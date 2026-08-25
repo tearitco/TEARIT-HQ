@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | xo-pet-v1
+META         | entry_layout       | projects/xo-pet-v1/layouts/xo-pet.chtpm
+
+STATE        | title              | XO-PET V1 (PoC)
+STATE        | version            | 1.0

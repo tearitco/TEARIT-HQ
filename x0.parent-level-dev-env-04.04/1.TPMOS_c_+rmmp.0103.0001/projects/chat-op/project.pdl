@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | chat-op
+META         | entry_layout       | projects/chat-op/layouts/mode_selector.chtpm
+STATE        | player_piece       | selector
+STATE        | current_world      | world_01
+RESPONSE     | default            | Chat Op loaded.

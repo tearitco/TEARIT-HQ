@@ -1,0 +1,5 @@
+user_id=avmenu_1654388
+display_name=MenuTest
+uuid=8d489a69-5e35-47f9-a603-c278d6612a68
+xyzfs_path=xyzfs/users/8d489a69-5e35-47f9-a603-c278d6612a68
+created_at=1785197566

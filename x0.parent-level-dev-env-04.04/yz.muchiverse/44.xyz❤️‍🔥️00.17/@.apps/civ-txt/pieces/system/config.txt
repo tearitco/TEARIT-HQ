@@ -1,0 +1,9 @@
+game_id=civ-txt-001
+turn=3
+turn_order_index=0
+victory_condition=conquest
+map_scale=small
+combat_resolution=abstract
+treasury=50
+city_count=1
+game_state=playing

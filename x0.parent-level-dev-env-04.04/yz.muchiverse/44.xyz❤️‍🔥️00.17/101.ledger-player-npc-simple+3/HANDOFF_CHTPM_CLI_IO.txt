@@ -1,0 +1,206 @@
+================================================================================
+LPNS+3 CHTPM/CLI_IO HANDOFF DOCUMENT
+Date: 2026-07-24
+================================================================================
+
+PROBLEM STATEMENT
+=================
+LPNS+3 was converted from OG shell-loop to CHTPM (prisc+x + PAL scripts).
+Then converted again to TPMOS pattern (game_manager + orchestrator).
+The chtpm_parser_pal and cli_io input are not working correctly.
+
+INVESTIGATION FINDINGS
+======================
+
+1. CHTPM PARSER VERSIONS
+------------------------
+Two versions exist:
+
+a) ORIGINAL TPMOS: x0.moke-pet-project-04.04/.../pieces/chtpm/plugins/chtpm_parser.c
+   - Pure substring guessing for is_modern_layout()
+   - Writes COMMAND: lines to history.txt (can wedge prisc+x cursor)
+   - 3030 lines
+
+b) PAL FORK: 0.ledger-player-npc-simple+3/system/chtpm_parser_pal.c
+   - Uses PRISC_PROJECT_ID env var for is_modern_layout() (better)
+   - Writes COMMAND: to pending_command.txt for PAL-native projects (fixes wedge)
+   - Adds suppress_next_gui_sync for cli_io race fix
+   - Fixes zombie process in cleanup_module()
+   - 3382 lines
+   - THIS IS THE CORRECT ONE TO USE
+
+2. KEYBOARD INPUT PIPELINE (CORRECT)
+-------------------------------------
+keyboard_input captures key
+    |
+    v
+pieces/keyboard/history.txt    <-- "KEY_PRESSED: N\n" format
+    |
+    v
+chtpm_parser_pal.c main()     <-- reads this, dispatches via process_key()
+    |
+    +--> For <interact> elements: inject_raw_key() writes to:
+         - <interact src="..."> path (if declared in layout)
+         - pieces/apps/player_app/history.txt (legacy fallback)
+    |
+    +--> For onClick commands: inject_command() writes to:
+         - pieces/display/pending_command.txt (PAL-native)
+         - pieces/apps/player_app/history.txt (legacy)
+
+3. gem-xo WORKING EXAMPLE
+--------------------------
+Layout: x0.moke-pet-project-04.04/.../projects/gem-xo/layouts/gem-xo.chtpm
+
+Key elements:
+  <module>projects/gem-xo/manager/+x/gem-xo_manager.+x</module>
+  <interact src="pieces/apps/player_app/history.txt" />
+  <cli_io id="input_text" label="Ask Agent: " />
+  <button label="[2] Clear Context" onClick="KEY:1" />
+
+Pattern:
+  - <interact> tag directs inject_raw_key() output to history.txt
+  - cli_io is TOP-LEVEL (not inside ACTIVATE button)
+  - cli_io id="input_text" uses legacy single-slot restore
+  - Enter on cli_io saves to gui_state.txt, injects keycode 13
+  - External manager reads gui_state.txt for the typed text
+
+4. cli_io PATTERNS (FROM WORKING PROJECTS)
+------------------------------------------
+Pattern A - Simple (gem-xo):
+  <cli_io id="input_text" label="Ask Agent: " />
+  No target_id. Uses legacy "input_text" slot.
+
+Pattern B - Multi-field:
+  <cli_io id="edit_x" label="X position" target_id="1" />
+  Each field uses own target_id to prevent collision.
+
+Pattern C - With ACTIVATE (our broken attempt):
+  <button onClick="ACTIVATE">
+    <cli_io id="input_text" label="Type word" />
+  </button>
+  THIS DOES NOT WORK for simple input - ACTIVATE is for submenus.
+
+5. THE BUG IN OUR LAYOUT
+-------------------------
+Our layout had:
+  <button label="Submit Word" onClick="ACTIVATE">
+    <cli_io label="Type your word" target_id="input_word" />
+  </button>
+
+This is WRONG because:
+  - ACTIVATE opens a submenu, not a text input
+  - cli_io should be top-level, not nested in ACTIVATE
+  - The correct pattern is just <cli_io> at panel level
+
+6. THE FIX NEEDED
+-----------------
+a) Layout: Use top-level cli_io like gem-xo does:
+   <panel>
+       <module>system/game_manager</module>
+       <interact src="pieces/apps/player_app/history.txt" />
+       <text label="${game_map}" /><br/>
+       <cli_io id="input_text" label="Type your word: " /><br/>
+       <button label="End Turn" onClick="KEY:101" /><br/>
+   </panel>
+
+b) keyboard_input: Must write to pieces/apps/player_app/history.txt
+   (NOT pieces/keyboard/history.txt) because <interact> tag directs
+   inject_raw_key() output there.
+
+   Current keyboard_input.c writes to pieces/keyboard/history.txt
+   with "KEY_PRESSED: " prefix - this is for chtpm_parser_pal's own
+   reading, but inject_raw_key() writes to the <interact> path.
+
+c) game_manager: Must read from pieces/apps/player_app/history.txt
+   (where inject_raw_key() writes), NOT from keyboard/history.txt.
+
+   Current game_manager.c reads from interact_relay.txt - this is
+   WRONG. Should read from history.txt.
+
+d) orchestrator: Must initialize pieces/apps/player_app/history.txt
+
+7. FLOW AFTER FIX
+------------------
+keyboard_input captures 'h' key
+    |
+    v
+pieces/keyboard/history.txt (KEY_PRESSED: 104)
+    |
+    v
+chtpm_parser_pal reads, calls process_key(104)
+    |
+    v
+process_key sees cli_io is focused, appends 'h' to input_buffer
+    |
+    v
+User presses Enter
+    |
+    v
+cli_io Enter handler:
+  - saves "hello" to gui_state.txt as input_text=hello
+  - injects keycode 13 to pieces/apps/player_app/history.txt
+  - clears input_buffer
+    |
+    v
+game_manager polls history.txt, sees keycode 13
+    |
+    v
+game_manager reads gui_state.txt for input_text value
+    |
+    v
+game_manager calls ./ops/word_turn_input 1 'hello'
+    |
+    v
+word_turn_input updates master_ledger.txt
+    |
+    v
+game_manager calls ./ops/word_compose_frame
+    |
+    v
+word_compose_frame writes game_map to state.txt
+    |
+    v
+game_manager pulses frame_changed.txt
+    |
+    v
+chtpm_parser_pal detects pulse, re-renders
+
+8. FILES TO MODIFY
+------------------
+a) pieces/chtpm/layouts/lpns_word_menu.chtpm
+   - Add <interact src="pieces/apps/player_app/history.txt" />
+   - Change cli_io to top-level with id="input_text"
+   - Remove ACTIVATE wrapper
+
+b) system/game_manager.c
+   - Read from pieces/apps/player_app/history.txt (not interact_relay.txt)
+   - Read word from gui_state.txt input_text slot
+
+c) system/orchestrator.c
+   - Initialize pieces/apps/player_app/history.txt (empty)
+
+d) system/keyboard_input.c
+   - Already correct: writes to pieces/keyboard/history.txt
+   - chtpm_parser_pal reads from there
+
+9. WHAT NOT TO CHANGE
+---------------------
+- chtpm_parser_pal.c - the PAL fork is correct, keep it
+- keyboard_input.c - already writes correct format to correct path
+- renderer.c - already works
+- orchestrator.c - structure is correct (fork/exec, track PIDs)
+
+10. TESTING CHECKLIST
+---------------------
+[ ] Layout shows cli_io input field
+[ ] Can type into cli_io field
+[ ] Enter submits the word
+[ ] word_turn_input receives the word
+[ ] Ledger updates with typed word
+[ ] Frame refreshes showing new word
+[ ] End Turn button works via KEY:101
+[ ] Ctrl+C kills all processes cleanly
+
+================================================================================
+END HANDOFF
+================================================================================

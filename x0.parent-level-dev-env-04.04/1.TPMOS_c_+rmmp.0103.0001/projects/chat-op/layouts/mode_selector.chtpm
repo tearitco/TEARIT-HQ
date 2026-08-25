@@ -1,0 +1,14 @@
+<panel>
+    <interact src="pieces/apps/player_app/history.txt" />
+    <text label="╔══════════════ CHAT OP : SELECT MODE ══════════════════════╗" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  Welcome to Chat-Op. Zero-Config P2P Discovery.           ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <button label=" [1] DEV-TEST MODE (Raw Hashes, Auto-Connect) " onClick="SET_MODE:DEV" href="projects/chat-op/layouts/chat-op.chtpm" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <button label=" [2] USER-FACING MODE (Nicknames, Auto-Connect) " onClick="SET_MODE:USER" href="projects/chat-op/layouts/chat-op.chtpm" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <button label=" [3] EXIT TO MAIN MENU " onClick="BACK" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+</panel>

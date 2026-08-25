@@ -1,0 +1,4 @@
+current_user_id=uloginA_1138315
+current_user_uuid=be561058-3101-41e0-8135-c076dc9e93d1
+current_xyzfs=xyzfs/users/be561058-3101-41e0-8135-c076dc9e93d1
+logged_in_at=1785474102

@@ -1,0 +1,31 @@
+# Moke-Pet Phase 4: Metabolism & Mortality - Detailed To-Do List
+
+## Objective
+Introduce metabolic state and lethal mechanics to the Moke-Pet simulation, ensuring entities must eat to survive and can be converted into resources upon death.
+
+## 1. Metabolism Implementation (`breathe.+x`)
+- [x] **Create `breathe.c`**:
+  - Increments `hunger` in `memory/stats.txt` by 1.
+  - Decrements `hp` by 1 if `hunger > 20`.
+- [x] **Manager Integration**:
+  - Dispatch `breathe.+x` automatically at the start of every lizard turn.
+
+## 2. Death Logic (Conversion)
+- [x] **Create `check_death.c`**:
+  - Reads `memory/stats.txt`.
+  - If `hp <= 0`:
+    - Rename entity directory (e.g., `liz_bulb` -> `corpse_bulb`).
+    - Update `state.txt`: `type | food`.
+    - Log death in epoch log.
+- [x] **Manager Integration**:
+  - After each entity action, dispatch `check_death.+x`.
+
+## 3. Interaction Mechanics (Combat)
+- [ ] **Update `attack.c`**:
+  - Argument: `<target_id>`.
+  - Logic: Open `../<target_id>/memory/stats.txt` and decrement `hp` by 3.
+  - Verification: Target should eventually die and become food.
+
+## 4. Verification
+- [ ] **Survival Test**: Run manager until a lizard dies from hunger.
+- [ ] **Predation Test**: Have `liz_bulb` attack `liz_char` until death, then `eat` the resulting `corpse_char`.

@@ -1,0 +1,21 @@
+SEARCH: | [ ] 1. : []                                        |
+FILE:   | [^] 2. : [typed-after-enter.txt_]                                     |
+MODE: SAVE AS FILE
+DIR: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.15/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/xyzfs/users/584a4c9b-cf42-4f9c-904b-9bca6be6d525/home/documents
+
+ACTIVE: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.15/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/xyzfs/users/584a4c9b-cf42-4f9c-904b-9bca6be6d525/home/documents/hi2-1655944.txt
+
+DIRECTORY CONTENTS:
+[ ] 3. [&lt;- BACK]
+[ ] 4. [[FIL] hi2-1655944.txt (20B)]
+[ ] 5. [[FIL] load_target_1651755.txt (66B)]
+[ ] 6. [[FIL] saved_1645336.txt (56B)]
+[ ] 7. [[FIL] saved_1648835.txt (56B)]
+[ ] 8. [[FIL] ved_1642371.txt (56B)]
+[ ] 9. [SAVE AS]
+[ ] 10. [CANCEL]
+
+
+
++=========================================================+
+Active [^]:  (ESC to exit)

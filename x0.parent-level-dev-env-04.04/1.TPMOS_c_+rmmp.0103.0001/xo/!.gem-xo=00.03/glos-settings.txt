@@ -1,0 +1,38 @@
+# GL-OS Settings & Configuration
+Date: 2026-05-04
+Status: IMPLEMENTED
+
+This document outlines the enhancements for the GL-OS desktop environment, focusing on display and text rendering.
+
+## 1. Automatic Fullscreen Mode (SUCCESS)
+
+**Implementation Status:**
+The GL-OS window now launches in fullscreen mode by default. The default window size has also been increased for improved visibility when windowed.
+
+**Implementation Details:**
+*   **Default Resolution:** Increased to 1024x768 in `gl_desktop.c`.
+*   **Fullscreen Call:** Added `glutFullScreen()` to the `main()` function, conditional on the `g_fullscreen_enabled` flag.
+
+## 2. Font Size Adjustment (SUCCESS)
+
+**Implementation Status:**
+A font scaling setting has been added to the Settings menu, allowing users to cycle through different scale factors (0.8x to 2.0x). The rendering engine has been updated to support dynamic scaling of fonts and UI elements.
+
+**Implementation Details:**
+*   **Global Factor:** Introduced `g_font_scale_factor`.
+*   **Dynamic Font Selection:** Added `get_font_regular()` and `get_font_small()` helpers that select appropriate GLUT bitmap fonts (8x13, 9x15, Helvetica 12/18, Times Roman 24) based on the scale factor.
+*   **Scaling UI:** Implemented dynamic `get_line_height()`, `get_button_height()`, and `get_toolbar_height()` to ensure the UI adapts to larger font sizes without overlapping.
+*   **Rendering Integration:** Updated all text rendering calls in `gl_desktop.c` (terminals, menus, toolbars, titlebars) to use these dynamic helpers.
+
+## 3. Main GL Desktop Settings Menu (SUCCESS)
+
+**Implementation Status:**
+A functional "Settings" menu is now accessible from the main GL-OS desktop menu.
+
+**Implementation Details:**
+*   **Navigation:** Added "Settings" to the main menu (`CTX_MAIN`) in `init_terminal_menu()` and `execute_option()`.
+*   **Settings Context:** Implemented `CTX_SETTINGS` to handle toggling fullscreen and adjusting font scale.
+*   **Consistency:** Updated all "back" navigation paths to ensure the main menu consistently displays all 4 options.
+
+---
+*Documented by Gemini CLI - 2026-05-04*

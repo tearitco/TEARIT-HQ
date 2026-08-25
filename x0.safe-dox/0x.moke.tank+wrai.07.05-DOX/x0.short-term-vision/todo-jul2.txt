@@ -1,0 +1,192 @@
+todo-jul2.txt
+Date: 2026-07-02
+Status: Active
+
+==================================================
+TOPIC
+==================================================
+
+Webcam is working again, but it is still too slow.
+
+User direction:
+- stop treating webcam like an ordinary occasional redraw source
+- if webcam is on, assume frames are continuously updating
+- polling / file-mtime wake logic is the wrong long-term contract for this lane
+- build the decoded-frame cache / shared-memory lane now so webcam can run at true speed
+- keep this useful for future performance-intensive live media, not just webcam
+
+==================================================
+CURRENT UNDERSTANDING
+==================================================
+
+What is working now:
+- `web-cam` launches again
+- standard compile path is clean
+- shared KVP seam has been lifted out of project-local Wraith ownership and moved toward TPMOS-shared ownership
+- audit files still exist and remain important
+
+What is still slow:
+- ffmpeg still emits `session/current_frame.png`
+- webcam daemon still polls for frame-file changes
+- manager/project wake path still depends on marker-file growth
+- project input still regenerates:
+  - `session/state.txt`
+  - `session/webcam_preview.grid.pdl`
+  - `session/wraith_body.txt`
+  - `session/scene.objects.pdl`
+
+So the current lane is:
+- correct enough for proof
+- too heavy for true live webcam speed
+
+==================================================
+PRINCIPLE
+==================================================
+
+For webcam and similar always-live surfaces:
+
+- once capture is active, we should assume the source is continuously updating
+- we should not require per-frame polling of a PNG file just to discover that truth
+- the hot runtime path should use decoded-frame shared memory / cache
+- file paths such as `session/current_frame.png` should become:
+  - audit snapshot names
+  - fallback exports
+  - debug dumps
+  - logical keys
+- not the mandatory hot transport itself
+
+==================================================
+NEXT IMPLEMENTATION TARGET
+==================================================
+
+Build a TPMOS shared live-frame cache lane for webcam and future media surfaces.
+
+Suggested naming direction:
+- `tpmos_live_frame_cache`
+- or `tpmos_media_frame_cache`
+
+The important part is the contract, not the exact final name.
+
+==================================================
+TARGET CONTRACT
+==================================================
+
+1. Continuous stream assumption
+- when webcam capture is active, producer writes frames continuously into shared memory
+- consumer does not need to rediscover stream liveness from file mtimes every frame
+
+2. Decoded-frame truth
+- hot path should store decoded pixel data, not just encoded PNG bytes
+- this avoids repeated encode/decode churn
+
+3. Shared transport
+- one shared memory frame buffer or ring buffer
+- keyed by stable logical path / media id
+- example logical key:
+  - `projects/wraith-alpha/wraith-projects/web-cam/session/current_frame`
+
+4. Sequence-aware updates
+- producer increments frame generation / frame sequence
+- consumers compare generation counters, not file size or file mtime
+
+5. Auditability preserved
+- hot path may be memory-first
+- audit dump/export still writes to:
+  - `session/current_frame.png`
+  - `session/webcam.status`
+  - other stable file paths as needed
+- dumping can happen on interval, on request, on stop, or sampled cadence
+
+6. Multi-consumer support
+- same live frame truth should be consumable by:
+  - ASCII projection
+  - GL image panel
+  - future recorder/export lane
+  - future computer-vision / agent tools
+
+==================================================
+PHASED PLAN
+==================================================
+
+Phase 1: Define the live frame cache seam
+- create TPMOS-shared runtime for live decoded frames
+- include:
+  - frame width
+  - frame height
+  - pixel format
+  - frame generation
+  - last update timestamp
+  - active flag / stream state
+  - raw RGBA buffer
+
+Phase 2: Feed webcam into the cache
+- webcam producer writes decoded frames into shared frame cache
+- stop using PNG file as the only live source of truth
+- keep optional snapshot export for audit/debug
+
+Phase 3: Teach `web-cam` consumer to read cache first
+- `wraith_project_input` reads shared frame cache directly
+- ASCII preview is built from decoded frame cache
+- GL image asset lane should also be able to consume the same decoded frame truth
+
+Phase 4: Reduce unnecessary wake work
+- for live webcam mode, prefer generation-based redraw triggering
+- do not rebuild more files than needed every frame
+- identify which outputs can be:
+  - per-frame
+  - sampled
+  - on-demand
+
+Phase 5: Generalize for future live media
+- screen-record monitor
+- future video live playback
+- any AR / camera / live-map lane
+
+==================================================
+FIRST CONCRETE TASKS
+==================================================
+
+1. Create new TPMOS shared frame-cache runtime unit
+- shared `.c` source, not implementation-heavy `.h`
+
+2. Decide first buffer shape
+- simplest acceptable first shape:
+  - single latest-frame RGBA buffer
+  - generation counter
+  - dimensions
+  - timestamp
+- ring buffer can come later if needed
+
+3. Add producer write path in webcam capture op
+- webcam should write decoded/latest frame into cache
+
+4. Add consumer read path in webcam project input op
+- prefer cache over PNG
+- PNG remains fallback / dump source
+
+5. Keep audit dump path
+- sampled or stop-time dump of current frame to PNG
+- keep status/history auditable
+
+==================================================
+NON-GOALS FOR THIS PASS
+==================================================
+
+- do not over-generalize into a giant media framework first
+- do not remove audit files entirely
+- do not keep using polling as the core logic for always-live webcam
+- do not reintroduce project-local ownership or implementation-heavy `.h` seams
+
+==================================================
+SUCCESS CONDITION
+==================================================
+
+Webcam should feel materially faster because:
+- hot frame truth is no longer gated by PNG file churn
+- consumers read shared decoded frame truth directly
+- audit files remain available without dominating the hot path
+
+If this works, the lane becomes the standard foundation for:
+- webcam
+- future screen-record live monitor
+- future high-frequency video/media surfaces

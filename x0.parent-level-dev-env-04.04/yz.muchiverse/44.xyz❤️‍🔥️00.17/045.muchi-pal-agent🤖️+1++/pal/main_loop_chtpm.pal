@@ -1,0 +1,77 @@
+# muchi-pal-agent main_loop_chtpm.pal - real chtpm version, replacing the
+# old bare main_loop.pal (deleted same day - see CHAT-INTEGRATION-
+# ARCHITECTURE.txt sec. 1 for the full upgrade record). Real <cli_io>
+# (chat.chtpm) now owns typing/backspace/live-echo entirely - buffer_key
+# is DELETED, not kept alongside, since chtpm_parser_pal.c's own cli_io
+# handling already does that job natively. This script's only remaining
+# job on a keypress is reacting to key==13 (Enter, injected by chtpm's
+# own cli_io Enter-handler via inject_raw_key(13) - the SAME "STAY
+# ACTIVE" mechanism pal-chat-irc's own room.chtpm/chat_menu_input.c
+# already proved live - see that project's own header comment for the
+# full trace of why this arrives here as a real, distinguishable key).
+#
+# Frame render gating: Only render when something actually changes.
+# Marker file (pieces/display/chat_screen_changed.txt) size increases
+# by 1 byte (dot) each time compose_frame runs. Compare before/after
+# to detect work. No render on idle. Matches mutaclsym pattern.
+#
+# TICK-RENDER (direct user request: "per second counter so user will
+# know we are waiting, not frozen") - compose_frame.c's own elapsed-
+# seconds display (thinking_start, gem-dev_manager.c's own g_thinking_
+# start/g_thinking_secs pattern) only advances on-screen when compose_
+# frame actually RUNS - it never ran on a plain idle tick before this,
+# only on response_arrived/do_submit, so the seconds counter looked
+# frozen even though real time was passing. x14 counts idle ticks
+# (100ms each); every 10 (~1s) forces one render regardless of state,
+# same "harmless to redraw identical content" tradeoff mutaclsym's own
+# tick-driven redraws already accept.
+li x1, 0
+li x8, 0
+li x14, 0
+
+compose_frame
+hit_frame
+read_pos x8, "pieces/display/chat_screen_changed.txt"
+
+loop:
+check_response
+read_pos x7, "pieces/display/chat_screen_changed.txt"
+bne x7, x8, response_arrived
+addi x8, x7, 0
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, no_key
+li x13, 13
+beq x2, x13, do_submit
+j no_key
+
+do_submit:
+gemma_strategy
+strategy_execute_a
+send_message
+li x14, 0
+j render
+
+response_arrived:
+addi x8, x7, 0
+li x14, 0
+j render
+
+render:
+irc_agent_poll
+compose_frame
+hit_frame
+j loop
+
+no_key:
+addi x14, x14, 1
+li x15, 10
+beq x14, x15, tick_render
+sleep 100000
+j loop
+
+tick_render:
+li x14, 0
+compose_frame
+hit_frame
+sleep 100000
+j loop

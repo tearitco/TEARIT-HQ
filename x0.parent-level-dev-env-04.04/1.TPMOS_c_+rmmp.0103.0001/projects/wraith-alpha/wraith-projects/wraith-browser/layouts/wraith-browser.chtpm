@@ -1,0 +1,8 @@
+<chtpm>
+  <module>projects/wraith-alpha/wraith-projects/wraith-browser/manager/+x/wraith-browser_manager.+x</module>
+  <text label="WRAITH BROWSER" /><br/>
+  <text label="Project ID: wraith-alpha/wraith-projects/wraith-browser" /><br/>
+  <text label="Status: TPMOS hybrid scaffold ready" /><br/>
+  <text label="Rule: browser, parser, and JS stay ops-based and auditable" /><br/>
+  <text label="Phase 1: local docs | Phase 2: controlled JS" /><br/>
+</chtpm>

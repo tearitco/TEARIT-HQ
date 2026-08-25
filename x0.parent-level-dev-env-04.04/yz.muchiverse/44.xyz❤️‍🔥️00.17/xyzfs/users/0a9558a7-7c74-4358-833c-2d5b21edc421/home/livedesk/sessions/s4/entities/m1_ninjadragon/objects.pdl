@@ -1,0 +1,3 @@
+PAGE | main
+OBJECT | label=Close | action=CLOSE
+OBJECT | label=Cancel | action=void

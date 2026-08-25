@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | q_002
+META         | type               | question
+
+STATE        | name               | Ethane
+STATE        | type               | Alkane

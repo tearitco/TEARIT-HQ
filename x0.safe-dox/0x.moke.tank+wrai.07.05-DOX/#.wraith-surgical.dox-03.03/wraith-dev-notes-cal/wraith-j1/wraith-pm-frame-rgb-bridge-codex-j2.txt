@@ -1,0 +1,265 @@
+WRAITH-PM FRAME/METADATA -> RGB BRIDGE PLAN
+Codex J2 alignment note
+
+Purpose:
+This note locks down the intended bootstrap boundary before code starts. The
+first Wraith path is not GL-first. It is frame-first, metadata-first, and
+audit-first. GL is only one optional consumer of RGB output.
+
+1. Core intention
+
+wraith-pm should create colored ASCII frames plus metadata before GL ever sees a
+frame.
+
+The core runtime path is:
+
+CHTMGL layout + project/session state
+-> wraith_parser.c
+-> colored ASCII frame artifacts
+-> metadata artifacts
+-> optional converter daemon
+-> pure RGB/RGBA framebuffer artifacts
+-> wraith-gl.c presenter
+
+The same RGB/RGBA framebuffer artifacts should later be usable for non-GL
+targets such as RGB panels or HDMI-style output.
+
+2. Parser responsibility
+
+wraith_parser.c owns:
+
+- reading CHTMGL layouts
+- reading project/session state
+- substituting variables
+- understanding tags, colors, geometry, shape metadata, roles, ids, actions,
+  images, video nodes, and interaction regions
+- calling separate image/video decode ops synchronously when the current frame
+  needs media cells
+- producing the colored ASCII frame
+- producing metadata that describes the frame
+- producing audit-friendly files for AI/debug review
+
+wraith_parser.c does not upload anything to GL.
+wraith_parser.c also should not contain full image/video decoding logic. It
+coordinates media decode ops and merges their cell output into the frame.
+
+3. Frame artifacts
+
+The parser should write a stable frame bundle under the project session folder.
+Initial target paths:
+
+projects/wraith-pm/session/current_frame.txt
+projects/wraith-pm/session/current_frame.ansi.txt
+projects/wraith-pm/session/current_frame.cells.pdl
+projects/wraith-pm/session/current_frame.meta.pdl
+projects/wraith-pm/session/current_frame.objects.pdl
+projects/wraith-pm/session/current_frame.hitmap.pdl
+projects/wraith-pm/session/current_frame.audit.txt
+projects/wraith-pm/session/frame_changed.txt
+
+current_frame.txt:
+Plain ASCII frame for easy reading and diffing.
+
+current_frame.ansi.txt:
+Colored ASCII frame using terminal color escape sequences.
+
+current_frame.cells.pdl:
+One record per visible ASCII cell. This is the most important converter input.
+Suggested table shape:
+
+SECTION | KEY | VALUE
+FRAME | frame_id | 000001
+FRAME | cell_width_px | 8
+FRAME | cell_height_px | 16
+CELL | x=0,y=0 | ch=20 fg=#E8E8E8 bg=#101820 object=0 style=normal
+CELL | x=1,y=0 | ch=57 fg=#E8E8E8 bg=#101820 object=4 style=bold
+
+current_frame.meta.pdl:
+Frame-level metadata, color palette, rasterization intent, source layout,
+viewport size, and output pixel dimensions.
+
+current_frame.objects.pdl:
+Object and semantic records for windows, panels, buttons, text, image/video
+regions, controls, and future mouse/keyboard targeting.
+
+current_frame.hitmap.pdl:
+Cell-to-object mapping for CLI mouse support and AI audit.
+
+current_frame.audit.txt:
+Human/AI readable summary: layout path, frame id, parse warnings, object count,
+interactive count, asset decode status, and output files.
+
+3b. Media decode ops
+
+Image and video decoding should be separate Wraith ops, not embedded inside the
+parser and not delayed until GL.
+
+Initial project-local names:
+
+projects/wraith-pm/ops/wraith_image_decode.c
+projects/wraith-pm/ops/wraith_video_decode.c
+
+The parser may call these synchronously while composing a frame. The decode ops
+should write region-local cell PDL that the parser merges into the global frame.
+
+Reference implementation to study:
+
+i2a(sci).c]ON+BMP]🧙‍♂️️]0001/i2a.c
+
+Important ideas from that reference:
+
+- use image loading to get RGB pixels
+- resize image to target terminal/cell dimensions
+- map brightness to ASCII ramps
+- keep color by emitting foreground/background RGB values
+- treat each output cell as both an ASCII glyph and color sample
+
+Wraith-specific change:
+
+The ops should not print terminal output as the primary product. They should
+write PDL cell data that can be audited and merged into the frame bundle.
+
+Suggested image op contract:
+
+wraith_image_decode.+x <src> <out_pdl> <cols> <rows> <object_id>
+
+Suggested video op contract:
+
+wraith_video_decode.+x <src> <out_pdl> <cols> <rows> <object_id> <frame_index>
+
+Suggested output:
+
+SECTION | KEY | VALUE
+MEDIA | kind | image
+MEDIA | source | assets/sample.bmp
+MEDIA | cols | 20
+MEDIA | rows | 6
+CELL | x=0,y=0 | ch=23 fg=#AABBCC bg=#AABBCC object=14 style=image
+
+The parser remains responsible for positioning those region-local cells in the
+global frame, writing current_frame.cells.pdl, objects.pdl, hitmap.pdl, and
+current_frame.txt / current_frame.ansi.txt.
+
+4. Why PDL for metadata
+
+PDL fits TPMOS better than ad hoc text because the project already uses PDL for
+structured project/piece data. It is readable, diffable, and simple for C
+parsers to consume.
+
+The exact PDL shape can evolve, but it should be stable enough that:
+
+- the RGB converter daemon can read it
+- the CLI renderer can use it for mouse hit regions
+- AI can audit it directly
+- future tools can replay or compare frames
+
+5. RGB converter daemon
+
+The optional converter should be a separate process, probably:
+
+projects/wraith-pm/plugins/wraith_rgb_daemon.c
+
+or, if promoted to a shared piece:
+
+pieces/wraith/plugins/wraith_rgb_daemon.c
+
+It watches:
+
+projects/wraith-pm/session/frame_changed.txt
+
+Then reads:
+
+projects/wraith-pm/session/current_frame.cells.pdl
+projects/wraith-pm/session/current_frame.meta.pdl
+projects/wraith-pm/session/current_frame.objects.pdl
+
+Then writes:
+
+projects/wraith-pm/session/current_frame.rgb24
+projects/wraith-pm/session/current_frame.rgba32
+projects/wraith-pm/session/current_frame.rgb.pdl
+projects/wraith-pm/session/rgb_frame_changed.txt
+
+current_frame.rgb24:
+Packed RGB bytes, row-major, 3 bytes per output pixel.
+
+current_frame.rgba32:
+Packed RGBA bytes, row-major, 4 bytes per output pixel. This is likely the
+easiest handoff to GL textures.
+
+current_frame.rgb.pdl:
+Metadata for the raw RGB/RGBA payloads: width, height, stride, format, source
+frame id, glyph rasterizer used, and warnings.
+
+6. Converter responsibility
+
+wraith_rgb_daemon.c owns:
+
+- reading the ASCII cell frame and metadata
+- rasterizing ASCII glyphs and shape metadata into pixels
+- converting image/video ASCII regions into matching pixels
+- applying fg/bg colors, borders, fills, and styles
+- writing pure RGB/RGBA buffers
+- pulsing rgb_frame_changed.txt
+
+It should not parse CHTMGL layout semantics directly. Its input is frame +
+metadata, not raw layout.
+
+7. Font and glyph responsibility
+
+GL does not render fonts.
+
+The converter/rasterizer turns ASCII characters, font choices, and shape
+metadata into RGB/RGBA pixels before GL sees them. Wraith can later swap
+rasterizers, but wraith-gl.c should still receive only pixel buffers.
+
+8. wraith-gl.c presenter
+
+wraith-gl.c owns:
+
+- watching rgb_frame_changed.txt
+- reading current_frame.rgba32 or current_frame.rgb24
+- reading current_frame.rgb.pdl for width/height/stride/format
+- uploading the buffer to a GL texture
+- presenting the texture on screen
+
+wraith-gl.c does not own:
+
+- CHTMGL parsing
+- variable substitution
+- fonts
+- text layout
+- button semantics
+- image/video semantic decisions
+- hit maps
+
+9. Bootstrap agenda
+
+Phase A:
+Create wraith-pm project skeleton, CHTMGL layout, and wraith_parser.c that
+emits colored ASCII frame artifacts plus PDL metadata.
+
+Phase B:
+Create separate synchronous media decode ops for image and video regions. Use
+the local i2a BMP/image-to-ASCII reference for RGB-to-glyph/color mapping.
+
+Phase C:
+Create a minimal converter that reads cells/meta PDL and writes a deterministic
+RGBA buffer. Use simple fixed cell dimensions first.
+
+Phase D:
+Create wraith-gl.c that presents the RGBA buffer as a texture. Keep it dumb.
+
+Phase E:
+Use the user's eyes for first visual confirmation. Until the bootstrap is
+confirmed, do not assume the ASCII->RGB->GL look matches the intended desktop.
+
+Phase F:
+Only after the bootstrap is visually accepted, expand image/video ASCII
+conversion, color metadata, mouse hit maps, and richer glyph/shape rasterizers.
+
+10. Non-negotiable boundary
+
+Do not merge parser, RGB converter, and GL presenter into one hidden step.
+
+The auditable frame bundle is the product. RGB and GL are consumers.

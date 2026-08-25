@@ -1,0 +1,29 @@
+# DSA Training Data Generation Prompt
+
+## Current Situation
+Currently, our DSA (Dynamic Sparse Attention) implementation is using fake/random values during the training process. This means that while the model can run and produce outputs, it's not learning meaningful representations from actual training data.
+
+## Future Implementation Goal
+In the future, we want the DSA to produce real values like the main @3.stage.llm.tomom@qroq.fame]921/** system does. The real training process should:
+
+1. Generate meaningful loss values during actual training
+2. Learn proper associations between tokens
+3. Update weights based on real gradient computations
+4. Converge to meaningful representations
+
+## Requirements for Real Training Implementation
+When implementing the real training data generation, the system should:
+
+1. Properly compute loss values during training iterations
+2. Store actual gradient updates in a loss.txt file
+3. Track convergence metrics over epochs
+4. Produce measurable improvements in attention mechanisms
+5. Generate real association weights between vocabulary items
+
+## Current State
+- Currently using placeholder/fake values
+- Need to implement actual training loop with real data
+- Need integration with the main training pipeline
+- Loss values should reflect actual model learning
+
+Note: This system should eventually integrate with the main training pipeline and use real curriculum data rather than synthetic values.

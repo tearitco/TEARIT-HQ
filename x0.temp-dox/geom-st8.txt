@@ -1,0 +1,179 @@
+WINDOW GEOMETRY STATUS -- 2026-07-13 (UPDATED after fix pass, same day)
+Supersedes the earlier version of this file written before the fixes below.
+
+BASE = x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/
+
+PATH NOTES (unchanged from the investigation pass):
+- GL renderer: projects/wraith-alpha/ops/wraith_gl.c
+- window-geom project: projects/wraith-alpha/wraith-projects/settings/window-geom/
+- Pixel compositor: projects/wraith-alpha/plugins/wraith_rgb_daemon.c (fixed
+  COLS=128/ROWS=40 raster buffer -- real headroom well past the 96x30 default,
+  confirmed still true after this pass, not touched)
+
+
+HOW TO USE IT (user-facing)
+==============================
+1. Open any project window normally (launcher list or taskbar). It becomes
+   the ACTIVE window (highlighted title bar).
+2. On that window's chrome row (the small icon row next to its title),
+   click/nav-select the '&' icon ("chrome_geom", the last chrome icon).
+   This is a per-window action, not global -- it targets whichever window
+   was active at the moment you clicked it. wraith-alpha_manager.c's
+   open_window_geom_for_project() snapshots that window's project_id into
+   window-geom's own session/wg_target.txt right then; it does NOT keep
+   tracking focus afterward, so switching windows after opening window-geom
+   does not retarget it -- you'd need to close and reopen it via '&' again
+   on the new target.
+3. This opens a NEW window titled "WINDOW GEOM" showing four nudge rows and
+   an Apply button:
+     [-] X   [+] X
+     [-] Y   [+] Y
+     [-] W   [+] W
+     [-] H   [+] H
+     Apply Changes
+   Each button is a normal nav-selectable/clickable control (arrow keys +
+   Enter, or mouse/GL click) -- same interaction model as everywhere else in
+   Wraith, nothing special. Each press nudges an in-memory working value by
+   1 (session/edit_state.txt), it does NOT save automatically.
+4. Click/select "Apply Changes" to actually persist the four working values
+   into the TARGET project's own project.pdl WINDOW section (window_x/
+   window_y/window_width/window_height). Nothing changes on screen for the
+   target window until this step.
+5. Close window-geom and reopen (or just switch to) the target window --
+   its title bar, content panel, and (as of this pass) overall frame size
+   will reflect the new geometry in both ASCII and GL. No restart of the
+   whole manager needed; geometry is (re)loaded fresh every time that
+   project's window is (re)launched (launch_window_instance() ->
+   load_window_geometry_from_pdl()), not on a timer.
+
+Caveats to tell a user testing this by hand:
+- height only visibly does anything in GL right now (see below) -- ASCII
+  will not visibly grow/shrink, only its border width will if you change W.
+- values aren't clamped to anything sensible on the low end beyond >=0;
+  setting width/height very small will visually break the layout (chrome
+  icons etc. are still emitted at their old fixed offsets -- see "REMAINING
+  KNOWN GAPS" below).
+- there's no "reset to default" button; to undo, nav back into window-geom
+  targeting the same project and nudge the values back, or hand-edit that
+  project's project.pdl WINDOW section directly, or delete the WINDOW
+  section from project.pdl entirely to fall back to defaults (0/0/0/0 reads
+  as "unset" and each resolver falls back to its historical default).
+
+
+WHAT WAS FIXED THIS PASS
+==========================
+
+1. Stale comments (3 locations) -- all rewritten to describe current reality:
+   - wraith-alpha_manager.c ~381-388 (load_window_geometry_from_pdl header)
+   - wraith-alpha_manager.c ~1318-1325 (launch_window_instance call site,
+     formerly "KPI A1 read-path-only, nothing renders until KPI A2")
+   - window-geom_manager.c 23-38 (formerly claimed "READ-ONLY"; Apply/KEY:13
+     has written real values since before this pass, comment just never
+     caught up)
+
+2. resolve_frame_height() added (wraith-alpha_manager.c, right after
+   resolve_frame_width()) -- same precedence/default-preserving structure:
+   window->height if >0, else layout_declared_height if >0, else historical
+   default 30 (matches wraith_root's long-standing hardcoded h=30, and equals
+   desktop_body_top(2) + old desktop_body_height(23) + footer_band_height(4)
+   + 1 bottom-border row, so the default reproduces prior behavior exactly).
+
+3. write_semantic_projection_files() (GL/semantic path) now derives ALL of
+   its frame-size numbers from resolve_frame_width()/resolve_frame_height()
+   instead of hardcoded literals:
+     - wraith_root OBJECT: w=<frame_width> h=<frame_height> (was w=96 h=30)
+     - desktop_banner OBJECT: w=<frame_width> (was w=96)
+     - window_chrome_row / content panel OBJECTs: w=<frame_width-2>
+       (was w=94)
+     - content panel h=<desktop_body_height-1>, where desktop_body_height
+       is now computed as frame_height - desktop_body_top(2) -
+       footer_band_height(4) - frame_border_rows(1), instead of the old
+       literal 23 (default frame_height=30 reproduces 23 exactly, unchanged)
+     - meta.pdl's FRAME | cols/rows/viewport_width_px/viewport_height_px
+       now match frame_width/frame_height (10px/18px cell size unchanged)
+       instead of hardcoded 96/30/960/540 -- this closes a metadata
+       inconsistency that would otherwise have appeared the moment any
+       project actually saved a non-default width/height.
+   audit.txt and desktop_state.pdl's own separate cols=96/rows=30 literals
+   were deliberately NOT touched -- confirmed (again) that nothing reads
+   those two particular fields, they're debug-output-only, and touching them
+   would have required restructuring variable scope for no functional gain.
+   Flagged here as a known, still-stale, but harmless loose end.
+
+4. ASCII path (build_desktop_shell_markup): width was already wired via
+   resolve_frame_width() pre-existing; left as-is. Height was deliberately
+   NOT given an ASCII equivalent -- there is no existing vertical-extent
+   mechanism in ASCII's rendering (no per-row loop analogous to
+   append_frame_border()'s per-column dash loop; content just grows to
+   however many lines the project body produces, bounded only by an
+   unrelated pre-existing max_lines=40 cap). Inventing a fake truncation/
+   padding loop just to claim height "works" in ASCII would have been
+   dishonest. This is a real, acknowledged asymmetry between the two
+   renderers for height specifically (width already had a milder version of
+   this same asymmetry -- ASCII's width was always cosmetic-border-only, GL
+   now also has real width effect on top of that).
+
+
+LIVE ROUND-TRIP TEST -- PASSED
+================================
+Method: wrote a nonzero WINDOW section directly into piececraft-wraith's
+project.pdl (x=6, y=3, width=80, height=24) -- the same write shape
+window-geom's Apply (KEY:13) produces -- started wraith-alpha_manager.+x as
+a live background process from repo root, injected
+"COMMAND: DESKTOP_ACTION:launch_piececraft_wraith" into
+projects/wraith-alpha/session/desktop_actions.txt, waited one frame,
+inspected the real generated output files, then killed the process and
+restored piececraft-wraith/project.pdl back to 0/0/0/0.
+
+Confirmed in pieces/display/current_frame.objects.pdl:
+  wraith_root:        w=80 h=24                (was hardcoded 96/30)
+  window_chrome_row:   x=7 y=5 w=78             (1+6, 2+3, 80-2)
+  content panel:       x=7 y=6 w=78 h=16        (desktop_body_height-1,
+                                                  where body_height=24-2-4-1=17)
+Confirmed in pieces/display/current_frame.meta.pdl:
+  FRAME | cols | 80,  FRAME | rows | 24
+  FRAME | viewport_width_px | 800,  viewport_height_px | 432
+Confirmed in projects/wraith-alpha/session/alpha_state.txt (ASCII markup,
+pre-chtpm_parser-composition):
+  border line "+-WRAITH DESKTOP GUI---...---+" measured at exactly 80
+  characters -- matches window_width=80 exactly.
+
+All arithmetic matched hand-derived predictions exactly on the first run --
+no bugs found in the new wiring during live testing.
+
+
+CURRENT STATUS BY FIELD
+==========================
+
+x, y       -- WORKING (unchanged from before this pass; was already
+              end-to-end via resolve_window_content_origin()).
+
+width      -- WORKING in BOTH renderers now. ASCII: cosmetic border length
+              (pre-existing). GL: wraith_root/banner/chrome-row/content-panel
+              w= fields all real and load-bearing (new this pass). Live-tested.
+
+height     -- WORKING in GL only (new this pass): wraith_root h=, content
+              panel h=, and the whole footer/taskbar/summary/debug row
+              vertical positions all now derive from resolve_frame_height().
+              NOT wired in ASCII -- no existing mechanism to hook into;
+              acknowledged asymmetry, not a bug, documented above. Live-tested
+              (GL side only, since that's the only side with any effect).
+
+window-geom save path -- unchanged, still confirmed field-format-compatible
+              (this was already true before this pass); the live test above
+              is the first real evidence a NONZERO round-trip actually works
+              end to end, not just an all-zeros write.
+
+
+REMAINING KNOWN GAPS (not fixed this pass, none blocking)
+=============================================================
+- audit.txt / desktop_state.pdl's own hardcoded cols=96/rows=30 (2 spots)
+  are now the only remaining stale-but-harmless literals; confirmed unread
+  by anything, left alone deliberately.
+- ASCII has no height concept at all, by design gap not oversight (see
+  point 4 above). Would need a genuinely new feature (row-budget-aware
+  content truncation/padding) to close, not just wiring an existing field --
+  out of scope for a "wire the field" pass.
+- chtpm_parser.c's attribute allow-list still has no width/height attrs
+  (resolve_frame_width()'s own comment's "layout-declared width" precedence
+  tier) -- still explicitly deferred, unstarted, unrelated to this pass.

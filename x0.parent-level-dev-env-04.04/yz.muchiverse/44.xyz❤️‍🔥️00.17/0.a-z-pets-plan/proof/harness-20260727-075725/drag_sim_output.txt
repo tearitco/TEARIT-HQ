@@ -1,0 +1,2 @@
+tk_drag_sim: source='test_pet_az' (480,480 80x80) target='mutaclsym RGB mirror' (20,90 640x768)
+tk_drag_sim: drop simulated: 'test_pet_az' -> 'mutaclsym RGB mirror'

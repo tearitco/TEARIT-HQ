@@ -1,0 +1,51 @@
+# coin_flip.pal - real pal-native rebuild of ops/coin_flip.c's own core
+# mutation (stake 10, double-or-nothing). Two real, named things the
+# dispatcher (ops/muchi_menu_input.c) must do BEFORE launching this
+# script, neither of which this ISA can do itself (xyzos-standards.txt
+# sec.21.3/21.5):
+#   1. PRECONDITION GATE: verify tokens >= 10 in C first and refuse to
+#      even launch this script otherwise (printing the same "need 10
+#      tokens, have N" message the C original gave) - this ISA only has
+#      `beq` (branch-if-EQUAL), no blt/bge, so a general ">=" check
+#      against an unbounded value isn't expressible here at all (unlike
+#      pet_pet_prototype.pal's own clamp, which works ONLY because the
+#      violating range was small and fully enumerable).
+#   2. THE RANDOM BIT: generate it in C (same rand() source
+#      ops/coin_flip.c always used) and write it into
+#      pieces/system/active_target.txt's own "heads" key (0 or 1)
+#      BEFORE launching - ecall has no randomness primitive, and
+#      deliberately isn't getting one just for this (xyzos-standards.txt
+#      sec.21.5 - a direct, considered choice, not an oversight).
+# This script itself only does what's genuinely pal-shaped: read the
+# pre-seeded coin result and the current balance, branch on it, write
+# the new balance back. Reuses active_target.txt as the scratch
+# location for "heads" purely for convenience (this op has no
+# per-instance PIECE target at all - user_01's own tokens are the
+# fixed, singular target, same as claim_tokens.pal) - the file is
+# truncated by the dispatcher after every action regardless of which
+# key it held.
+
+li x15, 6
+li x13, 0
+ecall "pieces/system/active_target.txt" "heads"
+addi x3, x12, 0
+
+li x15, 6
+li x13, 0
+ecall "pieces/world_01/map_lobby/user_01/state.txt" "tokens"
+addi x1, x12, 0
+
+li x4, 1
+beq x3, x4, heads_won
+addi x1, x1, -10
+j write_back
+
+heads_won:
+addi x1, x1, 10
+
+write_back:
+li x15, 7
+addi x12, x1, 0
+ecall "pieces/world_01/map_lobby/user_01/state.txt" "tokens"
+
+halt

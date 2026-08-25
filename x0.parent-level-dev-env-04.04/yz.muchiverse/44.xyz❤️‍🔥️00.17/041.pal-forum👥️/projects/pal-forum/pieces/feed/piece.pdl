@@ -1,0 +1,8 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | feed
+META         | version            | 1.0
+
+METHOD       | Refresh Feed            | REFRESH_FEED
+METHOD       | Like (enter post id)    | LIKE
+METHOD       | Retweet (enter post id) | RETWEET

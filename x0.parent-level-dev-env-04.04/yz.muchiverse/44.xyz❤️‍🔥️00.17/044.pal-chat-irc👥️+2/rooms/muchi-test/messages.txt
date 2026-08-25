@@ -1,0 +1,3 @@
+MSG|1784553227-0-2526847|muchi-test|irc-agent-0000|1784553227|hi! I am irc-agent-0000 - say something and I will reply.
+MSG|1784553252-0-2538834|muchi-test|human-tester|1784553252|hello agent, how are you?
+MSG|1784553252-0-2538852|muchi-test|irc-agent-0000|1784553252|coffee journey mountain happy journey today

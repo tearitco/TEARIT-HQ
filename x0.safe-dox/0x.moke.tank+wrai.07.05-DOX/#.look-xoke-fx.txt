@@ -1,0 +1,325 @@
+sh button.sh r
+=== CHTPM Orchestrator Launch ===
+Working directory: /home/no/Desktop/🤖️🪤️🏠️/🗓️📆️👩🏻‍💻️/jun-18/0x.moke.tank+wrai.06.00/x0.moke-pet-project-2.2/x0.5-liz.fiter4-mew-00.02
+
+POSIX path: /home/no/Desktop/🤖️🪤️🏠️/🗓️📆️👩🏻‍💻️/jun-18/0x.moke.tank+wrai.06.00/x0.moke-pet-project-2.2/x0.5-liz.fiter4-mew-00.02
+
+Performing comprehensive cleanup...
+Found: ./pieces/chtpm/plugins/+x/orchestrator.+x
+Launching...
+Press Ctrl+C to exit
+========================================
+Linux Keyboard Muscle Active (Press Ctrl+C to exit via Orchestrator)
+Could not open joystick: No such file or directory
+
+
+
+
+
+--- FRAME UPDATE at 2026-06-20 01:50:47 ---
++===========================================================+
+|                                                           |
+|           C H T P M + O S   C L I   v2.0                 |
+|                                                           |
+|  CHTPM+OS Main Menu                                      |
+|                                                           |
+|  [>] 1. [Project Loader]                             |
+|  [ ] 2. [App Store (Fondu)]                          |
+|  [ ] 3. [Status]  [ ] 4. [GL-OS]                                          |
+|  [ ] 5. [Process Monitor]                            |
+|  [ ] 6. [Toggle Frame History (Current: )]                                         |
+|  [ ] 7. [Help]                                            |
+|                                                           |
++===========================================================+
+|  Running Applications: None                               |
+|  System Time: 08:00:00 | Turn: 0 | Key: None |
++===========================================================+
+|                                                           |
+|  $ | [ ] 8. []                                                 |                                                 |
+
++=========================================================+
+Nav > _
+
+
+
+
+
+--- FRAME UPDATE at 2026-06-20 01:50:49 ---
+╔══════════════ P I E C E M A R K   L O A D E R ════════════╗
+║ LAYOUT ID: playrm/loader.chtpm                            ║
+║                                                           ║
+║  Select a project to begin:                               ║
+║                                                           ║
+║  [>] 1. [gem-xo]                                        ║
+║  [ ] 2. [template]                                      ║
+║  [ ] 3. [xo-pet-v1]                                     ║
+║                                                           ║
+╠═══════════════════════════════════════════════════════════╣
+║  [ ] 4. [Back to Main Menu]                                  ║
+╚═══════════════════════════════════════════════════════════╝
+
++=========================================================+
+Nav > _
+
+
+
+
+
+--- FRAME UPDATE at 2026-06-20 01:50:50 ---
+╔══════════════ P I E C E M A R K   L O A D E R ════════════╗
+║ LAYOUT ID: playrm/loader.chtpm                            ║
+║                                                           ║
+║  Select a project to begin:                               ║
+║                                                           ║
+║  [ ] 1. [gem-xo]                                        ║
+║  [ ] 2. [template]                                      ║
+║  [>] 3. [xo-pet-v1]                                     ║
+║                                                           ║
+╠═══════════════════════════════════════════════════════════╣
+║  [ ] 4. [Back to Main Menu]                                  ║
+╚═══════════════════════════════════════════════════════════╝
+
++=========================================================+
+Nav > 3_
+
+
+
+
+
+--- FRAME UPDATE at 2026-06-20 01:50:50 ---
+ [ SIM ACTIVE: PAUSED (0) ]
+ [ ACTIVE ID: xolector ]
+ [ EPOCH: 29 ]
+ [ STEPS: 0 ]
+ PROJECT CONTROLS:
+[>] 1. [[ START ]][ ] 2. [[ PAUSE ]][ ] 3. [[ STEP / END TURN ]]
+ PET SWITCHER:
+[ ] 4. [Possess liz_bulb][ ] 5. [Possess liz_char][ ] 6. [Possess liz_gen_5414]
+ METHODS (xolector):
+[ ] 7. [possess_bulb][ ] 8. [possess_char]
+ LOG: System Initialized.
+
++=========================================================+
+Nav > _
+
+
+
+
+
+--- FRAME UPDATE at 2026-06-20 01:50:53 ---
+ [ SIM ACTIVE: PAUSED (0) ]
+ [ ACTIVE ID: xolector ]
+ [ EPOCH: 29 ]
+ [ STEPS: 0 ]
+ PROJECT CONTROLS:
+[ ] 1. [[ START ]][>] 2. [[ PAUSE ]][ ] 3. [[ STEP / END TURN ]]
+ PET SWITCHER:
+[ ] 4. [Possess liz_bulb][ ] 5. [Possess liz_char][ ] 6. [Possess liz_gen_5414]
+ METHODS (xolector):
+[ ] 7. [possess_bulb][ ] 8. [possess_char]
+ LOG: System Initialized.
+
++=========================================================+
+Nav > _
+
+
+
+
+
+--- FRAME UPDATE at 2026-06-20 01:50:56 ---
+ [ SIM ACTIVE: PAUSED (0) ]
+ [ ACTIVE ID: xolector ]
+ [ EPOCH: 29 ]
+ [ STEPS: 0 ]
+ PROJECT CONTROLS:
+[ ] 1. [[ START ]][ ] 2. [[ PAUSE ]][>] 3. [[ STEP / END TURN ]]
+ PET SWITCHER:
+[ ] 4. [Possess liz_bulb][ ] 5. [Possess liz_char][ ] 6. [Possess liz_gen_5414]
+ METHODS (xolector):
+[ ] 7. [possess_bulb][ ] 8. [possess_char]
+ LOG: System Initialized.
+
++=========================================================+
+Nav > _
+
+
+
+
+
+--- FRAME UPDATE at 2026-06-20 01:50:56 ---
+ [ SIM ACTIVE: PAUSED (0) ]
+ [ ACTIVE ID: xolector ]
+ [ EPOCH: 29 ]
+ [ STEPS: 0 ]
+ PROJECT CONTROLS:
+[ ] 1. [[ START ]][ ] 2. [[ PAUSE ]][ ] 3. [[ STEP / END TURN ]]
+ PET SWITCHER:
+[>] 4. [Possess liz_bulb][ ] 5. [Possess liz_char][ ] 6. [Possess liz_gen_5414]
+ METHODS (xolector):
+[ ] 7. [possess_bulb][ ] 8. [possess_char]
+ LOG: System Initialized.
+
++=========================================================+
+Nav > _
+
+
+
+
+
+--- FRAME UPDATE at 2026-06-20 01:50:57 ---
+ [ SIM ACTIVE: PAUSED (0) ]
+ [ ACTIVE ID: xolector ]
+ [ EPOCH: 29 ]
+ [ STEPS: 0 ]
+ PROJECT CONTROLS:
+[>] 1. [[ START ]][ ] 2. [[ PAUSE ]][ ] 3. [[ STEP / END TURN ]]
+ PET SWITCHER:
+[ ] 4. [Possess liz_bulb][ ] 5. [Possess liz_char][ ] 6. [Possess liz_gen_5414]
+ METHODS (xolector):
+[ ] 7. [possess_bulb][ ] 8. [possess_char]
+ LOG: System Initialized.
+
++=========================================================+
+Nav > _
+
+
+
+
+
+--- FRAME UPDATE at 2026-06-20 01:50:57 ---
+ [ SIM ACTIVE: PAUSED (0) ]
+ [ ACTIVE ID: liz_bulb ]
+ [ EPOCH: 29 ]
+ [ STEPS: 0 ]
+ PROJECT CONTROLS:
+[>] 1. [[ START ]][ ] 2. [[ PAUSE ]][ ] 3. [[ STEP / END TURN ]]
+ PET SWITCHER:
+[ ] 4. [Possess liz_bulb][ ] 5. [Possess liz_char][ ] 6. [Possess liz_gen_5414]
+ METHODS (liz_bulb):
+[ ] 7. [scan][ ] 8. [eat][ ] 9. [breathe][ ] 10. [check_death][ ] 11. [train][ ] 12. [attack][ ] 13. [mate][ ] 14. [rest][ ] 15. [nothing][ ] 16. [ai][ ] 17. [release]
+ LOG: Possessed liz_bulb.
+
++=========================================================+
+Nav > _
+
+
+
+
+
+--- FRAME UPDATE at 2026-06-20 01:51:01 ---
+ [ SIM ACTIVE: PAUSED (0) ]
+ [ ACTIVE ID: liz_bulb ]
+ [ EPOCH: 29 ]
+ [ STEPS: 0 ]
+ PROJECT CONTROLS:
+[ ] 1. [[ START ]][ ] 2. [[ PAUSE ]][ ] 3. [[ STEP / END TURN ]]
+ PET SWITCHER:
+[ ] 4. [Possess liz_bulb][ ] 5. [Possess liz_char][ ] 6. [Possess liz_gen_5414]
+ METHODS (liz_bulb):
+[>] 7. [scan][ ] 8. [eat][ ] 9. [breathe][ ] 10. [check_death][ ] 11. [train][ ] 12. [attack][ ] 13. [mate][ ] 14. [rest][ ] 15. [nothing][ ] 16. [ai][ ] 17. [release]
+ LOG: Possessed liz_bulb.
+
++=========================================================+
+Nav > 7_
+
+
+
+
+
+--- FRAME UPDATE at 2026-06-20 01:51:06 ---
+ [ SIM ACTIVE: PAUSED (0) ]
+ [ ACTIVE ID: liz_bulb ]
+ [ EPOCH: 29 ]
+ [ STEPS: 0 ]
+ PROJECT CONTROLS:
+[>] 1. [[ START ]][ ] 2. [[ PAUSE ]][ ] 3. [[ STEP / END TURN ]]
+ PET SWITCHER:
+[ ] 4. [Possess liz_bulb][ ] 5. [Possess liz_char][ ] 6. [Possess liz_gen_5414]
+ METHODS (liz_bulb):
+[ ] 7. [scan][ ] 8. [eat][ ] 9. [breathe][ ] 10. [check_death][ ] 11. [train][ ] 12. [attack][ ] 13. [mate][ ] 14. [rest][ ] 15. [nothing][ ] 16. [ai][ ] 17. [release]
+ LOG: Possessed liz_bulb.
+
++=========================================================+
+Nav > _
+
+
+
+
+
+--- FRAME UPDATE at 2026-06-20 01:51:08 ---
+ [ SIM ACTIVE: PAUSED (0) ]
+ [ ACTIVE ID: liz_bulb ]
+ [ EPOCH: 29 ]
+ [ STEPS: 0 ]
+ PROJECT CONTROLS:
+[ ] 1. [[ START ]][ ] 2. [[ PAUSE ]][>] 3. [[ STEP / END TURN ]]
+ PET SWITCHER:
+[ ] 4. [Possess liz_bulb][ ] 5. [Possess liz_char][ ] 6. [Possess liz_gen_5414]
+ METHODS (liz_bulb):
+[ ] 7. [scan][ ] 8. [eat][ ] 9. [breathe][ ] 10. [check_death][ ] 11. [train][ ] 12. [attack][ ] 13. [mate][ ] 14. [rest][ ] 15. [nothing][ ] 16. [ai][ ] 17. [release]
+ LOG: Possessed liz_bulb.
+
++=========================================================+
+Nav > 3_
+
+
+
+
+
+--- FRAME UPDATE at 2026-06-20 01:51:08 ---
+ [ SIM ACTIVE: PAUSED (0) ]
+ [ ACTIVE ID: liz_bulb ]
+ [ EPOCH: 29 ]
+ [ STEPS: 0 ]
+ PROJECT CONTROLS:
+[>] 1. [[ START ]][ ] 2. [[ PAUSE ]][ ] 3. [[ STEP / END TURN ]]
+ PET SWITCHER:
+[ ] 4. [Possess liz_bulb][ ] 5. [Possess liz_char][ ] 6. [Possess liz_gen_5414]
+ METHODS (liz_bulb):
+[ ] 7. [scan][ ] 8. [eat][ ] 9. [breathe][ ] 10. [check_death][ ] 11. [train][ ] 12. [attack][ ] 13. [mate][ ] 14. [rest][ ] 15. [nothing][ ] 16. [ai][ ] 17. [release]
+ LOG: Possessed liz_bulb.
+
++=========================================================+
+Nav > _
+
+
+
+
+
+--- FRAME UPDATE at 2026-06-20 01:51:09 ---
+ [ SIM ACTIVE: PAUSED (0) ]
+ [ ACTIVE ID: liz_bulb ]
+ [ EPOCH: 29 ]
+ [ STEPS: 0 ]
+ PROJECT CONTROLS:
+[ ] 1. [[ START ]][ ] 2. [[ PAUSE ]][>] 3. [[ STEP / END TURN ]]
+ PET SWITCHER:
+[ ] 4. [Possess liz_bulb][ ] 5. [Possess liz_char][ ] 6. [Possess liz_gen_5414]
+ METHODS (liz_bulb):
+[ ] 7. [scan][ ] 8. [eat][ ] 9. [breathe][ ] 10. [check_death][ ] 11. [train][ ] 12. [attack][ ] 13. [mate][ ] 14. [rest][ ] 15. [nothing][ ] 16. [ai][ ] 17. [release]
+ LOG: Possessed liz_bulb.
+
++=========================================================+
+Nav > 3_
+
+
+
+
+
+--- FRAME UPDATE at 2026-06-20 01:51:10 ---
+ [ SIM ACTIVE: PAUSED (0) ]
+ [ ACTIVE ID: liz_bulb ]
+ [ EPOCH: 29 ]
+ [ STEPS: 0 ]
+ PROJECT CONTROLS:
+[>] 1. [[ START ]][ ] 2. [[ PAUSE ]][ ] 3. [[ STEP / END TURN ]]
+ PET SWITCHER:
+[ ] 4. [Possess liz_bulb][ ] 5. [Possess liz_char][ ] 6. [Possess liz_gen_5414]
+ METHODS (liz_bulb):
+[ ] 7. [scan][ ] 8. [eat][ ] 9. [breathe][ ] 10. [check_death][ ] 11. [train][ ] 12. [attack][ ] 13. [mate][ ] 14. [rest][ ] 15. [nothing][ ] 16. [ai][ ] 17. [release]
+ LOG: Possessed liz_bulb.
+
++=========================================================+
+Nav > _
+Terminated
+

@@ -1,0 +1,4 @@
+last_cmd=SWITCH_MAP
+result=ok
+message=switched to map_02 @ 8,3
+at=1785227635

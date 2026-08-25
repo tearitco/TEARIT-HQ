@@ -1,0 +1,2 @@
+pieces/chtpm/layouts/game.chtpm
+pieces/chtpm/layouts/game.chtpm

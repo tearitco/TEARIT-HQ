@@ -1,0 +1,7 @@
+peer_count=1
+network_status=ONLINE
+net_role=CLIENT
+my_ip=10.0.0.238
+host_ip=10.0.0.144
+connected_peers_list=[6a145817da18c] (YOU) | IP:10.0.0.238\n[] | IP:\n
+messages=[6a145817da18c] hi surf9\n[6a145834f6e9] hi32 desk\n[6a145834f6e9] desk22

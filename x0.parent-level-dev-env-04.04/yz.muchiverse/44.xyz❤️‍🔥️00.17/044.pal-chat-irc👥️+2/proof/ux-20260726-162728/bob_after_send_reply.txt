@@ -1,0 +1,20 @@
++============================================================+
+|  P A L - C H A T - I R C   [room]                          |
++============================================================+
+|                                                            |
+|  Room: lobby (as bob)                                      |
++============================================================+
+|  <userA> hello from real session A                         |
+|  <userA> second message - proving live push to an idle sess|
+|  <bob> hi alice, replying for real                         |
+|                                                            |
+|  Posted to lobby.                                          |
+|                                                            |
++============================================================+
+
+| [^] 1. Message: [_]                                     |
+[No Methods][ ] 2. [Leave Room]
+ (Ctrl+C to quit)
+
++=========================================================+
+Active [^]:  (ESC to exit)

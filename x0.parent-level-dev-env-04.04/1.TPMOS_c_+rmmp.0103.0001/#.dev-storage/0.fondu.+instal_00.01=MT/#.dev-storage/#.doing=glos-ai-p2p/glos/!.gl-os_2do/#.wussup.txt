@@ -1,0 +1,8 @@
+
+🚨️
+make you understand gl-os  terminal is text only (always)
+so it can use the same chtpm parser + module etc as ascii-os if possible. 
+
+no need to repeat code if we dont have to . is this possible? 
+
+🚨️

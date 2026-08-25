@@ -1,0 +1,90 @@
+FINANCIAL PROFILE FOR Farland
+====================================================
+FINANCIAL STATEMENT: Farland (CONSOLIDATED)
+----------------------------------------------------
+(Amounts in Martian Credits, to four decimal places)
+ASSETS:
+  Cash and Cash Equivalents:		28.7000
+  Tax Receivables (Net):		14.3500
+  Loans (Colony Development):		8.6100
+  Physical Assets (Habitats, Rovers):	22.9600
+  Investments (Trust Funds):		20.0900
+  ---------------------------------------------
+  Total Assets:				94.7100
+  ---------------------------------------------
+LIABILITIES AND NET POSITION:
+  Public Debt Outstanding:		57.4000
+  Intragovernmental Debt:		14.3500
+  Pension & Benefits Payable:		8.6100
+  Environmental & Legal Liabilities:	2.8700
+  Accrued Interest Payable:		1.4350
+  ---------------------------------------------
+  Total Liabilities:			84.6650
+  ---------------------------------------------
+  Net Position (Net Worth):		10.0450
+  =============================================
+FISCAL OPERATIONS (FY 2024):
+----------------------------
+  Total Revenue:			43.0500
+    - Individual Income Tax:		28.7000
+    - Corporate Income Tax:		8.6100
+    - Payroll Taxes (Social Security):	5.7400
+    - Other Revenue:			0.0000
+  Net Cost of Operations:		51.6600
+    - Social Security:			11.4800
+    - Health (Medicare, Clinics):	8.6100
+    - Net Interest on Debt:		2.8700
+    - Life Support Systems:		8.6100
+    - Colony Defense:			8.6100
+    - Income Security:			5.7400
+    - Other Spending:			4.3050
+  Net Operating (Cost)/Revenue:		-8.6100
+  ---------------------------------------------
+NET POSITION:
+-------------
+  Beginning of Period:			18.6550
+  Adjustments (Accounting Changes):	+0.5000
+  Net Operating (Cost)/Revenue:		-8.6100
+  ---------------------------------------------
+  End of Period (Net Worth):		10.0450
+  ---------------------------------------------
+VARIOUS FISCAL RATIOS:
+----------------------
+  Debt-to-GDP Ratio:			25.0000
+  Deficit-to-Spending Ratio:		16.6667
+  Interest-to-Revenue Ratio:		6.6667
+  Tax Revenue per Capita:		4.3050
+  Spending per Capita:			5.1660
+  ---------------------------------------------
+*** CREDIT INFO: ***
+-------------------
+  Sovereign Credit Rating:		AA+
+  Benchmark 10-Year Yield:		4.2100%
+  Effective Borrowing Rate:		3.8700%
+  Debt Ceiling Limit:			57.4000
+  Current Debt Level:			57.4000
+  ---------------------------------------------
+VARIABLE SETTINGS (Changeable by controlling player):
+----------------------------------------------------
+  % Change in Defense Spending:		0.0000%
+  % Change in Social Security:		0.0000%
+  Tax Rate Adjustment (Bracket Shift):	0.0000%
+  New Debt Issuance (Automatic):		YES (To Cover Deficit)
+  ---------------------------------------------
+MISCELLANEOUS INFO:
+-------------------
+  Government Type:			MARTIAN COLONY
+  Fiscal Year End:			September 30
+  Next Budget Deadline:			October 1, 2025
+  Next Debt Ceiling Vote:		TBD
+  Controlled (and actively managed) by:	Player_Name
+  Wholly owned by:			Citizens of Farland
+  Inflation Rate (2024):			3.1000%
+  Unemployment Rate (2024):		4.0000%
+  GDP (Nominal, 2024):			287.0000
+  ---------------------------------------------
+FOOTNOTE TO FINANCIAL STATEMENT:
+-------------------------------
+[1] This statement is consolidated and includes all colonial agencies and trust funds. Intragovernmental transactions are eliminated.
+[2] "Net Position" is analogous to net worth or equity in colonial finance. A negative value indicates liabilities exceed assets.
+[3] Interest on debt is projected based on current yield curve and debt rollover schedule.

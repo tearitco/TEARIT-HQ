@@ -1,0 +1,36 @@
+🔚️
+tldr ? do everything u need to do w/o webcam  (or with slo webcam for "AR") 
+then later when everything else is done pretty well, we can impliment a way to "cheat"
+webcam or cheat entire video pipeline when it doesn't need auditing anymore
+(we can switch debug mode on or off , and just use shmem or w/e 
+
+
+[why is video fast but not webcam? 
+(i know but its WAY 2 slower than anything else ever... even green screen live / ar. wtf? )]
+🔚️
+────────────────────────────────────────────────
+
+• Yes. The current fast mode still pays the biggest cost:
+
+  - capture writes a PNG to disk
+  - web-cam decodes that PNG every run
+  - it reprojects all 24x12 cells every run
+
+  So the next real win is not just “a faster ffmpeg profile.” It is to stop re-
+  decoding/reprojecting when session/current_frame.png has not changed.
+
+  Best follow-up fixes, in order:
+
+  1. Cache by frame mtime and skip PNG decode when the frame is unchanged.
+  2. Shrink the fast path further:
+      - lower webcam capture FPS
+      - reduce capture resolution
+      - reduce preview grid size
+
+  3. Later, move hot frame transport to shared memory or a ring buffer and keep files
+     only for audit/receipts.
+
+  Right now the project is still file-backed, so it is safe and debuggable, but not
+  optimal for throughput. The real bottleneck is the decode/project loop, not the
+  Wraith manager loop.
+_______________________________________________

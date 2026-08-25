@@ -1,0 +1,185 @@
+PITFALLS.txt — board-viewer, local, durable troubleshooting reference
+Written 2026-08-02/03. Keep updated as new real, live-caught bugs are found -
+this is meant to survive a disconnected session and let a fresh agent
+recognize "oh, this is THAT bug" instead of re-diagnosing from scratch.
+
+================================================================================
+PITFALL 1: 3D raymarch view disappears (partial "V" cutoff, then fully) as the
+camera moves away from the board
+================================================================================
+
+SYMPTOM: in render_mode==1 (3D), panning/raising the camera away from the
+board (camera_mode 3/4, w/a/s/d pan or c/v z-level) causes part of the
+board to vanish (a "V"-shaped cutoff, typically bottom-center of screen
+first), and moving further back makes the WHOLE board disappear - even
+though there's plenty of real board left that SHOULD still be visible at
+that distance/angle.
+
+ROOT CAUSE (the real one - a first attempted fix only partially helped,
+see "WRONG FIRST THEORY" below): ops/bv_render_3d.c's own per-pixel DDA
+raymarch loop (2D grid traversal over board cells) had a bounds-check
+break condition:
+    if (col < -1 || col > board_w || row < -1 || row > board_h) break;
+This is correct ONLY for a ray that started NEAR/INSIDE the board and is
+now diverging away after passing through it. It is WRONG for a camera
+that starts FAR OUTSIDE the board and is correctly, legitimately
+approaching it - col/row are ALSO outside that same [-1, board_w+1]
+margin on the very FIRST loop iteration in that case, so the loop broke
+before the ray ever got a chance to reach the board at all. This happens
+regardless of how large the loop's own max_steps budget is set to, since
+the break fires long before max_steps is ever exhausted.
+
+WRONG FIRST THEORY (tried first, real but incomplete): assumed the bug
+was purely "the max_steps iteration budget is too small for a distant
+camera" and made max_steps scale with camera distance/altitude. This
+DID fix the pure-altitude case (camera directly above the board's own
+center, just very high up - col/row start WITHIN board bounds there,
+only Y differs) but did NOT fix horizontal pan-away (camera moved off to
+the side) - that case never even reaches a meaningful fraction of
+max_steps, because the flawed break condition above fires almost
+immediately regardless of the budget. Diagnosed exactly by user report:
+"i still get the disappearing" after the first fix shipped - showed the
+first fix was real but insufficient, prompting deeper investigation.
+
+REAL FIX: removed the flawed early-break entirely. The loop is already
+safely, unconditionally bounded by max_steps (see below) - a ray that
+will truly never hit the board just runs out its step budget harmlessly
+(bounded, no infinite loop risk). No bounds check is needed at all once
+max_steps itself is trustworthy.
+
+max_steps itself is computed once per FRAME (not per pixel, cheap):
+    - a term scaling with the camera's horizontal distance from the
+      board's own bounding box (cam_dist_cells)
+    - a SEPARATE term scaling with camera ALTITUDE (cam_height_cells) -
+      confirmed via direct geometric reasoning as a real, independent
+      contributor: a camera centered horizontally above the board but at
+      extreme height also needs many extra steps for shallow-angle rays
+      to descend into the board's own thin Y-range before ever crossing
+      into its XZ footprint, even though horizontal distance is zero
+    - a generous FIXED FLOOR (>= FRAME_W, i.e. at least "screen size"),
+      per direct instruction ("don't want it to ever happen unless there
+      is literally no object on screen... doesn't need to be infinite
+      but big as screen size at least") - cheap insurance beyond the
+      theoretically-computed term, only meaningful now that the flawed
+      early-break is gone.
+
+PERFORMANCE - REAL FOLLOW-UP FIX (2026-08-02/03, same day): the first
+version of this fix (removing the early break + raising max_steps to a
+flat FRAME_W=640 floor) was CORRECT but genuinely slow - it made EVERY
+pixel that's plain sky (a large fraction of any frame, even at normal
+camera distance, not just the far-away edge case) walk up to 640 wasted
+DDA iterations before giving up. Live-caught: "since we added greater
+length of view... it seems to have slowed down render... mutaclysm is
+way faster." Frame time had gone from ~45ms to ~350-430ms.
+
+REAL FIX (the 2-phase approach flagged but not yet built in the
+paragraph above, now actually implemented): a cheap, coarse per-pixel
+rejection test FIRST - one single ray/AABB test against the board's own
+OUTER bounding box (x:[0,board_w], a generous fixed y:[-0.4,2.0] margin
+covering every real terrain_height() value, z:[0,board_h]) - using the
+exact same ray_aabb_hit_3d() primitive already used for the legend cube,
+BEFORE ever entering the expensive per-cell DDA loop. A ray that can't
+possibly reach the board costs exactly one slab test and moves on - zero
+wasted iterations, regardless of camera distance. A ray that DOES pass
+this coarse test is now confirmed to actually enter the board's own
+bounding region, so a plain, modest, board-SCALE max_steps
+(board_w+board_h+32) is genuinely sufficient for the DDA that follows -
+the earlier distance/height-scaled inflation (and the flat 640 floor)
+are BOTH no longer needed at all.
+
+VERIFIED (direct headless timing + pixel-content checks): a normal,
+close-up camera renders in ~50ms again (back to original baseline); the
+exact scenario that used to disappear (camera panned ~25 cells away
+horizontally, moderate altitude) now renders in ~20ms AND correctly
+still shows real terrain (not all-sky) - both the correctness fix and
+the performance fix hold together, verified in the same test pass.
+
+TO VERIFY THIS FIX STILL HOLDS (if this bug ever recurs): build a
+disposable scratch project with a real board.txt, set bv_state.txt's own
+render_mode=1/camera_mode=4/cam_pan_x/cam_z_level to push the camera far
+HORIZONTALLY away from the board (not just up - the altitude-only case is
+NOT sufficient to catch a regression here, confirmed live), run
+ops/+x/bv_render_3d.+x directly (no live session/GL needed), and sample
+the output pixel buffer for real terrain colors at increasing distances -
+should shrink gracefully, never vanish outright at a plausible distance,
+and should ONLY ever go all-sky once the board is genuinely, provably
+outside the camera's own view frustum (verify this is really true rather
+than assuming - e.g. by also checking a moderate/reasonable distance
+still shows SOME terrain).
+
+================================================================================
+PITFALL 2 (research done, NOT ported yet - complete later): one real
+mutaclysm camera-adjacent key not carried over
+================================================================================
+
+Full camera key scheme (q/e/r/t/w/a/s/d/c/v/f/0/1-4, see &.widgits/
+5-pov-widgit.md §2e) was ported from mutaclysm's ops/camera_control.c and
+ops/choice.c - confirmed complete for THOSE two files via direct research.
+
+ONE real, additional key exists in mutaclysm that was missed, because it
+lives in a THIRD file (ops/move_player.c:485-505), not camera_control.c:
+
+    x / z   (render_mode==1 only) - moves the HERO's own vertical
+             position (a `hero_z` field in hero/state.txt), DISTINCT from
+             the camera's own cam_z_level (which q/e/r/t/w/a/s/d/c/v/f
+             already cover via 'c'/'v'). mutaclysm's own move_player.c
+             has an explicit comment distinguishing the two.
+
+NOT YET PORTED, deliberately - board-viewer's own terrain model has no
+multi-floor/Z-layer concept at all (each board cell is one scalar height,
+no separate "which floor" dimension) the way mutaclysm's own hero_z
+implies. There is nothing for a selector-equivalent "z" key to actually
+DO yet. Port this once/if board-viewer ever gains multi-floor terrain -
+until then, the key is a real, confirmed gap but not a functional one.
+
+Also confirmed via the same research pass: a stale doc exists in
+mutaclysm's own tree (dox/pov-cam.md:38) claiming x/z is NOT implemented
+("only camera Z exists today") - that line is WRONG, contradicted by
+direct code read of move_player.c:485. Worth fixing in mutaclysm's own
+tree too if working there later - not fixed as part of this pass (out of
+board-viewer's own scope).
+
+Also confirmed NOT real (documented-but-never-implemented aspirational
+design notes, explicitly not to be treated as precedent): a "zoom/orbit
+around target" free-camera mode (dox/pov-cam-fix.md:18) and real frustum
+clipping / mouse-driven orbit (compose_rgb_frame.c:783-793's own
+comments explicitly flag these as future/not-present). No zoom, FOV,
+roll, or mouse-look key exists anywhere in mutaclysm's real code as of
+this research - don't go looking for one to port.
+
+
+================================================================================
+PITFALL 3 (Win, 2026-08-06): 2D board shows ASCII / "Selected: ?" — legend not
+loaded; 3D "empty" until overlay seed order is correct
+================================================================================
+
+SYMPTOM (Windows only under emoji house path): board-viewer focuses aomorai
+(or piececraft), board cells appear as plain ASCII (. , s _) or Selected
+shows "?", not dirt/grass/emoji. 3D may claim "overlay not ready" on first
+frame even when bv_render_3d works.
+
+ROOT CAUSE A — ANSI fopen on absolute host paths:
+  house_root is absolute and often contains emoji (44.xyz...00.10).
+  bv_compose_frame already used host_fopen for the board chunk file, but
+  terrain_legend.txt / entities / phymoji emoji.txt still used plain fopen.
+  MinGW ANSI fopen fails → g_terrain_legend_count stays 0 → glyph_emoji
+  returns NULL → ASCII fallback; glyph_name returns "?".
+
+ROOT CAUSE B — first-frame seed order:
+  pal order is compose → render_3d → hit_frame. First compose has no
+  rgb_frame_3d_overlay.raw yet, so it falls back to 2D. If 2D was broken
+  by (A), the GL window looks empty/useless until a later loop iteration
+  and a fixed binary.
+
+REAL FIX (landed 2026-08-06, live GL polish still next session):
+  1. host_fopen for all host-side reads in bv_compose_frame.c (legend,
+     entities, phymoji, hero emoji, plus session view/pdl/marker writes
+     that may sit under emoji paths).
+  2. button.ps1 seeds: compose → bv_render_3d → re-compose before GL.
+  3. Invoke-HouseBin always stages . +x → temp .exe (including -Wait).
+
+SMOKE (disk, not full interactive GL close-out):
+  Selected: grass; view.txt has UTF-8 emoji (F0 9F...); overlay ~1.2MB
+  non-zero; re-compose has MAP3D 0x01 marker.
+
+SEE ALSO: house root WIN-CONVERSION-STATUS.md §4b.

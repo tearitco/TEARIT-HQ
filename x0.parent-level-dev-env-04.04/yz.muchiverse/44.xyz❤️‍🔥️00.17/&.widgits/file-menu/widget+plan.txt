@@ -1,0 +1,279 @@
+# widget+plan.txt — File Menu Widget + Running-Process Registry
+# House: 44.xyz  |  First widget: &.widgits/file-menu
+# Primary consumer: 102.editor (AGY buffer / file_path)
+# Pattern kin: #.drag-drop-test (file-mediated IPC), mutaclsym GL mirror
+# UI LAW: xyzos-standards §35 — GL PRIMARY, ASCII SECONDARY
+# Status: PLAN — revised 2026-07-27 (GL-first widgets, no second TTY)
+# Date: 2026-07-27
+
+================================================================================
+0. THESIS (REVISED)
+================================================================================
+
+**GL is how the user interfaces with the house.** ASCII/terminal is a
+secondary surface (dev, harness, headless). Widgets are not "another
+terminal you open" — they are **GL windows** spawned as a **widget
+launch profile** of a program (ascii renderer off / nulled).
+
+Widgets are small pal-native programs that **send commands** into a
+**focused running program** through a file-mediated bus (drag-drop
+kinship: exchange/xyzfs files, not sockets-first).
+
+  Terminal A (optional): START_BUTTON or editor app (GL + maybe ASCII)
+       |
+       | user picks FILE in editor
+       v
+  file-menu process:  launch_profile=widget
+                      gl_window=1   (PRIMARY UI — user clicks here)
+                      ascii_renderer=0  (no TTY takeover, stdout /dev/null)
+       |
+       +—— cmds/inbox.txt ——> editor session (still running)
+       +—— reads buffer_path / document_path from xyzfs registry
+
+First widget: **file-menu** (NEW / SAVE / SAVE AS / LOAD + CHANGE FOCUS).
+First host: **102.editor**.
+
+Every future program should support the same **app vs widget** profiles
+so any app can open any widget-capable project as a GL window.
+
+See: #.haiku+/!.xyzos-standards+1.txt §35, PITFALL 49.
+
+================================================================================
+1. LAUNCH PROFILES (ALL PROGRAMS, GOING FORWARD)
+================================================================================
+
+  PROFILE app (default `./button.sh run`)
+    gl_window=1          # primary
+    ascii_renderer=0|1   # secondary; often 1 in dev, optional in product
+    registers in xyzfs runtime
+
+  PROFILE widget (`./button.sh run-widget` or RUN_PROFILE=widget)
+    gl_window=1          # REQUIRED — this IS the UI
+    ascii_renderer=0     # do not fight parent TTY; renderer not started
+                         # or stdout→/dev/null
+    still: session files, current_frame.txt, rgb_frame.raw, frame_history
+    registers as widget process; may receive --focus-pid / parent ctx
+
+Editor FILE menu:
+  spawn:  &.widgits/file-menu/button.sh run-widget
+  not:    "open a second terminal and run file-menu"
+
+START_BUTTON same-TTY handoff remains valid for **replacing** the loader
+with a full app. It is **not** the model for widgets-alongside-apps.
+
+================================================================================
+2. DRAG-DROP KINSHIP (IPC, NOT UI)
+================================================================================
+
+#.drag-drop-test proves **file-mediated, multi-process** IPC with GL
+surfaces. Widgets reuse that IPC idea; UI law is stricter (GL primary).
+
+  | Drag-drop                     | File-menu widget                      |
+  |-------------------------------|----------------------------------------|
+  | two processes + GL windows    | host app + widget process + GL window  |
+  | exchange / drop files         | xyzfs runtime inbox + document paths   |
+  | no shared memory              | same                                   |
+  | harness asserts files         | harness asserts buffer/disk + optional rgb |
+
+================================================================================
+3. RUNNING PROCESS REGISTRY (xyzfs)
+================================================================================
+
+  <login>/xyzfs/users/<uuid>/home/runtime/
+    processes.pdl
+    processes/<pid>-<slug>/
+      meta.pdl
+      cmds/inbox.txt
+      cmds/status.txt
+      heart.beat
+
+meta.pdl minimum:
+  project_id, display_name, install_path, session_path, kind, pid,
+  capabilities (file_document,text_buffer,widget_capable),
+  document_path, buffer_path, cmd_inbox, gl_window_title,
+  launch_profile (app|widget), started_at
+
+Register on run / run-widget; unregister on exit; GC dead pids.
+
+KPI-R1: editor app run → registry entry <2s
+KPI-R2: exit removes entry (or GC)
+KPI-R3: guest-uuid tree works
+KPI-R4: widget spawn also registers (kind=widget, parent_pid optional)
+
+================================================================================
+4. FILE-MENU PRODUCT SURFACE (GL WINDOW CHROME)
+================================================================================
+
+Same information architecture as file-flow frames; **pixels in GL**, not
+"must scroll a terminal."
+
+Main:
+  ACTIVE: <focused project document>
+  FILE:   <path>
+  1 NEW FILE | 2 SAVE | 3 SAVE AS... | 4 LOAD FILE... | 5 CHANGE FOCUS PROJECT
+  status
+
+CHANGE FOCUS PROJECT → focus layout (list **running** registry processes)
+LOAD / SAVE AS → browser layout (DIR / [DIR] / [FIL] / BACK / confirm)
+
+Input: GL key/mouse path (and/or same interact_relay from a non-TTY
+keyboard source later). Harness may still inject keys via history files
+without a visible ASCII renderer.
+
+================================================================================
+5. SHARED DOCUMENT / COMMAND BUS
+================================================================================
+
+Editor sole writer of editor_buffer.txt.
+Widget enqueues cmds only:
+
+  NEW | SAVE | SAVE_AS:<path> | LOAD:<path> | PING
+
+Editor idle (or tick) consumes inbox → status.txt ACK.
+Widget GL shows status; does not need editor TTY.
+
+================================================================================
+6. STEP 1 — GL WIDGET + REGISTRY + EDITOR (USER-FACING)
+================================================================================
+
+### Phase 1.A — Process registry
+  runtime_register / unregister / gc; editor hooks.
+  KPIs: R1–R4
+
+### Phase 1.B — UI mode flags + run-widget on file-menu
+  config: ui_primary=gl, gl_window, ascii_renderer, launch_profile
+  button.sh run vs run-widget
+  GL window shows FILE MENU chrome (rgb path); ASCII off in widget mode
+  KPIs:
+    KPI-G0: run-widget starts gl process, no interactive ASCII takeover
+    KPI-G1: ascii_renderer=0 → no terminal frame spam / no TTY raw fight
+    KPI-U1: GL or current_frame contains FILE MENU methods (harness via files)
+
+### Phase 1.C — Focus project (GL)
+  focus list from registry; set ACTIVE
+  KPIs: F1–F4 (empty list, list editor, select updates ACTIVE, back)
+
+### Phase 1.D — Cmd bus NEW/SAVE/LOAD with live editor
+  KPIs: E1–E5 (load/save/new; no focus error; one pulse per action)
+
+### Phase 1.E — File browser LOAD/SAVE AS
+  KPIs: B1–B5
+
+### Phase 1.F — Editor opens widget
+  Editor method FILE → spawn file-menu run-widget (not in-process stub long-term)
+  KPI-W1: from editor app, FILE opens GL file-menu without second terminal
+  KPI-W2: LOAD from that widget updates editor buffer
+  KPI-W3: closing widget leaves editor alive
+
+### Phase 1.G — Polish
+  GC, capability filter, proof harness, frame_history (files always)
+  KPI-P1: demo_file_menu_widget.sh ALL PASS
+  KPI-P2: idle frame markers stable (pitfall 48)
+
+================================================================================
+7. STEP 2 — APP PROFILE GL DEFAULT + HOUSE ROLL-OUT
+================================================================================
+
+Not "add GL someday" — **normalize all programs**:
+
+  - 102.editor `run` defaults gl_window=1 (ASCII secondary)
+  - START_BUTTON / login: document migration path to GL-primary
+  - Standard button.sh flags copied into project templates
+  - Optional: widget chrome theming, multi-widget z-order
+
+KPIs:
+  KPI-H1: editor run shows GL without extra flags
+  KPI-H2: template/README for new projects lists app vs widget profiles
+  KPI-H3: standards §35 cited in new project button.sh help
+
+ASCII-only remains valid for harness-only CI (display=:none).
+
+================================================================================
+8. NON-GOALS (v1)
+================================================================================
+
+  - Requiring a second human terminal for widgets
+  - Full desktop WM
+  - Network process list
+  - Xdnd file drag from file-menu (nice later; drag-drop already exists for pets)
+
+================================================================================
+9. RISKS
+================================================================================
+
+  | Risk | Mitigation |
+  |------|------------|
+  | Headless CI no display | harness uses files + optional xvfb; ascii optional |
+  | Two GL + one keyboard | widget uses own input path; document focus |
+  | Buffer dual-write | editor sole buffer writer |
+  | Session path dies | registry GC; widget status "focus dead" |
+  | Agents re-introduce TTY widgets | PITFALL 49 + §35 checklist |
+
+================================================================================
+10. SUCCESS SNAPSHOT
+================================================================================
+
+  1. User runs editor (GL primary).
+  2. User activates FILE → file-menu **GL window** appears (no new TTY).
+  3. CHANGE FOCUS if needed → editor selected.
+  4. LOAD FILE browser in widget GL → editor buffer updates.
+  5. Edit in editor → SAVE via widget → disk updates.
+  6. Close widget GL → editor still running.
+  7. Agents read frame_history / status files for proof.
+
+================================================================================
+10b. HARNESS PLACEMENT (this feature)
+================================================================================
+
+  Unit (file-menu chrome / browser / focus UI alone):
+    &.widgits/file-menu/test-harn-same/
+    proof/
+
+  Unit (editor canvas alone — already exists):
+    102.editor-…/test-harn-same/
+
+  Integration (widget LOAD/SAVE against live editor):
+    Prefer scenarios under file-menu/test-harn-same/ that spawn both
+    (widget owns the cross-story). If many hosts appear later, promote
+    to house-level #.file-menu-integration-test/ like #.drag-drop-test.
+
+  Law for agents: xyzos-standards §36.
+
+================================================================================
+11. DOC POINTERS FOR AGENTS
+================================================================================
+
+  #.haiku+/!.xyzos-standards+1.txt  §35 GL primary / widget profile
+  #.haiku+/!.xyzos-pitfalls+1.txt   PITFALL 49
+  #.haiku+/!.xyzos-standards+1.txt  §11 RGB, §20 one frame writer, §34 idle
+  this file                       product + phases + KPIs
+
+================================================================================
+12. EXTENSIONS (2026-07-28) — mutaclysm profile + user FS + sibling widgets
+================================================================================
+
+See **&.widgits/WIDGETS_ROADMAP.txt** for full detail. Summary:
+
+file-menu is **focus-adaptive**:
+
+  | Focus        | Browser roots                         | Verbs              |
+  |--------------|---------------------------------------|--------------------|
+  | editor       | xyzfs/.../projects/agy-editor/docs/   | NEW/SAVE/LOAD file |
+  | mutaclysm    | xyzfs/.../projects/mutaclysm/saves/   | NEW/SAVE/LOAD game |
+
+Mutaclysm save slot = full world_01 tree (maps + entities), named folder.
+Seed **demo-project** from install world/template so wipe never loses demo.
+
+User filesystem for **editor docs** is in-scope (was missing as first-class
+path; session buffer alone is not enough).
+
+Sibling widgets (separate packages under &.widgits/):
+
+  tile-picker/  — emoji palette → click mutaclysm cell → place glyph
+  map-picker/   — list maps; switch map; teleport xlector/hero
+
+Harnesses: %.harnesses/file-menu+mutaclysm/ (new); tile/map as needed.
+
+================================================================================
+END widget+plan.txt
+================================================================================

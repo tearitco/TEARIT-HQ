@@ -1,0 +1,231 @@
+# SUCCESSION HANDOVER - GL-OS PROJECT (M22/M23)
+**Date:** March 24, 2026
+**Current Focus:** GL-OS Desktop & Terminal Integration with TPM-Compliant Modularity
+
+---
+
+## 1. ARCHITECTURE SUMMARY
+
+The project is a C-based Desktop Environment (`gl_desktop.c`) running inside an OpenGL/GLUT window.
+
+**TPM Compliance:**
+- GL-OS is a sovereign Piece with isolated session state
+- Session files: `pieces/apps/gl_os/session/` (state.txt, view.txt, history.txt, etc.)
+- **Ledger:** `pieces/apps/gl_os/ledger/master_ledger.txt` (ISOLATED - NOT global ledger)
+- All window events logged to GL-OS ledger only
+
+**Key File:** `pieces/apps/gl_os/plugins/gl_desktop.c`
+
+**Architecture Principle:**
+- GL-OS apps are contained within `pieces/apps/gl_os/apps/<app>/`
+- Each app has its own module binary (`plugins/+x/<app>_module.+x`)
+- Apps communicate via session files (TPM Mirror pattern)
+- Similar to CHTPM modularity: `<module>` tag → separate `+x` binary
+
+---
+
+## 2. COMPLETED FEATURES
+
+- **Window Management:** Draggable, resizable, and focusable (Z-order) windows.
+- **Taskbar/Toolbar:** Bottom bar showing "User: guest", a real-time clock, and minimized apps.
+- **Window States:** Windows can be minimized to the toolbar and restored by clicking.
+- **3D Rendering:** Integrated "Cube App" rendering a rotating 3D cube inside a sub-viewport (scissor-tested).
+- **Virtual Terminal:**
+    - Text input with backspace and enter.
+    - Scrollable command history (12 lines).
+    - Basic command interpreter implemented (`process_terminal_command`).
+    - `help` command implemented inside the virtual terminal.
+
+---
+
+## 3. CRITICAL DISTINCTIONS (FOR THE SUCCESSOR)
+
+### 3.1 Virtual Terminal ≠ Linux Terminal
+
+The GL-OS Virtual Terminal is a **window inside GL-OS**, NOT a Linux terminal emulator.
+
+**What it IS:**
+- OpenGL-rendered text window inside GL-OS desktop
+- Commands interpreted by `process_terminal_command()` in gl_desktop.c
+- Uses GL-OS app modules (separate `+x` binaries)
+- TPM-compliant: all state in session files
+
+**What it is NOT:**
+- NOT xterm, gnome-terminal, or bash
+- Does NOT run Linux system commands (`/bin/ls`, `/usr/bin/top`)
+- Does NOT write to global ledger
+
+### 3.2 Input Focus Matters
+
+**When terminal window is focused (active_window_id points to terminal):**
+- Pressing '1' → types character '1' in input buffer
+- Pressing '2' → types character '2' in input buffer
+- All keys 32-126 → text input
+
+**When NO window is focused (active_window_id == -1):**
+- Pressing '1' → creates new terminal window (shortcut)
+- Pressing '2' → creates new cube window (shortcut)
+
+**COMMON BUG TO AVOID:**
+Don't make '1' always create a terminal - it should be text input when terminal is focused!
+
+### 3.3 GL-OS Apps vs CHTPM Apps
+
+**CHTPM Apps (Reference: pieces/apps/op-ed/):**
+```
+pieces/apps/op-ed/
+├── op-ed.pdl
+├── layouts/op-ed.chtpm
+├── plugins/+x/op-ed_module.+x
+└── pieces/
+```
+- Launched via CHTPM parser (`href="..."` button)
+- Module reads layout, processes input, writes state
+- Renders ASCII via CHTPM parser
+
+**GL-OS Apps (Future Structure):**
+```
+pieces/apps/gl_os/apps/terminal/
+├── terminal.pdl
+├── layouts/terminal.gl layout
+├── plugins/+x/terminal_module.+x
+└── pieces/
+```
+- Launched by gl_desktop.c (reads app.pdl, forks module)
+- Module writes to GL-OS session files
+- Renders OpenGL via gl_desktop.c
+
+**Key Insight:** Same TPM pattern, different renderer (ASCII vs OpenGL)
+
+---
+
+## 4. NEXT STEPS (FOR THE SUCCESSOR)
+
+### Priority 1: Fix Input Handling
+1. **Virtual Terminal Input Bug:**
+   - Ensure '1', '2', etc. are text input when terminal is focused
+   - Only use as shortcuts when active_window_id == -1
+   - See gl-os_spex.txt Section 2.2 for detailed behavior
+
+2. **Input Focus Optimization:**
+   - Ensure keyboard input is strictly directed to `active_window_id`
+   - Check `windows[i].type` before processing terminal input
+
+### Priority 2: TPM Compliance Updates
+1. **Isolated Ledger:**
+   - Change from `pieces/master_ledger/master_ledger.txt`
+   - To: `pieces/apps/gl_os/ledger/master_ledger.txt`
+   - Update `build_session_path()` and `log_master()` in gl_desktop.c
+
+2. **Session File Structure:**
+   - Ensure all apps write to `pieces/apps/gl_os/session/`
+   - Use non-destructive state updates (preserve all keys)
+   - Call `write_session_state()` after every window change
+
+### Priority 3: Modular App Structure
+1. **Current State (Built-in):**
+   - `process_terminal_command()` has hardcoded commands
+   - `create_cube_window()`, `create_terminal_window()` are direct calls
+   - Works but requires recompiling gl_desktop.c for new apps
+
+2. **Future State (Modular - Like CHTPM):**
+   ```c
+   // FUTURE: Dynamic module loading
+   void process_terminal_command(DesktopWindow* win) {
+       char *module_path = get_module_for_command(cmd);  // Read from app.pdl
+       if (module_path) {
+           pid_t pid = fork();
+           if (pid == 0) {
+               execl(module_path, module_path, cmd, NULL);
+               _exit(1);
+           }
+           // Module writes to session files, gl_desktop.c renders
+       }
+   }
+   ```
+   - Each app has own folder: `pieces/apps/gl_os/apps/<app>/`
+   - Each app has own module: `plugins/+x/<app>_module.+x`
+   - Add new app = new folder, no gl_desktop.c recompile
+
+### Priority 4: New Apps to Implement
+1. **File Browser ("folder" command):**
+   - Create window type "folder"
+   - Reads directory structure from `pieces/`
+   - Displays icons/list view
+   - TPM-compliant: reads Pieces, shows state
+
+2. **Process Monitor ("proc" command):**
+   - Shows GL-OS window stats
+   - CPU usage, memory, window count
+   - Like `top` but for GL-OS, not Linux
+
+3. **User Integration:**
+   - Replace hardcoded "guest" in `draw_toolbar()`
+   - Read from user session: `pieces/apps/user/session/state.txt`
+   - Or from GL-OS session: `pieces/apps/gl_os/session/state.txt`
+
+### Priority 5: Stability
+1. **Window Bounds:**
+   - Check `motion()` bounds to prevent windows dragged off-screen
+   - Ensure y >= 0 and y <= window_height - toolbar_height - titlebar
+
+2. **CPU Safety:**
+   - Follow cpu_safe_module_template.c patterns
+   - Use glutTimerFunc() (already 30ms - good)
+   - If adding daemons, use is_active_layout() throttling
+
+---
+
+## 5. TECHNICAL POINTERS
+
+- **Compilation:** Use `bash compile_all.sh`. It now includes `-lGL -lglut -lGLU` and handles macOS frameworks.
+- **Rendering:** `draw_window()` handles branching logic based on `win->type`.
+- **Z-Order:** Clicking a window moves it to the end of the `windows[]` array (highest render priority).
+- **TPM Consistency:** Ensure `write_session_state()` is called after any window modification (move, resize, rename).
+- **Ledger Isolation:** Use `pieces/apps/gl_os/ledger/master_ledger.txt` (NOT global ledger)
+- **Session Files:** All state in `pieces/apps/gl_os/session/` (state.txt, view.txt, etc.)
+- **Modularity:** Future apps use separate `+x` modules (like CHTPM)
+
+---
+
+## 6. REFERENCE DOCUMENTS
+
+**Primary Specification:**
+- `gl-os_spex.txt` - Complete GL-OS Virtual Terminal Specification
+  - Section 1.5: GL-OS Application Containment
+  - Section 2.2: Input Focus Behavior (the '1' key bug)
+  - Section 6: TPM Compliance with Isolated Ledger
+  - Section 9: Common Agent Mistakes
+
+**TPM Doctrine:**
+- `#.docs/!TPM2.PAL.MONOLITH+0.md` - Core TPM philosophy
+- `#.docs/*.st.mar_18+3🍀️.md` - Current architecture (APP vs PROJECT)
+- `#.docs/!.cpu_health+1.txt` - CPU safety patterns
+- `#.docs/^.pmo.ld-faq+8/PITFALLS_ACTIVE_2026-03-18.txt` - All known pitfalls
+
+**Reference Implementations:**
+- `pieces/apps/op-ed/` - APP pattern (modular structure)
+- `pieces/apps/editor/` - CPU-safe module pattern
+- `projects/fuzz_legacy/` - Original CPU-safe reference
+
+---
+
+## 7. QUICK START FOR SUCCESSOR
+
+1. **Read `gl-os_spex.txt` first** - Understand virtual terminal vs Linux terminal
+2. **Test current behavior** - Run GL-OS, type in terminal, check if '1' works correctly
+3. **Fix input focus** - Ensure '1' is text when terminal focused
+4. **Update ledger path** - Change to isolated GL-OS ledger
+5. **Implement next app** - Start with "folder" (file browser)
+6. **Plan modularity** - Design app module structure for future
+
+---
+
+**End of Succession Prompt.**
+
+**Remember:**
+- GL-OS is sovereign (isolated ledger, session files)
+- Apps are modular (separate +x binaries, like CHTPM)
+- Virtual terminal is NOT Linux (no system commands)
+- Input focus matters ('1' is text when terminal focused)
+- TPM compliance = file-backed state, audit trail, modularity

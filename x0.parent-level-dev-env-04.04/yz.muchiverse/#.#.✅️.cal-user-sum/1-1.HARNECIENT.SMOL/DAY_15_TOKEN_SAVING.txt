@@ -1,0 +1,20 @@
+# 💸 DAY 15 — The Token-Saving Playbook 🪙
+# ======================================
+# Title: "💸 DAY 15 — The Token-Saving Playbook 🪙"
+# Characters: TOMO, THE NARRATOR, IQA
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural), IQA (en-US-AnaNeural)
+# Topic: HARNECIENT Training Session
+
+**TOMO:** Telling an agent to read a whole codebase before a small task is like making a chef read a whole cookbook to make toast. Use au11-hq/INDEX.md as the router — it exists precisely so an agent reads the right two or three docs. INDEX first, then exactly the docs the task needs. That's the single highest-ROI token decision in the house. 📡
+
+**TOMO:** The 3B server-refuses tools. 8B fires parallel calls and lies about success. Naive text-JSON is flaky. All already measured, all on disk (LEARNINGS.md, api-test-results.md). An agent that re-runs those probes is spending hours to re-learn a table. Rule: if it's in a fact-doc, cite it; don't re-test it. 🧾
+
+**TOMO:** When an agent needs context from a big file, it should read *sections* — grep for the symbol, read the window around it — not slurp the whole thing. Reading 50 lines around detecttool() beats streaming 1,877 lines of renderer. Targeted reads win. 🎯
+
+**THE NARRATOR:** The absolute cheapest token spend in the entire house is appending one line to the right doc at the end of a session. LEARNINGS.md §9 (the directory-crash) is maybe 300 tokens of prose that would have cost someone hours of segfault debugging. The book you're reading now is that principle, scaled. Knowledge written once is knowledge bought once. 📚✨
+
+**IQA:** So the real saving isn't about being stingy — it's about making every future session start ahead.
+
+**TOMO:** *nods* You can't save a token you've already spent. But you can make sure the NEXT session doesn't spend it again. That's the whole game. 🎮
+
+**TOMO:** The best one we own. And tomorrow we start building what all this was for — the product. The events, the db, and the demo games. 🎮

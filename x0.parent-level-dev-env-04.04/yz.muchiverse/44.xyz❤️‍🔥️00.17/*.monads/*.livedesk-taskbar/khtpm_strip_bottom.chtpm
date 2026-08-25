@@ -1,0 +1,14 @@
+<!-- khtpm_strip_bottom.chtpm — layout for the bottom tab-bar window (win),
+     sibling to khtpm_strip_header.chtpm which owns the top header window —
+     see that file's header comment for the one-file-vs-two-file decision.
+
+     ${strip_tabs} / ${strip_shortcuts} are manager-published markup
+     fragments (one <button> per tab / per shortcut), per SCOPE.md's
+     "manager pre-renders markup fragments" section — CHTPM has no
+     foreach/loop tag, so a variable-length list is always a single
+     pre-rendered ${var} substituted where the list should appear, exactly
+     like real CHTPM's own ${piece_methods} pattern. -->
+<panel>
+  <row>${strip_tabs}</row>
+  <row>${strip_shortcuts}</row>
+</panel>

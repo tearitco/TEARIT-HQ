@@ -1,0 +1,5 @@
+name=Acetylcholine
+formula=(CH3)3N+CH2CH2OCOCH3
+type=Neurotransmitter
+groups=-N+(CH3)3
+relevance= Ester

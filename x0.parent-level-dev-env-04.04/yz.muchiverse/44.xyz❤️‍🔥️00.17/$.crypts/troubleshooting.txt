@@ -1,0 +1,36 @@
+$.crypts / livedesk reset troubleshooting
+=========================================
+
+Symptom:
+- The `$` icon on the livedesk taskbar no longer resets the live desk the way it used to.
+- Pressing it does not bring `hard-vvar-agent-Q0000` back up after code changes.
+
+What `$` actually does:
+- The taskbar shortcut row is `#.desktop/livedesk_shortcuts.pdl`.
+- Its `$` entry runs `$.crypts/button.sh run`.
+- `$.crypts/button.sh run` now prefers the curated desk launcher set from `$.crypts/scrypts/openall/run.sh`.
+- The old last-open restore path is still present as config, but `STATE | restore-last-open | 0` keeps it off.
+
+Likely root cause:
+- The desk reset used to restore from the last-open snapshot, which made the current open set win over the curated list.
+- That behavior is now disabled by `STATE | restore-last-open | 0`.
+- Current live evidence is worse than the launch list: after a reset/openall pass, `#.desktop/livedesk_open.txt` is still collapsing to only `book-stack`, while visible windows like `ava`, `asa`, and `q0000` are not staying registered.
+- Current live evidence is worse than the launch list: after a reset/openall pass, `#.desktop/livedesk_open.txt` is still collapsing to only `book-stack`, while visible windows like `ava`, `asa`, and `q0000` are not staying registered.
+- That means the taskbar close/reset logic is only as good as the live registry, and the registry is not reflecting every on-screen window yet.
+
+What to verify:
+- Confirm `#.desktop/livedesk_shortcuts.pdl` still has `SHORTCUT | $ | $.crypts/button.sh run`.
+- Confirm `$.crypts/autostart.pdl` has `STATE | restore-last-open | 0`.
+- Confirm `$.crypts/button.sh run` uses the curated desk launcher set.
+- Confirm the desk members you want restored are in the curated launch list / openall path.
+
+Likely fix path:
+- Fix the registry mismatch first: `X` on the taskbar only closes windows that are present in `#.desktop/livedesk_open.txt`, so any visible-but-unregistered window will survive close/reset.
+- If the registry stays incomplete after rebuilds, inspect whether each widget is reaching `livedesk_registry_add()` and whether the launched process is staying alive long enough for the live list to persist.
+
+Notes:
+- The taskbar code executes shortcut commands through the shell, so the shortcut row must be a valid shell command string.
+- The current failure is probably not the shortcut glyph itself; it is the reset target list.
+- The taskbar `X` button only closes entities that are present in `#.desktop/livedesk_open.txt`.
+- If a window is visible but missing from that registry, `X` will not close it even though it is on screen.
+- That makes registry integrity a prerequisite for both tab display and close behavior.

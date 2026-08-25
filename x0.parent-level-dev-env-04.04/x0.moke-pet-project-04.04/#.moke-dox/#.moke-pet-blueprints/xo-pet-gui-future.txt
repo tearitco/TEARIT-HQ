@@ -1,0 +1,38 @@
+# Moke-Pet to TPMOS GUI Transition Plan (xo-pet-gui-future.txt)
+
+## 1. Headless vs. GUI Execution Flow
+
+| Component | Headless (Current) | GUI/Wraith (Future) |
+| :--- | :--- | :--- |
+| **Manager** | Orchestrator loop (C binary) | Dispatcher + Projection Engine |
+| **Op Resolution** | `piece.pdl` (C lookup) | `piece.pdl` (manager-loaded) |
+| **Op Execution** | `fork()` + `execl()` of C binary | `fork()` + `execl()` of C binary |
+| **State Output** | Logs/Console | `gui_state.txt` (via `Projection`) |
+| **Render** | stdout | CHTPM (via `gui_state.txt`) |
+| **Input** | Script-driven | Key/Button Injection (e.g., `KEY:2`) |
+
+## 2. Maintaining Canonical Compatibility
+
+### A. Op Resolution Pattern
+Currently, we call `pieces/.../liz_bulb/ops/+x/eat.+x` (C binary).
+*   **Requirement**: The Manager MUST resolve these via `pdl_reader.+x` (C binary) querying the `piece.pdl` file.
+*   **Action**: Ensure `liz_bulb/piece.pdl` contains absolute paths (relative to project root) as specified in `fo-menu-sys.md`. All Ops must be compiled C binaries located in an `+x/` subdirectory.
+
+### B. Dynamic Menu Projection ("Thin Theater")
+The manager must treat its local tank state as a "model" that needs to be projected into a "view" for the GUI.
+*   **Requirement**: Before/after every action, the Manager must populate `world_tank_01/map_enclosure/gui_state.txt` with keys required by CHTPM:
+    *   `${pet_name}`: Entity directory name.
+    *   `${piece_methods}`: Rendered button markup (e.g., `<button label="Eat" onClick="KEY:2" />`).
+*   **Current bridge for autonomous mode**: the headless moke-pet manager now also writes a visible frame projection to `pieces/display/current_frame.txt` and `pieces/chtpm/frame_buffer/current_frame.txt`, then appends to `frame_changed.txt` so the mew/CHTPM renderer can repaint without taking over simulation logic.
+
+### C. Input Injection
+*   **Requirement**: While headless, simulate input by writing directly to a `history.txt` in the pet's directory (mirroring the `fuzz-op` pattern), then have the Manager read and dispatch based on that file.
+
+## 3. Immediate Implementation Directives
+
+1.  **PDL Compliance**: Standardize `piece.pdl` to follow `SECTION | KEY | VALUE` (e.g., `METHOD | eat | ...`).
+2.  **Manager Dispatch**: Do not hardcode path execution in the orchestrator. Implement a `dispatch_op` function that reads `piece.pdl` and maps indices 2-9 to specific Ops.
+3.  **Marker Files**: Implement `state_changed.txt` and `frame_changed.txt` signaling. The headless manager should update these even without a GUI; it keeps the "heartbeat" consistent for future UI hooks.
+
+---
+*Documentation for future-proofed Moke-Pet implementation.*

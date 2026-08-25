@@ -1,0 +1,94 @@
+================================================================================
+user-rtp-gui-guide.txt - real, direct guidance from the project owner,
+2026-07-31, given after reviewing rtp-gui-design.md's own first draft
+and its own build-in-progress live frame. Preserved here verbatim in
+substance (not paraphrased away) as a durable reference for future
+agents - this is the REAL source of truth for what the GUI redesign
+should look like, more concrete than the design doc's own earlier
+mockups. See claude-rtp-gui-view.txt (written immediately after this)
+for the technical response/plan built FROM this guidance.
+================================================================================
+
+## THE CORE INSTRUCTION, VERBATIM IN SPIRIT
+
+"the ascii map and gl mirror, and ability to traverse level with
+xelector is a feature we will keep no matter what" — the real-time
+ASCII map rendering, the GL mirror window, and Xlector-cursor
+traversal/possession are NOT up for redesign. Whatever the Menu/Title/
+chrome redesign does, this core mechanic stays exactly as it is
+architecturally. This is not cosmetic - it is the one thing explicitly
+carved OUT of the redesign scope.
+
+## PROBLEM 1: menu items should WRAP, not stack one-per-line
+
+The current rtp-xyz screen (live frame shown, 2026-07-31 20:07:09)
+renders every method as its own line:
+
+    [>] 1. [Control Hero]
+    [ ] 2. [pickup]
+    [ ] 3. [drop]
+    [ ] 4. [eat]
+    [ ] 5. [save]
+    [ ] 6. [toggle_emoji]
+    ...
+
+Real reference, 014.wsr-pal's own live `wsr_main_menu.chtpm` output
+(shown directly, real terminal capture):
+
+    [^] 1. [Actions ]
+        [>] 2. [File  ]    [ ] 3. [Game Options  ]    [ ] 4. [Settings  ]    [ ] 5. [Help  ]
+        [ ] 6. [Select Player  ]    [ ] 7. [Culture  ]    [ ] 8. [Entity Info  ]
+        [ ] 9. [Select Corp.  ]    [ ] 10. [History  ]    [ ] 11. [General  ]
+        ...
+
+Multiple items per line, wrapping naturally to the next line when the
+row fills up - NOT one per line. "instead of that title it will say
+something else, also the options shouldn't be separated by <br>/
+newline, they should wrap around like in wsr."
+
+## PROBLEM 2: replace the HP/Inventory status line with a map/glyph
+   picker style area
+
+Current rtp-xyz frame shows a real player-stat HUD:
+
+    HP:100  Hunger:1  Thirst:2  Stamina:100  Last key: 1001
+    Inventory: (empty)
+
+Real reference, TPMOS's own `slop-ed-dev.chtpm` output (shown
+directly):
+
+    ╔════════════ SLO P - E D   A D V A N C E D ════════════╗
+    | PROJECT: slop-ed-dev/games/default-0000 | GAME: ... |
+    | LAYOUT: slop-ed-dev.chtpm                                 |
+    |
+    |  GAME MAP:
+    [>] 1. [Control Map]
+    +=========================================================+
+    | [Z-LEVEL]: 0
+    +=========================================================+
+    |  #### (real map content) ####
+    ╠═══════════════════════════════════════════════════════════╣
+    | [RESP]: Loaded game: projects/slop-ed-dev/games/default-0000
+    | [POS]: (5,5,0) | [ARMED]: [ # ] | [KEY]: None
+    ╠═══════════════════════════════════════════════════════════╣
+    | [ ] 2. MAPS      : ADD map_0002.txt [map_0001.txt]
+    | [ ] 3. GLYPHS    : [#] . R T @ & Z X ? !
+    ╠═══════════════════════════════════════════════════════════╣
+    ║ [ ] 4. [TOGGLE EMOJI] [ ] 5. [DB]║ [ ] 6. [PROJECT] [ ] 7. [EVENT]
+    ║ [ ] 8. [FILE] [ ] 9. [LOADER] [ ] 10. [EXIT]
+    ╚═══════════════════════════════════════════════════════════╝
+
+"we get rid of that hp and inventory stuff and replace it with map and
+glyph picker" - direct instruction, exact wording. See slop-ed-dev's
+own real screen for the shape.
+
+## THE DELIVERABLE ASKED FOR
+
+"i want u to write this specific prompt to user-rtp-gui-guide.txt,
+then i want u to show the mock up you plan on refactoring, as
+claude-rtp-gui-view.txt, along with technical explanations etc, get
+it?"
+
+This file is the first half. claude-rtp-gui-view.txt is the second -
+read that file for the actual technical plan built from this guidance.
+================================================================================

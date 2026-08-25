@@ -1,0 +1,44 @@
+🚶 walkthru-j30.txt — 102.agy-txt (file browser) — QUICK CHECK
+================================================================
+STATUS: 🔧 5 real bugs fixed + ✅ re-tested clean
+
+Full nerdy before/after: see refactor-report.txt in this same folder.
+This file is just the "click through it yourself" version. 😴👍
+
+## ▶️ HOW TO RUN
+    bash button.sh run
+    (headless: NO_GL=1 bash button.sh run)
+    or through the paired app: @.apps/text-editor-xyz/button.sh run
+
+## ✅ CHECKLIST
+  [ ] 1️⃣ FILE MENU → SAVE AS... → cursor lands on SEARCH, not some
+        random file
+  [ ] 2️⃣ Arrow down to FILE, type a filename, hit Enter (or click
+        SAVE FILE) → 💾 real file shows up on disk
+  [ ] 3️⃣ FILE MENU → LOAD... → click a real file in the list → 📄
+        editor text actually changes to that file's content
+  [ ] 4️⃣ CANCEL from either screen → back to FILE MENU cleanly,
+        buttons still clickable
+
+## 🟢 GOOD LOOKS LIKE
+Every screen shows real clickable buttons (not typed-out `[>]` text),
+SAVE/LOAD both work end to end, no weird stuck focus after clicking
+CANCEL.
+
+## 🩹 WHAT WAS ACTUALLY BROKEN (already fixed)
+  - LOAD/click-to-load silently did nothing
+  - digit buttons (0-9) didn't respond
+  - focus could land on the wrong element after switching screens
+    (this one was a HOUSE-WIDE fix, benefits every project)
+  - Enter-directly-on-FILE-field could get swallowed
+  - leftover typed text could ghost back in on re-entry
+
+## 🧩 UPDATE 2026-07-31: each screen now runs its own process
+editor/file_menu/save-browser/load-browser each got their own
+dedicated `<module>` (house standard §41) instead of sharing one -
+invisible to you as a player, re-tested clean twice via the real K3
+harness. Along the way, 3 real, PRE-EXISTING bugs in the test script
+itself got fixed too (stale item numbers, a broken paste helper) -
+none of that was ever visible to a human clicking through the app,
+just to the automated test.
+================================================================

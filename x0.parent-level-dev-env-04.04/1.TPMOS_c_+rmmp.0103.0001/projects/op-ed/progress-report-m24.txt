@@ -1,0 +1,27 @@
+# Progress Report (m24) - OP-ED Development
+
+## 1. COMPLETED: Milestone 1 (File System Refactor)
+- **Baseline Achieved:** Standardized `op-ed` file operations to match the `agy-text-editor` "Perfect Standard."
+- **Browser Integrated:** A fully functional directory-based browser now manages projects within `projects/op-ed/games/`.
+- **Sovereign Context:** Implemented `load_game_from_path` and `save_game_to_path` using internal C logic for high-speed, synchronous directory copying (maps, pieces, and project-level PDL).
+- **Compilable State:** Fixed all syntax errors and prototype drifts; `op-ed_manager.c` compiles cleanly with `./button.sh compile`.
+
+## 2. IN PROGRESS: Slice 1 (Example Game Scaffolding)
+- **Fuzz-Op Mirror:** Standard structure established (`maps/`, `pieces/`, `scripts/`). Verified hero and pet pieces exist.
+- **Test Game 01:** (Pending) Creating a second project to verify context switching and cross-game state isolation.
+
+## 3. NEXT STEPS: Slice 2 (The PAL Player)
+The "Player" will be the first "Thin Engine" implementation in `op-ed`.
+
+- **Mode 1 Implementation:** Direct C movement in the Player for zero-latency WASD.
+- **Mode 2 Integration:** PRISC-driven event handling for `on_interact` and `on_tick`.
+- **The PAL Orchestrator:** Creating `projects/op-ed/player/PAL/player_loop.asm` to:
+    1. Read `project.pdl` for starting context.
+    2. Invoke `render_map.+x` for the theater.
+    3. Loop: Poll keys -> If movement (Mode 1), move entity -> If interaction (Mode 2), call `prisc+x event.asm`.
+
+## 4. NEXT STEPS: Slice 3 (The Event Editor)
+- Enable logic injection via the Editor's "EVENT" button.
+- Save `.asm` scripts directly into game subdirectories for the Player to execute.
+
+**Conclusion:** The foundation is solid. We are moving from "Static Editing" to "Behavioral Runtime."

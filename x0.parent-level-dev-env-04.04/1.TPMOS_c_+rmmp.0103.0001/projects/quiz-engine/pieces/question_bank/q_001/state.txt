@@ -1,0 +1,5 @@
+name=Methane
+formula=CH4
+type=Alkane
+groups=None
+relevance=Simplest hydrocarbon; base for organic nomenclature and combustion reactions.

@@ -1,0 +1,8 @@
+DIR|layouts
+DIR|manager
+DIR|pieces
+FILE|file-op-dox.txt|2094
+FILE|hi.txt|26
+FILE|project.pdl|575
+FILE|save-as-pipeline-study+.txt|2859
+FILE|t|26

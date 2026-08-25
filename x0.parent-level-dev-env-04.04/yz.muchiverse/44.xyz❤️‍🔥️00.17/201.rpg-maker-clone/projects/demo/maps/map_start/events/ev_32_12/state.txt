@@ -1,0 +1,6 @@
+name=to_factory_2
+trigger=action
+x=32
+y=12
+sprite=>
+map=map_start

@@ -1,0 +1,143 @@
+
+🧩️♟️
+DAY 4______________________________
+
+lets go stepwise, (this will help us build cloud infra as well)
+
+1.signup . 
+2. avatar creation 
+
+3. avatar pen = my chara (house customization ; shopping) 
+3.1 = now u can have pets... 
+3.4 ; is it on blockchain yet. this actually goes after chat
+maybe cuz blockchain is harder, but we will loop back
+at signtup to do more wallet related stuff
+<and loop back here after basic chat but also may build
+better testbot harnesses etc, 
+we had a flow where it could test chat ez pz etc, 
+lets get back2 that. 
+4. chat & forum = also look at chatbot. \
+(b-but i wanna look at chatbot now 2 make sure its ok!?
+its ok. were already using master-ledger-arch
+
+and if not. go back to  "101.lpns+map+4" as a #.ref
+
+
+4 = stop. trying 2 handle more than 4 is insane 
+and creates bugs and clarity which always = stop doign 4 do 1 ,well. 
+
+
+btw, this plan should be in "z00-play-plan"
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.12/x0.parent-level-dev-env-04.03/yz.muchiverse/44.xyz❤️‍🔥️00.07/002.zoo_0000/02.z00.play-plan.txt
+
+
+this is actually supposed to be 
+after editor+scratch is done, 
+where we can talk about
+how to do "sp/rmmv-tiles-lvel import-etc" 
+(honestly ppl in sv dont care about our product
+more ppl in japan do. (rmmv / ascii game lovers etc 
+and they are friendly not stuck up about fundraising
+competitive etc...
+
+, 
+now i do think there are aspects of the ai agents
+that lend themselvs 2 sv ; id think :
+ "SV(&NY)= B2B Connex/respect 
+japanese/rpg/ascii gamers = actual customers
+blockchain = sketchy wait"
+
+
+
+__________________________________________
+
+
+
+
+
+
+
+
+
+
+
+
+DAY2 ________________________
+
+here i will strategize and accumulate any desirable traits into 1 game
+
+
+additionally will make sure it has meta menu 
+
+2 choose between pvp , managers or w/e
+may also breakup mex/menus 2 be individual 
+like login, auction w/e 
+
+
+also go back and make sure editor can use this stuff really early on , and refactor if not
+
+___________________________________
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+_____________OG POKEMON REMIX DOX ____________________
+tell it we want to make some modifications 2 muchimon . 
+
+there is a main 'playable' character , but we will use a 'xelector'
+because other players will be selectable and even playable instead of main character
+when "captured" 
+
+(muchimon are kept in 
+
+,for battles, the battle will occur on the map, as a tactics style game. 
+
+
+for random battles, the enemy will appear in "tall grass" 
+
+
+for battles, enemy will deploy the muchimon once the battle is initiated
+
+additionally the trainers also have personal health, skills
+and can choose to engage in battle as well , and can also be "captured"
+
+player will have a muchimon in "muchiboxes" 
+
+which can hold many items/entities/muchimon, and have their own dropdown menu (which may contain more muchiboxes
+or entities who are holding their own muchiboxes with things inside.
+
+entities who player has already captured maybe made to follow character (as caterpillar
+follow party mechanics" or 'placed' on the board. and left there , 
+and or set on "auto mode" where it will make its own choices . 
+
+
+during "wild battles , user can deploy more than one entity 
+these can be controlled manually or be set to "auto mode" 
+where they will do 1 act per turn (as all entities) 
+
+(a turn will pass each turn) 
+
+(there will be day night cycle where time passes each turn that passes) 
+
+
+___________________________________

@@ -1,0 +1,18 @@
+<chtpm>
+  <module>projects/wraith-alpha/wraith-projects/chtmgl-wraith/manager/+x/chtmgl-wraith_manager.+x</module>
+  <text label="CHTMGL WRAITH" /><br/>
+  <text label="Reference: projects/chtmgl-alpha/layouts/index.chtmgl" /><br/>
+  <text label="Project ID: wraith-alpha/wraith-projects/chtmgl-wraith" /><br/>
+  <text label="[HEADER] CHTMGL Widget Probe" /><br/>
+  <text label="[PANEL: Controls]" /><br/>
+  <button label="Test Button" onClick="EVENT:test_click" /><br/>
+  <checkbox label="Enable Feature" checked="true" /><br/>
+  <text label="Slider: Volume [==========-----] 50" /><br/>
+  <text label="Vertical Slider: 75" /><br/>
+  <text label="[PANEL: Visuals & Media]" /><br/>
+  <text label="Image: missingno.png placeholder" /><br/>
+  <text label="Media: gowon.mp3 placeholder" /><br/>
+  <text label="Surface: ${game_map} canvas-like 3D preview" /><br/>
+  <text label="[MENU: Options] Save | Load | Exit" /><br/>
+  <button label="Interact Preview Surface" onClick="INTERACT" /><br/>
+</chtpm>

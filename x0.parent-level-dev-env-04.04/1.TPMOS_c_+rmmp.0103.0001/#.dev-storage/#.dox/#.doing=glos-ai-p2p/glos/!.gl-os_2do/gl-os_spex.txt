@@ -1,0 +1,77 @@
+# GL-OS MODULE ARCHITECTURE SPECIFICATION
+**Date:** March 24, 2026
+**Status:** AUTHORITATIVE - Frame-Based Mirroring Pattern
+
+---
+
+## CORE ARCHITECTURE: Frame-Based Mirroring
+
+**GL-OS is a High-Fidelity CHTPM Viewer:**
+- GL-OS windows (Terminal type) are pure text-frame renderers.
+- They mirror the output of CHTPM modules by reading text frames from files.
+- All state resides in standard TPM `state.txt` mirrors.
+- This ensures 100% architectural parity between ASCII-OS and GL-OS.
+
+---
+
+## THE "innerHTML" PATTERN (Mirroring Mechanism)
+
+### 1. State Sync (Mirror)
+Modules (built-in or external) write their state to `pieces/apps/gl_os/session/state.txt`.
+Multiple keys (multi-line) are supported using the "Continuation Pattern" (lines without `=` append to the previous key).
+
+### 2. Layout Parsing (innerHTML)
+The "innerHTML" part is the CHTPM layout file (`.chtml`). 
+`gl_desktop.c` implements a lightweight `parse_and_write_frame` function that:
+1. Loads variables from the `state.txt` mirror.
+2. Substitutes `${var}` placeholders in the `.chtml` layout.
+3. Writes the final composite text frame to `pieces/apps/gl_os/session/current_frame.txt`.
+
+### 3. Rendering (Theater)
+The GL-OS window reads the text frame and prints it using OpenGL bitmap fonts.
+Because the frame is pure text, the same layout used in ASCII-OS works perfectly in GL-OS.
+
+---
+
+## MODULE ANATOMY
+
+### Terminal Module (Standard pattern)
+- **Input:** Captured via GLUT `keyboard`, `special_keyboard`, or `joystick`.
+- **Logic:** Updates the window's `selected_index` or `scroll_offset`.
+- **Sync:** Calls `write_gl_os_state()` to persist the change.
+- **Refresh:** Calls `parse_and_write_frame()` to re-compose the text frame.
+- **Render:** OpenGL `draw_window` reads the new frame and displays it.
+
+---
+
+## CRITICAL ARCHITECTURAL NUANCES
+
+### 1. Input Isolation (Focus Lock)
+To prevent dual-input bugs, GL-OS creates `pieces/apps/gl_os/session/input_focus.lock`. 
+Background CHTPM daemons (`joystick_input`, `keyboard_input`) MUST check for this file and skip writing to ASCII-OS input buffers if it exists.
+
+### 2. CPU Health (Throttling)
+GL-OS must be resource-efficient:
+- **Active Throttling:** 33 FPS (30ms timer) when active.
+- **Background Throttling:** 10 FPS (100ms timer) when the CHTPM layout is not `gl_os`.
+- **Idle Backoff:** 10 FPS (100ms timer) after 5 seconds of user inactivity.
+
+### 3. Linux Terminal Parity (Scroll History)
+- **Linux Style:** "Thumb at bottom = newest content".
+- **History:** Every frame write appends to `pieces/apps/gl_os/session/frame_history.txt` with a timestamp.
+- **Scrolling:** The mouse or joystick scrolls back through this history file, not memory.
+
+---
+
+## COMMON PITFALLS (GL-OS Specific)
+
+- **Hardcoded Borders:** Do not draw borders in C code. Use the `.chtml` layout for all UI boxes.
+- **Axis Confusion:** In GL-OS, the Joystick Y-axis is typically the primary navigation (UP/DOWN).
+- **Z-Order Drift:** Ensure `active_window_id` always points to the top-most window in the array.
+- **Lock Leak:** `kill_all.sh` must remove the `input_focus.lock` to ensure ASCII-OS input is restored on crash/restart.
+
+---
+
+## SUMMARY (The Pitch)
+"GL-OS is just a better screen for the same text data." 
+By using Frame-Based Mirroring, we avoid duplicating logic and maintain the "One Truth" philosophy of the Piece-Module-OS hierarchy.

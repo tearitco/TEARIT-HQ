@@ -1,0 +1,4 @@
+[1784618191] Wraith Terminal Manager Started
+[1784618191] Project root: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.01/x0.parent-level-dev-env-04.00/1.TPMOS_c_+rmmp.0102.0028
+[1784618191] Session dir: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.01/x0.parent-level-dev-env-04.00/1.TPMOS_c_+rmmp.0102.0028/projects/wraith-alpha/wraith-projects/terminal/session
+[1784618191] Wraith Terminal Manager init complete (hot path owned by ops/wraith_project_input.c)

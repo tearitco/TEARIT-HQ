@@ -1,0 +1,4 @@
+# event.pal - real prisc+x opcodes, written by event-ez
+# pkg=dog page=1 trigger=on-click
+exec touch /tmp/dog-played.txt
+ret

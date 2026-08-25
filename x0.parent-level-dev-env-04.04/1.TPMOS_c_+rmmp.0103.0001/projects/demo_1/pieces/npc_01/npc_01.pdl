@@ -1,0 +1,17 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | npc_01
+META         | version            | 1.0
+META         | determinism        | strict
+
+STATE        | name                 | Old Man
+STATE        | type                 | npc
+STATE        | pos_x                | 7
+STATE        | pos_y                | 4
+STATE        | pos_z                | 0
+STATE        | on_map               | 1
+STATE        | on_interact          | scripts/npc_greeting.asm
+
+METHOD       | talk                 | void
+
+RESPONSE     | default              | Welcome, traveler!

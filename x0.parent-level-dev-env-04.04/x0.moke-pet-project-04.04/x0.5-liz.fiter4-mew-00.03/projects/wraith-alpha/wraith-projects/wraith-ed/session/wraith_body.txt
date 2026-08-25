@@ -1,0 +1,6 @@
+WRAITH ED | ${game_map} | game=test-game-01 map=map_0001_z0
+Mode: map_edit | Cursor: (5,3,0) | Active glyph: T tree
+Controls: Enter Control_Editor_Map, WASD move, G cycle glyph, P/Space place
+Ops: L load map | S save game | E create PAL event | X export manifest
+Last: Unhandled key 1002
+Reference: op-ed sovereign context + piececraft tile z-map + chtmgl panels

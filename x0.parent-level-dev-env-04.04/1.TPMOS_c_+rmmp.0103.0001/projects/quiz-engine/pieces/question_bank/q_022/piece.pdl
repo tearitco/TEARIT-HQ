@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | q_022
+META         | type               | question
+
+STATE        | name               | Alanine
+STATE        | type               | CH3CH(NH2)COOH

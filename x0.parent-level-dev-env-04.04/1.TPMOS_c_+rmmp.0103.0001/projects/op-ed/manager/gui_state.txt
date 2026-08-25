@@ -1,0 +1,20 @@
+module_path=projects/op-ed/manager/+x/op-ed_manager.+x
+active_layout_id=op-ed.chtpm
+app_title=OP-ED ADVANCED EDITOR
+project_id=op-ed
+active_game=none
+active_gui_index=1
+last_key=9
+selector_pos=(5,5,0)
+browser_mode_header=<text label="║  MODE: LOAD GAME                            ║" /><br/>
+browser_current_dir_line=<text label="║  DIR: projects/op-ed/games                ║" /><br/>
+search_query_val=
+file_path_input_val=projects/op-ed/games/
+autocomplete_suggestions_markup=<text label="║  SUGGESTIONS:                               ║" /><br/><text label="║  " /><button label="...-ed/games/fuzz-op-mirror/" onClick="SET_AUTOCOMPLETE:projects/op-ed/games/fuzz-op-mirror/" /><text label="   " /><text label=" ║" /><br/><text label="║  " /><button label="...op-ed/games/test-game-01/" onClick="SET_AUTOCOMPLETE:projects/op-ed/games/test-game-01/" /><text label="   " /><text label=" ║" /><br/>
+directory_browser_markup=<text label="║  " /><button label="<- BACK" onClick="SET_DIR:projects/op-ed" /><text label="                        " /><text label=" ║" /><br/><text label="║  " /><button label="[DIR] fuzz-op-mirror/" onClick="SET_DIR:projects/op-ed/games/fuzz-op-mirror" /><text label="          " /><text label=" ║" /><br/><text label="║  " /><button label="[DIR] test-game-01/" onClick="SET_DIR:projects/op-ed/games/test-game-01" /><text label="            " /><text label=" ║" /><br/>
+browser_action_buttons_markup=<text label="║  " /><button label="LOAD GAME" onClick="SET_LOAD_ACTION" /><text label="                      " /><text label=" ║" /><br/><text label="║  " /><button label="CANCEL" href="projects/op-ed/layouts/file_menu.chtpm" /><text label="                         " /><text label=" ║" /><br/>
+editor_response=[RESP]: Select game folder to load.                      
+editor_status_2=[POS]: (5,5,0) | [H-BEAT]: 1 | [KEY]: 9                  
+map_palette_view=ADD [map_0001_z0.txt] 
+glyph_palette_view=[#] . R T @ & Z X ? ! 
+armed_glyph=#

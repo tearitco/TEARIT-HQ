@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | main
+
+METHOD       | End Turn                            | END_TURN
+METHOD       | View Board (opens separate GL window) | OPEN_BOARD_WIDGET
+METHOD       | View Editor (opens separate GL window) | OPEN_VIEW_EDITOR

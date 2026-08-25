@@ -1,0 +1,6 @@
+# TSOTS custom operations for prisc+x (house format: name type handler {description})
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}
+tsots_compose void ops/+x/tsots_compose.+x {render menu or game screen into pieces/apps/player_app/view.txt}
+tsots_input void ops/+x/tsots_input.+x {dispatch game keys (digits/enter/backspace/idle-deal)}
+tsots_deal void ops/+x/tsots_deal.+x {pick verses from the bible and write round.txt + solution.txt}

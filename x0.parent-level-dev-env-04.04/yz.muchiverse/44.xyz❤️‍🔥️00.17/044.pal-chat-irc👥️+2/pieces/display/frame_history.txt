@@ -1,0 +1,74 @@
+
+--- FRAME at 2026-07-25 06:18:24 ---
+[Map Loading...]
+| [>] 1. User ID: []                                        |
+| [ ] 2. Display Name (new accounts only): []                                        |
+
+ (Ctrl+C to quit)
+
++=========================================================+
+Nav > _
+
+
+--- FRAME at 2026-07-25 06:18:24 ---
++============================================================+
+|  P A L - C H A T - I R C   [login]                         |
++============================================================+
+|                                                            |
+|  Welcome to pal-chat-irc.                                  |
+|  Create an account, or log in with an existing user ID.    |
+|                                                            |
++============================================================+
+
+| [>] 1. User ID: []                                        |
+| [ ] 2. Display Name (new accounts only): []                                        |
+[ ] 3. [Create Account]
+[ ] 4. [Log In]
+[ ] 5. [Continue to Rooms]
+ (Ctrl+C to quit)
+
++=========================================================+
+Nav > _
+
+
+--- FRAME at 2026-07-25 06:18:28 ---
++============================================================+
+|  P A L - C H A T - I R C   [login]                         |
++============================================================+
+|                                                            |
+|  Welcome to pal-chat-irc.                                  |
+|  Create an account, or log in with an existing user ID.    |
+|                                                            |
++============================================================+
+
+| [^] 1. User ID: [_]                                     |
+| [ ] 2. Display Name (new accounts only): []                                        |
+[ ] 3. [Create Account]
+[ ] 4. [Log In]
+[ ] 5. [Continue to Rooms]
+ (Ctrl+C to quit)
+
++=========================================================+
+Active [^]:  (ESC to exit)
+
+
+--- FRAME at 2026-07-25 06:18:28 ---
++============================================================+
+|  P A L - C H A T - I R C   [login]                         |
++============================================================+
+|                                                            |
+|  Welcome to pal-chat-irc.                                  |
+|  Create an account, or log in with an existing user ID.    |
+|                                                            |
++============================================================+
+
+| [^] 1. User ID: [_]                                     |
+| [ ] 2. Display Name (new accounts only): []                                        |
+[ ] 3. [Create Account]
+[ ] 4. [Log In]
+[ ] 5. [Continue to Rooms]
+ (Ctrl+C to quit)
+
++=========================================================+
+Active [^]:  (ESC to exit)
+

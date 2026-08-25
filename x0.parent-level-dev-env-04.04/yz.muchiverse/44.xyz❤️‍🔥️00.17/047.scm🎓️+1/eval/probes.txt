@@ -1,0 +1,8 @@
+# SCM probe bank — one probe per line: message|curriculum_dir|expected_feature
+# The selector must pick the feature-correct phrase far more often than
+# random-uniform sampling does (design §9 baseline gate).
+hello there!|corpuses/small-talk|greet
+is there any news today?|corpuses/small-talk|question
+no thanks, im not interested|corpuses/small-talk|neg
+what do you know about cats|corpuses/animals|topic_roleplay
+i need a drink|corpuses/tavern_rp|topic_roleplay

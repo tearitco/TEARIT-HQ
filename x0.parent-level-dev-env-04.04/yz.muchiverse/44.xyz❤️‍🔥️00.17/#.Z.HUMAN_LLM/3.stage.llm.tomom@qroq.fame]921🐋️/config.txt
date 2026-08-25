@@ -1,0 +1,32 @@
+# Training Configuration
+# Format: parameter=value
+
+# Number of training epochs
+epochs=10
+
+# Learning rate for Adam optimizer
+learning_rate=0.001
+
+# Beta1 parameter for Adam optimizer
+beta1=0.9
+
+# Beta2 parameter for Adam optimizer
+beta2=0.999
+
+# Maximum gradient norm for clipping
+max_gradient_norm=1.0
+
+# Dropout rate for attention layer (0.0 to 1.0)
+attention_dropout=0.1
+
+# Dropout rate for MLP layer (0.0 to 1.0)
+mlp_dropout=0.2
+
+# Gradient noise scale for attention scores
+attention_noise=0.01
+
+# Gradient noise scale for attention weights
+attention_weights_noise=0.005
+
+# Enable causal attention (0 = disabled, 1 = enabled)
+causal_attention=1

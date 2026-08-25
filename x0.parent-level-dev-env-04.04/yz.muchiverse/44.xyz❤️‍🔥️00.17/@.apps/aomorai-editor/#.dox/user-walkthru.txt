@@ -1,0 +1,148 @@
+AOMORAI-EDITOR — USER WALKTHROUGH (P1 clone phase)
+================================================================================
+How to launch this yourself and confirm the P1 clone is working as intended.
+Updated 2026-08-03 (clone restoration). This is a SKELETON — Minecraft features
+(place/break/inventory/chunks/3D) are NOT built yet (see KNOWN GAPS below).
+What IS real: real CHTPM nav, a real setup screen that writes real config,
+and a real End Turn loop with ledger logging — exactly the same structure
+as civ-txt, just renamed. The clone must be verified before Phase 1 divergence.
+
+--------------------------------------------------------------------------------
+0. RESET TO FRESH BEFORE TESTING
+--------------------------------------------------------------------------------
+Like civ-txt, aomorai-editor has no Save/Load yet — config.txt is a single
+persistent file shared by every launch. To force a fresh setup:
+
+    cd "@.apps/aomorai-editor"
+    ./button.sh kill
+    rm -f pieces/system/config.txt
+    rm -rf pieces/sessions
+    : > data/master_ledger.txt
+    ./button.sh run
+
+--------------------------------------------------------------------------------
+1. LAUNCH
+--------------------------------------------------------------------------------
+    cd "@.apps/aomorai-editor"
+    ./button.sh run
+
+You should see a real terminal screen titled "A T L A S - E D I T O R",
+AND a SEPARATE real GL window titled "aomorai-editor RGB mirror" should also
+pop open automatically, mirroring the same text as an image. (Use NO_GL=1
+./button.sh run to skip it. If it doesn't appear at all, that's expected
+without a display or GLUT dev libs, not a bug.)
+
+Terminal shows the SETUP screen:
+
+    Victory condition: (not set)
+    Map scale: (not set)
+    Combat resolution: (not set)
+
+    Pick each option below, then Confirm & Start.
+
+    [>] 1. [Victory: Conquest]
+    [ ] 2. [Victory: Score + Turn Limit]
+    [ ] 3. [Victory: Tech + Score]
+    [ ] 4. [Map: Small (2 civs)]
+    [ ] 5. [Map: Medium (3-4 civs)]
+    [ ] 6. [Combat: Abstract (army-strength)]
+    [ ] 7. [Combat: Per-unit (grid skirmish)]
+    [ ] 8. [Confirm & Start]
+
+--------------------------------------------------------------------------------
+2. TEST: SETUP OPTIONS (all three should be independently selectable)
+--------------------------------------------------------------------------------
+Pick one option from each group (e.g. type '1' Enter for Conquest, '4' Enter
+for Small map, '6' Enter for Abstract combat). After each pick, the summary
+at the top should update to show your choice. Order doesn't matter — you can
+pick them in any sequence, and re-picking a different option should overwrite it.
+
+VERIFY ON DISK:
+    cat pieces/system/config.txt
+    # victory_condition=, map_scale=, combat_resolution= should match
+    # whatever you last picked in each group
+
+--------------------------------------------------------------------------------
+3. TEST: CONFIRM & START, THEN ENTER GAME
+--------------------------------------------------------------------------------
+Select "Confirm & Start" (item 8). You should see a message like "Setup
+confirmed. Game started." and pieces/system/config.txt's game_state field
+should flip from "setup" to "playing":
+
+    cat pieces/system/config.txt   # game_state=playing
+
+Then, on the next idle tick or keypress, you should land on the MAIN screen
+showing a turn counter and a single numbered action:
+
+    Turn: 1
+    Treasury: 50
+    Cities: 1
+    Victory condition: <whatever you picked>
+
+    [>] 1. [End Turn]
+    [ ] 2. [View Board (opens separate GL window)]
+
+--------------------------------------------------------------------------------
+4. TEST: END TURN
+--------------------------------------------------------------------------------
+From the main screen, select "End Turn" (item 1) a few times.
+
+EXPECTED: Turn number increments by 1 each time, and a message like "Turn 2
+began." appears.
+
+VERIFY ON DISK:
+    cat data/master_ledger.txt
+    # one "end_turn" line per End Turn press, append-only, format:
+    # timestamp|turn|player|end_turn|turn:<N>
+
+--------------------------------------------------------------------------------
+4a. TEST: OPEN BOARD WIDGET (real, separate GL window)
+--------------------------------------------------------------------------------
+From the main screen, select "View Board (opens separate GL window)"
+(item 2). A brand new window titled "board-viewer" should open, completely
+independent of aomorai-editor's own terminal/GL window. If you have no display
+attached, this will report it can't open — that's expected, not a bug.
+
+What you should see in that window:
+    - The real terrain grid CONFIRM_START generated (not a placeholder) — a
+      mix of plains/forest/hills/water glyphs (rendered as real emoji), with
+      your capital (a castle emoji) at board center. 10x10 for "Map: Small",
+      14x14 for "Map: Medium" — matches whatever you picked during setup.
+    - A selector cursor you can move once you engage nav mode.
+    - A status area showing nav/camera/display info.
+
+TEST NAV MODE:
+    - Select the ONLY numbered item shown ("Nav Mode (camera + selector)")
+      to engage it.
+    - Arrow keys should now move the selector cursor around the board.
+    - Press ESC to exit nav mode.
+    - Re-engage nav mode, then press '0' for a REAL 3D view (per-pixel
+      raymarcher). Press '1'/'2'/'3'/'4' to switch camera modes (first-person,
+      third-person, free-roam, bird's-eye). Press '0' again to return to 2D.
+
+Close the board-viewer window when done — it's fully independent of
+aomorai-editor. Confirm aomorai-editor's own main screen still works correctly
+afterward.
+
+--------------------------------------------------------------------------------
+5. CLEAN SHUTDOWN CHECK
+--------------------------------------------------------------------------------
+Press Ctrl+C to quit. Then:
+
+    ps aux | grep aomorai-editor
+
+EXPECTED: no output (or only this grep command itself). Leftover processes
+would be a real bug.
+
+--------------------------------------------------------------------------------
+KNOWN GAPS (things intentionally NOT built yet, P1 clone phase only)
+--------------------------------------------------------------------------------
+- No Minecraft features (place blocks, break blocks, mine, build, inventory,
+  crafting, mobs, biome variation, chunks, Z-levels, vertical world).
+- No terrain variation beyond the one-time board fill in CONFIRM_START.
+- Board widget shows real terrain but no selectable features — selecting a
+  tile doesn't do anything in the game yet (command-bus hookup is designed but
+  not built, per PIECECRAFT_XYZ_DESIGN.md §4a).
+- No Save/Load (see §0 above).
+- See PIECECRAFT_XYZ_DESIGN.md's own §11 (Phase Order) for the full Phase 2+
+  plan. Phase 1 (this clone) must be verified working before divergence begins.

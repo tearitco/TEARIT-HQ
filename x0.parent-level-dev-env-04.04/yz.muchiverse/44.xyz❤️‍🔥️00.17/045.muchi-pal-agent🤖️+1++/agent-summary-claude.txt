@@ -1,0 +1,157 @@
+045.muchi-pal-agent🤖️+1 - AGENT-SPECIFIC TEST SUMMARY (2026-07-26, updated)
+What was tested, what works, and how it was tested. See
+test-harn-same/ for the reusable harness and proof/ for saved evidence.
+
+================================================================================
+AUDIT FINDINGS + FIXES (before any testing)
+================================================================================
+
+1. Confirmed already in place from earlier this session's directory-wide
+   passes (not re-done here, just verified present):
+   - system/keyboard_input.c: CPU-spin fix (usleep(20000) on the retry
+     path) - present.
+   - system/chtpm_parser_pal.c: the parse_attributes() heap-buffer-
+     overflow fix - present.
+   - 'q'/'Q' quit branch - already removed (only a comment documenting
+     the removal remains, no literal check).
+   - No stale .pre-href-fix backup files found.
+   - project.pdl present.
+
+2. Bug found + fixed: pieces/os/kill_all.sh had the same unescaped-`+`
+   regex bug found earlier in 044/041.pal-chain/041.pal-forum's own
+   kill_all.sh files - `pgrep -f "manager/+x/path_nav_manager"` never
+   matched the real literal path (pgrep/pkill treat unescaped `+` as an
+   extended-regex quantifier, not a literal character), so
+   path_nav_manager was never actually killed by this script. Fixed:
+   `manager/\+x/path_nav_manager` (escaped).
+
+3. Hardened button.sh's own `kill` action with the same independent
+   verify-and-retry-by-PID pattern already added to the other 3
+   projects this session (don't trust kill_all.sh's own "done" message
+   alone).
+
+4. Orchestrator.c's own 2-arg `launch()` was checked against the
+   PITFALL-20-class argv bug found in 044's original orchestrator - not
+   a bug here: every daemon this project's orchestrator launches
+   (renderer, chtpm_parser_pal, chtpm_rgb_render, gl_mirror,
+   path_nav_manager) needs 0 or 1 args, so the 2-arg launcher is
+   actually sufficient. No fix needed.
+
+5. CRITICAL bug found + fixed: default_op.txt (the file prisc+x's
+   OP_CUSTOM dispatch uses to resolve bare op names in .pal scripts to
+   actual compiled binaries) never registered `gemma_strategy` or
+   `strategy_execute_a`, even though both binaries exist at
+   ops/+x/gemma_strategy.+x and ops/+x/strategy_execute_a.+x AND
+   main_loop_chtpm.pal's own do_submit: block calls both of them, by
+   bare name, unconditionally, on EVERY Enter keypress:
+       do_submit:
+       gemma_strategy
+       strategy_execute_a
+       send_message
+   Because these two names had no entry in default_op.txt, the
+   interpreter had no way to resolve them to a binary, so those two
+   calls silently did nothing - every real user message went straight
+   to send_message (the LLM call) with NO deterministic pre-Gemma tool
+   detection ever running. This is a real regression from "before" (the
+   feature this project is supposed to have, and the exact thing this
+   test harness exists to catch), not a test-script bug. Fixed by
+   adding the two missing registration lines to default_op.txt, in the
+   file's existing `name type handler {description}` format.
+
+================================================================================
+WHAT WAS BUILT: test-harn-same/
+================================================================================
+
+Same architecture as the other 3 projects' harnesses this session
+(button.sh thin entry + ops/ reusable primitives + scenarios/ holding
+the actual test sequence). Key difference: this project is
+SINGLE-INSTANCE by design (button.sh's own "run" action reaps any
+existing session before starting a new one) - so this harness runs ONE
+session, not two concurrent users like the pal-chain/pal-forum ones.
+
+scenarios/demo_list_dir_tool.sh tests: does the REAL "pre-Gemma
+list_dir tool call" pipeline (gemma_strategy.c + strategy_execute_a.c)
+still fire end-to-end through the real UI, after the refactor - not a
+simulated/seeded version of it.
+
+================================================================================
+WHY A REAL TEST, NOT A SEEDED-STATE ONE (revised approach)
+================================================================================
+
+An earlier version of this harness manually seeded state.txt with
+ai_state=PENDING_PERM / pending_tool_name=list_dir / pending_tool_args=ops
+and then only drove the "y/n" confirmation step. That version passed
+cleanly (2 runs) but was testing the WRONG mechanism - it exercised
+execute_tool.c's older, generic user-confirmation path, not the actual
+deterministic gemma_strategy/strategy_execute_a pipeline that
+main_loop_chtpm.pal calls on every real submit. Reading
+main_loop_chtpm.pal, gemma_strategy.c, and strategy_execute_a.c
+directly (plus jul-21-gemma-fix.txt's own handoff notes) confirmed
+Gemma is too small to reliably follow a TOOL: format, so tool
+detection is fully deterministic and keyword-based, decided BEFORE any
+LLM call - the words "list"/"dir"/"files"/"show" in the user's message
+map to detected_tool=list_dir, selected_strategy=A (always pre-execute,
+never ask Gemma to try).
+
+The corrected scenario needs NO state seeding at all: it just types a
+natural message containing a detection keyword ("please list the files
+in this directory") and presses Enter, exactly like a real user would,
+and lets the real do_submit: sequence do the rest.
+
+================================================================================
+TWO REAL BUGS CAUGHT WHILE BUILDING/RUNNING THE CORRECTED TEST
+================================================================================
+
+1. default_op.txt missing registrations - see finding #5 above. This
+   is the actual thing the user asked to verify ("make sure it can
+   still run its tool for list dir, since it was refactored") - and the
+   answer, before this fix, was NO, it could not; the feature was
+   silently dead.
+
+2. Session-directory race in the harness itself: button.sh's "run"
+   action does `reap_stale_sessions` (rm -rf pieces/sessions/*) AFTER
+   it starts, but a leftover session directory from an earlier test run
+   can still be sitting in pieces/sessions/ at the moment a NEW run is
+   launched. The harness's readiness-poll (which watches for ANY
+   session dir with a current_frame.txt) could lock onto that OLD,
+   about-to-be-deleted directory instead of waiting for the real new
+   one - then reap_stale_sessions deleted it out from under the test
+   mid-keystroke (keyboard/history.txt and current_frame.txt vanished,
+   causing spurious FAILs unrelated to the actual feature under test).
+   Fixed by having the scenario itself clear pieces/sessions/* right
+   before launching, so there is no stale directory left to race
+   against.
+
+================================================================================
+WHAT THE TEST PROVES (2 consecutive clean runs, after both fixes)
+================================================================================
+
+1. Real key injection (activate Message field, type a natural message,
+   press Enter) reaches the real do_submit: sequence in
+   main_loop_chtpm.pal.
+2. gemma_strategy.+x now actually executes (previously silently
+   skipped) and deterministically detects "list_dir" from the typed
+   text - confirmed via a genuinely NEW strategy_log.txt line
+   (`strategy=A tool=list_dir meta=none`), not stale history left over
+   from earlier real usage (checked by diffing against the line count
+   recorded before the keystrokes).
+3. strategy_execute_a.+x now actually executes and pre-runs the real
+   list_dir.+x binary, rendering its result into the frame
+   SYNCHRONOUSLY, before send_message's own (separate, optional, and in
+   this environment failing on a bad API key) LLM call ever starts.
+
+Both runs: OVERALL PASS. Independent `ps aux` checks before and after
+each run confirmed zero lingering orchestrator/chtpm/renderer/
+path_nav_manager/curl processes (no CPU leak).
+
+================================================================================
+KNOWN GAP / FUTURE WORK
+================================================================================
+
+tool_args resolution for list_dir (why the earlier seeded test's "ops"
+argument didn't list this project's own ops/ folder) was not traced
+further - execute_tool.c / strategy_execute_a.c appear to resolve tool
+paths against their own project-root/sandbox concept rather than the
+harness's cwd assumption. Worth understanding precisely if a future
+agent needs to assert on a SPECIFIC target directory's contents rather
+than just "the tool fired and returned something."

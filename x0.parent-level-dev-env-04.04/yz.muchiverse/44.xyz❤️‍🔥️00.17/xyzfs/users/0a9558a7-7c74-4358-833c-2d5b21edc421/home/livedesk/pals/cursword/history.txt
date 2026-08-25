@@ -1,0 +1,99 @@
+[2026-08-24 01:17:56] WINDOW_OPEN
+[2026-08-24 01:17:56] LIVEDESK_INDEX=11
+[2026-08-24 01:19:37] WINDOW_OPEN
+[2026-08-24 01:19:37] LIVEDESK_INDEX=11
+[2026-08-24 01:19:44] CLICK method=Close action=CLOSE
+[2026-08-24 01:19:47] CLICK method=Cancel action=CLOSE
+[2026-08-24 01:33:17] WINDOW_OPEN
+[2026-08-24 01:33:17] LIVEDESK_INDEX=11
+[2026-08-24 01:33:32] INJECTED: RAISE
+[2026-08-24 01:49:51] WINDOW_OPEN
+[2026-08-24 01:49:51] LIVEDESK_INDEX=11
+[2026-08-24 01:53:33] INJECTED: CLOSE
+[2026-08-24 01:55:59] WINDOW_OPEN
+[2026-08-24 01:55:59] LIVEDESK_INDEX=11
+[2026-08-24 01:56:17] INJECTED: RAISE
+[2026-08-24 01:56:37] CLICK method=Cancel action=CLOSE
+[2026-08-24 01:57:01] WINDOW_OPEN
+[2026-08-24 01:57:01] LIVEDESK_INDEX=11
+[2026-08-24 02:05:05] INJECTED: CLOSE
+[2026-08-24 02:05:57] WINDOW_OPEN
+[2026-08-24 02:05:57] LIVEDESK_INDEX=11
+[2026-08-24 02:09:07] INJECTED: CLOSE
+[2026-08-24 02:14:16] WINDOW_OPEN
+[2026-08-24 02:14:16] LIVEDESK_INDEX=11
+[2026-08-24 02:14:44] INJECTED: OPEN_CONTEXT
+[2026-08-24 02:14:44] OPEN_CONTEXT
+[2026-08-24 02:14:46] CLICK method=Cancel action=void
+[2026-08-24 02:15:00] INJECTED: RAISE
+[2026-08-24 02:19:27] CLICK method=Cancel action=void
+[2026-08-24 02:42:13] CLICK method=Cancel action=void
+[2026-08-24 02:44:32] CLICK method=Chat action=sh -c 'exec sh "$1/&.widgits/open-hai/chat_button.sh" "$1" "$0/chat" cursword-chat'
+[2026-08-24 02:44:43] INJECTED: CLOSE
+[2026-08-24 02:44:43] WINDOW_OPEN
+[2026-08-24 02:44:43] LIVEDESK_INDEX=11
+[2026-08-24 02:51:29] CLICK method=Dir action=xdg-open
+[2026-08-24 03:02:20] CLICK method=Dir action=sh -c 'mkdir -p "$0/audit"; GDK_BACKEND=x11 xdg-open "$0" >>"$0/audit/dir.log" 2>&1'
+[2026-08-24 03:08:41] INJECTED: OPEN_CONTEXT
+[2026-08-24 03:08:41] OPEN_CONTEXT
+[2026-08-24 03:08:44] CLICK method=Dir action=sh -c 'mkdir -p "$0/audit"; GDK_BACKEND=x11 xdg-open "$0" >>"$0/audit/dir.log" 2>&1'
+[2026-08-24 03:08:51] INJECTED: ACTIVATE_NAV:31
+CHANGE_GOLD delta=+35 qolq: 0 -> 35
+[2026-08-24 03:20:57] INJECTED: RUN_METHOD:Play
+[2026-08-24 03:21:48] INJECTED: OPEN_CONTEXT
+[2026-08-24 03:21:48] OPEN_CONTEXT
+[2026-08-24 03:21:49] INJECTED: CLOSE
+[2026-08-24 03:23:41] WINDOW_OPEN
+[2026-08-24 03:23:41] LIVEDESK_INDEX=11
+[2026-08-24 03:23:41] INJECTED: RUN_METHOD:Play
+CHANGE_GOLD delta=+35 qolq: 35 -> 70
+[2026-08-24 03:23:52] INJECTED: RUN_METHOD:Play
+CHANGE_GOLD delta=+35 qolq: 70 -> 105
+SHOW_TEXT queued file=/tmp/test_verse.txt
+[2026-08-24 03:25:33] INJECTED: SHOW_TEXT_FILE:/tmp/test_verse.txt
+[2026-08-24 03:25:33] SHOW_TEXT_FILE /tmp/test_verse.txt (3 lines)
+[2026-08-24 03:25:37] SHOW_TEXT_DISMISSED
+[2026-08-24 03:26:32] CLICK method=Play action=sh -c 'exec sh "$1/*.monads/*.muchi-pet/ops/play_event.sh" "$0"'
+SHOW_TEXT queued file=/tmp/test_verse.txt
+[2026-08-24 03:26:33] INJECTED: SHOW_TEXT_FILE:/tmp/test_verse.txt
+[2026-08-24 03:26:33] SHOW_TEXT_FILE /tmp/test_verse.txt (3 lines)
+[2026-08-24 03:26:42] SHOW_TEXT_DISMISSED
+[2026-08-24 03:28:52] CLICK method=Play action=sh -c 'exec sh "$1/*.monads/*.muchi-pet/ops/play_event.sh" "$0"'
+SHOW_TEXT queued file=/tmp/test_verse.txt
+[2026-08-24 03:28:53] INJECTED: SHOW_TEXT_FILE:/tmp/test_verse.txt
+[2026-08-24 03:28:53] SHOW_TEXT_FILE /tmp/test_verse.txt (3 lines)
+[2026-08-24 03:33:43] INJECTED: CLOSE
+[2026-08-24 03:33:57] WINDOW_OPEN
+[2026-08-24 03:33:57] LIVEDESK_INDEX=11
+[2026-08-24 03:34:09] INJECTED: SHOW_TEXT_FILE:/tmp/test_verse.txt
+[2026-08-24 03:34:09] SHOW_TEXT_FILE /tmp/test_verse.txt (3 lines)
+[2026-08-24 03:35:07] SHOW_TEXT_DISMISSED
+[2026-08-24 03:35:11] CLICK method=Play action=sh -c 'exec sh "$1/*.monads/*.muchi-pet/ops/play_event.sh" "$0"'
+SHOW_TEXT queued file=/tmp/test_verse.txt
+[2026-08-24 03:35:12] INJECTED: SHOW_TEXT_FILE:/tmp/test_verse.txt
+[2026-08-24 03:35:12] SHOW_TEXT_FILE /tmp/test_verse.txt (3 lines)
+[2026-08-24 03:58:06] SHOW_TEXT_DISMISSED
+[2026-08-24 04:46:28] CLICK method=Bookmarks action=sh -c 'exec sh "$1/&.widgits/bookmarks/bm_menu.sh" "$1" "$0"'
+[2026-08-24 05:02:08] CLICK method=Bookmarks action=sh -c 'exec sh "$1/&.widgits/bookmarks/bm_menu.sh" "$1" "$0"'
+[2026-08-24 05:02:30] CLICK method=Bookmarks action=sh -c 'exec sh "$1/&.widgits/bookmarks/bm_menu.sh" "$1" "$0"'
+[2026-08-24 05:28:31] INJECTED: CLOSE
+[2026-08-24 05:28:54] WINDOW_OPEN
+[2026-08-24 05:28:54] LIVEDESK_INDEX=11
+[2026-08-24 05:28:58] CLICK method=Bookmarks action=sh -c 'exec sh "$1/&.widgits/bookmarks/bm_menu.sh" "$1" "$0"'
+[2026-08-24 05:29:03] INJECTED: CLOSE
+[2026-08-24 12:03:11] WINDOW_OPEN
+[2026-08-24 12:03:11] LIVEDESK_INDEX=11
+[2026-08-24 12:03:18] CLICK method=Bookmarks action=sh -c 'exec sh "$1/&.widgits/bookmarks/bm_menu.sh" "$1" "$0"'
+[2026-08-24 12:03:28] INJECTED: CLOSE
+[2026-08-24 15:38:05] WINDOW_OPEN
+[2026-08-24 15:38:05] LIVEDESK_INDEX=11
+[2026-08-24 15:38:09] INJECTED: CLOSE
+[2026-08-24 15:38:09] WINDOW_OPEN
+[2026-08-24 15:38:09] LIVEDESK_INDEX=11
+[2026-08-24 17:28:17] INJECTED: CLOSE
+[2026-08-24 17:28:21] WINDOW_OPEN
+[2026-08-24 17:28:21] LIVEDESK_INDEX=11
+[2026-08-24 17:28:24] CLICK method=Bookmarks action=sh -c 'exec sh "$1/&.widgits/bookmarks/bm_menu.sh" "$1" "$0"'
+[2026-08-24 20:04:28] INJECTED: CLOSE
+[2026-08-25 02:43:10] WINDOW_OPEN
+[2026-08-25 02:43:10] LIVEDESK_INDEX=11

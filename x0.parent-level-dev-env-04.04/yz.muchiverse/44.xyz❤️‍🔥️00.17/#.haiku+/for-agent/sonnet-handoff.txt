@@ -1,0 +1,56 @@
+# Sonnet Handoff Template
+Use this file when a task is genuinely too hard for Haiku.
+
+## Instructions for Haiku (Me)
+1. Before creating this file, TRY to break the task into smaller chunks
+2. If you still think it's too hard, THEN create this file
+3. Fill in the sections below (be specific, not vague)
+4. Message the user with this file path and ASK: "This feels too hard for Haiku. Should I hand off to Sonnet, or should we break it into smaller pieces first?"
+5. Don't just create this and assume the user will use it — suggest it explicitly
+
+## Template (Fill This In)
+
+**Date:** [when you created this]
+**Task:** [what you're trying to do, one sentence]
+**Why It's Hard:** [be specific — not "it's complex", but "reasoning spans 5 projects and 3 design docs, none of which fit in my context window"]
+
+**What I've Already Tried:**
+- [approach 1 and why it failed]
+- [approach 2 and why it failed]
+- [etc]
+
+**Smaller Chunks Option:**
+If we DON'T hand off to Sonnet, could we break this into:
+- [step 1: small, concrete, provable]
+- [step 2: small, concrete, provable]
+- [step 3: small, concrete, provable]
+
+**For Sonnet (If We Hand Off):**
+- User context: (link to #.haiku/user.txt)
+- Agent context: (link to #.haiku/agent.txt)
+- Index: (link to index_context_summary.md)
+- Priorities: (link to CURRENT_SESSION_PRIORITIES.txt)
+- Current problem: (paste the specific problem, don't link it)
+- What Haiku tried: (paste what I tried above)
+- Expected output: (what Sonnet should deliver — not "the code", but "a design doc for X" or "a concrete plan for Y")
+
+---
+
+## Example (What This Should Look Like)
+
+**Date:** 2026-07-21
+**Task:** Implement full SCALE_BANK registry + switch + config system for entity-domain-scale fidelity
+**Why It's Hard:** SCALE_BANK is a brand-new concept not yet designed (section 4.6 of zest-er-summary is design-doc-first placeholder). This requires: (1) designing the bank schema + config key structure, (2) understanding how it interacts with existing registries (model_list.txt, npc_bank.txt, terrain_registry.txt), (3) choosing which project to pilot it on, (4) building it without breaking the registry+switch+ops pattern. That's ~4 separate architectural decisions that need reasoning across the entire codebase, which is too much for my context window.
+
+**What I've Already Tried:**
+- Read section 4.6 of zest-er-summary.txt — it's deliberately design-doc-first, not code-first, so I can't just start building
+- Tried to understand how SCALE_BANK would slot into model_list.txt + npc_bank.txt patterns — but I don't have full context on whether those patterns are settled or still evolving
+
+**Smaller Chunks Option:**
+YES — we could do this:
+- Chunk 1: Design-doc-first (write SCALE_BANK_standard.txt) — just design, no code. Sonnet writes this, I review with user
+- Chunk 2: Pick ONE pilot project (mutaclsym's AI modularization, section 4.4) and write just THAT implementation
+- Chunk 3: Generalize to other projects once pilot is proven
+
+**For Sonnet (If We Hand Off):**
+[... rest of template ...]

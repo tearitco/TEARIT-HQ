@@ -1,0 +1,4 @@
+Hello World from TPMOS Text Editor!
+This is a simple file.
+We can edit, save and load.
+hi new

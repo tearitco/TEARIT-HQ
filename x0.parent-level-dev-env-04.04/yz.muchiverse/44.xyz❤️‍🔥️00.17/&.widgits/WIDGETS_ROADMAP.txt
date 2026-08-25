@@ -1,0 +1,403 @@
+# WIDGETS ROADMAP — file-menu (focus-adaptive) + tile-picker + map-picker
+# House: 44.xyz  |  &.widgits/
+# Date: 2026-07-28
+# Status: PLAN (extends file-menu/widget+plan.txt; does not replace cmd-bus proof)
+
+================================================================================
+0. THESIS
+================================================================================
+
+Widgets are GL-primary, file-mediated controllers of a **focused**
+running program (xyzfs runtime registry). file-menu is **not** one UI
+for all hosts: its browser and verbs **adapt to the focused project's
+kind**.
+
+  focus = agy-editor / text_buffer
+    → text documents under user FS for that project
+    → NEW / SAVE / SAVE_AS / LOAD single files (existing plan)
+
+  focus = mutaclysm / game_world
+    → **save slots** = named project dirs under user FS
+    → NEW  = wipe live maps+entities (fresh world)
+    → SAVE / SAVE_AS = snapshot live world → save dir
+    → LOAD = restore save dir → live world (maps + entities)
+
+Also planned:
+
+  tile-picker/  — paint emoji tiles onto mutaclysm map cells
+  map-picker/   — list maps in focused mutaclysm project; switch +
+                  teleport xlector/hero there
+
+User filesystem (xyzfs) is the durable home for **both** editor docs and
+mutaclysm save slots — not only install-tree pieces/saves/.
+
+UI law: xyzos-standards §35 (GL primary), §36 (harness placement).
+Cmd-bus proof already green: %.harnesses/file-menu+editor/
+
+================================================================================
+1. USER FILESYSTEM (xyzfs) — EDITOR + MUTACLYSM
+================================================================================
+
+Canonical root (logged-in user; guest uses guest-uuid tree):
+
+  <login-install>/xyzfs/users/<user_uuid>/home/
+    projects/
+      <project_id>/                 # e.g. mutaclysm | agy-editor
+        meta.pdl                    # display_name, kind, capabilities
+        docs/                       # EDITOR: text documents
+          untitled.txt
+          …
+        saves/                      # MUTACLYSM: named save slots
+          demo-project/             # seeded from install world (see §2)
+            meta.pdl
+            world_01/               # maps + entities snapshot
+          my-slot-1/
+            meta.pdl
+            world_01/
+        runtime/                    # optional live mirrors / last focus
+          last_save.txt
+          last_doc.txt
+
+project_id mapping (registry meta.project_id / install slug):
+
+  101.mutaclsym…     → mutaclysm   (kind=game_world)
+  102.editor…        → agy-editor  (kind=text_buffer)
+
+If not logged in: same layout under guest-uuid home (already used by
+login-signup for wallets/avatars).
+
+EDITOR (add if missing — was only "session buffer + path" before):
+
+  - Default SAVE/LOAD roots: xyzfs/.../projects/agy-editor/docs/
+  - file-menu when focus=editor browses that docs/ tree (not whole disk)
+  - Session buffer still primary for typing; SAVE commits into user FS
+
+MUTACLYSM:
+
+  - Live working world stays under install/session:
+      pieces/world_01/<map_id>/   (map.txt, furniture, hero, monsters, items…)
+  - User-visible save slots live under xyzfs projects/mutaclysm/saves/<name>/
+  - Install pieces/saves/save_N remains legacy; new path is user FS
+
+KPI-UFS1: editor SAVE_AS without path defaults under user docs/
+KPI-UFS2: mutaclysm SAVE creates xyzfs/.../saves/<name>/world_01/
+KPI-UFS3: guest path works without login
+KPI-UFS4: demo-project exists after first mutaclysm register/seed
+
+================================================================================
+2. DEMO-PROJECT SEED (mutaclysm)
+================================================================================
+
+Problem: NEW / wipe of live world must not lose the only playable content.
+
+Action (once per user, or if demo-project missing):
+
+  1. Resolve install mutaclysm live or template tree
+       prefer: pieces/world_01/ if populated
+       else:   pieces/world_01_template/
+  2. Copy into:
+       xyzfs/users/<uuid>/home/projects/mutaclysm/saves/demo-project/world_01/
+  3. Write meta.pdl:
+       STATE | name | demo-project
+       STATE | kind | mutaclysm_save
+       STATE | seeded_from | install world_01 | template
+       STATE | read_only | 0   # or 1 if we want demo immutable; default 0
+                              # with "restore demo" verb later
+
+Also keep install world_01_template/ as factory source for hard reset.
+
+KPI-D1: after seed, demo-project listing appears in file-menu mutaclysm mode
+KPI-D2: wipe live world; LOAD demo-project restores maps+entities playable
+KPI-D3: seed is idempotent (no clobber if demo-project already exists,
+        unless force flag)
+
+================================================================================
+3. FILE-MENU — FOCUS = MUTACLYSM (adaptive profile)
+================================================================================
+
+When widget focus meta.kind == game_world / project_id mutaclysm:
+
+Main chrome (same shell, different verbs):
+
+  ACTIVE: mutaclysm  |  LIVE: pieces/world_01  |  SLOT: <last save name or (none)>
+  1. NEW GAME          — wipe live maps+entities (re-init empty or from
+                         factory template — product choice: empty vs
+                         template; default **empty shell + prompt** or
+                         **copy template**; plan default = reset from
+                         world_01_template then optional clear entities)
+  2. SAVE              — snapshot live → current slot (or force SAVE AS)
+  3. SAVE AS…          — browser of user saves/ + name; write new slot
+  4. LOAD GAME…        — browser of user saves/ dirs only (not raw files)
+  5. CHANGE FOCUS PROJECT
+
+Browser mode when mutaclysm:
+
+  - ROOT fixed: xyzfs/.../projects/mutaclysm/saves/
+  - List **dirs** as save slots (demo-project, my-slot-1, …)
+  - No generic file picker of .txt (unless advanced toggle later)
+  - LOAD confirms: copy slot/world_01 → live pieces/world_01 (atomic
+    replace: write to world_01.tmp then swap)
+  - SAVE AS: copy live pieces/world_01 → saves/<name>/world_01
+
+Cmd bus verbs (mutaclysm consumer):
+
+  NEW_GAME
+  SAVE_GAME
+  SAVE_GAME_AS:<slot_name>
+  LOAD_GAME:<slot_name>
+  PING
+
+Mutaclysm side (new ops or extend save_game.c):
+
+  - muta_save_slot.+x <user_saves_root> <slot_name>
+  - muta_load_slot.+x <user_saves_root> <slot_name>
+  - muta_new_game.+x  [from_template|empty]
+  - muta_seed_demo.+x <user_saves_root>   # copy current/template → demo-project
+
+What "maps and entities" means (install shape today):
+
+  pieces/world_01/
+    map_start/ map_02/ map_gen_01/ building_01_gf/ …
+      map.txt furniture.txt transitions.txt state.txt
+      hero/ monsters/ items/ …   # entities as piece dirs + state.txt
+
+Save slot is a full tree copy of world_01 (same as existing save_game
+cp -r pattern, but destination = user FS save name folder).
+
+Phases (file-menu mutaclysm):
+
+  M1. User FS layout + seed demo-project from install world
+  M2. muta_save_slot / muta_load_slot / muta_new_game ops
+  M3. file-menu focus profile switch (editor vs mutaclysm) in compose
+  M4. Browser lists save dirs only; LOAD/SAVE AS wired
+  M5. Harness under %.harnesses/file-menu+mutaclysm/ (or extend multi)
+
+KPIs:
+
+  KPI-M1: demo-project present under user saves after seed
+  KPI-M2: SAVE_AS "t1" creates world_01 under saves/t1/
+  KPI-M3: mutate live map; LOAD t1 restores prior map.txt bytes
+  KPI-M4: NEW_GAME clears or resets live; demo-project still loadable
+  KPI-M5: focus=editor still shows text-file browser (no regression)
+
+================================================================================
+4. TILE-PICKER WIDGET  (&.widgits/tile-picker/)
+================================================================================
+
+Purpose: paint one emoji/glyph onto a mutaclysm map cell.
+
+UI (GL widget window):
+
+  - Palette of emojis/glyphs (from mutaclysm registry / furniture /
+    terrain tables — source TBD: pieces/registry or data files)
+  - User **clicks emoji** → selected tile
+  - User **clicks a cell** on the focused mutaclysm level (GL map /
+    interact map control) → place tile
+
+Protocol:
+
+  1. tile-picker focus must be mutaclysm session with map edit capability
+  2. Selection: write selected_glyph to widget state + optional
+     mutaclysm gui_state / paint_brush.txt
+  3. Placement: either
+       A) mutaclysm map INTERACT already places brush glyph (preferred
+          if map control exists), or
+       B) cmd bus: PLACE_TILE:<map_id>:<x>:<y>:<glyph>
+          → mutaclysm op place_tile / patch map.txt UTF-8-safe
+  4. Recompose map (one frame pulse; no idle spam)
+
+Dependencies:
+
+  - Focused mutaclysm running + registered
+  - Map identity (current_map / map_start etc.) known to session
+  - Prefer reuse OP-ED / place_tile patterns if present
+
+Phases:
+
+  T1. Palette UI (static emoji list from config or registry dump)
+  T2. Brush state file shared with mutaclysm
+  T3. Place on click (GL hit-test or ASCII map coords via cmd)
+  T4. Harness: set brush + PLACE_TILE → map.txt cell changes
+
+KPIs:
+
+  KPI-T1: select emoji updates brush state file
+  KPI-T2: PLACE_TILE changes map.txt at (x,y) to that glyph
+  KPI-T3: wrong focus (editor) → status error, no crash
+  KPI-T4: GL click path (Step after terminal/cmd proof)
+
+================================================================================
+5. MAP-PICKER WIDGET  (&.widgits/map-picker/)
+================================================================================
+
+Purpose: list all maps in the focused mutaclysm **live** project
+(world_01/* map dirs), switch current map, and **teleport xlector/hero**
+to that map (sensible spawn / last pos / map entry).
+
+UI (GL):
+
+  ACTIVE: mutaclysm | current map_start
+  List:
+    [ ] map_start
+    [ ] map_02
+    [ ] map_gen_01
+    [ ] building_01_gf
+    …
+  Enter / click → SWITCH_MAP:<map_id>
+
+Protocol:
+
+  SWITCH_MAP:<map_id>
+    - mutaclysm sets current_map / session map id
+    - moves hero + xlector (selector) onto that map's piece tree
+      (state.txt map coords — match existing transition/warp logic)
+    - recomposes
+
+Discovery:
+
+  scan pieces/world_01/*/ for dirs that look like maps (map.txt or
+  state.txt present); sort alpha.
+
+Phases:
+
+  P1. Scan + list maps in widget methods
+  P2. SWITCH_MAP op + hero/xlector teleport
+  P3. Highlight current map; refresh on world load
+  P4. Harness: switch map_start → map_02; assert current_map + hero path
+
+KPIs:
+
+  KPI-P1: list includes all live world_01 map dirs
+  KPI-P2: switch updates session current_map
+  KPI-P3: hero/xlector state lives under target map after switch
+  KPI-P4: after LOAD_GAME different slot, list refreshes
+
+
+================================================================================
+5b. PROC-MONITOR WIDGET  (&.widgits/proc-monitor/)
+================================================================================
+
+Purpose: **system tray / task manager for XYZOS processes** — not Linux
+`ps` cosplay, but the house runtime list: anything that registered
+(editor, mutaclysm, widgets, headless harness sessions, future @apps).
+
+UI (GL primary, ASCII secondary/off in run-widget):
+
+  ╔════════════ P R O C   M O N I T O R ════════════╗
+  ║  RUNNING (N)                                     ║
+  ║  [>] 1. mutaclysm     pid 1234  GL  app          ║
+  ║  [ ] 2. agy-editor    pid 1235  GL  app          ║
+  ║  [ ] 3. file-menu     pid 1236  GL  widget       ║
+  ║  [ ] 4. (headless) harn-fm-…  pid …  no-window   ║
+  ║                                                  ║
+  ║  1. FOCUS          → set widget_focus for others ║
+  ║  2. KILL           → SIGTERM then SIGKILL        ║
+  ║  3. SOFT QUIT      → quit_request / quit_flag    ║
+  ║  4. REFRESH        → re-scan registry + reaping  ║
+  ║  5. OPEN / RAISE   → optional (GL window focus)  ║
+  ╚══════════════════════════════════════════════════╝
+
+Data source (same registry planned for CHANGE FOCUS):
+
+  xyzfs/users/<uuid>/home/runtime/processes/
+    processes.pdl
+    processes/<pid>-<slug>/meta.pdl
+      project_id, kind (app|widget|harness),
+      launch_profile, session_path, gl_window 0|1,
+      capabilities, display_name, heart.beat
+
+Plus liveness:
+  - kill(pid, 0) / /proc/<pid> check
+  - GC dead entries (same as file-menu focus list)
+
+FOCUS:
+  - Writes "current focus" for this user/session so file-menu,
+    tile-picker, map-picker default to that process
+  - Does not require restarting those widgets if they poll focus
+
+KILL vs SOFT QUIT:
+  - SOFT: pieces/system/quit_request.txt or project quit_flag (house)
+  - KILL: SIGTERM → wait → SIGKILL; then runtime_unregister / GC
+
+Headless:
+  - Still listed (harness sessions, NO_GL runs)
+  - Marked no-window; FOCUS still valid for cmd-bus
+
+Phases:
+  PM1. Registry scan + list (read-only)
+  PM2. REFRESH + GC dead pids
+  PM3. FOCUS → shared focus file under xyzfs runtime
+  PM4. SOFT QUIT + KILL
+  PM5. GL chrome run-widget; optional raise window
+  PM6. Harness: spawn editor headless, see in list, focus, kill, gone
+
+KPIs:
+  KPI-PM1: running editor appears within 2s of register
+  KPI-PM2: dead pid GC removes row after kill
+  KPI-PM3: FOCUS updates runtime/current_focus.txt (or equivalent)
+  KPI-PM4: file-menu after FOCUS targets that process inbox
+  KPI-PM5: KILL reaps process and registry entry
+  KPI-PM6: headless session listed with gl=0 marker
+
+Depends on: runtime register/unregister (file-menu roadmap §2).
+Can ship list+kill on a harness-only registry before full GL.
+
+
+================================================================================
+6. IMPLEMENTATION ORDER (suggested)
+================================================================================
+
+  [ ] 0.  User FS dirs for agy-editor/docs + mutaclysm/saves (provision)
+  [ ] 1.  Seed demo-project from install world / template
+  [ ] 2.  muta_save_slot / load_slot / new_game ops
+  [ ] 3.  file-menu focus profile: mutaclysm save-dir browser
+  [ ] 4.  %.harnesses/file-menu+mutaclysm demo (SAVE/LOAD/NEW + demo intact)
+  [ ] 5.  map-picker list + SWITCH_MAP + xlector teleport
+  [ ] 6.  tile-picker brush + PLACE_TILE (cmd first, GL click second)
+  [ ] 7.  GL chrome for all three widgets (run-widget)
+  [ ] 8.  Editor user-docs browser path (file-menu editor profile)
+
+Editor file-menu path already partially proven (cmd bus). Mutaclysm path
+is the new work. tile-picker and map-picker assume mutaclysm focus +
+live world.
+
+================================================================================
+7. HARNESS PLACEMENT (§36)
+================================================================================
+
+  Unit file-menu UI:     &.widgits/file-menu/test-harn-same/
+  Unit tile-picker:      &.widgits/tile-picker/test-harn-same/
+  Unit map-picker:       &.widgits/map-picker/test-harn-same/
+  Editor alone:          102.editor-…/test-harn-same/
+  Editor × file-menu:    %.harnesses/file-menu+editor/        (DONE green 2026-07-28)
+  Mutaclysm × file-menu: %.harnesses/file-menu+mutaclysm/     (DONE green 2026-07-28)
+  Mutaclysm × map:       %.harnesses/map-picker+mutaclysm/    (DONE green 2026-07-28)
+  Mutaclysm × tile:      %.harnesses/tile-picker+mutaclysm/   (DONE green 2026-07-28)
+  Proc-monitor:          %.harnesses/proc-monitor/            (DONE green 2026-07-28)
+
+================================================================================
+8. NON-GOALS (this roadmap)
+================================================================================
+
+  - Full RPG maker / multi-user cloud saves
+  - Arbitrary disk browser outside user project trees (by default)
+  - Replacing mutaclysm in-game "save" bar immediately (may dual-path)
+
+================================================================================
+9. OPEN QUESTIONS (product)
+================================================================================
+
+  Q1: NEW_GAME = empty world vs copy world_01_template?
+  Q2: Is demo-project read-only, or overwriteable with "Reset demo"?
+  Q3: tile-picker paints terrain map.txt only, or also furniture/entities?
+  Q4: map-picker teleport = hero only, xlector only, or both?
+
+Defaults for planning until decided:
+  Q1 → reset live from template (not zero-byte maps)
+  Q2 → overwriteable; seed only if missing
+  Q3 → map.txt terrain/glyph first; furniture later
+  Q4 → both hero and xlector/selector
+
+================================================================================
+END WIDGETS ROADMAP
+================================================================================

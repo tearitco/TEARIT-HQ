@@ -1,0 +1,10 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | home_menu
+META         | title              | PLAYR Home Page
+
+# The numbers 1-4 in the boot.asm will correspond to these indices
+METHOD       | Start Project       | void
+METHOD       | Load Game           | void
+METHOD       | Help                | void
+METHOD       | Exit                | void

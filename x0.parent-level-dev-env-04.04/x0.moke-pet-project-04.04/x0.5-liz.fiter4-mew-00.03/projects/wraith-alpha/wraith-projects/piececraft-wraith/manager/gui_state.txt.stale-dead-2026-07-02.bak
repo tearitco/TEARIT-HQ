@@ -1,0 +1,23 @@
+module_path=projects/wraith-alpha/wraith-projects/piececraft-wraith/manager/+x/piececraft-wraith_manager.+x
+active_layout_id=piececraft-wraith.chtpm
+app_title=PIECECRAFT WRAITH
+project_id=wraith-alpha/wraith-projects/piececraft-wraith
+active_gui_index=1
+xel_x=4
+xel_y=2
+xel_z=0
+active_tile=.
+display_mode=2d_topdown
+debug_mode_on=0
+last_response=Game running.
+game_map=####################
+#..................#
+#...>..........R...#
+#..................#
+#.........T........#
+#....R.............#
+#..................#
+#...........T......#
+#..................#
+####################
+piece_methods=<button label="[X] Ascend" onClick="KEY:120" /><br/><button label="[Z] Descend" onClick="KEY:122" /><br/><button label="[8] Toggle 3D" onClick="KEY:56" /><br/><button label="[D] Debug" onClick="KEY:68" /><br/>

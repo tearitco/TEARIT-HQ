@@ -1,0 +1,7 @@
+tile_id=tree
+label=Tree
+rgb_top=0,255,0
+rgb_side=139,69,19
+extrude=3.0
+solid=1
+walkable=0

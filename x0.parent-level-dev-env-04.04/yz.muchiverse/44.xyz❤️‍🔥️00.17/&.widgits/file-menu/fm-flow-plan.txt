@@ -1,0 +1,435 @@
+# fm-flow-plan.txt — File Menu Widget: Complete Flow Implementation Plan
+# Date: 2026-07-29
+# Target: Match file-flow.txt behavior — full file browser, project-agnostic,
+#          drag-to-pair, file-explorer-pair, works standalone.
+
+============================================================================
+0. WIDGET PAIRING MODEL (ALL WIDGETS)
+============================================================================
+
+Every widget must support THREE pairing methods to connect to a target
+project. These are widget-wide conventions, not file-menu-specific:
+
+Method A — Ledger discovery (automatic):
+  - Widget starts → scans ledger_peers for active projects
+  - If exactly 1 found → auto-pair (write focus.txt)
+  - If 0 or many → show peer list for user to pick
+  - User picks → fm_set_focus writes focus.txt
+
+Method B — GL window drag-to-pair (future):
+  - Every project's GL window registers as a draggable source
+  - Widget GL window registers as a drop target
+  - User drags project window ONTO widget window → project path
+    is sent to widget's inbox or a drop-file
+  - Widget reads the drop, calls fm_set_focus to pair
+  - OR user drags widget window ONTO project window → same result
+  - Implementation: drag-drop filesystem protocol (see #.drag-drop-test).
+    Dropping writes a pairing token (project session root) to a known
+    drop-path; widget's PAL loop picks it up on next cycle.
+
+Method C — File explorer pair (all widgets, any time):
+  - Widget has a "PAIR WITH PROJECT..." option in its menu
+  - Opens a file browser rooted at house xyzfs or user's projects dir
+  - User navigates to a project's session dir or install dir
+  - User selects → fm_set_focus writes focus.txt
+  - This works even when no GL windows are visible (CI, headless)
+
+Every widget's button.sh must accept:
+  ./button.sh pair <session_root>    # direct pair (existing focus command)
+  ./button.sh pair                   # interactive file-browser pair
+
+============================================================================
+0a. STANDALONE MODE (UNPAIRED)
+============================================================================
+
+The widget ALWAYS renders its GL/display, even with no focus. When unpaired:
+
+  - Main menu shows "NO PROJECT FOCUSED" at the top
+  - ACTIVE: line shows "(none)"
+  - Options 1-4 (NEW/SAVE/SAVE AS/LOAD) show "No focus" status if pressed
+  - Option 5 (CHANGE FOCUS) → shows PAIR screen (ledger pick or file browse)
+  - Option 6 (PAIR FROM FILE...) → file browser to select project dir
+  - All visual chrome renders same as paired mode
+
+This ensures:
+  - Widget can be launched standalone for visual testing
+  - New users see the UI immediately, not a blank screen
+  - Pairing is discoverable from the menu itself
+
+============================================================================
+0b. XYZ-EDITOR GL WINDOW
+============================================================================
+
+The xyz-editor opens its OWN GL window when launched (app profile). This
+window is:
+
+  - A draggable source (can be dragged onto widget to pair)
+  - Independently closable (closing editor GL does not kill editor process)
+  - Shows the editor buffer content (the text canvas)
+  - Has its own title bar identifying the project
+
+The pairing flow via drag:
+
+  1. User launches xyz-editor → its GL window appears
+  2. User launches file-menu widget → its GL window appears (unpaired)
+  3. User drags editor GL window onto widget GL window
+  4. Drag-drop mechanism writes editor session_root to widget's drop path
+  5. Widget picks it up, calls fm_set_focus, now paired
+  6. Widget shows "ACTIVE: <editor document>"
+  7. LOAD/SAVE now work against the editor
+
+Reverse works too: user drags widget window onto editor GL window.
+
+============================================================================
+1. PROBLEM
+============================================================================
+
+Current widget shows only a text-mode menu (main_menu → save_as/load with
+bare path prompt). The expected UX from file-flow.txt is a FILE BROWSER:
+
+  ┌─ FILE BROWSER ──────────────────────────────┐
+  │  MODE: LOAD FILE                              │
+  │  DIR: projects/agy-text-editor               │
+  │ SEARCH: | [>] 1. []                           │
+  │ FILE:   | [ ] 2. []                           │
+  │                                               │
+  │ ACTIVE: projects/agy-text-editor/pieces/doc.. │
+  │                                               │
+  │  SUGGESTIONS:                                 │
+  │  [ ] 3. [layouts/]                           │
+  │  [ ] 4. [pieces/]                            │
+  │                                               │
+  ├─ DIRECTORY CONTENTS ─────────────────────────┤
+  │  [ ] 5. [<- BACK]                           │
+  │  [ ] 6. [[DIR] subdir/]                     │
+  │  [ ] 7. [[FIL] doc.txt (2KB)]               │
+  │                                               │
+  ├───────────────────────────────────────────────┤
+  │  [ ] 8. [LOAD FILE]                          │
+  │  [ ] 9. [CANCEL]                             │
+  └───────────────────────────────────────────────┘
+
+============================================================================
+2. ARCHITECTURE: PROJECT-AGNOSTIC DESIGN
+============================================================================
+
+The widget serves ANY focused project, not just an editor. It discovers the
+target via focus.txt (written by fm_set_focus):
+
+  focus.txt contains:
+    session_root=<abs_path>           # Project's session root
+    inbox_path=<abs_path>             # Where to send commands
+    buffer_path=<abs_path>            # Project's buffer file
+    state_path=<abs_path>             # Project's state file
+    status_path=<abs_path>            # Project's widget_cmds/status.txt
+    kind=<text_buffer|game_world|...> # Tells widget what verbs to show
+    project_id=<slug>
+    display_name=<human name>
+    live_world=<path>                 # Game world root
+    saves_root=<path>                 # Where saves go
+
+The widget uses ONLY these fields — zero project-specific knowledge:
+
+  - Browsing: reads filesystem via session_root/.. (the project's root
+    directory, deduced from session_root). Lists dirs + files with sizes.
+  - LOAD command: sends "LOAD:<path>" to inbox_path (path is any file)
+  - SAVE AS command: sends "SAVE_AS:<path>" to inbox_path
+  - Active file: reads state_path for "file_path" or "document"
+  - Status: reads status_path for response messages
+
+Kind-based behavior extension (future):
+
+  kind=text_buffer → file browser on project root, verbs = LOAD/SAVE_AS
+  kind=game_world  → browser on saves_root, verbs = LOAD_GAME/SAVE_GAME_AS
+
+============================================================================
+3. NEW/MODIFIED STATE FIELDS (fm_state.txt)
+============================================================================
+
+Current fields:
+  mode=main_menu|save_as|load
+
+New fields:
+  mode=main_menu|file_browser
+  browse_mode=load|save_as         # Which mode we're in
+  browse_dir=<abs_path>            # Current directory being browsed
+  cursor_pos=<int>                 # Currently selected line (1-based)
+  search_text=<string>             # Search filter text
+  path_buffer=<string>             # File path being typed (existing)
+  status_line=<string>             # Bottom status message
+
+============================================================================
+4. FOCUS DISCOVERY (THREE PAIRING METHODS)
+============================================================================
+
+The widget pairs with a target project using one of three methods,
+defined in §0. All write the same focus.txt.
+
+4a. Ledger discovery (automatic on startup):
+
+  button.sh run-widget:
+    1. Call ledger_peers to find active projects
+    2. If 0: start unpaired (standalone mode)
+    3. If 1: auto-pair via fm_set_focus
+    4. If >1: show peer list, user picks
+
+4b. Menu-based pair (from inside widget):
+
+  User presses CHANGE FOCUS (key 5) in main menu:
+    1. Widget scans ledger_peers for active projects
+    2. Shows list in display
+    3. User selects → fm_set_focus writes focus.txt
+    4. Widget returns to main menu, now paired
+
+  PAIR FROM FILE... (key 6) in main menu:
+    1. Opens file browser at house_root xyzfs or ~/projects/
+    2. User navigates to a project's session or install dir
+    3. User selects → fm_set_focus writes focus.txt
+
+4c. Drag-to-pair (future):
+
+  Widget polls its drop-path (pieces/system/drop_target.txt)
+  every PAL cycle. When a pairing token appears:
+    1. Read drop_target.txt → get session_root
+    2. Call fm_set_focus with that session_root
+    3. Widget is now paired
+    4. Show "PAIRED with <project>" status
+
+4d. Paired state:
+
+  When focus.txt exists with valid inbox_path:
+    - Main menu shows "ACTIVE: <path from state_path>"
+    - All file ops work against the target project
+    - Status line reads from status_path
+
+============================================================================
+5. OPS: what each binary does (new + modified)
+============================================================================
+
+5a. fm_compose_frame.c — MODIFIED
+===============================
+
+Reads: fm_state.txt, focus.txt (for session_root, kind, state_path)
+Writes: view.txt
+
+New mode: file_browser
+
+  if mode == main_menu:
+    - Read focus.txt for session_root, kind, project_id, display_name
+    - Read state_path for "file_path" (active document)
+    - Display FILE MENU chrome: active project, file path, button list
+    - If no focus: show warning, disable file ops
+
+  if mode == file_browser:
+    - Read browse_dir from fm_state.txt
+    - Read focus.txt for session_root, state_path
+    - Read state_path for "file_path" (shown as ACTIVE:)
+    - Scan browse_dir for entries (via fm_scan_dir.+x binary)
+    - Format full FILE BROWSER display with:
+      a) MODE label (LOAD FILE / SAVE AS)
+      b) DIR: current directory
+      c) SEARCH field with search_text
+      d) FILE field with path_buffer
+      e) ACTIVE: current document path
+      f) SUGGESTIONS section: top-level items from session_root's parent dir
+      g) DIRECTORY CONTENTS: entries filtered by search_text
+         - Each entry: [>] N. if cursor_pos==N, else [ ]
+         - [DIR] or [FIL] prefix
+         - File size in KB/B for files
+      h) Confirm button (LOAD FILE or SAVE AS)
+      i) CANCEL button
+    - Format is plain text inside the panel (embedded via ${panel_content})
+
+5b. fm_scan_dir.c — NEW
+=====================
+
+Reads: argv[1]=directory path, argv[2]=search filter (optional)
+Writes: stdout — pipe-delimited output
+
+Output format (one entry per line):
+  kind|name|size|is_dir
+  DIR|subdir|0|1
+  FIL|doc.txt|2048|0
+
+Supports:
+  - opendir/readdir, skip hidden files (dot prefix)
+  - stat for file sizes
+  - Optional search filter: only include names matching substring
+  - Sort: directories first, then alphabetical
+
+5c. fm_menu_input.c — MODIFIED
+============================
+
+Reads: fm_state.txt
+Writes: fm_state.txt, optionally calls fm_enqueue_cmd
+
+Main menu keys (existing, unchanged):
+  1 → NEW (enqueue_cmd)
+  2 → SAVE (enqueue_cmd)
+  3 → switch to file_browser mode, browse_mode=save_as, browse_dir=<project root>
+  4 → switch to file_browser mode, browse_mode=load, browse_dir=<project root>
+  5 → CHANGE FOCUS (scan ledger_peers → select → fm_set_focus)
+  ESC → (nothing, stay in menu)
+
+File browser keys:
+  Up arrow (key 65 / 'A' with ESC prefix or cursor up) → cursor_pos -= 1
+  Down arrow (key 66 / 'B') → cursor_pos += 1
+  Enter (key 10/13) → activate selected item:
+    - If [DIR]: cd into it (update browse_dir, cursor_pos=1)
+    - If [FIL]: set path_buffer = full path
+    - If [<- BACK]: browse_dir = parent directory
+    - If [LOAD FILE] or [SAVE AS]: enqueue command with path_buffer
+    - If [CANCEL]: back to main_menu
+  ESC (key 27) → back to main_menu
+  Printable ASCII (32-126) → append to search_text or path_buffer
+    (if cursor is on SEARCH field → search_text; else → path_buffer)
+  Backspace (key 127/8) → remove last char from active field
+  TAB (key 9) → toggle between SEARCH and FILE fields
+
+Note: The PAL loop passes the keycode from interact_relay.txt as argv[1].
+Arrow keys from gl_mirror may arrive as raw ANSI escape sequences; the
+existing read_history pipeline already strips these to single keycodes
+(appending to interact_relay.txt sends the raw scancode or the final
+byte). Need to verify arrow key handling when integrating with gl_mirror.
+
+5d. fm_set_focus.c — MODIFIED
+===========================
+
+Add: ability to select from ledger_peers output.
+New usage:
+  fm_set_focus.+x <widget_state_dir>                        # interactive pick
+  fm_set_focus.+x <widget_state_dir> <peer_session_root>    # direct set (existing)
+
+For interactive pick (no second arg):
+  - Call ledger_peers to list active peers
+  - Present numbered list
+  - User picks → write focus.txt
+
+5e. fm_enqueue_cmd.c — UNCHANGED
+=============================
+
+Already supports:
+  fm_enqueue_cmd <wdir> NEW
+  fm_enqueue_cmd <wdir> SAVE
+  fm_enqueue_cmd <wdir> LOAD <path>
+  fm_enqueue_cmd <wdir> SAVE_AS <path>
+  fm_enqueue_cmd <wdir> PING
+  (plus game-world commands for kind=game_world)
+
+Reads focus.txt → inbox_path, writes command string to inbox.
+
+============================================================================
+6. PAL LOOP CHANGES
+============================================================================
+
+Current main_loop_chtpm.pal:
+
+  compose → read interact_relay → menu_input → recompose
+
+The loop is unmodified. The PAL script does NOT need to change because:
+
+  - fm_compose_frame handles all display logic internally
+  - fm_menu_input handles all input logic internally
+  - The PAL loop just calls both in sequence, passing keycodes
+
+No new PAL ops, no new layout files. The chtpm layout remains the same
+panel with ${panel_content} embedding the dynamic file browser text.
+
+============================================================================
+7. CHTPM LAYOUT CHANGE
+============================================================================
+
+Current file-menu.chtpm has static buttons. For file browser mode, the
+layout must embed dynamic content from view.txt as ${panel_content}:
+
+  <panel w="100" h="30" title="FILE MENU">
+    <text>=== FILE MENU ===</text>
+    <text>${panel_content}</text>
+    <text>ESC: Back | Enter: Select</text>
+  </panel>
+
+The ${panel_content} variable is set by load_vars() which reads view.txt.
+When mode=main_menu, view.txt contains the menu button list.
+When mode=file_browser, view.txt contains the full browser display.
+
+============================================================================
+8. DATA FLOW: COMPLETE CYCLE
+============================================================================
+
+User presses key in GL window:
+  1. gl_mirror reads key, appends to interact_relay.txt (existing)
+  2. PAL loop reads interact_relay.txt via read_history (existing)
+  3. PAL loop calls fm_menu_input <keycode> (existing)
+  4. fm_menu_input updates fm_state.txt (mode, cursor, path, etc.)
+  5. PAL loop calls fm_compose_frame (existing)
+  6. fm_compose_frame reads fm_state.txt + focus.txt + target FS
+  7. fm_compose_frame writes view.txt (file browser or menu text)
+  8. Parser compose_frame runs, embeds view.txt as ${panel_content}
+  9. Parser writes current_frame.txt + renderer_pulse.txt
+  10. RGB renderer sees pulse, renders to rgb_frame.raw
+  11. gl_mirror sees rgb_frame change, updates GL window
+
+When user confirms LOAD/SAVE:
+  - fm_menu_input calls fm_enqueue_cmd (fork/exec)
+  - fm_enqueue_cmd reads focus.txt → inbox_path
+  - Writes "LOAD:<path>\n" or "SAVE_AS:<path>\n" to inbox
+  - Status line is updated from status_path on next compose cycle
+
+============================================================================
+9. PROJECT-AGNOSTIC VERIFICATION
+============================================================================
+
+The widget never imports or knows about:
+  - "editor" specific code (no editor_widget_cmds knowledge)
+  - "game" specific code
+  - Any project_id
+
+It only uses:
+  - focus.txt fields (session_root, inbox_path, state_path, etc.)
+  - filesystem operations (scandir, stat, read_kv)
+  - fm_enqueue_cmd to write to inbox
+
+A project that wants to be "widget-controlled" needs:
+  1. Write widget_bridge.txt with the 5 key paths (done via setup)
+  2. Have fm_set_focus point at it
+  3. Process inbox commands (LOAD:<path>, SAVE_AS:<path>, NEW, SAVE)
+  4. Write status_path for feedback
+
+============================================================================
+10. IMPLEMENTATION ORDER
+============================================================================
+
+Phase 1 — File browser foundation:
+  [1] fm_scan_dir.c — NEW: directory scanner
+  [2] fm_compose_frame.c — MODIFY: add file_browser mode display,
+      focus-aware main_menu (show active doc, show "no focus" if unpaired)
+  [3] fm_menu_input.c — MODIFY: add cursor/enter/backspace for browser,
+      pair-by-file option (key 6), standalone-friendly no-ops on 1-4
+  [4] file-menu.chtpm — MODIFY: use ${panel_content} instead of static buttons
+
+Phase 2 — Pairing & focus discovery:
+  [5] fm_set_focus.c — MODIFY: interactive peer selection from ledger,
+      accept file-browser path input
+  [6] fm_compose_frame.c — MODIFY: peer list display for CHANGE FOCUS
+  [7] fm_menu_input.c — MODIFY: peer selection, focus switching
+
+Phase 3 — Drag-to-pair:
+  [8] Define drop protocol — widget polls drop_target.txt
+  [9] Implement drop receiver in fm_menu_input or a new drop watcher
+  [10] Register project GL windows as drag sources (editor, then others)
+  [11] Test drag editor GL → widget GL → paired
+
+Phase 4 — Polish & edge cases:
+  [12] Search text filtering in file browser
+  [13] Arrow key integration with gl_mirror's interact_relay
+  [14] Standalone mode: "NO PROJECT FOCUSED" + pair instructions on screen
+
+Phase 5 — Cross-project verification:
+  [15] Test with editor (kind=text_buffer) — LOAD/SAVE
+  [16] Test with mutaclysm (kind=game_world) — browse saves_root
+  [17] Test standalone: no focus → menu renders → PAIR FROM FILE
+  [18] Test drag-to-pair: editor GL → widget GL → paired → LOAD
+
+============================================================================
+END fm-flow-plan.txt
+============================================================================

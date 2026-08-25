@@ -1,0 +1,21 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | system
+META         | version            | 1.0
+
+METHOD       | 0.user-pal👤️/00.login-signup | RUN:system:0.user-pal👤️/00.login-signup
+METHOD       | 0.user-pal👤️/01.avatar-creation👤️ | RUN:system:0.user-pal👤️/01.avatar-creation👤️
+METHOD       | 002.zoo__🦓️🐒️0000/02.z00-INK.lo.sur]PEN🏟️ | RUN:system:002.zoo__🦓️🐒️0000/02.z00-INK.lo.sur]PEN🏟️
+METHOD       | 01.muchi-pals-🥚️-13.01 | RUN:system:01.muchi-pals-🥚️-13.01
+METHOD       | 014.wsr-pal💸️📌️+2 | RUN:system:014.wsr-pal💸️📌️+2
+METHOD       | 041.pal-chain⛓️ | RUN:system:041.pal-chain⛓️
+METHOD       | 041.pal-forum👥️ | RUN:system:041.pal-forum👥️
+METHOD       | 044.pal-chat-irc👥️+2 | RUN:system:044.pal-chat-irc👥️+2
+METHOD       | 045.muchi-pal-agent🤖️+1 | RUN:system:045.muchi-pal-agent🤖️+1
+METHOD       | 101.ledger-player-npc-simple+3 | RUN:system:101.ledger-player-npc-simple+3
+METHOD       | 101.lpns+map+4 | RUN:system:101.lpns+map+4
+METHOD       | 101.mutaclsym🧟‍♂️️+18.01 | RUN:system:101.mutaclsym🧟‍♂️️+18.01
+METHOD       | 102.editor-📄️00.00 | RUN:system:102.editor-📄️00.00
+METHOD       | 150.gl-canvas | RUN:system:150.gl-canvas
+METHOD       | 151.screen-rec+01.02 | RUN:system:151.screen-rec+01.02
+METHOD       | Refresh list             | REFRESH

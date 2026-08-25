@@ -1,0 +1,11 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | tsots-online
+META         | version            | 1.0
+META         | entry_layout       | projects/tsots-online/layouts/tsots-login.chtpm
+META         | module_path        | projects/tsots-online/manager/+x/tsots_online_manager.+x
+
+STATE        | active_session     | 
+STATE        | session_count      | 0
+
+RESPONSE     | default            | TSOTS Online Ready.

@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | cursword
+STATE        | source               | event-ez
+NODE         | id=1 type=show_text | file=/tmp/test_verse.txt

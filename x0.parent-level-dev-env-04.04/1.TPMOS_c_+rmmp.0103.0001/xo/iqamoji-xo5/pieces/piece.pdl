@@ -1,0 +1,13 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | xo_bot
+META         | type               | bot
+META         | capability         | imitation_learning
+META         | intelligence_lv    | 0.1
+STATE        | status             | idle
+STATE        | current_memory     | none
+STATE        | recording          | 0
+METHOD       | record             | pieces/bots/xo/ops/+x/record_session.+x
+METHOD       | stop               | void
+METHOD       | rename             | pieces/bots/xo/ops/+x/rename_memory.+x
+METHOD       | train              | pieces/bots/xo/ops/+x/train_weights.+x

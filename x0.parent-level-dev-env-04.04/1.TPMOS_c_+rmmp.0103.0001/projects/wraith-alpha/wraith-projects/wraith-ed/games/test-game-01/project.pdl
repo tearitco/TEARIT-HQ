@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | game_id            | test-game-01
+META         | editor             | wraith-ed
+STATE        | current_map        | map_0001_z0
+STATE        | player_piece       | xlector
+STATE        | event_model        | PAL

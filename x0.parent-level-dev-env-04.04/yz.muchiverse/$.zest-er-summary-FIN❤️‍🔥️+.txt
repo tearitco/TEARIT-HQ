@@ -1,0 +1,924 @@
+ZEST-ER SESSION SUMMARY
+================================================================================
+Written as a cold-start handoff - a future agent/session should be able to
+read this alone and know what happened, what exists now, and what to do next.
+
+================================================================================
+0. INDEX - DIRECTORIES, PROJECTS, KEY FILES (terse - full detail below,
+   especially section 6's context dump)
+================================================================================
+CORRECTED PATHS: All paths are relative to yz.muchiverse/2.muchi-verse-0.0/
+(not "2.muchi-verse" - version pinned to -0.0). This is the home root - every
+real project is a sibling directory here, organized with numeric priority
+prefixes (0=foundation, 1=core active, 2=secondary, 3=future) and emojis for
+visual organization.
+
+  shared-ops/                 Canonical shared source: prisc+x.c (the tiny
+                               VM every .pal script runs on), chtpm_parser_
+                               pal.c (the shared UI/render engine),
+                               keyboard_input.c, palnet_peer.c (the P2P
+                               op). Synced INTO each project's own system/
+                               ops/, never symlinked - diff before
+                               overwriting.
+  shared-ops-manifest.txt     Which project has synced which shared file,
+                               plus any "don't sync from here" exceptions.
+  !.pal-standards.txt         THE running rulebook - every real gotcha
+                               found across every project lives here.
+                               Read this first, always.
+  #.dox/                      Family-wide design docs (USER-PAL-STANDARD.
+                               txt, PAL-CHAT-IRC-STANDARD.txt, PAL-FORUM-
+                               STANDARD.txt, PAL-CHAIN-STANDARD.txt,
+                               PAL-NET-STANDARD.txt).
+  1.muchi-pal-agent🤖️/       THIS SESSION's main project - real chtpm
+                               chat agent (provider_kind ollama/gemini/
+                               llamacpp/iqabod/script), new home of the
+                               irc-agent-0000 bridge. Own docs: CHAT-
+                               INTEGRATION-ARCHITECTURE.txt, MPC.txt,
+                               ROADMAP-models.txt.
+  1.pal-chat-irc/             IRC-style chatroom project (rooms/users/
+                               messages, real P2P via palnet_peer) -
+                               irc-agent-0000 now lives here as a live bot.
+  1.pal-chain⛓️/              Blockchain/wallet/mining pal project.
+  1.pal-forum/                Forum project (posts/follows/DMs) -
+                               foundational scaffolding still pending.
+  0.user-pal👤️/              Shared identity/login registry project.
+  1.mutaclsym🧟‍♂️️/           Original chtpm reference game project - has
+                               its OWN AI that sec. 4.4 wants modularized.
+  2.zoo_0000/ +
+  1.muchi-pals-🥚️-13.00/     The egg/zoo drag-and-drop pet project
+                               (egg_window.c, zoo_window.c, gl_mirror.c) -
+                               see sec. 3B, this is the next 2do.
+  1.wsr-pal/                   Has chtpm_rgb_render (the ASCII-to-RGB
+                               rendering project) - also the planned
+                               future home of humans/organisms per the
+                               SCALE_BANK notes in sec. 4.6.
+  pal-scripts/                 NEW this session - the first meta-
+                               orchestration script layer (pal-chat-
+                               agent.pal + launch_irc_agent.sh).
+  0.gemma-only♦️/              NEW - dedicated workspace for gemma-specific
+                               work (section 4.1 scaffolding).
+  2.avatar-creation👤️/        NEW - avatar generation project.
+  TPMOS_TRIPLE_REPORT.md      Pitch/explainer doc written this session
+                               (why this architecture matters, moat/
+                               revenue case) - emoji-heavy, non-technical
+                               audience.
+  zest-er-summary.txt          This file.
+
+================================================================================
+1. WHAT HAPPENED THIS SESSION (chronological)
+================================================================================
+- Investigated muchi-pal-llm (an LLM chat pal project) and found it had never
+  been given real chtpm (the family's shared UI/render engine) - it was still
+  hand-rolling keystroke buffering (buffer_key.c) instead of using real
+  <cli_io>. Wrote CHAT-INTEGRATION-ARCHITECTURE.txt covering the chtpm
+  upgrade, a connector abstraction (ui_drive vs direct_ops backends for
+  hooking into other chtpm-native projects), LLM-to-LLM chat, a new
+  "/model script" provider kind, and meta-orchestration - all before writing
+  any code, per this family's own design-doc-first convention.
+- Corrected a mischaracterization in MPC.txt/the architecture doc: mutaclsym
+  DOES have real chtpm (it just never needed <cli_io> - a pure digit-dispatch
+  game). The actual gap was that muchi-pal-llm's own author never checked
+  whether chtpm_parser_pal itself already supported free-text input.
+- Moved 4 projects that lived outside yz.muchiverse/2.muchi-verse-0.0/ into it
+  (mutaclsym, zoo_0000, muchi-pals-refx-13.00, muchi-pal-llm), fixing stale
+  path references and a couple of real bugs surfaced by the move (a stray
+  leftover process still writing to the OLD path after a directory rename -
+  PRISC_PROJECT_ROOT is cached at process startup, not re-read from a live
+  kernel cwd).
+- Renamed muchi-pal-llm -> muchi-pal-agent (direct user correction: "it does
+  much more than llm chat"). Upgraded it onto real chtpm (session isolation,
+  real <cli_io>, deleted buffer_key.c/main_loop.pal). Added a genuinely new,
+  zero-API "script" provider_kind (picks 5-10 random words from a plain
+  wordbank file, no network, no LLM at all).
+- Found and root-caused a real live bug: typing one message and pressing
+  Enter once produced FIVE fragmented sends. Root cause: shared-ops/
+  prisc+x.c's OP_READ_HISTORY opcode's literal-path parsing form never
+  actually set the position/cursor register - it silently defaulted to
+  register 0, which this VM hardwires to 0 every single instruction, so the
+  read position could never advance; it re-read the same stale value
+  forever. The FIX already existed in the canonical shared-ops/prisc+x.c
+  (a real 3-argument form, parsed before the broken fallback) - muchi-pal-
+  agent's own local copy was just stale and had never been re-synced.
+  Re-copying it in and rebuilding fixed it; confirmed live (one Enter -> one
+  send, no fragmentation).
+- Added trigger-word routing to the "script" provider: certain words swap to
+  a different wordbank ("weather" -> a weather-themed corpus), other words
+  run an actual external script and use its stdout as the reply ("time" ->
+  runs `date`). Live-verified all three cases (weather corpus, script
+  execution, default wordbank fallback).
+- Built irc-agent-0000: a real bridge from muchi-pal-agent into a SEPARATE
+  project, pal-chat-irc, as an actual bot participant. New op irc_agent_
+  poll.c (tick-driven, near-instant no-op unless active) joins pal-chat-irc
+  via its own direct_ops backend (chat_create_user.+x/chat_post_message.+x,
+  reading rooms/<room>/messages.txt directly - no UI/chtpm involvement on
+  the pal-chat-irc side at all), posts a greeting, then auto-replies to any
+  new message from someone else with a random wordbank pick. New op
+  set_irc_agent.c wires up a "/irc-agent <room>|off" command.
+- While building the bridge's own meta-launcher, found and fixed a SECOND,
+  previously-unhit VM bug of the identical class: OP_EXEC's assembly parser
+  had the same "register defaults to 0 instead of a real not-given sentinel"
+  bug as OP_READ_HISTORY - any `exec <path>` call with fewer than 3 total
+  tokens silently got spurious trailing "0"/"0 0" arguments appended to the
+  shell command. Never hit before because nothing in the family had used
+  `exec` yet. Fixed with the same explicit -1 sentinel pattern.
+- Built pal-scripts/ - a new TOP-LEVEL directory, sibling to every project,
+  holding the family's first real meta-orchestration script:
+  pal-chat-agent.pal (thin, execs into launch_irc_agent.sh) + launch_irc_
+  agent.sh (launches a real, session-isolated muchi-pal-agent instance -
+  renderer + chtpm_parser_pal only, no keyboard_input, since this is a bot
+  not a human - then injects "/irc-agent <room>" + Enter into it via the
+  same gui_state.txt/interact_relay.txt file-injection technique proven all
+  session).
+- LIVE-VERIFIED the full chain end to end: `IRC_ROOM=muchi-test ./system/
+  prisc+x pal-chat-agent.pal` really did launch muchi-pal-agent, join pal-
+  chat-irc, create the irc-agent-0000 user, greet, and then correctly
+  auto-reply to a second user's message within ~1s - with no double-replies
+  and no self-reply loop.
+- Wrote pal-scripts/README.txt documenting all of the above for whoever
+  touches that directory next.
+- Wrote two pitch/explainer documents at the user's request (TPMOS_TRIPLE_
+  REPORT.md - why this modular/local-first/multi-render architecture is
+  rare, why small locally-tuned AI beats huge general models for repeated
+  work, why ASCII-to-RGB rendering is a big deal for GUI+accessibility+
+  hardware output; then an honest, corrected probability estimate on how
+  replicable this whole combination really is, plus a moat/revenue section).
+
+================================================================================
+2. WHAT EXISTS NOW (state as of end of session)
+================================================================================
+- 1.muchi-pal-agent/ - real chtpm chat agent. provider_kind: ollama/gemini/
+  llamacpp/iqabod/script. New this session: script's trigger-word routing
+  (pieces/registry/triggers/trigger_list.txt), the irc-agent-0000 bridge
+  (ops/irc_agent_poll.c, ops/set_irc_agent.c, "/irc-agent <room>|off"),
+  a corrected system/prisc+x.c (both VM bugs fixed).
+- pal-scripts/ - new, minimal, first meta-orchestration script
+  (pal-chat-agent.pal + launch_irc_agent.sh + its own system/prisc+x).
+- shared-ops/prisc+x.c - canonical VM, both fixes landed here first, synced
+  into 1.muchi-pal-agent/system/ and pal-scripts/system/. NOT yet re-synced
+  into mutaclsym/zoo_0000/pal-chain/wsr-pal/muchipal-editor-0.0 - safe to do
+  whenever those are next touched (both fixes are purely additive), just not
+  done yet.
+- pal-chat-irc has a working "muchi-test" room with a live irc-agent-0000
+  user in it from the test run (left in place as a real, working example,
+  not torn down).
+- CHAT-INTEGRATION-ARCHITECTURE.txt (in 1.muchi-pal-agent/) - the design doc
+  for everything above; sec. 2 (generic ui_drive connector ops - session
+  launch/inject-key/read-frame/kill) and sec. 4 (multi-instance LLM-to-LLM
+  distillation) are still DESIGNED, NOT built - irc-agent-0000 used the
+  simpler direct_ops path instead, which is enough for a bot but not yet a
+  generic reusable connector.
+
+================================================================================
+3. STILL OPEN FROM BEFORE THIS SESSION (unstarted or in-progress)
+================================================================================
+- Wire egg_window.c to launch/kill palnet_peer during a drag (task #7).
+- Make zoo_window.c export pets dragged out of zoo bounds (task #8).
+- Build and live-test the full networked in/out drag-and-drop flow (task #9).
+- Build pal-forum foundational scaffolding + forum_create_user.c (task #14).
+- User's own next stated topic: "the pal dragging" (tasks #7/#8/#9).
+
+================================================================================
+3B. EGG WINDOW / ZOO DRAG-AND-DROP PROJECT - WHERE WE LEFT OFF
+================================================================================
+PRIORITY NOTE, decided after this session's own work was otherwise done:
+hooking up Gemma more (section 4.1 below - the keyword-based tool-use
+scaffolding) is now the ACTUAL next task, AHEAD of everything in this
+section - direct correction from "we go back and talk about the pal
+dragging" earlier in this session to "we keep putting [Gemma] off" as the
+real priority. Read 4.1 first. This section is still real and still next
+in line after that, just not first.
+
+This is a SEPARATE thread from everything in sections 1-2 above - none of
+it was touched this session at all, it predates it. Written here because
+it's the user's own explicitly next topic.
+
+THE IDEA: a "pet" (or egg) can be physically dragged between windows -
+egg_window.c and zoo_window.c are the two GUI windows involved - and
+dragging one OUT of its window's bounds should trigger real P2P networking
+to hand the pet off to wherever it's being dragged to (potentially a
+different machine on the network), not just a local in-process move.
+
+WHAT'S ALREADY DONE (tasks #5/#6/#10, all completed):
+  - #5: pal-net presence/discovery convention DESIGNED as a doc first
+    (this family's standing convention - design before code), before any
+    of the drag-specific wiring below.
+  - #6: gl_mirror.c (the window-geometry mirroring mechanism) was
+    deliberately REVERTED from an earlier socket-based attempt back to a
+    plain geometry-file writer - matching this whole family's own
+    "plain files over sockets/complex IPC" philosophy (the same instinct
+    behind chtpm's own file-based rendering pipeline, gui_state.txt, etc).
+    Worth remembering: an earlier, more complex socket-based version was
+    tried and explicitly walked back - don't re-introduce sockets here
+    without a real reason, that was a deliberate simplification, not an
+    oversight.
+  - #10: shared-ops/palnet_peer.c - the actual symmetric P2P op - is
+    BUILT and already proven working elsewhere (pal-chat-irc/pal-chain
+    both already use it for their own P2P networking, live-tested earlier
+    this family's history). This is the op the drag flow is meant to
+    reuse, not reinvent.
+
+  [!user i didn't know we stopped using sockets for drag and drop? no one
+  told me this? explain why. what about our p2p, can't that use that?]
+
+  [RESPONSE, and an honest flag]: I need to be upfront that I don't have
+  the original reasoning for the gl_mirror.c reversion directly in front
+  of me - task #6 predates this session and I'm reconstructing from the
+  task list entry alone ("Revert gl_mirror.c to a plain geometry-file
+  writer (no sockets)"), not from having read the actual discussion that
+  led to it. Don't treat what follows as settled fact - re-read gl_mirror.
+  c and whatever design note explains that decision before acting on it.
+
+  My best reconstruction, and I think this resolves the apparent
+  contradiction rather than actually being one: gl_mirror.c and palnet_
+  peer.c are almost certainly two DIFFERENT jobs, not competing
+  implementations of the same job.
+    - gl_mirror.c's own job (best guess): mirroring WINDOW GEOMETRY
+      (position/size on screen) between two LOCAL processes/windows on
+      the SAME machine, so they can visually coordinate (e.g. so a drag
+      gesture crossing from one window into another can be geometrically
+      detected at all). For that, a socket is real overhead for zero
+      benefit - two local processes can already share a plain file just
+      as fast, with none of the connection-management complexity a
+      socket needs. Reverting THIS to a plain geometry file is consistent
+      with this whole family's standing preference for plain files over
+      sockets wherever real cross-machine networking isn't actually
+      needed (chtpm's entire rendering pipeline, gui_state.txt, etc. all
+      make the same choice for the same reason).
+    - palnet_peer.c's own job: the actual DATA transfer of a pet's real
+      state, genuinely peer-to-peer, potentially ACROSS machines - this
+      is a fundamentally different requirement (real networking) that a
+      local geometry file cannot serve at all. Nothing in task #6 removed
+      or touched palnet_peer.c - it's still the real P2P mechanism, still
+      built, still proven (pal-chat-irc/pal-chain both use it live), and
+      is exactly what tasks #7/#8/#9 above are meant to wire the drag
+      gesture INTO.
+  So: sockets weren't dropped from "drag and drop networking" as a whole -
+  if my reconstruction is right, they were dropped from the LOCAL window-
+  geometry-mirroring plumbing specifically, because that part never
+  needed real networking in the first place, while the actual pet-export/
+  import step still goes through palnet_peer.c exactly as before. Confirm
+  this by actually reading both files' current header comments before
+  building on top of it - flagged above as reconstructed, not recalled.
+
+WHAT'S STILL OPEN (tasks #7/#8/#9, all pending - this is the actual next
+work, not yet started even in early planning-within-code form):
+  - #7: wire egg_window.c to LAUNCH palnet_peer when a drag starts (making
+    that egg's data available/announced over P2P) and KILL it when the
+    drag ends (drop or cancel) - matching this family's own careful
+    process-lifecycle convention (cwd-matched kill, never a bare
+    `pkill -f`, since argv text is identical across every session/
+    instance - see pal-standards.txt sec. 23, and this session's own
+    kill_own_module()/irc_agent bot teardown notes for the same pattern
+    applied elsewhere).
+  - #8: make zoo_window.c actually EXPORT a pet when it's dragged out of
+    the zoo's own window bounds - the send-side logic that detects the
+    boundary crossing and hands the pet's data off via palnet_peer.
+  - #9: build AND LIVE-TEST the full round trip - a pet dragged OUT of one
+    zoo (exported over P2P) successfully arriving and being importable
+    INTO another zoo/window elsewhere. Nothing here has been live-tested
+    yet - unlike almost everything else touched this session, this
+    specific flow has zero real-process verification behind it so far.
+
+FIRST CONCRETE STEP for whoever picks this back up: re-read the pal-net
+presence/discovery design doc from #5 and palnet_peer.c's own header
+comment IN FULL before writing any drag-detection code - don't assume
+what its calling convention is, it was designed and built as its own
+task, separately from egg_window.c/zoo_window.c, and the exact interface
+needs to be read directly, the same "read it, don't guess" discipline
+this whole family applies everywhere (e.g. this session's own CHAT-
+INTEGRATION-ARCHITECTURE.txt sec. 3 reading pal-chat-irc's real ops
+directly before designing the irc-agent-0000 bridge, rather than assuming
+its shape).
+
+  [!user go into a bit more detail on how we actually test these things -
+  key inject/frame reading - and why we expect frame history and frame
+  scroll in the terminal]
+
+  [RESPONSE]: This session's entire live-testing method (used for every
+  feature - the read_history fix, the trigger routing, the irc-agent-0000
+  bridge) is two matched halves, and it's worth being explicit that BOTH
+  only ever verify the DATA/LOGIC layer, not real terminal rendering - an
+  honest limit of this technique, not a small detail:
+    - KEY INJECTION (the input half): a real, human keypress normally
+      goes keyboard_input.c (raw terminal mode) -> pieces/keyboard/
+      history.txt (or, once chtpm's own <cli_io> is involved, gui_state.
+      txt's own per-keystroke field sync + pieces/apps/player_app/
+      interact_relay.txt for the Enter/submit keycode specifically -
+      that's the file main_loop's own read_history call actually polls).
+      Testing WITHOUT a real terminal/keyboard means writing directly
+      into those same files by hand - `echo "message_input=hi there" >
+      gui_state.txt` then `echo "13" >> interact_relay.txt` is a real,
+      exact stand-in for "a human typed 'hi there' and pressed Enter,"
+      because it's literally the same file state a real keypress would
+      have produced - not a simulation of the input, the actual same
+      data the real input path writes.
+    - FRAME READING (the output half): rather than looking at a rendered
+      terminal screen, read pieces/display/current_frame.txt (or a
+      project's own view.txt before chtpm's compose_frame step) directly
+      as text - since a real op wrote that file the same way it would for
+      a real user watching, reading it as plain text is a real check, not
+      a workaround.
+  WHY THIS PROVES LESS THAN IT LOOKS LIKE: both halves verify that the
+  correct DATA landed in the correct FILE - they say nothing about whether
+  a REAL terminal, running real ANSI escape codes, actually displays that
+  data correctly to a human. This matters specifically for two properties
+  neither key-injection nor frame-reading can ever confirm on their own:
+    - FRAME HISTORY: compose_frame ops generally render a bounded TAIL of
+      recent turns/events into view.txt (not the entire history every
+      time, for the same reason no one wants an infinitely growing
+      render) - reading current_frame.txt confirms the tail's CONTENT is
+      correct, but not that a real terminal, redrawing that same bounded
+      region every tick, gives a human the IMPRESSION of continuous
+      history the way a real chat scrollback would.
+    - FRAME SCROLL: most of these TUI-style renders clear/redraw the
+      screen in place each frame (typical ANSI behavior for a live-
+      updating display) - which usually means the terminal's OWN native
+      scrollback buffer does NOT preserve old frames the way it would for
+      a normal append-only command-line log. Whether a user can actually
+      scroll UP to see older conversation turns depends entirely on
+      whether compose_frame's own tail window is generous enough, and/or
+      whether the render deliberately avoids a hard clear-and-redraw in a
+      way that would let real terminal scrollback accumulate - this is a
+      genuine, UNTESTED-so-far question, not something file-injection
+      testing this session ever actually checked.
+  TAKEAWAY for task #9 (build AND live-test the full drag flow) and any
+  future testing generally: file-injection is the right FIRST check (fast,
+  cheap, exactly reproduces real input/output data) - but it is not a
+  substitute for actually opening a real terminal, running button.sh `run`
+  for real, and confirming with real eyes that history/scrollback looks
+  right. Do both, in that order, don't stop at the first one and call a
+  feature "verified."
+
+  [!user 1.TPMOS projects all write to debug/frame_history.txt (every
+  frame of that session, deleted on new session) - that was very helpful,
+  and you could also use a script to do your own test frame history dump,
+  but it sounds like you weren't using something like that? maybe suggest
+  it in the testing section]
+
+  [RESPONSE, and a real gap to fix]: Correct - I wasn't using this, and I
+  should have been. Nothing in this session's own testing checked for a
+  debug/frame_history.txt anywhere in muchi-pal-agent or pal-chat-irc
+  before assuming file-injection + a single current_frame.txt read was
+  the best available check - if 1.TPMOS's own convention (every frame of
+  a session appended to debug/frame_history.txt, wiped fresh on the next
+  session start) already exists as a project convention, that directly
+  answers the "frame history/scroll" open question from above far better
+  than reading current_frame.txt alone ever could: an APPENDED, ordered
+  log of every frame actually rendered that session is exactly the
+  evidence needed to confirm real history/scrollback behavior, not an
+  inference from a single snapshot.
+  CONCRETE NEXT STEP for whoever tests anything in this family next: (1)
+  check whether debug/frame_history.txt already exists as a real,
+  currently-wired convention in the specific project being tested (grep
+  for "frame_history" the same "read it, don't guess" way everything else
+  in this file insists on) - if it's already there, USE it, don't re-
+  invent a parallel mechanism. (2) If a given project doesn't have it yet,
+  add it (compose_frame's own equivalent of the fopen(...,"a") pattern
+  already used for frame_changed.txt/context_log.txt, deleted/truncated at
+  session start the same way interact_relay.txt/history.txt already are
+  in every button.sh). (3) Once it exists, a small test-harness script
+  can tail/diff debug/frame_history.txt across a scripted key-injection
+  run to assert the EXACT sequence of frames a real session would have
+  produced - a real, automatable upgrade over "read current_frame.txt
+  once at the end and hope it's representative," which is what this
+  session's own testing actually did throughout.
+
+================================================================================
+4. AGENT AI - DEEP DIVE (the part to actually study before touching any of
+   this - direct user ask for "great detail" here)
+================================================================================
+
+--------------------------------------------------------------------------
+4.1 Scaffolding Gemma to act like llama-groq-tool-use, but cheaper
+--------------------------------------------------------------------------
+THE PROBLEM: groq-tool-use-mac (llama3-groq-tool-use:8b via ollama) is the
+one proven, reliable tool-calling model in model_list.txt - native tools[]
+schema, real function-call JSON, build_ollama_request already handles it
+correctly. It is also SLOW (an 8B model). gemma-lan (gemma3:270m) is ~30x
+smaller and dramatically faster/cheaper to run on the same LAN Mac GPU, but
+it has NO native tool-calling schema at all - it just emits plain text.
+
+THE PLAN (concretely, this is what a future agent should be told to build -
+paste this whole subsection as the prompt if that's easier than summarizing
+it further):
+
+  "Gemma doesn't support native tool-calling, so instead of tools[] JSON, we
+  are going to teach it a plain-text KEYWORD CONVENTION and parse that
+  convention out of its raw completion text - the exact same shape
+  send_message.c already uses for provider_kind=llamacpp, which ALSO has no
+  native tool schema and is already handled by manually building a raw
+  prompt (text_to_pal_prompt.c) instead of relying on the API to understand
+  tools[]. Reuse that same pattern for gemma, don't invent a new one:
+
+  1. Write a new system-prompt template (or extend text_to_pal_prompt.c)
+     that teaches gemma a fixed marker syntax for calling a tool, e.g.:
+       TOOL: read_file <path>
+       TOOL: edit_file <path> <old> <new>
+       TOOL: exec <command>
+       TOOL: speak <text>
+     one call per turn, plain text, no JSON required at all.
+  2. Add a new parser (same shape as json_parser.c, but scanning for the
+     `TOOL: <verb> <args>` line instead of parsing JSON) that runs on
+     gemma's raw completion text and extracts verb+args if present.
+  3. Dispatch the SAME tool ops that already exist and are already proven
+     (file_ops.c, edit_file.c, cmd_exec.c, list_dir.c, search_in_files.c,
+     web_search.c - do not rewrite these, they are provider-agnostic
+     already) - only the PARSING layer is new, the EXECUTION layer is
+     reused untouched.
+  4. TTS is the one genuinely new op needed: write ops/tts_speak.c, self-
+     contained like every other op, shelling out to whatever local TTS
+     binary is available (espeak/piper/similar;[!.user: we use "edge-tts , .c script"]) with the text argument -
+     matching the family's own 'op wraps one external program' convention
+     (see chat_post_message.c or connect_op.c for the shape).
+  5. Feed the tool's result back into context_log.txt as a tool-result turn
+     (append_log_turn already supports a 'tool_name' field for exactly this
+     - see how execute_tool.c does it for the existing PENDING_PERM flow),
+     then let the SAME check_response.c/send_message.c tick loop already in
+     main_loop_chtpm.pal re-invoke gemma with the updated context - this is
+     already 'reloop using context,' no new engine work needed, it's the
+     exact same mechanism every other provider_kind already uses.
+  6. Add a new provider_kind, e.g. 'ollama_keyword' (or extend 'ollama' with
+     a sub-flag), so model_list.txt can point gemma-lan at this new request-
+     builder instead of the native-tools one groq-tool-use-mac uses.
+
+  Net effect: same read-file/edit-file/exec/speak/prompt-user/reloop
+  capability as groq-tool-use, at a fraction of the compute, because gemma3:
+  270m is that much smaller than the 8B tool-use model - the tradeoff is
+  slightly less reliable tool-call formatting (a plain-text convention is
+  easier to get wrong than a schema-validated JSON call), which is worth
+  testing empirically once built, not assumed.; refine "
+
+  [CORRECTION, 2026-07-21, muchi-pal-agent session - this plan was
+  SUPERSEDED, not built as written above]: steps 1-2 here (teach gemma a
+  `TOOL: verb args` marker syntax, then parse THAT syntax back out of
+  gemma's own completion text) were empirically tried and then explicitly
+  reversed by direct instruction: "gemma should never parse tool etc. we
+  got tool to work, while using gemma by pre-prompting our own fsm/or bt
+  and running a script." What actually got built instead - and is the
+  CURRENT, standing design - is documented in muchi-pal-agent's own
+  `!.GRAND-PLAN-TOOL-SCAFFOLD.txt`: a three-layer architecture where tool
+  intent is detected and the tool is EXECUTED BEFORE gemma is ever called
+  at all (gemma_strategy.c's keyword detection -> strategy_execute_a.c's
+  pre-execution -> the result gets logged as a normal tool-result turn),
+  and gemma's own persona (pieces/registry/personas/prompt_keyword.txt)
+  now explicitly tells it "you never call tools yourself." check_response.
+  c's own gemma branch no longer scans for ANY marker syntax in gemma's
+  reply - whatever gemma says is unconditionally plain conversational
+  text. This achieves this section's own stated goal (gemma gets
+  tool-use capability despite having no native schema, at a fraction of
+  groq-tool-use's compute) via a DIFFERENT mechanism than originally
+  planned - pre-execution instead of a parsed-completion convention - and
+  the pre-execution version is what's live today. Do not resurrect the
+  TOOL:-marker-in-gemma's-own-completion approach without a fresh, direct
+  instruction to do so.
+
+  [CORRECTION, per your note above]: I originally hedged with "espeak/
+  piper/similar" for the TTS op - wrong, we already have a real answer:
+  ops/tts_speak.c should shell out specifically to edge-tts (a ".c script"
+  wrapper around it, matching this family's own "one op wraps one external
+  program" convention - same shape as chat_post_message.c wrapping nothing
+  external at all, or connect_op.c wrapping curl). Concretely: tts_speak.c
+  takes the text to speak as an argument (or reads it off state.txt/a temp
+  file, matching how other ops take their input), builds an edge-tts
+  invocation (edge-tts --text "<text>" --write-media <tmp.mp3> or
+  equivalent, whatever edge-tts's own actual CLI shape is - check its real
+  usage before hardcoding flags, don't assume), then plays the resulting
+  audio via whatever local player is already available (aplay/ffplay/
+  similar - same "shell out to one already-installed program" pattern).
+  Don't build a generic "any TTS engine" abstraction unless a second engine
+  is actually needed later - one concrete, working edge-tts op first.
+
+--------------------------------------------------------------------------
+4.2 Getting IQABELLA (the iqabod curriculum model) past "random words"
+--------------------------------------------------------------------------
+CURRENT STATE: provider_kind=iqabod curricula are narrow, purpose-built test
+corpora (per ROADMAP-models.txt sec. 4), producing mostly <UNK> output
+against real conversation - not because the mechanism is broken, but because
+nobody has trained it on anything resembling real chat yet.
+
+THE PLAN (in order, each step depends on the last actually working):
+  1. LIVE CHAT DISTILLATION (CHAT-INTEGRATION-ARCHITECTURE.txt sec. 4,
+     designed, not yet built - but irc-agent-0000's own machinery from THIS
+     session is 90% of what's needed): put a strong TEACHER (gemini [!.user :prefer gemma!] , since
+     the Gemini API is "semi-reliable" and available - see budget notes
+     below) and IQABELLA (student, provider_kind=iqabod) in the SAME real
+     pal-chat-irc room, each as its own independent muchi-pal-agent
+     instance/session (session isolation already makes this safe - two
+     instances never share ephemeral state). Concretely: irc_agent_poll.c's
+     own polling pattern can be adapted almost directly - the teacher
+     instance auto-responds to the student's messages instead of picking
+     random words, using its real gemini connection.
+  2. HARVEST: build the one new op the architecture doc named but never
+     built - ops/harvest_room_to_corpus.c <room> <author_filter>
+     <output_name> - tails rooms/<room>/messages.txt, filters to IQABELLA's
+     own authored lines only, writes them as a plain corpus file (same
+     shape generate_corpus.+x already produces).
+  3. TRAIN: feed that harvested corpus into the EXISTING vocab_only + train
+     pipeline (ROADMAP sec. 11.1/12.2) - this part is not new, just needs a
+     real corpus to point at instead of the placeholder test ones.
+  4. ITERATE: run more chat sessions with the newly-retrained IQABELLA,
+     harvest again, retrain again - each cycle should measurably reduce
+     <UNK> output and increase coherent word choice, before ever attempting
+     harder tasks.
+  5. RL LAYER, once basic coherence exists: rather than a second expensive
+     training run every time, use human-in-the-loop feedback (thumbs up/
+     down on individual IQABELLA turns, logged alongside context_log.txt)
+     to bias future word/response choices - the same 'cheap, continuous,
+     personal tuning instead of rare/expensive retraining' philosophy this
+     whole family's local-AI approach is built on (see the AI-comparison
+     explainer given earlier this session, TPMOS_TRIPLE_REPORT.md sec. 2).
+  6. TOWARD CODING: once general chat coherence is real, repeat the exact
+     same teacher/student/harvest/train loop with a CODE-focused teacher
+     curriculum instead of general chat - gemini generating small, focused
+     code-completion pairs (e.g. 'write a function that...' / the
+     completion) as the room's own conversation content, harvested and
+     trained the same way. Start with the smallest reasonable unit (single
+     function completions), only scale up to multi-file/agentic coding
+     tasks once that smallest unit is reliably working - same 'prove one
+     thing end-to-end before generalizing' discipline this whole session
+     followed for every other feature.
+
+  [CORRECTION, per your note above]: I defaulted the teacher role to
+  gemini - wrong direction given the whole point of this section (4.3) is
+  reducing paid/rate-limited API reliance. PREFER GEMMA as the teacher:
+  gemma-lan is local, fast, and effectively free to call as many times as
+  a distillation loop needs (which could be hundreds/thousands of turns),
+  where gemini has real cost/rate-limit pressure at that volume. The
+  teacher/student roles in step 1 become gemma-lan (teacher) + IQABELLA
+  (student, provider_kind=iqabod) in the same pal-chat-irc room. Only
+  escalate the TEACHER role itself to gemini if gemma's own output proves
+  too weak/incoherent to actually teach anything useful - i.e. apply the
+  exact same escalation tiering from 4.3 to the teacher choice itself, not
+  just to ordinary chat use. Worth noting honestly: if gemma needs the
+  keyword-based tool-use scaffolding from 4.1 to be a GOOD teacher (e.g.
+  to demonstrate real file/tool use, not just conversation), build 4.1
+  before leaning on gemma-as-teacher for anything beyond plain chat
+  distillation.
+
+--------------------------------------------------------------------------
+4.3 API budget strategy - use Gemini/Haiku deliberately, not by default
+--------------------------------------------------------------------------
+Direct user framing: Gemini API access is "semi-reliable" and available;
+Haiku (or another cloud model) is available "when we have to," but the goal
+is to reduce reliance on both and budget deliberately, not reflexively call
+the biggest/most expensive model for everything.
+
+Concrete tiering to actually implement (this is a policy for a future agent
+to apply when choosing which /model to invoke for a given task, not new
+code):
+  1. DEFAULT to the cheapest capable option for the task at hand - script/
+     wordbank or a small local ollama model (gemma-lan) for anything routine
+     or repetitive.
+  2. ESCALATE to gemini-flash only when the task genuinely needs broader
+     reasoning/knowledge the small local model can't reliably produce -
+     this is the 'teacher' role in the IQABELLA distillation loop (4.2) and
+     the 'occasional hard question' role in ordinary use (see the earlier
+     'giant model for rare/novel questions, small tuned model for everything
+     routine' explainer).
+  3. RESERVE Haiku/larger cloud models for cases gemini itself can't handle
+     reliably (hence 'semi-reliable') - genuinely last resort, and track
+     when/why escalation happened so the pattern of 'what actually needs the
+     expensive model' becomes visible over time and can inform what
+     IQABELLA/gemma should be trained on NEXT (i.e. the escalation log
+     itself is a curriculum-design signal).
+  4. Every distillation/training run (4.2) should measurably shrink the set
+     of tasks that need escalation at all - the budget strategy and the
+     training strategy are the same feedback loop, not two separate
+     concerns.
+
+--------------------------------------------------------------------------
+4.4 Modularizing mutaclysm's AI like wsr-pal/muchi-pal-agent
+--------------------------------------------------------------------------
+THE ASK: mutaclysm's own AI logic should be restructured to look like this
+session's own muchi-pal-agent/wsr-pal pattern - modular, reusable ops
+instead of one hardcoded routine.
+
+WHAT THAT PATTERN ACTUALLY IS, concretely, to replicate:
+  - A REGISTRY file (model_list.txt's own shape: pipe-delimited rows,
+    id|kind|param|param) that names swappable behaviors instead of hard-
+    coding one path.
+  - A SWITCH command (switch_model.c's own shape: look up an id in the
+    registry, rewrite a handful of state.txt fields, done) so behavior can
+    change without a rebuild.
+  - Small, single-purpose, SELF-CONTAINED ops (own root resolution, own
+    constants, no shared headers - matches every op in this family) instead
+    of one large function handling every case inline.
+  - A TICK-DRIVEN poll pattern (check_response.c/irc_agent_poll.c's own
+    shape: cheap no-op check first, real work only when actually active)
+    for anything that needs to run continuously rather than once per
+    keypress.
+  - A TRIGGER/ROUTING layer (this session's own trigger_list.txt addition
+    to provider_kind=script) wherever "different input should pick a
+    different behavor" - directly reusable for "different game situations
+    should pick a different mutaclysm AI behavior."
+  FIRST CONCRETE STEP for a future agent: read mutaclysm's current AI code
+  in full (not assumed), identify the single hardcoded decision points, and
+  replace each with a registry+switch pair the same shape as switch_model.c
+  - one at a time, verified working after each swap, not a big-bang rewrite.
+  
+  [!user each npc should have its own "piece dir structure" or at least a "npc bank, aka {SCALE_BANK} micro structure which stores the same information but can manage multiple npc types ; this is also something
+  we will reuse in wsr , when we start adding humans(employees customers)/organisms(animals/food/plants/microbial biology for tech, etc)]
+
+  [RESPONSE]: Good addition, and it's actually a natural extension of the
+  registry pattern already described above, not a new mechanism - the
+  distinction worth being precise about is ONE FILE, MANY ROWS (like
+  model_list.txt/trigger_list.txt already are - one npc_bank.txt with one
+  pipe-delimited row per NPC type) vs. ONE DIRECTORY PER NPC (like pieces/
+  world_01/session_01/chat/ is its own real directory with its own state.
+  txt/context_log.txt). Concretely: use the BANK (single file, many rows)
+  for NPC TYPES/TEMPLATES - what kinds of NPC exist and their default
+  stats/behavior-registry-id - and use a real per-instance PIECE DIR only
+  for a SPECIFIC, STATEFUL, LIVING NPC instance that needs its own
+  persistent, mutable state over time (health, inventory, relationship
+  history) the same way pieces/world_01/session_01/chat/ is one specific,
+  stateful chat instance. Most NPCs in a bank never need their own
+  directory at all - only ones that accumulate real individual history do.
+  This exact bank-vs-instance-dir split is what makes it reusable in wsr
+  for humans/employees/customers and organisms/animals/plants/microbes
+  later: the BANK format doesn't care what domain it's naming (npc types,
+  employee roles, animal species - same pipe-delimited shape), only the
+  decision of "does this specific instance need its own stateful dir"
+  changes per domain.
+
+--------------------------------------------------------------------------
+4.5 Same pattern for terrain generation, leveling/evolution, and scale
+--------------------------------------------------------------------------
+THE ASK: apply the identical modular-registry-and-picker approach (4.4) to
+terrain generation, play leveling/evolution, and abstracting scale across
+levels/worlds/corpuses.
+
+HOW THE SAME PATTERN MAPS ONTO EACH:
+  - TERRAIN GENERATION: a terrain_registry.txt (same pipe-delimited shape)
+    naming swappable generator ops (e.g. a perlin-noise op, a biome-rules
+    op, a hand-authored room-layout op) - picking a generator becomes a
+    registry lookup, not a hardcoded function call, exactly like /model
+    picks a provider_kind.
+  - LEVELING/EVOLUTION: this is squarely what ROADMAP-models.txt's own
+    rl/fsm/script registry (sec. 5.1/6.3's shared bank/picker mechanism,
+    already designed, partially built via provider_kind=script this
+    session) is FOR - a "leveling rule" or "evolution step" is just another
+    named, swappable script/fsm/rl entry in the same picker, not a special
+    case needing its own new mechanism.
+  - SCALE ABSTRACTION (a single room vs. a full world vs. many worlds):
+    the SAME small generator ops should be parameterized to operate at
+    different granularities rather than needing separate "room generator"
+    vs. "world generator" code - matches this whole family's own "ops are
+    generic, state/config decides scope" convention (e.g. irc_agent_poll.c
+    is one op that works for any room name, not one op per room). A future
+    agent building this should design the generator ops' own parameters
+    (size, seed, density, whatever the domain needs) FIRST, prove one
+    generator works at both a small and a large scale using only parameter
+    changes, before adding any second generator - the same "vertical slice
+    first" discipline CHAT-INTEGRATION-ARCHITECTURE.txt sec. 7 and this
+    whole session followed throughout.
+  - CORPUSES AT SCALE: the exact same registry+picker idea applies to
+    training corpora themselves (which curriculum/wordbank is active is
+    already a registry lookup via model_list.txt) - scaling from a small
+    starter wordbank (sample.txt, 20 words) to a large real corpus is a
+    matter of pointing the SAME mechanism at a bigger file, not building
+    new machinery.
+    
+    [!.user wanna think of this like {SCALE_BANK}as well , lets
+    also think more deeply about scale bank , like we will have a config file for games
+    levels, ai corposes , anything that defines if we want that particular module 2 have large scale
+    or small scale, for example in a driving game , cars should have large scale, describing, tires, gas , engine mechanics , combustion etc (unless otherwise specified for a simple cheap racing game) but would not necessarily need the humans/animals to have large scale . also its npcs may have large scale information about driving, but not so much about "conversaiont" get it? expound on this in its own section if u want its gonna be a big deal. ]
+
+  [RESPONSE]: Yes - this is a real correction to how I framed 4.5 above.
+  I described scale mostly as "small world vs. big world" (one dimension).
+  What you're describing is sharper and more valuable: scale is PER-
+  ENTITY, PER-DOMAIN, not one global dial. The same NPC can need large-
+  scale fidelity in one domain (driving mechanics) and small-scale/cheap
+  fidelity in another (conversation) at the same time. That's genuinely
+  its own concept, expanded in full in the new section 4.6 right below.
+
+--------------------------------------------------------------------------
+4.6 SCALE_BANK - a fidelity-configuration layer, orthogonal to WHAT a
+    module is (this is the big one - its own section as asked)
+--------------------------------------------------------------------------
+THE CORE IDEA: scale is not a property of a GAME or a WORLD as a whole -
+it's a property of one (ENTITY TYPE, DOMAIN) PAIR at a time. A car in a
+driving game might need deep, "large scale" simulation of its physics
+domain (tires, gas, engine mechanics, combustion) while needing almost
+nothing for its "conversation" domain (cars don't talk). An NPC in that
+same game might need large-scale fidelity for ITS driving-knowledge domain
+(so it drives convincingly) but only small-scale/cheap fidelity for its
+conversation domain (a few canned lines is enough). Two different entities,
+same domain (driving), can independently need different scale too - a
+"simple cheap racing game" config might deliberately choose small-scale
+physics for cars even though large-scale is available, because the
+PRODUCT doesn't need it this time.
+
+WHY THIS IS A BIG DEAL, concretely: without this, a project either (a)
+hardcodes one fixed fidelity level for everything (wasteful when cheap
+would do, or worse, hardcodes CHEAP and can't later add depth without a
+rewrite), or (b) builds bespoke one-off fidelity switches per feature,
+each its own special case, none of them reusable. SCALE_BANK makes "how
+much detail does this need" a first-class, swappable, reusable config
+decision - the SAME mechanism as every registry described above (a
+pipe-delimited bank naming options, a switch/config picking one), just
+keyed by (entity_type, domain) instead of a single id.
+
+CONCRETE SHAPE (same pipe-delimited registry convention as model_list.txt/
+trigger_list.txt/the npc_bank idea in 4.4 above - not a new file format,
+a new KEY shape):
+  entity_type|domain|scale_level|module_id
+  car|physics|large|tire_engine_combustion_full_sim
+  car|physics|small|simple_speed_accel_abstraction
+  car|conversation|small|none
+  npc|driving_knowledge|large|full_driving_rules_module
+  npc|conversation|small|random_words_or_light_fsm
+  npc|conversation|large|full_llm_persona_module
+
+  - entity_type/domain: which kind of thing, and which subsystem/behavior
+    of it (physics, conversation, biology, driving_knowledge, whatever the
+    domain needs - not a fixed enum, project-defined).
+  - scale_level: which fidelity tier this row represents (large/small, or
+    more tiers later if actually needed - don't over-design past 2 tiers
+    until a 3rd is genuinely wanted).
+  - module_id: which actual generator/behavior module (an op, a script/
+    fsm/rl entry from the existing picker, a wordbank) implements THIS
+    specific (entity_type, domain, scale_level) combination - reuses
+    whatever registry mechanism that domain already has (e.g. conversation
+    scale rows point at provider_kind=script/iqabod/gemma entries the same
+    way model_list.txt already names them).
+
+A SEPARATE, PER-PROJECT/PER-GAME CONFIG FILE then picks which scale_level
+is ACTIVE for each (entity_type, domain) pair for THIS specific game/
+simulation - e.g. "simple cheap racing game" config picks car|physics|
+small, while "hardcore sim racer" config picks car|physics|large, using
+the exact SAME underlying SCALE_BANK rows either way. This is the same
+registry-vs-active-selection split as model_list.txt (the bank) vs.
+state.txt's current_model_id (the active pick) - not new machinery,
+the same pattern with a 2-part key.
+
+REUSE ACROSS DOMAINS, directly answering "get it?": this is NOT game-
+specific. The exact same SCALE_BANK mechanism applies to:
+  - AI TRAINING CORPORA (4.2/4.5's own "corpuses at scale" point) - a
+    corpus itself can have a scale_level (a tiny starter wordbank vs. a
+    full trained curriculum for the same domain).
+  - WSR's future humans/employees/customers and organisms/animals/plants/
+    microbes (4.4's own npc_bank note) - an "employee" entity might need
+    large-scale job-skill modeling but small-scale biology modeling; an
+    "animal" might need the exact opposite (large-scale biology, no job
+    skills at all). Same bank shape, same per-(entity,domain) key, totally
+    different actual content per project.
+
+BUILD ORDER (same "prove one thing before generalizing" discipline as
+everywhere else in this file): pick ONE real entity type with a genuine
+two-tier need (e.g. mutaclysm's own car-or-NPC, once 4.4's modularization
+work has already happened there), write its SCALE_BANK rows, wire ONE
+config file to pick between them, verify both tiers actually work end to
+end, BEFORE generalizing SCALE_BANK into a shared, cross-project
+mechanism. This is genuinely valuable but also genuinely new machinery
+(unlike 4.1-4.5, which mostly reuse existing patterns) - budget real
+design-doc-first time for it, matching this family's own standing
+convention, before writing code.
+
+================================================================================
+5. IF YOU ONLY REMEMBER ONE THING FROM SECTION 4
+================================================================================
+Every single sub-ask in section 4 - gemma tool-use, IQABELLA training,
+budget tiering, mutaclysm's AI, terrain/leveling/scale - reduces to the SAME
+three ingredients this whole family already uses everywhere else: a plain-
+text REGISTRY file naming swappable options, a small SWITCH op that rewrites
+a few state fields to activate one, and small SELF-CONTAINED ops that do the
+real work. Nothing in section 4 needs new engine capability - it needs the
+existing pattern applied one more time, in one more place, verified working
+after each step before moving to the next.
+
+================================================================================
+6. CONTEXT DUMP - GETTING A BRAND NEW AGENT FULLY UP TO SPEED
+================================================================================
+Read this section as if you have ZERO memory of anything above. This is the
+condensed, standing-knowledge version - the conventions and gotchas that
+apply to EVERY project in this family, not just what happened this session.
+
+WHERE EVERYTHING LIVES: yz.muchiverse/2.muchi-verse-0.0/ is home - every real
+project is a sibling directory inside it (1.muchi-pal-agent🤖️, 1.pal-chat-irc,
+1.pal-chain⛓️, 1.pal-forum, 1.mutaclsym🧟‍♂️️, 2.zoo_0000, 0.user-pal👤️, 1.wsr-pal,
+pal-scripts, 0.gemma-only♦️, etc). shared-ops/ holds the CANONICAL copy of code shared across projects
+(prisc+x.c, chtpm_parser_pal.c, keyboard_input.c, palnet_peer.c) - each
+project keeps its OWN local copy under system/ or ops/, synced in
+deliberately (sync_shared_op.sh / a plain diff-then-cp), not symlinked -
+see shared-ops-manifest.txt for the current consumer list per file. Design
+docs live either in #.dox/ (family-wide, e.g. USER-PAL-STANDARD.txt,
+PAL-CHAT-IRC-STANDARD.txt) or as a per-project *-STANDARD.txt/
+*-ARCHITECTURE.txt/ROADMAP-*.txt. !.pal-standards.txt is the single
+running rulebook - read it, it accumulates every real gotcha found across
+every project (session isolation, cli_io behavior, kill patterns, etc).
+
+THE CORE TECH STACK, in one paragraph: prisc+x is a tiny custom VM (RISC-V-
+style registers, li/beq/j/custom-op bytecode) that runs .pal scripts.
+chtpm_parser_pal is the shared UI engine - real declarative <cli_io>/
+<button>/${piece_methods} layouts, drives BOTH terminal rendering and (via
+chtpm_rgb_render) real RGB pixel rendering from the SAME layout. Every
+project is: a chtpm layout (pieces/chtpm/layouts/*.chtpm) + a .pal script
+(the main loop, calls custom ops each tick) + a pile of small, self-
+contained C "ops" (each does ONE thing, owns its own root-resolution/
+constants, never includes shared headers) + plain pipe-delimited or
+key=value text files as ALL state (state.txt, context_log.txt, registry
+files) - no databases, no JSON-as-state, no sockets unless a project
+genuinely needs real networking (palnet_peer.c).
+
+STANDING CONVENTIONS THAT APPLY EVERYWHERE (violate these and you will
+reintroduce bugs that were already found and fixed once):
+  - SESSION ISOLATION: every project's button.sh `run` action creates a
+    throwaway pieces/sessions/<id>/ dir, symlinking in shared/static code
+    and shared/persistent data, with real private ephemeral UI state -
+    deleted on exit. Never launch a second instance directly against a
+    project's own root - always go through button.sh's own session
+    creation, or replicate it exactly if scripting around it (see pal-
+    scripts/launch_irc_agent.sh for a worked example).
+  - KILL BY CWD, NEVER BY ARGV: every session's own processes have
+    IDENTICAL argv text (`system/prisc+x pal/main_loop.pal` etc.) - a bare
+    `pkill -f` will kill the WRONG session's process. Always match
+    /proc/$pid/cwd against the specific session dir you mean to kill.
+  - PRISC_PROJECT_ROOT IS CACHED, NOT LIVE: every op/process reads this
+    env var ONCE at startup into a static buffer. Moving/renaming a
+    directory updates a running process's kernel cwd (Linux follows
+    renames), but NOT this cached string - a leftover process can keep
+    writing to the OLD path indefinitely. Always re-sweep for orphaned
+    processes (by real /proc/$pid/cwd, not by name) after any directory
+    move, and do it TWICE - once isn't always enough.
+  - ONE VISIBLE FRAME WRITER: no op writes pieces/display/current_frame.
+    txt (or a project's own view.txt) directly except chtpm_parser_pal's
+    own internal compose step - an op writes its OWN view.txt, then pings
+    frame_changed.txt.
+  - REGISTER-SENTINEL BUG CLASS in prisc+x.c's own opcode parsers: several
+    opcodes (OP_READ_HISTORY, OP_EXEC) had a parsing bug where an unset
+    register field defaulted to 0 (a REAL register, hardwired-reset every
+    instruction) instead of an explicit "not given" sentinel (-1). If a
+    new opcode or new calling form is ever added, check this exact class
+    of bug before trusting it - "does an unset field default to something
+    indistinguishable from a valid value" is the actual question to ask.
+  - DESIGN-DOC-FIRST: every real feature in this family's history has a
+    doc written and read BEFORE code - don't skip this even under time
+    pressure, it's what keeps multi-session work coherent.
+  - ALWAYS DIFF BEFORE OVERWRITING a synced shared file - check
+    shared-ops-manifest.txt for "NOT synced from here" notes before
+    blindly copying a canonical file over a project's own fork of it.
+  - REGISTRY + SWITCH + SELF-CONTAINED OPS is the one pattern that shows
+    up in every single feature in this family (see section 5 above) -
+    when in doubt about how to add a new swappable behavior anywhere,
+    this is almost always the answer.
+  - ALWAYS FIX KNOWN-WRONG INFO IN DOCS the moment it's noticed, don't
+    wait to be asked - a standing instruction from this user specifically.
+
+THE USER'S OWN COLLABORATION STYLE, worth internalizing:
+  - Terse, direct, technical - expects real investigation (read the actual
+    file, run the actual process) over "should work" reasoning. Live-test
+    everything with real running processes wherever possible.
+  - Corrects wrong assumptions directly and expects the correction to
+    stick without re-litigating - when told "no, X is actually true," fix
+    it everywhere it was stated wrong, don't just patch one spot.
+  - Wants honest, calibrated answers when asked for an opinion/estimate
+    (see the earlier "how likely is this to exist elsewhere" exchange in
+    this same session) - pushes back hard on inflated or hedge-everything
+    answers, values a real number with real reasoning over a safe non-
+    answer.
+  - Asks for architecture discussion/clarifying questions BEFORE big,
+    ambiguous builds (e.g. the irc-agent-0000 scope question this
+    session), but wants execution to just proceed, fast, once direction
+    is confirmed - doesn't want to be asked about things that are
+    reasonably inferable or already decided.
+  - Explicitly okay with corrections being ADDED alongside original wrong
+    text rather than deleting the wrong text - preserves the trail of
+    what was corrected and why (see this exact file's own [CORRECTION]/
+    [RESPONSE] blocks in section 4 as the worked example of this).
+
+================================================================================
+7. A REUSABLE PROMPT - ASK FOR THIS AT THE END OF ANY LONG SESSION
+================================================================================
+Paste (and adapt <FILENAME> / <PROJECT AREA>) whenever a long session is
+wrapping up and a future session/agent will need to pick it back up cold:
+
+  "Before we finish this leg, write a complete cold-start context dump of
+  this ENTIRE session to <FILENAME>.txt. Assume the reader has ZERO memory
+  of this conversation - a brand new agent starting over with far less
+  context than you have right now. Include, in this order:
+    1. A chronological account of what actually happened this session -
+       what was investigated, what was built, what broke and how it was
+       actually fixed (root cause, not just symptom).
+    2. The current, as-of-now state of every file/system/project touched -
+       what exists, what's proven working (and how it was verified), what
+       was only designed but never built.
+    3. Every OPEN or unfinished thread, including ones from before this
+       session that never got touched - with enough detail that someone
+       could pick each one up without re-deriving the plan from scratch.
+    4. The standing conventions, gotchas, and pitfalls of this codebase
+       that a newcomer MUST know before touching anything - not just what
+       changed, but the rules that were already true and still apply.
+    5. What you've learned about my own communication/collaboration
+       preferences this session, so a future session doesn't have to
+       re-learn them the hard way.
+  Do not compress for brevity at the cost of losing a real gotcha, a root
+  cause, or a nuance - a shorter file that omits something important is
+  worse than a longer one that keeps it. If I've left inline notes/
+  corrections anywhere in an existing doc, respond to each directly next
+  to where I left it, correcting yourself if you were wrong - don't delete
+  your own original text, just add the correction alongside it."
+  
+  
+GOTO : /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.01/x0.parent-level-dev-env-04.00/yz.muchiverse/2.muchi-verse-0.0/#.haiku/README.md 
+
+when done reading this document, and begin reading it.

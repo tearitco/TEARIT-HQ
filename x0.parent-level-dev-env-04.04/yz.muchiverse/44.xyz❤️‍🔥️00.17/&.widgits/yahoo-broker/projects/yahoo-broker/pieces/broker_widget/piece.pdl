@@ -1,0 +1,8 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | broker_widget
+METHOD       | View Portfolio                | VIEW_PORTFOLIO
+METHOD       | View Options                | VIEW_OPTIONS
+METHOD       | Refresh                | REFRESH
+METHOD       | --debug--              | DEBUG_LEDGER
+METHOD       | Back to Bank                | BACK_TO_BANK

@@ -1,0 +1,44 @@
+# Moke-Pet Phase 1: Enclosure (Tank) Setup - Detailed Technical To-Do List
+
+## Objective
+Establish the `world_tank_01` container hierarchy, ensuring each lizard entity (`liz_bulb`, `liz_char`) is a fully sovereign piece with its own capabilities, methods, and state storage, compliant with TPMOS world architecture.
+
+## 1. Directory Structure Scaffolding
+- [x] **Create Container World**:
+  - `mkdir -p projects/moke-tank-0.1/pieces/world_tank_01/map_enclosure/`
+- [x] **Initialize Sovereign Entities**:
+  - For each pet (`liz_bulb`, `liz_char`):
+    - `mkdir -p pieces/world_tank_01/map_enclosure/liz_<name>/{stomach,ops,memory}`
+- [x] **Set Up Shared Resources**:
+  - `mkdir -p pieces/world_tank_01/map_enclosure/{food_pool,rock_pool}`
+- [x] **Define Audit Infrastructure**:
+  - `mkdir -p pieces/world_tank_01/logs/`
+
+## 2. Entity Sovereignty Configuration (`piece.pdl`)
+- [x] **Create `piece.pdl`** for each entity in `pieces/world_tank_01/map_enclosure/liz_<name>/piece.pdl`:
+  - Define standard methods:
+    ```pdl
+    METHOD | eat    | pieces/world_tank_01/map_enclosure/liz_<name>/ops/eat.+x
+    METHOD | attack | pieces/world_tank_01/map_enclosure/liz_<name>/ops/attack.+x
+    METHOD | rest   | pieces/world_tank_01/map_enclosure/liz_<name>/ops/rest.+x
+    METHOD | nothing| pieces/world_tank_01/map_enclosure/liz_<name>/ops/nothing.+x
+    ```
+
+## 3. Sovereign Method Implementation (`ops/`)
+Implement minimal C source files for each entity:
+- [x] **Define Ops**: Create `.c` source files (e.g., `eat.c`) in `pieces/world_tank_01/map_enclosure/liz_<name>/ops/`.
+- [x] **Implement Logic**: 
+  - `eat.c`: Logic to move file from `../food_pool/` to `../stomach/`.
+  - `attack.c`, `rest.c`, `nothing.c`: Corresponding logic.
+- [x] **Compilation**: Create a build script (`xo-pet-build-ops.sh`) that uses `gcc` to compile `.c` files into `ops/+x/<name>.+x` binaries.
+
+## 4. Tank Initialization Logic (`xo-pet-init.sh`)
+- [x] **Create `xo-pet-init.sh`** to bootstrap the tank:
+  - Validate structure.
+  - Populate `food_pool/` with test files (e.g., `food_1`, `food_2`).
+  - Set initial `state.txt` (epoch=0).
+
+## 5. Verification
+- [x] Verify `piece.pdl` is reachable.
+- [x] Test entity Op independently (e.g., `./pieces/.../liz_bulb/ops/eat.+x`).
+- [x] Confirm containment: Verify Op correctly resolves paths relative to the piece container.

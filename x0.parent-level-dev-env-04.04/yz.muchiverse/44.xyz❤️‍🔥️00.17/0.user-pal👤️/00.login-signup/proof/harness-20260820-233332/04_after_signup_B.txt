@@ -1,0 +1,40 @@
++============================================================+
+|  U S E R - P A L                                           |
++============================================================+
+|                                                            |
+|  Logged in as: uloginB_2487324                             |
+|  uuid: 9fa44abd-c398-421a-baf0-f1402b2a6c38                |
+|  xyzfs: xyzfs/users/9fa44abd-c398-421a-baf0-f1402b2a6c38   |
+|                                                            |
+|  Enter a user ID (and display name, if new), then          |
+|  Create Account / Log In — or Switch: an account below.  |
+|                                                            |
+|  Accounts on this machine:                                 |
+|    uloginA_2487324 — LoginHarnessA                       |
+|    jb — JB Test                                          |
+|    avmenu_1653663 — MenuTest                             |
+|  > uloginB_2487324 — LoginHarnessB                       |
+|    claude-0001 — AgentClaude0001                         |
+|    schar_1744476 — SessionChar                           |
+|    avmenu_1654388 — MenuTest                             |
+|                                                            |
+|  Account created - logged in as uloginB_2487324.           |
+|                                                            |
++============================================================+
+
+| [ ] 1. User ID: [uloginB_2487324]                                        |
+| [ ] 2. Display Name (new accounts only): [LoginHarnessB]                                        |
+[>] 3. [Create Account]
+[ ] 4. [Log In]
+[ ] 5. [Log Out]
+[ ] 6. [Switch: avmenu_1653663 (MenuTest)]
+[ ] 7. [Switch: avmenu_1654388 (MenuTest)]
+[ ] 8. [Switch: claude-0001 (AgentClaude0001)]
+[ ] 9. [Switch: jb (JB Test)]
+[ ] 10. [Switch: schar_1744476 (SessionChar)]
+[ ] 11. [Switch: uloginA_2487324 (LoginHarnessA)]
+[ ] 12. [Switch: uloginB_2487324 (LoginHarnessB) *]
+ Switch: rows log in as that account | Ctrl+C quit
+
++=========================================================+
+Nav > _

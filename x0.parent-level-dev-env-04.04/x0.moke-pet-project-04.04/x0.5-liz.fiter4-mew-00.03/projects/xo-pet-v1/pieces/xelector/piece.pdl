@@ -1,0 +1,2 @@
+METHOD | possess_bulb | projects/xo-pet-v1/ops/+x/possess.+x liz_bulb
+METHOD | possess_char | projects/xo-pet-v1/ops/+x/possess.+x liz_char

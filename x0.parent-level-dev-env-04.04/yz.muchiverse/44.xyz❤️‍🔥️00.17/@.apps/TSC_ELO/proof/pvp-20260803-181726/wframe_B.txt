@@ -1,0 +1,37 @@
++============================================================+
+|        T R U E   S W O R D S   C L A S H                 |
+|                 M A T C H   S E T U P                     |
++============================================================+
++============================================================+
+|            M A T C H   S E T U P                           |
++============================================================+
+|                                                            |
+|  Mode:            HvH                                      |
+|  Opponent ELO:    1000   (difficulty)                      |
+|  Your name:       Player1                                  |
+|                                                            |
+|  Host: TSC_ELO (True Swords Clash)                         |
+|  Host says: PVP ACCEPTED - PLAYING                         |
+|                                                            |
+|  Pick each option below, then START MATCH.                 |
+|  Up/Down move, Enter executes. Values apply on START.      |
+|                                                            |
+|  MOVE heal sent to host.                                   |
+|                                                            |
++============================================================+
+
++============================================================+
+[ ] 1. [Mode: cycle HvH / HvC / CvC]
+[ ] 2. [Opponent ELO: cycle 400..3000]
+[ ] 3. [Player name: cycle]
+[ ] 4. [START MATCH]
+[ ] 5. [PvP: CHALLENGE a duel (I am P1)]
+[ ] 6. [PvP: ACCEPT the duel (I am P2)]
+[ ] 7. [Play: STRIKE]
+[ ] 8. [Play: HEAVY]
+[>] 9. [Play: HEAL]
+[ ] 10. [Play: BLOCK]
+ (Ctrl+C to quit)
+
++=========================================================+
+Nav > _

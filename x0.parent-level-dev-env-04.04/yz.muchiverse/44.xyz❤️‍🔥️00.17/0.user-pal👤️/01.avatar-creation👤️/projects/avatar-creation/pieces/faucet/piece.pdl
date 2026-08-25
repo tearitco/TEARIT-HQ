@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | faucet
+META         | version            | 1.0
+
+METHOD       | Claim Tokens (+10)                     | CLAIM_TOKENS

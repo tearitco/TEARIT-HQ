@@ -1,0 +1,118 @@
+# 🤖 TPM-AI User Simulation & Testing Bot (Experimental)
+**Status:** Feasibility Study / Architectural Blueprint
+**Date:** March 26, 2026
+**Philosophy:** "The Bot is a User. The User is a Piece."
+
+---
+
+## 1. Executive Summary
+The goal is to create a TPM-compliant "Testing Bot" implemented in C. Unlike traditional unit tests, this bot lives within the OS ecosystem as a sovereign **Piece**. It uses a Finite State Machine (FSM) or PAL scripts to "play" the OS—navigating menus, creating accounts, and verifying system state—exactly like a human user, but with programmatic precision and recursive scalability.
+
+---
+
+## 2. Feasibility Analysis
+
+### 2.1 Technical Foundation
+- **Brain (C-based FSM):** A standalone module (`bot_manager.c`) running a standard `switch(state)` loop.
+- **Vision (Sensors):** The bot reads `pieces/display/current_frame.txt` for visual confirmation and `pieces/apps/player_app/state.txt` for raw variable data (the "Mirror").
+- **Muscle (Actuators):** The bot appends to `pieces/keyboard/history.txt` using the canonical `[TIMESTAMP] KEY_PRESSED: <code>` format.
+- **TPM Compliance:** The bot is a directory piece (`pieces/bots/tester_01/`) with its own `state.txt` (tracking `current_fsm_state`, `target_goal`, `retry_count`).
+
+### 2.2 Feasibility Score: HIGH
+The architecture already supports file-based IPC and daemon modules. The "Zombie AI" in FuzzPet already demonstrates autonomous movement; a Testing Bot simply replaces "move toward player" with "move toward menu option 2".
+
+---
+
+## 3. Benefits
+
+1.  **Deterministic Regression:** Automates the "Step-1 Matrix" (loader launch, save/load parity, local boot) without human intervention.
+2.  **Stress/Load Testing:** In `p2p-net`, one bot can spawn 50 "Client Bots" to test network congestion and blockchain mining difficulty.
+3.  **Auditability:** Every bot decision is logged to the bot's own `ledger.txt` and the global `master_ledger.txt`.
+4.  **"Living" World Simulation:** In `lsr` (Lunar Streetrace), bots act as NPCs that genuinely use the same UI/API as the player, ensuring the economy is balanced for humans.
+
+---
+
+## 4. Implementation Details
+
+### 4.1 Recursive Containment Model
+Following the "Every Piece is a Container" rule, the testing infrastructure uses a nested structure. `bot_tester` is the parent piece (the engine), and individual bots are its children.
+
+- **Parent Container (The Engine):** `pieces/apps/bot_tester/`
+  - `state.txt`: Tracks global testing status.
+  - `brain/`: Source code for the orchestrator.
+  - **Child Bot Pieces:** (Nested directly inside)
+    - `pieces/apps/bot_tester/save_restorer/`
+    - `pieces/apps/bot_tester/nav_bot/`
+    - `pieces/apps/bot_tester/network_stress_01/`
+
+Each child bot is a sovereign piece with its own `state.txt` and `scripts/` folder, ensuring they remain isolated and auditable while logically grouped under their "Master Piece."
+
+### 4.2 Using Ops & PAL for Scripting
+The bot can leverage the **Mode 2 (Event Scripts)** pipeline. Instead of writing C code for every new test, we write PAL scripts (`.asm`) that call specialized "Testing Ops."
+
+**New Testing Ops:**
+- `inject_key.+x <code>`: Wraps the timestamped injection logic.
+- `assert_state.+x <piece_path> <key> <expected_val>`: Logs a FAIL to `master_ledger` if mismatch.
+- `wait_for_frame.+x <string>`: Pauses execution until a specific string appears in `current_frame.txt`.
+
+### 4.3 Example: PAL Test Script (`test_fuzz_nav.asm`)
+Resides in: `pieces/apps/bot_tester/nav_bot/scripts/test_fuzz_nav.asm`
+
+```asm
+// --- Test: Navigate to FuzzPet and Scan ---
+
+// 1. Send Command to load FuzzPet
+call pieces/apps/playrm/ops/+x/send_command.+x "LOAD_PROJECT:fuzz-op"
+sleep 2000000 // 2s wait for module launch
+
+// 2. Inject KEY:2 (Select New Game)
+call pieces/apps/bot_tester/ops/+x/inject_key.+x 50
+sleep 1000000
+
+// 3. Inject ENTER
+call pieces/apps/bot_tester/ops/+x/inject_key.+x 10
+sleep 1500000
+
+// 4. Assert that the Pet is active
+call pieces/apps/bot_tester/ops/+x/assert_state.+x projects/fuzz-op/pieces/fuzzpet/state.txt status active
+
+// 5. Log Success to Master Ledger
+call pieces/master_ledger/ops/+x/log_event.+x "TEST_PASS: nav_bot successfully reached dashboard"
+```
+
+---
+
+## 5. Benefits of the PAL Approach
+1. **No-Code Testing:** Agents can "generate" new tests by writing simple text files.
+2. **Speed:** PAL execution is faster than a human but slow enough for the CHTPM file-sync heartbeat (~100ms per Op).
+3. **Recursive Reality:** A bot can run a PAL script that calls `create_piece.+x` to make *another* bot, then triggers that bot's `on_create` method.
+
+---
+
+## 5. Roadmap (KISS Baby Steps)
+
+### Phase 0: Baby Steps (Immediate Goal)
+**Objective:** Prove the bot can navigate without getting lost.
+1.  **Test Case:** `pieces/apps/bot_tester/baby_steps/`
+2.  **Script:** `nav_to_user.asm`
+    - Call `send_command.+x "LOAD_PROJECT:user"`
+    - Wait 2s.
+    - Assert `current_layout.txt` contains `user.chtpm`.
+3.  **Verification:** Check `master_ledger.txt` for the bot's success pulse.
+
+### Phase 1: Account Setup (Near-Term)
+**Objective:** The bot creates its own identity.
+1.  **Action:** Navigate to Signup menu.
+2.  **Action:** Inject "bot_tester_01" into username field.
+3.  **Action:** Inject "password123" into password field.
+4.  **Action:** Confirm and verify `pieces/apps/user/pieces/profiles/bot_tester_01/` is created.
+
+### Phase 2: Self-Login (Long-Term)
+**Objective:** Autonomous session management.
+1.  **Action:** Bot starts from `os.chtpm`.
+2.  **Action:** Navigates to User -> Login.
+3.  **Action:** Authenticates using the credentials it created in Phase 1.
+4.  **Action:** Proceed to test other apps (FuzzPet, Editor) under this logged-in session.
+
+---
+"If a human can click it, a piece can script it."

@@ -1,0 +1,15 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/broker_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|              Y A H O O   F I N A N C E                   |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="+============================================================+" /><br/>
+    <cli_io id="sym_field" label="Symbol" target_id="sym_input" /><br/>
+    <cli_io id="amt_field" label="Amount / Shares" target_id="amt_input" /><br/>
+    ${piece_methods}
+    <text label="+============================================================+" /><br/>
+    <button label="Back to Broker Select" href="pieces/chtpm/layouts/broker_select.chtpm" /><br/>
+    <text label=" (Ctrl+C to quit)" /><br/>
+</panel>

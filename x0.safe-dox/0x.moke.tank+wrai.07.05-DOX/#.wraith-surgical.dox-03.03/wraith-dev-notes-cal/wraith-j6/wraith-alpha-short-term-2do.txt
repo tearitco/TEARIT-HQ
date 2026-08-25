@@ -1,0 +1,74 @@
+# WRAITH-ALPHA SHORT TERM TODO
+Date: 2026-06-06
+
+Purpose:
+Record the near-term Wraith Alpha push so the next work slice stays narrow and
+recoverable after a disconnect.
+
+Current proven state:
+- These behaviors are now proven again in the rolled-back runtime baseline.
+- Reintroduce and re-test only the next unresolved behavior one at a time.
+- `Terminal` should remain the indexed launcher target in the dock.
+- Launching `Terminal` should open `Terminal #1` in the desktop surface.
+- The launcher label should stay plain `Terminal`.
+- Minimized restore targets should use proc-numbered labels like `Terminal #1`.
+- Keyboard debug should remain visible while the desktop is still being hardened.
+
+Immediate goals:
+1. Make `-` act as real minimize/collapse behavior for the terminal window.
+2. Make `x` act as real quit/close behavior for the terminal window.
+3. Keep the title chrome and dock visible rules consistent with the current ASCII desktop contract.
+4. Restore should reopen the exact minimized instance from the toolbar, but
+   this is still the active bug after rollback.
+5. Keep launcher and restore separate in the action contract:
+   - `Terminal` launcher uses the current launch path
+   - minimized restore target uses the exact proc-numbered restore path
+
+Current failure to investigate:
+- The rolled-back baseline no longer includes the toolbar-registry path.
+- `Terminal` / `-` / `x` now work again, but toolbar restore still does not
+  reopen the exact minimized instance.
+- Do not assume the restore dispatch path is still live until it is proven.
+
+Hypotheses to check next:
+1. The focused button is not reaching the `SET_ACTIVE:*` click handler on Enter.
+2. The action handler is firing, but `desktop_ui_state.txt` is getting re-normalized back to open state on reload.
+3. The minimize and close states need to be written into both canonical desktop state and toolbar restore state in the same pass.
+
+Near-term mouse goals:
+1. Add mouse support for the same window controls after the keyboard behavior is proven.
+2. Use the `mouse-test` project as the reference pattern for live mouse x/y reporting.
+3. Update Wraith Alpha mouse tracking at a modest refresh rate, about 60 fps or 120 fps, so the pointer position stays current without overcomplicating the loop.
+4. Make mouse clicks activate the same minimize and close actions as the keyboard controls.
+
+Mouse implementation notes:
+- Prefer the same state-driven model already used by the keyboard path.
+- Mouse input should update position/projection first, then trigger the same canonical window actions.
+- Keep the mouse layer simple at first: x/y position, hit targets, and the existing chrome controls.
+- Do not add complex resize behavior before minimize and close are stable.
+
+Verification targets:
+- Pressing `-` collapses/minimizes the terminal window as intended.
+- Pressing `x` quits/closes the terminal window as intended.
+- Mouse movement updates are visible in the same style as `mouse-test`.
+- Mouse clicks on the terminal controls perform the same actions as keyboard activation.
+
+References:
+- `projects/mouse-test/`
+- `projects/wraith-alpha/layouts/alpha-shell.chtpm`
+- `projects/wraith-alpha/manager/wraith-alpha_manager.c`
+- `projects/wraith-alpha/ops/wraith_parser_alpha.c`
+
+Recovery rule:
+- If the session drops, resume from this note first before expanding the desktop model further.
+### Registry Follow-Up
+- The current `Terminal #1` path is a bootstrap proof only.
+- Next code pass should replace fixed `SET_ACTIVE:5/6` handling with a manager-owned window registry.
+- The toolbar must support multiple minimized windows as dynamic restore entries.
+- `Terminal` remains the plain launcher label; numbered labels belong to restore entries only.
+- The toolbar should be projected as markup from manager state, not hardcoded in the layout.
+
+### Flexible Schema Note
+- Start with a small traits-style registry schema, but keep it adjustable.
+- If the first pass gets a field wrong, change the manager-side registry source instead of expanding layout logic.
+- Reserve space for future fields like `proc_no`, `group_id`, and `z_index` only if they are actually needed.

@@ -1,0 +1,42 @@
+================================================================================
+HANDOFF: INTERACT MODE KEY ROUTING ISSUE
+================================================================================
+
+PROBLEM:
+--------
+When "Move (arrows)" button is clicked and INTERACT mode activates ([^] shows),
+arrow keys and ESC are NOT being relayed to interact_relay.txt.
+
+EVIDENCE:
+- keyboard history shows: KEY_PRESSED: 1001, 1000, 27 (Enter, Right, Left, ESC)
+- interact_relay.txt only has: 1001, 1000 (missing ESC)
+- ESC doesn't exit INTERACT mode (should per mutaclsym spec)
+- This means chtpm_parser_pal isn't relaying INTERACT mode keys
+
+ARCHITECTURE VERIFIED AS CORRECT:
+- button.sh trap handler: kills processes on Ctrl+C ✓
+- renderer.c: uses file_size change markers for ~60fps, NOT constant polling ✓
+- prisc+x.c: correctly parses register arguments (x2 → regs[rs1]) ✓
+- main_loop_chtpm.pal: correctly structured for persistent module loop ✓
+- .chtpm layout: has <module> tag for auto-launch ✓
+- state.txt: has module_path set correctly ✓
+
+ISSUE IS IN:
+chtpm_parser_pal.c - the process_key() function's INTERACT branch
+
+CURRENT BEHAVIOR:
+1. Click "Move (arrows)" button with Enter
+2. chtpm_parser_pal sets active_index (shows [^])
+3. Arrow keys typed
+4. chtpm_parser_pal should inject them to interact_relay.txt
+5. But only arrow keycodes appear, not ESC
+
+NEXT STEP:
+Verify chtpm_parser_pal's process_key() INTERACT branch is correctly
+routing arrow keys (1000-1003) and ESC (27) to interact_relay.txt
+
+Check: chtpm_parser_pal.c line ~3487 (process_key INTERACT handler)
+- Is inject_raw_key() being called with correct keycodes?
+- Is active_index being maintained while in INTERACT mode?
+
+================================================================================

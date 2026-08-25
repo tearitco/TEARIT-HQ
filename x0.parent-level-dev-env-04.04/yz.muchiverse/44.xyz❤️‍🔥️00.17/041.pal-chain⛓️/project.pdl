@@ -1,0 +1,13 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | pal-chain
+META         | version            | 0.1
+META         | author              | uhogs
+
+STATE        | starting_screen    | login
+STATE        | title              | PAL-CHAIN
+
+EVENT_IN     | project_start      | void
+
+RESPONSE     | project_start      | pal-chain initialized.
+RESPONSE     | default            | *waiting...*

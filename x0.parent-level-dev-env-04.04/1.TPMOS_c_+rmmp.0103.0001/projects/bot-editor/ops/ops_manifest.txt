@@ -1,0 +1,12 @@
+# Bot-Editor AI & Filesystem Ops Manifest
+# Format: op_name|description|args_format
+
+bot_create|Create a new bot piece from template|bot_id:string,[template_id:string]
+bot_load|Load a bot piece into the active workspace|bot_id:string
+bot_tune|Manually adjust a bot's personality weight|bot_id:string,key:string,value:string
+bot_export|Bundle a bot into a standalone interactive directory|bot_id:string,[export_path:string]
+ai_attend|Calculate focus weights from a curriculum file|curriculum:string,target_id:string
+ai_evolve|Update bot biases based on reward signal|curriculum:string,target_token:string,reward:float
+fs_ls|List directory contents (D=Dir, F=File)|path:string
+fs_mk|Initialize a new file or directory|path:string,[type:F/D]
+fs_write|Write or append content to a file|path:string,mode:W/A,content:string

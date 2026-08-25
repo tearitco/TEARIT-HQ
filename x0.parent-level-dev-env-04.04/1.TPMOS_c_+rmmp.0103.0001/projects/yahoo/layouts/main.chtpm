@@ -1,0 +1,12 @@
+<layout id="yahoo_main">
+    <row><cell>--- YAHOO FINANCE TPMOS ---</cell></row>
+    <row><cell>User: ${user_id}</cell></row>
+    <row><cell>Balance: $${balance}</cell></row>
+    <row><cell>Last Lookup: ${last_lookup_symbol} ${last_lookup_price}</cell></row>
+    <row><cell>Time: ${last_lookup_time}</cell></row>
+    <row><cell></cell></row>
+    <row><cell>Menu:</cell></row>
+    <row><button label="1. Lookup NVDA" onClick="KEY:1" /></row>
+    <row><button label="2. Add $1000" onClick="KEY:2" /></row>
+    <row><button label="3. View Portfolio" onClick="KEY:3" /></row>
+</layout>

@@ -1,0 +1,1 @@
+KILL pid=2323232 removed_registry=yes

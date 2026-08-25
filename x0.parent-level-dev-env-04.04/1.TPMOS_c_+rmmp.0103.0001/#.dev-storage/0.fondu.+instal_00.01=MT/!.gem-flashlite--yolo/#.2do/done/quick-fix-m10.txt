@@ -1,0 +1,45 @@
+# Fuzz-Op Rendering & Navigation Glitches (Handoff)
+
+## Summary of Issues
+The Fuzz-Op project is currently exhibiting three main problems:
+1.  It incorrectly loads the generic `playrm.chtpm` layout instead of its own `fuzz-op.chtpm` layout.
+2.  The dynamic methods (action buttons like 'scan', 'feed') are not loading for the xelector.
+
+## Detailed Observations
+
+### Issue 1: Incorrect Layout Loading
+*   **Current State:** The Fuzz-Op UI displays the generic `playrm.chtpm` layout. This layout lacks Fuzz-Op's specific pet status fields (Name, Hunger, Energy, Level) and shows placeholder values.
+*   **Expected State:** The Fuzz-Op UI should load `projects/fuzz-op/layouts/fuzz-op.chtpm`, displaying all pet-specific information and the correct action menus.
+
+### Issue 2: Missing Dynamic Methods
+*   **Current State:** The `${piece_methods}` placeholder in the Fuzz-Op layout is empty. No action buttons (scan, feed, collect, etc.) are displayed for the xelector.
+*   **Expected State:** Based on `fuzz-op-r&d/fo-menu-sys.md`, the parser should extract methods from `fuzzball/piece.pdl` and render them as buttons (e.g., `[2] scan`, `[3] feed`).
+
+### Issue 3: Escape Key Navigation Failure
+*   **Current State:** Pressing the Escape key does not exit the map activation state in Fuzz-Op. The UI remains stuck in the map interaction mode.
+*   **Expected State:** The Escape key should revert to the previous menu or selector state, similar to how it functions in Op-Ed.
+
+## Relevant Architecture Insights (`fuzz-op-r&d/fo-menu-sys.md`)
+
+The intended Fuzz-Op dynamic menu system relies on a clear pipeline:
+1.  **CHTPM Parser:** Reads `active_target_id` and its PDL. Extracts `METHOD` entries (skipping internal ones like `move`, `select`). Generates `<button>` elements for display.
+2.  **Layout (`.chtpm`):** Contains the `${piece_methods}` placeholder where the generated buttons are injected.
+3.  **Manager (`fuzz-op_manager.c`):** Sets `active_target_id`, receives key presses via `history.txt`, uses `pdl_reader.+x` to resolve the method index, and executes the corresponding Op.
+4.  **State Synchronization:** Managers are expected to update `gui_state.txt` and pulse `state_changed.txt` after actions, and the parser should react to `active_gui_index` and `project_id` changes for focus persistence.
+
+## Hypothesized Root Causes
+
+### Issue 1 & 2 (Layout & Missing Methods):
+*   The `resolve_project_op.c` might not be correctly identifying `fuzz-op`'s `project_id` or its specific layout (`fuzz-op.chtpm`), causing it to fall back to `playrm.chtpm`.
+*   If the wrong layout is loaded, the `${piece_methods}` placeholder might be missing or in a context where the parser cannot populate it.
+*   Alternatively, the `fuzz-op_manager.c` might not be correctly writing `active_target_id` or `piece_methods` to `gui_state.txt` for the parser to read, or the parser isn't reading them correctly for Fuzz-Op.
+
+## Proposed Next Steps for Investigation (No Code Changes)
+
+1.  **Verify Project ID Resolution:** Inspect `resolve_project_op.c`'s logic for Fuzz-Op specifically. Does it correctly identify Fuzz-Op and attempt to load `fuzz-op.chtpm`?
+2.  **Audit Fuzz-Op Manager State:** Examine `fuzz-op_manager.c`'s `write_gui_state()` function. Ensure `active_target_id` and `piece_methods` are correctly populated and written to `gui_state.txt`. Compare its structure to the `op-ed` manager which is working.
+3.  **Analyze Parser's State Ingestion for Fuzz-Op:** Trace how `chtpm_parser.c` reads `gui_state.txt` and `active_target_id` for the Fuzz-Op context. Ensure it's correctly picking up the intended state.
+4.  **Focus Management Logic:** Investigate the `chtpm_parser.c` functions related to `active_index`, `focus_index`, `is_navigable`, and `process_key` specifically when Fuzz-Op's layout is active.
+---
+**Document:** #.2do/quick-fix-m10.txt
+**Status:** New Bug Report / Handoff Information

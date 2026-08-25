@@ -1,0 +1,5 @@
+name=Isopropanol
+formula=(CH3)2CHOH
+type=Alcohol
+groups=-OH
+relevance=Disinfectant; branched alcohol example for naming.

@@ -1,0 +1,21 @@
+# Custom Operations for mutaclsym's prisc+x program
+# Format: name type handler {description}
+
+out void builtin_out {print register to stdout}
+halt void builtin_halt {stop execution}
+move_player void ops/+x/move_player.+x {apply a keycode to hero position}
+end_turn void ops/+x/end_turn.+x {advance the map turn counter}
+compose_frame void ops/+x/compose_frame.+x {render map+hero+turn into current_frame.txt}
+compose_rgb_frame void ops/+x/compose_rgb_frame.+x {render the same map+hero state as a raw RGBA32 framebuffer for the optional GL mirror - zero GL calls, see GOVERNING CONSTRAINT in 2.muchi-verse/GRAND-ARCHITECTURE.md}
+pickup void ops/+x/pickup.+x {pick up a ground item at the hero's position}
+drop void ops/+x/drop.+x {drop the first inventory item at the hero's position}
+eat void ops/+x/eat.+x {consume the first food/drink item in inventory}
+tick_monsters void ops/+x/tick_monsters.+x {chase/attack AI tick for every monster on the hero's current map}
+craft void ops/+x/craft.+x {craft the first satisfiable recipe from inventory materials}
+examine void ops/+x/examine.+x {placeholder handler for hero/piece.pdl's examine METHOD - see ops/choice.c's panel special-case}
+save void ops/+x/save_game.+x {copy the live world into a fresh pieces/saves/save_N/ folder}
+toggle_emoji void ops/+x/toggle_emoji.+x {flip hero/state.txt's emoji_mode - real piece.pdl METHOD equivalent of choice.c's own 'e' hotkey, reachable via chtpm ${piece_methods} nav}
+title_input void ops/+x/title_input.+x {title screen digit/Enter accumulator - New Game / Load}
+compose_title_frame void ops/+x/compose_title_frame.+x {render the title screen into current_frame.txt}
+choice void ops/+x/choice.+x {dispatch a digit key 2-9 to hero/piece.pdl's Nth METHOD}
+camera_control void ops/+x/camera_control.+x {handle 3D camera movement/rotation (w/a/s/d/q/e/r/t/c/v/f) when render_mode=1}

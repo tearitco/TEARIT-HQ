@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | engine
+STATE        | name               | CYOA Engine
+
+METHOD       | Audio: PLAY | CYOA:PLAY
+METHOD       | Audio: STOP | CYOA:STOP

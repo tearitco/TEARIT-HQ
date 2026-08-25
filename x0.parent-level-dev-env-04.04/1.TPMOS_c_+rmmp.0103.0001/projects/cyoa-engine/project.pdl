@@ -1,0 +1,18 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | cyoa-engine
+META         | version            | 1.0
+META         | author             | TPMOS Team
+META         | entry_layout       | projects/cyoa-engine/layouts/cyoa.chtpm
+META         | exposes_ops        | true
+
+STATE        | title              | CYOA PLAYER
+STATE        | player_piece       | engine
+STATE        | book_name          | Select a Book
+STATE        | page_num           | 0
+STATE        | page_content       | LOADING...
+STATE        | choices_content    | LOADING...
+STATE        | status             | select_book
+
+OPS          | ops_dir            | projects/cyoa-engine/ops/
+MANIFEST     | manifest           | projects/cyoa-engine/ops/ops_manifest.txt

@@ -1,0 +1,49 @@
+Harnecient Delegation Stats (estimate)
+=======================================
+
+Source: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/harnecient-fsm/observations.log
+Generated: Tue Aug 25 02:48:32 AM PDT 2026
+
+Total log rows (all kinds):     76
+Real model calls delegated:     51
+  (NAVIGATE/STEP/STEP-RETRY/CHOOSE_MODEL - each is one real
+   local Ollama call that did NOT go through Claude's API)
+  PASS:                         29
+  FAIL (any kind):              22
+
+Delegation rate:                 67.1%
+  (51 of 76 total plan actions were routed to a
+   local model instead of Claude - the rest were Claude-side
+   control-flow: BRANCH/INCLUDE/LOOP_UNTIL/SET_MODEL)
+
+Success rate (of delegated calls): 56.9%
+  (29 of 51 delegated calls passed without falling
+   back to Claude)
+
+Estimated tokens saved:         ~15300 output tokens
+  (assumes ~300 output tokens per call - matches
+   this session's real observed shape: short answers, small
+   scripts, short classifications, not large generations)
+
+Estimated Claude tokens for same calls (orchestration only): ~3060
+  (assumes ~60 output tokens per call -
+   Claude's own overhead to DISPATCH+CHECK one delegated call,
+   short relay commands, not the full generation - general
+   estimate, not a measurement)
+
+Delegation ratio:               5.0x  (80.0% tokens saved)
+  (for every 1 output token Claude spent orchestrating,
+   ~5.0x that many were saved by delegating the
+   actual work to a local model instead - i.e. 80.0%
+   lower Claude-side token cost than generating it directly)
+
+Estimated $ saved (Claude API): ~$0.2295
+  (at $15.00 / 1M output tokens, Sonnet-class
+   pricing - input-token cost treated as a wash, not counted,
+   to keep this conservative)
+
+CAVEAT: this measures the SAME short tasks generated locally
+instead of by Claude - it does not net out the Claude tokens
+spent building/debugging the delegation pipeline itself.
+Both token estimates above are general estimates, not
+precise measurements of either side's real usage.

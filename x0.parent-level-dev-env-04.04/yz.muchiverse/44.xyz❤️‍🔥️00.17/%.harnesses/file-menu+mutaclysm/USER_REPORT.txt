@@ -1,0 +1,17 @@
+USER REPORT — file-menu + mutaclysm (dev)
+Date: 2026-07-28
+
+GREEN: ./button.sh demo
+  PASS focus kind=game_world
+  PASS SEED_DEMO → demo-project under user saves
+  PASS SAVE_GAME_AS t1
+  PASS mutate live map; LOAD t1 restores
+  PASS NEW_GAME; demo-project still loadable
+  PASS LOAD demo-project; list shows demo-project + t1
+
+Ops: muta_world_io, muta_widget_cmds (mutaclysm)
+     fm_set_focus, fm_enqueue_cmd (file-menu)
+
+Not yet: GL UI, tile-picker, map-picker, real xyzfs login path (harness uses workdir user_fs)
+
+See: %.harnesses/muta-zoo.md , #.notes/AFTER-widgets-apps-store.txt

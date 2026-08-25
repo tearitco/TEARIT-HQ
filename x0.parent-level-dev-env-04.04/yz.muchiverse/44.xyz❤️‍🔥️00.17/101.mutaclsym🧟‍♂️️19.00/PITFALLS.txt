@@ -1,0 +1,122 @@
+mutaclsym 19.00 - local pitfalls / gotchas
+(see also muta-neo-fix-a17.md for full fix history, muta-remaining-bugs.txt for open items)
+
+===============================================================================
+PITFALL: terminal ASCII rendering (the OG mutaclysm dual-render standard) is
+currently NOT wired up - button.sh's run verb only launches keyboard_input
+in the foreground terminal, never system/renderer
+===============================================================================
+Direct user report (2026-08-18): "og mutaclysm actually opened from terminal
+and showed 2d ascii map using same controls... im not sure if our current
+muta still has this tho i want it 2 even tho its in 'headless mode'".
+
+Confirmed by direct read of button.sh's run verb: it launches
+`./system/keyboard_input` in the FOREGROUND (blocking, this is what the
+terminal window is actually running/waiting on) - this only CAPTURES raw
+terminal keystrokes into pieces/keyboard/history.txt, it does not display
+anything. `system/renderer` (system/renderer.c, confirmed present and built -
+system/renderer/system/renderer.exe all exist on disk) is the OTHER real
+half of the OG terminal experience: it polls pieces/display/current_frame.txt
+via a pulse-marker file and prints the ASCII frame straight to stdout, no
+raw terminal mode needed (see its own header comment - ported directly from
+real TPMOS's pieces/display/renderer.c). button.sh's run verb never launches
+it - not backgrounded, not foregrounded, not referenced at all outside the
+kill/check verbs' own pkill/existence-check lists. Net effect: the terminal
+window you launch `button.sh run` from currently sits there capturing your
+keystrokes with nothing ever printed to it, while the GL/X11 mirror window is
+the only thing that actually shows the frame.
+
+This is a real, confirmed regression from the OG standard, not a new design
+question - the OG standard (still fully intact in the code, just not
+launched) is: ONE shared state file (pieces/display/current_frame.txt) +
+ONE shared input relay (pieces/keyboard/history.txt), with TWO
+interchangeable renderer front-ends consuming them independently -
+system/renderer.c (terminal/ASCII) and system/gl_mirror.c / the shared
+x11_mirror.+x (GUI window). Both can run at once, same as keyboard_input +
+GL mirror + chtpm_rgb_render already do today.
+
+Not yet fixed - deferred at direct user request (documentation-only pass,
+2026-08-18) so as to also document the taskbar's own, separate architectural
+gap (see au11-hq/taskbar-keyboard-relay-and-terminal-render.md) before either
+gets built/fixed. Likely fix: add `./system/renderer >/dev/null 2>&1 &`
+(or, if the user actually wants to SEE the ASCII frame in that terminal,
+without the /dev/null redirect) alongside the existing GL_PID/RGB_PID
+launches in button.sh's run verb, tracked/killed the same way. Confirm with
+the user whether "headless mode" should mean the ASCII frame is suppressed
+(current default assumption, matching keyboard_input's own already-silent
+capture) or whether they want to actually see it print in that terminal -
+their message reads as leaning toward "headless by design, but the
+capability should still exist/work" rather than "always show it."
+
+===============================================================================
+PITFALL: 3D view's xlector/selector marker frozen at board center, arrow keys
+appear to "not move the xelector/player" in 3D camera mode only
+===============================================================================
+Symptom: arrow keys correctly move the xlector cursor in 2D emoji mode, but
+in 3D camera mode (render_mode=1) it visually looks like arrow-key movement
+does nothing - camera rotation/pan (q/e/r/t/w/a/s/d, handled by
+camera_control.c) works fine, only arrow-driven xlector/player movement
+looked broken.
+
+Root cause: ops/muta_render_3d.c (board-viewer's real voxel raymarcher) reads
+its own selector_x/selector_y fields from pieces/system/bv_state.txt to know
+where to draw the xlector marker (and as the cam_pan_x/y fallback) - see its
+own header comment near line 1484. move_player.c, meanwhile, only ever
+updates xlector_pos_x/xlector_pos_y in pieces/hero_01/state.txt - a
+completely different file. ops/game_dispatch.c's sync_camera_to_bv_state()
+already mirrored the camera fields (cam_yaw, cam_pitch, cam_pan_*, etc.) from
+hero_01/state.txt into bv_state.txt every tick, but never mirrored
+xlector_pos_x/y -> selector_x/selector_y. So muta_render_3d.c always fell
+back to its own hardcoded default (board_w/2, board_h/2) on every single
+render, regardless of where the xlector actually was.
+
+The backend state was NEVER broken - confirmed live by injecting raw
+KEY_PRESSED lines directly into a session's pieces/keyboard/history.txt and
+diffing pieces/hero_01/state.txt before/after: xlector_pos_x/y updated
+correctly on every arrow key, in both 2D and 3D mode, the whole time. Only
+the 3D view's own rendering of that position was stale. 2D emoji mode reads
+xlector_pos_x/y straight from hero_01/state.txt via a separate render path
+(chtpm_rgb_render's own emoji-swap compositor), so it was never affected -
+this is exactly why the bug looked mode-specific instead of like a backend
+dispatch bug.
+
+Fix: ops/game_dispatch.c's sync_camera_to_bv_state() now also reads
+xlector_pos_x/xlector_pos_y from hero_01/state.txt and writes them into
+bv_state.txt as selector_x/selector_y, same pass as the camera fields.
+Verified live: pieces/system/bv_state.txt now carries selector_x/selector_y
+matching hero_01/state.txt's xlector_pos_x/y after every arrow keypress.
+
+Lesson: pieces/hero_01/state.txt (mutaclysm's own real game state) and
+pieces/system/bv_state.txt (board-viewer's own multi-host widget camera/view
+state) are two SEPARATE files with NO shared field names except by manual
+mirroring - any new field either renderer needs from the other's state must
+be added to sync_camera_to_bv_state() explicitly. There is no single source
+of truth here; it's a one-way mirror, keyed by tick, not a shared file. Any
+future bug where "the state changes correctly but the 3D view doesn't
+reflect it" should start by checking whether the relevant field is actually
+being mirrored here.
+
+===============================================================================
+KNOWN OPEN / NOT YET IMPLEMENTED (deferred, come back to after taskbar work)
+===============================================================================
+- Xlector/hero movement in the 3D voxel world has NO collision detection at
+  all right now - ops/move_player.c's possessed-branch was deliberately
+  simplified this session (direct user instruction: "just copy piececraft
+  xelector, we can add richness later") to a pure clamp-to-map-bounds early
+  return, skipping the old wall-collision/combat/transition logic entirely
+  (still present in the file below the early return, just unreachable).
+  Needs: real per-voxel collision check against the chunk terrain (walls,
+  furniture) before committing a move, ported from +18.0G's original
+  collision logic or board-viewer's own equivalent, once movement itself is
+  confirmed solid.
+- Zombies/monsters and obstacle-triggered teleports (map transitions) from
+  the old (+18.0G) mutaclysm were never ported into this voxel-based model.
+  tick_monsters.+x and the old transitions.txt mechanism still exist and are
+  still called by game_dispatch.c on hero_moved, but they operate on the old
+  2D map.txt coordinate model - need to be verified/re-adapted against the
+  new chunk/voxel coordinate space (chunk_x/chunk_y + per-chunk 16x16 grid)
+  before they can be trusted to actually collide with or teleport the player
+  in 3D mode. Not yet even smoke-tested post-voxel-conversion.
+- Possession model (Enter-to-possess / configurable-release-key, matching
+  fuzz-op_manager.c's real model) still not implemented - see
+  muta-remaining-bugs.txt Bug 3.

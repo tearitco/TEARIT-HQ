@@ -1,0 +1,46 @@
+UI FIX PLAN - PROJECT: /user/
+================================
+
+CURRENT ISSUES:
+1. Monolithic Layout: All authentication states (Main, Login, Signup, Profile, Waiting) are in one file (user.chtpm), causing rendering overlaps.
+2. Index Collisions: Multiple UI elements share the same numeric indexes ([1], [2], etc.) when they should be on separate screens.
+3. Cluttered Rendering: Frame borders and text labels are repeating, leading to an unusable interface.
+4. State Desync: state.txt is missing critical fields (like auth_screen) and contains incompatible data types (active_target_id=user_main).
+
+PROPOSED SOLUTION:
+Split the UI into discrete layouts and refine the state management to ensure only the active screen is rendered.
+
+PHASE 1: LAYOUT DECONSTRUCTION & RENDERING FIX
+----------------------------------------------
+1. Create Discrete Layouts:
+   - layouts/user_main.chtpm: Entry menu (Create Profile, Login, Session, Logout).
+   - layouts/user_auth.chtpm: Shared layout for Login/Signup with dynamic labels.
+   - layouts/user_profile.chtpm: Logged-in view.
+   - layouts/user_waiting.chtpm: Progress/Waiting indicator.
+
+2. Router Implementation:
+   - Modify layouts/user.chtpm to act as a lightweight "Router" that includes the correct sub-layout based on the ${auth_screen} state.
+   - OR: Transition to direct layout switching via the manager.
+
+3. UI Standardization:
+   - Fix border alignment for a single, clean 60-character wide frame.
+   - Ensure input fields ([cli_io]) have clear focus indicators.
+   - Clean up the "Response" area to be consistent across all views.
+
+4. Manager Refactoring (user_manager.c):
+   - Update the state.txt write logic to include ALL required variables.
+   - Ensure active_target_id is handled as an integer (or correctly mapped to string IDs if CHTPM requires).
+   - Fix the polling loop to properly handle transition states.
+
+PHASE 2: ENHANCED FEATURES (Post-Approval)
+------------------------------------------
+1. Default User Logic:
+   - Implement "Last Logged In" memory.
+   - Support "Guest" profile by default.
+2. Password Security:
+   - Verify SHA256 hashing integration is correctly used by auth_user and create_profile ops.
+
+NEXT STEPS:
+- Wait for user approval of this plan.
+- Execute Phase 1: Split layouts and fix rendering.
+- Verify UI isolation for each state.

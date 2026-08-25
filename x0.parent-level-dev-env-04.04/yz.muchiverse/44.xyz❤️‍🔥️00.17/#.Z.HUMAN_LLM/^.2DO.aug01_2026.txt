@@ -1,0 +1,39 @@
+# 2DO LIST — #.Z.HUMAN_LLM (2026-08-01)
+# Goal: hand-tunable, modular, auditable LLM track (tomom@qroq) running
+# side-by-side with iqabod, sharing corpus bank + augmentation infra.
+
+## Track A — Cleanup & corpus bank
+- [ ] BACKUP ship.sip + magic carpet to tar.gz (safety before delete)
+- [ ] Clean ship.sip: keep corpus bank (curriculums.txt + curricula/),
+      remove WIP model code, fix newline-in-dir-name
+- [ ] DELETE magic carpet dir (broken, "outputs zeros")
+- [ ] Extract per-subject corpuses from curriculums.txt into
+      curricula/<Subject>/curriculum.txt (10 subjects)
+
+## Track B — tomom@qroq (T@Q) integration
+- [ ] Verify T@Q pipeline: vocab_model -> trainer -> chatbot flow works
+- [ ] Compile T@Q fresh from .c sources (xsh.compile-all script)
+- [ ] Smoke test learn loop (loss goes down on a tiny corpus)
+- [ ] Point T@Q curriculum_bank.txt at ship.sip subject corpuses
+- [ ] Build corpus -> vocab_model.txt converter (per subject)
+
+## Track C — hand-tuning harness
+- [ ] Build harness: LLM (ollama) edits vocab_model.txt fields + diff
+- [ ] Validator: parse-check lines, numbers in range, no dropped tokens
+- [ ] Apply -> retrain -> eval -> keep/revert (auditable git-style)
+- [ ] meta_rl_weights.txt tuned the same way (steer corpus selection)
+
+## Track D — iqabod integration
+- [ ] IQA converter: ship.sip subject corpus -> iqabod curriculum
+      (vocab_only per subject, like Linux store does)
+- [ ] Confirm iqabod can train on each ship.sip subject corpus
+
+## Track E — augmentation (books/code target)
+- [ ] BT/FSM runtime skeleton (shared by T@Q + IQA)
+- [ ] BT chaining for T@Q: choose corpus -> generate -> edit -> verify
+- [ ] RL step baked between corpora (meta_rl_weights already exists)
+- [ ] Side-by-side compare harness: T@Q vs IQA on same prompts/corpora
+- [ ] Meaningful result: BT-driven book outline + compile-checked code
+
+THE RULE: if the current machinery can't do it, we BUILD the machinery.
+No cop-outs. Push forward.

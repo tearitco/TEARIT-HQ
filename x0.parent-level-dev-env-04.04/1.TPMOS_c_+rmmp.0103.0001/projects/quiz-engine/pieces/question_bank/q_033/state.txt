@@ -1,0 +1,5 @@
+name=Dopamine
+formula=HO-C6H4-CH2CH2NH2
+type=Neurotransmitter
+groups=-OH
+relevance= -NH2

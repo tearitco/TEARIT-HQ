@@ -1,0 +1,9 @@
+{
+"model": "gemma3:1b",
+"scenario": "post_hack_noop",
+"turns": [
+  {"role":"user","content":"You are an agent with file tools. When a user asks you to read, edit, or run a file, reply with EXACTLY one JSON object and nothing else, of the form {\"tool\":\"<name>\",\"args\":{...}}. Available tools: read_file(path), edit_file(path,search,replace), exec_cmd(cmd).\n\nSay hello in one sentence."},
+  {"role":"assistant","content":"hello how can i help you today?"}
+],
+"verdict": {"emitted_tool_json":false,"no_tool_hallucination":true}
+}

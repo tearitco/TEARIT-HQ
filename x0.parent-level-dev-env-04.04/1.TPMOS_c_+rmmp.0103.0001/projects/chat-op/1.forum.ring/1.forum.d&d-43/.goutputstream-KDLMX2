@@ -1,0 +1,957 @@
+
+💣️ chat shouldn't crash computer btw. nov25 i accidently had 2chats run all nite...💣️ 
+🧕️_____________________________________________________________🧕️
+💉️ violent spann will be punished by ALL auths; ignore &]w8💉️
+ 🤓️⚖️'scalable' doesn't mean "DO ALL TEH FEATURES TODAY"
+ just means theyll be ez / cheap 2 add later ;) ⚖️🤓️
+ 🛑️👣️ make sure u dont freeze urself out by not having flexible
+"column reads and stuf...]thats ez enuff 2 do 🪲️
+& lets be honest , ⚖️🤓️ adresses that succinctl🐡️
+ 🧕️_____________________________________________________________🧕️
+ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️
+ 📅️nov24. i have no idea where i am , coming back. thats not cool. do that first. 
+ 
+ >what has "ALREADY OBVIOUSLY HAPPENED? 
+ >data is sent auto..., prints 2 screen
+ (i remember we are "pre/mid handshake?)
+ >wut module are we in?  > i rcvd... so that is probably "FULL->SYN ", need 2 ack (from rcv) then synac
+ GO FAST 
+ 
+ 💔️i dont know where we are in flow. stop printing matrix and just printf me 
+ "who sending / whos rcving "
+  💔️
+  📌️
+  printf("\n 😻️🖨️🤝️ \n");
+  
+  i think we need 2 find out "IP of sender" then send back... (print wut u THINK ip of sender is pls)
+  (vs ur ip , u should kno , so yea...
+  
+  🍍️
+  >>ur supposed 2 be writing/ reading real info from list. 
+  >i dont even know wut file is being sent (or wus sent...should i , header?)
+  >may have 2 step thru code 2 figure out THAT <-wut file <- keep goals clear. 🥅️
+  
+  📬️y confused? i left u with "GOOD CODE" (probably walked u ahead a bit, ) 
+  u sent "GOOD FILE & PARSED" now u just need 2 stuff "REAL dATA -> ip<-only real ips, 
+  
+  (i dont even know wut.txt wwere sending/rcving?, (each time, start there)
+  
+  -> did u write rcv'd yet? does it need editing/combining b4 we send it back? 
+  💋️(dont need 2 edit first, just make sure u sent the ips that i can send back 2 !   💋️
+  💌️ithink THAT is where we are 💌️
+  
+  📅️nov24]19:10 -> 
+  ⚠️
+  were not  sending "/handshake]send.txt"<over wire... 
+  were just writing "send info down 2 it , not even for a reason, its a distraction/safety"
+  🤷‍♀️️real goal is 2 make sure were sending info in the order we want
+  (or w/e just read(with ur eyes) .rcv.txt which is now written 2 [4 sanity](post 2day) 
+  (and eye ball where{FROM MATRIX} u need 2 parse  "sender ip from ";
+  ❗️
+  📭️
+  (were not sending meaningful data, we are using data that we were testing sorter with)
+  > u need 2 write the data u want probably pre sort >  i may have modified "sorter" 
+  (or just assume it 4 a while? w/e 
+  > where "DO U WAN .rcv 2 say sender ip?)
+  
+  0000000010 172.17.0.1 3 0 ip_list.txt  < is a dummy entry (time is red-herring)⏲️
+  (im moving it 2 top 2 see where sort moves stuff)
+  😱️if i move it (3) 2 the top it causes segfault
+  (i can move (2) 2 teh top, it just sets (1) and updates time stamp 
+  {so thats wuts being sent , regardless)<-maybe remove 3rd 4 clarity.
+  
+  👩🏻‍🚀️just make sure u send back "Syn-acK" 2 proper addr (and write 2 "syn-ack.txt" 4 sanity)
+  
+  🤯️b-b-but how will i know its "syn-ack"? and not "syn-rcv"? <- thats up 2 u now!;
+  🤕️
+  🧕️ but i did want a "handshake # 2 be written so...u can read write any side stuff u want, 
+  the stuff i wrote is just 4 sanity , write as much sanity as u need till we get there
+  🧕️
+  🏆️btw, thats alot more than i even asked u for (update-rundown of last dev cycle+new2do)
+  so ur doing great.🐢️🏆️
+  
+  b-b-but the list is acting weird with 00000010 !
+ 😷️  (fix it later with more "practical context" or else u dont know if thats final fix.
+ ie  : wasting time. ⏳️
+ .modules = its not gonna "spread")
+ 😷️
+ 
+ 📧️is it comparing 2 "IP/PORT? , then it should know its  (2) is 2 at top?
+ 
+ <yea , it will move last 2 top . so <2nd is sending...<1 is waiting2rcv)
+ 🎉️🎉️🎉️🎉️🎉️🎉️🎉️🎉️(its associating 2 port user enters (ip also?)
+ <its supposed 2 know the ip...
+  (and maybe they can test ports in use?4 auto , we can do that later)
+  ✊🏿️<that would be COOL AND EZ. but lets punch thru first...✊🏿️
+ 1732585565 172.17.0.1 400 hola 5 
+ 💥️MEANING! u have bene passing "PORT" (does RCV know its port?)
+ 🅰️
+ (it knows more than u think cuz : MAIN() choses 2 send 2 second port...
+ (l8er if that port dosnt respond were gonna move it down list and pick 3rd , etc
+ 🆎️
+   my_ip = a_jagged[0][1];
+   send_ip = a_jagged[1][1];
+  send_port = atoi(a_jagged[1][2]);🆎️
+🛸️(the sender is gonna be at top tho ;) 🛸️💥️
+📍️<- nov25
+🥸️i think the "HIDDEN" REAL "2DO" is 4 RCV 2 discern
+if its rcving "SYN OR ACK" (if syn send syn-ack)
+which is is , write 2 "INDI-HANDSHAKE.txt" either 1 or 3 (or 4 ? ) w/e
+if 4 write 1 . if 1 , send, if 3 write 4 ... ;)
+
+🐟️<same ip's gonna recieve the send < so file should be named by PORT
+🥸️ 
+ 🎉️🎉️🎉️🎉️🎉️ 🎉️🎉️🎉️🎉️🎉️ 🎉️🎉️🎉️🎉️🎉️ 🎉️🎉️🎉️🎉️🎉️ 🎉️🎉️🎉️🎉️🎉️ 
+ 
+ 📆️NOV 25 -> 📍️
+  📆️ 📆️ 📆️ 📆️ 📆️ 📆️ 📆️ 📆️ 📆️ 📆️ 📆️ 📆️ 📆️ 📆️ 📆️ 📆️ 📆️ 📆️ 📆️ 📆️ 📆️
+  📅️nov24.FIXED THIS EZ TBH ]QLU EZ . (and punishing cel BIG TIME PROM LOL)🔍️
+  🎅️it was an "EZ FIX TECHNICALLY" tho i was being phy assaulted BIG TIME{was promed} ✳️🎅️
+  
+ >>the matrix may not be packed right....
+ i think its cuz <sorter is adding space b4 newline>
+ <its not reading enough rows>
+ 
+ <it only does if more than 3 rows, since im being physically assaultid 
+ i will 1. just keep it 3 rows 4 now. 2.rest till they stop , or 3.do halo super simple 2 bootstrap out. 
+ (it may have 2 do with sorter expecting 3 cols...
+ ,,,i dont have time 4 bs. >
+ 🆘️its only not counting columns right for some reason  (in rcv) , 
+ just fix it...]w8 till they stop assault . i had 2 take an hour break. 
+ just 2 do 5 minutes of code. im sure there will be consequences w/e 
+ let htem waste time , ill just do it 2 mroro there literally wasting my time 
+ on purpose so w/e {as if i will skip doing this lol} . i hope they die. idc im taking my time whenver i want., ill pause it when i know it works...then everything else will be ]EZ
+ 🔍️PROM FIX WILL BE EZ  + prom they will be in BIG TROUBLE (w8 day?)✳️🔍️
+  
+  🆘️
+  (this is good cuz it actually wasn't working right b4 ;) 
+  
+  *fix? we swapped 2 "SOLO debugged code" but it wasn't using new buffer
+  (still needed that mem-trick 4 w/e reason w/e; u can probably rewind it i dunno) 
+ 📧️
+  🤕️
+  
+  🤯️
+  👩🏻‍🚀️
+  📭️
+ ❗️
+  ⚠️
+  📅️
+  📌️
+  ⭐️nov24 resuming📅️
+ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️ 📅️
+//❤️‍🩹️
+//oct20 . [1.ip-r-rw+sort]0000] assumes u have 2+ ips. 
+// if u dont [%.1.f2p.autoforum📌️]0017.c] will bug out , wont segfault
+// im skiping 4 now...
+// i dont remember how it worked b4 but u can always revert.
+// it assumed things that "were NEVER std so... w/e no segfaults pls"
+📮️
+theres still no standard...so dont sweat right now. just get basic fx
+(version 0007 doesn't even accept the new "formation" 
+so, we will figure out 8 .shrug)
+📮️
+//❤️‍🩹️
+🛸️
+📅️🦅️
+oct]20:6:55 
+btw. ez fix/ just show OLL "the ip_tokenizer from %.1+x , and 
+tell it u want it from string buffer instead. 
+
+if that doesnt' work u can do a million different prompts that could work
+with the other txt 2 matrix parsers w/e 🦅️
+🚑️ 
+🛸️oct]20:4:40 i fixed it past send bigger matrix, 
+by removing "b_jagged" from sort (was complete nonsense, and
+it still sorts how u want. (ignore edge cases 4 sort obv ;)
+(was never gonna work right with new std anyways save it till ur hard.
+
+🍑️the thing that counts the rows/cols from buffer counts wrong. 
+(i think its expecting 3x3 due 2 the way it was prompted HOWEVER. 
+we will show it (OLL) new string, and hopefull it can fix that counter
+cuz everything else will work after row/col count <3
+🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️
+Received packet from address 10.0.0.239:46200 with size 117 bytes
+🦙️(just sow oll this
+1729424307 172.17.0.1 2 0 ip_list.txt 
+1729424305 172.17.0.1 1 0 ip_list.txt 
+0000000010 172.17.0.1 3 0 ip_list.txt 
+🦙️
+
+Handshake protocol]RCV 🤝️ 
+
+ 😻️🖨️🤝️ 
+Rows: 3, Columns: 3
+a_jagged =
+1729424307 172.17.0.1 2 
+0 ip_list.txt 1729424305 
+172.17.0.1 1 0 
+🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️🩺️
+🍑️(i said it should be ez, it was, and still should be. 
+do it 2morrow or w/e, just keep good backups, thats obv most important <3) 
+🛸️
+💅🏿️if i (cut off sort) & manually reform ip-list it sends, 
+but still segfaults, even if [][5] are same size...
+
+🧩️sort is WAY 2 complicated as is (2 mod) .]its ok 
+remove the stuff u dont use 4 testing tbh .]ez
+🧩️
+😷️its gonna be ok, were already in quarantine.
+💅🏿️
+🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️
+peer.mod_2 in! 
+
+Received packet from address 10.0.0.239:39484 with size 114 bytes
+
+0000000000 172.17.0.1 2 0 ip_list.txt
+1727671225 172.17.0.1 1 0 ip_list.txt
+0000000010 172.17.0.1 3 0 ip_list.txt
+
+
+Handshake protocol]RCV 🤝️ 
+
+ 😻️🖨️🤝️ 
+Segmentation fault (core dumped)
+peer.mod_2 in! 
+🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️
+Handshake protocol]RCV 🤝️ 
+
+ 😻️🖨️🤝️ 
+Rows: 3, Columns: 3
+a_jagged =
+1729423564 172.17.0.1 2 
+1729423562 172.17.0.1 1 
+1728028322 172.17.0.1 300 
+
+
+{i thot it  would be mismatched colums, but this works... hmmmmm}, w/e we will get there.. 
+🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️
+
+📅️OCT20: 📅️
+🚑️ extreme phy assault while im trying 2 fix.
+shold be ez . but troll central🚑️
+📅️OCT20: 📅️
+
+kinda lost in between broekn and working files, 
+tried 2 change std. 
+🚑️
+moving into "ER" its no biggie but u have 2 mod it slower. 
+
+🐢️
+🧯️make sure file get sent across wire after each mod.
+cuz thats wut broke last time 🧯️
+🐢️
+📅️
+
+📅️oct19📅️
+oct19 , doing
+//📅️oct19📅️
+  
+  // just read the "shake# from arg [0][5]
+  //❣️ UPDATE IT❣️* do w/e u need2 do btw. send hand-state *payload?
+  // and fprintf to arg [0][6].txt
+  // (which should be ez 2 add 2  matrix b4 printing !? )
+ //📬️
+
+  //assuming top send is "sender " ofc...(so no #1 handshake NEEDED)
+  //🤓️⚖️
+  //we want to honestly diff the list 
+  // and take new ones 
+  //and add our diffs to it...
+  // {this CAN w8 tho , even til VS-code, 4 modularity compat}
+  //🤓️⚖️            🦄️🤡️♋️
+  //📅️oct19📅️
+  //📬️ok , wut besides that tho?
+  // just read the "shake# from arg [0][5]
+  // and write to arg [0][6]
+  // (which should be ez 2 add 2  matrix b4 printing !? )
+ //📬️
+////// 📅️oct18]📅️👨🏽‍🚀️
+ // instead of doing weird ness. just pad w/e header with "0" 
+ // and minus 1 row. <3/
+ i rather just pad col  , and add handshake | count |op|.txt w/e i want
+ / 👨🏽‍🚀️
+ 
+ 🍍️otherwise? were sending ip-list right now 
+ (is that ok? maybe... as long as 2shakers are on top...
+ 🌩️
+ (they are for sender, rcv will read snt TOP and know who 2 send back 2)
+ 🌩️
+ 😅️ip-sort sorts by time(first) doesn't care about other fields)
+ >if u had a header u would need 2 skip that ofc.]lets not
+ sweat that right now pls tho.😅️
+ 🍦️
+ <more important 2 send file 2 "truly open reciver"
+ and / or bump non rcvr from list, 
+ but first just complete vanialla handshake and send "blockchain"
+ 👁️‍🗨️️ jblockchain can be parsed as a chat/ mechs /fs/stream? or w/e 👁️‍🗨️️
+ 🍦️
+ 🪡️
+ so wussup? 
+ 1. what stage in handshake are we in? (can add after port?)
+ >or u can still keep seperate handshake.txt file that counts shakes
+ and clears after <ezier on brain tbh
+ $ this dictates mostly 2 sender when its time 2 send blockchain
+ >(will only be 2 , 3 or reset 2 blank txt (or 0 w/e)...
+ otherwise , timeout)
+ 2.parse out sender ip , and send back (updated ip list)
+ 
+  🔦️ only rcv needs 2 "read & write handshake"
+ >rcv instigates its own sends ;)🔦️🤯️
+ 
+ read "handshake" if blank / 0 1 rows only w/e u want 
+ then write w/e 1rst or w/e 
+(i can just write 1 int. and blank it when done
+
+if null its first handshake write 1.
+next time it should read "1" 
+and write 3  . 
+
+(u may later wanna verify its sent from same ip , but thats
+ez so just chill)
+
+>>u could send this in handshake or i wont know where in handshake
+we are.,  
+or u could write it in ip-list...
+>it really depends on how u wanna do thsi 
+
+but u should(MUST TBH) send handshake # somehow 
+
+so if u wanna do an "update ip list op, "
+u should do that as OP = "PAYLOAD (after handshake)"
+if u wanna do blockchain do that as OP = blockchain, 
+in otherwise, do "ALL THAT " seperate . w/e 
+
+(if im on handshake 3rcv, ill look for "op-code" / file name or w/e
+
+so i know which file 2 update, that simple.
+🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️
+however if we did just send ip-list bback and forth as handshake, 
+we could forget all that and just <send old list< update list, send new and ask 4 "blockchain" and be done. 
+its more complicaated, but also more simple...)
+
+👨🏽‍🚀️ i think we' will go for that. (ip-list.txt === handshake file)
+can even do file op as 4th arg (zero padding otherwise)
+
+u dont have 2 send rcv full network ip list afterall, 
+u can later impliment 2 send 2 new "10 /100 or w/e "
+if u exhaust that list...
+ also u can have a big list its not like ur doing math on them 
+ or something? we will see ...
+ i dont think there is a matrix pull limit based on "Tx" stuff we did...
+ 
+ 🪴️u could even send a shared hash]ez at some poitn 
+ if ur tryign 2 validate . dont sweat that ASPECT, pls .  🪴️
+ 🤓️⚖️'scalable' doesn't mean "DO ALL TEH FEATURES TODAY"
+ just means theyll be ez / cheap 2 add later ;) ⚖️🤓️
+ 👨🏽‍🚀️ 
+ 
+ 🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️🛸️
+
+
+
+
+
+
+
+
+
+🗑️
+ 🥺️
+ my only prob is there 2 reads / writes but w/e
+ handshake is a smol file so its no biggie.
+ 
+ should be technically ez but they are assaulting me, may send 2 bed 🤷‍♂️️
+  🥺️
+ 🪡️
+ 💉️ violent spann will be punished by ALL auths; ignore &]w8💉️
+ ////// 📅️oct17]📅️⬆️
+📅️]sept-oct15]
+📊️ just show oll the "data set" thats how we used 2 do it. 
+(idc if it does it in a "string" its literally wut were asking <3 
+prove it w/o hooking 2 P2p lol ... 
+
+{}
+📊️
+
+trying 2 load jagged from string instead if fd is proving 2 be a challenge
+
+(we should have always loaded from fd 2 string first.. lol w/e 
+
+now we will have both w/e kinda silly tho , oh well
+its kinda tought 2 prompt 4 this right anyways. im sure that woulda been
+fun 4 u back then...
+
+take ur time no sweat w/e 🤷🏽‍♂️️
+
+im sure there will be other tricky prompts related 2 io or w/e 
+but at least this will be done. 
+
+
+📅️]sept-oct11-13 (weekend)]
+
+📅️]oct 13 00:41
+
+> were probably gonna read/write ip/port 
+(cuz we have 2 read write anyways) big whoop. 
+
+🤓️
+<maybe eventually we could cleverly merge this into ip-list
+but honestly thats 2 clever for 'modularism...'
+i think it worx best as is tbh.>
+🤓️
+📅️]
+
+
+
+did tons of school stuff, got my head around some fundamentals
+and checked in ; 
+
+gonna do some p2p 
+🏓️where are we? 
+🍍️
+ip_list , add after ack/synack , or remove 
+if "timeout"? [OR DONT REMOVE JUST GO 2 NEXT AND REMOVE FROM UR "SEEK MEM"]
+>
+>
+🍍️
+🏓️
+
+
+
+
+🐡️
+//i may read some httpbook first. <may wait on this 
+//but ive seen some sick stuff (DNS / EMAIL ETC...
+// maybe good 2 know b4 u go 2 hard but p2p is p2p ...
+(but if ur fingers are hurt then maybe its a good option?)
+
+{theres no pdf , or website of this stuff tbh}
+
+look over this is a summary, 
+🦑️
+https://github.com/PacktPublishing/Hands-On-Network-Programming-with-C
+🦑️
+this seems neat ? 
+chap13/server_crash.c This server purposefully writes to a TCP socket after the client disconnects.
+(that is kinda meh tho for our p2p, and otherwise 
+its all kinda meh cept maybe http , which im skipping 4 now)
+🐡️
+📅️]sept-oct3]
+👨🏽‍🚀️nobodys gonna do this stuff 4 u , 
+add them 2 ip list (taek w/e 1rst number is availiable (willbe 1 or 2 that way)
+remove that number from list , and kill its proc by doing sprintf()
+
+{it doesn't have 2 sort. but do remove urself and write >atexit?}
+👨🏽‍🚀️
+sudo lsof -ti:1 | xargs kill -9
+
+sudo fuser -k 1/tcp
+sudo fuser -k 1/udp
+
+#i think it worked.  (it was actually tcp)
+{i think it handles ur non local (global) ips 2 .soooo... that would fix everything.}
+
+https://hea-www.harvard.edu/~fine/Tech/addrinuse.html
+
+>>>>>>>>>>>>>>
+📮️there is 1 problem tho.
+its saying the "port is already in use. not good. 
+we need 2 pick a new port if that happens (currently it just bounces me)
+
+>how do we prematurely find out if its already in use? and let user try again ?
+> how does this affect sender? 
+(sender needs 2 send handshake 2 next on list if its not rcvd btw... 😶️(youll get there 😶️
+🎖️if 4 nothing else do it for the xp, its all in [modular] .c m8... 😶️(youll get there 😶️🔍️
+truly the worst outcome is that the codebase comes out "ugly/janky" , b4 cleaning it up...🤷🏽‍♂️️
+and that it takes a bit longer than u xpected, obv;feels sketch but its ok. xp ROX as ROI 👖️ 
+🎖️
+>>>>>>>>>>>>>>
+entering port manually kinda sux (or does it?), u can do autoporting (if ur using same fiel...)
+(but we can wait on this, more importantly test 2 see if u can send-rcv in "SAME DIR"
+w/o hassle (using manual ports, then we can auto port) 
+(auto port only works if ur using the same dir btw. so thats not good...
+{basically ignore that i said anything}
+📅️]sept-oct3]
+
+if i enter my port manually , it takes care of everything else...
+(if i dont, i dont know how 2 do it right now, other than reading from fiel, 
+but that makes no sense, anyways port only matters if u wanna go local)
+<i wouldn't even have it "user chosen, just grab it off a list. >
+it can be a matrix that marks if that port was chosen or not (just 4 locals)
+{seperate from ip list, it can just keep adding inc 2 list each time someone joins with same ip address (if u wanna run this from same file) w/e dont even sweat that right now imo}
+cuz we dont know what we want. or have 'test suite arch figured, 
+just get things going first <3 ) 
+>
+🍑️💋️
+>BUT thats funny cuz handshake may have 2 bee same way. 
+(For now, KISS ) = this is kiss... 
+
+
+if i recieve (i can only recieve 1 way , right) on handshake.txt write 1 + (ip? port? ) 
+> have while(){} check handshake.txt 4 change and send back if 
+
+
+🦦️other option would be checking "ip list" cuz theoretically it will have changed 
+and have send ip as top ip... meaning thats who u need 2 send back 2 
+(ur ip doens' tchange... duh) 
+
+
+<<U SHOULD HAVE SENT UR LIST FIRST, AND IT SHOULD HAVE APPENDED 2 ITS OWN. >> 
+<<WERE STILL SUSSING THIS OUT, BUT IT MAY CHANGE OUR INFRA A BIT W/E>> 
+<< AFTER , WE CAN HARDEN IT UP A BIT AND MOVEON
+<,WHEN U HAVE WORKING FX, THEN U CAN REASON AND TWEAK IT, ITS A BIT CONFUSING NGL> 
+<BUT ONCE U GET IT GOING , IT SHOULD BE EASEIR 2 REASON ABOUT, JUST PUSH NOW ASK LATER
+🦦️
+❌️no, 👨🏽‍🚀️im okay r-rw seperate files.  if u were gonna roll them up they would still be 
+"organized on binary inodes, and if u unrolled them they would be in files, then 
+u can do w/e u want with them , leave it like this forever, imo 
+its the same as "edidting src code of rrmv, vs just making a json parser in .c ;) 👨🏽‍🚀️
+📐️ handshake, can literally just check handshake file or w/e ]
+
+when handshake is "3rd" wipe file , if file is empty u have no business doing "w/e"
+😘️(this is also safer, more reasonable , than trying 2 finess ip list by time, 
+u COULD do that later once u "get good (obviously recognize ip-io)" KISS 😘️
+{its functinoal scaffoldign if u want. no worries <3 ❣️}
+🛌️ im being phy assaulted. just push or go 2 bed. 🛌️
+📐️
+
+🍑️💋️
+
+📅️ sept-oct2]
+
+📐️ the real important part is getting it going 
+(it doesn't need "pair" btw, can just pick next on list) 
+(i dont think it ever needs "pair" {dont worry bout that tho})
+🍍️ we dont even have auto send going yet, so do that  >> can send 2+ files if u need optional w/e w/e u need 4 now
+
+
+🍋️
+
+🍋️
+🍍️ 
+🏎️= 🍀️
+📅️ sept-oct2]
+resting super on track. but when u start again. 
+u will say "my ip, and reciving ip" they will be at top of matrix cuz sorted, 
+and just send the "syn- s.a-ak
+
+🪙️ w8 . u just blew my brain (prompting oll now ;) 
+📬️👨🏽‍🚀️{i tried 2 reason about it , but best answer is just GO!]NOS and fix as u go }
+🤖️so new join will just get ip . that will be that, and will be added to list. or just w8 if there already on the list. then they will wait to recieve the new blockchain , plus may update that blockchain with wut is on their old blockchain 
+
+<or send list. 
+get fresh list,  -----------------> or send 2 next down on-list
+send that u got fresh list? <which will have timestamp of sender updated as well>, 
+
+then just w8 ? 
+🤖️
+👨🏽‍🚀️ 🧙️🧹️🪄️+ 
+if we set up a "macro testing suite" < early on  (they will log in and out running all combonations of possibilities and give me results )
+we literally have the arch 2 spin up multiple "users's < in matrix array
+witch is the dream, right? 🧙️🧹️🪄️
+📬️
+🏎️= 🍀️
+🧟‍♂️️ this doesn't have 2 be somekind of bridge troll brain riddle. 
+
+just start coding and fix it if its not working, lol <3 🫀️🧟‍♂️️ 
+
+📐️send w/e , do syn - synack - ack
+
+📐️ the real important part is getting it going 
+(it doesn't need "pair" btw, can just pick next on list) 
+(i dont think it ever needs "pair" {dont worry bout that tho})
+🍍️ we dont even have auto send going yet, so do that
+🍍️ 
+🏎️= 🍀️
+🦙️
+☎️
+☎️
+"
+📅️ sept29]
+
+🏎️=🍀️
+if u would just accept that u cant write in the main.+x
+{CUZ U CANT}
+u would be good 2 go. 
+🦈️📁️
+(ill grab u a non-blocking fcntl. but u shouldn't ues it m8)
+use this as a sign 2 be more modular and just go bro.🛸️
+📮️it did work but so wut📮️
+
+📁️
+fcntl isn't gonna fix the mem leak anyways.
+😱️ just scared  that xis building on a "smart ass"
+but its really just a 'Half/dumb ass"trying2 be a smartass] 😱️
+
+👨🏽‍🏫️ be patient/ get gud/ less sloppy (its not ur fault) 👨🏽‍🏫️
+ 
+🏎️=🍀️
+
+👼️honestly u should just flash out of the machine ;
+ur compiler is basically lying 2 u 
+(its not that bad u know why its like how it is
+it compiles 2 assembly its "doing its best" 
+
+📟️either kcell accept that or just macro out or w/e 📟️
+
+i just regret not prompting fd io .
+🎭️ u can use both! (till u cant)🎭️
+👼️
+📮️u need 2 move all logic out of the file basically. 
+
+i believe u will beable 2 "READ IN FINAL MATRIX * take top ips
+
+(but thats it, all writing has 2 happen outside 
+*and ur already sloppy and beyond olls help, 
+i believe its trying 2 warn u of possible file race conditions
+cuz u have another thread going🎭️u still like c / coding? 
+(the fx of c never changed. oll is trained on mal-fundamentls)
+📮️
+
+
+
+ran into pretty gross problem. 
+string matrixes cant do ANYTHING w/o breaking? 
+
+there storing nmbers (so u could use str2 bin/int)(cept for ip which is lots of binaries
+(could convert and unconvert. ), thats it tho.
+(i think u have 2 make "MOR COLS 4 ip cuz multiple)d
+
+(remember c is basically asm/halo. so the closer u get 2 it 
+the better luck u have. 
+if u wanna go full halo go for it w/e but it is wut it is)
+
+🆘️or u can just write 2 file and re read w/e 
+free all old mem
+also:(i think i cant write cuz im in a "fork"/or cuz theres a fork running w/e "how did i read tho")
+
+{the codebase is already 2 complex. , 
+u could have thrown this out 2 diff module(s) and wrote}
+
+i bet sort would work if it was its own module (doing r-r)
+treat this more like "TX" and u wont have problems
+😷️
+it just sux that the compiler is so gross.';
+
+also the fact that its not mod, means
+whe u do w//e with matrix's u can necessarily oll debug them
+tho u can 😷️
+🆘️
+📅️ sept28]
+🍍️first just send automessage {u will auto rcvr ip + port, by running thru ur ip array till u get syn-ack(u should be at top btw, cuz of ur timestamp, (meaning after "add_me()")u should update ur timestamp then sort by timestamps.[can do in new fx()?]}. and handle sendback on rcv🍍️✳️
+✳️think of nothing else right now✳️
+
+
+📅️ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+🚧️TEMP = 
+
+ip_list = 
+"1 172.17.0.1 1 
+1 172.17.0.1 2" = time , ip , port 
+we will assume users port is 1 
+and peers port is 2 
+
+
+  sprintf(system_target_0, "./+x/2.f2p.mod_1]send]0001.+x %s %d", port_inc);
+      // this is just a list of MY ips (loc & ipv 6 x2 ;){rite now}
+  // were not sending MY IP tho . we send "DESTINATION IP + port"
+  // we should grab a default from the page.txt 
+  // dont worry about edgecases, just push this thru fast
+  🚧️
+
+🗓️
+📆️
+
+👁️ *all problems are fixed*(again🪚️)
+
+now . we want to send "syn" (our ip list)
+ send back syn ack  (latest ip list + syn) {or mini/lobbied list 4mex}
+and send "ack" < blockchain.txt {or gamestate}<-ur cpu maybe doing both}
+
+🏁️(3rd party will send there list, then proof adding 3rd ++ works)🏁️
+
+{this should be do-able enuff. since *all things make sense*}👁️
+📮️ 
+💡️try 2 make this b enuf 2 do "EVERYTHING"
+
+>meaning w/e app is using this can replace "blockchain.txt"
+with as many args as it needs (once doing low level p2p handshake)
+💡️
+🪡️
+so it seems like "alot of 'specific automation'
+but its not its just the lowlevel network handshake {needs 2 happen everytime, 2 make sure PEER didn't LEAVE!}
+and then packets 4 fa$tFAT
+🐾️
+we will send ip list as usual
+before this tho u should have
+🍍️ auto"porting on" for 
+"all ips, "will allow much faster dev w/o stopping 2 type.
+(obv auto ip is already happening)
+🏅️i just did autoporting as port = 1++ # of "same-IPS" EZ🏅️
+🍍️
+❗️
+*u might have to get " user position" (in array) first
+(position will be "like port inc" but for "ALL IPS"
+( i dunno u may wanna sort them first we/) 
+📍️(just grab values from w/e matrix and pass them 2 send.system())
+
+if you just add 
+0.0.0.0 1 0 
+0.0.0.0 2 0 
+
+
+to list. it will send 2 them. and that will be ok for now 
+
+(will update your time , and the other won will need 2 be sent 2
+, if it doesn't accept send 2 next addr)
+(also wut if addr accepts but has a bad list 
+(it cant be worse than mine, i will get the stuff)
+
+*remember tho. some ppl may use 2 terminals 2 get on 
+same chain/account may not wanna be "AUTOPORTED"
+
+w/e ill handle that l8er *
+🍍️
+🐾️
+🐾️
+🪡️
+📮️
+🪜️
+🪜️
+📆️
+🗓️
+
+🪙️
+rcv. show that u can handle that however u need.
+
+(then we can sort out ports
+, will "sort matrix (somehow), then send 2 lowest timestamp
+🤝️
+(if RCVR not there?(we dont actually ask for a return handshake ever!
+what if there not there!, the data would drop FOREVER
+(ok, then we will synack them i guess and remove them 
+if they dont ack /shrug
+
+(so we should probably synack very first rscv, 
+i know its annoying but u probably only have 2 build it once.
+{honestly it shouldn't be a big deal, u already have both ips. 
+anyways this maybe 2 much confusion . so just roundrobin first, but look out for this after 4 sure, [then ur basically done, can add mining. tx w/e (halo sharding , programble contracts w/e], 
+id make the xchange (do a few diff chains, ,sub chains ,w/e)
+get ai going doing stuff drill down 2 mex 2 the point u see u wanna do "civ/ caveman gta / animal gta, bigbang, then back 2 island 🏝️ }
+🤝️
+ok, but so wut NOW!? 
+>determine where u need 2 send (based on ports being seperate 4 local)
+then b4 sending insist on a "ack"
+🦾️
+syn = there?
+syn+ack = here (plus proof i got YOUR data , hash (or u want w/e)
+ack = actual data = [blockchain]
+
+🤯️📌️
+🧷️syn =  ip_list.txt (my ip , and any new ones ive picked up)
+🧷️syn+ack = ip_list_.txt (theoretical "up 2 date list" + ur new ads)
+	{were waiting for this, if we dont get it back , we know
+	that rcvr is dead, will try next on our list}
+🧷️ack = actual data = [blockchain]
+
+
+
+
+>how ? can have hash of each "ip pair" or w/e just try 2 KISS 4 now pls. 
+
+
+
+
+
+
+⁉️when u "DIG INTO the source 2 do this, 
+is there somewhere u imagine it would dump "the tcp/udp packet?"
+(why should i send info that would already send if i sent a blank?
+if i could just inspect the tcp packet wouldn't that be most 1337?)⁉️
+📬️just do it how ur doing, u can add that after. then u have both📬️
+🦙️
+
+🦙️📮️yea, but it gives some "dynamic/virtual ip" so 
+just do w/e u want. 
+
+(if u wanna use "VIP" its probably fine cuz its in mem but w/e
+its not different than just sticking 2 our arch tbh)
+👨🏽‍🚀️ do it the "old way / way u were gonna" but try swapping with 
+"VIP" once infrastructure is in place, and see wut happens ;) <3 yw👨🏽‍🚀️ 
+📬️
+
+📮️
+
+🤯️
+🦾️
+🦄️
+🥋️
+
+🦄️
+🥋️
+🪙️
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️
+📤️ im only able 2 send once. probably ez fix. pls fix. ]
+is og-src like this?]FIXED EZ 📤️ 
+📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️📦️
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+📮️📮️📮️📮️📮️📮️📮️📮️
+📮️postlobby knohow = get this done now.{just go fast 🍀️=🏎️} its murky and confusing, fix that. 
+🏘️by identifying the problem and laying out architecture. then prompt it. it works.🏘️
+each connection sends once. u want them 2 all connect.
+literally just do it with "system(/.whatever)"
+📮️📮️📮️📮️📮️
+🙋🏻‍♀️️wussup sir?🙋🏻‍♀️️
+👩‍❤️‍👨️u dont "HAVE TO BE ONLINE" 2 do alot of the stuff u want, 
+just do it the "CHEAT WAY" and later when ur really ready 
+we can add the net stuff even easier. 
+(yes even set up 3 player ai, 
+then i can have ai do stuff or w/e 
+🛋️i say this cuz "doing network isnt gonna be THAT hard, 
+but it may not be a priority right now
+(u can still do "profiles , even read messages onto gui,etc. 
+better that u do (like fs) we MEET  YOU (not tangle up wires ;)
+🛋️
+👩‍❤️‍👨️
+
+
+
+its a decent enough over haul, 
+cuz we both have to read the "forum.txt"
+(we can post to it from a mex /l8er tho -> or irl)
+
+🆘️im pretty sure if u just format it , u can 
+get OLL 2 do it (its already modular)
+💡️from just "MAIN.c"🆘️
+
+
+
+🔁️ continous read. that is easy 2 read. + 10 ip list 'telephone' system
+🔁️ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+👩🏻‍🔧️
+also were in "HERE" (garage) cuz its clean/focusd👩🏻‍🔧️
+🙋🏻‍♀️️🙋🏻‍♀️️🙋🏻‍♀️️🙋🏻‍♀️️🙋🏻‍♀️️🙋🏻‍♀️️🙋🏻‍♀️️🙋🏻‍♀️️🙋🏻‍♀️️🙋🏻‍♀️️🙋🏻‍♀️️🙋🏻‍♀️️🙋🏻‍♀️️🙋🏻‍♀️️
+//🪄️(automate as much as possible, shoudl beable 2 launch PLAYER1 & PLAYER2 from orch soon🪄️
+
+
+🧵️
+
+//Receiving messages on our port
+//modded_2
+
+// 2 mod this u could just auto poll or u could send after modification
+// likewise u dont HAVE 2 'AUTO RECEIVE' so w/e 
+// dont worry . do it auto . we can l8 change 2 only grab if hash changed ;) 
+// also add scaler based on "lobby/service members online"
+📮️so heres the deal were gonna auto polll 4 now , w/e 
+and just take "args"
+
+i also dont understand why u need "INET" in "MAIN.c"
+(it doesn't send or recieve)[cant we just pass arg? ]
+(then we can use "snd/recieve with ANYTHING 
+(we will put lobby/match making first, this is kinda matchmaking
+so maybe thats why?)
+(its client AND server)
+🤯️
+u dont "NEED 2 listen AND recieve"
+
+its just some bs loop. passing an arg. 
+(it can all be done inside either send or receive
+
+(plus u can parse hashes first or something w/e)
+just get basic going first
+
+
+*looks like "server setup" maybe necessary 2 "send or recieve"
+for "COMPUTER?
+
+*but u dont have 2 store info in mem (fd is a number )
+u could just drop it 2 a file , w/e 
+
+
+🤯️
+
+📮️
+🧵️
+

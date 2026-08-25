@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | template
+META         | version            | 1.0
+META         | entry_layout       | pieces/apps/op-ed/layouts/op-ed.chtpm
+META         | author             | Gemini-CLI
+
+STATE        | starting_map       | map_01.txt
+STATE        | player_piece       | selector
+STATE        | current_world      | world_01
+STATE        | current_map        | map_01
+STATE        | current_z          | 0
+
+RESPONSE     | default            | TEMPLATE Ready.

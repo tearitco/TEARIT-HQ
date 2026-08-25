@@ -1,0 +1,28 @@
+✦ tracker-miner-fs-3 is part of GNOME's file indexing service. It's currently
+  using 4.5GB of RAM and nearly 100% CPU because it is likely trying to index
+  all the small files in your TPMOS project.
+
+  Is it safe to kill?
+  Yes, it is safe. 
+   - Impact: If you kill it, your file manager (Nautilus) might not show
+     "Recent" files correctly, and global file searching will be slower until it
+     restarts or finishes indexing.
+   - Why it's happening: Every time we compile or change many small state.txt
+     files, tracker wakes up to re-index them, which causes the lag you're
+     feeling.
+
+  How to stop it:
+  You can stop it gracefully using systemctl. This is better than a hard kill -9
+  because it tells the system you want it off for now.
+
+   1 # To stop it for this session:
+   2 systemctl --user stop tracker-miner-fs-3.service
+   3
+   4 # To prevent it from starting automatically again:
+   5 systemctl --user mask tracker-miner-fs-3.service
+
+👨🏽‍🚀️u can just turn this off (oneday) and use ur own search in tpmos. but w/e ;
+if u didd it 4 user it would lead them 2 use and rely on only tpmos👨🏽‍🚀️
+witches faster ; by alot.. & immediate..
+🧹
+<its not ny of that, its the browser. solu : make a browser.🦊️

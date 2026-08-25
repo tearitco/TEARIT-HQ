@@ -1,0 +1,11 @@
+USER REPORT — tile-picker + mutaclysm
+Date: 2026-07-28
+GREEN: ./button.sh demo
+
+  PASS SET_BRUSH T
+  PASS PLACE_TILE map_start(5,2)='T'
+  PASS PLACE_TILE explicit X at (6,2)
+
+Ops: muta_place_tile, muta_widget_cmds (SET_BRUSH/PLACE_TILE)
+     tp_set_brush, tp_place (tile-picker)
+Note: v1 ASCII glyphs only on map.txt terrain.

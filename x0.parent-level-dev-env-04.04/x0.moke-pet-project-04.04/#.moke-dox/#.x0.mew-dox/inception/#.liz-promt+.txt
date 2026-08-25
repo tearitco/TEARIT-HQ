@@ -1,0 +1,86 @@
+
+
+
+lets run the "naked liz-bot5"
+
+if possible. see whats going on 
+or ask about it w/e 
+
+
+lets get this going as soon as possible
+
+🤔️
+(control of the pokemon 
+picking using "cursor menu first"
+and ai doesn't actually have to do the same yet
+since it already has 'naked control')
+
+but lets get other player feedback on turns etc.
+ie make sure loop is working. 
+
+also if u have sense
+u can have starting /pausing of mgmt loop controls
+within the same xo-pet/project 
+(not wraith yet) 
+
+
+<later we can even add 2dmap/3dascii
+then put that in wraith 4 gauranteed purity
+but just do bare bones using gemini first>
+🤔️
+
+
+lets create a new tpmos project
+ (normal project not wraith or glos)
+ and call it xo-pet 
+ 
+ look over fuzz-op and moke-pet-project-2.0
+ 
+ basically we want a project that will
+ 
+ 
+ start with a dynamic menu 
+ 
+ a sub menu to choose which entity/pet to control
+(gui should show which pet is under control 
+and its state hp/ living/dead etc)
+<player can change pet/xelector controlled at any time> 
+
+ 
+ default control will be to "xelector"
+ xelector will have methods : 
+ 
+  start / pause
+to start or stop the orchestrator simulation
+
+and the pet entities will show
+their eat / attack / mate methods
+in the same way fuzz op has dynamic menus
+
+
+also the orchestrator must wait for 
+user input before running each epoch 
+
+it should also echo user input for 1 frame
+
+also output of epoch for all entities
+should display dynamically in gui after
+each epoch
+
+
+does this make sense? lets keep it simple for now
+
+
+later we can align it more closely to fuzz-op by giving the entities xyz coords
+and letting us select them with xelector
+instead of submenu
+
+
+<we can do it in main project 
+but also copy it 2 smol later
+
+
+also later we could add a 
+'lobby'
+or rewire these into tsots 
+as default lobby first projects

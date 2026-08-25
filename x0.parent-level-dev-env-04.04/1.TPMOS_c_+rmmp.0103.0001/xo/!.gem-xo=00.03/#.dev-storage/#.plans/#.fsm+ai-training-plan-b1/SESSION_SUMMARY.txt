@@ -1,0 +1,159 @@
+# SESSION DELIVERABLE SUMMARY
+# ============================
+# Date: April 13, 2026
+# Session: TPMOS Training — op-ed updates, PAL Editor, fuzzpet-clone
+
+---
+
+## ✅ WHAT WE DID
+
+### 1. Mirror Sync Fix (P1)
+- Fixed `move_entity.+x` to respect explicit project argument (argv[3])
+- Fixed double-free bug in `get_current_commit` (log.c, diff.c)
+- Verified: state.txt updates, frame_changed pulses, ledger records movements
+
+### 2. Create→Save→Load→Play Cycle (P1.5)
+- Added `play_layout` field to `project.pdl` (points to `game.chtpm`)
+- Modified `loader_module.c` to read `play_layout` first, falls back to `entry_layout`
+- Updated `op-ed_manager.c` `save_project()` to write both layouts
+- Tested: loading op-ed project now uses `game.chtpm` instead of `op-ed.chtpm`
+
+### 3. v66.03 — Auto-Detect + Directory Rename
+- Added `.gitlet-hash` file for auto-detecting project hash
+- All 7 gitlet ops work without hash argument
+- Renamed directory: `TPMOS_c_+rmmp_66.02` → `TPMOS_c_+rmmp_66.03`
+- Full history preserved across rename (same hash, same storage)
+
+### 4. Gitlet Trunk+Delta Storage
+- First commit stores full content as trunk in `objects/`
+- Subsequent commits store only diff as delta in `deltas/`
+- Tree entry format: `filename hash type trunk_hash`
+- Checkout reconstructs from trunk + delta
+- Comprehensive README with user guide, dev guide, future improvements
+
+### 5. PAL Editor (P3)
+- Created `pal_editor.chtpm` layout (ASCII GUI for PAL scripting)
+- Created `pal_editor_module.c` (17 available ops, instruction list, register view)
+- Added `E` key to op-ed to open PAL Editor for selected piece
+- Saves scripts as `.asm` files, auto-binds to piece.pdl METHOD entry
+
+### 6. fuzzpet-clone Project
+- Proof that op-ed can build playable games
+- `project.pdl` with entry_layout + play_layout
+- `fuzzpet` piece with piece.pdl, state.txt, sample PAL script
+- `on_interact.asm` — reads happiness, adds 10, caps at 100, reads energy, subtracts 5
+- `selector` piece, `map_01_z0.txt` map
+
+### 7. M18-Compliant Test with Frame Capture
+- Test script injects keys to `pieces/keyboard/history.txt` (correct format)
+- Captures frames to `#.testing/<timestamp>/` directory
+- Frame report created in repo root
+- **Result: Frames ARE changing** (os.chtpm → loader.chtpm → selection moves)
+
+### 8. Future Plans Documents
+- `pal_menu_ideas.txt` — PAL-scriptable menu system design
+- `fsm_bot_programmer.txt` — Shared FSM bot programmer for testing + AI players
+
+### 9. Gitlet Commits (8 total)
+```
+P3: PAL Editor + fuzzpet-clone
+P2: Create→save→load→play cycle
+v66.03: Auto-detect + directory rename
+README: comprehensive docs
+Gitlet trunk+delta
+Mirror sync fix
+Snapshot before mirror sync
+Initial snapshot
+```
+
+---
+
+## 📋 WHAT WE PLAN TO DO
+
+### A. PAL-Scriptable Menu System
+- Generic `menu.chtpm` layout template
+- `menu_module.c` that renders dynamic content
+- PAL ops: `menu::set_title`, `menu::add_option`, `menu::set_response`, `layout::switch`
+- Setup menu PAL script (single/multiplayer, player count, AI vs P2P)
+- Sub-menus for AI/P2P choice
+
+### B. FSM Bot Programmer
+- `bot_module.c` — shared FSM engine
+- Bot PAL ops: `bot::navigate`, `bot::interact`, `bot::assert`, `bot::choose`, `bot::decide`, `bot::report`
+- Testing bot PAL script (automated playtesting, regression verification)
+- AI bot player PAL script (local AI opponents in single-player mode)
+- Wire into op-ed (devs create bots via PAL Editor)
+- Wire into game loader (setup screen chooses AI bot count)
+
+### C. Proper M18 Test Suite
+- Fix loader key routing (keyboard → player_app history)
+- Load fuzzpet-clone in op-ed local player
+- Run PAL script, verify frame/state changes
+- Full create→save→load→script→play cycle
+
+---
+
+## 🚧 WHAT'S STOPPING US
+
+| Blocker | Impact | Fix |
+|---------|--------|-----|
+| **No local op-ed player** | Can't test fuzzpet-clone within editor context | op-ed has "Play Mode" (switches to game.chtpm) but no built-in local player that runs the project within the editor. Need to build one or fix loader routing. |
+| **Loader key routing** | Keys injected to `keyboard/history.txt` don't reach loader module | Loader reads `player_app/history.txt`, parser reads `keyboard/history.txt`. Need to route keys when layout is `playrm/loader.chtpm`. |
+| **No menu infrastructure** | Can't build setup screen | Need `menu.chtpm` + `menu_module.c` + menu PAL ops. Not built yet. |
+| **No bot PAL ops** | Can't program bots | `bot::navigate`, `bot::interact`, `bot::assert`, etc. don't exist in prisc interpreter. Need to add them. |
+| **No FSM engine** | Can't run bot state machines | No `bot_module.c` that reads FSM state and dispatches PAL scripts. Need to build it. |
+
+---
+
+## 📅 ORDER OF OPERATIONS
+
+1. **Fix loader key routing** (quick fix, unblocks testing)
+   - Modify parser to route keys to `player_app/history.txt` when layout is `playrm/loader.chtpm`
+   - Test: inject key → loader receives it → project loads
+
+2. **Build PAL-scriptable menu system** (needed for setup screen)
+   - Create `menu.chtpm` layout template
+   - Create `menu_module.c` (reads state, renders options, passes input)
+   - Add menu PAL ops to prisc interpreter
+   - Test: create setup menu PAL script, verify it renders and responds
+
+3. **Create setup menu PAL script** (single/multiplayer, AI count)
+   - Write `setup_menu.asm` in PAL Editor
+   - Flow: Setup → Player Count → AI vs P2P → Start Game
+   - Test: run setup menu, verify transitions
+
+4. **Build FSM Bot Programmer** (shared testing + AI)
+   - Create `bot_module.c` — shared FSM engine
+   - Add bot PAL ops to prisc interpreter
+   - Create testing bot PAL script example
+   - Create AI bot player PAL script example
+
+5. **Wire into game loader flow**
+   - Setup menu runs before game starts
+   - AI bot count passed to game state
+   - Testing bots run against projects automatically
+
+6. **Run full M18 test suite with frame capture**
+   - Load fuzzpet-clone in op-ed local player
+   - Run PAL script, verify frame/state changes
+   - Full create→save→load→script→play cycle
+   - Frame report in repo root
+
+---
+
+## 📊 CURRENT STATUS
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Mirror sync | ✅ Done | move_entity respects project arg |
+| Load/play cycle | ✅ Done | play_layout in project.pdl |
+| Gitlet | ✅ Done | trunk+delta, 8 commits |
+| PAL Editor | ✅ Done | 17 ops, saves .asm, binds to piece.pdl |
+| fuzzpet-clone | ✅ Done | proof op-ed can build games |
+| Frame capture test | ✅ Done | frames ARE changing |
+| Menu system | ❌ Not started | needed for setup screen |
+| FSM Bot Programmer | ❌ Not started | needed for testing + AI |
+| Local op-ed player | ❌ Not started | needed for in-editor testing |
+| Loader key routing | ❌ Not started | blocks project loading |
+
+---

@@ -1,0 +1,109 @@
+================================================================================
+phase2-module-split-report.txt - 041.pal-chain⛓️: what changed 2026-07-31
+and why, for future agents. See also the house-wide docs this work is
+part of: #.haiku+/!.xyzos-standards+1.txt §41, #.haiku+/!.xyzos-
+pitfalls+1.txt PITFALL 66, #.haiku+/refactor-list-j30.txt, 01.muchi-
+pals-🥚️-13.01/dox/06-per-screen-module-standard.md.
+================================================================================
+
+## WHAT THIS IS
+
+Phase 2 of the house-wide chtpm refactor. Phase 1 (earlier, see this
+project's own prior refactor docs if any) was about buttons/href/
+real markup. Phase 2 is a separate, later-discovered standard: each
+.chtpm LAYOUT should launch its OWN dedicated <module> string, instead
+of every layout in a project sharing one <module>system/prisc+x pal/
+main_loop_chtpm.pal</module> line.
+
+## WHY (the real reasoning, not just "because the standard says so")
+
+chtpm_parser_pal.c's launch_module() has a liveness check:
+
+    strcmp(launch_str, current_module_path) == 0 && current_module_pid > 0
+
+If the <module> string is IDENTICAL across every screen in a project
+(the old, pre-Phase-2 pattern), launch_module() sees "same string,
+still alive" on every real href transition and just REUSES the
+already-running module process instead of a clean relaunch. This
+works fine for pure-rendering screens, but it means per-screen state
+doesn't get a clean boundary - the same running process instance
+persists silently across logically distinct screens. Giving every
+screen its own module string means every real transition gets its own
+process lifecycle, matching how the rest of the house's per-screen
+architecture (layouts, managers) already works. Also just a real
+human-readability win - separate files per screen, same idea as one
+component per file in JS, instead of one giant shared loop file every
+screen secretly depends on.
+
+## WHAT WAS DONE HERE
+
+Before: all 6 layouts (login, signup, wallet_main, send_screen,
+receive_screen, mining_status) declared the same
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+
+After: 6 new files, byte-identical CONTENT to the old shared loop,
+different filenames, one per screen:
+    pal/login_module.pal
+    pal/signup_module.pal
+    pal/wallet_main_module.pal
+    pal/send_screen_module.pal
+    pal/receive_screen_module.pal
+    pal/mining_status_module.pal
+
+Each layout's <module> line updated to point at its own file, e.g.
+pieces/chtpm/layouts/wallet_main.chtpm now has:
+    <module>system/prisc+x pal/wallet_main_module.pal</module>
+
+Also ported (PITFALL 66, a real house-wide stale-focus bug, unrelated
+to the module split itself but discovered/fixed the same session): a
+clear_saved_active_index() function into this project's own local
+system/chtpm_parser_pal.c (this project doesn't sync from a shared
+source - every project has its OWN copy of this file, so the fix had
+to be ported individually), inserted right after build_path_malloc().
+A call to it was inserted immediately before every real layout-
+transition parse_chtm() call site, matching the pattern:
+    active_index = -1; focus_index = 0; clear_saved_active_index();
+    parse_chtm(); initialize_focus();
+This fixes a real bug where a fresh href transition could land
+keyboard focus on a stale, coincidentally-same-indexed element left
+over from the PREVIOUS screen.
+
+## WHAT WAS NOT CHANGED
+
+The shared ops (chain_send.c, chain_compose_frame.c, etc.) were NOT
+split per-screen - every new per-screen module still calls into the
+same shared op binaries. Splitting those is a separate, not-yet-done,
+later step (see dox/06 §4) - do not assume it happened just because
+the module split happened.
+
+## VERIFICATION
+
+Re-verified live 2026-07-31 (after this doc's own initial writing
+was found to be missing - see refactor-list-j30.txt's own note about
+this): every pal/*_module.pal file exists, every layout's <module>
+line points at its own file (not the old shared one), and
+clear_saved_active_index appears 9 times in chtpm_parser_pal.c (1
+definition + 1 call site definition context + multiple real call
+sites - matches the expected pattern).
+
+The real K3 harness (test-harn-same/scenarios/demo_2wallet_ux.sh) was
+run and confirmed PASSING earlier in this same work session, after
+this module split was applied - not re-run again when writing this
+doc (already confirmed working, no need to re-burn the time - ask
+before assuming it needs re-running again unless you have a specific
+reason to suspect regression).
+
+## IF YOU HIT A BUG HERE
+
+1. Check whether it's actually a Phase 2 regression - compare against
+   git history / this doc's own "before" section - or a pre-existing
+   issue unrelated to the module split.
+2. If it looks like doubling/dropped keystrokes: read #.haiku+/
+   double-wr-grok-j31.txt FIRST - this exact bug class was already
+   root-caused and fixed house-wide (single-writer gl_mirror.c +
+   chtpm_parser_pal.c gate removal). Don't re-diagnose from scratch.
+3. If it looks like stale focus after a transition: check whether
+   clear_saved_active_index() is actually being CALLED at the specific
+   transition site involved - the function existing isn't enough, it
+   has to be invoked before parse_chtm() at that exact call site.
+================================================================================

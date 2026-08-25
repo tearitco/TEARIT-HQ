@@ -1,0 +1,57 @@
+Next Steps for XO-PET Visible Turn Output
+
+Goal
+- After each `STEP` / end-turn, show a concise per-entity action summary in the visible XO-PET frame.
+- Keep it short and readable.
+- For now, it is enough to show the `acts:` line for each entity and action, instead of the full raw manager log.
+
+Preflight status
+- The autonomous root `manager.c` / `manager` pair has been moved into `pieces/world_tank_01/`.
+- `sh button.sh auto` was verified again after the move.
+- The XO-PET manager binary was rebuilt from `projects/xo-pet-v1/pieces/manager/xo-pet_manager.c`.
+- The visible controller frame now shows `turn_summary` with `acts:` entries after a real `STEP`.
+
+Target shape
+- Example:
+  - `liz_bulb acts: breathe()`
+  - `liz_bulb acts: scan()`
+  - `liz_bulb acts: rest()`
+  - `liz_bulb acts: check_death()`
+  - `liz_char acts: breathe()`
+  - `liz_char acts: scan()`
+  - `liz_char acts: rest()`
+  - `liz_char acts: check_death()`
+  - `liz_gen_5414 acts: breathe()`
+  - `liz_gen_5414 acts: scan()`
+  - `liz_gen_5414 acts: rest()`
+  - `liz_gen_5414 acts: check_death()`
+  - `train` phase can stay summarized as `liz_bulb acts: train(...)`
+
+Implementation rule
+- Do not scrape the terminal output after the fact if it can be avoided.
+- Build the summary at the point each action is dispatched in the manager.
+- Append those concise entries into the existing `turn_summary` buffer.
+- Write `turn_summary` into:
+  - `projects/xo-pet-v1/pieces/manager/gui_state.txt`
+  - `projects/xo-pet-v1/session/state.txt`
+  - `projects/xo-pet-v1/session/frame_####.txt`
+
+Why this is the right level
+- The full debug trace already exists in manager logs and action prints.
+- The visible frame should stay compact so the user can verify state changes quickly.
+- This keeps the UI useful for humans and for future agents without turning the frame into a wall of text.
+
+Order of work
+1. Confirm the manager still writes `turn_summary` after a successful `STEP`.
+2. Add or refine per-entity action appends so each action appears as an `acts:` line.
+3. Ensure the controller-visible frame shows the summary immediately after end-turn.
+4. Verify the autonomous path and the controller path both show the same concise summary format.
+
+Status
+- Completed for the current implementation pass.
+- Remaining work, if desired later, is purely formatting polish or richer summaries.
+
+Success criteria
+- After one end-turn, the frame shows a compact action digest.
+- The summary is visible in both autonomous and controller-driven runs.
+- The summary is short enough that the menu still reads cleanly.

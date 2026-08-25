@@ -1,0 +1,192 @@
+# TPM World Architecture - World/Map/Container Model
+**Date:** 2026-03-18
+**Status:** Active Direction (clarified)
+
+---
+
+## 1. Core Clarification
+
+The intended nested structure is:
+
+```
+projects/<project>/
+└── pieces/
+    ├── selector/                      # global piece (optional)
+    └── world_<world_id>/              # world container piece
+        ├── state.txt
+        └── map_<map_id>/              # map container
+            ├── state.txt              # optional map metadata
+            ├── hero/
+            ├── npc_7_5/
+            └── chest_3_2/
+```
+
+Important nuance:
+- Pieces do **not** need an extra `/pieces/` folder under `map_<id>/`.
+- For now, the preferred look is direct piece directories inside the map dir.
+
+---
+
+## 2. Container Piece Rule (Generalized Nesting)
+
+Any piece can itself be a container.
+
+Examples:
+- `house/dog/`
+- `house/couch/`
+- `player_1/bag/`
+- `player_1/bag/crayon_box/`
+- `player_1/bag/crayon_box/crayon1/`
+
+Meaning:
+1. Maps are containers of pieces.
+2. Pieces may contain pieces (inventory, interiors, equipment groups, nested storage).
+3. This is the same concept at different levels: **container -> children**.
+
+### 2.1 Hierarchical Maps (Maps Containing Maps)
+
+Maps can nest to represent scale. Example for a space game:
+
+```
+projects/lsr/pieces/
+└── world_lunar/
+    ├── map_galaxy/
+    │   ├── sol_system/          (Map piece: solar system level)
+    │   │   ├── earth_moon/      (Map piece: lunar orbit)
+    │   │   │   ├── lunar_surface/
+    │   │   │   │   ├── fadam/
+    │   │   │   │   └── base_01/
+    │   │   │   │       └── interior/
+    │   │   │   └── cargo_ship_01/
+    │   │   └── mars_system/
+    │   └── alpha_centauri/
+    └── map_ui/                  (Separate UI world for menus)
+```
+
+**Key insight:** A "map" is just a piece that happens to contain location-aware children. The engine treats all containers uniformly.
+
+---
+
+## 3. Transitional Compatibility (still required)
+
+While migrating, we keep compatibility with flat/legacy layouts.
+
+Renderer resolution order:
+1. `world_<id>/map_<id>/<piece_id>/` (canonical)
+2. legacy `map_id` check from piece state
+3. root/global fallback (`projects/<project>/pieces/<piece_id>/`)
+
+`map_id` remains useful during migration and for fallback behavior.
+
+### 3.1 Global Pieces (Non-Container)
+
+Some pieces are **global registry/data** and should NOT be inside world/map containers:
+
+```
+projects/<project>/pieces/
+├── world_lunar/          (Container: active game world)
+├── world_menu/           (Container: UI world)
+├── registry/             (Global: item definitions, tech trees)
+│   ├── items/
+│   └── techs/
+├── templates/            (Global: piece blueprints for creation)
+└── config/               (Global: game rules, laws)
+```
+
+**Rule of thumb:**
+- **In world/map**: Entities that exist in the game world (agents, buildings, items in use)
+- **Global**: Definitions, templates, metadata that aren't "located" anywhere
+
+---
+
+## 4. Why this model
+
+Benefits:
+- Native support for multi-map teleport/travel
+- Clear world boundaries and map-local piece sets
+- Natural support for inventory/interior nesting
+- Better long-term query/filter semantics (where is this piece? what contains it?)
+
+---
+
+## 5. Implementation Priority
+
+Priority order (Mar 18 updated):
+1. Finish Step 1 in `op-ed` (`save -> load -> local play` + no-code event flow) using world/map-aware paths.
+2. Continue hardening `fuzz-op` and shared ops on world/map-first behavior.
+3. Keep both `op-ed` and `fuzz-op` migration-compatible until fallback removal is explicitly scheduled.
+
+`op-ed` and `fuzz-op` are both active migration surfaces; do not assume either is fully cut over in every module.
+
+---
+
+## 6. Required engine behavior
+
+1. Renderer must scan world/map containers first.
+2. Creation ops must support target world+map.
+3. Move ops must support moving a piece between map containers.
+4. Container-aware logic should allow nested child pieces under any piece directory.
+5. Legacy flat projects must still run during transition.
+
+---
+
+## 7. Migration path
+
+Phase A (fuzz-op):
+- world/map scan + dedup
+- create world/map container ops
+- world/map-targeted piece creation
+- move-to-world-map op
+
+Phase B (fuzz-op data):
+- migration script to copy flat pieces into world/map dirs
+- report conflicts/unmapped pieces
+- cutover after validation
+
+Phase C (op-ed):
+- apply same renderer/ops/migration approach once fuzz-op is stable
+
+---
+
+## 8. Notes for future agents
+
+- Do not assume `/pieces/` under map containers.
+- Treat directory containment as first-class relationship, not just metadata.
+- Preserve backward compatibility until both fuzz-op and op-ed are migrated.
+
+### 8.1 Common Pitfalls
+
+**PITFALL: Flat "map" folder**
+```
+WRONG:
+pieces/
+├── map/              (Single flat map folder)
+│   ├── tiles/
+│   └── pieces/       (All pieces in one flat list)
+
+RIGHT:
+pieces/
+└── world_01/
+    ├── map_overworld/
+    │   ├── hero/
+    │   ├── castle/
+    │   │   └── interior/
+    │   │       └── king/
+    │   └── forest/
+    └── map_underground/
+        └── dungeon/
+```
+
+**PITFALL: Confusing registry with world pieces**
+```
+WRONG:
+world_01/map_01/
+└── item_definitions/     (Definitions belong in registry, not world)
+
+RIGHT:
+world_01/map_01/
+└── chest_01/             (Instance in world)
+    └── items/            (Contains item instances)
+pieces/registry/
+└── items/                (Definitions/templates)
+```

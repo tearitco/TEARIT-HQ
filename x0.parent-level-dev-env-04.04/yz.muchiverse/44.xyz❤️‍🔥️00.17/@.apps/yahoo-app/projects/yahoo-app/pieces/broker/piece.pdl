@@ -1,0 +1,17 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | broker
+
+METHOD       | Lookup Stock Price       | LOOKUP_STOCK
+METHOD       | Check Balance            | CHECK_BALANCE
+METHOD       | Add Credit               | ADD_CREDIT
+METHOD       | Buy Stock                | BUY_STOCK
+METHOD       | Sell Stock               | SELL_STOCK
+METHOD       | Sell Options             | SELL_OPTIONS
+METHOD       | View Portfolio           | VIEW_PORTFOLIO
+METHOD       | View Profit/Loss         | VIEW_PROFIT_LOSS
+METHOD       | Add to Watchlist         | WATCHLIST_ADD
+METHOD       | Options Pricing          | OPTIONS_PRICING
+METHOD       | Predict Stock Price      | PREDICT_STOCK
+METHOD       | --debug--                | DEBUG_LEDGER
+METHOD       | Buy Options              | BUY_OPTIONS

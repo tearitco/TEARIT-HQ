@@ -1,0 +1,43 @@
+<!-- dashboard.chtpm — stats-hq, full TPMOS-compliant rebuild (2026-08-25,
+     au11-hq/TPMOS-COMPLIANCE-DEBT.md's own worst finding: the OLD version
+     of this file was regenerated fresh on every launch by open_stats_hq.sh
+     via inline bash `grep -oE` scraping + `printf`'d <tabbar>/<tab> XML,
+     with tabs that rendered but never responded to a click - no manager,
+     no testable Op, a real compliance violation, not just a style one.
+
+     This file is now STATIC (checked in, not regenerated per-launch) -
+     matches db-hq's own dashboard.chtpm exactly: a real, separate,
+     compiled, independently-testable manager (stats_hq_manager.c, see
+     its own header comment) owns the actual session-stats scan and
+     publishes into #.desktop/stats_hq_common_events.state.txt, which
+     khtpm_entity_menu_render.c's own g_is_stats_hq mode (2026-08-25)
+     reads via the SAME dbhq_load_common_events()/dbhq_inject_sidebar_
+     items() machinery db-hq's real Common Events feature already
+     proves out live - not a second bespoke rendering path.
+
+     Real, direct fix for the live complaint ("way too wide... tabs
+     should be on the side, like open-hai, not top"): sidebar+panel only,
+     NO <tabbar> at all - db-hq's own dashboard.chtpm keeps a <tabbar> for
+     ITS OWN unrelated 15-category RPG-Maker-style navigation (Actors/
+     Classes/etc, unrelated to Common Events' sidebar), which stats-hq
+     never needed in the first place; the OLD stats-hq's <tabbar> was
+     misusing that same tag for what should always have been a session
+     LIST, not a category switcher. -->
+<window class="database-window stats-hq">
+  <module src="*.monads/*.livedesk-taskbar/ops/+x/stats_hq_manager.+x" />
+  <sidebar id="sidebar" class="sidebar">
+    <item label="(loading)"/>
+  </sidebar>
+  <!-- REAL FIX 2026-08-25 (direct live report: "i was hoping it was more
+       human readable like before") - restored the OLD template's real
+       multi-line itemized layout (id= per field, populated individually
+       by stats_populate_panel() - see khtpm_entity_menu_render.c's own
+       g_is_stats_hq branch), instead of one condensed summary line. -->
+  <panel id="stats-panel" class="settings-block">
+    <title id="stat-title" class="block-title" label="Session Stats"/>
+    <text id="stat-msgs" class="stat-label" label="(select a session)"/>
+    <text id="stat-ai" class="stat-label" label=""/>
+    <text id="stat-turns" class="stat-value" label=""/>
+    <text id="stat-tools" class="stat-value" label=""/>
+  </panel>
+</window>

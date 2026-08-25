@@ -1,0 +1,95 @@
+# mutaclsym main loop - now boots to a title screen (New Game / Load)
+# before gameplay, per direct instruction to model save/load on real
+# 1.TPMOS op-ed's "one folder per save" pattern (see
+# dox/01-cdda-architecture.md and platform-vision.txt for the citation
+# of op-ed's save_game_to_path()/load_game_from_path()). Single
+# process, single script, no restart: the title phase and the gameplay
+# phase share the same x1 history-read cursor (so keypresses can never
+# leak from one phase into the other or get double-counted) and the
+# same already-running prisc+x/keyboard_input/renderer trio - the title
+# phase just falls through into the existing gameplay loop's labels via
+# an unconditional jump once ops/title_input.c signals a commit.
+#
+# x1 = read cursor into pieces/apps/player_app/history.txt (byte offset)
+# x2 = last key read (0 = nothing new)
+# x8 = 999, the title->gameplay hand-off sentinel. prisc+x has NO
+# opcode that can check an arbitrary file's existence/size by path
+# (read_pos/read_layout are both hardcoded to their own specific files -
+# confirmed by reading system/prisc+x.c's parser directly, not assumed)
+# so ops/title_input.c signals "a New Game/Load choice was just
+# committed" the same way ops/choice.c's own (later reverted) numbered-
+# quit prototype did: append this sentinel keycode to history.txt
+# directly. It's picked up by the ordinary read_history+beq check on
+# the very next tick, same as any real key - no new opcode needed.
+# Quit is Ctrl+C only (keyboard_input.c / gl_mirror.c handle it at the
+# terminal/GL level, writing quit_flag.txt). There is no 'q'-to-quit
+# anywhere in the PAL script or any op.
+#
+# All other verbs (pickup/drop/eat/craft) are digit-only now - no letter
+# mnemonics ('g'/'v'/'e'/'c') left to keep in sync. Digit keys '2'-'9'
+# PREVIEW a selection against hero/piece.pdl's METHOD table (index
+# 2 = pickup, 3 = drop, 4 = eat, 5 = craft) - they do NOT execute
+# anything by themselves. Only Enter commits whatever is currently
+# previewed. This is a real multi-digit accumulator (persisted in
+# hero/state.txt's action_cursor/digit_accum fields, since each keypress
+# here is a fresh short-lived process), ported faithfully from real
+# 1.TPMOS's chtmp_parser.c - confirmed via its compiled +x binary as the
+# actual live renderer/dispatcher behind its numbered-panel menus - not
+# the simpler single-key-immediate-fire version this replaces. All of
+# this lives in ops/choice.c, not here: prisc+x has no range-comparison
+# opcode and no persistent-across-ticks C-level state, so both the
+# bounds-checking and the accumulator itself have to live in the op, not
+# a pal script. choice.c runs unconditionally every tick (self-filtering
+# like move_player) because it must also RESET the accumulator on any
+# key it doesn't recognize as a digit or Enter - see its own header
+# comment. See nav-refactor-2.txt.
+li x1, 0
+li x8, 999
+
+# Unconditional initial render (title screen this time), so
+# current_frame.txt exists and reflects the actual starting state
+# before the first keypress - same reasoning as the old gameplay-only
+# bootstrap render below, just for the new first phase.
+compose_title_frame
+hit_frame
+
+title_loop:
+read_history x2, x1
+beq x2, x0, title_no_key
+beq x2, x8, game_start
+title_input x2
+compose_title_frame
+hit_frame
+title_no_key:
+sleep 30000
+j title_loop
+
+game_start:
+# Unconditional initial render, so current_frame.txt exists and reflects
+# the actual starting game state before the first keypress - without
+# this, a truly fresh boot (no leftover current_frame.txt from a prior
+# run) shows nothing until the player presses a key.
+compose_frame
+compose_rgb_frame
+hit_frame
+
+loop:
+read_history x2, x1
+beq x2, x0, no_key
+move_player x2
+choice x2
+camera_control x2
+j did_action
+
+did_action:
+end_turn
+tick_monsters
+compose_frame
+compose_rgb_frame
+hit_frame
+no_key:
+sleep 30000
+j loop
+
+quit:
+halt

@@ -1,0 +1,101 @@
+# OP-ED Project Progress & Roadmap Report (m23)
+**Date:** 2026-05-23
+**Status:** Planning & Scaffolding Phase
+
+## 1. The Vision: TPMOS as a PAL/Ops Engine
+
+The long-term vision for `op-ed` and the broader TPMOS is the realization that **the entire OS can be distilled into a collection of atomic Ops and PAL orchestrators.** 
+
+Instead of monolithic C managers, we are moving toward a "Thin Engine" model where:
+-   **Ops (+x binaries)** are the muscles (I/O, Physics, Math).
+-   **PAL Scripts (.asm)** are the brains (Logic, Game Loops, Decision making).
+-   **CHTPM (.chtpm)** is the skin (Display, Interaction).
+
+The "Player" we are building is essentially a standalone, stripped-down version of the TPMOS core. When we "export" a game, we are simply packaging the required Ops and PAL scripts with a minimal runtime (PRISC + Parser).
+
+---
+
+## 2. Granular Development Slices (Iterative Verification)
+
+To ensure testability and prevent circular dependencies, we will develop in vertical "slices," starting with the most behavioral elements.
+
+### Slice 1: The Mirror Lab (Example Game)
+-   **Goal:** Prove the Editor and Player can handle a standardized game project structure.
+-   **Tasks:**
+    -   Initialize `projects/op-ed/games/fuzz-op-mirror/`.
+    -   Setup `pet_01` with state and PDL methods.
+    -   Move existing `maps/` and `fuzzpet_mirror/` pieces into the `fuzz-op-mirror` project dir.
+-   **Success Metric:** The `fuzz-op-mirror` project exists with all required assets (maps, pieces, metadata) in a self-contained folder.
+
+### Slice 2: The PAL Orchestrator (VERIFY: Basic Player)
+-   **Goal:** Prove that a minimal PAL-based Player can run the Mirror project.
+-   **Tasks:**
+    -   Create `projects/op-ed/player/PAL/player_loop.asm`.
+    -   Implement a basic "Hero Move" loop in PAL that reads `project.pdl` for the starting map and player piece.
+    -   Reuse the same `render_map.+x` and `move_entity.+x` Ops the Editor uses.
+-   **Success Metric:** Launching the Player loads `fuzz-op-mirror` and allows WASD movement of the hero on the map.
+
+### Slice 3: Script Editor & Event Handover (VERIFY: Scripting)
+-   **Goal:** Connect the Editor to the behavior logic within the Mirror project.
+-   **Tasks:**
+    -   Create `fuzz_logic.asm` to simulate hunger/happiness decay.
+    -   Integrate the "EVENT" button to launch the script editor.
+    -   Enable saving of scripts into `projects/op-ed/games/fuzz-op-mirror/scripts/`.
+-   **Success Metric:** Editing the pet's interaction script in the Editor instantly changes its behavior in the Player.
+
+### Slice 4: Scaffolding & Sovereign Loader (VERIFY: Save/Load)
+-   **Goal:** Prove that the Editor can switch between multiple game projects (e.g., `default-game` and `test-game`) using external Ops.
+-   **Tasks:**
+    -   Implement/Port `project_file_op.+x` and `sync_op.+x`.
+    -   Update `op-ed_manager.c` to scan `projects/op-ed/games/` and use these Ops for project switching.
+-   **Success Metric:** Switching projects in the Editor UI correctly updates the files on disk and refreshes the map palette.
+
+---
+
+---
+
+## 3. Player Architecture: Reuse & Standalone
+
+The Player is a "Thin Client" that leverages existing TPMOS infrastructure:
+
+### Reusable Components:
+-   **PRISC (PAL Interpreter):** The core VM that executes behavior logic.
+-   **CHTPM Parser:** Handles the UI/Display layers (`game.chtpm`).
+-   **Global Ops:** Standardized binaries like `move_entity`, `render_map`, `sync_op`.
+
+### Exporting Strategy:
+Since the Player already uses modular TPMOS infrastructure, "exporting" is a simple file-copy operation:
+1.  Copy `prisc+x` and `parser+x` binaries.
+2.  Copy required `pieces/ops/+x/` binaries.
+3.  Copy the Game Project folder (`games/[PROJECT]`).
+4.  Generate a `boot.asm` that points the system root to the local export directory.
+
+This proves that **TPMOS is truly portable.** A game is just a subset of the OS's potential, running on the same underlying PAL/Ops muscle.
+
+---
+
+## 4. The Sovereign Save/Load Handshake (Contract v1.1)
+
+To eliminate race conditions during file operations (as identified in `handoff_save_load_m23.md`), all modular file-ops must adhere to the **Double-Marker Handshake**:
+
+1.  **The Request (Op):** The File Op writes to the Project PDL and appends to `state_changed.txt`.
+2.  **The Wait (Op):** The File Op polls `sync_confirmed.txt` (with a 2-second timeout).
+3.  **The Acknowledgment (Manager):** The Manager sees the pulse, syncs its RAM, and appends to `sync_confirmed.txt`.
+4.  **The Handover (Op):** Only after seeing the Ack does the File Op call `transition_to_layout`.
+
+This ensures the Manager has successfully consumed the disk truth before the File Op process is terminated by the Parser.
+
+---
+
+## 5. Player Launcher & Layout Updates
+- **Obsolete LOADER Removed:** The legacy `loader.chtpm` link has been replaced with a direct `PLAYER` launcher.
+- **Boot Sequence:** The `PLAYER` button triggers `player_bootstrap.+x`, which boots the PAL-driven game orchestrator for the current project.
+
+---
+
+## 6. Addressing Circular Dependencies
+
+By building the Player *at the same time* as the Loader (Slices 1 & 2), we ensure that the Editor doesn't become too bloated. If the Player can't "read" what the Editor "writes," we know the I/O contract is broken.
+
+-   **Layering:** Editor and Player are "Layouts" (UI). PAL scripts are the "Controllers". Ops are the "Data/Action" layer. 
+-   **Isolation:** Moving games to `projects/op-ed/games/` prevents accidental dependencies on the system's global project state.

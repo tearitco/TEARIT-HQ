@@ -1,0 +1,5 @@
+name=Serine
+formula=Ser (S)
+type=HOCH2CH(NH2)COOH
+groups=Amino Acid
+relevance=-NH2

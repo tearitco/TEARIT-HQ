@@ -1,0 +1,54 @@
+
+
+
+
+we are working on wraith. 
+
+
+0. 3d cube (in ascii window and 3d)
+
+<or switch that switches from gl ; just push and find out what is hard do debug>
+
+1. we can try normal "chtpmgl"
+
+
+2. and 3d-pet (in ascii but solid cube...)
+
+
+and push into both and see which makes more sense or do both make sense? 
+<if there is an issue , its with the "RGB CONVERTER"
+{maybe u can choose a different converter from submenu when u remove some debug stuff}
+
+
+ 1.TPMOS_c_+rmmp.0102.0027/!.gem-
+  flashlite--yolo/!.evo&obs/!.TPMOS_ONBORD_BIBLE_10.md is our platform.
+  currently we are working on pushing out features for wraith-architecture-
+  j25.md . the point of wraith is the make sure gl gui is incredibly auditable
+  in both ascii terminal , and by frame. however ofc the converter should
+  convert the rgb info into real presentable gl elements (like squares ,
+  rectangles , windows , buttons etc, ) the ascii is just the only way i can
+  think of to audit, however if u know better ways pls explain in the wraith
+  arch doc. currently we are building wraith to both beable to run chtml like
+  projects but also want it to look like gl-os desktop and have features like
+  chtmgl . you see its not meant to mirror the ascii 1:1 ; the ascii is just a
+  helpful auditing debugging feature for human and ai, that displays the
+  current frame in its most simplified state. therefore i think our next steps
+  should be , 1 . remove some of the debugging output or at least make it
+  collapsible using +- features , like what is in +-demo/ ; add another option
+  to switch between gl ascii view, or "graphical?" ie 'solid squares rectangles
+  etc, ie the view that is used in gl-os desktop and chtmgl-alpha... i want you
+  to investigate all these areas and update the arch doc and the fast-2do.txt
+  as in a todo list of the features we should impliment first to get up to
+  speed with chtmgl while keeping the frames as close to represnting the gl as
+  possible for easy debugging. if u think of any creative solutions for this,
+  pls feel free to tell me them first, then if i approve them, add them to the
+  architecture doc. always use existing standards if present.
+  
+  
+   2 do ? maybe we
+  make a new "wraith project" as '3d cube' just to see how 3d looks in ascii vs
+  gl . then maybe we can re do the chtpmgl-alpha project ; 2 see how an
+  auditable ascii version would look and how we need to format things etc. get
+  it?
+
+

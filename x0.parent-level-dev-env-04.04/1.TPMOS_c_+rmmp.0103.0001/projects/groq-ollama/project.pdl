@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | groq-ollama
+META         | version            | 1.0
+META         | entry_layout       | projects/groq-ollama/layouts/groq-ollama.chtpm
+STATE        | starting_map       | map_01
+STATE        | player_piece       | iqabel
+STATE        | current_world      | world_01
+RESPONSE     | default            | Project Groq-Ollama loaded. Local LLM interface active.

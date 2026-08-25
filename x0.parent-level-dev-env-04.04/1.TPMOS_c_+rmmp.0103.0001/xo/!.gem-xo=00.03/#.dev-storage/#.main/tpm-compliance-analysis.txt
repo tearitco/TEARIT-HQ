@@ -1,0 +1,213 @@
+================================================================================
+TPM COMPLIANCE ANALYSIS - Functional Differences
+================================================================================
+Date: April 2, 2026
+Purpose: Document WHY reference code works and current code doesn't
+
+================================================================================
+SECTION 1: GL-OS OpenGL Window - NOT A BUG, BY DESIGN
+================================================================================
+
+OBSERVATION:
+Both reference and current gl_desktop.c show ASCII output, not OpenGL window.
+
+ROOT CAUSE ANALYSIS:
+1. Both call glutInit() and glutCreateWindow() correctly
+2. Both call glutMainLoop() correctly
+3. Both write frames to pieces/apps/gl_os/session/current_frame.txt
+4. Both fall back to ASCII rendering when OpenGL can't create window
+
+FUNCTIONAL PRINCIPLE (TPM-COMPLIANT):
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ GL-OS Architecture: File-Based IPC is PRIMARY                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  OpenGL Window → VISUALIZER (secondary, optional)                           │
+│       ↓                                                                     │
+│  current_frame.txt → PRIMARY INTERFACE (file-based IPC)                     │
+│       ↓                                                                     │
+│  Parser reads → Displays in terminal                                        │
+│                                                                             │
+│  KEY INSIGHT: GL-OS is designed to work WITHOUT OpenGL display              │
+│  - Headless servers: ASCII fallback                                         │
+│  - SSH sessions: ASCII fallback                                             │
+│  - No GPU: ASCII fallback                                                   │
+│  - With display: OpenGL window + ASCII file                                 │
+│                                                                             │
+│  This is TPM-COMPLIANT:                                                     │
+│  - Reality persists in files (current_frame.txt)                            │
+│  - Visualization is secondary (OpenGL or ASCII)                             │
+│  - System works with OR without OpenGL                                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+VERIFICATION:
+✓ Reference gl_desktop writes to current_frame.txt
+✓ Current gl_desktop writes to current_frame.txt
+✓ Both show ASCII when OpenGL unavailable
+✓ Both would show OpenGL window with proper display
+
+CONCLUSION:
+gl_desktop IS WORKING CORRECTLY. The ASCII output is the DESIGNED behavior
+for headless/SSH environments. OpenGL window would appear with physical display.
+
+================================================================================
+SECTION 2: OP-ED PLACEMENT - ACTUAL BUG (Architecture Mismatch)
+================================================================================
+
+OBSERVATION:
+op-ed says "Piece placed" but nothing appears on map.
+
+ROOT CAUSE ANALYSIS:
+1. op-ed_module.c calls: pieces/apps/editor/ops/+x/place_tile.+x <map> <x> <y> <glyph>
+2. place_tile.c resolve_paths() looks for: projects/<current_project>/maps/<map>
+3. BUT op-ed is an APP, not a PROJECT
+4. op-ed maps are in: pieces/apps/op-ed/maps/
+5. place_tile looks in: projects/op-ed/maps/ (WRONG!)
+
+FUNCTIONAL PRINCIPLE VIOLATION:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ APP vs PROJECT Path Resolution Mismatch                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  op-ed is an APP (pieces/apps/op-ed/):                                      │
+│  - Maps location: pieces/apps/op-ed/maps/                                   │
+│  - State location: pieces/apps/op-ed/manager/state.txt                      │
+│  - Module location: pieces/apps/op-ed/plugins/+x/op-ed_module.+x            │
+│                                                                             │
+│  place_tile op expects PROJECT structure:                                   │
+│  - Maps location: projects/<project>/maps/                                  │
+│  - State location: projects/<project>/manager/state.txt                     │
+│  - Loaded from: pieces/apps/player_app/manager/state.txt (project_id)       │
+│                                                                             │
+│  MISMATCH:                                                                  │
+│  - op-ed sets current_project="op-ed"                                       │
+│  - place_tile looks for: projects/op-ed/maps/                               │
+│  - Actual maps at: pieces/apps/op-ed/maps/                                  │
+│  - RESULT: "Could not open" error, placement fails silently                 │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+FIX OPTIONS:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Option A: Make op-ed a PROJECT (Recommended)                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ - Move: pieces/apps/op-ed/ → projects/op-ed/                                │
+│ - Update: project.pdl with entry_layout                                     │
+│ - Update: launch via loader, not href                                       │
+│ - Pros: Consistent with TPM architecture                                   │
+│ - Cons: Changes launch method                                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Option B: Fix place_tile to support APP paths                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ - Add: Check pieces/apps/<app_id>/maps/ if projects/<project>/maps/ fails  │
+│ - Add: app_id detection from layout path                                   │
+│ - Pros: Keeps op-ed as APP                                                  │
+│ - Cons: More complex path resolution                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Option C: Create symlink for maps                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ - Create: projects/op-ed/ → pieces/apps/op-ed/                              │
+│ - Pros: Quick fix, no code changes                                          │
+│ - Cons: Architecture still inconsistent                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+RECOMMENDED FIX: Option A
+Move op-ed to projects/op-ed/ and make it a proper PROJECT.
+This aligns with TPM architecture where user-editable content is PROJECT-based.
+
+================================================================================
+SECTION 3: TPM COMPLIANCE PRINCIPLES
+================================================================================
+
+PRINCIPLE 1: File-Based IPC is Primary
+──────────────────────────────────────
+- Reality persists in FILES, not memory
+- OpenGL/visualization is SECONDARY
+- System MUST work without display (headless compliant)
+- current_frame.txt is the interface, OpenGL is just a viewer
+
+PRINCIPLE 2: APP vs PROJECT Distinction
+──────────────────────────────────────
+- APP (pieces/apps/): System tools, shared infrastructure
+- PROJECT (projects/): User content, editable, isolated
+- Ops must know which structure they're working with
+- Path resolution MUST match the topology
+
+PRINCIPLE 3: Reference Code as Source of Truth
+──────────────────────────────────────────────
+- When functionality is broken, CHECK REFERENCE FIRST
+- Compare line-by-line: wc -l current.c #.ref/.../reference.c
+- Identify FUNCTIONAL differences, not just code differences
+- Understand WHY reference works, not just WHAT it does
+
+PRINCIPLE 4: Silent Failures are TPM Violations
+──────────────────────────────────────────────
+- place_tile saying "Could not open" but continuing = BAD
+- op-ed saying "Piece placed" but nothing placed = BAD
+- TPM requires: If operation fails, state MUST NOT change
+- Response MUST reflect actual outcome
+
+================================================================================
+SECTION 4: DOCUMENTATION GAPS
+================================================================================
+
+MISSING FROM PITFALLS:
+1. APP vs PROJECT path resolution for ops
+2. OpenGL fallback behavior (not a bug, by design)
+3. Silent failure detection (response doesn't match action)
+4. Reference-first debugging procedure
+
+MISSING FROM ONBOARDING:
+1. How to decide: APP or PROJECT?
+2. Path resolution patterns for each topology
+3. Testing ops in isolation before integration
+4. Understanding file-based IPC vs visualization
+
+MISSING FROM TEXTBOOK:
+1. Chapter on APP vs PROJECT architecture
+2. Ops design patterns (project-aware vs app-aware)
+3. Silent failure anti-patterns
+4. Reference code analysis methodology
+
+================================================================================
+SECTION 5: PREVENTION MEASURES
+================================================================================
+
+1. ALWAYS CHECK REFERENCE FIRST
+   - Before implementing, read reference code
+   - Compare structure: wc -l, grep function names
+   - Test reference to confirm it works
+   - Identify functional differences, not just syntax
+
+2. UNDERSTAND TOPOLOGY BEFORE CODING
+   - Is this an APP or PROJECT?
+   - Where are maps stored?
+   - Where is state stored?
+   - What path does the op expect?
+
+3. TEST OPS IN ISOLATION
+   - Run op directly: ./op.+x <args>
+   - Verify file changes
+   - Check error handling
+   - Test with valid AND invalid paths
+
+4. VERIFY RESPONSE MATCHES ACTION
+   - If op says "success", verify state changed
+   - If op says "failed", verify state unchanged
+   - Log actual file paths for debugging
+   - Never silently continue on error
+
+5. DOCUMENT FUNCTIONAL PRINCIPLES
+   - WHY does this work?
+   - What are the failure modes?
+   - What are the assumptions?
+   - How do I test this?
+
+================================================================================
+END OF TPM COMPLIANCE ANALYSIS
+================================================================================

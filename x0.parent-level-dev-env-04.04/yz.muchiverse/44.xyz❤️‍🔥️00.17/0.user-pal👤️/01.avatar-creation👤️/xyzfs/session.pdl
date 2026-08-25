@@ -1,0 +1,18 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | xyzfs_session
+META         | version            | 1.0
+META         | notes              | Current logged-in user or guest for this machine
+
+STATE        | mode                 | guest
+STATE        | user_id              | 
+STATE        | user_uuid            | 
+STATE        | display_name         | Guest
+STATE        | xyzfs_path           | 
+STATE        | logged_in_at         | 1787297539
+STATE        | active_avatar_uuid   | 
+STATE        | active_avatar_path   | 
+
+# mode=logged_in | guest
+# xyzfs_path is relative to 00.login-signup install root
+# active_avatar_* set by 01.avatar-creation when a clone is minted/opened

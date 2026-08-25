@@ -1,0 +1,3 @@
+module_path=system/prisc+x pal/main_loop_chtpm.pal
+project_id=start-button
+active_target_id=system

@@ -1,0 +1,16 @@
+origin_game|muchi-pals
+kind|pet
+payload_id|egg_1
+display_name|egg_1
+species_id|sp_caterpillar
+species_name|Caterpillar
+skills|peck,scratch
+hunger|100
+energy|100
+hp|25
+hp_max|25
+mp|13
+mp_max|13
+level|2
+xp|0
+exported_at|1785117094

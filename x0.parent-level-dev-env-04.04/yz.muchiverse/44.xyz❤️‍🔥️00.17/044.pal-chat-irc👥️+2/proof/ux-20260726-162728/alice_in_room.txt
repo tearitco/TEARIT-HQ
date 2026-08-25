@@ -1,0 +1,20 @@
++============================================================+
+|  P A L - C H A T - I R C   [login]                         |
++============================================================+
+|                                                            |
+|  Welcome to pal-chat-irc.                                  |
+|  Create an account, or log in with an existing user ID.    |
+|                                                            |
+|  User 'alice' already exists.                              |
+|                                                            |
++============================================================+
+
+| [ ] 1. User ID: [alice]                                        |
+| [^] 2. Display Name (new accounts only): [Alice0_]                                     |
+[ ] 3. [Create Account]
+[ ] 4. [Log In]
+
+ (Ctrl+C to quit)
+
++=========================================================+
+Active [^]:  (ESC to exit)

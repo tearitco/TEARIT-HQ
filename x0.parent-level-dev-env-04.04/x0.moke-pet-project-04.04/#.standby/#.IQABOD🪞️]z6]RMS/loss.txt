@@ -1,0 +1,3 @@
+1,training,epoch_avg,token,3.123752
+2,training,epoch_avg,token,3.112243
+3,training,epoch_avg,token,3.101373

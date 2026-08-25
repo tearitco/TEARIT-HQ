@@ -1,0 +1,95 @@
+# How To: Deconstruct and Analyze the Transformer Model
+
+This guide explains how to use the programs in the `lab/` directory to convert the trained transformer's knowledge into a per-token format and then analyze that "lossy" data for research and educational purposes.
+
+This workflow allows you to "decompress" the abstract, distributed knowledge of the neural network into a more interpretable, token-centric format and then "magnify" the effects of that knowledge.
+
+---
+### **Step 0: Compilation**
+---
+
+First, you need to compile the lab programs. A dedicated compile script is provided in this directory.
+
+1.  **Make the script executable (only needs to be done once):**
+    ```bash
+    chmod +x lab/compile_lab.sh
+    ```
+
+2.  **Run the compile script from the project root directory:**
+    ```bash
+    ./lab/compile_lab.sh
+    ```
+    This will create two new executables in the `+x/` directory: `probe_model.+x` and `visualize_attention.+x`.
+
+---
+### **Step 1: Train the Main Model**
+---
+
+Before you can analyze the model's knowledge, you need to train it.
+
+-   Run the main training command. This will produce a `.../guess_the_word.txt.weights` file that contains the learned parameters of the model.
+    ```bash
+    ./+x/generation_module.+x train curriculum/guess_the_word/guess_the_word.txt 10 0.001
+    ```
+    (Train for 10 epochs with a learning rate of 0.001. Adjust as needed.)
+
+---
+### **Step 2: Conversion (Probing the Model)**
+---
+
+Now we "convert" the layer-centric weights into a token-centric "probe file". This is the **data generation** step for our experiment.
+
+-   **Program:** `probe_model.+x`
+-   **Action:** This program loads the trained model, including the layer-centric data from the `.weights` file. It then "converts" this data by running every token through the model and capturing the resulting activation vectors. This projects the distributed knowledge of the weights into a new, token-centric format which is then saved to `probe_data.txt`.
+
+-   **How to Run:**
+    ```bash
+    ./+x/probe_model.+x curriculum/guess_the_word/guess_the_word.txt curriculum/guess_the_word/guess_the_word.txt lab/probe_data.txt
+    ```
+    -   `Argument 1`: The vocabulary file (e.g., `curriculum/guess_the_word/guess_the_word.txt`).
+    -   `Argument 2`: The base path for finding the weights file. The program automatically appends `.weights` to this path. For example, by providing `curriculum/guess_the_word/guess_the_word.txt`, the program will automatically find and load the corresponding `curriculum/guess_the_word/guess_the_word.txt.weights` file.
+    -   `Argument 3`: The name of the output file for the probe data (e.g., `lab/probe_data.txt`).
+
+-   **Output:** This creates `lab/probe_data.txt`, a rich dataset where each token is now represented by several high-dimensional vectors.
+
+---
+### **Step 3: Deconversion & Analysis (Magnifying the "Lossy" Effects)**
+---
+
+This is the fun part. We now use our second program, `visualize_attention.+x`, to analyze the `probe_data.txt` file. This program does not use the transformer; it only uses the "deconstructed" data we just generated. This is where we "decompress" and interpret the learned knowledge.
+
+-   **Program:** `visualize_attention.+x`
+-   **Action:** Reads the probe data and performs various analyses.
+
+#### **A. Measuring Semantic Similarity**
+
+This "magnifies" the model's learned sense of closeness between concepts.
+
+-   **Command:** `similarity <word1> <word2>`
+-   **Example:**
+    ```bash
+    ./+x/visualize_attention.+x lab/probe_data.txt similarity cat dog
+    ```
+-   **Interpretation:** This calculates the cosine similarity of the "Final_Embedding" vectors. A score close to 1.0 means the model sees these two words as very similar in meaning or usage. A score close to 0.0 or -1.0 means they are dissimilar. You are "decompressing" the geometric relationship between concepts in the model's "mind".
+
+#### **B. Testing for Abstract Relationships**
+
+This tests if the *structure* of the model's internal vector space has captured complex relationships, like gender or tense.
+
+-   **Command:** `analogy <word1> <word2> <word3>`
+-   **Example:**
+    ```bash
+    ./+x/visualize_attention.+x lab/probe_data.txt analogy king man woman
+    ```
+-   **Interpretation:** This performs the classic `vector(king) - vector(man) + vector(woman)` test. If the model has learned the abstract concept of gender, the resulting vector should be very close to the vector for "queen". This is a powerful way to "decompress" and verify abstract knowledge.
+
+#### **C. Simulating Generation from Deconstructed Attention**
+
+This is the most experimental analysis. It attempts to generate text using *only* the deconstructed Query and Key vectors.
+
+-   **Command:** `generate <start_word> <num_tokens>`
+-   **Example:**
+    ```bash
+    ./+x/visualize_attention.+x lab/probe_data.txt generate the 10
+    ```
+-   **Interpretation:** This simulates a simplified attention mechanism. The quality and coherence of the generated text will reveal how much of the model's full generative power is captured in just the Query-Key interactions of its final layer. It's a way of "magnifying" the role of this specific component of attention in isolation. If the text makes any sense at all, it's a strong sign that these deconstructed vectors have retained significant, meaningful information.

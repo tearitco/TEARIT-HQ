@@ -1,0 +1,45 @@
+SYMLINK ELIMINATION STATUS — 2026-08-19
+==========================================
+
+WHAT WAS DONE:
+- C source: chtpm_rgb_render.c, chtpm_parser_pal.c, prisc+x.c modified
+  to use PRISC_PROJECT_ROOT env var for shared files, session_root (CWD)
+  for session-specific files (pieces/display/*, pieces/keyboard/*)
+- All 29 button.sh files: session symlinks removed,
+  PRISC_PROJECT_ROOT changed from "$SESSION_DIR" to "$SCRIPT_DIR"
+- Shared binaries recompiled: prisc+x.+x, chtpm_parser_pal.x, chtpm_rgb_render.+x
+
+TESTED BY ME (all PASS — 0 symlinks, both processes alive, rgb_frame.raw=1.9MB):
+  P0: 101.mutaclsym🧟‍♂️️19.00       ✅ tested, full launch cycle
+  P0: 041.pal-chain⛓️              ✅ tested, full launch cycle
+  P0: 102.editor-📄️00.00           ✅ tested, full launch cycle
+
+TEST MANUALLY (had session symlinks removed, needs user verification):
+  P1: 01.muchi-pals-🥚️-13.01       (17 symlinks removed, 2 run actions)
+  P1: 044.pal-chat-irc👥️+2         (9 symlinks removed, has users/rooms/data)
+  P1: 041.pal-forum👥️              (8 symlinks removed, has users/)
+  P1: 045.muchi-pal-agent🤖️+1++    (blanket loops removed)
+  P1: 102.agy-txt                  (8 symlinks removed, has docs/)
+  P1: *.START_BUTTON               (6 symlinks removed, multi-session launcher)
+
+NO CHANGES NEEDED (already had 0 session symlinks):
+  P2: $.crypts
+  P2: 007-goldeye+01.00
+  P2: 014.wsr-pal💸️📌️+2
+  P2: 101.drag-drop-test=ON🀄️
+  P2: 101.ledger-player-npc-simple+3
+  P2: 101.lpns+map+4
+  P2: 101.mutaclsym🧟‍♂️️+18.0G       (no session isolation, runs from project root)
+  P2: 150.gl-canvas
+  P2: 151.screen-rec+01.02
+  P2: 200.glut-craft
+  P2: 201.dwarf-fortress
+  P2: 201.rpg-maker-clone
+  P2: 202.snes-civ
+  P2: 203.gb-pokemon
+  P2: 204.sw-battlefront
+  P2: 205.ttg-tactics
+  P2: 209.sp-irl
+  P2: 300.rpg-xyz
+  P2: 300.rtp-xyz
+  P2: _BACKUP_101.mutaclsym-old+18.01  (backup, skip)

@@ -1,0 +1,5 @@
+Vocabulary size: 88
+Matrix shape: 88x88
+Max association: 1.000000
+Min association: 0.112690
+Mean association: 0.790506

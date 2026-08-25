@@ -1,0 +1,49 @@
+# XO-PET Step / Summary Debug Note
+
+Date: 2026-06-20
+
+Observed failure
+- The live controller frame still shows `xolector`, `STEP / END TURN`, and the pet switcher correctly.
+- After issuing `STEP`, the visible frame did not advance the epoch in this session.
+- `turn_summary` remained empty in the visible frame when the user expected the just-finished epoch digest.
+- Root cause: the shared keyboard muscle writes to `pieces/keyboard/history.txt`, but `route_input()` was still treating numeric `3` as a method-slot lookup instead of a project control.
+
+Standard to follow
+- Use the fuzz-op style: one canonical history file, manager-driven consumption, state projection into `gui_state.txt`, and renderer history as a mirror of state rather than the source of truth.
+- Do not invent a new UI-level command path for XO-PET.
+
+What the evidence says
+- `projects/xo-pet-v1/history.txt` was not enough on its own because the live CHTPM keyboard path records into `pieces/keyboard/history.txt`.
+- `projects/xo-pet-v1/pieces/manager/gui_state.txt` only advances after the manager consumes the command event from the shared keyboard history.
+- `pieces/debug/frames/session_frame_history.txt` stays on the pre-step frame until the manager actually consumes the request.
+- The manager code already contains the summary buffer and the `acts:` appends.
+- The bug was in the live manager input routing, not in the summary formatter or the renderer.
+
+Most likely causes
+1. The controller history file is not being consumed by the currently running manager instance.
+2. The manager may be launching from a stale or different project root than the controller runner expects.
+3. The startup/reset sequence may be clearing or reopening state in a way that leaves the history watcher at the wrong offset.
+4. A session may be rendering from a stale `gui_state.txt` snapshot instead of the latest manager state.
+
+Prescribed fix path
+1. Keep the fuzz-op style contract: one canonical command stream, manager-owned state transition, renderer as a mirror.
+2. Watch the shared keyboard history in the XO-PET manager, not just the project-local file.
+3. Buffer numeric nav input until `Enter` is pressed, then commit the selected action.
+4. Treat numeric `1/2/3` as project controls first so the visible `START`, `PAUSE`, and `STEP` buttons work.
+5. Confirm the manager increments `step_count` and `epoch` immediately after consuming `STEP`.
+6. Confirm `turn_summary` is written before `write_gui_state()` refreshes the frame.
+7. Keep a rollback note of the manager binary/source paths so a fresh agent can restore the last-known-good state if this pass regresses.
+
+Acceptance test
+- Launch controller.
+- Navigate to `xo-pet-v1`.
+- Press `STEP` once.
+- Verify all three update together:
+  - `step_count` increments
+  - `epoch` increments
+  - `turn_summary` shows `acts:` lines
+
+Important note
+- This is not an argument for changing the UI model.
+- The UI model is correct.
+- The issue was the command propagation path into the live XO-PET manager.

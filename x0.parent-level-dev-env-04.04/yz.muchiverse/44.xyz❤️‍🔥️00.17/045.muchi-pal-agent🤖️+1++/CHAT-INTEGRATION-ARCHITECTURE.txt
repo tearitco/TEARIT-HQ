@@ -1,0 +1,467 @@
+CHAT-INTEGRATION-ARCHITECTURE — bringing muchi-pal-agent onto real chtpm,
+connecting it to pal-chat-irc (and other chtpm-native projects) both as
+a UI-driver and as a direct backend consumer, LLM-to-LLM chat, the
+/model script option, and meta-orchestration.
+================================================================================
+Status: GOAL / DESIGN DOCUMENT ONLY, matching ROADMAP-models.txt's own
+convention - nothing here is built. Written after reading MPC.txt,
+handoff.txt, ROADMAP-models.txt, main_loop.pal, project.pdl,
+default_op.txt, state.txt, piece.pdl in full, plus yz.muchiverse/
+2.muchi-verse/pal-chat-irc's own real, live-tested implementation
+(#.dox/PAL-CHAT-IRC-STANDARD.txt, its own button.sh/ops/chtpm layouts)
+and !.xyzos-standards.txt's session-isolation sections (23/26/27) - all
+read directly the same day pal-chat-irc was built and session-isolated,
+not secondhand.
+
+Direct user framing this doc answers: "it should be able to chat with
+user, and do its own commands, but the meta script can input its own
+commands... i also think the llm should have a 'script' option which
+will just read and run a pal script instead of fsm or anything... i
+really wanna see that u understand meta orchestrating the chat, while
+interacting with the chat, while the chat maybe talks 2 another chat."
+Also, directly: "we probably didn't give it chtpm usage yet, so thats
+not good" - confirmed true (see sec. 0) and addressed in sec. 1.
+
+Preference recorded from the Q&A that produced this doc: for both "UI-
+drive vs. direct-ops" and "normal participant vs. bespoke" - "both...
+it should be very powerful, customizable flexible etc... modular,
+reusable, well documented and bespoke to what particular task,
+multipurpose." This doc is written to honor that literally: sec. 2
+designs ONE connector interface with TWO interchangeable backends,
+chosen per task, not an either/or architectural commitment.
+
+========================================================================
+0. WHAT WAS ACTUALLY READ, CONFIRMING THE GAP
+========================================================================
+muchi-pal-agent/system/ contains prisc+x.c, keyboard_input.c, renderer.c
+ONLY - no chtpm_parser_pal.c, no chtpm_rgb_render.c. Confirmed by direct
+`find`: zero `.chtpm` files exist anywhere under muchi-pal-agent/pieces/.
+
+CORRECTION (checked directly, not assumed - a first draft of this doc
+wrongly implied mutaclsym itself lacks chtpm; it doesn't): mutaclsym
+has real chtpm - `system/chtpm_parser_pal.c`, real `pieces/chtpm/
+layouts/game.chtpm`/`info_test.chtpm`, real `onClick="INTERACT"`/
+`ACTIVATE` submenus/href navigation, and `button.sh` genuinely launches
+it as the real UI. What's ALSO true and confirmed by reading `game.
+chtpm` directly: mutaclsym's own layouts have no `<cli_io>` anywhere -
+it's a pure digit/movement-key dispatch game, matching MPC.txt sec. 4's
+own accurate framing ("the one thing mutaclsym's engine has never
+needed: free-text multi-character input"). MPC.txt (grep confirms:
+zero mentions of "chtpm" anywhere in it) reused mutaclsym's own
+generic, game-logic-free `prisc+x.c`/`keyboard_input.c`/`renderer.c`
+trio - a correct and reasonable reuse - but never checked whether
+`chtpm_parser_pal.c` ITSELF (the shared engine, independent of how
+mutaclsym happens to use it) already supports free-text input as a
+built-in element type. It does - real `<cli_io>` (live per-keystroke
+gui_state sync, Enter-to-submit) is exactly the mechanism this same
+session built/fixed on pal-chain, pal-forum, and pal-chat-irc (see
+!.xyzos-standards.txt's own cli_io section). `buffer_key.c` is a hand-
+rolled parallel to a feature the engine already had - a real gap in
+the original research, not a deliberate, well-founded architectural
+choice. This predates every real-chtpm convention this family has
+since proven out
+(session isolation, real href navigation, ${piece_methods}, the
+label-always-visible cli_io fix) - muchi-pal-agent is the one project in
+active use still on the old pattern.
+
+========================================================================
+1. THE CHTPM UPGRADE
+========================================================================
+Bring muchi-pal-agent onto the SAME real chtpm stack as pal-chain/pal-
+forum/pal-chat-irc/user-pal - not a rewrite of its actual logic (ops
+stay ops, provider_kind branching stays exactly as proven in send_
+message.c/check_response.c), a swap of the INPUT/RENDER layer only:
+
+  - `system/chtpm_parser_pal.c` synced in from shared-ops (sec. 24 of
+    !.xyzos-standards.txt's own "local copy per project" convention -
+    same sync_shared_op.sh mechanism every other project uses).
+  - `pieces/chtpm/layouts/chat.chtpm` - ONE screen (this project has no
+    login/multi-screen structure today and doesn't need one yet): a
+    real `<cli_io id="message_input" target_id="message_input">` field
+    replaces buffer_key.c's own hand-rolled accumulator entirely -
+    chtpm's own sync_cli_input_from_gui_state() already does per-
+    keystroke live sync, Enter-to-submit (chtpm_parser_pal.c's own
+    "Trigger the Send action by dispatching KEY:13", the exact
+    mechanism pal-chat-irc's own room.chtpm now uses for Enter-sends-
+    chat, PAL-NET-STANDARD.txt-adjacent - see !.xyzos-standards.txt's
+    cli_io section for the full trace of how KEY:13 reaches an op).
+    `buffer_key.c` is DELETED, not kept alongside - it becomes dead
+    code the instant real cli_io does the same job natively.
+  - `${piece_methods}` replaces nothing structurally (this project
+    doesn't have numbered menu actions today beyond y/n and /model,
+    both already free-text), but piece.pdl gets real METHOD rows for
+    anything that becomes a clickable action later (e.g. a real
+    /lab menu, ROADMAP-models.txt sec. 7 - out of scope for THIS doc,
+    named so the chtpm layout doesn't foreclose it).
+  - `main_loop.pal` keeps its own shape (check_response every tick,
+    compose_frame, hit_frame - MPC.txt's own reasoning for why this
+    differs from mutaclsym's did_action/no_key split still holds
+    exactly as written) - only the key-dispatch section changes: no
+    more manual buffer_key/Enter-detection branch, since cli_io now
+    owns that; main_loop.pal's own job shrinks to "check_response,
+    render" plus reacting to `KEY:13`'s already-injected value the
+    same way pal-chat-irc's chat_menu_input.c does (see that project's
+    own header comment on the ENTER-SENDS-CHAT mechanism for the
+    exact, already-proven wiring to copy).
+  - Session isolation (xyzos-standards.txt sec. 23) applies here too,
+    from day one, matching pal-chat-irc's own precedent - button.sh's
+    `run` action gets the same pieces/sessions/<id>/ treatment, with
+    state.txt/context_log.txt as the REAL, persistent, symlinked-in
+    data (this project's own equivalent of pal-forum's users/ or pal-
+    chain's wallets/) - REQUIRED, not optional, the moment sec. 4 below
+    means multiple muchi-pal-agent instances can run concurrently.
+
+========================================================================
+2. THE CONNECTOR ABSTRACTION - ONE INTERFACE, TWO BACKENDS
+========================================================================
+Direct user instruction: support BOTH UI-driving and direct-ops-
+calling, chosen per task, not one architectural commitment. Designed
+as a small connector op family, generic to ANY chtpm-native pal-family
+project (pal-chat-irc is the first concrete target, sec. 3, but
+nothing here is pal-chat-irc-specific by construction):
+
+  connection state (new fields on the owning session's own state.txt,
+  or a nested pieces/apps/player_app/connections/<name>/state.txt if
+  more than one concurrent connection is ever needed - start with the
+  single-field version, generalize only once a second connection is
+  actually built):
+    connector_target_project   - absolute path to the target project's
+                                  own root (e.g. .../pal-chat-irc)
+    connector_backend          - "ui_drive" | "direct_ops"
+    connector_session_dir      - only set when backend=ui_drive: the
+                                  target's own pieces/sessions/<id>/
+                                  this connector launched and owns
+
+  ui_drive backend (three small, reusable ops, none pal-chat-irc-
+  specific - they operate on ANY session directory shape, since every
+  chtpm-native project in this family already agrees on that shape):
+    ops/connector_session_launch.c
+      - mkdir + symlink a NEW session directory under the TARGET
+        project's own pieces/sessions/, exactly matching that target's
+        own button.sh `run` action (read it, don't guess - every
+        project's shape is close but not byte-identical, e.g. what's
+        shared vs. session-scoped differs slightly per project's own
+        real/persistent data). Launches the target's own renderer +
+        chtpm_parser_pal ONLY - never keyboard_input (this connection
+        is driven programmatically, a human is not typing into it).
+        Records connector_session_dir + the two PIDs.
+    ops/connector_inject_key.c <session_dir> <keycode>
+      - appends "KEY_PRESSED: <keycode>\n" to
+        <session_dir>/pieces/keyboard/history.txt - the exact
+        mechanism used by hand, all session, to live-test pal-chat-irc
+        (see this same doc's own sec. 3 for the concrete key sequence
+        a login+join+chat flow needs).
+    ops/connector_read_frame.c <session_dir>
+      - cats <session_dir>/pieces/display/current_frame.txt to stdout
+        (or copies it into this agent's OWN state for its LLM/FSM/
+        script responder to read as context - see sec. 3's own "how
+        does the LLM decide what to press" question).
+    ops/connector_session_kill.c <session_dir>
+      - cwd-matched kill (pal-forum/pal-chat-irc/pal-chain's own
+        kill_own_module() pattern, ported to a standalone op) + rm -rf
+        the session dir - clean teardown, matching every button.sh's
+        own exit trap.
+
+  direct_ops backend (no new connector ops needed at all - this is
+  the SIMPLER backend, by design): the driving agent's own ops shell
+  straight into the target project's own ops, exactly the same
+  `run_capture`-style invocation every *_menu_input.c already does
+  internally, e.g.:
+    cd <connector_target_project> && ./ops/+x/chat_create_user.+x <id> <name>
+    cd <connector_target_project> && ./ops/+x/chat_post_message.+x <room> <id> <text>
+  reads the target's own real, shared `rooms/<room>/messages.txt`
+  directly for incoming messages (no chtpm rendering involved at all -
+  this backend never touches the target's UI layer, purely its data
+  layer). Faster, fewer moving parts, fewer ways to break (nothing to
+  parse from a rendered frame) - the right choice whenever "look like
+  a real human typing" isn't actually the point of a given task (e.g.
+  automated distillation loops, sec. 4, where two LLMs exchanging
+  messages as fast as possible is more valuable than either one
+  literally pressing keys).
+
+  WHEN TO USE WHICH (guidance, not a hard rule - "bespoke to what
+  particular task" was the explicit instruction):
+    - ui_drive: proving the real UI works end-to-end with a non-human
+      participant (the literal "test if the chat works" goal named for
+      the meta-scripts folder, sec. 6), demos, anything where the point
+      IS that it's indistinguishable from a human at the keystroke
+      level.
+    - direct_ops: bulk/fast multi-turn scenarios (LLM-to-LLM
+      distillation runs, sec. 4), anything where UI fidelity isn't the
+      thing being tested and speed/robustness matters more.
+  A single orchestration script (sec. 6) can freely mix both - e.g. one
+  LLM instance ui_drive-testing the real login/join flow while a second
+  instance direct_ops-posts a flood of messages to stress-test the
+  room, in the same run.
+
+========================================================================
+3. HOOKING UP TO PAL-CHAT-IRC SPECIFICALLY (the concrete first target)
+========================================================================
+Read directly (not assumed): pal-chat-irc's own login.chtpm (user_id_
+input, display_name_input cli_io fields, SIGNUP/LOGIN METHODs),
+room_list.chtpm (room_name_input cli_io, JOIN_ROOM METHOD, plus the
+dynamic ${room_choices} button list - !.xyzos-standards.txt sec. 13's
+own dynamic-button convention, added same day this doc was written),
+room.chtpm (message_input cli_io, Enter-sends-chat, no separate Post
+Message button per direct user correction - see chat_menu_input.c's
+own header comment).
+
+ui_drive walkthrough (the literal keycode sequence an LLM-driven
+connector would inject - already hand-verified working, this session,
+via the exact same technique):
+  1. connector_session_launch against pal-chat-irc's own root.
+  2. Focus item 1 (User ID): inject 49 (ASCII '1'), 13 (Enter - enters
+     cli_io edit mode).
+  3. Type the chosen user_id, one printable-ASCII keycode per
+     character.
+  4. inject 27 (ESC - exits cli_io edit mode, per-keystroke gui_state
+     sync already happened live, no separate "save" step needed).
+  5. Repeat 2-4 for item 2 (Display Name) if this is a new account.
+  6. inject 51 13 (item 3, Create Account) or 52 13 (item 4, Log In) -
+     which item number is correct is read off connector_read_frame's
+     own output, not assumed, since visibility-gated buttons
+     (${logged_in}) shift numbering.
+  7. Read the frame again; if "Continue to Rooms" is now present
+     (visibility-gated on logged_in), inject its own item number + 13.
+  8. On room_list.chtpm: either type a room name (items 1+Enter, type,
+     ESC, then the Join/Create Room item) or, if the wanted room
+     already appears in ${room_choices}, just inject that item's own
+     number + 13 directly (no typing needed - the dynamic room-choice
+     buttons exist for exactly this).
+  9. inject the "Enter Room" item's number + 13 once room_selected is
+     true (read off the frame, same as step 6).
+  10. On room.chtpm: focus item 1 (Message), Enter, type the message,
+     then inject 13 directly (NOT ESC-then-click-a-button - room.chtpm
+     has no Post Message method at all, Enter sends directly, per
+     direct user correction this same day).
+  11. Read subsequent frames (connector_read_frame, polled - matching
+     how a human would just look at the screen) to see the LLM's own
+     message land AND any replies from other participants - the room
+     screen already auto-refreshes on incoming messages with zero
+     local keystrokes needed (PAL-NET-STANDARD.txt sec. 6's trigger_
+     render fix, live-verified this same day) so a polling connector
+     genuinely sees live updates, not just its own actions echoed back.
+
+direct_ops walkthrough (the same flow, no UI at all):
+  chat_create_user.+x <id> <name> && chat_switch_user.+x <id>, then
+  chat_post_message.+x <room> <id> "<text>" per turn, tailing
+  rooms/<room>/messages.txt directly for incoming lines (parse the
+  MSG|<msg_id>|<room>|<user_id>|<timestamp>|<text> shape chat_post_
+  message.c already writes - same format connector reads either way).
+  No chat_menu_input.c/chtpm involvement at all - this backend talks
+  straight to pal-chat-irc's own DATA layer.
+
+WHO DECIDES WHAT TO PRESS/SEND: this doc deliberately does NOT design
+new "LLM reads a chtpm frame and decides the next key" logic - that's
+just muchi-pal-agent's OWN existing send_message.c/check_response.c
+loop, unchanged, except its "user turn" input is now sometimes a
+connector_read_frame()'s own output (or a rooms/*/messages.txt tail)
+instead of a human's own typed text, and its "response" sometimes
+becomes a connector_inject_key()/chat_post_message.+x call instead of
+a context_log.txt append. The provider_kind branching, tool-calling,
+persona system - all of it is reused completely unmodified. The
+connector is a new SOURCE and SINK for turns, not a new brain.
+
+========================================================================
+4. LLM-TO-LLM CHAT (knowledge distillation and beyond)
+========================================================================
+Direct answer to "the chat maybe talks 2 another chat": each
+participating LLM is its own, fully independent muchi-pal-agent process
+- own session directory (sec. 1's session-isolation requirement is
+exactly why this works cleanly: two instances never share ephemeral
+state, only the real, persistent pieces both are meant to see), own
+provider_kind/model, own connector instance (sec. 2) pointed at the
+SAME pal-chat-irc room. From pal-chat-irc's own point of view these
+are two ORDINARY users - chat_create_user.c/chat_post_message.c have
+no concept of "human" vs "AI," matching the direct preference recorded
+above ("both... modular, reusable... bespoke to what particular
+task"): the SAME mechanism that lets a human and one LLM chat also
+lets two LLMs chat, three LLMs chat, or an LLM chat with itself under
+two different personas for self-play - no special multi-agent code
+path, just N independent connector-equipped sessions in the same room.
+
+Knowledge distillation concretely: this is DIFFERENT from ROADMAP-
+models.txt sec. 12.2's own "corpus distillation" (a TEACHER generates
+static corpus TEXT offline, fed into main_orchestrator.+x train) -
+LIVE chat distillation means a "teacher" LLM (a strong provider_kind,
+e.g. gemini) and a "student" (e.g. an iqabod curriculum, or a smaller
+local ollama model) actually converse in a real pal-chat-irc room,
+and the student's OWN turns get harvested afterward (tail context_log.
+txt-equivalent from the room's own messages.txt, filtered to the
+student's own author lines) into a corpus file, feeding the EXACT SAME
+`vocab_only` + `train` pipeline ROADMAP sec. 11.1 already designed -
+this is genuinely a live variant of that same mechanism, not a new
+one: the "corpus" is just harvested from a real room transcript instead
+of a purpose-built generate_corpus.+x call. Whether to build a NEW
+harvesting op (`ops/harvest_room_to_corpus.c <room> <author_filter>
+<output_name>`) or reuse generate_corpus.c's own output-writing tail
+is a small, later implementation call, not an open architecture
+question - naming the seam here so it isn't rediscovered as a surprise.
+
+========================================================================
+5. THE /model script OPTION
+========================================================================
+Direct user ask: "the llm should have a 'script' option which will
+just read and run a pal script instead of fsm or anything (which may
+run certain sequence, run its own rl/llm combination or something
+else, get it?)." Your own follow-up ("not actually sure what that
+means... maybe both") is answered here with a concrete recommendation,
+not a re-ask - override any part of it that doesn't feel right once
+this is actually being built.
+
+### 5.1 Why this is genuinely different from fsm, not a renamed copy
+ROADMAP-models.txt sec. 6 already designs `fsm`: a STRUCTURED
+authoring shape - named states (states.txt), a transition table
+(transitions.txt), a dispatch script (on_tick.pal) that beq's on
+current_state, picked from a bank/picker (sec. 6.3). That structure is
+real overhead, worth it when a conversation genuinely branches on
+named conditions ("if user asks about X, go to state EXPLAIN_X").
+`script` is for the OTHER real case: a sequence that doesn't need
+named branching at all - "always do A, then B, then C," a literal
+recorded macro, a fixed test routine, or (your own parenthetical) a
+script that itself invokes "its own rl/llm combination" as one step
+among others - i.e. script mode's own steps aren't limited to "canned
+text," a step can be "call the rl responder for this one turn" or
+"call the iqabod responder for this one turn," making script mode a
+genuine ORCHESTRATOR of the other three model kinds, not a fourth peer
+bolted on beside them. Concretely: a `chat::call_tool ask_iqabod` step
+(reusing ROADMAP sec. 6.2's own chat::call_tool verb, pointed at a
+generate call instead of a sandboxed tool) is how a script "runs its
+own rl/llm combination" - no new plumbing beyond what fsm already
+needed to design.
+
+### 5.2 Registry shape (parallel to fsm's own, sec. 6.1)
+  pieces/registry/scripts/<script_name>/
+  ├── piece.pdl        (documents the op table, same as every other piece)
+  ├── script.pal        (the actual sequence - real prisc+x bytecode:
+                          li/beq/j/halt plus chat::* op calls, NO
+                          states.txt/transitions.txt at all - that's
+                          the entire structural difference from fsm)
+  └── README.txt        (one-paragraph human description of what this
+                          script does and why it exists - scripts are
+                          meant to be authored/read by a person, unlike
+                          fsm's state tables which are closer to data)
+"/model script" opens the SAME shared bank/picker mechanism ROADMAP
+sec. 5.1/6.3 already calls for reuse across rl/fsm - now a THIRD
+consumer of one picker op, strengthening the case it should be built
+shared from the start (sec. 6.3's own note, now doubly true).
+
+### 5.3 Resolving "one-shot vs. persistent" - BOTH, via one mechanism
+Your "maybe both" is correct, and it doesn't need two separate
+implementations - a script.pal is just a prisc+x program, and prisc+x
+programs already support both shapes natively via ordinary control
+flow, same as main_loop.pal itself does:
+  - ONE-SHOT: script.pal runs its sequence once, ends in `halt`
+    (or explicitly hands control back to a different provider_kind by
+    writing state.txt's own provider_kind field before halting - e.g.
+    a script that does a fixed "greeting + tool-call demo" then drops
+    back to normal LLM chat). This is the shape for the "test if chat
+    works" scenarios (sec. 6) - a script that logs in, joins a room,
+    sends one message, asserts a reply arrived, and exits with a
+    pass/fail written to a result file.
+  - PERSISTENT: script.pal ends in `j loop` (or similar) back to its
+    OWN top, exactly like main_loop.pal's own real shape - becomes the
+    per-turn responder indefinitely, e.g. a script that alternates
+    `chat::wait_for_input` / `chat::respond "canned text"` forever, or
+    cycles through several `chat::call_tool ask_<model>` steps round-
+    robin (a literal "ensemble" responder, script mode ORCHESTRATING
+    iqabod/rl/fsm/llm turns rather than being a peer to them - directly
+    realizing your own "run its own rl/llm combination" framing).
+  Both are the SAME mechanism (a .pal script authored either way) -
+  the distinction lives in how the script's OWN author writes it, not
+  in two different engine modes. This is the recommendation: don't
+  build two separate "script kinds," build one script registry entry
+  point and let script.pal's own control flow decide which shape it is.
+
+### 5.4 Relationship to sec. 4's LLM-to-LLM chat and sec. 6's meta-scripts
+Important distinction worth naming explicitly so it's never confused:
+`/model script` (this section) is a PER-CONVERSATION responder choice,
+selected the same way iqabod/rl/fsm are - it lives INSIDE one
+muchi-pal-agent session, controls what THAT session says. The meta-
+orchestration scripts (sec. 6) are a different, OUTER layer - plain
+shell scripts that launch and coordinate MULTIPLE sessions from
+outside any of them. A meta-orchestration script could easily launch
+an instance running in `/model script` mode (e.g. to run a scripted
+test participant) alongside instances running normal LLM/rl/fsm modes
+- the two layers compose, they aren't the same thing wearing two names.
+
+========================================================================
+6. META-ORCHESTRATION - THE llm scripts/ FOLDER
+========================================================================
+Direct ask: "we will have scripts to run in llm scripts folder that
+can start multiple llms and do things like test if the chat works,
+and other things using fsm/bt/rl/llm etc." New top-level `scripts/`
+directory in muchi-pal-agent/ (alongside the existing scripts/build.sh),
+holding plain bash (matching ROADMAP sec. 11.2's own `lab_autotrain.sh`
+precedent - "matches this whole environment's existing system()/shell
+everywhere op-calls-op convention, needs zero new engine work, and can
+start being useful immediately" - the same reasoning applies here,
+this is an outer coordination layer, not something that needs its own
+engine).
+
+Each orchestration script's real job, concretely:
+  1. Launch N muchi-pal-agent sessions (sec. 1's session isolation makes
+     this safe - each gets its own pieces/sessions/<id>/, no shared-
+     file contamination, matching xyzos-standards.txt sec. 23's own
+     "manual/agent testing gotcha" writeup - an orchestration script
+     IS exactly the kind of thing that writeup warns must set up real,
+     distinct sessions, never launch a second instance against a
+     directory a first one is still using).
+  2. Configure each instance's own provider_kind/model (iqabod/rl/fsm/
+     script/gemini/ollama/llamacpp - any mix) and connector settings
+     (sec. 2 - ui_drive or direct_ops, pointed at a shared pal-chat-irc
+     room).
+  3. Drive or wait for the scenario (inject a starting message, or let
+     script-mode instances run themselves - sec. 5.3's own "persistent"
+     shape).
+  4. Assert/inspect results - read the room's own rooms/<room>/
+     messages.txt, or each instance's own context_log.txt, and check
+     for expected content/turn counts/absence of errors - the concrete
+     "test if the chat works" deliverable.
+  5. Tear down cleanly - connector_session_kill.+x (sec. 2) for every
+     ui_drive connection, plain process kill for direct_ops-only
+     instances (they never launched a target UI session to clean up).
+
+Example scenarios this layer is FOR (named so the shape is concrete,
+none of these are built):
+  - `test_basic_chat.sh` - one muchi-pal-agent instance, ui_drive
+    connector, logs into pal-chat-irc, joins a room, sends a fixed
+    message, asserts it appears in the room's own messages.txt within
+    N seconds. The literal automated regression test for "does the
+    chat work," replacing what's been done by hand, this whole
+    session, via manual key injection.
+  - `distill_teacher_student.sh` - two instances (gemini "teacher",
+    iqabod "student"), direct_ops connectors (speed over UI-fidelity,
+    sec. 2's own guidance), same room, N turns of live conversation,
+    then harvests the student's own turns into a new corpus (sec. 4)
+    and runs the existing vocab_only+train pipeline.
+  - `multi_agent_soak.sh` - many instances (mix of script-mode fixed
+    participants and real LLM participants), same room, run for a long
+    duration, used to stress-test pal-chat-irc's own room-list/message-
+    propagation code under real concurrent load rather than the
+    hand-built two-session tests done so far this session.
+
+========================================================================
+7. BUILD ORDER (recommended, not committed - override freely)
+========================================================================
+1. Sec. 1's chtpm upgrade alone, verified against the EXISTING
+   ollama/gemini/llamacpp/iqabod chat loop with no connector/multi-
+   agent code at all yet - prove the UI swap didn't regress anything
+   already working, same "vertical slice first" discipline every other
+   doc in this project already follows.
+2. Sec. 2's connector ops, tested standalone against pal-chat-irc (both
+   backends), independent of muchi-pal-agent's own chat loop - a
+   connector that can log a bot into pal-chat-irc and post one message
+   is a complete, testable unit before it's wired into anything else.
+3. Sec. 3's concrete pal-chat-irc walkthrough, live-verified exactly
+   the way every other feature this session was verified (real
+   processes, real key injection or real op calls, actual frame/file
+   inspection - not "should work").
+4. Sec. 4 (two real instances, one room) - the first genuine multi-
+   agent test, once 1-3 are each independently proven.
+5. Sec. 5's script registry + picker (can happen in parallel with 2-4,
+   genuinely independent) - starting with a ONE-SHOT test script (the
+   test_basic_chat.sh scenario from sec. 6 is naturally also script
+   mode's own first real example).
+6. Sec. 6's orchestration scripts, once there's more than one working
+   piece (connector + script mode both existing) worth orchestrating.

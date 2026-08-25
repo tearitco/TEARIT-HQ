@@ -1,0 +1,346 @@
+================================================================================
+xyz-agy-handoff-j30.txt - HANDOFF, session ending on token/context limit.
+Read this whole file before touching code. Written 2026-07-30 for a fresh
+agent with zero conversation memory. Every claim below is marked TESTED,
+READ-ONLY, or UNTESTED - do not upgrade a READ-ONLY/UNTESTED claim to
+TESTED without actually running it.
+================================================================================
+
+## 0. What this project is
+
+102.agy-txt is a self-contained, single-process rewrite of the widget-pair
+editor (102.editor-📄️00.00 + &.widgits/file-menu, registered together as
+@.apps/text-editor-xyz). See PLAN.md in this dir for the full history -
+Phases T0-T5 are DONE, T5's own harness (test-harn-agy-txt/) is green
+(8/8 assertions, real key injection, real save/load round trip PROVEN -
+but see §2 below, that harness used PASTE mode throughout, which turns
+out to matter a lot). Phase T6 (comparison writeup) is also done:
+#.haiku+/30.jul-30-handoff/1.ngn/ed-app-vs-agy-txt.md.
+
+Today (2026-07-30), AFTER T5/T6 were both marked done, the user did real
+live human keyboard testing (not the harness) and found two more real
+bugs. #1 is FIXED and confirmed. #2 is NOT fixed - this is the actual
+handoff item.
+
+--------------------------------------------------------------------------------
+## 1. Bug #1 - character doubling on real typing - FIXED, CONFIRMED WORKING
+
+TESTED: user confirmed live ("it works for me now") after this fix.
+
+Symptom: typing "testing" into the editor canvas landed as
+"tteessttiinngg" - every character exactly duplicated.
+
+Root cause (confirmed via direct source read + one live isolation test -
+a single manual `echo 88 >> interact_relay.txt` produced exactly ONE
+character in editor_buffer.txt, proving the READ side, agy_edit_key.c's
+main loop, was innocent): TWO independent capture paths each deliver the
+SAME physical keystroke into `interact_relay.txt` whenever a real
+gl_mirror GL window is open -
+  (1) `014.wsr-pal💸️📌️+2/system/gl_mirror.c`'s own GLUT keyboard()/
+      special_keyboard() callbacks append directly (see append_key(),
+      line ~233).
+  (2) `system/keyboard_input.c`'s terminal capture -> `pieces/keyboard/
+      history.txt` -> `chtpm_parser_pal.c`'s `process_key()` INTERACT
+      branch (around line 3467, `strcmp(el->onClick, "INTERACT")`) ->
+      `inject_raw_key(eff)` at line 3499 (pre-fix) - a second,
+      independent forward of the same key.
+
+gl_mirror.c already had the intended fix mechanism sitting unused:
+`pieces/system/gl_focus.lock`, written by gl_mirror while it's alive
+(update_focus_lock()/remove_focus_lock(), gl_mirror.c line ~199-216),
+with its own header comment CLAIMING "keyboard_input.c was updated to
+check the same lock" - that claim was FALSE, confirmed via grep, zero
+hits for "gl_focus"/"focus_lock" in either keyboard_input.c or
+chtpm_parser_pal.c before this fix.
+
+FIX APPLIED (2026-07-30) in the SHARED system source:
+`014.wsr-pal💸️📌️+2/system/chtpm_parser_pal.c`, INTERACT branch, right
+before the `inject_raw_key(eff);` call - now wrapped in:
+```c
+{
+    char *lock_path = build_path_malloc("pieces/system/gl_focus.lock");
+    int gl_owns_input = (lock_path && access(lock_path, F_OK) == 0);
+    free(lock_path);
+    if (!gl_owns_input) inject_raw_key(eff);
+}
+```
+Skips the redundant forward ONLY when gl_mirror is actually alive for
+this session. NO_GL/headless sessions never see the lock file, so
+inject_raw_key still fires exactly as before there (the only path for
+typed text in that mode). Button navigation is a completely separate
+branch of process_key(), untouched.
+
+REBUILD STATE: the shared binary at `014.wsr-pal💸️📌️+2/system/
+chtpm_parser_pal` was recompiled from the fixed .c (gcc, compiles clean,
+confirmed via checksum). It was then copied into BOTH `102.agy-txt/
+system/chtpm_parser_pal` and `102.editor-📄️00.00/system/
+chtpm_parser_pal` via each project's own `scripts/build.sh` (checksums
+match the wsr-pal master - confirmed via `md5sum`). GOTCHA HIT WHILE
+DOING THIS: a project's own `scripts/build.sh` does `cp ... 2>/dev/null
+|| true` for these binaries - if ANY process for that project still has
+the OLD binary open (ETXTBSY), the cp silently fails and the `|| true`
+swallows it, but the script still prints "copied system/ from wsr-pal"
+and exits 0. ALWAYS kill every live session for a project (`ps aux |
+grep <project-dir>`) before rebuilding, then verify via `md5sum` against
+the wsr-pal master - do not trust the build script's own success message
+alone. This bit me once this session (a leftover manual test session I'd
+forgotten to kill silently blocked agy-txt's own rebuild for one pass).
+
+WHY NEITHER PROJECT'S OWN "level-2" HARNESS EVER CAUGHT THIS: both
+test-harn-ed-app and test-harn-agy-txt inject keys via direct file
+writes (one deliberate write per intended character) or via an op's own
+PASTE mode - never a real OS-level keystroke. This class of bug (a race
+between two independent real capture PROCESSES) is structurally
+invisible to that kind of injection. See ed-app-vs-agy-txt.md §3 and
+todo-j30.txt §5's 2026-07-30 UPDATE note (same handoff tree,
+`#.haiku+/30.jul-30-handoff/1.ngn/`) for the fuller writeup - both
+already updated with this finding before this handoff was written.
+
+--------------------------------------------------------------------------------
+## 2. Bug #2 - SAVE AS / LOAD path field display - **UNRESOLVED, START HERE**
+
+NOT fixed. Contradictory test results below - this is the real state,
+not a guess. Read both before changing anything.
+
+### 2a. What the user saw (real, live, `sh button.sh r`, REAL GL window)
+
+Typed "hi" into the PATH field on file_browser_save.chtpm. The on-screen
+`PATH: [X]` line NEVER changed - stayed exactly "PATH: [X]" through
+every frame, before and after typing. (The SEPARATE bottom status line,
+`Active [^]: h` then `Active [^]: i`, DID show individual keystrokes -
+but that's chtpm_parser_pal's own generic "last raw key while INTERACT"
+echo, unrelated to this project's own PATH line - it never accumulates
+by design, same as it wouldn't for the editor canvas either.)
+
+User's own words: "save as doesn't work."
+
+### 2b. What I tested myself, AFTER the bug #1 fix was already deployed (headless, NO_GL, real key injection, single character)
+
+TESTED, this exact sequence, reproducible:
+```bash
+cd 102.agy-txt
+rm -rf pieces/sessions
+NO_GL=1 setsid bash button.sh run > /tmp/somewhere.log 2>&1 & disown
+sleep 2
+SESS="$(ls -dt pieces/sessions/*/ | head -1)"; SESS="${SESS%/}"
+echo "[TS] KEY_PRESSED: 50" >> "$SESS/pieces/keyboard/history.txt"   # '2' -> FILE MENU
+sleep 1
+echo "[TS] KEY_PRESSED: 13" >> "$SESS/pieces/keyboard/history.txt"   # Enter
+sleep 1
+echo "[TS] KEY_PRESSED: 51" >> "$SESS/pieces/keyboard/history.txt"   # '3' -> SAVE AS...
+sleep 1
+echo "[TS] KEY_PRESSED: 13" >> "$SESS/pieces/keyboard/history.txt"
+sleep 1
+echo "[TS] KEY_PRESSED: 49" >> "$SESS/pieces/keyboard/history.txt"   # '1' -> TYPE PATH
+sleep 0.5
+echo "[TS] KEY_PRESSED: 13" >> "$SESS/pieces/keyboard/history.txt"
+sleep 1
+echo "88" >> "$SESS/pieces/apps/player_app/interact_relay.txt"       # 'X', ONE real relay write
+sleep 1
+cat "$SESS/pieces/system/agy_path_buffer.txt"   # -> "X"
+cat "$SESS/pieces/apps/player_app/view.txt"     # -> "PATH: X[X]" (correctly shows the typed X)
+```
+This worked correctly - the buffer updated, the view.txt line changed to
+show it. Session left running at last check:
+`102.agy-txt/pieces/sessions/1785443390-2151922` (NO_GL=1 - may still be
+alive, or may have been reaped - check `ps aux` first, don't assume).
+
+### 2c. The real, unresolved question
+
+§2a (real GL, real human typing) failed. §2b (headless, single synthetic
+relay write) worked. These do NOT need to contradict each other -
+the most likely explanation, given §1's own root cause, is a SIBLING bug
+in the SAME family: something about REAL GL-window typing specifically
+(not present in a synthetic single-write test) is still breaking the
+path field, even after §1's dual-capture fix. Concrete hypotheses NOT
+yet checked by anyone:
+  - Does the §1 fix actually cover this code path too? The INTERACT
+    branch fix in chtpm_parser_pal.c applies to ANY onClick="INTERACT"
+    element system-wide, including the path field's own `<button
+    onClick="INTERACT" id="path_field">` (file_browser_save.chtpm line
+    5) - so it SHOULD already be covered. Verify this directly (repeat
+    §2b's test but WITHOUT NO_GL, i.e. with a real gl_mirror running, to
+    see if the doubling-class bug is really gone for this specific
+    button too, or if something about it differs).
+  - Multiple real keystrokes in a row (not just one) - does the SECOND
+    or THIRD real character break something the first one didn't
+    (write_path_buffer/read_path_buffer race, or a render-pipeline lag
+    specific to rapid real typing)?
+  - Is there a difference between the headless renderer's frame-refresh
+    path and gl_mirror's own texture-refresh path that could show a
+    STALE frame even after view.txt itself is correct on disk (i.e. is
+    this actually a rendering/display bug, not a data bug at all)? Not
+    investigated at all this session.
+
+DO NOT assume §2b's success means the bug is fixed. Re-test with a real
+GL window (unset NO_GL, needs a real $DISPLAY) before declaring this
+resolved.
+
+--------------------------------------------------------------------------------
+## 3. Separately - missing directory browser / back-navigation (real gap, not a bug - a scope miss)
+
+User's own question: "where is file explorer and back functionality?"
+Correct question - it doesn't exist. What agy-txt currently has is a
+minimal stub:
+
+`102.agy-txt/pieces/chtpm/layouts/file_browser_save.chtpm` (and
+`file_browser_load.chtpm`, same shape) - just a raw PATH field
+(blind-typed, no directory listing) + SAVE/LOAD + CANCEL (which goes
+back to file_menu.chtpm - the ONLY "back" that currently exists, no
+up-a-directory navigation within the browser itself, because there's no
+browser).
+
+The DISPLAY bug in §2 is inside `102.agy-txt/ops/agy_compose_view.c`,
+function `compose_file_browser()` (~line 131-176). One cosmetic thing
+noticed while reading it, separate from §2's real bug: line 157,
+`snprintf(row, sizeof(row), "PATH: %s[X]", typed);` - the literal
+`[X]` is a hardcoded SUFFIX meant to look like a cursor block, appended
+after `typed` regardless of its content. It is not itself the bug (in
+§2b's working test, `typed` correctly appeared BEFORE it - "PATH:
+X[X]") but it's a confusing, easy-to-misread format either way and
+worth cleaning up once §2's real bug is fixed.
+
+### 3a. TPMOS reference - READ (source read in full this session), NOT run/tested live
+
+`1.TPMOS_c_+rmmp.0103.0001/projects/agy-text-editor/layouts/
+file_browser.chtpm` (ONE layout, used for both save AND load, unlike
+agy-txt's two separate ones) uses a fundamentally different, real,
+working mechanism:
+  - `<cli_io id="search_query" target_id="search_query"
+    label="${search_query_val}" />` and same shape for
+    `file_path_input` - a REAL, CONFIRMED-SUPPORTED chtpm element type
+    (grepped `014.wsr-pal💸️📌️+2/system/chtpm_parser_pal.c` directly -
+    `cli_io` handling is extensive and real, starting around line 162,
+    including live gui_state persistence, per-keystroke `cli_buffers.txt`
+    append with a per-id one-character line prefix - see the exact
+    write logic at chtpm_parser_pal.c lines ~3440-3463, confirmed by
+    direct read: `id="path_field"` would get prefix `'p'`, one full
+    line `p<current_buffer>\n` appended per keystroke, generic fallback
+    branch, does not need special-casing).
+  - `${directory_browser_markup}`, `${autocomplete_suggestions_markup}`,
+    `${browser_action_buttons_markup}` - these are chtpm VARIABLES that
+    expand to entire chunks of markup (multiple button-shaped lines),
+    not just an attribute value. NOT CONFIRMED whether THIS house's own
+    chtpm_parser_pal.c supports whole-markup-block variable expansion
+    the same way (agy-txt's own `${game_map}` usage is a single
+    `<text>` value substitution only, never tested for a variable that
+    expands to several sibling elements) - check `substitute_vars()` in
+    chtpm_parser_pal.c (~line 844) directly before assuming this works
+    the same way here.
+  - Real directory listing logic lives inline in
+    `1.TPMOS_c_+rmmp.0103.0001/projects/agy-text-editor/manager/
+    agy-text-editor_manager.c` (1013 lines, ONE big manager daemon, NOT
+    this house's own "thin script + separate ops" shape) - functions
+    `find_autocomplete_matches()` (line ~392), `save_to_path()`/
+    `load_from_path()` (~482/506), `handle_command()` (~530),
+    `process_key()` (~574). Read at a function-signature level only,
+    NOT read in full, NOT run live.
+
+### 3b. &.widgits/file-menu - the house-native, ALREADY-PROVEN alternative - PARTIALLY READ, more promising than TPMOS for direct reuse, NOT tested for directory-browsing UI specifically
+
+This is this house's own real, XYZOS-standard, already-working file
+browser widget - the SAME one 102.editor's own harness
+(test-harn-ed-app/scenarios/demo_save.sh) already proves SAVE_AS/LOAD
+against. Its own layout
+(`&.widgits/file-menu/pieces/chtpm/layouts/file-menu.chtpm`) is
+BUTTONLESS - the entire UI (including any directory listing) is
+composed as flat ASCII text into `${game_map}` by its own op, not via
+individual chtpm elements at all - avoids the whole
+"how-many-button-slots" problem TPMOS's dynamic-markup approach has,
+and matches agy-txt's OWN "op composes its own view text" convention
+(agy_compose_view.c) far more closely than TPMOS's `<cli_io>` +
+dynamic-markup approach does.
+
+**UPDATE (2026-07-30, later in the same handoff session) - READ IN FULL
+NOW, both files. Verdict: file-menu ALREADY HAS complete, real,
+working directory navigation - descend into dirs, go back up, search-
+filter, live path/search typing, PASTE mode. It is NOT a stub. No
+separate todo doc was written in `&.widgits/file-menu/` for this
+reason - there is nothing missing there to write a todo about. This
+directly answers "does fm have directory navigation like TPMOS" - yes,
+functionally equivalent, architected differently. Use FM as the
+blueprint for agy-txt's own fix, not TPMOS - it's already proven, in
+this house's own idioms, and both files below are now fully read.**
+
+Ops (`&.widgits/file-menu/ops/`):
+  - `fm_scan_dir.c` - genuinely generic, zero project-specific paths,
+    real, clean, reusable as-is. Interface: `fm_scan_dir <dir>
+    [filter]`, prints to stdout one line per entry: `DIR|<name>|<size>|1\n`
+    or `FIL|<name>|<size>|0\n`, sorted dirs-first then case-insensitive
+    name.
+  - `fm_menu_input.c` (564 lines, fully read) - the real dispatch, all
+    of it in `handle_file_browser()` (line ~283-437), driven off a
+    simple key-value state file (`pieces/system/fm_state.txt`: `mode`,
+    `browse_mode` [save_as/load/pair], `browse_dir`, `cursor_pos`,
+    `search_text`, `path_buffer`). FIXED LAYOUT INDEX SCHEME (line
+    ~298-310): index 0 = SEARCH field, 1 = FILE field, 2 = BACK, 3..
+    (2+entry_count) = directory entries (re-scanned live via
+    `fm_scan_dir.+x` each dispatch, so the index range moves with
+    however many entries are currently listed), then confirm, then
+    cancel. Real up-navigation: BACK (line 323-333) does
+    `strrchr(browse_dir, '/')`, truncates to the parent, writes it back
+    to `browse_dir`, resets cursor to 0 - genuinely goes up a real
+    directory level, not a fixed "return to file_menu" shortcut like
+    agy-txt's own CANCEL. Real descend: selecting a DIR entry (line
+    340-345) appends `/name` to `browse_dir` and resets cursor - you
+    can browse arbitrarily deep. Selecting a FILE entry (line 346-350)
+    writes its full path into `path_buffer` and moves cursor to the
+    FILE field (1) for review/edit before confirming. Confirm (line
+    366-384) sends `SAVE_AS:<path>` or `LOAD:<path>` via
+    `enqueue_cmd_with_path()`. Typing (search or path field) is plain
+    per-keystroke append (line 417-436) PLUS a separate PASTE mode
+    (`handle_paste()`, line 508-531, `fm_menu_input.+x PASTE "<text>"`)
+    for whole-string/emoji-path insertion - same real reason as
+    agy_edit_key.c's own PASTE mode (a keystroke is one byte, an emoji
+    is not one keystroke).
+  - `fm_compose_frame.c` - confirmed (grep, not full read) it renders
+    off the EXACT SAME `browse_dir`/index scheme: `[<- BACK]` at the
+    fixed BACK slot (line ~124), then one line per `fm_scan_dir.+x`
+    result for the current `browse_dir` (line ~132-139). Read this file
+    in full before implementing agy-txt's own render side - the exact
+    line-formatting/numbering logic needs to match fm_menu_input.c's
+    own index math exactly, or clicks will select the wrong entry.
+  - `fm_set_focus.c`, `fm_enqueue_cmd.c`, `ledger_append.c`,
+    `ledger_peers.c` - still not investigated, these are cross-project
+    focus/pairing/ledger plumbing (see `execute_menu_option()`'s own
+    option 5/6 branches), not part of directory browsing itself, safe
+    to skip for this specific fix.
+
+--------------------------------------------------------------------------------
+## 4. Recommended next steps, in order
+
+1. Re-test §2 with a REAL GL window (not NO_GL) to find out whether the
+   path-field display bug is a data bug (buffer not updating) or a
+   render/display bug (buffer updates fine, screen doesn't reflect it) -
+   this determines everything else. Use the exact §2b command sequence
+   but drop `NO_GL=1` and make sure `$DISPLAY` is set.
+2. Read `fm_compose_frame.c` in full (§3b - `fm_menu_input.c` is
+   already fully read and summarized there, no need to re-read it)
+   before writing any new directory-browsing code - do not re-invent
+   this, file-menu already solved it, matching TPMOS's own real
+   capability (browse into dirs, go back up, search, live-typed path)
+   functionally, and is already proven against a real harness. Its own
+   index math (BACK=2, entries start at 3, confirm/cancel after) is the
+   exact contract to copy - get it wrong and clicks select the wrong
+   row.
+3. Fix §2's real display bug first (small, isolated), THEN build real
+   directory browsing by porting fm_menu_input.c's own
+   `handle_file_browser()` shape into agy-txt's own architecture -
+   confirmed as the right blueprint (§3b), not TPMOS's `cli_io`+
+   dynamic-markup approach (which would ALSO require confirming
+   `${var}`-expands-to-a-markup-block support in this house's own
+   chtpm_parser_pal.c, still unconfirmed, see §3a - avoid that open
+   question entirely by mirroring FM instead, which needs no such
+   support since it renders everything as flat composed text, same as
+   agy_compose_view.c already does today).
+4. Whatever gets built, add REAL up-a-directory ("<- BACK" within the
+   browser, not just CANCEL-to-file-menu) and wire it through a level-2
+   harness scenario the same way T5's did - and per §1's own lesson,
+   budget at least one REAL (non-NO_GL, or xdotool-driven) test for the
+   typing path specifically, since synthetic single-write tests have
+   already been shown (§2c) to potentially miss real bugs here.
+5. Once genuinely fixed and re-verified, update PLAN.md (T4's own
+   "DONE" claim currently overstates what was actually built here -
+   T4's SAVE_AS/LOAD claim was only ever level-2-synthetic-tested, never
+   real-GL-tested, and this handoff is the direct proof that mattered).
+================================================================================

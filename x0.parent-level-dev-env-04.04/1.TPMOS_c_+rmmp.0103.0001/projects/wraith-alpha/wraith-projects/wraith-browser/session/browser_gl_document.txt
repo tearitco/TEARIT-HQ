@@ -1,0 +1,7 @@
+[H1] Controlled JS Lab
+This page is the first compatibility seam. Scripts are executed by a dedicated TPMOS op, not by hidden window logic.
+Use the chrome buttons to increment or reset the counter.
+- counter_inc
+- counter_reset
+link: Return home
+link: Open the audit page

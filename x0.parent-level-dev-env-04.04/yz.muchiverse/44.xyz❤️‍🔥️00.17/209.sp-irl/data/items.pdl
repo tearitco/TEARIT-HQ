@@ -1,0 +1,4 @@
+# id name type heal_amt price
+1 POTION HEAL 20 100
+2 SUPER_POTION HEAL 50 300
+3 POKEBALL CATCH 0 100

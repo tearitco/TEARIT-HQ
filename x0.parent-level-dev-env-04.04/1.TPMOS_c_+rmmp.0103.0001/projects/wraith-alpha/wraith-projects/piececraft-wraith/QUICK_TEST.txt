@@ -1,0 +1,113 @@
+═══════════════════════════════════════════════════════════
+PIECECRAFT-WRAITH PHASE 1 - QUICK TEST REFERENCE
+═══════════════════════════════════════════════════════════
+
+PROJECT READY FOR TESTING
+Location: projects/wraith-alpha/wraith-projects/piececraft-wraith/
+Status: All files created and verified
+Manager: piececraft-wraith_manager.+x (26KB, executable)
+Render Op: render_map_wraith.+x (17KB, executable)
+
+───────────────────────────────────────────────────────────
+QUICK TEST COMMANDS (run in project directory)
+───────────────────────────────────────────────────────────
+
+1. Test render op directly:
+   ./ops/+x/render_map_wraith.+x 4 2 0 map_01
+
+2. Check state file:
+   cat session/state.txt
+
+3. Check map files exist:
+   ls -lh maps/map_01_z*.txt
+
+4. Check manager binary:
+   ls -lh manager/+x/piececraft-wraith_manager.+x
+
+5. Verify layout syntax:
+   grep -c "module\|game_map\|xel_x" layouts/piececraft-wraith.chtpm
+
+───────────────────────────────────────────────────────────
+IN WRAITH - EXPECTED CONTROLS
+───────────────────────────────────────────────────────────
+
+MOVEMENT (Arrow Keys):
+  ← LEFT   = Move xelector left
+  → RIGHT  = Move xelector right
+  ↑ UP     = Move xelector up
+  ↓ DOWN   = Move xelector down
+
+Z-LEVEL (X/Z Keys):
+  X = Ascend (Z+1, max 2)
+  Z = Descend (Z-1, min 0)
+
+MODE:
+  8 = Toggle 2D/3D display mode
+  D = Toggle debug info display
+
+NAV:
+  ESC = Return to menu
+
+───────────────────────────────────────────────────────────
+EXPECTED MAP AT START
+───────────────────────────────────────────────────────────
+
+####################
+#..................#
+#...>..........R...#  ← xelector at (4,2,0)
+#..................#
+#.........T........#
+#....R.............#
+#..................#
+#...........T......#
+#..................#
+####################
+[2d_topdown] [Xelector: (4,2,0)] [Tile: .]
+
+───────────────────────────────────────────────────────────
+WHAT TO VERIFY
+───────────────────────────────────────────────────────────
+
+✓ Manager starts without crashing
+✓ Pressing arrow keys moves xelector (< 100ms latency)
+✓ Pressing X/Z changes Z level and map display
+✓ Pressing 8 toggles display mode in status line
+✓ Pressing D toggles debug display
+✓ State file updates (check session/state.txt)
+✓ No glitches or visual artifacts
+✓ Responsive to rapid input (20+ keys/sec)
+
+───────────────────────────────────────────────────────────
+MONITORING DURING TEST
+───────────────────────────────────────────────────────────
+
+In separate terminal windows, monitor:
+
+Terminal 1 - State changes:
+  tail -f session/state.txt
+
+Terminal 2 - Manager debug log:
+  tail -f session/debug_log.txt
+
+Terminal 3 - Input history:
+  tail -f session/history.txt
+
+Terminal 4 - Rendered output:
+  tail -f session/game_map.txt
+
+───────────────────────────────────────────────────────────
+PHASE 1 SUCCESS CRITERIA
+───────────────────────────────────────────────────────────
+
+All must pass:
+  □ Xelector moves on arrow key input (< 100ms)
+  □ Z-levels change correctly (0→1→2 and back)
+  □ Mode toggle works instantly
+  □ Debug toggle works instantly
+  □ No crashes or crashes under rapid input
+  □ State file reflects all changes
+  □ Map display matches input
+
+═══════════════════════════════════════════════════════════
+READY: Load piececraft-wraith in Wraith and test!
+═══════════════════════════════════════════════════════════

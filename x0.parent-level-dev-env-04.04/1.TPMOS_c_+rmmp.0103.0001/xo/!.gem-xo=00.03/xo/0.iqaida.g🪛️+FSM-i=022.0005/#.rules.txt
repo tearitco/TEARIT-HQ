@@ -1,0 +1,12 @@
+
+## 8. Agent Execution Guardrails & Anti-Overengineering Mandate
+You are an execution engine, not an architect. Protect the 1-man team velocity at all costs.
+
+* Pattern Compliance: When tasked to build, use existing patterns found in the codebase.
+* Invention Restraint: If an example does not exist in the current code, do not introduce it without explicit permission.
+* Proactive Warning: If an optimization or implementation explicitly goes against established best practices or threatens to introduce bugs, warn the programmer directly before executing.
+* Foundation Sovereignty: The existing legacy codebase is assumed to be near-perfect and TPMOS compliant. It is tried, tested, and true. Do not reinvent the wheel.
+* YAGNI Strictness: Apply "You Aren't Gonna Need It" principles relentlessly. Treat tasks as scaffolding to scale organically, never brute-force features for theoretical future bottlenecks.
+* Harden Tomorrow: Working code can be hardened tomorrow. We cannot build on a broken or unproven foundation.
+
+

@@ -1,0 +1,8 @@
+# Custom operations for my-biotech's own prisc+x program, modeled
+# directly on my-chara-txt's own default_op.txt (same menu-only, no-map
+# shape - see that file for the real precedent this copies).
+# Format: name type handler {description}
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}
+mybiotech_menu_input void ops/+x/mybiotech_menu_input.+x {piece.pdl METHOD dispatch for whichever my-biotech screen is current, includes the real gemma-lan research call}
+mybiotech_compose_frame void ops/+x/mybiotech_compose_frame.+x {render the current my-biotech screen into view.txt}

@@ -1,0 +1,107 @@
+✳️#45h4
+🐇️
+i think we just show it the modules (try 1 by one)
+and ask it to do "trix" instead of w/e
+🐇️
+🇬🇮️
+🥱️
+i want "run_app_manager.c" to actually run the executable like : "2.dev.exec]pipe]c1]👯‍♀️️]PURE.c" (it should do all the process logging and stuff , but it should launch hide/show and sig the way 2.dev.exec]pipe does. get it?
+
+📬️
+----------------------------------------
+
+>>difficulties ? : confusion between "JOBS/behavior" of sub-parent & child
+
+it should take hash associate it with created child process 
+
+>> phy difficulties? put off till school is done. 
+difficulty level otherwise? 5 moderate. have 2 pay attention 2 desires.
+(maybe better 2 prompt with "MAIN.c" and no "Module"
+its confusing module mix 2 much ] 
+ezier 2 specify change in mod behavior w/o distraction?
+(esp that it sees its passing args...) 
+🥱️
+📬️
+🆘️u should read over 2.dev.exec]pipe. {its "EZ"}
+
+ur gonna have to structure main differently. 
+(u may wanna start with ez'r but this is pretty simple. 
+if anything u could strip auth/m, but dont sweat 4 now cuz hash is good)
+and so is a helper/debug menu slot...
+
+main.c may need modification tho... , 
+are we piping input 2 child? are we piping output from child 2 'main.c'? 
+
+can we handle ctrl+c / 
+
+ctrl+h   & ctrl+s  <- can i hide show "live(last)" exe from main.c(yes)
+and if we launch  "all procs & show 1 , is there a way 2 show from pid?"
+
+tip: read over 2.pipe a bit more b4 u prompt. i bet it saves time.
+🆘️
+🤔️
+we will be doing this with many apps, so we want to store pid+hash'
+fine. 
+we can use latest hash 2 "show now" <- can add later. 
+what about "hide now" how is pipe handled ? pipe is external 2 child , right?
+meaning pipe is in main. 
+
+child may create a subchild, which is where "confusion" could start...
+
+( i may prompt for both modules...-> doesn't explain how "hide" works tho
+(cept 2 say it works same as in demo...;so does show 'both in "MAIN.c"getit?)
+
+♏️ ignore prompting 4 "M" cuz we want .+x ? 
+no. even if it doesn't work solo. we can just make another. 
+its great 4 debug and it was easily prompted 4 b4...♏️
+⚠️
+its possible u may want 2 start from "scratch" cuz 
+the changes are so systemic , depending on how ./+x/ launcher is called.
+w/e . lets be done with this, once & 4 all
+⚠️
+✳️#45h4
+💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️
+i actually think u maybe better off modifying "2.pipe👯‍♂️️.c (as a 'main.c')
+
+asking 4 it 2 "look in dir and launch from there"
+
+then all u have 2 do is add hash/write/auth...
+
+(nothing has 2 have a "seperate launcher" till 'hash-proc-menu')
+
+
+🚨️add "ctrl+b & ctrl+f now ] change show hide 2 bg/fg ]EZ'st way imo/xp🚨️
+🆘️change it 2 "ALSO USE" bg/fg + ctrl+b / ctrl+f
+💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️💡️🛢️
+🥈️
+
+🥈️
+
+🇬🇮️
+
+
+
+
+
+
+
+
+
+🐰️
+
+19639 
+19639 Zerah, of the tribe of Judah, took of the accursed thing: and the
+19640 anger of the LORD was kindled against the children of Israel.
+19641
+19642 7:2 And Joshua sent men from Jericho to Ai, which is beside Bethaven,
+19643 on the east of Bethel, and spake unto them, saying, Go up and view the
+19644 country.
+19645
+19646 And the men went up and viewed Ai.
+19647
+xo@xo-Surface-Laptop-3:/media/xo/b7ced73c-5231-4462-b98d-64e38fe2df9e/home/jbez/
+Desktop/!.📶️.SHARE]/!.🦾️].fullsharezip/💪🏾️].no-desk.sharezip/#.🫁️.BIBLE.📔️/!.bible📔️.DeathNote.c]🏆️+🤺️]a1$ ./+x/0.bible.rnd.conv]GRAIL]📔️🏆️]a1.+x 32
+📔️🏆️ = 32092 
+32092 22:12 And all the prophets prophesied so, saying, Go up to
+32093 Ramothgilead, and prosper: for the LORD shall deliver it into the
+

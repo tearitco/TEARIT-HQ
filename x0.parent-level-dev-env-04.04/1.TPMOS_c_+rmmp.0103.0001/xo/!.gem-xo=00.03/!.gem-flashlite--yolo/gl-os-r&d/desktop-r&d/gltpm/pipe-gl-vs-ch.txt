@@ -1,0 +1,44 @@
+# Study: GLTPM vs CHTPM Interaction Pipeline
+
+## 1. Architecture Comparison
+
+### 1.1 CHTPM (The Biblical Standard)
+- **Host:** `chtpm_parser.c`
+- **Mechanism:** 
+    1.  Host substitutes `${last_key}` from `gui_state.txt` or `state.txt`.
+    2.  Manager (`fuzz-op_manager.c`) polls `history.txt`.
+    3.  Manager updates its internal `last_key_str`.
+    4.  Manager calls `save_manager_state()`, writing `last_key=X` to `pieces/apps/player_app/manager/state.txt`.
+    5.  Host re-renders, substituting the new value.
+- **Pipeline:** Input -> history.txt -> Manager -> state.txt -> Host -> Render.
+
+### 1.2 GLTPM (The Modular Transition)
+- **Host:** `gl_desktop.c` + `gltpm_parser.c`
+- **Mechanism:**
+    1.  Host (`keyboard()`) routes keys to `projects/<project>/session/history.txt`.
+    2.  Manager (`fuzz-op-gl_manager.c`) polls project history.
+    3.  Manager updates `last_key_str`.
+    4.  Manager writes to `projects/<project>/session/state.txt`.
+    5.  Host (`refresh_gltpm_window`) re-parses project state.
+    6.  Host HUD renders `win->gltpm_scene.last_key`.
+- **Pipeline:** Input -> proj_history.txt -> Manager -> proj_state.txt -> Host -> Render.
+
+## 2. Identified Discrepancies (The Study)
+
+### 2.1 Project ID Drift
+The `fuzz-op-gl_manager.c` was dynamically re-resolving its `current_project` by reading `pieces/apps/player_app/manager/state.txt`. If that file contained `project_id=fuzz-op` (from the ASCII version), the GL manager would start writing to the ASCII project's session folder instead of its own.
+
+### 2.2 Variable Naming
+In ASCII `fuzz-op`, the variable is often `${last_key}`. In GLTPM, we were relying on the host HUD to display it, but if the layout also uses `${last_key}`, we need to ensure the parser extracts it correctly from the project's specific state file.
+
+### 2.3 The "Theater" Buffer
+ASCII CHTPM uses `view.txt` for the map and variables. GLTPM uses `view.txt` for the 3D map data but should rely on `session/state.txt` for UI variables like `last_key`.
+
+## 3. Fix Soundness Proof
+By locking the manager to `fuzz-op-gl` and ensuring `save_manager_state()` flushes to `projects/fuzz-op-gl/session/state.txt`, we guarantee that `gl_desktop.c` (which is looking in that exact folder) will see the updates.
+
+The "Dumb Theater" rule is maintained: 
+- Host doesn't know what 'W' means. 
+- Host sends 'W' to Manager.
+- Manager moves camera, writes "cam_z=10.5" and "last_key=w" to file.
+- Host re-reads file, moves camera icon, and updates HUD text.

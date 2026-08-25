@@ -1,0 +1,16 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/wallet_main_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|                       M Y   W A L L E T                     |" /><br/>
+    <text label="+============================================================+" /><br/>
+    ${piece_methods}
+    <button label="Send" href="pieces/chtpm/layouts/send_screen.chtpm" /><br/>
+    <button label="Receive" href="pieces/chtpm/layouts/receive_screen.chtpm" /><br/>
+    <button label="Mining Status" href="pieces/chtpm/layouts/mining_status.chtpm" /><br/>
+    <button label="Back to Login" href="pieces/chtpm/layouts/login.chtpm" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label=" (Ctrl+C to quit)" /><br/>
+</panel>

@@ -1,0 +1,13 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | wraith-alpha/wraith-projects/emoji-studio-wraith
+META         | version            | 0.1
+META         | author             | TPMOS
+META         | entry_layout       | projects/wraith-alpha/wraith-projects/emoji-studio-wraith/layouts/emoji-studio-wraith.chtpm
+
+STATE        | title              | EMOJI STUDIO WRAITH
+STATE        | status             | ready
+STATE        | mode               | emoji_extrusion_probe
+STATE        | reference          | #.emoji-studio-501.02.05t/&.emoji-studio-solo.02.01
+
+RESPONSE     | default            | Emoji Studio Wraith Ready.

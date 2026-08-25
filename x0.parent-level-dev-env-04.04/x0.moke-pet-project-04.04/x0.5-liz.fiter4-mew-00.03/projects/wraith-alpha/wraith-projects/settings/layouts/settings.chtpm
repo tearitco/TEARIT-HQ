@@ -1,0 +1,11 @@
+<layout id="settings">
+    <module>projects/wraith-alpha/wraith-projects/settings/manager/+x/settings_manager.+x</module>
+    <panel title="SETTINGS">
+        <text label="╔══════════════════════ S E T T I N G S ══════════════════════╗" /><br/>
+        <text label="Choose an option below." /><br/>
+        <br/>
+        ${settings_menu_markup}
+        <br/>
+        <button label="Back to Wraith Desktop" href="projects/wraith-alpha/layouts/alpha-shell.chtpm" /><br/>
+    </panel>
+</layout>

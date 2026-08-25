@@ -1,0 +1,288 @@
+2do-jul12.txt — remaining work, 2026-07-12 (written end of session)
+
+Two phases left. Everything else planned for today (wrai-text-editor
+parity, emoji rendering in GL, ASCII/GL mirroring) is DONE — see
+"WHAT'S ALREADY DONE" below for the short version, `agy-vs-wrai.txt`
+(repo root) for the full bug-by-bug trace. This doc is the forward-
+looking plan for what's left: Phase A (window geometry) and Phase B
+(context menu), in that order, per the user's own priority call.
+
+All paths below are relative to the repo root:
+`x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/` unless
+otherwise noted.
+
+═══════════════════════════════════════════════════════════════════════
+WHAT'S ALREADY DONE (context, not today's work — don't redo)
+═══════════════════════════════════════════════════════════════════════
+
+- wrai-text-editor: full parity with agy-text-editor. Bugs #1-13 fixed,
+  full detail + root causes + fixes in `agy-vs-wrai.txt`. Covers:
+  input/INTERACT-mode reliability, Save/Load, file browser, nav-slot
+  drift, GL key-repeat, the "ACTIVE: <file>" display on both editors'
+  main page, and — as of the last two passes — GL/ASCII mirroring for
+  the INTERACT `"^"` indicator (bugs #12 GL-side, #13 ASCII-side, both
+  fixed by reading the shared `is_map_control` state instead of each
+  renderer's own independent local tracker).
+- Emoji rendering in GL: root-caused (wrong FreeType API for Noto Color
+  Emoji — needed `FT_Select_Size`+`FT_LOAD_COLOR`, not
+  `FT_Set_Pixel_Sizes`+`FT_LOAD_RENDER` alone) and FIXED. New shared Ops
+  at `pieces/system/emoji_extract/` (`emoji_gen_atlas.c`,
+  `emoji_xtract.c`, ported from the proven `#.emoji-studio-501.02.05t/`
+  reference) generate real, cached, true-color RGBA CSV assets on
+  demand; `wraith_rgb_daemon.c` was rewritten to load from those instead
+  of doing broken live glyph rendering. A follow-up clipping bug (emoji
+  bounded to the narrow 8px text-cell width instead of their own 16px
+  size) was also found and fixed. Confirmed live, real color emoji
+  render correctly in GL.
+- One small, LOW-PRIORITY loose end from that work, not yet cleaned up:
+  `wraith-alpha_manager.c` already had a pre-existing function named
+  `project_is_map_control(project_dir)` (~l.1679) that does the exact
+  same thing as the `read_project_map_control_for_dir()` helper added
+  for bug #12 — a duplicate I created by not searching for an existing
+  one first. Also, bug #12's fix has a local variable literally named
+  `project_is_map_control` inside `emit_embedded_line_objects()`
+  (~l.2370) that shadows the pre-existing function name — legal C, no
+  runtime bug (confirmed: no shadow warning, and the function is never
+  called from within that shadowed scope), but confusing and worth a
+  quick cleanup pass: rename the local variable, then refactor both
+  `read_project_map_control_for_dir()`'s call sites AND anywhere already
+  calling `project_is_map_control()` (e.g. ~l.1786) to use ONE of these
+  two functions, not both. Low priority — not a live bug, just tech
+  debt from working fast. Do this whenever next touching
+  `wraith-alpha_manager.c` for something else, or as a standalone
+  5-minute pass.
+
+═══════════════════════════════════════════════════════════════════════
+PHASE A: WINDOW GEOMETRY — confirm load+use, wire height
+═══════════════════════════════════════════════════════════════════════
+
+Investigated via static code review only so far — NOT yet live-tested.
+Findings, all in `projects/wraith-alpha/manager/wraith-alpha_manager.c`:
+
+- `load_window_geometry_from_pdl()` (~l.386) reads `window_x`/
+  `window_y`/`window_width`/`window_height` from a project's own
+  `project.pdl`, called once per window-open (~l.1295).
+- `window->x`/`window->y` ARE consumed: `resolve_window_content_origin()`
+  (~l.2561) feeds BOTH the ASCII visual-emission path
+  (`append_with_origin_offset()`) and GL's semantic OBJECT x=/y= values
+  — one function, two call sites, can't drift apart by construction.
+  This looks correctly wired.
+- `window->width` IS consumed: `resolve_frame_width()` (~l.428) sizes
+  the ASCII frame border, two real call sites (~l.2660, ~l.2789).
+- **`window->height` is loaded but NEVER consumed anywhere else** —
+  confirmed by grep, only the one load call site touches it. A saved
+  height change currently has zero visual effect. Real, confirmed gap.
+- Save side — `projects/wraith-alpha/wraith-projects/settings/
+  window-geom/ops/src/wraith_project_input.c` (~l.263-289, key==13
+  case) — writes all four fields into the TARGET project's own
+  `project.pdl` using the pipe-delimited `SECTION | KEY | VALUE` format
+  `read_pdl_value()` expects. Format looks compatible on inspection,
+  but the x/y/width round-trip has never actually been LIVE-TESTED
+  end to end (edit → save → close → reopen → confirm visual change).
+- A stale comment at `wraith-alpha_manager.c` ~l.1291-1294 claims
+  "nothing renders from these fields until KPI A2" — inaccurate now for
+  x/y/width, only still true for height. Same "stale comment asserting
+  something that's no longer true" shape as bug #8's
+  `count_embedded_body_nav_slots()` comment — fix it once height is
+  wired, don't leave it misleading the next reader.
+
+STEPS, in order:
+
+1. Live-test the x/y/width round-trip FIRST — this is the part that
+   already looks fully wired, so it's the highest-confidence, fastest
+   win. Open window-geom for some project (any embedded project with a
+   `project.pdl`), edit x/y/width, save, close that project's window,
+   reopen it, confirm it actually appears at the new position/size in
+   BOTH ASCII and GL. Don't assume the code-level read matches the
+   visual result — verify, this session's whole discipline earned that
+   the hard way more than once.
+
+2. If x/y/width doesn't visually change on reopen despite the code
+   looking correct, don't re-theorize from scratch — get real evidence
+   first (`alpha_manager.log`, a fresh frame dump, or
+   `current_frame.objects.pdl`'s actual x=/y=/w= values for that
+   window's OBJECT lines) and trace from there. Likely candidates if
+   this happens: window struct reset order on reopen, or a stale
+   cached value somewhere between `load_window_geometry_from_pdl()`
+   and the render call.
+
+3. Wire `window->height`. Before writing code: figure out what
+   "height" should actually MEAN for each renderer — check whether
+   ASCII has any existing row-count/height concept to hook into (does
+   its own frame-border logic have a height equivalent to
+   `resolve_frame_width()`, or does ASCII's height come from something
+   else entirely, e.g. just however many lines the content happens to
+   produce?), and whether GL's height application is a viewport/window
+   size concern instead. Don't assume symmetry with width's
+   border-length model without checking — they may need genuinely
+   different treatment.
+
+4. Update or remove the stale KPI A2 comment (~l.1291-1294) once height
+   is wired, so it stops asserting something no longer true.
+
+5. Document what was found and fixed — either a new pass in
+   `agy-vs-wrai.txt` (if the bugs found are wrai-text-editor-relevant)
+   or a new tracking doc scoped to window-geom specifically, matching
+   this session's established pattern: document AND fix together, not
+   fix-then-forget.
+
+Reference: `agy-vs-wrai.txt`'s existing retest checklist and this
+session's memory entry `wraith-window-geometry-kpi-a2-status.md` have
+the same findings in more compact form if a quick refresher is needed
+without re-reading this whole section.
+
+═══════════════════════════════════════════════════════════════════════
+PHASE B: UNIVERSAL CONTEXT MENU — do this AFTER Phase A
+═══════════════════════════════════════════════════════════════════════
+
+>>> SUPERSEDED 2026-07-13 — see context-st8.txt (repo root) instead. <<<
+Phase A (window geometry) is now DONE — see geom-st8.txt. Phase B's
+design below turned out to be wrong or incomplete on several points once
+actually re-verified and clarified with the user: the hotkey is Ctrl+Q
+(not an unpicked Ctrl+<letter> — Ctrl+; and bare modifier combos were
+both concretely ruled out), the project is top-level, NOT nested under
+settings/, there are THREE entry points (not just hotkey + right-click,
+and right-click's own status is now uncertain, not decided), and the
+menu content model is PDL METHOD-entries-per-project (fo-menu-sys.md
+pattern) rather than a small fixed action list. Keep this section below
+only for its still-accurate background context (fuzz-op reference,
+initial problem framing); context-st8.txt is the current source of truth
+for what to actually build.
+
+Design is largely settled from discussion earlier today — this phase
+is about BUILDING it, not re-deciding the open questions below, except
+where explicitly still marked open.
+
+**Concept:** ONE key (or right-click), working identically across
+every Wraith screen (any embedded project, or the desktop itself),
+that opens a context menu whose CONTENTS depend on whatever is
+currently focused — mirroring how the chrome "&" resize/window-geom
+icon already scopes itself to whichever window is focused
+(`open_window_geom_for_project(window->project_id)`). An emoji picker
+(now that emoji rendering actually works) becomes the first real thing
+this menu offers when a text-editing field is focused — not a
+special-cased binding of its own.
+
+**DECIDED — implement as designed, don't re-litigate:**
+
+1. Hotkey: **Ctrl+\<letter\>**, not a bare modifier. Investigated in
+   detail: bare Shift/Alt/Ctrl+Alt are literally undetectable as a
+   standalone press in either the ASCII terminal reader
+   (`pieces/keyboard/plugins/keyboard_input.c`) or GLUT
+   (`wraith_gl.c`) — modifiers only ever exist as a byte-change or
+   flag ALONGSIDE a real key, never alone. Shift+letter is additionally
+   ruled out for an editor specifically (indistinguishable from typing
+   a capital letter in the ASCII path). Ctrl+letter already works
+   end-to-end today via the exact mechanism Ctrl+C's shutdown uses in
+   both renderers, and produces bytes 1-26 which can never collide with
+   normal typing (32-126) or the arrow codes (1000-1003). Exact letter
+   still open — pick one not meaningful in INTERACT-mode's WASD/
+   backspace/enter set or the desktop's digit/arrow nav (candidates:
+   `G`, `/`).
+2. Right-click ALSO opens it. Confirmed cheap: the mouse button number
+   is already captured end-to-end in both paths (GL's
+   `mouse(int button,...)`, ASCII's SGR mouse parsing in
+   `keyboard_input.c`) and both reach `wraith-alpha_manager.c`'s
+   `handle_mouse()` (~l.4543, comment already documents SGR codes:
+   0=left/1=middle/2=right) — but nothing branches on button value
+   today, every button does the identical action. Needs one new
+   `if (btn == 2)` (ASCII) / `if (button == GLUT_RIGHT_BUTTON)` (GL)
+   branch each side, not new plumbing.
+3. Architecture: build it as **a real launched project window**, like
+   window-geom itself (`launch_window_instance(...)`, matching
+   `open_window_geom_for_project()`'s own pattern) — NOT a floating
+   overlay. This codebase's navigation model is page-based
+   (`PROJECT_PAGE:`), not z-ordered overlays, so a real window is the
+   natural fit, not a fight against the grain.
+4. Menu content source: `projects/wraith-alpha/session/
+   desktop_ui_state.txt` is ALREADY a live, continuously-updated
+   registry of every open window (rewritten by `update_state()` on
+   every single state change, not a snapshot) with
+   `desktop_registry_<N>_id/title/project_id/instance_no/state/open/
+   minimized/visible` per slot — confirmed live content this session.
+   The new context-menu project's own ops can read this file directly
+   for zero new export work to list "Projects" (open windows) plus a
+   "Desktop" entry for desktop-level actions — same idea as
+   window-geom's own `wg_target.txt` "which thing am I acting on"
+   pattern, reused rather than reinvented.
+
+**STILL OPEN — decide these while implementing, don't guess silently:**
+
+- How the menu renders in ASCII vs GL specifically — likely its own
+  small page/overlay state (similar to file_browser's pattern).
+- How "what's focused" resolves for a DESKTOP-level (no window
+  focused) invocation vs a WINDOW-level one — likely mirrors
+  `open_window_geom_for_project()`'s own `active_window()` null-check
+  branching, reused not reinvented.
+- Whether picker selection inserts an emoji via `apply_editor_key()`'s
+  existing key-based insert path, or needs a new insert-by-codepoint
+  Op (would belong in `pieces/system/file_ops/` per Bible section 11
+  if genuinely reusable beyond this one picker — decide based on
+  whether any OTHER planned feature would also want "insert an
+  arbitrary codepoint at cursor," not just this one).
+- Whether the SAME Ctrl+\<letter\> is the ONE universal binding for
+  every context (desktop, any project window) with only the MENU
+  CONTENTS varying by focus, or whether the key itself should also
+  vary — default to one key, context-sensitive contents (matches the
+  user's own "similar to how resize button works" framing) unless a
+  concrete reason emerges not to.
+- Whether right-click opens the exact SAME menu as the hotkey
+  (context-sensitive to focus, not click position) or a click-position
+  -specific variant — default to "same menu, same focus-resolution
+  logic, one function" per this session's own repeatedly-learned
+  lesson about not letting two paths independently compute the same
+  thing (see bugs #8, #12, #13 — all the SAME root shape, three times
+  in one day).
+
+STEPS, in order:
+
+1. Pick the exact Ctrl+\<letter\> binding. Grep both `keyboard_input.c`
+   and `wraith_gl.c` first for anything already using it, and check
+   INTERACT-mode's own WASD/backspace/enter bindings in
+   `text_edit_key.c`/`apply_key()` for a collision, before committing.
+2. Wire the Ctrl+\<letter\> detection into BOTH `keyboard_input.c`
+   (ASCII) and `wraith_gl.c`'s `keyboard()` (GL) — confirm both paths
+   actually deliver a distinguishable signal for it (Ctrl+letter is
+   proven to work via the shutdown precedent, but double check the
+   SPECIFIC letter chosen doesn't hit any existing special-case first).
+3. Add right-click branching in `handle_mouse()` (ASCII-side dispatch
+   in `wraith-alpha_manager.c`) and `mouse()` (GL, `wraith_gl.c`).
+4. Build the new context-menu project (manager + ops, matching
+   window-geom's own structure as the closest existing precedent) —
+   reads `desktop_ui_state.txt`, offers Projects/Desktop selection,
+   launched via `launch_window_instance()` the same way
+   `open_window_geom_for_project()` launches window-geom.
+5. Wire the emoji picker as the first real menu action, once a
+   text-editing field is the resolved focus target.
+6. Live-test: hotkey from desktop (no window focused), hotkey from
+   inside wrai-text-editor, right-click from both contexts, confirm
+   ASCII and GL show the same thing for all of the above (this is now
+   a THIRD codebase area where the "two renderers must agree" lesson
+   applies — build the check in from the start this time, don't find
+   it live after the fact like bugs #12/#13).
+7. Document in a new tracking doc (or extend this one) once built and
+   live-tested.
+
+═══════════════════════════════════════════════════════════════════════
+STANDING RULES CARRIED FORWARD (still apply to both phases above)
+═══════════════════════════════════════════════════════════════════════
+
+- Bible section 11 REUSE RULE: check `pieces/system/` for an existing
+  shared Op before writing new manager/ops logic from scratch. Also —
+  new lesson from today's own loose end above — check for an existing
+  FUNCTION of the same purpose already in the file you're editing, not
+  just other files, before adding a new one.
+- Verify with real evidence, not guesses: this session's real bugs were
+  all found by reading two functions side by side and comparing their
+  actual criteria/formats, or by reading actual receipt/log data, not
+  by re-theorizing from a screenshot or assuming code that "looks
+  right" behaves right live.
+- Distrust comments that assert two things are "in sync" or "mirrored"
+  without a shared helper enforcing it. Prefer one function driving
+  both consumers over two independently-maintained copies of the same
+  criterion — proven THREE times today (bugs #8, #12, #13) to be the
+  single most common recurring bug shape in this codebase specifically.
+- One-shot event files (queues) must be cleared by their reader
+  immediately after consuming, or they silently re-apply forever.
+- `wraith_gl.c` is the one shared GL process for every Wraith project —
+  a bug or fix there is repo-wide, not project-specific.

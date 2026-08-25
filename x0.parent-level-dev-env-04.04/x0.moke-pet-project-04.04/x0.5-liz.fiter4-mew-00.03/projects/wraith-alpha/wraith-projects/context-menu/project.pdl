@@ -1,0 +1,16 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | wraith-alpha/wraith-projects/context-menu
+META         | version            | 1.0
+META         | author             | TPMOS
+META         | manager            | projects/wraith-alpha/wraith-projects/context-menu/manager/+x/context-menu_manager.+x
+META         | entry_layout       | projects/wraith-alpha/wraith-projects/context-menu/layouts/context-menu.chtpm
+
+STATE        | title              | CONTEXT MENU
+STATE        | status             | ready
+
+RESPONSE     | default            | Context menu ready.
+WINDOW | window_x | 0
+WINDOW | window_y | 0
+WINDOW | window_width | 48
+WINDOW | window_height | 0

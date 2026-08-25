@@ -1,0 +1,8 @@
+lookup_stock|Fetches or looks up cached stock price|user_hash:string,symbol:string
+buy_stock|Purchases shares of a stock|user_hash:string,symbol:string,shares:float
+sell_stock|Sells shares of a stock|user_hash:string,symbol:string,shares:float
+add_credit|Adds cash balance to user account|user_hash:string,amount:float
+options_pricing|Calculates option prices for a symbol|symbol:string,price:float,strike:float
+view_portfolio|Generates portfolio view for a user|user_hash:string
+view_pl|Generates profit and loss report|user_hash:string
+predict_stock|Predicts future stock price using linear regression|user_hash:string,symbol:string

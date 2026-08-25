@@ -1,0 +1,8 @@
+COMPOUND: Carbon
+DISCOVERED FROM: carbon
+
+[Use Case] Carbon is a fundamental element in the universe's chemistry and energy production.
+[Effect] Carbon's primary effect is to increase the rate of chemical reactions.
+[Side Effect] Carbon has many known side effects.
+[Market Price] Carbon
+[FDA Verdict] REJECTED

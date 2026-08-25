@@ -1,0 +1,16 @@
+# Xlector Fix: Fuzz-Op Pipeline
+
+The issue where the Xlector appeared but did not move in Fuzz-Op was caused by:
+1. **Infrastructure Drift:** Infrastructure (init scripts/manager) was still using `selector` while application logic expected `xlector`.
+2. **Missing Shadow Sync:** A critical "Shadow Xlector Sync" mechanism present in working reference versions was deleted, preventing the Xlector from following active entities or updating its state during movement.
+3. **Missing Input Codes:** Arrow key inputs were not mapped in the movement logic.
+
+## Fix Strategy
+1. **Purge Legacy:** Removed `selector` initialization in `run_chtpm.sh` and updated `fuzz-op_manager.c` to use `xlector` paths.
+2. **Restore Sync Logic:** Re-introduced the "Shadow Xlector Sync" block in `fuzz-op_manager.c` to keep `xlector` state synchronized with active entities.
+3. **Input Support:** Added handling for arrow key codes (2100-2103) in the movement logic.
+
+## Verification
+- Run `./button.sh compile` to build the updated manager.
+- Verify that `xlector` follows movement commands for both arrow keys and WASD.
+- Ensure `xlector` position updates in `projects/fuzz-op/pieces/xlector/state.txt` after movement.

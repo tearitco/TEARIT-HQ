@@ -1,0 +1,7 @@
+type=capital
+owner=delta
+credits=3
+units=0
+pos_x=22
+pos_y=22
+z_level=0

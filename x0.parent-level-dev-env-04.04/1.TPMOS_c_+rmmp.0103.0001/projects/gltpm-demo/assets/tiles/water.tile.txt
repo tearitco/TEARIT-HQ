@@ -1,0 +1,9 @@
+tile_id=water
+ascii=~
+unicode=~
+label=Water
+rgb_top=41,98,214
+extrude=0.8
+solid=1
+walkable=0
+category=liquid

@@ -1,0 +1,917 @@
+# Wraith Active Fixes
+
+Last updated: 2026-07-06
+
+## 2026-07-05: piececraft-wraith box-drawing header showed a corrupted
+## replacement character (user-reported, live)
+
+Observed (live, user-reported): piececraft-wraith's map-view header
+("╔════...════╗") rendered as `╔══════════════════════════�` — visibly
+cut off mid-glyph, ending in the Unicode replacement character.
+Pre-existing bug, not introduced this session -- this format string
+(`append_project_probe_body()`'s `"| |  %-83.83s |<br .../>"`) predates
+today's work entirely.
+
+Root cause, confirmed not guessed: printf's `.83s` precision truncates
+by BYTES, not displayed characters. `╔`/`═`/`╗`/`╚`/`╝` are each 3-byte
+UTF-8 sequences. Measured the real line: 46 visible characters, 138
+UTF-8 bytes. An 83-byte cut lands mid-character (83 is not a multiple
+of 3 relative to the string's character boundaries), producing an
+invalid, truncated byte sequence -- which terminals render as the
+replacement character.
+
+Fix: new `utf8_safe_truncate(src, dst, dst_sz)` -- truncates to at most
+`dst_sz - 1` bytes same as before, but backs up to the last complete
+UTF-8 character boundary first (checks for continuation-byte pattern
+`(byte & 0xC0) == 0x80` and steps back while true). Applied at the one
+confirmed call site: the body-line pre-truncates to 84 bytes (83 +
+null) via this helper BEFORE the existing `%-83.83s` formatting, so
+that formatting no longer has anything left to cut mid-character (the
+string is already <= 83 bytes). A too-long UTF-8 line now shows fewer
+complete glyphs (a clean, shorter border) instead of a corrupted one --
+this does not make long lines "fit," it only removes the corruption
+when they don't.
+
+Scope note: this specific `.83s` pattern may exist at other call sites
+in this same file (not audited exhaustively) -- only the one confirmed
+by the user's live report was fixed. If another garbled-multi-byte
+report surfaces elsewhere, the same `utf8_safe_truncate()` helper
+already exists and can be applied the same way.
+
+Verified:
+- Standalone test (`/tmp/.../utf8_truncate_test.c`) against the REAL
+  box-drawing line (byte-for-byte, extracted from the source): output
+  cut cleanly at 81 bytes (an exact multiple of 3 -- zero partial
+  characters), no corruption, matches expectation.
+- Confirmed a plain ASCII line passes through completely unchanged
+  (byte-for-byte identical) -- zero regression for the common case.
+- `gcc -Wall`: exit 0, 0 errors, same 77 warnings as the prior build
+  (the href-in-GL-mode fix build), nothing new.
+- Real `+x/wraith-alpha_manager.+x` rebuilt in place.
+- NOT yet re-confirmed live (need you to reopen piececraft-wraith and
+  check the header renders cleanly now).
+
+## 2026-07-05: End-of-session code review — two more real bugs found and fixed
+
+Found while reviewing today's work before handoff (see
+`j5-summary&handoff.txt` for full context), not reported live by the
+user — caught by tracing the actual dispatch/parsing code, not
+guessing.
+
+**Bug 1 — `href` actions were silently inert in GL mode.**
+Observed: `emit_embedded_line_objects()`'s buttons render correctly and
+are now nav-indexed (see the nav-numbering fix above), but tracing what
+actually happens when one is clicked/activated in GL mode revealed a
+real gap. In ASCII mode, `href` navigation is handled entirely inside
+`wraith_parser_alpha.c`'s own element tree (`strncpy` into its own
+in-process `current_layout` global) — `route_command()` is never
+involved. GL mode's click/Enter path is completely different
+(`wraith_gl.c`'s `hit_test_semantic_action()` /
+`action_for_nav_index()` → `route_command()`), and flattens everything
+to a bare `action=` string with no memory of "this came from href."
+`route_command()` had no recognized prefix for a raw layout path, so it
+silently dropped it — the button looked and nav-indexed correctly but
+did nothing when activated in GL mode specifically.
+Fix: found `request_layout_change()` already existed in
+`wraith-alpha_manager.c`, fully correct, and completely unused (flagged
+by the compiler as dead code) — it already writes to
+`pieces/display/layout_changed.txt`, which `wraith_parser_alpha.c`
+already polls and applies (confirmed by reading its own poll loop:
+reads the last non-empty line, sets `current_layout`, re-parses). Added
+one fallback branch at the end of `route_command()`: any command
+containing `.chtpm` that matched no other prefix now calls
+`request_layout_change(cmd)`. This is wiring up dead, correct,
+pre-existing infrastructure, not new plumbing.
+Verified: `gcc -Wall` diffed line-for-line against the prior build —
+every warning identical (just shifted by the new comment's line count)
+except `request_layout_change` no longer flagged unused (now called;
+replaced by a pre-existing, unrelated `execute_action` unused warning).
+Not yet live-tested (needs a real GL-mode click on an href-based
+button).
+
+**Bug 2 — `project_probe_body_lines()`'s storage silently truncated
+below its own read buffer.**
+Observed: its `static char body_lines[16][160]` storage was smaller
+than the `char line[256]` buffer it copies from, adding an unnecessary
+second, smaller truncation ceiling. Confirmed live against the actual
+settings body line (231 chars): got cut at 159, mid-attribute on the
+trailing border `<text>` tag. Landed harmlessly this time only by luck
+— `emit_embedded_line_objects()`'s malformed-tag guard silently dropped
+the cut-off trailing decorative tag rather than misrendering, and the
+button itself (earlier in the line) was unaffected. A longer href path
+or project name would have cut into the button itself.
+Fix: widened `body_lines` to `[16][256]` (matching the read buffer, so
+this storage step adds no truncation beyond what `fgets()` already
+imposes) and `%.159s` → `%.255s` to match.
+Scope note: the 256-byte `fgets()` read limit itself (shared with ASCII
+mode's `append_project_probe_body()`) is a deeper, pre-existing ceiling
+on body-line length in general — not touched tonight, out of scope, but
+worth knowing about for any future project embedding a longer line.
+Verified: `gcc -Wall` diffed against the prior build, identical except
+the widened buffer — 0 errors, same warning set.
+
+## 2026-07-05: Settings Hub / window-geom — Launcher-Row Path Shows "Missing project body file"
+
+Observed:
+- `settings` (new project, see `x0.short-term-vision/settings-hub-window-geom-design-j5.md`) is a real project with a `project.pdl`, so it's already auto-discovered by the existing `discover_launcher_projects()` launcher-row list — for free, no code written for that discoverability, it just already worked.
+- Opening it that way launches it as a `Window` (the desktop-embedded path), which reads `session/wraith_body.txt` via `append_project_probe_body()`. `settings` only ever wrote `manager/state.txt` — the file the separate `href`/standalone `current_layout` path reads (via `wraith_parser_alpha.c`'s generic `load_state_file()`).
+- Result: opening "settings" from the launcher row showed the existing generic fallback ("Missing project body file: session/wraith_body.txt"), not the real settings menu. Not a crash, not corrupted state — just the wrong rendering path for how this project was originally built (`href`-only).
+
+Applied:
+- `settings_manager.c` now ALSO writes `session/wraith_body.txt`, with the same discovered-entry markup as `<button href="..." /><br/>` lines. `append_project_probe_body()` already passes through any line starting with `<` verbatim (pre-existing convention, no change needed there) — so both paths now render the identical real menu, not just the `href` one.
+- No changes needed to `wraith-alpha_manager.c` for this — its existing passthrough already does the right thing once the file has the right content.
+
+Expected live check:
+- Reopen "settings" from the launcher row (same click as before) — should now show the "Window Geometry" menu option instead of "Missing project body file."
+- Clicking "Window Geometry" from inside that embedded view should still navigate correctly (same `href` mechanism either way).
+- The direct `href`-reached path (`settings.chtpm` as `current_layout`) is unaffected — unchanged.
+
+Verified (compiled + ran the manager standalone):
+- `gcc -Wall`: exit 0, 0 errors, one new benign truncation-style warning
+  matching every other pre-existing one in this file — nothing new in
+  kind.
+- Ran `settings_manager.+x` directly: `session/wraith_body.txt` now
+  contains `<button label="Window Geometry" href="..." /><br/>`
+  correctly, and `manager/state.txt` is unchanged/still correct — both
+  paths' data confirmed present at the file level.
+
+Live-tested (2026-07-05, follow-up same day): confirmed via live
+screenshot that clicking "settings" from the launcher row now shows
+"Window Geometry" as a real, nav-indexed option (`[ ] 5. [Window Geometry]`)
+— the fix above worked functionally. One visual gap found live: that
+line rendered without the `| |  ...  |` box border every other body
+line has (plain `<button .../>` passthrough has no border built in).
+Fixed by wrapping the button in its own raw `<text>` border pieces on
+the same passthrough line (`<text label="| |  " /><button .../><text label="...padding...|" />`)
+— still one real, nav-indexed, clickable button (not literal text),
+now matching the surrounding box visually too. Compiled clean, ran
+standalone, confirmed correct output — not yet re-confirmed live (next
+check).
+
+## 2026-07-05: GL-Mode Never Re-Parsed Embedded `<text>`/`<button>` Tags In Project Body Lines
+
+Observed (found while checking why the settings menu button "shows in
+ASCII but not GL," per the user's own receipt-check request):
+- ASCII mode reads `pieces/display/current_frame.txt`, built by
+  `wraith_parser_alpha.c`'s `render_element()` — which genuinely parses
+  markup, so raw `<text>`/`<button>` tags embedded in a project's
+  `session/wraith_body.txt` (the established trick
+  `append_project_probe_body()`'s passthrough relies on) render as real
+  interactive elements.
+- GL mode reads `current_frame.objects.pdl` instead, built by
+  `project_probe_body_lines()` inside `write_semantic_projection_files()`
+  — which copied each `wraith_body.txt` line **verbatim** into one
+  OBJECT's `label=` field, with **no** tag-parsing at all.
+- Confirmed via the actual GL receipt (`current_frame.receipt.pdl`):
+  `chtmgl-video-isolate`'s own Play/Pause/Resume/Stop buttons (which use
+  the identical embedding trick) showed up with
+  `label=<text label="| |  " /><button compact="true" label="Play" onClick="PROJECT_ACTION:VIDEO_PLAY" />...`
+  — the literal raw tag text, not a real button. **Pre-existing gap,
+  not unique to the new settings project** — it affects every project
+  using this embedding convention.
+
+Applied:
+- New `extract_attr()` (bounded `memmem`-based `name="value"` scan
+  within one tag) and `emit_embedded_line_objects()` in
+  `wraith-alpha_manager.c`, right before `append_project_scene_objects()`.
+- `write_semantic_projection_files()`'s project-body-line loop now
+  branches: a line starting with `<` gets parsed into one real OBJECT
+  per tag/text-run (each with its own x/y/w/label/action, x advancing
+  by each chunk's rendered width) instead of one OBJECT holding the
+  whole raw line as text. Lines that don't start with `<` (the vast
+  majority, plain project descriptions etc.) are completely unchanged —
+  zero behavior change for the common case.
+- **Scope decision, stated not hidden**: these new per-tag objects get
+  `nav=0` — not keyboard-Tab-navigable in GL mode specifically. Giving
+  them a correct `nav=` would require matching
+  `wraith_parser_alpha.c`'s own auto-assigned ordinal for this exact
+  line, the same two-independent-numbering-systems fragility already
+  documented in `window-geometry-render-plan-j5.md`'s Path B writeup.
+  Mouse clicks work correctly (hit-tested by real pixel bounds,
+  independent of nav index) — keyboard-Tab parity for embedded body
+  buttons in GL mode is a known, separate, deferred gap.
+
+Verified:
+- `gcc -Wall` on the full file: exit 0, 0 errors, same 78 pre-existing
+  warnings as every prior change this session — nothing new.
+- Verified the parser logic standalone first (extracted copy in
+  `/tmp/.../embedded_line_test.c`) against both real lines it needs to
+  handle: the new settings button line (correctly extracted `href` as
+  `action=`) and the pre-existing `chtmgl-video-isolate` Play/Pause
+  line (correctly extracted `onClick` as `action=`, correct x-advance
+  per chunk for all 5 pieces on that line).
+- Real `+x/wraith-alpha_manager.+x` rebuilt in place.
+
+## 2026-07-05: Follow-up — Embedded Body Buttons Had No Nav Number In GL Mode
+
+Observed (user noticed live): the settings menu's "Window Geometry"
+button rendered correctly in GL mode after the fix above, but showed no
+`[ ] N.` nav number the way every other selectable item does — because
+`emit_embedded_line_objects()` deliberately assigned `nav=0` to these
+new objects, since `g_max_index`'s formula
+(`recompute_nav_bounds()`/`dispatch_menu_index()`) never accounted for
+this category of control at all.
+
+Investigated before touching the shared formula (traced, not guessed):
+- `count_project_nav_controls()` already existed and already fed
+  `extra_project_slots`/`launcher_start` — but only counted nav-bearing
+  controls declared in a project's own `session/scene.objects.pdl`
+  (confirmed real example: `piececraft-wraith`'s controls are
+  `nav=5..22`, contiguous, author-declared directly in that file).
+- `session/wraith_body.txt`'s embedded tags were never counted at all.
+
+Applied:
+- Split `count_project_nav_controls()` into `count_scene_nav_controls()`
+  (the original scene.objects.pdl scan, unchanged logic) +
+  `count_embedded_body_nav_slots()` (new: counts labeled chunks across
+  `wraith_body.txt` lines starting with `<`, same criterion
+  `emit_embedded_line_objects()` uses) — `count_project_nav_controls()`
+  now returns their sum, additive to every existing call site
+  (`dispatch_menu_index()`, `recompute_nav_bounds()`) with no other
+  changes needed there.
+- `write_semantic_projection_files()` now computes
+  `next_body_nav = 5 + count_scene_nav_controls(project_dir)` before the
+  body-line loop, and passes it through to
+  `emit_embedded_line_objects()` as an in-out counter — only chunks with
+  a real `action` (actual buttons, not plain `<text>` border/padding
+  pieces) consume a nav slot, incrementing the shared counter.
+
+Verified (not guessed) before integrating:
+- Standalone test (`/tmp/.../nav_count_test.c`) run against the REAL
+  `piececraft-wraith/session/scene.objects.pdl` (18 real controls,
+  nav=5..22) combined with settings' real `wraith_body.txt`: confirmed
+  `next_body_nav` correctly starts at 23 (right after scene's range),
+  `launcher_start` correctly lands at 25 — no collision.
+- Same test against settings alone (no scene.objects.pdl): confirmed
+  `next_body_nav` starts at 5 — matching what ASCII mode already
+  independently shows for the same button (`[ ] 5. [Window Geometry]`),
+  a nice consistency bonus though not a requirement.
+- `gcc -Wall`: exit 0, 0 errors, same 78 baseline warnings, nothing new.
+- Real `+x/wraith-alpha_manager.+x` rebuilt in place.
+- Not yet re-confirmed live (need you to check the settings menu in GL
+  mode again — should now show a real `[ ] 5.`-style nav number on
+  "Window Geometry").
+
+
+
+## 2026-07-02: TPMOS CLI-IO Routing And Browser Control Drift
+
+Observed:
+- TPMOS startup menu option `8` could enter `[^]` mode but typed characters did not persist.
+- root cause was not the `cli_io` renderer itself; the main menu layout was falling outside the same modern/player-app gui-state lane used by `user`.
+- `wraith-browser` top chrome was only a text surface, so it looked like input but had no nav/input ownership.
+
+Applied:
+- `pieces/chtpm/layouts/os.chtpm`
+  - startup prompt now uses `<cli_io id="input_text" ... />`.
+- `pieces/chtpm/plugins/chtpm_parser.c`
+  - `pieces/chtpm/layouts/` now routes through the modern/player-app state path.
+  - `save_to_gui_state()` now falls back to `pieces/apps/player_app/manager/gui_state.txt` when no project/app `project_id` is present.
+  - modern non-project layouts now reload that same gui state on each compose pass.
+- `projects/wraith-alpha/wraith-projects/wraith-browser/ops/src/wraith_project_input.c`
+  - browser search was migrated from passive `text_asset` chrome into real Wraith `control` objects.
+  - search bar is now the single `action=INTERACT` control.
+  - browser nav buttons are now `PROJECT_ACTION:*` controls.
+  - browser state now persists `address_input` and keeps it synchronized with `address` when not editing.
+
+Expected live check:
+- TPMOS main menu option `8` should now behave like `projects/user/layouts/user_login.chtpm`:
+  - focus to `[^]`
+  - printable keys appear inline
+  - backspace mutates the visible buffer
+- Wraith browser should now show:
+  - top selectable search control
+  - browser action controls beneath it
+  - document panel below
+
+Remaining caution:
+- browser body still renders a local `[^] 1. [...]` text line as its project-owned mirror, while host Wraith also owns the real nav selectors in GL.
+- if that dual presentation feels noisy in live use, next pass should reduce the body mirror to plain label text and let host nav be the only selector truth.
+
+This file is intentionally limited to current live bugs. Historical context lives in:
+- `handoff-j26.txt`
+- `wraith-architecture-j25.md`
+- `WRAITH-GL-STD.md`
+- `wraith-chtmgl&3d.md`
+
+## Active Fix 1: Window Chrome And Interact Startup State
+
+Live screenshot:
+- `Screenshot from 2026-06-27 22-27-33.png`
+
+Observed:
+- `wraith-3d-cube` is in interact mode.
+- cube key controls work and update project state/body.
+- GL shows the projected wireframe cube.
+- `Control_Map` is now visible as a toolbar/headerbar-ish control.
+- normal window chrome controls are not visually complete enough around the project-specific toolbar control.
+- the project started in active `is_map_control=1`, so it showed `[^]` immediately instead of requiring click/Enter.
+- this was caused by persisted project state, not by a fresh intentional default.
+
+Expected:
+- new windows should start in shell/window-nav mode unless the project explicitly declares a resume policy.
+- `Control_Map` should show `[>]` when selected but inactive.
+- pressing Enter or clicking the `Control_Map` affordance enters interact mode and changes it to `[^]`.
+- entering `INTERACT` for a `${game_map}` payload should sandbox input like `fuzz-op` / `fuzz-op-gl`.
+- selected map control should remain visibly active as `[^]`.
+- the visible control may live in a project headerbar, toolbar, side menu, overlay, or footer as the project layout requires, but it must not replace or erase normal Wraith window focus/chrome controls.
+- the `${game_map}` surface should stay payload-only for cube/map/model rendering.
+- while `is_map_control=1`, keyboard control belongs to the project map surface.
+- external Wraith nav should not move or show active focus changes from map-control keys.
+- `ESC` is the escape hatch back to external Wraith nav.
+
+Receipt finding:
+- the manager/export side can already report the game map as `nav_selected=1` with `nav_selector_glyph=^`.
+- therefore the remaining issue is UI modeling/render placement, not just missing manager state.
+
+Fix direction:
+- keep project scene records migrated away from `nav=<n> action=INTERACT` on `role=game_map` and into a project UI control:
+  - `tag=control`
+  - `role=window_toolbar_item`
+  - `action=INTERACT`
+  - `target_surface=game_map`
+- keep the `${game_map}` surface as payload-only:
+  - `role=game_map`
+  - `nav=0`
+  - `action=NONE`
+- while `is_map_control=1`, pin/render the project-local interact control as `[^]`.
+- on new project window launch, reset or initialize `is_map_control=0` without writing a fake user `ESC` event.
+- keep key events appended to project `session/history.txt` and processed by project-owned `ops/+x/wraith_project_input.+x`.
+
+Applied code fix:
+- added generic `g_map_control_nav_index` pin in `wraith-alpha_manager.c`.
+- entering `INTERACT` resolves the current `action=INTERACT` nav and pins `g_active_gui_index` there.
+- while `is_map_control=1`, display-index sync is skipped so stale parser/GL focus cannot pull the manager to chrome/taskbar/debug nav.
+- imported project scene objects with `action=INTERACT` render selected as `[^]` while map control is active, even if stale shell nav was elsewhere.
+- `ESC` clears the map-control nav pin.
+- rebuilt `projects/wraith-alpha/manager/+x/wraith-alpha_manager.+x`.
+
+Status:
+- sandbox pin code was applied.
+- generic launch/open now silently initializes the opened Wraith project's `session/state.txt` to `is_map_control=0` without appending a fake `COMMAND: ESC`.
+- project-local interact control standard was applied to `wraith-3d-cube` scene generation, currently using a toolbar-style control.
+- `wraith-3d-cube/session/scene.objects.pdl` now emits:
+  - `tag=control role=window_toolbar_item nav=5 action=INTERACT target_surface=game_map label=Control_Map`
+  - `tag=surface role=game_map nav=0 action=-`
+  - `tag=model role=zslice_piece ... source=projects/wraith/wraith-projects/wraith-3d-cube/pieces/cube_probe/artifact.txt`
+- `wraith_rgb_daemon.c` now preserves `target_surface` in receipts and draws `role=window_toolbar_item` as a small filled/bordered chrome item.
+- rebuilt `wraith-alpha_manager.+x`, `wraith_rgb_daemon.+x`, and `wraith-3d-cube/ops/+x/wraith_project_input.+x`.
+- current `wraith-3d-cube/session/state.txt` was reset to `is_map_control=0` for the next live check.
+- launch-default fix is applied in `wraith-alpha_manager.c` through `set_project_map_control_in_dir(project_dir, 0, 0)`.
+
+Receipt checks after fix:
+- `current_frame.receipt.pdl` should show the `Control_Map` toolbar object with:
+  - `role=window_toolbar_item`
+  - `target_surface=game_map`
+  - inactive startup: `nav_selector_glyph=>` only when selected by shell nav
+  - active interact: `nav_selected=1` and `nav_selector_glyph=^`
+  - `action=INTERACT`
+- the `role=game_map` surface should show:
+  - `nav=0`
+  - `action=`
+- chrome close/min/open objects should not show `nav_selected=1` while map control is active.
+- primitive receipt for `role=zslice_piece` should no longer report `source_exists=0` if the daemon is resolving from the TPMOS project root.
+- project `session/history.txt` should receive key events.
+- project `session/state.txt` should update rotation/camera.
+
+## Active Fix 2: Receipt Should Prove Sandbox State
+
+Observed:
+- receipts currently show object nav state, but do not explicitly summarize map-control ownership.
+
+Expected:
+- receipt should make it easy to answer:
+  - which project owns interact mode
+  - which nav id is pinned as the interact surface
+  - whether shell nav is sandboxed
+
+Fix direction:
+- after Active Fix 1, add receipt/meta fields if needed:
+  - `map_control_active=1`
+  - `map_control_project=<project>`
+  - `map_control_nav=<nav>`
+  - `shell_nav_sandboxed=1`
+
+Do not implement those fields until the sandbox behavior is correct enough to audit.
+
+## Active Fix 3: Explore CHTMGL-Style Map Menus
+
+Observed:
+- forcing every `${game_map}` control into the window title/header is too narrow.
+- `chtmgl-alpha` style layouts may need map controls as overlays, sidebars, footer controls, menus, or local toolbars around the canvas.
+
+Expected:
+- normal Wraith window chrome/focus controls remain standard and visible.
+- project-specific map controls are layout-owned controls targeting `${game_map}`.
+- controls may be headerbar, toolbar, side menu, footer, or overlay if the project's layout declares them.
+- receipts must preserve `target_surface=game_map` so agents can audit which UI control owns which payload.
+
+Next exploration:
+- use `chtmgl-wraith` to define richer project-local controls around a `${game_map}` or canvas-like area.
+- then backport the useful standard to `wraith-3d-cube` and `piececraft-wraith` without hardcoding project details in Wraith Alpha.
+
+Progress:
+- `chtmgl-wraith` now has project-owned `panel`, `button`, `checkbox`, `slider`, `menu`, `window_toolbar_item`, `game_map`, and `widget_surface_probe` scene records.
+- this is still static scene truth, not a full CHTMGL parser.
+- RGB presenter now draws first-pass CHTMGL-style button/checkbox/slider/menu shapes and a `widget_surface_probe` preview.
+- receipts now audit `widget_surface_probe`.
+- `chtmgl-wraith/session/scene.objects.pdl` now uses higher panel/control/model z-levels so project body audit text should sit behind filled CHTMGL panels.
+- next fix is a project-owned CHTMGL parser/manager so scene records come from layout files instead of static seed files.
+
+## Active Fix 4: CHTMGL Fill Priority And Generic Window Move/Resize
+
+Live screenshot:
+- `Screenshot from 2026-06-27 23-45-34.png`
+
+Observed:
+- `chtmgl-wraith` now opens and shows representative controls/widgets.
+- panel/window regions are not visually filled strongly enough, so body text and controls appear to bleed through or visually collide.
+- some CHTMGL sub-panels look like outlines instead of real filled containers.
+- Wraith subwindows are not yet draggable or resizable.
+
+Expected:
+- container objects such as project panels, widget panels, visual panels, and `${game_map}` surfaces should fill their background before text/controls are drawn above them.
+- fill order should be auditable in receipts so an agent can tell whether overlap is source order, z-order, clipping, or missing fill.
+- normal Wraith host window chrome stays separate from project-local CHTMGL controls.
+- project-local controls may be headerbar, toolbar, side panel, footer, menu, or overlay controls if they declare `target_surface=game_map`.
+- host windows should become movable by titlebar/drag-region and resizable by edge/corner handles.
+
+Fix direction:
+- first fix RGB fill priority for CHTMGL/project containers:
+  - draw filled panel/surface backgrounds before control/text glyphs
+  - preserve border visibility
+  - preserve nav focus/highlight visibility above fills
+  - receipt should report fill rect, border rect, z, parent/container, and clipping result
+- then implement generic host window movement/resizing:
+  - add file-owned window geometry in the Wraith session/window registry
+  - export semantic host controls like `role=window_titlebar action=WINDOW_DRAG window_id=<id>`
+  - export resize handles like `role=window_resize_handle action=WINDOW_RESIZE edge=se window_id=<id>`
+  - GL input writes semantic drag/resize events, not direct geometry mutation
+  - manager consumes events, clamps geometry, writes registry, and exports next frame
+  - receipts include old rect, raw/mapped mouse, hit action, delta, clamp reason, and final rect
+
+Do not:
+- hardcode CHTMGL, Piececraft, cube, or Emoji window behavior into `wraith-alpha_manager.c`.
+- let project-specific ops own host drag/resize.
+- fix overlap by hiding text without receipt evidence.
+
+Applied partial fix:
+- `wraith-alpha_manager.c` now exports `project_body_text` at `z=14` instead of `z=22`, so project scene panels/surfaces can cover audit body text in GL.
+- `chtmgl-wraith` static scene records were raised to panel `z=24`, controls `z=30+`, and preview `z=34`.
+- this should reduce CHTMGL panel bleed, but receipts/screenshots still need live verification.
+
+## Active Fix 5: Webcam Shared-KVP Regression
+
+Observed:
+- `web-cam` shows the first webcam frame, then stops appearing live.
+- ASCII preview can show stale `missingno.png` content instead of current webcam data.
+- this started after moving webcam status / marker / frame transport toward shared KVP memory.
+
+What went wrong:
+
+1. Wake-up seam mismatch:
+- `wraith-alpha_manager.c` still wakes active project input from a real file append on `session/fs_watch.marker`.
+- current manager logic:
+  - `stat("%s/session/fs_watch.marker")`
+  - compare `st_size`
+  - call `run_active_project_input_op_mode("marker_tick")`
+- after the KVP change, webcam `pulse_marker()` writes `session/fs_watch.marker` into shared memory by default, not to the file manager watches.
+- result:
+  - the project gets its initial render/update path
+  - later webcam frames do not keep waking project input
+  - live streaming appears frozen even though capture may still be running
+
+2. Blob priority is too aggressive:
+- `wraith_project_input.c` currently prefers `wkdb_read_blob_direct("session/current_frame.png", ...)` before any file fallback.
+- there is no freshness comparison between:
+  - shared-memory blob generation
+  - shared-memory `frame_epoch`
+  - on-disk `session/current_frame.png`
+- if a stale blob already exists in shared memory, it wins every time.
+- that explains why `missingno.png` can persist in the ASCII preview after the manual blob test.
+
+3. Shared memory name was global:
+- earlier DB proof used a Wraith-local singleton name
+- current TPMOS-shared seam now uses TPMOS naming and shared ownership instead
+
+Expected:
+- webcam marker updates must remain visible to the existing Wraith manager wake-up path until the manager itself gains a memory-backed watcher seam.
+- ASCII preview should prefer the newest available frame, not blindly prefer any blob.
+- manual blob tests such as `missingno.png` must not poison future webcam sessions.
+
+Fix direction:
+
+Phase 1:
+- keep the immediate webcam regression investigation grounded in standard ownership, not just local patching.
+- do not grow implementation-heavy header ownership further
+
+## Active Fix 6: Browser GL Scene/Receipt Format Drift
+
+Observed:
+- `wraith-browser` ASCII looks correct in the mother terminal.
+- `wraith-browser` GL does not match the ASCII body.
+- live GL shows:
+  - labels truncated at spaces
+  - button labels split into fragments
+  - document text columns colliding or compressing
+  - receipt-derived scene truth looking more coherent than the final GL result
+
+Live evidence:
+- user screenshot: `Screenshot from 2026-07-02 01-17-38.png`
+- browser ASCII body at the same time is structurally correct
+- browser generated scene now contains explicit GL objects such as:
+  - `browser_addr`
+  - `browser_page`
+  - `browser_js`
+  - `browser_counter`
+  - `browser_doc_panel`
+  - `browser_doc_01..07`
+
+What went wrong:
+
+1. Scene object format is not quote-safe
+- `wraith-browser/session/scene.objects.pdl` currently emits lines like:
+  - `label=JS:on|Last:JS counter_inc`
+  - `label=[H1] Controlled JS Lab`
+  - `label=This page is the first compatibility seam. Scripts are executed by a dedicated TPMOS op, not by hidden window logic.`
+- those are human-readable, but the current Wraith scene/receipt chain was never standardized for arbitrary free-text labels in object records.
+
+2. Receipt exporter and GL parser do not share a strict reversible scene grammar
+- `wraith_rgb_daemon.c` receipt parse path uses:
+  - `label_start = strstr(line, "label=");`
+  - `action_start = strstr(label_start, " action=");`
+- this means the daemon depends on field order and unescaped sentinel tokens.
+- once labels contain rich text, punctuation, spaces, or any future ` action=`-like substring, the format becomes brittle.
+
+3. The GL object model is better suited to short chrome labels than paragraph text
+- current working projects mostly emit short labels like:
+  - `PROJ:blank-project/`
+  - `Thumb:[#-------]1-6/10`
+  - `Video_Poster`
+  - single-cell image preview labels
+- browser attempted to push paragraph-scale page text directly into `label=` fields on `tag=text` scene objects.
+- that is outside the stable proven envelope of the current scene-object grammar.
+
+4. The old browser nested-panel bug was real, but this is a second bug
+- first bug:
+  - browser panel used `source=session:wraith_body`
+  - GL rendered a nested framed block
+- second bug after replacing that:
+  - explicit browser scene objects are now generated
+  - but their label payloads exceed what the current scene/receipt/GL contract safely supports
+
+Code evidence:
+- generated browser scene:
+  - `projects/wraith-alpha/wraith-projects/wraith-browser/session/scene.objects.pdl`
+- GL parse path:
+  - `projects/wraith-alpha/plugins/wraith_rgb_daemon.c`
+  - `parse_frame_objects()`
+  - `label_start = strstr(line, "label=");`
+  - `action_start = strstr(label_start, " action=");`
+- receipt writing path also serializes `label=` as plain inline text
+
+Expected:
+- a browser scene must render the same logical text structure in ASCII and GL.
+- scene object records must support rich text payloads in a standardized reversible way.
+- receipts must prove exactly what text was intended, not only what survived ad hoc field slicing.
+
+Fix direction:
+
+Phase A: immediate stable browser fix
+- do not encode paragraph text directly in object `label=` fields.
+- keep object labels short and chrome-safe only:
+  - `Home`
+  - `Audit`
+  - `JS_Lab`
+  - `Document`
+- for body/document text, use one of:
+  - a dedicated `source_ref`/text-file payload field for row text
+  - a text-grid payload file referenced by object id
+  - or a browser-specific `body_surface` object whose file payload is rendered by a dedicated text-grid renderer
+
+Phase B: proper Wraith scene standard fix
+- define a quote-safe object field encoding standard for scene records:
+  - either quoted values
+  - escaped values
+  - or length-prefixed/text-file-backed payloads
+- ensure:
+  - scene writer
+  - receipt exporter
+  - GL parser
+  all use the same reversible contract
+
+Recommended TPMOS/Wraith direction:
+- long-form text should not live in ad hoc inline `label=` fields.
+- inline `label=` remains for small UI labels and nav controls.
+- browser/document/editor surfaces should use payload-backed text grids or text assets, which also keeps ops reusable and auditable.
+
+Status:
+- root cause confirmed.
+- browser GL object generation itself is no longer the main issue.
+- the remaining defect is scene text payload format/transport, not browser navigation logic.
+- treat the earlier project-local seam as replaced
+
+Standard correction required before broadening the fix:
+
+1. No implementation-heavy `.h` seam:
+- `wraith_share_kvp.h` currently contains real implementation:
+  - process launch
+  - shmem attach
+  - file mirroring
+  - text/blob read-write helpers
+- this violates the local TPMOS preference against `.h`-driven implementation.
+- future refactor should move this logic into normal `.c` ops/units.
+
+2. No Wraith-local naming for a TPMOS-wide service:
+- this service is useful beyond Wraith and should not stay named:
+  - `wraith_share_kvp_*`
+- preferred future naming:
+  - `tpmos_share_kvp_db`
+  - `tpmos_share_kvp_read`
+  - `tpmos_share_kvp_write`
+  - `tpmos_share_kvp_dump`
+
+3. No project-local lazy ownership for a shared service:
+- current startup path is project-local and lazy:
+  - `web-cam` seam calls `wkdb_ensure_daemon(...)`
+  - that launches `ops/+x/wraith_share_kvp_db.+x`
+- this is acceptable only as a proof seam.
+- long-term ownership should move to TPMOS orchestration or an equivalent shared startup layer, not remain inside one project.
+
+4. Standard-first hypothesis:
+- user direction for current epoch:
+  - adhere to TPMOS standards first, because ownership/naming/seam violations may be the reason the webcam bug is still muddy.
+- future agents should not frame this as "cleanup after the bug".
+- the structural correction is part of the bug fix.
+
+Current practical stance:
+- share-KVP refactor into TPMOS-shared ownership is done
+- live webcam frame cache is also in place
+- file-visible `session/fs_watch.marker` still remains important until manager wake is generation-native
+
+Phase 2:
+- make frame selection freshness-aware:
+  - compare blob generation / blob-written epoch / status `frame_epoch` / file mtime
+  - only use blob when it is known to be current
+- add explicit blob reset or overwrite on webcam start
+
+Phase 3:
+- replace global DB naming with project-scoped naming so one run cannot inherit stale blob state from another
+
+Architectural note:
+- this regression is not evidence that the shared-KVP idea is wrong.
+- it shows that the current proof moved the producer side of the seam before moving the watcher/consumer wake-up contract.
+- the manager still depends on file growth, so webcam cannot go fully memory-first on marker signaling yet.
+
+Applied repair and current state:
+- `wraith_webcam_capture.c`
+  - writes status through TPMOS shared KVP
+  - writes live decoded frames through `tpmos_live_frame_cache`
+  - sampled PNG snapshot remains for audit/fallback instead of hot transport
+  - redraw pulses now happen on raw-frame arrival rather than file mtime polling
+- `wraith_project_input.c`
+  - ASCII preview now prefers the live frame cache first
+  - file and blob paths are fallback, not first-choice hot truth
+- `wraith_rgb_daemon.c`
+  - webcam image panel now also prefers the live frame cache first
+  - this removes the earlier source mismatch where ASCII could be real-time but image preview still lagged on sampled PNG
+
+Why this repair is correct for now:
+- the current webcam hot frame truth is now memory-first
+- file artifacts are retained for audit/fallback
+- manager wake and full redraw policy are still not fully generation-native, so not every remaining latency source is solved yet
+
+Remaining proper fix:
+- move manager wake-up to a reusable backend-aware seam
+- then add blob/file freshness comparison before promoting webcam fully memory-first
+
+Current status after structural TPMOS pass:
+- webcam is working again after:
+  - removing the implementation-heavy project `.h` seam
+  - moving share-KVP ownership into TPMOS-shared `pieces/chtpm/ops`
+  - renaming the seam toward `tpmos_share_kvp_*`
+- standard compile path is clean again
+- however, the webcam lane is still visibly slow
+
+Why it is still slow:
+
+1. Conservative fast-profile capture/output:
+- current fast profile was still effectively low-frame-rate:
+  - video4linux input rate modest
+  - ffmpeg output filter limited
+- that makes the preview feel behind even when the path is technically alive
+
+2. Coarse frame-change polling in the capture daemon:
+- webcam daemon only checks `current_frame.png` mtime on a sleep loop
+- coarse sleep means frame detection and marker writes lag behind capture
+
+3. Full project redraw on each frame:
+- each marker wake still causes project input to rebuild:
+  - `state.txt`
+  - `webcam_preview.grid.pdl`
+  - `wraith_body.txt`
+  - `scene.objects.pdl`
+- that is acceptable for proof and audit, but it is heavier than a future decoded-frame/shared-surface lane
+
+Near-term fix direction:
+- keep the proof auditable and file-keyed
+- raise the fast-profile capture/output rate moderately
+- tighten frame-detect polling moderately
+- do not remove current audit files to chase speed
+
+Longer-term speed direction:
+- move away from PNG-as-hot-transport
+- use decoded-frame caching or shared-memory/ring-buffer handoff for hot media frames
+- keep the same logical file-path keys for audit dumps/snapshots
+
+## 2026-07-02: Browser GL Control Packing Drift
+
+Confirmed by live check:
+- TPMOS startup menu option `8` is now working.
+- the remaining browser issue is GL-only.
+
+Observed from `Screenshot from 2026-07-02 02-11-37.png`:
+- browser controls are now semantically correct Wraith controls, but visually packed too tightly.
+- host numbering/selectors are being rendered inside each control, which is correct semantically.
+- control widths are too small for `selector + nav index + label`, so labels are clipped:
+  - `Home` becomes `[Ho`
+  - `Audit` becomes `[Au`
+  - `JS_Lab` becomes `[JS_L`
+  - same pattern for `Back`, `Forward`, `Reload`, `Toggle_JS`, `JS_Reset`
+
+Interpretation:
+- this is no longer a CLI-IO/input routing bug.
+- this is no longer a browser action/command bug.
+- it is now a Wraith GL control sizing/reflow issue.
+
+Recommended next pass:
+1. keep host-owned nav numbering/selectors in GL.
+2. widen browser control widths and/or reduce controls per row.
+3. remove duplicate selector-style browser body text so GL host controls remain the only selector truth.
+
+
+## 2026-07-06: window-geom rendered ${window_geom_display} blank
+## (user-reported twice) -- project_id truncated at first path segment
+## in the ACTUALLY-LIVE parser (not the one j5-prompt.txt assumed)
+
+Corrects a wrong assumption made mid-investigation and now fixed: the
+live desktop is rendered by `pieces/chtpm/plugins/chtpm_parser.c` (the
+classic, shared parser), NOT `projects/wraith-alpha/ops/wraith_parser_
+alpha.c`. Confirmed empirically -- `wraith-alpha`'s `project.pdl` has no
+`META | parser` override, so `orchestrator.c`'s `launch_and_register()`
+falls through to its own default `parser_path = "pieces/chtpm/plugins/
++x/chtpm_parser.+x"`. A first attempt patched `wraith_parser_alpha.c`
+(it also has a similar-looking `load_vars()`/Pitfall-#31 block) and
+verified it standalone -- that fix is real and harmless but was NOT the
+live bug, since that binary never runs for wraith-alpha today. Caught
+this by noticing wraith_parser_alpha.c always writes a `parser.out`
+DEBUG trace and the user's live session produced none.
+
+Root cause (in the REAL live parser, chtpm_parser.c's load_vars(),
+~line 866): `project_id` for any `projects/...` layout was derived as
+"everything up to the FIRST `/`" (`strchr(start, '/')`), which is
+correct for a normal single-segment project but collapses a NESTED
+project -- `projects/wraith-alpha/wraith-projects/settings/window-geom/
+layouts/window-geom.chtpm` -- down to just `wraith-alpha`. The
+project-state load a few lines later then reads `projects/wraith-alpha/
+manager/state.txt` (doesn't exist) instead of window-geom's own
+`manager/state.txt`, so `window_geom_display` is never set and the
+`.chtpm`'s `${window_geom_display}` substitutes to nothing.
+
+Applied: in `chtpm_parser.c`'s `load_vars()`, derive `project_id` as
+everything from `projects/` up to the `/layouts/` (or `/project.pdl`)
+boundary instead of the first `/` -- falling back to the old
+first-`/` behavior only if neither marker is found. For every existing
+single-segment project (`projects/<id>/layouts/...`) the first `/` IS
+already that boundary, so this is byte-identical there; only
+multi-segment (nested) projects change.
+
+Verified:
+- Standalone (scratchpad `projid_test.c`): fed both the OLD and NEW
+  derivation the real layout paths for window-geom, settings,
+  alpha-shell, fuzz-op, user, and a bare `project.pdl` path. Nested
+  paths correctly changed (`wraith-alpha` -> full nested id); every
+  single-segment case was byte-identical between OLD and NEW -- zero
+  regression confirmed before touching the real file.
+- Compile: `gcc -pthread -lm -Wno-format-extra-args` (the real
+  `compile_all.sh` flags, not just `-Wall`) exit 0, 0 errors. `-Wall`
+  count unchanged at 5 (same pre-existing snprintf-truncation set).
+  Real `+x/chtpm_parser.+x` rebuilt in place.
+- **Live-verified by the user** (not just standalone): ran `sh
+  button.sh r`, navigated Loader -> wraith-alpha -> Terminal ->
+  settings -> Window Geometry, and the frame at 2026-07-05 19:12:35
+  showed the full populated block (`Source:`/`Window:`/`Project:`/
+  `x=...`/`(no WINDOW section...)`) where it had been blank before.
+
+
+## 2026-07-06: GL mode never advances past whatever Window was last
+## active -- href-only screens (window-geom, settings) render frozen/
+## stale in GL, even after the fix above made ASCII correct
+
+Observed (confirmed via receipts, not guessed): after the fix above,
+ASCII correctly showed window-geom's geometry block. But
+`pieces/display/current_frame.meta.pdl` / `.objects.pdl` /
+`.desktop_state.pdl` -- the files `wraith_rgb_daemon.c` actually
+renders GL mode from -- stayed frozen at `frame_id=000004`,
+`focused_object_dom_id=settings_3`, `source_layout=.../alpha-shell.
+chtpm`, even though their mtimes updated during the live session. User
+confirmed `desktop_presenter_mode=gl` was active, meaning GL was really
+trying to render this stale scene, not just idling in ASCII.
+
+Root cause: `current_frame.objects.pdl` is written exclusively by
+`wraith-alpha_manager.c`'s `write_semantic_projection_files()`, which
+only describes its own `g_windows[]` registry. window-geom is
+deliberately NOT a registered Window (settings-hub-window-geom-design-
+j5.md's whole point -- it's reached by pure `href`/`current_layout`
+swap inside the parser). So the manager process has zero way to know
+ASCII navigated there. `wraith_rgb_daemon.c`'s `render_semantic_frame()`
+only fails over to the ASCII glyph-mirror (`render_ascii_frame()`) when
+the semantic scene is MISSING or EMPTY (`semantic_source_is_allowed()`/
+`count<=0`) -- never when it's merely stale/describing the wrong
+screen, which is exactly this case, so GL rendered the wrong frozen
+content indefinitely.
+
+User's direction, explicit: keep `href` navigation (do not force
+window-geom to become a registered Window / project-launcher entry
+just to satisfy GL) -- fix GL to honor `href` instead.
+
+Applied (3 files, additive, matches "one scene two presenters" /
+"if they disagree render the fresh one" per wraith-architecture-j25.md):
+
+1. `wraith_rgb_daemon.c` (the RGB/GL rasterizer):
+   - `source_layout_is_stale()`: compares `current_frame.meta.pdl`'s
+     `source_layout` against the live `pieces/display/current_layout.
+     txt` (the ASCII parser's own truth of what's actually showing).
+     Zero effect when they agree (the normal desktop-Window case).
+   - `parse_nav_line()`: recognizes chtpm_parser.c's own real,
+     already-emitted nav-line convention (`"[>] N. [Label]"` /
+     `"[ ] N. [Label]"`) in any already-composed ASCII line.
+   - `synthesize_objects_from_ascii_frame()`: on a detected staleness
+     mismatch, scans `current_frame.txt` (always correct for ANY
+     layout, href-reached or not) and emits one semantic `OBJECT` per
+     real nav line, with real `x/y/w/h`/`nav`/`nav_selected`, and
+     `action=ASCII_NAV:<n>` -- giving GL a correct, clickable scene for
+     ANY href-only screen generically, no per-project code.
+   - `render_semantic_frame()`: on staleness, draws the SYNTHESIZED
+     objects (new receipt status `synthesized_from_ascii_stale_layout`)
+     instead of the stale real ones; only falls through to the
+     existing raw glyph-mirror if synthesis itself finds zero nav lines
+     (new rejection status `rejected_stale_semantic_source_no_ascii_
+     fallback`) -- never worse than the pre-existing fallback floor.
+2. `wraith-alpha_manager.c` (`route_command()`): new `ASCII_NAV:<n>`
+   branch. Deliberately does NOT reuse the existing `KEY:` branch (that
+   one routes into the ACTIVE PROJECT's own `wraith_project_input.+x`
+   op -- a different, project-specific input channel, per j5-summary&
+   handoff.txt section 11 point 4's "two independent nav-index systems"
+   warning). Also deliberately does NOT write the real
+   `pieces/keyboard/history.txt` -- this manager's OWN
+   `process_history_file()` polls that same file and would double-fire
+   its own unrelated `route_input()`/`g_active_gui_index` on the same
+   digits. Instead writes the digit-by-digit ASCII codes of the nav
+   number plus a trailing Enter (13) -- matching exactly what a human
+   typing that number at the `Nav > _` prompt produces, confirmed
+   against the user's own real transcript (typing "12" logged
+   `KEY_PRESSED: 49` then `KEY_PRESSED: 50`) -- into a NEW, dedicated
+   `pieces/keyboard/gl_bridge_history.txt` file.
+3. `chtpm_parser.c`: polls that new `gl_bridge_history.txt` the same
+   way it already polls the real `history.txt` (same `KEY_PRESSED:`
+   parsing, same CRLF-debounce pattern, own separate position/debounce
+   state), calling the same `process_key()` a real keypress would.
+   This is the only consumer of the new file -- `wraith-alpha_manager.c`
+   never reads it, so no double-fire.
+
+Found, flagged, deliberately NOT fixed (out of scope, pre-existing,
+unrelated): `wraith_parser_alpha.c` builds its own `hist_p` for
+`pieces/keyboard/history.txt` (line ~2667) but its main loop never
+actually polls it at all -- a real, separate keyboard-input gap in a
+parser that isn't currently live. Did not mirror the gl_bridge_history.
+txt addition into it for this reason (nothing to hook it into yet, and
+it's not blocking this fix). Worth a dedicated look if that parser is
+ever made live via a `project.pdl` `parser` override.
+
+Verified:
+- Standalone (scratchpad `gl_bridge_test.c`): `parse_nav_line()` against
+  real captured lines (window-geom's "Back to Settings", settings'
+  "Window Geometry" menu item, a loader entry) -- correct nav/label/col
+  every time; correctly rejects border lines, the `Nav > _` prompt, and
+  blank lines. `source_layout_is_stale()` against real values -- true
+  for the actual href-drift case, false when layouts agree, false on an
+  empty/missing current_layout.txt (no false-positive fallback). Digit
+  splitting for nav 5/12/38 -- matches the real transcript exactly
+  (`53 13` / `49 50 13` / `51 56 13`).
+- Compile, all three files, REAL `compile_all.sh` flags (`-pthread -lm
+  -Wno-format-extra-args`): exit 0, 0 errors, all three. `-Wall` counts:
+  chtpm_parser.c 5 (unchanged), wraith_rgb_daemon.c 3 (unchanged, none
+  reference new code), wraith-alpha_manager.c 78 (+1 new, on the one new
+  `append_ascii_bridge_key()` function -- same harmless snprintf-
+  truncation style as ~10 other pre-existing warnings in this same
+  file, not a new class of issue). All three real `+x` binaries
+  rebuilt in place.
+- **NOT yet live-tested.** This whole fix depends on a real GLUT mouse
+  click landing on a synthesized object and completing the round trip
+  (GL click -> hit_test_semantic_action() -> COMMAND: queue ->
+  route_command()'s ASCII_NAV: branch -> gl_bridge_history.txt ->
+  chtpm_parser.c's process_key() -> real frame change) -- that chain is
+  only exercisable with a real display and real mouse input, neither
+  available in this review environment. See j5-prompt.txt's addendum
+  for the exact live-test steps to run next.

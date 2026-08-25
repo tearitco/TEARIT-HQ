@@ -1,0 +1,11 @@
+tile_id=treasure
+ascii=T
+unicode=🎁
+label=Treasure
+rgb_top=255,215,0
+rgb_side=218,165,32
+rgb_edge=184,134,11
+extrude=1.2
+solid=0
+walkable=1
+category=interactive

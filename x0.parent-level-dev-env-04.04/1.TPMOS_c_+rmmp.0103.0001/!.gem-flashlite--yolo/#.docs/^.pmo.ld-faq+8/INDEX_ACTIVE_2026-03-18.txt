@@ -1,0 +1,36 @@
+PMO LD FAQ+7 - Active Index (2026-03-18)
+=========================================
+
+This folder was reduced to remove redundant or outdated doctrine files.
+Historical long-form duplicates and stale snapshots were removed.
+
+Retained active docs:
+1. !_READ_THIS_FIRST_2026-03-18.txt
+   - Entry note explaining historical vs current authority.
+2. #.PMO_KISS_STD_00.01.txt
+   - Current concise PMO/TPM standard and execution ordering.
+3. ^.how2TPM/TPM_ONBOARDING_GUIDE.txt
+   - Current implementer onboarding focused on Step 1 and migration-safe behavior.
+4. ^.chtpm-faq/CHTPM_TPM_DOX+1.md
+   - Current concise CHTPM/TPM layer contract and pipeline reference.
+5. PITFALLS_ACTIVE_2026-03-18.txt
+   - High-risk regression and migration pitfalls checklist.
+
+Retained for cross-reference only:
+(none)
+
+Removed as redundant/outdated:
+- ^.PMP_mar3.txt
+- ^.compile_clean.txt
+- !.PMO-WISE-0.2.txt
+- ^.PROCT_MOST*+9.txt
+- &.Piece.mark-os_walk.12.txt
+- #.piece.mark.c-look_0.txt
+- ^.how2TPM/+.TPM_+x+6.txt
+- ^.how2TPM/^.THE_PRACTING_M*+5.txt
+- ^.how2TPM/*.fuzzpet_pipeline.c+x_0.0.txt
+
+Current authority when conflicts exist:
+- *.st.mar_18+3🍀️.md
+- *.🍀️quickstart.mar_18+4.md
+- *.prompt_m18.txt

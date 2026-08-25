@@ -1,0 +1,25 @@
+# Moke-Pet Phase 5: Interaction & Reproduction - Detailed To-Do List
+
+## Objective
+Enable population growth through mating mechanics and refine competitive interactions.
+
+## 1. Reproduction Logic (`mate.+x`)
+- [x] **Create `mate.c`**:
+  - Argument: `<partner_id>`.
+  - Logic: 
+    - Check if partner is valid (type: lizard).
+    - Create new entity directory: `liz_genN_<uuid>`.
+    - Clone parent `ops/` and initialize fresh `memory/` and `stomach/`.
+    - Dispatch `xo-pet-setup-tank.sh` logic (scaffold piece.pdl and state.txt).
+- [x] **Heuristic Update**:
+  - Update decision logic in `manager.c` to prioritize `mate` if `hp > 15` and `hunger < 5`.
+
+## 2. Optimization Training
+- [x] **Update `train.c`**:
+  - `MATE`: +50 points (highest reward).
+  - `KILL`: +20 points (reward for eliminating competition).
+  - `DEATH`: -100 points (hard punishment).
+
+## 3. Manager Turn Rotation
+- [x] **Dynamic Turn Discovery**:
+  - Ensure the manager re-scans the enclosure at the start of every epoch to include newly born lizards in the rotation.

@@ -1,0 +1,548 @@
+🐢️🀄️🐉️
+<DRAGON> this thing is actually legendary. it was a talk about the fastest way 2 get rich, (flipping exoting lizards, not dogs , lizards fit in tank) 
+
+[i think u should treat it like that the whole way thru ] < its pieces/pokemon etc > then u can add the other stuff for w/e reason 
+but can u sell these for 1k-5k a peices? 2 ppl on fb market? like create this "thing"? a community , etc ? its a good "b&b" excersize... they could even bet weirdly related+
+<each has a generated lore/tale? can chat? etc ? others can mate them/sell them etc... track tree on chain. it can be its own thing tpmos independant (as it was @ inception)
+
+[yes it uses tpmos data structures BUT ANYTHINGIN THEW ORLD COULD DO THAT, it has nothing 2 do with tpmos gui or controls , cuz it runs independantly ;
+it can be sold as autonomouse, u could add controls later post incorporation but till then keep it satoshi sketchy level ] >
+
+and be "the lizard guy / lizard king"
+<DRAGON>
+🐢️🀄️🐉️
+
+🎁️🥡️🪆️
+
+🎁️🥡️🪆️🦎️
+🚬️🥡️
+metacage=
+tpmos for mokepet cages
+
+ie the cage has a .pdl
+and will register as a "project"(or cage or something w/e made2load those)
+and over time we will congeal this into super compatible swappable all over the place.
+🚬️🥡️
+
+📅️j25++ were kind of in a functional lul. we need to do some 
+"mid scaffold  maintinece style architecture b4 we get serious/fun momentum again"
+📅️j25:
+PROTIP? JUST DO WRAITH. (IN 1.TPMOS) 
+wraith status ?  = 
+still no "[]options in window" but once there are u can start opening
+more windows , and mimmicking chtmgl-os...
+
+do emoji studio. make sure everything has a 3d-z visual, even if its not 'attached 2 gui'.
+(bonus if u can take input from multiple sources/guis/ thats very sophisticated "end game" fx()
+
+
+
+>wait 
+
+--- FRAME UPDATE at 2026-06-25 01:07:08 ---
+[ KPI 1: Keyboard Nav Proof ]
+Use arrows to move selector. Windows and controls stay indexable.
+
++-WRAITH DESKTOP GUI---------------------------------------------------------------------------+
+| +-[ ] 1. [ Terminal #6 ]------------------------------------------[ ] 2. [o][ ] 3. [-][ ] 4. [x]-+               |
+| |[>] 5. [terminal    ]|
+| |[ ] 6. [blank-proj  ]|
+| |                                                                                              |
+| |                                                                                              |
+| +----------------------------------------------------------------------------------------------+               |
+| [ TASKBAR ] [ ] 7. [Terminal] |
++----------------------------------------------------------------------------------------------+
+
+
+(1.tpmos has options. just not xo-pet's ; so lets finish this before 'reporting' 2 pet . 
+)
+
+; ok. so what? how? 
+can we open / play any normal projects? chtpmgl? 
+(can we <switch between ascii and gl like emoji?>🔍️
+
+🐗️bored. wanna write book faster? make a "book writing suite"
+(just the chat interface? yea +- "tools" or something (ops for any ai or w/e)
+
+
+🏁️
+1. too much debug info on the screen first of all.
+<especialy if some is redundant>
+<would be nice if each window scaled on its own , premature frame instead of locking
+to terminal size , terminal is just a debug output ; frame should be truth 
+2.
+<why does 'blank project' lock up everything?>
+3. currently the gl window doesn't send mouse/kbd info back to history(which it
+definately should > 
+🏁️
+📅️
+📅️j24:
+instead of doign "WSR" game again. spend ur time more wisely 
+isolate a copy of "LSR" and start building it out in isolation . who cares
+and test it get it "up to snuff" , show screenshots if u can. etc.  
+❗️take xo-pet but push it inside out to make ox-pet? w/e ❗️
+(then wut? wraith or lsr...)
+✳️i just asked it to do this but it just hallucinated. we did too much in that last session
+🎑️
+pick a "large smol chunk" of thing u wanna do .
+
+like "lrs isolated + fsm + add entities (pets) once its done"
+(who cares , and add locations/visualization after. who is gonna complain if lsr is done 
+DO IT ALREADY LOL"
+🎑️
+⚗️pushing towards chem compoundy stuff
+
+🥈️2nd alt do op ed . up 2 readable pal save/load (HOW IS THIS NOT DONE!)
+
+🥉️🐖️🏪️(emoji studio 3d ) in wraith. this isn't done for reasons
+
+👁️ duh just do wraith. first , cuz duh {then do any and everything} <- have doc for pushing this
+
+🍀️4🍀️ do book writing.(but only with googlegemini)[only if they are chill]
+🤖️
+WAIT ON "IQA_LLM" till much later, cuz it may needs lots of "weights"
+(have fondue, and user-fondu bin folders first)
+
+however DO do fsm/ops/pal in mean time
+
+🙊️actually thats not true. seperate it . and train it on mac or debilu tbh 
+🤖️
+📅️j19: 
+🇷🇴️
+y xo-control is good? 
+as "enviornments and their entity/ai management becomes more robust
+its nice to have more prioritized view and accountability of data structures and ai functionality. 
+
+we can use this in the future, pulling a full project (its big) 
+and inject controllers / editors / visualizers(wraither) w/e as "dependencies"
+that pull in from a "~/tpmos-master-cloud/ and auto update kvp and dir thru scripts (ez but this was always the desire) there can still be a master project
+and sure this could also run as an "internal project(maybe even for the best? or
+have weird linking or just do w/e u want, where u may prefer this 
+and not think 2nd thoughts of it. however id with that they could be in 
+controllers peices, or enclosures peices, somehow , using a locations file or osmething
+in the future)
+
+{it also allows for using different editors or w/e for same project w/o moving the project
+after all we assume project is heavier than controller at this point,esp with fondu pushing for ux/marketability/packaging and sales}
+
+
+the fondu (i duno wut it currently does but we will probably just do a brand new one
+called phondu or something
+that will just pull in desired files. 
+otherwise they can just run install-phondu-deps.sh or something that will do the same
+but only for needed programs
+
+💌️
+we will move the hardened tpmos monolith into a ~/phondu/ and it can literally 
+just pull from its projects/ dir that way its still testable etc. i love it. 💌️
+🇷🇴️
+📅️
+j18 = not populating 'pet traits in xo-pet dynamic menu yet'
+
+<maybe show it fuzz-op or something> 
+
+also after this i would drive heavy into our own llm + rl etc just in case
+and ofc get 3d as far as possible
+(in case ai raisesprice/regulates off etc)
+
+<and also push into rmmp _ pal and redoing the current xo bot scripts in pal while 
+they are transparent, in different "tanks" and keep pushing that tanks thing
+
+learn 2 organize it. trunk it. (with exo tpmos style trunking etc 
+when u get exo control and trunking thats the real vision . 
+📅️
+
+j18 : 
+
+› ok, so we would theoretically move x0.5-liz.fiter4-mew-00.02 dir PHYSICALLY INTO moke-pet-project-2.1 , get
+  it? then if launced from moke-pet-project-2.1, the sim would run completely autonomously , but if launched
+  from tpmos gui menu the controller would register with modified moke-pet code, a uid pair, so moke-pet would
+  know to pause for user input (later more than one controller can be dropped in and moke-pet will pause for
+  those as well, get it? pls explain in all docs this important nuance, it is critical to the functional scale
+  of future development and use
+
+📅️
+________________________________________________
+
+🥚️🥚️🥚️🥚️🥚️🥚️🥚️🥚️🥚️🥚️🥚️🥚️🥚️🥚️🥚️🥚️🥚️🥚️🥚️🥚️🥚️🥚️🥚️
+
+
+🦎️
+in theory this bot is meant 2 be a "lizard"
+
+
+whats that mean? 
+
+
+can it pilot a fuzz pet? (like it was supposed 2) 
+
+can we do a meta fuzzpet that eats stuff in dir 
+(like old) will have a life, learn 2 eat 
+(move food in dir into stomach) 
+that was more like the old 🥡️🐩️'s 
+
+but uses tpmos and meta scripts ./ meta ai? 
+
+
+meta scripts = populate dirs, with food / rocks etc
+
+(we reward it for picking up food, punish it for pickingup nothing, or rocks
+or w/e something like that. see how that goes)
+<it needs to move the rocks into a dir 
+<we want to use same dir manipulation tools more or less
+than gem/cpp use. <but already thats diff + json so do u tbh
+we will turn this into a fsm chat bot etc later
+then can add "llm-mini etc" its a lab anyways
+so dont demand perfect. just demand proovable progress/ ui/ux-ez
+
+
+(this can be done with gemini when they stop assaulting me) 
+
+
+🦎️
+
+🕹️
+id liek something that runs raw ops w/o a gui , ie headless
+is this "PAL"? 
+
+
+🧩️🔍️
+(seems like as good a "script" as any imo , even better)
+"ops take args" 
+should it just launch the "op" from fsm? 
+should the fsm be in "pal" as its own op (this is entirely doable
+so dont just write it off) 
+(shold it be in c first just 2 get going? sure its all good tbh)
+
+
+i may even after let that lizard loose
+and let it battle another lizard. add "attacks"(liek pokemon)
+
+
+(could even just let them attack eachother , maybe more structure
+u can breed different lizards for different things) 🀄️
+
+
+🥚️
+
+x0.5-liz.live-00.00 = just live "breath"( or not) every 'turn' (or die)
+(and train just 2 keep breathing ) 
+make sure we have the basics first. 
+
+we will do things like monster rancher battles
+(monster can 'rebel' or fite +- hp )
+later we can add 'mp' rpg/ stats etc 
+
+
+<if the ops are user selectable ; user could do 2 test if they work 
++ they dont need map or anything
+just populate a list of methods 4 that pet w/o map
+we already have map , this isn't 4 that right now
+we could do that later using example 
+but this is more ai focused 2 ramp up fast with gemini>
+
+<can still populate list of methods ofc
+later we can add submethods even but keep things simple ai focusd 4 now pls > 
+🥚️
+🎁️
+
+this stuff is in lizard tank . 
+later we can do muchi tank (for elements / reactions w/e) 
+
+
+also these things dont needs same controls / gui
+
+
+they can be running headless
+with something viewing "entire state " however
+this/tpmos is super flexible. embrace that
+<the fact that we can work on wraith and alos this is amazing have fun<3>🎁️
+
+❎️we can even make ai fake kpg chat
+by using chat text window feedbac later
+since kpg keeps talking shit. ❎️
+
+
+⏳️📒️
+obviously there needs to be some 
+"exo monitor script " 
+
+" 2 run the script and re-run it for "10 epochs" 
+and say wether the pet is still alive 
+(did it take 5 breaths?)
+(and then modify its weights? or pick from best weights? 
+we dont know u just need 2 push forward and find out)
+
+
+<i know u want it in pal, but just do in c / bash for now> 
+we can migrate 2 pal easier later , just focus pls. 🔬️
+
+⏳️📒️
+
+⭐️
+(i would have it do fite cuz its most reasonable
+but that requires 2 . so 
+for now we will just do pet
+
+
+also its in a "box/tank" so it can see things in tank
+
+we will create 
+food dir and tummy dir it will 
+put food in tummy
+
+⭐️
+📅️
+
+ask it what it thinks we should do , review the plan
+and go from there. thats what i think.
+
+(also pal is good 2 go if u want...)
+
+💬️
+meta-goal = create a sh script that will run bot epochs 
+goal . use xo-5 foundation to create a 
+
+tpmos = will create a new project in tpmos <op-run>
+this will populate the ops in <methodist/>
+according to fo-menu
+users can choose these ops. 
+
+<a program like <map> can manage read/write 
+input and output for whatever "meta program is running"
+<which we can register somewhere > 
+<but this makes man/bot run ops git decoupled-fx. good 4 science. >
+
+pal. 
+
+💬️
+♊️
+we should DEFINATELY DO THIS. lets do it in 3 days
+for free google♊️
+
+<we will tell it we want 'solo' but later
+will put 2 pets in same place
+and allow fighting/mating / reproducing 
+
+(meta program will find all 'bots' in a dir and
+let them each run a turn rougelike style
+so plan from this architecture first) 
+
+<even if it was online , there would be a 'manager/host'
+who would manage 'tank'>
+
+<this should actually be more informative how we do games/online
+but its okay 2 have both
+esp when comparing and architecting new
+compare 2 old but explain how this should be different
+
+ask it questions. ask flash-lite first, etc. 
+
+
+<we could just do "pokemon first"
+then we would have 2 going
+but do the arch that could send 1 also . both, get it? 
+
+1 script 4 running 1 only , and giving it survival skills
+2 script for running 1,2,or3 and let them do w/e 
+
+(review log of what they did) 
+its very similiar 2 "WSR" 
+infact it is wsr. u should beable 2 make wsr in this
+use ledger. use wsr for reference if u need, etc. 
+
+
+let it know to keep the 'meta manager flexible'
+tell them we are making 'pokemon now'
+but later will make 'corporations, that trade with eachother'
+(u dont have to tell it they will hire/fire pokemon,yet ;)
+
+<and id run it in pal, then long term this can be how
+editor actualy sets things up b4 we get 2 far and vice
+versa , u can stil have maps and look at that comparison wise>
+
+
+<it doesn't need 2 know they will do r&d and corpus creation 
+later either. focus> 
+
+<later we can add gemini / iqabellai.+x > 
+
+<we dont even need to let use "choose pet 2 control"
+yet tho we could we can also retro add that ez. dont worry>
+<also u can only let it control things it has 'passkey 2 , etc>
+
+
+<kiss . leave pokenames 4 now. 
+its easi 2 change them later once things are moving along>
+
+
+<the goal is 2 get an ai manager flow 
+using pal probably , that can be scaled> 
+
+pal? literaly just a script that runs ops, right? 
+<same thing we can use in rpg maker later
+just run a loop that lets every "[entity] act"
+
+
+we are sussing out meta arch same as we did with fuzzpet 
+so be flexible and patient. but try 2 reuse patterns
+i dont see why we couldn't...
+
+the manager COULD be run as a project 
+that just runs "pal scripts" and outputs whatever there 
+response was from each turn 
+(but it doesn't have to be the pal script 
+should beable to run on its own 
+and save whatever logs to .txt file) 
+
+
+<also if there is "curxword" it can select any entity
+but just allow 1 selected entity 4 now
+
+were building a 'reptile enclosure'🚢️🚇️🔍️
+
+<basically i wanna make sure we can run pal FULL_EXO (on its own outside tpmos) 
+but that its basically the same as the one INSIDE tpmos .
+🧩️
+<it can have a dir that is just pal + ops
+that can touch things in same dir as it or w/e> 
+<u can put the things inside its dir , w/e >  
+
+
+so first just build up pal 2 do stuff on "button r" 
+<button c/r isn't tpmos but its meta tpmos standard> 
+🧩️
+
+
+so =- liz-button.sh
+
+-> sets up dir (resets session data, adds w/e ) 
+ -> runs pal script
+	->pal : runs xo-bot#0 4 1 turn only 
+	->pal : runs xo-bot#1 4 1 turn only 
+	          (4now thats it)
+	loop: 
+
+
+☮️the magic here is that each "entity" is an entire 
+tpmos ; but its gonna get run by an xo bot
+its kinda bloated, but thats ok. ;get it?  
+
+
+it shouldn't be that bad tbh. 
+
+2 me this is what wraith is 4 gui, for entities&ai ☮️
+
+
+
+heres where i am
+
+
+do we dispense with "xo-pets gui"
+
+and just let it choose from list of ops without user for now? 
+
+or do that later? it may reveal holes in architecture? 
+
+
+<then it could be like u are making a full npc manager> 
+<and u could do w/e later> 
+
+
+
+i dunno . i want u to look over the projects 
+and decide what we need to do 
+
+
+lets then make a blueprint for 
+
+xo-pets
+
+(eventually we will even hook them to the existing
+p2p-net ring architecture somehow
+but first it will just be local discovery
+like how projects are discovered by pdl. 
+
+
+i may want to do this without tpmos gui stuff at first
+and just get an io log of epoch session 
+so its fully auditable without any distractions
+then maybe we can add more gui or other stuff. 
+
+📅️
+
+
+so let me explain. 
+
+
+3 xopets will be in 1 tank
+
+along with food/ rocks / special items w/e 
+
+if a pet eats the food , its op literall moves the food into 
+its stomach. (which is a piece within a piece; within the tank; get it? this is explained in
+
+pet will have methods like 
+eat.+x    (eat visible food)
+attack.+x  (take hp from visible enemy)
+rest.+x (heals hp)
+nothing.+x (does nothing)
+<turn (for pet) will end after 1 action is take 
+if there are other pets they will take their one turn> 
+<for now we will stop after 3 turns and review the logs; including master log)
+to make sure everyhing is working
+
+each turn , the fsm/rl will choose an action for pet to do 
+based on weights and baises
+
+at the end of each session we will then run a 
+feedforward/back prop training where we punish or reward
+the weights based on pets outcome 
+
+!.world_architecture+1=rusindol.txt
+
+
+(we are basically making fuzz-op but without gui, 
+and without map/z levels
+
+just methods of pet for now, to prioritize
+exo control of ai. 
+
+
+read over all relevant information  
+
+
+basically there will be a 
+master script (in c or pal? pal is our goal but 
+we can scaffold if thats easier)
+
+
+master script will dictate any terms of the game setup
+and then will run the xo bots  run script , wait for them 
+to act and end turn then run the next bot
+for n number of epochs
+
+
+in !.moke-pet-blueprints/
+lets create  explaining all your investigation and research in a logical way ; including 
+how this should be like or unlike fuzz-op / loader and 
+other tpmos concepts (depending on practicality while trying to adhear to conventions)
+and then ask me any questions you have 
+then we will create 
+moke-pet-blueprint.txt
+outlining the steps and phases from 
+'exo master script , and testing' 
+to maybe later integration with tpmos gui 
+and tpmos p2p-net
+
+
+(it seems its going with the headless implimentation first [ie not using x0.5-liz type dir's  ] which is fine
+we can integrate into tpmos later, that seems to be for the best) 
+so create a new dir as moke-pet-project-0.0/pieces/ where all this can take place in , we dont need to do anything else in ./ parent dir. 
+
+we can then do things that make sense for gui , like run a manager program 
+or run a xo-pet but that can still see what pets/objects are in enclosure or w/e 
+
+(we can later reintigrate into fuzz-op/ or p2p but honestly if it did this 
+its cuz its hella fast at multi dir semi architecting and coding and u gave it good prompt+examples
+so yea. it was faster than i expected)

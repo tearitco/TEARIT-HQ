@@ -1,0 +1,7 @@
+project_id=xo-pet-v1
+epoch=515
+step_count=1
+active_target_id=xolector
+sim_active=0
+last_response=Input consumed: 13
+turn_summary=liz_bulb acts: breathe() | liz_bulb acts: scan() | liz_bulb acts: rest() | liz_bulb acts: check_death() | liz_char acts: breathe() | liz_char acts: scan() | liz_char acts: rest() | liz_char acts: check_death() | liz_gen_5414 acts: breathe() | liz_gen_5414 acts: scan() | liz_gen_5414 acts: rest() | liz_gen_5414 acts: check_death() | liz_bulb acts: train(pieces/world_tank_01/logs/epoch_515.txt, liz_bulb) | liz_char acts: train(pieces/world_tank_01/logs/epoch_515.txt, liz_char) | liz_gen_5414 acts: train(pieces/world_tank_01/logs/epoch_515.txt, liz_gen_5414)

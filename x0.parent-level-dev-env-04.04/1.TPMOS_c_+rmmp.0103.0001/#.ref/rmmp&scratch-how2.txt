@@ -1,0 +1,44 @@
+# Integration Guide: Scratch Blocks & RPG Maker Events in op-ed
+**Version:** 1.0 (May 17, 2026)
+**Purpose:** Mapping visual scripting concepts to TPMOS PAL Orchestration.
+
+## 1. Scratch Block Mapping (Motion & Control)
+In `op-ed`, Scratch-style blocks are the primary way to define piece-level logic.
+
+| Scratch Block | op-ed / PAL Implementation |
+| :--- | :--- |
+| **When Green Flag Clicked** | `METHOD | on_load` in `piece.pdl` -> calls the project's macro script. |
+| **Forever** | Orchestrated via `loop_op.+x` which wraps a block of commands. |
+| **If [ ] Then** | Orchestrated via `if_op.+x` (e.g., `CALL if_op <condition> <script_on_true>`). |
+| **Move [10] Steps** | Call to `move_entity_op.+x` with distance params. |
+| **Go to x: [ ] y: [ ]** | Call to `set_position_op.+x` (updates `state.txt`). |
+| **Wait [1] Seconds** | Call to `wait_op.+x` with ms parameter. |
+| **Broadcast [Message]** | Call to `broadcast_op.+x` (writes to `events.txt`). |
+
+## 2. RPG Maker Event Command Mapping (Flow & World)
+RPG Maker commands focus on high-level game progression and UI, implemented as high-level "Brain" Ops.
+
+### A. Message & Dialogue
+- **Show Text...**: Call to `show_message_op.+x "Text"`.
+- **Show Choices...**: Call to `show_choices_op.+x "Choice1|Choice2"`.
+
+### B. Game Progression (Switches & Variables)
+- **Control Switches/Variables**: Call to `set_var_op.+x <name> <value>`.
+- **Self Switch**: Call to `set_self_op.+x <key> <val>` (targets own `state.txt`).
+
+### C. Flow Control
+- **Label / Jump to Label**: Managed by the macro orchestrator's sequence logic.
+- **Common Event**: Call to `run_script_op.+x <script_path>`.
+
+## 3. Incorporation into op-ed
+The `EVENT` menu in the editor provides a visual grid of these High-Level Ops.
+1. **Selection**: User clicks a "Block" (e.g., [IF THEN]).
+2. **Parameters**: A `<cli_io>` or popup menu appears to set Op arguments.
+3. **Op Orchestration**: The manager appends a `CALL <op_name>.+x <args>` line to the project's macro orchestration script.
+   - Example: User adds [CHANGE HP -10] -> Manager writes `CALL change_stat_op.+x hp -10` to the script.
+4. **Binding**: The user chooses which trigger (interact, touch, on_load) executes this script.
+
+---
+**References:**
+- `#.ref/10.top-scratch-pieces.txt` (Motion & Variable logic)
+- `#.ref/event.commands.1.txt` (Progression & UI flow)

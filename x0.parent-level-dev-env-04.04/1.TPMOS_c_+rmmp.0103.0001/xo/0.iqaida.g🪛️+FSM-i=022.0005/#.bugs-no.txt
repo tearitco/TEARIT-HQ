@@ -1,0 +1,14 @@
+1.
+no should ALWAYS use different computer for ollama call..
+
+2. big chunks of json being sent are probably malformed
+
+3. "#" and other file names dont get read write "\#" requires escaping...
+
+(this will have same problems as discord json llama calls
+if u dont have sophisticated json parser. 
+also fuck json. 
+can we do this with w/e we want? (ie txt?)
+
+fuck ollama , u know? lets do our own thing ollama is a joke...
+---------------------------------------------------------------

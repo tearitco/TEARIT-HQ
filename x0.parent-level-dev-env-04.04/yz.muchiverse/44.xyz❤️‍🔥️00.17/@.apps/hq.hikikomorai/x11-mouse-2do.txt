@@ -1,0 +1,180 @@
+x11-mouse-2do.txt — real mouse-click support for CHTPM-rendered surfaces
+2026-08-05
+
+WHY THIS EXISTS
+---------------
+Direct user proposal: convert tp_desktop_window.c's own raw X11 popup
+context menu into a real CHTPM-rendered screen, with real href-based
+sub-navigation (User -> Move/Inventory/Skill). Attempted this session
+(&.widgits/context-menu/, built and confirmed working structurally -
+static button layout renders correctly, no numbering bugs, unlike
+event-ez's own dynamic-injection issue). ROLLED BACK, not deleted: the
+real blocker is that the shared renderer this whole CHTPM pipeline
+depends on, gl_mirror.c (system/gl_mirror.c, copied into every widget's
+own session/), has:
+  - a FIXED 640x768 window size, no env var or config to shrink it
+  - no override_redirect / borderless-popup mode
+  - NO mouse click handling of any kind (confirmed via direct grep:
+    zero matches for ButtonPress/override_redirect/last_click in
+    system/gl_mirror.c)
+A real context-menu popup needs to be small, borderless, positioned at
+the click location - matching tp_desktop_window.c's own EXISTING raw
+X11 popup (open_context_menu(), a real, already-working precedent for
+"windowless" popup shape) - and needs real mouse clicks to work, not
+just keyboard digit-jump (a context menu you can only navigate by typing
+digits is a real regression from the current raw-X11 popup, which
+already supports real ButtonPress mouse clicks).
+
+WHAT REAL PRECEDENT EXISTS (found this session, not guessed)
+--------------------------------------------------------------
+A DIFFERENT house project, wraith-alpha, has real, confirmed mouse-click
+handling on its OWN parser side:
+  /home/no/Desktop/🤖️🪤️🏠️/🗓️📆️👩🏻‍💻️/x/wraith-surgical-00.029=TOOLER/
+    1.TPMOS_c_+rmmp.0102.0018/projects/wraith-alpha/ops/wraith_parser_alpha.c
+  - real function: `void handle_mouse(int btn, int x, int y)` (line ~2026)
+  - THIS HOUSE's own chtpm_parser_pal.c already has a real, working
+    mouse-to-element hit-test too (confirmed via source, see this
+    file's own "CALIBRATION: Apply offsets found during Phase 6
+    calibration" comment, ~line 2700-2745): it reads `last_click_x`/
+    `last_click_y` (via get_var()), applies a real Y-axis calibration
+    offset (`ly -= 7`), and overlays a `<` marker onto the rendered
+    frame string at the resolved row/col - real, working element hit-
+    testing ALREADY EXISTS in the shared parser this house's whole
+    event-editor/event-ez/context-menu family already uses.
+
+WHAT'S STILL UNKNOWN (real research gap, not yet closed)
+------------------------------------------------------------
+`last_click_x`/`last_click_y` are READ by the parser (confirmed), but
+I did NOT find, within a bounded search of the wraith-alpha and
+wraith-surgical trees, which renderer/binary actually WRITES those two
+vars from a real X11 ButtonPress event. Candidates not yet checked:
+  - a renderer binary under wraith-alpha's own session/ or manager/
+    dirs (not yet opened - only ops/ was searched for .c files this
+    pass)
+  - a Python or other non-C tool (this house has several) that might
+    bridge real X11 mouse events into gui_state.txt's own last_click_x/y
+    keys, rather than a C GL renderer doing it directly
+  - it's possible wraith-alpha's OWN renderer is a bespoke GL window
+    (not gl_mirror.c, a different real binary this house also has
+    somewhere) that DOES have real ButtonPress handling gl_mirror.c
+    itself lacks - worth a direct search for any .c file under
+    wraith-alpha/wraith-surgical with BOTH "XNextEvent" and
+    "last_click_x" in the same file.
+
+WHAT NEEDS TO HAPPEN NEXT (concrete, in order)
+------------------------------------------------
+1. Find the real renderer that writes last_click_x/last_click_y for
+   wraith-alpha (search wraith-alpha's own session/manager dirs, not
+   just ops/, for a GL/X11 renderer binary's source).
+2. Once found, confirm whether it ALSO supports override_redirect
+   (borderless) + small/positioned windows, or whether that's a
+   SEPARATE gap needing its own real fix.
+3. Decide: port the real mouse-click-forwarding mechanism into THIS
+   house's own gl_mirror.c (affects every widget that uses it - real,
+   house-wide value, but a shared-binary change needs care), OR build a
+   dedicated small "popup_mirror.c" variant just for context-menu-style
+   surfaces (less shared-code risk, more real work, some duplication).
+4. Either way: prove it with the same real k3-style verification
+   convention this whole session has used - a real mouse click (not
+   just keyboard digit-jump) landing on the correct CHTPM element,
+   confirmed by reading back real state-file changes, not by eyeballing
+   the render.
+
+REAL, QUICK WORKAROUND SHIPPED THIS SESSION (not blocked on the above)
+------------------------------------------------------------------------
+"User" -> Move/Inventory/Skill/Cancel is a real second raw X11 popup,
+adjacent to the main one (positioned off the main popup's OWN real
+x/y, not the click coordinate - direct correction: "sub context menu is
+way offset, it could be right next to the other"), reusing
+tp_desktop_window.c's own open_context_menu()/draw_context_menu(). The
+range-finder grid (from "Move") was pulled OUT into its own real,
+standalone binary, ops/tp_range_grid.c (&.widgits/tile-picker/ops/) -
+NOT embedded in tp_desktop_window.c's own event loop anymore - launched
+via a real system() call so it's reusable from any dispatch path,
+CHTPM included. It uses the real X11 Shape Extension (same technique
+tp_desktop_window.c's own sprite transparency already uses) so ONLY
+the grid's own outline strokes are opaque - direct correction: "the
+grid cant cover up dog or surrounding tiles, it should just be a
+transparent outline like a png" - no PNG asset needed, the mask is
+built directly from the same outline geometry drawn on screen. Cell
+size matches GRID_CELL_PX (the real desktop grid), and the grid is
+centered on the entity's own real window position, not wherever the
+submenu happened to be. A visible "X" close affordance was tried and
+explicitly REVERTED (direct instruction: "i dont wanna do x button cuz
+it may clutter view") - the existing "any click or Escape closes it"
+behavior stays as the only close mechanism for this specific window;
+the OLD raw-X11 popups keep their own separate "Close [X]"-in-content
+convention where that's appropriate (e.g. the small CHTPM popup
+described below), by design, not by omission.
+
+REAL PROGRESS ON THE ORIGINAL RESEARCH GAP (2026-08-05, later same session)
+-------------------------------------------------------------------------------
+Items 1-4 above are now substantially answered - not by finding
+wraith-alpha's own renderer (that search came up empty within a bounded
+look at wraith-alpha's own ops/ dir; session/manager dirs were never
+checked - still a real, open gap if anyone wants wraith-alpha's own
+exact implementation), but by just building the real mechanism directly
+into THIS house's own system/gl_mirror.c and system/chtpm_rgb_render.c,
+since the consuming side (chtpm_parser_pal.c's own last_click_x/y +
+calibration) was already proven real and correct:
+
+1. REAL mouse-click forwarding: gl_mirror.c now has a real
+   glutMouseFunc(mouse_click) callback writing last_click_x/last_click_y
+   into pieces/apps/player_app/state.txt (the SAME real KEY=VALUE
+   format/file load_state_file() already parses for every other var).
+   PROVEN via a real XTestFakeButtonEvent click (not eyeballed): clicked
+   screen position (300,300) on a window at (148,128) produced
+   last_click_x=152/last_click_y=172 - exactly the window-relative
+   coordinate math the parser's own calibration expects.
+2. REAL borderless mode: gl_mirror.c now supports GL_MIRROR_BORDERLESS=1
+   (env-gated, default OFF so every other real caller - event-editor,
+   event-ez, tile-picker desktop entities - is completely unaffected),
+   using glXGetCurrentDrawable() to grab the real X11 Window under
+   freeglut and set override_redirect directly via raw Xlib, with the
+   required unmap/remap cycle most window managers need to honor it.
+3. REAL small-frame variant: chtpm_rgb_render.c's own FRAME_W/FRAME_H
+   were unconditional #defines (640/768, sized for the WORST-CASE real
+   editor chrome) - now wrapped in #ifndef, so the DEFAULT build is
+   byte-identical to before, but a separate binary
+   (chtpm_rgb_render_small, `-DFRAME_W=320 -DFRAME_H=320`) can be built
+   alongside it with zero shared-binary risk.
+4. REAL, live-verified pairing of 2+3: tested separately first (looked
+   "horrible" per direct user report - full 640x768 size, just
+   borderless, nothing shrunk), then correctly paired together
+   (context-menu/button.sh's own CM_SMALL=1 env var) - a real 320x320
+   borderless popup showing cm_user.chtpm's full real content (header,
+   Close [X], USER divider, Move/Inventory/Skill/Back) with nothing
+   clipped, confirmed via a real xwd+PIL screenshot, not just launched.
+   A real, pre-existing, unrelated bug was found and fixed along the
+   way: gl_mirror.c had a NESTED C block comment (a `/* ... */` snippet
+   quoted INSIDE another `/* ... */` doc comment) that broke compilation
+   entirely - meaning the actual running gl_mirror binary this whole
+   session had been using was a stale prebuilt one, not built from the
+   current source, until this fix.
+
+LONG-TERM GOAL, real gap acknowledged (2026-08-05, direct instruction)
+-------------------------------------------------------------------------
+Full assessment: TILE_PICKER_DESIGN.md's own new §10. Short version: raw
+X11 windows (tp_desktop_window.c's popup, tp_range_grid.c) need the SAME
+file-injection/auditability/AI-injection power every CHTPM app in this
+house already gets for free (a real history file + a real injectable
+relay file). Honest current state: NOT close - zero history, zero
+file-based injection, only ad-hoc XTest tooling built for this session's
+own testing. gl_mirror's new mouse-click write (this session) is the
+one real step in this direction, but only for its CHTPM-facing half, not
+the raw popups. Not started otherwise.
+
+STILL OPEN
+----------
+- This small+borderless CHTPM popup is NOT yet wired into any real
+  dispatch path (dog's own "User" row still uses the raw-X11 stopgap,
+  by direct instruction: "we can use it for what we're currently using
+  it for till we transition"). Wiring it in for real is the next step
+  whenever a transition is wanted.
+- wraith-alpha's own actual renderer implementation was never found
+  (see above) - low priority now that this house has its own real,
+  working mouse-click + borderless + small-frame mechanism, but still
+  an open curiosity if someone wants the comparison.
+- Real design polish (an actual grey-colored title bar was requested -
+  not a quick win in this ASCII-text pipeline, no per-cell background
+  color support - flagged, not attempted).

@@ -1,0 +1,193 @@
+================================================================================
+ TSC_ELO - True Swords Clash - SUMMARY WALKTHROUGH
+ PvP over the house P2P mesh (palnet_peer), proven by the 2-subharness harness
+================================================================================
+
+CONTENTS
+  1. What this is
+  2. What is DONE (verified live)
+  3. What is NOT done yet
+  4. How to PLAY the game
+  5. How to RUN the tests (the harness)
+  6. The 5 proofs (P1..P5) and where the proof archive lives
+  7. CPU / safety guards (the harness will not melt your machine)
+  8. Common problems and fixes
+
+
+--------------------------------------------------------------------------------
+1. WHAT THIS IS
+--------------------------------------------------------------------------------
+TSC_ELO is a small duel game (Mana-Challenge battle) with an ELO rating chain.
+It is split into a host program (a TTY battle screen) and a Match-Setup WIDGET
+(its own GL window). The newest mile makes the duel genuinely two-player:
+one harness boots TWO full subharnesses (host + widget each), and the two hosts
+fight over the house P2P mesh (ops/palnet_peer.c) instead of sharing one screen.
+
+Everything a player does goes through the WIDGET's REAL input chain:
+  key pressed  -> chtpm_parser_pal  -> interact_relay.txt -> setup_menu_input
+  -> host cmd-bus -> tsc_setup -> net/outbox.txt -> palnet_peer
+  -> remote net/inbox.txt -> remote tsc_net drainer -> remote per-session ledger
+The harness injects genuine KEY_PRESSED lines into the widget session, so the
+proofs exercise the exact UI path a human would use (PITFALL 21: no shortcuts).
+
+
+--------------------------------------------------------------------------------
+2. WHAT IS DONE (all live-verified, harness OVERALL: PASS)
+--------------------------------------------------------------------------------
+  - Two-subharness PvP harness: fsm-driver.sh (state engine) + pvp_duel.sh
+    (scenario: BOOT -> PRESENCE -> CHALLENGE -> ACCEPT -> A_MOVE -> B_VERIFY
+     -> B_MOVE -> A_VERIFY -> CONVERGENCE -> DONE).
+  - P1 PRESENCE  : both hosts publish live nodes in net/presence/.
+  - P2 CHALLENGE : A's widget sends CHALLENGE; B's inbox receives it over the
+                   wire (real 7-token MSG line).
+  - P3 ACCEPT    : B's widget accepts; game flips to state=playing mode=PvP;
+                   A's inbox receives B's ACCEPT.
+  - P4 MOVES     : each side plays a REAL move via its widget's "Play:" menu
+                   row; the other side's inbox gets MOVE:<action>; turns advance
+                   0 -> 1 -> 2.
+  - P5 CONVERGENCE: the two per-session ledgers agree on the exact ordered
+                   action sequence (each event is "local" on the actor's side
+                   and "net" on the peer's - both ledgers carry the same
+                   seq|user|action).
+  - Proof artifacts auto-archived to proof/pvp-<timestamp>/ with per-side
+    filenames (ledger_A.txt, ledger_B.txt, inbox_A.txt, ...) plus a
+    proof/latest symlink.
+  - BUGS FIXED along the way:
+      * tsc_net ledger.txt was created as a DIRECTORY (ensure_dir() built the
+        final path component) so ledgers never wrote. Fixed in tsc_setup.c and
+        tsc_net.c.
+      * CHALLENGE payload wrote the wrong player name; ACCEPT misread the
+        acceptor identity from the shared config instead of the wire. Fixed.
+      * The scenario SKIPPED the CHALLENGE state (h_presence returned ACCEPT),
+        so P2 never ran. Fixed.
+      * Playing-mode plain-digit keys could not reach setup_menu_input through
+        the real parser chain, so the widget gained real METHOD rows
+        "Play: STRIKE|HEAVY|HEAL|BLOCK" and non-quick-keys fall through to the
+        menu dispatch.
+
+See also: prog-report-pvp.md (progress report), prog-report-au2.md (previous
+mile), TSC_P2P_PVP.md (the PvP-over-P2P spec), TSC_DESIGN.md (full spec).
+
+
+--------------------------------------------------------------------------------
+3. WHAT IS NOT DONE YET
+--------------------------------------------------------------------------------
+  - Full match to a winner: the harness plays exactly one move per side
+    (proving the wire + ledger in both directions). A 0-HP victory end-game and
+    the win/loss -> ELO update (K=32, written back to the player's xyzfs) is the
+    next mile (a duel-completion state after CONVERGENCE).
+  - Computer opponents: HvC / CvC modes exist in the config but the rating-
+    tuned AI curve is still pending (tsc_ai is only a skeleton).
+  - Arena/map screen (host in-game screen shows a placeholder).
+  - Miracle feature (winner's post-duel pick) is not implemented.
+  - The harness "auto" answer source is deliberately simple (strike/heavy/heal/
+    block pick) - it is a proof driver, not a strategy AI.
+
+
+--------------------------------------------------------------------------------
+4. HOW TO PLAY
+--------------------------------------------------------------------------------
+Start ONE host (opens the host TTY battle screen + the Setup WIDGET GL window
+side by side):
+    ./button.sh run
+    # to stop:  ./button.sh kill
+
+In the SETUP WIDGET window (arrow keys navigate, Enter activates a row):
+    SET_MODE    cycles HvH -> HvC -> CvC
+    SET_ELO     opponent rating +100 (wrap 400..3000)
+    SET_NAME    your name
+    START       starts the duel when playing alone
+    PvP: CHALLENGE / PvP: ACCEPT   (only with a second host on the mesh)
+
+In the HOST battle screen, on your turn:
+    1  strike   (3 dmg)      2  heavy  (6 dmg, needs 2 mana)
+    3  heal    (+5 HP, 2 mana)  4  block  (reduce next hit, 1 mana)
+    +1 mana per turn (cap 10); game over when any HP <= 0.
+
+For a REAL two-player duel you need two hosts (two machines/sessions sharing
+the net/ mesh). The harness automates exactly this pairing - see section 5.
+
+
+--------------------------------------------------------------------------------
+5. HOW TO RUN THE TESTS (the harness)
+--------------------------------------------------------------------------------
+From the TSC_ELO project root:
+
+    bash test-harn-same/button.sh compile   # build the harness ops (C)
+    bash test-harn-same/button.sh check     # verify all binaries are runnable
+    bash test-harn-same/button.sh pvp       # run the 2-subharness PvP duel
+    bash test-harn-same/button.sh kill      # stop everything (safe at any time)
+
+The pvp run takes ~30-60s. It boots 2 hosts + 2 widgets headless (NO_GL=1),
+plays CHALLENGE/ACCEPT/one move each through the real widget key path, asserts
+P1..P5 on real network artifacts, archives the proof, then kills everything
+(cleanup also fires on Ctrl-C / failure). Exit code 0 = PASS, 1 = FAIL.
+
+A PASS looks like:
+    P1 (presence): 2 live tsc_duel nodes in net/presence/
+    P2 (challenge over wire): B inbox has A's CHALLENGE: ...
+    P3 (accept over wire): A inbox has B's ACCEPT; state=playing mode=PvP
+    P4a (A move 'block' over wire): B inbox has MOVE; turn=1
+    P4b: B's per-session ledger has A's move 'block' (via=net): ...
+    P4c (B move 'heal' over wire): A inbox has MOVE; turn=2
+    P4d: A's per-session ledger has B's move 'heal' (via=net): ...
+    P5 (convergence): both ledgers agree, 4 events: ...
+    === OVERALL: PASS ===
+
+
+--------------------------------------------------------------------------------
+6. THE PROOFS AND THE ARCHIVE
+--------------------------------------------------------------------------------
+Per run the scenario saves, under proof/pvp-<timestamp>/ (and proof/latest):
+    presence/        both nodes' presence files (P1)
+    inbox_A.txt      A's raw net inbox (P2: B's ACCEPT, P4c: B's MOVE)
+    inbox_B.txt      B's raw net inbox (P2: A's CHALLENGE, P4a: A's MOVE)
+    ledger_A.txt     A's per-session game ledger (P4d, P5)
+    ledger_B.txt     B's per-session game ledger (P4b, P5)
+    config.txt       the shared game config (state=playing, mode=PvP)
+    frame_A/B.txt    host screenshots, wframe_A/B.txt widget screenshots
+    state_A/B.txt    net state files, session.info (which session is which)
+
+The two ledgers are the strongest artifact: identical seq|user|action lists,
+each event tagged local on one side and net on the other - the P2P wire proof.
+
+
+--------------------------------------------------------------------------------
+7. CPU / SAFETY GUARDS
+--------------------------------------------------------------------------------
+The harness is built so it never spins a core to 100%:
+  - Booted services are already frame-paced in source:
+      renderer + chtpm_rgb_render: usleep(33333) = 30 fps cap
+      chtpm_parser_pal: usleep(16667) = 60 fps cap
+      keyboard_input: usleep(20000) = 50 fps cap
+      orchestrator: 5-10 Hz; palnet_peer: event-driven select() (0% when idle)
+      prisc PAL loop: paced by its instruction immediates
+  - The FSM driver sleeps FSM_TICK_S=0.5s between retries (never busy-polls),
+    and its helpers sleep after every key/focus/cmd injection.
+  - The whole run is bounded: per-state timeouts (15-45s), max 120 transitions,
+    and an overall wallclock cap FSM_WALL_S=600s (settable via env).
+  - Host subharnesses launch with `nice -n 10`, so they never starve your
+    interactive work.
+  - Kill-on-quit: trap cleanup EXIT INT TERM -> button.sh kill -> pkill of
+    orchestrator/peer/tsc_net/parser/renderer/prisc, then a straggler sweep.
+    Killing the harness with Ctrl-C at any point leaves nothing behind.
+  - Defense against the classic footgun: pkill patterns use [c]lass syntax so
+    the kill command never matches (and kills) its own shell.
+
+
+--------------------------------------------------------------------------------
+8. COMMON PROBLEMS AND FIXES
+--------------------------------------------------------------------------------
+  - "Ops not compiled yet"        -> run  bash test-harn-same/button.sh compile
+  - A state times out (e.g. B_VERIFY): the peer relay usually needs a tick or
+    two; the FSM retries for the state's full timeout. If it still fails, check
+    proof/latest for the ledgers/inboxes and re-run - a stale process from a
+    previous interrupted run is the usual cause:  bash test-harn-same/button.sh kill
+  - Wire lines arrive DUPLICATED in the inbox: expected. The peer re-delivers
+    the backlog; tsc_net dedupes via net/applied.txt, so the LEDGER is the
+    single source of truth. Assert convergence on the ledger, never the inbox.
+  - GL window black / frozen: wait for a non-empty pieces/display/current_frame.txt
+    before rendering (PITFALL 54); glyphs are a local copy per project.
+  - Long pkill sweeps can look like a hang: prefer `button.sh kill`, and never
+    `pkill -f orchestrator` from a shell whose own command line contains the
+    word you are matching (it kills the shell running it).

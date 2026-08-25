@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | wraith-alpha/wraith-projects/wraith-3d-cube
+META         | version            | 0.1
+META         | author             | TPMOS
+META         | manager            | projects/wraith-alpha/wraith-projects/wraith-3d-cube/manager/+x/wraith-3d-cube_manager.+x
+META         | entry_layout       | projects/wraith-alpha/wraith-projects/wraith-3d-cube/layouts/wraith-3d-cube.chtpm
+
+STATE        | title              | WRAITH 3D CUBE
+STATE        | status             | ready
+STATE        | mode               | probe_3d
+STATE        | current_context    | session
+
+RESPONSE     | default            | Wraith 3D Cube Ready.

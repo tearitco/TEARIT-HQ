@@ -1,0 +1,14 @@
+<layout id="piececraft_main">
+    <module>projects/piececraft-3d/manager/+x/piececraft-3d_manager.+x</module>
+    <row><cell>=== PIECECRAFT 3D ===</cell></row>
+    <row><cell>Controlling: ${active_piece}</cell></row>
+    <row><cell>Log: ${last_response}</cell></row>
+    <row><cell></cell></row>
+    <row><cell>[ 3D VOXEL VIEW STAGE ]</cell></row>
+    <row><cell></cell></row>
+    <row>
+        <button label="[9] Switch Piece" onClick="KEY:9" />
+        <button label="[WASD] Move" onClick="KEY:w" />
+        <button label="[ENTER] Break/Place" onClick="KEY:10" />
+    </row>
+</layout>

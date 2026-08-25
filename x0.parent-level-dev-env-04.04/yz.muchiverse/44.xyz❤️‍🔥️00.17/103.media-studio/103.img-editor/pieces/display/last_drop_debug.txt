@@ -1,0 +1,6 @@
+RAW_DROP_BYTES=40 HEAD=file:///home/no/Pictures/lucky-sol.png
+
+OK path=/home/no/Pictures/lucky-sol.png kind=3
+RAW_DROP_BYTES=40 HEAD=file:///home/no/Pictures/lucky-sol.png
+
+OK path=/home/no/Pictures/lucky-sol.png kind=3

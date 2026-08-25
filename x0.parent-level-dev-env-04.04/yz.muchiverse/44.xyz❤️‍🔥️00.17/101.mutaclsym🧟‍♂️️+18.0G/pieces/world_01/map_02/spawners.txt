@@ -1,0 +1,14 @@
+# mutaclsym monster spawners, one per map (this file lives inside the
+# map's own dir since a spawner only makes sense scoped to one map, same
+# as monsters/items/hero here - no cross-map registry needed).
+# Format: spawner_id|map_id|x|y|room_x0|room_y0|room_x1|room_y1
+# x/y is the grave/headstone furniture tile's position (informational -
+# ops/tick_monsters.c never spawns a monster ON it). room_x0/y0/x1/y1 is
+# the room's outer wall rectangle (inclusive, wall tiles themselves
+# included) - tick_monsters.c spawns only in the OPEN interior, i.e.
+# room_x0+1..room_x1-1 x room_y0+1..room_y1-1, never on the walls.
+# map_id is redundant with "which map's dir this file sits in" today,
+# but kept as an explicit field (not inferred) so a future op that
+# aggregates spawners across maps doesn't have to reverse-engineer it
+# from a file path.
+grave_01|map_02|3|11|1|9|5|13

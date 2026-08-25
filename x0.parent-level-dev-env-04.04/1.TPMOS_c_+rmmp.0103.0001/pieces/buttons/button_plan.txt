@@ -1,0 +1,371 @@
+# Button Reorganization Plan
+# Date: March 31, 2026
+# Purpose: Consolidate compile/run scripts into organized subdirectory structure
+
+================================================================================
+## CURRENT STATE (PROBLEM)
+================================================================================
+
+The root directory is cluttered with 14+ compile and run scripts:
+
+PowerShell Scripts (6):
+  - compile_all.ps1
+  - run_chtpm.ps1
+  - kill_all.ps1
+  - pal_watchdog.ps1
+  - install_deps.ps1
+  - add_to_path.ps1
+
+Batch Scripts (8):
+  - run_chtpm.bat
+  - run_chtpm_debug.bat
+  - run_chtpm_terminal.bat
+  - win_debug.bat
+  - kill_all.bat
+  - register_plus_x.bat
+  - run_plus_x.bat
+  - run_plus_x_wrapper.bat
+
+Shell Scripts (8):
+  - compile_all.sh
+  - run_chtpm.sh
+  - run_orchestrator.sh
+  - run_gl_desktop.sh
+  - kill_all.sh
+  - pal_watchdog.sh
+  - clear_all_history.sh
+  - test_gl_os.sh
+
+TOTAL: 22 scripts cluttering the root directory
+
+================================================================================
+## TARGET STATE (SOLUTION)
+================================================================================
+
+Organize scripts into: #.buttons/<os>/ structure
+
+#.buttons/
+├── README.md                    # How to use buttons
+├── windows/
+│   ├── compile.ps1              # Main compile button (Windows)
+│   ├── run.ps1                  # Main run button (Windows)
+│   ├── kill.ps1                 # Kill all processes (Windows)
+│   ├── watchdog.ps1             # PAL watchdog (Windows)
+│   ├── debug_gl.ps1             # GL-OS debug launch (Windows)
+│   ├── deps.ps1                 # Install dependencies (Windows)
+│   └── legacy/                  # Original scripts (preserved)
+│       ├── compile_all.ps1
+│       ├── run_chtpm.ps1
+│       ├── kill_all.ps1
+│       ├── pal_watchdog.ps1
+│       ├── install_deps.ps1
+│       └── add_to_path.ps1
+├── linux/
+│   ├── compile.sh               # Main compile button (Linux)
+│   ├── run.sh                   # Main run button (Linux)
+│   ├── kill.sh                  # Kill all processes (Linux)
+│   ├── watchdog.sh              # PAL watchdog (Linux)
+│   ├── debug_gl.sh              # GL-OS debug launch (Linux)
+│   └── legacy/                  # Original scripts (preserved)
+│       ├── compile_all.sh
+│       ├── run_chtpm.sh
+│       ├── kill_all.sh
+│       ├── pal_watchdog.sh
+│       └── run_orchestrator.sh
+└── shared/
+    └── run_orchestrator.sh      # Cross-platform orchestrator launcher
+
+Root directory (clean):
+  - button.ps1                   # Windows entry point (smart launcher)
+  - button.sh                    # Linux entry point (smart launcher)
+
+================================================================================
+## BUTTON BEHAVIOR
+================================================================================
+
+### Root Level Launchers
+
+#### button.ps1 (Windows)
+```powershell
+# Usage: .\button.ps1 <action>
+# Actions: compile, run, kill, debug, watchdog, deps
+
+param([string]$action = "help")
+
+$SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
+$BUTTON_DIR = Join-Path $SCRIPT_DIR "#.buttons\windows"
+
+switch ($action) {
+    "compile" { & "$BUTTON_DIR\compile.ps1" }
+    "run"     { & "$BUTTON_DIR\run.ps1" }
+    "kill"    { & "$BUTTON_DIR\kill.ps1" }
+    "debug"   { & "$BUTTON_DIR\debug_gl.ps1" }
+    "watchdog"{ & "$BUTTON_DIR\watchdog.ps1" }
+    "deps"    { & "$BUTTON_DIR\deps.ps1" }
+    "help"    {
+        Write-Host "Usage: .\button.ps1 <action>" -ForegroundColor Cyan
+        Write-Host "Actions: compile, run, kill, debug, watchdog, deps"
+    }
+    default   { Write-Error "Unknown action: $action" }
+}
+```
+
+#### button.sh (Linux/macOS)
+```bash
+#!/bin/bash
+# Usage: ./button.sh <action>
+# Actions: compile, run, kill, debug, watchdog
+
+ACTION="${1:-help}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BUTTON_DIR="$SCRIPT_DIR/#.buttons/linux"
+
+case "$ACTION" in
+    compile) bash "$BUTTON_DIR/compile.sh" ;;
+    run)     bash "$BUTTON_DIR/run.sh" ;;
+    kill)    bash "$BUTTON_DIR/kill.sh" ;;
+    debug)   bash "$BUTTON_DIR/debug_gl.sh" ;;
+    watchdog) bash "$BUTTON_DIR/watchdog.sh" ;;
+    help)
+        echo "Usage: ./button.sh <action>"
+        echo "Actions: compile, run, kill, debug, watchdog"
+        ;;
+    *) echo "Unknown action: $ACTION" ;;
+esac
+```
+
+================================================================================
+## IMPLEMENTATION STEPS
+================================================================================
+
+### Step 1: Create Directory Structure
+```bash
+mkdir -p "#.buttons/windows/legacy"
+mkdir -p "#.buttons/linux/legacy"
+mkdir -p "#.buttons/shared"
+```
+
+### Step 2: Move Legacy Scripts
+
+**Windows:**
+```bash
+mv compile_all.ps1 "#.buttons/windows/legacy/"
+mv run_chtpm.ps1 "#.buttons/windows/legacy/"
+mv kill_all.ps1 "#.buttons/windows/legacy/"
+mv pal_watchdog.ps1 "#.buttons/windows/legacy/"
+mv install_deps.ps1 "#.buttons/windows/legacy/"
+mv add_to_path.ps1 "#.buttons/windows/legacy/"
+```
+
+**Linux:**
+```bash
+mv compile_all.sh "#.buttons/linux/legacy/"
+mv run_chtpm.sh "#.buttons/linux/legacy/"
+mv kill_all.sh "#.buttons/linux/legacy/"
+mv pal_watchdog.sh "#.buttons/linux/legacy/"
+mv run_orchestrator.sh "#.buttons/shared/"
+```
+
+### Step 3: Create Wrapper Scripts
+
+**#.buttons/windows/compile.ps1:**
+```powershell
+# Compile button - Windows
+Write-Host "=== Compiling CHTPM (Windows) ===" -ForegroundColor Cyan
+& (Split-Path -Parent $MyInvocation.MyCommand.Path)\legacy\compile_all.ps1
+```
+
+**#.buttons/windows/run.ps1:**
+```powershell
+# Run button - Windows (uses MSYS2 bash for reliability)
+Write-Host "=== Launching CHTPM (Windows via MSYS2) ===" -ForegroundColor Cyan
+$SCRIPT_DIR = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+Set-Location $SCRIPT_DIR
+& C:\msys64\usr\bin\bash.exe -lc "cd '$SCRIPT_DIR' && exec ./#.buttons/shared/run_orchestrator.sh"
+```
+
+**#.buttons/windows/kill.ps1:**
+```powershell
+# Kill button - Windows
+& (Split-Path -Parent $MyInvocation.MyCommand.Path)\legacy\kill_all.ps1
+```
+
+**#.buttons/linux/compile.sh:**
+```bash
+#!/bin/bash
+# Compile button - Linux
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+bash "$SCRIPT_DIR/legacy/compile_all.sh"
+```
+
+**#.buttons/linux/run.sh:**
+```bash
+#!/bin/bash
+# Run button - Linux
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/../../"  # Go to project root
+exec bash "$SCRIPT_DIR/../shared/run_orchestrator.sh"
+```
+
+**#.buttons/linux/kill.sh:**
+```bash
+#!/bin/bash
+# Kill button - Linux
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+bash "$SCRIPT_DIR/legacy/kill_all.sh"
+```
+
+### Step 4: Create Root Level Launchers
+
+**button.ps1:** (see behavior section above)
+
+**button.sh:** (see behavior section above)
+
+### Step 5: Create Documentation
+
+**#.buttons/README.md:**
+```markdown
+# CHTPM Button System
+
+## Quick Start
+
+### Windows
+```powershell
+.\button.ps1 compile    # Compile all binaries
+.\button.ps1 run        # Run CHTPM orchestrator
+.\button.ps1 kill       # Kill all processes
+.\button.ps1 debug      # Launch GL-OS desktop
+```
+
+### Linux/macOS
+```bash
+./button.sh compile     # Compile all binaries
+./button.sh run         # Run CHTPM orchestrator
+./button.sh kill        # Kill all processes
+./button.sh debug       # Launch GL-OS desktop
+```
+
+## Directory Structure
+
+```
+#.buttons/
+├── windows/    # Windows-specific scripts
+├── linux/      # Linux/macOS-specific scripts
+├── shared/     # Cross-platform scripts
+└── legacy/     # Original scripts (preserved for reference)
+```
+
+## Legacy Scripts
+
+Original scripts are preserved in `#.buttons/<os>/legacy/` for reference
+and can be called directly if needed.
+```
+
+### Step 6: Update References
+
+Search and replace in documentation:
+- `compile_all.ps1` → `.\button.ps1 compile`
+- `run_chtpm.ps1` → `.\button.ps1 run`
+- `compile_all.sh` → `./button.sh compile`
+- `run_chtpm.sh` → `./button.sh run`
+
+### Step 7: Test
+
+**Windows:**
+```powershell
+.\button.ps1 compile
+.\button.ps1 run
+.\button.ps1 kill
+```
+
+**Linux:**
+```bash
+./button.sh compile
+./button.sh run
+./button.sh kill
+```
+
+================================================================================
+## BENEFITS
+================================================================================
+
+1. **Clean Root Directory**: Only 2 launcher files in root
+2. **Consistent Interface**: Same commands on all platforms
+3. **Preserved History**: Legacy scripts kept for reference
+4. **Easy Maintenance**: Update one button, all actions use it
+5. **Extensible**: Add new actions easily (test, clean, package)
+6. **Self-Documenting**: `button.ps1 help` shows available actions
+
+================================================================================
+## OPTIONAL ENHANCEMENTS
+================================================================================
+
+### A. Add Aliases
+```powershell
+# In button.ps1
+"c", "build" { & "$BUTTON_DIR\compile.ps1" }  # Aliases for compile
+"r", "start" { & "$BUTTON_DIR\run.ps1" }      # Aliases for run
+"k", "stop" { & "$BUTTON_DIR\kill.ps1" }      # Aliases for kill
+```
+
+### B. Add Verbosity Levels
+```powershell
+param([string]$action = "help", [switch]$verbose)
+$env:CHTPM_VERBOSE = $verbose ? "1" : "0"
+```
+
+### C. Add Logging
+```powershell
+$logFile = "logs\button_$action_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+Start-Transcript -Path $logFile
+```
+
+### D. Add Platform Detection
+```bash
+# In button.sh, auto-detect and call appropriate subdirectory
+if [ "$(uname)" = "Darwin" ]; then
+    BUTTON_DIR="$SCRIPT_DIR/#.buttons/macos"
+elif [ "$(uname)" = "Linux" ]; then
+    BUTTON_DIR="$SCRIPT_DIR/#.buttons/linux"
+fi
+```
+
+### E. Add Interactive Mode
+```powershell
+if ($action -eq "menu") {
+    $choices = @("Compile", "Run", "Kill", "Debug", "Exit")
+    $selection = $host.UI.PromptForChoice("CHTPM", "Select action", $choices, 0)
+    # Launch selected action
+}
+```
+
+================================================================================
+## MIGRATION CHECKLIST
+================================================================================
+
+[ ] Create #.buttons directory structure
+[ ] Move legacy scripts to appropriate directories
+[ ] Create wrapper scripts in #.buttons/windows/
+[ ] Create wrapper scripts in #.buttons/linux/
+[ ] Create shared scripts in #.buttons/shared/
+[ ] Create button.ps1 in root
+[ ] Create button.sh in root
+[ ] Create #.buttons/README.md
+[ ] Test all buttons on Windows
+[ ] Test all buttons on Linux
+[ ] Update documentation references
+[ ] Commit changes with clear message
+
+================================================================================
+## POST-MIGRATION CLEANUP
+================================================================================
+
+After confirming buttons work:
+- Keep legacy scripts for 1 sprint as fallback
+- Update CI/CD pipelines to use buttons
+- Update developer onboarding docs
+- Add deprecation notice to old script locations
+
+================================================================================
+# END OF PLAN
+================================================================================

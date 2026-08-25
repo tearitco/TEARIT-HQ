@@ -1,0 +1,5 @@
+name=Formaldehyde
+formula=HCHO
+type=Aldehyde
+groups=-CHO
+relevance=Simplest aldehyde; used in disinfection

@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | common_events
+STATE        | source               | harness-test
+NODE         | id=1 type=change_gold | amount=50

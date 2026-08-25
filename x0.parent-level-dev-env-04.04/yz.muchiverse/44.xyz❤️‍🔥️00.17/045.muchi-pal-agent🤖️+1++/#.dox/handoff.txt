@@ -1,0 +1,262 @@
+HANDOFF — muchi-pal-agent
+================================================================================
+Written 2026-07-15, end of the session that built this project from scratch.
+Read this before touching anything. Read MPC.txt first if you haven't -
+this file assumes you already know the architectural rationale it explains
+and only covers what MPC.txt doesn't: current state, exact file inventory,
+known bugs already found and fixed, gotchas, and how to test.
+
+================================================================================
+1. STATUS: all three providers built and verified at the plumbing level.
+================================================================================
+- ollama:   fully verified end-to-end, including real sandboxed tool
+            execution (a file write actually landed inside sandbox/, not
+            the project root).
+- llamacpp: fully verified end-to-end - request built correctly, model
+            returned a clean tool call, parsed correctly into PENDING_PERM
+            with the right tool name/args.
+- gemini:   request-building verified correct (valid JSON matching
+            Gemini's schema) and error handling verified correct, but NO
+            live successful round-trip yet - the GEMINI_API_KEY in the
+            dev environment this was built in is invalid (confirmed via a
+            direct curl with the same key, independent of this project's
+            code). Get a valid key and this should just work; the code
+            path isn't the open question.
+- The real interactive session (keyboard_input + prisc+x + renderer
+  running together against an actual terminal) has NEVER been tested -
+  every op was verified directly (piping keycodes through buffer_key.+x,
+  invoking send_message.+x/check_response.+x/execute_tool.+x by hand,
+  etc.), which covers all the actual logic, but not the live tty layer.
+  Run `./button.sh compile && ./button.sh run` in a real terminal to
+  close that gap. keyboard_input.c/renderer.c are unmodified copies of
+  mutaclsym's own already-proven code, so risk there is low, but "low
+  risk" isn't "verified."
+
+================================================================================
+2. FILE INVENTORY
+================================================================================
+system/ (copied verbatim from mutaclsym - zero project-specific logic in
+any of these, do not "fix" them back toward anything TPMOS-manager-shaped)
+  prisc+x.c        - the bytecode VM. li/beq/j/halt + a handful of
+                      builtins (read_history/sleep/hit_frame/...) + a
+                      table of "custom ops" (default_op.txt) it
+                      popen()s/system()s by name.
+  keyboard_input.c  - owns the real tty in raw mode, decodes arrow keys,
+                      appends one decimal keycode per line to
+                      pieces/apps/player_app/history.txt. Exits on 'q'.
+  renderer.c        - polls pieces/display/frame_changed.txt's SIZE, on
+                      growth prints current_frame.txt, logs every frame
+                      to frame_history.txt. Exits when quit_flag.txt is
+                      non-empty.
+
+ops/ (the actual project - everything below is new for muchi-pal-agent
+except json_parser.c/connect_op.c/cmd_exec.c/file_ops.c/edit_file.c/
+list_dir.c/search_in_files.c/web_search.c, which are unmodified copies of
+already-proven TPMOS tool ops)
+  buffer_key.c        - the one thing mutaclsym never needed: accumulates
+                         keystrokes into state.txt's input_buffer field
+                         (printable ASCII appends, 8/127 backspaces).
+  send_message.c       - the Enter handler. Self-filters on ai_state: if
+                         PENDING_PERM, interprets the buffer as y/n
+                         instead of a message. If the buffer starts with
+                         "/model ", delegates to switch_model.+x. Else
+                         builds one of three request shapes per
+                         provider_kind (build_ollama_request/
+                         build_gemini_request/build_llamacpp_request, all
+                         in this file) and forks a detached child that
+                         execs connect_op, non-blocking.
+  check_response.c     - polls the forked child's PID for liveness (no
+                         waitpid available - this process isn't that
+                         child's real parent). Once done, parses the
+                         response per provider_kind into either a plain
+                         assistant turn or a pending_tool_name/args +
+                         PENDING_PERM state.
+  execute_tool.c        - the "y" verb. Provider-agnostic - just dispatches
+                         pending_tool_name to the right tool op, chdir'd
+                         into sandbox/ first. v1 shows raw output
+                         immediately rather than auto-continuing the
+                         conversation (see its own header comment for why).
+  deny_tool.c           - the "n" verb.
+  switch_model.c        - the "/model <id>" verb. Looks <id> up in
+                         pieces/registry/models/model_list.txt, rewrites
+                         current_model_id/provider_kind/current_api_url/
+                         current_model_name directly - the actual feature
+                         this whole project exists to add (see MPC.txt §4).
+  compose_frame.c       - renders the conversation tail + live input line
+                         + status line into current_frame.txt.
+  text_to_pal_prompt.c   - llamacpp-only: converts context_log.txt into a
+                         raw Llama3 token-formatted prompt string (stdout),
+                         which send_message.c's build_llamacpp_request()
+                         captures and embeds as the "prompt" field.
+
+pal/main_loop.pal   - the whole dispatch script. Every tick, regardless of
+                      whether a key arrived: check_response, compose_frame,
+                      hit_frame. On a key: quit / Enter->send_message /
+                      anything else->buffer_key. See its own header
+                      comment for why this differs from mutaclsym's
+                      did_action/no_key split (check_response must run on
+                      every tick, not just on keypress ticks).
+
+default_op.txt      - name -> ops/+x/<name>.+x manifest prisc+x reads.
+
+pieces/registry/models/model_list.txt
+  id|provider_kind|api_url|model_name, one line per selectable model.
+  provider_kind must be exactly "ollama", "gemini", or "llamacpp" - those
+  are the only three strings send_message.c/check_response.c branch on.
+
+pieces/registry/personas/
+  native_tools.txt  - used by ollama + gemini (both have real tool
+                      schemas - "just call the tool, don't invent a JSON
+                      format").
+  prompt_json.txt   - used by llamacpp (no native tool schema - strict
+                      JSON + few-shot examples, proven in cpp-llm).
+
+pieces/world_01/session_01/chat/
+  state.txt          - the session's mutable fields (see §3).
+  piece.pdl           - documents the METHOD table (not actually consulted
+                      at runtime by anything yet - no pdl_reader-style
+                      dispatch built here, matching mutaclsym's own "fine
+                      while there's only one piece type" precedent).
+  context_log.txt     - the conversation, one turn per line (see §3).
+
+sandbox/config/context.txt - sandbox_depth=2. cmd_exec.c/file_ops.c/
+  edit_file.c each read config/context.txt relative to their own CWD for
+  this - execute_tool.c chdir's into sandbox/ before invoking any of them
+  via a shell `cd '...' && '...'` prefix. Nothing in this project can
+  touch files outside sandbox/ through a tool call.
+
+button.sh / scripts/build.sh - launcher/build, same shape as mutaclsym's.
+
+================================================================================
+3. DATA MODEL
+================================================================================
+state.txt (key=value, one per line):
+  current_model_id, provider_kind, current_api_url, current_model_name
+  ai_state            IDLE | THINKING | PENDING_PERM
+  input_buffer         live typed text
+  pending_tool_name / pending_tool_args   set only during PENDING_PERM
+  curl_pid             PID of the detached connect_op child send_message.c
+                      forked - check_response.c polls this
+  sys_msg             status line text shown in compose_frame's output
+
+context_log.txt (one turn per line, exactly 4 pipe-delimited fields):
+  role|kind|tool_name|content
+    role: system | user | assistant | tool
+    kind: text | tool_call  (only meaningful for role=assistant)
+    tool_name: only set for kind=tool_call or role=tool, else empty
+    content: pipe_escape()'d (\\ -> \\\\, | -> \|, newline -> \n) - see
+             pipe_escape()/pipe_unescape() in send_message.c, duplicated
+             (per no-shared-headers doctrine) into every op that reads or
+             writes this file.
+  "system" role lines are written by nothing currently (persona is
+  injected fresh from the registry file every request, not logged) - if
+  you ever see one, something changed; every request-builder explicitly
+  skips role=="system" lines when replaying history for exactly this
+  reason (they'd otherwise duplicate the systemInstruction/system message
+  already being sent separately).
+
+================================================================================
+4. BUGS ALREADY FOUND AND FIXED - know this pattern before you add more ops
+================================================================================
+Two real bugs were caught during testing (not just review), both worth
+remembering as a class of mistake to watch for in any NEW op you add,
+since the same boilerplate (read_state_field/write_state_field/
+append_log_turn) is hand-duplicated into every op file per doctrine:
+
+  - append_log_turn() was originally missing fclose(). A message's own
+    process couldn't see its own just-written line when it re-opened the
+    same file for reading moments later in the same run - the write was
+    still sitting in stdio's buffer, not on disk, until process exit
+    flushed it (by which point it was too late). If you add a new op that
+    writes then immediately re-reads a file within the same process,
+    make sure every writer fcloses before the reader reopens.
+  - Referenced pieces/registry/personas/default.txt in code before
+    actually creating the file. Caught by testing send_message.c
+    directly and inspecting the actual request body, not by code review.
+
+General lesson: every "verified" claim in this handoff came from actually
+running the op with real data and inspecting the actual file/JSON output,
+not from reading the code and reasoning it should work. Keep doing that -
+this project's whole architecture (everything communicates through files)
+means you can and should inspect the actual state.txt/context_log.txt/
+prompt.json/llm_response.json after every step instead of guessing.
+
+================================================================================
+5. GOTCHAS
+================================================================================
+- provider_kind values are exact-match strings ("ollama"/"gemini"/
+  "llamacpp") checked with strcmp in multiple files. A typo in
+  model_list.txt silently falls through to the ollama branch (the
+  else-case default) instead of erroring - if a model behaves like the
+  wrong provider, check this first.
+- The llamacpp/completion model (this Mac's llama-server) is slow and
+  variable, same as cpp-llm's own documented experience - the live test
+  in this session took ~77s. Gemini, by contrast, was fast (a few
+  seconds). Don't assume a stalled-looking llamacpp request is broken;
+  give it 60-120s before suspecting a real bug.
+- v1 does NOT auto-continue the conversation after a tool executes (see
+  execute_tool.c's header comment) - it shows raw tool output and returns
+  to IDLE. This is a deliberate simplification, not an oversight; revisit
+  only if the UX is genuinely wanted, not because it looks incomplete.
+- Model compliance (does it actually call the tool vs. hedge in prose) is
+  a known, extensively-documented-elsewhere quirk of the small local
+  models this project talks to, not something to chase as a code bug -
+  see groq-ollama's and cpp-llm's own !!.EMERGENCY-READ-ME-IT-WORKS.txt
+  files for the exact phrasing-sensitivity findings, which apply here too
+  since this project talks to the same backends.
+- Never run a second `system/prisc+x pal/main_loop.pal` (or the full
+  button.sh run) while one is already running - same shared-file-fighting
+  problem documented for the TPMOS chat managers applies here too. Check
+  `pgrep -af muchi-pal-agent` / `pgrep -af prisc+x` first.
+
+================================================================================
+6. HOW TO TEST
+================================================================================
+Build: `./button.sh compile` (must stay warning-free - see mutaclsym's own
+"compile warning-free is the standing bar" in its dox).
+Verify binaries exist: `./button.sh check`.
+
+Direct op testing (no live tty needed) - this is how everything in this
+project was actually verified, and the fastest way to test a change
+without touching the interactive layer:
+
+  export PRISC_PROJECT_ROOT="$(pwd)"
+  # type a message by feeding keycodes one at a time:
+  for c in 104 105; do ./ops/+x/buffer_key.+x $c; done   # "hi"
+  ./ops/+x/send_message.+x
+  # then poll:
+  ./ops/+x/check_response.+x   # repeat with a short sleep until
+                                # ai_state leaves THINKING (grep state.txt)
+  ./ops/+x/compose_frame.+x && cat pieces/display/current_frame.txt
+
+To test the tool-execution path without depending on the model cooperating
+(useful given the phrasing-sensitivity gotcha above), seed a pending tool
+call directly into state.txt and run execute_tool.+x/deny_tool.+x - see
+this session's own testing transcript for the exact pattern (grep this
+project's git history / the conversation that built it if available).
+
+Live interactive test (needs a real terminal, not this shell):
+  ./button.sh run
+  (type a message, Enter to send, y/n to approve/deny a tool call,
+  /model <id> to switch, q to quit)
+
+================================================================================
+7. NEXT STEPS
+================================================================================
+- Get a valid GEMINI_API_KEY and confirm a live Gemini round-trip
+  (request/error-handling code is already verified correct - this is
+  purely a credentials gap).
+- Run the real interactive session end-to-end at least once (§1/§6).
+- Everything in MPC.txt's original "not designed yet" list (§7 there) is
+  still not designed: no auto-continuation after tool execution, no
+  quota/error-fallback logic, no title screen, nothing beyond the single
+  session_01 piece (no multi-session support).
+- ROADMAP-models.txt is the next real phase: three new /model options
+  (iqabod - a homemade local transformer at #.ref/^.IQABOD-llm-06.00;
+  rl - reward/punishment-tuned iqabod via its existing
+  feedback_tx_module.c; fsm - a bank of PAL-scripted deterministic state
+  machines, built on real existing precedent at
+  #.fsm+ai-training-plan-b1/fsm_bot_programmer.txt, explicitly meant to be
+  reusable in game projects too, not chat-only). Goal/design doc only so
+  far - six concrete open questions listed in its §8 need answers before
+  any of it gets implemented.

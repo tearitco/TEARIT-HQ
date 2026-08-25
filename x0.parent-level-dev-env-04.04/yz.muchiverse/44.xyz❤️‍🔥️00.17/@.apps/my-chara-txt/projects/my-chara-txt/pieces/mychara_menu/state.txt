@@ -1,0 +1,1 @@
+last_message=Planted wheat on plot 0! Now have 0 grain.

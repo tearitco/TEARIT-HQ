@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | xyzfs_session
+META         | version            | 1.0
+META         | notes              | Durable login or guest-<uuid> save root
+
+STATE        | mode                 | logged_in
+STATE        | user_id              | jb
+STATE        | user_uuid            | 0a9558a7-7c74-4358-833c-2d5b21edc421
+STATE        | display_name         | JB Test
+STATE        | xyzfs_path           | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421
+STATE        | logged_in_at         | 1787297751
+STATE        | active_avatar_uuid   | 5dfb09e9-852d-405d-a84e-bba7bcb22340
+STATE        | active_avatar_path   | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/avatars/5dfb09e9-852d-405d-a84e-bba7bcb22340

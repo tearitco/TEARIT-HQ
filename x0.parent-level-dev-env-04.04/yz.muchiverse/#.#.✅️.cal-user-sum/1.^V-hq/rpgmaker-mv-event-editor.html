@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RPG Maker MV - Event Editor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap');
+
+  :root {
+    --rm-bg: #f0f0f0;
+    --rm-panel: #e8e8e8;
+    --rm-border: #a0a0a0;
+    --rm-border-dark: #707070;
+    --rm-header: #4a6984;
+    --rm-header-text: #ffffff;
+    --rm-selected: #cce4ff;
+    --rm-hover: #dce9f5;
+    --rm-button: #e1e1e1;
+    --rm-button-hover: #f0f0f0;
+    --rm-input: #ffffff;
+    --rm-text: #222222;
+    --rm-disabled: #999999;
+    --rm-accent: #3a7ab8;
+    --rm-script-bg: #1e1e1e;
+    --rm-script-text: #d4d4d4;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: 'Roboto', 'Noto Sans JP', 'Segoe UI', Tahoma, sans-serif;
+    background: #2b2b2b;
+    color: var(--rm-text);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  /* Main window frame */
+  .rm-window {
+    width: 920px;
+    max-width: 98vw;
+    background: var(--rm-bg);
+    border: 2px solid #555;
+    border-radius: 4px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Title bar */
+  .rm-titlebar {
+    background: linear-gradient(to bottom, #5a7a94, #3d5a73);
+    color: white;
+    padding: 6px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 500;
+    user-select: none;
+  }
+
+  .rm-titlebar .title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .rm-titlebar .window-controls {
+    display: flex;
+    gap: 4px;
+  }
+
+  .rm-titlebar .btn-ctrl {
+    width: 22px;
+    height: 20px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.15);
+    color: white;
+    font-size: 11px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+  }
+
+  .rm-titlebar .btn-ctrl:hover {
+    background: rgba(255,255,255,0.3);
+  }
+
+  /* Toolbar */
+  .rm-toolbar {
+    background: var(--rm-panel);
+    border-bottom: 1px solid var(--rm-border);
+    padding: 6px 10px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .rm-toolbar button {
+    padding: 4px 12px;
+    font-size: 12px;
+    background: var(--rm-button);
+    border: 1px solid var(--rm-border);
+    border-radius: 3px;
+    cursor: pointer;
+    color: var(--rm-text);
+  }
+
+  .rm-toolbar button:hover {
+    background: var(--rm-button-hover);
+    border-color: var(--rm-accent);
+  }
+
+  .rm-toolbar .spacer {
+    flex: 1;
+  }
+
+  .rm-toolbar .event-name {
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .rm-toolbar .event-name input {
+    width: 160px;
+    padding: 3px 6px;
+    border: 1px solid var(--rm-border);
+    font-size: 12px;
+  }
+
+  /* Page tabs */
+  .rm-pages {
+    background: #d8d8d8;
+    border-bottom: 1px solid var(--rm-border);
+    padding: 4px 8px 0;
+    display: flex;
+    gap: 2px;
+  }
+
+  .rm-page-tab {
+    padding: 5px 14px;
+    font-size: 12px;
+    background: #c0c0c0;
+    border: 1px solid var(--rm-border);
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    cursor: pointer;
+    color: #444;
+  }
+
+  .rm-page-tab.active {
+    background: var(--rm-bg);
+    color: var(--rm-text);
+    font-weight: 500;
+    position: relative;
+    top: 1px;
+  }
+
+  .rm-page-tab:hover:not(.active) {
+    background: #d0d0d0;
+  }
+
+  /* Main content area */
+  .rm-main {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 0;
+    min-height: 520px;
+  }
+
+  /* Left panel */
+  .rm-left {
+    background: var(--rm-bg);
+    border-right: 1px solid var(--rm-border);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+  }
+
+  .rm-section {
+    border: 1px solid var(--rm-border);
+    background: white;
+    border-radius: 3px;
+  }
+
+  .rm-section-header {
+    background: linear-gradient(to bottom, #e8e8e8, #d8d8d8);
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--rm-border);
+    color: #333;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .rm-section-body {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  /* Conditions */
+  .cond-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 5px;
+  }
+
+  .cond-row input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+  }
+
+  .cond-row label {
+    min-width: 70px;
+  }
+
+  .cond-row select,
+  .cond-row input[type="text"],
+  .cond-row input[type="number"] {
+    flex: 1;
+    padding: 2px 4px;
+    border: 1px solid var(--rm-border);
+    font-size: 11px;
+    background: var(--rm-input);
+  }
+
+  .cond-row select:disabled,
+  .cond-row input:disabled {
+    background: #f5f5f5;
+    color: var(--rm-disabled);
+  }
+
+  /* Image box */
+  .image-preview {
+    width: 100%;
+    height: 96px;
+    background: #2a2a2a;
+    border: 1px solid var(--rm-border-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+  }
+
+  .image-preview:hover {
+    outline: 2px solid var(--rm-accent);
+  }
+
+  .sprite-placeholder {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #5a8fc7 25%, #3d6a9e 25%, #3d6a9e 50%, #5a8fc7 50%, #5a8fc7 75%, #3d6a9e 75%);
+    background-size: 12px 12px;
+    border: 1px solid #222;
+    image-rendering: pixelated;
+    position: relative;
+  }
+
+  .sprite-placeholder::after {
+    content: '▼';
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: #fff;
+    text-shadow: 0 0 2px #000;
+  }
+
+  .image-info {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #555;
+    text-align: center;
+  }
+
+  /* Movement */
+  .move-grid {
+    display: grid;
+    grid-template-columns: 70px 1fr;
+    gap: 4px 8px;
+    align-items: center;
+  }
+
+  .move-grid label {
+    font-size: 11px;
+  }
+
+  .move-grid select {
+    padding: 2px 4px;
+    border: 1px solid var(--rm-border);
+    font-size: 11px;
+    width: 100%;
+  }
+
+  /* Options */
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+
+  .options-grid label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  /* Priority & Trigger */
+  .radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .radio-group label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  /* Right panel - Contents */
+  .rm-right {
+    display: flex;
+    flex-direction: column;
+    background: var(--rm-bg);
+  }
+
+  .contents-header {
+    background: linear-gradient(to bottom, #e8e8e8, #d8d8d8);
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--rm-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .contents-list {
+    flex: 1;
+    overflow-y: auto;
+    background: #fcfcfc;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    padding: 4px 0;
+    min-height: 280px;
+  }
+
+  .cmd-line {
+    padding: 2px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    display: flex;
+    gap: 6px;
+  }
+
+  .cmd-line:hover {
+    background: var(--rm-hover);
+  }
+
+  .cmd-line.selected {
+    background: var(--rm-selected);
+  }
+
+  .cmd-indent {
+    color: transparent;
+    user-select: none;
+  }
+
+  .cmd-icon {
+    color: #3a7ab8;
+    font-weight: bold;
+    min-width: 14px;
+  }
+
+  .cmd-text {
+    color: #222;
+  }
+
+  .cmd-comment {
+    color: #008000;
+  }
+
+  .cmd-script {
+    color: #9b59b6;
+  }
+
+  .cmd-branch {
+    color: #c0392b;
+  }
+
+  .cmd-empty {
+    color: #aaa;
+    font-style: italic;
+  }
+
+  /* Bottom buttons */
+  .rm-footer {
+    background: var(--rm-panel);
+    border-top: 1px solid var(--rm-border);
+    padding: 10px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .rm-footer button {
+    min-width: 80px;
+    padding: 6px 16px;
+    font-size: 12px;
+    border: 1px solid var(--rm-border);
+    border-radius: 3px;
+    cursor: pointer;
+    background: var(--rm-button);
+  }
+
+  .rm-footer button.primary {
+    background: linear-gradient(to bottom, #5a9bd5, #3a7ab8);
+    color: white;
+    border-color: #2a5a88;
+  }
+
+  .rm-footer button:hover {
+    filter: brightness(1.05);
+  }
+
+  /* Modal for Event Commands */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .modal-overlay.show {
+    display: flex;
+  }
+
+  .modal {
+    background: var(--rm-bg);
+    border: 2px solid #555;
+    border-radius: 4px;
+    width: 640px;
+    max-width: 95vw;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  }
+
+  .modal-title {
+    background: linear-gradient(to bottom, #5a7a94, #3d5a73);
+    color: white;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .modal-tabs {
+    display: flex;
+    background: #d0d0d0;
+    border-bottom: 1px solid var(--rm-border);
+    padding: 4px 8px 0;
+    gap: 2px;
+    flex-wrap: wrap;
+  }
+
+  .modal-tab {
+    padding: 5px 12px;
+    font-size: 11px;
+    background: #b8b8b8;
+    border: 1px solid var(--rm-border);
+    border-bottom: none;
+    border-radius: 3px 3px 0 0;
+    cursor: pointer;
+  }
+
+  .modal-tab.active {
+    background: var(--rm-bg);
+    font-weight: 500;
+  }
+
+  .modal-body {
+    padding: 12px;
+    overflow-y: auto;
+    max-height: 420px;
+  }
+
+  .cmd-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+
+  .cmd-btn {
+    padding: 6px 8px;
+    font-size: 11px;
+    text-align: left;
+    background: white;
+    border: 1px solid var(--rm-border);
+    border-radius: 2px;
+    cursor: pointer;
+  }
+
+  .cmd-btn:hover {
+    background: var(--rm-hover);
+    border-color: var(--rm-accent);
+  }
+
+  .cmd-btn.highlight {
+    background: #e8f0fe;
+    border-color: var(--rm-accent);
+  }
+
+  .modal-footer {
+    padding: 10px;
+    border-top: 1px solid var(--rm-border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .modal-footer button {
+    min-width: 70px;
+    padding: 5px 14px;
+    font-size: 12px;
+    border: 1px solid var(--rm-border);
+    border-radius: 3px;
+    cursor: pointer;
+    background: var(--rm-button);
+  }
+
+  /* Script editor modal */
+  .script-modal .modal {
+    width: 720px;
+  }
+
+  .script-editor {
+    background: var(--rm-script-bg);
+    color: var(--rm-script-text);
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 12px;
+    border: 1px solid #333;
+    border-radius: 3px;
+    width: 100%;
+    height: 320px;
+    resize: vertical;
+    outline: none;
+  }
+
+  .script-hint {
+    font-size: 11px;
+    color: #666;
+    margin-top: 8px;
+    line-height: 1.4;
+  }
+
+  .script-hint code {
+    background: #eee;
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-size: 10px;
+  }
+
+  /* Notes area */
+  .notes-area {
+    width: 100%;
+    height: 48px;
+    resize: none;
+    border: 1px solid var(--rm-border);
+    font-size: 11px;
+    padding: 4px;
+    font-family: inherit;
+  }
+
+  /* Small utility */
+  .muted {
+    color: #777;
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+
+<div class="rm-window">
+  <!-- Title bar -->
+  <div class="rm-titlebar">
+    <div class="title">
+      <span>◆</span>
+      <span>Event Editor — EV001</span>
+    </div>
+    <div class="window-controls">
+      <div class="btn-ctrl">_</div>
+      <div class="btn-ctrl">□</div>
+      <div class="btn-ctrl">×</div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="rm-toolbar">
+    <button onclick="addPage()">New Page</button>
+    <button onclick="copyPage()">Copy Page</button>
+    <button onclick="clearPage()">Clear Page</button>
+    <button onclick="deletePage()">Delete Page</button>
+    <div class="spacer"></div>
+    <div class="event-name">
+      <label>Name:</label>
+      <input type="text" id="eventName" value="Village Guard" onchange="updateTitle()">
+    </div>
+  </div>
+
+  <!-- Page tabs -->
+  <div class="rm-pages" id="pageTabs">
+    <div class="rm-page-tab active" data-page="1" onclick="switchPage(1)">1</div>
+    <div class="rm-page-tab" data-page="2" onclick="switchPage(2)">2</div>
+  </div>
+
+  <!-- Main area -->
+  <div class="rm-main">
+    <!-- LEFT PANEL -->
+    <div class="rm-left">
+      <!-- Conditions -->
+      <div class="rm-section">
+        <div class="rm-section-header">Conditions</div>
+        <div class="rm-section-body">
+          <div class="cond-row">
+            <input type="checkbox" id="sw1" onchange="toggleCond('sw1')">
+            <label for="sw1">Switch</label>
+            <select id="sw1val" disabled>
+              <option>0001: IntroDone</option>
+              <option>0002: HasKey</option>
+              <option>0003: BossDefeated</option>
+            </select>
+          </div>
+          <div class="cond-row">
+            <input type="checkbox" id="sw2" onchange="toggleCond('sw2')">
+            <label for="sw2">Switch</label>
+            <select id="sw2val" disabled>
+              <option>0001: IntroDone</option>
+              <option>0002: HasKey</option>
+              <option>0003: BossDefeated</option>
+            </select>
+          </div>
+          <div class="cond-row">
+            <input type="checkbox" id="var" onchange="toggleCond('var')">
+            <label for="var">Variable</label>
+            <select id="varid" disabled style="flex:0.6">
+              <option>0001: Gold</option>
+              <option>0002: QuestProgress</option>
+            </select>
+            <span>≥</span>
+            <input type="number" id="varval" value="1" disabled style="width:50px">
+          </div>
+          <div class="cond-row">
+            <input type="checkbox" id="ss" onchange="toggleCond('ss')">
+            <label for="ss">Self Switch</label>
+            <select id="ssval" disabled>
+              <option>A</option>
+              <option>B</option>
+              <option>C</option>
+              <option>D</option>
+            </select>
+          </div>
+          <div class="cond-row">
+            <input type="checkbox" id="item" onchange="toggleCond('item')">
+            <label for="item">Item</label>
+            <select id="itemval" disabled>
+              <option>001: Potion</option>
+              <option>002: Key</option>
+              <option>003: Map</option>
+            </select>
+          </div>
+          <div class="cond-row">
+            <input type="checkbox" id="actor" onchange="toggleCond('actor')">
+            <label for="actor">Actor</label>
+            <select id="actorval" disabled>
+              <option>001: Harold</option>
+              <option>002: Therese</option>
+              <option>003: Marsha</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Image -->
+      <div class="rm-section">
+        <div class="rm-section-header">Image</div>
+        <div class="rm-section-body">
+          <div class="image-preview" onclick="alert('Image selection dialog would open here (Character / Tile)')">
+            <div class="sprite-placeholder"></div>
+          </div>
+          <div class="image-info">People3 (2,0) · Down</div>
+        </div>
+      </div>
+
+      <!-- Autonomous Movement -->
+      <div class="rm-section">
+        <div class="rm-section-header">Autonomous Movement</div>
+        <div class="rm-section-body">
+          <div class="move-grid">
+            <label>Type</label>
+            <select>
+              <option>Fixed</option>
+              <option>Random</option>
+              <option>Approach</option>
+              <option selected>Custom</option>
+            </select>
+            <label>Speed</label>
+            <select>
+              <option>1: x8 slower</option>
+              <option>2: x4 slower</option>
+              <option>3: x2 slower</option>
+              <option selected>4: Normal</option>
+              <option>5: x2 faster</option>
+              <option>6: x4 faster</option>
+            </select>
+            <label>Freq</label>
+            <select>
+              <option>1: Lowest</option>
+              <option>2: Lower</option>
+              <option selected>3: Normal</option>
+              <option>4: Higher</option>
+              <option>5: Highest</option>
+            </select>
+          </div>
+          <button style="margin-top:6px;width:100%;padding:4px;font-size:11px;cursor:pointer" onclick="alert('Move Route editor would open')">Route...</button>
+        </div>
+      </div>
+
+      <!-- Options -->
+      <div class="rm-section">
+        <div class="rm-section-header">Options</div>
+        <div class="rm-section-body">
+          <div class="options-grid">
+            <label><input type="checkbox" checked> Walking</label>
+            <label><input type="checkbox"> Stepping</label>
+            <label><input type="checkbox"> Direction Fix</label>
+            <label><input type="checkbox"> Through</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Priority -->
+      <div class="rm-section">
+        <div class="rm-section-header">Priority</div>
+        <div class="rm-section-body">
+          <div class="radio-group">
+            <label><input type="radio" name="priority"> Below characters</label>
+            <label><input type="radio" name="priority" checked> Same as characters</label>
+            <label><input type="radio" name="priority"> Above characters</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trigger -->
+      <div class="rm-section">
+        <div class="rm-section-header">Trigger</div>
+        <div class="rm-section-body">
+          <div class="radio-group">
+            <label><input type="radio" name="trigger" checked> Action Button</label>
+            <label><input type="radio" name="trigger"> Player Touch</label>
+            <label><input type="radio" name="trigger"> Event Touch</label>
+            <label><input type="radio" name="trigger"> Autorun</label>
+            <label><input type="radio" name="trigger"> Parallel</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="rm-section">
+        <div class="rm-section-header">Notes</div>
+        <div class="rm-section-body">
+          <textarea class="notes-area" placeholder="Developer notes / notetags...">&lt;enemy: Guard&gt;
+Talks about the dungeon.</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL - Contents -->
+    <div class="rm-right">
+      <div class="contents-header">
+        <span>Contents</span>
+        <span class="muted">Double-click a line or empty space to edit</span>
+      </div>
+      <div class="contents-list" id="contentsList" ondblclick="openCommandPicker()">
+        <!-- Sample event commands -->
+        <div class="cmd-line" onclick="selectLine(this)">
+          <span class="cmd-icon">◆</span>
+          <span class="cmd-text">Text : None, Window, Bottom</span>
+        </div>
+        <div class="cmd-line" onclick="selectLine(this)">
+          <span class="cmd-indent">　</span>
+          <span class="cmd-text">: Halt, traveler! The dungeon ahead is dangerous.</span>
+        </div>
+        <div class="cmd-line" onclick="selectLine(this)">
+          <span class="cmd-indent">　</span>
+          <span class="cmd-text">: Do you still wish to enter?</span>
+        </div>
+        <div class="cmd-line" onclick="selectLine(this)">
+          <span class="cmd-icon">◆</span>
+          <span class="cmd-text">Show Choices : Yes, No</span>
+        </div>
+        <div class="cmd-line" onclick="selectLine(this)">
+          <span class="cmd-icon cmd-branch">：</span>
+          <span class="cmd-text">When [Yes]</span>
+        </div>
+        <div class="cmd-line" onclick="selectLine(this)">
+          <span class="cmd-indent">　</span>
+          <span class="cmd-icon">◆</span>
+          <span class="cmd-text">Text : None, Window, Bottom</span>
+        </div>
+        <div class="cmd-line" onclick="selectLine(this)">
+          <span class="cmd-indent">　　</span>
+          <span class="cmd-text">: Very well. Be careful in there.</span>
+        </div>
+        <div class="cmd-line" onclick="selectLine(this)">
+          <span class="cmd-indent">　</span>
+          <span class="cmd-icon">◆</span>
+          <span class="cmd-text">Control Self Switch : A = ON</span>
+        </div>
+        <div class="cmd-line" onclick="selectLine(this)">
+          <span class="cmd-icon cmd-branch">：</span>
+          <span class="cmd-text">When [No]</span>
+        </div>
+        <div class="cmd-line" onclick="selectLine(this)">
+          <span class="cmd-indent">　</span>
+          <span class="cmd-icon">◆</span>
+          <span class="cmd-text">Text : None, Window, Bottom</span>
+        </div>
+        <div class="cmd-line" onclick="selectLine(this)">
+          <span class="cmd-indent">　　</span>
+          <span class="cmd-text">: A wise choice. Come back when you're ready.</span>
+        </div>
+        <div class="cmd-line" onclick="selectLine(this)">
+          <span class="cmd-icon cmd-branch">：</span>
+          <span class="cmd-text">End</span>
+        </div>
+        <div class="cmd-line" onclick="selectLine(this)">
+          <span class="cmd-icon">◆</span>
+          <span class="cmd-text cmd-comment">Comment : Check if player has the key later</span>
+        </div>
+        <div class="cmd-line" onclick="selectLine(this)">
+          <span class="cmd-icon">◆</span>
+          <span class="cmd-text cmd-script">Script : // Custom JS logic</span>
+        </div>
+        <div class="cmd-line" onclick="selectLine(this)">
+          <span class="cmd-indent">　</span>
+          <span class="cmd-text cmd-script">: if ($gameParty.hasItem($dataItems[2])) {</span>
+        </div>
+        <div class="cmd-line" onclick="selectLine(this)">
+          <span class="cmd-indent">　</span>
+          <span class="cmd-text cmd-script">:   $gameMessage.add("You already have the key!");</span>
+        </div>
+        <div class="cmd-line" onclick="selectLine(this)">
+          <span class="cmd-indent">　</span>
+          <span class="cmd-text cmd-script">: }</span>
+        </div>
+        <div class="cmd-line cmd-empty" onclick="selectLine(this)" ondblclick="openCommandPicker()">
+          <span class="cmd-icon">◇</span>
+          <span class="cmd-text">(Empty line – double-click to insert)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="rm-footer">
+    <button onclick="openScriptEditor()">Edit Script…</button>
+    <button class="primary" onclick="alert('Changes applied (demo)')">OK</button>
+    <button onclick="alert('Cancelled (demo)')">Cancel</button>
+  </div>
+</div>
+
+<!-- Event Commands Picker Modal -->
+<div class="modal-overlay" id="cmdModal">
+  <div class="modal">
+    <div class="modal-title">Event Commands</div>
+    <div class="modal-tabs" id="cmdTabs">
+      <div class="modal-tab active" data-tab="1" onclick="switchCmdTab(1)">1. Message</div>
+      <div class="modal-tab" data-tab="2" onclick="switchCmdTab(2)">2. Game Progression</div>
+      <div class="modal-tab" data-tab="3" onclick="switchCmdTab(3)">3. Flow Control</div>
+      <div class="modal-tab" data-tab="4" onclick="switchCmdTab(4)">4. Party</div>
+      <div class="modal-tab" data-tab="5" onclick="switchCmdTab(5)">5. Actor</div>
+      <div class="modal-tab" data-tab="6" onclick="switchCmdTab(6)">6. Movement</div>
+      <div class="modal-tab" data-tab="7" onclick="switchCmdTab(7)">7. Character</div>
+      <div class="modal-tab" data-tab="8" onclick="switchCmdTab(8)">8. Picture</div>
+      <div class="modal-tab" data-tab="9" onclick="switchCmdTab(9)">9. Timing / Screen</div>
+      <div class="modal-tab" data-tab="10" onclick="switchCmdTab(10)">10. Audio & Video</div>
+      <div class="modal-tab" data-tab="11" onclick="switchCmdTab(11)">11. Scene Control</div>
+      <div class="modal-tab" data-tab="12" onclick="switchCmdTab(12)">12. System / Map</div>
+      <div class="modal-tab" data-tab="13" onclick="switchCmdTab(13)">13. Advanced</div>
+    </div>
+    <div class="modal-body" id="cmdBody">
+      <!-- filled by JS -->
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeCommandPicker()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Script Editor Modal -->
+<div class="modal-overlay script-modal" id="scriptModal">
+  <div class="modal">
+    <div class="modal-title">Script</div>
+    <div class="modal-body">
+      <textarea class="script-editor" id="scriptCode" spellcheck="false">// RPG Maker MV Script Command
+// You can use any valid JavaScript here.
+// Common objects:
+//   $gamePlayer, $gameParty, $gameMap, $gameSystem
+//   $gameVariables, $gameSwitches, $gameSelfSwitches
+//   $dataActors, $dataItems, $dataWeapons, ...
+
+if ($gameParty.hasItem($dataItems[2])) {
+  $gameMessage.add("You already have the dungeon key!");
+  $gameSelfSwitches.setValue([$gameMap.mapId(), this._eventId, 'A'], true);
+} else {
+  $gameMessage.add("You still need to find the key...");
+}
+
+// Example: transfer player
+// $gamePlayer.reserveTransfer(2, 10, 15, 2, 0);
+
+// Example: control variable
+// $gameVariables.setValue(1, $gameVariables.value(1) + 10);</textarea>
+      <div class="script-hint">
+        <strong>Tips:</strong> Use <code>this</code> for the current interpreter.
+        Event commands continue after the script finishes.
+        Long scripts can be split across multiple Script commands.
+        For complex logic, prefer Conditional Branch + Script or common events.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="applyScript()">OK</button>
+      <button onclick="closeScriptEditor()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---- Condition toggles ----
+  function toggleCond(id) {
+    const checked = document.getElementById(id).checked;
+    if (id === 'sw1') document.getElementById('sw1val').disabled = !checked;
+    if (id === 'sw2') document.getElementById('sw2val').disabled = !checked;
+    if (id === 'var') {
+      document.getElementById('varid').disabled = !checked;
+      document.getElementById('varval').disabled = !checked;
+    }
+    if (id === 'ss') document.getElementById('ssval').disabled = !checked;
+    if (id === 'item') document.getElementById('itemval').disabled = !checked;
+    if (id === 'actor') document.getElementById('actorval').disabled = !checked;
+  }
+
+  // ---- Page handling ----
+  let currentPage = 1;
+  function switchPage(n) {
+    currentPage = n;
+    document.querySelectorAll('.rm-page-tab').forEach(t => {
+      t.classList.toggle('active', parseInt(t.dataset.page) === n);
+    });
+  }
+  function addPage() {
+    const tabs = document.getElementById('pageTabs');
+    const next = tabs.children.length + 1;
+    const tab = document.createElement('div');
+    tab.className = 'rm-page-tab';
+    tab.dataset.page = next;
+    tab.textContent = next;
+    tab.onclick = () => switchPage(next);
+    tabs.appendChild(tab);
+    switchPage(next);
+  }
+  function copyPage() { alert('Page copied (demo)'); }
+  function clearPage() { if (confirm('Clear current page?')) alert('Page cleared (demo)'); }
+  function deletePage() {
+    const tabs = document.getElementById('pageTabs');
+    if (tabs.children.length <= 1) { alert('Cannot delete the last page'); return; }
+    if (confirm('Delete current page?')) {
+      const active = tabs.querySelector('.active');
+      active.remove();
+      switchPage(1);
+    }
+  }
+  function updateTitle() {
+    const name = document.getElementById('eventName').value || 'Event';
+    document.querySelector('.rm-titlebar .title span:last-child').textContent =
+      `Event Editor — EV001: ${name}`;
+  }
+
+  // ---- Contents selection ----
+  function selectLine(el) {
+    document.querySelectorAll('.cmd-line').forEach(l => l.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  // ---- Command picker ----
+  const commandPages = {
+    1: [
+      'Show Text…', 'Show Choices…', 'Input Number…', 'Select Item…',
+      'Show Scrolling Text…'
+    ],
+    2: [
+      'Control Switches…', 'Control Variables…', 'Control Self Switch…',
+      'Control Timer…'
+    ],
+    3: [
+      'Conditional Branch…', 'Loop', 'Break Loop', 'Exit Event Processing',
+      'Common Event…', 'Label…', 'Jump to Label…', 'Comment…'
+    ],
+    4: [
+      'Change Gold…', 'Change Items…', 'Change Weapons…', 'Change Armors…',
+      'Change Party Member…'
+    ],
+    5: [
+      'Change HP…', 'Change MP…', 'Change TP…', 'Change State…', 'Recover All…',
+      'Change EXP…', 'Change Level…', 'Change Parameter…', 'Change Skill…',
+      'Change Equipment…', 'Change Name…', 'Change Class…', 'Change Nickname…',
+      'Change Profile…'
+    ],
+    6: [
+      'Transfer Player…', 'Set Vehicle Location…', 'Set Event Location…',
+      'Scroll Map…', 'Set Movement Route…', 'Get on/off Vehicle'
+    ],
+    7: [
+      'Change Transparency…', 'Change Player Followers…', 'Gather Followers',
+      'Show Animation…', 'Show Balloon Icon…', 'Erase Event'
+    ],
+    8: [
+      'Show Picture…', 'Move Picture…', 'Rotate Picture…', 'Tint Picture…',
+      'Erase Picture…'
+    ],
+    9: [
+      'Wait…', 'Fadeout Screen', 'Fadein Screen', 'Tint Screen…',
+      'Flash Screen…', 'Shake Screen…', 'Set Weather Effect…'
+    ],
+    10: [
+      'Play BGM…', 'Fadeout BGM…', 'Save BGM', 'Replay BGM',
+      'Play BGS…', 'Fadeout BGS…', 'Play ME…', 'Play SE…', 'Stop SE',
+      'Play Movie…'
+    ],
+    11: [
+      'Battle Processing…', 'Shop Processing…', 'Name Input Processing…',
+      'Open Menu Screen', 'Open Save Screen', 'Game Over', 'Return to Title Screen'
+    ],
+    12: [
+      'Change Battle BGM…', 'Change Victory ME…', 'Change Defeat ME…',
+      'Change Vehicle BGM…', 'Change Map Name Display…', 'Change Tileset…',
+      'Change Battle Background…', 'Change Parallax…', 'Get Location Info…'
+    ],
+    13: [
+      'Script…', 'Plugin Command…'
+    ]
+  };
+
+  function openCommandPicker() {
+    document.getElementById('cmdModal').classList.add('show');
+    switchCmdTab(1);
+  }
+  function closeCommandPicker() {
+    document.getElementById('cmdModal').classList.remove('show');
+  }
+  function switchCmdTab(n) {
+    document.querySelectorAll('.modal-tab').forEach(t => {
+      t.classList.toggle('active', parseInt(t.dataset.tab) === n);
+    });
+    const body = document.getElementById('cmdBody');
+    const cmds = commandPages[n] || [];
+    body.innerHTML = '<div class="cmd-grid">' +
+      cmds.map(c => {
+        const isScript = c.startsWith('Script');
+        return `<button class="cmd-btn${isScript ? ' highlight' : ''}" onclick="insertCommand('${c.replace(/'/g, "\\'")}')">${c}</button>`;
+      }).join('') +
+      '</div>';
+  }
+  function insertCommand(name) {
+    closeCommandPicker();
+    if (name.startsWith('Script')) {
+      openScriptEditor();
+      return;
+    }
+    const list = document.getElementById('contentsList');
+    const empty = list.querySelector('.cmd-empty');
+    const line = document.createElement('div');
+    line.className = 'cmd-line';
+    line.onclick = function() { selectLine(this); };
+    line.innerHTML = `<span class="cmd-icon">◆</span><span class="cmd-text">${name}</span>`;
+    list.insertBefore(line, empty);
+    selectLine(line);
+  }
+
+  // ---- Script editor ----
+  function openScriptEditor() {
+    document.getElementById('scriptModal').classList.add('show');
+  }
+  function closeScriptEditor() {
+    document.getElementById('scriptModal').classList.remove('show');
+  }
+  function applyScript() {
+    const code = document.getElementById('scriptCode').value.trim();
+    if (!code) { closeScriptEditor(); return; }
+    const list = document.getElementById('contentsList');
+    const empty = list.querySelector('.cmd-empty');
+    // Remove previous demo script lines if any (simple demo)
+    const lines = code.split('\n').slice(0, 8); // limit for demo
+    lines.forEach((ln, i) => {
+      const line = document.createElement('div');
+      line.className = 'cmd-line';
+      line.onclick = function() { selectLine(this); };
+      if (i === 0) {
+        line.innerHTML = `<span class="cmd-icon">◆</span><span class="cmd-text cmd-script">Script : ${ln.substring(0, 40)}${ln.length > 40 ? '…' : ''}</span>`;
+      } else {
+        line.innerHTML = `<span class="cmd-indent">　</span><span class="cmd-text cmd-script">: ${ln.substring(0, 50)}${ln.length > 50 ? '…' : ''}</span>`;
+      }
+      list.insertBefore(line, empty);
+    });
+    closeScriptEditor();
+  }
+
+  // Close modals on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(ov => {
+    ov.addEventListener('click', e => {
+      if (e.target === ov) ov.classList.remove('show');
+    });
+  });
+</script>
+</body>
+</html>

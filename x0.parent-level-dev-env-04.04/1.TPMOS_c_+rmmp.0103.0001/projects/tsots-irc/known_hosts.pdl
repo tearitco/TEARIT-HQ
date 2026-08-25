@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+IP_LIST      | node_0             | 10.0.0.238
+IP_LIST      | node_1             | 10.0.0.16
+IP_LIST      | node_2             | 10.0.0.144
+IP_LIST      | node_3             | 10.0.0.31
+IP_LIST      | node_4             | 10.0.0.187
+META         | last_updated       | 2026-05-25
+META         | protocol           | TCP_PORT_8000

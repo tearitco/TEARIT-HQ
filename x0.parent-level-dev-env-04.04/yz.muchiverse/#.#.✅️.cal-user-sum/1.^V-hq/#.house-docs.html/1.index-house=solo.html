@@ -1,0 +1,970 @@
+<title>Muchiverse House Docs</title>
+
+<style>
+  :root {
+    --bg: #f4f3ef;
+    --surface: #ffffff;
+    --surface-2: #ececE6;
+    --border: #dcdad2;
+    --text: #1c1c1a;
+    --text-dim: #6b6a63;
+    --accent: #1a8a4a;
+    --accent-warm: #b5720a;
+    --status-wip: #2563a8;
+    --code-bg: #ececE6;
+    --code-text: #2b2b28;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --bg: #14161a;
+      --surface: #1b1e24;
+      --surface-2: #21252c;
+      --border: #2b2f37;
+      --text: #e9e7e2;
+      --text-dim: #9599a1;
+      --accent: #22c55e;
+      --accent-warm: #f0a63f;
+      --status-wip: #5b9dd9;
+      --code-bg: #16181c;
+      --code-text: #dcdad4;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a;
+    --surface: #1b1e24;
+    --surface-2: #21252c;
+    --border: #2b2f37;
+    --text: #e9e7e2;
+    --text-dim: #9599a1;
+    --accent: #22c55e;
+    --accent-warm: #f0a63f;
+    --status-wip: #5b9dd9;
+    --code-bg: #16181c;
+    --code-text: #dcdad4;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible, .navlink:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .shell {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    min-height: 100vh;
+  }
+
+  /* ---------- sidebar ---------- */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    padding: 28px 20px 40px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .brand {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .brand strong {
+    display: block;
+    font-family: var(--sans);
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    text-transform: none;
+    margin-top: 2px;
+  }
+  nav { margin-top: 28px; display: flex; flex-direction: column; gap: 22px; }
+  .navgroup-label {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .navlinks { display: flex; flex-direction: column; gap: 2px; }
+  .navlink {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.92rem;
+  }
+  .navlink:hover { background: var(--surface-2); }
+  .navlink .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--border); }
+  .navlink .dot.done { background: var(--accent); }
+  .navlink .dot.wip { background: var(--status-wip); }
+  .navlink .dot.deferred { background: var(--accent-warm); }
+
+  /* ---------- main ---------- */
+  main { padding: 56px 40px 120px; min-width: 0; }
+  .col { max-width: 760px; margin: 0 auto; }
+
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  h1.pagetitle {
+    font-size: 2.1rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0 0 14px;
+  }
+  .lede { font-size: 1.08rem; color: var(--text-dim); max-width: 62ch; margin: 0 0 48px; }
+
+  section.doc { padding-top: 56px; margin-top: 8px; border-top: 1px solid var(--border); scroll-margin-top: 24px; }
+  section.doc:first-of-type { border-top: none; padding-top: 0; }
+
+  .section-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
+  h3 { font-size: 1.12rem; font-weight: 700; margin: 32px 0 10px; }
+  .section-path {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin: 0 0 22px;
+  }
+
+  .pill {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .pill.done { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+  .pill.wip { color: var(--status-wip); border-color: color-mix(in srgb, var(--status-wip) 45%, var(--border)); }
+  .pill.deferred { color: var(--accent-warm); border-color: color-mix(in srgb, var(--accent-warm) 45%, var(--border)); }
+
+  p { margin: 0 0 16px; max-width: 68ch; }
+  ul, ol { margin: 0 0 16px; padding-left: 22px; }
+  li { margin-bottom: 6px; max-width: 64ch; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 0.12em 0.4em;
+    border-radius: 4px;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    margin: 0 0 20px;
+  }
+  pre code { background: none; padding: 0; font-size: 0.84rem; line-height: 1.55; }
+
+  .callout {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    background: var(--surface);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 0 0 20px;
+  }
+  .callout.warn { border-left-color: var(--accent-warm); }
+  .callout .callout-label {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 6px;
+  }
+  .callout.warn .callout-label { color: var(--accent-warm); }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .fieldgrid {
+    display: grid;
+    grid-template-columns: minmax(120px, auto) 1fr;
+    gap: 6px 18px;
+    font-size: 0.92rem;
+    margin: 0 0 20px;
+  }
+  .fieldgrid dt { font-family: var(--mono); color: var(--text-dim); }
+  .fieldgrid dd { margin: 0; }
+
+  .stub {
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    margin: 0 0 20px;
+  }
+  .stub strong { color: var(--text); }
+
+  table { border-collapse: collapse; width: 100%; margin: 0 0 20px; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
+  .table-wrap { overflow-x: auto; margin: 0 0 20px; }
+
+  footer.pagefoot {
+    max-width: 760px;
+    margin: 64px auto 0;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 880px) {
+    .shell { grid-template-columns: 1fr; }
+    .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    main { padding: 40px 20px 100px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { scroll-behavior: auto !important; }
+  }
+
+  html { scroll-behavior: smooth; }
+</style>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">yz.muchiverse / house docs</div>
+    <div class="brand"><strong>Muchiverse House Docs</strong></div>
+
+    <nav aria-label="Documentation sections">
+      <div>
+        <div class="navgroup-label">Start Here</div>
+        <div class="navlinks">
+          <a class="navlink" href="#overview"><span class="dot done"></span>Overview</a>
+          <a class="navlink" href="#standards"><span class="dot done"></span>House Standards</a>
+        </div>
+      </div>
+      <div>
+        <div class="navgroup-label">Architecture</div>
+        <div class="navlinks">
+          <a class="navlink" href="#taskbar"><span class="dot done"></span>Taskbar &amp; Window Apps</a>
+          <a class="navlink" href="#legacy-engines"><span class="dot done"></span>Legacy Game Engines</a>
+          <a class="navlink" href="#display-layer"><span class="dot wip"></span>Display Layer (GL → X11)</a>
+          <a class="navlink" href="#input-dispatch"><span class="dot wip"></span>Input &amp; Dispatch Architecture</a>
+        </div>
+      </div>
+      <div>
+        <div class="navgroup-label">AI &amp; Automation</div>
+        <div class="navlinks">
+          <a class="navlink" href="#ai-backends"><span class="dot done"></span>AI Agent Backends</a>
+        </div>
+      </div>
+      <div>
+        <div class="navgroup-label">Working In The Code</div>
+        <div class="navlinks">
+          <a class="navlink" href="#testing"><span class="dot done"></span>Testing Conventions</a>
+          <a class="navlink" href="#extending"><span class="dot wip"></span>How To Extend</a>
+        </div>
+      </div>
+      <div>
+        <div class="navgroup-label">State Of Things</div>
+        <div class="navlinks">
+          <a class="navlink" href="#roadmap"><span class="dot deferred"></span>Known Issues &amp; Roadmap</a>
+        </div>
+      </div>
+      <div>
+        <div class="navgroup-label">Other Docs</div>
+        <div class="navlinks">
+          <a class="navlink" href="index.html"><span class="dot done"></span>Browser Prompting Guide</a>
+        </div>
+      </div>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="col">
+      <div class="hero-eyebrow">Internal reference — living document</div>
+      <h1 class="pagetitle">How the house actually works</h1>
+      <p class="lede">
+        This is the real, working reference for the muchiverse/livedesk house: the taskbar and its
+        window-app family, the legacy game engines it grew out of, and the standards that hold it
+        together. It's deliberately broad and unevenly deep right now — some sections are
+        thorough, others are a skeleton waiting to be filled in. Click a section, read what's
+        there, and add to what's thin.
+      </p>
+
+      <!-- ============ OVERVIEW ============ -->
+      <section class="doc" id="overview">
+        <div class="section-head">
+          <h2>Overview</h2>
+          <span class="pill done">Current</span>
+        </div>
+        <p class="section-path">the shape of the house, in one pass</p>
+
+        <p>
+          The house is organized around a persistent desktop taskbar (<code>khtpm_strip_parser.c</code> +
+          <code>khtpm_taskbar_manager.c</code>) that launches and manages a family of window apps —
+          a database browser, an events editor, a chat interface, entity context menus, and more —
+          plus a much older family of standalone terminal/3D game projects that predate the taskbar
+          entirely and are gradually being brought into the same conventions.
+        </p>
+        <p>
+          Two real parser lineages exist side by side and are <strong>not</strong> the same thing:
+          the newer <code>khtpm_*</code> family (raw Xlib/Xft rendering, its own CSS-like styling
+          layer, used by the taskbar and its window apps) and the older
+          <code>chtpm_parser_pal.c</code> family (a PAL-VM-driven text-grid parser, used by the
+          legacy game projects). If you're building on a taskbar sub-app you're in the first
+          family; if you're touching one of the 16 legacy game projects, you're in the second.
+          Assuming a feature from one exists in the other is a real, recurring source of wasted
+          debugging time.
+        </p>
+
+        <div class="callout">
+          <span class="callout-label">Orientation rule</span>
+          <p>
+            Before inventing a new UI/state pattern, check whether the local codebase already has
+            one, then check the real TPMOS reference tree
+            (<code>1.TPMOS_c_+rmmp.0103.0001/</code>) before designing something new. TPMOS isn't
+            inspiration — it's the literal architecture standard this house is built against.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ HOUSE STANDARDS ============ -->
+      <section class="doc" id="standards">
+        <div class="section-head">
+          <h2>House Standards</h2>
+          <span class="pill done">Current</span>
+        </div>
+        <p class="section-path">the rules that keep the house from drifting apart</p>
+
+        <h3>Real processes, not shared includes</h3>
+        <p>
+          Independent or long-running logic gets a real <code>fork()</code> +
+          <code>execv()</code> child process (matching every real <code>launch_module()</code> in
+          this codebase), never an <code>#include</code> of another app's source. A discrete,
+          one-shot action gets its own standalone op binary, invoked the same way. The one
+          legitimate exception is pure, stateless, per-frame hot-path logic that genuinely needs
+          direct in-process access to shared data structures — the rendering core
+          (<code>khtpm_render_core.c</code>, <code>khtpm_css_parser.c</code>,
+          <code>khtpm_draw_core.c</code>) is the real example, not a precedent to stretch further.
+        </p>
+        <p>
+          New dispatch or launch code should reach for real <code>fork()</code>/<code>execv()</code>/<code>waitpid()</code>
+          rather than <code>system()</code>. Existing <code>system()</code> calls in code that's
+          slated for consolidation don't need to be rewritten just to be consistent — that
+          cleanup happens once the surrounding code converges, not as a drive-by change.
+        </p>
+
+        <h3>Archive, don't delete</h3>
+        <p>
+          Code made obsolete by a merge or migration gets moved into a clearly-named, dated
+          archive directory with a real <code>MANIFEST.txt</code> (original path + why it's dead),
+          then zipped. Whether the loose unzipped copy stays or gets deleted afterward is a real,
+          explicit instruction to confirm — some passes this session kept it, later ones deleted
+          it outright on direct request. Don't guess; ask if it's not stated.
+        </p>
+
+        <h3>Don't hardcode a path that can move again</h3>
+        <p>
+          When a real path needs to resolve to "wherever this app currently lives," scan known
+          root directories for it by name at runtime rather than baking in a fixed relative path.
+          Two real, working examples already in the codebase:
+        </p>
+        <pre><code>static int find_app_dir(const char *house_root, const char *app_name,
+                         char *out, size_t outsz) {
+    static const char *roots[] = { "*.monads", "&amp;.widgits", "&amp;.hq-apps", "@.apps", NULL };
+    for (int i = 0; roots[i]; i++) {
+        char parent[PATH_BUF];
+        snprintf(parent, sizeof(parent), "%s/%s", house_root, roots[i]);
+        DIR *d = opendir(parent);
+        if (!d) continue;
+        struct dirent *ent;
+        while ((ent = readdir(d)) != NULL) {
+            if (strstr(ent-&gt;d_name, app_name)) {
+                snprintf(out, outsz, "%s/%s", parent, ent-&gt;d_name);
+                closedir(d);
+                return 1;
+            }
+        }
+        closedir(d);
+    }
+    out[0] = '\0';
+    return 0;
+}</code></pre>
+        <p>
+          A directory that moves once will move again — this pattern means the next move doesn't
+          need a source edit at every call site that referenced it.
+        </p>
+
+        <h3>Verify before you trust a fix</h3>
+        <p>
+          A change that compiles and passes a synthetic, isolated test is not the same claim as
+          "this works." Real regressions this session were repeatedly found only once tested
+          against real, full-scale data through the real dispatch path — not a shell one-liner,
+          not a reduced test file. If you can't watch it happen (a rendered frame, a live process,
+          an actual keypress reaching the code), say so explicitly rather than reporting success.
+        </p>
+      </section>
+
+      <!-- ============ TASKBAR ============ -->
+      <section class="doc" id="taskbar">
+        <div class="section-head">
+          <h2>Taskbar &amp; Window Apps</h2>
+          <span class="pill done">Current</span>
+        </div>
+        <p class="section-path">*.monads/*.livedesk-taskbar/</p>
+
+        <p>
+          The taskbar itself is two real, separate OS processes with no shared memory —
+          <code>khtpm_strip_parser.c</code> (Xlib, layout, hit-testing) and
+          <code>khtpm_taskbar_manager.c</code> (pure logic, no Xlib) — talking exclusively through
+          plain files under <code>#.desktop/</code>. Cell dispatch is meant to be data-driven: a
+          real, optional <code>id=</code> attribute on a header button, cross-referenced against a
+          published <code>position → id</code> map, checked before falling back to purely
+          positional matching. Treating cell position as ground truth instead of the real <code>id</code>
+          is a recurring mistake worth avoiding.
+        </p>
+
+        <h3>The five window apps, one binary</h3>
+        <p>
+          Five apps that used to be five separate binaries — entity context menus, taskbar
+          settings, the database browser (db-hq), the events editor (events-hq), and chat-hai —
+          now live in one shared, compiled binary:
+          <code>khtpm_entity_menu_render.c</code>. Which app you get is selected by a
+          <code>class=</code> attribute on the app's own <code>&lt;window&gt;</code> tag, matching
+          the real "one binary, behavior chosen by loaded data" shape already used elsewhere in
+          this house — not five copies of the same rendering core.
+        </p>
+        <p>
+          Each app's own real, distinct dispatch logic (db-hq's tag/id-based
+          <code>activate_elem()</code>, events-hq's live file-watch polling and drag handling,
+          chat-hai's session sidebar and ledger polling) was ported in as a documented per-mode
+          branch, not forced into a single shared abstraction. When one app's own working pattern
+          is genuinely different from the others, preserving it as its own real branch beats
+          inventing a unified shape nothing actually asked for.
+        </p>
+
+        <div class="fieldgrid">
+          <dt>window shapes</dt>
+          <dd>Two real families: small override_redirect popups (entity-menu, taskbar-settings)
+            and full WM-managed windows with their own chrome bar (db-hq, events-hq, chat-hai).
+            They don't share a window-creation code path — don't assume one.</dd>
+          <dt>close button</dt>
+          <dd>A sub-app's own <code>[X]</code> should only ever tear down its own window. A real,
+            already-fixed bug had it also calling a taskbar-level "close everything" routine —
+            check what a shared cleanup function actually does before calling it from a narrower
+            scope.</dd>
+        </div>
+
+        <h3>Worked example: adding a new HQ menu row end to end</h3>
+        <p>
+          Real, live-verified recipe (built and tested 2026-08-18 — the HQ menu's "cli" row).
+          Two layers matter here, not one:
+        </p>
+        <ol>
+          <li>
+            <strong>The row itself is PDL-driven, not C-hardcoded</strong> — add
+            <code>hq_menu_N_label</code> / <code>hq_menu_N_cmd</code> to
+            <code>#.desktop/livedesk_taskbar.pdl</code> (max 8 rows,
+            <code>livedesk_build_hq_menu()</code> reads it fresh every open, no recompile needed).
+          </li>
+          <li>
+            <strong>The command string has a real, existing contract</strong> — any non-empty,
+            non-<code>"livedesk:"</code>-prefixed, non-<code>"quit"</code> command falls through
+            to a generic shell-out (<code>setsid nohup sh -c '&lt;cmd&gt;' &gt;/dev/null 2&gt;&amp;1
+            &amp;</code>). A trailing bare <code>" ."</code> token gets substituted with the real
+            absolute house root — the same convention <code>"dir"</code>'s own
+            <code>xdg-open .</code> row already uses.
+          </li>
+        </ol>
+        <div class="callout warn">
+          <span class="callout-label">Real gotcha: gnome-terminal + wildcard directory names</span>
+          <p>
+            <code>gnome-terminal -- &lt;path&gt;</code> calls <code>execve()</code> on
+            <code>&lt;path&gt;</code> DIRECTLY — no shell, no glob expansion. This house's own
+            real, literal directory names containing <code>*</code>
+            (<code>*.monads/*.livedesk-taskbar</code>) fail silently there. Fix: a tiny wrapper
+            script that resolves its own absolute path via <code>$0</code> (same real pattern
+            <code>run_khtpm_strip.sh</code> already uses) before exec'ing <code>gnome-terminal</code>
+            — never rely on glob expansion at the exec site.
+          </p>
+        </div>
+        <p>
+          Also real, also confirmed this session: the manager process's actual working directory
+          is its own <code>ops/</code> dir, not house root — a relative command path resolves from
+          there, not from wherever you might assume.
+        </p>
+
+        <h3>The taskbar's real terminal ASCII mirror</h3>
+        <p>
+          A genuine second frontend for the taskbar, matching TPMOS's own dual-render standard —
+          <code>khtpm_strip_render_ascii.+x</code> (no termios, composes + writes a real
+          <code>.txt</code> frame file, then displays it) and
+          <code>khtpm_strip_keyboard_ascii.+x</code> (raw termios only, never prints) as TWO
+          separate binaries, launched together against one terminal via <code>open_cli.sh</code>.
+        </p>
+        <div class="callout warn">
+          <span class="callout-label">Real bug this split fixes</span>
+          <p>
+            An earlier, combined single-binary attempt put both concerns in one process — raw
+            termios disables <code>OPOST</code> (needed for keyboard capture), which silently
+            breaks <code>\n</code>→<code>\r\n</code> translation for that SAME process's own
+            <code>printf</code> output too (termios raw mode is a property of the tty, not the
+            calling process). Produced a real, visible "staircase" render bug. Splitting into two
+            processes — one that only captures, one that never touches termios — is what actually
+            fixes it, not a style choice.
+          </p>
+        </div>
+        <p>
+          The relay this mirror drives (<code>livedesk_agent_relay.txt</code>) was, before this
+          session, deliberately scoped to ENTER/ESCAPE/BACKSPACE/printable only — no way to open a
+          header cell or move strip focus via arrow keys at all. Two real gaps found+fixed in
+          <code>dispatch_key_code()</code> (the relay consumer): forwarding
+          <code>KSC_HQ_HEADER_BASE</code> codes (to open a cell) and
+          <code>KSC_FOCUS_LEFT</code>/<code>RIGHT</code> (to move the strip cursor) — both were
+          zero-risk additions since real X11 input never reaches those same branches through this
+          path.
+        </p>
+
+        <div class="stub">
+          <strong>Still needs expansion:</strong> per-app <code>.chtpm</code> layout syntax
+          reference, and the real CSS subset supported by <code>khtpm_css_parser.c</code> (no
+          flexbox, no descendant selectors — both silently no-op).
+        </div>
+      </section>
+
+      <!-- ============ LEGACY ENGINES ============ -->
+      <section class="doc" id="legacy-engines">
+        <div class="section-head">
+          <h2>Legacy Game Engines</h2>
+          <span class="pill done">Current</span>
+        </div>
+        <p class="section-path">16 real standalone projects, one shared engine core</p>
+
+        <p>
+          Sixteen real projects (mutaclysm, piececraft-xyz, aomorai-editor, the yahoo cluster, and
+          others) each used to carry their own full copy of a shared engine: a PAL-script
+          interpreter (<code>prisc+x.c</code>), a text-grid parser
+          (<code>chtpm_parser_pal.c</code>), a raw-terminal key reader, a frame renderer, and a
+          display shim. A full drift survey found the copies had genuinely diverged in both
+          directions — no single project's copy was a strict superset of the others' real fixes.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>File</th><th>Status</th><th>Note</th></tr></thead>
+            <tbody>
+              <tr><td><code>chtpm_parser_pal.c</code></td><td><span class="pill done">consolidated</span></td><td>All 12 real participants on one shared baseline</td></tr>
+              <tr><td><code>prisc+x.c</code></td><td><span class="pill done">consolidated</span></td><td>All 12 real participants on one shared baseline</td></tr>
+              <tr><td><code>chtpm_rgb_render.c</code></td><td><span class="pill done">consolidated</span></td><td>9 of the projects that have this file share one copy</td></tr>
+              <tr><td><code>gl_mirror.c</code> → <code>x11_mirror.c</code></td><td><span class="pill wip">3 of 16</span></td><td>mutaclysm, piececraft-xyz, my-chara-txt converted; 13 remain</td></tr>
+              <tr><td><code>orchestrator.c</code> / <code>keyboard_input.c</code> / <code>renderer.c</code></td><td><span class="pill deferred">not started</span></td><td>Real, medium-effort, each needs its own pass</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout warn">
+          <span class="callout-label">Reference model</span>
+          <p>
+            When choosing which project's own implementation to treat as the real baseline,
+            <strong>piececraft-xyz and aomorai-editor are the better models for the 3D/game-parser
+            side of things</strong>, not the project with the most recent work done on it. Recency
+            of attention and quality of architecture aren't the same signal — check which is
+            actually true before assuming.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ DISPLAY LAYER ============ -->
+      <section class="doc" id="display-layer">
+        <div class="section-head">
+          <h2>Display Layer — GL → X11</h2>
+          <span class="pill wip">In progress</span>
+        </div>
+        <p class="section-path">&amp;.widgits/_shared-lib/ops/x11_mirror.c</p>
+
+        <p>
+          Each legacy project's own <code>gl_mirror.c</code> was a thin, deliberate display shim —
+          the one file in the project allowed to call GL/GLUT primitives, reading a CPU-composited
+          RGBA32 frame buffer another process already wrote and blitting it as one textured quad.
+          The real rendering math underneath was already portable, GL-free CPU code; only this
+          final display step touched GL at all.
+        </p>
+        <p>
+          <code>x11_mirror.c</code> replaces it with plain Xlib — no GL/GLUT dependency, same job,
+          same file-watch pulse, same checksum-verified frame parity. It's a real shared binary now
+          (not a per-project copy), parameterized by the project's own directory name for its
+          window title, with a hand-drawn chrome bar and close button matching the taskbar family's
+          own WM-managed window style. The old <code>gl_mirror.c</code> stays in place as an
+          automatic fallback, not deleted.
+        </p>
+
+        <div class="stub">
+          <strong>Needs expansion:</strong> the real conversion recipe for the remaining 13
+          projects, and what (if anything) differs project to project versus mutaclysm's own pilot.
+        </div>
+      </section>
+
+      <!-- ============ INPUT & DISPATCH ARCHITECTURE ============ -->
+      <section class="doc" id="input-dispatch">
+        <div class="section-head">
+          <h2>Input &amp; Dispatch Architecture</h2>
+          <span class="pill wip">Real, ongoing — Phase 1 done, Phase 2 opt-in</span>
+        </div>
+        <p class="section-path">khtpm_strip_parser.c's real input pipeline, and how it compares to TPMOS</p>
+
+        <p>
+          The taskbar's real X11 <code>KeyPress</code>/<code>ButtonPress</code> handling calls
+          <code>dispatch_key_code()</code>/hit-testing DIRECTLY, in-process — unlike mutaclysm's
+          <code>x11_mirror.c</code>, which is a pure capture-only writer to a shared
+          <code>pieces/keyboard/history.txt</code> that a SEPARATE process
+          (<code>game_dispatch.c</code>) is the sole reader/dispatcher for. This is a real,
+          confirmed architectural difference, not an oversight — the taskbar's own external-input
+          relay (<code>livedesk_agent_relay.txt</code>) is a deliberate, separate side-channel, not
+          a mutaclysm-style unified input log.</p>
+
+        <h3>Phase 1 — real input mirrored into an audit file (done, live-verified)</h3>
+        <p>
+          Real X11 input handling is completely unchanged — every branch still dispatches exactly
+          as before. Added alongside it: every real key/mouse event ALSO gets mirrored into a new
+          <code>#.desktop/strip_input_history.txt</code>, using the SAME <code>KEY_PRESSED:</code>/
+          <code>MOUSE_EVENT:</code> format already established by <code>pieces/keyboard/
+          history.txt</code> (confirmed via direct read of <code>chtpm_parser_pal.c</code>'s own
+          poll loop), plus a window-name field since this parser owns THREE separate X11 windows
+          simultaneously (strip, header, popup) — mutaclysm's own single-window convention doesn't
+          need that field. Verified live with genuine, unprompted user interaction, not a
+          synthetic test.
+        </p>
+
+        <h3>Phase 2 — a real, feature-flagged dual dispatch path → Phase 3 cutover complete (2026-08-19)</h3>
+        <p>
+          <code>KHTPM_NEW_DISPATCH_MODE</code> (env var) existed as of Phase 2 to let the new path
+          run alongside the untouched old path. As of Phase 3, the flag AND the old inline-dispatch
+          path are DELETED — real X11 capture is write-only (mirrors to
+          <code>strip_input_history.txt</code>, dispatches nothing inline) and a separate
+          read-back pass (<code>poll_captured_input()</code>, same cursor/resync discipline as
+          <code>poll_agent_relay()</code>) dispatches everything and redraws ONCE per tick —
+          matching <code>game_dispatch.c</code>'s own proven "read all, dispatch each, render
+          once" shape — is now the ONLY path, no runtime toggle, no fallback. Verified with real,
+          mixed clicks/keystrokes across all three windows, confirmed via
+          <code>strip_state.txt</code> showing correct resulting state; the bottom tab bar was
+          confirmed fully covered before the old path was removed.
+        </p>
+        <div class="callout warn">
+          <span class="callout-label">Real, honest behavior change — and a real bug this exposed</span>
+          <p>
+            The new path batches what were separate synchronous per-event redraws into one redraw
+            per tick — a real, if minor, behavior difference for real GUI use, not just an
+            implementation detail. Separately, a same-day frame-unification pass
+            (<code>strip_frame.cells.pdl</code>, see <code>au11-hq/TASKBAR-FRAME-UNIFICATION-HANDOFF.md</code>)
+            introduced a real bug: its cells.pdl change-signal file collided by name with this
+            dispatch work's own manager-state dirty signal, causing the layout docs to reload every
+            tick and silently wipe arrow-key submenu focus (never persisted, unlike digit/click
+            nav). Fixed same day by splitting the two signal files — see
+            <code>tb-bugfix-au19.txt</code>.
+          </p>
+        </div>
+        <p>
+          <strong>Not yet done</strong>: cutting the default over to new mode. Old mode remains the
+          live default; this is a real, deliberate, still-open decision — not an oversight.
+        </p>
+
+        <h3>Real testing tool this work surfaced</h3>
+        <p>
+          No <code>xdotool</code> on this machine (confirmed) — real X11 input injection instead
+          uses <code>&amp;.widgits/tile-picker/ops/tp_test_send_key.c</code> /
+          <code>tp_test_send_click.c</code> (real <code>XTest</code>/<code>libXtst</code>, both
+          pre-compiled). They match target windows by <code>WM_NAME</code>
+          (<code>XFetchName</code>) — some real windows (including this taskbar's own) set only
+          <code>WM_CLASS</code>, no title, so a <code>WM_CLASS</code>-matching variant
+          (<code>XQueryTree</code> + <code>XGetClassHint</code>) is needed for those. See Testing
+          Conventions below.
+        </p>
+      </section>
+
+      <!-- ============ AI AGENT BACKENDS ============ -->
+      <section class="doc" id="ai-backends">
+        <div class="section-head">
+          <h2>AI Agent Backends</h2>
+          <span class="pill done">Live-verified 2026-08-18</span>
+        </div>
+        <p class="section-path">&amp;.widgits/open-hai/ — real conversational AI, not a mock</p>
+
+        <p>
+          <code>open-hai</code> (taskbar cell 14, "ai") is a real X11 chat window, two real
+          processes (<code>khtpm_open_hai_render.c</code> / <code>khtpm_open_hai_manager.c</code>)
+          talking through plain files, same shell/manager split as the rest of the <code>khtpm_*</code>
+          family. It supports multiple real backends: raw Ollama (LAN, <code>10.0.0.144:11434</code>),
+          a local "Harnecient" tool-hack for non-tooled small models, and real OpenRouter/TokenRouter
+          API integration.
+        </p>
+
+        <h3>Real, live-tested findings</h3>
+        <ul>
+          <li><strong>OpenRouter free-tier tool-calling genuinely works</strong> — confirmed with a real key, real <code>tools</code> array, real <code>finish_reason:"tool_calls"</code> responses. Not every free model works at any given moment (shared-pool rate limits are real and common on popular models) — <code>nvidia/nemotron-3.5-lightning:free</code> and <code>cohere/north-mini-code:free</code> both confirmed working when the prior default (<code>gemma-4-26b-a4b-it:free</code>) was congested.</li>
+          <li><strong>Real safety boundary</strong>: <code>list_dir</code>/<code>read_file</code> auto-execute; <code>write_file</code>/<code>edit_file</code>/<code>run</code> require explicit human approve/deny. By design.</li>
+          <li><strong>Real end-to-end round trip confirmed</strong>: relay-injected message → real API call → real response → correctly persisted transcript, and a real <code>list_dir</code> tool call that returned the actual house-root listing.</li>
+        </ul>
+
+        <div class="callout warn">
+          <span class="callout-label">Real, standing architectural risk</span>
+          <p>
+            <code>khtpm_open_hai_manager.c</code> and <code>khtpm_open_hai_render.c</code> each
+            keep their OWN separate copy of the available-model list — by design (shell/manager
+            split), but it means any model-list change has to be made in BOTH files by hand, or
+            the render side silently falls back to its own stale default. Confirmed live this
+            session: exactly this drift had already happened once.
+          </p>
+        </div>
+
+        <div class="callout">
+          <span class="callout-label">Real gotcha</span>
+          <p>
+            A free model asked to read a path containing special characters
+            (<code>&amp;.widgits/...</code>) dropped the <code>&amp;</code> when re-emitting its
+            own tool call — likely a small-model JSON-fidelity issue, not a house bug. Give these
+            models simple, unambiguous paths for precision tasks.
+          </p>
+        </div>
+
+        <p>
+          Full write-up with real test transcripts: <code>house-docs.html/index.html</code> →
+          open-hai + Free AI page (a companion HTML doc set, separate from this one — see "Other
+          Docs" in the sidebar).
+        </p>
+      </section>
+
+      <!-- ============ TESTING ============ -->
+      <section class="doc" id="testing">
+        <div class="section-head">
+          <h2>Testing Conventions</h2>
+          <span class="pill done">Current</span>
+        </div>
+        <p class="section-path">relay-only — never a direct CLI call as "the test"</p>
+
+        <p>
+          Every real app in this house is tested by injecting into its own file-based relay, never
+          by calling its compiled binary directly from a shell and calling that a test. The taskbar
+          reads decimal ASCII codes, one per line, from
+          <code>#.desktop/livedesk_agent_relay.txt</code>; the window-app family reads a similar
+          convention scoped to its own relay file; the legacy game engines read raw keycodes from
+          their own history files. Find the real, currently-live mechanism for the specific process
+          you're testing before injecting anything — the taskbar, the window apps, and the legacy
+          engines each have a genuinely different real relay file and encoding, and assuming one
+          matches another wastes real time.
+        </p>
+
+        <h3>Two real gotchas worth knowing up front</h3>
+        <ul>
+          <li>
+            Many of these apps require an explicit "interact" or "control" mode to be engaged
+            before movement/navigation keys do anything at all — sending arrow keys into a menu
+            that hasn't entered that mode yet will silently do nothing, not fail loudly.
+          </li>
+          <li>
+            A frame that's already correct in the underlying data can still be stale on screen —
+            some renderers only recomposite on their own next poll cycle, not on demand. Seeing the
+            wrong thing on screen and seeing wrong data on disk are two different bugs; check both.
+          </li>
+        </ul>
+
+        <div class="callout">
+          <span class="callout-label">Confirm before you claim</span>
+          <p>
+            Dump the actual rendered frame and look at it. A receipt file or a log line saying a
+            value changed is not the same evidence as watching the screen respond. This distinction
+            has been the direct cause of at least one real, live-corrected false "it's fixed"
+            report this session.
+          </p>
+        </div>
+
+        <h3>Testing REAL X11 input (not the relay) — no xdotool on this machine</h3>
+        <p>
+          The relay is right for testing DISPATCH logic; it never touches real X11
+          <code>KeyPress</code>/<code>ButtonPress</code> capture at all. Confirmed 2026-08-18:
+          <code>xdotool</code> is not installed here. Real, working alternative already exists in
+          this house, written for exactly this reason:
+          <code>&amp;.widgits/tile-picker/ops/tp_test_send_key.c</code> /
+          <code>tp_test_send_click.c</code> (both pre-compiled to <code>+x/</code>) — real
+          <code>XTest</code> (<code>libXtst</code>) events, not a fake file-based shortcut.
+        </p>
+        <pre><code>tp_test_send_key.+x "&lt;window_name_substring&gt;" &lt;keysym_name&gt;
+tp_test_send_click.+x "&lt;window_name_substring&gt;" &lt;button:1|2|3&gt; [rel_x] [rel_y]</code></pre>
+        <div class="callout warn">
+          <span class="callout-label">Real gotcha, found live 2026-08-18</span>
+          <p>
+            Both tools match target windows by TITLE (<code>XFetchName</code>/<code>WM_NAME</code>),
+            not <code>WM_CLASS</code>. Some real apps (this taskbar's own <code>khtpm_strip_
+            parser.c</code> windows, confirmed via <code>XSetClassHint</code>) set <code>WM_CLASS</code>
+            but never a title — <code>find_by_name()</code> in both tools won't find them. If a
+            target window has no title, walk <code>XQueryTree</code> + match on
+            <code>XGetClassHint</code> instead — the underlying <code>XTestFakeKeyEvent</code>/
+            <code>XTestFakeButtonEvent</code> calls don't need to change, just the lookup step.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ EXTENDING ============ -->
+      <section class="doc" id="extending">
+        <div class="section-head">
+          <h2>How To Extend</h2>
+          <span class="pill wip">2 of 3 real worked examples added</span>
+        </div>
+        <p class="section-path">adding to the house without fighting it</p>
+
+        <p>
+          The real shape of a good addition here: pick one concrete, small task, and document it
+          as an actual worked example with real file paths and real before/after — not a generic
+          checklist. Two of three planned examples are filled in below with real, live-verified
+          recipes from 2026-08-18; the third (converting a legacy project's own display shim) is
+          still open.
+        </p>
+
+        <h3>Worked example: add a taskbar cell/menu row</h3>
+        <p>
+          Done for real, see <a href="#taskbar">Taskbar &amp; Window Apps</a> above (the "cli"
+          HQ row) — PDL-driven row addition, the real shell-out command contract, and the real
+          <code>gnome-terminal</code>/wildcard-directory gotcha it surfaced.
+        </p>
+
+        <h3>Worked example: add a new op binary (or pair)</h3>
+        <p>
+          Also done for real — <code>khtpm_strip_render_ascii.c</code> /
+          <code>khtpm_strip_keyboard_ascii.c</code>, added to the real build script
+          (<code>build_khtpm_strip.sh</code>) alongside the existing binaries, launched together
+          via a small wrapper script. The real lesson worth generalizing: when a new binary needs
+          BOTH raw-termios input capture AND stdout rendering, split it into two processes from the
+          start — see Taskbar &amp; Window Apps above for why combining them is a real, not
+          hypothetical, bug.
+        </p>
+
+        <div class="stub">
+          <strong>Still needs expansion:</strong> "convert a project's own <code>gl_mirror.c</code>"
+          walkthrough (the pattern is proven on mutaclysm — write it up as a real recipe).
+        </div>
+      </section>
+
+      <!-- ============ ROADMAP ============ -->
+      <section class="doc" id="roadmap">
+        <div class="section-head">
+          <h2>Known Issues &amp; Roadmap</h2>
+          <span class="pill deferred">Open</span>
+        </div>
+        <p class="section-path">what's real, known, and not yet fixed</p>
+
+        <ul>
+          <li>
+            <strong>13 of 16 legacy projects</strong> still run the old GL display shim, not
+            <code>x11_mirror.c</code>. The recipe is proven; the rollout isn't done.
+          </li>
+          <li>
+            <strong>Toys-cell-launched sessions don't tear down their process tree</strong> when
+            the display window is closed. Closing the window leaves the orchestrator and its own
+            child processes running orphaned — nothing currently ties the two lifecycles together.
+          </li>
+          <li>
+            <strong>mutaclysm's own camera/3D-layer architecture</strong> is a real, separate,
+            deferred effort — several targeted fixes landed and then kept surfacing new real bugs
+            in the same subsystem, which is itself the evidence that the underlying architecture,
+            not any one bug, is the real problem. The plan is a real port toward piececraft's own
+            more advanced camera model rather than more patches.
+          </li>
+          <li>
+            <strong><code>orchestrator.c</code></strong> differs meaningfully across projects in
+            ways that may reflect genuinely different binary sets each project launches, not just
+            accidental drift — worth a real, dedicated read before assuming it's safe to
+            consolidate the same way the parser was.
+          </li>
+          <li>
+            <strong>Taskbar's dispatch-mode cutover is DONE (2026-08-19)</strong> — no longer an
+            open decision. <code>KHTPM_NEW_DISPATCH_MODE</code> and the old inline-dispatch path
+            are deleted; capture-then-read-back is the only path (see Input &amp; Dispatch
+            Architecture above). What IS still open: the next step of frame unification
+            (<code>au11-hq/TASKBAR-FRAME-UNIFICATION-HANDOFF.md</code>) — sharing one real frame
+            buffer between the taskbar's X11 render and its terminal ASCII mirror, matching
+            wraith-alpha's pattern, rather than the two independently composing from
+            <code>strip_state.txt</code>.
+          </li>
+          <li>
+            <strong>ASCII mirror's bottom-tab-bar renders but doesn't activate</strong> via the
+            relay yet — tab activation routes through a bigger shared nav-claims numbering system
+            (spans header cells, tabs, AND remote entities' own context menus) that needs its own
+            careful, debug-traced pass, not a blind extension of the HQ-menu fix. <code>cli_io</code>
+            typing support is also still missing from the mirror.
+          </li>
+          <li>
+            <strong>open-hai's model list is duplicated by hand</strong> across
+            <code>khtpm_open_hai_manager.c</code> and <code>khtpm_open_hai_render.c</code> — a
+            real, confirmed (not hypothetical) drift risk every time a model is added or removed.
+            No shared-source-of-truth refactor attempted yet.
+          </li>
+          <li>
+            <strong>Real networking apps exist but aren't wired to the taskbar</strong> —
+            <code>041.pal-chain⛓️</code>, <code>041.pal-forum👥️</code>,
+            <code>044.pal-chat-irc👥️+2</code> (house root) each already have real
+            <code>pal/</code>/<code>ops/</code>/<code>net/</code> structure and a
+            <code>phase2-module-split-report.txt</code> documenting prior house-alignment work —
+            the taskbar's <code>network</code> cell (<code>strip_btn_9</code>) is still just a
+            label with no menu wired to it.
+          </li>
+          <li>
+            <strong><code>khtpm_hq_render.c</code>'s frame dump has no receipt and no
+            frame-history log</strong> — confirmed live 2026-08-24. Its <code>dump_frame_png()</code>
+            (called from the <code>'p'</code> key and <code>--dump-and-exit</code>, the shared
+            renderer behind db-hq/palettes/events-hq/chat-hai/entity-menu) writes only a PNG.
+            This is a real regression from the house's own standard: <code>ai-cell</code>'s own
+            renderer already writes a flat receipt file, and wraith-alpha's
+            <code>session/rgb/current_frame.receipt.pdl</code> — confirmed live and current,
+            not aspirational — goes further still (per-object bounds, checksum, focus/mouse
+            state, one line per rendered element). The gap means anything "verified" via a
+            <code>khtpm_hq_render</code> dump today is pixel-verified only, never
+            receipt-verified — see the "Confirm before you claim" callout above; this is exactly
+            the failure mode it warns about. Fix agreed but deliberately deferred until after a
+            documentation-compaction pass; full findings in
+            <code>au11-hq/house-compaction.md</code>.
+          </li>
+          <li>
+            <strong>Documentation volume is outpacing per-task need.</strong>
+            <code>au11-hq/</code> alone has 36+ files. Not stale — what got checked this session
+            was accurate — but too much to hand a token-limited agent wholesale. See
+            <code>house-docs.html/index.html</code> for the mitigation: a purpose-built delegation
+            map naming the 2-3 real docs that matter per task, rather than the whole directory.
+          </li>
+        </ul>
+      </section>
+
+      <footer class="pagefoot">
+        Broad and sparse by design — this is a real starting skeleton, not a finished reference.
+        Sections marked <span class="pill wip" style="vertical-align: 1px;">In progress</span> or
+        carrying a <strong>Needs expansion</strong> note are the real, honest gaps to fill next.
+      </footer>
+    </div>
+  </main>
+</div>

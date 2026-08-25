@@ -1,0 +1,7 @@
+type=capital
+owner=charlie
+credits=3
+units=0
+pos_x=2
+pos_y=22
+z_level=0

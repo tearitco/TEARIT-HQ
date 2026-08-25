@@ -1,0 +1,577 @@
+# 15.GROK_AU6-10.txt — Pre-session advisory (Grok, 2026-08-06)
+# Written BEFORE starting implementation work this session.
+# Sources read/verified:
+#   - #.grok.../14.Au6-CL0D-HOFF.txt (Claude Aug-6 handoff, taskbar/KHTPM nav saga)
+#   - !.HOUSE_STDS.md (§A–§I, especially §H event-compiler + §F.17 injection layers)
+#   - _.0.aigent-testing-k3.txt (CHTPM key-injection + frame report gate)
+#   - @.apps/MUCHI_RANCHER/walk-off-au5.md + MUCHI_RANCHER_DESIGN.md (skim)
+#   - &.widgits/event-ez/walk-off-au5.md + ops/ez_menu_input.c (compiler path)
+#   - &.widgits/event-editor/{walk-off-au5, visual-event-compiler-pal, EVENT_SCRIPTING_PROGRESS_AND_GOALS, gl_mock}
+#   - house-design-docs.md (creative apps: DAW / image / video)
+#   - live process snapshot (user desktop is UP — do not kill)
+#
+# Live desktop right now (DO NOT TOUCH without asking):
+#   tp_taskbar, m6_golddeity, book-stack, asa, ava  (user's session)
+
+================================================================
+0. SHORT ANSWERS (yes/no first, then the why)
+================================================================
+
+| # | Your question | Short answer |
+|---|---|---|
+| 1 | Do I understand the current task (EZ in MUCHI_RANCHER)? | **YES** — and it was explicitly DROPPED from the Aug-6 Claude session; it is the real next product work after hygiene. |
+| 2 | Fix nav for key injection using k3 method? | **YES — worth doing, and half-done.** File-based NAV_KEY/RUN_METHOD already works; that is the agent path. Do NOT equate it with X11 keyboard focus into KHTPM popups. |
+| 3 | Fix KHTPM navs to override X11 native windows (terminal/gedit priority)? | **NO — not worth it as a primary goal right now.** Hard Wayland/XWayland seat-focus problem; mouse + file injection already cover human + agent. Optional later, deliberate, never blocking product work. |
+| 4 | Events editor / flesh out / RPG Maker look? | **YES, understood.** Three (four) parallel variants; goal = visual compiler → real executable `event.pal`. |
+| 5 | Use editor-mock to go faster? | **YES as look/feel + interaction prototype.** NOT as the product runtime path. |
+| 6 | EZ redesign vs regular `event` redesign? | **Yes guidance below:** EZ = bare bones that compiles; regular event = RPG Maker chrome that mirrors mock; mock = throwaway visual reference. |
+| 7 | Media suite: non-CHTPM MVP first, or full house standard? | **Hybrid: domain MVP ops first, house scaffold early, full CHTPM chrome second.** Details §7. |
+
+================================================================
+1. DO I UNDERSTAND THE CURRENT TASK? (EZ in MUCHI_RANCHER)
+================================================================
+
+**Yes.** The framing is explicit across walk-offs and `visual-event-compiler-pal.md`:
+
+> MUCHI_RANCHER is the **proving ground** for RPG-Maker-style event authoring:
+> human (or agent via k3) drives a real GUI → IR (`event.ir.pdl`) → compiled
+> `event.pal` → `prisc+x` runs it → real game state changes (gold, choices, etc.).
+
+### What is actually done
+- 8 monsters extracted; KHTPM desktop windows; roster/`active_monster.pdl`.
+- `event-ez` rewritten from pet-behavior demo → Gallery / Page / Command Picker /
+  Change-Gold parameter screens.
+- Compiler lessons landed in `!.HOUSE_STDS.md` §H:
+  - `prisc+x` `exec` = **one literal arg only** → wrapper shell scripts.
+  - `${var}` precompute per-target (not one-render-behind).
+  - atomic `gui_state.txt` write.
+- Aug-6 Claude session also proved: **book-stack** Show Choices / Show Text via
+  KHTPM (`khtpm_show_choices` / `khtpm_show_text` + `SHOW_PAGE` / `SHOW_TEXT_FILE`),
+  and fixed a **severe** `prisc+x` `original[128]→[512]` truncation that broke long
+  emoji paths on `exec`.
+
+### What was DROPPED (your own catch at end of 14.*)
+- **Feed** method on monsters — never wired into `meta.pdl` / monster `button.sh`
+  (current methods: Ledger / Dir / Close / Cancel only).
+- **event-ez launch from MUCHI_RANCHER** — widget exists; rancher never references it.
+- Closing the loop: context-menu row → `prisc+x page_N/event.pal` → inventory change.
+
+### On-disk honesty check (I verified this session, not just docs)
+`@.apps/MUCHI_RANCHER/entities/m8_redhorned/event_pkg/pages/page_1/`:
+- `event.ir.pdl`: real `NODE | id=1 type=change_gold | amount=10` ✅
+- `event.pal`: still the **OLD 2-literal-arg form**:
+  ```
+  exec .../mr_change_gold.+x .../m8_redhorned 10
+  halt
+  ```
+  No `cmd_1.sh` wrapper on disk.
+- Source in `ez_menu_input.c` **does** generate wrappers on Save now.
+  ⇒ This artifact was written **before** the wrapper fix (or never re-Saved).
+  ⇒ First work item is NOT "build more commands" — it is:
+  1. Re-Save (or hand-regenerate) so `event.pal` matches the compiler, then
+  2. Literally run via `prisc+x` and assert `inventory.txt` `qolq=`.
+  Walk-off claimed this was already wrapper-fixed on disk; **live files disagree**.
+  Trust files over stale narrative (HOUSE_STDS §A.4).
+
+### Recommended product order for the EZ/rancher track
+1. **Process hygiene** (HOUSE_STDS §H.5.4): only *our* test processes; never kill user's live asa/ava/book-stack/m6/taskbar.
+2. **Confirm Change Gold end-to-end** on m8 (or m6) with wrapper-form `event.pal`.
+3. **Wire meta.pdl methods**:
+   - `Events` / `Edit Events` → spawn `&.widgits/event-ez/button.sh` with
+     `EZ_PKG_DIR=.../entities/<name>/event_pkg` (and name).
+   - `Faucet` or `Play page 1` → `prisc+x` on `pages/page_1/event.pal`
+     (mirror dog's Play convention / book-stack's RUN_METHOD pattern).
+   - Optionally `Feed` as a *real event page* (user wanted event.pal exercise,
+     not a hardcoded shell) — author it *through* ez once the loop works.
+4. **Show Choices** next (designed in visual-event-compiler-pal §7; runtime
+   pieces partially exist via book-stack's KHTPM ops — **reuse**, don't re-invent).
+5. Only then: multi-monster event_pkg, edit-in-place, condition evaluation.
+
+================================================================
+2. K3 KEY INJECTION — WHAT IT IS HERE, AND WHAT TO FIX
+================================================================
+
+### Two injection layers (do not mix up — HOUSE_STDS §F.17)
+
+| Layer | File | Format | What it proves |
+|---|---|---|---|
+| **A. Full CHTPM chain (classic k3)** | `pieces/keyboard/history.txt` | `[YYYY-MM-DD HH:MM:SS] KEY_PRESSED: <code>` | parser → module → frame |
+| **B. Module relay only** | `pieces/apps/player_app/interact_relay.txt` | bare keycodes one per line | module loop only |
+| **C. KHTPM entity relay (new, Aug-6)** | `<entity>/interact_relay.txt` | `RUN_METHOD:Label`, `NAV_KEY:Enter`, `ACTIVATE_NAV:N`, `CLOSE`, `SHOW_PAGE:...` | desktop window menus **without X11** |
+
+k3 guide (`_.0.aigent-testing-k3.txt`) is the **discipline** (baseline → inject →
+frame/state evidence → root `FRAME_REPORT_*` before code edits). The **mechanism**
+for KHTPM is layer C, not layer A — there is no `pieces/keyboard/history.txt`
+inside a pure KHTPM desktop window.
+
+### What is already proven working (Claude 14 handoff §2b)
+```
+echo "RUN_METHOD:Read" > <pkg>/interact_relay.txt   # opens SHOW_PAGE
+echo "NAV_KEY:Enter"   > <pkg>/interact_relay.txt   # picks focus row
+```
+Logged in entity `history.txt` as SHOW_PAGE / SHOW_PAGE_PICK(navkey) / SHOW_TEXT_FILE.
+That **is** the agent-friendly k3 analog for KHTPM. Prefer this over `xdotool` /
+`tp_test_send_key` for automation (X11 title collision: every gl_mirror is still
+`"mutaclsym RGB mirror"`).
+
+### What still needs "nav fix" for injection (scoped, product-useful)
+Worth doing **because agents and scripts depend on it**, not because humans need
+arrow keys in every popup:
+
+1. **Stable, documented relay vocabulary** (RUN_METHOD / NAV_KEY / SHOW_PAGE /
+   SHOW_TEXT_FILE / CLOSE) with one short HOW2 next to TILE_PICKER_DESIGN.
+2. **Self-dismiss races** on SHOW_TEXT_FILE (observed: popup closed a few seconds
+   later) — diagnose before authoring more event commands that rely on it.
+3. **prisc+x long-path regression sweep** after the 512 fix: any `event.pal`
+   with long absolute `exec` paths should be re-run once.
+4. **Taskbar keyboard** is a *separate* problem (override_redirect + Wayland seat).
+   File injection to *entity* relays does not require taskbar focus at all.
+
+### What is NOT the k3 fix
+Spending another long session on X11 grab / XSetInputFocus / global-focus fights
+so that physical keyboard arrows work when a gedit or terminal also exists.
+That is §3.
+
+================================================================
+3. SHOULD WE MAKE KHTPM NAVS OVERRIDE X11 NATIVE WINDOWS?
+================================================================
+
+### Recommendation: **No as a priority. Optional later. Do not block EZ/events.**
+
+Why:
+1. **Root cause is environmental**, not a missing `XRaiseWindow` call.
+   Aug-6 spent a full session proving: window-ID reuse, grab races, flock
+   backlog, and finally **Wayland/XWayland compositor seat ownership** all
+   produce "focus doesn't work" with different real fixes. Another "just raise
+   the window" pass is likely to re-introduce the global-focus-fight regression
+   already documented.
+2. **Human path already works**: mouse clicks on KHTPM menus work.
+3. **Agent path already works**: file relay (NAV_KEY / RUN_METHOD) never needs
+   keyboard focus over gedit/terminal.
+4. **Native tools (gedit, xterm) winning focus is correct desktop behavior**
+   for a compositor. Fighting the compositor to steal keys from a focused
+   terminal is the wrong product posture unless you are building a full WM.
+5. User already leaned toward **rollback or mouse-primary** for the [N]/nav
+   numbering experiment (14 handoff §4). That decision is still open — bring
+   it back explicitly before more keyboard-nav engineering.
+
+### If you still want "keyboard works on KHTPM when something else is focused"
+Middle ground (matches option (c) in the handoff):
+- Keep **[N] as display/addressing only** (agent can target row N unambiguously).
+- Keep **file NAV_KEY** as the automation path.
+- Drop ambitions for taskbar terminal-box to steal seat keys from gedit.
+- Do **not** install global X grabs as default.
+
+Only revisit full keyboard override if a *human* workflow truly requires
+keyboard-only ranching with terminal open side-by-side — and then treat it as
+a dedicated research spike with xev evidence, not a drive-by fix.
+
+================================================================
+4. EVENTS EDITOR — WHAT WE ARE ACTUALLY DOING
+================================================================
+
+### The real goal (one sentence)
+Build a **visual compiler for `.pal`**: GUI authoring → `event.ir.pdl` (truth) →
+`event.pal` (`prisc+x` ISA) → desktop/KHTPM runtime executes it, with RPG Maker
+page/condition/trigger semantics as the target model (highest page wins, etc.).
+
+### Runtime model (must not re-derive wrong)
+- Event = list of **pages**; continuous condition check; **highest eligible page**
+  is active; trigger then runs that page's command list.
+- Our data shape: `<pkg>/event_pkg/pages/page_N/{condition.pdl,event.ir.pdl,event.pal}`.
+- Real opcodes are the register-machine ISA (`li`, `exec`, `sleep`, …) — not
+  invented `show_text`/`ret` stubs from old scaffolding.
+
+### The parallel variants (keep them honest)
+
+| Variant | Path | Role | Status |
+|---|---|---|---|
+| **event (regular CHTPM)** | `&.widgits/event-editor/` | Product-shaped CHTPM+GL chrome; continuous digit nav; package load via EE_PKG_DIR | Partially real (read IR, sprites); Save/Load/edit mostly stubs; **untouched last ranch session** |
+| **event-mock (gl_mock)** | `&.widgits/event-editor/gl_mock/` | Pure freeglut RMMV look/feel; **NOT** product path | Look reference + continuous nav; stubs for package I/O; visual refs on disk |
+| **event-ez** | `&.widgits/event-ez/` | Bare-bones authoring: numbered buttons + cli_io fields → real compile | Furthest on **compiler** path (Change Gold); UX not RMMV-pretty |
+| **(proposed 4th)** | — | Scratch/block pal scripter | Not started |
+
+Proof of competence for any variant (EVENT_SCRIPTING_PROGRESS_AND_GOALS):
+author something that **visibly changes runtime behavior**, verified by injection
+or file state — not "looks right."
+
+================================================================
+5. USE editor-mock TO GET THE SCRIPTER GOING FASTER?
+================================================================
+
+### Yes — with a hard boundary
+
+**Use mock for:**
+- RPG Maker layout muscle memory (command list column, page tabs, parameter
+  dialogs, Commands vs Scratch feel).
+- Interaction prototypes (list nav, insert/delete command, page switch) that
+  are painful to iterate inside full CHTPM session isolation.
+- Side-by-side comparison when redesigning **regular event** chrome.
+
+**Do not use mock for:**
+- Becoming the real compiler or the runtime.
+- Saving "almost IR" that nothing else reads.
+- Shipping as asa/ava "Events" product path long-term (today it is already
+  exposed as "Events (mock)" — keep that label honest).
+
+### Practical parallel track
+1. **ez** keeps ownership of **IR + compile + proven commands**.
+2. **mock** iterates **RMMV chrome / list editor UX** (can even hardcode a
+   fake command list at first).
+3. When mock UX stabilizes, **port chrome patterns into regular event-editor**
+   (CHTPM layouts + compose), and point Save at the **same** `event.ir.pdl` +
+   compiler entry point ez already has (extract compile into a shared op if
+   needed — one compiler, multiple UIs).
+
+That is faster than forcing RMMV beauty into ez *or* forcing compile into mock.
+
+================================================================
+6. GUIDANCE: ez vs regular event redesign
+================================================================
+
+### event-ez — stay bare bones on purpose
+
+Design contract:
+- **Only ship working features.** No dead "Show Choices" row until it compiles
+  and runs (current cmdpick lists only Change Gold — correct discipline).
+- UX = digit jump + cli_io + Save. Ugly is OK.
+- IR is always truth; every Save **full rebuild** of `event.pal` (never patch).
+- Gaps that are OK until named milestones: no edit-in-place, no load-into-form,
+  conditions recorded but not evaluated.
+
+**If ez "got off on the wrong foot":** redesign means *thinning*, not *fattening*.
+Throw away leftover pet Chase/Flee UX if any remains in docs/UI; keep Gallery →
+Page → CmdPick → Param → Save. Do **not** turn ez into a second RMMV clone —
+that is regular event's job.
+
+**Redesign triggers (only when):**
+- Gallery/Page flow confuses humans more than it helps, or
+- cli_io can't express a command class you need (then add one focused screen,
+  not a full chrome overhaul).
+
+### regular event-editor — mirror mock, share compiler
+
+Design contract:
+- **Look like RPG Maker** (use gl_mock + VISUAL_REF_* as the bar).
+- **Behave like house CHTPM** (parser focus glyphs, digit jump, session isolation,
+  marker discipline — HOUSE_STDS §A/§D).
+- **Compile like ez** (same IR schema, same wrapper-exec rule, same prisc+x ISA).
+
+Redesign should **more mirror mock** for panels/lists, and **more mirror ez**
+for save/compile semantics. Today regular event is the opposite risk: some
+chrome, weak compile.
+
+### Shared non-negotiables across all variants
+1. Never invent opcodes that `prisc+x` does not implement.
+2. Never `exec op arg1 arg2` as two literals — wrappers only.
+3. Precompute dynamic `${var}` for href targets (ez's lesson).
+4. Atomic shared-state writes.
+5. k3/file-injection proof before claiming a feature done.
+6. One process-hygiene checklist before every GL test.
+
+================================================================
+7. PARALLEL: video-editor / image-editor / DAW
+================================================================
+
+### What exists
+- Spec braindump / design: `house-design-docs.md` (maps HOUSE_STDS → three apps;
+  canvas.raw widget model, markers, headless `check_rgba`, pitfalls).
+- `103.media-studio/` dirs are **mostly empty scaffolds** + a huge session log
+  `kilo-media_au5.02b8.md` — not shipping apps yet.
+- `103.media-studio/169.DAW-GROQ-XYZ/#.wussup-*.txt` — note only.
+
+### Non-CHTPM/GL first vs full standard?
+
+**Recommendation: Hybrid MVP — "domain core first, house shell early."**
+
+| Approach | Pros | Cons | Verdict |
+|---|---|---|---|
+| **Pure freeglut/custom UI MVP** | Faster agent iteration; fewer marker/session bugs | Diverges from house law ("only gl_mirror calls GL"); hard rewrite later; duplicates mock-trap from events | **Avoid as the product spine** |
+| **Full CHTPM/GL from day 1** | Compliant; reuses nav/test stack | Agents thrash on session isolation, markers, focus, RGB race before any pixel of media works | **Too heavy as first code** |
+| **Hybrid (recommended)** | Domain ops prove media math headless; shell is real but thin | Requires discipline not to invent a second UI framework | **Do this** |
+
+### Hybrid playbook (for each of DAW / image / video)
+**Phase 0 — Spec lock (hours, not days)**  
+Pick *one* vertical slice per app from `house-design-docs.md` (e.g. image:
+load PNG → paint one brush stroke → save; DAW: import wav → draw waveform →
+export; video: one clip on timeline → preview one frame → export).
+
+**Phase 1 — Domain ops only (headless, no pretty nav)**  
+- Pure C ops: `*_media_io`, `*_render_media` writing `canvas.raw` + receipt.
+- `check_rgba` (or equivalent) asserts pixels in CI-style shell tests.
+- No requirement for perfect `${piece_methods}` chrome yet.
+- Optional: tiny freeglut *viewer* that only blits `canvas.raw` is OK as a
+  *dev window* if clearly labeled throwaway — but prefer reusing gl_mirror +
+  canvas widget path from the design doc so you don't grow a second GL stack.
+
+**Phase 2 — Thin house shell**  
+- `button.sh` + session + `default_op.txt` + one layout with a few methods.
+- `NO_GL=1` + interact_relay injection tests for menu keys.
+- Compose frame is status text + "open canvas"; canvas is the real content.
+
+**Phase 3 — Full CHTPM chrome / timelines / tools**  
+Only after Phase 1 asserts are green. Then timelines, layers, piano roll, etc.
+
+### Why this is better for agents
+Agents fail when they must hold **media algorithms + CHTPM pitfalls + focus
+hygiene** in one PR. Split the risk:
+- Media math bugs → pure C tests on buffers.
+- House bugs → already-documented in HOUSE_STDS, tested with k3.
+
+### Adherence note
+Grand architecture: only `gl_mirror` (or the shared canvas widget path that
+feeds it) should own GL/GLUT. A "non-CHTPM MVP" that becomes a permanent
+freeglut app **violates house law** and creates event-mock debt forever.
+MVP means **incomplete shell**, not **alternate platform**.
+
+### Parallelism with events work
+Do **not** interleave media suite and event-ez in the same hour of work.
+Suggested session split:
+- Track A (primary this session if you start coding): rancher + ez close-the-loop.
+- Track B (parallel only if A is blocked waiting on you): image-editor Phase 1
+  scaffold under `103.media-studio/103.img-editor/` per house-design-docs.
+
+================================================================
+8. PRIORITY STACK FOR THE COMING SESSION (if we start after this note)
+================================================================
+
+**P0 — Hygiene & truth**
+- Do not kill user live processes (taskbar, m6, book-stack, asa, ava).
+- When testing, use separate monster / separate timeout-wrapped session, or
+  ask user to pause desktop.
+- Reconcile m8 `event.pal` with wrapper compiler (files > walk-off claims).
+
+**P1 — Close Change Gold loop** (ez / rancher)
+- Run compiled pal → inventory.
+- Wire meta method to run it + method to open event-ez on that pkg.
+
+**P2 — Agent nav for KHTPM (file k3)**
+- Document + smoke NAV_KEY/RUN_METHOD; fix SHOW_TEXT self-dismiss if it blocks P1.
+- Defer X11-over-gedit keyboard war.
+
+**P3 — Open product decision (ask user, don't decide alone)**
+- Nav-claims / [N] numbering: keep display-only, keep full keyboard, or roll back?
+  (User leaned rollback; confirm.)
+
+**P4 — Show Choices in ez + KHTPM runtime**
+- Reuse book-stack ops; add cmd to cmdpick only when runnable.
+
+**P5 — event-editor redesign toward mock chrome + shared compile**
+- Can start as design-only pass + mock UX experiments.
+
+**P6 — Media suite Phase 1**
+- One app vertical slice; headless buffer tests; thin button.sh.
+
+================================================================
+9. RISKS / PITFALLS TO CARRY IN HEAD
+================================================================
+
+1. `prisc+x` 1-literal `exec` + long-path buffers (512 fixed for original[];
+   other 256 buffers still exist).
+2. Shell `&` in paths (`&.widgits`, `asa-&-ava`) — always single-quote.
+3. Stale gl_mirror title collision → wrong-window injection.
+4. Growing `state_changed.txt` from ops kills nav (HOUSE_STDS §A.6).
+5. Non-atomic shared state files.
+6. No git — backups before risky deletes; "rollback" is manual.
+7. User desktop is live — never EMERGENCY_KILL without consent.
+8. event.pal on disk may lag compiler source — always re-Save or re-run
+   compile path before declaring "proven."
+
+================================================================
+10. BOTTOM LINE
+================================================================
+
+Yes: I understand the house, the rancher proving-ground, the event-compiler
+goal, the three editor variants, the k3 testing law, and the media-suite
+specs-as-written.
+
+**Do next for product value:** wire **event-ez + runnable page** into
+MUCHI_RANCHER, prove Change Gold for real, then Show Choices — using
+**file-based KHTPM injection** as the agent k3 path.
+
+**Do not next:** multi-day fight to make KHTPM steal keys from gedit/terminal;
+bloating ez into RMMV; building media apps as permanent freeglut islands.
+
+**Parallel OK:** mock for RPG Maker *look* experiments; media Phase-1 buffer
+ops under house-design-docs hybrid; regular event redesign *toward* mock UI
+and *onto* ez's compiler.
+
+— end of pre-session advisory —
+
+================================================================
+11. ADDENDUM 2026-08-06 — User pivot: fix human/KHTPM nav FIRST
+================================================================
+(Confer response; no code applied yet. Priority supersedes §8 P0–P1
+product work until this track is accepted or aborted.)
+
+### 11.1 Logic: if toolbar/context were human-only, are [N] nav selectors a distraction?
+
+**Only under the human-only assumption.** That assumption is now rejected.
+
+User intent (reiterated):
+- Humans use toolbar Nav + context [N]/digit jump like CHTPM.
+- Later harness / RL / light LLM also drive the **same** nav surface
+  (k3-style, or a KHTPM twin that looks like k3 to the harness).
+- Therefore [N] + toolbar Nav are **product + harness contract**, not chrome
+  to delete.
+
+**Conclusion:** Do **not** roll back nav numbering / selectors just because
+file-relay exists. File-relay is a **backend implementation detail** for
+tests that want to skip X11; it must not be the only story we tell agents.
+
+Better framing:
+  Human / LLM / RL  →  same UX surface (focus row, digit, Enter)
+       ↓
+  (optional thin adapter)
+       ↓
+  entity interact_relay  OR  real KeyPress into focused popup
+
+Direct `prisc+x` remains valid for **compiler unit tests** only (did
+Change Gold compile?), not for "nav works" acceptance tests.
+
+### 11.2 Does skipping k3-style make harnesses harder?
+
+**Yes, for the goals you stated (RL / LLM / "feels like the app").**
+
+| Harness style | Good for | Bad for |
+|---|---|---|
+| Direct file / direct prisc+x | Compiler, inventory math, ops | Training nav policy; catching focus bugs; matching human UX |
+| k3-like nav (keys or digit→Enter on real UI) | RL, LLM tool-use, regression of "can I use the app" | Needs stable focus/grab |
+| Toolbar-as-router writing NAV_KEY files | Automation without seat focus | Not the human path; can mask broken popup keyboard |
+
+For KHTPM we can make exceptions on **mechanism** (e.g. harness writes
+`NAV_KEY:Down` instead of `KEY_PRESSED: 40`) as long as the **sequence**
+is the same as a human: open menu → move focus → confirm. That still
+counts as "k3 nav harness style."
+
+### 11.3 User correction on focus history (take seriously)
+
+User: focus **used to work** (toolbar Nav got focus, etc.) **before**:
+- overwriting GNOME/X defaults, and/or
+- putting locks on the path.
+
+Do **not** treat "Wayland makes this impossible" as settled without a
+**rollback experiment**. The Aug-6 narrative mixed several real causes;
+locks and grabs were additive risk.
+
+Known layers that may have broken "it worked before" (ordered for
+surgical experiment, not a big-bang rewrite):
+
+1. **`livedesk_popup.lock` + flock around popup open**  
+   - Blocking LOCK_EX froze event loops (already partially "fixed" to
+     LOCK_NB ~1s poll) — still can delay/queue weirdness.
+   - **Experiment:** compile a trial binary with popup_lock_acquire/release
+     as no-ops; compare mouse + keyboard on one popup.
+
+2. **`livedesk_registry.lock` flock on registry/claims**  
+   - Different purpose (index corruption). Less likely to steal keyboard
+     focus, but can stall redraw/claim updates under load.
+   - **Experiment second**, only if (1) doesn't restore feel.
+
+3. **XGrabKeyboard / XGrabPointer on every popup**  
+   - Needed for "keys go to menu not terminal" **when grabs work**.
+   - Fails under multi-entity contention or compositor deny → silent no
+     keyboard while mouse still works.
+   - **Experiment:** single entity only, no second popup; log grab return
+     codes to a small receipt file every open.
+
+4. **Compositor policy** (`enable_xwayland_grabs.sh` / WM_CLASS
+   MuchiverseLivedesk)  
+   - Not a "lock," but **is** a GNOME setting change.
+   - **Check first (read-only):**  
+     `gsettings get org.gnome.mutter.wayland xwayland-grab-access-rules`  
+     `gsettings get org.gnome.mutter.wayland xwayland-allow-grabs`  
+   - Confirm script was applied; confirm popups still set WM_CLASS.
+   - Do **not** flip global allow-grabs without asking.
+
+5. **Taskbar XSetInputFocus / XRaiseWindow on tab click**  
+   - Documented as a regression source when it fought other windows.
+   - Toolbar Nav box itself uses XSetInputFocus — user says this **used
+     to work**; so the bug may be interaction with (1)/(3), not the
+     Nav box idea itself.
+
+6. **Stale processes / stale claims**  
+   - Still a test-hygiene killer; run livedesk_nav_debug before each
+     experiment so we don't blame locks for dead PIDs.
+
+### 11.4 Revised priority (supersedes §8 until this is done)
+
+**Track F — Focus/nav recovery (NOW, before EZ/gold product wiring)**
+
+F0. **Doc + plan freeze** (this addendum) — user agrees scope.  
+F1. **Read-only baseline:** gsettings grabs; xev on taskbar Nav when
+    clicked; grab rc logging design; livedesk_nav_debug snapshot.  
+F2. **Surgical experiment A:** no-op popup flock only (keep registry
+    lock, keep grabs, keep [N] UI). User tries: open context, arrows,
+    Enter, toolbar Nav digits.  
+F3. **If still broken — experiment B:** one-entity session; log
+    XGrabKeyboard success/fail; verify WM_CLASS + access-rules.  
+F4. **If still broken — experiment C:** temporarily disable
+    taskbar auto-XRaiseWindow on other windows (keep Nav box focus).  
+F5. **Only if user still wants:** discuss rolling back [N] display —
+    default is **keep** for harness/LLM.  
+F6. **After nav feels good again:** resume Change Gold / ez wiring,
+    with harness tests that walk the **same** nav path humans use
+    (plus optional file-relay twin for headless CI).
+
+### 11.5 What we will NOT do in Track F
+- Wire event-ez / Feed / media suite mid-flight.
+- Big-bang delete of all nav-claims code without a measured experiment.
+- Assume Wayland makes human nav hopeless without trying lock rollback.
+- Kill user's live desktop without consent (snapshot + ask, or user
+  restarts via $.crypts/button.sh).
+
+### 11.6 Harness end-state (target after focus works)
+
+```
+k3-style harness (LLM/RL/human)
+  → digits / arrows / Enter on real focused surface
+  → (KHTPM may also accept equivalent NAV_KEY lines as dual path)
+  → same menus, same [N] addresses
+```
+
+Direct entity-file injection = **debug escape hatch**, not the primary
+training API.
+
+— end addendum 11 —
+
+================================================================
+12. DONE 2026-08-06 — focus flags all OFF (trial binaries rebuilt)
+================================================================
+User request: put lock/grab/raise-fight behind true/false, all false.
+
+Flags (source tops of both files; recompile after flip):
+
+tp_desktop_window.c:
+  LIVEDESK_USE_REGISTRY_LOCK   = 0
+  LIVEDESK_USE_POPUP_LOCK      = 0
+  LIVEDESK_USE_XGRAB_POINTER   = 0
+  LIVEDESK_USE_XGRAB_KEYBOARD  = 0
+
+tp_taskbar.c:
+  LIVEDESK_USE_REGISTRY_LOCK            = 0
+  LIVEDESK_TASKBAR_RAISE_FOCUS_ENTITIES = 0
+  LIVEDESK_TASKBAR_FOCUS_NAV_BOX        = 1  (kept so click-Nav-to-type still works)
+
+STILL ON (not gated off): [N] nav claims UI, NAV_KEY/ACTIVATE_NAV file relay,
+stale-event drain, WM_CLASS MuchiverseLivedesk.
+
+Binaries rebuilt in place. LIVE processes still run OLD code until restart.
+User should relaunch livedesk (e.g. quit taskbar X / $.crypts/button.sh cycle)
+then try: open context menu, arrows/Enter, toolbar Nav digits.
+
+
+================================================================
+13. OPTION C applied 2026-08-06 ~02:57 — grabs ON + soft focus, locks OFF
+================================================================
+tp_desktop_window.c flags:
+  LIVEDESK_USE_REGISTRY_LOCK   = 0
+  LIVEDESK_USE_POPUP_LOCK      = 0
+  LIVEDESK_USE_XGRAB_POINTER   = 1
+  LIVEDESK_USE_XGRAB_KEYBOARD  = 1
+  LIVEDESK_POPUP_SOFT_FOCUS    = 1  (new: raise+focus THIS popup only
+                                     on open + header click + text popup)
+
+Taskbar unchanged (registry lock still 0, raise-other still 0, nav box focus 1).
+Binary rebuilt. User must restart livedesk to pick up.
+

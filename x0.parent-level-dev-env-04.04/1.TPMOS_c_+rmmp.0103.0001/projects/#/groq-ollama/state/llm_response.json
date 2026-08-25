@@ -1,0 +1,32 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "I'm doing well, thank you for asking! How can I help you today?",
+            "thoughtSignature": "CrUBAQw51scWRHliatDRuIcrzT3l6FiANbcOy531i79il6v5wFCzfCvPRAKXqFM6q4aWeThHKMyqkj+eeTHtXpubJeGgydeFzOacR+trwJvhUdTlQVajDKrVRxT4QTvsECqMKU1Tj3Bt+8sbjrXbhmBEv5X1NIoOyOuMXiybjxFT6ajIBrtBFlEQ7/5GRJu+kJU4C4hr5HgD6lr0JwXWlnjXy575LTwRNetfYKxl400OVTRze+DBSg=="
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 706,
+    "candidatesTokenCount": 18,
+    "totalTokenCount": 758,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 706
+      }
+    ],
+    "thoughtsTokenCount": 34,
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-2.5-flash",
+  "responseId": "aUAVao7PHNeb9MoP1NLVAQ"
+}

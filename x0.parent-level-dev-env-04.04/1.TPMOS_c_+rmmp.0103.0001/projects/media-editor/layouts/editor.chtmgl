@@ -1,0 +1,28 @@
+<window title="Media Editor" width="1024" height="768" color="#121212">
+    <!-- Sidebar: Asset Library -->
+    <panel id="assets" x="0" y="0" width="200" height="600" color="#1e1e1e">
+        <text label="Assets" x="10" y="10" />
+        <scroller id="asset_list" x="5" y="40" width="190" height="550" label="${asset_listing}" />
+    </panel>
+    
+    <!-- Main Editing Canvas -->
+    <canvas id="editor_viewport" x="200" y="0" width="624" height="600" view_mode="editor">
+        <text label="[3D Viewport]" x="10" y="10" color="#444444" />
+    </canvas>
+    
+    <!-- Property Inspector -->
+    <panel id="inspector" x="824" y="0" width="200" height="600" color="#1e1e1e">
+        <text label="Properties" x="10" y="10" />
+        <textfield id="prop_name" label="Name: ${selected_name}" x="5" y="40" />
+        <slider id="prop_x" label="X: ${selected_x}" x="5" y="80" min="-100" max="100" />
+        <slider id="prop_y" label="Y: ${selected_y}" x="5" y="110" min="-100" max="100" />
+        <button label="Apply" onClick="EVENT:apply_props" x="5" y="150" />
+    </panel>
+    
+    <!-- Timeline -->
+    <panel id="timeline" x="0" y="600" width="1024" height="168" color="#181818">
+        <text label="Timeline" x="10" y="10" />
+        <slider id="time_scrub" x="10" y="40" width="1004" height="30" min="0" max="${max_frames}" value="${current_frame}" />
+        <button label="Play" onClick="EVENT:play_anim" x="10" y="80" />
+    </panel>
+</window>

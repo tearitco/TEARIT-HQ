@@ -1,0 +1,4 @@
+current_epoch=1
+current_turn=1
+hero_start_x=5
+hero_start_y=4

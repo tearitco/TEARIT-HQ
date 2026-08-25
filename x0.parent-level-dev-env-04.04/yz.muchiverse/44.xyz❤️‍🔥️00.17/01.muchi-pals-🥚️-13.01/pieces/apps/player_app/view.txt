@@ -1,0 +1,26 @@
++============================================================+
+|                                                            |
+|                    M U C H I - P A L S                     |
+|                                                            |
+|                    ð Ÿ  £   e g g _ 5                     |
+|                                                            |
+|  Chick  Level 1 (XP 0/20)                                  |
+|  HP:20/20 MP:10/10                                         |
+|  Hunger:100 Energy:100 Poop:1 (asleep)                     |
+|  Skills: peck                                              |
+|  Card: issued                                              |
+|  Position: (13,1,0) Facing: left                           |
+|                                                            |
+|  [>] 1. [Open Window]                                      |
+|  [ ] 2. [Feed (-5 tokens, -30 hunger)]                     |
+|  [ ] 3. [Clean]                                            |
+|  [ ] 4. [Wake]                                             |
+|  [ ] 5. [Train (-20 energy)]                               |
+|  [ ] 6. [Export Card]                                      |
+|  [ ] 7. [Destroy Card]                                     |
+|  [ ] 8. [Back]                                             |
+|                                                            |
+|  Opened egg_5 in a new window.                             |
+|                                                            |
++============================================================+
+[wasd/arrows] move  [0-9] jump  [enter] select  [b] back  [q] quit

@@ -1,0 +1,52 @@
+================================================================================
+BUTTON SCRIPTS UPDATE (April 1, 2026)
+================================================================================
+
+CHANGES MADE:
+-------------
+
+1. pieces/buttons/linux/compile.sh
+   OLD: Called legacy/compile_all.sh (moved to #.ref/)
+   NEW: Compiles projects from compiled_projects.txt + system apps
+
+2. pieces/buttons/linux/kill.sh
+   OLD: Called legacy/kill_all.sh (moved to #.ref/)
+   NEW: Uses pkill directly to kill CHTPM processes
+
+3. Legacy scripts moved:
+   pieces/buttons/linux/legacy/ → #.ref/legacy_scripts/
+
+HOW TO COMPILE NOW:
+-------------------
+
+./button.sh c      # Compile all projects and system apps
+./button.sh r      # Run CHTPM orchestrator
+./button.sh k      # Kill all CHTPM processes
+
+WHAT GETS COMPILED:
+-------------------
+
+1. Projects in pieces/os/compiled_projects.txt:
+   - Managers (projects/<id>/manager/*_manager.c)
+   - Ops (projects/<id>/ops/*.c)
+
+2. System apps:
+   - op-ed_module
+   - man-ops_module, man-pal_module, man-add_module
+
+3. System components:
+   - keyboard_input
+   - chtpm_parser
+   - orchestrator
+   - renderer
+
+ADDING NEW PROJECTS TO COMPILE:
+-------------------------------
+
+Use Fondu:
+./pieces/system/fondu/fondu.+x --install <project>
+
+This automatically adds the project to compiled_projects.txt and it will be
+compiled on the next ./button.sh c
+
+================================================================================

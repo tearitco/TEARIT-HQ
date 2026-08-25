@@ -1,0 +1,4 @@
+project_id=template
+active_target_id=hero
+current_z=0
+last_key=None

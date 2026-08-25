@@ -1,0 +1,4 @@
+selected_broker=yahoo_finance
+focused_project_root=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/@.apps/yahoo-app
+focused_project_id=yahoo-app
+broker_balance=0.00

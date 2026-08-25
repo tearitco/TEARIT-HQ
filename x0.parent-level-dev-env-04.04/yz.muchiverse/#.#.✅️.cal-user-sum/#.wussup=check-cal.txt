@@ -1,0 +1,73 @@
+opencode --continue   <- works. 
+
+
+📆️AUG 13: 
+wanted to change "menus -> apps {toys}" (that just opens stuff like h-ai 
+but user made or dev made dump 
+but can also be menus for or from w/e and its infront of store. 
+(theres already plugins but apps is popup window...)
+
+<also im not sure about how bottom toolbar is but also
+
+i noticded "TB" isn't really "CHTPM or even organized
+like where are teh toolbar names , HARDCODED? the subs are in .pdl tho , wtf? 
+fix that... 
+
+she said {toys}
+instead of apps (not peices either, but yea i like toys 2 
+cuz its by store, like "TOY STORE" and also
+toy can be pro just like xl. its no biggie\
+
+<for bottom toolbar, if we leave it. it should scroll with arrow/jump(no buttons)> 
+
+📆️AUG 13: 
+i wanted to change dir or open a button on tb. 
+it digs thru entire codebase.
+stuff like this needs to be refactored out into .pdl + trigger. ez. 
+nothing hardcoded in complex x11. nothing. 
+i noticed lots of stuff IS hardcoded. 
+refactor it ; we never really did that and trying 2 scale,paying the price
+
+
+are there competing standards/repeated code / hardcoded user/dev-dynamic vars/paths?
+-------------------------------------------------------
+
+📮️
+
+
+
+
+🦁️
+📆️
+extrude emojis "backwards" maaybe b4 u push forward more or add ".config option"
+
+📆️opencode limits ran out for 16hours... 
+
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.14/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/&.widgits/file-menu/fm-widget-fix.md
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.14/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/&.widgits/file-menu/house-ledger-arch.md
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.14/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/&.widgits/file-menu/widget+plan.txt
+
+
+those should explain alot. 
+
+does the "app" have any of its own info? 
+
+
+
+also std's doc was updated a bit. 
+
+
+basically were trying to settle on a standard for multi project/widget communication. 
+starting with file-menu & editor (which has some setup complications , being the first of its kind)
+so we are settling out a lot of important micro-standards. very worth it. 
+i feel like this surpasses tpmos for sure, but maybe certainly backwards bolted on somehow
+altho this is a bit different, 
+honestly this is more of the "dream arch" than the tpmos. 
+1 thing tho. theres no way to "pause" a session. 
+but there should be ' like 'ctrl+c' 
+ctrl+p or something? 
+
+did we have this in that "PRE WGU TSUN.c or something? 
+
+id look now but theres lot of violence, 
+📆️

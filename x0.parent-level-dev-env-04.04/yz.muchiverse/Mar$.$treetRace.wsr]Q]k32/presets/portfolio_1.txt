@@ -1,0 +1,21 @@
+STOCK & BOND PORTFOLIO LISTING FOR DUCKLING
+STOCK PORTFOLIO FOR DUCKLING (In U.S. Dollars)
+-----------------------------------------------------------------------------------
+STOCK PCT% SHARE DIV. VALUE: ANALYST'S
+COMPANY SYM. HELD PRICE YIELD (MILLIONS) RATING
+---------------------------- ----- ---- -------- ----- ------------- -------------
+FULL METAL BITCHES FMB 80% 32.78 0.0% 3278 NOT TRADED
+---------------------------- ----- ---- -------- ----- ------------- -------------
+TORONTO-DOMINION CORP. TDM 1% 28.24 1.5% 226 BUY
+---------------------------- ----- ---- -------- ----- ------------- -------------
+TOTAL STOCK PORTFOLIO VALUE ($ Million): 3,504
+=============
+BOND PORTFOLIO FOR DUCKLING (In U.S. Dollars)
+-----------------------------------------------------------------------------------
+PRICE FACE MARKET BOND YIELD
+BOND ISSUER DESCRIPTION PAR=100 VALUE VALUE TO MATURITY
+--------------------------- -------------- ------- -------- ----------- -----------
+GOVERNMENT SHORT BONDS 6.00% of 2036 116.64 81 94 3.97%
+--------------------------- -------------- ------- -------- ----------- -----------
+TOTAL VALUE OF STOCK AND BOND HOLDINGS: $ 3,598 Million
+=======

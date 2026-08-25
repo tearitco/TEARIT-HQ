@@ -1,0 +1,258 @@
+# FSM Bot Programmer — Shared Testing + AI Bot Ops
+# ==================================================
+# Location: TPMOS-TRAINING/#.todo/future-plans/fsm_bot_programmer.txt
+# Purpose: Design for a shared FSM-based bot programming system used for:
+#   1. Testing bots (automated playtesting, regression testing)
+#   2. AI bot players in multiplayer (local AI opponents/partners)
+#   3. PAL-scriptable via op-ed (devs program bot behavior using PAL Editor)
+
+---
+
+## CORE CONCEPT
+
+A **Finite State Machine (FSM) Bot Programmer** that:
+- Is programmed using PAL scripts (via PAL Editor in op-ed)
+- Uses shared ops for common bot behaviors (navigate, interact, wait, decide, move, attack, etc.)
+- Works identically for testing bots AND AI bot players
+- State is stored in piece state files (TPM-compliant)
+- Decisions are driven by PAL conditionals (beq, read_state, read_env_key, etc.)
+
+**One system, two uses:**
+1. **Testing bot** — automated playtesting, regression verification, frame/state assertions
+2. **AI bot player** — local AI opponents in single-player mode (simulated multiplayer)
+
+---
+
+## ARCHITECTURE
+
+### 1. Bot Piece Structure
+```
+projects/my-game/pieces/bot_tester/
+├── piece.pdl              # Bot piece definition
+├── state.txt              # Current FSM state
+│   current_state=idle
+│   target_piece=fuzzpet
+│   action_queue=0
+│   test_pass=1
+│   test_fail=0
+├── events/
+│   ├── on_tick.asm        # Main FSM loop
+│   ├── on_interact.asm    # Interaction handler
+│   └── on_test_complete.asm  # Test result handler
+└── fsm/
+    ├── states.txt         # State definitions
+    └── transitions.txt    # State transition table
+```
+
+### 2. Shared PAL Ops for Bots
+| Op | Syntax | Purpose |
+|---|---|---|
+| `bot::set_state` | `OP bot::set_state "state_name"` | Set FSM state |
+| `bot::get_state` | `OP bot::get_state rD` | Read current state |
+| `bot::navigate` | `OP bot::navigate piece_id` | Navigate to piece |
+| `bot::interact` | `OP bot::interact piece_id` | Interact with piece |
+| `bot::wait` | `OP bot::wait ms` | Wait N milliseconds |
+| `bot::assert` | `OP bot::assert piece key expected` | Assert piece state value |
+| `bot::assert_frame` | `OP bot::assert_frame "text"` | Assert frame contains text |
+| `bot::record_pass` | `OP bot::record_pass` | Increment pass counter |
+| `bot::record_fail` | `OP bot::record_fail "reason"` | Increment fail counter |
+| `bot::report` | `OP bot::report` | Write test report to file |
+| `bot::choose` | `OP bot::choose rD option_count` | Random choice (0 to N-1) |
+| `bot::decide` | `OP bot::decide rD condition` | Conditional decision |
+
+### 3. FSM States (Example — Testing Bot)
+```
+# states.txt
+idle
+navigating
+interacting
+asserting
+waiting
+reporting
+complete
+```
+
+### 4. FSM Transitions (Example — Testing Bot)
+```
+# transitions.txt
+idle -> navigating    (always)
+navigating -> interacting  (arrived_at_target)
+interacting -> asserting   (interaction_complete)
+asserting -> waiting       (assertion_done)
+waiting -> idle            (timeout)
+asserting -> reporting     (assertion_failed)
+reporting -> complete      (report_written)
+```
+
+### 5. PAL Script — Testing Bot Example
+```
+# bot_tester/events/on_tick.asm
+# Automated test: navigate to fuzzpet, interact, assert happiness increased
+
+# Read current state
+bot::get_state r0
+
+# State machine dispatch
+beq r0, 0, state_idle       # idle = 0
+beq r0, 1, state_navigating  # navigating = 1
+beq r0, 2, state_interacting # interacting = 2
+beq r0, 3, state_asserting   # asserting = 3
+beq r0, 4, state_waiting     # waiting = 4
+beq r0, 5, state_reporting   # reporting = 5
+beq r0, 6, state_complete    # complete = 6
+j end
+
+state_idle:
+# Navigate to fuzzpet
+bot::navigate fuzzpet
+bot::set_state "navigating"
+j end
+
+state_navigating:
+# Check if arrived
+read_state r1, bot_tester, arrived
+beq r1, 1, do_interact
+j end
+
+do_interact:
+bot::interact fuzzpet
+bot::set_state "interacting"
+j end
+
+state_interacting:
+# Wait for interaction to process
+bot::wait 500
+bot::set_state "asserting"
+j end
+
+state_asserting:
+# Assert happiness increased
+read_state r2, fuzzpet, happiness
+addi r3, r0, 65              # expected minimum happiness
+beq r2, r3, assert_pass      # if happiness >= 65, pass
+j assert_fail
+
+assert_pass:
+bot::record_pass
+j end
+
+assert_fail:
+bot::record_fail "happiness too low"
+j end
+
+state_waiting:
+bot::wait 1000
+bot::set_state "idle"
+j end
+
+state_reporting:
+bot::report
+bot::set_state "complete"
+j end
+
+state_complete:
+halt
+
+end:
+sleep 100
+```
+
+### 6. PAL Script — AI Bot Player Example
+```
+# ai_bot/events/on_tick.asm
+# AI opponent: navigate, choose random action, execute
+
+# Read current state
+bot::get_state r0
+
+beq r0, 0, ai_idle
+beq r0, 1, ai_deciding
+beq r0, 2, ai_acting
+j end
+
+ai_idle:
+# Navigate to nearest player
+read_pos r1, r2, ai_bot
+read_pos r3, r4, player_1
+# Calculate distance (simplified)
+bot::navigate player_1
+bot::set_state "deciding"
+j end
+
+ai_deciding:
+# Choose random action: 0=attack, 1=defend, 2=flee
+bot::choose r5, 3
+beq r5, 0, do_attack
+beq r5, 1, do_defend
+beq r5, 2, do_flee
+j end
+
+do_attack:
+bot::interact player_1
+bot::set_state "acting"
+j end
+
+do_defend:
+OP state::write ai_bot defending 1
+bot::set_state "acting"
+j end
+
+do_flee:
+OP bot::navigate away
+bot::set_state "acting"
+j end
+
+ai_acting:
+bot::wait 1000
+bot::set_state "idle"
+j end
+
+end:
+sleep 100
+```
+
+---
+
+## SHARED FUNCTIONALITY
+
+Both testing bots and AI bots use the same:
+- **FSM engine** — state machine with transitions
+- **PAL ops** — navigate, interact, wait, choose, decide, assert
+- **State storage** — piece state files (TPM-compliant)
+- **Event system** — on_tick, on_interact, on_test_complete
+- **Reporting** — write results to files (for testing) or log (for AI)
+
+**Differences:**
+| Feature | Testing Bot | AI Bot Player |
+|---------|------------|---------------|
+| Goal | Verify correctness | Simulate player behavior |
+| Assertions | Yes (pass/fail) | No |
+| Randomness | Deterministic (seeded) | Stochastic (varied) |
+| Reporting | Test report file | Game log |
+| Speed | Fast (no delays) | Real-time (with delays) |
+
+---
+
+## IMPLEMENTATION ORDER
+
+1. Create `bot_module.c` — shared FSM engine
+2. Add bot PAL ops to prisc interpreter
+3. Create testing bot PAL script example
+4. Create AI bot player PAL script example
+5. Wire into op-ed (devs can create bots via PAL Editor)
+6. Wire into game loader (setup screen chooses AI bot count)
+7. Add test harness that runs testing bots against projects
+
+---
+
+## BENEFITS
+
+1. **One system, two uses** — testing + AI players share code
+2. **PAL-scriptable** — devs program bot behavior in PAL Editor
+3. **TPM-compliant** — state stored in piece state files
+4. **Extensible** — add new ops, states, transitions easily
+5. **Testable** — testing bots verify other bots work correctly
+6. **Deterministic** — seeded randomness for reproducible tests
+7. **Observable** — all state visible in piece state files
+
+---

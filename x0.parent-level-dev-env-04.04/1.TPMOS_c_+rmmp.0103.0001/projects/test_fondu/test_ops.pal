@@ -1,0 +1,24 @@
+# test_ops.pal - Test script for test_fondu ops
+# This script tests all 4 ops in sequence
+# Expected: counter goes 0 → 1 → 0 → -1 → 0
+
+# Get initial status
+OP test_fondu::get_status
+
+# Increment: counter should be 1
+OP test_fondu::increment_counter
+
+# Reset: counter should be 0
+OP test_fondu::reset_counter
+
+# Decrement: counter should be -1
+OP test_fondu::decrement_counter
+
+# Increment again: counter should be 0
+OP test_fondu::increment_counter
+
+# Final status check
+OP test_fondu::get_status
+
+# End of script
+END

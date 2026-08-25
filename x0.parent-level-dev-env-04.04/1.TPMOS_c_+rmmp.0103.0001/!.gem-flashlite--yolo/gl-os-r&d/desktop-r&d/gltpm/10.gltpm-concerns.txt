@@ -1,0 +1,35 @@
+agent recently delivered the first version of the "gltpm" framework. 
+a system meant to give developers a markup language and module manager for gl applications
+in the style of the existing chtpm_parser.c (but for gl instead of ascii)  
+
+
+
+concern #1 : Main concern = architectural flaw due to miscommunication about the 
+importance of using @chtpm_parser.c , @fuzz-op.chtpm and @fuzz-op-manager.c as a biblical grade
+refernce when designing the gltpm architecture.  the "@main.gltpm" for fuzz-op-gl indicates that the design of our 
+gltpm parser has deviated from the intended framework.
+"map entities shouldn't be hardcoded into the layout, of "map"
+map is meant to be a "canvas" that can be entered and exited using interact mode, 
+just like the one in "fuzz-op"(ascii version) that simply uses ${game-map}
+we want to use the exact same format , except we will convert the map ascii into 
+"8x8x8" tiles. (that is really the only big difference ; not much is it?)
+
+
+
+
+
+
+concern #2 : the menu options are in reverse "y" order . 1 is supposed to be at top of menu , largest number at bottom
+(currently it , and arrow key directions are reversed. simple fix im sure)
+
+
+
+
+concern #3 : enter key still isn't "entering control of <interact> mode like in the fuzz-op-gl hardcoded example. 
+our setup should completely mimmic the hardcoded example but in the modular tpm-wise framework (this will probably be addressed when we fix concern #1 so perhaps ignore it till that is done . lets do these in order) 
+the other documents that share a directory with this document are the preceding stages of development (all completed) the concerns i have given you are cutting edge and priority at this time. 
+i want you to look over them, the current gltpm , and compare it with the chtpm biblical reference, and we will approach the second iteration of gltpm , which should be more in line
+with chtpm. we will write a gltpm-vs-chtpm-a23.txt where we compare errors in gltpm with the perfect example of chtpm , with the mindset that much of the foundation is reusable and refactorable (dont have to start completely from scratch) and that the functionality for fuzz-op-gl that is hardcoded into @gl_desktop.c is what we are seeking to mimic . 
+when we mimic that functionality we may remove the hardcoded proof of concept , clearing up 
+loc, and will be left with the modular gltpm version as a sufficient deliverable. 
+

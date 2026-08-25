@@ -1,0 +1,6 @@
+glut-craft
+.glut-craft.pid
+saves/*/
+!saves/.gitkeep
+*.o
+*~

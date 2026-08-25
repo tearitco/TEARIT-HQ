@@ -1,0 +1,416 @@
+# 🤖 Qwen-Code Local Integration: Feasibility & Architectural Blueprint
+**Status:** Architectural Planning / Pre-Implementation
+**Date:** March 26, 2026
+**Philosophy:** "The Bot Writes Its Own Ops"
+
+---
+
+## 1. Executive Summary
+
+This document outlines the plan to integrate a **local Qwen-Code instance** into the TPM-AI FSM ecosystem. The goal is to enable autonomous bot pieces to not only execute PAL scripts but also **generate new ops**, **troubleshoot failures**, and **author new features** recursively.
+
+Currently, the `qwen` command is available system-wide (`/usr/local/bin/qwen`). This blueprint describes how to embed this capability into the testing bot architecture defined in `testing-2dolist.txt` and `user-sim-xm26.txt`.
+
+---
+
+## 2. Current State Analysis
+
+### 2.1 Existing Infrastructure
+| Component | Status | Location |
+|-----------|--------|----------|
+| **Qwen CLI** | ✅ Available | `/usr/local/bin/qwen` |
+| **PAL Scripting** | ✅ Functional | `pieces/system/prisc/prisc+x` |
+| **Ops Pipeline** | ✅ Standardized | `pieces/apps/*/ops/+x/*.+x` |
+| **FSM Foundation** | ✅ Documented | `user-sim-xm26.txt` |
+| **Baby Steps Roadmap** | ✅ Defined | `testing-2dolist.txt` |
+
+### 2.2 Current Execution Model
+```
+Keyboard → Parser → Module → Op (+x binary) → state.txt
+              ↓
+         Prisc (Mode 2) → event.asm → Ops → state.txt
+```
+
+### 2.3 Gap Analysis
+| Capability | Current | Target |
+|------------|---------|--------|
+| Script Execution | ✅ PAL scripts | ✅ + AI-generated scripts |
+| Op Creation | ❌ Manual (C dev) | ✅ AI-authored `.c` → compile → `. +x` |
+| Troubleshooting | ❌ Manual debug | ✅ AI analyzes ledger → suggests fixes |
+| Feature Authoring | ❌ Human-only | ✅ AI proposes → human approves |
+
+---
+
+## 3. Architectural Vision
+
+### 3.1 Recursive AI Containment Model
+
+```
+pieces/apps/bot_tester/
+├── state.txt                    # Global testing orchestrator state
+├── brain/
+│   ├── fsm_engine.c             # C-based state machine
+│   └── ai_bridge.c              # Qwen-Code integration layer
+├── ops/+x/                      # AI-executable ops
+│   ├── inject_key.+x
+│   ├── assert_state.+x
+│   └── ai_generate_op.+x        # ← NEW: Meta-op for AI codegen
+├── children/                    # Nested bot pieces
+│   ├── nav_bot/
+│   │   ├── state.txt
+│   │   ├── scripts/
+│   │   │   └── nav_to_user.asm
+│   │   └── ledger.txt
+│   └── codegen_bot/
+│       ├── state.txt
+│       ├── prompts/             # AI prompt templates
+│       │   ├── op_template.txt
+│       │   └── debug_template.txt
+│       └── generated/           # AI-authored artifacts
+│           ├── ops/             # New .c files awaiting compile
+│           └── scripts/         # New .asm files
+└── master_ledger.txt            # Global audit trail
+```
+
+### 3.2 The AI Bridge Module (`ai_bridge.c`)
+
+A standalone C module that wraps the `qwen` CLI, providing these functions:
+
+```c
+// Function signatures for ai_bridge.c
+int ai_query(const char *prompt, char *output, size_t output_size);
+int ai_generate_op(const char *spec, const char *output_path);
+int ai_debug_ledger(const char *ledger_excerpt, char *diagnosis, size_t size);
+int ai_validate_c_code(const char *code, char *errors, size_t size);
+```
+
+### 3.3 Integration Points
+
+| Integration Point | Trigger | AI Action |
+|-------------------|---------|-----------|
+| **PAL Script Generation** | `state.goal` changes | Generate `.asm` from natural language goal |
+| **Op Authoring** | Missing op detected | Write `.c` → compile to `ops/+x/` |
+| **Debug Loop** | Assert failure | Analyze `ledger.txt` → propose fix |
+| **Feature Expansion** | Human prompt in `!.file2do/` | Scaffold new piece structure |
+
+---
+
+## 4. Feasibility Analysis
+
+### 4.1 Technical Feasibility: **HIGH**
+
+**Why it works:**
+1.  **File-Based IPC:** TPM already uses files for all communication. AI reads/writes files—perfect match.
+2.  **Ops Are Standalone:** `+x` binaries are just executables. AI can write C, compile, and drop them in.
+3.  **Prisc Is Text-Based:** PAL scripts are plaintext. AI can generate/modify them easily.
+4.  **Qwen CLI Exists:** `/usr/local/bin/qwen` is already installed and functional.
+
+### 4.2 Implementation Complexity: **MEDIUM**
+
+| Challenge | Mitigation |
+|-----------|------------|
+| **C Code Compilation** | Use `compile_all.sh` as a post-generation step |
+| **Prompt Engineering** | Store templates in `codegen_bot/prompts/` |
+| **Safety/Auditability** | All AI output goes to `generated/` first, requires human approval |
+| **Context Window** | Feed only relevant `ledger.txt` excerpts + `state.txt` |
+
+### 4.3 Risk Assessment
+
+| Risk | Probability | Impact | Mitigation |
+|------|-------------|--------|------------|
+| AI generates broken C | Medium | Low | Code goes to `generated/` pending compile check |
+| Infinite recursion loop | Low | Medium | FSM state machine has `retry_count` limits |
+| Prompt injection via ledger | Low | Low | Ledger is internal; sanitize if external input added |
+| Slow iteration (LLM latency) | High | Low | Cache common patterns; use AI for scaffolding only |
+
+---
+
+## 5. Implementation Roadmap
+
+### Phase 0: NAV-SMOKE (No AI Yet)
+**Goal:** Prove bot navigation without AI complexity.
+- [ ] Scaffold `pieces/apps/bot_tester/baby_steps/`
+- [ ] Write `nav_to_user.asm` manually
+- [ ] Verify via `prisc+x`
+
+### Phase 1: AI Bridge Scaffold
+**Goal:** Enable AI queries from C code.
+- [ ] Create `pieces/apps/bot_tester/brain/ai_bridge.c`
+- [ ] Implement `ai_query()` wrapper around `qwen` CLI
+- [ ] Test: Ask AI to explain a ledger entry
+
+### Phase 2: PAL Script Generation
+**Goal:** AI writes navigation scripts.
+- [ ] Create `codegen_bot/prompts/pal_template.txt`
+- [ ] Implement `ai_generate_script(goal, output_path)`
+- [ ] Test: "Navigate to FuzzPet dashboard" → `nav_to_fuzz.asm`
+
+### Phase 3: Op Authoring (Meta-Cognition)
+**Goal:** AI creates new ops when needed.
+- [ ] Add `ai_generate_op(spec, output_path)` to bridge
+- [ ] Create `op_template.c` prompt (includes TPM standards)
+- [ ] Auto-compile: Hook into `compile_all.sh`
+- [ ] Test: "Create op that injects text input" → `inject_text.+x`
+
+### Phase 4: Recursive Debug Loop
+**Goal:** AI troubleshoots failures autonomously.
+- [ ] Add `ai_debug_ledger()` function
+- [ ] On assert failure: AI analyzes → proposes fix → patches script
+- [ ] Test: Break a script intentionally → AI fixes it
+
+### Phase 5: Full Autonomy (AI-Studio)
+**Goal:** Playable bots that self-improve.
+- [ ] Integrate with `ai-labs` for knowledge distillation
+- [ ] Enable cross-bot collaboration (shared ledger analysis)
+- [ ] Deploy in `lsr` as NPC behavior engine
+
+---
+
+## 6. Example: AI-Generated Op Workflow
+
+### 6.1 Trigger
+Bot needs to inject text input (not just keycodes). No such op exists.
+
+### 6.2 AI Query (via `ai_bridge.c`)
+```
+PROMPT:
+"You are a TPM-compliant C developer. Write a new Op for the Piecemark-IT OS.
+
+Requirement: Inject text string into a piece's input buffer.
+Standards:
+- Location: pieces/apps/bot_tester/ops/+x/inject_text.+x
+- Use fork()/exec() pattern (CPU-safe)
+- Append to pieces/keyboard/history.txt with timestamp
+- Log to master_ledger.txt
+
+Existing inject_key.+x pattern (for reference):
+[... code snippet ...]
+
+Output: Complete .c file ready to compile."
+```
+
+### 6.3 AI Output → `generated/ops/inject_text.c`
+```c
+/* AI-GENERATED Op: inject_text
+ * Generated: 2026-03-26T14:32:00Z
+ * Status: PENDING_REVIEW
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <sys/stat.h>
+
+#define MAX_PATH 4096
+
+int main(int argc, char **argv) {
+    if (argc < 2) {
+        fprintf(stderr, "Usage: inject_text.+x <text_string>\n");
+        return 1;
+    }
+
+    // ... [rest of generated code]
+}
+```
+
+### 6.4 Human Review → Approve
+- Move `generated/ops/inject_text.c` → `pieces/apps/bot_tester/ops/src/`
+- Run `./compile_all.sh`
+- New op available at `pieces/apps/bot_tester/ops/+x/inject_text.+x`
+
+### 6.5 Bot Uses New Op
+```asm
+// nav_bot/scripts/signup.asm
+call pieces/apps/bot_tester/ops/+x/inject_text.+x "bot_baby"
+sleep 500000
+call pieces/apps/bot_tester/ops/+x/inject_text.+x "KISS_123"
+```
+
+---
+
+## 7. Prompt Templates (Stored in `codegen_bot/prompts/`)
+
+### 7.1 `op_template.txt`
+```
+You are a TPM-compliant C developer for the Piecemark-IT OS.
+
+Write a new Op (standalone C binary) with these requirements:
+- Op Name: {{OP_NAME}}
+- Purpose: {{OP_PURPOSE}}
+- Input Args: {{OP_ARGS}}
+
+TPM Standards:
+1. Use fork()/exec()/waitpid() pattern (no system() unless interactive)
+2. Signal handling: SIGINT handler with _exit()
+3. File paths: Resolve via PRISC_PROJECT_ROOT env or default paths
+4. Logging: Append to master_ledger.txt on success/failure
+5. Determinism: No random() unless seeded from state.txt
+
+Reference existing ops in: pieces/apps/playrm/ops/src/
+
+Output: Complete .c file. No markdown, no explanations.
+```
+
+### 7.2 `debug_template.txt`
+```
+You are a TPM debugging assistant.
+
+Analyze this ledger excerpt from a failed bot run:
+{{LEDGER_EXCERPT}}
+
+Bot State at Failure:
+{{STATE_TXT}}
+
+Task:
+1. Identify the root cause
+2. Propose a fix (PAL script patch or op modification)
+3. If code change needed, output the corrected code block
+
+Format:
+ROOT_CAUSE: <one sentence>
+FIX: <actionable step>
+CODE: <if applicable>
+```
+
+### 7.3 `script_template.txt`
+```
+You are a PAL scripting expert for the Piecemark-IT OS.
+
+Goal: {{GOAL_DESCRIPTION}}
+
+Available Ops:
+- inject_key.+x <code>
+- inject_text.+x <string>
+- assert_state.+x <piece_path> <key> <expected>
+- wait_for_frame.+x <string>
+- send_command.+x <command>
+
+Constraints:
+- Use sleep 2000000 (2s) between major actions
+- Always log success/failure to master_ledger
+
+Output: Complete .asm file. No markdown.
+```
+
+---
+
+## 8. Safety & Auditability
+
+### 8.1 Human-in-the-Loop Gates
+| AI Action | Auto-Execute | Requires Approval |
+|-----------|--------------|-------------------|
+| Read ledger/state | ✅ | ❌ |
+| Generate PAL script | ✅ (to `generated/`) | ❌ |
+| Generate C code | ❌ | ✅ (before compile) |
+| Execute op | ✅ | ❌ |
+| Modify existing files | ❌ | ✅ (all changes) |
+| Spawn new bot piece | ❌ | ✅ |
+
+### 8.2 Audit Trail
+All AI actions logged to `master_ledger.txt`:
+```
+[TIMESTAMP] AI_ACTION: script_generated | bot=nav_bot | output=generated/scripts/nav_v2.asm
+[TIMESTAMP] AI_ACTION: code_generated | op=inject_text | status=PENDING_REVIEW
+[TIMESTAMP] AI_ACTION: debug_complete | root_cause=timeout | fix=sleep_increased
+```
+
+### 8.3 Containment
+- AI runs in user context (no root)
+- File writes restricted to `generated/` subtree
+- Compilation requires explicit `compile_all.sh` invocation
+- No network access (local Qwen only)
+
+---
+
+## 9. Testing Strategy
+
+### 9.1 Unit Tests (AI Bridge)
+```c
+// Test: ai_query returns valid output
+test_ai_query_basic() {
+    char output[4096];
+    int result = ai_query("What is 2+2?", output, sizeof(output));
+    assert(result == 0);
+    assert(strstr(output, "4") != NULL);
+}
+
+// Test: ai_generate_op produces compilable C
+test_ai_generate_op_compiles() {
+    int result = ai_generate_op("inject_text", "generated/test_op.c");
+    assert(result == 0);
+    assert(system("gcc -o /tmp/test_op generated/test_op.c") == 0);
+}
+```
+
+### 9.2 Integration Tests (Full Loop)
+1.  **Script Gen Test:** "Navigate to User menu" → AI generates `.asm` → Execute via `prisc+x` → Verify `current_layout.txt`
+2.  **Debug Test:** Break `nav_to_user.asm` → Run → AI analyzes failure → AI patches → Re-run → Success
+3.  **Op Gen Test:** Request new op → AI writes C → Human approves → Compile → Bot uses new op
+
+---
+
+## 10. Next Steps (Immediate Actions)
+
+### Week 1: AI Bridge Foundation
+- [ ] Create `pieces/apps/bot_tester/brain/` directory
+- [ ] Implement `ai_bridge.c` with `ai_query()` function
+- [ ] Test: Query Qwen about ledger entries from `user-sim-xm26.txt`
+
+### Week 2: PAL Script Generation
+- [ ] Create `codegen_bot/prompts/` with templates
+- [ ] Implement script generation workflow
+- [ ] Test: Generate `nav_to_fuzz.asm` from natural language
+
+### Week 3: Op Authoring Pipeline
+- [ ] Implement `ai_generate_op()` function
+- [ ] Add `generated/ops/` to compile script
+- [ ] Test: Full loop (prompt → C → compile → execute)
+
+### Week 4: Recursive Debug Loop
+- [ ] Implement `ai_debug_ledger()` function
+- [ ] Integrate with FSM error handling
+- [ ] Test: AI fixes broken scripts autonomously
+
+---
+
+## 11. Success Metrics
+
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| **Script Gen Success Rate** | >80% | Scripts run without manual edits |
+| **Op Compile Rate** | >90% | Generated C compiles on first try |
+| **Debug Resolution Time** | <5 min | Failure → AI fix → Success |
+| **Human Approval Overhead** | <10 min/day | Time spent reviewing AI output |
+
+---
+
+## 12. Appendix: Qwen CLI Usage Reference
+
+### Basic Query
+```bash
+qwen "Explain this ledger entry: [TIMESTAMP] KEY_PRESSED: 50"
+```
+
+### File Context Query
+```bash
+qwen "Given this state.txt: $(cat pieces/apps/bot_tester/state.txt), what PAL script should I run next?"
+```
+
+### Code Generation
+```bash
+qwen "Write a C Op for TPM OS that does X. Standards: [paste op_template.txt]" > output.c
+```
+
+### Streaming Mode (for long outputs)
+```bash
+qwen --stream "Generate a complete PAL script for navigating to FuzzPet and scanning the pet status"
+```
+
+---
+
+**Document Owner:** `#.testing/`
+**Review Cycle:** Weekly (every Thursday)
+**Next Review:** 2026-04-02
+
+*"The bot writes its own ops. We just light the fuse."*

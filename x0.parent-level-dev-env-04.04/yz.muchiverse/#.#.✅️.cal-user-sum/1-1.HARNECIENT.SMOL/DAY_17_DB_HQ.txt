@@ -1,0 +1,30 @@
+# 🗄 DAY 17 — db-hq: the database that feeds the world 💾
+# =====================================================
+# Title: "🗄 DAY 17 — db-hq: the database that feeds the world 💾"
+# Characters: MAXINE, TOMO, RAHWEH, IQA, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), IQA (en-US-AnaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+
+**MAXINE:** A database you can `cat`... that changes what "bug" means.
+
+**TOMO:** That's the point. When state is inspectable, problems become *readable*. 🧾
+
+**TOMO:** The db cell manages **session-level game data**. Right now that means one big thing, and a roadmap of more: - ✅ Common events — the shared library every entity can call (we met it yesterday). - 🚧 Items / inventory — coming (the store sells things next). - 🚧 Switches & variables — the game's memory of "what has happened" (conditions for pages). - 🚧 Actors & state — who the player is, their stats, their story flags.
+
+**RAHWEH:** So the db cell is basically the save-game + content library in one?
+
+**TOMO:** In one *cell*, yes — one little square on the taskbar that opens a real window. That's the whole philosophy of the livedesk: every capability is a cell, every cell opens a window, every window is driven by files. 🪟
+
+**TOMO:** And here's the exciting part for you, Rahweh — a real `db-hq` window was built on 2026-08-12 (aug-12-END.txt is the record). It's the first proof of the HQML CSS styling layer (au11-hq/HQML-DESIGN+PLANS.md): - 🗂️ A 15-tab bar that matches au11-hq/rpg-maker-database.html exactly (Actors...Tilesets, Common Events, System, Types, Terms) — the window auto-widens to fit however many tabs exist. - 📋 The Common Events tab: a real sidebar listing <houseroot/commonevents/, a bordered settings panel, and an "Open in Editor" button that launches the existing openeventez.sh against the selected event. - 🎨 Its own CSS engine (khtpmcssparser.c): element/class/#id/:hover selectors, colors, borders, position, sizes, padding, font, z-index. - ⌨️ wraith-alpha-standard index nav — every element gets a bracket-badge number, digits jump focus, Enter activates. Agent-friendly by design. - 📏 User-adjustable UI scale via #.desktop/hqui.pdl (fontscale) — shared across all future -hq apps. - 🧪 Its own agent-relay test harness (#.desktop/dbhqagentrelay.txt + #.desktop/harnesses/db-hq/nav.sh) — same bare-decimal-per-line relay contract the taskbar uses. The harness can drive it already.
+
+**IQA:** So the database window is... a styled, navigable, testable app?
+
+**TOMO:** A styled, navigable, *relay-driven* app. And because it speaks the relay, a Harnecient agent can operate it the same way it operates everything else. 🤖
+
+**TOMO:** Here's the mental map — you can check it in `au11-hq/DB_CONTEXT.md`:
+
+**TOMO:** Two editor paths, same data: - db-ez — the common-events editor. START HERE — it's the simplest real path into the db (per au11-hq/DBCONTEXT.md). - events-hq — the RGB-friendly event editor (au11-hq/EVENTS-HQ-RGB-HANDOFF.md). And db-ez points at the session package — meaning db-ez IS event-ez, pointed at a different folder. One editor, two labels, one data format. Elegant. 🧩
+
+**THE NARRATOR:** The db cell is the deterministic data layer the harness reads and writes. An agent doesn't guess what a game owns — it reads inventory.txt, it edits a commonevents/ folder, it opens db-hq through the relay and drives the tabs. The model's words become real game data. That's the loop from Day 05 applied to the database itself. 🎯
+
+**TOMO:** All of it. And tomorrow we finally name the games it will feed. The demo games — the whole reason the hack exists. 🎮

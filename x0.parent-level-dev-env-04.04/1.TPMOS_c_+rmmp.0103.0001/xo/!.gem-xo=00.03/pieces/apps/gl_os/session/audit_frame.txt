@@ -1,0 +1,16 @@
+GL_OS_AUDIT_FRAME
+timestamp=2026-06-02 00:47:03
+project_id=gl-os
+active_layout=pieces/apps/gl_os/layouts/desktop.chtpm
+window_count=2
+active_window_id=2
+selected_index=0
+windows:
+  window|id=1|title=Terminal 1|type=terminal|x=70|y=70|w=400|h=300|minimized=0
+  window|id=2|title=PIECECRAFT-3D (Sovereign)|type=gltpm_app|x=0|y=25|w=1024|h=713|minimized=0
+active_menu:
+  option_count=4
+  option|index=0|selected=1|label=Control Map (ENTER)
+  option|index=1|selected=0|label=Menu Mode (ESC)
+  option|index=2|selected=0|label=Deselect (9)
+  option|index=3|selected=0|label=Scan

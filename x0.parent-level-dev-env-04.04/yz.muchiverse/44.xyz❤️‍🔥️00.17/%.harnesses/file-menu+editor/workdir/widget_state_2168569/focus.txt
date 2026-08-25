@@ -1,0 +1,6 @@
+editor_session=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.13/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.09/102.editor-📄️00.00/pieces/sessions/harn-fm-1785220811-2168569
+inbox_path=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.13/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.09/102.editor-📄️00.00/pieces/sessions/harn-fm-1785220811-2168569/pieces/system/widget_cmds/inbox.txt
+buffer_path=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.13/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.09/102.editor-📄️00.00/pieces/sessions/harn-fm-1785220811-2168569/pieces/system/editor_buffer.txt
+state_path=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.13/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.09/102.editor-📄️00.00/pieces/sessions/harn-fm-1785220811-2168569/pieces/system/editor_state.txt
+status_path=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.13/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.09/102.editor-📄️00.00/pieces/sessions/harn-fm-1785220811-2168569/pieces/system/widget_cmds/status.txt
+display_name=agy-editor

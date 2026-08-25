@@ -1,0 +1,254 @@
+================================================================================
+jul30-house-refactor.txt - real chain of findings from 102.agy-txt's own
+file-browser rebuild, why it went sideways, what's actually true about
+this house's own runtime, and the concrete, scoped path back on track.
+Written 2026-07-30 per direct instruction after a real architecture
+course-correction mid-session. Read this before touching agy-txt's file
+browser again, and before assuming ANY doc (including this house's own
+!.xyzos-standards+1.txt/!.xyzos-pitfalls+1.txt) over real, directly-
+read source code.
+================================================================================
+
+## 0. The core lesson, stated first
+
+Every claim below was VERIFIED against real source (chtpm_parser_pal.c,
+prisc+x.c, TPMOS's own agy-text-editor_manager.c, mutaclysm's own
+compose_frame.c, game_manager.c) - not inferred from a comment, a
+markdown doc, or a prior agent's own summary. Direct instruction, same
+day: "if the docs contradict [tpmos] its probably an agent unclear of
+specs and it shouldn't have solidified that confusion." Applied here
+literally - one specific doc found genuinely misleading for THIS
+house's own runtime (§3 below), and this file corrects it rather than
+propagating it further.
+
+--------------------------------------------------------------------------------
+## 1. What went wrong in 102.agy-txt's own file-browser rebuild
+
+Built a working file browser (real click-to-load, real xyzfs jail,
+real Enter/Esc semantics - all genuinely correct, kept) on the WRONG
+rendering foundation: hand-drawn `[>]`/`[^]`/`[ ]` text markers inside
+a fully buttonless layout (matching &.widgits/file-menu's own real
+architecture), instead of real chtpm-native `<button>` elements with
+the PARSER owning focus/nav/marker-drawing. Modeled on file-menu
+because of an explicit instruction to reuse fm's own ops - but file-
+menu is a cross-project WIDGET (a different category), not the
+directly-comparable "same PAL-native family" precedent (mutaclysm)
+that should have been checked FIRST.
+
+--------------------------------------------------------------------------------
+## 2. What mutaclysm's own real code actually proves
+
+`101.mutaclsym🧟‍♂️️+18.01/ops/compose_frame.c`, `write_panel_gui_state()`
+(read in full) - a REAL, working, currently-shipped implementation of
+exactly this pattern: `craft`/`examine` buttons in `game.chtpm` are
+real `<button onClick="ACTIVATE">` wrappers, with
+`${craft_panel_items}`/`${inventory_panel_items}` expanding to real,
+dynamically-generated `<button onClick="KEY:n">` rows - confirmed via
+direct read, NOT hand-drawn markers anywhere. Its own header comment
+cites a real standards doc directly: "CHTPM DYNAMIC SUBMENU BRIDGE -
+real 1.TPMOS doctrine (see DYNAMIC_SUBMENUS_FUNCTIONAL_STD.md...) -
+the PARSER owns nav/focus/highlighting entirely; the MANAGER only ever
+projects raw button markup... never hand-draws its own '[>]'/'[ ]'
+markers."
+
+--------------------------------------------------------------------------------
+## 3. Where that same doc gets specifically wrong for THIS house
+
+`DYNAMIC_SUBMENUS_FUNCTIONAL_STD.md` (found at multiple identical
+copies under 1.TPMOS_c_+rmmp.0103.0001's own tooling snapshots, e.g.
+`!.gem-flashlite--yolo/#.docs/^.pmo.ld-faq+8/^.chtpm-faq/`) says,
+correctly for its own reference runtime: "Avoid `onClick=\"KEY:n\"`
+for submenus... Use String Commands" (`OP:`/`SET_` prefixes injected
+into history.txt). Confirmed directly in TPMOS's own real
+`agy-text-editor_manager.c` (`append_aligned_button_attr(...,
+"SET_LOAD_ACTION", ...)`, `"SET_SAVE_ACTION"`, even CANCEL is a
+dynamically-generated real `href` button, line ~871-875) - the doc
+accurately describes THAT reference's own real, working code.
+
+It does NOT accurately describe what THIS house's own `prisc+x` VM can
+actually do. Verified directly against `014.wsr-pal💸️📌️+2/system/
+prisc+x.c`'s own `OP_READ_HISTORY` handler:
+```c
+if (fscanf(hf, "%d", &key) == 1) {
+    regs[i.rd] = key;
+```
+Integer-only, hard-coded, by construction - not a stylistic choice, a
+real VM limitation. `mutaclsym`'s own compose_frame.c comment about
+this ("mutaclsym's prisc+x has no string-command relay capability
+yet... a genuine future upgrade, not silently built here") is
+CORRECT, confirmed by direct source read of the VM itself, not "an
+agent's own confusion" - it was the STANDARDS DOC's own blanket "avoid
+KEY:n" advice that doesn't account for this house's own, more
+constrained runtime. Do not follow that specific line of the doc for
+any prisc+x-based project without first checking whether the target
+runtime can actually do what it asks.
+
+--------------------------------------------------------------------------------
+## 4. The real precedent for "do it in C first" - already built, already shipped
+
+`101.ledger-player-npc-simple+3/system/game_manager.c` (401 lines,
+read in full) AND its sibling in `101.lpns+map+4` - a REAL, persistent,
+native C daemon (pthread poll loop, ~60fps, signal-handled clean
+shutdown), launched via `<module>system/game_manager</module>` the
+SAME way chtpm_parser_pal.c launches `prisc+x` - it just isn't
+prisc+x. Its own log line literally says `"=== Game Manager Started
+(TPMOS) ==="` - confirming it was already built once as a direct
+TPMOS-manager port. Both projects ALSO keep a second, `_pal`-suffixed
+layout (`lpns_word_menu_pal.chtpm`, `lpns_main_menu_pal.chtpm`)
+pointing at `prisc+x pal/main_loop_chtpm.pal` instead - a real,
+working example of the SAME screen implemented BOTH ways, side by
+side, exactly the "--pal flag" precedent asked about.
+
+IMPORTANT NUANCE: this specific game_manager.c happens to ALSO only
+read integer keycodes (`sscanf(line, "%d", &keycode)`, line ~328) -
+but that is NOT a limitation of native C daemons in this house, it's
+just what THIS word-game daemon happened to need. A native daemon is
+plain C reading a text file - nothing stops a NEW one from doing
+`strstr(line, "SET_LOAD_ACTION")` instead, exactly like TPMOS's own
+reference does. The integer-only constraint is specific to prisc+x's
+own OPCODE, not to "how this house does native managers" generally.
+
+--------------------------------------------------------------------------------
+## 5. UPDATE (2026-07-30, same session, direct instruction) - this is
+   not "C now, PAL maybe later." It's a standing principle:
+
+"the pal or the c should beable to consume the same data and ops. if u
+need to modify our vm to do that so be it. and truth be told we should
+have been making c and pal versions and testing them flagged"
+
+This changes §5 below from "pick Path A, defer Path B" to: BOTH real
+implementations should exist, BOTH should read/write the SAME
+underlying data files and call the SAME underlying reusable ops (the
+actual directory-scan/save/load logic - `agy_scan_dir`-shaped, the
+xyzfs jail resolution, the widget_cmds inbox/drain contract), and
+which ONE actually drives a given session should be a real, tested
+runtime flag - not two divergent, separately-maintained
+implementations that happen to look similar. `101.ledger-player-npc-
+simple+3`'s own real `_pal`-suffixed sibling layout
+(`lpns_word_menu_pal.chtpm` next to `lpns_word_menu.chtpm`) is the
+existing, real, ALREADY-SHIPPED precedent for "same screen, two real
+manager implementations, selectable" - this should be the STANDING
+house convention going forward for any project where this question
+comes up, not a one-off pattern to rediscover each time.
+
+CONCRETE IMPLICATION FOR §5's OWN "Path A / Path B" SPLIT BELOW: Path
+B (extending prisc+x to support real string-command relay) is no
+longer a deliberately-deferred, someday task - it is IN SCOPE now,
+because without it, a genuine PAL-driven version of the file browser
+CANNOT consume the same real markup-generation logic a C manager would
+use (string commands are how TPMOS's own reference - and mutaclysm's
+own real, cited standard - expects dynamic submenus to communicate).
+The two paths are not alternatives to choose between; they are two
+halves of the same real deliverable. Build the shared data/ops layer
+and the C manager first (per "do C first" - it's the smaller, lower-
+risk half, and it produces the real, concrete contract - state file
+shapes, op call conventions - the PAL version then has to match
+exactly, not invent its own), THEN extend prisc+x to let a PAL-driven
+manager drive the identical contract, THEN flag-test both against the
+SAME real harness (one harness, run twice, once per implementation,
+asserting identical real outcomes - not two separate harnesses that
+could quietly drift apart).
+
+--------------------------------------------------------------------------------
+## 5a. Two real paths forward - now understood as sequenced halves of
+     one deliverable, not alternatives (superseded framing preserved
+     below for the historical record of how this was first scoped)
+
+### Path A (recommended, do this first, per direct instruction: "do
+with c first, then do a prisc option"): a real, native C manager for
+agy-txt's file browser, mirroring TPMOS's own agy-text-editor_manager.c
+as closely as possible - real STRING commands (`SET_LOAD_ACTION`/
+`SET_SAVE_ACTION`/etc, no `KEY:n`), real dynamic `<button>` markup via
+`${directory_browser_markup}`-style vars, PARSER owns all nav/focus/
+marker-drawing, following game_manager.c's own real structural
+template (pthread poll loop, signal handling, `<module>` launch).
+
+FEASIBILITY: LOW-MEDIUM. Project-scoped only - touches 102.agy-txt's
+own `system/`/`manager/` dir and its own two `.chtpm` layouts, does
+NOT touch the shared `014.wsr-pal💸️📌️+2` VM or any other project.
+Real, proven precedent exists to copy the SHAPE from (game_manager.c)
+AND the exact CONTENT from (TPMOS's own agy-text-editor_manager.c,
+already fully read this session - save_to_path()/load_from_path()/
+find_autocomplete_matches()/append_aligned_button_attr() are all real,
+complete, ready-to-port functions, not something to design from
+scratch). Estimated real work: a genuine rebuild (new manager.c,
+new .chtpm layouts using real dynamic button markup instead of hand-
+drawn text, new harness matching the real interaction contract), but
+bounded, single-project, low blast radius, nothing house-wide at risk.
+
+### Path B (real, but bigger, house-wide, NOT blocking Path A): extend
+prisc+x.c's own `OP_READ_HISTORY` (and its own register model) to
+support real string-command relay, matching what TPMOS's PAL-native
+projects would need to do this WITHOUT a native C daemon at all.
+
+FEASIBILITY: MEDIUM-HIGH difficulty, HOUSE-WIDE blast radius. This is
+the shared VM every prisc+x/PAL project in the house rebuilds from
+(`014.wsr-pal💸️📌️+2/system/prisc+x.c`) - confirmed via this same
+session's own house-wide layout survey (§ elsewhere) that dozens of
+projects declare `<module>system/prisc+x pal/main_loop_chtpm.pal
+</module>`. The real difficulty isn't the opcode's own read side
+(swapping `fscanf("%d")` for a line-read is small) - it's that PRISC's
+own register file is INTEGER-ONLY by design (a real ISA-level
+property, not a quick patch), so relaying an arbitrary string back to
+a calling PAL script needs a genuinely new mechanism (e.g. write the
+raw string to a known side-channel file the PAL script's own `read_*`
+family can separately consume, rather than trying to fit a string into
+a register). This needs its own dedicated, carefully-scoped,
+separately-verified effort - explicitly NOT bundled into the agy-txt
+fix, and NOT started until Path A is done and re-validated, per direct
+instruction to do C first.
+
+--------------------------------------------------------------------------------
+## 6. Immediate next steps - updated for the unified C+PAL scope (§5)
+
+1. Do NOT continue extending the current buttonless/hand-drawn-marker
+   implementation - it's being replaced, not patched.
+2. Define the SHARED CONTRACT first, before either manager exists:
+   exact state-file shape (what today's `agy_browser_state.txt` would
+   become - browse_dir/cursor_pos/search_text/path_buffer, or whatever
+   the real port needs), exact op call conventions (agy_scan_dir's own
+   already-generic interface stays; the SAVE_AS/LOAD/xyzfs-jail
+   resolution logic already built in agy_widget_cmds.c's
+   resolve_save_path() stays too - both are already real, working,
+   manager-agnostic - confirmed via this session's own testing). This
+   contract is what BOTH managers below must produce/consume
+   identically - write it down before writing either manager, so
+   neither one quietly invents its own shape.
+3. Build the real native C manager first (`102.agy-txt/manager/` or
+   `system/agy_browser_manager.c`, following game_manager.c's own real
+   launch/poll shape - pthread, signal-handled, `<module>` launch),
+   porting TPMOS's own real save_to_path()/load_from_path()/
+   find_autocomplete_matches()/append_aligned_button_attr() logic
+   directly - these are complete, real, working functions already read
+   this session, not something to redesign. Real string commands
+   (`SET_LOAD_ACTION`-shaped), real dynamic `<button>` markup, PARSER
+   owns focus/nav - matching mutaclysm's own real, cited pattern (§2).
+4. Extend prisc+x.c's own `OP_READ_HISTORY` (and whatever register/
+   side-channel mechanism it needs - see §5a Path B's own feasibility
+   note on why a register can't directly hold a string) so a PAL-
+   driven manager can ALSO issue the same real string commands against
+   the SAME shared contract from step 2 - this is the part with real,
+   house-wide blast radius (§5a), do this carefully, with its own
+   dedicated verification pass, not folded silently into the agy-txt
+   work.
+5. Build the PAL-driven manager (a real `main_loop_chtpm.pal`-shaped
+   script, or its own dedicated `.pal` file) consuming the identical
+   shared contract from step 2, once step 4 makes that possible.
+6. New `.chtpm` layouts using real `${directory_browser_markup}`-style
+   dynamic button injection - no hand-drawn `[>]`/`[ ]` anywhere,
+   correct regardless of which manager (C or PAL) is actually driving
+   a given session.
+7. ONE real K3/§39-compliant harness, run TWICE - once against the C
+   manager, once against the PAL manager (a real flag, e.g.
+   `RUN_MANAGER=c` / `RUN_MANAGER=pal`, matching `_pal`-suffix-layout
+   precedent or a cleaner env-var equivalent) - asserting IDENTICAL
+   real outcomes from both, not two separately-trusted test suites
+   that could silently drift.
+8. Once this specific rebuild is done and re-verified, add a new
+   standards entry (§40, xyzos-standards) formalizing "build both a C
+   and a PAL implementation sharing one real data/ops contract,
+   flag-tested" as a standing house convention for future projects,
+   not a one-off pattern specific to agy-txt - direct instruction:
+   "truth be told we should have been making c and pal versions and
+   testing them flagged."
+================================================================================

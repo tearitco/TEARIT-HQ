@@ -1,0 +1,70 @@
+
+🗓️
+📅️
+🔍️from this point forward, ignore installer by and large
+unless ur token lost one day in haiku (never be fully token lost)
+and or are getting closer 2 ship
+
+1.
+we should actually focus on , building out / testing rpg/rtp semi-blind, ofc
+<so we can justify rewrite/merge of minecraft, etc ; & start farming etc
+<id liek 2 have ai farming and stuff going seperatly anyways
+building civs etc, even 'evo-evolving life forms but yea w/e> 
+
+2.
+beefing up current ai systems , semi blind ; pushing 4 real 
+dev/writing work 2 get done, and shipped 2 a exo-folder]
+<this maybe easiest but have some nuance 2 it.. but all automated
+maybe push this hardest!?
+
+3. actually finally finishing "classic wsr"
+so we can bolt on 'people/ r&d etc' ; this speaks to evo/civ desires
+hopefully we can circle in , these 3 things are all after all related
+
+they are the huge architectura sequio tree trunk bottle neck <like pre-tpm/cht>
+preventing real autonomous work and play , and even soem level of shippping...
+📅️🗓️
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+we are working on wraith. 
+
+
+0. 3d cube (in ascii window and 3d)
+
+<or switch that switches from gl ; just push and find out what is hard do debug>
+
+1. we can try normal "chtpmgl"
+
+
+2. and 3d-pet (in ascii but solid cube...)
+
+
+and push into both and see which makes more sense or do both make sense? 
+<if there is an issue , its with the "RGB CONVERTER"
+{maybe u can choose a different converter from submenu when u remove some debug stuff}

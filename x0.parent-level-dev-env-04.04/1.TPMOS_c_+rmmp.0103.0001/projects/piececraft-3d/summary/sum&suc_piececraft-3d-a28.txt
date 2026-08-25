@@ -1,0 +1,25 @@
+# TPMOS Project Succession: PIECECRAFT-3D
+Date: 2026-04-28
+Status: DEVELOPMENT (Phase 3 Started)
+
+## 🧬 Project Soul (Concept)
+A Minecraft-Lite voxel experience built on GL-OS. Unlike Minecraft, it allows the user to switch between controlling different player pieces (**Adam** and **Eve**) using a Selector.
+
+## 🧠 The Brain (Current Progress)
+- **Manager**: `piececraft-3d_manager.c` implements high-speed target switching via the `9` key. It updates `manager/state.txt` with the currently controlled ID.
+- **Player Sovereignty**:
+    - **Adam**: Sovereign piece with its own 3D coordinates.
+    - **Eve**: Sovereign piece with its own 3D coordinates.
+- **Theater**: `main.chtpm` displays the active piece and a placeholder for the voxel view stage.
+
+## 🗺️ Roadmap (Future Steps)
+1.  **Voxel Engine**: Integrate `render_voxels.c` (C + OpenGL) to read a 3D bitmask and render the world from sovereign states.
+2.  **Interaction**: Implement `break_block.+x` and `place_block.+x` Ops.
+3.  **Co-op Logic**: Allow AI-controlled characters to follow the player when not actively selected.
+
+## 🛠️ How to Continue
+- To modify movement: Add WASD handlers to `manager/piececraft-3d_manager.c` that call the standard `move_entity.+x` Muscle.
+- To change assets: Edit the `artifact.txt` files in each character'As piece folder (8x8x8 voxel bitmask).
+- Recompile: Run `sh button.sh c` from the TPMOS root.
+
+*"We are not characters. We are pieces in a world we can break."*

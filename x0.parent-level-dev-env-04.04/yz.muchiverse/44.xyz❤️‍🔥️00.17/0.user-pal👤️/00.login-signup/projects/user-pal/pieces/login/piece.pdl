@@ -1,0 +1,15 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | login
+META         | version            | 1.0
+
+METHOD       | Create Account          | SIGNUP
+METHOD       | Log In                  | LOGIN
+METHOD       | Log Out                 | LOGOUT
+METHOD       | Switch: asw_a_2492048 (Alice) * | SWITCH:asw_a_2492048
+METHOD       | Switch: asw_b_2492048 (Bob) | SWITCH:asw_b_2492048
+METHOD       | Switch: avmenu_1653663 (MenuTest) | SWITCH:avmenu_1653663
+METHOD       | Switch: avmenu_1654388 (MenuTest) | SWITCH:avmenu_1654388
+METHOD       | Switch: claude-0001 (AgentClaude0001) | SWITCH:claude-0001
+METHOD       | Switch: jb (JB Test) | SWITCH:jb
+METHOD       | Switch: schar_1744476 (SessionChar) | SWITCH:schar_1744476

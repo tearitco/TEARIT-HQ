@@ -1,0 +1,11 @@
+RAW_DROP_BYTES=629 HEAD=file:///media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e/home/jbez/Desktop/%5E.%F0%9F%93%B6%EF%B8%8F.SHARE%5D/%5E.%F0%9F%A6%BE%EF%B8%8F%5Dfullsharezip/%F0%9F%92%AA%F0%9F%8F%BE%EF%B8%8F%5D.no-desk.sharezi
+FAIL uri=file:///media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e/home/jbez/Desktop/%5E.%F0%9F%93%B6%EF%B8%8F.SHARE%5D/%5E.%F0%9F%A6 err=stat failed (errno path too long or missing): /media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e/home/jbez/Desktop/^.📶️.SHARE]/^.🦾️]fullsharezip/💪🏾️].no-desk.sharezip/📲️📵️.GTFO.flxbx.📦️arcbit♏️
+RAW_DROP_BYTES=37 HEAD=file:///home/no/Videos/dragn-1.webm
+
+OK path=/home/no/Videos/dragn-1.webm kind=1
+RAW_DROP_BYTES=153 HEAD=file:///media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e/home/jbez/Music/SP.music%5Darc.bit.DRV%5D!DL3!/04%5DDSS%5DGrand.Dragon/04.Grand.Dragon%5DTALE.mp3
+
+OK path=/media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e/home/jbez/Music/SP.music]arc.bit.DRV]!DL3!/04]DSS]Grand.Dragon/04.Grand.Dragon]TALE.mp3 kind=2
+RAW_DROP_BYTES=107 HEAD=file:///media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e/home/jbez/Music/sp.vs.missing!%3Fy%3F/satelites.mp3
+
+OK path=/media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e/home/jbez/Music/sp.vs.missing!?y?/satelites.mp3 kind=2

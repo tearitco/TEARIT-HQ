@@ -1,0 +1,15 @@
+<scene title="GL-Op-Ed (God Mode)" bg="20,20,20" />
+<camera mode="${camera_mode}" x="${cam_x}" y="${cam_y}" z="${cam_z}" pitch="${cam_pitch}" yaw="${cam_yaw}" roll="${cam_roll}" />
+
+<interact src="projects/op-ed-gl/session/history.txt" />
+
+# The God-Mode Canvas
+${game_map}
+
+<panel title="Editor Tools">
+    <button id="btn_interact" label="Fly Mode (ENTER)" onClick="INTERACT" />
+    <button id="btn_place" label="Place Tile (SPACE)" onClick="OP editor::place_tile ${current_map} ${xelector_x} ${xelector_y} ${armed_glyph}" />
+</panel>
+
+<text label="POS: (${xelector_x}, ${xelector_y}, ${current_z}) | ARMED: [ ${armed_glyph} ]" />
+<text label="[KEY]: ${last_key}" />

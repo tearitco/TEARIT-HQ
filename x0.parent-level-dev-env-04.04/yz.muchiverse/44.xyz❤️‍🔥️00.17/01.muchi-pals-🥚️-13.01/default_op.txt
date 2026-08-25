@@ -1,0 +1,19 @@
+# Custom Operations for muchi-pals's prisc+x program
+# Format: name type handler {description}
+
+out void builtin_out {print register to stdout}
+halt void builtin_halt {stop execution}
+tick_pets void ops/+x/tick_pets.+x {advance every pet's metabolism one epoch}
+generate_egg void ops/+x/generate_egg.+x {mint an egg for the owner}
+
+# Real chtpm-native (href + ${piece_methods}) dispatch/render pair -
+# see pal/main_loop_chtpm.pal and pieces/chtpm/layouts/*.chtpm.
+muchi_menu_input void ops/+x/muchi_menu_input.+x {piece.pdl METHOD dispatch + chtpm bridge sync for whichever muchi-pals screen is current}
+muchi_compose_frame void ops/+x/muchi_compose_frame.+x {render the current muchi-pals screen's live data into view.txt}
+
+# Original, pre-chtpm ASCII menu ops - kept, unused by the real "run"
+# action (button.sh now launches straight into chtpm mode, matching
+# pal-chain/wsr-pal's own real precedent), not deleted since they're
+# still real, working, independently-runnable code.
+menu_input void ops/+x/menu_input.+x {apply a keycode to menu nav/selection}
+compose_menu void ops/+x/compose_menu.+x {render the current menu screen into current_frame.txt}

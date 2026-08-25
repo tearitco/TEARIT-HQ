@@ -1,0 +1,8 @@
+[1784666717] compose_frame START
+[1784666717] compose_frame END
+[1784666727] compose_frame START
+[1784666727] compose_frame END
+[1784666731] compose_frame START
+[1784666731] compose_frame END
+[1784666733] compose_frame START
+[1784666733] compose_frame END

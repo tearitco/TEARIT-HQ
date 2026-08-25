@@ -1,0 +1,41 @@
+# Investigation Report: GLTPM Pipeline & Interact Mode Fix
+
+## 1. Problem Statement
+In the current GLTPM implementation, pressing "Enter" on an INTERACT button toggles the internal `is_map_control` state, but subsequent key presses (Arrows, etc.) still control the menu navigation instead of being routed to the project's interaction pipeline.
+
+## 2. Root Cause Analysis
+
+### 2.1 Missing Interaction Routing in `keyboard()`
+In `gl_desktop.c`, the `keyboard()` and `special_keyboard()` functions for `gltpm_app` were checking the state of `is_map_control`, but they were not effectively blocking the host-side menu logic. Specifically:
+- `move_selection()` was still being called for arrow keys.
+- Digit accumulation for "Nav >" jumps was still active.
+
+### 2.2 Standard CHTPM Pipe (The "Biblical" Reference)
+As seen in `chtpm_parser.c` (Lines 799-810) and `!.gem-flashlite--yolo/#.docs/!TPM2.PAL.MONOLITH+0.md` (Step 3: RELAY):
+1.  **Tag Discovery:** The parser looks for `<interact src="...">`.
+2.  **State Capture:** It sets a global `interact_history_path`.
+3.  **Relay:** If in **INTERACT** mode, `inject_raw_key()` writes directly to that path, skipping all OS-level menu logic.
+
+Our current `gltpm_parser.c` **does not parse the `<interact>` tag**, so the host doesn't know which `history.txt` to write to. It defaults to guessing the path in `gl_desktop.c`, which is brittle.
+
+### 2.3 Visual Feedback
+In `chtpm`, the `[^]` indicator indicates that the parser has yielded focus to the project manager. Our renderer was updated to show `[^]`, but the input logic wasn't "yielding."
+
+## 3. Implementation Plan
+
+### 3.1 `gltpm_parser.c` (Update)
+- Add a field `interact_src` to the `GLTPMScene` struct.
+- In `gltpm_load_scene`, parse the `<interact src="...">` tag and store the path.
+
+### 3.2 `gl_desktop.c` (Fix)
+- **Yield Logic:** In `keyboard()` and `special_keyboard()`, if `win->is_map_control` is 1, return early after routing the key to the project history.
+- **Dynamic Routing:** Use the `interact_src` path captured by the parser instead of hardcoding the path.
+- **ESC for Exit:** Ensure the `ESC` key (27) resets `win->is_map_control = 0` locally to return to menu navigation.
+
+## 4. Verification
+1.  Launch `fuzz-op-gl`.
+2.  Select "Control Map" and press ENTER.
+3.  Verify the indicator changes to `[^]`.
+4.  Press ARROW keys; verify the menu selection **does not move**.
+5.  Check `projects/fuzz-op-gl/session/history.txt` to see the injected keys.
+6.  Press ESC and verify the indicator returns to `[>]` and arrows move the menu again.

@@ -1,0 +1,23 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | zombie_01
+META         | version            | 1.0
+META         | determinism        | strict
+
+STATE        | name                 | Zombie
+STATE        | type                 | npc
+STATE        | pos_x                | 10
+STATE        | pos_y                | 3
+STATE        | pos_z                | 0
+STATE        | on_map               | 1
+STATE        | target               | player
+STATE        | emoji                | 🧟
+
+METHOD       | move                 | void
+METHOD       | chase                | void
+
+EVENT_IN     | player_moved         | void
+EVENT_IN     | player_seen          | void
+
+RESPONSE     | chased               | Braaains...
+RESPONSE     | player_seen          | I see you!

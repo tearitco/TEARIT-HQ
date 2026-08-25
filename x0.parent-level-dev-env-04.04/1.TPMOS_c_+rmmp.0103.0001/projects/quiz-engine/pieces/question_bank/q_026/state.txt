@@ -1,0 +1,5 @@
+name=Histidine
+formula=His (H)
+type=Imidazole-CH2CH(NH2)COOH
+groups=Amino Acid
+relevance=-NH2

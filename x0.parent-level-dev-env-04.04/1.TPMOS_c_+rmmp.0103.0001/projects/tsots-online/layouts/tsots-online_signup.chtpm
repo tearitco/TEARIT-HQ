@@ -1,0 +1,17 @@
+<panel>
+    <module>projects/tsots-online/manager/+x/tsots-online_manager.+x</module>
+    <text label="╔═══════════════════════════════════════════════════════════╗" /><br/>
+    <text label="║                U S E R   S I G N U P                      ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <cli_io id="tsots-onlinename_input" label="Enter tsots-onlinename" target_id="1" /><br/>
+    <cli_io id="password_input" label="Enter password" target_id="2" input_mode="password" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  " /><button label="Signup" onClick="KEY:4" /><text label="                                    ║" /><br/>
+    <text label="║  " /><button label="Login" href="projects/tsots-online/layouts/tsots-online_login.chtpm" /><text label="                                     ║" /><br/>
+    <text label="║  " /><button label="Clear" onClick="KEY:5" /><text label="                                     ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  Response: ${auth_response}                               ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  " /><button label="Back" href="projects/tsots-online/layouts/tsots-online_main.chtpm" /><text label="                                      ║" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+</panel>

@@ -1,0 +1,17 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | pet_rex
+META         | version            | 1.0
+
+STATE        | name                 | Rex
+STATE        | species              | dog
+STATE        | map_id               | map_zoo
+
+METHOD       | move                 | ops/+x/move_entity.+x
+METHOD       | select               | ops/+x/xlector_input.+x
+METHOD       | feed                 | ops/+x/feed_pet.+x
+METHOD       | pet                  | ops/+x/pet_pet.+x
+METHOD       | play                 | ops/+x/play_pet.+x
+METHOD       | export               | ops/+x/pet_export.+x
+
+RESPONSE     | default              | *Rex settles in*

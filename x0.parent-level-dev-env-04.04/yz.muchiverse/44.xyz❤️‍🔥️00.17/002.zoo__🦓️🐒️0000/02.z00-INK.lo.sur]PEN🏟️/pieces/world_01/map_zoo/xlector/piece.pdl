@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | xlector
+META         | version            | 1.0
+
+STATE        | name                 | xlector
+STATE        | pos_x                | 10
+STATE        | pos_y                | 6
+STATE        | map_id               | map_zoo
+
+METHOD       | move                 | ops/+x/move_entity.+x
+METHOD       | select               | ops/+x/xlector_input.+x
+
+RESPONSE     | default              | *xlector waiting*

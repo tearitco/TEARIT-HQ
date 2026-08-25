@@ -1,0 +1,48 @@
+<!-- event_editor.chtpm — REAL CHTPM layout
+     Nav law: DO NOT put numbers in labels — parser assigns continuous
+     interactive index 1..N (digit_accum multi-digit). Sections are
+     visual only; numbers never restart.
+     KEY:1-8 = method side-effects only (single digit inject).
+     EE:* for pages/rows (KEY:10+ is raw Enter — do not use).
+-->
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+
+    <!-- Pure ASCII only so chtpm_rgb_render glyph registry can draw text -->
+    <text label="+================================================================+" /><br/>
+    <text label="| EVENT EDITOR  ${nav_status}  view=${view_mode}  pkg=${pkg_name} |" /><br/>
+    <text label="+================================================================+" /><br/>
+
+    <text label="-- METHODS --" /><br/>
+    <button label="Save" onClick="KEY:1" /><br/>
+    <button label="Load" onClick="KEY:2" /><br/>
+    <button label="Import to Muta" onClick="KEY:3" /><br/>
+    <button label="Export to Desktop" onClick="KEY:4" /><br/>
+    <button label="Toggle Commands|Scratch" onClick="KEY:5" /><br/>
+    <button label="Edit .pal raw" onClick="KEY:6" /><br/>
+    <button label="New Page" onClick="KEY:7" /><br/>
+    <button label="Help" onClick="KEY:8" /><br/>
+
+    <text label="${game_map}" /><br/>
+
+    <text label="-- PAGES --" /><br/>
+    <button label="Page 1" onClick="EE:PAGE:1" /><br/>
+    <button label="Page 2" onClick="EE:PAGE:2" /><br/>
+    <button label="Page 3" onClick="EE:PAGE:3" /><br/>
+    <button label="Page 4" onClick="EE:PAGE:4" /><br/>
+
+    <text label="-- FIELDS --" /><br/>
+    <button label="Trigger: Action Button" onClick="EE:FIELD:trigger" /><br/>
+    <button label="Priority: Same as chars" onClick="EE:FIELD:priority" /><br/>
+    <button label="Options: Direction fix" onClick="EE:FIELD:options" /><br/>
+    <button label="Conditions / Switches" onClick="EE:FIELD:conditions" /><br/>
+
+    <text label="-- CONTENTS (${view_mode}) multi-digit jump OK --" /><br/>
+    ${event_content_rows}
+
+    <text label="-- FOOTER --" /><br/>
+    ${event_footer_rows}
+
+    <text label=" arrows=nav  digits=multi-digit (e.g. 17)  enter=commit  esc=BACK  KEY:5=toggle view" /><br/>
+</panel>

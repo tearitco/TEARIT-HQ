@@ -1,0 +1,36 @@
+Post-Work J20 Note
+
+Requested follow-up:
+- Add a way to show the output of the other AI turns after `end turn` is pressed.
+- This should work for autonomous runs too, so the user can see what the hidden actors did during the turn.
+
+Status:
+- Implemented as a `turn_summary` buffer in the XO-PET manager.
+- The summary is filled during the epoch loop and surfaced in the XO-PET frame after each turn.
+
+Verified:
+- `gui_state.txt` now includes `turn_summary=...`
+- `pieces/display/current_frame.txt` now shows `TURN SUMMARY:` in the live frame
+- the summary contains the per-entity actions from the finished epoch
+
+Desired behavior:
+- When a turn ends, store the per-entity actions in a visible buffer or variable.
+- Render that buffer in the frame or terminal log after the turn completes.
+- Keep the current CHTPM / TPMOS layout style.
+- Do not replace the existing menu flow.
+
+Why this matters:
+- The simulation needs visible proof that state changed.
+- The user wants to inspect the other pets' autonomous actions after the turn finishes.
+- This also helps with debugging, testing, and later RL / FSM / LLM training.
+
+Implementation idea:
+- Add a turn-summary variable or frame field.
+- Append each entity's action trace to it during the epoch.
+- Flush it into the post-turn log when `STEP` or `END TURN` is processed.
+- Preserve the existing frame history files so the summary can be replayed later.
+
+Testing target:
+- Run autonomous mode and confirm the buffer shows each entity's turn output.
+- Run controller mode and confirm the same output appears after `end turn`.
+- Verify the summary is visible in the live ASCII frame, not just in a hidden file.

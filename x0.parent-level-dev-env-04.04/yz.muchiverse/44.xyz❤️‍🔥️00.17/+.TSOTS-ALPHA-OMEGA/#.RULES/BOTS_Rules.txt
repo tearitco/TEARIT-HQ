@@ -1,0 +1,37 @@
+B.O.T.S. (Battle of the Sovereigns)
+Theme: A blood-based sci-fi economy set on Mars involving biotech, vampires, and corporate law firms in a "Wild West" setting.
+
+Game Setup
+- Board Size: 8x8 Square Grid.
+- Total Pieces: 32 (16 per player).
+- Starting Resources: 
+    - Money/Blood: 100 credits.
+    - Bullets: 0 (must be purchased or produced).
+    - Stocks: 0 (purchasable at the Market).
+- Piece Placement: Players set up on the two rows closest to them (Rows 0-1 and Rows 6-7).
+
+Pieces (Per Player)
+1. King: High-health leader with a powerful melee attack.
+2. Queen: High-priority piece. Can "Convert" enemy units to your side.
+3. Nurse: Support units that can heal or revive dead pieces.
+4. Pistol Gunner: Standard ranged units. (Consumes 1 Bullet).
+5. Auto Gunner: Rapid-fire unit. (Consumes Bullets).
+6. Sniper: Long-range specialist. (Consumes 1 Bullet).
+7. Grenadier: Area-of-effect attacker. (Consumes 1 Bullet).
+8. Engineer: Can build/fix Robots and "Work" at Factories to produce bullets.
+9. Artist: Support unit capable of converting enemies.
+10. Lawyer: Uses "Litigation" to revive or handle legalities of dead units.
+11. Archer: Ranged attacker (2-space range).
+12. Robot: Powerful mechanical unit; if damaged, must be repaired by an Engineer.
+13. Factory: Stationary structures (built during play) used to produce bullets.
+
+Core Rules
+- Turn Structure: Each player gets 3 Actions per turn.
+- Actions: Moving, Attacking, Buying Items, or using a Special Skill (Heal, Litigate, Work) each count as 1 action.
+- The Blood Tax: Every unit requires "blood" to survive. If your bank hits zero and you cannot pay the tax, you lose immediately.
+- The Market: Players can spend an action to check the current price of Stocks or Bullets. Buying low and selling high is a key strategy for maintaining your "Blood" bank.
+- Combat: Most attacks have a range and a success probability. Some units (Gunners) require Bullets to attack; others use "Barehanded" attacks as a last resort.
+
+Win State
+- Assassination: Capture/Kill the enemy Queen.
+- Bankruptcy: Deplete the enemy's money until they can no longer pay their "Blood Tax."

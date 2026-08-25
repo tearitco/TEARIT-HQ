@@ -1,0 +1,4 @@
+last_message=NEW FILE via widget cmd
+ge=harness session
+cursor_pos=0
+file_path=docs/untitled.txt

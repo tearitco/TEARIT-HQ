@@ -1,0 +1,8 @@
+# chat_hai_config.pdl - live-edited by the GUI buttons (chat_hai_hq_render.c)
+SECTION | sleep_between | 6
+SECTION | window_width | 280
+SECTION | window_bottom_margin | 50
+SECTION | window_right_margin | 10
+SECTION | window_top_offset | 100
+SECTION | require_cli_activation | 0
+SECTION | sound_on | 1

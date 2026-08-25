@@ -1,0 +1,5 @@
+# branch-demo.plan — proves BRANCH evaluates a real deterministic
+# condition and runs the correct sub-plan (never asks a model to pick
+# the branch). Condition here is deterministic (directory exists) so
+# this test isolates BRANCH's own logic from model reliability.
+BRANCH | [ -d /tmp/claude-1000 ] | subplans/branch-true.plan | subplans/branch-false.plan

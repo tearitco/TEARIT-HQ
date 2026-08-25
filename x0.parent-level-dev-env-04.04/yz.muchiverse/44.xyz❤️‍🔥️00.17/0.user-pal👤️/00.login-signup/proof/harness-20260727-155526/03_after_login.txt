@@ -1,0 +1,22 @@
++============================================================+
+|  U S E R - P A L                                           |
++============================================================+
+|                                                            |
+|  Logged in as: uloginA_1625738                             |
+|                                                            |
+|  Enter a user ID (and display name, if new), then          |
+|  choose Create Account or Log In below.                    |
+|                                                            |
+|  Logged in as 'uloginA_1625738'.                           |
+|                                                            |
++============================================================+
+
+| [ ] 1. User ID: [uloginA_1625738]                                        |
+| [ ] 2. Display Name (new accounts only): [LoginHarnessA]                                        |
+[ ] 3. [Create Account]
+[>] 4. [Log In]
+[ ] 5. [Log Out]
+ (Ctrl+C to quit)
+
++=========================================================+
+Nav > _

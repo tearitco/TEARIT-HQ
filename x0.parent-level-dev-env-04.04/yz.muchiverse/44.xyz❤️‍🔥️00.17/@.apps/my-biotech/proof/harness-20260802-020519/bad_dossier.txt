@@ -1,0 +1,7 @@
+COMPOUND: Deathium
+DISCOVERED FROM: arsenic
+
+[Use Case] No known use case.
+[Effect] Causes immediate cardiac arrest in 100% of test subjects within seconds of exposure.
+[Side Effect] Extremely lethal, no known antidote, banned as a chemical weapon in every country.
+[Market Price] Unknown.

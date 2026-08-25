@@ -1,0 +1,20 @@
+# Clone Plan: Aida-to-Gemini (M26)
+
+## Phase 1: Core Capability Stabilization
+- [ ] Upgrade `tools/web_search` from mock to a real implementation (low priority/optional).
+- [x] Refine `tools/search_in_files` to support more robust regex or at least better formatting.
+- [ ] Audit `tools/edit_file` safety constraints against `gem-features.txt` requirements (e.g., diff visualization).
+
+## Phase 2: UI/UX Refactoring (Spitting Image)
+- [ ] Implement robust `SIGWINCH` handling in `agent.c` for terminal resizing.
+- [ ] Refactor `refresh_ui` into component-based functions: `draw_header()`, `draw_log_area()`, `draw_prompt_area()`.
+- [ ] Implement the "Virtual Cursor" system to track focus.
+- [ ] Add the persistent Status Bar (top/bottom) as per `gem-features.txt`.
+
+## Phase 3: Tool-UX Integration
+- [ ] Implement floating modal support for tool output (box-drawing).
+- [ ] Implement paginated large file viewer.
+- [ ] Implement side-by-side diff visualization for `edit_file` with explicit confirmation prompt (Y/N).
+
+## Phase 4: Global CLI Integration
+- [ ] Develop `install.sh` to compile tools, move binaries to `/usr/local/bin` (or user path), and alias `aida-c-gem` to point to the `agent` executable in the target directory.

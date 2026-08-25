@@ -1,0 +1,4 @@
+wallet_address=abc123def456
+current_subnet=chat
+last_response=tsots-irc Ready. Press 1-7 for actions.
+wallet_selector=[abc123def456] def456ghi789

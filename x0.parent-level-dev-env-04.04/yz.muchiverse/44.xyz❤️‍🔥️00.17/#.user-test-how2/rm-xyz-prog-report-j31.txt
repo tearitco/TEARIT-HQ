@@ -1,0 +1,137 @@
+================================================================================
+rm-xyz-prog-report-j31.txt — progress report on the rtp-xyz/rpg-xyz
+(RPG Maker parity) effort, written 2026-07-31 for you, the project
+owner. Plain-language summary + hands-on steps you can run yourself to
+see and verify everything described below.
+================================================================================
+
+## THE SHORT VERSION
+
+We designed the full architecture for both variants (rtp-xyz and
+rpg-xyz), cleaned mutaclysm's zombie theming out of both game copies,
+and built real, working save/load for rtp-xyz — you can save your
+game to a real slot and load it back, verified live, not just
+"compiles." mutaclysm itself was never touched — everything happened
+in its two clones, per your own instruction.
+
+## WHAT GOT DONE, IN ORDER
+
+### 1. Two architecture documents
+
+`300.rtp-xyz/dox/rtp-xyz-architecture.md` and `300.rpg-xyz/dox/
+rpg-xyz-architecture.md` — the real design docs from our long
+discussion: how the event system will map onto real PAL scripts (not
+a fake interpreter — actual runnable code), how the Database editor
+will cover the full RPG Maker category set, how battle will work as a
+real plugin (not hardcoded — your own tactics/roguelike bias becomes
+the first of several swappable options, reusing two systems that
+already exist and work: `205.ttg-tactics` and `203.gb-pokemon`), and
+how the two variants differ (rtp-xyz = everything in one game window
+with screens you switch between; rpg-xyz = separate tool windows that
+hand content to each other). Also captured your own notes on future
+voxel-rendering styles and the "xyz-os as a general app platform"
+framing, so none of that gets lost even though we're not building it
+yet.
+
+### 2. De-themed both game copies (removed the zombie survival theme)
+
+Turned out to be a smaller job than expected — the terrain, furniture,
+and item content was ALREADY generic (walls, floors, tables, sticks,
+potions — no zombie branding at all). The only actually zombie-themed
+thing was the monster list itself. Zombies → Slimes (a classic,
+generic RPG enemy), same difficulty numbers, just re-skinned. Also
+double-checked that the game's own action menu (pickup/drop/eat/save/
+etc.) was ALREADY built the flexible, data-driven way you wanted
+(reads from a file, not hardcoded in the program) — someone had
+already done that work, we just confirmed it and didn't need to
+rebuild it.
+
+### 3. Real save/load for rtp-xyz
+
+This was the bulk of today's work. Built a new background helper
+program that gives you a real "Save / Load" screen from the main game
+menu. Saving creates a real save file on disk (with the turn number
+and timestamp) in your actual user folder. Loading picks a save from
+a real list and puts your character back exactly where they were.
+
+## HOW YOU CAN TEST THIS YOURSELF
+
+You'll need a terminal. These are the exact commands.
+
+### A. See the de-themed monsters
+
+```
+cd "300.rtp-xyz"
+bash button.sh run
+```
+Walk around (arrow keys move the map cursor once you engage "Control
+Hero" — press Enter on it first) and look for green slime monsters (🟢)
+instead of zombies. Press Ctrl+C when done, or use the in-game Quit.
+
+### B. Try real save/load
+
+1. Run the game the same way: `bash button.sh run` (from inside
+   `300.rtp-xyz/`).
+2. On the main screen, arrow down (or type the number) to select
+   "Save / Load" and press Enter.
+3. You'll see a screen that says either "(xyzfs (real house))" — using
+   your real account folder — or "(local dev fallback)" if no account
+   folder was found. Either is fine and expected.
+4. Select "Save Now (new slot)" and press Enter. You'll get a message
+   like "Saved to save_1 (turn 0, xyzfs)."
+5. Go back ("Back to Game"), move your character around a bit (engage
+   "Control Hero", walk with arrow keys).
+6. Go back into "Save / Load" again — you should now see your save
+   listed, e.g. "save_1 (turn N)".
+7. Select it and press Enter — your character should snap back to
+   wherever it was when you saved, not where you just walked to.
+
+### C. See the actual save file on disk
+
+```
+find ~/Desktop/*/xyzfs/users/*/home/projects/rtp-xyz -maxdepth 2
+```
+(adjust the path if your house folder is somewhere else — this
+searches under the shared `xyzfs` folder at the top of the whole
+project tree). You should see a real `save_1/` folder (or higher-
+numbered, if you saved more than once) containing `world_01/` and
+`save_meta.txt` — a real text file with the turn number and a Unix
+timestamp.
+
+### D. Read the design docs yourself
+
+```
+300.rtp-xyz/dox/rtp-xyz-architecture.md
+300.rpg-xyz/dox/rpg-xyz-architecture.md
+```
+These are long and technical (written for future agents/developers,
+not casual reading), but section headers are in plain English if you
+want to skim: event system, database editor, plugin system, GUI
+architecture, save/load, testing, de-theming, milestones.
+
+## WHAT'S NOT DONE YET (so you know what "testable" doesn't cover)
+
+- rpg-xyz (the OTHER variant — separate tool windows instead of one
+  game window) doesn't have save/load yet. Same design, not built.
+- No map editor, no event editor, no database screen, no battle
+  system yet — those are all real, substantial, separate pieces of
+  work still ahead, per the milestone tables in the architecture docs.
+- Only one save slot was actually tested end-to-end. Multiple saves,
+  naming your own save, and deleting old saves aren't built yet — you
+  can currently only ever add a new auto-numbered slot.
+- No automated test script for save/load yet (today's testing was me
+  doing it live, by hand, the same way you'd do it above) — a real,
+  repeatable test script is a separate follow-up task, not done today.
+
+## IF SOMETHING LOOKS WRONG WHEN YOU TEST THIS
+
+- If the Save/Load screen looks blank or frozen the very first time
+  you open it: wait a second and re-enter it (leave via "Back to
+  Game" then go back in) — there's a known, documented quirk where
+  the very first screen draw can be a beat behind the real data. If
+  it's STILL blank after that, that's a real bug worth reporting.
+- If you see old "Zombie Child hits you" messages in the log at the
+  bottom of the game screen even after the de-theme: that's cosmetic
+  leftover text from testing earlier today, not a real bug — the
+  actual monsters you'll encounter are slimes now.
+================================================================================

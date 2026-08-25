@@ -1,0 +1,5 @@
+name=Ethanol
+formula=C2H5OH
+type=Alcohol
+groups=-OH
+relevance=Alcoholic beverage component; undergoes oxidation to acetaldehyde/acetic acid.

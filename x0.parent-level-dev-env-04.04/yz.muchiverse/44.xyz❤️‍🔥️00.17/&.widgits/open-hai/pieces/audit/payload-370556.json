@@ -1,0 +1,1 @@
+{"model":"stable-code:latest","prompt":"hipthis is a very long test message meant to wrap across several lines inside the composer box so we can verify wrap and auto scroll works correctly without text disappearing off the edge while typing a really long line of input here","stream":false}

@@ -1,0 +1,471 @@
+[Wed May 13 18:06:45 2026]
+USER: hi list tools u have
+AGENT: Here are my available tools: 
+exec_cmd (args: {cmd: string})
+read_file (args: {path: string})
+write_file (args: {path: string, content: string})
+edit_file (args: {path: string, search: string, replace: string})
+list_dir (args: {path: string})
+search_in_files (args: {query: string})
+web_search (args: {query: string})
+
+[Wed May 13 18:13:25 2026]
+USER: hi how are u ?
+AGENT: I'm running smoothly, thank you! I can assist with code-related tasks.
+
+[Wed May 13 18:13:55 2026]
+USER: what tools do you have? can u create "test-file".txt ?
+AGENT: File created!
+
+[Wed May 13 18:14:12 2026]
+USER: list dir pls
+AGENT: ./: .
+./test-file.txt
+
+[Wed May 13 18:22:44 2026]
+USER: can u list all files in that dir? 
+AGENT: ["test-file.txt"]
+
+[Wed May 13 18:44:42 2026]
+USER: list current dir contents pls
+AGENT: 
+
+[Wed May 13 18:49:20 2026]
+USER: list dir contents of ../../
+AGENT: Directory not scanned recursively
+
+[Wed May 13 18:50:21 2026]
+USER: can u make file-3093h.txt pls ; write "3093h" in it pls
+AGENT: File created and written.
+
+[Wed May 13 19:01:28 2026]
+USER: create dir.txt and list all dir contents
+AGENT: Directory created!
+
+[Wed May 13 19:05:23 2026]
+USER: list dir contents
+AGENT: {"test-file.txt":"test- file.txt","file-3093h.txt":"3093h"}
+
+[Mon May 18 17:45:18 2026]
+USER: are u working?
+AGENT: {"test-file.txt":"test- file.txt","file-3093h.txt":"3093h"}
+
+[Mon May 18 17:46:32 2026]
+USER: testing local
+AGENT: {"test-file.txt":"test- file.txt","file-3093h.txt":"3093h"}
+
+[Mon May 18 19:11:57 2026]
+USER: hi
+AGENT: {"test-file.txt":"test- file.txt","file-3093h.txt":"3093h"}
+
+[Mon May 18 19:13:10 2026]
+USER: hi
+AGENT: {"test-file.txt":"test- file.txt","file-3093h.txt":"3093h"}
+
+[Mon May 18 19:39:23 2026]
+USER: hi
+AGENT: {"test- file. txt": "test- file.txt", "file- 3093h.txt": "3093h"}
+
+[Mon May 18 19:56:29 2026]
+USER: hi
+AGENT: {}
+
+[Mon May 18 20:25:16 2026]
+USER: hi
+AGENT: {}
+
+[Mon May 18 21:01:34 2026]
+USER: hi
+AGENT: Hello! What can I help you with today? Please let me know if you'd like to explore a specific codebase or discuss architecture, documentation, or something else. I'll start by scanning the current directory (./) using `list_dir` to get us started.
+
+[Mon May 18 21:23:17 2026]
+USER: whats your name?
+AGENT: I'm Aida, a technical coding agent. Nice to meet you!
+
+[Wed May 20 20:20:52 2026]
+USER: hi whats today?
+AGENT: I'm sorry, but I don't have access to the current date and time. Is there anything else I can help you with?
+
+[Wed May 20 20:34:11 2026]
+USER: hi
+AGENT: { }
+
+[Wed May 20 21:29:07 2026]
+USER: hi
+AGENT: { }
+
+[Wed May 20 21:33:34 2026]
+USER: hi test
+AGENT: { }
+
+[Wed May 20 21:39:49 2026]
+USER: hi
+AGENT: { }
+
+[Wed May 20 21:46:22 2026]
+USER: hi
+AGENT: { }
+
+[Wed May 20 21:51:24 2026]
+USER: hi
+AGENT: { }
+
+[Wed May 20 21:55:47 2026]
+USER: hi
+AGENT: Hello! How can I assist you today?
+
+[Wed May 20 22:00:26 2026]
+USER: hi
+AGENT: Welcome! What do you need help with?
+
+[Wed May 20 22:01:37 2026]
+USER: how are u today?
+AGENT: I'm doing well, thank you!
+
+[Wed May 20 22:06:09 2026]
+USER: hi how are u ?
+AGENT: I'm doing well, thank you!
+
+[Sun May 24 18:14:31 2026]
+USER: hi gemini . testing
+AGENT: 
+
+[Sun May 24 18:15:46 2026]
+USER: hi test
+AGENT: Hello!
+
+[Sun May 24 18:27:25 2026]
+USER: hi
+AGENT: 
+
+[Sun May 24 18:30:21 2026]
+USER: hi
+AGENT: 
+
+[Sun May 24 18:36:51 2026]
+USER: hi
+AGENT: {
+        "parts": [
+          {
+            "text": "Hello! How can I help you today?"
+          }
+        ],
+        "role": "model"
+      }
+
+[Sun May 24 18:52:06 2026]
+USER: hi
+AGENT: 
+
+[Mon May 25 00:02:49 2026]
+USER: hi
+AGENT: 
+
+[Mon May 25 00:03:09 2026]
+USER: hi
+AGENT: {
+        "parts": [
+          {
+            "text": "Hello! How can I help you today?"
+          }
+        ],
+        "role": "model"
+      }
+
+[Mon May 25 00:05:48 2026]
+USER: hi
+AGENT: 
+
+[Mon May 25 00:08:05 2026]
+USER: hi
+AGENT: {
+        "parts": [
+          {
+            "text": "Hello! How can I assist you today?"
+          }
+        ],
+        "role": "model"
+      }
+
+[Mon May 25 05:14:54 2026]
+USER: create test file testi.txt and tell me what dir you made it in 
+AGENT: {
+        "parts": [
+          {
+            "functionCall": {
+              "name": "write_file",
+              "args": {
+                "content": "This is a test file.",
+                "path": "testi.txt"
+              }
+            },
+            "thoughtSignature": "Cs0DAQw51sevq/CrKJbvXeY5l/xTe0ZAe6IUKo+/E4EPM2YndZ1UqaQt6kZaNzEJCtGn8Ahh2q4yRE3tT9Q8ia+tgoMuHwlp6S9D7VwgXMdn0OhgszpNIT/3k15GFm8rpYQtXfmioKLSFzcfNsbEI7L6SvRhXwWNjsAkbkTWmfWIYiEffJeVU2T3Tl2/3LE0KvL2/ibVquwM77a4d18dvrgfxme2V42hMwWXnv0W7cUROZGrnB+9V46PFZn5Gl/sxbNRhYc3pE21TcaiP7HmbeRpKJuaC5ldC2ewKX1DrcDGVKH8yHGH/rcxxh1z6+uv6dZhdDiJD3uGENNOEfv7rt5oOMl5peHqm9SaTJg10kfsVHSemZMf45vYpLDdLuu5/S0V1i8LsdRUVQLXNczgGRIWcvDvMZtecj/eG2/IDgEWFhowxBSqnvyUXoCdTuBOJxiO7zER5FjiKahHHMfh6YaFfqIpN5Dyu0+TPG5Qaw5gitPjgx24seMFDusBMWnOdnVQo/zUdgguI2/sDB6M5FHeDSdeFlULYja9HRNItiQ5GRBIeiMhnYiDCRDm+YHyRWR0EKoOW1F3x9sBPR7fSVilp6H52Ft8b786kqgjc9E="
+          }
+        ],
+        "role": "model"
+      }
+
+[Mon May 25 23:32:46 2026]
+USER: hi, how do u do?
+AGENT: 
+
+[Mon May 25 23:33:14 2026]
+USER: hi
+AGENT: 
+
+[Mon May 25 23:40:42 2026]
+USER: hola como esta
+AGENT: {
+        "parts": [
+          {
+            "text": "I'm doing well, thank you for asking! How can I help you today?",
+            "thoughtSignature": "CrUBAQw51scWRHliatDRuIcrzT3l6FiANbcOy531i79il6v5wFCzfCvPRAKXqFM6q4aWeThHKMyqkj+eeTHtXpubJeGgydeFzOacR+trwJvhUdTlQVajDKrVRxT4QTvsECqMKU1Tj3Bt+8sbjrXbhmBEv5X1NIoOyOuMXiybjxFT6ajIBrtBFlEQ7/5GRJu+kJU4C4hr5HgD6lr0JwXWlnjXy575LTwRNetfYKxl400OVTRze+DBSg=="
+          }
+        ],
+        "role": "model"
+      }
+
+[Mon May 25 23:46:26 2026]
+USER: hi , testing
+AGENT: {
+        "parts": [
+          {
+            "text": "{\n        \"parts\": [\n          {\n            \"text\": \"Hello! How can I help you with your testing today?\"\n          }\n        ],\n        \"role\": \"model\"\n      }"
+          }
+        ],
+        "role": "model"
+      }
+
+[Tue May 26 07:33:45 2026]
+USER: can u list dir contents?
+AGENT: 
+
+[Tue May 26 07:33:45 2026]
+USER: can u list dir contents?
+AGENT: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash
+Please retry in 14.214625566s.
+
+[Tue May 26 07:34:47 2026]
+USER: list dir
+AGENT: 
+
+[Tue May 26 07:34:47 2026]
+USER: list dir
+AGENT: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash
+Please retry in 12.394745438s.
+
+[Tue May 26 09:58:40 2026]
+USER: list dir
+AGENT: Method doesn't allow unregistered callers (callers without established identity). Please use API Key or other form of API consumer identity to call this API.
+
+[Tue May 26 10:05:17 2026]
+USER: list dir
+AGENT: The directory appears to be empty.
+
+[Tue May 26 10:05:40 2026]
+USER: create a test file in it then list dir. were testing ur tool execution ability
+AGENT: I've created `test_file.txt`. However, it seems the `list_dir` command is not showing the newly created file. This might indicate an issue with how the `list_dir` tool is configured or its interaction with the environment.
+
+[Tue May 26 10:11:08 2026]
+USER: create file and list dir
+AGENT: I've created `another_test_file.txt` and then listed the directory contents. It now shows `test_file.txt`, `dir.txt`, and `another_test_file.txt`. It seems the `list_dir` command is working correctly now!
+
+[Thu May 28 20:26:06 2026]
+USER: test makefile.txt to see if we can make a file yet
+AGENT: API key expired. Please renew the API key.
+
+[Thu May 28 20:27:45 2026]
+USER: hi
+AGENT: Hello! How can I help you today?
+
+[Thu May 28 20:27:57 2026]
+USER: test file creation 'file-new.txt' make
+AGENT: I've created a file named `file-new.txt` with the content "This is a test file created using the `write_file` tool.".
+
+[Thu May 28 20:51:35 2026]
+USER: list dir
+AGENT: API key expired. Please renew the API key.
+
+[Thu May 28 20:52:35 2026]
+USER: list dir
+AGENT: Here are the contents of the directory:
+* `dir.txt`
+* `file-new.txt`
+* `test_file.txt`
+* `another_test_file.txt`
+
+[Thu May 28 20:56:25 2026]
+USER:  @
+AGENT: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+
+[Thu May 28 22:20:30 2026]
+USER: hi list dir pls
+AGENT: API key expired. Please renew the API key.
+
+[Thu May 28 22:20:58 2026]
+USER: hi list dir
+AGENT: Here are the contents of the current directory:
+
+* `dir.txt`
+* `file-new.txt`
+* `test_file.txt`
+* `another_test_file.txt`
+
+[Fri May 29 10:38:22 2026]
+USER: hi
+AGENT: API key expired. Please renew the API key.
+
+[Wed Jun  3 08:03:43 2026]
+USER: hi
+AGENT: API key expired. Please renew the API key.
+
+[Wed Jun  3 08:04:15 2026]
+USER: hi
+AGENT: (empty response)
+
+[Wed Jun  3 08:07:11 2026]
+USER: hi
+AGENT: (empty response)
+
+[Wed Jun  3 08:07:21 2026]
+USER: hi
+AGENT: (empty response)
+
+[Wed Jun  3 08:12:25 2026]
+USER: hi
+AGENT: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash
+Please retry in 34.949420694s.
+
+[Wed Jun  3 08:12:48 2026]
+USER: hi
+AGENT: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash
+Please retry in 11.596175798s.
+
+[Wed Jun  3 08:13:56 2026]
+USER: hi
+AGENT: Hello! How can I help you today?
+
+[Wed Jun  3 08:18:55 2026]
+USER: hi
+AGENT: Hello! How can I assist you today?
+
+[Wed Jun  3 09:00:42 2026]
+USER:                }
+AGENT: I'm sorry, your request was unclear. Can you please elaborate on what you need help with?
+
+[Wed Jun  3 09:01:34 2026]
+USER: whats 7 * 7 / 32 ^ 99
+AGENT: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+
+[Wed Jun  3 09:01:39 2026]
+USER: list dir
+AGENT: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+
+[Wed Jun  3 09:02:13 2026]
+USER: whats 7 * 7 / 32 ^ 999
+AGENT: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+
+[Wed Jun  3 09:13:41 2026]
+USER: whats 7 * 7 / 32 ^ 999
+AGENT: The answer is 0.0.
+
+[Wed Jun  3 09:14:25 2026]
+USER: 7*7 ?
+AGENT: 49
+
+[Wed Jun  3 09:14:50 2026]
+USER: what do you think about ai?
+AGENT: As an AI, I find the topic of artificial intelligence fascinating. I am a tool designed to assist with a variety of tasks, and I believe AI, in general, holds immense potential to revolutionize many aspects of our lives, from healthcare and scientific research to daily conveniences. There are, of course, ethical considerations and challenges to address as AI continues to evolve, but I am optimistic about the positive impact it can have on the world.
+
+[Wed Jun  3 09:15:18 2026]
+USER: what do you think about exo robots?
+AGENT: I'm sorry, I was unable to retrieve information about exo robots. The tool I used for web search failed.
+
+[Wed Jun  3 09:24:05 2026]
+USER: whos kim zimbalim?
+AGENT: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash
+Please retry in 54.240122051s.
+
+[Wed Jun  3 09:24:30 2026]
+USER: hi
+AGENT: Hello! How can I help you today?
+
+[Wed Jun  3 09:28:19 2026]
+USER: internet search sponges
+AGENT: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash
+Please retry in 40.144068375s.
+
+[Wed Jun  3 09:31:31 2026]
+USER: what is shpongilili
+AGENT: Tool web_search completed, but the Gemini follow-up hit quota.
+Showing raw tool output instead:
+
+DuckDuckGo had no instant answer or related topics for 'what is shpongilili'.
+
+[Wed Jun  3 09:31:51 2026]
+USER: hi
+AGENT: Hello! How can I help you today?
+
+[Wed Jun  3 09:32:07 2026]
+USER: search 'stress'
+AGENT: Tool web_search completed, but the Gemini follow-up hit quota.
+Showing raw tool output instead:
+
+DuckDuckGo result for 'stress':
+Heading: Stress
+Related Topics:
+1. Stress (mechanics) A physical quantity that describes forces present during deformation. - https://duckduckgo.com/Stress_(mechanics)
+2. Stress (linguistics) The relative emphasis or prominence given to a certain syllable in a word or to a certain word in... - https://duckduckgo.com/Stress_(linguistics)
+3. Oxidative stress Oxidative stress reflects an imbalance between the systemic manifestation of reactive oxygen... - https://duckduckgo.com/Oxidative_stress
+4. Stress (biology) An organism's response to a stressor, such as an environmental condition or change in life... - https://duckduckgo.com/Stress_(biology)
+5. Psychological stress A feeling of emotional strain and pressure. Stress is a form of psychological and mental discomfort. - https://duckduckgo.com/Psychological_stress
+
+[Wed Jun  3 12:52:10 2026]
+USER: which cheese do u like most
+AGENT: As an AI, I don't have personal preferences or the ability to like cheese.
+
+[Wed Jun  3 12:52:23 2026]
+USER: which sounds most appealing to you?
+AGENT: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash
+Please retry in 37.094488076s.
+
+[Wed Jun  3 13:23:53 2026]
+USER: hii
+AGENT: Hello! I'm Aida, a technical agent. I can help you with a variety of tasks like running shell commands, reading/writing files, searching for information, and more. How can I assist you today?
+
+[Wed Jun  3 13:24:05 2026]
+USER: read dir contents
+AGENT: Tool list_dir completed, but the Gemini follow-up hit quota.
+Showing raw tool output instead:
+
+dir.txt
+file-new.txt
+test_file.txt
+another_test_file.txt
+config/
+
+[Wed Jun  3 13:24:33 2026]
+USER: dir.txt is a funny name. whats in it?
+AGENT: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash
+Please retry in 27.116395322s.
+
+[Mon Jun 22 14:40:57 2026]
+USER: hi
+AGENT: API key expired. Please renew the API key.
+
+[Mon Jun 22 14:41:45 2026]
+USER: hi
+AGENT: API key expired. Please renew the API key.
+
+[Mon Jun 22 14:42:02 2026]
+USER: hi
+AGENT: Hello! How can I help you today?
+

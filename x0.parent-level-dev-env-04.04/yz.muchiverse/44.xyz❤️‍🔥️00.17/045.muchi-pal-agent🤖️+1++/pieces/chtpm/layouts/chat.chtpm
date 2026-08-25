@@ -1,0 +1,9 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <module>manager/+x/path_nav_manager.+x</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="${game_map}" /><br/>
+    <cli_io id="message_input" label="Message" target_id="message_input" /><br/>
+    ${nav_menu}
+    <text label=" (Ctrl+C to quit)" /><br/>
+</panel>

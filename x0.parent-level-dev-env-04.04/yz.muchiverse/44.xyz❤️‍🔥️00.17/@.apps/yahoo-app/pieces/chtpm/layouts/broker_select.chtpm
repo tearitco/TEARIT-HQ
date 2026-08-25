@@ -1,0 +1,11 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/broker_select_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|              S E L E C T   B R O K E R                   |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <button label="Yahoo Finance (full)" href="pieces/chtpm/layouts/broker.chtpm" /><br/>
+    <text label="+============================================================+" /><br/>
+    <button label="Back to Bank" href="pieces/chtpm/layouts/bank.chtpm" /><br/>
+    <text label=" (Ctrl+C to quit)" /><br/>
+</panel>

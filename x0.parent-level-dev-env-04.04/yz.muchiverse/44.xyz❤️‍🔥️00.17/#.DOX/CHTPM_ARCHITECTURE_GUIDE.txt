@@ -1,0 +1,349 @@
+================================================================================
+LPNS +3 VERSIONS - FULL CHTPM INTEGRATION ARCHITECTURE
+Template for all future apps/games
+Fixed: 2026-07-23
+================================================================================
+
+THIS IS THE CORRECT ARCHITECTURE TO USE GOING FORWARD
+=====================================================
+
+SIGNAL FLOW (DATA THROUGH FILES)
+================================
+
+  User Types 'w'
+       ↓
+  system/keyboard_input
+       ↓ (writes byte as decimal keycode)
+  pieces/keyboard/history.txt
+       ↓ (read by)
+  system/chtpm_parser_pal
+       ↓ (parses layout, injects matching key)
+  pieces/apps/player_app/interact_relay.txt
+       ↓ (read by prisc+x via read_history)
+  pal/main_loop_chtpm.pal
+       ↓ (decodes keycode 119='w', dispatches action)
+  ops/* (game_turn_input, word_turn_input, etc)
+       ↓ (updates ledger, state)
+  data/master_ledger.txt
+       ↓ (read by)
+  ops/game_compose_frame
+       ↓ (writes rendered output)
+  pieces/display/current_frame.txt
+       ↓ (grows renderer_pulse.txt to signal)
+  pieces/display/renderer_pulse.txt
+       ↓ (watched by)
+  system/renderer
+       ↓ (reads and outputs to terminal)
+  Terminal
+
+PROCESS ARCHITECTURE (FOUR PROCESSES)
+======================================
+
+1. system/keyboard_input (FOREGROUND, BLOCKING)
+   - Puts stdin in raw mode (no echo, no line buffering)
+   - Reads every keystroke
+   - Writes decimal keycode to pieces/keyboard/history.txt
+   - Exits on Ctrl+C (keycode 3), sets pieces/system/quit_flag.txt
+   - Restores terminal on exit
+
+   Why foreground: Owns the terminal exclusively, must not share it
+
+2. system/renderer (BACKGROUND)
+   - Loop: watch pieces/display/renderer_pulse.txt file size
+   - When file grows: read pieces/display/current_frame.txt
+   - Output to terminal with "--- FRAME UPDATE ---" markers
+   - Exits when pieces/system/quit_flag.txt becomes non-empty
+
+   Why background: Runs independently, freed from terminal duties
+
+3. system/chtpm_parser_pal (BACKGROUND)
+   - Parses .chtpm layout file (XML-like syntax)
+   - Extracts <module> tag → launches prisc+x with that path
+   - Reads pieces/keyboard/history.txt continuously
+   - Filters/relays keycodes to pieces/apps/player_app/interact_relay.txt
+   - Manages pieces/apps/player_app/state.txt (active_target_id, etc)
+
+   Why background: Runs independent loop, manages module lifecycle
+
+4. system/prisc+x pal/main_loop_chtpm.pal (BACKGROUND, auto-launched by chtpm_parser_pal)
+   - Event loop: reads from interact_relay.txt
+   - Decodes keycodes → dispatches to ops (game_turn_input, etc)
+   - Ops update data/master_ledger.txt
+   - Calls compose_frame op → writes current_frame.txt
+   - Grows renderer_pulse.txt to signal frame ready
+   - Never exits on its own (persistent across screen changes)
+
+   Why background: Runs game logic loop independently
+
+LAUNCH ORDER (CRITICAL)
+=======================
+
+The sequence in button.sh matters:
+
+1. Initialize all state files to known state (empty)
+2. Launch renderer FIRST (so it's ready when frames appear)
+3. Launch chtpm_parser_pal SECOND (it auto-launches prisc+x via <module> tag)
+4. Launch keyboard_input LAST (takes foreground, blocking)
+
+This ensures the rendering pipeline is ready before any input is processed.
+
+CHTPM LAYOUT FILE STRUCTURE (.chtpm format)
+===========================================
+
+  <panel>
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+
+    <text label="Display static text" /><br/>
+
+    <button label="[W] Say Word" onClick="ACTIVATE_WORD">
+      <text label="Description" /><br/>
+    </button><br/>
+
+    <button label="[E] End Turn" onClick="ACTIVATE_END">
+      <text label="End your turn" /><br/>
+    </button><br/>
+
+    <text label="${game_map}" /><br/>
+  </panel>
+
+Key elements:
+
+- <module>PATH</module>: Path to prisc+x and .pal file to launch
+- <interact src="PATH" />: File to relay keycodes to
+- <text label="..." />: Static or dynamic (${placeholder}) output
+- <button label="..." onClick="ACTION">: Menu item (sent to prisc+x as keycode)
+- ${game_map}, ${game_recent}, etc: Placeholder substitution (handled by prisc+x ops)
+
+KEYCODE DISPATCH (.pal file)
+============================
+
+The .pal file reads keycodes and dispatches:
+
+  read_history pieces/apps/player_app/interact_relay.txt x2, x1
+  # x2 now contains the keycode as a decimal number (119 = 'w')
+
+  li x3, 119        # 'w'
+  beq x2, x3, do_word
+
+  li x3, 101        # 'e'
+  beq x2, x3, do_end
+
+  # Dispatch to op with action code:
+do_word:
+  game_turn_input 1  # action=1 (word)
+
+do_end:
+  game_turn_input 3  # action=3 (end_turn)
+
+COMMON ASCII KEYCODES
+=====================
+
+- 'w' = 119 (word)
+- 'm' = 109 (move)
+- 'e' = 101 (end turn)
+- 'q' = 113 (quit - handled by keyboard_input, doesn't reach prisc+x)
+- '1'-'9' = 49-57 (menu selections)
+- Arrow Up    = 1002 (ARROW_UP)
+- Arrow Down  = 1003 (ARROW_DOWN)
+- Arrow Left  = 1000 (ARROW_LEFT)
+- Arrow Right = 1001 (ARROW_RIGHT)
+
+STATE FILES (The Source of Truth)
+==================================
+
+pieces/keyboard/history.txt
+  Format: "KEY_PRESSED: <keycode>\n" (one per line)
+  Written by: system/keyboard_input
+  Read by: system/chtpm_parser_pal
+  Cleared at: startup (but chtpm_parser reads from position, not rewind)
+  Purpose: Raw keystroke log for chtpm to filter
+
+pieces/apps/player_app/interact_relay.txt
+  Format: "<keycode>\n" (decimal, one per line)
+  Written by: system/chtpm_parser_pal (via inject_raw_key())
+  Read by: pal/main_loop_chtpm.pal (via read_history)
+  Cleared at: startup
+  Purpose: Filtered keycodes that prisc+x processes
+
+pieces/apps/player_app/state.txt
+  Format: KEY=VALUE (one per line)
+  Contains: module_path, project_id, active_target_id, etc
+  Written by: button.sh at startup, chtpm_parser_pal during runtime
+  Read by: prisc+x ops (for placeholders like ${game_map})
+  Purpose: Session state that persists across screen changes
+
+pieces/apps/player_app/history.txt
+  Format: "<keycode>\n" (decimal, one per line)
+  Written by: system/keyboard_input (same as interact_relay, for compat)
+  Purpose: Backup key log (can be used if interact_relay processing fails)
+
+pieces/display/current_frame.txt
+  Format: Multi-line text (game frame output)
+  Written by: game_compose_frame.c, word_compose_frame.c (prisc+x ops)
+  Read by: system/renderer
+  Purpose: The rendered game state to display
+
+pieces/display/renderer_pulse.txt
+  Format: Each byte is "x" (marker file, size is what matters)
+  Written by: game_compose_frame.c (appends 'x') after writing current_frame.txt
+  Watched by: system/renderer (detects size growth)
+  Purpose: Signal that a new frame is ready
+
+pieces/display/wsr_screen_changed.txt
+  Format: Each byte is "x" (marker file, size is what matters)
+  Written by: wsr_menu_input op when active_target_id changes
+  Watched by: pal/main_loop_chtpm.pal (detects size growth)
+  Purpose: Signal that screen navigated (href) to a different layout
+
+pieces/system/quit_flag.txt
+  Format: Any non-empty content
+  Written by: system/keyboard_input (on Ctrl+C)
+  Watched by: system/renderer (exits loop when non-empty)
+  Purpose: Global quit signal
+
+data/master_ledger.txt
+  Format: timestamp|epoch|player|turn|action_data|action_type
+  Written by: game_turn_input op (appends new turn records)
+  Read by: game_compose_frame (reconstructs game state)
+  Purpose: Ledger-driven authoritative game state
+
+OPS ARCHITECTURE (Self-Contained Binaries)
+===========================================
+
+Each op is a standalone C program, called by prisc+x:
+
+game_compose_frame (map game)
+  Input: Reads config.txt, data/master_ledger.txt
+  Output: Writes pieces/display/current_frame.txt
+  Signal: Appends 'x' to pieces/display/renderer_pulse.txt
+  Purpose: Render current game state (map, actors, turn info)
+
+game_hit_frame
+  Input: None
+  Output: Marks frame as ready
+  Purpose: Placeholder (usually empty)
+
+game_turn_input <action>
+  Input: action code (1=word, 2=move, 3=end_turn)
+  Output: Appends to data/master_ledger.txt
+  Side effects: Updates config.txt (current_turn, etc)
+  Purpose: Process player action and advance game state
+
+word_compose_frame (word game)
+  Input: Reads config.txt, data/master_ledger.txt
+  Output: Writes pieces/display/current_frame.txt
+  Signal: Appends 'x' to pieces/display/renderer_pulse.txt
+  Purpose: Render word game state (turn, player, recent words)
+
+word_turn_input <action>
+  Input: action code (1=word, 2=end_turn)
+  Output: Appends to data/master_ledger.txt
+  Side effects: Updates config.txt
+  Purpose: Process player action
+
+BUTTON.SH INITIALIZATION
+=======================
+
+The launcher must:
+
+1. Compile all ops (gcc)
+2. Create directory structure:
+   - data/
+   - pieces/display/
+   - pieces/system/
+   - pieces/apps/player_app/
+   - pieces/keyboard/
+   - pieces/chtpm/layouts/
+
+3. Initialize state files:
+   - pieces/display/current_frame.txt (empty, will be written by first op)
+   - pieces/display/renderer_pulse.txt (empty)
+   - pieces/display/wsr_screen_changed.txt (empty)
+   - pieces/system/quit_flag.txt (empty)
+   - pieces/apps/player_app/interact_relay.txt (empty)
+   - pieces/apps/player_app/history.txt (empty)
+   - pieces/keyboard/history.txt (empty)
+   - pieces/apps/player_app/state.txt (with module_path, project_id, active_target_id)
+
+4. Initialize data:
+   - data/master_ledger.txt (header row only: timestamp|epoch|player|turn|...)
+
+5. Export environment variables:
+   - PRISC_PROJECT_ROOT=<absolute path>
+   - PRISC_PROJECT_ID=<project name>
+
+6. Launch processes in order:
+   a. ./system/renderer & → save PID
+   b. ./system/chtpm_parser_pal pieces/chtpm/layouts/MAIN_LAYOUT.chtpm & → save PID
+   c. trap to kill PIDs on EXIT/INT/TERM
+   d. ./system/keyboard_input (blocking foreground)
+
+ERROR HANDLING
+==============
+
+Common issues and symptoms:
+
+1. "No frame output"
+   - Check: pieces/display/current_frame.txt exists and has content
+   - Check: pieces/display/renderer_pulse.txt is growing (file size increases)
+   - Check: renderer process is running (ps aux | grep renderer)
+   - Fix: Ensure game_compose_frame is being called by prisc+x
+
+2. "Keys don't work"
+   - Check: pieces/keyboard/history.txt has keycodes
+   - Check: pieces/apps/player_app/interact_relay.txt has keycodes
+   - Check: chtpm_parser_pal is running (ps aux | grep chtpm_parser)
+   - Fix: Verify chtpm_parser_pal parsed layout correctly
+
+3. "Stale frames"
+   - Check: renderer_pulse.txt is NOT growing
+   - Cause: game_compose_frame not being called, or not appending to pulse file
+   - Fix: Verify compose_frame op appends to pieces/display/renderer_pulse.txt
+
+4. "Ctrl+C doesn't work"
+   - Check: keyboard_input process is running (owns tty)
+   - Check: terminal is in raw mode (no echo when typing)
+   - Fix: Ensure keyboard_input wasn't killed prematurely
+
+DEPLOYMENT CHECKLIST
+====================
+
+✓ Create .chtpm layout file (pieces/chtpm/layouts/NAME.chtpm)
+✓ Create .pal event loop (pal/main_loop_chtpm.pal)
+✓ Create ops (game_turn_input.c, game_compose_frame.c, etc)
+✓ Create button.sh launcher with full initialization
+✓ System/renderer compiled (gcc -o system/renderer system/renderer.c)
+✓ System/keyboard_input compiled (gcc -o system/keyboard_input system/keyboard_input.c)
+✓ System/chtpm_parser_pal copied from reference
+✓ Prisc+x binary exists (compiled from shared-ops)
+✓ All directories created at runtime (data, pieces/*, etc)
+✓ All marker files initialized to empty
+✓ State file initialized with module_path and project_id
+✓ Environment variables exported (PRISC_PROJECT_ROOT, etc)
+✓ Trap handler catches EXIT/INT/TERM
+✓ Cleanup script for manual process kills
+
+TEMPLATE FILES TO USE
+====================
+
+For a new game/app, copy from LPNS +3:
+
+1. button.sh (modify paths and op names)
+2. system/renderer.c (no changes needed)
+3. system/keyboard_input.c (no changes needed)
+4. pal/main_loop_chtpm.pal (modify op names and keycodes)
+5. pieces/chtpm/layouts/NAME.chtpm (customize layout and placeholders)
+6. ops/* (create game-specific ops)
+
+REFERENCE IMPLEMENTATIONS
+=========================
+
+Working examples:
+- 00.lpns+map+3 (map game with movement)
+- 0.ledger-player-npc-simple+3 (word game)
+- /path/to/wsr-pal (financial game - production reference)
+- /path/to/mutaclsym (mutation game - complex reference)
+
+================================================================================
+END CHTPM_ARCHITECTURE_GUIDE.txt

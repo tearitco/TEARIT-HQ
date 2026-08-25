@@ -1,0 +1,7 @@
+# Custom operations for tactics-txt's own prisc+x program, modeled
+# directly on @.apps/my-chara-txt's own default_op.txt.
+# Format: name type handler {description}
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}
+tactics_menu_input void ops/+x/tactics_menu_input.+x {piece.pdl METHOD dispatch for whichever tactics-txt screen is current}
+tactics_compose_frame void ops/+x/tactics_compose_frame.+x {render the current tactics-txt screen into view.txt}

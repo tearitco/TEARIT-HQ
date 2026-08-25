@@ -1,0 +1,391 @@
+TPMOS DEVELOPMENT LOG - April 2, 2026
+======================================
+P2P-NET IMPLEMENTATION PLAN
+
+NOTE: Phase 1 (Network + Chat) has been extracted to:
+#.plans/P2P-PHASE-1-NETWORK-AND-CHAT.md
+
+Start there for implementation. This file contains the full roadmap.
+
+================================================================================
+COMPLETED (Phase 5: Fondu + User Ops)
+================================================================================
+
+[X] 5. Fondu Architecture Implementation
+    [X] Step 5.0: Test project with ops (test_fondu)
+    [X] Step 5.1: Directory structure (trunk/, installed/, ops_registry/)
+    [X] Step 5.2: Fondu.c lifecycle manager
+    [X] Step 5.3: Test install/uninstall/archive/restore
+    [X] Step 5.4: User project ops (create_profile, auth_user, get_session)
+    [X] Step 5.5: Legacy migration (fuzzpet_app, editor, gl_os → trunk/)
+
+[X] 6. Cleanup & Documentation
+    [X] Delete legacy: #.ref/, x/, pieces/world/, pieces/clock/
+    [X] Create CODEBASE_MAP.txt (mall directory style)
+    [X] Create OPS_DICTIONARY.txt (canonical ops reference)
+    [X] Create p2p-ops.txt (P2P-NET specification)
+    [X] Create P2P_LEGAL_NOTICE.txt (refund guarantee)
+
+[X] 7. System Fixes
+    [X] Ctrl+C terminal lockup (signal handlers in keyboard_input)
+    [X] Aggressive kill script (restored surgical kill_all.sh)
+    [X] Project loader showing wrong projects (fixed project_id=playrm)
+    [X] Compile script updated (uses compiled_projects.txt)
+
+================================================================================
+PHASE 6: P2P-NET CORE INFRASTRUCTURE (Week 1-2)
+================================================================================
+
+Priority: CRITICAL (foundation for everything else)
+
+[ ] 6.1: Network Infrastructure (7 ops)
+    ───────────────────────────────────
+    [ ] p2p::configure_subnet - Configure network mode (broadcast/ring/hybrid)
+    [ ] p2p::broadcast_join - Join network via UDP broadcast
+    [ ] p2p::broadcast_leave - Leave network (graceful)
+    [ ] p2p::connect_peer - TCP connection to peer
+    [ ] p2p::disconnect_peer - Disconnect from peer
+    [ ] p2p::list_peers - List connected peers
+    [ ] p2p::ping_peer - Keepalive (auto every 30s)
+    
+    KPIs:
+    ✓ Subnet config loaded from subnet-config.txt
+    ✓ Port discovery works (8000-8010)
+    ✓ Broadcast JOIN/LEAVE works (UDP 255.255.255.255:8000)
+    ✓ TCP connections established (handshake: Hello→Ack)
+    ✓ Peers list updated (pieces/network/peers.txt)
+    ✓ Continuous mode: background listener thread
+    ✓ On-demand mode: connect/disconnect per op
+    ✓ Default hosts checked on startup
+    
+    Test Commands:
+    OP p2p::configure_subnet "general" "hybrid" "continuous" 8000
+    OP p2p::broadcast_join
+    OP p2p::list_peers "all"
+    OP p2p::connect_peer "127.0.0.1" 8001 "games"
+
+[ ] 6.2: Core Wallet System (3 ops)
+    ─────────────────────────────────
+    [ ] p2p::wallet_login - Login/create wallet with password
+    [ ] p2p::wallet_create - Create additional wallet
+    [ ] p2p::list_wallets - List all user wallets
+    
+    KPIs:
+    ✓ User can login with username + password
+    ✓ User can create multiple wallets (main, trading, mining)
+    ✓ User can switch between wallets
+    ✓ Wallet balance displays correctly
+    ✓ Password auth works (SHA256 salt+password)
+    
+    Test Commands:
+    ./fondu --install p2p-net
+    OP p2p::wallet_login "player1" "mypass123"
+    OP p2p::list_wallets "player1"
+
+[ ] 6.3: Mining & Balance (2 ops)
+    ──────────────────────────────
+    [ ] p2p::mine_block - SHA256 mining with difficulty
+    [ ] p2p::get_balance - Query wallet balance
+    
+    KPIs:
+    ✓ Mining finds nonce with difficulty 2 (hash starts with "00")
+    ✓ Mining reward = 10 coins credited to wallet
+    ✓ Balance updates after mining
+    ✓ Blockchain logs to pieces/blockchain/chain.txt
+    
+    Test Commands:
+    OP p2p::mine_block
+    OP p2p::get_balance
+
+[ ] 6.4: Send Coins (1 op)
+    ──────────────────────
+    [ ] p2p::send_coins - Transfer between wallets
+    
+    KPIs:
+    ✓ Can send coins to another wallet address
+    ✓ Sender balance decreases
+    ✓ Receiver balance increases
+    ✓ Transaction logged to blockchain
+    
+    Test Commands:
+    OP p2p::send_coins "abc123..." 50
+
+PHASE 6 KPIs (Core Wallet + Network):
+────────────────────────────────────
+□ All 13 ops implemented and compiled
+□ Network: broadcast, connect, list_peers working
+□ User can login, mine, send coins
+□ Balance updates correctly
+□ Blockchain logs all transactions
+□ Support can refund coins (p2p::refund_coins implemented)
+□ Legal notice displayed to users (refund guarantee)
+□ subnet-config.txt created with defaults
+
+================================================================================
+PHASE 7: ITEMS & NFTS (Week 3)
+================================================================================
+
+Priority: HIGH (needed for auctions, trading, rentals)
+
+[ ] 7.1: Item Creation (2 ops)
+    ──────────────────────────
+    [ ] p2p::create_item - Create NFT item with metadata
+    [ ] p2p::list_inventory - List user's items
+    
+    KPIs:
+    ✓ Item created with unique hash (SHA256 name+owner+time)
+    ✓ Metadata stored (rarity, stats, type)
+    ✓ Item appears in inventory
+    ✓ Item stored as piece (pieces/inventory/<hash>/)
+    
+    Test Commands:
+    OP p2p::create_item "Dragon Sword" "attack=50" "legendary"
+    OP p2p::list_inventory
+
+[ ] 7.2: Auctions (3 ops)
+    ────────────────────
+    [ ] p2p::create_auction - List item for bidding
+    [ ] p2p::place_bid - Bid on auction
+    [ ] p2p::list_auctions - View active auctions
+    
+    KPIs:
+    ✓ Item moved to escrow when auctioned
+    ✓ Bids tracked with highest bidder
+    ✓ Auction ends after duration
+    ✓ Winner receives item, seller receives coins
+    
+    Test Commands:
+    OP p2p::create_auction "sword_hash" 100 24
+    OP p2p::place_bid "auction_123" 150
+    OP p2p::list_auctions
+
+[ ] 7.3: Trading (2 ops)
+    ───────────────────
+    [ ] p2p::create_trade - Propose item-for-item trade
+    [ ] p2p::accept_trade - Accept trade proposal
+    
+    KPIs:
+    ✓ Trade proposal created
+    ✓ Both items held in escrow
+    ✓ Trade executes when both accept
+    ✓ Items swap ownership
+    
+    Test Commands:
+    OP p2p::create_trade "player2" "sword_hash" "shield_hash"
+    OP p2p::accept_trade "trade_123"
+
+PHASE 7 KPIs (Items & NFTs):
+───────────────────────────
+□ All 7 ops implemented
+□ Items have unique hashes and metadata
+□ Auctions work with escrow
+□ Trading system functional
+□ Inventory displays correctly
+
+================================================================================
+PHASE 8: RECURSIVE WALLETS (Week 4)
+================================================================================
+
+Priority: HIGH (pets can own pets, full recursion)
+
+[ ] 8.1: Pet Wallets (2 ops)
+    ────────────────────────
+    [ ] p2p::create_pet_wallet - Create wallet for pet/piece
+    [ ] p2p::pet_earnings - Manage pet's earnings
+    
+    KPIs:
+    ✓ Pet can have its own wallet
+    ✓ Pet wallet has separate balance from owner
+    ✓ Owner can collect pet's earnings
+    ✓ Pet can own items independently
+    
+    Test Commands:
+    OP p2p::create_pet_wallet "fuzzpet_01" "player1"
+    OP p2p::pet_earnings "fuzzpet_01" "collect"
+
+[ ] 8.2: Recursive Ownership (1 op)
+    ──────────────────────────────
+    [ ] p2p::list_ownership_chain - Trace ownership tree
+    
+    KPIs:
+    ✓ Can trace: player → pet → baby_pet → tiny_pet → wallet
+    ✓ Support can trace for refunds
+    ✓ Ownership chain logged to owner.pdl
+    
+    Test Commands:
+    OP p2p::list_ownership_chain "tiny_pet_01"
+
+PHASE 8 KPIs (Recursive Wallets):
+────────────────────────────────
+□ Pets can own wallets
+□ Pets can own pets (full recursion)
+□ Ownership chain traceable
+□ Support can refund at any level
+
+================================================================================
+PHASE 9: RENTAL SYSTEM (Week 5)
+================================================================================
+
+Priority: MEDIUM (lending while retaining ownership)
+
+[ ] 9.1: Item Lending (4 ops)
+    ─────────────────────────
+    [ ] p2p::lend_item - Lend item (retain ownership)
+    [ ] p2p::rent_item - Accept loan
+    [ ] p2p::return_item - Return early
+    [ ] p2p::list_loans - View active loans
+    
+    KPIs:
+    ✓ Owner retains NFT ownership
+    ✓ Borrower gets temporary possession
+    ✓ Fee held in escrow
+    ✓ Auto-return after duration
+    ✓ Early return works
+    
+    Test Commands:
+    OP p2p::lend_item "sword_hash" "player2" 7 50
+    OP p2p::rent_item "loan_123"
+    OP p2p::list_loans "player1" "lender"
+
+[ ] 9.2: Property Rental (2 ops)
+    ───────────────────────────
+    [ ] p2p::rent_property - Rent house/world/land
+    [ ] p2p::collect_rent - Auto-collect rent
+    
+    KPIs:
+    ✓ Property lease created
+    ✓ Rent collected automatically (daily/weekly/monthly)
+    ✓ Tenant can be evicted (with penalty)
+    
+    Test Commands:
+    OP p2p::rent_property "house_01" "player2" 30 100
+    OP p2p::collect_rent "house_01"
+
+PHASE 9 KPIs (Rental System):
+────────────────────────────
+□ All 6 ops implemented
+□ Lending retains ownership
+□ Auto-collection works
+□ Eviction with penalty works
+
+================================================================================
+PHASE 10: SMART CONTRACTS (Week 6)
+================================================================================
+
+Priority: MEDIUM (OPS-based contracts)
+
+[ ] 10.1: Contract System (2 ops)
+    ────────────────────────────
+    [ ] p2p::create_smart_contract - Deploy PAL script contract
+    [ ] p2p::execute_contract - Execute contract
+    
+    KPIs:
+    ✓ Contract written in PAL script
+    ✓ Contract deployed to blockchain
+    ✓ Auto-executes when conditions met
+    ✓ Can hold escrow coins
+    
+    Test Commands:
+    OP p2p::create_smart_contract "trade_contract" "..."
+    OP p2p::execute_contract "contract_123" "payment_received"
+
+PHASE 10 KPIs (Smart Contracts):
+───────────────────────────────
+□ Contracts written in PAL
+□ Auto-execution works
+□ Escrow functional
+
+================================================================================
+PHASE 11: EXCHANGE & CUSTOM COINS (Week 7-8)
+================================================================================
+
+Priority: LOW (advanced feature, needs foundation)
+
+[ ] 11.1: Custom Coins (1 op)
+    ─────────────────────────
+    [ ] p2p::create_coin - Create coin with ELO rate
+    
+    KPIs:
+    ✓ Coin created with name, symbol, supply
+    ✓ Starts at 1:1 with base coin (TPM)
+    ✓ ELO rate adjusts based on node backing
+    
+    Test Commands:
+    OP p2p::create_coin "DragonGold" "DRG" 10000 "player1"
+
+[ ] 11.2: Node Infrastructure (2 ops)
+    ────────────────────────────────
+    [ ] p2p::setup_heavy_node - Full blockchain, stable rate
+    [ ] p2p::setup_light_node - SPV, faster, variable rate
+    
+    KPIs:
+    ✓ Heavy node stores full blockchain
+    ✓ Light node stores headers only
+    ✓ ELO rate = f(heavy%, light%, demand)
+    ✓ Heavy = stable (0.9-1.1x)
+    ✓ Light = volatile (0.5-2.0x)
+    
+    Test Commands:
+    OP p2p::setup_heavy_node "DRG" 1000
+    OP p2p::setup_light_node "DRG" 100
+
+[ ] 11.3: Exchange System (3 ops)
+    ────────────────────────────
+    [ ] p2p::exchange_coins - Exchange at ELO rate
+    [ ] p2p::get_exchange_rate - Get current rate
+    [ ] p2p::update_elo_rate - Update rate (scheduled)
+    
+    KPIs:
+    ✓ Exchange at current ELO rate
+    ✓ Rate history tracked
+    ✓ Rate updates based on node backing
+    
+    Test Commands:
+    OP p2p::exchange_coins "DRG" "TPM" 100
+    OP p2p::get_exchange_rate "DRG" "TPM"
+
+PHASE 11 KPIs (Exchange & Coins):
+────────────────────────────────
+□ Custom coins creatable
+□ Heavy/light nodes functional
+□ ELO rate calculation correct
+□ Exchange works at dynamic rates
+
+================================================================================
+IMPLEMENTATION ORDER (Summary)
+================================================================================
+
+WEEK 1-2: Phase 6 - Core Wallet (6 ops)
+  → wallet_login, wallet_create, list_wallets, mine_block, get_balance, send_coins
+
+WEEK 3: Phase 7 - Items & NFTs (7 ops)
+  → create_item, list_inventory, create_auction, place_bid, list_auctions, create_trade, accept_trade
+
+WEEK 4: Phase 8 - Recursive Wallets (3 ops)
+  → create_pet_wallet, pet_earnings, list_ownership_chain
+
+WEEK 5: Phase 9 - Rental System (6 ops)
+  → lend_item, rent_item, return_item, list_loans, rent_property, collect_rent
+
+WEEK 6: Phase 10 - Smart Contracts (2 ops)
+  → create_smart_contract, execute_contract
+
+WEEK 7-8: Phase 11 - Exchange & Coins (6 ops)
+  → create_coin, setup_heavy_node, setup_light_node, exchange_coins, get_exchange_rate, update_elo_rate
+
+SUPPORT TOOLS (REQUIRED BEFORE LAUNCH):
+  → p2p::refund_coins, p2p::recover_wallet, p2p::evict_tenant
+
+================================================================================
+LEGAL REQUIREMENTS (Before Launch)
+================================================================================
+
+[ ] P2P_LEGAL_NOTICE.txt displayed to users
+[ ] Refund guarantee implemented (p2p::refund_coins)
+[ ] Support tools functional
+[ ] "Casual Fun" security level documented
+[ ] Users informed: NOT real crypto, NOT gambling, game coins only
+
+================================================================================
+END OF P2P-NET DEVELOPMENT PLAN
+================================================================================

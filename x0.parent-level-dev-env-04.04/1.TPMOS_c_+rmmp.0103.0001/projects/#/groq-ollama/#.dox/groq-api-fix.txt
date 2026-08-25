@@ -1,0 +1,49 @@
+# Groq-Ollama API Connection Analysis & Fix Plan
+
+## 1. Problem: Stale Responses
+**Symptom:** When switching to the Mac API (10.0.0.144), the agent responds "instantly" with old data (`{"test-file.txt": ...}`).
+**Root Cause:**
+*   The `curl` command to 10.0.0.144 is failing (Exit Code 7: Connection Refused).
+*   The `groq-ollama_manager.c` background logic detects that the process finished, but **it does not check the exit code**.
+*   It proceeds to parse `projects/groq-ollama/state/llm_response.json`.
+*   Since `curl` failed, it never overwrote the file, so the manager reads the **stale results** from the last successful localhost query.
+
+## 2. Problem: Remote Connectivity
+**Status:** 10.0.0.144:11434 is still rejecting connections.
+**Requirement:** 
+*   Ollama on the Mac must be running with `OLLAMA_HOST=0.0.0.0`.
+*   Verify firewall settings on the Mac allow port 11434.
+
+## 3. Proposed Engineering Fixes
+
+### Fix A: Prevent Stale Reads
+Before starting a new `curl` process, the manager must delete or truncate the following files:
+*   `projects/groq-ollama/state/llm_response.json`
+*   `projects/groq-ollama/state/llm_content.json`
+
+### Fix B: Check Process Exit Status
+In `check_ai_status()`, we must use `WIFEXITED(status)` and `WEXITSTATUS(status)`.
+*   If status != 0, set `g_sys_msg` to "API Error: Connection Failed" and revert to IDLE.
+*   Do not parse the JSON if the process failed.
+
+### Fix C: Improved UI Feedback
+*   Change `g_sys_msg` to show specific errors (e.g., "HTTP 404", "Connection Timeout").
+
+## 4. Binary Path Verification
+Ensure `projects/groq-ollama/config/paths.txt` contains the correct path for the **local** machine (10.0.0.238). 
+The Mac path only matters if you are running TPMOS *on the Mac*.
+
+## 7. Problem: Invisible Children in Activation Submenu
+**Symptom:** The `[2] Switch API` button activates and shows `[1] Back`, but the dynamic API list `${groq-ollama_api_menu}` is invisible/empty in the UI.
+
+**Analysis:**
+*   **Parser Indexing:** The CHTPM parser likely indexes child elements *before* variable substitution or requires children of `ACTIVATE` parents to be static XML tags.
+*   **Indentation Conflict:** The manager was adding manual spaces in the projection, which might conflict with the parser's automatic indentation logic.
+
+**Proposed Solutions:**
+1.  **Manual Submenu Projection:** Move the `ACTIVATE` logic out of the XML and let the manager project the entire indented list (including a "Back" button) as raw text/buttons when `g_menu_mode` is active.
+2.  **Explicit XML Slots:** If the number of APIs is known to be small (e.g., 4), define them statically in the XML and use variables for labels/urls.
+3.  **Correct Indentation Syntax:** Remove manual spaces and ensure the projected string is valid XML that the parser can re-scan.
+
+---
+**Next Step:** I will attempt to project the buttons *without* manual indentation and check if the parser picks them up. If not, I will refactor to "Manual Submenu Projection" to ensure 100% visibility.

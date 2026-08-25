@@ -1,0 +1,185 @@
+================================================================================
+xyzos-2do.txt — ONBOARDING TODO LIST for a virgin agent starting the
+rpg-xyz (Track A) / rtp-xyz (Track B) work. Repurposed 2026-07-30 (was
+previously a "deferred gaps" log — that content is superseded; the
+emoji-asset-pipeline gap it tracked was fully closed the same day, see
+!.xyzos-pitfalls+1.txt PITFALL 57 and its own STATUS UPDATE for the
+historical record if ever needed).
+
+Read this file top to bottom before writing any code. It assumes zero
+memory of prior sessions and cites exact files/lines throughout so
+nothing here needs to be taken on faith.
+================================================================================
+
+## 0. What you're being onboarded to do
+
+Implement project save/loading (maps/events/etc.) for rpg-xyz, the
+same way it was just proven for text editing — twice, as two competing
+architectures, Track A (rpg-xyz, separate widget processes per tool)
+and Track B (rtp-xyz, one process, in-session module switching) — then
+compare which works first. The full phase plan, already written, is:
+
+  #.haiku+/30.jul-30-handoff/1.ngn/todo-j30.txt
+
+That IS the plan. Do not re-derive it or write a new one — read it in
+full before doing anything else. It has its own numbered phases (0,
+A1-A4, B1-B3), a recommended build order (§6), and two UPDATE notes
+added 2026-07-30 that change its own original guidance — do not skip
+past them thinking the original text is still the whole story.
+
+--------------------------------------------------------------------------------
+## 1. Required reading, in this order
+
+1. `#.haiku+/30.jul-30-handoff/1.ngn/todo-j30.txt` — the actual plan.
+   Pay special attention to its own 2026-07-30 UPDATE note under
+   section 5 (level-2 harness guidance) — read §2 of THIS file below
+   before you reach it, so the update makes sense in context.
+2. `#.haiku+/30.jul-30-handoff/1.ngn/1-rtp-rpg-xyz-scaffold.md` — the
+   architecture scaffold todo-j30.txt itself is built from.
+3. `#.haiku+/30.jul-30-handoff/1.ngn/ed-app-vs-agy-txt.md` — a real,
+   already-run, SMALL-SCALE rehearsal of the exact Track A vs Track B
+   question (separate-processes vs one-process-in-session-switching),
+   done via two competing text editors. Real LOC/reuse numbers, real
+   bugs found and handed from one to the other for free, and (§3
+   there) the discovery that led to this file's own §2/§3 below. Read
+   this BEFORE starting Track A or B — it's cited by name in
+   todo-j30.txt as the direct precedent, not optional color.
+4. THE TPMOS REFERENCE (you will need this constantly, not just once):
+   `1.TPMOS_c_+rmmp.0103.0001/projects/agy-text-editor/` — the small
+   text-editor reference already mined this week (manager/
+   agy-text-editor_manager.c, layouts/file_browser.chtpm — read for
+   its real `<cli_io>`-based interaction contract, see §2 below).
+   For the ACTUAL rpg/rtp work, the equivalent reference (confirmed
+   present, verified path) is `1.TPMOS_c_+rmmp.0103.0001/projects/
+   slop-ed-dev/` — its real manager/daemon source, per todo-j30.txt
+   PHASE B1's own explicit instruction: "go read that source and write
+   down its real module-lifecycle contract... BEFORE phase B2 writes a
+   single line of rtp_manager.c." Do not skip B1. Separately (confirmed
+   present, verified path, NOT under TPMOS — it's this house's own,
+   directly under the house root): `201.rpg-maker-clone/` — the real,
+   working reference for the event/switch data shape (`switches.pdl`,
+   `events/ev_X_Y/{state.txt,event.pal}`, the CMD_SHOW_TEXT/
+   CMD_SET_SWITCH/CMD_IF_SWITCH/CMD_TRANSFER command IR) — cited in
+   todo-j30.txt PHASE A2a as the real format to port, not invent.
+5. `102.agy-txt/xyz-agy-handoff-j30.txt` and `&.widgits/file-menu/
+   todo-how2-j30.txt` — two STILL-OPEN real bug reports from this same
+   week, each with an explicit TPMOS/cli_io comparison already done for
+   you. Useful both as still-unfixed work you may be asked to pick up,
+   and as a worked example of what "diff against the reference's own
+   interaction contract" (§2 below) looks like in practice.
+6. `!.xyzos-standards+1.txt` and `!.xyzos-pitfalls+1.txt` — the house's
+   running rulebook and incident log. You do not need to read either
+   cover to cover, but §36.6 (real key injection, why it exists) and
+   §38 (below) are load-bearing for anything you build here.
+
+--------------------------------------------------------------------------------
+## 2. The two things this file was specifically asked to carry forward
+
+Full write-ups: PITFALL 63 in `!.xyzos-pitfalls+1.txt`, §38 in
+`!.xyzos-standards+1.txt`. Condensed here so you don't have to
+context-switch files to get the actionable version.
+
+**The finding**: a harness can satisfy §36.6's "real key injection
+through the real running app" bar and STILL give a false positive on
+real bugs, if it only ever reaches its assertions via the mechanically
+shortest path — an op's own PASTE mode for typed text, and a direct
+digit-jump straight to a "confirm" button — instead of the natural
+order a real human uses (type character by character, press Enter
+expecting it to submit, press Esc expecting it to only stop typing).
+This happened THREE times in one week, independently: a real dual-
+process key-capture race invisible to any single-deliberate-write
+injection (chtpm_parser_pal.c/gl_mirror.c, now fixed); 102.agy-txt's
+own SAVE AS path field, whose harness used PASTE for every path-typing
+assertion and so never once exercised real per-keystroke typing into
+that field (still open); and &.widgits/file-menu's own file_browser
+mode, whose ALREADY-GREEN, ALREADY-SHIPPED harness never once pressed
+Enter on the typed field or Esc mid-typing, hiding three real bugs
+(Enter-does-nothing, Esc-exits-the-wrong-scope, no cursor indicator)
+behind full harness confidence.
+
+**The rule (§38)**: every level-2 harness scenario involving typed
+input must exercise the natural interaction order — real per-keystroke
+injection ending in the field's own domain-natural terminator — at
+least ONCE, not only PASTE/digit-jump shortcuts. And when the code
+under test is an explicit port of a named reference architecture (which
+almost everything in Track A/B is — TPMOS's slop-ed-dev, rpg-maker-
+clone, and the event system all have real reference implementations),
+that reference's own interaction contract for typed fields — does
+Enter submit-in-place or need a separate confirm step, does Esc
+deactivate-only or exit the whole screen, is there a focus/cursor
+indicator — must be read and written down BEFORE a PASTE-only-proven
+harness is trusted as "done." Proving output DATA matches the
+reference is a real, necessary check; it is not the same claim as
+proving the INTERACTION matches, and nothing else in this house's
+
+**UPDATE, same day (§39, PITFALL 64) — NON-NEGOTIABLE, per direct
+instruction**: §38's own fix STILL missed two more real bugs, found by
+a human the same day the fix was verified — selecting a real listed
+file required an unsignaled second Enter to load (every harness always
+typed/pasted a path, never once selected from the real listing), and a
+digit keypress activated a main-menu option in the same keystroke
+instead of only navigating to it (every harness always sent Enter
+right after the digit, never checked state between the two
+separately). §39 is now the MANDATORY checklist this produced — real
+listed-entry selection, real digit-jump-vs-activate assertions, a real
+on-disk file-existence check after any save, and a real jail-escape
+attempt where a containment boundary exists. Every harness testing
+save/load-shaped user interaction in rpg-xyz/rtp-xyz MUST follow §39,
+not just §38 — read both, not just the first one you find.
+tooling checks the second claim for you.
+
+--------------------------------------------------------------------------------
+## 3. How to actually apply this to rpg-xyz / rtp-xyz
+
+- **Before PHASE A1** (level-2-verifying the existing map save/load):
+  don't just add real key injection and call it done — make sure at
+  least one pass types a real path/filename character-by-character and
+  hits the field's own real terminator key, not a PASTE call straight
+  to a confirm button. If the existing UI has no such terminator
+  wired (matching file-menu's own Enter-does-nothing bug), that IS a
+  PITFALL-63-shaped bug worth finding now, cheaply, before B2/B3 build
+  on top of the same underlying save/load ops.
+- **Before PHASE B1 writes rtp_manager.c**: read slop-ed-dev's own
+  source for its typed-input fields specifically (map name entry,
+  event text entry, whatever it has) — does it use something
+  cli_io-shaped, or its own thing — and write down the answer, the
+  same way this file's §1.4 already did for the smaller text-editor
+  reference. Do not assume it matches agy-text-editor's own `<cli_io>`
+  convention just because both are TPMOS projects — verify per-project.
+- **Before PHASE A2's event system is considered "ported"**: rpg-maker-
+  clone's own real event editor almost certainly has typed fields
+  (message text, switch names, whatever CMD_SHOW_TEXT's own UI needs)
+  — same rule: real per-keystroke + real terminator, at least once,
+  before trusting a PASTE-driven harness.
+- **When building either full-loop harness** (`%.harnesses/
+  rpg-xyz-full-loop/`, `%.harnesses/rtp-xyz-full-loop/`, per
+  todo-j30.txt §5): budget the natural-interaction-order pass into the
+  harness design from the START, the same way todo-j30.txt already
+  mandates level-2-from-the-start for real key injection generally —
+  this is the same mandate, one level more specific, not a separate
+  ask.
+- If you find a PITFALL-63-shaped bug (harness green, real interaction
+  broken) in rpg-xyz or rtp-xyz's own code, record it the same way —
+  a PITFALL entry citing exact file/line, plus (if it's substantial
+  enough to need its own worked-example doc) a `todo-how2-*.txt` in
+  the relevant project dir, matching the two examples cited in §1
+  item 5 above.
+
+--------------------------------------------------------------------------------
+## 4. Your actual first task
+
+Per todo-j30.txt §6's own recommended build order:
+  1. PHASE 0 — strip zombie data (small, unblocks everything, shared).
+  2. PHASE A1 — level-2-verify existing map save/load, WITH §2/§3
+     above applied (natural interaction order, not just real-injection).
+  3. PHASE B1 — read slop-ed-dev's real source, write down its
+     module-lifecycle contract, per its own explicit instruction.
+
+Do not start A2/B2 before A1/B1 are actually done — todo-j30.txt §6
+explains why (A1 finds out fast whether PITFALL-58-shaped bugs already
+lurk in code B3 will also depend on; B1 unblocks B2 safely). Update
+todo-j30.txt itself (its own UPDATE-note convention, see the
+2026-07-30 examples already in it) as you find real things, rather
+than writing a parallel tracking doc — this house's convention is to
+amend the plan in place with dated UPDATE sections, not fork it.
+================================================================================

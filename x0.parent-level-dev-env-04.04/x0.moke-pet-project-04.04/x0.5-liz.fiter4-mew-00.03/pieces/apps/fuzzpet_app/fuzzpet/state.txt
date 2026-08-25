@@ -1,0 +1,10 @@
+name=Fuzzball
+hunger=50
+happiness=55
+energy=100
+level=1
+pos_x=5
+pos_y=2
+pos_z=0
+status=active
+emoji_mode=0

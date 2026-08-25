@@ -1,0 +1,7 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="SEARCH: " /><cli_io id="search_query" target_id="search_query" label="${search_query_val}" /><br/>
+    <text label="FILE:   " /><cli_io id="file_path_input" target_id="file_path_input" label="${file_path_input_val}" /><br/>
+    ${game_map}
+</panel>

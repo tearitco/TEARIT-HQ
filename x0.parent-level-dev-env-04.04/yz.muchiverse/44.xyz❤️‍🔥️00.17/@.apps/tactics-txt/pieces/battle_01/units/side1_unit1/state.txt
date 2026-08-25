@@ -1,0 +1,7 @@
+entity_type=tactics_unit
+profession_id=chef
+pos_x=0
+pos_y=5
+hp=15
+owner_id=1
+owner_side=1

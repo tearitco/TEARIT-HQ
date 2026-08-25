@@ -1,0 +1,313 @@
+rgb-render-bug.txt — mutaclsym RGB/GL entity rendering bug (2026-07-27)
+=========================================================================
+STATUS: partially fixed, one structural bug confirmed+fixed, root cause
+of a second symptom ("renders once then vanishes on real interaction")
+NOT YET CONCLUSIVELY FOUND. Written mid-investigation per direct
+request, before the debug-instrumentation step below was run.
+
+Reported symptom: zombies, ground items, and imported pets (turtle,
+frog) are visible in the ASCII/emoji text view (pieces/display/
+current_frame.txt) but do NOT reliably render in the actual RGB/GL
+window (system/gl_mirror.c's displayed texture). Trees, bricks/walls,
+and the hero DO render correctly in both. This is specific to
+render_mode=1 (the 3D perspective view) in chtpm/PAL mode - the mode
+this whole session's live testing was done in.
+
+================================================================================
+PART 1: THE PIPELINE (established facts, not distractions - needed context)
+================================================================================
+Two INDEPENDENT renderer implementations exist, not one:
+
+1. ops/compose_frame.c - writes the plain-text current_frame.txt
+   (ASCII/emoji grid + chrome). Re-derives entity positions directly
+   from game state (map.txt/furniture.txt/hero/items/monsters/pets)
+   every time it runs.
+
+2. system/chtpm_rgb_render.c - a project-agnostic PERSISTENT DAEMON.
+   Normally it font-rasterizes current_frame.txt verbatim into
+   pieces/display/rgb_frame.raw (the file gl_mirror.c actually
+   displays), using its OWN separate emoji-recognition system
+   (load_emoji_colors_from()/load_emoji_assets_from(), built from
+   terrain/furniture/items/monster_types.txt registries + 2 hardcoded
+   entries for hero/xlector - see match_emoji_color()).
+
+   BUT: when a line in current_frame.txt starts with byte 0x01
+   (MAP3D_MARKER), chtpm_rgb_render.c does NOT font-rasterize that
+   line or the map rows following it - it calls blit_overlay()
+   instead, which reads a SEPARATE file, pieces/display/
+   rgb_frame_3d_overlay.raw (+ its own .receipt.txt for dimensions),
+   and composites THAT into the final frame. compose_frame.c emits
+   MAP3D_MARKER specifically when render_mode==1.
+
+3. The overlay file is written by ops/compose_rgb_frame.c - a REAL 3D
+   perspective ray marcher (render_3d_view()/raymarch_walls_3d()),
+   NOT font rasterization at all. It has its OWN "early" grid-
+   population pass inside main(), gated by `is_chtpm_mode &&
+   render_mode==1`, completely separate from its "late"/main-pass grid
+   population used in non-chtpm mode.
+
+Invocation: pal/main_loop_chtpm.pal calls compose_frame + compose_rgb_frame
+ONCE at startup, then loops calling ops/+x/game_dispatch.+x every 16.6ms
+forever. game_dispatch.c reads queued input keys, dispatches them
+(move_player/choice/camera_control), and - CONFIRMED via direct read,
+ops/game_dispatch.c lines ~83-84 - re-runs BOTH ./ops/+x/compose_frame
+AND ./ops/+x/compose_rgb_frame again, but ONLY if `any_key` was
+processed this tick (i.e. only on real player input, not every 16.6ms
+tick unconditionally).
+
+================================================================================
+PART 2: CONFIRMED, FIXED BUG - the chtpm-mode "early" pass never had
+items/monsters/pets loops at all
+================================================================================
+ops/compose_rgb_frame.c's "early" grid-population block (the one that
+feeds render_3d_view() for the overlay file, inside the
+`if (is_chtpm_mode) { if (render_mode==1) {...} }` branch) only ever
+populated terrain/furniture (via terrain_or_furniture_asset_id()) and
+hero/xlector (hardcoded). It had NO items/monsters/pets scanning loops
+at all - unlike the "late"/main pass used in non-chtpm mode, which
+already had items+monsters loops, and which this session had already
+added a pets loop to (see 0.a-z-pets-plan/a-z-fix-report.txt Part 8 for
+that earlier discovery).
+
+This is a real, structural, confirmed gap - not a guess. Fixed by
+adding the same items/monsters/pets scanning loops (mirroring the late
+pass's own code almost verbatim) into the early pass too. Compiled
+clean (zero warnings). Confirmed the overlay file DOES regenerate using
+this new code path when manually invoked (fresh mtime on rgb_frame_3d_
+overlay.raw after each run).
+
+This fix is necessary but, per live testing below, NOT sufficient on
+its own - entities still don't render reliably even with this fix in
+place.
+
+================================================================================
+PART 3: WHAT TURNED OUT TO BE DISTRACTIONS (real code, but not the bug)
+================================================================================
+1. chtpm_rgb_render.c's own emoji-matching system (match_emoji_color(),
+   load_emoji_assets_from() for items.txt/monster_types.txt) - spent
+   real time verifying field counts/indices/registry file contents here
+   (all correct, e.g. monster_types.txt's zombie|Zombie|Z|20|5|🧟 parses
+   fine against field_count=6/unicode_field=5). ALL IRRELEVANT once
+   render_mode=1 is confirmed active - that whole code path is bypassed
+   entirely by the MAP3D_MARKER/blit_overlay() mechanism in Part 1.
+   Wasted real effort tracing this before confirming render_mode=1 was
+   in play; flag for future self: check render_mode FIRST, before
+   assuming the text-rasterization renderer is even in use.
+
+2. extrude-emoji.md's own historical bug ("players/items render flat &
+   color-only in 3D mode while walls render extruded + emoji-textured")
+   - this document describes an OLDER bug that a PRIOR session already
+   fixed (cell_asset/cell_is_entity are already threaded into
+   render_3d_view()/raymarch_walls_3d(), confirmed via direct read;
+   ops/gen_voxels8.c exists specifically because that fix was
+   completed). Initially suspected this was THE bug re-surfacing;
+   it wasn't - the current bug is different (see Part 2 and Part 4).
+
+3. Camera mode 4 (bird's-eye, absolute cam_pan_x/y coordinates, not
+   hero-relative) - proposed as an explanation for entities
+   "disappearing" after the user moved/interacted. DIRECTLY REJECTED BY
+   THE USER ("no thats not true... the zombies disappeared from the
+   SAME view they were visible in 1 frame earlier"). Do not re-propose
+   this without new evidence - the user watched it happen in a single,
+   unmoved view.
+
+4. Real combat killing zombie_01/zombie_02 (their state.txt directories
+   were confirmed genuinely deleted from map_02/monsters/ - real
+   combat, not a rendering bug, for THOSE TWO specifically). This is a
+   real, confirmed, separate phenomenon (proven via direct directory
+   listing before/after), but the user clarified this does NOT explain
+   the general report ("ALL zombies everywhere on the map disappeared"
+   plus "the pet (was visible) also disappeared" - pets aren't
+   killable, so this explanation cannot cover the pet's disappearance
+   at all). Real, but incomplete/wrong as a general explanation - don't
+   lean on this again as the answer.
+
+================================================================================
+PART 4: SOLID LEAD - NOT YET CONCLUSIVELY CONFIRMED - entity vs wall
+asymmetry in raymarch_walls_3d()'s texture-sampling failure handling
+================================================================================
+Direct code read of raymarch_walls_3d() (ops/compose_rgb_frame.c,
+around what is currently lines ~1136-1328 after Part 2's edit) found a
+REAL structural asymmetry between how a failed texture sample is
+handled for walls/decor (hit_kind 0/2) vs entities (hit_kind 1):
+
+- Walls/decor: `has_voxel` comes from whether a voxels_8.csv path was
+  ever resolved at all (WallGlyphMeta's own m->has_voxel, set once per
+  distinct glyph). If sample_voxel8_pixel() fails OR has_voxel was
+  already 0, the pixel still gets drawn using the tile's flat,
+  registry-derived rgb_top color (r/g/b were already set from
+  glyph_rgb_top()/glyph_fallback_rgb() before the sampling attempt) -
+  `drew` stays 1 unconditionally for these hit_kinds.
+
+- Entities: `has_voxel` is HARDCODED to 1 unconditionally (line ~1271
+  in the post-Part-2-fix file: `has_voxel = 1;`), and r/g/b are first
+  set via glyph_fallback_rgb() (which doesn't recognize entity glyphs
+  like 'z'/'p', so this is generic magenta 255,0,255 - "unmapped"
+  color, per that function's own comment). If sample_voxel8_pixel()
+  then FAILS, the code explicitly sets `drew = 0` (comment: "Leave this
+  pixel untouched... instead of painting a flat color, so the box is
+  only visible where the emoji itself has opaque pixels"). This means
+  a failed sample for an entity draws NOTHING (transparent, falls
+  through to whatever the floor pass already put there), never the
+  magenta fallback, never any flat color at all - unlike walls, which
+  ALWAYS show at least a flat color.
+
+Checked (ruled out as the DIRECT cause of total invisibility): all four
+relevant asset directories - pieces/registry/emoji_assets/{zombie,
+zombie_child,sp_turtle,sp_frog}/ - DO have both voxels_16.csv AND
+voxels_8.csv present on disk right now. So "the file is simply missing"
+is NOT why sample_voxel8_pixel() would fail for these specific assets -
+if it IS failing, it's failing for some other reason (bad path
+construction, a UV/alpha-threshold miss, or the MAX_VOXEL8_CACHE=16
+cache filling up before these assets get their turn within a single
+frame - NOT checked yet, worth checking: how many DISTINCT terrain/
+furniture/entity assets appear within camera view in a typical current
+scene, vs. the 16-slot cache).
+
+ALSO worth weighing: ENTITY_MARGIN=0.15 / ENTITY_HEIGHT=0.9 (vs a
+wall's full 1.0x1.0x1.0 box) make an entity's hit-box meaningfully
+smaller in screen-space than a wall's, AND real emoji artwork typically
+has substantial transparent padding around the actual silhouette
+within its 8x8 texture. Combined, an entity might only ever get a
+handful of ray hits landing on genuinely opaque texture pixels at
+typical camera distances - which could look like "basically not
+rendering" to a human eye even if it's technically "working" per the
+code's own design intent (a sparse cutout silhouette, not a solid
+block). This is a real candidate explanation for "entities look
+absent/way fainter than solid-looking walls," independent of whatever
+causes the sharper "renders once then fully vanishes" symptom in Part 5.
+
+NEXT STEP (was in progress when this doc was requested): add a
+temporary stderr debug print at the exact hit_kind==1 sample-failure
+branch, in a throwaway compiled copy (/tmp/compose_rgb_frame_debug.c -
+NOT the live ops/compose_rgb_frame.c), showing the exact cell_asset
+string used, the constructed voxel_path, and whether fopen()/sampling
+actually succeeds - to get a definitive, non-speculative answer instead
+of continuing to reason about it from source alone. Not yet run.
+
+================================================================================
+PART 5: UNRESOLVED - "renders once (with visible magenta/color cluster
+near hero), then vanishes on the very next real interactive frame" -
+same camera view, not just some zombies (real combat deaths), but
+reportedly ALL zombies AND the pet
+================================================================================
+This is the sharpest, most confusing symptom and is NOT yet explained
+by anything above. Established facts ruling out the simpler theories:
+
+- game_dispatch.c DOES re-invoke both compose_frame and compose_rgb_frame
+  on every real keypress (confirmed via direct read, not assumed) - so
+  "it just isn't being called again" is ruled out.
+- Manually invoking ops/+x/compose_rgb_frame.+x TWICE in a row (same
+  camera/hero state, no real keypress involved) produced BYTE-IDENTICAL
+  overlay output both times (md5sum matched) - so simply "calling the
+  function again" does not by itself reproduce a disappearance. Whatever
+  causes the real, live disappearance is tied to something that
+  genuinely differs between a manual back-to-back re-run and a real
+  game_dispatch-triggered re-run.
+- Camera-mode movement was directly ruled out by the user (Part 3.3).
+- Real monster death only explains SOME zombies going away, not "ALL
+  zombies everywhere" plus the pet (pets can't be "killed" by combat).
+
+Untested angles worth checking next:
+  1. Does game_dispatch.c's own dispatch step (move_player/choice/
+     camera_control, which all run BEFORE compose_frame/compose_rgb_frame
+     on the SAME tick) change something that indirectly affects the
+     early pass's own is_chtpm_mode/render_mode check, or hero's
+     position/facing/yaw enough to move EVERY entity out of view_radius
+     simultaneously - seems unlikely to hit "every entity" at once
+     unless view_radius is very small or hero teleports, but not ruled
+     out.
+  2. Whether MAX_VOXEL8_CACHE(16) or MAX_EMOJI_COLORS-style caps are
+     hit differently once terrain assets ALSO get requested in the same
+     pass as entity assets - if terrain fills the cache first on one
+     invocation ordering vs another, entities could lose the cache race
+     unpredictably. Not checked.
+  3. Whether something clears/deletes/truncates pieces/display/
+     rgb_frame_3d_overlay.raw or its receipt as a side effect of some
+     OTHER op in the real dispatch chain (move_player/choice/
+     camera_control) between the "good" render and the "next" one -
+     not checked directly (e.g. via a targeted `stat`/inotify-style
+     watch across a real keypress cycle).
+  4. Get an actual byte-for-byte diff of the REAL overlay file
+     immediately before vs. immediately after a real, single, in-game
+     keypress that reproduces the disappearance - this session only
+     diffed two MANUAL invocations against each other, never a real
+     "before" against a real "after" pulled from an actual live
+     disappearance event. That's the single most direct, conclusive
+     check still not done.
+
+================================================================================
+PART 6: ARCHITECTURAL RECOMMENDATION - unify the render paths, don't
+keep patching each divergent copy separately
+================================================================================
+Both confirmed bugs in this file (Part 2 and Part 4) exist for the SAME
+underlying reason: the same logical concept - "how do I draw this tile/
+entity" - is implemented MULTIPLE, INDEPENDENT times across this
+codebase, and those copies have already drifted out of sync with each
+other at least twice:
+
+  1. Grid/cell_asset population is written out TWICE inside
+     ops/compose_rgb_frame.c's own main() - once for the "early"
+     (chtpm-mode overlay) pass, once for the "late" (non-chtpm) pass.
+     They are NOT the same function called twice with different
+     inputs - they are two separately hand-written blocks of near-
+     identical code. That's exactly how the early pass ended up
+     missing items/monsters/pets entirely (Part 2) while the late pass
+     had them: someone added those loops to one copy and never went
+     back to add them to the other, because there was no single place
+     to add them ONCE.
+
+  2. Drawing a raymarch hit (raymarch_walls_3d(), Part 4) branches by
+     hit_kind into three different behaviors for "what happens when the
+     texture sample fails" - walls/decor keep a flat color, entities go
+     fully transparent. That's not a deliberate, symmetric design
+     choice being applied consistently to a shared concept ("a
+     textured, ray-marched object") - it's three different code paths
+     for what should conceptually be ONE thing (an object occupying a
+     tile, textured if possible), each with its own fallback rule that
+     someone had to remember to write correctly, and didn't, uniformly.
+
+  3. Even one layer up: chtpm_rgb_render.c's own emoji-matching/
+     registry system (Part 3.1) is a THIRD, entirely separate
+     implementation of "how do I know what color/texture this tile/
+     glyph should be," used only when render_mode != 1, completely
+     disconnected from compose_rgb_frame.c's own asset-resolution logic
+     for the exact same underlying data (terrain/furniture/items/
+     monsters/pets registries). Two renderers, two independent
+     resolution systems, no shared source of truth.
+
+None of these bugs required a subtle logic error to occur - they
+required exactly one place to be updated and a SIBLING copy of the same
+logic to be forgotten. That will keep happening, for pets and for
+whatever the next new entity/content type is, as long as "how to render
+a thing" is copy-pasted rather than centralized.
+
+RECOMMENDATION for a future refactor (not attempted in this session -
+scope/risk too large to bundle into a bug investigation): every render
+path (chtpm text-mode, chtpm 3D overlay, non-chtpm 3D, and the ASCII/
+compose_frame.c text view if feasible) should call through ONE shared
+function for "resolve this map cell's drawable state" (glyph, asset id,
+is-entity, walkable) and ONE shared function for "given a resolved
+drawable + a ray hit (or a flat 2D blit position), produce a color,
+with ONE consistent fallback policy" - not a per-hit_kind branch that
+has to be kept in sync by hand across wall/decor/entity/pet/item/
+monster indefinitely. Whether that shared resolution lives in a real
+shared header/library or is at minimum refactored into single functions
+called from both the early and late passes within compose_rgb_frame.c
+itself, the goal is the same: one source of truth per concept, so a
+future new content type (or a future asset-path change) only needs to
+be correct in one place, not remembered correctly in three or four.
+
+================================================================================
+PART 7: WHAT TO DO WITH THIS FILE
+================================================================================
+Do not re-litigate Part 3's distractions without genuinely new evidence
+that contradicts the specific reasoning given for each. Part 4 is a
+real, confirmed-structural asymmetry worth fixing regardless of whether
+it's the whole story - making entities always draw at least a flat
+fallback color (matching walls' own behavior) instead of going fully
+transparent on a sample miss would be a reasonable, low-risk change on
+its own merits, independent of Part 5's mystery. Part 5 is the actual
+open question blocking "why did it work for one frame and then stop" -
+solve that with real before/after byte diffs across an actual live
+reproduction, not more source reading alone.

@@ -1,0 +1,19 @@
+window_count=2
+active_window_id=2
+bg_color=#000044
+name=Desktop
+type=desktop
+pos_x=0
+pos_y=0
+width=800
+height=600
+session_status=active
+selected_index=0
+debug_info=M(1097,1059) S=0
+window_list=  [ ] 1. Terminal 1          
+  [>] 2. PIECECRAFT-3D (Sovereign)
+menu_options=║    [>] 1. [Control Map (ENTER) ]           ║
+║    [ ] 2. [Menu Mode (ESC)     ]           ║
+║    [ ] 3. [Deselect (9)        ]           ║
+║    [ ] 4. [Scan                ]           ║
+desktop_view=DESKTOP_VIEW|BG: #000044|WINDOW_COUNT: 2|WINDOW | 1 | 70 | 70 | 400 | 300 | Terminal 1 | terminal | 0|WINDOW | 2 | 0 | 25 | 1024 | 713 | PIECECRAFT-3D (Sovereign) | gltpm_app | 0|gl_response=

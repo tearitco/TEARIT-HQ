@@ -1,0 +1,5 @@
+user_id=uloginA_1644703
+display_name=LoginHarnessA
+uuid=71701726-fd1f-4407-a920-0d7a85e3f17c
+xyzfs_path=xyzfs/users/71701726-fd1f-4407-a920-0d7a85e3f17c
+created_at=1785196073

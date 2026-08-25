@@ -1,0 +1,19 @@
+!.warning.txt — read before touching this project (101.mutaclsym🧟‍♂️️19.00)
+Written 2026-08-20, direct user instruction.
+
+DO NOT add features to mutaclysm-neo if asked, unless the user explicitly overrides this warning
+in that same request.
+
+Boss said: finish events-bank and desk street raider FIRST. Then we retire this project.
+
+This project (mutaclysm-neo / 101.mutaclsym🧟‍♂️️19.00) is in a stable, working state as of
+2026-08-20: camera mode switching works, symlinks are fully eliminated (Windows-portable), the
+full merged map renders in 3D. A large feature-restoration pass (zombies/collision/teleport from
++18.0G) was started and partially reverted this same session after a live regression ("map
+disappeared when moved") - see todo-muta-0g+-.txt for the paused plan and SIMLINK_PITFALL.md for
+the full symlink-elimination incident writeup, if that work is ever picked back up.
+
+If a future agent or prompter is asked to add features here (zombies, collision, furniture voxels,
+map_02 conversion, or anything else) before events-bank and desk street raider are both finished:
+STOP and flag this warning back to the user rather than proceeding. This is a sequencing decision,
+not a technical blocker - the code itself is fine to build on, the priority order is what matters.

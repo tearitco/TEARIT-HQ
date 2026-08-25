@@ -1,0 +1,619 @@
+================================================================================
+TPMOS CODEBASE MAP - "Mall Directory" Style Guide
+================================================================================
+Date: April 2, 2026
+Version: 1.2 (Documentation Organization Added)
+
+Think of this as your mall map. Each section is a "store" with specific purpose.
+
+================================================================================
+SECTION 0: DOCUMENTATION ORGANIZATION (Read This First!)
+================================================================================
+
+TPMOS documentation is organized by PURPOSE. Here's where to find/create docs:
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ #.plans/ - FUTURE PLANNING & ROADMAPS                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Purpose: Strategic plans, implementation roadmaps, architecture decisions  │
+│                                                                             │
+│ Structure:                                                                  │
+│   #.plans/                                                                  │
+│   ├── #.p2p/              ← P2P-specific plans (multi-document)            │
+│   │   ├── P2P-PHASE-1-NETWORK-AND-CHAT.md                                  │
+│   │   ├── P2P-MULTI-NETWORK-ARCHITECTURE.md                                │
+│   │   └── (future: P2P phase 2, 3, etc.)                                   │
+│   ├── p2p_plan.txt        ← P2P strategic overview                         │
+│   ├── ai_plan.txt         ← AI strategy                                    │
+│   └── lsr_plan+2.txt      ← LSR strategy                                   │
+│                                                                             │
+│ Rule: Future planning document → #.plans/                                  │
+│       Project-specific plans → #.plans/#.<project>/                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ #.main/ - SYSTEM SPECIFICATIONS (Technical)                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Purpose: Technical specifications for SYSTEM COMPONENTS                     │
+│                                                                             │
+│ Contains:                                                                   │
+│   - fondu-how2.txt, fondu-kpis.txt         ← Fondu system specs            │
+│   - migration-status.txt                     ← System migration tracking    │
+│   - tpm-functional-principles.txt            ← Architecture principles      │
+│   - gl-os-architecture.txt                   ← GL-OS system spec            │
+│   - p2p-ops.txt (1491 lines)                 ← P2P ops specification       │
+│   - op-ed-ops-section.txt                    ← Op-ed ops spec               │
+│                                                                             │
+│ Rule: Technical spec for a SYSTEM → #.main/                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ #.docs/ - USER DOCUMENTATION (For Humans)                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Purpose: Documentation for PEOPLE using/developing on TPMOS                 │
+│                                                                             │
+│ Contains:                                                                   │
+│   - INDEX.md                               ← Documentation hub (START HERE) │
+│   - AGENT_ONBOARDING.txt                   ← New developer guide            │
+│   - TPMOS_APP_REFERENCE.txt                ← App/project specs              │
+│   - OPS_DICTIONARY.txt                     ← Complete ops reference         │
+│   - COMPILE_SYSTEM.md                      ← How to compile                 │
+│   - DOCUMENTATION-ORGANIZATION-SCHEME.txt  ← Full org scheme                │
+│   - fondu-investigation-report.txt         ← Investigation reports          │
+│   - op-ed-investigation-report.txt         ← (what we found)                │
+│   - ^.pmo.ld-faq+8/PITFALLS_*.txt          ← Common mistakes                │
+│   - ARCHIVE/                               ← Outdated docs                  │
+│                                                                             │
+│ Rule: For PEOPLE learning/using → #.docs/                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ #.tools/ - BUILD & MAINTENANCE SCRIPTS                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Purpose: Scripts for building, testing, maintaining                         │
+│                                                                             │
+│ Contains:                                                                   │
+│   - compile_all.sh                         ← Build everything               │
+│   - check_binaries.sh                      ← Verify binaries exist          │
+│   - check_pmo_procs.sh                     ← Diagnostic: running processes  │
+│   - fix_terminal.sh                        ← Restore terminal after Ctrl+C  │
+│   - pmo_cpu_health.sh                      ← Monitor runaway processes      │
+│                                                                             │
+│ Rule: Build/maintenance script → #.tools/                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ #.testing/ - TEST PLANS & RESULTS                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Purpose: Test plans, test results, verification procedures                  │
+│                                                                             │
+│ Contains:                                                                   │
+│   - op-ed-testing-guide.txt                ← op-ed test plan               │
+│   - (future: test results by date)                                          │
+│                                                                             │
+│ Rule: Test plan or result → #.testing/                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ #.ref/ - REFERENCE CODE (Currently Empty)                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Purpose: Reference implementations for comparison                           │
+│                                                                             │
+│ Status: EMPTY - Reference-first debugging not currently available           │
+│                                                                             │
+│ Future: When populated, compare current code vs #.ref/ for debugging       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+DECISION TREE: "Where does this doc go?"
+────────────────────────────────────────
+1. Is it a TECHNICAL SPEC for a system component?
+   → YES: #.main/
+   → NO: Continue
+
+2. Is it for PEOPLE learning/using the system?
+   → YES: #.docs/
+   → NO: Continue
+
+3. Is it about FUTURE plans/roadmap?
+   → YES: #.plans/
+   → NO: Continue
+
+4. Is it a SCRIPT for building/testing/maintenance?
+   → YES: #.tools/
+   → NO: Continue
+
+5. Is it a TEST plan or result?
+   → YES: #.testing/
+   → NO: Where did this come from?!
+
+================================================================================
+GROUND FLOOR: SYSTEM CORE (The Foundation)
+================================================================================
+
+pieces/chtpm/           [CORE ENGINE]
+├── plugins/+x/
+│   ├── orchestrator.+x    # Main process launcher (kills children on exit)
+│   └── chtpm_parser.+x    # Reads input, routes to active project
+└── plugins/
+    └── orchestrator.c     # Source code
+
+pieces/keyboard/        [INPUT MUSCLE]
+├── plugins/+x/
+│   └── keyboard_input.+x  # Reads /dev/tty, writes to history.txt
+└── src/
+    └── keyboard_input_linux.c  # Source (has signal handlers for Ctrl+C)
+
+pieces/display/         [RENDER MUSCLE]
+├── plugins/+x/
+│   └── renderer.+x      # Composes frames, writes to current_frame.txt
+└── renderer.c
+
+pieces/os/              [OPERATING SYSTEM FILES]
+├── kill_all.sh          # Surgical process killer (won't kill browsers)
+├── compiled_projects.txt # List of projects to compile
+├── app_list.txt         # Registered apps for OS menu
+└── ops_registry/        # Registered ops per project
+    ├── user.txt
+    └── test_fondu.txt
+
+================================================================================
+FIRST FLOOR: SYSTEM APPS (Always Running)
+================================================================================
+
+pieces/apps/player_app/    [UNIFIED INPUT BUFFER]
+├── history.txt            # All projects write input here
+└── manager/
+    └── +x/player_manager.+x
+
+pieces/apps/playrm/        [PROJECT LOADER]
+├── plugins/+x/
+│   └── playrm_module.+x   # Shows project selection menu
+└── ops/+x/
+    ├── project_loader.+x  # Loads selected project
+    └── (20+ ops for movement, placement, etc.)
+
+pieces/apps/editor/        [EDITOR OPS SHARED]
+└── ops/+x/
+    ├── place_tile.+x      # Symlink to playrm ops
+    ├── scan_op.+x         # Symlink to playrm ops
+    └── (other editor ops)
+★ Purpose: Shared ops for op-ed and other editors
+
+pieces/apps/gl_os/         [OPENGL DESKTOP - APP ONLY] ⭐ VISUAL SHELL
+├── plugins/+x/
+│   ├── gl_desktop.+x      # Opens OpenGL window + writes ASCII state
+│   ├── gl_os_session.+x   # Session management
+│   └── gl_os_renderer.+x  # Window rendering
+├── session/
+│   ├── state.txt          # Session state (window_count, bg_color, etc.)
+│   ├── view.txt           # Desktop view content
+│   └── history.txt        # Input history
+├── layouts/
+│   └── desktop.chtpm      # ASCII layout with ${desktop_view}
+└── state/
+    └── (desktop state)
+★ Purpose: OpenGL desktop environment
+★ Launch: LAUNCH:GL-OS from main menu
+★ Note: APP-only, NOT a project
+
+pieces/apps/man-ops/       [MANUAL: OPERATIONS]
+├── plugins/+x/
+│   └── man-ops_module.+x  # Shows available ops
+└── layouts/
+
+pieces/apps/man-pal/       [MANUAL: PAL SCRIPTING]
+├── plugins/+x/
+│   └── man-pal_module.+x  # PAL script documentation
+└── layouts/
+
+pieces/apps/man-add/       [MANUAL: ADDRESS BOOK]
+├── plugins/+x/
+│   └── man-add_module.+x  # Contact management
+└── layouts/
+
+================================================================================
+SECOND FLOOR: ACTIVE PROJECTS (Your Games/Apps)
+================================================================================
+
+projects/test_fondu/      [TESTING - Fondu Test Project] ⭐ START HERE
+├── ops/+x/
+│   ├── increment_counter.+x  # counter++
+│   ├── decrement_counter.+x  # counter--
+│   ├── reset_counter.+x      # counter=0
+│   └── get_status.+x         # returns "OK"
+├── manager/+x/
+│   └── test_fondu_manager.+x
+├── test_ops.pal           # Test PAL script
+└── pieces/state.txt       # counter state
+★ Purpose: Test Fondu installation, learn op pattern
+★ Try: ./fondu --install test_fondu
+
+projects/user/            [USER MANAGEMENT] ⭐ ESSENTIAL
+├── ops/+x/
+│   ├── create_profile.+x  # Create user profile
+│   ├── auth_user.+x       # Login/authenticate
+│   └── get_session.+x     # Get session data
+├── manager/+x/
+│   └── user_manager.+x
+├── README_OPS.txt         # Full ops documentation
+└── pieces/
+    ├── profiles/          # User profiles
+    └── session/           # Active sessions
+★ Purpose: User accounts for all games
+★ Use in PAL: OP user::create_profile "player1"
+
+projects/fuzz-op/         [GAME: Fuzz Legacy Pet]
+├── manager/+x/
+│   └── fuzz-op_manager.+x
+├── maps/
+└── pieces/
+★ Purpose: Main pet simulation game
+★ Status: Active development
+
+projects/op-ed/           [EDITOR PROJECT] ⭐ CONTENT CREATION
+├── manager/+x/
+│   └── op-ed_manager.+x   # Editor logic
+├── layouts/
+│   └── op-ed.chtpm        # Editor UI
+├── maps/
+│   └── (editable maps)
+└── pieces/
+    └── xlector/           # Editor cursor
+★ Purpose: Level/text editor
+★ Uses: pieces/apps/editor/ops/ (symlinks to playrm)
+
+projects/gl-os/           [DEPRECATED - USE pieces/apps/gl_os/]
+★ Note: GL-OS is APP-ONLY now (pieces/apps/gl_os/)
+★ This project structure was removed
+
+projects/bot-editor/manager/+x/bot-editor_manager.+x   # Bot IDE logic
+├── layouts/
+│   └── editor.chtpm        # Bot Editor UI
+└── ops/+x/
+    ├── bot_create.+x       # Create bot piece
+    ├── bot_export.+x       # Standalone Mini-TPMOS bundle
+    ├── ai_attend.+x        # Neural attention Op
+    └── fs_ls.+x            # Bot filesystem "Hands"
+
+projects/quiz-engine/       [AI TESTING: Knowledge Validation] ⭐ NEW
+├── manager/+x/
+│   └── quiz-engine_manager.+x
+└── pieces/question_bank/   # 36 MCAT Compound Pieces
+
+projects/checkers/         [AI TESTING: Strategic RL] ⭐ NEW
+├── layouts/setup.chtpm     # Human/AI Setup Screen
+└── ops/src/                # RL Move & P2P Logic
+
+projects/hangman/          [AI TESTING: Attention Benchmark] ⭐ NEW
+├── layouts/setup.chtpm     # Benchmarking Setup
+└── pieces/word_bank/       # Dictionary for Attention Tests
+
+projects/lsr/             [GAME: Lunar Streetrace Raider] [FUTURE]
+├── manager/
+└── pieces/
+★ Purpose: Civ-lite simulation with lunar economy
+
+projects/demo_1/          [DEMO PROJECT]
+├── manager/
+└── pieces/
+★ Purpose: Proof of concept (title → game → win loop)
+
+projects/blank/           [TEMPLATE: Empty Project]
+├── project.pdl
+└── (minimal structure)
+★ Purpose: Start new projects from this
+
+projects/template/        [TEMPLATE: With Examples]
+├── layouts/
+└── pieces/
+★ Purpose: Learn project structure
+
+projects/ai-labs/         [AI EXPERIMENTS] [FUTURE]
+├── manager/
+└── pieces/
+★ Purpose: AI distillation, local LLM integration
+
+projects/p2p-net/         [NETWORKING] [PLANNED]
+├── manager/
+├── ops/                   # 43 ops planned (see #.main/p2p-ops.txt)
+│   ├── wallet_login.+x
+│   ├── mine_block.+x
+│   ├── send_coins.+x
+│   ├── create_item.+x
+│   ├── create_auction.+x
+│   └── (40+ more ops)
+└── pieces/
+★ Purpose: P2P market, blockchain, NFT trading
+★ Status: Specification complete, implementation pending
+
+projects/man-add/         [ADDRESS BOOK PROJECT]
+projects/man-ops/         [OPS MANUAL PROJECT]
+projects/man-pal/         [PAL MANUAL PROJECT]
+★ Purpose: System utilities as projects
+
+projects/404-test/        [TESTING: Error handling]
+★ Purpose: Test 404/not found scenarios
+
+================================================================================
+BASEMENT: ARCHIVED PROJECTS (Legacy/Inactive)
+================================================================================
+
+projects/trunk/legacy_archive/
+├── fuzzpet_app/          # Legacy fuzzpet (broken keyboard, replaced by fuzz-op)
+├── editor/               # Legacy editor (replaced by op-ed project)
+└── gl_os/                # Legacy GL desktop (reference only)
+★ Status: Source only, not compiled
+★ Use: Reference only, don't run these
+
+================================================================================
+TOOL SHOPS: Utilities & Build Tools
+================================================================================
+
+#.testing/
+├── PLANS/                 ← Test plans and procedures
+│   ├── fondu-howto.txt         ← How to use Fondu (commands + KPIs)
+│   ├── fondu-test-plan.txt     ← Fondu verification checklist
+│   └── op-ed-testing-guide.txt ← op-ed test plan
+├── RESULTS/               ← Test results (dated)
+│   └── (future: test results by date)
+└── INVESTIGATION-JOYSTICK-LINUX.txt ← Joystick functionality investigation
+
+#.main/
+├── fondu-how2.txt        ← DEPRECATED - moved to #.testing/PLANS/
+├── fondu-kpis.txt        ← DEPRECATED - moved to #.testing/PLANS/
+├── migration-status.txt   # APP→PROJECT migration status
+├── tpm-functional-principles.txt  # Core TPM principles
+├── gl-os-architecture.txt # GL-OS system specification
+├── gl-os-layout-fix.txt   # ${desktop_view} fix documentation
+├── gl-os-postmortem.txt   # What went wrong during GL-OS debugging
+└── p2p-ops.txt           # P2P-NET ops specification (1491 lines)
+
+pieces/buttons/linux/
+├── compile.sh            # ./button.sh c - Compiles everything
+├── run.sh                # ./button.sh r - Runs orchestrator
+├── kill.sh               # ./button.sh k - Surgical process kill
+└── debug_gl.sh           # ./button.sh d - Launch GL desktop
+
+#.tools/
+├── compile_all.sh        # Compiles everything
+├── check_binaries.sh     # Verifies all binaries exist
+├── fix_terminal.sh       # Restore terminal if Ctrl+C breaks it
+├── check_pmo_procs.sh    # Diagnostic: running PMO processes
+├── check_size.sh         # Count lines of code
+└── pmo_cpu_health.sh     # Monitor runaway processes
+
+#.docs/
+├── 00-INDEX/                  ← Documentation meta-docs
+│   ├── INDEX.md               ← Documentation hub (START HERE)
+│   ├── organization-scheme.txt ← Full org scheme
+│   ├── cleanup-summary-apr-2026.txt ← Cleanup results
+│   ├── reorg-plan.txt         ← Reorganization plan
+│   └── hybrid-reorg-proposal.txt ← What we moved
+├── 01-ONBOARDING/             ← New developer guides
+│   └── AGENT_ONBOARDING.txt   ← Quick start (moved from root)
+├── 02-REFERENCE/              ← Reference documentation
+│   ├── TPMOS_APP_REFERENCE.txt ← App/project specs
+│   └── OPS_DICTIONARY.txt     ← Complete ops reference
+├── 03-HOW-TO/                 ← Task-based guides (empty - future)
+├── 04-INVESTIGATIONS/         ← Investigation reports
+│   ├── fondu-investigation-report.txt
+│   ├── op-ed-investigation-report.txt
+│   └── (future investigations)
+├── 05-PITFALLS/               ← Common mistakes
+│   └── ^.pmo.ld-faq+8/
+│       └── PITFALLS_ACTIVE_2026-03-18.txt  # 76 pitfalls (READ BEFORE CODING!)
+└── 06-ARCHIVED/               ← Outdated docs
+    └── Dev-Sprints/
+        ├── consolidation-plan-apr-2026.txt
+        └── (archived dev sprint notes)
+
+================================================================================
+QUICK START: First-Time User Walkthrough
+================================================================================
+
+STEP 1: Compile Everything
+──────────────────────────
+./button.sh c
+
+This compiles:
+- All projects in pieces/os/compiled_projects.txt
+- System apps (man-*, player_app, playrm)
+- System components (orchestrator, parser, renderer, keyboard)
+- GL-OS (gl_desktop, gl_os_session, gl_os_renderer)
+
+STEP 2: Run the System
+──────────────────────
+./button.sh r
+
+You'll see the OS menu. Navigate with arrow keys, select with Enter.
+
+STEP 3: Try GL-OS (OpenGL Desktop)
+──────────────────────────────────
+From main menu:
+1. Click "GL-OS" button
+2. OpenGL window opens (requires DISPLAY server)
+3. ASCII layout shows desktop view in terminal
+
+STEP 4: Try op-ed (Text Editor)
+────────────────────────────────
+From loader menu:
+1. Select "op-ed"
+2. Use arrow keys to move cursor
+3. Select glyphs with number keys
+4. Place tiles on map
+
+STEP 5: Try a Test Project
+──────────────────────────
+From loader menu:
+1. Select "test_fondu"
+2. Press 1, 2, 3, 4 to test counter ops
+3. Press ESC to exit
+
+STEP 6: Install a Project (Fondu)
+─────────────────────────────────
+In terminal (after exiting with ESC):
+./pieces/system/fondu/fondu.+x --install test_fondu
+
+Now test_fondu is "production" (read-only, in pieces/apps/installed/)
+
+STEP 7: Discover Available Ops
+──────────────────────────────
+./pieces/system/fondu/fondu.+x --list-ops
+
+Shows all ops from all installed projects.
+
+STEP 8: Use User Ops in PAL Script
+──────────────────────────────────
+Create a PAL script in your project:
+
+  # my_game/scripts/login.asm
+  OP user::create_profile "hero"
+  OP user::auth_user "hero"
+  OP user::get_session "hero"
+
+Run it with prisc or from your game manager.
+
+================================================================================
+KEY CONCEPTS (New to TPMOS?)
+================================================================================
+
+WHAT IS A PROJECT?
+──────────────────
+A project is a self-contained game/app with:
+- project.pdl (descriptor with project_id, entry_layout)
+- manager/+x/ (orchestrates logic)
+- ops/+x/ (optional: reusable "muscle" binaries)
+- layouts/ (UI definitions)
+- pieces/ (game state, profiles, etc.)
+
+WHAT IS AN APP?
+───────────────
+An APP is a system tool with:
+- pieces/apps/<app_id>/ structure
+- LAUNCH:<APP_NAME> command
+- Listed in pieces/os/app_list.txt
+- Examples: GL-OS, man-ops, man-pal, man-add
+
+WHAT IS AN OP?
+──────────────
+An op is a standalone binary that does ONE thing well:
+- place_tile.+x (places a tile on a map)
+- create_profile.+x (creates a user profile)
+- auth_user.+x (authenticates a user)
+
+Ops are called from:
+1. C code (fork/exec/waitpid pattern)
+2. PAL scripts (OP op_name args)
+
+WHAT IS PAL?
+────────────
+PAL = Prisc Assembly Language. Simple scripting language:
+
+  OP user::create_profile "player1"
+  OP user::auth_user "player1"
+  JUMP game_start
+  LABEL game_start
+  OP move_entity "player" 1 0
+
+WHAT IS FONDU?
+──────────────
+Fondu manages project lifecycle:
+- ACTIVE (projects/) → Editable, in compile
+- INSTALLED (pieces/apps/installed/) → Read-only, production
+- ARCHIVED (projects/trunk/) → Source only, not compiled
+
+Use Fondu to:
+- Deploy projects as "apps"
+- Archive projects you're not working on
+- Discover what ops are available
+
+================================================================================
+FILE FLOW: How Input Becomes Action
+================================================================================
+
+1. USER PRESSES KEY
+   ↓
+2. keyboard_input.+x writes to pieces/keyboard/history.txt
+   ↓
+3. chtpm_parser.+x reads keyboard/history.txt
+   ↓
+4. Parser injects into active project's buffer (player_app/history.txt)
+   ↓
+5. Project manager polls buffer, sees key
+   ↓
+6. Manager calls op (e.g., move_entity.+x)
+   ↓
+7. Op updates state (projects/your_game/pieces/state.txt)
+   ↓
+8. Renderer reads state, writes view.txt
+   ↓
+9. Parser composes frame, writes current_frame.txt
+   ↓
+10. Display prints to screen
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Terminal locked after Ctrl+C?
+  → Run: reset
+  → Or: ./.tools/fix_terminal.sh
+
+Project not compiling?
+  → Check: pieces/os/compiled_projects.txt includes it
+  → Run: ./button.sh c and watch for errors
+
+Ops not showing in --list-ops?
+  → Check: projects/<id>/ops/ops_manifest.txt exists
+  → Run: ./fondu --install <project>
+  [fondue is incomplete , references to it are speculative]
+
+GL-OS shows wrong content?
+  → Check: pieces/apps/gl_os/session/view.txt has DESKTOP_VIEW
+  → Check: parser get_var() reads desktop_view from view.txt
+  → See: #.main/gl-os-layout-fix.txt
+
+op-ed xlector moves randomly?
+  → Check: op-ed_manager.c has stat() check for history
+  → See: #.main/op-ed-history-fix.txt
+
+Joystick not working?
+  → Check: #.testing/INVESTIGATION-JOYSTICK-LINUX.txt
+  → Check: pieces/joystick/plugins/+x/joystick_input.+x exists
+  → Check: pieces/joystick/ledger.txt has events
+
+Can't find where something is?
+  → Use this map! Look for the "store" that matches your need.
+  → Check PITFALLS first: #.docs/05-PITFALLS/^.pmo.ld-faq+8/PITFALLS_ACTIVE_*.txt
+
+================================================================================
+MAP LEGEND
+================================================================================
+
+[CORE ENGINE]    = Essential system, don't modify unless you know what you're doing
+[INPUT MUSCLE]   = Hardware interaction (keyboard, joystick)
+[RENDER MUSCLE]  = Display/output generation
+[OPERATING SYSTEM] = Shared state, registries, manifests
+[UNIFIED INPUT]  = Shared buffers all projects use
+[PROJECT LOADER] = Menu system for selecting projects
+[TESTING] ⭐     = Good for learning, safe to experiment with
+[ESSENTIAL] ⭐   = Used by other projects, important to understand
+[VISUAL SHELL]⭐ = OpenGL desktop environment
+[GAME]           = Actual games/apps built on TPMOS
+[TEMPLATE]       = Starting point for new projects
+[FUTURE]         = Planned/under development
+[LEGACY]         = Old code, reference only, don't run
+[PLANNED]        = Specification complete, implementation pending
+[INVESTIGATION]  = Functionality being investigated
+
+================================================================================
+END OF MAP
+================================================================================
+
+Need help? Check these IN ORDER:
+1. #.docs/01-ONBOARDING/AGENT_ONBOARDING.txt - Start here!
+2. #.docs/05-PITFALLS/^.pmo.ld-faq+8/PITFALLS_ACTIVE_2026-03-18.txt - Common pitfalls
+3. #.docs/02-REFERENCE/TPMOS_APP_REFERENCE.txt - App/project specs
+4. #.main/gl-os-postmortem.txt - What went wrong with GL-OS (learn from mistakes)
+5. #.main/tpm-functional-principles.txt - Core principles
+6. #.testing/INVESTIGATION-JOYSTICK-LINUX.txt - Joystick issues

@@ -1,0 +1,738 @@
+[1783256911] Window Geometry Manager Started
+[1783256911] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783256911] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783256911] Wrote window_geom_display for target=(none)
+[1783256911] Window Geometry Manager init complete
+[1783256950] Window Geometry Manager Started
+[1783256950] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783256950] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783256950] Wrote window_geom_display for target=wraith-alpha/wraith-projects/terminal
+[1783256950] Window Geometry Manager init complete
+[1783257468] Window Geometry Manager Started
+[1783257468] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783257468] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783257468] Wrote window_geom_display for target=(none)
+[1783257468] Window Geometry Manager init complete
+[1783257468] Window Geometry Manager Started
+[1783257468] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783257468] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783257468] Wrote window_geom_display for target=wraith-alpha/wraith-projects/terminal
+[1783257468] Window Geometry Manager init complete
+[1783257482] Window Geometry Manager Started
+[1783257482] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783257482] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783257482] Wrote window_geom_display for target=wraith-alpha/wraith-projects/terminal
+[1783257482] Window Geometry Manager init complete
+[1783258473] Window Geometry Manager Started
+[1783258473] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783258473] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783258473] Wrote window_geom_display for target=wraith-alpha/wraith-projects/chtmgl-video-isolate
+[1783258473] Window Geometry Manager init complete
+[1783258475] Window Geometry Manager Started
+[1783258475] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783258475] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783258475] Wrote window_geom_display for target=wraith-alpha/wraith-projects/chtmgl-video-isolate
+[1783258475] Window Geometry Manager init complete
+[1783258475] Window Geometry Manager Started
+[1783258475] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783258475] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783258475] Wrote window_geom_display for target=wraith-alpha/wraith-projects/chtmgl-video-isolate
+[1783258475] Window Geometry Manager init complete
+[1783259712] Window Geometry Manager Started
+[1783259712] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783259712] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783259712] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783259712] Window Geometry Manager init complete
+[1783259714] Window Geometry Manager Started
+[1783259714] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783259714] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783259714] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783259714] Window Geometry Manager init complete
+[1783297194] Window Geometry Manager Started
+[1783297194] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783297194] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783297194] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783297194] Window Geometry Manager init complete
+[1783297200] Window Geometry Manager Started
+[1783297200] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783297200] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783297200] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783297200] Window Geometry Manager init complete
+[1783298061] Window Geometry Manager Started
+[1783298061] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783298061] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783298061] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783298061] Window Geometry Manager init complete
+[1783298062] Window Geometry Manager Started
+[1783298062] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783298062] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783298062] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783298062] Window Geometry Manager init complete
+[1783301959] Window Geometry Manager Started
+[1783301959] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783301959] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783301959] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783301959] Window Geometry Manager init complete
+[1783302097] Window Geometry Manager Started
+[1783302097] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783302097] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783302097] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783302097] Window Geometry Manager init complete
+[1783302533] Window Geometry Manager Started
+[1783302533] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783302533] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783302533] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783302533] Window Geometry Manager init complete
+[1783302773] Window Geometry Manager Started
+[1783302773] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783302773] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783302773] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783302773] Window Geometry Manager init complete
+[1783302776] Window Geometry Manager Started
+[1783302776] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783302776] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783302776] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783302776] Window Geometry Manager init complete
+[1783303662] Window Geometry Manager Started
+[1783303662] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783303662] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783303662] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783303662] Window Geometry Manager init complete
+[1783303662] Window Geometry Manager Started
+[1783303662] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783303662] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783303662] Wrote window_geom_display for target=(none)
+[1783303662] Window Geometry Manager init complete
+[1783303663] Window Geometry Manager Started
+[1783303663] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783303663] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783303663] Wrote window_geom_display for target=(none)
+[1783303663] Window Geometry Manager init complete
+[1783303795] Window Geometry Manager Started
+[1783303795] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783303795] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783303795] Wrote window_geom_display for target=(none)
+[1783303795] Window Geometry Manager init complete
+[1783303795] Window Geometry Manager Started
+[1783303795] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783303795] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783303795] Wrote window_geom_display for target=(none)
+[1783303795] Window Geometry Manager init complete
+[1783303955] Window Geometry Manager Started
+[1783303955] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783303955] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783303955] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783303955] Window Geometry Manager init complete
+[1783305610] Window Geometry Manager Started
+[1783305610] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783305610] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783305610] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783305610] Window Geometry Manager init complete
+[1783305612] Window Geometry Manager Started
+[1783305612] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783305612] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783305612] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783305612] Window Geometry Manager init complete
+[1783305671] Window Geometry Manager Started
+[1783305671] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783305671] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783305671] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783305671] Window Geometry Manager init complete
+[1783306243] Window Geometry Manager Started
+[1783306243] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783306243] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783306243] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783306243] Window Geometry Manager init complete
+[1783317139] Window Geometry Manager Started
+[1783317139] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783317139] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783317139] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783317139] Window Geometry Manager init complete
+[1783317145] Window Geometry Manager Started
+[1783317145] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783317145] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783317145] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783317145] Window Geometry Manager init complete
+[1783317257] Window Geometry Manager Started
+[1783317257] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783317257] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783317257] Wrote window_geom_display for target=wraith-alpha/wraith-projects/settings
+[1783317257] Window Geometry Manager init complete
+[1783343783] Window Geometry Manager Started
+[1783343783] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783343783] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783343783] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783343783] Window Geometry Manager init complete, entering hot-path loop
+[1783345157] Window Geometry Manager Started
+[1783345157] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783345157] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783345157] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345157] Window Geometry Manager init complete, entering hot-path loop
+[1783345168] Regenerate marker grew, updating state for standalone view
+[1783345168] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345168] Regenerate marker grew, updating state for standalone view
+[1783345168] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345168] Regenerate marker grew, updating state for standalone view
+[1783345168] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345168] Regenerate marker grew, updating state for standalone view
+[1783345168] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345168] Regenerate marker grew, updating state for standalone view
+[1783345168] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345168] Regenerate marker grew, updating state for standalone view
+[1783345168] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345168] Regenerate marker grew, updating state for standalone view
+[1783345168] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345168] Regenerate marker grew, updating state for standalone view
+[1783345168] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345168] Regenerate marker grew, updating state for standalone view
+[1783345168] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345168] Regenerate marker grew, updating state for standalone view
+[1783345168] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345168] Regenerate marker grew, updating state for standalone view
+[1783345168] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345168] Regenerate marker grew, updating state for standalone view
+[1783345168] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345168] Regenerate marker grew, updating state for standalone view
+[1783345168] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345168] Regenerate marker grew, updating state for standalone view
+[1783345168] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345168] Regenerate marker grew, updating state for standalone view
+[1783345168] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345168] Regenerate marker grew, updating state for standalone view
+[1783345168] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345168] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345169] Regenerate marker grew, updating state for standalone view
+[1783345169] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345170] Regenerate marker grew, updating state for standalone view
+[1783345170] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345171] Regenerate marker grew, updating state for standalone view
+[1783345171] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345172] Regenerate marker grew, updating state for standalone view
+[1783345172] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345173] Regenerate marker grew, updating state for standalone view
+[1783345173] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345174] Regenerate marker grew, updating state for standalone view
+[1783345174] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345175] Regenerate marker grew, updating state for standalone view
+[1783345175] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345176] Regenerate marker grew, updating state for standalone view
+[1783345176] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345177] Regenerate marker grew, updating state for standalone view
+[1783345177] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345177] Regenerate marker grew, updating state for standalone view
+[1783345177] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345177] Regenerate marker grew, updating state for standalone view
+[1783345177] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345177] Regenerate marker grew, updating state for standalone view
+[1783345177] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783345177] Regenerate marker grew, updating state for standalone view
+[1783345177] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783347228] Window Geometry Manager Started
+[1783347228] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783347228] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783347228] Updated state for target=wraith-alpha/wraith-projects/settings
+[1783347228] Window Geometry Manager init complete, entering hot-path loop
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347229] Regenerate marker grew, updating state for standalone view
+[1783347229] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347230] Regenerate marker grew, updating state for standalone view
+[1783347230] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347231] Regenerate marker grew, updating state for standalone view
+[1783347231] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347232] Regenerate marker grew, updating state for standalone view
+[1783347232] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347233] Regenerate marker grew, updating state for standalone view
+[1783347233] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347233] Regenerate marker grew, updating state for standalone view
+[1783347233] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347233] Regenerate marker grew, updating state for standalone view
+[1783347233] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347233] Regenerate marker grew, updating state for standalone view
+[1783347233] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347233] Regenerate marker grew, updating state for standalone view
+[1783347233] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347233] Regenerate marker grew, updating state for standalone view
+[1783347233] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347233] Regenerate marker grew, updating state for standalone view
+[1783347233] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347233] Regenerate marker grew, updating state for standalone view
+[1783347233] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347233] Regenerate marker grew, updating state for standalone view
+[1783347233] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347233] Regenerate marker grew, updating state for standalone view
+[1783347233] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347233] Regenerate marker grew, updating state for standalone view
+[1783347233] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347233] Regenerate marker grew, updating state for standalone view
+[1783347233] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347233] Regenerate marker grew, updating state for standalone view
+[1783347233] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347233] Regenerate marker grew, updating state for standalone view
+[1783347233] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347233] Regenerate marker grew, updating state for standalone view
+[1783347233] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783347233] Regenerate marker grew, updating state for standalone view
+[1783347233] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783763700] Window Geometry Manager Started
+[1783763700] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783763700] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783763700] Updated state for target=wraith-alpha/wraith-projects/web-cam
+[1783763700] Window Geometry Manager init complete, entering hot-path loop
+[1783763700] Regenerate marker grew, updating state for standalone view
+[1783763700] Updated state for target=wraith-alpha/wraith-projects/settings/window-geom
+[1783951207] Window Geometry Manager Started
+[1783951207] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783951207] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783951207] Updated state for target=wraith-alpha/wraith-projects/piececraft-wraith
+[1783951207] Window Geometry Manager init complete, entering hot-path loop
+[1783951328] Window Geometry Manager Started
+[1783951328] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783951328] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings/window-geom
+[1783951328] Updated state for target=wraith-alpha/wraith-projects/piececraft-wraith
+[1783951328] Window Geometry Manager init complete, entering hot-path loop

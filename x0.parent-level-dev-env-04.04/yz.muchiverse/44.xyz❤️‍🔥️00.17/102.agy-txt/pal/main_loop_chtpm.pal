@@ -1,0 +1,34 @@
+# agy-txt main_loop_chtpm.pal - Phase T3 (PLAN.md §4). Adapted from
+# 102.editor-📄️00.00/pal/main_loop_chtpm.pal's own real, proven shape:
+# compose -> read interact_relay -> edit_key -> recompose. INTERACT
+# keys (typing into canvas) land on interact_relay; agy_edit_key owns
+# the buffer (pieces/system/editor_buffer.txt), same as editor's own.
+li x1, 0
+
+agy_compose_view
+hit_frame
+read_pos x7, "pieces/display/editor_screen_changed.txt"
+
+loop:
+    li x9, 0
+    agy_edit_key x9
+    read_pos x8, "pieces/display/editor_screen_changed.txt"
+    beq x7, x8, check_key
+    addi x7, x8, 0
+    j render
+
+check_key:
+    read_history pieces/apps/player_app/interact_relay.txt x2, x1
+    beq x2, x0, no_key
+    agy_edit_key x2
+    j render
+
+no_key:
+    sleep 30000
+    j loop
+
+render:
+    agy_compose_view
+    hit_frame
+    sleep 30000
+    j loop

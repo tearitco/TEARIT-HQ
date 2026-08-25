@@ -1,0 +1,7 @@
+
+
+if you are an agent and just read thru these documents (in the !.gemini--yolo sub dir) , as a task, and u were tasked with cleaning them up 
+do so in this dir. 
+
+combine information into one document . simliar to the pitfalls document. and toss out kruft
+and information related to code that is already in production or irrelevant to expedient onboarding. 

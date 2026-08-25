@@ -1,0 +1,392 @@
+handoff-j29.txt
+Date: 2026-06-29
+Purpose: Onboard the next agent quickly and keep the current Wraith/XO/editor planning lane coherent across dev epochs.
+
+==================================================
+1. ACTIVE LANE
+==================================================
+
+We are currently planning and implementing against:
+
+x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+
+Active Wraith targets:
+- projects/wraith-alpha
+- projects/wraith-alpha/wraith-projects/
+
+IMPORTANT:
+- Do NOT implement current Wraith work in x0.moke-pet-project-04.03 yet.
+- The Wraith copy in x0.moke-pet-project-04.03 is reference-only for now.
+- First polish the Wraith lane in 1.TPMOS.
+- Only copy/adapt later once the 1.TPMOS Wraith side is proven.
+
+==================================================
+2. CORE DOCS TO READ FIRST
+==================================================
+
+Read these before making architecture decisions:
+
+Framework / standards:
+- x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/!.gem-flashlite--yolo/!.evo&obs/!.TPMOS_ONBORD_BIBLE_10.md
+- x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/!.gem-flashlite--yolo/#.testing/_.0.aigent-testing-k3.txt
+
+Wraith architecture / context:
+- x0.parent-level-dev-env-02.01/wraith-architecture-j25.md
+- x0.parent-level-dev-env-02.01/fast-2do.txt
+- x0.parent-level-dev-env-02.01/handoff-j26.txt
+- x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/#.dev-storage/#.dox/onbord-tpmos-vision.md
+
+Current short-term planning docs:
+- x0.short-term-vision/README.md
+- x0.short-term-vision/jun-29-2do.txt
+- x0.short-term-vision/wraith-shell-fs-roadmap-j28.md
+- x0.short-term-vision/xo-editor-bridge-roadmap-j28.md
+- x0.short-term-vision/ops-surface-j28.md
+- x0.short-term-vision/ops-audit-table-j29.md
+- x0.short-term-vision/0x-pet-wraith-architecture-j29.md
+- x0.short-term-vision/chtpmgl-assumptions-j29.md
+- x0.short-term-vision/chtpmgl-mirror-contract-j29.md
+- x0.short-term-vision/wraith-gl-readiness-retrospective-j29.md
+- x0.short-term-vision/chtmgl-wraith-media-contract-j30.md
+- x0.short-term-vision/pre-re-vision-j29.md
+- x0.short-term-vision/window-first-enclosure-editor-vision-j29.md
+
+==================================================
+3. WHAT THE USER WANTS RIGHT NOW
+==================================================
+
+Main short-term priority:
+- Wraith shell/filesystem consolidation
+
+Concrete current push:
+- reusable ops first
+- PAL/Prisc later calling those same ops
+- Wraith settings means actual appearance customization:
+  - desktop colors
+  - window/chrome colors
+  - fonts
+  - background images / wallpaper
+- current Wraith shell baseline is usable enough that project/editor work can proceed
+
+Not the priority right now:
+- network / p2p
+- local LLM integration
+- broad new editor rewrite before project pressure demands it
+
+==================================================
+4. REUSE RULES
+==================================================
+
+These were explicitly clarified by the user and are important:
+
+1. Prefer existing ops first.
+2. If close, widen an existing op second.
+3. Add a new op only when widening would create confusion or pollution.
+
+Safe modification rule:
+- If an existing op is the right base but direct modification is risky:
+  1. copy it locally first
+  2. modify the local copy
+  3. prove it works locally
+  4. keep old behavior working
+  5. only then replace or upstream the shared/original op
+
+PAL / Prisc rule:
+- PAL/Prisc should orchestrate the real ops later.
+- Do not build parallel PAL-only logic paths.
+
+==================================================
+5. IMMEDIATE IMPLEMENTATION TARGET
+==================================================
+
+Best next concrete build step:
+- Wraith-local nested discovery op in 1.TPMOS
+
+Why:
+- highest leverage
+- unlocks launcher cleanup
+- unlocks later text-fs / gui-fs
+- unlocks future enclosure choosing for 0x-pet-wraith
+- gives PAL/agents a real scan surface later
+
+Current decision from ops audit:
+- use copy-mod first based on gl_os_project_scan.+x
+
+IMPORTANT UPDATE FROM CURRENT EPOCH:
+- before implementing the scan op, reevaluate the hosted Wraith project location
+- likely migration target is from:
+  - projects/wraith/wraith-projects/
+  to:
+  - projects/wraith-alpha/wraith-projects/
+- see x0.short-term-vision/jun-29-2do.txt
+- update: the folder move and compile-script path update have now been done
+- `./button.sh c` succeeded after the migration
+- user reports runtime still works after compile/test run
+- next active task is the local nested discovery op
+
+==================================================
+6. EXISTING CODE / OPS TO AUDIT FIRST
+==================================================
+
+Primary existing candidates:
+- pieces/apps/gl_os/plugins/+x/gl_os_project_scan.+x
+- pieces/apps/gl_os/plugins/+x/gl_os_loader.+x
+- pieces/apps/playrm/ops/+x/project_loader.+x
+- pieces/apps/playrm/ops/+x/scan_op.+x
+- projects/wraith/wraith-projects/*/ops/+x/wraith_project_input.+x
+
+Important current Wraith manager seam:
+- projects/wraith-alpha/manager/wraith-alpha_manager.c
+
+Current launcher discovery there:
+- directly scans projects/wraith-alpha/wraith-projects/
+- discover_launcher_projects() is still manager-local
+
+This is the seam we want to replace later with a local proven scan op + manifest flow.
+
+==================================================
+7. CURRENT UNDERSTANDING OF 0x-PET-WRAITH
+==================================================
+
+This was clarified in the current epoch:
+
+- The enclosure should become the sovereign file-backed artifact.
+- Wraith and 0x-pet should be different hosts/front doors over the same enclosure contract.
+- The real difference is likely discovery/defaulting/selection, not format.
+- This should be explored alongside deeper wraith-ed/editor-pattern work.
+- Do not implement both Wraith trees in parallel to chase this.
+
+Reference-only context:
+- x0.parent-level-dev-env-02.01/x0.moke-pet-project-04.03/
+
+Legacy seam worth knowing:
+- xo-pet-v1 still hardcodes bundle-level enclosure assumptions around pieces/world_tank_01/map_enclosure
+- that is precedent, not the target architecture
+
+==================================================
+8. TESTING RULE
+==================================================
+
+Use the testing discipline from:
+- _.0.aigent-testing-k3.txt
+
+Key points:
+- test existing behavior first
+- use key injection + frame review where relevant
+- write root FRAME_REPORT files before risky code changes when doing runtime testing
+
+For the immediate scan-op task, the first proof can be simpler:
+- compile local op
+- run it directly
+- verify manifest and receipt outputs are correct
+- do not wire UI until the local output is clean
+
+==================================================
+9. RECOMMENDED NEXT ACTIONS
+==================================================
+
+If resuming implementation:
+
+1. Read the docs listed above.
+2. Inspect:
+   - pieces/apps/gl_os/plugins/gl_os_project_scan.c
+   - projects/wraith-alpha/manager/wraith-alpha_manager.c
+3. Create a Wraith-local copied scan op under projects/wraith-alpha/ops/
+4. Add nested crawl + typed manifest output
+5. Keep the original GL-OS op untouched
+6. Compile the local op
+7. Run it directly against projects/wraith-alpha/wraith-projects/
+8. Inspect output before changing manager wiring
+
+STATUS UPDATE:
+- this local proof is now done
+- local op added:
+  - `projects/wraith-alpha/ops/wraith_project_scan.c`
+- local binary compiled:
+  - `projects/wraith-alpha/ops/+x/wraith_project_scan.+x`
+- proof outputs:
+  - `projects/wraith-alpha/session/wraith_project_manifest.txt`
+  - `projects/wraith-alpha/session/wraith_project_scan.receipt.pdl`
+- proof result:
+  - 8 hosted Wraith projects discovered
+  - receipt status `ok`
+- normal compile path rechecked after adding the op:
+  - `./button.sh c`
+  - 189 binaries compiled
+  - 0 compile failures
+  - binary verification passed
+- next likely implementation step:
+  - teach `wraith-alpha_manager.c` to consume the manifest flow instead of doing manager-local directory scanning
+
+Additional update from the current epoch:
+- a minimal real Wraith `fs` project scaffold now exists under:
+  - `projects/wraith-alpha/wraith-projects/fs`
+- it is intentionally light and records the chosen direction:
+  - one `fs` project
+  - ASCII/CHTPM first
+  - later `chtpmgl` surface over the same ops/state
+- local Wraith scan refreshed after adding `fs`
+  - current proof result is now 9 hosted Wraith projects
+- dedicated `chtpmgl` doc added:
+  - `x0.short-term-vision/chtpmgl-assumptions-j29.md`
+  - this doc explains current assumptions, implemented engine reality, placeholder gaps, and how `chtpmgl` differs from `chtpm`
+- dedicated mirror/audit contract doc added:
+  - `x0.short-term-vision/chtpmgl-mirror-contract-j29.md`
+  - core rule: ASCII mirrors semantic truth, not GL pixels
+  - treat this as a gating architecture rule before deeper `chtpmgl-wraith` work
+ - readiness/retrospective doc added:
+   - `x0.short-term-vision/wraith-gl-readiness-retrospective-j29.md`
+   - use this to keep project/app/game momentum instead of over-polishing framework work
+   - current bias: harden media + semantic mirror seams while building real projects
+
+==================================================
+10. J30 MEDIA / CPU SAFETY UPDATE
+==================================================
+
+New project lane added in the active `1.TPMOS` Wraith tree:
+
+- `projects/wraith-alpha/wraith-projects/web-cam`
+- `projects/wraith-alpha/wraith-projects/screen-record`
+
+What is now true:
+
+- both project-local runtime ops exist and compile:
+  - `web-cam/ops/+x/wraith_webcam_capture.+x`
+  - `screen-record/ops/+x/wraith_screen_record.+x`
+- Wraith manager shutdown now explicitly calls project-local stop ops before tearing down GL/RGB:
+  - see `projects/wraith-alpha/manager/wraith-alpha_manager.c`
+- `pieces/os/kill_all.sh` now also kills:
+  - `wraith_webcam_capture`
+  - `wraith_screen_record`
+  - `ffmpeg .*video4linux2`
+  - `ffmpeg .*x11grab`
+  - and clears stale webcam/record pid files under hosted Wraith projects
+
+Important CPU-safety lesson from this epoch:
+
+- the main Wraith render loops were already capped near 60 FPS
+- the real throttle source was orphaned host `ffmpeg` capture processes
+- stale pid-file cleanup alone was not enough
+- startup/stop guards must also kill residual ffmpeg by project-owned session/output path
+
+That guard is now added locally in the project ops:
+
+- `web-cam/ops/src/wraith_webcam_capture.c`
+  - kills residual capture processes referencing `session/current_frame.png`
+- `screen-record/ops/src/wraith_screen_record.c`
+  - kills residual capture processes referencing `session/recordings/`
+
+Observed host failure mode that caused the slowdown:
+
+- multiple orphaned `ffmpeg` `x11grab` recorders were still alive after prior sessions
+- they were each consuming roughly 150%+ CPU
+- they had to be killed directly on the host
+
+Current status at handoff:
+
+- live orphaned host capture processes were verified gone after direct kill
+- rebuilt binaries are present and timestamped:
+  - `web-cam/ops/+x/wraith_webcam_capture.+x`
+  - `screen-record/ops/+x/wraith_screen_record.+x`
+
+Remaining work before copying this lane wider:
+
+1. Prove `web-cam` quit-path cleanup end-to-end:
+   - start webcam
+   - quit Wraith normally
+   - verify no webcam ffmpeg survives
+
+2. Prove `screen-record` quit/stop cleanup end-to-end:
+   - start record
+   - stop record
+   - quit Wraith
+   - verify no x11grab ffmpeg survives
+
+3. Re-prove `screen-record` output validity after the new guard path:
+   - valid mp4
+   - audio muxed
+   - poster extracted
+
+4. Only after those proofs:
+   - copy the updated Wraith lane to `x0.moke-`
+
+Rule for future agents:
+
+- do not run a broad full compile/test loop just to touch these guards
+- prefer single-op rebuilds and direct host process verification
+- if CPU climbs during media testing, inspect host `ffmpeg` first before blaming the Wraith frame loop
+ - pre-re-vision doc added:
+   - `x0.short-term-vision/pre-re-vision-j29.md`
+   - this captures the current re-prioritization discussion around:
+     - `wraith-ed`
+     - `fs` as launcher/filesystem hybrid
+     - project-vs-dir behavior
+     - `0x-pet` / enclosure direction
+     - timing of `x0.moke-` transfer
+ - window-first enclosure/editor vision doc added:
+   - `x0.short-term-vision/window-first-enclosure-editor-vision-j29.md`
+   - this records the staged approach:
+     - separate cooperating windows/tools first
+     - integrated editor later
+     - same enclosure/project truth underneath
+- later in the same epoch, `fs` stopped being a static scaffold and became a live project-owned browser:
+  - project-owned input op:
+    - `projects/wraith-alpha/wraith-projects/fs/ops/src/wraith_project_input.c`
+  - project-owned watcher op:
+    - `projects/wraith-alpha/wraith-projects/fs/ops/src/wraith_project_watch.c`
+ - later still, the media lane was proven enough to stop treating it as abstract planning:
+   - shared media source of truth:
+     - `x0.parent-level-dev-env-02.01/#.media-library/`
+   - image proof:
+     - `projects/wraith-alpha/wraith-projects/chtmgl-wraith`
+   - video/audio proof:
+     - `projects/wraith-alpha/wraith-projects/chtmgl-video-isolate`
+   - important runtime rule:
+     - video redraw works by project-owned frame swap plus project-owned marker writes
+     - do not expect the manager to rerender advancing media unless the project writes the watched marker seam
+   - important command rule:
+     - projects that read `session/history.txt` for button commands should track a cursor/consumption seam so redraws do not replay stale commands
+   - important operator note:
+     - after recompiling Wraith, restart a running Wraith app before judging live behavior
+  - project-owned outputs:
+    - `session/wraith_body.txt`
+    - `session/scene.objects.pdl`
+    - `session/fs_watch.marker`
+    - `session/fs_watch.pid`
+- important implementation rule from this step:
+  - do not fake numbered nav rows inside `wraith_body.txt`
+  - Wraith body is summary/context only
+  - real numbered rows must live in `scene.objects.pdl`
+  - ASCII and GL should both mirror that same scene-owned row set
+- current `fs` improvement lane before pivoting to `chtpmgl-wraith`:
+  - nav scroll controls in scene:
+    - `^_UP`
+    - `v_DOWN`
+    - thumb/range text
+    - utility strip should stay on one scene row and one ASCII mirror row
+  - watcher/marker flow instead of visible refresh button
+  - manager now polls the active project marker and reruns the active project op on change
+  - this is now a reusable standard:
+    - long navigable lists should prefer a shared-row scroll utility strip
+    - content rows stay below it, one nav item per row
+    - bridges must preserve row intent and avoid width-truncating markup rows
+  - `fs` now has basic Wraith-project launch behavior:
+    - entries under `projects/wraith-alpha/wraith-projects/` with `project.pdl` are marked as projects
+    - scene rows emit direct `DESKTOP_ACTION:launch_*` actions for click/Enter routing
+    - keyboard/project-op launch path also works by appending to:
+      - `projects/wraith-alpha/session/desktop_actions.txt`
+    - plain directories still descend instead of launching
+
+==================================================
+10. HOW TO UPDATE THIS FILE
+==================================================
+
+At each dev epoch:
+- append or revise the active task
+- note what codebase is active
+- record any clarified user rules
+- record what was implemented vs only planned
+- note the next immediate build step
+- update x0.short-term-vision/jun-29-2do.txt or the epoch-equivalent todo file
+
+This file should stay short enough to be actually used, but concrete enough that an agent does not have to rediscover the lane from scratch.

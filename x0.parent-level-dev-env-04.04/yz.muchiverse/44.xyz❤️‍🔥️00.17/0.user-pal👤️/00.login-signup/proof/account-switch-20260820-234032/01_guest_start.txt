@@ -1,0 +1,19 @@
++============================================================+
+|  U S E R - P A L                                           |
++============================================================+
+|                                                            |
+|  Not logged in.                                            |
+|                                                            |
+|  Enter a user ID (and display name, if new), then          |
+|  Create Account / Log In — or Switch: an account below.  |
+|                                                            |
+|  Accounts on this machine:                                 |
+|    jb — JB Test                                          |
+|    avmenu_1653663 — MenuTest                             |
+|    claude-0001 — AgentClaude0001                         |
+|    schar_1744476 — SessionChar                           |
+|    avmenu_1654388 — MenuTest                             |
+|                                                            |
+|  Welcome to user-pal.                                      |
+|                                                            |
++============================================================+

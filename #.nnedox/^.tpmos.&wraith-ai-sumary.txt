@@ -1,0 +1,688 @@
+═══════════════════════════════════════════════════════════════════════════════
+  🎮 TPMOS & WRAITH: PROJECT ARCHITECTURE & PROGRESS SUMMARY 2026-07-06
+═══════════════════════════════════════════════════════════════════════════════
+
+📋 WHAT IS THIS?
+
+A living/breathing framework for building interactive projects with a custom OS-
+like structure (TPMOS = Tile-Piece-Module-OS), hosted inside a dual-rendering
+desktop shell (Wraith), rendering to both text-based ASCII and direct RGB
+framebuffer (no OpenGL, ever). A deeply architectural system designed to support
+game dev, asset editors, and AI-driven interactive experiences.
+
+═══════════════════════════════════════════════════════════════════════════════
+👥 USER SUMMARY: The Pitch & Path to Market
+═══════════════════════════════════════════════════════════════════════════════
+
+🎯 THE CORE THESIS: AI-Native OS/Browser for Autonomous Workflows
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**TPMOS & Wraith is an AI-native operating system and browser that runs on top
+of any existing OS** — Windows, macOS, Linux. It consumes agentic APIs (Claude,
+other LLMs) to perform complex automation through **mini LLM curricula** (small,
+task-specific models trained via reinforcement learning to mimic user behavior).
+
+The system is **FSM-triggered** — finite state machines at the UI level detect
+user intent, dispatch agents, and let them autonomously execute workflows. The
+agents **learn through RL**, progressively improving their ability to mimic human
+task execution without explicit programming.
+
+🏢 PRIMARY USER PERSONAS:
+
+  1️⃣  **Enterprises**: Automation of repetitive workflows (data entry, document
+     processing, customer service, asset management) without explicit RPA coding.
+     Users provide examples → system learns → agents scale.
+
+  2️⃣  **Game Developers**: A complete, open-architecture game dev environment
+     where game logic, rendering, and tools all exist in the same blackboard
+     system. No engine lock-in, full visibility, modular pieces.
+
+  3️⃣  **Tool Builders & Domain Experts**: Researchers, editors, CFOs who need
+     custom interactive tools faster than traditional software development.
+     TPMOS provides the scaffolding; they provide domain knowledge.
+
+  4️⃣  **AI Researchers**: A laboratory for studying agent behavior, imitation
+     learning, and multi-agent coordination without the complexity of traditional
+     RPA frameworks.
+
+📊 USER ACQUISITION & DATA STRATEGY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PHASE 1 (Bootstrap, Months 1-6): 🚀
+  • Developer community (HN, Reddit, GitHub): Free, open-source core
+  • Game jams: Sponsorship + community showcase (piececraft-wraith as template)
+  • Partnerships with 2-3 indie game teams (provide free cloud ops)
+  • Academic outreach: CS/AI departments for RL research collaboration
+
+PHASE 2 (Product-Market Fit, Months 6-18): 📈
+  • Freemium cloud tier: TPMOS core free, premium features (agent training,
+    higher concurrency, private artifact storage) at $49-299/month
+  • Enterprise pilots: 3-5 design-partner orgs (process automation focus)
+  • Asset marketplace: Curated tiles/templates/trained mini-curricula
+    (users earn 70% of sales, platform takes 30%)
+  • API-first approach: Let other apps embed Wraith as an automation layer
+
+PHASE 3 (Scale, 18+ months): 🌟
+  • SaaS agents: Fully hosted "run my workflow 24/7" with dashboard
+  • White-label: Enterprise customers run their own private Wraith cloud
+  • RL curriculum marketplace: Third-party trainers sell task-specific models
+
+🤖 DATA STRATEGY (Owned, Not Harvested)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+User workflows themselves stay private (users own their data). The platform
+collects **deanonymized behavioral signals** (which UI patterns drive agent
+success, where agents fail, average task completion time) to:
+
+  ✓ Improve mini-curriculum training (what patterns work at scale?)
+  ✓ Refine defaults (which keybindings/layouts do users choose?)
+  ✓ Build market research (which job categories need automation most?)
+  ✓ Feed RL researcher partners (papers, conferences, credibility)
+
+No harvesting of credentials, personal files, or customer data. Enterprises own
+their logs and training data. This is a **transparency advantage** — "your data
+stays private, we only learn the shape of success."
+
+💰 MONETIZATION PATHS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. CLOUD OPERATIONS (Primary, Year 2+):
+   • Hosted agent training: $0.10-1.00 per agent-hour (competitive with Claude API)
+   • Concurrent agent slots: $50/mo for 5 concurrent agents, $500/mo for 50+
+   • Private Wraith cloud: Enterprise on-prem/VPC deployment ($2-5K/mo)
+   • Audit/compliance logs: $100/mo (certifications for SOC2, HIPAA)
+
+2. AI MODELS & CURRICULA (Secondary, Year 2-3):
+   • Mini-curriculum marketplace: Pre-trained task-specific models
+     Examples: "Customer Service Tier 1" ($99), "Expense Report QA" ($199)
+   • Creator revenue share: 70/30 split (80/20 for partners who train on platform)
+   • Fine-tuning service: $1-5K to adapt existing curricula to proprietary workflows
+
+3. TRADABLE ASSETS (Tertiary, Year 3+):
+   • Game assets (tiles, entities, prefabs): Blockchain-backed ownership
+   • Game worlds: Mint as NFTs, tradable between users (each world = unique game)
+   • Trained agents as tradable IP: Rare curricula (beating a benchmark) traded
+     on-platform (5% platform fee)
+   • Governance token (optional, Year 3+): Community votes on curriculum approval,
+     feature roadmap, revenue splits
+
+4. ENTERPRISE SERVICES (Ongoing):
+   • Implementation consulting: $5-15K to build domain-specific curricula
+   • Custom integrations: Zapier/Make connectors ($500-5K per integration)
+   • Training & support: $10K/year annual support plans
+
+🧠 HOW THE AI INTEGRATION WORKS (The Secret Sauce)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Users record workflows (click, type, navigate) → Raw traces stored in session/
+directory (JSON, visible, auditable). Claude or fine-tuned mini-LLMs consume
+traces + UI state + reward signal to learn:
+
+  • Which UI regions correspond to meaningful actions
+  • What sequences of keypresses complete tasks
+  • How to generalize from 3 examples to unseen workflows
+  • When to ask for human confirmation vs. forge ahead
+
+**RL loop:** User shows agent 5 completions of "fill out expense form". Agent
+gets scored on: correctness (0-100%), speed, error recovery, generalization to
+new expense types. Curriculum updates weights. Next run, agent performs better.
+
+This is **not ChatGPT automation** (ask a question, get an answer). It's
+**behavioral imitation + reinforcement** — agents learn from watching you, not
+from prompting.
+
+🔐 BOOTSTRAP PLAN (Year 1)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+No VC funding needed to start. Instead:
+
+  ✓ **Open source core** (TPMOS + Wraith): Free forever, MIT license
+    → Builds community, auditable trust, research partnerships
+
+  ✓ **Freemium cloud ops** ($50-500/mo per team): Covers server costs at scale,
+    bootstrap runway in Year 2
+
+  ✓ **Indie partnerships**: 2-3 game teams get free hosted ops in exchange for
+    testimonials + case studies (marketing that scales)
+
+  ✓ **Research grants**: NSF / academic AI grants fund RL curriculum research
+    (you do the science, platform benefits)
+
+  ✓ **Marketplace day 1**: Asset creators (tiles, curricula) earn 70% from day
+    one (incentivizes quality content without funding)
+
+  ✓ **Enterprise pilots** (Y2): 3-5 companies deploy in-house, they evangelize
+    (warm introductions, easier sales)
+
+By Month 18, 2-3 revenue streams are live. By Month 24, cloud ops pays for team.
+No burn after Year 1.
+
+═══════════════════════════════════════════════════════════════════════════════
+🏗️  TPMOS ARCHITECTURE (The Blackboard Foundation)
+═══════════════════════════════════════════════════════════════════════════════
+
+CORE CONCEPT: ⚫ Blackboard Architecture + File-Driven Marker Pattern
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The whole system is **not request/response RPC** — it's **asynchronous, file-based
+state machines**. Modules write state to disk (gui_state.txt, scene files, etc),
+other processes poll for marker files (frame_changed.txt, state_changed.txt,
+layout_changed.txt) and react. No shared memory, no network, no socket
+complexity — just filesystem watched files.
+
+HIERARCHY: 🎨 PIECE > 📦 MODULE > 🖥️  OS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  🎨 PIECE ────────────────────────────────────────────────────────────────
+      A UI/layout/editor/game module. Lives at pieces/<name>/.
+      - plugins/: Rendering engines (chtpm_parser.c, wraith_rgb_daemon.c)
+      - ops/: Stateless operations (crunching, parsing, transforms)
+      - config/: Data-driven defaults (keys, color schemes, debug flags)
+      - Compiled to binary pieces (+x executables), no .so libs
+
+  📦 MODULE ────────────────────────────────────────────────────────────────
+      Packages a piece + ops + layout + state as a reusable unit.
+      Lives at pieces/<piece>/<module>/. Loaded by layouts (<module> tags).
+
+  🖥️  OS ────────────────────────────────────────────────────────────────────
+      One OS per TPMOS ecosystem: wraith-alpha. Provides:
+      - Desktop shell (taskbar, window chrome, keyboard dispatch)
+      - Two rendering pipelines (ASCII + GL/RGB)
+      - Session/project lifecycle management
+      - Shared state machine (frame_changed.txt polling)
+
+LEGACY WISDOM: 🧙 The Blackboard Pattern
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+This is NOT a new idea. The blackboard pattern (pioneered in HEARSAY-II's speech
+recognition system, 1980s) is perfect for:
+  ✓ Systems that need opportunistic reasoning (multiple processors)
+  ✓ Domains where you don't know the solution order upfront
+  ✓ Long-lived interactive systems (games, editors, terminals)
+  ✓ Event-driven stuff that isn't request/response
+
+TPMOS just applies it to a modern desktop: **every component watches the same
+filesystem, reacts to marker files, never blocks waiting for responses.**
+
+═══════════════════════════════════════════════════════════════════════════════
+🎬 WRAITH: THE DESKTOP SHELL & DUAL RENDERING
+═══════════════════════════════════════════════════════════════════════════════
+
+DUAL PIPELINES: 📺 ASCII & 🎨 RGB Running in Parallel
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+At any given moment, Wraith generates TWO descriptions of the same screen:
+
+  📺 ASCII PIPELINE (Character-grid, pure text)
+  ├─ wraith_parser_alpha.c: Loads .chtpm layout, renders <text>/<button>/<cli_io>
+  │   tags into a 128×40 character-cell grid via sequential strcat().
+  │   Outputs: current_frame.txt (the thing you read as a person)
+  │           state.txt (vars substituted in)
+  │
+  └─ Input dispatch: Raw key → route_command() → project/manager fork/exec
+
+  🎨 GL/RGB PIPELINE (Semantic objects, rich rendering)
+  ├─ wraith-alpha_manager.c: Parses same .chtpm, builds semantic objects
+  │   (nav indices, click regions, text positions, state references)
+  │   Outputs: current_frame.objects.pdl (semantic list)
+  │           .desktop_state.pdl (project state projected to GL)
+  │           .focus_state.pdl, .hitmap.pdl, .audit.txt (debug)
+  │
+  ├─ wraith_rgb_daemon.c: **Reads** the semantic objects, renders to RGB
+  │   via ray-marching for voxel grids + rasterization for overlays.
+  │   Outputs: current_frame.rgba32 (raw pixels), current_frame.png (debug)
+  │
+  └─ Input dispatch: Mouse click → wraith_rgb_daemon reads hitmap, routes to
+      same fork/exec as ASCII (both send to project's ops/wraith_project_input.c)
+
+🔥 THE CRITICAL INSIGHT: **Both pipelines must agree on nav indices, focus,
+state, and click regions.** If they diverge, you get the "GL looks different
+from ASCII" bug. This has happened. Repeatedly. All three times, the reason was
+one pipeline got updated and the other didn't.
+
+WINDOW SYSTEM: 🪟 The g_windows[] Array
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Wraith can host multiple projects simultaneously as "desktop-embedded" windows:
+  • Each Window has x/y/width/height (read from project.pdl's WINDOW section)
+  • Window chrome is drawn by the desktop shell (borders, title)
+  • Each window's body is rendered by its own manager (via marker polling)
+  • Active window determined by g_active_window_slot (focus tracking)
+  • Mouse clicks hit-tested against all windows' semantic objects
+
+The parser and manager both maintain the same g_windows[] array in memory —
+but they're separate processes (parser is C, runs Wraith itself; manager is a
+separate daemon orchestrating GL projection). They stay in sync via files.
+
+STATE CONVENTIONS: 📁 Two Different Ways to Store State
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1️⃣  manager/state.txt ← Generic loader, for standalone/href projects
+     (Projects opened via links, not desktop windows)
+
+  2️⃣  session/state.txt + session/wraith_body.txt ← Desktop-embedded convention
+     (Projects opened from taskbar, appear as windows)
+
+**These are NOT interchangeable.** Many bugs stem from reading the wrong one.
+
+═══════════════════════════════════════════════════════════════════════════════
+🎮 PIECECRAFT-WRAITH: The 3D/RGB Renderer (Ray-Marching Voxel Edition)
+═══════════════════════════════════════════════════════════════════════════════
+
+WHAT IT IS: 🎲 A tile-based RPG/dungeon world with real 3D rendering.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• Small regular grid (Minecraft-shaped world)
+• Tiles defined via assets/tiles/<id>.tile.txt (data-driven shapes/colors)
+• Voxel source can be per-tile (3D CSV + alpha mask)
+• Walkable ground is one shared wireframe grid (not individual boxes)
+• Solid tiles always extrude up from wy=0 ground datum
+• Entities (xelector/pet) extrude up from ground too
+
+RENDERING APPROACH: 🚀 Ray-Marching (DDA Voxel Walk)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**No OpenGL. Ever.** Instead: direct RGB framebuffer + ray marching.
+
+  For the solid voxel grid:
+  ✓ Cast ray from camera through each pixel
+  ✓ Step forward (DDA/Bresenham walk in voxel space)
+  ✓ Check each voxel for occupancy (alpha mask)
+  ✓ First hit wins — no painter's-order bugs, no Z-fighting
+  ✓ Immune to clipping artifacts because we're walking, not rasterizing
+
+  For overlay entities (xelector, pet) + translucency:
+  ✓ Still rasterize (easier for few objects)
+  ✓ Share one depth buffer with the ray marcher
+  ✓ Tiny enough that rasterization overhead is fine
+
+HISTORY: 📚 How We Got Here
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Early June: Fake 3D (little per-tile lift, no perspective projection)
+             → Looked "corrupted" (warped floor, paper-thin pillars)
+
+  Mid June:  Real perspective-projected grid
+             → Floor was drawn as individual boxes (expensive, redundant)
+             → Discovered 2/6 faces per box weren't rendering (visibility bug)
+
+  Late June: Switched from Z-buffer rasterization to ray marching
+             → Eliminated Z-fighting/painter's-order problems entirely
+             → Now only rasterize the few overlays
+
+CAMERA SYSTEM: 🎥
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Mode 1/2/3: Fixed camera presets (isometric-ish views)
+              ⚠️  NOT YET following xelector live position
+
+  WASD pan:   Free camera (independent mode)
+
+  Mouse drag: Orbit camera (yaw/pitch, gated to interact mode)
+
+assets/camera_default.txt drives reset-on-window-open behavior.
+
+═══════════════════════════════════════════════════════════════════════════════
+⚙️  PROJECT PATTERN: Manager + Ops Architecture
+═══════════════════════════════════════════════════════════════════════════════
+
+EVERY Wraith-hosted project follows this exact pattern:
+
+  Manager (manager/<project>_manager.c):
+  ├─ One-time init only
+  ├─ Calls trigger_initial_render() (fork/exec ops once)
+  ├─ Appends to frame_changed.txt (tells Wraith to redraw)
+  ├─ Then exits/idles — **never** runs a persistent thread
+  └─ **Critical:** NO per-keypress state mutation (causes 1-frame lag if you do)
+
+  Ops (ops/wraith_project_input.c):
+  ├─ Synchronous hot path
+  ├─ Wraith invokes directly: fork/exec/waitpid for every keypress
+  ├─ Runs **before** trigger_render() — first to touch fresh input
+  ├─ All state mutation happens here (not in manager)
+  └─ Multiple invocations per second, so must be fast
+
+  Session (session/*.txt):
+  ├─ wraith_body.txt: Plain text summary (what ASCII displays)
+  ├─ scene.objects.pdl: Semantic object list (nav, clicks, state refs)
+  ├─ state.txt: Variables for ${var} substitution in layout
+  ├─ state_changed.txt: Marker file (manager appends to trigger redraw)
+  └─ Various helper files (history.txt for command log, etc.)
+
+REUSE CONVENTION: 🔄 Copy → Modify → Upstream (Not In-Place Mutation)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. Existing op does 80% of what you need? Use it as-is.
+  2. Need to widen it? Copy the op locally, modify, prove it works.
+  3. Other projects still use the original? Keep both, consolidate later.
+  4. Only write a new op when nothing existing can be reused/widened.
+
+This prevents the "I broke shared code and all N projects regressed" problem.
+
+═══════════════════════════════════════════════════════════════════════════════
+🔧 RECENT WORK (2026-07-01 through 2026-07-06)
+═══════════════════════════════════════════════════════════════════════════════
+
+SETTINGS HUB + WINDOW-GEOM FEATURE 🎛️
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+A full feature for editing window geometry (x/y/width/height) via a UI:
+  ✓ Reads project.pdl's WINDOW section (data-driven)
+  ✓ Displays current values as editable fields
+  ✓ Numeric-only input validation (keystroke-level rejection of non-digits)
+  ✓ Targeted to a specific project (remembers which window you're editing)
+  ✓ Works in both ASCII and GL modes (dual pipeline consistency fixed)
+  ✓ Persistent (saves back to project.pdl)
+
+NUMERIC-ONLY CLI_IO FIELDS 🔢
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Added input_mode="numeric" attribute to <cli_io> tags:
+  • Parsed by both chtpm_parser.c and wraith_parser_alpha.c
+  • Per-keystroke guard: non-digit keys rejected before they land
+  • Works seamlessly with the state save/restore cycle
+
+BUGS FIXED THIS WEEK: 🐛
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. Flicker on marker_tick: Input ops were re-processing stale keys
+     → Fixed: early-return if argv[2]=="marker_tick"
+
+  2. GL staleness: route_input() silently dropped non-digit keys
+     → Fixed: set changed=1 in fallback
+
+  3. Missing glyph: No distinction between focused vs. actively-typing
+     → Fixed: active_gui_is_typing.txt export signal
+
+  4. Wrong parser running: Two identical forks exist (chtpm_parser.c +
+     wraith_parser_alpha.c); wraith_parser_alpha.c wasn't the one executing
+     → Fixed: ported all fixes to BOTH files
+
+  5. GUI state scoping: Embedded projects' state was landing in the wrong
+     gui_state.txt (shell's own, not project's)
+     → Fixed: `desktop_focused_window_project_id` variable + resolve helper
+
+  Plus multiple GL/ASCII parity issues (nav index drift, href routing, text
+  clipping, focus-click handling) — all resolved by keeping both pipelines
+  in sync.
+
+DOCUMENTATION CONSOLIDATION: 📚
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Consolidated 40 doc files (19 in x0.piececrafts/, 21 in x0.short-term-vision/)
+down to 2 authoritative docs + 1 active design doc:
+
+  x0.piececrafts/PIECECRAFT-WRAITH-ARCHITECTURE.md
+  ├─ Manager/ops pattern (the corrected version)
+  ├─ GL/ASCII nav mechanics
+  ├─ Ray-marching voxel rendering architecture
+  ├─ Terminal stub status
+  └─ Emoji-voxel-entity roadmap
+
+  x0.short-term-vision/WRAITH-ARCHITECTURE-AND-ROADMAP.md
+  ├─ Core architecture principles (blackboard, enclosure, reuse-order)
+  ├─ State/file conventions
+  ├─ Desktop window system
+  ├─ Media/shared-memory architecture
+  ├─ Editor/browser/XO roadmaps
+  └─ Long-term blue-sky ideas (preserved so they aren't lost)
+
+  x0.short-term-vision/settings-hub-window-geom-design-j5.md
+  ├─ Still actively maintained, current as of today
+  ├─ Full implementation detail for the feature
+  └─ Known open items flagged (unverified/incomplete)
+
+═══════════════════════════════════════════════════════════════════════════════
+🚀 FUTURE ROADMAP & BLUE-SKY IDEAS
+═══════════════════════════════════════════════════════════════════════════════
+
+NEAR-TERM (Months): 📅
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✓ Window geometry editing (DONE, just needs live testing)
+
+  ⏳ Live testing of all July fixes (window-geom, numeric-input, project-id
+     scoping, GL/ASCII parity) — needs full stack restart
+
+  ⏳ Wraith-3d-cube migration (from single-cube probe to tile-based map)
+
+  ⏳ Emoji-studio-wraith finishing (add manager, write ops, wire rendering)
+
+  🎮 Wraith-browser start (HTML/CSS/DOM/layout model, no JS/WebKit yet)
+
+MEDIUM-TERM (Months-to-Quarters): 🗓️
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  🏗️  Editor family (not one big editor — separate narrow windows: map view,
+     picker, event editor, exporter, all sharing enclosure truth)
+
+  🐾 XO-pets proving ground (test game mechanics, use as editor benchmark)
+
+  📱 Real camera-follow (camera modes 1/2/3 follow xelector live position)
+
+  🎬 Video/audio media support (grid rendering for dense colored content)
+
+LONG-TERM (Out There): 🌟
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  💬 P2P AI users (agent hosting, skill swapping)
+
+  🧠 RL/diffusion-learning LLMs in gameplay (trainable agents, not hardcoded)
+
+  🌐 Full 3D graphics (not just tile grid — full polygon scenes)
+
+  📈 Stock market / "humans on Earth" civ-sim with R&D
+
+  ⚔️  PvP mini-games with collectible pieces
+
+  💎 Crypto / trading mechanics
+
+  👻 "Soulpen franchise" (narrative/character persistence system)
+
+**All of these intentionally deferred** — preserved as formal ideas, not on the
+active sprint. They inform architecture choices (why modular? why file-based?
+why no networking limits?) but aren't blocking current work.
+
+═══════════════════════════════════════════════════════════════════════════════
+🔍 STANDARDS & CONVENTIONS (The Lore)
+═══════════════════════════════════════════════════════════════════════════════
+
+MARKER FILE DISCIPLINE: 📌
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  • Never poll on an unrelated trigger
+  • Always use a dedicated marker file (frame_changed.txt, state_changed.txt)
+  • Append, never overwrite (polling is a tail -f watch)
+  • Marker-file redraw is growth-triggered (projects append when state changes)
+
+FORK/EXEC/WAITPID SAFETY: 🔒
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  • Never system() — always fork/exec/waitpid (safer, more controllable)
+  • setpgid on child to isolate signal handling
+  • Collect stale +x processes (the HOLY Pattern: proc_list.txt tracking)
+  • Don't assume recompiled binary is running (kill old process first)
+
+ATOMIC WRITES: ✍️
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  • Always temp-file + rename, never in-place write
+  • Multiple readers can race; readers see either old or new, never corrupt
+
+PROJECT METADATA: 📋
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  project.pdl: YAML-like declarative format
+  ├─ name, path, description
+  ├─ META | manager | <path> (auto-launch trigger)
+  ├─ WINDOW | x | y | width | height | (optional geometry)
+  └─ (other project-specific facts)
+
+LAYOUT FILES: 🎨
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  .chtpm (custom markup language):
+  ├─ <module> tags: must be concrete paths, never ${variables}
+  ├─ <text>, <button>, <cli_io>: UI widgets
+  ├─ ${var}: substituted from state.txt at render time
+  ├─ <cli_io input_mode="numeric">: keystroke-level validation
+  └─ href: navigation (reassigns current_layout in the parser)
+
+VOXEL CSV FORMAT: 🧊
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  # resolution=16
+  # scale=1.0
+  # transform=x,y,z
+  r,g,b,a (header row)
+  r,g,b,a
+  r,g,b,a (row-major pixel rows)
+  ...
+
+  Used by: emoji-studio, piececraft-wraith tiles, any voxel shape
+
+═══════════════════════════════════════════════════════════════════════════════
+🐛 KNOWN GOTCHAS & HARD-LEARNED LESSONS
+═══════════════════════════════════════════════════════════════════════════════
+
+⚠️  THE TWO-PARSER FORK PROBLEM ⚠️
+  • chtpm_parser.c and wraith_parser_alpha.c are ~2700 lines each, nearly
+    identical, independently maintained
+  • Any fix to one usually needs porting to the other
+  • wraith_parser_alpha.c is NOT the one that actually runs for wraith-alpha
+    sessions (counterintuitive! chtpm_parser.c is the real one)
+  • Verify which one is actually executing before assuming a code change worked
+
+⚠️  PROJECT_ID CLOBBER (Stale but Still Possible) ⚠️
+  • load_vars() calls set_project_id_from_layout() correctly for nested projects
+  • But a later load_state_file() might clobber it (state file hardcodes its own
+    project_id)
+  • Result: ${vars} in nested/embedded projects render blank
+  • Workaround: re-assert set_project_id_from_layout() after loading state
+
+⚠️  MANAGER BACKGROUND THREAD INPUT LAG ⚠️
+  • If manager has a polling thread mutating state per-frame, it races
+    wraith-alpha's synchronous trigger_render()
+  • Produces structural, always-reproducible one-keypress-behind lag
+  • Solution: manager = init only, hot path = ops/wraith_project_input.c
+    (sync, invoked directly by key handler)
+
+⚠️  FFMPEG ORPHANS ⚠️
+  • Webcam/screen-record capture spawns ffmpeg that can outlive Wraith
+  • Each orphan = 150%+ CPU burn
+  • Must kill by process name (kill_all.sh does this now)
+  • If CPU climbs in testing, suspect ffmpeg before the render loop
+
+⚠️  STALE COMPILED BINARIES ⚠️
+  • Wraith manager/parser are long-lived processes
+  • Recompiling doesn't update a process already running
+  • Must full-restart Wraith to pick up new code
+  • Also applies to persistent daemons (wraith_rgb_daemon.c)
+
+⚠️  GL vs. ASCII PARITY ⚠️
+  • Two pipelines, two separate code paths, no forced sync
+  • Easy for one to get updated and the other to lag
+  • Any nav/click/state change must hit BOTH pipelines
+  • Watch out: auto-numbering in ASCII != fixed nav indices in GL
+
+═══════════════════════════════════════════════════════════════════════════════
+📊 CODEBASE STATS (As of 2026-07-06)
+═══════════════════════════════════════════════════════════════════════════════
+
+Core parsers & rendering:
+  • chtpm_parser.c: 2827 lines
+  • wraith_parser_alpha.c: 2900 lines (backup fork)
+  • wraith_rgb_daemon.c: 2995 lines
+  • wraith-alpha_manager.c: 4783 lines
+
+Project ecosystem:
+  • 14 Wraith-hosted projects (piececraft-wraith, settings, window-geom,
+    chtmgl-wraith, emoji-studio-wraith, fs, probe-project, probe, terminal,
+    web-cam, wraith-3d-cube, wraith-browser, wraith-ed, wraith-man-test)
+
+Documentation:
+  • 2 consolidated architecture docs (x0.piececrafts, x0.short-term-vision)
+  • 1 active design doc (settings-hub-window-geom-design-j5.md)
+  • Backup of 40 original docs (zip) for historical reference
+
+═══════════════════════════════════════════════════════════════════════════════
+🎯 PHILOSOPHY & DESIGN PRINCIPLES
+═══════════════════════════════════════════════════════════════════════════════
+
+❌ WHAT THIS ISN'T:
+  • Not a web framework (no HTML/JS/DOM by default)
+  • Not a traditional windowing system (no X11, no Wayland, no compositing)
+  • Not a game engine (no physics, no collision, no animation primitives)
+  • Not event-driven in the GUI sense (blackboard/polling, not callbacks)
+
+✅ WHAT IT IS:
+  • A **systems language** for building interactive software as a cascade of
+    specialized, communicating processes
+  • **File-first state machine** — the filesystem is your API surface, your
+    debugging tool, your audit trail
+  • **Dual-view platform** — same logic projects can be displayed in ASCII
+    (for development/debugging) or rich 3D (for play)
+  • **Modular and compositional** — small, focused pieces that compose without
+    coupling
+
+THE CORE TENSION:
+  Simplicity (files, polling, marker-based events) vs. performance (no RPC
+  overhead, but more I/O). Intentionally chose simplicity; performance tuning
+  deferred. CPU is cheap; debugging RPC is not.
+
+═══════════════════════════════════════════════════════════════════════════════
+🎓 FOR FUTURE AGENTS
+═══════════════════════════════════════════════════════════════════════════════
+
+Starting fresh? Here's the reading order:
+
+  1. x0.piececrafts/PIECECRAFT-WRAITH-ARCHITECTURE.md
+     (Understand the manager/ops pattern, the corrected version)
+
+  2. x0.short-term-vision/WRAITH-ARCHITECTURE-AND-ROADMAP.md
+     (Understand blackboard, state conventions, desktop system)
+
+  3. x0.short-term-vision/settings-hub-window-geom-design-j5.md
+     (See a real feature that uses all the patterns)
+
+  4. Grep the code for "HOLY Pattern", "project_dir_for_window", "marker_tick"
+     (Understand the idioms in practice)
+
+Common tasks & where to look:
+
+  • Add a new Wraith project? → Copy settings/ (it's the template)
+  • Debug GL/ASCII mismatch? → Check wraith-alpha_manager.c AND the parser
+  • Understand how state flows? → Follow gui_state.txt / state.txt / state_changed.txt
+  • Add a feature to a project? → Look at window-geom_manager.c + ops/wraith_project_input.c
+  • Getting an unused processor artifact? → run kill_all.sh (orphaned ffmpeg/+x processes)
+
+═══════════════════════════════════════════════════════════════════════════════
+✨ CLOSING THOUGHTS
+═══════════════════════════════════════════════════════════════════════════════
+
+This is a **living, breathing OS-in-a-box** — not in the traditional sense
+(kernel, drivers, filesystems), but in the sense of a complete, self-contained
+world where interactive software lives, renders, and talks to itself.
+
+It's deeply architectural: every choice (blackboard, files, polling, fork/exec,
+marker files, dual pipelines) is made to support a specific vision of what
+future interactive systems should look like. Not request/response. Not
+synchronous. Not hidden behind abstractions. **Visible, auditable, and
+endlessly composable.**
+
+The 3D renderer in particular represents a thesis: **you don't need OpenGL to
+render a small voxel world. You need to think differently about the problem.**
+Ray marching beats rasterization for regular grids. Direct RGB beats GPU
+abstraction for debuggability. It works.
+
+The work so far: a solid foundation, dual-pipeline rendering that (usually)
+stays in sync, project hosting that's elegant, documentation that's consolidated,
+and a clear path forward to editor, browser, AI-driven experiences, and games.
+
+What's next? Live testing, media support, the editor family, and then the
+long tail of features. But the core is sound. The blackboard holds.
+
+═══════════════════════════════════════════════════════════════════════════════
+Generated: 2026-07-06 21:30 UTC
+Compiled by: Claude (Haiku 4.5)
+═══════════════════════════════════════════════════════════════════════════════

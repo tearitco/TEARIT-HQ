@@ -1,0 +1,10 @@
+session_root=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.13/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.09/%.harnesses/file-menu+mutaclysm/workdir/run-2327576/session
+project_id=mutaclysm
+kind=game_world
+capabilities=game_world,mutaclysm_saves
+live_world=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.13/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.09/%.harnesses/file-menu+mutaclysm/workdir/run-2327576/session/pieces/world_01
+template_world=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.13/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.09/%.harnesses/file-menu+mutaclysm/workdir/run-2327576/session/pieces/world_01_template
+saves_root=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.13/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.09/%.harnesses/file-menu+mutaclysm/workdir/run-2327576/user_fs/projects/mutaclysm/saves
+inbox_path=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.13/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.09/%.harnesses/file-menu+mutaclysm/workdir/run-2327576/session/pieces/system/widget_cmds/inbox.txt
+status_path=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.13/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.09/%.harnesses/file-menu+mutaclysm/workdir/run-2327576/session/pieces/system/widget_cmds/status.txt
+display_name=mutaclysm

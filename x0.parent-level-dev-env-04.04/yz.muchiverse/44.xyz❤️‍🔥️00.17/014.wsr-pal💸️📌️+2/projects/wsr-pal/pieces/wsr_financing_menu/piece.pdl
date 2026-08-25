@@ -1,0 +1,13 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | wsr_financing_menu
+META         | version            | 1.0
+
+METHOD       | 1. Startup New Corp           | START_WIZARD:new_corp
+METHOD       | 2. Capital Contribution       | RUN:./ops/+x/corp_action.+x $(bash scripts/active_corp.sh) capital_contribution 500
+METHOD       | 3. Public Stock Offering      | RUN:./ops/+x/corp_action.+x $(bash scripts/active_corp.sh) public_offering 1000
+METHOD       | 4. Issue Bonds                | RUN:./ops/+x/corp_action.+x $(bash scripts/active_corp.sh) issue_bonds 500
+METHOD       | 5. Buy Back or Call Bonds     | RUN:./ops/+x/corp_action.+x $(bash scripts/active_corp.sh) buyback_bonds 200
+METHOD       | 6. Extraordinary Dividend     | RUN:./ops/+x/corp_action.+x $(bash scripts/active_corp.sh) extraordinary_dividend 100
+METHOD       | 7. Tax-Free Liquidation       | STUB
+METHOD       | 8. Spin Off Subsidiary        | STUB

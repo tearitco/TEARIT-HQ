@@ -1,0 +1,15 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | pets
+META         | version            | 1.0
+
+METHOD       | 🐁 egg_1    Mouse      (unhatched)   | SELECT_PET:egg_1
+METHOD       | ? egg_2    ?          (unhatched)      | SELECT_PET:egg_2
+METHOD       | 🐸 egg_3    Frog       HP:20/20      | SELECT_PET:egg_3
+METHOD       | 🐌 egg_4    Snail      HP:20/20      | SELECT_PET:egg_4
+METHOD       | 🐣 egg_5    Chick      HP:20/20      | SELECT_PET:egg_5
+METHOD       | 🐹 egg_6    Hamster    (unhatched)   | SELECT_PET:egg_6
+METHOD       | 🐛 egg_7    Caterpillar (unhatched)  | SELECT_PET:egg_7
+METHOD       | 🐁 egg_8    Mouse      HP:20/20      | SELECT_PET:egg_8
+METHOD       | 🐁 egg_9    Mouse      (unhatched)   | SELECT_PET:egg_9
+METHOD       | 🐁 egg_1    Mouse      (unhatched)   | SELECT_PET:egg_1

@@ -1,0 +1,51 @@
+# egg-pals main menu loop. Same shape as mutaclsym's pal/main_loop.pal:
+# x1 = read cursor into pieces/apps/player_app/history.txt (byte offset)
+# x2 = last key read (0 = nothing new)
+# x3 = epoch tick counter, x4 = ticks-per-epoch threshold (~100 loop
+# iterations * 30ms sleep =~ 3s - the "something re-invokes the pet's
+# tick regularly" mechanism from mutaclsym/dox/01-cdda-architecture.md
+# sec.4; this loop's own re-entry (j loop) IS that re-invoke mechanism,
+# no separate process needed.
+#
+# QUIT PATH REMOVED (mass-refactor 2026-07-26, direct user instruction:
+# "never use q to quit in any of the refactors"): this loop used to halt
+# itself the moment it read a literal 'q' (113) keystroke from history.txt
+# - which meant that letter could never be typed as ordinary input, AND
+# is exactly the "module must NOT own a quit path" anti-pattern pal-
+# standards.txt sec.9.1 explicitly documents (main_loop_chtpm.pal never
+# had this). Real quit now happens exclusively via keyboard_input.c's own
+# Ctrl+C (ETX) handling; button.sh's own trap/orchestrator cascade kills
+# this module externally when that happens, same as the chtpm variant.
+li x1, 0
+li x3, 0
+li x4, 100
+
+# Unconditional initial render, so current_frame.txt exists and reflects
+# menu_state.txt's actual starting screen before the first keypress -
+# without this, a truly fresh boot (no leftover current_frame.txt from a
+# prior run) shows nothing until the player presses a key.
+compose_menu
+hit_frame
+
+loop:
+read_history x2, x1
+beq x2, x0, no_key
+menu_input x2
+compose_menu
+hit_frame
+no_key:
+addi x3, x3, 1
+beq x3, x4, do_tick
+j after_tick
+# FLICKER FIX (mass-refactor 2026-07-26, same fix as main_loop_chtpm.pal's
+# do_tick - see that file's own header for the full explanation): pet
+# state keeps decaying silently every ~3s, but no forced compose_menu/
+# hit_frame here anymore - a render only happens because of real player
+# input (the `loop:` block's own compose_menu/hit_frame after menu_input),
+# never on a bare timer.
+do_tick:
+tick_pets
+li x3, 0
+after_tick:
+sleep 30000
+j loop

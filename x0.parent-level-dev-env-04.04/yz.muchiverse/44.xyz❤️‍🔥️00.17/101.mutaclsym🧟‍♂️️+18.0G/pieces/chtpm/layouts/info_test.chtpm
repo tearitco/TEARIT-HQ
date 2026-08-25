@@ -1,0 +1,12 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/info_test_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|                        I N F O                              |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="This is a real href test screen - a separate .chtpm file," /><br/>
+    <text label="not a collapsing submenu." /><br/>
+    <text label="${game_map}" /><br/>
+    <button label="Back to Game" href="pieces/chtpm/layouts/game.chtpm" /><br/>
+    <text label="+============================================================+" /><br/>
+</panel>

@@ -1,0 +1,52 @@
+# WRAITH-ALPHA: TERMINAL RESTORE & DYNAMIC NAVIGATION (j8)
+Date: 2026-06-08
+
+## THE PROBLEM
+1. **Command Rejection**: The current running Manager generates buttons with `onClick="WRAITH_TOOLBAR:..."`. The Parser rejects these (Pitfall #99), so clicking the toolbar does nothing.
+2. **Navigation Ceiling**: `g_max_index` is hardcoded to 5. The Restore button is at Index 6. Keyboard users can never reach it.
+3. **Hidden Index Trap**: When a window is minimized, its buttons (1-4) are hidden, but the Manager's `active_gui_index` stays at 3. The user is "stuck" on an invisible element.
+4. **Source Desync**: `wraith-alpha_manager.c` has been updated to use `SET_ACTIVE:5/6`, but the running binary (`wraith-alpha_manager.+x`) is still using the old broken `WRAITH_TOOLBAR` commands.
+
+## THE FIX (HOW-TO)
+
+### 1. Recompile the Manager
+The source code in `manager/wraith-alpha_manager.c` is actually correct (uses `SET_ACTIVE`), but it needs to be compiled to the binary the system expects.
+```bash
+gcc projects/wraith-alpha/manager/wraith-alpha_manager.c -o projects/wraith-alpha/manager/+x/wraith-alpha_manager.+x
+```
+
+### 2. Make Navigation Dynamic
+In `wraith-alpha_manager.c`, update `update_state()` or `route_input()` to adjust `g_max_index`.
+```c
+// Inside route_input or generate_toolbar_markup
+g_max_index = 5 + g_window_count; // Launcher (5) + Restore targets (6+)
+```
+
+### 3. Escape the Hidden Index
+When the user minimizes (Index 3 + ENTER), the Manager should move the focus to the dock immediately.
+```c
+// Inside route_input(), if index == 3 and ENTER is pressed:
+g_active_gui_index = 5; // Jump to Launcher
+```
+
+### 4. Sync Registry with Multi-Instance
+Update `generate_toolbar_markup` to handle more than one window in the registry.
+```c
+for (int i = 0; i < g_window_count; i++) {
+    if (g_windows[i].state == WSTATE_MINIMIZED) {
+        snprintf(buf, sizeof(buf), "<button label=\"%s\" onClick=\"SET_ACTIVE:%d\" />", 
+                 g_windows[i].title, 6 + i);
+        strcat(out, buf);
+    }
+}
+```
+And update `route_input` to resolve `Index >= 6` via `g_windows[Index - 6]`.
+
+## VALIDATION
+1. Press `DOWN` to reach the "Terminal" launcher (Index 5).
+2. Press `ENTER` to launch.
+3. Press `UP` to reach the Minimize button (Index 3).
+4. Press `ENTER` to minimize.
+5. Observe: Selection jumps back to Launcher (Index 5).
+6. Press `DOWN` once to reach the Restore button (Index 6).
+7. Press `ENTER` to restore.

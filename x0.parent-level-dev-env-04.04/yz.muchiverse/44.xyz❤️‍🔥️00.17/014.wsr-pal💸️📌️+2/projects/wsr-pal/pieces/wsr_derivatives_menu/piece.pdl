@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | wsr_derivatives_menu
+META         | version            | 1.0
+
+METHOD       | Open Long Futures (10sh, 5 turns)  | RUN:./ops/+x/player_open_derivative.+x future $(bash scripts/active_corp.sh) long 10 5
+METHOD       | Open Short Futures (10sh, 5 turns) | RUN:./ops/+x/player_open_derivative.+x future $(bash scripts/active_corp.sh) short 10 5
+METHOD       | Buy Call Option (10sh, 5 turns)    | RUN:./ops/+x/player_open_derivative.+x option $(bash scripts/active_corp.sh) call 10 5
+METHOD       | Buy Put Option (10sh, 5 turns)     | RUN:./ops/+x/player_open_derivative.+x option $(bash scripts/active_corp.sh) put 10 5

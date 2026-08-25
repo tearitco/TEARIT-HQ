@@ -1,0 +1,4 @@
+GOVERNMENT FINANCIAL DATA: United Clones
+---------------------------------------------
+GDP: 318
+Population: 10

@@ -1,0 +1,23 @@
+<panel time_reactive="true">
+    <module>pieces/apps/gl_os/plugins/+x/gl_os_session.+x</module>
+    <interact src="pieces/apps/gl_os/session/history.txt" />
+    
+    <text label="╔═══════════════ G L - O S   D E S K T O P ═══════════════╗" /><br/>
+    <text label="║  BG: ${bg_color}                                      ║" /><br/>
+    <text label="║  Windows: ${window_count}                               ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    
+    <!-- Desktop view - shows windows -->
+    <text label="${desktop_view}" /><br/>
+    
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  [t] New Terminal  [f] New Folder  [n] New File         ║" /><br/>
+    <text label="║  [c] Close Window  [ESC] Deselect  [q] Exit to Main     ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  " /><button label="Back to TPMOS Main Menu" href="pieces/chtpm/layouts/os.chtpm" /><text label="                   ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  Response: ${gl_response}                               ║" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+    
+    <text label=" Right-click for context menu (future: mouse support)" /><br/>
+</panel>

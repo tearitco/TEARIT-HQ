@@ -1,0 +1,145 @@
+CODEX DOX INVENTORY
+
+Active notes folder:
+_codex_dox/
+
+Codex TPMOS reports folder:
+_codex-tpmos/reports/
+
+Policy:
+- _codex_dox/NOTES_POLICY.txt
+
+Current active notes:
+
+- _codex_dox/codex-tpmos-onbord.txt
+  Practical Codex/API onboarding for TPMOS and wraith-pm work.
+  Old path archived from:
+  1.TPMOS_c_+rmmp.0102.0010/codex-tpmos-onbord.txt
+
+- _codex_dox/FRAME_FIRST_RENDER_REPORT.md
+  Report on the existing frame-first RGB project and its relevance to Wraith.
+  Old path archived from:
+  FRAME_FIRST_RENDER_REPORT.md
+
+- _codex_dox/wrath-pm-codex-j2.txt
+  Large planning document for wraith/wrath-pm direction.
+  Old path archived from:
+  wrath-pm-codex-j2.txt
+
+- _codex_dox/pre-planning-codex-j2.txt
+  Pre-code alignment agenda for colored ASCII, images, videos, metadata, and GL.
+  Old path archived from:
+  pre-planning-codex-j2.txt
+
+- _codex_dox/wraith-pm-frame-rgb-bridge-codex-j2.txt
+  Explicit parser -> separate media decode ops -> frame/meta -> RGB daemon ->
+  wraith-gl.c bridge plan.
+  Old path archived from:
+  wraith-pm-frame-rgb-bridge-codex-j2.txt
+
+- _codex_dox/clock-in-j3.txt
+  Wraith intention and phase outline, with a deeper breakdown of phase A UI,
+  frame artifacts, acceptance criteria, and the rule that subwindow content
+  should stay file-backed and frame-composed.
+  New active note created in `_codex_dox/` during this session.
+
+- _codex_dox/wraith-look-codex-reference-j3.txt
+  Codex-local visual reference derived from `!.look-of-wraith-gui.txt`,
+  clarifying that phase A should mirror a GL-OS-style shell composition with
+  an outer frame, left navigation, a `Wraith Terminal v1.0` shell, one
+  overlapping `GAME MAP` window, and footer/taskbar semantics.
+  New active note created in `_codex_dox/` during this session.
+
+- _codex_dox/wraith-look-ascii-j3.txt
+  ASCII-only mockup of the intended Wraith shell shape, using plain text to
+  capture the outer frame, launcher column, `Wraith Terminal v1.0`, the
+  overlapping `GAME MAP` window, and footer/taskbar composition.
+  New active note created in `_codex_dox/` during this session.
+
+- _codex_dox/wraith-handoff-j2.txt
+  Intent-correction handoff: Wraith must become an ASCII-first GL-OS-style
+  desktop/window manager, not a CHTMGL layout flattened by the old CHTPM parser.
+  Includes next stages for launcher bridge, desktop state, terminal window,
+  focus, z-levels, hit maps, mouse drag, later RGB/GL, and projected window
+  surfaces owned by Wraith or project-local managers.
+
+- _codex_dox/tomojizu-soul-synthesis-codex-j2.txt
+  Condensed project-local Tomojizu synthesis of &.TOMOKAZU-SOUL&0.txt for
+  persona/product context, with canonical name, emoji chat style, TPMOS
+  HR/culture interaction-layer guidance, safety boundary, and Codex integration
+  boundary.
+  Source remains:
+  &.TOMOKAZU-SOUL&0.txt
+
+- _codex_dox/lucky-j3-summary.txt
+  Session summary for the next quota reset: what was started, what is working,
+  what remains unfinished, where false assumptions were corrected, and where to
+  resume for Wraith, iqamoji-xo5, and 0.iqaida.g+FSM=022.0000.
+
+- _codex_dox/user-report-j3.txt
+  User-facing Wraith status report with proof of work, explicit non-features,
+  false-assumption corrections, the proof of basic nav support, and the
+  correction that sketch-menu labels are not the real long-term window/surface
+  model.
+  New active note created in `_codex_dox/` during this session.
+
+- _codex_dox/gemini-prompt-j3.txt
+  Continuation prompt for a new agent. Points at the real Wraith, fuzz-op, and
+  GL-OS code paths and explicitly allows correction of current Wraith code if it
+  does not match TPMOS standards or intent.
+  New active note created in `_codex_dox/` during this session.
+
+- _codex_dox/wraith-progress-j3.txt
+  Implementation-facing progress note for real Wraith features, explaining how
+  to borrow numeric jump behavior from CHTPM/fuzz-op, borrow geometry/focus
+  behavior from GL-OS, and keep visible subwindow content on projected
+  file-backed surfaces while preserving project-local submanagers inside Wraith
+  windows.
+  New active note created in `_codex_dox/` during this session.
+
+Important archive batches:
+
+- _codex_archives/2026-06-03/1780468325/
+  Inventory archive before adding Wraith handoff note that corrects the current
+  CHTPM-flattened launcher experience.
+
+- _codex_archives/2026-06-03/1780467609/
+  Moved Codex-generated TPMOS frame reports into _codex-tpmos/reports and
+  updated the Wraith bridge plan for separate synchronous image/video decode
+  ops.
+
+- _codex_archives/2026-06-03/1780466504/
+  Notes archive before adding Tomojizu as the preferred TPMOS HR/culture
+  interaction layer.
+
+- _codex_archives/2026-06-03/1780466342/
+  Tomojizu profile archive before correcting canonical name and emoji chat
+  guidance. Active note renamed from tomokazu-soul-synthesis-codex-j2.txt to
+  tomojizu-soul-synthesis-codex-j2.txt.
+
+- _codex_archives/2026-06-03/1780466230/
+  Inventory archive before adding the Tomokazu soul synthesis note.
+
+- _codex_archives/2026-06-03/1780465873/
+  Move of active Codex notes into _codex_dox and creation of this policy and
+  inventory.
+
+- _codex_archives/2026-06-03/1780465598/
+  Pre-edit onboarding copy before adding the frame/meta -> RGB daemon -> GL
+  presenter bridge note.
+
+- _codex_archives/2026-06-03/1780465407/
+  Pre-edit onboarding copy before adding the wraith_parser.c parser rule.
+
+- _codex_archives/2026-06-03/1780465084/
+  Batch for the original codex-tpmos-onbord.txt creation.
+
+- _codex_archives/2026-06-03/1780464960/
+  Testing document rename batch from m26 to j2.
+
+- _codex_archives/2026-06-03/1780464887/
+  Testing guide update batch before adding Codex/API testing nuances.
+
+Notes:
+The inventory can keep references to deleted notes when they matter for safety
+or rollback. The active folder should stay useful, not permanent by default.

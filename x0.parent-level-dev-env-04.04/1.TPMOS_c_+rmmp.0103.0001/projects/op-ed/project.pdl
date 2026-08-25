@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | op-ed
+META         | version            | 1.0
+META         | entry_layout       | projects/op-ed/layouts/op-ed.chtpm
+
+STATE        | starting_map       | map_0001
+STATE        | player_piece       | xlector
+STATE        | current_world      | world_01
+STATE        | current_map        | map_0001
+
+RESPONSE     | default            | Project op-ed Saved.

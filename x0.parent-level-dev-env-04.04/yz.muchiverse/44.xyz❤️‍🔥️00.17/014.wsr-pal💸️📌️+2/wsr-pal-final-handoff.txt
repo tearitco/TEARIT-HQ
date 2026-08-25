@@ -1,0 +1,423 @@
+WSR-PAL FINAL HANDOFF - written 2026-07-16, before an extended pause
+on this project. Assume the reader (human or agent) has ZERO memory of
+any prior session. Read this whole file before touching code.
+================================================================================
+
+0. WHAT THIS PROJECT IS
+--------------------------------------------------------------------------
+wsr-pal is a port of a real, locally-written stock-market/corporate-
+economy game ("Wall Street Raider" clone, original C source at
+`Mar$.$treetRace.wsr]Q]k32/` inside this same wsr-pal directory) onto
+this whole family's own pal/prisc+x bytecode-VM architecture (the same
+one muchi-evo-pal, muchi-pal-chat, mutaclsym use). The goal, per the
+user's own framing: an eventual realistic economic sim where
+companies/banks/population/commodities/R&D all interact - Tier 3 of a
+larger 3-tier game vision (see `../MUCHICIVO_BIBLE.txt`). This handoff
+covers ONLY wsr-pal's own state; the bigger vision docs are named in
+§6 below.
+
+
+1. ARCHITECTURE QUICK ORIENTATION (read the cited files for real detail)
+--------------------------------------------------------------------------
+- **pal/prisc+x**: a bytecode VM (`system/prisc+x.c`, copied verbatim
+  from muchi-evo-pal, zero project-specific changes). `.pal` scripts run
+  simple opcodes (`li`, `beq`, `j`, `read_history`, `read_state`,
+  custom ops). CRITICAL LIMITATION, confirmed by reading prisc+x.c
+  directly: `read_state`'s piece_id argument is a LITERAL parsed from
+  `.pal` source text at parse time, NOT a runtime register value - true
+  dynamic multi-entity dispatch is structurally impossible from `.pal`
+  alone. This is why `scripts/tick_all.sh` (bash, not `.pal`) is what
+  actually loops over every corp/gov/pop/weather/realestate piece -
+  each entity's own idle->deciding->trading FSM logic still goes through
+  the same ops a `.pal` script would call, just invoked from a bash loop
+  instead of a fixed-piece-id `.pal` file. This split is deliberate and
+  documented, not an oversight.
+- **Pieces**: `projects/wsr-pal/pieces/<piece_id>/state.txt` (flat
+  key=value). One piece per corporation (`corp_<TICKER>`), government
+  (`gov_<name>`), population pool (`pop_downtown`), weather
+  (`weather_global`), real estate holding (`realestate_00N`), plus
+  `wsr_menu` (shared UI/world state) and one piece per menu SCREEN
+  (`wsr_main_menu`, `wsr_financing_menu` - see below).
+- **decision_mode chassis** (`preset|weighted|rl|llm|human` = 0-4):
+  every corp/gov piece has this field. `corp_decide.c`/`gov_decide.c`
+  dispatch on it. GOVERNED BY `../GAME-AI-SPEED-DOCTRINE.txt` - AI API
+  calls (even LAN-hosted) are NEVER the in-game default, only
+  training/rare-moment use; `weighted` (real ported formulas, not
+  stubs) is the actual default for auto-generated entities. `rl` is
+  still a stub (falls back to weighted) - deliberately deprioritized,
+  never got prioritized in this project's lifetime.
+- **piece.pdl METHOD-table-driven menus** (hard architectural rule, see
+  `../feedback_menus_as_piece_pdl_method_tables.md` memory): a menu
+  SCREEN is its own piece with a `piece.pdl` file; its `METHOD | label |
+  command` rows ARE the menu, parsed generically by `ops/wsr_menu_
+  input.c` (dispatch) and `ops/wsr_compose_frame.c` (render) - NEVER
+  hardcoded C option arrays. Adding a menu option = editing a piece.pdl
+  line, no recompile. Modeled directly on real TPMOS's own
+  `chtpm_parser.c`'s `load_dynamic_methods()` (researched directly this
+  project, not guessed - see `1.TPMOS_c_+rmmp.0102.0028/pieces/chtpm/
+  plugins/chtpm_parser.c`). Navigation between screens is a
+  `GOTO:<piece_id>` command value. Special command prefixes recognized
+  by `wsr_menu_input.c`: `GOTO:`, `TICK_ALL:<n>`, `CYCLE_CORP`,
+  `TOGGLE_TICKER`, `NEW_GAME`, `NEW_CORP`, `STUB`, else shells the raw
+  command string directly.
+- **Human-playable interface** (built this project, had never existed
+  before): `system/keyboard_input.c` writes raw keypresses (including
+  correctly-decoded arrow keys, `ARROW_UP=1002`/`ARROW_DOWN=1003`/etc,
+  matching real TPMOS's own enum) to `pieces/apps/player_app/
+  history.txt`. `pal/main_loop.pal` reads them incrementally, dispatches
+  to `wsr_menu_input.+x`, then calls `compose_frame`/`hit_frame` to
+  render `pieces/display/current_frame.txt`. `system/renderer.c` is the
+  third process (paints that file to the real terminal). `button.sh
+  run` launches all three. **TESTING RULE, non-negotiable** (see
+  `../feedback_test_through_playable_interface.md`): any interactive
+  behavior must be tested by writing a real keycode to `history.txt`,
+  running `main_loop.pal` BACKGROUNDED (it loops forever by design -
+  `button.sh sim-key <code> [wait_seconds]` does exactly this), then
+  reading `current_frame.txt`/`state.txt` - never just reason about the
+  code or test via a CLI-only op. This caught multiple real bugs this
+  project that pure code review missed (see §4).
+
+
+2. THE SINGLE MOST IMPORTANT FINDING OF THIS WHOLE PROJECT
+--------------------------------------------------------------------------
+**The real original C source (`Mar$.$treetRace.wsr]Q]k32/`) is FAR
+sparser than its own menu text promises. Read `game.c` directly (485
+lines, especially the numbered-choice dispatch around lines 355-455)
+before assuming ANYTHING in the original game actually works.**
+
+`display_main_menu()` in `game.c` prints a full 0-31 numbered menu
+(File/Settings/Select Player/Culture/Entity Info/Select Corp/History/
+General/Tools/**Buy/Sell**/Financing/Private/Management/Other Trans/
+End Turn/Misc Menu/Chart/Auto/Watchlist/Ticker/Research Report/List
+Portfolio/**List Futures**/Financial Profile/**List Options**/DB Search/
+Earnings Report/Shareholder List/My Corporations). But the actual input
+dispatch `switch(choice)` block ONLY has real `case` labels for:
+**0 (quit), 1 (file_submenu), 3 (settings_submenu), 5 (select self as
+active player), 8 (select_entity), 13 (financing), 15 (management), 17
+(cycle player/ticker), 22 (toggle ticker), 24 (display_portfolio), 28
+(db_search)**. EVERY OTHER NUMBER - including 12 (Buy/Sell, the single
+most central mechanic of a stock-trading game), 25 (List Futures), 27
+(List Options), 14 (Private), 16 (Other Trans), 19 (Chart), 20 (Auto),
+21 (Watchlist), 23/26/29/30/31 (Research Report/Financial Profile/
+Earnings Report/Shareholder List/My Corporations) - has **no case at
+all**. Pressing those keys in the real original game silently does
+nothing. Confirmed by direct exhaustive grep across the entire source
+tree for buy/sell/short/future/option/bond/loan/takeover/control as real
+symbols (not just menu-label strings) - none exist as working
+mechanics anywhere in the codebase.
+
+Per-file findings from direct reading (not guessed) of the files most
+relevant to "how does buying/controlling a corporation, futures,
+options, bonds, loans actually work":
+
+- **`financing.c`** (471 lines): `display_financing_menu()`'s own
+  `switch(choice)` implements ONLY case 1 (Startup New Corp). Every
+  other listed option (Capital Contribution, Public Stock Offering,
+  Issue Bonds, Buy Back or Call Bonds, Extraordinary Dividend, Tax-Free
+  Liquidation, Spin Off Subsidiary) falls to a literal `default:
+  "Selection %d is not yet implemented"` IN THE REAL SOURCE ITSELF.
+- **`incorporation.c`** (called by financing.c's real case 1) IS
+  genuinely functional: creates a real `corporations/generated/<ticker>/`
+  directory from a template (bank/insurance/generic), writes financial
+  fields seeded from the funding amount, and - important - writes a real
+  `list_shareholders.txt` recording the FOUNDING PLAYER AS 100% OWNER.
+  So "found your own corp" is a real, complete, working mechanic; buying
+  INTO an existing corp or taking control of one you didn't found is
+  not (see below).
+- **`management.c`** (68 lines) prints a menu (Elect me as CEO/Resign/
+  Change Managers/Set Dividend Payout/**Set R&D Spend**/**Set Marketing
+  Spend**/Set Growth Rate/Micromanage/Legal/Toggle AutoPilot) but has NO
+  `scanf`, NO `switch`, NO logic of any kind behind ANY of these - it is
+  a pure `printf` list followed by "press Enter to return." R&D spend
+  and marketing spend ARE named concepts in the real source (so not
+  invented out of nothing), but are 100% unimplemented - pure aspiration,
+  zero backing code. Capital expenditure isn't named anywhere in the
+  source at all - a genuinely new concept if you want it.
+- **`analysis_loop.c`** (330 lines) IS real and working: computes a new
+  stock price for EVERY corporation once per day (book value/share x
+  market-cap multiplier x leverage factor x risk-bias factor, blended
+  70/30 with price momentum), writes it back, and logs `price_history.
+  txt`. This is the ONE real "market mechanics" system in the whole
+  source, and it has now been ported into wsr-pal (see §4).
+- **`news_loop.c`** (244 lines) IS real and working: scans all corps'
+  price moves, sorts by |change%|, writes `data/news.txt` - the exact
+  thing `game.c`'s main menu banner scrolls through. Also now ported
+  (see §4).
+- **`select_entity.c`**/**`display_portfolio.c`** are real and working,
+  but only do NAVIGATION (pick which corp/ticker is "active") - neither
+  buys, sells, nor transfers control of anything.
+- **`day_loop.c`** (30 lines) is itself a near-stub - just appends
+  "Hello, DAy!" to a log file and calls `analysis_loop.+x`. All its real
+  value is the one system() call.
+- **`payroll_loop.c`/`dividend_loop.c`** confirmed via `diff` to be
+  100% byte-identical to each other and non-functional (broken
+  menu-copy bug) - a real, still-unfixed bug in the original source,
+  independent of anything built in wsr-pal.
+- **`tax_loop.c`** confirmed a placeholder ("Hello, TAX!" stub).
+- **`ai/ai_manager.c`, `ai/ai_module_0]apprx.c`, `ai/ai_module_1]real.c`**
+  (whose names promise exactly an approximate-vs-real AI tiering) are
+  confirmed via `diff` to be 100% BYTE-IDENTICAL copies of `game.c`'s
+  own menu loop. Zero AI logic anywhere. This is why wsr-pal's own
+  `decision_mode` chassis had to be built completely fresh - there was
+  nothing real to port for the "AI trades" concept specifically (there
+  WAS something real to port for the underlying VALUATION math, which
+  is `analysis_loop.c`/now `corp_decide.c`+`corp_update_price.c`).
+
+**Bottom line for whoever picks this up**: the real original game is
+mostly a rich-LOOKING menu shell wrapped around three genuinely working
+systems (stock price valuation math, financial news, corp-founding-with-
+ownership) plus a scattering of unrelated working utilities (file/
+settings submenus, entity selection, portfolio viewing, a wall-clock
+day-ticker, DB search). Actual trading (buy/sell of stock you didn't
+found), futures, options, bonds, and loans DO NOT EXIST anywhere in the
+original source as working mechanics - not "hard to find," genuinely
+absent, confirmed by exhaustive grep. Anything built for these going
+forward is real NEW design work, not porting - which is exactly what
+`../SOCIETY-ECONOMY-ARCHITECTURE.txt` already treats them as (see §6).
+
+
+3. WHAT WSR-PAL HAS BUILT SO FAR (all real, all tested - see
+   `WSR-PAL-PORT-STATUS.txt` for full blow-by-blow detail)
+--------------------------------------------------------------------------
+- ONE real corporation (`corp_ORB`) seeded from its own real balance
+  sheet, then generalized to ALL 50 real corporations + 7 real
+  governments via `scripts/ensure_entities.sh` (idempotent, auto-runs on
+  every `button.sh run`/`tick-all`, defaults new entities to
+  `decision_mode=1`/weighted per the AI doctrine).
+- `corp_decide.c`/`corp_trade.c`/`corp_tick_idle.c`: the REAL ported
+  fundamental-value formula (from `analysis_loop.c`) driving genuine
+  buy/sell/hold decisions for the `weighted` tier - not a stub.
+- `gov_decide.c`/`gov_trade.c`/`gov_tick_idle.c`: real fiscal-policy
+  heuristic (deficit ratio + debt/GDP -> raise tax/cut spending).
+- **Corporate actions** (per `../SOCIETY-ECONOMY-ARCHITECTURE.txt` §5.5,
+  real WSR precedent from the manual, NOT from the sparse source code):
+  `corp_buy_stake.c` (cross-corp holdings primitive), `corp_attempt_
+  merger.c` (premium-based probabilistic acceptance, tested at 92% odds
+  across 10 real attempts), `corp_ipo.c` (creates a brand-new corp piece
+  at runtime). Greenmail/LBO/spin-off NAMED in the design doc but not
+  built. These are CLI-only ops right now, not wired into the
+  interactive menu except `corp_ipo` (reachable via Financing -> Startup
+  New Corp).
+- Population pool (`pop_downtown`, real growth/decline - food shortage
+  genuinely increases death rate, this formula was bug-fixed live
+  during testing), weather (`weather_global`, deterministic seasonal
+  sine wave), real estate (`realestate_001/002`, real xyz coordinates,
+  owned by two EXISTING real corporations tagged `industry=real_estate`
+  per direct correction - not synthetic IPO'd companies).
+- **The full interactive human-playable interface** (§1 above) - did
+  not exist before this project, built and tested via the real
+  methodology.
+- **piece.pdl METHOD-table menu rebuild** (§1 above) - the menu was
+  first built with hardcoded C option arrays, then rebuilt onto the
+  real TPMOS-inspired data-driven pattern after direct user feedback
+  that hardcoding was "just as inflexible" as anything else.
+- **Real price movement + financial news, ported 2026-07-16 (the
+  session just before this handoff)**: `corp_update_price.c` (real port
+  of `analyze_all_corporations()` - runs once per corp per End Turn,
+  BEFORE the idle->decide->trade round loop, recomputes stock_price via
+  the same formula unconditionally, logs `price_history.txt`) and
+  `wsr_news_op.c` (real port of `news_loop.c` - sorts all corps by
+  |change%|, writes `pieces/wsr_menu/news.txt`). `wsr_compose_frame.c`
+  now shows a real `FINANCIAL NEWS [...]` line on the main menu. Tested
+  end-to-end through the real interface: one End Turn moved ORB from
+  $167.70 to $116.49 and correctly populated the news feed.
+- **Real bug found and fixed the same session**: `button.sh`'s
+  `new-game` shortcut was sending a stale hardcoded keycode from before
+  the menu rebuild, silently landing on the wrong screen instead of
+  resetting anything. Fixed to force navigation to `wsr_main_menu`
+  first, confirmed via direct test that the world genuinely resets now.
+
+
+4. WHAT IS NOT BUILT YET - REAL GAPS, RANKED
+--------------------------------------------------------------------------
+Ranked roughly by how central they are to "a working stock-trading game
+a human can actually play," not by build order:
+
+1. **There is no human-facing Buy/Sell menu option anywhere in the
+   interactive interface.** `wsr_main_menu`'s piece.pdl currently has
+   only 5 rows: End Turn / Select Corp. / Financing / Toggle Ticker /
+   New Game - no "Buy/Sell" screen exists. The ONLY way a human can
+   currently queue a trade is `corp_set_human_decision.+x` via CLI
+   (`button.sh test-choose buy|sell|hold`, hardcoded to `corp_ORB`,
+   named as a "test" convenience, never built out as a real menu
+   screen). This is arguably the single highest-value next step - a
+   `wsr_trade_menu` piece.pdl (Buy N shares / Sell N shares / Back) that
+   calls `corp_set_human_decision.+x <active_corp> <action>` would close
+   this gap using patterns that already exist (piece.pdl menus,
+   `CYCLE_CORP`'s existing active-corp tracking).
+2. **Buying INTO an existing corp / taking control away from its
+   founder** - `corp_buy_stake.c` lets any piece acquire shares in
+   another corp (cross-corp holdings), but there's no majority-
+   ownership-triggers-control mechanic, and no human-reachable menu path
+   to invoke it at all (CLI-only). "Own >50%, gain control" is a real
+   design decision that hasn't been made.
+3. **Futures, options, short-selling, bonds, loans** - confirmed absent
+   from the ORIGINAL source (§2) AND not yet designed or built in
+   wsr-pal either. These are pure greenfield design work if wanted -
+   `../SOCIETY-ECONOMY-ARCHITECTURE.txt` §6 (the ledger/auction
+   marketplace - loan requests, sell offers) is the closest existing
+   design surface for loans specifically; futures/options/short have no
+   design doc at all yet.
+4. **R&D spend, marketing spend, capital expenditure** - R&D and
+   marketing ARE named in the real source's `management.c` (as
+   unimplemented printf lines); capex isn't named anywhere. All three
+   are genuinely new design work. `../ROADMAP-models.txt` §12 (schools/
+   expertise) and `../SOCIETY-ECONOMY-ARCHITECTURE.txt` §9 (tiered R&D,
+   LLM-distillation-driven for "cutting edge" research) already sketch
+   where R&D fits into the bigger cross-project vision - read those
+   before designing wsr-pal's own R&D mechanic in isolation.
+5. Greenmail/LBO/spin-off (named in the design doc, not built - see §3).
+6. `rl` decision_mode tier is still a stub (falls back to weighted).
+7. Tasks #39-42 from this project's own tracker, still pending: one
+   commodity (wheat) + one ag company + population consumption; the
+   ledger mechanism (one post kind, sell_offer); banks + loan requests
+   (second ledger post kind); a labor market stub. These are the "new"
+   (not classic-WSR) economy extensions per `SOCIETY-ECONOMY-
+   ARCHITECTURE.txt` - population/labor/banks/commodities layer, staged
+   deliberately AFTER getting the classic-mode corp/gov/market loop
+   solid first.
+8. `payroll_loop.c`/`dividend_loop.c`/`tax_loop.c` bugs in the ORIGINAL
+   source (not wsr-pal's own code) - confirmed broken/stub, never fixed
+   because they were never load-bearing for anything built here.
+9. Only ONE government's fiscal decision-making has been spot-tested;
+   `setup_governments.c` itself was never read in depth.
+
+
+5. TESTING METHODOLOGY - DO NOT SKIP THIS
+--------------------------------------------------------------------------
+Every mechanic in this project has been verified via the REAL
+interactive interface, not just CLI ops or code review - per
+`../feedback_test_through_playable_interface.md`. Concretely:
+  1. `rm -f pieces/apps/player_app/history.txt pieces/display/
+     current_frame.txt` (clean slate)
+  2. Append the numeric keycode(s) for the action you want to test to
+     `pieces/apps/player_app/history.txt` (digit keys are their ASCII
+     codes, e.g. `53` for '5'; Enter is `10`; arrows are `1000`-`1003`)
+  3. `./button.sh sim-key <code> [wait_seconds]` (or manually background
+     `./system/prisc+x pal/main_loop.pal`, sleep, then kill+wait - it
+     loops forever by design, there's no "process one tick and return"
+     mode)
+  4. Read `projects/wsr-pal/pieces/wsr_menu/state.txt` and `pieces/
+     display/current_frame.txt` to confirm the ACTUAL rendered/stored
+     result, not just that the op ran without error.
+This methodology caught multiple real bugs that pure code-reading
+missed this project: a cursor-stuck-after-reset bug, a mid-cycle-
+snapshotted `pieces_template`, a `build.sh` that silently never compiled
+the interactive binaries, and the stale-keycode `new-game` bug (§3).
+Don't skip straight to "looks right in the source" for anything
+interactive.
+
+
+6. DOCUMENT MAP - where the bigger-picture thinking lives
+--------------------------------------------------------------------------
+All paths relative to `yz.muchiverse/2.muchi-verse/` (one level up from
+this wsr-pal directory) unless noted:
+  - `WSR-PAL-PORT-STATUS.txt` (inside this wsr-pal dir) - the full,
+    detailed, dated build log this handoff summarizes. Read it for
+    exact test numbers/formulas/file lists this document only points at.
+  - `SOCIETY-ECONOMY-ARCHITECTURE.txt` - the "new" economy vision
+    (population/labor/schools/commodities/banks/ledger/corporate
+    actions/tech-tree gating/tiered R&D), grounded against the REAL WSR
+    manual (a 7000-line reference document, distinct from the sparse
+    source code covered in §2 above - the manual describes an idealized
+    feature set the actual playable source never implemented). Has a
+    "classic/new/learn" mode-selector principle (§0.75) - classic
+    faithfully matches the real (sparse) source, new is this project's
+    own extended design, learn is an FSM/RL-research-driven headless
+    mode.
+  - `GAME-AI-SPEED-DOCTRINE.txt` - the hard rule that AI API calls
+    (any, including LAN) are training-only, never in the live game loop;
+    compares GOAP/FSM/ML/RL/BT as the real local-technique options.
+  - `UPSCALE-DOWNSCALE-ENGINE-COMPONENTS.txt` - which patterns built
+    here are genuinely portable to other projects in this family
+    (prisc+x/connect_op/json_parser, the decision_mode chassis, the
+    piece.pdl METHOD-table menu pattern, dynamic-discovery tick drivers)
+    vs. wsr-pal-specific business logic that isn't.
+  - `MUCHICIVO_BIBLE.txt` - the 3-tier game vision wsr-pal is Tier 3 of.
+  - `coder-b-prompt.txt` (one level up again, in
+    `x0.parent-level-dev-env-03.00/`) - a DIFFERENT, currently-active
+    handoff for a parallel coder working on the platform orchestrator +
+    user-pal shared-identity layer - not wsr-pal, but worth knowing it
+    exists since a future shared-identity/ownership layer would
+    eventually want to know about wsr-pal's own corp/shareholder data.
+  - Auto-memory files (`/home/no/.claude/projects/.../memory/`, check
+    `MEMORY.md` there first) - `project_wsr_pal_port.md`,
+    `feedback_ai_never_in_game_loop.md`,
+    `feedback_test_through_playable_interface.md`,
+    `feedback_menus_as_piece_pdl_method_tables.md` all pertain directly
+    to this project and persist across sessions even though this
+    handoff file doesn't rely on that memory existing.
+
+
+7. ACTUAL CURRENT STATE (2026-07-17 session)
+--------------------------------------------------------------------------
+**This handoff's §4-§7 are OUTDATED.** The work described in §7.5 was
+indeed completed in §2.7-§2.8 of the actual, detailed build log
+(WSR-PAL-PORT-STATUS.txt). Here's what's REALLY in wsr-pal now:
+
+§2.1-2.3: Five-tier decision_mode chassis (preset/weighted/rl/llm/human),
+all live-tested with corp_ORB seed data. Weighted uses ported fundamental-
+value formula; llm calls gemma3:270m; human is park-and-wait.
+
+§2.4: Corporate actions (corp_buy_stake.c, corp_attempt_merger.c with 92%
+acceptance testing, corp_ipo.c runtime corp spawning).
+
+§2.45: Real interactive playable interface - piece.pdl METHOD-table-driven
+menu system (TPMOS-inspired), built after direct feedback on hardcoding.
+
+§2.6: Real price movement (ported corp_update_price.c from analysis_loop.c)
+and financial news (ported wsr_news_op.c from news_loop.c).
+
+§2.7: Full gameplay loop - player_you wallet, Buy/Sell/Short/Cover,
+ownership/financing/management/derivatives menus, loans, futures/options
+(simplified, auto-settling). 7 new ops, 3 new menu screens. Two real bugs
+found and fixed during interface testing (display/active-corp mismatch,
+self-loan edge case).
+
+§2.8: Startup New Corp rebuilt as real 5-step wizard flow (industry/country/
+funding/name/ticker with live lists, real text-entry UI). One real bug
+caught mid-build (stale template file).
+
+Also see: ALL THREE latent gaps from §7.5 UPDATE are NOW FIXED:
+
+1. HISTORY CURSOR REPLAY: main_loop.pal now reads history_cursor from
+   player_app/state.txt instead of hardcoding 0. A new ops/update_history_
+   cursor.+x persists the cursor after each read (reads state, increments,
+   writes back). On New Game, cursor is reset to 0 in wsr_menu_input.c's
+   new_game() function. Result: process restart no longer replays entire
+   history.txt.
+
+2. 'Q' IN CORP NAMES: keyboard_input.c no longer maps Ctrl-C (ETX byte 3)
+   to 'q'. Instead, Ctrl-C writes keycode 3 directly to history.txt.
+   main_loop.pal checks for keycode 3 (not 113/'q') to quit. Result:
+   lowercase 'q' can now be freely typed in wizard prompts without quitting.
+
+3. STARTUP NEW CORP WIZARD: Now requests all 5 real fields (industry/
+   country/funding/name/ticker) with live list reads and real validation,
+   matching the real game exactly - no longer just a keypress with fixed
+   values. Real bug found and fixed during testing.
+
+Quantities remain fixed (10 shares, $500, etc) and shareholder cap table
+remains simplified (dividends only to 100% owner) - both documented, not
+silent assumptions.
+
+================================================================================
+8. NEXT STEPS (priority order)
+--------------------------------------------------------------------------
+  1. Decide: should human trades be bounded by valuation model (fairer,
+     less interesting) or stay fully discretionary (realistic)? This is
+     a named-but-undecided question from §2 of WSR-PAL-PORT-STATUS.txt.
+  2. Read setup_governments.c in full before expanding government
+     decision-making (never read in depth, only ported general fiscal
+     pattern).
+  3. Resume SOCIETY-ECONOMY-ARCHITECTURE.txt tasks (#39-42: wheat/ag,
+     ledger, banks/loans, labor market) - deliberately AFTER classic
+     mode loop is solid.
+  4. Free-text quantity entry for trades/loans (current menus hardcoded
+     to 10 shares, $500, etc).
+  5. Real shareholder cap table (dividends to fractional owners, not just
+     100% owner).
+  6. Tax-Free Liquidation, Spin Off Subsidiary (still STUB in financing
+     menu).
+  7. Margin calls or risk limits on shorts/futures (currently unbounded).
+  8. Read `setup_governments.c` corner cases and known bugs, if any.

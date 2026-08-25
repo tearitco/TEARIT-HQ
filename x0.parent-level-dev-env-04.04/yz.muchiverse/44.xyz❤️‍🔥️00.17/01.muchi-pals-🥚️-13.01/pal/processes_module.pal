@@ -1,0 +1,59 @@
+# processes_module.pal - PHASE 2 (2026-07-30): pieces/chtpm/layouts/
+# processes.chtpm's own DEDICATED module - part of the full per-screen
+# module split, proven first on pets_module.pal (see dox/
+# 04-module-and-manager-architecture.md, dox/05-jul30-live-bugs-and-
+# plan.md). Every screen in this project now gets its own module
+# string, so chtpm_parser_pal.c's own launch_module() liveness check
+# (real kill+fork+exec on genuine navigation, real reuse while staying
+# on one screen) applies per screen, not once per whole project.
+#
+# Reuses the SAME shared ops (muchi_menu_input, muchi_compose_frame)
+# every other screen's module also calls - splitting those into
+# per-screen dedicated op files is a separate, later step, not done
+# here. Structure is a straight copy of the original main_loop_chtpm.
+# pal's own proven shape, including its DOUBLE-RENDER FIX ordering
+# (idle-sync once before the first compose, so a freshly-launched
+# module's first frame is already correct).
+li x1, 0
+li x3, 0
+li x4, 100
+
+li x9, 0
+muchi_menu_input x9
+muchi_compose_frame
+hit_frame
+read_pos x7, "pieces/display/muchi_screen_changed.txt"
+
+loop:
+li x9, 0
+muchi_menu_input x9
+read_pos x8, "pieces/display/muchi_screen_changed.txt"
+beq x7, x8, check_key
+addi x7, x8, 0
+j render
+
+check_key:
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, no_key
+muchi_menu_input x2
+j render
+
+no_key:
+addi x3, x3, 1
+beq x3, x4, do_tick
+j after_tick
+
+do_tick:
+tick_pets
+li x3, 0
+j after_tick
+
+after_tick:
+sleep 30000
+j loop
+
+render:
+muchi_compose_frame
+hit_frame
+sleep 30000
+j loop

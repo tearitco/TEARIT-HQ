@@ -1,0 +1,10 @@
+<layout id="window-geom-picker">
+    <module>projects/wraith-alpha/wraith-projects/settings/manager/+x/settings_manager.+x</module>
+    <panel title="WINDOW GEOMETRY">
+        <text label="WINDOW GEOMETRY -- choose a project to edit:" /><br/>
+        <br/>
+        ${project_picker_markup}
+        <br/>
+        <button label="Back" onClick="SETTINGS_PAGE:settings" /><br/>
+    </panel>
+</layout>

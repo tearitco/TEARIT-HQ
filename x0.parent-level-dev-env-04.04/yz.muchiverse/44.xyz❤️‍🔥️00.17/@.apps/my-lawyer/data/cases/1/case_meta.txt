@@ -1,0 +1,13 @@
+case_id=1
+title=State v. Adam Chen
+claim_summary=Commercial Corp alleges Adam breached a supply contract by missing a 30-day notice deadline.
+player_side=defendant
+plaintiff_name=Opposing Counsel
+defendant_name=Adam Chen (you)
+status=building
+plaintiff_status=ready
+defendant_status=ready
+winner=
+raw_comparison_text=
+raw_verdict=
+day_picked_up=1

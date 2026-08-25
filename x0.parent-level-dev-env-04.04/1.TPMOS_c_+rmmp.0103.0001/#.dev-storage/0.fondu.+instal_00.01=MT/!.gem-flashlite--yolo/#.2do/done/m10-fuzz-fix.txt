@@ -1,0 +1,58 @@
+# Fuzz-Op Refactor Regression Investigation Report
+
+## 1. What Went Wrong
+
+The investigation identified three primary root causes for the behavior observed in `1.POST/1.TPMOS_c_+rmmp_98.45`:
+
+### A. Layout Reset Bug (Parser Error)
+In `pieces/chtpm/plugins/chtpm_parser.c`, the `parse_chtm()` function attempts to update `current_layout` by reading from `pieces/display/layout_changed.txt`. However, it uses `fgets()` to read only the **first line** of the file. 
+*   **Effect:** Since `layout_changed.txt` is an append-only log, the parser resets the layout to the very first layout ever loaded (usually `playrm.chtpm`) every time `parse_chtm()` is called. 
+*   **Trigger:** The `fuzz-op_manager` pulses `state_changed.txt` on every keypress and heartbeat. This pulse triggers a re-parse, which in turn triggers the layout reset. This is why the UI reverts to `playrm.chtpm` immediately after `resolve_project_op` correctly switches to `fuzz-op.chtpm`.
+
+### B. Path Resolution Failure (Ops Error)
+The file `pieces/locations/location_kvp` contains a hardcoded, absolute path (`/home/jb/...`) that does not exist in the current environment. Standalone Ops like `resolve_project_op` and `get_piece_methods_op` blindly trust this path.
+*   **Effect:** `resolve_project_op` fails to find `projects/fuzz-op/project.pdl`. As a result, it cannot read `starting_map` or `player_piece`.
+*   **Result:** It writes empty values for `current_map` and `active_target_id` to `pieces/apps/player_app/manager/state.txt`. This explains why the "current" screenshot shows empty Hunger/Energy fields and why `piece_methods` is empty (the manager doesn't know which piece to query).
+
+### C. Escape Key "Ghosting"
+The Escape key *is* correctly handled by the parser to deactivate the map interaction mode (`active_index = -1`). However, because the Escape key is also passed to the manager, it triggers a state pulse. 
+*   **Effect:** The state pulse triggers the Layout Reset Bug (see A), causing the UI to redraw using the wrong layout (`playrm.chtpm`) and missing data. To the user, it appears as if the Escape key failed or broke the UI further.
+
+---
+
+## 2. Exactly How to Fix This
+
+### Fix 1: Robust Path Resolution
+Update `resolve_project_op.c`, `get_piece_methods_op.c`, and `chtpm_parser.c` to use a safer `resolve_root()` pattern. If `location_kvp` provides an invalid path, they should fallback to `getcwd()`.
+
+### Fix 2: Correct Layout Tracking
+Modify `pieces/chtpm/plugins/chtpm_parser.c` to stop re-reading `layout_changed.txt` inside `parse_chtm()`. The layout switching logic is already correctly handled in the `main` loop (which correctly reads the *last* line of the file). `parse_chtm()` should simply use the `current_layout` variable already set by the `main` loop.
+
+### Fix 3: Truncate Layout Log
+Update `resolve_project_op.c` to truncate `layout_changed.txt` or ensure it's managed as a single-entry state rather than an infinite log, or simply fix the parser to read the last line as intended. (Fixing the parser is more robust).
+
+---
+
+## 3. Recommended Code Changes (Surgical)
+
+### `pieces/chtpm/plugins/chtpm_parser.c`
+```c
+// Remove this block from parse_chtm()
+/* EARLY LOAD: Update current_layout from notification file */
+// ... (remove the fopen/fgets/strncpy logic here) ...
+```
+
+### `pieces/chtpm/ops/resolve_project_op.c`
+```c
+// Add safety check to resolve_paths()
+if (access(project_root, F_OK) != 0) {
+    getcwd(project_root, sizeof(project_root));
+}
+```
+
+### `pieces/locations/location_kvp`
+Update the file to use `.` or the correct relative path for the environment:
+`project_root=.`
+
+---
+*Report by Gemini CLI - 2026-05-10*

@@ -1,0 +1,8 @@
+<text label="| |  WRAITH SCREEN RECORD | gl-session capture proof                                     |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  STATE:error                                                                      |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  AUDIO:video_only                                                                      |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  OUTPUT:(pending)" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  DETAIL:recording_missing_output" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  [ASCII Poster Preview]                                                              |" /><br visibility="${desktop_active_window_body_visible}" />
+<grid source="projects/wraith-alpha/wraith-projects/screen-record/session/record_preview.grid.pdl" prefix="| |  " suffix="                                                           |" />
+<text label="| |  " /><button compact="true" label="Start" onClick="PROJECT_ACTION:SCREENREC_START" /><text label=" " /><button compact="true" label="Stop" onClick="PROJECT_ACTION:SCREENREC_STOP" /><text label=" " /><button compact="true" label="Refresh" onClick="PROJECT_ACTION:SCREENREC_REFRESH" /><text label="                           |" /><br visibility="${desktop_active_window_body_visible}" />

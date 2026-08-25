@@ -1,0 +1,42 @@
+# LSR KPI: MSR Feature Parity Plan
+# Objective: Replicate the core MSR experience on the Lunar surface using TPMOS Ops.
+
+---
+
+## 🏁 CORE KPI
+The `lsr` project must provide an identical startup sequence, menu navigation, and real-time clock experience as the original `msr` (WSR) before any "Lunar-specific" logic is added.
+
+---
+
+## 🛠️ PHASE 1: INTERFACE PORTING (MANAGER)
+**Goal:** Create a TPM-compliant Manager that mirrors the `game.c` experience.
+- [ ] **Task 1.1:** Deconstruct `game.c` into a series of UI View files (e.g., `main_menu.chtpm`, `file_menu.chtpm`).
+- [ ] **Task 1.2:** Implement `lsr_manager.c` to handle keyboard input from `history.txt` and switch between these views.
+- [ ] **Task 1.3:** Port the "Market Ticker" and "Header" layouts to the new manager.
+
+## 🚀 PHASE 2: STARTUP & ENTITY PARITY
+**Goal:** Ensure all Corporations and Governments load as they do in MSR.
+- [ ] **Task 2.1:** Port the `setup_governments.c` logic into an `lsr_setup_govs.c` Op.
+- [ ] **Task 2.2:** Port the `setup_corporations.c` and `stage2` logic into an `lsr_setup_corps.c` Op.
+- [ ] **Task 2.3:** Ensure entities are spawned as **TPM Pieces** (directory + `state.txt`) instead of raw text entries.
+
+## 🕰️ PHASE 3: CLOCK & PULSE INTEGRATION
+**Goal:** Mirror the background temporal system.
+- [ ] **Task 3.1:** Migrate the `wsr_clock.c` into a system Piece: `lsr/pieces/system/clock/`.
+- [ ] **Task 3.2:** Ensure the `lsr_manager` reads `wsr_clock.txt` to display the current date/time in real-time.
+- [ ] **Task 3.3:** Implement the "Pulse" mechanism where time changes trigger a re-render.
+
+## 📊 PHASE 4: VERIFICATION
+**Goal:** Side-by-side comparison.
+- [ ] **Task 4.1:** Compile and run `lsr`.
+- [ ] **Task 4.2:** Verify F1-F4 menus match the MSR counterparts.
+- [ ] **Task 4.3:** Verify entity data in `lsr/pieces/` matches the initial data in `msr/corporations/`.
+
+---
+
+## ⚠️ CONSTRAINTS
+- No "Lunar" features (Oxygen, Regolith, etc.) until this plan is 100% checked.
+- Strictly follow the **Piece-Op** model: UI must be a View of a Piece, Actions must be standalone Ops.
+
+---
+*Status: READY TO COMMENCE TASK 1.1*

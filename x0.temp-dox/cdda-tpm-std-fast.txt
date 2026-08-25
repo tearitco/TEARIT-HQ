@@ -1,0 +1,227 @@
+CDDA-STYLE ROGUELIKE, BUILT TPMOS-STANDARD -- FAST REFERENCE
+================================================================================
+For an agent building a Cataclysm-DDA-style curses roguelike. Curses is fine
+for rendering -- what matters is the PROCESS/FILE architecture underneath it,
+which should match x0.moke-pet-project and fuzz-op, not a normal single-binary
+C game. Read this before writing any code.
+
+THE ONE RULE EVERYTHING ELSE FOLLOWS FROM
+================================================================================
+"If it's not in a file, it's a lie."
+State, config, and communication between processes all live in plain text
+files on disk -- never in a shared struct, shared memory, or a header only
+one binary happens to also include. A second process (or a human, or you
+next session) must be able to inspect what's going on by reading files with
+`cat`, not by reading source.
+
+
+1) NO SHARED .h HEADERS -- EVER
+================================================================================
+Every .c file is a self-contained island. It compiles alone, with its own
+#defines, its own static helper functions, its own path-resolution code.
+Two files that both need MAX_PATH each define MAX_PATH themselves. Two files
+that both need to resolve the project root each have their OWN copy of that
+function.
+
+This feels like duplication. It is -- on purpose. The tradeoff: any file can
+be deleted, replaced, or handed to a different agent without anything else
+breaking or needing a rebuild. There is no "everything must recompile"
+blast radius, ever.
+
+  WRONG:
+    #include "shared_types.h"
+    #include "path_utils.h"
+
+  RIGHT (every file does this itself):
+    #define MAX_PATH 4096
+    #define MAX_LINE 256
+    static void resolve_root(char *out, size_t out_sz) { ... }
+
+Config that WOULD have been a shared header (type->glyph maps, item tables,
+monster stats) goes in a .pdl or .txt data file instead, with each .c file
+that needs it reading its own copy at runtime. Not shared code -- shared
+DATA, read independently.
+
+
+2) PROCESS SHAPE: ONE MANAGER, MANY OPS, ALL TALKING THROUGH FILES
+================================================================================
+- MANAGER (one long-running process): owns the game loop, owns rendering,
+  owns the ONE canonical input history it polls. This is the only thing
+  that ever writes the visible screen. Think of it as the only process
+  allowed to call any ncurses draw function.
+- OPS (many small, short-lived binaries): one op = one verb. `move_player`,
+  `attack`, `open_door`, `craft_item`, `end_turn`. Each one is invoked,
+  does ONE thing by reading/writing state files, writes a response, and
+  exits. An op is a muscle, not a brain -- it has no loop, no persistent
+  memory, nothing survives past its own exit() beyond what it wrote to
+  disk.
+- PIECES (game entities -- player, each monster, each item on the ground):
+  each gets its own piece.pdl (structure: what actions it supports) and
+  state.txt (current values: position, hp, inventory). A zombie and the
+  player are BOTH just pieces; the manager doesn't hardcode "the player is
+  special," it reads which piece_id is currently player-controlled from
+  state.
+
+Manager and ops never call each other's functions directly (no shared
+headers means there's nothing TO call). They communicate exclusively via:
+  - a routed input history file the manager polls for new lines
+  - state.txt / piece.pdl files ops read and rewrite
+  - a marker file the manager watches for "something changed, redraw"
+
+
+3) THE PDL FORMAT (how pieces/projects describe themselves)
+================================================================================
+Plain pipe-delimited key-value, grouped by SECTION. Human-readable, greppable,
+editable without a rebuild.
+
+  SECTION      | KEY                | VALUE
+  ----------------------------------------
+  META         | piece_id           | player
+  META         | version            | 1.0
+
+  STATE        | name               | Xlector
+  STATE        | pos_x              | 12
+  STATE        | pos_y              | 2
+  STATE        | hp                 | 80
+  STATE        | max_hp             | 100
+
+  METHOD       | move                 | projects/mygame/ops/+x/move_player.+x
+  METHOD       | attack               | projects/mygame/ops/+x/attack.+x
+  METHOD       | end_turn             | projects/mygame/ops/+x/end_turn.+x
+
+  RESPONSE     | default              | *waiting...*
+
+METHOD lines map a verb straight to a compiled op binary and its args --
+that's the entire "dispatch table," no C-side switch statement needed. Add
+a new verb by adding a line here and compiling a new op; the manager never
+needs to know the verb existed in advance if it just execs whatever
+piece.pdl points at.
+
+
+4) A REAL OP, START TO FINISH (this is the whole pattern)
+================================================================================
+Self-contained, no headers, resolves its own root, reads state, writes
+state, writes a response, exits. This is fuzz-op's actual end_turn op,
+unmodified -- copy this shape for `attack.c`, `craft_item.c`, etc.:
+
+  #define _GNU_SOURCE
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include <string.h>
+  #include <unistd.h>
+
+  #define MAX_LINE 256
+  #define MAX_PATH 4096
+
+  char project_root[MAX_PATH] = ".";
+
+  void resolve_root() {
+      FILE *kvp = fopen("pieces/locations/location_kvp", "r");
+      if (kvp) {
+          char line[MAX_LINE];
+          while (fgets(line, sizeof(line), kvp)) {
+              if (strncmp(line, "project_root=", 13) == 0) {
+                  char *v = line + 13;
+                  v[strcspn(v, "\n\r")] = 0;
+                  snprintf(project_root, sizeof(project_root), "%s", v);
+                  break;
+              }
+          }
+          fclose(kvp);
+      }
+  }
+
+  int main() {
+      resolve_root();
+      /* ... read this piece's state.txt, do the one thing this op does,
+         rewrite state.txt ... */
+      char resp_path[MAX_PATH];
+      snprintf(resp_path, sizeof(resp_path), "%s/projects/mygame/pieces/player/last_response.txt", project_root);
+      FILE *f = fopen(resp_path, "w");
+      if (f) { fprintf(f, "You end your turn."); fclose(f); }
+      return 0;
+  }
+
+Notice: no argv-parsed shared config struct, no included game.h with a
+Piece typedef. Just files in, files out.
+
+
+5) FRAME/MARKER DISCIPLINE (curses-specific)
+================================================================================
+Exactly ONE process may call ncurses draw functions -- the manager. Ops
+NEVER touch the screen directly, even indirectly through a shared curses
+handle -- they can't, they don't have one (no shared headers/state).
+
+Redraw is driven by a marker file, not a timer and not "redraw every loop
+iteration":
+  - manager's main loop watches a marker file's SIZE (append-only growth,
+    not mtime -- mtime can lie/collide) for changes
+  - any op that changed something visible APPENDS a byte to that marker
+    before it exits
+  - manager sees the marker grew -> re-reads whatever state changed ->
+    recomposes the screen -> clears/redraws via ncurses
+  - if the marker didn't grow, the manager does NOT redraw, even if its
+    own loop is still ticking (matches TPMOS's "pulse skip trap" pitfall --
+    the polling heartbeat itself must stay unconditional, only the actual
+    redraw is gated on the marker)
+
+This is the same shape as chtpm's frame_changed.txt -- don't invent a
+different mechanism for curses, reuse this one.
+
+
+6) PROCESS SAFETY (learned the hard way, this session)
+================================================================================
+An op that shells out to a long-running external tool (video capture,
+network listeners, anything that doesn't exit promptly) MUST NOT be
+fire-and-forget. A stray webcam-capture op in this exact codebase spawned
+an ffmpeg subprocess that outlived its own parent after the parent was
+killed, silently keeping a hardware device open and burning CPU with
+thousands of zombie children until someone noticed and killed the orphan
+directly by PID. For a roguelike this matters for anything like: a
+"watch this file" op, a network multiplayer listener, an async pathfinding
+worker.
+  - RULE: if an op forks a subprocess, the op (or the manager) must track
+    that PID somewhere on disk and be able to kill it explicitly -- don't
+    rely on "killing the parent kills the tree," it doesn't, orphans get
+    reparented and keep running.
+  - RULE: prefer ops that do one bounded unit of work and exit, over ops
+    that daemonize. If something genuinely needs to run continuously
+    (an AI tick daemon, say), it's a first-class daemon like clock_daemon,
+    not a spawned-and-forgotten child of a one-shot op.
+
+
+7) WHAT "PIECE" MEANS FOR A DDA-STYLE GAME
+================================================================================
+Map every DDA-ish concept onto TPMOS's existing piece/op vocabulary instead
+of inventing new nouns:
+  - player character           -> a piece (piece_id="player"), like xlector
+  - each monster/NPC            -> its own piece, own state.txt (pos, hp, AI state)
+  - each item on the ground/in
+    inventory                   -> a piece, or a state.txt entry under a
+                                    container piece -- pick one convention
+                                    and document it in project.pdl, don't
+                                    mix both without a rule
+  - the map itself               -> plain text grid files (see fuzz-op's
+                                    maps/map_01_z0.txt), one file per
+                                    z-level, read by the manager at render
+                                    time, not embedded in code
+  - turn/time                    -> a STATE key in project.pdl or a small
+                                    dedicated daemon (see clock_daemon),
+                                    NOT a variable inside the manager's own
+                                    memory that nothing else can see
+  - crafting/combat/etc verbs    -> ops, dispatched via METHOD lines in the
+                                    acting piece's piece.pdl, exactly like
+                                    fuzz-op's end_turn/scan/collect/place
+
+
+QUICK CHECKLIST BEFORE WRITING ANY .c FILE
+================================================================================
+[ ] Does it #include anything from this project other than system/libc headers?
+    If yes, stop -- move that shared thing into a data file instead.
+[ ] Does it define MAX_PATH/MAX_LINE/resolve_root() itself, even though
+    another file in the project already has the identical code? It should.
+[ ] Does it talk to other processes ONLY via files (state.txt, piece.pdl,
+    a marker file, a routed history file)? It must.
+[ ] If it's an op: does it do ONE thing and exit? If it forks anything
+    long-running, is that subprocess's PID tracked somewhere killable?
+[ ] If it touches the screen: is it the manager, and only the manager?

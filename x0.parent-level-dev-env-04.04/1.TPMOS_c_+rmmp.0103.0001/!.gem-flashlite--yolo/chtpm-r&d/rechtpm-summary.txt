@@ -1,0 +1,36 @@
+# CHTPM Refactor & Restoration Summary
+**Date:** 2026-05-10
+**Status:** ARCHITECTURE STABLE / FUNCTIONAL RESTORED
+
+## 1. Core Architectural Shift: "The Dumb Theater"
+The `chtpm_parser.c` (The Theater) has been stripped of all app-specific hardcoding. It no longer knows about "fuzz-pet" or "op-ed" internals. Instead, it follows the **Modular Lite Philosophy**:
+- **Blind State Ingestion:** The parser now blindly loads `gui_state.txt` from the project's manager directory.
+- **Delegated Logic:** Project scanning, method mapping, and project resolution have been moved to standalone Ops (`get_projects_op`, `get_piece_methods_op`, `resolve_project_op`).
+- **Convention over Configuration:** App managers are now responsible for exporting their own variables to the standard local `gui_state.txt`.
+
+## 2. Key Technical Improvements
+
+### Two-Pass Substitution System
+To resolve the "Truncation Bug" (where dynamic map data containing `<` or `$` broke the XML tokenizer), I implemented a two-pass system:
+- **Pass 1 (substitute_vars_naked):** Runs *before* tokenization. It only substitutes variables that are NOT inside XML tags (like `${project_list}`). This allows dynamic injection of new XML elements.
+- **Pass 2 (substitute_vars):** Runs *during* rendering. It substitutes variables inside tag attributes (like `${game_map}`). This protects the tokenizer from "seeing" reserved characters inside raw data.
+
+### Robust Tokenization
+The tokenizer is now resilient to stray `<` characters. If a tag start is found without a matching `>`, it is treated as literal text. This prevents a single corrupt map tile from crashing the entire frame rendering.
+
+### View Priority & Focus Sync
+- **Precedence:** `pieces/apps/player_app/view.txt` is now the highest priority search path, ensuring active session maps override static templates.
+- **Persistence:** The parser now exports and restores `active_gui_index`, and managers poll this value to maintain cursor focus across refreshes.
+
+## 3. Manager & Op Migration
+- **op-ed_manager.c / fuzz-op_manager.c:** Refactored to implement `write_gui_state()` and synchronize focus. Fixed variable naming mismatches (`selector_pos`).
+- **resolve_project_op.c:** Rebuilt to support both PIPE (`|`) and EQUAL (`=`) PDL formats, and added multi-path probing for entry layouts (`main.chtpm`, `quiz.chtpm`, etc.).
+
+## 4. Remaining Observations (Handoff Focus)
+- **Arbitrary Rendering Glitches:** Some projects (e.g., `yahoo`) show repeated sequence corruption (`|||||`). Likely a buffer overflow or newline-handling issue in Pass 1 substitution.
+- **GL Sync Drift:** The GL mirror render sometimes fails to update after a project launch, suggesting the GL Pulse mechanism (marker files) needs alignment with the new modular paths.
+
+---
+**Architecture:** STABLE
+**Flexibility:** HIGH
+**Performance:** OPTIMIZED

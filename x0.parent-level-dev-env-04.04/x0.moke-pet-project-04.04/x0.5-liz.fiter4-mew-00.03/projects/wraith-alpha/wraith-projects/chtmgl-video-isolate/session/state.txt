@@ -1,0 +1,26 @@
+project_id=wraith-alpha/wraith-projects/chtmgl-video-isolate
+reference_project=x0.parent-level-dev-env-02.01/#.CHTMGL.E23=cordsclean]💯️
+game_map=chtmgl_video_surface
+is_map_control=0
+widget_probe=video,img,poster,transport,in_wraith_frame_swap
+autoplay_debug=1
+video_asset=../../../../../#.media-library/sample-10s-vp9.mp4
+video_loaded=1
+video_width=320
+video_height=180
+video_duration=9.23
+poster_asset=session/poster.png
+poster_loaded=1
+poster_width=320
+poster_height=240
+current_frame_asset=session/current_frame.png
+current_frame_loaded=0
+frame_index=74
+frame_total=74
+audio_asset=session/video_audio.mp3
+audio_loaded=0
+audio_state=missing
+ascii_preview=24x12
+video_state=stopped
+last_response=Poster load failed.
+history_cursor=188

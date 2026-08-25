@@ -1,0 +1,5 @@
+name=Serotonin
+formula=5-HT (HO-C8H6N-CH2CH2NH2)
+type=Neurotransmitter
+groups=-OH
+relevance= -NH2

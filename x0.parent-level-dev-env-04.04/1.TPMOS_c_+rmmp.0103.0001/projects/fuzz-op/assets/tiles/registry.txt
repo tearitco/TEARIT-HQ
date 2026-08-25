@@ -1,0 +1,6 @@
+# Fuzz-Op Tile Registry
+# Format: glyph=tile_id
+.=grass
+#=wall
+T=treasure
+R=tree

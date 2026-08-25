@@ -1,0 +1,3 @@
+# Windows bible assets root (absolute, user Desktop assets-4win).
+# Used by run.ps1 / portable branch scripts. Linux keeps its own paths.
+C:\Users\jbro8\OneDrive\Desktop\assets-4win\bible-ench.twins+ai]b2

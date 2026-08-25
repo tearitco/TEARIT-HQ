@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+COLOR        | bg                   | #1a1a1a
+COLOR        | fg                   | #eab308
+COLOR        | opacity              | .666

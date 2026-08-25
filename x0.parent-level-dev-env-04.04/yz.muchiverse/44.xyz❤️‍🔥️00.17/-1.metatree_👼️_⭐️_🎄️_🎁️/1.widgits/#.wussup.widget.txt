@@ -1,0 +1,40 @@
+widgits.
+
+
+one widgit 2 do save load.  (with a save / load -less editor; in main 201. ) ; just show view. 
+<and figure out project association (is there a proc list with .pdls?) , and even drag and drop 2 change> 
+
+then will start doing more level editor stuff, picker, 
+
+then will modify methods 2 have "event edit" if <allowed, ie not in "play mode" > 
+
+<then we will give event editor 'which opens new window like pet' rpg-with block coding
+lets research it. -with pal backend. 
+
+and when those can save/load / be played. we can go back to making real games. 
+
+<but like also 'chat' button wit chara (also desk-env (open dif ones in save load & navs on desk-guys?)
+<but also remember, we really need our own local ai , harnessing/ rl , distillation 
+
+but also wanna do rpg maker tiling system... and even open our projects. 
+
+and start looking at wsr for reasons, civ, minecraft, gta, mgsv. nomansky...chimochio.../ai.dustopia...
+<also , hows auction? trading? mining? minting? exchage rates?>
+
+and making posts on our own network. hosting? webface? 
+(all this stuff could also happen in wraith-os / aka html ; oh and what of wraith browser?)
+
+
+<wheres eve? reproducing? auto running? that should be a particular game state 2 load
+that goes into civ quick>
+
+
+
+
+
+
+<also u should start putting "events onchain"
+with mining transactions. if its not onchain  , when u synch ur chain , 
+ur levels and stuff would go back (for that save file, but u can have fork )
+do this soon. to make sure were doing it right
+"fullnodes, and micro nodes, but also recursive pruning &| abstraction"

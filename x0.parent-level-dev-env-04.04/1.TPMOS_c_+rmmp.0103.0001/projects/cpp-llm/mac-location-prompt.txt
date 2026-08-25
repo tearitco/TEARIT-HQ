@@ -1,0 +1,6 @@
+What is the full absolute path to the 'cpp-llm' executable on this machine? 
+Please run:
+which cpp-llm
+
+And if that is empty, please check your NVM or global node bin folders.
+I need this path to fix the bridge connection in TPMOS.

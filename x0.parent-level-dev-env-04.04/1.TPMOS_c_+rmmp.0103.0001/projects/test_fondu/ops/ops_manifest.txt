@@ -1,0 +1,7 @@
+# Ops Manifest for test_fondu
+# Format: op_name|description|args_format
+
+increment_counter|Increment counter by 1|project_path:string
+decrement_counter|Decrement counter by 1|project_path:string
+reset_counter|Reset counter to 0|project_path:string
+get_status|Get current status message|project_path:string

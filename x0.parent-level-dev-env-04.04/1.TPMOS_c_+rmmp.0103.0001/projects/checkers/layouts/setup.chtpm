@@ -1,0 +1,13 @@
+<panel time_reactive="true">
+    <text label="╔══════════════ CHECKERS RL: SETUP ════════════╗" /><br/>
+    <text label="║ Select Player Modes:                        ║" /><br/>
+    <text label="║                                             ║" /><br/>
+    <text label="║  1. [Human vs AI]                           ║" /><br/>
+    <text label="║  2. [AI vs AI]                              ║" /><br/>
+    <text label="║  3. [Human vs Human (P2P)]                  ║" /><br/>
+    <text label="║                                             ║" /><br/>
+    <text label="╠═════════════════════════════════════════════╣" /><br/>
+    <button label="Begin Game" href="projects/checkers/layouts/board.chtpm" /><br/>
+    <button label="Exit" href="pieces/chtpm/layouts/os.chtpm" /><br/>
+    <text label="╚═════════════════════════════════════════════╝" /><br/>
+</panel>

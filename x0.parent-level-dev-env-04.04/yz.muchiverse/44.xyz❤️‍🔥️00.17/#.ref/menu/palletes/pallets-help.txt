@@ -1,0 +1,69 @@
+my-pallets : user list of their own pallets, the can copy paste or drag and drop in here from other palletes
+emojis = (emojis , simple dont need much explaination) 
+elements:/chemical/compounds[2 sides ; kind of like crafting] = (want to show a list of chemicals
+(they on other side show the compounds, and what is used to make them (from small to big 'planes,planets etc)
+(kind of like little alchemy game. ) 
+rpgmaker (including 3d transition functionality) =
+
+
+piececraft = minecraft like tiles/blocks and their functionality
++ minecraft crafting menu (this will be full in creative , but not in gameplay) 
+
+
+
+
+
+cdda = cataclysm dark days ahead related tiles & crafting menu 
+
+df = dwarf fortress related tiles 
+
+kenney : will use kenney 3d assets, not uploaded yet
+
+===============================================================
+ADDED 2026-08-24 - new categories promoted from
+#.ref/menu/tiling-palettes-chemistry.txt (read that for full
+mechanics; sources live in this palletes/ dir). THESE ARE THE
+PLANS AFTER EVENTS (see INDEX.md + event.commands.remaining.txt).
+===============================================================
+
+chemistry-palette = clickable compound tiles from chemistry_tiles🏆.csv
+  (+ elements]new=RECIPEZ+]z2🏆.txt recipe tree, mcat_compounds.csv):
+  emoji icon + formula text + color_hex swatch + tooltip (hint/state/
+  melt/boil/toxicity); "recipe" view walks the two-parent merge lines
+  ("Water = Hydrogen + Oxygen"); drag onto map spawns a prop by state
+  (solid=wall, liquid=flowing floor tile, gas=particles); toxicity>0
+  adds a hazard tag, reactivity>0 wires reactive-pair touch events
+  (Water+Sodium=boom). Counts are gameplay-side stoichiometry (OPTION C
+  in tiling doc §7 - file is "what it's made of", not "how many").
+  EASY MOMENTUM SEEDED 2026-08-24: chemistry_tiles_expanded🏆.csv has
+  the full 14-column format from tiling doc §10, all 50 compounds
+  carried over, 12 exemplar rows fully filled - next agent just fills
+  the remaining blank columns mechanically (color_hex/state/mp/bp/
+  density/toxicity/reactivity/icon_tile/animation_frames).
+
+tiling-rmmv = our A/B/C/D/R pages + RMMV autotiles A1-A5 mapped onto
+  them; neighbor_mask*3+frame lookup table == byte-identical to RMMV;
+  animated water/lava/fire via g_tick phase table (pattern already
+  proven in tileset.c).
+
+minecraft-blocks = piececraft tiles/blocks with top/side/bottom face
+  sprites; crafting menu full in creative, gated in gameplay; tick-
+  based frame swap for fire/lava/water.
+
+cdda-tiles = 16px floor + taller front-face pairs on a 2D grid;
+  movecost passability + smooth-flag neighbor auto-tiler (same math as
+  A1); furniture sits ON a tile without blocking unless heavy.
+
+df-tiles = ASCII<->tile dual mode (ascii_char per tile id, config
+  flag picks char vs sprite); raised-view 2D with wall_height 1..4
+  extrusion + roof caps; dig-designations and material-quality
+  modifiers stolen from DF's model.
+
+kenney-3d : unchanged (assets not uploaded yet) - will ride the voxel
+  raymarch path from piececraft-wraith when 3D lands.
+
+ORDER: palettes land AFTER the events ladder
+(event.commands.remaining.txt) + house commands ladder
+(house-commands.remaining.txt) are done or comfortably deep.
+
+

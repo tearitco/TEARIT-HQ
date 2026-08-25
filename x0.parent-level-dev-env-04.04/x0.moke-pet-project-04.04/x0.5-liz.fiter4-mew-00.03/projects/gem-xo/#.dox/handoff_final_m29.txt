@@ -1,0 +1,26 @@
+# HANDOFF: Path Completion System - Persistent Bugs (m29)
+
+## 1. Executive Summary
+The path completion system is functional in triggering and rendering, but fails on input-area synchronization and menu lifecycle management. The core issue is that the UI does not react instantaneously to user choices in the way native command-line autocomplete does.
+
+## 2. Bug Breakdown
+
+### Bug A: Autofill Failure
+*   **Actual Behavior**: When selecting a completion (e.g., from dynamic menu index 2-6), the filename is NOT injected into the `cli_io` input buffer (`input_text`).
+*   **Desired Behavior**: Upon selection, the chosen path MUST immediately replace the `*` and its prefix within the `cli_io` text area, and the dynamic menu MUST vanish.
+
+### Bug B: Persistent Dynamic Menu
+*   **Actual Behavior**:
+    1.  **After Selection**: The dynamic menu remains visible even after a file is selected.
+    2.  **On Backspace**: Deleting the `*` does not remove the menu suggestions immediately.
+*   **Desired Behavior**:
+    1.  The menu MUST disappear immediately after a selection is made.
+    2.  The menu MUST disappear immediately when the `*` trigger character is deleted from the `cli_io` input.
+
+## 3. Technical Notes for the Next Agent
+- **Source of Truth**: `cli_buffers.txt` is the history. `gui_state.txt` (`input_text`) is the UI display.
+- **Root Causes**:
+    - Autofill issues likely stem from a race condition between `handle_choose_path()` updating the internal buffer and the parser re-reading the state.
+    - Menu persistence is likely a "stale methods" issue where `g_piece_methods` isn't being zeroed out effectively across all exit paths (Backspace vs. Selection).
+- **Mandatory Action**: After applying fixes, **EVERYTHING MUST BE RECOMPILED**.
+    - Run: `bash projects/gem-xo/build.sh && ./button.sh compile`

@@ -1,0 +1,8 @@
+# stage-a-pilot1-harness-gemma.plan — same real task as
+# stage-a-pilot1-harness.plan, but explicitly on gemma3:1b instead of
+# letting CHOOSE_MODEL route to stable-code:latest, to test whether
+# the earlier §10 finding (smaller model = less pollution) holds for
+# a harness-writing task too, not just single-line code generation.
+SET_MODEL | gemma3:1b | true
+STEP | give me a bash test script for a program. the script should make a temporary items.txt file containing item_5=10, start the prisc+x virtual machine binary (path passed as argument 1) on a .pal file (path passed as argument 2), then check items.txt afterward equals item_5=13, and print PASS or FAIL. reply with only the bash script, no explanation, no markdown fences | grep -qi "pass\|fail" "$STEP2_OUT"
+STEP | write /tmp/claude-1000/scratchpad/stage_a_pilot/test_harness_gemma.sh | true | APPROVE

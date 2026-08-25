@@ -1,0 +1,15 @@
+╔═════════════════════════════════════════════════════════╗
+║   S Y S T E M   P R O G R A M S                         ║
+╠═════════════════════════════════════════════════════════╣
+║  Select an entry below (numbered methods).              ║
+║                                                         ║
+║  Pick a category.                                       ║
+╚═════════════════════════════════════════════════════════╝
+
+[>] 1. [(empty)]
+[ ] 2. [Refresh list]
+[ ] 3. [Back to categories]
+ Enter = run in this terminal | Esc/Back returns
+
++=========================================================+
+Nav > _

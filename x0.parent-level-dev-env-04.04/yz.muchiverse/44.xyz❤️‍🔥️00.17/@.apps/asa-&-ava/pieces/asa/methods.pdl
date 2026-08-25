@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+METHOD       | Chat                 | sh -c 'cd "$0" && H="$(cd ../../.. && pwd)" && exec gnome-terminal -- "$H/@.apps/asa-&-ava/pieces/asa/chat.sh"'
+METHOD       | Events               | sh -c 'exec "$1/&.widgits/events-hq/button.sh" "$0" "$1"'
+METHOD       | Events (mock)        | sh -c 'cd "$0" && H="$(cd ../../.. && pwd)" && exec sh "$H/&.widgits/event-editor/gl_mock/button.sh" run'
+METHOD       | Events (ez)          | sh -c 'cd "$0" && H="$(cd ../../.. && pwd)" && exec env EZ_PKG_NAME=asa-$(cat "$0/instance_id.txt") EZ_PKG_DIR="$H/@.apps/asa-&-ava/pieces/asa/event_pkg" sh "$H/&.widgits/event-ez/button.sh" run-widget'
+METHOD       | Play                 | sh -c 'cd "$0" && H="$(cd ../../.. && pwd)" && test -f "$H/@.apps/asa-&-ava/pieces/asa/event_pkg/pages/page_1/event.pal" && exec "$(find "$H" -maxdepth 1 -name "101.mutaclsym🧟‍♂️️*" -type d 2>/dev/null | head -1)/system/prisc+x" "$H/@.apps/asa-&-ava/pieces/asa/event_pkg/pages/page_1/event.pal"'
+METHOD       | Stop                 | void
+METHOD       | Ledger               | sh -c 'cd "$0" && H="$(cd ../../.. && pwd)" && exec gedit "$H/@.apps/asa-&-ava/pieces/asa/master_ledger.txt"'
+METHOD       | Dir                  | xdg-open
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void

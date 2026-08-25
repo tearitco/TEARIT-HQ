@@ -1,0 +1,33 @@
+# tsots menu_loop.pal - house pal-native module shape (agy-txt
+# main_loop_chtpm.pal): compose -> poll interact_relay -> dispatch ->
+# recompose. Menu has no <interact> target, so tsots_input only ever
+# sees idle here; it recomposes periodically so ELO/stats stay fresh.
+li x1, 0
+
+tsots_compose
+hit_frame
+read_pos x7, "pieces/display/game_screen_changed.txt"
+
+loop:
+    li x9, 0
+    tsots_input x9
+    read_pos x8, "pieces/display/game_screen_changed.txt"
+    beq x7, x8, check_key
+    addi x7, x8, 0
+    j render
+
+check_key:
+    read_history pieces/apps/player_app/interact_relay.txt x2, x1
+    beq x2, x0, no_key
+    tsots_input x2
+    j render
+
+no_key:
+    sleep 30000
+    j loop
+
+render:
+    tsots_compose
+    hit_frame
+    sleep 30000
+    j loop

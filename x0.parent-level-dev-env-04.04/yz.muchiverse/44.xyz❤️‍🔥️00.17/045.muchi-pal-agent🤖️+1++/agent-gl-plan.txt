@@ -1,0 +1,164 @@
+agent-gl-plan.txt — GL window RGB mirror for muchi-pal-agent
+============================================================
+Date: 2026-07-31
+Reference: 102.agy-txt (works, proven live) and 014.wsr-pal
+(014.wsr-pal💸️📌️+2 = canonical shared copy of gl_mirror.c /
+chtpm_rgb_render.c / fonts / emoji ops).
+
+0. THESIS
+---------
+102.agy-txt shows a real GL window that RGB-mirrors the terminal
+("wsr-pal RGB mirror" — font-rasterized frame from
+pieces/display/current_frame.txt, live, 30fps). muchi-pal-agent
+ALREADY ships the three pipeline layers (renderer -> current_frame.txt,
+chtpm_rgb_render -> rgb_frame.raw, gl_mirror -> window) and the
+orchestrator even tries to launch the last two — but they never work.
+This plan makes them actually work, staying on the agent's own
+"self-contained, solo-shippable, build-everything-from-local-source"
+philosophy (same rule wsr-pal's build.sh header states), NOT agy-txt's
+binary-copy shortcut.
+
+1. INVESTIGATION EVIDENCE (all verified, not assumed)
+-----------------------------------------------------
+1.1. Agent's GL binaries are STALE and were never rebuilt.
+     system/gl_mirror + system/chtpm_rgb_render are dated Jul 25.
+     Their sources were edited Jul 29. Neither scripts/build.sh nor
+     system/orchestrator.c's compile_binaries() ever compiles
+     gl_mirror.c or chtpm_rgb_render.c — so those two binaries are the
+     ONLY system binaries this project builds from its own source that
+     can silently drift, and they have (proven: md5 differs from the
+     Jul 31 shared versions; a fresh `gcc` build of the current source
+     produces a different binary).
+
+1.2. The agent's gl_mirror.c is an OLD revision with a real bug.
+     diff vs wsr-pal shows the agent's copy STILL has the unconditional
+     third write to pieces/apps/player_app/interact_relay.txt
+     ("REMOVED 2026-07-31" block present in wsr-pal/agy-txt, absent
+     here). That was a live-caught typing-doubling bug in this exact
+     app family — two independent paths writing the same key. Syncing
+     to wsr-pal's copy removes it.
+
+1.3. The agent's chtpm_rgb_render.c lacks the 2026-07-30 generic
+     on-demand emoji fix (184 diff lines): without it, any emoji in a
+     frame degrades to a flat color block. wsr-pal's version
+     auto-generates real voxel art via ops/+x/emoji_gen_atlas.+x +
+     emoji_xtract.+x on first use.
+
+1.4. The agent has NO font glyph registry. chtpm_rgb_render.c
+     font-rasterizes EVERY character from
+     pieces/registry/fonts/ascii/<code>/glyph.txt (load_glyphs(),
+     chars 32-126). The agent has no pieces/registry/fonts/ at all
+     (wsr-pal has 95 glyph dirs). Without these the RGB mirror renders
+     BLANK text. This is the single most likely reason the mirror
+     never visibly worked.
+
+1.5. Live proof the pipeline half-works already: leftover session
+     1785529785-1055178 (2026-07-31 13:29) contains rgb_frame.raw
+     (1966080 bytes, 640x768) + rgb_frame.receipt.txt written by
+     chtpm_rgb_render — but NO gl_display.receipt.txt. gl_mirror never
+     uploaded a texture / never showed a window in that session.
+
+1.6. Both stale binaries run fine standalone (tested live this
+     session: gl_mirror opened the window and wrote
+     pieces/display/gl_display.receipt.txt; chtpm_rgb_render wrote
+     rgb_frame.raw). So the code paths work — they're just never
+     correctly built + launched together in a session.
+
+1.7. Launch-order race (PITFALL 54 class): agy-txt waits for
+     pieces/display/current_frame.txt to be non-empty BEFORE opening
+     GL, and only opens GL when DISPLAY is set (plus NO_GL override).
+     The agent's orchestrator launches chtpm_rgb_render + gl_mirror
+     unconditionally (stat-check only) with no frame wait and no
+     DISPLAY check — so on a headless launch gl_mirror aborts in
+     glutCreateWindow, and on a desktop launch the window often opens
+     black before the first real frame.
+
+2. THE GAP, PRECISELY
+---------------------
+Pipeline exists but three things are wrong/missing:
+  A. GL/RGB sources are outdated local copies (buggy gl_mirror,
+     pre-emoji chtpm_rgb_render) and the binaries aren't compiled at
+     all by either build entry point.
+  B. Required assets are absent: pieces/registry/fonts/ (glyphs) and
+     the emoji ops the on-demand generator shell out to.
+  C. Orchestrator launches GL wrong: no DISPLAY gate, no first-frame
+     wait, so it is unreliable (blank/never-appears).
+
+3. REUSE MAP (house-native, like agy-txt's PLAN.md §2)
+-------------------------------------------------------
+| Need | Source | Action |
+|---|---|---|
+| system/gl_mirror.c | 014.wsr-pal/system/gl_mirror.c | copy over local copy (fixes 1.2, dynamic frame_w/h) |
+| system/chtpm_rgb_render.c | 014.wsr-pal/system/chtpm_rgb_render.c | copy over local copy (fixes 1.3) |
+| pieces/registry/fonts/ | 014.wsr-pal/pieces/registry/fonts/ | copy (1.2M, 95 glyph dirs) into agent registry |
+| ops/emoji_gen_atlas.c, ops/emoji_xtract.c (+ emoji_gen_lib/) | 014.wsr-pal/ops/ | copy sources, compile to ops/+x/ (keeps agent self-contained; chtpm_rgb_render system()s these two) |
+| pieces/registry/emoji_assets/ | runtime-generated | NOT copied (wsr-pal has 0 too) — created on demand by the ops into the shared top-level registry (already symlinked into sessions) |
+| launch pattern | 102.agy-txt/button.sh run (PITFALL 54) | port: DISPLAY gate + NO_GL + wait for current_frame.txt |
+
+Compile flags (from wsr-pal's scripts/build.sh, proven):
+  chtpm_rgb_render: gcc $CFLAGS system/chtpm_rgb_render.c
+  gl_mirror:        gcc $CFLAGS system/gl_mirror.c -lglut -lGL -lGLU (best-effort)
+  emoji ops:        gcc $CFLAGS ops/emoji_gen_atlas.c + emoji_xtract.c
+
+4. WHAT MUST NOT CHANGE
+-----------------------
+- Agent keeps compiling everything from its OWN local sources
+  (project rule). We sync the two GL sources from the canonical shared
+  copy like wsr-pal itself does (sync_shared_op.sh philosophy), then
+  compile locally — we do NOT vendor prebuilt binaries from wsr-pal
+  the way agy-txt does.
+- keyboard_input.c already honors pieces/system/gl_focus.lock
+  (verified, line ~139) — no change needed there; the lock keeps the
+  GL window from double-writing keystrokes.
+- renderer / chtpm_parser_pal / prisc+x: untouched (frame_changed.txt
+  -> current_frame.txt -> renderer pipeline already proven in 1.5).
+
+5. FILES TOUCHED
+----------------
+M  system/gl_mirror.c          (sync from wsr-pal)
+M  system/chtpm_rgb_render.c   (sync from wsr-pal)
+M  scripts/build.sh            (compile chtpm_rgb_render, gl_mirror best-effort, emoji ops)
+M  system/orchestrator.c       (compile_binaries(): same three; launch GL gated + frame-wait)
+A  pieces/registry/fonts/...   (95 glyph dirs from wsr-pal)
+A  ops/emoji_gen_atlas.c, ops/emoji_xtract.c, ops/emoji_gen_lib/
+A  ops/+x/emoji_gen_atlas.+x, ops/+x/emoji_xtract.+x
+A  agent-gl-plan.txt           (this file)
+
+6. PHASES
+---------
+G1. Sync the two system GL sources from 014.wsr-pal (overwrites local
+    buggy copies). Quick `gcc` test-build both to confirm the sync
+    compiles clean before wiring anything.
+G2. Copy font glyph registry (pieces/registry/fonts/) + emoji op
+    sources into the agent. Compile the emoji ops. Verify
+    ops/+x/emoji_gen_atlas.+x runs ("🦄" -> png -> csv pipeline as
+    wsr-pal documents).
+G3. scripts/build.sh: add chtpm_rgb_render, gl_mirror (best-effort
+    GLUT check), emoji ops to the build; keep the zero-warning bar.
+G4. system/orchestrator.c:
+      - compile_binaries(): add the same three.
+      - launch GL only when DISPLAY is set AND NO_GL unset.
+      - before launching chtpm_rgb_render/gl_mirror, wait (bounded,
+        ~2s) for pieces/display/current_frame.txt to be non-empty
+        (PITFALL 54 parity with agy-txt).
+      - keep existing best-effort stat checks + log_pid tracking.
+G5. VERIFY LIVE (real run, real GL window on DISPLAY=:0):
+      - both pieces/display/rgb_frame.receipt.txt AND
+        gl_display.receipt.txt exist in the session;
+      - rgb_frame.receipt.checksum matches gl_display.receipt's loaded
+        checksum (correct texture really uploaded);
+      - window title "wsr-pal RGB mirror" is visible and shows the
+        live chat frame (real text, not blank — proves fonts landed);
+      - type into the GL window: keystrokes reach the chat WITHOUT
+        doubling (proves the removed third-write bug is gone and
+        gl_focus.lock is respected);
+      - ./button.sh kill leaves zero gl_mirror/chtpm_rgb_render
+        processes (kill action + kill_all.sh already cover both).
+
+7. OUT OF SCOPE
+---------------
+- Window-drag / mouse hit-testing / window manager (dropped in the
+  original wraith_gl.c port; mirror only).
+- Joystick support (real hardware needed, tracked elsewhere).
+- Emoji ASSET pre-generation (on-demand generation is the shipped,
+  proven behavior — no reason to pre-bake).

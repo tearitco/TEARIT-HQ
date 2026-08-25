@@ -1,0 +1,1 @@
+[tool denied] write_file /tmp/claude-1000/fsm-deny-test.txt

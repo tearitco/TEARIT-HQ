@@ -1,0 +1,6 @@
+# navigate-to-model.plan — first real NAVIGATE step test, end-to-end,
+# built to close the "resolver correctness != semantic correctness"
+# gap from HARNESS-DELEGATION-PIPELINE.md §6: this doesn't just check
+# the model named A real label, it checks the post-action receipt's
+# real focus (nav=) actually equals the index we dispatched to.
+NAVIGATE | switch to a different AI model | [ "$(grep -oP '(?<= )nav=\K\S+' "$STEP1_OUT")" = "$STEP1_TARGET" ]

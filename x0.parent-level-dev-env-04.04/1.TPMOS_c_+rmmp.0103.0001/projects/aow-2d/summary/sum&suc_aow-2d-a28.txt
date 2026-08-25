@@ -1,0 +1,27 @@
+# TPMOS Project Succession: AOW-2D (BOOTY LAND)
+Date: 2026-04-28
+Status: DEVELOPMENT (Phase 2 Started)
+
+## 🧬 Project Soul (Concept)
+A "Civ-Lite" naval and island conquest game. It utilizes a 2D grid but manages "Airspace" via Z-levels (future planes). It follows strict turn-based logic with Head/Tail coin-flip combat.
+
+## 🧠 The Brain (Current Progress)
+- **Manager**: `aow-2d_manager.c` implements a 4-player turn rotation (Alpha, Bravo, Charlie, Delta).
+- **Rules Integrated**:
+    - **1 Action Limit**: Users must choose between Tax, Produce, or Move.
+    - **Tax logic**: Income = 10 - current military units.
+- **Ops (Muscles)**:
+    - `gen_map`: 25x25 random island generator with unique player capitals.
+- **Persistence**: Player capitals track credits and unit counts in sovereign state files.
+
+## 🗺️ Roadmap (Future Steps)
+1.  **Production Engine**: Implement `produce_unit.+x` to spend credits on Mechs, Jets, or Ships.
+2.  **Combat Resolution**: Build `combat.+x` Op using the coin-flip heads/tails logic.
+3.  **Unit Logic**: Add movement pathfinding and transport loading/unloading (entering a truck takes 1 turn).
+
+## 🛠️ How to Continue
+- Check `aow(booty-land-rules).txt` in the root for exact unit stats.
+- Edit `manager/aow-2d_manager.c` to add new "Case" handlers for the Production and Move keys.
+- Update `layouts/main.chtpm` to show the full map view via `${map_view}`.
+
+*"Geography is destiny. Control the islands, control the land."*

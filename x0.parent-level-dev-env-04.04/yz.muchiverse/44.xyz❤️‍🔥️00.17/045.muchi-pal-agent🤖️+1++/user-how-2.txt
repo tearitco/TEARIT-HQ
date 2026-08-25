@@ -1,0 +1,350 @@
+USER HOW-TO: Gemma Strategy A Tools
+====================================
+Real working examples + future scaffolding ideas
+
+========== TOOL: list_dir ==========
+WORKING PROMPTS:
+  ✓ "list files"
+  ✓ "list all files in current directory"
+  ✓ "show me the files"
+  ✓ "what files are here"
+
+WHAT HAPPENS:
+  1. Detects: tool=list_dir
+  2. Runs: list_dir.+x (executes in current directory)
+  3. Returns: Full file listing
+  4. Gemma sees: Tool result + user message
+  5. Responds: Text commentary about files
+
+COMPLEX SCAFFOLDS TO BUILD:
+  [ ] Filtered listing: "list only .txt files"
+      → parse extension from request
+      → run: find . -name "*.txt"
+      → match pattern extraction to file_ops
+
+  [ ] Recursive search: "list all files recursively"
+      → detect "recursive" keyword
+      → run: find . -type f
+      → pipe through sort for readable output
+
+  [ ] File size info: "list files with sizes"
+      → run: ls -lh instead of plain ls
+      → parse size column from output
+      → let Gemma sort/comment on sizes
+
+FUTURE COMBO:
+  User: "list files and read the biggest one"
+    1. list_dir → get file list
+    2. Parse Gemma's response about sizes
+    3. Auto-trigger read_file on largest
+    4. Chain results back to Gemma
+
+
+========== TOOL: read_file ==========
+WORKING PROMPTS:
+  ✓ "read /etc/hostname"
+  ✓ "read config.txt"
+  ✓ "read the file config.txt"
+  ✓ "show me what's in settings.json"
+
+WHAT HAPPENS:
+  1. Detects: tool=read_file
+  2. Extracts path from user message
+  3. Runs: cat <path> (head -50 for safety)
+  4. Returns: File contents (truncated at 50 lines)
+  5. Gemma analyzes: Suggests improvements, explains format, etc.
+
+COMPLEX SCAFFOLDS TO BUILD:
+  [ ] Selective reading: "read only the functions in this file"
+      → grep for def/function patterns
+      → extract + feed to Gemma
+      → Gemma explains what each does
+
+  [ ] Format detection: "read and parse this JSON"
+      → detect json/yaml/xml
+      → run: jq/yq to pretty-print
+      → feed formatted version to Gemma
+
+  [ ] Diff against version: "read file and compare with backup"
+      → read main + backup
+      → run: diff -u
+      → feed diff to Gemma for explanation
+
+  [ ] Code analysis: "read this file and tell me about bugs"
+      → read file (just like now)
+      → send to Gemma with "analyze for bugs"
+      → Gemma returns suggestions
+      → [FUTURE] Parse suggestions, highlight lines
+
+FUTURE COMBO:
+  User: "read and edit my python file"
+    1. read_file → capture contents
+    2. Send to Gemma: "suggest improvements"
+    3. Gemma returns suggestions + rewritten code
+    4. [NEXT STEP] Parse response, apply changes
+    5. Verify changes work (optional: run tests)
+
+
+========== TOOL: exec_cmd ==========
+WORKING PROMPTS:
+  ✓ "run date"
+  ✓ "run echo hello"
+  ✓ "run ls -la"
+  ✓ "execute whoami"
+
+WHAT HAPPENS:
+  1. Detects: tool=exec_cmd
+  2. Extracts command after "run"
+  3. Executes: /bin/sh -c "<command>"
+  4. Returns: stdout (up to 4KB)
+  5. Gemma sees result, responds
+
+COMPLEX SCAFFOLDS TO BUILD:
+  [ ] Command building: "run a command to count lines in all python files"
+      → parse user intent
+      → build: find . -name "*.py" -exec wc -l {} \;
+      → Gemma validates command makes sense before executing
+
+  [ ] Error handling: "run that command and explain the error"
+      → capture stderr too (currently: stdout only)
+      → if exit code != 0, tag as error
+      → feed error + command to Gemma
+      → Gemma explains what went wrong
+
+  [ ] Command chaining: "run ls, then show file sizes"
+      → detect multi-step request
+      → run ls
+      → parse output
+      → run ls -lh on specific files
+      → chain results
+
+  [ ] Script execution: "run my deploy script and report status"
+      → detect script name
+      → execute with timeout
+      → parse output for key lines
+      → feed to Gemma for summary
+
+FUTURE COMBO:
+  User: "run tests and tell me what failed"
+    1. exec_cmd → run pytest/test command
+    2. Capture: exit code + stderr
+    3. Send to Gemma: "what went wrong?"
+    4. Gemma analyzes errors
+    5. [OPTIONAL] Auto-suggest fixes (read code → suggest → apply)
+
+
+========== TOOL: search_in_files ==========
+WORKING PROMPTS:
+  ✓ "search for python"
+  ✓ "search in files for config"
+  ✓ "find all .py files"
+  ✓ "search for TODO"
+
+WHAT HAPPENS:
+  1. Detects: tool=search_in_files
+  2. Extracts query
+  3. Runs: grep -r '<query>' . (head -20 results)
+  4. Returns: Matching lines with filenames
+  5. Gemma summarizes findings
+
+COMPLEX SCAFFOLDS TO BUILD:
+  [ ] Regex search: "search for email addresses"
+      → detect pattern type
+      → build: grep -rE email_regex
+      → return matches + context
+
+  [ ] Code search: "find where this function is called"
+      → search for "function_name("
+      → show files + line numbers
+      → send to Gemma: "where is this called?"
+
+  [ ] Config search: "find all hardcoded IPs"
+      → search for IP pattern
+      → collect results
+      → Gemma suggests: "should be in config, not code"
+
+  [ ] Dependency search: "find all imports of numpy"
+      → grep for "import numpy" or "from numpy"
+      → count occurrences
+      → Gemma analyzes usage patterns
+
+FUTURE COMBO:
+  User: "find all TODO comments and tell me what needs doing"
+    1. search_in_files → grep "TODO"
+    2. Capture: files + line numbers + context
+    3. Send to Gemma: "what needs to be done?"
+    4. Gemma summarizes all TODOs
+    5. [OPTIONAL] Create issues/tickets from list
+
+
+========== TOOL: speak ==========
+WORKING PROMPTS:
+  ✓ "speak hello world"
+  ✓ "say this is a test"
+  ✓ "speak the results out loud"
+
+WHAT HAPPENS:
+  1. Detects: tool=speak
+  2. Extracts text
+  3. Runs: edge-tts to generate speech
+  4. Plays: mpg123 to output audio
+  5. Returns: Confirmation to user
+
+COMPLEX SCAFFOLDS TO BUILD:
+  [ ] Dynamic text: "speak the file contents"
+      → read file
+      → pipe through text-to-speech
+      → play audio
+
+  [ ] Summarized reading: "read this and speak a summary"
+      → read file
+      → send to Gemma: "summarize this"
+      → get response
+      → speak the summary
+
+  [ ] Multi-part narration: "explain what happened then speak it"
+      → Gemma analyzes situation
+      → structures explanation
+      → speaks it
+
+FUTURE COMBO:
+  User: "read the error log and explain what went wrong via voice"
+    1. read_file → get error log
+    2. Send to Gemma: "explain this error"
+    3. Gemma writes explanation
+    4. speak → output as audio
+
+
+========== FUTURE: CODE READ/EDIT COMBO ==========
+NOT YET IMPLEMENTED - Architecture Planning
+
+VISION:
+User says: "read my main.py and suggest improvements, then apply them"
+
+FLOW:
+  1. DETECT: "read" + "suggest" + "apply" keywords
+     → This is a CODE_ANALYSIS_EDIT request
+  2. READ: read_file → get code contents
+  3. CONTEXT: "Analyze this code and suggest improvements"
+  4. GEMMA: Responds with analysis + suggested code changes
+  5. PARSE: Extract code blocks from response
+  6. VERIFY: Show user diffs before applying
+  7. APPLY: Use edit_file.+x to apply changes
+  8. CONFIRM: Read back modified file, report success
+
+SCAFFOLDING NEEDED:
+  [ ] Code block detection in Gemma response
+      → Detect ```python code blocks
+      → Extract rewritten functions
+      → Build edit directives (search/replace pairs)
+
+  [ ] Diff visualization
+      → Before/after code display
+      → User confirmation step
+      → Rollback option if needed
+
+  [ ] State tracking FSM:
+      STATE: AWAIT_REQUEST
+        → USER: "read and improve"
+        → → READ_FILE
+      STATE: READ_FILE
+        → FILE: content loaded
+        → → SEND_TO_GEMMA
+      STATE: SEND_TO_GEMMA
+        → GEMMA: suggestion received
+        → → PARSE_SUGGESTIONS
+      STATE: PARSE_SUGGESTIONS
+        → PARSED: diffs extracted
+        → → AWAIT_USER_APPROVAL
+      STATE: AWAIT_USER_APPROVAL
+        → USER: "yes" → APPLY_CHANGES
+        → USER: "no" → ABORT
+      STATE: APPLY_CHANGES
+        → DONE: file updated
+        → → SUCCESS
+
+PARSING STRATEGY:
+When Gemma returns analysis with code blocks:
+  ```python
+  def old_function():
+      pass
+  ```
+  Parse as: "replace this code"
+
+  1. User's original code for that function
+  2. Suggested code (in code block)
+  3. Build: edit_file with search/replace
+
+COMPLEXITY NOTES:
+  - Gemma might return explanations BETWEEN code blocks
+  - Need robust parser for: ```python ... ``` extraction
+  - Handle multiple edits in one response
+  - Track line numbers for accurate replacement
+  - Fallback: Show diffs to user for approval
+
+
+========== NEAR-TERM ROADMAP ==========
+
+WEEK 1 (This Week):
+  ✓ list_dir working
+  ✓ read_file working
+  ✓ exec_cmd working
+  ✓ search_in_files working
+  ✓ speak working
+  [ ] Add each to user-how-2.txt with examples
+
+WEEK 2:
+  [ ] Implement first combo: "read file and suggest improvements"
+      → read_file + Gemma analysis
+      → No auto-apply yet, just suggestions
+  [ ] Build code block parser
+  [ ] Add user approval flow
+
+WEEK 3:
+  [ ] Implement auto-apply with edit_file
+  [ ] Add diff visualization
+  [ ] Add rollback capability
+
+FUTURE:
+  [ ] Multi-file analysis: "read all .py files and refactor imports"
+  [ ] Test running: "run tests after applying changes"
+  [ ] Chain tools: "find TODOs, read those files, suggest fixes"
+
+
+========== HOW TO REQUEST TOOLS NOW ==========
+
+FORMAT: "verb object [with qualifier]"
+  verb: list, read, run, search, speak
+  object: file/path/command/query/text
+  qualifier: with options/filters
+
+EXAMPLES THAT WORK:
+  "list files"
+  "read config.json"
+  "run echo hello"
+  "search for TODO"
+  "speak this is working"
+
+EXAMPLES THAT WILL WORK LATER:
+  "read main.py and suggest improvements"  ← combo: read+gemma+parse
+  "read all python files and refactor"     ← combo: search+read+gemma
+  "run tests and tell me what failed"      ← combo: run+parse+explain
+  "find TODOs and read the files"          ← combo: search+read+link
+  "speak a summary of the error log"       ← combo: read+gemma+speak
+
+
+========== REMEMBER ==========
+Strategy A works because:
+  1. We detect what user wants (keyword matching)
+  2. We execute it (tool runs deterministically)
+  3. We feed REAL results to Gemma
+  4. Gemma responds naturally (its strength)
+
+NOT:
+  - Trying to make Gemma output structured format
+  - Hoping for perfect parsing
+  - Betting on small model reliability
+
+This is the opposite of TOOL: format attempts.
+Gemma generates responses, not commands.
+We generate commands, not Gemma.

@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | receive_screen
+META         | version            | 1.0
+
+METHOD       | Refresh                 | CHAIN_BALANCE

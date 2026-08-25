@@ -1,0 +1,14 @@
+Scene: Fuzz-Op GLTPM (Sovereign A23)
+Tiles: 200
+Sprites: 0
+Buttons: 4
+Tile 0: grass at (-10.0, -5.0, 0.0)
+Tile 1: grass at (-9.0, -5.0, 0.0)
+Tile 2: grass at (-8.0, -5.0, 0.0)
+Tile 3: grass at (-7.0, -5.0, 0.0)
+Tile 4: grass at (-6.0, -5.0, 0.0)
+Tile 5: grass at (-5.0, -5.0, 0.0)
+Tile 6: grass at (-4.0, -5.0, 0.0)
+Tile 7: grass at (-3.0, -5.0, 0.0)
+Tile 8: grass at (-2.0, -5.0, 0.0)
+Tile 9: grass at (-1.0, -5.0, 0.0)

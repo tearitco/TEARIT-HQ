@@ -1,0 +1,5 @@
+cursor=1
+prompt_active=0
+prompt_step=0
+prompt_buffer=
+active_menu_piece=wsr_management_menu

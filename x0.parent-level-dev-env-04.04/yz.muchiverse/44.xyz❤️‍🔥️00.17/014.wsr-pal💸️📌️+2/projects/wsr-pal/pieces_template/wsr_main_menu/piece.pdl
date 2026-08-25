@@ -1,0 +1,33 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | wsr_main_menu
+META         | version            | 1.0
+
+METHOD       | File                    | STUB
+METHOD       | Game Options            | STUB
+METHOD       | Settings                | STUB
+METHOD       | Help                    | STUB
+METHOD       | Select Player           | STUB
+METHOD       | Culture                 | STUB
+METHOD       | Entity Info             | STUB
+METHOD       | Select Corp.            | CYCLE_CORP
+METHOD       | History                 | STUB
+METHOD       | General                 | STUB
+METHOD       | Tools                   | STUB
+METHOD       | Private                 | STUB
+METHOD       | Other Trans             | STUB
+METHOD       | End Turn                | TICK_ALL:1
+METHOD       | Misc. Menu              | STUB
+METHOD       | Chart                   | STUB
+METHOD       | Auto                    | STUB
+METHOD       | Watchlist               | STUB
+METHOD       | TICKER                  | TOGGLE_TICKER
+METHOD       | Research Report         | STUB
+METHOD       | List Portfolio          | STUB
+METHOD       | Financial Profile       | STUB
+METHOD       | List Options            | STUB
+METHOD       | DB Search               | STUB
+METHOD       | Earnings Report         | STUB
+METHOD       | Shareholder List        | STUB
+METHOD       | My Corporations         | STUB
+METHOD       | New Game                | START_WIZARD:new_game

@@ -1,0 +1,14 @@
+network_status=ONLINE
+node_name=nodeA
+my_endpoint=10.0.0.238:8000
+leader_endpoint=10.0.0.238:8000
+peer_count=0
+ring_size=1
+ring_index=0
+next_hop=N/A
+prev_hop=N/A
+ring_hosts=* 10.0.0.238:8000 LEADER ONLINE\nx 10.0.0.16:8000 NODE OFFLINE\nx 10.0.0.144:8000 NODE OFFLINE\nx 10.0.0.31:8000 NODE OFFLINE\nx 10.0.0.187:8000 NODE OFFLINE\n
+messages=[10.0.0.238:8000] hi 2 guys\n[10.0.0.238:8000] from surf!\n[10.0.0.238:8000] hi im surfi\n[10.0.0.187:8000] 1m deskti\n[10.0.0.187:8000] hi were the other ?\n[10.0.0.187:8000] hi deskti\n[10.0.0.16:8000] hi im online\n[10.0.0.238:8000] hi im onlinesurfier\n[10.0.0.16:8000] everyone is offline
+manager_status=No host handshake; became ring leader
+last_key=None
+input_text=hi im onlinesurfier

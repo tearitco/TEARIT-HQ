@@ -1,0 +1,5 @@
+name=Methanol
+formula=CH3OH
+type=Alcohol
+groups=-OH
+relevance=Solvent and fuel; compares to ethanol in metabolism and toxicity.

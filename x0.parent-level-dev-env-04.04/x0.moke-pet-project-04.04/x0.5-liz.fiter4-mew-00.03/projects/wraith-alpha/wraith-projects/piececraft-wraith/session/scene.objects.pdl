@@ -1,0 +1,25 @@
+# Project-owned Wraith scene records.
+# Piececraft world standard: maps/map_01_z*.txt + assets/tiles/registry.txt + tile extrude fields.
+OBJECT tag=control id=control_map role=window_toolbar_item x=35 y=5 w=26 h=1 z=26 nav=7 source=semantic:window_toolbar fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=INTERACT target_surface=game_map label=Control_Map
+OBJECT tag=surface id=game_map role=game_map x=35 y=6 w=48 h=14 z=16 nav=0 source=semantic:game_map_surface fg=#E8F1F2 bg=#0B1118 border=#7EDFF2 action=- label=
+OBJECT tag=model id=piececraft_map_01 role=tile_zmap x=35 y=6 w=48 h=14 z=23 source=projects/wraith-alpha/wraith-projects/piececraft-wraith/maps/map_01_z0.txt fg=#24C94A bg=#0B1118 border=#FFD166 action=- label=MAP_SOURCE:source=maps/map_01_z0.txt;registry=assets/tiles/registry.txt;z=0;selected=4,2,0;pet=14,6;mode=2d;camera=1,0.00,0.00,0.00,13.60,-6.90,0.00
+OBJECT tag=control id=btn_up role=game_button x=84 y=6 w=14 h=1 z=25 nav=8 source=- fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=KEY:1002 label=[Up]
+OBJECT tag=control id=btn_down role=game_button x=84 y=7 w=14 h=1 z=25 nav=9 source=- fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=KEY:1003 label=[Down]
+OBJECT tag=control id=btn_left role=game_button x=84 y=8 w=14 h=1 z=25 nav=10 source=- fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=KEY:1000 label=[Left]
+OBJECT tag=control id=btn_right role=game_button x=84 y=9 w=14 h=1 z=25 nav=11 source=- fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=KEY:1001 label=[Right]
+OBJECT tag=control id=btn_ascend role=game_button x=84 y=10 w=14 h=1 z=25 nav=12 source=- fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=KEY:101 label=[E] Z-Level Up
+OBJECT tag=control id=btn_descend role=game_button x=84 y=11 w=14 h=1 z=25 nav=13 source=- fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=KEY:113 label=[Q] Z-Level Dn
+OBJECT tag=control id=btn_mode role=game_button x=84 y=12 w=14 h=1 z=25 nav=14 source=- fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=KEY:56 label=[8] 2D/3D
+OBJECT tag=control id=btn_debug role=game_button x=84 y=13 w=14 h=1 z=25 nav=15 source=- fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=KEY:57 label=[9] Debug
+OBJECT tag=text id=coords_hud role=game_hud x=84 y=15 w=22 h=1 z=25 nav=0 source=- fg=#FFD166 bg=#0B1118 border=#0B1118 action=- label=(4,2,0) 2D
+OBJECT tag=text id=debug_hud role=game_hud x=84 y=16 w=22 h=1 z=25 nav=0 source=- fg=#7EDFF2 bg=#0B1118 border=#0B1118 action=- label=Debug: OFF
+OBJECT tag=text id=cam_hud role=game_hud x=84 y=18 w=22 h=1 z=25 nav=0 source=- fg=#7EDFF2 bg=#0B1118 border=#0B1118 action=- label=Camera: POV1
+OBJECT tag=control id=btn_cam_fwd role=game_button x=84 y=19 w=14 h=1 z=25 nav=16 source=- fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=KEY:119 label=[W] Cam Fwd
+OBJECT tag=control id=btn_cam_back role=game_button x=84 y=20 w=14 h=1 z=25 nav=17 source=- fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=KEY:115 label=[S] Cam Back
+OBJECT tag=control id=btn_cam_left role=game_button x=84 y=21 w=14 h=1 z=25 nav=18 source=- fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=KEY:97 label=[A] Cam Left
+OBJECT tag=control id=btn_cam_right role=game_button x=84 y=22 w=14 h=1 z=25 nav=19 source=- fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=KEY:100 label=[D] Cam Right
+OBJECT tag=control id=btn_cam_up role=game_button x=84 y=23 w=14 h=1 z=25 nav=20 source=- fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=KEY:120 label=[X] Cam Up
+OBJECT tag=control id=btn_cam_down role=game_button x=84 y=24 w=14 h=1 z=25 nav=21 source=- fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=KEY:122 label=[Z] Cam Down
+OBJECT tag=control id=btn_pov1 role=game_button x=84 y=25 w=14 h=1 z=25 nav=22 source=- fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=KEY:49 label=[1] POV-1
+OBJECT tag=control id=btn_pov2 role=game_button x=84 y=26 w=14 h=1 z=25 nav=23 source=- fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=KEY:50 label=[2] POV-2
+OBJECT tag=control id=btn_pov3 role=game_button x=84 y=27 w=14 h=1 z=25 nav=24 source=- fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=KEY:51 label=[3] POV-3

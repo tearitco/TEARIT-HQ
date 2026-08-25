@@ -1,0 +1,39 @@
+# Project Backup and Next Steps: Homemade C LLM
+**Date: December 16, 2025**
+
+## 1. Project Overview & Current State
+
+This project is a custom "homemade" Language Model (LLM) written from scratch in C. The initial architecture was a unique, token-centric design where model parameters were associated with individual vocabulary words and stored in human-readable "curriculum" files. The original training process was heuristic-based, relying on external programs to modify these files on disk.
+
+We are in the process of a major architectural upgrade to align the model with standard deep learning practices.
+
+**Recent Accomplishments (State as of this document):**
+1.  **Implemented Real Loss Calculation (Step 1):** The core training loop in `generation_module.c` has been successfully refactored. The old heuristic `system()` calls have been removed and replaced with a proper training loop that performs a forward pass for each token in the corpus.
+2.  **Architectural Shift Initiated:** As part of a critical bug fix, the model's forward pass in `generation_module.c` was modified to use a standard, layer-centric attention mechanism. The old custom logic (per-token QKV vectors with element-wise multiplication) was replaced with matrix multiplication (`matmul`) using shared layer weights (`wq`, `wk`, `wv`).
+3.  **Bug Fixes:** Several critical memory management and architectural bugs in `generation_module.c` were resolved. Specifically, the Key-Value cache allocation was corrected, and a `munmap_chunk()` crash related to improper pointer handling in the `RunState` was fixed.
+4.  **Current Status:** The code now compiles successfully using `xsh.compile-all.+x.sh`. When the `train` command is run (e.g., `./+x/main_orchestrator.+x train curriculum/guess_the_word/guess_the_word.txt`), the program completes all epochs without crashing. It correctly calculates and logs a consistent cross-entropy loss value. The loss value does not yet decrease, as the learning mechanism (backpropagation) has not been implemented.
+
+## 2. The Immediate Goal (Next Step)
+
+The next and most critical task is to implement **Step 2: Backpropagation and Gradient Descent**.
+
+This will complete the transition to a standard training pipeline. The objective is to make the model *learn* from the loss score we are now calculating, causing the loss to decrease with each training epoch. This involves implementing the logic to calculate the gradient of the loss with respect to every weight in the model and then updating those weights accordingly.
+
+## 3. Technical Plan for Next Step
+
+The implementation will follow the plan laid out in `step_up_d16.txt` and involves the following modifications, primarily to `generation_module.c`:
+
+1.  **Add Gradient Buffers:** For every weight and activation pointer in the `SimpleModel` and `RunState` structs, a corresponding `grad_` pointer must be added to store the calculated gradient (e.g., for `float* wq`, add `float* grad_wq`). These new buffers must be allocated and zeroed out before each backward pass.
+
+2.  **Implement Backward Functions:** For each function used in the forward pass, a corresponding `_backward` function that calculates its derivative must be implemented. This includes, but is not limited to:
+    *   `softmax_backward`
+    *   `matmul_backward`
+    *   `rmsnorm_backward`
+    *   `swiglu_backward`
+    *   The full attention mechanism backward pass.
+
+3.  **Create `transformer_backward()` Function:** This master function will orchestrate the entire backward pass. It will start with the initial gradient from the loss function and call all the individual `_backward` functions in the reverse order of the forward pass, propagating the error signal back through the entire model.
+
+4.  **Create `update_weights()` Optimizer Function:** This function will implement the gradient descent update rule. After `transformer_backward()` has populated all the `grad_` buffers, `update_weights()` will iterate through every model parameter and update it: `weight = weight - learning_rate * gradient`.
+
+This process will replace the last vestiges of the old heuristic system with a mathematically sound learning mechanism.

@@ -1,0 +1,46 @@
+🚶 walkthru-j30.txt — &.widgits/file-menu — QUICK CHECK
+================================================================
+STATUS: 🔧 5-6 real bugs fixed + ✅ re-tested clean
+
+Full nerdy before/after: see refactor-report.txt in this same folder.
+This file is just the "click through it yourself" version. 😴👍
+
+## ▶️ HOW TO RUN
+    Through the paired app: @.apps/text-editor-xyz/button.sh run
+
+## ✅ CHECKLIST
+  [ ] 1️⃣ From the editor, open FILE MENU → SAVE AS... → lands on
+        SEARCH focused, not a random entry
+  [ ] 2️⃣ Arrow to FILE, type a filename, Enter or click SAVE FILE →
+        💾 real file appears in the editor's own save target
+  [ ] 3️⃣ CANCEL back to FILE MENU → LOAD... → click a real file →
+        📄 editor text actually updates
+  [ ] 4️⃣ CHANGE FOCUS and PAIR FROM FILE... screens → confirm these
+        also show real clickable buttons, not hand-drawn text
+
+## 🟢 GOOD LOOKS LIKE
+5 separate real screens (main/save/load/pair/peers), all connected by
+real clickable buttons, SAVE/LOAD both work, CANCEL always returns you
+to FILE MENU cleanly.
+
+## 🩹 WHAT WAS ACTUALLY BROKEN (already fixed)
+  - digit buttons (0-9) didn't respond
+  - focus could land on the wrong element after switching screens
+    (HOUSE-WIDE fix, benefits every project)
+  - Enter-directly-on-FILE-field could get swallowed
+  - leftover typed text could ghost back in on re-entry
+  - state file moved to a proper project-scoped path
+
+## 🟡 KNOWN, LOW-PRIORITY, NOT BLOCKING
+One rare automated 4-deep rapid re-entry sequence (SAVE→cancel→SAVE→
+cancel→SAVE→type→Esc→retype) shows a stray dispatch. Never reproduced
+in normal single/double-cycle clicking. Not worth chasing.
+
+## 🧩 UPDATE 2026-07-31: each of the 5 screens now runs its own process
+Same house-standard change as agy-txt (§41) - invisible to you as a
+player. Re-tested clean via the real K3 harness (save/load/typing-ux
+all PASS). One unrelated, already-known-broken test script (demo_fm_
+click_to_load.sh, calls removed helper functions) still fails - not
+touched, not caused by this change, documented in this project's own
+refactor-report.txt already.
+================================================================

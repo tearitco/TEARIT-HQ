@@ -1,0 +1,1 @@
+switch: map_id=map_start pos=5,4 xlector=5,4

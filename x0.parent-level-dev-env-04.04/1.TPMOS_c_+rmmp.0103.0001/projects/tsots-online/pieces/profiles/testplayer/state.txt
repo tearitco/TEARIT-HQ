@@ -1,0 +1,4 @@
+tsots-onlinename=testplayer
+created_at=now
+session_count=1
+last_login=never

@@ -1,0 +1,5 @@
+Unintentional Creation: Most jurisdictions do not grant copyright to content generated wholly by computer code errors without human authorship.Underlying Code: The game cartridge code itself is heavily copyrighted by Nintendo and Game Freak.Public Domain Arguments: Many consider the raw pixel sprite and the literal name "MissingNo." to function as un-copyrightable data glitches, though no court has tested this.Trademark StatusNo Direct Trademark: The Pokémon Company has never registered "MissingNo." as an official trademark.
+
+
+id like to use for debugging, changing config options. 
+dumping crap etc. 

@@ -1,0 +1,10 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | media-editor
+META         | version            | 1.0
+META         | entry_layout       | projects/media-editor/layouts/editor.chtmgl
+META         | author             | Gemini-CLI
+
+STATE        | app_title          | GL-OS Media Editor
+STATE        | status             | Designing
+STATE        | SOVEREIGN          | true

@@ -1,0 +1,30 @@
+# DAY 01 — Welcome to the Harnecient Way
+# ======================================
+# Title: "DAY 01 — Welcome to the Harnecient Way"
+# Characters: TOMO, RAHWEH, MAXINE, IQA, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), MAXINE (en-GB-MaisieNeural), IQA (en-US-AnaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+
+**TOMO:** You're here because somebody told you this place does impossible things — that a model the size of a pocket watch can read documents, edit code, and run commands. They were right. It's not magic. It's engineering with humility. We stopped asking the models to be geniuses, and started treating them like what they are: small engines that produce text. And then we built a harness around that text that turns it into tools.
+
+**RAHWEH:** Wait. So the model doesn't actually... call tools?
+
+**TOMO:** Never. The API never even knows we wanted tools. That's the whole trick. 🪄
+
+**MAXINE:** And that's... legal? I mean, safe? Reliable?
+
+**TOMO:** *grins* It's the difference between trusting a toddler to drive and putting the toddler in a car with a grown-up at the wheel. The toddler points. The grown-up drives. We're the grown-up. The model is a very talkative toddler. 🚗👶
+
+**IQA:** What does "Harnecient" even *mean*? It's not a real word.
+
+**THE NARRATOR:** It's a **made word**, and that's deliberate. Say it out loud: HARN + ECIENT. You hear "harness" and you hear "efficient" — and maybe you also hear "scient" as in "omniscient." A Harnecient system is one that gets the most work out of the least model, the way a harness gets the most work out of a horse. 🐎⚙️ The Boss coined it. The Boss is the only person allowed to make words now. 😄
+
+**IQA:** So this whole book is about... a word the Boss made up?
+
+**RAHWEH:** *laughing* No. It's about the word the Boss made up *to describe the thing that sells the company.
+
+**MAXINE:** Everything a customer sees — the AI reading their document, writing their case file, moving their pieces, answering their questions — it's all Harnecient. The model provides the spark. We provide the work.
+
+**IQA:** I think I'm ready. What's next?
+
+**THE NARRATOR:** Tomorrow, you meet the House itself — the living place where all of this runs. Same place, same time. 🏠

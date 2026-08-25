@@ -1,0 +1,20 @@
+# weather-themed wordbank - example provider_kind=script corpus swap,
+# triggered by the word "weather" (see
+# pieces/registry/triggers/trigger_list.txt). Same format as
+# sample.txt: plain newline-delimited words, one per line, # comments
+# and blank lines ignored.
+rain
+sunshine
+clouds
+storm
+breeze
+snow
+thunder
+humid
+forecast
+temperature
+drizzle
+overcast
+gusty
+frost
+mild

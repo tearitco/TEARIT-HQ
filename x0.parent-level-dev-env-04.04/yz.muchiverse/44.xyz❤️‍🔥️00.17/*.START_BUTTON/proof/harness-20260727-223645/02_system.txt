@@ -1,0 +1,29 @@
+╔═════════════════════════════════════════════════════════╗
+║   S Y S T E M   P R O G R A M S                         ║
+╠═════════════════════════════════════════════════════════╣
+║  Select an entry below (numbered methods).              ║
+║                                                         ║
+║  Pick a category.                                       ║
+╚═════════════════════════════════════════════════════════╝
+
+[>] 1. [0.user-pal👤️/00.login-signup]
+[ ] 2. [0.user-pal👤️/01.avatar-creation👤️]
+[ ] 3. [002.zoo__🦓️🐒️0000/02.z00-INK.lo.sur]PEN🏟️]
+[ ] 4. [01.muchi-pals-🥚️-13.01]
+[ ] 5. [014.wsr-pal💸️📌️+2]
+[ ] 6. [041.pal-chain⛓️]
+[ ] 7. [041.pal-forum👥️]
+[ ] 8. [044.pal-chat-irc👥️+2]
+[ ] 9. [045.muchi-pal-agent🤖️+1]
+[ ] 10. [101.ledger-player-npc-simple+3]
+[ ] 11. [101.lpns+map+4]
+[ ] 12. [101.mutaclsym🧟‍♂️️+18.01]
+[ ] 13. [102.editor-📄️00.00]
+[ ] 14. [150.gl-canvas]
+[ ] 15. [151.screen-rec+01.02]
+[ ] 16. [Refresh list]
+[ ] 17. [Back to categories]
+ Enter = run in this terminal | Esc/Back returns
+
++=========================================================+
+Nav > _

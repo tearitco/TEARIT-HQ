@@ -1,0 +1,7 @@
+game_id=my-biotech-001
+player_name=Adam
+day=1
+max_days=10
+health=100
+money=500
+game_state=playing

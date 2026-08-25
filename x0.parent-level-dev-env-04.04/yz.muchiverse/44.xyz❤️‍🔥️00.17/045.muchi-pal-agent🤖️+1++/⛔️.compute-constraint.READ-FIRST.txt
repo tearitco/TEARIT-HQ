@@ -1,0 +1,16 @@
+⛔️ COMPUTE CONSTRAINT — READ FIRST
+==================================
+2026-07-31, user directive.
+
+THIS COMPUTER IS NOT A COMPUTE NODE. DO NOT RUN ANY LOCAL MODEL WORK HERE:
+  - no ollama/gemma inference
+  - no IQABOD/IQABELLA generation or training
+  - no code-gen eval that calls a local model
+  - nothing that spins up the local model CPU (it slows this machine down)
+
+Local models exist to SERVE OTHER MACHINES on the LAN (the Mac), not this box.
+If LAN/SSH access to the Mac is needed (inference, distillation, training
+offload, a user-playable LAN game), STOP and ask the user for the SSH info.
+Never "test locally" as a shortcut — ask first.
+
+This box's job: file work, agent harness runs, docs, orchestration.

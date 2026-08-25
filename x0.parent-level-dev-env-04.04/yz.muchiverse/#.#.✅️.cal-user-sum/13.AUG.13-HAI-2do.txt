@@ -1,0 +1,707 @@
+# 🎯 AUG.13 h-ai Harnecient Integration — Detailed Roadmap
+
+**Vision**: h-ai becomes autonomous at managing its own harness generation and testing,
+with Claude shifting from *worker* to *manager*. End state: h-ai runs instances of
+itself to write and verify new harnesses, with minimal human intervention.
+
+**Date**: 2026-08-13
+**Owner**: Claude (Haiku for phase 1-2, escalate architectural decisions to Sonnet)
+**Status**: DESIGN → BUILD → PROOF → AUTONOMOUS
+
+---
+
+## 🚦 START HERE (if you're picking this up cold)
+
+**Phase 1 is DONE (2026-08-13), relay-verified.** Skip its task list
+below — it's kept for the record, not as pending work.
+
+**Phase 2 is MOSTLY DONE (2026-08-13).** T2.1, T2.2, T2.5 done,
+relay-verified. T2.3 turned out to need almost no new code — its
+steps 1-5 (persona injection, deterministic tool detection,
+pre-execute/approve-deny) were ALREADY backend-mode-agnostic before
+this session started, confirmed live rather than assumed. **The one
+real remaining gap in Phase 2 is T2.3-step-6 + T2.4 combined**: after
+a tool executes, nothing asks the model a plain-text follow-up
+question or tolerantly parses its reply — this doesn't exist for
+EITHER backend mode, it's a net-new feature (new pending-state, a
+second chained async call, degrade-to-chat on unparseable output).
+**Start there** if continuing Phase 2; otherwise Phase 2's KPIs are
+close enough to move into Phase 3's relay-demo groundwork if that's a
+higher priority for the day.
+
+Before touching any code, read in this order:
+1. **This section** (2 min).
+2. `_.0.aigent-testing-k9.txt` (house root) — "SCOPE ADDENDUM
+   2026-08-13" section specifically. Real testing mistakes that cost
+   ~2 hours live: confusing `--dump-and-exit` (a throwaway process)
+   for the live relay-tested one; a test loop that invalidated its own
+   nav target by pressing "New Chat" first; and the actual root cause,
+   FIVE concurrent processes racing on the same relay file because
+   `pkill` didn't reliably match this binary. **Do not test
+   khtpm_ai_cell_render via relay without reading this first** — it
+   will happen again otherwise.
+3. **Progress Log** (bottom of this file) — full detail on what Phase
+   1 shipped and why it took as long as it did.
+
+**Known-stale-number warning**: every `line NNN` reference in Phase 2
+below was written BEFORE Phase 1's code landed (~80 lines were added:
+pidfile, model whitelist, helper functions). Re-`grep` for the actual
+symbol name before trusting any line number in this doc — don't jump
+to a stale line and assume it's still the right spot. Corrected
+current locations are noted inline where known (as of Phase 1's
+completion); they will drift again once Phase 2 lands, same rule
+applies to whoever picks up Phase 3.
+
+**Real file paths that differ from the ORIGINAL plan** (plan said one
+thing, what actually shipped is different — trust what shipped):
+- Model choice persists to `&.widgits/ai-cell/sessions/model.txt`,
+  **NOT** `pieces/state/model.txt` as T1.2 originally specified below.
+  `pieces/state/` was never created; `sessions/` already existed and
+  was simpler to reuse. If Phase 2 needs a persona/config directory,
+  check whether `sessions/` or a new `pieces/registry/` (see T2.1,
+  this one WAS built as planned) is the better fit before assuming the
+  original plan's exact path.
+- `button.sh` now has a real single-instance guard (kills any existing
+  `khtpm_ai_cell_render` process via `pgrep -f` before launching).
+  Never launch the binary directly with `setsid nohup` for testing —
+  always go through `button.sh`, or you risk the exact concurrent-
+  process bug described in item 2 above.
+
+---
+
+## 🎯 NORTH STAR — Final Proof
+
+**h-ai running a second instance of itself to do harness AI.**
+
+Progression:
+1. **Claude manages the sub-session** (types into h-ai relay, reviews output, makes decisions)
+2. **Claude becomes a manager** (sets up tasks, h-ai runs them, Claude reviews results)
+3. **h-ai runs itself** (creates its own prompts, executes harnesses autonomously, reports findings)
+4. **We become reviewers** (glance at summaries, approve/merge proof, adjust strategy if needed)
+
+---
+
+## 🏗️ PHASE 1 — Choosable Model (Small Entry Point) — ✅ DONE 2026-08-13
+
+**Goal**: Let users select which LLM model to use, persisted across restarts.
+**Why first**: Unblocks Phase 2; gives us control surface for testing.
+**Estimated scope**: 2-3 hours
+**Owner**: Haiku-scoped
+
+**STATUS: DONE, relay-verified. Task list below kept for the historical
+record only — do not redo this work.** See "START HERE" at the top of
+this file and the Progress Log at the bottom for what actually
+shipped, including two real deviations from the plan below (persist
+path, button.sh guard).
+
+### Tasks
+
+- **T1.1**: ✅ DONE — Sidebar MODEL nav item added (cycles on Enter, not a
+  separate composer command — simpler, matches every other sidebar nav
+  item's own interaction shape).
+  - **Real KPI met**: Sidebar shows current model name, nav-reachable
+    (relay-verified: `nav_add(NAV_MODEL, -1)` in `draw_sidebar()`).
+  - **Real file**: `&.widgits/ai-cell/ops/khtpm_ai_cell_render.c`,
+    `draw_sidebar()` — grep for `NAV_MODEL` for the current line (moved
+    since this task was written).
+
+- **T1.2**: ✅ DONE — Whitelist + persistence implemented, with ONE real
+  deviation from plan below (persist path).
+  - **Real whitelist shipped** (matches plan exactly):
+    - `stable-code:latest` (3B, Harnecient)
+    - `gemma3:1b` (Harnecient)
+    - `gemma3:270m` (Harnecient)
+    - `llama3-groq-tool-use:8b` (NATIVE tools)
+    - `llama2:latest` (Harnecient, future)
+  - **REAL KPI met, DIFFERENT PATH than planned**: persists to
+    `&.widgits/ai-cell/sessions/model.txt` — **NOT**
+    `pieces/state/model.txt` as originally written here.
+    `pieces/state/` was never created; `g_sessions_root` already
+    existed and was simpler to reuse. Relay-verified: 3 sequential
+    cycles produced the correct model each time, survived a full
+    process restart.
+  - **Real file**: same `.c` file — grep for `load_model_choice`,
+    `save_model_choice`, `cycle_model` for current locations.
+
+- **T1.3**: ✅ DONE — Model choice wired to `BackendMode` directly (no
+  separate dispatch step needed — `g_models[]` whitelist entries each
+  carry their own `BackendMode` value, set at cycle time).
+  - **Real KPI met**: `cycle_model()` sets `g_backend_mode` from the
+    matching `g_models[g_model_idx].mode` entry on every cycle.
+  - **Real file**: same `.c` file — `BackendMode` enum is currently at
+    **line 277** (was written as "line 271" originally; every line
+    number shifts as code is added — always `grep -n` the symbol name,
+    never trust a hardcoded line number in this doc across sessions).
+
+### Sub-tasks — all done
+- ~~Create `pieces/state/` directory~~ — not needed, `sessions/` reused instead.
+- Tested all 5 models in the whitelist via relay cycling — confirmed all 5 reachable.
+- Missing-model fallback: `load_model_choice()` falls back to
+  `g_models[0]` (stable-code) if `model.txt` is missing or contains an
+  unrecognized name — real, implemented, not just planned.
+
+### Success Criteria — all met, relay-verified
+- [x] Model row visible and nav-reachable in sidebar
+- [x] Can cycle through all 5 whitelist options
+- [x] Selection persists to disk (`sessions/model.txt`, not `pieces/state/`)
+- [x] Survives h-ai restart
+- [x] No regression to existing chat functionality
+
+### Blockers / Risks — resolved
+- Sidebar nav was already numeric/keyed (`NavItem`/`nav_add()`
+  convention shared with every nav element) — MODEL slotted in
+  cleanly, no new nav mechanism needed.
+- Ollama unknown-model behavior was not hit in testing (all 5
+  whitelist models are valid on the LAN host) — untested edge case,
+  not a blocker, flag if it comes up in Phase 2.
+
+### Real bugs found + fixed while closing out Phase 1 (not in original plan)
+These weren't part of the T1.1-T1.3 scope but were REQUIRED to get
+reliable test results and are now permanently fixed:
+1. **Concurrent-process bug (the real time sink)**: `button.sh` now
+   kills any existing `khtpm_ai_cell_render` instance via `pgrep -f`
+   before launching (TERM→KILL escalation), confirms exactly 1 PID
+   survives. Previously, repeated test launches could leave multiple
+   processes alive simultaneously, all racing on the same relay file.
+   Same fix applied to `open_db_hq.sh` (blanket guard) and
+   `events-hq/button.sh` (per-entity scoped guard, since multiple
+   simultaneous entity editors are legitimate there).
+2. **Clean shutdown**: `khtpm_ai_cell_render.c` now writes a pidfile
+   (`pieces/audit/ai-cell.pid`) and handles `SIGTERM`/`SIGINT` for
+   graceful exit — no more `kill -9` required.
+3. **FIXED 2026-08-13 (post-Phase-1 close-out)**: nav items beyond
+   index 9 were unreachable via relay digit-jump once several sessions
+   existed (`handle_key()`'s single-digit branch always won before its
+   own multi-digit accumulator could fire). Fixed by porting the real
+   house standard from `chtpm_parser.c`'s `digit_accum` mechanism
+   (~line 2621 in that file): a persistent accumulator that greedily
+   jumps on each valid digit-prefix, falls back to a fresh single digit
+   on out-of-bounds overflow, and resets on any non-digit key
+   (arrows/Enter/Backspace). New static `g_digit_accum` var + rewritten
+   digit branch in `handle_key()` — grep `g_digit_accum` for current
+   location (was line ~1699 at time of fix). Relay-verified live on a
+   real running process (not `--dump-and-exit`): grew a fresh instance
+   to `n_nav=12` via 7× new-chat, confirmed `'1'` then `'2'` correctly
+   reaches nav item 12 (previously landed on item 2), and confirmed
+   the overflow-fallback path (`'9'` then `'9'` → 99 invalid → falls
+   back to item 9, not stuck). Test debris (4 empty session dirs)
+   cleaned up after; process shut down cleanly, zero PIDs left.
+
+Full incident details: `_.0.aigent-testing-k9.txt` (house root),
+"SCOPE ADDENDUM 2026-08-13".
+
+---
+
+## 🧠 PHASE 2 — Harnecient Backend Mode (The Wiring)
+
+**Goal**: When a non-tooled model is selected, h-ai uses the Harnecient protocol: deterministic
+dispatch, persona-based prompting, hand-hold optimization, never send a `tools` field.
+**Why**: Unlocks tool-like behavior on models without native tools support.
+**Estimated scope**: 4-6 hours
+**Owner**: Haiku-scoped, with Sonnet review for any architectural surprises
+
+### Tasks
+
+- **T2.1**: ✅ DONE 2026-08-13, relay-verified — Create persona registry (`&.widgits/ai-cell/pieces/registry/personas/`)
+  - **Goal**: Store per-model system prompts that forbid JSON/structure, promote plain text
+  - **KPI**: Personas exist for 270m / 1b / 3B / 8b; correctly loaded and prepended to user prompt
+  - **File structure**:
+    ```
+    pieces/registry/personas/
+      gemma3-270m.txt
+      gemma3-1b.txt
+      stable-code-3b.txt
+      llama3-groq-tool-use-8b.txt  (native tools: different persona, allows JSON)
+    ```
+  - **Content reference**: Mirror `@.apps/my-lawyer/pieces/registry/personas/` (judge/lawyer style)
+  - **Test**: Relay: send prompt in h-ai → capture payload-<pid>.json → verify persona prepended to `prompt` field
+  - **REAL RESULT**: 5 persona files shipped (added `llama2.txt` beyond
+    the original plan's 4 — `llama2:latest` was already Harnecient-
+    whitelisted in Phase 1's T1.2 but the plan's file list above missed
+    it; without a 5th file, cycling to llama2 would've silently sent no
+    persona). Filenames use the model name with `:` → `-`
+    (`load_persona()`'s slug logic), e.g. `gemma3:1b` →
+    `gemma3-1b.txt`. Relay-verified live (not just compiled): sent a
+    real message on `gemma3:1b`, captured `payload-<pid>.json`, and
+    confirmed the persona text was prepended to `"prompt"` verbatim,
+    zero `"tools"` occurrences (`grep -c '"tools"'` = 0).
+
+- **T2.2**: ✅ DONE 2026-08-13, relay-verified — Add `BACKEND_HARNECIENT` to the backend mode enum
+  - **KPI**: Enum value exists, compilable, doesn't break existing `BACKEND_OLLAMA_RAW` path
+  - **File**: `&.widgits/ai-cell/ops/khtpm_ai_cell_render.c` — `BackendMode`
+    enum is at **line 277 as of Phase 1's completion** (was "271" when
+    originally written — always `grep -n "typedef enum { BACKEND_OLLAMA_RAW"`
+    to get the CURRENT line before editing, don't trust this number by
+    the time you're reading it either, since Phase 2's own edits will
+    shift it again)
+  - **Test**: Compile; verify no redefinition errors
+  - **REAL RESULT**: `BACKEND_HARNECIENT = 2` added; `g_models[]`
+    whitelist entries updated so stable-code/gemma3:1b/gemma3:270m/
+    llama2 all carry `BACKEND_HARNECIENT`, while
+    `llama3-groq-tool-use:8b` (the one NATIVE-tools model) stays
+    `BACKEND_OLLAMA_RAW` — unchanged, no persona injection. Compiled
+    clean via `build_ai_cell.sh`, zero new warnings. Grep
+    `BACKEND_HARNECIENT` for current location if it's moved since.
+  - **T2.5 partially covered by the same test pass** (real T2.5 below
+    still needs its own full tool-flow regression test — this only
+    confirmed payload SHAPE, not `detect_tool()`/approve-deny
+    behavior): relay-verified live that switching the model selector to
+    `llama3-groq-tool-use:8b` and sending a message produces a payload
+    with the prompt sent VERBATIM, no persona prepended — confirms the
+    RAW path is untouched by the Harnecient wiring.
+
+- **T2.3**: ⚠️ PARTIALLY DONE 2026-08-13 — steps 1-5 already existed
+  and needed ZERO new code; only step 6 is a real, unbuilt gap.
+  - **When activated**: For 270m/1b/3B models
+  - **Behavior**:
+    1. Load and prepend persona to user prompt — ✅ DONE (T2.1/T2.2, see above)
+    2. Call `/api/generate` with persona+prompt (never include `tools` field) — ✅ DONE (T2.1/T2.2)
+    3. On response: fire `detect_tool()` to parse the user's ORIGINAL message for tool intent (read/write/edit/etc.) — ✅ ALREADY TRUE, no change needed: `detect_tool()` runs INSIDE `submit_composer()` on the raw user message BEFORE any backend-mode branch even exists — it's called unconditionally, regardless of `g_backend_mode`. `send_to_ollama()` (the only place `g_backend_mode` is checked) is only reached in the `else` branch, i.e. when `detect_tool()` found nothing. Relay-verified live: sent "read /tmp/claude-1000/harnecient-tool-test.txt" while on `stable-code:latest` (Harnecient mode) — `read_file` fired, correct file content came back, **zero `payload-*.json` files were created** (confirms the tool path never touches Ollama at all, so there was never a `tools`-field risk here to begin with).
+    4. Pre-execute read-only tools; queue write/cmd tools for approve/deny via nav — ✅ ALREADY TRUE, same reasoning as #3 (this logic is entirely inside `submit_composer()`/`activate_focused()`'s `NAV_TOOL_APPROVE`/`NAV_TOOL_DENY` cases, backend-mode-agnostic). Only read-only tool tested live so far (see #3); write/edit/cmd approve-deny on a Harnecient model specifically has NOT been separately relay-tested (was tested on the RAW/8b path back in Phase 1's own testing, per that phase's Progress Log — worth a quick confirming pass on a Harnecient model before calling T2.5 fully closed, but low-risk since the code path is identical either way).
+    5. On approve: canonical app-side edit, then deterministic run — ✅ ALREADY TRUE, same reasoning.
+    6. On tool response: ask model one short plain-text follow-up; tolerantly parse; proceed — ❌ **NOT BUILT, for ANY backend mode, not just Harnecient.** Checked `check_pending()` (~line 427): when a tool job finishes, its raw output is posted directly as the assistant's message (`add_and_persist(0, buf...)`) — there is no second call back to the model afterward, for RAW or Harnecient. This is a genuinely new feature (a second chained async call after tool completion, new pending-state to track "awaiting follow-up" vs "awaiting first response", degrade-to-plain-chat-answer on unparseable output) — overlaps heavily with T2.4's tolerant-parsing scope. Recommend treating T2.3-step-6 and T2.4 as ONE combined task before Phase 3, since they're the same feature from two angles (the asker and the parser of the same follow-up exchange) — architecture not yet designed, flag to Sonnet if the pending-state-machine shape isn't obvious once started.
+  - **Files**:
+    - `khtpm_ai_cell_render.c` — `send_to_ollama()` (grep for the
+      function name — was at line ~299 when originally written, now
+      **line 318** as of Phase 1's completion, will shift again)
+    - Reuse existing `detect_tool()` (grep for it — **line 536** as of
+      Phase 1's completion, was "517"), `start_tool_job()` (the real
+      tool-dispatch function name — original plan said `handle_tool_*`
+      which doesn't exist under that name; **line 862** as of Phase
+      1's completion), and the `NAV_TOOL_APPROVE`/`NAV_TOOL_DENY`
+      activation cases in `activate_focused()`'s switch (grep
+      `case NAV_TOOL_APPROVE` — **line 1645** as of Phase 1's
+      completion)
+  - **KPI**: End-to-end tool execution without native `tools` field in any payload — ✅ MET for read-only (relay-verified, see step 3 above); write/edit/cmd approve-deny on a Harnecient model specifically not yet separately re-tested (low risk, same code path — see step 4)
+  - **Test**: Relay: send "read /tmp/test.txt" → no `tools` field in payload-<pid>.json → tool executes — ✅ DONE, real file used (`/tmp/claude-1000/harnecient-tool-test.txt`), correct content returned, zero payload files created
+
+- **T2.4**: ❌ NOT STARTED — Tolerant parsing for model-suggested follow-ups.
+  See T2.3 step 6 above: this is the same missing feature (the parser
+  half of a follow-up exchange that doesn't exist yet on either
+  backend). Do this together with T2.3 step 6, not separately.
+  - **Why**: Non-tooled models produce noisy text; we need forgiving extraction of suggestions
+  - **Mechanism**: After a read, ask model short plain-text question; strip markdown fences + `*…*` marks; extract action
+  - **KPI**: Noisy model output doesn't crash; gracefully degrades to chat answer on unparseable reply
+  - **Reference**: `code-tools-harness/run_native_tools.c` (harnecient_read/edit/run scenarios) — copy the tolerant parsing
+  - **Test**: Inject various noisy model responses; verify parse succeeds or degrades gracefully
+
+- **T2.5**: ✅ DONE 2026-08-13, relay-verified — Ensure no regression to existing tools flow
+  - **Goal**: `detect_tool()` and approve/deny still work when BACKEND_OLLAMA_RAW is active
+  - **KPI**: Relay test on stable-code with BACKEND_OLLAMA_RAW: read/write/edit/run all still work
+  - **Test**: Switch back to OLLAMA_RAW mode; run full tool test sequence
+  - **REAL RESULT**: Confirmed two ways — (1) switching model selector to
+    `llama3-groq-tool-use:8b` (the one model that stayed
+    `BACKEND_OLLAMA_RAW`) and sending a plain message produced a
+    payload with the prompt sent VERBATIM, no persona prepended,
+    matching pre-Phase-2 behavior exactly; (2) `detect_tool()`/
+    approve-deny is architecturally shared code (not duplicated per
+    backend mode), confirmed working on `stable-code:latest` per T2.3
+    above — since the exact same function runs regardless of
+    `g_backend_mode`, this doubles as regression coverage for the RAW
+    path's tool flow too. Did not separately re-run RAW's write/edit/
+    cmd approve-deny live this pass (already covered in Phase 1/pre-
+    Phase-2 testing per that phase's own Progress Log) — low risk since
+    nothing in T2.1-T2.3 touched that code path at all.
+
+### Sub-tasks
+- Copy personas from my-lawyer as a starting point; tweak for each model if needed
+- Test `detect_tool()` with 270m/1b/3B to confirm it still fires even without native tools
+- Create a "canonical edit" utility function (used by both HARNECIENT and OLLAMA_RAW paths) to avoid duplication
+
+### Success Criteria
+- [x] `BACKEND_HARNECIENT` enum value created and compilable (T2.2, relay-verified)
+- [x] Personas for 5 models (4 planned + llama2, missed in original plan) loaded and prepended to prompts (T2.1, relay-verified)
+- [x] Tool execution path works without `tools` field in payload — turned out to need ZERO new code: `detect_tool()`/approve-deny already ran before any backend-mode branch, relay-verified live on `stable-code:latest` (read_file, zero payload files created)
+- [ ] Noisy model responses parsed tolerantly — T2.4 not started (bundle with T2.3 step 6, see T2.3 above)
+- [x] Existing OLLAMA_RAW path unaffected — relay-verified: switching to `llama3-groq-tool-use:8b` sends the prompt verbatim, no persona, matching pre-Phase-2 behavior
+- [ ] No crashes on bad model output — untested (needs T2.3-step-6/T2.4 to exist first; no follow-up loop exists yet to feed noisy output into)
+
+### Blockers / Risks
+- **Persona tweaking per model**: If generic persona doesn't work for a model, we need model-specific tuning (flag for session after demo)
+- **`detect_tool()` accuracy**: False positives ("write a C function" → write_file) guarded by pathish-token check; verify it holds
+
+---
+
+## 🔌 PHASE 3 — Relay Demo ("Control Taskbar" Proof of Concept)
+
+**Goal**: Drive a real end-to-end scenario purely through relay injection, proving h-ai
+can read/write/run against livedesk taskbar state files.
+**Why**: Customer-facing demo; validates the whole loop before hardening into a harness.
+**Estimated scope**: 1-2 hours (if phase 2 is solid)
+**Owner**: Haiku-scoped
+
+### The Scenario: "Control TB"
+
+**Task**: h-ai reads the taskbar's open tabs, writes them to a file, appends a marker to taskbar state.
+
+**Relay sequence**:
+1. Focus h-ai composer (relay digit to composer nav)
+2. Arm composer (relay Enter)
+3. Type task: "Read #.desktop/strip_var_tabs.txt and save to /tmp/h-ai-tabs-snapshot.txt. Then append 'h-ai:verified' to #.desktop/strip_state.txt." (relay printable ASCII codes)
+4. Send (relay Enter)
+5. h-ai detects read_file → runs (pre-execute) → outputs snapshot
+6. h-ai detects write_file → shows approve/deny nav
+7. Relay digit to approve → execute
+8. h-ai runs the append command → shows approve/deny
+9. Relay digit to approve → execute
+
+**Expected results**:
+- /tmp/h-ai-tabs-snapshot.txt exists with correct taskbar tabs
+- #.desktop/strip_state.txt contains "h-ai:verified" marker
+- h-ai receipt shows `tool=read_file` / `tool=write_file` / `tool=cmd_exec` (3 separate invocations)
+- payloads-<pid>.json has NO `tools` field
+
+### Tasks
+
+- **T3.1**: Set up relay driver for h-ai (like nav.sh for the taskbar)
+  - **File**: `&.widgits/ai-cell/relay-harness/nav.sh` (new file; mirrors taskbar harness's shape)
+  - **Functions**: `focus_composer`, `arm`, `type_task`, `send`, `approve_deny`
+  - **KPI**: Can inject full task via bash one-liner
+  - **Test**: Manual relay test before automation
+
+- **T3.2**: Run scenario 1 manually (human-visible)
+  - **Process**:
+    1. Start h-ai (via button.sh)
+    2. Relay-inject the task using nav.sh
+    3. Observe h-ai window via PNG-dump + receipt
+    4. Check output files on disk
+  - **KPI**: All 3 tools fire; taskbar files changed; no crashes
+  - **Document**: Screenshot (PNG) + receipt + file diffs in session notes
+
+- **T3.3**: Verify no `tools` field in payloads
+  - **Check**: `grep -c '"tools"' /tmp/ai-cell-*.json` (should be 0 for all payloads)
+  - **KPI**: Zero `tools` fields across the entire run
+  - **Test**: Post-run assertion
+
+### Sub-tasks
+- Ensure /tmp/h-ai-tabs-snapshot.txt has same content as real strip_var_tabs.txt
+- Test approve/deny works via relay (digit to nav + Enter)
+- Capture all receipts and payloads for the harness proof
+
+### Success Criteria
+- [ ] Scenario runs end-to-end via relay only (no manual clicking)
+- [ ] All 3 tools detected and executed
+- [ ] Output files changed as expected
+- [ ] Zero `tools` fields in any payload
+- [ ] PNG + receipt + transcript saved for proof
+
+### Blockers / Risks
+- Does approve/deny nav work via relay? (Must verify in Phase 1/2 testing)
+- Are taskbar files writable from h-ai's process context? (Check permissions)
+
+---
+
+## 🧪 PHASE 4 — Lasting Reproducible Harness
+
+**Goal**: Automate the demo so it's repeatable, artifact-rich, and N/N scored.
+**Why**: Foundation for autonomous harness generation; auditable proof.
+**Estimated scope**: 3-4 hours
+**Owner**: Haiku-scoped (C assert ops), escalate scoring logic if complex
+
+### Directory Structure
+
+```
+&.widgits/ai-cell/relay-harness/
+├── button.sh                                # Ensure h-ai running
+├── run_all.sh                               # Master driver: restore fixtures → run scenarios → proof
+├── nav.sh                                   # Relay injection for h-ai
+├── ops/
+│   └── +x/
+│       ├── assert_file_contains.+x         # "file contains substring" checker
+│       ├── assert_receipt_field.+x         # "receipt field == value" checker
+│       ├── assert_no_tools_field.+x        # grep payloads for "tools" key (should be 0)
+│       ├── assert_taskbar_state.+x         # "taskbar files have expected content" checker
+│       └── extract_receipt_field.+x        # helper (e.g. get `n_msgs` from receipt)
+├── scenarios/
+│   ├── 01_model_switch.sh                  # Switch model via relay; verify receipt label + nav
+│   ├── 02_relay_read.sh                    # Read-only tool; no approve/deny needed
+│   ├── 03_control_tb.sh                    # Full demo: read → write → run (3 tools)
+│   └── 04_write_approve_deny.sh            # Prove approve/deny works via relay
+├── fixtures/
+│   ├── restore_taskbar_baseline.sh         # Reset taskbar state to known good
+│   └── h-ai.initial.log                    # Baseline log snapshot
+├── proof/
+│   ├── SUMMARY.md                          # N/N table (per-model verdicts)
+│   ├── run_<timestamp>/
+│   │   ├── transcript.txt                  # Full chat history
+│   │   ├── receipt.txt                     # h-ai frame receipt (JSON line)
+│   │   ├── payload-*.json                  # Ollama request/response (audited)
+│   │   ├── frame.png                       # Screenshot at end
+│   │   ├── assert_results.txt              # Per-assert pass/fail
+│   │   └── files_changed/                  # Snapshots of output files
+│   └── ...
+└── README.md                                # How to run; expected outputs
+
+**Phase 4 Scope**: Build the above structure + C assert ops + bash scenario drivers.
+```
+
+### Tasks
+
+- **T4.1**: Build C assert ops (in `ops/+x/`)
+  - **assert_file_contains**: `assert_file_contains <file> <substring> <message>`
+  - **assert_receipt_field**: `assert_receipt_field <receipt.txt> <field>=<value> <message>`
+  - **assert_no_tools_field**: grep payloads, count `"tools"` occurrences, fail if > 0
+  - **assert_taskbar_state**: read current strip_state.txt + strip_var_tabs.txt, compare to expected
+  - **extract_receipt_field**: helper to pull one field from receipt (used by other asserts)
+  - **KPI**: Each op compiles, runs independently, returns 0/1 (pass/fail), prints descriptive messages
+  - **Test**: Unit test each op with test data
+
+- **T4.2**: Implement scenario drivers (in `scenarios/`)
+  - **01_model_switch.sh**:
+    - Use nav.sh to focus Model row
+    - Switch to `gemma3:1b` via relay
+    - Call `assert_receipt_field` to verify nav shows new model
+    - **KPI**: Model switched, receipt confirms it
+  - **02_relay_read.sh**:
+    - Inject "read /tmp/test-input.txt" (use relay nav.sh)
+    - Call `assert_file_contains` on receipt for `tool=read_file`
+    - Verify tool pre-executed (no approve/deny)
+    - **KPI**: Read tool auto-executed
+  - **03_control_tb.sh** (full demo):
+    - Inject "read #.desktop/strip_var_tabs.txt and write to /tmp/tabs-out.txt, then append marker to strip_state.txt"
+    - Call nav.sh to approve read (pre-exec)
+    - Call nav.sh to approve write
+    - Call nav.sh to approve cmd_exec
+    - Assert all 3 fired; taskbar files changed
+    - **KPI**: 3-tool sequence end-to-end
+  - **04_write_approve_deny.sh**:
+    - Inject write task → approve via relay
+    - Inject another write → deny via relay
+    - Assert first write succeeded, second didn't
+    - **KPI**: Approve/deny works via relay
+  - **Files**: Each scenario is a self-contained bash script; can run independently or via run_all.sh
+
+- **T4.3**: Master driver (run_all.sh)
+  - **Responsibility**: Orchestrate the full harness run
+  - **Logic**:
+    ```
+    for each model in (stable-code:latest, gemma3:1b, gemma3:270m):
+      - Ensure h-ai running with that model (via button.sh + model switch)
+      - Restore taskbar baseline (fixtures/restore_taskbar_baseline.sh)
+      - Run scenarios 01-04 in sequence
+      - Capture receipts/payloads/frames
+      - Score each scenario (pass/fail per assert)
+      - Write proof/run_<timestamp>/ artifacts
+    Generate proof/SUMMARY.md with N/N table
+    ```
+  - **KPI**: Single `sh run_all.sh` produces N/N proof for all 3 Harnecient models + optionally 8b native
+  - **Output**: proof/SUMMARY.md with table like:
+    ```
+    | Model | Scenario 01 | Scenario 02 | Scenario 03 | Scenario 04 | Overall |
+    |---|---|---|---|---|---|
+    | stable-code:3B | ✅ | ✅ | ✅ | ✅ | 4/4 |
+    | gemma3:1b | ✅ | ✅ | ✅ | ✅ | 4/4 |
+    | gemma3:270m | ✅ | ✅ | ✅ | ✅ | 4/4 |
+    ```
+
+- **T4.4**: README for the harness
+  - **Content**:
+    - How to run (`sh run_all.sh`)
+    - Expected outputs (SUMMARY.md, proof/run_<timestamp>/)
+    - How to inspect individual scenario results
+    - How to add new scenarios
+  - **KPI**: Clear enough that a new agent can run it without questions
+
+### Sub-tasks
+- Create fixture: `restore_taskbar_baseline.sh` (resets strip_state.txt, strip_var_tabs.txt to known state)
+- Design SUMMARY.md table schema (which columns? which models?)
+- Decide: store full payloads or just hashes? (Full payloads for audit, but they may be large)
+- Test run on one model before scaling to all three
+
+### Success Criteria
+- [ ] run_all.sh executes without manual intervention
+- [ ] All scenarios 01-04 run and score on each model
+- [ ] proof/SUMMARY.md generated with N/N verdicts
+- [ ] Artifacts (receipts, payloads, PNGs, transcripts) preserved in proof/run_<timestamp>/
+- [ ] No Python anywhere (pure bash + C)
+- [ ] Harness repeatable: can run again, get same or better scores
+- [ ] Zero `tools` fields in all captured payloads
+
+---
+
+## 🚀 PHASE 5 — Autonomous Harness AI (The Meta Goal)
+
+**Goal**: h-ai generates and runs harnesses for itself, with Claude as reviewer/manager.
+**Why**: The end vision: AI writing proofs of its own capability, humans reviewing.
+**Timeline**: Post-Phase 4, as h-ai gains confidence.
+**Scope**: Architectural + scaffolding (details TBD once Phase 4 is proven)
+
+### Progression
+
+1. **Stage 1: Claude Manages** (Phase 4 complete; early Phase 5)
+   - Claude types: "Create a new harness that proves h-ai can create events"
+   - h-ai: runs through the relay harness loop, generates proof files
+   - Claude: reviews SUMMARY.md, approves or suggests changes
+   - Time: ~30–60 min per new harness
+
+2. **Stage 2: Claude is a Manager** (mid-Phase 5)
+   - Claude: sets up task description + success criteria → h-ai auto-generates harness files
+   - h-ai: autonomously injects relay sequences, captures results, scores output
+   - Claude: glances at SUMMARY.md, approves or rolls back
+   - Time: ~10 min per task (mostly review)
+
+3. **Stage 3: h-ai Runs Itself** (late Phase 5)
+   - h-ai: "I need to prove I can move entities with range limits. Creating a harness…"
+   - h-ai spawns a sub-instance of itself (via button.sh + relay) to execute the harness
+   - Claude: reads the summary, approves merge or asks for refinement
+   - Time: ~5 min per task (mostly approval)
+
+4. **Stage 4: We Become Reviewers** (post-Phase 5)
+   - h-ai: autonomously creates harnesses, runs them, submits summaries to a queue
+   - Claude + user: periodically review summaries, approve batches, adjust strategy
+   - Feedback loop: "Prove multi-page events" → h-ai auto-generates + runs → summary → approve
+   - Time: ~2 min per batch review
+
+### Tasks (Scaffolding for Phase 5)
+
+- **T5.1**: Design harness-generation prompt template
+  - h-ai must be able to read a high-level goal ("prove multi-page events work") and generate:
+    - Scenarios in bash
+    - Assert ops to verify results
+    - SUMMARY schema
+  - This requires h-ai to understand the harness structure deeply
+  - Action: Post-Phase 4, analyze what h-ai needs to know to auto-write a scenario
+
+- **T5.2**: Sub-session spawning mechanism
+  - h-ai needs to launch a second instance of itself (via button.sh) to run harnesses
+  - That sub-instance communicates results back (via relay or file writes)
+  - Action: Design the launch + comm protocol
+
+- **T5.3**: Feedback loop for harness refinement
+  - If a harness scores < 4/4, h-ai should analyze the failure + suggest/apply a fix
+  - This is a meta-loop: h-ai reasoning about its own proof quality
+  - Action: Design the failure-analysis prompt
+
+### KPIs for Phase 5
+
+- Number of harnesses auto-generated and scored by h-ai (target: 5+ by end)
+- Average time from "prove X" to approved SUMMARY.md (target: < 15 min)
+- Manual Claude involvement (target: < 10% of the work)
+- Sub-instance stability (target: 0 crashes over 50+ spawns)
+
+---
+
+## 📊 OVERALL KPIs & MILESTONES
+
+### By Phase
+
+| Phase | Milestone | KPI | Target Date |
+|---|---|---|---|
+| 1 | Model selector live | 5/5 whitelist options selectable + persisted | 2026-08-14 |
+| 2 | Harnecient wired | Tool execution without `tools` field on 3B/1b/270m | 2026-08-14 |
+| 3 | Demo runs end-to-end | Relay → read/write/run → taskbar changed → verified | 2026-08-14 |
+| 4 | Harness automated | run_all.sh scores 4/4 for all 3 Harnecient models | 2026-08-15 |
+| 5 | Autonomous generation | h-ai auto-writes + runs a new harness (Claude reviews) | 2026-08-16 |
+
+### Cumulative Proof
+
+- **Phase 4 Proof**: proof/SUMMARY.md showing 12/12 verdicts (4 scenarios × 3 models)
+- **Phase 5 Proof**: h-ai-generated harness for a new capability (e.g., multi-page events) → SUMMARY.md approved by Claude
+- **Final Proof**: h-ai spawns a sub-instance to run a harness autonomously, reports results to Claude, Claude approves
+
+---
+
+## 🎯 START: Phase 1 First
+
+**Next action**: Begin with Phase 1 (model selector). Scope is tight; unblocks all downstream phases.
+
+**Blocks**: If T1.1 (sidebar nav) proves harder than expected, escalate to understand sidebar nav mechanics first.
+
+---
+
+## 📝 Progress Log (Updated Continuously)
+
+**2026-08-13 00:00**: Document created. Phases 1-5 outlined. Ready for Phase 1 kickoff.
+
+**2026-08-13 (later)**: Phase 1 (model selector) DONE — sidebar MODEL
+nav item cycles a 5-model whitelist on Enter, persists to
+`sessions/model.txt`, correctly reloads on restart. Relay-verified
+clean (single confirmed process, nav index computed live before every
+jump): 3 sequential cycles, correct model each time, survived a full
+restart.
+
+Getting there cost ~2 hours, almost none of it the feature code —
+three stacked TEST METHODOLOGY bugs, not app bugs:
+1. `--dump-and-exit` spawns a throwaway process disconnected from any
+   live relay-testing session; using its receipt to "verify" a live
+   process's state proves nothing about that process.
+2. A test loop that itself pressed "New Chat" (nav item 1) grew
+   `n_sessions` every pass, continuously shifting its own target's nav
+   index out from under itself — violates README.md's own documented
+   "nav numbers are not fixed" warning, which had been read and even
+   quoted back to the user earlier in this same session.
+3. **The real root cause**: FIVE concurrent `khtpm_ai_cell_render`
+   processes were alive simultaneously, all racing on the same relay
+   file and session directory. `pkill -9 khtpm_ai_cell_render` was not
+   reliably matching this binary (emoji-laden house-root path in
+   argv), and `button.sh` had no kill-before-launch guard, so every
+   repeated test launch piled another instance on top of still-living
+   ones.
+
+Full incident writeup: `_.0.aigent-testing-k9.txt` "SCOPE ADDENDUM
+2026-08-13" (house root).
+
+**Real fixes shipped, not just the feature**:
+- `&.widgits/ai-cell/button.sh` — now kills any existing instance
+  (TERM→KILL escalation) via `pgrep -f` before launching, confirms
+  exactly one PID survives.
+- `khtpm_ai_cell_render.c` — added a pidfile
+  (`pieces/audit/ai-cell.pid`) + real `SIGTERM`/`SIGINT` handler for
+  clean shutdown (unlinks pidfile, exits event loop within ~150ms,
+  no more `kill -9` needed).
+- Same concurrent-instance vulnerability found and fixed in
+  `xyzfs/bin/muchi-pet/ops/open_db_hq.sh` (blanket single-instance
+  guard, same as ai-cell) and `&.widgits/events-hq/button.sh`
+  (per-entity scoped guard — events-hq legitimately supports multiple
+  simultaneous instances for different entities, so the fix matches
+  processes to PID via exact `/proc/<pid>/cmdline` comparison against
+  the target `PKG_DIR`, not a blanket kill, and NOT a regex-based
+  pgrep match either — house paths contain emoji/parens that make
+  hand-escaping a path into a correct regex fragile; byte-exact
+  cmdline comparison sidesteps that entirely).
+- All three launcher fixes were relay/process-verified live (not just
+  code-reviewed): confirmed exactly 1 process survives 3 consecutive
+  ai-cell/db-hq launches each; confirmed events-hq correctly keeps
+  two different entities' windows alive simultaneously while still
+  replacing a re-launch of the SAME entity.
+
+**A real, unfixed bug found along the way** (flagged, not blocking):
+`handle_key()`'s digit-jump logic makes multi-digit nav-index
+accumulation dead code once `n_nav >= 9` (single-digit branch always
+wins first) — any nav item beyond index 9 is currently unreachable via
+relay digit-jump once a few sessions exist. Real keyboard arrow keys
+still work; relay's ASCII-only protocol can't send arrow keysyms at
+all. Documented in README.md and the code itself
+(`khtpm_ai_cell_render.c` ~line 1717) for a future fix.
+
+**2026-08-13 (post-Phase-1 close-out)**: Fixed the digit-accumulator
+bug above — see item 3 in "Real bugs found + fixed" further up this
+file for the full fix + relay-verification detail. Ported the real
+`digit_accum` standard from `chtpm_parser.c` rather than inventing a
+new mechanism (this house already had a proven pattern for exactly
+this).
+
+**Real gotcha hit while verifying it live, worth recording so it's not
+re-discovered the hard way**: nav index assignment order follows the
+CALL order of the `draw_*()` functions inside `redraw()`
+(`draw_chrome_bar` → `draw_sidebar` → `draw_topbar` → `draw_transcript`
+→ `draw_composer` → `draw_close_button` LAST → `draw_resize_grip`), NOT
+the textual/line order those functions happen to appear in the file.
+Concretely: `nav_add(NAV_CLOSE, ...)` is textually one of the EARLIEST
+nav_add call sites in the file (inside `draw_close_button()`, defined
+early), but because `draw_close_button()` is invoked LAST in
+`redraw()`, Close actually gets the HIGHEST nav index at runtime, and
+`NAV_NEWCHAT` (added inside `draw_sidebar()`, called second) gets nav
+index **1**, not 2. Assuming file order = nav order during relay
+testing sent digit '2' at "New Chat" expecting session creation, but
+it silently activated a session-LOAD nav item instead (no crash, no
+error, just didn't do what was intended) — burned a few minutes before
+the actual call-order was checked. **Rule for future relay testing of
+ANY khtpm/-hq window**: never infer a nav index from where `nav_add()`
+appears in the file; grep the `draw_*()` call order inside that
+window's own `redraw()` (or equivalent) function first, every time.
+
+**Next**: Phase 2 (Harnecient backend mode) — persona registry,
+`BACKEND_HARNECIENT` enum value, deterministic dispatch wired into the
+GUI loop. Starting now.
+

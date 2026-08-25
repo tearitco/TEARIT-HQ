@@ -1,0 +1,29 @@
+[Mathematics]
+Numbers form the foundation of mathematics, encompassing algebra, geometry, and calculus. Algebra deals with equations like x + 2 = 5, solving for unknowns using addition, subtraction, multiplication, and division. Geometry explores shapes—triangles, circles, squares—measuring angles and areas, such as the Pythagorean theorem: a^2 + b^2 = c^2. Calculus tackles change, with derivatives for slopes and integrals for areas under curves. Statistics analyzes data, calculating means, medians, and probabilities. Arithmetic underpins it all with basic operations. Mathematical proofs ensure rigor, like proving 2 + 2 equals 4. These concepts solve real-world problems, from engineering to finance. end_token
+
+[Physics]
+Physics studies the universe’s laws, like motion, energy, and force. Mechanics describes how objects move—Newton’s laws say force equals mass times acceleration (F = ma). Thermodynamics examines heat and energy transfer, defining temperature and entropy. Electromagnetism covers electricity and magnetism, with currents generating fields and light as waves. Gravity pulls objects together, as seen in orbits. Quantum mechanics explores tiny particles, where probability rules. Experiments test theories, like dropping balls to measure acceleration. Physics powers technology, from bridges to lasers. end_token
+
+[Biology]
+Biology investigates life, from cells to ecosystems. Cells are life’s units, with DNA storing genetic instructions for proteins. Evolution drives diversity through natural selection—species adapt over generations. Plants photosynthesize, converting sunlight into energy. Animals consume food for fuel. Ecosystems balance predators, prey, and resources. Genetics explains inheritance, like eye color passing from parents. Microbes, tiny yet vital, decompose waste or cause disease. Biology advances medicine and conservation. end_token
+
+[History]
+History traces human events across time. Ancient civilizations built pyramids and wrote laws. The Middle Ages saw knights and castles, while the Renaissance sparked art and science. Wars shaped nations—World War II involved tanks, planes, and millions dead. Revolutions, like America’s, birthed democracies. Leaders like Caesar or Lincoln left marks. Trade connected continents, spreading goods and ideas. History teaches patterns, like power shifting with technology. end_token
+
+[Literature]
+Literature tells stories through words. Shakespeare wrote plays like Hamlet, exploring tragedy and human nature. Novels, like Dickens’ tales, paint society’s struggles. Poetry uses rhythm—think Frost’s “roads diverged.” Themes of love, death, and identity recur. Authors craft characters, from heroes to villains, driving plots. Books shape culture, inspiring films and debates. Reading builds empathy and imagination. end_token
+
+[Programming]
+Programming instructs computers with code. C uses syntax like loops (for, while) and conditionals (if-else). Variables store data—integers, floats, strings. Functions organize tasks, like adding numbers. Algorithms solve problems, like sorting lists efficiently. Debugging finds errors in logic or syntax. Languages evolve—Python simplifies, C++ adds power. Programming builds software, from games to apps. end_token
+
+[Chemistry]
+Chemistry studies matter—atoms bond into molecules. Elements like carbon or oxygen form the periodic table. Reactions rearrange bonds, like hydrogen and oxygen making water (H2O). Acids and bases shift pH. Organic chemistry explores carbon chains, vital for life. Labs mix substances, observing gas or color changes. Chemistry drives industry, creating plastics and drugs. end_token
+
+[Geography]
+Geography maps Earth’s features. Mountains rise from tectonic plates clashing. Rivers carve valleys, flowing to oceans. Climate varies—deserts bake, tundras freeze. Population clusters in cities, spreading culture. Resources like oil or water shape economies. Maps guide travel, showing borders and terrain. Geography explains human-environment ties. end_token
+
+[Economics]
+Economics tracks money and trade. Supply and demand set prices—scarce goods cost more. Markets exchange everything, from apples to stocks. Governments tax and spend, influencing growth. Inflation erodes cash value over time. Labor earns wages, capital earns profit. Theories debate free markets versus control. Economics predicts trends, like recessions. end_token
+
+[Astronomy]
+Astronomy gazes at the cosmos. Stars burn hydrogen, shining for billions of years. Planets orbit stars—Earth spins daily. Galaxies swirl with millions of suns. Telescopes spot nebulas and black holes, where gravity traps light. The Big Bang started it all 13 billion years ago. Astronomy seeks life beyond, scanning signals. end_token

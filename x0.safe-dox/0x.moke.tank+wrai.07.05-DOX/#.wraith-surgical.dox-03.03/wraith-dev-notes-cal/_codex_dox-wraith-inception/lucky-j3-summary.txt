@@ -1,0 +1,167 @@
+Lucky J3 Summary
+
+Date:
+2026-06-03
+
+Purpose:
+This note captures what we started, what is working, what is unfinished, and
+where the next session should begin once quota resets.
+
+1. Wraith / Wraith-PM
+
+What we started:
+- Built the Wraith project direction as ASCII-first, frame-first, metadata-first.
+- Defined the intended bridge: CHTMGL layouts -> Wraith parser -> colored ASCII
+  frames + metadata -> optional RGB daemon -> optional GL presenter.
+- Separated image/video decoding into dedicated ops so media can be decoded
+  synchronously and merged into frames.
+- Created active notes and handoff docs for the Wraith direction.
+
+What is working:
+- Wraith project scaffolding exists.
+- Wraith parser and media decode ops exist.
+- Frame/audit artifacts are being produced.
+- Wraith now renders a visible shell through the thin `.chtpm` wrapper bridge
+  instead of being flattened directly from raw `.chtmgl`.
+- The current frame bundle is real and inspectable:
+  `current_frame.txt`, `current_frame.ansi.txt`, `current_frame.cells.pdl`,
+  `current_frame.meta.pdl`, `current_frame.objects.pdl`,
+  `current_frame.hitmap.pdl`, `current_frame.desktop_state.pdl`,
+  `current_frame.window_stack.pdl`, `current_frame.focus_state.pdl`,
+  `current_frame.mouse_state.pdl`, and `current_frame.audit.txt`.
+- Wraith now has limited real nav support:
+  - `nav_state.txt`
+  - manager-routed `focus terminal`, `focus map`, `window N`, `nav N`, and
+    bare-digit commands
+  - visible `[>]` marker updates inside the Wraith frame
+- The project has a clear policy for notes, inventories, and archive safety.
+
+What is unfinished:
+- Wraith is visible now, but still bridged through the legacy CHTPM theater and
+  still inherits that outer shell chrome.
+- Wraith does emit focus, z-stack, hit-map, and mouse-state metadata, and it
+  now has limited Wraith-owned nav routing, but it still does not have live
+  mouse window movement.
+- Important correction: the current nav proof still targets hard-coded
+  sketch/menu rows in the layout. It does not yet target real projected
+  subwindow surfaces or mutable window geometry.
+- There is no implemented split-out `wraith_nav_jump_op`, `wraith_mouse_down_op`,
+  `wraith_mouse_move_op`, or `wraith_mouse_up_op` yet.
+- The current `mouse_x`, `mouse_y`, and `drag_active` values are file-seeded
+  and rendered into metadata; they are not yet mutated by live Wraith input.
+- GL rendering is still downstream and not the primary runtime.
+
+Next Wraith step:
+- Keep the current visible bridge, but stop overstating feature completeness.
+- Add `windows_state.pdl` for canonical window geometry/lifecycle.
+- Add projected per-window content surfaces so subwindows stay file-backed and
+  auditable.
+- Expand the new Wraith-owned nav state into a fuller TPMOS/`fuzz-op` jump
+  model, then split it into dedicated ops if needed.
+- Stop treating sketch menu rows as the real app model.
+- Add `windows_state.pdl` so windows become mutable `x/y/z/focus` objects.
+- Make subwindows behave like `fuzz-op` style projected map/surface regions,
+  then point nav at those surfaces instead of fake static labels.
+- Add Wraith-owned mouse down/move/up ops by borrowing GL-OS titlebar/focus/z
+  behavior against `current_frame.hitmap.pdl`.
+- Only after those mutations exist should the docs or agents claim real
+  mouse/index-jump support.
+
+Important corrections for future agents:
+- False assumption corrected: Wraith did not have working mouse/window drag.
+  It had only `drag_active=false` in state and emitted mouse metadata.
+- False assumption corrected: Wraith did not have working index jump. The
+  current visible `Nav >` prompt belongs to legacy CHTPM theater, not to
+  Wraith-owned command routing.
+- Correct model: GL-OS is the behavior reference for geometry/focus/drag/z, but
+  projected TPMOS surfaces are the content reference for what Wraith subwindows
+  should be.
+- Correct model: the sketch is composition reference only, not the literal
+  long-term subwindow/content model.
+- Correct model: the composed frame bundle is the product, and later RGB must
+  consume that same frame bundle.
+
+2. iqamoji-xo5
+
+What we started:
+- Copied `xo/bot5` into `xo/iqamoji-xo5`.
+- Added a handoff doc for future agents.
+- Added ops for directory traversal, reward, punishment, and session labeling.
+- Added build support so the ops compile with the bot.
+- Fixed an early path bug where the ops wrote into nested duplicated project
+  paths.
+
+What is working:
+- `ops/traverse_dirs.c` walks directories and writes listings.
+- `ops/reward_signal.c` records reward state.
+- `ops/punish_signal.c` records punishment state.
+- `ops/label_session.c` records goal/session labels.
+- The bot still builds successfully.
+
+What is unfinished:
+- The bot does not yet have the FSM/RL input router.
+- It does not yet ingest external text files as first-class prompts.
+- It does not yet do supervised training export or knowledge distillation.
+- The accidental nested output tree from the first path bug still exists and was
+  left in place for now.
+
+Next iqamoji-xo5 step:
+- Add the small FSM that chooses between stdin, file input, and replay.
+- Add RL hooks around input selection and outcome scoring.
+- Add file-backed prompt ingestion and training trace export.
+
+3. 0.iqaida.g+FSM=022.0000
+
+What we confirmed:
+- This bot is a Gemini-backed interactive CLI agent.
+- `agent.c` is the core user-input loop.
+- It already calls helper tools for JSON state, payload building, file ops,
+  directory listing, search, edit, and command execution.
+
+What we wrote:
+- `iq-g-fsm-plan-j2.txt` in the bot directory.
+
+What the plan says:
+- The bot should accept external textfile input.
+- FSM and RL should be able to choose the input source.
+- The long-term shape is file inputs + FSM + RL + supervised training +
+  knowledge distillation.
+- The Gemini CLI remains one backend, not the whole machine.
+
+What is unfinished:
+- No file-backed prompt queue yet.
+- No FSM selector yet.
+- No RL reward/punish loop yet.
+- No supervised export path yet.
+
+4. Notes / docs policy
+
+What was established:
+- Active notes live in `_codex_dox/`.
+- TPMOS-generated reports live in `_codex-tpmos/reports/`.
+- Notes can be deleted later if obsolete, but only after archiving.
+- The inventory keeps references that matter for safety and rollback.
+
+Useful active notes:
+- `_codex_dox/codex-tpmos-onbord.txt`
+- `_codex_dox/FRAME_FIRST_RENDER_REPORT.md`
+- `_codex_dox/wraith-handoff-j2.txt`
+- `_codex_dox/wraith-pm-frame-rgb-bridge-codex-j2.txt`
+- `_codex_dox/pre-planning-codex-j2.txt`
+- `_codex_dox/wrath-pm-codex-j2.txt`
+- `_codex_dox/tomojizu-soul-synthesis-codex-j2.txt`
+
+5. Best next-session start
+
+Recommended first move after quota resets:
+1. Read `lucky-j3-summary.txt`.
+2. Resume Wraith work by fixing the current visible runtime path.
+3. Add the file-backed/FSM/RL input router to `0.iqaida.g+FSM=022.0000`.
+4. Keep `iqamoji-xo5` moving toward the simpler exo-bot shape.
+
+Short version:
+- Wraith now has a visible desktop bridge and real frame artifacts, but not yet
+  real Wraith-owned mouse or index-jump interaction.
+- iqamoji-xo5 exists in scaffolding but not yet as a file-driven FSM/RL bot.
+- 0.iqaida.g+FSM=022.0000 is the current Gemini CLI that needs file-backed
+  input and policy selection.

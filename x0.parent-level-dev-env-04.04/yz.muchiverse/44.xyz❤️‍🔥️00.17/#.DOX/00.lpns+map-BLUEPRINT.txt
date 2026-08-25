@@ -1,0 +1,545 @@
+LEDGER-PLAYER-NPC-SIMPLE + MAP (LPNS+MAP)
+Blueprint for Spatial Game Demo with Ledger Architecture
+Map-Based Movement + RGB Window Rendering
+
+================================================================================
+OVERVIEW
+================================================================================
+
+LPNS+MAP extends the ledger-driven word game with:
+  ✓ Spatial gameplay: 8x8 game map
+  ✓ Player positions tracked in ledger
+  ✓ Movement mechanics (x/y input via CLI-IO)
+  ✓ RGB rendering: live view of map in secondary window
+  ✓ Same ledger architecture as LPNS (actions → append-only log)
+
+Design philosophy:
+  - Map state derived from ledger (replay from turn 0 to get any past map)
+  - Players and NPCs occupy grid positions
+  - Each turn: player chooses action (word, move, or end turn)
+  - All actions logged to master ledger
+  - Map rendered from current ledger state
+
+Inspired by: mutaclysm🧟️ (map rendering, position tracking)
+But: keep our ledger-first architecture (don't make map the source of truth)
+
+================================================================================
+PART 1: DATA STRUCTURES
+================================================================================
+
+MAP STATE (derived from ledger, not authoritative):
+
+  8x8 grid: (x: 0-7, y: 0-7)
+
+  Cell contents:
+    '.' = empty
+    '1'-'8' = human player (player number)
+    'A'-'H' = NPC (NPC letter A-H for NPCs 1-8)
+    '#' = wall (optional, for future)
+
+  Example map after setup:
+    01234567
+  0 1.......
+  1 .......2
+  2 ........
+  3 .A......
+  4 ........
+  5 .......B
+  6 ........
+  7 3......4
+
+PLAYER STATE (tracked per game):
+
+  actors/<player_name>/state.txt:
+    name=alice
+    player_type=human
+    position_x=0
+    position_y=0
+    score=0
+    inventory=word1,word2  (optional)
+    current_action=idle    (last action taken)
+
+NPC STATE (same structure):
+
+  actors/<npc_name>/state.txt:
+    name=NPC_Alpha
+    player_type=npc
+    position_x=1
+    position_y=3
+    score=0
+    strategy_id=0          (which NPC strategy to use)
+    current_action=idle
+
+EXTENDED MASTER LEDGER:
+
+  Format: timestamp|epoch|player|turn|action_type|action_data
+
+  Previous format still supported:
+    2026-07-23T10:00:00|1|alice|0|word:hello|word_spoken
+
+  New movement actions:
+    2026-07-23T10:01:00|1|alice|1|move:x:1,y:0|movement
+    2026-07-23T10:02:00|1|bob|2|move:x:7,y:1|movement
+    2026-07-23T10:03:00|1|npc_alpha|3|move:x:2,y:3|npc_auto
+    2026-07-23T10:04:00|1|alice|4|end_turn|turn_end
+
+================================================================================
+PART 2: GAME LOOP WITH MOVEMENT
+================================================================================
+
+TURN SEQUENCE (extended from LPNS):
+
+  1. Ring determines current player (same as LPNS)
+  2. If human player:
+     - Display map (ASCII in CLI)
+     - Display input prompt: "Enter action (word/move/end): "
+     - CLI-IO buttons for: word input, move, end turn
+     - Player chooses:
+       a) TYPE WORD: "hello" → append to ledger
+       b) MOVE: prompt "X (0-7): " and "Y (0-7): " → validate → append move to ledger
+       c) END TURN: → append end_turn to ledger
+  3. If NPC:
+     - Run NPC strategy (existing ai_module)
+     - NPC chooses: word, move, or end turn
+     - Append NPC action to ledger
+  4. Render updated map (all actors from current ledger state)
+  5. Increment turn counter
+  6. Loop
+
+MOVEMENT VALIDATION:
+
+  On MOVE action:
+    - Parse target position (x, y)
+    - Check bounds: 0 <= x <= 7, 0 <= y <= 7
+    - Check occupancy: target cell must be empty or word-bearable
+    - If valid: append move to ledger
+    - If invalid: reject, re-prompt for action
+
+  Position update:
+    - After move appended to ledger, update actors/<player>/state.txt
+    - position_x=new_x
+    - position_y=new_y
+
+MAP RECONSTRUCTION:
+
+  void reconstruct_map(char ledger_path[MAX_PATH], GameMap *map) {
+    // Start with all players at origin (0, 0)
+    for each actor in actors/:
+      map.players[actor].x = 0
+      map.players[actor].y = 0
+
+    // Replay all ledger entries
+    FILE *ledger = fopen(ledger_path, "r")
+    while (read_line(ledger)):
+      if action_type == "move":
+        parse x, y from action_data
+        update map.players[actor].x = x
+        update map.players[actor].y = y
+
+    return map
+  }
+
+================================================================================
+PART 3: CLI-IO LAYOUT (CHTPM-BASED)
+================================================================================
+
+LAYOUT FILE: pieces/chtpm/layouts/game_map.chtpm
+
+Expected structure (conceptual, based on mutaclysm):
+
+  <cli_io>
+    <section name="header">
+      <label>${current_epoch} / ${total_epochs} | Turn ${current_turn}</label>
+    </section>
+
+    <section name="map">
+      <display type="map_ascii" id="game_map">
+        <!-- 8x8 grid, each cell is a character -->
+        <!-- Updated per render from ledger state -->
+      </display>
+    </section>
+
+    <section name="player_info">
+      <label>Player: ${current_player_name} | Pos: (${player_x},${player_y})</label>
+    </section>
+
+    <section name="input">
+      <text_input id="word_input" placeholder="Enter word (or 'm' for move, 'e' for end)"/>
+      <button id="submit_word">Speak Word</button>
+      <button id="move_prompt">Move (Enter X,Y)</button>
+      <button id="end_turn">End Turn</button>
+    </section>
+
+    <section name="ledger_view">
+      <display type="text_scroll" id="recent_actions">
+        <!-- Last 5 actions from ledger -->
+      </display>
+    </section>
+
+  </cli_io>
+
+CLI-IO BINDING (in main_loop.pal or equivalent):
+
+  - word_input receives keyboard text
+  - submit_word button calls: ledger_append action:word
+  - move_prompt button prompts for x, y (two inputs)
+  - end_turn button calls: ledger_append action:end_turn
+  - All outputs → files (similar to LPNS, but with map state)
+
+================================================================================
+PART 4: RGB WINDOW (SECONDARY DISPLAY)
+================================================================================
+
+REFERENCE: mutaclysm's chtpm_rgb_render (chtpm_rgb_render.c or similar)
+
+Purpose: render 8x8 map as colored pixel grid in separate window
+
+APPROACH (from mutaclysm pattern):
+
+  1. Use same chtpm_rgb_render engine (shared-ops/)
+  2. Read layout from pieces/chtpm/layouts/map_render_rgb.chtpm
+  3. Render map cells as 32x32 pixel squares (configurable)
+  4. Color coding:
+     - Empty (.) = light gray background
+     - Player 1-8 = bright colors (e.g., red, blue, green, yellow, etc.)
+     - NPC A-H = muted colors (brown, purple, teal, etc.)
+     - Optional: walls (#) = dark gray
+  5. Update in real-time: every game tick, re-render from current ledger state
+  6. Optional: show player names as text overlay on their cell
+
+RGB LAYOUT FILE: pieces/chtpm/layouts/map_render_rgb.chtpm
+
+  Defines:
+    - Map cell size (32x32 pixels)
+    - Colors per player/NPC (palette)
+    - Font for overlays
+    - Window title "LPNS+MAP Game View"
+
+RENDERING FLOW:
+
+  1. button.sh launches both:
+     - Terminal CLI (prisc+x with main_loop.pal)
+     - RGB window (chtpm_rgb_render reading map state)
+  2. Both read from same game state (master ledger + actors/ dirs)
+  3. On each tick:
+     - CLI shows map in ASCII (8x8 grid of characters)
+     - RGB window shows same map in pixels (256x256 window)
+  4. Player chooses action in CLI → appends to ledger
+  5. Both re-render from updated ledger state
+
+PSEUDO-CODE (chtpm_rgb_render rendering loop):
+
+  while game_running:
+    // Reconstruct map from ledger
+    map = reconstruct_map(master_ledger.txt)
+
+    // Clear canvas (light gray background)
+    fill_rect(0, 0, 256, 256, color_bg_gray)
+
+    // Draw each cell
+    for y in 0..7:
+      for x in 0..7:
+        cell = map[y][x]
+        if cell == '.':
+          draw_empty_cell(x, y)
+        else if cell in '1'..'8':
+          player_num = atoi(cell)
+          draw_player_cell(x, y, player_num, get_player_color(player_num))
+        else if cell in 'A'..'H':
+          npc_idx = cell - 'A'
+          draw_npc_cell(x, y, npc_idx, get_npc_color(npc_idx))
+
+    // Optional: draw grid lines
+    for i in 0..8:
+      draw_line_h(i * 32, 0, 256, color_grid)
+      draw_line_v(0, i * 32, 256, color_grid)
+
+    // Optional: show player names as overlay
+    for each actor in actors/:
+      x, y = map.players[actor].position
+      draw_text(x*32 + 4, y*32 + 4, actor.name, font_small, color_text)
+
+    // Blit to screen
+    display_update()
+
+    sleep(50ms)  // ~20fps
+
+================================================================================
+PART 5: OPERATIONS (NEW OR MODIFIED)
+================================================================================
+
+NEW/MODIFIED OPS FOR MAP:
+
+  1. update_player_position.c
+     Input: player_name, new_x, new_y
+     Output: updates actors/<player>/state.txt
+     Validates: bounds, occupancy
+
+  2. reconstruct_map.c
+     Input: master_ledger.txt
+     Output: prints map ASCII (8x8 grid)
+     Used by: CLI rendering, RGB window sync
+
+  3. render_map_ascii.c (extends view_ledger.c)
+     Input: master_ledger.txt
+     Output: renders map as ASCII to stdout or file
+     Called by: CLI every tick
+
+  4. render_map_rgb.c (new, runs in background or separate process)
+     Input: master_ledger.txt, actors/ directory
+     Output: updates RGB pixel buffer
+     Loops: reconstructs map, renders pixels
+
+  5. handle_movement_input.c
+     Input: player_name, x, y input from CLI
+     Output: appends MOVE action to ledger if valid
+     Validates: bounds, checks current ledger state
+
+SHARED OPS (NO CHANGES):
+
+  - ledger_append.c (extend format, but backward compatible)
+  - human_turn.c (modify UI to show map, add move/word choice)
+  - computer_turn.c (add basic move logic for NPCs)
+  - game_tick.c (no change, ring works same)
+
+================================================================================
+PART 6: FILE STRUCTURE
+================================================================================
+
+00.lpns+map/
+  button.sh                 # Extended to launch RGB window
+
+  ops/
+    game_init.c             # (unchanged from LPNS)
+    game_tick.c             # (unchanged)
+    human_turn.c            # (MODIFIED: show map, prompt for move)
+    computer_turn.c         # (MODIFIED: add move logic)
+    ledger_append.c         # (MODIFIED: support move actions)
+    update_player_position.c # (NEW)
+    reconstruct_map.c       # (NEW)
+    render_map_ascii.c      # (NEW)
+    render_map_rgb.c        # (NEW - optional, may be built into chtpm_rgb_render)
+    handle_movement_input.c # (NEW)
+    view_ledger.c           # (unchanged)
+
+  registry/
+    word_bank.txt           # (unchanged)
+
+  data/
+    config.txt              # (extended: added npc_count)
+    master_ledger.txt       # (extended format for moves)
+
+  pieces/
+    chtpm/
+      layouts/
+        game_map.chtpm      # (NEW: CLI-IO layout with map display)
+        map_render_rgb.chtpm # (NEW: RGB render config)
+    display/
+      current_frame.txt     # (output from chtpm_parser_pal)
+    apps/
+      player_app/
+        view.txt            # (current map render)
+
+  actors/                   # (symlink or copy from players/)
+    alice/
+      state.txt             # pos_x, pos_y, name, etc.
+      ledger.txt            # filtered entries for alice
+    bob/
+      state.txt
+      ledger.txt
+    npc_1/
+      state.txt
+      ledger.txt
+
+================================================================================
+PART 7: WORKFLOW (USER PERSPECTIVE)
+================================================================================
+
+1. SETUP:
+   bash button.sh run
+   - Config: 2 players, 1 NPC, 2 epochs
+   - Players: alice (human), bob (computer)
+   - NPC: npc_1 (auto-play)
+
+2. START GAME:
+   - Terminal window opens (CLI with map)
+   - RGB window opens (pixel view of map)
+   - Both show 8x8 grid with positions
+
+3. EPOCH 1, TURN 1 (alice's turn):
+   - Terminal prompts: "Enter action (word/move/end): "
+   - Alice can:
+     a) Type "hello" → appended as word action
+     b) Press move button → prompts X, Y → appended as move action
+     c) Press end turn → appended as end_turn action
+   - RGB window updates to show alice's new position
+
+4. EPOCH 1, TURN 2 (bob's turn):
+   - Computer auto-plays: picks word or moves to adjacent cell
+   - Action appended to ledger
+   - RGB window updates
+
+5. EPOCH 1, TURN 3 (npc_1's turn):
+   - NPC strategy runs: move toward highest-value cell or random
+   - Action appended to ledger
+   - RGB window updates
+
+6. EPOCH 2: Repeat steps 3-5
+
+7. GAME END:
+   - Final map displayed
+   - Ledger shown (all actions)
+   - Each actor's filtered ledger shown
+
+================================================================================
+PART 8: ARCHITECTURE ALIGNMENT
+================================================================================
+
+LEDGER-FIRST DESIGN:
+
+  ✓ Master ledger is source of truth (not map data structure)
+  ✓ All position changes → ledger entries
+  ✓ Map state derived by replaying ledger
+  ✓ Crash recovery: restart, replay ledger, get same map
+  ✓ Time-travel: any past turn's map can be reconstructed
+  ✓ P2P ready: each node replays ledger → convergent map state
+
+COMPARISON TO MUTACLYSM:
+
+  Mutaclysm (source of truth):
+    - Entity positions in RAM data structures
+    - Map is "the world"
+    - Ledger is audit trail (optional)
+
+  LPNS+MAP (source of truth):
+    - Entity positions DERIVED from ledger
+    - Ledger is "the world"
+    - Map is a VIEW of ledger state
+
+BENEFIT:
+  - Same architecture as LPNS (words in ledger)
+  - Scales to hundreds of actors (no RAM bloat)
+  - Deterministic replay (no hidden state bugs)
+  - P2P-friendly (no conflict resolution needed)
+
+================================================================================
+PART 9: IMPLEMENTATION ROADMAP
+================================================================================
+
+PHASE 1: Map ASCII rendering (no movement yet)
+
+  [ ] 1. Extend master_ledger format to support move actions
+  [ ] 2. Create reconstruct_map.c (rebuild map from ledger)
+  [ ] 3. Create render_map_ascii.c (draw 8x8 grid to stdout)
+  [ ] 4. Modify human_turn.c: display map before prompting for word
+  [ ] 5. Test: map shows players, updates after each turn
+
+PHASE 2: Movement input + validation
+
+  [ ] 6. Create handle_movement_input.c (parse x, y, validate)
+  [ ] 7. Modify human_turn.c: add "move" option
+  [ ] 8. Create update_player_position.c (append move to ledger)
+  [ ] 9. Modify computer_turn.c: add random move logic
+  [ ] 10. Test: players can move, positions persist in ledger
+
+PHASE 3: RGB rendering
+
+  [ ] 11. Create map_render_rgb.chtpm layout
+  [ ] 12. Create render_map_rgb.c (or integrate with chtpm_rgb_render)
+  [ ] 13. Launch RGB window from button.sh
+  [ ] 14. Test: RGB window shows same map as terminal
+
+PHASE 4: Polish + extras
+
+  [ ] 15. Add player names as overlay in RGB
+  [ ] 16. Add grid lines to RGB render
+  [ ] 17. Add color-coded players (red, blue, green, etc.)
+  [ ] 18. Add collision detection (can't move to occupied cell)
+  [ ] 19. Optional: items on map (collectible words, obstacles)
+
+================================================================================
+PART 10: TESTING STRATEGY
+================================================================================
+
+UNIT TESTS:
+
+  1. reconstruct_map.c:
+     - Given ledger with moves, verify map state is correct
+     - Test: move (0,0) → (1,1), verify position in reconstructed map
+
+  2. handle_movement_input.c:
+     - Test: valid move accepted
+     - Test: out of bounds rejected
+     - Test: occupied cell rejected
+
+INTEGRATION TESTS:
+
+  1. Full game with 2 players, 1 epoch:
+     - Player 1 moves from (0,0) to (1,1)
+     - Player 2 moves from (7,7) to (6,6)
+     - Both positions persisted in ledger
+     - Reconstructed map shows both positions
+
+  2. RGB window + CLI sync:
+     - Move player in CLI
+     - Verify RGB window shows same position
+     - Verify ledger has move entry
+
+REGRESSION:
+
+  - All LPNS tests still pass (word input, computer turns, etc.)
+  - Ledger format backward compatible (old entries still readable)
+
+================================================================================
+PART 11: MUTACLYSM REFERENCE
+================================================================================
+
+STEAL FROM MUTACLYSM:
+
+  ✓ Color palette for players/NPCs
+  ✓ Grid rendering (8x8 cells)
+  ✓ chtpm_rgb_render integration (if it exists there)
+  ✓ Position tracking per entity
+  ✓ Movement validation (bounds check)
+
+DON'T STEAL:
+
+  ✗ Entity state in RAM (use ledger instead)
+  ✗ "Action queue" data structure (use ledger instead)
+  ✗ Central map object (derive from ledger instead)
+  ✗ Collision meshes (simple bounds check is enough for v1)
+
+================================================================================
+PART 12: FUTURE EXTENSIONS
+================================================================================
+
+BEYOND V1 (POST-MVP):
+
+  1. Items/resources on map
+     - Collectible words worth points
+     - Obstacles (walls) block movement
+     - Ledger entries: "alice collects word:sword at (3,3)"
+
+  2. Turn-based combat
+     - Adjacent players can attack each other
+     - "alice attacks bob at (2,2)" → damage in ledger
+     - Winner determined at end of game
+
+  3. Fog of war
+     - Player only sees 3-cell radius around their position
+     - Map updates as players move/explore
+     - Optional: knowledge of what other players have seen
+
+  4. Dynamic map generation
+     - Procedural map per game
+     - Terrain types (grass, water, mountain)
+     - Different movement costs per terrain
+
+  5. Multi-map levels
+     - Game consists of multiple 8x8 maps
+     - Portals allow traversal between maps
+     - Ledger tracks which map each player is on
+
+================================================================================
+END 00.lpns+map-BLUEPRINT.txt
+================================================================================

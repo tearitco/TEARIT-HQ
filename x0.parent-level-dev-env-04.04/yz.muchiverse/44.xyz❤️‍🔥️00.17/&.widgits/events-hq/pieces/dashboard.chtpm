@@ -1,0 +1,38 @@
+<!-- dashboard.chtpm — events-hq Phase 1 (2do-rgb-hq.md's own scope).
+     Mirrors au11-hq/rpgmaker-mv-event-editor.html's VISIBLE, non-flex/
+     grid regions only (titlebar/toolbar/page-tabs/left-properties/
+     right-command-list/footer) - the mockup's flex/grid/modal-overlay
+     parts are hand-laid-out here instead (khtpm_css_parser.c has no
+     flex/grid/position:fixed support yet, see 2do-rgb-hq.md's own
+     "mockup reality check"). Left panel scoped down to Trigger+Notes
+     only (real house data); command picker is a separate popout
+     window, not a modal - see khtpm_events_hq_render.c.
+
+     <module> tag added 2026-08-16 (Stage 2d shell/manager split, real
+     mechanism proven first on db-hq - see local-2do-15.txt's own
+     "Stage 2d shell/manager split CORRECTED TO THE REAL MECHANISM"
+     entry for the full reasoning). khtpm_events_hq_render.c's main()
+     finds this after parse_chtpm() and fork()+execv()s it itself,
+     passing house_root/pkg_dir/entity_label - the SAME 3 args this
+     app's own shell already takes, since the manager needs the exact
+     same per-entity scoping. -->
+<window class="events-hq-window">
+  <module src="&.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x" />
+  <panel id="toolbar" class="toolbar">
+    <text id="event-name" class="event-name" label="(entity)"/>
+  </panel>
+  <tabbar id="pagetabs" class="page-tabs">
+    <tab label="(no pages yet)"/>
+  </tabbar>
+  <panel id="left" class="left-panel">
+    <title class="block-title" label="Trigger"/>
+    <text id="trigger-value" class="prop-value" label="(unknown)"/>
+  </panel>
+  <panel id="right" class="command-list">
+    <title class="block-title" label="Commands"/>
+    <text id="cmd-empty" class="empty-msg" label="(no commands yet)"/>
+  </panel>
+  <panel id="footer" class="footer">
+    <button id="add-command" class="btn-primary" label="+ Add Command"/>
+  </panel>
+</window>

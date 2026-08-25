@@ -1,0 +1,1 @@
+<text label="| |  " /><button label="Window Geometry" onClick="SETTINGS_PAGE:window-geom" /><text label="                                                            |" /><br/>

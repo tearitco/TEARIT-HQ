@@ -1,0 +1,51 @@
+# House-wide compile report — 2026-08-21 04:13:54
+
+**Summary: 44 scripts — PASS=44 FAIL=0 TIMEOUT=0**
+
+| Status | Script | Log |
+|---|---|---|
+| PASS | 002.zoo__🦓️🐒️0000/02.z00-INK.lo.sur]PEN🏟️/scripts/build.sh | $.crypts/build-reports/20260821-040431/002.zoo__🦓️🐒️0000_02.z00-INK.lo.sur]PEN🏟️_scripts_build.sh.log |
+| PASS | 014.wsr-pal💸️📌️+2/scripts/build.sh | $.crypts/build-reports/20260821-040431/014.wsr-pal💸️📌️+2_scripts_build.sh.log |
+| PASS | 01.muchi-pals-🥚️-13.01/scripts/build.sh | $.crypts/build-reports/20260821-040431/01.muchi-pals-🥚️-13.01_scripts_build.sh.log |
+| PASS | 041.pal-chain⛓️/scripts/build.sh | $.crypts/build-reports/20260821-040431/041.pal-chain⛓️_scripts_build.sh.log |
+| PASS | 041.pal-forum👥️/scripts/build.sh | $.crypts/build-reports/20260821-040431/041.pal-forum👥️_scripts_build.sh.log |
+| PASS | 044.pal-chat-irc👥️+2/scripts/build.sh | $.crypts/build-reports/20260821-040431/044.pal-chat-irc👥️+2_scripts_build.sh.log |
+| PASS | 045.muchi-pal-agent🤖️+1++/scripts/build.sh | $.crypts/build-reports/20260821-040431/045.muchi-pal-agent🤖️+1++_scripts_build.sh.log |
+| PASS | 0.user-pal👤️/00.login-signup/scripts/build.sh | $.crypts/build-reports/20260821-040431/0.user-pal👤️_00.login-signup_scripts_build.sh.log |
+| PASS | 0.user-pal👤️/01.avatar-creation👤️/scripts/build.sh | $.crypts/build-reports/20260821-040431/0.user-pal👤️_01.avatar-creation👤️_scripts_build.sh.log |
+| PASS | 101.mutaclsym🧟‍♂️️+18.0G/scripts/build.sh | $.crypts/build-reports/20260821-040431/101.mutaclsym🧟‍♂️️+18.0G_scripts_build.sh.log |
+| PASS | 101.mutaclsym🧟‍♂️️19.00/scripts/build.sh | $.crypts/build-reports/20260821-040431/101.mutaclsym🧟‍♂️️19.00_scripts_build.sh.log |
+| PASS | 102.agy-txt/scripts/build.sh | $.crypts/build-reports/20260821-040431/102.agy-txt_scripts_build.sh.log |
+| PASS | 102.editor-📄️00.00/scripts/build.sh | $.crypts/build-reports/20260821-040431/102.editor-📄️00.00_scripts_build.sh.log |
+| PASS | 300.rpg-xyz/scripts/build.sh | $.crypts/build-reports/20260821-040431/300.rpg-xyz_scripts_build.sh.log |
+| PASS | 300.rtp-xyz/scripts/build.sh | $.crypts/build-reports/20260821-040431/300.rtp-xyz_scripts_build.sh.log |
+| PASS | @.apps/aomorai-editor/scripts/build.sh | $.crypts/build-reports/20260821-040431/@.apps_aomorai-editor_scripts_build.sh.log |
+| PASS | @.apps/civ-txt/scripts/build.sh | $.crypts/build-reports/20260821-040431/@.apps_civ-txt_scripts_build.sh.log |
+| PASS | @.apps/my-biotech/scripts/build.sh | $.crypts/build-reports/20260821-040431/@.apps_my-biotech_scripts_build.sh.log |
+| PASS | @.apps/my-chara-txt/scripts/build.sh | $.crypts/build-reports/20260821-040431/@.apps_my-chara-txt_scripts_build.sh.log |
+| PASS | @.apps/my-lawyer/scripts/build.sh | $.crypts/build-reports/20260821-040431/@.apps_my-lawyer_scripts_build.sh.log |
+| PASS | @.apps/myne-qrypto/qtc/scripts/build.sh | $.crypts/build-reports/20260821-040431/@.apps_myne-qrypto_qtc_scripts_build.sh.log |
+| PASS | @.apps/piececraft-xyz/scripts/build.sh | $.crypts/build-reports/20260821-040431/@.apps_piececraft-xyz_scripts_build.sh.log |
+| PASS | @.apps/tactics-txt/scripts/build.sh | $.crypts/build-reports/20260821-040431/@.apps_tactics-txt_scripts_build.sh.log |
+| PASS | @.apps/TSC_ELO/scripts/build.sh | $.crypts/build-reports/20260821-040431/@.apps_TSC_ELO_scripts_build.sh.log |
+| PASS | @.apps/TSC_ELO/widgets/setup/scripts/build.sh | $.crypts/build-reports/20260821-040431/@.apps_TSC_ELO_widgets_setup_scripts_build.sh.log |
+| PASS | @.apps/yahoo-app/scripts/build.sh | $.crypts/build-reports/20260821-040431/@.apps_yahoo-app_scripts_build.sh.log |
+| PASS | *.monads/*.hard-vvar-agent-Q0000/pieces/features/build_self.sh | $.crypts/build-reports/20260821-040431/*.monads_*.hard-vvar-agent-Q0000_pieces_features_build_self.sh.log |
+| PASS | *.monads/*.livedesk-taskbar/ops/build_db_hq_manager.sh | $.crypts/build-reports/20260821-040431/*.monads_*.livedesk-taskbar_ops_build_db_hq_manager.sh.log |
+| PASS | *.monads/*.livedesk-taskbar/ops/build_db_hq.sh | $.crypts/build-reports/20260821-040431/*.monads_*.livedesk-taskbar_ops_build_db_hq.sh.log |
+| PASS | *.monads/*.livedesk-taskbar/ops/build_entity_menu.sh | $.crypts/build-reports/20260821-040431/*.monads_*.livedesk-taskbar_ops_build_entity_menu.sh.log |
+| PASS | *.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh | $.crypts/build-reports/20260821-040431/*.monads_*.livedesk-taskbar_ops_build_khtpm_strip.sh.log |
+| PASS | *.START_BUTTON/scripts/build.sh | $.crypts/build-reports/20260821-040431/*.START_BUTTON_scripts_build.sh.log |
+| PASS | +.TSOTS-ALPHA-OMEGA/TSOTS-OG+01.00/scripts/build.sh | $.crypts/build-reports/20260821-040431/+.TSOTS-ALPHA-OMEGA_TSOTS-OG+01.00_scripts_build.sh.log |
+| PASS | &.widgits/board-viewer/scripts/build.sh | $.crypts/build-reports/20260821-040431/&.widgits_board-viewer_scripts_build.sh.log |
+| PASS | &.widgits/events-hq/ops/build_events_hq_manager.sh | $.crypts/build-reports/20260821-040431/&.widgits_events-hq_ops_build_events_hq_manager.sh.log |
+| PASS | &.widgits/file-menu/scripts/build.sh | $.crypts/build-reports/20260821-040431/&.widgits_file-menu_scripts_build.sh.log |
+| PASS | &.widgits/livedesk-clock/ops/build_lc_clock.sh | $.crypts/build-reports/20260821-040431/&.widgits_livedesk-clock_ops_build_lc_clock.sh.log |
+| PASS | &.widgits/open-hai/ops/build_open_hai_manager.sh | $.crypts/build-reports/20260821-040431/&.widgits_open-hai_ops_build_open_hai_manager.sh.log |
+| PASS | &.widgits/open-hai/ops/build_open_hai.sh | $.crypts/build-reports/20260821-040431/&.widgits_open-hai_ops_build_open_hai.sh.log |
+| PASS | &.widgits/_shared-lib/ops/build_chtpm_rgb_render.sh | $.crypts/build-reports/20260821-040431/&.widgits__shared-lib_ops_build_chtpm_rgb_render.sh.log |
+| PASS | &.widgits/_shared-lib/ops/build_dump_frame_png_op.sh | $.crypts/build-reports/20260821-040431/&.widgits__shared-lib_ops_build_dump_frame_png_op.sh.log |
+| PASS | &.widgits/_shared-lib/ops/build_x11_mirror.sh | $.crypts/build-reports/20260821-040431/&.widgits__shared-lib_ops_build_x11_mirror.sh.log |
+| PASS | &.widgits/tile-picker/scripts/build.sh | $.crypts/build-reports/20260821-040431/&.widgits_tile-picker_scripts_build.sh.log |
+| PASS | &.widgits/yahoo-broker/scripts/build.sh | $.crypts/build-reports/20260821-040431/&.widgits_yahoo-broker_scripts_build.sh.log |
+

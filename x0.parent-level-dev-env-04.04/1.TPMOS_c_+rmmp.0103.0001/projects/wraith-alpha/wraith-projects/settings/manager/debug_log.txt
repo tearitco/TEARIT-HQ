@@ -1,0 +1,1418 @@
+[1783256787] Settings Hub Manager Started
+[1783256787] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783256787] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783256787] Discovered 1 settings entry
+[1783256787] Settings Hub Manager init complete (discovery is one-time; href clicks are handled generically, no hot path needed)
+[1783257726] Settings Hub Manager Started
+[1783257726] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783257726] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783257726] Discovered 1 settings entry
+[1783257726] Settings Hub Manager init complete (discovery is one-time; href clicks are handled generically, no hot path needed)
+[1783258023] Settings Hub Manager Started
+[1783258023] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783258023] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783258023] Discovered 1 settings entry
+[1783258023] Settings Hub Manager init complete (discovery is one-time; href clicks are handled generically, no hot path needed)
+[1783258230] Settings Hub Manager Started
+[1783258230] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783258230] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783258230] Discovered 1 settings entry
+[1783258230] Settings Hub Manager init complete (discovery is one-time; href clicks are handled generically, no hot path needed)
+[1783258343] Settings Hub Manager Started
+[1783258343] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783258343] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783258343] Discovered 1 settings entry
+[1783258343] Settings Hub Manager init complete (discovery is one-time; href clicks are handled generically, no hot path needed)
+[1783303662] Settings Hub Manager Started
+[1783303662] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783303662] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783303662] Discovered 1 settings entry
+[1783303662] Settings Hub Manager init complete (discovery is one-time; href clicks are handled generically, no hot path needed)
+[1783303795] Settings Hub Manager Started
+[1783303795] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783303795] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783303795] Discovered 1 settings entry
+[1783303795] Settings Hub Manager init complete (discovery is one-time; href clicks are handled generically, no hot path needed)
+[1783303795] Settings Hub Manager Started
+[1783303795] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783303795] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783303795] Discovered 1 settings entry
+[1783303795] Settings Hub Manager init complete (discovery is one-time; href clicks are handled generically, no hot path needed)
+[1783305612] Settings Hub Manager Started
+[1783305612] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783305612] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783305612] Discovered 1 settings entry
+[1783305612] Settings Hub Manager init complete (discovery is one-time; href clicks are handled generically, no hot path needed)
+[1783305618] Settings Hub Manager Started
+[1783305618] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783305618] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783305618] Discovered 1 settings entry
+[1783305618] Settings Hub Manager init complete (discovery is one-time; href clicks are handled generically, no hot path needed)
+[1783319273] Settings Hub Manager Started
+[1783319273] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783319273] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783319273] Discovered 1 settings entry
+[1783319273] Settings Hub Manager: init complete, entering hot-path loop
+[1783319273] Active page changed, re-rendering wraith_body.txt
+[1783320530] Settings Hub Manager Started
+[1783320530] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783320530] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783320530] Discovered 1 settings entry
+[1783320530] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783320693] Settings Hub Manager Started
+[1783320693] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783320693] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783320693] Discovered 1 settings entry
+[1783320693] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783320873] Settings Hub Manager Started
+[1783320873] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783320873] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783320873] Discovered 1 settings entry
+[1783320873] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783326198] Settings Hub Manager Started
+[1783326198] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783326198] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783326198] Discovered 1 settings entry
+[1783326198] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783326202] Page change detected, re-rendering wraith_body.txt
+[1783326203] Page change detected, re-rendering wraith_body.txt
+[1783326907] Settings Hub Manager Started
+[1783326907] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783326907] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783326907] Discovered 1 settings entry
+[1783326907] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783326997] Settings Hub Manager Started
+[1783326997] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783326997] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783326997] Discovered 1 settings entry
+[1783326997] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783327057] Settings Hub Manager Started
+[1783327057] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783327057] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783327057] Discovered 1 settings entry
+[1783327057] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783335776] Settings Hub Manager Started
+[1783335776] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783335776] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783335776] Discovered 1 settings entry
+[1783335776] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783335778] Page change detected, re-rendering wraith_body.txt
+[1783335780] Page change detected, re-rendering wraith_body.txt
+[1783335824] Settings Hub Manager Started
+[1783335824] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783335824] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783335824] Discovered 1 settings entry
+[1783335824] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783335826] Page change detected, re-rendering wraith_body.txt
+[1783335828] Page change detected, re-rendering wraith_body.txt
+[1783338781] Settings Hub Manager Started
+[1783338781] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783338781] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783338781] Discovered 1 settings entry
+[1783338781] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783338783] Page change detected, re-rendering wraith_body.txt
+[1783338783] Page change detected, re-rendering wraith_body.txt
+[1783339129] Settings Hub Manager Started
+[1783339129] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783339129] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783339129] Discovered 1 settings entry
+[1783339129] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783339136] Page change detected, re-rendering wraith_body.txt
+[1783339212] Settings Hub Manager Started
+[1783339212] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783339212] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783339212] Discovered 1 settings entry
+[1783339212] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783339235] Page change detected, re-rendering wraith_body.txt
+[1783339237] Page change detected, re-rendering wraith_body.txt
+[1783343781] Settings Hub Manager Started
+[1783343781] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783343781] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783343781] Discovered 1 settings entry
+[1783343781] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783343783] Page change detected, re-rendering wraith_body.txt
+[1783345155] Settings Hub Manager Started
+[1783345155] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783345155] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783345155] Discovered 1 settings entry
+[1783345155] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783345157] Page change detected, re-rendering wraith_body.txt
+[1783347199] Settings Hub Manager Started
+[1783347199] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783347199] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783347199] Discovered 1 settings entry
+[1783347199] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783347203] Page change detected, re-rendering wraith_body.txt
+[1783347205] Page change detected, re-rendering wraith_body.txt
+[1783347939] Settings Hub Manager Started
+[1783347939] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783347939] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783347939] Discovered 1 settings entry
+[1783347939] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783347942] Page change detected, re-rendering wraith_body.txt
+[1783347944] Page change detected, re-rendering wraith_body.txt
+[1783347948] Page change detected, re-rendering wraith_body.txt
+[1783347948] Page change detected, re-rendering wraith_body.txt
+[1783347948] Page change detected, re-rendering wraith_body.txt
+[1783347948] Page change detected, re-rendering wraith_body.txt
+[1783347948] Page change detected, re-rendering wraith_body.txt
+[1783347948] Page change detected, re-rendering wraith_body.txt
+[1783347948] Page change detected, re-rendering wraith_body.txt
+[1783347948] Page change detected, re-rendering wraith_body.txt
+[1783347948] Page change detected, re-rendering wraith_body.txt
+[1783347948] Page change detected, re-rendering wraith_body.txt
+[1783347948] Page change detected, re-rendering wraith_body.txt
+[1783347948] Page change detected, re-rendering wraith_body.txt
+[1783347948] Page change detected, re-rendering wraith_body.txt
+[1783347948] Page change detected, re-rendering wraith_body.txt
+[1783347948] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347949] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347950] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347951] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347952] Page change detected, re-rendering wraith_body.txt
+[1783347953] Page change detected, re-rendering wraith_body.txt
+[1783347953] Page change detected, re-rendering wraith_body.txt
+[1783347953] Page change detected, re-rendering wraith_body.txt
+[1783347953] Page change detected, re-rendering wraith_body.txt
+[1783347953] Page change detected, re-rendering wraith_body.txt
+[1783347953] Page change detected, re-rendering wraith_body.txt
+[1783347953] Page change detected, re-rendering wraith_body.txt
+[1783347953] Page change detected, re-rendering wraith_body.txt
+[1783347953] Page change detected, re-rendering wraith_body.txt
+[1783347953] Page change detected, re-rendering wraith_body.txt
+[1783347953] Page change detected, re-rendering wraith_body.txt
+[1783347953] Page change detected, re-rendering wraith_body.txt
+[1783385375] Settings Hub Manager Started
+[1783385375] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783385375] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783385375] Discovered 1 settings entry
+[1783385375] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783385381] Page change detected, re-rendering wraith_body.txt
+[1783385383] Page change detected, re-rendering wraith_body.txt
+[1783385397] Page change detected, re-rendering wraith_body.txt
+[1783385397] Page change detected, re-rendering wraith_body.txt
+[1783385397] Page change detected, re-rendering wraith_body.txt
+[1783385397] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385398] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385399] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385400] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385401] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385402] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385403] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385404] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385405] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385406] Page change detected, re-rendering wraith_body.txt
+[1783385407] Page change detected, re-rendering wraith_body.txt
+[1783385407] Page change detected, re-rendering wraith_body.txt
+[1783385407] Page change detected, re-rendering wraith_body.txt
+[1783385407] Page change detected, re-rendering wraith_body.txt
+[1783385407] Page change detected, re-rendering wraith_body.txt
+[1783385407] Page change detected, re-rendering wraith_body.txt
+[1783385407] Page change detected, re-rendering wraith_body.txt
+[1783385839] Settings Hub Manager Started
+[1783385839] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783385839] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783385839] Discovered 1 settings entry
+[1783385839] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783385840] Page change detected, re-rendering wraith_body.txt
+[1783385841] Page change detected, re-rendering wraith_body.txt
+[1783385841] Page change detected, re-rendering wraith_body.txt
+[1783385841] Page change detected, re-rendering wraith_body.txt
+[1783385841] Page change detected, re-rendering wraith_body.txt
+[1783385841] Page change detected, re-rendering wraith_body.txt
+[1783385841] Page change detected, re-rendering wraith_body.txt
+[1783385841] Page change detected, re-rendering wraith_body.txt
+[1783385841] Page change detected, re-rendering wraith_body.txt
+[1783385841] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385842] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385843] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385844] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385845] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385846] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783385847] Page change detected, re-rendering wraith_body.txt
+[1783387090] Settings Hub Manager Started
+[1783387090] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783387090] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783387090] Discovered 1 settings entry
+[1783387090] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783387092] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387093] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387094] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387095] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387096] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387097] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387098] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387099] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387100] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387101] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387102] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387103] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387104] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387105] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387106] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387107] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387108] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387109] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387110] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387111] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387112] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387113] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387114] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387115] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387116] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387117] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387118] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387119] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387120] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387121] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387122] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387123] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387124] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387125] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387126] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387127] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387128] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387129] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387130] Page change detected, re-rendering wraith_body.txt
+[1783387131] Page change detected, re-rendering wraith_body.txt
+[1783387131] Page change detected, re-rendering wraith_body.txt
+[1783388269] Settings Hub Manager Started
+[1783388269] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783388269] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783388269] Discovered 1 settings entry
+[1783388269] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783388275] Page change detected, re-rendering wraith_body.txt
+[1783388276] Page change detected, re-rendering wraith_body.txt
+[1783388370] Settings Hub Manager Started
+[1783388370] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783388370] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783388370] Discovered 1 settings entry
+[1783388370] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783388371] Page change detected, re-rendering wraith_body.txt
+[1783388373] Page change detected, re-rendering wraith_body.txt
+[1783389292] Settings Hub Manager Started
+[1783389292] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783389292] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783389292] Discovered 1 settings entry
+[1783389292] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783389293] Page change detected, re-rendering wraith_body.txt
+[1783389294] Page change detected, re-rendering wraith_body.txt
+[1783390499] Settings Hub Manager Started
+[1783390499] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783390499] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783390499] Discovered 1 settings entry
+[1783390499] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783390501] Page change detected, re-rendering wraith_body.txt
+[1783390502] Page change detected, re-rendering wraith_body.txt
+[1783392484] Settings Hub Manager Started
+[1783392484] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783392484] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783392484] Discovered 1 settings entry
+[1783392484] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783392485] Page change detected, re-rendering wraith_body.txt
+[1783392486] Page change detected, re-rendering wraith_body.txt
+[1783393959] Settings Hub Manager Started
+[1783393959] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783393959] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783393959] Discovered 1 settings entry
+[1783393959] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783393960] Page change detected, re-rendering wraith_body.txt
+[1783393961] Page change detected, re-rendering wraith_body.txt
+[1783395287] Settings Hub Manager Started
+[1783395287] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783395287] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783395287] Discovered 1 settings entry
+[1783395287] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783395289] Page change detected, re-rendering wraith_body.txt
+[1783395290] Page change detected, re-rendering wraith_body.txt
+[1783775442] Settings Hub Manager Started
+[1783775442] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783775442] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783775442] Discovered 1 settings entry
+[1783775442] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783776021] Settings Hub Manager Started
+[1783776021] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783776021] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783776021] Discovered 1 settings entry
+[1783776021] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783776023] Page change detected, re-rendering wraith_body.txt
+[1783776024] Page change detected, re-rendering wraith_body.txt
+[1783776362] Settings Hub Manager Started
+[1783776362] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783776362] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783776362] Discovered 1 settings entry
+[1783776362] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783776521] Settings Hub Manager Started
+[1783776521] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783776521] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783776521] Discovered 1 settings entry
+[1783776521] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783777262] Settings Hub Manager Started
+[1783777262] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783777262] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783777262] Discovered 1 settings entry
+[1783777262] Settings Hub Manager: init complete, entering marker-file-watch loop
+[1783777291] Settings Hub Manager Started
+[1783777291] Project root: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+[1783777291] Project dir: /home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-09.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/settings
+[1783777291] Discovered 1 settings entry
+[1783777291] Settings Hub Manager: init complete, entering marker-file-watch loop

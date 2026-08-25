@@ -1,0 +1,23 @@
+╔═══════════ X Y Z   E D I T O R ═══════════╗
+║  FILE: docs/untitled.txt                    ║
+╠═════════════════════════════════════════════╣
+║  ab[X]cd                                    ║
+║  ef                                         ║
+║                                             ║
+║                                             ║
+║                                             ║
+║                                             ║
+╠═════════════════════════════════════════════╣
+║  Welcome to AGY Editor. Focus EDIT TEXT, Ent║
+╚═════════════════════════════════════════════╝
+
+[^] 1. [EDIT TEXT (INTERACT)]
+[ ] 2. [INTERACT]
+[ ] 3. [NEW FILE]
+[ ] 4. [CLEAR FILE]
+[ ] 5. [FILE MENU]
+[ ] 6. [EXIT]
+ Esc exits INTERACT | Ctrl+C quit
+
++=========================================================+
+Active [^]:  (ESC to exit)

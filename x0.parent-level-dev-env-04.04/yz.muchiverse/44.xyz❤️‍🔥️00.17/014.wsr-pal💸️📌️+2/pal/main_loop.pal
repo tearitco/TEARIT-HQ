@@ -1,0 +1,31 @@
+# wsr-pal main_loop.pal - the REAL interactive human-playable loop
+# (per direct instruction: human testability above all things). Reads
+# keypresses from history.txt (keyboard_input.c writes them),
+# dispatches every real key to wsr_menu_input.+x (which internally does
+# BOTH digit-accumulation AND Enter-commit, matching mutaclsym's own
+# proven title_input.c all-in-one design - simpler than muchi-pal-
+# chat's own split buffer_key/send_message shape since there's no
+# free-text entry here, only numbered-menu digits), then recomposes and
+# hits the frame every tick, matching this whole family's proven
+# 3-process (keyboard_input/prisc+x/renderer) shape.
+# History cursor is persisted to player_app/state.txt to avoid replaying
+# the entire history.txt on process restart (e.g. after a crash).
+read_state x1, player_app history_cursor
+li x3, 3
+li x10, 10
+li x13, 13
+compose_frame
+hit_frame
+loop:
+read_history x2, x1
+beq x2, x0, tick
+beq x2, x3, quit
+wsr_menu_input x2
+update_history_cursor
+tick:
+compose_frame
+hit_frame
+sleep 30000
+j loop
+quit:
+halt

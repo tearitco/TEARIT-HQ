@@ -1,0 +1,8 @@
+# Custom operations for pal-chain's own prisc+x program, modeled
+# directly on wsr-pal's own default_op.txt (same menu-only, no-map
+# shape - see that file for the real precedent this copies).
+# Format: name type handler {description}
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}
+chain_menu_input void ops/+x/chain_menu_input.+x {piece.pdl METHOD dispatch + wizard relay for whichever pal-chain screen is current}
+compose_frame void ops/+x/chain_compose_frame.+x {render the current pal-chain screen into current_frame.txt}

@@ -1,0 +1,54 @@
+
+🗓️
+📅️
+💸️
+use haiku and i bet u wont blow out 20% doing "WSR" 
+
+<do this with wu 2, cuz yahoo is 2 slow 2 sim but u can pump sims  / playtest / rest etc ; slow down>
+
+💸️
+📅️🗓️
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+we are working on wraith. 
+
+
+0. 3d cube (in ascii window and 3d)
+
+<or switch that switches from gl ; just push and find out what is hard do debug>
+
+1. we can try normal "chtpmgl"
+
+
+2. and 3d-pet (in ascii but solid cube...)
+
+
+and push into both and see which makes more sense or do both make sense? 
+<if there is an issue , its with the "RGB CONVERTER"
+{maybe u can choose a different converter from submenu when u remove some debug stuff}

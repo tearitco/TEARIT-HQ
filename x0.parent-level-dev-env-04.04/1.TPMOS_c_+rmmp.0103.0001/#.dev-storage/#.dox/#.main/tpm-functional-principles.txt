@@ -1,0 +1,198 @@
+================================================================================
+TPM FUNCTIONAL PRINCIPLES
+================================================================================
+Date: April 2, 2026
+Purpose: Document WHY code works based on functional principles
+
+================================================================================
+PRINCIPLE 1: FILE-BASED IPC IS PRIMARY
+================================================================================
+
+OpenGL/visualization is SECONDARY to file-based communication.
+
+KEY INSIGHT:
+- current_frame.txt is the PRIMARY interface
+- OpenGL window is a VISUALIZER (optional)
+- System MUST work with OR without display
+
+GL-OS Architecture:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  glutInit() + glutCreateWindow() → OpenGL window (requires DISPLAY)         │
+│       ↓                                                                     │
+│  glutMainLoop() → Event processing                                          │
+│       ↓                                                                     │
+│  write_gl_os_frame() → pieces/apps/gl_os/session/current_frame.txt         │
+│       ↓                                                                     │
+│  Parser reads → Displays in terminal (works everywhere)                     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Environment Behavior:
+┌─────────────────┬──────────────────────┬─────────────────────────────┐
+│ Environment     │ OpenGL Window        │ File Output                 │
+├─────────────────┼──────────────────────┼─────────────────────────────┤
+│ With display    │ ✓ Opens              │ ✓ current_frame.txt         │
+│ Headless/SSH    │ ✗ Falls back to ASCII│ ✓ current_frame.txt         │
+│ No X11          │ ✗ Falls back to ASCII│ ✓ current_frame.txt         │
+└─────────────────┴──────────────────────┴─────────────────────────────┘
+
+TPM PRINCIPLE: "Reality persists in files, visualization adapts to environment"
+
+================================================================================
+PRINCIPLE 2: EDITOR TOOLS MUST BE PROJECTS
+================================================================================
+
+Tools that modify maps/content MUST use PROJECT structure, not APP structure.
+
+WHY:
+- APP (pieces/apps/): System tools, read-only, shared infrastructure
+- PROJECT (projects/): User content, editable, isolated
+- place_tile op expects: projects/<project>/maps/<map>.txt
+
+CORRECT STRUCTURE (op-ed as PROJECT):
+projects/op-ed/
+├── project.pdl
+│   META | project_id | op-ed
+│   META | entry_layout | projects/op-ed/layouts/op-ed.chtpm
+│   STATE | starting_map | map_0001_z0
+├── manager/
+│   ├── +x/op-ed_manager.+x
+│   └── state.txt (project_id, active_target_id, current_z)
+├── maps/
+│   └── map_0001_z0.txt (editable)
+├── pieces/
+│   └── selector/
+│       └── state.txt (pos_x, pos_y, pos_z, map_id)
+└── layouts/
+    └── op-ed.chtpm (<module>projects/op-ed/manager/+x/op-ed_manager.+x</module>)
+
+PATH RESOLUTION FLOW:
+1. op-ed_manager.c reads current_project from state.txt
+2. scan_maps() constructs: projects/<current_project>/maps/
+3. place_tile op called with: <map_path> <x> <y> <glyph>
+4. place_tile.c resolve_paths() looks for: projects/<project>/maps/
+
+TPM PRINCIPLE: "Editable content lives in projects/, system tools in pieces/apps/"
+
+================================================================================
+PRINCIPLE 3: PATH RESOLUTION MUST MATCH TOPOLOGY
+================================================================================
+
+Before coding, DECIDE: Is this PROJECT or APP?
+
+PROJECT paths:
+- Maps: projects/<project>/maps/
+- Manager: projects/<project>/manager/
+- Pieces: projects/<project>/pieces/
+- State: projects/<project>/manager/state.txt
+
+APP paths:
+- Maps: pieces/apps/<app>/maps/
+- Module: pieces/apps/<app>/plugins/
+- Pieces: pieces/apps/<app>/pieces/
+- State: pieces/apps/<app>/manager/state.txt
+
+DEBUG PROCEDURE:
+1. Identify topology: Is this PROJECT or APP?
+2. Check path construction: asprintf(&path, "%s/projects/%s/...", project_root, project_id)
+3. Verify path exists: ls <constructed_path>
+4. Test op directly: ./op.+x <full_path> <args>
+
+TPM PRINCIPLE: "Geography is destiny. Path resolution must match topology."
+
+================================================================================
+PRINCIPLE 4: NO SILENT FAILURES
+================================================================================
+
+If operation fails:
+1. State MUST NOT change
+2. Response MUST reflect actual outcome
+3. Never silently continue on error
+
+WRONG (Silent Failure):
+```c
+FILE *f = fopen(path, "r");
+// Missing error check!
+fread(...);  // Crashes or corrupts if f == NULL
+set_response("Success");  // Lies!
+```
+
+RIGHT (Error Handling):
+```c
+FILE *f = fopen(path, "r");
+if (f == NULL) {
+    fprintf(stderr, "Error: Could not open %s\n", path);
+    set_response("Error: Could not open file");
+    return;  // Stop execution
+}
+fread(...);  // Safe to read
+fclose(f);
+set_response("Success");  // Truthful
+```
+
+VERIFICATION PATTERN:
+```c
+// Write state
+write_state_file(path, state);
+
+// Verify write succeeded
+if (!verify_state_file(path, state)) {
+    rollback_state();  // Restore previous state
+    set_response("Error: State write failed");
+    return;
+}
+
+set_response("Success");  // Only after verification
+```
+
+TPM PRINCIPLE: "If it's not in a file, it's a lie. If file unchanged, operation failed."
+
+================================================================================
+PRINCIPLE 5: REFERENCE ANALYSIS METHODOLOGY
+================================================================================
+
+When reference code exists, ANALYZE functional principles:
+
+ANALYSIS STEPS:
+1. Identify KEY FUNCTION CALLS
+   - What functions? (glutInit, fopen, fork/exec)
+   - What purpose? (initialize, read/write, spawn process)
+
+2. Trace FILE PATHS
+   - Where does it read from?
+   - Where does it write to?
+   - What is the path construction pattern?
+
+3. Check ERROR HANDLING
+   - What happens on fopen() failure?
+   - What happens on fork() failure?
+   - Are errors logged? Reported?
+
+4. Understand STATE FLOW
+   - What state changes?
+   - When does it change?
+   - Where is it stored?
+
+5. Document FUNCTIONAL PRINCIPLES
+   - WHY does this work?
+   - What are the requirements?
+   - What are the failure modes?
+
+DOCUMENT FOR FUTURE:
+✓ Key function calls and their purpose
+✓ File path patterns (PROJECT vs APP topology)
+✓ Error handling patterns (check return values, verify state)
+✓ State change sequence (read → modify → write → verify)
+✓ Environment requirements (DISPLAY, X11, OpenGL libs)
+
+DO NOT DOCUMENT:
+✗ Specific line numbers (code changes)
+✗ "Copy from reference" (reference may not exist)
+✗ Implementation details without principles
+
+TPM PRINCIPLE: "Understand why, not just what. Principles outlive code."
+
+================================================================================
+END OF TPM FUNCTIONAL PRINCIPLES
+================================================================================

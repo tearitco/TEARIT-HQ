@@ -1,0 +1,1193 @@
+AU11-khtpm-gap-fixes.txt — handoff for the ONE remaining known bug in the
+real khtpm strip layout parser, 2026-08-11 session.
+
+*** UPDATE, same session, shortly after this doc was written: RESOLVED. ***
+Direct instruction "yes if u see the fix, fix it" led to finding the REAL
+root cause, different from either hypothesis below: khtpm_strip_header.chtpm's
+own <!-- ... --> documentation comment (which contains a literal example
+"<button label=".." onClick="..">") was being tokenized as real markup —
+lay_tokenize() (khtpm_strip_layout.c) had zero <!--/--> comment-awareness
+at all. Fixed by adding explicit comment-span skipping to the tokenizer.
+Verified directly via the frame-history log: header.focus now correctly
+resolves to real HQ (index 0, "<panel>" itself gets no array slot),
+element_count corrected from a corrupted 37 down to a sane 18. See
+khtpm-refactor-plan.md's own "RESOLVED" section (search that string) for
+the full writeup, including why neither hypothesis below was actually
+right and the lesson for future debugging in this codebase (check the
+tokenizer/raw file before assuming tree-walking logic is at fault).
+This file is kept below as-is for the investigation record only — no
+hand-off to a separate agent is needed for this specific bug anymore.
+***
+
+Original doc, written before the fix above:
+
+Read khtpm-refactor-plan.md's own "Real parser live-tested" section first
+(same directory) for the full session history and 5 other bugs already
+fixed this same round (header numbering, right-click giving no visible
+feedback, bottom-bar false-focus, the -1-sentinel-gets-reseeded bug, and a
+run_khtpm_strip.sh /bin/sh compatibility bug). This file is scoped to ONLY
+the one bug that's still open, with everything needed to fix it directly,
+so a fresh agent does not need this session's full context.
+
+===========================================================================
+THE BUG, IN ONE SENTENCE
+===========================================================================
+On a fresh launch, the header window's [>] focus cursor is not visible
+anywhere, and the underlying focus_index value (2) does not correspond to
+header cell 1 (HQ) the way it's supposed to.
+
+===========================================================================
+DIRECT USER REPORTS, VERBATIM, IN ORDER (read these in sequence — the bug
+description evolved as we investigated together)
+===========================================================================
+1. "seems the top nav no longer has numbering" — FIXED this round (see
+   plan doc), not the remaining bug.
+2. "its still defaulting to 13 . there wasn't a crash i just canceld cuz
+   it was still at 13." — this was BEFORE the bottom_has_real_focus fix
+   landed; also not the remaining bug (confirmed fixed, see below).
+3. "and its still defaulting to 13 and not giving arrow / # focus back
+   with right click" — stale feedback from testing a build before the
+   latest fix had even been rebuilt/relaunched.
+4. "its not defaulting to 13 , but not 1 either. there is no '>' this
+   time. . i want to put sprites back. i may have a different agent fix
+   this bug if we document it" — THIS is the current, live, unresolved
+   bug. The "13" (bottom-bar false-focus) problem IS fixed. What remains
+   is: header cursor position is wrong (not 1) AND invisible (no [>]
+   drawn anywhere at all).
+
+===========================================================================
+WHAT'S CONFIRMED FIXED (do not re-investigate these)
+===========================================================================
+- bottom_doc.focus_index correctly stays -1 on load and across every
+  redraw tick, verified directly via the frame-history log (see below):
+  "bottom.focus=-1 bottom_has_real_focus=0" on a completely fresh launch,
+  consistently across multiple redraw ticks.
+- Right-click now calls lay_focus_first(&header_doc) and resets
+  bottom_has_real_focus=0 on ALL THREE windows' right-click handlers
+  (hq_win, popup_win, win/bottom-bar) — matches tp_taskbar.c's own
+  unconditional "nav_focus = 0" on either window's right-click (direct
+  comment there: "header gets priority [>] focus"). Verify this file:
+  khtpm_strip_parser.c, search "bottom_has_real_focus = 0" — 3 call sites,
+  all present.
+- Header cell numbering ("1. HQ", "2. USER", etc.) draws correctly —
+  format_cell() takes an explicit nav_n parameter now, driven by a
+  running position counter in draw_header_win()'s own render loop.
+
+===========================================================================
+WHAT'S CONFIRMED BROKEN, WITH REAL DATA (not guessed)
+===========================================================================
+Captured via the NEW #.desktop/khtpm_strip_frame_history.txt log (see
+"THE DEBUG TOOL" section below) on a completely fresh launch, before any
+interaction:
+
+    header.focus=2 header.active=-1 bottom.focus=-1
+    bottom_has_real_focus=0 cliio_active=0 nav_armed=0 digit_buf=
+
+- header.focus_index == 2 on a FRESH LOAD, before any interaction. Per
+  tp_taskbar.c's own explicit convention (nav_focus = 0, "SINGLE unified
+  cursor... defaults to button 1, chtpm-style" — see tp_taskbar.c line
+  3620's own comment, and lines 3694/3731's right-click handlers), the
+  correct default is index/position 1 (HQ), not whatever "2" corresponds
+  to in this tree.
+- header.active_index == -1 (correct — nothing should be ACTIVATE-scoped
+  on a fresh load).
+- Direct live report AFTER this same build: "there is no '>' this time" —
+  meaning NOTHING renders a visible cursor bracket anywhere in the header
+  row, not even on the wrong cell. This is the more concerning half of
+  the bug — a wrong-but-visible cursor would be a minor bug; an invisible
+  cursor everywhere suggests focus_index doesn't correspond to any
+  element the render loop actually walks.
+
+===========================================================================
+LEADING HYPOTHESIS — concrete, reasoned, NOT YET CONFIRMED, check this
+FIRST
+===========================================================================
+khtpm_strip_header.chtpm's real structure (read the file directly,
+*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm):
+
+    <panel>                                          <- likely index 0
+      <button label="HQ" onClick="ACTIVATE:1">        <- likely index 1
+        <row>${strip_hq_items}</row>                  <- likely index 2  <-- SUSPECT
+      </button>
+      <button label="USER" onClick="STRIP:2"/>        <- likely index 3
+      <button label="file" onClick="ACTIVATE:3">      <- likely index 4
+        <row>${strip_hq_items}</row>                  <- likely index 5
+      </button>
+      ... (9 more cells, most with their own nested <row> child)
+      <cli_io target_id="cliio" label="${cliio_label}"/>
+    </panel>
+
+IF the tag-tree builder (khtpm_strip_layout.c, lay_build_tree(), line 264)
+assigns indices in simple depth-first document order (append each element
+as encountered, recursing into children immediately), then index 2 is
+HQ's own nested <row>${strip_hq_items}</row> — NOT USER, NOT any real
+header cell.
+
+Why this would produce EXACTLY the observed symptom (wrong index AND
+invisible cursor):
+
+1. draw_header_win() (khtpm_strip_parser.c, line 548) only iterates
+   ROOT-LEVEL <button> elements when drawing header cells — its own loop
+   condition is `if (doc->elements[i].parent_index != -1) continue;`
+   followed by `if (strcmp(type, "button") != 0) continue;`. HQ's nested
+   <row> has parent_index == HQ's own index (NOT -1), so this loop would
+   NEVER visit index 2 at all while drawing the header row.
+2. lay_cursor_prefix(doc, idx) (khtpm_strip_layout.c, line 514) is only
+   ever CALLED by the render loop for the indices it actually draws. If
+   focus_index=2 is never one of those indices (per point 1), the [>]
+   bracket for "whatever is focused" never gets drawn ANYWHERE in the
+   header row — exactly matching "there is no '>' this time."
+3. This would mean lay_load()'s own "seed to first navigable element"
+   loop (khtpm_strip_layout.c, line ~357-361: `for i in 0..count, if
+   lay_is_navigable(doc,i) break`) incorrectly returned true for the
+   <row> at index 2, OR skipped index 1 (real HQ button) for some other
+   reason and landed on index 2 next.
+
+THE ONE THING THAT DOESN'T CLEANLY FIT THIS HYPOTHESIS (verify this
+specifically, don't just assume the hypothesis is right):
+lay_is_navigable() (khtpm_strip_layout.c, line 426) calls
+lay_is_interactive() (line 406) FIRST, which is:
+
+    return strcmp(el->type, "button") == 0 || strcmp(el->type, "cli_io") == 0;
+
+A <row> element's type should be the literal string "row", which fails
+both comparisons — lay_is_interactive() should return 0, and
+lay_is_navigable() should return 0 immediately (line 429: "if
+(!lay_is_interactive(el)) return 0;") without ever reaching the deeper
+ACTIVATE-scope logic. So on paper, is_navigable() should ALREADY exclude
+a <row> element correctly, which means the hypothesis above has a real
+gap: something else must be going wrong for index 2 to get selected.
+
+Concrete things to check, in order, to resolve this gap:
+(a) Is index 2 REALLY the <row>? Don't hand-count from the file — use the
+    debug tool (below) to get the ACTUAL type/label/onClick string for
+    whatever focus_index currently is. This answers the question directly
+    instead of more arithmetic-by-hand, which is exactly what caused this
+    round of back-and-forth to take longer than it should have.
+(b) If index 2 genuinely IS the <row> (type=="row" confirmed via the
+    debug tool) — then there's a real bug in lay_is_interactive() or how
+    LayElement.type gets set during tree-building for a <row> tag
+    specifically. Read lay_build_tree() (line 264) in full, specifically
+    how it sets el->type for each token — check for anything that could
+    leave type empty/wrong for a <row> (e.g. an uninitialized buffer, or
+    the tokenizer mis-parsing "<row>" vs "<button>" tag names).
+(c) If index 2 is something else entirely (e.g. actually USER, and the
+    "should be 1 not 2" complaint is really about lay_load()'s seed loop
+    skipping index 1/HQ for some reason) — then the bug is in why HQ
+    itself fails is_navigable() on a fresh load. Read
+    lay_is_navigable()'s global-mode branch (line 442-463) — the walk-up-
+    parent-chain check for ACTIVATE-scope ancestors — and verify it
+    correctly returns 1 for HQ specifically (HQ's own parent is <panel>,
+    which is never an ACTIVATE marker, so the walk should terminate
+    immediately and return 1).
+
+===========================================================================
+THE DEBUG TOOL — use this instead of more live-testing round-trips
+===========================================================================
+A permanent, real frame-history log now exists (direct request: "chtpm
+does a frame history everytime frame updates. we should do the same (and
+refresh on new session or 256kb limit"): #.desktop/khtpm_strip_frame_history.txt
+
+- Modeled on real chtpm_parser.c's own always-append "debug.txt" habit
+  (confirmed via direct source read: chtpm_parser.c has NO size-cap logic
+  anywhere, just simple unconditional appends at ~10 call sites) COMBINED
+  with this house's own separate 256KB-cap-and-truncate convention
+  (tp_taskbar.c's check_log_size()/LOG_MAX_BYTES=262144).
+- Truncated fresh at every process launch (frame_history_init(), called
+  from main() right after g_house_root is set).
+- One line appended per redraw tick (append_frame_history(), called from
+  the frame_changed_dirty() branch of the main loop), format:
+
+    header.focus=N[type=TYPE label=LABEL onClick=ONCLICK] header.active=N
+    bottom.focus=N bottom_has_real_focus=0|1 cliio_active=0|1
+    nav_armed=0|1 digit_buf=... element_count=N
+
+  The bracketed [type=... label=... onClick=...] part directly answers
+  "what element is currently focused" without any hand-counting — this
+  was added specifically because the investigation above kept guessing at
+  tree indices instead of just reading them. USE IT.
+
+To use: launch the new pair (sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new,
+or the house-root delegator sh run-khtpm-strip.sh new), then read
+#.desktop/khtpm_strip_frame_history.txt directly — no live human
+interaction needed to see the very first line's fresh-load state.
+
+NOTE: this session had real, repeated trouble getting a backgrounded
+launch to reliably persist in ITS OWN tool environment (exit code 144
+appeared multiple times on launches that either did or didn't actually
+survive — inconsistent). If relaunching in a similar tool-driven
+environment, verify with `pgrep -af "khtpm_strip_parser_test|khtpm_taskbar_manager_main_test"`
+after a real sleep, don't trust the launch command's own exit code.
+
+===========================================================================
+FILES INVOLVED, WITH LINE NUMBERS (as of this handoff — re-check if the
+file has been edited since)
+===========================================================================
+- khtpm_strip_header.chtpm (*.monads/*.livedesk-taskbar/, the layout
+  markup itself)
+- khtpm_strip_layout.c / .h (*.monads/*.livedesk-taskbar/ops/):
+  - lay_build_tree()        line 264 — tag tree construction, index
+                             assignment happens here
+  - lay_is_interactive()    line 406
+  - lay_is_navigable()      line 426
+  - lay_cursor_prefix()     line 514
+  - lay_load()'s seed-to-first-navigable loop — line ~357-361
+- khtpm_strip_parser.c (same dir):
+  - format_cell()           line 518
+  - draw_header_win()       line 548 — the render loop that only visits
+                             root-level <button> elements
+  - draw_bottom()           line 710
+  - frame_history_init()    line 358
+  - append_frame_history()  line 367
+  - lay_focus_first()       line 409
+  - main()'s right-click handlers — search "bottom_has_real_focus = 0"
+
+===========================================================================
+NEXT PRIORITY AFTER THIS BUG, PER DIRECT INSTRUCTION
+===========================================================================
+"i want to put sprites back." Bottom-bar tabs are currently text-only
+(no tab_sprite()/blit_tab_sprite()-equivalent rendering) — confirmed real,
+out-of-scope-until-now gap. Not yet scoped against the NEW layout-driven
+architecture (draw_bottom() in khtpm_strip_parser.c is where sprite
+rendering would need to hook in, replacing the old hardcoded plat_x11.c
+approach this gap was originally scoped against before the real parser
+existed). Scope this fresh against the current architecture, don't reuse
+old pre-parser sprite-porting notes without re-checking them against
+draw_bottom()'s actual current shape.
+
+===========================================================================
+UPDATE, same session, after the resolved bug above: focus/redraw bugs
+found and fixed, plus a full gap sweep (save/load, right-click, sprites,
+user display, file/desk display) per direct request: "check for any other
+gaps? save load? right click? sprites ? user display? file desk display ,
+record those in our gaps document as well"
+===========================================================================
+
+REAL FOCUS INDICATOR ADDED, direct request: "does it have focus? right
+click doesn't say. lets add a '^' in nav section if it has focus, for
+sanity." Added real FocusIn/FocusOut event tracking (FocusChangeMask on
+all 3 windows, g_has_real_focus set only from actual events, never
+assumed from "we called XSetInputFocus") and a persistent "^"/" " prefix
+in the [NAV] box, shown always (not gated on nav_armed). Also added to
+the frame-history log as has_real_x11_focus=0|1. Verified via the log:
+correctly flips 0→1 on real focus.
+
+BUG FOUND AND FIXED, confirmed live: "arrows working but not digits" was
+preceded by "nav has focus but the selector isn't moving from arrow or
+digits yet" — root cause was NOT a focus problem (the ^ indicator proved
+real focus WAS present). Real bug: arrow-key handling (lay_focus_delta())
+only ever changed header_doc's in-memory focus_index — a purely LOCAL
+state change — but every redraw call in khtpm_strip_parser.c lived inside
+the frame_changed_dirty() block, gated entirely on the MANAGER's own
+strip_frame_changed.txt signal file. A local key press never touched that
+file, so the screen never updated to show the (correct, in-memory) new
+cursor position. Fixed: explicit draw_header_win()/draw_popup_win() call
+added right after the KeyPress handling block, matching the same
+draw+map/unmap pattern already used elsewhere. LIVE-CONFIRMED WORKING by
+direct user report after this fix ("ok, arrows working but not digits").
+
+SECOND BUG, same class, fixed same round: digits still didn't move the
+cursor after the arrow fix. Root cause: digit keys correctly reach the
+MANAGER (send_code() forwards raw ASCII, manager updates digit_buf/
+nav_armed — visible in the [NAV] box) but nothing ever read that back to
+move the PARSER's own local header_doc.focus_index (an already-documented
+gap from the original parser-build pass: "jump-by-number no longer opens
+submenus through the new parser's local tree"). Fixed: added
+sync_focus_to_digit_buf() — matches the manager's current digit_buf
+against each header <button>'s onClick numeric suffix (e.g. "ACTIVATE:3"
+→ nav 3, matching sync_strip_claims()'s own NAV=i+1 numbering already
+established this session) and moves focus_index there. Deliberately
+scoped to header cells (1-12) only — tab digit-jump (13+) is NOT wired,
+flagged as a real, separate follow-up, not silently claimed done.
+Build-verified clean; NOT YET live-confirmed at the time of this write
+(fix was just relaunched) — verify this specifically on the next check-in
+before assuming it's fully resolved, same discipline as everything else
+in this file.
+
+--- Gap sweep findings ---
+
+SAVE/LOAD: wired to real functions, structurally complete, but NEVER
+LIVE-TESTED END TO END this session (every live-test round got derailed
+by nav/focus/opacity bugs before reaching the file menu). Confirmed via
+direct code read: the file cell's ACTIVATE menu populates "new-desk" /
+"save" / "save-as" / "load" rows (khtpm_taskbar_manager.c lines
+~1668-1671), each mapped to a real function in ktb_hq_activate()
+(livedesk_new_desk/livedesk_save/livedesk_save_as_with_name/ — "load"
+opens the session-picker via which==13, an internal-only value, see that
+file's own comment at line 1710). RECOMMENDATION: test this specifically
+next — save a desk, restart via the now-safe run_khtpm_strip.sh, confirm
+the saved state actually reloads. Do not assume broken OR working without
+testing; the code path looks right but this whole session has shown
+"looks right" and "is right" are not the same thing here.
+
+RIGHT-CLICK: CONFIRMED WORKING, live-tested and verified earlier this
+same round — right-click on any of the 3 windows correctly arms nav,
+resets focus to header cell 1 (matching legacy's "header gets priority
+[>] focus" unconditional behavior), and grants real X11 focus (now
+visibly confirmable via the "^" indicator). Not a remaining gap.
+
+SPRITES: CONFIRMED ZERO IMPLEMENTATION. `grep -n "sprite"
+khtpm_strip_parser.c` returns nothing at all. Bottom-bar tabs are
+text-only labels, no icon/sprite rendering of any kind. This is the
+user's own stated NEXT PRIORITY ("i want to put sprites back") — not
+scoped yet against the current layout-driven architecture (draw_bottom()
+in khtpm_strip_parser.c is where this would need to hook in — the
+architecture has changed since any earlier pre-parser sprite-porting
+notes were written, re-scope fresh, don't reuse old notes blindly).
+
+USER DISPLAY: REAL GAP, confirmed. The USER header cell shows the literal
+static text "USER" (khtpm_strip_header.chtpm line 81: `<button
+label="USER" onClick="STRIP:2"/>`) with no live username at all.
+tp_taskbar.c's real behavior (confirmed via direct source read earlier
+this session, ~line 3485-3506) does a REAL username lookup — NOT
+getenv("USER") (that's the wrong, OS-level identity per a direct
+historical correction in that file's own comments), but this house's own
+login system: `PRISC_PROJECT_ROOT='<house_root>/0.user-pal👤️/00.login-signup'
+'<that same dir>/ops/+x/userpal_whoami.+x'`, parsed for its first word,
+falling back to "guest" if empty or literally "none". This was flagged
+once already this session (in khtpm-refactor-plan.md, before the real
+parser existed) but NOT YET PORTED into either the manager or the new
+layout system. Real, concrete, not-yet-started follow-up: either (a) the
+manager driver calls userpal_whoami.+x itself and publishes the result as
+a new small VAR file the layout's USER button's label references via
+${username}, following the exact same "manager pre-renders, parser
+substitutes" pattern already used for strip_tabs/strip_shortcuts/
+strip_hq_items, or (b) some equivalent — but do NOT reintroduce
+getenv("USER") or any other shortcut, that was explicitly corrected away
+from in the legacy file's own history for a real reason (shows OS login,
+not livedesk identity).
+
+FILE/DESK DISPLAY: REAL GAP, confirmed. Both cells are static text in the
+layout file (khtpm_strip_header.chtpm lines 82/85: `label="file"`,
+`label="desks"`) — no live session/desk name shown. Legacy's real
+behavior (flagged earlier this session too, in the very first "what's
+left" pass before the parser existed) shows "file:<session-name>" /
+"desks:<desk-name>", refreshed live as the active session/desk changes
+(tp_taskbar.c tracks this via g_file_label, updated each poll tick by
+calling livedesk_current_session_name()). Same fix shape as USER above:
+the manager should publish the live session/desk name as new VAR(s)
+(e.g. ${file_label}/${desks_label}) the layout references directly in
+place of the static "file"/"desks" text, reusing the manager's own
+already-ported livedesk_current_session_name()-equivalent logic (check
+khtpm_taskbar_manager.c for what's already there before writing anything
+new — task 3 earlier this session ported the full livedesk_* function
+set, this may already exist and just need wiring, not reimplementing).
+
+NEXT PRIORITY ORDER, given all of the above (this is a suggestion, not a
+directive — confirm with direct instruction before committing to it):
+1. Live-confirm the digit-jump fix actually works (quick, already coded).
+2. Save/load end-to-end live test (nothing to build, just needs testing).
+3. USER live username + file/desk live labels (same VAR-publishing
+   pattern, moderate scope, reuses existing manager logic per above).
+4. Sprites (larger, separate scoping pass needed first, the user's own
+   stated priority — do this whenever ready to invest the scoping time,
+   doesn't need to be blocked on 1-3 above).
+
+===========================================================================
+UPDATE, same session, real architecture correction: unified header+bottom
+navigation. Direct correction: "focus is for both. do u understand? there
+is no distinction between top and bottom. treat them as one. if i click
+bottom i should beable to move top navs (this was present in legacy)."
+===========================================================================
+
+A prior fix in this file tracked header_doc/bottom_doc focus as two
+independent variables with a bottom_has_real_focus flag — structurally
+the SAME "two cursors" bug tp_taskbar.c's own nav_focus_step()/
+nav_focus_apply() (~line 1500) documents fixing in legacy, for the same
+reason ("two separately-tracked cursor variables... could desync").
+
+REBUILT PROPERLY: one unified index (g_nav_focus) now spans [header cells
+0..hc-1][tabs hc..hc+tc-1], exactly like legacy's real [strip buttons]
+[tabs] layout. header_doc->focus_index/bottom_doc->focus_index are now
+PURE DERIVED display state, written only by unified_apply() — never
+independently. Arrow keys step g_nav_focus with wraparound
+(unified_step(), matches nav_focus_step() including skip-non-navigable
+behavior); right-click on ANY of the 3 windows arms the unified cursor at
+position 0 (matches legacy's own unconditional "nav_focus = 0... header
+gets priority [>] focus" on either window's right-click — NOT "give both
+windows independent focus", the unification itself is what lets a
+header-armed cursor walk into the bottom bar via arrow keys); mouse clicks
+on either window also update g_nav_focus so a later arrow press continues
+naturally from wherever was clicked. Only active while no header submenu
+is open (active_index == -1) — an open submenu still uses
+lay_focus_delta()'s existing LOCAL logic unchanged, matching legacy's own
+separate g_hq_popup_open arrow-handling branch.
+
+REAL BUG FOUND WHILE VERIFYING THIS: direct report "nav is supposed to go
+from 12 to 13, and from 18 to 1 and 1 to 18... currently its stuck up at
+1-12." Root cause: the new root_nav_count()/root_nav_element_at()/
+root_nav_pos_of() helpers checked literal `parent_index != -1` (true
+root-of-panel children only) — but khtpm_strip_bottom.chtpm's real tabs
+are nested one level deeper, inside `<row>${strip_tabs}</row>` (confirmed
+directly: `cat #.desktop/strip_var_tabs.txt` shows
+`<button label="13. self" onClick="TAB:0"/>...` — these buttons' real
+parent is the <row>, not the panel). So root_nav_count(bottom_doc) was
+silently always 0, capping the unified total at exactly the header's 12
+cells. Fixed by using lay_is_navigable() (the already-correct, ANY-DEPTH,
+CHTPM-ported predicate) instead of the hand-rolled root-only check —
+correctly finds interactive elements regardless of nesting, as long as
+they're not under a closed ACTIVATE scope.
+
+Build-verified clean both times. NOT YET independently live-reconfirmed
+after the second (nesting-depth) fix specifically — the user's own next
+live test should confirm full 1↔18 wraparound now, not just that it moved
+past 12 at all.
+
+===========================================================================
+UPDATE, same session: USER/file/desks live labels IMPLEMENTED AND
+VERIFIED. Direct request: "the button vars for user/file/desk."
+===========================================================================
+
+Added three non-static wrapper functions to khtpm_taskbar_manager.c
+(declared in khtpm_taskbar_manager.h): ktb_get_username() (ported verbatim
+from tp_taskbar.c's real userpal_whoami.+x lookup, ~line 3480-3506 — NOT
+getenv("USER"), that was explicitly corrected away from in legacy's own
+history), ktb_get_file_label()/ktb_get_desks_label() (thin wrappers over
+the already-ported-but-never-wired livedesk_current_session_name()/
+livedesk_current_desk_name()). khtpm_taskbar_manager_main.c's
+publish_var_fragments() now also writes strip_var_username.txt/
+strip_var_file_label.txt/strip_var_desks_label.txt, same write_small_file()
+pattern as the existing strip_tabs/strip_shortcuts/strip_hq_items vars.
+khtpm_strip_header.chtpm's USER/file/desks buttons now reference
+${username}/${file_label}/${desks_label} instead of static text.
+khtpm_strip_parser.c's SpState/sp_get_var() extended to read+serve the
+three new files.
+
+REAL PERF ISSUE FOUND AND FIXED WHILE IMPLEMENTING: ktb_get_username()
+does a real popen() shell-out, and publish_var_fragments() runs on EVERY
+dispatch_code() call (every keystroke/click reaching the manager) — far
+more often than tp_taskbar.c's own once-a-second poll tick. Added a 5-
+second time-based cache (a login essentially never changes mid-session) so
+this doesn't spawn a subprocess on every single keypress.
+
+VERIFIED WORKING with real live data, not just build-clean: directly read
+the three output files after a fresh launch —
+    strip_var_username.txt:    jb
+    strip_var_file_label.txt:  file:pre-design
+    strip_var_desks_label.txt: desks:office
+Matches legacy's real format exactly. Build clean, this gap is CLOSED.
+
+REGRESSION FOUND AND FIXED IMMEDIATELY AFTER: direct live report "entries
+11 and 12 on bar are getting cutt off" — a real side effect of the
+USER/file/desks change above. Root cause: hq_win's width is computed ONCE
+at startup (header_total_width()) and never changes again (deliberate,
+prevents the earlier disappearing-header bug), but launch_manager() forks
+the manager and the parser's very next action was load_state() with ZERO
+wait — the freshly-exec'd manager hadn't had time to run its own startup
++ first publish_state() yet, so header_total_width() measured USER/file/
+desks using still-empty var strings, permanently under-sizing the window
+before the real (longer) "jb"/"file:pre-design"/"desks:office" values
+ever got read once. Fixed: added wait_for_manager_first_publish() — polls
+for strip_state.txt existing with real content, up to a 1s bound, called
+right after launch_manager() and before the first load_state(). Build
+clean, relaunched.
+
+===========================================================================
+UPDATE, same session: SPRITES IMPLEMENTED. The background research agent
+was stopped mid-work (direct instruction: "i dont want that agent running
+wasting my tokens") after it had completed the DATA-PLUMBING half only
+(sprite="<entity dir>" attribute added to the manager's strip_tabs
+markup, LayElement.sprite field + attribute parsing in
+khtpm_strip_layout.c/.h) — verified this partial state was safe and
+buildable before continuing, then finished the actual rendering directly.
+===========================================================================
+
+Real mechanism, confirmed by direct read of tp_taskbar.c's own
+tab_sprite()/blit_tab_sprite() (~line 915-1015, NOT re-derived from
+guesswork): sprite data lives at "<entity dir>/sprite.csv" — a
+"# resolution=N" header line, then N*N "r,g,b,a" rows. Loaded once per
+path into a small process-wide cache, alpha-composited against the bar's
+solid theme background color, and blitted via XPutImage into the SAME
+offscreen double-buffer draw_bottom() already uses (one atomic XCopyArea,
+matching the anti-flicker pattern already established everywhere else in
+this file). Sprite drawn at the tab's x0+2, vertically centered
+((KTB_BAR_H-24)/2), 24x24px (TAB_SPRITE_PX); tab label text shifts right
+by 24px ONLY when a real sprite was actually loaded — missing/unreadable
+sprite.csv falls back to plain text at the original position, matching
+legacy's own explicit "never a crash" contract exactly.
+
+Ported ktb_sprite_cache/tab_sprite()/blit_tab_sprite() verbatim into
+khtpm_strip_parser.c, wired into draw_bottom()'s existing tab-drawing
+loop (reads doc->elements[ci].sprite, the attribute the manager already
+publishes via s->tabs[i].path — same field legacy's own tabs[i].path
+uses). Hit-test rect width also updated to include the sprite's reserved
+space when present, so clicking still resolves to the correct tab (a
+draw/hit-test drift class of bug this session hit and fixed multiple
+times elsewhere — checked for it explicitly here too).
+
+Build clean, relaunched, both new processes confirmed running via pgrep.
+
+===========================================================================
+UPDATE: live report "bottom nav items completely missing" investigated —
+NOT a sprite/rendering bug. Confirmed directly: livedesk_open.txt and
+strip_state.txt's TAB rows were both completely empty, and zero
+tp_desktop_window processes were running — genuinely no entities open on
+the desk (consistent with EMERGENCY_CLOSE.sh having been run earlier this
+session, nothing reopened since). Real, separate follow-up: "office desk
+is supposed to have entities automatically" — this is the ALREADY-KNOWN,
+already-documented gap #1 from the earlier gap sweep (ktb_init() never
+calls anything session/desk-restoring on startup) — NOT related to
+sprites, needs its own fix (auto-load the active desk's saved entities on
+launch), tracked separately.
+===========================================================================
+
+===========================================================================
+UPDATE: USER cell avatar sprite IMPLEMENTED AND VERIFIED with real data.
+Direct request: "user should have a sprite at least."
+===========================================================================
+
+Confirmed real mechanism via direct read of tp_taskbar.c's
+active_avatar_dir() (~line 2019-2031): resolves current_user_uuid from
+0.user-pal👤️/00.login-signup/current_login.txt + active_avatar_uuid from
+that dir's own xyzfs/session.pdl, builds <house_root>/xyzfs/users/<uuid>/
+home/avatars/<avatar_uuid> — and REUSES the exact same tab_sprite()
+function tabs use (confirmed: legacy's own USER cell calls tab_sprite(),
+there is no separate avatar-sprite loader). Ported as ktb_get_avatar_dir()
+in khtpm_taskbar_manager.c, published as strip_var_avatar_dir.txt.
+
+Wired the SAME generic sprite mechanism the killed agent had already built
+for tabs — khtpm_strip_header.chtpm's USER button now has
+sprite="${avatar_dir}", reusing the existing LayElement.sprite field
+rather than special-casing "USER." One real correctness gap found and
+fixed while wiring this: the "sprite" attribute needed its OWN ${var}
+substitution helper (lay_get_sprite(), mirrors lay_get_label() exactly) —
+unlike tabs, whose sprite path is already a concrete, manager-resolved
+string by the time it's tokenized, the header's STATIC layout file has a
+literal sprite="${avatar_dir}" placeholder that must be substituted at
+draw time. Without this, checking the raw (un-substituted) attribute
+string would have been permanently "non-empty" (the literal text
+"${avatar_dir}" is never blank), inflating header width even when no
+avatar exists.
+
+Also had to relocate the sprite-loading/blitting code block (TAB_SPRITE_PX/
+tab_sprite()/blit_tab_sprite()) earlier in khtpm_strip_parser.c — it
+previously lived just before draw_bottom() only, but draw_header_win()
+(defined earlier in the file) now needs it too; C requires the definition
+before use in the same translation unit.
+
+format_cell()'s width calculation and draw_header_win()'s actual draw
+loop both updated to match tp_taskbar.c's real header-cell sprite
+positioning exactly (sprite at x+4, text shifts to x+TAB_SPRITE_PX+10,
+width includes +TAB_SPRITE_PX+6 when present — ~line 1617-1625 in the
+reference) — deliberately different from the bottom-bar tab positioning
+(x+2/x+8+PX), matching legacy's own two slightly different conventions
+rather than forcing them to match.
+
+VERIFIED WORKING with real data, not just build-clean: read
+strip_var_avatar_dir.txt directly after a fresh launch — resolved to a
+real, existing directory, and confirmed sprite.csv genuinely exists there
+(`ls` succeeded). This gap is CLOSED. Build clean, relaunched, both
+processes confirmed running via pgrep.
+
+===========================================================================
+UPDATE: multi-process cleanup, autostart.pdl entity/path fixes, new
+button_khtpm.sh, opacity re-verified, gap list re-swept.
+===========================================================================
+
+Real bug: running $.crypts/button.sh run (chasing "why aren't entities for
+office opening?") also relaunched LEGACY tp_taskbar.+x — two taskbars open
+at once. Direct correction: "yes and u ran the old tb also. which is dumb
+now 2 are open." Separately, all 6 entities autostart.pdl launches were
+pointed at stale dev-folder paths, not the session-scoped pals/ registry.
+Direct correction: "make sure we run from users session and not dev
+folder for the enties. that was the progress we made in legacy."
+
+Fixed: killed all stray processes (verified dead via pgrep). Corrected
+autostart.pdl's 6 entity LAUNCH rows to xyzfs/users/<uuid>/home/livedesk/
+pals/<entity> (confirmed correct via office.pdl's own real DESK rows +
+ls). Also fixed the tool-bar row's own separately-stale binary path
+(pre-monad-relocation leftover).
+
+Direct instruction on scope: "leave the legacy script. but make a new
+script for khtpm." button.sh/autostart.pdl NOT switched to khtpm — still
+launch legacy tp_taskbar.+x (now from the corrected path), otherwise
+untouched. Added a new, fully separate $.crypts/button_khtpm.sh
+(run/stop/status) instead — same "quit everything then launch" shape as
+button.sh run, but targets khtpm_strip_parser_test.+x (which forks
+khtpm_taskbar_manager_main_test.+x itself) and always launches entities
+from pals/, never dev-folder paths.
+
+VERIFIED LIVE: sh button_khtpm.sh run -> exactly 1 khtpm parser + 1 khtpm
+manager + all 6 entities from correct pals/ paths, ZERO legacy
+tp_taskbar.+x processes, confirmed via a fresh pgrep -af call.
+
+OPACITY — checked per direct request ("searching for any remaning gaps,
+including opacity fix"), NOT a gap. set_window_opacity()/
+load_theme_opacity() are both present in khtpm_strip_parser.c (~line
+311-351, ported from tp_taskbar.c's real functions), called on all 3 real
+windows (win/hq_win/popup_win) at creation — matches legacy's 3-window
+opacity coverage exactly. This was done earlier in the session as part of
+the parser rewrite; just hadn't been explicitly re-confirmed until now.
+
+REMAINING GAPS, re-swept and grep-verified this round:
+1. Entity auto-restore on launch — RECLASSIFIED, not actually a khtpm
+   gap. Legacy tp_taskbar.c's own main() has zero entity-auto-spawn code
+   either (confirmed via direct source read) — restore-on-launch has
+   never been the taskbar's job in either system, it's autostart.pdl's/
+   crypt_autostart.+x's job. khtpm now has real parity via
+   button_khtpm.sh run. No taskbar-internal fix needed.
+2. Save/load — still structurally wired, still NEVER LIVE-TESTED end to
+   end. Top recommendation for next live-test round.
+3. Digit-jump still only covers header cells (1-12), not bottom-bar tabs
+   (13+) — confirmed by grep: sync_focus_to_digit_buf() has exactly one
+   call site (&header_doc only), no bottom_doc equivalent exists. Real,
+   still-open, small-scope follow-up.
+
+===========================================================================
+UPDATE: digit-jump extended to bottom-bar tabs (13+). Direct request:
+"can u fix the digit jump now? seems simple?"
+===========================================================================
+
+sync_focus_to_digit_buf() (khtpm_strip_parser.c) was rewritten from
+per-element onClick-suffix string matching (header cells only, since tab
+onClick is "TAB:<0-based index>", not a unified nav number, so the old
+approach couldn't extend to tabs at all) to direct POSITION indexing:
+g_nav_focus already spans [header][tabs] in exact document order
+(unified_apply()'s own contract) and the manager's digit_buf numbering
+already assigns nav numbers in that same order (sync_strip_claims()'s
+NAV=i+1), so nav_n-1 IS g_nav_focus directly, no per-element matching
+needed. New signature takes both header_doc and bottom_doc and calls
+unified_apply() itself (the documented single writer of both docs'
+focus_index) instead of writing focus_index directly. Simpler than what
+it replaced, and covers tabs "for free." Build-verified clean.
+
+===========================================================================
+REAL BUG FOUND WHILE VERIFYING THE ABOVE, direct live report: "it opened
+both toolbars" / "we need 2 fix that"
+===========================================================================
+
+Root cause was NOT in khtpm_strip_parser.c at all. tp_desktop_window.c
+(the entity binary, &.widgits/tile-picker/ops/) has its own
+ensure_taskbar_running() self-heal check: on every entity launch, it
+scans /proc for a running taskbar for this house, and if it doesn't find
+one, launches tp_taskbar.+x itself directly (hardcoded path, independent
+of autostart.pdl entirely). The /proc scan only ever matched the literal
+substring "tp_taskbar" in a process's cmdline — it never recognized
+khtpm_strip_parser_test.+x/khtpm_taskbar_manager_main_test.+x as "a
+taskbar is running," so every one of the 6 entities launched via
+button_khtpm.sh independently concluded no taskbar existed and launched
+legacy tp_taskbar.+x on top of the already-running khtpm pair.
+
+Fixed: broadened the /proc cmdline match to `strstr(cmdbuf, "tp_taskbar")
+|| strstr(cmdbuf, "khtpm_strip_parser")`. Rebuilt tp_desktop_window.+x
+(real build flags recovered from &.widgits/tile-picker/scripts/build.sh:
+-lX11 -lXext -lGL -lGLX — an earlier ad hoc rebuild attempt with -lGL -lm
+and no -lXext failed to link).
+
+SECOND, RELATED BUG found while investigating: khtpm_taskbar_manager.c's
+ktb_quit_and_save() (called from the manager's own SIGTERM/SIGINT
+handler, on_sigterm() -> line 363/394) rewrites $.crypts/autostart.pdl's
+tool-bar LAUNCH row on every khtpm quit, using a hardcoded STALE
+pre-monad-relocation path (&.widgits/livedesk-taskbar/...) — silently
+undoing the earlier hand-fix to autostart.pdl every time the khtpm
+manager shut down (including every button_khtpm.sh run's own quit_all
+step). Fixed: corrected the hardcoded string to the real current path
+(*.monads/*.livedesk-taskbar/ops/+x/tp_taskbar.+x).
+
+VERIFIED LIVE, full clean cycle: killed everything, rebuilt all 3
+binaries (tp_desktop_window.+x, khtpm_strip_parser_test.+x,
+khtpm_taskbar_manager_main_test.+x), ran button_khtpm.sh run fresh —
+exactly 1 khtpm parser + 1 khtpm manager + 6 entities from correct pals/
+paths, ZERO legacy tp_taskbar.+x processes, confirmed via pgrep -af.
+
+===========================================================================
+UPDATE: agent relay ported (was a real, missed gap — direct correction
+"are u not able to do the legacy relay key injection spoken of in
+_.0.aigent-testing-k9.txt? u didn't add this as legacy had?"), and used to
+LIVE-VERIFY the digit-jump-to-tab fix above end to end (no xdotool needed
+after all).
+===========================================================================
+
+tp_taskbar.c has its own poll_agent_relay()/agent_relay_dispatch()
+(#.desktop/livedesk_agent_relay.txt, one decimal ASCII code per line —
+48-57 digit, 13 Enter, 27 Escape, 8 Backspace, 32-126 printable, no arrow
+codes) built specifically so agent testing would survive a khtpm port
+without needing XTest/real X11 focus. This was never ported into
+khtpm_strip_parser.c — a real, missed gap, not previously flagged in any
+gap sweep.
+
+Ported into khtpm_strip_parser.c: livedesk_relay_path(), g_relay_cursor,
+poll_agent_relay() (same cursor/truncation-resync discipline as legacy's
+version, verified against the real source before writing). ONE deliberate
+architectural deviation from legacy, explained in the new code's own
+comment: legacy's agent_relay_dispatch() is a documented, intentional
+DUPLICATE of its inline KeyPress logic (done that way specifically so
+agent support couldn't regress the dense local nav_armed/digit_buf state
+machine tp_taskbar.c maintains by hand). khtpm doesn't have that problem —
+its own KeyPress handler's Enter/Escape/Backspace/printable branches are
+already thin forwarding calls to the manager via send_code(), no local
+state machine to protect. So this port factored a SHARED
+dispatch_key_code(header_doc, bottom_doc, st, code) function used by BOTH
+the real KeyPress handler and poll_agent_relay() — less code than
+duplicating, and a relay-injected code gets IDENTICAL handling to a real
+keypress by construction. Arrow-key nav stays real-X11-only (matches
+legacy's own relay contract — digit-based nav only, no arrow codes).
+poll_agent_relay() called once per main-loop tick (~300ms), independent
+of frame_changed_dirty(), with its own explicit redraw when codes were
+dispatched (same necessity as the real KeyPress path: a LOCAL-only state
+change doesn't touch strip_frame_changed.txt).
+
+LIVE-VERIFIED, via the relay itself, on a fresh launch (element_count=18,
+12 header cells + 6 tabs numbered 13-18 per strip_var_tabs.txt):
+    echo "49" >> livedesk_agent_relay.txt   (ASCII '1')
+    echo "53" >> livedesk_agent_relay.txt   (ASCII '5')
+frame history confirmed, in order:
+    nav_armed=1 digit_buf=1                                  (after '1')
+    digit_buf=15 unified_nav_focus=14 bottom.focus=3 header.focus=-1  (after '5')
+unified_nav_focus=14 is exactly nav 15 minus 1 — the cursor correctly
+left the header (header.focus=-1) and landed on bottom-bar tab nav 15
+(m1_ninjadragon). Then:
+    echo "27" >> livedesk_agent_relay.txt   (Escape)
+confirmed nav_armed=0 digit_buf= (cleared), matching legacy's contract.
+
+This closes BOTH the digit-jump-to-tab gap (now real, end-to-end
+live-verified, not just build-clean) AND the missing-agent-relay gap in
+the same round. Build clean, all 3 binaries rebuilt, full clean relaunch
+verified via pgrep (1 khtpm parser + 1 khtpm manager + 6 entities from
+pals/ paths, zero legacy tp_taskbar.+x).
+
+===========================================================================
+UPDATE: opacity-on-reset quirk FIXED (was open since 2026-08-10/aug9,
+never actually solved before — "did u ever figure out how legacy would
+have transparency on bottom bar (but only after reset)?").
+===========================================================================
+
+Leading theory (opacity-bug-aug9.txt) was a compositor-timing quirk:
+Mutter/Xwayland not reliably honoring _NET_WM_WINDOW_OPACITY set at
+XCreateWindow/map time on a window's very FIRST paint, but honoring it
+once re-applied after the window's been visible a moment — which is
+incidentally what a full process "reset" does. Never actually tried
+before. KISS fix: after the initial windows are created/mapped/first-
+drawn, XFlush + a 200ms sleep + re-call set_window_opacity() on all 3
+windows (win/hq_win/popup_win) + XFlush again, right before entering the
+event loop in khtpm_strip_parser.c's main(). LIVE-CONFIRMED by direct
+human visual check on a FRESH launch (not a reset): both bars transparent
+immediately. Theory confirmed, gap closed.
+
+===========================================================================
+UPDATE: three real bugs found + fixed while building/live-testing the new
+player>reset feature via the agent relay, plus a fourth found from a
+direct live report AFTER reset was confirmed working.
+Direct request: "if i click reset will it kill all entities and reload?"
+===========================================================================
+
+1) player>reset WIRED UP (was a genuinely inert placeholder in BOTH
+   legacy and this port). New livedesk_reset_entities() in
+   khtpm_taskbar_manager.c: graceful CLOSE via the registry
+   (livedesk_close_all()), then a NEW /proc hard-kill sweep
+   (livedesk_kill_stray_entities(), matches tp_desktop_window.c's own
+   ensure_taskbar_running() /proc-scan technique) for any entity NOT in
+   the registry (direct report: "some lingered last time and that caused
+   problems" — root cause: livedesk_close_all() only ever acts on
+   #.desktop/livedesk_open.txt; an entity that's running but never
+   registered, e.g. hand-launched outside the normal spawn path, survives
+   any registry-based close indefinitely, no matter how many times it
+   runs), then livedesk_spawn_desk() to reload the current desk fresh.
+
+2) Digit-driven submenu row-selection was COMPLETELY BROKEN — typing a
+   digit inside an open HQ/player menu moved the MANAGER's own hq_focus
+   correctly (confirmed via strip_state.txt) but had ZERO visible effect
+   in the parser and Enter did nothing. Two stacked root causes, both
+   fixed:
+   (a) khtpm_strip_parser.c never read strip_state.txt's own "hq_focus"
+       KEY row back into header_doc->focus_index at all — added
+       sync_popup_focus() (mirrors draw_popup_win()'s own row-filtering
+       exactly: navigable descendants of active_index, in order) plus a
+       new SpState.hq_focus field/parse branch.
+   (b) sync_focus_to_digit_buf() (from the earlier tab-digit-jump fix)
+       was clobbering sync_popup_focus()'s correct result back to -1 on
+       the SAME tick — its digit_buf-driven unified_apply() call was
+       unconditional, but digit_buf holds the TOP-LEVEL nav-arm buffer
+       (e.g. "8" for the cell that opened the menu) and stays set even
+       after a submenu opens; resolving that stale value's position
+       against the much-smaller in-scope navigable set silently returned
+       -1. Fixed: guarded with `if (header_doc->active_index != -1)
+       return;`, matching the OTHER unified_apply() call site's existing
+       guard.
+
+3) Popup/submenu rows had ZERO visible numbers at all (direct report:
+   "the submenu is missing numbers. it should be auto/dynamically
+   numbered... how chtpm worked"). draw_popup_win() never drew a number,
+   only "[cursor] label". Fixed: added "%d. " (r+1, 1-based) to both the
+   width-measuring pass and the real draw pass — matches
+   ktb_hq_digit()'s own `accum - 1` convention exactly (the number shown
+   is the number to type).
+
+4) Enter's dispatch order didn't prioritize an open header submenu over
+   bottom_doc — bottom_doc->focus_index can hold a perfectly valid,
+   navigable, but STALE value from before the submenu opened (nothing
+   ever clears it while active_index != -1), so the old unconditional
+   "check bottom first" logic would activate a stale bottom-bar element
+   instead of the submenu row sync_popup_focus() had just moved to.
+   Fixed: added an explicit `header_doc->active_index != -1` branch
+   ahead of the bottom_doc check in dispatch_key_code(), matching the
+   manager's own dispatch_code() precedence (hq_open checked before the
+   bottom-tab digit logic there too).
+
+5) office.pdl's desks/<name>.pdl parsing (livedesk_spawn_desk()) spawned
+   EVERY "DESK" row unconditionally, with no dedup — found live via
+   reset itself: "self" launched TWICE from one reset. desks/*.pdl is a
+   genuinely append-only HISTORY of saves (confirmed: office.pdl really
+   does have two separate real "self" DESK rows from different saves),
+   not a current-state snapshot. Fixed: track spawned entity basenames in
+   a small array, skip a row if its entity was already spawned earlier in
+   the same pass (keep-first). This is a PRE-EXISTING bug, not introduced
+   by the reset feature — livedesk_switch_desk() and any future
+   desk-load path share the exact same fixed function, so this fix
+   benefits more than just reset.
+
+6) SEPARATE, found from a direct live report AFTER all of the above was
+   confirmed working: "enter on nav in bottom bar isn't opening its
+   context menu like it used to." Root cause, confirmed by direct legacy
+   read (tp_taskbar.c's real taskbar_activate_tab(), ~line 1174):
+   ktb_activate_tab() (khtpm_taskbar_manager.c) wrote TWO relay lines,
+   "ACTIVATE\nOPEN_CONTEXT\n" — but tp_desktop_window.c's own
+   interact_relay.txt reader does exactly ONE fgets() per poll tick and
+   immediately truncates the file (confirmed by direct read of that
+   file's real relay-poll block, ~line 1758-1770). "ACTIVATE" has no
+   handler there at all (grepped: only "OPEN_CONTEXT" is a recognized
+   bare command) — every tab activation silently discarded the real
+   command on line 2, which was never read. Legacy's own
+   taskbar_activate_tab() writes ONLY "OPEN_CONTEXT" (plus a real
+   XRaiseWindow this Xlib-free manager has no equivalent for — the
+   entity's own OPEN_CONTEXT handler is what actually shows the popup).
+   Fixed: ktb_activate_tab() now writes just "OPEN_CONTEXT", matching
+   legacy exactly, dead double-write code removed.
+   LIVE-VERIFIED via the entity's own history.txt: two earlier relay
+   attempts show "INJECTED: ACTIVATE" (the bug, command discarded); after
+   the fix, "INJECTED: OPEN_CONTEXT" followed immediately by a real
+   "OPEN_CONTEXT" dispatch line — the popup genuinely opened this time.
+
+All 6 fixes build-verified clean, full clean relaunch confirmed via
+pgrep, gaps 1-4 live-verified end to end via the agent relay
+(#.desktop/livedesk_agent_relay.txt) with real frame-history evidence at
+each step — not assumed from a clean build.
+
+===========================================================================
+UPDATE: tab numbering FIXED — was jumping non-uniformly (e.g. "31" then
+"14"). Direct report: "numbering is very weird now beyond 12... cant we
+get it to do more uniform numbering?"
+===========================================================================
+
+Root cause, confirmed via direct read of BOTH khtpm's and legacy's real
+sync_tab_claims(): tab numbers were derived from max_nav, the highest
+NAV= value seen ANYWHERE in the shared #.desktop/livedesk-nav-claims/
+livedesk_nav_claims.txt file — including KIND=row entries (each entity's
+own context-menu row numbers). Neither khtpm NOR legacy ever prunes
+KIND=row entries for dead PIDs (confirmed: legacy's own sync_tab_claims()
+comment says it drops stale KIND=tab claims but the KIND=row branch is
+`else { fputs(line, w); }` — unconditional, no liveness check at all —
+same gap in both). This session's heavy testing (many rapid entity
+kill/relaunch cycles) left dozens of stale row claims behind from dead
+PIDs, inflating max_nav to 30+ and producing gapped, non-sequential tab
+numbers (confirmed live: 14/15/17/18/19/31/32, missing 16 entirely).
+
+Real, deliberate improvement over BOTH references (not just matching
+legacy — legacy has the same latent flaw, it's just rarely visible under
+normal, slower entity-cycling usage): tab numbers are now purely
+POSITIONAL (KTB_STRIP_N_CELLS + i + 1 — i.e. always exactly 13, 14, 15...
+contiguous, however many tabs are open), no longer derived from the
+claims-pool's max_nav at all. This also fixes a real, independent
+correctness issue: khtpm_strip_parser.c's own digit-jump math
+(unified_apply()/g_nav_focus) already ASSUMED this exact contiguous
+model — the claims-pool numbers had silently drifted out of sync with
+that assumption, meaning digit-jump-to-tab could have started resolving
+to the WRONG tab as claims drifted further, not just looking cosmetically
+odd. The shared claims file is still WRITTEN with each tab's new
+deterministic number (so entities' own row-claiming still sees what the
+strip is using), just no longer READ to decide numbers.
+
+LIVE-VERIFIED: cleared the (heavily polluted, testing-only) claims file,
+fresh relaunch, strip_var_tabs.txt now shows exactly 13,14,15,16,17,18,19
+— fully sequential, zero gaps, matching claims file's own KIND=tab lines
+exactly. Build clean (also removed nav_idx_of_pid(), now dead code).
+
+Remaining, NOT fixed (out of scope for this report, flagged for
+awareness): stale KIND=row claims from dead entity PIDs are still never
+pruned in either khtpm or legacy — this no longer affects tab numbering
+(now positional) but the claims file itself will still grow unboundedly
+under heavy entity-cycling. Would need a liveness check (kill(pid,0)-style,
+same technique livedesk_kill_stray_entities() already uses) added to the
+KIND=row branch specifically — not done here since it wasn't the reported
+symptom and touches shared file semantics tp_desktop_window.c also
+depends on.
+
+===========================================================================
+UPDATE: full legacy-vs-khtpm gap sweep, direct request: "find any more
+nuanced or advanced functional gaps from legacy to now." Real regression
+fixed, two real feature gaps documented (not yet implemented), and — from
+actually LIVE-TESTING save/load via a new harness — THREE more real,
+previously-undiscovered bugs found and fixed, including two that made
+session/desk switching completely non-functional this entire session.
+===========================================================================
+
+--- Fixed ---
+
+1. REGRESSION: ktb_quit_and_save() no longer rewrites $.crypts/
+   autostart.pdl. Confirmed via legacy's own explicit comment
+   (tp_taskbar.c ~line 1120-1131): legacy USED TO rewrite it, found it
+   "erased the curated startup list and collapsed later resets," and
+   deliberately removed that behavior — keeping only entity-close +
+   pidfile-unlink. khtpm had regressed back to the pre-fix behavior. This
+   is also the real root cause of a symptom patched EARLIER tonight (the
+   stale tool-bar path kept reappearing in autostart.pdl after every
+   relaunch) — that patch fixed the WRONG path baked into the rewrite;
+   per legacy's own history, the real fix is not rewriting at all. Now
+   matches legacy exactly: close entities, unlink pidfile, nothing else.
+
+2. cli-io (save-as/rename) popup was full-header-width, anchored at x=0
+   — "isn't placed under its tab... confusing." Legacy's own comment
+   (cliio_open()/cliio_open_save_as()) is explicit: "SEPARATE standalone
+   window for the edit - deliberately NOT anchored to the toolbar: centered
+   on screen instead" (w=300, x=(screen_w-300)/2, fixed y=140). khtpm's
+   draw_popup_win() forced w=g_header_row_w/anchor_x0=0 for is_cliio
+   specifically — fixed to match legacy's real geometry exactly.
+   LIVE-VERIFIED via xwininfo: 300x36+1098+140 on a 2496px-wide screen —
+   exactly centered.
+
+3. Selecting a submenu row that OPENS A REPLACEMENT POPUP (e.g. "load" ->
+   session picker) silently closed instead — dispatch_onclick()'s
+   HQITEM: branch unconditionally lay_back()'d after every row, wrongly
+   assuming every row command closes the menu (true for save/new-desk,
+   NOT true for load, which calls ktb_hq_open(s,13) to replace content
+   in place — manager-side, confirmed correct, never the bug). Fixed:
+   removed the unconditional lay_back(); added sync_popup_focus()-based
+   closing keyed on the MANAGER's own real hq_open state (0=closed) —
+   with a real, necessary grace period (comparing the active element's
+   onClick STRING, not raw array index, across ticks — indices legitimately
+   shift when the tree rebuilds at a different size, confirmed live: an
+   index-based version caused an infinite postponement since the index
+   never stayed "stable" between reload-driven shifts). New SpState.hq_open
+   field/parse branch added to read the manager's real state back.
+
+4. REAL, SEPARATE, DEEP BUG found live-testing the above fix (harness:
+   nav 3 -> row 4 [load] -> row 1 [pre-design] -> nothing switched,
+   active_session stayed on the wrong session): "livedesk:open-session:"
+   strncmp used length 23 — the literal string is genuinely 22 characters
+   (verified: `printf '%s' "livedesk:open-session:" | wc -c`). Comparing
+   23 bytes compared the literal's own '\0' terminator against the real
+   command's next real character — guaranteed mismatch, ALWAYS. This
+   branch could never match, means session-switching via the picker has
+   been completely non-functional this ENTIRE khtpm session, independent
+   of gap #3 above (a real, load-bearing bug hiding *underneath* a
+   different bug). +23 extraction offset had the same off-by-one (would
+   chop the first char off the target id too). Both fixed to 22. ALSO
+   fixed the actual missing behavior underneath: this branch only ever
+   wrote the active_session pointer file — never closed the outgoing
+   session's entities or spawned the new session's own desk. Direct
+   question/confirmation: "if we load a session it should auto load the
+   desk with stuff on it if there is one, right?" — yes, confirmed via
+   legacy's real handler (tp_taskbar.c ~line 3155:
+   livedesk_load_session(house_root, sroot, c+13)). khtpm already had
+   livedesk_load_session() fully ported (snapshot outgoing, close all,
+   spawn target's active desk, write pointer) but it sat completely
+   unused — wired it in.
+
+5. SAME off-by-one class, found by systematically grepping every
+   `strncmp(m->command, "livedesk:...", N)` in the file after finding #4
+   (not stumbled onto separately) — "livedesk:switch-desk:" used length
+   22, the literal is genuinely 21 characters. Same failure mode:
+   switching desks WITHIN a session (the "desks" cell's own rows) has
+   been completely non-functional this entire session too. Fixed to 21
+   (both the strncmp and the +21 extraction offset). "livedesk:pal:" (13)
+   was already correct — checked, not assumed.
+
+LIVE-VERIFIED END TO END, via THREE independent signals (not log text
+alone — direct instruction: "make sure ur framehistory or w/e ur checking
+gives u accurate results before trust it"): switched session s7 -> s1
+(session.pdl file content confirms "active_session | s1"), then desk
+desk_02 -> office (session.pdl confirms "active_desk | office"), and all
+6 real entities came up — confirmed via `ps aux` (real process list, not
+a log), AND independently via real X11 window count (`xwininfo`, 6
+"tile:"-titled windows). Also directly confirmed via ps aux + xwininfo
+that exactly ONE taskbar header/popup/bottom-bar trio is running, no
+duplicates, addressing a direct concern about a possible stray second
+header glimpsed during earlier rapid rebuild/relaunch cycles.
+
+New test harness: #.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh —
+ported directly from the existing legacy harness
+(#.desktop/harnesses/livedesk-taskbar/nav.sh, reviewed in full first,
+direct instruction: "there were some test harnesses for legacy desk, u
+may review them and make ur own for this new desk"). Same relay file,
+same bare-decimal-per-line contract; only real difference is a longer
+pre-Enter settle pause (0.8s vs legacy's implicit same-tick handling) —
+khtpm's architecture is a genuine two-process relay (agent -> parser ->
+manager -> parser) where legacy is single-process, so a fresh digit needs
+measurably more round-trip margin before Enter can trust it. This gap
+between legacy's and khtpm's OWN settle-time needs was itself a real,
+live-confirmed finding this round, not a hypothetical port note.
+
+--- Documented, NOT yet implemented (real gaps, still open) ---
+
+6. Desk properties popup missing. Legacy's real right-click-a-desk-row /
+   "edit" popup (tp_taskbar.c's "K11" feature, livedesk_open_desk_props_
+   popup()) shows "name: <desk>" / "rename..." / "entities: N" / "delete"
+   / "cancel". khtpm's own "livedesk:edit-desk" goes straight to a bare
+   rename modal (ktb_cliio_open_rename_desk()) — no delete, no entity
+   count, no properties view at all. The underlying logic
+   (livedesk_delete_desk(), livedesk_desk_entity_count()) is ALREADY
+   ported in khtpm_taskbar_manager.c, confirmed sitting completely unused
+   (matches the "defined but not used" build warnings noted earlier this
+   session). Needs: a real desk-props popup UI wired to the existing
+   delete/count functions, plus a right-click handler on desk rows
+   (currently only left-click/Enter selection exists for desk rows).
+
+7. No cross-process input-contention guard. Legacy's remote_entity_menu_
+   open() (tp_taskbar.c ~line 847) checks the shared nav-claims file
+   before handling ANY KeyPress — if a DIFFERENT process (an entity) has
+   its own context menu open, legacy explicitly ignores its own KeyPress
+   and yields keyboard handling to that entity. khtpm has zero equivalent
+   check anywhere, including the NEW agent relay this session built —
+   meaning digit/Enter/Escape input could fire on the taskbar's own state
+   while an entity's context menu is legitimately open and expecting that
+   same input itself. Needs: a KIND=row-with-foreign-PID check (same
+   /proc-scan-adjacent technique already used elsewhere this session)
+   gating dispatch_key_code()'s handling, both in the real KeyPress path
+   and poll_agent_relay().
+
+--- Standing lesson, saved to memory this round ---
+
+Direct instruction after finding the cli-io positioning bug: "be sure to
+look out for nuances like that when researching gaps." A ported feature
+existing and functioning is not the same as it matching the reference's
+real geometry/positioning/behavioral details — confirmed feature
+PRESENCE is necessary but not sufficient; read the reference's actual
+implementation for these details too. Saved as a feedback memory
+(feedback_gap_sweeps_check_geometry_not_just_presence.md) for future
+sessions working on this or similar ports.
+
+===========================================================================
+UPDATE: LEGACY RETIRED. khtpm is now the real, only, production taskbar.
+Direct instruction: "id like to deprecate the old toolbar system now, by
+first zipping all the related, non used code and scripts in place/and
+deleting the original."
+===========================================================================
+
+ARCHIVED (zip verified via `unzip -t`, 67 files, no errors) to
+*.monads/*.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip, originals
+deleted:
+- tp_taskbar.c (legacy source, 199KB), tp_taskbar.+x, tp_taskbar.exe,
+  tp_taskbar_win.c (Windows port, explicitly marked "LEGACY: do not add
+  design logic here" in its own header), rebuild.sh (legacy's own
+  dedicated rebuild script).
+- #.desktop/harnesses/livedesk-taskbar/ (the legacy-specific test
+  harness: nav.sh, button.sh, key_injector.c/+x, scenarios/, proof/ —
+  fully superseded by #.desktop/harnesses/khtpm-livedesk-taskbar/, built
+  earlier this session).
+- $.crypts/button.sh, renamed button-legacy.sh before archiving (its
+  "run" logic is UNCHANGED-but-now-correct — see below — the archived
+  copy is a point-in-time record, not a live fallback).
+- A SEPARATE, real discovery made while sweeping for "related unused
+  code": the ABANDONED pre-real-parser khtpm architecture from earlier
+  THIS SAME session (before the "commit to building the real parser"
+  pivot) — khtpm_taskbar_main.c, khtpm_taskbar_plat.h,
+  khtpm_taskbar_plat_win.c, khtpm_taskbar_plat_x11.c,
+  build_khtpm_taskbar.sh (all confirmed genuinely unreferenced by the
+  live build_khtpm_strip.sh via direct grep before archiving), plus an
+  even OLDER generation of the same abandoned idea found sitting in
+  &.widgits/tile-picker/ops/ (khtpm_plat_x11.c, khtpm_plat_win.c,
+  khtpm_core.c, and the old build_khtpm.sh — explicitly flagged unsafe in
+  build_khtpm_taskbar.sh's own comment: "DID auto-copy its taskbar output
+  over the live binary path... clobbers the strip taskbar"), also
+  confirmed unreferenced by the real &.widgits/tile-picker/scripts/
+  build.sh before archiving.
+
+RENAMED (dropped "_test" suffix — khtpm is the real system now, no live
+legacy binary left to protect against clobbering):
+  khtpm_strip_parser_test.+x -> khtpm_strip_parser.+x
+  khtpm_taskbar_manager_main_test.+x -> khtpm_taskbar_manager_main.+x
+build_khtpm_strip.sh / run_khtpm_strip.sh updated to match (the latter's
+own now-meaningless `legacy`/`restore` action removed — there is no
+legacy binary left to relaunch).
+
+$.crypts/button.sh — direct instruction: "we should still use button r to
+run things. so that should be renamed [to be canonical]... eadd that
+stuff [preserve on/off/compile/status/install-xdg]." The OLD button.sh
+(pure autostart-control wrapper around crypt_autostart.+x/autostart.pdl)
+was renamed button-legacy.sh and archived — but its own "run" logic
+needed ZERO changes, since it just triggers crypt_autostart against
+autostart.pdl, and autostart.pdl's tool-bar row now points at khtpm (see
+below). The NEW button.sh keeps that exact same structure/all
+subcommands, PLUS a new `reset` subcommand folded in from the retired
+button_khtpm.sh (deleted, its one genuinely useful piece — a harder,
+guaranteed-clean kill-everything+rebuild+relaunch, using the renamed
+binaries and real pals/ paths — preserved as this new subcommand).
+
+REAL, LOAD-BEARING FIXES found and made while retiring legacy (not just
+file moves — these would have silently broken khtpm the moment it became
+the sole autostart target):
+
+1. $.crypts/autostart.pdl's tool-bar LAUNCH row updated to khtpm's
+   renamed binary (was still pointing at the now-deleted tp_taskbar.+x).
+
+2. &.widgits/tile-picker/ops/tp_desktop_window.c's ensure_taskbar_running()
+   fallback launch command was STILL hardcoded to tp_taskbar.+x's path —
+   would have silently launched nothing (file doesn't exist) the next
+   time an entity's own self-heal check ran. Updated to khtpm's renamed
+   binary. Also fixed the SAME stale path in tp_desktop_window_win.c
+   (Windows port, still live/unrelated to legacy — found it ALSO had a
+   second, independent bug: a pre-monad-relocation directory on the same
+   line, &.widgits\livedesk-taskbar\ instead of *.monads\*.livedesk-taskbar\
+   — not build-tested, no Windows environment available this session).
+
+3. $.crypts/ops/crypt_autostart.c's own process-name kill-sweep (both
+   Windows kill_by_name_win() calls and the Linux /proc cmdline scan)
+   only ever matched "tp_taskbar" — broadened to also match
+   "khtpm_strip_parser", so a restart correctly clears a running khtpm
+   instance first (the exact "2 taskbars open" bug class this sweep
+   exists to prevent — previously fixed for khtpm-vs-legacy, now applies
+   to khtpm-vs-khtpm too). tp_taskbar kept in the sweep as a harmless
+   no-op safety net.
+
+4. #.desktop/livedesk_taskbar.pdl's hq_menu_1_cmd (the real, LIVE
+   "$.restart" HQ button command) was hardcoded to `cd .../livedesk-
+   taskbar && gcc ... tp_taskbar.c ...`. This is a REAL, separate finding
+   from an earlier-tonight fix (khtpm_taskbar_manager.c's own
+   livedesk_build_hq_menu() default fallback was already corrected to
+   use run_khtpm_strip.sh — but that fallback ONLY fires when this .pdl
+   file provides ZERO hq_menu rows, and it always has 5 real rows, so the
+   earlier fix was silently dead code — the ACTUAL live "$.restart"
+   command has always come from THIS file). Fixed to
+   `sh .../run_khtpm_strip.sh new`.
+
+5. $.crypts/scrypts/openall/run.sh's TASKBAR variable — same stale
+   tp_taskbar.+x path, updated (this script is the "restore-last-open"
+   path, currently disabled by default, but fixed for correctness
+   regardless).
+
+6. REAL BUG, caught live during final verification (not found by
+   grep — found because a test relay code silently did nothing):
+   khtpm_strip_parser.c's own launch_manager() had the renamed manager
+   binary's OLD "_test" name HARDCODED at its execl() call site — missed
+   by the earlier binary-rename pass because it's a compiled-in string,
+   not a build-script argument. The manager silently failed to fork
+   (execl against a nonexistent path), so ALL input (digits, Enter,
+   everything routed through send_code()) reached the parser but never
+   got forwarded anywhere — the taskbar LOOKED fine (windows rendered,
+   entities open) but was completely inert to input. Fixed, rebuilt,
+   LIVE-RECONFIRMED via the agent relay: nav 8 -> Enter correctly opened
+   player's real submenu (active_index=23, focus on "play" row) after
+   the fix, on a freshly autostart-launched instance.
+
+FINAL VERIFICATION, this exact sequence, all real (not assumed):
+  1. Full kill of every taskbar/entity process.
+  2. `sh $.crypts/button.sh run` (the real, unmodified-logic, autostart
+     entry point an actual login/restart would use).
+  3. `ps aux` (not a log) confirmed: 1 khtpm_strip_parser.+x + 6
+     tp_desktop_window.+x (self/m8_redhorned/m1_ninjadragon/book-stack/
+     asa/ava), all from correct xyzfs/users/.../pals/ paths.
+  4. Zero tp_taskbar processes anywhere (`pgrep -af tp_taskbar` — no
+     output).
+  5. Real X11 windows confirmed via `xwininfo` (3 MuchiverseLivedesk
+     windows: header/popup/bottom bar).
+  6. Agent relay round-trip (nav 8 -> Enter) confirmed the manager
+     genuinely forks on demand and dispatches correctly end-to-end.
+
+Legacy tp_taskbar.c's entire multi-day, many-session lifecycle in this
+house ends here — khtpm_strip_parser.c/khtpm_taskbar_manager.c (the real
+declarative-layout parser architecture, per the session's own original
+mandate: "we definately want to use parser layouts instead of
+hardcoding... that is house standard") is now the one, real, live,
+autostart-launched taskbar.
+
+--- End AU11-khtpm-gap-fixes.txt ---

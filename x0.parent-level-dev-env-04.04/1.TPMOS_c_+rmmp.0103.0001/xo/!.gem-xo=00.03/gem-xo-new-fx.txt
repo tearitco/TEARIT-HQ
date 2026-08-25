@@ -1,0 +1,5 @@
+
+
+
+wanna add commands to command like to allow
+(fsm auto control or w/e) (just 2 read from external instead of prompt)

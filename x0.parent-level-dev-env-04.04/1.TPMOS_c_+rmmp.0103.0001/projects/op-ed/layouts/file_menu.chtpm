@@ -1,0 +1,21 @@
+<panel>
+    <module>projects/op-ed/manager/+x/op-ed_manager.+x</module>
+    
+    <text label="╔══════════════ F I L E   M E N U ════════════╗" /><br/>
+    <text label="║ GAME:    ${active_game}                       " /><text label="║" /><br/>
+    <text label="║ PROJECT: ${project_id}                        " /><text label="║" /><br/>
+    <text label="║                                               ║" /><br/>
+    
+    <text label="║  " /><button label="SAVE GAME (Quick)" onClick="KEY:7" /><text label="                        ║" /><br/>
+    <text label="║  " /><button label="SAVE GAME AS..."   onClick="KEY:8" /><text label="                        ║" /><br/>
+    <text label="║  " /><button label="LOAD GAME..."      onClick="KEY:9" /><text label="                        ║" /><br/>
+    <text label="║  " /><button label="PLAY PROJECT"      onClick="KEY:4" /><text label="                        ║" /><br/>
+    <text label="║  " /><button label="BACK TO EDITOR"    onClick="KEY:5" /><text label="                   ║" /><br/>
+    
+    <text label="║                                               ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════╣" /><br/>
+    <row label="${editor_response}" /><br/>
+    <text label="╚═══════════════════════════════════════════════╝" /><br/>
+    
+    <interact src="pieces/apps/player_app/history.txt" />
+</panel>

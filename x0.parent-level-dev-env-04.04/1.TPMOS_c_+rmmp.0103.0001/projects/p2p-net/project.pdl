@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | p2p-net
+META         | entry_layout       | projects/p2p-net/layouts/p2p-net.chtpm
+STATE        | player_piece       | selector
+STATE        | current_world      | world_01
+RESPONSE     | default            | P2P-NET ring loaded.

@@ -1,0 +1,3092 @@
+========================================================================
+XYZOS-PITFALLS - Common mistakes and gotchas encountered during
+01.lpns+map+4 development. Read this BEFORE modifying any pal project.
+Add pitfalls as they are discovered, do not remove existing entries.
+
+RENAME NOTE (2026-07-30): renamed from !.pal-pitfalls+1.txt, sibling
+rename to !.xyzos-standards+1.txt (see that file's own header note for
+the full "why xyzos, not just pal" reasoning) - every cross-reference
+across the house updated to match, nothing here removed or rewritten.
+========================================================================
+
+========================================================================
+PITFALL 1: system() in orchestrator causes zombie processes
+========================================================================
+
+SYMPTOM: After Ctrl+C, processes continue running, consuming CPU.
+ROOT CAUSE: orchestrator.c used system() for compile_binaries(),
+mkdir, and initial compose. system() spawns a shell which spawns
+the actual command - the shell process may not be reaped properly,
+and signals don't propagate correctly through the shell layer.
+
+FIX: Replace ALL system() calls with fork/exec/waitpid (Bible §3).
+Each helper function: fork() → freopen(/dev/null) → execl() → _exit(1).
+Parent: waitpid(pid, &status, 0) to reap.
+
+FILES: system/orchestrator.c:compile_single(), ensure_directories(),
+       initial_compose()
+
+========================================================================
+PITFALL 2: kill_all_tracked() misses child-of-child processes
+========================================================================
+
+SYMPTOM: game_manager's child ops (game_turn_input, game_compose_frame)
+continue running after orchestrator exits.
+ROOT CAUSE: game_manager forks ops via run_op(), but those PIDs are
+never logged to proc_list.txt. If game_manager is killed mid-op,
+the op becomes orphaned.
+
+FIX: 3-layer cascading kill:
+  Layer 1: kill(0, SIGTERM) to entire process group
+  Layer 2: File-backed PID sweep (proc_list.txt)
+  Layer 3: kill_all.sh nuclear option (pkill by pattern)
+
+The process group kill (Layer 1) catches most orphans. The nuclear
+option (Layer 3) catches everything else by matching binary names.
+
+FILES: system/orchestrator.c:kill_process_group(), kill_all_tracked(),
+       run_final_kill_sweep()
+
+========================================================================
+PITFALL 3: sscanf overwrites search variable in config lookups
+========================================================================
+
+SYMPTOM: NPC moves alice instead of itself. Bot1 (player 2) moves
+alice (player 1) to a new position, then bot2 also moves alice, etc.
+ROOT CAUSE: sscanf(line, "player_%d_name=%49s", &current_player, ...)
+was using &current_player as the index variable. When sscanf found
+player_2_name, it wrote 2 into current_player, overwriting the
+original value (which was tracking which player to search for).
+
+FIX: Use a temp variable for sscanf:
+  int pidx;
+  if (sscanf(line, "player_%d_name=%49s", &pidx, player_name) == 2
+      && pidx == current_player) break;
+
+The && pidx == current_player check ensures we only use the result
+when the index matches the player we're looking for.
+
+FILES: ops/game_turn_input.c:44-45, 59-60, 68-69
+
+========================================================================
+PITFALL 4: compose_frame writing to frame_changed.txt causes infinite loop
+========================================================================
+
+SYMPTOM: Renderer flickers, CPU spikes, frame never stabilizes.
+ROOT CAUSE: chtpm_parser_pal's compose_frame() was writing to
+frame_changed.txt (the same file the renderer watches). Parser's
+main loop detected growth → dirty=1 → called compose_frame() again
+→ wrote to frame_changed.txt again → infinite loop.
+
+FIX: compose_frame() writes to renderer_pulse.txt (NOT frame_changed.txt).
+game_compose_frame.c writes to frame_changed.txt (game state changes).
+Renderer watches BOTH files:
+  - frame_changed.txt growth → immediate render
+  - renderer_pulse.txt growth → wait for current_frame.txt to stabilize,
+    then render
+
+The two-file pattern prevents the infinite loop while still triggering
+renders for both game state changes and parser recomposition.
+
+FILES: system/renderer.c:96-113, ops/game_compose_frame.c:126-130
+
+========================================================================
+PITFALL 5: Stale keyboard/history.txt replays old keys on startup
+========================================================================
+
+SYMPTOM: Keys from previous session fire immediately on launch.
+ROOT CAUSE: chtpm_parser_pal reads keyboard/history.txt from byte 0
+on fresh launch. If the file wasn't cleared, old KEY_PRESSED: lines
+replay into the new session.
+
+FIX: button.sh or orchestrator MUST clear on launch:
+  : > pieces/keyboard/history.txt
+
+This is orthogonal to interact_relay.txt - both files must be cleared.
+
+FILES: system/orchestrator.c:155-156, button.sh
+
+========================================================================
+PITFALL 6: quit_flag.txt left non-empty from previous session
+========================================================================
+
+SYMPTOM: Renderer prints exactly one frame then exits. Everything
+else keeps running but nothing is displayed.
+ROOT CAUSE: keyboard_input writes "1" to quit_flag.txt on 'q' press.
+If the session wasn't cleaned up properly, this file stays non-empty.
+Next launch's renderer sees quit_requested()==true before loop starts.
+
+FIX: orchestrator MUST clear on launch:
+  FILE *qf = fopen("pieces/system/quit_flag.txt", "w");
+  if (qf) fclose(qf);
+
+Also clear in button.sh kill action.
+
+FILES: system/orchestrator.c:160-161, button.sh
+
+========================================================================
+PITFALL 7: pulse_frame_marker() dead code causes confusion
+========================================================================
+
+SYMPTOM: Agent adds another pulse_frame_marker() call, causing
+double-render or infinite loop.
+ROOT CAUSE: game_manager.c still has pulse_frame_marker() function
+definition (line 39) even though execute_action() no longer calls it.
+game_compose_frame.c already writes to frame_changed.txt.
+
+FIX: Remove the dead function. It serves no purpose and confuses
+future agents who think it's part of the render pipeline.
+
+FILES: system/game_manager.c:39-42 (dead code, should be removed)
+
+========================================================================
+PITFALL 8: PAL layout <module> tag must have exact binary path
+========================================================================
+
+SYMPTOM: Parser fails to launch module, no game manager running.
+ROOT CAUSE: <module> tag content is split on spaces by launch_module().
+If the path is wrong or missing, execv() fails silently (_exit(1)).
+
+FIX: PAL layout must use:
+  <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+
+C layout must use:
+  <module>system/game_manager</module>
+
+Parser's launch_module() at line 1625-1631:
+  char* token = strtok(full_cmd, " ");
+  while (token && arg_count < 15) {
+      args[arg_count++] = (arg_count == 0) ?
+          build_path_malloc(token) : strdup(token);
+      token = strtok(NULL, " ");
+  }
+
+The first token gets build_path_malloc() (resolves relative to project root).
+Subsequent tokens are passed as-is (argv to the binary).
+
+FILES: system/chtpm_parser_pal.c:1621-1638
+
+========================================================================
+PITFALL 9: interact_relay.txt must be truncated after read
+========================================================================
+
+SYMPTOM: Same keycode dispatches multiple times, actions repeat.
+ROOT CAUSE: game_manager reads interact_relay.txt but doesn't truncate
+it. Next poll reads the same keys again.
+
+FIX: After reading, truncate the file:
+  FILE *trunc = fopen("pieces/apps/player_app/interact_relay.txt", "w");
+  if (trunc) fclose(trunc);
+  last_relay_pos = 0;
+
+Must reset last_relay_pos to 0 after truncation.
+
+FILES: system/game_manager.c:147-149
+
+========================================================================
+PITFALL 10: PAL script must not have its own quit path
+========================================================================
+
+SYMPTOM: Module dies on 'q' press, parser keeps relaying keys into
+empty relay file, system appears frozen.
+ROOT CAUSE: PAL script had `beq x2, x9, quit` (checking for 'q' key).
+In INTERACT mode, ALL keys pass through including 'q'. Module halts,
+parser doesn't notice.
+
+FIX: Remove quit path from main_loop_chtpm.pal entirely.
+Quitting is parser's job (top-level 'q' or keyboard_input's exit).
+Module never owns the quit decision.
+
+FILES: pal/main_loop_chtpm.pal (no quit/exit instruction)
+
+========================================================================
+PITFALL 11: button.sh --pal flag must set env var before exec
+========================================================================
+
+SYMPTOM: Orchestrator ignores --pal flag, always uses C layout.
+ROOT CAUSE: button.sh parsed arguments incorrectly, or PAL_LAYOUT
+wasn't exported before exec.
+
+FIX: button.sh must:
+  1. Parse --pal flag in argument loop
+  2. export PAL_LAYOUT="..." before exec
+  3. Orchestrator reads getenv("PAL_LAYOUT")
+
+  for arg in "$@"; do
+      case "$arg" in
+          --pal) PAL_MODE=1 ;;
+      esac
+  done
+  if [ "$PAL_MODE" -eq 1 ]; then
+      export PAL_LAYOUT="pieces/chtpm/layouts/..._pal.chtpm"
+  fi
+  exec "$SCRIPT_DIR/system/orchestrator"
+
+FILES: button.sh, system/orchestrator.c:172-180
+
+========================================================================
+PITFALL 12: game_compose_frame writes view.txt, not current_frame.txt
+========================================================================
+
+SYMPTOM: ${game_map} variable is empty in rendered frame.
+ROOT CAUSE: Agent expected game_compose_frame to write directly to
+current_frame.txt (the renderer's input). But chtpm_parser_pal owns
+current_frame.txt - writing to it from an op clobbers chrome.
+
+FIX: game_compose_frame writes to pieces/apps/player_app/view.txt.
+Parser reads view.txt via load_vars(), substitutes into ${game_map}
+in the layout, then writes the composed result to current_frame.txt.
+
+The chain: view.txt → parser load_vars() → ${game_map} → current_frame.txt
+
+FILES: ops/game_compose_frame.c:85-123
+
+========================================================================
+PITFALL 13: PAL "op" keyword doesn't exist - use "exec" instead
+========================================================================
+
+SYMPTOM: PAL script runs but nothing happens when keys are pressed.
+No actions dispatched, no state changes, ledger stays empty.
+ROOT CAUSE: Used `op game_turn_input x10` syntax in PAL script.
+The PAL instruction is `exec`, not `op`. prisc+x doesn't have an
+`op` instruction at all.
+
+FIX: Use `exec ./ops/game_turn_input x10` (not `op`).
+
+The `exec` instruction:
+  - Takes a literal path as first argument
+  - Optionally takes registers as arguments (their int values are
+    passed as string arguments to the command)
+  - Runs the command via system() (yes, this is inside prisc+x.c
+    itself - the exec op is the ONE place system() is acceptable,
+    matching real TPMOS precedent)
+
+Correct syntax:
+  exec ./ops/game_turn_input x10    # runs: ./ops/game_turn_input <value_of_x10>
+  exec ./ops/game_compose_frame     # runs: ./ops/game_compose_frame
+
+Wrong syntax (does nothing):
+  op game_turn_input x10            # parse error or silent no-op
+  op game_compose_frame
+
+FILES: system/prisc+x.c:1033-1046 (OP_EXEC handler)
+
+========================================================================
+PITFALL 14: compose_rgb_frame non-atomic write causes RGB flicker
+========================================================================
+
+SYMPTOM: RGB/GL window briefly flashes black on every frame update.
+ROOT CAUSE: compose_rgb_frame.c wrote rgb_frame.raw (and
+rgb_frame_3d_overlay.raw) via plain fopen("wb"), which TRUNCATES the
+file to 0 bytes before any new content is written. A reader
+(chtpm_rgb_render or gl_mirror) that opens the file during that
+truncate→write window sees an empty/partial buffer = black frame.
+
+FIX: Write to a .tmp file, then rename() over the real path. POSIX
+rename() onto the same filesystem is atomic - any reader sees either
+the complete OLD file or the complete NEW one, never a partial one.
+Matches chtpm_rgb_render.c's own write_file_atomic() pattern (see
+that file's own header comment at line 539-554 for the full
+writeup of this exact race class).
+
+  char tmp[PATH_BUF + 4];
+  snprintf(tmp, sizeof(tmp), "%s.tmp", real_path);
+  FILE *f = fopen(tmp, "wb");
+  fwrite(data, 1, len, f);
+  fclose(f);
+  rename(tmp, real_path);
+
+FILES: ops/compose_rgb_frame.c (overlay write + frame write)
+
+========================================================================
+PITFALL 15: ONE WRITER RULE VIOLATION — compose_frame writes current_frame.txt
+=======================================================================
+DATE: 2026-07-25
+SEVERITY: HIGH (causes visible flicker in both ASCII and RGB)
+SOURCE: PMO Pitfall #17 + #36 from PITFALLS_ACTIVE_2026-03-18.txt
+PROJECTS: mutaclsym, potentially any project with game_compose_frame
+
+SYMPTOM: Persistent flickering in both ASCII and RGB frames, even after
+atomic-write fix for rgb_frame.raw.
+
+ROOT CAUSE: TWO writers fighting over current_frame.txt:
+  1. compose_frame.c wrote directly to pieces/display/current_frame.txt
+  2. chtpm_parser_pal.c also writes current_frame.txt (via layout compose)
+Dual-writer race.
+
+FIX: compose_frame writes to view.txt, NOT current_frame.txt.
+Parser reads view.txt -> ${game_map} -> writes current_frame.txt.
+
+FILES: ops/compose_frame.c (out_path -> view.txt)
+
+=======================================================================
+PITFALL 16: RGB 3D CAMERA ANCHOR MISSING
+=======================================================================
+DATE: 2026-07-25
+SEVERITY: MEDIUM (camera doesn't follow xlector in 3D mode)
+
+ROOT CAUSE: chtpm 3D path passes (px, py) to render_3d_view() always.
+Non-chtpm 2D path has correct anchor at lines 1615-1616.
+
+FIX: anchor_x = (interact_mode == 1) ? xlector_x : px in chtpm 3D path.
+
+FILES: ops/compose_rgb_frame.c (chtpm 3D path ~line 1435)
+
+=======================================================================
+PITFALL 17: move_player EXIT CODES — xlector vs hero signaling
+=======================================================================
+DATE: 2026-07-25
+SEVERITY: HIGH (causes turn spam)
+
+ROOT CAUSE: move_player returned 0 for ALL actions. game_dispatch
+treated all exit 0 as "hero acted".
+
+FIX: exit 0 = hero acted, exit 2 = xlector moved (free action).
+game_dispatch gates end_turn on hero_moved only.
+
+FILES: ops/game_dispatch.c, ops/move_player.c
+
+=======================================================================
+PITFALL 18: PARSER non-atomic current_frame.txt write (ASCII flicker)
+=======================================================================
+DATE: 2026-07-25
+SEVERITY: HIGH (causes visible ASCII frame flicker)
+SOURCE: Same class as compose_rgb_frame.c's own flicker (PITFALL 14)
+
+SYMPTOM: ASCII frame flickers despite compose_frame writing to view.txt.
+Renderer reads current_frame.txt between parser's fopen("w") truncation
+and fwrite completion = empty/partial frame visible.
+
+ROOT CAUSE: chtpm_parser_pal.c line 2716-2717 writes current_frame.txt
+with plain fopen("w") + fprintf. fopen("w") truncates to 0 bytes BEFORE
+any content is written. The renderer (running concurrently) reads the
+file during this window and sees an empty frame.
+
+FIX: same atomic write pattern as compose_rgb_frame.c:
+  1. Write to current_frame.txt.tmp
+  2. rename(tmp, current_frame.txt)
+
+POSIX rename() on the same filesystem is atomic - the reader sees
+either the complete OLD or complete NEW file, never a partial one.
+
+FILES: system/chtpm_parser_pal.c (compose_frame function ~line 2716)
+
+=======================================================================
+PITFALL 19: compose_frame.c view.txt non-atomic write (ASCII flicker)
+=======================================================================
+DATE: 2026-07-25
+SEVERITY: HIGH (causes visible ASCII frame flicker)
+SOURCE: Same class as compose_rgb_frame.c (PITFALL 14) and parser
+(PITFALL 18)
+
+SYMPTOM: ASCII frame flickers even though parser's current_frame.txt
+write is atomic. The flicker source is one step earlier: compose_frame
+(ops binary) writes view.txt with fopen("w"), which truncates to 0
+bytes BEFORE writing. Parser reads view.txt during this window via
+${game_map} substitution and gets a partial/empty frame.
+
+ROOT CAUSE: compose_frame.c line 1069 uses fopen(out_path, "w") to
+write view.txt. fopen("w") sets file size to 0 before any bytes are
+written. The parser's compose_frame() reads view.txt to populate
+${game_map} — if it reads during the truncation window, it gets
+empty/partial content.
+
+FIX: atomic write (tmp+rename) for view.txt:
+  1. Write framebuf to view.txt.tmp
+  2. rename(view.txt.tmp, view.txt)
+
+Also removed the duplicate VIEW BRIDGE write (same path, same buffer,
+was writing view.txt twice per frame — the second write re-truncated
+the file the first had just completed).
+
+FILES: ops/compose_frame.c (~line 1063-1090)
+
+=======================================================================
+PITFALL 20: launch_redirect()'s FIXED 2-ARG execl() silently truncates a
+multi-arg child's real argv - process "starts" but exits on its own
+usage message
+=======================================================================
+DATE: 2026-07-26
+SEVERITY: HIGH (kills P2P entirely, but LOOKS like it half-works)
+PROJECT: 044.pal-chat-irc
+
+SYMPTOM: Two users in the same room, on two concurrent local sessions of
+the SAME project, do not see each other's messages update live. The
+first joiner sitting idle never sees a second joiner's message appear -
+only re-renders when the first joiner does something themselves (their
+own keypress causes their own recompose, which then happens to pick up
+the already-shared room file).
+
+ROOT CAUSE: system/orchestrator.c's launch_redirect(path, arg1, arg2,
+logfile) only supports a FIXED 2-argv-slot execl() call. But the actual
+call site needed 5 real args for palnet_peer (own_kind, project_id,
+piece_id, outbox_file, inbox_file[, seek_kind]):
+
+  launch_redirect("ops/+x/palnet_peer.+x",
+                  "irc_node", "pal-chat-irc - net/outbox.txt net/inbox.txt irc_node",
+                  logfile);
+
+execl() does NOT shell-split arg2 - palnet_peer received it as ONE
+literal argv[2] string, saw argc=3 instead of the required 6, and
+exited immediately printing its own "Usage: ..." message straight into
+the (rarely-checked) log file. Net result: palnet_peer never actually
+ran, net/inbox.txt on every session stayed permanently empty, and
+net/presence/ stayed empty too - the entire P2P layer was silently dead
+from the very first `./button.sh run`.
+
+WHY THIS WENT UNNOTICED: rooms/<room>/messages.txt and (after the
+master-ledger pass) data/master_ledger.txt are REAL, SHARED files
+(symlinked into every session of the same local project) - so any
+session that recomposes ITS OWN view for ANY reason (its own keypress,
+its own post) reads the already-correct shared file directly, with zero
+help from P2P. This gives strong false-positive confidence that
+messaging/networking works, when actually the ONLY thing making it look
+that way is direct filesystem sharing between same-machine sessions -
+the mechanism that's supposed to proactively notify an IDLE session
+(palnet_peer -> net/inbox.txt -> chat_inbox_watcher -> trigger_render())
+was never running at all.
+
+FIX: added a proper argv-array launcher (mirrors 041.pal-chain's own
+orchestrator.c launch(path, argv[], argc) which already did this
+correctly via execv()):
+
+  static pid_t launch_argv_redirect(const char *path, const char **argv,
+                                     int argc, const char *logfile) {
+      ...
+      char *args[16];
+      args[0] = (char *)path;
+      for (i = 0; i < argc && i < 14; i++) args[i + 1] = (char *)argv[i];
+      args[i + 1] = NULL;
+      execv(path, args);
+      ...
+  }
+
+Call site fixed to pass real separate argv slots:
+  const char *pn_args[] = { "irc_node", "pal-chat-irc", "-",
+                             "net/outbox.txt", "net/inbox.txt", "irc_node" };
+  launch_argv_redirect("ops/+x/palnet_peer.+x", pn_args, 6, logfile);
+
+VERIFIED LIVE (not just read): before the fix, /tmp/pal_chat_irc_palnet_peer.log
+contained palnet_peer's own usage-error text and net/presence/ was empty
+for both sessions. After the fix, presence files appeared with two
+DISTINCT ports (9950/9951) and a real message posted from session A
+appeared in session B's own net/inbox.txt within seconds.
+
+CHECK YOUR OWN PROJECT: any orchestrator.c using a fixed-arg launch()/
+launch_redirect() helper is only ever correct for children that need
+<= that many args. If a call site's arg2 (or similar) contains embedded
+spaces representing MULTIPLE logical tokens, that's the smell - it means
+someone is passing a whole argv as one string to a function that can't
+split it. grep every orchestrator.c in this family for this pattern.
+
+FILES: 044.pal-chat-irc/system/orchestrator.c (launch_argv_redirect added,
+       palnet_peer call site fixed)
+
+=======================================================================
+PITFALL 21: TESTING VIA DIRECT OP INVOCATION OR ISOLATED-NODE NETWORK
+SIMULATION DOES NOT PROVE THE REAL LOCAL MULTI-SESSION UX WORKS
+=======================================================================
+DATE: 2026-07-26
+SEVERITY: HIGH (false "PASS" verdict on a completely broken feature)
+PROJECT: 044.pal-chat-irc (applies to any project with an orchestrator +
+P2P daemon + shared local session state)
+
+SYMPTOM: An agent tests P2P/multi-session chat by directly invoking
+ops/+x/palnet_peer.+x and ops/+x/chat_inbox_watcher.+x by hand with
+correctly-formed argv, across two INDEPENDENT project copies simulating
+two separate machines. Everything passes - distinct ports, message
+propagation, dedup, replay. A written test report says "SAFE TO
+PROCEED." The user then runs the ACTUAL entry point real users use
+(`./button.sh run` x2, same real project, real symlinked sessions) and
+the feature is completely broken (see PITFALL 20).
+
+ROOT CAUSE: Testing ops directly bypasses the orchestrator's own launch
+code entirely - the exact code path PITFALL 20's bug lived in. A
+synthetic two-independent-node test also can't be fooled by the
+shared-symlinked-file false-positive described in PITFALL 20, so it
+proved the network protocol logic works while proving NOTHING about
+whether the real project ever actually launches that logic correctly
+for a real local user. Two structurally different kinds of "the P2P
+layer works" claims got conflated: "the ops, given correct args, do the
+right thing" (true, and was genuinely tested) vs. "the real button.sh
+run entry point actually launches those ops with correct args for a
+real local multi-session user" (false, and was NOT tested until the
+user pushed back and asked directly).
+
+FIX / STANDING RULE: for any feature involving an orchestrator-launched
+daemon (P2P, watchers, background tick processes), at least ONE test
+pass MUST go through the actual user entry point (`./button.sh run`,
+twice concurrently for multi-session features) before writing "SAFE TO
+PROCEED" or "PASS" in a test report - not a headless op-level
+substitute, no matter how thorough the op-level coverage is. Op-level
+and isolated-node tests are still valuable (they prove the underlying
+logic is sound and isolate the SPECIFIC bug faster once you know
+something's wrong) but they are a SUPPLEMENT to, never a REPLACEMENT
+for, one real end-to-end run through the actual launcher path.
+
+RELATED, ALSO DISCOVERED THIS SESSION: don't hand-edit a state file
+(current_layout.txt, chat_menu_state.txt, etc.) that a LIVE persistent
+pal module also owns and actively re-syncs - the module's own next idle
+loop tick will silently overwrite your edit back to whatever IT thinks
+the state is (it never learned about the manual edit; it has no idea a
+human/agent intervened). To move a live session into a given
+screen/room/state for testing, drive it through REAL key injection
+(pieces/keyboard/history.txt, [TIMESTAMP] KEY_PRESSED: <code> format per
+_.0.aigent-testing-k3.txt) so the state change happens through the
+module's own real code path, not around it.
+
+ALSO OBSERVED THIS SESSION (worth a quick mention for future agents):
+system/keyboard_input.c busy-spins near 100% CPU per session in a
+headless/no-/dev/tty environment (API sandbox) rather than blocking
+cleanly - two concurrent test sessions pegged ~93% CPU EACH. Kill test
+sessions immediately after use in such environments, don't leave them
+running "for later." Also: `./button.sh kill` / kill_all.sh did not
+always complete in a single invocation under that CPU load in this
+environment (observed exit code 144 twice) - always verify with a
+`ps aux | grep` afterward rather than trusting the exit code alone; a
+manual `kill -9 <pid>` follow-up closed the gap both times it happened.
+
+FILES: 044.pal-chat-irc/system/keyboard_input.c (CPU-spin - ROOT-CAUSED
+       AND FIXED, see PITFALL 22 below),
+       044.pal-chat-irc/pieces/os/kill_all.sh (unreliable single-shot
+       completion under CPU load, NOT fully root-caused - mitigated via
+       an outer verify+retry pattern, see standing rule above)
+
+=======================================================================
+PITFALL 22: keyboard_input.c's read_key() busy-spins at ~100% CPU with
+no /dev/tty (headless/API-sandbox testing) - ROOT-CAUSED AND FIXED,
+directory-wide (10 project copies)
+=======================================================================
+DATE: 2026-07-26
+SEVERITY: HIGH (pegs a full CPU core per session indefinitely, no
+natural ceiling - compounds fast with 2+ concurrent test sessions)
+
+SYMPTOM: `./system/keyboard_input` shows ~93-100% CPU in `ps aux`,
+indefinitely, for every headless/backgrounded test session launched via
+`./button.sh run`. Confirmed live: two concurrent sessions each pegged
+a separate core at ~99-100% for the full 3+ minutes they were left
+running.
+
+ROOT CAUSE (system/keyboard_input.c's read_key()):
+
+  static int read_key(void) {
+      char c;
+      int nread;
+      while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+          if (nread == -1 && errno != EAGAIN) return -1;
+      }
+      ...
+  }
+
+  enable_raw_mode() sets VMIN=0/VTIME=1 on stdin so a REAL terminal's
+  read() blocks up to ~100ms before returning 0 when nothing's typed -
+  the loop above is meant to be naturally throttled by that. But
+  tcsetattr() SILENTLY FAILS (return value never checked) when stdin
+  isn't a real tty - which is exactly what a headless/API-sandbox test
+  run looks like (backgrounded via `&`, stdin redirected from
+  /dev/null or a closed pipe). On a non-tty fd, read() returns 0
+  INSTANTLY every single call, forever - the while loop's only
+  condition for continuing IS "did I get exactly 1 byte", so it spins
+  as fast as the CPU allows with zero blocking, zero sleep, zero upper
+  bound.
+
+FIX: add a short usleep() on the nread==0/retry path:
+
+  while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+      if (nread == -1 && errno != EAGAIN) return -1;
+      usleep(20000);  /* caps the spin; negligible cost on a real
+                          terminal where this path is already rare and
+                          already throttled by VTIME */
+  }
+
+  Verified live: CPU usage for system/keyboard_input dropped from
+  ~99-100% to ~0.1% after rebuilding with this fix, same test session
+  shape (button.sh run --pal, backgrounded, no tty).
+
+DIRECTORY-WIDE SCOPE: this file is described in its OWN header comment
+as a "SHARED OP" independently copied (not symlinked) into every
+project in this family. Found the IDENTICAL unfixed pattern in 9 other
+copies (014.wsr-pal, 041.pal-chain, 041.pal-forum, 045.muchi-pal-agent,
+01.muchi-pals, 101.lpns+map+4, 101.mutaclsym, 002.zoo, 0.user-pal) and
+applied the SAME fix to all of them - do not assume fixing your one
+project's copy is enough; grep the whole tree
+(`find <root> -iname keyboard_input.c`) and check every hit.
+INTERESTING PRECEDENT MISSED: 101.ledger-player-npc-simple+3's own copy
+ALREADY had a bare `usleep(10000)` here with no comment - meaning this
+exact bug was found and partially fixed once before, in one project,
+and never propagated or written down anywhere until now. Write pitfalls
+down BEFORE fixes get lost in a single project's diff.
+
+STANDING RULE: when testing ANY of these projects headlessly (no real
+terminal), assume this fix needs to be in place, or that keyboard_input
+itself should simply be skipped/killed immediately after launch if the
+project's own binary predates this fix and can't be rebuilt - check
+`ps aux` CPU% for it within a few seconds of any headless launch and
+kill/rebuild rather than letting it run.
+
+FILES: system/keyboard_input.c in all 11 copies across the muchiverse
+       tree (see DIRECTORY-WIDE SCOPE above for the full list)
+
+=======================================================================
+PITFALL 23: parse_attributes() 1-byte heap-buffer-overflow -> silent
+malloc corruption -> chtpm_parser_pal dies a few frames after startup
+(directory-wide, all 11 copies)
+=======================================================================
+DATE: 2026-07-26
+SEVERITY: CRITICAL (silently kills the whole UI stack; was previously
+misdiagnosed as an orchestrator/palnet_peer "hang")
+PROJECT FOUND: 041.pal-chain (root-caused via AddressSanitizer)
+
+SYMPTOM: `./button.sh run` appears to "hang" - keyboard_input blocks in
+the foreground as expected (see PITFALL 21's headless-testing note),
+but chtpm_parser_pal ALSO silently disappears from `ps aux` within a
+couple seconds of startup, so nothing ever renders. A prior session's
+own smoke test reported this as an unexplained hang and gave up. It is
+NOT a hang - the parser crashes.
+
+ROOT CAUSE (system/chtpm_parser_pal.c, parse_attributes(), scanning an
+attribute name):
+
+  char* name_start = pos; while (*pos && *pos != '=' && !isspace(*pos)) pos++;
+  char saved = *pos; *pos = '\0'; while (*(++pos) && isspace(*pos));
+
+When the attribute name runs all the way to the end of the strdup'd
+attribute string (saved == '\0' - i.e. pos was ALREADY at the buffer's
+own null terminator), `while (*(++pos) && ...)` unconditionally
+increments pos PAST that terminator BEFORE ever checking it - a 1-byte
+READ past the end of the heap allocation. Confirmed via AddressSanitizer:
+
+  ERROR: AddressSanitizer: heap-buffer-overflow ... READ of size 1
+  #0 parse_attributes system/chtpm_parser_pal.c:2202
+  #1 parse_chtm system/chtpm_parser_pal.c:2474
+  0x... is located 0 bytes to the right of 508-byte region
+  allocated by strdup() at system/chtpm_parser_pal.c:2197
+
+That single out-of-bounds read corrupts glibc's own malloc bookkeeping
+for the adjacent heap chunk (undefined behavior, not merely a harmless
+stray read) - the NEXT malloc/free call downstream then aborts with:
+
+  malloc(): invalid next size (unsorted)
+
+...which is why the crash appears to happen "a few frames later" with
+no obvious connection to the actual bug, and why it looked like a hang
+from the outside (no core dump inspected, no ASan run) rather than a
+crash.
+
+FIX: only advance past the terminator if there's a real character to
+skip:
+
+  char saved = *pos; *pos = '\0';
+  if (saved) { pos++; while (*pos && isspace((unsigned char)*pos)) pos++; }
+
+VERIFIED LIVE: before the fix, ASan caught the overflow every run and
+the plain (non-ASan) binary aborted with the malloc corruption message
+within ~1-2 seconds of `./button.sh run`. After the fix: full daemon
+stack (orchestrator, renderer, chtpm_parser_pal, keyboard_input,
+prisc+x, palnet_peer) launched and stayed alive/stable for 10+ seconds
+straight with real frame content rendering, verified via direct process
+inspection, not just a log message.
+
+DIRECTORY-WIDE SCOPE: chtpm_parser_pal.c is a "SHARED OP" independently
+copied (not symlinked) into 11 projects across this tree - found and
+fixed the IDENTICAL bug in ALL of them (including 044.pal-chat-irc's
+own copy, which had simply never triggered it - a dormant time bomb
+depending on the exact shape of whatever CHTPM layout XML a given
+project happens to load first). grep every copy for
+`while (\*(\+\+pos) && isspace` before trusting any of them are safe.
+
+DEBUGGING METHOD WORTH REMEMBERING: when a persistent daemon
+mysteriously "disappears" from `ps aux` shortly after launch with no
+obvious cause, don't assume a hang or an orchestrator/launch-arg bug
+(PITFALL 20's class) without checking first - recompile the exact
+binary with `-fsanitize=address -g` and run it directly (bypass the
+orchestrator's fork/exec, run it standalone against a hand-built
+session directory with correct symlinks) to get an exact file:line
+crash location in seconds, instead of guessing from process-list
+absence or grepping for suspicious code. A plain (non-ASan) run's own
+"malloc(): invalid next size" message just means "somewhere upstream
+overflowed a heap buffer" - it points at neither the actual overflow
+site nor even reliably at the correct function.
+
+ALSO WORTH REMEMBERING: when checking whether a project's own daemons
+are alive via `ps aux | grep`, match on the process/binary name alone
+(`system/renderer`, `ops/\+x/palnet_peer`, etc.), NEVER require the
+project's own absolute path as part of the same match - children
+launched via a relative execv() path (`execv("./system/renderer", ...)`
+from a cwd-changed parent) show up in `ps aux` as `./system/renderer`
+with NO absolute path prefix at all. A grep requiring both produces a
+false "nothing is running" reading even when the full stack is alive
+and healthy - this exact mistake was made twice this session (once in
+testing/test_multiuser_p2p.sh's cleanup check, once while manually
+investigating this very pitfall) before being caught both times by an
+independent broader recheck.
+
+FILES: system/chtpm_parser_pal.c in all 11 copies across the muchiverse
+       tree (014.wsr-pal, 041.pal-chain, 041.pal-forum, 045.muchi-pal-
+       agent, 01.muchi-pals, 044.pal-chat-irc, 101.lpns+map+4,
+       101.mutaclsym, 101.ledger-player-npc-simple, 002.zoo,
+       0.user-pal/00.login-signup)
+
+
+=======================================================================
+PITFALL: DNA / palette pickers MUST be numbered nav rows — not a/d scrollers
+=======================================================================
+DATE: 2026-07-27
+PROJECT: 0.user-pal/01.avatar-creation
+
+WRONG: a single <scroller> strip like `SKIN: 👨 [👨🏻] 👨🏼 …` with a/d (or
+INTERACT lock) to cycle. User tries to "select" a skin and either
+navigates away (w/s/digits swallowed or strip steals focus) or has no
+per-option index to jump to. Deviated from std chtpm menu pattern.
+
+RIGHT (std): under a [+]/[-] fold, inject one <button> per option so
+the parser assigns real navigable indexes:
+
+  [ ] 7. [+] Skin  👨🏻
+  (Enter open)
+  [ ] 7. [-] Skin  👨🏻
+  [>] 8. [👨🏻]          ← KEY:301 applies skin index 1
+  [ ] 9. 👨🏼
+  …
+
+Implementation notes for avatar-creation:
+  - compose writes dna_opts_skin=… markup into gui_state (lazy XML sub)
+  - each button onClick="KEY:300+idx" (gender 310+, hair 320+, …)
+  - avatar_menu_input maps those key codes → cycle_dna.+x <uuid> <field> <idx>
+  - fold [+]/[-] only hides/shows children; no ACTIVATE trap, no a/d strip
+
+ALSO: do not put onClick="ACTIVATE" on DNA folds if children need global
+numbered nav — ACTIVATE scopes navigability and INTERACT-on-child was
+broken via send_command("INTERACT") (not a real command verb).
+
+FILES: ops/avatar_compose_frame.c, ops/avatar_menu_input.c,
+       pieces/chtpm/layouts/avatar_manage.chtpm, customize.chtpm
+
+========================================================================
+PITFALL 48: Idle menu_input (key 0) MUST NOT unconditional bump_screen /
+            hit_frame — causes multi-frame-per-second spam (unlike
+            mutaclsym, which only composes when input/state changed)
+========================================================================
+
+SYMPTOM: Terminal floods with `--- FRAME UPDATE at ... ---` markers even
+when the user is idle. `pieces/display/frame_history.txt` grows to
+megabytes in minutes. CPU sits high; scrollback becomes unusable.
+
+ROOT CAUSE: House pal loops (login, START_BUTTON, forum-family) look like:
+
+  loop:
+    menu_input 0          # idle catch-up every ~30ms
+    read_history ...
+    ...
+    compose_frame
+    hit_frame
+
+If `menu_input` key==0 always grows `*_screen_changed.txt` (or always
+calls compose), the main loop takes the "render" branch on every sleep
+tick — not only when something changed. mutaclsym avoids this: its
+dispatch only composes after real keys / turn work.
+
+LIVE EXAMPLE (user-pal login, 2026-07-27):
+  userpal_menu_input key 0 did regenerate_login_pdl() then
+  bump_screen() unconditionally → ~33 recomposes/sec with no new
+  accounts and no keypresses.
+
+FIX:
+  1. Idle path may recompute catalogs, but pulse/recompose ONLY when
+     the resulting view/catalog fingerprint actually differs
+     (hash piece.pdl, compare last_message, compare layout, etc.).
+  2. Real actions (KEY:n, RUN:, login success, href) still bump.
+  3. Prefer mutaclsym shape when possible: compose only after input
+     processing that changed state.
+
+AUDIT: system/renderer.c appends every painted frame to
+  pieces/display/frame_history.txt (cleared at renderer process start /
+  each new session). Use that file to prove spam vs calm paint rates.
+  START_BUTTON also dual-writes install debug/frame_history.txt via
+  PRISC_FRAME_HISTORY (cleared each `./button.sh run`).
+
+FILES: 0.user-pal/00.login-signup/ops/userpal_menu_input.c,
+       *.START_BUTTON/ops/start_menu_input.c (idle already gated),
+       pal/main_loop_chtpm.pal family, system/renderer.c
+
+SEE ALSO: xyzos-standards sec. 20 (ONE VISIBLE FRAME WRITER), sec. below
+on frame_history audit logs.
+
+========================================================================
+PITFALL 49: Treating ASCII/terminal as primary and widgets as
+            "open another terminal" — WRONG. GL is primary; widgets
+            are GL-only spawn profiles (2026-07-27)
+========================================================================
+
+SYMPTOM: Plans and agents add Step 2 "optional GL" for widgets, or tell
+users to open a second terminal for file-menu while the editor runs.
+Product feels like a dev console farm, not an OS of windows.
+
+ROOT CAUSE: Early house scaffolds (login, START_BUTTON, editor Phase 1)
+shipped terminal-first because harnesses and agents are text-native.
+That is a **dev convenience**, not the product architecture.
+
+LAW (xyzos-standards sec. 35):
+  - GL / RGB window = primary user surface
+  - ASCII renderer = secondary (harness, headless, debug)
+  - Widget launch profile = GL on, ASCII off (no second TTY)
+  - App opens widget by spawning run-widget, not by asking for a shell
+
+FIX:
+  - button.sh: `run` (app) vs `run-widget` (GL-only)
+  - ascii renderer stdout → /dev/null or skip process when widget
+  - editor FILE menu → spawn &.widgits/file-menu as widget
+  - update plans: GL is Step 1 for widgets, not Step 2
+
+SEE: xyzos-standards §35, &.widgits/file-menu/widget+plan.txt
+
+=======================================================================
+PITFALL 50: prisc+x custom-op dispatch (exec_custom_op's popen()/
+            system() calls) interpolates the project path UNQUOTED —
+            any project living under a directory name containing a
+            shell metacharacter silently loses EVERY custom op,
+            forever, with zero error visible to the caller
+=======================================================================
+DATE: 2026-07-29
+SEVERITY: CRITICAL (every op, every project, under the affected path —
+           not a bug in the project's own code at all)
+PROJECT FOUND: &.widgits/file-menu (this whole tree — event-editor,
+           map-picker, tile-picker, proc-monitor — lives one directory
+           deeper than every other project, inside a folder literally
+           named "&.widgits" per PITFALL 49's own house convention)
+
+SYMPTOM: file-menu's nav pickers rendered fine ([>]/[ ] showed cursor
+position), arrow keys were correctly defined, but cursor_pos in
+fm_state.txt NEVER moved no matter what was injected. The marker file
+(pieces/display/fm_screen_changed.txt) that fm_menu_input.c touches on
+every call stayed at 0 bytes forever — looked exactly like "the PAL
+module never runs" or "read_history is broken." Spent a long time
+chasing that hypothesis (checking <module> tag parsing, read_history's
+literal-path form, the main_loop_chtpm.pal control flow byte-for-byte
+against working siblings) before finding the real cause.
+
+ROOT CAUSE (system/prisc+x.c, exec_custom_op()): every `void ops/+x/*`
+custom op (fm_menu_input, fm_compose_frame, chain_menu_input, etc.) is
+dispatched by building a shell command string with asprintf() and
+running it through popen()/system():
+
+  char *full_script_path; // = PRISC_PROJECT_ROOT + "/" + handler path
+  asprintf(&cmd, "%s %d", full_script_path, regs[i->rs1]);
+  FILE *pipe = popen(cmd, "r");   // full_script_path is NEVER quoted
+
+PRISC_PROJECT_ROOT for file-menu resolves to a path containing a bare,
+unquoted "&" (".../44.xyz.../&.widgits/file-menu/..."). /bin/sh treats
+an unquoted "&" as "background the previous command, then run the
+rest" — it silently SPLITS the exec path in two:
+
+  sh: 1: .widgits/file-menu/.../fm_menu_input.+x: not found
+  sh: 1: /home/no/Desktop/.../44.xyz.../: Permission denied
+
+Confirmed by manually reproducing the exact popen() string with sh -c
+outside prisc+x entirely — same two errors, byte for byte. Neither
+error is printed anywhere the caller sees by default: chtpm_parser_pal
+forks prisc+x with stdout redirected to /dev/null in every button.sh
+(`>/dev/null 2>&1 &`), so the "not found"/"Permission denied" lines
+vanish silently. Every custom op call becomes a complete, silent no-op:
+the op's own binary never runs, so it never touches ITS OWN marker
+file either — from the PAL loop's side, this is indistinguishable from
+"the marker-diff gate is broken" or "the module isn't executing at
+all," which is exactly the wrong trail this was chased down first.
+
+WHY THIS AFFECTS THE WHOLE &.widgits/ FAMILY, NOT JUST file-menu: any
+project under a path containing a shell metachar (&, ;, |, $, `, (),
+unescaped spaces already handled by real dirs elsewhere in this tree
+via quoting THAT never existed here) hits the identical silent failure
+for EVERY custom op it defines, unconditionally — this is a property
+of the path, not of any individual project's own PAL script or op
+code. event-editor, map-picker, tile-picker, proc-monitor all sit at
+the exact same "&.widgits/<name>" depth and are exposed identically
+until the shared prisc+x binary is rebuilt from the fixed source.
+
+FIX: quote the resolved path before it ever reaches popen()/system().
+Added a small shell_quote() helper (single-quote wrap, with the
+standard '\'' escape for any literal single quotes already present)
+in system/prisc+x.c, applied to full_script_path at all three
+cmd-building call sites inside exec_custom_op() (the layout_op branch,
+the literal-arg branch, and the register-value branch):
+
+  static char *shell_quote(const char *in) {
+      size_t len = strlen(in);
+      char *out = malloc(len * 4 + 3);
+      char *o = out; *o++ = '\'';
+      for (size_t k = 0; k < len; k++) {
+          if (in[k] == '\'') { *o++='\''; *o++='\\'; *o++='\''; *o++='\''; }
+          else *o++ = in[k];
+      }
+      *o++ = '\''; *o = '\0';
+      return out;
+  }
+  ...
+  char *quoted_script_path = shell_quote(full_script_path);
+  asprintf(&cmd, "%s %d", quoted_script_path, regs[i->rs1]);
+
+No-op for every path that never had a metacharacter in it (every
+non-widget project) — this is purely additive safety, not a behavior
+change for anything that currently works.
+
+VERIFIED LIVE: after rebuilding system/prisc+x from the patched source
+and pulling it into file-menu via its own build.sh (which copies the
+compiled binary from 014.wsr-pal, the canonical shared-ops source),
+fm_screen_changed.txt started growing every idle tick as expected, and
+a real ARROW_DOWN injected through the standard pipeline (see PITFALL
+51 below for why the FIRST injection attempt looked broken too) moved
+cursor_pos 1 -> 2 -> 5 across repeated key presses, matching every
+other working project's own nav behavior exactly.
+
+STANDING RULE: system/prisc+x.c is this family's own shared VM (see
+that file's own top-of-file comment: "genuine fixes belong here
+directly, not worked around elsewhere") — this fix belongs in the
+canonical 014.wsr-pal copy, not file-menu's own local binary, so every
+build.sh across the tree that re-copies from wsr-pal picks it up
+automatically. Rebuild wsr-pal's system/prisc+x, then re-run any other
+widget's own `./button.sh compile` (or equivalent build.sh) to pick up
+the fixed binary — do not assume the fix "traveled" just because the
+source file did.
+
+FILES: 014.wsr-pal💸️📌️+2/system/prisc+x.c (exec_custom_op, canonical
+       fix — shared by every project that copies its prisc+x binary
+       from here via build.sh)
+
+=======================================================================
+PITFALL 51: PITFALL 22's keyboard_input.c fix only throttled the EOF
+            (nread==0) retry path — the hard-error (nread==-1, real
+            errno) path still returns instantly with ZERO sleep,
+            reproducing the exact same 100% CPU spin PITFALL 22
+            already claimed was fixed
+=======================================================================
+DATE: 2026-07-29
+SEVERITY: HIGH (same blast radius as PITFALL 22 — one pegged CPU core
+           per headless test session — plus it actively misled
+           debugging by mimicking an "already fixed, known" bug)
+
+SYMPTOM: system/keyboard_input showed ~99% CPU in `ps aux` during a
+headless test run, identical to PITFALL 22's own symptom, DESPITE that
+project's copy of keyboard_input.c already containing PITFALL 22's own
+documented fix (`usleep(20000)` inside the retry loop). Wasted time
+re-diagnosing a "known, already-fixed" bug before noticing the fix was
+incomplete, not absent.
+
+ROOT CAUSE (system/keyboard_input.c, read_key()) — the exact code
+PITFALL 22 left behind:
+
+  while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+      if (nread == -1 && errno != EAGAIN) return -1;
+      usleep(20000);
+  }
+
+This throttles the nread==0 (EOF) case correctly — PITFALL 22's own
+fix works exactly as documented for THAT path. But the hard-error
+branch (`nread == -1 && errno != EAGAIN`) executes `return -1` on the
+SAME line, before ever reaching the usleep() below it. In this specific
+sandboxed test environment, read(STDIN_FILENO, ...) on a backgrounded
+process's stdin returned a real error (not EAGAIN, not a clean 0/EOF)
+on every single call — so read_key() returned -1 immediately, and
+main()'s own `if (key == -1) continue;` looped straight back into
+read_key() with no sleep anywhere in the cycle. Same 100% CPU spin,
+different trigger condition than the one PITFALL 22 root-caused.
+
+FIX: move the usleep() ahead of the error check so EVERY non-1 read
+result gets throttled before the function can return, regardless of
+which branch put it there:
+
+  while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+      usleep(20000);
+      if (nread == -1 && errno != EAGAIN) return -1;
+  }
+
+Preserves the existing contract (still returns -1 upward on a real
+hard error, main() still treats that as a harmless no-op tick) while
+capping the retry rate on EVERY path that can loop, not just the one
+PITFALL 22 happened to hit first.
+
+VERIFIED LIVE: system/keyboard_input CPU usage dropped to ~0.0% in the
+same headless test session shape (button.sh run-app, backgrounded, no
+controlling tty) that showed ~99% before this follow-up fix.
+
+STANDING RULE: when a "known, already-fixed" pitfall's symptom
+resurfaces, read the CURRENT code before assuming the fix regressed or
+was never applied — check whether the ORIGINAL fix actually covers
+every branch that can reach the buggy loop, not just the one branch it
+was written against. PITFALL 22's own fix was correct for the
+condition it was diagnosed from (nread==0 on a plain /dev/null-style
+stdin) but incomplete for a different failure mode of the same
+underlying "no real tty" environment (a hard read() error instead of a
+clean EOF) — same root symptom, same file, same loop, genuinely
+different code path through it.
+
+FILES: 014.wsr-pal💸️📌️+2/system/keyboard_input.c (read_key() — same
+       "shared, independently-copied" scope note as PITFALL 22 itself;
+       re-check the other copies listed there if this resurfaces
+       elsewhere)
+
+=======================================================================
+PITFALL 52: Wiring GL/RGB into a NEW project without copying the font
+            glyph registry produces a technically-correct, checksum-
+            matching, but VISUALLY BLANK/BLACK GL window — a known
+            bug (fm-widget-fix.md) recurring because it was never
+            promoted into this file
+=======================================================================
+DATE: 2026-07-29
+SEVERITY: MEDIUM (window opens, pipeline runs, everything LOOKS wired
+           correctly by every file-level check — the failure is
+           invisible except by actually looking at the window)
+PROJECT: 102.editor-📄️00.00 (adding §35 GL/RGB parity with
+          &.widgits/file-menu for the first time)
+
+SYMPTOM: Added chtpm_rgb_render + gl_mirror to a project that never had
+them (editor), copying the binaries and the button.sh launch
+conditional from file-menu's own working pattern. Every file-level
+check passed: chtpm_rgb_render produced rgb_frame.raw at the correct
+size (640x768x4 = 1,966,080 bytes), and gl_mirror's own
+gl_display.receipt.txt checksum matched rgb_frame.receipt.txt's
+checksum exactly — the documented proof method from fm-widget-fix.md
+for "GL actually consumed the right frame." By that evidence alone this
+looked done. It was not: the actual content in the frame's non-glyph
+regions being non-zero doesn't mean the TEXT itself renders visibly.
+
+ROOT CAUSE: chtpm_rgb_render loads ASCII font glyphs from
+pieces/registry/fonts/ascii/<code>/glyph.txt, resolved relative to
+PRISC_PROJECT_ROOT (the SESSION dir, symlinked back to the project
+root) — NOT from a shared/central location, NOT from 014.wsr-pal at
+runtime. This is a project-LOCAL requirement, by design (see
+fm-widget-fix.md's own "Lesson: Every project/widget that uses
+chtpm_rgb_render must have pieces/registry/fonts/ascii/<code>/
+glyph.txt in its own directory tree. Glyphs are project-local, not
+shared from wsr."). editor never had a pieces/registry/ directory at
+all, and its button.sh never symlinked one into the session dir. Every
+character in current_frame.txt rendered as invisible pixels — a
+checksummed, correctly-sized, but visually blank/black frame.
+
+WHY THIS ALMOST SHIPPED UNCAUGHT: fm-widget-fix.md already documents
+this EXACT root cause, discovered once already for file-menu — but it
+lives only in that one project-local sprint doc, never in the shared
+!.xyzos-pitfalls+1.txt every future agent is told to read "BEFORE
+modifying any pal project." A second agent (this session) re-wired the
+identical GL/RGB pipeline into a second project and walked straight
+into the identical, already-solved bug, because the fix's location
+made it invisible to anyone not specifically told to go read
+file-menu's own internal fix-log first.
+
+FIX (mirrors fm-widget-fix.md's own fix #3, applied here to editor):
+  1. scripts/build.sh: copy pieces/registry/fonts/ascii/<code>/
+     glyph.txt for every code from 014.wsr-pal into the project's OWN
+     pieces/registry/fonts/ascii/ tree (95 glyphs as of this session).
+  2. button.sh: symlink $SESSION_DIR/pieces/registry ->
+     $SCRIPT_DIR/pieces/registry alongside the project's other session
+     symlinks (chtpm layouts, ops, pal, etc.).
+
+VERIFIED LIVE: before the fix, rgb_frame.raw's non-zero byte count was
+in the single digits (essentially a blank/black frame with checksum
+noise, not real glyph content) on at least one capture. After copying
+the 95-glyph registry and re-testing, non-zero byte count rose to
+~79,000 and the receipt checksums still matched — same proof method,
+now backed by an actual visible frame (confirmed by the user directly
+viewing the GL window, not just file checks).
+
+STANDING RULE: ANY project adding chtpm_rgb_render for the first time
+MUST copy the font glyph registry as part of that same change — it is
+not optional, and its absence produces NO error anywhere (not in
+stdout, not in a receipt file, not in a checksum) — only a blank
+window a human has to actually look at to notice. Checksum-matching
+receipts prove the PIPELINE moved bytes correctly; they do NOT prove
+the bytes are visually meaningful. Grep any new GL/RGB integration for
+a pieces/registry/fonts/ascii/ directory before declaring it done.
+
+UPDATE (2026-07-30) — RECURRED A THIRD TIME, SAME SESSION: this
+pitfall's own "STANDING RULE" (grep any new GL/RGB integration for a
+registry directory) was written, then missed on the very next
+integration point checked: @.apps/text-editor-xyz/button.sh builds its
+OWN separate editor session (does not delegate to 102.editor-📄️00.00/
+button.sh for the editor side — see PITFALL 54/handoff PART 0) and had
+the exact same missing symlink. Three occurrences of the identical
+bug, same calendar day, across three different launch paths for what
+is ultimately the same underlying editor project: file-menu (original,
+fixed pre-2026-07-29), 102.editor's own button.sh (fixed 2026-07-29),
+and this combined app launcher's own separate session-bootstrap code
+(fixed 2026-07-30). Fixed by adding the same
+`ln -sfn "$EDITOR_DIR/pieces/registry" "$EDITOR_SESSION/pieces/registry"`
+line alongside this launcher's other symlinks.
+
+REVISED STANDING RULE: it is not enough to check "does the project
+have a registry symlink" once per project — ANY session-bootstrap code
+path that independently constructs a session directory (rather than
+delegating to that project's own button.sh) needs its OWN copy of
+every required symlink, checked independently. Grep the WHOLE tree for
+every place that builds an editor (or any GL/RGB-using project's)
+session directory by hand — `grep -rl "EDITOR_SESSION\|SESSION_DIR.*ln -sfn"` —
+not just the project's own canonical launcher.
+
+FILES: 102.editor-📄️00.00/scripts/build.sh (glyph copy step added),
+       102.editor-📄️00.00/button.sh (registry symlink added),
+       @.apps/text-editor-xyz/button.sh (registry symlink added,
+       separate session-bootstrap code, third occurrence)
+SEE ALSO: &.widgits/file-menu/fm-widget-fix.md (original discovery,
+       never promoted here until now)
+
+=======================================================================
+PITFALL 53: Backgrounding `button.sh run` with a trailing `&` from an
+            interactive job-control shell SIGTTIN-stops the ENTIRE
+            daemon stack (GL included) the instant keyboard_input
+            touches the controlling terminal — silent, no error, looks
+            exactly like "GL never launched"
+=======================================================================
+DATE: 2026-07-29
+SEVERITY: HIGH (total, silent failure of the whole running stack —
+           easily misdiagnosed as a GL/DISPLAY/rendering bug, which is
+           exactly what happened this session before the real cause
+           was found)
+PROJECT: 102.editor-📄️00.00 (discovered while testing the PITFALL 52
+          fix; applies to EVERY project using this button.sh shape —
+          file-menu included — not something the GL/RGB work
+          introduced)
+
+SYMPTOM: User ran `./button.sh run &` (backgrounded from their own
+interactive terminal) expecting the same GL window that had just been
+verified working moments earlier via an agent-run background test. No
+GL window appeared at all. `ps aux` on that exact process group showed
+EVERY daemon in the stack (system/renderer, system/chtpm_parser_pal,
+system/chtpm_rgb_render, system/prisc+x) in STATE T (stopped) — not
+running, not crashed, not exited: paused mid-execution, indefinitely,
+consuming zero CPU, with no error output anywhere because nothing
+actually failed — the kernel suspended the whole group.
+
+ROOT CAUSE: every button.sh run action in this family ends with a
+FOREGROUND, blocking call: `./system/keyboard_input`. That binary
+calls tcgetattr()/tcsetattr() directly on STDIN_FILENO to enter raw
+terminal mode - real, direct controlling-terminal I/O. When the WHOLE
+button.sh invocation is backgrounded with a trailing `&` in a shell
+with normal job control enabled, that shell's own job-control layer is
+still watching the terminal on behalf of ITS foreground job (the shell
+prompt itself). The instant a BACKGROUND job's process attempts to
+read from (or, depending on shell/tty settings, write to) the
+controlling terminal, the kernel's own tty line discipline sends
+SIGTTIN (or SIGTTOU) to that process'S ENTIRE PROCESS GROUP - not just
+keyboard_input, everything forked earlier in the same button.sh run
+that hasn't since called setsid()/setpgid() to detach - the ASCII
+renderer, chtpm_parser_pal, chtpm_rgb_render, and prisc+x/PAL loop, all
+stopped together, at whatever point each happened to be in mid-loop.
+gl_mirror's own absence from that stopped-process list (rather than
+also showing up stopped) suggests the group-stop can land before or
+around the GL launch point depending on exact timing - either way the
+net effect for a user watching the screen is identical: no window,
+zero error, the process silently going nowhere the moment `&` was
+used.
+
+This is NOT a bug introduced by wiring GL into editor (PITFALL 52's own
+work) - &.widgits/file-menu/button.sh's `run` action ends in the exact
+same foreground `./system/keyboard_input` call and would exhibit the
+identical stop if launched the same way. It surfaced here because this
+was the first time in this session someone actually tried `&`-
+backgrounding one of these launchers from a real interactive shell
+while also expecting its GL window to appear.
+
+FIX (workaround, not a code change - see STANDING RULE): do not
+background `button.sh run` (or run-app/run-widget) with a trailing `&`
+from an interactive shell that has job control enabled. Run it in the
+foreground directly; the GL window (a separate X11 client/process) and
+the terminal-blocking keyboard_input coexist fine as long as the whole
+invocation itself stays foreground in its own shell.
+
+If a TRUE background/headless launch is genuinely needed (agent
+testing, CI, a supervised daemon), the correct fix is on the launcher
+side, not the caller side: either (a) redirect keyboard_input's own
+stdin from something that isn't the controlling tty (`</dev/null` or
+a pty allocated for that purpose) so it never attempts real terminal
+I/O in the first place, or (b) have the backgrounding shell explicitly
+disown the job / run it via `setsid ./button.sh run &` so the new
+process group has no controlling terminal to trap against at all. This
+handoff/pitfall does NOT implement either of those - flagging the
+mechanism for whoever needs a genuine headless-launch mode next,
+rather than guessing at a fix nobody asked for yet.
+
+VERIFIED LIVE: same `./button.sh run` command, same session, no `&` -
+ran in the plain foreground - GL window appeared correctly, confirmed
+directly by the user looking at their own screen (not just file/
+checksum evidence, matching the STANDING RULE PITFALL 52 itself just
+established: a human has to actually look).
+
+STANDING RULE: when a headless/agent-driven test genuinely needs a
+project's daemon stack running unattended (the k3/§36.6 black-box
+testing style), do NOT reach for `./button.sh run &` as the obvious
+option - it is the one invocation shape most likely to silently stop
+itself in exactly this way the moment keyboard_input executes. Prefer
+launching the individual pipeline binaries directly (as fm-widget-
+fix.md's own "Standalone rendering test" procedure already does:
+compose -> chtpm_parser_pal -> chtpm_rgb_render -> gl_mirror, each
+started explicitly, keyboard_input omitted entirely) when the goal is
+unattended verification rather than real interactive use.
+
+FILES: none changed - this is a shell/job-control interaction, not a
+       code bug; documented here so the NEXT agent debugging "GL/
+       daemon silently doesn't start" checks `ps aux` STATE column
+       (T = stopped) before assuming a rendering, DISPLAY, or config
+       bug
+
+=======================================================================
+PITFALL 54: A previously-fixed, previously-VERIFIED three-layer race
+            condition (chtpm_rgb_render's initial render vs
+            chtpm_parser_pal's first compose) had regressed out of
+            &.widgits/file-menu/button.sh and was never present in
+            102.editor-📄️00.00/button.sh's new GL/RGB wiring either —
+            RE-FIXED IN BOTH, 2026-07-30
+=======================================================================
+DATE: 2026-07-29 (regression found) / 2026-07-30 (re-confirmed live +
+re-fixed in both projects); original bug/fix dated 2026-07-29 per
+@.apps/text-editor-xyz/widget-bug-fix-j29.txt (discovered, not
+authored, this session)
+SEVERITY: HIGH (blank/all-black GL window — the exact symptom class
+           debugged at length this session for two OTHER, genuinely
+           separate causes first, PITFALL 52/53 — all three now
+           reconciled: registry, job-control backgrounding, and this
+           race condition were three distinct bugs producing an
+           identical-looking symptom, fixed one at a time)
+
+SYMPTOM (per the discovered doc, not independently reproduced this
+session): GL window shows correctly when file-menu is launched
+standalone (`&.widgits/file-menu/button.sh r`), but comes up solid
+black when launched together with editor via
+`@.apps/text-editor-xyz/button.sh run` — same files, same checksums
+computed correctly, but rgb_frame.raw itself contains all-black pixel
+data (0/491520 non-black), because chtpm_rgb_render's very FIRST
+synchronous render ran before chtpm_parser_pal had written
+current_frame.txt at all, and then a second race (pulse size already
+matching by the time the renderer starts its poll loop) meant it never
+re-rendered afterward either — stuck black forever, not transiently.
+
+ROOT CAUSE OF THE RACE (already root-caused in the discovered doc, not
+re-derived this session): chtpm_rgb_render's startup order was
+gl_mirror -> chtpm_rgb_render -> chtpm_parser_pal, i.e. the renderer's
+own one-shot initial render + its baseline pulse-size read both happen
+BEFORE the parser has ever run compose_frame() once — a pure ordering
+bug, made far more likely to actually trigger under an app-launched
+combined session (5+ concurrent daemons = wider scheduler preemption
+window per that doc's own "Layer 3") than standalone (1-2 daemons).
+
+DOCUMENTED FIX (per that doc's own "THE FIX" + "FILES CHANGED"
+sections): reorder to chtpm_parser_pal FIRST, poll (up to ~2s) for
+current_frame.txt to actually exist, THEN gl_mirror, THEN
+chtpm_rgb_render — so the renderer's own initial render and baseline
+pulse-size read both happen strictly after the first real compose.
+Explicitly listed as applied to "&.widgits/file-menu/button.sh —
+startup order (parser first + wait)", with "REMAINING ISSUES: None
+found" as of that doc's own last line.
+
+THE REGRESSION (found this session, not yet root-caused): the CURRENT
+&.widgits/file-menu/button.sh does NOT have this ordering. It still
+starts `./system/renderer &` then `./system/chtpm_parser_pal ...`
+immediately after, then conditionally `gl_mirror`/`chtpm_rgb_render`
+inside the widget-profile block — no poll-for-current_frame.txt step
+anywhere, matching the doc's own documented "OLD ORDER (broken)"
+almost exactly, not the fixed one. Not yet determined whether: (a) the
+fix was applied to a different file/location than file-menu's real
+button.sh despite what the doc's FILES CHANGED section says, (b) a
+later, unrelated edit to file-menu/button.sh was made from a
+pre-fix base and silently dropped the reordering, or (c) the doc's own
+verification was against a temporarily-patched copy that was never
+actually committed back to the tracked file. None of these have been
+checked yet — flagging the discrepancy, not resolving it.
+
+WHY THIS WASN'T CAUGHT DURING THIS SESSION'S OWN GL/RGB WORK (PITFALL
+52/53): every live test this session ran EITHER file-menu alone or
+editor alone directly via each project's own button.sh — never through
+@.apps/text-editor-xyz/button.sh, the actual combined "app" launcher
+that runs both concurrently. Low-contention single-project testing is
+exactly the condition under which this doc's own Layer 3 analysis says
+the race is LEAST likely to trigger — a clean single-project test
+proves relatively little about the higher-contention combined-launch
+path, similar in spirit to PITFALL 21's own "op-level test proves
+nothing about the real multi-process path" lesson.
+
+STANDING RULE: before considering any editor<->file-menu GL/RGB work
+"done," it must be verified through `@.apps/text-editor-xyz/button.sh
+run` specifically (the actual combined launcher), not just each
+project's own standalone button.sh — this is the one invocation shape
+known to have hit a real, previously-fixed-then-apparently-regressed
+race condition. Do not assume "works standalone" implies "works
+combined."
+
+UPDATE (2026-07-30) — RE-CONFIRMED LIVE AND RE-FIXED: the race does
+still reproduce today, and NOT only under the combined-launcher's
+extra CPU contention as first suspected — it reproduced running
+102.editor-📄️00.00/button.sh run completely standalone, foreground,
+no combined launcher involved at all (single-project, low-daemon-count
+— exactly the condition earlier assumed to make it "unlikely"). This
+narrows the earlier "why wasn't this caught" theory: contention makes
+it MORE likely, but it is not required to trigger it — a handful of
+processes competing for scheduling on one core was already enough.
+Re-applied the documented reorder (chtpm_parser_pal already started
+first in both projects; added the missing "poll up to 2s for
+pieces/display/current_frame.txt to exist" step before launching
+gl_mirror/chtpm_rgb_render) to BOTH:
+  - 102.editor-📄️00.00/button.sh (never had this fix — new GL/RGB
+    wiring this session, PITFALL 52, inherited the same bug pattern by
+    copying the already-broken current file-menu/button.sh as the
+    reference instead of the documented fixed version)
+  - &.widgits/file-menu/button.sh (the actual regression this pitfall
+    entry first flagged)
+User-confirmed live: GL window renders real content (not black) on
+repeated real runs after the fix, using the same foreground
+`./button.sh run` invocation that reproduced the bug moments earlier.
+
+FILES: 102.editor-📄️00.00/button.sh (fix applied — wait-for-frame
+       step added before GL launch),
+       &.widgits/file-menu/button.sh (fix re-applied — same wait step
+       added; this is the file this pitfall entry originally flagged
+       as regressed)
+SEE ALSO: @.apps/text-editor-xyz/widget-bug-fix-j29.txt (original
+       investigation + fix writeup, discovered not authored this
+       session); &.widgits/file-menu/fm-font-pitfall.txt referenced
+       therein as an earlier, insufficient attempt at the same bug
+
+=======================================================================
+PITFALL 55: EMERGENCY_KILL.sh's own `pkill -x`/`pgrep -x` (exact-name
+            match) can NEVER kill two of the nine binaries it targets
+            by name — /proc/[pid]/comm truncates to 15 characters, and
+            both chtpm_parser_pal (17) and chtpm_rgb_render (16) exceed
+            that, silently and permanently
+=======================================================================
+DATE: 2026-07-30
+SEVERITY: CRITICAL (the house's own designated "nuclear/emergency"
+           runaway-process killer cannot kill exactly the two daemons
+           most prone to runaway CPU in this session's own GL/RGB work
+           — and its own end-of-run check uses the identical broken
+           match, so it prints "All project processes terminated."
+           while both keep running, uncaught)
+
+SYMPTOM: none visible without deliberately testing — this is a silent,
+total failure mode. `pkill -x "chtpm_parser_pal"` against a real,
+currently-running process by that exact name returns nothing killed,
+`pgrep -x "chtpm_parser_pal"` reports no match, and the script's own
+final verification loop (built on the same `-x` check) reports success
+regardless.
+
+ROOT CAUSE: `-x` (both pgrep and pkill) matches the process name as
+stored in the kernel's own bookkeeping (historically /proc/[pid]/comm,
+TASK_COMM_LEN = 16 bytes including the null terminator -> 15 visible
+characters, unconditional, regardless of the real argv[0] or the
+binary's own on-disk filename). Any binary name longer than 15
+characters is truncated by the KERNEL itself before `-x` ever sees it.
+Verified live: started a dummy process literally named
+`chtpm_parser_pal` (via a 17-character executable filename executed
+directly, so argv[0] is exactly that string) — `cat /proc/<pid>/comm`
+reported `chtpm_parser_pa` (15 chars, silently truncated), and
+`pgrep -x "chtpm_parser_pal"` reported no match against that same live
+process. Repeated for `chtpm_rgb_render` (16 chars) with the identical
+result (`chtpm_rgb_rende`, 15 chars, no match).
+
+Every other name on the script's own target list (orchestrator,
+keyboard_input, gl_mirror, egg_window, avatar_window, renderer,
+prisc+x) happens to be <=15 characters, which is exactly why this went
+unnoticed — the bug only affects 2 of 9 names, and those 2 are the
+newest additions (GL/RGB pipeline daemons), not the original set the
+script was likely first written and tested against.
+
+FIX: switched EMERGENCY_KILL.sh from `pkill -x "$name"` to `pkill -f`
+with an ANCHORED regex, `(^|/)NAME( |$)`, matching against the
+UNTRUNCATED /proc/[pid]/cmdline instead of the truncated comm field —
+while still requiring NAME to appear as its own whole token or
+path-final-component (never a bare substring), preserving the original
+script's own explicitly-stated "safe vs Chrome" property. Verified
+live, both directions:
+  - `pgrep -af '(^|/)renderer( |$)'` produces ZERO matches against a
+    real running Chrome (whose own cmdline only ever contains these
+    strings glued to "=", e.g. "--type=renderer" — the anchor
+    deliberately does not match that shape).
+  - The anchored pattern DOES match a live 17-character-named test
+    process that plain `-x` could never see.
+  - Ran the actual fixed EMERGENCY_KILL.sh against two dummy processes
+    named exactly `chtpm_parser_pal` and `chtpm_rgb_render` — both
+    killed, confirmed via a fresh pgrep immediately after (the script's
+    own visible exit code was a flaky nonzero value under this
+    environment's own load — same already-documented `kill_all.sh`-
+    class flakiness noted elsewhere in this file; the real state is in
+    the process table, not the exit code, and that was clean).
+
+ALSO ADDED (direct user request, "could it be more comprehensive"):
+a blanket sweep of every `pieces/sessions/` directory in the house
+(bounded `find -maxdepth 4 -type d -path '*/pieces/sessions'`, a
+directory-NAME match, not a content walk — stays fast, and covers
+every project using this newer session-per-launch pattern rather than
+the old hardcoded 3-project list, which never touched
+102.editor-📄️00.00, &.widgits/file-menu, or @.apps/text-editor-xyz's
+own /tmp/.text-editor-xyz-editor-* sessions at all). Explicit,
+confirmed design choice: this does NOT check whether a session is
+still legitimately in progress before removing it — matches the
+script's own stated "nuclear kill" purpose, at the cost of also being
+able to destroy someone's genuinely-unsaved in-progress session state.
+Acceptable for an EMERGENCY script; would not be acceptable for a
+routine/scheduled cleanup tool.
+
+STANDING RULE: any binary name added to a future `-x`-based kill/check
+script MUST be checked against the 15-character TASK_COMM_LEN limit
+before assuming exact-name matching will work — `echo -n "$name" | wc -c`
+and reject anything over 15, or just use the anchored `-f` pattern from
+this fix as the default going forward instead of `-x` at all.
+
+FILES: EMERGENCY_KILL.sh (pkill/pgrep matching mechanism rewritten;
+       blanket pieces/sessions/ sweep added)
+
+=======================================================================
+PITFALL 56: fm_menu_input.c/editor_menu_input.c's FILE-field and
+            INTERACT typing paths can NEVER accept multi-byte UTF-8
+            (emoji) — and this house's own directory tree has emoji
+            path segments, meaning its own absolute path could never
+            be typed through either field. Fixed via a new, real,
+            separate PASTE mode in both ops.
+=======================================================================
+DATE: 2026-07-30
+SEVERITY: MEDIUM (blocks any real-key-path test/use that needs to
+           reference this house's own absolute path — not a crash,
+           just silent, wrong, truncated-looking input)
+
+SYMPTOM: building a level-2 (§36.6) harness that types a real absolute
+fixture path character-by-character into file-menu's FILE field
+produced a garbled, wrong path — every emoji path segment
+(🤖️🪤️🏠️, 🥡️🪜️, ❤️‍🔥️, ...) silently vanished, leaving gaps ("//" where
+a segment used to be) or truncating early depending on exactly which
+byte landed where.
+
+ROOT CAUSE: both handle_file_browser() (fm_menu_input.c) and the
+INTERACT canvas path (editor_menu_input.c's insert_char() call site)
+gate typed input at `key >= 32 && key <= 126` — single-byte ASCII
+only. This is not an oversight: the whole system's own "keypress"
+model is one int per keystroke, matching a real physical keyboard's
+one-scancode-per-press behavior — a multi-byte UTF-8 emoji was never
+one keystroke on a real keyboard either (IME composition or paste, not
+a bare keycode). Confirmed live: this house's own project directory
+literally contains emoji as real path segments, meaning its own
+absolute path could never be typed through the FILE field one keycode
+at a time, by design, regardless of any test-harness bug.
+
+FIX: added a genuinely separate PASTE mode to both ops — `<op> PASTE
+"<string>"` as a second CLI invocation shape (distinct from `<op>
+<int-keycode>`), appending the given string WHOLE (real UTF-8 bytes,
+no per-character validation) to whichever field is active:
+fm_menu_input.c's handle_paste() (SEARCH/FILE field, file_browser mode
+only) and editor_menu_input.c's insert_string() (INTERACT typing,
+requires INTERACT already engaged — same real gate insert_char()'s own
+call site already has). This is the SAME op binary a REAL paste
+trigger (Ctrl+V/clipboard, not yet wired to any actual capture
+mechanism) would eventually call — adding this mode is a real
+capability, not a test-only shortcut, even though only a test harness
+exercises it as of this session.
+
+VERIFIED LIVE: `fm_menu_input.+x PASTE "<full emoji-laden house
+path>"` produced an exact, byte-for-byte correct path_buffer — full
+emoji preserved, zero truncation, zero garbling — compared directly
+against the identical string.
+
+ALSO DISCOVERED WHILE FIXING THIS (separate, real timing bug in the
+PRE-EXISTING per-keystroke path, not the new PASTE mode): injecting
+characters into interact_relay.txt/keyboard/history.txt faster than
+~16.7ms apart (main_loop_chtpm.pal's own `sleep 16667` poll interval)
+silently drops characters — confirmed live, a tight no-delay bash loop
+truncated a path after ~12 characters, adding a 50ms sleep between
+each injected keystroke fixed it completely. Any future key-injection
+harness for this house's PAL loop family needs this same throttle;
+it's a property of the PAL loop's own polling rate, not specific to
+file-menu or this harness.
+
+FILES: &.widgits/file-menu/ops/fm_menu_input.c (handle_paste() + PASTE
+       mode in main()), 102.editor-📄️00.00/ops/editor_menu_input.c
+       (insert_string() + PASTE mode in main()),
+       @.apps/text-editor-xyz/test-harn-ed-app/scenarios/common.sh
+       (fm_paste()/ed_paste() call these; inject_string()/fm_relay_
+       string() gained the 50ms per-character throttle for the
+       ordinary keystroke path)
+
+=======================================================================
+PITFALL 57: GL windows render emoji as a meaningless, arbitrary
+            colored block instead of anything resembling the real
+            emoji — chtpm_rgb_render.c's emoji-color table is entirely
+            hand-curated per game entity and has no entry for plain
+            decorative text emoji
+=======================================================================
+DATE: 2026-07-30
+SEVERITY: LOW-MEDIUM (cosmetic — GL window still renders and functions
+           correctly otherwise; the block is just visually wrong/
+           meaningless, reported directly by the user testing the real
+           GL output)
+
+SYMPTOM: 102.editor-📄️00.00's own seed buffer content ("hi 😅 😆 🐧")
+rendered in its GL window as flat colored blocks with no visible
+relation to the actual emoji (a face, a face, a penguin).
+
+ROOT CAUSE: system/chtpm_rgb_render.c's emoji_colors[] lookup table is
+populated ENTIRELY from game-entity-specific sources: 4 hand-authored
+registry files (terrain_types.txt, furniture_types.txt, items.txt,
+monster_types.txt, each mapping a specific game object to a specific
+emoji+color+asset) plus a short hardcoded list (add_hardcoded_emoji_
+color(), previously only hero/xlector). Any emoji NOT in one of those
+five sources falls through to utf8_hash_color() — an FNV-hash of the
+emoji's own UTF-8 bytes turned into an RGB color with ZERO relation to
+the emoji's actual appearance. Editor's own decorative text emoji were
+never going to be in a terrain/furniture/item/monster registry (they
+aren't game entities at all) and had no hardcoded entry either.
+
+FIX (stopgap, see !.pal-2do.txt 2DO 1 for the real, generic, not-yet-
+wired fix): added 3 new add_hardcoded_emoji_color() calls for the 3
+specific emoji currently in use (😅/😆/🐧), using their real,
+observed dominant colors, with asset_id values pointing at
+emoji_assets/ folders that do NOT exist yet — safe, because
+load_emoji_voxels() already fails closed on a missing folder (fopen
+fails, returns 0, caller skips the voxel blit, flat color still
+applies) — confirmed by reading that function directly before relying
+on it.
+
+UPDATE (2026-07-30, SAME DAY) — REAL FIX NOW DONE, not just the
+stopgap above: !.pal-2do.txt 2DO 1's own "real, generic, already-
+EXISTING solution" has been wired in. Copied #.emoji-studio-
+501.02.05t's own emoji-gen-atlas.c + emoji-xtract.c (+ their stb_image
+libs) verbatim into 014.wsr-pal💸️📌️+2/ops/, compiled as ops/+x/
+emoji_gen_atlas.+x + ops/+x/emoji_xtract.+x, propagated to
+102.editor-📄️00.00 and &.widgits/file-menu via their own build.sh
+(same copy-from-wsr-pal pattern already used for chtpm_rgb_render/
+gl_mirror). New functions in chtpm_rgb_render.c
+(decode_utf8_codepoint(), ensure_emoji_asset_generated(),
+add_dynamic_emoji_color()) sit in blit_text()'s own fallback path,
+tried BEFORE utf8_hash_color(): any codepoint not already in
+emoji_colors[] gets a REAL voxel asset generated on first use (real
+FreeType rasterization via the actual NotoColorEmoji.ttf font already
+installed on this system, confirmed present), cached both on disk
+(pieces/registry/emoji_assets/<HEX>/voxels_16.csv — hex-codepoint
+naming adopted from wraith-alpha's own convention, so assets are
+shareable between the two) and in-process (so later frames in the same
+run hit the table directly, no repeated shell-outs per frame). The 3
+hand-curated stopgap entries above still work fine as an override
+layer (a project can still want a non-natural color for a specific
+emoji) — they are simply no longer load-bearing for the general case.
+
+VERIFIED LIVE, end-to-end, with a BRAND NEW emoji never referenced
+anywhere in this house before (🦄, U+1F984 — not one of the 3 stopgap
+entries, not in wraith-alpha's own pre-existing asset set either):
+launched 102.editor-📄️00.00's real button.sh run, engaged INTERACT for
+real, inserted 🦄 into the live buffer, and confirmed
+pieces/registry/emoji_assets/1F984/voxels_16.csv was created
+AUTOMATICALLY during that live run (138/256 real non-transparent
+voxel pixels — a genuine recognizable shape, not empty), with
+rgb_frame.raw showing substantial real pixel variation immediately
+after (chtpm_rgb_render still alive, still rendering, no crash, no
+stall) — proving the on-demand path fires correctly inside the real
+running app, not just in an isolated CLI test of the two tools.
+
+FILES: 014.wsr-pal💸️📌️+2/system/chtpm_rgb_render.c (load_emoji_colors()
+       — 3 new add_hardcoded_emoji_color() calls; decode_utf8_
+       codepoint()/ensure_emoji_asset_generated()/add_dynamic_emoji_
+       color() added; blit_text()'s fallback rewired),
+       014.wsr-pal💸️📌️+2/ops/emoji_gen_atlas.c + emoji_xtract.c +
+       emoji_gen_lib/ (stb_image.h/stb_image_write.h — copied from
+       #.emoji-studio-501.02.05t, compiled as new +x tools),
+       102.editor-📄️00.00/scripts/build.sh + &.widgits/file-menu/
+       scripts/build.sh (both now copy the 2 new tools from wsr-pal)
+SEE ALSO: !.pal-2do.txt 2DO 1 (now resolved — see that file's own
+       update); #.emoji-studio-501.02.05t/&.emoji-studio-solo.02.01/
+       (the original, unmodified source of the real generator);
+       1.TPMOS_c_+rmmp.0103.0001/projects/wraith-alpha/plugins/
+       wraith_rgb_daemon.c (consumer-side pattern this fix's hex-
+       codepoint naming was deliberately matched to — see 2DO 1's own
+       "what's still missing in wraith-alpha" writeup for how much of
+       THIS fix would need porting there too)
+
+=======================================================================
+PITFALL 58: file-menu's REAL menu-driven NEW/SAVE/SAVE_AS/LOAD/PING
+            has been silently doing NOTHING since this code was
+            written — enqueue_cmd()/enqueue_cmd_with_path() pass the
+            WRONG directory to fm_enqueue_cmd.+x, which then finds no
+            focus.txt and exits 1, unseen (stderr -> /dev/null the
+            whole way up). Found ONLY because a real level-2 (§36.6)
+            harness exists now — the level-1 harness that predates it
+            could not have caught this even in principle.
+=======================================================================
+DATE: 2026-07-30
+SEVERITY: CRITICAL (the actual, real, human-facing file-menu <->
+           editor feature — the whole point of building both projects
+           together — has never worked via the real UI, only via
+           direct op invocation)
+
+SYMPTOM: building the first real level-2 (§36.6) harness for LOAD
+(demo_load.sh, driving file-menu's own menu via real key injection,
+exactly as a human would) produced this sequence, confirmed live:
+  - file-menu's OWN state (fm_state.txt) showed EVERY step succeeding
+    perfectly: mode correctly switched to file_browser, browse_dir
+    correctly resolved from a valid focus, path_buffer correctly
+    received the pasted path, cursor nav correctly reached confirm_idx,
+    Enter correctly fired and even set status_line="Command sent" —
+    every visible signal said success.
+  - Yet editor's own inbox.txt (pieces/system/widget_cmds/inbox.txt)
+    stayed completely empty. editor_buffer.txt never changed.
+  - No error appeared ANYWHERE a human or a level-1 test would ever
+    look — because there wasn't one to see: everything downstream of
+    the actual bug reported nothing (see ROOT CAUSE), and the real
+    failure point's own stderr is routed to /dev/null through the
+    whole button.sh chain.
+
+ROOT CAUSE (system/fm_menu_input.c): `has_focus()` correctly reads
+focus from `"%s/pieces/system/focus.txt"` (project_root, WITH the
+pieces/system suffix — confirmed correct because browse_dir kept
+resolving correctly using it). But `enqueue_cmd()` and
+`enqueue_cmd_with_path()` — three lines away in the SAME source file —
+pass bare `project_root` (WITHOUT that suffix) as the
+`<widget_state_dir>` argument to `ops/+x/fm_enqueue_cmd.+x`.
+fm_enqueue_cmd.c's own focus lookup is `"%s/focus.txt"` against
+whatever directory it's given — so it looked for focus.txt at
+`project_root/focus.txt` (no such file — the real one lives one level
+deeper, at `project_root/pieces/system/focus.txt`, matching how
+button.sh actually invokes fm_set_focus.+x: `fm_set_focus.+x
+"$SESSION_DIR/pieces/system" "$FOCUS_SESSION"` — the suffix is
+supplied by the CALLER, not baked into fm_set_focus.c itself).
+fm_enqueue_cmd.c's own `read_kv(focus, "inbox_path", ...)` found
+nothing, its own guard fired (`fprintf(stderr, "fm_enqueue_cmd: no
+focus (run fm_set_focus first)\n"); return 1;`), and the whole
+operation silently did nothing — no line ever reached inbox.txt, no
+signal reached anywhere fm_menu_input.c's own caller (prisc+x's
+OP_EXEC via popen()) surfaces to a user.
+
+WHY THIS WENT UNNOTICED UNTIL NOW: %.harnesses/file-menu+editor/
+scenarios/demo_load_save.sh (the pre-existing, level-1-only harness —
+see PITFALL 50/§36.6's own critique of it) calls
+`ops/+x/fm_enqueue_cmd.+x` DIRECTLY as a bash subprocess, with the
+CORRECT wdir argument (`"$SESSION_DIR/pieces/system"`) supplied
+straight from the harness script itself — completely bypassing
+enqueue_cmd_with_path() and this exact bug. That harness's own 6/6
+"ALL PASS" was real and correct FOR WHAT IT TESTED (the cmd-bus
+contract, given a correct wdir) — it was never capable of proving the
+one thing that actually matters to a human user: that choosing LOAD
+from file-menu's own real menu, with a real keypress, actually does
+anything. This is the single clearest, most direct confirmation this
+session found for why §36.6 exists at all — an op-level PASS and a
+real, working feature are two different claims, and this house had
+been trusting the wrong one for this exact feature the whole time.
+
+FIX: enqueue_cmd() and enqueue_cmd_with_path() now build
+`wdir = project_root + "/pieces/system"` (a new
+FM_WIDGET_STATE_SUBDIR constant) and pass THAT to fm_enqueue_cmd.+x,
+matching has_focus()'s own already-correct path exactly.
+
+VERIFIED LIVE: rebuilt file-menu, re-ran the level-2 harness — LOAD:
+editor_buffer.txt now matches the loaded fixture byte-for-byte AND
+current_frame.txt (the actual rendered frame) shows it. SAVE_AS: typed
+new text into editor's own INTERACT canvas for real, saved via
+file-menu's own real SAVE_AS menu flow, and the resulting file ON DISK
+contains exactly what was typed. Both via real key injection through
+real running processes, zero op-level shortcuts, per §36.6.
+
+FILES: &.widgits/file-menu/ops/fm_menu_input.c (enqueue_cmd(),
+       enqueue_cmd_with_path() — wdir argument fixed)
+SEE ALSO: @.apps/text-editor-xyz/test-harn-ed-app/ (the level-2 harness
+       that found this — see its own README.txt); §36.6 in
+       !.xyzos-standards+1.txt (the standard this bug is the concrete
+       justification for)
+
+UPDATE (2026-07-30, same day) — 1F605/1F606 false-alarm chased down:
+after removing the 😅/😆/🐧 stopgap entries above, a live re-test still
+showed 😅 (1F605) and 😆 (1F606) missing while 😇 (1F607) rendered fine
+— looked like a real remaining bug in the generic path. Added
+temporary fprintf instrumentation to ensure_emoji_asset_generated(),
+killed everything, rebuilt, and ran against a genuinely FRESH session
+(not the one the earlier failing observation was made against) — 😅
+and 😆 both generated correctly (167/164 non-transparent voxel pixels,
+same ballpark as 😇's 187). CONCLUSION: the "still broken" observation
+was against a STALE session left over from mid-debugging, not an
+actual defect in the fixed code — once tested against a clean process,
+all three worked. Re-ran test-harn-ed-app's demo_load.sh/demo_save.sh
+afterward: both still ALL PASS, confirming the render-only change
+never touched LOAD/SAVE.
+
+While instrumenting, found and fixed one real (if latent) issue the
+debug log exposed: ensure_emoji_asset_generated() was receiving `p` —
+a pointer into the WHOLE REMAINING line text, not just the 4 bytes of
+the one emoji being generated (confirmed in the log: hex=1F605's own
+call received '😅 😆 😇 ...' as argv[1], not just '😅'). Never actually
+caused a wrong result (emoji_gen_atlas.c's own decode_utf8() only ever
+reads the leading codepoint regardless of what follows), but embedding
+an unbounded buffer remainder into a shell command string is fragile —
+a future line containing a literal single-quote anywhere after an
+ungenerated emoji would break the quoting. FIX: ensure_emoji_asset_
+generated() now takes an explicit utf8_len parameter and copies only
+that many bytes into a small bounded local buffer before it ever
+reaches a system() call. Rebuilt + re-verified (harness still ALL
+PASS) after this change too.
+
+LESSON: when a live symptom doesn't match code you just read/fixed,
+check whether you're actually looking at a FRESH run before concluding
+the fix didn't work — a leftover process/session from partway through
+a debug-and-rebuild cycle can look identical to a real regression.
+
+PITFALL 59: chtpm_rgb_render's GL window shows a wide gray gap before/
+            after emoji in file-menu's own path display, but NOT in
+            editor's own test content, despite both using the exact
+            same shared binary
+=======================================================================
+DATE: 2026-07-30
+FOUND WHILE: direct user observation comparing file-menu's real FILE-
+field path rendering against editor's own emoji test content in the
+same GL family (chtpm_rgb_render.c, shared by both projects via each
+one's own build.sh copy).
+
+ROOT CAUSE: this house's own directory tree names every path-segment
+emoji with an explicit trailing VARIATION SELECTOR-16 (U+FE0F), not a
+bare codepoint - confirmed via direct byte inspection: "🤖️" is
+actually U+1F916 (ROBOT FACE) + U+FE0F, "❤️‍🔥️" is a full 5-codepoint
+ZWJ sequence (U+2764 + U+FE0F + U+200D(ZWJ) + U+1F525 + U+FE0F).
+blit_text() decodes ONE UTF-8 CODEPOINT at a time, not one grapheme
+cluster - so before this fix, VS16/ZWJ (both invisible formatting
+codepoints with no real glyph) fell through to the exact same generic
+on-demand emoji path as any real character: ensure_emoji_asset_
+generated() actually shelled out to FreeType for hex_id=FE0F, which
+rendered a near-empty glyph (confirmed: 4/256 non-transparent pixels)
+- but blit_text() ALWAYS draws a solid VOXEL_PX-wide (60,60,60) gray
+backdrop block for a generic-path tile regardless of how empty the
+voxel art itself is, so every VS16 (and every ZWJ) still consumed a
+full extra 16px gray block. Editor's own seed-buffer test content
+(😅/😆/😇/🦄) was typed bare with no VS16 suffix, so it never hit this
+- same binary, different content, hence the two projects LOOKED
+different despite running identical code.
+
+FIX: blit_text() (system/chtpm_rgb_render.c) now peeks the decoded
+codepoint before doing anything else in its >=0x80 branch; if it's
+U+FE0E, U+FE0F, or U+200D, the byte sequence is skipped entirely (p
+advances, x_px does NOT, no tile drawn, loop continues) rather than
+being treated as a real, unmatched emoji needing on-demand generation.
+ZWJ sequences are not composed into one combined glyph (this file has
+no glyph-composition capability) - skipping the ZWJ/VS16 still
+correctly renders e.g. heart + fire as two adjacent real emoji tiles
+with no junk block between them, which is the actual reported bug,
+not full compound-emoji rendering.
+
+VERIFIED LIVE: found and removed stale pieces/registry/emoji_assets/
+FE0F/ junk-asset folders (confirmed pre-existing in both editor and
+file-menu, generated by the exact bug this fix closes) from both
+projects. Rebuilt, launched a fresh editor session, pasted the real
+house path text "🤖️🪤️🏠️ 🥡️🪜️ ❤️‍🔥️" through INTERACT - all 7 real
+emoji (robot/mousetrap/house/takeout-box/broom/heart/fire) generated
+correctly, ZERO FE0F or 200D junk assets regenerated. test-harn-ed-app's
+demo_load.sh/demo_save.sh both still ALL PASS afterward.
+
+FILES: 014.wsr-pal💸️📌️+2/system/chtpm_rgb_render.c (blit_text())
+SCOPE NOTE: mutaclsym's own compose_rgb_frame.c has a separate
+blit_text() (chrome/header/footer only, ASCII-composed by that same
+file, never fed a raw file path with VS16-suffixed emoji in normal
+play) - not touched, since it was never exposed to this bug's actual
+trigger condition; flag for the same fix if that ever changes.
+
+PITFALL 60: hardcoded absolute cross-project paths silently die after a
+            house-wide directory rename/reorg - no crash, no error a
+            human would see, the dependent feature just silently stops
+            working entirely
+=======================================================================
+DATE: 2026-07-30
+FOUND WHILE: comparing muchi-pal-agent's own understanding of "iqabod"
+(its provider_kind=iqabod integration) against the real, current IQABOD
+project on disk, per direct user request (30.jul-30-handoff/2.ai/
+xyzai-vs-iqabod.md has the full investigation).
+
+SYMPTOM: every chat call using provider_kind=iqabod
+(pieces/registry/models/model_list.txt's own iqabod-test/
+iqabod-daily-life entries) silently failed - no error surfaced to the
+user, no crash, `ai_state` would just never leave THINKING correctly (or
+would resolve with empty/garbage content), because the forked child
+process's own `chdir(api_url)` call failed immediately and the child
+`_exit(127)`d before ever running IQABOD's real, working
+main_orchestrator.+x binary.
+
+ROOT CAUSE: model_list.txt hardcoded api_url as an ABSOLUTE path -
+`/home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-10.00/x0.parent-level-dev-env-03.00/#.ref/^.IQABOD-llm-06.00`
+- pointing at a top-level directory tree from a PRIOR house
+reorganization. Confirmed via direct `ls`: that path does not exist at
+all anymore. The real, current IQABOD project lives at
+`#.z.mirror_llm]z5]IQABOD🪞️+4/`, a sibling of muchi-pal-agent under the
+same current house root - but nothing in send_message.c's own iqabod
+branch had any way to discover that; it just chdir()'d into whatever
+literal string model_list.txt gave it.
+
+This is a real, house-wide RISK CLASS, not a one-off - this house has
+visibly been renamed/reorganized more than once (the dead path's own
+`🚽️🧻️/🚽️🥡️-00.00/ZEST-10.00` naming generation is clearly older than
+the current `🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/.../44.xyz❤️‍🔥️00.10`
+one). ANY hardcoded absolute path anywhere in this house's own registry/
+config files is a landmine that will silently detonate the next time the
+top-level tree gets renamed again - and because these failures don't
+crash or log anywhere visible, they can sit broken for a long time
+before anyone notices (this one plausibly sat broken since whichever
+reorg killed the ZEST-10.00 path - unknown how long).
+
+FIX (this instance): send_message.c's iqabod branch now resolves
+api_url RELATIVE TO project_root when it doesn't start with '/'
+(backward-compatible - an absolute path is still honored as-is for
+manual overrides), building `resolved_root = project_root + "/" +
+api_url` before chdir()/exec(). model_list.txt's own iqabod-test entry
+now stores `../#.z.mirror_llm]z5]IQABOD🪞️+4` - relative, survives the
+NEXT house-wide rename, since sibling projects move together as a unit
+during a reorg (confirmed pattern: every reorg this house has been
+through kept sibling projects' relative positions to each other intact,
+only the ancestor wrapper directories got renamed). Also fixed the
+curriculum reference alongside it - model_list.txt named
+`curriculum/test/test.txt`/`curriculum/daily_life/daily_life.txt`,
+neither of which exists in the real project (only
+`curriculum/guess_the_word/` (has a real trained `.weights` file) and
+`curriculum/guess_the_letter/` (untrained) exist) - dropped the
+daily-life entry, repointed iqabod-test at guess_the_word.
+
+VERIFIED LIVE, real running app, not just a CLI test: switched the real,
+live chat session to iqabod-test via switch_model.+x, sent a real
+message via send_message.+x, polled check_response.+x for real - ai_state
+correctly cycled THINKING -> IDLE, a real assistant|text|| line landed in
+the live context_log.txt. (Output itself is word-salad - IQABOD's own
+32-token toy curriculum, not a bug, see xyzai-vs-iqabod.md's own "model
+scale" finding - but the PIPELINE is now fully, provably working end to
+end, which it was not before this fix.)
+
+NEW STANDARD from this incident: see !.xyzos-standards+1.txt's own
+"relative paths house-wide" section - hardcoded absolute cross-project
+paths are now a documented anti-pattern, not just this one instance.
+
+FILES: 045.muchi-pal-agent🤖️+1/ops/send_message.c (iqabod branch -
+       resolved_root resolution added), pieces/registry/models/
+       model_list.txt (iqabod-test entry repointed, iqabod-daily-life
+       dropped)
+SEE ALSO: 30.jul-30-handoff/2.ai/xyzai-vs-iqabod.md (the full
+       investigation that found this), 30.jul-30-handoff/2.ai/TODO.txt
+       (the plan this fix executed)
+
+UPDATE (2026-07-30, SAME DAY) — the fix above was itself wrong for real
+runs, caught by building and running a REAL level-2 harness scenario,
+not by re-checking the CLI test: user asked directly "did you test the
+AI agent using its harness" - the honest answer was no (the original fix
+was verified via manual, direct op-by-op CLI invocation:
+switch_model.+x -> send_message.+x -> check_response.+x, one at a time,
+from the top-level project directory). Wrote
+test-harn-same/scenarios/demo_iqabod_chat.sh (same tk_inject_key/
+tk_type_text/tk_assert_contains real-key-injection shape
+demo_list_dir_tool.sh already established for this project) and ran it
+for real: model switch confirmed correct, relative path confirmed
+non-absolute, ai_state correctly left THINKING - but the FINAL
+assertion (a real assistant reply landing in context_log.txt) FAILED,
+reproducibly, on two separate real runs.
+
+ROOT CAUSE OF THE SECOND BUG: button.sh always sets
+`PRISC_PROJECT_ROOT="$SESSION_DIR"` where
+`SESSION_DIR="$SCRIPT_DIR/pieces/sessions/$SESSION_ID"` (confirmed by
+direct read of button.sh) - i.e. project_root for every REAL run is the
+SESSION directory, two path levels deeper (pieces/, then sessions/<id>/)
+than the true top-level project directory sibling projects actually
+live beside. The first fix's own manual CLI test happened to invoke
+send_message.+x with PRISC_PROJECT_ROOT set to the TOP-LEVEL project dir
+directly (no session nesting) - so `project_root + "/../IQABOD..."`
+correctly resolved there, passed, and was reported fixed - but that same
+relative path, resolved against a REAL run's actual (session-scoped)
+project_root, silently resolved to a nonexistent location two levels
+short (something like `pieces/sessions/#.z.mirror_llm]z5]IQABOD🪞️+4`,
+never checked directly since the harness already proved end-to-end
+failure without needing to). This is exactly the PITFALL 58 shape again,
+one session later: a fix "confirmed working" by a narrower op-level/
+CLI-level test that doesn't match the real running app's own actual
+invocation context.
+
+REAL FIX: added `derive_true_project_root()` to send_message.c - strips
+a trailing `/pieces/sessions/<id>` suffix (button.sh's own exact, fixed
+session-dir shape) from project_root before resolving the iqabod
+cross-project reference, recovering the true top-level project root
+regardless of whether the caller is a real session-scoped run or a
+direct top-level CLI invocation. In-project paths (world_01/, etc.)
+correctly keep using raw project_root, unaffected - only the
+CROSS-PROJECT reference needed this.
+
+VERIFIED LIVE, for real this time, via the actual project harness (not
+a manual CLI sequence): re-ran demo_iqabod_chat.sh after the second fix
+- all 4 assertions PASS (model switch, relative path, ai_state
+THINKING->IDLE, real assistant reply landed in context_log.txt). Also
+re-ran demo_list_dir_tool.sh (the pre-existing gemma tool-detection
+scenario, unrelated code path but same file) both before AND after this
+second edit - PASS both times, confirming no regression to the
+tool-calling pipeline from either send_message.c change.
+
+LESSON, stated plainly since this is the second time this exact shape
+of mistake happened in one session: "I tested it and it passed" is only
+as trustworthy as the test's own fidelity to the real invocation
+context. A hand-run CLI sequence from the top-level project directory
+is NOT the same test as the real app, which always runs from a
+session-scoped subdirectory - this house's own session-isolation
+convention (project_root = session dir, not project dir, confirmed
+house-wide pattern, not unique to this project) means ANY future
+cross-project relative-path fix needs the SAME derive_true_project_root()-
+style normalization, not just this one file - worth checking for the
+same pattern anywhere else a relative path is resolved against a raw,
+possibly-session-scoped project_root.
+
+FILES: 045.muchi-pal-agent🤖️+1/ops/send_message.c
+       (derive_true_project_root() added; iqabod branch now resolves
+       against it instead of raw project_root),
+       test-harn-same/scenarios/demo_iqabod_chat.sh (new harness
+       scenario, the thing that actually caught this)
+
+PITFALL 61: href navigation between CHTPM layouts respawns the
+            `<module>` process EVERY TIME — a plausible-sounding code
+            comment about a "liveness guard fix" does not mean it
+            avoids this, and only a live test caught the difference
+=======================================================================
+DATE: 2026-07-30
+FOUND WHILE: building `102.agy-txt` (a new self-contained editor
+project, Phase T2 of its own PLAN.md - proving layout switching before
+wiring real functionality behind it).
+
+THE MISTAKE, STATED PLAINLY: `chtpm_parser_pal.c`'s own `launch_module()`
+has a real guard - `if (strcmp(launch_str, current_module_path) == 0
+&& current_module_pid > 0) return;` - with a long, detailed comment
+explaining a real, past bug it fixed (a path-only version of this guard
+used to kill and relaunch an already-alive persistent module on every
+single href navigation). Reading that comment alone, it is completely
+reasonable to conclude "href navigation between layouts now keeps the
+same persistent module process alive, that bug is fixed." That
+conclusion is WRONG, and was written into a planning document
+(102.agy-txt/PLAN.md) before being tested.
+
+WHAT'S ACTUALLY TRUE: built a real Phase T2 stub - three real `.chtpm`
+layouts, each declaring the identical `<module>system/prisc+x pal/
+main_loop_chtpm.pal</module>` line, a real op that writes the
+COMPOSING PROCESS'S OWN PID into the rendered frame. Launched it for
+real, injected three real `[TS] KEY_PRESSED: 13` keystrokes via
+`pieces/keyboard/history.txt` to walk editor -> file_menu ->
+file_browser, checked the module's own PID via `ps aux` after each:
+
+    PID before nav 1: 1821693  ->  after: 1822388  (DIFFERENT)
+    PID before nav 2: 1822388  ->  after: 1823813  (DIFFERENT)
+
+Reproducible on both transitions, not a fluke. Root cause, found by
+reading `cleanup_module()` (called unconditionally by the href click
+path): it kills+reaps the current module AND clears
+`current_module_path` BEFORE `launch_module()`'s own guard is ever
+checked - so by the time the guard runs, `current_module_path` is
+already empty, and the guard can never match. The bug fix the comment
+describes was real and correctly fixed a DIFFERENT problem (a stale
+module leaking/double-killing) - it was never a fix that makes href
+avoid a respawn, and the comment's own surrounding prose can easily be
+read as claiming the opposite if you don't test it.
+
+WHY THIS DIDN'T ACTUALLY BREAK ANYTHING: the respawn-per-href behavior
+turns out to be FINE, not a bug to work around - it's the same real
+behavior the actual reference architecture being ported
+(1.TPMOS_c_+rmmp.0103.0001/projects/agy-text-editor) already has and
+ships with (its own href transitions respawn its manager too, per that
+project's own real code, confirmed same session) - because real state
+lives on disk (document.txt/cursor.txt equivalents), never in a
+process-resident variable that would need to survive. This house's own
+"files are the API" law already means nothing SHOULD depend on
+process continuity across a screen switch. The corrected lesson isn't
+"fix the respawn," it's "don't assume state survives in memory across
+an href transition - keep it on disk, which this house's own
+conventions already push you toward anyway."
+
+LESSON, GENERALIZED: a detailed, technically accurate comment
+describing a real past bug fix does not by itself prove the CURRENT
+behavior does what you infer from it - the comment can be 100% honest
+about what it fixed and still support a wrong inference about what
+that leaves true today, especially for a guard whose short-circuit
+depends on a precondition (`current_module_path` being non-empty) that
+a DIFFERENT function, called earlier in the same code path, always
+clears. When a claim like this is about to go into a planning document
+that other work will build on, TEST it with a real running process and
+a real PID check - exactly the same discipline PITFALL 58/60 already
+established for "does the op-level pass mean the real feature works,"
+applied here to "does a code comment describing a fix mean the thing
+it sounds like it fixed is actually fixed for my specific case."
+
+SEE ALSO: 102.agy-txt/PLAN.md §1.5 (the full live-tested account, kept
+as its own project's own documented correction);
+30.jul-30-handoff/1.ngn/todo-j30.txt (its own Phase B2 corrected to
+match, since rtp-xyz's own module-switching plan made the identical
+assumption before this was tested); `pieces/display/
+layout_changed.txt` in chtpm_parser_pal.c - a separate pulse mechanism
+that looked like a real same-process-switching candidate, NOT
+investigated this session - read it first before assuming same-process
+switching is possible/needed for some future case that actually
+requires it.
+
+=======================================================================
+PITFALL 62: `mkdir -p` pre-creating a symlink's own target path makes
+            `ln -sfn` nest the symlink one level too deep instead of
+            replacing it — a real, previously-shipped bug in
+            102.editor-📄️00.00's own button.sh, found via 102.agy-txt's
+            own Phase T4 save/load testing
+=======================================================================
+DATE: 2026-07-30
+FOUND WHILE: building 102.agy-txt's own real SAVE_AS/LOAD flow (PLAN.md
+Phase T4) and testing it via real key injection through the real
+running app - a real save reported "Saved 11 bytes to docs/foo.txt",
+but the file never appeared under the durable house-level docs/
+directory afterward.
+
+ROOT CAUSE: `button.sh run` builds a fresh session directory and does:
+
+    mkdir -p ".../pieces/system" ".../pieces/display" ... ".../docs"
+    ...
+    ln -sfn "$SCRIPT_DIR/docs" "$SESSION_DIR/docs"
+
+`mkdir -p` includes `$SESSION_DIR/docs` in its own list, creating it as
+a REAL directory BEFORE the `ln -sfn` call runs. `ln -sfn SRC DST`,
+when DST already exists as a real directory, does NOT replace it with
+a symlink - it creates the symlink INSIDE that directory, using SRC's
+own basename (`ln`'s own standard, POSIX-documented behavior for this
+exact case - not this house's own bug, but hitting it unknowingly is).
+Net effect: `$SESSION_DIR/docs/docs -> <real house-level docs/>` (one
+level too deep), while `$SESSION_DIR/docs` ITSELF stays a real,
+separate, EMPTY directory - exactly the directory the session's own
+`rm -rf "$SESSION_DIR"` cleanup trap deletes on exit.
+
+`do_save_to()`/`do_load_from()` (agy_widget_cmds.c / editor_widget_
+cmds.c, both identical logic - copied verbatim, PLAN.md §2) call plain
+`fopen(path, ...)`/`fopen(path, "r")` with NO project_root prefixing at
+all - the path is resolved against the PROCESS'S CURRENT WORKING
+DIRECTORY, which is set to project_root (the session dir) via the
+`cd '%s' &&` in the shell command that invokes `agy_widget_cmds.+x`/
+`editor_widget_cmds.+x`. So a relative `docs/foo.txt` SAVE_AS path
+silently landed in the buggy, ephemeral `$SESSION_DIR/docs/`, not the
+durable one - the save reported success (it genuinely did write 11
+real bytes, just to the wrong, doomed location) and the bug produced
+NO error anywhere, exactly the "quiet by design" failure shape this
+house's own file-mediated architecture keeps producing when something
+IS wrong (see PITFALL 60's own §37 citation for the general pattern).
+
+CONFIRMED THIS ALREADY AFFECTED THE SHIPPED, REAL, HARNESS-PROVEN
+102.editor-📄️00.00 PROJECT TOO, undiscovered until now: its own
+button.sh has the byte-identical bug (`docs` in the same `mkdir -p`
+list, same `ln -sfn` line right after). It was never caught by this
+project's own real level-2 harness (`test-harn-ed-app`) because that
+harness's own `demo_save.sh` always used an ABSOLUTE save path
+(`$HARNESS/workdir/saved_$$.txt`), which never touches this code path
+at all - only a RELATIVE `docs/...` path (the natural, expected way a
+real user would actually use the SAVE AS flow, typing just a filename
+under the project's own docs/ convention) exercises it. A harness that
+never exercises the realistic/default path shape can stay green
+forever while that exact shape is broken - worth remembering as its
+own lesson, not just this specific bug.
+
+FIX: removed `docs` from the `mkdir -p` argument list in BOTH
+button.sh files (102.agy-txt and 102.editor-📄️00.00) - `ln -sfn` then
+creates the symlink directly at `$SESSION_DIR/docs` as originally
+intended, since nothing pre-exists there to force nesting.
+
+VERIFIED LIVE, real running app, both directions: killed all sessions,
+relaunched fresh, confirmed via `stat -L` that `$SESSION_DIR/docs` and
+the house-level `docs/` now share the same inode (proving the symlink
+resolves correctly, not just "looks like a symlink" - `stat` without
+`-L` reports the symlink's OWN inode, a real mistake made once during
+this exact investigation before switching to `-L`). Real SAVE_AS via
+real key injection (navigate FILE MENU -> SAVE AS -> real INTERACT
+path typing -> SAVE) produced a real file at the durable
+`102.agy-txt/docs/t4-fixed.txt` containing the real buffer content.
+Real LOAD afterward (buffer first cleared via a real NEW, then LOAD of
+the same path) correctly restored the buffer from that same real file.
+Both directions proven, not just save.
+
+FILES: 102.agy-txt/button.sh, 102.editor-📄️00.00/button.sh (both -
+docs/ removed from the mkdir -p list)
+SEE ALSO: 102.agy-txt/PLAN.md §4 Phase T4 (the work that found this);
+!.xyzos-standards+1.txt §37 (the general "quiet-by-design failures"
+pattern this is another real instance of)
+
+PITFALL 63: "level-2" harnesses that only ever reach their assertions
+            via PASTE-mode / digit-jump-to-confirm shortcuts give a
+            FALSE POSITIVE on interaction-order bugs — three real
+            examples, same week, same root pattern
+=======================================================================
+DATE: 2026-07-30
+FOUND WHILE: live human testing of @.apps/text-editor-xyz (the real
+widget pair) and 102.agy-txt, AFTER both projects' own harnesses were
+already green and both were considered proven by this house's own
+§36.6 discipline.
+
+ROOT CAUSE: §36.6's own "real key injection through the real running
+app" bar was being satisfied by harnesses that still took the
+MECHANICALLY SHORTEST path to their assertion - an op's own PASTE mode
+for typed text, and a direct digit-jump straight to a "confirm" button
+- rather than the NATURAL interaction order a real human actually uses:
+type character by character, then press the domain-natural terminator
+(Enter) expecting it to submit; press Esc expecting it to only stop
+typing, not leave the whole screen. Real key injection through a real
+running process is still real key injection - §36.6's own bar was
+genuinely met - but "real" was never the same claim as "exercises every
+interaction path a human would actually take." This is a narrower,
+newly-identified gap in a rule that was otherwise working exactly as
+intended.
+
+THREE REAL INCIDENTS, SAME PATTERN, SAME WEEK:
+  1. chtpm_parser_pal.c/gl_mirror.c dual-capture doubling bug (see
+     !.xyzos-standards+1.txt §38 for the fix; the bug itself predates
+     this pitfall's own discovery of the METHODOLOGY gap - listed here
+     because it's the same root shape: synthetic injection structurally
+     cannot reproduce what a real capture RACE produces, same as it
+     cannot reproduce a real Enter/Esc interaction sequence).
+  2. 102.agy-txt's own SAVE AS path-field display bug - STILL OPEN at
+     time of writing (see 102.agy-txt/xyz-agy-handoff-j30.txt for the
+     full, still-unresolved account). test-harn-agy-txt's own
+     demo_save_load.sh used `ag_paste()` for every path-typing
+     assertion - real single-keystroke typing into that specific field
+     was never exercised by anything before a live human tried it and
+     found the on-screen PATH line never updated.
+  3. &.widgits/file-menu's own file_browser mode - three confirmed real
+     bugs, all invisible to the ALREADY-GREEN, ALREADY-SHIPPED
+     test-harn-ed-app: (a) Enter while the FILE field is selected does
+     nothing (`fm_menu_input.c` lines 318-321, both branches empty -
+     you must separately arrow-navigate to a distinct confirm row and
+     press Enter THERE), (b) Esc always exits the whole file_browser
+     back to main_menu unconditionally (line 312-316) because there is
+     no "actively typing" state distinct from "this row is merely
+     selected" anywhere in `fm_state.txt` for Esc to narrowly undo, (c)
+     no cursor/focus indicator is ever rendered (`fm_compose_frame.c`
+     lines 103-110 only ever emit `[>]`/`[ ]`, never a third "engaged"
+     state, never a trailing cursor glyph). test-harn-ed-app's own
+     demo_save.sh used `fm_paste()` for the path AND jumped straight to
+     SAVE_AS's own confirm index by digit - it never once pressed Enter
+     on the file field, never pressed Esc mid-typing. Full account,
+     including the direct comparison to this house's own real `<cli_io>`
+     mechanism (which DOES submit-on-Enter and DOES have a real focus
+     state, confirmed via chtpm_parser_pal.c's own `strcmp(el->type,
+     "cli_io")` branch) at &.widgits/file-menu/todo-how2-j30.txt.
+
+WHY THIS IS ESPECIALLY SHARP WHEN A REFERENCE ARCHITECTURE EXISTS: a
+port/mirror of a named reference (TPMOS's own agy-text-editor, in this
+house's case) can produce byte-identical, harness-PROVEN-correct output
+DATA while having an entirely different, and broken, interaction
+CONTRACT from the reference it was supposedly mirroring. Proving the
+data shape matches is a real, necessary check - it is not the same
+claim as proving the interaction matches, and this house's own tooling
+had no separate check for the second claim until this pitfall.
+
+FIX / STANDING GUARD: !.xyzos-standards+1.txt §38 (new section, same
+date) - every level-2 harness scenario involving typed input must
+exercise the natural interaction order (real per-keystroke injection
+ending in the field's own domain-natural terminator) at least once, not
+only PASTE/digit-jump shortcuts; and when the code under test is an
+explicit port of a named reference architecture, that reference's own
+interaction contract for typed fields (does Enter submit-in-place, does
+Esc deactivate-only-or-exit, is there a focus indicator) must be read
+and written down BEFORE a PASTE-only-proven harness is trusted as
+"done."
+
+STATUS: guidance written and recorded here + §38; the actual FIXES for
+incidents #2 and #3 above are NOT yet implemented (see each project's
+own handoff doc, cited above, for the concrete next steps) - this
+pitfall entry documents the METHODOLOGY gap and the guard against it
+recurring, independent of whether every individual bug it already found
+has been fixed yet.
+
+FILES: !.xyzos-standards+1.txt §38 (new); 102.agy-txt/
+xyz-agy-handoff-j30.txt; &.widgits/file-menu/todo-how2-j30.txt
+SEE ALSO: PITFALL 60/61/62 (the earlier real-app-testing-finds-real-bugs
+pattern this pitfall is a refinement of, not a departure from - §36.6
+itself stays correct, this narrows what "real key injection" must cover
+to actually satisfy it)
+
+PITFALL 64: two more real file-menu bugs a synthetic harness could not
+            see - selecting a real listed file required an unsignaled
+            SECOND Enter to load, and a digit keypress activated the
+            main menu option in the same keystroke instead of only
+            navigating to it
+=======================================================================
+DATE: 2026-07-30
+FOUND WHILE: live human testing of file-menu's own real UI, the SAME
+day PITFALL 63's own three bugs were fixed and their fix was verified
+via a NEW real black-box harness (test-harn-ed-app/scenarios/
+demo_fm_typing_ux.sh) - that harness itself still could not see either
+bug below, because it always typed/pasted paths directly and always
+sent a digit press immediately followed by a real Enter, never once
+selecting a listed entry or checking state between the digit and the
+Enter separately.
+
+BUG A - selecting a real file from the directory listing didn't load
+it: `fm_menu_input.c`'s own file-entry-selection branch (inside
+`handle_file_browser()`) only ever wrote `path_buffer` and moved
+`cursor_pos` to the FILE field - it never submitted. A real user
+arrow-navigating to a real listed file and pressing Enter ONCE (the
+obvious, expected action - "select this file") saw nothing happen; a
+SECOND Enter, now on the FILE field, was required, with no on-screen
+signal that a second press was needed. FIX: selecting a file entry
+while `browse_mode == "load"` now calls `enqueue_cmd_with_path("LOAD",
+full_path)` directly - real, immediate load on one real Enter.
+SAVE_AS's own identical-looking selection deliberately stays as
+pre-fill-then-confirm (protects against an accidental overwrite from
+one stray keypress) - not an oversight, a real, considered asymmetry.
+
+BUG B - digit press on the main menu activated immediately, skipping
+Enter entirely: `handle_main_menu()`'s own digit-key branch
+(`key >= 49 && key <= 54`) moved the cursor AND called
+`execute_menu_option()` on the SAME keystroke. Real chtpm digit-jump
+(`isdigit(key)` -> `do_jump()`, the standard every chtpm-native
+buttoned layout in this house already follows - confirmed this same
+week for 102.editor/102.agy-txt) moves focus only; a separate Enter
+activates. File-menu's own hand-built nav never matched this standard
+- direct report: "when i press nav index # of load option it goes
+straight to new window, doesn't wait for enter - this isn't std chtpm
+behavior." FIX: digit press now only writes `cursor_pos`, matching
+arrow-nav's own existing behavior; the pre-existing Enter branch
+already did the activation half correctly.
+
+BUG B SIDE-EFFECT - a digit press inside file_browser mode (SEARCH/
+FILE fields) was previously indistinguishable from typed text:
+pressing "2" while on the SEARCH field (the default landing row) typed
+a literal "2" into the search box instead of doing anything nav-
+shaped, because file_browser mode had NO digit-jump concept at all -
+direct report: "when i press number to nav to file index it instead
+inputs into search." FIX: `field_active` (PITFALL 63's own real focus-
+state) is exactly the right disambiguator - a digit pressed while NOT
+actively engaged in a field now jumps `cursor_pos` to that row (1-based
+on screen -> 0-based internally, confirmed via a live off-by-one catch:
+the first version of this fix jumped to the WRONG row, landing on BACK
+instead of FILE when the user pressed the on-screen "2." - fixed by
+converting `key - '0' - 1`); a digit pressed WHILE actively typing
+still types normally (needed for real filenames containing digits,
+e.g. "file2.txt").
+
+VERIFIED LIVE: new harness scenario, test-harn-ed-app/scenarios/
+demo_fm_click_to_load.sh - real digit-press-alone state assertion
+(mode stays main_menu, cursor moves), real separate-Enter activation,
+real SEARCH-filter down to a unique fixture (deterministic listing
+index regardless of whatever else is in the user's own real documents/
+folder), real arrow-nav to the listed entry, ONE real Enter, real
+editor_buffer.txt + current_frame.txt assertions - 5/5 PASS. Full
+four-scenario regression (demo_save.sh, demo_load.sh,
+demo_fm_typing_ux.sh, demo_fm_click_to_load.sh) re-run clean.
+
+FILES: &.widgits/file-menu/ops/fm_menu_input.c (handle_main_menu()'s
+digit branch, handle_file_browser()'s file-entry-selection branch and
+new digit-jump branch)
+SEE ALSO: !.xyzos-standards+1.txt §39 (the NEW, non-negotiable
+checklist this incident directly produced - real listed-entry
+selection and real digit-jump-vs-activate assertions are now MANDATORY
+harness coverage, not optional); PITFALL 63 (the same-day, same-root-
+pattern predecessor); &.widgits/file-menu/todo-how2-j30.txt
+
+PITFALL 65: built a real chtpm dynamic list using hand-drawn "[>]"/
+            "[ ]" text markers instead of real <button> elements -
+            the comparable in-house precedent (mutaclysm) was never
+            checked before building on a cross-category reference
+=======================================================================
+DATE: 2026-07-30
+FOUND WHILE: rebuilding 102.agy-txt's own file browser (PLAN.md §4
+Phase T4/T6 follow-up), caught directly by the user's own domain
+knowledge, not by any verification pass of mine.
+
+ROOT CAUSE: the file browser's directory listing/SEARCH/FILE fields
+were built as fully buttonless (matching &.widgits/file-menu's own
+real architecture) with the OP hand-composing "[>]"/"[^]"/"[ ]" text
+markers itself, based on cursor_pos tracked in a custom state file.
+This directly violates a real, already-cited, already-followed
+in-house standard: `101.mutaclsym🧟‍♂️️+18.01/ops/compose_frame.c`'s own
+`write_panel_gui_state()` (a REAL, shipped implementation, read in
+full) cites `DYNAMIC_SUBMENUS_FUNCTIONAL_STD.md` directly: "the PARSER
+owns nav/focus/highlighting entirely; the MANAGER only ever projects
+raw button markup... never hand-draws its own '[>]'/'[ ]' markers."
+mutaclysm already does this correctly (real `<button onClick="KEY:n">`
+rows, dynamically generated, `${var}`-injected) - this was sitting in
+the SAME house, one project away, and was never checked before
+building on file-menu's shape instead, because file-menu was the
+model explicitly asked to be reused for its OWN ops (a real, correct
+instruction) - the mistake was treating that as license to also copy
+file-menu's overall SCREEN ARCHITECTURE without separately checking
+whether a more directly-comparable in-house precedent (same PAL-native
+family, not a cross-project widget) did it differently.
+
+FURTHER FINDING, SAME INVESTIGATION: the STANDARDS DOC itself
+(`DYNAMIC_SUBMENUS_FUNCTIONAL_STD.md`) turned out to be partially
+inapplicable to this house's own runtime - it says to avoid
+`onClick="KEY:n"` and use string commands (`OP:`/`SET_` prefixes)
+instead, correctly describing TPMOS's own real reference manager
+(confirmed: `agy-text-editor_manager.c` really does this). But THIS
+house's own `prisc+x` VM (`014.wsr-pal💸️📌️+2/system/prisc+x.c`)
+has `OP_READ_HISTORY` hard-coded to `fscanf(hf, "%d", &key)` - integer
+ONLY, a real, verified VM limitation, not a stylistic choice - string
+commands genuinely cannot pass through this specific opcode as it
+exists today. mutaclysm's own `KEY:n`-based deviation from the
+"official" doc was itself CORRECT for this constraint, not an error -
+confirmed by reading the VM source directly rather than trusting
+either the doc or the comment. See `#.haiku+/jul30-house-refactor.txt`
+for the full chain of findings and the two real, separately-scoped
+paths forward (a native C manager per screen that needs string
+commands - low risk, project-scoped, real precedent already exists in
+`101.ledger-player-npc-simple+3/system/game_manager.c` - vs. extending
+prisc+x itself - real, but house-wide blast radius, deliberately
+deferred).
+
+LESSON: "the standard doc says X" and "the comparable shipped code
+does X" are two different claims - when they disagree, trust the
+shipped code, and go find out WHY before assuming the doc is simply
+wrong (here, the doc wasn't wrong for ITS OWN reference runtime, it
+was incomplete for describing a DIFFERENT runtime's own real, verified
+constraint). And before adopting an architecture from a REUSED
+reference (file-menu, reused correctly per explicit instruction for
+its OWN ops), separately check whether a MORE directly comparable
+in-house precedent (same project family, not a cross-category widget)
+already solved the exact same problem a different way.
+
+STATUS: not yet fixed - 102.agy-txt's file browser is being rebuilt on
+the real pattern (native C manager, real dynamic button markup,
+mirroring TPMOS's own agy-text-editor_manager.c + mutaclysm's own real
+`${var}`-markup convention), not patched in place. See
+`#.haiku+/jul30-house-refactor.txt` §6 for the concrete rebuild steps
+and `!.xyzos-2do.txt` for the deferred prisc+x string-command
+extension (Path B).
+
+FILES: 102.agy-txt/ops/agy_edit_key.c, agy_compose_view.c (the code
+being replaced); #.haiku+/jul30-house-refactor.txt (full account);
+101.mutaclsym🧟‍♂️️+18.01/ops/compose_frame.c (the real, correct in-house
+reference); 1.TPMOS_c_+rmmp.0103.0001/projects/agy-text-editor/
+manager/agy-text-editor_manager.c (the real reference being ported,
+this time on the correct foundation)
+SEE ALSO: PITFALL 63/64 (same week, same root pattern - real
+comparable code checked too late, after building on an assumption)
+
+=======================================================================
+PITFALL 66: clear_saved_active_index() (the real, house-wide stale-
+            focus-index fix from PITFALL 65's own rebuild) never
+            propagated past the two projects that fixed it directly -
+            every LOCAL COPY of chtpm_parser_pal.c in the house is
+            still missing it
+=======================================================================
+DATE: 2026-07-31
+FOUND WHILE: prototyping a per-screen module split in 01.muchi-pals-
+🥚️-13.01 (dox/06-per-screen-module-standard.md), live-caught directly
+by the user during real testing: selecting egg_7 from the pets list
+(interactive_idx 7) landed keyboard focus on "7. Destroy Card" in the
+freshly-entered, structurally different pet-action submenu, instead of
+the first real navigable item.
+
+ROOT CAUSE: identical to PITFALL 65's own file-menu finding -
+initialize_focus() unconditionally calls sync_focus_from_saved_active_
+index() first, which reads pieces/display/active_gui_index.txt and
+jams focus onto whatever element shares the SAME interactive_idx in
+the new layout, a pure structural coincidence. The fix
+(clear_saved_active_index(), write "0" to that file immediately before
+every real parse_chtm() layout-transition call) was made in `014.wsr-
+pal💸️📌️+2/system/chtpm_parser_pal.c` at the time - but that's only the
+canonical source agy-txt and file-menu actually sync FROM. Checked
+directly (grep -c clear_saved_active_index, all returned 0) - every
+other project in the house keeps its own local, unsynced copy of this
+file, and none of them ever got the fix:
+
+  041.pal-chain⛓️, 041.pal-forum👥️, 044.pal-chat-irc👥️+2,
+  0.user-pal👤️/00.login-signup, 0.user-pal👤️/01.avatar-creation👤️,
+  045.muchi-pal-agent🤖️+1, 002.zoo__🦓️🐒️0000, 101.mutaclsym🧟‍♂️️+18.01,
+  300.rpg-xyz, 300.rtp-xyz
+
+This whole family's own real sync source (`sync_shared_op.sh` from
+`yz.muchiverse/2.muchi-verse/shared-ops/`) doesn't exist anywhere in
+this house copy (confirmed earlier the same session) - so there was no
+mechanism for the fix to propagate even if someone had tried.
+
+FIX: ported directly into muchi-pals' own local copy (copy the
+function verbatim + insert `clear_saved_active_index();` immediately
+before every real `parse_chtm()` call that follows an `active_index =
+-1; focus_index = 0;` reset - 7 such sites found in this project alone,
+more than wsr-pal's own 3, since this copy has extra features/paths).
+Same port still needed in every other project listed above - not done
+yet, tracked in dox/06-per-screen-module-standard.md §2.1/§3.
+
+LESSON: a fix made in a "canonical" source file only actually reaches
+projects that really sync from it. Before assuming a house-wide fix
+is house-wide, check whether the target project's own copy of that
+file is a live sync or an independently-diverged local fork - this
+family's own local copies are drifting further from any single source
+of truth over time, not converging.
+FILES: 01.muchi-pals-🥚️-13.01/system/chtpm_parser_pal.c (fixed);
+014.wsr-pal💸️📌️+2/system/chtpm_parser_pal.c (original fix, PITFALL 65);
+dox/05-jul30-live-bugs-and-plan.md, dox/06-per-screen-module-
+standard.md (both in 01.muchi-pals-🥚️-13.01/dox/)
+SEE ALSO: PITFALL 65 (the original fix this one never propagated)
+
+=======================================================================
+PITFALL 67: GL-mode typing doubling (hi -> hhii) - a redundant
+             double-writer into interact_relay.txt that survived for
+             DAYS because the app's real binaries never got rebuilt,
+             and the launcher's own EDITOR_DIR glob points at a
+             different project than the handoffs claimed
+=======================================================================
+DATE: 2026-07-31 (fixed same day after the long-running investigation
+documented in #.haiku+/editor-app-gl-dub-j32.txt)
+FOUND WHILE: @.apps/text-editor-xyz, `bash button.sh run`, real DISPLAY
+set (real GLUT/GL window). Typing "hi" into the editor's INTERACT-
+engaged canvas landed as "hhii" in editor_buffer.txt, confirmed by the
+user multiple times. Headless (`NO_GL=1`) never doubled. That GL-only /
+GL-off split was the one reliable behavioral clue, and it pointed the
+entire (long, exhausting, initially unsuccessful) investigation at
+gl_mirror.c - which was correct, but only half the story.
+
+SYMPTOM:
+  - GL enabled -> every character doubles (hi -> hhii).
+  - NO_GL=1 headless -> no doubling.
+  - file-menu's own GL widget also "acting crazy" alongside the editor
+    (separate symptom, same family of stale-process/file-sharing bugs).
+
+ROOT CAUSE (two bugs stacked, plus one that poisoned the investigation):
+  1. REDUNDANT DOUBLE-WRITER DESIGN. Two independent code paths could
+     each write a keystroke into pieces/apps/player_app/
+     interact_relay.txt, which is the editor's typing channel:
+       a) gl_mirror.c's append_key() originally wrote interact_relay.txt
+          DIRECTLY (unconditional), and
+       b) chtpm_parser_pal.c's INTERACT branch also inject_raw_key()'d
+          the same key into interact_relay.txt.
+     The only thing keeping that from doubling was a lock:
+       c) gl_focus.lock - created by gl_mirror at startup, removed at
+          exit; chtpm_parser_pal.c:3547-3550 checked access(lock)==0
+          and SKIPPED its own forward whenever the lock existed
+          ("gl is alive, so gl already delivered this key").
+  2. THE LOCK IS A LIVENESS FLAG, NOT A FOCUS FLAG - and it's resolved
+     through each process's OWN cwd/PRISC_PROJECT_ROOT. gl_mirror
+     builds the path from ITS root (gl_mirror.c:196); the parser from
+     ITS root. Any wrong-cwd gl_mirror, any stale duplicate from an old
+     session, or any SIGHUP-killed gl_mirror whose atexit() never ran
+     (fixed later, gl_mirror.c:475-484) leaves the lock absent/misplaced
+     while gl_mirror is still alive and delivering -> BOTH writers fire
+     per keystroke -> hi -> hhii. In NO_GL mode there is exactly ONE
+     writer (keyboard_input.c), so it can never double - the observed
+     GL-only split.
+  3. THE INVESTIGATION-POISONING BUG (why "huge confusion for a long
+     time"): @.apps/text-editor-xyz/button.sh resolves its editor via
+     EDITOR_DIR="$(ls -d "$HOUSE_DIR/102."*"editor"* | head -1)" which
+     matches **102.editor-📄️00.00**, NOT 102.agy-txt. 102.editor keeps
+     its OWN local chtpm_parser_pal.c (independent, already-gate-free
+     lineage) AND was running a Jul-30 gl_mirror binary that STILL had
+     the direct interact_relay.txt write. The earlier investigation
+     rebuilt/fixed only wsr-pal + agy-txt + file-menu and declared the
+     lock the culprit - but the app's REAL binaries (under 102.editor)
+     were never rebuilt, so the doubling survived. The handoff
+     (editor-app-gl-dub-j32.txt §7) claimed the app reads wsr-pal's
+     "live copy, no local copy of their own" - that was false for
+     102.editor, which has its own source AND stale binaries.
+
+FIX (Option B - single writer, delete the lock entirely):
+  - 014.wsr-pal💸️📌️+2/system/chtpm_parser_pal.c: deleted the 4-line
+    gl_focus.lock gate in the INTERACT branch; inject_raw_key(eff) is
+    now unconditional. The parser relay is the SOLE path into
+    interact_relay.txt; doubling is structurally impossible.
+  - Rebuilt wsr-pal, then redeployed the whole copy chain:
+      102.agy-txt      (bash scripts/build.sh - copies from wsr-pal)
+      102.editor-📄️00.00 (bash scripts/build.sh - copies gl_mirror,
+                        builds its OWN parser from its own source)
+      &.widgits/file-menu (bash scripts/build.sh - copies from wsr-pal)
+  - Verified: all 4 parsers have gl_focus string count 0; all 4
+    gl_mirror binaries identical (md5 8107eb78e9...), append_key() has
+    NO interact_relay fopen (remaining "interact_relay" strings are
+    only the unused buffer var + snprintf init, gl_mirror.c:121/195).
+  - No stale house processes were running; run `bash EMERGENCY_KILL.sh`
+    before any retest so a rebuilt binary isn't still locked in memory
+    ("Text file busy").
+
+LESSON: this is the second time (PITFALL 66) this family burned hours
+because a fix made in a "canonical" file didn't actually reach the
+project the user runs. TWO independent traps compound here:
+  a) The redundant double-writer + liveness-lock "arbiter" is a
+     minefield by design. Single-writer beats clever lock logic: if
+     exactly one code path can write to a file, doubling is impossible
+     by construction, and focus/ownership questions go away.
+  b) Before trusting any handoff or "live copy" claim, resolve the
+     launcher's OWN path resolution and check the ACTUAL binaries the
+     app runs (md5, mtime, strings). A stale binary on disk - even one
+     whose source was "fixed" elsewhere - reproduces the bug forever.
+FILES: 014.wsr-pal💸️📌️+2/system/chtpm_parser_pal.c (gate removed);
+014.wsr-pal💸️📌️+2/system/gl_mirror.c (direct write already removed
+2026-07-31, now verified propagated); 102.editor-📄️00.00/system/ (the
+real EDITOR_DIR target, stale gl_mirror replaced); @.apps/text-editor-
+xyz/button.sh (EDITOR_DIR glob = 102.editor-📄️00.00, not agy-txt);
+#.haiku+/double-wr-grok-j31.txt (full root-cause report + options A/B)
+SEE ALSO: PITFALL 65, PITFALL 66 (the same "fix didn't propagate to
+local forks" family); PITFALL 5 (keyboard/history.txt must be cleared
+on launch - adjacent input-pipeline gotcha)
+
+=======================================================================
+PITFALL 68: a manager daemon's OWN custom gui_state.txt variable
+            renders empty forever, even though the file has correct
+            fresh content on disk - bare ${var} raw-markup injection
+            points only re-resolve when piece_methods/active_target_id/
+            input_text specifically change, not on any gui_state.txt
+            write
+=======================================================================
+DATE: 2026-07-31
+SEVERITY: MEDIUM (silent - no error anywhere, the daemon appears to
+           work perfectly by every other measure: file writes succeed,
+           the process stays alive, other ${var}-wrapped-in-<text>
+           substitutions on the SAME layout update correctly)
+
+SYMPTOM: building rtp_manager.c (300.rtp-xyz's own new save/load
+daemon, modeled on slop-ed-dev_manager.c), a bare `${save_list_markup}`
+injection point (same shape as `${piece_methods}`/`${game_map}` -
+outside any `<text label="...">` wrapper, meant to inject real
+`<button>` markup) rendered as literally nothing on first screen
+arrival, and NEVER updated after a real save was created either -
+despite `pieces/apps/player_app/manager/gui_state.txt` having the
+correct, fresh `save_list_markup=...` line on disk every single time
+it was checked. Meanwhile a SEPARATE variable on the exact same
+layout, `${last_message}` (wrapped in `<text label="  ${last_message}"
+/>`), updated correctly on every real frame.
+
+ROOT CAUSE: chtpm_parser_pal.c's own compose_frame() only re-runs
+parse_chtm() (the pass that re-does raw/bare markup substitution -
+i.e. rebuilds the parsed XML tree with fresh injected content) when
+ONE of three SPECIFIC variables changes: `piece_methods`,
+`active_target_id`, or `input_text` (a hardcoded dirty-check, not
+generic to "any gui_state.txt variable changed"). A custom variable
+name like `save_list_markup` DOES get loaded into the in-memory var
+table via load_vars()/load_state_file()/set_var() every frame - `get_
+var("save_list_markup")` would return the fresh value if you asked for
+it - but nothing ever asks, because the ALREADY-PARSED XML element
+tree (built once, at the last real parse_chtm() call) is what actually
+gets rendered, and that tree's own copy of the bare injection point is
+frozen at whatever it resolved to the first time. Variables used
+INSIDE an existing `<text label="${var}">` wrapper don't have this
+problem - substituting `${var}` into an already-existing text element
+happens on every frame, no reparse needed; it's specifically the RAW/
+BARE injection shape (used for multi-element dynamic content like a
+button list) that's gated behind the three-variable dirty-check.
+
+FIX: publish the real dynamic markup AS `piece_methods` itself, not a
+custom variable name - already wired to force a reparse whenever its
+value changes. Safe for any layout with no active_target_id/hero
+context of its own (load_dynamic_methods() only overwrites
+piece_methods when active_target_id is non-empty, so a layout with no
+such context never fights your daemon for that variable). Confirmed
+live: renaming rtp_manager.c's own `save_list_markup=` gui_state.txt
+line to `piece_methods=` and project_menu.chtpm's own `${save_list_
+markup}` reference to `${piece_methods}` made the real save list
+render correctly on first arrival AND update correctly after a real
+save was created, with zero other changes.
+
+LESSON: before assuming a new manager daemon's own custom dynamic-
+markup variable will "just work" because `${piece_methods}` does,
+check WHICH SPECIFIC variables actually trigger a reparse in compose_
+frame() - it's a hardcoded short list, not a generic mechanism. If you
+need a NEW kind of dynamic multi-element content on a layout with no
+competing active_target_id, riding on `piece_methods` is the real,
+proven way to get it to redraw; inventing a new variable name for raw/
+bare injection will compile, run, and silently never update.
+FILES: 300.rtp-xyz/manager/rtp_manager.c (write_gui_state(), the
+piece_methods= line + its own header comment with this citation);
+300.rtp-xyz/pieces/chtpm/layouts/project_menu.chtpm (${piece_methods}
+reference); 300.rtp-xyz/system/chtpm_parser_pal.c compose_frame()
+(read directly to find this - the methods_changed/active_changed/
+input_changed dirty-check, ~line 2650-2665)
+SEE ALSO: 300.rtp-xyz/save-load-report-j31.txt (full build report,
+4 other real bugs found in the same daemon build - onClick prefix
+requirement is PITFALL #99 already documented elsewhere in this file,
+search for it)
+
+=======================================================================
+PITFALL 69: A SMALL LOCAL LLM (gemma3:270m) CANNOT RELIABLY SELF-CLASSIFY
+            INTO A BINARY VERDICT ZERO-SHOT, EVEN WHEN IT DEMONSTRABLY
+            HAS THE UNDERLYING KNOWLEDGE — DECOUPLE "DESCRIBE" (WORKS)
+            FROM "CLASSIFY" (DOESN'T) INTO A DETERMINISTIC SCORER
+            BEFORE REACHING FOR A BIGGER MODEL
+=======================================================================
+DATE: 2026-08-02
+SEVERITY: HIGH (any project asking a small local LLM to render a judge/
+          approve-reject/win-lose verdict will silently get near-
+          meaningless output unless this pattern is followed)
+PROJECT FOUND: @.apps/my-biotech (its own "FDA_REVIEW" mechanic - a
+          Gemma call meant to read a real research dossier and render
+          APPROVED/REJECTED)
+
+SYMPTOM: A prompt asking gemma3:270m to directly classify content into
+a binary verdict ("Answer with just APPROVED or REJECTED") produces
+answers that look plausible but are NOT actually responsive to the
+content - live-tested against two deliberately extreme dossiers (one
+describing a compound that "causes immediate cardiac arrest in 100% of
+test subjects... banned as a chemical weapon," one describing Vitamin
+C), 270m answered APPROVED for the LETHAL compound 2 times out of 3,
+and when the question was reframed as SAFE/DANGEROUS (still binary,
+more concrete framing) it answered SAFE for the lethal compound 3/3
+times - even with the danger-option listed FIRST in the prompt (ruling
+out simple order/anchoring bias). Asking it to also explain its verdict
+produced ZERO real explanatory content ("Approved", "AN APPROVED" - no
+substance at all), the clearest signal that it was not reasoning about
+the content, just completing toward a default-positive-sounding token.
+
+ROOT CAUSE: this is NOT the same failure mode as Pitfall (see
+045.muchi-pal-agent🤖️+1's own gemma_strategy.c precedent, "gemma is too
+small to reliably follow a TOOL: format") - that finding was about
+STRUCTURED OUTPUT FORMAT reliability. This is different and, at first,
+counter-intuitive: 270m demonstrably HAS real, accurate knowledge about
+the exact same content when asked to freely describe/recall it (the
+SAME two test dossiers, when 270m was asked "Describe the safety
+concerns of this compound in one sentence" instead of "APPROVED or
+REJECTED," answered "highly toxic and potentially fatal... severe side
+effects" for the lethal compound and "generally safe... mild stomach
+upset" for Vitamin C, 6/6 trials both directions, real content-aware
+language every time). The model's OPEN-ENDED recall/description
+capability is genuinely good; its ZERO-SHOT SELF-CLASSIFICATION
+capability (collapsing that same knowledge into a binary decision) is
+not - a real, measured capability gap between "say what you know" and
+"judge what you know," specific to a model this small.
+
+FIX (the real, working pattern, live-verified 2026-08-02): do NOT ask
+the small model to classify. Ask it an OPEN-ENDED DESCRIBE question
+(the thing it's actually good at), then run your OWN deterministic
+keyword/sentiment scorer over that description text to derive the
+verdict - the exact same "deterministic dispatch over free text, never
+another LLM self-judgment" doctrine gemma_strategy.c already
+established for tool-detection, now confirmed to generalize to
+judge/verdict tasks too:
+
+  1. Prompt: "Describe the safety concerns of <X> in one sentence."
+     (open-ended, not "APPROVED/REJECTED" or "SAFE/DANGEROUS")
+  2. Run a small, auditable, hand-written keyword scorer over the real
+     response text (danger-words: toxic/fatal/lethal/dangerous/deadly/
+     poison/banned/severe/risk/harm/hazard/death/unsafe vs. safe-words:
+     safe/mild/beneficial/well-tolerated/none known/rare - count
+     occurrences, danger_count > safe_count -> REJECTED, tie defaults
+     to REJECTED per this house's own "honest default on inconclusive"
+     convention)
+  3. Verdict is now derived from OUR OWN code, not the model's own
+     unreliable self-judgment - fully auditable, matches this whole
+     project family's transparency ethos, and the real description
+     text is itself the player-visible "explanation" for the verdict,
+     not a fabricated one.
+
+TRIED AND REJECTED before landing on the above (documented so a future
+agent doesn't re-waste the same effort): switching the classify call to
+a bigger model (gemma3:1b) DID work (6/6 correct, real content-aware
+explanations) - but the describe+deterministic-score approach on the
+SAME small 270m model also reached 6/6 correct with real explanations,
+without needing the bigger model at all. Direct user framing, worth
+repeating as a standing rule: "i think its a big deal that we try to
+make it work b4 going up 2 larger model" - always try this
+decouple-describe-from-classify pattern FIRST, on whatever model is
+already in use, before reaching for a bigger one. A bigger model is a
+real, valid fallback if this pattern still doesn't work for a given
+task, not the first thing to reach for.
+
+FILES: @.apps/my-biotech/ops/mybiotech_fda_verdict.c (own header
+       comment has the full three-approach experiment trail),
+       @.apps/my-biotech/ops/mybiotech_research_worker.c (FDA_REVIEW
+       step), @.apps/my-biotech/test-harn-same/scenarios/
+       demo_fda_review_discrimination.sh (the real, repeatable,
+       live-gemma-call harness this finding was measured with - reuse
+       its shape for any other project's own judge/verdict mechanic)
+SEE ALSO: @.apps/my-lawyer/MY_LAWYER_DESIGN.md (its own judge mechanic,
+       §4, reads two real documents and picks a winner - the SAME
+       decouple-describe-from-classify pattern applies directly there:
+       ask gemma to describe/compare the two cases in prose, THEN
+       deterministically score which side's description reads
+       stronger, rather than asking it to directly output "A or B")
+
+========================================================================
+PITFALL 70: LIVEDESK TOOLBAR + CONTEXT-MENU FOCUS — DO NOT GET FANCY
+           (2026-08-06, house 44.xyz… / KHTPM / event-ez arc)
+========================================================================
+
+SYMPTOM (the "toolbar nightmare" + "context focus woes"):
+  - Two livedesk taskbars, racing tabs, wrong Nav numbers, bar that
+    never dies or respawns forever.
+  - Right-click context menu: keys go to the *terminal*, clicks
+    instantly dismiss the menu, Up/Down dead, Chinese/long labels
+    clipped, "focus problems" that feel random across book-stack /
+    monsters / asa / ava.
+  - CPU melts while Events (ez) sits "idle" (rgb_render 40%+,
+    gl_mirror 20%+, parser 10%+).
+  - Agents "fix" by layering more X11 policy (raise everyone,
+    grab harder, focus-steal on every entity, multi-process
+    coordination) and make it worse.
+
+ROOT CAUSE (one sentence): X11 focus/grab and livedesk chrome are
+**display-global exclusive resources**; fancy multi-window focus
+orchestras and self-feeding recompose loops lose to simple ownership
+rules every time.
+
+What actually burned us (measured / re-broken / re-fixed this week):
+
+  A) XGrabKeyboard / XGrabPointer are DISPLAY-WIDE. Every entity is
+     its own OS process. If each popup does "grab harder" without
+     coordination, last grabber wins; everyone else silently has no
+     keyboard (AlreadyGrabbed after retry — no log). XWayland /
+     Mutter further *denies* grabs unless WM_CLASS is allowlisted
+     (xwayland-allow-grabs / grab-access-rules). Fancy: multi-entity
+     focus war. Real: optional grab + soft focus on *this* popup only.
+
+  B) XRaiseWindow / XSetInputFocus on *other* entities' windows is a
+     focus war. Taskbar "helpfully" raising tiles + each tile
+     raising itself + popup raise = keys land in the wrong place
+     (often the terminal that launched livedesk).
+
+  C) Dual taskbar: ensure_taskbar_running() + incomplete singleton
+     (PID file without kill(pid,0), or two launch paths) → two bars
+     polling the same livedesk_open.txt. Fancy "sync" code papers
+     over one process too many.
+
+  D) Stale X events + window-ID reuse: close popup, open next in the
+     same tick (SHOW_PAGE / Clear All / page switch). X11 can recycle
+     the destroyed window id; queued Button/KeyPress hits the *new*
+     menu as a phantom click. Fix is boring: drain
+     ButtonPress|KeyPress for that window id after Map before
+     accepting input — not a smarter focus manager.
+
+  E) Self-feeding recompose (same family as PITFALL 4 / 48):
+     ez_compose_frame always appended ez_screen_changed.txt;
+     main_loop only recomposes when that file grows → permanent
+     ~25–33 fps full RGB pipeline while "idle". Fancy continuous
+     "keep UI fresh" is a CPU bomb. Pulse only on real content
+     change; screen_changed owned only by KEY side-effects.
+
+  F) Fixed 160px context menus + always-on GL swap for static tiles:
+     "polish" that hides labels and burns 30fps × N entities for no
+     reason. Size menus to measured text; skip glXSwapBuffers when
+     need_redraw==0; hard-cap ≤30fps with sleep remainder (never
+     busy-spin continue).
+
+THE ANTI-FANCY RULE (prefer this over new focus architecture):
+
+  1. ONE taskbar process. PID file + liveness probe. No second
+     launch path. No "focus broker" process.
+
+  2. Popups: soft focus (XRaiseWindow + XSetInputFocus on the popup
+     itself only). Grabs optional / flag-gated. Never
+     XSetInputFocus another process's tile window from menu code.
+
+  3. Cross-process popup exclusivity: flock on a single house file
+     (#.desktop/livedesk_popup.lock) — boring mutex, not a focus
+     protocol.
+
+  4. WM_CLASS = "MuchiverseLivedesk" (or one house name) on every
+     livedesk popup so XWayland grab allowlist is possible. Do not
+     invent per-entity grab policies.
+
+  5. Nav numbers: one shared claims file, claim on open / release on
+     close. Do not invent a second numbering system for the bar.
+
+  6. After Map of any override_redirect menu: drain stale Button/Key
+     events for that window id. Do not "debounce focus" with timers
+     as the primary fix.
+
+  7. Compose/pulse files: only grow when content actually changed.
+     Idle menu_input(key 0) must not bump. Compose must not re-arm
+     its own trigger (see PITFALL 4, 48, and event-ez 2026-08-06
+     ping_frame_if_view_changed).
+
+  8. FPS: usleep(33333) / glutTimer 33ms / select poll — not
+     usleep(16667) "for snappiness". Static desktop tiles: no GL
+     work when idle.
+
+  9. When focus "feels broken": first check process count (duplicate
+     taskbar? three event-ez sessions?), then which window has
+     input focus, then grab ownership — not "add another raise".
+
+TRIED-AND-REJECTED (do not re-open without new evidence):
+  - Multi-entity XRaiseWindow chains / "focus last interacted entity"
+  - Hard global XGrab without WM_CLASS + flock coordination
+  - Second taskbar "helper" to fix Nav
+  - Continuous compose "so the list always shows latest" without a
+    content fingerprint (guaranteed CPU loop)
+  - Busy-loop frame skip (continue without sleep under FPS cap)
+
+WORKING SHAPE (as of 2026-08-06):
+  - &.widgits/livedesk-taskbar/ — singleton bar, ~300ms poll, Nav>
+  - tp_desktop_window.c — KHTPM menus, soft focus, popup flock,
+    content-aware width (g_popup_w), idle skip swap, ≤30fps
+  - event-ez — KEY:5/6/7; compose does not touch ez_screen_changed;
+    pal sleep 33333; mutaclsym parser/gl_mirror 30fps
+  - walk-off-au6.md (house root) — full handoff
+
+FILES:
+  &.widgits/tile-picker/ops/tp_desktop_window.c
+  &.widgits/livedesk-taskbar/ops/tp_taskbar.c
+  &.widgits/event-ez/ops/ez_compose_frame.c
+  &.widgits/event-ez/pal/main_loop_chtpm.pal
+  101.mutaclsym*/system/chtpm_parser_pal.c
+  101.mutaclsym*/system/gl_mirror.c
+  $.crypts/enable_xwayland_grabs.sh
+  walk-off-au6.md
+  #.desktop/livedesk_popup.lock , livedesk_taskbar.pid ,
+  livedesk_nav_claims.txt , livedesk_open.txt
+
+SEE ALSO: PITFALL 4 (compose↔frame_changed loop), PITFALL 22/51
+  (keyboard busy-spin), PITFALL 48 (idle menu_input bump),
+  PITFALL 53 (backgrounded button.sh zombies), HOUSE_STDS §H.5.4
+  (shared "mutaclsym RGB mirror" title / session hygiene).
+
+LESSON IN ONE LINE: for livedesk chrome and context menus, boring
+ownership + one mutex + soft focus on the active popup beats any
+fancy focus graph; recompose only on real change.
+
+========================================================================
+PITFALL 71: khtpm taskbar theme change leaves sprites blending against
+the STALE background color (GC-cached bg never refreshed on reload)
+========================================================================
+
+SYMPTOM: after a live theme change (bg/fg), the taskbar's top bar and
+bottom bar show a color mismatch - one bar's sprites/flat-fill uses
+the OLD color, the other uses the new one. Direct user report:
+"colors have not been going back to usual there is a discrepancy of
+discoloration between top and bottom bar now."
+
+ROOT CAUSE: khtpm_strip_parser.c's live-reload path
+(frame_changed_dirty() branch, ~line 1620) calls XSetWindowBackground()
++ XSetForeground() when the theme changes, but never calls
+XSetBackground(dpy, gc, bg) again after the ONE-TIME startup call
+(~line 1534). draw_bottom()/draw_header_win()'s sprite alpha-blending
+(blit_tab_sprite()) reads the GC's OWN cached background via
+XGetGCValues(dpy, gc, GCBackground, &gv) - NOT the window's
+background_pixel attribute. So after any live theme change post-
+startup, the window's flat-fill background updates correctly
+(XSetWindowBackground), but sprites keep compositing against whatever
+background color was set at PROCESS STARTUP, forever, until the next
+full restart.
+
+FIX: add the missing XSetBackground(dpy, gc, bg) call right alongside
+the existing XSetWindowBackground() calls on the reload path, so the
+GC's cached background tracks the window's real background exactly
+like the one-time startup code already does.
+
+FILES: *.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c - reload
+  branch near line 1620 (frame_changed_dirty()), original one-time
+  setup near line 1534
+
+SEE ALSO: PITFALL 70 (livedesk toolbar focus - same file, same
+  general "don't get fancy, keep GC/window state in lockstep" lesson).
+
+========================================================================
+PITFALL 72: concurrent-instance race corrupted REAL production config
+(theme.pdl), not just a test fixture - single-instance guard applies
+to windows you're actively BUILDING too, no exceptions
+========================================================================
+
+SYMPTOM: user's live taskbar went black-text-on-black (fonts/sprites
+invisible). Direct report: "i no longer see any fonts in tb or
+anything sprites. we broke it."
+
+ROOT CAUSE: while building the taskbar HQ menu's new "Settings" window
+(khtpm_taskbar_settings_render.c, a palette picker that writes
+#.desktop/livedesk_theme.pdl's COLOR|bg / COLOR|fg keys), launched it
+via bare `setsid nohup ./+x/... &` for a quick relay smoke-test, then
+- WITHOUT confirming the first one had been killed - launched a SECOND
+copy directly (`./+x/... 2>&1 &` in the foreground this time) to watch
+it interactively. Both processes independently polled the SAME relay
+file (#.desktop/taskbar_settings_agent_relay.txt) and the same
+apply_theme() read-modify-write path, each with their OWN independent
+g_focus_nav/g_chosen_bg_idx/g_chosen_fg_idx state - the exact same
+class of bug as PITFALL 53 (backgrounded button.sh zombies) and the
+2026-08-13 open-hai concurrent-process incident (5 processes racing on
+one relay file, see _.0.aigent-testing-k9.txt SCOPE ADDENDUM 2026-08-13),
+except this time the shared resource being raced on was the house's
+ACTUAL live theme config, not a disposable test session dir. One
+process (which never received the digit meant for it, so its focus
+stayed at the default swatch, index 0 = black) received two stray
+Enters and reached its own phase-2 "apply" with bg_idx=0 fg_idx=0 -
+wrote bg=#000000 fg=#000000 into the REAL livedesk_theme.pdl, and the
+running taskbar manager picked it up on its own scoped auto-restart.
+
+The bitter irony: this happened MINUTES after writing down "always
+confirm zero stray processes before launching, every time" as a
+lesson from the open-hai incident - the discipline was internalized as
+"testing an EXISTING window," not as "every khtpm/-hq window,
+including brand new ones I'm actively writing, no exceptions."
+
+FIX: killed both stray processes, restored livedesk_theme.pdl's
+original bg=#000000 fg=#00ff00 by hand, restarted the taskbar via the
+same scoped run_khtpm_strip.sh new the HQ menu's own "$.restart" row
+uses, confirmed fonts/sprites visible again (user-confirmed live).
+Then re-ran the ENTIRE pick-primary -> pick-secondary -> apply flow
+correctly, this time exclusively through button_taskbar_settings.sh
+(the real single-instance-guard launcher, written but not used the
+first time around) - confirmed exactly one PID before sending any
+relay codes.
+
+LESSON IN ONE LINE: "confirm zero stray processes before launching"
+has NO exception for "it's a window I just wrote, this is just a
+quick look" - check `pgrep -f` before every single launch, always,
+especially for anything writing to shared non-disposable state (a
+real config another live process reads) rather than its own private
+session dir, where the blast radius of a race is live user-visible
+breakage, not just a confusing test result.
+
+FILES: *.monads/*.livedesk-taskbar/ops/khtpm_taskbar_settings_render.c,
+  button_taskbar_settings.sh (the correct launcher, not used the first
+  time), #.desktop/livedesk_theme.pdl (the corrupted shared state)
+
+SEE ALSO: PITFALL 53 (backgrounded button.sh zombies), PITFALL 71
+  (same session, same file family - GC/window state lockstep lesson),
+  _.0.aigent-testing-k9.txt Rule 3/Rule 8 (the procedural rule this
+  incident is the real-world case study for).
+
+========================================================================
+PITFALL 73: open-hai's JSON response parser silently corrupted \uXXXX
+escapes ('>' became literal "u003e" text) - found via a cross-model
+signal, not a single bad output
+========================================================================
+
+SYMPTOM: model-generated bash scripts (via h-ai/open-hai) contained
+garbage like "u003e" where ">" should be, and "u0026" where "&" should
+be - real, runnable output corrupted into broken syntax.
+
+ROOT CAUSE: `extract_response_field()` (khtpm_open_hai_render.c) is a
+hand-rolled JSON string unescaper that explicitly handled `\n` and
+`\t` but had no `\uXXXX` case. Ollama's own standard JSON encoding
+escapes '>' as `>` and '&' as `&` (both entirely normal,
+spec-compliant JSON) - hitting the parser's generic `else` branch,
+which after consuming the backslash just emitted the literal 'u'
+character and let the hex digits "003e"/"0026" fall through as plain
+text, corrupting ANY response containing those characters.
+
+**How this was actually caught** (real methodology worth repeating):
+TWO INDEPENDENT models (stable-code:latest, gemma3:1b) produced the
+EXACT SAME corruption pattern on the same delegated task. A single bad
+output from one model is "the model got it wrong" - the SAME artifact
+from two unrelated models is a signal the common factor (this app's
+own parser) is the actual bug. Don't stop investigating at "the model
+produced garbage" without checking whether a DIFFERENT model produces
+the identical garbage - if it does, look at your own code first.
+
+FIX: added a real `\uXXXX` → UTF-8 decoder (BMP range: 1-3 byte UTF-8
+depending on codepoint) to `extract_response_field()`. Confirmed live:
+re-ran the same delegated task after rebuilding, '>' rendered
+correctly instead of "u003e".
+
+FILES: `&.widgits/open-hai/ops/khtpm_open_hai_render.c` -
+`extract_response_field()`
+
+SEE ALSO: `au11-hq/EVENTS-PAL-BUILDOUT-PLAN.md` §8.3 for the full
+delegation-pipeline context this was found inside.
+
+========================================================================
+PITFALL 74: khtpm taskbar HQ menu items from livedesk_taskbar.pdl were
+NEVER actually readable - read_key_value() skipped every real "SECTION
+| key | value" data row, not just the true header divider
+========================================================================
+
+SYMPTOM: HQ menu (taskbar header cell 1) only ever showed 3 hardcoded
+items ($.restart / X.quit / cancel), no matter what was in
+#.desktop/livedesk_taskbar.pdl's hq_menu_N_label/hq_menu_N_cmd rows -
+including rows that had "always" been there (hide/show, dir), not just
+newly-added ones. Direct user report: "wait. i see neither settings
+nor statistics added to tb. where is it?!"
+
+ROOT CAUSE: `read_key_value()` (khtpm_taskbar_manager.c) had
+`if (strncmp(line, "SECTION", 7) == 0) continue;` - intended to skip
+the file's own true header/divider line ("SECTION | KEY | VALUE"), but
+in this house's real .pdl convention EVERY data row also starts with
+the literal word "SECTION" as its row-tag ("SECTION | hq_menu_5_label |
+settings"). The blanket check skipped ALL of them, header and real
+data alike - `livedesk_build_hq_menu()`'s per-row read_key_value()
+calls always returned empty, `count` stayed 0, and the function always
+fell into its hardcoded 3-item fallback. This was NOT a regression
+from any one session's edits - it looks like this function has NEVER
+been able to read hq_menu_N_* from this file format, the fallback just
+happened to look plausible enough (3 real-looking menu items) that
+nobody noticed until someone went looking for a SPECIFIC missing item.
+
+HOW THIS WAS ACTUALLY CAUGHT: direct relay verification, not
+assumption - dumped #.desktop/strip_var_hqitems.txt (the live-rendered
+menu content) after actually opening the HQ menu via relay, and it
+showed exactly the 3-item hardcoded fallback set, not the 7 real rows
+on disk. Confirmed the .pdl file itself was correct (grep showed all 7
+rows), confirmed the running process had the right house_root, then
+found the actual bug by reading read_key_value()'s source directly
+instead of continuing to guess at config/restart issues.
+
+FIX: only skip the line if it is the TRUE header row - check that the
+field immediately after "SECTION |" is literally the word "KEY", not
+just that the line starts with "SECTION". Real data rows (whose second
+field is a real key name like "hq_menu_5_label") are no longer
+skipped.
+
+REAL RELAY TESTING NOTE (separate but related): opening the HQ menu
+via relay needs digit-then-ENTER (e.g. "49" then "13"), NOT a bare
+digit alone - a bare digit only accumulates into digit_buf, it does
+not activate/open the targeted header cell by itself. Confirmed via
+#.desktop/strip_state.txt's own "hq_open" key (0=closed, 1=open) and
+strip_var_hqitems.txt (only populated while hq_open=1).
+
+FILES: `*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c` -
+`read_key_value()` (~line 697)
+
+SEE ALSO: this bug likely affected EVERY OTHER caller of
+read_key_value() reading a "SECTION"-tagged .pdl row too (strip_user_cmd,
+datetime_lang, session state reads, etc. all go through the same
+function) - worth auditing those callers for the same silently-empty-
+read symptom if something else "never seems to read its config" in
+this taskbar family.
+
+========================================================================
+PITFALL 75: taskbar HQ "stats" window "never opens" - THREE stacked
+silent failures (relative-path pdl row, find-based OPS_DIR, sh-vs-bash)
+========================================================================
+
+SYMPTOM: clicking "stats" in the taskbar HQ menu (cell 1) did nothing -
+the menu closed but no stats window ever appeared. "This has been
+constantly buggy. why cant it just copy how hai opens?" - and open-hai /
+settings / db-hq all DID open fine. The failure was silent at every
+layer: no window, no error dialog, no log line, no nonzero exit anyone
+looked at.
+
+ROOT CAUSE: not one bug but THREE, stacked, each masking the next:
+
+  1) RELATIVE PATH IN PDL ROW. livedesk_taskbar.pdl's stats row was
+     `sh "&.hq-apps/stats-hq/open_stats_hq.sh" .` - a raw shell
+     command that fell through to ktb_hq_activate()'s generic
+     shell-out fallback. That fallback's ktb_action_portable() only
+     rewrites `$.crypts/`, `&.widgits/`, `@.apps/` markers - it does
+     NOT handle `&.hq-apps/` - so the relative path was passed through
+     verbatim and resolved against the MANAGER's own cwd, which is the
+     house's PARENT dir (run_khtpm_strip.sh never chdirs to
+     house_root). The shell silently could not find the script.
+  2) FIND-BASED OPS_DIR. open_stats_hq.sh resolved its render binary
+     via `find "$HOUSE_ROOT" -name "*livedesk-taskbar" | head -1`,
+     which matched the HARNESS dir first (#.desktop/harnesses/
+     khtpm-livedesk-taskbar), never the real ops dir - so
+     "$OPS_DIR/+x/khtpm_hq_render.+x" did not exist and it bailed
+     with "build failed" (written to a discarded stderr).
+  3) sh-vs-BASH SHEBANG. Even once the path resolved, the manager
+     launched launchers via `sh -c 'sh "script" ...'` - the inner
+     `sh` runs dash, ignoring the script's `#!/bin/bash`. The stats
+     script uses bash-only array syntax (`sessions=()`, line ~81),
+     so dash died with `Syntax error: "(" unexpected`. open-hai's
+     button.sh happens to be POSIX-safe, which is why hai "just
+     worked" under sh while stats never did.
+
+WHY THIS WAS HARD TO FIND: every layer was silent. The generic
+fallback discards stderr (`>/dev/null 2>&1`), the script's own
+"build failed" went to that same discarded stderr, and the final dash
+syntax error only showed up once the first two were fixed and stderr
+was redirected to a file instead of /dev/null. Any single layer being
+fixed alone looked like "still broken."
+
+FIX (2026-08-13):
+  * Stats (and settings) now use a dedicated reserved command
+    (`livedesk:open-stats`, mirroring `livedesk:open-settings` /
+    `livedesk:open-open-hai`) instead of a raw relative shell row.
+  * All HQ window launcher paths moved to the house-standard registry
+    `#.desktop/livedesk_launchers.pdl` (`SECTION | launcher_<app> |
+    <path relative to house_root>`) and resolved against house_root by
+    the new ktb_hq_launcher_path() - never cwd-dependent, never
+    hardcoded in C.
+  * open_stats_hq.sh now uses the literal house-standard ops path
+    `$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops` (exactly like
+    open_db_hq.sh/open_event_ez.sh), NOT find.
+  * Launchers are invoked with `bash` (`setsid nohup sh -c 'bash
+    "script" "house_root"'`), honoring the `#!/bin/bash` shebang every
+    launcher in the registry carries.
+
+VERIFY THIS PATTERN WHEN: any taskbar HQ row "does nothing" while a
+sibling row works - check (a) does the pdl row hit a real reserved
+dispatch or the generic fallback, (b) is the target path absolute-vs-
+cwd or find-derived, (c) does the launched script need bash while the
+invocation forces sh. All three are silent killers.
+
+FILES:
+  * `#.desktop/livedesk_taskbar.pdl` - hq_menu_6_cmd now
+    `livedesk:open-stats` (was a relative shell row)
+  * `#.desktop/livedesk_launchers.pdl` - NEW house-standard launcher
+    registry (settings/stats/ai/db)
+  * `*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c` -
+    ktb_hq_launcher_path() (~line 752), livedesk:open-settings and
+    livedesk:open-stats branches (now bash-launch via the registry)
+  * `&.hq-apps/stats-hq/open_stats_hq.sh` - OPS_DIR fix (find ->
+    literal house path)
+  * `*.monads/*.livedesk-taskbar/ops/button_taskbar_stats.sh` -
+    STATS_SCRIPT path fixed (xyzfs/bin/stats-hq/ops/ -> &.hq-apps/)
+
+========================================================================
+END OF XYZOS-PITFALLS
+Add new pitfalls above this line as they are discovered.
+========================================================================

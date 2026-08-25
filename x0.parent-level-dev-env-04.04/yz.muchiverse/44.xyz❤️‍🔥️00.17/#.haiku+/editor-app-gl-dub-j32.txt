@@ -1,0 +1,287 @@
+editor-app-gl-dub-j32.txt - HANDOFF for a fresh agent: real, unsolved
+GL-mode typing-doubling bug in @.apps/text-editor-xyz (102.agy-txt's
+own editor). Written 2026-07-31 after a long, exhausting, ultimately
+unsuccessful investigation - read this in full before touching
+anything, so you don't repeat work already done and already ruled out.
+
+================================================================================
+## 1. THE REAL, CONFIRMED, LIVE SYMPTOM
+
+Real human testing (not synthetic), via `@.apps/text-editor-xyz`,
+`bash button.sh run`, with a real DISPLAY set (real GLUT/GL window,
+NOT `NO_GL=1` headless mode):
+
+  - Typing into the editor's own INTERACT-engaged canvas doubles every
+    character: typing "hi" lands as "hhii" in the real, rendered
+    editor_buffer.txt content. Confirmed multiple times, by the actual
+    user, via real GL-mode typing.
+  - The SAME app, run headless (`NO_GL=1 bash button.sh run`, ASCII-
+    only, no GL window at all) does NOT double. Confirmed both by the
+    user's own direct statement and by my own synthetic (raw key-
+    injection) testing, which never once reproduced doubling - always
+    under NO_GL=1.
+  - This is the ONE clean, reliable behavioral split to reason from:
+    GL enabled -> doubles. GL disabled -> does not double. Whatever the
+    real cause is, it is DIRECTLY tied to gl_mirror.c's own presence/
+    activity, not something purely in the ASCII-mode-only code path.
+  - Also reported, possibly related, possibly separate: file-menu's
+    own GL widget "acting crazy" (real navigation/selection glitches)
+    when running alongside the editor - not confirmed root-caused
+    either.
+
+## 2. HOW INPUT IS *SUPPOSED* TO FLOW (the real, intended architecture)
+
+Two independent real capture sources can feed keystrokes into this
+pipeline:
+
+  A) `system/keyboard_input.c` - raw termios stdin capture, runs in
+     the FOREGROUND (blocking) as the last step of a session launch.
+     Real terminal window, real OS keyboard focus required to receive
+     anything.
+  B) `system/gl_mirror.c` - a real GLUT window, real OS keyboard focus
+     required (GLUT's own `glutKeyboardFunc`/`keyboard()` callback
+     structurally cannot fire without real X11 keyboard focus on that
+     specific window - this is enforced by the X server itself, not a
+     convention).
+
+BOTH of these, when a key arrives, call their own local `append_key()`
+which writes:
+  1. `pieces/apps/player_app/history.txt` (bare decimal int per line -
+     read by prisc+x's own `OP_READ_HISTORY` opcode elsewhere, not
+     part of this bug's own path)
+  2. `pieces/keyboard/history.txt` (`KEY_PRESSED: N` per line - this
+     IS part of this bug's own path, read by `chtpm_parser_pal.c`)
+
+`system/chtpm_parser_pal.c` (the real, shared, persistent parser/
+engine - agy-txt/text-editor-xyz read `014.wsr-pal💸️📌️+2`'s own LIVE
+copy directly, no local copy of their own) polls `pieces/keyboard/
+history.txt` for new `KEY_PRESSED: N` lines. For a real `<button
+onClick="INTERACT">`-engaged element (the editor canvas), its own
+`process_key()` calls `inject_raw_key(eff)` - **this is supposed to be
+the ONE place a real keystroke gets forwarded into `pieces/apps/
+player_app/interact_relay.txt`**, which the PAL script's own
+`read_history` opcode reads, dispatching into `agy_edit_key.c` (the
+real op that owns the editor buffer and actually inserts the typed
+character).
+
+So the INTENDED, single, correct path for ONE real keystroke is:
+
+  real keypress -> (keyboard_input.c OR gl_mirror.c, whichever has
+  real OS focus - never both) -> pieces/keyboard/history.txt ->
+  chtpm_parser_pal.c's own process_key() -> inject_raw_key(eff) ->
+  pieces/apps/player_app/interact_relay.txt -> PAL script's own
+  read_history -> agy_edit_key.c -> ONE character inserted.
+
+Given real OS-level window focus is supposed to guarantee only ONE of
+{keyboard_input.c, gl_mirror.c} ever receives a given real keystroke
+at a time, and `pieces/keyboard/history.txt` is a single, shared file
+BOTH of them write into using the identical format, `chtpm_parser_
+pal.c`'s own read/relay logic should never see or process the same
+logical keystroke twice under this design - REGARDLESS of which of
+the two sources produced it. That is the real, intended contract. It
+is currently being violated somehow when GL is active.
+
+## 3. A REAL, ALREADY-KNOWN, ALREADY-DOCUMENTED CLASS OF THIS EXACT BUG
+
+This exact symptom (GL-mode typing doubling in this exact app) was
+ALREADY found and "fixed" once before, 2026-07-30 (one day before this
+handoff) - see `!.xyzos-pitfalls+1.txt` PITFALL 63 and `!.xyzos-
+standards+1.txt` §38 in THIS house copy (both still present, both
+describe the SAME bug). The original fix added a
+`pieces/system/gl_focus.lock` file, written by `gl_mirror.c`'s own
+`update_focus_lock()` while it's alive, checked by `chtpm_parser_pal.
+c`'s own INTERACT branch immediately before `inject_raw_key(eff)` -
+skip the forward if the lock exists, on the theory that gl_mirror.c is
+ALREADY independently delivering the same key via some other path.
+
+**This check is STILL present in the code right now** (confirmed,
+`chtpm_parser_pal.c` ~line 3548-3550: `int gl_owns_input =
+(lock_path && access(lock_path, F_OK) == 0); ... if (!gl_owns_input)
+inject_raw_key(eff);`) and the bug is STILL reproducing. So either:
+  a) the lock file isn't being found/written correctly in the live
+     session (a real path-resolution bug, worth re-verifying - see §5
+     below for exactly what WAS checked), or
+  b) the original 2026-07-30 diagnosis itself was incomplete/wrong
+     (the lock check treats gl_mirror as "the other independent
+     deliverer" but does NOT actually verify gl_mirror is writing
+     into interact_relay.txt via any path anymore - see §4, this was
+     REMOVED during this investigation), or
+  c) something else entirely, not yet found.
+
+## 4. EVERYTHING ALREADY TRIED THIS SESSION (2026-07-31) - DO NOT
+   REPEAT THESE, they are confirmed NOT to have fixed it, in this
+   exact order, each verified via a real, clean rebuild + a real
+   report back from the user after each change:
+
+  1. Killed all stale/orphaned processes (a REAL, separate, CONFIRMED,
+     ALREADY-FIXED bug: `agy_browser_manager.+x`, a native C manager
+     daemon, was missing from every kill path in this house -
+     `button.sh kill`, `EMERGENCY_KILL.sh`, and both apps' own pre-
+     launch cleanup. This part IS real and IS fixed, and DID fix a
+     SEPARATE, earlier symptom (file-menu's own freezing/not-
+     selecting bug) - keep this fix, don't revert it.
+  2. Removed, then RESTORED (after direct comparison against a known-
+     working pre-refactor snapshot proved the removal was based on a
+     wrong theory - see §6), the `gl_focus.lock` check in `chtpm_
+     parser_pal.c`. Currently: RESTORED to original (present, matches
+     the working reference exactly).
+  3. Reverted this session's own "per-screen module split" (Phase 2
+     work, unrelated to this bug's origin - see dox/06-per-screen-
+     module-standard.md in 01.muchi-pals-🥚️-13.01) for both agy-txt
+     (`editor.chtpm`/`file_menu.chtpm` back to sharing one `main_loop_
+     chtpm.pal`, `file_browser_save/load.chtpm` back to sharing one
+     `agy_browser_manager.+x` with no distinguishing arg) and file-menu
+     (all 5 screens back to one shared `main_loop_chtpm.pal`). This
+     did NOT fix the doubling, but DID independently confirm file-menu
+     freezing was actually caused by item (1) above, not the module
+     split.
+  4. Temporarily disabled (commented out) all 3 calls to `clear_saved_
+     active_index()` in `chtpm_parser_pal.c` (a real, separate,
+     legitimate stale-focus fix from earlier this session, unrelated
+     to keystroke delivery - only fires on real layout TRANSITIONS,
+     not during steady-state typing). No effect on doubling. Currently
+     DISABLED (commented out) - should probably be RE-ENABLED once
+     this bug is solved, since it fixes a real, separate, confirmed
+     bug (PITFALL 66) and was never actually implicated.
+  5. Removed `gl_mirror.c`'s own SECOND, independent, unconditional
+     direct write into `pieces/apps/player_app/interact_relay.txt`
+     (this was a REAL, structural difference from `101.mutaclsym`'s
+     own `gl_mirror.c`, which has never had this second write - only
+     writes to `pieces/keyboard/history.txt`, matching §2's own
+     "intended" description above). This looked like the most
+     promising lead of the whole investigation - a second,
+     UNCONDITIONAL delivery path straight into `interact_relay.txt`,
+     completely bypassing the `gl_focus.lock` check's own gate
+     entirely (since that check only guards `chtpm_parser_pal.c`'s
+     OWN forward, not gl_mirror's independent one). Removed to match
+     mutaclysm exactly. Rebuilt, re-copied into both agy-txt and file-
+     menu (confirmed via matching md5sum). **Still doubles.**
+
+  IMPORTANT CAVEAT ON THE "WORKING REFERENCE" COMPARISON (item 3 and
+  throughout): a real, running pre-refactor snapshot of this whole
+  house exists at `/home/no/Desktop/🧩️Piecemark-IT/🦚/⚜️/z00/5.XYZ_RE/
+  jul-30-pre-re-ER/44.xyz❤️‍🔥️00.10+13.2/44.xyz❤️‍🔥️00.10/` - the user
+  confirmed this copy does NOT double. Direct `diff` confirmed
+  `keyboard_input.c` and `gl_mirror.c` (BEFORE change #5 above) were
+  byte-IDENTICAL between this reference and the current copy;
+  `main_loop_chtpm.pal` and `editor.chtpm` are ALSO byte-identical;
+  `agy_edit_key.c`'s only difference is dead browser-handling code
+  REMOVED (unrelated, the browser moved to a new native manager during
+  this session's earlier Tier 1 rebuild) - the actual typing/insert
+  logic is unchanged. So this reference comparison, exhaustively
+  checked, found NOTHING different in the direct pipeline except the
+  things already tried in items 2-5 above. **This is the single
+  biggest source of confusion in this whole investigation**: nearly
+  everything provably matches a known-working state, yet the bug
+  persists. Either the ONE remaining unRuled-out difference (item 5,
+  gl_mirror's removed direct write) WAS actually load-bearing for some
+  non-obvious reason and removing it didn't fully fix the underlying
+  issue, or the real cause is environmental/runtime, not source-level.
+
+## 5. A REAL, CONCRETE, NOT-YET-FULLY-CHASED-DOWN LEAD: transient,
+   wrongly-scoped `gl_mirror` processes
+
+During live process inspection (mid-investigation), a SECOND, real
+`gl_mirror` process was caught running with the WRONG working
+directory (the file-menu PROJECT ROOT, not its own session
+subdirectory) and NO `PRISC_PROJECT_ROOT` env var set - meaning ITS
+OWN `gl_focus.lock` file would be written to (and checked from) the
+WRONG path entirely, breaking the whole lock mechanism's own
+precondition for that specific instance. This exact process was
+caught TWICE, in two separate fresh-launch tests, each time appearing
+~16 seconds into the session's life (not immediately at launch) and
+then dying on its own within roughly 20-30 seconds - i.e., a real,
+reproducible, but TRANSIENT extra process, not a permanent competitor.
+
+**This was never fully root-caused.** `grep -n "gl_mirror"` on file-
+menu's own `button.sh` shows only ONE launch site (inside `run_widget_
+session()`, correctly after `cd "$SESSION_DIR"` and after `export
+PRISC_PROJECT_ROOT="$SESSION_DIR"` - so the SCRIPT'S OWN code looks
+correct). Where this second, wrongly-scoped process actually comes
+from (self-fork inside gl_mirror.c on some GLUT/X11 error/retry path?
+a second invocation from somewhere else in the process tree? genuinely
+just a slow-dying leftover from an earlier kill, coincidentally
+timed?) was NOT determined. Real next step: catch this process the
+INSTANT it appears (e.g., a tight polling loop checking `pgrep -f
+system/gl_mirror` every 0.1s right after launch, logging PID+cwd+ppid
++full cmdline+lstart for every NEW pid seen) and trace its OWN parent
+process chain to find where it's actually spawned from.
+
+## 6. WHAT WAS NOT YET DONE - the direct, ground-truth next step
+
+At the moment this handoff was written, I (the prior agent) was about
+to read `inject_raw_key()`'s own full implementation in `chtpm_parser_
+pal.c` (`grep -n "void inject_raw_key"` found it at ~line 1515) to
+confirm, directly, EXACTLY what it does (does it write only to
+`interact_relay.txt`? does it do anything else? is there any OTHER
+code path, anywhere in this ~3700-line file, that could ALSO
+independently write into `interact_relay.txt` for a raw keystroke,
+beyond the one call site already found and already gated by the
+`gl_focus.lock` check?). This was never completed. **Do this first** -
+`grep -n "interact_relay" system/chtpm_parser_pal.c` and read EVERY
+match, not just the one already found and already discussed above,
+since a second, ungated write site inside chtpm_parser_pal.c ITSELF
+(not gl_mirror.c) would exactly explain this bug and was never fully
+ruled out.
+
+Also not yet done, and possibly more direct than continued source
+reading: real, timestamped debug logging. The user explicitly asked
+for this at one point, then asked to reason it through logically
+instead - but logical reasoning alone did not solve it. If source
+reading (starting from the `inject_raw_key` re-check above) doesn't
+turn up a second write site, real instrumentation is the honest next
+step: have BOTH `keyboard_input.c`'s own `append_key()` AND `gl_mirror.
+c`'s own `append_key()` AND `chtpm_parser_pal.c`'s own `inject_raw_
+key()` each write one timestamped line (with millisecond precision -
+`clock_gettime(CLOCK_REALTIME, ...)`) to a single, shared, real debug
+file (e.g., `pieces/system/input_debug.txt`) identifying themselves
+and the key code. Have the user reproduce ONE single doubled character
+in a real session, then read that file - it will show, with total
+certainty, whether one source fires twice, two sources both fire once
+each, or something else entirely. This removes ALL guessing.
+
+## 7. KEY FILE PATHS (all under this house's own root,
+   `.../44.xyz❤️‍🔥️00.10/`)
+
+  014.wsr-pal💸️📌️+2/system/chtpm_parser_pal.c  - the shared engine;
+    agy-txt and @.apps/text-editor-xyz read this LIVE copy directly,
+    no local copy of their own (confirmed: no `system/chtpm_parser_
+    pal.c` file exists in either project's own directory, only the
+    compiled binary, copied in by each project's own `scripts/
+    build.sh` via `cp "$WSR/system/chtpm_parser_pal" ...`)
+  014.wsr-pal💸️📌️+2/system/gl_mirror.c          - ditto, live-shared
+  014.wsr-pal💸️📌️+2/system/keyboard_input.c     - ditto, live-shared
+    (this one is a genuinely local, intentionally-forked copy per this
+    file's own header comment - "NOT switched onto shared-ops/
+    keyboard_input.c... this file stays its own local copy" - but
+    STILL only exists in wsr-pal, copied into agy-txt/text-editor-xyz
+    the same way as the others - there is no keyboard_input.c source
+    file inside 102.agy-txt/ or @.apps/text-editor-xyz/ themselves)
+  102.agy-txt/ops/agy_edit_key.c                - the real op that
+    owns the editor buffer and inserts typed characters
+  102.agy-txt/pal/main_loop_chtpm.pal           - the PAL script
+    dispatching keys into agy_edit_key.c
+  102.agy-txt/pieces/chtpm/layouts/editor.chtpm - the real layout
+  @.apps/text-editor-xyz/button.sh              - the REAL launcher
+    the user actually runs (`bash button.sh run`) - builds its own
+    separate editor session (`run_app()`), does NOT delegate to
+    102.agy-txt's own button.sh
+
+  Remember to rebuild+re-copy in this exact order after any change to
+  a wsr-pal file: `cd 014.wsr-pal💸️📌️+2 && bash scripts/build.sh`
+  (the `emoji_gen_atlas.c` freetype failure in this build is
+  UNRELATED/pre-existing, ignore it - the actual binary you care about
+  still rebuilds fine, verify via file mtime), THEN `cd 102.agy-txt &&
+  bash scripts/build.sh` AND `cd &.widgits/file-menu && bash scripts/
+  build.sh` (both copy FROM wsr-pal's freshly-built binary). Always
+  `bash EMERGENCY_KILL.sh` (house root) before testing again, or a
+  `Text file busy` error means a stale binary is still running and
+  your rebuild silently didn't take effect on disk where it matters.
+
+## 8. WHAT NOT TO DO
+
+Don't re-try any of the 5 items in §4 - they're real, verified,
+already-ruled-out (or already-fixed-for-something-else) dead ends.
+Don't re-derive the "reference copy proves X" comparisons from
+scratch - §4's own caveat already summarizes what was and wasn't found
+there. Start from §6.

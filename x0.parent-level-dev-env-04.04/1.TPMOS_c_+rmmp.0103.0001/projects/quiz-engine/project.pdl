@@ -1,0 +1,13 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | quiz-engine
+META         | version            | 1.0
+META         | author             | TPM-AI Team
+META         | entry_layout       | projects/quiz-engine/layouts/quiz.chtpm
+
+STATE        | player_piece       | xlector
+STATE        | title              | TPM-AI QUIZ ENGINE
+STATE        | current_book       | none
+STATE        | current_page       | 0
+
+RESPONSE     | default            | *Ready*

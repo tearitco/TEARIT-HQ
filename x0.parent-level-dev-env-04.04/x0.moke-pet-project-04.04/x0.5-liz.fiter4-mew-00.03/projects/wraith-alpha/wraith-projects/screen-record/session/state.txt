@@ -1,0 +1,9 @@
+project_id=wraith-alpha/wraith-projects/screen-record
+state=error
+detail=recording_missing_output
+output_rel=
+audio_mode=video_only
+poster_loaded=0
+poster_width=0
+poster_height=0
+history_cursor=0

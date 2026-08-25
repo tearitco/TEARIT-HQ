@@ -1,0 +1,23 @@
+╔═══════════ X Y Z   E D I T O R ═══════════╗
+║  FILE: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NN║
+╠═════════════════════════════════════════════╣
+║  HARNESS-LOAD-MARKER-1553790-1785403298     ║
+║  second line of the fixture                 ║
+║  [X]                                        ║
+║                                             ║
+║                                             ║
+║                                             ║
+╠═════════════════════════════════════════════╣
+║  Loaded 66 bytes from /home/no/Desktop/🤖�║
+╚═════════════════════════════════════════════╝
+
+[>] 1. [EDIT TEXT (INTERACT)]
+[ ] 2. [INTERACT]
+[ ] 3. [NEW FILE]
+[ ] 4. [CLEAR FILE]
+[ ] 5. [FILE MENU]
+[ ] 6. [EXIT]
+ Esc exits INTERACT | Ctrl+C quit
+
++=========================================================+
+Nav > _

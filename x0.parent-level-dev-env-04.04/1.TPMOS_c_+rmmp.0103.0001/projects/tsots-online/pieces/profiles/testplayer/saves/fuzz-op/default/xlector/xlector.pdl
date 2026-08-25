@@ -1,0 +1,27 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | xlector
+META         | version            | 1.0
+META         | determinism        | strict
+
+STATE        | name               | Xlector
+STATE        | type               | xlector
+STATE        | pos_x              | 12
+STATE        | pos_y              | 2
+STATE        | pos_z              | 0
+STATE        | on_map             | 1
+STATE        | map_id             | map_01.txt
+
+METHOD       | move               | void
+METHOD       | select             | void
+METHOD       | scan               | pieces/apps/playrm/ops/+x/scan_op.+x xlector
+METHOD       | collect            | pieces/apps/playrm/ops/+x/collect_op.+x xlector
+METHOD       | place              | pieces/apps/playrm/ops/+x/place_op.+x xlector
+METHOD       | inventory          | pieces/apps/playrm/ops/+x/inventory_op.+x xlector
+METHOD       | toggle_emoji       | echo "toggled"
+METHOD       | toggle_clock       | echo "clock toggled"
+
+EVENT_IN     | move               | void
+EVENT_IN     | select             | void
+
+RESPONSE     | default            | *xlector clicks*

@@ -1,0 +1,741 @@
+LEDGER-DRIVEN ARCHITECTURE FOR MULTIPLAYER GAMES
+Master Ledger as the Backbone for Players, NPCs, and AI at Scale
+Ring-Based Turn Management, Local or Online P2P
+
+================================================================================
+Document Version: 1.0
+Date: 2026-07-23
+Scope: The append-only ledger pattern as the PRIMARY architecture for:
+       - Turn-based multiplayer games (ring topology for fair turn order)
+       - Massive NPC population management via banking and batching
+       - AI behavior management (SCALE_BANK fidelity configuration)
+       - P2P synchronization (local or networked)
+       - Full auditability and time-travel replay
+
+Reference: Tested via Mars Street Trading Sim (marst-arch-j23.txt)
+           Extended from zest-er-summary-FIN.txt sections 4.4, 4.6, 5, 6
+
+================================================================================
+PART 1: CORE IDEA - THE LEDGER AS TRUTH
+================================================================================
+
+FUNDAMENTAL PRINCIPLE:
+
+  In a ledger-driven game architecture, the APPEND-ONLY LOG is not a side
+  effect or audit trail - it is the SOURCE OF TRUTH for all game state.
+
+  Everything else (renderable state, NPC positions, player inventories, world
+  facts) is DERIVED from the ledger by replaying it.
+
+CONSEQUENCES:
+
+  ✓ Single source of truth: one file, one ordering, no conflicts
+  ✓ Time-travel: reconstruct state at any past timestamp by partial replay
+  ✓ Crash recovery: resume from checkpoint, no state lost
+  ✓ P2P sync: each node independently replays ledger, convergent result
+  ✓ Auditability: every change is logged (player action, NPC behavior, env event)
+  ✓ Replay testing: run game from scratch, verify behavior is deterministic
+  ✓ Rollback: undo by truncating ledger (for dev; not player-facing)
+
+CONTRAST TO TRADITIONAL ARCHITECTURE:
+
+  Traditional game:
+    Player sends command → Game applies to state in RAM → Render output
+    State is volatile (RAM only, lost on crash)
+    Multiplayer requires constant synchronization (messy, lag-prone)
+    NPCs are hardcoded or templated (not truly dynamic)
+
+  Ledger-driven game:
+    Player sends command → Append to ledger → Read state from full ledger
+    State is persistent (ledger is authoritative, RAM is cache)
+    Multiplayer: each node appends own actions, replays all → convergent state
+    NPCs are log entries (behaviors emerge from ledger patterns)
+
+================================================================================
+PART 2: RING TOPOLOGY FOR FAIR MULTIPLAYER TURNS
+================================================================================
+
+PROBLEM SOLVED: How do multiple players take turns fairly in a distributed system?
+
+ANSWER: Ring topology with explicit turn order.
+
+LEDGER FORMAT:
+
+  timestamp|actor_id|turn_number|action_type|action_data|actor_type|fidelity_scale
+
+  Example:
+    2026-07-23T10:00:00|player_1|0|MOVE|x:50,y:100|player|full
+    2026-07-23T10:01:00|npc_goblin_001|1|ACTION|attack:player_1:damage:5|npc|medium
+    2026-07-23T10:02:00|npc_dragon_boss|2|ACTION|fireball:targets:3:radius:20|npc|full
+    2026-07-23T10:03:00|player_2|3|MOVE|x:75,y:120|player|full
+    2026-07-23T10:04:00|player_1|4|ACTION|cast:fireball:x:60,y:100|player|full
+
+TURN ORDER SEMANTICS:
+
+  - turn_number = global counter (0, 1, 2, 3, ...)
+  - Increments by 1 for EVERY actor that takes a turn
+  - No re-ordering: ledger order is turn order (deterministic)
+  - No "rounds" or "phases": pure linear sequence
+
+RING DISTRIBUTION (round-robin fairness):
+
+  Actor set: {player_1, player_2, npc_goblin_001, npc_dragon_boss}
+  Expected turn order: player_1, player_2, npc_goblin_001, npc_dragon_boss,
+                       player_1, player_2, npc_goblin_001, npc_dragon_boss, ...
+
+  Enforcement: each actor has a next_turn_index (persistent in state.txt or
+               computed from ledger)
+
+  Algorithm (pseudo-pseudocode):
+    next_actor_to_move = ring[turn_number % ring.size()]
+    if next_actor_is_human: wait for input
+    if next_actor_is_ai: run strategy module (append action to ledger)
+    increment turn_number
+    loop
+
+WHY RING?
+
+  ✓ Fair: every actor moves exactly once per ring cycle
+  ✓ Predictable: actors know when their turn is (deterministic scheduling)
+  ✓ Simple: no complex dependency resolution (turn N depends only on N-1)
+  ✓ P2P-friendly: no central arbiter needed (all nodes compute same ring)
+  ✓ Scalable: 2 actors or 100 actors, same mechanism
+
+LOCAL VS. ONLINE:
+
+  LOCAL (same machine):
+    - Ring file: just an in-memory array or config file
+    - All actors in same process or related processes
+    - Turn dispatcher reads ledger, computes next actor
+    - No network needed
+
+  ONLINE (P2P):
+    - Ring file: shared, replicated on each peer node
+    - Players on different machines, NPCs distributed (or replicated)
+    - Each node independently computes next actor from turn_number
+    - Ledger synced via palnet_peer (outbox → broadcast → inbox)
+    - All nodes converge on same state (eventually consistent)
+
+================================================================================
+PART 3: ACTOR TYPES - PLAYERS, NPCS, ENVIRONMENT
+================================================================================
+
+ACTOR_TYPE FIELD in ledger:
+
+  player       = human player (input from keyboard/network)
+  ai_player    = computer-controlled "player" (e.g., trading bot, chess engine)
+  npc          = non-player character (e.g., goblin, merchant, pet)
+  environmental_event = world event (e.g., earthquake, rain, NPC spawn)
+  system_tick  = game logic tick (not an actor, but meta events)
+
+EACH ACTOR TYPE HAS:
+
+  1. Registry (what behaviors/strategies are available)
+     File: registry/<actor_type>_bank.txt
+     Format: id|name|strategy_module|scale_tier|cost
+
+  2. State (persistent properties across turns)
+     File: actors/<actor_id>/state.txt
+     Format: key=value (health, position, inventory, current_strategy, etc.)
+
+  3. Decision Engine (how this actor picks its next action)
+     File: ops/decide_<actor_type>.c (self-contained)
+     Input: state.txt, ledger history (for context), world state
+     Output: action (appended to ledger)
+
+EXAMPLE: Three actors in one game
+
+  PLAYER_1 (human player):
+    Registry: registries/player_bank.txt
+      0|human_tactical|human_input_reader|-|0
+    State: actors/player_1/state.txt
+      name=Alice
+      health=100
+      position_x=50
+      position_y=100
+    Decision: Read keyboard, parse menu choice, output action
+
+  NPC_GOBLIN_001 (NPC with "medium" fidelity):
+    Registry: registries/npc_bank.txt
+      10|goblin_scout|ai_module_goblin_medium|medium|0.5
+    State: actors/npc_goblin_001/state.txt
+      name=Goblin Scout
+      health=25
+      current_strategy_id=10
+      patrol_radius=30
+    Decision: Cheap FSM (finite state machine) + random patrol + simple combat
+
+  NPCDRAGON_BOSS (NPC with "full" fidelity):
+    Registry: registries/npc_bank.txt
+      20|dragon_boss|ai_module_dragon_full|full|2.0
+    State: actors/npc_dragon_boss/state.txt
+      name=Dragon of Destruction
+      health=500
+      current_strategy_id=20
+      learned_player_patterns=[...]  # tracks player behavior history
+    Decision: Full AI module - reads entire ledger, learns from player patterns,
+              executes sophisticated strategy (e.g., targeted attacks on weak
+              player weaknesses learned from prior turns)
+
+================================================================================
+PART 4: SCALE_BANK - FIDELITY CONFIGURATION
+================================================================================
+
+CORE CONCEPT (from zest-er-summary-FIN.txt sec. 4.6):
+
+  Scale is NOT a property of the whole game. It is a property of
+  (entity_type, behavior_domain) PAIR.
+
+  Example: A car in a racing game
+    - physics domain: might be LARGE (tire mechanics, combustion, suspension)
+    - conversation domain: might be SMALL (cars don't talk)
+
+  Example: An NPC merchant
+    - commerce domain: might be LARGE (pricing logic, inventory tracking)
+    - combat domain: might be SMALL (simple punch, no strategy)
+
+SCALE_BANK FORMAT (pipe-delimited, multi-key):
+
+  entity_type|behavior_domain|scale_level|strategy_module_id
+
+  car|physics|large|car_full_sim.c
+  car|physics|small|car_simple_accel.c
+  car|conversation|small|no_op
+  merchant|commerce|large|pricing_engine.c
+  merchant|combat|small|basic_punch.c
+  goblin_scout|combat|medium|goblin_fsm_combat.c
+  goblin_scout|detection|small|simple_distance_check.c
+  dragon_boss|combat|full|dragon_ai_learning.c
+  dragon_boss|detection|large|dragon_advanced_targeting.c
+
+ACTIVE CONFIG PER GAME:
+
+  File: game_config.txt (or similar)
+  Content: (entity_type, domain) → which scale_level to use THIS game
+
+  Example - "casual easy mode":
+    car|physics = small          # simple physics
+    merchant|commerce = medium   # simplified pricing
+    goblin_scout|combat = small  # dumb AI
+    dragon_boss|combat = medium  # moderately smart
+
+  Example - "hardcore simulator":
+    car|physics = large          # full physics
+    merchant|commerce = large    # realistic commerce
+    goblin_scout|combat = medium # still not super smart
+    dragon_boss|combat = full    # brutally smart
+
+COST MODEL:
+
+  Each (entity_type, behavior_domain, scale_level) tuple has a CPU COST
+  associated (for batching and scaling decisions).
+
+  Small-scale: 0.1 cost per tick
+  Medium-scale: 0.5 cost per tick
+  Large-scale: 2.0 cost per tick
+  Full-scale: 5.0 cost per tick
+
+  Budget calculation:
+    total_cost = sum of all (active actor's scale_level costs)
+    if total_cost > max_budget_per_tick:
+      downgrade some actors to cheaper scale tiers
+      OR skip some turns for expensive actors (reduce frequency)
+
+ACTIVE CONFIG CHANGES AT RUNTIME:
+
+  Player PC gets slower (low battery) → downgrade NPC fidelity
+  Network congestion → reduce P2P sync frequency, downgrade distant NPCs
+  Seasonal gameplay → scaled event like "dragon awakens" adds high-cost NPC
+                      (system auto-downgrades others to stay within budget)
+
+================================================================================
+PART 5: NPC BANKING AND BATCHING
+================================================================================
+
+PROBLEM: A game with 1000 NPCs can't call a full decision engine 1000 times
+         per turn. That's computationally intractable.
+
+SOLUTION: NPC BANKING (from zest-er-summary-FIN.txt sec. 4.4)
+
+  - ONE BANK FILE listing NPC TEMPLATES (not instances)
+  - Small subset of STATEFUL NPC INSTANCES get full ledger entries
+  - Rest are DETERMINISTIC from ledger + template (no state needed)
+
+CONCRETE BREAKDOWN:
+
+  NPC Bank (templates, shared across many instances):
+    File: registries/npc_bank.txt
+    10|goblin_scout|ai_module_goblin_medium|medium|0.5
+    11|goblin_mage|ai_module_goblin_mage_full|full|3.0
+    20|dragon_boss|ai_module_dragon_full|full|5.0
+
+  Instance Categories:
+
+    1. ACTIVE NPCS (< 100 typically)
+       - Are in ledger (have individual turn entries)
+       - Have individual state.txt (persistent mutable state)
+       - Examples: boss monsters, key quest NPCs, pets
+       - Cost: full (each takes a real turn)
+
+    2. ZONE NPCs (100-1000)
+       - Appear in ledger during entry/spawn
+       - No individual state.txt (state derived from bank + position)
+       - Behavior: simple, deterministic (or cheap FSM)
+       - Cost: medium (spawn is one ledger entry, behavior is cheap)
+       - Example: "goblin_scout spawns at x:50, y:100" (one entry)
+                   Behavior: patrol deterministically based on seed + time
+
+    3. BACKGROUND NPCS (1000+)
+       - Not in ledger at all
+       - Rendered but not interactive (cloth NPCs)
+       - Behavior: simple loops (walking, idle animations)
+       - Cost: negligible (computed locally from position + time)
+       - Example: "City NPCs" in a crowded marketplace
+
+LEDGER ENTRIES FOR NPCS:
+
+  timestamp|actor_id|turn_number|action_type|action_data|actor_type|scale
+  2026-07-23T10:00:00|npc_goblin_001|1|ACTION|attack:player:damage:5|npc|medium
+  2026-07-23T10:01:00|npc_zone_group_patrol_sector_A|1|SPAWN|count:5,type:goblin_scout,seed:12345|environmental|small
+  2026-07-23T10:02:00|npc_dragon_boss|2|ACTION|cast:fireball:targeting:0|npc|full
+
+BATCHING ALGORITHM:
+
+  At game start:
+    1. Load NPC bank (templates)
+    2. Compute actor ring (active NPCs + players)
+    3. Calculate total cost/turn (sum of active NPC scale costs)
+    4. If cost > budget:
+       - Downgrade expensive NPCs to cheaper scale (SCALE_BANK)
+       - OR reduce turn frequency (make some NPCs act every 2 turns, not 1)
+       - OR de-activate non-essential NPCs (move to background)
+
+  During gameplay:
+    - Player enters new zone → spawn zone NPCs (one ledger entry for group)
+    - Boss defeated → remove from active ring, possibly keep state in history
+    - Server load spikes → runtime downgrade (reduce NPC fidelity)
+
+COST-BASED ADAPTATION:
+
+  Budget model:
+    max_ticks_per_second = 30 (or whatever target is)
+    actors_per_tick = len(active_ring)
+    cost_per_actor_per_turn = sum of scale_level costs
+    total_cost_per_tick = actors_per_tick * average_cost_per_actor
+
+    If total_cost_per_tick > max_budget_per_frame:
+      → Reduce scale tier for cheapest N actors
+      → Or move N actors to "act every other turn"
+      → Or despawn low-priority zone NPCs
+
+================================================================================
+PART 6: DISTRIBUTED NPC MANAGEMENT (P2P)
+================================================================================
+
+ONLINE MULTIPLAYER VARIANT: NPCs exist on the shared ledger, but are
+                            managed by dedicated "NPC servers" (special nodes)
+
+  Node types:
+    - CLIENT: human player's local instance (receives ledger updates via P2P)
+    - PLAYER_NODE: stateless replication of other players (for interpolation)
+    - NPC_NODE: dedicated server(s) that compute NPC behavior, append to ledger
+
+  Ledger sync:
+    NPC_NODE computes: "it's npc_goblin_001's turn, what should it do?"
+                       Reads ledger, runs ai_module, outputs action
+    NPC_NODE appends to local ledger, broadcasts via palnet_peer
+    CLIENT receives via inbox, appends to local ledger, replays
+    All clients eventually see same NPC action in same turn slot
+
+  Failure handling:
+    NPC_NODE crashes: other clients don't get that NPC's action for that turn
+                      → could either: skip that turn, or downgrade NPC to simple
+                      → re-join NPC_NODE to ledger when it comes back online
+    CLIENT crashes: re-syncs from ledger (backlog replay via palnet_peer)
+    Network partition: nodes in different partitions diverge, re-sync on
+                       reconnect (last write wins, or explicit merge)
+
+DETERMINISTIC NPC BEHAVIOR (alternative to dedicated NPC server):
+
+  All clients run the SAME ai_module.c for each NPC
+  All clients have the SAME ledger (eventually consistent)
+  All clients independently compute: "whose turn? what should they do?"
+  All clients append the same result
+  Net: no NPC_NODE needed (fully decentralized)
+
+  Tradeoff: slower turn resolution (must wait for slowest client), but
+            more peer-symmetric
+
+================================================================================
+PART 7: DECISION ENGINE - HOW AI WORKS
+================================================================================
+
+SAME PATTERN EVERYWHERE (from zest-er-summary-FIN.txt sec. 5):
+
+  1. REGISTRY: ai_module_goblin_medium.c exists, is named in npc_bank.txt
+  2. SWITCH: npc_goblin_001's state.txt says current_strategy_id=10
+  3. DECISION OP: ops/ai_module_goblin_medium.c runs, reads ledger, outputs action
+  4. LOG: action appended to master ledger.txt
+
+CONCRETE EXAMPLE: Goblin Scout Decision (medium fidelity)
+
+  Registry (npc_bank.txt):
+    10|goblin_scout|ai_module_goblin_medium|medium|0.5
+
+  State (actors/npc_goblin_001/state.txt):
+    name=Goblin Scout
+    health=25
+    position_x=50
+    position_y=100
+    current_strategy_id=10
+    patrol_center_x=50
+    patrol_center_y=100
+    patrol_radius=30
+    seen_player=false
+
+  Decision Engine (ops/ai_module_goblin_medium.c):
+
+    int main(int argc, char **argv) {
+      // Load NPC state
+      read_state(argv[1], &state);
+
+      // Read ledger history (last 10 turns, to detect player proximity)
+      char ledger[4096];
+      read_ledger(argv[2], ledger, state.last_ledger_pos);
+
+      // Simple decision logic (FSM)
+      if (player_in_ledger_within_distance(ledger, state.position_x,
+                                           state.position_y, 10)) {
+        // Player detected! Chase them
+        printf("ACTION|chase|target:player_1|speed:medium\n");
+      } else if (random() < 0.1) {
+        // Random patrol step
+        int new_x = state.patrol_center_x + (rand() % state.patrol_radius);
+        int new_y = state.patrol_center_y + (rand() % state.patrol_radius);
+        printf("ACTION|move|x:%d,y:%d\n", new_x, new_y);
+      } else {
+        // Idle
+        printf("ACTION|idle\n");
+      }
+
+      return 0;
+    }
+
+  Output: "ACTION|move|x:60,y:110"
+
+  Dispatcher appends to ledger:
+    2026-07-23T10:02:00|npc_goblin_001|2|ACTION|move:x:60,y:110|npc|medium
+
+SAME FOR AI PLAYER (bot):
+
+  Registry (player_bank.txt):
+    0|trading_bot|ai_module_trader_medium|medium|1.0
+
+  State (actors/ai_player_1/state.txt):
+    name=TradeBot Alpha
+    cash=10000
+    portfolio=TECH:50,ENERGY:25
+    current_strategy_id=0
+
+  Decision Engine (ops/ai_module_trader_medium.c):
+    Reads: state.txt, ledger (past trades), corporation fundamentals
+    Outputs: "ACTION|BUY|ticker:TECH|qty:10|price:200"
+    Appended to ledger (same turn slot as any other player)
+
+================================================================================
+PART 8: LEDGER CHECKPOINT AND REPLAY
+================================================================================
+
+CHECKPOINT FILE (like master_reader.txt in Mars Street):
+
+  File: data/ledger_checkpoint.txt
+  Content: turn_number_processed=42
+
+  Means: turns 0-42 have been processed (rendered, applied to state)
+         turns 43+ are new (not yet processed)
+
+STATE RECONSTRUCTION:
+
+  To recover state after a crash or at any point in history:
+
+    1. Start with blank state (all actors at defaults)
+    2. Replay ledger lines 0 through N:
+       for each line in ledger[0:N]:
+         parse (actor_id, action)
+         apply action to actor's state
+    3. After line N, state matches what it was at turn N
+
+  Performance: Can cache incremental checkpoints
+    Checkpoint every 100 turns: state at turn 100, 200, 300, ...
+    To get state at turn 342: replay checkpoint[300] + ledger[300:342]
+
+REPLAY TESTING:
+
+  Run entire game from ledger, no player interaction:
+    1. Load ledger (all decisions already logged)
+    2. Replay decision engine for each turn (deterministic)
+    3. Verify: does ai_module produce the SAME action given SAME inputs?
+    4. If yes: game state is deterministic (no uninitialized randomness bugs)
+    5. If no: found a bug (action depends on hidden state or time)
+
+ROLLBACK (for dev/testing):
+
+  Truncate ledger at turn 100, re-run from there
+    truncate ledger at line 100
+    reset checkpoint to turn_number_processed=100
+    start game at turn 101
+    continue playing
+
+  (Not player-facing: players don't get to rewind live games)
+
+================================================================================
+PART 9: LOCAL MULTIPLAYER EXAMPLE
+================================================================================
+
+SETUP: 2 human players + 3 active NPCs on one machine
+
+Ring configuration:
+  Actors: {player_1, player_2, npc_goblin_001, npc_goblin_002, npc_dragon_boss}
+  Ring order: [player_1, npc_goblin_001, player_2, npc_goblin_002, npc_dragon_boss]
+
+GAME LOOP (pseudo):
+
+  turn_number = 0
+  while game_running:
+    next_actor = ring[turn_number % ring.size()]
+
+    if next_actor == "player_1":
+      Wait for input from keyboard
+      Player chooses action (e.g., "move north")
+      Append to ledger: 2026-07-23T10:00:00|player_1|0|ACTION|move:north|player|full
+      turn_number += 1
+
+    elif next_actor == "npc_goblin_001":
+      Execute: ./ops/ai_module_goblin_medium actors/npc_goblin_001/state.txt data/ledger.txt
+      Get output: "ACTION|move|x:60,y:110"
+      Append to ledger: 2026-07-23T10:01:00|npc_goblin_001|1|ACTION|move:x:60,y:110|npc|medium
+      turn_number += 1
+
+    ... (repeat for all ring members)
+
+    Render current frame from ledger state:
+      Reconstruct state by replaying ledger[0:turn_number]
+      Display: player at (50,100), goblin at (60,110), dragon at (100,100), ...
+      Show whose turn is next
+
+================================================================================
+PART 10: ONLINE MULTIPLAYER EXAMPLE (P2P)
+================================================================================
+
+SETUP: 2 players on different machines, shared NPCs
+
+Node 1 (Alice):
+  - Runs: game instance + palnet_peer (seek_kind=game)
+  - Has: local ledger.txt (copy of shared ledger)
+  - Appends when: Alice takes a turn
+
+Node 2 (Bob):
+  - Runs: game instance + palnet_peer (seek_kind=game)
+  - Has: local ledger.txt (copy of shared ledger)
+  - Appends when: Bob takes a turn
+
+Shared:
+  - NPC servers (dedicated or replicated across nodes)
+  - Ring order: [player_alice, npc_goblin_001, player_bob, npc_goblin_002, ...]
+
+TURN SEQUENCE:
+
+  Turn 0 (Alice):
+    Alice takes action → appends to local ledger.txt
+    Alice's outbox: append to net/outbox.txt
+    palnet_peer broadcasts via TCP to Bob
+    Bob receives via palnet_peer → appends to local ledger.txt
+    Both nodes now have: turn 0 = alice's action
+
+  Turn 1 (NPC goblin_001):
+    NPC server (on any node, or replicated) computes action
+    Appends to its local ledger.txt, broadcasts via P2P
+    All nodes receive, append to local ledger.txt
+    Both nodes now have: turn 1 = goblin's action
+
+  Turn 2 (Bob):
+    Bob takes action → appends to local ledger.txt
+    Bob's outbox → broadcast
+    Alice receives → appends to local ledger.txt
+    Both nodes now have: turn 2 = bob's action
+
+  Rendering:
+    Both nodes independently replay ledger[0:turn_number]
+    Both see same game state (deterministic replay)
+    Both display synchronized view (no "lag" beyond network latency)
+
+FAILURE MODES:
+
+  Alice's game crashes after turn 5:
+    - Her local ledger.txt has turns 0-5
+    - Bob's ledger.txt has turns 0-N (N >= 5)
+    - Alice re-launches: palnet_peer backlog replay brings her up to turn N
+    - Alice can continue playing from turn N+1
+    - No data loss (ledger on disk, not RAM)
+
+  Network partition (Alice and Bob can't reach each other):
+    - Alice continues playing locally (appending to ledger)
+    - Bob continues playing locally (appending to ledger)
+    - Their ledgers diverge
+    - When network heals, nodes try to merge
+    - Conflict resolution: timestamp-based (last-write-wins) or explicit merge
+
+================================================================================
+PART 11: SCALE_BANK IN ACTION - BUDGET ADAPTATION
+================================================================================
+
+SCENARIO: Game has 100 NPCs, but CPU budget allows only 50 active turns/sec
+
+Initial configuration:
+  All NPCs set to "full" fidelity (scale_level = full, cost = 5.0)
+  Total cost/tick: 100 NPCs * 5.0 = 500
+  Max budget/tick: 50
+  Problem: 10x over budget
+
+System adapts:
+
+  Option A: Downgrade scale tiers
+    50 NPCs → medium (cost 0.5)
+    50 NPCs → small (cost 0.1)
+    Total: 50*0.5 + 50*0.1 = 30 cost/tick ✓ within budget
+
+  Option B: Reduce turn frequency
+    All 100 NPCs stay "full" fidelity
+    But: only 10 NPCs take a turn per tick
+    Each NPC takes a turn every 10 ticks (10 * 10 turns = 100 NPCs)
+    Cost/tick: 10 * 5.0 = 50 ✓ within budget
+
+  Option C: Hybrid
+    20 NPCs (bosses): full fidelity, always active (cost 100)
+    50 NPCs (common): medium fidelity, act every 2 ticks (cost 25 avg)
+    30 NPCs (background): small fidelity, act every 5 ticks (cost 6 avg)
+    Total: 100 + 25 + 6 = 131 cost/tick
+    Problem: still over budget by 2.6x
+    Adjust: reduce boss count or average frequency
+
+LEDGER REFLECTS ADAPTATION:
+
+  High-cost NPC turn: "2026-07-23T10:00:00|npc_dragon_boss|0|ACTION|...|npc|full"
+  Low-cost NPC turn (acting less frequently):
+    "2026-07-23T10:10:00|npc_goblin_scout_batch|1|ACTION|...|npc|small"
+    (this one acts every 10 turns instead of every turn)
+
+  Rendering: players see NPC movement less frequently if downgraded, but game
+             remains playable and budget-aware
+
+================================================================================
+PART 12: IMPLEMENTATION CHECKLIST
+================================================================================
+
+TO BUILD A LEDGER-DRIVEN GAME:
+
+PHASE 1: CORE LEDGER + SINGLE PLAYER
+
+  [ ] 1. Design ledger format (timestamp|actor|turn|action|data|type|scale)
+  [ ] 2. Implement ledger file I/O (append, read, seek to line N)
+  [ ] 3. Create checkpoint file (tracks last processed line)
+  [ ] 4. Implement ledger replay (reconstruct state from line 0 to N)
+  [ ] 5. Build human player input → ledger append
+  [ ] 6. Test: play solo, verify ledger grows, replay gives same state
+
+PHASE 2: SINGLE AI PLAYER
+
+  [ ] 7. Create player_bank.txt registry
+  [ ] 8. Implement ai_module_*.c for player strategies
+  [ ] 9. Build dispatcher: state.txt strategy_id → choose module → run
+  [ ] 10. Wire dispatcher into turn loop
+  [ ] 11. Test: AI player takes turns, ledger has both human and AI entries
+
+PHASE 3: RING TOPOLOGY (LOCAL MULTIPLAYER)
+
+  [ ] 12. Define ring: [actor_1, actor_2, ..., actor_N]
+  [ ] 13. Implement turn_number % ring.size() to pick next actor
+  [ ] 14. Build turn dispatcher: "whose turn is it?" → wait for human or call AI
+  [ ] 15. Test: 2+ players, NPCs, verify turn order is fair
+
+PHASE 4: NPCs
+
+  [ ] 16. Create npc_bank.txt registry (goblin, dragon, merchant, etc.)
+  [ ] 17. Implement ai_module_* for each NPC type
+  [ ] 18. Create actor directories (actors/npc_goblin_001/state.txt, etc.)
+  [ ] 19. Add NPCs to ring
+  [ ] 20. Test: NPCs take turns, make decisions, append to ledger
+
+PHASE 5: SCALE_BANK + FIDELITY
+
+  [ ] 21. Design SCALE_BANK format (entity|domain|level|module_id)
+  [ ] 22. Create game_config.txt (pick active scale tiers)
+  [ ] 23. Implement cost calculator (sum of active NPC costs)
+  [ ] 24. Build adapter: if over budget, downgrade some NPCs
+  [ ] 25. Test: start with expensive config, watch system auto-degrade
+
+PHASE 6: P2P NETWORKING
+
+  [ ] 26. Implement outbox.txt (queue of local actions)
+  [ ] 27. Wire palnet_peer.c (broadcast outbox to peers)
+  [ ] 28. Implement inbox.txt (receive from peers)
+  [ ] 29. Merge inbox entries into local ledger (in turn order)
+  [ ] 30. Test: 2 machines, players on each, verify ledger convergence
+
+PHASE 7: CRASH RECOVERY + TESTING
+
+  [ ] 31. Implement ledger checkpoint (save state at turn boundaries)
+  [ ] 32. Test crash: kill process, restart, verify resume from checkpoint
+  [ ] 33. Implement replay tester (load ledger, re-run all decisions)
+  [ ] 34. Verify determinism (same inputs → same outputs for all decisions)
+
+================================================================================
+PART 13: BENEFITS AT SCALE
+================================================================================
+
+With 1000+ NPCs:
+
+  TRADITIONAL APPROACH:
+    - Create 1000 AI entities in RAM (expensive memory)
+    - Update each per tick (1000 decision calls = slow)
+    - Sync to clients (1000 states * 60fps = massive bandwidth)
+    - Crash: all 1000 states lost (reload from backup)
+
+  LEDGER APPROACH:
+    - 100 active NPCs in ring (cheap, bounded)
+    - Zone NPCs spawned on-demand (one ledger entry = group spawn)
+    - Background NPCs computed locally (no ledger entries)
+    - Client sync: just append-only log (small bandwidth)
+    - Crash: ledger persists (replay to recover state)
+    - Scale adaptation: auto-downgrade fidelity to stay within budget
+
+================================================================================
+PART 14: CONCLUSION
+================================================================================
+
+The append-only ledger is not just an audit trail or a convenience feature.
+It is the architectural SPINE of a scalable, multiplayer, NPC-rich game.
+
+Key properties:
+
+  1. SINGLE SOURCE OF TRUTH: ledger determines all state
+  2. DETERMINISTIC: same ledger → same state, always
+  3. FAIR: ring topology ensures balanced turn order
+  4. SCALABLE: NPC banking + SCALE_BANK keeps cost bounded
+  5. DISTRIBUTED: P2P sync without central server
+  6. RECOVERABLE: crash recovery via checkpoint + replay
+  7. DEBUGGABLE: full replay of any session for testing/verification
+
+This pattern has been proven in:
+  - Mars Street Trading Sim (financial transactions)
+  - Pal-Chat-IRC (social messages)
+  - Pal-Chain (blockchain transactions, implied)
+  - Mutaclysm (combat, exploration, implied)
+
+Apply it consistently: one ledger, one ring, one decision engine per actor type,
+and you can scale from 2 players to thousands of NPCs on one machine or across
+a P2P network.
+
+================================================================================
+END LEDGER_ADVANCED_STUDY.txt
+================================================================================

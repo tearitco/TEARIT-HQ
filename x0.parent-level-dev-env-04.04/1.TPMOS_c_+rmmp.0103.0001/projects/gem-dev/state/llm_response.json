@@ -1,0 +1,30 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"response\":\"File 'j15.txt' written successfully.\"}"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 509,
+    "candidatesTokenCount": 15,
+    "totalTokenCount": 524,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 509
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-2.5-flash",
+  "responseId": "1phXatreKZCA-8YPjPHx0QE"
+}

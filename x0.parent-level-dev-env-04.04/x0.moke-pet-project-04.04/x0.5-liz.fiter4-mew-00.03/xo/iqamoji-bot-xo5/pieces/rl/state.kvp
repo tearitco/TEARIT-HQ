@@ -1,0 +1,6 @@
+reward_total=5
+punish_total=2
+net_score=3
+last_goal=bootstrap
+last_event=reward
+last_amount=5

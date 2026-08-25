@@ -1,0 +1,12 @@
+name=xlector
+type=xlector
+pos_x=14
+pos_y=8
+pos_z=0
+on_map=1
+map_id=map_zoo
+active_target_id=xlector
+emoji_mode=1
+digit_accum=0
+action_cursor=-1
+last_key=115

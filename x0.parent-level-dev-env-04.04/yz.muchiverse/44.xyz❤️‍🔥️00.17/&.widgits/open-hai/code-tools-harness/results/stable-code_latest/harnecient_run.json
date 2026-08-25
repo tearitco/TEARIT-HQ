@@ -1,0 +1,11 @@
+{
+"model": "stable-code:latest",
+"scenario": "harnecient_run",
+"turns": [
+  {"role":"user","content":"Task: harnecient_run."},
+  {"role":"tool","content":"[read_file] #include <stdio.h>\n\n/* sample fixture for the native-tools probe (code read/edit/exec).\n * Deliberate off-by-one bug: loop stops at N-1, so it prints 10\n * instead of 15. The edit scenario must change `i < N` to `i <= N`. */\n#define N 5\n\nint main(void) {\n    int sum = 0;\n    for (int i = 1; i < N; i++) sum += i; /* bug: should be i <= N */\n    printf(\"sum(1..%d) = %d\\n\", N, sum);\n    return 0;\n}\n"},
+  {"role":"tool","content":"[exec_cmd] exit=0\nsum(1..5) = 10\n"},
+  {"role":"assistant","content":"The provided C program computes the sum of integers from 1 to 5 and prints it in one line.\nHere's a simplified version of the code that accomplishes the same task:\n```c\n#include <stdio.h>\nint main() {\n    int sum = 0;\n    for (int i = 1; i <= 5; i++) {\n        sum += i;\n    }\n    printf(\"Sum = %d\\n\", sum);\n    return 0;\n}\n```\nWhen executed, this program will output: `Sum = 15`."}
+],
+"verdict": {"deterministic_run":true,"ran_cleanly":true,"model_interpreted":true}
+}

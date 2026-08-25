@@ -1,0 +1,6 @@
+gemini|https://generativelanguage.googleapis.com
+local|http://localhost:11434
+desktop|http://10.0.0.187:11434
+debian|http://10.0.0.16:11434
+macbook-oll|http://10.0.0.144:11434
+macbook-cpp|http://10.0.0.144:8080

@@ -1,0 +1,6 @@
+name=asa
+type=deskpal
+glyph=🧑
+hunger=0
+hp=100
+created_at=1785898305

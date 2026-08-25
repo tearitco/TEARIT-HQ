@@ -1,0 +1,10 @@
+name=EditorCamera
+type=camera
+pos_x=0.00
+pos_y=2.00
+pos_z=10.00
+pitch=30.00
+yaw=0.00
+roll=0.00
+mode=4
+is_map_control=0

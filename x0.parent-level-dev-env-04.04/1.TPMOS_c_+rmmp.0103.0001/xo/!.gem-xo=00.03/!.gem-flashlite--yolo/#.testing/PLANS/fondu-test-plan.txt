@@ -1,0 +1,385 @@
+================================================================================
+FONDU KPIs & VERIFICATION CHECKLIST
+================================================================================
+Date: April 1, 2026
+Status: ACCEPTANCE CRITERIA FOR FONDU IMPLEMENTATION
+
+This document defines EXACTLY what a human user should test to verify Fondu
+is working correctly, and what files should NOT break during the process.
+
+================================================================================
+PART 1: KPIs (KEY PERFORMANCE INDICATORS)
+================================================================================
+
+After Fondu implementation, a human user should be able to:
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ KPI 1: INSTALL A PROJECT (The "Happy Path")                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  COMMAND:                                                                   │
+│    $ ./fondu --install <project_name>                                       │
+│                                                                             │
+│  EXPECTED OUTPUT:                                                           │
+│    ✓ "Installed: <project_name> to pieces/apps/installed/<project_name>/"   │
+│    ✓ "Registered X ops in ops_registry/<project_name>.txt"                  │
+│    ✓ "Updated compiled_projects.txt"                                        │
+│                                                                             │
+│  VERIFICATION STEPS:                                                        │
+│    [ ] pieces/apps/installed/<project_name>/ exists                         │
+│    [ ] Binaries are in pieces/apps/installed/<project_name>/+x/             │
+│    [ ] pieces/os/ops_registry/<project_name>.txt exists                     │
+│    [ ] pieces/os/ops_catalog.txt updated                                    │
+│    [ ] pieces/os/compiled_projects.txt includes project                     │
+│    [ ] Installed project LAUNCHES and WORKS                                 │
+│                                                                             │
+│  TIME: < 5 seconds for small project                                        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ KPI 2: UNINSTALL AN APP                                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  COMMAND:                                                                   │
+│    $ ./fondu --uninstall <project_name>                                     │
+│                                                                             │
+│  EXPECTED OUTPUT:                                                           │
+│    ✓ "Uninstalled: <project_name>"                                          │
+│    ✓ "Removed X ops from ops_registry/"                                     │
+│                                                                             │
+│  VERIFICATION STEPS:                                                        │
+│    [ ] pieces/apps/installed/<project_name>/ DELETED                        │
+│    [ ] pieces/os/ops_registry/<project_name>.txt DELETED                    │
+│    [ ] pieces/os/ops_catalog.txt updated (ops removed)                      │
+│    [ ] pieces/os/compiled_projects.txt updated (project removed)            │
+│    [ ] Original projects/<project_name>/ STILL EXISTS (not deleted!)        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ KPI 3: ARCHIVE A PROJECT (Move to Trunk)                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  COMMAND:                                                                   │
+│    $ ./fondu --archive <project_name>                                       │
+│                                                                             │
+│  EXPECTED OUTPUT:                                                           │
+│    ✓ "Archived: <project_name> to projects/trunk/"                          │
+│    ✓ "Removed from compiled_projects.txt"                                   │
+│                                                                             │
+│  VERIFICATION STEPS:                                                        │
+│    [ ] projects/trunk/<project_name>/ EXISTS                                │
+│    [ ] projects/<project_name>/ DELETED (moved, not copied)                 │
+│    [ ] pieces/os/compiled_projects.txt updated (project commented/removed)  │
+│    [ ] Project NO LONGER COMPILED by compile_all.sh                         │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ KPI 4: RESTORE A PROJECT (From Trunk)                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  COMMAND:                                                                   │
+│    $ ./fondu --restore <project_name>                                       │
+│                                                                             │
+│  EXPECTED OUTPUT:                                                           │
+│    ✓ "Restored: <project_name> to projects/"                                │
+│    ✓ "Added to compiled_projects.txt"                                       │
+│    ✓ "Recompiled project"                                                   │
+│                                                                             │
+│  VERIFICATION STEPS:                                                        │
+│    [ ] projects/<project_name>/ EXISTS                                      │
+│    [ ] projects/trunk/<project_name>/ DELETED (moved back)                  │
+│    [ ] pieces/os/compiled_projects.txt updated (project added back)         │
+│    [ ] Project COMPILED successfully                                        │
+│    [ ] Binaries in projects/<project_name>/+x/ work                         │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ KPI 5: LIST ALL PROJECTS                                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  COMMAND:                                                                   │
+│    $ ./fondu --list                                                         │
+│                                                                             │
+│  EXPECTED OUTPUT:                                                           │
+│    ACTIVE:     fuzz-op, op-ed, user                                         │
+│    ARCHIVED:   lsr, old_project                                             │
+│    INSTALLED:  fuzz-op (production)                                         │
+│                                                                             │
+│  VERIFICATION:                                                              │
+│    [ ] All active projects listed                                           │
+│    [ ] All archived projects listed                                         │
+│    [ ] All installed apps listed                                            │
+│    [ ] Counts are accurate                                                  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ KPI 6: LIST ALL OPS (The Ops Discovery Feature)                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  COMMAND:                                                                   │
+│    $ ./fondu --list-ops                                                     │
+│                                                                             │
+│  EXPECTED OUTPUT:                                                           │
+│    === user ===                                                             │
+│      create_profile    - Creates a new user profile                         │
+│      auth_user         - Authenticates a user session                       │
+│      get_session       - Gets active session data                           │
+│                                                                             │
+│    === fuzz-op ===                                                          │
+│      move_entity       - Moves an entity on the map                         │
+│      place_tile        - Places a tile on the map                           │
+│                                                                             │
+│  VERIFICATION:                                                              │
+│    [ ] All registered ops are listed                                        │
+│    [ ] Ops are grouped by project                                           │
+│    [ ] Descriptions are shown                                               │
+│    [ ] After --uninstall, ops disappear from list                           │
+│    [ ] After --install, ops appear in list                                  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ KPI 7: PAL SCRIPT CALLS ANOTHER PROJECT'S OPS                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  SCENARIO:                                                                  │
+│    fuzz-op PAL script calls user::create_profile                            │
+│                                                                             │
+│  SETUP:                                                                     │
+│    1. fondu --install user                                                  │
+│    2. Create PAL script in fuzz-op:                                         │
+│       OP user::create_profile "testplayer"                                  │
+│    3. Run PAL script                                                        │
+│                                                                             │
+│  EXPECTED RESULT:                                                           │
+│    ✓ user::create_profile executes successfully                             │
+│    ✓ Profile created in projects/user/pieces/profiles/                      │
+│    ✓ No errors in master_ledger.txt                                         │
+│                                                                             │
+│  THIS IS THE ULTIMATE TEST: If this works, the ops ecosystem is functional. │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+PART 2: FILES THAT MUST NOT BREAK
+================================================================================
+
+During ALL Fondu operations, these files should remain INTACT:
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ CRITICAL SYSTEM FILES (Must Never Break)                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  File: pieces/os/master_ledger.txt                                          │
+│  Purpose: Global event log                                                  │
+│  Test: After any fondu command, verify:                                     │
+│    [ ] File still exists                                                    │
+│    [ ] File is readable (not corrupted)                                     │
+│    [ ] New fondu events are logged (optional)                               │
+│                                                                             │
+│  File: pieces/display/current_layout.txt                                    │
+│  Purpose: Tracks active layout                                              │
+│  Test: After any fondu command, verify:                                     │
+│    [ ] File still exists                                                    │
+│    [ ] Content unchanged (unless Fondu explicitly changes layout)           │
+│                                                                             │
+│  File: pieces/apps/player_app/history.txt                                   │
+│  Purpose: Universal input buffer                                            │
+│  Test: After any fondu command, verify:                                     │
+│    [ ] File still exists                                                    │
+│    [ ] Content unchanged                                                    │
+│                                                                             │
+│  File: projects/<other_project>/ (any project NOT being operated on)        │
+│  Purpose: Unrelated projects should be untouched                            │
+│  Test: After fondu --install fuzz-op, verify:                               │
+│    [ ] projects/op-ed/ unchanged                                            │
+│    [ ] projects/user/ unchanged                                             │
+│    [ ] projects/lsr/ unchanged                                              │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ MANIFEST FILES (Fondu Manages These - Should Update Cleanly)                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  File: pieces/os/compiled_projects.txt                                      │
+│  Purpose: List of projects to compile                                       │
+│  Expected Behavior:                                                         │
+│    - --install: ADDS project to list                                        │
+│    - --uninstall: REMOVES project from list                                 │
+│    - --archive: COMMENTS OUT or REMOVES project from list                   │
+│    - --restore: ADDS project back to list                                   │
+│                                                                             │
+│  Test: After each command, verify:                                          │
+│    [ ] File format unchanged (one project per line)                         │
+│    [ ] Comments preserved                                                   │
+│    [ ] No duplicate entries                                                 │
+│    [ ] No corrupted lines                                                   │
+│                                                                             │
+│  File: pieces/os/ops_registry/<project>.txt                                 │
+│  Purpose: Registered ops for a project                                      │
+│  Expected Behavior:                                                         │
+│    - --install: CREATES file with ops list                                  │
+│    - --uninstall: DELETES file                                              │
+│    - --archive: DELETES file (ops not available when archived)              │
+│    - --restore: RECREATES file                                              │
+│                                                                             │
+│  Test: After each command, verify:                                          │
+│    [ ] File format correct (op_name|description|args)                       │
+│    [ ] No orphaned registry files                                           │
+│                                                                             │
+│  File: pieces/os/ops_catalog.txt                                            │
+│  Purpose: Human-readable ops catalog                                        │
+│  Expected Behavior:                                                         │
+│    - Auto-regenerated by Fondu on each install/uninstall                    │
+│    - Should always match current ops_registry/ contents                     │
+│                                                                             │
+│  Test: After each command, verify:                                          │
+│    [ ] File is readable                                                     │
+│    [ ] All registered ops appear                                            │
+│    [ ] Uninstalled ops are removed                                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PROJECT FILES (Source Should Never Be Modified by Fondu)                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  File: projects/<project_id>/project.pdl                                    │
+│  Purpose: Project descriptor                                                │
+│  Test: After any fondu command, verify:                                     │
+│    [ ] File content UNCHANGED                                               │
+│    [ ] File permissions UNCHANGED                                           │
+│                                                                             │
+│  File: projects/<project_id>/layouts/                                       │
+│  Purpose: Project layouts                                                   │
+│  Test: After any fondu command, verify:                                     │
+│    [ ] All layout files present                                             │
+│    [ ] No modifications to layout content                                   │
+│                                                                             │
+│  File: projects/<project_id>/manager/                                       │
+│  Purpose: Project manager source                                            │
+│  Test: After any fondu command, verify:                                     │
+│    [ ] All source files present                                             │
+│    [ ] No modifications to source code                                      │
+│                                                                             │
+│  File: projects/<project_id>/ops/                                           │
+│  Purpose: Project ops source                                                │
+│  Test: After any fondu command, verify:                                     │
+│    [ ] All op source files present                                          │
+│    [ ] ops_manifest.txt unchanged                                           │
+│    [ ] Compiled binaries in ops/+x/ may be updated (expected)               │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+PART 3: FULL VERIFICATION WORKFLOW (Run This After Implementing Fondu)
+================================================================================
+
+### Test Scenario 1: Fresh Install
+```bash
+# Setup
+cd /path/to/TPMOS
+
+# Step 1: Create test project
+mkdir -p projects/test_fondu/{ops/+x,layouts,pieces}
+echo "[META]" > projects/test_fondu/project.pdl
+echo "project_id = test_fondu" >> projects/test_fondu/project.pdl
+echo "entry_layout = projects/test_fondu/layouts/test.chtpm" >> projects/test_fondu/project.pdl
+
+# Step 2: Create dummy op
+echo '#include <stdio.h>' > projects/test_fondu/ops/dummy_op.c
+echo 'int main() { printf("Dummy op executed\n"); return 0; }' >> projects/test_fondu/ops/dummy_op.c
+
+# Step 3: Create ops manifest
+echo 'dummy_op|Test dummy operation|none' > projects/test_fondu/ops/ops_manifest.txt
+
+# Step 4: Install via Fondu
+./fondu --install test_fondu
+
+# Step 5: Verify
+[ -d pieces/apps/installed/test_fondu/ ] && echo "✓ Install directory exists"
+[ -f pieces/os/ops_registry/test_fondu.txt ] && echo "✓ Ops registry exists"
+./fondu --list-ops | grep -q "dummy_op" && echo "✓ Op appears in catalog"
+```
+
+### Test Scenario 2: Uninstall
+```bash
+# Step 1: Uninstall
+./fondu --uninstall test_fondu
+
+# Step 2: Verify
+[ ! -d pieces/apps/installed/test_fondu/ ] && echo "✓ Install directory removed"
+[ ! -f pieces/os/ops_registry/test_fondu.txt ] && echo "✓ Ops registry removed"
+./fondu --list-ops | grep -q "dummy_op" || echo "✓ Op removed from catalog"
+[ -d projects/test_fondu/ ] && echo "✓ Source project still exists"
+```
+
+### Test Scenario 3: Archive & Restore
+```bash
+# Step 1: Archive
+./fondu --archive test_fondu
+
+# Step 2: Verify archived
+[ -d projects/trunk/test_fondu/ ] && echo "✓ Project moved to trunk"
+[ ! -d projects/test_fondu/ ] && echo "✓ Original project removed"
+grep -q "test_fondu" pieces/os/compiled_projects.txt || echo "✓ Removed from compile list"
+
+# Step 3: Restore
+./fondu --restore test_fondu
+
+# Step 4: Verify restored
+[ -d projects/test_fondu/ ] && echo "✓ Project restored"
+[ ! -d projects/trunk/test_fondu/ ] && echo "✓ Trunk copy removed"
+grep -q "test_fondu" pieces/os/compiled_projects.txt && echo "✓ Added back to compile list"
+```
+
+### Test Scenario 4: PAL Script Integration
+```bash
+# Prerequisites
+./fondu --install user
+./fondu --install fuzz-op
+
+# Create test PAL script in fuzz-op
+echo 'OP user::create_profile "pal_test_user"' > projects/fuzz-op/test_script.pal
+
+# Run PAL script (via prisc or fuzz-op manager)
+./prisc projects/fuzz-op/test_script.pal
+
+# Verify profile created
+[ -f projects/user/pieces/profiles/pal_test_user/state.txt ] && echo "✓ PAL op call worked"
+```
+
+================================================================================
+PART 4: SUCCESS CRITERIA SUMMARY
+================================================================================
+
+Fondu is considered WORKING when ALL of the following are true:
+
+□ All 7 KPIs pass (install, uninstall, archive, restore, list, list-ops, PAL integration)
+□ No critical system files are corrupted
+□ Manifest files update cleanly (no duplicates, no corruption)
+□ Project source files are never modified by Fondu
+□ Installed binaries are read-only (chmod 555)
+□ Ops registry accurately reflects installed projects
+□ PAL scripts can call ops from other projects
+□ compile_all.sh only compiles projects in compiled_projects.txt
+
+Fondu is considered BROKEN if ANY of the following occur:
+
+✗ System crashes during Fondu operations
+✗ Files are corrupted or unreadable
+✗ Projects disappear (source deleted when it shouldn't be)
+✗ Ops registry doesn't match installed projects
+✗ PAL scripts can't call external ops
+✗ Installed apps don't launch
+✗ Compile cycle breaks after Fondu operations
+
+================================================================================
+END OF FONDU KPIs & VERIFICATION CHECKLIST
+================================================================================

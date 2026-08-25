@@ -1,0 +1,19 @@
+In Scratch, "code pieces" usually refer to the specific blocks that form the foundation of every project. While there are over 100 blocks, these 10 are considered the most essential for creating everything from simple animations to complex games. [1, 2] 
+
+* When Green Flag Clicked (Events): The "start" button for almost every script. Without this, your code won't run when the project begins.
+* Forever (Control): A loop that keeps code running indefinitely. It is vital for continuous actions like background music or checking if a player is touching a wall.
+* If [ ] Then (Control): The basis of logic. It allows a sprite to make decisions, such as "If touching enemy, then lose health".
+* Move [10] Steps (Motion): The simplest way to get a sprite moving. It moves the sprite forward in the direction it is currently facing.
+* Go to x: [ ] y: [ ] (Motion): Essential for resetting a game or placing a sprite in a specific starting position.
+* Touching [ ]? (Sensing): Used inside "If" blocks to detect collisions between sprites, the mouse pointer, or the edge of the stage.
+* Change [Variable] by (Variables): Used to track changing values like scores, health, or speed. Variables are the "memory" of your program.
+* Wait [1] Seconds (Control): Crucial for timing animations, dialogue, or preventing a script from running too fast.
+* Switch Costume to [ ] (Looks): The key to animation. By switching between different drawings of a sprite, you make it look like it's walking or talking.
+* Broadcast [Message] (Events): Allows different sprites to "talk" to each other. For example, when a player wins, one sprite can broadcast "Win," and a "Game Over" sprite will know to appear. [3, 4, 5, 6, 7, 8, 9, 10, 11] 
+
+For those looking to expand their Scratch skills, physical resources like [Coding Cards](https://scratch.mit.edu/ideas) or educational books provide structured challenges to master these blocks. [9, 12, 13, 14, 15] 
+Would you like to see a specific example of how to combine these blocks to make a simple movement script?
+
+[1] [https://potatopirates.game](https://potatopirates.game/blogs/coding-challenge/scratch-coding#:~:text=Scratch%27s%20unique%20approach%20to%20coding%20is%20encapsulated,the%20building%20blocks%20of%20every%20Scratch%20project.)
+[2] [https://scratched.gse.harvard.edu](https://scratched.gse.harvard.edu/sites/default/files/a.all_blocks_of_scratch_0.pdf#:~:text=Scratch%20has%20over%20100%20coding%20blocks%2C%20and,the%20sprite%20spin%20for%202%20full%20turns.)
+[3] [https://www.youtube.com](https://www.youtube.com/watch?v=pHT0MxNUTSw)

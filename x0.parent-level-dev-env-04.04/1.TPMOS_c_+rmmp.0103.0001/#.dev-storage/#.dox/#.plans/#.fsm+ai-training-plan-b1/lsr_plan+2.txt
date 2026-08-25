@@ -1,0 +1,125 @@
+LSR (LUNAR STREETRACE RAIDER) MASTER SPECIFICATION
+====================================================
+**Prompt/Directive for AI Implementation**
+
+1. PROJECT OVERVIEW
+-------------------
+**Title:** LSR (Lunar Streetrace Raider)
+**Concept:** A "Civ-Lite" + "Life Sim" + "Market Economy" hybrid where autonomous AI agents (FuzzPets) work, reproduce, research, and build civilizations on a lunar map.
+**Core Differentiator:** R&D is driven by local LLMs (via `ai-labs`), generating actual recipes/techs rather than a static tree.
+**Architecture:** TPM-Compliant Project (`projects/lsr/`).
+
+2. PHASE 1: THE FOUNDATION (MSR-LITE)
+-------------------------------------
+**Objective:** Clone the core economic loop of MSR but scaled down.
+
+- **Scope:** 
+    - 4 Companies (e.g., LunarMining, MoonFarms, CraterChem, HelixLabs).
+    - 1 Government (The Lunar Authority).
+    - Basic Market: Commodities (Ore, Food, Chems, Tech).
+- **Mechanics:**
+    - Companies hire FuzzPets.
+    - Companies produce goods based on labor + resources.
+    - Government taxes transactions and enforces "Law" (basic boolean flags for now).
+
+3. PHASE 2: THE BIOLOGICAL ENGINE (FADAM & FEVE)
+------------------------------------------------
+**Objective:** Implement the Life Sim layer (The Sims/FuzzPet logic).
+
+- **Progenitors:** Start with 2 entities: 'Fadam' (Male) and 'Feve' (Female).
+- **Stats:**
+    - `hunger`, `energy`, `bladder`, `social`, `health`.
+    - `genetics`: Traits passed to offspring (e.g., +Intelligence, +Strength).
+- **Loop:** 
+    - Agents must buy food (economy interaction).
+    - Agents must sleep (housing/map interaction).
+    - Agents must work (to earn money).
+    - Reproduction: Requires high `social` + `energy`. Creates new unique Agent piece.
+
+4. PHASE 3: THE MAP & CIV MECHANICS
+-----------------------------------
+**Objective:** 2D/3D Z-Layered Tile Map (Civilization Style).
+
+- **Map Structure:** TPM Container Hierarchy (see !.world_architecture+1.txt).
+- **Territory:**
+    - **Government Land:** Safe, taxed, law enforcement present.
+    - **Company Claims:** Land owned by corps.
+    - **Unclaimed/Wild:** "Barbarian" zones.
+- **Building:**
+    - Agents can build structures (Houses, Factories, Labs).
+    - **Criminal Mechanic:** If a Company/Structure is built on unclaimed land without Gov permit, it is "Criminal". It pays no tax but risks being "Raided" by Law Enforcement.
+
+5. PHASE 4: AI-DRIVEN R&D (THE GEMMA LINK)
+------------------------------------------
+**Objective:** Use `ai-labs` ops to generate content dynamically.
+
+- **Tech Tree:** Not static.
+- **Workflow:**
+    1. Agent works at `HelixLabs` on "R&D".
+    2. LSR Manager calls `ai-labs` op: `generate_tech "Chemistry" "Lunar Soil"`.
+    3. LLM (Ollama/Gemma) returns a JSON recipe: `{ "name": "Mooncrete", "inputs": ["Regolith", "Water"], "strength": 50 }`.
+    4. This new item is added to the game's item database (registry piece, see below).
+- **Scope:** Drugs, Tools, Vehicles, Recipes, Physics constants.
+
+6. PHASE 5: P2P MULTIPLAYER
+---------------------------
+**Objective:** Allow interaction between different LSR instances.
+
+- **Protocol:** Uses `p2p-net` ops.
+- **Interaction:**
+    - Visiting: Send Agent piece to another player's IP (Travel).
+    - Trade: Sell "Mooncrete" formula to another player.
+
+7. FILE STRUCTURE (TPM CONTAINER MODEL)
+---------------------------------------
+projects/lsr/
+├── manager/
+│   └── lsr_manager.+x           (The Orchestrator)
+├── pieces/
+│   ├── world_lunar/             (World Container)
+│   │   ├── state.txt
+│   │   ├── map_galaxy/          (Map: Galaxy level)
+│   │   │   ├── state.txt
+│   │   │   ├── sol_system/      (Piece: Solar System, contained in galaxy)
+│   │   │   │   └── ...
+│   │   │   └── alpha_centauri/
+│   │   │       └── ...
+│   │   ├── map_moon/            (Map: Lunar surface)
+│   │   │   ├── state.txt
+│   │   │   ├── fadam/           (Agent piece, contained in map)
+│   │   │   │   ├── state.txt
+│   │   │   │   └── bag/         (Container: inventory)
+│   │   │   │       ├── state.txt
+│   │   │   │       └── item_01/
+│   │   │   ├── feve/
+│   │   │   ├── lunar_mining_co/ (Company HQ piece)
+│   │   │   │   ├── state.txt
+│   │   │   │   └── interior/    (Container: building interior)
+│   │   │   │       ├── state.txt
+│   │   │   │       └── ...
+│   │   │   └── tile_z0_x5_y3/   (Map tile piece)
+│   │   └── map_orbit/           (Map: Orbital layer)
+│   │       └── ...
+│   ├── registry/                (Global item/tech definitions)
+│   │   ├── items/
+│   │   └── techs/
+│   └── config/
+│       └── laws.txt             (Government rules)
+└── config/
+    └── project.pdl
+
+CONTAINER RULES:
+- Maps contain pieces directly (no extra /pieces/ subfolder).
+- Any piece can be a container (inventory, interiors, equipment).
+- Nesting is unlimited: player/bag/crayon_box/crayon/
+- Renderer scans: world/map containers first, then legacy fallbacks.
+
+8. IMPLEMENTATION STEPS (FOR AI BUILDER)
+----------------------------------------
+1. **Scaffold:** Create directory structure and `project.pdl` with world/map containers.
+2. **Map:** Implement `render_map` for Lunar terrain (Grey/Black palette), world/map-aware.
+3. **Agents:** Port `fuzzpet` logic, strip "pet" fluff, add "worker" stats. Create in map container.
+4. **Economy:** Implement Producer/Consumer loop.
+5. **Integration:** Connect `ai-labs` for "Research" action.
+6. **Civ:** Add "Claim Tile" and "Build" actions (creates container pieces in map).
+7. **Ops:** Use world/map-targeted create_piece and move_entity ops (TPM canonical).

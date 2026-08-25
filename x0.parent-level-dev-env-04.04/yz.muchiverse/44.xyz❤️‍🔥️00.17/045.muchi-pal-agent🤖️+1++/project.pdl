@@ -1,0 +1,15 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | muchi-pal-agent
+META         | version            | 0.1
+META         | author             | uhogs
+
+STATE        | starting_world     | world_01
+STATE        | starting_session   | session_01
+STATE        | active_piece       | chat
+STATE        | title              | MUCHI-PAL-CHAT
+
+EVENT_IN     | project_start      | void
+
+RESPONSE     | project_start      | muchi-pal-agent initialized.
+RESPONSE     | default            | *waiting...*

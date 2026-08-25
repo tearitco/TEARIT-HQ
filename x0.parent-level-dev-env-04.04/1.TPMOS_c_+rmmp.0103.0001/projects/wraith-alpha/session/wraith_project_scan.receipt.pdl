@@ -1,0 +1,8 @@
+receipt_type=wraith_project_scan
+host_project=wraith-alpha
+scan_root=projects/wraith-alpha/wraith-projects
+manifest_path=projects/wraith-alpha/session/wraith_project_manifest.txt
+project_count=9
+manifest_checksum=15395353946033058154
+generated_epoch=1782728166
+status=ok

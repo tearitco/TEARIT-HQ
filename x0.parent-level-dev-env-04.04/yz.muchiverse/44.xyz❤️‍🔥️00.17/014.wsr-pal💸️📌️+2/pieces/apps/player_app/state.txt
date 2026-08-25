@@ -1,0 +1,2 @@
+project_id=wsr-pal
+active_target_id=wsr_main_menu

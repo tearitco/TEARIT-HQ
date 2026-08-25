@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | xyzos_app_catalog
+META         | version            | 1.0
+
+APPS         | login-signup       | 00.login-signup
+APPS         | avatar-creation    | 01.avatar-creation👤️

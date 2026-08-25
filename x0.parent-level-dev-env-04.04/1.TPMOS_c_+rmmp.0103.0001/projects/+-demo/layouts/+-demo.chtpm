@@ -1,0 +1,41 @@
+<panel>
+    <text label="╔═══════════════════════════════════════════════════════════╗" fg="cyan" /><br/>
+    <text label="║                  +-DEMO PROJECT STATIC LAYOUT             ║" fg="yellow" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" fg="cyan" /><br/>
+    <text label="║ This is a basic static layout.                            ║" fg="white" /><br/>
+    <text label="║ It demonstrates how a layout file opens without a         ║" fg="white" /><br/>
+    <text label="║ dynamic manager.                                        ║" fg="white" /><br/>
+    <text label="║                                                           ║" fg="white" /><br/>
+    <text label="║ For future steps, we can add functionality.               ║" fg="green" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" fg="cyan" /><br/>
+    
+    <button label="[dir1/][-] Dir1" id="dir1" fg="black" bg="cyan">
+        <br/>
+        <button label="[2.txt] file" id="file2" fg="white" bg="blue" /><br/>
+        <button label="[3.txt] file" id="file3" fg="white" bg="blue" /><br/>
+        <button label="[subdir/][+] Subdir" id="subdir4" fg="black" bg="yellow">
+            <br/>
+            <button label="[5.txt] file" id="file5" fg="white" bg="blue" /><br/>
+        </button><br/>
+    </button><br/>
+    
+    <button label="[dir2/][-] Dir2" id="dir2" fg="black" bg="cyan">
+        <br/>
+        <button label="[7.txt] file" id="file7" fg="white" bg="blue" /><br/>
+    </button><br/>
+
+    <text label="╠═══════════════════════════════════════════════════════════╣" fg="cyan" /><br/>
+    <text label="║             ACTIVATION SUBMENU DESIGN OPTION              ║" fg="yellow" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" fg="cyan" /><br/>
+    <button label="Menu A (Press Enter to Activate)" onClick="ACTIVATE" id="menu_a" fg="black" bg="green">
+        <br/>
+        <button label="[Back]" onClick="BACK" id="back_a" fg="black" bg="yellow" /><br/>
+        <button label="Sub-item 1" onClick="KEY:1" id="sub1" fg="white" bg="blue" /><br/>
+        <button label="Sub-item 2" onClick="KEY:2" id="sub2" fg="white" bg="blue" /><br/>
+        <button label="Nested Menu (Enter to Activate)" onClick="ACTIVATE" id="nested_menu" fg="black" bg="green">
+            <br/>
+            <button label="[Back]" onClick="BACK" id="back_nested" fg="black" bg="yellow" /><br/>
+            <button label="Nested Item 1" onClick="KEY:3" id="nested1" fg="white" bg="blue" /><br/>
+        </button><br/>
+    </button><br/>
+    </panel>

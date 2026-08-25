@@ -1,0 +1,4 @@
+edit_x=0
+edit_y=0
+edit_width=0
+edit_height=0

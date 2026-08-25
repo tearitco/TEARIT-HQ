@@ -1,0 +1,28 @@
+================================================================================
+local-pitfalls-j31.txt - 300.rpg-xyz: real incidents from 2026-07-31,
+for future agents. See 101.mutaclsym's own local-pitfalls-j31.txt
+(Pitfall A, camera-state loss - same fix applied here) and 300.rtp-
+xyz's own local-pitfalls-j31.txt (Pitfall B, a save/load registry-
+deletion bug in rtp_manager.c) for the two full incident writeups -
+not repeated here since neither originated in this project's own code.
+
+## What's relevant to rpg-xyz specifically
+
+Pitfall A's fix (real camera field values: cam_yaw=180.00, cam_pitch=
+6.00, cam_z_level=2, hero_z=14, facing=1002, camera_mode=2,
+render_mode=1) was applied here too, in both pieces/world_01/map_start/
+hero/state.txt and pieces/world_01_template/map_start/hero/state.txt -
+this project had NEVER been launched with a live camera session at
+all before this fix, so it received the restored/baked-in values
+directly rather than losing something it never had.
+
+Pitfall B never touched this project directly (rpg-xyz has no
+manager/+x/ daemon of its own yet - task #31, the &.widgits/
+project-menu/ widget, is still pending) - but this project's own
+pieces/registry/ WAS used as the real recovery source when rtp-xyz's
+own copy was found deleted, since both were de-themed identically the
+same session and this project's copy stayed untouched. When task #31
+gets built, follow the SAME guarded save/load shape 300.rtp-xyz's own
+rtp_manager.c now uses (verify source before any destructive rm -rf) -
+do not repeat Pitfall B's own mistake in a new daemon.
+================================================================================

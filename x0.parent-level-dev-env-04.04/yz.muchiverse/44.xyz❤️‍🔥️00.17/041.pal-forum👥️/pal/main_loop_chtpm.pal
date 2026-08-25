@@ -1,0 +1,44 @@
+# pal-forum main_loop_chtpm.pal - persistent screen-dispatch loop,
+# direct copy of pal-chain's own proven shape (PAL-CHAIN-STANDARD.txt) -
+# real href navigation + ${piece_methods} KEY:n dispatch + real
+# <cli_io> free text, NO onClick="INTERACT", no map. Runs forever
+# (matching real fuzz-op_manager.c's own persistent-daemon precedent -
+# see xyzos-standards.txt sec. 0-CORRECTED), surviving every href screen
+# switch via chtpm_parser_pal.c's own liveness-based launch_module()
+# guard.
+#
+# forum_menu_input x9 (x9 always 0) runs every loop tick - a cheap,
+# usually-no-op check that catches up on a real href screen change
+# chtpm just made on its own (with zero module involvement at the
+# moment of the click itself), gated on
+# pieces/display/forum_screen_changed.txt so this doesn't recompose on
+# every idle tick.
+li x1, 0
+
+forum_compose_frame
+hit_frame
+read_pos x7, "pieces/display/forum_screen_changed.txt"
+
+loop:
+li x9, 0
+forum_menu_input x9
+read_pos x8, "pieces/display/forum_screen_changed.txt"
+beq x7, x8, check_key
+addi x7, x8, 0
+j render
+
+check_key:
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, no_key
+forum_menu_input x2
+j render
+
+no_key:
+sleep 30000
+j loop
+
+render:
+forum_compose_frame
+hit_frame
+sleep 30000
+j loop

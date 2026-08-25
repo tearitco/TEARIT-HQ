@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | q_011
+META         | type               | question
+
+STATE        | name               | Acetone
+STATE        | type               | Ketone

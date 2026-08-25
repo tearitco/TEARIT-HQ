@@ -1,0 +1,375 @@
+PMO/TPM Pitfalls Playbook (Active)
+Date: 2026-04-03
+Purpose: Preserve high-value implementation pitfalls so future agents do not repeat known regressions.
+
+1) WORLD/MAP PATHING DRIFT
+- Canonical path is: projects/<project>/pieces/world_<id>/map_<id>/<piece_id>/
+- Do not require an extra /pieces/ under map dirs.
+- Keep fallback/root lookup only as migration bridge.
+- New writes should be canonical-first.
+
+2) HARDCODED PIECE IDS
+- Never hardcode scan/load assumptions around fixed ids.
+- Pieces can be dynamically created/removed.
+- Selection and rendering must be directory/data driven.
+
+2b) HARDCODED LOGIC DRIFT (ARCHITECTURAL RISK)
+- Do not hardcode behavior where modular contracts already exist (piece/module/op boundaries).
+- Hardcoded shortcuts increase token cost, increase agent confusion, and block partial upgrades.
+- Keep editor-player recursion contract-driven so one side can evolve without breaking the other.
+
+2c) NO SHARED .h HEADERS (CONVENTION)
+- TPMOS convention: executable modules (.c → .+x) and data files (.pdl, .kvp, .txt) only.
+- Do NOT create shared .h header files for path constants, type registries, or helper functions.
+- Each .c file is self-contained: defines its own #define macros and static helpers at the top.
+- For data-driven values (type→icon mappings, etc.), use external .pdl files as the canonical reference, with local lookup functions in each .c file that needs them.
+- Canonical data file: pieces/os/type_registry.pdl
+
+2d) NO SCATTERED HARDCODED SYSTEM PATHS (MEDIUM SEVERITY FIX)
+- Never scatter paths like "pieces/master_ledger/plugins/+x/piece_manager.+x" across 7+ .c files.
+- Each .c file defines its OWN local constant and helper:
+    #define TPM_PIECE_MANAGER_CMD "'./pieces/master_ledger/plugins/+x/piece_manager.+x'"
+    /* or for project_root-based calls: */
+    #define TPM_PIECE_MANAGER_PATH "pieces/master_ledger/plugins/+x/piece_manager.+x"
+    static char* pm_path_for(const char *project_root) { ... }
+- Same pattern for ops: #define TPM_OPS_ROOT "pieces/apps/playrm/ops/+x" + local helper.
+- If a system path moves, update the macro in each affected .c file. This is intentional: each file compiles independently with no header dependencies.
+
+2e) NO HARDCODED TYPE/Glyph MAPPINGS IN C
+- Piece type → icon mappings (npc→&, zombie→Z, chest→T, xlector→X) live in:
+  pieces/os/type_registry.pdl
+- Each .c file that needs them has its own local lookup function (infer_icon_from_type, icon_from_type).
+- Adding a new type: update type_registry.pdl AND the local lookup in each relevant .c file.
+- Do NOT create shared type registry headers.
+
+2f) NO HARDCODED PROJECT DEFAULTS
+- Ops should default to "template" (system default project), not "fuzzpet_v2" or other legacy names.
+- Resolution order: PRISC env vars → location_kvp → player_app manager state → "template".
+- Hardcoded project defaults cause silent failures when loading unregistered projects.
+
+2g) DATA-DRIVEN DISPATCH OVER TYPE CHECKING
+- Replace `strcmp(type, "npc")` with `strcmp(behavior, "aggressive")` — read behavior from piece state.txt.
+- Replace `strcmp(action, "feed")` response key "fed" with the action name directly ("feed").
+- The rule: check what the piece DOES (its behavior/traits), not what it IS (its type name).
+
+3) PDL FILE-NAME MISMATCH
+- Runtime may encounter both piece.pdl and <piece_id>.pdl conventions.
+- Resolver must support both (with deterministic precedence).
+- If parser/reader disagree on naming, methods silently fail (nav/hotkeys appear dead).
+
+4) SELECTOR STATE LOSS (0,0 BUG CLASS)
+- State rewrite loops can accidentally drop pos_x/pos_y/pos_z lines.
+- Any state-rewrite code must preserve unrelated keys.
+- Add default guards for selector keys when missing.
+
+5) LOADER PATH REGRESSIONS
+- Project loader can fail from wrong layout path mapping.
+- Always verify loader target paths exist on disk after changes.
+
+5b) CHTPM MODULE HARD-CODING LEAK
+- In CHTPM modules (not parser), avoid baking project-specific behavior into infrastructure code.
+- `chtpm_player`, `orchestrator`, and render helpers should stay generic plumbing.
+- If project-specific rules appear there, agents copy them and architecture drifts away from PMO modular recursion.
+
+5c) TEMPLATE DEFAULT TRAP (`project.pdl` / entry_layout / player_piece)
+- Do not hardcode `entry_layout=game.chtpm` or fixed `player_piece` assumptions in generic templates.
+- Missing fields must resolve via scan/registry rules (app/module/layout discovery), not guessed defaults.
+- Wrong default entry layout can break visibility/movement and misroute editor vs op-ed flows.
+- Rule: detect available layouts/modules from project/app context and write resolved values to explicit metadata.
+
+6) FALLBACK ABUSE
+- Temporary fallback is useful, but if used as primary path it masks migration bugs.
+- Rule: canonical path first; fallback only if canonical is absent.
+- Document each fallback location and planned removal criteria.
+
+7) MAP MEMBERSHIP CONFUSION
+- `map_id` in state is compatibility metadata, not sole source of truth.
+- Directory containment (world/map path) is authoritative for membership.
+
+8) EVENT FLOW FRAGILITY (STEP 1 SCOPE)
+- No-code pal/op-event create/bind must persist to disk, not UI-only memory.
+- Save/load parity must include event bindings.
+- Local play must boot from saved artifacts without manual edits.
+
+9) PATH CONSTRUCTION WARNINGS
+- Watch truncation in snprintf path building.
+- Use bounded writes and explicit null-termination where fixed buffers remain.
+- Re-run compile_all after path changes.
+
+10) PROCESS/CPU SAFETY
+- Avoid runaway loops and orphaned subprocesses.
+- Prefer controlled fork/exec/wait patterns for critical calls.
+- Keep focus-aware throttling and bounded polling.
+
+11) MIGRATION DEDUP RISK
+- During transition, same logical piece may appear in root + world/map.
+- Renderer should prefer canonical nested entries and dedup deterministically.
+
+12) CHANGE HYGIENE
+- When touching core pathing, verify:
+  a) loader launch
+  b) save/load roundtrip
+  c) local play boot
+  d) event trigger path
+  e) compile_all warnings in touched components
+  f) entry_layout/player_piece resolution (no stale hardcoded defaults)
+
+13) NO-GIT BACKUP MANDATE (MANUAL SNAPSHOTS REQUIRED)
+- This workspace may not have usable git history; do not assume rollback exists.
+- Before editing high-risk files, create manual backups in-place (same directory) with clear suffixes.
+- Recommended suffix pattern:
+  - `<filename>.bak.<YYYYMMDD-HHMM>`
+  - or folder snapshot: `<dir>.bak.<YYYYMMDD-HHMM>/`
+- Minimum backup-required areas:
+  1) path resolution / loader / parser files
+  2) state rewrite loops
+  3) event persistence files
+  4) major docs being consolidated/rewritten
+- After successful validation, backups can be retained or pruned intentionally; never silently overwrite originals without a backup.
+
+14) DUAL INJECTION BUG (INPUT PARITY, NOT DUPLICATION)
+- For one UI action, do not inject both keyboard code and joystick code.
+- UI/menu clicks should inject one normalized action key path.
+- Joystick codes should come from actual joystick input path only.
+
+15) PULSE SKIP TRAP (CONDITIONAL WAIT BUG)
+- Never skip module pulse while waiting for marker files (`view_changed.txt`, etc.).
+- Keep pulse/update heartbeat unconditional; only gate composition/render timing.
+- If pulse is skipped, history is never consumed and controls appear dead.
+
+16) MARKER FILE DISCIPLINE
+- Initialize marker files at startup before watch loops (`view_changed.txt`, `frame_changed.txt`).
+- For change detection, prefer marker size/append delta over mtime-only checks.
+- Daemons that mutate visible state must append the frame marker or the UI appears frozen.
+- If the controller surface looks dead, inspect the marker pulse before changing menu dispatch; in TPMOS the render watcher is the sync boundary.
+
+17) ONE WRITER RULE (FRAME OWNERSHIP)
+- `current_frame.txt` must have a single owner/writer.
+- Parser/composer writes the frame; renderer prints only.
+- Dual writers cause flicker/corruption and nondeterministic behavior.
+
+18) STATE/PDL INTEGRITY RULE
+- Never overwrite whole piece definitions when setting state.
+- State writes must preserve METHOD/RESPONSE/other sections.
+- Use section-aware updates; avoid destructive rewrites.
+
+19) ACTION RESPONSE TRACKING
+- Responses should reflect the last action/route, not only threshold-derived state.
+- If response routing is state-only, user feedback becomes misleading (appears random).
+
+20) ROOT/PATH DRIFT + MEMORY LIFETIME RISKS
+- Always resolve `project_root` dynamically from `pieces/locations/location_kvp` (runtime instance-aware).
+- Do not rely on relative-path assumptions tied to cwd.
+- Never free path buffers before I/O operations complete (use-after-free can create corrupted filenames/filesystem artifacts).
+
+21) DIRECT READ PERFORMANCE TRAP
+- High-frequency loops should avoid repeated heavyweight subprocess reads (`popen` storms).
+- Use direct mirror/state file reads in hot paths; reserve manager/ops calls for writes/mutations.
+
+22) INPUT/MODULE NORMALIZATION RULE
+- Module logic should consume normalized input actions, not device-specific branching everywhere.
+- Keep keyboard/joystick mapping in input/parser layers so app modules stay device-agnostic.
+
+23) TRIM/SANITIZE TRAP (MIRROR READS)
+- Mirror/state reads often include trailing spaces/newlines; always trim before compare/parse.
+- Untrimmed keys/values cause false mismatches and silent branch failures.
+
+24) HYBRID EXPANSION RULE (LARGE DATA IN LAYOUTS)
+- Do not force large map payloads into brittle early-stage tag attributes.
+- Expand heavy variables at final render/composition stage to avoid truncation/corruption risk.
+
+25) RESPONSE SINK RULE (BACKGROUND OUTPUT)
+- Background/plugin stdout is not a reliable user-visible response channel.
+- Persist meaningful responses to response files/state and include them in composed frame output.
+
+26) BUTTON/NAV PATTERN CONFUSION (CRITICAL FOR NEW APPS)
+- DO NOT manually write nav indicators like "[>] 1. [Login]" or "[1] Login" in layout files.
+- The CHTPM parser AUTOMATICALLY adds [>] (focused) and [ ] (unfocused) when rendering <button> elements.
+- WRONG: <text label="║  [1] Login ║" />  <- Parser won't recognize as navigable
+- CORRECT: <text label="║  " /><button label="Login" onClick="KEY:1" /><text label=" ║" />
+- Module does NOT need to track gui_focus_index - parser manages this internally.
+- Module does NOT write gui_focus to state - parser reads active_gui_index.txt for sync.
+- Follow os.chtpm and fuzzpet_launcher.chtpm as canonical button patterns.
+- If nav appears broken ([ ] missing, focus not moving), check:
+  a) Layout uses <button> elements, not raw text
+  b) onClick="KEY:n" or href="path.chtpm" attributes are correct
+  c) Module processes the key codes from onClick
+  d) Parser is loading the correct layout file
+
+27) APP vs PROJECT TOPOLOGY (ARCHITECTURAL DECISION)
+- APP (pieces/apps/<app_id>/): System tools like op-ed, editor, user auth
+  - Launched via href buttons from os.chtpm or other layouts
+  - Has <app_id>.pdl with app_id and layout_path fields
+  - Module reads layout_path from PDL via resolve_my_layout()
+- PROJECT (projects/<project_id>/): User content like games, custom experiences
+  - Launched via loader menu selection
+  - Has project.pdl with project_id and entry_layout fields
+  - project_loader.c reads entry_layout and writes to layout_changed.txt
+- DO NOT create projects/user/ for system tools - use pieces/apps/user/
+- DO NOT create pieces/apps/fuzz-op/ for games - use projects/fuzz-op/
+- Confusing these causes loader failures and wrong state file locations.
+
+28) APP TITLE OVERWRITE (RENDER_MAP CONFLICT)
+- `render_map` (pieces/apps/playrm/ops/src/render_map.c) has a default `app_title = "PIECEMARK PLAYER"`.
+- It writes this title to `pieces/apps/player_app/state.txt` on every render.
+- If a system app (like User Auth) writes its own title to state and then calls `trigger_render()`, `render_map` will immediately overwrite it.
+- FIX: System apps with their own dynamic layouts (using `${piece_methods}`) should NOT call `trigger_render()` unless they actually need a map rendered.
+- FIX: `chtpm_parser.c` should clear `app_title` at the start of `load_vars()` to prevent stale titles from persisting across app/project switches.
+- Rule: verify which process "owns" the header title in the current layout context.
+
+29) NAVIGATION BOUND TRAP (digit_accum limit)
+- `process_key()` in the parser bounds digit input to enable immediate single-digit jumping.
+- Large bounds (like `MAX_ELEMENTS`) break this "strong inside" behavior by forcing multi-digit waits.
+- RULE: Use `count_projects()` or similar context-aware bounds to preserve immediate responsiveness. Don't "over-fix" this at the expense of core UI feel.
+
+30) SEA SHELL INTEGRITY (Core Nav/Jump behavior)
+- The core logic of `do_jump()` is designed to move focus only, not execute actions.
+- Attempting to add immediate execution to `do_jump()` breaks the canonical UI flow.
+- RULE: Preserve the strong inside (core nav); execution must remain triggered by Enter or explicit onClick routing.
+
+31) APP LAYOUT project_id DRIFT (RECURRING AGENT MISTAKE)
+- When an APP layout (e.g., `pieces/apps/user/layouts/user.chtpm`) is loaded via `href="..."`, the parser does NOT automatically set `project_id`.
+- `load_vars()` reads `project_id` from `pieces/apps/player_app/manager/state.txt`, which may contain a stale value from a previously loaded PROJECT (e.g., `project_id=fuzz-op`).
+- Consequence: `resolve_dynamic_pdl_path()` looks in wrong locations:
+  - WRONG: `projects/fuzz-op/pieces/user_main/piece.pdl` (doesn't exist)
+  - CORRECT: `pieces/apps/user/pieces/user_main/piece.pdl` (exists)
+- Symptom: App loads but `${piece_methods}` shows nothing, buttons don't work, module may not launch correctly.
+- RULE: When loading an APP layout via href, explicitly set `project_id` to match the app:
+  ```c
+  // In parse_chtm(), after layout file is read:
+  if (strstr(current_layout, "pieces/apps/user/")) {
+      set_var("project_id", "user");
+  }
+  ```
+- Alternative: Use `LAUNCH:user` command instead of `href`, which can set up the full app context.
+- Apps affected: user, op-ed, man-ops, man-pal, man-add, gl-os (any `pieces/apps/*/` layout).
+- This mistake has tripped up multiple agents because PROJECT loading (`LOAD_PROJECT:`) sets `project_id` correctly, but APP loading (via `href`) does not.
+
+32) STATE FILE CONTEXT CONFUSION (player_app vs app-specific)
+- System apps share `pieces/apps/player_app/` for routed input (`history.txt`) and state (`state.txt`, `manager/state.txt`).
+- When switching between apps/projects, stale state in these shared files can cause:
+  - Wrong `project_id` (see Pitfall #31)
+  - Wrong `active_target_id` (methods load from wrong PDL)
+  - Wrong `app_title` (see Pitfall #28)
+- RULE: Apps should write their context (`project_id`, `active_target_id`, `app_title`) to shared state files immediately on launch/layout change.
+- Parser should clear or overwrite context variables at start of `load_vars()` to prevent stale data persistence.
+
+33) CLI_IO INPUT PERSISTENCE (input_buffer vs layout var)
+- When using `<cli_io>` elements for text input (username, password, etc.), the render logic must display `el->input_buffer` content even after ESC deactivates the field.
+- BUG: After typing "hi" and pressing ESC, field shows empty `[]` instead of `[hi]`.
+- CAUSE: Render used `scratch_substituted` (from layout variable `${cli_username}`) instead of `el->input_buffer`.
+- FIX: In `render_element()`, check if `el->input_buffer` has content and use it for display when not active.
+- File is source of truth: parser reads last U/P value from `cli_buffers.txt` on parse, ESC only deactivates (never clears).
+
+34) JOYSTICK THREAD BLOCKING (orchestrator join deadlock)
+- Joystick input runs forever waiting on `/dev/input/js0` events.
+- BUG: Ctrl+C hangs because main thread waits on `pthread_join(joy_t)` but joystick thread never returns.
+- CAUSE: `launch_and_register()` calls `waitpid()` which blocks until child exits (never for joystick).
+- FIX: Joystick thread should fork-and-return (don't wait), and main should NOT join the joystick thread.
+- Signal handler kills all children via `kill(0, SIGTERM)` + `kill_all.sh`.
+
+35) BACKUP FILE BLOAT (.bak* accumulation)
+- Backup files (`*.bak`, `*.bak.*`, `*.bak*`) accumulate during development and can add 400KB+ to project size.
+- This is expected and intentional (no-git mode requires manual snapshots).
+- Use `./#.tools/remove_baks.sh` to clean up when needed.
+- Use `./#.tools/remove_binaries.sh` to remove compiled `.+x` files (also large).
+- Use `./#.tools/check_size.sh` to monitor disk usage.
+
+36) GL-OS MULTI-LINE STATE TRAP
+- Standard state file parsers read line-by-line (`key=value`).
+- Complex UI blocks (like `menu_options`) contain newlines.
+- BUG: Parser only captures the first line; items 2+ are lost.
+- FIX: Use the "Continuation Pattern" where lines without an `=` are appended to the previous key's value.
+
+37) GL-OS INPUT FOCUS LOCK LEAK
+- GL-OS creates `input_focus.lock` to isolate input from ASCII-OS.
+- If GL-OS crashes or is killed forcefully, the lock persists.
+- Symptom: Joystick/Keyboard input appears "dead" in ASCII-OS after GL-OS usage.
+- FIX: `kill_all.sh` MUST explicitly `rm -f pieces/apps/gl_os/session/input_focus.lock`.
+
+38) GL-OS IDLE THROTTLE VS RESPONSIVENESS
+- Aggressive throttling (100ms timer) saves CPU but makes input feel "laggy".
+- FIX: Input callbacks (`keyboard`, `mouse`, `joystick`) must reset `last_interaction_time`.
+- The timer should stay at high-performance (30ms) for at least 5 seconds after any interaction before backing off.
+
+39) GL-OS JOYSTICK AXIS ASSIGNMENT
+- Standard CHTPM axis mapping may differ from GL-OS expected behavior.
+- In GL-OS desktop, the Y-axis is typically mapped to vertical menu movement.
+- Ensure `last_joy_y` is updated outside the focus check to prevent edge-triggering "stickiness".
+
+40) GL-OS SPECIAL KEY REGISTRATION
+- Standard `glutKeyboardFunc` does not capture arrow keys.
+- BUG: Arrow keys don't navigate terminal menus.
+- FIX: Implement and register `glutSpecialFunc` to handle `GLUT_KEY_UP/DOWN` specifically.
+
+41) COMPILE_ALL.SH ENTRY DELETION (SILENT MODULE FAILURE)
+- When agents refactor compile_all.sh, they may accidentally remove entries for project-specific managers.
+- Symptom: Project loads but shows generic UI (wrong module), hotkeys don't work, actions are missing.
+- Example: `fuzz-op_manager.+x` was removed, causing fallback to `playrm_module.+x` (generic actions).
+- RULE: After ANY compile_all.sh changes, verify ALL project managers are still listed:
+  - `projects/*/manager/+x/*_manager.+x` binaries exist
+  - Each has a corresponding gcc line in compile_all.sh
+- Quick check: `find projects -name "*_manager.c" | wc -l` vs `find projects -name "*_manager.+x" | wc -l`
+- If source exists but binary doesn't, add to compile_all.sh immediately.
+
+42) 404 PAGE VS MODULE MISSING (DIAGNOSIS GUIDE)
+- 404 page shows when: Project exists in `projects/` but NOT in `pieces/os/project_routes.kvp`
+- Module Missing page shows when: Project IS in routes, but module binary doesn't exist
+- Generic/wrong UI (OLD BEHAVIOR, pre-fix): Module binary missing but no error shown
+- Diagnosis steps:
+  1) Check project_routes.kvp: `grep project_name pieces/os/project_routes.kvp`
+  2) Check binary exists: `ls -la projects/project_name/manager/+x/`
+  3) If binary missing, add to compile_all.sh and recompile
+- Do NOT add route to project_routes.kvp if module isn't compiled - it will show Module Missing page.
+- NEW FEATURE (post-fix): Parser now detects missing modules and shows helpful error page instead of silent failure.
+- Variables set: `module_error=MISSING`, `module_error_path=<path>`
+
+43) MODULE BINARY CHECK (NEW ERROR PAGE)
+- Parser now checks `access(module_path, X_OK)` before launching modules.
+- If binary is missing, switches to `module_missing.chtpm` layout with:
+  - Project ID and missing module path displayed
+  - Possible causes (not compiled, compile_all.sh entry removed, binary deleted)
+  - Fix steps (check source, add to compile_all.sh, recompile)
+- This prevents confusing "generic UI" symptom from silent module failures.
+- Variables set: `module_error=MISSING`, `module_error_path=<path>`
+
+44) WINDOWS ARROW KEY TRAP (MSYS2 PSEUDO-TERMINAL)
+- Physical arrow keys don't work when running orchestrator via MSYS2/mintty bash.
+- Root cause: `_kbhit()` doesn't work in pseudo-terminals, only native Windows console.
+- Symptom: Number keys (1-9) work for navigation, but arrow keys do nothing.
+- Keyboard injection works (writing to history file), proving parser is functional.
+- Fix attempted: Added fgetc() fallback and escape sequence parsing in readKey().
+- Status: Still broken - may require native Windows console (not MSYS2 bash).
+- Workaround: Use number keys for menu navigation on Windows.
+- Files affected: `pieces/chtpm/plugins/orchestrator.c` (readKey function)
+
+45) WINDOWS JOYSTICK (XINPUT - IMPLEMENTED)
+- Linux uses `/dev/input/js0` (linux/joystick.h) - doesn't exist on Windows.
+- Windows uses XInput API (xinput.h) for Xbox controllers.
+- IMPLEMENTATION (April 2, 2026):
+  - File: pieces/joystick/plugins/joystick_input_win.c
+  - Supports 4 Xbox controllers (XInputGetState 0-3)
+  - Maps buttons to codes 2000-2013 (A,B,X,Y, bumpers, D-pad, etc.)
+  - Maps axes to codes 2100-2109 (left/right sticks, triggers)
+  - Writes to same input files as Linux (keyboard/history.txt, etc.)
+  - Compiled by: pieces/buttons/windows/legacy/compile_all.ps1
+  - Killed by: pieces/buttons/windows/legacy/kill_all.ps1 (joystick_input)
+- Status: Linux joystick working. Windows XInput code complete, needs hardware test.
+- Files: pieces/joystick/plugins/joystick_input.c (Linux), joystick_input_win.c (Windows)
+
+Operational rule:
+If a change touches path resolution, state rewriting, loader mapping, or event persistence, treat it as high-risk and run full Step-1 matrix before merge.
+
+104) PROJECT CLONING AND PATH DRIFT
+- SYMPTOM: Duplicated projects show incorrect UI/Headers, or paths revert to the original project name (e.g., `op-ed` appearing inside `slop-ed-dev`) even after a rename.
+- ROOT CAUSE:
+    1. "Double-rename" bug: running `sed` on strings that already contain the replacement pattern (e.g., replacing `op-ed` with `slop-ed-dev` in a file path that already contained `slop-ed-dev` makes it `slslop-ed-dev-dev`).
+    2. Hardcoded project paths in `gui_state.txt` or `manager.c`.
+    3. Stale `project_id` in `project.pdl` or `gui_state.txt`.
+    4. Incorrect `entry_layout` module paths in `.chtpm` files after renaming the directory.
+- MANDATE: When duplicating a project:
+    1. Use a temporary intermediate name to avoid double-renaming if reusing patterns.
+    2. Verify `project.pdl` and `manager.c` for hardcoded strings.
+    3. Clear ALL `gui_state.txt` and temporary session files before first run.
+    4. Recompile EVERYTHING (`./button.sh compile`) to ensure binaries are built from the new paths.
+- TPM PRINCIPLE: "A duplicate is only as good as its rename. If one link in the chain is stale, the whole system drifts."

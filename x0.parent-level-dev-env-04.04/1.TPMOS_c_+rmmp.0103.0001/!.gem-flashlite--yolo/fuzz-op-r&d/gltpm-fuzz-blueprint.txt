@@ -1,0 +1,77 @@
+# GLTPM Fuzz-Op Blueprint (Canonical GL Standard)
+
+This document corrects the discrepancies found in the `fuzz-op-gl` implementation and defines the "Perfect Beautiful" GLTPM architecture.
+
+## 1. Discrepancy Audit: Fuzz-Op vs. Fuzz-Op-GL
+
+The previous implementation of `fuzz-op-gl` introduced several "naive" patterns that violate the TPM principle of "Thin Brain, Thick Ops."
+
+| Feature | Fuzz-Op (Canonical) | Fuzz-Op-GL (Incorrect) | The Fix |
+| :--- | :--- | :--- | :--- |
+| **Camera State** | Resolved from `session/state.txt` by Renderer. | Hardcoded variables (`cam_pos`, `cam_rot`) in Manager. | **Move to Piece:** Camera is a Piece (or virtual Piece in session state). Manager only writes to file. |
+| **Movement** | Calls `move_entity.+x`. | Direct `cam_pos[2] += speed` in Manager. | **Standardize:** Camera movement should be an Op (`move_camera.+x`) triggered by the Manager. |
+| **Input Routing** | Unified `route_input()`. | Forked logic inside `gltpm_input_thread`. | **Unify:** `gltpm_input_thread` should only translate codes and call the central `route_input()`. |
+| **Render Trigger** | Pulse `frame_changed.txt` (G/M). | Same, but often calls `render_map.+x` (ASCII) redundantly. | **GL-Specific:** The GL Renderer is a background daemon watching `session/frame_changed.txt`. |
+
+---
+
+## 2. The Unified Input Pipeline
+
+The ONLY difference in input should be the translation layer.
+
+1.  **Listener:** `gltpm_input_thread` reads `projects/<id>/session/history.txt`.
+2.  **Translation:** It converts `KEY_PRESSED: 1002` to `route_input(1002)`.
+3.  **Routing:** `route_input()` handles:
+    - **Mode Toggle:** Toggles `is_map_control` in `session/state.txt`.
+    - **Entity Ops:** Calls `move_entity.+x` (World State).
+    - **Camera Ops:** Calls `move_camera.+x` (Camera/Session State).
+
+---
+
+## 3. The "Thin" GL Manager Structure
+
+A perfect GL Manager should be identical to the ASCII manager, except for the **State Mirroring** it performs for the GL Renderer.
+
+### A. The GL State Sink (`session/state.txt`)
+The Manager must ensure the following keys are ALWAYS synced for the GL Renderer to pick up:
+- `cam_x`, `cam_y`, `cam_z`
+- `cam_pitch`, `cam_yaw`, `cam_roll`
+- `active_target_id`
+- `is_map_control` (0 = Menu/Piece UI, 1 = Free Cam/Direct Map)
+
+### B. The Render Pulse
+```c
+void trigger_render() {
+    // 1. Update session/state.txt (The "Source of Truth")
+    save_session_state(); 
+    
+    // 2. Pulse GL-OS
+    char *gl_pulse = "projects/fuzz-op-gl/session/frame_changed.txt";
+    FILE *pf = fopen(gl_pulse, "a"); 
+    if (pf) { fprintf(pf, "G\n"); fclose(pf); }
+}
+```
+
+---
+
+## 4. GL-Specific Build Exception
+
+While TPMOS usually prefers standalone `+x` Ops, GL-heavy projects may link common GL utilities to reduce binary size and startup overhead.
+
+- **The GL-Library:** Compile `gl_utils.c` into a shared object or link it directly into the Manager and Renderer.
+- **The Binary:** `fuzz-op-gl_manager.+x` may contain the GL logic if it acts as the primary viewport, but the **12-step pipeline** mandate remains: Input -> History -> Manager -> State -> Pulse -> Renderer.
+
+---
+
+## 5. Virgin Agent Implementation Steps
+
+1.  **Clone ASCII Manager:** Start with `fuzz-op_manager.c`.
+2.  **Add Camera Piece:** Create `pieces/camera/state.txt` and `piece.pdl`.
+3.  **Update route_input:** Add cases for 'w,a,s,d' that call `move_camera.+x` when `is_map_control` is active.
+4.  **Implement GL Renderer:** Create a daemon that:
+    - Waits for `G` in `session/frame_changed.txt`.
+    - Reads `pieces/world/.../state.txt` for all entities.
+    - Reads `pieces/camera/state.txt` for the view matrix.
+    - Draws the 3D scene.
+
+"Geography is destiny. The file is the truth. The GL window is just a different theater for the same play."

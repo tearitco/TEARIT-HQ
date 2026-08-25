@@ -1,0 +1,399 @@
+TESTING METHODOLOGY — Haiku's Testing Playbook
+(How to verify features work, not just "the code compiles")
+
+Updated: 2026-07-20
+Status: Learned from zest-er-summary, needs hands-on validation with real project
+
+================================================================================
+THE TESTING STACK (Three Layers, All Needed)
+================================================================================
+
+### LAYER 1: File Injection Testing (Fast, Proves Data Layer)
+WHAT IT IS: Simulate user input by writing directly to state files, read output
+from state files. Bypasses real terminal, real keyboard, real rendering.
+
+WHY: Fast, exact, reproduces real input/output data without UI overhead.
+
+HOW (Key Injection):
+  - Real keypress normally: keyboard_input.c (raw terminal mode) →
+    pieces/keyboard/history.txt OR gui_state.txt + interact_relay.txt
+  - Testing WITHOUT terminal: write directly to those same files
+  - Example: `echo "message_input=hi there" > gui_state.txt` then
+    `echo "13" >> interact_relay.txt` (13 = Enter keycode)
+  - This is EXACTLY the same state a real keypress produces
+
+HOW (Frame Reading):
+  - Real render output: pieces/display/current_frame.txt (or project's view.txt)
+  - Testing: read that same file as plain text
+  - This verifies the DATA is correct (ops wrote the right thing)
+
+WHAT IT PROVES:
+  ✅ Data layer is correct
+  ✅ Logic layer is correct
+  ✅ Ops are writing to the right files
+  ✅ State transitions are working
+
+WHAT IT DOES NOT PROVE:
+  ❌ Real terminal rendering looks right (ANSI escape codes, colors, etc)
+  ❌ Frame history/scrollback behavior (can user scroll up to see old turns?)
+  ❌ Whether terminal clears/redraws correctly vs. appends
+  ❌ Real human perception (looks correct to eyes)
+
+### CLI_IO TEXT INPUT (solved + VERIFIED by Sonnet 2026-07-20, ran it live
+against pal-chat-irc, see #.haiku/sonnet/cli_io_investigation_ANSWER.md)
+cli_io fields are TWO-PHASE, not one-shot. process_key() in chtpm_parser_pal.c
+only appends printable keys to input_buffer when active_index is already
+set to that field. If active_index == -1 (nav mode), the SAME key codes are
+read as navigation ('w'/'s' move focus, digits jump nav slots) -- this is
+why typing "test" looked like navigation: 's' == JOY_DOWN in nav mode.
+
+Correct sequence, all via pieces/keyboard/history.txt KEY_PRESSED codes
+(confirmed working: gui_state.txt ended up with user_id_input=testuser,
+and current_frame.txt showed "[^] 1. User ID: [testuser_]" live):
+  1. Focus the field: inject the ASCII code of its nav-slot digit
+     (e.g. slot 1 -> code 49 for '1', NOT raw code 1). Often already
+     focused by default (login.chtpm's User ID field starts as [>] 1.).
+  2. Activate it: inject 13 (Enter) -- sets active_index = focus_index
+  3. Type: inject each character's ASCII code in sequence (t=116, e=101, ...)
+  4. Submit: inject 13 (Enter) again -- saves to gui_state.txt, clears buffer,
+     field stays active
+
+NEVER write gui_state.txt directly for cli_io testing -- it's not the live
+input path and can be overwritten by the next resync. Always go through
+history.txt so you exercise the real code path.
+
+To test standalone without keyboard_input/renderer (which need a real tty):
+build with scripts/build.sh, set up an isolated session dir like button.sh
+does (symlink system/ops/pal/pieces/chtpm/users/rooms, init the empty state
+files), then launch `./system/chtpm_parser_pal <layout.chtpm>` directly in
+the background and write KEY_PRESSED lines straight to
+pieces/keyboard/history.txt. Read results from
+projects/<project>/manager/gui_state.txt and pieces/display/current_frame.txt.
+
+LIMITATION: This layer only verifies DATA/LOGIC, not PRESENTATION.
+
+---
+
+### LAYER 2: Frame History Dump (Proves Frame Sequence, Scrollback)
+WHAT IT IS: Append every frame rendered in a session to debug/frame_history.txt,
+then inspect the sequence to verify:
+  - Correct frames rendered in correct order
+  - Bounded tail window is working (not rendering entire history every time)
+  - Scrollback behavior (can you see old frames if terminal supports scrollback)
+  - Frame history is being preserved (not lost between ticks)
+
+WHY: File injection tests current_frame.txt ONCE at the end. But if rendering
+is bounded or if frames are clearing/redraws, a single snapshot misses the story.
+Appending every frame to debug/frame_history.txt shows the SEQUENCE.
+
+HOW (Implementation Required in Each Project):
+  - compose_frame (or equivalent render op) opens debug/frame_history.txt with
+    fopen(..., "a") (append mode, not write/truncate)
+  - After writing current_frame.txt, also append a separator + timestamp:
+    fprintf(history_file, "\n=== FRAME @ %ld ===\n", time(NULL));
+    fprintf(history_file, "%s\n", current_frame_content);
+  - At session start, TRUNCATE debug/frame_history.txt (fresh per session)
+  - During session: every frame gets logged
+  - At session end: read debug/frame_history.txt to verify sequence
+
+IMPLEMENTATION STEPS (Only If Project Doesn't Have It):
+  FIRST: Check if project already has frame history dumping:
+    - Look for "frame_history" in ops/compose_frame.c (or equivalent)
+    - Check if debug/ directory is created in button.sh
+    - If both exist, you're done — use it as-is
+    - If either is missing, implement both steps below
+
+  IF NEEDED, add frame history dumping:
+    1. Edit ops/compose_frame.c (or equivalent):
+       - Add #include <time.h> at top
+       - Create append_frame_history(view_path) function (copy pattern from pal-chat-irc)
+       - Call it after fclose(g_view_out), before ping_render_marker()
+    2. Edit button.sh run action:
+       - Add mkdir -p to create debug/ directory in session setup
+       - Add ": > debug/frame_history.txt" to truncate it fresh (like interact_relay.txt)
+    3. Rebuild: bash scripts/build.sh
+    4. Verify: Run session, check that debug/frame_history.txt appends frames with timestamps
+
+  Reference: 1.pal-chat-irc/ops/chat_compose_frame.c shows the full implementation pattern.
+
+WHAT IT PROVES:
+  ✅ Frames are rendered in the correct sequence
+  ✅ Bounded tail window is working correctly
+  ✅ No frames are lost between ticks
+  ✅ Frame history is accumulating (scrollback-friendly)
+  ✅ Render behavior under rapid updates (e.g., message flood)
+
+WHAT IT DOES NOT PROVE:
+  ❌ Real terminal actually scrolls up to show old frames
+  ❌ Terminal rendering looks correct to human eyes
+  ❌ ANSI escape codes are correct (colors, cursor movement, etc)
+  ❌ User can actually SEE the frames they expect
+
+LIMITATION: This layer proves the SEQUENCE and PRESERVATION, not the VISUAL
+rendering. If frames are correct but ANSI codes are wrong, this won't catch it.
+
+---
+
+### LAYER 3: Real Terminal Run (Proves Human Experience)
+WHAT IT IS: Actually launch the project, interact with it like a human would,
+observe the real terminal output.
+
+WHY: File injection + frame history prove data/logic/sequence are correct.
+But real rendering, real scrollback, real ANSI codes, real terminal behavior —
+only a human can verify those by looking.
+
+HOW:
+  - Run `button.sh run` or equivalent in a real terminal
+  - Interact with the feature (type messages, click buttons, drag pets, etc)
+  - Observe: Does it look right? Can I scroll? Do colors render? Is it fast?
+  - Try edge cases (rapid input, many messages, boundary conditions)
+  - Look for visual glitches, rendering artifacts, missing scrollback
+
+WHAT IT PROVES:
+  ✅ Real terminal rendering works
+  ✅ User can interact naturally
+  ✅ Scrollback works (can scroll up to old messages)
+  ✅ ANSI codes are correct
+  ✅ Performance is acceptable (not hanging, updates smooth)
+  ✅ Edge cases don't break rendering
+
+WHAT IT DOES NOT PROVE:
+  ❌ Different terminals render identically (xterm vs iTerm2 vs Windows Terminal)
+  ❌ Remote SSH rendering (might have different scroll behavior)
+  ❌ Accessibility (screen readers, high contrast modes)
+
+LIMITATION: This is manual, slow, can't catch all edge cases. But it's the
+ONLY layer that verifies real human experience.
+
+================================================================================
+BUILD ORDER FOR TESTING (Always Do All Three, In This Order)
+================================================================================
+
+1. LAYER 1 — File Injection (Fast Check)
+   - Write key injection file
+   - Read frame output
+   - Verify data/logic are correct
+   - ✅ Passes → continue
+   - ❌ Fails → fix logic, repeat step 1
+
+2. LAYER 2 — Frame History Dump (Sequence Check)
+   - If not already in project, add debug/frame_history.txt dumping
+   - Run session with key injection
+   - Read debug/frame_history.txt
+   - Verify frame sequence, tail window, history preservation
+   - ✅ Passes → continue
+   - ❌ Fails → fix render logic, repeat steps 1-2
+
+3. LAYER 3 — Real Terminal (Human Check)
+   - Run `button.sh run` in real terminal
+   - Interact with feature naturally (type, click, drag, etc)
+   - Observe rendering, scrollback, performance
+   - Try edge cases (rapid input, many messages, boundary conditions)
+   - ✅ Looks right → feature is working
+   - ❌ Looks wrong → either render logic is broken (fix + repeat 1-2), or
+     terminal/ANSI issue (debug real output)
+
+DON'T SKIP ANY LAYER. Each layer answers different questions.
+
+================================================================================
+DEBUG/FRAME_HISTORY.TXT CONVENTION (1.TPMOS Projects Already Have This)
+================================================================================
+
+WHAT IT IS:
+  - Plain text file: debug/frame_history.txt
+  - Append-only during session: every frame gets logged
+  - Truncated fresh at session start (same as interact_relay.txt, history.txt)
+  - Format: frame separator + timestamp + full frame content, one per append
+
+WHY THIS PROJECT NEEDS IT:
+  - Single read of current_frame.txt misses the story (is it preserving history?)
+  - Real terminal scrollback can't be tested via file injection (need real terminal)
+  - Frame history dump bridges the gap: proves sequence + preservation without
+    needing real terminal
+
+CONCRETE IMPLEMENTATION:
+  In compose_frame op or equivalent render function:
+
+  ```c
+  // At session start:
+  FILE *history = fopen("debug/frame_history.txt", "w");  // TRUNCATE
+  fprintf(history, "Frame history dump - session start\n");
+  fclose(history);
+
+  // Every frame rendered:
+  FILE *history = fopen("debug/frame_history.txt", "a");  // APPEND
+  fprintf(history, "\n=== FRAME %d @ %ld ===\n", frame_count, time(NULL));
+  fprintf(history, "%s\n", current_frame_content);  // the actual frame
+  fprintf(history, "---\n");
+  fclose(history);
+  ```
+
+HOW TO READ IT:
+  - After file-injection test run, read debug/frame_history.txt
+  - Count frames, verify they're in order
+  - Look for missing frames or out-of-order frames
+  - Check if tail window is bounded (are old frames being dropped correctly?)
+  - Verify separator timestamps show frame rate (timing between frames)
+
+EXAMPLE OUTPUT (What It Looks Like):
+  ```
+  Frame history dump - session start
+
+  === FRAME 1 @ 1689952341 ===
+  Welcome to chat
+  Messages (0):
+  > _
+  ---
+
+  === FRAME 2 @ 1689952342 ===
+  Welcome to chat
+  Messages (1):
+  [user] hello
+  > _
+  ---
+
+  === FRAME 3 @ 1689952343 ===
+  Welcome to chat
+  Messages (2):
+  [user] hello
+  [bot] hi there
+  > _
+  ---
+  ```
+
+================================================================================
+TESTING CHECKLIST (For Any New Feature)
+================================================================================
+
+BEFORE BUILDING:
+  [ ] Design doc is written (read it completely)
+  [ ] Related code is read (don't guess what ops do)
+  [ ] Testing approach is planned (file injection? frame history needed?)
+
+LAYER 1 — File Injection:
+  [ ] Key injection file prepared (messages.txt or gui_state.txt + interact_relay.txt)
+  [ ] Compiled and ready to run
+  [ ] Run feature with file injection
+  [ ] Read current_frame.txt (or project's view.txt)
+  [ ] Verify data/logic are correct
+  [ ] If failed: fix logic, re-run file injection
+
+LAYER 2 — Frame History Dump:
+  [ ] Check if project already has debug/frame_history.txt (grep for "frame_history")
+  [ ] If not: add frame history dumping to compose_frame (or equivalent)
+  [ ] Run same file-injection test with frame history enabled
+  [ ] Read debug/frame_history.txt
+  [ ] Count frames, verify order, check tail window, check timestamps
+  [ ] If failed: fix render logic, re-run file injection + frame history
+
+LAYER 3 — Real Terminal:
+  [ ] Compile and link
+  [ ] Run `button.sh run` in real terminal
+  [ ] Interact with feature naturally (don't automate, use your hands)
+  [ ] Observe rendering, scrollback, performance
+  [ ] Try edge cases (rapid input, many messages, boundary conditions)
+  [ ] Look for glitches, missing scrollback, rendering artifacts
+  [ ] If failed: debug real output, fix ANSI/terminal behavior, repeat layers 1-2
+
+DONE:
+  [ ] All three layers pass
+  [ ] Feature is ready for integration
+
+================================================================================
+GOTCHAS & TRAPS
+================================================================================
+
+TRAP 1: "File injection proved it works, ship it"
+  - WRONG. File injection only proves data/logic.
+  - Frame history dump adds sequence/preservation verification.
+  - Real terminal run adds human verification.
+  - All three together = confidence feature works.
+
+TRAP 2: "Current frame snapshot is enough to prove scrollback works"
+  - WRONG. A single snapshot doesn't prove history preservation.
+  - If frames are being dropped or re-rendered in place, you won't see it.
+  - Frame history dump (every frame appended) makes it visible.
+
+TRAP 3: "I'll add frame history dumping later, it's not critical"
+  - WRONG. Add it NOW, during build, not after.
+  - It's as easy as fopen(..., "a") + fprintf.
+  - It catches issues that file injection misses.
+  - Waiting until "later" means you've already shipped broken code.
+
+TRAP 4: "Real terminal run revealed a glitch, but file injection passed"
+  - This means: logic is correct, but rendering/ANSI/terminal behavior is wrong.
+  - Fix the render/ANSI code, THEN re-run file injection + frame history to
+    confirm logic still works (don't introduce new bugs while fixing rendering).
+
+TRAP 5: "Different terminal emulators render differently"
+  - This is expected and okay (xterm vs iTerm2 vs Windows Terminal are different).
+  - Fix the most important one (user's terminal).
+  - Document the difference (some terminals don't support X feature).
+  - Don't try to make all terminals identical (too much work, not worth it).
+
+================================================================================
+INTEGRATION WITH DESIGN-DOC-FIRST
+================================================================================
+
+In your design doc, include a "TESTING" section:
+  - What does success look like? (what behavior should the feature have?)
+  - What are the edge cases? (rapid input, empty state, boundary conditions)
+  - How will we test it? (file injection? frame history needed? real terminal?)
+  - What can't file injection test? (real rendering, scrollback, ANSI codes)
+
+Example (from CHAT-INTEGRATION-ARCHITECTURE.txt section 3):
+  "Testing: irc-agent-0000 bridge will be verified via:
+   1. File injection: post message to muchi-test room, verify bot reads it (data layer)
+   2. Frame history dump: verify bot's poll loop fires at expected rate (sequence layer)
+   3. Real terminal: verify bot appears in room list, messages render, user can scroll (human layer)"
+
+Then BEFORE building, you know exactly how you'll test it. No surprises.
+
+================================================================================
+KEY INJECTION FORMAT (STANDARD ACROSS ALL PROJECTS)
+================================================================================
+File: pieces/keyboard/history.txt
+Format (EXACT): [YYYY-MM-DD HH:MM:SS] KEY_PRESSED: <code>
+
+Example:
+  [2026-07-20 22:30:15] KEY_PRESSED: 13
+
+Common codes:
+  13 = Enter (submit)
+  27 = Escape (cancel)
+  49-57 = Keys '1' through '9' (menu navigation)
+  ASCII values for letters if typing
+
+Shell command:
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] KEY_PRESSED: 13" >> pieces/keyboard/history.txt
+
+If date command fails, use fixed timestamp:
+  echo "[2026-07-20 22:30:15] KEY_PRESSED: 13" >> pieces/keyboard/history.txt
+
+CRITICAL: Format must be exact or parser ignores it. No raw integers, no missing
+prefixes, no malformed timestamps.
+
+================================================================================
+TESTING FLOW: Per-Project Navigation Mapping
+================================================================================
+Each project has a TESTING_GUIDE.txt file documenting:
+1. What layout is active initially
+2. Which key codes navigate between screens
+3. Which fields accept text (cli_io ids)
+4. Expected frame changes per key
+
+CREATE THIS FILE FOR EACH NEW PROJECT after understanding its navigation.
+
+Example pattern (1.pal-chat-irc):
+  Layout: login.chtpm
+  Fields: user_id_input, display_name_input
+  Actions: (TBD - key code to action mapping)
+  Flow: login -> room_list -> room -> message input
+
+================================================================================
+RELATED FILES
+================================================================================
+- gotchas_by_project.txt: Project-specific testing gotchas
+- CURRENT_SESSION_PRIORITIES.txt: Testing task progress
+- 1.pal-chat-irc/TESTING_GUIDE.txt: Project-specific testing (created during TASK 0)
+- 1.TPMOS testing guide: Generic template at 1.TPMOS_c_+rmmp.0102.0028/!.gem-flashlite--yolo/#.testing/

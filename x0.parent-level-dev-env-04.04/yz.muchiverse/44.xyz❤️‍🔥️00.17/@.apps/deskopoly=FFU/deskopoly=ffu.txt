@@ -1,0 +1,31 @@
+
+
+
+
+
+
+can "hai" play "monopoly" (cuz appearantly that would be good)
+should be ez, but if each agent acts independantly cuz
+its "monopoly fsm of its ai bank is biased / linked 2 playing monopoly desk...)
+
+
+(would also be good if it did wsr (fsm/agent[for biz names +r&d])+ 
+__________________________________________________________
+
+💭️
+🤔️
+u can ask it to make "any descion" if u give it parameters first
+so u just send parameters to gemma270b
+
+esp if its just a decion tree. 
+(but u dont need to send tree 2 ai , just trigger it from weights. 
+but u can help it learn the right weights by biasing choice
+instead of trainig from "RL" = fake observation training. 
+
+does any of that matter for coding tho? 
+
+it should . if ai "needs to code something to perform tasks" 
+(so like game dev story , 
+liek 4 gemma270m's 
+should all do parts of a project and a manager should check it
++ they should send to "users" who test it and complain or w/e;

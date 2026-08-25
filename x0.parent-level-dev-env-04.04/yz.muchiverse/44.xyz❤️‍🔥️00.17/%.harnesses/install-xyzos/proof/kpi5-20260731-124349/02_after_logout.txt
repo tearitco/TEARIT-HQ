@@ -1,0 +1,26 @@
++============================================================+
+|  U S E R - P A L                                           |
++============================================================+
+|                                                            |
+|  Not logged in.                                            |
+|                                                            |
+|  Enter a user ID (and display name, if new), then          |
+|  Create Account / Log In — or Switch: an account below.  |
+|                                                            |
+|  Accounts on this machine:                                 |
+|    installUser_1031662 — InstallHarness                  |
+|                                                            |
+|  Logged out.                                               |
+|                                                            |
++============================================================+
+
+| [ ] 1. User ID: [installUser_1031662]                                        |
+| [ ] 2. Display Name (new accounts only): [InstallHarness]                                        |
+[ ] 3. [Create Account]
+[ ] 4. [Log In]
+[>] 5. [Log Out]
+[ ] 6. [Switch: installUser_1031662 (InstallHarness)]
+ Switch: rows log in as that account | Ctrl+C quit
+
++=========================================================+
+Nav > _

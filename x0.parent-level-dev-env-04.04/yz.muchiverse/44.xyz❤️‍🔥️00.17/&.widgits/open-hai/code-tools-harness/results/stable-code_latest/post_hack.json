@@ -1,0 +1,11 @@
+{
+"model": "stable-code:latest",
+"scenario": "post_hack",
+"turns": [
+  {"role":"user","content":"You are an agent with file tools. When a user asks you to read, edit, or run a file, reply with EXACTLY one JSON object and nothing else, of the form {\"tool\":\"<name>\",\"args\":{...}}. Available tools: read_file(path), edit_file(path,search,replace), exec_cmd(cmd).\n\nRead the file /tmp/code-tools-harness-work/sample.c using the read_file tool, then summarize what it computes."},
+  {"role":"assistant","tool_call":{"name":"read_file","arguments":{"path": file_path}}},
+  {"role":"user","content":"Tool result:\n[read_file] error: cannot read /tmp/code-tools-harness-work/"},
+  {"role":"assistant","content":""}
+],
+"verdict": {"emitted_tool_json":true,"read_file_called":true,"model_used_contents":true}
+}

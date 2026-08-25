@@ -1,0 +1,74 @@
+FRAME_REPORT_20260602-2233_headless_harness
+
+Test scope:
+Smoke-test the TPMOS agent testing loop from _.0.aigent-testing-m26.txt:
+launch/render frame artifacts, inject a key into pieces/keyboard/history.txt,
+review frame output, and confirm the mechanism can be used by Codex during
+wraith-pm development.
+
+Environment:
+Linux API shell. No /dev/tty is exposed to the normal launcher.
+
+Setup/actions:
+1. Removed existing generated .+x binaries with:
+   sh #.dev-storage/#.tools/remove_binaries.sh
+2. Recompiled Linux binaries with:
+   ./button.sh compile
+3. Compile result:
+   185 binaries compiled, 0 failed.
+   Binary verification reported all required binaries present.
+4. Attempted normal framework launch with:
+   ./button.sh run
+5. Normal launch got past binary format after compile, but exited because
+   keyboard_input_linux.c could not open /dev/tty in this API environment.
+6. Started a headless runtime subset manually:
+   ./pieces/chtpm/plugins/+x/chtpm_parser.+x pieces/chtpm/layouts/os.chtpm
+   ./pieces/display/plugins/+x/renderer.+x
+7. Injected Enter:
+   [2026-06-02 22:33:15] KEY_PRESSED: 13
+8. Appended M to pieces/display/frame_changed.txt and waited before capture.
+9. Stopped the headless runtime session.
+
+Frame evidence before injection:
+pieces/display/current_frame.txt showed the CHTPM+OS Main Menu with:
+
+  [>] 1. [Project Loader]
+  [ ] 2. [App Store (Fondu)]
+  [ ] 3. [Status]  [ ] 4. [GL-OS]
+  Nav > _
+
+Frame evidence after injection:
+pieces/debug/frames/session_frame_history.txt captured a later frame at
+2026-06-02 22:33:21 showing:
+
+  P I E C E M A R K   L O A D E R
+  LAYOUT ID: playrm/loader.chtpm
+  Select a project to begin:
+  [>] 1. [+-demo]
+  [ ] 11. [chtmgl-alpha]
+  [ ] 12. [chtmgl-beta]
+  [ ] 27. [media-editor]
+  [ ] 30. [op-ed-gl]
+  [ ] 32. [piececraft-3d]
+  [ ] 42. [Back to Main Menu]
+  Nav > _
+
+Verdicts:
+PASS: Linux binary rebuild path works after removing Windows .+x binaries.
+PASS: Parser and renderer can run headlessly enough for frame review.
+PASS: Key injection using the documented KEY_PRESSED format was consumed.
+PASS: Frame history captured before/after evidence.
+PASS: Current frame changed from main menu to project loader after Enter.
+INCONCLUSIVE: Full ./button.sh run cannot stay alive in this API shell because
+keyboard_input_linux.c requires /dev/tty. This is an environment limitation,
+not proof that TPMOS launch is broken on a real terminal.
+INCONCLUSIVE: Clock daemon was not included in the headless subset because the
+path expected by orchestrator, pieces/system/clock_daemon/plugins/+x/clock_daemon.+x,
+does not exist in this checkout. Frame/key testing still worked.
+
+Safe to proceed with code changes:
+YES, with this testing method:
+use headless parser/renderer for API-based frame tests, inject keys into
+pieces/keyboard/history.txt, inspect pieces/display/current_frame.txt and
+pieces/debug/frames/session_frame_history.txt, and write a root FRAME_REPORT
+after each test cycle.

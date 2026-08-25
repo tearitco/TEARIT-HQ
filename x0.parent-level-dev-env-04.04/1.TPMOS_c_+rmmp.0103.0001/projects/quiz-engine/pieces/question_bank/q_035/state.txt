@@ -1,0 +1,5 @@
+name=GABA
+formula=H2NCH2CH2CH2COOH
+type=Neurotransmitter
+groups=-NH2
+relevance= -COOH

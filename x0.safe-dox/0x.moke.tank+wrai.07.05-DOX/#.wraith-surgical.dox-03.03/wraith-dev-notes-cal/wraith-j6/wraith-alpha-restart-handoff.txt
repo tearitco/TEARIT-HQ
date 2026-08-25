@@ -1,0 +1,23 @@
+# WRAITH-ALPHA RESTART HANDOFF
+Date: 2026-06-06
+
+Purpose:
+Legacy restart pointer for older recovery paths.
+
+Current note:
+- For the current state, use [wraith-alpha-virgin-context-handoff.txt](./wraith-alpha-virgin-context-handoff.txt).
+- This file is kept only as a short pointer so old links do not break.
+
+Use the virgin-context handoff for:
+- the rolled-back baseline summary
+- what is proven live
+- what is still broken
+- the first files to inspect
+- the next step to reintroduce
+
+If you are starting fresh:
+1. Open [wraith-alpha-virgin-context-handoff.txt](./wraith-alpha-virgin-context-handoff.txt).
+2. Inspect `projects/wraith-alpha/layouts/alpha-shell.chtpm`.
+3. Inspect `projects/wraith-alpha/manager/wraith-alpha_manager.c`.
+4. Inspect `projects/wraith-alpha/ops/wraith_parser_alpha.c`.
+5. Reintroduce only the restore-from-toolbar path.

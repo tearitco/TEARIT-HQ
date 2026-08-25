@@ -1,0 +1,11 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+==========================================+" /><br/>
+    <text label="| NEW EVENT COMMAND (page 1)              |" /><br/>
+    <text label="+==========================================+" /><br/>
+    <text label="Choose a command type (RMMV-style list)." /><br/>
+    <text label="Only working types are listed." /><br/>
+    <button label="Change Gold..." href="pieces/chtpm/layouts/event_ez_page_1_cmd_change_gold.chtpm" /><br/>
+    <button label="< Back" href="pieces/chtpm/layouts/event_ez_page_1.chtpm" /><br/>
+</panel>

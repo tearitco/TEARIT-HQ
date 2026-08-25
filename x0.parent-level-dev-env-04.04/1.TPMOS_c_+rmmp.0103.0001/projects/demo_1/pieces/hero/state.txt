@@ -1,0 +1,6 @@
+name=Hero
+type=player
+pos_x=2
+pos_y=2
+pos_z=0
+on_map=1

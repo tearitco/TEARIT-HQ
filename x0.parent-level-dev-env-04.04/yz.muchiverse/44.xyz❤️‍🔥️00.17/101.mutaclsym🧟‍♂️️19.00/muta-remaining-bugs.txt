@@ -1,0 +1,213 @@
+MUTA-REMAINING-BUGS.txt — three real, researched, NOT-YET-FIXED bugs
+Written 2026-08-18, after the terrain texture fix (muta-terrain-fix.txt) was confirmed working
+live ("i see the textures now. and it looks like the old map"). This doc is research + prescribed
+direction only — nothing here has been implemented or tested yet. Direct user instruction: research
+and document these three locally, decide priority (these vs. taskbar work) afterward.
+
+================================================================================
+BUG 1 — interact-mode keys leak through when interact ISN'T active — FIXED 2026-08-18, TWO real
+gaps found+fixed, both confirmed via direct before/after state tests.
+================================================================================
+Direct user report: "keys ment for interact mode are still passsing thru menu when interact isn't
+active. thats really bad." Direct instruction: fix this first, using fuzz-op as the reference.
+
+Both canonical reference files (`1.TPMOS_c_+rmmp.0103.0001/pieces/chtpm/plugins/chtpm_parser.c` and
+`.../projects/fuzz-op/manager/fuzz-op_manager.c`) were read in full for this bug. Two real,
+independent gaps found (not one) - both fixed, both verified working:
+
+**Gap A — `camera_control.c` had no `interact_mode` guard at all** (matches this doc's own earlier
+draft finding, now confirmed and fixed). Contrast with `move_player.c`'s own already-correct
+`if (interact_mode == 0) return 0;`. Fixed by adding the identical guard to `camera_control.c`.
+Verified: with `interact_mode=0`, `camera_control.+x 113` (yaw key) left `cam_yaw` completely
+unchanged (180.00 → 180.00); with `interact_mode=1`, the SAME key correctly changed it (180.00 →
+170.00). Both directions confirmed via real before/after reads, not assumed.
+
+**Gap B — the real, deeper one, found by reading `fuzz-op_manager.c`'s own `input_thread()` in
+full**: the canonical reference has an OUTER gate, `is_active_layout()`, checked BEFORE any relayed
+key is even read - it only allows input processing when `pieces/display/current_layout.txt` names
+a real game layout (`game.chtpm`/`fuzz-op.chtpm`/`gl_os` in the reference's own multi-project
+case). `game_dispatch.c` had NO equivalent check anywhere - it unconditionally drained and
+processed `interact_relay.txt` on every tick regardless of which chtpm layout was actually being
+shown. This is the real, structural analog of the reported symptom: any key relayed while looking
+at a DIFFERENT screen than the game (main.chtpm) would still move the camera/hero, invisibly,
+"leaking through" whatever the player was actually looking at.
+
+Fix: ported a `is_active_layout()` function into `game_dispatch.c` itself (mutaclysm only has one
+real game layout, `main.chtpm`, confirmed via direct read of `current_layout.txt` - single
+substring match suffices, no need for the reference's own multi-name list). Matches the
+reference's own EXACT behavior, not just the same spirit: when the layout doesn't match, the
+function returns immediately WITHOUT opening `interact_relay.txt` at all - any already-queued keys
+stay queued untouched (not drained-and-discarded) until the layout becomes active again. Verified
+live: with `current_layout.txt` set to `new_game.chtpm` and a real key (`1002`) sitting in
+`interact_relay.txt`, `game_dispatch.+x` left BOTH `pos_y` unchanged AND the queued key still
+present in the relay file afterward; setting the layout back to `main.chtpm` and re-running
+correctly consumed and processed that same queued key (xlector moved as expected, relay file
+emptied). Both states confirmed via real reads, not assumed.
+
+Both fixes are small, additive, and directly modeled on read-in-full canonical reference code, not
+guessed. Whether Bug 1 and Bug 2 (camera stuck) share a root cause: NO - they are structurally
+related (both are "mutaclysm's dispatch chain is missing a guard fuzz-op has as a first-class
+check") but mechanically independent bugs with independent fixes; Bug 2's own separate root cause
+(missing `selector_x`/`selector_y` sync into `bv_state.txt`) is unaffected by this fix and remains
+open.
+
+================================================================================
+BUG 2 — camera in 1st/2nd person mode doesn't follow hero or xlector; stuck. ROOT CAUSE CONFIRMED,
+REFERENCE: piececraft/board-viewer.
+================================================================================
+Direct user report: "camera in 1rst and 2nd person mode doesn't seem to be following hero or
+xelector. its just stuck."
+
+ROOT CAUSE CONFIRMED (real, direct code read, not inference): `ops/muta_render_3d.c` (verbatim copy
+of board-viewer's own `bv_render_3d.c`) computes its own camera anchor point directly from
+`selector_x`/`selector_y` (~line 1509-1529: `anchor_x = selector_x + 0.5, anchor_z = selector_y +
+0.5`), read via `read_kv_int(state_path, "selector_x", board_w / 2)` where `state_path` =
+`pieces/system/bv_state.txt` (the SAME file `sync_camera_to_bv_state()` in `ops/game_dispatch.c`
+already writes to, added earlier this session to fix the "camera state never reaches the renderer"
+bug). **`sync_camera_to_bv_state()` currently only mirrors camera fields (cam_yaw/cam_pitch/
+cam_pan_*/camera_mode/render_mode) from `hero_01/state.txt` into `bv_state.txt` - it NEVER mirrors
+`xlector_pos_x`/`xlector_pos_y` into `selector_x`/`selector_y`.** Since `bv_state.txt` never has
+these fields, every single read falls back to the hardcoded default `board_w / 2` (literally the
+board's fixed horizontal/vertical center) - the camera anchor is PERMANENTLY STUCK at board-center,
+regardless of where the hero or xlector actually moves. This is not a rendering bug at all - it's a
+missing field in an already-existing sync function.
+
+PRESCRIBED FIX: extend `sync_camera_to_bv_state()` (`ops/game_dispatch.c`) to ALSO read
+`xlector_pos_x`/`xlector_pos_y` from `hero_01/state.txt` and write them as `selector_x`/
+`selector_y` into `bv_state.txt`, using the exact same read_kv_raw()/fprintf() pattern already used
+for the camera fields in that same function. This is a small, additive, low-risk change to a
+function already proven correct for the fields it does handle.
+
+Real, additional confirm-before-declaring-done: `muta_render_3d.c`'s own `anchor_h` (camera eye
+HEIGHT, vertical) is separately derived from `g_xelector_present ? g_xelector_z : current_z + 1.0`
+(~line 1554) - check whether `g_xelector_present`/`g_xelector_z` are populated from a REAL xelector
+piece read (`pieces/xelector_01/state.txt`, board-viewer's own convention) that mutaclysm's own
+architecture may not have an equivalent of (mutaclysm tracks `xlector_pos_x/y` as plain FIELDS on
+`hero_01/state.txt` itself, not a separate `xelector_01` piece/entity the way board-viewer does) -
+if `g_xelector_present` is always false for mutaclysm's own real setup, `anchor_h` silently falls
+to the `current_z + 1.0` fallback, which may itself be fine or may need a similar sync fix. Verify
+this doesn't need the SAME class of fix as the X/Z anchor before considering Bug 2 fully resolved.
+
+================================================================================
+BUG 3 — possession model needs to be fuzz-op's real model (Enter=possess, configurable
+release-key=release), NOT board-viewer's simpler always-toggle-on-9.
+================================================================================
+Direct user report + DIRECT CORRECTION (2026-08-18, after this doc's own first draft proposed
+board-viewer's simpler toggle model): "fuzz-op is more accurate. enter to posses, 9 to release.
+(also it doesn't have to be nine, hardcoded should be in a config file) u say always toggle 9 is ok
+but its not working in muta so we need 2 do something that works."
+
+REAL, CONFIRMED CANONICAL REFERENCE (read in full this pass, not summarized from memory):
+`1.TPMOS_c_+rmmp.0103.0001/projects/fuzz-op/manager/fuzz-op_manager.c`, function `route_input()`
+(~line 539-630). The REAL, canonical model is NOT a toggle at all:
+- `key == '9' || key == 27 || key == 2008` (9, ESC, or joystick button 8) → if not already
+  controlling the xlector, ALWAYS sets `active_target_id = "xlector"` and returns. One-directional
+  release, not a toggle - pressing this key while ALREADY on xlector is a real no-op (the guard
+  `if (strcmp(active_target_id, "xlector") != 0)` skips it).
+- `strcmp(active_target_id, "xlector") == 0 && (key == 10 || key == 13 || key == 2000)` (Enter, or
+  joystick button 0) → checks whether the xlector's CURRENT position matches any real entity's own
+  position in `projects/<project>/pieces/` (skipping AI-controlled entities like zombies), and if
+  so, POSSESSES that entity (`active_target_id` becomes the entity's own id) - this is the real
+  "walk onto it and press Enter" possession model, matching mutaclysm's own choice.c header comments
+  ("sec. 32", "panel commit") which already correctly referenced this as the real precedent.
+
+board-viewer's own simpler always-toggle-on-`9` model (which this doc's own first draft
+recommended) is a DELIBERATE SIMPLIFICATION of this real model (board-viewer's own code comment,
+already read earlier this session, explicitly says so: "Real precedent is MORE specific than a
+plain toggle... a real, deliberate simplification of that precedent is fine here" - justified there
+specifically because board-viewer only ever has ONE possessable target, hero_01, so toggle-vs-
+walk-onto-and-confirm made no practical difference for that narrow case). Direct user correction:
+that simplification is NOT what's wanted for mutaclysm - use the real fuzz-op model.
+
+PRESCRIBED FIX (revised, replaces this doc's own earlier draft):
+1. Rewrite `choice.c`'s own key handling for possession to match `route_input()`'s real shape:
+   - A real, CONFIGURABLE release key (read from a config file - `pieces/system/keybinds.txt`
+     already exists per `mua_menu_input.c`'s own header comment referencing it as "config-driven
+     (keybinds.txt) key dispatch" - check whether that file is the right place, or whether a
+     new/separate key mapping entry is more appropriate) replaces the hardcoded `'9'` check
+     entirely. Direct user instruction: "it doesn't have to be nine, hardcoded should be in a
+     config file."
+   - Pressing that key while NOT possessing the hero is a real no-op (matches fuzz-op's own real
+     guard) - not currently how mutaclysm's own code is shaped (its own reverse-jump branch DOES
+     something even when unpossessed, per the code read earlier this session).
+   - Pressing Enter while the xlector's position matches the hero's own real position grants
+     possession - mutaclysm's own architecture doesn't need fuzz-op's own generic "scan all
+     entities in pieces/ dir" logic (mutaclysm currently only has ONE possessable target, the
+     hero, matching board-viewer's own narrower real case) - a direct position-match check against
+     `hero_01/state.txt`'s own `pos_x`/`pos_y` is sufficient, no directory scan needed.
+2. Xelector position restore-on-release: fuzz-op's own real `route_input()` does NOT appear (in the
+   portion read this pass) to do a board-viewer-style `pre_possess_x/y/z` save/restore at all - it
+   simply sets `active_target_id` back to `"xlector"` and the xlector's own position stays wherever
+   it currently is (which, if it was being dragged along by hero movement the whole time it was
+   "possessing," is wherever the hero ended up - same real behavior board-viewer's OWN release
+   branch produces before ITS OWN pre_possess restore fix was added). Re-read more of
+   `fuzz-op_manager.c` (only ~90 lines of `route_input()` were read this pass, the full function
+   may be longer - check for a save/restore mechanism further down before assuming none exists)
+   before deciding whether mutaclysm needs one too, or whether "xlector stays where the hero ended
+   up" is the real, correct, intended behavior to match.
+3. "why isn't the current toggle working in muta" - real, NOT yet root-caused. The toggle logic
+   itself was confirmed working via direct state-diff testing earlier this session (interact_mode
+   correctly gated, possessed_id correctly flipped both directions). Given the user reports it
+   "isn't working" now, either (a) something regressed since that earlier test, (b) the working
+   toggle mechanics don't produce a satisfying/correct FEEL even when technically functioning
+   correctly (e.g. because of Bug 2's own camera-stuck issue making possession changes invisible),
+   or (c) a genuinely different, not-yet-found bug. Given the user's own real desire is the fuzz-op
+   model, not the toggle model, this may be moot - implement fuzz-op's real model per the fix above
+   rather than debugging the toggle model further.
+
+================================================================================
+CONFIDENCE LEVELS (honest assessment, not aspirational)
+================================================================================
+
+BUG 1 (interact-mode key leak) — MEDIUM confidence.
+The camera_control.c missing-guard fix itself is trivial and safe to apply (HIGH confidence that
+specific change is correct and harmless). But re-reading chtpm_parser.c's own real INTERACT-relay
+branch this pass (~line 2999-3005) found it STRUCTURALLY IDENTICAL to mutaclysm's own - same
+`inject_raw_key()` call, same `active_index`-based gating, no extra guard there either. This means
+the canonical reference does NOT reveal an obvious additional gap mutaclysm is missing at the
+parser level. The camera_control.c fix addresses a REAL, confirmed code gap, but I'm not fully
+certain it's the SOLE explanation for the live "keys leak through menu" symptom - there may be a
+second, not-yet-found cause. Apply the camera_control.c fix (safe either way), then re-test live
+specifically for the reported symptom before declaring this one closed.
+
+BUG 2 (camera stuck) — HIGH confidence.
+Root cause is concrete and mechanical: one missing field-sync (`selector_x`/`selector_y`) in an
+already-proven-correct function (`sync_camera_to_bv_state()`), causing a hardcoded fallback default
+to always win. The fix is small, additive, and matches an already-working pattern exactly (same
+function, same read/write style, just two more fields). Low risk of the fix itself introducing a
+NEW bug. Real remaining uncertainty is narrow and explicitly flagged above (the `anchor_h`/
+`g_xelector_present` question) - worth a 2-minute check but unlikely to change the overall
+diagnosis.
+
+BUG 3 (possession model) — MEDIUM-LOW confidence, real design work, not a mechanical fix.
+This is genuine feature work (rewrite the possession trigger from "9 toggles" to "Enter possesses
++ configurable-key releases," make the release key config-driven), not a bug patch. The REAL
+reference (fuzz-op_manager.c) is now read and understood for its core shape, but only ~90 lines of
+a 942-line file were read - real risk of missing additional real behavior (position-restore-on-
+release, or other edge cases) further down in that same function or elsewhere in the file. Should
+re-read `route_input()` in FULL, and check for a keybinds/config-file convention already
+established elsewhere in this house (rather than inventing a new one) before implementing. Real,
+non-trivial design decisions remain (exactly which file the configurable release-key lives in,
+whether xlector position needs save/restore or not) - this is the least "just copy the fix" of the
+three, most "make real decisions and build it" of the three.
+
+================================================================================
+TOOLBAR (livedesk-taskbar) CONFIDENCE — LOW, genuinely not yet investigated this session.
+================================================================================
+Direct user question: "how do u feel about tb?" Honest answer: LOW confidence, because the actual
+taskbar source code has NOT been read at all this session (the earlier au11-hq doc,
+`taskbar-keyboard-relay-and-terminal-render.md`, was written from the house testing doc's own
+ALREADY-DOCUMENTED description of the relay mechanism, not from reading tp_taskbar.c's own real
+current code - a real distinction, "I read a description of how this used to work" is not the same
+confidence level as "I read the current code and confirmed X"). A file-path lookup for tp_taskbar.c
+was attempted at the very end of the mutaclysm bug research above and was interrupted before
+completing - so as of this doc, the file hasn't even been LOCATED this session, let alone read.
+Before any real confidence claim can be made: locate the real, current tp_taskbar.c (or whatever
+its real current filename is - it may have moved/renamed, matching book-stack's own real "*.monads"
+prefix convention found elsewhere in the house this session), read its own real
+`poll_agent_relay()`/`agent_relay_dispatch()` functions in full, and get a concrete, reproducible
+description from the user of what specifically goes wrong (which menu, which key, what happens vs.
+expected) - per this same doc's own house testing-guide citation about not building a theory from
+one ambiguous result. Zero of that has happened yet. Do not treat the taskbar doc's own "likely
+reusable pattern" suggestions as confirmed findings - they're reasonable hypotheses from house
+convention, not code-verified yet.

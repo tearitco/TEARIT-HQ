@@ -1,0 +1,4 @@
+last_cmd=LOAD_GAME
+result=ok
+message=loaded slot demo-project
+at=1785227634

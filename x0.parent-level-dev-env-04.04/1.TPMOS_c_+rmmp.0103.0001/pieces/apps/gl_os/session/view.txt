@@ -1,0 +1,5 @@
+DESKTOP_VIEW
+BG: #000044
+WINDOW_COUNT: 2
+WINDOW | 1 | 70 | 70 | 400 | 300 | Terminal 1 | terminal | 0
+WINDOW | 2 | 0 | 25 | 1024 | 713 | PIECECRAFT-3D (Sovereign) | gltpm_app | 0

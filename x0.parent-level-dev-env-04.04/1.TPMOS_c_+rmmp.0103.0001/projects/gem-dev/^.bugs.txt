@@ -1,0 +1,19 @@
+# ^.bugs.txt - Path Completion System Known Bugs
+
+## !! LEGACY STABILITY MANDATE !!
+**CRITICAL**: DO NOT modify `pieces/chtpm/plugins/chtpm_parser.c`. All fixes must be implemented in `projects/gem-dev/manager/gem-dev_manager.c`.
+
+## 1. UX/Behavioral Bugs
+- **Spacebar Trigger Delay**: Suggestions only trigger *after* typing a space after `*` (e.g., `* ` vs `*`).
+    - *Cause*: The input polling loop in the Manager might be buffering or ignoring characters until a whitespace delimiter is detected by the Parser.
+- **Autofill Failure**: Selected paths are correctly identified, but they are not injected into the `cli_io` area (`input_text`) and the menu does not reliably vanish.
+    - *Cause*: Race condition between `handle_choose_path` updating the internal buffer and the Parser refreshing its local copy of `gui_state.txt`.
+- **Menu/Focus UI**: Menu should default to "open" (expanded) and focus should auto-jump to the suggestions header.
+
+## 2. Recommended Manager-Side Fixes
+1.  **Immediate Trigger**: Modify the `polling` loop in `gem-dev_manager.c` to detect `*` immediately without requiring a delimiter. It should check for `*` anywhere in `g_last_buf_input`.
+2.  **Autofill Injection**: Use a "Write-Verify" cycle. In `handle_choose_path`, write the new `input_text` to `gui_state.txt`, then explicitly pulse a `G\n` marker to `frame_changed.txt` to force an *immediate* re-render of the input field.
+3.  **Auto-Focus & Open**: 
+    *   **Open**: Set `g_comp_root_vis = true` immediately upon `*` detection, before the `trigger_render()` call.
+    *   **Focus**: Write the string `comp_root` to `pieces/display/active_gui_index.txt` and call `export_active_index()` or the equivalent Manager-side focus setter immediately after triggering the menu.
+4.  **Menu Cleanup**: Ensure `g_piece_methods` is zeroed out in every possible exit branch of `handle_choose_path` (selection, ESC, BACK).

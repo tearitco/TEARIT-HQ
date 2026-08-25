@@ -1,0 +1,7 @@
+*.tmp
+*.log
+*.receipt.txt
+pieces/sessions/
+/tmp/
+*.o
+tags

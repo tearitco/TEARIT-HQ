@@ -1,0 +1,8 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | user
+META         | version            | 1.0
+META         | entry_layout       | projects/user/layouts/user_main.chtpm
+META         | module_path        | projects/user/manager/+x/user_manager.+x
+STATE        | active_session     | 
+STATE        | session_count      | 0

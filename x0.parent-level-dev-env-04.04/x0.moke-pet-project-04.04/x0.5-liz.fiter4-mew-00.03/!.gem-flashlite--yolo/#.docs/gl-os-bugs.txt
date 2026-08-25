@@ -1,0 +1,49 @@
+# GL-OS Bug Report & Technical Debt
+**Date:** May 30, 2026
+
+## 1. LAYOUT MIRRORING / SOVEREIGNTY BREAKDOWN
+**Bug:** Development projects (`chtmgl-alpha`, `chtmgl-beta`, `media-editor`) often appear with identical or global layouts instead of their unique CHTML files.
+
+**Root Causes:**
+1.  **Static Sovereignty List:** The `sync_with_global_project` function in `gl_desktop.c` uses a hardcoded list of project IDs to skip synchronization. This is fragile and fails as soon as new projects are added.
+2.  **Global Variable Injection:** `gltpm_parser.c` hardcodes the `${game_map}` variable to `pieces/apps/player_app/view.txt`. If a project doesn't provide its own map data, it "leaks" the global terminal map into the GL view.
+3.  **Missing Project Structure:** New projects were created without `session/state.txt` or `manager/gui_state.txt`. The parser expects these files to resolve variables and camera state.
+4.  **Implicit Mirroring:** If a `gltpm_app` fails to load its layout, it doesn't clearly signal failure, often leading to a "ghost" render of the last valid scene or a fallback state.
+
+**Fix Strategy:**
+- Implement a `SOVEREIGN` flag in `project.pdl`. If set to `true`, `gl_desktop.c` must never sync that window with the terminal.
+- Update `gltpm_parser.c` to search for `manager/view.txt` within the project directory before falling back to the global `player_app/view.txt`.
+- Ensure project creation scripts include the full standard directory hierarchy (`session/`, `manager/`, `pieces/`).
+
+## 2. HARDCODED PROJECT PATHS
+**Bug:** Several system-level functions still hardcode paths for specific projects like `emoji-studio`.
+
+**Affected Locations:**
+- `gl_desktop.c`: `load_emoji_studio_voxels()` and resolution logic for specialized windows.
+- `execute_option()`: Contains `if (strcmp(id, "piececraft-3d") == 0)` blocks.
+
+**Fix Strategy:**
+- Move project-specific logic into external "Ops" (+x binaries) that the Host calls via IPC.
+- Use the `project.pdl` `METHOD` section to define specialized launch commands instead of hardcoding them in the C source.
+
+## 3. PARSER TAG LIMITATION (THE "FALLBACK LAYOUT" BUG)
+**Observation:** Even though `chtmgl-alpha`, `beta`, and `media-editor` are now sovereign and loading their correct `.chtmgl` files, the windows appear as empty/dark-blue "fallback layouts".
+
+**Root Cause:**
+1.  **Tag Skipping:** `gltpm_parser.c` is currently hardcoded to only recognize `<scene>`, `<camera>`, `<sprite>`, `<button>`, and `<text>`.
+2.  **Unrecognized Blocks:** When it encounters the new structural tags (`<window>`, `<panel>`, `<header>`) or interactive tags (`<slider>`, `<checkbox>`, `<canvas>`), it skips them entirely.
+3.  **Resulting "Empty" Scene:** Since the new development layouts are built exclusively with these tags, the parser ends up with an empty scene data structure.
+4.  **Host Fallback:** When `gl_desktop.c` receives an empty scene, it renders the default GLTPM Window template (dark blue background, default title).
+
+**Fix Strategy (Handoff to Next Agent):**
+- The next phase of development must involve porting the parsing logic from `#.CHTMGL.E23=cordsclean]💯️/3.view_v0.05]textiles.c` into `gltpm_parser.c`.
+- **First Step:** Teach the parser to recognize `<window>` and `<panel>`.
+- **Second Step:** Map `<panel>` to a 2D viewport or scissor-clipped region in the renderer.
+
+## 4. HANDOFF SUMMARY (MAY 30, 2026)
+**State of the OS:**
+- **Architecture:** Version 3.0 descriptor-driven system is active.
+- **Loading:** Dynamic PDL-based project scanning is functional.
+- **Sovereignty:** `SOVEREIGN | true` flag in PDL works and prevents terminal sync.
+- **Infrastructure:** `chtmgl-alpha/beta` and `media-editor` projects exist with correct hierarchies.
+- **Goal:** Port CHTMGL features into the GL-OS parser/renderer to eliminate the "Fallback Layout" state.

@@ -1,0 +1,30 @@
+# 🎨 DAY 06 — DESCRIBE, don't CLASSIFY 🗣
+# =====================================
+# Title: "🎨 DAY 06 — DESCRIBE, don't CLASSIFY 🗣"
+# Characters: TOMO, RAHWEH, MAXINE, IQA, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), MAXINE (en-GB-MaisieNeural), IQA (en-US-AnaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+
+**TOMO:** We tested this on a real feature: `@.apps/my-biotech`, the FDA-review sibling of my-lawyer. We asked gemma to classify directly — "is this drug review safe or unsafe?" The model was wrong 2 out of 3 times. Two. Out of three. A coin flip with swagger. 🪙
+
+**RAHWEH:** Ouch. So classification is dead.
+
+**TOMO:** Not dead — just not the model's job. We flipped the question. We stopped asking "what's the verdict?" and asked instead "describe this in your own words — compare the two sides." And now the model was right 6 out of 6 times on the description. Then we scored the description ourselves, deterministically, and the verdict came out right. 📈
+
+**MAXINE:** Wait — so the model gets it right when it's not being judged, and the computer gets it right when it does the judging?
+
+**TOMO:** *nods* Now you see the trick. **Small models describe reliably. They classify unreliably. So we use them for raw material, and we use code for decisions.
+
+**TOMO:** Look at `ops/mylawyer_judge_worker.c`. The judge's job is to pick a winner for a case. Here's the shape: 1. 🗣️ Ask gemma to compare in its own words — "In two sentences, which side has the stronger case and why?" Real prose, real reasoning-ish material. The model's comfort zone. 2. 🧮 Feed that text into a deterministic, hand-authored keyword scorer — classifycomparison() — which looks for strength words, weak words, etc. 3. ⚖️ Tiebreakers, in order: argument count → document length → default. Code decides, always. The model produces the clay. We sculpt the statue. 🗿
+
+**IQA:** So the judge never actually judges?
+
+**TOMO:** The *code* judges. The model is a witness who gives testimony. 🧑⚖️
+
+**THE NARRATOR:** This principle is so important it's engraved in the house's standards as PITFALL 69 (in !.xyzos-pitfalls+1.txt) and §42 of !.xyzos-standards+1.txt. The lesson, in one line: ⚠️ Never let the LLM be the final decider. Keep outcome decisions out of the LLM; use the LLM for raw material, and score it yourself.
+
+**MAXINE:** Number *69*? The house really thought this one was foundational.
+
+**TOMO:** And funny. The Boss has a sense of humor about eternal truths. 😄
+
+**TOMO:** And when you stop making it *decide* things, that talking becomes *reliable*. Use the tool for what it's good at. 🧰

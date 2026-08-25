@@ -1,0 +1,13 @@
+<panel time_reactive="true">
+    <module>${module_path}</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|                       Z O O _ 0 0 0 0                     |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <button label="Control Zoo" onClick="INTERACT" /><br/>
+    <button label="Feed" onClick="KEY:2" /><text label="  " /><button label="Pet" onClick="KEY:3" /><text label="  " /><button label="Play" onClick="KEY:4" /><text label="  " /><button label="Export" onClick="KEY:5" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label=" [enter] Control Zoo  [esc, while controlling] Back to Menu  (Ctrl+C to quit)" /><br/>
+</panel>

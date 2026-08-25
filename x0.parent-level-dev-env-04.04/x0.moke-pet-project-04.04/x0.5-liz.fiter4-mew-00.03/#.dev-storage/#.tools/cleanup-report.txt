@@ -1,0 +1,122 @@
+================================================================================
+CLEANUP REPORT - April 1, 2026
+================================================================================
+
+DELETED FILES & DIRECTORIES
+---------------------------
+
+ROUND 1: Legacy Apps & Structures (1.2MB)
+  1. projects/trunk/legacy_archive/     (1.2MB)
+     - fuzzpet_app/ (legacy pet app, replaced by projects/fuzz-op/)
+     - editor/ (legacy editor, replaced by projects/op-ed/)
+     - gl_os/ (legacy GL desktop, replaced by projects/gl-os/)
+  
+  2. pieces/world/                      (~100KB)
+     - map_01/ (old world structure)
+  
+  3. pieces/clock/                      (~8KB)
+     - state.txt
+
+ROUND 2: Reference & Misc (180KB)
+  4. #.ref/                             (~80KB)
+     - legacy_scripts/ (old scripts we moved)
+  
+  5. x/                                 (~100KB)
+     - misc old files (kbd-mod-prompt.txt, past-look-52.00.txt, etc.)
+
+ROUND 3: Empty Directories
+  - #.ref/legacy_scripts/pieces/
+  - pieces/chtpm/renderers/+x/
+  - pieces/system/input_dispatcher/plugins/+x/
+  - pieces/system/kvp_db/plugins/+x/
+  - projects/trunk/
+  - projects/lsr/pieces/* (empty subdirs)
+  - projects/demo_1/config/
+  - projects/template/scripts/
+  - projects/ai-labs/pieces/*
+  - projects/blank/*
+
+
+SIZE REDUCTION
+--------------
+
+Original:    ~8.0MB (estimated)
+After R1:    6.8MB  (saved 1.2MB legacy apps)
+After R2:    6.6MB  (saved 180KB ref+misc)
+Final:       6.6MB
+
+Total Saved: ~1.4MB (17.5% reduction)
+
+
+WHAT REMAINS (LEGITIMATE FILES)
+-------------------------------
+
+✓ projects/ - 1.1MB (ACTIVE PROJECTS - keep)
+  - test_fondu/, user/, fuzz-op/, op-ed/, etc.
+
+✓ pieces/ - 3.8MB (SYSTEM COMPONENTS - keep)
+  - apps/installed/, player_app/, playrm/, man-*, op-ed/, user/
+  - chtpm/, display/, keyboard/, system/, os/, etc.
+
+✓ #.docs/ - 460KB (DOCUMENTATION - keep)
+  - OPS_DICTIONARY.txt, !TPM2.PAL.MONOLITH+0.md, etc.
+
+✓ #.main/ - 200KB (MAIN DOCUMENTATION - keep)
+  - fondu-*.txt, redundant.txt, CODEBASE_MAP.txt, etc.
+
+✓ TPMOSTEXTBOOK_v03.00/ - 168KB (TEXTBOOK - keep)
+
+✓ #.tools/ - 656KB (TOOLS - keep)
+  - size_audit.sh, check_size.sh, fix_terminal.sh, etc.
+
+✓ !.gl-os_2do/ - 104KB (GL-OS PLANNING - kept per request)
+
+✓ #.testing/ - 72KB (TESTING - useful for QA)
+
+✓ !.file2do/ - 24KB (TODO notes - keep)
+
+✓ #.plans/ - 20KB (FUTURE PLANS - keep)
+
+
+OPTIONAL FURTHER CLEANUP (LOW PRIORITY)
+---------------------------------------
+
+1. !.gl-os_2do/ - GL-OS planning docs (104KB)
+   Status: KEPT per request, but can delete if GL-OS is deprecated
+
+2. #.testing/ - Test scripts (72KB)
+   Review: Keep only what's needed for current testing
+
+3. pieces/apps/user/plugins/+x/user_module.+x - Legacy binary
+   (user is now in projects/user/, this is old)
+
+
+TO DELETE MORE (OPTIONAL):
+
+rm -rf #.ref/                    # Old legacy scripts reference
+rm -rf #.gl-os_2do/              # Old GL-OS planning
+rm -rf x/                        # Misc old files
+rm -f pieces/apps/user/plugins/+x/user_module.+x  # Legacy binary
+
+
+FINAL NOTES
+-----------
+
+The project is now lean and focused:
+
+DELETED TOTAL: ~1.4MB (17.5% reduction)
+  - Round 1: Legacy apps (fuzzpet_app, editor, gl_os) + old structures
+  - Round 2: Reference docs (#.ref/) + misc files (x/)
+  - Round 3: Empty directories
+
+FINAL SIZE: 6.6MB
+  - Active projects: 1.1MB (17%)
+  - System components: 3.8MB (58%)
+  - Documentation: 1.0MB (15%)
+  - Tools/testing: 0.7MB (10%)
+
+This is a healthy size for a TPMOS codebase with active development.
+All legacy apps have been removed. All active projects use the modern
+project-based architecture with centralized ops directories.
+
+================================================================================

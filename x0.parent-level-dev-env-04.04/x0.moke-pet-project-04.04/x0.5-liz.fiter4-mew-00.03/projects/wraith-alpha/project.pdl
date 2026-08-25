@@ -1,0 +1,8 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | wraith-alpha
+META         | version            | 0.1
+META         | entry_layout       | projects/wraith-alpha/layouts/alpha-shell.chtpm
+
+STATE        | title              | WRAITH ALPHA
+STATE        | status             | development

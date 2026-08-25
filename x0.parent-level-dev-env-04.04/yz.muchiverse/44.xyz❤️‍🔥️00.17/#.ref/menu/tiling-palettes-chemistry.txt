@@ -1,0 +1,708 @@
+TILING, PALETTES, AND CHEMISTRY COMPOUNDS
+==========================================
+2026-08-24. Companion to the existing tileset.c / tileset.h and the
+chemistry elements/compounds files. This doc explains how tiling works
+in this house (2D and 3D), how RPG Maker animated tiles map to our
+system, guidance for Minecraft/CDDA/DF-style worlds, and how chemistry
+elements + compounds become game palettes.
+
+1. WHAT A "TILE" IS HERE
+------------------------
+A tile is a 32x32 (TILE_PX) cell drawn at a world coordinate. The
+tileset is split into PAGES (RMMV calls them tabs A/B/C/D/R):
+
+  Page A (0) = floors / ground / outdoor
+  Page B (1) = walls / machines / obstacles
+  Page C (2) = furniture / props / decorations
+  Page D (3) = doors / lights / special actors
+  Page R (4) = regions / triggers / invisible tags
+
+Each page has 64 cells (8 cols x 8 rows). A tile id encodes both:
+
+  id = (page << 6) | index
+
+So id 0 = page A cell 0, id 64 = page B cell 0, etc.
+
+2. 2D TILING (CURRENT STATE)
+-----------------------------
+The current 2D renderer is in 201.rpg-maker-clone/src/tileset.c. It
+draws tiles with immediate-mode OpenGL (glBegin(GL_QUADS)). There are
+three layers:
+
+  LAYER 1 - Ground (page A): always drawn first, fills the whole cell.
+  LAYER 2 - Walls/Objects (page B/C): drawn on top, can overlap edges.
+  LAYER 3 - Props/Actors (page C/D): drawn last, highest z-order.
+
+Passability is a simple boolean per tile (tileset_walkable()). If a
+tile is not walkable, the pathfinder treats it as a wall.
+
+2D animation is already proven: water tiles shift their blue channel
+with a sine-like phase, and server racks blink LEDs on a tick counter.
+The trick is a global g_tick that advances every frame; any tile can
+sample (g_tick / speed) & mask to choose between 2-4 sub-frames.
+
+3. 3D TILING (NOT YET IN MUTACLSYM, EXISTS IN PIECECRAFT-WRAITH)
+-----------------------------------------------------------------
+3D in this house means voxels, not polygons. The reference is
+piececraft-wraith's wraith_rgb_daemon.c which does a CPU raymarch:
+
+  - World is a 3D grid of blocks (x, y, z).
+  - For each pixel, cast a ray, step until you hit a non-air block.
+  - Shade the hit face with a simple directional light (dot product
+    of face normal and light vector).
+  - Return flat RGB per face - no textures, no UVs, no GL calls from
+    game code.
+
+This is the same shape mutaclsym's compose_rgb_frame.c already uses
+for 2D (flat color per tile), just with an extra z-axis. The gl_mirror
+blits the result; zero GL in the game logic.
+
+For a raised/elevated view (like classic Dwarf Fortress or old SimAnt),
+you skip the raymarch and instead:
+
+  - Draw the floor tile at the cell's base position.
+  - Draw wall tiles as vertical quads extruded upward from the floor
+    edge, so the player can see both the ground and the front face of
+    walls/buildings.
+  - Sort back-to-front so nearer walls occlude farther ones.
+
+CDDA uses exactly this raised-view model: each tile is a 16x16 pixel
+square drawn on a 2D grid, with walls shown as a floor tile plus a
+taller front face. No true 3D needed.
+
+4. RPG MAKER ANIMATED TILES (A1-A5, B, C, D, E)
+-----------------------------------------------
+RMMV splits tilesets into 5 groups, each with a different animation
+rule. Here is how they map to our system:
+
+  A1 - Autotile Water / Lava / Poison swamp
+       RMMV stores 48 frames per direction in a single tileset cell.
+       The engine picks the frame based on neighbor tiles (the "border
+       autotile" rule: if neighbor is water, blend edge, else show
+       center). In our system, we can do the same with a precomputed
+       lookup table: given the 4-bit neighbor mask, pick one of 16
+       blend sprites. For animation, cycle through 3-4 pre-drawn
+       frames per blend state.
+
+  A2 - Autotile Ground (grass, sand, snow, etc.)
+       Same border rule as A1, but no animation by default. To add
+       animation (like grass swaying), overlay a 2-frame sprite on
+       top and toggle it with g_tick.
+
+  A3 - Autotile Rooftop
+       Border-based, no animation. Used for building tops.
+
+  A4 - Autotile Walls
+       The most complex: RMMV shows 4 heights (low, medium, tall,
+       extra tall) and 4 roof shapes. Each combination is a separate
+       sprite in the tileset. In our system, we can generate these
+       procedurally from a single wall height value:
+
+         wall_height = 1..4
+         roof_type = flat / peak / slant
+
+       The tileset_draw() function already knows how to draw walls
+       (page B). We just need to extrude the quad upward by N pixels
+       and cap it with the roof shape.
+
+  A5 - Autotile Waterfall / Stream
+       Animated 3-frame loop by default. In our system, use the same
+       phase counter as the water tiles: shift the UV offset or cycle
+       3 pre-drawn sprite frames.
+
+  B  - Standard tiles (no autotile)
+      Plain sprites, no neighbor blending. Most buildings and props
+      go here.
+
+  C  - Standard tiles (no autotile)
+      Same as B, but RMMV draws them one row higher (they hang from
+      the top of the cell). In our system, we just offset the draw
+      y by -TILE_PX and let the ground tile show through below.
+
+  D  - Standard tiles (no autotile)
+      Same as B, but drawn on the "roof" layer (above walls). Used
+      for objects that sit on top of buildings.
+
+  E  - Shadows / misc
+      Used for shadow blobs and special effects. In our system, we
+      can draw these as semi-transparent black quads with alpha=0.3.
+
+The key insight: RMMV's animated tiles are just a lookup table from
+(neighbor_mask, animation_phase) -> sprite_frame. We can build that
+table once at tileset_init() and then the renderer is a single array
+index per cell.
+
+5. MINECRAFT / CDDA / DF COMPARISON
+------------------------------------
+Minecraft:
+  - True 3D voxels, 16x16x16 chunks.
+  - Each block has a single texture (or 6 face textures).
+  - No animation per block, but redstone/torch fire is a tick-based
+    frame swap.
+  - Lighting is per-block sky-light + block-light, propagated by
+    flood-fill each tick.
+  - What to steal: chunk-based loading, face culling (skip faces
+    between two solid blocks), tick-based frame selection.
+
+CDDA (Cataclysm: Dark Days Ahead):
+  - 2D square tiles, 16x16 pixels, top-down view.
+  - Each tile is a pair of images: floor (bottom) + wall (top), drawn
+    as a flat square on a 2D grid.
+  - Terrain has "movecost" and "smooth" flags - smooth floors get
+    auto-tiled by neighbor mask, same as RMMV A1.
+  - What to steal: the movecost/passability model, the smooth-flag
+    auto-tiler, the furniture-as-prop model (furniture sits ON a tile
+    but does not block movement unless heavy).
+
+Dwarf Fortress:
+  - ASCII characters in a terminal grid (classic) or 16x16 pixel
+    tiles in a 2D grid (modern premium).
+  - Each character/tile maps to a single cell in the world grid.
+  - The view is slightly elevated so you see both the ground and the
+    front face of taller tiles, but the underlying layout is still a
+    simple 2D array of cells.
+  - Each tile can have up to 4 designations engraved.
+  - The world has a 3D z-axis, but the display is a 2D slice at a
+    given z-level (or a composite of multiple levels).
+  - What to steal: the "dig designation" model (player marks tiles
+    for excavation, workers execute), the material-quality modifier
+    (+/- item value based on raw material grade), the ASCII-to-tile
+    mapping pattern.
+
+6. CHEMISTRY COMPOUNDS AS PALETTES
+-----------------------------------
+The elements file (elements]new=RECIPEZ+]z2🏆.txt) is a recipe tree.
+Every line after the first 118 elements is a compound, and columns
+4-5 point to its parent ingredients by line number.
+
+Example:
+  Water    10  8  10  7  14
+  ^        |   |   |  |  |
+  |        |   |   |  |  +-- parent 2 = Oxygen (line 14)
+  |        |   |   |  +----- parent 1 = Hydrogen (line 7)
+  |        |   |   +-------- mass or count?
+  |        |   +------------- proton count?
+  |        +----------------- neutron count?
+  +-------------------------- electron count?
+
+The exact meaning of columns 2-4 varies by element type, but for
+compounds they represent:
+  col2 = total protons in the molecule
+  col3 = total neutrons in the molecule  
+  col4 = total electrons in the molecule
+  col5 = ingredient A line number (or 0 for elemental sources)
+  col6 = ingredient B line number (or 0)
+
+For elements 1-118, col5 and col6 are:
+  -1 = fundamental particle (quark, electron)
+   0 = synthesized from particles (proton, neutron)
+   1 = natural element from particles
+   5 = natural element from protons/neutrons
+   6 = natural element from H/He fusion
+
+For compounds 126+, col5 and col6 are the parent line numbers. This
+lets you walk the tree backwards: to make Water, you need Hydrogen
+(line 7) and Oxygen (line 14). To make Hydrogen, you need a proton
+(line 6) and an electron (line 3).
+
+7. THE MATH OF COMPOUNDING
+---------------------------
+The compound formula is a DAG (directed acyclic graph), not a tree,
+because ingredients can be reused. Example:
+
+  Methane (line 129) = Carbon(12) + 4*Hydrogen(7)
+  but the file only stores TWO parents: 12 and 7.
+
+This means the recipe system is a "two-parent merge" model. To get
+4 hydrogens, you must merge Hydrogen with itself 3 times, or the
+recipe system must support a "count" field. The current format does
+NOT have a count field, so the math works like this:
+
+  merge(A, B) => {
+    protons = A.protons + B.protons
+    neutrons = A.neutrons + B.neutrons
+    electrons = A.electrons + B.electrons
+    parents = [A.line, B.line]
+  }
+
+  For methane: merge(C, H) gives CH, not CH4.
+  To get CH4, you need a "multiplier" or repeated merge.
+
+Two ways to extend this:
+
+  OPTION A - Add a count column:
+    Methane 10 6 10 12 7 4   (4th col is ingredient A, 5th is B, 6th is count of A)
+    This breaks the 6-column format.
+
+  OPTION B - Introduce "molecular count" compounds:
+    H2  = merge(H, H)          (line 126)
+    H4  = merge(H2, H2)        (line ?)
+    CH4 = merge(C, H4)         (line ?)
+    This keeps every merge a binary operation, but adds many
+    intermediate compounds.
+
+  OPTION C - Keep the file as "conceptual recipe" and let the game
+    code handle stoichiometry at runtime. The file says "Methane
+    needs Carbon + Hydrogen" and the crafting system knows that
+    CH4 means 1 C + 4 H, deducting 4 Hydrogen items even though
+    the file only lists one parent.
+
+OPTION C is the most flexible for gameplay. The file is a "what's it
+made of" list, not a "how many" list. The crafting UI fills in the
+counts from the chemical formula.
+
+8. CHEMISTRY_TILES.CSV FORMAT
+------------------------------
+The CSV adds an emoji, display name, formula string, category, and
+hint to each compound. This is the "visually descriptive and chemically
+descriptive format" the user asked about.
+
+Header:
+  emoji,compound_name,formula,category,hint
+
+Categories used:
+  0 = Acid
+  1 = Alcohol / Solvent
+  2 = Sugar / Carbohydrate
+  3 = Ketone / Organic solvent
+  4 = Base / Amine
+  5 = Aromatic / Industrial
+  6 = Salt / Electrolyte
+  7 = Strong acid
+  8 = Fuel / Alkane
+
+The hint field is the human-readable chemistry note (pKa, odor,
+use case). This is exactly what a palette tooltip should show.
+
+9. MISSING BASIC ELEMENTS AND COMPOUNDS
+---------------------------------------
+The current elements file has all 118 natural elements (H through Og)
+plus 92 compounds. Missing from the "basic game palette" are:
+
+  ELEMENTS (already have all 118, so none missing here)
+
+  SIMPLE INORGANIC COMPOUNDS (missing):
+    - Ammonium (NH4) - fertilizer, cleaning
+    - Carbon Dioxide (CO2) - already present as line 130
+    - Carbon Monoxide (CO) - toxic gas
+    - Hydrogen Peroxide (H2O2) - bleach, rocket fuel
+    - Nitrous Oxide (N2O) - laughing gas, fuel additive
+    - Sulfur Dioxide (SO2) - pollutant, preservative
+    - Nitrogen Dioxide (NO2) - pollutant
+    - Ozone (O3) - disinfectant, upper atmosphere
+    - Saltpeter (KNO3) - fertilizer, gunpowder
+    - Quicklime (CaO) - cement, steel flux
+    - Slaked Lime (Ca(OH)2) - construction, water treatment
+    - Gypsum (CaSO4) - drywall, fertilizer
+    - Table Salt (NaCl) - already present
+    - Baking Soda (NaHCO3) - already present
+    - Washing Soda (Na2CO3) - cleaning
+    - Bleach (NaOCl) - disinfectant
+    - Vinegar (CH3COOH) - already present as Acetic Acid
+    - Ammonium Nitrate (NH4NO3) - fertilizer, explosive
+    - Urea (CH4N2O) - already present
+    - Methane (CH4) - already present
+    - Propane (C3H8) - already present
+    - Butane (C4H10) - already present
+    - Octane (C8H18) - already present
+
+  COMMON ORGANIC COMPOUNDS (missing):
+    - Acetone (C3H6O) - already present in CSV but not in elements file
+    - Glycerol (C3H8O3) - already present in CSV but not in elements file
+    - Ethylene (C2H4) - ripening agent, plastic precursor
+    - Propylene (C3H6) - plastic precursor
+    - Butanol (C4H10O) - solvent, fuel
+    - Hexane (C6H14) - solvent
+    - Heptane (C7H16) - fuel
+    - Benzene (C6H6) - already present in elements file, also in CSV
+    - Toluene (C7H8) - already present in elements file, also in CSV
+    - Phenol (C6H6O) - already present in CSV but not elements file
+    - Aniline (C6H7N) - already present in CSV but not elements file
+    - Formaldehyde (CH2O) - already present in elements file, also in CSV
+    - Acetaldehyde (C2H4O) - preservative, solvent
+    - Acetone (C3H6O) - already in CSV
+    - Ether (C4H10O) - anesthetic
+    - Chloroform (CHCl3) - solvent, historical anesthetic
+    - Freon (CCl2F2) - refrigerant
+    - Citric Acid (C6H8O7) - already in CSV but not elements file
+    - Lactic Acid (C3H6O3) - already in CSV but not elements file
+    - Stearic Acid (C18H36O2) - soap, candle
+    - Oleic Acid (C18H34O2) - olive oil, biodiesel
+    - Linoleic Acid (C18H32O2) - omega-6 fatty acid
+    - Glycerol (C3H8O3) - already in CSV
+    - Sucrose (C12H22O11) - already present
+    - Lactose (C12H22O11) - already present
+    - Maltose (C12H22O11) - malt sugar
+    - Starch ((C6H10O5)n) - already present
+    - Cellulose ((C6H10O5)n) - already present
+    - Chitin (C8H13O5N) - insect shells, fungal walls
+    - Hemoglobin (C2952H4664O832N812S8Fe) - already present as simplified
+    - Chlorophyll (C55H72O5N4Mg) - photosynthesis
+    - Dopamine (C8H11NO2) - already present in CSV but not elements file
+    - Serotonin (C10H12N2O) - already present in CSV but not elements file
+    - Adrenaline (C9H13NO3) - fight-or-flight
+    - Insulin (C257H383N65O77S6) - already present as simplified
+    - Penicillin (C16H18N2O4S) - already present as simplified
+    - Caffeine (C8H10N4O2) - already present
+    - Nicotine (C10H14N2) - stimulant
+    - Morphine (C17H19NO3) - painkiller
+    - Aspirin (C9H8O4) - already present
+    - Ibuprofen (C13H18O2) - already present
+    - Paracetamol (C8H9NO2) - already present in CSV but not elements file
+    - THC (C21H30O2) - cannabis active compound
+    - Cocaine (C17H21NO4) - stimulant/anesthetic
+    - Methamphetamine (C10H15N) - stimulant
+    - Kevlar ((C14H10O2)n) - already present
+    - Nylon-6 (C6H11NO) - polymer
+    - Polyethylene ((C2H4)n) - plastic
+    - Polypropylene ((C3H6)n) - plastic
+    - PVC (C2H3Cl) - plastic
+    - Teflon (C2F4) - non-stick
+    - Kevlar (C14H10O2) - already present
+    - Graphene (C) - already present
+    - Diamond (C) - already present
+    - Graphite (C) - pencil lead, lubricant
+    - Fullerene (C60) - buckyballs, nanomaterials
+    - Carbon Nanotube (C) - already present
+
+  METALS / ALLOYS (missing from elements file, some in CSV):
+    - Brass (Cu + Zn) - already present in elements file
+    - Bronze (Cu + Sn) - already present in elements file
+    - Steel (Fe + C) - already present in elements file
+    - Stainless Steel (Fe + Cr + Ni) - corrosion resistant
+    - Cast Iron (Fe + C + Si) - brittle, heavy
+    - Wrought Iron (Fe + trace C) - malleable
+    - Aluminum (Al) - already present
+    - Titanium (Ti) - already present
+    - Titanium Alloy (Ti + Al + V) - already present
+    - Inconel (Ni + Cr + Fe) - jet engines, rockets
+    - Tungsten Carbide (W + C) - cutting tools
+    - Brass (Cu + Zn) - already present
+    - Pewter (Sn + Pb) - cheap tableware
+    - Solder (Sn + Pb) - electronics
+    - Nichrome (Ni + Cr) - heating elements
+    - Constantan (Cu + Ni) - thermocouples
+    - Wood's Metal (Bi + Pb + Sn + Cd) - low-melt alloy
+    - Galinstan (Ga + In + Sn) - liquid metal thermometer
+
+  FUELS / EXPLOSIVES (missing):
+    - Gunpowder (KNO3 + C + S) - black powder
+    - Cordite (C + H + N + O) - smokeless powder
+    - TNT (C7H5N3O6) - already present in CSV but not elements file
+    - Nitroglycerin (C3H5N3O9) - explosive, medicine
+    - RDX (C3H6N6O6) - military explosive
+    - HMX (C4H8N8O8) - military explosive
+    - Dynamite (nitroglycerin + absorbent) - civilian explosive
+    - ANFO (NH4NO3 + fuel oil) - mining explosive
+    - Hydrogen (H2) - rocket fuel
+    - Ammonia (NH3) - already present
+    - Hydrazine (N2H4) - rocket fuel
+    - RP-1 (kerosene) - rocket fuel
+    - Solid Rocket Fuel (Al + NH4ClO4 + binder) - shuttle boosters
+
+  BIOLOGICAL / FOOD (missing):
+    - Ethanol (C2H6O) - already present
+    - Methanol (CH4O) - already present
+    - Isopropyl Alcohol (C3H8O) - already present in CSV
+    - Vinegar (CH3COOH) - already present as Acetic Acid
+    - Citric Acid (C6H8O7) - already in CSV
+    - Lactic Acid (C3H6O3) - already in CSV
+    - Ascorbic Acid (C6H8O6) - Vitamin C, already in CSV
+    - Retinol (C20H30O) - Vitamin A
+    - Calciferol (C28H44O) - Vitamin D
+    - Tocopherol (C29H50O2) - Vitamin E
+    - Phylloquinone (C31H46O2) - Vitamin K
+    - Thiamine (C12H17N3OS) - Vitamin B1
+    - Riboflavin (C17H21N4O6) - Vitamin B2
+    - Niacin (C6H6N2O) - Vitamin B3
+    - Pyridoxine (C8H11NO3) - Vitamin B6
+    - Cobalamin (C63H88CoN14O14P) - Vitamin B12
+    - Folate (C20H19N7O6) - Vitamin B9
+    - Biotin (C10H16N2O3S) - Vitamin B7
+    - Omega-3 (C22H32O2) - already present as simplified
+    - Omega-6 (C18H32O2) - already present as simplified
+    - Omega-9 (C18H34O2) - oleic acid
+    - Glutamate (C5H9NO4) - umami
+    - Glycine (C2H5NO2) - already present
+    - Serine (C3H7NO3) - amino acid
+    - Alanine (C3H7NO2) - amino acid
+    - Valine (C5H11NO2) - amino acid
+    - Leucine (C6H13NO2) - amino acid
+    - Isoleucine (C6H13NO2) - amino acid
+    - Proline (C5H9NO2) - amino acid
+    - Threonine (C4H9NO3) - amino acid
+    - Lysine (C6H14N2O2) - amino acid
+    - Arginine (C6H14N4O2) - amino acid
+    - Histidine (C6H9N3O2) - amino acid
+    - Phenylalanine (C9H11NO2) - amino acid
+    - Tyrosine (C9H11NO3) - amino acid
+    - Tryptophan (C11H12N2O2) - amino acid
+    - Methionine (C5H11NO2S) - amino acid
+    - Cysteine (C3H7NO2S) - amino acid
+    - DNA (C10H12N5O7P) - already present as simplified
+    - RNA (C10H12N5O7P) - already present as simplified
+    - ATP (C10H16N5O13P3) - already present in CSV but not elements file
+
+  DRUGS / PHARMACEUTICALS (missing):
+    - Paracetamol (C8H9NO2) - already in CSV
+    - Ibuprofen (C13H18O2) - already present
+    - Aspirin (C9H8O4) - already present
+    - Morphine (C17H19NO3) - already listed
+    - Caffeine (C8H10N4O2) - already present
+    - Nicotine (C10H14N2) - already listed
+    - Alcohol (C2H6O) - already present as Ethanol
+    - THC (C21H30O2) - already listed
+    - Cocaine (C17H21NO4) - already listed
+    - Methamphetamine (C10H15N) - already listed
+    - LSD (C20H25N3O) - hallucinogen
+    - Psilocybin (C12H17N2O4P) - magic mushroom
+    - Mescaline (C11H17NO3) - peyote
+    - DMT (C12H16N2) - ayahuasca
+    - Ketamine (C13H16ClNO) - anesthetic, dissociative
+    - Fentanyl (C22H28N2O) - synthetic opioid
+    - Heroin (C21H23NO5) - diacetylmorphine
+    - MDMA (C11H15NO2) - ecstasy
+    - Amphetamine (C9H13N) - stimulant
+    - Modafinil (C15H15NO2S) - nootropic
+    - Melatonin (C13H16N2O2) - sleep hormone
+    - SSRIs (C17H18F3NO) - antidepressants
+    - Beta Blockers (C16H21NO2) - heart medication
+    - Insulin (C257H383N65O77S6) - already present as simplified
+
+  MATERIALS / INDUSTRIAL (missing):
+    - Concrete (CaCO3 + aggregate + water) - construction
+    - Asphalt (C + H + S + bitumen) - roads
+    - Glass (SiO2 + Na2CO3 + CaCO3) - already present
+    - Ceramic (Al2O3 + SiO2) - already present
+    - Porcelain (kaolin + feldspar) - fine ceramic
+    - Brick (SiO2 + Al2O3 + Fe2O3) - construction
+    - Cement (CaO + SiO2 + Al2O3) - binder
+    - Plaster (CaSO4 * 0.5H2O) - wall coating
+    - Drywall (CaSO4 * 2H2O + paper) - wall board
+    - Asbestos (Mg3Si2O5(OH)4) - insulation (hazardous)
+    - Fiberglass (SiO2 + binder) - insulation
+    - Carbon Fiber (C + polymer) - lightweight strong material
+    - Kevlar (C14H10O2) - already present
+    - Nomex (C14H10O2) - fire-resistant
+    - Lexan (C16H14O3) - polycarbonate bulletproof glass
+    - Plexiglass (C5H8O2)n - acrylic glass
+    - Neoprene (C10H14ClN) - synthetic rubber
+    - Silicone (C2H6OSi) - sealant, implant safe
+    - Epoxy (C21H25ClO5) - adhesive
+    - Super Glue (C6H9NO2) - cyanoacrylate
+    - Tungsten (W) - already present as element
+    - Tungsten Carbide (WC) - cutting tools
+    - Graphene (C) - already present
+    - Fullerene (C60) - already listed
+    - Aerogel (SiO2 + air) - insulation
+    - Ferrofluid (Fe3O4 + surfactant) - liquid magnet
+    - Mercury (Hg) - already present
+    - Gallium (Ga) - already present
+    - Galinstan (Ga + In + Sn) - liquid metal
+    - Sodium-Potassium Alloy (NaK) - reactive liquid metal
+    - Lithium (Li) - already present
+    - Lithium-ion Battery (LiCoO2 + C + electrolyte) - already present
+
+10. EXPANDED CHEMISTRY_TILES FORMAT
+------------------------------------
+The current CSV has 5 columns. To make it more chemically descriptive
+and visually useful for a palette/tile system, add these columns:
+
+  emoji,compound_name,formula,category,hint,color_hex,state,melting_point,boiling_point,density,toxicity,reactivity,icon_tile,animation_frames
+
+New fields explained:
+
+  color_hex       - dominant color as #RRGGBB, used for tile tinting.
+                     Water = #4488ff, Lava = #ff4400, Poison = #44ff44.
+                     This lets the palette render a correct-colored
+                     swatch without loading the actual sprite.
+
+  state           - solid / liquid / gas / plasma / powder / crystal
+                     Affects which tile sheet the palette picks.
+
+  melting_point   - in Celsius, for temperature simulation.
+  boiling_point   - in Celsius.
+                     If the game has a temperature system, these let
+                     tiles change state (ice -> water -> steam).
+
+  density         - g/cm3, used for buoyancy and layering.
+                     Water = 1.0, Oil = 0.8, Mercury = 13.5.
+                     Liquids with lower density float on water.
+
+  toxicity        - 0..10 scale. 0 = edible, 10 = lethal dose < 1mg.
+                     Used by crafting UI to color-code hazards.
+
+  reactivity      - 0..10 scale. 0 = inert (gold, argon), 10 = explodes
+                     on contact with air (potassium, chlorine trifluoride).
+
+  icon_tile       - filename of the tile sprite to use for this compound
+                     in the palette picker (e.g. "tile_water.png").
+
+  animation_frames - number of frames in the tile's animation loop.
+                      0 = static, 3 = water shimmer, 4 = torch flicker.
+
+Example expanded row:
+
+  💧,Water,H₂O,6,"The universal solvent",#4488ff,liquid,0,100,1.0,0,0,water.png,3
+
+11. RPG MAKER ANIMATED TILES -> OUR TILESET
+-------------------------------------------
+RMMV animated tiles use a 3-frame sprite sheet per cell. The engine
+loops through the frames at a fixed speed (usually 10-20Hz). In our
+system, we already have g_tick. To match RMMV exactly:
+
+  - Each animated tile gets an animation_speed field (toggles per N
+    frames of g_tick).
+  - The palette editor stores 3 sprite filenames per animated cell:
+    frame_A, frame_B, frame_C.
+  - tileset_draw() picks the frame: (g_tick / speed) % 3.
+  - For autotiles (A1-A5), the sprite sheet is 48 cells wide (16
+    autotile variations x 3 frames). The lookup table is:
+
+      neighbor_mask = (N<<0) | (E<<1) | (S<<2) | (W<<3)
+      frame = (g_tick / speed) % 3
+      cell_index = neighbor_mask * 3 + frame
+
+    This is byte-identical to how RMMV picks autotile frames.
+
+12. MINECRAFT-STYLE BLOCK PALETTES
+-----------------------------------
+Minecraft blocks are simpler than RMMV tiles: one texture per face,
+no neighbor blending. To map this to our palette:
+
+  - Add a "block_face" field to the tile definition: top, side, bottom.
+  - The palette stores 3 sprite filenames per block (or 1 if all faces
+    share the same texture).
+  - For 3D voxel mode, the renderer draws the top face with the "top"
+    sprite and the 4 side faces with the "side" sprite.
+  - Animated blocks (fire, lava, water, note block) use the same
+    g_tick frame selection as RMMV tiles.
+
+  Minecraft block categories that map to our pages:
+
+    Page A (ground)  = grass, dirt, sand, gravel, stone, bedrock
+    Page B (wall)    = cobblestone, planks, bricks, glass, metal
+    Page C (prop)    = torches, flowers, crops, chests, beds
+    Page D (special) = doors, trapdoors, fences, ladders, signs
+    Page R (region)  = spawn, bed, portal, pressure plate, button
+
+13. ASCII-TO-2D-TILE CONVERSION (CDDA / DF PATTERN)
+----------------------------------------------------
+Both CDDA and Dwarf Fortress started as pure ASCII games. The screen
+was a grid of characters drawn in a terminal:
+
+  @ = player
+  # = wall
+  . = floor
+  + = closed door
+  > = stairs down
+
+When these games got graphical tilesets, the conversion was simple:
+each ASCII character maps to a 16x16 pixel tile image. The underlying
+game logic never changes - it still thinks in terms of a 2D array of
+characters. The renderer just draws the corresponding image instead
+of the letter.
+
+This is exactly what our tileset already does. A tile id is just an
+index into a sprite sheet. The "ASCII mode" is simply rendering the
+character that corresponds to each tile id instead of the pixel art.
+
+For a dual ASCII+graphics mode:
+
+  - Add an ascii_char field to each tile definition (page A cell 3
+    = 'g' for grass, page B cell 1 = '#' for wall).
+  - The renderer checks a config flag:
+      if (ascii_mode) draw_char(tile.ascii_char, x, y)
+      else          draw_sprite(tile.sprite_id, x, y)
+  - The palette editor shows both: the character in a monospace font
+    and the 32x32 sprite side by side.
+
+CDDA's "smooth floor" auto-tiler works the same way as RMMV A1: it
+looks at the 4 neighbors (N/E/S/W) and picks one of 16 blend sprites
+based on which neighbors are the same terrain type. The only difference
+is that CDDA's tiles are 16x16 and our are 32x32 - the border-lookup
+math is identical.
+
+14. DF-STYLE RAISED-VIEW 2D
+----------------------------
+Dwarf Fortress's graphical view is NOT isometric. It is a 2D grid of
+square tiles, but drawn with a slight elevation angle so walls have
+visible front faces. Each tile cell is 16x16 pixels (in the premium
+tileset), and the view shows one z-level at a time.
+
+The raised-view trick:
+
+  - The floor tile is drawn at the cell's base (screen_y + height).
+  - The wall tile is drawn starting from the floor and extruding
+    upward by N pixels, so you see the wall face.
+  - Taller walls (height 2, 3, 4) extrude more.
+  - Roof tiles are drawn on top of the highest wall.
+
+In our system, this maps directly to tileset_draw()'s existing wall
+code (page B). We already draw walls as quads with height. The only
+addition is a wall_height field (1-4) that controls how many tile
+heights to extrude:
+
+  wall_height = 1  -> draw 1 tile tall (short fence)
+  wall_height = 2  -> draw 2 tiles tall (standard wall)
+  wall_height = 3  -> draw 3 tiles tall (tall building)
+  wall_height = 4  -> draw 4 tiles tall (tower)
+
+DF also supports "ramp" tiles (stairs) which connect two z-levels.
+In a single-level 2D view, these are just floor tiles with a "walk
+up/down" flag. In a multi-level view, the ramp tile draws as a sloped
+quad connecting the lower and upper floor.
+
+15. CHEMISTRY PALETTE UI
+------------------------
+The palette should show compounds as clickable tiles with:
+  - Emoji as the tile icon (from chemistry_tiles.csv).
+  - Formula text below (H₂O, C₆H₁₂O₆).
+  - Color swatch from color_hex.
+  - Tooltip with hint, state, melting/boiling points, toxicity.
+  - "Recipe" button that shows the parent line numbers as ingredient
+    icons, so the player can see "Water = Hydrogen + Oxygen".
+
+When the player drags a compound tile onto the map, the game should:
+  - Spawn a prop entity with the compound's state (solid = wall,
+    liquid = floor with flow, gas = particle effect).
+  - If the compound has animation_frames > 0, attach the tile
+    animation loop to the prop.
+  - If the compound has toxicity > 0, add a "hazard" tag that deals
+    damage over time to entities standing on it.
+  - If the compound has reactivity > 0, add a "reactive" tag that
+    triggers an event when touched by incompatible compounds
+    (e.g. Water + Sodium = explosion).
+
+16. PRACTICALITY NOTES
+----------------------
+  Cheap soon (pure file/kv):
+    - Add col5/col6 parent tracking to elements file (already there).
+    - Add emoji + formula columns to chemistry_tiles.csv (already there).
+    - Extend CSV with color_hex, state, mp, bp, density, toxicity,
+      reactivity (just text fields, no code change).
+    - Add 3-frame animation to tileset.c for water/lava/fire (proven
+      pattern, just extend the phase table).
+
+  Medium (needs new UI):
+    - ASCII mode renderer (char lookup, no sprite draw).
+    - Autotile border lookup table (precompute at init).
+    - Chemistry palette UI with recipe tree view.
+    - Voxel raymarch from piececraft-wraith (already proven C code).
+
+  Deep (whole new systems):
+    - True 3D z-axis in mutaclsym (map data structure, pathfinding,
+      lighting propagation).
+    - Temperature simulation (heat sources, conductivity, phase
+      change at mp/bp).
+    - Real fluid dynamics (water flows downhill, fills cavities).
+    - Chemical reaction engine (reactive pairs + products).
+
+17. MISSING FROM SCRATCH-BRIDGE
+-------------------------------
+These Scratch concepts have NO RMMV equivalent and should be added
+to house-commands.remaining.txt as new event commands:
+  - Broadcast Message (send named event, other entities listen)
+  - Touching? (collision check against entity or tile)
+  - Move Steps (pixel nudge in facing direction)
+  - Switch Costume (swap sprite sheet on the fly)

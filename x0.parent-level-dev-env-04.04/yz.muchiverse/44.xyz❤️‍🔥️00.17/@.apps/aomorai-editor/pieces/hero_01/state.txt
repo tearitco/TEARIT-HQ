@@ -1,0 +1,11 @@
+entity_type=hero
+hp=20
+pos_x=8
+pos_y=8
+pos_z=17
+owner_id=player
+chunk_x=0
+chunk_y=0
+interact_mode=0
+xlector_pos_x=8
+xlector_pos_y=8

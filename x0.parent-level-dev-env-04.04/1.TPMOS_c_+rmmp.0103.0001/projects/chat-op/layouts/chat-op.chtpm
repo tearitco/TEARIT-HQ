@@ -1,0 +1,18 @@
+<panel time_reactive="true">
+    <module>projects/chat-op/manager/+x/chat-op_manager.+x</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+
+    <text label="╔══════════════ C H A T   O P ══════════════════════════════╗" /><br/>
+    <text label="║ STATUS: ${network_status} | ROLE: ${net_role} | PEERS: ${peer_count}          ║" /><br/>
+    <text label="║ MY IP: ${my_ip} | HOST: ${host_ip}                        ║" /><br/>
+    <text label="╠══════════════ CONNECTED PEERS ════════════════════════════╣" /><br/>
+    <scroller id="PEER_LIST" label="${connected_peers_list}" height="3" /><br/>
+    <text label="║ NET: SOCKET (TCP) - HANDSHAKE SYNCED                      ║" /><br/>
+    <text label="╠══════════════ MESSAGE LOG ════════════════════════════════╣" /><br/>
+    <scroller id="MESSAGE_LOG" label="${messages}" height="10" />
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║ Type message:                                             ║" /><br/>
+    <cli_io id="message_input" label="${input_text}" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+    <button label=" [ BACK TO MODE SELECTOR ] " href="projects/chat-op/layouts/mode_selector.chtpm" /><br/>
+</panel>

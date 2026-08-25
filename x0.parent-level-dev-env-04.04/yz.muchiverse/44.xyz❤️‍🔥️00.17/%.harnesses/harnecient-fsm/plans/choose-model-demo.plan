@@ -1,0 +1,7 @@
+# choose-model-demo.plan — proves CHOOSE_MODEL: a cheap classifier
+# model (gemma3:270m) decides SIMPLE vs COMPLEX in plain text for two
+# different real task descriptions, and the harness deterministically
+# switches to the correct target model for each - the model chooses
+# the CLASSIFICATION, never the model name directly.
+CHOOSE_MODEL | give me a one line shell instruction that prints exactly OK-TEST | true
+CHOOSE_MODEL | design and implement a multi-file build system with dependency tracking | true

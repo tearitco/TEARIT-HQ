@@ -1,0 +1,7 @@
+# event.pal — mini interpreter script
+show_text Warp pad to Factory 2.
+transfer factory_2 3 3
+ret
+ret
+ret
+ret

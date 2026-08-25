@@ -1,0 +1,5 @@
+# context-menu widget ops for prisc+x
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}
+cm_menu_input void ops/+x/cm_menu_input.+x {run real method / close / cancel}
+cm_compose_frame void ops/+x/cm_compose_frame.+x {view.txt + gui_state}

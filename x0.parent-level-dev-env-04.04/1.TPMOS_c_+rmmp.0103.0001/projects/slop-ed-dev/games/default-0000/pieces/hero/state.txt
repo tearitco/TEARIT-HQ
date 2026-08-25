@@ -1,0 +1,7 @@
+name=Default Hero
+type=player
+pos_x=9
+pos_y=7
+pos_z=0
+on_map=1
+icon=@

@@ -1,0 +1,62 @@
+# Retrospective: Improvements to Training and Generation Accuracy
+
+## What Was Done
+
+### 1. Integrated Learning Systems
+- Combined feedforward and backpropagation into unified `feedback_tx_module`
+- Implemented proper context windows for attention mechanism
+- Ensured parameters are updated consistently across all modules
+- Connected training and generation to use same parameter update mechanisms
+
+### 2. Transformer-Based Architecture
+- Implemented proper attention computation (Q, K, V projections)
+- Added feedforward networks with SwiGLU activation
+- Included RoPE (Rotary Positional Encoding) for positional information
+- Used RMSNorm for normalization
+
+### 3. Shared Parameter Space
+- Curriculum files serve as central data store
+- All modules read/write to same parameter files
+- Parameters updated by one module are available to others
+- Ensured continuity between training and generation
+
+### 4. Proper Context Windows
+- Used sliding windows of multiple tokens for prediction context
+- Implemented causal attention to respect sequential nature
+- Applied attention weights based on query-key similarity
+- Enabled context-aware token prediction
+
+## What Could Be Improved Further
+
+### 1. More Sophisticated Gradients
+- Implement proper gradient computation through entire network
+- Use chain rule for true backpropagation
+- Add momentum and adaptive learning rates
+- Better loss functions for sequence modeling
+
+### 2. Enhanced Attention Mechanism
+- Multi-head attention with proper head aggregation
+- More sophisticated QKV projection computation
+- Cross-attention for different contexts
+- Sliding window attention for longer sequences
+
+### 3. Better Parameter Sharing
+- Ensure all modules update same parameter spaces
+- Implement parameter freezing/thawing strategies
+- Add regularization to prevent overfitting
+- Use parameter-efficient fine-tuning methods
+
+### 4. Optimized Architecture
+- Layer normalization improvements
+- Better activation functions 
+- Residual connections optimization
+- Gradient checkpointing for memory efficiency
+
+## Attention Map Feature
+
+The attention map functionality will:
+- Track attention weights between tokens in curriculum
+- Record Q, K, V interactions during training/generation
+- Output attention scores to attention_map.txt
+- Enable visualization of what tokens attend to what others
+- Facilitate debugging and model interpretation

@@ -1,0 +1,36 @@
+user|text||hi
+assistant|text||Hi there! I'm here to help you with your tasks. Just let me know what you need.
+assistant|text||Hi there! I'm here to help you with your tasks. Just let me know what you need.
+tool|info||Available models:\n  - groq-tool-use-mac\n  - gemma-lan\n  - gemma-local\n  - gemini-flash\n  - cpp-llm-mac\n  - iqabod-test\n  - iqabod-daily-life\n  - random-words\n
+user|text||hi
+assistant|text||Hi! How can I help you today?
+user|text||hi
+assistant|text||Hi! I'm here to help you with your tasks. Just let me know what you need.
+user|text||new
+assistant|text||Hi! I'm here to help you with your tasks. Just let me know what you need.
+user|text||hi
+assistant|text||Hi! I'm here to help you with your tasks. Just let me know what you need.
+user|text||hola
+assistant|text||Hi! I'm here to help you with your tasks. Just let me know what you need.
+tool|info||Available models:\n  - groq-tool-use-mac\n  - gemma-lan\n  - gemma-local\n  - gemini-flash\n  - cpp-llm-mac\n  - iqabod-test\n  - iqabod-daily-life\n  - random-words\n
+user|text||hi
+user|text||hi
+assistant|text||Hi! I'm here to help you with your tasks. Just let me know what you need.
+user|text||hi
+assistant|text||Hi! I'm here to help you with your tasks. Just let me know what you need.
+user|text||list dir
+user|text||test
+assistant|tool_call|list_dir|{\n                "path": "dirtest"\n              }
+tool|text|list_dir|config/
+user|text||how are u ?
+assistant|text||I'm a large language model, so I don't have feelings or a personal state like humans do. However, I'm ready and eager to assist you with any coding, architecture, or documentation tasks you have! How can I help you today?
+user|text||make a test file test-file.txt
+assistant|tool_call|write_file|{\n                "path": "test-file.txt",\n                "content": ""\n              }
+tool|text|write_file|
+user|text||write file new-file.txt containing "help me!"
+assistant|tool_call|write_file|{\n                "content": "help me!",\n                "path": "new-file.txt"\n              }
+tool|text|write_file|
+user|text||read file jul-21.txt
+assistant|tool_call|read_file|{\n                "path": "jul-21.txt"\n              }
+tool|text|read_file|Error: tool execution failed or produced no output.
+user|text||hello how are you

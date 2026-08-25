@@ -1,0 +1,10 @@
+
+
+
+fuzz op documentation didn't go up 2 xelector or past. 
+so asking it 2 fix gloz was kinda 'dumb' i get it now. 
+
+we can update hardcoded also . then we can delete it soon
+
+
+(gltpm has LOTS of dox related to setup/ pipes but not up 2 xelector ;) 

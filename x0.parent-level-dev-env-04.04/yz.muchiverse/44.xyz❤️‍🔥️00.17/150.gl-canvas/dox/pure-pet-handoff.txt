@@ -1,0 +1,382 @@
+pure-pet-handoff.txt — Full Session Handoff
+============================================
+Created: 2026-07-26
+Purpose: Complete context dump for task handoff. Everything the next agent
+         needs to know about this session's work.
+
+======================================================================
+PART 1: SESSION SUMMARY (what we did, in order)
+======================================================================
+
+PHASE 1 — Xdnd Bug Fixing (egg_window + gl_mirror)
+----------------------------------------------------
+We found and fixed 6 bugs in the Xdnd drag-and-drop protocol between
+muchi-pals' egg_window (drag SOURCE) and mutaclsym's gl_mirror (drag
+TARGET). Both projects compile via their own button.sh / scripts/build.sh.
+
+Bug 1: gl_mirror had glutIdleFunc(NULL) that overwrote glutIdleFunc(check_xdnd_events)
+  Location: gl_mirror.c old lines 850-855
+  Fix: Removed the overwrite
+
+Bug 2: gl_mirror used XOpenDisplay(NULL) — separate X11 connection can't
+  receive ClientMessage events destined for GLUT's connection
+  Fix: Replaced with freeglut's fgDisplay.Display (extern hack)
+
+Bug 3: egg_window used XQueryPointer to find drag target — returns egg_window
+  itself since it's override_redirect/topmost
+  Fix: Replaced with XQueryTree + XGetGeometry enumeration of root children
+
+Bug 4: egg_window sent XdndSelection as ClientMessage — broken, target must
+  request via XConvertSelection
+  Fix: Replaced with proper XConvertSelection() call in gl_mirror
+
+Bug 5: egg_window didn't call XSetSelectionOwner on drag start — target
+  couldn't request the pet_id
+  Fix: Added XSetSelectionOwner(dpy, XA_XdndSelection, win, CurrentTime)
+
+Bug 6: egg_window sent spurious XdndLeave after XdndDrop — protocol violation
+  Fix: Removed the XdndLeave after ButtonRelease
+
+All bugs documented in: drag-drop-bugs.txt (at project root)
+
+Both projects compile clean after fixes:
+  mutaclsym: bash scripts/build.sh (or button.sh compile)
+  muchi-pals: bash button.sh compile
+
+PHASE 2 — Documentation
+-------------------------
+Wrote x-window-move.md to 01.muchi-pals/dox/ explaining:
+  - How egg_window moves (4 XMoveWindow call sites)
+  - state.txt polling (grid_x/grid_y/z → pixels)
+  - drag_drop_test.pdl position injection
+  - The complete movement pipeline (tick_pets → state.txt → egg_window)
+
+PHASE 3 — gl-canvas Project
+------------------------------
+Created a new project: gl-canvas/
+Purpose: Minimal Xdnd drop target for pet drag-and-drop testing.
+Inspired by user: "i want to create a new dir called gl-canvas that will
+specifically do nothing but wait for drag and drop of pet on it, then
+render pet in canvas, and pet x window will go away"
+
+Created:
+  gl-canvas/dox/canvas-gl-architecture.md — full architecture doc
+  gl-canvas/dox/pet-only.txt — egg_window vs pet_purely comparison
+  gl-canvas/system/pet_purely.c — minimal draggable pet (283 lines)
+  gl-canvas/system/gl_canvas.c — Xdnd drop target (freeglut)
+  gl-canvas/system/import_pet.c — receipt writer + close request
+  gl-canvas/button.sh — compile/run/kill
+  gl-canvas/test-harn/ops/tk_drag_sim.c — XSendEvent drag simulator
+  gl-canvas/test-harn/ops/tk_screenshot.c — X11 screen capture (PPM)
+  gl-canvas/test-harn/scenarios/test_drag_drop.sh — end-to-end test
+
+All 5 binaries compile clean (warnings only, no errors).
+
+PHASE 4 — Runtime Testing (partially complete)
+-------------------------------------------------
+Screenshot tool works: XCopyArea to pixmap, XGetImage, saves PPM.
+pet_purely launches (pid alive) but window not visible in XQueryTree.
+gl_canvas launches but Xdnd init via fgDisplay.Display unverified.
+Drag sim untested (depends on windows being visible).
+
+Two remaining issues for next agent:
+  1. pet_purely window visibility
+  2. End-to-end drag test
+
+======================================================================
+PART 2: PROJECT STRUCTURE
+======================================================================
+
+All projects live under:
+  /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.12/
+  x0.parent-level-dev-env-04.03/yz.muchiverse/44.xyz❤️‍🔥️00.07/
+
+Shortened as $ROOT below.
+
+Key projects:
+  $ROOT/01.muchi-pals-🥚️-13.01/   — pet game (egg_window lives here)
+  $ROOT/101.mutaclsym🧟‍♂️️+18.01/    — roguelike (gl_mirror lives here)
+  $ROOT/gl-canvas/                 — new test project (this session)
+  $ROOT/044.pal-chat-irc👥️+2/     — reference test harness pattern
+  $ROOT/drag-drop-bugs.txt         — 6 bug reports
+  $ROOT/drag-drop-how2.md          — drag-drop test guide (some outdated)
+
+======================================================================
+PART 3: KEY FILE LOCATIONS
+======================================================================
+
+gl-canvas/ (the new project):
+  system/pet_purely.c              — 283 lines, minimal draggable pet
+  system/gl_canvas.c               — Xdnd drop target (freeglut)
+  system/import_pet.c              — import receipt + close request
+  button.sh                        — compile/run/kill verbs
+  test-harn/ops/tk_drag_sim.c     — XSendEvent drag simulator
+  test-harn/ops/tk_screenshot.c   — X11 capture to PPM
+  test-harn/scenarios/test_drag_drop.sh — full test scenario
+  dox/canvas-gl-architecture.md    — architecture document
+  dox/pet-only.txt                 — egg_window vs pet_purely
+  dox/pure-pet-handoff.txt         — THIS FILE
+
+01.muchi-pals/:
+  system/egg_window.c              — 1292 lines, production pet window
+  dox/x-window-move.md             — movement mechanics doc
+
+101.mutaclsym/:
+  system/gl_mirror.c               — 874 lines, RGB mirror + Xdnd target
+  drag-drop-bugs.txt               — at $ROOT root
+
+======================================================================
+PART 4: pet_purely vs egg_window (detailed)
+======================================================================
+
+pet_purely is a TEST STUB, not a copy of egg_window.
+
+What it KEEPS from egg_window:
+  - Raw X11 + GLX window creation (no freeglut)
+  - override_redirect borderless window
+  - 80x80 pixel size (same as egg_window's GRID_CELL_PX)
+  - Mouse drag: ButtonPress → MotionNotify → ButtonRelease
+  - Xdnd source protocol (XdndAware, Enter/Position/Drop, SelectionRequest)
+  - XSetSelectionOwner on ButtonPress
+  - XQueryPointer + XQueryTree target detection
+  - SelectionRequest handler (sends pet_id as text/plain)
+
+What it STRIPS from egg_window:
+  - Sprite loading (sprite.csv + emoji atlas)
+  - X11 Shape Extension masking (pet silhouette)
+  - state.txt polling (grid_x/grid_y/z/tick_seq)
+  - Autonomous movement (XMoveWindow from state.txt)
+  - Self-tick (shelling out to tick_pets)
+  - Grid snap on drop
+  - write_pet_position() (state.txt writeback)
+  - drag_drop_test.pdl polling
+  - Close request file polling (/tmp/egg_window_close_*.txt)
+  - Facing direction tracking
+  - Icon overlays (sleep, poop)
+  - Tick config reading
+
+pet_purely renders: solid colored quad (hash of pet_id → RGB)
+egg_window renders: GL texture of pet sprite + icon overlays
+
+pet_purely position: argv[1]=pet_id, argv[2]=x, argv[3]=y
+egg_window position: state.txt polling + drag_drop_test.pdl polling
+
+See gl-canvas/dox/pet-only.txt for full comparison table.
+
+======================================================================
+PART 5: HOW THE Xdnd PROTOCOL WORKS (for this project)
+======================================================================
+
+SOURCE (egg_window or pet_purely) → TARGET (gl_canvas or gl_mirror)
+
+1. ButtonPress on source:
+   - source calls XSetSelectionOwner(XA_XdndSelection)
+   - Records drag_start_x/y from xbutton.x_root/y_root
+
+2. MotionNotify on source (while button held):
+   - source calls XQueryPointer → gets root_x, root_y (actual cursor pos)
+   - source calls XQueryTree(root) → enumerates all root children
+   - source checks XGetGeometry on each child → finds which window
+     the cursor is inside (the TARGET)
+   - If new target: sends XdndLeave to old, XdndEnter to new
+   - Sends XdndPosition to current target
+
+3. Target receives XdndPosition:
+   - Replies with XdndStatus (l[1]=1 means accepting)
+
+4. ButtonRelease on source:
+   - source sends XdndDrop to target
+   - source clears xdnd_target, xdnd_have_target
+
+5. Target receives XdndDrop:
+   - Calls XConvertSelection(XA_XdndSelection, XA_text_plain, ...)
+
+6. X server sends SelectionRequest to source:
+   - Source responds with pet_id string via XChangeProperty
+
+7. Target receives SelectionNotify:
+   - Reads pet_id from property
+   - Runs import_pet(pet_id)
+   - Writes /tmp/egg_window_close_<pet_id>.txt
+   - Sends XdndFinished to source
+
+8. Source receives XdndFinished:
+   - Cleans up xdnd_target, xdnd_have_target
+
+9. Source detects close request file:
+   - Reads and removes /tmp/egg_window_close_<pet_id>.txt
+   - Exits
+
+CRITICAL: Xdnd uses ClientMessage events. These are delivered only to
+the X11 connection that CREATED the window. That's why gl_mirror must
+use freeglut's fgDisplay.Display (the same connection glutCreateWindow
+used), not XOpenDisplay(NULL) (a different connection).
+
+======================================================================
+PART 6: TEST HARNESS PATTERN
+======================================================================
+
+Follows the 044.pal-chat-irc/test-harn-same/ pattern:
+  - Small self-contained C binaries in ops/
+  - No shared headers, no shared libs
+  - Each binary is a standalone CLI tool
+  - argv-based arguments, stdout for output, exit 0/1
+  - Compiled with: gcc -std=c11 -Wall -Wextra -O2
+
+Test harness ops:
+  tk_drag_sim    — finds windows by title (XFetchName), simulates drag
+                    via XWarpPointer + XSendEvent (ButtonPress → 40 step
+                    MotionNotify → ButtonRelease). Pure X11, no xdotool.
+  tk_screenshot  — captures root window via XCopyArea → pixmap →
+                    XGetImage → PPM file. 2496x1664 on current display.
+
+Test scenario (test_drag_drop.sh):
+  1. Kill prior instances
+  2. Screenshot baseline
+  3. Launch gl_canvas (background)
+  4. Launch pet_purely at (100,100) (background)
+  5. Screenshot both windows
+  6. Run tk_drag_sim(pet_id, "gl-canvas", 10ms_delay)
+  7. Wait 3 seconds
+  8. Screenshot after drop
+  9. Verify: imported_pets.txt contains pet_id
+  10. Verify: close request file consumed
+  11. Cleanup
+
+======================================================================
+PART 7: KNOWN ISSUES / TODO
+======================================================================
+
+ISSUE 1: pet_purely window not visible in XQueryTree
+  Symptom: Process runs (kill -0 succeeds) but window doesn't appear
+           in the window listing (XQueryTree on root finds no match)
+  Possible causes:
+    - XMapWindow not completing (XSync needed after?)
+    - Window created on wrong screen/visual
+    - Override_redirect windows not appearing as root children on
+      this WM (mutter/gnome-shell)
+    - GLX visual creation failing silently
+  Debug: Run pet_purely manually, use xlsclients or xwininfo to check
+  Status: UNRESOLVED
+
+ISSUE 2: gl_canvas fgDisplay.Display hack
+  Symptom: Untested. The extern struct hack may not work if freeglut's
+           internal layout differs from what we declared.
+  Debug: Check stderr for "Xdnd initialized on window" message
+  Status: UNRESOLVED
+
+ISSUE 3: tk_drag_sim synthetic events
+  Symptom: Untested. XSendEvent events may not be processed correctly
+           by pet_purely/egg_window if they check send_event flag.
+  Note: Neither egg_window nor pet_purely check send_event, so this
+        should work. But unverified.
+  Status: UNTESTED
+
+ISSUE 4: Test script path resolution
+  Symptom: Fixed once (DIR was resolving to test-harn/ instead of
+           gl-canvas/). May have other path issues.
+  Status: FIXED but untested after fix
+
+======================================================================
+PART 8: BUILD INSTRUCTIONS
+======================================================================
+
+gl-canvas (all binaries):
+  cd $ROOT/gl-canvas
+  bash button.sh compile
+  # Compiles: gl_canvas (-lglut -lGL -lGLU -lX11)
+  #           import_pet (no libs)
+  #           pet_purely (-lX11 -lXext -lGL -lm)
+  #           tk_drag_sim (-lX11)
+  #           tk_screenshot (-lX11)
+
+Run gl_canvas:
+  cd $ROOT/gl-canvas && PRISC_PROJECT_ROOT=$ROOT/gl-canvas ./system/gl_canvas &
+
+Run pet_purely:
+  cd $ROOT/gl-canvas && PRISC_PROJECT_ROOT=$ROOT/gl-canvas ./system/pet_purely <pet_id> [x] [y] &
+
+Run full test:
+  bash $ROOT/gl-canvas/test-harn/scenarios/test_drag_drop.sh
+
+Kill all:
+  bash $ROOT/button.sh kill
+
+egg_window (for comparison):
+  cd $ROOT/01.muchi-pals-🥚️-13.01
+  bash button.sh compile
+  ./system/egg_window <pet_id>
+
+======================================================================
+PART 9: ENVIRONMENT
+======================================================================
+
+Display: :0 (X.Org, x86_64)
+GLX: Yes (SGI, direct rendering)
+Freeglut: 2.8.1 (freeglut3-dev installed)
+GL: Mesa 23.2.1 (libgl1-mesa-dev)
+X11: X.Org 1.22.1.1
+Compiler: gcc (std=c11)
+Window manager: mutter/gnome-shell (GNOME)
+No xdotool (not installed, no sudo)
+No Xvfb
+Screenshots: 2496x1664 resolution
+
+======================================================================
+PART 10: WHAT TO DO NEXT
+======================================================================
+
+Priority 1: Fix pet_purely window visibility
+  - Run pet_purely manually, check with xlsclients -l
+  - Try adding XFlush(dpy) after XMapWindow
+  - Try removing override_redirect (let WM manage it)
+  - Check stderr for any GLX errors
+
+Priority 2: Verify gl_canvas Xdnd init
+  - Launch gl_canvas, check stderr for "Xdnd initialized"
+  - If fgDisplay.Display fails, rewrite with raw X11 (like pet_purely)
+
+Priority 3: Test drag sim
+  - Once both windows are visible, run tk_drag_sim
+  - Check stderr on pet_purely for XdndPosition messages
+  - Check stderr on gl_canvas for "got pet_id='...'"
+
+Priority 4: Full scenario
+  - Run test_drag_drop.sh end-to-end
+  - Verify screenshots show the progression
+  - Verify imported_pets.txt is created
+
+Priority 5 (optional): Sprite rendering in gl_canvas
+  - Load pet sprite from muchi-pals pieces directory
+  - Render as GL texture instead of colored quad
+  - This makes gl_canvas a real "canvas" not just a test target
+
+======================================================================
+PART 11: REFERENCE DOCS (all written during this session)
+======================================================================
+
+$ROOT/gl-canvas/dox/canvas-gl-architecture.md
+  Full architecture of gl-canvas project. Directory structure,
+  Xdnd protocol flow, display() rendering, compilation, env vars.
+
+$ROOT/gl-canvas/dox/pet-only.txt
+  Detailed comparison of egg_window (1292 lines) vs pet_purely (283
+  lines). What's kept, what's stripped, why pet_purely exists, build
+  instructions, test harness flow, known issues.
+
+$ROOT/gl-canvas/dox/pure-pet-handoff.txt
+  THIS FILE. Complete session handoff.
+
+$ROOT/01.muchi-pals-🥚️-13.01/dox/x-window-move.md
+  How egg_window moves. 4 XMoveWindow call sites, state.txt polling,
+  drag_drop_test.pdl injection, pixel conversion formula.
+
+$ROOT/drag-drop-bugs.txt
+  All 6 Xdnd bugs found and fixed, with line numbers and code snippets.
+
+$ROOT/drag-drop-how2.md
+  Original drag-drop test guide. Some info outdated after bug fixes
+  (mentions xdotool which isn't installed).
+
+$ROOT/0.a-z-pets-plan/a-z-pets-plan.md
+  Master plan for pet ecosystem.

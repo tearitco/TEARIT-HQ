@@ -1,0 +1,3 @@
+user_id=irc-agent-0000
+display_name=IRC Agent
+created_at=1784553227

@@ -1,0 +1,120 @@
+XO-PET / MOKE-PET COMMUNICATION DOC
+Date: 2026-06-19
+
+Purpose
+- Shared clarification surface for the user and the next agent.
+- Use this file to record the live menu shape, the intended control model, and the exact paths that must be tested.
+- Stop assumption drift before touching layout or manager logic.
+
+1. Live path the user tests
+
+The user launches:
+- `sh button.sh r`
+
+That should enter the normal TPMOS / CHTPM flow, then load `xo-pet-v1` from the project loader.
+
+2. Current intended control model
+
+Preferred naming:
+- use `xolector` as the visible switcher/control-shell name
+- keep `xelector` as a compatibility alias in code and legacy PDL paths if needed
+
+Lock the model as:
+- default active target = `xolector`
+- `xolector` is the pet switcher, not a world pet
+- `xolector` methods are pet-selection methods only
+- project controls are separate and always visible
+- possessed pets expose their own methods directly
+- `release` / `esc` returns control back to `xolector`
+- `AI` is a pet method
+- `AI` should act like one-step delegated control unless resume is already active
+
+3. What the live project menu should show
+
+The `xo-pet-v1` surface should show:
+- sim status
+- active target
+- epoch
+- step count
+- hp / hunger for active pets
+- project controls
+- pet-switch list
+- active methods for the current target
+- log / response
+
+The menu should not collapse into a dead `POSSESS PET` submenu stub.
+
+4. Control separation
+
+These are not `xolector` methods:
+- `start`
+- `pause`
+- `step`
+- `end turn`
+
+These are project controls and must remain visible even when a pet is possessed.
+
+These are `xolector` methods:
+- pet selection / possession methods only
+
+These are pet methods:
+- the pet’s own action methods
+- `release` / `esc`
+- `AI`
+
+5. Input contract
+
+Important fix:
+- the controller runner must emit ASCII key codes, not raw digits
+- raw `2` must be converted to ASCII `50`
+- raw `9` must be converted to ASCII `57`
+- the controller runner must write to `projects/xo-pet-v1/history.txt`, because the XO manager reads that file
+- the global keyboard history can stay mirrored for compatibility, but it is not the primary XO control path
+
+Why this matters:
+- the old runner wrote raw digits
+- the manager expected ASCII digit codes
+- that mismatch made the controller look unresponsive
+- the manager also ignored the wrong history file until the runner was switched to the project-scoped input file
+
+6. Marker / frame contract
+
+Keep the visible repaint handshake file-driven.
+
+Known projection files:
+- autonomous projection: `pieces/display/current_frame.txt`
+- autonomous pulse: `pieces/display/frame_changed.txt`
+- CHTPM frame buffer projection: `pieces/chtpm/frame_buffer/current_frame.txt`
+- CHTPM frame buffer pulse: `pieces/chtpm/frame_buffer/frame_changed.txt`
+- XO controller projection: `projects/xo-pet-v1/manager/gui_state.txt`
+- XO controller snapshots: `projects/xo-pet-v1/session/frame_####.txt`
+- XO controller session state: `projects/xo-pet-v1/session/state.txt`
+
+7. What was wrong before
+
+The thread had drifted across three different surfaces:
+- the autonomous moke-pet manager
+- the controller runner terminal view
+- the actual `button.sh r -> loader -> xo-pet-v1` path
+
+Validation on any one of those alone is not sufficient.
+The real acceptance test is the live in-menu project surface loaded through the standard CHTPM path.
+
+8. Current implementation focus
+
+The next agent should verify:
+1. the controller menu shows `project_controls`, `pet_list`, and active `piece_methods`
+2. `xolector` is the visible default shell name
+3. pet `release` returns to `xolector`
+4. `AI` exists on pets and is one-step delegated control
+5. the controller runner and live menu both consume the same command contract
+6. autonomous mode still writes rich frame snapshots and pulses the frame markers
+7. the live project surface should now show real runtime fields, not blank placeholders
+
+9. Non-goals for now
+
+Do not:
+- add `<interact>` yet
+- move simulation logic into the renderer
+- hardcode a separate one-off terminal UI as the real product
+- rely on the monolith as the active XO-PET bundle

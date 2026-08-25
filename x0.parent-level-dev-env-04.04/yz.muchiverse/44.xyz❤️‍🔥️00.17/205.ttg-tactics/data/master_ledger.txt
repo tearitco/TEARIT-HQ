@@ -1,0 +1,14 @@
+timestamp|epoch|actor|turn|action_data|action_type
+2026-07-28T04:39:01|1|system|0|mode:1v1,clock:300000,ante:50,board:12x12|match_start
+2026-07-28T04:39:01|1|system|0|unit:u_s0_king_01,role:King,x:6,y:2|spawn
+2026-07-28T04:39:01|1|system|0|unit:u_s0_soldier_01,role:Soldier,x:2,y:0|spawn
+2026-07-28T04:39:01|1|system|0|unit:u_s0_soldier_02,role:Soldier,x:7,y:0|spawn
+2026-07-28T04:39:01|1|system|0|unit:u_s0_soldier_03,role:Soldier,x:3,y:2|spawn
+2026-07-28T04:39:01|1|system|0|unit:u_s0_wizard_01,role:Wizard,x:4,y:0|spawn
+2026-07-28T04:39:01|1|system|0|unit:u_s0_farmer_01,role:Farmer,x:9,y:0|spawn
+2026-07-28T04:39:01|1|system|0|unit:u_s1_king_01,role:King,x:6,y:9|spawn
+2026-07-28T04:39:01|1|system|0|unit:u_s1_soldier_01,role:Soldier,x:2,y:11|spawn
+2026-07-28T04:39:01|1|system|0|unit:u_s1_soldier_02,role:Soldier,x:7,y:11|spawn
+2026-07-28T04:39:01|1|system|0|unit:u_s1_soldier_03,role:Soldier,x:3,y:9|spawn
+2026-07-28T04:39:01|1|system|0|unit:u_s1_wizard_01,role:Wizard,x:4,y:11|spawn
+2026-07-28T04:39:01|1|system|0|unit:u_s1_farmer_01,role:Farmer,x:9,y:11|spawn

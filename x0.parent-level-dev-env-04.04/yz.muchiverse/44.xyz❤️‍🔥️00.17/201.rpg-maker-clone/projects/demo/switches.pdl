@@ -1,0 +1,4 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+SWITCH       | door_open          | 0
+SWITCH       | met_guard          | 0

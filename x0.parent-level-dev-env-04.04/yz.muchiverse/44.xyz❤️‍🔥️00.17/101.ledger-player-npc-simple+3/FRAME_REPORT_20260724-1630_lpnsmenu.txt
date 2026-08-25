@@ -1,0 +1,45 @@
+FRAME REPORT — lpns_word_menu.chtpm (Original Parser)
+Date: 2026-07-24 16:30
+Parser: system/chtpm_parser.c (copied from x0.pet, DEBUG printf removed)
+Layout: pieces/chtpm/layouts/lpns_word_menu.chtpm
+
+=== TEST RESULTS ===
+
+R1) Stack launch + process health
+  PASS: Parser launches headless, renders frame to pieces/display/current_frame.txt
+  PASS: Process survives >45s with timeout, exits cleanly on signal
+
+R2) Key injection ingestion
+  PASS: Enter (13) in history.txt consumed by parser via seek-based read
+  PASS: cli_io activated from [>] to [^] on Enter press
+  PASS: Letter keys (99=c, 97=a, 116=t) typed into cli_io buffer
+  PASS: Frame updates to [cat_] after typing
+  PASS: Enter on active cli_io submits word — "cat" appears in Recent Words
+  PASS: w/s navigation moves focus between cli_io and button elements
+  PASS: Enter on End Turn button triggers game_manager action
+  PASS: Turn increments correctly (0→1→2→3→4)
+
+R3) Layout/frame validity
+  PASS: Box-drawing borders render (╔═══╗)
+  PASS: current_layout.txt = "pieces/chtpm/layouts/lpns_word_menu.chtpm"
+  PASS: Game state variables render (Turn, Epoch, Player, Recent Words)
+
+NEW) cli_io input
+  PASS: cli_io starts [>] (focused, nav mode)
+  PASS: Enter activates to [^] (active, accepting input)
+  PASS: Letters append to input buffer, displayed in frame
+  PASS: ESC returns to [>] nav mode (tested in prior session)
+
+FIX APPLIED:
+  - Removed DEBUG printf("DEBUG: Loaded directory_listing/last_key") from chtpm_parser.c:978-979
+  - game_manager.c: added clear_input_text() — clears gui_state.txt input_text after word submit
+  - game_manager.c: replaced system() with fork()/exec()/waitpid() per Bible §3
+  - game_manager.c: removed incorrect 'w'→submit keycode mapping
+
+CONFIRMED (x0.pet original behavior):
+  - WASD are nav keys in nav mode (active_index == -1)
+  - When cli_io is active, ALL printable chars including WASD are typed as text
+  - User MUST press ESC to deactivate cli_io before navigating
+  - This is the canonical TPMOS pattern per Bible §4
+
+SAFE TO PROCEED WITH CODE CHANGES: YES

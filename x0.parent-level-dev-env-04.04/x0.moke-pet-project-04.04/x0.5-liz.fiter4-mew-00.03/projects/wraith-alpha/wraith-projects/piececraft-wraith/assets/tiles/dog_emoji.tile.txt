@@ -1,0 +1,10 @@
+tile_id=dog_emoji
+ascii=d
+unicode=🐶
+label=Dog (emoji voxel)
+rgb_top=170,120,70
+rgb_side=130,90,50
+extrude=2.0
+solid=1
+walkable=0
+voxel_source=assets/emoji/dog_voxels_8.csv

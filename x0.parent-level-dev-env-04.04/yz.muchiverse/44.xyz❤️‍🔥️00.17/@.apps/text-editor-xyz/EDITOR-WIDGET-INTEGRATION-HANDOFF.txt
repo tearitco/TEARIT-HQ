@@ -1,0 +1,484 @@
+================================================================================
+EDITOR <-> FILE-MENU WIDGET INTEGRATION — HANDOFF
+Date: 2026-07-29
+Location: moved here (from &.widgits/file-menu/) 2026-07-29 — this is a
+SHARED handoff spanning 102.editor-📄️00.00, &.widgits/file-menu, and
+this directory (@.apps/text-editor-xyz, the actual combined-app
+launcher for the two — see PART 0, a major finding from the same day
+this handoff was first drafted). It does not belong filed under either
+individual project.
+Supersedes: FIX-NAV-HANDOFF.txt (deleted — that bug is fixed, see
+!.xyzos-pitfalls+1.txt PITFALL 50/51; file-menu's own nav now works
+standalone, verified live: cursor_pos moved 1->2->5 across repeated
+real key injections).
+================================================================================
+
+START HERE (read this block before touching anything below)
+================================================================================
+
+1. NEVER background any of these launchers with a trailing `&` from an
+   interactive shell. `./button.sh run &` SIGTTIN-stops the ENTIRE
+   daemon stack the instant keyboard_input touches the controlling
+   terminal — silent, no error, `ps aux` shows every process in state
+   T (stopped), and it looks EXACTLY like "GL never launched." This
+   cost real time this session before being root-caused. Run these in
+   the foreground. Full account: !.xyzos-pitfalls+1.txt PITFALL 53.
+
+2. Before any test run, kill stale state first:
+     sh "$HOUSE/EMERGENCY_KILL.sh"
+   As of 2026-07-30 this actually works (PITFALL 55 — the OLD version
+   used pkill -x, which the kernel's own 15-char /proc/comm truncation
+   made permanently unable to kill chtpm_parser_pal or
+   chtpm_rgb_render, silently, while still printing "All project
+   processes terminated."). Without this, repeated test runs pile up
+   — this session found THREE live file-menu sessions simultaneously,
+   each with chtpm_rgb_render pegged at 50%+ CPU for 10+ minutes,
+   because nothing had been cleaning up between attempts.
+
+3. Quick verification checklist ($HOUSE = the 44.xyz.../ directory this
+   file's own path already sits under — same dir EMERGENCY_KILL.sh
+   lives in at the top level. Literal commands, run in this order,
+   each in the FOREGROUND per item 1 above — run one, Ctrl+C or let it
+   sit a few seconds, confirm what you see, THEN move to the next):
+
+     sh "$HOUSE/EMERGENCY_KILL.sh"                    # clean slate
+     cd "$HOUSE/@.apps/text-editor-xyz" && bash button.sh run
+       # expect: TWO GL windows (editor's own + file-menu's own),
+       # both showing real rendered content, neither black. This is
+       # the ONE path that has a known race-condition history
+       # (PITFALL 54) — if either window is black, that regressed
+       # again; re-check the wait-for-current_frame.txt step in both
+       # &.widgits/file-menu/button.sh and 102.editor-📄️00.00/
+       # button.sh before doing anything else.
+     # separately, confirm standalone paths still work (PART 3.2):
+     sh "$HOUSE/EMERGENCY_KILL.sh"
+     cd "$HOUSE/102.editor-📄️00.00" && bash button.sh run
+     sh "$HOUSE/EMERGENCY_KILL.sh"
+     cd "$HOUSE/&.widgits/file-menu" && bash button.sh run
+
+4. Work-item dependency note (PART 3): 3.0 is DONE. 3.1 (auto-spawn-
+   on-demand) is NOT built yet and 3.3's own standalone-editor test
+   variant depends on it existing (3.3 step 2 explicitly assumes 3.1's
+   spawn code path fires) — build 3.1 before attempting that half of
+   3.3. The combined-launcher variant of 3.3 does NOT depend on 3.1
+   (PART 0's launcher already starts both).
+
+================================================================================
+
+GOAL
+====
+Editor and file-menu must work together, BOTH real, BOTH explicit —
+not one faked via the other:
+
+  1. AUTO-SPAWN ON DEMAND: user hits FILE in an editor session that was
+     started standalone (102.editor-📄️00.00/button.sh run, no widget
+     yet running); if no file-menu widget is already up, editor starts
+     one itself (xyzos-standards §35.2's own canonical design — NOT YET
+     BUILT, see PART 3.1).
+  2. LAUNCH-TOGETHER (ALREADY EXISTS — see PART 0): this directory's
+     own button.sh already starts editor + file-menu together as one
+     combined session, symlinking into each project's real system/
+     ops/pal directly (not a duplicate/stale copy).
+  3. STANDALONE: file-menu keeps working launched completely
+     separately, exactly as it does today, untouched.
+
+Plus: prove save/load actually works end-to-end through REAL entry
+points, using the SAME rigor _.0.aigent-testing-k3.txt already
+prescribes — not a shortcut. (This part of the handoff predates PART 0
+below and is still fully valid — kept as originally written.)
+
+================================================================================
+PART 0 — MAJOR FINDING (added after this handoff was first drafted):
+A working combined-app launcher ALREADY EXISTS at this exact location
+================================================================================
+
+This handoff was originally drafted inside &.widgits/file-menu/,
+written as if "editor + file-menu working together" was entirely
+unbuilt. It was not fully unbuilt — @.apps/text-editor-xyz/ (THIS
+directory) is a real, separate "app store" entry
+(meta.pdl: display_name="Text Editor XYZ", description="Text editor
+with file-menu widget GL window") with its own button.sh that:
+
+  - Discovers both projects dynamically: EDITOR_DIR via
+    `ls -d $HOUSE/102.*editor*`, FM_DIR via
+    `ls -d $HOUSE/&.widgits/file-menu*`.
+  - Symlinks (not copies) into 102.editor's real system/ops/pal/
+    default_op.txt/pieces/chtpm/docs — confirmed live, so every fix
+    made to 102.editor-📄️00.00 itself (this session's PITFALL 50/51
+    binary fixes, the XYZ-editor display-text rename, the GL/RGB +
+    font-registry wiring — see PART 5) automatically applies when
+    launched THROUGH this app launcher too, with zero extra work.
+  - Launches file-menu by calling file-menu's OWN real button.sh
+    directly — `bash "$FM_DIR/button.sh" r "$EDITOR_SESSION" &` — NOT
+    a reimplemented/duplicated widget launch sequence. This means
+    &.widgits/file-menu/button.sh is the single source of truth for
+    the widget's own launch behavior in BOTH the standalone and
+    combined-app paths; there is no separate copy to keep in sync.
+
+A prior work session (same calendar day, 2026-07-29, per
+widget-bug-fix-j29.txt in this directory — discovered, not authored,
+this session) already built AND VERIFIED a working combined GL launch:
+editor's own window + file-menu's OWN SEPARATE GL window, both up
+simultaneously, file-menu's window showing real rendered menu content
+(not black) — i.e. real progress on GL_CHROME_WIDGETS_PROPOSAL.md's
+own G0-G1 phases, which this handoff's own earlier draft incorrectly
+called "100% proposal-only, zero built." That characterization is
+WRONG and is corrected in PART 4 below.
+
+THAT PRIOR FIX APPEARS TO HAVE REGRESSED (see !.xyzos-pitfalls+1.txt
+PITFALL 54 for the full writeup, not re-derived here): widget-bug-
+fix-j29.txt documents a three-layer race condition in chtpm_rgb_
+render's startup ordering relative to chtpm_parser_pal (the renderer's
+own initial synchronous render + baseline pulse-size read both
+happening before the parser's first compose_frame() call), fixed by
+reordering &.widgits/file-menu/button.sh to start chtpm_parser_pal
+FIRST, poll for current_frame.txt to exist, THEN gl_mirror, THEN
+chtpm_rgb_render. The doc's own last line reads "REMAINING ISSUES:
+None found." The CURRENT &.widgits/file-menu/button.sh does NOT have
+this ordering — it still starts renderer, then chtpm_parser_pal
+immediately, then (conditionally) gl_mirror/chtpm_rgb_render with no
+wait-for-frame step at all, matching the doc's own documented "OLD
+ORDER (broken)" far more closely than the fixed one. NOT YET
+DETERMINED why (never independently re-verified whether the race
+actually still reproduces today — scheduler timing is probabilistic
+per that doc's own analysis).
+
+STATUS (2026-07-30): RE-FIXED. Re-confirmed live that the race still
+reproduces — and NOT only via the combined app launcher's extra CPU
+contention as first suspected; it reproduced running
+102.editor-📄️00.00/button.sh run completely standalone, foreground,
+single-project. Re-applied the documented reorder (wait for
+pieces/display/current_frame.txt to exist, up to ~2s, before launching
+gl_mirror/chtpm_rgb_render) to BOTH &.widgits/file-menu/button.sh (the
+actual regression) AND 102.editor-📄️00.00/button.sh (its new GL/RGB
+wiring this session had copied the same broken ordering, since it was
+written against the currently-broken file-menu/button.sh as the
+reference rather than the documented fixed version). User-confirmed
+live: GL window renders real content on repeated runs after the fix.
+See !.xyzos-pitfalls+1.txt PITFALL 54's own 2026-07-30 update for the
+full account. STILL OPEN: re-verifying specifically through
+`@.apps/text-editor-xyz/button.sh run` (the combined launcher itself
+was never directly re-tested this session, only each project
+standalone) — worth one more explicit pass given the fix now lives in
+both files it touches.
+
+================================================================================
+PART 1 — CURRENT STATE OF THE STILL-OPEN WORK (verified, not assumed)
+================================================================================
+
+WORKING, PROVEN standalone (this session, live-verified):
+  - file-menu's own nav/PAL loop (PITFALL 50/51 fixes, shared
+    014.wsr-pal system/prisc+x + system/keyboard_input binaries).
+  - file-menu <-> editor cmd bus (NEW/SAVE/SAVE_AS:<path>/LOAD:<path>),
+    via %.harnesses/file-menu+editor/ — ALL PASS, re-run this session.
+  - 102.editor's own GL/RGB rendering (PITFALL 52 fix: font glyph
+    registry added), verified with real checksummed non-black frame
+    content, tested through 102.editor's own button.sh directly
+    (single-project, low-contention — NOT yet re-verified through the
+    combined app launcher per PART 0's own open item above).
+
+NOT BUILT (still true after PART 0's discovery — that finding is about
+LAUNCH-TOGETHER and GL rendering, not about on-demand auto-spawn):
+  - Auto-spawn-on-demand: 102.editor.../ops/editor_menu_input.c's
+    do_fm() (~line 232) ONLY calls find_widget_via_ledger() (~line
+    206) and, if that fails, prints "FM — no widget session (start app
+    with button.sh run)" and returns. No spawn logic anywhere. This is
+    genuinely distinct from PART 0's launch-together mode: a user who
+    started 102.editor-📄️00.00/button.sh run directly (not through
+    this app launcher) still has no way to get a widget without
+    manually starting one in a second shell.
+
+THE HARNESS PROBLEM (why PART 3's work exists, not just "add a spawn
+call"): %.harnesses/file-menu+editor/scenarios/demo_load_save.sh calls
+ops/+x/fm_set_focus.+x and ops/+x/fm_enqueue_cmd.+x DIRECTLY as bash
+subprocesses. It never goes through file-menu's own button.sh, never
+touches prisc+x's custom-op dispatch, never routes a key through the
+PAL loop. Re-ran it this session: ALL PASS, 6/6 assertions — while
+file-menu's REAL button.sh-launched UI was, at that exact moment,
+completely dead (PITFALL 50). The harness could not have caught that
+bug even in principle — the identical failure class PITFALL 21 already
+named for pal-chat-irc's own test_multiuser_p2p.sh. Direct user
+instruction this session: fix the STANDARD, not just this one harness
+— use the testing infrastructure _.0.aigent-testing-k3.txt already
+prescribes, no shortcuts.
+
+================================================================================
+PART 2 — DONE: xyzos-standards §36.6 (black-box harness rigor) — ADDED
+================================================================================
+
+§36 in !.xyzos-standards+1.txt already existed ("36. WHERE HARNESSES
+LIVE — PER-PROJECT vs CROSS-PROJECT", 2026-07-27) — it governs harness
+LOCATION, not testing RIGOR, and its own 36.4 already had a one-line
+"real key path when testing GUI" bullet that %.harnesses/file-menu+
+editor/ still slipped past. Added a new subsection 36.6 (after the
+existing 36.5 checklist, before SEE ALSO) — ALREADY APPLIED to
+!.xyzos-standards+1.txt this session, not just drafted. Read it there for
+the full text; summary:
+
+  - Codifies _.0.aigent-testing-k3.txt's 3-level matrix (module/op,
+    black-box runtime, end-to-end) as enforceable, not aspirational:
+    level 1 (direct op/state assertions) is a real, valuable
+    SUPPLEMENT, never sufficient alone for a "works together" verdict.
+    Level 2 (black-box, through the real button.sh entry point) is the
+    floor.
+  - Level 2 mechanics made explicit: key injection ONLY via
+    pieces/keyboard/history.txt in `[TS] KEY_PRESSED: <code>` format;
+    NEVER a direct write into interact_relay.txt to fake a test
+    keypress; assert rendered frame evidence IN ADDITION TO state
+    files, not instead of them; headless/no-DISPLAY is not an
+    exemption.
+  - Mandatory Post-Test Report Gate: FRAME_REPORT_<ts>_<topic>.txt at
+    project/house root before further code changes land on the
+    result.
+  - Named %.harnesses/file-menu+editor/ explicitly, in the standards
+    doc itself, as a live example of BOTH violations at once: wrong
+    location (should be #.<name>-test/ per 36.3) AND the exact
+    op-level-only shortcut 36.4 already warned against.
+  - RETROFIT RULE: existing level-1-only harnesses are not
+    grandfathered — same standard PITFALL 21 already put on
+    pal-chat-irc.
+
+No further action needed on the standards doc itself for this
+handoff's original scope — PART 3.4 below is the retrofit of the ONE
+harness this session actually found in violation.
+
+================================================================================
+PART 3 — CONCRETE WORK ITEMS (still open)
+================================================================================
+
+3.0 RE-VERIFY / RE-FIX the PART 0 race-condition regression FIRST
+--------------------------------------------------------------------
+DONE 2026-07-30 — see PART 0's own STATUS update and
+!.xyzos-pitfalls+1.txt PITFALL 54's own 2026-07-30 update for the full
+account. Remaining: one explicit pass through
+`@.apps/text-editor-xyz/button.sh run` itself (the combined launcher
+wasn't directly re-tested this session, only each project standalone)
+would close this out completely.
+
+3.1 AUTO-SPAWN-ON-DEMAND (editor -> file-menu, standalone-editor case)
+------------------------------------------------------------------------
+FILE: 102.editor-📄️00.00/ops/editor_menu_input.c, do_fm() (~line 232)
+
+Current:
+  if (find_widget_via_ledger(widget_root, sizeof(widget_root)) != 0) {
+      set_message("FM — no widget session (start app with button.sh run)");
+      return;
+  }
+
+Change to: on ledger-miss, fork+exec (NOT system()/popen() — see
+PITFALL 1's own "system() causes zombies" and PITFALL 50's own "never
+interpolate a path into a shell string unquoted" — both apply here
+directly) `&.widgits/file-menu/button.sh run-widget`, matching §35.2's
+own step-by-step. Then either:
+  (a) poll ledger_peers briefly (bounded retries, not a blocking spin
+      — PITFALL 22/51's CPU-spin class is exactly what an unbounded
+      poll here would reproduce) for the new session to register, or
+  (b) fire-and-forget + set_message("FILE MENU — starting..."), let
+      the NEXT do_fm() call (or an idle-tick re-check) find it once
+      registered.
+Prefer (b) for v1 — matches the existing async, file-mediated
+philosophy everywhere else in this house.
+
+NOTE: this is genuinely additive to, not a duplicate of, this
+directory's own combined-launch button.sh (PART 0) — that path is for
+"start both together from nothing"; this path is for "editor is
+already running standalone, get a widget on demand." Both are
+legitimate and should both exist, matching the "ultimate flexibility,
+both modes" framing this handoff was scoped under.
+
+3.2 STANDALONE MODE — verify untouched
+----------------------------------------
+No code change expected. file-menu/button.sh's run/run-app/run-widget
+actions must keep working exactly as today after 3.0/3.1 land — add
+this as an explicit regression check in the new harness (3.3).
+
+3.3 LEVEL-2 HARNESS (the actual proof)
+-----------------------------------------
+DONE 2026-07-30 — built at @.apps/text-editor-xyz/test-harn-ed-app/
+(the combined-launcher variant below; the standalone-editor variant
+still depends on 3.1, not yet built). `./button.sh demo-load` /
+`demo-save` / `demo` — modular, each independently runnable, real key
+injection through real running processes (interact_relay.txt directly
+for file-menu's own buttonless layout — the real channel for that
+architecture, see PITFALL 56 — and pieces/keyboard/history.txt for
+editor's own real <button onClick="INTERACT">). Both PASS, re-verified
+clean after fixes. Full account: !.xyzos-pitfalls+1.txt PITFALL 56/58,
+test-harn-ed-app/README.txt, and
+test-harn-ed-app/FRAME_REPORT_20260730-0222_editor-widget-load-save.txt
+(the mandatory §36.6 evidence report). A human-facing summary lives at
+@.apps/text-editor-xyz/USER_GUIDE.txt.
+
+BIGGEST FINDING FROM BUILDING THIS: it caught PITFALL 58 — file-menu's
+own REAL menu-driven LOAD/SAVE/SAVE_AS/NEW/PING had been silently
+broken (wrong wdir passed to fm_enqueue_cmd.+x) since that code was
+written. The pre-existing level-1 harness (demo_load_save.sh, still at
+%.harnesses/file-menu+editor/, kept per §36.6 as a legitimate
+supplement) could not have caught this even in principle — it calls
+fm_enqueue_cmd.+x directly with the correct path, bypassing the exact
+buggy function. This is the concrete, real-world justification for
+§36.6 existing at all, not a hypothetical.
+
+The plan below is kept as the original design record; the two items
+still genuinely open are (a) the standalone-editor variant (blocked on
+3.1's own auto-spawn), and (b) 3.4's README correction for
+%.harnesses/file-menu+editor/ itself.
+
+------------------------------------------------------------------------
+ORIGINAL PLAN (historical — see DONE status above for what actually
+shipped and where it differs)
+------------------------------------------------------------------------
+Model directly on 044.pal-chat-irc👥️+2/testing/test_real_ux_2users.sh
+— the concrete "real entry point, not op-level" pattern already proven
+to work in this house.
+
+New/upgraded scenario (extend %.harnesses/file-menu+editor/ — add
+scenarios/demo_real_ux.sh alongside the existing op-level
+demo_load_save.sh; do NOT replace the level-1 one, per §36 it's a
+legitimate supplement, just never alone):
+
+  1. Launch editor for real: `102.editor-📄️00.00/button.sh run-app &`
+     (headless-safe per k3 pitfall #11 — no live tty needed) — OR,
+     given PART 0's discovery, also add a SECOND variant that launches
+     via `@.apps/text-editor-xyz/button.sh run` instead, since that is
+     a real, distinct entry point users actually have, with its own
+     now-known race-condition history worth a permanent regression
+     check.
+  2. DO NOT auto-spawn file-menu manually — inject the FM keypress
+     into EDITOR's own pieces/keyboard/history.txt
+     ([TS] KEY_PRESSED: <fm_key>) and let 3.1's real spawn code path
+     fire (for the standalone-editor variant) or let the app launcher's
+     own already-running widget receive it (for the combined variant).
+  3. Poll ledger_peers (bounded, sleep-throttled) until file-menu
+     registers, or timeout -> FAIL with evidence.
+  4. Inject LOAD/SAVE_AS/NEW into file-menu's OWN
+     pieces/keyboard/history.txt (not interact_relay.txt directly —
+     §36) — real arrow-key nav, real Enter, matching how a human
+     actually drives it.
+  5. Assert BOTH: editor's buffer state file (level-1 style, keep it)
+     AND editor's current_frame.txt actually shows the loaded content
+     (level-2 — the part demo_load_save.sh could never catch).
+  6. For the combined-launcher variant specifically: also assert
+     file-menu's own rgb_frame.raw has a non-trivial non-zero byte
+     count (per PITFALL 52's own proof method) — this is the
+     regression check for PART 0/3.0's race condition, not just a
+     cmd-bus check.
+  7. Write FRAME_REPORT_<ts>_editor-widget-integration.txt at HOUSE
+     root per §36's mandatory gate before calling this done.
+
+3.4 README/USER_REPORT correction (retrofit rule, §36)
+---------------------------------------------------------
+%.harnesses/file-menu+editor/README.txt currently says the harness
+"Proves: ... ops x cmd bus" with no caveat. Once 3.3 exists, split the
+claim explicitly: "Level 1 (op-level, demo_load_save.sh): cmd-bus
+contract only" vs "Level 2 (demo_real_ux.sh): real entry points, real
+key injection, frame-verified."
+
+================================================================================
+PART 4 — GL CHROME: CORRECTED (was wrongly called "100% proposal-only")
+================================================================================
+
+This handoff's own earlier draft said GL chrome was entirely
+unimplemented and out of scope. That was WRONG given PART 0's own
+discovery: a real, working (then apparently regressed) combined GL
+launch already exists for file-menu specifically, verified once with
+checksummed non-black frame content. GL_CHROME_WIDGETS_PROPOSAL.md's
+own phase table (G0-G5) should be re-read against what's ACTUALLY here
+before assuming any specific phase is still fully unbuilt — at minimum
+G0/G1 (file-menu chrome, window opens with real content) appears to
+have been reached once already.
+
+Still explicitly out of scope for THIS handoff's own work items (3.0-
+3.4): extending GL chrome to map-picker/tile-picker/proc-monitor, any
+mouse hit-testing (phases G3+), or a full re-audit of every GL_CHROME_
+WIDGETS_PROPOSAL.md acceptance criterion. PART 3.0's race-condition
+re-verification is in scope (it's a regression of existing work, not
+new chrome work); building NEW chrome phases is not.
+
+================================================================================
+PART 5 — WHAT THIS SESSION ACTUALLY CHANGED IN 102.editor-📄️00.00
+================================================================================
+
+For context, since PART 0 confirms these changes flow through to the
+combined launcher automatically (symlinked, not copied):
+
+  - Display text: "AGY Editor" -> "XYZ Editor" in button.sh's
+    last_message, ledger display_name (x2), CLI help header, and
+    editor_compose_frame.c's box title. project_id=agy-editor and the
+    projects/agy-editor/ directory path were deliberately left
+    unchanged (internal identifiers, not user-facing display text).
+  - GL/RGB wiring added (previously entirely absent): scripts/build.sh
+    now copies chtpm_rgb_render + gl_mirror from 014.wsr-pal;
+    button.sh now launches them conditionally (PROFILE=widget OR
+    PROFILE=app+DISPLAY-set, NO_GL=1 escape hatch), matching
+    &.widgits/file-menu/button.sh's own auto-detect logic exactly
+    (copied, not reinvented, per direct instruction this session).
+  - Font glyph registry added (PITFALL 52 — without this, GL renders
+    checksummed but visually blank/black; recurrence of a bug
+    fm-widget-fix.md already solved once for file-menu, never
+    promoted into the shared pitfalls file until this session).
+  - PITFALL 53 discovered and documented: backgrounding
+    `button.sh run &` from an interactive job-control shell
+    SIGTTIN-stops the entire daemon stack the instant keyboard_input
+    touches the controlling terminal — not a code bug, a usage
+    pitfall; run these launchers in the foreground.
+  - @.apps/text-editor-xyz/button.sh: this combined launcher originally
+    only ever opened ONE GL window (file-menu's own, step 8) — editor's
+    own daemons (step 7) were ASCII-renderer + chtpm_parser_pal only,
+    gl_mirror/chtpm_rgb_render never wired in for the editor side at
+    all. Added editor's own GL/RGB launch (step 7b), same wait-for-
+    frame race fix as PITFALL 54, PIDs threaded into the cleanup trap.
+    Both windows now open; NOTE both will show the same hardcoded
+    gl_mirror window title ("wsr-pal RGB mirror" — not configurable
+    per-project in the current binary) — a real, pre-existing, NOT
+    fixed here limitation (see GL_CHROME_WIDGETS_PROPOSAL.md's own
+    gl_title config field, listed as future work).
+
+================================================================================
+KEY FILES
+================================================================================
+  @.apps/text-editor-xyz/button.sh                    (combined launcher
+                                                        — PART 0; symlinks
+                                                        into 102.editor,
+                                                        calls file-menu's
+                                                        own button.sh)
+  @.apps/text-editor-xyz/widget-bug-fix-j29.txt       (race-condition
+                                                        history — PART 0,
+                                                        PITFALL 54)
+  102.editor-📄️00.00/ops/editor_menu_input.c          (do_fm, ~line 232
+                                                        — PART 3.1)
+  102.editor-📄️00.00/button.sh                        (GL/RGB wiring
+                                                        added this session
+                                                        — PART 5)
+  102.editor-📄️00.00/scripts/build.sh                 (GL/RGB + glyph
+                                                        registry copy
+                                                        added — PART 5)
+  &.widgits/file-menu/button.sh                       (PART 3.0 — needs
+                                                        race-condition
+                                                        reorder re-applied,
+                                                        see PITFALL 54;
+                                                        also PART 3.1's
+                                                        run-widget target)
+  %.harnesses/file-menu+editor/scenarios/
+      demo_load_save.sh                               (keep, level-1)
+      demo_real_ux.sh                                 (NEW, level-2 —
+                                                        PART 3.3)
+  %.harnesses/file-menu+editor/README.txt             (correct claims —
+                                                        PART 3.4)
+  044.pal-chat-irc👥️+2/testing/test_real_ux_2users.sh (pattern to copy)
+  #.haiku+/!.xyzos-standards+1.txt                       (§36.6 already
+                                                        added — PART 2)
+  #.haiku+/tpmos-re-dox/_.0.aigent-testing-k3.txt      (source of the
+                                                        §36.6 requirements)
+  #.haiku+/!.xyzos-pitfalls+1.txt                        (PITFALL 50-55,
+                                                        all from this
+                                                        session)
+  EMERGENCY_KILL.sh                                    (house root —
+                                                        fixed 2026-07-30,
+                                                        PITFALL 55; use
+                                                        between test
+                                                        runs, see START
+                                                        HERE above)
+
+================================================================================
+END OF HANDOFF
+================================================================================

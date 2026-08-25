@@ -1,0 +1,20 @@
+#!/bin/bash
+# Auto-verifying test harness for a GET_KV_INT/ADDI/SET_KV_INT .pal snippet.
+set -e
+STATE_FILE="{{STATE_FILE}}"
+KEY="{{KEY}}"
+START_VALUE={{START_VALUE}}
+EXPECTED_VALUE={{EXPECTED_VALUE}}
+PAL_FILE="{{PAL_FILE}}"
+PRISC_BIN="{{PRISC_BIN}}"
+
+echo "${KEY}=${START_VALUE}" > "$STATE_FILE"
+"$PRISC_BIN" "$PAL_FILE"
+
+actual=$(grep "^${KEY}=" "$STATE_FILE" | cut -d= -f2 | tr -d '\r\n ')
+if [ "$actual" = "$EXPECTED_VALUE" ]; then
+    echo "PASS: ${KEY} = ${actual} (expected ${EXPECTED_VALUE})"
+else
+    echo "FAIL: ${KEY} = ${actual} (expected ${EXPECTED_VALUE})"
+    exit 1
+fi

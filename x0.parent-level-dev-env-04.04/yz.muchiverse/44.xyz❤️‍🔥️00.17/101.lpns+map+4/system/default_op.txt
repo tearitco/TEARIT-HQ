@@ -1,0 +1,7 @@
+# LPNS+MAP+3 Operations for prisc+x
+# Format: name type handler {description}
+
+game_compose_frame void ops/game_compose_frame {render map+actors into view.txt}
+game_hit_frame void ops/game_hit_frame {signal renderer to update}
+game_turn_input void ops/game_turn_input {process player action: 1=word, 3=end_turn, 4-7=move directions}
+game_dispatch void ops/game_dispatch {dispatch keycode to appropriate action}

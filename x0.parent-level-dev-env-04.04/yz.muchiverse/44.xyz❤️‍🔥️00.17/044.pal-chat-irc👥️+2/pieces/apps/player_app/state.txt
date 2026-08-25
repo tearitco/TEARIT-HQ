@@ -1,0 +1,4 @@
+project_id=pal-chat-irc
+active_target_id=login
+logged_in=true
+room_selected=false

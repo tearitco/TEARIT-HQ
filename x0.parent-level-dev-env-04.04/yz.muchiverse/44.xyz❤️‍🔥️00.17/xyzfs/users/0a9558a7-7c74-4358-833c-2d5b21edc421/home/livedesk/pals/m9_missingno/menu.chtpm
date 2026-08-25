@@ -1,0 +1,14 @@
+<!-- menu.chtpm — m9_missingno's real entity context menu, Stage 2c
+     ROLLOUT (2026-08-16, direct instruction "yes we need to finish those").
+     Converted 1:1 from this entity's own real objects.pdl (same PAGE/OBJECT
+     rows, same action strings verbatim) via the same real mechanical
+     conversion rule proven on ava/asa (scratchpad objects_to_chtpm.py).
+-->
+<window class="entity-menu">
+  <page name="main">
+    <item label="Events (hq)" action="sh -c 'exec &quot;$1/&amp;.widgits/events-hq/button.sh&quot; &quot;$0&quot; &quot;$1&quot;'"/>
+    <item label="Dir" action="sh -c 'exec xdg-open &quot;$0&quot;'"/>
+    <item label="Close" action="CLOSE"/>
+    <item label="Cancel" action="void"/>
+  </page>
+</window>

@@ -1,0 +1,217 @@
+================================================================================
+LPNS+3 TPMOS CONVERSION PLAN
+Fix: 2026-07-24
+================================================================================
+
+WHAT WENT WRONG
+===============
+
+We converted LPNS+3 from the OG shell-loop architecture to CHTPM (prisc+x + PAL
+scripts). This was wrong because:
+
+1. CHTPM uses prisc+x as the game loop (via PAL scripts)
+2. PAL scripts are assembly-like instructions for prisc+x VM
+3. This couples game logic to prisc+x VM
+4. Breaks the TPMOS pattern where game_manager.c IS the game loop
+
+CORRECT ARCHITECTURE (MODIFIED TPMOS)
+=======================================
+
+We are using a MODIFIED TPMOS pattern. The deviation from classic TPMOS:
+
+  Classic TPMOS:  button.sh starts all services directly
+  Our version:    orchestrator.c runs chtpm_parser_pal (slight deviation)
+
+Why the deviation: orchestrator.c manages the chtpm_parser_pal lifecycle
+directly, giving us tighter control over the display pipeline.
+
+THE FLOW
+========
+
+  User runs: ./button.sh
+       |
+  button.sh compiles orchestrator.c, then runs it
+       |
+  orchestrator.c (meta-launcher, stays alive):
+    1. Compiles all binaries
+    2. Initializes state files
+    3. Launches keyboard_input (background)
+    4. Launches renderer (background)
+    5. Launches chtpm_parser_pal with layout (background)
+    6. chtpm_parser_pal reads layout, sees <module> tag
+    7. chtpm_parser_pal launches game_manager (via <module>)
+    8. Monitors until Ctrl+C
+       |
+  Ctrl+C -> orchestrator kills all children, exits
+
+ROLES
+=====
+
+1. button.sh
+   - Entry point
+   - Compiles orchestrator.c
+   - Runs orchestrator (exec)
+
+2. orchestrator.c (meta-launcher)
+   - Compiles all binaries
+   - Initializes state
+   - Launches: keyboard_input, renderer, chtpm_parser_pal
+   - Monitors children
+   - Kills all on Ctrl+C
+
+3. chtpm_parser_pal (display + module launcher)
+   - Reads layout file
+   - Renders display elements (<text>, <button>)
+   - Detects frame_changed.txt growth, re-renders
+   - Extracts <module> tag, launches game_manager
+
+4. game_manager.c (game loop)
+   - Launched by chtpm_parser_pal via <module> tag
+   - Polls pieces/keyboard/history.txt
+   - Converts keycodes to actions
+   - Calls ./ops/word_turn_input <action>
+   - Calls ./ops/word_compose_frame
+   - Pulses pieces/display/frame_changed.txt
+
+5. keyboard_input.c (input capture)
+   - Captures raw keystrokes
+   - Writes to pieces/keyboard/history.txt
+   - Runs in background
+
+6. renderer.c (output)
+   - Watches pieces/display/frame_changed.txt
+   - Reads pieces/display/current_frame.txt
+   - Outputs to terminal
+
+STATE FLOW
+==========
+
+  keyboard_input writes keycode to history.txt
+       |
+  game_manager polls history.txt, sees new entry
+       |
+  game_manager converts keycode to action (w=1, e=3)
+       |
+  game_manager calls ./ops/word_turn_input <action>
+       |
+  word_turn_input updates master_ledger.txt
+       |
+  game_manager calls ./ops/word_compose_frame
+       |
+  word_compose_frame writes current_frame.txt
+       |
+  game_manager pulses frame_changed.txt
+       |
+  chtpm_parser_pal detects pulse
+       |
+  chtpm_parser_pal re-renders terminal
+
+FILES TO CREATE
+===============
+
+1. system/orchestrator.c
+   - Meta-launcher
+   - Compiles binaries
+   - Initializes state
+   - Launches keyboard_input, renderer, chtpm_parser_pal
+   - Monitors children
+   - Kills all on SIGINT/SIGTERM
+
+FILES TO MODIFY
+===============
+
+1. button.sh
+   - Compile orchestrator.c
+   - Run ./orchestrator (exec, replaces shell)
+   - Remove old service launching code
+
+2. system/keyboard_input.c
+   - Run in background mode (not foreground)
+   - Don't own tty exclusively
+   - Write to pieces/keyboard/history.txt
+
+3. pieces/chtpm/layouts/lpns_word_menu.chtpm
+   - Add <module> tag to launch game_manager
+   - Keep <text label="${game_map}" /> for display
+   - Remove buttons (use direct key input)
+
+4. system/game_manager.c
+   - Already fixed: polls pieces/keyboard/history.txt
+   - Already fixed: calls word_turn_input and word_compose_frame
+   - Already fixed: pulses frame_changed.txt
+
+5. ops/word_compose_frame.c
+   - Already fixed: writes to current_frame.txt
+
+6. ops/word_turn_input.c
+   - Already fixed: handles action codes (1=word, 3=end_turn)
+
+WHAT TO REMOVE
+==============
+
+- pal/main_loop_chtpm.pal (game_manager replaces PAL scripts)
+- system/prisc+x (game_manager replaces prisc+x)
+- interact_relay.txt (game_manager reads history.txt directly)
+
+WHAT TO KEEP
+============
+
+- chtpm_parser_pal (display renderer, launches manager via <module>)
+- Layout file format (XML-like for display)
+- renderer.c (watches frame_changed.txt)
+- keyboard_input.c (writes to history.txt)
+- game_manager.c (game loop, calls ops)
+
+LAYOUT FILE (lpns_word_menu.chtpm)
+====================================
+
+```xml
+<panel>
+    <module>system/game_manager</module>
+    <text label="${game_map}" /><br/>
+</panel>
+```
+
+The <module> tag tells chtpm_parser_pal to launch game_manager.
+game_manager then runs the game loop.
+
+TESTING PLAN
+============
+
+1. Compile everything
+   - ./button.sh (compiles orchestrator, runs it)
+
+2. Orchestrator starts
+   - Compiles all binaries
+   - Initializes state
+   - Launches services
+
+3. Test keyboard input
+   - Press 'w' -> submit word, turn advances
+   - Press 'e' -> end turn, turn advances
+   - Press Ctrl+C -> all processes killed, clean exit
+
+4. Test frame updates
+   - After each action, frame updates
+   - Shows current turn, player, recent words
+
+5. Test process cleanup
+   - After Ctrl+C, no orphan processes
+
+SUCCESS CRITERIA
+================
+
+- button.sh compiles and runs orchestrator
+- orchestrator launches all services
+- chtpm_parser_pal launches game_manager via <module>
+- keyboard_input writes to history.txt
+- game_manager polls history, calls ops
+- word_compose_frame writes current_frame.txt
+- renderer displays updates
+- Ctrl+C kills everything cleanly
+- No PAL scripts
+- No prisc+x
+
+================================================================================
+END PLAN
+================================================================================

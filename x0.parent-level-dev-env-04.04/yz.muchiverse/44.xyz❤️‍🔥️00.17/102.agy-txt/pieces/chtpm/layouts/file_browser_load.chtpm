@@ -1,0 +1,18 @@
+<panel time_reactive="true">
+    <module>manager/+x/agy_browser_manager.+x</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="╔══════════════ L O A D   F I L E ═══════════╗" /><br/>
+    <text label="${browser_current_dir_line}" /><br/>
+    <text label="║                                             ║" /><br/>
+    <text label="SEARCH: " /><cli_io id="search_query" target_id="search_query" label="${search_query_val}" /><br/>
+    <text label="FILE:   " /><cli_io id="file_path_input" target_id="file_path_input" label="${file_path_input_val}" /><br/>
+    <text label="║                                             ║" /><br/>
+    <text label="╠════════════ DIRECTORY CONTENTS ═════════════╣" /><br/>
+    ${directory_browser_markup}
+    <text label="║                                             ║" /><br/>
+    <text label="╠═════════════════════════════════════════════╣" /><br/>
+    ${browser_action_buttons_markup}
+    <text label="╠═════════════════════════════════════════════╣" /><br/>
+    <text label="${editor_response_line}" /><br/>
+    <text label="╚═════════════════════════════════════════════╝" /><br/>
+</panel>

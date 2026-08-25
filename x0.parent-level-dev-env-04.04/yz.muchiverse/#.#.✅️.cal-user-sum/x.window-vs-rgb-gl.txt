@@ -1,0 +1,564 @@
+# 🪟 XWindow vs 📺 CHTPM: Key Injection & Rendering Paradigms
+
+## 🔍 Research Question (Original Prompt)
+
+Compare how the XWindow key injection system for the toolbar (kthpm) differs from the CHTPM key injection system. Examine harness implementations at both #.desktop/harnesses/livedesk-taskbar and %.harnesses/ locations. Determine: what key injection capabilities exist in XWindow, what about animation? How do X window primitives compare to RGB/GL construction? Could RGB construction replace X window primitives? What can we do with XWindow that we couldn't do with CHTPM, and what are the tradeoffs?
+
+---
+
+## 🏗️ CORE DIFFERENCE: TWO DISTINCT ARCHITECTURAL FAMILIES
+
+The codebase contains **two fundamentally different UI frameworks**, not variants of one:
+
+### 📺 1. CHTPM Family (Embedded frame-based)
+- **📄 Input**: File-based key polling loop
+  - Location: `pieces/keyboard/history.txt`
+  - Format: `[YYYY-MM-DD HH:MM:SS] KEY_PRESSED: <decimal_code>`
+  - Consumed by: `chtpm_parser.+x` running in a dedicated process
+  - Behavior: Parser reads file on every poll cycle (~100ms), parsed keys become state in the active layout
+
+- **Programs**: chtpm_parser_pal family (orchestrator, parser, renderer, plugins)
+- **Rendering**: Textual frame artifact in `pieces/display/current_frame.txt`, rendered to terminal by a separate `renderer.+x` process
+- **Event loop**: Blocking `select()` on file descriptors with configurable poll intervals; one central dispatcher processes all input for all active menus/layouts
+- **Harness location**: `%.harnesses/` (tile-picker+mutaclysm, file-menu+mutaclysm, etc.)
+- **Test method**: Direct state op calls + frame capture; no simulation needed because ops are pure functions
+- **Key constraint**: Very limited to what the terminal can display - no sub-pixel animation, color depth depends on terminal capability, no mouse motion callbacks
+
+### 🪟 2. XWindow Family (Raw X11 Xlib)
+- **⚡ Input**: Real X11 events via XNextEvent()
+  - Source: Physical keyboard/mouse, or XTest-injected synthetic events at X server level
+  - Format: Raw KeyCode/Button events from X server
+  - Behavior: Program's own XNextEvent() loop reads directly; no intermediate file
+  - Direct at-server-level injection available via `XTestFakeKeyEvent`, `XTestFakeButtonEvent`, `XTestFakeMotionEvent`
+
+- **Programs**: Raw Xlib applications (tp_taskbar.c, tp_desktop_window.c, khtpm_taskbar_core.c)
+- **Rendering**: Direct X11 calls (XDrawString, XFillRectangle, XDrawLine, XGetImage, XPutImage)
+- **Event loop**: Application controls its own XNextEvent() poll, Expose handling, damage propagation
+- **Harness location**: `#.desktop/harnesses/livedesk-taskbar/` (XTest-based, vendored key_injector.c)
+- **Test method**: XTest injector + text log assertions (frame_log.txt written by app itself) + optional RGB frame capture
+- **Key constraint**: Cannot be tested via pieces/keyboard/history.txt at all (file doesn't exist for these programs)
+
+**⚠️ CRITICAL CLARIFICATION** (added to `_.0.aigent-testing-k9.txt` 2026-08-09):
+- 📺 CHTPM: file-injection via pieces/keyboard/history.txt → ✅ works because chtpm_parser.+x reads it
+- 🪟 XWindow (kthpm, tp_taskbar.c): **❌ file-injection does nothing** — these programs read raw X11 events only
+- 🎯 You must use XTest injector (or native toolkit synthetic-event API) for XWindow programs, not file-based injection
+
+---
+
+## ⌨️ KEY INJECTION: DETAILED MECHANICS
+
+### 📺 CHTPM Key Injection
+
+**📋 File Format** (strictly required):
+```
+[2026-08-09 14:23:45] KEY_PRESSED: 13
+[2026-08-09 14:23:46] KEY_PRESSED: 1
+```
+
+**🔄 Consumption Pipeline**:
+1. 📝 Line appended to `pieces/keyboard/history.txt`
+2. 👁️ chtpm_parser.+x reads on next poll cycle (typically 100-300ms depending on select() timeout)
+3. 🔍 Parser strips timestamp, parses decimal key code
+4. 🧭 Key code routed to active layout's input handler via `active_piece_interact()` or similar
+5. 🔄 Layout state machine updates (menu cursor moves, selection changes, etc.)
+6. 🖼️ Renderer regenerates `current_frame.txt` with new state
+7. 📺 Renderer.+x or terminal stdout shows updated display
+
+**📌 Harness Example** (tile-picker+mutaclysm/scenarios/demo_place_tile.sh):
+- ⏭️ No key injection used at all — instead, harnesses call ops directly
+- 🏃 `tp_set_brush.+x` is an executable binary called with args, not a simulated menu navigation
+- ✅ Assertions run on resulting file state (map.txt cell changed from blank to 'T')
+- 💡 This works because all ops are pure functions with external state (filesystem)
+
+**✅ Advantage**: Can test without spawning UI at all; pure state verification
+**❌ Limitation**: Only works for programs that read the file; CHTPM's own monopoly on file polling means it's not suitable for concurrent file readers or real-time systems
+
+### 🪟 XWindow Key Injection (Real X11 Events)
+
+**📋 File Format** (what harness script writes):
+```
+CLICK: 90 16 1
+KEY_PRESSED: Down
+KEY_PRESSED: Escape
+```
+
+**🚀 Delivery Mechanism** (key_injector.c, the XTest approach):
+1. 📝 Harness script writes injections to file (e.g., `#.desktop/tp_taskbar_debug/key_inject.txt`)
+2. 👀 key_injector.c tails the file (monitors file size growth)
+3. 🔧 On new lines, key_injector parses them:
+   - 🔤 `KEY_PRESSED: <name>` → XStringToKeysym(name) → XKeysymToKeycode() → XTestFakeKeyEvent(press) + XTestFakeKeyEvent(release)
+   - 🖱️ `CLICK: <x> <y> <button>` → XTestFakeMotionEvent() + XTestFakeButtonEvent()
+4. 🎯 **Delivered at X server level** — indistinguishable from physical input to receiving client
+5. 📡 tp_taskbar.c's XNextEvent() loop receives as raw X11 events, same as keyboard/mouse
+6. ⚙️ tp_taskbar.c's own event handler processes (armed nav, focus transitions, etc.)
+7. 📊 tp_taskbar.c writes own debug logs (`strip_frame_log.txt`, `popup_frame_log.txt`, captures RGB frames)
+
+**📌 Harness Example** (livedesk-taskbar/scenarios/demo_strip_and_popup_nav.sh):
+```bash
+# Build injector
+gcc -O2 -o key_injector.+x key_injector.c -lX11 -lXtst
+
+# Prepare injections
+cat > key_inject.txt <<EOF
+CLICK: 90 16 1
+KEY_PRESSED: Down
+KEY_PRESSED: Escape
+EOF
+
+# Run at X server level (real events)
+./key_injector.+x key_inject.txt --once
+
+# Assert against app's own logs
+grep 'focus_row=1' tp_taskbar_debug/popup_frame_log.txt
+```
+
+**✅ Advantage**: Real X11 events = genuine, system-level testing; no special input handling needed; identical to human keyboard input from app's perspective
+**❌ Limitation**: Requires X server running, XTest extension enabled; more complex build (link against X11, Xtest libraries); timing-sensitive (app event loop may run faster/slower depending on load)
+
+---
+
+## 📊 KEY INJECTION CAPABILITIES: XWINDOW VS CHTPM
+
+### 🪟 What XWindow Can Do That CHTPM Cannot
+
+1. **🖱️ Mouse Motion Events**
+   - XTest: `XTestFakeMotionEvent()` delivers motion events
+   - CHTPM: ❌ No mouse support at all (terminal has no mouse events in history.txt)
+   - Use case: Hover effects, drag operations, window repositioning
+
+2. **⏱️ Sub-millisecond Timing Control**
+   - XTest: usleep() between events; key_injector.c waits 400ms between key presses to avoid race conditions
+   - CHTPM: ⚠️ Limited by parser poll interval (~100-300ms); file timestamps are parsed but timing drift inevitable
+   - Use case: Drag-and-drop timing, rapid key sequences
+
+3. **📐 Window Geometry Queries**
+   - XWindow app (tp_taskbar.c): Can query real window dimensions via XGetGeometry(), compute screen-relative positions
+   - CHTPM: ❌ No window concept; frame is text, no geometry available
+   - Use case: Position-dependent clicks (harness calls xwininfo to locate window, then computes click coords)
+
+4. **🎯 Cross-Window Focus & Activation**
+   - XWindow: XSetInputFocus(), XRaiseWindow() on any window; real focus-steal semantics
+   - CHTPM: ❌ No focus concept; parser just routes keys to active layout
+   - Use case: Testing multi-window apps, override-redirect popups
+
+5. **🖱️ Button/Click Events**
+   - XWindow: XTest injects real button 1/3/2 events with coordinates
+   - CHTPM: ❌ No button/coordinate support
+   - Use case: Context menus, right-click behaviors, click-to-focus
+
+### 📺 What CHTPM Can Do That XWindow Cannot (Easily)
+
+1. **🖥️ Headless Testing**
+   - CHTPM: ✅ Can run parser.+x + renderer.+x without X11 at all (no display needed)
+   - XWindow: ❌ Requires X server, display connection, real graphics hardware (or Xvfb)
+   - Use case: CI/CD pipelines, server automation, headless agents
+
+2. **⚡ Instant State Verification**
+   - CHTPM: ✅ Ops are pure functions; call `tp_place.+x map_start 5 2` and read resulting map.txt immediately
+   - XWindow: ⏳ Must wait for app to process event, write its debug log, then read log
+   - Use case: Unit testing individual operations without full UI
+
+3. **⏰ Predictable Timing**
+   - CHTPM: ✅ No render lag; frame updates synchronously when state changes
+   - XWindow: ⚠️ Subject to X server latency, Expose event batching, app's own event-loop timing
+   - Use case: Automated testing with tight timing requirements
+
+### 🤝 Parity: What Both Can Do
+
+1. **⌨️ Keyboard Input** (digit keys 0-9, arrow keys, special keys)
+2. **📋 Discrete State Assertions** (read resulting state files)
+3. **🧭 Navigation/Menu Testing** (test menu cursors, focus transitions)
+4. **📺 Frame Log Review** (CHTPM: pieces/display/current_frame.txt + session_frame_history.txt; XWindow: app's own debug logs)
+
+---
+
+## 🎬 ANIMATION & CONTINUOUS FEEDBACK
+
+### 📺 CHTPM Animation
+
+**⏸️ Current Reality**: Minimal. Frame is regenerated on state change, not on timer.
+- Parser processes key → layout state updates → renderer calls compose_frame() → new current_frame.txt
+- No frame-by-frame rendering; no delta updates; full redraw each time
+- Terminal updates based on `frame_changed.txt` marker (append-only log)
+- Typical visible latency: 100-500ms depending on parse/render cycle
+
+**Theoretical Capability**: Could add a frame-rate timer to renderer.+x:
+- Tick every 16ms (60 FPS)
+- Redraw even if layout state unchanged (for animations like spinning cursor, progress bars)
+- Would require significant refactor to decouple frame updates from state changes
+
+**Current Constraint**: Frame is textual; animations limited to ASCII art or color-attribute changes. No sub-character-cell motion.
+
+### 🪟 XWindow Animation
+
+**✅ Current Reality**: Possible but not heavily used in tp_taskbar.c itself.
+- App controls event loop timing via select() timeout (300ms in tp_taskbar.c)
+- Could register timer events, use XSync for frame sync, or call Expose handlers on a timer
+- Full control over pixel-perfect rendering
+
+**Capability**: True frame-by-frame animation
+- Redraw strip window every 16ms with smooth transitions
+- Gradient fills via XPutImage with computed RGB buffers
+- Sub-pixel motion via floating-point coords (rounded to KeyCode → actual pixel at XFillRectangle time)
+- **Example not in current codebase**: Smooth button press animation, sliding tab transitions, progress spinners
+
+**Implementation Path**: Add timer in select() loop:
+```c
+struct timeval tv = { 0, 16000 }; // 16ms for ~60 FPS
+int nfds = select(nfds, &rfds, NULL, NULL, &tv);
+if (nfds == 0) {
+    // Timer fired, redraw even if no events
+    draw_frame_animated();
+}
+```
+
+**Constraint**: Terminal CHTPM can't do this at all (terminal has no sub-frame-time update semantics). XWindow has no inherent limit.
+
+---
+
+## 🎨 RENDERING PRIMITIVES: X11 vs RGB/GL
+
+### 🪟 X11 Primitive Functions in tp_taskbar.c
+
+Currently used (all Xlib, no OpenGL):
+
+1. **📝 XDrawString(display, drawable, gc, x, y, string, length)**
+   - Draws monospace text using GC's font
+   - Used for: Button labels ("HQ", "user", "file"), tab names, navigation numbers
+   - Speed: Single call per text element; font rasterized by X server
+   - Limitation: Single font per GC; no kerning, no sub-pixel rendering
+
+2. **🟫 XFillRectangle(display, drawable, gc, x, y, width, height)**
+   - Fills solid rectangle with GC's foreground color
+   - Used for: Background fill (g_bar_buf cleared each frame), highlight boxes
+   - Speed: ⚡ O(1) in X server (hardware optimized on most platforms)
+   - Limitation: ⚠️ Solid fill only; no gradients natively
+
+3. **📏 XDrawLine(display, drawable, gc, x1, y1, x2, y2)**
+   - Draws line segment
+   - Used for: Row dividers in popup menu, top border of bar
+   - Speed: ⚡ Single call; hardware optimized
+   - Limitation: ⚠️ Single pixel width; no anti-aliasing
+
+4. **📸 XGetImage(display, drawable, x, y, width, height, plane_mask, format)**
+   - Captures actual RGBA frame into memory as XImage
+   - Used for: Debug frame capture (strip_frame.raw), confirming visual output for harness
+   - Speed: 🐢 Server → client data transfer; can be slow (full screen capture in main loop is a perf killer)
+   - Limitation: ⚠️ Synchronous; blocks until server responds
+
+5. **🖼️ XPutImage(display, drawable, gc, ximage, src_x, src_y, dest_x, dest_y, width, height)**
+   - Copies RGB buffer into drawable
+   - Used for: In tp_taskbar.c for HQ popup cell rendering (pre-computed RGBA pixels)
+   - Speed: ⚡ One server round-trip
+   - Limitation: ⚠️ Must have XImage (RGB buffer) already computed client-side
+
+### How These Are Actually Used in tp_taskbar.c
+
+**Strip Button Rendering** (draw_strip_if_marked(), line ~1400):
+```c
+XFillRectangle(dpy, g_strip_buf, gc, 0, 0, win_w, BAR_H);  // Clear background
+XDrawLine(dpy, win, gc, 0, 0, win_w, 0);                  // Top border
+
+for (each strip cell) {
+    XDrawString(dpy, win, gc, x + 4, BAR_H / 2 + 4,
+                display, strlen(display));  // "[ ] 1. HQ", "[ ] 2. user", etc.
+}
+```
+
+**Popup Menu Rendering** (open_cell_popup(), line ~1200):
+```c
+for (each row in popup) {
+    if (row has background) {
+        // Complex cell - use XPutImage
+        XImage *img = XGetImage(dpy, popup, x, y, w, h, AllPlanes, ZPixmap);
+        // ... modify pixels in img ...
+        XPutImage(dpy, popup, gc, img, 0, 0, x, y, w, h);
+    } else {
+        // Simple text row - use XDrawString
+        XDrawString(dpy, popup, gc, 12, row_y + offset,
+                    labeled, strlen(labeled));
+    }
+}
+```
+
+**Constraint**: No gradients, no transparency (RGBA computed but alpha not used in X11 drawing), no complex transforms. Simple, fast, reliable.
+
+### 🎮 RGB/GL Alternative Rendering Model
+
+#### 🚀 How RGB/GL Would Work
+
+1. **Compute Phase**: Build RGBA frame in memory (host RAM)
+   ```c
+   uint32_t frame[WIDTH * HEIGHT];
+   for (y = 0; y < HEIGHT; y++) {
+       for (x = 0; x < WIDTH; x++) {
+           uint8_t r, g, b, a = 255;
+           // Compute pixel color based on app state
+           frame[y * WIDTH + x] = (a << 24) | (r << 16) | (g << 8) | b;
+       }
+   }
+   ```
+
+2. **Display Phase**: Send RGBA buffer to GPU (OpenGL) or X server (XPutImage/Pixmap)
+   - OpenGL: glTexImage2D() + render quad, then glSwapBuffers()
+   - X11 Pixmap: XPutImage() or direct DRI2 write
+   - Result: One atomic update per frame (no tearing, guaranteed consistency)
+
+#### ✅ Advantages of RGB/GL Over Xlib Primitives
+
+1. **🎨 Complex Fills**
+   - Gradient backgrounds: Compute RGB buffer with smoothly varying colors
+   - Rounded corners: Rasterize via per-pixel alpha
+   - Anti-aliased text: Render glyphs into buffer with per-pixel smoothing
+   - Xlib limitation: No native support; would need custom XImages
+
+2. **🎬 Animation**
+   - Smooth transitions: Interpolate RGBA values frame-by-frame, redraw 60 FPS
+   - Particle effects: Simulate positions in compute phase, render to buffer
+   - Video playback: Decode frame into buffer, upload to GPU
+   - Xlib limitation: Single font, no transform pipeline
+
+3. **💎 Sub-Pixel Rendering**
+   - Move elements by 0.5 pixels (text smoothing), roundtrip on display
+   - Xlib limitation: Coordinates are integers; rounding to nearest pixel
+
+4. **📡 Bandwidth Efficiency**
+   - With GPU: One PCIe transfer per frame (buffer → VRAM); GPU rasterizes
+   - Xlib: Many round-trips (XDrawString call, XFillRectangle call, etc.); each is a server request
+   - Result: RGB/GL typically wins on high-complexity scenes (many small elements)
+
+#### ❌ Disadvantages of RGB/GL
+
+1. **🧠 Complexity**: Must implement own text rasterization, must understand GPU pipeline
+2. **🐛 Debugging**: Can't easily inspect individual pixels; no native "screenshot" (must read back from GPU, slow)
+3. **📦 Portability**: OpenGL requires GPU driver; Xlib works on basic Xvfb (no GPU)
+4. **⏱️ Latency**: GPU upload may be slower than simple XFillRectangle for tiny scenes
+5. **🔗 Dependencies**: Xlib only needs Xlib.h; RGB/GL needs stb_image_write.h or similar, plus GPU libraries
+
+### 🤔 Could RGB/GL Replace X11 Primitives in tp_taskbar.c?
+
+**✅ Technical Answer**: Yes, absolutely.
+
+**⚠️ Practical Answer**: Not worth it for current taskbar, but worth knowing the path for future UIs.
+
+**📊 Current Taskbar Complexity**: ~5 text strings + 1 line + maybe 1 background rectangle. Xlib is perfectly adequate.
+- XDrawString is fast enough for 5 labels
+- XDrawLine for single border is negligible
+- XFillRectangle clears background instantly
+- No animation, no complex graphics
+- Cost of RGB/GL pipeline setup would dwarf savings
+
+**Future Case Where RGB/GL Wins**:
+- Animated taskbar with sliding tab transitions
+- Gradient backgrounds with semi-transparent overlays
+- Per-pixel effects (glow, shadow, blur)
+- High refresh rate (120+ FPS) with many objects
+- Shared GPU context with other app windows (avoid costly server round-trips)
+
+**Recommended Path if Needed**:
+1. Keep Xlib for simple cases (text, lines, solid fills)
+2. Use XPutImage for complex pixels (already done for popup cells)
+3. If animation needed, add timer loop to redraw every 16ms
+4. Only switch to OpenGL if profiling shows Xlib is bottleneck (unlikely for taskbar)
+
+---
+
+## ⚠️ WINDOW SYSTEM CONSTRAINTS & EDGE CASES
+
+### 🪟 Override-Redirect Popup Focus (XWindow-Specific Issue)
+
+**🐛 Problem** (!.HOUSE_STDS.md §F-19): On Mutter/XWayland (Wayland-based X11 emulation), a fresh override-redirect window (popup menu) doesn't reliably receive keyboard input after bare `XSetInputFocus()`, even though `XGetInputFocus()` reports success.
+
+**🔍 Root Cause**: X server reports focus set, but compositor doesn't route input to the client window. At X11 protocol level, this is valid; Wayland compositor has final say.
+
+**✅ Confirmed Fix**: `XRaiseWindow()` immediately before `XSetInputFocus()`, followed by `XSync()` to flush.
+```c
+XRaiseWindow(dpy, popup);
+XSetInputFocus(dpy, popup, RevertToNone, CurrentTime);
+XSync(dpy, False);
+```
+
+**Why This Matters for Testing**:
+- File-based injection (CHTPM's method) would never catch this bug (wrong arch family)
+- XTest injector + real event delivery **did** catch it (injector ran fine, but events didn't reach window)
+- This is why !.HOUSE_STDS.md mandates: **"Stop reading code and build a real, repeatable injection-based test harness when keyboard bugs are invisible from code review."**
+- Lesson: XWindow testing needs real event delivery verification, not just "did the injection file work"
+
+### Window Manager Timing (XWindow-Specific)
+
+**Variability**:
+- XNextEvent() may wait for real OS-level input (500ms of keyboard inactivity = 500ms blocking on select())
+- XTest injection wakes the app immediately, but still subject to X server scheduler
+- Expose event batching: Multiple damage regions coalesce into one Expose event
+- Result: Same test might show different timing on loaded vs idle system
+
+**Mitigation** (key_injector.c, line 54):
+```c
+usleep(400000); /* generous margin past the app's own poll interval (select() timeout up to 300ms)
+                   so a focus-transfer/redraw race under system load can't silently drop a key */
+```
+
+After each key, wait 400ms to ensure app event loop has time to process. Without this, rapid key sequences could be lost under load.
+
+### CHTPM Timing (File-Based)
+
+**Variability**:
+- Parser poll interval: 100-300ms depending on select() timeout
+- File write → parser read: subject to filesystem buffering (fsync() needed for guarantee)
+- Timestamp parsing is done, but actual timing drift inevitable
+- No real-time guarantees
+
+**Mitigation** (_.0.aigent-testing-k9.txt):
+```bash
+# Always allow 1-2 seconds for the parser/module cycle to complete before
+# capturing evidence. Don't assume "injected" means "processed".
+sleep 2
+cat pieces/display/current_frame.txt > evidence.txt
+```
+
+**Lesson**: Both systems are subject to timing races. XWindow is tighter (400ms margin sufficient), CHTPM needs larger safety margin (2-3s).
+
+---
+
+## MULTIWINDOW SCENARIOS
+
+### CHTPM's Advantage: Single Dispatcher
+
+In CHTPM, one parser loop handles all input for all open layouts.
+
+**Navigation Example**: User in main menu (layout A), right-clicks a tab to open entity window (layout B).
+1. Parser reads navigation number from history.txt
+2. Calls active_piece_interact() on current layout
+3. Layout dispatches to appropriate handler
+4. If result is "open entity", sends command to entity window's relay
+5. Entity window (separate process) reads relay, opens, parser now routes future keys to new layout
+
+**Advantage**: Guaranteed single-threaded input ordering; no race conditions between windows
+**Limitation**: One parser for entire house; bottleneck if many fast interactions
+
+### XWindow's Challenge: Multiple Event Loops
+
+Each XWindow app has its own XNextEvent() loop running independently.
+
+**Navigation Example** (tp_taskbar.c + entity window):
+1. Taskbar running in process A, gets keypress via XNextEvent()
+2. Taskbar armed mode, processes arrow key, calls open_cell_popup()
+3. Popup opens (override-redirect window, still in process A)
+4. User presses Enter → taskbar detects ACTIVATE command
+5. Taskbar writes to entity window's interact_relay.txt
+6. Entity window process B runs its own event loop, independently polls relay
+7. Race: Did relay write before process B's next poll cycle?
+
+**Synchronization**: File-based (relay.txt) → eventual consistency model. Both windows read/write shared files atomically (rename pattern), but timing between windows is not synchronized.
+
+**Advantage**: Truly parallel (each window can render at its own rate, responsive to local input)
+**Limitation**: Complex cross-window coordination, potential race conditions, eventual consistency only
+
+### CHTPM Coordination with Multiple Windows (File-Based)
+
+Same relay.txt pattern as XWindow (for entity windows written in XWindow or other toolkits). Difference: CHTPM's own windows all route through one parser, so they have stronger guarantees.
+
+---
+
+## 📊 SUMMARY TABLE: CAPABILITIES & TRADEOFFS
+
+| Feature | 📺 CHTPM | 🪟 XWindow |
+|---------|---------|-----------|
+| **⌨️ Input Method** | 📄 File-based (pieces/keyboard/history.txt) | ⚡ Real X11 events (XNextEvent) or XTest injection |
+| **🧪 Test Harness** | 🏃 Direct op calls + state assertions | 🎯 XTest injector + app's own log assertions |
+| **🖥️ Headless Capable** | ✅ Yes (no display needed) | ❌ No (requires X server) |
+| **🖱️ Mouse Support** | ❌ No | ✅ Yes (motion, buttons) |
+| **⏱️ Sub-Millisecond Timing** | ⚠️ Limited (poll interval ~100-300ms) | ✅ Better (select() wakeup on events) |
+| **📐 Window Geometry** | ❌ No (text frame, no dimensions) | ✅ Yes (XGetGeometry, screen coords) |
+| **🎯 Focus/Activation** | ❌ No (no window concept) | ✅ Yes (XSetInputFocus, XRaiseWindow) |
+| **🎬 Animation** | 🤔 Theoretical (timer loop) | ✅ Native (frame-by-frame control) |
+| **🎨 Rendering Model** | 📺 Textual frame artifact | 🪟 X11 primitives (Xlib) or RGB/GL |
+| **⚡ Rendering Speed** | 🏃 Single render per state change | ⏱️ Can be continuous (timer-driven) |
+| **🧠 Complexity** | 📉 Lower (text + state machines) | 📈 Higher (event loop + graphics) |
+| **🐛 Debugging Ease** | ✅ High (read current_frame.txt anytime) | ⚠️ Medium (read app's own logs, XGetImage for RGB) |
+| **🔀 Cross-Window Sync** | ✅ Strong (single dispatcher) | ⏳ Eventual (file-based relay) |
+
+---
+
+## 🏗️ ARCHITECTURAL LESSON: When to Use Each
+
+### 📺 Use CHTPM For
+1. **💻 Terminal-based apps** requiring text UI
+2. **🖥️ Headless automation** without display
+3. **📋 Simple menus/navigation** (no graphics needed)
+4. **✅ Deterministic testing** of business logic ops
+5. **🎯 Single coordinator** handling many entities (parser as hub)
+
+### 🪟 Use XWindow (Raw Xlib) For
+1. **🎨 Desktop apps** with real graphics
+2. **🪟🪟 Multi-window** scenarios (independent event loops)
+3. **🎬 Animation** or smooth feedback
+4. **🖱️ Mouse interaction** (drag, hover, context menus)
+5. **🔐 System-level** integration (X11 focus stealing, override-redirect)
+
+### 🎮 Use RGB/GL For (Future)
+1. **⚡ High-performance graphics** (many elements, complex effects)
+2. **🎬 Smooth animation** (60+ FPS)
+3. **🚀 GPU-accelerated** processing
+4. **🔀 Shared rendering context** across windows (DRI2/DRI3)
+
+---
+
+## 🤔 REMAINING UNKNOWNS & FUTURE WORK
+
+1. **🎬 Can CHTPM animation be implemented without major refactor?**
+   - ✅ Partial: Yes, add timer to renderer; probably 90% effective
+   - ❓ Full: Maybe, but would require decoupling frame updates from state changes
+
+2. **🪟 Could khtpm_taskbar_core.c use CHTPM's file-based input?**
+   - ❌ No: Core architecture assumes real X11 events (focus callbacks, geometry queries)
+   - 🤝 Compromise: Could add optional file-based input via polling in event loop, but adds complexity
+
+3. **🎨 Would RGB/GL rendering measurably improve taskbar performance?**
+   - ❌ Unlikely: Current Xlib primitives are bottleneck-free for 5 labels + 1 line
+   - 📊 Measured via: Remove XGetImage call (current bottleneck), profile remaining Xlib calls
+   - ✅ If <1ms per frame with Xlib, no need for RGB/GL
+
+4. **🧪 How to unify testing across both families?**
+   - 🤝 Partial: Write wrapper harness that auto-detects input method (file vs XTest)
+   - ⚠️ Challenge: CHTPM harnesses call ops directly (no UI), XWindow harnesses inject events
+   - 📌 Recommendation: Keep separate test families, document which method applies where
+
+---
+
+## 📚 HOUSE STANDARDS IMPACT
+
+- **!.HOUSE_STDS.md §F-19**: 🪟 Override-redirect focus rule applies to XWindow only; codifies XTest testing approach
+- **_.0.aigent-testing-k9.txt (updated 2026-08-09)**: ⚠️ Explicitly documents scope separation (file-injection vs XTest)
+- **KHTPM-ARCH.txt**: 📌 Notes that khtpm_taskbar_core.c has zero strip support; intended architecture is:
+  - 🔀 Shared core (khtpm_taskbar_core.c + khtpm_taskbar_plat_x11.c + khtpm_taskbar_main.c)
+  - 📺 Strip feature currently only in legacy tp_taskbar.c (file-based input won't help here)
+
+---
+
+## 🎓 CONCLUSION
+
+XWindow and CHTPM are **not two implementations of the same idea**; they are **two fundamentally different event models** for different UI paradigms:
+
+- **📺 CHTPM**: Centralized, file-based, single-threaded, deterministic, text-focused
+- **🪟 XWindow**: Decentralized, event-driven, asynchronous, pixel-perfect, multi-window
+
+⌨️ **Key injection differs accordingly:**
+- **📺 CHTPM**: File lines → parser loop → state updates → frame recompute
+- **🪟 XWindow**: XTest real events → app event loop → state updates → Xlib draw
+
+🎨 **Rendering differs:**
+- **📺 CHTPM**: Textual frame artifact (pieces/display/current_frame.txt)
+- **🪟 XWindow**: X11 primitives (XDrawString, XFillRectangle, etc.) or RGB/GL
+
+🎬 **Animation:**
+- **📺 CHTPM**: Possible via timer (not currently used)
+- **🪟 XWindow**: Native via frame-by-frame redraw (not currently used in taskbar, but available)
+
+🎮 **RGB/GL Tradeoff:**
+RGB/GL could replace Xlib in theory, but for a simple taskbar (5 text strings + 1 line), Xlib is optimal. RGB/GL becomes valuable only for complex graphics (gradients, effects, high FPS).
+
+### 💡 Key Insight
+**Testing methodology must match architecture.** File-injection harnesses work for CHTPM; XTest injectors work for XWindow. Trying to test XWindow via file injection (or vice versa) produces silent failure, not an error.
+
+**TL;DR**: 📺 = file/parser/text; 🪟 = events/graphics/real-time. Know which one you're building, and test accordingly! 🎯

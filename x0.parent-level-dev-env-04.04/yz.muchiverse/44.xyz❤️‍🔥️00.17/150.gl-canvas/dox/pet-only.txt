@@ -1,0 +1,231 @@
+pet-only.txt — egg_window vs pet_purely
+========================================
+Created: 2026-07-26
+Purpose: Document the relationship between the real pet window (egg_window)
+         and the test stub (pet_purely) for task handoff.
+
+TL;DR: pet_purely is a WITTINGLY SIMPLIFIED reimplementation, NOT a copy
+of egg_window. It shares the same Xdnd source protocol logic (which was
+extracted from egg_window after the 6-bug fix cycle), but strips out every
+feature that makes egg_window a "real pet" — no sprite, no grid, no
+autonomous movement, no shape masking, no state.txt, no tick system.
+
+======================================================================
+SECTION 1: WHAT egg_window IS (1292 lines)
+======================================================================
+
+egg_window.c is the production pet window in 01.muchi-pals. It:
+
+A) RENDERING
+   - Loads a pet sprite from sprite.csv (via load_sprite())
+   - Builds a per-pixel alpha shape mask (X11 Shape Extension) so the
+     window is shaped to the pet's silhouette, not a rectangle
+   - Draws the sprite at 80x80px via OpenGL texture
+   - Supports facing direction (left/right flip) via rebuild_shape_mask()
+   - Overlays icons (sleep, poop) loaded from pieces/registry/icons/
+
+B) AUTONOMOUS MOVEMENT
+   - Polls state.txt every ~300ms for grid_x/grid_y/z/tick_seq
+   - Converts grid coords to pixels: x*80, y*80 - z*20
+   - Moves window via XMoveWindow()
+   - Shells out to tick_pets op (self-tick) based on tick_config.txt
+   - Writes grid_x/grid_y back to state.txt on drag-drop
+
+C) MOUSE DRAG
+   - ButtonPress: starts free-pixel drag, XSetSelectionOwner
+   - MotionNotify: follows cursor (XMoveWindow), finds Xdnd target
+   - ButtonRelease: snaps to grid, writes position to state.txt
+
+D) Xdnd SOURCE PROTOCOL
+   - Sets XdndAware property
+   - XQueryPointer + XQueryTree to find target window under cursor
+   - Sends XdndEnter/Position/Drop to target
+   - Serves pet_id via SelectionRequest (text/plain)
+   - Handles XdndStatus/Finished responses
+
+E) TEST HARNESS INTEGRATION
+   - Polls drag_drop_test.pdl every 1s for external position override
+   - Gated by !dragging (won't override during active drag)
+
+F) CLOSE MECHANISM
+   - Polls /tmp/egg_window_close_<pet_id>.txt every ~300ms
+   - If found: reads it, removes it, exits
+
+======================================================================
+SECTION 2: WHAT pet_purely IS (283 lines)
+======================================================================
+
+pet_purely.c is a minimal test stub for the gl-canvas drag-drop test.
+It exists so we can test the Xdnd protocol WITHOUT depending on the
+full muchi-pals ecosystem (tick system, state files, sprite loading,
+shape extension library).
+
+A) RENDERING
+   - Just a solid colored quad (hash of pet_id → RGB)
+   - No sprite, no texture, no shape mask
+   - 80x80px window, same size as egg_window
+
+B) NO AUTONOMOUS MOVEMENT
+   - Window stays where you put it
+   - No state.txt polling
+   - No tick system
+
+C) MOUSE DRAG (identical to egg_window)
+   - ButtonPress → XSetSelectionOwner
+   - MotionNotify → follows cursor + XQueryTree target detection
+   - ButtonRelease → sends XdndDrop
+   - This code was COPIED from egg_window's Xdnd source logic
+
+D) Xdnd SOURCE PROTOCOL (identical to egg_window)
+   - Same atoms, same protocol version (5)
+   - Same XQueryPointer + XQueryTree target detection
+   - Same SelectionRequest handler (sends pet_id as text/plain)
+
+E) POSITIONING
+   - argv[1] = pet_id, argv[2] = x, argv[3] = y
+   - No drag_drop_test.pdl polling (position via args only)
+
+F) NO CLOSE MECHANISM
+   - Doesn't poll for close request file
+   - Test harness kills it via pkill
+
+======================================================================
+SECTION 3: SIDE-BY-SIDE COMPARISON
+======================================================================
+
+Feature               | egg_window (1292)  | pet_purely (283)
+----------------------|--------------------|------------------
+Window system         | raw X11 + GLX      | raw X11 + GLX
+override_redirect     | Yes                | Yes
+Size                  | 80x80              | 80x80
+Sprite rendering      | Yes (sprite.csv)   | No (colored quad)
+Shape masking         | Yes (X11 Shape)    | No (rectangle)
+Autonomous movement   | Yes (state.txt)    | No
+Self-tick             | Yes (tick_pets)    | No
+Grid snap on drop     | Yes                | No
+Mouse drag            | Yes                | Yes (copied code)
+Xdnd source protocol  | Yes (5 bugs fixed) | Yes (same fixed code)
+Xdnd target detection | XQueryPointer+Tree | XQueryPointer+Tree
+SelectionRequest      | Sends pet_id       | Sends pet_id
+Test config polling   | Yes (drag_drop.pdl)| No (args only)
+Close request polling | Yes (/tmp/...)     | No (killed by harness)
+Facing direction      | Yes                | No
+Icon overlays         | Yes                | No
+
+======================================================================
+SECTION 4: WHY pet_purely EXISTS
+======================================================================
+
+The Xdnd source protocol (ButtonPress → MotionNotify → XQueryTree →
+XdndEnter/Position → ButtonRelease → XdndDrop → SelectionRequest →
+SelectionNotify) is the COMPLICATED part that had 6 bugs.
+
+egg_window is the only thing in the codebase that implements this.
+Testing gl-canvas's Xdnd receiver requires an Xdnd SOURCE. We could:
+
+1) Use egg_window directly
+   Problem: Requires the full muchi-pals ecosystem:
+   - pieces/world_01/map_lobby/<pet_id>/state.txt
+   - pieces/registry/emoji_pool/common_emoji.txt
+   - ops/+x/tick_pets.+x
+   - pieces/system/tick_config.txt
+   - A valid emoji sprite (sprite.csv + emoji atlas PNG)
+   Without these, egg_window falls back to a blue circle and may crash.
+
+2) Use pet_purely (chosen approach)
+   Just needs: X11 + GLX. No files, no ecosystem. Takes pet_id as
+   argv[1], position as argv[2]/argv[3], opens window, done.
+
+pet_purely is a TEST STUB, not a replacement for egg_window.
+
+======================================================================
+SECTION 5: WHAT pet_purely IS MISSING (IF YOU WANT FULL PARITY)
+======================================================================
+
+If you later want pet_purely to behave exactly like egg_window:
+
+1. Add #include <X11/extensions/shape.h> and build_shape_mask()
+2. Add load_sprite() to read sprite.csv
+3. Add state.txt polling (read_pet_vitals + XMoveWindow)
+4. Add self-tick (shell out to tick_pets)
+5. Add drag_drop_test.pdl polling
+6. Add close request file polling
+7. Add grid snap on ButtonRelease
+8. Add write_pet_position() for state.txt writeback
+9. Add facing direction tracking
+10. Add icon overlay rendering
+
+Each of these is independent — you can add them one at a time.
+
+======================================================================
+SECTION 6: BUILD INSTRUCTIONS
+======================================================================
+
+egg_window (in 01.muchi-pals):
+  cd 01.muchi-pals-🥚️-13.01
+  bash scripts/build.sh
+  # or: bash button.sh compile
+  # Links: -lX11 -lXext -lGL -lm
+
+pet_purely (in gl-canvas):
+  cd gl-canvas
+  bash button.sh compile
+  # Compiles: pet_purely.c -lX11 -lXext -lGL -lm
+  #           gl_canvas.c -lglut -lGL -lGLU -lX11
+  #           import_pet.c (no libs)
+
+======================================================================
+SECTION 7: TEST HARNESS FLOW
+======================================================================
+
+test-harn/scenarios/test_drag_drop.sh does:
+
+1. Kill prior instances
+2. Screenshot baseline
+3. Launch gl_canvas (freeglut, Xdnd TARGET) — background, PID saved
+4. Launch pet_purely (raw X11, Xdnd SOURCE) — at (100,100), PID saved
+5. Run tk_drag_sim (XSendEvent + XWarpPointer):
+   - Finds windows by title (XFetchName)
+   - XWarpPointer to pet center → ButtonPress → 40 step drag → ButtonRelease
+   - pet_purely receives MotionNotify → finds gl_canvas via XQueryTree
+   - pet_purely sends XdndEnter/Position/Drop to gl_canvas
+6. gl_canvas receives XdndDrop → XConvertSelection → SelectionNotify
+7. gl_canvas reads pet_id → runs import_pet → writes close request
+8. pet_purely doesn't poll close requests (killed by cleanup)
+9. Screenshots at each stage for visual proof
+
+Known issues at time of writing:
+- pet_purely window wasn't visible in XQueryTree listing (investigating)
+- gl_canvas may not have initialized Xdnd (fgDisplay.Display hack)
+- Both need runtime testing on a real X display with GPU
+
+======================================================================
+SECTION 8: HANDOFF NOTES
+======================================================================
+
+For the next agent picking up this task:
+
+1. pet_purely.c compiles and launches but its window may not appear
+   in XQueryTree. Investigate: is XMapWindow completing? Is the window
+   actually a child of root? Check with xlsclients or xwininfo.
+
+2. gl_canvas.c uses freeglut's fgDisplay.Display hack to get the real
+   Display* for Xdnd. This is platform-specific and fragile. If it
+   fails, fall back to raw X11 like egg_window (no freeglut).
+
+3. The drag simulator (tk_drag_sim.c) is untested. It sends synthetic
+   events via XSendEvent. egg_window processes these, but:
+   - ButtonPress must have x_root/y_root set correctly
+   - MotionNotify must have state=Button1Mask
+   - The XWarpPointer must physically move the cursor for XQueryTree
+
+4. The screenshot tool (tk_screenshot.c) works via XCopyArea to pixmap
+   then XGetImage. Saves PPM format (large but simple).
+
+5. All code is in /home/no/.../44.xyz❤️‍🔥️00.07/gl-canvas/
+   Architecture doc: gl-canvas/dox/canvas-gl-architecture.md
+   This file: pet-only.txt (in same dox/ dir)
+
+6. The egg_window Xdnd source code was fixed in 6 bugs documented in
+   drag-drop-bugs.txt. pet_purely inherits those fixes (copied code).
+   If you modify the Xdnd source logic, check drag-drop-bugs.txt first.

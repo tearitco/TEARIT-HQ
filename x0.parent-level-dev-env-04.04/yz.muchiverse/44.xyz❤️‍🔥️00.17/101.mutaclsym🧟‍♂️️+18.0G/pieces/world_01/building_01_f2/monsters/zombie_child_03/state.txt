@@ -1,0 +1,4 @@
+monster_type=zombie_child
+pos_x=11
+pos_y=5
+hp=10

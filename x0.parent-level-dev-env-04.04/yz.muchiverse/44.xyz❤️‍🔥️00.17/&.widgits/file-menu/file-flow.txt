@@ -1,0 +1,64 @@
+
+--- FRAME UPDATE at 2026-07-27 22:14:11 ---
+╔══════════════ F I L E   M E N U ════════════╗
+║                                             ║
+║ ACTIVE: projects/agy-text-editor/pieces/document.txt
+║                                             ║
+║  FILE: projects/agy-text-editor/pieces/do ║
+║                                             ║
+║  [ ] 1. [NEW FILE]                       ║
+║  [ ] 2. [SAVE FILE]                      ║
+║  [ ] 3. [SAVE AS...]                     ║
+║  [>] 4. [LOAD FILE...]                   ║
+║  [ ] 5. [CHANGE ACTIVE PROJECT]                 ║
+║                                             ║
+╠═════════════════════════════════════════════╣
+| ║  Ready.                                   ║         |
+
+╚═════════════════════════════════════════════╝
+
++=========================================================+
+Nav > _
+
+
+
+
+
+--- FRAME UPDATE at 2026-07-27 22:14:11 ---
+╔══════════════ FILE BROWSER ════════════════╗
+║  MODE: LOAD FILE                            ║
+║  DIR: projects/agy-text-editor            ║
+║ SEARCH: | [>] 1. []                                                 |
+║ FILE:   | [ ] 2. []                                                 |
+║                                             ║
+║ ACTIVE: projects/agy-text-editor/pieces/document.txt
+║                                             ║
+║  SUGGESTIONS:                               ║
+║  [ ] 3. [layouts/]                        ║
+║  [ ] 4. [manager/]                        ║
+║  [ ] 5. [pieces/]                         ║
+║  [ ] 6. [file-op-dox.txt]                 ║
+║                                             ║
+╠════════════ DIRECTORY CONTENTS ═════════════╣
+║  [ ] 7. [<- BACK]                         ║
+║  [ ] 8. [[DIR] layouts/]                  ║
+║  [ ] 9. [[DIR] manager/]                  ║
+║  [ ] 10. [[DIR] pieces/]                  ║
+║  [ ] 11. [[FIL] file-op-dox.txt (2KB)]    ║
+║  [ ] 12. [[FIL] hi.txt (26B)]             ║
+║  [ ] 13. [[FIL] project.pdl (575B)]       ║
+║  [ ] 14. [...pipeline-study+.txt (2KB)]   ║
+║  [ ] 15. [[FIL] t (26B)]                  ║
+║                                             ║
+╠═════════════════════════════════════════════╣
+║  [ ] 16. [LOAD FILE]                      ║
+║  [ ] 17. [CANCEL]                         ║
+║                                             ║
+╠═════════════════════════════════════════════╣
+| ║  Select file to load.                     ║         |
+
+╚═════════════════════════════════════════════╝
+
++=========================================================+
+Nav > _
+

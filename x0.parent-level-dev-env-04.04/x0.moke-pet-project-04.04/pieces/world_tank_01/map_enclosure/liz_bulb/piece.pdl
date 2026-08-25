@@ -1,0 +1,11 @@
+METHOD | scan        | pieces/world_tank_01/map_enclosure/liz_bulb/ops/scan.+x
+METHOD | eat         | pieces/world_tank_01/map_enclosure/liz_bulb/ops/eat.+x
+METHOD | breathe     | pieces/world_tank_01/map_enclosure/liz_bulb/ops/breathe.+x
+METHOD | check_death | pieces/world_tank_01/map_enclosure/liz_bulb/ops/check_death.+x
+METHOD | train       | pieces/world_tank_01/map_enclosure/liz_bulb/ops/train.+x
+METHOD | attack      | pieces/world_tank_01/map_enclosure/liz_bulb/ops/attack.+x
+METHOD | mate        | pieces/world_tank_01/map_enclosure/liz_bulb/ops/mate.+x
+METHOD | rest        | pieces/world_tank_01/map_enclosure/liz_bulb/ops/rest.+x
+METHOD | nothing     | pieces/world_tank_01/map_enclosure/liz_bulb/ops/nothing.+x
+METHOD | ai          | projects/xo-pet-v1/ops/+x/ai.+x
+METHOD | release     | projects/xo-pet-v1/ops/+x/possess.+x xolector

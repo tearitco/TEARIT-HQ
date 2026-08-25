@@ -1,0 +1,48 @@
+🎃️
+
+this is our project , " Mars StreetRace Raider" ; it is a single or multiplayer human and ai, stock market simulation game (on the planet Mars). 
+player moves are turn based, but ai manages corporations not based on turn but based on 
+schedules being triggered by clockwise_loop.c
+and event loop also gets triggered sometimes called 
+master_reader.c
+which will read and write events to and from global ledger and entity accounts when relevant : 
+the players have a command line gui that they will use to make financial moves. the sim is about 40% done ; 
+[
+rules : when planning or coding dont modify or delete anything unrealated to issue obviously and stick 2 
+the stylistic architectural conventions of the project . if you must make a deviation consult user first
+]
+first read the prompt , then read over whatever code you need, to understand the codebase, then make me a 2do.txt list of the code that you plan to impliment. i will read and approve or suggest changes 2do; 
+then we may begin . here is the prompt for today : 
+
+today we are working on creating a realistic, dynamic stock price for corporations 
+
+i have outlined a simple architecture , keep it simple , it can be added to later, once proven functional.
+
+clockwise_loop.c -> presets/schedule.txt -> day_loop.c =   fprintf(fptr, "Hello, DAy!\n");
+
+want to add a module analysis_loop.c , where for each bank in game, an analysis 
+of each company is done and a 'stock price is given' based on 3 corporate fundamentals + bank bias  :  
+(market cap , leverage, and book value ; to do a 'p/e' -it can then give these statistics to the company's accounting sheet, and they will show up when searched )
+
+before we do this we should set up corporate bias, during "setup" <then we can do all at once>
+
+in whichever one of these you deem more relevant : 
+setup_corporations.c
+setup_corporations_stage2.c
+
+{later we can "use weights of each bank 2 do calculation all at once" mask some out , use more criteria or w/e just keep this one simple ; just get the ball rolling} 
+(i may actually just do this at setup, give all companies a 
+"weights.txt" inside their "dir/" which can have 'personality ie : risk appetite ; (politics w/e etc) ' 
+ie for now it can have 1 row and 2 colomns " risk and calculated risk appetite based on side industry &rand
+"risk 1-100"
+
+so 
+step 1 . add weights.txt during setup to set static 'biases' for each corporation
+
+step2 in day_loop.c lets add (real code, currently boiler plate) a system/fork call to a new module analysis_loop.c 
+which will calculate a stock price for each company (including the banks) 
+based on a simple combined calculation that takes into account fundamentals and bank bias. 
+
+status : #.2do_oc29.txt exist and is approved
+🎃️
+

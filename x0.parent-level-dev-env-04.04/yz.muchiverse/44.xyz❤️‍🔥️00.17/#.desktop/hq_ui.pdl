@@ -1,0 +1,25 @@
+# hq_ui.pdl - shared UI config for all -hq apps (db-hq, events-hq, ai-hq, etc.)
+# font_scale: multiplier applied to both font sizes and layout box sizes
+# (chrome height, row heights, default window size), so a bigger font
+# never gets clipped by boxes that stayed the same size. Range 0.5-3.0.
+font_scale=1.25
+
+# window_x / window_y: initial on-screen position of the -hq window
+# (root coords). Default was a hardcoded 100,100 in khtpm_hq_render.c -
+# that put the window only ~46px below the top (the taskbar + work-area
+# margin is ~54px), so stats/db-hq windows appeared glued right under the
+# taskbar. Now configurable without a rebuild (direct instruction
+# 2026-08-13: "scootch them down a bit... are there values in .pdl
+# separate as they should be?"). Left as 100 default; window_y raised to
+# clear the taskbar area with comfortable margin.
+window_x=100
+window_y=160
+
+# focus_grab: 0 (default, KISS hail-mary 2026-08-12) = do NOTHING focus-
+# related on map/click, matching egg_window.c's own entity/context
+# window exactly (no XSetInputFocus, no XGrabKeyboard) - those windows
+# also launch fresh from a click and reliably keep keyboard focus with
+# zero special handling, so try that first. 1 = fall back to the earlier
+# XGrabKeyboard+retry / right-click-force-focus machinery if 0 doesn't
+# actually fix real physical keyboard input.
+focus_grab=0

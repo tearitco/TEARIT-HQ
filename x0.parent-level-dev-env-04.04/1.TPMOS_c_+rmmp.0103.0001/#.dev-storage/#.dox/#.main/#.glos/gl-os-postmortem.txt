@@ -1,0 +1,117 @@
+================================================================================
+GL-OS DEBUGGING POST-MORTEM (April 2, 2026)
+================================================================================
+
+WHAT HAPPENED
+================================================================================
+
+We spent 3+ hours debugging GL-OS because we violated our own principles.
+
+THE BUG WE CREATED:
+1. Assumed projects/gl-os/ was "developmental scaffolding"
+2. Deleted it WITHOUT checking reference first
+3. GL-OS broke (showed op-ed map instead of desktop view)
+4. Spent hours trying to fix a problem we created
+
+THE ACTUAL ARCHITECTURE:
+- GL-OS is an APP (pieces/apps/gl_os/) - launched via LAUNCH:GL-OS
+- projects/gl-os/ exists for piece state management
+- BOTH are used together (hybrid pattern)
+- Reference has BOTH structures
+
+WHAT WE SHOULD HAVE DONE:
+1. ls #.ref/TPMOS_c_+rmmp_52.00/projects/ - Would have seen gl-os/ exists
+2. cat #.ref/.../projects/gl-os/project.pdl - Would have seen it's intentional
+3. grep -r "gl-os" #.ref/.../*.kvp - Would have seen routing
+4. NOT deleted anything
+
+LESSONS LEARNED
+================================================================================
+
+1. REFERENCE-FIRST DEBUGGING (Pitfall #74)
+   - ALWAYS check reference BEFORE making changes
+   - Assume reference is correct until proven otherwise
+   - Compare structure: ls current/ vs ls #.ref/.../
+   - Understand WHY before changing
+
+2. DON'T ASSUME REDUNDANCY (Pitfall #72)
+   - If reference has a structure, there's a reason
+   - "Looks redundant" is NOT a reason to delete
+   - Test understanding: Can I explain why this exists?
+   - If no, ASK or CHECK REFERENCE
+
+3. MULTI-LINE VALUES DON'T WORK IN STATE FILES (Pitfall #76)
+   - State files use line-by-line parsing
+   - "key=value" format splits on '='
+   - Multi-line content gets split into separate variables
+   - Solutions:
+     a) Encode newlines with | delimiter
+     b) Read directly from source in get_var()
+     c) Use separate file for complex data
+
+4. APP vs PROJECT DISTINCTION (Pitfall #75)
+   - APP: pieces/apps/, LAUNCH:<NAME>, app_list.txt
+   - PROJECT: projects/, LOAD_PROJECT:<ID>, project_routes.kvp
+   - GL-OS is APP (has OpenGL code, system tool)
+   - op-ed is PROJECT (user-editable content)
+
+5. DOCUMENT AS YOU GO
+   - We created good docs AFTER fixing
+   - Should have checked docs BEFORE changing
+   - Update docs WHEN you make changes
+   - Future you (and agents) will thank you
+
+FIXES APPLIED
+================================================================================
+
+1. Restored projects/gl-os/ (then removed again when we understood it's APP-only)
+2. Added ${desktop_view} special handling in parser get_var()
+3. Updated PITFALLS with 5 new pitfalls (#72-76)
+4. Updated TPMOS_APP_REFERENCE.txt with quick reference
+5. Created gl-os-architecture.txt and gl-os-layout-fix.txt
+
+CODE CHANGES
+================================================================================
+
+pieces/chtpm/plugins/chtpm_parser.c:
+- Added #include <time.h>
+- Modified get_var() to handle ${desktop_view} specially
+- Reads directly from pieces/apps/gl_os/session/view.txt
+- Caches result, refreshes every second
+
+pieces/apps/gl_os/plugins/gl_desktop.c:
+- Modified write_gl_os_state() to write all variables
+- Added: bg_color, name, type, pos_x, pos_y, width, height, session_status
+- Added: desktop_view (reads from view.txt)
+- Added: gl_response (default empty)
+
+pieces/os/project_routes.kvp:
+- Removed gl-os entry (it's an APP, not PROJECT)
+
+VERIFICATION CHECKLIST (FOR FUTURE DEBUGGING)
+================================================================================
+
+Before making structural changes:
+[ ] Check reference structure: ls #.ref/.../<path>/
+[ ] Compare file counts: wc -l current/* #.ref/.../*
+[ ] Understand purpose: What does each file do?
+[ ] Test reference: Does it work? How?
+[ ] Document understanding: Write down what you learned
+
+After making changes:
+[ ] Test functionality: Does it work?
+[ ] Compare to reference: Same behavior?
+[ ] Update documentation: PITFALLS, reference docs
+[ ] Run check_binaries.sh: All binaries present?
+[ ] Run compile_all.sh: All compile successfully?
+
+When stuck:
+[ ] Check reference: What does reference do?
+[ ] Check state files: cat pieces/.../state.txt
+[ ] Check layout variables: grep "\${" layout.chtpm
+[ ] Check parser: How are variables loaded?
+[ ] Ask: What principle am I violating?
+
+================================================================================
+END OF POST-MORTEM
+================================================================================

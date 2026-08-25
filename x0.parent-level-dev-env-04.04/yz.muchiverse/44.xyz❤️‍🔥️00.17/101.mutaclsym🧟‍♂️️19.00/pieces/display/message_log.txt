@@ -1,0 +1,20 @@
+Xlector menu: Event/Copy/Paste/Delete/Exit
+You take control of hero.
+You can't go that way.
+You can't go that way.
+Xlector menu: Event/Copy/Paste/Delete/Exit
+Copied glyph '.' from (9,1).
+You can't go that way.
+You can't go that way.
+zombie_child hits you for 1!
+zombie_child hits you for 1!
+zombie_child hits you for 1!
+You can't go that way.
+You can't go that way.
+You can't go that way.
+You can't go that way.
+You can't go that way.
+You can't go that way.
+You can't go that way.
+You can't go that way.
+You can't go that way.

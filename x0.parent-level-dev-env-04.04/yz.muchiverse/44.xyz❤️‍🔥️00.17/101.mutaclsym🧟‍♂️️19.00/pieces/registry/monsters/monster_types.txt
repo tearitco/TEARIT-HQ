@@ -1,0 +1,6 @@
+# id|name|glyph|hp|damage|unicode
+zombie|Zombie|Z|20|3|🧟
+skeleton|Skeleton|S|15|2|💀
+rat|Rat|r|8|1|🐀
+bat|Bat|B|10|1|🦇
+spider|Spider|sp|12|2|🕷️

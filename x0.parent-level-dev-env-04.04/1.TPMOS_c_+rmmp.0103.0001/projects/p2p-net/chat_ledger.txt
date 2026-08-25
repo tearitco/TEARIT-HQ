@@ -1,0 +1,9 @@
+[10.0.0.238:8000] hi 2 guys
+[10.0.0.238:8000] from surf!
+[10.0.0.238:8000] hi im surfi
+[10.0.0.187:8000] 1m deskti
+[10.0.0.187:8000] hi were the other ?
+[10.0.0.187:8000] hi deskti
+[10.0.0.16:8000] hi im online
+[10.0.0.238:8000] hi im onlinesurfier
+[10.0.0.16:8000] everyone is offline

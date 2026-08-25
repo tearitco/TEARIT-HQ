@@ -1,0 +1,1 @@
+{"model":"stable-code:latest","prompt":"give me a one line shell instruction that prints exactly the text OK-CODE-TEST. reply with only that one line of shell syntax. do not explain it. do not add any other sentence","stream":false}

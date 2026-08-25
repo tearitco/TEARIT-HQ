@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | setup
+
+METHOD       | Mode: cycle HvH / HvC / CvC       | SET_MODE
+METHOD       | Opponent ELO: cycle 400..3000     | SET_ELO
+METHOD       | Player name: cycle                 | SET_NAME
+METHOD       | START MATCH                        | START_MATCH
+METHOD       | PvP: CHALLENGE a duel (I am P1)   | PVP_CHALLENGE
+METHOD       | PvP: ACCEPT the duel (I am P2)    | PVP_ACCEPT
+METHOD       | Play: STRIKE                       | MOVE_STRIKE
+METHOD       | Play: HEAVY                        | MOVE_HEAVY
+METHOD       | Play: HEAL                         | MOVE_HEAL
+METHOD       | Play: BLOCK                        | MOVE_BLOCK

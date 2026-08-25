@@ -1,0 +1,6 @@
+My Balance Sheet: Farland
+Cash (CD's)..		28.7000
+Other Assets....		22.9600
+Total Assets.....		94.7100
+Less Debt....		-57.4000
+Net Worth........		10.0450

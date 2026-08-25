@@ -1,0 +1,10 @@
+battery=100
+energy=50
+gold=10
+xp=0
+level=1
+pos_x=0
+pos_y=0
+ai_state=IDLE
+brain_model=llama3.2:3b
+brain_url=http://10.0.0.187:11434/api/chat

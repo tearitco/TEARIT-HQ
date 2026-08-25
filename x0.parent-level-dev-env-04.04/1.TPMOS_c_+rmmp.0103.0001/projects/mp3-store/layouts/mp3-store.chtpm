@@ -1,0 +1,17 @@
+<panel time_reactive="true">
+    <module>projects/mp3-store/manager/+x/mp3-store_manager.+x</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+
+    <text label="╔═══════════════════════════════════════════════════════════╗" /><br/>
+    <text label="║              MP3 STORE PLAYER                             ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  Now Playing: ${current_mp3}" /><text label="                             ║" /><br/>
+    <text label="║  Status: ${player_status}" /><text label="                                  ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  MP3 Library:                                             ║" /><br/>
+    <text label="║  " />${piece_methods}<text label=" ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  " /><button label="Exit to Menu" onClick="KEY:9" /><text label="                          ║" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+</panel>

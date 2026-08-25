@@ -1,0 +1,3 @@
+2026-08-02T00:00:00|1|referee|0|tsc_elo genesis ledger initialized|init
+2026-08-02T18:45:06|1|referee|0|setup:HvH:1000:1000|setup
+2026-08-02T18:49:11|1|referee|0|setup:HvC:1000:1100|setup

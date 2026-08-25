@@ -1,0 +1,12 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/automation_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|                     M Y - C H A R A                        |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="+============================================================+" /><br/>
+    ${piece_methods}
+    <text label="+============================================================+" /><br/>
+    <button label="Back to main" href="pieces/chtpm/layouts/main.chtpm" /><br/>
+</panel>

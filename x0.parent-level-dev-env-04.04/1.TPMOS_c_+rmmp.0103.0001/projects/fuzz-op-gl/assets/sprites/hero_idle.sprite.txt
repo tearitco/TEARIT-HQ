@@ -1,0 +1,7 @@
+sprite_id=hero_idle
+ascii=@
+unicode=🐶
+label=Fuzzball
+rgb=255,255,255
+asset_type=cube_sprite
+anchor=center

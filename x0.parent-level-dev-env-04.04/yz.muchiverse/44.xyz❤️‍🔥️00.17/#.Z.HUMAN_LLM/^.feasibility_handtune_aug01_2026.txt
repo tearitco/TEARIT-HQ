@@ -1,0 +1,157 @@
+# FEASIBILITY REPORT — HUMAN-READABLE WEIGHTS + LLM HAND-TUNING HARNESS
+# Date: 2026-08-01
+# Topic: Is your hand-tuning idea (LLM-tunes-text-weights, modular by
+#        corpus, auditable) better than training iqabod? Which candidate?
+
+----------------------------------------------------------------------
+## 1. THE IDEA (as understood)
+----------------------------------------------------------------------
+Instead of gradient-training iqabod (opaque .weights floats), use an LLM
+(ollama llama3-groq / gemma) or a harness as a "weight tuner" that edits
+HUMAN-READABLE weight files by hand. Weights stay:
+  - TEXT (readable/editable)
+  - MODULAR (separate file per corpus / dir)
+  - AUDITABLE (git-diffable, explainable changes)
+The tuner LLM reads the current weights + a task, decides what to change,
+and rewrites the text. Augmenting infra (RL/BT/FSM/corpuses) still applies
+on top.
+
+----------------------------------------------------------------------
+## 2. THE CANDIDATES (from #.Z.HUMAN_LLM)
+----------------------------------------------------------------------
+
+### A) 3.stage.llm.tomom@qroq.fame]921🐋️  <-- STRONGEST CANDIDATE
+WHAT IT IS:
+  - 3-stage pipeline in C: vocab_model -> trainer -> chatbot (+MoE)
+  - WEIGHTS = per-token TEXT in vocab_model.txt:
+        number word embedding pe weight bias1 bias2 bias3 bias4
+        1 start-token 0.840188 0.000000 0.394383 ...
+  - trainer.c computes gradients, then SHELLS OUT to optimizer.+x
+    (Adam) which rewrites the text weights -> REAL training loop, but
+    weights stay human-readable the whole time.
+  - chatbot_moe_v1.c = Mixture of Experts: reads curriculum_bank.txt
+    (list of curriculum paths), loads MULTIPLE vocabularies, activates
+    per prompt -> EXACTLY the "meta weights point to different
+    corpuses" modularity you want, already built.
+  - meta_rl/meta_rl.c = real RL weight file (meta_rl_weights.txt:
+    rl_bias, rl_weight_0..N) + prompt-feature extraction (word count,
+    has_question, sentiment) -> linear score -> picks curriculum. The
+    RL weights are READABLE TEXT and UPDATEABLE BY HAND.
+  - corpuses/ holds per-model .m/.v (Adam moments) + per-curriculum
+    dirs. Modular by design.
+
+WHY IT WINS:
+  - Weights already text, already modular per corpus, already MoE,
+    already has a meta-RL router picking corpora. Your idea is 80% BUILT.
+  - The hand-tuning harness plugs straight in: an LLM edits
+    vocab_model.txt fields (embedding/pe/weight/bias1-4) per token, or
+    edits meta_rl_weights.txt to steer corpus choice.
+  - It even has http_server.c + web-interface/ for a human/LLM editor UI.
+  - Same no-deps portable C as iqabod -> runs on Mac + Linux.
+
+CAVEATS:
+  - It's a toy-scale model (1 scalar embedding per token, simple linear
+    score RL). It is NOT a transformer like iqabod. Its "attention" is
+    basic. For BOOK/CODE writing it needs the BT/FSM/tool augmentation
+    just like iqabod does.
+  - Needs a compile + smoke test to confirm it still builds/learns
+    (last touched 2025-12-16).
+
+### B) #.ship.sip🚀️]QURLIQ🇴🇲️🎖️🔋️💈️]0001  <-- SECOND
+WHAT IT IS:
+  - curriculum bank with REAL multi-subject corpuses:
+    [Mathematics], [Physics], ... each with its own file under
+    curricula/<Subject>/curriculum.txt -> textbook-quality per-subject
+    training text. This is a READY-MADE CORPUS BANK for modular MoE.
+  - C sources: 0.model v2/v6/v7 (resume/hax), 1.llm v3 += moe PROOF,
+    4.train-gating, 0.rl-weight v2 -> RL gating + MoE proof-of-concept.
+  - Has perplexity-moe.c + cos-sim-moe.c evaluation tools.
+
+WHY IT'S USEFUL:
+  - Best CORPUS BANK of the three. Sectioned, subject-tagged, usable
+    for ANY modular model including iqabod and tomom@qroq.
+  - RL-weight + train-gating sources confirm the "meta weights choose
+    corpus" pattern was already being pursued here.
+
+CAVEATS:
+  - Directory name contains a literal newline (\n) -> breaks bash/
+    tooling. Needs a rename cleanup to be usable.
+  - Early-stage WIP (v2/v6/v7 versions, "resume"/"hax"), unproven end
+    to end. Treat as a corpus+ideas source, not a runtime.
+  - Wussup notes say "4 smol corpus's loss=3-5" -> same toy-scale
+    ceiling, needs augmentation for books/code.
+
+### C) !.*.magic.arpet.llm🇱🇰️]1]0000  <-- NOT A CANDIDATE
+WHAT IT IS: an experimental stage-by-stage C build (0.sol.count ->
+22.mo) with text .txt weights (bpweights_0.txt etc).
+WHY IT LOSES:
+  - WIP itself admits: "compiling FF but it outputs zeros",
+    "embeddings WAS DONE wrong... just generating randoms".
+  - bpweights_0.txt is 12 lines of floats; bpbias_0.txt and 22.out.txt
+    are EMPTY. Broken. Skip.
+
+----------------------------------------------------------------------
+## 3. FEASIBILITY OF THE HAND-TUNING HARNESS
+----------------------------------------------------------------------
+VERDICT: FEASIBLE, and it works BETTER for these toy-scale models than
+pure gradient training, BECAUSE the weights are text with structure.
+
+HOW IT WOULD WORK (harness design):
+  1. Tuner LLM (ollama llama3-groq or gemma) is given:
+       - current weight file (vocab_model.txt / meta_rl_weights.txt)
+       - a task ("make 'greeting' tokens score higher for 'hello'")
+       - a budget ("edit at most 5 fields")
+  2. LLM returns a DIFF (or full rewritten file) -> validated by a
+     checker (all lines parse, numbers in range, no dropped tokens).
+  3. We apply, re-train/re-generate, measure loss/output, keep or
+     revert. Every change is git-committed = auditable.
+  4. RL/meta weights tuned the same way (steer corpus selection).
+  5. This is a FEEDBACK LOOP, same as distillation but editing weights
+     directly instead of feeding the corpus. They can run TOGETHER.
+
+WHY IT BEATS iqabod FOR THIS USE CASE:
+  - iqabod's .weights = 60KB of raw float matrices (opaque, unreadable,
+    NOT hand-tunable; the vocab file is readable but the weights aren't).
+  - tomom@qroq's vocab_model.txt = per-token scalar fields WITH MEANING
+    (embedding, weight, biases) -> an LLM can reason about "increase
+    this token's weight" in a way it CANNOT reason about a 16x16 matrix.
+  - Auditability: text weights = git diff = you SEE what the model
+    "knows" changed. That is the property you've always wanted.
+  - Modularity: corpus dirs = separate weight files = separate diffs =
+    the "huge or small model depending on how many corpus weights +
+    meta weights we include" plan, EXACTLY.
+
+LIMITS (honest):
+  - Hand-tuning cannot build massive distributed knowledge. It's for
+    STEERING + CORRECTING toy models (tens to low-hundreds of tokens),
+    which is precisely the scale we have. It complements, not replaces,
+    distillation + corpus growth.
+  - An LLM "tuner" editing raw floats is still guesswork; the harness
+    must verify by retraining/eval. It works because scale is tiny.
+  - Same augmented-training requirement as iqabod: BT/FSM + tools +
+    RL + corpus bank are what enable books/code. The readable weights
+    make the CONTROL (meta/RL) trainable and auditable, not the LLM
+    knowledge itself.
+
+----------------------------------------------------------------------
+## 4. RECOMMENDATION
+----------------------------------------------------------------------
+1. PRIMARY: adopt tomom@qroq (3.stage.llm.tomom@qroq.fame]921🐋️) as the
+   HAND-TUNABLE, MODULAR, MoE+meta-RL model. It is the closest existing
+   thing to your idea and needs only:
+     - compile + smoke test (confirm learn loop still works)
+     - a hand-tuning harness (LLM edits vocab_model.txt + diffs)
+     - reuse ship.sip's subject corpuses as the corpus bank
+2. USE ship.sip as the CORPUS BANK + RL-gating ideas source (after a
+   rename cleanup to fix the newline-in-name).
+3. DROP magic.arpet (broken).
+4. iqabod KEEPS RUNNING as the TRANSFORMER track (real multi-layer LLM
+   capability) with the augmented training (RL/FSM/BT/corpus modules)
+   from the hybrid plan. The two tracks share: corpus bank, BT/FSM
+   runtime, tools, RL harness, and the Mac/Linux training nodes.
+   Hand-tuning track = auditable control; iqabod track = raw LLM power.
+
+BOTTOM LINE: your idea is feasible, better than gradient-only for toy
+scale, and tomom@qroq is the candidate that already embodies 80% of it.
+Build the harness around it; run it beside iqabod; share the corpus
+bank + augmentation infra between both.

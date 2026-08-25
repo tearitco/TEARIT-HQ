@@ -1,0 +1,46 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/game_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|                R T P - X Y Z   P L A Y T E S T              |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <button label="Control Hero" onClick="INTERACT" /><br/>
+    ${piece_methods}<br/>
+    <button label="craft" onClick="ACTIVATE">
+        <br/>
+        <button label="Close" onClick="BACK" /><br/>
+        ${craft_panel_items}
+    </button><br/>
+    <button label="examine" onClick="ACTIVATE">
+        <br/>
+        <button label="Close" onClick="BACK" /><br/>
+        ${inventory_panel_items}
+    </button><br/>
+    <button label="help" onClick="ACTIVATE">
+        <br/>
+        <button label="Close" onClick="BACK" /><br/>
+        <text label="  MOVEMENT: wasd or arrows moves the hero." /><br/>
+        <text label="  Bump into a monster to melee-attack it (uses" /><br/>
+        <text label="  your best carried weapon, or fists if none)." /><br/>
+        <text label="  ACTION BAR: arrows/digits select an option above," /><br/>
+        <text label="  Enter commits it. pickup/drop/eat/save/toggle_emoji" /><br/>
+        <text label="  fire immediately; craft/examine open their own" /><br/>
+        <text label="  submenu here." /><br/>
+        <text label="  INTERACT MODE: 'Control Hero' moves a free-roaming" /><br/>
+        <text label="  cursor (walks through walls, for" /><br/>
+        <text label="  looking/aiming at range). [enter] examines whatever" /><br/>
+        <text label="  is under the cursor, or returns control to hero if" /><br/>
+        <text label="  the cursor is on the hero's own tile. [t] throws" /><br/>
+        <text label="  your best carried weapon at whatever's under the" /><br/>
+        <text label="  cursor, if it's a monster in range. [esc] always" /><br/>
+        <text label="  returns to normal movement." /><br/>
+        <text label="  [e] toggles ASCII/emoji display any time." /><br/>
+        <text label="  [q] quits." /><br/>
+    </button><br/>
+    <button label="Save / Load" href="pieces/chtpm/layouts/project_menu.chtpm" /><br/>
+    <button label="Stop Playtest" href="pieces/chtpm/layouts/editor_home.chtpm" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label=" [enter] Control Hero  [esc, while controlling] Back to Menu  (Ctrl+C to quit)" /><br/>
+</panel>

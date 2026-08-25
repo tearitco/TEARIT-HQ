@@ -1,0 +1,365 @@
+================================================================================
+GRAND PLAN: Gemma Tool Scaffolding Architecture
+Evolved 2026-07-21 — Tool Augmentation for Small LLMs
+================================================================================
+
+CORE INSIGHT:
+Gemma (270M) cannot reliably follow JSON tool schemas or generate structured
+tool calls. Instead of fighting the model's limitations, we pre-parse user
+intent BEFORE hitting Gemma, execute tools deterministically, and only use
+Gemma to wrap results conversationally. This is a three-layer architecture:
+
+  Layer 1 (Intent Detection): keyword → tool lookup + strategy selection
+  Layer 2 (Pre-execution): tool dispatcher → run in sandbox → capture output
+  Layer 3 (Gemma Wrapping): template-fill response history → send to model
+
+This doc explains the goal, current implementation (Phase 1), and concrete
+technical roadmap through Phase 4.
+
+================================================================================
+PHASE 1: PROOF OF CONCEPT (DONE — 2026-07-21)
+================================================================================
+
+IMPLEMENTED:
+  ✅ gemma_strategy.c (lines 1-260)
+     - Reads user message from gui_state.txt's message_input
+     - Keyword matching: "list" → "list_dir", "read" → "read_file", etc.
+     - Strategy selection: A (pre-exec) / B (pass to Gemma) / C (meta)
+     - Weighted random selection based on pieces/registry/strategy_weights.txt
+     - Current weights: A=0.9, B=0.1, C=0.0 (90% pre-execute, 10% Gemma)
+     - Logs decision to pieces/world_01/session_01/chat/strategy_log.txt
+
+  ✅ strategy_execute_a.c (lines 1-309)
+     - Runs ONLY when strategy="A" and detected_tool != "none"
+     - Parses tool arguments from user message (extract_argument_after)
+     - Dispatches to tool op: list_dir, read_file, exec_cmd, speak, search_in_files
+     - Captures output via popen/fread (4KB buffers currently)
+     - Appends result to context_log.txt as role=tool kind=result entry
+     - Writes sys_msg showing "[Tool: X] N bytes"
+     - Multiple debug outputs (strategy_messages.txt, strategy_debug.txt, all_debug.txt)
+
+  ✅ Integration in pal/main_loop_chtpm.pal (line 36-38)
+     do_submit:
+       gemma_strategy          # detect intent → select strategy
+       strategy_execute_a      # if A, execute tool and log result
+       send_message            # send to Gemma (with logged result in context)
+
+  ✅ REAL VERIFICATION (2026-07-21 12:58):
+     User typed: "list dir"
+     → gemma_strategy detected tool="list_dir", selected strategy="A"
+     → strategy_execute_a executed list_dir, logged result
+     → [list_dir result]: config/
+     → User saw prompt: "EXECUTE list_dir {...} ? (type y/n)"
+     → Confirmed working end-to-end
+
+ARCHITECTURE CURRENT STATE:
+  Input: gui_state.txt message_input (user types text in chat box)
+    ↓
+  gemma_strategy: keyword detection + strategy random selection
+    ↓
+  strategy_execute_a: if strategy=A, pre-execute tool, log result
+    ↓
+  send_message: sends message to Gemma (context includes logged tool result)
+    ↓
+  check_response: parses Gemma response, looks for TOOL: lines (legacy Gemma hack)
+    ↓
+  Output: context_log.txt (appended), state.txt (updated), user sees result
+
+KNOWN LIMITATIONS (intentional for scaffolding):
+  - Tool detection is keyword-only, no semantic understanding
+  - Argument parsing is fragile (extract_argument_after is basic)
+  - No error handling if tool fails (just logs "Error" message)
+  - Buffer sizes fixed at 4KB (will overflow on large outputs)
+  - No multi-step tool sequences (each tool call is isolated)
+  - No feedback loop to Gemma about tool success/failure (yet)
+
+================================================================================
+PHASE 2: FUNCTIONAL TOOLS (NEXT — read/write/edit/execute scaffolding)
+================================================================================
+
+GOAL: Make all major tool ops (read_file, write_file, edit_file, exec_cmd)
+fully functional with robust argument extraction and proper output capture.
+
+IMMEDIATE TODOs:
+
+  [ ] 2.1 Improve argument extraction in strategy_execute_a.c
+      Current: extract_argument_after("read", msg) → takes everything after "read"
+      Needed: Extract delimited paths/args:
+        "read filename.txt" → "filename.txt"
+        "write file.txt with content" → {"path": "file.txt", "content": "..."}
+      HOW: Parse quoted strings, handle key=value pairs, extract until EOL/punctuation
+      Why: Current approach breaks on sentences like "read the file and show me"
+
+  [ ] 2.2 Implement read_file tool fully
+      Current: strategy_execute_a has basic popen("cat file | head -50")
+      Needed: Use existing ops/read_file.c or create wrapper
+      HOW: Test with file_ops.c's proven read logic, reuse error handling
+      Why: list_dir works; read_file is next validation that tool ops work
+
+  [ ] 2.3 Implement write_file tool
+      Current: skeleton only in gemma_strategy.c detection
+      Needed: Create ops/+x/write_file.+x that:
+        - Takes path + content as args
+        - Validates path is in sandbox/
+        - Writes atomically (write to .tmp, rename)
+        - Returns success/failure + byte count
+      Why: Required for "replace code" feature in Phase 4
+
+  [ ] 2.4 Implement edit_file tool (file replacement/patching)
+      Current: detected but not executed
+      Needed: ops/+x/edit_file.+x that:
+        - Takes path + search_string + replacement_string
+        - Does substring replacement (or regex if needed)
+        - Atomically writes back
+        - Returns old_content + new_content for Gemma context
+      Why: Code generation pipelines will need this
+
+  [ ] 2.5 Expand exec_cmd tool with timeout + output limit
+      Current: popen(cmd_str) with 4KB buffer
+      Needed:
+        - Timeout enforcement (e.g., 10s max per command)
+        - Output limit enforcement (e.g., 64KB max captured)
+        - Escape/sanitize command string before popen
+        - Capture both stdout + stderr separately
+      Why: Prevent hangs, resource exhaustion, command injection
+
+  [ ] 2.6 Test each tool in isolation before wiring to strategy
+      HOW: Direct op invocation pattern from handoff.txt §6
+        PRISC_PROJECT_ROOT="." ops/+x/read_file.+x with test args
+        PRISC_PROJECT_ROOT="." ops/+x/write_file.+x with test args
+        Verify context_log.txt output matches expected schema
+      Why: Match handoff.txt's proven testing discipline
+
+================================================================================
+PHASE 3: INTELLIGENT STRATEGY + RL SCAFFOLDING (training infrastructure)
+================================================================================
+
+GOAL: Build the scaffolding layer that will let RL systems adjust strategy
+weights. This is NOT running RL yet; it's the instrumentation that RL will use.
+
+IMMEDIATE TODOs:
+
+  [ ] 3.1 Instrument each strategy path with outcome tracking
+      Current: strategy_log.txt records decision only
+      Needed:
+        - After tool executes: was it successful? (parse stderr? check return code?)
+        - After Gemma response: did Gemma understand the result?
+        - Track: {timestamp, strategy, tool, success_bool, latency_ms, output_bytes}
+      Why: RL systems need ground truth to learn which strategy is best per scenario
+
+  [ ] 3.2 Add outcome evaluation to check_response.c
+      Current: check_response just parses TOOL: lines, sets PENDING_PERM
+      Needed: After tool result is logged, evaluate:
+        - Did Gemma produce useful text or just echo the result?
+        - Parse Gemma's response to detect understanding vs confusion
+        - Log outcome to strategy_outcomes.txt
+      Why: Collect training data for RL to optimize weights
+
+  [ ] 3.3 Implement weight update CLI (not automatic yet)
+      HOW: Create ops/+x/update_strategy_weights.+x that:
+        - Reads strategy_outcomes.txt (all recent outcomes)
+        - Computes success rate per strategy per tool
+        - Writes new weights to strategy_weights.txt
+      Usage: ./ops/+x/update_strategy_weights.+x --period 24h --epsilon 0.1
+      Why: Manual control before RL automation; test the mechanism
+
+  [ ] 3.4 FSM scaffolding (prelude to Phase 4)
+      Placeholder only, no implementation yet:
+        - Define FSM state machine for multi-step workflows (read file → parse → decide)
+        - Create pieces/registry/fsm_templates/ directory structure
+        - Document how future ops will query current_fsm_state
+      Why: Lay groundwork; don't implement until Phase 2 tests pass
+
+================================================================================
+PHASE 4: INTELLIGENT RESPONSE PARSING + MULTI-STEP SEQUENCES (far future)
+================================================================================
+
+GOAL: Replace keyword-only detection with semantic understanding. Use Gemma
+(or RL-trained iqabod) to parse user intent. Build multi-step tool sequences.
+
+CONCRETE EXAMPLES OF WHAT THIS ENABLES:
+  User: "read file.txt, find all lines with 'TODO', and show me"
+    → Current: "read" → list_dir (because 'read' keyword matches)
+    → Future: Semantic parser says "this is a read-then-search workflow"
+              Execute: read_file(file.txt) → search_in_file_output(output, 'TODO')
+              Return: filtered results
+
+  User: "replace every occurrence of 'old' with 'new' in all .py files"
+    → Current: "replace" → edit_file (fragile)
+    → Future: FSM detects multi-file loop, generates:
+              for each .py: read → compare → execute edit → log success
+
+ROADMAP (not implementing yet — Phase 2 must validate tools first):
+
+  [ ] 4.1 Semantic intent parser
+      - Use Gemma or a separate semantic model to parse intent → tool graph
+      - Instead of keywords only, understand "read file AND search in results"
+      - Output: JSON-structured tool sequence [{tool: "read", args: {...}}, ...]
+
+  [ ] 4.2 FSM executor
+      - Execute multi-step tool sequences
+      - Handle branching: "if tool_1 returns empty, try tool_2"
+      - Maintain state across tool calls within one user request
+
+  [ ] 4.3 Response scaffolding
+      - Current: Gemma sees logged results and wraps conversationally
+      - Future: Gemma sees structured {tool, args, result, success} + asks clarifying ?s
+      - Enable: Gemma saying "I read the file, it's 500 lines, which section?" vs just echoing
+
+  [ ] 4.4 Multi-model orchestration
+      - Gemma for conversation + meaning
+      - RL-tuned iqabod for binary decisions ("is this a file operation?")
+      - FSM for deterministic workflows
+      - Combine strengths: use each model where it's strongest
+
+================================================================================
+TECHNICAL DECISIONS & CONSTRAINTS
+================================================================================
+
+WHY THIS ARCHITECTURE (not "just make Gemma do tool calling"):
+  1. Gemma-270M is too small; it hallucinates JSON and forgets schemas
+  2. Fine-tuning Gemma for tool calling would require:
+     - Thousands of tool-call examples
+     - VRAM for training (not available)
+     - Weeks of tuning (we want working tools now)
+  3. Pre-parsing + weighted strategies lets us:
+     - Get working tools immediately (pre-execute path)
+     - Gracefully degrade to Gemma as a fallback (B strategy)
+     - A/B test strategies without retraining
+     - Layer in RL when ready (just adjust weights)
+
+WHY STRATEGY WEIGHTS (not hard if/else):
+  - Allows experimentation: what % of "read file" should pre-execute vs go to Gemma?
+  - RL will eventually learn optimal % per tool per user
+  - Easy to toggle: change one file, no recompile
+  - Human-interpretable: 0.9 = "almost always pre-execute"
+
+WHY EXECUTE IN SANDBOX/ (ops/+x/* environment):
+  - Each op can read sandbox/config/context.txt for safety rules
+  - All file paths are relative to sandbox/
+  - User can't accidentally read /etc/passwd or write to /
+  - Aligns with existing TPMOS tool precedent
+
+WHY CONTEXT_LOG.TXT FORMAT (not JSON):
+  - Pipe-delimited, one turn per line: simple, inspectable, append-only
+  - No parsing overhead (strtok on pipe chars)
+  - Easy to grep/tail when debugging
+  - Matches mutaclsym's own handoff.txt documented choice
+
+================================================================================
+CURRENT BLOCKAGES & UNRESOLVED QUESTIONS
+================================================================================
+
+  ❓ 1. TOOL EXECUTION CONFIRMATION
+     Currently: User sees "EXECUTE list_dir? (y/n)" prompt
+     Issue: Where does this come from? Is it sent by Gemma or hardcoded in compose_frame?
+     Needed: Understand the permission flow; ensure all tools use same flow
+     Impact: If execute_tool is broken, even working pre-executed tools won't run
+
+  ❓ 2. ARGUMENT PARSING ROBUSTNESS
+     Currently: extract_argument_after("read", msg) is extremely basic
+     Issue: "read file.txt in /home/user" would extract everything including "in /home/user"
+     Needed: Build a real argument parser (quoted strings, key=value, paths)
+     Impact: Many tools won't work on sentences with multiple clauses
+
+  ❓ 3. TOOL OUTPUT SIZE LIMITS
+     Currently: strategy_execute_a.c uses 4KB fixed buffer
+     Issue: Reading a large file will truncate silently
+     Needed: Decide on max output size, handle gracefully (file too large → summary)
+     Impact: Can't reliably read files > 4KB
+
+  ❓ 4. ERROR HANDLING
+     Currently: If tool fails, just logs "Error" string
+     Issue: No distinction between "tool ran but had an error" vs "tool crashed"
+     Needed: Capture stderr, exit codes, timeouts separately
+     Impact: Gemma can't decide to retry differently
+
+  ❓ 5. DEFAULT_OP.TXT REGISTRATION
+     Currently: gemma_strategy and strategy_execute_a are NOT in default_op.txt
+     Issue: Are they being compiled? Are they registered somewhere else?
+     Needed: Verify build system includes them; add to default_op.txt if needed
+     Impact: If not compiled, recent test success was a fluke
+
+  ❓ 6. STRATEGY WEIGHTS PERSISTENCE
+     Currently: weights are read from strategy_weights.txt at runtime
+     Issue: Each gemma_strategy call re-reads the file (fine) but RL update path unclear
+     Needed: Decide: does RL write to strategy_weights.txt directly, or separate file?
+     Impact: If unclear, hard to build RL layer later
+
+================================================================================
+SUCCESS CRITERIA BY PHASE
+================================================================================
+
+PHASE 1 (CURRENT):
+  ✅ "list dir" command works end-to-end (verified 2026-07-21 12:58)
+  ⏳ All other tools (read, write, edit, exec) should compile without errors
+  ⏳ Each tool tested in isolation (not yet done)
+
+PHASE 2 (VALIDATION):
+  [ ] read_file works: read /home/user/test.txt → output to log → user sees it
+  [ ] write_file works: write /tmp/test.txt with "hello" → file created → verified
+  [ ] exec_cmd works: run "ls" → output captured → user sees directory listing
+  [ ] edit_file works: edit /tmp/test.txt replace "old" with "new" → verified
+  [ ] All tools tested in isolation per handoff.txt §6 pattern
+  [ ] All tools tested with realistic sentence inputs (not just bare keywords)
+
+PHASE 3 (INSTRUMENTATION):
+  [ ] Each tool execution logged with outcome (success/failure)
+  [ ] Weight update mechanism works: call update_strategy_weights.+x, weights change
+  [ ] A/B testing framework in place: can compare strategy A vs B success rates
+
+PHASE 4 (FUTURE — not required yet):
+  [ ] Semantic parser understands multi-step workflows
+  [ ] FSM executor runs sequences correctly
+  [ ] RL system automatically tunes weights based on outcomes
+
+================================================================================
+NEXT IMMEDIATE ACTION ITEMS (for next session)
+================================================================================
+
+Priority 1 (unblock Phase 2):
+  [ ] Resolve blockage #5: verify gemma_strategy.c and strategy_execute_a.c are
+      actually compiled/registered. If not, add to default_op.txt or build system.
+  [ ] Resolve blockage #1: understand tool execution confirmation flow.
+      Is it Gemma saying "execute?" or compose_frame hardcoding it?
+
+Priority 2 (enable Phase 2 validation):
+  [ ] Improve argument parsing in strategy_execute_a.c:
+      - Handle quoted strings: "read 'path with spaces.txt'"
+      - Handle key=value args: "write path=file.txt content=hello"
+      - Stop at punctuation: "read file.txt." → path is "file.txt" not "file.txt."
+
+Priority 3 (Phase 2 work):
+  [ ] Implement read_file fully (test with 10KB file, ensure no truncation)
+  [ ] Implement write_file (atomic write pattern)
+  [ ] Test both tools in isolation, then integrated
+
+Priority 4 (future):
+  [ ] Add outcome logging to strategy_log.txt (success/failure per tool)
+  [ ] Build weight update mechanism
+  [ ] Design RL harness (can't implement without Phase 2 validation)
+
+================================================================================
+REFERENCES
+================================================================================
+
+Code:
+  - ops/gemma_strategy.c (lines 1-260): Intent detection + strategy selection
+  - ops/strategy_execute_a.c (lines 1-309): Tool pre-execution
+  - pal/main_loop_chtpm.pal (lines 35-39): Integration point
+  - pieces/registry/strategy_weights.txt: A=0.9, B=0.1, C=0.0
+
+Docs:
+  - handoff.txt (§6): Testing methodology
+  - CHAT-INTEGRATION-ARCHITECTURE.txt: chtpm upgrade context
+
+Data Files:
+  - pieces/world_01/session_01/chat/strategy_log.txt: execution decisions
+  - pieces/world_01/session_01/chat/context_log.txt: tool results logged here
+  - pieces/world_01/session_01/chat/strategy_messages.txt: debug output
+  - pieces/world_01/session_01/chat/state.txt: selected_strategy, detected_tool fields
+
+================================================================================
+END GRAND PLAN
+Written 2026-07-21 by Claude Haiku 4.5 (after reading code, not from memory)
+================================================================================

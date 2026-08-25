@@ -1,0 +1,74 @@
+# GL-Fuzz Project: Modular Architecture Blueprint (A24)
+
+**Date:** April 24, 2026
+**Standard:** Sovereign GLTPM (Decoupled Input/State/Rendering)
+**Reference:** ASCII-OS Frame Architecture & Fuzz-Op Map Interaction Blueprints
+
+---
+
+## 1. The Core Philosophy: Host as "TV", Manager as "Studio"
+
+Following the **"One Truth"** of ASCII-OS, the GL-OS Host (`gl_desktop.c`) should minimize local state generation. 
+- **The Manager Studio:** `fuzz-op-gl_manager.c` generates the "signal" (state variables, camera coordinates, piece positions).
+- **The Host TV:** `gl_desktop.c` (via `gltpm_parser.c`) "tunes in" to the signal and renders the frame.
+
+---
+
+## 2. Entity Management & Sovereign Identity
+
+### A. The Xelector (XEL) - THE WIREFRAME PIECE
+- **Identity:** Sovereign Piece ID `xlector`.
+- **State File:** `projects/fuzz-op-gl/pieces/xlector/state.txt`.
+- **Purpose:** 3D Map Cursor. Represents the user's focus on the grid.
+- **Rendering:** Drawn as a **Yellow Wireframe Box** by the Host.
+- **Sovereignty:** 
+    - **Position:** Managed by the **Manager** via `move_entity.+x`.
+    - **Visuals:** Host renders based on `xelector_pos_x/y` synced from state.
+
+### B. The Selector - NAVIGATION CONTROL
+- **Identity:** Internal UI logic within `DesktopWindow` (`selected_index`).
+- **Purpose:** Menu indexing (Navigating category lists).
+- **Distinction:** Never move the `xlector` piece to change menu selection. The `xelector` is for the map; the `selector` is for the menu.
+
+---
+
+## 3. Data Flow & Input Decoupling
+
+### A. The Input Pipeline (History-First)
+1. **Raw Input:** Host captures keys in `keyboard()`.
+2. **Filtering:**
+    - **WASD/ZXQE:** Handled **LOCALLY** by Host for Camera Fly. NOT injected to history (unless for specific camera recording).
+    - **Arrow Keys:** Injected as `KEY_PRESSED: 1000-1003` to `session/history.txt`.
+    - **Numeric Keys (1-4):** Injected to history for Camera Mode changes.
+3. **Processing:** Manager reads history and updates its internal state (Xelector movement, Camera mode logic).
+
+### B. The State Pipeline (Variable Sync)
+1. **Manager Writes:** `projects/fuzz-op-gl/session/state.txt`.
+    - Keys: `xelector_pos_x`, `xelector_pos_y`, `camera_mode`, `cam_x/y/z` (for 1st/3rd person).
+2. **Manager Pulses:** `projects/fuzz-op-gl/session/frame_changed.txt`.
+3. **Host Reads:** `refresh_gltpm_window()` triggers `gltpm_parser.c` to reload variables.
+4. **Host Renders:** 3D scene updates.
+
+---
+
+## 4. Camera Modes & Sovereignty
+
+| Mode | Control | Authority | Behavior |
+| :--- | :--- | :--- | :--- |
+| **1st Person** | Manager-Driven | Manager | Camera fixed to `xlector` pos, low angle. |
+| **3rd Person** | Manager-Driven | Manager | Camera follows `xlector` with offset/shadowing. |
+| **Free/ISO** | Host-Driven | **HOST** | WASD fly controls. **CRITICAL:** Arrow keys move the `xlector` piece but MUST NOT recenter the camera. |
+
+**DEVIATION REPAIR:** Currently, the Manager's `cam_pos` variables (defaulting to 0) overwrite the Host's Fly position on every pulse. 
+**FIX:** In **Free Mode**, the Host should ignore Manager `cam_pos` updates, OR the Host must sync its Fly coordinates BACK to the Manager.
+
+---
+
+## 5. Visual Purity & "XEL" Status
+
+- **Xelector Visibility:** The yellow wireframe must be persistent (or have a fast, high-frequency pulse, e.g., 200ms, not the current 1s `time(NULL)` check).
+- **HUD Consistency:** Coordinate display must use `"XEL:"` (3D Piece) to distinguish from menu interaction.
+- **Grid Rendering:** Decoupled from Host. Host only draws `gltpm_scene.tiles[]` provided by the parser.
+
+---
+*Documented by Gemini CLI - 2026-04-24*

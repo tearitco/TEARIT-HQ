@@ -1,0 +1,20 @@
+<!-- cm_user.chtpm - "User" submenu: Move/Inventory/Skill + Back.
+     ALL static (no dynamic content at all) - pure href nav, same known-
+     good pattern this house's own real pal-chain 2-screen href test
+     already proved works. Move/Inventory/Skill are real stub screens
+     (own .chtpm files) so the shape is visible now; real content
+     (tactics-range-grid for Move, item list for Inventory, skill list
+     for Skill) is future scope - see TILE_PICKER_DESIGN.md §9.2.
+-->
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="${cm_header}" /><br/>
+    <button label="Close [X]" onClick="KEY:9" /><br/>
+    <text label="-- USER --" /><br/>
+    <button label="Move" href="pieces/chtpm/layouts/cm_move.chtpm" /><br/>
+    <button label="Inventory" href="pieces/chtpm/layouts/cm_inventory.chtpm" /><br/>
+    <button label="Skill" href="pieces/chtpm/layouts/cm_skill.chtpm" /><br/>
+    <button label="Back" href="pieces/chtpm/layouts/cm_main.chtpm" /><br/>
+    <text label="${last_message}" /><br/>
+</panel>

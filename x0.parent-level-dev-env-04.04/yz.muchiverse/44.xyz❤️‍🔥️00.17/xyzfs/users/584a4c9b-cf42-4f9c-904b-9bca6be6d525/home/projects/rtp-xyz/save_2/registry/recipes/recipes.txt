@@ -1,0 +1,12 @@
+# mutaclsym recipe registry (global, non-located content)
+# Format: id|name|result_item_id|req1_item_id:qty1,req2_item_id:qty2,...
+# Pressing craft opens an overlay panel (ops/choice.c panel mode,
+# compose_frame.c's panel renderer) listing every recipe here in this
+# file order, marked (ready)/(missing) by current inventory - the
+# player picks which one to make. craft.+x <recipe_id> then crafts
+# exactly that one; craft.+x with no argument (legacy/CLI path, no
+# longer reachable from normal play) still falls back to "first
+# satisfiable wins", same precedent as pickup.c/eat.c.
+recipe_pointy_stick|Sharpen a Stick|pointy_stick|stick:1
+recipe_knife|Craft a Knife|knife_steak|scrap_metal:1,stick:1
+recipe_tshirt|Sew a Shirt|tshirt|rag:3

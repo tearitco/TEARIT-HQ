@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | wraith-alpha/wraith-projects/screen-record
+META         | version            | 0.1
+META         | author             | TPMOS
+META         | manager            | projects/wraith-alpha/wraith-projects/screen-record/manager/+x/screen-record_manager.+x
+META         | entry_layout       | projects/wraith-alpha/wraith-projects/screen-record/layouts/screen-record.chtpm
+
+STATE        | title              | WRAITH SCREEN RECORD
+STATE        | status             | ready
+STATE        | mode               | screen_record
+STATE        | reference          | x0.parent-level-dev-env-02.01/#.CHTMGL.E23=cordsclean]💯️
+
+RESPONSE     | default            | Wraith Screen Record Ready.

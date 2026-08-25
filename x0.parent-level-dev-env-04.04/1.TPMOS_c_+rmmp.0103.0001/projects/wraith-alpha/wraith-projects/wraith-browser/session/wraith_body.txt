@@ -1,0 +1,17 @@
+WRAITH BROWSER | TPMOS hybrid phase 1/2
+Address: local://js-lab.html
+Page: js-lab.html | Status: scripted
+JS: on | Last: JS counter_inc
+Counter: 1 | Script: counter_inc | Result: counter=1
+[^] 1. [local://js-lab.html]
+[ ] 2. [Home] [ ] 3. [Audit] [ ] 4. [JS_Lab]
+[ ] 5. [Back] [ ] 6. [Forward] [ ] 7. [Reload]
+[ ] 8. [Toggle_JS] [ ] 9. [JS+1] [ ] 10. [JS_Reset]
+------------------------------------------------------------
+[H1] Controlled JS Lab
+This page is the first compatibility seam. Scripts are executed by a dedicated TPMOS op, not by hidden window logic.
+Use the chrome buttons to increment or reset the counter.
+- counter_inc
+- counter_reset
+link: Return home
+link: Open the audit page

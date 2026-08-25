@@ -1,0 +1,59 @@
+# Aida: Multi-Machine API Orchestration Plan
+
+This plan outlines how to enable Aida to switch between different Ollama instances across your network (10.0.0.x).
+
+---
+
+## 1. Remote Machine Configuration (Crucial)
+Ollama by default only listens on `localhost` (127.0.0.1). To make them reachable by Aida over the network, you MUST perform these steps on EACH machine (Desktop, Debian, Macbook):
+
+### Linux (Debian/Desktop)
+1. Edit the systemd service: `sudo systemctl edit ollama.service`
+2. Add these lines:
+   ```
+   [Service]
+   Environment="OLLAMA_HOST=0.0.0.0"
+   ```
+3. Restart Ollama:
+   ```
+   sudo systemctl daemon-reload
+   sudo systemctl restart ollama
+   ```
+
+### macOS (Macbook)
+Run this in terminal before starting the Ollama app:
+```bash
+launchctl setenv OLLAMA_HOST "0.0.0.0"
+```
+(Then restart the Ollama application).
+
+---
+
+## 2. Configuration Schema (`config/apis.txt`)
+We will create a new configuration file to store your endpoints:
+```
+local|http://localhost:11434
+desktop|http://10.0.0.187:11434
+debian|http://10.0.0.16:11434
+macbook|http://10.0.0.65:11434
+```
+
+---
+
+## 3. Technical Implementation (TPMOS Style)
+
+### 🧩 Logic Changes (`agent.c`)
+- **State**: A new global `char* current_api_url` variable (defaulting to localhost).
+- **Persistence**: Store the active API selection in `state/active_api.txt` so it survives restarts.
+- **UI Command**: `/api`
+  - When triggered, Aida reads `config/apis.txt`.
+  - It uses our new **Interactive Dropdown UI** to let you cycle through machine names.
+  - Hitting `Enter` on a machine name updates `current_api_url` and saves it to the state file.
+
+### 🛠️ Tool Interaction
+- All `curl` calls in `agent.c` will replace the hardcoded `http://localhost:11434` with the `current_api_url`.
+
+---
+
+## 4. Security Note
+By setting `OLLAMA_HOST=0.0.0.0`, anyone on your local 10.0.0.x network can use your GPU. Ensure your local firewall allows port 11434 only for your internal IPs.

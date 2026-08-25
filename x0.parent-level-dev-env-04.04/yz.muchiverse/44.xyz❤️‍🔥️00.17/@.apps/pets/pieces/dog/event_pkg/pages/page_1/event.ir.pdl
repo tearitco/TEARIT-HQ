@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | dog
+STATE        | source               | event-ez
+NODE         | id=1 type=trigger      | text=on-click
+NODE         | id=5 type=command      | text=touch /tmp/dog-played.txt
+NODE         | id=9 type=ret          | text=

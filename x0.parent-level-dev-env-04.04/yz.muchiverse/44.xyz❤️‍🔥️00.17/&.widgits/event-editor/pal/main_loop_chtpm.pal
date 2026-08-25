@@ -1,0 +1,45 @@
+# event-editor main_loop_chtpm.pal
+# House std: compose → interact_relay → menu_input → recompose
+# CHTPM owns [>] focus + digit_accum multi-digit jump; we only handle
+# KEY:n / Enter side effects (toggle view, save stub, etc.)
+li x1, 0
+
+ee_compose_frame
+hit_frame
+read_pos x7, "pieces/display/ee_screen_changed.txt"
+
+# REAL FIX 2026-08-04, direct instruction ("lets fix that bug nomatter
+# wut" re: real keys not taking live effect): this script used to check
+# ee_screen_changed.txt FIRST, only falling through to interact_relay.txt
+# if the marker hadn't moved. But ee_compose_frame's own ping() bumps
+# ee_screen_changed.txt unconditionally every time "render" runs, so
+# after the very first real key processed, the marker never again
+# matches the stale x7 baseline on schedule and the loop kept taking the
+# "j render" branch, permanently skipping check_key/interact_relay.txt
+# — real keys reached history.txt but were never dispatched to
+# ee_menu_input. Fixed to match tile-picker's own proven-working
+# pattern: check interact_relay.txt FIRST, unconditionally, every
+# single loop iteration, with screen-changed only consulted as the
+# fallback idle-render trigger.
+loop:
+li x9, 0
+ee_menu_input x9
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, no_key
+ee_menu_input x2
+j render_always
+
+no_key:
+read_pos x8, "pieces/display/ee_screen_changed.txt"
+beq x7, x8, no_render
+addi x7, x8, 0
+
+render_always:
+ee_compose_frame
+hit_frame
+sleep 30000
+j loop
+
+no_render:
+sleep 30000
+j loop

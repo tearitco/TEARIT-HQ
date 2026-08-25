@@ -1,0 +1,14 @@
+ticker_speed: sec
+currency: usd
+cheat_mode:on
+select_law_firm
+suppress_popups : on
+suppress_earn_rept: on
+autosave: off
+excersize_options: no
+make_physical_delivery: no
+take_physical_delivery: yes
+sweep_cash_to_repay_margin: yes
+stock_chart_size:small
+autoadd_to_streamlist:on
+autopilot:off

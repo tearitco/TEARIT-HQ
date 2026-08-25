@@ -1,0 +1,154 @@
+# 046.open-gema🤖️+1 — SUPERVISION HANDOFF (read me first if you are the next agent)
+# Status: loop in progress. Written 2026-08-01 by a supervising agent.
+# PURPOSE: how to SUPERVISE the gemma that builds the gemma CLI, and how to
+# keep the co-evolution loop alive. Read DESIGN-DOC.txt (supervisor view) +
+# ARCH-DOC.txt (agent view) before doing anything.
+
+================================================================
+1. WHAT THIS FOLDER IS (10-second recap)
+================================================================
+A CLI coding agent (like a mini-opencode) that runs on gemma3:270m over LAN
+(no big LLM). gemma does NOT write big code from nothing: it ROUTES intent
+through deterministic C tools (ops/) and REASONS over tiny RAG-retrieved
+windows (rag/ + memory/). The tools are the ground truth, not the model.
+
+The deliverable is src/agent.c, which gemma itself authors STEP BY STEP via
+the builder loop (small spec -> gemma writes -> gcc check -> fix -> next).
+
+================================================================
+2. THE CO-EVOLUTION LOOP (keep this rotating forever)
+================================================================
+   [supervisor updates gemma's TOOLS: ops/, rag/, builder/, harness/]
+            |
+            v
+   [gemma authors/builds src/agent.c through the tools]
+            |
+            v
+   [harness proves read -> edit -> run -> document -> ask]
+            |
+            v
+   [bottlenecks found -> supervisor updates tools again]
+            |
+            v
+   [gemma rebuilds/extends itself -> LOOP REPEATS]
+
+We are DONE only when the loop stalls and no new bottleneck appears.
+Every single pass should leave a trace (see section 6).
+
+================================================================
+3. YOUR JOB AS SUPERVISOR (the rules)
+================================================================
+R1. GEMMA COMPUTES, YOU ORCHESTRATE. This box only runs tools/compile/
+    harness. gemma computes on the LAN Mac:
+      http://10.0.0.144:11434  model gemma3:270m  (see ops/connect_op.c)
+    Never try to run a big LLM locally here.
+
+R2. GEMMA NEVER WRITES CODE FROM NOTHING. Give it ONE tiny spec at a time:
+    - one function, zero ambiguity, stdio/stdlib/string only
+    - "Write C that does EXACTLY this. Put it in src/agent.c."
+    - mark append/splice points with // === STEP N === markers
+    If the spec fits in a tweet, it fits in gemma's context. If not, break
+    it down further. 270m CANNOT hold large specs — never fight this.
+
+R3. COMPILE FEEDBACK IS THE CURRENCY. Every authoring step MUST end in
+    `gcc -c src/agent.c`. On failure, feed the EXACT compiler error back:
+    "fix ONLY this error, keep everything else identical" -> retry, max 3.
+    On 3x failure: STOP, report the bottleneck. That report is the signal
+    to improve YOUR tools (step decomposition, RAG injection, error format).
+
+R4. TOOLS ARE GROUND TRUTH, NOT THE MODEL. list/read/search/edit/run must
+    fire with ZERO LLM calls (that's harness K7/K8). Only the `ask` path
+    touches gemma. If a tool is slow/broken/ambiguous, FIX THE TOOL first.
+
+R5. KEEP THE TOOL GRAMMAR STABLE. ARCH-DOC.txt defines the contract
+    (read|edit|write|search|run|list|rag|ask). Changes ripple into
+    agent.c routing + harness scenarios. Change the grammar ONLY when the
+    loop truly demands it, and update ALL of: ARCH-DOC.txt, ops/, builder
+    steps, harness.
+
+R6. ALWAYS VERIFY WITH THE HARNESS. harness/k3-cli.sh feeds stdin commands
+    and asserts on stdout + disk truth (K1..K8). Green harness = real
+    progress. A passing gcc -o is NOT proof; a passing harness is.
+
+================================================================
+4. CURRENT STATE / WHERE THE LOOP LEFT OFF (as of 2026-08-01)
+================================================================
+- DESIGN-DOC.txt + ARCH-DOC.txt written (draft).
+- ops/ populated with PROVEN borrowed ops:
+    connect_op, json_parser, list_dir, edit_file, search_in_files, cmd_exec
+- rag/ sources listed in ARCH-DOC (build_index/rag_search/compact) — VERIFY
+  they exist/compile before relying on them.
+- memory/ has a generated inverted index (index.pdl, index-compact.pdl) —
+  generated artifact, never commit by hand.
+- harness/ is EMPTY right now — k3-cli.sh is NOT yet written. This is the
+  next real piece of work for the loop.
+- src/agent.c is EMPTY — the builder loop has NOT run yet.
+- builder/ (steps/ + run.sh) is described in DESIGN-DOC but NOT created.
+
+NEXT MOST USEFUL MOVE (recommended order):
+  1. create builder/run.sh + builder/steps/01-bootstrap.txt (echo loop)
+  2. run the builder for step 01 to prove gemma can author ANYTHING
+  3. write harness/k3-cli.sh with K1..K8 (or at least K1/K2 first)
+  4. loop steps 01..07 per DESIGN-DOC section 4
+  5. whenever a step fails 3x -> improve tools, record WHY in memory/
+
+================================================================
+5. HOW TO ASK GEMMA (the exact mechanics)
+================================================================
+- endpoint: LAN ollama http://10.0.0.144:11434/api/chat
+- model: gemma3:270m
+- prompt shape for authoring (KEEP THIS):
+    "You are writing C. Requirements:
+     [one sentence spec, one function]
+     File: src/agent.c. Use stdio/stdlib/string only. No comments beyond
+     the function. Write the code now."
+- prompt shape for fixing:
+    "Your previous code failed to compile. Compiler output:
+     [paste gcc error verbatim]
+     Fix ONLY that error. Keep all other lines identical. Write the code."
+- prompt shape for ask-path (runtime user questions):
+    "[RAG snippets from memory/index]  Question: <user line>  Answer in
+     <=3 sentences using only the snippets."
+- Retry budget: 3 compile-fix rounds per step. Then STOP and escalate.
+
+================================================================
+6. TRACEABILITY RULES (leave breadcrumbs every pass)
+================================================================
+T1. After each loop pass, APPEND to memory/loop-log.txt (create it):
+      date | step# | harness K1..K8 status | bottleneck | tool change made
+T2. Keep memory/ generated indexes out of any commits; commit specs, ops,
+    builder, harness, and this log.
+T3. If you update tools/grammar, bump DESIGN-DOC/ARCH-DOC version line so
+    future agents know the loop moved. One sentence is enough.
+T4. Never delete a step file. Failed steps stay as history; mark them
+    `[FAILED 3x -> decomposed into 01a/01b]` so the next agent sees the
+    bottleneck pattern.
+
+================================================================
+7. WARNING SIGNS (when to STOP and reconsider, not push through)
+================================================================
+- gemma "hallucinating" tool calls in replies -> context window too big
+  for the spec, OR the RAG window is polluted. Shrink, don't retry harder.
+- harness flaky (passes then fails on same input) -> make asserts
+  deterministic (exact substrings, disk checks); a flaky harness poisons
+  the whole loop.
+- builder spends 3x retries on step N repeatedly -> step N is too big.
+  Decompose it, don't brute-force it.
+- any op/ hangs or forks the LAN Mac -> fix timeouts in ops/connect_op.c
+  first; the box orchestrates, never blocks.
+
+================================================================
+8. ULTIMATE TEST (what "done" looks like, check all)
+================================================================
+  [x] harness/k3-cli.sh exists and K1..K8 all PASS
+  [x] src/agent.c compiled by builder (gemma-authored, not hand-written)
+  [x] `ask` path returns real gemma3:270m replies with RAG context
+  [x] a fresh clone can re-run the loop from builder/run.sh and pass
+  [x] memory/loop-log.txt shows >=3 completed passes with evolving tools
+      (loop is alive, not a one-shot)
+Then: the loop has stalled productively -> next arm can be born (see
+DESIGN-DOC "co-evolution loop" / "any future arm can reuse" note).
+
+---
+GO FORWARD. THE RULE: if the current machinery can't do it, we BUILD the
+machinery. No cop-outs. Push the loop.

@@ -1,0 +1,78 @@
+# CPU Health Fix — Implementation Summary
+**Date:** April 3, 2026
+**Status:** IMPLEMENTED & COMPILED
+
+---
+
+## What Was Changed
+
+### 1. orchestrator.c (v3.1 - HOLY Process Management)
+
+**Added:**
+- `log_pid(pid, name)` — appends `PID name` to `pieces/os/proc_list.txt` with flock
+- `kill_all_tracked_processes()` — reads proc_list.txt, kills all PIDs (SIGTERM→200ms→SIGKILL), clears file
+- `setpgid(0, 0)` in `main()` — orchestrator becomes process group leader
+- `setpgid(pid, pid)` in `launch_and_register()` and `joystick_thread_func()` — each child is group leader
+- Clears `proc_list.txt` on startup
+
+**Replaced:**
+- `kill(0, SIGTERM)` → `kill_all_tracked_processes()` in signal handler
+- `exit(0)` → `_exit(0)` — async-signal-safe
+- Removed `system("bash kill_all.sh")` from signal handler — not signal-safe
+
+### 2. chtpm_parser.c
+
+**Fixed:**
+- `cleanup_module()` — blocking `waitpid()` instead of `WNOHANG`
+- Added `kill(-current_module_pid, SIGTERM)` — kills module's process group
+
+### 3. kill_all.sh
+
+**Fixed:**
+- Two-phase kill: SIGTERM → sleep 0.2 → SIGKILL
+
+### 4. proc_manager.c
+
+**Fixed:**
+- Added `unregister` command
+
+---
+
+## Architecture
+
+- **NO separate library file** — everything in orchestrator.c (HOLY pattern)
+- **File-backed PID tracking** via `pieces/os/proc_list.txt`
+- **Architecture document:** `#.docs/pmo-procman-arch.txt`
+
+---
+
+## Files Modified
+
+| File | Status |
+|------|--------|
+| `pieces/chtpm/plugins/orchestrator.c` | ✓ Compiled |
+| `pieces/chtpm/plugins/chtpm_parser.c` | ✓ Compiled |
+| `pieces/os/kill_all.sh` | ✓ Updated |
+| `pieces/os/plugins/proc_manager.c` | ✓ Compiled |
+| `#.dev-storage/#.tools/compile_all.sh` | ✓ Updated |
+
+---
+
+## How It Works
+
+1. **On startup:** Orchestrator clears `proc_list.txt`, registers itself
+2. **On spawn:** Each child PID is logged to `proc_list.txt` with flock
+3. **On Ctrl+C:** Signal handler reads `proc_list.txt`, kills all PIDs (SIGTERM→200ms→SIGKILL), clears file
+4. **Process groups:** Each child is its own group leader (`setpgid(0,0)`), so `kill(-PID, SIG)` kills the child AND any grandchildren
+
+---
+
+## Verification
+
+```bash
+# After Ctrl+C, verify no orphans
+ps aux | grep '\.+x' | grep -v grep
+
+# Check proc_list.txt during runtime
+cat pieces/os/proc_list.txt
+```

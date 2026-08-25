@@ -1,0 +1,22 @@
+# 🧪 DAY 11 — Harness Philosophy 🏗
+# ===============================
+# Title: "🧪 DAY 11 — Harness Philosophy 🏗"
+# Characters: TOMO, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+
+**TOMO:** I've watched enough harnesses die to know what keeps one alive. Four laws.
+
+**TOMO:** Iron rule from the Boss. Embedded/ops code is pure C, `-Wall -Wextra` clean. The first version of our probing harness was written in Python; it was ported to C and the .py deleted. When in doubt: write C first. (It's in LEARNINGS.md §3, and it's a Boss rule, so it's sacred.) ⛪
+
+**TOMO:** A harness must be **idempotent**. Run 1 and run 99 must start from the same world. Our read/edit/run tests restore the sample C file to its pristine buggy state before each scenario, so a previous run's fix can never contaminate the next. If a harness isn't repeatable, its score is a rumor. 🔁
+
+**TOMO:** Raw transcripts, receipts, payloads, verdict files — every run dumps them into a proof/ or results/ directory. A human can open results/gemma3270m/harnecientedit.json and see the 270m echo the whole file — and see the harness still land the fix. The transcript is the evidence; the N/N table is the verdict. Never delete the artifacts. 📜
+
+**TOMO:** The verdict is PASS only when the *machine* confirms it: the file compiled, the binary printed 15, the taskbar file contains the marker. The model saying "done" means nothing — we learned that the hard way. 🎭
+
+**THE NARRATOR:** Every harness in this house shares the same skeleton. Meet the three bodies we cover in the next two days:
+
+**TOMO:** One more habit that saved us three round-trips: **after porting a harness, diff the verdicts against a known-good run before trusting the new harness. We lost an n++ and a wrong-verdict lookup in the C port — a parity check caught both instantly. The lesson is in LEARNINGS.md §7: don't trust your new harness; prove it against the old one first. 🔍
+
+**TOMO:** That's the best one-line definition I've ever heard. Tomorrow, the machine that measured the 9/9.

@@ -1,0 +1,5 @@
+RMMP=pieces/apps/editor/plugins/+x/editor_module.+x
+PLAYR=pieces/apps/playrm/plugins/+x/playrm_module.+x
+GL-OS=pieces/apps/gl_os/plugins/+x/gl_desktop.+x
+FUZZPET=pieces/apps/fuzzpet_app/manager/plugins/+x/fuzzpet_manager.+x
+FUZZPET_NEW=pieces/apps/fuzzpet_app/manager/plugins/+x/fuzzpet_manager.+x

@@ -1,0 +1,162 @@
+# 046.gemma-cli-agent🤖️+1 — DESIGN DOC (read before building)
+
+Status: DRAFT v0.1 — 2026-07-31. Companion: ARCH-DOC.txt (what the agent
+reads to understand itself). This doc is what the SUPERVISOR reads to build
+the birth canal. The agent (gemma) authors its own src/agent.c.
+
+================================================================
+1. GOAL (the North Star)
+================================================================
+Build a BASIC opencode-style CLI coding agent that runs on gemma3:270m
+over the LAN — no big LLM. It reads, searches, edits, runs, and documents
+a codebase. It must feel like a real coding agent, not a toy.
+
+The twist that makes this achievable at 270m (PROVEN in 045):
+  - gemma does NOT write code from nothing. It ROUTES intent
+    (deterministic keyword table) and REASONS over tiny windows of
+    RAG-retrieved snippets. Tools are the ground truth.
+  - "Gemma writes the code" here means: gemma authors src/agent.c THROUGH
+    the tool pipeline, one small spec at a time, with compile feedback.
+    The tools do the mechanics; gemma makes the choices.
+
+================================================================
+2. THE CO-EVOLUTION LOOP (how we get to "competent as opencode")
+================================================================
+This is NOT build-once-then-done. It's a loop:
+
+  [we build/update gemma's TOOLS]
+            |
+            v
+  [gemma authors/builds src/agent.c via the tools]
+            |
+            v
+  [harness proves read→edit→run→document]
+            |
+            v
+  [bottlenecks found → we UPDATE OUR OWN GEMMA TOOLS]
+            |
+            v
+  [gemma rebuilds/extends itself → loop repeats]
+
+"Updating our own gemma tools" is a first-class activity, same weight as
+building the agent. Every iteration makes the agent (and the tools) more
+competent. We are not done when the harness passes once; we are done when
+the loop stalls and no new bottleneck appears.
+
+================================================================
+3. ARCHITECTURE (what exists where)
+================================================================
+046.gemma-cli-agent🤖️+1/
+  DESIGN-DOC.txt      this file (supervisor reads)
+  ARCH-DOC.txt        the spec (agent reads; ground truth for self-building)
+  src/agent.c         THE DELIVERABLE — authored by GEMMA via builder loop
+  ops/                borrowed proven tool ops (MY job, already copied):
+                        connect_op, json_parser, list_dir, edit_file,
+                        search_in_files, cmd_exec
+  rag/                RAG memory (MY job — gemma's brain extension):
+                        build_index.c  scan tree → inverted index
+                        rag_search.c   query → top-N snippets
+                        compact.c      index too big → gemma summarizes
+  memory/             generated index + compacted summaries (never committed)
+  builder/            the birth canal (MY job):
+                        steps/         one spec file per authoring step
+                        run.sh         drives gemma step-by-step
+  harness/k3-cli.sh   K3-style proof (MY job): feeds stdin, asserts output,
+                      no "TOOL:" hallucination, deterministic tools.
+
+Compute rule (locked): this box orchestrates only. gemma computes on the
+LAN Mac (http://10.0.0.144:11434, model gemma3:270m). Tools run locally.
+
+================================================================
+4. THE BUILDER LOOP (how gemma authors its own agent.c)
+================================================================
+The builder (builder/run.sh) is a small deterministic driver. It is NOT an
+LLM orchestrator — it does file/compile/retry mechanics. Per step:
+
+  1. read builder/steps/01-bootstrap.txt (one tiny spec: "implement
+     main() that reads a line and prints it back")
+  2. ask gemma (LAN): "Write C code that does EXACTLY this. Put it in
+     src/agent.c. Use only stdio/stdlib/string. No comments beyond the
+     function."  ← tiny window, one function, zero ambiguity
+  3. write gemma's answer to src/agent.c (append per step, or splice by
+     // === STEP N === markers)
+  4. gcc -c src/agent.c  (compile check)
+     - pass → next step
+     - fail → feed the compiler error back to gemma with "fix ONLY the
+       error, keep the rest identical" → retry (max 3)
+  5. after all steps: full gcc -o, then harness runs against the result
+
+Step sizes are SMALL because 270m can't hold large specs. If a step fails
+3x, the builder STOPS and reports the bottleneck to the supervisor — that
+is the signal to UPDATE OUR OWN GEMMA TOOLS (better step decomposition,
+RAG context injection into the prompt, error formatting, etc.).
+
+Steps (draft, refined as we learn):
+  01 main + read line + echo
+  02 tool keyword detection table (list|read|edit|search|run|ask|rag)
+  03 dispatch + call the real ops/ binaries
+  04 RAG integration (call build_index/rag_search, show snippets)
+  05 LAN gemma ask (connect_op → /api/chat → parse reply)
+  06 document command (gemma writes a doc block to the file)
+  07 shell polish (prompt, help, error messages) — optional stretch
+
+================================================================
+5. HARNESS (k3-cli.sh) — the proof
+================================================================
+Borrowed K3 convention from 045's test-harn-same: feed stdin commands,
+assert on stdout + on disk truth.
+
+Scenarios (each = PASS/FAIL + OVERALL summary):
+  K1 read:       `read src/agent.c` → output contains a known function name
+  K2 edit+run:   `edit src/agent.c replace <known> with <new>` → disk changes
+                 AND recompiles AND runs
+  K3 search:     `search build_index` → finds the RAG file, correct line
+  K4 rag:        `rag read` → returns snippets from read-related files
+  K5 ask:        `ask what does main do` → gemma reply via LAN, no "TOOL:"
+                 hallucination in reply
+  K6 document:   `document src/agent.c` → doc block written to disk (adjacent
+                 goal; may be stretch)
+  K7 determinism:tool fires WITHOUT any LLM call for list/read/search/edit
+  K8 no halluc:  grep the whole transcript for "TOOL: <tool> <args>" pattern
+                 = zero (the 270m copy-paste bug we already killed in 045)
+
+Exit: OVERALL PASS only if all K1–K8 green. Partial = report which K failed.
+
+================================================================
+6. WHAT "COMPETENT AS CURRENT OPENCODE" MEANS FOR US (acceptance)
+================================================================
+Phase 1 (this build): the agent can, from its own REPL, on ITS OWN code:
+  - list/read/search its tree via RAG and real tools
+  - edit a file and re-run it (self-modification works)
+  - answer "what does X do" via gemma+RAG over LAN
+  - document a function by writing a doc block to disk
+Phase 2 (later): agent processes the same commands on OTHER codebases;
+tools get richer (git diff, multi-file edit, tests); builder loop grows
+steps for the new tools (this is where "update our own gemma tools" bites).
+Phase 3 (stretch): the agent edits ITSELF, recompiles, and re-passes the
+harness — a self-improving loop on a small model.
+
+================================================================
+7. RISKS / BOTTLENECKS WE ALREADY KNOW (watch for these)
+================================================================
+  - 270m cannot hold multi-step specs → keep steps tiny (rule: one
+    function or one behavior per step)
+  - 270m copies "TOOL:" patterns → K8 exists; if it fires, the prompt
+    builder in the LAN ask path needs the same stale-turn filter 045 uses
+  - gemma may emit non-C or partial C → builder retry loop + error feed
+  - RAG index may miss words (tokenizer quirks) → rag_search returns
+    empty → that's a TOOL bug, fix build_index/rag_search, not gemma
+  - LAN Mac down → tools still work (deterministic), ask returns BUSY
+  - compile feedback loop may need the actual gcc stderr, not gemma's guess
+  - memory/ grows → compact.c (gemma summarizes the index) keeps it bounded
+
+================================================================
+8. RULES (locked)
+================================================================
+  R1 supervisor builds scaffold/tools/harness/steps ONLY. gemma authors
+     src/agent.c. I do not hand-write agent.c.
+  R2 when a harness K fails, look at the TOOL/prompt/steps FIRST (that's
+     "update our own gemma tools"), not at rewriting gemma's code by hand.
+  R3 tools never fake results. Disk is the only truth.
+  R4 memory/ is generated. index rebuilds are cheap; never hand-edit index.
+  R5 keep it simple. No feature creep in phase 1. One bottleneck at a time.

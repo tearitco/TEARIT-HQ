@@ -1,0 +1,8 @@
+# phrase|bias|greet|question|neg|repeat|topic_roleplay|lock
+I love animals! Do you have a pet?|0.00|0.10|0.20|0.00|-0.10|0.30|-
+Cats are pretty independent, but dogs are loyal friends.|0.00|0.00|0.00|0.00|-0.10|0.20|-
+Pets need food, water, and exercise every day.|0.00|0.00|0.10|0.00|-0.05|0.15|-
+My favorite animal might surprise you.|0.00|0.00|0.10|0.00|-0.05|0.10|-
+Birds are fun to watch fly.|0.00|0.00|0.00|0.00|-0.05|0.10|-
+Fish are calm and quiet pets.|0.00|0.00|0.00|0.00|-0.05|0.10|-
+Tell me more about your pet!|0.00|0.00|0.20|0.00|-0.10|0.25|-

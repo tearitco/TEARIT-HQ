@@ -1,0 +1,220 @@
+GOTCHAS BY PROJECT — Haiku's Persistent Discoveries
+(Append-only log of project-specific pitfalls found while working)
+
+Updated: 2026-07-20
+Session: Cold setup + first context building
+
+================================================================================
+1.muchi-pal-agent🤖️ (Chat Agent)
+================================================================================
+SYNCING GOTCHAS:
+  - prisc+x.c is synced from shared-ops/ (DO NOT blindly overwrite local copy)
+  - Both prisc+x.c VM bug fixes (OP_READ_HISTORY, OP_EXEC register-sentinel) are in canonical shared-ops/ but NOT YET re-synced to this project's system/ copy
+  - Before assuming a stale version is "wrong," diff with shared-ops/prisc+x.c first
+  - shared-ops-manifest.txt lists which files are synced from where
+
+PROCESS GOTCHAS:
+  - PRISC_PROJECT_ROOT is cached at process startup, not live
+  - If you move/rename the project directory while muchi-pal-agent is running, the process keeps writing to the OLD path
+  - After directory moves: sweep /proc/$pid/cwd for stale processes, kill by cwd match (not by argv)
+
+SCRIPT GOTCHAS:
+  - pal/main_loop.pal uses @file include syntax (non-standard, specific to this project)
+  - Session isolation is CRITICAL — never launch directly, always via button.sh or replicate exactly (pal-scripts/launch_irc_agent.sh is the worked example)
+
+RENDERING GOTCHAS:
+  - pieces/display/current_frame.txt is written ONLY by chtpm_parser_pal, never by ops
+  - Ops write their own view.txt, then ping frame_changed.txt to trigger chtpm's compose step
+  - Don't try to write directly to current_frame.txt or you'll race with chtpm
+
+PROVIDER GOTCHAS:
+  - model_list.txt is the registry (pipe-delimited: id|kind|param|param)
+  - switch_model.c picks which provider is active (rewrites state.txt fields)
+  - New this session: script provider_kind can use trigger-word routing (pieces/registry/triggers/trigger_list.txt)
+  - edge-tts is chosen for TTS (not espeak/piper) — wrap it in ops/tts_speak.c
+
+TESTING GOTCHAS:
+  - File injection testing verifies DATA/LOGIC, not real terminal rendering
+  - KEY INJECTION: write directly to pieces/keyboard/history.txt (or gui_state.txt + interact_relay.txt)
+  - FRAME READING: read pieces/display/current_frame.txt directly as text
+  - LIMITATION: file injection doesn't verify frame history/scrollback (that needs real terminal)
+  - debug/frame_history.txt convention (if it exists) logs every frame rendered in a session — USE IT to verify history/scrollback
+
+================================================================================
+1.pal-chat-irc (IRC Chatroom)
+================================================================================
+STRUCTURE GOTCHAS:
+  - Rooms are real directories: rooms/<room_name>/
+  - Each room contains messages.txt (one message per line, format: user|text|timestamp)
+  - palnet_peer.c for P2P is already proven working (pal-chain also uses it)
+  - irc-agent-0000 uses ops/irc_agent_poll.c (tick-driven, near-instant no-op unless active)
+
+TESTING GOTCHAS (discovered during TASK 0 testing, 2026-07-20):
+  - Frame history dumping works: debug/frame_history.txt appended on every compose_frame call
+  - Each frame includes timestamp, full rendered content, and --- separator
+  - Session creates fresh debug/frame_history.txt on startup (truncated, not appended to old runs)
+  - LAYER 1 (view.txt) and LAYER 2 (frame_history.txt) stay in perfect sync
+  - File injection works: pieces/apps/player_app/state.txt + pieces/apps/player_app/interact_relay.txt
+
+GENERAL GOTCHAS:
+  - Don't assume rooms are created beforehand — check if rooms/ directory exists
+  - messages.txt might be fresh or might have history — don't truncate without backing up
+  - palnet_peer.c header comment needs to be read BEFORE calling it (calling convention, env vars, etc)
+
+================================================================================
+1.pal-chain⛓️ (Blockchain Project)
+================================================================================
+P2P GOTCHAS:
+  - Already using palnet_peer.c successfully for P2P
+  - Check shared-ops/palnet_peer.c header before adding new P2P calls
+  - Session isolation same as other projects (use button.sh)
+
+================================================================================
+2.zoo_0000 (Drag-and-Drop Pet Game)
+================================================================================
+ARCHITECTURE GOTCHAS:
+  - Drag system involves: egg_window.c (source), zoo_window.c (target), gl_mirror.c (geometry mirroring)
+  - gl_mirror.c is DELIBERATELY a plain file (geometry-file writer, NOT socket-based)
+  - Socket-based approach was tried earlier and explicitly reverted (plain files over sockets is this family's philosophy)
+  - gl_mirror.c and palnet_peer.c are TWO DIFFERENT JOBS (don't confuse them)
+    - gl_mirror: window geometry mirroring on SAME machine (local processes)
+    - palnet_peer: actual pet state transfer, potentially ACROSS machines (real networking)
+
+NEXT WORK GOTCHAS:
+  - Task #7: wire egg_window.c to LAUNCH palnet_peer on drag START, KILL on drag END
+  - Task #8: make zoo_window.c EXPORT pet when dragged out of bounds (send-side logic)
+  - Task #9: live-test full round trip (pet out of one zoo, into another)
+  - Before writing any drag code: read pal-net presence/discovery design doc (task #5) + palnet_peer.c header IN FULL
+
+================================================================================
+1.mutaclsym🧟‍♂️️ (Game with AI)
+================================================================================
+AI MODULARIZATION GOTCHA:
+  - Current AI logic is hardcoded (one big decision tree or similar)
+  - Section 4.4 wants to split this into: registry (behavior options) + switch (pick one) + ops (do work)
+  - Model: look at muchi-pal-agent/model_list.txt + switch_model.c for the exact pattern to replicate
+  - Each NPC should eventually have its own "piece dir structure" (or at least npc_bank for templates + per-instance dirs for stateful NPCs)
+
+GOTCHAS:
+  - Don't rewrite the AI in one big-bang refactor
+  - One at a time: identify a hardcoded decision, replace with registry+switch, verify working, move to next
+  - Test after each swap, not after all swaps
+
+================================================================================
+0.gemma-only♦️ (Gemma Scaffolding Work)
+================================================================================
+CURRENT FOCUS (Section 4.1):
+  - Gemma (270M local model) has NO native tool-calling schema
+  - Plan: teach it plain-text KEYWORD convention (TOOL: verb args)
+  - Reuse text_to_pal_prompt.c pattern (already proven on llamacpp, another model without native tools)
+  - New parser (scan for TOOL: line, extract verb+args), reuse existing ops (file_ops, exec, etc)
+  - New op needed: tts_speak.c wrapping edge-tts
+  - New provider_kind: ollama_keyword (or extend ollama with sub-flag)
+
+GOTCHAS:
+  - Text_to_pal_prompt.c already solves "no native tools" — study it before writing keyword parser
+  - Reuse tool ops, don't rewrite them (they're provider-agnostic)
+  - Feed tool result back into context_log.txt (append_log_turn already supports tool_name field)
+  - Let check_response.c/send_message.c main loop reloop gemma with updated context (no new engine work)
+  - edge-tts is chosen for TTS, not espeak/piper (wrap it same way other ops wrap external programs)
+
+================================================================================
+Shared Ops & VM
+================================================================================
+PRISC+X.C REGISTER-SENTINEL BUG:
+  - Several opcodes had bug: unset register fields defaulted to 0 (valid register) instead of -1 (sentinel)
+  - Affected: OP_READ_HISTORY, OP_EXEC (both fixed this session)
+  - If adding new opcodes/forms: check this exact class of bug before trusting
+  - How to spot it: "if an unset field defaults to something indistinguishable from a valid value"
+
+SHARED-OPS SYNCING:
+  - Canonical prisc+x.c and other shared ops live in shared-ops/
+  - Each project has local copy under system/ (never symlinked)
+  - ALWAYS diff before overwrite (shared-ops-manifest.txt has exceptions)
+  - This session's prisc+x.c fixes are in canonical shared-ops/ but NOT YET re-synced to all projects
+
+================================================================================
+RENDERING FLICKER (CHTPM PROJECTS - COMMON PITFALL)
+  Problem: Constant screen redraw/flicker even at idle (no keypresses)
+  Root cause: Calling compose_frame on EVERY main_loop tick unconditionally
+  Solution (verified 2026-07-20 on muchi-pal-agent):
+    1. Use a marker file (pieces/display/chat_screen_changed.txt)
+    2. compose_frame appends a dot (fputc('.')) to marker on EACH run
+    3. Main loop reads marker file size BEFORE rendering
+    4. Only render when: marker size changed (bne x7, x8) OR user action (Enter)
+    5. On idle (no key + marker unchanged): skip compose_frame, just sleep
+  Pattern (mutaclsym-style):
+    - Initial render before loop starts
+    - In loop: check_response, read_pos marker, bne → render if changed
+    - Read key: only render if key==13 (Enter/submit)
+    - No_key: sleep without render
+  This eliminates all idle redraws while keeping responsive UI.
+  Reference: mutaclsym/pal/main_loop_chtpm.pal (doesn't have marker file, but has
+  the same "only render after action" pattern - no idle renders).
+
+Testing & Verification
+================================================================================
+LIVE TESTING PATTERN (This family's standing convention):
+  1. KEY INJECTION: write directly to pieces/keyboard/history.txt (matches real keypress data)
+  2. FRAME READING: read pieces/display/current_frame.txt (matches what ops actually wrote)
+  3. VERIFY DATA/LOGIC: confirmed (file injection proves data layer is correct)
+  4. LIMITATION: doesn't verify real terminal rendering (frame history/scrollback)
+  5. NEXT STEP: if frame history/scrollback matters, RUN REAL TERMINAL and observe with eyes
+
+DEBUG FRAME HISTORY:
+  - Convention: projects write debug/frame_history.txt (every frame appended, deleted at session start)
+  - This answers "frame history/scrollback" question far better than single current_frame.txt read
+  - IF a project has this, USE it for testing (grep "frame_history" first, don't assume)
+  - IF a project doesn't have it, add it (compose_frame fopen(...,"a") pattern, same as context_log.txt)
+
+================================================================================
+Session Isolation & Process Management
+================================================================================
+BUTTON.SH CONVENTION:
+  - Always launch via button.sh `run` or replicate exactly (pal-scripts/launch_irc_agent.sh is worked example)
+  - Creates pieces/sessions/<id>/ (ephemeral, deleted on exit)
+  - Symlinks shared code, real private ephemeral state
+
+KILL PATTERN (CRITICAL):
+  - Every session's processes have IDENTICAL argv text (system/prisc+x pal/main_loop.pal)
+  - Bare pkill -f will kill WRONG session
+  - Always match /proc/$pid/cwd against target session dir
+  - After ANY directory move: sweep /proc/$pid/cwd TWICE (once often isn't enough)
+
+PRISC_PROJECT_ROOT:
+  - Env var read ONCE at process startup into static buffer
+  - Moving directory updates kernel cwd, but NOT this cached string
+  - Leftover process keeps writing to OLD path indefinitely after move
+  - After moves: kill orphaned processes by cwd match
+
+================================================================================
+Design-Doc-First Convention
+================================================================================
+EVERY feature gets design doc BEFORE code (examples this session):
+  - CHAT-INTEGRATION-ARCHITECTURE.txt (whole chat agent system)
+  - pal-scripts/README.txt (meta-orchestration layer)
+  - PAL-NET-STANDARD.txt (P2P presence/discovery)
+
+BEFORE building anything new:
+  - Read related design doc IN FULL (don't skim, don't guess)
+  - If no design doc exists yet, write it first
+  - If doc is incomplete/designed-but-not-built, note what's missing
+
+================================================================================
+The ONE Pattern (Applies Everywhere)
+================================================================================
+REGISTRY + SWITCH + SELF-CONTAINED OPS
+
+When adding ANY swappable behavior, use this pattern:
+  1. REGISTRY file (plain text, pipe-delimited rows: id|kind|param|param)
+  2. SWITCH op (look up id in registry, rewrite state.txt fields, done)
+  3. SELF-CONTAINED OPS (each does one thing, owns constants/root-resolution)
+
+Examples already in code:
+  - Provider: model_list.txt + switch_model.c + send_message.c
+  - Routing: trigger_list.txt + script provider parser + execute_tool.c
+  - NPC behavior: npc_bank.txt (future) + switch command + per-NPC script/fsm/rl
+  - Terrain: terrain_registry.txt (future) + selector op + generator ops
+  - Scale: SCALE_BANK.txt (future) + config file + actual modules
+
+Don't invent new patterns. This is the pattern.

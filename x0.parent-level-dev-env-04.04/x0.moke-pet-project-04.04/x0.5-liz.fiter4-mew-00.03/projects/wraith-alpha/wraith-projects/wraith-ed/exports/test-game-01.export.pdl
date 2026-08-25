@@ -1,0 +1,7 @@
+SECTION | KEY | VALUE
+META | exporter | wraith-ed
+META | game_id | test-game-01
+FILE | map | games/test-game-01/maps/map_0001_z0.txt
+FILE | project | games/test-game-01/project.pdl
+FILE | script | games/test-game-01/scripts/talk.pal
+DIR | pal_events | pal/events

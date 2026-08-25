@@ -1,0 +1,4 @@
+--- injected key sequence (editor) ---
+[2026-07-30 20:54:19] KEY_PRESSED: 13
+[2026-07-30 20:54:20] KEY_PRESSED: 27
+[2026-07-30 20:54:20] KEY_PRESSED: 52

@@ -1,0 +1,3626 @@
+# Extracted 3624 fully qualified emojis
+# Format: codepoint_hex_string|emoji_string|emoji_name
+1F600|😀|grinning face
+1F603|😃|grinning face with big eyes
+1F604|😄|grinning face with smiling eyes
+1F601|😁|beaming face with smiling eyes
+1F606|😆|grinning squinting face
+1F605|😅|grinning face with sweat
+1F923|🤣|rolling on the floor laughing
+1F602|😂|face with tears of joy
+1F642|🙂|slightly smiling face
+1F643|🙃|upside-down face
+1FAE0|🫠|melting face
+1F609|😉|winking face
+1F60A|😊|smiling face with smiling eyes
+1F607|😇|smiling face with halo
+1F970|🥰|smiling face with hearts
+1F60D|😍|smiling face with heart-eyes
+1F929|🤩|star-struck
+1F618|😘|face blowing a kiss
+1F617|😗|kissing face
+263AFE0F|☺️|smiling face
+1F61A|😚|kissing face with closed eyes
+1F619|😙|kissing face with smiling eyes
+1F972|🥲|smiling face with tear
+1F60B|😋|face savoring food
+1F61B|😛|face with tongue
+1F61C|😜|winking face with tongue
+1F92A|🤪|zany face
+1F61D|😝|squinting face with tongue
+1F911|🤑|money-mouth face
+1F917|🤗|smiling face with open hands
+1F92D|🤭|face with hand over mouth
+1FAE2|🫢|face with open eyes and hand over mouth
+1FAE3|🫣|face with peeking eye
+1F92B|🤫|shushing face
+1F914|🤔|thinking face
+1FAE1|🫡|saluting face
+1F910|🤐|zipper-mouth face
+1F928|🤨|face with raised eyebrow
+1F610|😐|neutral face
+1F611|😑|expressionless face
+1F636|😶|face without mouth
+1FAE5|🫥|dotted line face
+1F636200D1F32BFE0F|😶‍🌫️|face in clouds
+1F60F|😏|smirking face
+1F612|😒|unamused face
+1F644|🙄|face with rolling eyes
+1F62C|😬|grimacing face
+1F62E200D1F4A8|😮‍💨|face exhaling
+1F925|🤥|lying face
+1F60C|😌|relieved face
+1F614|😔|pensive face
+1F62A|😪|sleepy face
+1F924|🤤|drooling face
+1F634|😴|sleeping face
+1F637|😷|face with medical mask
+1F912|🤒|face with thermometer
+1F915|🤕|face with head-bandage
+1F922|🤢|nauseated face
+1F92E|🤮|face vomiting
+1F927|🤧|sneezing face
+1F975|🥵|hot face
+1F976|🥶|cold face
+1F974|🥴|woozy face
+1F635|😵|face with crossed-out eyes
+1F635200D1F4AB|😵‍💫|face with spiral eyes
+1F92F|🤯|exploding head
+1F920|🤠|cowboy hat face
+1F973|🥳|partying face
+1F978|🥸|disguised face
+1F60E|😎|smiling face with sunglasses
+1F913|🤓|nerd face
+1F9D0|🧐|face with monocle
+1F615|😕|confused face
+1FAE4|🫤|face with diagonal mouth
+1F61F|😟|worried face
+1F641|🙁|slightly frowning face
+2639FE0F|☹️|frowning face
+1F62E|😮|face with open mouth
+1F62F|😯|hushed face
+1F632|😲|astonished face
+1F633|😳|flushed face
+1F97A|🥺|pleading face
+1F979|🥹|face holding back tears
+1F626|😦|frowning face with open mouth
+1F627|😧|anguished face
+1F628|😨|fearful face
+1F630|😰|anxious face with sweat
+1F625|😥|sad but relieved face
+1F622|😢|crying face
+1F62D|😭|loudly crying face
+1F631|😱|face screaming in fear
+1F616|😖|confounded face
+1F623|😣|persevering face
+1F61E|😞|disappointed face
+1F613|😓|downcast face with sweat
+1F629|😩|weary face
+1F62B|😫|tired face
+1F971|🥱|yawning face
+1F624|😤|face with steam from nose
+1F621|😡|pouting face
+1F620|😠|angry face
+1F92C|🤬|face with symbols on mouth
+1F608|😈|smiling face with horns
+1F47F|👿|angry face with horns
+1F480|💀|skull
+2620FE0F|☠️|skull and crossbones
+1F4A9|💩|pile of poo
+1F921|🤡|clown face
+1F479|👹|ogre
+1F47A|👺|goblin
+1F47B|👻|ghost
+1F47D|👽|alien
+1F47E|👾|alien monster
+1F916|🤖|robot
+1F63A|😺|grinning cat
+1F638|😸|grinning cat with smiling eyes
+1F639|😹|cat with tears of joy
+1F63B|😻|smiling cat with heart-eyes
+1F63C|😼|cat with wry smile
+1F63D|😽|kissing cat
+1F640|🙀|weary cat
+1F63F|😿|crying cat
+1F63E|😾|pouting cat
+1F648|🙈|see-no-evil monkey
+1F649|🙉|hear-no-evil monkey
+1F64A|🙊|speak-no-evil monkey
+1F48B|💋|kiss mark
+1F48C|💌|love letter
+1F498|💘|heart with arrow
+1F49D|💝|heart with ribbon
+1F496|💖|sparkling heart
+1F497|💗|growing heart
+1F493|💓|beating heart
+1F49E|💞|revolving hearts
+1F495|💕|two hearts
+1F49F|💟|heart decoration
+2763FE0F|❣️|heart exclamation
+1F494|💔|broken heart
+2764FE0F200D1F525|❤️‍🔥|heart on fire
+2764FE0F200D1FA79|❤️‍🩹|mending heart
+2764FE0F|❤️|red heart
+1F9E1|🧡|orange heart
+1F49B|💛|yellow heart
+1F49A|💚|green heart
+1F499|💙|blue heart
+1F49C|💜|purple heart
+1F90E|🤎|brown heart
+1F5A4|🖤|black heart
+1F90D|🤍|white heart
+1F4AF|💯|hundred points
+1F4A2|💢|anger symbol
+1F4A5|💥|collision
+1F4AB|💫|dizzy
+1F4A6|💦|sweat droplets
+1F4A8|💨|dashing away
+1F573FE0F|🕳️|hole
+1F4A3|💣|bomb
+1F4AC|💬|speech balloon
+1F441FE0F200D1F5E8FE0F|👁️‍🗨️|eye in speech bubble
+1F5E8FE0F|🗨️|left speech bubble
+1F5EFFE0F|🗯️|right anger bubble
+1F4AD|💭|thought balloon
+1F4A4|💤|zzz
+1F44B|👋|waving hand
+1F44B1F3FB|👋🏻|waving hand: light skin tone
+1F44B1F3FC|👋🏼|waving hand: medium-light skin tone
+1F44B1F3FD|👋🏽|waving hand: medium skin tone
+1F44B1F3FE|👋🏾|waving hand: medium-dark skin tone
+1F44B1F3FF|👋🏿|waving hand: dark skin tone
+1F91A|🤚|raised back of hand
+1F91A1F3FB|🤚🏻|raised back of hand: light skin tone
+1F91A1F3FC|🤚🏼|raised back of hand: medium-light skin tone
+1F91A1F3FD|🤚🏽|raised back of hand: medium skin tone
+1F91A1F3FE|🤚🏾|raised back of hand: medium-dark skin tone
+1F91A1F3FF|🤚🏿|raised back of hand: dark skin tone
+1F590FE0F|🖐️|hand with fingers splayed
+1F5901F3FB|🖐🏻|hand with fingers splayed: light skin tone
+1F5901F3FC|🖐🏼|hand with fingers splayed: medium-light skin tone
+1F5901F3FD|🖐🏽|hand with fingers splayed: medium skin tone
+1F5901F3FE|🖐🏾|hand with fingers splayed: medium-dark skin tone
+1F5901F3FF|🖐🏿|hand with fingers splayed: dark skin tone
+270B|✋|raised hand
+270B1F3FB|✋🏻|raised hand: light skin tone
+270B1F3FC|✋🏼|raised hand: medium-light skin tone
+270B1F3FD|✋🏽|raised hand: medium skin tone
+270B1F3FE|✋🏾|raised hand: medium-dark skin tone
+270B1F3FF|✋🏿|raised hand: dark skin tone
+1F596|🖖|vulcan salute
+1F5961F3FB|🖖🏻|vulcan salute: light skin tone
+1F5961F3FC|🖖🏼|vulcan salute: medium-light skin tone
+1F5961F3FD|🖖🏽|vulcan salute: medium skin tone
+1F5961F3FE|🖖🏾|vulcan salute: medium-dark skin tone
+1F5961F3FF|🖖🏿|vulcan salute: dark skin tone
+1FAF1|🫱|rightwards hand
+1FAF11F3FB|🫱🏻|rightwards hand: light skin tone
+1FAF11F3FC|🫱🏼|rightwards hand: medium-light skin tone
+1FAF11F3FD|🫱🏽|rightwards hand: medium skin tone
+1FAF11F3FE|🫱🏾|rightwards hand: medium-dark skin tone
+1FAF11F3FF|🫱🏿|rightwards hand: dark skin tone
+1FAF2|🫲|leftwards hand
+1FAF21F3FB|🫲🏻|leftwards hand: light skin tone
+1FAF21F3FC|🫲🏼|leftwards hand: medium-light skin tone
+1FAF21F3FD|🫲🏽|leftwards hand: medium skin tone
+1FAF21F3FE|🫲🏾|leftwards hand: medium-dark skin tone
+1FAF21F3FF|🫲🏿|leftwards hand: dark skin tone
+1FAF3|🫳|palm down hand
+1FAF31F3FB|🫳🏻|palm down hand: light skin tone
+1FAF31F3FC|🫳🏼|palm down hand: medium-light skin tone
+1FAF31F3FD|🫳🏽|palm down hand: medium skin tone
+1FAF31F3FE|🫳🏾|palm down hand: medium-dark skin tone
+1FAF31F3FF|🫳🏿|palm down hand: dark skin tone
+1FAF4|🫴|palm up hand
+1FAF41F3FB|🫴🏻|palm up hand: light skin tone
+1FAF41F3FC|🫴🏼|palm up hand: medium-light skin tone
+1FAF41F3FD|🫴🏽|palm up hand: medium skin tone
+1FAF41F3FE|🫴🏾|palm up hand: medium-dark skin tone
+1FAF41F3FF|🫴🏿|palm up hand: dark skin tone
+1F44C|👌|OK hand
+1F44C1F3FB|👌🏻|OK hand: light skin tone
+1F44C1F3FC|👌🏼|OK hand: medium-light skin tone
+1F44C1F3FD|👌🏽|OK hand: medium skin tone
+1F44C1F3FE|👌🏾|OK hand: medium-dark skin tone
+1F44C1F3FF|👌🏿|OK hand: dark skin tone
+1F90C|🤌|pinched fingers
+1F90C1F3FB|🤌🏻|pinched fingers: light skin tone
+1F90C1F3FC|🤌🏼|pinched fingers: medium-light skin tone
+1F90C1F3FD|🤌🏽|pinched fingers: medium skin tone
+1F90C1F3FE|🤌🏾|pinched fingers: medium-dark skin tone
+1F90C1F3FF|🤌🏿|pinched fingers: dark skin tone
+1F90F|🤏|pinching hand
+1F90F1F3FB|🤏🏻|pinching hand: light skin tone
+1F90F1F3FC|🤏🏼|pinching hand: medium-light skin tone
+1F90F1F3FD|🤏🏽|pinching hand: medium skin tone
+1F90F1F3FE|🤏🏾|pinching hand: medium-dark skin tone
+1F90F1F3FF|🤏🏿|pinching hand: dark skin tone
+270CFE0F|✌️|victory hand
+270C1F3FB|✌🏻|victory hand: light skin tone
+270C1F3FC|✌🏼|victory hand: medium-light skin tone
+270C1F3FD|✌🏽|victory hand: medium skin tone
+270C1F3FE|✌🏾|victory hand: medium-dark skin tone
+270C1F3FF|✌🏿|victory hand: dark skin tone
+1F91E|🤞|crossed fingers
+1F91E1F3FB|🤞🏻|crossed fingers: light skin tone
+1F91E1F3FC|🤞🏼|crossed fingers: medium-light skin tone
+1F91E1F3FD|🤞🏽|crossed fingers: medium skin tone
+1F91E1F3FE|🤞🏾|crossed fingers: medium-dark skin tone
+1F91E1F3FF|🤞🏿|crossed fingers: dark skin tone
+1FAF0|🫰|hand with index finger and thumb crossed
+1FAF01F3FB|🫰🏻|hand with index finger and thumb crossed: light skin tone
+1FAF01F3FC|🫰🏼|hand with index finger and thumb crossed: medium-light skin tone
+1FAF01F3FD|🫰🏽|hand with index finger and thumb crossed: medium skin tone
+1FAF01F3FE|🫰🏾|hand with index finger and thumb crossed: medium-dark skin tone
+1FAF01F3FF|🫰🏿|hand with index finger and thumb crossed: dark skin tone
+1F91F|🤟|love-you gesture
+1F91F1F3FB|🤟🏻|love-you gesture: light skin tone
+1F91F1F3FC|🤟🏼|love-you gesture: medium-light skin tone
+1F91F1F3FD|🤟🏽|love-you gesture: medium skin tone
+1F91F1F3FE|🤟🏾|love-you gesture: medium-dark skin tone
+1F91F1F3FF|🤟🏿|love-you gesture: dark skin tone
+1F918|🤘|sign of the horns
+1F9181F3FB|🤘🏻|sign of the horns: light skin tone
+1F9181F3FC|🤘🏼|sign of the horns: medium-light skin tone
+1F9181F3FD|🤘🏽|sign of the horns: medium skin tone
+1F9181F3FE|🤘🏾|sign of the horns: medium-dark skin tone
+1F9181F3FF|🤘🏿|sign of the horns: dark skin tone
+1F919|🤙|call me hand
+1F9191F3FB|🤙🏻|call me hand: light skin tone
+1F9191F3FC|🤙🏼|call me hand: medium-light skin tone
+1F9191F3FD|🤙🏽|call me hand: medium skin tone
+1F9191F3FE|🤙🏾|call me hand: medium-dark skin tone
+1F9191F3FF|🤙🏿|call me hand: dark skin tone
+1F448|👈|backhand index pointing left
+1F4481F3FB|👈🏻|backhand index pointing left: light skin tone
+1F4481F3FC|👈🏼|backhand index pointing left: medium-light skin tone
+1F4481F3FD|👈🏽|backhand index pointing left: medium skin tone
+1F4481F3FE|👈🏾|backhand index pointing left: medium-dark skin tone
+1F4481F3FF|👈🏿|backhand index pointing left: dark skin tone
+1F449|👉|backhand index pointing right
+1F4491F3FB|👉🏻|backhand index pointing right: light skin tone
+1F4491F3FC|👉🏼|backhand index pointing right: medium-light skin tone
+1F4491F3FD|👉🏽|backhand index pointing right: medium skin tone
+1F4491F3FE|👉🏾|backhand index pointing right: medium-dark skin tone
+1F4491F3FF|👉🏿|backhand index pointing right: dark skin tone
+1F446|👆|backhand index pointing up
+1F4461F3FB|👆🏻|backhand index pointing up: light skin tone
+1F4461F3FC|👆🏼|backhand index pointing up: medium-light skin tone
+1F4461F3FD|👆🏽|backhand index pointing up: medium skin tone
+1F4461F3FE|👆🏾|backhand index pointing up: medium-dark skin tone
+1F4461F3FF|👆🏿|backhand index pointing up: dark skin tone
+1F595|🖕|middle finger
+1F5951F3FB|🖕🏻|middle finger: light skin tone
+1F5951F3FC|🖕🏼|middle finger: medium-light skin tone
+1F5951F3FD|🖕🏽|middle finger: medium skin tone
+1F5951F3FE|🖕🏾|middle finger: medium-dark skin tone
+1F5951F3FF|🖕🏿|middle finger: dark skin tone
+1F447|👇|backhand index pointing down
+1F4471F3FB|👇🏻|backhand index pointing down: light skin tone
+1F4471F3FC|👇🏼|backhand index pointing down: medium-light skin tone
+1F4471F3FD|👇🏽|backhand index pointing down: medium skin tone
+1F4471F3FE|👇🏾|backhand index pointing down: medium-dark skin tone
+1F4471F3FF|👇🏿|backhand index pointing down: dark skin tone
+261DFE0F|☝️|index pointing up
+261D1F3FB|☝🏻|index pointing up: light skin tone
+261D1F3FC|☝🏼|index pointing up: medium-light skin tone
+261D1F3FD|☝🏽|index pointing up: medium skin tone
+261D1F3FE|☝🏾|index pointing up: medium-dark skin tone
+261D1F3FF|☝🏿|index pointing up: dark skin tone
+1FAF5|🫵|index pointing at the viewer
+1FAF51F3FB|🫵🏻|index pointing at the viewer: light skin tone
+1FAF51F3FC|🫵🏼|index pointing at the viewer: medium-light skin tone
+1FAF51F3FD|🫵🏽|index pointing at the viewer: medium skin tone
+1FAF51F3FE|🫵🏾|index pointing at the viewer: medium-dark skin tone
+1FAF51F3FF|🫵🏿|index pointing at the viewer: dark skin tone
+1F44D|👍|thumbs up
+1F44D1F3FB|👍🏻|thumbs up: light skin tone
+1F44D1F3FC|👍🏼|thumbs up: medium-light skin tone
+1F44D1F3FD|👍🏽|thumbs up: medium skin tone
+1F44D1F3FE|👍🏾|thumbs up: medium-dark skin tone
+1F44D1F3FF|👍🏿|thumbs up: dark skin tone
+1F44E|👎|thumbs down
+1F44E1F3FB|👎🏻|thumbs down: light skin tone
+1F44E1F3FC|👎🏼|thumbs down: medium-light skin tone
+1F44E1F3FD|👎🏽|thumbs down: medium skin tone
+1F44E1F3FE|👎🏾|thumbs down: medium-dark skin tone
+1F44E1F3FF|👎🏿|thumbs down: dark skin tone
+270A|✊|raised fist
+270A1F3FB|✊🏻|raised fist: light skin tone
+270A1F3FC|✊🏼|raised fist: medium-light skin tone
+270A1F3FD|✊🏽|raised fist: medium skin tone
+270A1F3FE|✊🏾|raised fist: medium-dark skin tone
+270A1F3FF|✊🏿|raised fist: dark skin tone
+1F44A|👊|oncoming fist
+1F44A1F3FB|👊🏻|oncoming fist: light skin tone
+1F44A1F3FC|👊🏼|oncoming fist: medium-light skin tone
+1F44A1F3FD|👊🏽|oncoming fist: medium skin tone
+1F44A1F3FE|👊🏾|oncoming fist: medium-dark skin tone
+1F44A1F3FF|👊🏿|oncoming fist: dark skin tone
+1F91B|🤛|left-facing fist
+1F91B1F3FB|🤛🏻|left-facing fist: light skin tone
+1F91B1F3FC|🤛🏼|left-facing fist: medium-light skin tone
+1F91B1F3FD|🤛🏽|left-facing fist: medium skin tone
+1F91B1F3FE|🤛🏾|left-facing fist: medium-dark skin tone
+1F91B1F3FF|🤛🏿|left-facing fist: dark skin tone
+1F91C|🤜|right-facing fist
+1F91C1F3FB|🤜🏻|right-facing fist: light skin tone
+1F91C1F3FC|🤜🏼|right-facing fist: medium-light skin tone
+1F91C1F3FD|🤜🏽|right-facing fist: medium skin tone
+1F91C1F3FE|🤜🏾|right-facing fist: medium-dark skin tone
+1F91C1F3FF|🤜🏿|right-facing fist: dark skin tone
+1F44F|👏|clapping hands
+1F44F1F3FB|👏🏻|clapping hands: light skin tone
+1F44F1F3FC|👏🏼|clapping hands: medium-light skin tone
+1F44F1F3FD|👏🏽|clapping hands: medium skin tone
+1F44F1F3FE|👏🏾|clapping hands: medium-dark skin tone
+1F44F1F3FF|👏🏿|clapping hands: dark skin tone
+1F64C|🙌|raising hands
+1F64C1F3FB|🙌🏻|raising hands: light skin tone
+1F64C1F3FC|🙌🏼|raising hands: medium-light skin tone
+1F64C1F3FD|🙌🏽|raising hands: medium skin tone
+1F64C1F3FE|🙌🏾|raising hands: medium-dark skin tone
+1F64C1F3FF|🙌🏿|raising hands: dark skin tone
+1FAF6|🫶|heart hands
+1FAF61F3FB|🫶🏻|heart hands: light skin tone
+1FAF61F3FC|🫶🏼|heart hands: medium-light skin tone
+1FAF61F3FD|🫶🏽|heart hands: medium skin tone
+1FAF61F3FE|🫶🏾|heart hands: medium-dark skin tone
+1FAF61F3FF|🫶🏿|heart hands: dark skin tone
+1F450|👐|open hands
+1F4501F3FB|👐🏻|open hands: light skin tone
+1F4501F3FC|👐🏼|open hands: medium-light skin tone
+1F4501F3FD|👐🏽|open hands: medium skin tone
+1F4501F3FE|👐🏾|open hands: medium-dark skin tone
+1F4501F3FF|👐🏿|open hands: dark skin tone
+1F932|🤲|palms up together
+1F9321F3FB|🤲🏻|palms up together: light skin tone
+1F9321F3FC|🤲🏼|palms up together: medium-light skin tone
+1F9321F3FD|🤲🏽|palms up together: medium skin tone
+1F9321F3FE|🤲🏾|palms up together: medium-dark skin tone
+1F9321F3FF|🤲🏿|palms up together: dark skin tone
+1F91D|🤝|handshake
+1F91D1F3FB|🤝🏻|handshake: light skin tone
+1F91D1F3FC|🤝🏼|handshake: medium-light skin tone
+1F91D1F3FD|🤝🏽|handshake: medium skin tone
+1F91D1F3FE|🤝🏾|handshake: medium-dark skin tone
+1F91D1F3FF|🤝🏿|handshake: dark skin tone
+1FAF11F3FB200D1FAF21F3FC|🫱🏻‍🫲🏼|handshake: light skin tone, medium-light skin tone
+1FAF11F3FB200D1FAF21F3FD|🫱🏻‍🫲🏽|handshake: light skin tone, medium skin tone
+1FAF11F3FB200D1FAF21F3FE|🫱🏻‍🫲🏾|handshake: light skin tone, medium-dark skin tone
+1FAF11F3FB200D1FAF21F3FF|🫱🏻‍🫲🏿|handshake: light skin tone, dark skin tone
+1FAF11F3FC200D1FAF21F3FB|🫱🏼‍🫲🏻|handshake: medium-light skin tone, light skin tone
+1FAF11F3FC200D1FAF21F3FD|🫱🏼‍🫲🏽|handshake: medium-light skin tone, medium skin tone
+1FAF11F3FC200D1FAF21F3FE|🫱🏼‍🫲🏾|handshake: medium-light skin tone, medium-dark skin tone
+1FAF11F3FC200D1FAF21F3FF|🫱🏼‍🫲🏿|handshake: medium-light skin tone, dark skin tone
+1FAF11F3FD200D1FAF21F3FB|🫱🏽‍🫲🏻|handshake: medium skin tone, light skin tone
+1FAF11F3FD200D1FAF21F3FC|🫱🏽‍🫲🏼|handshake: medium skin tone, medium-light skin tone
+1FAF11F3FD200D1FAF21F3FE|🫱🏽‍🫲🏾|handshake: medium skin tone, medium-dark skin tone
+1FAF11F3FD200D1FAF21F3FF|🫱🏽‍🫲🏿|handshake: medium skin tone, dark skin tone
+1FAF11F3FE200D1FAF21F3FB|🫱🏾‍🫲🏻|handshake: medium-dark skin tone, light skin tone
+1FAF11F3FE200D1FAF21F3FC|🫱🏾‍🫲🏼|handshake: medium-dark skin tone, medium-light skin tone
+1FAF11F3FE200D1FAF21F3FD|🫱🏾‍🫲🏽|handshake: medium-dark skin tone, medium skin tone
+1FAF11F3FE200D1FAF21F3FF|🫱🏾‍🫲🏿|handshake: medium-dark skin tone, dark skin tone
+1FAF11F3FF200D1FAF21F3FB|🫱🏿‍🫲🏻|handshake: dark skin tone, light skin tone
+1FAF11F3FF200D1FAF21F3FC|🫱🏿‍🫲🏼|handshake: dark skin tone, medium-light skin tone
+1FAF11F3FF200D1FAF21F3FD|🫱🏿‍🫲🏽|handshake: dark skin tone, medium skin tone
+1FAF11F3FF200D1FAF21F3FE|🫱🏿‍🫲🏾|handshake: dark skin tone, medium-dark skin tone
+1F64F|🙏|folded hands
+1F64F1F3FB|🙏🏻|folded hands: light skin tone
+1F64F1F3FC|🙏🏼|folded hands: medium-light skin tone
+1F64F1F3FD|🙏🏽|folded hands: medium skin tone
+1F64F1F3FE|🙏🏾|folded hands: medium-dark skin tone
+1F64F1F3FF|🙏🏿|folded hands: dark skin tone
+270DFE0F|✍️|writing hand
+270D1F3FB|✍🏻|writing hand: light skin tone
+270D1F3FC|✍🏼|writing hand: medium-light skin tone
+270D1F3FD|✍🏽|writing hand: medium skin tone
+270D1F3FE|✍🏾|writing hand: medium-dark skin tone
+270D1F3FF|✍🏿|writing hand: dark skin tone
+1F485|💅|nail polish
+1F4851F3FB|💅🏻|nail polish: light skin tone
+1F4851F3FC|💅🏼|nail polish: medium-light skin tone
+1F4851F3FD|💅🏽|nail polish: medium skin tone
+1F4851F3FE|💅🏾|nail polish: medium-dark skin tone
+1F4851F3FF|💅🏿|nail polish: dark skin tone
+1F933|🤳|selfie
+1F9331F3FB|🤳🏻|selfie: light skin tone
+1F9331F3FC|🤳🏼|selfie: medium-light skin tone
+1F9331F3FD|🤳🏽|selfie: medium skin tone
+1F9331F3FE|🤳🏾|selfie: medium-dark skin tone
+1F9331F3FF|🤳🏿|selfie: dark skin tone
+1F4AA|💪|flexed biceps
+1F4AA1F3FB|💪🏻|flexed biceps: light skin tone
+1F4AA1F3FC|💪🏼|flexed biceps: medium-light skin tone
+1F4AA1F3FD|💪🏽|flexed biceps: medium skin tone
+1F4AA1F3FE|💪🏾|flexed biceps: medium-dark skin tone
+1F4AA1F3FF|💪🏿|flexed biceps: dark skin tone
+1F9BE|🦾|mechanical arm
+1F9BF|🦿|mechanical leg
+1F9B5|🦵|leg
+1F9B51F3FB|🦵🏻|leg: light skin tone
+1F9B51F3FC|🦵🏼|leg: medium-light skin tone
+1F9B51F3FD|🦵🏽|leg: medium skin tone
+1F9B51F3FE|🦵🏾|leg: medium-dark skin tone
+1F9B51F3FF|🦵🏿|leg: dark skin tone
+1F9B6|🦶|foot
+1F9B61F3FB|🦶🏻|foot: light skin tone
+1F9B61F3FC|🦶🏼|foot: medium-light skin tone
+1F9B61F3FD|🦶🏽|foot: medium skin tone
+1F9B61F3FE|🦶🏾|foot: medium-dark skin tone
+1F9B61F3FF|🦶🏿|foot: dark skin tone
+1F442|👂|ear
+1F4421F3FB|👂🏻|ear: light skin tone
+1F4421F3FC|👂🏼|ear: medium-light skin tone
+1F4421F3FD|👂🏽|ear: medium skin tone
+1F4421F3FE|👂🏾|ear: medium-dark skin tone
+1F4421F3FF|👂🏿|ear: dark skin tone
+1F9BB|🦻|ear with hearing aid
+1F9BB1F3FB|🦻🏻|ear with hearing aid: light skin tone
+1F9BB1F3FC|🦻🏼|ear with hearing aid: medium-light skin tone
+1F9BB1F3FD|🦻🏽|ear with hearing aid: medium skin tone
+1F9BB1F3FE|🦻🏾|ear with hearing aid: medium-dark skin tone
+1F9BB1F3FF|🦻🏿|ear with hearing aid: dark skin tone
+1F443|👃|nose
+1F4431F3FB|👃🏻|nose: light skin tone
+1F4431F3FC|👃🏼|nose: medium-light skin tone
+1F4431F3FD|👃🏽|nose: medium skin tone
+1F4431F3FE|👃🏾|nose: medium-dark skin tone
+1F4431F3FF|👃🏿|nose: dark skin tone
+1F9E0|🧠|brain
+1FAC0|🫀|anatomical heart
+1FAC1|🫁|lungs
+1F9B7|🦷|tooth
+1F9B4|🦴|bone
+1F440|👀|eyes
+1F441FE0F|👁️|eye
+1F445|👅|tongue
+1F444|👄|mouth
+1FAE6|🫦|biting lip
+1F476|👶|baby
+1F4761F3FB|👶🏻|baby: light skin tone
+1F4761F3FC|👶🏼|baby: medium-light skin tone
+1F4761F3FD|👶🏽|baby: medium skin tone
+1F4761F3FE|👶🏾|baby: medium-dark skin tone
+1F4761F3FF|👶🏿|baby: dark skin tone
+1F9D2|🧒|child
+1F9D21F3FB|🧒🏻|child: light skin tone
+1F9D21F3FC|🧒🏼|child: medium-light skin tone
+1F9D21F3FD|🧒🏽|child: medium skin tone
+1F9D21F3FE|🧒🏾|child: medium-dark skin tone
+1F9D21F3FF|🧒🏿|child: dark skin tone
+1F466|👦|boy
+1F4661F3FB|👦🏻|boy: light skin tone
+1F4661F3FC|👦🏼|boy: medium-light skin tone
+1F4661F3FD|👦🏽|boy: medium skin tone
+1F4661F3FE|👦🏾|boy: medium-dark skin tone
+1F4661F3FF|👦🏿|boy: dark skin tone
+1F467|👧|girl
+1F4671F3FB|👧🏻|girl: light skin tone
+1F4671F3FC|👧🏼|girl: medium-light skin tone
+1F4671F3FD|👧🏽|girl: medium skin tone
+1F4671F3FE|👧🏾|girl: medium-dark skin tone
+1F4671F3FF|👧🏿|girl: dark skin tone
+1F9D1|🧑|person
+1F9D11F3FB|🧑🏻|person: light skin tone
+1F9D11F3FC|🧑🏼|person: medium-light skin tone
+1F9D11F3FD|🧑🏽|person: medium skin tone
+1F9D11F3FE|🧑🏾|person: medium-dark skin tone
+1F9D11F3FF|🧑🏿|person: dark skin tone
+1F471|👱|person: blond hair
+1F4711F3FB|👱🏻|person: light skin tone, blond hair
+1F4711F3FC|👱🏼|person: medium-light skin tone, blond hair
+1F4711F3FD|👱🏽|person: medium skin tone, blond hair
+1F4711F3FE|👱🏾|person: medium-dark skin tone, blond hair
+1F4711F3FF|👱🏿|person: dark skin tone, blond hair
+1F468|👨|man
+1F4681F3FB|👨🏻|man: light skin tone
+1F4681F3FC|👨🏼|man: medium-light skin tone
+1F4681F3FD|👨🏽|man: medium skin tone
+1F4681F3FE|👨🏾|man: medium-dark skin tone
+1F4681F3FF|👨🏿|man: dark skin tone
+1F9D4|🧔|person: beard
+1F9D41F3FB|🧔🏻|person: light skin tone, beard
+1F9D41F3FC|🧔🏼|person: medium-light skin tone, beard
+1F9D41F3FD|🧔🏽|person: medium skin tone, beard
+1F9D41F3FE|🧔🏾|person: medium-dark skin tone, beard
+1F9D41F3FF|🧔🏿|person: dark skin tone, beard
+1F9D4200D2642FE0F|🧔‍♂️|man: beard
+1F9D41F3FB200D2642FE0F|🧔🏻‍♂️|man: light skin tone, beard
+1F9D41F3FC200D2642FE0F|🧔🏼‍♂️|man: medium-light skin tone, beard
+1F9D41F3FD200D2642FE0F|🧔🏽‍♂️|man: medium skin tone, beard
+1F9D41F3FE200D2642FE0F|🧔🏾‍♂️|man: medium-dark skin tone, beard
+1F9D41F3FF200D2642FE0F|🧔🏿‍♂️|man: dark skin tone, beard
+1F9D4200D2640FE0F|🧔‍♀️|woman: beard
+1F9D41F3FB200D2640FE0F|🧔🏻‍♀️|woman: light skin tone, beard
+1F9D41F3FC200D2640FE0F|🧔🏼‍♀️|woman: medium-light skin tone, beard
+1F9D41F3FD200D2640FE0F|🧔🏽‍♀️|woman: medium skin tone, beard
+1F9D41F3FE200D2640FE0F|🧔🏾‍♀️|woman: medium-dark skin tone, beard
+1F9D41F3FF200D2640FE0F|🧔🏿‍♀️|woman: dark skin tone, beard
+1F468200D1F9B0|👨‍🦰|man: red hair
+1F4681F3FB200D1F9B0|👨🏻‍🦰|man: light skin tone, red hair
+1F4681F3FC200D1F9B0|👨🏼‍🦰|man: medium-light skin tone, red hair
+1F4681F3FD200D1F9B0|👨🏽‍🦰|man: medium skin tone, red hair
+1F4681F3FE200D1F9B0|👨🏾‍🦰|man: medium-dark skin tone, red hair
+1F4681F3FF200D1F9B0|👨🏿‍🦰|man: dark skin tone, red hair
+1F468200D1F9B1|👨‍🦱|man: curly hair
+1F4681F3FB200D1F9B1|👨🏻‍🦱|man: light skin tone, curly hair
+1F4681F3FC200D1F9B1|👨🏼‍🦱|man: medium-light skin tone, curly hair
+1F4681F3FD200D1F9B1|👨🏽‍🦱|man: medium skin tone, curly hair
+1F4681F3FE200D1F9B1|👨🏾‍🦱|man: medium-dark skin tone, curly hair
+1F4681F3FF200D1F9B1|👨🏿‍🦱|man: dark skin tone, curly hair
+1F468200D1F9B3|👨‍🦳|man: white hair
+1F4681F3FB200D1F9B3|👨🏻‍🦳|man: light skin tone, white hair
+1F4681F3FC200D1F9B3|👨🏼‍🦳|man: medium-light skin tone, white hair
+1F4681F3FD200D1F9B3|👨🏽‍🦳|man: medium skin tone, white hair
+1F4681F3FE200D1F9B3|👨🏾‍🦳|man: medium-dark skin tone, white hair
+1F4681F3FF200D1F9B3|👨🏿‍🦳|man: dark skin tone, white hair
+1F468200D1F9B2|👨‍🦲|man: bald
+1F4681F3FB200D1F9B2|👨🏻‍🦲|man: light skin tone, bald
+1F4681F3FC200D1F9B2|👨🏼‍🦲|man: medium-light skin tone, bald
+1F4681F3FD200D1F9B2|👨🏽‍🦲|man: medium skin tone, bald
+1F4681F3FE200D1F9B2|👨🏾‍🦲|man: medium-dark skin tone, bald
+1F4681F3FF200D1F9B2|👨🏿‍🦲|man: dark skin tone, bald
+1F469|👩|woman
+1F4691F3FB|👩🏻|woman: light skin tone
+1F4691F3FC|👩🏼|woman: medium-light skin tone
+1F4691F3FD|👩🏽|woman: medium skin tone
+1F4691F3FE|👩🏾|woman: medium-dark skin tone
+1F4691F3FF|👩🏿|woman: dark skin tone
+1F469200D1F9B0|👩‍🦰|woman: red hair
+1F4691F3FB200D1F9B0|👩🏻‍🦰|woman: light skin tone, red hair
+1F4691F3FC200D1F9B0|👩🏼‍🦰|woman: medium-light skin tone, red hair
+1F4691F3FD200D1F9B0|👩🏽‍🦰|woman: medium skin tone, red hair
+1F4691F3FE200D1F9B0|👩🏾‍🦰|woman: medium-dark skin tone, red hair
+1F4691F3FF200D1F9B0|👩🏿‍🦰|woman: dark skin tone, red hair
+1F9D1200D1F9B0|🧑‍🦰|person: red hair
+1F9D11F3FB200D1F9B0|🧑🏻‍🦰|person: light skin tone, red hair
+1F9D11F3FC200D1F9B0|🧑🏼‍🦰|person: medium-light skin tone, red hair
+1F9D11F3FD200D1F9B0|🧑🏽‍🦰|person: medium skin tone, red hair
+1F9D11F3FE200D1F9B0|🧑🏾‍🦰|person: medium-dark skin tone, red hair
+1F9D11F3FF200D1F9B0|🧑🏿‍🦰|person: dark skin tone, red hair
+1F469200D1F9B1|👩‍🦱|woman: curly hair
+1F4691F3FB200D1F9B1|👩🏻‍🦱|woman: light skin tone, curly hair
+1F4691F3FC200D1F9B1|👩🏼‍🦱|woman: medium-light skin tone, curly hair
+1F4691F3FD200D1F9B1|👩🏽‍🦱|woman: medium skin tone, curly hair
+1F4691F3FE200D1F9B1|👩🏾‍🦱|woman: medium-dark skin tone, curly hair
+1F4691F3FF200D1F9B1|👩🏿‍🦱|woman: dark skin tone, curly hair
+1F9D1200D1F9B1|🧑‍🦱|person: curly hair
+1F9D11F3FB200D1F9B1|🧑🏻‍🦱|person: light skin tone, curly hair
+1F9D11F3FC200D1F9B1|🧑🏼‍🦱|person: medium-light skin tone, curly hair
+1F9D11F3FD200D1F9B1|🧑🏽‍🦱|person: medium skin tone, curly hair
+1F9D11F3FE200D1F9B1|🧑🏾‍🦱|person: medium-dark skin tone, curly hair
+1F9D11F3FF200D1F9B1|🧑🏿‍🦱|person: dark skin tone, curly hair
+1F469200D1F9B3|👩‍🦳|woman: white hair
+1F4691F3FB200D1F9B3|👩🏻‍🦳|woman: light skin tone, white hair
+1F4691F3FC200D1F9B3|👩🏼‍🦳|woman: medium-light skin tone, white hair
+1F4691F3FD200D1F9B3|👩🏽‍🦳|woman: medium skin tone, white hair
+1F4691F3FE200D1F9B3|👩🏾‍🦳|woman: medium-dark skin tone, white hair
+1F4691F3FF200D1F9B3|👩🏿‍🦳|woman: dark skin tone, white hair
+1F9D1200D1F9B3|🧑‍🦳|person: white hair
+1F9D11F3FB200D1F9B3|🧑🏻‍🦳|person: light skin tone, white hair
+1F9D11F3FC200D1F9B3|🧑🏼‍🦳|person: medium-light skin tone, white hair
+1F9D11F3FD200D1F9B3|🧑🏽‍🦳|person: medium skin tone, white hair
+1F9D11F3FE200D1F9B3|🧑🏾‍🦳|person: medium-dark skin tone, white hair
+1F9D11F3FF200D1F9B3|🧑🏿‍🦳|person: dark skin tone, white hair
+1F469200D1F9B2|👩‍🦲|woman: bald
+1F4691F3FB200D1F9B2|👩🏻‍🦲|woman: light skin tone, bald
+1F4691F3FC200D1F9B2|👩🏼‍🦲|woman: medium-light skin tone, bald
+1F4691F3FD200D1F9B2|👩🏽‍🦲|woman: medium skin tone, bald
+1F4691F3FE200D1F9B2|👩🏾‍🦲|woman: medium-dark skin tone, bald
+1F4691F3FF200D1F9B2|👩🏿‍🦲|woman: dark skin tone, bald
+1F9D1200D1F9B2|🧑‍🦲|person: bald
+1F9D11F3FB200D1F9B2|🧑🏻‍🦲|person: light skin tone, bald
+1F9D11F3FC200D1F9B2|🧑🏼‍🦲|person: medium-light skin tone, bald
+1F9D11F3FD200D1F9B2|🧑🏽‍🦲|person: medium skin tone, bald
+1F9D11F3FE200D1F9B2|🧑🏾‍🦲|person: medium-dark skin tone, bald
+1F9D11F3FF200D1F9B2|🧑🏿‍🦲|person: dark skin tone, bald
+1F471200D2640FE0F|👱‍♀️|woman: blond hair
+1F4711F3FB200D2640FE0F|👱🏻‍♀️|woman: light skin tone, blond hair
+1F4711F3FC200D2640FE0F|👱🏼‍♀️|woman: medium-light skin tone, blond hair
+1F4711F3FD200D2640FE0F|👱🏽‍♀️|woman: medium skin tone, blond hair
+1F4711F3FE200D2640FE0F|👱🏾‍♀️|woman: medium-dark skin tone, blond hair
+1F4711F3FF200D2640FE0F|👱🏿‍♀️|woman: dark skin tone, blond hair
+1F471200D2642FE0F|👱‍♂️|man: blond hair
+1F4711F3FB200D2642FE0F|👱🏻‍♂️|man: light skin tone, blond hair
+1F4711F3FC200D2642FE0F|👱🏼‍♂️|man: medium-light skin tone, blond hair
+1F4711F3FD200D2642FE0F|👱🏽‍♂️|man: medium skin tone, blond hair
+1F4711F3FE200D2642FE0F|👱🏾‍♂️|man: medium-dark skin tone, blond hair
+1F4711F3FF200D2642FE0F|👱🏿‍♂️|man: dark skin tone, blond hair
+1F9D3|🧓|older person
+1F9D31F3FB|🧓🏻|older person: light skin tone
+1F9D31F3FC|🧓🏼|older person: medium-light skin tone
+1F9D31F3FD|🧓🏽|older person: medium skin tone
+1F9D31F3FE|🧓🏾|older person: medium-dark skin tone
+1F9D31F3FF|🧓🏿|older person: dark skin tone
+1F474|👴|old man
+1F4741F3FB|👴🏻|old man: light skin tone
+1F4741F3FC|👴🏼|old man: medium-light skin tone
+1F4741F3FD|👴🏽|old man: medium skin tone
+1F4741F3FE|👴🏾|old man: medium-dark skin tone
+1F4741F3FF|👴🏿|old man: dark skin tone
+1F475|👵|old woman
+1F4751F3FB|👵🏻|old woman: light skin tone
+1F4751F3FC|👵🏼|old woman: medium-light skin tone
+1F4751F3FD|👵🏽|old woman: medium skin tone
+1F4751F3FE|👵🏾|old woman: medium-dark skin tone
+1F4751F3FF|👵🏿|old woman: dark skin tone
+1F64D|🙍|person frowning
+1F64D1F3FB|🙍🏻|person frowning: light skin tone
+1F64D1F3FC|🙍🏼|person frowning: medium-light skin tone
+1F64D1F3FD|🙍🏽|person frowning: medium skin tone
+1F64D1F3FE|🙍🏾|person frowning: medium-dark skin tone
+1F64D1F3FF|🙍🏿|person frowning: dark skin tone
+1F64D200D2642FE0F|🙍‍♂️|man frowning
+1F64D1F3FB200D2642FE0F|🙍🏻‍♂️|man frowning: light skin tone
+1F64D1F3FC200D2642FE0F|🙍🏼‍♂️|man frowning: medium-light skin tone
+1F64D1F3FD200D2642FE0F|🙍🏽‍♂️|man frowning: medium skin tone
+1F64D1F3FE200D2642FE0F|🙍🏾‍♂️|man frowning: medium-dark skin tone
+1F64D1F3FF200D2642FE0F|🙍🏿‍♂️|man frowning: dark skin tone
+1F64D200D2640FE0F|🙍‍♀️|woman frowning
+1F64D1F3FB200D2640FE0F|🙍🏻‍♀️|woman frowning: light skin tone
+1F64D1F3FC200D2640FE0F|🙍🏼‍♀️|woman frowning: medium-light skin tone
+1F64D1F3FD200D2640FE0F|🙍🏽‍♀️|woman frowning: medium skin tone
+1F64D1F3FE200D2640FE0F|🙍🏾‍♀️|woman frowning: medium-dark skin tone
+1F64D1F3FF200D2640FE0F|🙍🏿‍♀️|woman frowning: dark skin tone
+1F64E|🙎|person pouting
+1F64E1F3FB|🙎🏻|person pouting: light skin tone
+1F64E1F3FC|🙎🏼|person pouting: medium-light skin tone
+1F64E1F3FD|🙎🏽|person pouting: medium skin tone
+1F64E1F3FE|🙎🏾|person pouting: medium-dark skin tone
+1F64E1F3FF|🙎🏿|person pouting: dark skin tone
+1F64E200D2642FE0F|🙎‍♂️|man pouting
+1F64E1F3FB200D2642FE0F|🙎🏻‍♂️|man pouting: light skin tone
+1F64E1F3FC200D2642FE0F|🙎🏼‍♂️|man pouting: medium-light skin tone
+1F64E1F3FD200D2642FE0F|🙎🏽‍♂️|man pouting: medium skin tone
+1F64E1F3FE200D2642FE0F|🙎🏾‍♂️|man pouting: medium-dark skin tone
+1F64E1F3FF200D2642FE0F|🙎🏿‍♂️|man pouting: dark skin tone
+1F64E200D2640FE0F|🙎‍♀️|woman pouting
+1F64E1F3FB200D2640FE0F|🙎🏻‍♀️|woman pouting: light skin tone
+1F64E1F3FC200D2640FE0F|🙎🏼‍♀️|woman pouting: medium-light skin tone
+1F64E1F3FD200D2640FE0F|🙎🏽‍♀️|woman pouting: medium skin tone
+1F64E1F3FE200D2640FE0F|🙎🏾‍♀️|woman pouting: medium-dark skin tone
+1F64E1F3FF200D2640FE0F|🙎🏿‍♀️|woman pouting: dark skin tone
+1F645|🙅|person gesturing NO
+1F6451F3FB|🙅🏻|person gesturing NO: light skin tone
+1F6451F3FC|🙅🏼|person gesturing NO: medium-light skin tone
+1F6451F3FD|🙅🏽|person gesturing NO: medium skin tone
+1F6451F3FE|🙅🏾|person gesturing NO: medium-dark skin tone
+1F6451F3FF|🙅🏿|person gesturing NO: dark skin tone
+1F645200D2642FE0F|🙅‍♂️|man gesturing NO
+1F6451F3FB200D2642FE0F|🙅🏻‍♂️|man gesturing NO: light skin tone
+1F6451F3FC200D2642FE0F|🙅🏼‍♂️|man gesturing NO: medium-light skin tone
+1F6451F3FD200D2642FE0F|🙅🏽‍♂️|man gesturing NO: medium skin tone
+1F6451F3FE200D2642FE0F|🙅🏾‍♂️|man gesturing NO: medium-dark skin tone
+1F6451F3FF200D2642FE0F|🙅🏿‍♂️|man gesturing NO: dark skin tone
+1F645200D2640FE0F|🙅‍♀️|woman gesturing NO
+1F6451F3FB200D2640FE0F|🙅🏻‍♀️|woman gesturing NO: light skin tone
+1F6451F3FC200D2640FE0F|🙅🏼‍♀️|woman gesturing NO: medium-light skin tone
+1F6451F3FD200D2640FE0F|🙅🏽‍♀️|woman gesturing NO: medium skin tone
+1F6451F3FE200D2640FE0F|🙅🏾‍♀️|woman gesturing NO: medium-dark skin tone
+1F6451F3FF200D2640FE0F|🙅🏿‍♀️|woman gesturing NO: dark skin tone
+1F646|🙆|person gesturing OK
+1F6461F3FB|🙆🏻|person gesturing OK: light skin tone
+1F6461F3FC|🙆🏼|person gesturing OK: medium-light skin tone
+1F6461F3FD|🙆🏽|person gesturing OK: medium skin tone
+1F6461F3FE|🙆🏾|person gesturing OK: medium-dark skin tone
+1F6461F3FF|🙆🏿|person gesturing OK: dark skin tone
+1F646200D2642FE0F|🙆‍♂️|man gesturing OK
+1F6461F3FB200D2642FE0F|🙆🏻‍♂️|man gesturing OK: light skin tone
+1F6461F3FC200D2642FE0F|🙆🏼‍♂️|man gesturing OK: medium-light skin tone
+1F6461F3FD200D2642FE0F|🙆🏽‍♂️|man gesturing OK: medium skin tone
+1F6461F3FE200D2642FE0F|🙆🏾‍♂️|man gesturing OK: medium-dark skin tone
+1F6461F3FF200D2642FE0F|🙆🏿‍♂️|man gesturing OK: dark skin tone
+1F646200D2640FE0F|🙆‍♀️|woman gesturing OK
+1F6461F3FB200D2640FE0F|🙆🏻‍♀️|woman gesturing OK: light skin tone
+1F6461F3FC200D2640FE0F|🙆🏼‍♀️|woman gesturing OK: medium-light skin tone
+1F6461F3FD200D2640FE0F|🙆🏽‍♀️|woman gesturing OK: medium skin tone
+1F6461F3FE200D2640FE0F|🙆🏾‍♀️|woman gesturing OK: medium-dark skin tone
+1F6461F3FF200D2640FE0F|🙆🏿‍♀️|woman gesturing OK: dark skin tone
+1F481|💁|person tipping hand
+1F4811F3FB|💁🏻|person tipping hand: light skin tone
+1F4811F3FC|💁🏼|person tipping hand: medium-light skin tone
+1F4811F3FD|💁🏽|person tipping hand: medium skin tone
+1F4811F3FE|💁🏾|person tipping hand: medium-dark skin tone
+1F4811F3FF|💁🏿|person tipping hand: dark skin tone
+1F481200D2642FE0F|💁‍♂️|man tipping hand
+1F4811F3FB200D2642FE0F|💁🏻‍♂️|man tipping hand: light skin tone
+1F4811F3FC200D2642FE0F|💁🏼‍♂️|man tipping hand: medium-light skin tone
+1F4811F3FD200D2642FE0F|💁🏽‍♂️|man tipping hand: medium skin tone
+1F4811F3FE200D2642FE0F|💁🏾‍♂️|man tipping hand: medium-dark skin tone
+1F4811F3FF200D2642FE0F|💁🏿‍♂️|man tipping hand: dark skin tone
+1F481200D2640FE0F|💁‍♀️|woman tipping hand
+1F4811F3FB200D2640FE0F|💁🏻‍♀️|woman tipping hand: light skin tone
+1F4811F3FC200D2640FE0F|💁🏼‍♀️|woman tipping hand: medium-light skin tone
+1F4811F3FD200D2640FE0F|💁🏽‍♀️|woman tipping hand: medium skin tone
+1F4811F3FE200D2640FE0F|💁🏾‍♀️|woman tipping hand: medium-dark skin tone
+1F4811F3FF200D2640FE0F|💁🏿‍♀️|woman tipping hand: dark skin tone
+1F64B|🙋|person raising hand
+1F64B1F3FB|🙋🏻|person raising hand: light skin tone
+1F64B1F3FC|🙋🏼|person raising hand: medium-light skin tone
+1F64B1F3FD|🙋🏽|person raising hand: medium skin tone
+1F64B1F3FE|🙋🏾|person raising hand: medium-dark skin tone
+1F64B1F3FF|🙋🏿|person raising hand: dark skin tone
+1F64B200D2642FE0F|🙋‍♂️|man raising hand
+1F64B1F3FB200D2642FE0F|🙋🏻‍♂️|man raising hand: light skin tone
+1F64B1F3FC200D2642FE0F|🙋🏼‍♂️|man raising hand: medium-light skin tone
+1F64B1F3FD200D2642FE0F|🙋🏽‍♂️|man raising hand: medium skin tone
+1F64B1F3FE200D2642FE0F|🙋🏾‍♂️|man raising hand: medium-dark skin tone
+1F64B1F3FF200D2642FE0F|🙋🏿‍♂️|man raising hand: dark skin tone
+1F64B200D2640FE0F|🙋‍♀️|woman raising hand
+1F64B1F3FB200D2640FE0F|🙋🏻‍♀️|woman raising hand: light skin tone
+1F64B1F3FC200D2640FE0F|🙋🏼‍♀️|woman raising hand: medium-light skin tone
+1F64B1F3FD200D2640FE0F|🙋🏽‍♀️|woman raising hand: medium skin tone
+1F64B1F3FE200D2640FE0F|🙋🏾‍♀️|woman raising hand: medium-dark skin tone
+1F64B1F3FF200D2640FE0F|🙋🏿‍♀️|woman raising hand: dark skin tone
+1F9CF|🧏|deaf person
+1F9CF1F3FB|🧏🏻|deaf person: light skin tone
+1F9CF1F3FC|🧏🏼|deaf person: medium-light skin tone
+1F9CF1F3FD|🧏🏽|deaf person: medium skin tone
+1F9CF1F3FE|🧏🏾|deaf person: medium-dark skin tone
+1F9CF1F3FF|🧏🏿|deaf person: dark skin tone
+1F9CF200D2642FE0F|🧏‍♂️|deaf man
+1F9CF1F3FB200D2642FE0F|🧏🏻‍♂️|deaf man: light skin tone
+1F9CF1F3FC200D2642FE0F|🧏🏼‍♂️|deaf man: medium-light skin tone
+1F9CF1F3FD200D2642FE0F|🧏🏽‍♂️|deaf man: medium skin tone
+1F9CF1F3FE200D2642FE0F|🧏🏾‍♂️|deaf man: medium-dark skin tone
+1F9CF1F3FF200D2642FE0F|🧏🏿‍♂️|deaf man: dark skin tone
+1F9CF200D2640FE0F|🧏‍♀️|deaf woman
+1F9CF1F3FB200D2640FE0F|🧏🏻‍♀️|deaf woman: light skin tone
+1F9CF1F3FC200D2640FE0F|🧏🏼‍♀️|deaf woman: medium-light skin tone
+1F9CF1F3FD200D2640FE0F|🧏🏽‍♀️|deaf woman: medium skin tone
+1F9CF1F3FE200D2640FE0F|🧏🏾‍♀️|deaf woman: medium-dark skin tone
+1F9CF1F3FF200D2640FE0F|🧏🏿‍♀️|deaf woman: dark skin tone
+1F647|🙇|person bowing
+1F6471F3FB|🙇🏻|person bowing: light skin tone
+1F6471F3FC|🙇🏼|person bowing: medium-light skin tone
+1F6471F3FD|🙇🏽|person bowing: medium skin tone
+1F6471F3FE|🙇🏾|person bowing: medium-dark skin tone
+1F6471F3FF|🙇🏿|person bowing: dark skin tone
+1F647200D2642FE0F|🙇‍♂️|man bowing
+1F6471F3FB200D2642FE0F|🙇🏻‍♂️|man bowing: light skin tone
+1F6471F3FC200D2642FE0F|🙇🏼‍♂️|man bowing: medium-light skin tone
+1F6471F3FD200D2642FE0F|🙇🏽‍♂️|man bowing: medium skin tone
+1F6471F3FE200D2642FE0F|🙇🏾‍♂️|man bowing: medium-dark skin tone
+1F6471F3FF200D2642FE0F|🙇🏿‍♂️|man bowing: dark skin tone
+1F647200D2640FE0F|🙇‍♀️|woman bowing
+1F6471F3FB200D2640FE0F|🙇🏻‍♀️|woman bowing: light skin tone
+1F6471F3FC200D2640FE0F|🙇🏼‍♀️|woman bowing: medium-light skin tone
+1F6471F3FD200D2640FE0F|🙇🏽‍♀️|woman bowing: medium skin tone
+1F6471F3FE200D2640FE0F|🙇🏾‍♀️|woman bowing: medium-dark skin tone
+1F6471F3FF200D2640FE0F|🙇🏿‍♀️|woman bowing: dark skin tone
+1F926|🤦|person facepalming
+1F9261F3FB|🤦🏻|person facepalming: light skin tone
+1F9261F3FC|🤦🏼|person facepalming: medium-light skin tone
+1F9261F3FD|🤦🏽|person facepalming: medium skin tone
+1F9261F3FE|🤦🏾|person facepalming: medium-dark skin tone
+1F9261F3FF|🤦🏿|person facepalming: dark skin tone
+1F926200D2642FE0F|🤦‍♂️|man facepalming
+1F9261F3FB200D2642FE0F|🤦🏻‍♂️|man facepalming: light skin tone
+1F9261F3FC200D2642FE0F|🤦🏼‍♂️|man facepalming: medium-light skin tone
+1F9261F3FD200D2642FE0F|🤦🏽‍♂️|man facepalming: medium skin tone
+1F9261F3FE200D2642FE0F|🤦🏾‍♂️|man facepalming: medium-dark skin tone
+1F9261F3FF200D2642FE0F|🤦🏿‍♂️|man facepalming: dark skin tone
+1F926200D2640FE0F|🤦‍♀️|woman facepalming
+1F9261F3FB200D2640FE0F|🤦🏻‍♀️|woman facepalming: light skin tone
+1F9261F3FC200D2640FE0F|🤦🏼‍♀️|woman facepalming: medium-light skin tone
+1F9261F3FD200D2640FE0F|🤦🏽‍♀️|woman facepalming: medium skin tone
+1F9261F3FE200D2640FE0F|🤦🏾‍♀️|woman facepalming: medium-dark skin tone
+1F9261F3FF200D2640FE0F|🤦🏿‍♀️|woman facepalming: dark skin tone
+1F937|🤷|person shrugging
+1F9371F3FB|🤷🏻|person shrugging: light skin tone
+1F9371F3FC|🤷🏼|person shrugging: medium-light skin tone
+1F9371F3FD|🤷🏽|person shrugging: medium skin tone
+1F9371F3FE|🤷🏾|person shrugging: medium-dark skin tone
+1F9371F3FF|🤷🏿|person shrugging: dark skin tone
+1F937200D2642FE0F|🤷‍♂️|man shrugging
+1F9371F3FB200D2642FE0F|🤷🏻‍♂️|man shrugging: light skin tone
+1F9371F3FC200D2642FE0F|🤷🏼‍♂️|man shrugging: medium-light skin tone
+1F9371F3FD200D2642FE0F|🤷🏽‍♂️|man shrugging: medium skin tone
+1F9371F3FE200D2642FE0F|🤷🏾‍♂️|man shrugging: medium-dark skin tone
+1F9371F3FF200D2642FE0F|🤷🏿‍♂️|man shrugging: dark skin tone
+1F937200D2640FE0F|🤷‍♀️|woman shrugging
+1F9371F3FB200D2640FE0F|🤷🏻‍♀️|woman shrugging: light skin tone
+1F9371F3FC200D2640FE0F|🤷🏼‍♀️|woman shrugging: medium-light skin tone
+1F9371F3FD200D2640FE0F|🤷🏽‍♀️|woman shrugging: medium skin tone
+1F9371F3FE200D2640FE0F|🤷🏾‍♀️|woman shrugging: medium-dark skin tone
+1F9371F3FF200D2640FE0F|🤷🏿‍♀️|woman shrugging: dark skin tone
+1F9D1200D2695FE0F|🧑‍⚕️|health worker
+1F9D11F3FB200D2695FE0F|🧑🏻‍⚕️|health worker: light skin tone
+1F9D11F3FC200D2695FE0F|🧑🏼‍⚕️|health worker: medium-light skin tone
+1F9D11F3FD200D2695FE0F|🧑🏽‍⚕️|health worker: medium skin tone
+1F9D11F3FE200D2695FE0F|🧑🏾‍⚕️|health worker: medium-dark skin tone
+1F9D11F3FF200D2695FE0F|🧑🏿‍⚕️|health worker: dark skin tone
+1F468200D2695FE0F|👨‍⚕️|man health worker
+1F4681F3FB200D2695FE0F|👨🏻‍⚕️|man health worker: light skin tone
+1F4681F3FC200D2695FE0F|👨🏼‍⚕️|man health worker: medium-light skin tone
+1F4681F3FD200D2695FE0F|👨🏽‍⚕️|man health worker: medium skin tone
+1F4681F3FE200D2695FE0F|👨🏾‍⚕️|man health worker: medium-dark skin tone
+1F4681F3FF200D2695FE0F|👨🏿‍⚕️|man health worker: dark skin tone
+1F469200D2695FE0F|👩‍⚕️|woman health worker
+1F4691F3FB200D2695FE0F|👩🏻‍⚕️|woman health worker: light skin tone
+1F4691F3FC200D2695FE0F|👩🏼‍⚕️|woman health worker: medium-light skin tone
+1F4691F3FD200D2695FE0F|👩🏽‍⚕️|woman health worker: medium skin tone
+1F4691F3FE200D2695FE0F|👩🏾‍⚕️|woman health worker: medium-dark skin tone
+1F4691F3FF200D2695FE0F|👩🏿‍⚕️|woman health worker: dark skin tone
+1F9D1200D1F393|🧑‍🎓|student
+1F9D11F3FB200D1F393|🧑🏻‍🎓|student: light skin tone
+1F9D11F3FC200D1F393|🧑🏼‍🎓|student: medium-light skin tone
+1F9D11F3FD200D1F393|🧑🏽‍🎓|student: medium skin tone
+1F9D11F3FE200D1F393|🧑🏾‍🎓|student: medium-dark skin tone
+1F9D11F3FF200D1F393|🧑🏿‍🎓|student: dark skin tone
+1F468200D1F393|👨‍🎓|man student
+1F4681F3FB200D1F393|👨🏻‍🎓|man student: light skin tone
+1F4681F3FC200D1F393|👨🏼‍🎓|man student: medium-light skin tone
+1F4681F3FD200D1F393|👨🏽‍🎓|man student: medium skin tone
+1F4681F3FE200D1F393|👨🏾‍🎓|man student: medium-dark skin tone
+1F4681F3FF200D1F393|👨🏿‍🎓|man student: dark skin tone
+1F469200D1F393|👩‍🎓|woman student
+1F4691F3FB200D1F393|👩🏻‍🎓|woman student: light skin tone
+1F4691F3FC200D1F393|👩🏼‍🎓|woman student: medium-light skin tone
+1F4691F3FD200D1F393|👩🏽‍🎓|woman student: medium skin tone
+1F4691F3FE200D1F393|👩🏾‍🎓|woman student: medium-dark skin tone
+1F4691F3FF200D1F393|👩🏿‍🎓|woman student: dark skin tone
+1F9D1200D1F3EB|🧑‍🏫|teacher
+1F9D11F3FB200D1F3EB|🧑🏻‍🏫|teacher: light skin tone
+1F9D11F3FC200D1F3EB|🧑🏼‍🏫|teacher: medium-light skin tone
+1F9D11F3FD200D1F3EB|🧑🏽‍🏫|teacher: medium skin tone
+1F9D11F3FE200D1F3EB|🧑🏾‍🏫|teacher: medium-dark skin tone
+1F9D11F3FF200D1F3EB|🧑🏿‍🏫|teacher: dark skin tone
+1F468200D1F3EB|👨‍🏫|man teacher
+1F4681F3FB200D1F3EB|👨🏻‍🏫|man teacher: light skin tone
+1F4681F3FC200D1F3EB|👨🏼‍🏫|man teacher: medium-light skin tone
+1F4681F3FD200D1F3EB|👨🏽‍🏫|man teacher: medium skin tone
+1F4681F3FE200D1F3EB|👨🏾‍🏫|man teacher: medium-dark skin tone
+1F4681F3FF200D1F3EB|👨🏿‍🏫|man teacher: dark skin tone
+1F469200D1F3EB|👩‍🏫|woman teacher
+1F4691F3FB200D1F3EB|👩🏻‍🏫|woman teacher: light skin tone
+1F4691F3FC200D1F3EB|👩🏼‍🏫|woman teacher: medium-light skin tone
+1F4691F3FD200D1F3EB|👩🏽‍🏫|woman teacher: medium skin tone
+1F4691F3FE200D1F3EB|👩🏾‍🏫|woman teacher: medium-dark skin tone
+1F4691F3FF200D1F3EB|👩🏿‍🏫|woman teacher: dark skin tone
+1F9D1200D2696FE0F|🧑‍⚖️|judge
+1F9D11F3FB200D2696FE0F|🧑🏻‍⚖️|judge: light skin tone
+1F9D11F3FC200D2696FE0F|🧑🏼‍⚖️|judge: medium-light skin tone
+1F9D11F3FD200D2696FE0F|🧑🏽‍⚖️|judge: medium skin tone
+1F9D11F3FE200D2696FE0F|🧑🏾‍⚖️|judge: medium-dark skin tone
+1F9D11F3FF200D2696FE0F|🧑🏿‍⚖️|judge: dark skin tone
+1F468200D2696FE0F|👨‍⚖️|man judge
+1F4681F3FB200D2696FE0F|👨🏻‍⚖️|man judge: light skin tone
+1F4681F3FC200D2696FE0F|👨🏼‍⚖️|man judge: medium-light skin tone
+1F4681F3FD200D2696FE0F|👨🏽‍⚖️|man judge: medium skin tone
+1F4681F3FE200D2696FE0F|👨🏾‍⚖️|man judge: medium-dark skin tone
+1F4681F3FF200D2696FE0F|👨🏿‍⚖️|man judge: dark skin tone
+1F469200D2696FE0F|👩‍⚖️|woman judge
+1F4691F3FB200D2696FE0F|👩🏻‍⚖️|woman judge: light skin tone
+1F4691F3FC200D2696FE0F|👩🏼‍⚖️|woman judge: medium-light skin tone
+1F4691F3FD200D2696FE0F|👩🏽‍⚖️|woman judge: medium skin tone
+1F4691F3FE200D2696FE0F|👩🏾‍⚖️|woman judge: medium-dark skin tone
+1F4691F3FF200D2696FE0F|👩🏿‍⚖️|woman judge: dark skin tone
+1F9D1200D1F33E|🧑‍🌾|farmer
+1F9D11F3FB200D1F33E|🧑🏻‍🌾|farmer: light skin tone
+1F9D11F3FC200D1F33E|🧑🏼‍🌾|farmer: medium-light skin tone
+1F9D11F3FD200D1F33E|🧑🏽‍🌾|farmer: medium skin tone
+1F9D11F3FE200D1F33E|🧑🏾‍🌾|farmer: medium-dark skin tone
+1F9D11F3FF200D1F33E|🧑🏿‍🌾|farmer: dark skin tone
+1F468200D1F33E|👨‍🌾|man farmer
+1F4681F3FB200D1F33E|👨🏻‍🌾|man farmer: light skin tone
+1F4681F3FC200D1F33E|👨🏼‍🌾|man farmer: medium-light skin tone
+1F4681F3FD200D1F33E|👨🏽‍🌾|man farmer: medium skin tone
+1F4681F3FE200D1F33E|👨🏾‍🌾|man farmer: medium-dark skin tone
+1F4681F3FF200D1F33E|👨🏿‍🌾|man farmer: dark skin tone
+1F469200D1F33E|👩‍🌾|woman farmer
+1F4691F3FB200D1F33E|👩🏻‍🌾|woman farmer: light skin tone
+1F4691F3FC200D1F33E|👩🏼‍🌾|woman farmer: medium-light skin tone
+1F4691F3FD200D1F33E|👩🏽‍🌾|woman farmer: medium skin tone
+1F4691F3FE200D1F33E|👩🏾‍🌾|woman farmer: medium-dark skin tone
+1F4691F3FF200D1F33E|👩🏿‍🌾|woman farmer: dark skin tone
+1F9D1200D1F373|🧑‍🍳|cook
+1F9D11F3FB200D1F373|🧑🏻‍🍳|cook: light skin tone
+1F9D11F3FC200D1F373|🧑🏼‍🍳|cook: medium-light skin tone
+1F9D11F3FD200D1F373|🧑🏽‍🍳|cook: medium skin tone
+1F9D11F3FE200D1F373|🧑🏾‍🍳|cook: medium-dark skin tone
+1F9D11F3FF200D1F373|🧑🏿‍🍳|cook: dark skin tone
+1F468200D1F373|👨‍🍳|man cook
+1F4681F3FB200D1F373|👨🏻‍🍳|man cook: light skin tone
+1F4681F3FC200D1F373|👨🏼‍🍳|man cook: medium-light skin tone
+1F4681F3FD200D1F373|👨🏽‍🍳|man cook: medium skin tone
+1F4681F3FE200D1F373|👨🏾‍🍳|man cook: medium-dark skin tone
+1F4681F3FF200D1F373|👨🏿‍🍳|man cook: dark skin tone
+1F469200D1F373|👩‍🍳|woman cook
+1F4691F3FB200D1F373|👩🏻‍🍳|woman cook: light skin tone
+1F4691F3FC200D1F373|👩🏼‍🍳|woman cook: medium-light skin tone
+1F4691F3FD200D1F373|👩🏽‍🍳|woman cook: medium skin tone
+1F4691F3FE200D1F373|👩🏾‍🍳|woman cook: medium-dark skin tone
+1F4691F3FF200D1F373|👩🏿‍🍳|woman cook: dark skin tone
+1F9D1200D1F527|🧑‍🔧|mechanic
+1F9D11F3FB200D1F527|🧑🏻‍🔧|mechanic: light skin tone
+1F9D11F3FC200D1F527|🧑🏼‍🔧|mechanic: medium-light skin tone
+1F9D11F3FD200D1F527|🧑🏽‍🔧|mechanic: medium skin tone
+1F9D11F3FE200D1F527|🧑🏾‍🔧|mechanic: medium-dark skin tone
+1F9D11F3FF200D1F527|🧑🏿‍🔧|mechanic: dark skin tone
+1F468200D1F527|👨‍🔧|man mechanic
+1F4681F3FB200D1F527|👨🏻‍🔧|man mechanic: light skin tone
+1F4681F3FC200D1F527|👨🏼‍🔧|man mechanic: medium-light skin tone
+1F4681F3FD200D1F527|👨🏽‍🔧|man mechanic: medium skin tone
+1F4681F3FE200D1F527|👨🏾‍🔧|man mechanic: medium-dark skin tone
+1F4681F3FF200D1F527|👨🏿‍🔧|man mechanic: dark skin tone
+1F469200D1F527|👩‍🔧|woman mechanic
+1F4691F3FB200D1F527|👩🏻‍🔧|woman mechanic: light skin tone
+1F4691F3FC200D1F527|👩🏼‍🔧|woman mechanic: medium-light skin tone
+1F4691F3FD200D1F527|👩🏽‍🔧|woman mechanic: medium skin tone
+1F4691F3FE200D1F527|👩🏾‍🔧|woman mechanic: medium-dark skin tone
+1F4691F3FF200D1F527|👩🏿‍🔧|woman mechanic: dark skin tone
+1F9D1200D1F3ED|🧑‍🏭|factory worker
+1F9D11F3FB200D1F3ED|🧑🏻‍🏭|factory worker: light skin tone
+1F9D11F3FC200D1F3ED|🧑🏼‍🏭|factory worker: medium-light skin tone
+1F9D11F3FD200D1F3ED|🧑🏽‍🏭|factory worker: medium skin tone
+1F9D11F3FE200D1F3ED|🧑🏾‍🏭|factory worker: medium-dark skin tone
+1F9D11F3FF200D1F3ED|🧑🏿‍🏭|factory worker: dark skin tone
+1F468200D1F3ED|👨‍🏭|man factory worker
+1F4681F3FB200D1F3ED|👨🏻‍🏭|man factory worker: light skin tone
+1F4681F3FC200D1F3ED|👨🏼‍🏭|man factory worker: medium-light skin tone
+1F4681F3FD200D1F3ED|👨🏽‍🏭|man factory worker: medium skin tone
+1F4681F3FE200D1F3ED|👨🏾‍🏭|man factory worker: medium-dark skin tone
+1F4681F3FF200D1F3ED|👨🏿‍🏭|man factory worker: dark skin tone
+1F469200D1F3ED|👩‍🏭|woman factory worker
+1F4691F3FB200D1F3ED|👩🏻‍🏭|woman factory worker: light skin tone
+1F4691F3FC200D1F3ED|👩🏼‍🏭|woman factory worker: medium-light skin tone
+1F4691F3FD200D1F3ED|👩🏽‍🏭|woman factory worker: medium skin tone
+1F4691F3FE200D1F3ED|👩🏾‍🏭|woman factory worker: medium-dark skin tone
+1F4691F3FF200D1F3ED|👩🏿‍🏭|woman factory worker: dark skin tone
+1F9D1200D1F4BC|🧑‍💼|office worker
+1F9D11F3FB200D1F4BC|🧑🏻‍💼|office worker: light skin tone
+1F9D11F3FC200D1F4BC|🧑🏼‍💼|office worker: medium-light skin tone
+1F9D11F3FD200D1F4BC|🧑🏽‍💼|office worker: medium skin tone
+1F9D11F3FE200D1F4BC|🧑🏾‍💼|office worker: medium-dark skin tone
+1F9D11F3FF200D1F4BC|🧑🏿‍💼|office worker: dark skin tone
+1F468200D1F4BC|👨‍💼|man office worker
+1F4681F3FB200D1F4BC|👨🏻‍💼|man office worker: light skin tone
+1F4681F3FC200D1F4BC|👨🏼‍💼|man office worker: medium-light skin tone
+1F4681F3FD200D1F4BC|👨🏽‍💼|man office worker: medium skin tone
+1F4681F3FE200D1F4BC|👨🏾‍💼|man office worker: medium-dark skin tone
+1F4681F3FF200D1F4BC|👨🏿‍💼|man office worker: dark skin tone
+1F469200D1F4BC|👩‍💼|woman office worker
+1F4691F3FB200D1F4BC|👩🏻‍💼|woman office worker: light skin tone
+1F4691F3FC200D1F4BC|👩🏼‍💼|woman office worker: medium-light skin tone
+1F4691F3FD200D1F4BC|👩🏽‍💼|woman office worker: medium skin tone
+1F4691F3FE200D1F4BC|👩🏾‍💼|woman office worker: medium-dark skin tone
+1F4691F3FF200D1F4BC|👩🏿‍💼|woman office worker: dark skin tone
+1F9D1200D1F52C|🧑‍🔬|scientist
+1F9D11F3FB200D1F52C|🧑🏻‍🔬|scientist: light skin tone
+1F9D11F3FC200D1F52C|🧑🏼‍🔬|scientist: medium-light skin tone
+1F9D11F3FD200D1F52C|🧑🏽‍🔬|scientist: medium skin tone
+1F9D11F3FE200D1F52C|🧑🏾‍🔬|scientist: medium-dark skin tone
+1F9D11F3FF200D1F52C|🧑🏿‍🔬|scientist: dark skin tone
+1F468200D1F52C|👨‍🔬|man scientist
+1F4681F3FB200D1F52C|👨🏻‍🔬|man scientist: light skin tone
+1F4681F3FC200D1F52C|👨🏼‍🔬|man scientist: medium-light skin tone
+1F4681F3FD200D1F52C|👨🏽‍🔬|man scientist: medium skin tone
+1F4681F3FE200D1F52C|👨🏾‍🔬|man scientist: medium-dark skin tone
+1F4681F3FF200D1F52C|👨🏿‍🔬|man scientist: dark skin tone
+1F469200D1F52C|👩‍🔬|woman scientist
+1F4691F3FB200D1F52C|👩🏻‍🔬|woman scientist: light skin tone
+1F4691F3FC200D1F52C|👩🏼‍🔬|woman scientist: medium-light skin tone
+1F4691F3FD200D1F52C|👩🏽‍🔬|woman scientist: medium skin tone
+1F4691F3FE200D1F52C|👩🏾‍🔬|woman scientist: medium-dark skin tone
+1F4691F3FF200D1F52C|👩🏿‍🔬|woman scientist: dark skin tone
+1F9D1200D1F4BB|🧑‍💻|technologist
+1F9D11F3FB200D1F4BB|🧑🏻‍💻|technologist: light skin tone
+1F9D11F3FC200D1F4BB|🧑🏼‍💻|technologist: medium-light skin tone
+1F9D11F3FD200D1F4BB|🧑🏽‍💻|technologist: medium skin tone
+1F9D11F3FE200D1F4BB|🧑🏾‍💻|technologist: medium-dark skin tone
+1F9D11F3FF200D1F4BB|🧑🏿‍💻|technologist: dark skin tone
+1F468200D1F4BB|👨‍💻|man technologist
+1F4681F3FB200D1F4BB|👨🏻‍💻|man technologist: light skin tone
+1F4681F3FC200D1F4BB|👨🏼‍💻|man technologist: medium-light skin tone
+1F4681F3FD200D1F4BB|👨🏽‍💻|man technologist: medium skin tone
+1F4681F3FE200D1F4BB|👨🏾‍💻|man technologist: medium-dark skin tone
+1F4681F3FF200D1F4BB|👨🏿‍💻|man technologist: dark skin tone
+1F469200D1F4BB|👩‍💻|woman technologist
+1F4691F3FB200D1F4BB|👩🏻‍💻|woman technologist: light skin tone
+1F4691F3FC200D1F4BB|👩🏼‍💻|woman technologist: medium-light skin tone
+1F4691F3FD200D1F4BB|👩🏽‍💻|woman technologist: medium skin tone
+1F4691F3FE200D1F4BB|👩🏾‍💻|woman technologist: medium-dark skin tone
+1F4691F3FF200D1F4BB|👩🏿‍💻|woman technologist: dark skin tone
+1F9D1200D1F3A4|🧑‍🎤|singer
+1F9D11F3FB200D1F3A4|🧑🏻‍🎤|singer: light skin tone
+1F9D11F3FC200D1F3A4|🧑🏼‍🎤|singer: medium-light skin tone
+1F9D11F3FD200D1F3A4|🧑🏽‍🎤|singer: medium skin tone
+1F9D11F3FE200D1F3A4|🧑🏾‍🎤|singer: medium-dark skin tone
+1F9D11F3FF200D1F3A4|🧑🏿‍🎤|singer: dark skin tone
+1F468200D1F3A4|👨‍🎤|man singer
+1F4681F3FB200D1F3A4|👨🏻‍🎤|man singer: light skin tone
+1F4681F3FC200D1F3A4|👨🏼‍🎤|man singer: medium-light skin tone
+1F4681F3FD200D1F3A4|👨🏽‍🎤|man singer: medium skin tone
+1F4681F3FE200D1F3A4|👨🏾‍🎤|man singer: medium-dark skin tone
+1F4681F3FF200D1F3A4|👨🏿‍🎤|man singer: dark skin tone
+1F469200D1F3A4|👩‍🎤|woman singer
+1F4691F3FB200D1F3A4|👩🏻‍🎤|woman singer: light skin tone
+1F4691F3FC200D1F3A4|👩🏼‍🎤|woman singer: medium-light skin tone
+1F4691F3FD200D1F3A4|👩🏽‍🎤|woman singer: medium skin tone
+1F4691F3FE200D1F3A4|👩🏾‍🎤|woman singer: medium-dark skin tone
+1F4691F3FF200D1F3A4|👩🏿‍🎤|woman singer: dark skin tone
+1F9D1200D1F3A8|🧑‍🎨|artist
+1F9D11F3FB200D1F3A8|🧑🏻‍🎨|artist: light skin tone
+1F9D11F3FC200D1F3A8|🧑🏼‍🎨|artist: medium-light skin tone
+1F9D11F3FD200D1F3A8|🧑🏽‍🎨|artist: medium skin tone
+1F9D11F3FE200D1F3A8|🧑🏾‍🎨|artist: medium-dark skin tone
+1F9D11F3FF200D1F3A8|🧑🏿‍🎨|artist: dark skin tone
+1F468200D1F3A8|👨‍🎨|man artist
+1F4681F3FB200D1F3A8|👨🏻‍🎨|man artist: light skin tone
+1F4681F3FC200D1F3A8|👨🏼‍🎨|man artist: medium-light skin tone
+1F4681F3FD200D1F3A8|👨🏽‍🎨|man artist: medium skin tone
+1F4681F3FE200D1F3A8|👨🏾‍🎨|man artist: medium-dark skin tone
+1F4681F3FF200D1F3A8|👨🏿‍🎨|man artist: dark skin tone
+1F469200D1F3A8|👩‍🎨|woman artist
+1F4691F3FB200D1F3A8|👩🏻‍🎨|woman artist: light skin tone
+1F4691F3FC200D1F3A8|👩🏼‍🎨|woman artist: medium-light skin tone
+1F4691F3FD200D1F3A8|👩🏽‍🎨|woman artist: medium skin tone
+1F4691F3FE200D1F3A8|👩🏾‍🎨|woman artist: medium-dark skin tone
+1F4691F3FF200D1F3A8|👩🏿‍🎨|woman artist: dark skin tone
+1F9D1200D2708FE0F|🧑‍✈️|pilot
+1F9D11F3FB200D2708FE0F|🧑🏻‍✈️|pilot: light skin tone
+1F9D11F3FC200D2708FE0F|🧑🏼‍✈️|pilot: medium-light skin tone
+1F9D11F3FD200D2708FE0F|🧑🏽‍✈️|pilot: medium skin tone
+1F9D11F3FE200D2708FE0F|🧑🏾‍✈️|pilot: medium-dark skin tone
+1F9D11F3FF200D2708FE0F|🧑🏿‍✈️|pilot: dark skin tone
+1F468200D2708FE0F|👨‍✈️|man pilot
+1F4681F3FB200D2708FE0F|👨🏻‍✈️|man pilot: light skin tone
+1F4681F3FC200D2708FE0F|👨🏼‍✈️|man pilot: medium-light skin tone
+1F4681F3FD200D2708FE0F|👨🏽‍✈️|man pilot: medium skin tone
+1F4681F3FE200D2708FE0F|👨🏾‍✈️|man pilot: medium-dark skin tone
+1F4681F3FF200D2708FE0F|👨🏿‍✈️|man pilot: dark skin tone
+1F469200D2708FE0F|👩‍✈️|woman pilot
+1F4691F3FB200D2708FE0F|👩🏻‍✈️|woman pilot: light skin tone
+1F4691F3FC200D2708FE0F|👩🏼‍✈️|woman pilot: medium-light skin tone
+1F4691F3FD200D2708FE0F|👩🏽‍✈️|woman pilot: medium skin tone
+1F4691F3FE200D2708FE0F|👩🏾‍✈️|woman pilot: medium-dark skin tone
+1F4691F3FF200D2708FE0F|👩🏿‍✈️|woman pilot: dark skin tone
+1F9D1200D1F680|🧑‍🚀|astronaut
+1F9D11F3FB200D1F680|🧑🏻‍🚀|astronaut: light skin tone
+1F9D11F3FC200D1F680|🧑🏼‍🚀|astronaut: medium-light skin tone
+1F9D11F3FD200D1F680|🧑🏽‍🚀|astronaut: medium skin tone
+1F9D11F3FE200D1F680|🧑🏾‍🚀|astronaut: medium-dark skin tone
+1F9D11F3FF200D1F680|🧑🏿‍🚀|astronaut: dark skin tone
+1F468200D1F680|👨‍🚀|man astronaut
+1F4681F3FB200D1F680|👨🏻‍🚀|man astronaut: light skin tone
+1F4681F3FC200D1F680|👨🏼‍🚀|man astronaut: medium-light skin tone
+1F4681F3FD200D1F680|👨🏽‍🚀|man astronaut: medium skin tone
+1F4681F3FE200D1F680|👨🏾‍🚀|man astronaut: medium-dark skin tone
+1F4681F3FF200D1F680|👨🏿‍🚀|man astronaut: dark skin tone
+1F469200D1F680|👩‍🚀|woman astronaut
+1F4691F3FB200D1F680|👩🏻‍🚀|woman astronaut: light skin tone
+1F4691F3FC200D1F680|👩🏼‍🚀|woman astronaut: medium-light skin tone
+1F4691F3FD200D1F680|👩🏽‍🚀|woman astronaut: medium skin tone
+1F4691F3FE200D1F680|👩🏾‍🚀|woman astronaut: medium-dark skin tone
+1F4691F3FF200D1F680|👩🏿‍🚀|woman astronaut: dark skin tone
+1F9D1200D1F692|🧑‍🚒|firefighter
+1F9D11F3FB200D1F692|🧑🏻‍🚒|firefighter: light skin tone
+1F9D11F3FC200D1F692|🧑🏼‍🚒|firefighter: medium-light skin tone
+1F9D11F3FD200D1F692|🧑🏽‍🚒|firefighter: medium skin tone
+1F9D11F3FE200D1F692|🧑🏾‍🚒|firefighter: medium-dark skin tone
+1F9D11F3FF200D1F692|🧑🏿‍🚒|firefighter: dark skin tone
+1F468200D1F692|👨‍🚒|man firefighter
+1F4681F3FB200D1F692|👨🏻‍🚒|man firefighter: light skin tone
+1F4681F3FC200D1F692|👨🏼‍🚒|man firefighter: medium-light skin tone
+1F4681F3FD200D1F692|👨🏽‍🚒|man firefighter: medium skin tone
+1F4681F3FE200D1F692|👨🏾‍🚒|man firefighter: medium-dark skin tone
+1F4681F3FF200D1F692|👨🏿‍🚒|man firefighter: dark skin tone
+1F469200D1F692|👩‍🚒|woman firefighter
+1F4691F3FB200D1F692|👩🏻‍🚒|woman firefighter: light skin tone
+1F4691F3FC200D1F692|👩🏼‍🚒|woman firefighter: medium-light skin tone
+1F4691F3FD200D1F692|👩🏽‍🚒|woman firefighter: medium skin tone
+1F4691F3FE200D1F692|👩🏾‍🚒|woman firefighter: medium-dark skin tone
+1F4691F3FF200D1F692|👩🏿‍🚒|woman firefighter: dark skin tone
+1F46E|👮|police officer
+1F46E1F3FB|👮🏻|police officer: light skin tone
+1F46E1F3FC|👮🏼|police officer: medium-light skin tone
+1F46E1F3FD|👮🏽|police officer: medium skin tone
+1F46E1F3FE|👮🏾|police officer: medium-dark skin tone
+1F46E1F3FF|👮🏿|police officer: dark skin tone
+1F46E200D2642FE0F|👮‍♂️|man police officer
+1F46E1F3FB200D2642FE0F|👮🏻‍♂️|man police officer: light skin tone
+1F46E1F3FC200D2642FE0F|👮🏼‍♂️|man police officer: medium-light skin tone
+1F46E1F3FD200D2642FE0F|👮🏽‍♂️|man police officer: medium skin tone
+1F46E1F3FE200D2642FE0F|👮🏾‍♂️|man police officer: medium-dark skin tone
+1F46E1F3FF200D2642FE0F|👮🏿‍♂️|man police officer: dark skin tone
+1F46E200D2640FE0F|👮‍♀️|woman police officer
+1F46E1F3FB200D2640FE0F|👮🏻‍♀️|woman police officer: light skin tone
+1F46E1F3FC200D2640FE0F|👮🏼‍♀️|woman police officer: medium-light skin tone
+1F46E1F3FD200D2640FE0F|👮🏽‍♀️|woman police officer: medium skin tone
+1F46E1F3FE200D2640FE0F|👮🏾‍♀️|woman police officer: medium-dark skin tone
+1F46E1F3FF200D2640FE0F|👮🏿‍♀️|woman police officer: dark skin tone
+1F575FE0F|🕵️|detective
+1F5751F3FB|🕵🏻|detective: light skin tone
+1F5751F3FC|🕵🏼|detective: medium-light skin tone
+1F5751F3FD|🕵🏽|detective: medium skin tone
+1F5751F3FE|🕵🏾|detective: medium-dark skin tone
+1F5751F3FF|🕵🏿|detective: dark skin tone
+1F575FE0F200D2642FE0F|🕵️‍♂️|man detective
+1F5751F3FB200D2642FE0F|🕵🏻‍♂️|man detective: light skin tone
+1F5751F3FC200D2642FE0F|🕵🏼‍♂️|man detective: medium-light skin tone
+1F5751F3FD200D2642FE0F|🕵🏽‍♂️|man detective: medium skin tone
+1F5751F3FE200D2642FE0F|🕵🏾‍♂️|man detective: medium-dark skin tone
+1F5751F3FF200D2642FE0F|🕵🏿‍♂️|man detective: dark skin tone
+1F575FE0F200D2640FE0F|🕵️‍♀️|woman detective
+1F5751F3FB200D2640FE0F|🕵🏻‍♀️|woman detective: light skin tone
+1F5751F3FC200D2640FE0F|🕵🏼‍♀️|woman detective: medium-light skin tone
+1F5751F3FD200D2640FE0F|🕵🏽‍♀️|woman detective: medium skin tone
+1F5751F3FE200D2640FE0F|🕵🏾‍♀️|woman detective: medium-dark skin tone
+1F5751F3FF200D2640FE0F|🕵🏿‍♀️|woman detective: dark skin tone
+1F482|💂|guard
+1F4821F3FB|💂🏻|guard: light skin tone
+1F4821F3FC|💂🏼|guard: medium-light skin tone
+1F4821F3FD|💂🏽|guard: medium skin tone
+1F4821F3FE|💂🏾|guard: medium-dark skin tone
+1F4821F3FF|💂🏿|guard: dark skin tone
+1F482200D2642FE0F|💂‍♂️|man guard
+1F4821F3FB200D2642FE0F|💂🏻‍♂️|man guard: light skin tone
+1F4821F3FC200D2642FE0F|💂🏼‍♂️|man guard: medium-light skin tone
+1F4821F3FD200D2642FE0F|💂🏽‍♂️|man guard: medium skin tone
+1F4821F3FE200D2642FE0F|💂🏾‍♂️|man guard: medium-dark skin tone
+1F4821F3FF200D2642FE0F|💂🏿‍♂️|man guard: dark skin tone
+1F482200D2640FE0F|💂‍♀️|woman guard
+1F4821F3FB200D2640FE0F|💂🏻‍♀️|woman guard: light skin tone
+1F4821F3FC200D2640FE0F|💂🏼‍♀️|woman guard: medium-light skin tone
+1F4821F3FD200D2640FE0F|💂🏽‍♀️|woman guard: medium skin tone
+1F4821F3FE200D2640FE0F|💂🏾‍♀️|woman guard: medium-dark skin tone
+1F4821F3FF200D2640FE0F|💂🏿‍♀️|woman guard: dark skin tone
+1F977|🥷|ninja
+1F9771F3FB|🥷🏻|ninja: light skin tone
+1F9771F3FC|🥷🏼|ninja: medium-light skin tone
+1F9771F3FD|🥷🏽|ninja: medium skin tone
+1F9771F3FE|🥷🏾|ninja: medium-dark skin tone
+1F9771F3FF|🥷🏿|ninja: dark skin tone
+1F477|👷|construction worker
+1F4771F3FB|👷🏻|construction worker: light skin tone
+1F4771F3FC|👷🏼|construction worker: medium-light skin tone
+1F4771F3FD|👷🏽|construction worker: medium skin tone
+1F4771F3FE|👷🏾|construction worker: medium-dark skin tone
+1F4771F3FF|👷🏿|construction worker: dark skin tone
+1F477200D2642FE0F|👷‍♂️|man construction worker
+1F4771F3FB200D2642FE0F|👷🏻‍♂️|man construction worker: light skin tone
+1F4771F3FC200D2642FE0F|👷🏼‍♂️|man construction worker: medium-light skin tone
+1F4771F3FD200D2642FE0F|👷🏽‍♂️|man construction worker: medium skin tone
+1F4771F3FE200D2642FE0F|👷🏾‍♂️|man construction worker: medium-dark skin tone
+1F4771F3FF200D2642FE0F|👷🏿‍♂️|man construction worker: dark skin tone
+1F477200D2640FE0F|👷‍♀️|woman construction worker
+1F4771F3FB200D2640FE0F|👷🏻‍♀️|woman construction worker: light skin tone
+1F4771F3FC200D2640FE0F|👷🏼‍♀️|woman construction worker: medium-light skin tone
+1F4771F3FD200D2640FE0F|👷🏽‍♀️|woman construction worker: medium skin tone
+1F4771F3FE200D2640FE0F|👷🏾‍♀️|woman construction worker: medium-dark skin tone
+1F4771F3FF200D2640FE0F|👷🏿‍♀️|woman construction worker: dark skin tone
+1FAC5|🫅|person with crown
+1FAC51F3FB|🫅🏻|person with crown: light skin tone
+1FAC51F3FC|🫅🏼|person with crown: medium-light skin tone
+1FAC51F3FD|🫅🏽|person with crown: medium skin tone
+1FAC51F3FE|🫅🏾|person with crown: medium-dark skin tone
+1FAC51F3FF|🫅🏿|person with crown: dark skin tone
+1F934|🤴|prince
+1F9341F3FB|🤴🏻|prince: light skin tone
+1F9341F3FC|🤴🏼|prince: medium-light skin tone
+1F9341F3FD|🤴🏽|prince: medium skin tone
+1F9341F3FE|🤴🏾|prince: medium-dark skin tone
+1F9341F3FF|🤴🏿|prince: dark skin tone
+1F478|👸|princess
+1F4781F3FB|👸🏻|princess: light skin tone
+1F4781F3FC|👸🏼|princess: medium-light skin tone
+1F4781F3FD|👸🏽|princess: medium skin tone
+1F4781F3FE|👸🏾|princess: medium-dark skin tone
+1F4781F3FF|👸🏿|princess: dark skin tone
+1F473|👳|person wearing turban
+1F4731F3FB|👳🏻|person wearing turban: light skin tone
+1F4731F3FC|👳🏼|person wearing turban: medium-light skin tone
+1F4731F3FD|👳🏽|person wearing turban: medium skin tone
+1F4731F3FE|👳🏾|person wearing turban: medium-dark skin tone
+1F4731F3FF|👳🏿|person wearing turban: dark skin tone
+1F473200D2642FE0F|👳‍♂️|man wearing turban
+1F4731F3FB200D2642FE0F|👳🏻‍♂️|man wearing turban: light skin tone
+1F4731F3FC200D2642FE0F|👳🏼‍♂️|man wearing turban: medium-light skin tone
+1F4731F3FD200D2642FE0F|👳🏽‍♂️|man wearing turban: medium skin tone
+1F4731F3FE200D2642FE0F|👳🏾‍♂️|man wearing turban: medium-dark skin tone
+1F4731F3FF200D2642FE0F|👳🏿‍♂️|man wearing turban: dark skin tone
+1F473200D2640FE0F|👳‍♀️|woman wearing turban
+1F4731F3FB200D2640FE0F|👳🏻‍♀️|woman wearing turban: light skin tone
+1F4731F3FC200D2640FE0F|👳🏼‍♀️|woman wearing turban: medium-light skin tone
+1F4731F3FD200D2640FE0F|👳🏽‍♀️|woman wearing turban: medium skin tone
+1F4731F3FE200D2640FE0F|👳🏾‍♀️|woman wearing turban: medium-dark skin tone
+1F4731F3FF200D2640FE0F|👳🏿‍♀️|woman wearing turban: dark skin tone
+1F472|👲|person with skullcap
+1F4721F3FB|👲🏻|person with skullcap: light skin tone
+1F4721F3FC|👲🏼|person with skullcap: medium-light skin tone
+1F4721F3FD|👲🏽|person with skullcap: medium skin tone
+1F4721F3FE|👲🏾|person with skullcap: medium-dark skin tone
+1F4721F3FF|👲🏿|person with skullcap: dark skin tone
+1F9D5|🧕|woman with headscarf
+1F9D51F3FB|🧕🏻|woman with headscarf: light skin tone
+1F9D51F3FC|🧕🏼|woman with headscarf: medium-light skin tone
+1F9D51F3FD|🧕🏽|woman with headscarf: medium skin tone
+1F9D51F3FE|🧕🏾|woman with headscarf: medium-dark skin tone
+1F9D51F3FF|🧕🏿|woman with headscarf: dark skin tone
+1F935|🤵|person in tuxedo
+1F9351F3FB|🤵🏻|person in tuxedo: light skin tone
+1F9351F3FC|🤵🏼|person in tuxedo: medium-light skin tone
+1F9351F3FD|🤵🏽|person in tuxedo: medium skin tone
+1F9351F3FE|🤵🏾|person in tuxedo: medium-dark skin tone
+1F9351F3FF|🤵🏿|person in tuxedo: dark skin tone
+1F935200D2642FE0F|🤵‍♂️|man in tuxedo
+1F9351F3FB200D2642FE0F|🤵🏻‍♂️|man in tuxedo: light skin tone
+1F9351F3FC200D2642FE0F|🤵🏼‍♂️|man in tuxedo: medium-light skin tone
+1F9351F3FD200D2642FE0F|🤵🏽‍♂️|man in tuxedo: medium skin tone
+1F9351F3FE200D2642FE0F|🤵🏾‍♂️|man in tuxedo: medium-dark skin tone
+1F9351F3FF200D2642FE0F|🤵🏿‍♂️|man in tuxedo: dark skin tone
+1F935200D2640FE0F|🤵‍♀️|woman in tuxedo
+1F9351F3FB200D2640FE0F|🤵🏻‍♀️|woman in tuxedo: light skin tone
+1F9351F3FC200D2640FE0F|🤵🏼‍♀️|woman in tuxedo: medium-light skin tone
+1F9351F3FD200D2640FE0F|🤵🏽‍♀️|woman in tuxedo: medium skin tone
+1F9351F3FE200D2640FE0F|🤵🏾‍♀️|woman in tuxedo: medium-dark skin tone
+1F9351F3FF200D2640FE0F|🤵🏿‍♀️|woman in tuxedo: dark skin tone
+1F470|👰|person with veil
+1F4701F3FB|👰🏻|person with veil: light skin tone
+1F4701F3FC|👰🏼|person with veil: medium-light skin tone
+1F4701F3FD|👰🏽|person with veil: medium skin tone
+1F4701F3FE|👰🏾|person with veil: medium-dark skin tone
+1F4701F3FF|👰🏿|person with veil: dark skin tone
+1F470200D2642FE0F|👰‍♂️|man with veil
+1F4701F3FB200D2642FE0F|👰🏻‍♂️|man with veil: light skin tone
+1F4701F3FC200D2642FE0F|👰🏼‍♂️|man with veil: medium-light skin tone
+1F4701F3FD200D2642FE0F|👰🏽‍♂️|man with veil: medium skin tone
+1F4701F3FE200D2642FE0F|👰🏾‍♂️|man with veil: medium-dark skin tone
+1F4701F3FF200D2642FE0F|👰🏿‍♂️|man with veil: dark skin tone
+1F470200D2640FE0F|👰‍♀️|woman with veil
+1F4701F3FB200D2640FE0F|👰🏻‍♀️|woman with veil: light skin tone
+1F4701F3FC200D2640FE0F|👰🏼‍♀️|woman with veil: medium-light skin tone
+1F4701F3FD200D2640FE0F|👰🏽‍♀️|woman with veil: medium skin tone
+1F4701F3FE200D2640FE0F|👰🏾‍♀️|woman with veil: medium-dark skin tone
+1F4701F3FF200D2640FE0F|👰🏿‍♀️|woman with veil: dark skin tone
+1F930|🤰|pregnant woman
+1F9301F3FB|🤰🏻|pregnant woman: light skin tone
+1F9301F3FC|🤰🏼|pregnant woman: medium-light skin tone
+1F9301F3FD|🤰🏽|pregnant woman: medium skin tone
+1F9301F3FE|🤰🏾|pregnant woman: medium-dark skin tone
+1F9301F3FF|🤰🏿|pregnant woman: dark skin tone
+1FAC3|🫃|pregnant man
+1FAC31F3FB|🫃🏻|pregnant man: light skin tone
+1FAC31F3FC|🫃🏼|pregnant man: medium-light skin tone
+1FAC31F3FD|🫃🏽|pregnant man: medium skin tone
+1FAC31F3FE|🫃🏾|pregnant man: medium-dark skin tone
+1FAC31F3FF|🫃🏿|pregnant man: dark skin tone
+1FAC4|🫄|pregnant person
+1FAC41F3FB|🫄🏻|pregnant person: light skin tone
+1FAC41F3FC|🫄🏼|pregnant person: medium-light skin tone
+1FAC41F3FD|🫄🏽|pregnant person: medium skin tone
+1FAC41F3FE|🫄🏾|pregnant person: medium-dark skin tone
+1FAC41F3FF|🫄🏿|pregnant person: dark skin tone
+1F931|🤱|breast-feeding
+1F9311F3FB|🤱🏻|breast-feeding: light skin tone
+1F9311F3FC|🤱🏼|breast-feeding: medium-light skin tone
+1F9311F3FD|🤱🏽|breast-feeding: medium skin tone
+1F9311F3FE|🤱🏾|breast-feeding: medium-dark skin tone
+1F9311F3FF|🤱🏿|breast-feeding: dark skin tone
+1F469200D1F37C|👩‍🍼|woman feeding baby
+1F4691F3FB200D1F37C|👩🏻‍🍼|woman feeding baby: light skin tone
+1F4691F3FC200D1F37C|👩🏼‍🍼|woman feeding baby: medium-light skin tone
+1F4691F3FD200D1F37C|👩🏽‍🍼|woman feeding baby: medium skin tone
+1F4691F3FE200D1F37C|👩🏾‍🍼|woman feeding baby: medium-dark skin tone
+1F4691F3FF200D1F37C|👩🏿‍🍼|woman feeding baby: dark skin tone
+1F468200D1F37C|👨‍🍼|man feeding baby
+1F4681F3FB200D1F37C|👨🏻‍🍼|man feeding baby: light skin tone
+1F4681F3FC200D1F37C|👨🏼‍🍼|man feeding baby: medium-light skin tone
+1F4681F3FD200D1F37C|👨🏽‍🍼|man feeding baby: medium skin tone
+1F4681F3FE200D1F37C|👨🏾‍🍼|man feeding baby: medium-dark skin tone
+1F4681F3FF200D1F37C|👨🏿‍🍼|man feeding baby: dark skin tone
+1F9D1200D1F37C|🧑‍🍼|person feeding baby
+1F9D11F3FB200D1F37C|🧑🏻‍🍼|person feeding baby: light skin tone
+1F9D11F3FC200D1F37C|🧑🏼‍🍼|person feeding baby: medium-light skin tone
+1F9D11F3FD200D1F37C|🧑🏽‍🍼|person feeding baby: medium skin tone
+1F9D11F3FE200D1F37C|🧑🏾‍🍼|person feeding baby: medium-dark skin tone
+1F9D11F3FF200D1F37C|🧑🏿‍🍼|person feeding baby: dark skin tone
+1F47C|👼|baby angel
+1F47C1F3FB|👼🏻|baby angel: light skin tone
+1F47C1F3FC|👼🏼|baby angel: medium-light skin tone
+1F47C1F3FD|👼🏽|baby angel: medium skin tone
+1F47C1F3FE|👼🏾|baby angel: medium-dark skin tone
+1F47C1F3FF|👼🏿|baby angel: dark skin tone
+1F385|🎅|Santa Claus
+1F3851F3FB|🎅🏻|Santa Claus: light skin tone
+1F3851F3FC|🎅🏼|Santa Claus: medium-light skin tone
+1F3851F3FD|🎅🏽|Santa Claus: medium skin tone
+1F3851F3FE|🎅🏾|Santa Claus: medium-dark skin tone
+1F3851F3FF|🎅🏿|Santa Claus: dark skin tone
+1F936|🤶|Mrs. Claus
+1F9361F3FB|🤶🏻|Mrs. Claus: light skin tone
+1F9361F3FC|🤶🏼|Mrs. Claus: medium-light skin tone
+1F9361F3FD|🤶🏽|Mrs. Claus: medium skin tone
+1F9361F3FE|🤶🏾|Mrs. Claus: medium-dark skin tone
+1F9361F3FF|🤶🏿|Mrs. Claus: dark skin tone
+1F9D1200D1F384|🧑‍🎄|mx claus
+1F9D11F3FB200D1F384|🧑🏻‍🎄|mx claus: light skin tone
+1F9D11F3FC200D1F384|🧑🏼‍🎄|mx claus: medium-light skin tone
+1F9D11F3FD200D1F384|🧑🏽‍🎄|mx claus: medium skin tone
+1F9D11F3FE200D1F384|🧑🏾‍🎄|mx claus: medium-dark skin tone
+1F9D11F3FF200D1F384|🧑🏿‍🎄|mx claus: dark skin tone
+1F9B8|🦸|superhero
+1F9B81F3FB|🦸🏻|superhero: light skin tone
+1F9B81F3FC|🦸🏼|superhero: medium-light skin tone
+1F9B81F3FD|🦸🏽|superhero: medium skin tone
+1F9B81F3FE|🦸🏾|superhero: medium-dark skin tone
+1F9B81F3FF|🦸🏿|superhero: dark skin tone
+1F9B8200D2642FE0F|🦸‍♂️|man superhero
+1F9B81F3FB200D2642FE0F|🦸🏻‍♂️|man superhero: light skin tone
+1F9B81F3FC200D2642FE0F|🦸🏼‍♂️|man superhero: medium-light skin tone
+1F9B81F3FD200D2642FE0F|🦸🏽‍♂️|man superhero: medium skin tone
+1F9B81F3FE200D2642FE0F|🦸🏾‍♂️|man superhero: medium-dark skin tone
+1F9B81F3FF200D2642FE0F|🦸🏿‍♂️|man superhero: dark skin tone
+1F9B8200D2640FE0F|🦸‍♀️|woman superhero
+1F9B81F3FB200D2640FE0F|🦸🏻‍♀️|woman superhero: light skin tone
+1F9B81F3FC200D2640FE0F|🦸🏼‍♀️|woman superhero: medium-light skin tone
+1F9B81F3FD200D2640FE0F|🦸🏽‍♀️|woman superhero: medium skin tone
+1F9B81F3FE200D2640FE0F|🦸🏾‍♀️|woman superhero: medium-dark skin tone
+1F9B81F3FF200D2640FE0F|🦸🏿‍♀️|woman superhero: dark skin tone
+1F9B9|🦹|supervillain
+1F9B91F3FB|🦹🏻|supervillain: light skin tone
+1F9B91F3FC|🦹🏼|supervillain: medium-light skin tone
+1F9B91F3FD|🦹🏽|supervillain: medium skin tone
+1F9B91F3FE|🦹🏾|supervillain: medium-dark skin tone
+1F9B91F3FF|🦹🏿|supervillain: dark skin tone
+1F9B9200D2642FE0F|🦹‍♂️|man supervillain
+1F9B91F3FB200D2642FE0F|🦹🏻‍♂️|man supervillain: light skin tone
+1F9B91F3FC200D2642FE0F|🦹🏼‍♂️|man supervillain: medium-light skin tone
+1F9B91F3FD200D2642FE0F|🦹🏽‍♂️|man supervillain: medium skin tone
+1F9B91F3FE200D2642FE0F|🦹🏾‍♂️|man supervillain: medium-dark skin tone
+1F9B91F3FF200D2642FE0F|🦹🏿‍♂️|man supervillain: dark skin tone
+1F9B9200D2640FE0F|🦹‍♀️|woman supervillain
+1F9B91F3FB200D2640FE0F|🦹🏻‍♀️|woman supervillain: light skin tone
+1F9B91F3FC200D2640FE0F|🦹🏼‍♀️|woman supervillain: medium-light skin tone
+1F9B91F3FD200D2640FE0F|🦹🏽‍♀️|woman supervillain: medium skin tone
+1F9B91F3FE200D2640FE0F|🦹🏾‍♀️|woman supervillain: medium-dark skin tone
+1F9B91F3FF200D2640FE0F|🦹🏿‍♀️|woman supervillain: dark skin tone
+1F9D9|🧙|mage
+1F9D91F3FB|🧙🏻|mage: light skin tone
+1F9D91F3FC|🧙🏼|mage: medium-light skin tone
+1F9D91F3FD|🧙🏽|mage: medium skin tone
+1F9D91F3FE|🧙🏾|mage: medium-dark skin tone
+1F9D91F3FF|🧙🏿|mage: dark skin tone
+1F9D9200D2642FE0F|🧙‍♂️|man mage
+1F9D91F3FB200D2642FE0F|🧙🏻‍♂️|man mage: light skin tone
+1F9D91F3FC200D2642FE0F|🧙🏼‍♂️|man mage: medium-light skin tone
+1F9D91F3FD200D2642FE0F|🧙🏽‍♂️|man mage: medium skin tone
+1F9D91F3FE200D2642FE0F|🧙🏾‍♂️|man mage: medium-dark skin tone
+1F9D91F3FF200D2642FE0F|🧙🏿‍♂️|man mage: dark skin tone
+1F9D9200D2640FE0F|🧙‍♀️|woman mage
+1F9D91F3FB200D2640FE0F|🧙🏻‍♀️|woman mage: light skin tone
+1F9D91F3FC200D2640FE0F|🧙🏼‍♀️|woman mage: medium-light skin tone
+1F9D91F3FD200D2640FE0F|🧙🏽‍♀️|woman mage: medium skin tone
+1F9D91F3FE200D2640FE0F|🧙🏾‍♀️|woman mage: medium-dark skin tone
+1F9D91F3FF200D2640FE0F|🧙🏿‍♀️|woman mage: dark skin tone
+1F9DA|🧚|fairy
+1F9DA1F3FB|🧚🏻|fairy: light skin tone
+1F9DA1F3FC|🧚🏼|fairy: medium-light skin tone
+1F9DA1F3FD|🧚🏽|fairy: medium skin tone
+1F9DA1F3FE|🧚🏾|fairy: medium-dark skin tone
+1F9DA1F3FF|🧚🏿|fairy: dark skin tone
+1F9DA200D2642FE0F|🧚‍♂️|man fairy
+1F9DA1F3FB200D2642FE0F|🧚🏻‍♂️|man fairy: light skin tone
+1F9DA1F3FC200D2642FE0F|🧚🏼‍♂️|man fairy: medium-light skin tone
+1F9DA1F3FD200D2642FE0F|🧚🏽‍♂️|man fairy: medium skin tone
+1F9DA1F3FE200D2642FE0F|🧚🏾‍♂️|man fairy: medium-dark skin tone
+1F9DA1F3FF200D2642FE0F|🧚🏿‍♂️|man fairy: dark skin tone
+1F9DA200D2640FE0F|🧚‍♀️|woman fairy
+1F9DA1F3FB200D2640FE0F|🧚🏻‍♀️|woman fairy: light skin tone
+1F9DA1F3FC200D2640FE0F|🧚🏼‍♀️|woman fairy: medium-light skin tone
+1F9DA1F3FD200D2640FE0F|🧚🏽‍♀️|woman fairy: medium skin tone
+1F9DA1F3FE200D2640FE0F|🧚🏾‍♀️|woman fairy: medium-dark skin tone
+1F9DA1F3FF200D2640FE0F|🧚🏿‍♀️|woman fairy: dark skin tone
+1F9DB|🧛|vampire
+1F9DB1F3FB|🧛🏻|vampire: light skin tone
+1F9DB1F3FC|🧛🏼|vampire: medium-light skin tone
+1F9DB1F3FD|🧛🏽|vampire: medium skin tone
+1F9DB1F3FE|🧛🏾|vampire: medium-dark skin tone
+1F9DB1F3FF|🧛🏿|vampire: dark skin tone
+1F9DB200D2642FE0F|🧛‍♂️|man vampire
+1F9DB1F3FB200D2642FE0F|🧛🏻‍♂️|man vampire: light skin tone
+1F9DB1F3FC200D2642FE0F|🧛🏼‍♂️|man vampire: medium-light skin tone
+1F9DB1F3FD200D2642FE0F|🧛🏽‍♂️|man vampire: medium skin tone
+1F9DB1F3FE200D2642FE0F|🧛🏾‍♂️|man vampire: medium-dark skin tone
+1F9DB1F3FF200D2642FE0F|🧛🏿‍♂️|man vampire: dark skin tone
+1F9DB200D2640FE0F|🧛‍♀️|woman vampire
+1F9DB1F3FB200D2640FE0F|🧛🏻‍♀️|woman vampire: light skin tone
+1F9DB1F3FC200D2640FE0F|🧛🏼‍♀️|woman vampire: medium-light skin tone
+1F9DB1F3FD200D2640FE0F|🧛🏽‍♀️|woman vampire: medium skin tone
+1F9DB1F3FE200D2640FE0F|🧛🏾‍♀️|woman vampire: medium-dark skin tone
+1F9DB1F3FF200D2640FE0F|🧛🏿‍♀️|woman vampire: dark skin tone
+1F9DC|🧜|merperson
+1F9DC1F3FB|🧜🏻|merperson: light skin tone
+1F9DC1F3FC|🧜🏼|merperson: medium-light skin tone
+1F9DC1F3FD|🧜🏽|merperson: medium skin tone
+1F9DC1F3FE|🧜🏾|merperson: medium-dark skin tone
+1F9DC1F3FF|🧜🏿|merperson: dark skin tone
+1F9DC200D2642FE0F|🧜‍♂️|merman
+1F9DC1F3FB200D2642FE0F|🧜🏻‍♂️|merman: light skin tone
+1F9DC1F3FC200D2642FE0F|🧜🏼‍♂️|merman: medium-light skin tone
+1F9DC1F3FD200D2642FE0F|🧜🏽‍♂️|merman: medium skin tone
+1F9DC1F3FE200D2642FE0F|🧜🏾‍♂️|merman: medium-dark skin tone
+1F9DC1F3FF200D2642FE0F|🧜🏿‍♂️|merman: dark skin tone
+1F9DC200D2640FE0F|🧜‍♀️|mermaid
+1F9DC1F3FB200D2640FE0F|🧜🏻‍♀️|mermaid: light skin tone
+1F9DC1F3FC200D2640FE0F|🧜🏼‍♀️|mermaid: medium-light skin tone
+1F9DC1F3FD200D2640FE0F|🧜🏽‍♀️|mermaid: medium skin tone
+1F9DC1F3FE200D2640FE0F|🧜🏾‍♀️|mermaid: medium-dark skin tone
+1F9DC1F3FF200D2640FE0F|🧜🏿‍♀️|mermaid: dark skin tone
+1F9DD|🧝|elf
+1F9DD1F3FB|🧝🏻|elf: light skin tone
+1F9DD1F3FC|🧝🏼|elf: medium-light skin tone
+1F9DD1F3FD|🧝🏽|elf: medium skin tone
+1F9DD1F3FE|🧝🏾|elf: medium-dark skin tone
+1F9DD1F3FF|🧝🏿|elf: dark skin tone
+1F9DD200D2642FE0F|🧝‍♂️|man elf
+1F9DD1F3FB200D2642FE0F|🧝🏻‍♂️|man elf: light skin tone
+1F9DD1F3FC200D2642FE0F|🧝🏼‍♂️|man elf: medium-light skin tone
+1F9DD1F3FD200D2642FE0F|🧝🏽‍♂️|man elf: medium skin tone
+1F9DD1F3FE200D2642FE0F|🧝🏾‍♂️|man elf: medium-dark skin tone
+1F9DD1F3FF200D2642FE0F|🧝🏿‍♂️|man elf: dark skin tone
+1F9DD200D2640FE0F|🧝‍♀️|woman elf
+1F9DD1F3FB200D2640FE0F|🧝🏻‍♀️|woman elf: light skin tone
+1F9DD1F3FC200D2640FE0F|🧝🏼‍♀️|woman elf: medium-light skin tone
+1F9DD1F3FD200D2640FE0F|🧝🏽‍♀️|woman elf: medium skin tone
+1F9DD1F3FE200D2640FE0F|🧝🏾‍♀️|woman elf: medium-dark skin tone
+1F9DD1F3FF200D2640FE0F|🧝🏿‍♀️|woman elf: dark skin tone
+1F9DE|🧞|genie
+1F9DE200D2642FE0F|🧞‍♂️|man genie
+1F9DE200D2640FE0F|🧞‍♀️|woman genie
+1F9DF|🧟|zombie
+1F9DF200D2642FE0F|🧟‍♂️|man zombie
+1F9DF200D2640FE0F|🧟‍♀️|woman zombie
+1F9CC|🧌|troll
+1F486|💆|person getting massage
+1F4861F3FB|💆🏻|person getting massage: light skin tone
+1F4861F3FC|💆🏼|person getting massage: medium-light skin tone
+1F4861F3FD|💆🏽|person getting massage: medium skin tone
+1F4861F3FE|💆🏾|person getting massage: medium-dark skin tone
+1F4861F3FF|💆🏿|person getting massage: dark skin tone
+1F486200D2642FE0F|💆‍♂️|man getting massage
+1F4861F3FB200D2642FE0F|💆🏻‍♂️|man getting massage: light skin tone
+1F4861F3FC200D2642FE0F|💆🏼‍♂️|man getting massage: medium-light skin tone
+1F4861F3FD200D2642FE0F|💆🏽‍♂️|man getting massage: medium skin tone
+1F4861F3FE200D2642FE0F|💆🏾‍♂️|man getting massage: medium-dark skin tone
+1F4861F3FF200D2642FE0F|💆🏿‍♂️|man getting massage: dark skin tone
+1F486200D2640FE0F|💆‍♀️|woman getting massage
+1F4861F3FB200D2640FE0F|💆🏻‍♀️|woman getting massage: light skin tone
+1F4861F3FC200D2640FE0F|💆🏼‍♀️|woman getting massage: medium-light skin tone
+1F4861F3FD200D2640FE0F|💆🏽‍♀️|woman getting massage: medium skin tone
+1F4861F3FE200D2640FE0F|💆🏾‍♀️|woman getting massage: medium-dark skin tone
+1F4861F3FF200D2640FE0F|💆🏿‍♀️|woman getting massage: dark skin tone
+1F487|💇|person getting haircut
+1F4871F3FB|💇🏻|person getting haircut: light skin tone
+1F4871F3FC|💇🏼|person getting haircut: medium-light skin tone
+1F4871F3FD|💇🏽|person getting haircut: medium skin tone
+1F4871F3FE|💇🏾|person getting haircut: medium-dark skin tone
+1F4871F3FF|💇🏿|person getting haircut: dark skin tone
+1F487200D2642FE0F|💇‍♂️|man getting haircut
+1F4871F3FB200D2642FE0F|💇🏻‍♂️|man getting haircut: light skin tone
+1F4871F3FC200D2642FE0F|💇🏼‍♂️|man getting haircut: medium-light skin tone
+1F4871F3FD200D2642FE0F|💇🏽‍♂️|man getting haircut: medium skin tone
+1F4871F3FE200D2642FE0F|💇🏾‍♂️|man getting haircut: medium-dark skin tone
+1F4871F3FF200D2642FE0F|💇🏿‍♂️|man getting haircut: dark skin tone
+1F487200D2640FE0F|💇‍♀️|woman getting haircut
+1F4871F3FB200D2640FE0F|💇🏻‍♀️|woman getting haircut: light skin tone
+1F4871F3FC200D2640FE0F|💇🏼‍♀️|woman getting haircut: medium-light skin tone
+1F4871F3FD200D2640FE0F|💇🏽‍♀️|woman getting haircut: medium skin tone
+1F4871F3FE200D2640FE0F|💇🏾‍♀️|woman getting haircut: medium-dark skin tone
+1F4871F3FF200D2640FE0F|💇🏿‍♀️|woman getting haircut: dark skin tone
+1F6B6|🚶|person walking
+1F6B61F3FB|🚶🏻|person walking: light skin tone
+1F6B61F3FC|🚶🏼|person walking: medium-light skin tone
+1F6B61F3FD|🚶🏽|person walking: medium skin tone
+1F6B61F3FE|🚶🏾|person walking: medium-dark skin tone
+1F6B61F3FF|🚶🏿|person walking: dark skin tone
+1F6B6200D2642FE0F|🚶‍♂️|man walking
+1F6B61F3FB200D2642FE0F|🚶🏻‍♂️|man walking: light skin tone
+1F6B61F3FC200D2642FE0F|🚶🏼‍♂️|man walking: medium-light skin tone
+1F6B61F3FD200D2642FE0F|🚶🏽‍♂️|man walking: medium skin tone
+1F6B61F3FE200D2642FE0F|🚶🏾‍♂️|man walking: medium-dark skin tone
+1F6B61F3FF200D2642FE0F|🚶🏿‍♂️|man walking: dark skin tone
+1F6B6200D2640FE0F|🚶‍♀️|woman walking
+1F6B61F3FB200D2640FE0F|🚶🏻‍♀️|woman walking: light skin tone
+1F6B61F3FC200D2640FE0F|🚶🏼‍♀️|woman walking: medium-light skin tone
+1F6B61F3FD200D2640FE0F|🚶🏽‍♀️|woman walking: medium skin tone
+1F6B61F3FE200D2640FE0F|🚶🏾‍♀️|woman walking: medium-dark skin tone
+1F6B61F3FF200D2640FE0F|🚶🏿‍♀️|woman walking: dark skin tone
+1F9CD|🧍|person standing
+1F9CD1F3FB|🧍🏻|person standing: light skin tone
+1F9CD1F3FC|🧍🏼|person standing: medium-light skin tone
+1F9CD1F3FD|🧍🏽|person standing: medium skin tone
+1F9CD1F3FE|🧍🏾|person standing: medium-dark skin tone
+1F9CD1F3FF|🧍🏿|person standing: dark skin tone
+1F9CD200D2642FE0F|🧍‍♂️|man standing
+1F9CD1F3FB200D2642FE0F|🧍🏻‍♂️|man standing: light skin tone
+1F9CD1F3FC200D2642FE0F|🧍🏼‍♂️|man standing: medium-light skin tone
+1F9CD1F3FD200D2642FE0F|🧍🏽‍♂️|man standing: medium skin tone
+1F9CD1F3FE200D2642FE0F|🧍🏾‍♂️|man standing: medium-dark skin tone
+1F9CD1F3FF200D2642FE0F|🧍🏿‍♂️|man standing: dark skin tone
+1F9CD200D2640FE0F|🧍‍♀️|woman standing
+1F9CD1F3FB200D2640FE0F|🧍🏻‍♀️|woman standing: light skin tone
+1F9CD1F3FC200D2640FE0F|🧍🏼‍♀️|woman standing: medium-light skin tone
+1F9CD1F3FD200D2640FE0F|🧍🏽‍♀️|woman standing: medium skin tone
+1F9CD1F3FE200D2640FE0F|🧍🏾‍♀️|woman standing: medium-dark skin tone
+1F9CD1F3FF200D2640FE0F|🧍🏿‍♀️|woman standing: dark skin tone
+1F9CE|🧎|person kneeling
+1F9CE1F3FB|🧎🏻|person kneeling: light skin tone
+1F9CE1F3FC|🧎🏼|person kneeling: medium-light skin tone
+1F9CE1F3FD|🧎🏽|person kneeling: medium skin tone
+1F9CE1F3FE|🧎🏾|person kneeling: medium-dark skin tone
+1F9CE1F3FF|🧎🏿|person kneeling: dark skin tone
+1F9CE200D2642FE0F|🧎‍♂️|man kneeling
+1F9CE1F3FB200D2642FE0F|🧎🏻‍♂️|man kneeling: light skin tone
+1F9CE1F3FC200D2642FE0F|🧎🏼‍♂️|man kneeling: medium-light skin tone
+1F9CE1F3FD200D2642FE0F|🧎🏽‍♂️|man kneeling: medium skin tone
+1F9CE1F3FE200D2642FE0F|🧎🏾‍♂️|man kneeling: medium-dark skin tone
+1F9CE1F3FF200D2642FE0F|🧎🏿‍♂️|man kneeling: dark skin tone
+1F9CE200D2640FE0F|🧎‍♀️|woman kneeling
+1F9CE1F3FB200D2640FE0F|🧎🏻‍♀️|woman kneeling: light skin tone
+1F9CE1F3FC200D2640FE0F|🧎🏼‍♀️|woman kneeling: medium-light skin tone
+1F9CE1F3FD200D2640FE0F|🧎🏽‍♀️|woman kneeling: medium skin tone
+1F9CE1F3FE200D2640FE0F|🧎🏾‍♀️|woman kneeling: medium-dark skin tone
+1F9CE1F3FF200D2640FE0F|🧎🏿‍♀️|woman kneeling: dark skin tone
+1F9D1200D1F9AF|🧑‍🦯|person with white cane
+1F9D11F3FB200D1F9AF|🧑🏻‍🦯|person with white cane: light skin tone
+1F9D11F3FC200D1F9AF|🧑🏼‍🦯|person with white cane: medium-light skin tone
+1F9D11F3FD200D1F9AF|🧑🏽‍🦯|person with white cane: medium skin tone
+1F9D11F3FE200D1F9AF|🧑🏾‍🦯|person with white cane: medium-dark skin tone
+1F9D11F3FF200D1F9AF|🧑🏿‍🦯|person with white cane: dark skin tone
+1F468200D1F9AF|👨‍🦯|man with white cane
+1F4681F3FB200D1F9AF|👨🏻‍🦯|man with white cane: light skin tone
+1F4681F3FC200D1F9AF|👨🏼‍🦯|man with white cane: medium-light skin tone
+1F4681F3FD200D1F9AF|👨🏽‍🦯|man with white cane: medium skin tone
+1F4681F3FE200D1F9AF|👨🏾‍🦯|man with white cane: medium-dark skin tone
+1F4681F3FF200D1F9AF|👨🏿‍🦯|man with white cane: dark skin tone
+1F469200D1F9AF|👩‍🦯|woman with white cane
+1F4691F3FB200D1F9AF|👩🏻‍🦯|woman with white cane: light skin tone
+1F4691F3FC200D1F9AF|👩🏼‍🦯|woman with white cane: medium-light skin tone
+1F4691F3FD200D1F9AF|👩🏽‍🦯|woman with white cane: medium skin tone
+1F4691F3FE200D1F9AF|👩🏾‍🦯|woman with white cane: medium-dark skin tone
+1F4691F3FF200D1F9AF|👩🏿‍🦯|woman with white cane: dark skin tone
+1F9D1200D1F9BC|🧑‍🦼|person in motorized wheelchair
+1F9D11F3FB200D1F9BC|🧑🏻‍🦼|person in motorized wheelchair: light skin tone
+1F9D11F3FC200D1F9BC|🧑🏼‍🦼|person in motorized wheelchair: medium-light skin tone
+1F9D11F3FD200D1F9BC|🧑🏽‍🦼|person in motorized wheelchair: medium skin tone
+1F9D11F3FE200D1F9BC|🧑🏾‍🦼|person in motorized wheelchair: medium-dark skin tone
+1F9D11F3FF200D1F9BC|🧑🏿‍🦼|person in motorized wheelchair: dark skin tone
+1F468200D1F9BC|👨‍🦼|man in motorized wheelchair
+1F4681F3FB200D1F9BC|👨🏻‍🦼|man in motorized wheelchair: light skin tone
+1F4681F3FC200D1F9BC|👨🏼‍🦼|man in motorized wheelchair: medium-light skin tone
+1F4681F3FD200D1F9BC|👨🏽‍🦼|man in motorized wheelchair: medium skin tone
+1F4681F3FE200D1F9BC|👨🏾‍🦼|man in motorized wheelchair: medium-dark skin tone
+1F4681F3FF200D1F9BC|👨🏿‍🦼|man in motorized wheelchair: dark skin tone
+1F469200D1F9BC|👩‍🦼|woman in motorized wheelchair
+1F4691F3FB200D1F9BC|👩🏻‍🦼|woman in motorized wheelchair: light skin tone
+1F4691F3FC200D1F9BC|👩🏼‍🦼|woman in motorized wheelchair: medium-light skin tone
+1F4691F3FD200D1F9BC|👩🏽‍🦼|woman in motorized wheelchair: medium skin tone
+1F4691F3FE200D1F9BC|👩🏾‍🦼|woman in motorized wheelchair: medium-dark skin tone
+1F4691F3FF200D1F9BC|👩🏿‍🦼|woman in motorized wheelchair: dark skin tone
+1F9D1200D1F9BD|🧑‍🦽|person in manual wheelchair
+1F9D11F3FB200D1F9BD|🧑🏻‍🦽|person in manual wheelchair: light skin tone
+1F9D11F3FC200D1F9BD|🧑🏼‍🦽|person in manual wheelchair: medium-light skin tone
+1F9D11F3FD200D1F9BD|🧑🏽‍🦽|person in manual wheelchair: medium skin tone
+1F9D11F3FE200D1F9BD|🧑🏾‍🦽|person in manual wheelchair: medium-dark skin tone
+1F9D11F3FF200D1F9BD|🧑🏿‍🦽|person in manual wheelchair: dark skin tone
+1F468200D1F9BD|👨‍🦽|man in manual wheelchair
+1F4681F3FB200D1F9BD|👨🏻‍🦽|man in manual wheelchair: light skin tone
+1F4681F3FC200D1F9BD|👨🏼‍🦽|man in manual wheelchair: medium-light skin tone
+1F4681F3FD200D1F9BD|👨🏽‍🦽|man in manual wheelchair: medium skin tone
+1F4681F3FE200D1F9BD|👨🏾‍🦽|man in manual wheelchair: medium-dark skin tone
+1F4681F3FF200D1F9BD|👨🏿‍🦽|man in manual wheelchair: dark skin tone
+1F469200D1F9BD|👩‍🦽|woman in manual wheelchair
+1F4691F3FB200D1F9BD|👩🏻‍🦽|woman in manual wheelchair: light skin tone
+1F4691F3FC200D1F9BD|👩🏼‍🦽|woman in manual wheelchair: medium-light skin tone
+1F4691F3FD200D1F9BD|👩🏽‍🦽|woman in manual wheelchair: medium skin tone
+1F4691F3FE200D1F9BD|👩🏾‍🦽|woman in manual wheelchair: medium-dark skin tone
+1F4691F3FF200D1F9BD|👩🏿‍🦽|woman in manual wheelchair: dark skin tone
+1F3C3|🏃|person running
+1F3C31F3FB|🏃🏻|person running: light skin tone
+1F3C31F3FC|🏃🏼|person running: medium-light skin tone
+1F3C31F3FD|🏃🏽|person running: medium skin tone
+1F3C31F3FE|🏃🏾|person running: medium-dark skin tone
+1F3C31F3FF|🏃🏿|person running: dark skin tone
+1F3C3200D2642FE0F|🏃‍♂️|man running
+1F3C31F3FB200D2642FE0F|🏃🏻‍♂️|man running: light skin tone
+1F3C31F3FC200D2642FE0F|🏃🏼‍♂️|man running: medium-light skin tone
+1F3C31F3FD200D2642FE0F|🏃🏽‍♂️|man running: medium skin tone
+1F3C31F3FE200D2642FE0F|🏃🏾‍♂️|man running: medium-dark skin tone
+1F3C31F3FF200D2642FE0F|🏃🏿‍♂️|man running: dark skin tone
+1F3C3200D2640FE0F|🏃‍♀️|woman running
+1F3C31F3FB200D2640FE0F|🏃🏻‍♀️|woman running: light skin tone
+1F3C31F3FC200D2640FE0F|🏃🏼‍♀️|woman running: medium-light skin tone
+1F3C31F3FD200D2640FE0F|🏃🏽‍♀️|woman running: medium skin tone
+1F3C31F3FE200D2640FE0F|🏃🏾‍♀️|woman running: medium-dark skin tone
+1F3C31F3FF200D2640FE0F|🏃🏿‍♀️|woman running: dark skin tone
+1F483|💃|woman dancing
+1F4831F3FB|💃🏻|woman dancing: light skin tone
+1F4831F3FC|💃🏼|woman dancing: medium-light skin tone
+1F4831F3FD|💃🏽|woman dancing: medium skin tone
+1F4831F3FE|💃🏾|woman dancing: medium-dark skin tone
+1F4831F3FF|💃🏿|woman dancing: dark skin tone
+1F57A|🕺|man dancing
+1F57A1F3FB|🕺🏻|man dancing: light skin tone
+1F57A1F3FC|🕺🏼|man dancing: medium-light skin tone
+1F57A1F3FD|🕺🏽|man dancing: medium skin tone
+1F57A1F3FE|🕺🏾|man dancing: medium-dark skin tone
+1F57A1F3FF|🕺🏿|man dancing: dark skin tone
+1F574FE0F|🕴️|person in suit levitating
+1F5741F3FB|🕴🏻|person in suit levitating: light skin tone
+1F5741F3FC|🕴🏼|person in suit levitating: medium-light skin tone
+1F5741F3FD|🕴🏽|person in suit levitating: medium skin tone
+1F5741F3FE|🕴🏾|person in suit levitating: medium-dark skin tone
+1F5741F3FF|🕴🏿|person in suit levitating: dark skin tone
+1F46F|👯|people with bunny ears
+1F46F200D2642FE0F|👯‍♂️|men with bunny ears
+1F46F200D2640FE0F|👯‍♀️|women with bunny ears
+1F9D6|🧖|person in steamy room
+1F9D61F3FB|🧖🏻|person in steamy room: light skin tone
+1F9D61F3FC|🧖🏼|person in steamy room: medium-light skin tone
+1F9D61F3FD|🧖🏽|person in steamy room: medium skin tone
+1F9D61F3FE|🧖🏾|person in steamy room: medium-dark skin tone
+1F9D61F3FF|🧖🏿|person in steamy room: dark skin tone
+1F9D6200D2642FE0F|🧖‍♂️|man in steamy room
+1F9D61F3FB200D2642FE0F|🧖🏻‍♂️|man in steamy room: light skin tone
+1F9D61F3FC200D2642FE0F|🧖🏼‍♂️|man in steamy room: medium-light skin tone
+1F9D61F3FD200D2642FE0F|🧖🏽‍♂️|man in steamy room: medium skin tone
+1F9D61F3FE200D2642FE0F|🧖🏾‍♂️|man in steamy room: medium-dark skin tone
+1F9D61F3FF200D2642FE0F|🧖🏿‍♂️|man in steamy room: dark skin tone
+1F9D6200D2640FE0F|🧖‍♀️|woman in steamy room
+1F9D61F3FB200D2640FE0F|🧖🏻‍♀️|woman in steamy room: light skin tone
+1F9D61F3FC200D2640FE0F|🧖🏼‍♀️|woman in steamy room: medium-light skin tone
+1F9D61F3FD200D2640FE0F|🧖🏽‍♀️|woman in steamy room: medium skin tone
+1F9D61F3FE200D2640FE0F|🧖🏾‍♀️|woman in steamy room: medium-dark skin tone
+1F9D61F3FF200D2640FE0F|🧖🏿‍♀️|woman in steamy room: dark skin tone
+1F9D7|🧗|person climbing
+1F9D71F3FB|🧗🏻|person climbing: light skin tone
+1F9D71F3FC|🧗🏼|person climbing: medium-light skin tone
+1F9D71F3FD|🧗🏽|person climbing: medium skin tone
+1F9D71F3FE|🧗🏾|person climbing: medium-dark skin tone
+1F9D71F3FF|🧗🏿|person climbing: dark skin tone
+1F9D7200D2642FE0F|🧗‍♂️|man climbing
+1F9D71F3FB200D2642FE0F|🧗🏻‍♂️|man climbing: light skin tone
+1F9D71F3FC200D2642FE0F|🧗🏼‍♂️|man climbing: medium-light skin tone
+1F9D71F3FD200D2642FE0F|🧗🏽‍♂️|man climbing: medium skin tone
+1F9D71F3FE200D2642FE0F|🧗🏾‍♂️|man climbing: medium-dark skin tone
+1F9D71F3FF200D2642FE0F|🧗🏿‍♂️|man climbing: dark skin tone
+1F9D7200D2640FE0F|🧗‍♀️|woman climbing
+1F9D71F3FB200D2640FE0F|🧗🏻‍♀️|woman climbing: light skin tone
+1F9D71F3FC200D2640FE0F|🧗🏼‍♀️|woman climbing: medium-light skin tone
+1F9D71F3FD200D2640FE0F|🧗🏽‍♀️|woman climbing: medium skin tone
+1F9D71F3FE200D2640FE0F|🧗🏾‍♀️|woman climbing: medium-dark skin tone
+1F9D71F3FF200D2640FE0F|🧗🏿‍♀️|woman climbing: dark skin tone
+1F93A|🤺|person fencing
+1F3C7|🏇|horse racing
+1F3C71F3FB|🏇🏻|horse racing: light skin tone
+1F3C71F3FC|🏇🏼|horse racing: medium-light skin tone
+1F3C71F3FD|🏇🏽|horse racing: medium skin tone
+1F3C71F3FE|🏇🏾|horse racing: medium-dark skin tone
+1F3C71F3FF|🏇🏿|horse racing: dark skin tone
+26F7FE0F|⛷️|skier
+1F3C2|🏂|snowboarder
+1F3C21F3FB|🏂🏻|snowboarder: light skin tone
+1F3C21F3FC|🏂🏼|snowboarder: medium-light skin tone
+1F3C21F3FD|🏂🏽|snowboarder: medium skin tone
+1F3C21F3FE|🏂🏾|snowboarder: medium-dark skin tone
+1F3C21F3FF|🏂🏿|snowboarder: dark skin tone
+1F3CCFE0F|🏌️|person golfing
+1F3CC1F3FB|🏌🏻|person golfing: light skin tone
+1F3CC1F3FC|🏌🏼|person golfing: medium-light skin tone
+1F3CC1F3FD|🏌🏽|person golfing: medium skin tone
+1F3CC1F3FE|🏌🏾|person golfing: medium-dark skin tone
+1F3CC1F3FF|🏌🏿|person golfing: dark skin tone
+1F3CCFE0F200D2642FE0F|🏌️‍♂️|man golfing
+1F3CC1F3FB200D2642FE0F|🏌🏻‍♂️|man golfing: light skin tone
+1F3CC1F3FC200D2642FE0F|🏌🏼‍♂️|man golfing: medium-light skin tone
+1F3CC1F3FD200D2642FE0F|🏌🏽‍♂️|man golfing: medium skin tone
+1F3CC1F3FE200D2642FE0F|🏌🏾‍♂️|man golfing: medium-dark skin tone
+1F3CC1F3FF200D2642FE0F|🏌🏿‍♂️|man golfing: dark skin tone
+1F3CCFE0F200D2640FE0F|🏌️‍♀️|woman golfing
+1F3CC1F3FB200D2640FE0F|🏌🏻‍♀️|woman golfing: light skin tone
+1F3CC1F3FC200D2640FE0F|🏌🏼‍♀️|woman golfing: medium-light skin tone
+1F3CC1F3FD200D2640FE0F|🏌🏽‍♀️|woman golfing: medium skin tone
+1F3CC1F3FE200D2640FE0F|🏌🏾‍♀️|woman golfing: medium-dark skin tone
+1F3CC1F3FF200D2640FE0F|🏌🏿‍♀️|woman golfing: dark skin tone
+1F3C4|🏄|person surfing
+1F3C41F3FB|🏄🏻|person surfing: light skin tone
+1F3C41F3FC|🏄🏼|person surfing: medium-light skin tone
+1F3C41F3FD|🏄🏽|person surfing: medium skin tone
+1F3C41F3FE|🏄🏾|person surfing: medium-dark skin tone
+1F3C41F3FF|🏄🏿|person surfing: dark skin tone
+1F3C4200D2642FE0F|🏄‍♂️|man surfing
+1F3C41F3FB200D2642FE0F|🏄🏻‍♂️|man surfing: light skin tone
+1F3C41F3FC200D2642FE0F|🏄🏼‍♂️|man surfing: medium-light skin tone
+1F3C41F3FD200D2642FE0F|🏄🏽‍♂️|man surfing: medium skin tone
+1F3C41F3FE200D2642FE0F|🏄🏾‍♂️|man surfing: medium-dark skin tone
+1F3C41F3FF200D2642FE0F|🏄🏿‍♂️|man surfing: dark skin tone
+1F3C4200D2640FE0F|🏄‍♀️|woman surfing
+1F3C41F3FB200D2640FE0F|🏄🏻‍♀️|woman surfing: light skin tone
+1F3C41F3FC200D2640FE0F|🏄🏼‍♀️|woman surfing: medium-light skin tone
+1F3C41F3FD200D2640FE0F|🏄🏽‍♀️|woman surfing: medium skin tone
+1F3C41F3FE200D2640FE0F|🏄🏾‍♀️|woman surfing: medium-dark skin tone
+1F3C41F3FF200D2640FE0F|🏄🏿‍♀️|woman surfing: dark skin tone
+1F6A3|🚣|person rowing boat
+1F6A31F3FB|🚣🏻|person rowing boat: light skin tone
+1F6A31F3FC|🚣🏼|person rowing boat: medium-light skin tone
+1F6A31F3FD|🚣🏽|person rowing boat: medium skin tone
+1F6A31F3FE|🚣🏾|person rowing boat: medium-dark skin tone
+1F6A31F3FF|🚣🏿|person rowing boat: dark skin tone
+1F6A3200D2642FE0F|🚣‍♂️|man rowing boat
+1F6A31F3FB200D2642FE0F|🚣🏻‍♂️|man rowing boat: light skin tone
+1F6A31F3FC200D2642FE0F|🚣🏼‍♂️|man rowing boat: medium-light skin tone
+1F6A31F3FD200D2642FE0F|🚣🏽‍♂️|man rowing boat: medium skin tone
+1F6A31F3FE200D2642FE0F|🚣🏾‍♂️|man rowing boat: medium-dark skin tone
+1F6A31F3FF200D2642FE0F|🚣🏿‍♂️|man rowing boat: dark skin tone
+1F6A3200D2640FE0F|🚣‍♀️|woman rowing boat
+1F6A31F3FB200D2640FE0F|🚣🏻‍♀️|woman rowing boat: light skin tone
+1F6A31F3FC200D2640FE0F|🚣🏼‍♀️|woman rowing boat: medium-light skin tone
+1F6A31F3FD200D2640FE0F|🚣🏽‍♀️|woman rowing boat: medium skin tone
+1F6A31F3FE200D2640FE0F|🚣🏾‍♀️|woman rowing boat: medium-dark skin tone
+1F6A31F3FF200D2640FE0F|🚣🏿‍♀️|woman rowing boat: dark skin tone
+1F3CA|🏊|person swimming
+1F3CA1F3FB|🏊🏻|person swimming: light skin tone
+1F3CA1F3FC|🏊🏼|person swimming: medium-light skin tone
+1F3CA1F3FD|🏊🏽|person swimming: medium skin tone
+1F3CA1F3FE|🏊🏾|person swimming: medium-dark skin tone
+1F3CA1F3FF|🏊🏿|person swimming: dark skin tone
+1F3CA200D2642FE0F|🏊‍♂️|man swimming
+1F3CA1F3FB200D2642FE0F|🏊🏻‍♂️|man swimming: light skin tone
+1F3CA1F3FC200D2642FE0F|🏊🏼‍♂️|man swimming: medium-light skin tone
+1F3CA1F3FD200D2642FE0F|🏊🏽‍♂️|man swimming: medium skin tone
+1F3CA1F3FE200D2642FE0F|🏊🏾‍♂️|man swimming: medium-dark skin tone
+1F3CA1F3FF200D2642FE0F|🏊🏿‍♂️|man swimming: dark skin tone
+1F3CA200D2640FE0F|🏊‍♀️|woman swimming
+1F3CA1F3FB200D2640FE0F|🏊🏻‍♀️|woman swimming: light skin tone
+1F3CA1F3FC200D2640FE0F|🏊🏼‍♀️|woman swimming: medium-light skin tone
+1F3CA1F3FD200D2640FE0F|🏊🏽‍♀️|woman swimming: medium skin tone
+1F3CA1F3FE200D2640FE0F|🏊🏾‍♀️|woman swimming: medium-dark skin tone
+1F3CA1F3FF200D2640FE0F|🏊🏿‍♀️|woman swimming: dark skin tone
+26F9FE0F|⛹️|person bouncing ball
+26F91F3FB|⛹🏻|person bouncing ball: light skin tone
+26F91F3FC|⛹🏼|person bouncing ball: medium-light skin tone
+26F91F3FD|⛹🏽|person bouncing ball: medium skin tone
+26F91F3FE|⛹🏾|person bouncing ball: medium-dark skin tone
+26F91F3FF|⛹🏿|person bouncing ball: dark skin tone
+26F9FE0F200D2642FE0F|⛹️‍♂️|man bouncing ball
+26F91F3FB200D2642FE0F|⛹🏻‍♂️|man bouncing ball: light skin tone
+26F91F3FC200D2642FE0F|⛹🏼‍♂️|man bouncing ball: medium-light skin tone
+26F91F3FD200D2642FE0F|⛹🏽‍♂️|man bouncing ball: medium skin tone
+26F91F3FE200D2642FE0F|⛹🏾‍♂️|man bouncing ball: medium-dark skin tone
+26F91F3FF200D2642FE0F|⛹🏿‍♂️|man bouncing ball: dark skin tone
+26F9FE0F200D2640FE0F|⛹️‍♀️|woman bouncing ball
+26F91F3FB200D2640FE0F|⛹🏻‍♀️|woman bouncing ball: light skin tone
+26F91F3FC200D2640FE0F|⛹🏼‍♀️|woman bouncing ball: medium-light skin tone
+26F91F3FD200D2640FE0F|⛹🏽‍♀️|woman bouncing ball: medium skin tone
+26F91F3FE200D2640FE0F|⛹🏾‍♀️|woman bouncing ball: medium-dark skin tone
+26F91F3FF200D2640FE0F|⛹🏿‍♀️|woman bouncing ball: dark skin tone
+1F3CBFE0F|🏋️|person lifting weights
+1F3CB1F3FB|🏋🏻|person lifting weights: light skin tone
+1F3CB1F3FC|🏋🏼|person lifting weights: medium-light skin tone
+1F3CB1F3FD|🏋🏽|person lifting weights: medium skin tone
+1F3CB1F3FE|🏋🏾|person lifting weights: medium-dark skin tone
+1F3CB1F3FF|🏋🏿|person lifting weights: dark skin tone
+1F3CBFE0F200D2642FE0F|🏋️‍♂️|man lifting weights
+1F3CB1F3FB200D2642FE0F|🏋🏻‍♂️|man lifting weights: light skin tone
+1F3CB1F3FC200D2642FE0F|🏋🏼‍♂️|man lifting weights: medium-light skin tone
+1F3CB1F3FD200D2642FE0F|🏋🏽‍♂️|man lifting weights: medium skin tone
+1F3CB1F3FE200D2642FE0F|🏋🏾‍♂️|man lifting weights: medium-dark skin tone
+1F3CB1F3FF200D2642FE0F|🏋🏿‍♂️|man lifting weights: dark skin tone
+1F3CBFE0F200D2640FE0F|🏋️‍♀️|woman lifting weights
+1F3CB1F3FB200D2640FE0F|🏋🏻‍♀️|woman lifting weights: light skin tone
+1F3CB1F3FC200D2640FE0F|🏋🏼‍♀️|woman lifting weights: medium-light skin tone
+1F3CB1F3FD200D2640FE0F|🏋🏽‍♀️|woman lifting weights: medium skin tone
+1F3CB1F3FE200D2640FE0F|🏋🏾‍♀️|woman lifting weights: medium-dark skin tone
+1F3CB1F3FF200D2640FE0F|🏋🏿‍♀️|woman lifting weights: dark skin tone
+1F6B4|🚴|person biking
+1F6B41F3FB|🚴🏻|person biking: light skin tone
+1F6B41F3FC|🚴🏼|person biking: medium-light skin tone
+1F6B41F3FD|🚴🏽|person biking: medium skin tone
+1F6B41F3FE|🚴🏾|person biking: medium-dark skin tone
+1F6B41F3FF|🚴🏿|person biking: dark skin tone
+1F6B4200D2642FE0F|🚴‍♂️|man biking
+1F6B41F3FB200D2642FE0F|🚴🏻‍♂️|man biking: light skin tone
+1F6B41F3FC200D2642FE0F|🚴🏼‍♂️|man biking: medium-light skin tone
+1F6B41F3FD200D2642FE0F|🚴🏽‍♂️|man biking: medium skin tone
+1F6B41F3FE200D2642FE0F|🚴🏾‍♂️|man biking: medium-dark skin tone
+1F6B41F3FF200D2642FE0F|🚴🏿‍♂️|man biking: dark skin tone
+1F6B4200D2640FE0F|🚴‍♀️|woman biking
+1F6B41F3FB200D2640FE0F|🚴🏻‍♀️|woman biking: light skin tone
+1F6B41F3FC200D2640FE0F|🚴🏼‍♀️|woman biking: medium-light skin tone
+1F6B41F3FD200D2640FE0F|🚴🏽‍♀️|woman biking: medium skin tone
+1F6B41F3FE200D2640FE0F|🚴🏾‍♀️|woman biking: medium-dark skin tone
+1F6B41F3FF200D2640FE0F|🚴🏿‍♀️|woman biking: dark skin tone
+1F6B5|🚵|person mountain biking
+1F6B51F3FB|🚵🏻|person mountain biking: light skin tone
+1F6B51F3FC|🚵🏼|person mountain biking: medium-light skin tone
+1F6B51F3FD|🚵🏽|person mountain biking: medium skin tone
+1F6B51F3FE|🚵🏾|person mountain biking: medium-dark skin tone
+1F6B51F3FF|🚵🏿|person mountain biking: dark skin tone
+1F6B5200D2642FE0F|🚵‍♂️|man mountain biking
+1F6B51F3FB200D2642FE0F|🚵🏻‍♂️|man mountain biking: light skin tone
+1F6B51F3FC200D2642FE0F|🚵🏼‍♂️|man mountain biking: medium-light skin tone
+1F6B51F3FD200D2642FE0F|🚵🏽‍♂️|man mountain biking: medium skin tone
+1F6B51F3FE200D2642FE0F|🚵🏾‍♂️|man mountain biking: medium-dark skin tone
+1F6B51F3FF200D2642FE0F|🚵🏿‍♂️|man mountain biking: dark skin tone
+1F6B5200D2640FE0F|🚵‍♀️|woman mountain biking
+1F6B51F3FB200D2640FE0F|🚵🏻‍♀️|woman mountain biking: light skin tone
+1F6B51F3FC200D2640FE0F|🚵🏼‍♀️|woman mountain biking: medium-light skin tone
+1F6B51F3FD200D2640FE0F|🚵🏽‍♀️|woman mountain biking: medium skin tone
+1F6B51F3FE200D2640FE0F|🚵🏾‍♀️|woman mountain biking: medium-dark skin tone
+1F6B51F3FF200D2640FE0F|🚵🏿‍♀️|woman mountain biking: dark skin tone
+1F938|🤸|person cartwheeling
+1F9381F3FB|🤸🏻|person cartwheeling: light skin tone
+1F9381F3FC|🤸🏼|person cartwheeling: medium-light skin tone
+1F9381F3FD|🤸🏽|person cartwheeling: medium skin tone
+1F9381F3FE|🤸🏾|person cartwheeling: medium-dark skin tone
+1F9381F3FF|🤸🏿|person cartwheeling: dark skin tone
+1F938200D2642FE0F|🤸‍♂️|man cartwheeling
+1F9381F3FB200D2642FE0F|🤸🏻‍♂️|man cartwheeling: light skin tone
+1F9381F3FC200D2642FE0F|🤸🏼‍♂️|man cartwheeling: medium-light skin tone
+1F9381F3FD200D2642FE0F|🤸🏽‍♂️|man cartwheeling: medium skin tone
+1F9381F3FE200D2642FE0F|🤸🏾‍♂️|man cartwheeling: medium-dark skin tone
+1F9381F3FF200D2642FE0F|🤸🏿‍♂️|man cartwheeling: dark skin tone
+1F938200D2640FE0F|🤸‍♀️|woman cartwheeling
+1F9381F3FB200D2640FE0F|🤸🏻‍♀️|woman cartwheeling: light skin tone
+1F9381F3FC200D2640FE0F|🤸🏼‍♀️|woman cartwheeling: medium-light skin tone
+1F9381F3FD200D2640FE0F|🤸🏽‍♀️|woman cartwheeling: medium skin tone
+1F9381F3FE200D2640FE0F|🤸🏾‍♀️|woman cartwheeling: medium-dark skin tone
+1F9381F3FF200D2640FE0F|🤸🏿‍♀️|woman cartwheeling: dark skin tone
+1F93C|🤼|people wrestling
+1F93C200D2642FE0F|🤼‍♂️|men wrestling
+1F93C200D2640FE0F|🤼‍♀️|women wrestling
+1F93D|🤽|person playing water polo
+1F93D1F3FB|🤽🏻|person playing water polo: light skin tone
+1F93D1F3FC|🤽🏼|person playing water polo: medium-light skin tone
+1F93D1F3FD|🤽🏽|person playing water polo: medium skin tone
+1F93D1F3FE|🤽🏾|person playing water polo: medium-dark skin tone
+1F93D1F3FF|🤽🏿|person playing water polo: dark skin tone
+1F93D200D2642FE0F|🤽‍♂️|man playing water polo
+1F93D1F3FB200D2642FE0F|🤽🏻‍♂️|man playing water polo: light skin tone
+1F93D1F3FC200D2642FE0F|🤽🏼‍♂️|man playing water polo: medium-light skin tone
+1F93D1F3FD200D2642FE0F|🤽🏽‍♂️|man playing water polo: medium skin tone
+1F93D1F3FE200D2642FE0F|🤽🏾‍♂️|man playing water polo: medium-dark skin tone
+1F93D1F3FF200D2642FE0F|🤽🏿‍♂️|man playing water polo: dark skin tone
+1F93D200D2640FE0F|🤽‍♀️|woman playing water polo
+1F93D1F3FB200D2640FE0F|🤽🏻‍♀️|woman playing water polo: light skin tone
+1F93D1F3FC200D2640FE0F|🤽🏼‍♀️|woman playing water polo: medium-light skin tone
+1F93D1F3FD200D2640FE0F|🤽🏽‍♀️|woman playing water polo: medium skin tone
+1F93D1F3FE200D2640FE0F|🤽🏾‍♀️|woman playing water polo: medium-dark skin tone
+1F93D1F3FF200D2640FE0F|🤽🏿‍♀️|woman playing water polo: dark skin tone
+1F93E|🤾|person playing handball
+1F93E1F3FB|🤾🏻|person playing handball: light skin tone
+1F93E1F3FC|🤾🏼|person playing handball: medium-light skin tone
+1F93E1F3FD|🤾🏽|person playing handball: medium skin tone
+1F93E1F3FE|🤾🏾|person playing handball: medium-dark skin tone
+1F93E1F3FF|🤾🏿|person playing handball: dark skin tone
+1F93E200D2642FE0F|🤾‍♂️|man playing handball
+1F93E1F3FB200D2642FE0F|🤾🏻‍♂️|man playing handball: light skin tone
+1F93E1F3FC200D2642FE0F|🤾🏼‍♂️|man playing handball: medium-light skin tone
+1F93E1F3FD200D2642FE0F|🤾🏽‍♂️|man playing handball: medium skin tone
+1F93E1F3FE200D2642FE0F|🤾🏾‍♂️|man playing handball: medium-dark skin tone
+1F93E1F3FF200D2642FE0F|🤾🏿‍♂️|man playing handball: dark skin tone
+1F93E200D2640FE0F|🤾‍♀️|woman playing handball
+1F93E1F3FB200D2640FE0F|🤾🏻‍♀️|woman playing handball: light skin tone
+1F93E1F3FC200D2640FE0F|🤾🏼‍♀️|woman playing handball: medium-light skin tone
+1F93E1F3FD200D2640FE0F|🤾🏽‍♀️|woman playing handball: medium skin tone
+1F93E1F3FE200D2640FE0F|🤾🏾‍♀️|woman playing handball: medium-dark skin tone
+1F93E1F3FF200D2640FE0F|🤾🏿‍♀️|woman playing handball: dark skin tone
+1F939|🤹|person juggling
+1F9391F3FB|🤹🏻|person juggling: light skin tone
+1F9391F3FC|🤹🏼|person juggling: medium-light skin tone
+1F9391F3FD|🤹🏽|person juggling: medium skin tone
+1F9391F3FE|🤹🏾|person juggling: medium-dark skin tone
+1F9391F3FF|🤹🏿|person juggling: dark skin tone
+1F939200D2642FE0F|🤹‍♂️|man juggling
+1F9391F3FB200D2642FE0F|🤹🏻‍♂️|man juggling: light skin tone
+1F9391F3FC200D2642FE0F|🤹🏼‍♂️|man juggling: medium-light skin tone
+1F9391F3FD200D2642FE0F|🤹🏽‍♂️|man juggling: medium skin tone
+1F9391F3FE200D2642FE0F|🤹🏾‍♂️|man juggling: medium-dark skin tone
+1F9391F3FF200D2642FE0F|🤹🏿‍♂️|man juggling: dark skin tone
+1F939200D2640FE0F|🤹‍♀️|woman juggling
+1F9391F3FB200D2640FE0F|🤹🏻‍♀️|woman juggling: light skin tone
+1F9391F3FC200D2640FE0F|🤹🏼‍♀️|woman juggling: medium-light skin tone
+1F9391F3FD200D2640FE0F|🤹🏽‍♀️|woman juggling: medium skin tone
+1F9391F3FE200D2640FE0F|🤹🏾‍♀️|woman juggling: medium-dark skin tone
+1F9391F3FF200D2640FE0F|🤹🏿‍♀️|woman juggling: dark skin tone
+1F9D8|🧘|person in lotus position
+1F9D81F3FB|🧘🏻|person in lotus position: light skin tone
+1F9D81F3FC|🧘🏼|person in lotus position: medium-light skin tone
+1F9D81F3FD|🧘🏽|person in lotus position: medium skin tone
+1F9D81F3FE|🧘🏾|person in lotus position: medium-dark skin tone
+1F9D81F3FF|🧘🏿|person in lotus position: dark skin tone
+1F9D8200D2642FE0F|🧘‍♂️|man in lotus position
+1F9D81F3FB200D2642FE0F|🧘🏻‍♂️|man in lotus position: light skin tone
+1F9D81F3FC200D2642FE0F|🧘🏼‍♂️|man in lotus position: medium-light skin tone
+1F9D81F3FD200D2642FE0F|🧘🏽‍♂️|man in lotus position: medium skin tone
+1F9D81F3FE200D2642FE0F|🧘🏾‍♂️|man in lotus position: medium-dark skin tone
+1F9D81F3FF200D2642FE0F|🧘🏿‍♂️|man in lotus position: dark skin tone
+1F9D8200D2640FE0F|🧘‍♀️|woman in lotus position
+1F9D81F3FB200D2640FE0F|🧘🏻‍♀️|woman in lotus position: light skin tone
+1F9D81F3FC200D2640FE0F|🧘🏼‍♀️|woman in lotus position: medium-light skin tone
+1F9D81F3FD200D2640FE0F|🧘🏽‍♀️|woman in lotus position: medium skin tone
+1F9D81F3FE200D2640FE0F|🧘🏾‍♀️|woman in lotus position: medium-dark skin tone
+1F9D81F3FF200D2640FE0F|🧘🏿‍♀️|woman in lotus position: dark skin tone
+1F6C0|🛀|person taking bath
+1F6C01F3FB|🛀🏻|person taking bath: light skin tone
+1F6C01F3FC|🛀🏼|person taking bath: medium-light skin tone
+1F6C01F3FD|🛀🏽|person taking bath: medium skin tone
+1F6C01F3FE|🛀🏾|person taking bath: medium-dark skin tone
+1F6C01F3FF|🛀🏿|person taking bath: dark skin tone
+1F6CC|🛌|person in bed
+1F6CC1F3FB|🛌🏻|person in bed: light skin tone
+1F6CC1F3FC|🛌🏼|person in bed: medium-light skin tone
+1F6CC1F3FD|🛌🏽|person in bed: medium skin tone
+1F6CC1F3FE|🛌🏾|person in bed: medium-dark skin tone
+1F6CC1F3FF|🛌🏿|person in bed: dark skin tone
+1F9D1200D1F91D200D1F9D1|🧑‍🤝‍🧑|people holding hands
+1F9D11F3FB200D1F91D200D1F9D11F3FB|🧑🏻‍🤝‍🧑🏻|people holding hands: light skin tone
+1F9D11F3FB200D1F91D200D1F9D11F3FC|🧑🏻‍🤝‍🧑🏼|people holding hands: light skin tone, medium-light skin tone
+1F9D11F3FB200D1F91D200D1F9D11F3FD|🧑🏻‍🤝‍🧑🏽|people holding hands: light skin tone, medium skin tone
+1F9D11F3FB200D1F91D200D1F9D11F3FE|🧑🏻‍🤝‍🧑🏾|people holding hands: light skin tone, medium-dark skin tone
+1F9D11F3FB200D1F91D200D1F9D11F3FF|🧑🏻‍🤝‍🧑🏿|people holding hands: light skin tone, dark skin tone
+1F9D11F3FC200D1F91D200D1F9D11F3FB|🧑🏼‍🤝‍🧑🏻|people holding hands: medium-light skin tone, light skin tone
+1F9D11F3FC200D1F91D200D1F9D11F3FC|🧑🏼‍🤝‍🧑🏼|people holding hands: medium-light skin tone
+1F9D11F3FC200D1F91D200D1F9D11F3FD|🧑🏼‍🤝‍🧑🏽|people holding hands: medium-light skin tone, medium skin tone
+1F9D11F3FC200D1F91D200D1F9D11F3FE|🧑🏼‍🤝‍🧑🏾|people holding hands: medium-light skin tone, medium-dark skin tone
+1F9D11F3FC200D1F91D200D1F9D11F3FF|🧑🏼‍🤝‍🧑🏿|people holding hands: medium-light skin tone, dark skin tone
+1F9D11F3FD200D1F91D200D1F9D11F3FB|🧑🏽‍🤝‍🧑🏻|people holding hands: medium skin tone, light skin tone
+1F9D11F3FD200D1F91D200D1F9D11F3FC|🧑🏽‍🤝‍🧑🏼|people holding hands: medium skin tone, medium-light skin tone
+1F9D11F3FD200D1F91D200D1F9D11F3FD|🧑🏽‍🤝‍🧑🏽|people holding hands: medium skin tone
+1F9D11F3FD200D1F91D200D1F9D11F3FE|🧑🏽‍🤝‍🧑🏾|people holding hands: medium skin tone, medium-dark skin tone
+1F9D11F3FD200D1F91D200D1F9D11F3FF|🧑🏽‍🤝‍🧑🏿|people holding hands: medium skin tone, dark skin tone
+1F9D11F3FE200D1F91D200D1F9D11F3FB|🧑🏾‍🤝‍🧑🏻|people holding hands: medium-dark skin tone, light skin tone
+1F9D11F3FE200D1F91D200D1F9D11F3FC|🧑🏾‍🤝‍🧑🏼|people holding hands: medium-dark skin tone, medium-light skin tone
+1F9D11F3FE200D1F91D200D1F9D11F3FD|🧑🏾‍🤝‍🧑🏽|people holding hands: medium-dark skin tone, medium skin tone
+1F9D11F3FE200D1F91D200D1F9D11F3FE|🧑🏾‍🤝‍🧑🏾|people holding hands: medium-dark skin tone
+1F9D11F3FE200D1F91D200D1F9D11F3FF|🧑🏾‍🤝‍🧑🏿|people holding hands: medium-dark skin tone, dark skin tone
+1F9D11F3FF200D1F91D200D1F9D11F3FB|🧑🏿‍🤝‍🧑🏻|people holding hands: dark skin tone, light skin tone
+1F9D11F3FF200D1F91D200D1F9D11F3FC|🧑🏿‍🤝‍🧑🏼|people holding hands: dark skin tone, medium-light skin tone
+1F9D11F3FF200D1F91D200D1F9D11F3FD|🧑🏿‍🤝‍🧑🏽|people holding hands: dark skin tone, medium skin tone
+1F9D11F3FF200D1F91D200D1F9D11F3FE|🧑🏿‍🤝‍🧑🏾|people holding hands: dark skin tone, medium-dark skin tone
+1F9D11F3FF200D1F91D200D1F9D11F3FF|🧑🏿‍🤝‍🧑🏿|people holding hands: dark skin tone
+1F46D|👭|women holding hands
+1F46D1F3FB|👭🏻|women holding hands: light skin tone
+1F4691F3FB200D1F91D200D1F4691F3FC|👩🏻‍🤝‍👩🏼|women holding hands: light skin tone, medium-light skin tone
+1F4691F3FB200D1F91D200D1F4691F3FD|👩🏻‍🤝‍👩🏽|women holding hands: light skin tone, medium skin tone
+1F4691F3FB200D1F91D200D1F4691F3FE|👩🏻‍🤝‍👩🏾|women holding hands: light skin tone, medium-dark skin tone
+1F4691F3FB200D1F91D200D1F4691F3FF|👩🏻‍🤝‍👩🏿|women holding hands: light skin tone, dark skin tone
+1F4691F3FC200D1F91D200D1F4691F3FB|👩🏼‍🤝‍👩🏻|women holding hands: medium-light skin tone, light skin tone
+1F46D1F3FC|👭🏼|women holding hands: medium-light skin tone
+1F4691F3FC200D1F91D200D1F4691F3FD|👩🏼‍🤝‍👩🏽|women holding hands: medium-light skin tone, medium skin tone
+1F4691F3FC200D1F91D200D1F4691F3FE|👩🏼‍🤝‍👩🏾|women holding hands: medium-light skin tone, medium-dark skin tone
+1F4691F3FC200D1F91D200D1F4691F3FF|👩🏼‍🤝‍👩🏿|women holding hands: medium-light skin tone, dark skin tone
+1F4691F3FD200D1F91D200D1F4691F3FB|👩🏽‍🤝‍👩🏻|women holding hands: medium skin tone, light skin tone
+1F4691F3FD200D1F91D200D1F4691F3FC|👩🏽‍🤝‍👩🏼|women holding hands: medium skin tone, medium-light skin tone
+1F46D1F3FD|👭🏽|women holding hands: medium skin tone
+1F4691F3FD200D1F91D200D1F4691F3FE|👩🏽‍🤝‍👩🏾|women holding hands: medium skin tone, medium-dark skin tone
+1F4691F3FD200D1F91D200D1F4691F3FF|👩🏽‍🤝‍👩🏿|women holding hands: medium skin tone, dark skin tone
+1F4691F3FE200D1F91D200D1F4691F3FB|👩🏾‍🤝‍👩🏻|women holding hands: medium-dark skin tone, light skin tone
+1F4691F3FE200D1F91D200D1F4691F3FC|👩🏾‍🤝‍👩🏼|women holding hands: medium-dark skin tone, medium-light skin tone
+1F4691F3FE200D1F91D200D1F4691F3FD|👩🏾‍🤝‍👩🏽|women holding hands: medium-dark skin tone, medium skin tone
+1F46D1F3FE|👭🏾|women holding hands: medium-dark skin tone
+1F4691F3FE200D1F91D200D1F4691F3FF|👩🏾‍🤝‍👩🏿|women holding hands: medium-dark skin tone, dark skin tone
+1F4691F3FF200D1F91D200D1F4691F3FB|👩🏿‍🤝‍👩🏻|women holding hands: dark skin tone, light skin tone
+1F4691F3FF200D1F91D200D1F4691F3FC|👩🏿‍🤝‍👩🏼|women holding hands: dark skin tone, medium-light skin tone
+1F4691F3FF200D1F91D200D1F4691F3FD|👩🏿‍🤝‍👩🏽|women holding hands: dark skin tone, medium skin tone
+1F4691F3FF200D1F91D200D1F4691F3FE|👩🏿‍🤝‍👩🏾|women holding hands: dark skin tone, medium-dark skin tone
+1F46D1F3FF|👭🏿|women holding hands: dark skin tone
+1F46B|👫|woman and man holding hands
+1F46B1F3FB|👫🏻|woman and man holding hands: light skin tone
+1F4691F3FB200D1F91D200D1F4681F3FC|👩🏻‍🤝‍👨🏼|woman and man holding hands: light skin tone, medium-light skin tone
+1F4691F3FB200D1F91D200D1F4681F3FD|👩🏻‍🤝‍👨🏽|woman and man holding hands: light skin tone, medium skin tone
+1F4691F3FB200D1F91D200D1F4681F3FE|👩🏻‍🤝‍👨🏾|woman and man holding hands: light skin tone, medium-dark skin tone
+1F4691F3FB200D1F91D200D1F4681F3FF|👩🏻‍🤝‍👨🏿|woman and man holding hands: light skin tone, dark skin tone
+1F4691F3FC200D1F91D200D1F4681F3FB|👩🏼‍🤝‍👨🏻|woman and man holding hands: medium-light skin tone, light skin tone
+1F46B1F3FC|👫🏼|woman and man holding hands: medium-light skin tone
+1F4691F3FC200D1F91D200D1F4681F3FD|👩🏼‍🤝‍👨🏽|woman and man holding hands: medium-light skin tone, medium skin tone
+1F4691F3FC200D1F91D200D1F4681F3FE|👩🏼‍🤝‍👨🏾|woman and man holding hands: medium-light skin tone, medium-dark skin tone
+1F4691F3FC200D1F91D200D1F4681F3FF|👩🏼‍🤝‍👨🏿|woman and man holding hands: medium-light skin tone, dark skin tone
+1F4691F3FD200D1F91D200D1F4681F3FB|👩🏽‍🤝‍👨🏻|woman and man holding hands: medium skin tone, light skin tone
+1F4691F3FD200D1F91D200D1F4681F3FC|👩🏽‍🤝‍👨🏼|woman and man holding hands: medium skin tone, medium-light skin tone
+1F46B1F3FD|👫🏽|woman and man holding hands: medium skin tone
+1F4691F3FD200D1F91D200D1F4681F3FE|👩🏽‍🤝‍👨🏾|woman and man holding hands: medium skin tone, medium-dark skin tone
+1F4691F3FD200D1F91D200D1F4681F3FF|👩🏽‍🤝‍👨🏿|woman and man holding hands: medium skin tone, dark skin tone
+1F4691F3FE200D1F91D200D1F4681F3FB|👩🏾‍🤝‍👨🏻|woman and man holding hands: medium-dark skin tone, light skin tone
+1F4691F3FE200D1F91D200D1F4681F3FC|👩🏾‍🤝‍👨🏼|woman and man holding hands: medium-dark skin tone, medium-light skin tone
+1F4691F3FE200D1F91D200D1F4681F3FD|👩🏾‍🤝‍👨🏽|woman and man holding hands: medium-dark skin tone, medium skin tone
+1F46B1F3FE|👫🏾|woman and man holding hands: medium-dark skin tone
+1F4691F3FE200D1F91D200D1F4681F3FF|👩🏾‍🤝‍👨🏿|woman and man holding hands: medium-dark skin tone, dark skin tone
+1F4691F3FF200D1F91D200D1F4681F3FB|👩🏿‍🤝‍👨🏻|woman and man holding hands: dark skin tone, light skin tone
+1F4691F3FF200D1F91D200D1F4681F3FC|👩🏿‍🤝‍👨🏼|woman and man holding hands: dark skin tone, medium-light skin tone
+1F4691F3FF200D1F91D200D1F4681F3FD|👩🏿‍🤝‍👨🏽|woman and man holding hands: dark skin tone, medium skin tone
+1F4691F3FF200D1F91D200D1F4681F3FE|👩🏿‍🤝‍👨🏾|woman and man holding hands: dark skin tone, medium-dark skin tone
+1F46B1F3FF|👫🏿|woman and man holding hands: dark skin tone
+1F46C|👬|men holding hands
+1F46C1F3FB|👬🏻|men holding hands: light skin tone
+1F4681F3FB200D1F91D200D1F4681F3FC|👨🏻‍🤝‍👨🏼|men holding hands: light skin tone, medium-light skin tone
+1F4681F3FB200D1F91D200D1F4681F3FD|👨🏻‍🤝‍👨🏽|men holding hands: light skin tone, medium skin tone
+1F4681F3FB200D1F91D200D1F4681F3FE|👨🏻‍🤝‍👨🏾|men holding hands: light skin tone, medium-dark skin tone
+1F4681F3FB200D1F91D200D1F4681F3FF|👨🏻‍🤝‍👨🏿|men holding hands: light skin tone, dark skin tone
+1F4681F3FC200D1F91D200D1F4681F3FB|👨🏼‍🤝‍👨🏻|men holding hands: medium-light skin tone, light skin tone
+1F46C1F3FC|👬🏼|men holding hands: medium-light skin tone
+1F4681F3FC200D1F91D200D1F4681F3FD|👨🏼‍🤝‍👨🏽|men holding hands: medium-light skin tone, medium skin tone
+1F4681F3FC200D1F91D200D1F4681F3FE|👨🏼‍🤝‍👨🏾|men holding hands: medium-light skin tone, medium-dark skin tone
+1F4681F3FC200D1F91D200D1F4681F3FF|👨🏼‍🤝‍👨🏿|men holding hands: medium-light skin tone, dark skin tone
+1F4681F3FD200D1F91D200D1F4681F3FB|👨🏽‍🤝‍👨🏻|men holding hands: medium skin tone, light skin tone
+1F4681F3FD200D1F91D200D1F4681F3FC|👨🏽‍🤝‍👨🏼|men holding hands: medium skin tone, medium-light skin tone
+1F46C1F3FD|👬🏽|men holding hands: medium skin tone
+1F4681F3FD200D1F91D200D1F4681F3FE|👨🏽‍🤝‍👨🏾|men holding hands: medium skin tone, medium-dark skin tone
+1F4681F3FD200D1F91D200D1F4681F3FF|👨🏽‍🤝‍👨🏿|men holding hands: medium skin tone, dark skin tone
+1F4681F3FE200D1F91D200D1F4681F3FB|👨🏾‍🤝‍👨🏻|men holding hands: medium-dark skin tone, light skin tone
+1F4681F3FE200D1F91D200D1F4681F3FC|👨🏾‍🤝‍👨🏼|men holding hands: medium-dark skin tone, medium-light skin tone
+1F4681F3FE200D1F91D200D1F4681F3FD|👨🏾‍🤝‍👨🏽|men holding hands: medium-dark skin tone, medium skin tone
+1F46C1F3FE|👬🏾|men holding hands: medium-dark skin tone
+1F4681F3FE200D1F91D200D1F4681F3FF|👨🏾‍🤝‍👨🏿|men holding hands: medium-dark skin tone, dark skin tone
+1F4681F3FF200D1F91D200D1F4681F3FB|👨🏿‍🤝‍👨🏻|men holding hands: dark skin tone, light skin tone
+1F4681F3FF200D1F91D200D1F4681F3FC|👨🏿‍🤝‍👨🏼|men holding hands: dark skin tone, medium-light skin tone
+1F4681F3FF200D1F91D200D1F4681F3FD|👨🏿‍🤝‍👨🏽|men holding hands: dark skin tone, medium skin tone
+1F4681F3FF200D1F91D200D1F4681F3FE|👨🏿‍🤝‍👨🏾|men holding hands: dark skin tone, medium-dark skin tone
+1F46C1F3FF|👬🏿|men holding hands: dark skin tone
+1F48F|💏|kiss
+1F48F1F3FB|💏🏻|kiss: light skin tone
+1F48F1F3FC|💏🏼|kiss: medium-light skin tone
+1F48F1F3FD|💏🏽|kiss: medium skin tone
+1F48F1F3FE|💏🏾|kiss: medium-dark skin tone
+1F48F1F3FF|💏🏿|kiss: dark skin tone
+1F9D11F3FB200D2764FE0F200D1F48B200D1F9D11F3FC|🧑🏻‍❤️‍💋‍🧑🏼|kiss: person, person, light skin tone, medium-light skin tone
+1F9D11F3FB200D2764FE0F200D1F48B200D1F9D11F3FD|🧑🏻‍❤️‍💋‍🧑🏽|kiss: person, person, light skin tone, medium skin tone
+1F9D11F3FB200D2764FE0F200D1F48B200D1F9D11F3FE|🧑🏻‍❤️‍💋‍🧑🏾|kiss: person, person, light skin tone, medium-dark skin tone
+1F9D11F3FB200D2764FE0F200D1F48B200D1F9D11F3FF|🧑🏻‍❤️‍💋‍🧑🏿|kiss: person, person, light skin tone, dark skin tone
+1F9D11F3FC200D2764FE0F200D1F48B200D1F9D11F3FB|🧑🏼‍❤️‍💋‍🧑🏻|kiss: person, person, medium-light skin tone, light skin tone
+1F9D11F3FC200D2764FE0F200D1F48B200D1F9D11F3FD|🧑🏼‍❤️‍💋‍🧑🏽|kiss: person, person, medium-light skin tone, medium skin tone
+1F9D11F3FC200D2764FE0F200D1F48B200D1F9D11F3FE|🧑🏼‍❤️‍💋‍🧑🏾|kiss: person, person, medium-light skin tone, medium-dark skin tone
+1F9D11F3FC200D2764FE0F200D1F48B200D1F9D11F3FF|🧑🏼‍❤️‍💋‍🧑🏿|kiss: person, person, medium-light skin tone, dark skin tone
+1F9D11F3FD200D2764FE0F200D1F48B200D1F9D11F3FB|🧑🏽‍❤️‍💋‍🧑🏻|kiss: person, person, medium skin tone, light skin tone
+1F9D11F3FD200D2764FE0F200D1F48B200D1F9D11F3FC|🧑🏽‍❤️‍💋‍🧑🏼|kiss: person, person, medium skin tone, medium-light skin tone
+1F9D11F3FD200D2764FE0F200D1F48B200D1F9D11F3FE|🧑🏽‍❤️‍💋‍🧑🏾|kiss: person, person, medium skin tone, medium-dark skin tone
+1F9D11F3FD200D2764FE0F200D1F48B200D1F9D11F3FF|🧑🏽‍❤️‍💋‍🧑🏿|kiss: person, person, medium skin tone, dark skin tone
+1F9D11F3FE200D2764FE0F200D1F48B200D1F9D11F3FB|🧑🏾‍❤️‍💋‍🧑🏻|kiss: person, person, medium-dark skin tone, light skin tone
+1F9D11F3FE200D2764FE0F200D1F48B200D1F9D11F3FC|🧑🏾‍❤️‍💋‍🧑🏼|kiss: person, person, medium-dark skin tone, medium-light skin tone
+1F9D11F3FE200D2764FE0F200D1F48B200D1F9D11F3FD|🧑🏾‍❤️‍💋‍🧑🏽|kiss: person, person, medium-dark skin tone, medium skin tone
+1F9D11F3FE200D2764FE0F200D1F48B200D1F9D11F3FF|🧑🏾‍❤️‍💋‍🧑🏿|kiss: person, person, medium-dark skin tone, dark skin tone
+1F9D11F3FF200D2764FE0F200D1F48B200D1F9D11F3FB|🧑🏿‍❤️‍💋‍🧑🏻|kiss: person, person, dark skin tone, light skin tone
+1F9D11F3FF200D2764FE0F200D1F48B200D1F9D11F3FC|🧑🏿‍❤️‍💋‍🧑🏼|kiss: person, person, dark skin tone, medium-light skin tone
+1F9D11F3FF200D2764FE0F200D1F48B200D1F9D11F3FD|🧑🏿‍❤️‍💋‍🧑🏽|kiss: person, person, dark skin tone, medium skin tone
+1F9D11F3FF200D2764FE0F200D1F48B200D1F9D11F3FE|🧑🏿‍❤️‍💋‍🧑🏾|kiss: person, person, dark skin tone, medium-dark skin tone
+1F469200D2764FE0F200D1F48B200D1F468|👩‍❤️‍💋‍👨|kiss: woman, man
+1F4691F3FB200D2764FE0F200D1F48B200D1F4681F3FB|👩🏻‍❤️‍💋‍👨🏻|kiss: woman, man, light skin tone
+1F4691F3FB200D2764FE0F200D1F48B200D1F4681F3FC|👩🏻‍❤️‍💋‍👨🏼|kiss: woman, man, light skin tone, medium-light skin tone
+1F4691F3FB200D2764FE0F200D1F48B200D1F4681F3FD|👩🏻‍❤️‍💋‍👨🏽|kiss: woman, man, light skin tone, medium skin tone
+1F4691F3FB200D2764FE0F200D1F48B200D1F4681F3FE|👩🏻‍❤️‍💋‍👨🏾|kiss: woman, man, light skin tone, medium-dark skin tone
+1F4691F3FB200D2764FE0F200D1F48B200D1F4681F3FF|👩🏻‍❤️‍💋‍👨🏿|kiss: woman, man, light skin tone, dark skin tone
+1F4691F3FC200D2764FE0F200D1F48B200D1F4681F3FB|👩🏼‍❤️‍💋‍👨🏻|kiss: woman, man, medium-light skin tone, light skin tone
+1F4691F3FC200D2764FE0F200D1F48B200D1F4681F3FC|👩🏼‍❤️‍💋‍👨🏼|kiss: woman, man, medium-light skin tone
+1F4691F3FC200D2764FE0F200D1F48B200D1F4681F3FD|👩🏼‍❤️‍💋‍👨🏽|kiss: woman, man, medium-light skin tone, medium skin tone
+1F4691F3FC200D2764FE0F200D1F48B200D1F4681F3FE|👩🏼‍❤️‍💋‍👨🏾|kiss: woman, man, medium-light skin tone, medium-dark skin tone
+1F4691F3FC200D2764FE0F200D1F48B200D1F4681F3FF|👩🏼‍❤️‍💋‍👨🏿|kiss: woman, man, medium-light skin tone, dark skin tone
+1F4691F3FD200D2764FE0F200D1F48B200D1F4681F3FB|👩🏽‍❤️‍💋‍👨🏻|kiss: woman, man, medium skin tone, light skin tone
+1F4691F3FD200D2764FE0F200D1F48B200D1F4681F3FC|👩🏽‍❤️‍💋‍👨🏼|kiss: woman, man, medium skin tone, medium-light skin tone
+1F4691F3FD200D2764FE0F200D1F48B200D1F4681F3FD|👩🏽‍❤️‍💋‍👨🏽|kiss: woman, man, medium skin tone
+1F4691F3FD200D2764FE0F200D1F48B200D1F4681F3FE|👩🏽‍❤️‍💋‍👨🏾|kiss: woman, man, medium skin tone, medium-dark skin tone
+1F4691F3FD200D2764FE0F200D1F48B200D1F4681F3FF|👩🏽‍❤️‍💋‍👨🏿|kiss: woman, man, medium skin tone, dark skin tone
+1F4691F3FE200D2764FE0F200D1F48B200D1F4681F3FB|👩🏾‍❤️‍💋‍👨🏻|kiss: woman, man, medium-dark skin tone, light skin tone
+1F4691F3FE200D2764FE0F200D1F48B200D1F4681F3FC|👩🏾‍❤️‍💋‍👨🏼|kiss: woman, man, medium-dark skin tone, medium-light skin tone
+1F4691F3FE200D2764FE0F200D1F48B200D1F4681F3FD|👩🏾‍❤️‍💋‍👨🏽|kiss: woman, man, medium-dark skin tone, medium skin tone
+1F4691F3FE200D2764FE0F200D1F48B200D1F4681F3FE|👩🏾‍❤️‍💋‍👨🏾|kiss: woman, man, medium-dark skin tone
+1F4691F3FE200D2764FE0F200D1F48B200D1F4681F3FF|👩🏾‍❤️‍💋‍👨🏿|kiss: woman, man, medium-dark skin tone, dark skin tone
+1F4691F3FF200D2764FE0F200D1F48B200D1F4681F3FB|👩🏿‍❤️‍💋‍👨🏻|kiss: woman, man, dark skin tone, light skin tone
+1F4691F3FF200D2764FE0F200D1F48B200D1F4681F3FC|👩🏿‍❤️‍💋‍👨🏼|kiss: woman, man, dark skin tone, medium-light skin tone
+1F4691F3FF200D2764FE0F200D1F48B200D1F4681F3FD|👩🏿‍❤️‍💋‍👨🏽|kiss: woman, man, dark skin tone, medium skin tone
+1F4691F3FF200D2764FE0F200D1F48B200D1F4681F3FE|👩🏿‍❤️‍💋‍👨🏾|kiss: woman, man, dark skin tone, medium-dark skin tone
+1F4691F3FF200D2764FE0F200D1F48B200D1F4681F3FF|👩🏿‍❤️‍💋‍👨🏿|kiss: woman, man, dark skin tone
+1F468200D2764FE0F200D1F48B200D1F468|👨‍❤️‍💋‍👨|kiss: man, man
+1F4681F3FB200D2764FE0F200D1F48B200D1F4681F3FB|👨🏻‍❤️‍💋‍👨🏻|kiss: man, man, light skin tone
+1F4681F3FB200D2764FE0F200D1F48B200D1F4681F3FC|👨🏻‍❤️‍💋‍👨🏼|kiss: man, man, light skin tone, medium-light skin tone
+1F4681F3FB200D2764FE0F200D1F48B200D1F4681F3FD|👨🏻‍❤️‍💋‍👨🏽|kiss: man, man, light skin tone, medium skin tone
+1F4681F3FB200D2764FE0F200D1F48B200D1F4681F3FE|👨🏻‍❤️‍💋‍👨🏾|kiss: man, man, light skin tone, medium-dark skin tone
+1F4681F3FB200D2764FE0F200D1F48B200D1F4681F3FF|👨🏻‍❤️‍💋‍👨🏿|kiss: man, man, light skin tone, dark skin tone
+1F4681F3FC200D2764FE0F200D1F48B200D1F4681F3FB|👨🏼‍❤️‍💋‍👨🏻|kiss: man, man, medium-light skin tone, light skin tone
+1F4681F3FC200D2764FE0F200D1F48B200D1F4681F3FC|👨🏼‍❤️‍💋‍👨🏼|kiss: man, man, medium-light skin tone
+1F4681F3FC200D2764FE0F200D1F48B200D1F4681F3FD|👨🏼‍❤️‍💋‍👨🏽|kiss: man, man, medium-light skin tone, medium skin tone
+1F4681F3FC200D2764FE0F200D1F48B200D1F4681F3FE|👨🏼‍❤️‍💋‍👨🏾|kiss: man, man, medium-light skin tone, medium-dark skin tone
+1F4681F3FC200D2764FE0F200D1F48B200D1F4681F3FF|👨🏼‍❤️‍💋‍👨🏿|kiss: man, man, medium-light skin tone, dark skin tone
+1F4681F3FD200D2764FE0F200D1F48B200D1F4681F3FB|👨🏽‍❤️‍💋‍👨🏻|kiss: man, man, medium skin tone, light skin tone
+1F4681F3FD200D2764FE0F200D1F48B200D1F4681F3FC|👨🏽‍❤️‍💋‍👨🏼|kiss: man, man, medium skin tone, medium-light skin tone
+1F4681F3FD200D2764FE0F200D1F48B200D1F4681F3FD|👨🏽‍❤️‍💋‍👨🏽|kiss: man, man, medium skin tone
+1F4681F3FD200D2764FE0F200D1F48B200D1F4681F3FE|👨🏽‍❤️‍💋‍👨🏾|kiss: man, man, medium skin tone, medium-dark skin tone
+1F4681F3FD200D2764FE0F200D1F48B200D1F4681F3FF|👨🏽‍❤️‍💋‍👨🏿|kiss: man, man, medium skin tone, dark skin tone
+1F4681F3FE200D2764FE0F200D1F48B200D1F4681F3FB|👨🏾‍❤️‍💋‍👨🏻|kiss: man, man, medium-dark skin tone, light skin tone
+1F4681F3FE200D2764FE0F200D1F48B200D1F4681F3FC|👨🏾‍❤️‍💋‍👨🏼|kiss: man, man, medium-dark skin tone, medium-light skin tone
+1F4681F3FE200D2764FE0F200D1F48B200D1F4681F3FD|👨🏾‍❤️‍💋‍👨🏽|kiss: man, man, medium-dark skin tone, medium skin tone
+1F4681F3FE200D2764FE0F200D1F48B200D1F4681F3FE|👨🏾‍❤️‍💋‍👨🏾|kiss: man, man, medium-dark skin tone
+1F4681F3FE200D2764FE0F200D1F48B200D1F4681F3FF|👨🏾‍❤️‍💋‍👨🏿|kiss: man, man, medium-dark skin tone, dark skin tone
+1F4681F3FF200D2764FE0F200D1F48B200D1F4681F3FB|👨🏿‍❤️‍💋‍👨🏻|kiss: man, man, dark skin tone, light skin tone
+1F4681F3FF200D2764FE0F200D1F48B200D1F4681F3FC|👨🏿‍❤️‍💋‍👨🏼|kiss: man, man, dark skin tone, medium-light skin tone
+1F4681F3FF200D2764FE0F200D1F48B200D1F4681F3FD|👨🏿‍❤️‍💋‍👨🏽|kiss: man, man, dark skin tone, medium skin tone
+1F4681F3FF200D2764FE0F200D1F48B200D1F4681F3FE|👨🏿‍❤️‍💋‍👨🏾|kiss: man, man, dark skin tone, medium-dark skin tone
+1F4681F3FF200D2764FE0F200D1F48B200D1F4681F3FF|👨🏿‍❤️‍💋‍👨🏿|kiss: man, man, dark skin tone
+1F469200D2764FE0F200D1F48B200D1F469|👩‍❤️‍💋‍👩|kiss: woman, woman
+1F4691F3FB200D2764FE0F200D1F48B200D1F4691F3FB|👩🏻‍❤️‍💋‍👩🏻|kiss: woman, woman, light skin tone
+1F4691F3FB200D2764FE0F200D1F48B200D1F4691F3FC|👩🏻‍❤️‍💋‍👩🏼|kiss: woman, woman, light skin tone, medium-light skin tone
+1F4691F3FB200D2764FE0F200D1F48B200D1F4691F3FD|👩🏻‍❤️‍💋‍👩🏽|kiss: woman, woman, light skin tone, medium skin tone
+1F4691F3FB200D2764FE0F200D1F48B200D1F4691F3FE|👩🏻‍❤️‍💋‍👩🏾|kiss: woman, woman, light skin tone, medium-dark skin tone
+1F4691F3FB200D2764FE0F200D1F48B200D1F4691F3FF|👩🏻‍❤️‍💋‍👩🏿|kiss: woman, woman, light skin tone, dark skin tone
+1F4691F3FC200D2764FE0F200D1F48B200D1F4691F3FB|👩🏼‍❤️‍💋‍👩🏻|kiss: woman, woman, medium-light skin tone, light skin tone
+1F4691F3FC200D2764FE0F200D1F48B200D1F4691F3FC|👩🏼‍❤️‍💋‍👩🏼|kiss: woman, woman, medium-light skin tone
+1F4691F3FC200D2764FE0F200D1F48B200D1F4691F3FD|👩🏼‍❤️‍💋‍👩🏽|kiss: woman, woman, medium-light skin tone, medium skin tone
+1F4691F3FC200D2764FE0F200D1F48B200D1F4691F3FE|👩🏼‍❤️‍💋‍👩🏾|kiss: woman, woman, medium-light skin tone, medium-dark skin tone
+1F4691F3FC200D2764FE0F200D1F48B200D1F4691F3FF|👩🏼‍❤️‍💋‍👩🏿|kiss: woman, woman, medium-light skin tone, dark skin tone
+1F4691F3FD200D2764FE0F200D1F48B200D1F4691F3FB|👩🏽‍❤️‍💋‍👩🏻|kiss: woman, woman, medium skin tone, light skin tone
+1F4691F3FD200D2764FE0F200D1F48B200D1F4691F3FC|👩🏽‍❤️‍💋‍👩🏼|kiss: woman, woman, medium skin tone, medium-light skin tone
+1F4691F3FD200D2764FE0F200D1F48B200D1F4691F3FD|👩🏽‍❤️‍💋‍👩🏽|kiss: woman, woman, medium skin tone
+1F4691F3FD200D2764FE0F200D1F48B200D1F4691F3FE|👩🏽‍❤️‍💋‍👩🏾|kiss: woman, woman, medium skin tone, medium-dark skin tone
+1F4691F3FD200D2764FE0F200D1F48B200D1F4691F3FF|👩🏽‍❤️‍💋‍👩🏿|kiss: woman, woman, medium skin tone, dark skin tone
+1F4691F3FE200D2764FE0F200D1F48B200D1F4691F3FB|👩🏾‍❤️‍💋‍👩🏻|kiss: woman, woman, medium-dark skin tone, light skin tone
+1F4691F3FE200D2764FE0F200D1F48B200D1F4691F3FC|👩🏾‍❤️‍💋‍👩🏼|kiss: woman, woman, medium-dark skin tone, medium-light skin tone
+1F4691F3FE200D2764FE0F200D1F48B200D1F4691F3FD|👩🏾‍❤️‍💋‍👩🏽|kiss: woman, woman, medium-dark skin tone, medium skin tone
+1F4691F3FE200D2764FE0F200D1F48B200D1F4691F3FE|👩🏾‍❤️‍💋‍👩🏾|kiss: woman, woman, medium-dark skin tone
+1F4691F3FE200D2764FE0F200D1F48B200D1F4691F3FF|👩🏾‍❤️‍💋‍👩🏿|kiss: woman, woman, medium-dark skin tone, dark skin tone
+1F4691F3FF200D2764FE0F200D1F48B200D1F4691F3FB|👩🏿‍❤️‍💋‍👩🏻|kiss: woman, woman, dark skin tone, light skin tone
+1F4691F3FF200D2764FE0F200D1F48B200D1F4691F3FC|👩🏿‍❤️‍💋‍👩🏼|kiss: woman, woman, dark skin tone, medium-light skin tone
+1F4691F3FF200D2764FE0F200D1F48B200D1F4691F3FD|👩🏿‍❤️‍💋‍👩🏽|kiss: woman, woman, dark skin tone, medium skin tone
+1F4691F3FF200D2764FE0F200D1F48B200D1F4691F3FE|👩🏿‍❤️‍💋‍👩🏾|kiss: woman, woman, dark skin tone, medium-dark skin tone
+1F4691F3FF200D2764FE0F200D1F48B200D1F4691F3FF|👩🏿‍❤️‍💋‍👩🏿|kiss: woman, woman, dark skin tone
+1F491|💑|couple with heart
+1F4911F3FB|💑🏻|couple with heart: light skin tone
+1F4911F3FC|💑🏼|couple with heart: medium-light skin tone
+1F4911F3FD|💑🏽|couple with heart: medium skin tone
+1F4911F3FE|💑🏾|couple with heart: medium-dark skin tone
+1F4911F3FF|💑🏿|couple with heart: dark skin tone
+1F9D11F3FB200D2764FE0F200D1F9D11F3FC|🧑🏻‍❤️‍🧑🏼|couple with heart: person, person, light skin tone, medium-light skin tone
+1F9D11F3FB200D2764FE0F200D1F9D11F3FD|🧑🏻‍❤️‍🧑🏽|couple with heart: person, person, light skin tone, medium skin tone
+1F9D11F3FB200D2764FE0F200D1F9D11F3FE|🧑🏻‍❤️‍🧑🏾|couple with heart: person, person, light skin tone, medium-dark skin tone
+1F9D11F3FB200D2764FE0F200D1F9D11F3FF|🧑🏻‍❤️‍🧑🏿|couple with heart: person, person, light skin tone, dark skin tone
+1F9D11F3FC200D2764FE0F200D1F9D11F3FB|🧑🏼‍❤️‍🧑🏻|couple with heart: person, person, medium-light skin tone, light skin tone
+1F9D11F3FC200D2764FE0F200D1F9D11F3FD|🧑🏼‍❤️‍🧑🏽|couple with heart: person, person, medium-light skin tone, medium skin tone
+1F9D11F3FC200D2764FE0F200D1F9D11F3FE|🧑🏼‍❤️‍🧑🏾|couple with heart: person, person, medium-light skin tone, medium-dark skin tone
+1F9D11F3FC200D2764FE0F200D1F9D11F3FF|🧑🏼‍❤️‍🧑🏿|couple with heart: person, person, medium-light skin tone, dark skin tone
+1F9D11F3FD200D2764FE0F200D1F9D11F3FB|🧑🏽‍❤️‍🧑🏻|couple with heart: person, person, medium skin tone, light skin tone
+1F9D11F3FD200D2764FE0F200D1F9D11F3FC|🧑🏽‍❤️‍🧑🏼|couple with heart: person, person, medium skin tone, medium-light skin tone
+1F9D11F3FD200D2764FE0F200D1F9D11F3FE|🧑🏽‍❤️‍🧑🏾|couple with heart: person, person, medium skin tone, medium-dark skin tone
+1F9D11F3FD200D2764FE0F200D1F9D11F3FF|🧑🏽‍❤️‍🧑🏿|couple with heart: person, person, medium skin tone, dark skin tone
+1F9D11F3FE200D2764FE0F200D1F9D11F3FB|🧑🏾‍❤️‍🧑🏻|couple with heart: person, person, medium-dark skin tone, light skin tone
+1F9D11F3FE200D2764FE0F200D1F9D11F3FC|🧑🏾‍❤️‍🧑🏼|couple with heart: person, person, medium-dark skin tone, medium-light skin tone
+1F9D11F3FE200D2764FE0F200D1F9D11F3FD|🧑🏾‍❤️‍🧑🏽|couple with heart: person, person, medium-dark skin tone, medium skin tone
+1F9D11F3FE200D2764FE0F200D1F9D11F3FF|🧑🏾‍❤️‍🧑🏿|couple with heart: person, person, medium-dark skin tone, dark skin tone
+1F9D11F3FF200D2764FE0F200D1F9D11F3FB|🧑🏿‍❤️‍🧑🏻|couple with heart: person, person, dark skin tone, light skin tone
+1F9D11F3FF200D2764FE0F200D1F9D11F3FC|🧑🏿‍❤️‍🧑🏼|couple with heart: person, person, dark skin tone, medium-light skin tone
+1F9D11F3FF200D2764FE0F200D1F9D11F3FD|🧑🏿‍❤️‍🧑🏽|couple with heart: person, person, dark skin tone, medium skin tone
+1F9D11F3FF200D2764FE0F200D1F9D11F3FE|🧑🏿‍❤️‍🧑🏾|couple with heart: person, person, dark skin tone, medium-dark skin tone
+1F469200D2764FE0F200D1F468|👩‍❤️‍👨|couple with heart: woman, man
+1F4691F3FB200D2764FE0F200D1F4681F3FB|👩🏻‍❤️‍👨🏻|couple with heart: woman, man, light skin tone
+1F4691F3FB200D2764FE0F200D1F4681F3FC|👩🏻‍❤️‍👨🏼|couple with heart: woman, man, light skin tone, medium-light skin tone
+1F4691F3FB200D2764FE0F200D1F4681F3FD|👩🏻‍❤️‍👨🏽|couple with heart: woman, man, light skin tone, medium skin tone
+1F4691F3FB200D2764FE0F200D1F4681F3FE|👩🏻‍❤️‍👨🏾|couple with heart: woman, man, light skin tone, medium-dark skin tone
+1F4691F3FB200D2764FE0F200D1F4681F3FF|👩🏻‍❤️‍👨🏿|couple with heart: woman, man, light skin tone, dark skin tone
+1F4691F3FC200D2764FE0F200D1F4681F3FB|👩🏼‍❤️‍👨🏻|couple with heart: woman, man, medium-light skin tone, light skin tone
+1F4691F3FC200D2764FE0F200D1F4681F3FC|👩🏼‍❤️‍👨🏼|couple with heart: woman, man, medium-light skin tone
+1F4691F3FC200D2764FE0F200D1F4681F3FD|👩🏼‍❤️‍👨🏽|couple with heart: woman, man, medium-light skin tone, medium skin tone
+1F4691F3FC200D2764FE0F200D1F4681F3FE|👩🏼‍❤️‍👨🏾|couple with heart: woman, man, medium-light skin tone, medium-dark skin tone
+1F4691F3FC200D2764FE0F200D1F4681F3FF|👩🏼‍❤️‍👨🏿|couple with heart: woman, man, medium-light skin tone, dark skin tone
+1F4691F3FD200D2764FE0F200D1F4681F3FB|👩🏽‍❤️‍👨🏻|couple with heart: woman, man, medium skin tone, light skin tone
+1F4691F3FD200D2764FE0F200D1F4681F3FC|👩🏽‍❤️‍👨🏼|couple with heart: woman, man, medium skin tone, medium-light skin tone
+1F4691F3FD200D2764FE0F200D1F4681F3FD|👩🏽‍❤️‍👨🏽|couple with heart: woman, man, medium skin tone
+1F4691F3FD200D2764FE0F200D1F4681F3FE|👩🏽‍❤️‍👨🏾|couple with heart: woman, man, medium skin tone, medium-dark skin tone
+1F4691F3FD200D2764FE0F200D1F4681F3FF|👩🏽‍❤️‍👨🏿|couple with heart: woman, man, medium skin tone, dark skin tone
+1F4691F3FE200D2764FE0F200D1F4681F3FB|👩🏾‍❤️‍👨🏻|couple with heart: woman, man, medium-dark skin tone, light skin tone
+1F4691F3FE200D2764FE0F200D1F4681F3FC|👩🏾‍❤️‍👨🏼|couple with heart: woman, man, medium-dark skin tone, medium-light skin tone
+1F4691F3FE200D2764FE0F200D1F4681F3FD|👩🏾‍❤️‍👨🏽|couple with heart: woman, man, medium-dark skin tone, medium skin tone
+1F4691F3FE200D2764FE0F200D1F4681F3FE|👩🏾‍❤️‍👨🏾|couple with heart: woman, man, medium-dark skin tone
+1F4691F3FE200D2764FE0F200D1F4681F3FF|👩🏾‍❤️‍👨🏿|couple with heart: woman, man, medium-dark skin tone, dark skin tone
+1F4691F3FF200D2764FE0F200D1F4681F3FB|👩🏿‍❤️‍👨🏻|couple with heart: woman, man, dark skin tone, light skin tone
+1F4691F3FF200D2764FE0F200D1F4681F3FC|👩🏿‍❤️‍👨🏼|couple with heart: woman, man, dark skin tone, medium-light skin tone
+1F4691F3FF200D2764FE0F200D1F4681F3FD|👩🏿‍❤️‍👨🏽|couple with heart: woman, man, dark skin tone, medium skin tone
+1F4691F3FF200D2764FE0F200D1F4681F3FE|👩🏿‍❤️‍👨🏾|couple with heart: woman, man, dark skin tone, medium-dark skin tone
+1F4691F3FF200D2764FE0F200D1F4681F3FF|👩🏿‍❤️‍👨🏿|couple with heart: woman, man, dark skin tone
+1F468200D2764FE0F200D1F468|👨‍❤️‍👨|couple with heart: man, man
+1F4681F3FB200D2764FE0F200D1F4681F3FB|👨🏻‍❤️‍👨🏻|couple with heart: man, man, light skin tone
+1F4681F3FB200D2764FE0F200D1F4681F3FC|👨🏻‍❤️‍👨🏼|couple with heart: man, man, light skin tone, medium-light skin tone
+1F4681F3FB200D2764FE0F200D1F4681F3FD|👨🏻‍❤️‍👨🏽|couple with heart: man, man, light skin tone, medium skin tone
+1F4681F3FB200D2764FE0F200D1F4681F3FE|👨🏻‍❤️‍👨🏾|couple with heart: man, man, light skin tone, medium-dark skin tone
+1F4681F3FB200D2764FE0F200D1F4681F3FF|👨🏻‍❤️‍👨🏿|couple with heart: man, man, light skin tone, dark skin tone
+1F4681F3FC200D2764FE0F200D1F4681F3FB|👨🏼‍❤️‍👨🏻|couple with heart: man, man, medium-light skin tone, light skin tone
+1F4681F3FC200D2764FE0F200D1F4681F3FC|👨🏼‍❤️‍👨🏼|couple with heart: man, man, medium-light skin tone
+1F4681F3FC200D2764FE0F200D1F4681F3FD|👨🏼‍❤️‍👨🏽|couple with heart: man, man, medium-light skin tone, medium skin tone
+1F4681F3FC200D2764FE0F200D1F4681F3FE|👨🏼‍❤️‍👨🏾|couple with heart: man, man, medium-light skin tone, medium-dark skin tone
+1F4681F3FC200D2764FE0F200D1F4681F3FF|👨🏼‍❤️‍👨🏿|couple with heart: man, man, medium-light skin tone, dark skin tone
+1F4681F3FD200D2764FE0F200D1F4681F3FB|👨🏽‍❤️‍👨🏻|couple with heart: man, man, medium skin tone, light skin tone
+1F4681F3FD200D2764FE0F200D1F4681F3FC|👨🏽‍❤️‍👨🏼|couple with heart: man, man, medium skin tone, medium-light skin tone
+1F4681F3FD200D2764FE0F200D1F4681F3FD|👨🏽‍❤️‍👨🏽|couple with heart: man, man, medium skin tone
+1F4681F3FD200D2764FE0F200D1F4681F3FE|👨🏽‍❤️‍👨🏾|couple with heart: man, man, medium skin tone, medium-dark skin tone
+1F4681F3FD200D2764FE0F200D1F4681F3FF|👨🏽‍❤️‍👨🏿|couple with heart: man, man, medium skin tone, dark skin tone
+1F4681F3FE200D2764FE0F200D1F4681F3FB|👨🏾‍❤️‍👨🏻|couple with heart: man, man, medium-dark skin tone, light skin tone
+1F4681F3FE200D2764FE0F200D1F4681F3FC|👨🏾‍❤️‍👨🏼|couple with heart: man, man, medium-dark skin tone, medium-light skin tone
+1F4681F3FE200D2764FE0F200D1F4681F3FD|👨🏾‍❤️‍👨🏽|couple with heart: man, man, medium-dark skin tone, medium skin tone
+1F4681F3FE200D2764FE0F200D1F4681F3FE|👨🏾‍❤️‍👨🏾|couple with heart: man, man, medium-dark skin tone
+1F4681F3FE200D2764FE0F200D1F4681F3FF|👨🏾‍❤️‍👨🏿|couple with heart: man, man, medium-dark skin tone, dark skin tone
+1F4681F3FF200D2764FE0F200D1F4681F3FB|👨🏿‍❤️‍👨🏻|couple with heart: man, man, dark skin tone, light skin tone
+1F4681F3FF200D2764FE0F200D1F4681F3FC|👨🏿‍❤️‍👨🏼|couple with heart: man, man, dark skin tone, medium-light skin tone
+1F4681F3FF200D2764FE0F200D1F4681F3FD|👨🏿‍❤️‍👨🏽|couple with heart: man, man, dark skin tone, medium skin tone
+1F4681F3FF200D2764FE0F200D1F4681F3FE|👨🏿‍❤️‍👨🏾|couple with heart: man, man, dark skin tone, medium-dark skin tone
+1F4681F3FF200D2764FE0F200D1F4681F3FF|👨🏿‍❤️‍👨🏿|couple with heart: man, man, dark skin tone
+1F469200D2764FE0F200D1F469|👩‍❤️‍👩|couple with heart: woman, woman
+1F4691F3FB200D2764FE0F200D1F4691F3FB|👩🏻‍❤️‍👩🏻|couple with heart: woman, woman, light skin tone
+1F4691F3FB200D2764FE0F200D1F4691F3FC|👩🏻‍❤️‍👩🏼|couple with heart: woman, woman, light skin tone, medium-light skin tone
+1F4691F3FB200D2764FE0F200D1F4691F3FD|👩🏻‍❤️‍👩🏽|couple with heart: woman, woman, light skin tone, medium skin tone
+1F4691F3FB200D2764FE0F200D1F4691F3FE|👩🏻‍❤️‍👩🏾|couple with heart: woman, woman, light skin tone, medium-dark skin tone
+1F4691F3FB200D2764FE0F200D1F4691F3FF|👩🏻‍❤️‍👩🏿|couple with heart: woman, woman, light skin tone, dark skin tone
+1F4691F3FC200D2764FE0F200D1F4691F3FB|👩🏼‍❤️‍👩🏻|couple with heart: woman, woman, medium-light skin tone, light skin tone
+1F4691F3FC200D2764FE0F200D1F4691F3FC|👩🏼‍❤️‍👩🏼|couple with heart: woman, woman, medium-light skin tone
+1F4691F3FC200D2764FE0F200D1F4691F3FD|👩🏼‍❤️‍👩🏽|couple with heart: woman, woman, medium-light skin tone, medium skin tone
+1F4691F3FC200D2764FE0F200D1F4691F3FE|👩🏼‍❤️‍👩🏾|couple with heart: woman, woman, medium-light skin tone, medium-dark skin tone
+1F4691F3FC200D2764FE0F200D1F4691F3FF|👩🏼‍❤️‍👩🏿|couple with heart: woman, woman, medium-light skin tone, dark skin tone
+1F4691F3FD200D2764FE0F200D1F4691F3FB|👩🏽‍❤️‍👩🏻|couple with heart: woman, woman, medium skin tone, light skin tone
+1F4691F3FD200D2764FE0F200D1F4691F3FC|👩🏽‍❤️‍👩🏼|couple with heart: woman, woman, medium skin tone, medium-light skin tone
+1F4691F3FD200D2764FE0F200D1F4691F3FD|👩🏽‍❤️‍👩🏽|couple with heart: woman, woman, medium skin tone
+1F4691F3FD200D2764FE0F200D1F4691F3FE|👩🏽‍❤️‍👩🏾|couple with heart: woman, woman, medium skin tone, medium-dark skin tone
+1F4691F3FD200D2764FE0F200D1F4691F3FF|👩🏽‍❤️‍👩🏿|couple with heart: woman, woman, medium skin tone, dark skin tone
+1F4691F3FE200D2764FE0F200D1F4691F3FB|👩🏾‍❤️‍👩🏻|couple with heart: woman, woman, medium-dark skin tone, light skin tone
+1F4691F3FE200D2764FE0F200D1F4691F3FC|👩🏾‍❤️‍👩🏼|couple with heart: woman, woman, medium-dark skin tone, medium-light skin tone
+1F4691F3FE200D2764FE0F200D1F4691F3FD|👩🏾‍❤️‍👩🏽|couple with heart: woman, woman, medium-dark skin tone, medium skin tone
+1F4691F3FE200D2764FE0F200D1F4691F3FE|👩🏾‍❤️‍👩🏾|couple with heart: woman, woman, medium-dark skin tone
+1F4691F3FE200D2764FE0F200D1F4691F3FF|👩🏾‍❤️‍👩🏿|couple with heart: woman, woman, medium-dark skin tone, dark skin tone
+1F4691F3FF200D2764FE0F200D1F4691F3FB|👩🏿‍❤️‍👩🏻|couple with heart: woman, woman, dark skin tone, light skin tone
+1F4691F3FF200D2764FE0F200D1F4691F3FC|👩🏿‍❤️‍👩🏼|couple with heart: woman, woman, dark skin tone, medium-light skin tone
+1F4691F3FF200D2764FE0F200D1F4691F3FD|👩🏿‍❤️‍👩🏽|couple with heart: woman, woman, dark skin tone, medium skin tone
+1F4691F3FF200D2764FE0F200D1F4691F3FE|👩🏿‍❤️‍👩🏾|couple with heart: woman, woman, dark skin tone, medium-dark skin tone
+1F4691F3FF200D2764FE0F200D1F4691F3FF|👩🏿‍❤️‍👩🏿|couple with heart: woman, woman, dark skin tone
+1F46A|👪|family
+1F468200D1F469200D1F466|👨‍👩‍👦|family: man, woman, boy
+1F468200D1F469200D1F467|👨‍👩‍👧|family: man, woman, girl
+1F468200D1F469200D1F467200D1F466|👨‍👩‍👧‍👦|family: man, woman, girl, boy
+1F468200D1F469200D1F466200D1F466|👨‍👩‍👦‍👦|family: man, woman, boy, boy
+1F468200D1F469200D1F467200D1F467|👨‍👩‍👧‍👧|family: man, woman, girl, girl
+1F468200D1F468200D1F466|👨‍👨‍👦|family: man, man, boy
+1F468200D1F468200D1F467|👨‍👨‍👧|family: man, man, girl
+1F468200D1F468200D1F467200D1F466|👨‍👨‍👧‍👦|family: man, man, girl, boy
+1F468200D1F468200D1F466200D1F466|👨‍👨‍👦‍👦|family: man, man, boy, boy
+1F468200D1F468200D1F467200D1F467|👨‍👨‍👧‍👧|family: man, man, girl, girl
+1F469200D1F469200D1F466|👩‍👩‍👦|family: woman, woman, boy
+1F469200D1F469200D1F467|👩‍👩‍👧|family: woman, woman, girl
+1F469200D1F469200D1F467200D1F466|👩‍👩‍👧‍👦|family: woman, woman, girl, boy
+1F469200D1F469200D1F466200D1F466|👩‍👩‍👦‍👦|family: woman, woman, boy, boy
+1F469200D1F469200D1F467200D1F467|👩‍👩‍👧‍👧|family: woman, woman, girl, girl
+1F468200D1F466|👨‍👦|family: man, boy
+1F468200D1F466200D1F466|👨‍👦‍👦|family: man, boy, boy
+1F468200D1F467|👨‍👧|family: man, girl
+1F468200D1F467200D1F466|👨‍👧‍👦|family: man, girl, boy
+1F468200D1F467200D1F467|👨‍👧‍👧|family: man, girl, girl
+1F469200D1F466|👩‍👦|family: woman, boy
+1F469200D1F466200D1F466|👩‍👦‍👦|family: woman, boy, boy
+1F469200D1F467|👩‍👧|family: woman, girl
+1F469200D1F467200D1F466|👩‍👧‍👦|family: woman, girl, boy
+1F469200D1F467200D1F467|👩‍👧‍👧|family: woman, girl, girl
+1F5E3FE0F|🗣️|speaking head
+1F464|👤|bust in silhouette
+1F465|👥|busts in silhouette
+1FAC2|🫂|people hugging
+1F463|👣|footprints
+1F435|🐵|monkey face
+1F412|🐒|monkey
+1F98D|🦍|gorilla
+1F9A7|🦧|orangutan
+1F436|🐶|dog face
+1F415|🐕|dog
+1F9AE|🦮|guide dog
+1F415200D1F9BA|🐕‍🦺|service dog
+1F429|🐩|poodle
+1F43A|🐺|wolf
+1F98A|🦊|fox
+1F99D|🦝|raccoon
+1F431|🐱|cat face
+1F408|🐈|cat
+1F408200D2B1B|🐈‍⬛|black cat
+1F981|🦁|lion
+1F42F|🐯|tiger face
+1F405|🐅|tiger
+1F406|🐆|leopard
+1F434|🐴|horse face
+1F40E|🐎|horse
+1F984|🦄|unicorn
+1F993|🦓|zebra
+1F98C|🦌|deer
+1F9AC|🦬|bison
+1F42E|🐮|cow face
+1F402|🐂|ox
+1F403|🐃|water buffalo
+1F404|🐄|cow
+1F437|🐷|pig face
+1F416|🐖|pig
+1F417|🐗|boar
+1F43D|🐽|pig nose
+1F40F|🐏|ram
+1F411|🐑|ewe
+1F410|🐐|goat
+1F42A|🐪|camel
+1F42B|🐫|two-hump camel
+1F999|🦙|llama
+1F992|🦒|giraffe
+1F418|🐘|elephant
+1F9A3|🦣|mammoth
+1F98F|🦏|rhinoceros
+1F99B|🦛|hippopotamus
+1F42D|🐭|mouse face
+1F401|🐁|mouse
+1F400|🐀|rat
+1F439|🐹|hamster
+1F430|🐰|rabbit face
+1F407|🐇|rabbit
+1F43FFE0F|🐿️|chipmunk
+1F9AB|🦫|beaver
+1F994|🦔|hedgehog
+1F987|🦇|bat
+1F43B|🐻|bear
+1F43B200D2744FE0F|🐻‍❄️|polar bear
+1F428|🐨|koala
+1F43C|🐼|panda
+1F9A5|🦥|sloth
+1F9A6|🦦|otter
+1F9A8|🦨|skunk
+1F998|🦘|kangaroo
+1F9A1|🦡|badger
+1F43E|🐾|paw prints
+1F983|🦃|turkey
+1F414|🐔|chicken
+1F413|🐓|rooster
+1F423|🐣|hatching chick
+1F424|🐤|baby chick
+1F425|🐥|front-facing baby chick
+1F426|🐦|bird
+1F427|🐧|penguin
+1F54AFE0F|🕊️|dove
+1F985|🦅|eagle
+1F986|🦆|duck
+1F9A2|🦢|swan
+1F989|🦉|owl
+1F9A4|🦤|dodo
+1FAB6|🪶|feather
+1F9A9|🦩|flamingo
+1F99A|🦚|peacock
+1F99C|🦜|parrot
+1F438|🐸|frog
+1F40A|🐊|crocodile
+1F422|🐢|turtle
+1F98E|🦎|lizard
+1F40D|🐍|snake
+1F432|🐲|dragon face
+1F409|🐉|dragon
+1F995|🦕|sauropod
+1F996|🦖|T-Rex
+1F433|🐳|spouting whale
+1F40B|🐋|whale
+1F42C|🐬|dolphin
+1F9AD|🦭|seal
+1F41F|🐟|fish
+1F420|🐠|tropical fish
+1F421|🐡|blowfish
+1F988|🦈|shark
+1F419|🐙|octopus
+1F41A|🐚|spiral shell
+1FAB8|🪸|coral
+1F40C|🐌|snail
+1F98B|🦋|butterfly
+1F41B|🐛|bug
+1F41C|🐜|ant
+1F41D|🐝|honeybee
+1FAB2|🪲|beetle
+1F41E|🐞|lady beetle
+1F997|🦗|cricket
+1FAB3|🪳|cockroach
+1F577FE0F|🕷️|spider
+1F578FE0F|🕸️|spider web
+1F982|🦂|scorpion
+1F99F|🦟|mosquito
+1FAB0|🪰|fly
+1FAB1|🪱|worm
+1F9A0|🦠|microbe
+1F490|💐|bouquet
+1F338|🌸|cherry blossom
+1F4AE|💮|white flower
+1FAB7|🪷|lotus
+1F3F5FE0F|🏵️|rosette
+1F339|🌹|rose
+1F940|🥀|wilted flower
+1F33A|🌺|hibiscus
+1F33B|🌻|sunflower
+1F33C|🌼|blossom
+1F337|🌷|tulip
+1F331|🌱|seedling
+1FAB4|🪴|potted plant
+1F332|🌲|evergreen tree
+1F333|🌳|deciduous tree
+1F334|🌴|palm tree
+1F335|🌵|cactus
+1F33E|🌾|sheaf of rice
+1F33F|🌿|herb
+2618FE0F|☘️|shamrock
+1F340|🍀|four leaf clover
+1F341|🍁|maple leaf
+1F342|🍂|fallen leaf
+1F343|🍃|leaf fluttering in wind
+1FAB9|🪹|empty nest
+1FABA|🪺|nest with eggs
+1F347|🍇|grapes
+1F348|🍈|melon
+1F349|🍉|watermelon
+1F34A|🍊|tangerine
+1F34B|🍋|lemon
+1F34C|🍌|banana
+1F34D|🍍|pineapple
+1F96D|🥭|mango
+1F34E|🍎|red apple
+1F34F|🍏|green apple
+1F350|🍐|pear
+1F351|🍑|peach
+1F352|🍒|cherries
+1F353|🍓|strawberry
+1FAD0|🫐|blueberries
+1F95D|🥝|kiwi fruit
+1F345|🍅|tomato
+1FAD2|🫒|olive
+1F965|🥥|coconut
+1F951|🥑|avocado
+1F346|🍆|eggplant
+1F954|🥔|potato
+1F955|🥕|carrot
+1F33D|🌽|ear of corn
+1F336FE0F|🌶️|hot pepper
+1FAD1|🫑|bell pepper
+1F952|🥒|cucumber
+1F96C|🥬|leafy green
+1F966|🥦|broccoli
+1F9C4|🧄|garlic
+1F9C5|🧅|onion
+1F344|🍄|mushroom
+1F95C|🥜|peanuts
+1FAD8|🫘|beans
+1F330|🌰|chestnut
+1F35E|🍞|bread
+1F950|🥐|croissant
+1F956|🥖|baguette bread
+1FAD3|🫓|flatbread
+1F968|🥨|pretzel
+1F96F|🥯|bagel
+1F95E|🥞|pancakes
+1F9C7|🧇|waffle
+1F9C0|🧀|cheese wedge
+1F356|🍖|meat on bone
+1F357|🍗|poultry leg
+1F969|🥩|cut of meat
+1F953|🥓|bacon
+1F354|🍔|hamburger
+1F35F|🍟|french fries
+1F355|🍕|pizza
+1F32D|🌭|hot dog
+1F96A|🥪|sandwich
+1F32E|🌮|taco
+1F32F|🌯|burrito
+1FAD4|🫔|tamale
+1F959|🥙|stuffed flatbread
+1F9C6|🧆|falafel
+1F95A|🥚|egg
+1F373|🍳|cooking
+1F958|🥘|shallow pan of food
+1F372|🍲|pot of food
+1FAD5|🫕|fondue
+1F963|🥣|bowl with spoon
+1F957|🥗|green salad
+1F37F|🍿|popcorn
+1F9C8|🧈|butter
+1F9C2|🧂|salt
+1F96B|🥫|canned food
+1F371|🍱|bento box
+1F358|🍘|rice cracker
+1F359|🍙|rice ball
+1F35A|🍚|cooked rice
+1F35B|🍛|curry rice
+1F35C|🍜|steaming bowl
+1F35D|🍝|spaghetti
+1F360|🍠|roasted sweet potato
+1F362|🍢|oden
+1F363|🍣|sushi
+1F364|🍤|fried shrimp
+1F365|🍥|fish cake with swirl
+1F96E|🥮|moon cake
+1F361|🍡|dango
+1F95F|🥟|dumpling
+1F960|🥠|fortune cookie
+1F961|🥡|takeout box
+1F980|🦀|crab
+1F99E|🦞|lobster
+1F990|🦐|shrimp
+1F991|🦑|squid
+1F9AA|🦪|oyster
+1F366|🍦|soft ice cream
+1F367|🍧|shaved ice
+1F368|🍨|ice cream
+1F369|🍩|doughnut
+1F36A|🍪|cookie
+1F382|🎂|birthday cake
+1F370|🍰|shortcake
+1F9C1|🧁|cupcake
+1F967|🥧|pie
+1F36B|🍫|chocolate bar
+1F36C|🍬|candy
+1F36D|🍭|lollipop
+1F36E|🍮|custard
+1F36F|🍯|honey pot
+1F37C|🍼|baby bottle
+1F95B|🥛|glass of milk
+2615|☕|hot beverage
+1FAD6|🫖|teapot
+1F375|🍵|teacup without handle
+1F376|🍶|sake
+1F37E|🍾|bottle with popping cork
+1F377|🍷|wine glass
+1F378|🍸|cocktail glass
+1F379|🍹|tropical drink
+1F37A|🍺|beer mug
+1F37B|🍻|clinking beer mugs
+1F942|🥂|clinking glasses
+1F943|🥃|tumbler glass
+1FAD7|🫗|pouring liquid
+1F964|🥤|cup with straw
+1F9CB|🧋|bubble tea
+1F9C3|🧃|beverage box
+1F9C9|🧉|mate
+1F9CA|🧊|ice
+1F962|🥢|chopsticks
+1F37DFE0F|🍽️|fork and knife with plate
+1F374|🍴|fork and knife
+1F944|🥄|spoon
+1F52A|🔪|kitchen knife
+1FAD9|🫙|jar
+1F3FA|🏺|amphora
+1F30D|🌍|globe showing Europe-Africa
+1F30E|🌎|globe showing Americas
+1F30F|🌏|globe showing Asia-Australia
+1F310|🌐|globe with meridians
+1F5FAFE0F|🗺️|world map
+1F5FE|🗾|map of Japan
+1F9ED|🧭|compass
+1F3D4FE0F|🏔️|snow-capped mountain
+26F0FE0F|⛰️|mountain
+1F30B|🌋|volcano
+1F5FB|🗻|mount fuji
+1F3D5FE0F|🏕️|camping
+1F3D6FE0F|🏖️|beach with umbrella
+1F3DCFE0F|🏜️|desert
+1F3DDFE0F|🏝️|desert island
+1F3DEFE0F|🏞️|national park
+1F3DFFE0F|🏟️|stadium
+1F3DBFE0F|🏛️|classical building
+1F3D7FE0F|🏗️|building construction
+1F9F1|🧱|brick
+1FAA8|🪨|rock
+1FAB5|🪵|wood
+1F6D6|🛖|hut
+1F3D8FE0F|🏘️|houses
+1F3DAFE0F|🏚️|derelict house
+1F3E0|🏠|house
+1F3E1|🏡|house with garden
+1F3E2|🏢|office building
+1F3E3|🏣|Japanese post office
+1F3E4|🏤|post office
+1F3E5|🏥|hospital
+1F3E6|🏦|bank
+1F3E8|🏨|hotel
+1F3E9|🏩|love hotel
+1F3EA|🏪|convenience store
+1F3EB|🏫|school
+1F3EC|🏬|department store
+1F3ED|🏭|factory
+1F3EF|🏯|Japanese castle
+1F3F0|🏰|castle
+1F492|💒|wedding
+1F5FC|🗼|Tokyo tower
+1F5FD|🗽|Statue of Liberty
+26EA|⛪|church
+1F54C|🕌|mosque
+1F6D5|🛕|hindu temple
+1F54D|🕍|synagogue
+26E9FE0F|⛩️|shinto shrine
+1F54B|🕋|kaaba
+26F2|⛲|fountain
+26FA|⛺|tent
+1F301|🌁|foggy
+1F303|🌃|night with stars
+1F3D9FE0F|🏙️|cityscape
+1F304|🌄|sunrise over mountains
+1F305|🌅|sunrise
+1F306|🌆|cityscape at dusk
+1F307|🌇|sunset
+1F309|🌉|bridge at night
+2668FE0F|♨️|hot springs
+1F3A0|🎠|carousel horse
+1F6DD|🛝|playground slide
+1F3A1|🎡|ferris wheel
+1F3A2|🎢|roller coaster
+1F488|💈|barber pole
+1F3AA|🎪|circus tent
+1F682|🚂|locomotive
+1F683|🚃|railway car
+1F684|🚄|high-speed train
+1F685|🚅|bullet train
+1F686|🚆|train
+1F687|🚇|metro
+1F688|🚈|light rail
+1F689|🚉|station
+1F68A|🚊|tram
+1F69D|🚝|monorail
+1F69E|🚞|mountain railway
+1F68B|🚋|tram car
+1F68C|🚌|bus
+1F68D|🚍|oncoming bus
+1F68E|🚎|trolleybus
+1F690|🚐|minibus
+1F691|🚑|ambulance
+1F692|🚒|fire engine
+1F693|🚓|police car
+1F694|🚔|oncoming police car
+1F695|🚕|taxi
+1F696|🚖|oncoming taxi
+1F697|🚗|automobile
+1F698|🚘|oncoming automobile
+1F699|🚙|sport utility vehicle
+1F6FB|🛻|pickup truck
+1F69A|🚚|delivery truck
+1F69B|🚛|articulated lorry
+1F69C|🚜|tractor
+1F3CEFE0F|🏎️|racing car
+1F3CDFE0F|🏍️|motorcycle
+1F6F5|🛵|motor scooter
+1F9BD|🦽|manual wheelchair
+1F9BC|🦼|motorized wheelchair
+1F6FA|🛺|auto rickshaw
+1F6B2|🚲|bicycle
+1F6F4|🛴|kick scooter
+1F6F9|🛹|skateboard
+1F6FC|🛼|roller skate
+1F68F|🚏|bus stop
+1F6E3FE0F|🛣️|motorway
+1F6E4FE0F|🛤️|railway track
+1F6E2FE0F|🛢️|oil drum
+26FD|⛽|fuel pump
+1F6DE|🛞|wheel
+1F6A8|🚨|police car light
+1F6A5|🚥|horizontal traffic light
+1F6A6|🚦|vertical traffic light
+1F6D1|🛑|stop sign
+1F6A7|🚧|construction
+2693|⚓|anchor
+1F6DF|🛟|ring buoy
+26F5|⛵|sailboat
+1F6F6|🛶|canoe
+1F6A4|🚤|speedboat
+1F6F3FE0F|🛳️|passenger ship
+26F4FE0F|⛴️|ferry
+1F6E5FE0F|🛥️|motor boat
+1F6A2|🚢|ship
+2708FE0F|✈️|airplane
+1F6E9FE0F|🛩️|small airplane
+1F6EB|🛫|airplane departure
+1F6EC|🛬|airplane arrival
+1FA82|🪂|parachute
+1F4BA|💺|seat
+1F681|🚁|helicopter
+1F69F|🚟|suspension railway
+1F6A0|🚠|mountain cableway
+1F6A1|🚡|aerial tramway
+1F6F0FE0F|🛰️|satellite
+1F680|🚀|rocket
+1F6F8|🛸|flying saucer
+1F6CEFE0F|🛎️|bellhop bell
+1F9F3|🧳|luggage
+231B|⌛|hourglass done
+23F3|⏳|hourglass not done
+231A|⌚|watch
+23F0|⏰|alarm clock
+23F1FE0F|⏱️|stopwatch
+23F2FE0F|⏲️|timer clock
+1F570FE0F|🕰️|mantelpiece clock
+1F55B|🕛|twelve o’clock
+1F567|🕧|twelve-thirty
+1F550|🕐|one o’clock
+1F55C|🕜|one-thirty
+1F551|🕑|two o’clock
+1F55D|🕝|two-thirty
+1F552|🕒|three o’clock
+1F55E|🕞|three-thirty
+1F553|🕓|four o’clock
+1F55F|🕟|four-thirty
+1F554|🕔|five o’clock
+1F560|🕠|five-thirty
+1F555|🕕|six o’clock
+1F561|🕡|six-thirty
+1F556|🕖|seven o’clock
+1F562|🕢|seven-thirty
+1F557|🕗|eight o’clock
+1F563|🕣|eight-thirty
+1F558|🕘|nine o’clock
+1F564|🕤|nine-thirty
+1F559|🕙|ten o’clock
+1F565|🕥|ten-thirty
+1F55A|🕚|eleven o’clock
+1F566|🕦|eleven-thirty
+1F311|🌑|new moon
+1F312|🌒|waxing crescent moon
+1F313|🌓|first quarter moon
+1F314|🌔|waxing gibbous moon
+1F315|🌕|full moon
+1F316|🌖|waning gibbous moon
+1F317|🌗|last quarter moon
+1F318|🌘|waning crescent moon
+1F319|🌙|crescent moon
+1F31A|🌚|new moon face
+1F31B|🌛|first quarter moon face
+1F31C|🌜|last quarter moon face
+1F321FE0F|🌡️|thermometer
+2600FE0F|☀️|sun
+1F31D|🌝|full moon face
+1F31E|🌞|sun with face
+1FA90|🪐|ringed planet
+2B50|⭐|star
+1F31F|🌟|glowing star
+1F320|🌠|shooting star
+1F30C|🌌|milky way
+2601FE0F|☁️|cloud
+26C5|⛅|sun behind cloud
+26C8FE0F|⛈️|cloud with lightning and rain
+1F324FE0F|🌤️|sun behind small cloud
+1F325FE0F|🌥️|sun behind large cloud
+1F326FE0F|🌦️|sun behind rain cloud
+1F327FE0F|🌧️|cloud with rain
+1F328FE0F|🌨️|cloud with snow
+1F329FE0F|🌩️|cloud with lightning
+1F32AFE0F|🌪️|tornado
+1F32BFE0F|🌫️|fog
+1F32CFE0F|🌬️|wind face
+1F300|🌀|cyclone
+1F308|🌈|rainbow
+1F302|🌂|closed umbrella
+2602FE0F|☂️|umbrella
+2614|☔|umbrella with rain drops
+26F1FE0F|⛱️|umbrella on ground
+26A1|⚡|high voltage
+2744FE0F|❄️|snowflake
+2603FE0F|☃️|snowman
+26C4|⛄|snowman without snow
+2604FE0F|☄️|comet
+1F525|🔥|fire
+1F4A7|💧|droplet
+1F30A|🌊|water wave
+1F383|🎃|jack-o-lantern
+1F384|🎄|Christmas tree
+1F386|🎆|fireworks
+1F387|🎇|sparkler
+1F9E8|🧨|firecracker
+2728|✨|sparkles
+1F388|🎈|balloon
+1F389|🎉|party popper
+1F38A|🎊|confetti ball
+1F38B|🎋|tanabata tree
+1F38D|🎍|pine decoration
+1F38E|🎎|Japanese dolls
+1F38F|🎏|carp streamer
+1F390|🎐|wind chime
+1F391|🎑|moon viewing ceremony
+1F9E7|🧧|red envelope
+1F380|🎀|ribbon
+1F381|🎁|wrapped gift
+1F397FE0F|🎗️|reminder ribbon
+1F39FFE0F|🎟️|admission tickets
+1F3AB|🎫|ticket
+1F396FE0F|🎖️|military medal
+1F3C6|🏆|trophy
+1F3C5|🏅|sports medal
+1F947|🥇|1st place medal
+1F948|🥈|2nd place medal
+1F949|🥉|3rd place medal
+26BD|⚽|soccer ball
+26BE|⚾|baseball
+1F94E|🥎|softball
+1F3C0|🏀|basketball
+1F3D0|🏐|volleyball
+1F3C8|🏈|american football
+1F3C9|🏉|rugby football
+1F3BE|🎾|tennis
+1F94F|🥏|flying disc
+1F3B3|🎳|bowling
+1F3CF|🏏|cricket game
+1F3D1|🏑|field hockey
+1F3D2|🏒|ice hockey
+1F94D|🥍|lacrosse
+1F3D3|🏓|ping pong
+1F3F8|🏸|badminton
+1F94A|🥊|boxing glove
+1F94B|🥋|martial arts uniform
+1F945|🥅|goal net
+26F3|⛳|flag in hole
+26F8FE0F|⛸️|ice skate
+1F3A3|🎣|fishing pole
+1F93F|🤿|diving mask
+1F3BD|🎽|running shirt
+1F3BF|🎿|skis
+1F6F7|🛷|sled
+1F94C|🥌|curling stone
+1F3AF|🎯|bullseye
+1FA80|🪀|yo-yo
+1FA81|🪁|kite
+1F3B1|🎱|pool 8 ball
+1F52E|🔮|crystal ball
+1FA84|🪄|magic wand
+1F9FF|🧿|nazar amulet
+1FAAC|🪬|hamsa
+1F3AE|🎮|video game
+1F579FE0F|🕹️|joystick
+1F3B0|🎰|slot machine
+1F3B2|🎲|game die
+1F9E9|🧩|puzzle piece
+1F9F8|🧸|teddy bear
+1FA85|🪅|piñata
+1FAA9|🪩|mirror ball
+1FA86|🪆|nesting dolls
+2660FE0F|♠️|spade suit
+2665FE0F|♥️|heart suit
+2666FE0F|♦️|diamond suit
+2663FE0F|♣️|club suit
+265FFE0F|♟️|chess pawn
+1F0CF|🃏|joker
+1F004|🀄|mahjong red dragon
+1F3B4|🎴|flower playing cards
+1F3AD|🎭|performing arts
+1F5BCFE0F|🖼️|framed picture
+1F3A8|🎨|artist palette
+1F9F5|🧵|thread
+1FAA1|🪡|sewing needle
+1F9F6|🧶|yarn
+1FAA2|🪢|knot
+1F453|👓|glasses
+1F576FE0F|🕶️|sunglasses
+1F97D|🥽|goggles
+1F97C|🥼|lab coat
+1F9BA|🦺|safety vest
+1F454|👔|necktie
+1F455|👕|t-shirt
+1F456|👖|jeans
+1F9E3|🧣|scarf
+1F9E4|🧤|gloves
+1F9E5|🧥|coat
+1F9E6|🧦|socks
+1F457|👗|dress
+1F458|👘|kimono
+1F97B|🥻|sari
+1FA71|🩱|one-piece swimsuit
+1FA72|🩲|briefs
+1FA73|🩳|shorts
+1F459|👙|bikini
+1F45A|👚|woman’s clothes
+1F45B|👛|purse
+1F45C|👜|handbag
+1F45D|👝|clutch bag
+1F6CDFE0F|🛍️|shopping bags
+1F392|🎒|backpack
+1FA74|🩴|thong sandal
+1F45E|👞|man’s shoe
+1F45F|👟|running shoe
+1F97E|🥾|hiking boot
+1F97F|🥿|flat shoe
+1F460|👠|high-heeled shoe
+1F461|👡|woman’s sandal
+1FA70|🩰|ballet shoes
+1F462|👢|woman’s boot
+1F451|👑|crown
+1F452|👒|woman’s hat
+1F3A9|🎩|top hat
+1F393|🎓|graduation cap
+1F9E2|🧢|billed cap
+1FA96|🪖|military helmet
+26D1FE0F|⛑️|rescue worker’s helmet
+1F4FF|📿|prayer beads
+1F484|💄|lipstick
+1F48D|💍|ring
+1F48E|💎|gem stone
+1F507|🔇|muted speaker
+1F508|🔈|speaker low volume
+1F509|🔉|speaker medium volume
+1F50A|🔊|speaker high volume
+1F4E2|📢|loudspeaker
+1F4E3|📣|megaphone
+1F4EF|📯|postal horn
+1F514|🔔|bell
+1F515|🔕|bell with slash
+1F3BC|🎼|musical score
+1F3B5|🎵|musical note
+1F3B6|🎶|musical notes
+1F399FE0F|🎙️|studio microphone
+1F39AFE0F|🎚️|level slider
+1F39BFE0F|🎛️|control knobs
+1F3A4|🎤|microphone
+1F3A7|🎧|headphone
+1F4FB|📻|radio
+1F3B7|🎷|saxophone
+1FA97|🪗|accordion
+1F3B8|🎸|guitar
+1F3B9|🎹|musical keyboard
+1F3BA|🎺|trumpet
+1F3BB|🎻|violin
+1FA95|🪕|banjo
+1F941|🥁|drum
+1FA98|🪘|long drum
+1F4F1|📱|mobile phone
+1F4F2|📲|mobile phone with arrow
+260EFE0F|☎️|telephone
+1F4DE|📞|telephone receiver
+1F4DF|📟|pager
+1F4E0|📠|fax machine
+1F50B|🔋|battery
+1FAAB|🪫|low battery
+1F50C|🔌|electric plug
+1F4BB|💻|laptop
+1F5A5FE0F|🖥️|desktop computer
+1F5A8FE0F|🖨️|printer
+2328FE0F|⌨️|keyboard
+1F5B1FE0F|🖱️|computer mouse
+1F5B2FE0F|🖲️|trackball
+1F4BD|💽|computer disk
+1F4BE|💾|floppy disk
+1F4BF|💿|optical disk
+1F4C0|📀|dvd
+1F9EE|🧮|abacus
+1F3A5|🎥|movie camera
+1F39EFE0F|🎞️|film frames
+1F4FDFE0F|📽️|film projector
+1F3AC|🎬|clapper board
+1F4FA|📺|television
+1F4F7|📷|camera
+1F4F8|📸|camera with flash
+1F4F9|📹|video camera
+1F4FC|📼|videocassette
+1F50D|🔍|magnifying glass tilted left
+1F50E|🔎|magnifying glass tilted right
+1F56FFE0F|🕯️|candle
+1F4A1|💡|light bulb
+1F526|🔦|flashlight
+1F3EE|🏮|red paper lantern
+1FA94|🪔|diya lamp
+1F4D4|📔|notebook with decorative cover
+1F4D5|📕|closed book
+1F4D6|📖|open book
+1F4D7|📗|green book
+1F4D8|📘|blue book
+1F4D9|📙|orange book
+1F4DA|📚|books
+1F4D3|📓|notebook
+1F4D2|📒|ledger
+1F4C3|📃|page with curl
+1F4DC|📜|scroll
+1F4C4|📄|page facing up
+1F4F0|📰|newspaper
+1F5DEFE0F|🗞️|rolled-up newspaper
+1F4D1|📑|bookmark tabs
+1F516|🔖|bookmark
+1F3F7FE0F|🏷️|label
+1F4B0|💰|money bag
+1FA99|🪙|coin
+1F4B4|💴|yen banknote
+1F4B5|💵|dollar banknote
+1F4B6|💶|euro banknote
+1F4B7|💷|pound banknote
+1F4B8|💸|money with wings
+1F4B3|💳|credit card
+1F9FE|🧾|receipt
+1F4B9|💹|chart increasing with yen
+2709FE0F|✉️|envelope
+1F4E7|📧|e-mail
+1F4E8|📨|incoming envelope
+1F4E9|📩|envelope with arrow
+1F4E4|📤|outbox tray
+1F4E5|📥|inbox tray
+1F4E6|📦|package
+1F4EB|📫|closed mailbox with raised flag
+1F4EA|📪|closed mailbox with lowered flag
+1F4EC|📬|open mailbox with raised flag
+1F4ED|📭|open mailbox with lowered flag
+1F4EE|📮|postbox
+1F5F3FE0F|🗳️|ballot box with ballot
+270FFE0F|✏️|pencil
+2712FE0F|✒️|black nib
+1F58BFE0F|🖋️|fountain pen
+1F58AFE0F|🖊️|pen
+1F58CFE0F|🖌️|paintbrush
+1F58DFE0F|🖍️|crayon
+1F4DD|📝|memo
+1F4BC|💼|briefcase
+1F4C1|📁|file folder
+1F4C2|📂|open file folder
+1F5C2FE0F|🗂️|card index dividers
+1F4C5|📅|calendar
+1F4C6|📆|tear-off calendar
+1F5D2FE0F|🗒️|spiral notepad
+1F5D3FE0F|🗓️|spiral calendar
+1F4C7|📇|card index
+1F4C8|📈|chart increasing
+1F4C9|📉|chart decreasing
+1F4CA|📊|bar chart
+1F4CB|📋|clipboard
+1F4CC|📌|pushpin
+1F4CD|📍|round pushpin
+1F4CE|📎|paperclip
+1F587FE0F|🖇️|linked paperclips
+1F4CF|📏|straight ruler
+1F4D0|📐|triangular ruler
+2702FE0F|✂️|scissors
+1F5C3FE0F|🗃️|card file box
+1F5C4FE0F|🗄️|file cabinet
+1F5D1FE0F|🗑️|wastebasket
+1F512|🔒|locked
+1F513|🔓|unlocked
+1F50F|🔏|locked with pen
+1F510|🔐|locked with key
+1F511|🔑|key
+1F5DDFE0F|🗝️|old key
+1F528|🔨|hammer
+1FA93|🪓|axe
+26CFFE0F|⛏️|pick
+2692FE0F|⚒️|hammer and pick
+1F6E0FE0F|🛠️|hammer and wrench
+1F5E1FE0F|🗡️|dagger
+2694FE0F|⚔️|crossed swords
+1F52B|🔫|water pistol
+1FA83|🪃|boomerang
+1F3F9|🏹|bow and arrow
+1F6E1FE0F|🛡️|shield
+1FA9A|🪚|carpentry saw
+1F527|🔧|wrench
+1FA9B|🪛|screwdriver
+1F529|🔩|nut and bolt
+2699FE0F|⚙️|gear
+1F5DCFE0F|🗜️|clamp
+2696FE0F|⚖️|balance scale
+1F9AF|🦯|white cane
+1F517|🔗|link
+26D3FE0F|⛓️|chains
+1FA9D|🪝|hook
+1F9F0|🧰|toolbox
+1F9F2|🧲|magnet
+1FA9C|🪜|ladder
+2697FE0F|⚗️|alembic
+1F9EA|🧪|test tube
+1F9EB|🧫|petri dish
+1F9EC|🧬|dna
+1F52C|🔬|microscope
+1F52D|🔭|telescope
+1F4E1|📡|satellite antenna
+1F489|💉|syringe
+1FA78|🩸|drop of blood
+1F48A|💊|pill
+1FA79|🩹|adhesive bandage
+1FA7C|🩼|crutch
+1FA7A|🩺|stethoscope
+1FA7B|🩻|x-ray
+1F6AA|🚪|door
+1F6D7|🛗|elevator
+1FA9E|🪞|mirror
+1FA9F|🪟|window
+1F6CFFE0F|🛏️|bed
+1F6CBFE0F|🛋️|couch and lamp
+1FA91|🪑|chair
+1F6BD|🚽|toilet
+1FAA0|🪠|plunger
+1F6BF|🚿|shower
+1F6C1|🛁|bathtub
+1FAA4|🪤|mouse trap
+1FA92|🪒|razor
+1F9F4|🧴|lotion bottle
+1F9F7|🧷|safety pin
+1F9F9|🧹|broom
+1F9FA|🧺|basket
+1F9FB|🧻|roll of paper
+1FAA3|🪣|bucket
+1F9FC|🧼|soap
+1FAE7|🫧|bubbles
+1FAA5|🪥|toothbrush
+1F9FD|🧽|sponge
+1F9EF|🧯|fire extinguisher
+1F6D2|🛒|shopping cart
+1F6AC|🚬|cigarette
+26B0FE0F|⚰️|coffin
+1FAA6|🪦|headstone
+26B1FE0F|⚱️|funeral urn
+1F5FF|🗿|moai
+1FAA7|🪧|placard
+1FAAA|🪪|identification card
+1F3E7|🏧|ATM sign
+1F6AE|🚮|litter in bin sign
+1F6B0|🚰|potable water
+267F|♿|wheelchair symbol
+1F6B9|🚹|men’s room
+1F6BA|🚺|women’s room
+1F6BB|🚻|restroom
+1F6BC|🚼|baby symbol
+1F6BE|🚾|water closet
+1F6C2|🛂|passport control
+1F6C3|🛃|customs
+1F6C4|🛄|baggage claim
+1F6C5|🛅|left luggage
+26A0FE0F|⚠️|warning
+1F6B8|🚸|children crossing
+26D4|⛔|no entry
+1F6AB|🚫|prohibited
+1F6B3|🚳|no bicycles
+1F6AD|🚭|no smoking
+1F6AF|🚯|no littering
+1F6B1|🚱|non-potable water
+1F6B7|🚷|no pedestrians
+1F4F5|📵|no mobile phones
+1F51E|🔞|no one under eighteen
+2622FE0F|☢️|radioactive
+2623FE0F|☣️|biohazard
+2B06FE0F|⬆️|up arrow
+2197FE0F|↗️|up-right arrow
+27A1FE0F|➡️|right arrow
+2198FE0F|↘️|down-right arrow
+2B07FE0F|⬇️|down arrow
+2199FE0F|↙️|down-left arrow
+2B05FE0F|⬅️|left arrow
+2196FE0F|↖️|up-left arrow
+2195FE0F|↕️|up-down arrow
+2194FE0F|↔️|left-right arrow
+21A9FE0F|↩️|right arrow curving left
+21AAFE0F|↪️|left arrow curving right
+2934FE0F|⤴️|right arrow curving up
+2935FE0F|⤵️|right arrow curving down
+1F503|🔃|clockwise vertical arrows
+1F504|🔄|counterclockwise arrows button
+1F519|🔙|BACK arrow
+1F51A|🔚|END arrow
+1F51B|🔛|ON! arrow
+1F51C|🔜|SOON arrow
+1F51D|🔝|TOP arrow
+1F6D0|🛐|place of worship
+269BFE0F|⚛️|atom symbol
+1F549FE0F|🕉️|om
+2721FE0F|✡️|star of David
+2638FE0F|☸️|wheel of dharma
+262FFE0F|☯️|yin yang
+271DFE0F|✝️|latin cross
+2626FE0F|☦️|orthodox cross
+262AFE0F|☪️|star and crescent
+262EFE0F|☮️|peace symbol
+1F54E|🕎|menorah
+1F52F|🔯|dotted six-pointed star
+2648|♈|Aries
+2649|♉|Taurus
+264A|♊|Gemini
+264B|♋|Cancer
+264C|♌|Leo
+264D|♍|Virgo
+264E|♎|Libra
+264F|♏|Scorpio
+2650|♐|Sagittarius
+2651|♑|Capricorn
+2652|♒|Aquarius
+2653|♓|Pisces
+26CE|⛎|Ophiuchus
+1F500|🔀|shuffle tracks button
+1F501|🔁|repeat button
+1F502|🔂|repeat single button
+25B6FE0F|▶️|play button
+23E9|⏩|fast-forward button
+23EDFE0F|⏭️|next track button
+23EFFE0F|⏯️|play or pause button
+25C0FE0F|◀️|reverse button
+23EA|⏪|fast reverse button
+23EEFE0F|⏮️|last track button
+1F53C|🔼|upwards button
+23EB|⏫|fast up button
+1F53D|🔽|downwards button
+23EC|⏬|fast down button
+23F8FE0F|⏸️|pause button
+23F9FE0F|⏹️|stop button
+23FAFE0F|⏺️|record button
+23CFFE0F|⏏️|eject button
+1F3A6|🎦|cinema
+1F505|🔅|dim button
+1F506|🔆|bright button
+1F4F6|📶|antenna bars
+1F4F3|📳|vibration mode
+1F4F4|📴|mobile phone off
+2640FE0F|♀️|female sign
+2642FE0F|♂️|male sign
+26A7FE0F|⚧️|transgender symbol
+2716FE0F|✖️|multiply
+2795|➕|plus
+2796|➖|minus
+2797|➗|divide
+1F7F0|🟰|heavy equals sign
+267EFE0F|♾️|infinity
+203CFE0F|‼️|double exclamation mark
+2049FE0F|⁉️|exclamation question mark
+2753|❓|red question mark
+2754|❔|white question mark
+2755|❕|white exclamation mark
+2757|❗|red exclamation mark
+3030FE0F|〰️|wavy dash
+1F4B1|💱|currency exchange
+1F4B2|💲|heavy dollar sign
+2695FE0F|⚕️|medical symbol
+267BFE0F|♻️|recycling symbol
+269CFE0F|⚜️|fleur-de-lis
+1F531|🔱|trident emblem
+1F4DB|📛|name badge
+1F530|🔰|Japanese symbol for beginner
+2B55|⭕|hollow red circle
+2705|✅|check mark button
+2611FE0F|☑️|check box with check
+2714FE0F|✔️|check mark
+274C|❌|cross mark
+274E|❎|cross mark button
+27B0|➰|curly loop
+27BF|➿|double curly loop
+303DFE0F|〽️|part alternation mark
+2733FE0F|✳️|eight-spoked asterisk
+2734FE0F|✴️|eight-pointed star
+2747FE0F|❇️|sparkle
+00A9FE0F|©️|copyright
+00AEFE0F|®️|registered
+2122FE0F|™️|trade mark
+0023FE0F20E3|#️⃣|keycap: #
+002AFE0F20E3|*️⃣|keycap: *
+0030FE0F20E3|0️⃣|keycap: 0
+0031FE0F20E3|1️⃣|keycap: 1
+0032FE0F20E3|2️⃣|keycap: 2
+0033FE0F20E3|3️⃣|keycap: 3
+0034FE0F20E3|4️⃣|keycap: 4
+0035FE0F20E3|5️⃣|keycap: 5
+0036FE0F20E3|6️⃣|keycap: 6
+0037FE0F20E3|7️⃣|keycap: 7
+0038FE0F20E3|8️⃣|keycap: 8
+0039FE0F20E3|9️⃣|keycap: 9
+1F51F|🔟|keycap: 10
+1F520|🔠|input latin uppercase
+1F521|🔡|input latin lowercase
+1F522|🔢|input numbers
+1F523|🔣|input symbols
+1F524|🔤|input latin letters
+1F170FE0F|🅰️|A button (blood type)
+1F18E|🆎|AB button (blood type)
+1F171FE0F|🅱️|B button (blood type)
+1F191|🆑|CL button
+1F192|🆒|COOL button
+1F193|🆓|FREE button
+2139FE0F|ℹ️|information
+1F194|🆔|ID button
+24C2FE0F|Ⓜ️|circled M
+1F195|🆕|NEW button
+1F196|🆖|NG button
+1F17EFE0F|🅾️|O button (blood type)
+1F197|🆗|OK button
+1F17FFE0F|🅿️|P button
+1F198|🆘|SOS button
+1F199|🆙|UP! button
+1F19A|🆚|VS button
+1F201|🈁|Japanese “here” button
+1F202FE0F|🈂️|Japanese “service charge” button
+1F237FE0F|🈷️|Japanese “monthly amount” button
+1F236|🈶|Japanese “not free of charge” button
+1F22F|🈯|Japanese “reserved” button
+1F250|🉐|Japanese “bargain” button
+1F239|🈹|Japanese “discount” button
+1F21A|🈚|Japanese “free of charge” button
+1F232|🈲|Japanese “prohibited” button
+1F251|🉑|Japanese “acceptable” button
+1F238|🈸|Japanese “application” button
+1F234|🈴|Japanese “passing grade” button
+1F233|🈳|Japanese “vacancy” button
+3297FE0F|㊗️|Japanese “congratulations” button
+3299FE0F|㊙️|Japanese “secret” button
+1F23A|🈺|Japanese “open for business” button
+1F235|🈵|Japanese “no vacancy” button
+1F534|🔴|red circle
+1F7E0|🟠|orange circle
+1F7E1|🟡|yellow circle
+1F7E2|🟢|green circle
+1F535|🔵|blue circle
+1F7E3|🟣|purple circle
+1F7E4|🟤|brown circle
+26AB|⚫|black circle
+26AA|⚪|white circle
+1F7E5|🟥|red square
+1F7E7|🟧|orange square
+1F7E8|🟨|yellow square
+1F7E9|🟩|green square
+1F7E6|🟦|blue square
+1F7EA|🟪|purple square
+1F7EB|🟫|brown square
+2B1B|⬛|black large square
+2B1C|⬜|white large square
+25FCFE0F|◼️|black medium square
+25FBFE0F|◻️|white medium square
+25FE|◾|black medium-small square
+25FD|◽|white medium-small square
+25AAFE0F|▪️|black small square
+25ABFE0F|▫️|white small square
+1F536|🔶|large orange diamond
+1F537|🔷|large blue diamond
+1F538|🔸|small orange diamond
+1F539|🔹|small blue diamond
+1F53A|🔺|red triangle pointed up
+1F53B|🔻|red triangle pointed down
+1F4A0|💠|diamond with a dot
+1F518|🔘|radio button
+1F533|🔳|white square button
+1F532|🔲|black square button
+1F3C1|🏁|chequered flag
+1F6A9|🚩|triangular flag
+1F38C|🎌|crossed flags
+1F3F4|🏴|black flag
+1F3F3FE0F|🏳️|white flag
+1F3F3FE0F200D1F308|🏳️‍🌈|rainbow flag
+1F3F3FE0F200D26A7FE0F|🏳️‍⚧️|transgender flag
+1F3F4200D2620FE0F|🏴‍☠️|pirate flag
+1F1E61F1E8|🇦🇨|flag: Ascension Island
+1F1E61F1E9|🇦🇩|flag: Andorra
+1F1E61F1EA|🇦🇪|flag: United Arab Emirates
+1F1E61F1EB|🇦🇫|flag: Afghanistan
+1F1E61F1EC|🇦🇬|flag: Antigua & Barbuda
+1F1E61F1EE|🇦🇮|flag: Anguilla
+1F1E61F1F1|🇦🇱|flag: Albania
+1F1E61F1F2|🇦🇲|flag: Armenia
+1F1E61F1F4|🇦🇴|flag: Angola
+1F1E61F1F6|🇦🇶|flag: Antarctica
+1F1E61F1F7|🇦🇷|flag: Argentina
+1F1E61F1F8|🇦🇸|flag: American Samoa
+1F1E61F1F9|🇦🇹|flag: Austria
+1F1E61F1FA|🇦🇺|flag: Australia
+1F1E61F1FC|🇦🇼|flag: Aruba
+1F1E61F1FD|🇦🇽|flag: Åland Islands
+1F1E61F1FF|🇦🇿|flag: Azerbaijan
+1F1E71F1E6|🇧🇦|flag: Bosnia & Herzegovina
+1F1E71F1E7|🇧🇧|flag: Barbados
+1F1E71F1E9|🇧🇩|flag: Bangladesh
+1F1E71F1EA|🇧🇪|flag: Belgium
+1F1E71F1EB|🇧🇫|flag: Burkina Faso
+1F1E71F1EC|🇧🇬|flag: Bulgaria
+1F1E71F1ED|🇧🇭|flag: Bahrain
+1F1E71F1EE|🇧🇮|flag: Burundi
+1F1E71F1EF|🇧🇯|flag: Benin
+1F1E71F1F1|🇧🇱|flag: St. Barthélemy
+1F1E71F1F2|🇧🇲|flag: Bermuda
+1F1E71F1F3|🇧🇳|flag: Brunei
+1F1E71F1F4|🇧🇴|flag: Bolivia
+1F1E71F1F6|🇧🇶|flag: Caribbean Netherlands
+1F1E71F1F7|🇧🇷|flag: Brazil
+1F1E71F1F8|🇧🇸|flag: Bahamas
+1F1E71F1F9|🇧🇹|flag: Bhutan
+1F1E71F1FB|🇧🇻|flag: Bouvet Island
+1F1E71F1FC|🇧🇼|flag: Botswana
+1F1E71F1FE|🇧🇾|flag: Belarus
+1F1E71F1FF|🇧🇿|flag: Belize
+1F1E81F1E6|🇨🇦|flag: Canada
+1F1E81F1E8|🇨🇨|flag: Cocos (Keeling) Islands
+1F1E81F1E9|🇨🇩|flag: Congo - Kinshasa
+1F1E81F1EB|🇨🇫|flag: Central African Republic
+1F1E81F1EC|🇨🇬|flag: Congo - Brazzaville
+1F1E81F1ED|🇨🇭|flag: Switzerland
+1F1E81F1EE|🇨🇮|flag: Côte d’Ivoire
+1F1E81F1F0|🇨🇰|flag: Cook Islands
+1F1E81F1F1|🇨🇱|flag: Chile
+1F1E81F1F2|🇨🇲|flag: Cameroon
+1F1E81F1F3|🇨🇳|flag: China
+1F1E81F1F4|🇨🇴|flag: Colombia
+1F1E81F1F5|🇨🇵|flag: Clipperton Island
+1F1E81F1F7|🇨🇷|flag: Costa Rica
+1F1E81F1FA|🇨🇺|flag: Cuba
+1F1E81F1FB|🇨🇻|flag: Cape Verde
+1F1E81F1FC|🇨🇼|flag: Curaçao
+1F1E81F1FD|🇨🇽|flag: Christmas Island
+1F1E81F1FE|🇨🇾|flag: Cyprus
+1F1E81F1FF|🇨🇿|flag: Czechia
+1F1E91F1EA|🇩🇪|flag: Germany
+1F1E91F1EC|🇩🇬|flag: Diego Garcia
+1F1E91F1EF|🇩🇯|flag: Djibouti
+1F1E91F1F0|🇩🇰|flag: Denmark
+1F1E91F1F2|🇩🇲|flag: Dominica
+1F1E91F1F4|🇩🇴|flag: Dominican Republic
+1F1E91F1FF|🇩🇿|flag: Algeria
+1F1EA1F1E6|🇪🇦|flag: Ceuta & Melilla
+1F1EA1F1E8|🇪🇨|flag: Ecuador
+1F1EA1F1EA|🇪🇪|flag: Estonia
+1F1EA1F1EC|🇪🇬|flag: Egypt
+1F1EA1F1ED|🇪🇭|flag: Western Sahara
+1F1EA1F1F7|🇪🇷|flag: Eritrea
+1F1EA1F1F8|🇪🇸|flag: Spain
+1F1EA1F1F9|🇪🇹|flag: Ethiopia
+1F1EA1F1FA|🇪🇺|flag: European Union
+1F1EB1F1EE|🇫🇮|flag: Finland
+1F1EB1F1EF|🇫🇯|flag: Fiji
+1F1EB1F1F0|🇫🇰|flag: Falkland Islands
+1F1EB1F1F2|🇫🇲|flag: Micronesia
+1F1EB1F1F4|🇫🇴|flag: Faroe Islands
+1F1EB1F1F7|🇫🇷|flag: France
+1F1EC1F1E6|🇬🇦|flag: Gabon
+1F1EC1F1E7|🇬🇧|flag: United Kingdom
+1F1EC1F1E9|🇬🇩|flag: Grenada
+1F1EC1F1EA|🇬🇪|flag: Georgia
+1F1EC1F1EB|🇬🇫|flag: French Guiana
+1F1EC1F1EC|🇬🇬|flag: Guernsey
+1F1EC1F1ED|🇬🇭|flag: Ghana
+1F1EC1F1EE|🇬🇮|flag: Gibraltar
+1F1EC1F1F1|🇬🇱|flag: Greenland
+1F1EC1F1F2|🇬🇲|flag: Gambia
+1F1EC1F1F3|🇬🇳|flag: Guinea
+1F1EC1F1F5|🇬🇵|flag: Guadeloupe
+1F1EC1F1F6|🇬🇶|flag: Equatorial Guinea
+1F1EC1F1F7|🇬🇷|flag: Greece
+1F1EC1F1F8|🇬🇸|flag: South Georgia & South Sandwich Islands
+1F1EC1F1F9|🇬🇹|flag: Guatemala
+1F1EC1F1FA|🇬🇺|flag: Guam
+1F1EC1F1FC|🇬🇼|flag: Guinea-Bissau
+1F1EC1F1FE|🇬🇾|flag: Guyana
+1F1ED1F1F0|🇭🇰|flag: Hong Kong SAR China
+1F1ED1F1F2|🇭🇲|flag: Heard & McDonald Islands
+1F1ED1F1F3|🇭🇳|flag: Honduras
+1F1ED1F1F7|🇭🇷|flag: Croatia
+1F1ED1F1F9|🇭🇹|flag: Haiti
+1F1ED1F1FA|🇭🇺|flag: Hungary
+1F1EE1F1E8|🇮🇨|flag: Canary Islands
+1F1EE1F1E9|🇮🇩|flag: Indonesia
+1F1EE1F1EA|🇮🇪|flag: Ireland
+1F1EE1F1F1|🇮🇱|flag: Israel
+1F1EE1F1F2|🇮🇲|flag: Isle of Man
+1F1EE1F1F3|🇮🇳|flag: India
+1F1EE1F1F4|🇮🇴|flag: British Indian Ocean Territory
+1F1EE1F1F6|🇮🇶|flag: Iraq
+1F1EE1F1F7|🇮🇷|flag: Iran
+1F1EE1F1F8|🇮🇸|flag: Iceland
+1F1EE1F1F9|🇮🇹|flag: Italy
+1F1EF1F1EA|🇯🇪|flag: Jersey
+1F1EF1F1F2|🇯🇲|flag: Jamaica
+1F1EF1F1F4|🇯🇴|flag: Jordan
+1F1EF1F1F5|🇯🇵|flag: Japan
+1F1F01F1EA|🇰🇪|flag: Kenya
+1F1F01F1EC|🇰🇬|flag: Kyrgyzstan
+1F1F01F1ED|🇰🇭|flag: Cambodia
+1F1F01F1EE|🇰🇮|flag: Kiribati
+1F1F01F1F2|🇰🇲|flag: Comoros
+1F1F01F1F3|🇰🇳|flag: St. Kitts & Nevis
+1F1F01F1F5|🇰🇵|flag: North Korea
+1F1F01F1F7|🇰🇷|flag: South Korea
+1F1F01F1FC|🇰🇼|flag: Kuwait
+1F1F01F1FE|🇰🇾|flag: Cayman Islands
+1F1F01F1FF|🇰🇿|flag: Kazakhstan
+1F1F11F1E6|🇱🇦|flag: Laos
+1F1F11F1E7|🇱🇧|flag: Lebanon
+1F1F11F1E8|🇱🇨|flag: St. Lucia
+1F1F11F1EE|🇱🇮|flag: Liechtenstein
+1F1F11F1F0|🇱🇰|flag: Sri Lanka
+1F1F11F1F7|🇱🇷|flag: Liberia
+1F1F11F1F8|🇱🇸|flag: Lesotho
+1F1F11F1F9|🇱🇹|flag: Lithuania
+1F1F11F1FA|🇱🇺|flag: Luxembourg
+1F1F11F1FB|🇱🇻|flag: Latvia
+1F1F11F1FE|🇱🇾|flag: Libya
+1F1F21F1E6|🇲🇦|flag: Morocco
+1F1F21F1E8|🇲🇨|flag: Monaco
+1F1F21F1E9|🇲🇩|flag: Moldova
+1F1F21F1EA|🇲🇪|flag: Montenegro
+1F1F21F1EB|🇲🇫|flag: St. Martin
+1F1F21F1EC|🇲🇬|flag: Madagascar
+1F1F21F1ED|🇲🇭|flag: Marshall Islands
+1F1F21F1F0|🇲🇰|flag: North Macedonia
+1F1F21F1F1|🇲🇱|flag: Mali
+1F1F21F1F2|🇲🇲|flag: Myanmar (Burma)
+1F1F21F1F3|🇲🇳|flag: Mongolia
+1F1F21F1F4|🇲🇴|flag: Macao SAR China
+1F1F21F1F5|🇲🇵|flag: Northern Mariana Islands
+1F1F21F1F6|🇲🇶|flag: Martinique
+1F1F21F1F7|🇲🇷|flag: Mauritania
+1F1F21F1F8|🇲🇸|flag: Montserrat
+1F1F21F1F9|🇲🇹|flag: Malta
+1F1F21F1FA|🇲🇺|flag: Mauritius
+1F1F21F1FB|🇲🇻|flag: Maldives
+1F1F21F1FC|🇲🇼|flag: Malawi
+1F1F21F1FD|🇲🇽|flag: Mexico
+1F1F21F1FE|🇲🇾|flag: Malaysia
+1F1F21F1FF|🇲🇿|flag: Mozambique
+1F1F31F1E6|🇳🇦|flag: Namibia
+1F1F31F1E8|🇳🇨|flag: New Caledonia
+1F1F31F1EA|🇳🇪|flag: Niger
+1F1F31F1EB|🇳🇫|flag: Norfolk Island
+1F1F31F1EC|🇳🇬|flag: Nigeria
+1F1F31F1EE|🇳🇮|flag: Nicaragua
+1F1F31F1F1|🇳🇱|flag: Netherlands
+1F1F31F1F4|🇳🇴|flag: Norway
+1F1F31F1F5|🇳🇵|flag: Nepal
+1F1F31F1F7|🇳🇷|flag: Nauru
+1F1F31F1FA|🇳🇺|flag: Niue
+1F1F31F1FF|🇳🇿|flag: New Zealand
+1F1F41F1F2|🇴🇲|flag: Oman
+1F1F51F1E6|🇵🇦|flag: Panama
+1F1F51F1EA|🇵🇪|flag: Peru
+1F1F51F1EB|🇵🇫|flag: French Polynesia
+1F1F51F1EC|🇵🇬|flag: Papua New Guinea
+1F1F51F1ED|🇵🇭|flag: Philippines
+1F1F51F1F0|🇵🇰|flag: Pakistan
+1F1F51F1F1|🇵🇱|flag: Poland
+1F1F51F1F2|🇵🇲|flag: St. Pierre & Miquelon
+1F1F51F1F3|🇵🇳|flag: Pitcairn Islands
+1F1F51F1F7|🇵🇷|flag: Puerto Rico
+1F1F51F1F8|🇵🇸|flag: Palestinian Territories
+1F1F51F1F9|🇵🇹|flag: Portugal
+1F1F51F1FC|🇵🇼|flag: Palau
+1F1F51F1FE|🇵🇾|flag: Paraguay
+1F1F61F1E6|🇶🇦|flag: Qatar
+1F1F71F1EA|🇷🇪|flag: Réunion
+1F1F71F1F4|🇷🇴|flag: Romania
+1F1F71F1F8|🇷🇸|flag: Serbia
+1F1F71F1FA|🇷🇺|flag: Russia
+1F1F71F1FC|🇷🇼|flag: Rwanda
+1F1F81F1E6|🇸🇦|flag: Saudi Arabia
+1F1F81F1E7|🇸🇧|flag: Solomon Islands
+1F1F81F1E8|🇸🇨|flag: Seychelles
+1F1F81F1E9|🇸🇩|flag: Sudan
+1F1F81F1EA|🇸🇪|flag: Sweden
+1F1F81F1EC|🇸🇬|flag: Singapore
+1F1F81F1ED|🇸🇭|flag: St. Helena
+1F1F81F1EE|🇸🇮|flag: Slovenia
+1F1F81F1EF|🇸🇯|flag: Svalbard & Jan Mayen
+1F1F81F1F0|🇸🇰|flag: Slovakia
+1F1F81F1F1|🇸🇱|flag: Sierra Leone
+1F1F81F1F2|🇸🇲|flag: San Marino
+1F1F81F1F3|🇸🇳|flag: Senegal
+1F1F81F1F4|🇸🇴|flag: Somalia
+1F1F81F1F7|🇸🇷|flag: Suriname
+1F1F81F1F8|🇸🇸|flag: South Sudan
+1F1F81F1F9|🇸🇹|flag: São Tomé & Príncipe
+1F1F81F1FB|🇸🇻|flag: El Salvador
+1F1F81F1FD|🇸🇽|flag: Sint Maarten
+1F1F81F1FE|🇸🇾|flag: Syria
+1F1F81F1FF|🇸🇿|flag: Eswatini
+1F1F91F1E6|🇹🇦|flag: Tristan da Cunha
+1F1F91F1E8|🇹🇨|flag: Turks & Caicos Islands
+1F1F91F1E9|🇹🇩|flag: Chad
+1F1F91F1EB|🇹🇫|flag: French Southern Territories
+1F1F91F1EC|🇹🇬|flag: Togo
+1F1F91F1ED|🇹🇭|flag: Thailand
+1F1F91F1EF|🇹🇯|flag: Tajikistan
+1F1F91F1F0|🇹🇰|flag: Tokelau
+1F1F91F1F1|🇹🇱|flag: Timor-Leste
+1F1F91F1F2|🇹🇲|flag: Turkmenistan
+1F1F91F1F3|🇹🇳|flag: Tunisia
+1F1F91F1F4|🇹🇴|flag: Tonga
+1F1F91F1F7|🇹🇷|flag: Turkey
+1F1F91F1F9|🇹🇹|flag: Trinidad & Tobago
+1F1F91F1FB|🇹🇻|flag: Tuvalu
+1F1F91F1FC|🇹🇼|flag: Taiwan
+1F1F91F1FF|🇹🇿|flag: Tanzania
+1F1FA1F1E6|🇺🇦|flag: Ukraine
+1F1FA1F1EC|🇺🇬|flag: Uganda
+1F1FA1F1F2|🇺🇲|flag: U.S. Outlying Islands
+1F1FA1F1F3|🇺🇳|flag: United Nations
+1F1FA1F1F8|🇺🇸|flag: United States
+1F1FA1F1FE|🇺🇾|flag: Uruguay
+1F1FA1F1FF|🇺🇿|flag: Uzbekistan
+1F1FB1F1E6|🇻🇦|flag: Vatican City
+1F1FB1F1E8|🇻🇨|flag: St. Vincent & Grenadines
+1F1FB1F1EA|🇻🇪|flag: Venezuela
+1F1FB1F1EC|🇻🇬|flag: British Virgin Islands
+1F1FB1F1EE|🇻🇮|flag: U.S. Virgin Islands
+1F1FB1F1F3|🇻🇳|flag: Vietnam
+1F1FB1F1FA|🇻🇺|flag: Vanuatu
+1F1FC1F1EB|🇼🇫|flag: Wallis & Futuna
+1F1FC1F1F8|🇼🇸|flag: Samoa
+1F1FD1F1F0|🇽🇰|flag: Kosovo
+1F1FE1F1EA|🇾🇪|flag: Yemen
+1F1FE1F1F9|🇾🇹|flag: Mayotte
+1F1FF1F1E6|🇿🇦|flag: South Africa
+1F1FF1F1F2|🇿🇲|flag: Zambia
+1F1FF1F1FC|🇿🇼|flag: Zimbabwe
+1F3F4E0067E0062E0065E006EE0067E007F|🏴󠁧󠁢󠁥󠁮󠁧󠁿|flag: England
+1F3F4E0067E0062E0073E0063E0074E007F|🏴󠁧󠁢󠁳󠁣󠁴󠁿|flag: Scotland
+1F3F4E0067E0062E0077E006CE0073E007F|🏴󠁧󠁢󠁷󠁬󠁳󠁿|flag: Wales

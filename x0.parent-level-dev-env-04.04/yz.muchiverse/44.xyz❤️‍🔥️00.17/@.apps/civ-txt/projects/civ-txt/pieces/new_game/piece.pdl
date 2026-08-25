@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | new_game
+
+METHOD       | Victory: Conquest                   | SET_VICTORY:conquest
+METHOD       | Victory: Score + Turn Limit         | SET_VICTORY:score_turnlimit
+METHOD       | Victory: Tech + Score               | SET_VICTORY:tech_score
+METHOD       | Map: Small (2 civs)                 | SET_MAP_SIZE:small
+METHOD       | Map: Medium (3-4 civs)              | SET_MAP_SIZE:medium
+METHOD       | Combat: Abstract (army-strength)    | SET_COMBAT:abstract
+METHOD       | Combat: Per-unit (grid skirmish)    | SET_COMBAT:per_unit
+METHOD       | Confirm & Start                     | CONFIRM_START

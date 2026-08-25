@@ -1,0 +1,12 @@
+WRAITH FRAME AUDIT
+frame_id=000004
+project_id=wraith-alpha
+source_layout=projects/wraith-alpha/layouts/alpha-shell.chtpm
+generated_at_epoch=1783992296
+cols=96
+rows=30
+cell_width_px=10
+cell_height_px=18
+object_count=351
+outputs=current_frame.txt,current_frame.ansi.txt,current_frame.cells.pdl,current_frame.meta.pdl,current_frame.objects.pdl,current_frame.hitmap.pdl,current_frame.desktop_state.pdl,current_frame.window_stack.pdl,current_frame.focus_state.pdl,current_frame.mouse_state.pdl
+warnings=none

@@ -1,0 +1,34 @@
+🗓️we wanna get to the point where somehow ai/human fills out a calender in fuzz op.
+or w/e that will make fuzzpet automatically do stuff 2 move thru the game. also auto batter. 
+ 🗓️
+ 
+ 📅️apr21
+ this isn't bad(better than first try!):[i did it with gemini + browser grr]
+ <i wouldn't have needed browser if i was very specific with code spex via last try ;)>
+  i would keep at this, and try to get bot ops internally 2... 
+ and bot editor could pull in . that woudl be dreamy. 
+ 
+  📅️
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 🥚️
+ 
+ genesis;🥚️
+ wait. we do not use headers, we use orchestrator that runs forks() or pipes, and store shared    
+   data in "piece" format like @\!.gem-flashlite/ explains ... did u not understand this. pls       
+   update @xo/bot3-plan.txt with this new information and we will begin work on a 3rd more          
+   informed bot that is quickly tested for compilability and fsm key injection functionality.       
+   (ignore rl and frame reading for now)         🥚️

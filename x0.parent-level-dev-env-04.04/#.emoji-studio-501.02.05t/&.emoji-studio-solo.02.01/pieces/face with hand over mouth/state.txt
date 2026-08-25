@@ -1,0 +1,5 @@
+name=face with hand over mouth
+index=30
+resolution=8
+pos=0,0,0
+scale=1.0

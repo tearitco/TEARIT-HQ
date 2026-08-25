@@ -1,0 +1,27 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                 G E M - X O   L O C A L   A G E N T                          ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║ [AI STATE]: IDLE | [API]: https://generativelanguage.googleapis.com ║
+║ [PIECE]: iqabel | [CTX]: 2% | [FSM]: IDLE                   ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║ You exceeded your current quota, please check your plan and billing detail ║
+║ s. For more information on this error, head to: https://ai.google.dev/gemi ║
+║ ni-api/docs/rate-limits. To monitor your current usage, head to: https://a ║
+║ i.dev/rate-limit.                                                          ║
+║ * Quota exceeded for metric: generativelanguage.googleapis.com/generate_co ║
+║ ntent_free_tier_requests, limit: 20, model: gemini-2.5-flash               ║
+║ Please retry in 27.116395322s.                                             ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  | [^] 1. [_]                                              |  ║
+
+[ ] 2. [[2] Clear Context]
+[ ] 3. [[3] Switch API]
+[ ] 4. [[4] Summarize]
+[ ] 5. [[ESC] Exit]
+| [SYS]: Response received.                                 |
+
+
++=========================================================+
+Active [^]:  (ESC to exit)

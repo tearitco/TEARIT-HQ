@@ -1,0 +1,141 @@
+================================================================================
+USER REPORT — file-menu widget (dev snapshot)
+================================================================================
+Date:     2026-07-27
+Audience: humans + agents checking what already works
+Paths:    &.widgits/file-menu/   (widget)
+          102.editor-…/          (host editor)
+          %.harnesses/file-menu+editor/  (cross-project proof)
+
+--------------------------------------------------------------------------------
+1. What this widget is for
+--------------------------------------------------------------------------------
+
+file-menu is the first house **widget**: a small program that does not own
+the editor’s typing canvas. It **sends file commands** (NEW / SAVE /
+SAVE_AS / LOAD) to a **focused running program** over a file-mediated
+command bus (same idea as drag-drop exchange files, not sockets).
+
+Product direction (see widget+plan.txt + xyzos-standards §35):
+
+  - User UI is **GL-primary** (widget window), not a second terminal.
+  - Editor FILE menu should eventually **spawn this widget** as
+    run-widget (GL on, ASCII off).
+  - This report’s “done” slice is the **cmd bus + multi-project harness**,
+    not full GL chrome yet.
+
+--------------------------------------------------------------------------------
+2. What is implemented now
+--------------------------------------------------------------------------------
+
+file-menu package (ops, not full pal UI yet):
+
+  button.sh compile|check|help
+  ops/fm_set_focus.c
+    → point widget at an editor session (reads widget_bridge.txt)
+  ops/fm_enqueue_cmd.c
+    → append NEW | SAVE | LOAD <path> | SAVE_AS <path> | PING
+      to the focused editor’s inbox
+
+Editor package (host):
+
+  ops/editor_widget_cmds.c
+    → drains pieces/system/widget_cmds/inbox.txt
+    → LOAD / SAVE / SAVE_AS / NEW / PING
+    → writes status.txt + publishes widget_bridge.txt
+  idle tick of editor_menu_input also drains the inbox
+
+Shared contract:
+
+  Editor session:
+    pieces/system/widget_bridge.txt   # paths for widgets/harness
+    pieces/system/widget_cmds/inbox.txt
+    pieces/system/widget_cmds/status.txt
+    pieces/system/editor_buffer.txt
+    pieces/system/editor_state.txt    # file_path, cursor, message
+
+--------------------------------------------------------------------------------
+3. What is NOT done yet (honest)
+--------------------------------------------------------------------------------
+
+  [ ] Full FILE MENU chtpm screens (NEW/SAVE/LOAD UI matching file-flow)
+  [ ] File browser layout (DIR / [FIL] / BACK)
+  [ ] CHANGE FOCUS PROJECT UI (registry list)
+  [ ] xyzfs runtime process registry (multi-app discoverability)
+  [ ] GL window / run-widget profile (standards §35)
+  [ ] Editor method “FILE” that spawns this widget automatically
+
+Those remain in widget+plan.txt phases 1.B–1.G and Step 2.
+
+--------------------------------------------------------------------------------
+4. Proof that editor + file-menu work together (pre-human)
+--------------------------------------------------------------------------------
+
+Cross-project harness (not inside one app alone — standards §36):
+
+  %.harnesses/file-menu+editor/button.sh demo
+
+Latest green run (example):
+
+  proof/harness-20260727-234011/
+
+  PASS: file-menu focused on editor session
+  PASS: LOAD: editor buffer == fixture
+  PASS: LOAD status result=ok
+  PASS: SAVE_AS: disk file == buffer
+  PASS: NEW: buffer empty
+
+  === ALL PASS — file-menu + editor work together via cmd bus ===
+
+How to re-run:
+
+  cd %.harnesses/file-menu+editor
+  ./button.sh demo
+
+Fixture used:
+
+  fixtures/hello_from_harness.txt
+  → "hello from file-menu harness\nline2\n"
+
+--------------------------------------------------------------------------------
+5. How an agent should use the ops manually
+--------------------------------------------------------------------------------
+
+  # 1) Have an editor session root ($ED) with bridge published:
+  #    PRISC_PROJECT_ROOT=$ED ./ops/+x/editor_widget_cmds.+x
+
+  # 2) Focus widget state on that session:
+  &.widgits/file-menu/ops/+x/fm_set_focus.+x /tmp/wstate $ED
+
+  # 3) Send commands:
+  .../fm_enqueue_cmd.+x /tmp/wstate LOAD /path/to/file.txt
+  .../fm_enqueue_cmd.+x /tmp/wstate SAVE_AS /path/to/out.txt
+  .../fm_enqueue_cmd.+x /tmp/wstate NEW
+
+  # 4) Drain (if not relying on editor idle):
+  PRISC_PROJECT_ROOT=$ED $EDITOR/ops/+x/editor_widget_cmds.+x
+
+  # 5) Read:
+  $ED/pieces/system/editor_buffer.txt
+  $ED/pieces/system/widget_cmds/status.txt
+
+--------------------------------------------------------------------------------
+6. Docs to read next
+--------------------------------------------------------------------------------
+
+  widget+plan.txt                 full phases / KPIs / GL law
+  file-flow.txt                   target UI frames
+  #.haiku+/!.xyzos-standards+1.txt  §35 GL primary, §36 harness placement
+  #.haiku+/!.xyzos-pitfalls+1.txt   PITFALL 48 idle spam, 49 no second TTY
+  %.harnesses/file-menu+editor/USER_REPORT.txt  (sibling copy of this story)
+
+--------------------------------------------------------------------------------
+7. One-line status
+--------------------------------------------------------------------------------
+
+Cmd-bus between file-menu ops and 102.editor is **proven by harness**.
+GL FILE MENU UI and “open from editor” spawn are **not** shipped yet.
+
+================================================================================
+END USER_REPORT (file-menu)
+================================================================================

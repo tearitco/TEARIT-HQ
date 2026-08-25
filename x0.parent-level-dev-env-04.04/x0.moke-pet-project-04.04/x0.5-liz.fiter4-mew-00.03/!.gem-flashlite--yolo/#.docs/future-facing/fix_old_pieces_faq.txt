@@ -1,0 +1,191 @@
+# fix_old_pieces.sh - FAQ & Documentation
+**Date:** 2026-03-15
+**Purpose:** Add `map_id` field to existing pieces that don't have it
+
+## 2026-03-18 NOTE (IMPORTANT)
+This script/doc is a **legacy migration utility**.
+
+Current canonical architecture is world/map containment by directory:
+`projects/<project>/pieces/world_<id>/map_<id>/<piece_id>/`
+
+`map_id` remains useful for compatibility and fallback during migration, but should not be treated as the only source of map membership in new systems.
+
+---
+
+## 1. WHAT DOES THIS SCRIPT DO?
+
+The script scans all piece state files in your projects and **adds a `map_id=` line** to pieces that don't already have one.
+
+### Example Transformation
+
+**Before:**
+```
+# projects/template/pieces/npc_7_5/state.txt
+name=npc_7_5
+type=npc
+pos_x=7
+pos_y=5
+pos_z=0
+on_map=1
+icon=&
+behavior=passive
+dialogue=Hello!
+```
+
+**After:**
+```
+# projects/template/pieces/npc_7_5/state.txt
+name=npc_7_5
+type=npc
+pos_x=7
+pos_y=5
+pos_z=0
+on_map=1
+icon=&
+behavior=passive
+dialogue=Hello!
+map_id=map_0001_z0.txt    ← ADDED BY SCRIPT
+```
+
+---
+
+## 2. HOW DOES IT DETERMINE WHICH MAP?
+
+The script uses a **two-step heuristic**:
+
+### Step 1: Check Position Against Map Content
+For each piece with `pos_x` and `pos_y`:
+1. Scan all map files in `projects/{project}/maps/`
+2. Check if the character at position (pos_x, pos_y) is **not empty** (`.`)
+3. If a match is found, assign that map as `map_id`
+
+**Example:**
+- `npc_7_5` has `pos_x=7, pos_y=5`
+- Script checks `map_0001_z0.txt` at row 5, column 7
+- Finds `&` character (not `.`)
+- **Result:** `map_id=map_0001_z0.txt`
+
+### Step 2: Fallback to First Map
+If no matching position is found:
+- Assign the **first alphabetically sorted map** as `map_id`
+- This ensures every piece has SOME map association
+
+---
+
+## 3. WHAT PIECES DOES IT SKIP?
+
+| Piece Type | Reason |
+|------------|--------|
+| `selector/` | Global piece, should appear on all maps |
+| Pieces already with `map_id=` | Already fixed |
+| Pieces without `state.txt` | Invalid piece directory |
+| Pieces without `pos_x`/`pos_y` | Uses default map |
+
+---
+
+## 4. USAGE
+
+### Fix All Projects
+```bash
+#.tools/fix_old_pieces.sh
+```
+
+### Fix Specific Project
+```bash
+#.tools/fix_old_pieces.sh template
+#.tools/fix_old_pieces.sh fuzz_legacy
+```
+
+---
+
+## 5. SAFE TO RUN MULTIPLE TIMES?
+
+**Yes!** The script checks if `map_id=` already exists before adding it. Running twice won't duplicate lines.
+
+---
+
+## 6. WHAT IF IT ASSIGNS THE WRONG MAP?
+
+You can manually edit the piece's `state.txt`:
+
+```bash
+# Edit the file
+nano projects/template/pieces/npc_7_5/state.txt
+
+# Change or remove the map_id line
+map_id=map_0002.txt    # Change to different map
+# map_id=              # Remove to show on all maps
+```
+
+---
+
+## 7. CAN I UNDO THE CHANGES?
+
+The script **only appends** `map_id=` to the end of each state file. To undo:
+
+```bash
+# Remove the last line from all piece state files
+for f in projects/*/pieces/*/state.txt; do
+    sed -i '/^map_id=/d' "$f"
+done
+```
+
+---
+
+## 8. WHAT ABOUT THE PDL FILES?
+
+This script **only updates `state.txt`** files. The `piece.pdl` files are optional and used for documentation/debugging. The renderer only reads `state.txt`.
+
+If you want PDL files updated too, you'd need to manually edit them or create a separate script.
+
+---
+
+## 9. EXPECTED OUTPUT
+
+```
+=== PMO Piece map_id Migration Script ===
+
+Fixing pieces in project: template
+  Default map: map_0001_z0.txt
+
+  ✓ selector: Already has map_id (skipped - global piece)
+  npc_7_5: Found map map_0001_z0.txt by position (7,5)
+  chest_3_2: Using default map map_0001_z0.txt
+
+Fixing pieces in project: fuzz_legacy
+  Default map: map_0001.txt
+
+  ✓ selector: Already has map_id (skipped)
+  zombie_01: Found map map_0001.txt by position (3,2)
+  ...
+
+Migration complete!
+```
+
+---
+
+## 10. WHEN SHOULD I RUN THIS?
+
+**Recommended order:**
+1. ✅ Compile the updated `render_map.c` and `create_piece.c`
+2. ✅ **Run this migration script**
+3. ✅ Test by switching between maps in the editor
+4. ✅ Verify NPCs no longer appear on wrong maps
+
+---
+
+## 11. TROUBLESHOOTING
+
+### "No maps found in project"
+- Ensure `projects/{project}/maps/` contains `.txt` files
+
+### "No pieces directory"
+- Ensure `projects/{project}/pieces/` exists
+
+### Script runs but nothing changes
+- Pieces may already have `map_id=`
+- Check if pieces have `pos_x` and `pos_y` fields
+
+---
+
+*This script is safe, reversible, and idempotent. Run with confidence.*

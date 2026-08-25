@@ -1,0 +1,11 @@
+# phrase|bias|greet|question|neg|repeat|topic_roleplay|lock
+Hi there!|0.00|0.50|0.00|0.00|-0.20|0.00|-
+Hello, how are you?|0.10|0.40|0.10|0.00|-0.15|0.00|-
+Good morning! How's your day going?|0.10|0.35|0.00|0.00|-0.10|0.00|-
+Nice to meet you!|0.00|0.30|0.00|0.00|-0.05|0.00|-
+Can I help you with something today?|0.00|0.00|0.30|0.00|0.00|0.10|-
+I'm doing well, thanks for asking.|0.00|0.00|0.30|0.00|-0.10|0.00|-
+What's new with you?|0.00|0.10|0.00|0.00|-0.10|0.00|-
+That's interesting, tell me more.|0.05|0.00|0.10|0.00|-0.05|0.15|-
+I don't know much about that topic yet.|-0.10|0.00|0.00|0.00|0.00|0.20|floor:0.3
+Let's talk about something else.|-0.15|0.00|0.00|0.00|0.00|0.25|-

@@ -1,0 +1,372 @@
+================================================================================
+TODO-J30 — project save/load (maps/events/database) for rpg-xyz (widget)
+and rtp-xyz (slop-ed-dev self-contained), mapped out in real phases,
+compared step-by-step against the text-editor/file-menu work.
+Companion to: ngn-vs-rm.txt (the gap analysis this closes), 1-rtp-rpg-
+xyz-scaffold.md (the original scaffolding plan), battle-plugin-
+architecture.md (the event-command pattern this reuses).
+================================================================================
+
+--------------------------------------------------------------------------------
+0. WHAT'S ALREADY TRUE TODAY (verified live, 2026-07-30, not assumed
+   from reading a doc) - START HERE, don't rebuild what exists
+--------------------------------------------------------------------------------
+
+There is a real, detailed, dated plan doc for HALF of this ask that
+already exists and was NOT written by me: `&.widgits/WIDGETS_ROADMAP.txt`
+(2026-07-28). It plans exactly "file-menu, but for mutaclysm save
+slots" plus tile-picker + map-picker widgets. Read it in full before
+touching anything below - this document extends it, does not replace
+it, and this section exists so nobody re-invents what's already there.
+
+I re-ran its own claimed-done harness live, today, to check the claim
+rather than trust the doc text (the whole point of §36.6):
+
+    %.harnesses/file-menu+mutaclysm/  ->  bash button.sh demo
+    RESULT: ALL PASS, live, today. SEED_DEMO, SAVE_GAME_AS, LOAD_GAME,
+    NEW_GAME, and the demo-project survival check all genuinely work.
+    MAP save/load through file-menu's own cmd-bus is REAL, not
+    aspirational.
+
+BUT - important, load-bearing finding - that harness's own scenario
+script calls `fm_enqueue_cmd.+x` DIRECTLY:
+
+    "$OPS_F/fm_enqueue_cmd.+x" "$WSTATE" SEED_DEMO
+    "$OPS_F/fm_enqueue_cmd.+x" "$WSTATE" SAVE_GAME_AS t1
+    ...
+
+This is an OP-LEVEL / CMD-BUS-LEVEL proof (§36.6's "level 1"), not a
+REAL KEY INJECTION proof through the actual running file-menu GL widget
+(§36.6's "level 2"). This is EXACTLY the shape PITFALL 58 warned about -
+"an op-level PASS and a real, working feature are two different claims"
+- and PITFALL 58 itself was a bug that ONLY a level-2 harness caught,
+after a level-1 harness had already reported clean. Nobody has yet
+proven that a human pressing real arrow keys and Enter in the real
+file-menu widget, focused on mutaclysm, actually reaches this same
+SAVE_GAME_AS/LOAD_GAME code path end to end. It probably does - the
+cmd-bus contract is real - but "probably" is not "proven," and this
+exact gap is why PITFALL 58 existed at all.
+
+STATUS SUMMARY:
+  Maps, save/load, via widget (rpg-xyz path)  -> cmd-bus level PROVEN,
+                                                  real-key-injection
+                                                  level NOT YET PROVEN
+  Events (switches/conditional branches)      -> DOES NOT EXIST AT ALL
+                                                  in mutaclsym (verified
+                                                  ngn-vs-rm.txt §1)
+  Database (structured registry access,       -> DOES NOT EXIST; today
+    not raw text-file editing)                   it's 4 hand-edited
+                                                  pipe-delimited .txt
+                                                  files, no query/edit
+                                                  layer
+  Generic (non-zombie) engine core            -> code is ALREADY
+                                                  generic (0 zombie-
+                                                  specific .c files,
+                                                  ngn-vs-rm.txt §0) but
+                                                  DATA has not been
+                                                  separated - rpg-xyz's
+                                                  own registry still has
+                                                  "zombie" in it today
+                                                  (verified: grep -c
+                                                  zombie ... = 2)
+  rtp-xyz (self-contained, slop-ed-dev style) -> NO plan doc exists for
+                                                  this at all yet (only
+                                                  the original one-
+                                                  paragraph mention in
+                                                  rpg-xyz-plan.md's own
+                                                  M3) - this document is
+                                                  the first real attempt
+                                                  to phase it
+
+--------------------------------------------------------------------------------
+1. THE EDITOR/FILE-MENU WORK, AS A TEMPLATE - what actually happened,
+   in order, so every phase below can point at its own equivalent step
+--------------------------------------------------------------------------------
+
+  E1. Started from an app (editor) and a widget (file-menu) that
+      already existed in some form, with a real relay-file cmd-bus
+      pattern already connecting them.
+  E2. Investigated the REAL architecture directly from source (chtpm
+      layout parser, buttoned vs buttonless layouts, interact_relay.txt
+      vs keyboard/history.txt) rather than trusting prior docs about it.
+  E3. Found and fixed real, small wiring bugs (shell_quote for `&` in
+      paths, a keyboard_input retry-loop CPU spin, EMERGENCY_KILL.sh's
+      truncated-comm-name matching).
+  E4. Built a REAL level-2 harness (test-harn-ed-app) - actual GL
+      process launch, real key injection via the real channels
+      (interact_relay.txt for file-menu's buttonless layout,
+      keyboard/history.txt for editor's buttoned layout), asserting
+      BOTH the rendered frame AND the real files on disk.
+  E5. That harness caught a REAL bug (PITFALL 58 - fm_enqueue_cmd's own
+      wrong working directory) that a prior op-level-only harness had
+      never caught, despite reporting PASS.
+  E6. Fixed it, re-ran the level-2 harness, confirmed PASS for real.
+
+Every phase below names its own E1-E6 equivalent explicitly.
+
+--------------------------------------------------------------------------------
+2. PHASE PLAN - SHARED PREREQUISITE (do this once, both tracks depend
+   on it)
+--------------------------------------------------------------------------------
+
+PHASE 0: Strip the zombie costume off the shared engine data
+  Editor-work equivalent: E1 (start from what already exists, know its
+  real shape before changing it).
+  WHAT: per ngn-vs-rm.txt §0, the 27 mutaclsym ops are already 100%
+  generic - the zombie-specific surface is ~110 lines across 4 registry
+  files (terrain/furniture/items/monster_types.txt) plus world_01/
+  world_01_template's own map content. Create a real, minimal, GENERIC
+  starter registry set (grass/wall/door terrain, stick/potion items, a
+  plain "slime" monster - enough to be playable, not a full re-theme)
+  and a matching blank world_template/. Swap rpg-xyz's own copy of
+  these files for the generic set - it currently still has "zombie" in
+  it (confirmed this session), meaning THIS specific step has not been
+  done yet even though the underlying M1 "cp -a mutaclsym" copy step
+  has.
+  PROOF: run the emoji-asset-generation pipeline (PITFALL 57's own
+  real fix) cold against the new registries - confirms every new
+  registry row's own `unicode` field produces a real generated asset,
+  which also incidentally proves the registry swap didn't leave a
+  dangling reference to a zombie-only asset_id anywhere.
+  ESTIMATE: small - a data-authoring task, not a code task.
+
+--------------------------------------------------------------------------------
+3. PHASE PLAN - TRACK A: rpg-xyz (widget-toolchain, "the next @.app")
+--------------------------------------------------------------------------------
+
+PHASE A1: Prove map save/load at REAL key-injection level (close the
+  gap §0 found, don't just assume the cmd-bus proof is enough)
+  Editor-work equivalent: E4 + E5 (build the level-2 harness; expect it
+  to find something the level-1 proof missed).
+  WHAT: extend %.harnesses/file-menu+mutaclysm/ (or add a sibling
+  scenario in the same dir, matching house convention) with a version
+  of demo_save_load.sh that drives file-menu through REAL keys -
+  interact_relay.txt injection (file-menu's own buttonless-layout
+  channel, exactly like test-harn-ed-app's own fm_relay_key helper) -
+  navigating the real MUTACLYSM-focused menu (NEW GAME / SAVE / SAVE
+  AS / LOAD GAME, per WIDGETS_ROADMAP.txt §3's own chrome spec) instead
+  of calling fm_enqueue_cmd.+x directly.
+  WHY FIRST: if this finds a PITFALL-58-shaped bug (real plausible,
+  given the pattern already repeated once this session for a completely
+  different feature - see !.xyzos-pitfalls+1.txt PITFALL 60's own
+  UPDATE section), you want to know NOW, before building events/
+  database on top of an assumption that turns out shaky.
+  PROOF: real PASS/FAIL against the real rendered frame + real files on
+  disk, matching §36.6 exactly.
+
+PHASE A2: Events as a NEW widget capability - "plugins" in the shape
+  the user asked for
+  Editor-work equivalent: none directly - this is genuinely new ground,
+  closest analog is E1-E2 (there IS a real, partial reference to learn
+  from first: &.widgits/event-editor already exists, with a real
+  README documented status: "[~] Save/Load/Import/Export/Edit.pal =
+  status stubs only", "[ ] real package edit, event_run, muta auto-
+  spawn" - confirmed this session, 1-rtp-rpg-xyz-scaffold.md §2).
+  WHAT, IN ORDER:
+    A2a. Define the event/switch DATA SHAPE first, before any UI -
+         201.rpg-maker-clone's own real, working format is the
+         reference to copy, not invent from scratch (switches.pdl,
+         events/ev_X_Y/{state.txt,event.pal}, the CMD_SHOW_TEXT/
+         CMD_SET_SWITCH/CMD_IF_SWITCH/CMD_TRANSFER command IR - see
+         ngn-vs-rm.txt §1 for the full citation). Port this data shape
+         into rpg-xyz's own pieces/world_01/ tree structure.
+    A2b. Write the event INTERPRETER as a new mutaclsym-family op
+         (event_run.+x or similar) - reads an event's own event.pal,
+         executes commands against the SAME switches.pdl the interpreter
+         itself owns, matching rpg-maker-clone's own real interpreter
+         loop (ARCHITECTURE.md §"Play interpreter") line for line in
+         spirit, not by accident.
+    A2c. Wire event-editor's own real (not stub) save/load against this
+         new data shape - this closes event-editor's own documented
+         "[~] stub" gap directly, turning it from a UI shell into a
+         real editor.
+    A2d. BATTLE_START as one concrete event command, once this exists -
+         see battle-plugin-architecture.md, already fully designed,
+         ready to slot in as one more event command type once A2b's own
+         interpreter exists to dispatch it.
+  PROOF: level-2 harness (real key injection into event-editor,
+  placing/editing one event; real key injection into mutaclsym's own
+  overworld, triggering it; assert the interpreter's own effect - a
+  switch flip, a message box - shows in the REAL rendered frame).
+
+PHASE A3: Database as a real layer, not raw text-file editing
+  Editor-work equivalent: none directly (genuinely new).
+  WHAT: this is the smallest, most speculative phase - per
+  ngn-vs-rm.txt §4 item 3, explicitly NOT recommended as urgent. Scope
+  it small: a single new op (e.g. registry_query.+x) that can list/
+  filter/read rows from the 4 registry files programmatically (for
+  event-editor's own "pick an item/monster for this event" UI to use
+  later), NOT a full GUI database editor. Defer a write/edit-through-op
+  layer until A2's own event system actually needs to author registry
+  rows programmatically (e.g. "recruit" mechanics) - don't build it
+  speculatively.
+
+PHASE A4: Wire it all together as rpg-xyz's own "@.app"
+  Editor-work equivalent: E6 (the whole thing working together, re-
+  verified after every individual fix).
+  WHAT: project-menu widget (still doesn't exist per
+  1-rtp-rpg-xyz-scaffold.md §5b) + file-menu (mutaclysm profile, now
+  level-2 proven per A1) + event-editor (now real per A2) + tile-picker/
+  map-picker (already have real ops per WIDGETS_ROADMAP.txt §4-5,
+  confirm their own harnesses the same way A1 confirmed file-menu's)
+  all pointed at the SAME rpg-xyz project tree, registered under
+  @.apps/ per topic 3's own "project + widgets = a saved launch recipe"
+  concept (30.jul-30-handoff/3.harness/README.md cites
+  #.notes/AFTER-widgets-apps-store.txt for this - reuse it, don't
+  reinvent the @app concept here).
+
+--------------------------------------------------------------------------------
+4. PHASE PLAN - TRACK B: rtp-xyz (slop-ed-dev self-contained daemon)
+--------------------------------------------------------------------------------
+
+Nothing below has any existing plan doc to build on (confirmed - the
+ONLY prior mention is rpg-xyz-plan.md's own single paragraph on M3).
+Every phase here is genuinely new planning.
+
+PHASE B1: Read the real reference architecture FIRST, don't design from
+  a paragraph summary
+  Editor-work equivalent: E2 (understand the real architecture from
+  source before changing/building anything).
+  WHAT: `slop-ed-dev`'s own real manager/ daemon source (TPMOS
+  reference, cited but not yet read in depth this session per
+  1-rtp-rpg-xyz-scaffold.md §5c's own explicit instruction to go read
+  it before writing rtp_manager.c). This phase IS "go read that source
+  and write down its real module-lifecycle contract" - who owns focus,
+  how a module signals "done, hand back to the game layout" - before
+  phase B2 writes a single line of rtp_manager.c.
+
+PHASE B2: rtp_manager.c + rtp_map_editor.c + rtp_event_editor.c +
+  rtp_palette.c as real CHTPM `<module>` daemons
+  Editor-work equivalent: E1 + E3 (build from a real pattern; expect
+  and fix real small wiring bugs as they surface).
+  WHAT: layouts (game.chtpm / map_editor.chtpm / event_editor.chtpm /
+  project_menu.chtpm / palette.chtpm) with `<module>` tags, switching
+  via href/F-key WITHIN ONE SESSION - no second process spawn, this is
+  the entire architectural difference from Track A. Reuse PHASE A2's
+  own event-system DATA SHAPE (switches.pdl, event.pal command IR) -
+  the data model should be IDENTICAL between rpg-xyz and rtp-xyz, only
+  WHERE the editing UI lives differs. Do not invent a second event
+  format for this track.
+  PROOF, INCREMENTAL: prove layout-switching itself works BEFORE
+  wiring real map/event editing into each module. UPDATE (2026-07-30,
+  same day, found while building 102.agy-txt as this exact phase's own
+  smaller-scale rehearsal - see 102.agy-txt/PLAN.md §1.5 for the full
+  live-tested account): the original version of this bullet expected
+  href navigation to keep the SAME process alive, checked via PID -
+  that expectation was WRONG, tested directly. `href` respawns
+  chtpm_parser_pal's own tracked module on EVERY transition
+  (`cleanup_module()` runs unconditionally on an href click - confirmed
+  by reading chtpm_parser_pal.c after a live 3-navigation test showed
+  3 different PIDs). This does NOT block rtp-xyz - the reference
+  architecture (slop-ed-dev) respawns on href too and works fine,
+  because real state lives on disk, never in a process-resident
+  variable. CORRECTED PROOF TARGET: inject the real key/href that
+  should switch game.chtpm -> map_editor.chtpm, assert the layout
+  actually changed (`current_layout.txt` + the rendered frame) AND
+  that whatever disk state needs to survive the transition (map data,
+  cursor position, whatever this phase's own stub state is) actually
+  does - NOT that the PID stays constant, which was never the real
+  requirement. If genuine same-process switching is ever needed for
+  some other reason, chtpm_parser_pal.c has a separate
+  `pieces/display/layout_changed.txt` pulse mechanism that looked like
+  a real candidate but was not investigated further this session -
+  read it first rather than assuming href-avoidance is possible/needed.
+
+PHASE B3: Save/load, events, database - SAME phases as A1/A2/A3, same
+  proof discipline, different host process
+  Since the data shape is shared with Track A (per B2's own
+  instruction), most of the WORK here is wiring the same interpreter/
+  registry-query logic into rtp's own module structure rather than
+  redesigning it. This is where Track B should get CHEAPER than Track A
+  over time, not more expensive - the second track paying down the
+  first track's own design cost.
+
+--------------------------------------------------------------------------------
+5. TEST HARNESSES FOR BOTH - and how "which works first" gets decided
+--------------------------------------------------------------------------------
+
+Per WIDGETS_ROADMAP.txt §7's own convention (cross-project multi-
+process harnesses live under %.harnesses/, not inside either project):
+
+  %.harnesses/rpg-xyz-full-loop/    (Track A - already named in
+                                      1-rtp-rpg-xyz-scaffold.md §5d)
+  %.harnesses/rtp-xyz-full-loop/    (Track B - same doc)
+
+Both harnesses prove the SAME six things, per 1-rtp-rpg-xyz-scaffold.md
+§5d (Create / Edit / Save / Reload / Play / Module-handoff for Track B
+only) - copy that section's own numbered list rather than re-deriving
+it here. The only new addition this document makes: BOTH harnesses
+must be level-2 (real key injection) from the START, not upgraded
+later - Phase 0's own finding (the existing map save/load proof is
+level-1 only) is the direct, concrete lesson for why starting level-2
+matters more than shipping fast here.
+
+UPDATE (2026-07-30, ed-app-vs-agy-txt.md, same dir - full account
+there): level-2 synthetic injection, as defined above, is necessary
+but NOT sufficient. Real human keyboard testing of 102.agy-txt (a
+small-scale Track-B-shaped rehearsal, see that doc) found a real
+dual-input-capture bug in the SHARED chtpm_parser_pal.c/gl_mirror.c
+system layer - every real typed character landing doubled - that both
+that project's own level-2 harness AND text-editor-xyz's own already-
+proven one had zero chance of catching, because synthetic injection
+(a single deliberate write per intended character) cannot reproduce a
+race between two independent real OS-level capture processes. Fixed
+in the shared system source, rebuilt into every project that compiles
+it. Both rpg-xyz's and rtp-xyz's own full-loop harnesses (immediately
+below) should budget at least one genuine OS-level input test (xdotool
+against the real GL window, or literal human testing) for any feature
+that types while GL is active - synthetic-only proof is not enough for
+that specific class of bug, even though it remains correct and
+necessary for everything else level-2 already covers.
+
+DECIDING "WHICH WORKS FIRST" (rpg-xyz-plan.md's own M5, made concrete):
+  - Whichever track's OWN full-loop harness goes green FIRST, with
+    real level-2 proof, wins the "works first" title for that specific
+    milestone - track progress by harness color, not by vibes or how
+    much code exists.
+  - Expect Track A (rpg-xyz) to reach individual pieces faster (file-
+    menu/tile-picker/map-picker already have real, if level-1-only,
+    proof) but Track B to potentially close faster on FULL-LOOP once
+    started, since B2's own module-switching risk, once proven once,
+    de-risks map/event/save all at once within a single session -
+    Track A's separate-widget-processes model pays a re-launch cost
+    per tool switch that Track B's in-session layout-switch doesn't.
+    This is a real, testable prediction, not a guess to leave
+    unchecked - the harness timings themselves will confirm or refute
+    it.
+  - Per rpg-xyz-plan.md's own M5 ("Polish and compare... Decide
+    direction"), this document does NOT pre-decide the winner -
+    building both and comparing real harness results is the actual
+    point of running two tracks, not a formality.
+
+--------------------------------------------------------------------------------
+6. RECOMMENDED BUILD ORDER (single ordered list, both tracks)
+--------------------------------------------------------------------------------
+
+  1. PHASE 0 - strip zombie data (small, unblocks everything, shared).
+  2. PHASE A1 - level-2-verify existing map save/load (cheap, since the
+     cmd-bus layer is already proven; this is "add real key injection
+     to an existing harness," not new plumbing) - do this before B1,
+     since it's the fastest way to find out whether PITFALL-58-shaped
+     bugs are lurking in code Track B is about to depend on too
+     (Track B's own save/load will likely reuse the same muta_save_slot/
+     muta_load_slot ops per WIDGETS_ROADMAP.txt §3).
+  3. PHASE B1 - read slop-ed-dev's real source, write down its contract
+     (cheap, unblocks B2, can happen in parallel with A2 by a second
+     agent/session if available).
+  4. PHASE A2a/A2b - event data shape + interpreter (the real new
+     capability both tracks need; build it once, shared).
+  5. PHASE B2 - rtp_manager.c + module skeleton, prove layout-switching
+     FIRST per B2's own incremental-proof note, before wiring real
+     functionality in.
+  6. PHASE A2c/A2d, B3 - wire the shared event system into each track's
+     own UI/module.
+  7. PHASE A3 - database query op, only once A2's own event system
+     actually needs it (don't build speculatively).
+  8. PHASE A4 - rpg-xyz as a real @.app.
+  9. Both full-loop harnesses (§5) - build and run continuously as each
+     phase above lands, not as one big bang at the end.
+
+================================================================================
+END OF TODO-J30
+================================================================================

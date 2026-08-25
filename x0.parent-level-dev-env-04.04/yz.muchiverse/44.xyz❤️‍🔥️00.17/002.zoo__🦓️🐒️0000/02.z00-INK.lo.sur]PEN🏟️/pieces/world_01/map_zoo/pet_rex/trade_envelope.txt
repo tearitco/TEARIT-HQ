@@ -1,0 +1,9 @@
+origin_game|zoo_0000
+kind|pet
+payload_id|pet_rex
+display_name|Rex
+species|dog
+hunger|0
+happiness|75
+energy|80
+exported_at|1784281239

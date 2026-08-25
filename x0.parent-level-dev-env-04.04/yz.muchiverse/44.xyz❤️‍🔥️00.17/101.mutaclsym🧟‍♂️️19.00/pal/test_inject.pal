@@ -1,0 +1,3 @@
+# test_inject.pal - directly test if mua_menu_input works from PAL
+mua_menu_input 10
+halt

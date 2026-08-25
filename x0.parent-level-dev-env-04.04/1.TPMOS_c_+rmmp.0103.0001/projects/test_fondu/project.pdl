@@ -1,0 +1,10 @@
+[META]
+project_id = test_fondu
+version = 1.0
+exposes_ops = true
+entry_layout = projects/test_fondu/layouts/test_fondu.chtpm
+module_path = projects/test_fondu/manager/+x/test_fondu_manager.+x
+
+[STATE]
+counter = 0
+status = OK

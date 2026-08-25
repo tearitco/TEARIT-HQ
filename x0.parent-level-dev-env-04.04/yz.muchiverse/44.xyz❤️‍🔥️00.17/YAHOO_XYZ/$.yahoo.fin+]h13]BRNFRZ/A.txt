@@ -1,0 +1,1 @@
+{"chart":{"result":[{"meta":{"symbol":"A"},"timestamp":[1749562200,1749562260],"indicators":{"quote":[{"close":[120.50,120.55]}]}}]}}

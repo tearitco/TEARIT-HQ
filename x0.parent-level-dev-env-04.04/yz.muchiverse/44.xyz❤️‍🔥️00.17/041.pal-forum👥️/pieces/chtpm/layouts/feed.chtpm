@@ -1,0 +1,14 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/feed_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|                          F E E D                             |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <cli_io id="post_id_input" label="Post ID" target_id="post_id_input" /><br/>
+    ${piece_methods}
+    <button label="Back to Home" href="pieces/chtpm/layouts/home.chtpm" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label=" (Ctrl+C to quit)" /><br/>
+</panel>

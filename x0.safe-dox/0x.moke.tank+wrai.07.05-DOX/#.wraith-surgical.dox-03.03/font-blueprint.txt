@@ -1,0 +1,55 @@
+# FONT ASSET BLUEPRINT: THE TPM-EMOJI STANDARD
+Date: 2026-06-17
+Status: ARCHITECTURAL SPECIFICATION
+
+## 1. CORE PHILOSOPHY (TRUE PIECE METHOD)
+We will treat every font character as a sovereign **PIECE**. This follows the Emoji Studio standard where assets are decomposed into atomic, auditable units.
+
+- **SOUL (Piece)**: Each character exists as a directory (e.g., `assets/fonts/ascii/65_A/`).
+- **BRAIN (Manager)**: The Wraith Alpha manager (or a dedicated Font Manager) orchestrates which pieces are active.
+- **MUSCLE (Op)**: A standalone `font-gen-op` extracts pixels from system fonts and writes them to `.txt` grids.
+- **THEATER (Host)**: The `wraith_rgb_daemon` reads the `.txt` pieces and performs the final blit to RGBA.
+
+## 2. STANDARDS & PATTERNS (REF: emoji-studio-solo.02.01)
+### A. The 3-Process Model
+- **The Op**: `font-gen-op.c` (Standalone, CLI-testable).
+- **The Bridge**: Human-readable `.txt` bitmaps in the piece directory.
+- **The Presenter**: `wraith_rgb_daemon.c` (Consumes the pieces).
+
+### B. Sovereign Auditability (The .txt Standard)
+Following the user mandate, we will NOT use binary formats like PNG for the core font bridge.
+- **File**: `glyph.txt`
+- **Format**:
+    - `#` = Filled Pixel (RGBA based on PDL metadata).
+    - `.` = Empty/Transparent.
+- **Metadata**: Each piece directory contains a `piece.pdl` describing its resolution, advance width, and baseline offset (mirroring `voxels.csv` headers).
+
+### C. Process Lifecycle (The Holy Pattern)
+The font generation script will follow the `run.sh` standard:
+- **Nuclear Cleanup**: Clear stale assets/session files before generation.
+- **Dynamic Compilation**: Compile the generation Op on-the-fly to ensure platform parity (Linux/Mac).
+- **Signal Integrity**: Register `SIGINT`/`SIGTERM` handlers if the generator is long-running.
+
+## 3. ASSET HIERARCHY (VERIFIED)
+```
+projects/wraith-alpha/assets/
+└── fonts/
+    └── ascii/
+        ├── 32/ (Space)
+        ├── 65/ (A)
+        │   ├── piece.pdl   # Metadata: w=8, h=16, baseline=12
+        │   └── glyph.txt   # The #/. grid
+        └── ...
+```
+
+## 4. CURRENT STATUS
+- **Muscle Verified**: `font-gen-op.c` successfully rasterizes glyphs into 8x16 grids.
+- **ASCII Set Live**: 95 character pieces generated in `projects/wraith-alpha/assets/fonts/ascii/`.
+- **Format Audit**: Characters use `#` for pixels and `.` for empty space, thresholded at 128 gray value.
+
+## 5. NEXT STEPS
+1.  **Daemon Integration**: Implement the `.txt` blitter in `wraith_rgb_daemon.c`.
+2.  **JIT Extraction**: Research implementing a JIT Op for CJK/Unicode characters to avoid generating thousands of files upfront.
+
+---
+"Geography is destiny. If it's not in a file, it's a lie. The glyph is the soul."

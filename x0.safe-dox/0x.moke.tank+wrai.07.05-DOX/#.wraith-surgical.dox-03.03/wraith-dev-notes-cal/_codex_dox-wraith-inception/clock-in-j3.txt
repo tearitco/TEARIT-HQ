@@ -1,0 +1,325 @@
+CLOCK-IN J3
+Wraith intention and phase outline
+
+Date:
+2026-06-03
+
+Purpose:
+This note captures the intended shape of Wraith / wraith-pm after the J3
+handoff: what the project is trying to become, what phases exist, and what the
+bootstrap should look like when phase A is complete.
+
+Implementation anchor:
+Phase A should be modeled after the dynamic GL-OS desktop behavior in
+`1.TPMOS_c_+rmmp.0102.0014/pieces/apps/gl_os/plugins/gl_desktop.c`, not as a
+static splash or docs mockup.
+
+1. Core intention
+
+Wraith is not a GL-first project.
+
+Wraith is intended to be:
+
+- an ASCII-first desktop/window manager
+- a frame-first rendering pipeline
+- a metadata-first runtime for audit and AI/debug inspection
+- a Sovereign Map-Composer (fuzz-op standard)
+- a downstream-RGB system that can later feed GL or other pixel sinks
+
+Architectural boundary:
+
+- Wraith owns desktop orchestration (Map terrain)
+- Wraith orchestrates windows as Map Pieces (entities)
+- Windows have pos_x, pos_y, and pos_z in their own state.txt
+- The Wraith composer renders these pieces into a deterministic ASCII grid (view.txt)
+- Sub-projects maintain their own managers and state, which Wraith projects into the window bodies
+- The composed frame is the auditable product
+
+The user-visible product should be a real desktop surface, not a flattened text
+dump of layout tags.
+
+2. The intended pipeline
+
+The long-form path is:
+
+CHTMGL layout + project/session state
+-> Wraith parser
+-> colored ASCII frame artifacts
+-> structured metadata artifacts
+-> optional RGB rasterizer/daemon
+-> optional GL presenter
+
+The key rule is that the frame bundle exists first. GL is a consumer, not the
+source of truth.
+
+The content rule is also explicit:
+
+- geometry, focus, stack order, and lifecycle can live in files such as
+  `windows_state.pdl`
+- visible project-window content should come from file-backed projected
+  surfaces, manager-published variables, or cell/text artifacts
+- Wraith should compose those surfaces into one deterministic desktop frame
+- later RGB conversion should consume that same frame bundle, not invent a
+  second rendering truth
+
+The TPM theater bridge rule is also now explicit:
+
+- Wraith should not expose `.chtmgl` directly as `pieces/display/current_layout.txt`
+- Wraith should enter the legacy theater through a thin `.chtpm` wrapper
+- the wrapper should launch `wraith-pm_manager.+x`
+- the manager should publish a manager-owned projection in `projects/wraith-pm/manager/view.txt`
+- the wrapper should render `${game_map}`, which the host parser automatically loads from `view.txt`
+- when Wraith opens a project window, that project should still be backed by
+  its own manager/process layer the same way GL-OS windows already are
+
+3. Phase map
+
+Phase A:
+- make Wraith visible in ASCII
+- build the parser and frame bundle
+- publish desktop/window state
+- bridge the result into the current TPMOS visible renderer
+- use a wrapper `.chtpm` layout plus manager projection when entering the old
+  CHTPM theater
+
+Phase B:
+- add synchronous image/video decode ops
+- keep media decoding separate from layout parsing
+- merge media cells into the frame bundle
+
+Phase C:
+- add a minimal RGB converter
+- rasterize cells/meta into deterministic RGB/RGBA buffers
+
+Phase D:
+- add a dumb GL presenter
+- make it display the RGB buffer without owning layout semantics
+
+Phase E:
+- visually verify the bootstrap
+- compare the CLI/ASCII result against the intended desktop
+
+Phase F:
+- expand fidelity
+- richer media, better hit maps, stronger rasterization, mouse behavior, and
+  more complete desktop interaction
+
+4. What phase A must feel like
+
+Phase A is not "the parser exists." It is "the user can see a real desktop."
+
+When phase A is done, the UI should feel like a small but real operating shell:
+
+- a desktop background/surface
+- one or more bordered windows
+- a visible title bar on active windows
+- a focused terminal or text window
+- visible window stacking order
+- basic panel or inspector areas
+- color in the frame, not monochrome-only text
+- frame metadata available for inspection
+
+The point is to stop showing the user a flattened list of layout labels and
+instead show a Wraith-owned shell that looks like a desktop.
+
+5. Phase A UI shape
+
+The first visible Wraith UI should likely include:
+
+- Desktop surface
+  - a stable background color or patterned ASCII field
+  - a clear distinction between background and windows
+
+- Outer shell window
+  - one large framed shell, closer to GL-OS composition than a loose dashboard
+  - visible title bar with window chrome semantics
+  - enough room for multiple floating windows to live on top of the desktop
+  - should read specifically like `Wraith Terminal v1.0`, not a generic demo
+
+- Left navigation / launcher list
+  - menu-style app list similar to the sketch in `!.look-of-wraith-gui.txt`
+  - entries like project loader, app store, status, GL-OS, process monitor,
+    help
+  - one active selection marker
+
+- Floating subwindow A
+  - its own title bar and controls
+  - title like `GAME MAP` or equivalent project/content title
+  - content area that can show a map, terminal buffer, or app output
+  - visible border and title bar
+  - clear focus state
+  - should start inside the shell region but extend through the shell boundary
+    so it reads as a separate movable window
+
+- Floating subwindow B
+  - can come later if it supports the GL-OS feel, but it is not required for
+    the approved phase A sketch
+  - the approved minimum is the terminal shell plus one overlapping `GAME MAP`
+    window
+
+- Inspector or audit window
+  - should be deferred if it harms the shell composition
+  - if present later, it should not dominate the frame or break the GL-OS-style
+    look
+
+- Footer / taskbar region
+  - start button or launcher marker
+  - active window labels
+  - clock or session status at the far edge
+
+Reference:
+The intended composition is closer to the sketch in `!.look-of-wraith-gui.txt`
+than to the current "left control panel plus right demo panel" interpretation.
+That sketch better matches the GL-OS understanding: a framed desktop shell with
+floating movable windows, overlap, and footer/taskbar semantics.
+The approved shell/window geometry is now the `Wraith Terminal v1.0` plus
+overlapping `GAME MAP` composition captured in `_codex_dox/wraith-look-ascii-j3.txt`.
+
+Important correction:
+- the sketch is a composition reference, not a literal long-term menu/content
+  spec
+- visible rows like `Project Loader`, `Status`, or `Control Map` were useful as
+  a first nav proof, but they should not become the real subwindow/content
+  model
+- real subwindows should become projected surfaces that behave more like
+  `fuzz-op` map areas and later move through mutable `x/y/z` state
+
+This should look intentional, not like a demo page.
+
+5b. What phase A should not look like
+
+Phase A should not primarily look like:
+
+- a settings dashboard
+- a documentation card with status text
+- a control panel beside a preview panel
+- a flattened list of labels with buttons scattered around it
+- a nested parent/child window hierarchy
+
+If the user sees "panel demo" instead of "desktop shell," the implementation is
+still off-target even if the parser and metadata are technically working.
+
+6. Phase A features that should exist when it is done
+
+These are the concrete capabilities phase A should expose:
+
+- CHTMGL parsing through Wraith-owned code
+- colored ASCII frame generation
+- structured frame metadata
+- object records for windows, panels, buttons, text regions, and media slots
+- focus state for at least one active window
+- z-order / stacking metadata
+- a hit map that names interactive regions
+- a visible terminal-style content region
+- an audit path for what was parsed and rendered
+- a bridge that makes the Wraith frame visible through the current TPMOS
+  display path
+- file-backed projected content for the visible desktop windows so future
+  project windows can plug into the same composition path
+
+Phase A does not need perfect mouse dragging or finished RGB output yet. It does
+need a believable desktop shell that the user can inspect and recognize as the
+project.
+
+7. Phase A object model
+
+The frame should be more than characters.
+
+Likely object types:
+
+- desktop
+- window
+- panel
+- titlebar
+- terminal
+- inspector
+- button
+- label
+- status strip
+- image region placeholder
+- video region placeholder
+
+Likely metadata fields:
+
+- id
+- title
+- x, y
+- width, height
+- z
+- focused
+- role
+- fg/bg color
+- action or click target
+- source layout node
+
+8. Phase A visual behavior
+
+The user should be able to tell, from the first view, which parts of the screen
+are interactive and which part is the desktop.
+
+Expected visual cues:
+
+- active window has higher contrast or a stronger title bar
+- inactive windows are dimmer or visually recessed
+- borders separate windows from the desktop
+- controls read as controls, not just text
+- floating windows read like real windows, not side-by-side cards or nested
+  children
+- a footer/taskbar line anchors the shell
+- the color palette is consistent enough to feel like one shell
+
+The goal is a legible ASCII desktop, not a screenshot copy of GL.
+
+9. Phase A interaction scope
+
+Phase A interaction can still be limited, but it should not be fake.
+
+Minimum interaction intent:
+
+- keyboard focus can point at the terminal window
+- the hit map knows which object is under a cell
+- the framework can identify title bars, content areas, and controls
+- focus and z-order are represented in files
+
+Even if dragging and full mouse gestures come later, the structure for them
+should already be present in the frame metadata.
+
+10. Phase A acceptance criteria
+
+Phase A is complete when:
+
+- selecting Wraith shows an actual Wraith desktop surface
+- the surface is produced by Wraith, not flattened CHTPM text
+- the frame contains an outer shell window and at least two floating peer
+  windows with visible title bars and controls
+- the overall composition reads as GL-OS-style desktop chrome, not as a
+  dashboard
+- the focused region is clear
+- frame artifacts are inspectable on disk
+- object and hit metadata exist
+- the current runtime path points at Wraith's frame bundle instead of treating
+  it like a generic text layout
+
+11. Phase B and beyond in one sentence each
+
+Phase B:
+- media becomes first-class through separate decode ops.
+
+Phase C:
+- the same frame becomes a deterministic RGB buffer.
+
+Phase D:
+- GL becomes a simple presenter.
+
+Phase E:
+- the shell gets visually verified.
+
+Phase F:
+- the system grows into full interaction and rendering fidelity.
+
+12. Short version for future agents
+
+Wraith should become a visible ASCII desktop/window manager first, with
+auditable frame artifacts and enough metadata to support focus, z-order, and
+hit testing. Subwindow content should come from file-backed projected surfaces,
+and GL/RGB stay downstream from the same frame bundle.

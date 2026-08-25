@@ -1,0 +1,160 @@
+PAL-CHAT-IRC TESTING GUIDE
+Adapted from 1.TPMOS testing methodology (2026-07-20)
+
+===========================================================================
+KEY INJECTION FORMAT (REQUIRED)
+===========================================================================
+File: pieces/keyboard/history.txt
+Format: [YYYY-MM-DD HH:MM:SS] KEY_PRESSED: <code>
+
+Example:
+  [2026-07-20 22:30:15] KEY_PRESSED: 13
+
+Common key codes:
+  - 13 = Enter (submit/activate)
+  - 1-9 = Number keys (menu navigation)
+  - 27 = Escape (cancel/back)
+
+SHELL COMMAND TO INJECT:
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] KEY_PRESSED: <code>" >> pieces/keyboard/history.txt
+
+IF date command is problematic, use fixed timestamp:
+  echo "[2026-07-20 22:30:15] KEY_PRESSED: 13" >> pieces/keyboard/history.txt
+
+===========================================================================
+SESSION SETUP
+===========================================================================
+1. Start session: bash button.sh run > /tmp/irc_test.log 2>&1 &
+2. Wait 2 seconds for session to initialize
+3. Find session directory: SESSION_DIR=$(ls -dt pieces/sessions/*/ | head -1)
+4. Verify session files exist:
+   - ${SESSION_DIR}pieces/keyboard/history.txt (for key injection)
+   - ${SESSION_DIR}pieces/apps/player_app/view.txt (current frame)
+   - ${SESSION_DIR}debug/frame_history.txt (frame sequence log)
+
+===========================================================================
+THREE-LAYER TESTING STACK
+===========================================================================
+
+LAYER 1: Frame Reading
+  Read current frame state: cat ${SESSION_DIR}pieces/apps/player_app/view.txt
+  Verifies: current UI state, what's visible to user
+
+LAYER 2: Frame History Dump
+  Read full sequence: cat ${SESSION_DIR}debug/frame_history.txt
+  Verifies: frame sequence, timing, preservation (scrollback)
+  Format: === FRAME @ <timestamp> === <full frame content> ---
+
+LAYER 3: Real Terminal (Not testable in headless API)
+  Run: bash button.sh run (in a real terminal, not backgrounded)
+  Interact manually, observe rendering, scrollback, performance
+
+===========================================================================
+TEST FLOW: LOGIN → CREATE ACCOUNT → JOIN ROOM → POST MESSAGE
+===========================================================================
+
+SETUP:
+  SESSION_DIR=$(ls -dt pieces/sessions/*/ | head -1)
+  cd pieces/sessions/$(basename $SESSION_DIR)
+
+STEP 1: Read initial frame (login screen)
+  cat pieces/apps/player_app/view.txt
+  Expected: "Welcome to pal-chat-irc" + User ID and Display Name input fields
+
+STEP 2: Navigate to User ID field (if needed) - number key 1
+  echo "[2026-07-20 22:30:15] KEY_PRESSED: 49" >> pieces/keyboard/history.txt
+  (49 is ASCII '1')
+  sleep 0.5
+  cat pieces/apps/player_app/view.txt
+
+STEP 3: Type username (simulated via login op accepting it)
+  - In real pal-chat-irc, user types into User ID field
+  - For file injection, the app reads this from cli_io state
+  - Note: Exact injection method TBD - may need to check how cli_io captures text
+
+STEP 4: Submit login (key 13 = Enter)
+  echo "[2026-07-20 22:30:15] KEY_PRESSED: 13" >> pieces/keyboard/history.txt
+  sleep 0.5
+  cat pieces/apps/player_app/view.txt
+  Expected: screen transitions to room list or next step
+
+STEP 5: Create account (number key 3)
+  echo "[2026-07-20 22:30:15] KEY_PRESSED: 51" >> pieces/keyboard/history.txt
+  (51 is ASCII '3')
+  sleep 0.5
+  cat pieces/apps/player_app/view.txt
+
+STEP 6: Join a room (navigate, submit)
+  - Inject room name
+  - Inject number key for room list action
+  - Verify frame shows room contents
+
+STEP 7: Post message
+  - Inject message text
+  - Inject Enter key
+  - Verify message appears in frame
+
+===========================================================================
+EVIDENCE CAPTURE
+===========================================================================
+After each test cycle:
+1. Save frame history to root:
+   cp ${SESSION_DIR}debug/frame_history.txt ./FRAME_HISTORY_$(date +%Y%m%d-%H%M)_irctest.txt
+
+2. Create test report:
+   ./FRAME_REPORT_$(date +%Y%m%d-%H%M)_irctest.txt
+   Include:
+   - What was tested (login flow, frame history, etc)
+   - Key injections performed (exact codes)
+   - Frame snapshots (before/after each major step)
+   - PASS/FAIL verdict
+   - "Safe to proceed with code changes" or blockers
+
+===========================================================================
+KNOWN GOTCHAS (This Project)
+===========================================================================
+1. Session ephemeral: pieces/sessions/ deleted when process exits
+2. debug/frame_history.txt truncated at session start (fresh per run)
+3. Timestamp format MUST be exact: [YYYY-MM-DD HH:MM:SS]
+4. Raw integers in history.txt are ignored - format is strict
+5. CLI_IO text input: exact mechanism TBD (may need layout inspection)
+6. Frame history: appended on EVERY compose_frame call (not just changes)
+
+===========================================================================
+AUTOMATION CHECKLIST
+===========================================================================
+- [ ] Session launches successfully
+- [ ] Frame history dump is working (frames appending)
+- [ ] Key injection format accepted (frame shows keys)
+- [ ] Navigation works (number keys move between screens)
+- [ ] Frame before/after pair captured for each step
+- [ ] All three testing layers verified
+- [ ] No leftover prisc+x processes after test
+
+===========================================================================
+COMMON ISSUES
+===========================================================================
+Issue: "Key injection not registering"
+Fix:
+  1. Verify timestamp format: [YYYY-MM-DD HH:MM:SS] exactly
+  2. Verify key code format: KEY_PRESSED: <code> exactly
+  3. Check frame output shows [KEY]: status line
+  4. Wait 1-2 seconds between injections for app to process
+
+Issue: "Frame history not being written"
+Fix:
+  1. Verify debug/ directory exists in session
+  2. Verify compose_frame.c calls append_frame_history()
+  3. Check file permissions (fopen with "a" mode)
+
+Issue: "Session disappears after timeout"
+Fix:
+  1. Don't use timeout command
+  2. Run: bash button.sh run > /tmp/log 2>&1 &
+  3. Background process will keep session alive
+  4. Kill with: pkill -f "prisc+x pal/main_loop"
+
+===========================================================================
+END OF TESTING GUIDE
+Generated: 2026-07-20 (Haiku, TASK 0)
+Based on: 1.TPMOS_c_+rmmp testing guide + pal-chat-irc specifics

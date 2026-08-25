@@ -1,0 +1,709 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    CHTPM OP-BASED PROJECT ARCHITECTURE GUIDE                  ║
+║                         Version 2.0 - March 2026                              ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+**Purpose:** Complete implementation guide (reference while coding)
+**Quick Reference:** See `CHTPM_TPM_DOX+1.md` for a 5-minute cheat sheet
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. OVERVIEW: What is an OP-Based Project?
+2. PROJECT STRUCTURE
+3. CORE COMPONENTS
+4. LAUNCH AND EXECUTION FLOW
+5. FUNCTIONAL ARCHITECTURE
+6. MODULE DEVELOPMENT STANDARDS
+7. LAYOUT DESIGN PATTERNS
+8. STATE MANAGEMENT
+9. EVENT HANDLING
+10. BEST PRACTICES
+
+================================================================================
+1. OVERVIEW: WHAT IS AN OP-BASED PROJECT?
+================================================================================
+
+An OP-BASED PROJECT in the CHTPM (Curses/OpenGL Terminal Piece Mark) ecosystem
+is a self-contained application that follows the Piece-Based Architecture (PBA)
+where:
+
+  - OPS = Operations (executable modules in +x subdirectories)
+  - MODULES = Plugin binaries that process input and render state
+  - LAYOUTS = CHTPM markup files defining UI structure
+  - PIECES = Discrete stateful entities with PDL descriptors
+
+The architecture is demonstrated by two reference implementations:
+  - op-ed    : Advanced RMMP (Raster Map/Model Piece) Editor
+  - fuzz-op  : Legacy FuzzPet Game Application
+
+================================================================================
+2. PROJECT STRUCTURE
+================================================================================
+
+A standard op-based project follows this directory structure:
+
+projects/<project_id>/
+├── project.pdl              # Project Descriptor (metadata, state, events)
+├── history.txt              # Input history (key events)
+├── layouts/
+│   └── <project_id>.chtpm   # Main layout file
+├── manager/
+│   ├── <project_id>_manager.c    # Manager source
+│   └── +x/
+│       └── <project_id>_manager.+x  # Manager binary
+├── maps/
+│   ├── map_0001.txt         # Map data files
+│   └── map_0002.txt
+└── pieces/
+    ├── fuzzpet_mirror/      # UI state mirror
+    └── <entity_id>/         # Project-specific pieces
+        └── state.txt
+
+SHARED INFRASTRUCTURE (in project root):
+pieces/
+├── apps/
+│   ├── op-ed/               # Editor application
+│   │   ├── op-ed.pdl
+│   │   ├── layouts/
+│   │   │   └── op-ed.chtpm
+│   │   ├── plugins/
+│   │   │   ├── op-ed_module.c
+│   │   │   └── +x/
+│   │   │       └── op-ed_module.+x
+│   │   └── ops/+x/          # Editor operations
+│   ├── playrm/              # Shared play/render ops
+│   │   ├── ops/+x/          # move_player, render_map, etc.
+│   │   └── layouts/
+│   │       ├── game.chtpm
+│   │       └── loader.chtpm
+│   └── player_app/          # Player application state
+│       ├── manager/
+│       │   └── state.txt
+│       └── history.txt      # Global input queue
+├── display/
+│   ├── current_layout.txt   # Active layout path
+│   ├── frame_changed.txt    # Render trigger pulse
+│   └── plugins/+x/
+│       ├── renderer.+x
+│       └── gl_renderer.+x
+├── master_ledger/
+│   └── plugins/+x/
+│       └── piece_manager.+x  # Central piece state manager
+└── locations/
+    └── location_kvp         # Path resolution key-value pairs
+
+================================================================================
+3. CORE COMPONENTS
+================================================================================
+
+3.1 PROJECT.PDL (Project Descriptor)
+-------------------------------------
+PDL file defining project metadata:
+
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | <project_name>
+META         | version            | 1.0
+META         | entry_layout       | pieces/apps/<app>/layouts/<app>.chtpm
+STATE        | starting_map       | map_01
+STATE        | player_piece       | <player_entity_id>
+STATE        | current_world      | world_01
+RESPONSE     | default            | <default_response_msg>
+
+3.2 LAYOUT FILES (*.chtpm)
+--------------------------
+XML-like markup defining UI panels:
+
+<panel time_reactive="true">
+    <module>${module_path}</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+    
+    <text label="║ Title: ${app_title}" />
+    <button label="Action" onClick="KEY:1" />
+    <scroller id="VIEW" label="${dynamic_view}" />
+</panel>
+
+VARIABLE SUBSTITUTIONS:
+  ${project_id}      - Current project identifier
+  ${active_layout_id} - Active layout path
+  ${game_map}        - Rendered map view
+  ${last_response}   - Last operation response
+  ${last_key}        - Last input key
+
+3.3 MODULES (*.c → *.+x)
+------------------------
+C source compiled to executables (+x suffix):
+
+STRUCTURE:
+  - resolve_paths()     - Initialize from location_kvp
+  - is_active_layout()  - Check if module should process input
+  - route_input(key)    - Handle key events
+  - trigger_render()    - Signal display update
+  - save_manager_state() - Persist state
+
+================================================================================
+4. LAUNCH AND EXECUTION FLOW
+================================================================================
+
+4.1 SYSTEM INITIALIZATION
+--------------------------
+$ ./run_chtpm.sh
+
+SEQUENCE:
+1. kill_all.sh         - Terminate existing processes
+2. Set location_kvp    - Establish path resolution
+3. Reset entities      - Initialize piece states
+4. Clear histories     - Purge input/state files
+5. Launch pal_watchdog - Start process monitor
+6. Exec orchestrator   - Start CHTPM pipeline
+
+4.2 ORCHESTRATOR PIPELINE
+--------------------------
+pieces/chtpm/plugins/+x/orchestrator.+x
+
+RESPONSIBILITIES:
+  - Spawn PAL (Piece Abstraction Layer) modules
+  - Monitor piece communication files
+  - Route input history to active modules
+  - Trigger render cycles
+
+4.3 MODULE EXECUTION PATTERN
+-----------------------------
+Each module runs as a daemon process:
+
+int main() {
+    resolve_paths();           // Initialize paths
+    ensure_state_defaults();   // Create default state files
+    trigger_render();          // Initial render
+    
+    while (1) {
+        if (!is_active_layout()) { 
+            usleep(100000);      // Sleep if not active
+            continue; 
+        }
+        
+        // Poll input history
+        if (stat(history_path, &st) == 0 && st.st_size > last_pos) {
+            FILE *hf = fopen(history_path, "r");
+            fseek(hf, last_pos, SEEK_SET);
+            int key;
+            while (fscanf(hf, "%d", &key) == 1) {
+                route_input(key);  // Process key
+            }
+            last_pos = ftell(hf);
+            fclose(hf);
+        }
+        usleep(16667);  // ~60Hz poll
+    }
+}
+
+================================================================================
+5. FUNCTIONAL ARCHITECTURE
+================================================================================
+
+5.1 INPUT FLOW
+--------------
+KEYBOARD → pieces/keyboard/history.txt
+           ↓
+JOYSTICK → pieces/joystick/history.txt
+           ↓
+           pieces/apps/player_app/history.txt (aggregated)
+           ↓
+    [Active Module Polls]
+           ↓
+    route_input(key)
+
+5.2 STATE FLOW
+--------------
+PIECE STATE FILES:
+  projects/<id>/pieces/<entity>/state.txt
+  projects/<id>/pieces/world_<w>/map_<m>/<entity>/state.txt
+  pieces/world/map_<n>/<entity>/state.txt
+
+STATE ACCESS PATTERN:
+  get_state_fast(piece_id, key, out_val)   - Read string
+  get_state_int_fast(piece_id, key)        - Read integer
+  write_entity_state(piece_id, k, v)       - Write value
+
+STATE SYNCHRONIZATION:
+  - Selector syncs to entity positions
+  - Manager maintains project_id, active_target_id, current_z
+  - Mirror pieces provide UI state snapshots
+  - Manager publishes layout-facing projection to projects/<id>/manager/gui_state.txt
+
+PROJECTION CONTRACT:
+  Managers interpret project state. CHTPM renders manager projection.
+
+  Manager responsibilities:
+    - Resolve project Piece state, including nested sovereign paths
+    - Choose which Piece values are shown in each layout variable
+    - Resolve dynamic methods through PDL helpers/Ops
+    - Write flat gui_state.txt values such as:
+        module_path=projects/<id>/manager/+x/<id>_manager.+x
+        active_layout_id=<id>.chtpm
+        app_title=<title>
+        active_target=<piece_id>
+        piece_methods=<button ... />
+        pet_name=...
+
+  CHTPM responsibilities:
+    - Load gui_state.txt
+    - Substitute ${var} values into .chtpm layouts
+    - Render focus/navigation markers
+    - Inject KEY:n into history
+
+  DO NOT add project-specific recursive Piece lookup, PDL method generation,
+  or display-state interpretation to chtpm_parser.c. If a value is missing
+  from the frame, fix the manager projection or a manager-called Op.
+
+5.3 RENDER FLOW
+---------------
+MODULE STATE CHANGE
+       ↓
+trigger_render()
+       ↓
+pieces/apps/playrm/ops/+x/render_map.+x
+       ↓
+pieces/display/frame_changed.txt (pulse: "M\n" or "Z\n")
+       ↓
+orchestrator detects pulse
+       ↓
+pieces/display/plugins/+x/gl_renderer.+x
+       ↓
+pieces/display/current_frame.txt
+
+================================================================================
+6. MODULE DEVELOPMENT STANDARDS
+================================================================================
+
+6.1 FILE NAMING CONVENTIONS
+---------------------------
+Source:     <name>.c
+Binary:     <name>.+x (in +x/ subdirectory)
+Layout:     <name>.chtpm
+Descriptor: <name>.pdl
+
+6.2 CPU-SAFE PATTERN
+--------------------
+All modules must implement:
+
+static volatile sig_atomic_t g_shutdown = 0;
+
+static void handle_sigint(int sig) {
+    (void)sig;
+    g_shutdown = 1;
+}
+
+int main() {
+    signal(SIGINT, handle_sigint);
+    signal(SIGTERM, handle_sigint);
+    setpgid(0, 0);  // Process group for cleanup
+    // ...
+}
+
+6.3 FORK/EXEC PATTERN
+---------------------
+For running external operations:
+
+static int run_command(const char* cmd) {
+    pid_t pid = fork();
+    if (pid == 0) {
+        freopen("/dev/null", "w", stdout);
+        freopen("/dev/null", "w", stderr);
+        execl("/bin/sh", "/bin/sh", "-c", cmd, (char *)NULL);
+        _exit(127);
+    } else if (pid > 0) {
+        int status;
+        waitpid(pid, &status, 0);
+        return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+    }
+    return -1;
+}
+
+6.4 PATH RESOLUTION
+-------------------
+All modules must resolve paths dynamically:
+
+void resolve_paths() {
+    getcwd(project_root, sizeof(project_root));
+    
+    FILE *kvp = fopen("pieces/locations/location_kvp", "r");
+    if (kvp) {
+        char line[2048];
+        while (fgets(line, sizeof(line), kvp)) {
+            char *eq = strchr(line, '=');
+            if (eq) {
+                *eq = '\0';
+                char *k = trim_str(line);
+                char *v = trim_str(eq + 1);
+                if (strcmp(k, "project_root") == 0) {
+                    if (root_has_anchors(v)) 
+                        snprintf(project_root, sizeof(project_root), "%s", v);
+                }
+            }
+        }
+        fclose(kvp);
+    }
+}
+
+================================================================================
+7. LAYOUT DESIGN PATTERNS
+================================================================================
+
+7.1 PANEL STRUCTURE
+-------------------
+<panel time_reactive="true">
+    <module>path/to/module.+x</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+    
+    <!-- Header -->
+    <text label="╔════════════════════════════════════════╗" />
+    <text label="║ ${title}                              ║" />
+    
+    <!-- Content Area -->
+    <text label="╠════════════════════════════════════════╣" />
+    ${dynamic_content}
+    
+    <!-- Controls -->
+    <text label="╠════════════════════════════════════════╣" />
+    <button label="ACTION" onClick="KEY:1" />
+    
+    <!-- Footer -->
+    <text label="╚════════════════════════════════════════╝" />
+</panel>
+
+7.2 BUTTON AND NAVIGATION PATTERN (CRITICAL)
+---------------------------------------------
+The CHTPM parser AUTOMATICALLY handles nav highlighting ([>] vs [ ]).
+DO NOT manually write [>] or [ ] in layout files!
+
+CORRECT PATTERN (follow os.chtpm, fuzzpet_launcher.chtpm):
+
+<panel>
+    <text label="║  " /><button label="Login" onClick="KEY:1" /><text label="                            ║" /><br/>
+    <text label="║  " /><button label="Sign Up" onClick="KEY:2" /><text label="                            ║" /><br/>
+    <text label="║  " /><button label="Back" href="pieces/chtpm/layouts/os.chtpm" /><text label="                                  ║" /><br/>
+</panel>
+
+The parser will render:
+  [>] 1. [Login]    <- focused item
+  [ ] 2. [Sign Up]  <- unfocused
+  [ ] 3. [Back]
+
+KEY POINTS:
+- Use <button> elements, NOT raw text like "[1] Login"
+- onClick="KEY:n" triggers key n in module
+- href="path/to.chtpm" switches layout directly
+- Parser manages focus_index internally (up/down arrows)
+- Module does NOT need to track gui_focus
+- Module does NOT write [>] or [ ] - parser does this
+
+WRONG (DO NOT DO):
+  <text label="║  [>] 1. [Login] ║" />  <- Manual nav, will break!
+  <text label="║  [1] Login ║" />       <- No button, no nav!
+
+CORRECT:
+  <text label="║  " /><button label="Login" onClick="KEY:1" /><text label=" ║" />
+
+7.3 VARIABLE SUBSTITUTION
+-------------------------
+Modules write state files; renderer substitutes:
+
+Layout:     <text label="${game_map}" />
+Module:     write_to_view("pieces/apps/player_app/view.txt", map_str)
+Renderer:   Reads view.txt, substitutes ${game_map}
+
+================================================================================
+8. STATE MANAGEMENT
+================================================================================
+
+8.1 STATE FILE LOCATIONS
+------------------------
+GLOBAL STATE:
+  pieces/apps/player_app/manager/state.txt
+    - project_id
+    - active_target_id
+    - current_z
+    - last_key
+    - current_map
+
+PROJECT STATE:
+  projects/<id>/pieces/<entity>/state.txt
+    - pos_x, pos_y, pos_z
+    - name, type
+    - Custom entity attributes
+
+8.2 STATE SYNCHRONIZATION
+-------------------------
+SELECTOR SYNC PATTERN:
+
+void sync_selector_to_entity(const char* entity_id) {
+    int px = get_state_int_fast(entity_id, "pos_x");
+    int py = get_state_int_fast(entity_id, "pos_y");
+    
+    char sel_state[4096];
+    snprintf(sel_state, sizeof(sel_state), 
+             "%s/projects/%s/pieces/selector/state.txt",
+             project_root, current_project);
+    
+    // Update selector state file directly
+    char lines[100][256];
+    int lc = 0, fx = 0, fy = 0;
+    FILE *sf = fopen(sel_state, "r");
+    if (sf) {
+        while (fgets(lines[lc], sizeof(lines[0]), sf) && lc < 99) {
+            if (strncmp(lines[lc], "pos_x=", 6) == 0) {
+                snprintf(lines[lc], sizeof(lines[0]), "pos_x=%d\n", px);
+                fx = 1;
+            } else if (strncmp(lines[lc], "pos_y=", 6) == 0) {
+                snprintf(lines[lc], sizeof(lines[0]), "pos_y=%d\n", py);
+                fy = 1;
+            }
+            lc++;
+        }
+        fclose(sf);
+    }
+    if (!fx && lc < 100) snprintf(lines[lc++], "pos_x=%d\n", px);
+    if (!fy && lc < 100) snprintf(lines[lc++], "pos_y=%d\n", py);
+    sf = fopen(sel_state, "w");
+    if (sf) {
+        for (int i = 0; i < lc; i++) fputs(lines[i], sf);
+        fclose(sf);
+    }
+}
+
+8.3 MANAGER STATE PERSISTENCE
+-----------------------------
+void save_manager_state() {
+    char path[4096];
+    snprintf(path, sizeof(path), 
+             "%s/pieces/apps/player_app/manager/state.txt", project_root);
+    
+    FILE *f = fopen(path, "w");
+    if (f) {
+        fprintf(f, "project_id=%s\n", current_project);
+        fprintf(f, "active_target_id=%s\n", active_target_id);
+        fprintf(f, "last_key=%s\n", last_key_str);
+        fprintf(f, "current_z=%d\n", current_z_val);
+        fprintf(f, "current_map=map_01_z%d.txt\n", current_z_val);
+        fclose(f);
+    }
+}
+
+================================================================================
+9. EVENT HANDLING
+================================================================================
+
+9.1 PDL METHOD BINDING
+----------------------
+Piece PDL format:
+
+SECTION   | KEY          | VALUE
+----------------------------------
+METHOD    | on_create    | void | projects/<id>/scripts/create.asm
+METHOD    | on_place     | void | pieces/apps/editor/ops/+x/place_tile.+x
+METHOD    | interact     | void | projects/<id>/scripts/interact.asm
+
+9.2 METHOD RESOLUTION
+---------------------
+int get_method(const char* piece_id, const char* event,
+               char* out_handler, size_t out_size,
+               const char* project_root, const char* current_project) {
+    char pdl_path[MAX_PATH];
+    char piece_dir[MAX_PATH];
+    if (!resolve_piece_dir(piece_id, piece_dir, sizeof(piece_dir))) 
+        return -1;
+    
+    snprintf(pdl_path, sizeof(pdl_path), "%s/piece.pdl", piece_dir);
+    
+    FILE *f = fopen(pdl_path, "r");
+    if (!f) return -1;
+    
+    char line[MAX_LINE];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "METHOD", 6) == 0) {
+            char *pipe1 = strchr(line, '|');
+            if (!pipe1) continue;
+            char *pipe2 = strchr(pipe1 + 1, '|');
+            if (!pipe2) continue;
+            
+            // Parse event and handler
+            // Compare with requested event
+            // Copy handler to out_handler
+        }
+    }
+    fclose(f);
+    return -1;
+}
+
+9.3 EVENT TRIGGERING
+--------------------
+void trigger_event(const char* piece_id, const char* event) {
+    char handler[MAX_PATH];
+    if (get_method(piece_id, event, handler, sizeof(handler),
+                   project_root, current_project) == 0) {
+        char *cmd = NULL;
+        if (strstr(handler, ".asm")) {
+            asprintf(&cmd, 
+                "PRISC_PROJECT_ID=%s PRISC_PROJECT_ROOT=%s %s > /dev/null 2>&1",
+                current_project, project_root, handler);
+        } else {
+            asprintf(&cmd, "%s > /dev/null 2>&1", handler);
+        }
+        if (cmd) {
+            run_command(cmd);
+            free(cmd);
+        }
+    }
+}
+
+================================================================================
+10. BEST PRACTICES
+================================================================================
+
+10.1 MODULE ISOLATION
+---------------------
+- Each app maintains its own state directory
+- Editor: pieces/apps/editor/
+- FuzzPet: pieces/apps/fuzzpet_app/
+- Player: pieces/apps/player_app/
+- Never cross-contaminate state files
+
+10.2 INPUT POLLING
+------------------
+- Poll at ~60Hz (usleep(16667))
+- Track file position for incremental reads
+- Reset position if file shrinks
+
+10.3 RENDER TRIGGERING
+----------------------
+- Always call trigger_render() after state changes
+- Hit frame marker: pieces/display/frame_changed.txt
+- Use "M\n" for map changes, "Z\n" for Z-level changes
+
+10.4 ERROR HANDLING
+-------------------
+- Check all file operations
+- Gracefully handle missing files
+- Log to debug_log.txt for troubleshooting
+
+10.5 COMPILATION
+----------------
+Use compile_all.sh or follow pattern:
+
+mkdir -p <target_dir>/+x
+gcc -o <target_dir>/+x/<name>.+x <source>.c -pthread
+
+10.6 PROJECT CREATION CHECKLIST
+-------------------------------
+[ ] Create projects/<id>/ directory structure
+[ ] Write project.pdl with metadata
+[ ] Create layout file in layouts/
+[ ] Implement manager in manager/
+[ ] Add manager binary to manager/+x/
+[ ] Create initial maps in maps/
+[ ] Register in compile_all.sh
+[ ] Test with ./run_chtpm.sh
+
+10.7 CLI_IO INPUT PATTERN (FORM FIELDS)
+---------------------------------------
+For text input (username, password, settings):
+
+LAYOUT:
+  <text label="Username: " /><cli_io id="username" label="${username_input}" /><br/>
+  <text label="Password: " /><cli_io id="password" label="${password_input}" /><br/>
+  <button label="Login" onClick="login" />
+
+PARSER BEHAVIOR:
+- Enter on cli_io: activates field, shows [^] with cursor
+- Typing: appends to el->input_buffer, writes to cli_buffers.txt
+- ESC: deactivates (active_index = -1), preserves buffer
+- Render: shows input_buffer content even when not active
+
+FILE PERSISTENCE:
+- Write: append "U<text>\n" or "P<masked>\n" on each keystroke
+- Read: read all lines from cli_buffers.txt, keep last matching prefix
+- File: pieces/apps/player_app/cli_buffers.txt
+
+REFERENCE: Pitfall #33, chtpm_parser.c render_element()
+
+10.8 JOYSTICK THREAD PATTERN
+----------------------------
+Joystick runs forever waiting on /dev/input/js0:
+
+ORCHESTRATOR FIX (Pitfall #34):
+- Joystick thread must fork-and-return (don't waitpid)
+- Main thread must NOT join joystick thread
+- Signal handler kills all children via kill(0, SIGTERM) + kill_all.sh
+
+WRONG (blocks forever):
+  void* joystick_thread_func() {
+      launch_and_register("joystick_input", ...);  // calls waitpid()
+      return NULL;
+  }
+  pthread_join(joy_t, NULL);  // HANGS!
+
+CORRECT:
+  void* joystick_thread_func() {
+      pid_t pid = fork();
+      if (pid == 0) {
+          execl("./pieces/joystick/plugins/+x/joystick_input.+x", ...);
+          exit(1);
+      }
+      return NULL;  // Parent returns immediately
+  }
+  // Don't join joy_t - let signal handler clean up
+
+10.9 APP vs PROJECT TOPOLOGY
+----------------------------
+CRITICAL DISTINCTION (Pitfall #27, #31, #32):
+
+APP (pieces/apps/<app_id>/):
+- System tools: op-ed, editor, user, gl_os
+- Launched via href buttons from os.chtpm
+- Has <app_id>.pdl with layout_path
+- Module MUST set project_id explicitly when loaded
+
+PROJECT (projects/<project_id>/):
+- User content: fuzz-op, man-pal, template
+- Launched via loader menu
+- Has project.pdl with entry_layout
+- project_loader.c sets entry_layout automatically
+
+APP LAYOUT LOADING (Pitfall #31):
+When loading APP layout via href, parser does NOT auto-set project_id:
+
+  // In parse_chtm() or module:
+  if (strstr(current_layout, "pieces/apps/user/")) {
+      set_var("project_id", "user");
+  }
+
+Without this, resolve_dynamic_pdl_path() looks in wrong location.
+
+10.10 STATE FILE CONTEXT (Pitfall #32)
+--------------------------------------
+Shared state files (pieces/apps/player_app/) persist across app switches:
+
+ON APP LAYOUT CHANGE:
+- Clear stale context variables (project_id, app_title)
+- Write new context immediately
+- Parser clears/overwrites at start of load_vars()
+
+This prevents stale data from previous project persisting.
+
+================================================================================
+END OF DOCUMENT
+================================================================================
+
+For reference implementations, study:
+  - pieces/apps/op-ed/          (Editor application)
+  - projects/fuzz-op/           (Game application)
+  - pieces/apps/playrm/         (Shared operations)
+
+For system architecture:
+  - #.docs/!TPM2.PAL.MONOLITH+0.md
+  - pieces/chtpm/plugins/orchestrator.c
+  - pieces/master_ledger/plugins/piece_manager.c
+
+================================================================================

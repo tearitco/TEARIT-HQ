@@ -1,0 +1,5 @@
+; Wraith Ed generated PAL event draft.
+TARGET_MAP "map_0001_z0"
+TARGET_CELL 5 3 0
+SHOW_TEXT "Event at 5,3"
+END

@@ -1,0 +1,249 @@
+================================================================================
+editor-widget-app-refactor-j30.txt - handoff todo for refactoring
+"the app that uses widgets": `@.apps/text-editor-xyz` - the real
+launcher app (confirmed via its own button.sh: "Editor and file-menu
+widget are SEPARATE PROGRAMS... communicate via file-mediated widget
+cmd bus") that starts `102.editor-📄️00.00` (editor session) plus
+`&.widgits/file-menu` (background widget, RUN_PROFILE=widget) as two
+independent processes - the WIDGET-TOOLCHAIN pair per
+`102.agy-txt/PLAN.md` §0. This doc covers the same real fixes/lessons
+found this session while rebuilding 102.agy-txt's OWN self-contained
+sibling, scoped to whichever of the two programs actually owns the
+work (mostly file-menu's own rendering - see §1/§2 below for exactly
+which files). Written so a fresh agent can pick this up and work it IN
+PARALLEL while the 102.agy-txt browser-manager rebuild continues
+elsewhere. Also real, already on disk, read before duplicating any of
+it: `@.apps/text-editor-xyz/EDITOR-WIDGET-INTEGRATION-HANDOFF.txt` -
+the existing integration handoff for this exact app; this doc is
+scoped narrowly to the PITFALL-65-class rendering refactor, not a
+replacement for that broader doc. Read the compliance docs in §0
+FIRST - don't start editing code before you've read them, this doc is
+a checklist built on top of them, not a replacement for them.
+================================================================================
+
+## 0. Compliance docs to read first, in this order
+
+1. `#.haiku+/jul30-house-refactor.txt` - the root-cause analysis this
+   whole thread comes from: real dynamic `<button>` markup vs
+   hand-drawn `[>]`/`[^]` markers, the prisc+x VM's own integer-only
+   `OP_READ_HISTORY` limitation, and why KEY:n is a real (not lazy)
+   encoding choice for THIS house's PAL VM.
+2. `#.haiku+/refactor-list-j30.txt` - the concrete checklist this doc
+   is a Tier-3 expansion of. TIER 3 already names
+   `&.widgits/file-menu/ops/fm_menu_input.c` /
+   `fm_compose_frame.c` / `pieces/chtpm/layouts/file-menu.chtpm` as a
+   CONFIRMED-same-issue, not-yet-decided-to-fix item. This doc turns
+   that one paragraph into an actual work plan.
+3. `102.agy-txt/manager/BROWSER_CONTRACT.md` - the real, concrete
+   shared markup/state-key shape (already fixed, already tested this
+   session) - use it as the TEMPLATE for the state contract, don't
+   invent a new one. Its own §0 was WRONG once already this session
+   (assumed a path that turned out gated by `project_id` - now
+   corrected in-place with the real trace) - read the CURRENT version,
+   not a cached memory of it.
+4. `101.mutaclsym🧟‍♂️️+18.01/ops/compose_frame.c`'s own
+   `write_panel_gui_state()` - the original, real, in-house PROOF that
+   dynamic `<button onClick="KEY:n">` markup generation is correct and
+   already shipping in this house - the pattern file-menu's own
+   rebuild should match.
+5. `#.haiku+/!.xyzos-pitfalls+1.txt` - PITFALL 61 (interact_relay.txt
+   not truncated on module respawn), 63 (PASTE/jump-shortcut harnesses
+   give false positives on interaction-order bugs), 64 (file-menu's
+   own two already-fixed real bugs - digit-press-immediately-activates,
+   digit-press-types-into-search), 65 (hand-drawn markers vs real
+   dynamic button markup - the mistake this whole thread traces back
+   to).
+6. `#.haiku+/!.xyzos-standards+1.txt` §36-39 - K3 human-input-parity
+   testing requirements. Any harness work here MUST follow §39's
+   checklist (real click-to-load, real digit-jump-vs-activate
+   assertions, real on-disk checks) - PASTE/jump-shortcut-only tests
+   are NOT sufficient per PITFALL 63's own three real incidents.
+7. `1.TPMOS_c_+rmmp.0103.0001/projects/agy-text-editor/manager/
+   agy-text-editor_manager.c` - the TPMOS reference. Read
+   `process_key()` (~line 574) closely: it demonstrates the CORRECT,
+   real cli_io echo timing (discrete events only - Backspace, Enter,
+   SET_*_ACTION - NEVER a continuous per-tick poll-and-echo of
+   cli_buffers.txt back into gui_state.txt). Direct instruction this
+   session: "do exactly what tpmos does... investigate tpmos and
+   change EVERY DOC that deviates from it" - this applies here too.
+
+## 1. What "the app that uses widgets" actually is (don't confuse it
+   with 102.agy-txt)
+
+`102.editor-📄️00.00` (launched via `@.apps/text-editor-xyz`) +
+`&.widgits/file-menu` are TWO SEPARATE PROCESSES/GL windows, connected
+over a relay-file cmd-bus - the WIDGET-TOOLCHAIN pattern (per
+`102.agy-txt/PLAN.md` §0, which explicitly contrasts this against
+agy-txt's own "no second widget process" self-contained design).
+file-menu is a real, SHIPPED, WORKING widget - PITFALL 63/64's own
+fixes are already verified live against it. This refactor is a
+style/architecture upgrade to bring it in line with the real
+in-house dynamic-markup standard, NOT a bug-fix-a-broken-thing task -
+treat every change here as "make it match the standard", verify it
+still works exactly as before afterward, don't "fix" things that
+aren't broken.
+
+file-menu.chtpm declares
+`<module>system/prisc+x pal/main_loop_chtpm.pal</module>` (the SAME
+shared PAL loop 102.agy-txt's OLD editor.chtpm/file_menu.chtpm still
+use) - this is PAL-driven dispatch, NOT a native C manager. `fm_menu_
+input.c` receives its key as an argv value the PAL script passes in
+directly (reading `pieces/apps/player_app/interact_relay.txt` itself)
+- it does NOT poll files on its own. This means the ONE bug class
+found this session that does NOT apply here: 102.agy-txt's NEW native
+manager was found to be watching the wrong file entirely
+(`pieces/keyboard/history.txt` instead of the real
+`<interact src>` target) for KEY:n button-activation events - that bug
+was specific to building a NEW native-C poll loop from scratch.
+file-menu's PAL-driven dispatch already gets its key correctly (it's
+real, shipped, working - confirmed by PITFALL 64's own live-tested
+fixes) and needs NO change on that front.
+
+## 2. The actual real work item (matches refactor-list-j30.txt Tier 3)
+
+`fm_compose_frame.c` renders the file browser listing/menu with
+hand-drawn `[>]`/`[^]`/`[ ]` text markers (confirmed via direct read
+this session) instead of real, PARSER-owned, dynamically-generated
+`<button onClick="KEY:n">` markup. `fm_menu_input.c` correspondingly
+hand-tracks `cursor_pos`/`field_active` itself instead of letting
+chtpm_parser_pal's own nav/focus/highlighting own that state (the
+exact violation PITFALL 65 documents, and the exact thing
+102.agy-txt's own rebuild this session fixed for its OWN browser).
+
+CORRECTED 2026-07-30 (direct instruction, mid-implementation of this
+exact section - a first pass at this got it wrong and is preserved
+below only so the mistake and its real symptom are on record): file-
+menu's THREE screens (main_menu/file_browser/peer_list) MUST become
+THREE SEPARATE real `.chtpm` layout files connected by real
+`<button href="...">` navigation - NOT one `file-menu.chtpm` with an
+internal `mode` variable switching what `${game_map}` renders. This
+is the actual point of the whole refactor (modularity/reusability,
+direct instruction) and it is NOT optional/stylistic - it also fixes a
+real, live-caught bug for free: a same-layout `mode` switch is NOT a
+real chtpm layout transition, so `chtpm_parser_pal.c`'s own
+`focus_index` CARRIES OVER from whatever nav position the user was on
+in the PREVIOUS mode's element structure, landing on an unrelated
+element in the new one (confirmed live: digit-jumping to "SAVE AS..."
+in main_menu then activating it left focus pointing at an arbitrary
+directory-listing entry in the freshly-rendered file_browser
+structure, not SEARCH/index 0). A REAL href transition avoids this
+entirely for free - `cleanup_module()`/`parse_chtm()`/
+`initialize_focus()` all run fresh on every real href navigation
+(confirmed via direct read of chtpm_parser_pal.c's own href-handling
+code, the same mechanism 102.agy-txt's own editor.chtpm -> file_menu.chtpm
+-> file_browser_save.chtpm/file_browser_load.chtpm chain already uses,
+proven this same session). Do not reach for a manual `active_target_id`
+toggle or any other same-layout focus-reset workaround as a substitute
+for this - that was the first-pass mistake this note replaces, and it
+only patches the symptom, not the actual architecture request.
+
+Concrete steps (mirror 102.agy-txt's own real rebuild AND its real
+multi-layout/href shape - both are already proven this session, do not
+re-derive from scratch):
+
+1. Split `&.widgits/file-menu/pieces/chtpm/layouts/file-menu.chtpm`
+   into real separate files - e.g. `file_menu_main.chtpm`,
+   `file_menu_browser.chtpm` (save_as/load/pair share one real layout,
+   `browse_mode` stays as an internal variable ONLY for that one real
+   sub-distinction - it's a single coherent screen, unlike main_menu
+   vs file_browser which are genuinely different screens), and
+   `file_menu_peers.chtpm`. Each declares its own real
+   `<module>system/prisc+x pal/main_loop_chtpm.pal</module>` (same
+   literal module path in all three, matching this house's own real
+   "one shared module per project, branches on current_layout.txt"
+   convention, confirmed universal this session) and its own real
+   `<interact src="pieces/apps/player_app/interact_relay.txt" />`.
+2. Write `&.widgits/file-menu/BROWSER_CONTRACT.md` (or reuse/link
+   `102.agy-txt`'s own, adapting the project-specific paths) - the
+   gui_state.txt key shape each layout's own dynamic markup will
+   target. Keep KEY:n as the encoding (matches prisc+x's own confirmed
+   integer-only limitation, jul30-house-refactor.txt §3 - this is not
+   up for debate, it's a real VM constraint, not a style choice).
+3. Rewrite `fm_compose_frame.c` to build real
+   `<button label="..." onClick="KEY:n" /><br/>` rows (one per menu
+   item / directory entry), matching
+   `101.mutaclsym🧟‍♂️️+18.01/ops/compose_frame.c`'s own
+   `write_panel_gui_state()` shape - same real `[DIR]`/`[FIL]` prefix
+   convention, same real size-suffix formatting, no hand-drawn
+   `[>]`/`[ ]` prefixes (the PARSER draws focus/highlighting itself
+   once it owns real `<button>` elements). Dispatch on
+   `current_layout.txt` (`strstr(layout, "file_menu_browser.chtpm")`
+   etc, same real pattern `agy_browser_manager.c` uses) instead of a
+   hand-tracked `mode` key.
+4. Each new layout's own real `<button href="...">` targets the OTHER
+   two files directly (main_menu's own "SAVE AS.../LOAD.../PAIR FROM
+   FILE..." options become real hrefs into file_menu_browser.chtpm,
+   not an internal mode write; file_browser's own CANCEL becomes a
+   real href back into file_menu_main.chtpm, not an internal mode
+   write) - matches 102.agy-txt's own file_browser_save.chtpm/
+   file_browser_load.chtpm's own real CANCEL button exactly.
+5. Simplify `fm_menu_input.c`'s own dispatch to match: it should
+   decode a KEY:n integer into a STRING action name at ONE clearly-
+   marked boundary per layout (matches `102.agy-txt/manager/
+   agy_browser_manager.c`'s own `decode_key_to_action()`/
+   `dispatch_action()` split, built this session as the concrete
+   reference), not hand-roll cursor_pos math inline everywhere.
+6. cli_io fields (SEARCH/FILE, if file-menu's own browser has them -
+   verify first, don't assume): if you add or touch any, apply the
+   TPMOS-matching fix found this session - do NOT continuously poll
+   `cli_buffers.txt` and echo it back into `gui_state.txt` on every
+   tick. Only read/write it at discrete events (Backspace, Enter,
+   selection-prefill) - a continuous echo races against
+   `chtpm_parser_pal.c`'s own `sync_cli_input_from_gui_state()` restore
+   pass and stomps the live-typed buffer (confirmed, reproduced, and
+   fixed in `102.agy-txt/manager/agy_browser_manager.c` this session -
+   read that file's own `poll_history()`/`dispatch_action("confirm")`
+   split for the concrete fix shape).
+7. Real K3 harness re-verification (§39/PITFALL 63) BEFORE and AFTER:
+   `test-harn-ed-app`'s existing scenarios are the "before" baseline
+   (must still pass unchanged) - do not consider this refactor done
+   until they're green against the NEW markup-driven, real-href-driven
+   layouts, not just compiling.
+
+## 3. Two additional real findings from THIS session, generically
+   applicable here too - check whether they apply, even though they
+   surfaced while building 102.agy-txt's NEW native C manager (which
+   file-menu does not have, being PAL-driven):
+
+a. **gui_state.txt path is project_id-scoped, not a single universal
+   path.** `chtpm_parser_pal.c`'s own `load_vars()` only auto-loads
+   `pieces/apps/player_app/manager/gui_state.txt` when `project_id` is
+   EMPTY. Any project whose own `state.txt` sets a real `project_id`
+   (file-menu's own session state - verify what it sets) gets routed
+   through `load_project_gui_state(proj_id)` instead, which checks (in
+   order) `projects/<id>/manager/gui_state.txt`,
+   `pieces/apps/<id>/manager/gui_state.txt`,
+   `pieces/apps/<id>/loader/gui_state.txt`,
+   `pieces/apps/<id>/session/gui_state.txt` - NOT the generic
+   player_app path. If file-menu's own `fm_compose_frame.c` (or
+   whatever ends up writing its new dynamic markup) writes gui_state
+   to the wrong path, the symptom is: the RIGHT data is in the file,
+   the render just silently never picks it up - no error anywhere in
+   file-menu will match this against its own literal path, verify it
+   works against a real project_id before trusting it.
+b. **`state_changed.txt` vs `frame_changed.txt`.** Pulsing only
+   `pieces/display/frame_changed.txt` re-renders the ALREADY-parsed
+   element tree (a plain redraw) - it does NOT force
+   `chtpm_parser_pal.c` to re-run `parse_chtm()`, which is the step
+   that actually re-substitutes a raw `${var}`-as-markup line into
+   fresh `<button>` elements. Also pulse
+   `pieces/apps/player_app/state_changed.txt` after every real state
+   change that should show up in dynamically-generated markup (matches
+   `101.mutaclsym🧟‍♂️️+18.01/ops/compose_frame.c`'s own real
+   precedent, and TPMOS's own `agy-text-editor_manager.c`'s own
+   `trigger_render()` - both already pulse both files).
+
+## 4. Explicitly out of scope for this refactor
+
+- Do NOT extend `prisc+x.c`'s `OP_READ_HISTORY` (Tier 2 in
+  refactor-list-j30.txt) - that's a separate, house-wide, dedicated-
+  pass task, not bundled into this one.
+- Do NOT convert file-menu from PAL-driven to a native C manager -
+  102.agy-txt's native manager was a deliberate choice for ITS OWN
+  reasons (see jul30-house-refactor.txt §5/§6); file-menu staying
+  PAL-driven is fine, this refactor is markup/rendering only.
+- Do NOT touch `102.editor-📄️00.00`'s own editor canvas/INTERACT
+  typing logic - only the file-menu WIDGET's own browser/menu
+  rendering is in scope here.
+
+================================================================================

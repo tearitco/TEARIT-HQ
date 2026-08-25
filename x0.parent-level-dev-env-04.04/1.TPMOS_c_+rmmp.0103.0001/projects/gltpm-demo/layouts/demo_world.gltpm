@@ -1,0 +1,5 @@
+<scene title="Demo World GLTPM" bg="15,20,34" camera_mode="${camera_mode}" />
+<tilemap source="projects/gltpm-demo/maps/demo_world.map.txt" legend="projects/gltpm-demo/assets/tiles/registry.txt" origin_x="-1" origin_y="-1" z="0" />
+<sprite sprite_id="hero_idle" label="Hero" x="${player_x}" y="${player_y}" z="1" />
+<text label="Status: ${status_text}" />
+<button id="advance" label="${action_label}" onClick="OP gltpm-demo::advance" />

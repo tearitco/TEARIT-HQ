@@ -1,0 +1,227 @@
+[Wed May 13 18:06:45 2026]
+USER: hi list tools u have
+AGENT: Here are my available tools: 
+exec_cmd (args: {cmd: string})
+read_file (args: {path: string})
+write_file (args: {path: string, content: string})
+edit_file (args: {path: string, search: string, replace: string})
+list_dir (args: {path: string})
+search_in_files (args: {query: string})
+web_search (args: {query: string})
+
+[Wed May 13 18:13:25 2026]
+USER: hi how are u ?
+AGENT: I'm running smoothly, thank you! I can assist with code-related tasks.
+
+[Wed May 13 18:13:55 2026]
+USER: what tools do you have? can u create "test-file".txt ?
+AGENT: File created!
+
+[Wed May 13 18:14:12 2026]
+USER: list dir pls
+AGENT: ./: .
+./test-file.txt
+
+[Wed May 13 18:22:44 2026]
+USER: can u list all files in that dir? 
+AGENT: ["test-file.txt"]
+
+[Wed May 13 18:44:42 2026]
+USER: list current dir contents pls
+AGENT: 
+
+[Wed May 13 18:49:20 2026]
+USER: list dir contents of ../../
+AGENT: Directory not scanned recursively
+
+[Wed May 13 18:50:21 2026]
+USER: can u make file-3093h.txt pls ; write "3093h" in it pls
+AGENT: File created and written.
+
+[Wed May 13 19:01:28 2026]
+USER: create dir.txt and list all dir contents
+AGENT: Directory created!
+
+[Wed May 13 19:05:23 2026]
+USER: list dir contents
+AGENT: {"test-file.txt":"test- file.txt","file-3093h.txt":"3093h"}
+
+[Mon May 18 17:45:18 2026]
+USER: are u working?
+AGENT: {"test-file.txt":"test- file.txt","file-3093h.txt":"3093h"}
+
+[Mon May 18 17:46:32 2026]
+USER: testing local
+AGENT: {"test-file.txt":"test- file.txt","file-3093h.txt":"3093h"}
+
+[Mon May 18 19:11:57 2026]
+USER: hi
+AGENT: {"test-file.txt":"test- file.txt","file-3093h.txt":"3093h"}
+
+[Mon May 18 19:13:10 2026]
+USER: hi
+AGENT: {"test-file.txt":"test- file.txt","file-3093h.txt":"3093h"}
+
+[Mon May 18 19:39:23 2026]
+USER: hi
+AGENT: {"test- file. txt": "test- file.txt", "file- 3093h.txt": "3093h"}
+
+[Mon May 18 19:56:29 2026]
+USER: hi
+AGENT: {}
+
+[Mon May 18 20:25:16 2026]
+USER: hi
+AGENT: {}
+
+[Mon May 18 21:01:34 2026]
+USER: hi
+AGENT: Hello! What can I help you with today? Please let me know if you'd like to explore a specific codebase or discuss architecture, documentation, or something else. I'll start by scanning the current directory (./) using `list_dir` to get us started.
+
+[Mon May 18 21:23:17 2026]
+USER: whats your name?
+AGENT: I'm Aida, a technical coding agent. Nice to meet you!
+
+[Wed May 20 20:20:52 2026]
+USER: hi whats today?
+AGENT: I'm sorry, but I don't have access to the current date and time. Is there anything else I can help you with?
+
+[Wed May 20 20:34:11 2026]
+USER: hi
+AGENT: { }
+
+[Wed May 20 21:29:07 2026]
+USER: hi
+AGENT: { }
+
+[Wed May 20 21:33:34 2026]
+USER: hi test
+AGENT: { }
+
+[Wed May 20 21:39:49 2026]
+USER: hi
+AGENT: { }
+
+[Wed May 20 21:46:22 2026]
+USER: hi
+AGENT: { }
+
+[Wed May 20 21:51:24 2026]
+USER: hi
+AGENT: { }
+
+[Wed May 20 21:55:47 2026]
+USER: hi
+AGENT: Hello! How can I assist you today?
+
+[Wed May 20 22:00:26 2026]
+USER: hi
+AGENT: Welcome! What do you need help with?
+
+[Wed May 20 22:01:37 2026]
+USER: how are u today?
+AGENT: I'm doing well, thank you!
+
+[Wed May 20 22:06:09 2026]
+USER: hi how are u ?
+AGENT: I'm doing well, thank you!
+
+[Sun May 24 18:14:31 2026]
+USER: hi gemini . testing
+AGENT: 
+
+[Sun May 24 18:15:46 2026]
+USER: hi test
+AGENT: Hello!
+
+[Sun May 24 18:27:25 2026]
+USER: hi
+AGENT: 
+
+[Sun May 24 18:30:21 2026]
+USER: hi
+AGENT: 
+
+[Sun May 24 18:36:51 2026]
+USER: hi
+AGENT: {
+        "parts": [
+          {
+            "text": "Hello! How can I help you today?"
+          }
+        ],
+        "role": "model"
+      }
+
+[Sun May 24 18:52:06 2026]
+USER: hi
+AGENT: 
+
+[Mon May 25 00:02:49 2026]
+USER: hi
+AGENT: 
+
+[Mon May 25 00:03:09 2026]
+USER: hi
+AGENT: {
+        "parts": [
+          {
+            "text": "Hello! How can I help you today?"
+          }
+        ],
+        "role": "model"
+      }
+
+[Mon May 25 00:05:48 2026]
+USER: hi
+AGENT: 
+
+[Mon May 25 00:08:05 2026]
+USER: hi
+AGENT: {
+        "parts": [
+          {
+            "text": "Hello! How can I assist you today?"
+          }
+        ],
+        "role": "model"
+      }
+
+[Mon May 25 05:14:54 2026]
+USER: create test file testi.txt and tell me what dir you made it in 
+AGENT: {
+        "parts": [
+          {
+            "functionCall": {
+              "name": "write_file",
+              "args": {
+                "content": "This is a test file.",
+                "path": "testi.txt"
+              }
+            },
+            "thoughtSignature": "Cs0DAQw51sevq/CrKJbvXeY5l/xTe0ZAe6IUKo+/E4EPM2YndZ1UqaQt6kZaNzEJCtGn8Ahh2q4yRE3tT9Q8ia+tgoMuHwlp6S9D7VwgXMdn0OhgszpNIT/3k15GFm8rpYQtXfmioKLSFzcfNsbEI7L6SvRhXwWNjsAkbkTWmfWIYiEffJeVU2T3Tl2/3LE0KvL2/ibVquwM77a4d18dvrgfxme2V42hMwWXnv0W7cUROZGrnB+9V46PFZn5Gl/sxbNRhYc3pE21TcaiP7HmbeRpKJuaC5ldC2ewKX1DrcDGVKH8yHGH/rcxxh1z6+uv6dZhdDiJD3uGENNOEfv7rt5oOMl5peHqm9SaTJg10kfsVHSemZMf45vYpLDdLuu5/S0V1i8LsdRUVQLXNczgGRIWcvDvMZtecj/eG2/IDgEWFhowxBSqnvyUXoCdTuBOJxiO7zER5FjiKahHHMfh6YaFfqIpN5Dyu0+TPG5Qaw5gitPjgx24seMFDusBMWnOdnVQo/zUdgguI2/sDB6M5FHeDSdeFlULYja9HRNItiQ5GRBIeiMhnYiDCRDm+YHyRWR0EKoOW1F3x9sBPR7fSVilp6H52Ft8b786kqgjc9E="
+          }
+        ],
+        "role": "model"
+      }
+
+[Mon May 25 23:32:46 2026]
+USER: hi, how do u do?
+AGENT: 
+
+[Mon May 25 23:33:14 2026]
+USER: hi
+AGENT: 
+
+[Mon May 25 23:40:42 2026]
+USER: hola como esta
+AGENT: {
+        "parts": [
+          {
+            "text": "I'm doing well, thank you for asking! How can I help you today?",
+            "thoughtSignature": "CrUBAQw51scWRHliatDRuIcrzT3l6FiANbcOy531i79il6v5wFCzfCvPRAKXqFM6q4aWeThHKMyqkj+eeTHtXpubJeGgydeFzOacR+trwJvhUdTlQVajDKrVRxT4QTvsECqMKU1Tj3Bt+8sbjrXbhmBEv5X1NIoOyOuMXiybjxFT6ajIBrtBFlEQ7/5GRJu+kJU4C4hr5HgD6lr0JwXWlnjXy575LTwRNetfYKxl400OVTRze+DBSg=="
+          }
+        ],
+        "role": "model"
+      }
+

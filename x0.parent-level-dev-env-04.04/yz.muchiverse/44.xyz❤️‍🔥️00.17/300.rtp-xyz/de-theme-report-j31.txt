@@ -1,0 +1,101 @@
+================================================================================
+de-theme-report-j31.txt - 300.rtp-xyz: registry de-theme, done
+2026-07-31, for future agents. See dox/rtp-xyz-architecture.md §9 for
+the design this executes, and its own corrected note on the emoji
+asset pipeline (an earlier draft of that doc wrongly claimed an
+auto-regeneration mechanism that does not exist - read that correction
+before assuming voxel art "just regenerates").
+================================================================================
+
+## WHAT WAS ACTUALLY THEMED (narrower than expected)
+
+Grepped the real .c files for "zombie" before touching anything.
+terrain_types.txt and furniture_types.txt were ALREADY fully generic
+(wall/floor/door/grass/water/tree/table/chair/bed - no zombie theming
+at all). item_types.txt was and remains EMPTY - confirmed no .c file
+in this project reads it at all; real items are per-instance
+directories under pieces/world_01_template/*/items/ (item_stick_01,
+item_rock_01, item_water_01, item_rag_01, item_jacket_01) which were
+ALREADY generic survival items, zero zombie theming. The ENTIRE real
+de-theme scope was monster_types.txt + 3 real C hardcoded references,
+all of them fully data-driven (monster_name()/monster_max_hp() in
+tick_monsters.c/choice.c/move_player.c already read monster_types.txt
+dynamically - no hardcoded name tables to fix).
+
+## WHAT CHANGED
+
+pieces/registry/monsters/monster_types.txt:
+    zombie|Zombie|Z|20|5|🧟           -> slime|Slime|S|20|5|🟢
+    zombie_child|Zombie Child|z|10|3|🧟 -> slime_pup|Slime Pup|q|10|3|🟩
+(same hp/damage values preserved, only identity/glyph/emoji changed -
+no balance change).
+
+ops/tick_monsters.c:
+    line 319: spawn_types[2] = { "zombie", "zombie_child" }
+                            -> { "slime", "slime_pup" }
+    line 457: read_kv_str(..., "monster_type", ..., "zombie")
+                            -> ..., "slime")   (default fallback only)
+
+ops/move_player.c:
+    line 572: read_str_field(..., "monster_type", ..., "zombie")
+                            -> ..., "slime")   (default fallback only,
+    used to look up a display name for the "You hit the X" message
+    when monster_type is somehow unreadable - not a real gameplay
+    path under normal conditions)
+
+pieces/world_01_template/*/monsters/zombie_*/ and zombie_child_*/
+directories renamed to slime_*/ and slime_pup_*/ (map_start, map_02,
+building_01_f2 - every real placed monster instance), and each one's
+own state.txt monster_type= field updated to match. map_gen_01's own
+procedurally-generated monster instances (monster_gen_00..04, real
+directory names already generic) had their monster_type= field values
+updated the same way, directory names left as-is (already fine).
+
+pieces/world_01/ (the live, non-template world) reset from the
+now-updated pieces/world_01_template/ to match - old zombie-themed
+live state would otherwise have lingered until a real "new game" reset
+happened anyway.
+
+## VERIFICATION
+
+Rebuilt via scripts/build.sh - "build ok", no new errors (pre-existing
+unrelated warnings only). grep for "zombie" across the whole project
+tree (excluding this doc's own commit-history-style mentions) now
+returns zero hits in any real state/registry/source file.
+
+Live-launched fresh (NO_GL=1 PAL_MODE=1) after the reset - real ASCII
+frame rendered correctly, "Control Hero" menu present, no crash, no
+error in stdout log. The 2D ASCII path renders monsters via their
+registry glyph/unicode fields directly - no voxel asset dependency,
+so this path is fully verified working with the new slime/slime_pup
+identities.
+
+3D/GL mode was NOT live-tested for the new monster types specifically
+(no GL display available in this sandboxed run) - see dox/
+rtp-xyz-architecture.md §9's own corrected note: entities (hero,
+items, ALL monster types, old and new alike) never got a real 3D
+voxel texture pass in this project to begin with (a real, pre-existing,
+separate gap documented in this project's own extrude-emoji.md) - a
+missing voxels_16.csv for "slime"/"slime_pup" fails closed to a flat
+fallback color by design (load_emoji_voxels() confirmed via direct
+code read), same as every other untextured entity already does. Not a
+regression this de-theme caused.
+
+## IF YOU HIT A BUG HERE
+
+1. If a monster fails to spawn or shows the wrong name: confirm
+   monster_types.txt's own slime/slime_pup rows are intact and
+   pieces/world_01/<map>/monsters/*/state.txt's own monster_type=
+   field matches one of those ids exactly.
+2. If 3D mode shows a flat-color box instead of a textured monster:
+   this is the pre-existing, documented gap (extrude-emoji.md), not
+   caused by this de-theme - do not assume you broke something.
+3. Real asset generation (voxels_16.csv for a new registry entry) has
+   NO working pipeline in this project currently - see dox/
+   rtp-xyz-architecture.md §9's corrected note for the full
+   investigation (gen_voxels8.c only downsamples an EXISTING
+   voxels_16.csv; the actual rasterization tool lives elsewhere,
+   e.g. 014.wsr-pal's own emoji_gen_atlas.+x, and produces hex-
+   codepoint-keyed TEXT assets, a different pipeline entirely from
+   this project's own asset-id-keyed world-tile assets).
+================================================================================

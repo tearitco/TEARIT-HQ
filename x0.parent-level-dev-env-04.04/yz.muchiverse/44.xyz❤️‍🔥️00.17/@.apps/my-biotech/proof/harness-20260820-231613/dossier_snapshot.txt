@@ -1,0 +1,8 @@
+COMPOUND: Chlorine
+DISCOVERED FROM: chlorine
+
+[Use Case] Chlorine's primary use case is to create chemical bonds.
+[Effect] Chlorine's primary effect is to change the chemical properties of matter.
+[Side Effect] Chlorine has been shown to cause skin irritation and burns.
+[Market Price] The market price is $0.05.
+[FDA Verdict] REJECTED (Chlorine's potential health hazards, including skin irritation and burns, necessitate careful handling and personal protective equipment (PPE).)

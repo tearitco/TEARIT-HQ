@@ -1,0 +1,10 @@
+curriculum/Astronomy/Astronomy.txt
+curriculum/Biology/Biology.txt
+curriculum/Chemistry/Chemistry.txt
+curriculum/Economics/Economics.txt
+curriculum/Geography/Geography.txt
+curriculum/History/History.txt
+curriculum/Literature/Literature.txt
+curriculum/Mathematics/Mathematics.txt
+curriculum/Physics/Physics.txt
+curriculum/Programming/Programming.txt

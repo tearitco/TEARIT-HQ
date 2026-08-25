@@ -1,0 +1,13 @@
+<text label="| |  CHTMGL VIDEO ISOLATE | video-first proof                                            |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  [HEADER] CHTMGL Video Tag Probe                                                     |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  VIDEO_ISOLATE                                                                       |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  [ASCII Color Preview]                                                               |" /><br visibility="${desktop_active_window_body_visible}" />
+<grid source="projects/wraith-alpha/wraith-projects/chtmgl-video-isolate/session/poster_preview.grid.pdl" prefix="| |  " suffix="                                                           |" />
+<text label="| |  STATE:stopped                                                                          |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  320x180_9.23s                                                                        |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  FRAME:74/74                                                                         |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  " /><button compact="true" label="Play" onClick="PROJECT_ACTION:VIDEO_PLAY" /><text label=" " /><button compact="true" label="Pause" onClick="PROJECT_ACTION:VIDEO_PAUSE" /><text label="                                                      |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  " /><button compact="true" label="Resume" onClick="PROJECT_ACTION:VIDEO_RESUME" /><text label=" " /><button compact="true" label="Stop" onClick="PROJECT_ACTION:VIDEO_STOP" /><text label="                                                     |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  " /><button compact="true" label="Refresh_Poster" onClick="PROJECT_ACTION:VIDEO_REFRESH" /><text label="                                                |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  VIDEO:stopped                                                                          |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  Last: Poster refreshed from ../../../../../#.media-library/sample-10s-vp9.mp4" /><br visibility="${desktop_active_window_body_visible}" />

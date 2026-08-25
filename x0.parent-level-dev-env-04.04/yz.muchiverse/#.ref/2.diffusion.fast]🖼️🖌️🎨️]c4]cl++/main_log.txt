@@ -1,0 +1,131 @@
+Selected 2 images for blending:
+  2: munqi.jpg (106x116, 4 channels)
+  3: dubu.jpg (106x116, 4 channels)
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat train kernels_0.dat
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat train kernels_1.dat
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat infer kernels_0.dat
+Generated output_0.jpg for inspection
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat infer kernels_1.dat
+Generated output_1.jpg for inspection
+Executing: ./+x/noise_schedule.+x neural_outputs_list.txt diffusion_output.jpg 106 116
+Warning: Failed to execute noise_schedule.+x, falling back to averaging
+Output saved as diffusion_output.jpg (106x116, 3 channels)
+Selected 2 images for blending:
+  5: dubu.jpg (106x116, 4 channels)
+  2: munqi.jpg (106x116, 4 channels)
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat train kernels_0.dat
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat train kernels_1.dat
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat infer kernels_0.dat
+Generated output_0.jpg for inspection
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat infer kernels_1.dat
+Generated output_1.jpg for inspection
+Executing: ./+x/noise_schedule.+x neural_outputs_list.txt diffusion_output.jpg 106 116
+Warning: Failed to execute noise_schedule.+x, falling back to averaging
+Output saved as diffusion_output.jpg (106x116, 3 channels)
+Selected 2 images for blending:
+  2: munqi.jpg (106x116, 4 channels)
+  5: dubu.jpg (106x116, 4 channels)
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat train kernels_0.dat
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat train kernels_1.dat
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat infer kernels_0.dat
+Generated output_0.jpg for inspection
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat infer kernels_1.dat
+Generated output_1.jpg for inspection
+Executing: ./+x/noise_schedule.+x neural_outputs_list.txt diffusion_output.jpg 106 116
+Warning: Failed to execute noise_schedule.+x, falling back to averaging
+Output saved as diffusion_output.jpg (106x116, 3 channels)
+Selected 2 images for blending:
+  3: munqi.jpg (106x116, 4 channels)
+  6: dubu.jpg (106x116, 4 channels)
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat train kernels_0.dat
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat train kernels_1.dat
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat infer kernels_0.dat
+Generated output_0.jpg for inspection
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat infer kernels_1.dat
+Generated output_1.jpg for inspection
+Executing: ./+x/noise_schedule.+x neural_outputs_list.txt diffusion_output.jpg 106 116
+Warning: Failed to execute noise_schedule.+x, falling back to averaging
+Output saved as diffusion_output.jpg (106x116, 3 channels)
+Selected 6 images for blending:
+  27: munqi.jpg (106x116, 4 channels)
+  39: dubu.jpg (106x116, 4 channels)
+  20: cat face_10.jpg (162x108, 3 channels)
+  23: cartoon face_16.jpg (162x110, 3 channels)
+  24: cartoon face_11.jpg (140x140, 3 channels)
+  25: cartoon face_9.jpg (162x91, 3 channels)
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat train kernels_0.dat
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat train kernels_1.dat
+Executing: ./+x/neural_net.+x temp_input_2.jpg neural_output_2.dat train kernels_2.dat
+Error: Failed to execute neural_net.+x train for temp_input_2.jpg
+Selected 4 images for blending:
+  39: dubu.jpg (106x116, 4 channels)
+  25: cartoon face_9.jpg (162x91, 3 channels)
+  24: cartoon face_11.jpg (140x140, 3 channels)
+  41: cat face_9.jpg (162x108, 3 channels)
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat train kernels_0.dat
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat train kernels_1.dat
+Executing: ./+x/neural_net.+x temp_input_2.jpg neural_output_2.dat train kernels_2.dat
+Executing: ./+x/neural_net.+x temp_input_3.jpg neural_output_3.dat train kernels_3.dat
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat infer kernels_0.dat
+Generated output_0.jpg for inspection
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat infer kernels_1.dat
+Generated output_1.jpg for inspection
+Executing: ./+x/neural_net.+x temp_input_2.jpg neural_output_2.dat infer kernels_2.dat
+Generated output_2.jpg for inspection
+Executing: ./+x/neural_net.+x temp_input_3.jpg neural_output_3.dat infer kernels_3.dat
+Generated output_3.jpg for inspection
+Executing: ./+x/noise_schedule.+x neural_outputs_list.txt diffusion_output.jpg 106 91
+Warning: Failed to execute noise_schedule.+x, falling back to averaging
+Output saved as diffusion_output.jpg (106x91, 3 channels)
+Selected 2 images for blending:
+  15: 0.munqi.jpg (106x116, 4 channels)
+  26: 0.dubu.jpg (106x116, 4 channels)
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat train kernels_0.dat
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat train kernels_1.dat
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat infer kernels_0.dat
+Generated output_0.jpg for inspection
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat infer kernels_1.dat
+Generated output_1.jpg for inspection
+Executing: ./+x/noise_schedule.+x neural_outputs_list.txt diffusion_output.jpg 106 116
+Warning: Failed to execute noise_schedule.+x, falling back to averaging
+Output saved as diffusion_output.jpg (106x116, 3 channels)
+Selected 2 images for blending:
+  23: cartoon face_16.jpg (162x110, 3 channels)
+  24: cartoon face_11.jpg (140x140, 3 channels)
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat train kernels_0.dat
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat train kernels_1.dat
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat infer kernels_0.dat
+Generated output_0.jpg for inspection
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat infer kernels_1.dat
+Generated output_1.jpg for inspection
+Executing: ./+x/noise_schedule.+x neural_outputs_list.txt diffusion_output.jpg 140 110
+Warning: Failed to execute noise_schedule.+x, falling back to averaging
+Output saved as diffusion_output.jpg (140x110, 3 channels)
+Selected 2 images for blending:
+  2: face_3.jpg (112x140, 3 channels)
+  3: cartoon face_8.jpg (140x140, 3 channels)
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat train kernels_0.dat
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat train kernels_1.dat
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat infer kernels_0.dat
+Generated output_0.jpg for inspection
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat infer kernels_1.dat
+Generated output_1.jpg for inspection
+Executing: ./+x/noise_schedule.+x neural_outputs_list.txt diffusion_output.jpg 112 140
+Warning: Failed to execute noise_schedule.+x, falling back to averaging
+Output saved as diffusion_output.jpg (112x140, 3 channels)
+Selected 3 images for blending:
+  6: dubu.jpg (106x116, 4 channels)
+  2: munqi.jpg (106x116, 4 channels)
+  1: output_enhanced.jpg (106x116, 3 channels)
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat train kernels_0.dat
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat train kernels_1.dat
+Executing: ./+x/neural_net.+x temp_input_2.jpg neural_output_2.dat train kernels_2.dat
+Executing: ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat infer kernels_0.dat
+Generated output_0.jpg for inspection
+Executing: ./+x/neural_net.+x temp_input_1.jpg neural_output_1.dat infer kernels_1.dat
+Generated output_1.jpg for inspection
+Executing: ./+x/neural_net.+x temp_input_2.jpg neural_output_2.dat infer kernels_2.dat
+Generated output_2.jpg for inspection
+Executing: ./+x/noise_schedule.+x neural_outputs_list.txt diffusion_output.jpg 106 116
+Warning: Failed to execute noise_schedule.+x, falling back to averaging
+Output saved as diffusion_output.jpg (106x116, 3 channels)

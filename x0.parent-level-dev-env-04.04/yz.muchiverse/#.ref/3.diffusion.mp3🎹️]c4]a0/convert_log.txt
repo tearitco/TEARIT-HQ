@@ -1,0 +1,2 @@
+Executing FFmpeg: ffmpeg -y -f f32le -ar 44100 -ac 1 -i "diffusion_output.raw" -c:a mp3 -b:a 192k "diffusion_output.mp3" 2> ffmpeg_convert_err.txt
+Successfully converted diffusion_output.raw to diffusion_output.mp3

@@ -1,0 +1,14 @@
+project_id=wraith-alpha/wraith-projects/emoji-studio-wraith
+reference_project=#.emoji-studio-501.02.05t/&.emoji-studio-solo.02.01
+game_map=emoji_extrusion_surface
+is_map_control=0
+emoji_resolution=8
+emoji_source=pieces/sample_emoji/voxels_8.csv
+camera_mode=4
+cam_x=0.00
+cam_y=0.00
+cam_z=0.00
+cam_pitch=15.00
+cam_yaw=0.00
+cam_roll=0.00
+last_response=Emoji Studio Wraith extrusion probe ready.

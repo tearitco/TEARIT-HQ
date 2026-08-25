@@ -1,0 +1,46 @@
+================================================================================
+ MUCHI-PAL-CHAT   [IDLE]   model: groq-tool-use-mac        api: http://10.0.0.144:11434
+================================================================================
+
+[list_dir result]: config/
+
+You: how are u ?
+
+Aida: I'm a large language model, so I don't have feelings or a personal state like humans do. However, I'm ready and eager to assist you with any coding, architecture, or documentation tasks you have! How can I help you today?
+
+You: make a test file test-file.txt
+
+Aida: [calling write_file {
+                "path": "test-file.txt",
+                "content": ""
+              }]
+
+[write_file result]: 
+
+You: write file new-file.txt containing "help me!"
+
+Aida: [calling write_file {
+                "content": "help me!",
+                "path": "new-file.txt"
+              }]
+
+[write_file result]: 
+
+You: read file jul-21.txt
+
+Aida: [calling read_file {
+                "path": "jul-21.txt"
+              }]
+
+[read_file result]: Error: tool execution failed or produced no output.
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+[SYS]: Switched to groq-tool-use-mac
+(type /model <id> to switch models)
+
+| [^] 1. Message: [_]                                     |
+ (Ctrl+C to quit)
+
++=========================================================+
+Active [^]:  (ESC to exit)

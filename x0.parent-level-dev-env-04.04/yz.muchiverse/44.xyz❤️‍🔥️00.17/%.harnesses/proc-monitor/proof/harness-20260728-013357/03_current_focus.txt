@@ -1,0 +1,6 @@
+pid=2328049
+project_id=mutaclysm
+session_path=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.13/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.09/%.harnesses/proc-monitor/workdir/run-2328043/fake_sess
+kind=app
+display_name=mutaclysm-demo
+inbox_path=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.13/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.09/%.harnesses/proc-monitor/workdir/run-2328043/fake_sess/pieces/system/widget_cmds/inbox.txt

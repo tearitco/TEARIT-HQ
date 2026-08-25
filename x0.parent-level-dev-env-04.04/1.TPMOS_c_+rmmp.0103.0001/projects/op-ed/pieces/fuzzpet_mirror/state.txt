@@ -1,0 +1,8 @@
+name=XLECTOR
+hunger=0
+happiness=0
+energy=0
+level=0
+status=active
+emoji_mode=0
+z_level=0

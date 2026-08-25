@@ -1,0 +1,1138 @@
+P2P-NET SUCCESSION REPORT - April 2, 2026
+==========================================
+Document ID: deliverable-p2p.txt
+Purpose: Complete handoff for Phase 6 implementation and GUI integration
+Status: Naming mismatch FIXED, ready for Phase 6 ops + GUI wiring
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+
+P2P-NET has 10 ops implemented and compiled. The GUI layout is complete.
+The manager code is functional but needs enhancement to populate GUI variables.
+
+CRITICAL FIX APPLIED:
+✓ Fixed project.pdl naming mismatch (send_message → compose_message)
+✓ Fixed ops_manifest.txt to match actual op names
+✓ Added missing ops: check_inbox, read_message to PDL
+
+NEXT PHASE:
+1. Implement remaining Phase 6 ops (wallet, mining, balance, send_coins)
+2. Enhance p2p_manager.c to populate all GUI variables
+3. Wire up action keys to ops with proper argument handling
+4. Test full GUI workflow
+
+================================================================================
+WHAT'S COMPLETED (10 Ops)
+================================================================================
+
+NETWORK OPS (6):
+✓ configure_subnet - Create/update subnet configs (pieces/network/subnets/)
+✓ broadcast_join - UDP broadcast peer discovery (255.255.255.255:port)
+✓ broadcast_leave - UDP broadcast leave network
+✓ connect_peer - TCP connection with HELLO/WELCOME handshake
+✓ disconnect_peer - TCP graceful disconnect (GOODBYE)
+✓ ping_peer - TCP keepalive ping with 3s timeout
+
+MESSAGING OPS (4):
+✓ compose_message - Email-style messaging (from, to, subnet, subject, body)
+✓ check_inbox - List inbox messages with formatting for GUI
+✓ read_message - Read message, mark as read, decrement unread count
+✓ broadcast_leave - Leave subnet gracefully
+
+ALL OPS ARE COMPILED AND TESTED.
+Location: projects/p2p-net/ops/+x/*.+x (10 binaries)
+
+================================================================================
+CRITICAL FIX APPLIED: NAMING MISMATCH
+================================================================================
+
+BEFORE (BROKEN):
+  project.pdl line 17: METHOD | send_message | .../ops/+x/send_message.+x
+  ops_manifest.txt: send_message|Send chat message...
+  
+  BUT: No send_message.+x exists! Actual op is compose_message.+x
+
+AFTER (FIXED):
+  project.pdl line 17: METHOD | compose_message | .../ops/+x/compose_message.+x
+  project.pdl line 18: METHOD | check_inbox | .../ops/+x/check_inbox.+x
+  project.pdl line 19: METHOD | read_message | .../ops/+x/read_message.+x
+  
+  ops_manifest.txt: compose_message|Send email-style message...
+  ops_manifest.txt: check_inbox|List inbox messages...
+  ops_manifest.txt: read_message|Read and mark message as read...
+
+IMPACT:
+- Manager code already calls compose_message.+x (correct)
+- PDL now matches actual binaries
+- Fondu will register ops correctly on install
+
+================================================================================
+PHASE 6 IMPLEMENTATION PLAN
+================================================================================
+
+Phase 6 has TWO parts:
+  Part A: Core Network + Messaging (DONE - 10 ops)
+  Part B: Wallet + Mining + Economy (TODO - 6 ops)
+
+PART B: WALLET + MINING OPS (6 ops to implement)
+─────────────────────────────────────────────────
+
+These ops are REQUIRED before full GUI integration because:
+1. Dashboard shows ${wallet_address} but no wallet auth exists
+2. No balance tracking or mining capability
+3. Economy ops are foundation for all future phases
+
+OP 1: wallet_login
+───────────────────
+Purpose: Authenticate user and load wallet
+Args: username, password
+
+Implementation:
+  - Check if pieces/wallets/users/<username>/profile.txt exists
+  - If not, create new user profile
+  - Hash password (SHA256 with salt) and compare to stored hash
+  - On success:
+    * Write wallet address to pieces/wallets/sessions/<username>/active_wallet.txt
+    * Write session token to pieces/wallets/sessions/<username>/session.txt
+    * Output: "Wallet logged in: <wallet_address>"
+  - On failure:
+    * Output: "Authentication failed"
+    * Return 1
+
+File structure:
+  pieces/wallets/
+  ├── users/
+  │   └── <username>/
+  │       ├── profile.txt       # username, wallet_address, created_at
+  │       └── password_hash.txt # salt + SHA256 hash
+  └── sessions/
+      └── <username>/
+          ├── active_wallet.txt # current wallet address
+          └── session.txt       # session token, expires_at
+
+Test command:
+  OP p2p::wallet_login "player1" "mypass123"
+
+OP 2: wallet_create
+────────────────────
+Purpose: Create additional wallet for authenticated user
+Args: username, wallet_name (e.g., "main", "trading", "mining")
+
+Implementation:
+  - Verify user is logged in (check session.txt)
+  - Generate unique wallet address (SHA256 of username + wallet_name + timestamp)
+  - Create wallet directory: pieces/wallets/users/<username>/wallets/<wallet_name>/
+  - Initialize balance.txt with 0
+  - Output: "Wallet created: <wallet_address>"
+
+File structure:
+  pieces/wallets/users/<username>/wallets/
+  └── <wallet_name>/
+      ├── wallet.txt        # wallet_address, name, created_at
+      └── balance.txt       # balance=0
+
+Test command:
+  OP p2p::wallet_create "player1" "trading"
+
+OP 3: list_wallets
+───────────────────
+Purpose: List all wallets for authenticated user
+Args: username
+
+Implementation:
+  - Verify user is logged in
+  - Scan pieces/wallets/users/<username>/wallets/ directory
+  - For each wallet, read balance.txt and wallet.txt
+  - Output formatted list:
+    ```
+    Wallets for player1:
+    [1] main (abc123...) - Balance: 150.00 TPM
+    [2] trading (def456...) - Balance: 50.00 TPM
+    ```
+  - Write to pieces/wallets/users/<username>/wallet_list.txt for GUI
+
+Test command:
+  OP p2p::list_wallets "player1"
+
+OP 4: mine_block
+─────────────────
+Purpose: Mine coins via SHA256 proof-of-work
+Args: username, wallet_address
+
+Implementation:
+  - Verify user is logged in
+  - Read difficulty from pieces/blockchain/config.txt (default: 2)
+  - Create block header: prev_hash + wallet_address + timestamp + nonce
+  - Increment nonce until SHA256 hash starts with "00" (difficulty 2)
+  - On success:
+    * Credit mining reward (10 coins) to wallet balance
+    * Append block to pieces/blockchain/chain.txt
+    * Output: "Block mined! Reward: 10 TPM (nonce: 12345)"
+  - Difficulty scaling:
+    * Every 10 blocks, increase difficulty by 1 (max 4)
+    * Store difficulty in pieces/blockchain/config.txt
+
+File structure:
+  pieces/blockchain/
+  ├── config.txt          # difficulty=2, total_blocks=5
+  ├── chain.txt           # Block 1: hash, nonce, timestamp, reward
+  └── mining_log.txt      # Mining history
+
+Test command:
+  OP p2p::mine_block "player1" "abc123..."
+
+OP 5: get_balance
+──────────────────
+Purpose: Query wallet balance
+Args: username, wallet_address
+
+Implementation:
+  - Verify user owns wallet (check session)
+  - Read pieces/wallets/users/<username>/wallets/<wallet_name>/balance.txt
+  - Calculate balance from blockchain transactions (sum all credits - debits)
+  - Output: "Balance: 150.00 TPM"
+  - Write to pieces/wallets/users/<username>/wallets/<wallet_name>/balance_display.txt
+
+Test command:
+  OP p2p::get_balance "player1" "abc123..."
+
+OP 6: send_coins
+─────────────────
+Purpose: Transfer coins between wallets
+Args: from_wallet, to_wallet_address, amount
+
+Implementation:
+  - Verify user owns from_wallet (check session)
+  - Check from_wallet balance >= amount
+  - Deduct amount from sender balance
+  - Add amount to receiver balance (find wallet by address)
+  - Create transaction record: pieces/blockchain/transactions/tx_<id>.txt
+  - Append to chain.txt
+  - Output: "Sent 50 TPM to def456..."
+
+File structure:
+  pieces/blockchain/transactions/
+  └── tx_<timestamp>.txt
+      # from=<wallet>
+      # to=<wallet>
+      # amount=50
+      # timestamp=...
+      # hash=<SHA256>
+
+Test command:
+  OP p2p::send_coins "abc123..." "def456..." 50
+
+================================================================================
+GUI INTEGRATION PLAN
+================================================================================
+
+CURRENT STATE:
+  - p2p_manager.c reads keypresses and calls ops (functional)
+  - Manager writes to manager/response.txt and manager/state.txt
+  - Layout (p2p-net.chtpm) expects 10 variables to be populated
+  - Manager does NOT currently populate most GUI variables
+
+THE PROBLEM:
+  Layout expects: ${wallet_address}, ${subnet_list}, ${unread_count},
+  ${total_count}, ${inbox_list}, ${message_preview}, ${peer_count},
+  ${peer_list}, ${p2p_response}, ${last_key}
+
+  Manager provides: wallet_address, current_subnet, last_response
+  (Missing: 7 out of 10 variables!)
+
+THE SOLUTION:
+  Enhance p2p_manager.c to:
+  1. On startup: Read all state files and populate GUI variables
+  2. After each op: Re-read affected state files and update variables
+  3. Write all variables to manager/gui_state.txt for parser to substitute
+
+IMPLEMENTATION STEPS:
+─────────────────────
+
+STEP 1: Add GUI Variable Functions to Manager
+──────────────────────────────────────────────
+
+Add these functions to p2p_manager.c:
+
+```c
+/* Read wallet address from active session */
+static void read_wallet_address(char *buf, size_t size) {
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path),
+             "%s/projects/p2p-net/pieces/wallets/sessions/%s/active_wallet.txt",
+             project_root, current_wallet);
+    
+    FILE *f = fopen(path, "r");
+    if (f) {
+        fgets(buf, size, f);
+        char *nl = strchr(buf, '\n');
+        if (nl) *nl = '\0';
+        fclose(f);
+    } else {
+        strncpy(buf, "Not logged in", size - 1);
+    }
+}
+
+/* Read subnet list from network config */
+static void read_subnet_list(char *buf, size_t size) {
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path),
+             "%s/projects/p2p-net/pieces/network/subnets",
+             project_root);
+    
+    buf[0] = '\0';
+    DIR *dir = opendir(path);
+    if (dir) {
+        struct dirent *entry;
+        int first = 1;
+        while ((entry = readdir(dir)) != NULL) {
+            if (entry->d_name[0] == '.') continue;
+            if (!first) strncat(buf, ", ", size - strlen(buf) - 1);
+            strncat(buf, entry->d_name, size - strlen(buf) - 1);
+            first = 0;
+        }
+        closedir(dir);
+    }
+    if (strlen(buf) == 0) strncpy(buf, "None", size - 1);
+}
+
+/* Read inbox counts */
+static void read_inbox_counts(int *unread, int *total) {
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path),
+             "%s/projects/p2p-net/pieces/chat/inbox/%s/status.txt",
+             project_root, current_wallet);
+    
+    *unread = 0;
+    *total = 0;
+    
+    FILE *f = fopen(path, "r");
+    if (f) {
+        char line[MAX_LINE];
+        while (fgets(line, sizeof(line), f)) {
+            if (strncmp(line, "unread_count=", 13) == 0) {
+                *unread = atoi(line + 13);
+            } else if (strncmp(line, "total_messages=", 15) == 0) {
+                *total = atoi(line + 15);
+            }
+        }
+        fclose(f);
+    }
+}
+
+/* Read inbox list for GUI (first 10 messages) */
+static void read_inbox_list(char *buf, size_t size) {
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path),
+             "%s/projects/p2p-net/pieces/chat/inbox/%s/inbox_list.txt",
+             project_root, current_wallet);
+    
+    buf[0] = '\0';
+    FILE *f = fopen(path, "r");
+    if (f) {
+        fread(buf, 1, size - 1, f);
+        fclose(f);
+    } else {
+        /* Fallback: generate from msg files */
+        char msg_dir[MAX_PATH];
+        snprintf(msg_dir, sizeof(msg_dir),
+                 "%s/projects/p2p-net/pieces/chat/inbox/%s",
+                 project_root, current_wallet);
+        
+        DIR *dir = opendir(msg_dir);
+        if (dir) {
+            struct dirent *entry;
+            int count = 0;
+            while ((entry = readdir(dir)) != NULL && count < 10) {
+                if (strncmp(entry->d_name, "msg_", 4) != 0) continue;
+                
+                /* Read message subject */
+                char msg_path[MAX_PATH];
+                snprintf(msg_path, sizeof(msg_path),
+                         "%s/%s", msg_dir, entry->d_name);
+                
+                FILE *mf = fopen(msg_path, "r");
+                if (mf) {
+                    char line[MAX_LINE];
+                    char subject[128] = "";
+                    char from[64] = "";
+                    int is_read = 0;
+                    
+                    while (fgets(line, sizeof(line), mf)) {
+                        if (strncmp(line, "subject=", 8) == 0) {
+                            char *nl = strchr(line + 8, '\n');
+                            if (nl) *nl = '\0';
+                            strncpy(subject, line + 8, sizeof(subject) - 1);
+                        } else if (strncmp(line, "from=", 5) == 0) {
+                            char *nl = strchr(line + 5, '\n');
+                            if (nl) *nl = '\0';
+                            strncpy(from, line + 5, sizeof(from) - 1);
+                        } else if (strncmp(line, "read=", 5) == 0) {
+                            is_read = atoi(line + 5);
+                        }
+                    }
+                    fclose(mf);
+                    
+                    char icon = is_read ? ' ' : '!';
+                    char msg_line[256];
+                    snprintf(msg_line, sizeof(msg_line),
+                             "[%c] %s - %s\n", icon, from, subject);
+                    strncat(buf, msg_line, size - strlen(buf) - 1);
+                    count++;
+                }
+            }
+            closedir(dir);
+        }
+        if (strlen(buf) == 0) strncpy(buf, "No messages", size - 1);
+    }
+}
+
+/* Read peer count and list */
+static void read_peer_info(int *count, char *list_buf, size_t list_size) {
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path),
+             "%s/projects/p2p-net/pieces/network/peer_list.txt",
+             project_root);
+    
+    *count = 0;
+    list_buf[0] = '\0';
+    
+    FILE *f = fopen(path, "r");
+    if (f) {
+        /* First line is count */
+        char line[MAX_LINE];
+        if (fgets(line, sizeof(line), f)) {
+            *count = atoi(line);
+        }
+        
+        /* Rest is formatted list */
+        fread(list_buf, 1, list_size - 1, f);
+        fclose(f);
+    } else {
+        /* Fallback: read from peers.txt */
+        char peers_path[MAX_PATH];
+        snprintf(peers_path, sizeof(peers_path),
+                 "%s/projects/p2p-net/pieces/network/peers.txt",
+                 project_root);
+        
+        f = fopen(peers_path, "r");
+        if (f) {
+            char line[MAX_LINE];
+            while (fgets(line, sizeof(line), f)) {
+                if (line[0] == '#') continue;
+                
+                char ip[64], port[16], wallet[64], subnet[32], status[32];
+                if (sscanf(line, "%[^|]|%[^|]|%[^|]|%[^|]|%s",
+                           ip, port, wallet, subnet, status) == 5) {
+                    char peer_line[256];
+                    snprintf(peer_line, sizeof(peer_line),
+                             "%s:%s (%s) [%s] - %s\n",
+                             ip, port, wallet, subnet, status);
+                    strncat(list_buf, peer_line, list_size - strlen(list_buf) - 1);
+                    (*count)++;
+                }
+            }
+            fclose(f);
+        }
+        if (strlen(list_buf) == 0) strncpy(list_buf, "No peers", list_size - 1);
+    }
+}
+
+/* Read message preview (current message) */
+static void read_message_preview(char *buf, size_t size) {
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path),
+             "%s/projects/p2p-net/pieces/chat/inbox/%s/current_message.txt",
+             project_root, current_wallet);
+    
+    buf[0] = '\0';
+    FILE *f = fopen(path, "r");
+    if (f) {
+        fread(buf, 1, size - 1, f);
+        fclose(f);
+    } else {
+        strncpy(buf, "Select a message to preview", size - 1);
+    }
+}
+```
+
+STEP 2: Create gui_state.txt Writer
+────────────────────────────────────
+
+Add function to write all GUI variables in parser-substitutable format:
+
+```c
+static void write_gui_state() {
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path),
+             "%s/projects/p2p-net/manager/gui_state.txt",
+             project_root);
+    
+    FILE *f = fopen(path, "w");
+    if (!f) return;
+    
+    /* Read all current values */
+    char wallet_addr[128] = "";
+    char subnet_list[512] = "";
+    char inbox_list[2048] = "";
+    char peer_list[1024] = "";
+    char msg_preview[512] = "";
+    int unread = 0, total = 0, peer_count = 0;
+    
+    read_wallet_address(wallet_addr, sizeof(wallet_addr));
+    read_subnet_list(subnet_list, sizeof(subnet_list));
+    read_inbox_counts(&unread, &total);
+    read_inbox_list(inbox_list, sizeof(inbox_list));
+    read_peer_info(&peer_count, peer_list, sizeof(peer_list));
+    read_message_preview(msg_preview, sizeof(msg_preview));
+    
+    /* Write in format parser can substitute */
+    fprintf(f, "wallet_address=%s\n", wallet_addr);
+    fprintf(f, "subnet_list=%s\n", subnet_list);
+    fprintf(f, "unread_count=%d\n", unread);
+    fprintf(f, "total_count=%d\n", total);
+    fprintf(f, "inbox_list=%s\n", inbox_list);
+    fprintf(f, "message_preview=%s\n", msg_preview);
+    fprintf(f, "peer_count=%d\n", peer_count);
+    fprintf(f, "peer_list=%s\n", peer_list);
+    fprintf(f, "p2p_response=%s\n", last_response);
+    fprintf(f, "last_key=%d\n", last_key_pressed);
+    
+    fclose(f);
+}
+```
+
+STEP 3: Update process_key() to Refresh GUI State
+──────────────────────────────────────────────────
+
+After each op call, refresh the affected GUI variables:
+
+```c
+static void process_key(int key) {
+    char cmd[MAX_CMD];
+    last_key_pressed = key;  /* Track for GUI */
+
+    if (key == '1') {
+        /* Compose Message */
+        snprintf(cmd, sizeof(cmd),
+                 "%s/projects/p2p-net/ops/+x/compose_message.+x %s def456ghi789 %s \"Test\" \"GUI test message\"",
+                 project_root, current_wallet, current_subnet);
+        run_command(cmd);
+        set_response("Message sent to def456ghi789");
+        
+        /* Refresh inbox state after sending */
+        write_gui_state();
+    }
+    else if (key == '2') {
+        /* Check Inbox */
+        snprintf(cmd, sizeof(cmd),
+                 "%s/projects/p2p-net/ops/+x/check_inbox.+x %s %s",
+                 project_root, current_wallet, current_subnet);
+        run_command(cmd);
+        set_response("Inbox checked");
+        
+        /* Refresh inbox list */
+        write_gui_state();
+    }
+    else if (key == '3') {
+        /* Reply Message */
+        snprintf(cmd, sizeof(cmd),
+                 "%s/projects/p2p-net/ops/+x/compose_message.+x %s def456ghi789 %s \"Re: Test\" \"GUI reply\"",
+                 project_root, current_wallet, current_subnet);
+        run_command(cmd);
+        set_response("Reply sent");
+        
+        /* Refresh inbox state */
+        write_gui_state();
+    }
+    else if (key == '4') {
+        /* Read Message */
+        snprintf(cmd, sizeof(cmd),
+                 "%s/projects/p2p-net/ops/+x/read_message.+x %s msg_001",
+                 project_root, current_wallet);
+        run_command(cmd);
+        set_response("Message marked as read");
+        
+        /* Refresh message preview and inbox */
+        write_gui_state();
+    }
+    else if (key == '5') {
+        /* Join Subnet */
+        snprintf(cmd, sizeof(cmd),
+                 "%s/projects/p2p-net/ops/+x/broadcast_join.+x %s %s",
+                 project_root, current_wallet, current_subnet);
+        run_command(cmd);
+        set_response("Joined subnet");
+        
+        /* Refresh peer list */
+        write_gui_state();
+    }
+    else if (key == '6') {
+        /* Leave Subnet */
+        snprintf(cmd, sizeof(cmd),
+                 "%s/projects/p2p-net/ops/+x/broadcast_leave.+x %s %s",
+                 project_root, current_wallet, current_subnet);
+        run_command(cmd);
+        set_response("Left subnet");
+        
+        /* Refresh peer list */
+        write_gui_state();
+    }
+
+    write_state();
+    write_gui_state();  /* Always update GUI state after key press */
+}
+```
+
+STEP 4: Update main() to Initialize GUI State
+──────────────────────────────────────────────
+
+In main(), after resolve_paths():
+
+```c
+int main() {
+    signal(SIGINT, handle_sigint);
+    signal(SIGTERM, handle_sigint);
+    setpgid(0, 0);
+
+    resolve_paths();
+    write_state();
+    write_gui_state();  /* Initialize GUI state on startup */
+
+    /* ... rest of main loop ... */
+}
+```
+
+STEP 5: Parser Integration (CHTPM Layout)
+──────────────────────────────────────────
+
+The parser (chtpm_parser.+x) needs to read gui_state.txt and substitute
+variables. This should already work if the parser supports variable
+substitution from state files.
+
+If NOT, add to parser:
+
+```c
+/* In variable substitution section of parser */
+if (strstr(var_name, "wallet_address")) {
+    read_from_file("projects/p2p-net/manager/gui_state.txt", "wallet_address", buf);
+}
+else if (strstr(var_name, "inbox_list")) {
+    read_from_file("projects/p2p-net/manager/gui_state.txt", "inbox_list", buf);
+}
+/* ... etc for all variables ... */
+```
+
+================================================================================
+COMPLETE IMPLEMENTATION CHECKLIST
+================================================================================
+
+PHASE 6 PART B: WALLET + MINING OPS
+────────────────────────────────────
+[ ] Implement wallet_login op
+    - Create user profile system
+    - Password hashing (SHA256 + salt)
+    - Session management
+    - Test: OP p2p::wallet_login "player1" "mypass123"
+
+[ ] Implement wallet_create op
+    - Generate unique wallet address
+    - Initialize balance to 0
+    - Test: OP p2p::wallet_create "player1" "trading"
+
+[ ] Implement list_wallets op
+    - Scan wallet directory
+    - Format output with balances
+    - Write wallet_list.txt for GUI
+    - Test: OP p2p::list_wallets "player1"
+
+[ ] Implement mine_block op
+    - SHA256 proof-of-work with difficulty
+    - Credit mining reward (10 coins)
+    - Append to blockchain
+    - Test: OP p2p::mine_block "player1" "abc123..."
+
+[ ] Implement get_balance op
+    - Read wallet balance
+    - Calculate from transactions
+    - Test: OP p2p::get_balance "player1" "abc123..."
+
+[ ] Implement send_coins op
+    - Verify ownership and balance
+    - Transfer between wallets
+    - Create transaction record
+    - Test: OP p2p::send_coins "abc123..." "def456..." 50
+
+GUI INTEGRATION
+───────────────
+[ ] Add GUI variable reader functions to p2p_manager.c
+    - read_wallet_address()
+    - read_subnet_list()
+    - read_inbox_counts()
+    - read_inbox_list()
+    - read_peer_info()
+    - read_message_preview()
+
+[ ] Add write_gui_state() function
+    - Write all variables to manager/gui_state.txt
+    - Format for parser substitution
+
+[ ] Update process_key() to refresh GUI state
+    - Call write_gui_state() after each op
+    - Track last_key_pressed
+
+[ ] Update main() to initialize GUI state
+    - Call write_gui_state() on startup
+
+[ ] Test parser variable substitution
+    - Verify ${wallet_address} substitutes correctly
+    - Test all 10 variables
+
+[ ] Add wallet/mining variables to layout (optional)
+    - ${wallet_balance}
+    - ${mining_status}
+    - Update p2p-net.chtpm if needed
+
+INTEGRATION TESTING
+───────────────────
+[ ] Install project: ./fondu --install p2p-net
+[ ] Launch from OS menu
+[ ] Test all 6 action keys
+[ ] Verify all GUI variables populate
+[ ] Test message compose/send/read flow
+[ ] Test peer join/leave flow
+[ ] Test wallet login/create
+[ ] Test mining and balance
+[ ] Test send_coins between wallets
+
+================================================================================
+FILE STRUCTURE REFERENCE
+================================================================================
+
+After Phase 6 completion, p2p-net should have:
+
+projects/p2p-net/
+├── project.pdl                    # ✓ FIXED (13 methods now)
+├── layouts/
+│   └── p2p-net.chtpm             # ✓ COMPLETE (dashboard layout)
+├── manager/
+│   ├── p2p_manager.c             # NEEDS ENHANCEMENT (add GUI variable functions)
+│   └── +x/
+│       └── p2p_manager.+x        # Recompile after enhancements
+├── ops/
+│   ├── ops_manifest.txt          # ✓ FIXED (10 ops listed)
+│   ├── src/                      # 10 existing + 6 new = 16 source files
+│   │   ├── configure_subnet.c    # ✓
+│   │   ├── broadcast_join.c      # ✓
+│   │   ├── broadcast_leave.c     # ✓
+│   │   ├── connect_peer.c        # ✓
+│   │   ├── disconnect_peer.c     # ✓
+│   │   ├── list_peers.c          # ✓
+│   │   ├── ping_peer.c           # ✓
+│   │   ├── compose_message.c     # ✓
+│   │   ├── check_inbox.c         # ✓
+│   │   ├── read_message.c        # ✓
+│   │   ├── wallet_login.c        # TODO
+│   │   ├── wallet_create.c       # TODO
+│   │   ├── list_wallets.c        # TODO
+│   │   ├── mine_block.c          # TODO
+│   │   ├── get_balance.c         # TODO
+│   │   └── send_coins.c          # TODO
+│   └── +x/                       # 10 existing + 6 new = 16 binaries
+└── pieces/
+    ├── network/                  # ✓ Pre-populated with test data
+    │   ├── peers.txt
+    │   ├── peer_list.txt
+    │   └── subnets/
+    ├── chat/                     # ✓ Pre-populated with test messages
+    │   ├── chat_msgs.txt
+    │   ├── general_msgs.txt
+    │   ├── inbox/
+    │   └── sent/
+    ├── wallets/                  # TODO (created by wallet ops)
+    │   ├── users/
+    │   └── sessions/
+    └── blockchain/               # TODO (created by mining)
+        ├── config.txt
+        ├── chain.txt
+        └── transactions/
+
+================================================================================
+OP IMPLEMENTATION PATTERN (Follow This Template)
+================================================================================
+
+All ops should follow this pattern (from compose_message.c):
+
+1. **Header**: Purpose, args, GUI integration notes
+2. **Includes**: stdio, stdlib, string, unistd, time, limits
+3. **Helper functions**: 
+   - get_base_path() or resolve project root
+   - ensure_dir() for directory creation
+   - read/write state files
+4. **main()**:
+   - Parse and validate arguments
+   - Get base path
+   - Create directories if needed
+   - Perform operation
+   - Update state files
+   - Output result (printf for logging)
+   - Return 0 on success, 1 on failure
+
+CPU SAFETY:
+- Ops are short-lived (fork/exec/exit pattern)
+- No long-running loops or daemons
+- Use system() for simple mkdir (acceptable in ops)
+- For network ops, use fork/exec for external commands
+
+EXAMPLE: wallet_login.c Structure
+```c
+/*
+ * wallet_login.c - P2P-NET Wallet Authentication Op
+ * Purpose: Authenticate user and load wallet
+ * Args: username, password
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <time.h>
+#include <limits.h>
+
+#define MAX_PATH PATH_MAX
+#define MAX_LINE 1024
+
+static void get_base_path(char *buf, size_t size) {
+    if (getcwd(buf, size) != NULL) return;
+    strncpy(buf, ".", size - 1);
+}
+
+static void ensure_dir(const char *path) {
+    char cmd[MAX_PATH * 2];
+    snprintf(cmd, sizeof(cmd), "mkdir -p %s", path);
+    system(cmd);
+}
+
+/* SHA256 hash function - use openssl or implement */
+static void sha256_hash(const char *input, char *output) {
+    /* Use: echo -n "input" | sha256sum | awk '{print $1}' */
+    char cmd[MAX_PATH * 2];
+    snprintf(cmd, sizeof(cmd),
+             "echo -n '%s' | sha256sum | awk '{print $1}'", input);
+    
+    FILE *f = popen(cmd, "r");
+    if (f) {
+        fgets(output, 65, f);
+        pclose(f);
+    }
+}
+
+int main(int argc, char *argv[]) {
+    char base_path[MAX_PATH];
+    
+    /* Parse arguments */
+    if (argc < 3) {
+        fprintf(stderr, "Usage: wallet_login <username> <password>\n");
+        return 1;
+    }
+    
+    const char *username = argv[1];
+    const char *password = argv[2];
+    
+    /* Get base path */
+    get_base_path(base_path, sizeof(base_path));
+    
+    /* Check if user exists */
+    char user_path[MAX_PATH];
+    snprintf(user_path, sizeof(user_path),
+             "%s/projects/p2p-net/pieces/wallets/users/%s",
+             base_path, username);
+    
+    if (access(user_path, F_OK) == -1) {
+        /* Create new user */
+        printf("Creating new user: %s\n", username);
+        
+        char profile_path[MAX_PATH];
+        snprintf(profile_path, sizeof(profile_path),
+                 "%s/projects/p2p-net/pieces/wallets/users/%s",
+                 base_path, username);
+        ensure_dir(profile_path);
+        
+        /* Generate wallet address */
+        char wallet_addr[65];
+        char seed[MAX_LINE];
+        snprintf(seed, sizeof(seed), "%s_%ld", username, time(NULL));
+        sha256_hash(seed, wallet_addr);
+        
+        /* Write profile */
+        char prof_file[MAX_PATH];
+        snprintf(prof_file, sizeof(prof_file),
+                 "%s/profile.txt", profile_path);
+        FILE *f = fopen(prof_file, "w");
+        if (f) {
+            fprintf(f, "username=%s\n", username);
+            fprintf(f, "wallet_address=%s\n", wallet_addr);
+            fprintf(f, "created_at=%ld\n", time(NULL));
+            fclose(f);
+        }
+        
+        /* Create main wallet */
+        char wallet_path[MAX_PATH];
+        snprintf(wallet_path, sizeof(wallet_path),
+                 "%s/wallets/main", profile_path);
+        ensure_dir(wallet_path);
+        
+        char wallet_file[MAX_PATH];
+        snprintf(wallet_file, sizeof(wallet_file),
+                 "%s/wallet.txt", wallet_path);
+        f = fopen(wallet_file, "w");
+        if (f) {
+            fprintf(f, "wallet_address=%s\n", wallet_addr);
+            fprintf(f, "name=main\n");
+            fprintf(f, "created_at=%ld\n", time(NULL));
+            fclose(f);
+        }
+        
+        /* Initialize balance */
+        char bal_file[MAX_PATH];
+        snprintf(bal_file, sizeof(bal_file),
+                 "%s/balance.txt", wallet_path);
+        f = fopen(bal_file, "w");
+        if (f) {
+            fprintf(f, "balance=0\n");
+            fclose(f);
+        }
+    }
+    
+    /* Hash password and store (or verify) */
+    char hash_input[MAX_LINE];
+    snprintf(hash_input, sizeof(hash_input), "%s_%s", username, password);
+    char hash[65];
+    sha256_hash(hash_input, hash);
+    
+    char hash_path[MAX_PATH];
+    snprintf(hash_path, sizeof(hash_path),
+             "%s/projects/p2p-net/pieces/wallets/users/%s/password_hash.txt",
+             base_path, username);
+    
+    /* Check if password matches or create new */
+    FILE *f = fopen(hash_path, "r");
+    if (f) {
+        char stored_hash[65];
+        fgets(stored_hash, sizeof(stored_hash), f);
+        fclose(f);
+        
+        if (strcmp(hash, stored_hash) != 0) {
+            fprintf(stderr, "Authentication failed\n");
+            return 1;
+        }
+    } else {
+        /* Store new password hash */
+        ensure_dir(hash_path);  /* Creates parent dirs */
+        f = fopen(hash_path, "w");
+        if (f) {
+            fprintf(f, "%s\n", hash);
+            fclose(f);
+        }
+    }
+    
+    /* Create session */
+    char session_path[MAX_PATH];
+    snprintf(session_path, sizeof(session_path),
+             "%s/projects/p2p-net/pieces/wallets/sessions/%s",
+             base_path, username);
+    ensure_dir(session_path);
+    
+    /* Write active wallet */
+    char active_file[MAX_PATH];
+    snprintf(active_file, sizeof(active_file),
+             "%s/active_wallet.txt", session_path);
+    f = fopen(active_file, "w");
+    if (f) {
+        /* Read wallet address from profile */
+        char prof_file[MAX_PATH];
+        snprintf(prof_file, sizeof(prof_file),
+                 "%s/projects/p2p-net/pieces/wallets/users/%s/profile.txt",
+                 base_path, username);
+        
+        char wallet_addr[65] = "";
+        FILE *pf = fopen(prof_file, "r");
+        if (pf) {
+            char line[MAX_LINE];
+            while (fgets(line, sizeof(line), pf)) {
+                if (strncmp(line, "wallet_address=", 15) == 0) {
+                    char *nl = strchr(line + 15, '\n');
+                    if (nl) *nl = '\0';
+                    strncpy(wallet_addr, line + 15, sizeof(wallet_addr) - 1);
+                }
+            }
+            fclose(pf);
+        }
+        
+        fprintf(f, "%s\n", wallet_addr);
+        fclose(f);
+    }
+    
+    /* Write session */
+    char sess_file[MAX_PATH];
+    snprintf(sess_file, sizeof(sess_file),
+             "%s/session.txt", session_path);
+    f = fopen(sess_file, "w");
+    if (f) {
+        fprintf(f, "username=%s\n", username);
+        fprintf(f, "logged_in=%ld\n", time(NULL));
+        fprintf(f, "expires=%ld\n", time(NULL) + 3600);  /* 1 hour */
+        fclose(f);
+    }
+    
+    /* Output */
+    printf("Wallet logged in: %s\n", username);
+    printf("Wallet address: %s\n", wallet_addr);
+    
+    return 0;
+}
+```
+
+================================================================================
+COMPILATION INSTRUCTIONS
+================================================================================
+
+After implementing new ops:
+
+1. Compile each op:
+```bash
+cd projects/p2p-net/ops/src/
+gcc -o ../+x/wallet_login.+x wallet_login.c
+gcc -o ../+x/wallet_create.+x wallet_create.c
+gcc -o ../+x/list_wallets.+x list_wallets.c
+gcc -o ../+x/mine_block.+x mine_block.c -lcrypto  # If using openssl
+gcc -o ../+x/get_balance.+x get_balance.c
+gcc -o ../+x/send_coins.+x send_coins.c
+```
+
+2. Recompile manager:
+```bash
+cd projects/p2p-net/manager/
+gcc -o +x/p2p_manager.+x p2p_manager.c
+```
+
+3. Install project:
+```bash
+./pieces/system/fondu/fondu.+x --install p2p-net
+```
+
+4. Verify ops registered:
+```bash
+./pieces/system/fondu/fondu.+x --list-ops | grep p2p
+```
+
+================================================================================
+TESTING WORKFLOW
+================================================================================
+
+STEP 1: Test Wallet Ops
+────────────────────────
+```bash
+# Login (creates user if new)
+OP p2p::wallet_login "player1" "mypass123"
+
+# Create additional wallet
+OP p2p::wallet_create "player1" "trading"
+
+# List wallets
+OP p2p::list_wallets "player1"
+```
+
+STEP 2: Test Mining
+────────────────────
+```bash
+# Get wallet address from login output
+OP p2p::mine_block "player1" "abc123def456..."
+
+# Check balance
+OP p2p::get_balance "player1" "abc123def456..."
+```
+
+STEP 3: Test Transactions
+──────────────────────────
+```bash
+# Create second user
+OP p2p::wallet_login "player2" "pass456"
+
+# Send coins
+OP p2p::send_coins "abc123..." "xyz789..." 50
+
+# Verify balances
+OP p2p::get_balance "player1" "abc123..."
+OP p2p::get_balance "player2" "xyz789..."
+```
+
+STEP 4: Test GUI Integration
+─────────────────────────────
+```bash
+# Launch system
+./button.sh r
+
+# Navigate to p2p-net dashboard
+# Verify all variables populate:
+# - Wallet address shows
+# - Subnet list shows
+# - Inbox shows unread/total
+# - Peer list shows
+# - Action keys work
+
+# Test workflows:
+# 1. Press 2 (Check Inbox) → inbox_list updates
+# 2. Press 4 (Read Message) → message_preview updates
+# 3. Press 5 (Join Subnet) → peer_list updates
+```
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Problem: Variables not substituting in GUI
+Solution:
+  - Check manager/gui_state.txt exists and has correct format
+  - Verify parser reads gui_state.txt
+  - Test with hardcoded values first
+
+Problem: Wallet ops fail with "Authentication failed"
+Solution:
+  - Check password hash matches
+  - Verify SHA256 implementation
+  - Check file permissions on password_hash.txt
+
+Problem: Mining takes too long
+Solution:
+  - Reduce difficulty to 1 for testing
+  - Check pieces/blockchain/config.txt
+  - Verify nonce increments correctly
+
+Problem: send_coins fails with "Insufficient balance"
+Solution:
+  - Mine some coins first
+  - Check balance.txt format
+  - Verify transaction calculation
+
+================================================================================
+REFERENCE DOCUMENTS
+================================================================================
+
+⭐ START HERE: #.docs/p2p-onboarding-a2.txt - Quick start guide (read first!)
+- #.main/p2p-ops.txt - Complete P2P ops specification (1491 lines)
+- #.plans/P2P-PHASE-1-NETWORK-AND-CHAT.md - Phase 1 implementation plan
+- #.plans/p2p_plan.txt - Strategic overview
+- #.docs/p2p-succession-report-a2.txt - Status summary and checklist
+- 2do.txt - Full roadmap with all phases
+- #.docs/^.pmo.ld-faq+8/PITFALLS_ACTIVE_2026-03-18.txt - System pitfalls (MANDATORY)
+- #.docs/ubuntu-freeze-investigation-a2.txt - System freeze analysis
+
+================================================================================
+END OF DELIVERABLE
+================================================================================
+
+Created: April 2, 2026
+Status: Naming mismatch FIXED, Phase 6 Part B ready to implement
+Next: Implement wallet_login op first, then continue with remaining 5 ops

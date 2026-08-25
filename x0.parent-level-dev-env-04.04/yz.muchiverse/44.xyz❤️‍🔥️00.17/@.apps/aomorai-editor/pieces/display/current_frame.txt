@@ -1,0 +1,23 @@
++============================================================+
+|                  A T L A S - E D I T O R               |
++============================================================+
++============================================================+
+|  A T L A S - E D I T O R   [new_game]                      |
++============================================================+
+|                                                            |
+|Choose a world type, then Confirm & Start.                  |
+|                                                            |
+|Seeded World: real 16x16x32 chunk, +/-2 height variation.   |
+|Debug Flat World: flat ground, 4 trees, easy to verify.     |
+|                                                            |
+|  Board widget launching (separate GL window)...            |
+
++============================================================+
+[>] 1. [End Turn]
+[ ] 2. [View Board (opens separate GL window)]
+[ ] 3. [View Editor (opens separate GL window)]
++============================================================+
+ (Ctrl+C to quit)
+
++=========================================================+
+Nav > _

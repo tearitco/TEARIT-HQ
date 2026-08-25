@@ -1,0 +1,2 @@
+cursor=2
+digit_accum=0

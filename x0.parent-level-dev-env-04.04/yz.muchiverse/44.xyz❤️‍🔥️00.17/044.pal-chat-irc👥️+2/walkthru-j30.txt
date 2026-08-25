@@ -1,0 +1,30 @@
+🚶 walkthru-j30.txt — 044.pal-chat-irc👥️+2 — QUICK CHECK
+================================================================
+STATUS: ✅ rebuilt + real-tested (chat) + ✅ REAL P2P NETWORK TEST PASSED
+
+## ▶️ HOW TO RUN (do this in TWO SEPARATE TERMINALS at once — important!)
+    Terminal 1:  bash button.sh run
+    Terminal 2:  bash button.sh run
+
+⚠️ Using two terminals matters here — this project has a real,
+independent per-session network layer (not just "same files on disk"),
+and testing with only one terminal doesn't actually prove the network
+part works. There's history here: this exact P2P chain was found
+COMPLETELY BROKEN once before (2026-07-26) and it was invisible to
+single-session tests. A dedicated real network test (testing/
+test_multiuser_p2p.sh) exists specifically to catch that again — I ran
+it this session and it passed. 🎉
+
+## ✅ CHECKLIST
+  [ ] 1️⃣ Join the SAME room in both terminals
+  [ ] 2️⃣ Type a message in Terminal 1 → 💬 should appear in Terminal 2
+        within a second or two, without touching Terminal 2 at all
+  [ ] 3️⃣ Type a reply in Terminal 2 → should appear back in Terminal 1
+  [ ] 4️⃣ (optional, for the extra paranoid 🕵️) watch net/inbox.txt and
+        net/presence/ grow while you type — proof it's really going
+        over the network layer, not just shared files
+
+## 🟢 GOOD LOOKS LIKE
+Messages sync live between two truly separate processes, no delay
+beyond a second or two, no duplicates.
+================================================================

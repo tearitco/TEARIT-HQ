@@ -1,0 +1,152 @@
+================================================================================
+refactor-report.txt - 102.agy-txt file browser: before/after, for human
+review. Written 2026-07-30 at the end of the PITFALL-65 rebuild
+(#.haiku+/jul30-house-refactor.txt, #.haiku+/refactor-list-j30.txt
+Tier 1). Read this to check with your own eyes whether the refactor
+landed correctly and completely - it is not a substitute for actually
+running button.sh and clicking through it yourself.
+================================================================================
+
+## BEFORE (superseded architecture, no longer in the codebase)
+
+ONE C op (agy_edit_key.c) owned BOTH the plain-text editor canvas AND
+a hand-rolled file browser, dispatched via the shared PAL loop
+(<module>system/prisc+x pal/main_loop_chtpm.pal</module>) that every
+other layout in this project also used.
+
+The file browser itself (file_browser_save.chtpm / file_browser_load.
+chtpm) rendered as ONE giant hand-drawn text blob:
+- SEARCH/FILE "fields" were fake - just cursor_pos==0/cursor_pos==1
+  conventions the op tracked itself in a state file
+  (agy_browser_state.txt: cursor_pos, field_active, search_text,
+  path_buffer), with [>]/[^]/[ ] markers drawn as literal characters
+  by the op, not real chtpm focus indicators.
+- Directory entries were plain text lines with a hand-drawn "[>]"
+  prefix for whichever one cursor_pos happened to point at.
+- ALL navigation (arrows, digit-jump, Enter, Esc, backspace-while-
+  typing) was interpreted by the op itself reading raw keycodes -
+  chtpm_parser_pal.c (the real house-wide layout engine) never knew
+  any of these elements existed, because they weren't real elements -
+  they were just text.
+- This violated the real, in-house standard already proven elsewhere
+  (mutaclysm's own compose_frame.c) that the PARSER should own
+  nav/focus/highlighting via real <button>/<cli_io> elements, and it
+  is what let two real interaction-order bugs ship undetected
+  (PITFALL 64): a digit-jump that activated immediately instead of
+  just moving focus, and typed digits landing in a search field
+  instead of being interpreted as navigation.
+
+## AFTER (current, real architecture)
+
+Real multi-layout, real chtpm-native, real href navigation - the exact
+same shape TPMOS's own agy-text-editor uses and mutaclysm's own real
+in-game panels use:
+
+  editor.chtpm
+    -> (button href) file_menu.chtpm
+         -> (button href) file_browser_save.chtpm
+         -> (button href) file_browser_load.chtpm
+         -> (button href, back) editor.chtpm
+
+Each .chtpm layout is a real file under pieces/chtpm/layouts/. Every
+one declares the SAME real native C manager as its own <module>:
+
+    <module>manager/+x/agy_browser_manager.+x</module>
+
+(editor.chtpm/file_menu.chtpm still use the older, unrelated, real
+PAL-driven dispatch via agy_edit_key.c - untouched by this rebuild,
+they were never part of the hand-drawn-marker problem.)
+
+file_browser_save.chtpm / file_browser_load.chtpm now look like this
+(real elements, not text):
+
+    <panel time_reactive="true">
+        <module>manager/+x/agy_browser_manager.+x</module>
+        <interact src="pieces/apps/player_app/interact_relay.txt" />
+        <text label="..." /><br/>
+        <cli_io id="search_query" target_id="search_query"
+                label="${search_query_val}" /><br/>
+        <cli_io id="file_path_input" target_id="file_path_input"
+                label="${file_path_input_val}" /><br/>
+        ${directory_browser_markup}
+        ${browser_action_buttons_markup}
+        <text label="${editor_response_line}" /><br/>
+    </panel>
+
+`${directory_browser_markup}` and `${browser_action_buttons_markup}`
+are RAW MARKUP INJECTION POINTS - manager/agy_browser_manager.c
+generates real strings like:
+
+    <button label="[FIL] my.txt (20B)" onClick="KEY:5" /><br/>
+    <button label="SAVE FILE" onClick="KEY:11" /><br/>
+    <button label="CANCEL" href="pieces/chtpm/layouts/file_menu.chtpm" /><br/>
+
+and chtpm_parser_pal.c re-parses that text as real XML - real
+<button> elements, real focus/highlighting/nav owned entirely by the
+parser, not hand-drawn. SEARCH/FILE are real <cli_io> elements with
+real native typing, real Enter-to-engage, real per-keystroke sync -
+none of that logic lives in this project's own code anymore.
+
+manager/agy_browser_manager.c is a real, persistent, native C daemon
+(pthread poll loop, ~60fps, matches game_manager.c's own real
+launch/poll shape) - it polls pieces/apps/player_app/interact_relay.txt
+for real button activations (KEY:n) and real cli_io "Send" events,
+decodes them into string actions (decode_key_to_action() ->
+dispatch_action()) at one clearly-marked boundary, and writes
+pieces/apps/agy-txt/manager/gui_state.txt to drive the next render -
+it never touches raw keycodes directly.
+
+## Real bugs found and fixed during this rebuild (all live-verified,
+   not just compiled)
+
+1. The manager was watching the wrong file for button activations
+   (pieces/keyboard/history.txt instead of the real <interact src>
+   target, interact_relay.txt) - LOAD/click-to-load silently never
+   fired until fixed.
+2. chtpm_parser_pal.c's own KEY:n relay ASCII-shifts single digits
+   (onClick="KEY:3" sends byte 51, not 3) - every real button
+   0-9 silently never dispatched until decode_key_to_action() learned
+   to un-shift first.
+3. A real, HOUSE-WIDE bug in the shared chtpm_parser_pal.c itself
+   (014.wsr-pal💸️📌️+2/system/chtpm_parser_pal.c): a fresh href
+   transition could land keyboard focus on a stale, coincidentally-
+   same-indexed element from the PREVIOUS screen instead of resetting
+   to the first real element. Fixed at the source (new
+   clear_saved_active_index() helper) - this fix benefits every real
+   href-driven project in the house, not just this one.
+4. Real Enter-directly-on-the-FILE-field (no separate CONFIRM click
+   needed, matching TPMOS's own real convention) needed a real
+   disambiguation check (active_gui_index()) so it isn't accidentally
+   swallowed by the generic button-index decode.
+5. Abandoned, un-submitted typed text could get silently stuck in
+   gui_state.txt and reappear prepended to the next thing typed, on
+   re-entering the screen - fixed by clearing BOTH the display-only
+   "_val" keys AND the real target_id-keyed ones chtpm_parser_pal.c
+   itself writes.
+
+## Real, live-verified end-to-end (not just "it compiles")
+
+- SAVE: type a real filename character-by-character into the FILE
+  cli_io, click SAVE FILE (or press Enter directly on the field) ->
+  real file lands on disk in the user's real xyzfs documents/ folder.
+- LOAD: click a real listed file entry -> real click-to-load, file
+  content actually loads into the editor buffer.
+- K3 harness (test-harn-agy-txt + @.apps/text-editor-xyz/test-harn-
+  ed-app's own demo_save.sh/demo_load.sh, which exercise this project
+  through the paired editor+file-menu app) both 100% pass.
+
+## What to check yourself
+
+1. `bash button.sh run` (headless: `NO_GL=1 bash button.sh run`), or
+   through the paired app (@.apps/text-editor-xyz/button.sh run).
+2. FILE MENU -> SAVE AS... -> confirm you land on SEARCH focused
+   (not some random directory entry).
+3. Arrow DOWN to FILE, Enter to engage, type a real filename, either
+   click SAVE FILE or press Enter directly - confirm status line says
+   "Command sent" and the file is real on disk under
+   xyzfs/users/<you>/home/documents/.
+4. FILE MENU -> LOAD... -> arrow to a real listed file, Enter -> confirm
+   the editor's own text actually changes to that file's content.
+5. CANCEL from either screen -> confirm you land back on FILE MENU
+   cleanly, buttons real and clickable.
+================================================================================

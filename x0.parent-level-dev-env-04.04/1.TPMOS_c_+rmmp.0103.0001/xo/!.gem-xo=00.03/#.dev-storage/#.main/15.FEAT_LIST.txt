@@ -1,0 +1,35 @@
+# 15.FEAT_LIST.txt - RMMP Editor Enhancement Roadmap
+
+## Feature 1: Enhanced Placement & Context Interaction
+- **Input: [ENTER]**
+  - Place currently ARMED glyph on the project map.
+  - Automatically create a corresponding piece entry in the project directory (`projects/{project}/pieces/`).
+- **Input: [SPACE]**
+  - If a piece exists at the current selector position, open a **Context Menu**.
+  - Default Context Menu options: [OPS], [COPY], [CUT], [DELETE].
+- **UI Feedback:** Update `editor_response` with the action performed (e.g., "Piece Created: &", "Context Menu Opened").
+
+## Feature 2: Dynamic Map Management ("ADD" at Start)
+- **Map Palette Update:** Add a static "add" option at the **START** of the map list.
+- **Action:** Selecting "add" (index 0) will:
+  1. Generate a new blank map file in the project's `maps/` directory.
+  2. Automatically switch the editor's active map to this new file.
+  3. Trigger an immediate render of the new blank map.
+- **Action (Contextual):** If a map is **ALREADY SELECTED** and clicked again:
+  1. Open a **Map Sub-Menu**.
+  2. Options: [RENAME], [RESIZE].
+  3. [RESIZE] will update the map's scrollable area (width/height metadata), not the viewport size.
+- **Naming Convention:** `map_<#>.txt` (e.g., if `map_0001.txt` exists, create `map_0002.txt`).
+- **Integration:** The new map should be immediately available in the scroller and active on the stage.
+
+## Feature 3: Integrated File Menu
+- **UI Update:** Rename "7. SAVE" to "7. FILE".
+- **Functionality:** Opening "FILE" reveals a sub-menu: [SAVE], [SAVE AS], [LOAD].
+- **UX Exploration:**
+  - **Option A (Sub-Menu Overlay):** Dynamically replace the lower UI panel with file options.
+  - **Option B (Dedicated Screen):** Switch to a new `.chtpm` screen (e.g., `file_menu.chtpm`) with a "BACK" button.
+
+## Feature 4: Scripting & Advanced Ops
+- **Save Operations:** Implement robust project-wide save & load logic.
+- **Ops/Script Editing:** Allow for editing piece scripts/brain logic directly from the [OPS] menu.
+- **Advanced Piece Management:** Refine the creation and linking of piece traits.

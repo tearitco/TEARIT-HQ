@@ -1,0 +1,8 @@
+<window class="database-window">
+  <tabbar class="tab-bar">
+__SESSION_TABS__
+  </tabbar>
+  <panel id="stats-panel" class="settings-block">
+__SESSION_CONTENT__
+  </panel>
+</window>

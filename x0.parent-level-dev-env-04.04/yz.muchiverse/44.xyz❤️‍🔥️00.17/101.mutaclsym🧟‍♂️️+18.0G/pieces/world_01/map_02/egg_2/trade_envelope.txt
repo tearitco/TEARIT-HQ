@@ -1,0 +1,17 @@
+origin_game|muchi-pals
+kind|pet
+payload_id|egg_2
+display_name|egg_2
+species_id|sp_turtle
+species_name|Turtle
+species_emoji|🐢
+skills|peck
+hunger|78
+energy|100
+hp|20
+hp_max|20
+mp|10
+mp_max|10
+level|1
+xp|0
+exported_at|1785170449

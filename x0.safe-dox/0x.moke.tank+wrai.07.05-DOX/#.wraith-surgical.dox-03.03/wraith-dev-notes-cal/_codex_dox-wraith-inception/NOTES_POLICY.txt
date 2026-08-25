@@ -1,0 +1,77 @@
+CODEX DOX POLICY
+
+Purpose:
+_codex_dox is the active Codex notes folder for this workspace. It keeps
+planning, onboarding, architecture alignment, reports, and temporary working
+notes out of the project root and TPMOS source tree.
+
+1. Active notes vs archives
+
+_codex_dox:
+- active notes future Codex/API agents should read
+- planning docs that may still guide implementation
+- inventories and cross-references
+- temporary notes that can be deleted when obsolete
+
+_codex-tpmos:
+- Codex-generated TPMOS-specific reports and working artifacts
+- frame reports written by Codex after TPMOS tests
+- agent-side TPMOS audit notes that should not sit in the raw TPMOS root
+
+_codex_archives:
+- rollback copies made before edits/moves
+- archive manifests
+- safety history for old paths and old wording
+- not the active reading surface
+
+2. Before editing notes
+
+Before editing an existing note in _codex_dox, archive the old version under:
+
+_codex_archives/YYYY-MM-DD/EPOCH/
+
+Include a MANIFEST.txt that says what changed and why.
+
+New notes do not need pre-edit copies, but the archive manifest for the batch
+should list them when they are created during the same work session.
+
+3. Deleting notes
+
+Notes in _codex_dox may be deleted when they are obsolete, superseded, or too
+noisy for future agents.
+
+Before deleting an existing note:
+- archive it
+- update _codex_dox/INVENTORY.txt
+- keep a reference to the archive batch if the deleted note could help rollback
+  or recover intent
+
+4. Inventory rule
+
+_codex_dox/INVENTORY.txt should list:
+- current active notes
+- what each note is for
+- moved/deleted note references when useful
+- archive batches that matter for rollback safety
+
+The inventory is allowed to mention deleted notes. That is the point: active
+notes can stay clean while archive references remain findable.
+
+5. Source tree rule
+
+Do not scatter Codex planning notes across TPMOS source directories unless the
+user explicitly asks for a source-local note. Prefer _codex_dox for Codex
+planning and onboarding.
+
+6. Reports
+
+Codex-generated TPMOS reports should live under:
+
+_codex-tpmos/reports/
+
+Do not leave Codex reports in the raw TPMOS root unless the user explicitly asks
+for that location. Planning reports and architecture alignment notes should live
+in _codex_dox.
+
+Runtime files created by TPMOS itself may remain inside TPMOS session/runtime
+directories when they are part of the framework workflow.

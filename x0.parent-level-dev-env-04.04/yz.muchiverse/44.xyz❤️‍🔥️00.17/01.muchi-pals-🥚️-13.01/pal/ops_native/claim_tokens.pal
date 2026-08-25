@@ -1,0 +1,27 @@
+# claim_tokens.pal - real pal-native rebuild of ops/claim_tokens.c's own
+# core mutation (+10 tokens, no cooldown, no upper bound - matches the
+# C original exactly). Hardcoded to pieces/world_01/map_lobby/user_01/
+# state.txt rather than a general <owner_piece_id> argument - egg-pals
+# has always been single-user in practice (owner defaults to "user_01"
+# internally even in the C version, per dox/01-architecture.md's own
+# note on this) and prisc+x's own main() has no argv-into-a-launched-
+# script mechanism yet (xyzos-standards.txt sec.21.1) - so this needs no
+# indirection at all, unlike a genuinely per-instance op (toggle_sleep,
+# clean_pet, feed_pet - see xyzos-standards.txt sec.21.2).
+#
+# Called by ops/muchi_menu_input.c via `system/prisc+x
+# pal/ops_native/claim_tokens.pal` - the dispatcher reads tokens
+# before/after via plain file I/O (not ecall) to build the real
+# "Claimed 10 tokens! Balance: N" message itself (sec.21.3 - ecall's
+# own SYS_WRITE_LINE can't splice a live number into a string).
+
+li x15, 6
+li x13, 0
+ecall "pieces/world_01/map_lobby/user_01/state.txt" "tokens"
+addi x1, x12, 10
+
+li x15, 7
+addi x12, x1, 0
+ecall "pieces/world_01/map_lobby/user_01/state.txt" "tokens"
+
+halt

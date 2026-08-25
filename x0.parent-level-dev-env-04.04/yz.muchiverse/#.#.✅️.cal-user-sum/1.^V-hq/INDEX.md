@@ -1,0 +1,373 @@
+# 📍 START HERE — au11-hq Document Index
+
+**If you're a new agent picking this up cold, read in this order until you have enough context to act.**
+
+**`archive/` subfolder (added 2026-08-24):** lower-priority docs — closed-bug records,
+DONE/superseded handoffs, single-feature deep-dives, and the two `.ARCHIVE.md` full-history
+twins for compacted docs — live in `archive/` instead of cluttering this directory's
+listing. Every doc below still has its own routing entry and read-order slot; the path
+just tells you it's reference-only, not "delete this." Nothing in `archive/` is more
+authoritative than what's linked from Tier 1/2 above it — if a doc moves back to active
+status (a deferred task restarts, a "DONE" record needs revisiting), move the file back
+to the main directory and drop the `archive/` prefix here.
+
+---
+
+## Tier 1 — Always read (small context budget, ~2 min)
+-2. **TPMOS-COMPLIANCE-DEBT.md — STANDING #1 PRIORITY, HIGH SEVERITY (2026-08-25),
+   NOT YET FIXED, direct instruction: "this cant propagate forward into the codebase by
+   naive agents"** — real, confirmed architecture violations found while migrating
+   stats-hq: at least 3 launcher scripts (`stats-hq`, `palettes`, `bookmarks`) generate
+   `.chtpm` UI markup via raw bash `printf` of XML tags, with NO real manager process and
+   NO compiled, testable Op — violates TPMOS §11/§12 directly. **stats-hq is not just
+   non-compliant, it's actually broken**: its tabs render but do nothing when clicked
+   (labels never match the renderer's own `TAB_LABELS[]`). Read this BEFORE building or
+   extending ANY taskbar-launched window/menu — this pattern looks like it works and is
+   the nearest copy-paste example in the tree for exactly that reason. Full inventory,
+   severity reasoning, the compliant reference pattern (db-hq/events-hq/open-hai's real
+   manager binaries), and remediation priority in the doc itself.
+-1. **house-compaction.md — STANDING #1 PRIORITY (2026-08-24), NOT YET ACTED ON** —
+   documents a confirmed real compliance drift: `khtpm_hq_render.c`'s `dump_frame_png()`
+   (the shared renderer behind db-hq/palettes/events-hq/chat-hai/entity-menu) writes a
+   PNG only — **no receipt file, no frame-history log** — unlike the house's own
+   TPMOS/wraith-alpha standard (see `!.TPMOS_ONBORD_BIBLE_10.md` §13.7 + live
+   `wraith-alpha/session/rgb/*.receipt.pdl` files, confirmed real and current) and unlike
+   au11-hq's OWN already-written receipt convention (which exists in `ai-cell` but was
+   never ported into the merged `khtpm_hq_render` binary). Practical effect: anything
+   "verified" via `--dump-and-exit` on this family (incl. `palettes-handoff-2026-08-24.md`'s
+   T1/T3 claims) was only pixel-verified, never receipt-verified — treat those claims as
+   unconfirmed until the port lands. **Agreed order of operations (direct instruction,
+   2026-08-24): document now, do NOT fix yet → finish reading/compacting the docs below
+   first → THEN come back and do the receipt-port + any other compliance fixes → THEN
+   resume palettes T1–T6.** Full findings, the real wraith-alpha receipt shape, and a
+   scoped (not over-built) recommendation for what livedesk's own receipt should contain:
+   `house-compaction.md` Part 1 + Part 2. Compaction candidates (Part 3) are the
+   immediate next step, not this.
+0. **palettes-handoff-2026-08-24.md — CURRENT ACTIVE HANDOFF (2026-08-24)** — if you were
+   handed THIS session's work: palettes dropdown+emoji sprite matrix is done and verified;
+   remaining tasks T1–T6 with per-task how-to AND how-to-check instructions inside. Start
+   there, then CREATOR_AGENT.md for background.
+1. **This file** — orientation, what exists, read order
+2. **HANDOFF.md → "⚡ TL;DR" + "🎯 Project State" sections only** — current status, what's next
+3. **$.claude-hai-budget.md — HIGH PRIORITY, direct instruction (2026-08-13)** — before doing scoped/mechanical work yourself, check whether it should be delegated to a Harnecient model (h-ai) instead, to save Claude token budget. Log delegation opportunities there, not just plans.
+4. **HARNESS-DELEGATION-PIPELINE.md — HIGH PRIORITY, direct instruction (2026-08-13)** — before writing any new one-off dispatch/test script, check whether it should be a reusable harness instead. Harnesses are sellable products, not just test infra.
+
+Stop here if you just need to know "what's going on."
+
+---
+
+## Tier 2 — Read before touching code (medium context budget, ~10 min)
+3. **HANDOFF.md (full)** — architecture (sessions/desks/events), file structure, known gaps, demo game list
+4. **HANDOFF.md → "⚠️ STANDING RULE"** (near top) — check local chtpm, then tpmos
+   (`1.TPMOS_c_+rmmp.0103.0001/`), before inventing any new UI/state pattern
+5. **TESTING_STRATEGY.md** — relay-only testing rule (no direct CLI calls), harness template, frame-history reading
+5b. **TASKBAR-MENU-ARCHITECTURE.md — READ BEFORE TOUCHING ANY TASKBAR MENU** — cell 14 (h-ai)'s
+   submenu is C-hardcoded (`livedesk_build_ai_menu()`), NOT PDL-driven, despite matching PDL rows
+   existing and looking live (they're dead — editing them wastes a full debug cycle, confirmed
+   2026-08-15). Covers the real two-layer relay/dispatch architecture, the exact recipe to add a
+   menu item without repeating a ~15-round-trip debug session, the `nav.sh` double-Enter trap, and
+   the standing PDL-externalization refactor debt (why this drifted from config-driven back to
+   hardcoded C, and what the real fix looks like).
+5b1b. **CREATOR_AGENT.md — READ BEFORE BUILDING ANY NEW MENU, PICKER, OR TB-LAUNCHED WINDOW**
+   (2026-08-24, written after a real session confused the two menu systems): the one-page map
+   of BOTH menu mechanisms — (A) the tb-native shared dropdown under header cells (builder →
+   strip_var_hqitems.txt → anchored popup; self-closing header cell = broken/detached popup;
+   `livedesk:*` dispatch forms vs raw shell commands that break on `&` paths; cancel-row rule)
+   and (B) hq-style `.chtpm`+`.css` windows via khtpm_hq_render (css filename derived from
+   chtpm name — mismatch silently unstyles; apply_css_deep for nested elements; emoji tiles =
+   sprite.csv pipeline, never font glyphs), plus the headless frame-dump verification workflow.
+5b2. **`taskbar-tpmos-parallel-refactor.md` + `taskbar-history-txt-migration-investigation.md` —
+   READ BEFORE TOUCHING `khtpm_strip_parser.c`'s REAL X11 INPUT/DISPATCH CODE** (2026-08-18,
+   cutover completed 2026-08-19): the taskbar now has a real terminal ASCII mirror (HQ menu's "cli"
+   row) AND a single dispatch path — capture-only writers + one read-back dispatcher, matching
+   mutaclysm's real `x11_mirror.c`/`game_dispatch.c` split. The old inline-dispatch path and its
+   `KHTPM_NEW_DISPATCH_MODE` feature flag are DELETED, not just defaulted off — there is no
+   fallback mode anymore. Live-verified with real X11 input (genuine user interaction AND real
+   `XTest`-based injection tools - see `&.widgits/tile-picker/ops/
+   tp_test_send_key.c`/`tp_test_send_click.c`, the real fix for "no xdotool on this machine"). A
+   same-day frame-unification pass (`strip_frame.cells.pdl`) then introduced and fixed a real bug —
+   see `taskbar-history-txt-migration-investigation.md`'s "Phase 3" section and
+   `au11-hq/TASKBAR-FRAME-UNIFICATION-HANDOFF.md` (under `44.xyz❤️‍🔥️00.17/`) for the frame-sharing
+   plan that pass was the first step of.
+   `dispatch_key_code()` gained two real relay-forwarding fixes (`KSC_HQ_HEADER_BASE`,
+   `KSC_FOCUS_LEFT`/`RIGHT`) this pass - know about them before assuming the relay's own
+   capabilities match its older, more limited header comment.
+5c. **`!.HOUSE_STDS.md` §J — READ BEFORE ASSUMING A `.chtpm`/CSS FEATURE EXISTS** — there are TWO
+   separate, unmerged parser implementations sharing the `.chtpm` name: legacy `chtpm_parser_pal.c`
+   (PAL-VM/text-grid, what §A of that doc covers) and the newer `khtpm_*` family (raw Xlib/Xft, no
+   PAL VM, its own `khtpm_css_parser.c`) that the taskbar and every tb-launched sub-app (db-hq,
+   open-hai/"open-hai", events-hq, chat-hai) actually use. Confirmed real feature drift this session:
+   `khtpm_css_parser.c` has no flexbox AND no descendant-selector (`.a .b`) support — both silently
+   no-op rather than error, and both caused real, live-caught chat-hai bugs. If you're building on
+   any tb sub-app, you're in the `khtpm_*` family — §A of `!.HOUSE_STDS.md` does not apply to you.
+
+---
+
+## Tier 2.5 — Read before major architectural decisions
+
+**HQML-DESIGN+PLANS.md** — Vision for a web-like markup language (HTML/CSS-like syntax) that would enable prettier UIs while keeping .pal scripting. Covers events-hqml (prettier event editor), db-hq (modern database UI), AI applications, network applications (forum/IRC). Design phase, technical requirements, implementation roadmap. Read this if designing new UIs or considering how to modernize existing ones.
+
+---
+
+## Tier 3 — Read only if working the specific task (large context budget)
+6. **archive/USER_CREATION.md** — full research + plan for wiring account creation into livedesk's USER
+   cell (tpmos multi-field `<cli_io>` reference, khtpm gap analysis, step-by-step build plan)
+6b. **EVENTS_RUNTIME.md** — how the event-ez runtime actually fires (right-click "Play" /
+   `RUN_METHOD:Play` relay, not automatic on-click), real bugs found+fixed (path resolution, stale
+   in-memory cache after migration), the completed ops migration (`xyzfs/bin/<game>/ops/+x/`
+   pattern), and the ops-vs-events sharing model (shared ops, private-until-published events via the
+   `store` cell). Read before touching event/db/common-events work.
+6c. **EVENT_AI_VISION.md** — the long-range design intent for events: RPG-Maker-aligned trigger
+   types, message/choice events that reuse chtpm's own layout/navigation (self-bootstrapping, not a
+   new UI), entity AI (movement/interaction/decision-trees via FSM/BT, referencing agent-45's
+   tool-loop pattern and SCM's deterministic-first philosophy), and future network/MMO-participation
+   events. Read before designing any new event TYPE (not just wiring existing ones).
+6d. **HAIKU_TASKS.md** — small, well-scoped tasks suitable for Haiku (Claude's faster variant).
+   Self-contained work with clear success criteria, no architectural decisions. Start here if you
+   want to pick up a concrete, bounded task without needing Sonnet's reasoning depth.
+6e. **DB_CONTEXT.md** — explanation of what the "db" (database) cell is and how event commands
+   like Show Text + Show Choices integrate with it. Read after completing an event-related task
+   to understand the bigger picture.
+7. **2do-au11.txt** — the working task log: what's done, what's pending, timestamped progress notes.
+   This is the most volatile file — always check its bottom (Progress Log) for the latest state.
+8. **archive/a11.focus-troubleshooting.md** — historical record of two entity-window bugs already fixed
+   (focus-steal, arrow-nav). Reference only; not active work.
+9. **maintenance-fixes.md** — running list of small, non-blocking UI polish items (index numbers,
+   window sizing, etc.). Check before starting cosmetic work; add to it, don't fix inline elsewhere.
+10. **archive/DB-HQ-HANDOFF.md** — Implementation handoff for db cell (cell 9). Status: broken/incomplete
+    AS OF BEFORE 2026-08-12 — db-hq itself got real, working this session, see #11 below for the
+    current state before trusting this file's own "still-placeholder" framing.
+11. **EVENTS-HQ-RGB-HANDOFF.md** — 2026-08-12 session handoff (context ran full, new agent picking
+    up). db-hq's real focus fix (managed window + `_MOTIF_WM_HINTS`, NOT override_redirect — see
+    `!.HOUSE_STDS.md` #21-24 house-root), events-hq built real and wired to two entities (nav
+    confirmed working), RGB Phase 0 proven (compose→buffer→present is pixel-identical), and the
+    concrete next-step plan for both (events-hq's remaining event-ez-parity gaps, how to actually
+    refactor db-hq/taskbar to RGB). **Read this before starting ANY db-hq/events-hq/khtpm-window/
+    RGB work** — it points at exactly what's real vs. still-needed, don't re-derive.
+12. **archive/OPENROUTER-INTEGRATION-HANDOFF.md** — 2026-08-16, real router API key work for open-hai.
+    Status: **DONE for OpenRouter, TokenRouter marked a real confirmed paywalled non-starter**
+    ($0 account credit blocks tool-calling even on free-labeled models — plain chat works fine).
+    OpenRouter is fully live-verified through the REAL UI (not just the manager in isolation):
+    cycled the model via a real relay-injected UI action, sent a message that ALSO matches the
+    local tool-detection harness's own keywords, confirmed it now bypasses that harness for this
+    backend ("un-harnessed"), and watched the model's real native `tool_calls` response actually
+    EXECUTE (not just get detected) and show a real result in the transcript/GUI. Also caught and
+    fixed a real bug mid-session: the shell (`khtpm_open_hai_render.c`) has its OWN separate model
+    list from the manager's — adding models to only one silently broke the model-changer UI.
+    **Read this before touching open-hai's backend/model logic** — real next steps left: no shared
+    source of truth for the model list (real footgun), conversation history, cost tracking,
+    model-name/error validation, more tools in the OpenRouter `tools` array.
+
+---
+
+## Document Roles (so you don't duplicate one)
+
+| File | Purpose | Update when |
+|---|---|---|
+| `INDEX.md` | This file — pure routing, no content | New doc added/removed |
+| `#.house-docs.html/1.index-house=solo.html` | **The human-facing house doc — this is what the user actually reads**, not just an agent-routing file. Narrative "how the house actually works" page (Overview/Standards/Taskbar/Legacy Engines/Display/Input/AI Backends/Testing/Extending/Roadmap sections). Keep the "Known Issues & Roadmap" section in sync with real findings the same way `INDEX.md`'s own changelog is kept in sync — when you land a real fix or finding that changes user-facing state, update BOTH this file and INDEX.md, not just one. | Whenever a real, user-relevant finding or fix lands — added the khtpm_hq_render receipt/frame-history gap here 2026-08-24 |
+| `TPMOS-COMPLIANCE-DEBT.md` | **STANDING #1 PRIORITY, HIGH SEVERITY, undone** — real manager-pattern violations (stats-hq/palettes/bookmarks generate `.chtpm` via raw bash `printf`, no manager, no testable Op); stats-hq's own tabs are confirmed non-functional, not just non-standard. Full inventory + remediation priority in the doc. | When any listed app is remediated, or the broader "not yet audited" sweep finds more instances — update the inventory, don't just delete the doc |
+| `house-compaction.md` | **STANDING #1 PRIORITY, undone** — the khtpm_hq_render receipt/frame-history compliance-drift finding vs. TPMOS/wraith-alpha standard, plus the doc-compaction candidate list for `1.^V-hq/` (44 files). Agreed order: compact docs first, THEN fix the compliance drift, THEN resume palettes T1-T6. | When the compliance fix lands, or a compaction item from Part 3 is acted on — tick it off, don't just delete the doc |
+| `44.xyz❤️‍🔥️00.17/!.HOUSE_STDS.md` (house root) | **THE general house standards doc** ("from zero", §A–§K): CHTPM/PAL mechanics, session isolation/symlink ban, digit-dispatch, marker discipline, runtime-config-over-hardcode, rendering pipeline, CPU/testing discipline, widgets, 3D/raymarch, pitfalls F-18/F-19/#20/#21 (window focus/managed-window standards), §J two-parser-families warning, and **§K UI-authoring standards (2026-08-24): no hardcoded UIs ever (store→generated-artifact rule), context windows OLD vs NEW (`khtpm_entity_menu_render` is THE standard), generic renderer mechanisms (onClick open:/exec:, live reload) with honest port-status caveat, SHOW_PAGE chooser contract, bookmarks spec** | Whenever a standing house standard is set, corrected, or superseded |
+| `HANDOFF.md` | Living architecture + status snapshot, "hand this to a fresh agent" doc | Architecture changes, status changes |
+| `livedesk-dir-map.md` | Real, current directory map of everything meaningful to the livedesk toolbar (taskbar, the 5 merged window apps, `#.desktop/` runtime state, toys-cell targets, tile-picker test tooling, `xyzfs/`'s real current scope) - written 2026-08-17 to inform a real, still-undecided xyzfs migration question (only `muchi-pet`/`livedesk-clock` have moved into `xyzfs/bin/` so far; everything else, including mutaclysm/the taskbar, is still outside it) | When the directory structure meaningfully changes, or before deciding/acting on any xyzfs migration |
+| `legacy-shared-fix.md` | Separate leg of work from `khtpm-merge-how2.md`: consolidating all 16 legacy-GL projects' `system/`+`ops/` engine binaries. **AS OF 2026-08-17: `chtpm_parser_pal.c`/`prisc+x.c` consolidation is DONE - all 12 real participants (of 16 total; 4 have neither file) now on ONE shared baseline (`&.widgits/_shared-lib/system/`), see §3.10.** `chtpm_rgb_render.c` also consolidated (9 projects, §5c.7 in the other doc). `gl_mirror.c`→`x11_mirror.c` display-shim migration: 3 of 16 projects done (mutaclysm/piececraft-xyz/my-chara-txt), 13 remain - real, open work. Also covers a real mutaclysm interact-mode regression found+fixed post-consolidation (§3.11) and mutaclysm's own separate, deferred camera/3D work (§2.6, handed off to `archive/opencode-mutafix-pie.md`). | Every time the remaining 13-project GL migration or mutaclysm's own deferred camera work advances |
+| `HARNECIENT-HACK.md` | **THE COMPANY'S BREAD AND BUTTER** - tool-like use out of NON-tooled models (gemma 270M/1b, stable-code 3b) by never telling the API we want tools: plain /api/chat, persona files forbidding structure, simple plain-text prompts, tolerant parser (`json_parser.+x`), deterministic app-side tool dispatch, real-file folding, fallback-everywhere, DESCRIBE-don't-CLASSIFY. Live reference: `@.apps/my-lawyer` (gemma reads+writes real case docs). Use this pattern for any feature that needs tool-like behavior on non-tooled models. | Before building any agentic/tool feature on a non-tooled LAN model |
+| `TESTING_STRATEGY.md` | How to test (relay-only rule, harness patterns, verified recipes) - PLUS (2026-08-18) how to test REAL X11 input specifically (not the relay): real `XTest`-based `tp_test_send_key.+x`/`tp_test_send_click.+x` (confirmed `xdotool` is NOT installed here), and the `WM_CLASS`-vs-title window-matching gotcha | Testing approach changes |
+| `TASKBAR-MENU-ARCHITECTURE.md` | Taskbar menu dispatch mechanics: which cells are C-hardcoded vs PDL-driven, the two-layer relay system, the exact recipe to add a menu item, nav.sh gotchas, standing PDL-externalization refactor debt, PLUS the full lifecycle/pitfalls of building a brand-new khtpm_*-family sub-app from scratch (elem-pool exhaustion, apply_css() clobbering, tail-vs-head ledger reads, PDL-driven geometry) | When a new taskbar cell/menu is added, a new sub-app is built, or the PDL-externalization refactor is finally done |
+| `CREATOR_AGENT.md` | **THE map of the TWO menu systems** — tb-native shared dropdown vs hq-style `.chtpm` window — with the which-one-do-I-use table, wiring recipes for each, and every trap that cost real debug rounds (self-closing header cell = detached popup; `&`-containing raw commands fail in dispatch; css filename derived from chtpm name; nested elements need deep styling; emoji tiles = sprite.csv pipeline never font glyphs; headless `--dump-and-exit` verification) | When either menu mechanism changes, or a new trap is hit while building menus/pickers/windows |
+| `palettes-handoff-2026-08-24.md` | Active session handoff for the palettes work: what landed (dropdown fix, cancel row, Elem.sprite pipeline, apply_css_deep, per-key css), remaining tasks T1–T6 each with how-to + how-to-check (re-verify placement, element sprites, scroll visual pass, stub-category pickers, PDL externalization pointer), env quick-reference incl. headless frame-dump verification recipe and bash-tool detach gotcha | When a palettes task (T1–T6) completes — tick it off; delete/supersede this doc once all are done |
+| `taskbar-keyboard-relay-and-terminal-render.md` | **COMPACTED 2026-08-24** to a short stub — ORIGINAL finding (2026-08-18): taskbar's real X11 input+render was bundled into one process (`khtpm_strip_parser.c`), unlike mutaclysm/TPMOS's real split renderer/input binaries. Superseded in practice by the two docs below, which built the actual fix - kept as the original architectural discovery, still cross-linked as prerequisite reading from both. Full original content: `archive/taskbar-keyboard-relay-and-terminal-render.ARCHIVE.md`. | Historical/prerequisite only - read the two docs below for current status |
+| `taskbar-tpmos-parallel-refactor.md` | **DONE, live-verified**: taskbar's real terminal ASCII mirror (HQ menu's "cli" row → `khtpm_strip_render_ascii.+x` + `khtpm_strip_keyboard_ascii.+x`, matching TPMOS's real renderer.c/keyboard_input.c split exactly - fixed a real `\r\n`/staircase bug from an earlier combined-binary attempt). Strip + HQ popup + bottom tabs render with the real `[cursor] N. [Label]` format (ported from `chtpm_parser.c`'s own `render_element()`). Real `[>]` cursor + arrow-key nav on the strip, driven by two real relay-forwarding gaps found+fixed in `khtpm_strip_parser.c`'s `dispatch_key_code()`. Still open: bottom-tab-bar activation (renders, doesn't yet activate via relay - bigger shared nav-claims system) and `cli_io` typing. | Before touching the taskbar's ASCII mirror, or `dispatch_key_code()`'s relay-forwarding logic |
+| `taskbar-history-txt-migration-investigation.md` | **Phase 1 + Phase 2 DONE + live-verified, Phase 3 (full cutover) DONE 2026-08-19**: real X11 `KeyPress`/`ButtonPress` mirror into `#.desktop/strip_input_history.txt` (real `KEY_PRESSED:`/`MOUSE_EVENT:` format, same as `pieces/keyboard/history.txt`); the old inline-dispatch path and its `KHTPM_NEW_DISPATCH_MODE` flag are DELETED — capture-only writers + one read-back dispatcher (matching mutaclysm's real `x11_mirror.c`/`game_dispatch.c` shape) is the only path now, no fallback. Real XTest-based input-injection tools used for live testing (`&.widgits/tile-picker/ops/tp_test_send_key.c`/`tp_test_send_click.c` - real fix for "no xdotool on this machine"). A same-day frame-unification pass introduced+fixed a real arrow-key-submenu-nav bug (see the doc's own "Phase 3" section). | Before touching real X11 capture/dispatch in `khtpm_strip_parser.c`, or before the next frame-sharing step in `au11-hq/TASKBAR-FRAME-UNIFICATION-HANDOFF.md` |
+| `A15.chat-hack.md` | Theory/exploration doc (not yet implemented): maps chat-hai's current bot-loop against the Harnecient Hack's 6 components, finds the real gap (no memory/relationships/document artifacts — only a flat ledger), proposes concrete DESCRIBE-not-CLASSIFY-safe designs for persona memory, relationship scoring, shared documents, and activating the already-stubbed moderator hook | Before implementing chat-hai memory/relationships, or exploring similar "evolving multi-agent conversation" designs elsewhere |
+| `khtpm-merge-how2.md` | **COMPACTED 2026-08-24** (was 2839 lines → now current-status + the still-load-bearing HOUSE STANDARD decision rule only). **Stage 5 (literal single-binary merge) is DONE for all 5 window apps** — entity-menu, taskbar-settings, db-hq, events-hq, chat-hai all now live in ONE binary (`khtpm_entity_menu_render.c`), mode-selected via `class=`. Old standalone renderers archived to `_.ARCHIVED-pre-merge-legacy.zip` (db-hq's own kept live — `stats-hq` still uses it). **Legacy GL migration status now tracked in `legacy-shared-fix.md`, not here.** Full historical step-by-step (all 21 dated "real findings/DONE" sub-sections, exact diffs, exact per-app merge logs): `archive/khtpm-merge-how2.ARCHIVE.md`. | Before touching ANY khtpm app's rendering/model/identity logic (read the compacted doc); open the ARCHIVE only for historical HOW, not current WHAT |
+| `archive/USER_CREATION.md` | Deep-dive research + plan + test log for one specific feature | That feature's design/status changes |
+| `EVENTS_RUNTIME.md` | Event runtime mechanics, real bugs fixed, ops migration, ops-vs-events architecture | Runtime/architecture changes |
+| `EVENT_AI_VISION.md` | Long-range intent: trigger types, message/input UI reuse, entity AI, network events | New capability designed/started |
+| `archive/a12.opencode-prompt.md` | Self-contained handoff prompt for the parallel palette-picker agent | If that task's scope changes before it's dispatched |
+| `archive/opencode-mutafix-pie.md` | Self-contained handoff prompt for a separate opencode agent: port mutaclysm's own 3D camera/render engine to piececraft/board-viewer's own real architecture. Real motivation: 4 separate real camera bugs were found+fixed live this session (camera-struct rewrite, duplicate-process flicker, missing offscreen buffer, a state.txt read-cap bug), each correct in isolation, but a new bug kept surfacing every time - direct instruction: stop patching, port the underlying architecture instead. Written 2026-08-17, full real bug history in `legacy-shared-fix.md` §2.6 | When the porting agent reports its real plan/findings, or scope changes before dispatch |
+| `2do-au11.txt` | Task tracker / progress log | Every work session (append to Progress Log) |
+| `archive/todo-a12.txt` | Task tracker for the DB Common Events CSS engine, status "not started" — scoped to a minimal CSS subset needed for the Common Events tab's visual structure, not a full `db-0000.html` port | When that task starts/progresses |
+| `archive/15.clock-design.md` | Design doc (2026-08-13, not built) for taskbar cell 15's clock menu: realclock + game clocks (`gameclock0000`...), per-session/desk/world, switch/event-tied | Before building cell 15's clock menu |
+| `archive/CURSWORD-HQ-SPAWN.md` | DONE, relay-verified (2026-08-24): "cursword" HQ menu row + entity spawn flow, built off `AU24-oc-handon.md` §4.4 | Historical/reference — read before touching the cursword entity template or HQ-menu spawn flow |
+| `AU24-oc-handon.md` | Live, still-open task backlog (2026-08-24): events ladder (Show Text/Choices/Input Number/Wait/Play SE), common events in db, CURSword's remaining chat features (minimize/windows-list/voice I/O — §4 spawn mechanics itself is DONE, see `archive/CURSWORD-HQ-SPAWN.md`), test-artifact + video-report generation, hum/idle animation, execution priority order, critical rules, event-runtime quick-reference diagram | Before starting ANY of the events-ladder or CURSword-chat-feature work — this is the real task list, not just a snapshot |
+| `archive/a11.focus-troubleshooting.md` | Closed-bug record | Rarely (historical) |
+| `maintenance-fixes.md` | Small non-blocking polish items | Whenever one is noticed |
+| `_.0.aigent-testing-k9.txt` (house root, not au11-hq) | House-wide testing guide across ALL program families, with a 2026-08-11 khtpm-specific addendum at the bottom | When a testing mechanism is discovered/corrected for a NEW family |
+| `44.xyz❤️‍🔥️00.17/LINUX_ROUNDTRIP.md` | Linux return-leg status: Mach-O quarantine (76 files), house-wide recompile (44/44 PASS), manual rebuilds (treetRace, hm_assert, apply_theme_op), verification, livedesk smoke-test | When returning from macOS to Linux (or any roundtrip); read before relaunching |
+| `yz.muchiverse/ROUNDTRIP_FIX.md` | Concise fix log + re-run recipe for future roundtrips (purge Mach-O → compile-runner → manual extras → verify → relaunch) | When re-running the purge+rebuild recipe; includes rollback instructions |
+| `$.crypts/compile-runner.ps1` | Windows house-wide compile runner (PowerShell twin of compile-runner.sh). Finds every build.ps1 and runs each from its own directory. **Untested — needs Windows/MSYS2 verification.** | When compiling all projects on Windows natively (no WSL) |
+| `EVENTS-HQ-RGB-HANDOFF.md` | 2026-08-12 session handoff: db-hq focus fix, events-hq built+wired, RGB Phase 0 result, next-step plans | When events-hq/db-hq/RGB work resumes and this doc's own "next steps" get done |
+| `!.chtpm-render-dedup-guidance.md` (house root) | Deferred: `chtpm_rgb_render.c`/`chtpm_parser_pal.c` duplication across 22/28 dirs, NOT byte-identical (real per-app divergence) - investigation plan for whenever this becomes relevant, not urgent | Only when someone actually starts that dedup pass |
+| `HARNECIENT-H-AI-RELAY.md` | **HIGH PRIORITY + LOAD-BEARING** - approved design to wire the Harnecient mode (`HARNECIENT-HACK.md`) into h-ai as a CHOOSABLE model, then demo + bake in a lasting reproducible harness for the full loop: relay injection into the real h-ai window → non-tooled model (270m/1b/3B) → deterministic read/write/run → **real control of the livedesk taskbar state files** (`strip_var_tabs.txt`, `strip_state.txt`). 4 phases (model switcher → `BACKEND_HARNECIENT` backend path → relay demo → `relay-harness/` N/N proof), success criteria + risks + milestones all in the doc. | Before starting any h-ai model-switcher / Harnecient-mode / relay-harness work |
+| `chat-hai-design.md` | **HIGH PRIORITY** — design plan for a new side-bar multi-model conversation engine: 4 smol models (gemma270/qwen-ladder) constantly chatting with persistent memory, moderated by slower bigger models (qwen2.5:7b/haiku) that curate, reprompt, and delegate. Proof-of-concept ladder (Phase 0-5), memory/priority/FSM-recall architecture, relationship graphs, moderator loop, and roadmap. | Before starting any multi-agent / ambient-chat / side-bar conversation work |
+| `13.AUG.13-HAI-2do.txt` | **DETAILED OPERATIONAL ROADMAP** — phases 1-5 with KPIs, sub-tasks, milestones for Harnecient integration into h-ai. Phases: model switcher (1-2h), Harnecient wiring (4-6h), relay demo (1-2h), reproducible harness (3-4h), autonomous generation (post-phase-4). Includes progression: Claude manages → Claude reviews → h-ai autonomous, with success criteria and risk mitigation. | Every phase completion or when strategy/timelines change |
+| `1-1.HARNECIENT.AUBIO/` (this dir) | **HARNECIENT VOL 1 — the living textbook** (2026-08-12). 16 daily lessons in chapter format (README = cover + lesson map), audio-friendly, house cast (tomo/rahweh/maxine/iqa). Covers: the Harnecient Hack + 6 components, DESCRIBE-not-CLASSIFY, the 9/9 proof + war stories (fopen crash, 3B hallucination, 8B lying), the house + relay + nav.sh, h-ai & the relay plan, controlling tb, harness philosophy, and **the prompting masterclass (verbatim session-opener templates + token-saving playbook)**. Part VI = the telescope: create events, range-limited entity movement, **fake time starting 0 A.D. + endturn + time ticker + toolbar options**. Each day file stands alone; new lessons append as work grows. | Before starting a new Harnecient feature or onboarding an agent — read INDEX first, then the relevant day |
+| `archive/OPEN-HAI-GUI-DESIGN.md` | REAL AND BUILT (as of 2026-08-12) - cell 14 "h-ai" window: real nav, scroll, disk-persisted deletable history, raw Ollama backend, PNG+receipt verification. Current primary work: Harnecient integration (model switcher → protocol → relay demo → harness). See `13.AUG.13-HAI-2do.txt) for detailed roadmap and phase breakdown. See `ONBOARDING.md` for current status and next steps.` FIRST for the actual current blocker |
+| `&.widgits/open-hai/code-tools-harness/api-test-results.md` | 2026-08-12 Ollama tool-use probe. HEADLINE: HARNECIENT (my-lawyer strategy) proven 9/9 on non-tooled `stable-code` 3B + `gemma3:1b` + `gemma3:270m` (deterministic read/edit/run, zero `tools` fields). Contrast: 3B has NO native tools (server rejects); naive text-JSON calls are flaky/hallucinate; 8B native works but read-then-edit FAILS (parallel calls, guessed search). Harness + raw JSONs in same dir. | When tool-use capability/verdicts change |
+| `&.widgits/open-hai/code-tools-harness/LEARNINGS.md` | 2026-08-12 "don't waste time again" doc: §0 = THE HARNECIENT HACK (see `HARNECIENT-HACK.md`) - proven 9/9 on 3B/1b/270m; 3B cannot do native tools (don't retest); pure-C-only rule; 8B emoji-path corruption; native args arrive as dict-or-string with `\uXXXX` escapes; 8B won't wait for read before editing; harness C-port parity bugs (missing `n++`, wrong verdict msg); fopen-on-directory `ftell=LONG_MAX` malloc crash. Read BEFORE re-probing Ollama tool use or touching the harness. | Before any new Ollama tool-use probing or harness edits |
+| `#.Z.HUMAN_LLM/.MAC-ACCESS.txt` (house root, NOT au11-hq) | LAN Mac SSH+Ollama access (10.0.0.144, real model list, the "Ollama only binds localhost after a restart" fix) - single source of truth, read before any LAN-model work | Before any SSH/Ollama LAN access; if Ollama seems unreachable, check the restart-fix here first |
+| `$.claude-hai-budget.md` | **HIGH PRIORITY** - Claude↔h-ai token budget strategy: when to delegate scoped/mechanical work to a Harnecient model instead of doing it in-session, standing offload opportunities, BT/FSM/RL test-runner ops worth building, delegation log | Every time a real delegation opportunity is identified or acted on - log it, don't just plan |
+| `EVENTS-PAL-BUILDOUT-PLAN.md` | Delegation plan for building out the RPG-Maker event command vocabulary (~90 commands, `#.ref/menu/`) via `run_plan.sh`/`run_queue.sh` - real architecture confirmed (Change Gold IS `.pal`-driven, not hardcoded), staged rollout (Party/Actor commands first - structurally identical to Change Gold, highest delegation leverage; Flow Control needs real VM opcodes, keep in Claude; Movement/Screen/Audio/Battle blocked on unbuilt infra) | Before starting ANY new event command implementation - check which stage it belongs to first |
+| `HARNESS-DELEGATION-PIPELINE.md` | **HIGH PRIORITY, BUSINESS-CRITICAL** - survey of every existing harness (Harnecient Hack, code-tools-harness, detect_tool(), relay harnesses, Phase-4 design) + the real gap (no adaptive multi-step tool chaining exists yet) + a staged design (deterministic FSM, pluggable tool registry, declarative scoring, checkpoint/resume) for a reusable, sellable delegation pipeline. Direct instruction: "always favor making a harness to do work that we can reuse over recoding something by hand." | Before writing ANY new one-off dispatch/test script - check if it should be a reusable harness piece instead; update when a new harness is built or the pipeline design advances |
+| `44.xyz❤️‍🔥️00.17/completed-sym-list.md` + `sim-smell-fix.md` (house root) | **SESSION NOTE 2026-08-21 — symlink-migration Step 2 session (opencode agent)**: wired `persist_session_state()` into **19 projects'** `button.sh` (all `0.user-pal👤️`, `@.apps/*`, `&.widgits/*`, TSOTS families) after the earlier house-wide `ln -s`→`cp -r` swap. STRUCTURAL CHANGES to know about if complications arise later: (1) every patched button.sh now copies mutable session state back to the real project root at session exit — data written mid-session only exists under `pieces/sessions/<id>/` (or `/tmp/.<app>-*`) until exit, so anything reading real-root state mid-run must read the SESSION copy instead; (2) persist blocks auto-`mkdir -p` real-root dest dirs on fresh checkouts; (3) volatile files deliberately NOT copied back (`avatar_window_pids.txt`, quit_flag, history, relays, gui_state); (4) identity ops unchanged — they write real roots via `USERPAL_LOGIN_ROOT`/seeded `house_root.txt`; (5) 5 harness scenarios updated (stale real-root assertions → session/house-level paths, post-exit persistence checks added, sessions launched with `setsid` so cleanup sweeps can't kill the scenario); (6) `&.widgits/{context-menu,event-editor,event-ez}` verified STATELESS — no persist wiring, on purpose; (7) known pre-existing quirk left as-is: external TERM on `button.sh run` defers the EXIT trap while keyboard_input is foreground (Ctrl+C in-UI unaffected). Full per-project reports + test recipes in `completed-sym-list.md`; classification/status tables in `sim-smell-fix.md`. Awaiting human per-project signoff before `.pre-symlink-swap` backup deletion. **Also this session: house-wide compile sweep added — all 44 build scripts now PASS** (fixed 5 pre-existing breakages: undefined `$_SS` vars in zoo-INK/muchi-pals/mutaclsym+18.0G build.sh, wsr-pal missing freetype flags, tile-picker missing vendored stb_image.h). **NEW STANDING HOUSE RULE recorded in `!.HOUSE_STDS.md` §A.2 + pitfall 7b: NEVER use symlinks anywhere in this tree (they break on Windows) — copy or compile-from-canonical-source instead; §A.2 rewritten for the copy-in/persist-out model (live binary rebuilds no longer apply to running sessions).** | If any project's save/config data looks stale, missing, or duplicated after a session — read this note + completed-sym-list.md first; if a build fails, re-run its scripts/build.sh and compare against the 44/44 baseline |
+
+**Rule of thumb:** architecture/status → HANDOFF.md. How-to-test → TESTING_STRATEGY.md. Deep
+single-feature research → its own `<FEATURE>.md`. Task-by-task progress → 2do-au11.txt. Never duplicate
+the same fact across files — link instead (`see HANDOFF.md §X`).
+
+---
+
+## Standing Rules (apply everywhere, not just one doc)
+
+1. **Testing:** All testing goes through relay/inject (`nav.sh`), never direct CLI binary calls.
+   See TESTING_STRATEGY.md.
+2. **New UI/state patterns:** Check local chtpm usage first, then tpmos
+   (`1.TPMOS_c_+rmmp.0103.0001/`) before inventing new shape. See HANDOFF.md's standing-rule section.
+3. **Storage:** New work (games, events, common events) goes under `sessions/<user>/<session>/`, not
+   `@.apps/`. Games = sessions. Maps = desks.
+4. **Ownership:** Store your own harnesses/test output under your own
+   `xyzfs/users/<your_account>/harnesses/` so agents don't clobber each other.
+5. **Blocked/uncertain?** Document the question + dead end in au11-hq/ rather than guessing silently.
+6. **Demo games must use palettes**, not hardcoded content — direct instruction: "when u build the
+   game, i want u 2 use pallets, to make sure users can use it and that we have autonomous harnesses
+   ready to sell." Palette population UI is on the 2do (Task 4) but not yet built — building it may
+   be a prerequisite for the first demo game, not an afterthought.
+7. **No hardcoded UIs, ever** (2026-08-24): every window/menu/layout is DATA and a GENERATED
+   ARTIFACT of some store (`.ir.pdl`→pal, `bookmarks.pdl`→chtpm, `meta.pdl`→menu rows); extend
+   generic renderer mechanisms instead of adding domain branches to renderers. New UI work rides
+   the NEW context-window standard (`khtpm_entity_menu_render`), not bespoke windows. Full rule +
+   mechanics: `44.xyz❤️‍🔥️00.17/!.HOUSE_STDS.md` §K.
+
+---
+
+## 🌐 Cross-Platform Compatibility (3 legs)
+
+**Doctrine: Linux is canonical. Other OSes = thin shims + resolve-time aliasing — never a second product, never per-OS file renames, never PDL content rewrites.**
+
+| Leg | Status | Doc |
+|---|---|---|
+| Linux (canonical) | ✅ always current | `44.xyz❤️‍🔥️00.17/!.HOUSE_STDS.md` |
+| Windows | ✅ taskbar + entity windows live; **compile-runner.ps1 + 33 build.ps1 generated** (needs Windows/MSYS2 verification) | `yz.muchiverse/8.21.GROK-win.md`, `$.crypts/compile-runner.ps1` |
+| macOS (return leg) | ✅ **ROUNDTRIP FIXED 2026-08-23** — 76 Mach-O binaries quarantined + house-wide recompile (44/44 PASS) + livedesk smoke-test passed | `44.xyz❤️‍🔥️00.17/LINUX_ROUNDTRIP.md`, `yz.muchiverse/ROUNDTRIP_FIX.md` |
+
+**The round-trip problem (bites EVERY Windows trip, caught 2026-08-22):** NTFS cannot store
+names containing `*`, so the house's `*.monads` / `*.START_BUTTON` trees must be renamed to `_.`
+to travel; coming back they MUST be restored or every launch says "binary missing" (paths like
+`*.monads/*.livedesk-taskbar/ops/+x/...` stop resolving) and the whole tree comes back with
+stripped/locked permissions.
+
+**The fix — `$.crypts/win-trip.sh` (house root), run around every physical copy:**
+```
+$.crypts/win-trip.sh status     # which shape is the tree in right now?
+$.crypts/win-trip.sh to-win     # BEFORE copying to Windows: '*.' -> '_.', writes WIN-TRIP-MANIFEST.txt
+# ... copy to Windows, work there (Win binaries alias '*.'<->'_.' at RESOLVE time - no content changes) ...
+$.crypts/win-trip.sh to-linux   # AFTER copying back: restores '*.' names via manifest + chmod -R 777 whole tree
+```
+Manifest-driven: legitimately underscore-named entries (e.g. `_.0.aigent-testing-k9.txt`) are never
+touched; refuses to restore without a manifest rather than guessing. Verified by full sandbox
+round trip (content-identical).
+
+**If you just merged from a Windows checkout and things "randomly" broke:** run
+`win-trip.sh status` first. Symptom of an un-restored tree: `crypt_autostart: binary missing for ...`
+on every pal, nothing on screen. Also check exec bits if only *some* things fail.
+
+---
+
+## 🎯 Plans AFTER events (recorded 2026-08-24, direct instruction)
+
+The events ladders come first, then these land:
+
+1. **Events ladder** — `44.xyz❤️‍🔥️00.17/#.ref/menu/event.commands.remaining.txt`
+   (Wait → Show Choices → Input Number → Play SE, then by category) and
+   `house-commands.remaining.txt` (TTS, file ops, exec shell, forum/AI
+   commands). **Parity rule:** every event op also lands in db-hq's
+   global/common events in the same pass (same shared runtime), and the
+   db-side state those commands read (switches/variables kv files,
+   Items/Weapons/Armors/System tabs) lands IN STEP — see the coupling
+   notes in both files + `db-tabs-remaining.txt`.
+2. **Palettes after that** — new categories now registered in
+   `44.xyz❤️‍🔥️00.17/#.ref/menu/palletes/pallets-help.txt`:
+   chemistry-palette (emoji/formula/color compound tiles + recipe-tree
+   view from `elements]new=RECIPEZ+]z2🏆.txt`), tiling-rmmv (A1–E
+   autotile mapping), minecraft-blocks, cdda-tiles, df-tiles (ASCII dual
+   mode + raised view). Full mechanics:
+   `44.xyz❤️‍🔥️00.17/#.ref/menu/tiling-palettes-chemistry.txt`.
+
+---
+
+**2026-08-24** (created `archive/` subfolder for lower-priority docs, per direct
+suggestion: closed-bug records, DONE/superseded handoffs, single-feature deep-dives, and
+the two `.ARCHIVE.md` full-history twins moved there — 12 files
+(`a11.focus-troubleshooting.md`, `a12.opencode-prompt.md`, `CURSWORD-HQ-SPAWN.md`,
+`DB-HQ-HANDOFF.md`, `khtpm-merge-how2.ARCHIVE.md`, `opencode-mutafix-pie.md`,
+`OPEN-HAI-GUI-DESIGN.md`, `OPENROUTER-INTEGRATION-HANDOFF.md`,
+`taskbar-keyboard-relay-and-terminal-render.ARCHIVE.md`, `todo-a12.txt`,
+`15.clock-design.md`, `USER_CREATION.md`); every routing entry above and in Document
+Roles updated to the new `archive/`-prefixed path, none left dangling. Main dir went
+44→30 files. `AU24-oc-handon.md` deliberately NOT archived — still live backlog, see its
+own entry) by Claude (Haiku)
+
+**2026-08-24** (doc-compaction pass, part 2, approved: confirmed `_.hai-LEARNINGS-a12.md`
+was a strict subset/earlier draft of the already-indexed `code-tools-harness/LEARNINGS.md`
+— diffed line-by-line, deleted; corrected an earlier over-hasty "AU24-oc-handon.md is
+superseded" call after actually reading it in full — it's mostly LIVE open backlog
+(§1-3, §5-10), only §4's spawn mechanics are done (per `archive/CURSWORD-HQ-SPAWN.md`) — added a
+status banner instead of shrinking it, plus its own missing INDEX.md routing row;
+compacted `khtpm-merge-how2.md` (2839→~150 active lines, full history preserved in new
+`archive/khtpm-merge-how2.ARCHIVE.md`) and `taskbar-keyboard-relay-and-terminal-render.md` (161→~30
+lines, full original in new `.ARCHIVE.md`) — both were genuinely superseded, unlike
+AU24-oc-handon.md. Also updated the human-facing `#.house-docs.html/1.index-house=solo.html`
+Known-Issues section with the khtpm_hq_render receipt/frame-history finding, per direct
+instruction that that page is what the user actually reads — added a standing INDEX.md
+rule to keep both in sync going forward) by Claude (Haiku)
+
+**2026-08-24** (compaction "safe batch" executed, approved: deleted `session-au15.md`
+(raw session-transcript debris, not a doc) and the empty `x/` dir; fixed the stale
+`chat-hack.md`→`A15.chat-hack.md` link typo; added missing routing rows for
+`archive/todo-a12.txt`, `archive/15.clock-design.md`, `archive/CURSWORD-HQ-SPAWN.md` (all real, just unindexed).
+Correction during the pass: `#.house-docs.html` looked like a 0-byte stub but is
+actually a DIRECTORY containing a real 47K "Muchiverse House Docs" index page
+(`1.index-house=solo.html`, 2026-08-19) — NOT deleted, flagged instead. Remaining
+compaction items (AU24-oc-handon.md shrink, LEARNINGS diff, khtpm-merge-how2.md +
+taskbar-keyboard-relay-and-terminal-render.md compaction) still pending in
+`house-compaction.md` Part 3) by Claude (Haiku)
+
+**2026-08-24** (found + documented, NOT YET FIXED per direct instruction: real compliance
+drift — `khtpm_hq_render.c`'s dump path has no receipt and no frame-history log, unlike
+au11-hq's own documented receipt convention and unlike the live, confirmed
+TPMOS/wraith-alpha `.receipt.pdl` standard; wrote `house-compaction.md` with full findings
++ a doc-compaction candidate list for `1.^V-hq/`; agreed order is compact-docs-first, then
+fix the drift, then resume palettes T1-T6) by Claude (Haiku)
+
+**Last updated:** 2026-08-24 (added 🎯 Plans-after-events section: palettes
+categories registered in pallets-help.txt, db-hq↔events-hq event-op parity +
+db-coupling rules pinned in the #.ref remaining lists) by opencode (ox-alpha)
+
+**2026-08-24** (pinned the no-hardcoded-UIs standing rule + added Standing Rule 7 +
+Document Roles row for `!.HOUSE_STDS.md`; wrote new **§K UI-authoring standards** into
+`44.xyz❤️‍🔥️00.17/!.HOUSE_STDS.md`: store→generated-artifact rule, context windows OLD vs NEW
+(`khtpm_entity_menu_render` = THE standard, opt-in via `<pkg>/menu.chtpm`), generic hq-renderer
+mechanisms with honest caveat they currently live only in the stats-hq legacy binary
+(`kptm_hq_render.c`, port to merged binary open), SHOW_PAGE chooser contract, bookmarks spec;
+also verified live db-hq launches the MERGED binary via `open_db_hq.sh`) by opencode (ox-alpha)
+
+**2026-08-23** (Linux return leg roundtrip fixed: 76 Mach-O binaries quarantined, house-wide recompile 44/44 PASS, livedesk smoke-test passed; full trail in `44.xyz❤️‍🔥️00.17/LINUX_ROUNDTRIP.md` + `yz.muchiverse/ROUNDTRIP_FIX.md`) by Kilo
+
+**2026-08-22** (macOS leg started + critical path LIVE: taskbar and all entity
+windows verified running under XQuartz on the Intel Mac via new `$.crypts/mac-start-livedesk.command`
+(mirrors win-start-livedesk.ps1; bypasses /proc-dependent crypt_autostart); taskbar build scripts
+patched with guarded Darwin branches, zero C edits; full trail in
+`44.xyz❤️‍🔥️00.17/MAC-CONVERSION-STATUS.md`) by opencode (ox-alpha)
+
+**2026-08-22** (added 🌐 Cross-Platform Compatibility section: the Windows
+round-trip breakage + `$.crypts/win-trip.sh` fix — star-name aliasing + `chmod -R 777` on return;
+and `44.xyz❤️‍🔥️00.17/MAC_COMPAT.md`, the handoff brief for the macOS leg) by opencode (ox-alpha)
+
+**2026-08-21** (added session note for the 2026-08-21 symlink-migration Step 2
+session — `persist_session_state()` wired into 19 projects' button.sh across the house, 5 harness
+scenarios fixed, full trail in `44.xyz❤️‍🔥️00.17/completed-sym-list.md` + `sim-smell-fix.md`;
+see the new Document Roles row for what may bite later) by opencode (ox-alpha)
+
+**Previously:** 2026-08-17 (`legacy-shared-fix.md`: full `chtpm_parser_pal.c`/`prisc+x.c` consolidation done, 12/12 real participants on one shared baseline; `chtpm_rgb_render.c` consolidated for 9 projects; GL→X11 display-shim migration 3/16 done (mutaclysm/piececraft-xyz/my-chara-txt), 13 remain; a real mutaclysm interact-mode regression and a real db-hq/chat-hai `[X]`-close-all-entities bug both found+fixed; mutaclysm's own camera/3D work deferred to `archive/opencode-mutafix-pie.md`. `!.HOUSE_STDS.md` also updated to point its own khtpm-window-reference mentions at the now-merged shared binary instead of the archived standalone files) by claude

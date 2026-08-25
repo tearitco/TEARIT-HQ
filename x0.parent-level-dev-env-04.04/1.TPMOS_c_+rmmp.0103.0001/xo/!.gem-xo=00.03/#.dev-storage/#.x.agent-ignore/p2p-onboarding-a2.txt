@@ -1,0 +1,570 @@
+P2P-NET ONBOARDING GUIDE
+========================
+Document ID: p2p-onboarding-a2.txt
+Date: April 2, 2026
+Purpose: Get a new agent productive on P2P-NET in under 10 minutes
+Audience: Developers/agents continuing Phase 6 implementation
+
+================================================================================
+READ THIS FIRST (In Order)
+================================================================================
+
+1. THIS DOCUMENT - Orientation and quick start
+2. #.docs/deliverable-p2p.txt - Complete implementation guide with code examples
+3. #.docs/p2p-succession-report-a2.txt - Status summary and checklist
+4. #.docs/^.pmo.ld-faq+8/PITFALLS_ACTIVE_2026-03-18.txt - System-wide pitfalls (MANDATORY)
+5. #.docs/P2P_LEGAL_NOTICE.txt - Legal requirements (refund guarantee, casual fun security)
+6. #.docs/cpu_safe_module_template.c - CPU-safe pattern for manager enhancements
+7. #.docs/COMPILE_SYSTEM.md - How compilation works (./button.sh compile)
+
+================================================================================
+WHAT IS P2P-NET?
+================================================================================
+
+P2P-NET is a peer-to-peer networking and messaging system built on TPMOS (True
+Piece Method Operating System). It provides:
+
+- Decentralized peer discovery (UDP broadcast)
+- Direct peer connections (TCP)
+- Email-style messaging between wallets
+- Blockchain-based economy (mining, wallets, transactions)
+- NFT items, auctions, trading, rentals (future phases)
+
+Think of it as a game-internal P2P network where players can:
+- Discover and connect to each other
+- Send messages across the network
+- Mine coins and trade items
+- Create their own economies
+
+All state is file-based. No databases. No shared memory. Files are the database.
+
+================================================================================
+WHERE IT LIVES
+================================================================================
+
+Project root:
+  projects/p2p-net/
+
+Key files:
+  project.pdl                    - Project descriptor (metadata, op mappings)
+  layouts/p2p-net.chtpm          - GUI dashboard layout (ASCII art with ${vars})
+  manager/p2p_manager.c          - Manager daemon (reads keys, calls ops)
+  manager/+x/p2p_manager.+x      - Compiled manager binary
+  ops/src/*.c                    - Op source files (10 implemented)
+  ops/+x/*.+x                    - Compiled op binaries (10 binaries)
+  ops/ops_manifest.txt           - Registry of all ops with descriptions
+  pieces/                        - State files (network, chat, wallet, blockchain)
+
+System integration:
+  pieces/system/fondu/fondu.+x   - Lifecycle manager (install/uninstall/archive)
+  pieces/os/ops_registry/        - Registered ops per project
+  pieces/os/ops_catalog.txt      - Human-readable list of all ops
+  pieces/apps/player_app/history.txt - Input buffer (all projects write here)
+
+================================================================================
+ARCHITECTURE OVERVIEW
+================================================================================
+
+TPMOS follows a strict layered model:
+
+```
+USER INPUT (keyboard)
+    ↓
+pieces/keyboard/history.txt
+    ↓
+chtpm_parser.+x (routes to active project)
+    ↓
+pieces/apps/player_app/history.txt
+    ↓
+p2p_manager.+x (polls every 16ms)
+    ↓
+fork/exec → ops/+x/<op_name>.+x
+    ↓
+Op updates state files (pieces/chat/, pieces/network/, etc.)
+    ↓
+Manager writes response.txt + state.txt + gui_state.txt
+    ↓
+Parser substitutes ${variables} in layout
+    ↓
+current_frame.txt → Display to user
+```
+
+Key principle: **Files are the database.** Every op reads/writes files. No memory
+sharing. No databases. If it's not in a file, it doesn't exist.
+
+================================================================================
+WHAT'S COMPLETED (Phase 6 Part A)
+================================================================================
+
+✅ 10 ops implemented and compiled:
+   Network (6): configure_subnet, broadcast_join, broadcast_leave,
+                connect_peer, disconnect_peer, list_peers, ping_peer
+   Messaging (4): compose_message, check_inbox, read_message
+
+✅ GUI layout complete (p2p-net.chtpm)
+✅ Account Switcher Implemented: Seamlessly switch between multiple local 
+   wallets/identities using Key 7 (Selector Pattern).
+✅ Manager code functional (reads keys, calls ops, writes state)
+✅ State files initialized (peers, subnets, sample messages)
+✅ Ops manifest registered
+✅ Project.pdl corrected (naming mismatch fixed)
+
+================================================================================
+WHAT NEEDS TO BE DONE (Phase 6 Part B)
+================================================================================
+
+⬜ 6 wallet/mining ops:
+   1. wallet_login - Authenticate user, load wallet
+   2. wallet_create - Create additional wallet
+   3. list_wallets - List user's wallets with balances
+   4. mine_block - SHA256 mining with difficulty
+   5. get_balance - Query wallet balance
+   6. send_coins - Transfer between wallets
+
+⬜ GUI integration:
+   - Manager must populate all 10 layout variables
+   - Add gui_state.txt writer to manager
+   - Wire up action keys to refresh GUI state
+   - Test full dashboard workflow
+
+⬜ Integration testing:
+   - Install via fondu
+   - Test all ops manually
+   - Test GUI workflow
+   - Verify variable substitution
+
+DETAILED GUIDE: See #.docs/deliverable-p2p.txt for complete code examples,
+file structures, compilation commands, and testing workflows.
+
+================================================================================
+QUICK START (First 30 Minutes)
+================================================================================
+
+STEP 1: Read the pitfalls (10 min)
+──────────────────────────────────
+  cat #.docs/^.pmo.ld-faq+8/PITFALLS_ACTIVE_2026-03-18.txt
+
+Critical pitfalls for P2P-NET:
+  #10  - Process/CPU safety (fork/exec, no runaway loops)
+  #13  - No-git backup mandate (backup before editing!)
+  #16  - Marker file discipline (initialize before watch loops)
+  #17  - One writer rule (current_frame.txt has single owner)
+  #18  - State/PDL integrity (never overwrite whole files)
+  #20  - Root/path drift (resolve from location_kvp)
+  #21  - Direct read performance trap (avoid popen storms)
+  #25  - Response sink rule (persist to files, not stdout)
+  #46  - Missing binaries syndrome (compile all required)
+  #55  - Input routing path confusion (history file location)
+  #70  - Silent failure anti-pattern (report actual outcomes)
+
+STEP 2: Review current state (5 min)
+────────────────────────────────────
+  cd projects/p2p-net/
+  ls -la ops/+x/           # Should see 10 binaries
+  cat project.pdl           # Verify op mappings
+  cat ops/ops_manifest.txt  # Verify op registry
+  cat manager/state.txt     # Check current state
+
+STEP 3: Test existing ops (10 min)
+──────────────────────────────────
+  # Test network ops
+  ./projects/p2p-net/ops/+x/list_peers.+x "all"
+  ./projects/p2p-net/ops/+x/check_inbox.+x "abc123def456" "all"
+  ./projects/p2p-net/ops/+x/read_message.+x "abc123def456" "msg_001"
+
+  # Test compose
+  ./projects/p2p-net/ops/+x/compose_message.+x "abc123def456" "def456ghi789" "chat" "Test" "Hello from CLI"
+
+STEP 4: Read the deliverable (5 min)
+────────────────────────────────────
+  head -100 #.docs/deliverable-p2p.txt
+
+This has complete code examples for all 6 remaining ops and GUI integration.
+
+================================================================================
+OP IMPLEMENTATION PATTERN
+================================================================================
+
+Every op follows this template:
+
+```c
+/*
+ * op_name.c - Brief description
+ * Purpose: What this op does
+ * Args: arg1, arg2, ...
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <time.h>
+#include <limits.h>
+
+#define MAX_PATH PATH_MAX
+#define MAX_LINE 1024
+
+/* Helper: Get base path */
+static void get_base_path(char *buf, size_t size) {
+    if (getcwd(buf, size) != NULL) return;
+    strncpy(buf, ".", size - 1);
+}
+
+/* Helper: Ensure directory exists */
+static void ensure_dir(const char *path) {
+    char cmd[MAX_PATH * 2];
+    snprintf(cmd, sizeof(cmd), "mkdir -p %s", path);
+    system(cmd);
+}
+
+int main(int argc, char *argv[]) {
+    char base_path[MAX_PATH];
+    
+    /* 1. Parse and validate arguments */
+    if (argc < EXPECTED_ARGS) {
+        fprintf(stderr, "Usage: op_name <arg1> <arg2> ...\n");
+        return 1;
+    }
+    
+    /* 2. Get base path */
+    get_base_path(base_path, sizeof(base_path));
+    
+    /* 3. Create directories if needed */
+    ensure_dir(some_path);
+    
+    /* 4. Perform operation (read/write state files) */
+    FILE *f = fopen(path, "r");
+    // ... do work ...
+    
+    /* 5. Update state files */
+    f = fopen(state_path, "w");
+    fprintf(f, "key=value\n");
+    fclose(f);
+    
+    /* 6. Output result */
+    printf("Operation completed successfully\n");
+    
+    /* 7. Return 0 on success, 1 on failure */
+    return 0;
+}
+```
+
+COMPILATION:
+  gcc -o projects/p2p-net/ops/+x/op_name.+x projects/p2p-net/ops/src/op_name.c
+
+TESTING:
+  ./projects/p2p-net/ops/+x/op_name.+x arg1 arg2 ...
+
+================================================================================
+MANAGER PATTERN
+================================================================================
+
+The manager is a long-running daemon that follows the CPU-SAFE pattern.
+
+REFERENCE TEMPLATE: #.docs/cpu_safe_module_template.c
+
+Key requirements (from template):
+✓ Signal handlers for SIGINT/SIGTERM
+✓ setpgid(0, 0) for process group isolation
+✓ fork/exec/waitpid (NEVER system() for commands)
+✓ stat() before reading files (avoid unnecessary I/O)
+✓ is_active_layout() check - sleep 100ms when not in focus
+✓ 16ms polling interval (60 FPS max)
+✓ Bounded sleep intervals (no tight loops)
+
+Architecture:
+```c
+int main() {
+    /* CPU-SAFE: Setup */
+    signal(SIGINT, handle_sigint);
+    signal(SIGTERM, handle_sigint);
+    setpgid(0, 0);
+    resolve_paths();  /* Read project_root from location_kvp */
+    
+    /* Main loop */
+    while (!g_shutdown) {
+        /* CPU-SAFE: Focus-aware throttling */
+        if (!is_active_layout()) {
+            usleep(100000);  /* 100ms when not in focus */
+            continue;
+        }
+        
+        /* Poll history file with stat()-first */
+        if (stat(history_path, &st) == 0 && st.st_size > last_pos) {
+            FILE *f = fopen(history_path, "r");
+            fseek(f, last_pos, SEEK_SET);
+            
+            int key;
+            while (fscanf(f, "%d", &key) == 1) {
+                process_key(key);  /* Dispatch to op */
+            }
+            
+            last_pos = ftell(f);
+            fclose(f);
+        }
+        
+        usleep(16667);  /* ~16ms polling */
+    }
+    
+    return 0;
+}
+
+static void process_key(int key) {
+    if (key == '1') {
+        /* CPU-SAFE: fork/exec/waitpid pattern */
+        pid_t pid = fork();
+        if (pid == 0) {
+            freopen("/dev/null", "w", stdout);
+            freopen("/dev/null", "w", stderr);
+            execl("/bin/sh", "/bin/sh", "-c", cmd, NULL);
+            _exit(127);
+        } else {
+            waitpid(pid, &status, 0);
+        }
+        
+        /* Update state */
+        set_response("Operation completed");
+        write_state();
+        write_gui_state();  /* For GUI variable substitution */
+    }
+}
+```
+
+CRITICAL: When enhancing p2p_manager.c, follow the cpu_safe_module_template.c
+pattern exactly. Do NOT use system(), do NOT skip is_active_layout() checks,
+do NOT remove signal handlers.
+
+================================================================================
+GUI INTEGRATION PATTERN
+================================================================================
+
+The layout (p2p-net.chtpm) expects these variables:
+
+  ${wallet_address}    - Current wallet address
+  ${subnet_list}       - Comma-separated subnet names
+  ${unread_count}      - Number of unread messages
+  ${total_count}       - Total messages in inbox
+  ${inbox_list}        - Formatted inbox (first 10 messages)
+  ${message_preview}   - Current message content
+  ${peer_count}        - Number of connected peers
+  ${peer_list}         - Formatted peer list
+  ${p2p_response}      - Response from last op
+  ${last_key}          - Last key pressed
+
+The manager must write these to `manager/gui_state.txt`:
+
+```
+wallet_address=abc123def456...
+subnet_list=general, chat, auction
+unread_count=1
+total_count=1
+inbox_list=[!] def456 - Re: Hello!
+message_preview=Hi back! Message received...
+peer_count=3
+peer_list=127.0.0.1:8001 (abc123) [chat] - active
+p2p_response=Message sent successfully
+last_key=2
+```
+
+The parser reads this file and substitutes ${variables} in the layout.
+
+IMPLEMENTATION: See deliverable-p2p.txt for complete gui_state.txt writer code.
+
+================================================================================
+COMPILATION WORKFLOW
+================================================================================
+
+STANDARD COMPILATION:
+  ./button.sh compile    # Compiles everything + verifies
+  ./button.sh check      # Verifies all binaries exist
+  ./button.sh run        # Starts CHTPM
+
+IMPORTANT: compile_all.sh scans for ops in `projects/*/ops/*.c` but P2P-NET 
+stores sources in `ops/src/*.c`. This means:
+
+MANUAL COMPILATION REQUIRED for P2P-NET ops:
+  cd projects/p2p-net/ops/src/
+  gcc -o ../+x/wallet_login.+x wallet_login.c
+  gcc -o ../+x/wallet_create.+x wallet_create.c
+  gcc -o ../+x/list_wallets.+x list_wallets.c
+  gcc -o ../+x/mine_block.+x mine_block.c
+  gcc -o ../+x/get_balance.+x get_balance.c
+  gcc -o ../+x/send_coins.+x send_coins.c
+
+MANAGER COMPILATION:
+  cd projects/p2p-net/manager/
+  gcc -o +x/p2p_manager.+x p2p_manager.c
+
+VERIFY BINARIES:
+  ls -la projects/p2p-net/ops/+x/
+  ls -la projects/p2p-net/manager/+x/
+
+AFTER COMPILATION:
+  ./pieces/system/fondu/fondu.+x --install p2p-net
+  ./pieces/system/fondu/fondu.+x --list-ops | grep p2p
+
+REFERENCE: #.docs/COMPILE_SYSTEM.md for full compilation guide
+
+================================================================================
+TESTING WORKFLOW
+================================================================================
+
+MANUAL OP TESTING:
+  # Test wallet login
+  ./projects/p2p-net/ops/+x/wallet_login.+x "player1" "mypass123"
+  
+  # Test mining
+  ./projects/p2p-net/ops/+x/mine_block.+x "player1" "abc123..."
+  
+  # Test balance
+  ./projects/p2p-net/ops/+x/get_balance.+x "player1" "abc123..."
+
+GUI TESTING:
+  # Launch system
+  ./button.sh r
+  
+  # Navigate to p2p-net from loader menu
+  # Test all 6 action keys (1-6)
+  # Verify all variables populate in dashboard
+
+INTEGRATION TESTING:
+  # Install project
+  ./pieces/system/fondu/fondu.+x --install p2p-net
+  
+  # Verify ops registered
+  ./pieces/system/fondu/fondu.+x --list-ops
+  
+  # Test full workflow
+  # 1. Login wallet
+  # 2. Check inbox
+  # 3. Send message
+  # 4. Read message
+  # 5. Join subnet
+  # 6. Mine coins
+  # 7. Send coins
+```
+
+================================================================================
+CRITICAL PITFALLS (P2P-NET Specific)
+================================================================================
+
+1. COMPILE SCRIPT PATH MISMATCH
+   compile_all.sh looks for ops/*.c but sources are in ops/src/*.c
+   FIX: Compile manually or update compile_all.sh
+
+2. GETCWD() DEPENDENCY
+   All ops use getcwd() to resolve paths
+   FIX: Must run from TPMOS root directory
+
+3. NO LOCKING ON SHARED FILES
+   Multiple ops can read/write peers.txt concurrently
+   FIX: For now, accept race conditions. Add locking if needed later.
+
+4. HARDCODED VALUES IN MANAGER
+   Wallet address, recipient, message ID are hardcoded
+   FIX: Implement wallet_login, read from session state
+
+5. MANAGER DOESN'T POPULATE GUI VARIABLES
+   Only writes response.txt, not gui_state.txt
+   FIX: Add write_gui_state() function (see deliverable)
+
+6. P2P-NET IS A PROJECT (Not an APP)
+   P2P-NET lives in projects/p2p-net/ (user content, installable via Fondu)
+   NOT in pieces/apps/ (system tools)
+   Launched via LOAD_PROJECT:p2p-net from loader menu
+   REFERENCE: #.docs/op-setup.txt for APP vs PROJECT patterns
+
+7. OPS MUST BE REGISTERED IN ops_manifest.txt
+   Format: op_name|description|args_format
+   Fondu reads this during installation to register ops system-wide
+   REFERENCE: #.docs/02-REFERENCE/OPS_DICTIONARY.txt
+
+8. LEGAL REQUIREMENTS (MUST IMPLEMENT BEFORE LAUNCH)
+   - p2p::refund_coins op MUST exist (refund guarantee)
+   - p2p::recover_wallet op MUST exist (wallet recovery)
+   - All transactions logged for support visibility
+   - "Casual Fun" security level (SHA256, not bcrypt/argon2)
+   - Support must be able to refund any user, anytime
+   - REFERENCE: #.docs/P2P_LEGAL_NOTICE.txt (READ THIS!)
+
+9. SYSTEM-WIDE PITFALLS (from PITFALLS_ACTIVE file)
+   #10  - CPU safety (fork/exec, no runaway loops)
+   #13  - Backup before editing (no-git mode)
+   #18  - State/PDL integrity (section-aware updates)
+   #20  - Resolve project_root from location_kvp
+   #25  - Persist responses to files, not stdout
+   #46  - Compile all binaries before testing
+   #55  - Read from correct history file (player_app/history.txt)
+   #70  - Report actual outcomes, not assumed success
+
+================================================================================
+FILE REFERENCE
+================================================================================
+
+MUST READ (In Order):
+1. #.docs/deliverable-p2p.txt - Complete implementation guide
+2. #.docs/p2p-succession-report-a2.txt - Status summary
+3. #.docs/P2P_LEGAL_NOTICE.txt - Legal requirements (refund guarantee)
+4. #.docs/^.pmo.ld-faq+8/PITFALLS_ACTIVE_2026-03-18.txt - System pitfalls
+5. #.docs/cpu_safe_module_template.c - CPU-safe manager pattern
+6. #.main/p2p-ops.txt - Full ops specification (1491 lines)
+7. #.plans/P2P-PHASE-1-NETWORK-AND-CHAT.md - Phase 1 plan
+
+REFERENCE CODE:
+- projects/p2p-net/ops/src/compose_message.c - Example op pattern
+- projects/p2p-net/manager/p2p_manager.c - Manager daemon pattern
+- #.docs/cpu_safe_module_template.c - CPU-safe pattern (follow this!)
+- pieces/apps/playrm/ops/src/*.c - Shared ops (good examples)
+- projects/fuzz-op/manager/fuzz-op_manager.c - Game manager example
+
+SYSTEM DOCUMENTATION:
+- #.docs/INDEX.md - Documentation hub
+- #.docs/COMPILE_SYSTEM.md - How to compile
+- #.docs/op-setup.txt - APP vs PROJECT patterns
+- #.docs/02-REFERENCE/OPS_DICTIONARY.txt - Ops reference
+- #.docs/DOCUMENTATION-ORGANIZATION-SCHEME.txt - Doc structure
+
+STATE FILES:
+- projects/p2p-net/pieces/network/peers.txt - Peer list
+- projects/p2p-net/pieces/chat/inbox/*/status.txt - Inbox status
+- projects/p2p-net/manager/state.txt - Manager state
+- projects/p2p-net/manager/response.txt - Last op response
+- pieces/apps/player_app/history.txt - Input buffer (shared)
+
+================================================================================
+DEBUGGING CHECKLIST
+================================================================================
+
+If something doesn't work:
+
+[ ] 1. Check binary exists: ls projects/p2p-net/ops/+x/<op>.+x
+[ ] 2. Test op directly: ./projects/p2p-net/ops/+x/<op>.+x args...
+[ ] 3. Check state files: cat projects/p2p-net/manager/state.txt
+[ ] 4. Check response: cat projects/p2p-net/manager/response.txt
+[ ] 5. Check input routing: cat pieces/apps/player_app/history.txt
+[ ] 6. Check project root: cat pieces/locations/location_kvp
+[ ] 7. Check layout variables: cat projects/p2p-net/manager/gui_state.txt
+[ ] 8. Check fondu registration: ./fondu --list-ops | grep p2p
+[ ] 9. Reinstall: ./fondu --uninstall p2p-net && ./fondu --install p2p-net
+[ ] 10. Check pitfalls: Did you violate any of the 76 pitfalls?
+
+================================================================================
+NEXT STEPS (In Priority Order)
+================================================================================
+
+1. Read deliverable-p2p.txt (complete implementation guide)
+2. Implement wallet_login op (code example provided)
+3. Implement remaining 5 wallet/mining ops
+4. Add GUI variable functions to manager
+5. Test full dashboard workflow
+6. Install via fondu and verify ops registration
+7. Continue with Phase 7 (Items & NFTs) when Phase 6 complete
+
+================================================================================
+END OF ONBOARDING GUIDE
+================================================================================
+
+Remember: Files are the database. If it's not in a file, it doesn't exist.
+When in doubt, check the reference code and test ops directly from CLI.
+
+Good luck!

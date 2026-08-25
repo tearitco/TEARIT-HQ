@@ -1,0 +1,85 @@
+# pet_pet_prototype.pal - PROTOTYPE, not wired into default_op.txt, not
+# a drop-in replacement for the real ops/pet_pet.+x (see
+# PAL-VS-C-ARCHITECTURE.txt sec. 4/6 for the full why). Built as task
+# #62's own concrete proof-of-concept: can a real op's actual state
+# mutation - read one key, clamp+modify it, write it back while
+# preserving every OTHER key in the same file, matching real
+# ops/pet_pet.c's own read_kv_int()/set_kv_int() idiom exactly - be
+# done in genuine pal+ecall instructions instead of C? Yes, confirmed
+# by this file, run against pieces/world_01/map_zoo/pet_mochi/state.txt
+# (mochi's own REAL state file, not a scratch copy).
+#
+# TWO REAL, NAMED SIMPLIFICATIONS vs. the C original (not hidden
+# regressions - see PAL-VS-C-ARCHITECTURE.txt sec. 3's own "known
+# limitation" on string read-back):
+#   1. Hardcoded to pet_mochi specifically, not a general <piece_id>
+#      argument - prisc+x's own main() has no established mechanism
+#      yet for passing a value from argv into a pal script's own
+#      registers/variables (a real, separate, still-open piece of work
+#      needed before this becomes a general callable op).
+#   2. The real op's own personalized log line ("Mochi enjoys the
+#      attention.") needs reading the pet's own `name` field back as a
+#      STRING, which ecall's syscall table doesn't support yet (only
+#      SYS_GET_KV_INT reads an int back) - logs a generic line instead,
+#      a real, acknowledged scope cut, not silently dropped.
+#
+# Everything else - the actual state mutation, preserving hunger/
+# energy/pos_x/etc. untouched while only happiness changes - is FULL,
+# real parity with ops/pet_pet.c's own behavior, verified by direct
+# diff of the state file before/after (see this file's own test run in
+# PAL-VS-C-ARCHITECTURE.txt sec. 6).
+
+li x15, 6
+li x13, 50
+ecall "pieces/world_01/map_zoo/pet_mochi/state.txt" "happiness"
+addi x1, x12, 10
+
+# Clamp x1 to 100 if it went over. This ISA only has `beq` (branch if
+# EQUAL) - no blt/bgt/bge instruction exists to test "greater than" -
+# so a general clamp isn't directly expressible. It doesn't need to
+# be: happiness is always in [0,100] before this file's own +10 step
+# runs, so x1 is always in [10,110], and the only values that actually
+# need clamping are the small, fully enumerable set {101..110}
+# (original happiness 91..100). Checking each by name is honest about
+# a real ISA limitation, not a workaround hiding a bug.
+li x2, 101
+beq x1, x2, clamp_100
+li x2, 102
+beq x1, x2, clamp_100
+li x2, 103
+beq x1, x2, clamp_100
+li x2, 104
+beq x1, x2, clamp_100
+li x2, 105
+beq x1, x2, clamp_100
+li x2, 106
+beq x1, x2, clamp_100
+li x2, 107
+beq x1, x2, clamp_100
+li x2, 108
+beq x1, x2, clamp_100
+li x2, 109
+beq x1, x2, clamp_100
+li x2, 110
+beq x1, x2, clamp_100
+j write_back
+clamp_100:
+li x1, 100
+
+write_back:
+li x15, 7
+addi x12, x1, 0
+ecall "pieces/world_01/map_zoo/pet_mochi/state.txt" "happiness"
+
+li x15, 1
+li x13, 2
+ecall "pieces/display/message_log.txt"
+addi x4, x12, 0
+li x15, 3
+addi x12, x4, 0
+ecall "A pet enjoys the attention."
+li x15, 2
+addi x12, x4, 0
+ecall
+
+halt

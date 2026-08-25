@@ -1,0 +1,222 @@
+
+--- FRAME UPDATE at 2026-07-02 03:22:14 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Project Explorer    ]           ║
+║    [ ] 2. [Debug Layouts (Dev Only)]           ║
+║    [ ] 3. [Terminal Apps       ]           ║
+║    [ ] 4. [Settings            ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-07-02 03:22:14 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Project Explorer    ]           ║
+║    [ ] 2. [Debug Layouts (Dev Only)]           ║
+║    [ ] 3. [Terminal Apps       ]           ║
+║    [ ] 4. [Settings            ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-07-02 03:22:15 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [fuzz-op-gl          ]           ║
+║    [ ] 2. [op-ed-gl            ]           ║
+║    [ ] 3. [aow-2d              ]           ║
+║    [ ] 4. [piececraft-3d       ]           ║
+║    [ ] 5. [emoji-studio        ]           ║
+║    [ ] 6. [chtmgl-alpha        ]           ║
+║    [ ] 7. [chtmgl-beta         ]           ║
+║    [ ] 8. [media-editor        ]           ║
+║    [ ] 9. [xsr                 ]           ║
+║    [ ] 10. [user                ]           ║
+║    [ ] 11. [tsots-irc           ]           ║
+║    [ ] 12. [wraith-alpha        ]           ║
+║    [ ] 13. [checkers            ]           ║
+║    [ ] 14. [cyoa-engine         ]           ║
+║    [ ] 15. [tsots-online        ]           ║
+║    [ ] 16. [gltpm-demo          ]           ║
+║    [ ] 17. [chat-op             ]           ║
+║    [ ] 18. [test_fondu          ]           ║
+║    [ ] 19. [p2p-net             ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-07-02 03:22:15 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [fuzz-op-gl          ]           ║
+║    [ ] 2. [op-ed-gl            ]           ║
+║    [ ] 3. [aow-2d              ]           ║
+║    [ ] 4. [piececraft-3d       ]           ║
+║    [ ] 5. [emoji-studio        ]           ║
+║    [ ] 6. [chtmgl-alpha        ]           ║
+║    [ ] 7. [chtmgl-beta         ]           ║
+║    [ ] 8. [media-editor        ]           ║
+║    [ ] 9. [xsr                 ]           ║
+║    [ ] 10. [user                ]           ║
+║    [ ] 11. [tsots-irc           ]           ║
+║    [ ] 12. [wraith-alpha        ]           ║
+║    [ ] 13. [checkers            ]           ║
+║    [ ] 14. [cyoa-engine         ]           ║
+║    [ ] 15. [tsots-online        ]           ║
+║    [ ] 16. [gltpm-demo          ]           ║
+║    [ ] 17. [chat-op             ]           ║
+║    [ ] 18. [test_fondu          ]           ║
+║    [ ] 19. [p2p-net             ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-07-02 03:22:21 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [ ] 1. [fuzz-op-gl          ]           ║
+║    [ ] 2. [op-ed-gl            ]           ║
+║    [ ] 3. [aow-2d              ]           ║
+║    [>] 4. [piececraft-3d       ]           ║
+║    [ ] 5. [emoji-studio        ]           ║
+║    [ ] 6. [chtmgl-alpha        ]           ║
+║    [ ] 7. [chtmgl-beta         ]           ║
+║    [ ] 8. [media-editor        ]           ║
+║    [ ] 9. [xsr                 ]           ║
+║    [ ] 10. [user                ]           ║
+║    [ ] 11. [tsots-irc           ]           ║
+║    [ ] 12. [wraith-alpha        ]           ║
+║    [ ] 13. [checkers            ]           ║
+║    [ ] 14. [cyoa-engine         ]           ║
+║    [ ] 15. [tsots-online        ]           ║
+║    [ ] 16. [gltpm-demo          ]           ║
+║    [ ] 17. [chat-op             ]           ║
+║    [ ] 18. [test_fondu          ]           ║
+║    [ ] 19. [p2p-net             ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-07-02 03:22:21 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Control Map (ENTER) ]           ║
+║    [ ] 2. [Menu Mode (ESC)     ]           ║
+║    [ ] 3. [Deselect (9)        ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-07-02 03:22:21 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Control Map (ENTER) ]           ║
+║    [ ] 2. [Menu Mode (ESC)     ]           ║
+║    [ ] 3. [Deselect (9)        ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-07-02 03:22:21 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Control Map (ENTER) ]           ║
+║    [ ] 2. [Menu Mode (ESC)     ]           ║
+║    [ ] 3. [Deselect (9)        ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-07-02 03:22:24 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Control Map (ENTER) ]           ║
+║    [ ] 2. [Menu Mode (ESC)     ]           ║
+║    [ ] 3. [Deselect (9)        ]           ║
+║    [ ] 4. [Scan                ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-07-02 03:22:26 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Control Map (ENTER) ]           ║
+║    [ ] 2. [Menu Mode (ESC)     ]           ║
+║    [ ] 3. [Deselect (9)        ]           ║
+║    [ ] 4. [Scan                ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-07-02 03:22:47 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Control Map (ENTER) ]           ║
+║    [ ] 2. [Menu Mode (ESC)     ]           ║
+║    [ ] 3. [Deselect (9)        ]           ║
+║    [ ] 4. [Scan                ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-07-02 03:22:47 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Control Map (ENTER) ]           ║
+║    [ ] 2. [Menu Mode (ESC)     ]           ║
+║    [ ] 3. [Deselect (9)        ]           ║
+║    [ ] 4. [Scan                ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-07-02 03:22:57 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Control Map (ENTER) ]           ║
+║    [ ] 2. [Menu Mode (ESC)     ]           ║
+║    [ ] 3. [Deselect (9)        ]           ║
+║    [ ] 4. [Scan                ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-07-02 03:22:59 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Control Map (ENTER) ]           ║
+║    [ ] 2. [Menu Mode (ESC)     ]           ║
+║    [ ] 3. [Deselect (9)        ]           ║
+║    [ ] 4. [Scan                ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-07-02 03:23:04 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Control Map (ENTER) ]           ║
+║    [ ] 2. [Menu Mode (ESC)     ]           ║
+║    [ ] 3. [Deselect (9)        ]           ║
+║    [ ] 4. [Scan                ]           ║
+
+╚═══════════════════════════════════════════╝

@@ -1,0 +1,208 @@
+[1773620083] Shadow sync: pet_01 pos_x=13, pos_y=5
+[1773620083] Shadow sync: pet_01 pos_x=14, pos_y=5
+[1773620083] Shadow sync: pet_01 pos_x=15, pos_y=5
+[1773620084] Shadow sync: pet_01 pos_x=14, pos_y=5
+[1773620084] Shadow sync: pet_01 pos_x=13, pos_y=5
+[1773620496] Shadow sync: pet_01 pos_x=12, pos_y=5
+[1773620496] Shadow sync: pet_01 pos_x=11, pos_y=5
+[1773620976] Shadow sync: pet_02 pos_x=11, pos_y=4
+[1773620977] Shadow sync: pet_02 pos_x=11, pos_y=3
+[1773620977] Shadow sync: pet_02 pos_x=11, pos_y=4
+[1773620977] Shadow sync: pet_02 pos_x=11, pos_y=5
+[1773620978] Shadow sync: pet_02 pos_x=10, pos_y=5
+[1773620978] Shadow sync: pet_02 pos_x=9, pos_y=5
+[1773620979] Shadow sync: pet_02 pos_x=10, pos_y=5
+[1773620979] Shadow sync: pet_02 pos_x=11, pos_y=5
+[1773620979] Shadow sync: pet_02 pos_x=12, pos_y=5
+[1773620979] Shadow sync: pet_02 pos_x=11, pos_y=5
+[1773620980] Shadow sync: pet_02 pos_x=12, pos_y=5
+[1773620980] Shadow sync: pet_02 pos_x=13, pos_y=5
+[1773620980] Shadow sync: pet_02 pos_x=14, pos_y=5
+[1773621606] Shadow sync: pet_01 pos_x=12, pos_y=5
+[1773621606] Shadow sync: pet_01 pos_x=13, pos_y=5
+[1773621607] Shadow sync: pet_01 pos_x=14, pos_y=5
+[1773621607] Shadow sync: pet_01 pos_x=13, pos_y=5
+[1773621607] Shadow sync: pet_01 pos_x=13, pos_y=4
+[1773621987] Shadow sync: pet_01 pos_x=12, pos_y=4
+[1773621988] Shadow sync: pet_01 pos_x=11, pos_y=4
+[1773621988] Shadow sync: pet_01 pos_x=11, pos_y=3
+[1773621988] Shadow sync: pet_01 pos_x=11, pos_y=2
+[1773621989] Shadow sync: pet_01 pos_x=11, pos_y=3
+[1773621989] Shadow sync: pet_01 pos_x=11, pos_y=4
+[1773621990] Shadow sync: pet_01 pos_x=11, pos_y=5
+[1773622146] Shadow sync: pet_01 pos_x=11, pos_y=4
+[1773622146] Shadow sync: pet_01 pos_x=11, pos_y=3
+[1773622147] Shadow sync: pet_01 pos_x=12, pos_y=3
+[1773622576] Shadow sync: zombie_01 pos_x=11, pos_y=3
+[1773622576] Shadow sync: zombie_01 pos_x=10, pos_y=3
+[1773622577] Shadow sync: zombie_01 pos_x=10, pos_y=2
+[1773622577] Shadow sync: zombie_01 pos_x=10, pos_y=3
+[1773622577] Shadow sync: zombie_01 pos_x=10, pos_y=4
+[1773622578] Shadow sync: zombie_01 pos_x=10, pos_y=3
+[1773622579] Shadow sync: zombie_01 pos_x=10, pos_y=2
+[1773623236] Shadow sync: pet_01 pos_x=12, pos_y=4
+[1773623237] Shadow sync: pet_01 pos_x=12, pos_y=3
+[1773623237] Shadow sync: pet_01 pos_x=12, pos_y=4
+[1773623237] Shadow sync: pet_01 pos_x=12, pos_y=5
+[1773623238] Shadow sync: pet_01 pos_x=11, pos_y=5
+[1773623929] Shadow sync: pet_01 pos_x=11, pos_y=4
+[1773623929] Shadow sync: pet_01 pos_x=11, pos_y=3
+[1773623930] Shadow sync: pet_01 pos_x=11, pos_y=2
+[1773623930] Shadow sync: pet_01 pos_x=10, pos_y=2
+[1773623931] Shadow sync: pet_01 pos_x=9, pos_y=2
+[1773623931] Shadow sync: pet_01 pos_x=10, pos_y=2
+[1773623932] Shadow sync: pet_01 pos_x=11, pos_y=2
+[1773623932] Shadow sync: pet_01 pos_x=10, pos_y=2
+[1779728936] Key received: 1001
+[1779728936] Key received: 1001
+[1779728936] Key received: 1001
+[1779728936] Key received: 1001
+[1779728942] Key received: 1003
+[1780852008] Key received: 1000
+[1780852009] Key received: 1000
+[1780852009] Key received: 1001
+[1780852009] Key received: 1001
+[1780852009] Key received: 1002
+[1780852010] Key received: 1002
+[1780852011] Key received: 49
+[1780852011] Key received: 50
+[1780852012] Key received: 51
+[1781047762] Key received: 1000
+[1781047762] Key received: 1003
+[1781047763] Key received: 99
+[1781159602] Key received: 1000
+[1781159602] Key received: 1003
+[1781159614] Key received: 1003
+[1781159615] Key received: 50
+[1781159616] Key received: 51
+[1781159617] Key received: 52
+[1781159617] Key received: 1001
+[1781159618] Key received: 1002
+[1781159618] Key received: 1001
+[1781164742] Key received: 1000
+[1781164742] Key received: 1000
+[1781164744] Key received: 50
+[1781164745] Key received: 51
+[1781164746] Key received: 52
+[1781165825] Key received: 1000
+[1781165825] Key received: 1000
+[1781165828] Key received: 51
+[1781165828] Executing hotkey 3: '/home/no/Desktop/🤖️🪤️🏠️/🗓️📆️👩🏻‍💻️/jun-9/wraith-surgical-02.02%/1.TPMOS_c_+rmmp.0102.0021/pieces/apps/playrm/ops/+x/collect_op.+x' xlector
+[1781165829] Key received: 52
+[1781165829] Executing hotkey 4: '/home/no/Desktop/🤖️🪤️🏠️/🗓️📆️👩🏻‍💻️/jun-9/wraith-surgical-02.02%/1.TPMOS_c_+rmmp.0102.0021/pieces/apps/playrm/ops/+x/place_op.+x' xlector
+[1781165829] Key received: 50
+[1781165829] Executing hotkey 2: '/home/no/Desktop/🤖️🪤️🏠️/🗓️📆️👩🏻‍💻️/jun-9/wraith-surgical-02.02%/1.TPMOS_c_+rmmp.0102.0021/pieces/apps/playrm/ops/+x/scan_op.+x' xlector
+[1781165831] Key received: 51
+[1781165831] Executing hotkey 3: '/home/no/Desktop/🤖️🪤️🏠️/🗓️📆️👩🏻‍💻️/jun-9/wraith-surgical-02.02%/1.TPMOS_c_+rmmp.0102.0021/pieces/apps/playrm/ops/+x/collect_op.+x' xlector
+[1781165831] Key received: 52
+[1781165831] Executing hotkey 4: '/home/no/Desktop/🤖️🪤️🏠️/🗓️📆️👩🏻‍💻️/jun-9/wraith-surgical-02.02%/1.TPMOS_c_+rmmp.0102.0021/pieces/apps/playrm/ops/+x/place_op.+x' xlector
+[1781165832] Key received: 53
+[1781165832] Executing hotkey 5: '/home/no/Desktop/🤖️🪤️🏠️/🗓️📆️👩🏻‍💻️/jun-9/wraith-surgical-02.02%/1.TPMOS_c_+rmmp.0102.0021/pieces/apps/playrm/ops/+x/inventory_op.+x' xlector
+[1781166575] Key received: 1003
+[1781166576] Key received: 51
+[1781166576] Executing hotkey 3: '/home/no/Desktop/🤖️🪤️🏠️/🗓️📆️👩🏻‍💻️/jun-9/wraith-surgical-02.02%/1.TPMOS_c_+rmmp.0102.0021/pieces/apps/playrm/ops/+x/collect_op.+x' xlector
+[1781166577] Key received: 52
+[1781166577] Executing hotkey 4: '/home/no/Desktop/🤖️🪤️🏠️/🗓️📆️👩🏻‍💻️/jun-9/wraith-surgical-02.02%/1.TPMOS_c_+rmmp.0102.0021/pieces/apps/playrm/ops/+x/place_op.+x' xlector
+[1781166637] Key received: 54
+[1781166639] Key received: 50
+[1781166639] Executing hotkey 2: '/home/no/Desktop/🤖️🪤️🏠️/🗓️📆️👩🏻‍💻️/jun-9/wraith-surgical-02.02%/1.TPMOS_c_+rmmp.0102.0021/pieces/apps/playrm/ops/+x/scan_op.+x' xlector
+[1781166644] Key received: 1000
+[1781166645] Key received: 1000
+[1781166648] Key received: 55
+[1781166648] Executing hotkey 7: '/home/no/Desktop/🤖️🪤️🏠️/🗓️📆️👩🏻‍💻️/jun-9/wraith-surgical-02.02%/1.TPMOS_c_+rmmp.0102.0021/echo' "clock toggled"
+[1781166649] Key received: 1001
+[1781166650] Key received: 1001
+[1781166650] Key received: 1001
+[1781166651] Key received: 1002
+[1781166652] Key received: 1001
+[1781166652] Key received: 1001
+[1781166653] Key received: 1002
+[1781166654] Key received: 1002
+[1781166655] Key received: 1002
+[1781166656] Key received: 120
+[1781166657] Key received: 122
+[1781852879] Key received: 1001
+[1781852880] Key received: 1002
+[1781852880] Key received: 1002
+[1781852880] Key received: 1002
+[1781852881] Key received: 1001
+[1781852881] Key received: 13
+[1782288976] Key received: 1000
+[1782288977] Key received: 1000
+[1782288980] Key received: 50
+[1782288980] Executing hotkey 2: '/home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-00.00/x0.moke-pet-project-3.1/1.TPMOS_c_+rmmp.0102.0026/pieces/apps/playrm/ops/+x/scan_op.+x' xlector
+[1783780079] Key received: 1001
+[1783780080] Key received: 1001
+[1783780080] Key received: 1003
+[1784279724] Key received: 1001
+[1784279725] Key received: 1001
+[1784279726] Key received: 1002
+[1784279727] Key received: 1000
+[1784279727] Key received: 1000
+[1784279727] Key received: 13
+[1784279728] Key received: 1000
+[1784279736] Key received: 1000
+[1784279737] Key received: 1000
+[1784279745] Key received: 13
+[1784279745] Key received: 1000
+[1784279761] Key received: 13
+[1784279763] Key received: 32
+[1784279763] Key received: 1000
+[1784279764] Key received: 1000
+[1784279764] Key received: 1000
+[1784279765] Key received: 1001
+[1784279773] Key received: 50
+[1784279773] Executing hotkey 2: '/home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-10.00/x0.parent-level-dev-env-03.00/1.TPMOS_c_+rmmp.0102.0028/void'
+[1784279775] Key received: 1001
+[1784279780] Key received: 49
+[1784279781] Key received: 1001
+[1784279781] Key received: 50
+[1784279781] Executing hotkey 2: '/home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-10.00/x0.parent-level-dev-env-03.00/1.TPMOS_c_+rmmp.0102.0028/void'
+[1784279782] Key received: 51
+[1784279782] Executing hotkey 3: '/home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-10.00/x0.parent-level-dev-env-03.00/1.TPMOS_c_+rmmp.0102.0028/void'
+[1784279783] Key received: 52
+[1784279783] Executing hotkey 4: '/home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-10.00/x0.parent-level-dev-env-03.00/1.TPMOS_c_+rmmp.0102.0028/void'
+[1784279783] Key received: 53
+[1784279783] Executing hotkey 5: '/home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-10.00/x0.parent-level-dev-env-03.00/1.TPMOS_c_+rmmp.0102.0028/void'
+[1784279784] Key received: 54
+[1784279785] Key received: 55
+[1784279785] Key received: 56
+[1784279785] Key received: 57
+[1784279786] Key received: 1001
+[1784279786] Key received: 1001
+[1784279786] Key received: 1001
+[1784279788] Key received: 1000
+[1784279788] Key received: 1000
+[1784279788] Key received: 1000
+[1784279789] Key received: 13
+[1784279790] Key received: 56
+[1784279790] Key received: 1001
+[1784279791] Key received: 1001
+[1784279792] Key received: 57
+[1784279792] Key received: 1001
+[1784279792] Key received: 1001
+[1784279793] Key received: 1001
+[1784624248] Key received: 1000
+[1784624249] Key received: 1000
+[1784624253] Key received: 57
+[1784624253] Key received: 1001
+[1784624254] Key received: 1000
+[1784624255] Key received: 1000
+[1784624255] Key received: 13
+[1784624255] Key received: 1000
+[1784624256] Key received: 1000
+[1784624258] Key received: 48
+[1784624259] Key received: 57
+[1784624260] Key received: 1001
+[1784624260] Key received: 1001
+[1784624261] Key received: 1001
+[1784624266] Key received: 1000
+[1784624266] Key received: 1000
+[1784624627] Key received: 54
+[1784624628] Key received: 54
+[1784624642] Key received: 1000
+[1784624642] Key received: 13
+[1784624642] Key received: 1001
+[1784624644] Key received: 57
+[1784624645] Key received: 1001
+[1784624646] Key received: 1001

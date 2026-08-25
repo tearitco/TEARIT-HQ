@@ -1,0 +1,15 @@
+stable-code:latest | post_hack | {"emitted_tool_json":true,"read_file_called":true,"model_used_contents":true}
+stable-code:latest | post_hack_noop | {"emitted_tool_json":true,"no_tool_hallucination":false}
+stable-code:latest | harnecient_read | {"deterministic_read":true,"model_summarized":true}
+stable-code:latest | harnecient_edit | {"deterministic_edit_applied":true,"compiles_and_prints_15":true,"model_suggested_fix":true}
+stable-code:latest | harnecient_run | {"deterministic_run":true,"ran_cleanly":true,"model_interpreted":true}
+gemma3:1b | post_hack | {"emitted_tool_json":true,"read_file_called":true,"model_used_contents":false}
+gemma3:1b | post_hack_noop | {"emitted_tool_json":false,"no_tool_hallucination":true}
+gemma3:1b | harnecient_read | {"deterministic_read":true,"model_summarized":true}
+gemma3:1b | harnecient_edit | {"deterministic_edit_applied":true,"compiles_and_prints_15":true,"model_suggested_fix":false}
+gemma3:1b | harnecient_run | {"deterministic_run":true,"ran_cleanly":true,"model_interpreted":true}
+gemma3:270m | post_hack | {"emitted_tool_json":true,"read_file_called":true,"model_used_contents":false}
+gemma3:270m | post_hack_noop | {"emitted_tool_json":false,"no_tool_hallucination":true}
+gemma3:270m | harnecient_read | {"deterministic_read":true,"model_summarized":true}
+gemma3:270m | harnecient_edit | {"deterministic_edit_applied":true,"compiles_and_prints_15":true,"model_suggested_fix":true}
+gemma3:270m | harnecient_run | {"deterministic_run":true,"ran_cleanly":true,"model_interpreted":true}

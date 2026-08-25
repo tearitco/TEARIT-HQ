@@ -1,0 +1,291 @@
+XO-PET BLUEPRINT
+Shared Simulation Core with Optional Controllers
+
+Date: 2026-06-19
+
+1. Vision
+
+XO-PET is not a separate menu toy.
+It is a control layer for the same simulation engine used by moke-pet.
+
+Deployment shape:
+- the project root owns the project bundle
+- the project bundle contains project-local session/controller state and the world/map tree
+- controllers are project-level occupants, usually from `controllers/` or nearby top-level controller paths
+- the controller attaches at runtime via a uid pair or generated session uid
+- pets stay in the world/map tree and can be autonomous or controlled
+- `button.sh` at the `x0.moke-pet-project-2.2/` root is the top-level entrypoint for this bundle
+- `xo-pet-launch.sh` is the canonical mode router underneath that front door
+- the nested `x0.5-liz.fiter4-mew-00.02/button.sh` remains only as a compatibility wrapper for the older generic name
+- `xo-pet-launch.sh` should choose `auto` or `controller` mode via flags, without requiring the user to type an executable name
+- if no controller uid pair is provided, `xo-pet-launch.sh` should generate one automatically
+- `xo-pet-launch.sh` should default to `reset` so each fresh launch clears stale runtime scratch files
+- `resume` should preserve the runtime scratch files and keep the current session state
+- executables still live in a `+x/` directory per TPMOS convention
+- launcher-facing navigation tests should stay outside `button.sh`; if we need key injection, it should be a separate helper that still writes through the normal keyboard history path
+
+The target architecture is:
+
+- one shared biological / simulation core
+- one shared directory-backed piece model
+- one shared manager/Op execution pattern
+- one project-local session/state file in the fuzz-op style
+- one `gui_state.txt` projection file for the loader/render pipeline
+- optional human control when a controller is present
+- automatic AI control when no human is present or when the user selects AI
+- one-step AI by default unless `resume` is active
+- persistent per-step snapshots for rewind/replay
+- CHTPM-shaped projections for both the controller surface and the autonomous status surface so existing tools can keep parsing them
+- the controller surface should be delivered through the same CHTPM project-loader flow used by other projects, not a separate ad hoc terminal panel
+
+The same code path should be able to run:
+
+- fully autonomous, like moke-pet
+- semi-interactive, where the user steps or pauses the world
+- controller-mixed, where one or more pets are player-owned and the rest remain AI-owned
+- rewindable, where every step writes a recoverable frame/state snapshot
+- visible step counter / turn count in the projection
+
+2. Core rule
+
+The engine must not depend on a GUI being present.
+
+If there is no controller, the simulation runs autonomously.
+If there is a controller, the simulation can pause, step, or hand off the next turn to that controller.
+If the controller selects AI, the pet takes exactly one AI step unless `resume` is active.
+If `resume` is active, the pet continues stepping until paused.
+
+3. Controller model
+
+Controllers are not the same thing as pets.
+A controller is an input source that can lease authority over a pet for a turn or a short sequence of turns.
+
+Controller states:
+
+- absent
+- present but idle
+- attached to a pet
+- AI fallback
+- active session waiting on end-turn
+
+Controller actions:
+
+- observe available pets
+- select a pet
+- choose manual or AI control
+- pause the simulation
+- step one turn
+- resume continuous stepping
+- release control
+- end turn and advance the remaining world turns
+
+4. Required behavior
+
+- The world can run continuously with no user input.
+- The world can also run in step mode.
+- AI control defaults to a single step unless continuous resume is enabled.
+- If a controller is active, the world should step in order, let AI act for the current epoch slice, then wait for user `end turn` before continuing the rest of the cycle.
+- A pet can be controlled manually for a turn, then returned to AI control.
+- Multiple controllers may exist later, but the first implementation should support one controller cleanly.
+- The manager must remain the authority that advances epochs and dispatches Ops.
+- The renderer must only present projected state; it should not invent simulation logic.
+- Every step must save a frame/state snapshot so rewind is possible.
+- Autonomous turns should log each entity's visible state, including health, hunger, and current ownership/control state, not just the method trace.
+- The autonomous and controller projections should both preserve the CHTPM layout contract so the existing CLI and testing tools keep working.
+
+5. Compatibility goal
+
+XO-PET and moke-pet should converge on the same engine contract.
+
+Meaning:
+
+- same piece state layout
+- same Ops naming where possible
+- same manager dispatch rules
+- same scan / eat / rest / breathe / check_death / train loop
+- same ability to run headless
+- same ability to run with controller-active project state
+- same ability to pause or step when a controller exists
+- same ability to rewind from saved snapshots
+
+The difference should be operational mode, not project identity.
+
+6. Control policy
+
+Default policy:
+
+- no controller present -> AI runs the pet
+- controller present but not attached -> project UI may offer attach/pause/step
+- controller attached -> user can choose the next method, then press `end turn` to continue the epoch flow
+- controller chooses AI -> pet returns to autonomous execution
+
+7. Future expansion
+
+This model should scale beyond pets.
+
+The same pattern should eventually work for:
+
+- biology simulations
+- turn-based strategy systems
+- stock market / agent modeling
+- multiplayer p2p games
+- npc management
+
+The only thing that changes is the piece domain and method set.
+The control contract should stay the same.
+
+8. UX direction
+
+Preferred console behavior:
+
+- launch into autonomous mode by default
+- optionally open a mini TPMOS console
+- select a pet
+- choose manual / AI control
+- pause
+- step
+- resume
+- end turn
+- show total steps taken
+- show snapshot/rewind count
+- show per-entity health/state in the autonomous and controller projections
+- keep the screen layout in the same CHTPM family, even when the content changes between auto and controller modes
+
+The console should feel like a supervisor for the world, not a separate game.
+
+9. Non-goals for the first cut
+
+- no multiplayer networking yet
+- no remote controller auth
+- no complex permission system
+- no rewrite of the existing simulation logic if the current ops can be reused
+- no GUI-only architecture
+- no snapshotless execution once rewind is required
+- no world-inside-controller layout; the controller must live inside the enclosure with the world
+- no manual executable-name entry in the launcher path
+- no mandatory uid entry when the launcher can generate one
+- no dependency on the old one-off `button.sh` naming convention
+
+10. Summary
+
+XO-PET should become the interactive face of the same engine that powers moke-pet.
+Moke-pet remains the source of simulation truth.
+Human control is optional, additive, and reversible.
+AI control is one-step by default unless `resume` is pressed.
+Every step is recorded so the world can rewind.
+The same project bundle must work whether the project is launched directly or via the TPMOS GUI.
+Controllers may also be placed at the project top level or under `controllers/` as long as the launcher can discover them.
+Autonomous output must expose entity health/state so tools can inspect the sim without stepping into the code.
+Launcher names are now descriptive:
+
+- `xo-pet-launch.sh` for the canonical entrypoint
+- `xo-pet-run-auto.sh` for autonomous launch
+- `xo-pet-run-controller.sh` for controller launch
+- `xo-pet-init.sh` for world setup and reset
+- `xo-pet-build-ops.sh` for ops compilation
+- `xo-pet-setup-tank.sh` for enclosure scaffolding
+- old generic filenames are compatibility shims only
+
+
+
+
+
+
+
+----
+• The docs now state the control contract explicitly:
+
+  - AI is one-step by default.
+  - resume keeps stepping until paused.
+  - Every step saves a rewindable snapshot.
+  - Step count and snapshot/rewind count are visible projection fields.
+
+  Updated files:
+
+  - xo-pet-blueprint.txt
+  - tempt-2do.txt
+  - 1.TPMOS_c_+rmmp.0102.0024/#.dev-storage/0.fondu.+instal_00.01=MT/!.gem-flashlite--yolo/#.docs/future-
+    facing/!.world_architecture+1=rusindol.txt
+
+  - moke-pet-project-2.1/!.moke-pet-blueprints/moke-pet-blueprint.txt
+  - moke-pet-project-2.1/HANDOFF.md
+
+  The implementation order in the todo now starts with:
+
+  1. shared engine contract
+  2. snapshot persistence per step
+  3. controller attach/release
+  4. pause/step/resume semantics
+
+  If you want, I can start the code changes next.
+
+─ Worked for 2m 17s ─────────────────────────────────────────────────────────────────────────────────────────────
+
+
+› could u show the projected gui menu for xo-pet again since your assumptions have been corrected and hardened?
+
+
+• Yes. With the corrected assumptions, the XO-PET projection should look more like a thin controller for the
+  moke-pet-style engine, not a fuzz-op trait menu.
+
+  ╔════════════════════════════════════════════════════════════╗
+  ║                          XO-PET                           ║
+  ║  WORLD: lizard_tank_01 | MODE: AUTO/CTRL | TURN: 12      ║
+  ║  STEPS: 12 | SNAPSHOTS: 12 | REWIND: 0                   ║
+  ╠════════════════════════════════════════════════════════════╣
+  ║  CONTROLLERS                                              ║
+  ║  [ ] 1. AI (default)                                      ║
+  ║  [ ] 2. Controller A                                      ║
+  ║  [ ] 3. Controller B                                      ║
+  ╠════════════════════════════════════════════════════════════╣
+  ║  PET SELECTOR                                             ║
+  ║  [>] 1. liz_bulb                                          ║
+  ║  [ ] 2. liz_char                                          ║
+  ║  [ ] 3. liz_newborn_01                                    ║
+  ║  [ ] 4. spectator / no pet                                ║
+  ╠════════════════════════════════════════════════════════════╣
+  ║  ACTIVE PET: liz_bulb                                     ║
+  ║  HP: 72 | HUNGER: 41 | STATE: waiting_for_input           ║
+  ║  CONTROL: human                                            ║
+  ╠════════════════════════════════════════════════════════════╣
+  ║  METHODS                                                  ║
+  ║  [ ] 2. scan                                              ║
+  ║  [ ] 3. eat                                               ║
+  ║  [ ] 4. rest                                              ║
+  ║  [ ] 5. breathe                                           ║
+  ║  [ ] 6. check_death                                       ║
+  ║  [ ] 7. train                                             ║
+  ║  [ ] 8. attack                                            ║
+  ║  [ ] 9. mate                                              ║
+  ╠════════════════════════════════════════════════════════════╣
+  ║  CONTROL                                                 ║
+  ║  [ ] A. step once                                         ║
+  ║  [ ] B. resume                                            ║
+  ║  [ ] C. pause                                             ║
+  ║  [ ] D. release control                                   ║
+  ║  [ ] E. rewind last step                                  ║
+  ╠════════════════════════════════════════════════════════════╣
+  ║  LOG: controller attached; next step paused               ║
+  ╚════════════════════════════════════════════════════════════╝
+
+  And the autonomous variant would collapse the control area like this:
+
+  ╔════════════════════════════════════════════════════════════╗
+  ║                          XO-PET                           ║
+  ║  WORLD: lizard_tank_01 | MODE: AUTO                       ║
+  ║  STEPS: 12 | SNAPSHOTS: 12 | REWIND: 0                   ║
+  ╠════════════════════════════════════════════════════════════╣
+  ║  ACTIVE PET: none selected                                ║
+  ║  AI will advance one step when triggered                  ║
+  ╠════════════════════════════════════════════════════════════╣
+  ║  WORLD ACTIONS                                            ║
+  ║  [ ] 1. run AI step                                       ║
+  ║  [ ] 2. pause                                             ║
+  ║  [ ] 3. open controller                                   ║
+  ║  [ ] 4. rewind                                            ║
+  ╠════════════════════════════════════════════════════════════╣
+  ║  LOG: waiting for controller or AI step                   ║
+  ╚════════════════════════════════════════════════════════════╝
+
+  If you want, I can also make this into a stricter “projected GUI spec” that maps each visible field to
+  gui_state.txt keys.

@@ -1,0 +1,14 @@
+network_status=ONLINE
+node_name=nodeA
+my_endpoint=10.0.0.238:9001
+leader_endpoint=10.0.0.238:9001
+peer_count=0
+ring_size=1
+ring_index=0
+next_hop=N/A
+prev_hop=N/A
+ring_hosts=* 10.0.0.238:9001 LEADER ONLINE\nx 10.0.0.238:8000 NODE OFFLINE\nx 10.0.0.16:8000 NODE OFFLINE\nx 10.0.0.144:8000 NODE OFFLINE\nx 10.0.0.31:8000 NODE OFFLINE\nx 10.0.0.187:8000 NODE OFFLINE\n
+messages=[10.0.0.238:9001] hi
+manager_status=Local-only (no peers online)
+last_key=KEY:13
+input_text=hi

@@ -1,0 +1,12 @@
+# wraith_project_manifest
+# root=/home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects
+# format=dir_name|project_id|title|entry_layout|command|id_prefix
+blank-project|wraith-alpha/wraith-projects/blank-project|WRAITH BLANK PROJECT|projects/wraith-alpha/wraith-projects/blank-project/layouts/blank-project.chtpm|DESKTOP_ACTION:launch_blank_project|blank_project
+chtmgl-wraith|wraith-alpha/wraith-projects/chtmgl-wraith|CHTMGL WRAITH|projects/wraith-alpha/wraith-projects/chtmgl-wraith/layouts/chtmgl-wraith.chtpm|DESKTOP_ACTION:launch_chtmgl_wraith|chtmgl_wraith
+emoji-studio-wraith|wraith-alpha/wraith-projects/emoji-studio-wraith|EMOJI STUDIO WRAITH|projects/wraith-alpha/wraith-projects/emoji-studio-wraith/layouts/emoji-studio-wraith.chtpm|DESKTOP_ACTION:launch_emoji_studio_wraith|emoji_studio_wraith
+fs|wraith-alpha/wraith-projects/fs|WRAITH FS|projects/wraith-alpha/wraith-projects/fs/layouts/fs.chtpm|DESKTOP_ACTION:launch_fs|fs
+piececraft-wraith|wraith-alpha/wraith-projects/piececraft-wraith|PIECECRAFT WRAITH|projects/wraith-alpha/wraith-projects/piececraft-wraith/layouts/piececraft-wraith.chtpm|DESKTOP_ACTION:launch_piececraft_wraith|piececraft_wraith
+probe-project|wraith-alpha/wraith-projects/probe-project|WRAITH PROBE PROJECT|projects/wraith-alpha/wraith-projects/probe-project/layouts/probe-project.chtpm|DESKTOP_ACTION:launch_probe_project|probe_project
+terminal|wraith-alpha/wraith-projects/terminal|WRAITH TERMINAL|projects/wraith-alpha/wraith-projects/terminal/layouts/terminal.chtpm|DESKTOP_ACTION:launch_terminal|terminal
+wraith-3d-cube|wraith-alpha/wraith-projects/wraith-3d-cube|WRAITH 3D CUBE|projects/wraith-alpha/wraith-projects/wraith-3d-cube/layouts/wraith-3d-cube.chtpm|DESKTOP_ACTION:launch_wraith_3d_cube|wraith_3d_cube
+wraith-ed|wraith-alpha/wraith-projects/wraith-ed|WRAITH ED|projects/wraith-alpha/wraith-projects/wraith-ed/layouts/wraith-ed.chtpm|DESKTOP_ACTION:launch_wraith_ed|wraith_ed

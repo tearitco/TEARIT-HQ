@@ -1,0 +1,49 @@
+WRAITH LOOK ASCII J3
+Plain text mockup of the intended shell shape
+
+This is the ASCII-only version of the visual reference in
+`!.look-of-wraith-gui.txt`.
+
+It is intentionally coarse. The goal is to capture composition:
+outer shell, left launcher list, floating overlapping windows, footer/taskbar.
+
++----------------------------------------------------------------------------+
+| WRAITH DESKTOP GUI                                                         |
++----------------------------------------------------------------------------+
+|   ┌──────────────────────────[ Wraith Terminal v1.0 ]────────[■][─][X]──────┐   |
+|   │  [>] 1. [Project Loader]                                                │   |
+|   │  [ ] 2. [App Store (Fondu)]                                             │   |
+|   │  [ ] 3. [Status]  [ ] 4. [GL-OS]                                        │   |
+|   │  [ ] 5. [Process Monitor]                                               │   |
+|   │  [ ] 6. [Toggle Frame History (Current: )]                              │   |
+|   │  [ ] 7. [Help]                                                          │   |
+|   │                                                                         │   |
+|   │    ┌────────────────[ GAME MAP: ]──────────────[■][─][X]──────────┐│    |
+|   │    │  [>] 1. [Control Map]                                        │ │   |
+|   │    │ ####################                                         │ │   |
+|   └────│  #  ...............T#                                        │ ┘   |
+|        │  #  ..@.........Z..T#                                        │     |
+|        │  #  ....R..........T#                                        │     |
+|        │  #  ....R..........T#                                        │     |
+|        │  #  ..X.R..?.......T#                                        │     |
+|        │  #  ....R..........T#                                        │     |
+|        │  #  ................#                                        │     |
+|        │  #                  #                                        │     |
+|        │  ####################                                        │     |
+|        └──────────────────────────────────────────────────────────────┘     |
+|                                                                            |
+|----------------------------------------------------------------------------|
+| [Start] ║ [Wraith Term]  [Game Map] ║ 14:28 06-04-2026                     |
++----------------------------------------------------------------------------+
+
+Interpretation notes:
+- The outer border is the desktop shell.
+- The left side is the launcher/menu column.
+- The framed boxes are floating peer windows, each with its own chrome.
+- The `GAME MAP` window is intentionally offset so it overlaps the shell and
+  protrudes past the shell border on the left.
+- The main shell title is terminal-like, because this should feel like a real
+  desktop shell rather than a docs page.
+- The bottom strip is the taskbar/footer.
+- The ASCII map is a placeholder for real content and should be replaced by
+  actual project/content rendering once the shell composition is right.

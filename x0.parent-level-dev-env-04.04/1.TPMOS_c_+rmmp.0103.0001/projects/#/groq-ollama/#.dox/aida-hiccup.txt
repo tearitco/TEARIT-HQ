@@ -1,0 +1,28 @@
+# AIDA HICCUP: Investigation & Remediation (May 20, 2026)
+
+## 🕵️ INVESTIGATION
+The "Thinking..." hang in the `groq-ollama` project was traced to a logic error in the manager's tool execution wrapper (`run_tool`).
+
+### 1. The "Path of Least Resistance" Failure
+- **Symptom:** Manager stuck in THINKING state when switching to `aida_mac`.
+- **Diagnosis:** The manager attempted to run `curl` to fetch remote models via `resolve_local_model`. However, the C code was hardcoded to only look for binaries in `projects/groq-ollama/ops/+x/`. Since `curl` is a system command, it was never found.
+- **Consequence:** `g_current_model` remained `llama3:latest`. When querying Aida Mac (8080), it sent `llama3:latest` and `"format":"json"`, both of which are incompatible with the raw `llama.cpp` server (which expects `llama3-groq.gguf` and no format flag).
+
+### 2. Local Ollama "Lethargy"
+- **Observation:** Local `llama3:latest` (8B) is responding very slowly (timeouts > 15s) on this machine.
+- **Verification:** Tiny models like `gemma3:270M` work but still take ~11s to load. This indicates the local machine is currently resource-constrained or CPU-throttling.
+
+## 🛠️ REMEDIATION
+
+### A. Manager Fix (APPLIED)
+- Refactored `run_tool` in `groq-ollama_manager.c` to fallback to the system `PATH` if a tool is not found in the local `ops/+x/` directory.
+- This allows `resolve_local_model` to successfully run `curl` and identify the correct model name for any endpoint.
+
+### B. Protocol Optimization (APPLIED)
+- Ensured that `format: json` is only sent to Ollama (11434) and stripped for Llama.cpp (8080) to prevent parsing errors on the slave muscle.
+
+### C. Recommended Usage
+- **Prefer Aida Mac:** Use `aida_mac` (8080) for complex tasks. It is currently much faster (8s vs 15s+) than local CPU inference.
+- **Clear Context:** If hangs persist, use `[2] Clear Context` to reduce the prompt size.
+
+"Reliability is a function of fallbacks." - Investigation Complete.

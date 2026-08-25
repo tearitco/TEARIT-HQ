@@ -1,0 +1,10 @@
+name=Lunar Mining Corp
+ticker=LMC
+type=corporation
+cash=5000.00
+stock_price=10.00
+industry=MINING
+on_map=1
+pos_x=19
+pos_y=8
+pos_z=0

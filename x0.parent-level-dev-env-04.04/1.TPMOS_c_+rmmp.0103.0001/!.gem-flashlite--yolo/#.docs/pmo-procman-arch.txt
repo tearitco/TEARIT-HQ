@@ -1,0 +1,214 @@
+# PMO Process Manager Architecture (TPM-Compliant)
+**Date:** April 3, 2026
+**Based on:** #.ref/0.uni-cyc]A19]HOLY process management patterns
+**Philosophy:** File-backed, auditable, NO separate files, NO linking
+
+---
+
+## 0. CORE PRINCIPLES
+
+1. **No .h files, no linking, no separate library** — Everything lives in orchestrator.c
+2. **File-backed PID tracking** — `proc_list.txt` is the single source of truth
+3. **On Ctrl+C: read file → kill all PIDs → clear file**
+4. **Process group isolation** — Each child calls `setpgid(0, 0)` to become group leader
+5. **Graceful escalation** — SIGTERM → 200ms → SIGKILL
+
+---
+
+## 1. FILE STRUCTURE
+
+```
+pieces/os/
+├── proc_list.txt          # Active process registry (one PID per line)
+├── proc_debug.log         # Timestamped debug log (append-only)
+├── plugins/
+│   └── proc_manager.c     # CLI tool: register/unregister/list (standalone)
+```
+
+### 1.1 proc_list.txt Format (SIMPLE — one PID per line)
+```
+12345 keyboard_input
+12346 chtpm_parser
+12347 renderer
+12348 gl_renderer
+12349 clock_daemon
+12350 joystick_input
+12351 response_handler
+```
+
+- **One line per process**: `PID name`
+- **Truncated on startup** by orchestrator
+- **Appended on spawn** when a child is forked
+- **Read on Ctrl+C** to kill all listed processes
+- **Cleared after cleanup** so next run starts fresh
+
+### 1.2 proc_debug.log Format
+```
+[2026-04-03 21:00:00] Spawned keyboard_input (PID: 12345)
+[2026-04-03 21:00:05] SIGINT received, killing all tracked processes
+[2026-04-03 21:00:05] Killed PID 12345 (keyboard_input)
+```
+
+---
+
+## 2. HOW IT WORKS (HOLY Pattern)
+
+### 2.1 On Startup (orchestrator main)
+
+```c
+int main() {
+    resolve_root();
+    
+    /* Make orchestrator the process group leader */
+    setpgid(0, 0);
+    
+    /* Clear stale proc_list.txt */
+    FILE* f = fopen("pieces/os/proc_list.txt", "w");
+    if (f) fclose(f);
+    
+    /* Register orchestrator itself */
+    log_pid(getpid(), "orchestrator");
+    
+    signal(SIGINT, handle_sigint);
+    
+    /* Spawn children... */
+}
+```
+
+### 2.2 On Spawn (launch_and_register)
+
+```c
+void launch_and_register(const char* name, const char* path, const char* args, bool quiet) {
+    pid_t pid = fork();
+    if (pid == 0) {
+        /* Child: become process group leader */
+        setpgid(0, 0);
+        execl(abs_path, abs_path, args, NULL);
+        exit(1);
+    } else if (pid > 0) {
+        /* Parent: ensure child is process group leader */
+        setpgid(pid, pid);
+        
+        /* Log to proc_list.txt */
+        log_pid(pid, name);
+        
+        /* Wait for child to finish */
+        waitpid(pid, &status, 0);
+    }
+}
+```
+
+### 2.3 On Ctrl+C (handle_sigint)
+
+```c
+void handle_sigint(int sig) {
+    /* Kill ALL processes listed in proc_list.txt */
+    kill_all_tracked_processes();
+    _exit(0);
+}
+
+void kill_all_tracked_processes() {
+    FILE* f = fopen("pieces/os/proc_list.txt", "r");
+    if (!f) return;
+    
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        int pid;
+        char name[128];
+        if (sscanf(line, "%d %127s", &pid, name) == 2) {
+            /* Phase 1: SIGTERM to process group */
+            kill(-pid, SIGTERM);
+            kill(pid, SIGTERM);
+        }
+    }
+    fclose(f);
+    
+    /* Wait 200ms for graceful shutdown */
+    usleep(200000);
+    
+    /* Phase 2: SIGKILL survivors */
+    f = fopen("pieces/os/proc_list.txt", "r");
+    if (!f) return;
+    
+    while (fgets(line, sizeof(line), f)) {
+        int pid;
+        char name[128];
+        if (sscanf(line, "%d %127s", &pid, name) == 2) {
+            kill(-pid, SIGKILL);
+            kill(pid, SIGKILL);
+            waitpid(pid, NULL, WNOHANG);
+        }
+    }
+    fclose(f);
+    
+    /* Clear the file */
+    f = fopen("pieces/os/proc_list.txt", "w");
+    if (f) fclose(f);
+}
+```
+
+---
+
+## 3. WHAT CHANGES
+
+### 3.1 orchestrator.c
+
+**Add:**
+- `log_pid(pid, name)` function — appends to proc_list.txt with flock
+- `kill_all_tracked_processes()` function — reads file, kills all PIDs, clears file
+- `setpgid(0, 0)` in main()
+- `setpgid(pid, pid)` in `launch_and_register()` and `joystick_thread_func()`
+- Call `log_pid()` after each successful fork
+
+**Replace in handle_sigint():**
+- `kill(0, SIGTERM)` → `kill_all_tracked_processes()`
+- `system("bash kill_all.sh")` → removed (not signal-safe)
+- `exit(0)` → `_exit(0)`
+
+### 3.2 chtpm_parser.c
+
+**Replace in cleanup_module():**
+- `waitpid(current_module_pid, NULL, WNOHANG)` → `waitpid(current_module_pid, &status, 0)` (blocking)
+- Add `kill(-current_module_pid, SIGTERM)` before killing the PID
+
+**Add in main loop:**
+- Focus-aware throttling: check `is_active_layout()` and sleep 100ms if inactive
+
+### 3.3 proc_manager.c
+
+**Add:**
+- `unregister` command — removes matching line from proc_list.txt
+
+### 3.4 kill_all.sh
+
+**Replace:**
+- `pkill -9` → `pkill -15` (SIGTERM) first
+- Add `sleep 0.2` between phases
+- Add second pass with `pkill -9` (SIGKILL) for survivors
+
+---
+
+## 4. NO SEPARATE LIBRARY FILE
+
+**pmo_proc_mgr.c is NOT needed.** All process management code lives directly in `orchestrator.c`, exactly like the HOLY reference (`0.mgnt_uni-cycl♿️gl_i10🚸️!]HOLY.c`).
+
+The only separate file is `proc_manager.c` which is a standalone CLI tool for manual process management (register/unregister/list). It's NOT linked into anything.
+
+---
+
+## 5. VERIFICATION
+
+```bash
+# After Ctrl+C, verify no orphans
+ps aux | grep '\.+x' | grep -v grep
+
+# Check proc_list.txt during runtime
+cat pieces/os/proc_list.txt
+
+# Check debug log
+tail -f pieces/os/proc_debug.log
+```
+
+---
+
+**Status:** Architecture revised. Simple, file-backed, no linking, HOLY-compliant.

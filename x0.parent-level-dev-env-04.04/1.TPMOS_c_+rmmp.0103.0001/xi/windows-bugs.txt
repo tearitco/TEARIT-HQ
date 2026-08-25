@@ -1,0 +1,11 @@
+# CHTPM Windows Bug List (May 25, 2026)
+
+## Critical Issues
+1. [ ] **Enter key not working in menus:** Pressing Enter in the Project Loader or other menus does not trigger the expected action.
+2. [ ] **3D Map not rendering in GL:** The map content is missing in the OpenGL window. (Currently broken on Windows, reverted for Linux parity).
+3. [ ] **Ctrl+C not killing processes:** Pressing Ctrl+C in the terminal terminates the orchestrator but leaves child processes running.
+4. [ ] **xlector Sync Broken:** Selection/Interaction in Fuzz-Op and Op-Ed is inconsistent. (Reverted for Linux parity).
+
+## Minor Issues
+- [ ] MAX_PATH redefinition warnings in multiple files.
+- [ ] pid_t conflict in MinGW (fixed locally in some files).

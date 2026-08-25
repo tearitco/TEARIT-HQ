@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | cursword
+STATE        | menu_stay_open     | 1
+STATE        | grab_pointer       | 1
+STATE        | grab_keyboard      | 1
+METHOD       | Dir                | sh -c 'mkdir -p "$0/audit"; GDK_BACKEND=x11 xdg-open "$0" >>"$0/audit/dir.log" 2>&1'
+METHOD       | Chat               | sh -c 'exec sh "$1/&.widgits/open-hai/chat_button.sh" "$1" "$0/chat" cursword-chat'
+METHOD       | Bookmarks          | sh -c 'exec sh "$1/&.widgits/bookmarks/bm_menu.sh" "$1" "$0"'
+METHOD       | Play               | sh -c 'exec sh "$1/*.monads/*.muchi-pet/ops/play_event.sh" "$0"'
+METHOD       | Close              | CLOSE
+METHOD       | Cancel             | void

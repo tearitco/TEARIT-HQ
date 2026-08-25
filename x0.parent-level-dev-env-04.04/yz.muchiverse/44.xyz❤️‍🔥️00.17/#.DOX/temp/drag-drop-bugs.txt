@@ -1,0 +1,123 @@
+DRAG-AND-DROP BUG REPORT
+========================
+Date: 2026-07-26
+Status: ALL BUGS FIXED, COMPILED OK
+
+========================================
+BUG 1: glutIdleFunc(NULL) overwrites Xdnd event polling callback [FIXED]
+========================================
+
+File: 101.mutaclsym🧟‍♂️️+18.01/system/gl_mirror.c
+
+WHAT: glutIdleFunc(check_xdnd_events) was set at line 823, then
+overwritten by glutIdleFunc(NULL) at line 854. Idle callback never ran.
+
+FIX: Deleted the glutIdleFunc(NULL) block (old lines 850-855).
+
+========================================
+BUG 2: Separate X11 display connection never receives events [FIXED]
+========================================
+
+File: 101.mutaclsym🧟‍♂️️+18.01/system/gl_mirror.c
+
+WHAT: XOpenDisplay(NULL) created a SEPARATE connection. ClientMessage
+events from XSendEvent are delivered to the connection that CREATED
+the window (freeglut's internal connection). A separate connection
+will never receive them, regardless of XSelectInput.
+
+FIX: Replaced XOpenDisplay(NULL) with freeglut's internal
+fgDisplay.Display. Now we poll the SAME connection GLUT uses, so
+ClientMessage events arrive in our queue.
+
+========================================
+BUG 3: egg_window XQueryPointer returns itself, not target [FIXED]
+========================================
+
+File: 01.muchi-pals-🥚️-13.01/system/egg_window.c
+
+WHAT: During drag, XQueryPointer on root returns the egg_window itself
+as subwindow (because it's override_redirect and topmost). So target
+always equals win, xdnd_have_target is always 0, and XdndEnter is
+NEVER sent. The drag source code was completely dead.
+
+FIX: Replaced XQueryPointer approach with XQueryTree to enumerate ALL
+root children, then XGetGeometry on each to find which one the cursor
+is actually inside (excluding our own window).
+
+========================================
+BUG 4: XdndDrop sends XdndSelection as ClientMessage [FIXED]
+========================================
+
+File: 101.mutaclsym🧟‍♂️️+18.01/system/gl_mirror.c
+
+WHAT: On XdndDrop, gl_mirror sent XdndSelection as a ClientMessage
+directly to the source. This is wrong — the Xdnd spec requires calling
+XConvertSelection(), which triggers a SelectionRequest on the source.
+The source's SelectionRequest handler (which egg_window.c already had)
+then responds with the pet ID.
+
+FIX: Replaced the ClientMessage with XConvertSelection(g_dpy,
+XA_XdndSelection, XA_text_plain, XA_XdndSelection, g_win, CurrentTime).
+Also moved XdndFinished to the SelectionNotify handler (after data is
+received), and added cleanup on rejected selections.
+
+========================================
+BUG 5: egg_window never claimed XdndSelection ownership [FIXED]
+========================================
+
+File: 01.muchi-pals-🥚️-13.01/system/egg_window.c
+
+WHAT: egg_window never called XSetSelectionOwner(), so when gl_mirror
+called XConvertSelection(), the X server had no selection owner to
+send SelectionRequest to. The data transfer was silently broken even
+if everything else worked.
+
+FIX: Added XSetSelectionOwner(dpy, XA_XdndSelection, win, CurrentTime)
+in the ButtonPress handler when drag starts.
+
+========================================
+BUG 6: Spurious XdndLeave sent after XdndDrop [FIXED]
+========================================
+
+File: 01.muchi-pals-🥚️-13.01/system/egg_window.c
+
+WHAT: After sending XdndDrop, egg_window also sent XdndLeave to the
+target. Per the Xdnd spec, the drop ends the drag — the target cleans
+up via XdndFinished. Sending Leave after Drop is a protocol violation.
+
+FIX: Removed the spurious XdndLeave block.
+
+========================================
+FIXES APPLIED
+========================================
+
+Both projects compile clean:
+  - 101.mutaclsym🧟‍♂️️+18.01/system/gl_mirror — rebuilt
+  - 01.muchi-pals-🥚️-13.01/system/egg_window — rebuilt
+
+========================================
+XDND PROTOCOL FLOW (after fixes)
+========================================
+
+1. User presses button on egg_window
+   -> XSetSelectionOwner(XdndSelection)
+
+2. User drags — egg_window enumerates root children by geometry
+   -> Finds gl_mirror window under cursor
+   -> Sends XdndEnter to gl_mirror
+
+3. gl_mirror receives XdndEnter (via freeglut's display)
+   -> Sets g_drag_over = 1 -> green border appears
+
+4. User moves — egg_window sends XdndPosition periodically
+   -> gl_mirror responds with XdndStatus (accepting)
+
+5. User releases — egg_window sends XdndDrop
+   -> gl_mirror calls XConvertSelection
+   -> X server sends SelectionRequest to egg_window
+   -> egg_window responds with pet ID in SelectionNotify
+   -> gl_mirror receives SelectionNotify, triggers pet_import
+   -> gl_mirror sends XdndFinished to egg_window
+
+6. gl_mirror writes close request file
+   -> egg_window polls for it, closes itself

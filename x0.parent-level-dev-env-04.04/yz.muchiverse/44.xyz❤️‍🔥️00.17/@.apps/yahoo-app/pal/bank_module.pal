@@ -1,0 +1,42 @@
+# bank_module.pal - pieces/chtpm/layouts/bank.chtpm's own dedicated
+# module, per xyzos-standards §41's per-screen module convention.
+# Same proven shape as my-chara-txt's farm_module.pal (idle-sync once
+# before first compose, then loop on screen_changed-diff / real relayed
+# key, only recomposing when something actually changed - Pitfall 48).
+li x1, 0
+
+drain:
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, drain_done
+j drain
+drain_done:
+
+li x9, 0
+yahoo_menu_input x9
+yahoo_compose_frame
+hit_frame
+read_pos x7, "pieces/display/yahoo_screen_changed.txt"
+
+loop:
+li x9, 0
+yahoo_menu_input x9
+read_pos x8, "pieces/display/yahoo_screen_changed.txt"
+beq x7, x8, check_key
+addi x7, x8, 0
+j render
+
+check_key:
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, no_key
+yahoo_menu_input x2
+j render
+
+no_key:
+sleep 30000
+j loop
+
+render:
+yahoo_compose_frame
+hit_frame
+sleep 30000
+j loop

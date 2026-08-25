@@ -1,0 +1,87 @@
+# CHTPM Layouts and Module Interaction Guide
+
+## 1. Introduction
+
+CHTPM layouts (`.chtpm` files) define the visual structure of the user interface, while Modules (`_manager.c` or `_module.c`, compiled to `.+x`) handle the application's logic, input processing, and interaction with underlying TPMOS components like Pieces and Ops. Understanding their interaction is crucial for building dynamic and responsive applications. This guide uses examples from `fuzz-op` and `op-ed` to illustrate these concepts.
+
+## 2. CHTPM Layouts (`.chtpm` Files)
+
+CHTPM files describe the UI structure using an XML-like syntax. They can define both static elements and dynamic content that changes based on application state.
+
+### 2.1 Static Elements
+
+Static elements are hardcoded directly into the layout file. They are useful for fixed labels, decorative borders, and UI structure that doesn't depend on runtime data.
+
+**Example:**
+
+```xml
+<text label="╔═══════════════════════════════════════════════════════════╗" /><br/>
+<text label="║             FUZZ-OP PET SIM             ║" /><br/>
+<text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+```
+
+### 2.2 Dynamic Elements with Variable Substitution
+
+Dynamic elements allow the UI to adapt based on runtime data managed by the Module. This is achieved using the `${variable_name}` syntax within attributes like `label` or as standalone content. The Module is responsible for populating these variables in a state file that the CHTPM parser reads.
+
+**Example from `fuzz-op.chtpm`:**
+
+```xml
+<text label="║  Pet Name: ${pet_name}                                     ║" /><br/>
+<text label="║  Hunger: ${hunger}/100 | Happiness: ${happiness}/100           ║" /><br/>
+${game_map}<br/>
+<text label="║ [RESP]: ${last_response}                                     ║" /><br/>
+<text label="║ [ACTIVE]: ${active_target}   | [KEY]: ${last_key}                  ║" /><br/>
+<text label="║  " />${piece_methods}<text label=" ║" /><br/>
+```
+
+*   `${pet_name}`, `${hunger}`, `${happiness}`, etc.: These variables are populated by the `fuzz-op_manager.c` module based on the `fuzzball` Piece's `state.txt` and other game state.
+*   `${game_map}`: This variable is populated by the `render_map.+x` Op, which reads map data and Piece states to generate the map string.
+*   `${piece_methods}`: This is a crucial dynamic element. The manager queries the `piece.pdl` of the `active_target_id` (e.g., `fuzzball` or `xlector`) to get its available methods (like `feed`, `play`, `scan`). These methods are then formatted into interactive buttons, allowing users to interact with the Piece's capabilities.
+
+### 2.3 Buttons and Interactivity
+
+`<button>` tags define interactive elements.
+*   `onClick="KEY:n"`: Simulates pressing a specific key (e.g., `KEY:1` maps to keycode `49`). The Module then processes this keypress.
+*   `onClick="INTERACT"`: A general interaction signal, often handled by the Module to trigger default Piece actions.
+*   `href="path/to/layout.chtpm"`: Switches the displayed layout to a new CHTPM file, used for navigation between different screens or apps.
+
+## 3. Modules (`_manager.c` / `_module.c`)
+
+Modules are the C programs that contain the application's core logic. They act as the intermediary between the UI and the underlying TPMOS system (Pieces, Ops, state files).
+
+### 3.1 Role and Responsibilities
+
+*   **Input Handling:** Modules poll input history files (e.g., `pieces/apps/player_app/history.txt` or project-specific history files). They read key presses and determine the user's intent.
+*   **State Management:** Modules read Piece state (`.pdl`, `state.txt`) and global state (`pieces/apps/player_app/manager/state.txt`) to understand the current game/application context. They also write state changes back to these files, ensuring persistence.
+*   **Populating Layout Variables:** Modules are responsible for reading relevant data (e.g., from Piece PDL, state files, or external sources like directories) and writing it into files that the CHTPM parser can read for `${variable}` substitution. For example, the `p2p-net` manager writes GUI state to `manager/gui_state.txt`.
+*   **CPU Safety:** Modules must adhere to strict CPU-safe patterns, including signal handling, process group management (`setpgid`), using `fork/exec/waitpid` instead of `system()`, focus-aware throttling (`is_active_layout()`), `stat()`-first polling, and bounded sleep intervals.
+*   **Examples:**
+    *   `projects/fuzz-op/manager/fuzz-op_manager.c`: Demonstrates game logic, state updates, and dynamic menu generation using `${piece_methods}`. It also shows CPU-safe patterns.
+    *   `pieces/apps/op-ed/manager/op-ed_manager.c`: Illustrates editor logic, state synchronization, and interaction with Ops, also adhering to CPU-safe practices.
+
+## 4. Interaction Flow
+
+The interaction between Layouts and Modules follows a defined pipeline to ensure deterministic updates:
+
+1.  **User Input:** A key press is registered by the OS and written to `pieces/keyboard/history.txt`.
+2.  **Routing & Relay:** The CHTPM parser reads the history, determines the active layout and interaction context, and injects the input into the appropriate application history file (often `pieces/apps/player_app/history.txt`).
+3.  **Module Polls Input:** The active Module's main loop continuously polls its designated history file.
+4.  **Decision & Dispatch:** Upon detecting input, the Module determines the intended action (e.g., moving the `xlector`, activating a Piece method).
+5.  **Op Execution:** If an Op is required, the Module constructs and executes it using `run_command()` (which uses `fork/exec/waitpid` for CPU safety).
+6.  **State Update & Mirror Sync:** After an action, the Module updates Piece state files (`state.txt`) and potentially global state files (`pieces/apps/player_app/manager/state.txt`). It then calls `perform_mirror_sync()` to update UI-related mirrors and `save_manager_state()` to persist changes.
+7.  **Render Trigger:** The Module calls `trigger_render()` which writes a pulse marker (e.g., "M
+" or "Z
+") to `pieces/display/frame_changed.txt`.
+8.  **Composition & Frame Generation:** The CHTPM parser detects the `frame_changed.txt` pulse, reads updated state variables, substitutes them into the layout (e.g., `${pet_name}` becomes "Fuzzball"), and writes the final frame to `pieces/display/current_frame.txt`.
+9.  **Display:** The Renderer (ASCII or GL) detects changes in `current_frame.txt` (via `renderer_pulse.txt`) and renders the output to the terminal or window.
+
+## 5. Key Principles for Layouts and Modules
+
+*   **Modularity and Separation of Concerns:** Keep UI structure in `.chtpm` files and logic in C modules. Avoid hardcoding complex logic within layouts.
+*   **Data-Driven UI:** Leverage `${variable}` substitution in layouts. Modules should dynamically populate UI elements based on Piece state and PDL definitions. Prefer PDL-driven `${piece_methods}` for dynamic actions.
+*   **CPU Safety:** Adhere strictly to CPU-safe patterns for Modules (signal handling, `fork/exec/waitpid`, focus throttling) to ensure efficiency and stability.
+*   **Auditability & File-Based State:** All significant state should be persisted in files (`state.txt`, `piece.pdl`). The filesystem serves as the single source of truth.
+*   **Consistency:** Follow established project structures (APP vs. PROJECT) and naming conventions. Resolve paths dynamically using `pieces/locations/location_kvp`.
+
+By adhering to these principles and referencing existing projects like `fuzz-op` and `op-ed`, developers can create robust, dynamic, and CPU-safe applications within the TPMOS ecosystem.

@@ -1,0 +1,2 @@
+# op_name|description|args_format
+# Intentionally empty in the template-only clone.

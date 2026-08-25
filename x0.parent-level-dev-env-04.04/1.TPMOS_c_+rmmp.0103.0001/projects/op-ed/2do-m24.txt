@@ -1,0 +1,28 @@
+# OP-ED File System Update (m24) - 2DO
+
+## 1. File System Refactor (Agy-Style)
+- [ ] Port `agy-text-editor` browser logic to `op-ed_manager.c`.
+    - [ ] Implement `update_gui_state()` fields for browser (browser_mode_header, directory_browser_markup, etc.).
+    - [ ] Implement `handle_command()` for `SET_DIR`, `SET_PATH`, `SET_LOAD_ACTION`, `SET_SAVE_ACTION`.
+    - [ ] Implement `process_key()` for browser navigation and input sync.
+- [ ] Update `op-ed` Layouts to support the new browser.
+    - [ ] Create `projects/op-ed/layouts/file_browser.chtpm`.
+    - [ ] Update `projects/op-ed/layouts/file_menu.chtpm` to link to the browser.
+- [ ] Target Directory: Default the browser to `projects/op-ed/games/`.
+
+## 2. Project-Level Save/Load (Sovereign Context)
+- [ ] Implement `save_game_to_path(path)`:
+    - [ ] Instead of saving a single file, it should copy/move the current working state of the editor into a named game folder.
+    - [ ] Current working state is usually `projects/op-ed/maps/` and `projects/op-ed/pieces/`.
+- [ ] Implement `load_game_from_path(path)`:
+    - [ ] Copy the contents of the selected game folder into `projects/op-ed/maps/` and `projects/op-ed/pieces/`.
+    - [ ] Refresh the editor state (scan maps, update UI).
+
+## 3. Testing & Verification
+- [ ] Test loading the `fuzz-op-mirror` game from `projects/op-ed/games/`.
+- [ ] Test "Save As" to create a new game (e.g., `projects/op-ed/games/test-game`).
+- [ ] Verify that changes in one game do not bleed into the other.
+
+## 4. Next Steps
+- [ ] Integrate the PAL Player (Slice 2).
+- [ ] Implement Script Editor (Slice 3).

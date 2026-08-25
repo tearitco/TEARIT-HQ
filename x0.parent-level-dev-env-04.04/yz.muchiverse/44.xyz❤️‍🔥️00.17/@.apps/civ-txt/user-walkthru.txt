@@ -1,0 +1,189 @@
+CIV-TXT — USER WALKTHROUGH (P1 skeleton)
+================================================================================
+How to launch this yourself and confirm the P1 skeleton is working as
+intended. Written 2026-08-02. This is a SKELETON — cities/tech/military/
+diplomacy/AI civs are NOT built yet (see KNOWN GAPS below). What IS real:
+real CHTPM nav, a real setup screen that writes real config, and a real
+End Turn loop with ledger logging — the same proven pattern as
+@.apps/my-chara-txt, just this project's own first slice of it.
+
+--------------------------------------------------------------------------------
+0. RESET TO FRESH BEFORE TESTING (same caveat as my-chara-txt has)
+--------------------------------------------------------------------------------
+Like my-chara-txt, civ-txt has no Save/Load yet — config.txt is a single
+persistent file shared by every launch. To force a fresh setup:
+
+    cd "@.apps/civ-txt"
+    ./button.sh kill
+    rm -f pieces/system/config.txt
+    rm -rf pieces/sessions
+    : > data/master_ledger.txt
+    ./button.sh run
+
+--------------------------------------------------------------------------------
+1. LAUNCH
+--------------------------------------------------------------------------------
+    cd "@.apps/civ-txt"
+    ./button.sh run
+
+You should see a real terminal screen titled "C I V - T X T", AND (new,
+added same session) a SEPARATE real GL window titled "civ-txt RGB mirror"
+should also pop open automatically, mirroring the same text as an image —
+use `NO_GL=1 ./button.sh run` to skip it. If it doesn't appear at all,
+that's expected/graceful without a display or GLUT dev libs, not a bug.
+
+Terminal shows the SETUP screen:
+
+    Victory condition: (not set)
+    Map scale: (not set)
+    Combat resolution: (not set)
+
+    Pick each option below, then Confirm & Start.
+
+    [>] 1. [Victory: Conquest]
+    [ ] 2. [Victory: Score + Turn Limit]
+    [ ] 3. [Victory: Tech + Score]
+    [ ] 4. [Map: Small (2 civs)]
+    [ ] 5. [Map: Medium (3-4 civs)]
+    [ ] 6. [Combat: Abstract (army-strength)]
+    [ ] 7. [Combat: Per-unit (grid skirmish)]
+    [ ] 8. [Confirm & Start]
+    [ ] 9. [Enter Game (after Confirm & Start)]
+
+--------------------------------------------------------------------------------
+2. TEST: SETUP OPTIONS (all three should be independently selectable)
+--------------------------------------------------------------------------------
+Pick one option from each group (e.g. type '1' Enter for Conquest, '4' Enter
+for Small map, '6' Enter for Abstract combat). After each pick, the summary
+at the top should update to show your choice (e.g. "Victory condition:
+conquest"). Order doesn't matter — you can pick them in any sequence, and
+re-picking a different option in the same group should just overwrite it
+(try picking Conquest then Tech+Score — the summary should end up showing
+tech_score, not both).
+
+VERIFY ON DISK:
+    cat pieces/system/config.txt
+    # victory_condition=, map_scale=, combat_resolution= should match
+    # whatever you last picked in each group
+
+--------------------------------------------------------------------------------
+3. TEST: CONFIRM & START, THEN ENTER GAME
+--------------------------------------------------------------------------------
+Select "Confirm & Start" (item 8). You should see a message like "Setup
+confirmed. Game started." and pieces/system/config.txt's game_state field
+should flip from "setup" to "playing":
+
+    cat pieces/system/config.txt   # game_state=playing
+
+Then select "Enter Game" (item 9, a real navigation button, not a piece.pdl
+row). You should land on the MAIN screen:
+
+    Turn: 1 (or 2 - see note below)
+    Treasury: 50
+    Cities: 1
+    Victory condition: <whatever you picked>
+
+    [>] 1. [End Turn]
+
+CORRECTED NOTE (this walkthrough originally described this as a harmless
+"buffered rapid keypress" timing quirk — that explanation turned out to be
+WRONG, found while building this project's own test harness later the same
+session): you may see "Turn: 2" already instead of "Turn: 1" right after
+entering the game, even if you press keys slowly and deliberately. This is
+NOT a keypress-timing artifact — it's a real, confirmed bug in the shared
+CHTPM engine (`interact_relay.txt` replays a stale, already-handled keypress
+against whichever screen you just arrived on). It's harmless here only
+because the replayed action (re-confirming setup) doesn't change anything
+visible. See `HANDOFF_NEXT_SESSION.md` §5 for the full writeup — this is a
+known, open, shared-engine issue, not something wrong with civ-txt
+specifically, and not something to worry about while testing.
+
+--------------------------------------------------------------------------------
+4. TEST: END TURN
+--------------------------------------------------------------------------------
+From the main screen, select "End Turn" (item 1) a few times.
+
+EXPECTED: Turn number increments by 1 each time, and a message like "Turn 3
+began." appears.
+
+VERIFY ON DISK:
+    cat data/master_ledger.txt
+    # one "end_turn" line per End Turn press, append-only, format:
+    # timestamp|turn|player|end_turn|turn:<N>
+
+--------------------------------------------------------------------------------
+4a. TEST: OPEN BOARD WIDGET (real, separate GL window — replaces the old
+    "View Map" screen entirely, updated 2026-08-02)
+--------------------------------------------------------------------------------
+This is now a REAL, separate program with its own GL window (never a
+same-session screen switch — civ-txt's own screen never changes when you
+open this). From the main screen, select "View Board (opens separate GL
+window)". A brand new window titled something like "board-viewer" should
+open, completely independent of civ-txt's own terminal/GL window. If you
+have no display attached, this will report it can't open a window rather
+than doing anything — that's expected, not a bug.
+
+What you should see in that window:
+    - The real terrain grid CONFIRM_START generated (not a placeholder) -
+      a mix of plains/forest/hills/water glyphs (rendered as real emoji:
+      grass, trees, mountain, water wave), with your capital (a castle
+      emoji) at board center. 10x10 for "Map: Small", 14x14 for "Map:
+      Medium" - matches whatever you picked during setup.
+    - A selector cursor you can move once you engage nav mode (see below).
+    - A status area showing "Nav mode: OFF/ON" and "Display: emoji" and a
+      "Camera: ..." line.
+
+TEST NAV MODE + CAMERA:
+    - Select the ONLY numbered item shown ("Nav Mode (camera + selector)")
+      to engage it - the item's own [>] should flip to [^], and "Nav mode:"
+      should read ON. Arrow keys should now move the selector cursor
+      around the board, clamped to its edges.
+    - Press ESC - nav mode should exit cleanly (flips back to [>]/OFF).
+    - Re-engage nav mode, then press '0' - this switches to a REAL 3D
+      view (an actual per-pixel raymarcher, not a flat image) of the same
+      board, camera looking down by default. Press '1'/'2'/'3'/'4' to
+      switch between first-person / third-person / free-roam / bird's-eye
+      camera modes. In modes that support it: 'q'/'e' rotates the camera,
+      'r'/'t' tilts it, 'w'/'a'/'s'/'d' pans (modes 3/4 only), 'c'/'v'
+      raises/lowers it (modes 3/4), 'f' resets the current mode's camera.
+      Press '0' again to go back to the 2D view.
+    - You should also see a small reference cube near one corner of the
+      board in 3D mode (red/blue/green/brown/white/dark faces) - this is
+      an orientation-calibration aid, not part of the actual game board.
+
+This widget is shared - the exact same program will be used for
+tactics-txt's own board too, once that's wired up.
+
+Close the board-viewer window (or Ctrl+C its own terminal if you launched
+it headless) when done - it's fully independent of civ-txt's own process,
+closing it does not affect civ-txt's own running session at all. Confirm
+civ-txt's own main screen still shows the correct turn/treasury/city-count
+summary afterward - opening/closing the widget should never have touched
+civ-txt's own screen state.
+
+--------------------------------------------------------------------------------
+5. CLEAN SHUTDOWN CHECK
+--------------------------------------------------------------------------------
+Press Ctrl+C to quit. Then, in a separate terminal:
+
+    ps aux | grep civ-txt
+
+EXPECTED: no output (or only this grep command itself). Leftover
+orchestrator/prisc+x/keyboard_input processes would be a real bug.
+
+--------------------------------------------------------------------------------
+KNOWN GAPS (things intentionally NOT built yet, don't report these as bugs)
+--------------------------------------------------------------------------------
+- No cities, tech tree, units, or military actions yet — main screen only
+  shows a static treasury/city-count summary and End Turn.
+- No AI civs yet — this is a true single-player skeleton, no opponent exists.
+- Board widget (§4a above) shows real terrain now (a real generated
+  board.txt, real emoji rendering, real 3D raymarch view with camera
+  controls) - but no cities/units render on it yet, since none exist in
+  civ-txt's own P1 data model yet. Selecting a tile in the widget doesn't
+  do anything back in civ-txt yet either (the command-bus hookup for that
+  is designed but not built - see @.apps/BOARD_WIDGET_ARCHITECTURE.md §5).
+- No automation/decision_mode layer yet, unlike my-chara-txt (which has one
+  as of 2026-08-02) — CIV_TXT_DESIGN.md §7 describes the plan, not yet ported.
+- No Save/Load (see §0 above).
+- See CIV_TXT_DESIGN.md's own §10 (Build Order) for the full P2-P11 plan.

@@ -1,0 +1,30 @@
+# Player Engine Standardized Operations (v3.0)
+# Format: name type handler {description}
+
+# Movement
+move_z void pieces/apps/playrm/ops/+x/move_z.+x {Relative vertical move}
+move_player void pieces/apps/playrm/ops/+x/move_player.+x {Move entity to X,Y,Z}
+move_entity void pieces/apps/playrm/ops/+x/move_entity.+x {Generic move entity}
+move_selector void pieces/apps/playrm/ops/+x/move_selector.+x {Move selector}
+
+# Engine
+halt void builtin_halt {stop execution}
+out void builtin_out {print register}
+console_print void pieces/apps/playrm/ops/+x/console_print.+x {Show message}
+menu_op void pieces/apps/playrm/ops/+x/menu_op.+x {Render PDL menu and get selection}
+project_loader void pieces/apps/playrm/ops/+x/project_loader.+x {Scan projects and select}
+render_map void pieces/apps/playrm/ops/+x/render_map.+x {Compose map view}
+
+# Fuzzpet / Gameplay
+fuzzpet_action void pieces/apps/playrm/ops/+x/fuzzpet_action.+x {Pet interactions}
+stat_decay void pieces/apps/playrm/ops/+x/stat_decay.+x {Natural stat changes}
+toggle_selector void pieces/apps/playrm/ops/+x/toggle_selector.+x {Toggle between modes}
+inspect_tile void pieces/apps/playrm/ops/+x/inspect_tile.+x {Describe tile/entity}
+clock_daemon void pieces/system/clock_daemon/plugins/+x/clock_daemon.+x {Clock controls}
+tick void pieces/system/clock_daemon/plugins/+x/clock_daemon.+x tick {Trigger turn tick}
+
+# Selector Specialized Ops
+scan_op void pieces/apps/playrm/ops/+x/scan_op.+x {Detailed area scan}
+collect_op void pieces/apps/playrm/ops/+x/collect_op.+x {Pickup item}
+place_op void pieces/apps/playrm/ops/+x/place_op.+x {Place item}
+inventory_op void pieces/apps/playrm/ops/+x/inventory_op.+x {Show selector items}

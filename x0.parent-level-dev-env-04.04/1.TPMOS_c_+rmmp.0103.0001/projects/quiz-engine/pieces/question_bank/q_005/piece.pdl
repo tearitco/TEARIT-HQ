@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | q_005
+META         | type               | question
+
+STATE        | name               | Methanol
+STATE        | type               | Alcohol

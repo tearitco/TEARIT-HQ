@@ -1,0 +1,99 @@
+Reading gui_state.txt...
+LINE: peer_count=1
+LINE: network_status=ONLINE
+LINE: net_role=HOST
+LINE: my_ip=10.0.0.187
+LINE: host_ip=SELF
+LINE: connected_peers_list=[6a1445e1cf00] (YOU) | IP:10.0.0.187\n
+LINE: messages=
+LINE: input_text=hi test
+Reading gui_state.txt...
+LINE: peer_count=1
+LINE: network_status=ONLINE
+LINE: net_role=HOST
+LINE: my_ip=10.0.0.187
+LINE: host_ip=SELF
+LINE: connected_peers_list=[6a1445e1cf00] (YOU) | IP:10.0.0.187\n
+LINE: messages=[6a1445e1cf00] hi test
+LINE: input_text=test 3
+Reading gui_state.txt...
+LINE: peer_count=2
+LINE: network_status=ONLINE
+LINE: net_role=HOST
+LINE: my_ip=10.0.0.187
+LINE: host_ip=SELF
+LINE: connected_peers_list=[6a14474fcffb] (YOU) | IP:10.0.0.187\n[6a1447c3259f] | IP:10.0.0.144\n
+LINE: messages=[6a1447c3259f] hi mac
+LINE: input_text=hi desk
+Reading gui_state.txt...
+LINE: peer_count=1
+LINE: network_status=ONLINE
+LINE: net_role=HOST
+LINE: my_ip=10.0.0.238
+LINE: host_ip=SELF
+LINE: connected_peers_list=[6a144c89d646e] (YOU) | IP:10.0.0.238\n
+LINE: messages=
+LINE: input_text=lonely surf1
+Reading gui_state.txt...
+LINE: peer_count=2
+LINE: network_status=ONLINE
+LINE: net_role=HOST
+LINE: my_ip=10.0.0.238
+LINE: host_ip=SELF
+LINE: connected_peers_list=[6a144c89d646e] (YOU) | IP:10.0.0.238\n[6a144caa302a] | IP:10.0.0.144\n
+LINE: messages=[6a144c89d646e] lonely surf1\n[6a144c89d646e] lonely surf1\n[6a144caa302a] hi mac1
+LINE: input_text=lonely 2surf
+Reading gui_state.txt...
+LINE: peer_count=3
+LINE: network_status=ONLINE
+LINE: net_role=HOST
+LINE: my_ip=10.0.0.238
+LINE: host_ip=SELF
+LINE: connected_peers_list=[6a144c89d646e] (YOU) | IP:10.0.0.238\n[6a144caa302a] | IP:10.0.0.144\n[6a144cdada69] | IP:10.0.0.187\n
+LINE: messages=[6a144c89d646e] lonely surf1\n[6a144c89d646e] lonely surf1\n[6a144caa302a] hi mac1\n[6a144c89d646e] lonely 2surf\n[6a144c89d646e] lonely 2surf\n[6a144cdada69] hi desk\n[6a144caa302a] mak 2
+LINE: input_text=3rd player
+Reading gui_state.txt...
+LINE: peer_count=1
+LINE: network_status=ONLINE
+LINE: net_role=CLIENT
+LINE: my_ip=10.0.0.238
+LINE: host_ip=10.0.0.144
+LINE: connected_peers_list=[6a145538d9673] (YOU) | IP:10.0.0.238\n[] | IP:\n
+LINE: messages=
+LINE: input_text=hisurfi
+Reading gui_state.txt...
+LINE: peer_count=1
+LINE: network_status=ONLINE
+LINE: net_role=CLIENT
+LINE: my_ip=10.0.0.238
+LINE: host_ip=10.0.0.144
+LINE: connected_peers_list=[6a145538d9673] (YOU) | IP:10.0.0.238\n[] | IP:\n
+LINE: messages=[6a145538d9673] hisurfi
+LINE: input_text=howdi?
+Reading gui_state.txt...
+LINE: peer_count=1
+LINE: network_status=ONLINE
+LINE: net_role=CLIENT
+LINE: my_ip=10.0.0.238
+LINE: host_ip=10.0.0.144
+LINE: connected_peers_list=[6a145799d9f5c] (YOU) | IP:10.0.0.238\n[] | IP:\n
+LINE: messages=
+LINE: input_text=hi s90
+Reading gui_state.txt...
+LINE: peer_count=1
+LINE: network_status=ONLINE
+LINE: net_role=CLIENT
+LINE: my_ip=10.0.0.238
+LINE: host_ip=10.0.0.144
+LINE: connected_peers_list=[6a145799d9f5c] (YOU) | IP:10.0.0.238\n
+LINE: messages=[6a145799d9f5c] hi s90
+LINE: input_text=hid
+Reading gui_state.txt...
+LINE: peer_count=1
+LINE: network_status=ONLINE
+LINE: net_role=CLIENT
+LINE: my_ip=10.0.0.238
+LINE: host_ip=10.0.0.144
+LINE: connected_peers_list=[6a145817da18c] (YOU) | IP:10.0.0.238\n[] | IP:\n
+LINE: messages=
+LINE: input_text=hi surf9

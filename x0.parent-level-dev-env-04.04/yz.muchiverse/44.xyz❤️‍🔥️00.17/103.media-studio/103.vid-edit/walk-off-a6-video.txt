@@ -1,0 +1,51 @@
+# walk-off-a6-video.txt — Muchi Video Editor Phase-1 handoff
+**Date:** 2026-08-06  
+**Path:** `103.media-studio/103.vid-edit/`  
+**Sibling DAW:** `103.media-studio/103.daw/walk-off-a6-daw.txt`  
+**Spec:** `house-design-docs.md` §3  
+
+## Run
+```bash
+cd 103.media-studio/103.vid-edit && sh button.sh r
+```
+
+## What works now
+- iMovie-shaped UI: File menu, transport, preview + inspector, multi-track timeline (V1/V2/A1/A2)
+- Demo MP4s (`media/demo_*.mp4`) auto-placed on timeline
+- Playhead + ffmpeg single-frame preview decode
+- Select clip, split (C), ripple delete (R), I/O trim, nudge [ ]
+- Save/load `timeline.clips`; Export V1 via ffmpeg concat → `export.mp4`
+- Writes `canvas.raw` for future house canvas-widgit
+- Window resize keeps UI top-left (same fix as DAW)
+- **OS drag-drop** of video/audio/image/webm (X11 XDND) onto timeline
+- **Clip drag** on timeline to move
+- **House-path-safe** URI resolve: `../shared/media_drop_path.c` (emoji/ZWJ/`file://` decode, PATH_MAX buffers, debug log)
+- Fallback: File → Paste files (clipboard / xclip)
+- **Audio playback**: ffmpeg `-vn` PCM s16le stereo 44.1k pipe → PulseAudio (`-lpulse -lpulse-simple`); play/pause via `set_playing()`; status “Playing (video + audio)”. Demo sines are audible on Space.
+- **CPU-safe play**: **no ffmpeg video during play** (hold last frame + audio). Decode only scrub/pause/first load, ≤~2/sec, 320×180, `nice -n 15`. UI ≤20fps play / ≤8 idle. Main loop always sleeps.
+
+## Not yet
+- Drag-resize clips, multi-layer composite export, transitions, titles, multi-track audio mix / meters
+- CHTPM shell / canvas-widgit process (still freeglut Phase-1)
+- Real file picker for import
+
+## Next steps toward iMovie
+1. Mouse drag move/trim clips on timeline  
+2. Composite V1+V2 into preview (ffmpeg filter or software blit)  
+3. Transitions + title cards  
+4. Export full sequence (not V1-only concat)  
+5. House migration: preview → canvas.raw only; spawn canvas-widgit  
+
+## Architecture
+Single file `ops/ve_main.c` + `button.sh` (mirrors DAW iteration style).
+Split when features grow: state / decode / ui.
+
+## Pitfalls
+- Don’t decode every timer tick at 30fps without cache (we throttle + 40ms cache)
+- Don’t write `rgb_frame.raw` for preview (use canvas.raw) — design §3 P1
+- ffmpeg must be on PATH for real frames / export / audio decode  
+- Preview was video-only until Pulse path; don’t set `g_playing` without `set_playing()` or audio never starts  
+- Don’t busy-loop `glutMainLoopEvent` without sleep — pegs one core  
+- **Never** `system(ffmpeg)` while playing for video — one frame seek/spawn ~melts CPU; hold texture + audio pipe only  
+
+*End walk-off-a6-video*

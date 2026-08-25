@@ -1,0 +1,13 @@
+project_id=slop-ed-dev
+active_target_id=xlector
+camera_mode=4
+pet_01_pos_x=unknown
+pet_01_pos_y=unknown
+pet_01_active=0
+zombie_01_pos_x=unknown
+zombie_01_pos_y=unknown
+zombie_01_active=0
+selector_pos_x=5
+selector_pos_y=5
+status_text=Pet(unknown,unknown) | Zom(unknown,unknown) | Sel(5,5)
+current_z=0

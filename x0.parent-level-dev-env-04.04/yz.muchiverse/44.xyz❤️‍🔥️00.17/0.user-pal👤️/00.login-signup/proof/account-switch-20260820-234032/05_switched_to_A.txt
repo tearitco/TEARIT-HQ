@@ -1,0 +1,23 @@
++============================================================+
+|  U S E R - P A L                                           |
++============================================================+
+|                                                            |
+|  Logged in as: asw_a_2492048                               |
+|  uuid: d253bfdc-d04c-407b-bb4f-35163b475054                |
+|  xyzfs: xyzfs/users/d253bfdc-d04c-407b-bb4f-35163b475054   |
+|                                                            |
+|  Enter a user ID (and display name, if new), then          |
+|  Create Account / Log In — or Switch: an account below.  |
+|                                                            |
+|  Accounts on this machine:                                 |
+|    jb — JB Test                                          |
+|    avmenu_1653663 — MenuTest                             |
+|  > asw_a_2492048 — Alice                                 |
+|    asw_b_2492048 — Bob                                   |
+|    claude-0001 — AgentClaude0001                         |
+|    schar_1744476 — SessionChar                           |
+|    avmenu_1654388 — MenuTest                             |
+|                                                            |
+|  Switched account -> asw_a_2492048 (Logged in as 'asw_a_249|
+|                                                            |
++============================================================+

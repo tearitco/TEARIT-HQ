@@ -1,0 +1,5 @@
+user_id=jb
+display_name=JB Test
+uuid=0a9558a7-7c74-4358-833c-2d5b21edc421
+xyzfs_path=xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421
+created_at=1784527064

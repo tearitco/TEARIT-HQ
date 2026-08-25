@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | wraith-alpha/wraith-projects/wraith-browser
+META         | version            | 0.1
+META         | author             | TPMOS
+META         | manager            | projects/wraith-alpha/wraith-projects/wraith-browser/manager/+x/wraith-browser_manager.+x
+META         | entry_layout       | projects/wraith-alpha/wraith-projects/wraith-browser/layouts/wraith-browser.chtpm
+
+STATE        | title              | WRAITH BROWSER
+STATE        | status             | scaffold
+STATE        | mode               | browser
+STATE        | current_context    | session
+
+RESPONSE     | default            | Wraith Browser Ready.

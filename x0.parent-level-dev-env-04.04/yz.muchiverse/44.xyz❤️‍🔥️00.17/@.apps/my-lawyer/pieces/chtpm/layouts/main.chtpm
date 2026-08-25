@@ -1,0 +1,14 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|                     M Y - L A W Y E R                      |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="+============================================================+" /><br/>
+    <button label="Docket" href="pieces/chtpm/layouts/docket.chtpm" /><br/>
+    <button label="My Case" href="pieces/chtpm/layouts/case.chtpm" /><br/>
+    ${piece_methods}
+    <text label="+============================================================+" /><br/>
+    <text label=" (Ctrl+C to quit)" /><br/>
+</panel>

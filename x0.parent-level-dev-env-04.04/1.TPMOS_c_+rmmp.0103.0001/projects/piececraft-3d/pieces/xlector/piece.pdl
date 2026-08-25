@@ -1,0 +1,6 @@
+[META]
+id=xlector
+type=selector
+
+[METHODS]
+METHOD | Scan | pieces/apps/playrm/ops/+x/scan_op.+x xlector

@@ -1,0 +1,115 @@
+# WRAITH-ALPHA TERMINAL OPEN EXPLORATION
+Date: 2026-06-06
+
+Historical note:
+- this exploration predates the rollback
+- the current live baseline has launch/minimize/close working again, but
+  restore-from-toolbar is still unresolved
+- keep the launch analysis as reference only; do not treat it as the active
+  runtime contract without re-verifying live
+
+Purpose:
+Investigate why the Wraith Alpha dock target for `Terminal` is visible but
+does not yet open a terminal window in the live frame, and define the path to
+make terminal launches behave like normal desktop project launches.
+
+Current observed failure:
+- Desktop boots empty, which is correct.
+- The dock shows `Terminal` as an indexed target, which is correct.
+- Pressing Enter on the dock target does not yet produce a visible terminal
+  window in the desktop area.
+- The frame still reports `Open Windows: 0`.
+
+Desired contract:
+- Wraith Alpha boots into an empty desktop.
+- The dock is the indexed launch strip.
+- Clicking or activating `Terminal` launches a real terminal project instance.
+- Each launch of `Terminal` should create a new proc-numbered terminal
+  instance.
+- Minimized terminal instances should restore the exact numbered instance.
+- The dock is part of the desktop, not a separate launcher runtime.
+- There is no special `wraith-projects` category in the final model.
+
+What is already in place:
+- The dock target for `Terminal` is visible in the ASCII frame.
+- `SET_ACTIVE:5` is routed through the parser as a desktop action.
+- The manager can read and write `desktop_window_count`.
+- The parser now understands `Terminal #N` as the numbered instance label.
+- The desktop can boot empty without forcing an always-open window.
+- The manager now also mirrors launch state into `desktop_ui_state.txt`, which
+  is required because the parser loads that file last and it otherwise wins.
+
+Why the launch still feels broken:
+- The current implementation still uses a single fixed desktop window slot.
+- The UI state can say "launch target selected" without creating a new window
+  instance record.
+- The parser/manager split still needs an explicit launch path that turns a
+  dock activation into a live project instance.
+- The current state model is not yet a full instance registry.
+
+Hypothesis A:
+- `Terminal` is only changing selection/state, not instantiating a window
+  entry.
+- Evidence to look for:
+  - `parser.out` should show a `DESKTOP ACTION` line for `SET_ACTIVE:5`
+  - `desktop_ui_state.txt` should change from `desktop_window_count=0` to a
+    positive count
+  - the desktop frame should then render a visible terminal body/chrome
+
+Hypothesis B:
+- The action is firing, but a later load path overwrites the open state back
+  to empty.
+- Evidence to look for:
+  - `desktop_ui_state.txt` changes briefly, then reverts
+  - `alpha_state.txt` or `gui_state.txt` reasserts `desktop_window_count=0`
+  - the parser logs show the launch but the next frame returns to empty
+
+Hypothesis C:
+- The terminal must be launched through a true project-launch path, not a
+  desktop UI toggle.
+- Evidence to look for:
+  - the dock activation needs to call the same launch transport used by other
+    TPMOS projects
+  - terminal should have its own project layout entry point and instance state
+  - the desktop should treat the result as a normal project surface, not a
+    special window flag
+
+Implementation path:
+1. Keep the desktop booting empty.
+2. Treat dock `Terminal` activation as a real project launch.
+3. Have the manager create the first terminal instance directly.
+4. Assign a proc number to each launch, starting at `Terminal #1`.
+5. Mirror the launch into `desktop_ui_state.txt` so the parser cannot revert
+   the desktop back to closed.
+6. Render the launched instance into the desktop surface.
+7. Keep the dock visible with the launch target and the minimized instance
+   list.
+8. Add restore behavior for the exact numbered instance that was minimized.
+9. Only after launch/open works should maximize, minimize, and repeated
+   overlapping instances be hardened.
+
+Acceptance criteria:
+- The live frame shows `Open Windows: 1` after launching `Terminal`.
+- The desktop area shows a visible terminal project surface.
+- Repeated `Terminal` clicks create new overlapping terminal instances.
+- Minimized terminals return as their exact numbered instance.
+- The dock remains indexed and keyboard accessible.
+- The empty desktop boot remains intact.
+
+What not to do:
+- Do not reintroduce a permanent auto-open terminal fixture.
+- Do not create a separate `wraith-projects` bucket.
+- Do not hide the dock launch behavior inside a hardcoded layout shortcut.
+- Do not treat launch as the same thing as collapse or fullscreen.
+
+Recommended next inspection points:
+- `1.TPMOS_c_+rmmp.0102.0018/projects/wraith-alpha/layouts/alpha-shell.chtpm`
+- `1.TPMOS_c_+rmmp.0102.0018/projects/wraith-alpha/ops/wraith_parser_alpha.c`
+- `1.TPMOS_c_+rmmp.0102.0018/projects/wraith-alpha/manager/wraith-alpha_manager.c`
+- `1.TPMOS_c_+rmmp.0102.0018/projects/wraith-alpha/session/desktop_ui_state.txt`
+- `1.TPMOS_c_+rmmp.0102.0018/projects/wraith-alpha/session/alpha_state.txt`
+
+Recovery note:
+- If the live frame still shows zero windows after launch, treat the session
+  as stale until the parser/manager binaries are confirmed rebuilt and the
+  runtime is restarted.

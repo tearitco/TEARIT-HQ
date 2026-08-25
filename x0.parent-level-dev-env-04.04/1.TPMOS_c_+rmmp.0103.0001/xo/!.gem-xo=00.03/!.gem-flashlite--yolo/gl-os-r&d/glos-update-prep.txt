@@ -1,0 +1,70 @@
+
+# GL-OS Update Preparation: Walkthrough of Current Progress
+
+This document provides an indexed overview of the current state of GL-OS development, focusing on its capabilities as a host environment for independent GL-native applications and the implementation of virtual window launches.
+
+## I. Introduction
+
+*   **Purpose:** To document the progress made in establishing GL-OS as a functional desktop environment capable of hosting and managing separate GL applications.
+*   **Context:** This phase represents a significant architectural shift, moving from mirroring ASCII processes to GL-OS acting as a sophisticated display manager and input router for self-contained GL projects.
+
+## II. Core Architectural Principles
+
+This section outlines the foundational design decisions guiding GL-OS development, as detailed in `gl-os_vision.md`.
+
+*   **A. GL-OS as Host Environment:**
+    *   GL-OS is designed as a high-fidelity, modular desktop environment.
+    *   It manages windows, input events, and the rendering pipeline for GL-native applications.
+    *   It does NOT directly render ASCII processes or mirror their internal memory states.
+*   **B. File-State Synchronization:**
+    *   GL-OS applications within the host environment interact with **project-specific data files**.
+    *   Examples of these files include `current_frame.txt`, `state.txt`, `view.txt`, and tile definitions, located within their respective project directories (e.g., `projects/gl-os/fuzz-op-gl/`).
+    *   This adheres to the TPMOS principle that **file states are the source of truth**, ensuring data sovereignty.
+*   **C. Process Sovereignty:**
+    *   GL-OS and any ASCII TPMOS applications remain entirely **independent processes**.
+    *   Communication and state synchronization between them are mediated exclusively through file I/O.
+
+## III. Project Launch Mechanism ("Virtual Windows")
+
+This section details how GL-OS launches and manages independent GL applications.
+
+*   **A. The "Virtual Window" Concept:**
+    *   As clarified in `#`.gl-2do.prompt.txt, a "virtual window" is a GL-OS window that launches and displays a standalone GL application, reflecting its own project's file state. This is distinct from opening a new, separate GL window or mirroring an ASCII process.
+*   **B. Role of `gl_desktop.c`:**
+    *   The GL-OS desktop manager, primarily implemented in `gl_desktop.c`, intercepts selections for GL projects from menus (e.g., the ASCII Project Loader menu `playrm/loader.chtpm`).
+    *   Instead of simply displaying text or mirroring ASCII, it handles the launch sequence.
+*   **C. Launching GL Application Binaries:**
+    *   When a GL project is selected, `gl_desktop.c` launches the corresponding GL application binary (e.g., `projects/gl-os/fuzz-op-gl/+x/fuzz-op_manager.+x`).
+*   **D. Window Management:**
+    *   GL-OS takes responsibility for managing the lifecycle of these launched GL application windows, including their input handling and overall state.
+
+## IV. Current Implementation Status
+
+*   **A. Completed Key Performance Indicators (KPIs):**
+    *   **KPI K1 (Theater Swap):** The infrastructure for swapping between different application "theaters" (like the main GL-OS desktop and a launched GL project) is complete.
+    *   **KPI K3 (Camera):** Camera control logic and integration have been finalized.
+*   **B. `gl_desktop.c` Launch Capability:**
+    *   The `gl_desktop.c` file has been updated and successfully recompiled.
+    *   It is now capable of launching "Project Mirror" windows for GL projects, such as `fuzz-op-gl`.
+*   **C. Verification Test (K1):**
+    *   The user is instructed to:
+        1.  Launch GL-OS (e.g., `./button.sh run_gl_os`).
+        2.  Navigate to "Desktop Apps".
+        3.  Select `fuzz-op-gl`.
+    *   **Expected Outcome:** A new virtual window titled "Fuzz-Op-GL" should appear, confirming the launch mechanism (KPI K1) is functional.
+
+## V. Upcoming Development Tasks (Next Steps)
+
+As outlined in `succession_prompt-apr23.txt`, the immediate next steps involve:
+
+*   **A. Real Data Sync:**
+    *   **Objective:** Update `gl_desktop.c` to read actual project state data from files, specifically `projects/fuzz-op-gl/session/state.txt`, instead of using mock grid/entities.
+*   **B. Menu Triggers:**
+    *   **Objective:** Map menu options within the launched GL applications (e.g., `scan`, `collect`) to actual Op execution via the project manager.
+
+## VI. Key Documentation References
+
+*   **`!.gem-flashlite--yolo/gl-os-r&d/gl-os_vision.md`**: Provides the detailed vision, architecture, and rendering pipeline for GL-OS.
+*   **`!.gem-flashlite--yolo/gl-os-r&d/#.gl-2do.prompt.txt`**: Clarifies the concept of "virtual windows" and GL-OS as a host.
+*   **`!.gem-flashlite--yolo/gl-os-r&d/camera_vision_manifest.txt`**: Details camera controls, map interaction, and menu options for projects like Fuzz-Op.
+*   **`!.gem-flashlite--yolo/gl-os-r&d/succession_prompt-apr23.txt`**: Summarizes current state, build integrity tasks, and outlines immediate next steps.

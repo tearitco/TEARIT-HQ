@@ -1,0 +1,359 @@
+
+
+📅️
+were thinking of just adding zoo drag and drop stuff right in here. 
+
+thats best. 
+
+
+also i wanna add rpg editing
+
+(what the difference, between that and a "swatch/picker"
+(and giving "xelector different-meta methods 2 pick from "event editor" as one 
+(and getting rid of default muta. we will do that but in due time 
+
+(later u can lookin to things like session/ window manager, 
+but first 
+i would get into saving and loading different projects within "stripped"repurposed/multipurpose
+mutaclysm ; 
+easier 2 take stuff off than 2 add stuff. just copy a backup... 
+(get 2 the point where its not about "mutaclysm" its about project
+just ask it to parse the mutaclsm game into a save loadable project,
+thinkabout how u wanna do that , away from the agent. pls . architecting goes along way
+instead of blind prompting. 
+
+do u wanna have a seperate save/load window. and somehow associate it with that zoo? 
+that seems reasonable. could even drag it into that window so it picks up the "WINDOW ID"
+
+
+📅️
+i want to pause here 
+
+make a "civ clone" and "rpg maker  clone" (modeled off existing op-ed in 1.tpmos) 
+
+the trick is . when creating rpg maker event editor. use existing rpg maker events
+and scratch code blocks first, then go back and refactor mutaclysm to use those
+if possible first[or the plugin system]instead of making our own (then we can reuse/
+open mutaclysm and civ clone in this editor and edit it, and later 
+we will even write ports for real rpg maker engine to import/export)
+
+use : /home/no/Desktop/🤖️🪤️🏠️/🐖️💩️/xxx.the.uhogs.xxx-book-0.0/2.muchi-verse/muchi-civ-pal
+for the civilization clone and
+
+/home/no/Desktop/🤖️🪤️🏠️/🐖️💩️/xxx.the.uhogs.xxx-book-0.0/2.muchi-verse/muchipal-editor
+for the editor
+
+also after that i will ask you to provide guidance on a "minecraft clone"
+but using pal/prisc and "wraith" conventions for gl gui
+(ie launches from terminal, has a 2d flat mirror. 
+
+and then in the future
+we will even create a mirror at launch of mutaclysm/editor/civilization
+so user can use either gl/tiles etc or ascii ; 1.tpmos wraith projects
+provide a lot of guiance for this. so use them to write the grand architecture for this
+then we will come back to mutaclysm- i just want to make sure our ops are compatible.
+we can also do the 2d/3d mirror) all our ascii games can have gl-2d/3d switchable mirror
+just like in wraith.
+
+
+> do online p2p 
+> do online chat room the same way
+
+then when that is bascially appearant
+
+do copies of each using real "2d gl tiles" 🥈️dont go crazy . do 1 thing first; y not mc? 🥈️
+
+and do mc-3d 
+
+📅️
+
+🤓️
+honestly u really dont have to hump social MARKETING either. 
+use it 4 fun or inspo only. 
+but this hsit is gonna grow fast and organically on its own like co's in wsr. maybe even faster
+w/o ur intervention lol ;) 
+
+u can even incorporate asap . u can run this company (seeking revenu from muchi would be good and sustainable at this point
+based on market research imo w/e tho ceratinly after u really start geting some buy in cnoverserion 
+obv were not there yet, but it feels super natty already (cuz it is , its not that kinda product ur forced 2 make/sell...)
+. u can go back 2 tpmos .
+but honestly i look at this as research for tpmos optimization/ tangents / onboard / marketing optimization
+y cuz i like and wanna use the product as best as it can be ... so w/e 
+
+a bit of product touching market is good im not saying that, it can certainly give nuance and direction.
+
+
+obv it doenst have 'hands off momentum' but it has 'sales dev implied momentum af'
+
+but yea. at this point , u cant really break this. unless u lost all code/ ai /jail etc. 
+
+
+
+🤓️
+
+
+this is supposed pal / ops only
+
+
+
+later we can do start/ wrangler / fondu? 
+
+
+ez chat room 
+
+
+distribution scheme ; desktop or browser situation on github / fake website or something? x.com pushing. 
+
+
+and what of like a tamogotchi (x0pet like or different?) mini game + mining/ faucet? auto mining ? pet mines? as avatar? 
+
+explore different things u will just build and shit will be fun or it wont
+
+just build lots of these "MUTAGEN GAMES" (not connected 2 tpmos just heavy experiments
+if its wrong w/e . throw it on steam w/e ; talk 2 customers try 2 store data/ do crm etc. 
+
+
+wheres minecraft 3d? 
+can that use same data? 
+
+wheres tamopet ? wheres exopet? 
+wheres arena? 
+wheres chimochio
+same data but diff engine ? 3d 2d (completely different engine? 
+meta 'piece manager / 'collection importer? does it look like a spreadsheet? does it look nice? 
+some cheap shitty app in html that does it that ppl can download from fondue
+(ppl like choices, even if another choice is better, they wanna feel like its from a different dev 2 
+(u dont lie, but its from sol, or rth , or tnet, often they 'buy/dl' cuz marketing , not function <their not at product edu lol ; their degen vtubers who will literally spread this 4 free cuz they like ur vtube ava only vibe. sick . have fun with them>
+so just have fun and experimetn
+
+build community. 
+culture
+real cohesian
+business can come last if ever. 
+be legally wary tho. but not when ur deving. be un legally wary . right up till u ship
+and ask what data u can legit collect or w/e 
+
+atoms/ space? yea . make outlaw star also . dont care about cdda or tamogotich. just see if u make another fun thing
+xvs/ etc can be bolted on later. 
+
+
+btw i know u can sell "ai tools" (or ust give away/ support get feeback. u can even deprecate like google did
+4 gemini / agy , telling ppl 2 migrate or w/e fuck off fork  it w/e ) 
+
+
+i still want a handheld. 
+
+
+should we look back at mac - (using just gcc c at some point and see if we can run a simple appl like that? yes'but dev$$
+macs have browsers tho)
+
+
+deliberiately make mini games u know u can port 2 browser. 
+mini platforms etc. 
+try doing a differnt thing using gh pages or something
+walk thru the ux... could a robot do it? if not it lowkey sucks but w/e
+does a person not mind doing it and is more used 2 doing it and has no knowledge of robots
+u can do that in one console and this in the other . u have enough tokens with claud on "sonnet" so use them like this
+
+<2 badass employees 4 1 price + check on the marketing / sales /distro team aka x.com / disci pals...>
+
+
+ make deliberate 
+ cdda clone tho
+ 
+ make deliberate df clone
+ 
+ make deliberate digimon clone (then build platform / ip-obfuscation aroud it)
+ 
+ make deliberate pokemon clone.  + a network link ; + pokemon stadium clone . get it? 
+ 
+ why deliberate? cuz stadards 
+ 
+ do all using 'pal only'
+ 
+ 
+ one day we can ship on a tiny risk toy . can interface with plushi-pals scan qr w/ e
+ 
+ 
+ .gguf . 
+ 
+ yes get another chat enterface
+ yes get robots running it / training it even in a 3rd tab. 
+ fuck ill get an ai computer if necessary . 
+ (even the 2k one, w/e) 
+ 
+ 
+ 💡️
+ btw i would just make a fake nft network
+ 
+ that doesn't do ANYTHING
+ just lets u collect and look at a pixel of a randomly generated "OBJEKT " as muchi pet <- literall do this. 
+ 
+ < u can get some for free if u use the faucet and cash in. u can do referals
+ just simplest dumb labubu thing with huge product market fit that is more natural aka in browser
+ then the hardcore users may want desktop
+ yes we did hardcore first. halo/tpmos... no casual fiends dont care/ know 2 want that yet , or know how 2 use it 
+ u GET 2 ease them in cuz lots of ai...
+ 
+ ppl just want memes and sexy twitter drama etc . and thats fun . so win win . 
+ 
+ give out some rare muchi cards whenever u can . make them collectible
+ make sure day 1 collects have "legacy abilitys ; that should be ur #1 concern imo
+ 
+ even if the original chain got destroyed they should have some copy that could link / synch back up 
+ as a sec person u should be roleplaying these scenarios in ur "MUCHI LAB";
+ 
+ yes now u are deviating from live play again. but in a different way. all are good tho.
+ 
+ i can live play  low effort is highest macro manager effort. 
+ give me some collectibles
+ 
+ hows our image gen? is it smart? wise of real images? selfies? 4 ava pfp? 
+ 
+ image recog and muchi creation like monstrancher? just as fun gimmic + niantic training? 
+ 
+ 
+ btw , everyones from twitter righT? put them in a new twitter clone (can have grok 2)
+ 
+ dont use jbbrooks.com imo
+ use supa base or something
+ if it goes down . u can get in touch with the ppl and figure something else out. 
+eaiser than if u were in jail or someshit. 
+
+think of why ppl use cloudflare. 
+that was a good experiment and maybe good for professional things bu tthis is deliberately unprofessional  m8
+no one will mind 
+MTENT.subabase.com
+subabase-robottraphouse.com or w/e ;;
+theyll probably trust it more cuz its more "dangerous" low effert , degen ie: harmless
+& this way u can try different sites/ configs
+fin sim? edu progrms? 
+chat only + games in chat later or exo games? etc
+w/e works
+they should be modular at outset anyways if not never 2 late 2 learn /fix... from tpmos core hidden...
+
+'product market share fit blitz scaling'
+ -----------------------------------💡️
+ 
+ 
+ and lets u look thru ur cataloge. 
+ then add chat. then add life + adventures 2 catch more rares etc. get it? 
+ 
+ 
+ 💡️
+ 
+ 
+ 
+
+
+would be in best interest 2 have more chat interfaces and be running our own curriculums / chat at some point ofc...
+🦜️
+
+
+🦎️🦖️
+🧟‍♂️️🧬️
+🐖️💩️pipomon = pig poop mon = slop monsters = mutagens 🐖️💩️❤️‍🔥️
+the pet we do will literally just be an emoji at first (super common , not valueable. free random generator 
++ it gets a serial number
+{then stable-diffusion of 2 emojis ; like mr for combo + dna }
+later can get put on blockchain and figure out how 2 retro add instead of worrying about adding 2 platform
+its better that way. u can redo but still do legacy and save old code cuz thats how it will be in prod
+and u can formulate "live versioning strategies"
+
+later u may make an "album"(u may expand album 2 do pet care, or make seperate app for petacare . ie
+pokedex vs bills pc . vs 'party'
+(literally emulate pokemon but w/o 2d map.,just bills pc , pokecenters etc . then later
+add more monster rancher type stuff
+then later add walking around , catching pipomon etc. 
+🐖️💩️
+🏪️
+(let them also do faucet/slots, and just buy w/e emoji they want esp 2 do combos, just let them buy them {pokemart}
+then go 2 combo menu)
+🎰️🎰️
+🦎️🦖️
+🧟‍♂️️🧬️
+🐖️💩️
+🎰️🎰️ trick= doens't look like a 'slot machine' but its the right answer (we could auto give combos
+and save pures, make them trade 2 piece them 2gether, ie stamp collection ;) [othewise they already have those...]shrug
+
+💍️EDEN RING LORE TIE IN 
+if we make dinosaurs
+we will return 2 humanity to caveman times
+and be the gods
+💍️the diamonds of the ring 💍️
+
+
+all warfare is based on deception -laotzu🀄️
+
+🃏️
+do card and pet  , and do tcg sim as well and ppl can play online with energies etc  + convert 2 and fro with tearit/flexbox
++elo card level scaleing / xchange rates etc
+🃏️
+🦖️no its not enclosure either yet, tho it maybe informed by that info🦖️
+🎱️people want a desktop 'tamogotchi' shaped as egg (not square); later u can mange those multiple + install IN EGG
+
+https://x.com/dadamPXL
+https://x.com/_dotplus
+
+actually i think when u use the "palpet generator" as a 'gacha user"
+
+it should pop a new "GL WINDOW" on ur desktop " as an egg shaped gigapet" (ofc u can close it and re open it 
+from its file path)or user can just think it died w/e 
+
+id just ship a "SLOP MACHINE" with a faucet on it. and let it drop eggletes
+
+and different models and designes of the window + op features for more leveled up complex mix version from arc-seeds. 
+🎱️
+🎴️
+its the best entry point (random gacha card machine first + seperate app as fauce + accounts/wallet ofc )
+
++ global 'forum' posts on ur profile , and allows retweets and shows others tweets
+(do u wanna just do this as is first but later tear it apart? maybe 
+cuz we will have auction 2 . dm's and chat (sub) room creation ie : u dont have 2 leave 2 discord
+but friends are always found in main forum 4chan/twitter and micro down 2 discord, not vice versa, get it? 
+
+so do gach cards
+let ppl post them or w/e they want on their own feed
+make a mixing sharing algo 
+and see how it works when u let ai do stuff including chat /shit postig
+at this point u can use the chat room 2 fine tune ai chat
+
+then later do a school. 
+and r&d = crafting 
+and later go back 2 auction/trading / stocks. 
+
+and later do 2d /3d . (same pokemon flow but a bit longer) this is good cuz data is pieced out
+however doing 3d/2d first allowed us to make the "SCHEMA" w/e tho youll figure it out 
+many times over and have resilient hybrid network of websites/apps/executables hardware / boardgame /papercraft/plushies etc
+
+
+mining? it shoudl be present just 2 decide if u want stuff on blockchain
+but make sure u can just retro add 2 blockchain and have 'parsing tools'
+i mean were gonna discover peak schema thru trial and effect, so just know things will change
+and build a system that is friendly 2 that internal change/customizability
+🎴️
+🇬🇧️
+the real trick is 2 have games like wu/wsr that work alone as 1 player but beble 2 bring money out
+(imo its using dustokens vs  blood.sol vs dreams/tempt(temp) vs avantasy w/e tokens. 
+
+and same goes for 1 players games or spins, the pets are low powered and will fluctuate in xchange based on 
+ur "NODE COLLECTION" or tax payment (similiar 2 staking . if u have more assets u pay more tax 2 node owners
+who would just pay tax and let "government" handle the messy work instead of making p2p node owners
+do it
+like bsinesss in a country  u dont make business run the police / roads etc
+tho they could or w/e thats a faliure of gov more than anything...
+⚖️will have formal structure of laws ; might as well get jd ong⚖️
+🫀️same with md ofc🫀️
+🇬🇧️
+🏝️have live players in tempt island while building out
+
+more robust sp/chimochio/xvs stuff <3
+
+🏝️🪴️
+dont get high on ur own supply. regardless of drama/politics/hype required 2 talk 2 customers @ a level🪴️
+💯️
+btw im not saying its 100% assured
+just that its the most optimal path here
+ofc get md , sell 2 hospitalor w/e 
+
+💯️

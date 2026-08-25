@@ -1,0 +1,136 @@
+================================================================================
+claude-rtp-gui-view.txt - v2, FINAL technical plan, rewritten 2026-07-31
+after a third round of correction. The v1 content of this file (visible
+in file history / prior reads) proposed redesigning game.chtpm itself
+into a map/glyph-picker screen. That reading was WRONG - superseded
+below. Read user-rtp-gui-guide.txt's own ROUND 3 addendum first (the
+direct correction this rewrite responds to), then rtp-gui-design.md
+(the authoritative design doc) - this file is the technical "how"
+underneath that doc's own "what."
+================================================================================
+
+## WHAT CHANGED FROM v1 OF THIS FILE
+
+v1 assumed the MAPS/GLYPHS/status-row redesign belonged on
+`game.chtpm` (the player's own screen), replacing its HP/Inventory
+HUD. Direct correction, verbatim: "there is not dropping or eating,
+etc, we are making an RPG Maker clone, only we need the RPG Maker
+options on screen not mutaclysm" - followed by a pointer to the real
+TPMOS `slop-ed-dev` project and an instruction to copy it as the
+baseline for a NEW screen, not a reskin of the existing player screen.
+
+Corrected split:
+- `editor_home.chtpm` (NEW) - gets the real slop-ed-dev shape: title,
+  project row, GAME MAP row, Control Map, real map, POS/ARMED/KEY row,
+  MAPS/GLYPHS scrollers, RPG Maker toolbar row. This is the DEFAULT
+  boot target.
+- `game.chtpm` (EXISTING, mostly unchanged) - keeps pickup/drop/eat/
+  craft/examine/help/save/toggle_emoji exactly as they are today. Only
+  gets the LOW-RISK visual polish that was never actually in question
+  (wrap-around method list, `<row>`-based status line) plus a new
+  "Stop Playtest" link back to `editor_home.chtpm`. Reached only via
+  Editor's own Playtest action, gated behind a new `title.chtpm`.
+
+Everything below is re-scoped to match. See rtp-gui-design.md §3-4 for
+the full mockups; this file focuses on the real element types and the
+one non-obvious engineering decision (the wrap-around fix).
+
+## WHAT I VERIFIED BEFORE DRAWING ANYTHING (unchanged from v1, still
+   the real technical grounding)
+
+- `014.wsr-pal💸️📌️+2/pieces/chtpm/layouts/wsr_main_menu.chtpm` - real
+  wrap-around technique: multiple `<button>` elements on the SAME
+  markup line (or consecutive lines with no `<br/>` between them) -
+  e.g. `<button label="Buy/Sell  " .../><button label="List
+  Futures  " .../><br/>`. No manual column math - the frame composer's
+  own text layout wraps naturally at the real render width. wsr-pal's
+  own menu uses `${piece_methods_compact}`, NOT the standard
+  `${piece_methods}` - a project-specific variant (see the reparse-
+  risk discussion below - rtp-xyz deliberately does NOT copy this
+  part).
+- `slop-ed-dev.chtpm` (TPMOS reference tree, read at TWO separate
+  snapshot paths, byte-identical both times - a settled, not moving,
+  target) - real, already-built element types:
+  - `<row label="...">` (`chtpm_parser_pal.c` line ~2561) - a real,
+    auto-padded, box-bordered single line - `║ <label, padded to 57
+    chars> ║` - zero manual padding needed in markup.
+  - `<scroller id="MAPS" label="${var}">` (line ~2571) - renders as
+    `║ N. <id, padded to 10> : <label, padded to 33> ║` - a real,
+    numbered, ID-labeled, auto-formatted interactive row. **This is
+    the real primitive behind "MAPS: ..." / "GLYPHS: ..."** - not
+    hand-drawn text, a genuine built-in widget type.
+  - Both confirmed present in rtp-xyz's own local `chtpm_parser_pal.c`
+    too (same shared-engine lineage) - available today, zero new
+    engine code needed.
+- The real RPG Maker MV/MZ toolbar (given directly, verbatim list):
+  New Project/Open/Save, Cut/Copy/Paste/Delete, Map Design Mode, Map
+  Events Mode, Layer Select 1/2/3/A, Shadow Pen, Database, Plugin
+  Manager, Resource Manager, Character Generator, Playtest. No real
+  CHTPM element needed beyond `<button>`/`<row>` - each is just a
+  labeled row, real or honest-placeholder depending on what's built
+  behind it (see rtp-gui-design.md §3's own real-vs-placeholder table).
+
+## 🔧 TECHNICAL PLAN - the wrap-around change specifically
+
+Still the one piece with a real, non-obvious engineering decision,
+now applying to BOTH new screens (editor toolbar rows AND game.chtpm's
+method list), so worth getting right once:
+
+**The problem**: `chtpm_parser_pal.c`'s own `load_dynamic_methods()`
+(builds `${piece_methods}` from a piece's `piece.pdl` `METHOD` rows -
+see `rtp-xyz-architecture.md` §9) hardcodes a trailing `<br/>` after
+every button:
+
+```c
+asprintf(&btn, "<button label=\"%s\" onClick=\"KEY:%d\" /><br/>", trimmed_key, method_idx++);
+```
+
+That's why every method renders on its own line today - baked into
+the generator, not a layout choice. wsr-pal's own fix uses a
+different variable name (`piece_methods_compact`), which sidesteps
+PITFALL 68's reparse trigger (only `piece_methods`/`active_target_id`/
+`input_text` force a re-render) - risky to copy verbatim, since
+wsr-pal likely gets away with it only because its own Actions menu
+rarely changes mid-session.
+
+**Fix, unchanged from v1's own plan**: edit `load_dynamic_methods()`
+in rtp-xyz's OWN local copy of `chtpm_parser_pal.c` only (every
+project keeps an independent local copy - zero blast radius
+elsewhere). Join buttons with spaces instead of a forced `<br/>`, KEEP
+the variable name `piece_methods` unchanged so PITFALL 68's reparse
+trigger still fires correctly. Applies to `game.chtpm`'s real method
+list. The Editor screen's toolbar rows are mostly static markup (not
+`piece_methods`-driven) since most of them are placeholders, so this
+fix path is scoped to `game.chtpm` specifically, not the Editor.
+
+## 📋 Build order (matches rtp-gui-design.md §6, repeated here for the
+   technical sequencing specifically)
+
+1. Patch rtp-xyz's own local `load_dynamic_methods()` for wrap-around
+   (scoped, safe, per the plan above) - needed for `game.chtpm` only.
+2. Build `editor_home.chtpm` + its own small manager/module wiring:
+   real title/project `<row>`s, real Control Map (`onClick=
+   "INTERACT"`, unpossessed Xlector only - an editing cursor, not hero
+   movement), real map render (verbatim drop-in), real POS/ARMED/KEY
+   `<row>`, real MAPS/GLYPHS `<scroller>`s (reading actual
+   `pieces/world_01/` map dirs and `terrain_types.txt` glyphs - both
+   already real registry data, no new data model needed), toolbar row
+   with real Playtest + honest placeholders elsewhere. Make this the
+   new default `button.sh run` target.
+3. Build `title.chtpm` (New Game/Continue/Options/Back to Editor),
+   reached via Editor's Playtest row.
+4. Apply the wrap-around fix + a `<row>`-based status line to
+   `game.chtpm` - method list and HUD only, survival actions
+   themselves stay exactly as they are. Add "Stop Playtest" link back
+   to `editor_home.chtpm`.
+5. `project_menu.chtpm` visual polish (unchanged plan, box-drawing +
+   real save metadata - functionally complete already).
+6. Real K3 live-test of the full loop: Editor → Playtest → Title →
+   New Game → Menu → Save → Stop Playtest → back at Editor → Playtest
+   → Continue → back in-game. Confirm `piece_methods` still triggers
+   real redraws after a state change (PITFALL 68's own concern).
+7. Update `rtp-xyz-architecture.md`'s milestone table to match.
+
+Nothing in this file authorizes writing implementation code yet - see
+rtp-gui-design.md's own header: awaiting review.
+================================================================================

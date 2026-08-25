@@ -1,0 +1,34 @@
+# 🪟 DAY 08 — h-ai, the Chat Window 💬
+# ==================================
+# Title: "🪟 DAY 08 — h-ai, the Chat Window 💬"
+# Characters: TOMO, RAHWEH, MAXINE, IQA, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), MAXINE (en-GB-MaisieNeural), IQA (en-US-AnaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+
+**TOMO:** One C file — `&.widgits/ai-cell/ops/khtpm_ai_cell_render.c` (~1,877 lines). It's a real managed X11 window (real focus — MOTIFWMHINTS, don't change that), a sidebar of saved chats on disk, a transcript pane with real scrolling, and a composer. Backend: raw HTTP to Ollama (10.0.0.144:11434), model hardcoded to stable-code:latest in gmodelname. No UI switcher yet — that's the very first thing we're going to build (Day 09).
+
+**RAHWEH:** "Storefront"? It's a chat box.
+
+**TOMO:** It's the *human interface* to everything we've been doing. The user doesn't know what a harness is. The user knows they can talk to this window and get things done. That window is the product. The harness is the engine under the hood. 🚗
+
+**MAXINE:** Wait — earlier you said h-ai already has tools?
+
+**TOMO:** It does! Ported from agent-45's proven mechanism. Look at `detect_tool()` in the renderer: it parses the user's message deterministically for keywords — readfile, writefile, editfile, searchinfiles, listdir, cmdexec. The model never emits tool calls. Read-only tools pre-execute; write/edit/cmd ask for your approve/deny through the nav (a human-in-the-loop guarantee — same shape as agent-45's own approve/deny pair).
+
+**IQA:** So... h-ai already IS Harnecient?
+
+**TOMO:** In its deterministic dispatch — yes! What's missing is the *model hand-hold* (component 3+6 of Day 05): asking the model short questions and folding its suggestions in. And the hardcoded model. And the proof harness. Close, but not yet the full product. 🔧
+
+**THE NARRATOR:** Do NOT trust `xwd` or screenshots. A covered or dragged window can make a screen capture return another window's content. The house rule: use the app's own PNG dump — it reads from its own compose buffer, so stacking can't fool it. - 📸 Press p in the window (or via relay injection) → writes &.widgits/ai-cell/pieces/audit/ai-cell-frame.png. - 🧾 Plus a receipt file ai-cell-frame.png.receipt.txt — ONE line of real state: ok=1 w=.. h=.. t=.. nav=.. nnav=.. nsessions=.. nmsgs=.. toolpending=0 tool=readfile Check the receipt, not just the PNG's existence. A PNG can exist half-written; a receipt existing means the frame finished, and its fields tell you the exact app state at that instant (including which tool is pending!). This receipt-over-screenshot standard is now house-wide (see .0.aigent-testing-k9.txt). ✅
+
+**RAHWEH:** So every harness we write will assert on the *receipt*, not on pixels?
+
+**TOMO:** You're learning the house way already. Pixels lie. Receipts don't. 🧾
+
+**TOMO:** h-ai's real current gap: it doesn't open via a **real taskbar click** yet. The MANAGER's dispatch is proven correct (nav.sh mgrcode 5000 launches it every time), but the PARSER-level path (nav.sh nav 14 → row 1) doesn't register. There's a live unverified hypothesis in ONBOARDING.md (cell 14 is the last real ACTIVATE header button — only the non-interactive ${datetime} follows). Don't trust that hypothesis blindly — trace it. But know the two-layer split (Day 03) is exactly why this can be a narrow bug and not a broken system.
+
+**MAXINE:** And this bug is *why* we're putting the fake-time UI in that `${datetime}` slot someday? 👀
+
+**TOMO:** *winks* Maybe. That's [Day 19](DAY_19_THE_TELESCOPE.md) business. 😏
+
+**TOMO:** And tomorrow we walk through the plan to wire them together properly. 📐

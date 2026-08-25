@@ -1,0 +1,8 @@
+run_plan_file — /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/harnecient-fsm/plans/subplans/self-code-attempt.plan (depth 1)
+started: Thu Aug 13 09:28:26 AM PDT 2026
+
+STEP 1 [give me a one line shell instruction that prints exactly the text OK-CODE-TEST and nothing else]: PASS (output: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/harnecient-fsm/proof/run_20260813-092826-468258859/step1.out)
+STEP 2 [write /tmp/claude-1000/self-code-test.sh]: FAIL (assertion: out=$(bash /tmp/claude-1000/self-code-test.sh 2>&1); rc=$?; echo "$out" | grep -q "OK-CODE-TEST" && [ "$rc" -eq 0 ]; output: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/harnecient-fsm/proof/run_20260813-092826-468258859/step2.out)
+
+finished: Thu Aug 13 09:29:05 AM PDT 2026
+overall: FAIL

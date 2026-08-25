@@ -1,0 +1,18 @@
+<layout id="aow_setup">
+    <row><cell>--- AOW: BOOTY LAND SETUP ---</cell></row>
+    <row><cell></cell></row>
+    <row><cell>Select Player Count:</cell></row>
+    <row>
+        <button label="2 Players" onClick="COMMAND:SET_PLAYERS 2" />
+        <button label="3 Players" onClick="COMMAND:SET_PLAYERS 3" />
+        <button label="4 Players" onClick="COMMAND:SET_PLAYERS 4" />
+    </row>
+    <row><cell></cell></row>
+    <row><cell>Player Slots:</cell></row>
+    <row><cell>P1: HUMAN (Fixed)</cell></row>
+    <row><cell>P2: ${p2_type}</cell> <button label="Toggle" onClick="COMMAND:TOGGLE_P2" /></row>
+    <row><cell>P3: ${p3_type}</cell> <button label="Toggle" onClick="COMMAND:TOGGLE_P3" /></row>
+    <row><cell>P4: ${p4_type}</cell> <button label="Toggle" onClick="COMMAND:TOGGLE_P4" /></row>
+    <row><cell></cell></row>
+    <row><button label="[ START GAME ]" onClick="COMMAND:START_GAME" href="projects/aow-2d/layouts/main.chtpm" /></row>
+</layout>

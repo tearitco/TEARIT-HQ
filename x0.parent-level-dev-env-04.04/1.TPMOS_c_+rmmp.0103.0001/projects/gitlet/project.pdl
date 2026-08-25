@@ -1,0 +1,8 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | gitlet
+META         | version            | 1.0
+META         | description        | TPM-compliant local version control
+
+STATE        | storage_root       | ~/gitlet/<project-hash>/.gitlet/
+STATE        | ops_count          | 7

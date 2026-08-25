@@ -1,0 +1,40 @@
+# 🧪 DAY 21 — The Scratch File: what "delegated" actually wrote 🧪
+# ===================================================
+# Title: "🧪 DAY 21 — The Scratch File: what 'delegated' actually wrote 🧪"
+# Characters: TOMO, RAHWEH, MAXINE, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), MAXINE (en-GB-MaisieNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+
+**RAHWEH:** Boss asked something plain today: "where is the created event file — is it .pal? bash? what did you actually prompt Harnecient for, and what did you do yourself?" Fair question. Let's answer it exactly.
+
+**TOMO:** There were TWO artifacts, not one, and they were built by two completely different methods. That split IS the lesson.
+
+**TOMO:** Artifact one: the `.pal` snippet itself — three real `prisc+x` VM instructions (GET_KV_INT, ADDI, SET_KV_INT) that reads `item_9`, adds a fixed amount, writes it back. Nobody's model wrote this. It came from a hand-verified template — `%.harnesses/harnecient-fsm/templates/get_add_set_test.sh.tmpl` — with blanks like `{{KEY}}` and `{{EXPECTED_VALUE}}` filled in by plain substitution. Zero model calls. That's correctly minimal delegation: when the answer is deterministic, asking a model for it just adds risk for nothing.
+
+**MAXINE:** And artifact two?
+
+**TOMO:** The verification *harness* — a real bash test script that starts the VM on that `.pal` file and checks the result. That genuinely needed synthesis, not blank-filling, so THAT part went to Harnecient. The real plan file is `%.harnesses/harnecient-fsm/plans/stage-a-pilot1-harness.plan`, and it's short enough to read whole:
+
+**TOMO:** Step one, `CHOOSE_MODEL`, asked a small local model to pick a worker for "write a short bash test script that starts a small VM program and checks a text file's contents afterward." Step two, `STEP`, sent the ACTUAL prompt to that worker model: "give me a bash test script... make a temporary items.txt file containing item_5=10, start the prisc+x virtual machine binary... on a .pal file... then check items.txt afterward equals item_5=13, print PASS or FAIL... reply with only the bash script, no explanation, no markdown fences." Step three wrote whatever came back — but gated behind `APPROVE`, meaning a human confirms before it's trusted, and Claude still reads and manually runs the script afterward before believing its own verdict.
+
+**RAHWEH:** So where did it land?
+
+**TOMO:** `/tmp/claude-1000/scratchpad/stage_a_pilot/test_harness.sh`. Scratchpad. On purpose. This was Stage A, pilot #1 — a proof that the pipeline (template + bounded delegation + human approval) actually works end to end, not a shipped game event. It's already gone by the time you read this, because scratch means scratch. Nothing about the real `.pal` game-event system depends on that file existing.
+
+**MAXINE:** So if I want to see it work with my own eyes, not take your word for it?
+
+**TOMO:** Run it yourself, no Claude in the loop: `bash %.harnesses/harnecient-fsm/run_plan.sh plans/stage-a-pilot1-harness.plan` from inside `%.harnesses/harnecient-fsm/`. Watch `observations.log` grow a new CHOOSE_MODEL row and a new STEP row in real time. Or skip the model entirely and just run the deterministic half by hand: fill `templates/get_add_set_test.sh.tmpl`'s blanks yourself, point `PRISC_BIN` at any real `prisc+x` binary in the house (e.g. `101.mutaclsym🧟‍♂️️+18.01/system/prisc+x`), and watch it print `PASS: item_9 = <value> (expected <value>)`. Two independently-checkable halves, exactly like the plan describes.
+
+**THE NARRATOR:** One honest number, while we're being exact. `%.harnesses/harnecient-fsm/compute_stats.sh` counts every real local-model call logged today: 51 real calls, 38 marked PASS, an estimated 15,300 output tokens and about $0.23 that would have cost Claude's API to generate the same short answers directly. Small money. That's the point — it's supposed to be small money, repeated for free, not a headline number.
+
+**RAHWEH:** Different topic — Boss also caught a live bug today, after all this.
+
+**TOMO:** Two, actually, both in the taskbar's Settings window, both real regressions from wiring it up in the first place. First: the window kept appearing pinned near the top edge, overlapping the taskbar's own strip — turned out the real window manager here is mutter over Xwayland, and Xwayland mostly ignores a plain window's requested x/y. Fix was tagging it `_NET_WM_WINDOW_TYPE_DIALOG` and re-asserting the position with `XMoveWindow` right after mapping — confirmed live afterward at `420x280+200+260`, clear of the strip.
+
+**MAXINE:** And the part where it couldn't be closed?
+
+**TOMO:** It COULD be closed — Escape worked fine if the window had focus — but Boss wanted "cancel" on the HQ menu itself to close it too, no hunting for focus. `ktb_hq_close()` in `khtpm_taskbar_manager.c` now TERM-kills any running `khtpm_taskbar_settings_render` process whenever the HQ menu closes for any reason — cancel, picking another row, Escape. Same `pgrep -f` pattern the launcher script already used for its own single-instance guard, just pointed the other direction.
+
+**TOMO:** Small bonus find while chasing that: the "stats" row had never actually worked — its command in `livedesk_taskbar.pdl` wrapped single-quoted paths inside a command that was ITSELF getting wrapped in single quotes by the C dispatcher, so the shell string broke apart silently the moment it ran. Rewrote it without inner quotes, matching the "dir" row's own working style. Confirmed live: it regenerates `stats_summary.txt` and opens it.
+
+**THE NARRATOR:** Two lessons stacked in one day, then. Delegate the part that needs synthesis, keep the deterministic part deterministic — and when a fix "works" on paper, launch it for real and read the window manager's own answer back, because paper never has an Xwayland running underneath it. 🧪

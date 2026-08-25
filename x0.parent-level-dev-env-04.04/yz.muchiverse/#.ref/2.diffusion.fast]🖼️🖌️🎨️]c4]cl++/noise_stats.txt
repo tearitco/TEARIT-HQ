@@ -1,0 +1,74 @@
+temp_input_0.jpg: Mean = 0.382877, Variance = 0.218723
+temp_input_1.jpg: Mean = 0.388222, Variance = 0.225697
+temp_input_0.jpg: Mean = 0.224442, Variance = 0.107023
+temp_input_1.jpg: Mean = 0.275322, Variance = 0.159111
+temp_input_0.jpg: Mean = 0.062478, Variance = 0.009234
+temp_input_1.jpg: Mean = 0.275822, Variance = 0.095468
+temp_input_2.jpg: Mean = 0.249026, Variance = 0.040088
+temp_input_0.jpg: Mean = 0.234496, Variance = 0.119969
+temp_input_1.jpg: Mean = 0.276120, Variance = 0.095701
+temp_input_2.jpg: Mean = 0.248599, Variance = 0.141676
+temp_input_0.jpg (output): Mean = 0.383920, Variance = 0.219336
+temp_input_1.jpg (output): Mean = 0.389530, Variance = 0.226296
+temp_input_0.jpg (output): Mean = 0.389531, Variance = 0.226296
+temp_input_1.jpg (output): Mean = 0.383921, Variance = 0.219345
+temp_input_0.jpg (output): Mean = 0.215034, Variance = 0.115131
+temp_input_1.jpg (output): Mean = 0.217709, Variance = 0.116825
+temp_input_0.jpg (output): Mean = 0.231234, Variance = 0.125081
+temp_input_1.jpg (output): Mean = 0.235562, Variance = 0.125477
+temp_input_0.jpg (output): Mean = 0.231057, Variance = 0.125137
+temp_input_1.jpg (output): Mean = 0.235450, Variance = 0.125586
+temp_input_0.jpg (output): Mean = 0.165857, Variance = 0.046153
+Kernel Stats (Inference Kernels): Mean = 0.002686, Variance = 0.000890
+Kernel Stats (Inference Kernels2): Mean = 0.010062, Variance = 0.000752
+temp_input_1.jpg (output): Mean = 0.153269, Variance = 0.032994
+Kernel Stats (Inference Kernels): Mean = 0.002661, Variance = 0.000889
+Kernel Stats (Inference Kernels2): Mean = 0.010024, Variance = 0.000752
+temp_input_0.jpg (output): Mean = 0.142829, Variance = 0.029547
+Kernel Stats (Inference Kernels): Mean = -0.001888, Variance = 0.000967
+Kernel Stats (Inference Kernels2): Mean = -0.003056, Variance = 0.000807
+temp_input_1.jpg (output): Mean = 0.154525, Variance = 0.042900
+Kernel Stats (Inference Kernels): Mean = 0.001187, Variance = 0.000924
+Kernel Stats (Inference Kernels2): Mean = -0.001456, Variance = 0.001086
+temp_input_0.jpg (output): Mean = 0.573944, Variance = 0.009262
+Kernel Stats (Inference Kernels): Mean = 0.004310, Variance = 0.000848
+Kernel Stats (Inference Kernels2): Mean = 0.014570, Variance = 0.000792
+temp_input_1.jpg (output): Mean = 0.572358, Variance = 0.007393
+Kernel Stats (Inference Kernels): Mean = -0.002790, Variance = 0.000766
+Kernel Stats (Inference Kernels2): Mean = -0.003436, Variance = 0.001097
+temp_input_0.jpg (output): Mean = 0.556194, Variance = 0.002316
+Kernel Stats (Inference Kernels): Mean = -0.009747, Variance = 0.000617
+Kernel Stats (Inference Kernels2): Mean = 0.005882, Variance = 0.000772
+temp_input_1.jpg (output): Mean = 0.571890, Variance = 0.008561
+Kernel Stats (Inference Kernels): Mean = 0.001194, Variance = 0.000770
+Kernel Stats (Inference Kernels2): Mean = -0.000207, Variance = 0.000763
+temp_input_0.jpg (output): Mean = 0.565688, Variance = 0.006267
+Kernel Stats (Inference Kernels): Mean = -0.000393, Variance = 0.000738
+Kernel Stats (Inference Kernels2): Mean = 0.000621, Variance = 0.000755
+temp_input_1.jpg (output): Mean = 0.573536, Variance = 0.009716
+Kernel Stats (Inference Kernels): Mean = 0.003972, Variance = 0.000828
+Kernel Stats (Inference Kernels2): Mean = -0.005944, Variance = 0.000854
+temp_input_0.jpg (output): Mean = 0.148322, Variance = 0.034420
+Kernel Stats (Inference Kernels): Mean = 0.005449, Variance = 0.000863
+Kernel Stats (Inference Kernels2): Mean = -0.000261, Variance = 0.000891
+temp_input_1.jpg (output): Mean = 0.147554, Variance = 0.034294
+Kernel Stats (Inference Kernels): Mean = 0.005485, Variance = 0.000863
+Kernel Stats (Inference Kernels2): Mean = -0.000292, Variance = 0.000892
+temp_input_0.jpg (output): Mean = 0.167604, Variance = 0.044952
+Kernel Stats (Inference Kernels): Mean = -0.008667, Variance = 0.000973
+Kernel Stats (Inference Kernels2): Mean = -0.009526, Variance = 0.000550
+temp_input_1.jpg (output): Mean = 0.259311, Variance = 0.087456
+Kernel Stats (Inference Kernels): Mean = -0.011181, Variance = 0.001033
+Kernel Stats (Inference Kernels2): Mean = -0.009779, Variance = 0.000544
+temp_input_2.jpg (output): Mean = 0.173179, Variance = 0.041142
+Kernel Stats (Inference Kernels): Mean = -0.009611, Variance = 0.000987
+Kernel Stats (Inference Kernels2): Mean = -0.009457, Variance = 0.000557
+temp_input_3.jpg (output): Mean = 0.123520, Variance = 0.032053
+Kernel Stats (Inference Kernels): Mean = -0.006352, Variance = 0.000815
+Kernel Stats (Inference Kernels2): Mean = 0.001251, Variance = 0.000836
+Output: R(Mean=0.174879, Var=0.046752), G(Mean=0.145792, Var=0.033619), B(Mean=0.131541, Var=0.027630)
+Kernel Stats (Inference Kernels): R(Mean=-0.001531, Var=0.000798), G(Mean=0.003848, Var=0.000322), B(Mean=-0.002211, Var=0.000782)
+Kernel Stats (Inference Kernels2): R(Mean=0.004583, Var=0.001106), G(Mean=0.001341, Var=0.001049), B(Mean=-0.001365, Var=0.000710)
+Output: R(Mean=0.165961, Var=0.044266), G(Mean=0.181892, Var=0.053175), B(Mean=0.137136, Var=0.030445)
+Kernel Stats (Inference Kernels): R(Mean=-0.001439, Var=0.000809), G(Mean=0.003760, Var=0.000322), B(Mean=-0.002191, Var=0.000782)
+Kernel Stats (Inference Kernels2): R(Mean=0.004590, Var=0.001106), G(Mean=0.001319, Var=0.001049), B(Mean=-0.001352, Var=0.000710)

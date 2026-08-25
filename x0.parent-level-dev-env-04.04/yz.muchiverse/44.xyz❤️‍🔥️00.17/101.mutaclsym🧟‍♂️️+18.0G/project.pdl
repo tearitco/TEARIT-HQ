@@ -1,0 +1,15 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | mutaclsym
+META         | version            | 0.1
+META         | author              | uhogs
+
+STATE        | starting_world     | world_01
+STATE        | starting_map       | map_start
+STATE        | player_piece       | hero
+STATE        | title              | MUTACLSYM
+
+EVENT_IN     | project_start      | void
+
+RESPONSE     | project_start      | mutaclsym initialized.
+RESPONSE     | default            | *waiting...*

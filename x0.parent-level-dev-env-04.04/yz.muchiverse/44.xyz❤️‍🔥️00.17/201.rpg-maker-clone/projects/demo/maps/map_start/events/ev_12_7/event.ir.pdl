@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | name               | console_log
+META         | trigger            | action
+META         | cmds               | 4

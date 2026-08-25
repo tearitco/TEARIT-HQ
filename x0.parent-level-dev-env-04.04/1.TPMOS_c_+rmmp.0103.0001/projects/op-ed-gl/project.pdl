@@ -1,0 +1,11 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | op-ed-gl
+META         | version            | 1.0
+META         | entry_layout       | projects/op-ed-gl/layouts/main.gltpm
+
+STATE        | starting_map       | map_01_z0
+STATE        | player_piece       | xlector
+STATE        | current_z          | 0
+STATE        | title              | GL-OP-ED ADVANCED
+STATE        | SOVEREIGN          | true

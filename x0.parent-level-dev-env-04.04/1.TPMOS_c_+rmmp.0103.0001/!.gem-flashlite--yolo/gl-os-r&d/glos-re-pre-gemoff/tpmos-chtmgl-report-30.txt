@@ -1,0 +1,38 @@
+TPMOS-CHTMGL Integration Report - May 30, 2026
+=============================================
+
+1. OVERVIEW
+-----------
+CHTMGL (or CHTML OpenGL) is a sophisticated UI framework for OpenGL-based applications, following an MVC (Model-View-Controller) architecture. It allows for rich, HTML-like layouts using CHTML markup. The goal is to merge these features into the TPMOS (Terminal Piece Mark OS) ecosystem to provide advanced UI capabilities in its OpenGL rendering path.
+
+2. CHTMGL CORE COMPONENTS
+-------------------------
+- **Markup (CHTML):** XML-like tags such as <window>, <panel>, <button>, <canvas>, <textfield>, <slider>, etc.
+- **View (view.c):** Handles parsing CHTML, managing a 2D/3D texture cache, and rendering elements via GLUT.
+- **Controller (controller.c):** Manages mouse and keyboard interactions, including text editing (copy/paste), slider dragging, and event routing.
+- **Model (model.c):** Handles application state and IPC with external modules via pipes or shared memory.
+- **IPC Protocol:** Uses specific message prefixes (SLIDER:, CANVAS:, EVENT:, SHAPE;, VAR;) for two-way communication.
+
+3. KEY FEATURES FOR MERGING
+---------------------------
+- **Rich UI Elements:** Text areas, checkboxes, and sliders that support both horizontal and vertical orientations.
+- **Media Support:** Native loading and rendering of images (stb_image), audio playback, and video rendering (FFmpeg-based in tasks).
+- **Advanced Text Input:** Multi-line textareas with cursor management and clipboard support.
+- **Dynamic Event System:** Decoupled event handling that routes UI events to external modules.
+- **3D Canvas:** Ability to render 3D shapes (prisms, pyramids, cylinders) within a UI panel.
+- **Emoji Support:** UTF-8 decoding and rendering via FreeType/Noto Color Emoji.
+- **Flex Sizing:** Support for percentage-based width and height in layouts.
+- **DOM Matrix System:** A simplified indexable representation of the UI for easier querying and debugging.
+
+4. ARCHITECTURAL SYNERGY
+------------------------
+TPMOS currently uses CHTPM for terminal-like layouts. Integrating CHTMGL will involve:
+- Extending `chtpm_parser.c` to handle CHTML tags and OpenGL-specific attributes.
+- Bridging the Piece-Based Architecture (PBA) of TPMOS with the dynamic event system of CHTMGL.
+- Creating a unified renderer that can handle both the legacy box-drawing terminal UI and the new rich graphical UI.
+
+5. NEXT STEPS
+-------------
+- Create a proof-of-concept project `chtmgl-test` in the `gl-os` environment.
+- Implement a standard `index.chtmgl` demonstrating buttons, text input, and media integration.
+- Verify the IPC communication between a TPMOS module and the new CHTMGL-based view.

@@ -1,0 +1,3 @@
+MSG|1785104909-0-127656|lobby|userA|1785104909|hello from real session A
+MSG|1785104951-0-132922|lobby|userA|1785104951|second message - proving live push to an idle session
+MSG|1785108482-0-29948|lobby|bob|1785108482|hi alice, replying for real

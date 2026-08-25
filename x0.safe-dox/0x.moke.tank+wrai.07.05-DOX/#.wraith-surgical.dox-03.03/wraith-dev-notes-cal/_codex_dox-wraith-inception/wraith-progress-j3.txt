@@ -1,0 +1,472 @@
+WRAITH PROGRESS J3
+Real feature path from current bridge to real Wraith desktop behavior
+
+Date:
+2026-06-03
+
+Purpose:
+This note explains what is currently real in Wraith, what is still a bridge,
+and how to implement real TPMOS/GL-OS-grade features next without drifting
+from existing system patterns.
+
+Operating correction:
+GL-OS remains the behavioral reference for focus, drag, resize, z-order, and
+window lifecycle. `fuzz-op` style projected surfaces remain the better content
+reference for what a visible Wraith subwindow should actually be: file-backed
+state that updates deterministic frame output.
+
+Latest correction after the first nav proof:
+the current Wraith nav implementation proved that manager-owned selection state
+can move visible `[>]` markers, but it currently targets hard-coded sketch/menu
+rows. That is not the correct long-term abstraction. The next agent should move
+nav toward real projected subwindow surfaces plus mutable `x/y/z/focus` window
+state.
+
+1. Current reality
+
+What is working now:
+
+- Wraith has its own Map-Composer (Op):
+  `projects/wraith-pm/ops/+x/wraith_composer.+x`
+- Wraith composes its own ASCII desktop grid into:
+  `projects/wraith-pm/manager/view.txt`
+- Wraith enters the standard TPMOS theater via the ${game_map} projection in:
+  `projects/wraith-pm/layouts/desktop.chtpm`
+- Wraith emits real metadata in PDL format:
+  - `projects/wraith-pm/session/windows_state.pdl` (Authority for geometry/focus)
+
+Non-negotiable architectural rule:
+
+- Wraith is a Sovereign Map project.
+- Windows are dynamic map entities (Pieces). They must be spawned and deleted by the manager; they are not static fixtures of the desktop.
+- Sub-projects opened inside Wraith maintain their own manager and state, which Wraith projects into the window bodies.
+- This follows the Piece Russian-Doll standard: sub-projects live in `projects/wraith-pm/wraith-projects/`.
+
+*Note: This document has been corrected from historical unclarity to further up-to-date iterative clarity. It remains flexible until desired outcomes and data structures are achieved.*
+
+What is still not "real desktop behavior" yet:
+
+- the visible TPMOS theater still adds its own global `Nav >` shell
+- numeric jump navigation is not yet mapped into Wraith-owned semantics
+- mouse hit data exists, but live mouse dragging/resizing is not wired
+- the focused Wraith window is not yet being moved or reordered by live input
+- Wraith is still being displayed through the legacy CHTPM theater bridge
+
+Correction to the nav line above:
+- some Wraith-owned nav semantics now exist in manager/state/render flow
+- but they are still pointed at sketch-menu rows instead of real projected
+  surfaces and mutable windows
+
+2. Why the current bridge is limited
+
+Wraith now uses the correct TPM bridge contract:
+
+- thin `.chtpm` wrapper
+- manager-owned `gui_state.txt`
+- parser-owned frame artifacts
+
+That fixed the earlier bug where CHTPM tried to parse raw `.chtmgl` and
+flattened the desktop into garbage text.
+
+But the wrapper is still only a bridge.
+
+The old CHTPM theater owns:
+
+- the global `Nav >` prompt
+- the numeric jump buffer
+- focus traversal among interactive CHTPM elements
+- the final visible shell chrome of the theater itself
+
+So if we want Wraith to feel like a real desktop, we need to move more input
+ownership from "legacy theater UI" into "Wraith desktop state and actions."
+
+3. The two source patterns we should copy
+
+A. CHTPM / fuzz-op pattern for numeric jump navigation
+
+Relevant source:
+- `pieces/chtpm/plugins/chtpm_parser.c`
+- `projects/fuzz-op/manager/fuzz-op_manager.c`
+
+What TPMOS already gives us:
+
+- `digit_accum` for multi-digit jump input
+- `nav_buffer` display like `Nav > 40_`
+- `do_jump(target_num)` to move focus by visible index
+- `active_gui_index.txt` persistence
+- manager-published `active_gui_index` and other projected UI vars
+
+What this means for Wraith:
+
+- We do not need to invent a new jump-number system
+- Wraith should adopt the same model:
+  - one current jump buffer
+  - one current focused interactive item
+  - one persisted active/focused target in file state
+- The difference is scope:
+  - CHTPM jumps among layout elements
+  - Wraith should jump among desktop objects or within the focused projected
+    surface, not remain stuck on sketch labels
+
+Practical Wraith interpretation:
+
+- top-level jump mode:
+  - jump among desktop windows
+  - example: `1 = Wraith Terminal`, `2 = GAME MAP`
+- focused-window jump mode:
+  - jump among visible controls or regions inside the active projected surface
+  - not among fake hard-coded sketch labels unless they are genuinely part of
+    the projected surface
+- Persist the focused item and active window in Wraith session state
+
+Files Wraith should own for this:
+
+- `projects/wraith-pm/session/state.txt`
+  - `focused_window`
+  - `focused_control`
+  - `nav_buffer`
+  - `nav_scope`
+- `projects/wraith-pm/session/current_frame.focus_state.pdl`
+  - active object id
+  - active object role
+  - active control or menu item id
+
+4. GL-OS pattern for real windows
+
+Relevant source:
+- `pieces/apps/gl_os/plugins/gl_desktop.c`
+
+What GL-OS already has:
+
+- `active_window_id`
+- per-window `x`, `y`, `w`, `h`
+- title-bar hit testing
+- `find_window_at(x, y)`
+- `is_dragging`
+- `is_resizing`
+- `drag_window_id`
+- drag start mouse/window coordinates
+- `clamp_window_bounds()`
+- active window selection on click
+- title bar controls for close/maximize/minimize/half-screen
+- keyboard routing based on active window type
+
+This is the real source of truth for how TPMOS windows are supposed to behave.
+
+It is also the source of truth for process boundaries:
+
+- GL-OS owns desktop/window orchestration
+- GL-OS windows can represent project-local runtimes
+- those runtimes keep their own managers and behavior
+- the desktop layer does not reimplement each app internally
+
+What this means for Wraith:
+
+- Wraith needs a real window-state layer, not just decorative borders
+- every Wraith window should have:
+  - stable object id
+  - x, y, w, h
+  - z
+  - focused
+  - movable
+  - resizable
+  - titlebar/control/body hit regions
+- mouse input must update this state, then force a re-render
+
+Important limit:
+
+- this does not mean Wraith should keep visible window content as hidden
+  in-memory UI objects
+- GL-OS is the source for behavior and mutation rules
+- projected TPMOS surfaces are the source for how content becomes visible and
+  auditable
+
+5. Projected-surface rule for real content
+
+Window geometry and interaction state are only half the model.
+
+For Wraith, each visible subwindow should behave more like a projected TPMOS
+surface:
+
+- a project-local manager or Wraith-owned module publishes file-backed view
+  state
+- examples:
+  - `window_<id>.view.txt`
+  - `window_<id>.state.txt`
+  - `window_<id>.cells.pdl`
+  - manager-published `gui_state.txt` variables
+- Wraith reads those projected surfaces and composes them into one desktop frame
+- the composed frame is the auditable product
+- the later RGB converter should consume the exact same frame bundle
+
+This is the stronger fit for Wraith's purpose than a pure GL-OS-style immediate
+UI model.
+
+6. What Wraith already has that helps
+
+The current Wraith parser already emits enough metadata to start:
+
+- objects with:
+  - id
+  - role
+  - x, y, w, h
+  - z
+  - focused
+- hit-map rows with:
+  - object id
+  - object role
+  - cell role such as `titlebar`, `body`, `control`, `media`
+- focus state file
+- mouse state file
+- window stack file
+
+That means the next step is not "invent metadata."
+The next step is "make a live input loop mutate that metadata source."
+
+7. The missing implementation layer
+
+What Wraith does not yet have:
+
+- a Wraith-owned input/state daemon equivalent to GL-OS window state handling
+- a live command grammar for:
+  - focus next/prev
+  - jump by number
+  - mouse down
+  - mouse move
+  - mouse up
+  - drag start
+  - drag stop
+  - resize start
+  - resize stop
+- a way to translate theater input or renderer input into Wraith window actions
+
+This should live in the manager layer, not inside the parser.
+
+Reason:
+
+- parser responsibility:
+  render from state into frame/meta
+- manager responsibility:
+  own state, process commands, mutate files, pulse parser
+
+That matches TPMOS and the onboarding bible.
+
+8. Recommended architecture for real Wraith features
+
+Add these state files first:
+
+- `projects/wraith-pm/session/windows_state.pdl`
+  - canonical window records with x/y/w/h/z/focused/minimized
+  - this is the authority for geometry and lifecycle, not the sole source of
+    visible content
+- `projects/wraith-pm/session/nav_state.txt`
+  - `nav_buffer`
+  - `nav_scope`
+  - `selected_index`
+  - `active_window`
+- `projects/wraith-pm/session/mouse_state.txt`
+  - `mouse_x`
+  - `mouse_y`
+  - `mouse_down`
+  - `drag_active`
+  - `drag_window_id`
+  - `resize_active`
+
+Add these projectable content files next:
+
+- `projects/wraith-pm/session/window_terminal.view.txt`
+- `projects/wraith-pm/session/window_game_map.view.txt`
+- or equivalent project-local projected surface files owned by submanagers
+- if richer content is needed, prefer `*.cells.pdl` or manager-published view
+  variables over opaque runtime state
+
+Parsing rule:
+
+- parser reads geometry from `windows_state.pdl`
+- parser reads content from projected window surfaces
+- parser composes both into the final frame and metadata bundle
+- manager mutates state or signals submanagers, then rerenders
+
+Important correction:
+- do not keep investing in the current sketch-menu rows as if they are the real
+  app model
+- use them only as temporary proof that nav state can alter visible frame output
+- next implementation should make the `GAME MAP` or similar window a real
+  projected surface area, then point nav at that surface and later at its
+  movement/state
+
+Then add manager-side ops:
+
+- `wraith_focus_op.+x`
+  - next/prev/top/focus-window
+- `wraith_nav_jump_op.+x`
+  - apply TPMOS-style jump numbering to Wraith state
+- `wraith_mouse_down_op.+x`
+  - hit test using current hitmap and start focus/drag/resize
+- `wraith_mouse_move_op.+x`
+  - mutate x/y/w/h while dragging/resizing
+- `wraith_mouse_up_op.+x`
+  - finish drag/resize and clear transient state
+- `wraith_raise_window_op.+x`
+  - bring clicked/focused window to top z
+
+Then update the manager to:
+
+- listen for Wraith commands in session/history
+- call the appropriate op
+- rerun `wraith_parser.+x`
+- rewrite `gui_state.txt`
+- pulse the theater markers
+
+Then, when opening real project windows:
+
+- add a project-window registry file that maps window id to:
+  - project id
+  - manager path
+  - runtime type
+  - content source
+- let Wraith launch or signal the project-local manager/submanager
+- let the project-local manager publish project-specific view/state
+- let Wraith compose that project output into the desktop window
+
+Wraith should not inline fuzz-op logic, op-ed logic, or future app logic into
+`wraith-pm_manager.c`.
+
+9. How numeric jump should work in Wraith
+
+Phase 1:
+
+- Keep CHTPM `Nav >` as the outer input prompt
+- Interpret numeric jump inside Wraith manager instead of pretending it is just
+  button focus
+- `1`, `2`, `3` should target Wraith windows or Wraith controls based on
+  current `nav_scope`
+
+Suggested scopes:
+
+- `desktop`
+  - jumps among windows
+- `window_menu`
+  - jumps among window-local commands
+- `map_control`
+  - routes arrows/WASD into map movement instead of menu selection
+
+Implementation note:
+
+- The manager should store and publish `selected_index`
+- The parser should render visible `[>]` indicators based on that state
+- This mirrors GL-OS `selected_index` and CHTPM `active_gui_index` without
+  giving up Wraith ownership
+
+10. How mouse/window moving should work in Wraith
+
+Phase 1:
+
+- Use current `hitmap.pdl` as the click map
+- On mouse down:
+  - find object/cell role under cursor
+  - if titlebar: start drag
+  - if bottom-right corner or resize role later: start resize
+  - if control: activate control
+  - otherwise: focus body window
+- On mouse move:
+  - if dragging: update x/y in `windows_state.pdl`
+  - if resizing: update w/h in `windows_state.pdl`
+- On mouse up:
+  - clear transient drag/resize state
+- On focus click:
+  - raise z and set `focused=true`
+
+This should directly mirror GL-OS ideas:
+
+- `active_window_id`
+- `drag_window_id`
+- `drag_start_x/y`
+- `win_drag_start_x/y`
+- `clamp_window_bounds`
+
+11. Concrete phase order
+
+Phase J3-A:
+- finish the wrapper bridge and stabilize visible Wraith desktop projection
+- done enough to render shape, not enough for rich input
+
+Phase J3-B:
+- add canonical `windows_state.pdl`
+- stop treating layout coordinates as the only source of truth
+
+Phase J3-C:
+- add manager-side nav state and TPMOS-style numeric jump
+- support:
+  - focus window by index
+  - focus control or region by index within active projected surface
+
+Phase J3-D:
+- add mouse hit-test commands and click-to-focus
+- use existing `hitmap.pdl`
+
+Phase J3-E:
+- add titlebar dragging and z-raise
+- mutate `windows_state.pdl`
+
+Phase J3-F:
+- add resize handles and true minimize/maximize semantics
+
+Phase J3-G:
+- reduce dependence on the legacy CHTPM shell
+- let Wraith own more of the visible prompt/chrome directly
+
+12. Immediate coding recommendation
+
+The correct next coding move is:
+
+1. add `windows_state.pdl`
+2. add per-window projected content files or manager-published view variables
+3. make the parser read geometry from `windows_state.pdl` and content from
+   those projected surfaces
+4. repoint nav at windows/surfaces instead of sketch-menu labels
+5. split the current manager-routed nav behavior into clearer TPMOS-style ops
+6. add `wraith_mouse_down/move/up` ops using `current_frame.hitmap.pdl`
+
+Do not start with freeform mouse behavior in the parser.
+Do not invent a new navigation model separate from TPMOS.
+Do not bypass the file contracts.
+
+13. Short version
+
+Use CHTPM/fuzz-op for:
+
+- numeric jump
+- persisted focus index
+- manager-projected UI state
+
+Use GL-OS for:
+
+- active window ownership
+- x/y/w/h/z window state
+- drag/resize/focus behavior
+- titlebar hit testing
+- the pattern where the desktop orchestrates windows while project-local
+  runtimes keep their own managers
+
+Use projected TPMOS surfaces for:
+- visible window content
+- auditability
+- replayability
+- The `${game_map}` magic variable for host-parser sync
+
+
+Use Wraith parser for:
+
+- deterministic frame rendering
+- metadata emission
+- hit maps
+
+Use Wraith manager for:
+
+- state mutation
+- command routing
+- op orchestration
+- parser rerender pulses
+
+That is the path from "good-looking bridge" to "real Wraith desktop."

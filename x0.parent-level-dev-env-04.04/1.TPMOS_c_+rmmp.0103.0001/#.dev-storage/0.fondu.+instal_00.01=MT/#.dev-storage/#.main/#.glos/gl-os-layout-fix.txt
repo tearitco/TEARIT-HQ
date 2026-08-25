@@ -1,0 +1,100 @@
+================================================================================
+GL-OS LAYOUT FIX - FINAL SOLUTION (April 2, 2026)
+================================================================================
+
+PROBLEM:
+GL-OS layout uses ${desktop_view} variable, but the state file can't store
+multi-line values properly. The parser's load_state_file() reads line-by-line,
+so multi-line content gets split into separate variables.
+
+ROOT CAUSE:
+When gl_desktop.c writes desktop_view to state.txt:
+```
+desktop_view=DESKTOP_VIEW
+BG: #000044
+WINDOW_COUNT: 1
+WINDOW | 1 | 70 | 70 | 400 | 300 | Terminal 1 | terminal | 0
+```
+
+The parser reads this as FOUR separate variables:
+- desktop_view = "DESKTOP_VIEW"
+- BG: = "#000044"
+- WINDOW_COUNT: = "1"
+- WINDOW = "1 | 70 | 70 | 400 | 300 | Terminal 1 | terminal | 0"
+
+SOLUTION:
+Instead of storing desktop_view in state.txt, have the parser read it directly
+from pieces/apps/gl_os/session/view.txt when ${desktop_view} is requested.
+
+CODE CHANGE (chtpm_parser.c get_var function):
+```c
+const char* get_var(const char* name) {
+    /* Special case: ${desktop_view} reads from view.txt directly */
+    if (strcmp(name, "desktop_view") == 0) {
+        static char desktop_view_cache[4096] = "";
+        static time_t last_read = 0;
+        time_t now = time(NULL);
+        /* Re-read every second to avoid stale data */
+        if (now - last_read >= 1) {
+            FILE* f = fopen("pieces/apps/gl_os/session/view.txt", "r");
+            if (f) {
+                char line[256];
+                desktop_view_cache[0] = '\0';
+                while (fgets(line, sizeof(line), f)) {
+                    line[strcspn(line, "\n")] = '|';
+                    if (strlen(desktop_view_cache) + strlen(line) < sizeof(desktop_view_cache) - 50) {
+                        strcat(desktop_view_cache, line);
+                    }
+                }
+                fclose(f);
+            }
+            last_read = now;
+        }
+        return desktop_view_cache;
+    }
+    /* ... rest of get_var ... */
+}
+```
+
+This approach:
+1. Reads view.txt directly when ${desktop_view} is requested
+2. Caches the result (refreshed every second)
+3. Replaces newlines with | for single-line storage
+4. Works for both LAUNCH:GL-OS and LOAD_PROJECT:gl-os
+
+VERIFICATION:
+After launching GL-OS, the ASCII layout should show:
+╔═══════════════ G L - O S   D E S K T O P ═══════════════╗
+║  BG: #000044                                      ║
+║  Windows: 1                               ║
+╠═══════════════════════════════════════════════════════════╣
+DESKTOP_VIEW|BG: #000044|WINDOW_COUNT: 1|WINDOW | 1 | 70 | 70 | 400 | 300 | Terminal 1 | terminal | 0|
+╠═══════════════════════════════════════════════════════════╣
+║  [t] New Terminal  [f] New Folder  [n] New File         ║
+║  [c] Close Window  [ESC] Deselect                       ║
+╠═══════════════════════════════════════════════════════════╣
+║  Response:                                ║
+╚═══════════════════════════════════════════════════════════╝
+
+Note: The | characters are visible because we're using | as newline substitute.
+This is acceptable for now - the content IS displayed correctly.
+
+================================================================================
+ARCHITECTURE DECISION
+================================================================================
+
+GL-OS is an APP (pieces/apps/gl_os/), NOT a project.
+- Launched via LAUNCH:GL-OS from main menu
+- Module: pieces/apps/gl_os/plugins/+x/gl_desktop.+x
+- Layout: pieces/apps/gl_os/layouts/desktop.chtpm
+
+The projects/gl-os/ directory exists for state management:
+- projects/gl-os/pieces/desktop/state.txt - Desktop piece state
+- projects/gl-os/pieces/terminal/state.txt - Terminal piece state
+- projects/gl-os/project.pdl - Project metadata
+
+BOTH structures are used together:
+- pieces/apps/gl_os/ - OpenGL application and session state
+- projects/gl-os/ - Persistent piece state
+
+================================================================================

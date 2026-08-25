@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | mp3_player
+STATE        | name               | MP3 Player Engine
+
+METHOD       | rb&u.book1.page76-v1.0 | MP3:PLAY:rb&u.book1.page76-v1.0.mp3
+METHOD       | rb&u.book0.page33-v1.0 | MP3:PLAY:rb&u.book0.page33-v1.0.mp3
+METHOD       | Pause Audio | MP3:TOGGLE_PAUSE
+METHOD       | Stop Audio | MP3:STOP

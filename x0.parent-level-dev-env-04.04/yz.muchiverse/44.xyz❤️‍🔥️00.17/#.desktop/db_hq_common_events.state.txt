@@ -1,0 +1,2 @@
+greet_player
+shop_open

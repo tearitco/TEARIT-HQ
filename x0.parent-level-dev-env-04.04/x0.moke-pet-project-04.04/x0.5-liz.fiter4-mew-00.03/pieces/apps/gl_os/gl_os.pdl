@@ -1,0 +1,25 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | gl_os
+META         | version            | 1.0
+META         | determinism        | strict
+
+STATE        | desktop_bg         | #000044
+STATE        | window_count       | 0
+STATE        | active_window_id   | -1
+STATE        | is_nested          | 0
+STATE        | cursor_x           | 400
+STATE        | cursor_y           | 300
+
+METHOD       | open_window        | void
+METHOD       | close_window       | void
+METHOD       | move_window        | void
+METHOD       | focus_window       | void
+
+EVENT_IN     | window_opened      | void
+EVENT_IN     | window_closed      | void
+EVENT_IN     | input_received     | void
+
+RESPONSE     | window_opened      | Desktop: Window opened successfully.
+RESPONSE     | window_closed      | Desktop: Window closed.
+RESPONSE     | default            | Desktop: Ready.

@@ -1,0 +1,38 @@
+<!-- test_fondu.chtpm - Simple Counter Test UI -->
+<layout id="test_fondu" name="Fondu Test Project">
+
+  <header>
+    <text>FONDU TEST PROJECT</text>
+  </header>
+
+  <main>
+    <panel title="Counter State">
+      <text>Counter Value: ${counter}</text>
+      <text>Status: ${status}</text>
+    </panel>
+
+    <panel title="Test Ops">
+      <text>[1] Increment Counter</text>
+      <text>[2] Decrement Counter</text>
+      <text>[3] Reset Counter</text>
+      <text>[4] Get Status</text>
+      <text>[9] Run PAL Script</text>
+    </panel>
+
+    <panel title="Instructions">
+      <text>Press 1-4 to test ops</text>
+      <text>Press 9 to run test_ops.pal</text>
+      <text>Press ESC to exit</text>
+    </panel>
+  </main>
+
+  <footer>
+    <text>Project: ${project_id}</text>
+    <text>Layout: test_fondu</text>
+  </footer>
+
+  <interact src="pieces/apps/player_app/history.txt" />
+
+  <module path="projects/test_fondu/manager/+x/test_fondu_manager.+x" />
+
+</layout>

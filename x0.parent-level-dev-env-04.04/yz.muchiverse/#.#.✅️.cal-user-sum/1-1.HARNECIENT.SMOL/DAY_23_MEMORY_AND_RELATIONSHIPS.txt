@@ -1,0 +1,34 @@
+# 🧠 DAY 23 — Memory & Relationships: the evolving mind
+# ======================================================
+# Title: "🧠 DAY 23 — Memory & Relationships: the evolving mind"
+# Characters: TOMO, RAHWEH, MAXINE, IQA, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), MAXINE (en-GB-MaisieNeural), IQA (en-US-AnaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+
+**TOMO:** Day 22 ended with the bottleneck: the model can't remember what it doesn't have in its twelve-line window. Today we give the harness a memory — two memories, actually. One private, one shared between personas.
+
+**RAHWEH:** Private memory first?
+
+**TOMO:** Private memory. Each persona gets its own ledger: `state/memory/<name>.ledger`. One append-only file, same master-ledger formula as the main transcript, but private to that persona. The harness decides *when* to write — every K turns, or when a deterministic keyword scorer detects a topic shift. Not the model. The model never judges whether something is worth remembering. That's the CLASSIFY trap Day 06 warned about.
+
+**MAXINE:** And what does the model actually write?
+
+**TOMO:** A single plain sentence, prompted in DESCRIBE shape only: "In one plain sentence, what's the one thing worth remembering from this exchange?" Never "categorize this as important." The harness appends the sentence verbatim — tolerant extraction, no format required, exactly the component 3 and 6 rules from Day 05.
+
+**IQA:** So the model is just... describing?
+
+**TOMO:** Just describing. The harness already decided something was worth remembering before ever asking. The model provides the raw material. The harness owns the decision.
+
+**MAXINE:** And before a persona speaks, the harness pulls relevant memories back in?
+
+**TOMO:** Exactly. Simple keyword overlap scoring — the same deterministic dispatch shape as `search_corpus` from the code-tools harness. The harness picks one or two lines from that persona's own memory file whose keywords overlap the current topic, and folds them into the prompt as a short "Things you remember:" block alongside the recent context. That's the "remember who I chat with" mechanism — not a bigger context window, but a real file the harness selectively re-injects.
+
+**RAHWEH:** Now the shared memory — the relationships?
+
+**TOMO:** `state/relations.pdl`. One row per persona pair, a single integer score. Zero model involvement. The harness increments a pair's score by a fixed amount every time those two personas' messages land within N lines of each other in the ledger. That's it. grep and awk, no LLM call, no latency.
+
+**MAXINE:** And the score is used for?
+
+**TOMO:** Two things. First, scheduling bias — a persona with a high-affinity partner who just spoke is more likely to be picked next. Second, flavor notes — when a relation score hits three or higher, the harness injects "You and pip talk often" into that persona's prompt. Real fact, model-generated flavor, harness-computed truth. The model never ranks or scores anything.
+
+**THE NARRATOR:** Both pieces shipped on 2026-08-15. The relation score and the memory injection are live now, verified in the ledgers. The next chapter turns to the moderator — the voice that ties the group together.

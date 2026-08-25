@@ -1,0 +1,14 @@
+# Custom Operations for zoo_0000's prisc+x program
+# Format: name type handler {description}
+
+out void builtin_out {print register to stdout}
+halt void builtin_halt {stop execution}
+xlector_input void ops/+x/xlector_input.+x {the standard xlector active-target dispatcher - select/relinquish/move/method-hotkeys, see dox/xlector-standard.md}
+move_entity void ops/+x/move_entity.+x {generic mover, used internally by xlector_input.+x - not called directly from the pal script}
+tick_pets void ops/+x/tick_pets.+x {decision_mode=0 wander AI tick for every pet not currently under manual control}
+compose_frame void ops/+x/compose_frame.+x {render map+pets+xlector+active-target-driven footer into current_frame.txt}
+compose_rgb_frame void ops/+x/compose_rgb_frame.+x {render the LEVEL ONLY (map+xlector, no pets - see that op's own header comment) as a raw RGBA32 framebuffer for the optional GL mirror - zero GL calls}
+feed_pet void ops/+x/feed_pet.+x {feed method handler, dispatched via a pet's own piece.pdl, not called directly from the pal script}
+pet_pet void ops/+x/pet_pet.+x {pet method handler, dispatched via a pet's own piece.pdl, not called directly from the pal script}
+play_pet void ops/+x/play_pet.+x {play method handler, dispatched via a pet's own piece.pdl, not called directly from the pal script}
+pet_export void ops/+x/pet_export.+x {export method handler - moves a pet's whole directory into exchange/ as a neutral envelope}

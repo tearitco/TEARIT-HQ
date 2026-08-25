@@ -1,0 +1,8 @@
+default_render_mode=1
+default_camera_mode=2
+camera_pitch=20.0
+camera_yaw=45.0
+camera_pan_x=0.0
+camera_pan_y=0.0
+camera_distance=20.0
+interact_mode=0

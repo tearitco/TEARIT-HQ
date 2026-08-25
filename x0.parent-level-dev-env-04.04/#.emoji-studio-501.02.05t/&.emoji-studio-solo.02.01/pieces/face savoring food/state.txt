@@ -1,0 +1,5 @@
+name=face savoring food
+index=23
+resolution=8
+pos=0,0,0
+scale=1.0

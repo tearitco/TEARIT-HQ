@@ -1,0 +1,5 @@
+project_id=playrm
+active_target_id=loader
+current_map=map_01.txt
+current_z=0
+last_key=None

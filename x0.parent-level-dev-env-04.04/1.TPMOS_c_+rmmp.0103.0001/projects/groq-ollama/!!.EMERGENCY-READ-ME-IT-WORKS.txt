@@ -1,0 +1,103 @@
+================================================================================
+STOP: groq-ollama tool-calling WORKS as of 2026-07-15. Read this before you
+try to "fix" it again.
+================================================================================
+
+VERIFIED WORKING END TO END on 2026-07-15: a real user prompt through the
+manager TUI produced a permission-gated write_file tool call against the
+Mac's Ollama (10.0.0.144:11434, model llama3-groq-tool-use:latest), which
+executed and actually wrote the file. Confirmed output:
+    "Tool write_file completed. Showing raw tool output:
+     Written 11 bytes to new-july15.txt"
+
+If you see it fail (model says "I'm sorry, I can't do that" / asks a
+clarifying question / hedges instead of calling a tool), READ THIS FIRST
+before assuming the code is broken again:
+
+--------------------------------------------------------------------------------
+1. THE MODEL IS PICKY ABOUT WORDING. This is expected, not a bug.
+--------------------------------------------------------------------------------
+llama3-groq-tool-use:8b is a small model and its tool-call compliance is
+sensitive to how the request is phrased. Confirmed by direct A/B test against
+the live Mac endpoint on 2026-07-15:
+
+    "make file \"j14.txt\" saying\"date\""
+        -> model hedges: "I'm sorry but I do not have the capability..."
+
+    "Create a file named j14.txt with the content: date"
+        -> model correctly emits a real tool_calls response, first try.
+
+Ambiguous/casual phrasing (odd quoting, "saying" instead of "with content",
+missing punctuation) measurably hurts compliance. If a request fails, try
+rephrasing it more explicitly/imperatively before touching any code.
+
+--------------------------------------------------------------------------------
+2. INFERENCE ON THIS HARDWARE IS SLOW AND VARIABLE. This is expected too.
+--------------------------------------------------------------------------------
+Round trips have ranged from ~8s to 2+ minutes for the exact same kind of
+request, depending on prompt size and Mac load. Do not read a slow response,
+or one curl test that times out, as "it's broken" - retry with a longer
+timeout before concluding anything.
+
+--------------------------------------------------------------------------------
+3. Things that look like bugs but are just how this works:
+--------------------------------------------------------------------------------
+- Two "groq-ollama_manager" processes running at once (e.g. a manual test
+  instance + your real session) will fight over manager/gui_state.txt and
+  make the TUI flicker/never settle. Check `pgrep -af groq-ollama_manager`
+  before launching another one.
+- Editing config/persona.txt or config/tool_flags.txt has NO EFFECT on an
+  already-running session until you clear context (state/context.json) -
+  the old persona is baked into context as the first message and will keep
+  contradicting the new one until cleared.
+- The Mac's Ollama binds to 127.0.0.1 by default. `launchctl setenv
+  OLLAMA_HOST 0.0.0.0` + relaunching Ollama.app fixes it for LAN access, but
+  this does NOT survive a reboot/logout of the Mac. If 10.0.0.144:11434
+  starts refusing connections again, redo that, don't assume the manager
+  code regressed.
+
+--------------------------------------------------------------------------------
+Fixes applied 2026-07-15 (for context, don't re-apply these):
+--------------------------------------------------------------------------------
+- Default API repointed from localhost:11434 to the Mac (10.0.0.144:11434) -
+  localhost was never supposed to be used for inference on this box.
+- Added a native Ollama tools[] array to the request (was completely
+  missing - this was the original root cause of "doesn't make toolcalls
+  correctly").
+- Swapped in a real path-aware json_parser.c (old one was a shallow
+  first-match scanner that only worked by luck).
+- Ported the y/n permission-gate flow (PENDING_PERM/WAIT_PERM) from gem-dev
+  so tool calls require confirmation instead of auto-executing.
+- Added config/tool_flags.txt + web_search_ignored()/raw_tool_followup_enabled().
+- Fixed config/persona.txt and config/tool_flags.txt being read via a bare
+  relative path ("config/persona.txt") that resolved against the TPMOS
+  root (where the manager chdir()s to), not the project folder - it was
+  silently falling back to a generic hardcoded persona every single time.
+  Now reads "projects/groq-ollama/config/persona.txt" etc.
+- Removed the old persona instruction telling the model to invent its own
+  {"tool":...,"args":...} JSON format - it was fighting with the native
+  tools[] schema and produced garbled hybrid output that claimed success
+  while doing nothing.
+
+Full original investigation: tpmos-ai-fix.txt at the ZEST-10.00 repo root.
+
+cpp-llm (raw llama.cpp/gguf path) was deferred initially but has since been
+fixed too - see its own !!.EMERGENCY-READ-ME-IT-WORKS.txt (needed a
+fundamentally different approach, not this same pattern). The aida_mac
+(10.0.0.144:8080) endpoint option inside groq-ollama's own apis.txt is still
+untouched/unfixed if you ever actually use it.
+
+--------------------------------------------------------------------------------
+UPDATE 2026-07-15 (later same day): autocomplete (* path completion) polish
+--------------------------------------------------------------------------------
+The * path-completion feature already existed here but was a simplified
+version of gem-dev's - it worked but was rougher: suggestion labels showed
+the full "projects/groq-ollama/sandbox/..." path instead of a clean relative
+name, keyboard focus never jumped to the suggestion list (so pressing 2-6
+could just type those digits into the input box instead of picking a
+suggestion), and polling ran at the normal 100ms instead of gem-dev's
+snappier 20ms while completion mode is active. Ported all three from
+gem-dev's proven implementation (pulse_state_changed/read_active_gui_index
+focus management, label prefix-stripping, CHOOSE: history marker support,
+faster polling). Don't re-simplify this back to the old version - the
+extra plumbing is what makes 2-6 actually select a suggestion.

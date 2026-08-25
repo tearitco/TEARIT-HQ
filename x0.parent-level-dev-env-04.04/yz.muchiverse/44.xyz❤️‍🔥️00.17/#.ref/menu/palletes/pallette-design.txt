@@ -1,0 +1,119 @@
+PALETTES SYSTEM DESIGN
+======================
+2026-08-24. Direct instruction: palette categories should DROP DOWN FROM
+THE TOOLBAR as usual; each option opens an HQ-STYLE WINDOW whose interior
+is that category's own picker style. Desk placement from the picker is
+the primary action; placement inside piececraft/mutaclysm follows the
+drag&drop protocol. Nothing here needs the taskbar recompiled - menus are
+PDL rows, windows reuse the existing kptm_hq_render binary (bookmarks
+pattern, !.HOUSE_STDS.md §K.5).
+
+ARCHITECTURE (one sentence)
+---------------------------
+Toolbar "Palettes" row -> dropdown lists categories read from the PDL ->
+each launches the SAME hq-renderer window composed by
+&.widgits/palettes/palettes_menu.sh from &.widgits/palettes/pallets.pdl,
+with per-category picker interiors added incrementally.
+
+CATEGORY -> WINDOW INTERIOR (what each picker looks like)
+---------------------------------------------------------
+user-pallet    the user's own saved palette; entries can be copied or
+               dragged in from any other category's picker.
+emojis         plain emoji grid; click selects for placement. (This is
+               what tile-picker already does today - first real picker,
+               just re-launched through this menu.)
+elements       TWO-SIDED BAR: left = chemicals list, right = compounds
+               and what they're made of, small-to-big (little-alchemy
+               style). Fed by chemistry_tiles_expanded🏆.csv +
+               elements]new=RECIPEZ+]z2🏆.txt recipe walk (tiling doc
+               §15 UI spec: emoji icon, formula, color swatch, tooltip,
+               recipe button).
+rmmv           RPG-Maker-like tileset view: pages A/B/C/D/E tabs,
+               autotile groups A1-A5, animation frames - exactly the
+               mapping in tiling-palettes-chemistry.txt §4/§11.
+piececraft     MINECRAFT CREATIVE-MENU layout: tabbed block grid,
+               top/side/bottom face sprites, crafting menu full in
+               creative mode (tiling doc §12).
+cdda           16px floor+front-face pairs, movecost/smooth flags,
+               furniture-as-prop (tiling doc §5/§13).
+df             ASCII<->sprite dual view toggle, raised-view wall_height
+               extrusion preview (tiling doc §13/§14).
+kenney         RESERVED - kenney 3D asset packs (not uploaded yet).
+paint          PURE COLOR GRID - swatches, not tiles; picked color goes
+               to brush/placement.
+generate       GENERATION tools: stable-diffusion image generation,
+               text-to-speech, etc. TTS already has a proven op
+               (tts_speak); SD lands with the GPU-enabled build tier
+               (see house-commands.remaining.txt Deep notes).
+
+PLACEMENT PROTOCOL
+------------------
+1. DESK (primary): same pipeline tile-picker uses today -
+   tp_place_desktop drops the stamp onto #.desktop/tiles/ (emoji go
+   through emoji_gen_atlas.+x/emoji_xtract.+x to become real textures).
+2. PIECECRAFT / MUTACLSYM: drag&drop protocol - the merged entity-menu
+   binary already speaks X11 XDND via the data-driven drop_action=
+   attribute (!.HOUSE_STDS.md §K.3-3): game windows declare
+   <window drop_action="...">, receive text/uri-list drops as $DROP_PATH,
+   and route the dropped palette item into their own map-placement op
+   (tile-picker's tp_place muta-map path is the reference).
+
+VIEW SPECS (direct instruction, 2026-08-24, "the palette view should be
+a matrix. and there should be a scroll thumb"; emojis: "just use the
+colored one for now")
+---------------------------------------------------------------------------------
+MATRIX VIEW    Every category window shows its tiles as a GRID (matrix),
+               not a vertical list. Composition-side: tiles are chunked
+               into <row class="pal-grid-row"> containers of N tiles -
+               khtpm_render_core.c's css_layout_pass() genuinely recurses
+               into nested flex containers, so row-of-tiles children of
+               the panel's column stack lay out horizontally with no new
+               engine code. Tile cell size comes from .pal-tile CSS
+               (width/height), not the panel's default 22px row height.
+SCROLL THUMB   Grid content taller than the window scrolls, and there is
+               a REAL VISIBLE THUMB on a track at the panel's right edge
+               (proportional thumb size/position from scroll_offset).
+               House guidance for the mechanics, verified live:
+               - wraith-alpha fs browser: g_scroll_offset + fixed
+                 visible-window size + clamp [0, max_scroll] where
+                 max = total - visible (wraith-alpha ops' fs pattern,
+                 cited by open-hai's file header).
+               - chat / open-hai transcript: same offset+clamp plus
+                 nav-badge-numbered "Scroll Up"/"Scroll Down" rows
+                 (step 3) and a "line X-Y / Z" position readout
+                 (khtpm_open_hai_render.c ~1318-1340, 1649-1655) - that
+                 is chat's "up down nav thumb".
+               Palettes combines both: real drawn track+thumb AND
+               mouse wheel (Button4/5) AND PageUp/PageDown keys; nav
+               indices are only assigned to VISIBLE cells so digit-jump
+               never targets scrolled-out tiles; focus-follow adjusts
+               the offset when arrow/digit nav moves focus out of view;
+               offset resets to 0 whenever the chtpm reloads.
+EMOJI SOURCE   The emojis category reads #.ref/menu/palletes/
+               emoji-pallet-00.00.txt (112 colored emojis, one per
+               line) - NOT any hand-picked monochrome starter set.
+
+DATA SOURCES
+------------
+#.ref/menu/palletes/pallets-help.txt            category registry (prose)
+#.ref/menu/palletes/pallets.pdl                 LIVE category list (PDL)
+#.ref/menu/palletes/chemistry_tiles_expanded🏆.csv   compound tiles (14-col)
+#.ref/menu/palletes/elements]new=RECIPEZ+]z2🏆.txt   recipe tree (2-parent)
+#.ref/menu/tiling-palettes-chemistry.txt        full mechanics reference
+
+BUILD ORDER (momentum path)
+---------------------------
+1. [STARTED TODAY] pallets.pdl + generic category window
+   (palettes_menu.sh compose -> kptm_hq_render database-window; every
+   category row present immediately, non-emoji rows open the design
+   doc section until their real picker lands).
+2. Emojis picker = tile-picker launched THROUGH this window (it works;
+   zero new rendering code).
+3. Chemistry two-pane chemicals|compounds picker (pure data already
+   seeded; needs the two-list hq layout).
+4. RMMV / piececraft / cdda / df tile-grid views (share one generic
+   tile-grid picker fed per-category).
+5. Paint color grid; Generate panel (tts first, sd when GPU tier lands).
+6. Taskbar dropdown row wiring (PDL menu row -> palettes_menu.sh; no C
+   changes) + drop_action declarations on piececraft/muta windows so
+   palette items drag straight onto maps.

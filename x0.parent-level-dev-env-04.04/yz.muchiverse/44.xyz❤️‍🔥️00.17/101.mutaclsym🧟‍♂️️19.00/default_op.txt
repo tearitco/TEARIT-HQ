@@ -1,0 +1,9 @@
+# Custom operations for mutaclysm's own prisc+x program.
+# Format: name type handler {description}
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}
+mua_menu_input void ops/+x/mua_menu_input.+x {config-driven (keybinds.txt) key dispatch}
+mua_compose_frame void ops/+x/mua_compose_frame.+x {render the current screen into view.txt}
+compose_frame void ops/+x/compose_frame.+x {render map+hero+turn into current_frame.txt (restored from +18.0G)}
+compose_rgb_frame void ops/+x/compose_rgb_frame.+x {render the same map+hero state as a raw RGBA32 framebuffer for the GL mirror (restored from +18.0G)}
+muta_render_3d void ops/+x/muta_render_3d.+x {board-viewer's real voxel raymarcher - writes rgb_frame_3d_overlay.raw, composited in by compose_rgb_frame}

@@ -1,0 +1,31 @@
+# zoo_0000 main loop - no title screen, no hero: boots directly into
+# xlector control of the zoo, per the standard's own core idea (see
+# dox/xlector-standard.md) - a game following this pattern does NOT
+# need a "player" piece to exist by default. x1/x2 are the same
+# history-read-cursor/last-key registers every project in this family
+# uses (mutaclsym/egg-pals/1.TPMOS all share this shape).
+# x9 = 113 ('q'), the same fixed, non-numbered quit key convention
+# every sibling project uses - never routed through the numbered
+# accumulator.
+li x1, 0
+li x9, 113
+
+compose_frame
+compose_rgb_frame
+hit_frame
+
+loop:
+read_history x2, x1
+beq x2, x0, no_key
+beq x2, x9, quit
+xlector_input x2
+tick_pets
+compose_frame
+compose_rgb_frame
+hit_frame
+no_key:
+sleep 30000
+j loop
+
+quit:
+halt

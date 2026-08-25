@@ -1,0 +1,29 @@
+Refactoring Task: Complete Path Quoting and Verification
+
+Objective:
+Ensure all shell commands executed via `popen` and `system` across the CHTPM project correctly handle paths with special characters by implementing consistent path quoting.
+
+Summary of Work Done:
+I have successfully fixed the primary issue where projects would not open from the menu when parent directories contained spaces. This was achieved by hardening `chtpm_parser.c` and `loader_module.c`.
+
+Full list of hardened modules (All recompiled and verified):
+1. Core Loader: `chtpm_parser.c`, `loader_module.c`, `playrm_module.c`, `resolve_project_op.c`.
+2. User System: `file_manager.c`, `user_manager.c`, `file_op.c`.
+3. Project Management: `man-add_module.c`, `lsr_setup.c` (and govs/corps), `bot_create.c`, `bot_export.c`, `fs_mk.c`.
+4. Yahoo Finance: `buy_stock.c`, `sell_stock.c`, `lookup_stock.c`, `1.yfin💴️._orch]h13.c`, `sell_option_inventory.c`.
+
+Remaining Tasks:
+System-wide hardening is still needed for several background daemons and plugins that use `system()` or `popen()`:
+- Orchestrator: `pieces/chtpm/plugins/orchestrator.c` (handles kill scripts/process management).
+- Input/System: `joystick_input.c`, `keyboard_input.c`, `clock_daemon.c`, `prisc+x.c`.
+- App Plugins: `gl_desktop.c`, `gl_os.c`, `player_manager.c`.
+- World Ops: `interact.c`, `move_entity.c`, `project_loader.c`, `place_tile.c`, `move_z.c` (under `pieces/apps/player_app/world/plugins/`).
+
+Verification:
+- The Project Loader is confirmed working in directories with spaces.
+- All modified modules have been recompiled and verified.
+
+Note: Due to token constraints, I am stopping here. The foundation is solid and the priority fix is delivered.
+
+user note: 
+The original issue is fixed. You can now open projects even if the folder has spaces. I've hardened the most critical parts of the project management and user systems.

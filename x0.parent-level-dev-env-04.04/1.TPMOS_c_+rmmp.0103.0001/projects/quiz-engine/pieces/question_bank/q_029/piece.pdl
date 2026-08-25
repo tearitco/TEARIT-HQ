@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | q_029
+META         | type               | question
+
+STATE        | name               | Lysine
+STATE        | type               | H2N(CH2)4CH(NH2)COOH

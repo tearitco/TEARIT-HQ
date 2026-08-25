@@ -1,0 +1,62 @@
+[2026-03-18 ACTIVE CANONICAL SUMMARY]
+This file is now the concise PMO/TPM standard for current implementation decisions.
+
+# PMO KISS Standard (Current)
+
+Core rule:
+PIECE -> MODULE -> OS
+
+Core mandate:
+MODULAR OVER HARDCODED. ALWAYS.
+
+## 1) Piece
+- A piece is a directory-backed unit of state + behavior.
+- Runtime truth is file-backed (`state.txt` and related files), never hidden memory-only state.
+- Pieces can contain pieces (inventory/interior nesting).
+
+## 2) Module
+- Modules orchestrate piece behavior and route input to ops/plugins.
+- Modules should remain deterministic and auditable.
+- Prefer world/map-first resolution; keep fallback only for migration compatibility.
+
+## 3) OS/CHTPM
+- CHTPM handles layout composition, variable substitution, and input routing.
+- Parser is theater/view layer, not business-logic owner.
+
+## 4) Canonical world architecture
+- Canonical path: `projects/<project>/pieces/world_<id>/map_<id>/<piece_id>/`
+- No required `/pieces/` under map dirs.
+- Recursive containment is first-class.
+
+## 5) Current execution order (Mar 18, 2026)
+1. Step 1: `op-ed` save -> load -> local play + `pal`/op-event no-code create/bind/test.
+2. Step 2: AI ops.
+3. Step 3: Pet expansion.
+4. Step 4: Voice accessibility.
+5. Step 5+: simulation, network, gl-os, install/versioning, then kernel horizon.
+
+## 6) Non-negotiables
+- Do not hardcode piece IDs in scan/load paths.
+- Preserve deterministic save/load/local play behavior.
+- Keep migration fallbacks explicit and temporary.
+- Keep all key state transitions inspectable on disk.
+- Do not guess missing project metadata (e.g., `entry_layout`, `player_piece`) via static defaults when scan/registry resolution is possible.
+
+## 7) Modularity + Recursion Doctrine (Critical)
+1. Everything should be replaceable in slices:
+   - piece-level
+   - module-level
+   - app-level (editor/player)
+2. Avoid embedding behavior that forces full-system rewrites for small feature changes.
+3. Editor and player should share composable ops/contracts, not duplicate hardcoded behavior trees.
+4. Recursive containment is intentional architecture:
+   - maps contain pieces
+   - pieces contain pieces
+   - same rules at each layer
+5. Goal for agents: enable partial evolution.
+   - remove/replace one part while other parts continue running.
+   - reduce token and reasoning overhead by localizing change scope.
+
+## 8) Legacy note
+Older PMO doctrine docs in this folder are historical context only.
+When conflict exists, follow Mar 18 roadmap docs and Step 1 prompt.

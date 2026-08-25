@@ -1,0 +1,6 @@
+player_x=-1
+player_y=-1
+move_count=0
+camera_mode=4
+action_label=Advance Hero
+status_text=Moves: 0 | Hero=(-1,-1)

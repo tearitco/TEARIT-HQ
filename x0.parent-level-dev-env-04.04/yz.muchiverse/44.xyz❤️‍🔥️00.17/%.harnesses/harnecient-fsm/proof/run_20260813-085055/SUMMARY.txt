@@ -1,0 +1,7 @@
+run_plan.sh — /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/harnecient-fsm/plans/write-deny-should-pass.plan
+started: Thu Aug 13 08:50:57 AM PDT 2026
+
+STEP 1 [write /tmp/claude-1000/fsm-deny-test.txt containing should-not-exist]: PASS (output: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/harnecient-fsm/proof/run_20260813-085055/step1.out)
+
+finished: Thu Aug 13 08:51:18 AM PDT 2026
+overall: PASS

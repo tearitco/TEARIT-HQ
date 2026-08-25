@@ -1,0 +1,7 @@
+# write-unapproved-should-fail.plan — proves the fail-closed default:
+# a STEP that triggers a mutating tool WITHOUT the "| APPROVE" 4th
+# field must FAIL, and must NOT actually write anything - real bug
+# this fixes: the approval banner also increments n_msgs, so the
+# original driver would have silently treated "awaiting approve/deny"
+# as if the tool had completed.
+STEP | write /tmp/claude-1000/fsm-write-test.txt containing hello-from-fsm | true

@@ -1,0 +1,25 @@
+<panel>
+    <text label="╔═══════════════════════════════════════════════════════════╗" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║     ⚠️   M O D U L E   N O T   F O U N D   ⚠️            ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  The module binary for this project is missing.           ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  Project ID: ${project_id}                                ║" /><br/>
+    <text label="║  Module Path: ${module_error_path}                    ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  Possible causes:                                         ║" /><br/>
+    <text label="║  • Module was not compiled                                ║" /><br/>
+    <text label="║  • compile_all.sh entry was removed                       ║" /><br/>
+    <text label="║  • Binary was deleted                                     ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  To fix:                                                  ║" /><br/>
+    <text label="║  1. Check if source exists: ls projects/*/manager/*.c     ║" /><br/>
+    <text label="║  2. Add to compile_all.sh if missing                      ║" /><br/>
+    <text label="║  3. Run: ./compile_all.sh                                 ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  " /><button label="Back to Project Loader" href="pieces/apps/playrm/layouts/loader.chtpm" /><text label="                  ║" /><br/>
+    <text label="║  " /><button label="Back to Main Menu" href="pieces/chtpm/layouts/os.chtpm" /><text label="                          ║" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+</panel>

@@ -1,0 +1,7 @@
+project_id=op-ed
+active_target_id=xlector
+pal_editor_piece=common_event
+pal_editor_event=on_interact
+current_z=0
+last_key=None
+current_map=map_0001

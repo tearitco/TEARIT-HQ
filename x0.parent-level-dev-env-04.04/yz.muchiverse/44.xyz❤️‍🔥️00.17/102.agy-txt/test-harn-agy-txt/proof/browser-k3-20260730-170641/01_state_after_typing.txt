@@ -1,0 +1,7 @@
+browse_dir=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.15/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/xyzfs/users/e8bf229a-62d3-4d6f-810e-e2aaf031cd73/home/documents
+cursor_pos=1
+search_text=
+path_buffer=k3-save-219601.txt
+field_active=1
+last_layout=pieces/chtpm/layouts/file_browser_save.chtpm
+status_line=Type path or browse to a file

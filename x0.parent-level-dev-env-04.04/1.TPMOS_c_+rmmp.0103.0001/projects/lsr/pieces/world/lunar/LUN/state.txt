@@ -1,0 +1,9 @@
+name=Lunar Authority
+ticker=LUN
+type=government
+cash=1000000.00
+tax_rate=0.10
+on_map=1
+pos_x=8
+pos_y=3
+pos_z=0

@@ -1,0 +1,13 @@
+game_id=mutaclysm-001
+turn=1
+hunger=100
+thirst=100
+stamina=100
+hp=100
+max_hp=100
+evasion=0
+defense=0
+level=1
+exp=0
+gold=0
+game_state=playing

@@ -1,0 +1,6 @@
+# set-model-demo.plan — proves SET_MODEL deterministically switches
+# the live model via nav cycling (never editing model.txt directly)
+# and correctly verifies the switch landed.
+SET_MODEL | gemma3:1b | true
+SET_MODEL | llama2:latest | true
+SET_MODEL | stable-code:latest | true

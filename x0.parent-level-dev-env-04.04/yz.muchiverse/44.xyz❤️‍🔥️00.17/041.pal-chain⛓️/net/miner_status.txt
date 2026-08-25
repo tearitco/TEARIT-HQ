@@ -1,0 +1,7 @@
+miner_wallet_id=testdebug123
+running=0
+blocks_mined_this_session=0
+last_block_index=13999
+last_block_hash=0c61ca2f8e18b2416568e3244011e727ab8803a4e0d9d69fa426a7d718c0f512
+total_supply_minted=20996000
+updated_at=1785117922

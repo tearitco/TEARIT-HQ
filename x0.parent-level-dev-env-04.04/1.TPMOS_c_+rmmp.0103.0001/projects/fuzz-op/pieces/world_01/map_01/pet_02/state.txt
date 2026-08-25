@@ -1,0 +1,13 @@
+name=StorageCat
+type=pet
+pos_x=14
+pos_y=5
+pos_z=0
+on_map=1
+hunger=50
+happiness=55
+energy=68
+level=1
+owner=world
+emoji=🐱
+map_id=map_01_z0.txt

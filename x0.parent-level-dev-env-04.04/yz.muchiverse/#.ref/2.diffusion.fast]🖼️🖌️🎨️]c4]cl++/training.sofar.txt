@@ -1,0 +1,370 @@
+
+### Key Changes in `neural_net.c`
+- **Gradient Scaling**:
+  - Removed normalization in `convolve_backward` (no `grad_norm` division).
+  - Added gradient clipping (`[-10, 10]`) to prevent explosion.
+  - Changed loss gradient scaling from `4.0f / size` to `2.0f / size`.
+- **Learning Rate**:
+  - Reduced `LEARNING_RATE` from 0.01 to 0.001.
+  - Increased `WEIGHT_DECAY` from 0.0001 to 0.001.
+- **Noise Schedule**:
+  - Changed `timestep` range from `0.01f + (0.2f - 0.01f) * epoch / (NUM_EPOCHS - 1)` to `0.001f + (0.5f - 0.001f) * epoch / (NUM_EPOCHS - 1)`.
+- **Loss Function**:
+  - Added clipping in `compute_loss` to constrain `pred_noise` to [-0.05, 0.05], matching the input noise range.
+- **Debugging**:
+  - Updated `log_noise_stats` to include a `type` parameter (e.g., “target_noise”, “pred_noise”).
+  - Log both `noise` and `pred_noise` stats in `loss_debug.txt` each epoch.
+- **Preserved**:
+  - `NUM_EPOCHS = 50`, second-stage training (`kernels2`), memory optimizations, and bounds checking.
+
+### Compilation and Usage
+1. **Compile**:
+   ```bash
+   gcc -o +x/neural_net.+x neural_net.c -lm
+   gcc -o +x/noise_schedule.+x noise_schedule.c -lm
+   gcc -o main main.c -lm
+   ```
+   Ensure `stb_image.h` and `stb_image_write.h` are available.
+
+2. **Place Executables**:
+   Put `neural_net.+x` and `noise_schedule.+x` in `./+x/`.
+
+3. **Run**:
+   ```bash
+   ./main /path/to/images
+   ```
+   Select indices `1 2` for `munqi.jpg` and `dubu.jpg`.
+
+### Expected Outcomes
+- **Loss Decrease**: Loss should drop steadily (e.g., from 1.0 to <0.1) across epochs, indicating the model is learning to predict noise.
+- **Stable Gradients**: GradMag1 and GradMag2 should start high (e.g., 50–100) and decrease as loss drops, staying non-zero.
+- **Noise Prediction**:
+  - `loss_debug.txt` should show `pred_noise` stats approaching `target_noise` (mean ~0, variance ~0.000833).
+  - `noise_stats.txt` should show output mean ~0, variance <0.01.
+- **Blend Quality**: `diffusion_output.jpg` should reach 90%+ quality, with clear features from both `munqi.jpg` (e.g., colors, shapes) and `dubu.jpg` (e.g., textures, patterns), minimal blurriness, and no artifacts.
+
+### Debugging Tips
+If the loss doesn’t decrease or blend quality is still poor:
+1. **Check `loss_debug.txt`**:
+   - Look for loss trends (should decrease to <0.1).
+   - Compare `pred_noise` vs. `target_noise` stats (mean and variance should converge).
+   - Check GradMag1/GradMag2 (should decrease but stay >0.1).
+2. **Image Size Consistency**:
+   - The varying sizes (106x116, 500x500) may cause issues. Consider resizing all images to 256x256 in `main.c`:
+     ```c
+     // In main.c, before writing temp_files[i]
+     #include <stb_image_resize.h>
+     if (image_widths[idx] != 256 || image_heights[idx] != 256) {
+         int new_width = 256;
+         int new_height = 256;
+         unsigned char *resized = (unsigned char *)malloc(new_width * new_height * 3);
+         stbir_resize_uint8(image_data[idx], image_widths[idx], image_heights[idx], 0, resized, new_width, new_height, 0, 3);
+         stbi_write_jpg(temp_files[i], new_width, new_height, 3, resized, 90);
+         free(resized);
+         image_widths[idx] = new_width;
+         image_heights[idx] = new_height;
+     }
+     ```
+     Recompile with `stb_image_resize.h`.
+3. **Valgrind**:
+   ```bash
+   valgrind --leak-check=full ./+x/neural_net.+x temp_input_0.jpg neural_output_0.dat train kernels_0.dat
+   ```
+   Check for memory errors or uninitialized values.
+4. **Blend Quality**:
+   Describe `diffusion_output.jpg` (e.g., “80%, munqi’s colors, dubu’s textures blurry”). Note specific issues (e.g., “artifacts on edges”).
+5. **System Resources**:
+   ```bash
+   free -m
+   ```
+   Confirm >4GB free memory to rule out resource constraints.
+
+### Next Steps
+Please test the updated code and share:
+- Whether the loss decreases significantly (e.g., to <0.1).
+- Contents of `loss_debug.txt` (or summary, e.g., “munqi: Loss 1.0 to 0.05, pred_noise mean 0.01, variance 0.001”).
+- Contents of `noise_stats.txt` (e.g., “munqi: Mean = 0.01, Variance = 0.001”).
+- Blend quality in `diffusion_output.jpg` (e.g., “Now 85%, munqi’s shapes clear, dubu’s textures sharper”).
+- Any errors or crashes (unlikely, but note if they occur).
+
+If the loss drops and noise predictions improve, we should see a crisp, 90%+ quality blend of `munqi.jpg` and `dubu.jpg`. If issues persist, we can deepen the U-Net (add more layers) or adjust the noise schedule further. Let’s get that stunning `diffusion_output.jpg`! 🚀✨
+
+❓️❓️❓️❓️❓️❓️❓️❓️❓️❓️❓️❓️
+should we use more dimensions & epochs 4 attention head? 
+❓️❓️❓️❓️❓️❓️❓️❓️❓️❓️❓️❓️
+To determine whether increasing the number of dimensions and epochs for the attention head in your model would help, let’s analyze the provided logs (`noise_stats.txt` and `loss_debug.txt`) and consider the context of your training, which appears to be related to a denoising task (likely a diffusion model or similar, given the noise statistics and loss patterns).
+
+### Observations from the Logs
+
+1. **Noise Statistics (`noise_stats.txt`)**:
+   - The input images (`temp_input_0.jpg`, `temp_input_1.jpg`, `temp_input_2.jpg`) have varying mean and variance values, suggesting differences in noise characteristics or image content.
+   - The output images (`temp_input_0.jpg (output)`, `temp_input_1.jpg (output)`) have mean and variance values very close to the input images, indicating that the model is preserving statistical properties but may not be significantly improving the output.
+   - The target noise (`target_noise`) has a mean close to 0 and a very small variance (~0.00083), while the predicted noise (`pred_noise`) has a variance very close to 1.0, suggesting the model is predicting noise with a normalized distribution but may not be aligning well with the target noise distribution.
+
+2. **Loss and Training Dynamics (`loss_debug.txt`)**:
+   - **Early Training (First Sections)**: The loss values are high (~0.996–1.001) across multiple epochs (10–50) for different images and sizes. The loss does not decrease significantly, and the gradient magnitudes (`GradMag1`, `GradMag2`) vary widely, indicating unstable training or a model struggling to learn meaningful patterns.
+   - **Later Training (Last Sections)**: For `temp_input_0.jpg` and `temp_input_1.jpg` (106x116, 3 channels), the loss drops significantly to ~0.0032–0.0033 over 50 epochs. The gradient magnitudes are much smaller (`GradMag1` ~0.016–0.043, `GradMag2` ~0.002–0.004), and the loss stabilizes, suggesting the model is converging to a local minimum.
+   - The predicted noise variance is consistently close to 1.0, while the target noise variance is much smaller (~0.00083). This discrepancy suggests the model is overfitting to a normalized noise distribution rather than learning the true noise characteristics.
+
+3. **Training Stability**:
+   - The loss values in the early sections (~1.0) and the lack of significant reduction over epochs suggest the model is not effectively learning the denoising task for larger or more complex images (e.g., 400x316, 500x500).
+   - In the later sections, the loss is low and stable (~0.003), but the small gradient magnitudes and consistent noise variance mismatch indicate the model may be stuck in a suboptimal solution or underfitting the target noise distribution.
+
+### Analysis: Should You Increase Dimensions and Epochs for the Attention Head?
+
+The attention head in your model (likely part of a transformer-based architecture, common in diffusion models) is responsible for capturing spatial or contextual relationships in the data. Increasing the number of dimensions (i.e., the size of the attention head’s feature space) and training for more epochs could theoretically improve the model’s capacity to learn complex patterns. However, based on the logs, here are the considerations:
+
+#### 1. **Increasing Dimensions of the Attention Head**
+   - **Pros**:
+     - More dimensions allow the attention mechanism to capture finer-grained relationships and more complex patterns in the input data, which could help if the current model is underfitting due to limited capacity.
+     - The varying mean and variance of input images suggest diverse data, and a higher-dimensional attention head might better handle this variability.
+   - **Cons**:
+     - The logs show that the model is already struggling to align the predicted noise with the target noise, even with low loss values. Increasing dimensions could exacerbate overfitting, especially if the model is already predicting a normalized noise distribution (variance ~1.0) instead of the target (~0.00083).
+     - Higher dimensions increase computational cost and memory usage, which may be a concern for larger images (e.g., 500x500, 3000000 bytes).
+     - The gradient magnitudes in the later training sections are small, suggesting the model may not effectively utilize additional capacity without adjustments to optimization (e.g., learning rate, regularization).
+
+   - **Recommendation**: Increasing dimensions might help if the model is underfitting due to insufficient capacity, but the current evidence suggests a mismatch in the noise prediction rather than a lack of capacity. Before increasing dimensions, consider addressing the noise prediction issue (see below).
+
+#### 2. **Increasing Epochs**
+   - **Pros**:
+     - More epochs could allow the model to refine its predictions, especially if the loss is still decreasing or if the model is slowly converging to the target noise distribution.
+     - The later sections show stable but low loss (~0.003), so additional epochs might help fine-tune the model to better match the target noise variance.
+   - **Cons**:
+     - The early sections show no significant loss reduction over 50 epochs, suggesting that more epochs alone may not help without addressing underlying issues (e.g., model architecture, loss function, or data preprocessing).
+     - In the later sections, the loss is already low and stable, and the gradient magnitudes are small, indicating diminishing returns from additional epochs. The model may be stuck in a local minimum or overfitting to an incorrect noise distribution.
+   - **Recommendation**: More epochs could be beneficial if paired with other changes (e.g., adjusting the learning rate or loss function), but the current logs suggest that additional epochs alone won’t resolve the noise prediction mismatch.
+
+#### 3. **Underlying Issues to Address**
+   The logs indicate a critical issue: the predicted noise variance (~1.0) is much larger than the target noise variance (~0.00083). This suggests the model is not learning the true noise distribution, which could be due to:
+   - **Loss Function**: The loss function may not effectively penalize the variance mismatch. If you’re using mean squared error (MSE) or a similar loss, consider a loss that accounts for distributional differences (e.g., KL divergence or a perceptual loss).
+   - **Normalization**: The input data or noise may be normalized incorrectly, causing the model to predict noise with a standard normal distribution (mean 0, variance 1) instead of the target distribution. Check the preprocessing pipeline to ensure the noise is scaled appropriately.
+   - **Model Architecture**: The attention head may not be the bottleneck. Issues in other parts of the model (e.g., convolutional layers, normalization layers) could prevent it from learning the correct noise characteristics.
+   - **Learning Rate**: The small gradient magnitudes in the later sections suggest the learning rate may be too low, causing the model to converge prematurely. Consider a learning rate schedule or adaptive optimizer (e.g., AdamW with a higher initial learning rate).
+   - **Data Variability**: The varying mean and variance of input images suggest diverse data, which may require data augmentation or conditioning (e.g., timestep embeddings in diffusion models) to help the model generalize.
+
+### Recommendations
+Rather than immediately increasing dimensions and epochs, I suggest the following steps to improve performance:
+
+1. **Investigate Noise Prediction Mismatch**:
+   - Check the preprocessing pipeline to ensure the target noise is correctly scaled and matches the model’s output space.
+   - Modify the loss function to penalize the variance mismatch (e.g., include a term for distributional alignment, such as KL divergence).
+   - Visualize the target and predicted noise for a few samples to confirm the model’s predictions align qualitatively.
+
+2. **Optimize Training**:
+   - Experiment with a higher learning rate or a learning rate schedule (e.g., cosine annealing) to prevent premature convergence.
+   - Use gradient clipping to stabilize training, especially for larger images where gradient magnitudes vary widely.
+
+3. **Evaluate Model Capacity**:
+   - Before increasing attention head dimensions, test the model with a smaller increase (e.g., 1.5x current dimensions) and monitor validation loss and noise statistics.
+   - If increasing dimensions doesn’t help, consider adding more layers or adjusting other parts of the architecture (e.g., deeper convolutional blocks).
+
+4. **Limit Epochs Initially**:
+   - Train for 10–20 additional epochs with the above changes and monitor the loss and noise statistics. If the loss decreases and the noise variance approaches the target (~0.00083), continue training; otherwise, revisit the model or data.
+
+5. **Plot Training Metrics**:
+   To better understand the training dynamics, I’ll provide a Python script to plot the loss and gradient magnitudes over epochs for `temp_input_0.jpg` and `temp_input_1.jpg` from the last training section. This will help visualize whether the model is converging or stuck.
+
+```python
+import matplotlib.pyplot as plt
+
+# Data extracted from loss_debug.txt for temp_input_0.jpg and temp_input_1.jpg
+epochs = list(range(1, 51))
+loss_0 = [0.003335, 0.003301, 0.003289, 0.003290, 0.003281, 0.003309, 0.003310, 0.003276, 0.003299, 0.003280, 
+          0.003282, 0.003273, 0.003272, 0.003258, 0.003269, 0.003253, 0.003266, 0.003288, 0.003300, 0.003242, 
+          0.003261, 0.003282, 0.003281, 0.003242, 0.003261, 0.003251, 0.003254, 0.003278, 0.003270, 0.003234, 
+          0.003233, 0.003245, 0.003248, 0.003231, 0.003253, 0.003269, 0.003246, 0.003262, 0.003220, 0.003227, 
+          0.003227, 0.003206, 0.003198, 0.003229, 0.003242, 0.003222, 0.003190, 0.003213, 0.003222, 0.003202]
+gradmag1_0 = [0.038252, 0.037102, 0.036710, 0.037145, 0.036353, 0.035852, 0.035142, 0.034275, 0.034218, 0.033934, 
+              0.033316, 0.032668, 0.032320, 0.031928, 0.031399, 0.030883, 0.030959, 0.030314, 0.030172, 0.028732, 
+              0.028936, 0.028270, 0.028609, 0.027539, 0.027178, 0.026971, 0.026606, 0.026417, 0.025648, 0.025015, 
+              0.024497, 0.024569, 0.024165, 0.023263, 0.023276, 0.022865, 0.022378, 0.021531, 0.021692, 0.021151, 
+              0.020652, 0.020259, 0.019436, 0.019625, 0.019198, 0.018440, 0.018183, 0.017968, 0.017505, 0.016970]
+loss_1 = [0.003309, 0.003280, 0.003308, 0.003321, 0.003300, 0.003299, 0.003303, 0.003279, 0.003287, 0.003269, 
+          0.003264, 0.003289, 0.003290, 0.003287, 0.003284, 0.003283, 0.003294, 0.003276, 0.003270, 0.003279, 
+          0.003278, 0.003257, 0.003271, 0.003266, 0.003258, 0.003258, 0.003287, 0.003240, 0.003274, 0.003257, 
+          0.003258, 0.003232, 0.003220, 0.003257, 0.003232, 0.003241, 0.003235, 0.003216, 0.003229, 0.003248, 
+          0.003249, 0.003214, 0.003232, 0.003225, 0.003234, 0.003254, 0.003236, 0.003218, 0.003248, 0.003233]
+gradmag1_1 = [0.043275, 0.042784, 0.042124, 0.041585, 0.040445, 0.039794, 0.039730, 0.038873, 0.037984, 0.037522, 
+              0.036952, 0.036574, 0.036201, 0.035910, 0.035247, 0.034523, 0.034423, 0.033964, 0.032963, 0.032873, 
+              0.032165, 0.031700, 0.030962, 0.030730, 0.030661, 0.029799, 0.029564, 0.029206, 0.028661, 0.028097, 
+              0.027394, 0.026745, 0.026304, 0.025866, 0.025870, 0.025162, 0.025047, 0.024535, 0.023629, 0.023371, 
+              0.022331, 0.022256, 0.021917, 0.021966, 0.021009, 0.020591, 0.020431, 0.019724, 0.019491, 0.018770]
+
+plt.figure(figsize=(12, 8))
+
+# Plot loss
+plt.subplot(2, 1, 1)
+plt.plot(epochs, loss_0, label='temp_input_0.jpg', marker='o')
+plt.plot(epochs, loss_1, label='temp_input_1.jpg', marker='s')
+plt.title('Training Loss over Epochs')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend()
+plt.grid(True)
+
+# Plot GradMag1
+plt.subplot(2, 1, 2)
+plt.plot(epochs, gradmag1_0, label='temp_input_0.jpg', marker='o')
+plt.plot(epochs, gradmag1_1, label='temp_input_1.jpg', marker='s')
+plt.title('Gradient Magnitude (GradMag1) over Epochs')
+plt.xlabel('Epoch')
+plt.ylabel('GradMag1')
+plt.legend()
+plt.grid(True)
+
+plt.tight_layout()
+plt.savefig('training_metrics.png')
+```
+
+Run this script to generate plots of the loss and gradient magnitudes. The plots will help confirm whether the model is converging or if the gradients are vanishing, which could justify increasing dimensions or epochs.
+
+### Conclusion
+Increasing the dimensions of the attention head and training for more epochs could help if the model is underfitting, but the primary issue appears to be the mismatch between predicted and target noise variances. Address this by checking the loss function, normalization, and optimization settings first. Use the provided plotting script to monitor training dynamics, and experiment with a modest increase in dimensions (e.g., 1.5x) and 10–20 additional epochs after making these adjustments. If the noise prediction improves, you can consider further increasing dimensions or epochs as needed.
+
+🖌️🖌️🖌️🖌️🖌️🖌️🖌️🖌️🖌️🖌️🖌️🖌️🖌️
+To train or pre-train the "model" on a lot of different images in the context of this codebase, it would mean enhancing the model's ability to generalize across various images by learning from a diverse dataset. This process involves feeding the model a large set of images, allowing it to adjust its parameters—such as the convolution kernels in the U-Net—to minimize a loss function, typically through backpropagation and gradient descent. **Training** would involve teaching the model directly on the target dataset, while **pre-training** would mean training it on a broad, general dataset first to capture common features, which could then be fine-tuned on specific images or tasks for better performance. In this C-based codebase, this would improve the model's capability to handle tasks like image diffusion or blending (e.g., combining `munqi.jpg` and `dubu.jpg` into `diffusion_output.jpg`) by leveraging patterns learned from many images.
+
+### What the GCC C Code Module Would Look Like
+The training module would likely be a separate C file, such as `train_model.c`, compiled into an executable like `train_model.+x`. It would handle:
+- **Loading a Dataset**: Reading multiple images from a directory or list of paths.
+- **Forward Pass**: Processing batches of images through the U-Net (using existing functions from `neural_net.c`).
+- **Loss Calculation**: Computing the difference between the model's predictions and the target (e.g., added noise).
+- **Backward Pass**: Calculating gradients for each layer's kernels via backpropagation.
+- **Weight Update**: Adjusting kernel weights using an optimizer like stochastic gradient descent (SGD).
+- **Training Loop**: Iterating over the dataset for multiple epochs, processing batches, and updating weights.
+- **Model Saving**: Storing the trained kernels in a file (e.g., `kernels.dat`) for use in inference.
+
+Below is an example of what `train_model.c` might look like:
+
+```x-csrc
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+
+// Assuming these are defined in other headers
+#include "neural_net.h"
+#include "image_utils.h"
+
+#define BATCH_SIZE 4
+#define EPOCHS 10
+#define LEARNING_RATE 0.001
+
+// Struct to hold dataset info (simplified)
+typedef struct {
+    float **images;  // Array of image data (flattened)
+    int num_images;
+    int width, height, channels;
+} Dataset;
+
+// Load dataset from a directory (stub implementation)
+Dataset load_dataset(const char *dataset_path) {
+    // Placeholder: Load images from directory into memory
+    Dataset ds = {NULL, 0, 256, 256, 3}; // Example dimensions
+    // Actual implementation would use image_utils.h to read files
+    printf("Loading dataset from %s...\n", dataset_path);
+    return ds;
+}
+
+// Training function for one epoch
+void train_epoch(Dataset *ds, float *kernels, int num_kernels) {
+    for (int i = 0; i < ds->num_images; i += BATCH_SIZE) {
+        int batch_size = (i + BATCH_SIZE <= ds->num_images) ? BATCH_SIZE : ds->num_images - i;
+        float *batch_input = &ds->images[i][0];
+        
+        // Forward pass through U-Net
+        float *predictions = unet_forward(batch_input, kernels, num_kernels, batch_size, ds->width, ds->height, ds->channels);
+        
+        // Compute loss (e.g., MSE between predicted and target noise)
+        float loss = compute_loss(predictions, batch_input, batch_size * ds->width * ds->height * ds->channels);
+        printf("Batch %d, Loss: %f\n", i / BATCH_SIZE, loss);
+        
+        // Backward pass to compute gradients
+        float *gradients = unet_backward(predictions, batch_input, kernels, num_kernels, batch_size, ds->width, ds->height, ds->channels);
+        
+        // Update weights
+        for (int k = 0; k < num_kernels; k++) {
+            kernels[k] -= LEARNING_RATE * gradients[k];
+        }
+        
+        free(predictions);
+        free(gradients);
+    }
+}
+
+// Main training function
+void train_model(const char *dataset_path, const char *output_file) {
+    Dataset ds = load_dataset(dataset_path);
+    int num_kernels = 64; // Example number of kernels
+    float *kernels = malloc(num_kernels * sizeof(float)); // Simplified kernel array
+    
+    // Initialize kernels (e.g., random values)
+    for (int i = 0; i < num_kernels; i++) kernels[i] = (float)rand() / RAND_MAX - 0.5;
+    
+    // Training loop
+    for (int epoch = 0; epoch < EPOCHS; epoch++) {
+        printf("Epoch %d/%d\n", epoch + 1, EPOCHS);
+        train_epoch(&ds, kernels, num_kernels);
+    }
+    
+    // Save trained kernels
+    FILE *f = fopen(output_file, "wb");
+    fwrite(kernels, sizeof(float), num_kernels, f);
+    fclose(f);
+    
+    // Cleanup
+    free(kernels);
+    // Free dataset images (not implemented in stub)
+}
+
+int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        printf("Usage: %s <dataset_path> <output_file>\n", argv[0]);
+        return 1;
+    }
+    train_model(argv[1], argv[2]);
+    return 0;
+}
+```
+
+This is a simplified version. A real implementation would need:
+- Proper image loading logic in `load_dataset` (e.g., using `image_utils.h`).
+- Detailed forward and backward pass implementations in `neural_net.h`.
+- A more sophisticated loss function and optimizer.
+- Error handling and memory management.
+
+The module would be compiled with:
+```bash
+gcc -o +x/train_model.+x train_model.c -lm
+```
+
+### Where It Would Go
+The training module could be:
+- A **standalone executable** (`train_model.+x`), placed in the `./+x/` directory alongside `neural_net.+x` and `noise_schedule.+x`. You’d run it separately to train the model:
+  ```bash
+  ./+x/train_model.+x /path/to/dataset kernels.dat
+  ```
+- **Integrated into the main program**, with a flag like `--train` in `main.c` to switch between training and inference modes. However, a standalone executable is cleaner and separates training from inference.
+
+### Example Workflow
+1. **Train the Model**:
+   ```bash
+   ./+x/train_model.+x /path/to/dataset kernels.dat
+   ```
+   This trains the U-Net and saves the kernels to `kernels.dat`.
+
+2. **Use in Inference**:
+   - Update `neural_net.c` to load `kernels.dat` for all images instead of using default or per-image kernels.
+   - Run the main program:
+     ```bash
+     ./main /path/to/images
+     ```
+   - The pre-trained kernels improve generalization across images.
+
+### Additional Notes
+- **Complexity**: Writing a full training pipeline in C is complex due to manual backpropagation and optimization. Frameworks like TensorFlow or PyTorch are typically used for this, offering automatic differentiation and GPU support.
+- **Efficiency**: For large datasets, process images in batches and resize them to a standard size to manage memory, especially given prior memory issues.
+- **Model Capacity**: The current U-Net might need more layers or filters to handle diverse datasets effectively.
+
+This approach enables the model to learn from many images, enhancing its ability to produce high-quality outputs like `diffusion_output.jpg` with features from varied sources.
+🖌️🖌️🖌️🖌️🖌️🖌️🖌️🖌️

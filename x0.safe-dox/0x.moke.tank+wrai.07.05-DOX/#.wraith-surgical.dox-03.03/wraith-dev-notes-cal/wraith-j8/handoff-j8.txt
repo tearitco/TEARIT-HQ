@@ -1,0 +1,22 @@
+# WRAITH-ALPHA DEVELOPMENT HANDOFF - 2026-06-08 (J8)
+
+## CURRENT STATE
+- **Architecture**: Implemented a Command-Driven "Thin Theater" model.
+- **Manager**: Now handles both raw key input AND semantic 'COMMAND: ' strings from the Parser.
+- **Parser**: Refactored to delegate all 'SET_ACTIVE' actions to the Manager via command history, ending "Split Brain" state fights.
+- **Binary**: Standardized to `wraith-alpha_manager.+x`.
+- **Known Issue**: The 'Restore' action on the toolbar is still intermittently failing. The Manager receives the command but may be overwriting its own state during the asynchronous sync process between history injection and state projection.
+
+## INTELLECTUAL MOMENTUM
+The core problem is not the command flow itself, but the *synchronization race condition* between the Manager reading the history and updating `alpha_state.txt`. 
+
+### Key Findings
+- The Manager's `route_input` and `route_command` are now decoupled from the Parser's logic, which is correct.
+- The `alpha_state.txt` projection MUST wait for the state transition to complete before triggering a render, or the Parser will load stale data.
+- The "Restore" failure may be a result of the Manager processing the command, updating state, but the Parser reading the *old* `alpha_state.txt` (the one that still has the "minimized" flag set) before the Manager has written the new one.
+
+## NEXT STEPS
+1. **Race Condition Check**: Analyze `wraith-alpha_manager.c` to ensure `trigger_render()` only happens *after* `rename(tmp, path)` has safely updated `alpha_state.txt`.
+2. **Parser Sync**: Ensure the Parser's `sync_wraith_alpha_state()` function doesn't cache state file contents across frames.
+3. **Fuzz-Op Comparison**: Use `projects/fuzz-op/manager/fuzz-op_manager.c` as a template for *how* to handle method markup generation reliably.
+4. **Validation**: Test the restore flow by checking `alpha_manager.log` immediately after clicking Restore to see if the state transition was applied *before* the render pulse was sent.

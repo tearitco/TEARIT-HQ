@@ -1,0 +1,5 @@
+Vocabulary size: 24
+Matrix shape: 24x24
+Max association: 1.000000
+Min association: 0.213265
+Mean association: 0.822342

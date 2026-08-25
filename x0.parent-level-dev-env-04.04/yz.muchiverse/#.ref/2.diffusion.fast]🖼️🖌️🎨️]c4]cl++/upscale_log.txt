@@ -1,0 +1,6 @@
+Loaded diffusion_output.jpg (106x116, 3 channels)
+Upscaled image to 212x232 (factor: 2)
+Saved upscaled image as upscaled_output.jpg (212x232, 3 channels)
+Loaded diffusion_output.jpg (106x116, 3 channels)
+Upscaled image to 1060x1160 (factor: 10)
+Saved upscaled image as upscaled_output.jpg (1060x1160, 3 channels)

@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | gem-dev
+META         | version            | 1.0
+META         | entry_layout       | projects/gem-dev/layouts/gem-dev.chtpm
+STATE        | starting_map       | map_01
+STATE        | player_piece       | iqabel
+STATE        | current_world      | world_01
+RESPONSE     | default            | Project Groq-Ollama loaded. Local LLM interface active.

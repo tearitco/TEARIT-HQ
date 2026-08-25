@@ -1,0 +1,83 @@
+WRAITH PM BOOTSTRAP FRAME REPORT
+Timestamp: 2026-06-02 23:11 PDT
+Agent: Codex J2 / Tomojizu interaction layer
+
+Scope:
+- Add projects/wraith-pm skeleton.
+- Add project-local CHTMGL layout.
+- Add wraith_parser.c op that reads CHTMGL and emits colored ASCII frame artifacts plus PDL metadata.
+- Add thin wraith-pm_manager.c that runs the parser on boot and on project history render commands.
+
+Files added:
+- projects/wraith-pm/project.pdl
+- projects/wraith-pm/layouts/desktop.chtmgl
+- projects/wraith-pm/session/state.txt
+- projects/wraith-pm/session/history.txt
+- projects/wraith-pm/session/frame_changed.txt
+- projects/wraith-pm/session/rgb_frame_changed.txt
+- projects/wraith-pm/ops/wraith_parser.c
+- projects/wraith-pm/manager/wraith-pm_manager.c
+
+Parser output bundle:
+- projects/wraith-pm/session/current_frame.txt
+- projects/wraith-pm/session/current_frame.ansi.txt
+- projects/wraith-pm/session/current_frame.cells.pdl
+- projects/wraith-pm/session/current_frame.meta.pdl
+- projects/wraith-pm/session/current_frame.objects.pdl
+- projects/wraith-pm/session/current_frame.hitmap.pdl
+- projects/wraith-pm/session/current_frame.audit.txt
+
+Latest frame:
+- frame_id=000004
+- cols=96
+- rows=30
+- cell_width_px=10
+- cell_height_px=18
+- object_count=18
+- warnings=none
+
+Actions tested:
+1. Direct compile of wraith_parser.c: PASS
+2. Direct compile of wraith-pm_manager.c: PASS
+3. Direct parser run:
+   ./projects/wraith-pm/ops/+x/wraith_parser.+x projects/wraith-pm/layouts/desktop.chtmgl wraith-pm
+   Result: frame 000001/000002 rendered during parser testing.
+4. Full TPMOS compile:
+   ./button.sh compile
+   Result: 187 compiled, 0 failed, 0 missing required binaries.
+   Wraith binaries verified:
+   - projects/wraith-pm/manager/+x/wraith-pm_manager.+x
+   - projects/wraith-pm/ops/+x/wraith_parser.+x
+5. Manager boot render:
+   ./projects/wraith-pm/manager/+x/wraith-pm_manager.+x
+   Result: frame 000003 rendered on manager start.
+6. Manager command render:
+   Appended to projects/wraith-pm/session/history.txt:
+   [2026-06-02 23:11:05] COMMAND: OP wraith-pm::render
+   Result: frame 000004 rendered.
+7. Process cleanup:
+   Manager stopped with Ctrl-C.
+   ps check found no remaining wraith-pm_manager or wraith_parser process.
+
+Frame review:
+- current_frame.txt displays a Wraith desktop with top bar, pipeline dock,
+  desktop preview, canvas, image placeholder, video placeholder, status text,
+  and buttons.
+- Text/media labels are clipped inside their ASCII regions after refinement.
+- cells.pdl contains one CELL record per visible cell.
+- objects.pdl records semantic objects, colors, geometry, labels, actions, and
+  media source paths.
+- hitmap.pdl records cell-to-object mapping for future CLI mouse support.
+- meta.pdl records raster policy: converter owns glyphs, GL presents RGB only.
+
+Known limitations:
+- Image and video are currently represented as colored ASCII placeholder regions
+  with source metadata. Real decode-to-ASCII is the next implementation slice.
+- No RGB converter daemon exists yet.
+- No wraith-gl.c presenter exists yet.
+- Parser is line-oriented and intentionally small for the bootstrap.
+
+Verdict:
+PASS. Safe to proceed to the next slice: implement the frame/meta to RGB daemon
+prototype, or improve image/video ASCII conversion before RGB depending on user
+priority.

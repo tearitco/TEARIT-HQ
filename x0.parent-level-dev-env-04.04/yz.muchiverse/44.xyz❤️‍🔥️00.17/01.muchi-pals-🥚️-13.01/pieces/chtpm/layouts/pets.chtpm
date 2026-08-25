@@ -1,0 +1,13 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/pets_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|                         P E T S                           |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${panel_content}" /><br/>
+    <text label="+============================================================+" /><br/>
+    ${piece_methods}
+    <button label="Back to Main" href="pieces/chtpm/layouts/main.chtpm" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label=" [ctrl+c] Quit" /><br/>
+</panel>

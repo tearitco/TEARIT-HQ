@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | wraith-alpha/wraith-projects/web-cam
+META         | version            | 0.1
+META         | author             | TPMOS
+META         | manager            | projects/wraith-alpha/wraith-projects/web-cam/manager/+x/web-cam_manager.+x
+META         | entry_layout       | projects/wraith-alpha/wraith-projects/web-cam/layouts/web-cam.chtpm
+
+STATE        | title              | WRAITH WEB CAM
+STATE        | status             | ready
+STATE        | mode               | webcam
+STATE        | reference          | x0.parent-level-dev-env-02.01/#.CHTMGL.E23=cordsclean]💯️
+
+RESPONSE     | default            | Wraith Web Cam Ready.

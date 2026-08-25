@@ -1,0 +1,3 @@
+item_id=rock
+pos_x=7
+pos_y=6

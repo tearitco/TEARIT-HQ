@@ -1,0 +1,4 @@
+last_cmd=LOAD
+result=error
+message=cannot open file
+at=1785452809

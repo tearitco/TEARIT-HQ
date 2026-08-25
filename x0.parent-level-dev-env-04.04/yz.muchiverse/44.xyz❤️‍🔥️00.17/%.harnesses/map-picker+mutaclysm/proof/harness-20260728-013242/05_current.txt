@@ -1,0 +1,5 @@
+current_map=map_start
+pos_x=2
+pos_y=2
+xlector_pos_x=2
+xlector_pos_y=2

@@ -1,0 +1,10 @@
+[META]
+project_id = yahoo
+version = 1.0
+exposes_ops = true
+entry_layout = projects/yahoo/layouts/main.chtpm
+module_path = projects/yahoo/manager/+x/yahoo_manager.+x
+
+[OPS]
+ops_dir = projects/yahoo/ops/
+manifest = projects/yahoo/ops/ops_manifest.txt

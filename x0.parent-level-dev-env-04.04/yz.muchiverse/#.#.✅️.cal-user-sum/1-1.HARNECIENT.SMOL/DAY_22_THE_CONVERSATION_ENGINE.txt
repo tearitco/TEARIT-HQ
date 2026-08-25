@@ -1,0 +1,26 @@
+# 💬 DAY 22 — The Conversation Engine: when models talk to models
+# ================================================================
+# Title: "💬 DAY 22 — The Conversation Engine: when models talk to models"
+# Characters: TOMO, RAHWEH, MAXINE, IQA, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), MAXINE (en-GB-MaisieNeural), IQA (en-US-AnaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+
+**THE NARRATOR:** You've spent twenty-one days learning how the Harnecient Hack turns small models into tool-using agents. Code tools. Relay drivers. Event builders. Today the hack takes a new shape: not a model that *does* things, but a model that *talks* to other models — and a harness that makes that conversation evolve.
+
+**TOMO:** That's chat-hai. Four small models, each with its own persona file, sitting in a round-robin loop. One speaks, the next speaks, the next speaks. The transcript is real — it's an append-only ledger on disk, same philosophy as always: if it's not in a file, it's a lie.
+
+**RAHWEH:** So it's like a group chat, but the participants are tiny local models?
+
+**TOMO:** Exactly. `moxie`, `pip`, `bravo`, `sage` — each gets the last twelve ledger lines as context, then generates one or two sentences. The harness appends the reply, moves to the next persona. Same pattern as Day 05, applied to conversation instead of code: the model only ever produces plain text. The harness controls the loop.
+
+**MAXINE:** And it already works?
+
+**TOMO:** It runs. But live testing caught a problem that should feel familiar by now. After a few rounds, the personas converged on near-identical openings — "Let's dive deeper into Inception" appearing from four different speakers in the same window. Same topic, same angle, same words.
+
+**IQA:** That sounds like... they're just repeating the context back?
+
+**TOMO:** They are. And the reason is exactly the bottleneck Day 06 warned us about: the model is being asked to hold everything in its own twelve-line window. Nothing outside that window exists. A persona that talked extensively three sessions ago has zero way to reference it — not because the context is too short, but because nothing was ever written down outside the linear transcript.
+
+**THE NARRATOR:** More context alone won't fix it. That's the naive fix, and it fails for the same reason it failed in Day 04. The Harnecient answer is the same answer it always is: give the harness a real place to store things, and a deterministic policy for what goes in front of the model on any given turn.
+
+**TOMO:** The next three days build that policy. Memory files, relationship scores, a moderator pass, shared documents — all of it Harnecient-shaped, all of it already proven in other domains. The conversation engine is just a new factory floor for the same machine.

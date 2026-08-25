@@ -1,0 +1,21 @@
+<panel>
+    <text label="╔═══════════════════════════════════════════════════════════╗" /><br/>
+    <text label="║             L S R   I N I T I A L I Z A T I O N             ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  Initializing Lunar Economy...                            ║" /><br/>
+    <text label="║  [CONFIG]: Loading setup_config.txt                       ║" /><br/>
+    <text label="║  [SYSTEM]: 10 Entities initialized successfully.          ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  Purge complete. Pieces migrated to Piece Model.          ║" /><br/>
+    <text label="║  Done. All entities updated with [LSR] methods.           ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  Starting analysis loop...                                ║" /><br/>
+    <text label="║  Done. Initial stock prices calculated.                   ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  " /><button label="Launch Lunar Map (2D)" href="pieces/apps/playrm/layouts/game.chtpm" /><text label="                   ║" /><br/>
+    <text label="║  " /><button label="Enter Financial Dashboard" href="projects/lsr/layouts/lsr_main.chtpm" /><text label="                ║" /><br/>
+    <text label="║  " /><button label="Back to Main Menu" href="pieces/chtpm/layouts/os.chtpm" /><text label="                          ║" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+</panel>

@@ -1,0 +1,45 @@
+# walk-off-a6-image.txt — Muchi Image Editor Phase-1 handoff
+**Date:** 2026-08-06  
+**Path:** `103.media-studio/103.img-editor/`  
+**Siblings:** `103.daw/`, `103.vid-edit/`  
+**Spec:** `house-design-docs.md` §2  
+
+## Run
+```bash
+cd 103.media-studio/103.img-editor && sh button.sh r
+```
+
+## What works now
+- Photoshop-shaped UI: File menu, left tools, canvas, layers panel, status
+- Tools: Brush, Eraser, Fill, Rect, Eyedropper, Hand (pan)
+- Layers (max 6): select 1–6, visibility V, clear Del, add N / File→Add Layer
+- FG/BG swatches, X swap, [ ] brush size, zoom (+/- wheel), pan (H / arrows)
+- Undo stack (active layer snapshot per stroke)
+- Drag-drop PNG/JPG via shared `media_drop_path` (house emoji paths)
+- Export flattened PNG via ffmpeg → `pieces/apps/player_app/export.png`
+- Writes `canvas.raw` + receipt `mode=canvas` for future house canvas-widgit
+- **CPU-safe**: paint ≤20fps / idle ≤8fps, main-loop sleep, composite dirty-only, ffmpeg never on paint path
+
+## Not yet
+- Masks, adjustment layers, text tool, filters, free transform, CMYK
+- True multi-level history browser
+- CHTPM shell / canvas-widgit process (still freeglut Phase-1)
+- Variable document size (fixed 800×600)
+
+## Next toward Photoshop
+1. Variable canvas size + crop  
+2. Selection marquee + layer masks  
+3. Soft brush / opacity / blend modes  
+4. Filters (blur/levels) as ops  
+5. House migration: host chrome + canvas-widgit for RGBA only  
+
+## Architecture
+Single file `ops/ie_main.c` + `button.sh` + `../shared/media_drop_path.c`  
+(mirrors DAW / Video Phase-1 iteration style).
+
+## Pitfalls
+- Don’t `system(ffmpeg)` while painting — import/export only  
+- Don’t busy-spin freeglut event loop  
+- Checkerboard is display-only under composite; export includes checker if flattened without opaque bg — Background layer is white opaque  
+
+*End walk-off-a6-image*

@@ -1,0 +1,896 @@
+═══════════════════════════════════════════════════════════════════════════════
+  🎨 WRAIMOJI: EMOJI RENDERING + CONTEXT MENU + WINDOW FOCUS ROADMAP
+  Plan Document: 2026-07-10
+  Codebase State Recap & Multi-Phase Implementation Strategy
+═══════════════════════════════════════════════════════════════════════════════
+
+⚠️  CORRECTION NOTICE (2026-07-12) — READ BEFORE FOLLOWING PHASE 1.A BELOW
+═══════════════════════════════════════════════════════════════════════════════
+Phase 1.A's pseudocode (the "Integration into main render loop" block,
+part h, and the FT_Load_Glyph calls in parts c/e below) is INCOMPLETE
+in a way that caused a real, live bug: it never mentions FT_LOAD_COLOR
+or FT_Select_Size, both of which are REQUIRED for Noto Color Emoji
+(a fixed-size embedded-bitmap font) to render at all. The actual
+implementation followed this doc's pseudocode literally and reproduced
+exactly that gap — confirmed live: emoji rendered fine in ASCII but
+were silently blank in GL, root-caused via a standalone FreeType repro
+(FT_Load_Glyph failing with err=36 using this doc's exact flags).
+
+This doc's OWN "⭐ PATTERN REFERENCE" pointer (line ~93, "Use THIS
+archived reference... All patterns... already exist in working form")
+was right about WHERE to look, just didn't quote the reference's
+actual code closely enough to catch this specific gap.
+
+Full root cause + a corrected, complete architectural plan (quoting
+the reference's real working FreeType calls, not paraphrasing them):
+`wraimoji-j12-root-cause-and-fix-plan.txt` (same directory). Read that
+instead of implementing Phase 1.A's pseudocode as literally written
+below — the rest of this doc (Phase 2/3 planning, sequencing rationale)
+is unaffected and still stands.
+═══════════════════════════════════════════════════════════════════════════════
+
+📍 WHERE WE ARE (State as of 2026-07-10)
+═══════════════════════════════════════════════════════════════════════════════
+
+RECENT ACCOMPLISHMENTS:
+  ✅ Window-Geometry Editor Feature BUILT (not yet live-tested)
+     • Reads x/y/width/height from project.pdl WINDOW section
+     • Numeric-only input validation (input_mode="numeric" on cli_io fields)
+     • Settings hub + window-geom sub-project architecture working (code compile)
+     • Both parsers (chtpm_parser.c + wraith_parser_alpha.c) synced with fixes
+     • wraith-alpha_manager.c updated with desktop_focused_window_project_id tracking
+     • Settings/window-geom copied to moke platform
+
+  ✅ Documentation Consolidated
+     • 40 docs → 3 (PIECECRAFT-WRAITH-ARCHITECTURE.md, WRAITH-ARCHITECTURE-AND-ROADMAP.md, settings-hub-window-geom-design-j5.md)
+     • Full project summary written (tpmos&wraith-ai-summary.txt)
+
+  ✅ Bug Fixes from Earlier Sessions (5 major bugs resolved via code, not live-tested):
+     1. Flicker on marker_tick (early-return guard)
+     2. GL staleness (missing keystroke handling)
+     3. Missing glyph signal (active_gui_is_typing.txt export)
+     4. Wrong parser running (ported fixes to both forks)
+     5. GUI state scoping (desktop_focused_window_project_id + resolve helper)
+
+  ⚠️  CRITICAL: NONE OF THE ABOVE HAS BEEN LIVE-TESTED YET
+     • Window-geom feature: built, compiles clean, 225/225 warnings consistent, NO runtime verification
+     • Parser fixes: code looks correct, NO session restart / real UI testing
+     • Settings project: files copied, managers built, NO actual use
+
+KNOWN OPEN ITEMS (Flagged as unresolved/unverified):
+  1. project_id-clobber in wraith_parser_alpha.c (stale but possibly still live)
+  2. GL/ASCII parity (both pipelines must stay in sync — has diverged before)
+  3. href navigation in GL mode (wired but not verified working in context)
+  4. Window geometry actually affecting rendering (real x/y offsets applied?)
+  5. Overlapping windows & focus tracking (g_active_window_slot behavior, hit-testing)
+
+═══════════════════════════════════════════════════════════════════════════════
+🎯 WHY EMOJI FIRST? (The Strategic Detour)
+═══════════════════════════════════════════════════════════════════════════════
+
+Counterintuitively, we're **pausing full window-geom verification** to add emoji
+rendering + context menus before diving into overlapping-window debugging. Here's
+the reasoning:
+
+  1️⃣  EMOJI RENDERING IS A FOUNDATION
+      • Rich text UI (buttons with emoji labels, dialog icons, status glyphs)
+      • Requires: FreeType integration, Unicode handling, font caching
+      • Blocks: Any feature that wants to display rich text
+      • Smart to build now while infrastructure is fresh
+
+  2️⃣  CONTEXT MENUS UNLOCK TESTING
+      • Right-click context menu = perfect testing tool for embedded windows
+      • Allows per-window interactions without full UI build-out
+      • Can open "Edit Window Geometry" from context menu
+      • Gives immediate feedback: does resize work? Do windows render correctly?
+      • Also tests focus tracking (which window got right-clicked?)
+
+  3️⃣  BOTH SHARE SAME INFRASTRUCTURE
+      • Per-project rendering (already have this: manager + ops pattern)
+      • Focus/active-window tracking (needed for context menus anyway)
+      • Marker-file notifications (same as current state_changed.txt pattern)
+      • Once context menus work, we get overlapping-window handling "for free"
+
+  4️⃣  SEQUENCING: EMOJI → CONTEXT MENUS → FOCUS TESTING → WINDOW-GEOM VERIFICATION
+      • Emoji: Rich text foundation
+      • Context menus: Testing tool + focus-tracking verification
+      • Focus/overlap: Proven working via context menu interactions
+      • Window-geom: Now testable via context menu, with focus/overlap already verified
+
+TL;DR: We're building the **testing infrastructure** (context menus + focus) while
+adding rich-text capability (emoji). This makes the window-geom verification phase
+much more reliable (we'll know focus works, overlap works, click-handling works).
+
+═══════════════════════════════════════════════════════════════════════════════
+🚀 PHASE 1: EMOJI RENDERING WITH FREETYPE & CONFIG
+═══════════════════════════════════════════════════════════════════════════════
+
+OBJECTIVE: Lazy-load emoji glyphs on-demand, cache in memory, render via voxel path.
+All via config file (font path, size, cache size). No Python, no pre-baked CSVs.
+
+DELIVERABLE: wrai-text-editor project (mirrors agy-test-editor structure)
+TIMELINE: 2 days (emoji infrastructure) + 1 day (test project + verification)
+
+───────────────────────────────────────────────────────────────────────────────
+PHASE 1.A: Core Emoji Infrastructure (wraith_rgb_daemon.c changes)
+───────────────────────────────────────────────────────────────────────────────
+
+⭐ PATTERN REFERENCE: #.emoji-studio-501.02.05t/ (PROVEN WORKING IMPLEMENTATION)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📂 PATH: x0.parent-level-dev-env-02.01/#.emoji-studio-501.02.05t/&.emoji-studio-solo.02.01/
+
+⚠️  CRITICAL: Use THIS archived reference, NOT projects/emoji-studio/ (which may not be
+fully functional). This is the PROVEN working implementation. All patterns for voxel
+loading, caching, glyph rendering, and state management come from here.
+
+ALL THE PATTERNS WE'RE IMPLEMENTING ALREADY EXIST IN WORKING FORM:
+
+  emoji-studio_host.c (line 88+):
+    • load_voxels() — reads CSV from disk, parses RGBA rows (our template)
+    • CSV format: `# resolution=N`, `# scale=1.0`, `# transform=x,y,z`, then
+      `r,g,b,a` header row, followed by pixel data rows (exactly what we need)
+    • Cache pattern: voxel_data[N], reloaded only if resolution changed
+    • UI state pattern: reads from projects/emoji-studio/manager/gui_state.txt
+
+  emoji_list management:
+    • load_gui_state() (line 50+) — reads structured state from gui_state.txt
+    • Parses emoji_list_start / emoji_list_end markers
+    • Each emoji: index:utf8_str:name format
+    • Direct template for our emoji_cache[] struct + lookup
+
+  Glyph rendering:
+    • draw_cube() (line 132+) — already renders RGBA_Pixel as 3D voxel
+    • Direct reuse: our bitmap_to_voxel_quad() can call draw_cube() per pixel
+    • No need to reinvent; just adapt emoji_studio's rendering
+
+  Atlas texture management:
+    • init_atlas() (line 119+) — loads emoji_atlas.png via STB_IMAGE
+    • We don't need atlas for our approach (direct FreeType render), but
+      precedent exists if we later want batch rendering
+
+RECOMMENDATION (Reference #.emoji-studio-501.02.05t/):
+  • Copy emoji-studio_host.c's voxel loading logic verbatim for Phase 1
+  • Use identical CSV format (ensures compatibility if we later share assets)
+  • Reuse emoji_studio's cache struct pattern (proven, debugged, working)
+  • Study load_gui_state() for state-file parsing best practices
+  • This is the AUTHORITATIVE reference — don't use projects/emoji-studio/
+
+WHAT WE'RE BUILDING:
+  • In-memory emoji bitmap cache (256 entries max, LRU if cache fills)
+  • FreeType lazy loader (init once, render-on-demand per emoji)
+  • UTF-8 multi-byte decoder (identify emoji codepoints in text)
+  • Bitmap-to-RGBA converter (render bitmap as small voxel quads)
+  • Config file reader for font paths
+
+CODE LOCATIONS & CHANGES:
+
+  1. pieces/config/wraith_debug.conf (NEW SECTION):
+     ────────────────────────────────────────────────────
+     [emoji_rendering]
+     enabled = 1
+     font_path = /usr/share/fonts/truetype/noto/NotoColorEmoji.ttf
+     glyph_size = 16
+     cache_size = 256
+     fallback_to_ascii = 1   # If Noto unavailable, show [?]
+
+  2. projects/wraith-alpha/plugins/wraith_rgb_daemon.c (MAJOR ADDITIONS):
+     ────────────────────────────────────────────────────────────────────
+
+     a) Struct + globals (top of file):
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ #include <ft2build.h>                                           │
+        │ #include FT_FREETYPE_H                                          │
+        │                                                                 │
+        │ #define EMOJI_CACHE_SIZE 256                                    │
+        │ #define EMOJI_GLYPH_SIZE 16  /* 16x16 bitmap */                │
+        │                                                                 │
+        │ typedef struct {                                               │
+        │     uint32_t codepoint;                                        │
+        │     unsigned char* bitmap;  /* 16*16 bytes luminance */        │
+        │     int cached;                                                │
+        │     time_t last_used;      /* For LRU eviction later */        │
+        │ } EmojiCacheEntry;                                             │
+        │                                                                 │
+        │ static EmojiCacheEntry emoji_cache[EMOJI_CACHE_SIZE];          │
+        │ static FT_Library ft_lib = NULL;                               │
+        │ static FT_Face emoji_face = NULL;                              │
+        │ static int emoji_enabled = 1;                                  │
+        │ static char emoji_font_path[1024];                             │
+        │ static int emoji_glyph_size = 16;                              │
+        └─────────────────────────────────────────────────────────────────┘
+
+     b) Config loader (new function, called at daemon startup):
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ static void load_emoji_config() {                               │
+        │     FILE *f = fopen("pieces/config/wraith_debug.conf", "r");   │
+        │     if (!f) {                                                  │
+        │         /* Defaults */                                         │
+        │         strcpy(emoji_font_path,                                │
+        │                 "/usr/share/fonts/truetype/noto/NotoColor.."); │
+        │         emoji_glyph_size = 16;                                 │
+        │         return;                                                │
+        │     }                                                           │
+        │                                                                 │
+        │     char line[1024];                                           │
+        │     int in_emoji_section = 0;                                  │
+        │     while (fgets(line, sizeof(line), f)) {                     │
+        │         if (strstr(line, "[emoji_rendering]")) {               │
+        │             in_emoji_section = 1;                              │
+        │             continue;                                          │
+        │         }                                                       │
+        │         if (line[0] == '[') { in_emoji_section = 0; continue; }│
+        │         if (!in_emoji_section) continue;                       │
+        │                                                                 │
+        │         if (strncmp(line, "enabled=", 8) == 0) {               │
+        │             emoji_enabled = atoi(line + 8);                    │
+        │         } else if (strncmp(line, "font_path=", 10) == 0) {     │
+        │             char *val = line + 10;                             │
+        │             val[strcspn(val, "\n\r")] = 0;                     │
+        │             strncpy(emoji_font_path, val, sizeof(emoji_font_.. │
+        │         } else if (strncmp(line, "glyph_size=", 11) == 0) {    │
+        │             emoji_glyph_size = atoi(line + 11);                │
+        │         }                                                       │
+        │     }                                                           │
+        │     fclose(f);                                                 │
+        │ }                                                               │
+        └─────────────────────────────────────────────────────────────────┘
+
+     c) FreeType init (new function, called once at daemon startup):
+        ⚠️ WRONG AS WRITTEN — see correction notice at top of this doc.
+        FT_Set_Pixel_Sizes() below is the bug: Noto Color Emoji is a
+        fixed-size embedded-bitmap font and needs FT_Select_Size()
+        instead. Don't implement this block as literally written.
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ static void init_emoji_renderer() {                             │
+        │     if (!emoji_enabled || ft_lib) return;  /* Already init'd */ │
+        │                                                                 │
+        │     if (FT_Init_FreeType(&ft_lib)) {                            │
+        │         fprintf(stderr, "FreeType init failed\n");              │
+        │         emoji_enabled = 0;                                     │
+        │         return;                                                │
+        │     }                                                           │
+        │                                                                 │
+        │     if (FT_New_Face(ft_lib, emoji_font_path, 0, &emoji_face)) {│
+        │         fprintf(stderr, "Failed to load emoji font: %s\n",     │
+        │                 emoji_font_path);                              │
+        │         FT_Done_FreeType(ft_lib);                              │
+        │         ft_lib = NULL;                                         │
+        │         emoji_enabled = 0;                                     │
+        │         return;                                                │
+        │     }                                                           │
+        │                                                                 │
+        │     FT_Set_Pixel_Sizes(emoji_face, emoji_glyph_size,           │
+        │                         emoji_glyph_size);                      │
+        │     memset(emoji_cache, 0, sizeof(emoji_cache));               │
+        │ }                                                               │
+        └─────────────────────────────────────────────────────────────────┘
+
+     d) UTF-8 decoder (new helper):
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ static uint32_t decode_utf8_codepoint(const char *str, int *len)│
+        │ {                                                               │
+        │     unsigned char c = (unsigned char)str[0];                   │
+        │     uint32_t cp = 0;                                           │
+        │                                                                 │
+        │     if (c < 0x80) {  /* ASCII */                                │
+        │         *len = 1;                                              │
+        │         return c;                                              │
+        │     } else if ((c & 0xE0) == 0xC0) {  /* 2-byte */             │
+        │         cp = ((c & 0x1F) << 6) | ((unsigned char)str[1] & 0..)  │
+        │         *len = 2;                                              │
+        │     } else if ((c & 0xF0) == 0xE0) {  /* 3-byte */             │
+        │         cp = ((c & 0x0F) << 12) | (((unsigned char)str[1] &..)  │
+        │         *len = 3;                                              │
+        │     } else if ((c & 0xF8) == 0xF0) {  /* 4-byte (emoji) */     │
+        │         cp = ((c & 0x07) << 18) | (((unsigned char)str[1] &..)  │
+        │         *len = 4;                                              │
+        │     } else {                                                   │
+        │         *len = 1;                                              │
+        │         return '?';                                            │
+        │     }                                                           │
+        │     return cp;                                                 │
+        │ }                                                               │
+        │                                                                 │
+        │ static int utf8_char_len(unsigned char c) {                    │
+        │     if (c < 0x80) return 1;                                    │
+        │     else if ((c & 0xE0) == 0xC0) return 2;                     │
+        │     else if ((c & 0xF0) == 0xE0) return 3;                     │
+        │     else if ((c & 0xF8) == 0xF0) return 4;                     │
+        │     return 1;                                                  │
+        │ }                                                               │
+        └─────────────────────────────────────────────────────────────────┘
+
+     e) On-demand emoji renderer (new function):
+        ⚠️ WRONG AS WRITTEN — see correction notice at top of this doc.
+        The FT_Load_Glyph call below (a few lines down) uses
+        FT_LOAD_RENDER alone — missing FT_LOAD_COLOR, so it won't
+        decode the color bitmap layer at all. It also never checks
+        FT_Load_Glyph's return value, and the copy loop assumes
+        1-byte-per-pixel grayscale when color glyphs are 4-byte BGRA.
+        wraimoji-j12-root-cause-and-fix-plan.txt has the corrected
+        version (quoting the proven reference's real code).
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ static unsigned char* render_emoji_to_bitmap(uint32_t codepoint)│
+        │ {                                                               │
+        │     if (!emoji_face) return NULL;                              │
+        │                                                                 │
+        │     FT_UInt glyph_idx = FT_Get_Char_Index(emoji_face, codepoint)
+        │     if (!glyph_idx) {                                          │
+        │         /* Emoji not in font, skip */                          │
+        │         return NULL;                                           │
+        │     }                                                           │
+        │                                                                 │
+        │     FT_Load_Glyph(emoji_face, glyph_idx, FT_LOAD_RENDER);      │
+        │     FT_Bitmap *bitmap = &emoji_face->glyph->bitmap;            │
+        │                                                                 │
+        │     unsigned char *out = malloc(emoji_glyph_size *             │
+        │                                  emoji_glyph_size);            │
+        │     memset(out, 0, emoji_glyph_size * emoji_glyph_size);       │
+        │                                                                 │
+        │     /* Copy FreeType bitmap into our fixed-size grid */        │
+        │     int copy_w = (bitmap->width < emoji_glyph_size) ?          │
+        │                   bitmap->width : emoji_glyph_size;            │
+        │     int copy_h = (bitmap->rows < emoji_glyph_size) ?           │
+        │                   bitmap->rows : emoji_glyph_size;             │
+        │                                                                 │
+        │     for (int y = 0; y < copy_h; y++) {                         │
+        │         memcpy(&out[y * emoji_glyph_size],                     │
+        │                 &bitmap->buffer[y * bitmap->pitch],            │
+        │                 copy_w);                                       │
+        │     }                                                           │
+        │     return out;                                                │
+        │ }                                                               │
+        └─────────────────────────────────────────────────────────────────┘
+
+     f) Cache + lookup (new function):
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ static unsigned char* get_emoji_bitmap(uint32_t codepoint) {    │
+        │     if (!emoji_enabled || !emoji_face) return NULL;            │
+        │                                                                 │
+        │     /* Check cache first */                                    │
+        │     for (int i = 0; i < EMOJI_CACHE_SIZE; i++) {               │
+        │         if (emoji_cache[i].cached &&                           │
+        │             emoji_cache[i].codepoint == codepoint) {           │
+        │             emoji_cache[i].last_used = time(NULL);             │
+        │             return emoji_cache[i].bitmap;                      │
+        │         }                                                       │
+        │     }                                                           │
+        │                                                                 │
+        │     /* Not cached, render on-demand */                         │
+        │     unsigned char *bitmap = render_emoji_to_bitmap(codepoint); │
+        │     if (!bitmap) return NULL;  /* Font doesn't have this emoji │
+        │                                                                 │
+        │     /* Find empty slot in cache */                             │
+        │     int slot = -1;                                             │
+        │     for (int i = 0; i < EMOJI_CACHE_SIZE; i++) {               │
+        │         if (!emoji_cache[i].cached) {                          │
+        │             slot = i;                                          │
+        │             break;                                             │
+        │         }                                                       │
+        │     }                                                           │
+        │                                                                 │
+        │     /* If cache full, evict LRU entry */                       │
+        │     if (slot == -1) {                                          │
+        │         time_t oldest = emoji_cache[0].last_used;              │
+        │         slot = 0;                                              │
+        │         for (int i = 1; i < EMOJI_CACHE_SIZE; i++) {           │
+        │             if (emoji_cache[i].last_used < oldest) {           │
+        │                 oldest = emoji_cache[i].last_used;             │
+        │                 slot = i;                                      │
+        │             }                                                   │
+        │         }                                                       │
+        │         free(emoji_cache[slot].bitmap);                        │
+        │     }                                                           │
+        │                                                                 │
+        │     emoji_cache[slot].codepoint = codepoint;                   │
+        │     emoji_cache[slot].bitmap = bitmap;                         │
+        │     emoji_cache[slot].cached = 1;                              │
+        │     emoji_cache[slot].last_used = time(NULL);                  │
+        │     return bitmap;                                             │
+        │ }                                                               │
+        └─────────────────────────────────────────────────────────────────┘
+
+     g) Bitmap to voxel rendering (new function):
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ static void render_emoji_voxel_quad(unsigned char *bitmap,      │
+        │     float screen_x, float screen_y, float z,                    │
+        │     unsigned char r, unsigned char g, unsigned char b) {        │
+        │                                                                 │
+        │     if (!bitmap) return;                                       │
+        │                                                                 │
+        │     /* Render 16x16 bitmap as small colored voxel cubes */     │
+        │     float cube_size = 0.05f;  /* Small voxels */                │
+        │     for (int py = 0; py < emoji_glyph_size; py++) {            │
+        │         for (int px = 0; px < emoji_glyph_size; px++) {        │
+        │             unsigned char alpha = bitmap[py * emoji_glyph_size+ │
+        │                                          px];                   │
+        │             if (alpha < 128) continue;  /* Skip transparent */  │
+        │                                                                 │
+        │             /* Map bitmap pixel to screen position */          │
+        │             float vx = screen_x + (px / (float)emoji_glyph_size)
+        │             float vy = screen_y + (py / (float)emoji_glyph_size)
+        │             float vz = z;                                      │
+        │                                                                 │
+        │             /* Use existing voxel renderer */                  │
+        │             draw_box(vx, vy, vz, cube_size, cube_size,        │
+        │                       cube_size, r, g, b, alpha);              │
+        │         }                                                       │
+        │     }                                                           │
+        │ }                                                               │
+        └─────────────────────────────────────────────────────────────────┘
+
+     h) Integration into main render loop:
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ In main loop where text is rendered:                            │
+        │                                                                 │
+        │ for (int i = 0; text[i]; ) {                                   │
+        │     unsigned char c = (unsigned char)text[i];                  │
+        │                                                                 │
+        │     if (c < 128) {                                             │
+        │         /* ASCII character — use existing bitmap glyph */      │
+        │         render_ascii_glyph(c, screen_x, screen_y);             │
+        │         i++;                                                   │
+        │     } else {                                                   │
+        │         /* Multi-byte UTF-8, possibly emoji */                 │
+        │         int char_len = 0;                                      │
+        │         uint32_t cp = decode_utf8_codepoint(&text[i],          │
+        │                                              &char_len);       │
+        │         unsigned char *emoji_bm = get_emoji_bitmap(cp);        │
+        │                                                                 │
+        │         if (emoji_bm) {                                        │
+        │             /* Render emoji as voxel quad */                   │
+        │             render_emoji_voxel_quad(emoji_bm, screen_x,        │
+        │                 screen_y, 0.0f, 200, 150, 255);  /* Blue-ish */│
+        │         } else {                                               │
+        │             /* Emoji not available, show fallback */           │
+        │             render_ascii_glyph('?', screen_x, screen_y);       │
+        │         }                                                       │
+        │         i += char_len;                                         │
+        │     }                                                           │
+        │     screen_x += CHAR_WIDTH;  /* or emoji-adjusted width */     │
+        │ }                                                               │
+        └─────────────────────────────────────────────────────────────────┘
+
+     i) Daemon startup (add to main):
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ int main(...) {                                                 │
+        │     ...                                                         │
+        │     load_emoji_config();                                        │
+        │     init_emoji_renderer();                                      │
+        │     ...                                                         │
+        │ }                                                               │
+        └─────────────────────────────────────────────────────────────────┘
+
+     j) Cleanup on shutdown:
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ void cleanup_emoji() {                                          │
+        │     for (int i = 0; i < EMOJI_CACHE_SIZE; i++) {               │
+        │         if (emoji_cache[i].bitmap) {                           │
+        │             free(emoji_cache[i].bitmap);                       │
+        │         }                                                       │
+        │     }                                                           │
+        │     if (emoji_face) FT_Done_Face(emoji_face);                   │
+        │     if (ft_lib) FT_Done_FreeType(ft_lib);                       │
+        │ }                                                               │
+        │ /* Call cleanup_emoji() on daemon exit */                      │
+        └─────────────────────────────────────────────────────────────────┘
+
+COMPILE & LINK:
+  • Link against: -lfreetype (via pkg-config or system libs)
+  • Flags: Add -I/usr/include/freetype2 if needed (pkg-config handles it)
+  • No new external deps beyond FreeType (already required by old gl_renderer.c)
+
+───────────────────────────────────────────────────────────────────────────────
+PHASE 1.B: Test Project (wrai-text-editor)
+───────────────────────────────────────────────────────────────────────────────
+
+MIRRORS: agy-test-editor/ structure (as reference) — but simpler, just emoji demo
+
+PROJECT STRUCTURE:
+  projects/wraith-alpha/wraith-projects/wrai-text-editor/
+  ├─ layouts/
+  │  └─ emoji-test.chtpm (main layout)
+  ├─ manager/
+  │  ├─ emoji-test_manager.c (boilerplate, one-time init)
+  │  ├─ +x/emoji-test_manager.+x (compiled)
+  │  ├─ state.txt (vars: current_emoji_set, demo_message)
+  │  └─ gui_state.txt (scratch)
+  ├─ ops/
+  │  ├─ src/
+  │  │  └─ wraith_project_input.c (handles keyboard nav)
+  │  └─ +x/wraith_project_input.+x (compiled)
+  ├─ session/
+  │  ├─ wraith_body.txt (ASCII display)
+  │  ├─ state.txt (read by manager, contains emoji data)
+  │  ├─ scene.objects.pdl (GL semantic objects)
+  │  └─ state_changed.txt (marker, written by manager)
+  └─ project.pdl (metadata, includes WINDOW section)
+
+CONTENT (emoji-test.chtpm layout):
+  ┌───────────────────────────────────────────────────────────────────┐
+  │ <layout project_id="wrai-text-editor">                           │
+  │                                                                   │
+  │   <text label="═══════════════════════════════════════════════"/>  │
+  │   <text label="  🎨 EMOJI RENDERING TEST (WRAITH)"/>              │
+  │   <text label="═══════════════════════════════════════════════"/>  │
+  │                                                                   │
+  │   <text label=""/>                                                │
+  │   <text label="EMOJI DEMO:"/>                                     │
+  │   <text label="${emoji_row_1}"/>  <!-- 😀😁😂🤣😃 etc -->        │
+  │   <text label="${emoji_row_2}"/>  <!-- 🎮🎨🎭🎪🎯 etc -->        │
+  │   <text label="${emoji_row_3}"/>  <!-- 🚀🛸🌍🌎🌏 etc -->        │
+  │                                                                   │
+  │   <text label=""/>                                                │
+  │   <text label="SAMPLE MESSAGE:"/>                                 │
+  │   <text label="${demo_message}"/> <!-- "Hello 👋 World 🌍!" -->  │
+  │                                                                   │
+  │   <text label=""/>                                                │
+  │   <text label="NAVIGATION:"/>                                     │
+  │   <button nav="1" label="[1] Previous Set" target_id="prev_set"/> │
+  │   <button nav="2" label="[2] Next Set" target_id="next_set"/>     │
+  │   <button nav="3" label="[3] Refresh" target_id="refresh"/>       │
+  │   <button nav="4" label="[4] Back" target_id="back"/>             │
+  │                                                                   │
+  │ </layout>                                                         │
+  └───────────────────────────────────────────────────────────────────┘
+
+DEFAULT SESSION STATE (session/state.txt):
+  emoji_row_1=😀😁😂🤣😃😄😅🙂🤗😊
+  emoji_row_2=🎮🎨🎭🎪🎯🎲🎰🎳🎸🎹
+  emoji_row_3=🚀🛸🌍🌎🌏⭐🌟✨💫🌠
+  demo_message=Hello 👋 World 🌍! Emoji rendering: ✅
+
+INPUT HANDLER (ops/wraith_project_input.c):
+  • Read input from history.txt
+  • On key=1 (prev_set): cycle to previous emoji row (in state.txt)
+  • On key=2 (next_set): cycle to next emoji row
+  • On key=3 (refresh): reload state, re-render
+  • On key=4 (back): open launcher (href back to parent)
+  • Write marker to state_changed.txt (triggers re-render)
+
+MANAGER TEMPLATE (manager/emoji-test_manager.c):
+  • Standard manager init boilerplate (resolve_paths, etc.)
+  • Call trigger_initial_render() to launch ops once
+  • Append to frame_changed.txt, then idle
+  • NO background thread, NO polling, NO state mutation
+
+═══════════════════════════════════════════════════════════════════════════════
+🎯 PHASE 1 SUCCESS CRITERIA
+═══════════════════════════════════════════════════════════════════════════════
+
+Live Testing (after build):
+
+  ✅ Wraith starts, wrai-text-editor appears in launcher
+  ✅ Click to open wrai-text-editor window
+  ✅ Window displays emoji rows (not garbled, not blank, actual emoji glyphs)
+  ✅ Navigate with arrow keys or [1][2][3][4] buttons
+  ✅ Emoji rows change on prev/next
+  ✅ No crashes, no orphaned FreeType handles
+  ✅ ASCII mode shows emoji text (fallback character if rendering disabled)
+  ✅ GL mode shows emoji as voxel quads (colored cubes making glyph shape)
+  ✅ Performance acceptable (no stalls, <16ms per frame)
+  ✅ Cache working (repeated emoji renders fast)
+
+CONFIG OVERRIDE TEST:
+  • Change pieces/config/wraith_debug.conf: enabled = 0
+  • Restart Wraith
+  • Emoji display fallback to [?] (ASCII only)
+  • Performance improves noticeably
+
+═══════════════════════════════════════════════════════════════════════════════
+🎪 PHASE 2: RIGHT-CLICK CONTEXT MENU (Window-Specific)
+═══════════════════════════════════════════════════════════════════════════════
+
+OBJECTIVE: Right-click opens a per-window context menu with project-specific
+actions. Proves focus tracking works, sets stage for window-geom testing.
+
+DELIVERABLE: Context menu system + test menu in wrai-text-editor
+TIMELINE: 3 days (infrastructure) + 1 day (testing + edge cases)
+
+───────────────────────────────────────────────────────────────────────────────
+PHASE 2.A: Context Menu Infrastructure
+───────────────────────────────────────────────────────────────────────────────
+
+ARCHITECTURE:
+  • Right-click detected by wraith_rgb_daemon.c (mouse event handler)
+  • Stores click position + hit-tested window ID
+  • Writes to a marker file: projects/wraith-alpha/session/context_menu_request.txt
+  • Format: "window_id=X|click_x=Y|click_y=Z"
+  • Triggered project's manager wakes up, reads request
+  • Manager generates context menu layout (temporary)
+  • Writes to session/context_menu.chtpm
+  • Parser loads temp layout, renders menu as a floating panel
+  • Menu navigation: arrow keys, enter to select, esc to close
+  • Selection triggers action (e.g., "Edit Geometry" → opens settings window)
+
+CHANGES NEEDED:
+
+  1. wraith_rgb_daemon.c (mouse handler):
+     ┌───────────────────────────────────────────────────────────────┐
+     │ /* Add to mouse button event handler */                       │
+     │ if (mouse_button == RIGHT_BUTTON) {                           │
+     │     int hit_window = hitmap_lookup(click_x, click_y);        │
+     │     int hit_obj = find_nav_object_at(click_x, click_y);       │
+     │                                                               │
+     │     FILE *f = fopen("projects/wraith-alpha/session/context..  │
+     │     fprintf(f, "window_id=%d|click_x=%d|click_y=%d|obj_id=%d\n",
+     │             hit_window, click_x, click_y, hit_obj);           │
+     │     fclose(f);                                                │
+     │                                                               │
+     │     /* Write marker to wake manager */                        │
+     │     append_to_marker("frame_changed.txt");                    │
+     │ }                                                             │
+     └───────────────────────────────────────────────────────────────┘
+
+  2. Each project's manager (e.g., emoji-test_manager.c):
+     ┌───────────────────────────────────────────────────────────────┐
+     │ /* New helper function */                                     │
+     │ void generate_context_menu() {                                │
+     │     FILE *req = fopen("projects/wraith-alpha/session/context..
+     │     if (!req) return;  /* No context menu request */          │
+     │                                                               │
+     │     int window_id, click_x, click_y, obj_id;                  │
+     │     fscanf(req, "window_id=%d|click_x=%d|click_y=%d|obj_id=%d",
+     │             &window_id, &click_x, &click_y, &obj_id);         │
+     │     fclose(req);                                              │
+     │                                                               │
+     │     if (window_id != MY_WINDOW_ID) {                          │
+     │         return;  /* Not for us */                             │
+     │     }                                                         │
+     │                                                               │
+     │     /* Generate context menu based on obj_id or general */    │
+     │     FILE *menu_f = fopen("projects/wraith-alpha/session/...",
+     │                           "w");                               │
+     │     fprintf(menu_f, "<layout project_id=\"wrai-text-editor\" │
+     │             mode=\"context_menu\">\n");                       │
+     │                                                               │
+     │     /* Menu title */                                          │
+     │     fprintf(menu_f, "  <text label=\"[Context Menu]\"/>\n");   │
+     │                                                               │
+     │     /* Actions */                                             │
+     │     fprintf(menu_f, "  <button nav=\"10\" label=\"Edit\" />\n");│
+     │     fprintf(menu_f, "  <button nav=\"11\" label=\"Copy\" />\n");│
+     │     fprintf(menu_f, "  <button nav=\"12\" label=\"Close\" />\n");
+     │                                                               │
+     │     fprintf(menu_f, "</layout>\n");                           │
+     │     fclose(menu_f);                                           │
+     │ }                                                             │
+     │                                                               │
+     │ /* Call generate_context_menu() in main loop after checking.. │
+     │ /* marker_changed() */                                        │
+     └───────────────────────────────────────────────────────────────┘
+
+  3. Parser (wraith_parser_alpha.c / chtpm_parser.c):
+     • Add marker file watch for context menu layouts
+     • Detect `mode="context_menu"` in layout
+     • Render menu as floating overlay (fixed position or click position)
+     • Handle menu input separately (arrow keys, enter, esc)
+     • On selection, write to session/context_menu_selection.txt
+     • Manager reads selection, executes action
+
+───────────────────────────────────────────────────────────────────────────────
+PHASE 2.B: Test Context Menu (wrai-text-editor)
+───────────────────────────────────────────────────────────────────────────────
+
+RIGHT-CLICK MENU OPTIONS FOR EMOJI-TEST:
+  [1] Refresh Emoji Set
+  [2] Toggle Dark/Light Mode
+  [3] Copy Current Row (to clipboard, or marker file)
+  [4] Info (shows glyph count, cache size)
+  [5] Close Menu
+
+EXPECTED BEHAVIOR:
+  • Right-click on any emoji → menu appears at click location
+  • Menu doesn't obscure content (positioned intelligently)
+  • Arrow up/down navigate menu
+  • Enter selects, triggers action
+  • Esc or click elsewhere closes menu
+  • Multiple windows can have context menus open (focus tracking tested)
+
+═══════════════════════════════════════════════════════════════════════════════
+🎯 PHASE 2 SUCCESS CRITERIA
+═══════════════════════════════════════════════════════════════════════════════
+
+  ✅ Right-click detected, no crash
+  ✅ Context menu appears at click location
+  ✅ Menu navigable with arrow keys
+  ✅ Selection triggers correct action (e.g., Refresh re-renders emoji)
+  ✅ Menu closes on esc or selection
+  ✅ Multiple windows can have independent context menus
+  ✅ Focus tracking works (menu inherits window focus)
+  ✅ No orphaned menu layouts left behind (cleanup on close)
+
+═══════════════════════════════════════════════════════════════════════════════
+🪟 PHASE 3: WINDOW-GEOM VERIFICATION + OVERLAPPING WINDOWS / FOCUS
+═══════════════════════════════════════════════════════════════════════════════
+
+OBJECTIVE: NOW that we have context menus + emoji (working together), we can
+properly test window geometry, overlapping windows, and focus tracking. Use
+context menu to trigger window-geom edits, verify they apply.
+
+DELIVERABLE: Full window-geom feature live-tested + overlapping-window behavior
+documented + focus system verified
+TIMELINE: 4-5 days (comprehensive testing + fixes)
+
+───────────────────────────────────────────────────────────────────────────────
+PHASE 3.A: Window-Geometry Live Testing (via Context Menu)
+───────────────────────────────────────────────────────────────────────────────
+
+WHAT TO TEST:
+  1. Open wrai-text-editor
+  2. Right-click → "Edit Window Geometry"
+  3. Opens settings/window-geom window (embedded or href, TBD)
+  4. Modify x, y, width, height
+  5. Apply/Save
+  6. Verify:
+     • New position/size take effect immediately
+     • Window chrome resizes correctly
+     • Content reflows (or clips, depending on design)
+     • Geometry persists (close/reopen window, values saved in project.pdl)
+     • Both ASCII and GL rendering reflect new geometry
+
+  7. Repeat with multiple windows open:
+     • Open emoji-test + settings hub + wraith-ed
+     • Resize emoji-test, overlaps settings
+     • Verify click handling (which window gets focus?)
+     • Move emoji-test, verify z-order (top window gets clicks)
+
+───────────────────────────────────────────────────────────────────────────────
+PHASE 3.B: Overlapping Windows & Focus Behavior
+───────────────────────────────────────────────────────────────────────────────
+
+INFRASTRUCTURE TO VERIFY:
+  • g_windows[] array: all open windows stored with x/y/w/h/active status
+  • g_active_window_slot: which window has input focus
+  • hitmap calculation: clicking at (x,y) → which window gets the click?
+  • Z-order: is it last-opened-is-top, or explicit z-index?
+  • Focus switching: click on window A, then window B → focus changes?
+
+TESTS:
+  1. CLICK TARGETING (hitmap):
+     • Open 2 overlapping windows (A overlaps B)
+     • Click on overlap region → A gets input (it's on top)
+     • Expected: nav/buttons in A respond, B is inert
+     • ✅ Pass: click targeting works
+     • ❌ Fail: click goes to wrong window or both respond
+
+  2. FOCUS SWITCHING:
+     • Window A has focus (indicated by border, title highlight)
+     • Click on Window B (non-overlapping)
+     • Expected: B gets focus (visual indicator changes), keyboard goes to B
+     • Test: type in window B, verify input goes to B's ops handler
+
+  3. Z-ORDER:
+     • Open A, then B, then C
+     • All overlap
+     • Expected: C is visually on top, gets all clicks
+     • Click/move operations should respect Z-order
+     • Test each window's rendering priority
+
+  4. WINDOW DRAGGING (Future, but track for Phase 3):
+     • Click+drag title bar → window moves
+     • Position updates in g_windows[].x/y
+     • Rendering follows, no lag
+
+  5. DYNAMIC GEOMETRY (via settings/window-geom):
+     • Change width in window-geom editor
+     • Expected: content reflows, chrome resizes
+     • Test both ASCII (character grid) and GL (semantic objects)
+     • Verify no rendering glitches (text clipping, object misalignment)
+
+DEBUGGING TOOLS (add marker files for inspection):
+  • Write to projects/wraith-alpha/session/.debug_windows.txt:
+    ┌───────────────────────────────────────────────────────┐
+    │ window_0: emoji-test    x=10  y=5   w=60  h=25 active │
+    │ window_1: settings      x=40  y=10  w=50  h=20        │
+    │ window_2: wraith-ed     x=5   y=20  w=40  h=15        │
+    │ active_slot: 0 (emoji-test has focus)                 │
+    └───────────────────────────────────────────────────────┘
+
+───────────────────────────────────────────────────────────────────────────────
+PHASE 3.C: Bug Fixes & Refinements (As Issues Arise)
+───────────────────────────────────────────────────────────────────────────────
+
+EXPECTED BUGS (from prior analysis):
+  1. project_id clobber in wraith_parser_alpha.c
+     → Nested projects' ${vars} render blank
+     → Fix: re-assert project_id after state load (see x0.short-term-vision doc)
+
+  2. GL/ASCII parity drift
+     → Parser updates nav, manager doesn't (or vice versa)
+     → Fix: audit both codepaths, keep in strict sync
+
+  3. Window geometry not persisting
+     → Modify x/y in window-geom, close/reopen, values lost
+     → Fix: verify write_gui_state_kv() path, ensure project.pdl WINDOW section is updated
+
+  4. Click misses (hitmap stale)
+     → Click on button, no response
+     → Fix: verify hitmap recalculates every frame, not cached
+
+TESTING STRATEGY:
+  • For each bug: create minimal repro (e.g., "open emoji-test, resize to x=100,
+    close/reopen, does x=100 persist?")
+  • Fix, then verify fix doesn't break adjacent functionality
+  • Add regression test (marker file check, or manual verification checklist)
+
+═══════════════════════════════════════════════════════════════════════════════
+🎯 PHASE 3 SUCCESS CRITERIA
+═══════════════════════════════════════════════════════════════════════════════
+
+WINDOW GEOMETRY:
+  ✅ Modify geometry → renders immediately
+  ✅ Geometry persists (project.pdl saved)
+  ✅ Both ASCII and GL modes reflect changes
+  ✅ No rendering glitches (clipping, alignment errors)
+
+OVERLAPPING WINDOWS:
+  ✅ Click targeting correct (hitmap works)
+  ✅ Focus switches on click
+  ✅ Z-order respected (top window gets clicks)
+  ✅ No input cross-talk (typing in window A doesn't affect B)
+
+GENERAL:
+  ✅ No crashes during resize, move, focus-switch
+  ✅ Performance acceptable (no stalls on window operations)
+  ✅ Parser + manager stay in sync (no GL/ASCII divergence)
+
+═══════════════════════════════════════════════════════════════════════════════
+📋 EXECUTION CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+PHASE 1 (EMOJI):
+  □ Update wraith_debug.conf with [emoji_rendering] section
+  □ Add FreeType code to wraith_rgb_daemon.c (8 functions + integration)
+  □ Create wrai-text-editor project structure
+  □ Write emoji-test.chtpm layout
+  □ Write emoji-test_manager.c
+  □ Write emoji-test ops/wraith_project_input.c
+  □ Compile & verify no new warnings
+  □ Live test: open emoji-test, verify emoji render, no crashes
+  □ Test cache: repeat emoji rendering, verify fast
+  □ Test fallback: disable emoji in config, verify [?] fallback
+
+PHASE 2 (CONTEXT MENU):
+  □ Add right-click handler to wraith_rgb_daemon.c
+  □ Add context_menu_request.txt writer
+  □ Add context_menu.chtpm generator to each project's manager
+  □ Update parser to detect & render context menus
+  □ Implement menu navigation (arrow keys, enter, esc)
+  □ Wire menu selections to actions (e.g., "Edit" → opens window-geom)
+  □ Live test: right-click on emoji-test, verify menu appears & works
+  □ Test with multiple windows: overlapping menus, independent state
+
+PHASE 3 (WINDOW-GEOM + FOCUS):
+  □ Open emoji-test via launcher
+  □ Right-click → "Edit Geometry"
+  □ Modify x/y/width/height, apply
+  □ Verify rendering reflects changes
+  □ Close & reopen, verify values persist
+  □ Open 2+ windows, overlap them
+  □ Test click targeting (correct window responds)
+  □ Test focus switching (click A → B, input goes to B)
+  □ Debug any issues (use .debug_windows.txt marker files)
+  □ Document findings, fix bugs iteratively
+  □ Final verification: wrai-text-editor + settings hub + wraith-ed all
+    work together without conflicts
+
+═══════════════════════════════════════════════════════════════════════════════
+⏰ TIMELINE SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+  Phase 1 (Emoji):       3 days build + 1 day testing = ~4 days
+  Phase 2 (Context Menu): 4 days build + 1 day testing = ~5 days
+  Phase 3 (Window-Geom + Focus): 5 days testing + fixes = ~5 days
+
+  TOTAL: ~14 days of work (assuming no major blockers)
+
+  Parallelizable:
+  • Phase 1 build & Phase 2 architecture design can overlap
+  • Phase 2 & 3 testing can identify issues in parallel (different codepaths)
+
+═══════════════════════════════════════════════════════════════════════════════
+🚀 START DATE: 2026-07-10
+📅 ESTIMATED COMPLETION: 2026-07-24 (assuming full-time focus)
+═══════════════════════════════════════════════════════════════════════════════

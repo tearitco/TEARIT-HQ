@@ -1,0 +1,21 @@
+ai_state=IDLE
+sys_msg=Tool read_file completed.
+input_buffer=
+current_model_id=gemma-lan
+provider_kind=gemma
+current_api_url=http://10.0.0.144:11434
+current_model_name=gemma3:270m
+curl_pid=2525355
+thinking_start=1784676685
+pending_tool_name=
+pending_tool_args=
+                "path": "jul-21.txt"
+              }
+                "content": "help me!",
+                "path": "new-file.txt"
+              }
+                "path": "test-file.txt",
+                "content": ""
+              }
+                "path": "dirtest"
+              }

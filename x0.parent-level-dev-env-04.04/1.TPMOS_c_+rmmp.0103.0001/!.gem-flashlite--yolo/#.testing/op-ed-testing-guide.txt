@@ -1,0 +1,649 @@
+# POST-FIX TESTING GUIDE - OP-ED RESTORATION
+**Date:** 2026-03-25
+**Purpose:** Systematic testing procedure to verify op-ed fix and prevent regressions
+**Scope:** Black-box runtime testing + state integrity verification
+
+---
+
+## HOW TO USE THIS GUIDE
+
+1. **Before Testing:** Apply the fix from `op-ed-fix.txt`
+2. **During Testing:** Follow test sequence T1-T12 in order
+3. **After Testing:** Record results in `#.testing/op-ed-test-results-YYYY-MM-DD.txt`
+
+**Testing Principles:**
+- Test existing behavior FIRST (regression baseline)
+- Test new behavior SECOND (fix verification)
+- Record evidence (frame snippets, state file contents)
+- In no-git mode, create manual backups before risky changes
+- After each test pass, publish frame-history report
+
+---
+
+## PRE-TEST SETUP
+
+### Step 1: Create Backup (MANDATORY)
+```bash
+# Backup current state
+cp -r pieces/apps/op-ed pieces/apps/op-ed.bak.$(date +%Y%m%d_%H%M%S) 2>/dev/null
+cp -r projects/op-ed projects/op-ed.bak.$(date +%Y%m%d_%H%M%S) 2>/dev/null
+cp run_chtpm.sh run_chtpm.sh.bak.$(date +%Y%m%d_%H%M%S)
+```
+
+### Step 2: Apply Fix
+Follow instructions in `op-ed-fix.txt` to update `run_chtpm.sh`
+
+### Step 3: Compile
+```bash
+./compile_all.sh
+```
+**Expected:** No compilation errors for op-ed_module.c
+
+### Step 4: Prepare Test Log
+```bash
+mkdir -p #.testing
+cat > #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt << 'EOF'
+# OP-ED Fix Test Results
+**Date:** $(date +%Y-%m-%d)
+**Tester:** [Your Name/Agent]
+**Fix Version:** op-ed-fix.txt v1.0
+
+## Test Results Summary
+T1: Main Menu Launch        - [ ] PASS [ ] FAIL
+T2: Project Manager         - [ ] PASS [ ] FAIL
+T3: op-ed Direct Launch     - [ ] PASS [ ] FAIL
+T4: Project Loader → op-ed  - [ ] PASS [ ] FAIL
+T5: Xlector Movement       - [ ] PASS [ ] FAIL
+T6: Glyph Selection         - [ ] PASS [ ] FAIL
+T7: Map Palette             - [ ] PASS [ ] FAIL
+T8: Toggle Emoji            - [ ] PASS [ ] FAIL
+T9: Exit to Menu            - [ ] PASS [ ] FAIL
+T10: Re-launch After Exit   - [ ] PASS [ ] FAIL
+T11: Other Apps             - [ ] PASS [ ] FAIL
+T12: Compile Clean          - [ ] PASS [ ] FAIL
+
+## Detailed Observations
+[Fill in during testing]
+
+## Frame Snippets
+[Copy relevant frame sections]
+
+## State File Verification
+[Copy state.txt contents]
+
+## Issues Found
+[List any regressions or new bugs]
+
+## Recommendations
+[Suggestions for future improvements]
+EOF
+```
+
+---
+
+## TEST SEQUENCE
+
+### T1: Main Menu Launch
+**Objective:** Verify runtime starts correctly
+
+**Procedure:**
+```bash
+./run_chtpm.sh
+```
+
+**Expected Frame:**
+```
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║           C H T P M + O S   C L I   v2.0                 ║
+║                                                           ║
+║  CHTPM+OS Main Menu                                      ║
+║                                                           ║
+║  [>] 1. [Project Manager (V2/Editor)]                    ║
+║  [ ] 2. [Launch Legacy FuzzPet]                          ║
+║  [ ] 3. [Status]                                         ║
+║  [ ] 4. [Process Monitor]                                ║
+║  [ ] 5. [Settings]                                       ║
+║  [ ] 6. [GL-OS]                                          ║
+║  [ ] 7. [Help]                                           ║
+║      Applications                                        ║
+║  [ ] 8. [User Auth]                                      ║
+║  [ ] 9. [RMMP Editor]                                    ║
+╠═══════════════════════════════════════════════════════════╣
+║  Running Applications: None                               ║
+║  System Time: ${clock_time} | Turn: ${clock_turn} | Key: ${last_key} ║
+╠═══════════════════════════════════════════════════════════╣
+║  $ [ ] 10. []                                             ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
+Nav > _
+```
+
+**Pass Criteria:**
+- [ ] Frame displays without corruption
+- [ ] All menu options visible
+- [ ] "RMMP Editor" option present (option 9)
+- [ ] System time/clock displays
+- [ ] Nav prompt shows `_` (ready for input)
+
+**Record:**
+```bash
+# Copy first frame to test log
+cat pieces/display/current_frame.txt | head -30 >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+```
+
+---
+
+### T2: Project Manager Navigation
+**Objective:** Verify project manager menu works
+
+**Procedure:**
+- From main menu, press `1` or navigate to "Project Manager (V2/Editor)" and press Enter
+
+**Expected Frame:**
+```
+╔═══════════════════════════════════════════════════════════╗
+║           P R O J E C T   M A N A G E R                  ║
+║                                                           ║
+║  1. [ ] 1. [RMMP Editor]                                ║
+║  2. [ ] 2. [PLAYR Player]                               ║
+║  3. [ ] 3. [Back to Main Menu]                          ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
+Nav > _
+```
+
+**Pass Criteria:**
+- [ ] Project Manager title visible
+- [ ] "RMMP Editor" option present
+- [ ] "PLAYR Player" option present
+- [ ] "Back to Main Menu" option present
+- [ ] Navigation selector `[>]` shows on first option
+
+**Record:**
+```bash
+# Navigate and capture
+echo "KEY_PRESSED: 1001" >> pieces/keyboard/history.txt  # Enter on option 1
+sleep 1
+cat pieces/display/current_frame.txt | head -20 >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+```
+
+---
+
+### T3: op-ed Direct Launch (CRITICAL TEST)
+**Objective:** Verify op-ed launches correctly from main menu
+
+**Procedure:**
+1. Restart: `./run_chtpm.sh`
+2. From main menu, navigate to "RMMP Editor" (option 9)
+3. Press Enter
+
+**Expected Frame:**
+```
+╔══════════════ O P - E D   A D V A N C E D ════════════╗
+║ PROJECT: op-ed | LAYOUT: op-ed.chtpm                      ║
+║                                                           ║
+║  GAME MAP:                                                ║
+║  [>] 1. [Control Map]                                     ║
+╠═══════════════════════════════════════════════════════════╣
+║ [Z-LEVEL]: 0                                              ║
+╠═══════════════════════════════════════════════════════════╣
+║  ####################                                     ║
+║  #                  #                                     ║
+║  #      DEMO-0      #                                     ║
+║  #                  #                                     ║
+║  #        .         #                                     ║
+║  #    X#            #                                     ║
+║  #                  #                                     ║
+║  #                  #                                     ║
+║  #                  #                                     ║
+║  ####################                                     ║
+║                                                           ║
+╠═══════════════════════════════════════════════════════════╣
+║ [RESP]:                                                   ║
+║ [POS]: (5,5,0) | [ARMED]: [ # ] | [KEY]: None             ║
+╠═══════════════════════════════════════════════════════════╣
+║ [ ] 2. MAPS      : ADD map_0001_z0.txt [map_01.txt]       ║
+║ [ ] 3. GLYPHS    : [#] . R T @ & Z X ? !                 ║
+╠═══════════════════════════════════════════════════════════╣
+║ [ ] 4. [TOGGLE EMOJI] [ ] 5. [DB]                         ║
+║ [ ] 6. [PROJECT] [ ] 7. [EVENT]                           ║
+║ [ ] 8. [FILE] [ ] 9. [LOADER] [ ] 10. [EXIT]              ║
+╚═══════════════════════════════════════════════════════════╝
+ [1]: Grid | [2/3]: Palettes | [4]: Emoji Toggle | [ESC]: Nav
+
+╚═══════════════════════════════════════════════════════════╝
+Nav > _
+```
+
+**Pass Criteria:**
+- [ ] "O P - E D   A D V A N C E D" title visible
+- [ ] "PROJECT: op-ed" shown
+- [ ] Map displays with border (####################)
+- [ ] Xlector `X` visible on map
+- [ ] [POS]: (5,5,0) shown
+- [ ] [ARMED]: [ # ] shown
+- [ ] MAPS palette visible (option 2)
+- [ ] GLYPHS palette visible (option 3)
+- [ ] TOGGLE EMOJI button visible (option 4)
+- [ ] EXIT button visible (option 10)
+- [ ] Footer hint: "[1]: Grid | [2/3]: Palettes..."
+
+**Record:**
+```bash
+# Capture full frame
+echo "=== T3: op-ed Direct Launch ===" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+cat pieces/display/current_frame.txt >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+echo "" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+
+# Verify state files
+echo "=== State Files ===" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+echo "--- pieces/apps/op-ed/manager/state.txt ---" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+cat pieces/apps/op-ed/manager/state.txt >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+echo "" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+echo "--- pieces/apps/op-ed/pieces/xlector/state.txt ---" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+cat pieces/apps/op-ed/pieces/xlector/state.txt >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+echo "" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+```
+
+---
+
+### T4: Project Loader → op-ed
+**Objective:** Verify op-ed loads correctly via project loader
+
+**Procedure:**
+1. From op-ed (T3), press EXIT or navigate to option 9 (LOADER)
+2. In loader, navigate to "op-ed" (should be option 10)
+3. Press Enter or type `10`
+
+**Expected Frame:** Same as T3, but may show different project context
+
+**Pass Criteria:**
+- [ ] Loader displays project list
+- [ ] op-ed is selectable
+- [ ] After selection, op-ed UI appears
+- [ ] Map and xlector display correctly
+
+**Record:**
+```bash
+echo "=== T4: Project Loader → op-ed ===" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+cat pieces/display/current_frame.txt | head -30 >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+```
+
+---
+
+### T5: Xlector Movement
+**Objective:** Verify xlector responds to input
+
+**Procedure:**
+In op-ed UI:
+- Press `2` (numpad) or navigate DOWN
+- Press `4` (numpad) or navigate LEFT
+- Press `6` (numpad) or navigate RIGHT
+- Press `8` (numpad) or navigate UP
+
+**Expected Behavior:**
+- X xlector moves on map
+- [POS] updates to reflect new position
+- [KEY] shows last input direction
+
+**Example After Moving Right:**
+```
+║  #     #X           #                                     ║
+...
+║ [POS]: (6,5,0) | [ARMED]: [ # ] | [KEY]: RIGHT            ║
+```
+
+**Pass Criteria:**
+- [ ] Xlector moves in all 4 directions
+- [ ] [POS] updates correctly
+- [ ] [KEY] shows last direction
+- [ ] Map boundary collision works (can't move into #)
+
+**Record:**
+```bash
+# Test movement sequence
+echo "KEY_PRESSED: 1006" >> pieces/apps/player_app/history.txt  # RIGHT
+sleep 0.5
+echo "=== After RIGHT ===" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+grep "\[POS\]" pieces/display/current_frame.txt >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+
+echo "KEY_PRESSED: 1002" >> pieces/apps/player_app/history.txt  # UP
+sleep 0.5
+echo "=== After UP ===" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+grep "\[POS\]" pieces/display/current_frame.txt >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+```
+
+---
+
+### T6: Glyph Selection
+**Objective:** Verify glyph palette works
+
+**Procedure:**
+1. In op-ed, press `3` or navigate to GLYPHS palette
+2. Select different glyphs using number keys
+
+**Expected:**
+- Available glyphs: `# . R T @ & Z X ? !`
+- [ARMED] shows currently selected glyph
+- Selecting glyph updates [ARMED] display
+
+**Pass Criteria:**
+- [ ] GLYPHS palette shows all 10 glyphs
+- [ ] Current glyph highlighted with brackets `[#]`
+- [ ] Selecting new glyph updates [ARMED]
+- [ ] Glyph selection persists across frames
+
+**Record:**
+```bash
+echo "=== T6: Glyph Selection ===" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+grep "\[ARMED\]" pieces/display/current_frame.txt >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+```
+
+---
+
+### T7: Map Palette
+**Objective:** Verify map palette displays correctly
+
+**Procedure:**
+1. In op-ed, press `2` or navigate to MAPS palette
+
+**Expected:**
+```
+║ [ ] 2. MAPS      : ADD map_0001_z0.txt [map_01.txt]       ║
+```
+
+**Pass Criteria:**
+- [ ] MAPS palette shows current map file
+- [ ] Map name in brackets `[map_01.txt]`
+- [ ] ADD option available if adding new map
+
+**Record:**
+```bash
+echo "=== T7: Map Palette ===" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+grep "MAPS" pieces/display/current_frame.txt >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+```
+
+---
+
+### T8: Toggle Emoji
+**Objective:** Verify emoji toggle works
+
+**Procedure:**
+1. In op-ed, press `4` or TOGGLE EMOJI button
+
+**Expected:**
+- Glyphs switch from ASCII to emoji:
+  - `#` → `🧱`
+  - `.` → `🟩`
+  - `R` → `🌲`
+  - `T` → `🏰`
+  - etc.
+
+**Pass Criteria:**
+- [ ] Emoji mode toggles on/off
+- [ ] Glyph palette shows emoji when enabled
+- [ ] Map display uses emoji when enabled (if map uses emoji glyphs)
+
+**Record:**
+```bash
+echo "=== T8: Toggle Emoji ===" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+echo "KEY_PRESSED: 4" >> pieces/apps/player_app/history.txt
+sleep 0.5
+grep "GLYPHS" pieces/display/current_frame.txt >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+```
+
+---
+
+### T9: Exit to Menu
+**Objective:** Verify clean exit
+
+**Procedure:**
+1. In op-ed, navigate to EXIT (option 10)
+2. Press Enter
+
+**Expected:** Returns to main menu or os.chtpm
+
+**Pass Criteria:**
+- [ ] Exits to main menu
+- [ ] No orphaned processes
+- [ ] State files preserved
+
+**Record:**
+```bash
+echo "=== T9: Exit to Menu ===" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+cat pieces/display/current_layout.txt >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+```
+
+---
+
+### T10: Re-launch After Exit
+**Objective:** Verify state resets correctly
+
+**Procedure:**
+1. After T9 exit, re-launch op-ed
+2. Check selector position
+
+**Expected:**
+- Selector resets to (5,5,0) or last saved position
+- State files load correctly
+
+**Pass Criteria:**
+- [ ] op-ed launches successfully
+- [ ] Xlector at expected position
+- [ ] No stale state from previous session
+
+**Record:**
+```bash
+echo "=== T10: Re-launch ===" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+cat pieces/apps/op-ed/manager/state.txt >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+```
+
+---
+
+### T11: Other Apps Still Work
+**Objective:** Verify no regressions in other applications
+
+**Procedure:**
+Test each app:
+1. **Editor:** Launch from main menu → verify map editing works
+2. **GL-OS:** Launch → verify desktop appears
+3. **User Auth:** Launch → verify login form displays
+4. **FuzzPet:** Launch → verify pet displays and moves
+
+**Pass Criteria:**
+- [ ] Editor launches and functions
+- [ ] GL-OS desktop renders
+- [ ] User Auth form displays
+- [ ] FuzzPet shows and responds to input
+
+**Record:**
+```bash
+echo "=== T11: Other Apps Regression Test ===" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+echo "Editor: [ ] PASS [ ] FAIL" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+echo "GL-OS:  [ ] PASS [ ] FAIL" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+echo "User:   [ ] PASS [ ] FAIL" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+echo "FuzzPet:[ ] PASS [ ] FAIL" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+```
+
+---
+
+### T12: Compile Clean
+**Objective:** Verify no compilation errors or warnings
+
+**Procedure:**
+```bash
+./compile_all.sh 2>&1 | tee #.testing/compile-output-$(date +%Y-%m-%d).txt
+```
+
+**Pass Criteria:**
+- [ ] op-ed_module.c compiles without errors
+- [ ] No new warnings introduced
+- [ ] All modules compile successfully
+
+**Record:**
+```bash
+echo "=== T12: Compile Output ===" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+grep -E "(error|warning)" #.testing/compile-output-$(date +%Y-%m-%d).txt | head -20 >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+```
+
+---
+
+## STATE INTEGRITY VERIFICATION
+
+After all tests, verify state file integrity:
+
+```bash
+# Check all op-ed state files
+echo "=== State Integrity Check ===" >> #.testing/op-ed-test-results-$(date +%Y-%m-%d).txt
+
+echo "--- pieces/apps/op-ed/state.txt ---"
+cat pieces/apps/op-ed/state.txt
+
+echo "--- pieces/apps/op-ed/manager/state.txt ---"
+cat pieces/apps/op-ed/manager/state.txt
+
+echo "--- pieces/apps/op-ed/pieces/xlector/state.txt ---"
+cat pieces/apps/op-ed/pieces/xlector/state.txt
+
+echo "--- projects/op-ed/manager/state.txt ---"
+cat projects/op-ed/manager/state.txt
+
+echo "--- projects/op-ed/pieces/xlector/state.txt ---"
+cat projects/op-ed/pieces/xlector/state.txt
+
+echo "--- projects/op-ed/history.txt ---"
+cat projects/op-ed/history.txt
+```
+
+**Expected Content:**
+- All files should have required keys (pos_x, pos_y, pos_z, active_target_id, etc.)
+- No duplicate or conflicting values
+- Values should match what's displayed in UI
+
+---
+
+## FRAME HISTORY ANALYSIS (Advanced)
+
+For deep debugging, analyze frame history:
+
+```bash
+# Enable frame history if not already
+# In main menu, toggle "Toggle Frame History"
+
+# Review frame sequence
+ls -la pieces/debug/frames/ 2>/dev/null || echo "No frame history directory"
+
+# Check ledger for events
+cat pieces/master_ledger/master_ledger.txt | tail -50
+
+# Check display ledger
+cat pieces/display/ledger.txt | tail -20
+```
+
+---
+
+## COMMON ISSUES AND TROUBLESHOOTING
+
+### Issue: op-ed shows "PROJECT MANAGER" instead of "O P - E D   A D V A N C E D"
+**Cause:** Missing app-level state initialization
+**Fix:** Ensure `pieces/apps/op-ed/manager/state.txt` exists with correct content
+
+### Issue: Xlector doesn't move
+**Cause:** History file not being read or module not polling
+**Fix:** Check `pieces/apps/player_app/history.txt` is being written and read
+
+### Issue: Map doesn't display
+**Cause:** Missing map file or wrong path
+**Fix:** Verify `projects/op-ed/maps/map_01.txt` exists
+
+### Issue: Glyph palette empty
+**Cause:** Module not initializing glyph array
+**Fix:** Check op-ed_module.c initialization code
+
+### Issue: Exit doesn't work
+**Cause:** Wrong href path or module not handling exit
+**Fix:** Verify EXIT button href points to `pieces/chtpm/layouts/os.chtpm`
+
+---
+
+## TEST RESULTS TEMPLATE
+
+Copy this to `#.testing/op-ed-test-results-YYYY-MM-DD.txt`:
+
+```markdown
+# OP-ED Fix Test Results
+**Date:** YYYY-MM-DD
+**Tester:** [Name]
+**Fix Version:** op-ed-fix.txt v1.0
+
+## Summary
+- Total Tests: 12
+- Passed: __
+- Failed: __
+- Blocked: __
+
+## Test Results
+
+| Test | Description | Result | Notes |
+|------|-------------|--------|-------|
+| T1 | Main Menu Launch | PASS/FAIL | |
+| T2 | Project Manager | PASS/FAIL | |
+| T3 | op-ed Direct Launch | PASS/FAIL | CRITICAL |
+| T4 | Project Loader → op-ed | PASS/FAIL | |
+| T5 | Xlector Movement | PASS/FAIL | |
+| T6 | Glyph Selection | PASS/FAIL | |
+| T7 | Map Palette | PASS/FAIL | |
+| T8 | Toggle Emoji | PASS/FAIL | |
+| T9 | Exit to Menu | PASS/FAIL | |
+| T10 | Re-launch After Exit | PASS/FAIL | |
+| T11 | Other Apps Regression | PASS/FAIL | |
+| T12 | Compile Clean | PASS/FAIL | |
+
+## Critical Issues
+[List any showstoppers]
+
+## Non-Critical Issues
+[List minor bugs or UI glitches]
+
+## Frame Snippets
+[Paste relevant frame sections]
+
+## State File Contents
+[Paste state.txt contents]
+
+## Recommendations
+[Suggestions for future improvements]
+```
+
+---
+
+## NEXT STEPS AFTER TESTING
+
+1. **If All Tests Pass:**
+   - Document in project ledger
+   - Consider fix complete
+   - Move to next priority task
+
+2. **If Tests Fail:**
+   - Document specific failures
+   - Create fix iteration plan
+   - Update `op-ed-fix.txt` with new findings
+
+3. **If Partial Pass:**
+   - Document which tests pass/fail
+   - Prioritize fixes for critical failures (T3, T5, T9)
+   - Schedule follow-up testing
+
+---
+
+## RELATED DOCUMENTS
+
+- **Fix Document:** `op-ed-fix.txt`
+- **Architecture Docs:** `#.docs/*.md`
+- **Testing Standards:** `#.testing/*.testing-m18.txt`
+- **Reference Implementation:** `#.ref/PMO_c_+rmmp_41.01/`
+
+---
+
+**END OF TESTING GUIDE**

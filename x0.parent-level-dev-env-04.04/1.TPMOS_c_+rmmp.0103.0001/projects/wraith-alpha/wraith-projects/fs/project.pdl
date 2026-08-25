@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | wraith-alpha/wraith-projects/fs
+META         | version            | 1.0
+META         | author             | TPMOS
+META         | manager            | projects/wraith-alpha/wraith-projects/fs/manager/+x/fs_manager.+x
+META         | entry_layout       | projects/wraith-alpha/wraith-projects/fs/layouts/fs.chtpm
+
+STATE        | title              | WRAITH FS
+STATE        | status             | scaffold
+STATE        | mode               | filesystem
+STATE        | current_context    | session
+
+RESPONSE     | default            | Wraith FS Scaffold Ready.

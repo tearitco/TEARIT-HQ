@@ -1,0 +1,10 @@
+name=Camera
+type=camera
+pos_x=0.00
+pos_y=0.00
+pos_z=0.00
+pitch=15.00
+yaw=0.00
+roll=0.00
+mode=4
+is_map_control=0

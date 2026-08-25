@@ -1,0 +1,10 @@
+╔════════════════════════════╗
+║   WRAITH MANAGER TEST      ║
+║   (Test Project)           ║
+╚════════════════════════════╝
+
+✓ Manager is RUNNING
+✓ This text is from wraith-man-test_manager
+✓ Session: wraith-man-test
+
+Status: If you see this, manager launched!

@@ -1,0 +1,24 @@
+# TSOTS-Online IRC Module Diagnostics Report
+
+## Observation
+The `tsots-irc` (renamed `p2p-net`) IRC module is failing to populate the IP host list and the chat ledger in the UI.
+
+## Root Cause Analysis (via Diff)
+The automated renaming process (sed s/p2p-net/tsots-irc/gi) was too aggressive. Specifically, it incorrectly renamed internal identifiers and file names within the `p2p_manager.c` source code.
+
+- **Identifier Corruption:**
+  - `MAX_USERS_PAYLOAD` became `MAX_tsots_onlineS_PAYLOAD` (incorrect syntax).
+  - `users_path` became `tsots_onlines_path` (incorrect syntax).
+  - `load_users_file` became `load_tsots_onlines_file` (incorrect syntax).
+
+- **Data File Mismatch:**
+  - The manager is now looking for `ring_tsots_onlines.txt` instead of the expected `ring_users.txt`.
+  - The `p2p-net` original logic relied on `ring_users.txt`. Because the code was renamed to look for a non-existent file, it cannot load the user/IP data, resulting in an empty UI list.
+
+## Conclusion
+The `tsots-irc` module manager is broken due to incorrect refactoring of C identifiers during the project duplication.
+
+## Recommended Fix
+1. Revert identifier renames in `projects/tsots-online/irc-module/manager/p2p_manager.c` that corrupted function names and variable names (specifically those related to 'users').
+2. Revert the file name `ring_tsots_onlines.txt` back to `ring_users.txt` (or update the manager to point to the correct file if the new name is intentional, but the original file data is likely needed).
+3. Recompile the IRC module.

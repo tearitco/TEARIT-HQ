@@ -1,0 +1,65 @@
+# net/ollama-lan.pdl — house-wide Qwen2.5-Coder ladder registry (uniform family).
+# The ONE place that maps a tier name -> real ollama model. Every product
+# (chat-hai, muci-pal-agent, iqabod, khtpm h-ai cell 14, ...) reads THIS file
+# instead of hardcoding model names / endpoints, so a model swap is one line.
+#
+# Format: SECTION | KEY | VALUE   (standard house .pdl, 3 columns)
+#   HOST | <name> | <base url>            — an inference node
+#   TIER | <tier> | <ollama model name>   — a rung on the qwen ladder
+#
+# Tiers (match 15.CHAT-HAI-PLAN.md's ladder):
+#   router   = gemma3:1b  (smol chat, fast intent/tool routing, ~2GB)
+#   quick    = gemma3:1b  (fast code snippets / chat)
+#   coder    = qwen2.5-coder:3b    (main local coder)
+#   manager  = qwen2.5-coder:7b    (manager/curator tier — slow, called least)
+#   fim      = codeqwen:7b-code   (base CodeQwen1.5-7B: fill-in-the-middle/infill)
+#   smol     = gemma3:270m         (2026-08-15, direct instruction: "calls
+#              to gemma270 are way faster? could it use that to do some
+#              of its harnessing?" - fastest model on the ladder, already
+#              served on the SAME host as qwen (confirmed via
+#              @.apps/my-lawyer's own GEMMA_LAN_URL=10.0.0.144:11434),
+#              just never registered as a tier here before. Real,
+#              measured precedent for what "smol" is FOR:
+#              HARNECIENT-HACK.md's own my-lawyer reference uses
+#              gemma3:270m for exactly this shape - a fast, short,
+#              DESCRIBE-only pre-step that FEEDS the harness's next real
+#              decision, never the final generated artifact itself
+#              (mylawyer_case_worker.c's own search_precedent() call,
+#              always fed into a harness-built buffer, never trusted as
+#              the whole output). Use this tier for any staged
+#              pre-prompt/scoring/description step, not as a drop-in
+#              replacement for a tier meant to produce the final text.
+#
+# NOTE 2026-08-18 (direct instruction: "swap router/quick tiers to
+# gemma3:1b"): qwen2.5-coder is a code model, not a chat model. The 4
+# chatting personas (film: moxie/bravo/sage/pip; philo: daoist/evolutionist/
+# theologian/synthesist) all run on router/quick tiers. Swapping these to
+# gemma3:1b (chat-tuned, 2GB) eliminates the code-model failure mode that
+# makes both topics loop on cheerleader phrases or fake academic summaries.
+# qwen2.5-coder:3b (coder tier) is kept for actual coding tasks only.
+#
+# Hosts:
+#   mac   = 10.0.0.144 (Intel MacBook Pro, Radeon Pro 560X, primary inference)
+#   linux = 10.0.0.187 (Dell Inspiron 3655, always-on backup / gemma box)
+#   local = 127.0.0.1 (this box's own ollama; qwen2.5-coder:7b already here)
+#
+# Verify a tier is live: sh net/qwen.sh status
+HOST    | mac     | http://10.0.0.144:11434
+HOST    | linux   | http://10.0.0.187:11434
+HOST    | local   | http://127.0.0.1:11434
+TIER    | router  | gemma3:1b
+TIER    | quick   | gemma3:1b
+TIER    | coder   | qwen2.5-coder:3b
+TIER    | manager | qwen2.5-coder:7b
+TIER    | fim     | codeqwen:7b-code
+TIER    | smol    | gemma3:270m
+TIER    | tiny    | gemma3:1b
+# tiny = gemma3:1b (2026-08-15, direct instruction: "we also have gemma1b
+# to experiment with") - confirmed available on the same host
+# (10.0.0.144:11434, same /api/tags check that confirmed smol). One rung
+# up from smol - worth trying anywhere smol's weak instruction-following
+# (see chat-hai's own chat_hai_loop.sh - real, live-caught instruction-
+# echo leaks on gemma3:270m) turns out to be the actual bottleneck rather
+# than raw chat quality. NOTE 2026-08-18: router/quick tiers now ALSO
+# use gemma3:1b (see above), so this tier is now redundant for chat
+# personas but kept for staged pre-prompt fallback.

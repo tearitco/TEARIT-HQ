@@ -1,0 +1,3 @@
+TRIGGER|on-click
+CMD|1|change_gold|
+CMD|2|change_gold|

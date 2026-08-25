@@ -1,0 +1,393 @@
+khtpm-win-fix.txt — Windows port plan for $.crypts + KHTPM livedesk
+======================================================================
+Status: Phase 1 DONE + Phase 2 minimal Win stubs DONE (2026-08-06)
+        Full X11/GLX parity still open (objects.pdl menus, grabs, etc.)
+        NEXT: livedesk-win-fix-lvl2.txt (emoji texture + RMB + muchi button)
+Date:   2026-08-06
+Author: agent (post-014.wsr Windows port)
+Related:
+  - livedesk-win-fix-lvl2.txt      (L2: egg-pals ref → real sprites/menus)
+  - windows-house-guide.md          (house-wide Linux→Win checklist)
+  - 014.wsr-pal*/WIN-PORT-NOTES.txt (worked vertical slice)
+  - _.0.aigent-testing-k3.txt       (frame/key evidence doctrine)
+  - &.widgits/tile-picker/*         (KHTPM home: tp_desktop_window)
+  - &.widgits/livedesk-taskbar/*    (tp_taskbar)
+  - $.crypts/*                      (autostart controller)
+  - !.linux-absolute-FIXME-a6.txt   (NO abs paths even on Linux;
+                                    full inventory + rewrite order for
+                                    other agent — do not reintroduce
+                                    /home/no/... in PDL/scripts)
+  - egg-pals+5.2win (1)/egg-pals/   (working Win ref of truth)
+
+Deferred (explicit, later):
+  - Terminal frame-history default OFF wholesale on Windows for all
+    apps (user will test both modes). Do not change house-wide yet.
+  - @.apps/aomorai-editor (3D GL) — after KHTPM/crypts; expected easier
+    if it is freeglut-style rather than raw X11/GLX.
+  - Absolute-path rewrites (see !.linux-absolute-FIXME-a6.txt) —
+    owned by path-portability agent, not this Win GL plan alone.
+
+======================================================================
+0. Vocabulary (do not conflate)
+======================================================================
+
+CHTPM  = full session pipeline (button.sh run):
+           keyboard_input / chtpm_parser_pal / prisc+x / renderer /
+           chtpm_rgb_render / gl_mirror (+ .chtpm layouts)
+         Example: tile-picker's own picker UI (&.widgits/tile-picker/button.sh).
+
+KHTPM  = house-own "livedesk entity window" convention (informal name,
+         walk-off-au5 / TILE_PICKER_DESIGN):
+           ONE binary: tp_desktop_window.+x
+           Raw X11 + GLX (NOT freeglut, NOT chtpm_parser_pal)
+           Per-package history.txt + interact_relay.txt
+           objects.pdl multi-page menus, nav claims, taskbar tabs
+         Every pet / asa / ava / MUCHI_RANCHER monster on the desk uses
+         this same binary with a different <package_dir> argument.
+
+$.crypts does NOT launch full CHTPM sessions for each entity.
+It launches KHTPM windows + the livedesk taskbar (and optionally mounts
+a volume). That is why this plan is titled KHTPM-first, not
+"port every CHTPM app."
+
+======================================================================
+1. What $.crypts is
+======================================================================
+
+Path:  $.crypts/
+Role:  House-wide autostart controller (manual + optional XDG login).
+
+Files today:
+  button.sh                 Linux entry (run/on/off/status/compile/check/install-xdg)
+  autostart.pdl             STATE | MOUNT | LAUNCH rows
+  ops/crypt_autostart.c     The real worker binary
+  ops/+x/crypt_autostart.+x Compiled op
+  enable_xwayland_grabs.sh  GNOME/Wayland XGrab allowlist (Linux compositor only)
+
+No button.ps1 yet.
+
+button.sh actions (must mirror in button.ps1 later):
+  run|r|start|restart  compile if needed; run crypt_autostart.+x <autostart.pdl>
+  on / off             toggle STATE|enabled in autostart.pdl (sed -i)
+  status               grep enabled
+  compile|c|build      gcc crypt_autostart.c
+  check                binary + pdl exist
+  install-xdg          write ~/.config/autostart/*.desktop (Linux-only)
+
+======================================================================
+2. Runtime pipeline (crypt_autostart.+x)
+======================================================================
+
+2.1 Resolve PDL
+  - argv[1] or default via readlink("/proc/self/exe") walking up to
+    <house>/$.crypts/autostart.pdl
+  - Windows has no /proc/self/exe → need GetModuleFileName / _fullpath
+
+2.2 Parse autostart.pdl (SECTION|KEY|VALUE)
+  STATE | enabled | 0|1
+  MOUNT | uuid | ...
+  MOUNT | mountpoint | ...
+  LAUNCH | <label> | <shell command string>
+
+2.3 If enabled=0 → no-op exit 0
+
+2.4 quit_current_livedesk(house_root)  [HEAVY LINUX]
+  - Read #.desktop/livedesk_open.txt → write CLOSE into each entity
+    interact_relay.txt
+  - SIGTERM taskbar pid from livedesk_taskbar.pid
+  - usleep; SIGTERM entity PIDs still alive
+  - Scan /proc/*/cmdline for tp_taskbar / tp_desktop_window containing
+    house_root → SIGTERM
+  - Clear livedesk_open.txt, livedesk_nav_claims.txt, unlink taskbar pid
+
+2.5 MOUNT (optional)
+  - Check /proc/mounts
+  - udisksctl mount -b /dev/disk/by-uuid/<uuid>
+  - Windows: no-op or optional drive letter policy (see §6)
+
+2.6 LAUNCH each command
+  - system("setsid nohup <cmd> >/dev/null 2>&1 &")
+  - Windows: CreateProcess / Start-Process without setsid/nohup
+
+======================================================================
+3. What autostart.pdl currently launches (this house copy)
+======================================================================
+
+All LAUNCH rows use HARDCODED Linux absolute paths under a Linux home
+tree (not this Windows checkout path). That alone makes a naive port
+fail even if binaries existed.
+
+Current targets (logical):
+
+  (1) tool-bar
+      bin:  &.widgits/livedesk-taskbar/ops/+x/tp_taskbar.+x
+      arg:  <house_root>
+
+  (2) m6_golddeity
+      bin:  &.widgits/tile-picker/ops/+x/tp_desktop_window.+x
+      arg:  @.apps/MUCHI_RANCHER/entities/m6_golddeity
+
+  (3) book-stack
+      bin:  tp_desktop_window.+x
+      arg:  #.desktop/entities/book-stack
+
+  (4) ava
+      bin:  tp_desktop_window.+x
+      arg:  #.desktop/entities/ava
+
+  (5) asa
+      bin:  tp_desktop_window.+x
+      arg:  #.desktop/entities/asa
+
+So one run = 1 taskbar + N KHTPM entity windows (not N CHTPM stacks).
+
+REQUIRED PDL FIX (any OS, especially Windows):
+  Replace hardcoded /home/no/Desktop/... paths with house-relative
+  resolution inside crypt_autostart (or rewrite PDL to relative
+  templates and expand against house_root). Absolute Linux paths must
+  not remain load-bearing.
+
+======================================================================
+4. KHTPM stack surface (what "needs the same treatment")
+======================================================================
+
+4.1 Core binaries (X11/GLX — hard part)
+
+  &.widgits/tile-picker/ops/tp_desktop_window.c   (~140KB, largest)
+    - Xlib, XShape, GLX, XGrabKeyboard/Pointer
+    - override_redirect desktop stamps
+    - objects.pdl menus, nav claims, soft focus, history/relay
+    - spawns/ensures taskbar
+    - polls package_dir/glyph.txt, desktop_pos.txt writeback
+
+  &.widgits/livedesk-taskbar/ops/tp_taskbar.c      (~42KB)
+    - Xlib bar, tabs, Nav digit jump, shortcuts, close
+    - reads #.desktop/livedesk_open.txt
+    - talks to entities via interact_relay ACTIVATE_NAV / raise
+
+  These are NOT freeglut gl_mirror. They are raw X11 + GLX, same class
+  as 01.muchi-pals egg_window. Windows needs either:
+    A) Win32 + WGL (or ANGLE) port of the windowing layer, OR
+    B) Temporary stub that logs "KHTPM not on Windows yet" while
+       crypts still mounts/toggles, OR
+    C) Run under WSLg/X server if available (not a real house product
+       path; document only).
+
+  Recommendation for first implementation phase:
+    - Port crypt_autostart + button.ps1 + relative PDL first
+    - Port tp_taskbar + tp_desktop_window windowing as a second
+      work package (shared Win32 "livedesk_window" shim if possible)
+    - Do NOT pretend freeglut is a drop-in for GLX override_redirect
+
+4.2 Related but separate: tile-picker CHTPM session
+
+  tile-picker/button.sh launches a FULL CHTPM session (parser, prisc,
+  gl_mirror, rgb_render) for the *picker UI* itself. That is the
+  014.wsr-style treatment (button.ps1, relative root, freeglut mirror).
+
+  $.crypts does NOT invoke tile-picker/button.sh today. Porting crypts
+  does not require tile-picker CHTPM session first — only the KHTPM
+  desktop binary that tile-picker owns as source.
+
+4.3 House-wide livedesk state files (already relative-friendly)
+
+  #.desktop/livedesk_open.txt
+  #.desktop/livedesk_nav_claims.txt
+  #.desktop/livedesk_taskbar.pid
+  #.desktop/livedesk_master_ledger.txt
+  #.desktop/livedesk_next_index.txt
+  #.desktop/entities/<name>/  (packages: glyph, meta.pdl, objects.pdl, …)
+
+  These are plain files + PIDs. On Windows: same files; PID kill uses
+  TerminateProcess / taskkill (no /proc).
+
+======================================================================
+5. Linux-only APIs inventory (crypt_autostart + KHTPM)
+======================================================================
+
+crypt_autostart.c
+  - readlink("/proc/self/exe")
+  - /proc/mounts, /proc/<pid>/cmdline
+  - kill(SIGTERM), pid_alive via kill(0)
+  - setsid + nohup via system()
+  - udisksctl mount
+  - dirname() mutates buffer (POSIX)
+  - usleep
+
+tp_desktop_window.c / tp_taskbar.c
+  - XOpenDisplay, XCreateWindow, override_redirect, XShape
+  - glXCreateContext / glXSwapBuffers
+  - XGrabKeyboard / XGrabPointer (Wayland: enable_xwayland_grabs.sh)
+  - select() on X connection fd
+  - Possibly /proc for taskbar ensure
+
+Windows mapping sketch (for later implement phase):
+
+  /proc/self/exe     → GetModuleFileNameW
+  kill / proc scan   → OpenProcess + TerminateProcess; CreateToolhelp32Snapshot
+  setsid nohup &     → CreateProcess CREATE_NEW_PROCESS_GROUP | DETACHED
+  udisksctl          → skip, or document manual drive letter; optional
+                       mountvol if UUID known
+  X11/GLX window     → Win32 HWND + WGL (or GDI stub for non-GL bar)
+  XGrab*             → SetCapture / SetForegroundWindow (different model)
+  gsettings Wayland  → N/A on Windows (enable_xwayland_grabs.sh stays Linux)
+
+======================================================================
+6. Proposed phased plan (for review — DO NOT START until approved)
+======================================================================
+
+Phase 0 — Preconditions (doc only here)
+  - Keep Linux button.sh / paths working
+  - Note deferred: Windows terminal history-off wholesale later
+  - Note aomorai-editor after this pipeline
+
+Phase 1 — $.crypts shell + relative PDL (lowest risk)
+  [x] button.ps1 (run/on/off/status/compile/check/kill; install-xdg N/A)
+  [x] crypt_autostart.c: #ifdef _WIN32 for self-path, process kill,
+      CreateProcessW launch; mount = no-op log; prefer .exe over .+x
+  [x] Rewrite LAUNCH rows to house-relative forms (autostart.pdl)
+  [x] Prove: button.ps1 compile + check + status + off/on on Windows
+  [x] Prove: run with enabled=0 is no-op; run with enabled=1 launches
+  See: $.crypts/WIN-PORT-NOTES.txt
+
+Phase 2 — KHTPM windowing (hard)
+  [x] MINIMAL Win stubs: tp_desktop_window_win.c + tp_taskbar_win.c
+      (GDI stamp, drag, CLOSE/ACTIVATE relay, open registry, taskbar tabs)
+  [ ] Inventory every X11/GLX call site (full parity matrix still open)
+  [ ] Full objects.pdl menus / GLX glyph / soft-focus / XGrab parity
+  [x] Build via button.ps1 compile
+  [x] Manual test: full autostart.pdl set (4 entities + taskbar) PASS
+
+Phase 3 — CHTPM widgets that crypts does NOT launch but live nearby
+  [ ] tile-picker button.ps1 (014.wsr pattern: freeglut gl_mirror)
+  [ ] file-menu / event-ez as needed later
+  Not blocking crypts "run livedesk entities"
+
+Phase 4 — aomorai-editor (user: after KHTPM)
+  [ ] Separate investigation: freeglut vs raw X11
+  [ ] Expect easier if freeglut/Chtm stack like wsr
+
+Phase 5 — House-wide Windows terminal history policy (user: soon)
+  [ ] Option: pieces/display/state.txt off by default on Windows
+      OR renderer always clear-redraw on _WIN32 (already applied in
+      014.wsr renderer.c as first experiment)
+  [ ] User tests both modes before house-wide mandate
+
+======================================================================
+7. Testing plan (K3-aligned, KHTPM-adapted)
+======================================================================
+
+Crypts / KHTPM do not use current_frame.txt the same way as CHTPM.
+Evidence sources differ:
+
+  KHTPM entity package:
+    <package>/history.txt
+    <package>/interact_relay.txt
+    <package>/desktop_pos.txt
+    <package>/glyph.txt / meta.pdl / objects.pdl
+
+  House livedesk:
+    #.desktop/livedesk_open.txt
+    #.desktop/livedesk_nav_claims.txt
+    #.desktop/livedesk_taskbar.pid
+
+  Crypts:
+    autostart.pdl STATE
+    stdout of crypt_autostart (launch/mount lines)
+
+Suggested report name:
+  KHTPM_WIN_REPORT_<yyyyMMdd-HHmm>_<topic>.txt  (root or $.crypts/)
+
+Gates for Phase 1:
+  R1  button.ps1 compile/check/status PASS
+  R2  enabled=0 run is no-op PASS
+  R3  relative house_root resolution PASS (no /home/no/... required)
+  R4  quit_current_livedesk does not crash when registries empty PASS
+
+Gates for Phase 2:
+  R5  one tp_desktop_window process + visible window PASS
+  R6  CLOSE via interact_relay exits window PASS
+  R7  taskbar appears; tab for open entity PASS
+  R8  ACTIVATE_NAV / digit jump moves focus PASS
+
+Do not claim "desktop works" until R5–R8.
+
+======================================================================
+8. Risks / unknowns (call out before coding)
+======================================================================
+
+1. tp_desktop_window.c is ~140KB of X11/GLX — largest single port risk
+   in this pipeline. Underestimate = disaster.
+
+2. override_redirect + XShape transparency ≠ Win32 borderless by default;
+   visual parity will take iteration.
+
+3. Keyboard grab semantics on Win32 differ (focus model, not XGrab).
+
+4. autostart.pdl absolute paths are a landmine even on Linux if the
+   machine/user path changes; relative expansion is a correctness fix
+   for all OS.
+
+5. Mount UUID volume: may be irrelevant on this Windows machine;
+   keep optional.
+
+6. Do not confuse tile-picker CHTPM session port with KHTPM binary port.
+
+7. Multiple entity windows = multiple processes; kill must be name-based
+   (no Get-Process .Path hang — see windows-house-guide.md).
+
+======================================================================
+9. Recommended decision points for user review
+======================================================================
+
+D1  Approve Phase 1 (crypts button.ps1 + portable crypt_autostart +
+    relative PDL) before any X11 work?
+
+D2  For Phase 2 windowing: full WGL port vs temporary "launch stub
+    logs only" until WGL exists?
+
+D3  Should autostart.pdl be rewritten now to relative forms even before
+    Windows KHTPM windows work (helps Linux too)?
+
+D4  When to apply "Windows terminal history off wholesale" (Phase 5) —
+    after aomorai or in parallel?
+
+D5  aomorai-editor: confirm freeglut/Chtm vs raw X11 before scheduling.
+
+======================================================================
+10. Explicit non-goals for this plan
+======================================================================
+
+- Not porting every CHTPM widget in &.widgits/
+- Not implementing aomorai-editor in this plan
+- Not changing house-wide terminal history defaults yet
+- Not requiring WSLg as the product path
+- Not rewriting KHTPM menu semantics (objects.pdl etc.) — only OS shell
+
+======================================================================
+11. One-page summary
+======================================================================
+
+$.crypts = PDL-driven launcher that:
+  (a) quits existing livedesk
+  (b) mounts a volume (Linux)
+  (c) starts tp_taskbar + several tp_desktop_window (KHTPM) entities
+
+Windows work is two layers:
+  Layer A — portable launcher (button.ps1, crypt_autostart, relative PDL)
+  Layer B — replace X11/GLX in tp_desktop_window + tp_taskbar
+
+Layer A is ready to schedule after this review.
+Layer B is the hard project; size and X11 surface justify a separate
+design pass with a call-site matrix before coding.
+
+End of khtpm-win-fix.txt — wait for user review before implementing.
+
+======================================================================
+ARCH RULE (2026-08-06 user): no dual rewrites
+======================================================================
+Shared KHTPM design logic once; Win/X11 = shims only (egg_window style).
+Do not re-implement menus/nav/registry in separate _win.c when Linux
+changes. See livedesk-win-fix-lvl2.txt §15–16. L3 = merge stubs into
+shared core + platform hooks.
+

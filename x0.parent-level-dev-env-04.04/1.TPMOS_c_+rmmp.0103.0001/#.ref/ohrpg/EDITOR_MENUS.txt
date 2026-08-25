@@ -1,0 +1,23 @@
+name=EDITOR_MENUS.txt
+OHRRPGCE Main Editor Menus (Custom.exe)
+
+1. Edit Graphics
+2. Edit Maps
+3. Edit Heroes
+4. Edit Enemies
+5. Edit Attacks
+6. Edit Battle Formations
+7. Edit Items
+8. Edit Shops
+9. Edit Text Boxes
+10. Edit Tag Names
+11. Edit Menus        <-- (open the menu editor)
+12. Edit Slice Collections
+13. Edit Vehicles
+14. Import Music
+15. Import Sound Effects
+16. Edit Global Text Strings
+17. Edit General Game Settings
+18. Script Management
+19. Distribute Game
+20. Test Game / Quit or Save (depends on platform)

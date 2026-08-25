@@ -1,0 +1,17 @@
+<panel>
+    <module>projects/op-ed/manager/+x/op-ed_manager.+x</module>
+    
+    <text label="╔════════════ L O A D   S L O T ══════════╗" /><br/>
+    <text label="║ Select a save slot for ${project_id}:         ║" /><br/>
+    <text label="║                                               ║" /><br/>
+    
+    ${slot_selection_markup}
+    
+    <text label="║                                               ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════╣" /><br/>
+    <text label="║  " /><button label="BACK TO FILE MENU" href="projects/op-ed/layouts/file_menu.chtpm" /><text label="            ║" /><br/>
+    <text label="║  " /><button label="BACK TO EDITOR" href="projects/op-ed/layouts/op-ed.chtpm" /><text label="               ║" /><br/>
+    <text label="╚═══════════════════════════════════════════════╝" /><br/>
+    
+    <interact src="pieces/apps/player_app/history.txt" />
+</panel>

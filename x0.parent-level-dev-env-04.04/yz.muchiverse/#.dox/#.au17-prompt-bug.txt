@@ -1,0 +1,5 @@
+ok, theres one thing i wanna fix right now before i stop
+db-hq isn't opening from tb. 
+and chat hai (which does open from tb press, for ref)
+when i use [x] to 
+close, Closes all desktop entures (bad) ; can we investigate and research teh fix 

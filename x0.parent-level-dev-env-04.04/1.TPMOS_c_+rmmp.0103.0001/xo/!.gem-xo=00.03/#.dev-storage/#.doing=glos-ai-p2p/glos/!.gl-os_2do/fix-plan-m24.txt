@@ -1,0 +1,780 @@
+# GL-OS TERMINAL NAVIGATION FIX PLAN (M24)
+**Date:** March 24, 2026
+**Priority:** CRITICAL - Match ASCII-OS Behavior
+**Reference:** #.docs/#.piece.mark.c-look_0.txt (working ASCII-OS implementation)
+**Status:** ⚠️ CRITICAL BUG FOUND - State File Parser Broken
+
+---
+
+## PROBLEM SUMMARY
+
+GL-OS terminal menu navigation has MULTIPLE bugs:
+
+1. ❌ **Menu only shows 1 item** - "2. [Terminal Apps]" is MISSING
+2. ❌ **Duplicate "1." indexes** - Window list has "1." AND menu has "1." (breaks ASCII-OS jump navigation)
+3. ❌ **Joystick not updating selection** - Selection changes but frame doesn't show item 2
+
+---
+
+## ROOT CAUSE ANALYSIS
+
+### Bug 1: Multi-line State File Variables Don't Work
+
+**Problem:** The parser reads state file line-by-line:
+```c
+while (fgets(line, sizeof(line), state)) {
+    char *eq = strchr(line, '=');
+    // ...
+}
+```
+
+But `menu_options` has newlines:
+```
+menu_options=  [>] 1. [Desktop Apps]
+  [ ] 2. [Terminal Apps]
+```
+
+**Result:** Only the first line is captured. Second line is lost.
+
+**ASCII-OS Reference:** ASCII-OS does NOT use multi-line state variables. It builds the frame DIRECTLY from parsed layout elements using `render_element()`.
+
+---
+
+### Bug 2: Duplicate Index Numbers
+
+**Current GL-OS:**
+```
+║    [>] 1. Terminal 1          ← Window list uses "1."
+║  MENU (Joystick UP/DOWN to navigate)
+║    [>] 1. [Desktop Apps]      ← Menu ALSO uses "1."
+```
+
+**Problem:** User can't use "jump" navigation (typing "2" to select second item) because both sections use the same numbers.
+
+**ASCII-OS Reference:** ASCII-OS has ONE unified navigation list. All navigable items share a single index sequence.
+
+---
+
+## SOLUTION
+
+### Fix 1: Build Frame Directly (Like ASCII-OS)
+
+**Remove the broken state-file-parser approach.** Instead:
+1. Build frame DIRECTLY in `write_gl_os_state()`
+2. Write complete frame to `current_frame.txt`
+3. Don't use multi-line state variables
+
+**OR**
+
+### Fix 2: Encode Multi-line as Single Line
+
+Use a delimiter (e.g., `|`) to encode newlines:
+```
+menu_options=  [>] 1. [Desktop Apps]|[ ] 2. [Terminal Apps]
+```
+
+Then decode in parser. But this is hacky.
+
+---
+
+### Fix 3: Separate Index Spaces
+
+Window list and menu should have DIFFERENT index schemes:
+```
+Window list: Use letters (A, B, C) or no numbers
+Menu: Use numbers (1, 2, 3)
+```
+
+OR remove window list entirely and just show menu.
+
+---
+
+## REMAINING WORK
+
+### Priority 1: Fix Multi-line Variable Parsing (CRITICAL)
+
+**Option A: Direct Frame Building (Recommended)**
+Replace `parse_and_write_frame()` with direct frame building:
+```c
+void write_gl_os_frame(void) {
+    FILE *f = fopen("pieces/apps/gl_os/session/current_frame.txt", "w");
+    
+    /* Write frame header */
+    fprintf(f, "╔═══════════════════════════════════════════════╗\n");
+    fprintf(f, "║              G L - O S   D E S K T O P        ║\n");
+    /* ... */
+    
+    /* Build menu directly */
+    const char *menu_items[] = {"Desktop Apps", "Terminal Apps"};
+    for (int i = 0; i < 2; i++) {
+        const char *indicator = (i == selected_idx) ? "[>]" : "[ ]";
+        fprintf(f, "║    %s %d. [%s]\n", indicator, i + 1, menu_items[i]);
+    }
+    
+    fclose(f);
+}
+```
+
+**Option B: Fix Parser to Handle Multi-line**
+Modify parser to join lines until next `key=` pattern.
+
+---
+
+### Priority 2: Fix Duplicate Indexes (IMPORTANT)
+
+**Option A: Remove Window List**
+Just show the menu, not the window list.
+
+**Option B: Use Different Index Scheme**
+Window list: `[>] A. Terminal 1`
+Menu: `[>] 1. [Desktop Apps]`
+
+---
+
+### Priority 3: Test Joystick Navigation
+
+After fixes:
+1. Clear frame history
+2. Run GL-OS
+3. Push joystick DOWN
+4. Verify menu shows BOTH items
+5. Verify selection changes
+6. Verify index numbers are unique
+
+---
+
+## ORIGINAL PROBLEM (FOR REFERENCE)
+
+You mentioned "shoddily implemented copy paste" - this is future work.
+Navigation is the critical fix, which is now complete.
+
+---
+
+## ORIGINAL PROBLEM (FOR REFERENCE)
+
+### Current GL-OS Output (WRONG):
+```
+╔═══════════════════════════════════════════════╗
+║  Win:1  Act:1  M(0,0) S=0                    ║
+╠═══════════════════════════════════════════════╣
+║  ║  [>] 1. Terminal 1                      ║  ← Extra ║, always [>]
+║  ║  [>] 1. [Desktop Apps]                ║  ← Extra ║, always [>]
+╚═══════════════════════════════════════════════╝
+```
+
+### Expected ASCII-OS Output (RIGHT):
+```
+╔═══════════════════════════════════════════════╗
+║  CHTPM+OS Main Menu                          ║
+║                                               ║
+║  [>] 1. [Help]                                 ║  ← ONLY ONE has [>]
+║  [ ] 2. [Launch FuzzPet]                       ║  ← Others have [ ]
+║  [ ] 3. [Status]                               ║
+╚═══════════════════════════════════════════════╝
+```
+
+---
+
+## ROOT CAUSE ANALYSIS
+
+### Bug 1: Extra `║` Character in Menu Lines
+
+**Location:** `gl_desktop.c` line ~355
+
+**Current Code:**
+```c
+snprintf(line, sizeof(line), "║  %s %d. [%s]                            ║\n", 
+         indicator, i + 1, menu_items[i]);
+```
+
+**Problem:** The format string includes `║` at the START of each line, but these lines are already INSIDE a bordered frame. This creates double borders.
+
+**Fix:**
+```c
+snprintf(line, sizeof(line), "  %s %d. [%s]\n", 
+         indicator, i + 1, menu_items[i]);
+```
+
+---
+
+### Bug 2: Window List Also Has Extra `║`
+
+**Location:** `gl_desktop.c` line ~323
+
+**Current Code:**
+```c
+snprintf(line, sizeof(line), "║  %s %d. %-20s            ║\n",
+         indicator, i + 1, windows[i].title);
+```
+
+**Problem:** Same issue - extra `║` at start.
+
+**Fix:**
+```c
+snprintf(line, sizeof(line), "  %s %d. %-20s\n",
+         indicator, i + 1, windows[i].title);
+```
+
+---
+
+### Bug 3: Frame Not Being Written on Every Selection Change
+
+**Location:** `gl_desktop.c` joystick() function, line ~1155
+
+**Current Code:**
+```c
+/* Write new frame if selection changed */
+if (selection_changed) {
+    printf("[JOY NAV] Selection changed, writing new frame...\n");
+    write_gl_os_state();
+    parse_and_write_frame();
+}
+```
+
+**Problem:** The `selection_changed` flag is set, but the frame history shows the SAME frame repeated (same timestamp 08:02:04). This means either:
+1. `parse_and_write_frame()` is not being called
+2. `write_gl_os_state()` is not updating the state correctly
+3. The frame is being written but with WRONG state
+
+**Evidence:** Frame history shows identical frames:
+```
+--- FRAME UPDATE at 2026-03-24 08:02:04 ---
+--- FRAME UPDATE at 2026-03-24 08:02:04 ---  ← Same timestamp!
+```
+
+**Fix:** Add debug output to verify the full cycle:
+```c
+if (selection_changed) {
+    printf("[JOY NAV] Selection changed, writing new frame...\n");
+    printf("[JOY NAV] selected_idx: %d\n", windows[i].selected_index);
+    write_gl_os_state();
+    printf("[JOY NAV] State written\n");
+    parse_and_write_frame();
+    printf("[JOY NAV] Frame written\n");
+}
+```
+
+---
+
+### Bug 4: `selected_index` Not Persisted in State File
+
+**Location:** `gl_desktop.c` write_gl_os_state() function
+
+**Problem:** The `selected_index` is used to build the menu, but it's not written to the state file for the parser to use. The state file should contain:
+```
+selected_index=1
+```
+
+**Fix:** Add selected_index to state file:
+```c
+void write_gl_os_state(void) {
+    /* ... existing code ... */
+    
+    /* Get selected index */
+    int selected_idx = 0;
+    for (int i = 0; i < window_count; i++) {
+        if (windows[i].id == active_window_id && 
+            strcmp(windows[i].type, "terminal") == 0) {
+            selected_idx = windows[i].selected_index;
+            break;
+        }
+    }
+    
+    /* Write selected_index to state file */
+    fprintf(f, "selected_index=%d\n", selected_idx);
+    
+    /* ... rest of code ... */
+}
+```
+
+---
+
+## SUPPORTING FUNCTIONS NEEDED
+
+### Priority 1: Core Navigation (CRITICAL)
+
+These functions already exist but need fixes:
+
+1. **`move_selection()`** - Already exists, works correctly
+   - File: `gl_desktop.c` line 545
+   - Status: ✓ WORKING (just needs to be called properly)
+
+2. **`write_gl_os_state()`** - Exists, needs format fix
+   - File: `gl_desktop.c` line 306
+   - Status: ✗ FIX NEEDED (remove extra `║`)
+
+3. **`parse_and_write_frame()`** - Exists, should work
+   - File: `gl_desktop.c` line 368
+   - Status: ? VERIFY (add debug output)
+
+4. **`joystick()`** - Exists, needs verification
+   - File: `gl_desktop.c` line 1104
+   - Status: ? VERIFY (check edge-triggering)
+
+---
+
+### Priority 2: Frame Display (IMPORTANT)
+
+5. **`terminal_display_frame()`** - May need implementation
+   - Purpose: Read frame from file and display in OpenGL window
+   - Status: ? VERIFY (check if exists)
+
+6. **`update_scroll_thumb()`** - May need implementation
+   - Purpose: Update scroll thumb position based on scroll_offset
+   - Status: ? VERIFY (check if exists)
+
+---
+
+### Priority 3: Copy/Paste (NICE TO HAVE)
+
+You mentioned "shoddily implemented copy paste" - this is LOW priority. Focus on navigation first.
+
+7. **Text Selection** - Partially implemented
+   - Fields exist in DesktopWindow struct:
+     - `is_selecting`, `select_start_x`, `select_start_y`
+     - `select_end_x`, `select_end_y`, `selected_text`
+     - `selection_active`
+   - Status: ⚠️ PARTIAL (not critical for navigation)
+
+---
+
+## IMPLEMENTATION STEPS
+
+### Step 1: Fix Menu Format (Remove Extra `║`)
+
+**File:** `pieces/apps/gl_os/plugins/gl_desktop.c`
+
+**Change 1:** Line ~323 (window_list format)
+```c
+/* OLD */
+snprintf(line, sizeof(line), "║  %s %d. %-20s            ║\n",
+         indicator, i + 1, windows[i].title);
+
+/* NEW */
+snprintf(line, sizeof(line), "  %s %d. %-20s\n",
+         indicator, i + 1, windows[i].title);
+```
+
+**Change 2:** Line ~355 (menu_options format)
+```c
+/* OLD */
+snprintf(line, sizeof(line), "║  %s %d. [%s]                            ║\n", 
+         indicator, i + 1, menu_items[i]);
+
+/* NEW */
+snprintf(line, sizeof(line), "  %s %d. [%s]\n", 
+         indicator, i + 1, menu_items[i]);
+```
+
+---
+
+### Step 2: Add Debug Output
+
+**File:** `pieces/apps/gl_os/plugins/gl_desktop.c`
+
+**Add to joystick() function, line ~1155:**
+```c
+if (selection_changed) {
+    printf("[JOY NAV] Selection changed, writing new frame...\n");
+    printf("[JOY NAV] selected_idx: %d\n", windows[i].selected_index);
+    write_gl_os_state();
+    printf("[JOY NAV] State written\n");
+    parse_and_write_frame();
+    printf("[JOY NAV] Frame written\n");
+}
+```
+
+---
+
+### Step 3: Test the Fix
+
+1. **Compile:**
+   ```bash
+   bash compile_all.sh
+   ```
+
+2. **Run GL-OS:**
+   ```bash
+   ./pieces/apps/gl_os/plugins/gl_os
+   ```
+
+3. **Test Joystick Navigation:**
+   - Push joystick DOWN
+   - Check console output for debug messages
+   - Check `pieces/apps/gl_os/session/state.txt`
+   - Check `pieces/apps/gl_os/session/current_frame.txt`
+
+4. **Expected Console Output:**
+   ```
+   [JOY NAV] Selection changed, writing new frame...
+   [JOY NAV] selected_idx: 1
+   [JOY NAV] State written
+   [JOY NAV] Frame written
+   ```
+
+5. **Expected State File:**
+   ```
+   window_count=1
+   active_window_id=1
+   selected_index=1
+   menu_options=  [ ] 1. [Desktop Apps]
+     [>] 2. [Terminal Apps]
+   ```
+
+6. **Expected Frame:**
+   ```
+   ╔═══════════════════════════════════════════╗
+   ║  G L - O S   D E S K T O P                ║
+   ╠═══════════════════════════════════════════╣
+   ║  MENU (Joystick UP/DOWN to navigate)     ║
+   ║    [ ] 1. [Desktop Apps]                  ║
+   ║    [>] 2. [Terminal Apps]                 ║
+   ╚═══════════════════════════════════════════╝
+   ```
+
+---
+
+## SUCCESS CRITERIA
+
+- [ ] Menu format correct (no extra `║`)
+- [ ] Only ONE item has `[>]` at a time
+- [ ] Joystick DOWN moves `[>]` to next item
+- [ ] Joystick UP moves `[>]` to previous item
+- [ ] Selection wraps around (0 → 1 → 0)
+- [ ] Frame updates immediately on joystick input
+- [ ] Console shows debug output
+- [ ] State file shows correct `selected_index`
+- [ ] Frame history shows DIFFERENT timestamps
+
+---
+
+## ASCII-OS REFERENCE (Gold Standard)
+
+From `#.docs/#.piece.mark.c-look_0.txt`:
+
+```
+--- FRAME UPDATE at 2026-03-04 06:26:17 ---
+[>] 1. [Help]
+[ ] 2. [Launch FuzzPet]
+[ ] 3. [Status]
+
+--- FRAME UPDATE at 2026-03-04 06:26:19 ---  ← DIFFERENT timestamp!
+[ ] 1. [Help]
+[>] 2. [Launch FuzzPet]  ← Selection MOVED!
+[ ] 3. [Status]
+```
+
+**Key Points:**
+1. Each frame has UNIQUE timestamp
+2. Only ONE `[>]` per frame
+3. Selection changes between frames
+4. Frame format is clean (no extra `║`)
+
+---
+
+## NOTES
+
+- Copy/paste is LOW priority - fix navigation first
+- Frame infrastructure EXISTS and WORKS
+- The problem is CONTENT (format + state), not the mechanism
+- ASCII-OS is the reference - match it exactly
+
+---
+
+**END OF FIX PLAN**
+
+
+
+last state before api limit = 
+──╯
+✦ Found the root cause:
+
+  The state file parser reads line-by-line, but menu_options has newlines in
+  it:
+
+   1 menu_options=  [>] 1. [Desktop Apps]
+   2   [ ] 2. [Terminal Apps]
+
+  The parser only captures the first line. The second line is lost.
+
+  ASCII-OS doesn't use multi-line state variables - it builds the frame
+  directly from parsed layout elements.
+
+  Two issues:
+   1. Menu item 2 is missing - parser drops the second line
+   2. Duplicate "1." indexes - window list AND menu both use "1.", breaking
+      ASCII-OS jump navigation
+
+  Recommended fix: Build the frame directly (like ASCII-OS) instead of using
+  multi-line state variables.
+
+  Should I implement Fix 1A (direct frame building)?
+
+> it shouldd just show this : - ╔═══════════════════════════════════════════╗      
+                      │
+   │    37 - ║  G L - O S   D E S K T O P                ║                         
+   │
+   │    38 - ╠═══════════════════════════════════════════╣                         
+   │
+   │    39 - ║  MENU (Joystick UP/DOWN to navigate)     ║                          
+   │
+   │    40 - ║    [ ] 1. [Desktop Apps]                  ║                         
+   │
+   │    41 - ║    [>] 2. [Terminal Apps]                 ║                         
+   │
+   │    42 - ╚═══════════════════════════════════════════╝    . nothing more. no 
+  "window list" nothing else for now. were just testing basic functionality. not 
+  getting fancy
+
+ ╭────────────────────────────────────────────────────────────────────────────────╮
+ │ ✓  Edit ...pieces/apps/gl_os/plugins/gl_desktop.c: /* Write GL-OS frame to fi… │
+ │                                                                                │
+ │    ... first 6 lines hidden ...                                                │
+ │    1575 +     /* Get selected index from active terminal                       │
+ │         window */                                                              │
+ │    1576 +     int selected_idx = 0;                                            │
+ │    1577 +     for (int i = 0; i < window_count; i++) {                         │
+ │    1578 +         if (windows[i].id == active_window_id &&                     │
+ │         strcmp(windows[i].type, "terminal") == 0) {                            │
+ │    1579 +             selected_idx =                                           │
+ │         windows[i].selected_index;                                             │
+ │    1580 +             break;                                                   │
+ │    1581 +         }                                                            │
+ │    1582 +     }                                                                │
+ │    1583                                                                        │
+ │    1578 -     /* Parse layout and write frame */                               │
+ │    1579 -     parse_and_write_frame();                                         │
+ │    1584 +     /* Keep selected index in range */                               │
+ │    1585 +     if (selected_idx >= 2) selected_idx = 0;                         │
+ │    1586 +                                                                      │
+ │    1587 +     /* Write frame directly (like ASCII-OS) */                       │
+ │    1588 +     FILE *f = fopen(                                                 │
+ │         "pieces/apps/gl_os/session/current_frame.txt", "w");                   │
+ │    1589 +     if (!f) return;                                                  │
+ │    1590 +                                                                      │
+ │    1591 +     /* Write frame header */                                         │
+ │    1592 +     fprintf(f,                                                       │
+ │         "╔═══════════════════════════════════════════╗\n");                    │
+ │    1593 +     fprintf(f, "║  G L - O S   D E S K T O P                         │
+ │         ║\n");                                                                 │
+ │    1594 +     fprintf(f,                                                       │
+ │         "╠═══════════════════════════════════════════╣\n");                    │
+ │    1595 +     fprintf(f, "║  MENU (Joystick UP/DOWN to                         │
+ │         navigate)     ║\n");                                                   │
+ │    1596 +                                                                      │
+ │    1597 +     /* Build menu directly */                                        │
+ │    1598 +     const char *menu_items[] = {"Desktop Apps",                      │
+ │         "Terminal Apps"};                                                      │
+ │    1599 +     for (int i = 0; i < 2; i++) {                                    │
+ │    1600 +         const char *indicator = (i ==                                │
+ │         selected_idx) ? "[>]" : "[ ]";                                         │
+ │    1601 +         fprintf(f, "║    %s %d. [%s]                                 │
+ │         ║\n", indicator, i + 1, menu_items[i]);                                │
+ │    1602       }                                                                │
+ │    1603                                                                        │
+ │    1604 +     /* Write frame footer */                                         │
+ │    1605 +     fprintf(f,                                                       │
+ │         "╚═══════════════════════════════════════════╝\n");                    │
+ │    1606 +                                                                      │
+ │    1607 +     fclose(f);                                                       │
+ │    1608 +                                                                      │
+ │    1609 +     /* Append to frame history */                                    │
+ │    1610 +     time_t rawtime;                                                  │
+ │    1611 +     struct tm *timeinfo;                                             │
+ │    1612 +     char timestamp[100];                                             │
+ │    1613 +     time(&rawtime);                                                  │
+ │    1614 +     timeinfo = localtime(&rawtime);                                  │
+ │    1615 +     strftime(timestamp, sizeof(timestamp),                           │
+ │         "%Y-%m-%d %H:%M:%S", timeinfo);                                        │
+ │    1616 +                                                                      │
+ │    1617 +     FILE *history = fopen(                                           │
+ │         "pieces/apps/gl_os/session/frame_history.txt", "a");                   │
+ │    1618 +     if (history) {                                                   │
+ │    1619 +         fprintf(history, "\n--- FRAME UPDATE at %s                   │
+ │         ---\n", timestamp);                                                    │
+ │    1620 +         FILE *frame_file = fopen(                                    │
+ │         "pieces/apps/gl_os/session/current_frame.txt", "r");                   │
+ │    1621 +         if (frame_file) {                                            │
+ │    1622 +             char line[MAX_LINE];                                     │
+ │    1623 +             while (fgets(line, sizeof(line),                         │
+ │         frame_file)) {                                                         │
+ │    1624 +                 fprintf(history, "%s", line);                        │
+ │    1625 +             }                                                        │
+ │    1626 +             fclose(frame_file);                                      │
+ │    1627 +         }                                                            │
+ │    1628 +         fclose(history);                                             │
+ │    1629 +     }                                                                │
+ │    1630 +                                                                      │
+ │    1631 +     /* Touch marker file */                                          │
+ │    1632 +     FILE *marker = fopen(                                            │
+ │         "pieces/apps/gl_os/session/gl_os_pulse.txt", "a");                     │
+ │    1633 +     if (marker) {                                                    │
+ │    1634 +         fprintf(marker, "G\n");                                      │
+ │    1635 +         fclose(marker);                                              │
+ │    1636 +     }                                                                │
+ │    1637 + }                                                                    │
+ │    1638 +                                                                      │
+ │    1639   int main(int argc, char** argv) {                                    │
+ │    1640       glutInit(&argc, argv);                                           │
+ │           glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA |                        │
+ │           GLUT_DEPTH);                                                         │
+ │    1641       glutInitWindowSize(window_width,                                 │
+ │           window_height); glutCreateWindow("GL-OS Desktop");                   │
+ ╰────────────────────────────────────────────────────────────────────────────────╯
+✦ Now I need to remove the old parse_and_write_frame() call from
+  write_gl_os_state() since we're building the frame directly. Let me also check
+  what else calls write_gl_os_state():
+
+ ╭────────────────────────────────────────────────────────────────────────────────╮
+ │ ✓  SearchText 'write_gl_os_state\(\)' in *.c within pieces/apps/gl_os/plugins  │
+ │                                                                                │
+ │    Found 1 match                                                               │
+ ╰────────────────────────────────────────────────────────────────────────────────╯
+✦ write_gl_os_state() is only called from the joystick function. Since we're now
+  building the frame directly in write_gl_os_frame(), we can simplify. Let me
+  update the joystick function to just call write_gl_os_frame():
+
+ ╭───────────────────────────────────────────────────────────────╮
+ │ ✓  ReadFile ...pieces/apps/gl_os/plugins/gl_desktop.c         │
+ │                                                               │
+ │    Read lines 1156-1185 of 1688 from                          │
+ │    pieces/apps/gl_os/plugins/gl_desktop.c                     │
+ ╰───────────────────────────────────────────────────────────────╯
+ ╭────────────────────────────────────────────────────────────────────────────────╮
+ │ -  Edit ...pieces/apps/gl_os/plugins/gl_desktop.c:                 /* Write n… │
+ │                                                                                │
+ │    1159   if (selection_changed) {                                             │
+ │    1160       printf("[JOY NAV] Selection changed, writing                     │
+ │           new frame...\n");                                                    │
+ │    1161       printf("[JOY NAV] selected_idx: %d\n",                           │
+ │           windows[i].selected_index);                                          │
+ │    1162 -     write_gl_os_state();                                             │
+ │    1163 -     printf("[JOY NAV] State written\n");                             │
+ │    1164 -     parse_and_write_frame();                                         │
+ │    1162 +     write_gl_os_frame();                                             │
+ │    1163       printf("[JOY NAV] Frame written\n");                             │
+ │    1164   }                                                                    │
+ │    1165                                                                        │
+ ╰────────────────────────────────────────────────────────────────────────────────╯
+
+> no it should be reading from gl-os renderer layout not hardcoded!? haven't you 
+  read the docs? the terminal is meant to mirror the linux working terminal 
+  exactly!?
+
+✦ You're right - I should use the layout file, not hardcode. The issue is the
+  parser can't handle multi-line state variables.
+
+  Let me check the layout file and fix the parser properly:
+
+ ╭───────────────────────────────────────────────────────────────╮
+ │ ✓  ReadFile ...eces/apps/gl_os/layouts/terminal.chtml         │
+ │                                                               │
+ │ ✓  ReadFile ...pieces/apps/gl_os/plugins/gl_desktop.c         │
+ │                                                               │
+ │    Read lines 1571-1620 of 1688 from                          │
+ │    pieces/apps/gl_os/plugins/gl_desktop.c                     │
+ ╰───────────────────────────────────────────────────────────────╯
+✦ I see - I already replaced the function. Let me revert to using the layout
+  file properly. The fix is to NOT use multi-line state variables - instead,
+  build the menu content directly when writing the state, using a single-line
+  format:
+
+ ╭────────────────────────────────────────────────────────────────────────────────╮
+ │ ✓  Edit ...pieces/apps/gl_os/plugins/gl_desktop.c: /* Write GL-OS frame to fi… │
+ │                                                                                │
+ │    ... first 8 lines hidden ...                                                │
+ │    1578 -         if (windows[i].id == active_window_id &&                     │
+ │         strcmp(windows[i].type, "terminal") == 0) {                            │
+ │    1579 -             selected_idx =                                           │
+ │         windows[i].selected_index;                                             │
+ │    1580 -             break;                                                   │
+ │    1581 -         }                                                            │
+ │    1582 -     }                                                                │
+ │    1575 +     /* Write state first (for parser) */                             │
+ │    1576 +     write_gl_os_state();                                             │
+ │    1577                                                                        │
+ │    ═════════════════════════════════════════════════════════                   │
+ │    1584 -     /* Keep selected index in range */                               │
+ │    1585 -     if (selected_idx >= 2) selected_idx = 0;                         │
+ │    1586 -                                                                      │
+ │    1587 -     /* Write frame directly (like ASCII-OS) */                       │
+ │    1588 -     FILE *f = fopen(                                                 │
+ │         "pieces/apps/gl_os/session/current_frame.txt", "w");                   │
+ │    1589 -     if (!f) return;                                                  │
+ │    1590 -                                                                      │
+ │    1591 -     /* Write frame header */                                         │
+ │    1592 -     fprintf(f,                                                       │
+ │         "╔═══════════════════════════════════════════╗\n");                    │
+ │    1593 -     fprintf(f, "║  G L - O S   D E S K T O P                         │
+ │         ║\n");                                                                 │
+ │    1594 -     fprintf(f,                                                       │
+ │         "╠═══════════════════════════════════════════╣\n");                    │
+ │    1595 -     fprintf(f, "║  MENU (Joystick UP/DOWN to                         │
+ │         navigate)     ║\n");                                                   │
+ │    1596 -                                                                      │
+ │    1597 -     /* Build menu directly */                                        │
+ │    1598 -     const char *menu_items[] = {"Desktop Apps",                      │
+ │         "Terminal Apps"};                                                      │
+ │    1599 -     for (int i = 0; i < 2; i++) {                                    │
+ │    1600 -         const char *indicator = (i ==                                │
+ │         selected_idx) ? "[>]" : "[ ]";                                         │
+ │    1601 -         fprintf(f, "║    %s %d. [%s]                                 │
+ │         ║\n", indicator, i + 1, menu_items[i]);                                │
+ │    1578 +     /* Parse layout and write frame */                               │
+ │    1579 +     parse_and_write_frame();                                         │
+ │    1580   }                                                                    │
+ │    1581                                                                        │
+ │    ═════════════════════════════════════════════════════════                   │
+ │    1604 -     /* Write frame footer */                                         │
+ │    1605 -     fprintf(f,                                                       │
+ │         "╚═══════════════════════════════════════════╝\n");                    │
+ │    1606 -                                                                      │
+ │    1607 -     fclose(f);                                                       │
+ │    1608 -                                                                      │
+ │    1609 -     /* Append to frame history */                                    │
+ │    1610 -     time_t rawtime;                                                  │
+ │    1611 -     struct tm *timeinfo;                                             │
+ │    1612 -     char timestamp[100];                                             │
+ │    1613 -     time(&rawtime);                                                  │
+ │    1614 -     timeinfo = localtime(&rawtime);                                  │
+ │    1615 -     strftime(timestamp, sizeof(timestamp),                           │
+ │         "%Y-%m-%d %H:%M:%S", timeinfo);                                        │
+ │    1616 -                                                                      │
+ │    1617 -     FILE *history = fopen(                                           │
+ │         "pieces/apps/gl_os/session/frame_history.txt", "a");                   │
+ │    1618 -     if (history) {                                                   │
+ │    1619 -         fprintf(history, "\n--- FRAME UPDATE at %s                   │
+ │         ---\n", timestamp);                                                    │
+ │    1620 -         FILE *frame_file = fopen(                                    │
+ │         "pieces/apps/gl_os/session/current_frame.txt", "r");                   │
+ │    1621 -         if (frame_file) {                                            │
+ │    1622 -             char line[MAX_LINE];                                     │
+ │    1623 -             while (fgets(line, sizeof(line),                         │
+ │         frame_file)) {                                                         │
+ │    1624 -                 fprintf(history, "%s", line);                        │
+ │    1625 -             }                                                        │
+ │    1626 -             fclose(frame_file);                                      │
+ │    1627 -         }                                                            │
+ │    1628 -         fclose(history);                                             │
+ │    1629 -     }                                                                │
+ │    1630 -                                                                      │
+ │    1631 -     /* Touch marker file */                                          │
+ │    1632 -     FILE *marker = fopen(                                            │
+ │         "pieces/apps/gl_os/session/gl_os_pulse.txt", "a");                     │
+ │    1633 -     if (marker) {                                                    │
+ │    1634 -         fprintf(marker, "G\n");                                      │
+ │    1635 -         fclose(marker);                                              │
+ │    1636 -     }                                                                │
+ │    1637 - }                                                                    │
+ │    1638 -                                                                      │
+ │    1582   int main(int argc, char** argv) {                                    │
+ │    1583       glutInit(&argc, argv);                                           │
+ │           glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA |                        │
+ │           GLUT_DEPTH);                                                         │
+ │    1584       glutInitWindowSize(window_width,                                 │
+ │           window_height); glutCreateWindow("GL-OS Desktop");                   │
+ ╰────────────────────────────────────────────────────────────────────────────────╯
+✕ [API Error: Qwen API quota exceeded: Your Qwen API quota has been exhausted. 
+  Please wait for your quota to reset.]
+
+

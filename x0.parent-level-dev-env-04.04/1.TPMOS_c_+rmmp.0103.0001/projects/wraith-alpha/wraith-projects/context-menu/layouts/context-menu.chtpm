@@ -1,0 +1,8 @@
+<layout id="context-menu">
+    <module>projects/wraith-alpha/wraith-projects/context-menu/manager/+x/context-menu_manager.+x</module>
+    <panel>
+        <text label="CONTEXT MENU" /><br/>
+        <text label=" " /><br/>
+        <text label="Target: ${cm_target}" /><br/>
+    </panel>
+</layout>

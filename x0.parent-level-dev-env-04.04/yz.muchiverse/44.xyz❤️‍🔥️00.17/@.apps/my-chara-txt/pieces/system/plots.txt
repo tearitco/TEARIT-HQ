@@ -1,0 +1,9 @@
+plot_0_state=growing
+plot_0_crop=wheat
+plot_0_harvest_day=4
+plot_1_state=empty
+plot_1_crop=
+plot_1_harvest_day=0
+plot_2_state=empty
+plot_2_crop=
+plot_2_harvest_day=0

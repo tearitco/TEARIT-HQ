@@ -1,0 +1,39 @@
+# buy_egg.pal - real pal-native rebuild of ops/buy_egg.c's own token
+# gate (deduct EGG_COST(20) tokens from the fixed user_01 target), then
+# calls the EXISTING C op `generate_egg` to do the actual minting -
+# same "reuse the other op rather than duplicate its logic" convention
+# ops/buy_egg.c itself already followed, ported into pal terms: a
+# custom-op bareword call is real pal syntax (see pal/main_loop.pal's
+# own `tick_pets` call), not a workaround. generate_egg.c stays C on
+# purpose - species-pick/serial-number/piece-directory-creation is
+# string/registry-heavy, a genuinely bad ecall candidate (PAL-VS-C-
+# ARCHITECTURE.txt sec.4's own criteria), not something forced into pal
+# just for coverage.
+#
+# PRECONDITION GATE (tokens >= 20) happens in C, in the dispatcher
+# (ops/muchi_menu_input.c), before this script is ever launched - same
+# reasoning as coin_flip.pal/feed_pet.pal's own header comments (no
+# >= against an unbounded value is expressible in this ISA). If the
+# gate fails, the dispatcher never launches this script at all and
+# reports the same "need 20 tokens, have N" message the C original gave.
+#
+# generate_egg is called with the literal "user_01" argument - a plain
+# custom-op bareword literal call (prisc+x's own generic custom-op
+# dispatch passes exactly one argument, register OR literal - see
+# egg-pals' own dox/01-architecture.md on this real constraint), not a
+# register, since the owner is always the fixed single user here (same
+# simplification claim_tokens.pal/coin_flip.pal/feed_pet.pal already
+# make about user_01).
+
+li x15, 6
+li x13, 0
+ecall "pieces/world_01/map_lobby/user_01/state.txt" "tokens"
+addi x1, x12, -20
+
+li x15, 7
+addi x12, x1, 0
+ecall "pieces/world_01/map_lobby/user_01/state.txt" "tokens"
+
+generate_egg user_01
+
+halt

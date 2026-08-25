@@ -1,0 +1,36 @@
+# 🏆 DAY 07 — The Proof: 9/9, and the War Stories 🎖
+# ================================================
+# Title: "🏆 DAY 07 — The Proof: 9/9, and the War Stories 🎖"
+# Characters: RAHWEH, TOMO, MAXINE, THE NARRATOR, IQA
+# Voices: RAHWEH (zh-CN-YunxiaNeural), TOMO (zh-CN-XiaoxiaoNeural), MAXINE (en-GB-MaisieNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural), IQA (en-US-AnaNeural)
+# Topic: HARNECIENT Training Session
+
+**RAHWEH:** Even the 270m?! The pocket-watch model?!
+
+**TOMO:** Especially the 270m — and that's the story worth telling. 🍿
+
+**TOMO:** In `results/gemma3_270m/harnecient_edit.json` you can see what actually happened. We asked 270m to tell us the fix for a bug. It didn't say "change i < N to i <= N." Instead it echoed the ENTIRE source file inside a  c  fence. The whole thing. A toddler dumping a whole box of blocks because you asked for one block.
+
+**MAXINE:** So the hand-holding worked?
+
+**TOMO:** It worked *beautifully*. The harness didn't need the model to be precise — it tolerated the noise, extracted the i <= N fix concept, applied the canonical line itself, compiled, and printed 15. The model was a disaster and the outcome was perfect. That's the hack working as designed: noise tolerated, never trusted verbatim. 🎯
+
+**THE NARRATOR:** This one is a true debugging drama — and it nearly ate our harness.
+
+**TOMO:** The 3B, rambling on a harmless prompt, embedded a fake Python `summary = {"tool": "readfile", "args": {"path": filepath}, ...} dict in its reply. Our parser accepted it, and the unparseable path resolved to... the working directory.
+
+**MAXINE:** Reading a directory isn't a crash though.
+
+**TOMO:** On Linux, `fopen()` on a **directory succeeds**. `fseek()` returns 0. And ftell() returns... LONGMAX. 9.2 quintillion. Our code then did malloc(LONGMAX + 1) and the process segfaulted. 💥
+
+**RAHWEH:** A fake tool call from a model that doesn't even do tools, crashed us, through a directory, disguised as a file, in a single unbroken chain of absurdity.
+
+**TOMO:** *nods* And that's exactly why rule one of Harnecient engineering is: never trust paths or sizes that came out of a model. Now readwhole() rejects any size <= 0 or bigger than 8MB before allocating. The whole story is in LEARNINGS.md §9. 📜
+
+**TOMO:** And the counter-example, so you respect the hack: the 8B (`llama3-groq-tool-use`) does have real tools. Native readfile PASSES. Native execcmd PASSES. But ask it to read-then-edit and it fires both calls in parallel — editing before the read lands — guesses the wrong search block, and then hallucinates success. It believes it fixed a bug it never touched. 🎭
+
+**IQA:** So even the "smart" one can't be trusted to route tools?
+
+**TOMO:** Even the smart one. **No model routes tools. Only we do.** That's why the hack isn't a workaround — it's the better architecture.
+
+**TOMO:** And that, my friend, is a product you can sell to anyone. 🏆

@@ -1,0 +1,6 @@
+# Ops Manifest for tsots-online
+# Format: op_name|description|args_format
+
+create_profile|Creates a new tsots-online profile|project_path:string,tsots-onlinename:string
+auth_tsots-online|Authenticates a tsots-online session|project_path:string,tsots-onlinename:string
+get_session|Get current session data|project_path:string,tsots-onlinename:string

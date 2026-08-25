@@ -1,0 +1,4 @@
+# event.pal - real prisc+x opcodes, COMPILED from event.ir.pdl by event-ez
+# pkg=cursword page=1 - regenerated fresh on every command save
+exec cmd_1.sh
+halt

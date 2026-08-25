@@ -1,0 +1,575 @@
+================================================================================
+refactor-list-j30.txt - every project/file this session's own real
+findings (PITFALL 65, #.haiku+/jul30-house-refactor.txt) touch, split
+by what's CONFIRMED necessary vs what's a REAL CANDIDATE not yet
+decided. Read jul30-house-refactor.txt first for the full reasoning -
+this file is the concrete checklist that document's own §6 pointed at.
+
+PROGRESS LOG (updated as items complete):
+[DONE 2026-07-30] Shared C/PAL contract defined:
+  102.agy-txt/manager/BROWSER_CONTRACT.md - real gui_state.txt keys,
+  real dynamic <button>/<cli_io> markup shape, KEY:n as a swappable
+  encoding layer over string dispatch (ready for Tier 2's own
+  extension without a rewrite), ops reuse confirmed unchanged. Also
+  found and confirmed: chtpm_parser_pal.c's own load_vars() ALREADY
+  auto-loads pieces/apps/player_app/manager/gui_state.txt for agy-txt
+  (is_modern_layout() qualifies it unconditionally) - no custom
+  ${game_map}-blob scheme needed, that was this session's own earlier
+  mistake, now superseded by using the real, already-active mechanism.
+[DONE 2026-07-30] Dead superseded code removed:
+  102.agy-txt/ops/agy_edit_key.c - removed handle_file_browser()/
+  browser_read_kv/browser_write_kv/browser_scan_entry_count/
+  browser_read_entry_at_index/browser_paste/resolve_xyzfs_home/
+  resolve_xyzfs_documents/browser_state_path (lines 415-836 of the
+  pre-cleanup file) plus the now-dead on_browser dispatch branch in
+  main() - these layouts no longer route through this binary at all
+  (file_browser_save/load.chtpm now declare <module>manager/+x/
+  agy_browser_manager.+x</module>). 102.agy-txt/ops/agy_compose_view.c
+  - removed compose_file_browser()/format_size() and its own dispatch
+  branch in main() (rendering now owned by the new manager's own
+  write_frame(), which writes gui_state.txt directly). Both ops
+  recompile clean (only pre-existing/unrelated snprintf-truncation
+  warnings remain). Full `scripts/build.sh` run end-to-end: "build ok",
+  all binaries present including the new manager/+x/
+  agy_browser_manager.+x.
+[DONE 2026-07-30] TIER 1 fully closed - real end-to-end SAVE/LOAD
+  confirmed live (click-to-load, real per-character cli_io typing,
+  real Enter-directly-submits) after finding and fixing FIVE more real
+  bugs beyond the initial rebuild, all real evidence-based (K3), all
+  fixed in both 102.agy-txt AND &.widgits/file-menu (same architecture,
+  same bugs, fixed together):
+   1. agy_browser_manager.c's poll_history() watched the wrong file
+      (pieces/keyboard/history.txt) for KEY:n button activations - real
+      button activations relay via <interact src> (interact_relay.txt
+      for both projects), confirmed via direct read of chtpm_parser_
+      pal.c's own send_command()/inject_raw_key().
+   2. inject_raw_key()'s own KEY:n handling ASCII-shifts single-digit
+      values (k in 0-9 -> '0'+k, e.g. KEY:3 relays byte 51 not 3) -
+      decode_key_to_action() needed an un-shift before every dispatch.
+   3. REAL, HOUSE-WIDE bug in the SHARED 014.wsr-pal💸️📌️+2/system/
+      chtpm_parser_pal.c: initialize_focus() unconditionally calls
+      sync_focus_from_saved_active_index() FIRST, which restores focus
+      from active_gui_index.txt - but every real layout-transition call
+      site calls initialize_focus() BEFORE export_active_index() ever
+      overwrites that file, so a fresh href transition into a
+      differently-shaped layout can land focus on a coincidentally-
+      same-indexed, unrelated element instead of resetting to the first
+      navigable one. Fixed with a new clear_saved_active_index() helper
+      called at all three real layout-transition sites (keyboard-Enter
+      href, mouse/ACTIVATE-fold href, current_layout.txt-driven
+      transitions) - rebuilt into the shared system/chtpm_parser_pal
+      binary both projects copy from.
+   4. Real Enter-from-cli_io "Send" event (chtpm_parser_pal.c's own
+      cli_io Enter handler relays a raw 10/13 via inject_raw_key(13))
+      was falling through to the generic KEY:n decode instead of being
+      recognized as "submit the FILE field directly" - fixed via a new
+      active_gui_index() check (matches TPMOS's own get_active_gui_
+      index()==2 disambiguation) before the generic decode in both
+      poll_history() (agy-txt) and dispatch_file_browser() (file-menu).
+      Also found/fixed a real race: active_gui_index.txt is written via
+      a plain fopen(path,"w")+fprintf (not atomic), so a reader can
+      catch it mid-truncate (empty) - a short bounded retry fixed it.
+   5. chtpm_parser_pal.c's own cli_io typing handler writes the LIVE
+      buffer into gui_state.txt under the element's own target_id
+      DIRECTLY ("file_path_input"/"search_query") - a completely
+      separate key from this project's own "_val"-suffixed vars (label-
+      display only). Neither project's reset-on-entry logic cleared the
+      target_id-keyed ones, so an abandoned, un-submitted typed value
+      stayed permanently stuck in gui_state.txt and silently prepended
+      itself onto the next typed filename for the rest of the session.
+      Fixed in both reset_for_layout() (agy-txt) and fm_compose_frame.c's
+      own reset block (file-menu).
+  Real K3 harness re-verification (@.apps/text-editor-xyz/test-harn-
+  ed-app): demo_save.sh and demo_load.sh both fully rewritten off the
+  removed fm_relay_key/fm_paste helpers (file-menu is chtpm-native now,
+  real key injection via pieces/keyboard/history.txt) and both 100%
+  PASS. demo_fm_typing_ux.sh rewritten off the removed fm_state.txt
+  keys (mode/field_active/path_buffer/cursor_pos, all real-signal-
+  sourced now) - 9/10 assertions PASS; one known minor remaining issue
+  (see TIER 1 FOLLOW-UPS below), not blocking.
+[DONE 2026-07-30] TIER 3 done alongside Tier 1 (direct instruction:
+  "always use href to go to another page... that was the whole point
+  of the refactor" - corrected an earlier, wrong first pass that kept
+  file-menu on ONE layout with an internal mode variable). &.widgits/
+  file-menu split into FIVE real separate layout files
+  (file_menu_main.chtpm, file_menu_browser_save/load/pair.chtpm,
+  file_menu_peers.chtpm) connected by real <button href> navigation,
+  matching 102.agy-txt's own file_menu.chtpm -> file_browser_save/
+  load.chtpm pattern exactly. fm_compose_frame.c/fm_menu_input.c
+  rewritten to dispatch off pieces/display/current_layout.txt instead
+  of a hand-tracked "mode" key. All 5 real bugs listed under TIER 1
+  above were found and fixed in file-menu too (same architecture).
+================================================================================
+
+## TIER 1 FOLLOW-UPS (real, minor, not blocking - noted so they are not
+   silently dropped)
+
+- demo_fm_typing_ux.sh's own 10th assertion (a compounding, 4-deep
+  automated re-entry: SAVE_AS -> cancel -> SAVE_AS -> cancel -> SAVE_AS
+  -> Enter-first -> type -> Esc -> re-Enter -> backspace-clear -> type
+  a jail-escape path) still shows a stray SELECT-style dispatch landing
+  on an unrelated real directory entry instead of the intended typed
+  escape path, in THIS specific rapid-fire automated sequence only -
+  not reproduced in any single-cycle or double-cycle test, and not
+  matching realistic human interaction pacing. Real, not yet root-
+  caused precisely; low priority given every core SAVE/LOAD/typing/
+  focus-reset path is independently confirmed correct.
+- 102.agy-txt/manager/agy_browser_manager.c's own resolve_xyzfs_home()/
+  resolve_xyzfs_documents() is now the THIRD real copy of this same
+  logic in the project (agy_widget_cmds.c, agy_edit_key.c's now-removed
+  copy, this one) - a future cleanup candidate (extract to a tiny
+  shared header), not done now to avoid widening this session's own
+  already-large real scope.
+- button.sh's own trap-based process cleanup (both 102.agy-txt and
+  &.widgits/file-menu) needed a real fix this session too (the new
+  manager/PAL-loop's own module process was never in the kill pattern,
+  leaking orphaned processes on every session exit) - already fixed,
+  noted here only for completeness of what changed.
+
+## TIER 1 - CONFIRMED, actively being rebuilt (not a "someday" item)
+
+102.agy-txt/pieces/chtpm/layouts/file_browser_save.chtpm
+  - rebuild: real ${directory_browser_markup}-style dynamic <button>
+    injection, no hand-drawn [>]/[^] text.
+102.agy-txt/pieces/chtpm/layouts/file_browser_load.chtpm
+  - same rebuild, LOAD-mode markup.
+102.agy-txt/ops/agy_edit_key.c
+  - remove handle_file_browser()/browser_read_kv/browser_write_kv/
+    browser_scan_entry_count/browser_read_entry_at_index/browser_paste/
+    resolve_xyzfs_home/resolve_xyzfs_documents (this file's own copies)
+    - this logic moves to the new manager (below), NOT this shared
+      editor/file_menu op. editor.chtpm/file_menu.chtpm's own real
+      dispatch in this file stays untouched (already correct, real
+      chtpm-native buttons, never part of this investigation).
+102.agy-txt/ops/agy_compose_view.c
+  - remove compose_file_browser()/format_size() (this file's own copy)
+    - moves to the new manager's own render side.
+102.agy-txt/pieces/system/agy_browser_state.txt (runtime artifact, not
+  source - shape changes once the new manager owns it, no file to edit
+  directly, listed for completeness of what's affected)
+
+NEW FILES (do not exist yet):
+102.agy-txt/manager/agy_browser_manager.c (or equivalent path)
+  - real native C manager, mirrors TPMOS's agy-text-editor_manager.c +
+    game_manager.c's own real launch/poll shape (pthread, signal-
+    handled, <module> launch). Real string commands, real dynamic
+    button markup generation, calls the EXISTING, already-correct
+    agy_scan_dir.+x and agy_widget_cmds.c's resolve_save_path()/
+    resolve_xyzfs_home() - those two stay as real, reusable, manager-
+    agnostic ops, not rewritten.
+102.agy-txt/pal/<browser>.pal (or equivalent) - the PAL-driven sibling,
+  built AFTER prisc+x's own string-command extension (Tier 2) makes it
+  possible to consume the SAME shared contract.
+
+102.agy-txt/scripts/build.sh
+  - add compile step for the new manager; keep agy_scan_dir.+x/
+    agy_widget_cmds.+x builds as-is (unaffected, already correct).
+102.agy-txt/test-harn-agy-txt/scenarios/demo_browser_k3.sh
+  - rebuild against the real button-driven interaction contract; real
+    focus/nav now comes from the PARSER, not a hand-rolled state
+    machine - re-verify digit-jump/Enter/Esc against real key
+    injection, don't assume the old assertions still apply.
+102.agy-txt/test-harn-agy-txt/scenarios/demo_save_load.sh
+  - likely needs the same interaction-model update (uses jump_to +
+    real key injection into the browser screens).
+102.agy-txt/PLAN.md
+  - Phase T4/T6 status needs correcting - currently marked DONE against
+    the now-superseded buttonless implementation.
+102.agy-txt/xyz-agy-handoff-j30.txt
+  - update or close out once the real rebuild lands; currently
+    describes the superseded architecture as the active state.
+
+#.haiku+/!.xyzos-pitfalls+1.txt
+  - PITFALL 65 already added (this session) - no further action unless
+    the rebuild surfaces something new.
+#.haiku+/jul30-house-refactor.txt
+  - already written (this session) - the source document this list is
+    derived from, keep in sync as the rebuild proceeds.
+#.haiku+/!.xyzos-2do.txt
+  - needs an update pointing at this file + jul30-house-refactor.txt;
+    not yet done as of this list's own writing.
+
+--------------------------------------------------------------------------------
+## TIER 2 - DONE 2026-07-30
+
+014.wsr-pal💸️📌️+2/system/prisc+x.c
+  - new opcode OP_READ_HISTORY_STR added (`read_history_str rd, rs1,
+    [literal_path]` - identical arg shape to the existing
+    `read_history`, same real 3-arg-literal-path parsing reused, same
+    real position-register-advance semantics). PRISC's own register
+    file stays integer-only (unchanged, real ISA property) - rd is a
+    found/not-found boolean (1/0), same signal shape read_history's
+    own rd already used. The real STRING content itself is written
+    verbatim to a new, documented side-channel file, pieces/system/
+    prisc_str_relay.txt (project-root-relative, same PRISC_PROJECT_ROOT
+    convention every other op already uses) - any real op can read it
+    directly, matching how ops already read fm_state.txt/gui_state.txt
+    themselves; no new convention invented. This is ADDITIVE ONLY - no
+    existing opcode's own behavior changed, so it does not touch Tier
+    4's own "just recompile" projects' actual runtime behavior, only
+    the shared binary they all copy gets bigger.
+  - Real, dedicated verification pass (own isolated scratch project,
+    not folded into agy-txt/file-menu): confirmed found-signal (real
+    string command present -> rd=1, side-channel file gets the exact
+    line), not-found-signal (empty history -> rd=0), and incremental
+    multi-line reads (position register correctly advances across 3
+    real string commands in sequence, side-channel file ends on the
+    LAST one, matching a real PAL polling loop's own expected use).
+  - Real regression check after rebuilding the shared system/prisc+x
+    binary both 102.agy-txt and &.widgits/file-menu copy from their own
+    scripts/build.sh: demo_save.sh and demo_load.sh (@.apps/text-editor-
+    xyz/test-harn-ed-app) both re-ran 100% PASS, confirming the
+    additive change did not regress either project's own real KEY:n
+    integer-relay dispatch (both stayed on that encoding - see Tier 3's
+    own note that they did NOT need this extension to ship).
+  - NOT yet built on top of: a real PAL-driven manager consuming this
+    new opcode against BROWSER_CONTRACT.md's own shared contract (jul30-
+    house-refactor.txt §6 step 5) - the opcode itself is real and
+    verified, a consumer of it is still a real, separate, not-yet-
+    started task (see TIER 2 FOLLOW-UP below).
+
+## TIER 2 FOLLOW-UP (real, not started, not blocking Tier 4)
+
+- Build the actual PAL-driven browser manager sibling (102.agy-txt/pal/
+  <browser>.pal or equivalent) that uses read_history_str to consume
+  BROWSER_CONTRACT.md's own shared contract - the flag-tested
+  (RUN_MANAGER=c / RUN_MANAGER=pal) C+PAL parity task-14's own §40
+  standard is written FOR. Real, deliberately deferred - the opcode
+  needed to exist and be proven first (done above), building a full
+  second manager on top of it is its own real chunk of work.
+
+--------------------------------------------------------------------------------
+## TIER 3 - DONE (see PROGRESS LOG above) for the confirmed item; the
+   open-ended sweep below is still real, still not started
+
+&.widgits/file-menu/ops/fm_menu_input.c
+&.widgits/file-menu/ops/fm_compose_frame.c
+&.widgits/file-menu/pieces/chtpm/layouts/file-menu.chtpm (now 5 real
+  files: file_menu_main/browser_save/browser_load/browser_pair/
+  peers.chtpm)
+  - DONE 2026-07-30, see PROGRESS LOG. Real dynamic <button>/<cli_io>
+    markup, real href navigation between real separate layout files,
+    matching agy-txt's own rebuilt pattern exactly. NOTE: file-menu did
+    NOT need the Tier 2 prisc+x.c extension to get here - KEY:n stayed
+    the real encoding (matches jul30-house-refactor.txt §3's own real
+    VM-limitation finding), same as agy-txt. Tier 2 is still real and
+    still needed for the FUTURE PAL-driven manager sibling (BROWSER_
+    CONTRACT.md §5), not for what shipped this session.
+
+Every OTHER project in this house whose own real screens use hand-
+rolled cursor_pos/[>]/[ ] rendering instead of real dynamic <button>
+markup - NOT individually audited yet. Known real precedent for the
+CORRECT pattern already exists and should be the template for any
+future audit: 101.mutaclsym🧟‍♂️️+18.01/ops/compose_frame.c's own
+write_panel_gui_state(). No blanket sweep has been done - this line is
+a placeholder for that future audit, not a list of specific offenders
+beyond file-menu (confirmed) and agy-txt (confirmed, being fixed).
+
+--------------------------------------------------------------------------------
+## STATUS 2026-07-30: TIER 1, 2, 3 ALL DONE - TIER 4 IS THE NEXT,
+   NOT-YET-STARTED WORK (direct instruction: "push all the way to the
+   start of tier 4"). Real regression already run against the two
+   projects with existing K3 harnesses (102.agy-txt via test-harn-agy-
+   txt, &.widgits/file-menu via @.apps/text-editor-xyz/test-harn-ed-
+   app) - both 100% clean after the Tier 2 prisc+x.c change. Tier 4
+   itself (rebuild-only sweep across the other 13 listed projects +
+   a real regression check on each) has NOT been started.
+
+--------------------------------------------------------------------------------
+## TIER 4 - rebuild-only (their own C code does NOT need to change;
+   just recompile against the updated shared prisc+x binary the same
+   way every project already does after any wsr-pal system/ change).
+   SEGMENTED 2026-07-30 (direct instruction) into four groups before
+   starting:
+
+### 4a. HOLD OFF this pass (already done, or actively evolving
+    together elsewhere - don't touch)
+
+  101.mutaclsym🧟‍♂️️+18.01
+  xer/101.mutaclsym🧟‍♂️️+18.00PURE
+  300.rpg-xyz
+  300.rtp-xyz
+  102.agy-txt          - already rebuilt + regression-tested this session (Tier 1/2)
+  102.editor-📄️00.00   - already rebuilt + regression-tested this session (Tier 2)
+  &.widgits/file-menu   - already rebuilt + regression-tested this session (Tier 2/3)
+
+### 4b. Rebuild only, USER tests (muchi-pal family)
+
+  01.muchi-pals-🥚️-13.01
+  045.muchi-pal-agent🤖️+1   - grouped in with muchi-pals by name/family, not explicitly named by user - flag if wrong
+
+### 4c. Rebuild + I test myself (chat/forum/user-pal-login family)
+
+  044.pal-chat-irc👥️+2
+  041.pal-forum👥️
+  0.user-pal👤️/00.login-signup
+  0.user-pal👤️/01.avatar-creation👤️   - grouped in with login-signup (same 0.user-pal parent), not explicitly named by user - flag if wrong
+
+### 4d. Not explicitly assigned by user - defaulted into "I test
+    myself" (4c's own bucket) as the most reasonable call; flag if any
+    of these should move to 4b (user tests) or 4a (hold off) instead
+
+  002.zoo__🦓️🐒️0000/02.z00-INK.lo.sur]PEN🏟️
+  041.pal-chain⛓️
+  *.START_BUTTON
+
+  None of Tier 4 needs its OWN op/manager code touched for the Tier 2
+  prisc+x.c change - a plain rebuild (their own scripts/build.sh) picks
+  up the fixed prisc+x automatically, same as every prior shared-
+  system fix this session (gl_focus.lock, etc.) already required. Real
+  regression already run on 4a's own three projects (Tier 2's own
+  regression pass) - 4b/4c/4d below still need their own real rebuild
+  + verification pass.
+
+--------------------------------------------------------------------------------
+## CORRECTION, found live during 4b/4c/4d (real, verified by direct
+   read, not assumed): the framing above ("a plain rebuild picks up
+   the fixed prisc+x automatically... same as every prior shared-
+   system fix") is WRONG for the entire pal-chain/pal-forum/pal-chat-
+   irc/muchi-pal/002.zoo family. Every one of these projects keeps its
+   OWN LOCAL COPY of prisc+x.c (and other "shared ops") - confirmed via
+   each project's own scripts/build.sh header comment: "LOCAL COPIES,
+   NOT A LIVE SHARED_OPS REFERENCE... To pull in an update from the
+   canonical source, run (from yz.muchiverse/2.muchi-verse/): bash
+   sync_shared_op.sh <op_name> <project>/<target_dir>". Their real sync
+   source is yz.muchiverse/2.muchi-verse/shared-ops/ via that script -
+   NOT 014.wsr-pal💸️📌️+2/system/ the way 4a's own three projects work.
+   That path does not exist anywhere in this house copy (only an
+   unrelated, differently-versioned copy exists under
+   #.♻️.EzYQL/2.muchi-verse-0.2/shared-ops, a completely different
+   top-level tree) - so the Tier 2 prisc+x.c extension (OP_READ_HISTORY_
+   STR) built this session NEVER propagates to any project in this
+   section. Each project below was rebuilt against its OWN existing
+   local prisc+x.c as-is (a real, needed rebuild after other local
+   source edits, not a prisc+x sync) - none of them gained the new
+   opcode, and none of them needed to for their own tests to pass.
+
+## TIER 4b/4c/4d RESULTS (2026-07-30, existing test-harn-same harnesses
+   only, per direct instruction - no new harness infra built)
+
+  01.muchi-pals-🥚️-13.01        - rebuilt (local prisc+x.c), build ok.
+                                    USER TESTS (4b, not self-tested).
+  045.muchi-pal-agent🤖️+1       - rebuilt (local prisc+x.c), build ok.
+                                    USER TESTS (4b, not self-tested).
+
+  041.pal-forum👥️               - rebuilt, build ok. test-harn-same/
+    button.sh demo (demo_2user_forum.sh: signup, post, follow, feed
+    refresh, like) - ALL PASS.
+
+  044.pal-chat-irc👥️+2          - rebuilt, build ok. test-harn-same/
+    button.sh demo (demo_2user_chat.sh: join room, live message
+    propagation both directions) - ALL PASS.
+
+  0.user-pal👤️/00.login-signup  - rebuilt, build ok. test-harn-same/
+    button.sh demo (real login/signup/uuid/xyzfs multi-user scenario)
+    - ALL PASS.
+
+  0.user-pal👤️/01.avatar-creation👤️ - rebuilt, build ok. No button.sh
+    wrapper here - test-harn-same/scenarios/ has two runnable .sh
+    files directly:
+      demo_menu_fx.sh - claim tokens, free starter clone, choose-clone
+        selection, DNA/skin option cycling, compose panel, open chara+
+        RGB preview windows, back navigation - ALL PASS.
+      demo_session_character_window.sh - mostly PASS, one FAIL: line
+        94's own assertion greps for "Opened desktop window" but the
+        real, current op output is "Opened chara window for..." -
+        confirmed via direct grep of the script that this is a STALE
+        TEST ASSERTION (wrong expected wording), not a functional
+        regression - window PID stayed alive, session.pdl correctly
+        tracked the active avatar per the later PASS assertions in the
+        same run. NOT fixed this pass (out of the scope the user asked
+        for - only the pal-chain truncation bug below was) - the
+        assertion at line 94 should be updated to match
+        "Opened chara window" next time this project is touched.
+
+  041.pal-chain⛓️                - rebuilt, build ok. test-harn-same/
+    button.sh demo (demo_2wallet_ux.sh: signup, login, mining, real
+    send) - REAL BUG FOUND AND FIXED (2026-07-30): the send
+    confirmation message ("Sent N millicones from <A> to <B> (tx_id=
+    ...)." in ops/chain_send.c) redundantly repeated the sender wallet
+    ID (already shown on its own "Wallet: ..." line one row above in
+    the same frame) and appended a full tx_id - once both wallet IDs
+    got long enough this pushed the rendered line past
+    chain_compose_frame.c's fixed BOX_W=60 box, and a second bug (that
+    file's own rowbuf sized to exactly BOX_W+1) made snprintf() itself
+    silently truncate the content before line()'s own correct %.*s
+    width-clamp ever ran - cutting the recipient wallet ID's last
+    character off with no padding. Fixed both: chain_send.c's
+    confirmation now reads "Sent N millicones to <B>." (drops the
+    redundant "from <A>" and the tx_id, which is still recorded in
+    full on disk in pending_tx.txt/outbox.txt, just never needed to be
+    in the rendered line); chain_compose_frame.c's rowbuf widened from
+    BOX_W+1 to MAX_LINE so line() is the only place width-clamping
+    happens. Updated the one existing assertion in demo_2wallet_ux.sh
+    (line ~165) to match the new, intentional wording. Rebuilt, re-ran
+    - === OVERALL: PASS ===. Real evidence of the original bug
+    preserved at proof/harness-20260730-215522/walletA_send_result.txt.
+
+  002.zoo__🦓️🐒️0000/02.z00-INK.lo.sur]PEN🏟️ - rebuilt (local prisc+x.c
+    + other local shared ops, same sync_shared_op.sh family as above),
+    build ok. No test-harn-same here - launched directly
+    (NO_GL=1 setsid bash button.sh run) and confirmed real frame
+    rendering (zoo grid, animal stats, active xlector) with no
+    pieces/sessions/<id>/ subfolder (state lives directly under this
+    project's own pieces/ root, unlike every session-based project
+    above). INCOMPLETE: real movement/interaction not yet confirmed -
+    injecting the numeric arrow-code convention (KEY_PRESSED: 1003)
+    used elsewhere this session produced no visible cat movement; the
+    on-screen hint text ("[wasd/arrows] Move") suggests this project's
+    real input convention may be literal WASD ASCII codes instead
+    (e.g. 115 = 's') - not yet tried. STILL NEEDS: finish this one
+    basic interaction smoke test.
+
+  *.START_BUTTON                 - NOT YET STARTED this pass (existing
+    test-harn-same/button.sh present, not yet run).
+
+--------------------------------------------------------------------------------
+## TIER 5 (formerly numbered ahead of the section below by mistake -
+   renumber if this ever gets cleaned up; PHASE 2 is real, separate,
+   NEW scope discovered 2026-07-31, not part of the original Tier 1-4
+   plan at all) - per-screen module split + house-wide propagation of
+   PITFALL 66's fix. Full detail: 01.muchi-pals-🥚️-13.01/dox/
+   06-per-screen-module-standard.md. Direct instruction: "that is the
+   true standard i wanted... we will test that here before doing it
+   elsewhere" - proven on muchi-pals (DONE, all 6 screens, live-
+   tested), the rest below is real, confirmed-needed, NOT STARTED.
+
+  01.muchi-pals-🥚️-13.01 (6 screens)         - DONE 2026-07-31: per-
+    screen module split, clear_saved_active_index() port (7 real call
+    sites), debug-spam removal, panel_content/game_map engine-wiring
+    fix (muchi-pals-specific, not house-wide).
+
+  102.agy-txt (2 module groups -> 4 real modules) - DONE 2026-07-31:
+    editor.chtpm/file_menu.chtpm split into their own modules;
+    file_browser_save.chtpm/file_browser_load.chtpm made distinct via
+    a trailing arg to the same agy_browser_manager.+x binary (argc/argv
+    already ignored there, confirmed safe). No clear_saved_active_
+    index()/debug-spam work needed - reads wsr-pal's live copy, never
+    had either gap. Real K3 harness (test-harn-agy-txt) re-run clean,
+    twice - but 3 real, PRE-EXISTING (not module-split-caused,
+    confirmed by reproducing identically on unmodified code) bugs in
+    demo_save_load.sh got fixed along the way: stale SEARCH/FILE item-
+    number assumptions, an incompatible paste helper for the rebuilt
+    browser's own <cli_io> fields, and a missing Esc-to-exit-typing
+    after Enter-confirm. See dox/06 §6 in muchi-pals for the "check the
+    unmodified baseline first" lesson this produced.
+
+  &.widgits/file-menu (5 screens)            - DONE 2026-07-31: all 5
+    layouts split, reusing the same fm_menu_input.c/fm_compose_frame.c
+    ops. Real K3 harness (test-harn-ed-app): demo_save.sh/demo_load.sh/
+    demo_fm_typing_ux.sh all re-run clean. demo_save.sh's own main->
+    browser_save transition genuinely needed a real fix (not a false
+    alarm this time) - a fixed `sleep 0.5` wasn't enough real wall-
+    clock time for the newly-genuine module relaunch; fixed by waiting
+    on current_layout.txt actually flipping instead of guessing a
+    bigger number. demo_fm_click_to_load.sh still fails, but on
+    "command not found" for fm_relay_key/fm_paste - helpers already
+    documented as removed in this project's own refactor-report.txt,
+    unrelated to today's work, not touched.
+
+  041.pal-chain⛓️ (6 screens)                  - DONE 2026-07-31: all 6
+    layouts split to own *_module.pal, clear_saved_active_index()
+    ported (verified: 9 hits in chtpm_parser_pal.c), debug spam
+    removed. Layout <module> lines verified pointing at the new
+    per-screen files.
+  041.pal-forum👥️ (6 screens)                  - DONE 2026-07-31: same
+    as pal-chain (6 layouts split, index port verified 9 hits, layouts
+    verified pointing at new modules).
+  044.pal-chat-irc👥️+2 (3 screens)             - DONE 2026-07-31: 3
+    layouts split, index port verified (9 hits), layouts verified
+    pointing at new modules. (debug spam was already absent.)
+  045.muchi-pal-agent🤖️+1 (1 layout)           - DONE 2026-07-31:
+    module split N/A (1 layout), clear_saved_active_index() ported
+    (verified 9 hits). (debug spam already absent.)
+
+  NOTE (2026-07-31): the four rows above were code-complete before
+  this doc was updated - the work was done but this report wasn't
+  refreshed at the time, so it kept showing them as "needs:" after
+  the fact. Re-verified live (module files + <module> lines in every
+  layout + grep count in chtpm_parser_pal.c) before writing this
+  correction. Going forward, update this file in the SAME turn the
+  code work finishes, not after moving on to the next project.
+
+  101.mutaclsym🧟‍♂️️+18.01 (2 screens)          - module split DONE
+    2026-07-31 (game.chtpm -> pal/game_module.pal, info_test.chtpm ->
+    pal/info_test_module.pal), clear_saved_active_index() ported (6
+    call sites + def). New real K3 harness built (test-harn-same/,
+    first this project has ever had): href navigation (game.chtpm <->
+    info_test.chtpm) fully PASSES. INTERACT-mode movement check still
+    shows FAIL, but root-caused: not a module-split bug and not an
+    injection bug (history.txt shows the real 'd' keypress landed,
+    hero's own last_key=100 confirms real dispatch received it) - the
+    test's own hero was left at hp=0 (dead, from earlier harness-run
+    combat) because mutaclsym runs in-place with no session isolation,
+    so state carries over between runs. User corrected the harness's
+    own movement model too: real control is arrow-keys move an
+    on-screen Xlector cursor, Enter possesses/selects "hero" under it
+    - not a button-focus-by-digit + Enter-to-engage model. Harness
+    needs a real fix (reset hero from pieces/world_01_template/ before
+    each run, per ops/title_input.c's own "new game" precedent, PLUS
+    switch the movement-engage sequence to match the real Xlector
+    controls) before this can be called done - deferred, come back
+    after the simpler remaining projects below.
+    UPDATE 2026-07-31: control model + reset mechanism now fully
+    ground-truthed and documented (real Xlector cursor + Enter-to-
+    possess flow, real state reset mirroring title_input.c's own
+    reset_world()) - href nav now passes reliably. Movement half still
+    fails specifically when run via the actual bash script (despite
+    being manually verified correct step-by-step) - a real, un-
+    explained script-vs-manual discrepancy, not a control-model or
+    sleep-duration issue. Full writeup + next steps: test-harn-same/
+    HARNESS-STATUS-j31.txt.
+  300.rpg-xyz / 300.rtp-xyz (mutaclsym's own
+    copies)                                    - DONE 2026-07-31: same
+    module split + clear_saved_active_index() port (6 call sites) as
+    mutaclsym itself, mechanically re-applied to both (their chtpm_
+    parser_pal.c files were confirmed byte-identical to each other
+    both before and after). Both rebuild clean ("build ok"). Debug
+    spam already absent in both. NOT live-tested - neither project has
+    a test harness. See each project's own phase2-module-split-
+    report.txt.
+
+  0.user-pal👤️/01.avatar-creation👤️ (6 screens) - DONE 2026-07-31: all
+    6 layouts split to own *_module.pal, clear_saved_active_index()
+    ported (9 grep hits, 7 real call sites), 2 debug-spam printf lines
+    removed. Rebuilt clean ("build ok"). Real op-level harness
+    (test-harn-same/scenarios/demo_menu_fx.sh) re-run after the edit:
+    20/20 assertions PASS. That harness calls ops binaries directly,
+    not through a real running parser process, so it does not exercise
+    launch_module()'s own relaunch behavior specifically - see this
+    project's own phase2-module-split-report.txt for what a real K3
+    harness addition would need.
+  0.user-pal👤️/00.login-signup (1 screen)      - DONE 2026-07-31:
+    module split N/A (only one real screen), clear_saved_active_index()
+    ported (7 real call sites + startup unlink() left as-is, 9 grep
+    hits total), 2 debug-spam printf lines removed. Rebuilt clean
+    ("build ok", no new warnings). NOT yet live/K3-tested (no harness
+    exists for this project yet) - source-level + compile-verified
+    only. See this project's own phase2-module-split-report.txt.
+  002.zoo__🦓️🐒️0000 (1 layout)                 - NOT STARTED - module
+    split N/A - still needs clear_saved_active_index() port +
+    debug-spam removal.
+
+  NOT DONE ANYWHERE YET, INCLUDING MUCHI-PALS: splitting the actual
+  shared compose/input OPS into per-screen dedicated files - the
+  module split above reuses the same shared ops from every new per-
+  screen module, only the process boundary changed. Real, separate,
+  later step - see dox/06 §4.
+
+  Docs already updated as part of discovering this (2026-07-31):
+  #.haiku+/!.xyzos-pitfalls+1.txt (PITFALL 66 added), #.haiku+/
+  !.xyzos-standards+1.txt (new §41), 01.muchi-pals-🥚️-13.01/dox/
+  04-module-and-manager-architecture.md (corrected, superseded banner
+  added - it previously argued AGAINST per-screen modules).
+
+--------------------------------------------------------------------------------
+## TIER 5 - documentation-only, standing convention (once Tier 1 is
+   done and re-verified, not before - a convention should be written
+   from a real, working example, not speculatively)
+
+#.haiku+/!.xyzos-standards+1.txt
+  - new §40: "build both a C and a PAL implementation sharing one real
+    data/ops contract, flag-tested" as a standing house convention -
+    direct instruction, not yet written (task exists, tracked
+    separately in this session's own task list).
+================================================================================

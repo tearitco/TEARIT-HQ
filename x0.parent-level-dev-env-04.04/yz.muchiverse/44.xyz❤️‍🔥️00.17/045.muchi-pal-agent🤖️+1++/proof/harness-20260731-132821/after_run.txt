@@ -1,0 +1,45 @@
+================================================================================
+ MUCHI-PAL-CHAT   [IDLE]   model: gemma-lan                api: http://10.0.0.144:11434
+================================================================================
+
+You: write file new-file.txt containing "help me!"
+
+Aida: [calling write_file {
+                "content": "help me!",
+                "path": "new-file.txt"
+              }]
+
+[write_file result]: 
+
+You: read file jul-21.txt
+
+Aida: [calling read_file {
+                "path": "jul-21.txt"
+              }]
+
+[read_file result]: Error: tool execution failed or produced no output.
+
+→ [Strategy A] Detected tool: write_file
+
+You: create file hello.py containing print('hello world')
+
+[write_file result]: Written 20 bytes to hello.py
+
+
+→ [Strategy A] Detected tool: exec_cmd
+
+You: run python3 hello.py
+
+[exec_cmd result]: hello world
+
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+[SYS]: Tool result shown.
+(type /model <id> to switch models)
+
+| [^] 1. Message: [_]                                     |
+ (Ctrl+C to quit)
+
++=========================================================+
+Active [^]:  (ESC to exit)

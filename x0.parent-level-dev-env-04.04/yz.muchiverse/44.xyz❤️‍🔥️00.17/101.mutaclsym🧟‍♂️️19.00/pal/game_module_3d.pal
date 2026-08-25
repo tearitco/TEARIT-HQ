@@ -1,0 +1,14 @@
+# game_module_3d.pal - 3D gameplay loop stolen from +18.0G
+# RENDERING: compose_frame (text) -> muta_render_3d (3D overlay) -> compose_rgb_frame (RGB compositing)
+
+li x1, 0
+
+compose_frame
+muta_render_3d
+compose_rgb_frame
+hit_frame
+
+loop:
+exec ./ops/+x/game_dispatch
+sleep 16667
+j loop

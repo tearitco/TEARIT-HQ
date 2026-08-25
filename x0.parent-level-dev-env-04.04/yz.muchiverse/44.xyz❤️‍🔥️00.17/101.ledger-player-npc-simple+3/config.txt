@@ -1,0 +1,15 @@
+current_epoch=1
+current_turn=0
+num_players=4
+num_human_players=1
+num_npcs=3
+epoch_length=5
+game_state=playing
+player_1_type=human
+player_1_name=alice
+player_2_type=computer
+player_2_name=bot1
+player_3_type=computer
+player_3_name=bot2
+player_4_type=computer
+player_4_name=bot3

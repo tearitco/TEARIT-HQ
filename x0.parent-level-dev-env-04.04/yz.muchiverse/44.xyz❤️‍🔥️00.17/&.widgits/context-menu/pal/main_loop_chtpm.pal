@@ -1,0 +1,31 @@
+# context-menu main_loop_chtpm.pal
+# Same proven pattern as event-editor's own real fix and event-ez:
+# check interact_relay.txt FIRST, unconditionally, every loop iteration.
+li x1, 0
+
+cm_compose_frame
+hit_frame
+read_pos x7, "pieces/display/cm_screen_changed.txt"
+
+loop:
+li x9, 0
+cm_menu_input x9
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, no_key
+cm_menu_input x2
+j render_always
+
+no_key:
+read_pos x8, "pieces/display/cm_screen_changed.txt"
+beq x7, x8, no_render
+addi x7, x8, 0
+
+render_always:
+cm_compose_frame
+hit_frame
+sleep 30000
+j loop
+
+no_render:
+sleep 30000
+j loop

@@ -1,0 +1,7 @@
+# Piececraft Tile Registry
+.=grass
+#=wall
+T=tree
+R=stone
+A=adam
+E=eve

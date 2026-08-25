@@ -1,0 +1,265 @@
+STATUS: FIXED (2026-07-30, same day). Per direct instruction, the
+design in §4 below was tightened before implementation: the user's
+xyzfs `home/` is now a HARD JAIL, not just a default - real path
+containment via realpath()-based verification (not string pattern
+matching), so no typed/browsed path can ever reach the real host
+filesystem, only ever `<xyzfs_home>/...`. Implemented in
+`editor_widget_cmds.c`/`agy_widget_cmds.c` (`resolve_xyzfs_home()` +
+`resolve_save_path()`, both new) and `fm_menu_input.c` (same
+`resolve_xyzfs_home()`, seeds SAVE AS/LOAD's own default `browse_dir`
+at `.../home/documents/`, and clamps BACK navigation so it can never
+truncate above the jail root). A new idempotent setup script,
+`0.user-pal👤️/#.sys-fs-setup/setup_user_fs.sh`, ensures a user's
+`runtime/`/`projects/`/`documents/` shape exists (mkdir -p only, never
+destructive) - run manually this session, intended to run on signup.
+
+VERIFIED LIVE, all real key injection through the real running apps,
+not op-level shortcuts: `demo_save.sh`/`demo_load.sh` (updated to
+match the new contract - a bare filename, not an absolute scratch
+path, since a leading "/" is now interpreted as relative to xyzfs home,
+never the real filesystem) both ALL PASS with the real file landing at
+the real `xyzfs/users/<uuid>/home/documents/` location.
+`demo_fm_typing_ux.sh` gained two new real assertions per direct
+instruction ("the harness should have tested for the creation of the
+file"): a real on-disk file-existence check after Enter-submit (not
+just a status message), and a real jail-escape attempt (30 levels of
+`../` typed through the real FILE field, aimed at `/tmp`) that gets
+REJECTED with a real error status and produces no file anywhere
+outside xyzfs - 13/13 PASS. `102.agy-txt`'s own harness needed one more
+fix beyond the shared logic: its `button.sh` never wrote
+`pieces/system/house_root.txt` at all (editor's own button.sh always
+did), so `resolve_xyzfs_home()` had nothing to resolve against -
+added, now 8/8 PASS there too, including full save+new+load round trip
+against the real xyzfs location.
+
+Two real, narrow races surfaced and fixed while building the NEW
+harness assertions (both in the TEST scripts, not the underlying fix):
+a stale `mode=file_browser`/`field_active=1` state left over from an
+earlier test step caused a later `fm_relay_key` digit-send to be typed
+as a literal character instead of dispatched as a menu command (fixed:
+two real Esc presses to force main_menu first); and `fm_compose_frame
+.c`'s own plain truncate-then-write `fopen(path,"w")` (no write-to-
+temp-then-rename) occasionally produced a torn, momentarily-empty
+`view.txt` read during FM's own `time_reactive` periodic re-compose
+(fixed: poll for real non-empty content, matching this house's own
+established "real synchronization, not a fixed sleep" convention,
+rather than trusting a single blind read).
+
+================================================================================
+save-bug.txt - real bug: SAVE_AS via file-menu's real UI never writes to
+a durable, findable location. Written BEFORE any code changes, per
+direct instruction, so the TPMOS-compliant + this-house's-own-xyzfs-
+compliant fix can be reviewed first. Affects BOTH halves of the
+editor+file-menu pair AND 102.agy-txt (shares the same copied code).
+================================================================================
+
+## 0. The real symptom
+
+User reports: choosing SAVE (Enter on the FILE field, or navigating to
+the SAVE/confirm button) and separately Esc-then-nav-to-SAVE-AS both
+produce no file anywhere findable - unlike TPMOS's own real reference,
+which writes somewhere real and durable. This is REAL - confirmed by
+direct source trace below, not assumed.
+
+Also flagged by the user, and correct: my own newly-added harness
+(demo_fm_typing_ux.sh) never once asserted that a real file landed on
+disk anywhere - it checked `status_line=Command sent` and `mode=
+main_menu`, i.e. that the COMMAND was sent, not that it actually
+PRODUCED anything. Same class of shallow-verification gap as before
+(PITFALL 63) - recorded here honestly, will be fixed once the real fix
+below is implemented and the harness can assert a real file.
+
+--------------------------------------------------------------------------------
+## 1. Root cause, traced to the exact lines (confirmed, not guessed)
+
+`102.editor-📄️00.00/ops/editor_widget_cmds.c` (and the byte-for-byte
+identical copy at `102.agy-txt/ops/agy_widget_cmds.c` - both affected):
+
+```c
+if (strcmp(line, "SAVE") == 0) {
+    ...
+    /* relative paths under project_root */
+    char full[PATH_BUF];
+    if (fp[0] == '/') snprintf(full, sizeof(full), "%s", fp);
+    else snprintf(full, sizeof(full), "%s/%s", project_root, fp);
+    return do_save_to(full);                                    // line 218-222
+}
+if (strncmp(line, "SAVE_AS:", 8) == 0) {
+    const char *p = line + 8;
+    if (!p[0]) { set_status("SAVE_AS", "error", "empty path"); return -1; }
+    return do_save_to(p);                                       // line 224-227, RAW, UNPREFIXED
+}
+```
+
+Plain `SAVE` (re-saving to an already-known path) correctly prefixes a
+relative path with `project_root`. `SAVE_AS:<path>` does NOT - it
+passes whatever file-menu's own FILE field sent, completely
+unprefixed, straight into `do_save_to()`, which just does
+`fopen(path, "w")` (line 166-185) - resolved against the invoking
+process's own CWD.
+
+That CWD is `project_root` (the shell command that runs
+`editor_widget_cmds.+x` always `cd`s into it first, matching the
+established, already-confirmed pattern from PITFALL 62's own
+investigation) - and for a REAL SAVE_AS-capable session, `project_root`
+IS the EPHEMERAL, SESSION-SCOPED directory (`/tmp/.text-editor-xyz-
+editor-<id>` for the app profile, or a `pieces/sessions/<id>` dir for
+others) - the exact directory every project's own launcher `rm -rf`s
+on exit.
+
+So a bare typed filename (e.g. "hi.txt", as used in my own test
+scenarios) DOES get written - `do_save_to()`'s own `set_status(...,
+"ok", ...)` and "Saved N bytes to hi.txt" message are genuinely true
+at the moment they're written - but the file lands directly inside the
+ephemeral session directory, with no `docs/` prefix at all (the user
+was never told they needed to type one), and is destroyed the instant
+the session ends. From the user's real, persistent-storage
+perspective, this is indistinguishable from "never saved anywhere" -
+because functionally, it wasn't.
+
+This is a DIFFERENT bug from PITFALL 62 (the `docs/` symlink nesting
+bug) - PITFALL 62 only ever mattered for a path that ALREADY started
+with `docs/`. This bug is that SAVE_AS never applies ANY prefixing
+convention at all, so even a path that never mentions `docs/`
+(file-menu's own FILE field has no built-in awareness that `docs/` is
+supposed to be the convention - it's a generic, project-agnostic
+widget, it doesn't know any given paired project's own internal
+convention) silently vanishes.
+
+--------------------------------------------------------------------------------
+## 2. What TPMOS's own real reference does (read directly, cited exactly)
+
+`1.TPMOS_c_+rmmp.0103.0001/projects/agy-text-editor/manager/
+agy-text-editor_manager.c`, `save_to_path()` (line 482-503):
+
+```c
+static int save_to_path(const char *rel_path) {
+    if (rel_path[0] == '/' || strstr(rel_path, "projects/") == rel_path) {
+        strncpy(active_file_path, rel_path, sizeof(active_file_path) - 1);
+    } else {
+        snprintf(active_file_path, sizeof(active_file_path), "%s/%s", current_dir, rel_path);
+    }
+    ...
+    snprintf(full_path, sizeof(full_path), "%s/%s", project_root, active_file_path);
+    ...
+    char *op_argv[] = { "file_copy.+x", doc_path, full_path, NULL };
+    run_op("pieces/system/file_ops/+x/file_copy.+x", op_argv);
+    ...
+}
+```
+
+The real pattern: a path starting with `/` (absolute) or with the
+literal prefix `projects/` is used AS-IS; anything else (a bare
+filename) is resolved relative to `current_dir` - the file browser's
+OWN current location (`static char current_dir[MAX_PATH] =
+"projects/agy-text-editor";` at file scope - defaults to the project's
+own root, and changes as the user navigates the real directory
+browser). Every SAVE, whether bare or explicit, is ALWAYS resolved
+against a known, deliberate base directory - never a bare `fopen()`
+against whatever the process's CWD happens to be. `load_from_path()`
+(line 506-528) mirrors this exactly for LOAD.
+
+TPMOS's own convention resolves bare paths relative to the PROJECT's
+own tree (`current_dir`, `project_root`) - it has no separate concept
+of a per-user home directory distinct from the project. That concept
+does exist in THIS house though - see §3.
+
+--------------------------------------------------------------------------------
+## 3. This house's own, ALREADY REAL, ALREADY WORKING xyzfs user-home
+   convention (confirmed live, not aspirational)
+
+`!.xyzos-standards+1.txt` §35.5 documents a real per-user home tree,
+currently used for the runtime process ledger (not yet for saved
+documents - see §4). CONFIRMED LIVE, not just documented:
+
+  - `0.user-pal👤️/00.login-signup/current_login.txt` (real file, real
+    content, checked directly this session):
+    ```
+    current_user_id=asw_a_2131489
+    current_user_uuid=e8bf229a-62d3-4d6f-810e-e2aaf031cd73
+    current_xyzfs=xyzfs/users/e8bf229a-62d3-4d6f-810e-e2aaf031cd73
+    ```
+  - `xyzfs/users/e8bf229a-62d3-4d6f-810e-e2aaf031cd73/home/projects/`
+    ALREADY EXISTS with real (currently empty) subdirectories for
+    `rpg-xyz` and `rtp-xyz` - confirmed via direct `find`. No
+    equivalent dir exists yet for `agy-editor`/`text-editor-xyz`/
+    `agy-txt` - this convention has never been wired for ANY project's
+    actual document-save flow yet, only for the runtime ledger.
+  - The REAL, ALREADY-IMPLEMENTED resolution chain (not something to
+    invent): `&.widgits/file-menu/ops/ledger_append.c`'s own
+    `resolve_ledger_path()` (line ~66-96) does exactly:
+    ```
+    PRISC_PROJECT_ROOT/pieces/system/house_root.txt   -- "where is the house?"
+      -> <house>/0.user-pal👤️/00.login-signup/current_login.txt
+                                                  -- "who am i?" (current_xyzfs)
+        -> <house>/<current_xyzfs>/home/runtime/ledger.txt
+                                                  -- (ledger's own target;
+                                                     a SAVE target would
+                                                     use .../home/projects/
+                                                     <project-id>/ instead)
+    ```
+    This is a real, working, three-hop resolution already proven by
+    the ledger feature - reusable directly for save-path resolution,
+    not a new mechanism to design from scratch.
+
+--------------------------------------------------------------------------------
+## 4. Proposed fix direction (NOT YET IMPLEMENTED - review before proceeding)
+
+Mirror TPMOS's own STRUCTURAL PATTERN (§2) - always resolve against a
+known, deliberate base directory, never a bare CWD-relative `fopen()`
+- but make the DEFAULT base directory this house's own real xyzfs
+user-home project tree (§3) instead of TPMOS's own project-relative
+`current_dir`, since this house already has a real per-user home
+concept TPMOS does not.
+
+Sketch (naming/exact shape open for review, not committed):
+  1. `do_save_to()`/`do_load_from()` (or a shared helper both SAVE_AS
+     and LOAD call) resolve a bare path (no leading `/`) against a new
+     `resolve_xyzfs_save_dir()` - same three-hop chain as
+     `ledger_append.c`'s own `resolve_ledger_path()`, ending at
+     `<house>/<current_xyzfs>/home/projects/<project_id>/` instead of
+     `.../home/runtime/`. `project_id` already exists as a real,
+     available value (`agy-editor`/`agy-txt`, matching each project's
+     own `PRISC_PROJECT_ID`/state.txt convention already in use
+     elsewhere this session).
+  2. A path already starting with `/` (absolute) is used as-is,
+     matching both TPMOS's own convention and this house's own
+     existing `SAVE` handler's own `if (fp[0] == '/')` check - keep
+     this as the deliberate escape hatch, per §37's own "backward
+     compatibility" note in !.xyzos-standards+1.txt.
+  3. `mkdir -p` the resolved target directory before the actual write,
+     since (per §3) most projects' own xyzfs project-home dir does not
+     exist yet - the FIRST real save for a given project should create
+     it, not fail because it's missing.
+  4. Apply the SAME fix to `SAVE`'s own existing `project_root`-
+     prefixing branch too (line 218-222) - once a real xyzfs default
+     exists, plain `SAVE` should also target it for a NEW file (no
+     prior `file_path`), not fall back to the ephemeral session dir
+     either. Re-saving to an already-resolved absolute `file_path`
+     (the common case once a file has been saved once) is unaffected.
+  5. Update the harness: `demo_fm_typing_ux.sh`, `demo_save.sh` should
+     assert a REAL file exists under the NEW real target
+     (`xyzfs/users/<uuid>/home/projects/<project_id>/...`), not just
+     that a status message says "ok" - directly closes the gap named
+     in §0.
+
+OPEN QUESTIONS FOR REVIEW BEFORE IMPLEMENTING (not decided here):
+  - Exact subdirectory shape under `.../home/projects/<project_id>/` -
+    a flat drop, or a `documents/` subfolder, matching how `rpg-xyz`/
+    `rtp-xyz`'s own (currently empty) dirs are structured once they
+    have real content to compare against?
+  - Whether file-menu's own directory browser (`browse_dir`, currently
+    seeded from the paired session's own `session_root` - see
+    `execute_menu_option()` option 3/4 in `fm_menu_input.c`) should
+    ALSO default to this same xyzfs project-home dir instead of the
+    ephemeral session root, so browsing-to-a-file (not just typing a
+    bare name) also naturally lands somewhere durable.
+  - Does `agy-txt`'s own self-contained architecture (no separate
+    file-menu widget, its own `agy_widget_cmds.c`) need this ported
+    identically, or does its own existing `docs/` symlink convention
+    (PITFALL 62) stay as its primary path with xyzfs as a secondary/
+    future concern? Given agy-txt has its own real, working `docs/`
+    durable-storage fix already, this may be lower priority there than
+    for the editor+file-menu pair, which currently has NO durable
+    default at all.
+================================================================================

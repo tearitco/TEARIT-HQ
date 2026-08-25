@@ -1,0 +1,8 @@
+BOX browser_root x=0 y=0 w=1 h=1
+BOX line_0 x=0 y=1 w=1 h=1 text=[H1] Controlled JS Lab
+BOX line_1 x=0 y=2 w=1 h=1 text=This page is the first compatibility seam. Scripts are executed by a dedicated TPMOS op, not by hidden window logic.
+BOX line_2 x=0 y=3 w=1 h=1 text=Use the chrome buttons to increment or reset the counter.
+BOX line_3 x=0 y=4 w=1 h=1 text=- counter_inc
+BOX line_4 x=0 y=5 w=1 h=1 text=- counter_reset
+BOX line_5 x=0 y=6 w=1 h=1 text=link: Return home
+BOX line_6 x=0 y=7 w=1 h=1 text=link: Open the audit page

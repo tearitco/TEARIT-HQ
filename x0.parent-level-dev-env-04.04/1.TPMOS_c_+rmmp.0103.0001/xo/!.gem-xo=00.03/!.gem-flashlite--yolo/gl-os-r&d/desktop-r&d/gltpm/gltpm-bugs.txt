@@ -1,0 +1,34 @@
+# GLTPM Bugs & Regressions Report
+
+## Bug 1: Nav Index Invisibility (gltpm_app) - [FIXED]
+- Resolved by fixing rendering order and indicator logic.
+
+## Bug 2: "Superficial" Map Control - [FIXED]
+- Resolved by ensuring host state sync and correct input routing.
+
+## Bug 3: Map Overlap / Single Row Rendering - [FIXED]
+- Addressed by persistent row tracking in parser and filtering ASCII theater.
+
+## Bug 4: Missing Camera & Xelector Control in Interact Mode
+**Symptom:** WASDERZX keys do not control the camera. Arrow keys do not move the xelector. Camera modes 1-4 do not switch.
+**Investigation:**
+- **Input Routing:** Keys are correctly routed to `projects/fuzz-op-gl/session/history.txt`.
+- **Manager State Update:** `fuzz-op-gl_manager.c` correctly updates its internal `camera_mode`, `cam_pos`, `cam_rot`, and `xelector_pos` when processing input and saves them to `projects/fuzz-op-gl/session/state.txt`.
+- **Host State Parsing (`gltpm_parser.c`)**:
+    - The parser now correctly extracts `camera_mode`, `cam_pos`, `cam_rot`, and `xelector_pos` from the substituted variables (e.g., `${cam_x}`) and populates the `GLTPMScene` struct. This means the scene object has the latest state.
+- **Host Rendering Logic (`gl_desktop.c`)**:
+    - The critical issue was in `sync_gltpm_menu_from_scene()`. This function was *not* copying the camera and xelector states from the parsed `scene` to the `DesktopWindow` struct (`win`). It was only syncing `is_map_control` and `camera_mode` (implicitly).
+    - The rendering function `draw_window()` for `gltpm_app` uses `win->cam_pos`, `win->cam_rot`, etc. Since these were not being updated from the scene, the rendering was stuck with default or stale values.
+- **Root Cause:** A failure in the synchronization layer between the parsed scene data and the window's active state prevented the renderer from using the manager's updated camera and xelector coordinates.
+
+## Fix Plan
+1.  **Sync State to Window (`gl_desktop.c`)**: Update `sync_gltpm_menu_from_scene()` to correctly copy `camera_mode`, `cam_pos`, `cam_rot`, and `xelector_pos` from `win->gltpm_scene` to `win` struct members.
+2.  **Manager State Flushing (`fuzz-op-gl_manager.c`)**: Confirm that `save_manager_state()` is correctly flushing camera and xelector states to `state.txt`. (This appears to be handled correctly from previous steps).
+3.  **Testing**: Verify WASD/Arrows control camera/xelector, and 1-4 keys switch camera modes.
+
+## Verification
+- Confirm camera movement with WASD, QE, ZX keys.
+- Confirm xelector movement with Arrow keys.
+- Confirm camera mode switching with 1, 2, 3, 4 keys.
+- Check `projects/fuzz-op-gl/session/state.txt` for updated camera/xelector values after input.
+- Verify `[KEY]:` feedback in the HUD updates correctly.

@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | npc_01
+META         | type               | npc
+
+METHOD       | on_interact        | projects/op-ed/games/test-game-01/scripts/talk.asm

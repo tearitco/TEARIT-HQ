@@ -1,0 +1,36 @@
+GEM-XO STARTUP STATE FIX
+Date: 2026-06-03
+
+Problem
+- The first rendered gem-xo frame could show stale UI from a previous copied session.
+- Symptoms seen in the frame:
+  - suggestions menu focused on first load
+  - "API key expired" response area before fresh init
+  - context meter showing old usage like 30%
+
+Cause
+- `gem-xo` was cloned from `gem-dev` with runtime artifacts still present.
+- Two file groups mattered:
+  - `projects/gem-xo/manager/gui_state.txt`
+  - transient files under `projects/gem-xo/state/`
+- The parser can render from `gui_state.txt` before the manager finishes its first clean write.
+- The manager was also preserving old `context.json`, so the context meter reused prior conversation state after startup.
+
+Fix
+1. Reset the tracked `manager/gui_state.txt` to a clean default.
+2. On manager startup, truncate the transient runtime files:
+   - `history.txt`
+   - `cli_buffers.txt`
+   - `projects/gem-xo/manager/gui_state.txt`
+   - `projects/gem-xo/state/context.json`
+   - `projects/gem-xo/state/prompt.json`
+   - `projects/gem-xo/state/llm_response.json`
+   - `projects/gem-xo/state/last_response.txt`
+   - `projects/gem-xo/state/curl_debug.log`
+   - `projects/gem-xo/state/args.tmp`
+   - remove `projects/gem-xo/state/function_call.tmp`
+
+Expected result
+- First gem-xo frame should start from the clean "Ready for input" state.
+- Suggestions should stay hidden until `*` completion mode is actually triggered.
+- Context percentage should start at `0%` for a new session.

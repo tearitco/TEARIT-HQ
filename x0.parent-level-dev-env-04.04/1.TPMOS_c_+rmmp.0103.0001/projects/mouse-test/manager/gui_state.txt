@@ -1,0 +1,4 @@
+app_title=Mouse Test
+mouse_x=53
+mouse_y=33
+mouse_btn=51

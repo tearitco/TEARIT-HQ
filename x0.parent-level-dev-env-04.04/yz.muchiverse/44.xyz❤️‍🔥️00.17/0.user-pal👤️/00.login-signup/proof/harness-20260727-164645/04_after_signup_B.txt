@@ -1,0 +1,24 @@
++============================================================+
+|  U S E R - P A L                                           |
++============================================================+
+|                                                            |
+|  Logged in as: uloginB_1642538                             |
+|  uuid: bab202a0-4e0e-4aad-8519-b30fe1c7bdc9                |
+|  xyzfs: xyzfs/users/bab202a0-4e0e-4aad-8519-b30fe1c7bdc9   |
+|                                                            |
+|  Enter a user ID (and display name, if new), then          |
+|  choose Create Account or Log In below.                    |
+|                                                            |
+|  Account created - logged in as uloginB_1642538.           |
+|                                                            |
++============================================================+
+
+| [ ] 1. User ID: [uloginB_1642538]                                        |
+| [ ] 2. Display Name (new accounts only): [LoginHarnessB]                                        |
+[>] 3. [Create Account]
+[ ] 4. [Log In]
+[ ] 5. [Log Out]
+ (Ctrl+C to quit)
+
++=========================================================+
+Nav > _

@@ -1,0 +1,56 @@
+# Wraith Alpha Toolbar Bugfix Comparison
+Date: 2026-06-06
+
+Historical note:
+- this is a pre-rollback comparison doc
+- the target registry model below is still useful, but it should not be read as
+  the currently active Wraith Alpha runtime
+- current live baseline: `Terminal` launch, `-` minimize, and `x` close are
+  working again, but toolbar restore is still the unresolved step
+
+Goal:
+Compare the current Wraith Alpha window/toolbar work against the proven `fuzz-op`
+dynamic menu pattern so the next fix stays manager-owned and projection-driven.
+
+What `fuzz-op` does well:
+- The manager owns canonical state.
+- The manager resolves the dynamic list of actions.
+- The parser only renders a projection from `gui_state.txt`.
+- Buttons are generated from manager-published markup, not hardcoded in layout.
+- The render layer does not decide which methods or items exist.
+
+Relevant `fuzz-op` pattern:
+- `active_target_id` is manager-owned state.
+- `piece_methods` is manager-published markup.
+- `write_gui_state()` writes the projection for the parser.
+- `KEY_PRESSED` goes to manager history, then manager resolves the action list.
+- The layout is thin: it renders `${piece_methods}` and nothing more.
+
+What Wraith Alpha is doing now:
+- The desktop launches empty, which is correct.
+- `Terminal` opens as a bootstrap project, which is correct for now.
+- The toolbar is still only partially projected.
+- The current toolbar logic is still anchored to one terminal bootstrap instance.
+- `Terminal #1` is a proof of restore behavior, not the final registry model.
+
+What is still wrong:
+- The toolbar is not yet a true manager-owned registry of all open/minimized windows.
+- Restore entries are still effectively special-cased around terminal bootstrap behavior.
+- The layout has been reduced to consume projected toolbar markup, but the manager is still only projecting a single terminal-shaped instance model.
+
+Comparison conclusion:
+- `fuzz-op` proves the right shape is: manager owns the dynamic list, parser renders the projection.
+- Wraith Alpha should stop treating toolbar entries as terminal-specific layout elements.
+- The next fix should move from a single bootstrap terminal slot to a real manager-owned window registry.
+- That registry should project all open and minimized instances, with the parser rendering only the resulting markup.
+
+Recommended next implementation step:
+1. Add a manager-side window registry structure.
+2. Store each open/minimized instance there with id, title, open/minimized flags, and restore action.
+3. Project the registry into `desktop_toolbar_markup`.
+4. Keep the parser as a dumb renderer of that projected markup.
+
+Current working assumption:
+- `Terminal` remains the bootstrap launcher.
+- The final toolbar must support multiple minimized windows and restore targets.
+- No further layout hardcoding should be added for instance entries.

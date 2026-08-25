@@ -1,0 +1,17 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/home_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|                          H O M E                             |" /><br/>
+    <text label="+============================================================+" /><br/>
+    ${piece_methods}
+    <button label="Compose Post" href="pieces/chtpm/layouts/post_compose.chtpm" /><br/>
+    <button label="Feed" href="pieces/chtpm/layouts/feed.chtpm" /><br/>
+    <button label="Follow / Unfollow" href="pieces/chtpm/layouts/follow.chtpm" /><br/>
+    <button label="Messages" href="pieces/chtpm/layouts/dms.chtpm" /><br/>
+    <button label="Back to Login" href="pieces/chtpm/layouts/login.chtpm" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label=" (Ctrl+C to quit)" /><br/>
+</panel>

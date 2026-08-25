@@ -1,0 +1,9 @@
+game_id=aomorai-editor-001
+turn=1
+turn_order_index=0
+victory_condition=
+map_scale=
+combat_resolution=
+treasury=50
+city_count=1
+game_state=playing

@@ -1,0 +1,77 @@
+# 046.gemma-cli-agent🤖️+1 — ARCH DOC (read me first, I read me too)
+
+## How I was built (IMPORTANT)
+I DID NOT write my own src/agent.c from a template. I built myself through
+the builder loop: the scaffolding (ops/, rag/, harness/, this doc) was laid
+down by the supervisor, and then GEMMA (me) authored src/agent.c step by
+step — one small spec at a time, writing real files, compiling, reading the
+errors, fixing — until the harness passes. The builder loop (builder/run.sh)
+is the "birth" that any future arm can reuse: spec → gemma authors → compile
+feedback → iterate.
+
+## What this is
+A **simple, standalone CLI coding agent** that rivals the opencode/Claude/Codex
+feel but runs on **gemma3:270m over the LAN** — no big LLM required. It is the
+"other arm" of the pal agent: deterministic tool pipeline + small-model
+reasoning + a RAG memory so gemma can "see" a codebase bigger than its context.
+
+Ground rule (stolen from 045): **gemma never writes code**. It routes intent
+(deterministic keyword match) and reasons in tiny windows over RAG-retrieved
+snippets. The tools do the real work. That's what makes 270m viable.
+
+## The self-hosting trick (dogfood)
+This agent's own codebase IS its test target. The harness proves:
+  read → understand → edit → run → document — on THIS source tree.
+If the agent can navigate itself, it can navigate any small C codebase.
+
+## Layout
+  ARCH-DOC.txt        this file (the agent reads it to understand itself)
+  src/agent.c         the REPL: prompt → route → tool → result (→ gemma comment)
+  ops/                borrowed, proven, project-agnostic tool ops:
+                        connect_op, json_parser, list_dir, edit_file,
+                        search_in_files, cmd_exec
+  rag/                RAG memory (the new brain part):
+                        build_index.c  scan tree → inverted index (word→file:line)
+                        rag_search.c   query → top-N snippets (auto-compacting)
+                        compact.c      index too big → gemma summarizes → shrink
+  memory/             index + compacted summaries (generated, never committed)
+  harness/k3-cli.sh   K3-style proof: feeds stdin commands, asserts output,
+                      no "TOOL:" hallucination, results deterministic.
+
+## Agent loop (what the harness drives)
+  1. read a line from stdin (the human / harness types it)
+  2. detect_tool(line) — deterministic keyword table (same idea as 045's
+     gemma_strategy): read|edit|write|search|run|list|rag|ask
+  3. execute tool → capture result (tools are the ground truth, no AI)
+  4. print "[result] ..." then optionally ask gemma to comment on it
+  5. ask → no tool keyword → send the line + RAG context to gemma via LAN
+     ollama (http://10.0.0.144:11434, model gemma3:270m), print the reply
+
+## Tool grammar (the contract, keep stable)
+  read <path>                    → src: read_file via file_ops-style op
+  edit <file> replace <a> with <b>
+  write <file> containing <text>
+  search <needle> [dir]          → RAG-backed grep (index first)
+  run <cmd>                      → cmd_exec (+x), cwd = agent root
+  list [dir]                     → list_dir
+  rag <query>                    → build/refresh index, top-N snippets
+  ask <question>                 → gemma chat over LAN with RAG context
+  document <file>                → gemma writes a doc block for it (adjacent goal)
+
+## K3 convention (stolen from 045's test-harn-same)
+The harness asserts, per scenario:
+  - tool fired deterministically (no LLM involved in the decision)
+  - result rendered after the triggering input
+  - NO "TOOL:" hallucination text in any gemma reply (the 270m copy-paste bug)
+  - file truth: the edited/created file on disk actually changed
+
+## LAN gemma call (borrowed from 045 send_message/connect_op)
+  request  -> connect_op → http://10.0.0.144:11434/api/chat (ollama)
+  response -> json_parser message.content
+  timeout  -> treat as "gemma down": tools still work, ask returns BUSY
+
+## Rules (locked)
+  - this box orchestrates; gemma computes on the LAN Mac (10.0.0.144)
+  - tools never fake results; a real file on disk is the only truth
+  - RAG index stays in memory/ (generated); source is the truth
+  - keep it simple: no feature creep; fix bottlenecks as the harness finds them

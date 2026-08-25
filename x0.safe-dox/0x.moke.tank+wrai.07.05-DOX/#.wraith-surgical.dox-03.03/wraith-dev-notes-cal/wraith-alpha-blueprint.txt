@@ -1,0 +1,441 @@
+# WRAITH-ALPHA BLUEPRINT
+Date: 2026-06-07
+
+Purpose:
+This document defines the intended architecture for Wraith Alpha going forward.
+It is written for future agents. It describes what Wraith Alpha is trying to
+be, what it is not trying to be, and how to judge whether a change is aligned.
+
+Status:
+- Manager-owned registry projection is now the canonical contract.
+- Terminal launch, repeated minimize/restore, and close are proven live through the parser-owned activation path.
+- The current presenter supports one active open window at a time plus many minimized restore targets from the registry.
+- Full multi-window tiling remains future work, but the registry and action ownership seams are now aligned with that future model.
+
+Source of truth:
+- `scaffold-blueprints/tpmos-ascii-doc-0.txt`
+- `scaffold-blueprints/desktop-glos-chtpmgl-doc-0.txt`
+- `projects/wraith-alpha/wraith-std.txt`
+- `projects/wraith-alpha/wraith-mod.txt`
+
+Explicit exclusion:
+- do not derive Wraith Alpha behavior from the failed `wraith-pm` architecture
+- `wraith-pm` docs are historical failure context, not design authority
+
+## 1. Core Identity
+Wraith Alpha is a desktop-oriented ASCII shell built on TPMOS-style file-driven
+input, state, and render reactivity.
+
+It is not:
+- a hardcoded terminal demo
+- a recursive parser host
+- a fake desktop that only looks open
+- a mouse-dependent project
+
+Wraith Alpha should feel like a real desktop runtime:
+- there is a desktop shell
+- there are windows or projects that can open onto that desktop
+- there is canonical state for focus, selection, and lifecycle
+- the visible frame is generated from state, not invented directly in the UI
+
+## 2. Architectural Rules
+
+### 2.1 One Owner Per Responsibility
+- the manager owns canonical desktop/window state and lifecycle mutation
+- the parser owns live composition and the visible frame
+- the renderer displays the current frame
+- the keyboard/input layer only captures and writes events
+
+### 2.2 State Before Paint
+All visible behavior must come from state that is written first and rendered
+afterward.
+
+Required flow:
+1. user input is captured into history
+2. manager reads history
+3. manager mutates canonical state
+4. manager writes state atomically
+5. manager emits a frame-change pulse
+6. parser reloads live state
+7. parser composes the frame
+8. parser writes the current frame
+9. renderer displays it
+
+### 2.3 Data-Driven Desktop
+The desktop must be built from state, registry, and layout data.
+
+That means:
+- do not hardcode a terminal widget directly into the layout as the only truth
+- do not make the desktop depend on one fixed open window
+- do not encode launch behavior only as static markup
+
+Target:
+Wraith Alpha should boot empty by default.
+If a terminal is present, it must be present because the desktop state,
+registry, or dock launch logic says so, not because the layout secretly bakes
+it in.
+
+### 2.4 Honest Visibility
+Keyboard debug output stays visible while the system is still being hardened.
+That debug output is a proof tool, not a final UI feature.
+
+The presence of debug labels should never be used to justify a broken desktop.
+The proof is still whether the state and visible frame agree.
+
+### 2.5 Accessible Index Targets
+Every interactable surface element should be addressable by a stable index or
+jump target once the desktop registry exists.
+
+This includes:
+- windows
+- launcher items
+- collapsible controls
+- nested `+` / `-` style expand-collapse regions
+- any item that can be focused, opened, or toggled from the keyboard
+
+Intent:
+- the user should be able to jump to items without relying only on linear nav
+- indices should remain deterministic across redraws when state is unchanged
+- dynamic/collapsible content should renumber in a predictable way when opened
+  or closed
+- the index model should feel like the existing `+-demo` style dynamic submenu
+  behavior, not a one-off accessibility overlay
+- overflow content should expose keyboard-accessible scroll thumb controls with
+  visible nav brackets, so `^` / `v` scrolling can be jumped to by index just
+  like any other interactable target
+
+Implementation rule:
+- stable indexing belongs with desktop/window state and layout projection
+- the parser should render index labels from canonical state
+- the manager should own the source order and open/closed structure
+- do not bolt indexing onto the UI after the fact if it changes focus behavior
+- this is a keyboard accessibility feature, not a cosmetic label system
+- the ability to jump directly to numbered targets is one of the core selling
+  points of Wraith Alpha
+
+### 2.6 ASCII-First Presentation
+Wraith Alpha should present a real desktop look in ASCII first, not a flat menu.
+
+The intended visual direction is closer to a framed desktop view:
+- window chrome
+- top-left window indices for focus targeting
+- inline control indices adjacent to the title bar
+- top-right window controls such as `[-]`, `[o]`, `[x]`
+- nested desktop surfaces with their own indexed controls
+- a taskbar or launcher strip that reflects canonical open windows
+- a launcher entry such as `Terminal` for opening a project instance
+
+This is not just decoration.
+The ASCII desktop is the canonical presentation layer that future agents can
+inspect, verify, and convert downstream.
+
+Stable interaction contract:
+- `-` is the terminal/window collapse or minimize action in the chrome
+- `x` is the terminal/window close or quit action in the chrome
+- mouse clicks on those controls must invoke the same canonical actions as the
+  keyboard path
+- mouse movement may later update x/y position for hover or hit-testing, but
+  that is a presentation/input detail and does not change the action contract
+
+Long-term intent:
+- the ASCII frame becomes the source view
+- a later converter can translate that frame into RGB data
+- a GL presenter or HDMI-style ingestion path can consume the same view
+- the visual shape should remain consistent between ASCII and RGB/GL output
+
+## 3. Current Baseline
+Wraith Alpha currently has a working keyboard/nav proof.
+
+Current baseline expectations:
+- arrow keys move the selector
+- manager state updates correctly
+- parser debug remains visible during hardening
+- the shell remains minimal until the desktop layer is added
+
+This baseline must be preserved while the desktop work begins.
+
+## 4. Short Term Goals
+Short term means the next implementation slice.
+
+Goal 1:
+Build a real desktop composition layer for Wraith Alpha.
+
+Intent:
+- the shell should become a desktop surface, not just a menu
+- the desktop should be rendered from canonical state
+- the parser should continue showing the existing proof/debug fields
+- the desktop should visually resemble a framed GUI with indexed chrome
+
+Goal 2:
+Introduce desktop/window state in the manager.
+
+Intent:
+- represent what is open
+- represent what is focused
+- represent what is selected
+- represent how the desktop should look when rendered
+
+Goal 3:
+Make `Terminal` appear through state-driven dock launch logic.
+
+Intent:
+- this is a convenience for the dev phase, but the desktop should still boot
+  empty until the dock opens a project
+- it must not be hardcoded as a layout-only hack
+- the dock should launch `Terminal` through the standard project path
+- `Terminal` is the first project target, not a permanent boot fixture
+
+Goal 4:
+Keep keyboard proof intact.
+
+Intent:
+- arrow navigation should continue to work while the desktop layer is added
+- debug output should stay visible until the functionality is hardened
+- the new desktop code must not obscure whether input still works
+
+## 5. Mid Term Goals
+Mid term means the first real desktop lifecycle pass.
+
+Goal 1:
+Establish a canonical window registry.
+
+Intent:
+- each open project/window has a stable identity
+- open/closed state is explicit
+- focus is explicit
+- ordering or z-order is explicit if needed
+
+Goal 2:
+Make launch behavior intentional.
+
+Intent:
+- the desktop can open projects from state or registry data
+- the launcher surface should be a real decision point
+- opening a window should not depend on one-off hardcoded branches
+
+Goal 3:
+Separate desktop shell behavior from window behavior.
+
+Intent:
+- desktop-level commands should not be confused with in-window commands
+- the launcher should not be treated as a permanent background object
+- a project window should behave like a peer desktop object
+
+Goal 4:
+Add a durable way to verify user-visible truth.
+
+Intent:
+- current frame must remain the visible source of truth
+- session and audit files are useful, but they are not the screen
+- future agents should be able to tell when the visible frame is stale
+
+Goal 5:
+Add accessible index-jump navigation for all interactable desktop elements.
+
+Intent:
+- windows, launcher entries, and collapsible controls all receive jumpable
+  indices
+- expanded/collapsed structures maintain predictable numbering behavior
+- index navigation works as part of the desktop model, not as a separate hack
+- the feature should be visible and testable while the desktop registry matures
+- keyboard users must be able to use those indices as direct navigation targets
+- the accessibility model should serve both linear nav and jump-to-item nav
+- the launcher surface should itself be indexable and keyboard-openable
+
+Priority note:
+- this should come after the basic desktop/window registry exists
+- it should come before mouse is treated as a primary interaction path
+- it should not wait until the very end, because index assignment affects the
+  shape of the desktop model itself
+
+Goal 6:
+Preserve an ASCII-first desktop that can later be converted to RGB/GL.
+
+Intent:
+- the desktop view should eventually resemble a real framed GUI, not a bare list
+- ASCII remains the canonical debug and development view
+- a future RGB presenter should render the same frame structure without
+  inventing a second UI model
+- future GL or HDMI output should ingest the same canonical desktop frame
+
+## 6. Long Term Goals
+Long term means the full Wraith desktop runtime.
+
+Goal 1:
+Make Wraith behave like a complete desktop environment.
+
+Intent:
+- multiple windows
+- focus changes
+- collapse, maximize/restore, quit, and reopen behavior
+- project launch from desktop controls
+- predictable desktop state after every action
+
+Goal 2:
+Add mouse and context-menu interactions after the desktop model is stable.
+
+Intent:
+- mouse is a capability, not a prerequisite
+- right-click/context menu should be a desktop action, not a hack
+- mouse behavior should not destabilize keyboard or gesture behavior
+
+Goal 3:
+Support richer project and window workflows.
+
+Intent:
+- terminal is just one project/window type
+- other projects should open the same way
+- the desktop should become the container for multiple live project surfaces
+
+Goal 4:
+Allow future blank-start or restored-start modes if desired.
+
+Intent:
+- the current terminal launch path is a development convenience, but the desktop still boots empty
+- it should remain a choice, not a permanent law
+- future startup modes should be data-driven, not hardcoded
+
+## 7. Non-Goals
+Do not do these unless a new document explicitly changes the plan:
+- do not rebuild the failed `wraith-pm` architecture
+- do not make the manager act like a second parser
+- do not hardcode the terminal as the desktop's permanent content
+- do not remove keyboard debug before the system is hardened
+- do not depend on mouse support before desktop state is correct
+- do not treat audit files as proof of what the user sees
+
+## 8. Working Definitions
+
+### Desktop
+The top-level shell surface that owns global state, launch entry points, and
+window arrangement.
+
+### Window
+A project surface that can be opened, focused, collapsed, resized, and
+closed independently.
+
+### Registry
+The canonical source of what windows exist and how they are represented.
+
+### Launcher
+The user-facing route for opening a project/window from the desktop.
+
+### Default Terminal
+A convenience window that may open at boot during development, but must be
+introduced by state/registry logic rather than layout hardcoding.
+
+### Visible Frame
+The actual rendered frame the user sees.
+
+## 9. Acceptance Criteria for Future Changes
+A future change is aligned with Wraith Alpha if it satisfies all of these:
+- it follows TPMOS-style file-driven state and render flow
+- it preserves the current keyboard/nav proof while the desktop grows
+- it keeps canonical state in the manager and rendering in the parser
+- it avoids hardcoding terminal launch into the UI as a permanent boot rule
+- it adds desktop capability without reintroducing Wraith-PM style split-brain
+- it is treated as provisional until running code and user approval confirm it
+
+If a change violates any of those, it is not Wraith Alpha architecture.
+
+---
+If it's not in a file, it's a guess.
+7. Launch Contract Clarification
+- A project is a project regardless of whether it is opened by default, launched from a menu, or opened from a context window.
+- Boot convenience is not project identity. `Terminal` or any other project may be launched at startup without becoming a special-case type.
+- The launch transport remains standard TPMOS launch semantics. A context window or launcher panel inside Wraith Alpha may emit launch commands, but it should not create a separate app-launch system.
+- Default-open behavior is a policy choice for the current boot state only. It does not change how the project is identified, stored, or launched.
+- Future agents should treat any built-in Wraith launcher UI as a normal command surface that issues project launches, not as a parallel runtime model.
+- `Terminal` is itself a launchable project target in the toolbar.
+- Selecting `Terminal` should open a terminal project instance using the normal launch path.
+- Launching `Terminal` again is allowed and should create another terminal instance if the runtime supports it.
+- Terminal is therefore a normal project surface, not a privileged launcher mode.
+
+8. Project Model Clarification
+- There is no special `wraith-projects` category in the final model.
+- Everything visible in the launcher/toolbar is a project.
+- `Terminal` is one project among many, and may itself launch other projects using the standard launch path.
+- The desktop boots empty by default; opening a project is a dock/launcher action, not a boot rule.
+- Future launcher surfaces should enumerate projects directly, not project-group categories.
+- The model should stay recursive: launching `Terminal` from `Terminal` is allowed if the runtime supports it, just like launching any other project from a project surface.
+
+9. Lower Toolbar Contract
+- The lower toolbar is the indexed project strip.
+- `Terminal` appears there as a normal indexed project target with no proc number.
+- Each click on `Terminal` launches a new proc-numbered terminal instance.
+- Minimized projects appear there as proc-numbered restore targets using the same strip and the same indexing rules.
+- The strip is shared for launch targets and restore targets; it is not a separate `wraith-projects` area.
+- There is no unindexed `Start` filler in the dock; only real targets appear there.
+- Keyboard index navigation should work across the full strip so a user can jump to `Terminal`, restore a minimized project instance, or launch any other project from the same surface.
+- Proc numbering is part of the visible restore model, so a minimized terminal should come back as the exact numbered instance the user minimized.
+- If a window has more content than fits in its viewport, the scroll thumb itself
+  becomes an indexed control with nav brackets, so the user can keyboard-jump to
+  `^` / `v` thumb actions instead of relying on pointer-only scrolling.
+
+10. Debug Placement Contract
+- Debug and proof lines belong outside the desktop surface, not inside the desktop chrome.
+- During hardening, keep the keyboard/index proof visible, but render it below the desktop frame so it does not confuse the desktop model itself.
+- Once the desktop is stable, debug output can be silenced or reduced without changing the desktop contract.
+
+11. Desktop Dock Contract
+- The taskbar / instance strip belongs to the desktop, not to the window chrome and not to the debug area.
+- Option A is the intended visual model: desktop chrome and window body at the top, shared dock beneath them, debug below the full desktop surface.
+- The dock is where launch targets and minimized instances live.
+- The dock should remain keyboard-indexable and should not be treated as a separate project category.
+
+12. Terminal Project Transition
+- `Terminal` is a real project with its own layout, not a permanent auto-open special case.
+- The desktop shell boots empty first, then launches `Terminal` as a normal project instance through the standard launch path.
+- Auto-open terminal behavior is not part of the intended steady state.
+- Future terminal instances should be proc-numbered and managed like any other project instance.
+
+13. Fullscreen Contract
+- Fullscreen mode hides the desktop surface and shows only the active window.
+- When fullscreen is active, the dock/taskbar and other desktop chrome are not visible.
+- Fullscreen is a presentation and focus mode, not a second desktop model.
+- Half-screen remains the default resizable window state.
+- Mouse support later may allow manual resizing of half-screen windows, but that is separate from fullscreen behavior.
+## Window Registry Contract
+- The toolbar/instance strip must be manager-owned and dynamic.
+- Each open or minimized window/project instance gets its own projected entry.
+- The parser renders the projected registry; it does not invent the list or its ordering.
+- `Terminal #1` is a bootstrap proof, not the final design.
+- The final model must support multiple minimized windows and multiple restore targets without hardcoding terminal-only behavior.
+
+### Current June 2026 Contract
+- The registry is the source of truth even though the current presenter shows one active open window.
+- Launching `Terminal` opens a new proc-numbered instance and minimizes any currently open instance into the restore strip.
+- Restoring a minimized instance reopens that exact proc-numbered instance and minimizes any currently open instance into the restore strip.
+- Open windows do not remain duplicated in the taskbar.
+- Taskbar restore targets are projected manager-side into fixed parser-visible slots.
+- Parser activation is the only path that should fire titlebar/taskbar actions.
+- Manager raw digit/arrow handling is debug-state support only; raw Enter must not execute desktop chrome actions.
+- Visible refresh remains on `pieces/display/frame_changed.txt`.
+
+### Working Standard Comparisons
+- Compare Wraith changes against `+-demo` when reasoning about parser-native focus and activation.
+- Compare against `fuzz-op` when reasoning about manager-projected dynamic UI data.
+- Compare against `gem-dev` when reasoning about semantic command routing and avoiding index/action drift.
+- Future agents should prefer the simplest existing standard that matches the current feature slice before inventing a new desktop pattern.
+
+### Flexible Registry Schema
+- Treat this as a provisional traits-style schema, not a permanent fixed API.
+- Registry item fields:
+  - `id`
+  - `title`
+  - `project_id`
+  - `kind`
+  - `open`
+  - `minimized`
+  - `visible`
+  - `restore_action`
+  - `close_action`
+  - `launch_action`
+- Optional fields may be added later if they prove useful, such as:
+  - `proc_no`
+  - `instance_title`
+  - `group_id`
+  - `z_index`
+  - `dock_label`
+- If any field turns out to be wrong, keep the projection interface stable and adjust the manager-side source of truth.
+- The parser should continue to render projected markup, not infer registry semantics.

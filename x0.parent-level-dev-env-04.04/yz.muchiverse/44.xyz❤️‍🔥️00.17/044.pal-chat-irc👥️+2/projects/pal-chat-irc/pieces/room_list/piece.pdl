@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | room_list
+META         | version            | 1.0
+
+METHOD       | Join / Create Room      | JOIN_ROOM

@@ -1,0 +1,7 @@
+run_queue.sh pass — 20260813-090304
+plans found: 2
+
+PASS  navigate-to-model.plan
+FAIL  retry-demo.plan (see proof/queue_retry-demo_20260813-090304.log)
+
+totals: 1 pass, 1 fail

@@ -1,0 +1,27 @@
+<window title="CHTMGL Test" width="800" height="600" color="#1a1a1a">
+    <header label="CHTMGL Advanced UI System" height="50" color="#333333" />
+    
+    <panel x="20" y="70" width="200" height="500" color="#2a2a2a">
+        <text label="Controls" x="10" y="10" color="#ffffff" />
+        <button id="btn1" label="Test Button" x="10" y="40" width="180" height="30" onClick="EVENT:test_click" />
+        <checkbox id="chk1" label="Enable Feature" x="10" y="80" checked="true" />
+        <slider id="sld1" label="Volume" x="10" y="120" width="180" height="20" min="0" max="100" value="50" />
+        <slider id="sld_vert" label="Vertical" x="10" y="160" width="20" height="150" min="0" max="100" value="75" />
+    </panel>
+
+    <panel x="240" y="70" width="540" height="500" color="#2a2a2a">
+        <text label="Visuals & Media" x="10" y="10" color="#ffffff" />
+        <img id="img1" src="missingno.png" x="10" y="40" width="100" height="100" />
+        <video id="vid1" src="gowon.mp3" x="120" y="40" width="200" height="150" autoplay="true" loop="true" />
+        
+        <canvas id="main_canvas" x="10" y="200" width="520" height="280" view_mode="3d">
+            <text label="3D Preview" x="5" y="5" color="#aaaaaa" />
+        </canvas>
+    </panel>
+
+    <menu label="Options" x="20" y="20" width="100" height="30">
+        <menuitem label="Save" onClick="EVENT:save" />
+        <menuitem label="Load" onClick="EVENT:load" />
+        <menuitem label="Exit" onClick="exit_app" />
+    </menu>
+</window>

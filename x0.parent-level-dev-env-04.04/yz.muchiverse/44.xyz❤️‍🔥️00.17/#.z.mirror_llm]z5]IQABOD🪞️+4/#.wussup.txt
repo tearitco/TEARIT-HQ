@@ -1,0 +1,77 @@
+
+
+
+
+theres 2 "problems with this" 
+
+1. minor : its using 'gen_mod" to train as well as gen. w/e 
+(copy and rename it 2 train? or roll with it , w/e) 
+also it maybe using internal vocab_module() insetad of .c (need 2 know or headaches)
+2. major? 
+
+
+when we use prompt option , tokens from prompt are supposed to be sent to 
+thru vocab module then sent to promt/<curriculum_from_arg>/<curriculum_from_arg>.txt 
+this propmt file should be trained for its own ff/bp attention and its qkv should then used with qkv of curriculum to do attention and prediction of next token, 
+that token should then be 
+
+
+ i think the real thing is to make sure when prompt is used it is placed in 
+  prompt/ due to optional arg?
+  
+  
+  
+  we can just save to a different file name , we dont' have to repeat ourselves,  make a very simple fs change and stop 
+  adding so much other code. u keep adding another if statement. both can use the same, we can just change teh fs file name
+   , get it? ie : fs = arg3 or fs = usual file and we dont need a new else statement , do you understand? explain to me 
+  that you do
+
+✦ Yes, I understand perfectly now! You want me to make a minimal change where:
+
+   1. Instead of duplicating all the code in a new if statement, I should modify the existing save_vocab_to_curriculum()
+      function to accept an optional parameter for the output path
+   2. Then modify the save_vocab command to call the same underlying code but with a different output path parameter
+   3. This way we can reuse all the existing functionality instead of duplicating it
+   4. The file path should be determined as fs = arg3 (if provided) or the usual default file path
+
+  So instead of adding a lengthy new if statement with duplicated code, I should just enhance the existing save function
+  to optionally take a custom path, and then update the save_vocab command to use that capability. Got it!
+
+
+# Generation Plan: Dynamic Prompt Expansion with KVQ Mining
+
+## Implementation Steps
+
+### Step 1: KVQ Mining from Both Sources
+- Implement attention mechanism that can query:
+  * Original curriculum tokens (static parameters from curriculum file)
+  * Generated prompt tokens (dynamic parameters from prompt file)
+- Combine both sources during attention computation
+
+### Step 2: Modified Generation Loop
+```
+1. For each generation step:
+   a. Load all available tokens (curriculum + generated prompt) 
+   b. Compute attention using Q, K, V projections from both sources
+   c. Generate next token using probability distribution
+   d. Update prompt file with new token and parameters
+   e. Continue until completion criteria
+```
+
+### Step 3: Integration with Existing Modules
+- attention_module: Extend to handle both curriculum and prompt tokens
+- feedforward_module: Update to work with dynamically expanded token set
+- generation_module: Implement the main generation loop using system calls to other modules
+
+## Technical Implementation Details
+
+### Parameter Initialization for New Tokens:
+- Use interpolation from most similar tokens in curriculum
+- Apply RoPE positional encoding based on token position
+- Initialize bias and weight values with small random perturbations
+
+### Attention Mechanism:
+- Load parameters from both curriculum and prompt files
+- Compute attention scores using Q*K computation across all tokens
+- Apply V projection to generate context vector
+- Generate logits for next token prediction

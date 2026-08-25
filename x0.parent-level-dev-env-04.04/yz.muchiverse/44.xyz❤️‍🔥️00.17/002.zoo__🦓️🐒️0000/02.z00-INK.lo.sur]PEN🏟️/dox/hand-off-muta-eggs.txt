@@ -1,0 +1,205 @@
+HAND-OFF: bringing xlector + pet import/export from z0.zoo_0000 back
+into mutaclsym (or egg-pals, or any other project in this family)
+========================================================================
+
+Read this FIRST if picking up "should we bring the xlector/import-
+export standard into mutaclsym" - it exists so that conversation
+doesn't have to start from scratch. Full technical detail lives in
+this same dox/ directory: xlector-standard.md and
+pet-import-export-standard.md. This file is the decision-oriented
+summary + exact pointers.
+
+WHY THIS PROJECT EXISTS AT ALL
+------------------------------------------------------------------------
+Built directly in response to: "let's make a new project... to explore
+the import export of the pets, and even xelector stuff without
+bothering with mutaclsym so yes, lets do that now." The whole point was
+proving both mechanisms out in isolation, cheaply, before deciding
+whether/how to touch mutaclsym's own working game. Both mechanisms are
+now built AND live-verified in z0.zoo_0000 - see the two dox files
+above for exact verification detail. Nothing in mutaclsym itself has
+been touched by this work.
+
+THE ONE THING YOU MUST KNOW BEFORE TOUCHING MUTACLSYM
+------------------------------------------------------------------------
+Earlier the SAME session this project was built in, mutaclsym ALREADY
+got an "interact mode"/xlector-cursor feature - built BEFORE the user
+redirected research to real fuzz-op specifically ("look at fuzz op").
+That earlier mutaclsym build and THIS project's xlector standard are
+GENUINELY DIFFERENT DESIGNS, not the same feature under two names:
+
+  mutaclsym's own interact_mode (dox/04-chtpm-parser-research-and-
+  interact-mode.txt in the mutaclsym project):
+    - xlector cursor moves FREE/UNCOLLIDED (a "look around" cursor,
+      matching CDDA's own examine-at-range convention)
+    - Enter EXAMINES whatever's at the cursor (read-only - logs a
+      message, does not transfer control)
+    - No active_target_id switching - the hero is always the hero,
+      the cursor is always just a cursor
+
+  z0.zoo_0000's real xlector standard (this project, dox/
+  xlector-standard.md):
+    - xlector moves through the SAME collision-checked mover as any
+      other piece - no free-roam special case
+    - Enter TRANSFERS CONTROL to whatever's at the cursor (if that
+      piece's own piece.pdl allows it) - active_target_id actually
+      switches, and the menu changes to the newly-controlled piece's
+      own methods
+    - There is no default "hero" at all - xlector-or-whatever-it's-
+      controlling is the only concept
+
+These are not compatible without a real decision. Do NOT assume
+"upgrading" mutaclsym's interact_mode to the real standard is a drop-in
+change - it would remove the free-roam examine-only cursor mutaclsym
+currently has and replace it with actual control-transfer, which is a
+real gameplay design decision (does mutaclsym want the player to be
+able to "become" a monster or NPC via xlector? Today's answer is
+implicitly no - monsters/items have no piece.pdl METHOD tables of their
+own yet, so nothing would even BE selectable without further content
+work first).
+
+WHAT TO DO IF THE DECISION IS "YES, BRING IT IN"
+------------------------------------------------------------------------
+1. Read xlector-standard.md's own "Porting this into mutaclsym" section
+   first - it has the concrete file-by-file list.
+2. ops/xlector_input.c and ops/move_entity.c are the two files to
+   adapt. Both are already close to mutaclsym's own path conventions
+   (pieces/world_01/<map>/<piece_id>/state.txt matches exactly) - the
+   real work is deciding what REPLACES mutaclsym's existing
+   interact_mode-driven code paths in ops/choice.c and
+   ops/move_player.c, since those currently own the free-roam-cursor
+   behavior that would need to either coexist with or be replaced by
+   real active-target switching.
+3. Give mutaclsym's hero (and anything else meant to be selectable) the
+   digit_accum/action_cursor/last_key/select-METHOD-row shape this
+   standard depends on - hero already has the first three from the
+   interact_mode work; would need a real `select` METHOD row and a
+   decision about what plays the "xlector" role (a brand new piece, or
+   repurposing the existing xlector_pos_x/xlector_pos_y fields already
+   in hero/state.txt).
+4. Decide what mutaclsym content actually becomes selectable via
+   piece.pdl's `select` row - right now NOTHING in mutaclsym has one,
+   since monsters/items don't have piece.pdl files at all yet. This is
+   real content work, not just wiring.
+
+PET IMPORT/EXPORT -> MUTACLSYM'S OWN ITEM MODEL
+------------------------------------------------------------------------
+mutaclsym doesn't have "pets" - it has items (rename()-based inventory,
+see mutaclsym's own dox/00-HANDOFF.md inventory writeup) and monsters
+(pure AI, no inventory-like transfer concept at all). The REAL
+cross-game vision this connects to is mutaclsym's own
+platform-vision.txt §2 (cross-game item/pet portability) - that
+document proposed the exact trade_envelope.txt shape z0.zoo_0000's
+pet_export.c/pet_import.c now actually implement. Porting this to
+mutaclsym would mean:
+
+  - A mutaclsym item export op: read an inventory item's own fields
+    (item_id/name/category/glyph/weight/power - see mutaclsym's own
+    items.txt registry format), write a trade_envelope.txt with
+    kind=item, rename() the item's own directory out of
+    hero/inventory/ into the SAME shared exchange/ this project uses.
+  - A mutaclsym item import op: read the envelope, translate into a
+    real item instance mutaclsym's own registries recognize (or a
+    generic "imported item" category if the species/category doesn't
+    map cleanly - a real design question platform-vision.txt itself
+    flagged as "not just plumbing").
+
+IMPORTANT PATH DETAIL: the shared exchange/ directory this project
+resolves to (by default) is ONE LEVEL ABOVE z0.zoo_0000's own project
+root, i.e. z0.egg-pals+plats-8.00/exchange/ - a sibling of z0.zoo_0000
+and (eventually) egg-pals proper, since both live under that same
+parent folder. mutaclsym lives at a DIFFERENT parent
+(y0.mutaclsym+05.00/), so its own default "one level up" would resolve
+to a DIFFERENT, wrong exchange/ location. Any mutaclsym-side export/
+import op MUST set PRISC_EXCHANGE_ROOT explicitly (both pet_export.c
+and pet_import.c already support this override - see either file's own
+resolve_exchange_root()) to the SAME absolute path
+(.../z0.egg-pals+plats-8.00/exchange/) for cross-game transfer to
+actually reach the same shared location. This is the one concrete gotcha
+most likely to bite silently (two projects both writing/reading their
+own DIFFERENT default "../exchange" and never actually seeing each
+other's pets) if this gets ported without reading this paragraph.
+
+GL LEVEL MIRROR - NOW REAL, MUTACLSYM-STYLE (added after this doc was
+first written)
+------------------------------------------------------------------------
+zoo_0000 now has its own `ops/compose_rgb_frame.c` + `system/
+gl_mirror.c`, a direct port of mutaclsym's own pair of files -
+auto-launched by `./button.sh run` exactly like mutaclsym's own
+`gl_mirror`, showing the SAME map+pets+xlector the ASCII view shows
+(flat colored blocks, not sprites). If porting THIS specific piece
+back into mutaclsym: there's nothing to port, mutaclsym already has
+the original this was copied from - this note exists just so a future
+reader doesn't assume zoo_0000 is ASCII-only when checking what's been
+built here.
+
+REAL BUG FOUND AND FIXED IN THE GL MIRROR (worth knowing before trusting
+any new fgets()-based map reader in this family)
+------------------------------------------------------------------------
+`ops/compose_rgb_frame.c`'s map.txt reader originally declared
+`char grid[VIEWPORT_H][VIEWPORT_W + 1]` and read each line via
+`fgets(grid[rows], VIEWPORT_W + 1, mf)` - exactly matching the line's
+real width (20 chars) plus 1. That is the bug: fgets reads AT MOST
+(size-1) bytes, so with size=21 it reads exactly the 20 real
+characters and stops - there is no room left in that same call to also
+consume the line's trailing '\n'. The NEXT fgets call then reads just
+that lone leftover '\n' as its own "line" (an empty string). Net
+effect: every real map row was immediately followed by a phantom empty
+row, live-verified via a real screenshot showing exactly alternating
+real-content/solid-black stripes, and only the first HALF of the map's
+real rows were ever actually read before the row-count budget
+(VIEWPORT_H) ran out. Fixed by reading into an oversized scratch buffer
+(`VIEWPORT_W + 8`, real headroom past the actual line width) so fgets
+always has room to consume the newline in the same call - matching
+ops/compose_frame.c's own `MAX_MAP_W`-sized (generously oversized, not
+exactly-fitted) read, which is why the ASCII view never had this bug.
+**The actual rule to remember**: when sizing an fgets() buffer for a
+known-width text format, never size it to EXACTLY (line_width + 1) -
+always leave real headroom for the newline, even though "+1 for the
+newline" sounds like enough at first glance. Check any other
+fgets(buf, EXACT_WIDTH+1, ...) call written for this project on sight.
+
+ASCII<->EMOJI DISPLAY TOGGLE - PORTED (terminal + GL both)
+------------------------------------------------------------------------
+Same 'e'/'E' toggle mutaclsym has, live-verified in both renderers.
+**Directly answers "can you just copy the ops mutaclsym uses" - no,
+because emoji-mode isn't its own op there**: it's logic added inside
+ops/choice.c (the input dispatcher) and ops/compose_frame.c/
+compose_rgb_frame.c (the renderers) - there was never a standalone
+`emoji_toggle.c` file to copy. Ported the PATTERN, not a file, into
+zoo_0000's own equivalent ops (ops/xlector_input.c gets the toggle
+branch; ops/compose_frame.c gets ASCII substitution; ops/
+compose_rgb_frame.c gets the real pixel-blit GL version). `emoji_mode`
+field lives on xlector's own state.txt (the one piece that always
+exists), not on any specific pet - a global display preference.
+zoo_0000's own content has NO glyph collisions (unlike mutaclsym's real
+'=', '~', '%' cases), so the ASCII side didn't need full identity-based
+resolution the way mutaclsym's did - a plain per-character/per-species
+table was enough. The GL side DOES reuse the exact real pipeline
+(FreeType-based emoji_gen_atlas.c/emoji_xtract.c, genuinely standalone
+tools, not mutaclsym-specific) to pre-generate real 16x16 pixel assets
+under pieces/registry/emoji_assets/{wall,floor,dog,cat,xlector}/
+voxels_16.csv - 5 assets total, far fewer than mutaclsym's 39 since
+zoo_0000's whole content set is tiny. 🎯 for the xlector cursor
+deliberately reuses real fuzz-op's own 'X'->🎯 mapping, same as
+mutaclsym's own choice.
+
+WHAT'S STILL NOT BUILT ANYWHERE, EVEN IN ZOO_0000
+------------------------------------------------------------------------
+The actual drag-and-drop GESTURE (a pet visibly leaving one game's
+window and landing in another's, or on the real OS desktop). A
+per-pet shaped desktop window WAS built and live-verified in zoo_0000
+(`system/zoo_window.c`, a direct port of egg-pals' own
+`system/egg_window.c`) - real sprite rendering, real drag-to-grid-snap,
+real bidirectional position sync with the terminal - but per direct
+user correction, that is NOT the direction: per-pet dragging is being
+built independently in a separate project, `z0.egg-pals+13`, which
+will talk to zoo_0000 through "a shared data file" (not yet designed -
+see pet-import-export-standard.md §3 for the full split and the most
+likely real building blocks, `exchange/`/`trade_envelope.txt`, once
+that design happens). `zoo_window.c` is kept in zoo_0000 only as a
+manually-invokable reference (`./button.sh window <piece_id>`), not
+launched by `run` and not the intended cross-game mechanism.
+The file-level export/import this hand-off is about is real and
+working; the visual layer on top of it is not, in ANY project in this
+family yet.

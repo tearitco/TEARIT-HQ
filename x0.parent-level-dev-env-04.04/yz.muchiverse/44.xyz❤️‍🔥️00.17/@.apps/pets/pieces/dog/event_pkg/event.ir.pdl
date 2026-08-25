@@ -1,0 +1,8 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | dog
+STATE        | source               | event-ez
+NODE         | id=1 type=behavior     | text=Chase
+NODE         | id=2 type=target       | text=cat
+NODE         | id=3 type=speed        | text=fast
+NODE         | id=4 type=ret          | text=

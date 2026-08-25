@@ -1,0 +1,24 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/game_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|              R T P - X Y Z   E D I T O R                   |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <row label="PROJECT: rtp-xyz | GAME: My Quest | MAP: map_start" /><br/>
+    <text label="+============================================================+" /><br/>
+    <row label=" GAME MAP:" /><br/>
+    <button label="Control Map" onClick="INTERACT" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="+============================================================+" /><br/>
+    <row label="MAPS: map_start* building_01_gf building_01_f2 map_02 map_gen_01" /><br/>
+    <row label="GLYPHS: 🧱 🟫 🚪 🌿 🟤 ⬜ 🪨 💧 🌊 🌲 🪟 ⬇️ ⬆️" /><br/>
+    <text label="+============================================================+" /><br/>
+    <button label="New" onClick="KEY:3001" /><button label="Open" onClick="KEY:3002" /><button label="Save" onClick="KEY:3003" /><button label="Cut" onClick="KEY:3004" /><button label="Copy" onClick="KEY:3005" /><button label="Paste" onClick="KEY:3006" /><button label="Delete" onClick="KEY:3007" /><br/>
+    <button label="Map Mode" onClick="KEY:3008" /><button label="Event Mode" onClick="KEY:3009" /><button label="Layer 1" onClick="KEY:3010" /><button label="Layer 2" onClick="KEY:3011" /><button label="Layer 3" onClick="KEY:3012" /><br/>
+    <button label="Database" onClick="KEY:3013" /><button label="Plugins" onClick="KEY:3014" /><button label="Resources" onClick="KEY:3015" /><button label="CharGen" onClick="KEY:3016" /><br/>
+    <text label="+============================================================+" /><br/>
+    <button label="Playtest" href="pieces/chtpm/layouts/game.chtpm" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label=" [enter] Control Map  [esc, while controlling] Back to Menu  (Ctrl+C to quit)" /><br/>
+</panel>

@@ -1,0 +1,10 @@
+pos_x=19
+pos_y=8
+hp=20
+hunger=200
+thirst=200
+stamina=100
+map_id=map_start
+interact_mode=0
+emoji_mode=0
+camera_mode=0

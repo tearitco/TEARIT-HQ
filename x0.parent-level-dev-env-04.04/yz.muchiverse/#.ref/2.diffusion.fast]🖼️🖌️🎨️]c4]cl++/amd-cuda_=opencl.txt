@@ -1,0 +1,12 @@
+♊️
+No, CUDA is not directly compatible with AMD GPUs. CUDA is a proprietary computing platform and programming model developed by NVIDIA for their own GPUs. AMD GPUs use OpenCL or ROCm, their own open standard for parallel programming. 
+While CUDA cannot be directly used with AMD GPUs, there are some approaches to run CUDA applications on AMD hardware: 
+OpenCL and ROCm:
+AMD GPUs primarily support OpenCL and ROCm for parallel computing. Some applications may offer support for both CUDA and OpenCL/ROCm, allowing you to use AMD GPUs with compatible software. 
+HIP:
+The Heterogeneous Interface for Portability (HIP) is a C++ API that allows for the creation of code that can run on both AMD and NVIDIA GPUs. It can be used to port CUDA applications to AMD GPUs. 
+ZLUDA:
+A project called ZLUDA allows CUDA code to run on AMD GPUs by providing an implementation that is compatible with the CUDA API. 
+SCALE:
+The SCALE toolchain from Spectral Compute allows CUDA applications to be compiled directly for AMD GPUs, offering a potentially simpler way to run CUDA code on AMD hardware. 
+♊️

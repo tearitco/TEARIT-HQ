@@ -1,0 +1,3 @@
+module_path=system/prisc+x pal/main_loop_chtpm.pal
+project_id=avatar-creation
+active_target_id=avatars

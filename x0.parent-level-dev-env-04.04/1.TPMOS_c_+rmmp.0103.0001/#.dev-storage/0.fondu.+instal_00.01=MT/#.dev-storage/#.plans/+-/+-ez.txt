@@ -1,0 +1,28 @@
+# Plan: Demonstrate Static Expand/Collapse in CHTPM Layouts
+
+## Objective
+To showcase basic expand/collapse UI functionality using only static elements within CHTPM layout files, without requiring a dynamic manager module. This will establish a foundation for more complex UI features later.
+
+## Steps
+
+1.  **Research CHTPM Parser for Static Expand/Collapse:**
+    *   Investigate the CHTPM parser's capabilities for rendering UI elements that simulate expand/collapse behavior. This includes analyzing existing `.chtpm` files for patterns related to nested structures, static markers (e.g., `[+]`/`[-]`), or specific tags that indicate collapsible sections.
+    *   Focus on how the parser handles static content within layout files that can be toggled for visibility.
+
+2.  **Define `.chtpm` Static Expand/Collapse Syntax:**
+    *   Based on research, propose a simple syntax within `.chtpm` files for defining static collapsible sections. This might involve custom tags or attributes that the CHTPM parser can recognize.
+    *   Example syntax: `<collapsible title="Section Title"> Static Content </collapsible>` or similar.
+
+3.  **Create a Static Demo Layout:**
+    *   Create a new layout file: `projects/+-demo/layouts/+-demo.chtpm`.
+    *   This file will contain a static structure demonstrating expand/collapse. It will *not* rely on dynamic data from `+-demo_manager.c` for its initial functionality.
+    *   Use the defined static syntax to create nested sections with titles and content that can be visually expanded or collapsed.
+
+4.  **Test Static Rendering:**
+    *   Ensure the CHTPM parser can load and render the `+-demo.chtpm` layout file.
+    *   Visually verify that the static expand/collapse elements appear correctly and behave as expected (e.g., toggling visibility when interacted with, if interaction is simulated or handled by the parser).
+
+5.  **Document Findings:**
+    *   Summarize the discovered capabilities of the CHTPM parser for static UI elements.
+    *   Document the new syntax or patterns used for static expand/collapse.
+    *   Note any limitations of this static approach.

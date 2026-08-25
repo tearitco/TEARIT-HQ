@@ -1,0 +1,23 @@
+ai_state=IDLE
+sys_msg=Switched to iqabod-test
+input_buffer=
+current_model_id=iqabod-test
+provider_kind=iqabod
+current_api_url=../#.z.mirror_llm]z5]IQABOD🪞️+4
+current_model_name=curriculum/guess_the_word/guess_the_word.txt
+curl_pid=2525355
+thinking_start=1784676685
+pending_tool_name=
+pending_tool_args=
+                "path": "jul-21.txt"
+              }
+                "content": "help me!",
+                "path": "new-file.txt"
+              }
+                "path": "test-file.txt",
+                "content": ""
+              }
+                "path": "dirtest"
+              }
+detected_tool=none
+selected_strategy=A

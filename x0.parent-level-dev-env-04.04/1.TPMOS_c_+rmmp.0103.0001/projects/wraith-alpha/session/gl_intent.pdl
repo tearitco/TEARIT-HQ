@@ -1,0 +1,23 @@
+SECTION | KEY | VALUE
+ROW_KIND | taskbar_row | x=0 y=26 w=96 h=1 padding_left=0 padding_right=1 gap=1 align=left baseline=grid selector_slot_w=3 nav_num_w=3 label_wrap=bracketed
+ROW_KIND | debug_row | x=0 y=28 w=44 h=1 padding_left=0 padding_right=1 gap=1 align=left baseline=grid selector_slot_w=3 nav_num_w=3 label_wrap=bracketed
+ROW_KIND | summary_row | x=0 y=27 w=96 h=1 padding_left=0 padding_right=0 gap=3 align=left baseline=grid truncation=field_preserve
+
+ROW | id=taskbar_row | kind=taskbar_row | x=0 y=26 w=96 h=1
+ITEM | row=taskbar_row | id=taskbar_prefix | slot=1 | x=0 w=14 | text=| [ TASKBAR ]
+ITEM | row=taskbar_row | id=taskbar_terminal | slot=2 | x=14 w=18 | nav=1 | selector=[ ] | text=[Terminal]
+ITEM | row=taskbar_row | id=taskbar_windows | slot=3 | x=34 w=61 | nav_group=taskbar_windows | text=[window items...]
+
+ROW | id=debug_row | kind=debug_row | x=0 y=28 w=44 h=1
+ITEM | row=debug_row | id=view_prefix | slot=1 | x=0 w=6 | text=View:
+ITEM | row=debug_row | id=view_ascii | slot=2 | x=6 w=18 | nav=2 | selector=[ ] | text=[ASCII]
+ITEM | row=debug_row | id=view_gl | slot=3 | x=24 w=14 | nav=3 | selector=[>] | text=[GL*]
+
+ROW | id=summary_row | kind=summary_row | x=0 y=27 w=96 h=1
+ITEM | row=summary_row | id=summary_desktop | slot=1 | text=Desktop: ${desktop_mode}
+ITEM | row=summary_row | id=summary_open | slot=2 | text=Open: ${desktop_window_count}
+ITEM | row=summary_row | id=summary_focus | slot=3 | text=Focus: ${desktop_focused_window_title}
+ITEM | row=summary_row | id=summary_mode | slot=4 | text=Mode: ${desktop_active_window_mode}
+
+NOTES | intent | This file defines arrangement intent, not current live export.
+NOTES | compare_order | intent -> semantic scene -> render receipt -> final frame

@@ -1,0 +1,85 @@
+/* dashboard.css — db-hq styling, load-bearing subset only (see
+   au11-hq/HQML-DESIGN+PLANS.md's own "start small" note). Ported from
+   au11-hq/rpg-maker-database.html's .tab-bar / .sidebar / .settings-block
+   / .block-title / .stat-bar rules, minus anything needing flex/grid
+   (out of scope until a section that needs it gets built).
+
+   REAL, DELIBERATE 2026-08-16: dark theme, direct instruction ("yes"
+   after being asked to confirm this as a real design change, not a
+   bug fix - db-hq's own light theme was intentional/matching the real
+   rpg-maker-database.html mockup until this point). Real palette
+   matches the same dark convention already used across open-hai/
+   chat-hai/khtpm_entity_menu_render.c/taskbar-settings this same
+   session (#141414 base / #1a1a1a-#2a2a2a panels / #eeeeee-#cccccc
+   text) - not a new, unrelated color scheme. */
+
+window {
+  background-color: #141414;
+  font-family: Ubuntu;
+  font-size: 10px;
+}
+
+.tab-bar {
+  background-color: #1a1a1a;
+  border-color: #444444;
+  border: 1px solid #444444;
+}
+
+.tab {
+  background-color: #1a1a1a;
+  color: #aaaaaa;
+  border: 1px solid #444444;
+  font-size: 9px;
+}
+
+.tab.active {
+  background-color: #2a2a2a;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.sidebar {
+  background-color: #181818;
+  border: 1px solid #333333;
+}
+
+.data-item {
+  color: #cccccc;
+  font-size: 10px;
+}
+
+.data-item.active {
+  background-color: #2f5f8f;
+  color: #ffffff;
+}
+
+.settings-block {
+  background-color: #1c1c1c;
+  border: 1px solid #333333;
+  border-width: 1;
+}
+
+.block-title {
+  background-color: #2a2a2a;
+  color: #eeeeee;
+  font-weight: bold;
+  font-size: 9px;
+  position: absolute;
+  top: -8px;
+  left: 10px;
+}
+
+.event-name {
+  color: #dddddd;
+  font-size: 12px;
+}
+
+.btn-primary {
+  background-color: #4a9eff;
+  color: #ffffff;
+  font-size: 10px;
+}
+
+button:hover {
+  background-color: #2a7eff;
+}

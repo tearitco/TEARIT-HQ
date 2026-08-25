@@ -1,0 +1,306 @@
+REMAINING ASCII PROJECT BUGS AFTER CHTPM PARSER REFACTOR
+Date: 2026-05-10
+File name follows request spelling: remaning-bugs-m10.txt
+
+Scope:
+- p2p-net: user/peer connection data no longer showing.
+- mp3-store: MP3 entries no longer showing.
+- lsr: project does not open.
+
+Working theory:
+These are likely related. The refactor made chtpm_parser.c more modular, but
+some older ASCII projects still depend on legacy conventions:
+- display variables written to project manager/state.txt
+- dynamic buttons generated from piece.pdl METHOD rows
+- project.pdl missing entry_layout
+- module paths relative to project roots instead of repository root
+- old layouts using <layout> or relative <module> instead of modern
+  <panel><module>projects/<id>/manager/+x/... </module>
+
+The likely all-at-once fix is a parser compatibility layer, not three isolated
+project rewrites.
+
+
+1. Shared Parser Regression Pattern
+-----------------------------------
+
+File:
+- pieces/chtpm/plugins/chtpm_parser.c
+
+Relevant current behavior:
+- load_vars() loads:
+  - pieces/apps/player_app/state.txt
+  - pieces/apps/player_app/manager/state.txt
+  - clock state
+  - project/app gui_state.txt if present
+  - generic view.txt paths
+- It does NOT generically load:
+  - projects/<project_id>/manager/state.txt
+- It does NOT appear to rebuild ${piece_methods} from:
+  - projects/<project_id>/pieces/<active_target_id>/piece.pdl
+- parse_chtm() launches modules only when a layout contains a <module> tag.
+
+Why this matters:
+- p2p-net and lsr have important UI variables in projects/<id>/manager/state.txt.
+- mp3-store generates METHOD rows in projects/mp3-store/pieces/mp3_player/piece.pdl,
+  but the layout renders ${piece_methods}.
+- p2p-net's current layout has no <module>, so its manager will not be launched
+  by parse_chtm().
+- lsr has old relative module paths and no project.pdl entry_layout.
+
+Proposed parser-level compatibility fix:
+1. After project_id is resolved from current_layout, load:
+   projects/<project_id>/manager/state.txt
+   before gui_state.txt or immediately after it. Prefer project-local state over
+   stale player_app state.
+2. Restore generic PDL method injection:
+   - active target = active_target_id, active_piece, or fallback piece id
+   - read projects/<project_id>/pieces/<active>/piece.pdl
+   - convert METHOD rows to <button label="..." onClick="..." /><br/>
+   - set_var("piece_methods", generated_buttons)
+3. Normalize module paths:
+   - If current_layout is under projects/<id>/layouts/ and <module> is relative
+     such as manager/lsr_manager.+x, resolve against projects/<id>/.
+   - If relative path lacks +x but projects/<id>/manager/+x/<name> exists, probe
+     that path.
+4. In resolve_project_op, improve fallback layout probing:
+   - projects/%s/layouts/%s.chtpm
+   - projects/%s/layouts/main.chtpm
+   - projects/%s/layouts/%s_main.chtpm
+   - projects/%s/layouts/lsr_main.chtpm only as a temporary project-specific
+     stopgap if no generic pattern is accepted.
+
+
+2. p2p-net: Connection/User Data Not Showing
+--------------------------------------------
+
+Observed files:
+- projects/p2p-net/project.pdl has entry_layout:
+  projects/p2p-net/layouts/p2p-net.chtpm
+- projects/p2p-net/layouts/p2p-net.chtpm uses:
+  ${wallet_address}
+  ${wallet_selector}
+  ${subnet_list}
+  ${inbox_list}
+  ${message_preview}
+  ${peer_count}
+  ${peer_list}
+  ${p2p_response}
+- projects/p2p-net/manager/state.txt currently only contains:
+  wallet_address
+  current_subnet
+  last_response
+  wallet_selector
+- projects/p2p-net/pieces/network/peer_list.txt has structured peer data:
+  peer_count=6
+  peer_0_wallet=...
+  peer_0_ip=...
+  etc.
+- projects/p2p-net/pieces/network/peers.txt has real connected/active peer rows.
+- p2p-net layout contains <layout>, but no <module> and no <interact>.
+
+Most likely causes:
+1. p2p_manager is not launched from the p2p-net layout.
+   - parse_chtm() only launches modules from <module>.
+   - p2p-net.chtpm currently lacks a module tag.
+2. The manager writes full display variables to:
+   pieces/apps/player_app/manager/state.txt
+   but writes only a subset to:
+   projects/p2p-net/manager/state.txt
+3. The parser does not load peer_list.txt as display variables and does not
+   synthesize ${peer_list} from peer_0_* rows.
+4. resolve_project_op overwrites player_app/manager/state.txt with generic
+   project_id/current_map/active_target_id/current_z/last_key, which can erase
+   p2p_manager's richer display vars if the manager is not running or not
+   rewriting immediately.
+
+Best fix:
+- Modernize p2p-net.chtpm minimally:
+  - wrap in <panel time_reactive="true">
+  - add <module>projects/p2p-net/manager/+x/p2p_manager.+x</module>
+  - add <interact src="projects/p2p-net/history.txt" />
+- Update p2p_manager.write_state() to write the full display state to
+  projects/p2p-net/manager/state.txt, not only player_app/manager/state.txt.
+- Generate a human-readable peer_list string from peers.txt or peer_list.txt:
+  e.g. "abc123@127.0.0.1:8001 active | ..."
+  and write:
+  peer_count=6
+  peer_list=<formatted list>
+- Parser compatibility alternative:
+  - load project manager/state.txt
+  - optionally support loading key/value files referenced by layout or a
+    conventional projects/<id>/pieces/**/view_state.txt, but this is broader.
+
+Recommended first patch:
+- Add <module> and <interact> to p2p-net.chtpm.
+- Expand p2p_manager.write_state() to write all variables required by layout to
+  projects/p2p-net/manager/state.txt.
+
+
+3. mp3-store: MP3 Entries Not Showing
+-------------------------------------
+
+Observed files:
+- projects/mp3-store/layouts/mp3-store.chtpm contains:
+  ${current_mp3}
+  ${player_status}
+  ${piece_methods}
+- mp3-store_manager scans:
+  projects/mp3-store/pieces/user-config.txt
+  current value: #.mp3-library/
+- #.mp3-library contains MP3 files:
+  rb&u.book1.page76-v1.0.mp3
+  rb&u.book0.page33-v1.0.mp3
+- projects/mp3-store/pieces/mp3_player/piece.pdl currently contains METHOD rows
+  for those MP3s.
+- projects/mp3-store/manager/state.txt currently only contains:
+  project_id=mp3-store
+  active_target_id=mp3_player
+  last_key=None
+- write_app_context() writes current_mp3/player_status to:
+  pieces/apps/player_app/state.txt
+  but not to projects/mp3-store/manager/state.txt.
+
+Most likely causes:
+1. Parser no longer generates ${piece_methods} from the active piece.pdl METHOD
+   rows, or the generation path does not run for this modern layout.
+2. current_mp3 and player_status are written to player_app/state.txt, while the
+   project-local state file lacks them.
+3. If player_app state is overwritten by another project launch, mp3-store loses
+   its display variables.
+
+Best fix:
+- Parser-level:
+  - restore METHOD -> piece_methods generation for all project layouts.
+  - parse both pipe format:
+    METHOD | label | command
+    and any existing equals format if present elsewhere.
+- Project-level:
+  - update mp3-store_manager.write_app_context() to also write:
+    current_mp3=<...>
+    player_status=<...>
+    project_id=mp3-store
+    active_target_id=mp3_player
+    last_key=None
+    to projects/mp3-store/manager/state.txt.
+- Optional:
+  - have mp3-store_manager also write a direct mp3_library_buttons variable, but
+    this duplicates the existing piece.pdl method model. Prefer restoring the
+    generic piece_methods pipeline.
+
+Recommended first patch:
+- Implement parser piece_methods restoration, because it may fix MP3 Store and
+  other METHOD-driven projects at once.
+- Then make mp3-store manager write current_mp3/player_status project-locally.
+
+
+4. lsr: Project Does Not Open
+-----------------------------
+
+Observed files:
+- projects/lsr/project.pdl has no META entry_layout.
+- resolve_project_op fallback probes:
+  projects/%s/layouts/%s.chtpm
+  projects/%s/layouts/main.chtpm
+  projects/%s/layouts/quiz.chtpm
+  pieces/apps/%s/layouts/%s.chtpm
+- lsr layouts are:
+  projects/lsr/layouts/lsr_main.chtpm
+  projects/lsr/layouts/lsr_setup.chtpm
+  projects/lsr/layouts/lsr_file.chtpm
+- If no fallback matches, resolve_project_op falls back to:
+  projects/lsr/layouts/lsr.chtpm
+  which does not exist.
+- lsr_main.chtpm has:
+  <module>manager/lsr_manager.+x</module>
+  but the actual executable is:
+  projects/lsr/manager/+x/lsr_manager.+x
+- lsr_manager.c has old relative paths:
+  history_path = pieces/keyboard/history.txt
+  manager_state_path = projects/lsr/manager/state.txt
+  pulse_path = pieces/display/frame_changed.txt
+  layout_path = pieces/display/current_layout.txt
+  It does not resolve project_root from location_kvp.
+
+Most likely causes:
+1. Project resolution never finds the correct layout because project.pdl lacks
+   entry_layout and fallback probing does not include *_main.chtpm.
+2. Even if loaded manually, <module>manager/lsr_manager.+x</module> resolves
+   relative to project_root, not projects/lsr, so the binary path is wrong.
+3. Even if the module launches, lsr_manager uses relative paths from its current
+   working directory and writes to pieces/keyboard/history.txt while most modern
+   project layouts use pieces/apps/player_app/history.txt.
+4. Parser does not load projects/lsr/manager/state.txt, so the dashboard vars
+   may be blank even when the manager state exists.
+
+Best fix:
+- Add to projects/lsr/project.pdl:
+  META | entry_layout | projects/lsr/layouts/lsr_main.chtpm
+- Update lsr_main.chtpm and lsr_file.chtpm:
+  <module>projects/lsr/manager/+x/lsr_manager.+x</module>
+  <interact src="projects/lsr/history.txt" /> or
+  <interact src="pieces/apps/player_app/history.txt" /> consistently.
+- Update lsr_manager.c:
+  - resolve project_root from pieces/locations/location_kvp
+  - build absolute paths from project_root
+  - listen to the same history file declared in the layout
+  - write state to projects/lsr/manager/state.txt
+  - pulse pieces/display/frame_changed.txt with an absolute path
+- Parser compatibility alternative:
+  - resolve relative module paths against the layout's project directory.
+  - load project-local manager/state.txt.
+
+Recommended first patch:
+- Add entry_layout to project.pdl and fix the module path in the layout.
+- Then normalize lsr_manager paths.
+
+
+5. Suggested Fix Order
+----------------------
+
+Phase 1: Parser compatibility fixes likely to fix several projects at once.
+- In load_vars(), after project_id is known, load:
+  projects/<project_id>/manager/state.txt
+- Restore ${piece_methods} generation from active piece.pdl METHOD rows.
+- Add resolve_project_op fallback for projects/%s/layouts/%s_main.chtpm.
+
+Phase 2: Project metadata/layout cleanup.
+- p2p-net: add <module> and <interact>.
+- lsr: add entry_layout and fix <module> path.
+
+Phase 3: Manager state ownership cleanup.
+- p2p-net: write full display state to projects/p2p-net/manager/state.txt.
+- mp3-store: write current_mp3/player_status to projects/mp3-store/manager/state.txt.
+- lsr: resolve project_root and use absolute paths.
+
+Phase 4: Regression checks.
+- Launch p2p-net and confirm wallet, subnet, peer_count, peer_list render.
+- Launch mp3-store and confirm two MP3 buttons render from piece.pdl.
+- Launch lsr from the project selector and confirm lsr_main.chtpm opens.
+- Confirm an unrelated modern project still launches and renders.
+
+
+6. Minimal Patch Set Candidate
+------------------------------
+
+If we want the smallest changes with broad effect:
+
+1. chtpm_parser.c:
+   - load project manager/state.txt
+   - generate piece_methods from active piece.pdl
+
+2. resolve_project_op.c:
+   - add fallback: projects/%s/layouts/%s_main.chtpm
+
+3. projects/lsr/project.pdl:
+   - add entry_layout
+
+4. projects/lsr/layouts/*.chtpm:
+   - replace manager/lsr_manager.+x with
+     projects/lsr/manager/+x/lsr_manager.+x
+
+5. projects/p2p-net/layouts/p2p-net.chtpm:
+   - add module/interact tags.
+
+This should address the shared breakage from the parser refactor while keeping
+project-specific rewrites small.

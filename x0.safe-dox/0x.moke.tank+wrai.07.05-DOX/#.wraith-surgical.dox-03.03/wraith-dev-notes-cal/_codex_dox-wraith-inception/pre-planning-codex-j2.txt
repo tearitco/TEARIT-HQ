@@ -1,0 +1,325 @@
+PRE-PLANNING-CODEX-J2
+wraith-pm alignment note before coding
+
+Purpose:
+This file exists so we can confirm the intent before we start building wraith-pm inside TPMOS.
+
+1. Core understanding
+
+wraith-pm is an ASCII-first project, but "ASCII-first" does not mean plain monochrome text.
+
+The baseline renderer must support:
+
+- colored ASCII
+- colored UI controls
+- colored windows and panels
+- colored CHTMGL layout regions
+- image-to-ASCII rendering
+- video-to-ASCII rendering
+- optional conversion from colored ASCII/scene metadata into RGB graphics frames
+
+This is different from current CHTPM, which mainly produces text frames without a real color model.
+
+This is closer to the intent of CHTMGL, because CHTMGL already has layout tags that carry visual metadata such as color, geometry, panels, windows, canvas, image, video, sliders, and buttons. Even where current code does not fully implement those tags yet, wraith-pm should treat them as part of the starting contract.
+
+2. The real starting point
+
+We are not starting with GL.
+
+We are starting with:
+
+1. CHTMGL layout input.
+2. Wraith-owned CHTMGL parsing.
+3. Colored ASCII frame output.
+4. Image/video-to-colored-ASCII support.
+5. Audit metadata for every frame.
+6. Later conversion of the same frame/scene data into RGB.
+7. Optional GL presenter that displays the RGB frame.
+
+The first usable version should run in CLI and be visually meaningful there.
+
+3. Why color is required from the start
+
+Color is not decoration in this project.
+
+Color is part of the render contract because:
+
+- CHTMGL layouts already describe color intent.
+- colored ASCII makes CLI rendering closer to the future RGB frame.
+- image/video ASCII depends on luminance plus color sampling.
+- AI/debug audits should be able to reason about visual layers, not only characters.
+- the later RGB converter needs shape/color metadata instead of guessing from text.
+- future RGB/HDMI output should consume the same color-aware frame pipeline.
+
+So wraith-pm should not have a "plain ASCII now, color later" phase. Color starts at phase one.
+
+4. Frame model we want
+
+The frame is the source of truth before GL.
+
+Minimum frame layers:
+
+- character layer: what glyph/ASCII cell is shown
+- foreground color layer: RGB/ANSI color for glyphs
+- background color layer: RGB/ANSI color behind glyphs
+- object_id layer: which UI/image/video/object owns the cell
+- style layer: bold, dim, inverse, underline, border style if needed
+- metadata layer: semantic node, action, bounds, source asset
+
+Text snapshot:
+
+session/current_frame.txt
+
+Colored snapshot:
+
+session/current_frame.ansi.txt
+
+Structured cell snapshot:
+
+session/current_frame.cells.txt
+
+RGB snapshot:
+
+session/current_frame.rgb.txt
+
+Audit snapshot:
+
+session/audit_frame.txt
+
+5. Image and video ASCII from the start
+
+Images:
+
+- read an image source from CHTMGL <img> tags
+- sample it down to a target cell rectangle
+- choose glyphs by luminance/detail
+- set foreground/background colors from sampled pixels
+- write cells into the colored ASCII frame
+- preserve source metadata in audit_frame.txt
+
+Videos:
+
+- read video source from CHTMGL <video> tags
+- decode or frame-sample through a standalone op
+- convert each sampled frame to colored ASCII cells
+- update frame_changed.txt or renderer_pulse.txt per video frame
+- keep playback state in files, not hidden memory
+- support pause/play/loop metadata from layout attributes
+
+We can implement videos in stages, but the architecture must include them from day one. The first implementation can use a simple frame-extraction op or placeholder decoder, but the layout/parser/frame contract must already support video nodes.
+
+6. CHTMGL tags we should treat as first-class
+
+Minimum first-pass tags:
+
+- <window>
+- <panel>
+- <header>
+- <menu>
+- <menuitem>
+- <button>
+- <checkbox>
+- <slider>
+- <text>
+- <textfield>
+- <scroller>
+- <canvas>
+- <img>
+- <video>
+
+Important attributes:
+
+- id
+- label
+- title
+- x
+- y
+- width
+- height
+- color
+- bg
+- fg
+- border
+- shape
+- src
+- onClick
+- value
+- min
+- max
+- autoplay
+- loop
+- view_mode
+
+7. TPMOS working rules
+
+We will build this in TPMOS style:
+
+- If it is not in a file, it is a lie.
+- Managers orchestrate.
+- Ops execute.
+- The parser/renderer owns frame output.
+- Projects publish flat gui_state.txt data.
+- Marker files trigger updates.
+- current_frame files are audit artifacts.
+- Standalone ops must be testable from CLI.
+- Avoid hidden memory-only desktop state.
+- Avoid making GL required.
+
+8. Proposed TPMOS project shape
+
+wraith-pm/
+  project.pdl
+  layouts/
+    desktop.chtmgl
+    media_test.chtmgl
+    image_test.chtmgl
+    video_test.chtmgl
+  manager/
+    gui_state.txt
+    projects_cache.txt
+  session/
+    state.txt
+    history.txt
+    input_events.txt
+    current_frame.txt
+    current_frame.ansi.txt
+    current_frame.cells.txt
+    current_frame.rgb.txt
+    audit_frame.txt
+    object_map.txt
+    hit_map.txt
+    frame_changed.txt
+    renderer_pulse.txt
+    frame_history.txt
+  ops/
+    image_to_ascii.c
+    video_frame_to_ascii.c
+    chtmgl_parse.c
+    ascii_to_rgb.c
+  plugins/
+    wraith_pm_host.c
+    wraith_ascii_renderer.c
+    wraith_gl_presenter.c
+
+9. First agenda before coding
+
+Before writing the first implementation, agree on these decisions:
+
+1. Terminal color target:
+   ANSI 24-bit truecolor should be the target if supported, with fallback to 256-color.
+
+2. Cell format:
+   Decide exact line format for current_frame.cells.txt.
+
+3. Image/video dependencies:
+   Decide whether first media ops use stb_image/stb_image_resize, ffmpeg/libav, or external CLI extraction.
+
+4. Layout subset:
+   Decide the exact CHTMGL tags for milestone one.
+
+5. Frame size:
+   Decide default terminal grid size, likely 80x40 or 100x50, and default RGB scale per cell.
+
+6. Mouse mapping:
+   Decide whether hit_map.txt is cell-based first or pixel-based first.
+
+7. GL presenter timing:
+   Decide whether GL presenter waits until after colored ASCII is proven, or whether it is scaffolded early but disabled by default.
+
+10. Phase plan
+
+Phase 1: Contract and skeleton
+
+- create project.pdl
+- create session files
+- define cell frame format
+- define object_map and hit_map format
+- create a minimal desktop.chtmgl
+- render colored ANSI frame from hardcoded scene nodes
+
+Exit criteria:
+
+- CLI shows colored ASCII desktop
+- current_frame.txt and current_frame.ansi.txt are written
+- audit_frame.txt lists the same objects
+
+Phase 2: Wraith CHTMGL parser
+
+- parse window/panel/text/button/slider/img/video tags
+- parse x/y/width/height/color/bg/fg/src/onClick
+- substitute variables from state.txt and gui_state.txt
+- emit scene_tree.txt/object_map.txt
+
+Exit criteria:
+
+- desktop.chtmgl controls the colored ASCII frame
+- no CHTPM parser is needed
+
+Phase 3: Colored ASCII UI renderer
+
+- render windows, panels, borders, buttons, sliders, menus
+- preserve focus and selected states
+- write hit_map.txt
+- support keyboard navigation
+
+Exit criteria:
+
+- usable CLI desktop with colored UI and focus markers
+
+Phase 4: Image ASCII
+
+- implement image_to_ascii op
+- support <img src=...>
+- sample source image into glyph/color cells
+- write image metadata to audit_frame.txt
+
+Exit criteria:
+
+- CHTMGL image layout renders as colored ASCII
+
+Phase 5: Video ASCII
+
+- implement video_frame_to_ascii op
+- support <video src=... autoplay loop>
+- update frame on pulse
+- maintain playback state in files
+
+Exit criteria:
+
+- CHTMGL video node renders changing colored ASCII frames
+
+Phase 6: ASCII/metadata to RGB
+
+- convert colored cells and shape metadata to RGB pixels
+- use layout shapes for graphics, not just font glyphs
+- write current_frame.rgb.txt
+
+Exit criteria:
+
+- the same desktop has ASCII and RGB frame outputs
+
+Phase 7: Optional GL presenter
+
+- read current_frame.rgb.txt or binary RGBA
+- display it in GL as a texture
+- route GL keyboard/mouse to the same input event files
+
+Exit criteria:
+
+- GL shows the frame produced by wraith-pm
+- GL does not own UI truth
+
+11. What we are intentionally avoiding
+
+- no monochrome-only prototype
+- no GL-first prototype
+- no CHTPML dependency for CHTMGL
+- no hidden in-memory-only state
+- no screenshot-based debug path
+- no color guessing after the fact when layout metadata can provide it
+
+12. Intention statement
+
+wraith-pm should begin as a colored ASCII desktop that can render real layout color, UI controls, images, and videos. It should make every frame readable and auditable before any GL window exists.
+
+The later GL path is a presenter for the same RGB data, not a replacement for the CLI. The later RGB/HDMI path is also a presenter for the same RGB data. This is why we start with colored ASCII plus metadata, not plain text.

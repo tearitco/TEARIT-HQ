@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | faucet
+META         | version            | 1.0
+
+METHOD       | Claim Tokens (+10)                     | CLAIM_TOKENS
+METHOD       | Coin Flip (stake 10, double or nothing) | COIN_FLIP

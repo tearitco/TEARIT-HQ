@@ -1,0 +1,13 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/setup_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|                   T A C T I C S - T X T                    |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="+============================================================+" /><br/>
+    ${piece_methods}
+    <text label="+============================================================+" /><br/>
+    <button label="Enter Battle (after Confirm & Start)" href="pieces/chtpm/layouts/main.chtpm" /><br/>
+    <text label=" (Ctrl+C to quit)" /><br/>
+</panel>

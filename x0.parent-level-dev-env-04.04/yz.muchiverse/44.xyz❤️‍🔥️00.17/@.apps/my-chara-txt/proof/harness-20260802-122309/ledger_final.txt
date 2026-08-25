@@ -1,0 +1,16 @@
+2026-08-02T12:23:13|1|plant|wheat:plot_0
+2026-08-02T12:23:14|1|day_end|health:95
+2026-08-02T12:23:16|2|day_end|health:90
+2026-08-02T12:23:18|3|day_end|health:85
+2026-08-02T12:23:19|4|day_end|health:80
+2026-08-02T12:23:21|5|harvest|wheat:50:plot_0
+2026-08-02T12:23:21|5|plant|wheat:plot_0
+2026-08-02T12:23:22|5|day_end|health:75
+2026-08-02T12:23:22|6|day_end|health:70
+2026-08-02T12:23:23|7|day_end|health:65
+2026-08-02T12:23:23|8|day_end|health:60
+2026-08-02T12:23:24|9|mine|silver:1
+2026-08-02T12:23:24|9|mine|silver:1
+2026-08-02T12:23:24|9|mine|gold:1
+2026-08-02T12:23:24|9|mine|silver:1
+2026-08-02T12:23:26|9|mine|gold:1

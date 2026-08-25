@@ -1,0 +1,7 @@
+# spawner_id|map_id|x|y|room_x0|room_y0|room_x1|room_y1
+# Authored 2026-08-20 (todo-muta-0g+-.txt Step 3) - real room read directly from this map's own
+# map.txt, not guessed. Bottom-right room (the one containing the '>' stairs-down transition at
+# 30,11, matching transitions.txt's real entry) - outer wall rectangle: left wall col19, top wall
+# row8, right outer wall col39, bottom outer wall row15. Grave tile placed at (35,13), a corner
+# away from both the door (28,7) and the stairs (30,11).
+zombie_grave_01|map_start|35|13|19|8|39|15

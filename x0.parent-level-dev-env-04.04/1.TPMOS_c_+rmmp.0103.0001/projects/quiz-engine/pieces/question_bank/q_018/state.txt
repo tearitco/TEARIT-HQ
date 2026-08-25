@@ -1,0 +1,5 @@
+name=Dihydroxyacetone phosphate
+formula=(HOCH2)2C(O)OPO3H2
+type=Ketone Phosphate
+groups=C=O
+relevance= Phosphate

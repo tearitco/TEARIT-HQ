@@ -1,0 +1,53 @@
+# PIECECRAFT-3D: Project Roadmap & Summary (M1)
+Date: 2026-05-02
+Status: INITIALIZING GL-OS ALIGNMENT
+
+## 1. Project Soul
+A GL-OS voxel survival experience. Key differentiators:
+- **Sovereign Pieces**: Switch control between different characters (Adam, Eve) using the Xlector pattern.
+- **Genetic Reconstruction**: Entities and blocks are defined by 8x8x8 voxel bitmasks (Artifacts).
+
+## 2. Current State (A28 -> M1)
+- **Manager**: `piececraft-3d_manager.c` handles piece switching (Key '9').
+- **Pieces**: `adam` and `eve` have basic state files.
+- **UI**: Basic CHTPM layout (`main.chtpm`) with placeholder view.
+- **Missing**: WASD movement, voxel rendering, mining/placing mechanics, NPC AI.
+
+## 3. The Plan: Bringing Piececraft to Speed
+
+### Phase 1: Controls & Sovereignty (WASD + Selector)
+- **Action**: Update `piececraft-3d_manager.c` to process 'w','a','s','d'.
+- **Reference**: `projects/fuzz-op-gl/manager/fuzz-op-gl_manager.c` (L648).
+- **Tooling**: Call `pieces/apps/playrm/ops/+x/move_entity.+x` for the `active_piece`.
+- **Selector**: Implement a "Selection Box" (Xlector) that tracks the block the player is looking at.
+
+### Phase 2: GL-OS Transition (Voxel Rendering)
+- **Action**: Create `projects/piececraft-3d/layouts/main.gltpm`.
+- **Artifacts**: Define `artifact.txt` for players and blocks (Grass, Dirt, Stone).
+- **Voxel Engine**: Ensure the GL-OS Host correctly renders the `game_map` using 3D tiles from the registry.
+
+### Phase 3: Minecraft Mechanics (Mining & Placing)
+- **Mining**: Implement `ops/mining.c`. Logic:
+    1. Identify targeted block.
+    2. Remove from map (update `map_01_zX.txt`).
+    3. Add to `pieces/<active_piece>/inventory.txt`.
+- **Placing**: Implement `ops/placing.c`. Logic:
+    1. Check inventory.
+    2. Place block at target location.
+    3. Update map state and trigger pulse.
+
+### Phase 4: NPC AI (The "Zombie" Mirror)
+- **Mirror**: Adapt `pieces/apps/fuzzpet_app/traits/zombie_ai.c`.
+- **Behavior**: Create a `zombie` piece that calculates steps toward the `active_piece` and updates its position in the world map.
+
+### Phase 5: UI & Navigation (Overlay Menu & Mini-Map)
+- **Overlay**: Use a `<panel>` in `main.gltpm` for a side-bar menu (Inventory, Stats, Mode Switch).
+- **Mini-Map**: Implement a 2D ASCII overlay of the current Z-level map in the HUD.
+
+## 4. Technical Nuances
+- **Pulse Trigger**: Always update `pieces/display/frame_changed.txt` after any world modification to ensure the Host re-renders.
+- **Coordinate Sync**: Host camera must sync back to Manager state via `CAMERA_SET` commands in `history.txt`.
+
+---
+"We are pieces in a world we can break."
+Documented by Gemini CLI - 2026-05-02

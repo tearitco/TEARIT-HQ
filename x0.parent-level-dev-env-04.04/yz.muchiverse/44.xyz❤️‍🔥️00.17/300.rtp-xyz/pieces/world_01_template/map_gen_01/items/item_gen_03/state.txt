@@ -1,0 +1,3 @@
+item_id=pointy_stick
+pos_x=59
+pos_y=20

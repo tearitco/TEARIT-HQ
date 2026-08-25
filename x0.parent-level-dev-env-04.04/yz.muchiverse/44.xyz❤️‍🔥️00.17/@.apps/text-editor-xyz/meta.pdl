@@ -1,0 +1,8 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | display_name       | Text Editor XYZ
+META         | version            | 0.1
+META         | description        | Text editor with file-menu widget GL window
+META         | author             | muchi-verse
+META         | category           | Apps
+METHOD       | launch             | RUN

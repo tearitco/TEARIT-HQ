@@ -1,0 +1,36 @@
+1. Banking
+2. Insurance
+3. Real Estate
+4. Automotive
+5. Technology/Computers
+6. Commodities
+7. Aerospace and Defense
+8. Agriculture
+9. Airlines
+10. Apparel and Textiles
+11. Biotechnology
+12. Chemicals
+13. Construction
+14. Consumer Electronics
+15. Consumer Goods
+16. Energy (Oil and Gas)
+17. Entertainment and Media
+18. Food and Beverage
+19. Healthcare
+20. Hospitality
+21. Manufacturing
+22. Mining
+23. Pharmaceuticals
+24. Retail
+25. Telecommunications
+26. Transportation
+27. Utilities
+28. Advertising
+29. Building Materials
+30. Consumer Finance
+31. Financial Services (Non-Banking)
+32. Heavy Machinery
+33. Medical Equipment
+34. Publishing
+35. Semiconductors
+36. Software

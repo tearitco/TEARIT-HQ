@@ -1,0 +1,18 @@
+
+
+
+ok, now we want to pivot. to gl-os. it is a gl only gui based       
+   implimentation meant to be like the tpmos cli version. currently    
+   clicking "1. desktop app" in the gl-os desktop cli does nothing,    
+   but we want it to open a sub layout with a list of demo apps,       
+   apps that will open gl only apps. the first will be "fuzz-op-gl"    
+   , which will be a version of fuzz-op , but it will open in a new
+   gl-os 'virtrual desktop window' (minimizable and closeable like terminal gl window)
+   
+   for now it can look just like fuzz-op in ascii but open in a new virtual window within the 'gl-os' however in the future we are going to render the map  using
+   "tiles" 
+   and add view change, 
+   which will allow changing from 2d to 3d , 
+   and when in 3d will allow changing from '1rst person, 3rd person and freecamera"
+   
+   does this make sense? 

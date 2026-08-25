@@ -1,0 +1,294 @@
+
+
+📆️
+JULY 30 : 
+appreantly wraith emoji_extract function isn't real. however i think were making one in xyzos- text editor etc. so 
+maybe come back and steal it " 
+xyzos : 
+
+📆️
+
+
+______________________________________________________________
+---------]
+
+
+load is stuck. seems it would be easy fix. 
+esp if things were more modular. i spent 2 days brute forcing a fix. 
+
+u need to approach from a diff angle. skip it. 
+
+
+maybe get "play game" to work at least? 
+
+make a default game load at start? etc. how does fuzzop load? wussup? 
+-------------
+
+
+
+    Alternative (one-liner bypass):
+
+     1 powershell -ExecutionPolicy Bypass -File .\button.ps1
+
+
+⚠️noticed : 
+clock daemon no longer works? fuzz-op? copy it from old  <which?> 
+(i haven't seen it in a working version . 
+but its not that hard. heres the prompt : 
+
+there is a feature (as a reusable 'op') we need to add back to fuzz-op that existed in 
+fuzz-op-legacy ; it would
+toggle clock 2 ways for now 'manual or auto'
+<manual is supposed to update only on "xelector moving a piece (not itself)
+or 'piece doing an action ' (not xelector)
+or if user presses "end turn (both xelector and pet should have this method ;
+which will advance the clock by 1 hour)
+lets resarch that, write clock-op-fix.txt ; and i will approve your plan after i read it. 
+======
+then i may look at lsr / editor on desktop)
+
+
+
+
+start moving in 3d but lets see that .
+
+🎮️ want to start optomizing 2 run on lil-win + hdmi
+
+2. bigger font? 
+
+🤏️
+even smaller things like :
+───────────────────────────────────────────────────╯
+  ✓  Edit  gl_desktop.c → Accepted (+1, -0)
+
+      40   #define CTX_DESKTOP_APPS 1
+      41   #define CTX_TERMINAL_APPS 2
+      42   #define CTX_GLTPM_APPS 3
+      43 + #define CTX_SETTINGS 4 /* New context for settings menu */
+      44
+
+this still hardcoded...
+🧹️this is basic kruft that basic ai can clean🧹️
+🤏️
+⚠️
+🚿️MAY PUSH
+
+📅️may10 : 
+did chtpm refactor. there were tons of bugs
+but we have wittled them down and out of parser
+but codex added "p2p-net" logic 2 parser instead of using code or anything duno why but
+in #.ref/p2p-net-OLD/ 
+is the old code we need 2 restore. and remove the hardcoding;epic day dont sweat it❤️‍🩹️
+
+📅️may1 
+
+i have been doing gl-os setup and somehow got into lsr / msr porting + exoai -2- iqbel
+which is hugely important however, 
+we kinda veered off the path of doing editor, 
+and we are also doing chat... 
+and?
+(i kinda started a php thing thru copilot but didnt get very far, has a readme?)
+
+NOW!?
+>wanna look at finishing windows keyboard/joys. 
+>get piececraft3d going ; before asking about 2d. y ? differentiation 
+(also 2d is an illusion so dont stress it tbh)
+>editor stuff (pal proof) then in 3d.
+> ai exo bot/ making its own videos. doing chat , w/e etc
+📅️
+
+📅️ may3 : 
+(day of extreme terroristic violence ; aside from just going 2 bed etc?)
+thinking about auditing clock deamon. just playing with lsr. 
+asking about lsr z-levels, clock , setup screen basic stuff
+mirroring editor fx in 3d. including file ops. (and finish pal here?)
+(wait 4 clock or w/e revisit clock but start remaking fuzz op in editor?
+❗️
+(testing out exo bot . with chat!? building out ; imitation learning
+
+and even using exo bot to start up "ollama3" and ask it questions
+2 build out its own db. (but it wont, no file op)
+writing a qwen-coder wrapper. just for file op stuff.. &just run on mac<-YES!
+(y is this good? put idle computers 2 work immediately plus build delegation muscle
+📅️ 
+
+
+📅️APRIL PUSH☔️
+📍
+🏖️
+(u are here)
+💌️
+can do for gemini 2 (local qwen? .json)
+ . but also . 🫕️just bust down 2 fondue soon pls (9mb in win is bad) 🫕️
+🦄️♾️
+what? just get parity for fuzzpet/op-ed and w/e else (gl-os?) & fix/polish win
+
+and then immediately do "install script + local trunk versioning dev api scheme from stripped app of legacy
+🦄️♾️(then it will bee a "REAL SYSTEM" and {EVEN} easier 2 work with AND dev for AND distribute)🍯️🐝️
+💌️
+🐡️i wouldn't go crazy thinking about gl-os op ed. we will do that kinda "seperate"; do this stff first🐡️
+📅️
+
+
+📅️mar24🧲️go back 2 finish "file save/load and PAL" before we worry about 'parity' 
+with gl-os(another layer of complication, focuz on remaining hard stuff in ascii-os 
+it will be ok <3 ; do ai everything. no need to spread ur strategic mind that thin <3🧲️
+🤳️
+for 3d view we are going to have toggle 
+like emoji 
+but will show 2d/3d-a(free)-3d-b(3rd)-3d-c(pov)
+🤳️
+
+
+
+
+
+
+🍀️🥅️
+we actualy wanna pop all the projects out that were not working on long term
+and go back 2 small folders that "QWEN" can handle. 💌️
+🥅️
+📅️mar22🚨️
+
+user authentication option isn't quite fleshed out yet, and has some "false scaffolding"
+> signup changes menu (should activate as [^](as is std in this 
+  codebase, but doesn't yet activate aka "lock in") also doesn't echo input buffer yet.
+  and it should open a new menu when selected showing []1.username []2.password
+  which when activated, allows and echos input. get it? 
+   also login does 
+  nothing (should show menu for user name and password user input 
+  buffer using nav activation., just like how sign up is SUPPOSED TO (but doesn't) work.
+  (look at how in fuzz-op selecting entities changes menus , till escaped
+  this should work the same way)
+   get it? , explain this in 
+  user_finalization-m22.txt
+
+do you see how
+   fuzz-op has a dynamic menu that is able to chage based on entity 
+  methods in pdl?
+
+this is how we will handle submenu changing dynamically (tpm / piece compliant)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+WIN: 
+  Summary of Known Windows Issues:
+
+     1. Arrow Keys (MSYS2/mintty) - Physical arrow keys don't work
+        in MSYS2 bash terminal
+        - Root cause: _kbhit() doesn't work in pseudo-terminals
+        - Workaround: Use number keys (1-9) for navigation
+        - Status: Investigating
+
+     2. Joystick Input - Not implemented for Windows
+        - Root cause: Linux uses /dev/input/js0 (doesn't exist on
+          Windows)
+        - Required: XInput API or DirectInput for Windows gamepad
+          support
+        - Workaround: Use keyboard input
+        - Status: Needs separate Windows implementation
+
+    What Works:
+     - ✓ Number key navigation (1-9 jump to menu items)
+     - ✓ Keyboard injection (writing to history file)
+     - ✓ Nav line shows last key
+     - ✓ last_key displays in status
+     - ✓ All other parity features
+
+    The documentation now accurately reflects the current state.
+
+
+
+
+
+
+
+
+
+
+🤯️pal = riscv/halo+quantum🤯️
+
+
+
+
+_______________________________________________________________________
+
+📅️mar13🚨️
+move on from "man-pal"  (theres no way to audit it or anything without editor its kinda meaningless)
+
+🤯️u will see one whhen we export it, we will try 2 match it 2 player but
+honestly it should be  pretty easy  but do that first. 🥇️
+🙀️THEN WHEN U PROVE FULL EDITOR 2 PAL PIPELINE WE CAN PROMPT w/e U WANT
+IN PAL (including even text apps, thats what we prefer after all 🙀️
+
+get  editor 2 the point where its bouncing out projects that can really play. 
+
+get into op ed, keep building it out. build pet back out using oops 4 scaffold. + (ascii 3d view)
+then do p2p network. and other stuff.
+then do glos and php .
+
+then do wu/ building crafting, ai(big) , yahoo , chem, anat.    [then rv emu/ kernel/ phychem unoman oneday]🏁️🏎️
+📅️mar11🚨️
+editor and editor mirror is going well. 
+fuzzpet isn't dead. but its really bad. 
+
+id almost rather gut it and ask it 2 rebuild based on "op-ed" but w/e
+u can always do that later, dont mention fuzzpet and u will be fine , 3
+
+⌛️manually do editor more ; leave op-ed how it is 
+till u are sure u can do it right, cuz fuzzpet will need 2 scaff off it. 
+⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
+if u do it in a hurry u will certainly waste hours/days⌛️
+⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️
+🆘️
+editor and ops go hand in hand. fuzzpets an unwanted interloper by agent 2 
+and agent prefers editor is done b4 ops. 
+so just do it how it wants. 2 4 1. u win. 341 tbh . so go "slower" 
+enjoy the sights. ffs. 🆘️
+🚨️🚨️🚨️🚨️🚨️🚨️🚨️🚨️🚨️🚨️🚨️🚨️🚨️🚨️🚨️🚨️🚨️🚨️
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

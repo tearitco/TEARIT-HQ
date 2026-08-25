@@ -1,0 +1,3 @@
+name=World 01
+type=world
+active=1

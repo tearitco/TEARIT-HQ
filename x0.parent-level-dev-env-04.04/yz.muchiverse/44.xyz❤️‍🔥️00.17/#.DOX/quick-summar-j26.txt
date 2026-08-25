@@ -1,0 +1,148 @@
+QUICK SUMMARY - 2026-07-26
+Scope: (1) is 044.pal-chat-irc+2 really on orchestrator/chtpm/pal+c-ops now, does it use
+the master ledger, and how does it compare architecturally to 101.ledger-player-npc-simple+3.
+(2) status of 041.pal-chain and 041.pal-forum (the "state irc used to be in" projects).
+Verified by reading files on disk just now, not from memory of prior docs.
+
+================================================================================
+1. IS 044.pal-chat-irc+2 ON ORCHESTRATOR/CHTPM/PAL+C-OPS? YES, CONFIRMED ON DISK.
+================================================================================
+
+  system/orchestrator.c + compiled `system/orchestrator` binary       - present
+  system/chtpm_parser_pal.c (+ binary)                                 - present
+  system/renderer.c, system/keyboard_input.c, system/prisc+x.c         - present
+  pieces/os/ session-scoped kill (button.sh does its own session dirs,
+    see below)                                                          - present
+  button.sh: --pal flag parsing, compiles orchestrator, session-isolated
+    `run` (creates pieces/sessions/<ts>-<pid>/ with symlinks back to the
+    shared system/ops/pal/chtpm, launches palnet_peer.+x as irc_node +
+    chat_inbox_watcher.+x automatically)                                - present
+  ops/: chat_compose_frame, chat_menu_input, chat_post_message,
+    chat_create_user, chat_switch_user, chat_inbox_watcher, palnet_peer  - present (7 ops, matches j25 doc)
+  'q'/'Q' quit branch                                                   - REMOVED (confirmed absent)
+
+  This matches !.!.convert-report-j26.md's "044 - DONE, smoke-tested" line exactly.
+  No drift since that report was written.
+
+  ONE THING NOT PRESENT: system/chtpm_parser.c (the non-PAL / C-mode parser variant).
+  Only chtpm_parser_pal.c exists. Per !.!..j25-conversion-task.md this is BY DESIGN for
+  now ("C mode is future - both modes currently run the same PAL loop via orchestrator").
+  Not a bug, just an open item if "true" C-mode is ever wanted.
+
+================================================================================
+2. DOES 044 USE THE MASTER LEDGER? NO. THIS IS THE BIG ARCHITECTURAL DIFFERENCE.
+================================================================================
+
+  101.ledger-player-npc-simple+3 (per LEDGER_ADVANCED_STUDY.txt + +3_ARCHITECTURE_SUMMARY.txt
+  doctrine, and confirmed on disk) has:
+    - data/master_ledger.txt            <- single source of truth, append-only
+    - players/<name>/ledger.txt         <- per-player ledger slice
+    - system/game_manager.c             <- REAL C daemon: polls relay, drives turns,
+                                            calls ops/computer_turn.c for NPC/AI turns
+    - ops/ledger_append.c, ops/sync_player_ledger.c, ops/view_ledger.c, ops/game_tick.c,
+      ops/game_init.c, ops/human_turn.c, ops/computer_turn.c
+    - BOTH system/chtpm_parser.c AND system/chtpm_parser_pal.c (true C-mode + PAL-mode)
+    - State is DERIVED by replaying the ledger, not stored as current-value flat files.
+
+  044.pal-chat-irc+2 instead has:
+    - rooms/<room>/messages.txt         <- flat append file per room, no turn/replay concept
+    - users/<user>/profile.txt          <- current-value flat file, not ledger-derived
+    - NO data/ directory, NO master_ledger.txt, NO game_manager.c, NO ledger_append/
+      sync_player_ledger/view_ledger ops.
+    - The PAL script (pal/main_loop_chtpm.pal) + chtpm_parser_pal.c ARE the whole "game
+      manager" - there's no C daemon polling a ledger or driving turn order.
+
+  Net: 044 is NOT built on the ledger-driven pattern at all. It's a simpler
+  "current-state flat files + append-only messages.txt per room" model. This works fine
+  for chat (no turn order, no NPC banking, no replay/time-travel need), but it means:
+    - LEDGER_ADVANCED_STUDY.txt line ~731 lists "Pal-Chat-IRC (social messages)" as one
+      of the pattern's proven use cases - that line is aspirational/historical, not an
+      accurate description of the CURRENT 044 codebase. Worth flagging since it could
+      mislead a future agent into assuming ledger replay exists here.
+    - There is no crash-recovery-via-replay, no audit trail, no time-travel for chat
+      history beyond "read messages.txt from the top" (which is close enough to a ledger
+      in spirit but has none of the actor_type/turn_number/scale_bank machinery, and no
+      game_manager.c to replay it into derived state).
+
+  IS THIS A PROBLEM? Not necessarily - chat doesn't need ring-based turn order or NPC
+  scale-bank fidelity. But it IS a real architectural divergence from the "canonical"
+  101.ledger-player-npc-simple+3 reference, so don't assume 044 has ledger/replay/
+  crash-recovery semantics when reasoning about it or writing the trace doc.
+
+================================================================================
+3. OTHER 044 vs 101 ARCHITECTURE DIFFERENCES (beyond the ledger)
+================================================================================
+
+  - 044's orchestrator launches persistent P2P daemons (palnet_peer, chat_inbox_watcher)
+    that must survive tick-to-tick; 101's game_manager.c is itself the persistent daemon
+    (single process, polls relay + drives ring/turn order) - different daemon topology,
+    not just "same pattern, different ops."
+  - 044 uses session-scoped directories under pieces/sessions/<ts>-<pid>/ with symlinks
+    for multi-user isolation (each terminal = its own session); 101 is single-session,
+    no session dir sharding.
+  - 101 has a registry/ (word_bank.txt) + explicit turn/epoch/scale_bank config; 044 has
+    no registry/, no turn concept at all (chat has no "turns").
+  These are expected/appropriate differences given chat vs. turn-based-game domains -
+  flagging them so the upcoming pc-irc-trace-j26.md doesn't get written as if 044 were
+  ledger/turn-shaped when it isn't.
+
+================================================================================
+4. 041.pal-chain AND 041.pal-forum - WORK DONE VS STILL NEEDED
+================================================================================
+
+  These are "the state irc used to be in" - i.e. pre-conversion, PAL-only, no
+  orchestrator/kill_all.sh, same cruft 044 already had removed.
+
+  --- 041.pal-chain (CONVERTED, but NOT confirmed working) ---
+  Done (confirmed present on disk just now):
+    - system/orchestrator.c + binary                    present
+    - pieces/os/kill_all.sh                              present (extended for
+      chtpm_rgb_render/palnet_peer/chain_miner/chain_inbox_watcher)
+    - 'q'/'Q' branch removed from chtpm_parser_pal.c      confirmed removed
+    - .pre-href-fix-2026-07-22 backup                     confirmed gone
+    - button.sh wired: compile builds orchestrator, run launches it backgrounded
+    - own ledger-shaped file: data/blockchain.txt (953KB, append-style chain log) +
+      data/pending_tx.txt - this is a domain-specific ledger (blockchain), NOT the
+      master_ledger.txt/game_manager.c pattern from 101 - no game_manager.c exists here.
+  Still needed (per !.!.convert-report-j26.md, not re-verified live by me this pass):
+    - THE HANG IS STILL UNRESOLVED. Last session's own pty smoke test of
+      `./button.sh run` hung and had to be killed - never root-caused. Suspected:
+      orchestrator blocking before backgrounding, or palnet_peer.+x blocking network
+      call before daemonizing. DO NOT TREAT THIS PROJECT AS FUNCTIONAL until a live
+      run actually completes + quits cleanly. This is the #1 blocker before pal-chain
+      or pal-forum can be called "done."
+
+  --- 041.pal-forum (NOT STARTED) ---
+  Confirmed on disk just now, matches convert-report-j26.md's "NOT STARTED" exactly:
+    - NO system/orchestrator.c, NO pieces/os/kill_all.sh at all.
+    - .pre-href-fix-2026-07-22 backup STILL PRESENT
+      (system/chtpm_parser_pal.c.pre-href-fix-2026-07-22)
+    - 'q'/'Q' quit branch STILL PRESENT: system/chtpm_parser_pal.c line 3328
+      (`else if (key == 'q' || key == 'Q') exit(0);`)
+    - Renderer not yet converted to single-marker/skip-if-unchanged (not independently
+      re-checked this pass, but nothing else was touched so assume still old dual-marker
+      shape until verified).
+  Needed: the full identical conversion pass 044/014/045 already got (orchestrator.c,
+    kill_all.sh, --pal, renderer fix, 'q' removal, backup cleanup, project.pdl), BUT
+    do this AFTER pal-chain's hang is understood, since pal-forum was pal-chain's own
+    session-isolation template origin ("backported FROM pal-forum's proven run action"
+    per pal-chain's button.sh header) - don't blindly re-port a possibly-broken pattern
+    a second time.
+
+================================================================================
+BOTTOM LINE
+================================================================================
+
+  044.pal-chat-irc+2: orchestrator/chtpm/pal+ops conversion is real and confirmed on
+  disk. It does NOT and was never using the master-ledger/game_manager.c pattern -
+  that's a genuine, permanent architectural difference from 101.ledger-player-npc-simple+3,
+  not a gap to "fix." Fine to proceed to the pc-irc-trace-j26.md tracing doc with that
+  understanding baked in (trace the actual rooms/messages.txt + users/profile.txt flow,
+  not a ledger-replay flow).
+
+  041.pal-chain: converted but unverified/hung - needs root-cause before anything else.
+  041.pal-forum: not started - do it after pal-chain's hang is fixed, reusing whatever
+  the fix turns out to be.
+
+  Full step-by-step plan + file locations for continuing all of this (in case of a
+  disconnect) is now written to: 040.net-health/todo-nethealth-j26.txt

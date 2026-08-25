@@ -1,0 +1,18 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | chest_01
+META         | version            | 1.0
+META         | determinism        | strict
+
+STATE        | name                 | Treasure Chest
+STATE        | type                 | chest
+STATE        | pos_x                | 10
+STATE        | pos_y                | 7
+STATE        | pos_z                | 0
+STATE        | on_map               | 1
+STATE        | on_interact          | scripts/chest_open.asm
+STATE        | is_open              | 0
+
+METHOD       | open                 | void
+
+RESPONSE     | default              | *locked*

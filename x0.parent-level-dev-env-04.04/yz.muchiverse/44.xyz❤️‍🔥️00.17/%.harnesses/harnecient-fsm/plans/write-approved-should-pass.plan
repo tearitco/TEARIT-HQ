@@ -1,0 +1,6 @@
+# write-approved-should-pass.plan — same task as the sibling
+# unapproved plan, but with the explicit "| APPROVE" 4th field. Proves
+# the approve path actually sends NAV_TOOL_APPROVE (found dynamically
+# via nav-labels.txt, never a hardcoded index) and waits for the REAL
+# tool result, not the approval banner.
+STEP | write /tmp/claude-1000/fsm-write-test.txt containing hello-from-fsm | grep -q hello-from-fsm /tmp/claude-1000/fsm-write-test.txt | APPROVE

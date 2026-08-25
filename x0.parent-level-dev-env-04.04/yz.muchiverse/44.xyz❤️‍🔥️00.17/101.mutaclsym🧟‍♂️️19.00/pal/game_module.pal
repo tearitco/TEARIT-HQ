@@ -1,0 +1,10 @@
+li x1, 0
+
+compose_frame
+muta_render_3d
+hit_frame
+
+loop:
+exec ./ops/+x/game_dispatch.+x
+sleep 16667
+j loop

@@ -1,0 +1,139 @@
+MYNE-QRYPTO / QTC — USER WALKTHROUGH
+================================================================================
+How to launch this yourself and confirm it's working exactly as intended.
+Written 2026-08-02.
+
+--------------------------------------------------------------------------------
+0. WHAT THIS IS (read before testing)
+--------------------------------------------------------------------------------
+This is a real, UNMODIFIED, wholesale copy of the proven 041.pal-chain⛓️
+blockchain engine — real SHA-256 proof-of-work mining, real wallet crypto.
+It is the BACKEND ENGINE for a future "myne-qrypto" game (Mine/Store/Exchange
+screens, themed around crypto instead of farming) — that player-facing game
+shell does NOT exist yet. What you're testing here is the raw wallet/mining
+engine itself: create a wallet, log in, view your balance, start mining.
+
+--------------------------------------------------------------------------------
+1. LAUNCH
+--------------------------------------------------------------------------------
+    cd "@.apps/myne-qrypto/qtc"
+    ./button.sh run
+
+You should see a real GL/terminal screen titled "P A L - C H A I N" with:
+    - a "Wallet ID" text field
+    - a "Password" text field
+    - "Create New Wallet" and "Continue to Wallet" buttons
+
+If instead you see "[Map Loading...]" and it never resolves — something's
+broken with the render pipeline.
+
+--------------------------------------------------------------------------------
+2. TEST: CREATE A WALLET
+--------------------------------------------------------------------------------
+Navigate to "Create New Wallet" and press Enter — this takes you to the
+signup screen ("C R E A T E   W A L L E T" title).
+
+Fill in the Wallet ID field: navigate to it, press Enter to start typing,
+type a wallet name (letters/numbers/underscores/hyphens only — anything else
+will be rejected), press Escape when done (Escape stops typing, it does NOT
+leave the screen or clear what you typed).
+
+Do the same for the Password field.
+
+Navigate to "Create Wallet" and press Enter.
+
+EXPECTED: a message like "Wallet '<your-name>' created. - click Back to
+Login." — if you instead see an error, most likely a wallet with that exact
+name already exists (wallet IDs must be unique) — try a different name.
+
+VERIFY ON DISK:
+    ls "@.apps/myne-qrypto/qtc/wallets/<your-wallet-name>/"
+    # should show a real wallet.txt file
+    cat "@.apps/myne-qrypto/qtc/wallets/<your-wallet-name>/wallet.txt"
+
+--------------------------------------------------------------------------------
+3. TEST: LOG IN
+--------------------------------------------------------------------------------
+Select "Back to Login". Fill in the SAME Wallet ID and Password you just
+created (same typing procedure as step 2), navigate to "Log In", press Enter.
+
+EXPECTED: a message containing "Logged in".
+
+If you typed the wallet ID field on the login screen and it looks like it
+already has old text in it before you type anything — that's real, EXPECTED
+behavior, not a bug: a <cli_io> field's typed value persists across screens
+sharing the same target_id, so the Wallet ID field carries over from signup.
+If you're reusing that same value, you don't need to retype it — just fill
+in Password and log in directly.
+
+--------------------------------------------------------------------------------
+4. TEST: VIEW YOUR REAL WALLET
+--------------------------------------------------------------------------------
+Select "Continue to Wallet".
+
+EXPECTED: a "M Y   W A L L E T" screen showing your wallet ID, and options
+for Send, Receive, Mining Status. It should NOT say "Not logged in" — if it
+does, the login in step 3 didn't actually carry through, a real bug worth
+reporting.
+
+--------------------------------------------------------------------------------
+5. TEST: START MINING (real SHA-256 proof-of-work, will take real time)
+--------------------------------------------------------------------------------
+From the wallet screen, go to Mining Status, start mining (the exact menu
+wording may vary — look for a "Start Mining" style option).
+
+EXPECTED: mining runs as a real background process. Check back on the Mining
+Status screen after 30-60+ seconds — you should see a real block count
+increasing and your wallet balance increasing when a block is found. This is
+GENUINE proof-of-work, not simulated — how long a block takes depends on real
+CPU-bound hash search, not a fixed timer.
+
+VERIFY ON DISK:
+    cat "@.apps/myne-qrypto/qtc/data/blockchain.txt"
+    # should show real BLOCK| lines accumulating as mining finds blocks
+    cat "@.apps/myne-qrypto/qtc/wallets/<your-wallet-name>/wallet.txt"
+    # balance should be increasing
+
+Stop mining before quitting (look for a "Stop Mining" option) — don't just
+Ctrl+C out of the game with a miner still running in the background, since
+that process isn't tied to your session lifecycle the same way.
+
+--------------------------------------------------------------------------------
+6. CLEAN SHUTDOWN CHECK
+--------------------------------------------------------------------------------
+Press Ctrl+C to quit. Then, in a separate terminal:
+
+    ps aux | grep myne-qrypto
+
+EXPECTED: no output, UNLESS you left a miner running (step 5) — a real
+chain_miner.+x process is meant to keep running in the background even after
+you quit the UI (that's its whole point — mining continues while you're not
+looking). If you want to stop it, use the "Stop Mining" in-game action before
+quitting, or manually:
+    pkill -f "myne-qrypto.*chain_miner"
+
+--------------------------------------------------------------------------------
+7. THE AUTOMATED REGRESSION HARNESSES (do the same checks, unattended)
+--------------------------------------------------------------------------------
+    cd "@.apps/myne-qrypto/qtc/test-harn-same"
+    ./button.sh compile
+    ./button.sh demo                              # smoke test: does it launch/render at all
+    ./scenarios/demo_signup_login_wallet.sh       # the FULL flow from steps 2-4 above
+
+EXPECTED: "OVERALL: PASS" for both, 10/10 and 11/11 individual checks
+respectively. Same "Exit code 143 at the top is not a failure" note as the
+other sibling apps' harnesses — the real result is the "OVERALL:" line.
+
+--------------------------------------------------------------------------------
+KNOWN GAPS (things intentionally NOT built yet, don't report these as bugs)
+--------------------------------------------------------------------------------
+- No player-facing "myne-qrypto" game shell exists — this whole app is
+  currently just the raw wallet/mining ENGINE, meant to be a backend a future
+  Mine/Store/Exchange game shell shells out to. See
+  @.apps/myne-qrypto/MYNE_QRYPTO_DESIGN.md for the full plan.
+- No Send/Receive flow has been walked through and verified this session
+  (only signup/login/wallet-view/mining) — a real, valuable next test to add.
+- This copy shares NO save/load slot concept with the rest of the @.apps/
+  family (see @.apps/sv-ld-ses-strat.md) — wallet_id + password IS already a
+  real, working per-player identity here, which is a different (already
+  correct) model from the other siblings' current bug.

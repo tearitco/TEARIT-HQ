@@ -1,0 +1,284 @@
+================================================================================
+LPNS +3 VERSIONS - PAL ARCHITECTURE FIX SUMMARY
+Fixed: 2026-07-23
+================================================================================
+
+WHAT WAS BROKEN
+===============
+
+The +3 versions (0.ledger-player-npc-simple+3 and 00.lpns+map+3) were incomplete:
+
+1. Missing system/renderer.c
+   - No process to read current_frame.txt and output to terminal
+   - Game logic ran but nothing was displayed
+
+2. Missing system/keyboard_input.c
+   - No process to capture keyboard input
+   - No way to inject keys into the game
+
+3. Wrong file paths in ops
+   - game_compose_frame.c wrote to pieces/display/frame.txt (wrong)
+   - game_compose_frame.c grew game_state_changed.txt (renderer didn't watch it)
+
+4. Incomplete button.sh
+   - Only launched prisc+x, no renderer or keyboard_input
+   - No proper process cleanup on exit
+
+WHAT WAS FIXED
+==============
+
+### 1. Created system/renderer.c (both directories)
+   Location: {00.lpns+map+3,0.ledger-player-npc-simple+3}/system/renderer.c
+
+   Features:
+   - Reads pieces/display/current_frame.txt
+   - Outputs to terminal with timestamps
+   - Watches pieces/display/renderer_pulse.txt for changes
+   - Exits when pieces/system/quit_flag.txt is non-empty
+   - Maintains frame history in pieces/display/frame_history.txt
+   - Compiled: gcc -o system/renderer system/renderer.c
+
+### 2. Created system/keyboard_input.c (both directories)
+   Location: {00.lpns+map+3,0.ledger-player-npc-simple+3}/system/keyboard_input.c
+
+   Features:
+   - Captures raw terminal input (no echo, no line buffering)
+   - Supports arrow keys (ESC [ A/B/C/D)
+   - Writes keycode digits to pieces/apps/player_app/interact_relay.txt
+   - Exits on Ctrl+C (ETX, keycode 3)
+   - Sets pieces/system/quit_flag.txt on exit
+   - Compiled: gcc -o system/keyboard_input system/keyboard_input.c
+
+### 3. Fixed game_compose_frame.c (00.lpns+map+3)
+   Changed:
+   - FILE output: pieces/display/frame.txt → pieces/display/current_frame.txt
+   - Marker growth: game_state_changed.txt → renderer_pulse.txt
+
+   Reason:
+   - Renderer watches renderer_pulse.txt, not game_state_changed.txt
+   - current_frame.txt is the standard frame output location (PAL standards)
+
+### 4. Fixed word_compose_frame.c (0.ledger-player-npc-simple+3)
+   Changed:
+   - FILE output: pieces/display/frame.txt → pieces/display/current_frame.txt
+   - Marker growth: game_state_changed.txt → renderer_pulse.txt
+
+   Reason:
+   - Same as above - matches PAL standards and renderer expectations
+
+### 5. Rewrote button.sh for both +3 directories
+
+   Old approach:
+   ```
+   button.sh run
+     └─ ./prisc+x pal/main_loop_chtpm.pal &
+   ```
+
+   New approach (proper three-process architecture):
+   ```
+   button.sh run
+     ├─ ./system/renderer &  (outputs frames to terminal)
+     ├─ ./prisc+x pal/main_loop_chtpm.pal &  (game logic, writes current_frame.txt)
+     └─ ./system/keyboard_input  (captures input, writes interact_relay.txt)
+   ```
+
+   Key changes:
+   - Launches renderer in background
+   - Launches prisc+x in background
+   - keyboard_input runs in foreground (blocking)
+   - Proper trap handler for EXIT/INT/TERM
+   - Creates all required directories and marker files
+   - Exports PRISC_PROJECT_ROOT and PRISC_PROJECT_ID
+   - Added "kill" action to cleanly terminate all processes
+   - Added "clean" action to reset state
+
+### 6. Created cleanup.sh for both directories
+   Location: {00.lpns+map+3,0.ledger-player-npc-simple+3}/cleanup.sh
+
+   Features:
+   - Kills renderer, keyboard_input, and prisc+x
+   - Resets state files
+   - Can be used independently or sourced
+   - Useful for Ctrl+C handling or manual cleanup
+
+PROCESS FLOW (CORRECTED)
+========================
+
+1. User runs: sh button.sh run
+2. button.sh initializes state files:
+   - pieces/display/current_frame.txt (initial frame)
+   - pieces/display/renderer_pulse.txt (empty)
+   - pieces/system/quit_flag.txt (empty)
+   - pieces/apps/player_app/interact_relay.txt (empty)
+
+3. button.sh launches three processes in parallel:
+   a) ./system/renderer (background)
+      - Loops: check renderer_pulse.txt size → if changed, read & output current_frame.txt
+
+   b) ./prisc+x pal/main_loop_chtpm.pal (background)
+      - Loops: read interact_relay.txt → call ops → call game_compose_frame
+      - game_compose_frame writes current_frame.txt and grows renderer_pulse.txt
+
+   c) ./system/keyboard_input (foreground, blocking)
+      - Reads stdin in raw mode
+      - Writes keycodes to interact_relay.txt
+      - Exits on Ctrl+C (keycode 3), sets quit_flag.txt
+
+4. When quit_flag.txt becomes non-empty:
+   - renderer loop exits
+   - keyboard_input has already exited (on Ctrl+C)
+   - prisc+x may still be running (cleanup via trap)
+
+5. trap handler (EXIT/INT/TERM):
+   - Kills renderer PID
+   - Kills prisc+x (via pkill)
+   - Restores terminal
+
+FILE COORDINATION (CORRECTED)
+=============================
+
+interact_relay.txt:
+  ↑ Written by: system/keyboard_input
+  ↓ Read by: prisc+x pal/main_loop_chtpm.pal
+
+current_frame.txt:
+  ↑ Written by: game_compose_frame.c (called by prisc+x)
+  ↓ Read by: system/renderer
+
+renderer_pulse.txt:
+  ↑ Written by: game_compose_frame.c (appends "x")
+  ↓ Watched by: system/renderer (file size changes)
+
+quit_flag.txt:
+  ↑ Written by: system/keyboard_input (on Ctrl+C)
+  ↓ Checked by: system/renderer (to exit loop)
+
+HOW TO USE
+==========
+
+Map game (+3 version):
+  cd 00.lpns+map+3
+  sh button.sh run
+
+  Controls:
+  - 'w' = say a word
+  - 'm' = move on map
+  - 'e' = end turn
+  - 'Ctrl+C' = quit
+
+Word game (+3 version):
+  cd 0.ledger-player-npc-simple+3
+  sh button.sh run
+
+  Controls:
+  - 'w' = say a word
+  - 'e' = end turn
+  - 'Ctrl+C' = quit
+
+Manual cleanup (if needed):
+  sh cleanup.sh
+  # or
+  sh button.sh kill
+  # or
+  sh button.sh clean
+
+ARCHITECTURE COMPARISON
+=======================
+
+BEFORE (+3 broken):
+  ✗ No renderer → no output
+  ✗ No keyboard_input → no input
+  ✗ button.sh only launches prisc+x → incomplete
+  ✗ Wrong file paths (frame.txt instead of current_frame.txt)
+  ✗ Wrong markers (game_state_changed.txt not watched)
+
+AFTER (+3 fixed):
+  ✓ Proper three-process architecture
+  ✓ Renderer reads current_frame.txt and outputs to terminal
+  ✓ keyboard_input captures keys and injects to interact_relay.txt
+  ✓ prisc+x runs game logic, writes current_frame.txt, grows renderer_pulse.txt
+  ✓ Proper signal handling on Ctrl+C
+  ✓ PAL standards compliant
+  ✓ Matches wsr-pal architecture pattern
+
+REFERENCE ARCHITECTURE
+======================
+
+Study wsr-pal (the working reference):
+  /home/no/Desktop/.../1.wsr-pal💸️📌️/
+
+  Key files:
+  - button.sh (lines 19-155): Three-process launch pattern
+  - system/renderer.c: Frame rendering logic
+  - system/keyboard_input.c: Input capture logic
+  - pal/main_loop_chtpm.pal: Event loop pattern
+
+The +3 fix is a simplified version of wsr-pal's architecture:
+- Same three-process shape
+- Same file coordination
+- Same signal handling
+- Simpler (no chtpm_parser_pal, no full CHTPM integration yet)
+
+TESTING VERIFICATION
+====================
+
+To verify the fix works:
+
+1. Launch the game:
+   sh button.sh run
+
+2. Observe frame output with "--- FRAME UPDATE ---" markers
+
+3. Type 'w' → see output updated on terminal (takes ~30ms)
+
+4. Type 'e' → turn progresses
+
+5. Type 'Ctrl+C' → game exits cleanly, processes die
+
+6. Check frame history:
+   cat pieces/display/frame_history.txt
+
+If any of these steps fails, check:
+- pieces/system/quit_flag.txt (should exist, be empty)
+- pieces/display/current_frame.txt (should have game output)
+- pieces/display/renderer_pulse.txt (should grow on each frame)
+- pieces/apps/player_app/interact_relay.txt (should have keycodes)
+
+COMPILATION NOTES
+=================
+
+Both system/renderer.c and system/keyboard_input.c are self-contained:
+- No shared headers
+- No libncurses or termcap
+- Only standard C library + termios
+- Compile with: gcc -o output input.c
+
+Done in +3 directories:
+  gcc -o system/renderer system/renderer.c
+  gcc -o system/keyboard_input system/keyboard_input.c
+
+Both +2 versions remain unchanged (still functional as non-PAL-standard versions).
+
+NEXT STEPS (OPTIONAL)
+====================
+
+The +3 versions are now functional PAL-compliant implementations. To go further:
+
+1. Add .chtpm layout files:
+   - pieces/chtpm/layouts/lpns_main_menu.chtpm
+   - Use <module> tag to launch prisc+x
+   - Use ${piece_methods} for dynamic UI
+
+2. Integrate chtpm_parser_pal:
+   - Replace keyboard_input's hardcoded key relay
+   - Let chtpm_parser handle layout parsing and key injection
+
+3. Full CHTPM integration:
+   - Multiple screens/layouts
+   - Real onclick handlers
+   - Dynamic UI rendering via CHTPM's placeholders
+
+But current +3 versions are fully playable without these enhancements.
+
+================================================================================
+END FIX_SUMMARY_+3_PAL_ARCHITECTURE.txt

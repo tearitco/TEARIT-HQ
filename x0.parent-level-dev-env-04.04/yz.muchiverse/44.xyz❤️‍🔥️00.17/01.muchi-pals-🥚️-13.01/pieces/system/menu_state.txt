@@ -1,0 +1,5 @@
+screen=pet_detail
+cursor=0
+last_message=Opened egg_5 in a new window.
+selected_pet=egg_5
+digit_accum=0

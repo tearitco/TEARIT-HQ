@@ -1,0 +1,8 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="${game_map}" /><br/>
+    ${piece_methods}
+    <button label="Back to categories" href="pieces/chtpm/layouts/home.chtpm" /><br/>
+    <text label=" App Store: browse only (install later)" /><br/>
+</panel>

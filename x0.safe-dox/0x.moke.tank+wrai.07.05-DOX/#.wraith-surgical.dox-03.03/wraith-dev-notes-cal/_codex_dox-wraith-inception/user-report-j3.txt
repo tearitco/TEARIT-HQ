@@ -1,0 +1,206 @@
+USER REPORT J3
+Wraith status, proof of work, and what is not implemented yet
+
+Date:
+2026-06-03
+
+Purpose:
+This note is for the user and future agents. It states what was actually
+implemented in Wraith, what was only assumed, what was corrected, and when real
+mouse/index-jump support should arrive.
+
+1. What is proven right now
+
+Visible rendering proof:
+
+- Wraith renders a visible desktop shell through:
+  `projects/wraith-pm/layouts/wraith-shell.chtpm`
+- The manager publishes:
+  `projects/wraith-pm/manager/gui_state.txt`
+- The manager also mirrors the frame bundle into:
+  `pieces/display/`
+- The live frame exists at:
+  `projects/wraith-pm/session/current_frame.txt`
+
+Frame-bundle proof:
+
+- `projects/wraith-pm/session/current_frame.txt`
+- `projects/wraith-pm/session/current_frame.ansi.txt`
+- `projects/wraith-pm/session/current_frame.cells.pdl`
+- `projects/wraith-pm/session/current_frame.meta.pdl`
+- `projects/wraith-pm/session/current_frame.objects.pdl`
+- `projects/wraith-pm/session/current_frame.hitmap.pdl`
+- `projects/wraith-pm/session/current_frame.desktop_state.pdl`
+- `projects/wraith-pm/session/current_frame.window_stack.pdl`
+- `projects/wraith-pm/session/current_frame.focus_state.pdl`
+- `projects/wraith-pm/session/current_frame.mouse_state.pdl`
+- `projects/wraith-pm/session/current_frame.audit.txt`
+
+Code proof:
+
+- `projects/wraith-pm/ops/wraith_parser.c` writes focus, mouse, hit-map, object,
+  stack, desktop, and audit artifacts.
+- `projects/wraith-pm/manager/wraith-pm_manager.c` runs the parser, updates `view.txt`, and pulses the host bridge.
+
+2. What is not proven
+
+There is now limited proof of live Wraith-owned index jump.
+
+Evidence:
+
+- `projects/wraith-pm/session/nav_state.txt` now exists.
+- `wraith-pm_manager.c` now parses:
+  - `OP wraith-pm::focus terminal`
+  - `OP wraith-pm::focus map`
+  - `OP wraith-pm::nav N`
+  - `OP wraith-pm::window N`
+  - bare numeric commands like `1`, `2`, `3`
+- those commands mutate Wraith-owned `focused_window`, `focused_control`,
+  `nav_scope`, `selected_index`, and `nav_buffer`
+- the Wraith frame now visibly updates its `[>]` markers from that state
+
+Important limit:
+
+- this is manager-routed nav support, not a split-out `wraith_nav_jump_op.+x`
+  yet
+- the visible outer `Nav >` prompt still belongs to legacy CHTPM theater
+- Wraith now owns menu/window selection semantics, but not the outer prompt
+- this proof is still aimed at hard-coded sketch/menu labels, which the user
+  later clarified are not the real target abstraction
+
+There is currently no proof of live Wraith-owned mouse drag or window move.
+
+Evidence:
+
+- No `wraith_mouse_down_op.+x`, `wraith_mouse_move_op.+x`, or
+  `wraith_mouse_up_op.+x` exists.
+- No manager-side mutation loop updates window geometry from hit tests.
+- `projects/wraith-pm/session/state.txt` currently seeds:
+  - `mouse_x=3`
+  - `mouse_y=3`
+  - `drag_active=false`
+- `current_frame.mouse_state.pdl` reflects those file values, but there is no
+  live input mutation path behind them yet.
+
+3. What was incorrectly assumed earlier
+
+Incorrect assumption:
+- Wraith already had mouse support because it emitted mouse metadata.
+
+Correction:
+- Wraith only has mouse metadata emission right now.
+- That metadata is useful and real, but it is not interactive support.
+
+Incorrect assumption:
+- Wraith already had index-jump behavior because the shell showed `Nav >`.
+
+Correction:
+- The current `Nav >` belongs to legacy CHTPM theater.
+- Wraith has now taken partial ownership of numeric jump semantics inside the
+  Wraith manager and frame state, but it still does not own the outer theater
+  prompt.
+
+Incorrect assumption:
+- Window state should be copied directly from GL-OS as if Wraith were a hidden
+  in-memory immediate-mode UI.
+
+Correction:
+- GL-OS is the behavior reference for focus, z, drag, resize, and window
+  orchestration.
+- `fuzz-op` and other TPMOS projected-surface patterns are the content
+  reference for what visible subwindows should be in Wraith.
+- Wraith's product is the composed auditable frame bundle, not hidden live UI
+  state.
+
+Incorrect assumption:
+- the sketch menu rows and labels were acceptable as the actual long-term
+  subwindow model.
+
+Correction:
+- the sketch is composition reference only
+- those labels should not become the real app/window content model
+- subwindows should behave more like `fuzz-op` map/surface regions that are
+  projected into the frame and later moved by mutable `x/y/z` state
+
+4. What the right model is now
+
+- Wraith owns desktop/window orchestration.
+- Opened projects keep their own managers or submanagers.
+- Wraith should own geometry, focus, z, hit testing, and lifecycle.
+- Subwindow content should be file-backed and projected into the frame.
+- The frame bundle is the product.
+- RGB conversion later should consume that same frame bundle.
+
+5. When do we get real index jump
+
+We now have partial index jump. We get the correct Wraith-style nav after these
+are coded:
+
+1. `projects/wraith-pm/session/windows_state.pdl`
+2. projected subwindow surface files or manager-published view variables
+3. nav that targets windows/surfaces first, not sketch labels
+4. a split-out `projects/wraith-pm/ops/+x/wraith_nav_jump_op.+x`
+5. richer manager-side command routing in `wraith-pm_manager.c`
+6. parser support for rendering `[>]` and active indices from Wraith-owned nav
+   state instead of relying on legacy theater
+
+Source patterns to borrow:
+
+- `pieces/chtpm/plugins/chtpm_parser.c`
+- `projects/fuzz-op/manager/fuzz-op_manager.c`
+- `pieces/apps/gl_os/plugins/gl_desktop.c`
+
+Practical answer:
+- basic Wraith nav is implemented now
+- next milestone is to formalize it into ops/state patterns closer to TPMOS
+  standard and repoint it away from sketch-menu rows and toward real projected
+  movable window surfaces
+
+6. When do we get real mouse/window move
+
+We get real mouse/window move after these are coded:
+
+1. `projects/wraith-pm/session/windows_state.pdl`
+2. per-window projected content surfaces
+3. hit-test driven ops:
+   - `wraith_mouse_down_op.+x`
+   - `wraith_mouse_move_op.+x`
+   - `wraith_mouse_up_op.+x`
+4. manager-side mutation of `x/y/w/h/z/focused`
+5. parser rereads mutated state and emits the next frame bundle
+
+Source pattern to borrow:
+
+- `pieces/apps/gl_os/plugins/gl_desktop.c`
+
+Practical answer:
+- not implemented yet
+- the current hit map is the prerequisite proof, not the finished feature
+
+7. Best next coding order
+
+1. add `windows_state.pdl`
+2. add projected content files for visible Wraith windows
+3. make the parser compose geometry plus projected content
+4. add `nav_state.txt` and `wraith_nav_jump_op.+x`
+5. add manager-side numeric routing
+6. add mouse down/move/up ops against `current_frame.hitmap.pdl`
+7. add z-raise and drag mutation
+
+8. Bottom line
+
+What is real:
+- visible Wraith desktop bridge
+- real frame bundle
+- real audit artifacts
+- real focus/stack/hitmap metadata
+- real Wraith-owned menu/window nav state and visible selection markers
+
+What is not real yet:
+- Wraith-owned mouse drag/move
+- live mutable window geometry
+- split-out nav ops and richer nav scopes
+- nav aimed at real projected subwindow surfaces instead of sketch labels
+
+That is the honest status as of 2026-06-03.
+s the honest status as of 2026-06-03.

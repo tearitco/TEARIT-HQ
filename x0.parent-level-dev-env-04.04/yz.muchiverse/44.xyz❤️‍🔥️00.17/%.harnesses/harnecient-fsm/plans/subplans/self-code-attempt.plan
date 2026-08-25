@@ -1,0 +1,29 @@
+# self-code-attempt.plan — one real self-coding attempt: ask the
+# model to write a small script (chat, no tool - just generates text),
+# then write THAT generated content to a real file (write_file with no
+# "containing" keyword uses the model's own last answer as content,
+# per detect_tool()'s documented "write the code it just made to file"
+# shape), then VERIFY by actually running the written script, not just
+# grepping for expected text in it - a script can contain the right
+# words and still not run correctly, execution is the real test.
+# Real bugs found and fixed 2026-08-13, TWO rounds: round 1, "write a
+# one-line bash command..." tripped write_file (the word "write" plus
+# a trailing sentence period looked pathish). Round 2, "output a
+# one-line bash command..." STILL tripped a tool - "command" is itself
+# a cmd_exec trigger keyword (detect_tool()'s cmd_exec kws include
+# "run"/"execute"/"command"/"cmd"/"exec"). Both times the harness
+# correctly failed closed (no APPROVE granted, nothing ran) - the bugs
+# were in MY task phrasing accidentally hitting detect_tool()'s real
+# keyword set, not in the FSM. Avoiding the full keyword list now:
+# write/create/save/edit/modify/append/search/grep/list/show/dir/
+# run/execute/command/cmd/exec/read/open/cat/view + "file".
+STEP | give me a one line shell instruction that prints exactly the text OK-CODE-TEST. reply with only that one line of shell syntax. do not explain it. do not add any other sentence | true
+# Real gap found and fixed 2026-08-13, round 3: the model's answer
+# often includes trailing explanatory prose in the SAME file (real,
+# not hypothetical - "echo OK-CODE-TEST" followed by "This is a one
+# line shell instruction..."), which breaks as bash but was invisible
+# to an assertion that only grepped stdout with stderr discarded
+# (2>/dev/null hid the real "command not found" error). Fixed by
+# checking the exit code too, not just stdout content - a script that
+# prints the right thing AND then errors is not actually correct code.
+STEP | write /tmp/claude-1000/self-code-test.sh | out=$(bash /tmp/claude-1000/self-code-test.sh 2>&1); rc=$?; echo "$out" | grep -q "OK-CODE-TEST" && [ "$rc" -eq 0 ] | APPROVE

@@ -1,0 +1,32 @@
+# 🌌 DAY 20 — The Vision: why the whole house exists 🏠
+# ===================================================
+# Title: "🌌 DAY 20 — The Vision: why the whole house exists 🏠"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+
+**MAXINE:** "A factory agents and humans can both operate" — that's the Harnecient line.
+
+**TOMO:** It's the whole thesis. Because state is files, an agent can *read* the UI, *inject* input, verify the result. That's why this book's hack matters: it's the factory's robot arm. 🦾
+
+**TOMO:** From the same doc, the formal statement:
+
+**TOMO:** The marketing doc lays out a three-horizon roadmap. Treat it as *direction*, not promise: - 🛠️ Near (0–6 mo): Windows parity kits, board widget productized, capture pipeline (PNG/video of the dual view), template app "new vertical in a day". - 🚀 Mid (6–18 mo): agent marketplace (ops + layouts as installable "skills", receipts as SLAs), education edition, multi-desk sync (the ledger/peers turn into a collab shared tabletop). - 🌌 Far (18–36 mo): RISC-V targets, studio OS, runtime-as-service — cloud agents tick worlds by writing state files; clients only mirror.
+
+**RAHWEH:** Runtime-as-service — the games live in files, so a cloud can just... write files?
+
+**TOMO:** Yes. That's the deep consequence of this architecture. The mirror is the only thing that needs a screen. 🪞
+
+**TOMO:** There's a yellow-notepad doc (`+.TSOTS-ALPHA-OMEGA/BIBLE-data-only-duh🤯️❤️‍🔥️1.txt`) with a line that should be carved into the wall:
+
+**MAXINE:** And our modular piece is the *widget*.
+
+**TOMO:** *nods* The BIBLE is full of that: **"go back to just making widgets"**, and later, "drag and drop them into an empty zoo." That's the plan — and it's a real plan, because Day 22 shows the drag-and-drop is real today.
+
+**THE NARRATOR:** One more piece of the vision, because names carry weight. The Boss chose the word Harnecient — invented, institutional, saleable. The brand plan sits in ^.GROK-r&d&marketing&.md alongside the pricing grid. The deepest point: the house ships games as infrastructure — and the harness is what makes the house buildable by small models at all. The book you're reading is that bridge. 🌉
+
+**TOMO:** And the ending of the doc is the mission statement: 🏠✨ Build toys that can be read. 🪞 Ship mirrors that can be trusted. 🚀 Sell the factory, not just the toy.
+
+**TOMO:** The next six days walk the vision pillars, one at a time — each with its real files and its "where to find it": - Day 21 — 🎮 2D/3D games: straight-to-RGB, tile worlds, real raymarching. - Day 22 — 🧩 Drag, drop & the zoo: pets move by rename(), windows catch drops. - Day 23 — 👤 User signup: the account registry, real and relay-built. - Day 24 — 📜 The master-ledger: the spine every game and every AI will share. - Day 25 — ⛓️ Money: cones, wallets, and the chain. - Day 26 — 🤝 P2P: players dueling live, the shared tabletop.
+
+**THE NARRATOR:** Exactly. Now let's look at the factory floor — the 2D/3D worlds waiting for it. 🎮

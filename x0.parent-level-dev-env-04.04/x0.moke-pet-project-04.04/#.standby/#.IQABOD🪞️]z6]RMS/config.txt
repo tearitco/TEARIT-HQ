@@ -1,0 +1,19 @@
+# Configuration file for Mirror Model Training
+# Place this in the project root directory
+
+# Learning parameters
+learning_rate=0.00001
+epochs=10
+batch_size=1
+max_seq_len=128
+
+# Model parameters  
+dim=256
+n_layers=4
+n_heads=8
+seq_len=128
+
+# Generation parameters
+temperature=1.0
+top_p=0.9
+max_tokens=100

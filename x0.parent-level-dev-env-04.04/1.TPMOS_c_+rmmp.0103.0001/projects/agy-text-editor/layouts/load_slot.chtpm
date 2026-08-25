@@ -1,0 +1,16 @@
+<panel>
+    <module>projects/agy-text-editor/manager/+x/agy-text-editor_manager.+x</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+    
+    <text label="╔══════════════ L O A D   S L O T ════════════╗" /><br/>
+    <text label="║ Select a save slot to restore:              ║" /><br/>
+    <text label="║                                             ║" /><br/>
+    
+    ${slot_selection_markup}
+    
+    <text label="║                                             ║" /><br/>
+    <text label="╠═════════════════════════════════════════════╣" /><br/>
+    <text label="║  " /><button label="BACK TO FILE MENU" href="projects/agy-text-editor/layouts/file_menu.chtpm" /><text label="                                 ║" /><br/>
+    <text label="║  " /><button label="BACK TO EDITOR" href="projects/agy-text-editor/layouts/editor.chtpm" /><text label="                                    ║" /><br/>
+    <text label="╚═════════════════════════════════════════════╝" /><br/>
+</panel>

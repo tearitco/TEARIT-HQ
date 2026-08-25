@@ -1,0 +1,372 @@
+
+--- FRAME at 2026-08-08 21:52:05 ---
+╔═════════════════════════════════════════════════════════╗
+║   H O U S E   L O A D E R                               ║
+╠═════════════════════════════════════════════════════════╣
+║  Pre-screen — pick a category:                        ║
+║                                                         ║
+║    System     house programs under ./                   ║
+║    Widgets    &.widgits/ installed widgets              ║
+║    Apps       @.apps/ installed apps                    ║
+║    App Store  @.app-store/ available packages           ║
+║                                                         ║
+║  Pick a category (System / Widgets / Apps / App Store). ║
+╚═════════════════════════════════════════════════════════╝
+
+[>] 1. [System]
+[ ] 2. [Widgets]
+[ ] 3. [Apps]
+[ ] 4. [App Store]
+ Ctrl+C quit | Enter opens category
+
++=========================================================+
+Nav > _
+
+
+--- FRAME at 2026-08-08 21:52:05 ---
+╔═════════════════════════════════════════════════════════╗
+║   H O U S E   L O A D E R                               ║
+╠═════════════════════════════════════════════════════════╣
+║  Pre-screen — pick a category:                        ║
+║                                                         ║
+║    System     house programs under ./                   ║
+║    Widgets    &.widgits/ installed widgets              ║
+║    Apps       @.apps/ installed apps                    ║
+║    App Store  @.app-store/ available packages           ║
+║                                                         ║
+║  Pick a category (System / Widgets / Apps / App Store). ║
+╚═════════════════════════════════════════════════════════╝
+
+[>] 1. [System]
+[ ] 2. [Widgets]
+[ ] 3. [Apps]
+[ ] 4. [App Store]
+ Ctrl+C quit | Enter opens category
+
++=========================================================+
+Nav > _
+
+
+--- FRAME at 2026-08-08 21:52:05 ---
+╔═════════════════════════════════════════════════════════╗
+║   H O U S E   L O A D E R                               ║
+╠═════════════════════════════════════════════════════════╣
+║  Pre-screen — pick a category:                        ║
+║                                                         ║
+║    System     house programs under ./                   ║
+║    Widgets    &.widgits/ installed widgets              ║
+║    Apps       @.apps/ installed apps                    ║
+║    App Store  @.app-store/ available packages           ║
+║                                                         ║
+║  Pick a category (System / Widgets / Apps / App Store). ║
+╚═════════════════════════════════════════════════════════╝
+
+[>] 1. [System]
+[ ] 2. [Widgets]
+[ ] 3. [Apps]
+[ ] 4. [App Store]
+ Ctrl+C quit | Enter opens category
+
++=========================================================+
+Nav > _
+
+
+--- FRAME at 2026-08-08 21:52:06 ---
+╔═════════════════════════════════════════════════════════╗
+║   H O U S E   L O A D E R                               ║
+╠═════════════════════════════════════════════════════════╣
+║  Pre-screen — pick a category:                        ║
+║                                                         ║
+║    System     house programs under ./                   ║
+║    Widgets    &.widgits/ installed widgets              ║
+║    Apps       @.apps/ installed apps                    ║
+║    App Store  @.app-store/ available packages           ║
+║                                                         ║
+║  Pick a category (System / Widgets / Apps / App Store). ║
+╚═════════════════════════════════════════════════════════╝
+
+[ ] 1. [System]
+[>] 2. [Widgets]
+[ ] 3. [Apps]
+[ ] 4. [App Store]
+ Ctrl+C quit | Enter opens category
+
++=========================================================+
+Nav > _
+
+
+--- FRAME at 2026-08-08 21:52:07 ---
+╔═════════════════════════════════════════════════════════╗
+║   H O U S E   L O A D E R                               ║
+╠═════════════════════════════════════════════════════════╣
+║  Pre-screen — pick a category:                        ║
+║                                                         ║
+║    System     house programs under ./                   ║
+║    Widgets    &.widgits/ installed widgets              ║
+║    Apps       @.apps/ installed apps                    ║
+║    App Store  @.app-store/ available packages           ║
+║                                                         ║
+║  Pick a category (System / Widgets / Apps / App Store). ║
+╚═════════════════════════════════════════════════════════╝
+
+[ ] 1. [System]
+[>] 2. [Widgets]
+[ ] 3. [Apps]
+[ ] 4. [App Store]
+ Ctrl+C quit | Enter opens category
+
++=========================================================+
+Nav > _
+
+
+--- FRAME at 2026-08-08 21:52:08 ---
+╔═════════════════════════════════════════════════════════╗
+║   H O U S E   L O A D E R                               ║
+╠═════════════════════════════════════════════════════════╣
+║  Pre-screen — pick a category:                        ║
+║                                                         ║
+║    System     house programs under ./                   ║
+║    Widgets    &.widgits/ installed widgets              ║
+║    Apps       @.apps/ installed apps                    ║
+║    App Store  @.app-store/ available packages           ║
+║                                                         ║
+║  Pick a category (System / Widgets / Apps / App Store). ║
+╚═════════════════════════════════════════════════════════╝
+
+[ ] 1. [System]
+[ ] 2. [Widgets]
+[>] 3. [Apps]
+[ ] 4. [App Store]
+ Ctrl+C quit | Enter opens category
+
++=========================================================+
+Nav > _
+
+
+--- FRAME at 2026-08-08 21:52:08 ---
+╔═════════════════════════════════════════════════════════╗
+║   H O U S E   L O A D E R                               ║
+╠═════════════════════════════════════════════════════════╣
+║  Pre-screen — pick a category:                        ║
+║                                                         ║
+║    System     house programs under ./                   ║
+║    Widgets    &.widgits/ installed widgets              ║
+║    Apps       @.apps/ installed apps                    ║
+║    App Store  @.app-store/ available packages           ║
+║                                                         ║
+║  Pick a category (System / Widgets / Apps / App Store). ║
+╚═════════════════════════════════════════════════════════╝
+
+[ ] 1. [System]
+[ ] 2. [Widgets]
+[>] 3. [Apps]
+[ ] 4. [App Store]
+ Ctrl+C quit | Enter opens category
+
++=========================================================+
+Nav > _
+
+
+--- FRAME at 2026-08-08 21:52:09 ---
+╔═════════════════════════════════════════════════════════╗
+║   A P P S                                               ║
+╠═════════════════════════════════════════════════════════╣
+║  Select an entry below (numbered methods).              ║
+║                                                         ║
+║  Pick a category (System / Widgets / Apps / App Store). ║
+╚═════════════════════════════════════════════════════════╝
+
+[No Methods][>] 1. [Back to categories]
+
++=========================================================+
+Nav > _
+
+
+--- FRAME at 2026-08-08 21:52:09 ---
+╔═════════════════════════════════════════════════════════╗
+║   A P P S                                               ║
+╠═════════════════════════════════════════════════════════╣
+║  Select an entry below (numbered methods).              ║
+║                                                         ║
+║  Pick a category (System / Widgets / Apps / App Store). ║
+╚═════════════════════════════════════════════════════════╝
+
+[>] 1. [TSC_ELO]
+[ ] 2. [aomorai-editor]
+[ ] 3. [asa-&-ava]
+[ ] 4. [civ-txt]
+[ ] 5. [my-biotech]
+[ ] 6. [my-chara-txt]
+[ ] 7. [my-lawyer]
+[ ] 8. [piececraft-xyz]
+[ ] 9. [tactics-txt]
+[ ] 10. [text-editor-xyz]
+[ ] 11. [yahoo-app]
+[ ] 12. [Refresh list]
+[ ] 13. [Back to categories]
+
++=========================================================+
+Nav > _
+
+
+--- FRAME at 2026-08-08 21:52:09 ---
+╔═════════════════════════════════════════════════════════╗
+║   A P P S                                               ║
+╠═════════════════════════════════════════════════════════╣
+║  Select an entry below (numbered methods).              ║
+║                                                         ║
+║  Pick a category (System / Widgets / Apps / App Store). ║
+╚═════════════════════════════════════════════════════════╝
+
+[>] 1. [TSC_ELO]
+[ ] 2. [aomorai-editor]
+[ ] 3. [asa-&-ava]
+[ ] 4. [civ-txt]
+[ ] 5. [my-biotech]
+[ ] 6. [my-chara-txt]
+[ ] 7. [my-lawyer]
+[ ] 8. [piececraft-xyz]
+[ ] 9. [tactics-txt]
+[ ] 10. [text-editor-xyz]
+[ ] 11. [yahoo-app]
+[ ] 12. [Refresh list]
+[ ] 13. [Back to categories]
+
++=========================================================+
+Nav > _
+
+
+--- FRAME at 2026-08-08 21:52:10 ---
+╔═════════════════════════════════════════════════════════╗
+║   A P P S                                               ║
+╠═════════════════════════════════════════════════════════╣
+║  Select an entry below (numbered methods).              ║
+║                                                         ║
+║  Pick a category (System / Widgets / Apps / App Store). ║
+╚═════════════════════════════════════════════════════════╝
+
+[>] 1. [TSC_ELO]
+[ ] 2. [aomorai-editor]
+[ ] 3. [asa-&-ava]
+[ ] 4. [civ-txt]
+[ ] 5. [my-biotech]
+[ ] 6. [my-chara-txt]
+[ ] 7. [my-lawyer]
+[ ] 8. [piececraft-xyz]
+[ ] 9. [tactics-txt]
+[ ] 10. [text-editor-xyz]
+[ ] 11. [yahoo-app]
+[ ] 12. [Refresh list]
+[ ] 13. [Back to categories]
+
++=========================================================+
+Nav > _
+
+
+--- FRAME at 2026-08-08 21:52:10 ---
+╔═════════════════════════════════════════════════════════╗
+║   A P P S                                               ║
+╠═════════════════════════════════════════════════════════╣
+║  Select an entry below (numbered methods).              ║
+║                                                         ║
+║  Pick a category (System / Widgets / Apps / App Store). ║
+╚═════════════════════════════════════════════════════════╝
+
+[ ] 1. [TSC_ELO]
+[>] 2. [aomorai-editor]
+[ ] 3. [asa-&-ava]
+[ ] 4. [civ-txt]
+[ ] 5. [my-biotech]
+[ ] 6. [my-chara-txt]
+[ ] 7. [my-lawyer]
+[ ] 8. [piececraft-xyz]
+[ ] 9. [tactics-txt]
+[ ] 10. [text-editor-xyz]
+[ ] 11. [yahoo-app]
+[ ] 12. [Refresh list]
+[ ] 13. [Back to categories]
+
++=========================================================+
+Nav > _
+
+
+--- FRAME at 2026-08-08 21:52:11 ---
+╔═════════════════════════════════════════════════════════╗
+║   A P P S                                               ║
+╠═════════════════════════════════════════════════════════╣
+║  Select an entry below (numbered methods).              ║
+║                                                         ║
+║  Launching aomorai-editor (same terminal)...            ║
+╚═════════════════════════════════════════════════════════╝
+
+[ ] 1. [TSC_ELO]
+[>] 2. [aomorai-editor]
+[ ] 3. [asa-&-ava]
+[ ] 4. [civ-txt]
+[ ] 5. [my-biotech]
+[ ] 6. [my-chara-txt]
+[ ] 7. [my-lawyer]
+[ ] 8. [piececraft-xyz]
+[ ] 9. [tactics-txt]
+[ ] 10. [text-editor-xyz]
+[ ] 11. [yahoo-app]
+[ ] 12. [Refresh list]
+[ ] 13. [Back to categories]
+
++=========================================================+
+Nav > _
+
+
+--- FRAME at 2026-08-08 21:52:11 ---
+╔═════════════════════════════════════════════════════════╗
+║   A P P S                                               ║
+╠═════════════════════════════════════════════════════════╣
+║  Select an entry below (numbered methods).              ║
+║                                                         ║
+║  Launching aomorai-editor (same terminal)...            ║
+╚═════════════════════════════════════════════════════════╝
+
+[ ] 1. [TSC_ELO]
+[>] 2. [aomorai-editor]
+[ ] 3. [asa-&-ava]
+[ ] 4. [civ-txt]
+[ ] 5. [my-biotech]
+[ ] 6. [my-chara-txt]
+[ ] 7. [my-lawyer]
+[ ] 8. [piececraft-xyz]
+[ ] 9. [tactics-txt]
+[ ] 10. [text-editor-xyz]
+[ ] 11. [yahoo-app]
+[ ] 12. [Refresh list]
+[ ] 13. [Back to categories]
+
++=========================================================+
+Nav > _
+
+
+--- FRAME at 2026-08-08 21:52:11 ---
+╔═════════════════════════════════════════════════════════╗
+║   A P P S                                               ║
+╠═════════════════════════════════════════════════════════╣
+║  Select an entry below (numbered methods).              ║
+║                                                         ║
+║  Launching aomorai-editor (same terminal)...            ║
+╚═════════════════════════════════════════════════════════╝
+
+[ ] 1. [TSC_ELO]
+[>] 2. [aomorai-editor]
+[ ] 3. [asa-&-ava]
+[ ] 4. [civ-txt]
+[ ] 5. [my-biotech]
+[ ] 6. [my-chara-txt]
+[ ] 7. [my-lawyer]
+[ ] 8. [piececraft-xyz]
+[ ] 9. [tactics-txt]
+[ ] 10. [text-editor-xyz]
+[ ] 11. [yahoo-app]
+[ ] 12. [Refresh list]
+[ ] 13. [Back to categories]
+
++=========================================================+
+Nav > _
+

@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | wsr_management_menu
+META         | version            | 1.0
+
+METHOD       | Elect me as CEO          | RUN:./ops/+x/corp_set_owner.+x $(bash scripts/active_corp.sh) player_you
+METHOD       | Resign as CEO            | RUN:./ops/+x/corp_set_owner.+x $(bash scripts/active_corp.sh) ""
+METHOD       | Increase Dividend +10%   | RUN:./ops/+x/corp_action.+x $(bash scripts/active_corp.sh) set_dividend 10
+METHOD       | Increase R&D Spend +10%  | RUN:./ops/+x/corp_action.+x $(bash scripts/active_corp.sh) set_rnd 10
+METHOD       | Increase Marketing +10%  | RUN:./ops/+x/corp_action.+x $(bash scripts/active_corp.sh) set_marketing 10
+METHOD       | Increase Growth +10%     | RUN:./ops/+x/corp_action.+x $(bash scripts/active_corp.sh) set_growth 10
+METHOD       | Toggle AutoPilot         | RUN:./ops/+x/corp_action.+x $(bash scripts/active_corp.sh) toggle_autopilot

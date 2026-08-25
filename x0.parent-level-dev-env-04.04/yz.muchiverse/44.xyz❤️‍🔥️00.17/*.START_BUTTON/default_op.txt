@@ -1,0 +1,5 @@
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}
+start_menu_input void ops/+x/start_menu_input.+x {href bridge + RUN handoff + KEY methods}
+start_compose_frame void ops/+x/start_compose_frame.+x {loader chrome into view.txt}
+start_scan void ops/+x/start_scan.+x {regenerate section piece.pdl catalogs}

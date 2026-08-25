@@ -1,0 +1,278 @@
+[2026-03-21 ACTIVE ONBOARDING]
+This is the active onboarding guide for implementers.
+
+# TPM Onboarding Guide (Current)
+
+## What TPM means in this codebase now
+TPM means file-backed, auditable, modular systems where pieces own state and modules orchestrate behavior through explicit contracts.
+
+## Core philosophy reminder (do not skip)
+This project is intentionally designed so agents can change one slice without rewriting the whole system.
+That only works if implementations remain modular and data-driven rather than hardcoded.
+
+## CRITICAL: APP vs PROJECT DISTINCTION (Mar 21 Update)
+─────────────────────────────────────────────────────────────────────────────
+BEFORE creating any new module, you MUST decide: is this an APP or a PROJECT?
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ APP (System Tool) - pieces/apps/<app_id>/                                  │
+│ Examples: op-ed, editor, playrm, gl_os, user (authentication)             │
+│                                                                            │
+│ Use when:                                                                  │
+│   - Building a system utility (editor, player, OS desktop)                │
+│   - Tool is shared across multiple projects                               │
+│   - Not user-generated content                                            │
+│                                                                            │
+│ Structure:                                                                 │
+│   pieces/apps/user/                                                        │
+│   ├── user.pdl                    # App descriptor                        │
+│   │   META | app_id | user                                                │
+│   │   META | layout_path | pieces/apps/user/layouts/user.chtpm           │
+│   ├── layouts/                                                             │
+│   │   └── user.chtpm              # Main UI layout                        │
+│   ├── plugins/                                                             │
+│   │   └── +x/                                                              │
+│   │       └── user_module.+x      # Compiled module                       │
+│   ├── ops/+x/                     # Optional operations                   │
+│   └── pieces/                     # App-specific state                    │
+│       ├── profiles/                                                        │
+│       └── session/                                                         │
+│                                                                            │
+│ How to launch:                                                             │
+│   - Via button: <button href="pieces/apps/user/layouts/user.chtpm" />     │
+│   - Module reads layout_path from PDL via resolve_my_layout()             │
+│   - Module checks is_active_layout() every frame                          │
+│                                                                            │
+│ Reference: op-ed (pieces/apps/op-ed/)                                     │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ PROJECT (User Content) - projects/<project_id>/                            │
+│ Examples: fuzz-op, man-pal, template, demo_1                              │
+│                                                                            │
+│ Use when:                                                                  │
+│   - User-created game/content                                             │
+│   - Self-contained experience with its own maps/entities                  │
+│   - Loaded via project loader menu                                        │
+│                                                                            │
+│ Structure:                                                                 │
+│   projects/fuzz-op/                                                        │
+│   ├── project.pdl                 # Project descriptor                    │
+│   │   META | project_id | fuzz_legacy                                     │
+│   │   META | entry_layout | projects/fuzz-op/layouts/fuzz-op.chtpm       │
+│   │   STATE | starting_map | map_01_z0                                    │
+│   ├── history.txt               # Input history                           │
+│   ├── layouts/                                                             │
+│   │   └── fuzz-op.chtpm         # Main layout                             │
+│   ├── manager/                                                             │
+│   │   └── +x/                                                              │
+│   │       └── fuzz-op_manager.+x  # Project manager                       │
+│   ├── maps/                       # Map files                             │
+│   └── pieces/                     # Project entities                      │
+│                                                                            │
+│ How to launch:                                                             │
+│   - Selected from loader menu (playrm/loader.chtpm)                       │
+│   - project_loader.c reads entry_layout from project.pdl                  │
+│   - Writes entry_layout to pieces/display/layout_changed.txt              │
+│   - Parser switches to that layout                                        │
+│   - Parser sets module_path based on project_id                           │
+│                                                                            │
+│ Reference: fuzz-op (projects/fuzz-op/)                                    │
+└────────────────────────────────────────────────────────────────────────────┘
+
+COMMON MISTAKE TO AVOID:
+  - Don't create projects/user/ for system tools (use pieces/apps/user/)
+  - Don't create pieces/apps/fuzz-op/ for game projects (use projects/fuzz-op/)
+  - The loader expects projects/ to have entry_layout in project.pdl
+  - Apps don't use the loader - they're launched via href buttons
+
+## Current architecture truths
+1. Canonical pathing is world/map-first for game entities:
+   `projects/<project>/pieces/world_<id>/map_<id>/<piece_id>/`
+2. Maps contain pieces, and pieces may contain pieces.
+3. Fallback root paths may still exist during migration, but are not canonical.
+4. Deterministic local behavior is required for save/load/local-play parity.
+5. APP vs PROJECT distinction is CRITICAL - see above section.
+
+## Current top priority (Step 1)
+Implement and stabilize:
+1. `op-ed` save-to-file
+2. save/load roundtrip parity
+3. local play bootstrap from saved artifacts
+4. no-code `pal` + op-event create/bind/test flow
+
+## Guardrails for contributors
+- Prefer world/map-first resolution and keep fallbacks explicit.
+- Do not hardcode piece IDs.
+- Keep state and event bindings persisted in inspectable files.
+- Avoid coupling parser/view logic with app business logic.
+- Keep editor-player recursion modular:
+  - shared ops/contracts
+  - minimal duplicated hardcoded logic
+  - same rules apply across nested containers/pieces.
+- For `project.pdl`-style metadata (`entry_layout`, `player_piece`), prefer scan/registry-derived resolution over static guessed defaults.
+- ALWAYS check is_active_layout() in module main loop
+- ALWAYS use fork/exec/waitpid (NOT system()) for CPU safety
+- ALWAYS write to pieces/apps/player_app/state.txt for parser variables
+- ALWAYS clear view.txt when switching from game projects to prevent stale maps
+- ALWAYS set project_id when loading APP layouts (see Pitfall #31)
+- NEVER manually write nav indicators like "[>]" or "[ ]" in layouts - use <button>
+- CLI_IO pattern: use <cli_io> for text input, parser reads cli_buffers.txt
+
+## What is not Step 1
+AI ops, voice, full simulation, networking, gl-os, install/versioning, and kernel work are later phases.
+
+## Required validation mindset
+Before claiming done on Step 1:
+- verify loader launch
+- verify save/load parity
+- verify local play from saved artifacts
+- verify no-code event trigger in play
+- run compile checks for touched components
+
+## Quick Start: Creating a New APP (e.g., user authentication)
+─────────────────────────────────────────────────────────────────────────────
+
+1. Create directory structure:
+   mkdir -p pieces/apps/user/layouts
+   mkdir -p pieces/apps/user/plugins/+x
+   mkdir -p pieces/apps/user/pieces/profiles
+   mkdir -p pieces/apps/user/pieces/session
+
+2. Create pieces/apps/user/user.pdl:
+   SECTION      | KEY                | VALUE
+   META         | app_id             | user
+   META         | layout_path        | pieces/apps/user/layouts/user.chtpm
+   META         | version            | 1.0
+
+3. Create pieces/apps/user/layouts/user.chtpm:
+   <panel>
+       <text label="║  " /><button label="Login" onClick="KEY:1" /><text label=" ║" /><br/>
+       <text label="║  " /><button label="Sign Up" onClick="KEY:2" /><text label=" ║" /><br/>
+       <text label="${app_title}" />
+   </panel>
+   
+   BUTTON PATTERN (CRITICAL):
+   - Use <button> elements for all interactive items
+   - Parser AUTOMATICALLY adds [>] and [ ] nav indicators
+   - onClick="KEY:n" - module receives key n
+   - href="path/to.chtpm" - switches layout directly
+   - DO NOT manually write [>] or [ ] in layout!
+   - DO NOT use raw text like "[1] Login" - use buttons!
+
+4. Create pieces/apps/user/plugins/user_module.c:
+   - Include signal handlers (handle_sigint)
+   - Include resolve_paths() from location_kvp
+   - Include is_active_layout() check
+   - Include write_parser_state() to pieces/apps/player_app/state.txt
+   - Include trigger_render() and hit_frame_marker()
+   - Use fork/exec/waitpid (NOT system())
+   - Main loop: poll history, process keys, update state
+
+5. Compile:
+   gcc -o pieces/apps/user/plugins/+x/user_module.+x \
+       pieces/apps/user/plugins/user_module.c -pthread
+
+6. Add to compile_all.sh and run_chtpm.sh
+
+7. Launch via button in os.chtpm or loader:
+   <button label="User" href="pieces/apps/user/layouts/user.chtpm" />
+
+## Quick Start: Creating a New PROJECT (e.g., my-game)
+─────────────────────────────────────────────────────────────────────────────
+
+1. Create directory structure:
+   mkdir -p projects/my-game/layouts
+   mkdir -p projects/my-game/manager/+x
+   mkdir -p projects/my-game/maps
+   mkdir -p projects/my-game/pieces
+
+2. Create projects/my-game/project.pdl:
+   SECTION      | KEY                | VALUE
+   META         | project_id         | my-game
+   META         | entry_layout       | projects/my-game/layouts/my-game.chtpm
+   META         | version            | 1.0
+   STATE        | starting_map       | map_01
+   STATE        | player_piece       | hero
+
+3. Create projects/my-game/layouts/my-game.chtpm:
+   <panel>
+       <module>projects/my-game/manager/+x/my-game_manager.+x</module>
+       <interact src="projects/my-game/history.txt" />
+       <text label="${app_title}" />
+   </panel>
+
+4. Create projects/my-game/manager/my-game_manager.c:
+   - Same structure as APP module (see above)
+   - Read project_id from player_app/manager/state.txt
+   - Check is_active_layout() for "my-game.chtpm" or "game.chtpm"
+
+5. Compile:
+   gcc -o projects/my-game/manager/+x/my-game_manager.+x \
+       projects/my-game/manager/my-game_manager.c -pthread
+
+6. Add to compile_all.sh
+
+7. Launch: Select from loader menu (automatic via project_loader.c)
+
+## Module Template Checklist
+─────────────────────────────────────────────────────────────────────────────
+
+Every module MUST have:
+[ ] Signal handlers (SIGINT, SIGTERM)
+[ ] setpgid(0, 0) for process group
+[ ] resolve_paths() from location_kvp
+[ ] resolve_my_layout() from app PDL (for APPs)
+[ ] is_active_layout() check in main loop
+[ ] Focus-aware throttling (sleep 100ms when not active)
+[ ] write_parser_state() to pieces/apps/player_app/state.txt
+[ ] write_manager_state() to appropriate manager state file
+[ ] trigger_render() via render_map.+x (ONLY when state changes!)
+[ ] hit_frame_marker() to pieces/display/frame_changed.txt (ONLY when state changes!)
+[ ] fork/exec/waitpid (NOT system())
+[ ] Proper history polling (stat-first, position tracking)
+[ ] Clean state file initialization
+[ ] State change detection (track last state, render only on change)
+
+LAYOUT BUTTONS:
+[ ] Use <button> elements for interactive items
+[ ] onClick="KEY:n" for key triggers (parser sends key n to module)
+[ ] onClick="INTERACT" for interaction events
+[ ] href="path.chtpm" for layout switches
+[ ] DO NOT manually write [>] or [ ] - parser does this automatically!
+[ ] Follow os.chtpm or fuzzpet_launcher.chtpm pattern
+
+CLI INPUT (<cli_io>) PATTERN:
+[ ] Use <cli_io label="${var_name}" /> for text input fields
+[ ] Parser automatically handles: focus, text capture (key 32-126), backspace, ESC, Enter
+[ ] When focused + Enter pressed: shows [^] and captures chars to input_buffer
+[ ] ESC just sets active_index = -1 (NO return statement in parser!)
+[ ] Enter injects buffered keys to history and deactivates
+[ ] For auto-focus: set cli_prompt variable in state.txt
+[ ] For password masking: check cli_prompt in parser's render_element()
+[ ] Reference: #.ref/#.PMO_c_01.01/pieces/chtpm/plugins/chtpm_parser.c
+
+CLI_IO PERSISTENCE (Pitfall #33):
+- Parser reads last U/P value from cli_buffers.txt on every parse
+- Write format: append "U<text>\n" or "P<masked>\n" on each keystroke
+- Read format: read all lines, keep last matching prefix (U or P)
+- ESC deactivates but NEVER clears input_buffer
+- Render must show input_buffer content even when not active
+- File is source of truth; UI is just a view
+
+## Debugging Checklist
+─────────────────────────────────────────────────────────────────────────────
+
+When something doesn't work:
+1. Check current_layout.txt: cat pieces/display/current_layout.txt
+2. Check parser state: cat pieces/apps/player_app/state.txt
+3. Check view.txt (stale maps): cat pieces/apps/player_app/view.txt
+4. Check module is running: ps aux | grep _module
+5. Check debug output: cat debug.txt | tail -20
+6. Check history is being written: cat pieces/apps/player_app/history.txt
+7. Verify layout file exists at specified path
+8. Verify <module> tag path matches compiled binary location
+9. Verify <interact> tag points to correct history file
+10. Kill all and restart: ./kill_all.sh && ./run_chtpm.sh
+
+--- End of Onboarding Guide

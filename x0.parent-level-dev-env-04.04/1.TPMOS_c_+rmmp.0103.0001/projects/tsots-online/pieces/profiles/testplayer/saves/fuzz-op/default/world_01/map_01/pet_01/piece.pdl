@@ -1,0 +1,31 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | pet_01
+META         | version            | 1.0
+META         | determinism        | strict
+
+STATE        | name               | Fuzzball
+STATE        | type               | pet
+STATE        | pos_x              | 5
+STATE        | pos_y              | 2
+STATE        | pos_z              | 0
+STATE        | on_map             | 1
+STATE        | hunger             | 50
+STATE        | happiness          | 55
+STATE        | energy             | 100
+STATE        | level              | 1
+STATE        | map_id             | map_01.txt
+
+METHOD       | feed               | pieces/apps/playrm/ops/+x/fuzzpet_action.+x pet_01 feed
+METHOD       | play               | pieces/apps/playrm/ops/+x/fuzzpet_action.+x pet_01 play
+METHOD       | sleep              | pieces/apps/playrm/ops/+x/fuzzpet_action.+x pet_01 sleep
+METHOD       | end_turn           | projects/fuzz-op/ops/+x/end_turn_op.+x
+METHOD       | toggle_emoji       | echo "toggled"
+
+EVENT_IN     | feed               | void
+EVENT_IN     | play               | void
+EVENT_IN     | sleep              | void
+
+RESPONSE     | fed                | Yum yum!
+RESPONSE     | played             | Wheee~ Best playtime ever!
+RESPONSE     | slept              | *snore*

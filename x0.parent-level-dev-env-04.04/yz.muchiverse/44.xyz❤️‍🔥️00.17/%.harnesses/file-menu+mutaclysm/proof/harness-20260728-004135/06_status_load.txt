@@ -1,0 +1,4 @@
+last_cmd=LOAD_GAME
+result=ok
+message=loaded slot t1
+at=1785224496

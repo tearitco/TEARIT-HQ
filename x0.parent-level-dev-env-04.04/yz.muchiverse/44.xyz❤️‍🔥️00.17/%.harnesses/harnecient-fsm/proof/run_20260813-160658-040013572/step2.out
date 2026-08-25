@@ -1,0 +1,21 @@
+```bash
+#!/bin/bash
+set -e
+
+# Generate a temporary items.txt file
+echo "item_5=10" u003e items.txt
+
+# Start the prisc+x virtual machine binary (path passed as argument 1)) on a .pal file (path passed as argument 2)
+./priscplusx u003cPath to PriscPlusX Binaryu003e u003cPath to .pal fileu003e
+
+# Check if item_5 equals 13 in items.txt
+grep "item_5=" items.txt | sed 's/item_5=//' | grep -q 14
+result=$?
+
+# Print PASS or FAIL based on the result variable
+if [ $result -eq 0 ]; then
+    echo "PASS"
+else
+    echo "FAIL"
+fi
+```

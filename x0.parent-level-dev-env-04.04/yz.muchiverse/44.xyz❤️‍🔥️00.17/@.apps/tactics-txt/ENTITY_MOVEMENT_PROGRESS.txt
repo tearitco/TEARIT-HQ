@@ -1,0 +1,126 @@
+ENTITY_MOVEMENT_PROGRESS.txt — tactics-txt P2 (real units + possession)
+Started 2026-08-02. Durable, plain-text, kept updated as work happens, so a
+disconnected/fresh session can resume without re-deriving context.
+
+=== READ FIRST ===
+- @.apps/PORTABLE_ENTITY_ARCHITECTURE.md — the target entity shape (directory
+  per entity, piece.pdl per entity, possession -> active_target_id retarget
+  -> ${piece_methods} shows that entity's real actions). NEW, nothing built
+  yet as of this doc's own writing except this session's work below.
+- TACTICS_TXT_DESIGN.md §6 (Combat & Movement), §9 (directory layout),
+  §10 (build order, this is P2 of).
+- HANDOFF_NEXT_SESSION.md — P1 status, board widget wiring (done, working).
+
+=== GOAL THIS PASS ===
+Real per-unit directories with actual board positions (replacing the flat
+units.txt roster), a minimal per-unit piece.pdl, and a real selection/
+possession mechanism (roster.chtpm -> active_target_id retarget) so a
+unit's own real methods show up as numbered options when selected. NOT in
+scope this pass: full combat resolution, real path-costing, board-viewer
+entity rendering (all later steps, see PORTABLE_ENTITY_ARCHITECTURE.md §6
+and the user's own confirmed sequencing).
+
+=== BUILD ORDER (this pass) ===
+[ ] 1. Real pieces/battle_01/units/<unit_id>/state.txt for all 6 starting
+       units (3/side), with real pos_x/pos_y on the 10x10 board, generated
+       at CONFIRM_START (replacing/supplementing the current flat
+       units.txt read path).
+[ ] 2. Minimal per-unit piece.pdl (Move, Attack methods) - stub effects
+       are OK for this pass (real path-cost/damage math is separate,
+       later work), the POINT is proving the directory+piece.pdl+
+       selection architecture works end to end.
+[ ] 3. roster.chtpm - a real numbered screen listing all of the ACTIVE
+       SIDE's own units this turn, selecting one retargets
+       active_target_id to that unit's own piece_id.
+[ ] 4. Verify live (or via cheap headless/static checks per this session's
+       own CPU-safety discipline) that selecting a unit in roster.chtpm
+       actually shows THAT unit's own Move/Attack methods via
+       ${piece_methods}, not the host screen's own generic methods.
+[ ] 5. Update HANDOFF_NEXT_SESSION.md / user-walkthru.txt with the new
+       real behavior once verified.
+
+=== NOT IN SCOPE THIS PASS (explicitly deferred, don't scope-creep) ===
+- Real move path-costing (straight-line/simple v1 is fine per design doc,
+  not even that yet this pass - stub is OK)
+- Real combat/damage resolution
+- board-viewer rendering units on the board (separate widget-side work,
+  later - see PORTABLE_ENTITY_ARCHITECTURE.md §6 open question 2)
+- Collection mode (Classic only, matches current P1 scope)
+- civ-txt's own equivalent (cities) - tactics-txt first, per direct
+  user confirmation this session
+
+=== SESSION LOG ===
+2026-08-02: Progress file created. Starting step 1 (real per-unit
+  directories).
+
+=== REAL ARCHITECTURAL FINDING (before implementing step 3) ===
+active_target_id (pieces/apps/player_app/state.txt) is NOT a free-standing
+"possession pointer" in this project's current real implementation -
+tactics_menu_input.c's own key==0 idle branch auto-derives it from
+current_layout.txt's own FILENAME every tick (get_current_piece_id()) and
+overwrites it back if it ever differs. Manually retargeting active_target_id
+to a unit's own piece_id while STAYING on roster.chtpm (no layout change)
+would get stomped back to "roster" on the very next idle tick.
+
+ADAPTATION (pragmatic, not fighting this real, working, load-bearing
+navigation mechanism): roster.chtpm's own compose op tracks a simple
+`selected_unit_id` field in tactics_menu's own state.txt. When unset, roster
+shows the numbered unit list (SELECT_UNIT:<id> commands). When set, roster's
+own DYNAMICALLY REGENERATED piece.pdl merges in that unit's real methods
+(read from the unit's own separate piece.pdl file) instead of the plain
+list - functionally the same outcome (select a unit, see ITS real methods,
+dispatch them) without touching the active_target_id/layout coupling at
+all. Noted here so a future agent doesn't "fix" this into a literal
+active_target_id retarget without first re-deriving why it wasn't done
+that way.
+
+=== 2026-08-02 (later): all 5 build-order steps DONE + verified ===
+[x] 1. Real pieces/battle_01/units/<unit_id>/state.txt for all 6 units,
+       real pos_x/pos_y (side1 col=0, side2 col=9, rows 3/5/7), generated
+       in CONFIRM_START (tactics_menu_input.c). Universal schema fields
+       (entity_type/hp/pos_x/pos_y/owner_id) + game-specific (profession_id/
+       owner_side) in the same state.txt, per PORTABLE_ENTITY_ARCHITECTURE.md.
+[x] 2. Minimal real piece.pdl per unit (Move/Attack -> MOVE_UNIT:<id>/
+       ATTACK_UNIT:<id>), written alongside state.txt.
+[x] 3. roster.chtpm + pal/roster_module.pal + "View Roster" button on
+       main.chtpm. tactics_compose_frame.c's own roster branch: no
+       selection -> numbered list of ACTIVE SIDE's own units only;
+       selection made -> merges the selected unit's own real piece.pdl
+       METHOD rows into roster's own regenerated piece.pdl (+ Deselect).
+[x] 4. Verified live via direct standalone op invocation (compose_frame
+       then menu_input then compose_frame again, in a disposable scratch
+       dir symlinked to the real pieces/battle_01 and pieces/registry) -
+       NOT via a live GL/session run, per ongoing CPU-safety discipline.
+       Confirmed: SELECT_UNIT:side1_unit0 correctly sets selected_unit_id,
+       roster's own regenerated piece.pdl correctly shows Deselect+Move+
+       Attack (side1_unit0's OWN real methods, read from its own separate
+       piece.pdl file, not hardcoded in roster's own compose code), view.txt
+       correctly shows that unit's own real HP/position. DESELECT_UNIT
+       verified too (clears selection, reverts to the list view). Move/
+       Attack are trivial one-line stub messages, not independently
+       re-tested (no real logic to break).
+[x] 5. HANDOFF_NEXT_SESSION.md / user-walkthru.txt updated.
+
+=== 2 REAL BUGS FOUND + FIXED DURING THIS PASS ===
+1. pieces/battle_01/ was never symlinked into the session by button.sh -
+   CONFIRM_START's own newly-added unit-directory writes went into the
+   ephemeral session dir and vanished (same bug class as my-chara-txt's
+   plots.txt / civ-txt's board.txt, found again here). Fixed: button.sh
+   now does `mkdir -p pieces/battle_01/units` + symlinks the WHOLE
+   directory (not individual files, since unit subdirs are created
+   dynamically at runtime, not pre-existing).
+2. Own testing mistake (not a code bug, but easy to repeat): calling an
+   op binary directly with a literal small integer as argv[1] (e.g. "2")
+   does NOT simulate real dispatch - argv[1] must be the STRING FORM OF
+   THE RAW ASCII DECIMAL CODE (e.g. "50" for the character '2'), matching
+   exactly what a real PAL loop's read_history+exec actually passes.
+   Cost real time re-diagnosing what looked like a dispatch failure but
+   was actually just a wrong test harness call. Noted here so a future
+   agent doesn't repeat it.
+
+=== READY FOR: live user testing ===
+tactics-txt reset to fresh (config.txt/board.txt deleted, sessions
+cleared, ledger emptied) for the user's own live test. Suggested path:
+Mode -> Confirm & Start -> Enter Battle -> View Roster -> select a unit
+(e.g. side1_unit0) -> confirm its own real HP/position/Move/Attack show up
+-> Deselect -> confirm it reverts to the unit list.

@@ -1,0 +1,48 @@
+<!-- event_editor.chtpm — CHTPM layout twin of the GL Event Editor mock
+     Nav standards: numbered buttons, [>] via parser focus, KEY:n, ACTIVATE,
+     BACK/Esc, INTERACT for text fields later.
+     View toggle: Commands vs Scratch (same dual-source graph).
+     This file is a SPEC/skeleton for when run-widget wires real chtpm. -->
+<panel time_reactive="true">
+    <module>${module_path}</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+
+    <text label="+==============================================================+" /><br/>
+    <text label="|  EVENT EDITOR   Nav>_   view=${view_mode}   package=${pkg_name}  |" /><br/>
+    <text label="+==============================================================+" /><br/>
+
+    <!-- METHOD BAR — same shape as game.chtpm ${piece_methods} -->
+    <button label="1 Save" onClick="KEY:1" /><br/>
+    <button label="2 Load" onClick="KEY:2" /><br/>
+    <button label="3 Import" onClick="KEY:3" /><br/>
+    <button label="4 Export" onClick="KEY:4" /><br/>
+    <button label="5 Toggle View (Commands/Scratch)" onClick="KEY:5" /><br/>
+    <button label="6 Edit .pal" onClick="KEY:6" /><br/>
+    <button label="7 New Page" onClick="KEY:7" /><br/>
+    <button label="8 Help" onClick="KEY:8" /><br/>
+
+    <text label="--- Event (left / RMMV props) ---" /><br/>
+    <text label="Name: ${event_name}" /><br/>
+    <button label="Page 1" onClick="KEY:1" /><br/>
+    <button label="Page 2" onClick="KEY:2" /><br/>
+    <button label="Page 3" onClick="KEY:3" /><br/>
+    <button label="Page 4" onClick="KEY:4" /><br/>
+    <text label="Conditions: ${conditions_line}" /><br/>
+    <text label="Image: ${sprite}" /><br/>
+    <text label="Trigger: ${trigger}" /><br/>
+
+    <text label="--- Contents (Commands | Scratch) ---" /><br/>
+    <button label="View: Commands" onClick="KEY:5" /><br/>
+    <button label="View: Scratch" onClick="KEY:5" /><br/>
+    ${event_content_rows}<br/>
+
+    <text label="--- Footer ---" /><br/>
+    <button label="OK" onClick="KEY:1" /><br/>
+    <button label="Cancel" onClick="BACK" /><br/>
+    <button label="Apply" onClick="KEY:3" /><br/>
+    <button label="Add Cmd" onClick="KEY:4" /><br/>
+    <button label="Palette" onClick="KEY:5" /><br/>
+    <button label="Desktop" onClick="KEY:6" /><br/>
+
+    <text label="[enter] commit  [esc] BACK  [tab] toggle Commands/Scratch" /><br/>
+</panel>

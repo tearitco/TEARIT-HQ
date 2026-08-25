@@ -1,0 +1,18 @@
+USER REPORT — map-picker + mutaclysm (dev)
+Date: 2026-07-28
+
+GREEN: ./button.sh demo
+
+  PASS list includes map_start and map_02 (5 maps total)
+  PASS SWITCH_MAP map_02 → hero map_id + pos + xlector teleported
+  PASS switch back to map_start via file-menu enqueue
+  PASS muta_map_io current reports map_start
+
+Ops:
+  mutaclysm: muta_map_io, muta_widget_cmds (SWITCH_MAP / LIST_MAPS)
+  map-picker: mp_list_maps, mp_switch_map
+  file-menu: fm_set_focus, fm_enqueue SWITCH_MAP
+
+Note: hero always lives at map_start/hero/state.txt; map_id field selects active map.
+
+Next: tile-picker PLACE_TILE; GL chrome for map-picker.

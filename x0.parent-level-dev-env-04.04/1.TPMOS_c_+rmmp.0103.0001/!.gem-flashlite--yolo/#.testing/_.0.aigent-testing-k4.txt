@@ -1,0 +1,426 @@
+J2 Testing Guide (Existing + New Features)
+Date: 2026-03-18
+Purpose: Standardize how agents test features (especially via key injection + frame review) to prevent regressions.
+
+Principles
+----------
+1) Test existing behavior first (regression baseline), then test new behavior.
+2) Test at three levels:
+   - black-box runtime (key injection + frame review)
+   - module/op level (direct state/op assertions)
+   - end-to-end user flow (play full project, create/edit/save/load, script, and replay)
+3) Record evidence in text (commands + observed output snippets).
+4) In no-git mode, create manual backups before risky changes.
+5) After each test pass, publish a frame-history report in repo root (`./`) before making code changes.
+
+High-Value Test Interfaces
+--------------------------
+1) Key injection file:
+- `pieces/keyboard/history.txt`
+- **EXACT FORMAT REQUIRED:** `[YYYY-MM-DD HH:MM:SS] KEY_PRESSED: <code>`
+- Example: `echo "[$(date '+%Y-%m-%d %H:%M:%S')] KEY_PRESSED: 10" >> pieces/keyboard/history.txt`
+- *Note:* The parser strictly looks for the `KEY_PRESSED: ` prefix. Raw integers or malformed lines are ignored.
+- **Timestamp Issues:** Dynamic generation of timestamps using the `date` command in the shell environment can be problematic due to parsing errors or command availability. If issues arise, using a fixed, valid timestamp (e.g., `[2026-04-21 08:08:15]`) is a reliable workaround.
+- **Specific Key Codes:** Common key codes include 'Enter' (decimal code: `13`).
+- **Behavioral Note:** Observed behavior indicates that some key presses, such as '1' on the main menu, might not consistently register or may require specific context. Further investigation may be needed for such cases.
+
+2) Routed app input:
+- `pieces/apps/player_app/history.txt`
+
+3) Frame artifacts:
+- `pieces/display/current_frame.txt`
+- `pieces/display/current_layout.txt`
+- `pieces/display/frame_changed.txt`
+- `pieces/master_ledger/frame_changed.txt`
+
+4) Runtime process checks:
+- orchestrator / parser / renderer / clock daemon process presence
+
+5) Project/runtime artifacts:
+- `projects/<project>/...` piece/state trees
+- project metadata (`project.pdl` and related fields)
+- event/script files and bindings
+
+Regression Test Matrix (Existing Features)
+-----------------------------------------
+R1) Stack launch + process health
+- Launch runtime.
+- Verify expected core processes are live.
+- Verify frame file exists and is rendering.
+
+R2) Key injection ingestion
+- Inject key lines to `pieces/keyboard/history.txt` using the `[TIMESTAMP] KEY_PRESSED: <code>` format.
+- Confirm new entries append and are consumed over time.
+- Confirm frame updates continue after key injections.
+
+R3) Layout/frame validity
+- Confirm `current_layout.txt` points to a valid layout path.
+- Confirm `current_frame.txt` is non-empty and structurally valid.
+
+R4) Local app state integrity
+- Confirm active status line in frame remains coherent (`ACTIVE`, `KEY`, `Z-LEVEL`).
+- Confirm no broken placeholders in frame output.
+
+R5) Op-level smoke checks
+- Run `render_map.+x` and verify `view.txt` updates.
+- For move/state ops, verify expected state deltas (or document if blocked by mode/context).
+
+R6) Compile regression
+- Run `./compile_all.sh` for touched areas before merge.
+
+Nuanced Full-Project Test Matrix (Required)
+-------------------------------------------
+These are required for tester-grade confidence, not optional.
+
+P1) Full project playthrough smoke (existing project)
+- Enter project loader.
+- Launch at least one target project (e.g., fuzz-op/op-ed-related flow).
+- Perform nuanced interactions (nav, mode switches, map control, action menu paths).
+- Verify frame + state coherence after each interaction cluster.
+
+P2) Editor-driven project creation
+- Enter editor flow.
+- Create a new project or project-like playable state.
+- Add pieces/entities and map content.
+- Verify piece placement appears in rendered frame and corresponding state files.
+
+P3) Save / load roundtrip (editor-created content)
+- Save created project.
+- Exit/re-enter flow.
+- Load same project.
+- Verify parity:
+  - piece positions/states
+  - map association
+  - active layout/metadata sanity
+
+P4) Script/event authoring and execution
+- Create script/event definitions for the created project.
+- Bind scripts/events to target pieces/actions.
+- Trigger in runtime play.
+- Verify expected state/result changes and response text.
+
+P5) Local play from created/saved project
+- Launch local play using saved project artifacts.
+- Confirm no manual file edits required.
+- Confirm project boots into expected layout/context.
+
+P6) Metadata correctness checks
+- Validate `entry_layout`, `player_piece`, and related metadata are resolved correctly.
+- Ensure values are scan/registry-derived where appropriate (no stale hardcoded defaults).
+
+P7) Cross-project sanity
+- Ensure testing one project does not corrupt another project's states/layout pointers.
+- Check at least one untouched project still launches normally.
+
+New Feature Test Plan (Template)
+--------------------------------
+For each new feature F:
+1) Define expected behavior in one sentence.
+2) Add deterministic setup steps (files/paths/state).
+3) Add key-injection path (if UI/input relevant).
+4) Add frame assertions (what text/layout must change).
+5) Add state-file assertions (which keys/values must change).
+6) Add project artifact assertions (save/load/script binding persistence).
+7) Add rollback/cleanup steps.
+8) Add failure signatures (what indicates miswire/hardcode regression).
+
+Recommended command skeleton:
+- Baseline capture:
+  - copy `current_frame.txt` and key state files to `/tmp/*before*`
+- Inject/trigger:
+  - append key/event inputs
+- Post capture:
+  - copy `current_frame.txt` and state files to `/tmp/*after*`
+- Diff:
+  - `diff -u before after`
+- Log:
+  - save key evidence lines in test report text file
+
+Mandatory Post-Test Report Gate (Root `./`)
+-------------------------------------------
+This is required so review does not depend on hunting under nested folders.
+
+Rule:
+1) After every test cycle, create a root report file in `./` with:
+- test scope
+- key injections/actions performed
+- frame evidence lines (timestamps + relevant frame snippets)
+- PASS/FAIL/INCONCLUSIVE verdicts
+- explicit "safe to proceed with code changes" line
+
+2) Source evidence from:
+- `pieces/debug/frames/session_frame_history.txt`
+
+3) Report filename convention (root dir):
+- `FRAME_REPORT_<YYYYMMDD-HHMM>_<topic>.txt`
+- Example: `FRAME_REPORT_20260318-0950_scroller.txt`
+
+4) Review gate:
+- Do not begin implementation edits until this root report is written and reviewed.
+
+**System Startup and Frame Viewing:**
+- **System Startup:** The CHTPM orchestrator is launched using the `./button.sh run` command. This initializes the system and presents a text-based main menu.
+- **Frame Viewing:** Frame updates are logged chronologically in `pieces/debug/frames/session_frame_history.txt`. This file is crucial for evidence gathering and post-test review.
+
+Suggested command pattern:
+- `cp pieces/debug/frames/session_frame_history.txt ./FRAME_HISTORY_RAW_<YYYYMMDD-HHMM>.txt`
+- Create concise reviewed summary in:
+  - `./FRAME_REPORT_<YYYYMMDD-HHMM>_<topic>.txt`
+- Keep both raw copy and concise summary for traceability.
+
+M18 Smoke Pass Performed (This Session)
+---------------------------------------
+Executed:
+1) Started stack via background `run_chtpm.sh`.
+2) Verified live processes: orchestrator, chtpm_parser, renderer, clock_daemon.
+3) Injected keys into `pieces/keyboard/history.txt`.
+4) Verified frame output present in `pieces/display/current_frame.txt`.
+5) Captured runtime frame evidence from `/tmp/chtpm_m18.log`.
+6) Stopped stack cleanly via `kill_all.sh`.
+
+Observed:
+- PASS: runtime stack launches and renders frames.
+- PASS: keyboard history accepts injected keys.
+- PASS: frame artifacts are generated and readable.
+- PASS: process cleanup completed after `kill_all.sh`.
+- INCONCLUSIVE: selector movement via direct injection was not proven in this smoke run context; requires controlled active-mode test harness.
+- INCONCLUSIVE: direct `move_entity.+x` delta not observed in current context; requires dedicated fixture state and mode-aware harness.
+
+Known Testing Pitfalls
+----------------------
+1) Mode/context sensitivity:
+- Same key can do nothing if active mode/context is not correct. Check the current layout and focused element.
+
+2) Metadata/default traps:
+- Missing `entry_layout` / `player_piece` guessed defaults can misroute tests.
+
+3) Hardcoded-path drift:
+- Tests may pass in one layout/project but fail in another if pathing is not canonical/world-map-first.
+
+4) Cancellation sequence confusion:
+- Multi-key injections can net-zero movement and hide real behavior.
+
+5) False confidence from op-only tests:
+- Direct op passes do not prove end-to-end editor/save/load/script/play behavior.
+
+6) **INJECTION FORMAT ERROR & UNRELIABLE INPUT:**
+- Key injection MUST strictly follow the `[TIMESTAMP] KEY_PRESSED: <code>` format. Raw integers, malformed lines, incorrect timestamps, or missing prefixes will be ignored by the parser. Issues with the shell's `date` command may necessitate using fixed timestamps.
+- **Specific Key Codes:** Common key codes include 'Enter' (decimal code: `13`).
+- **Behavioral Note:** Observed behavior indicates that some key presses, such as '1' on the main menu, might not consistently register or may require specific context. Further investigation may be needed for such cases.
+
+7) **GHOST BUG HUNTING**: 
+- If key injection is visible in the frame (e.g., in the `[KEY]:` status line), the input pipeline is functional. **Do not investigate "broken input" if the frame reflects the key.** If the application doesn't respond, check the application module's logic, active layout mode (Nav vs Active), or focus state.
+
+8) **RACE CONDITION FALSE POSITIVES**:
+- Sometimes a frame update happens just before an injection is processed. Always allow 1-2 seconds for the parser/module cycle to complete before capturing evidence.
+
+9) **MENU NAVIGATION INCONSISTENCIES:**
+- On certain menus, specific key presses (e.g., '1' on the main menu) may not appear to register or navigate as expected. This could be due to context sensitivity, an incorrect key code being used, or the need for a different action (like 'Enter'). Always verify frame updates and system state after injection.
+
+10) **LINUX VS WINDOWS .+x BINARY DRIFT:**
+- If `./button.sh run` fails with `cannot execute binary file: Exec format error`, inspect the target with `file`.
+- A common cause is that `pieces/chtpm/plugins/+x/orchestrator.+x` or other `.+x` files are Windows PE binaries while the current agent/session is on Linux.
+- Approved Linux recovery path:
+  1. `sh #.dev-storage/#.tools/remove_binaries.sh`
+  2. `./button.sh compile`
+  3. Verify compile summary reports zero failed binaries and required binary check passes.
+- This removes generated `*.+x` binaries and rebuilds Linux versions. It should not be treated as source-code deletion.
+
+11) **API SANDBOX / NO `/dev/tty` HEADLESS TESTING:**
+- Some agent/API shells do not expose `/dev/tty`. In that environment, normal `./button.sh run` may get past compilation but exit when `keyboard_input_linux.c` reports `open /dev/tty: No such device or address`.
+- This does not prove TPMOS is broken on a real terminal; it means the API shell cannot run the terminal keyboard muscle.
+- For frame-driven agent testing in this environment, use a headless subset:
+  - Start parser: `./pieces/chtpm/plugins/+x/chtpm_parser.+x pieces/chtpm/layouts/os.chtpm`
+  - Start renderer: `./pieces/display/plugins/+x/renderer.+x`
+  - Inject keys by appending valid `KEY_PRESSED` lines to `pieces/keyboard/history.txt`.
+  - If needed, append a marker such as `M\n` to `pieces/display/frame_changed.txt`.
+  - Inspect `pieces/display/current_frame.txt` and `pieces/debug/frames/session_frame_history.txt`.
+- Stop any manually launched parser/renderer processes after the test cycle and verify no `chtpm_parser`, `renderer`, `orchestrator`, `keyboard_input`, or `joystick_input` process remains.
+
+12) **HEADLESS TEST CAN STILL PROVE KEY INGESTION:**
+- In the API headless smoke test, starting only `chtpm_parser.+x` and `renderer.+x`, then injecting:
+  `[2026-06-02 22:33:15] KEY_PRESSED: 13`
+  moved the frame from the CHTPM main menu to `PIECEMARK LOADER` / `playrm/loader.chtpm`.
+- This proves the file-based input parser and frame renderer can be tested without live keyboard capture.
+- Use this pattern for Codex/agent validation when a real terminal is unavailable.
+
+13) **WRAITH-ALPHA SPECIFIC TESTING (ASCII + GL, two/four-process
+    architecture) -- added 2026-07-06:**
+
+Everything in items 11-12 above is about the GENERIC/CLASSIC engine
+(`pieces/chtpm/plugins/chtpm_parser.c` + `pieces/display/plugins/+x/
+renderer.+x`). Wraith-alpha is a SEPARATE, parallel stack with its own
+binaries and its own file-based wiring -- confirmed by reading the
+actual source, not assumed. Use this section instead when the feature
+under test lives under `projects/wraith-alpha/`.
+
+13a. The four processes, what each one is, and which ones a headless
+     agent can actually drive
+------------------------------------------------------------------
+  1. `projects/wraith-alpha/ops/+x/wraith_parser_alpha.+x` -- Wraith's
+     own ~2700-line fork of the classic parser. Reads whichever
+     `.chtpm` layout `current_layout` points at, owns `cli_io`/nav/
+     focus state, writes `pieces/display/current_frame.txt` (plain
+     ASCII text). This is the ASCII rendering ground truth.
+  2. `projects/wraith-alpha/manager/+x/wraith-alpha_manager.+x` -- the
+     desktop shell: `g_windows[]`, taskbar, `route_command()`
+     (`DESKTOP_ACTION:...`, `SET_ACTIVE:N`, `KEY:N` dispatch),
+     `navigate_active_window()`, per-project `ops/+x/
+     wraith_project_input.+x` invocation. **Confirmed by reading
+     `main()` directly: this process does NOT touch `/dev/tty` at
+     all.** It polls three plain files every ~16ms
+     (`process_history_file()` on each): `pieces/keyboard/history.txt`,
+     `projects/wraith-alpha/session/history.txt`,
+     `projects/wraith-alpha/session/desktop_actions.txt`. This means
+     it CAN be headless-tested the same way item 11 describes for the
+     classic engine, by appending `KEY_PRESSED:`/`COMMAND:`/
+     `DESKTOP_ACTION:`/`SET_ACTIVE:` lines to those files directly.
+  3. `projects/wraith-alpha/plugins/+x/wraith_rgb_daemon.+x` -- reads
+     `current_frame.txt` (the ASCII text from #1) and rasterizes it,
+     one character at a time, into an RGBA32 pixel buffer
+     (`session/rgb/current_frame.rgba32`) plus click hit-box metadata
+     (`pieces/display/current_frame.objects.pdl`). No GL/display
+     dependency itself -- pure file-to-file rasterization, so this one
+     CAN run headless too.
+  4. `projects/wraith-alpha/ops/+x/wraith_gl.+x` -- a real GLUT window
+     that loads #3's `.rgba32` as a texture and displays it, forwarding
+     raw mouse/keyboard input back into the SAME history files #2
+     reads. **This one genuinely needs a display (X11/GLUT) to open a
+     window at all** -- unlike the other three, this is NOT
+     headless-testable in a no-display API sandbox. Don't try; it's a
+     real constraint, not a workaround-able one like the `/dev/tty`
+     case.
+  Both #3 and #4 are spawned automatically by #2's own
+  `launch_rgb_pipeline()` inside `main()` -- you do not start them
+  separately if you're launching `wraith-alpha_manager.+x` itself; they
+  come up as its children.
+
+13b. MANDATORY pre-flight check before launching ANY of these
+     yourself, every single time
+------------------------------------------------------------------
+`ps aux | grep -iE "wraith-alpha_manager|wraith_gl|wraith_rgb_daemon"`
+FIRST, always, before starting your own instance. Read the FULL PATH in
+the ps output, not just the process name -- these binaries can be
+running from a DIFFERENT agent's enclosure on the same machine (e.g. a
+path containing a different top-level project name than the one you
+were told to work in) and that is NOT yours to inspect, kill, or
+otherwise interact with. This is a real incident, not a hypothetical:
+one session found a live `wraith-alpha_manager.+x` already running from
+a sibling enclosure mid-test and had to abort and confirm with the user
+before proceeding, precisely because two independent processes with the
+same binary name can coexist harmlessly on one machine as long as
+neither reads the other's directory tree -- but that harmlessness is
+exactly why it's easy to not notice you're looking at the wrong one
+until you check the full path. If you see an unfamiliar top-level
+project path in the output, STOP and ask before doing anything else,
+same rule as any other "wrong enclosure" signal.
+
+13c. Headless ASCII-mode smoke test (proven pattern, 2026-07-06)
+------------------------------------------------------------------
+  1. Run the pre-flight check (13b). Confirm zero pre-existing
+     processes from YOUR OWN enclosure's path before starting anything.
+  2. `cd` to the project root first (same "cd into the TPMOS dir"
+     requirement as the classic engine -- both `wraith-alpha_manager.c`'s
+     `resolve_root()` and `wraith_parser_alpha.c`'s own root resolution
+     use `getcwd()` as the default project root).
+  3. Launch the manager in the background:
+     `nohup ./projects/wraith-alpha/manager/+x/wraith-alpha_manager.+x > /tmp/wam.log 2>&1 &`
+     -- this alone brings up the manager + rgb_daemon + (if a display
+     exists) the GL window as children. For ASCII-only testing you
+     don't need to also separately launch `wraith_parser_alpha.+x`;
+     the manager's own project-launch machinery
+     (`launch_project_manager()`) starts a project's parser process
+     path itself once a project is navigated to -- confirm exactly how
+     before assuming, this may differ per code path.
+  4. Inject test input into `pieces/keyboard/history.txt` in the exact
+     format item 11 already requires (`[TIMESTAMP] KEY_PRESSED: <code>`)
+     -- digit keys jump nav focus, `13`/`10` = Enter/activate, `27` =
+     ESC/deactivate, same conventions as the classic engine's `cli_io`
+     handling (confirmed identical shape by reading both parsers'
+     `process_key()`).
+  5. Inspect `pieces/display/current_frame.txt` for the ASCII result.
+  6. Kill ONLY the process(es) you started (match by the PID you
+     captured at launch, not by name -- see 13b) when done. Verify with
+     `ps aux | grep wraith` afterward that nothing of yours remains and
+     nothing else's got touched.
+
+13d. ASCII vs GL PARITY testing -- what "parity" actually means here
+     and how to check it
+------------------------------------------------------------------
+Traced end-to-end (see `x0.short-term-vision/
+window-geometry-render-plan-j5.md` for the full trace): ASCII and GL
+are NOT two independently-implemented renderers that can silently
+drift apart in their own logic -- GL is strictly DOWNSTREAM of ASCII's
+own output. The pipeline is:
+  `wraith_parser_alpha.c` writes `current_frame.txt` (ASCII text)
+    -> `wraith_rgb_daemon.c` rasterizes it character-by-character into
+       `.rgba32` + writes click hit-boxes into `current_frame.objects.pdl`
+    -> `wraith_gl.c` just displays that `.rgba32` texture and forwards
+       clicks by hit-testing against `current_frame.objects.pdl`.
+There is a SECOND, separately-written description of "what's clickable
+where" for the outer desktop chrome specifically:
+`write_semantic_projection_files()` in `wraith-alpha_manager.c` writes
+its own `OBJECT | ... | x=.../y=...` lines (chrome buttons, taskbar,
+title bar) -- independent from `wraith_rgb_daemon.c`'s per-character
+rasterization of a project's OWN body content. Both of these are
+"semantic click descriptions of the same visual grid," computed in two
+different places. **This is exactly where parity can actually break**:
+if a change moves something in the ASCII text but the matching
+`OBJECT` line's `x=`/`y=` isn't updated identically, GL-mode clicks land
+on the wrong element while ASCII-mode (which re-parses its own
+`.chtpm` markup fresh, independent of these `OBJECT` files) keeps
+working fine -- so an ASCII-only smoke test can pass while GL is
+silently broken.
+
+**Concrete parity check, when a display is available (can't be done
+in a no-display headless sandbox -- see 13a #4):**
+  1. Run the ASCII smoke test (13c) first. Confirm the feature works
+     via keyboard/`current_frame.txt` alone.
+  2. With the SAME running session (don't restart -- the whole point is
+     both renderers reading the identical live state), switch to or
+     open the GL window. Confirm the SAME content is visible (same
+     text, same layout) -- this proves the rasterization step (#3 in
+     13a) is keeping up with ASCII's output.
+  3. Click the SAME control in the GL window that you drove via
+     keyboard in step 1. Confirm it produces the SAME effect (compare
+     resulting `current_frame.txt` / state files against what the
+     keyboard path produced). This is the real proof -- a control that
+     merely LOOKS right in GL but is hit-testable at the wrong
+     coordinate is exactly the class of bug two independently-computed
+     offset calculations produces (see the render-plan doc's own
+     "two parallel systems" finding).
+  4. If the feature under test added/moved any chrome-level button
+     (e.g. a new title-bar button), specifically verify its matching
+     `OBJECT` entry in `write_semantic_projection_files()` was added
+     too, not just the visual markup -- this is the single most likely
+     place ASCII/GL parity silently breaks, per the finding above.
+- If no display is available in your environment, do 13c (ASCII) fully,
+  note explicitly in your test report that GL-mode parity is
+  NOT verified in this pass (not "verified" -- there is no way to fake
+  this one), and say so plainly rather than assuming GL is fine because
+  ASCII was.
+
+Best-Practice Additions for Future
+----------------------------------
+1) Build deterministic end-to-end harness scripts for P1-P7.
+2) Add per-feature test fixtures under `#.tools/`:
+- setup fixture
+- run test
+- verify expectations
+- cleanup fixture
+
+3) Keep an append-only session test report per day.
+4) Require at least one full create->save->load->script->play cycle before accepting major feature work.
+
+Minimal Daily Regression Checklist
+----------------------------------
+1) Runtime launches (processes alive)
+2) Frame renders (non-empty current_frame)
+3) Key injection path alive (history updates)
+4) Layout resolution valid (current_layout points to existing file)
+5) Compile check for touched code
+6) High-risk changes get before/after evidence
+7) At least one end-to-end project flow is validated (create/play or load/play)
+8) Root frame report created in `./` and reviewed before edits
+
+End of testing guide.

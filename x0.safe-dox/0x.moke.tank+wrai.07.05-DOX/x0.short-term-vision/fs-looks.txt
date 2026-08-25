@@ -1,0 +1,47 @@
+
+
+this is our framework "TPMOS" 
+
+currently we are working on wraith-alpha
+
+
+
+
+
+--- FRAME UPDATE at 2026-06-28 22:29:50 ---
+╔══════════════ FILE BROWSER ════════════════╗
+║  MODE: LOAD FILE                            ║
+║  DIR: projects/agy-text-editor            ║
+║ SEARCH: | [>] 1. []                                                 |
+║ FILE:   | [ ] 2. [projects/op-ed/games/]                                                 |
+║                                             ║
+║ ACTIVE: projects/agy-text-editor/pieces/document.txt
+║                                             ║
+║  SUGGESTIONS:                               ║
+║  [ ] 3. [...-ed/games/fuzz-op-mirror/]    ║
+║  [ ] 4. [...op-ed/games/test-game-01/]    ║
+║                                             ║
+╠════════════ DIRECTORY CONTENTS ═════════════╣
+║  [ ] 5. [<- BACK]                         ║
+║  [ ] 6. [[DIR] layouts/]                  ║
+║  [ ] 7. [[DIR] manager/]                  ║
+║  [ ] 8. [[DIR] pieces/]                   ║
+║  [ ] 9. [[FIL] file-op-dox.txt (2KB)]     ║
+║  [ ] 10. [[FIL] hi.txt (32B)]             ║
+║  [ ] 11. [[FIL] project.pdl (575B)]       ║
+║  [ ] 12. [...pipeline-study+.txt (2KB)]   ║
+║  [ ] 13. [[FIL] test.txt (14B)]           ║
+║                                             ║
+╠═════════════════════════════════════════════╣
+║  [ ] 14. [LOAD FILE]                      ║
+║  [ ] 15. [CANCEL]                         ║
+║                                             ║
+╠═════════════════════════════════════════════╣
+| ║  Select file to load.                     ║         |
+
+╚═════════════════════════════════════════════╝
+
++=========================================================+
+Nav > _
+
+

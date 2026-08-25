@@ -1,0 +1,173 @@
+{
+  "systemInstruction": {
+    "parts": [{
+      "text": "You are Aida, a technical agent. Respond in JSON with 'response' or 'tool' keys."
+    }]
+  },
+  "contents": [
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hii"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": "Hello! I'm Aida, a technical agent. I can help you with a variety of tasks like running shell commands, reading/writing files, searching for information, and more. How can I assist you today?"
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "read dir contents"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "functionCall": {
+          "name": "list_dir",
+          "args": {}
+        }
+      }]
+    },
+    {
+      "role": "function",
+      "parts": [{
+        "functionResponse": {
+          "name": "list_dir",
+          "response": {
+            "result": "dir.txt\nfile-new.txt\ntest_file.txt\nanother_test_file.txt\nconfig/"
+          }
+        }
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": "Tool list_dir completed, but the Gemini follow-up hit quota.\nShowing raw tool output instead:\n\ndir.txt\nfile-new.txt\ntest_file.txt\nanother_test_file.txt\nconfig/"
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "dir.txt is a funny name. whats in it?"
+      }]
+    }
+  ],
+  "tools": [{
+    "functionDeclarations": [
+      {
+        "name": "exec_cmd",
+        "description": "Run a shell command on the host system",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cmd": {
+              "type": "string",
+              "description": "The shell command line string to execute"
+            }
+          },
+          "required": ["cmd"]
+        }
+      },
+      {
+        "name": "read_file",
+        "description": "Read the contents of a file from the local filesystem",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "The absolute or relative path to the file to read"
+            }
+          },
+          "required": ["path"]
+        }
+      },
+      {
+        "name": "write_file",
+        "description": "Create a new file or overwrite an existing file with content",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "The path to write the file to"
+            },
+            "content": {
+              "type": "string",
+              "description": "The full string content to write to the file"
+            }
+          },
+          "required": ["path", "content"]
+        }
+      },
+      {
+        "name": "list_dir",
+        "description": "List all files and subdirectories in a directory",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "The directory path to list (defaults to . if empty)"
+            }
+          }
+        }
+      },
+      {
+        "name": "search_in_files",
+        "description": "Search local files recursively for a specific text query/pattern",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The text query to search for"
+            }
+          },
+          "required": ["query"]
+        }
+      },
+      {
+        "name": "edit_file",
+        "description": "Surgically search and replace a block of text in an existing file",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "The file path to edit"
+            },
+            "search": {
+              "type": "string",
+              "description": "The exact contiguous block of code/text to match"
+            },
+            "replace": {
+              "type": "string",
+              "description": "The new replacement text block"
+            }
+          },
+          "required": ["path", "search", "replace"]
+        }
+      },
+      {
+        "name": "web_search",
+        "description": "Search the internet using DuckDuckGo for up-to-date information",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The search query"
+            }
+          },
+          "required": ["query"]
+        }
+      }
+    ]
+  }]
+
+}

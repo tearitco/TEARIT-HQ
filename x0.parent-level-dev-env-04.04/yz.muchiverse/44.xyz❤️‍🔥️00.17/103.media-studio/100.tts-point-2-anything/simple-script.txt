@@ -1,0 +1,11 @@
+
+
+use the script from the bible reader. 
+that will do tts to any doc u point to , or will do all docs in dir if u say , '<dir>/' instead of <doc>.txt/md (ignore code) 
+
+
+
+<it can make the tts locally in temp and not delete it. ill delete it if i want.> 
+
+
+<which voice? from a voice bank [riley/chara 4 now] ; and it just runs in cli but takes dir as arg> 

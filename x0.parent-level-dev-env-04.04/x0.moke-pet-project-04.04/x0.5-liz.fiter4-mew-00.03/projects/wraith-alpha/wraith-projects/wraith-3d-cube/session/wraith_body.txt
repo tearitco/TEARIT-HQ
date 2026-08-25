@@ -1,0 +1,12 @@
+WRAITH 3D CUBE
+Surface: ${game_map} | Toolbar: Control_Map INTERACT | Mode: is_map_control
+    +--------+
+   /        /|
+  +--------+ |
+  |        | +
+  |        |/
+  +--------+
+Audit: piece=cube_probe artifact=pieces/cube_probe/artifact.txt rot=x10,y0,z0
+Camera: mode=4 pos=0.00,0.00,0.00 pitch=15.00 yaw=0.00 roll=0.00
+Last: ROTATE_CUBE:y,-5
+Keys: WASD rotate XY | QE roll | IJKL move camera | M mode | R reset | ESC exit

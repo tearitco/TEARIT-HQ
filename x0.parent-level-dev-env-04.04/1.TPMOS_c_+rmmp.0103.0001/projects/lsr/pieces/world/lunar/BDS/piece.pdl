@@ -1,0 +1,8 @@
+<piece_id>BDS</piece_id>
+<traits>
+  <trait>corporation</trait>
+  <trait>auditable</trait>
+</traits>
+<methods>
+  <method label="LSR" href="projects/lsr/layouts/lsr_main.chtpm" />
+</methods>

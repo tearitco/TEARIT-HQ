@@ -1,0 +1,55 @@
+# Clock-Op Fix Plan (fuzz-op)
+
+## 1. Objectives
+Restore the toggle clock feature to `fuzz-op` with two modes: `auto` and `manual`.
+- **Auto Mode**: Real-time clock (seconds increment every real second).
+- **Manual Mode**: Clock updates only on specific triggers:
+    - User (via Xlector) moves a piece (not Xlector itself).
+    - A piece performs an action (not Xlector).
+    - User selects "End Turn" (advances clock by 1 hour).
+
+## 2. Component Updates
+
+### A. Clock Daemon (`pieces/system/clock_daemon/plugins/clock_daemon.c`)
+- Add `increment-hour` command to OP MODE.
+- Add `increment_hour_str` function.
+- Ensure `DAEMON MODE` only increments time if `mode == "auto"`.
+- Support `mode == "manual"` (previously `turn`).
+
+### B. New Ops
+1. **Toggle Clock Op** (`projects/fuzz-op/ops/toggle_clock.c` -> `toggle_clock_op.+x`):
+   - Reads `pieces/system/clock_daemon/state.txt`.
+   - Toggles `mode` between `auto` and `manual`.
+   - Logs response (e.g., "Clock: Manual").
+2. **End Turn Op** (`projects/fuzz-op/ops/end_turn.c` -> `end_turn_op.+x`):
+   - Calls `clock_daemon increment-hour`.
+   - Logs response ("Turn Ended").
+
+### C. PDL Updates
+- **`projects/fuzz-op/pieces/xlector/piece.pdl`**:
+    - `METHOD | toggle_clock | projects/fuzz-op/ops/+x/toggle_clock_op.+x`
+    - `METHOD | end_turn | projects/fuzz-op/ops/+x/end_turn_op.+x`
+- **`projects/fuzz-op/pieces/pet_01/piece.pdl`** (and `pet_02`):
+    - `METHOD | end_turn | projects/fuzz-op/ops/+x/end_turn_op.+x`
+
+### D. Manager Update (`projects/fuzz-op/manager/fuzz-op_manager.c`)
+- In `route_input`:
+    - Before processing movement or methods, check `pieces/system/clock_daemon/state.txt` for `mode`.
+    - If `mode == "manual"`:
+        - If moving a piece and `active_target_id != "xlector"`, call `clock_daemon tick`.
+        - If executing a method (hotkeys 2-8) and `active_target_id != "xlector"`, call `clock_daemon tick`.
+
+## 3. Verification
+1. Compile all components.
+2. Launch `fuzz-op`.
+3. Toggle clock to `manual`.
+4. Verify time does not advance on its own.
+5. Move Xlector: Verify time does not advance.
+6. Select Pet, move Pet: Verify `turn` increments.
+7. Perform Pet action (e.g., feed): Verify `turn` increments.
+8. Select "End Turn": Verify `time` advances by 1 hour.
+9. Toggle clock to `auto`: Verify time advances every second.
+
+
+Status : Complete. 
+use this document as working clock op documentation 

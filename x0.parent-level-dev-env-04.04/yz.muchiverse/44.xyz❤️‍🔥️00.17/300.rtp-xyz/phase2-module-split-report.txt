@@ -1,0 +1,38 @@
+================================================================================
+phase2-module-split-report.txt - 300.rtp-xyz: what changed 2026-07-31
+and why, for future agents. See also the house-wide docs this work is
+part of: #.haiku+/!.xyzos-standards+1.txt §41, #.haiku+/!.xyzos-
+pitfalls+1.txt PITFALL 66, #.haiku+/refactor-list-j30.txt, and
+101.mutaclsym🧟‍♂️️+18.01's own phase2-module-split-report.txt (this
+project is a confirmed byte-identical copy of that project's own
+pieces/chtpm/layouts/*.chtpm + pal/main_loop_chtpm.pal + system/
+chtpm_parser_pal.c BEFORE mutaclsym's own Phase 2 work - the exact
+same edits were mechanically re-applied here, identically to this
+project's own sibling copy, 300.rpg-xyz - see that project's own
+phase2-module-split-report.txt for the full detail, this file is
+intentionally a near-duplicate).
+================================================================================
+
+## WHAT WAS DONE HERE
+
+Identical to 300.rpg-xyz - see that project's own phase2-module-
+split-report.txt. Summary: pal/game_module.pal + pal/info_test_
+module.pal created (same content as pal/main_loop_chtpm.pal), both
+layouts' <module> lines updated to point at their own file,
+clear_saved_active_index() (PITFALL 66) ported into system/chtpm_
+parser_pal.c at 6 real transition sites. Verified byte-for-byte
+identical chtpm_parser_pal.c to 300.rpg-xyz both before and after this
+edit (same script applied to both).
+
+## VERIFICATION
+
+Rebuilt via `bash scripts/build.sh` - "build ok", no new errors.
+clear_saved_active_index appears 8 times. NOT live-tested (no harness
+exists for this project) - source-level + compile-verified only.
+
+## IF YOU HIT A BUG HERE
+
+Same guidance as 300.rpg-xyz's own phase2-module-split-report.txt -
+read that file. This project runs IN-PLACE (no session isolation) -
+game state persists across runs.
+================================================================================

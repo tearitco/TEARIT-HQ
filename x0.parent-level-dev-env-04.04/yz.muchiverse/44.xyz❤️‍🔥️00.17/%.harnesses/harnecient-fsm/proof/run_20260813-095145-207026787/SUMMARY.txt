@@ -1,0 +1,9 @@
+run_plan_file — /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/harnecient-fsm/plans/set-model-demo.plan (depth 0)
+started: Thu Aug 13 09:51:45 AM PDT 2026
+
+SET_MODEL 1 [gemma3:1b]: PASS
+SET_MODEL 2 [llama2:latest]: PASS
+SET_MODEL 3 [stable-code:latest]: PASS
+
+finished: Thu Aug 13 09:52:00 AM PDT 2026
+overall: PASS

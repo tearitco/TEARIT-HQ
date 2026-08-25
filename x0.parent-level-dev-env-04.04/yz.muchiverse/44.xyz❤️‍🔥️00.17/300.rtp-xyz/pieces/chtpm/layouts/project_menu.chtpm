@@ -1,0 +1,18 @@
+<panel time_reactive="true">
+    <module>manager/+x/rtp_manager.+x</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|                   S A V E   /   L O A D                   |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="  (${save_root_kind})" /><br/>
+    <br/>
+    <button label="Save Now (new slot)" onClick="SET_SAVE_NEW" /><br/>
+    <br/>
+    <text label="  Load a save:" /><br/>
+    ${piece_methods}
+    <br/>
+    <text label="  ${last_message}" /><br/>
+    <text label="+============================================================+" /><br/>
+    <button label="Back to Game" href="pieces/chtpm/layouts/game.chtpm" /><br/>
+    <text label=" [enter] select  [esc] Back to Game  (Ctrl+C to quit)" /><br/>
+</panel>

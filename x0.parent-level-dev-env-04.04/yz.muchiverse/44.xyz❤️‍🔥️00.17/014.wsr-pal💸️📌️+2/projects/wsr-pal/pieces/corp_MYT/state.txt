@@ -1,0 +1,17 @@
+current_state=1
+decision_mode=1
+cash=1000.00
+stock_price=10.17
+book_value=1000.00
+shares_outstanding=100.00
+market_cap=1017.50
+debt_to_equity=0.00
+risk_bias=50
+shares_held=0
+pending_action=
+last_action=
+human_decision=
+owned_by=player_you
+name=mytest
+industry=Banking
+country=Solar Empire

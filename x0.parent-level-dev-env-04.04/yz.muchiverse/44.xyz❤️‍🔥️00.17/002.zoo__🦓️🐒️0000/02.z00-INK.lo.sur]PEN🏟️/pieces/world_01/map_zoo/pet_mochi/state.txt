@@ -1,0 +1,15 @@
+name=Mochi
+type=pet
+species=cat
+pos_x=2
+pos_y=1
+pos_z=0
+on_map=1
+map_id=map_zoo
+hunger=40
+happiness=60
+energy=90
+decision_mode=0
+digit_accum=0
+action_cursor=-1
+last_key=0

@@ -1,0 +1,12 @@
+name=Fuzzball
+type=pet
+pos_x=5
+pos_y=5
+pos_z=0
+on_map=1
+hunger=20
+happiness=80
+energy=100
+level=1
+map_id=map_0001.txt
+status=active

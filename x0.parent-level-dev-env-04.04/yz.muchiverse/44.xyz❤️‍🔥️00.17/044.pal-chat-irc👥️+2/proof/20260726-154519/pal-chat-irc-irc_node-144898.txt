@@ -1,0 +1,7 @@
+kind=irc_node
+project_id=pal-chat-irc
+piece_id=
+host=127.0.0.1
+port=9950
+pid=144898
+last_seen=1785105920

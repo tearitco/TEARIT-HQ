@@ -1,0 +1,188 @@
+<title>Project Starters — Browser Prompting</title>
+
+<style>
+  :root {
+    --bg: #f4f3ef; --surface: #ffffff; --surface-2: #ececE6; --border: #dcdad2;
+    --text: #1c1c1a; --text-dim: #6b6a63; --accent: #1a8a4a; --accent-warm: #b5720a;
+    --status-wip: #2563a8; --code-bg: #ececE6; --code-text: #2b2b28;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  :root:not([data-theme="light"]) { @media (prefers-color-scheme: dark) {
+    --bg: #14161a; --surface: #1b1e24; --surface-2: #21252c; --border: #2b2f37;
+    --text: #e9e7e2; --text-dim: #9599a1; --accent: #22c55e; --accent-warm: #f0a63f;
+    --status-wip: #5b9dd9; --code-bg: #16181c; --code-text: #dcdad4;
+  } }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --surface: #1b1e24; --surface-2: #21252c; --border: #2b2f37;
+    --text: #e9e7e2; --text-dim: #9599a1; --accent: #22c55e; --accent-warm: #f0a63f;
+    --status-wip: #5b9dd9; --code-bg: #16181c; --code-text: #dcdad4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  a:focus-visible, .navlink:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
+  .sidebar { border-right: 1px solid var(--border); background: var(--surface); padding: 28px 20px 40px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .brand { font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 4px; }
+  .brand strong { display: block; font-family: var(--sans); font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em; color: var(--text); text-transform: none; margin-top: 2px; }
+  nav { margin-top: 24px; display: flex; flex-direction: column; gap: 20px; }
+  .navgroup-label { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 8px; }
+  .navlinks { display: flex; flex-direction: column; gap: 2px; }
+  .navlink { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; color: var(--text); text-decoration: none; font-size: 0.88rem; }
+  .navlink:hover { background: var(--surface-2); }
+  .navlink.current { background: var(--surface-2); font-weight: 700; }
+  .navlink .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--border); }
+  .navlink .dot.done { background: var(--accent); }
+  .navlink .dot.wip { background: var(--status-wip); }
+  main { padding: 56px 40px 120px; min-width: 0; }
+  .col { max-width: 760px; margin: 0 auto; }
+  .hero-eyebrow { font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 10px; }
+  h1.pagetitle { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; margin: 0 0 14px; }
+  .lede { font-size: 1.08rem; color: var(--text-dim); max-width: 62ch; margin: 0 0 48px; }
+  section.doc { padding-top: 44px; margin-top: 8px; border-top: 1px solid var(--border); scroll-margin-top: 24px; }
+  section.doc:first-of-type { border-top: none; padding-top: 0; }
+  .section-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  h2 { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
+  h3 { font-size: 1.08rem; font-weight: 700; margin: 28px 0 10px; }
+  .pill { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-dim); white-space: nowrap; }
+  p { margin: 0 0 16px; max-width: 68ch; }
+  ul, ol { margin: 0 0 16px; padding-left: 22px; }
+  li { margin-bottom: 6px; max-width: 64ch; }
+  code { font-family: var(--mono); font-size: 0.86em; background: var(--code-bg); color: var(--code-text); padding: 0.12em 0.4em; border-radius: 4px; }
+  pre { background: var(--code-bg); color: var(--code-text); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; overflow-x: auto; margin: 0 0 20px; }
+  pre code { background: none; padding: 0; font-size: 0.84rem; line-height: 1.55; }
+  .callout { border: 1px solid var(--border); border-left: 3px solid var(--accent); background: var(--surface); border-radius: 6px; padding: 14px 18px; margin: 0 0 20px; }
+  .callout.warn { border-left-color: var(--accent-warm); }
+  .callout .callout-label { font-family: var(--mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); display: block; margin-bottom: 6px; }
+  .callout.warn .callout-label { color: var(--accent-warm); }
+  .callout p:last-child { margin-bottom: 0; }
+  footer.pagefoot { max-width: 760px; margin: 64px auto 0; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.85rem; }
+  @media (max-width: 880px) { .shell { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); } main { padding: 40px 20px 100px; } }
+  html { scroll-behavior: smooth; }
+</style>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">yz.muchiverse / browser prompting</div>
+    <div class="brand"><strong>Delegation Map</strong></div>
+    <nav aria-label="Documentation sections">
+      <div>
+        <div class="navgroup-label">Start Here</div>
+        <div class="navlinks">
+          <a class="navlink" href="1.platform-primer.html"><span class="dot done"></span>Platform Primer</a>
+          <a class="navlink" href="2.house-shape-status.html"><span class="dot done"></span>House Shape Status</a>
+        </div>
+      </div>
+      <div>
+        <div class="navgroup-label">Topics</div>
+        <div class="navlinks">
+          <a class="navlink" href="3.ai-agents.html"><span class="dot wip"></span>AI Agents</a>
+          <a class="navlink" href="4.open-hai-free-ai.html"><span class="dot done"></span>open-hai + Free AI</a>
+          <a class="navlink" href="5.bugs-toys-gl.html"><span class="dot wip"></span>Bugs / Toys / GL</a>
+          <a class="navlink" href="6.architecture-explainers.html"><span class="dot wip"></span>Architecture Explainers</a>
+          <a class="navlink" href="7.platform-passes.html"><span class="dot wip"></span>Grok's Lanes</a>
+          <a class="navlink current" href="8.project-starters.html"><span class="dot wip"></span>Project Starters</a>
+        </div>
+      </div>
+      <div>
+        <div class="navlinks">
+          <a class="navlink" href="../index.html">← Browser Prompting index</a>
+          <a class="navlink" href="../1.index-house.html">← Muchiverse House Docs</a>
+        </div>
+      </div>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="col">
+      <div class="hero-eyebrow">New work, from scratch</div>
+      <h1 class="pagetitle">🌱 Project Starters</h1>
+      <p class="lede">Business-sim game, xyz-installer-dev, calendar/notebook HQ app.</p>
+
+      <section class="doc" id="business-sim">
+        <div class="section-head"><h2>🏦🌾 Business sim game (banks/stores/farmers/scientists)</h2></div>
+        <p>Banks + stores on a board trading stocks/bonds, players work for salary or trade goods with farmers/miners/scientists doing R&amp;D.</p>
+        <h3>Segregation via `3.file`</h3>
+        <p>
+          The taskbar's real HQ header cell 3 is "file" (new/save/save-as/load). Each save-slot
+          under the file cell IS your project boundary — the game lives entirely inside its own
+          file/session. Default to keeping it local; only promote a genuinely reusable capability
+          (e.g. a generic stock-ticker widget) out to shared code deliberately.
+        </p>
+        <h3>Top docs to show the agent</h3>
+        <ol>
+          <li>Platform Primer</li>
+          <li>Architecture Explainers → Collaborative Entity Games</li>
+          <li>Architecture Explainers → Data Storage Ledger</li>
+        </ol>
+        <h3>Starter prompt shape</h3>
+        <pre><code>CONTEXT: [platform primer + collaborative-entity-games + data-storage-ledger]
+CODE: [an existing multi-pal desk, as reference]
+PROMPT:
+  "New game, file-scoped. Board = a desk. Banks/stores (pals) as shared-state owners for
+  prices/inventory, farmers/miners/scientists and the player as pals that READ that state and
+  submit trade/work actions. Start with ONE mechanic only. Don't build the full economy in one
+  pass."</code></pre>
+        <p><strong>Build order</strong>: (1) one static desk + one bank pal with a real price-list state file, (2) one player pal that can buy/sell against it, (3) THEN add farmers/salary/R&amp;D.</p>
+      </section>
+
+      <section class="doc" id="installer">
+        <div class="section-head"><h2>📦🧙 xyz-installer-dev exploration</h2></div>
+        <p>Location: <code>x0.parent-level-dev-env-04.04/xyz-installer-dev/</code></p>
+        <div class="callout warn">
+          <span class="callout-label">Real version mismatch, worth checking</span>
+          <p>
+            <code>pointers.pdl</code> points the installer at <code>44.xyz❤️‍🔥️00.10</code> as the
+            dev tree — but this session's own work happened in <code>44.xyz❤️‍🔥️00.17</code>.
+            Confirm which version the installer is actually meant to package.
+          </p>
+        </div>
+        <h3>Top docs</h3>
+        <ol>
+          <li><code>xyz-installer-dev/README.md</code> — read yourself first</li>
+          <li><code>dev-doc/04.harnecient-fresh-install-design.md</code> — closest to a "wizard" idea</li>
+          <li><code>dev-doc/03.hardcoded-path-fragility-and-portability.md</code> — an installer's #1 real risk</li>
+        </ol>
+        <h3>Prompt shape — discovery, not build</h3>
+        <pre><code>CONTEXT: [README.md + 04.harnecient-fresh-install-design.md + 03.hardcoded-path-fragility.md]
+CODE: [pointers.pdl]
+PROMPT:
+  "Summarize the current real state of this installer project against my goal: a wizard-style
+  installer. What already exists vs. what's missing? Also flag: pointers.pdl points at version
+  00.10 - is that still the intended package target, or stale?"</code></pre>
+      </section>
+
+      <section class="doc" id="calendar">
+        <div class="section-head"><h2>📅📓 Calendar-based notebook app (HQ or clock cell)</h2></div>
+        <p>Real existing doc to check first: <code>au11-hq/15.clock-design.md</code> — a real clock-cell design doc may already cover calendar UI shape.</p>
+        <h3>This is really 3 separate features</h3>
+        <ol>
+          <li><strong>Sidebar widenable + forkable/dumpable + input reliability</strong> — route through the AI Agents page, not this one.</li>
+          <li><strong>X11 copy-paste</strong> — a genuine house-wide input-handling gap, infrastructure not app-specific.</li>
+          <li><strong>The notebook app itself</strong> — covered here.</li>
+        </ol>
+        <div class="callout warn">
+          <span class="callout-label">Decide before prompting</span>
+          <p>Per-subject-calendar vs per-day-subject — both named without picking one. Same "decide first" caution as palettes-as-pals.</p>
+        </div>
+        <h3>Prompt shape — notebook app</h3>
+        <pre><code>CONTEXT: [platform primer + 15.clock-design.md]
+CODE: [clock cell's current manager/layout]
+PROMPT:
+  "Add a notebook feature to the clock cell: [per-subject calendar / per-day subject - STATE
+  WHICH]. Calendar-shaped note view, one master note per month/year, full text audit trail
+  (append-only ledger convention)."</code></pre>
+        <h3>Prompt shape — X11 copy-paste (separate, infrastructure-level)</h3>
+        <pre><code>CONTEXT: [platform primer]
+CODE: [khtpm_* family's own Xlib event loop, e.g. khtpm_strip_parser.c's KeyPress handling]
+PROMPT:
+  "Add PRIMARY/CLIPBOARD selection support (X11 copy-paste) to the khtpm_* family's cli_io
+  text-input widgets. Keep it in the shared css/layout parser layer if there's an obvious shared
+  hook point, not duplicated per-app."</code></pre>
+      </section>
+
+      <footer class="pagefoot">Three independent starters — each gets its own browser session, don't try to bootstrap all three in one prompt.</footer>
+    </div>
+  </main>
+</div>

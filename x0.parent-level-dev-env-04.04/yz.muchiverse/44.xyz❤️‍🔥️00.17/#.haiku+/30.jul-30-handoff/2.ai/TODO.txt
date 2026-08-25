@@ -1,0 +1,218 @@
+================================================================================
+TODO — AI-system bugs found this session, concrete fixes
+Companion to xyzai-vs-iqabod.md (read that first for the full evidence).
+================================================================================
+
+========================================================================
+TODO 1 — FIXED 2026-07-30 (in TWO passes - first pass was itself wrong,
+see below). model_list.txt's iqabod entries pointed at a project root
+that no longer exists
+========================================================================
+RESOLUTION, PASS 1: per direct follow-up instruction ("make sure we use
+relative paths in the entire house"), this became a real architecture
+fix, not just a data edit: send_message.c's own iqabod branch resolves
+api_url RELATIVE TO project_root (backward-compatible with a literal
+absolute-path override), and model_list.txt's iqabod-test entry stores
+`../#.z.mirror_llm]z5]IQABOD🪞️+4` instead of the dead absolute path.
+VERIFIED at the time via a manual, direct CLI sequence (switch_model.+x
+-> send_message.+x -> check_response.+x, one at a time, run from the
+top-level project directory) - passed, reported fixed.
+
+RESOLUTION, PASS 2 (same day, after being asked directly "did you test
+using its harness"): building and running the project's REAL harness
+(test-harn-same/scenarios/demo_iqabod_chat.sh, new this pass, same real
+key-injection shape demo_list_dir_tool.sh already established) found
+PASS 1's own fix was WRONG for real runs - button.sh always sets
+project_root to a SESSION-scoped directory, two levels deeper than
+where sibling projects actually live, so the relative path that worked
+from a top-level CLI invocation silently resolved to nowhere for every
+real app run. Added `derive_true_project_root()` (strips the session-dir
+suffix before resolving the cross-project reference) - re-ran the same
+harness scenario, all 4 assertions PASS. Also re-ran
+demo_list_dir_tool.sh (gemma tool-detection, unrelated code path, same
+file touched twice) before and after PASS 2's edit - PASS both times,
+no regression.
+
+Full incident + both fix passes now documented as PITFALL 60 (with its
+own UPDATE section for pass 2) in !.xyzos-pitfalls+1.txt, generalized
+into !.xyzos-standards+1.txt §37 ("RELATIVE PATHS HOUSE-WIDE") + new
+§37.1 (the session-dir gotcha specifically).
+
+LESSON: "verified via CLI" and "verified via the real running app's own
+harness" are different claims - PASS 1 made the first claim honestly and
+it was still not enough. This is the exact same shape PITFALL 58 already
+documented once this session (op-level pass, real feature still broken)
+- worth remembering it can bite twice in one session even when you
+already know the rule.
+
+Original bug report, kept below for the record (what was true before
+the fix):
+
+TODO 1 (ORIGINAL, HIGHEST PRIORITY, ~5 MIN FIX): model_list.txt's
+iqabod entries point at a project root that no longer exists
+========================================================================
+STATUS: confirmed 100% broken, not "produces bad output" - every
+iqabod-provider chat call currently fails at chdir() and the forked
+child silently _exit(127)s. Verified by direct `ls` on the referenced
+path (No such file or directory) and by reading send_message.c's own
+exec block (chdir(api_url) != 0 -> _exit(127)).
+
+CURRENT (broken) lines in
+045.muchi-pal-agent🤖️+1/pieces/registry/models/model_list.txt:
+
+  iqabod-test|iqabod|/home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-10.00/x0.parent-level-dev-env-03.00/#.ref/^.IQABOD-llm-06.00|curriculum/test/test.txt
+  iqabod-daily-life|iqabod|/home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-10.00/x0.parent-level-dev-env-03.00/#.ref/^.IQABOD-llm-06.00|curriculum/daily_life/daily_life.txt
+
+FIX: repoint api_url at the real, current project
+(#.z.mirror_llm]z5]IQABOD🪞️+4/, confirmed to exist, confirmed to compile/
+run) AND repoint model_name at a curriculum that actually exists there.
+Only ONE of the two real curricula has a trained checkpoint
+(curriculum/guess_the_word/guess_the_word.txt.weights exists;
+curriculum/guess_the_letter/guess_the_letter.txt has no .weights file,
+i.e. untrained/random-init - would generate pure noise, not even
+word-salad). Proposed replacement (both entries kept, `daily-life`
+renamed since that curriculum doesn't exist under any name):
+
+  iqabod-test|iqabod|/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.15/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/#.z.mirror_llm]z5]IQABOD🪞️+4|curriculum/guess_the_word/guess_the_word.txt
+  iqabod-untrained|iqabod|/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.15/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/#.z.mirror_llm]z5]IQABOD🪞️+4|curriculum/guess_the_letter/guess_the_letter.txt
+
+(second entry kept only as a deliberately-labeled "known untrained,
+expect noise" option for comparison/debugging - rename or drop it if
+that's not useful; `guess_the_letter` was never trained per the missing
+.weights file, confirmed by direct listing).
+
+VERIFY AFTER FIXING: re-run the exact live test this session already
+did by hand (see xyzai-vs-iqabod.md's "Third finding" section) but
+through the REAL xyzai path this time - i.e. actually trigger
+send_message.c/check_response.c with provider_kind=iqabod (via /model
+iqabod-test in the real chat UI, real key injection, not a direct CLI
+call) and confirm iqabod_response.txt gets real content and
+check_response.c's marker-strip logic produces a non-empty `content`
+string in the real chat frame. This is the same "prove it in the real
+running app, not just in isolation" discipline the rest of this
+handoff's own §36.6 citations already establish - the CLI test alone
+(already done, see xyzai-vs-iqabod.md) proves the BINARY works, not that
+xyzai's OWN wiring reaches it correctly end to end.
+
+FILES: 045.muchi-pal-agent🤖️+1/pieces/registry/models/model_list.txt
+       (the only file that needs to change for this specific bug)
+
+========================================================================
+TODO 2 (LOW PRIORITY, DOCUMENTATION ONLY): comments in send_message.c/
+check_response.c undersell what IQABOD actually is
+========================================================================
+STATUS: not a bug, a missed-context gap. send_message.c's own header
+comment correctly describes IQABOD's request shape (no HTTP/JSON, forks
+main_orchestrator.+x) but never states it's a REAL, from-scratch
+transformer (attention/RoPE/RMSNorm/SwiGLU/real backprop) - independently
+confirmed this session via the real project's own
+^.finall_report_dec16.txt. A future reader skimming these comments could
+reasonably assume "iqabod" is some lightweight stub or mock provider
+kept around for testing, rather than a genuine (if tiny and undertrained)
+homemade LLM.
+
+FIX (optional, cheap): add one sentence to send_message.c's existing
+iqabod header comment block, e.g. "IQABOD is a real from-scratch C
+transformer (attention/RoPE/RMSNorm/SwiGLU, real backprop) - see
+#.z.mirror_llm]z5]IQABOD🪞️+4/^.finall_report_dec16.txt for an independent
+architecture review - not a stub or mock provider."
+
+FILES: 045.muchi-pal-agent🤖️+1/ops/send_message.c (header comment only)
+
+========================================================================
+TODO 3 (SEPARATE BUG, ALREADY DOCUMENTED, STILL OPEN): gemma pipeline
+render-refresh freeze
+========================================================================
+STATUS: NOT an iqabod bug - flagging here because it's in the same
+provider-dispatch family and was already surfaced in the original
+2-independent-ai-systems.md research pass. Real, open,
+previously-diagnosed-but-not-yet-fixed: 045.muchi-pal-agent🤖️+1/
+jul-21-gemma-fix.txt documents a resolved race-condition bug
+(concurrent unreaped sessions on shared world_01/state.txt) followed by
+a NEW render-refresh freeze that appeared after that fix landed. The
+file itself already prescribes the next diagnostic step: add a debug
+log inside check_response.c and reproduce. Not yet done as of this
+write-up (this session's own read of check_response.c did not find that
+debug log present).
+
+FIX: not attempted this session (out of scope for the iqabod-specific
+ask) - the prescribed next step is already written down in
+jul-21-gemma-fix.txt itself, re-read that file in full before starting.
+
+FILES: 045.muchi-pal-agent🤖️+1/ops/check_response.c (add the prescribed
+       debug log), jul-21-gemma-fix.txt (read first, has the full
+       repro steps already written)
+
+========================================================================
+TODO 4 (FIXED 2026-07-31): gemma "TOOL: ..." hallucination after typing
+"dir list" + tool result rendered above the user message
+=======================================================================
+SYMPTOM (user report): typing "dir list" produced a frame where Aida
+"answered" with `TOOL: read file jul-21.txt` instead of a clean listing.
+
+ROOT CAUSE, PART 1: build_gemma_request() (ops/send_message.c) replayed
+old persisted `assistant|tool_call` turns to gemma3:270m as literal
+"assistant: TOOL: X {args}" text. The model imitated that format in its
+reply. Live-caught: llm_response.json contained exactly
+`"TOOL: read file jul-21.txt"`.
+
+ROOT CAUSE, PART 2 (cosmetic): strategy_execute_a ran BEFORE send_message
+appends the user's own message, so its tool|result append rendered ABOVE
+the "You: ..." line that triggered it.
+
+FIX (per explicit user decisions, all harness-proven):
+  - build_gemma_request() now SKIPS assistant|tool_call turns at
+    prompt-build time only (before comma placement, no dangling "{}," in
+    the JSON). Persisted context_log template untouched (user chose
+    filter-not-purge). tool|* result turns still fed as TOOL_RESULT.
+  - New state.txt toggle model_after_tool=no (default): when strategy A
+    just pre-ran a tool, send_message flushes the result then returns
+    IDLE WITHOUT calling any LLM ("Tool result shown."). Set
+    model_after_tool=yes to re-enable model commentary after tool runs.
+  - Display order fixed via tool_result.pending handshake:
+    strategy_execute_a stashes (tool name + raw result), send_message
+    flushes it into context_log right after the user turn, deletes the
+    file. tool_result_pending= is the handshake field.
+  - Old check_response.c PENDING_PERM → execute_tool.c/deny_tool.c flow
+    and text_to_pal_prompt.c's llamacpp replay: LEFT AS-IS (user chose).
+
+VERIFIED: demo_list_dir_tool.sh OVERALL PASS with two NEW assertions
+(KPI#2: no `TOOL: (read|write|list|run|search|speak)` in last 12 frame
+lines; KPI#3: result line number > user message line number). Proof:
+045.muchi-pal-agent🤖️+1/proof/harness-20260731-113214/. Full narrative +
+plan in #.haiku+/30.jul-30-handoff/2&3-jul31-sprint.md §6b.
+
+FILES: ops/send_message.c, ops/strategy_execute_a.c,
+       test-harn-same/scenarios/demo_list_dir_tool.sh.
+
+=======================================================================
+RECOMMENDED ORDER
+========================================================================
+1. TODO 1 (model_list.txt fix) - DONE 2026-07-30, verified live.
+2. TODO 1's own "VERIFY AFTER FIXING" step - DONE, through the real
+   running app, per this house's own §36.6 discipline.
+3. TODO 2 (comment update) - still open, trivial, low priority.
+4. TODO 3 (render-refresh freeze) - still open, separate, real,
+   already-scoped work; now safe to pick up, since TODO 1/2's own
+   uncertainty ("is iqabod even reaching the binary at all") is
+   resolved - a freeze investigation won't be confused by an unrelated
+   dead-path failure anymore.
+5. TODO 4 (gemma TOOL: hallucination + display order) - DONE 2026-07-31,
+   harness-proven (proof/harness-20260731-113214/). Remaining open item:
+   user's own eyes-on test (sprint doc KPI I.6).
+ 6. TODO 5 (gemma agentic tools: write/edit/read/run/search) - DONE 2026-07-31.
+    Design: 5.tool-scaffold-gemma-agentic.md. H1 + H2 harnesses all 8 KPIs
+    PASS (proof/harness-20260731-114822/, -114843/); list_dir/iqabod/
+    model_remember regression green. User's own test: user-walkthru.md
+    (sprint doc A.5). Install (Phase II) unblocked.
+ 7. TODO 6 (install v1: ~/xyzos bootstrap) - DONE 2026-07-31 (harness-proven).
+    Design APPROVED: 3.harness-install-xyzos~/4.install-v1-xyzfs-layout.md
+    (Option B layout, home-🏠️ label, paths.pdl pointer, dev tree untouched).
+    Installer packaged at x0.parent-level-dev-env-04.04/xyz-installer-dev/
+    (pointers.pdl; planned move ~/xyz-installer-dev/). KPI#4 + KPI#5 PASS
+    (%.harnesses/install-xyzos/proof/kpi4-20260731-124331/,
+     -kpi5-20260731-124349/). Open: II.5 user's own install + signup.
+
+ ========================================================================
+ END OF TODO
+ ========================================================================

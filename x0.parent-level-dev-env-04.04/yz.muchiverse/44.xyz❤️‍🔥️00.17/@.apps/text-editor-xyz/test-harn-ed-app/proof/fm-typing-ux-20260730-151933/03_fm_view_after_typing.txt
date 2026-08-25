@@ -1,0 +1,15 @@
+  MODE: SAVE AS FILE
+  DIR: /tmp/.text-editor-xyz-editor-1785449974-203543
+
+ SEARCH: [ ] 1. []
+ FILE:   [^] 2. [hi_]
+
+  ACTIVE: docs/untitled.txt
+
+  DIRECTORY CONTENTS:
+  [ ] 3. [<- BACK]
+
+  [ ] 4. [SAVE AS]
+  [ ] 5. [CANCEL]
+
+  Type path or browse to a file

@@ -1,0 +1,12 @@
+# PIECE ARTIFACT: 8x8x8 Z-SLICE BITMASK
+# Source standard: piececraft-3d/fuzz-op-gl pieces/<id>/artifact.txt
+# Purpose: Wraith cube game_map probe. Each zN line is one 2D slice.
+# Byte rows are Y rows. Bits are X cells. FF means full row, 00 empty row.
+z0=FF,FF,FF,FF,FF,FF,FF,FF
+z1=FF,FF,FF,FF,FF,FF,FF,FF
+z2=FF,FF,FF,FF,FF,FF,FF,FF
+z3=FF,FF,FF,FF,FF,FF,FF,FF
+z4=FF,FF,FF,FF,FF,FF,FF,FF
+z5=FF,FF,FF,FF,FF,FF,FF,FF
+z6=FF,FF,FF,FF,FF,FF,FF,FF
+z7=FF,FF,FF,FF,FF,FF,FF,FF

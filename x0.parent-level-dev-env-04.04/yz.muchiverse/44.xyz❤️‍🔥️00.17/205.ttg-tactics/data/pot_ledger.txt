@@ -1,0 +1,2 @@
+ante|seat:0|50
+ante|seat:1|50

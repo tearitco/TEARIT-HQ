@@ -1,0 +1,32 @@
+# AGY Text Editor: File Operations Documentation
+**Date:** 2026-05-24
+**Status:** OPERATIONAL
+
+## 1. Overview
+The AGY Text Editor uses a dual-buffer system for file operations. 
+- **In-Memory Buffer:** `document_lines[100][MAX_LINE]` contains the live text being edited.
+- **Working Disk Buffer:** `projects/agy-text-editor/pieces/document.txt` acts as the staging area.
+
+## 2. Save Pipeline (Save / Save As)
+1. **Trigger:** User initiates Save (7) or Save As (8).
+2. **Buffer Flush:** Every interaction in the editor calls `save_buffer_to_document()`, ensuring the working disk buffer is always current.
+3. **Copy:** `save_to_path(target)` copies the working disk buffer to the selected destination.
+4. **State Update:** `active_file_path` is updated to the destination, and the UI is refreshed.
+
+## 3. Load Pipeline (Load File)
+1. **Trigger:** User selects a file in the browser or types a path and clicks LOAD.
+2. **Reverse Copy:** `load_from_path(source)` loads the source file directly into the In-Memory Buffer.
+3. **Sync:** `save_buffer_to_document()` is called immediately to sync the working disk buffer with the newly loaded content.
+4. **Reset:** Cursor is reset to (0,0) and `active_file_path` is updated.
+
+## 4. UI Integration
+- **File Browser:** Managed via `file_browser.chtpm`.
+- **Autocomplete:** Dynamic suggestions based on `file_path_input`.
+- **Sticky Browser:** The system remains in the browser after operations to allow for further navigation, updating the `ACTIVE: ${active_project}` indicator to confirm success.
+- **Sanity Check:** The `active_project` variable in `gui_state.txt` is the authoritative source for the currently loaded file path.
+
+## 5. Engineering Standards
+- **No System Calls:** Uses standard C library functions for file I/O.
+- **Safe Paths:** Resolves paths relative to `project_root` using `location_kvp` or defaulting to current directory.
+- **Render Trigger:** Pulsing `frame_changed.txt` ensures the CHTPM parser reflects state changes immediately.
+- **Clean Code:** Debug logging is disabled to prevent I/O-related bugs and terminal clutter.

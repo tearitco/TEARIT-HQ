@@ -1,0 +1,25 @@
+```bash
+#!/bin/bash
+
+# Check if any arguments were provided
+if [ $# -eq 0 ]; then
+  echo "Usage: ./test_virtual_machine.sh <arg1> <arg2>" >&2 # Print usage to stderr
+	exit 1
+fi
+
+item_5=$1
+path=$2
+
+if [[ ! -f items.txt ]]; then
+    echo "Creating 'items.txt' for testing..." >&2
+    cat > items.txt=10,start prisc+x binary $path
+  
+   
+}
+
+
+if [[ $(grep 'item_5:' items.txt) != '' ]];then
+  echo "FAIL"
+ else
+  echo "PASS"
+```

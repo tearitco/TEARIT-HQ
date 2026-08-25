@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | login
+META         | version            | 1.0
+
+METHOD       | Create Account          | SIGNUP
+METHOD       | Log In                  | LOGIN

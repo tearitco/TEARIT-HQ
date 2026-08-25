@@ -1,0 +1,25 @@
+
+
+
+want to create an llm pipeline 3 seperate modules in gcc c 
+(they all work on their own, no linkers/ additional headers 2 combine them)
+(if they share data they do so via .txt file)
+
+modules :
+
+1. takes files as args and turns them into 1 numbered vocab file with 9 colums
+number word embedding pe weight bias1 bias2 bias3 bias4
+ie : 1 dog 1.03 0 8.00 1 2 3 4
+etc. = vocab_model.txt
+ie : ./vocab_model file1.txt file2.txt file3.txt
+add start-token to begining of sentances and end-token after punctuations.
+
+2. take vocab and trains its weight column using mlp/attention backprop to update
+the weights (optionally ignoring bias if -bias flag)
+(can use multi dimensional training, but should beable 2 record 1 single final weight)
+
+3.chat_bot.c predictor takes in the vocab_model.txt as arg 1 and prompt string as arg 2 
+and optional desired length (other wise use start-token and end token)
+ie : ./chatbot vocab_model.txt "how are you today?" 5
+
+

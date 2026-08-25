@@ -1,0 +1,6 @@
+corpus: tavern_rp
+reply_shape: template
+temperature: 0.8
+features: greet,question,neg,repeat,topic_roleplay
+intents: rp:tavern
+fallback: "The tavern keeper nods, waiting for your answer."

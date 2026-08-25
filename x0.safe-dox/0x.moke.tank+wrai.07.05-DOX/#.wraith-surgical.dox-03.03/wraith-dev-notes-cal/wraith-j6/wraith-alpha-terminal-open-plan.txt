@@ -1,0 +1,124 @@
+# WRAITH-ALPHA TERMINAL OPEN PLAN
+Date: 2026-06-06
+
+Historical note:
+- this plan predates the rollback and should be treated as reference material
+- the current live baseline has launch/minimize/close working again, but
+  restore from the toolbar still needs to be reintroduced and proven
+- keep the launch notes as comparison guidance only until they are re-tested
+
+Purpose:
+Explain the first terminal-open problem in Wraith Alpha and how to fix it
+using the same TPMOS projection pattern proven by `fuzz-op`.
+
+Question being answered:
+- Why does the dock show `Terminal` but the terminal window still does not
+  appear?
+- Do we need to compose the frame before rendering?
+- How does the proven `fuzz-op` dynamic menu pattern inform the fix?
+
+Short answer:
+- No, the frame does not need to be composed before rendering.
+- The correct order is still: state mutation -> projection write -> parser
+  composition -> renderer display.
+- The real bug is that the dock activation currently does not reliably become
+  a launched terminal instance in canonical state.
+
+What `fuzz-op` proves:
+- The layout is a hollow shell.
+- The manager owns the meaningful state.
+- The manager publishes a flat projection to `gui_state.txt`.
+- The parser reads that projection and renders it.
+- Button clicks and Enter keys are only input triggers.
+- The actual action is resolved and executed by the manager or by an Op that
+  the manager calls.
+
+Current Wraith Alpha correction:
+- The manager now handles the first dock launch directly.
+- Pressing Enter on the dock `Terminal` target opens `Terminal #1` by
+  writing both `alpha_state.txt` and `desktop_ui_state.txt`.
+- `desktop_ui_state.txt` must be updated by the manager too, because the
+  parser loads it last and would otherwise snap the desktop back to closed.
+- The manager must not re-sync the launch tick from the stale closed UI file
+  before writing the new state, or the launch is immediately erased.
+
+What that means for Wraith Alpha:
+- The dock item `Terminal` should not be treated as decoration.
+- It should be treated as a real launch target.
+- When the user activates `Terminal`, the manager should mutate canonical
+  desktop state so that one terminal instance exists.
+- The parser should only render the result of that state change.
+- The parser should not invent a terminal window on its own.
+
+Current failure mode:
+- The dock target is visible.
+- The desktop boots empty.
+- Enter on the dock target still leaves `Open Windows: 0`.
+- That means the launch action is not yet producing a real terminal instance in
+  state, or a later reload is overwriting the new state before the frame is
+  composed.
+
+Likely root cause:
+- Wraith Alpha still models the desktop as a single fixed window slot.
+- The current state write path can represent open/closed/collapsed/fullscreen,
+  but it does not yet behave like a real instance registry.
+- `Terminal` needs a launch action that creates the first instance, not just a
+  button press that changes a focus index.
+
+Desired first fix:
+1. Keep the desktop booting empty.
+2. Keep the dock item `Terminal` visible and indexed.
+3. Treat activation of `Terminal` as a launch event.
+4. Have the manager create exactly one terminal instance in canonical state
+   for the first fix.
+5. Write that state before compose/render.
+6. Let the parser render the new open terminal frame from that state.
+
+What not to do:
+- Do not move launch logic into the layout.
+- Do not make the parser fabricate open windows.
+- Do not confuse collapse/maximize with launch.
+- Do not add multi-instance complexity until the first terminal instance opens
+  reliably.
+
+Implementation shape:
+- Manager-side launch handler:
+  - receive dock activation
+  - update canonical desktop state
+  - set terminal count to 1
+  - set focused title to `Terminal #1`
+  - mark the first window open
+  - trigger a render pulse
+- Parser-side projection:
+  - load the updated state
+  - render the terminal body/chrome from `desktop_window_count`
+  - keep debug below the desktop frame
+
+Potential use of existing TPMOS launch transport:
+- If the dock target can be routed through a standard launch command, use that.
+- If not, the launch action should still follow the same manager-owned
+  projection pattern used by `fuzz-op`.
+- The key is that the manager performs the state mutation first, and the
+  parser only projects the resulting state.
+
+Verification target:
+- After activating `Terminal`, the live frame should show:
+  - `Open Windows: 1`
+  - a visible terminal window surface
+  - a numbered title such as `Terminal #1`
+
+Later step, after the first open works:
+- make repeated `Terminal` launches create overlapping proc-numbered
+  instances
+- make minimized instances restore the exact numbered instance
+
+References:
+- `fuzz-op-r&d/fo-menu-sys.md`
+- `projects/wraith-alpha/ops/wraith_parser_alpha.c`
+- `projects/wraith-alpha/manager/wraith-alpha_manager.c`
+- `projects/wraith-alpha/layouts/alpha-shell.chtpm`
+
+Bottom line:
+- The fix is not “compose before render.”
+- The fix is to add a real manager-side launch mutation for `Terminal`, just
+  like `fuzz-op` uses manager projection to make dynamic menu actions real.

@@ -1,0 +1,12 @@
+USER REPORT — proc-monitor
+Date: 2026-07-28
+GREEN: ./button.sh demo (or scenarios/demo_register_focus_kill.sh)
+
+  PASS register two live processes
+  PASS list shows both + alive=1
+  PASS FOCUS → current_focus.txt
+  PASS SOFT QUIT → quit_request.txt
+  PASS KILL + GC removes registry entry
+
+Ops under &.widgits/proc-monitor:
+  runtime_register, runtime_list [--gc], runtime_focus, runtime_kill [--soft]

@@ -1,0 +1,3 @@
+mode=main_menu
+cursor_pos=4
+path_buffer=

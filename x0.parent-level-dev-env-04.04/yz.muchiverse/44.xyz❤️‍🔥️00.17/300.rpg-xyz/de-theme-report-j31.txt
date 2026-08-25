@@ -1,0 +1,39 @@
+================================================================================
+de-theme-report-j31.txt - 300.rpg-xyz: registry de-theme, done
+2026-07-31, for future agents. Identical scope and findings to
+300.rtp-xyz's own de-theme-report-j31.txt (both projects were byte-
+identical mutaclsym copies before this pass) - read that file for the
+full detail. This file only records what's specific to rpg-xyz.
+================================================================================
+
+## WHAT CHANGED
+
+Identical edits applied independently to this project's own copy:
+pieces/registry/monsters/monster_types.txt (zombie/zombie_child ->
+slime/slime_pup, same hp/damage values), ops/tick_monsters.c (spawn
+list + default fallback), ops/move_player.c (default fallback),
+pieces/world_01_template/*/monsters/ directories renamed + state.txt
+monster_type= fields updated (map_start, map_02, building_01_f2,
+map_gen_01), pieces/world_01/ reset from the updated template.
+
+terrain_types.txt/furniture_types.txt/item_types.txt required zero
+changes - already generic (or, for items, empty/unused) in this
+project too, same as rtp-xyz.
+
+## VERIFICATION
+
+Rebuilt via scripts/build.sh - "build ok", no new errors. Zero
+remaining "zombie" hits anywhere in the real project tree. Live-
+launched fresh (NO_GL=1 PAL_MODE=1) - real ASCII frame rendered
+correctly, no crash, no error. Same 3D/GL-mode caveat as rtp-xyz's own
+report: entity 3D texturing is a real, pre-existing, separate gap in
+this codebase (extrude-emoji.md), not something this de-theme touches
+or regresses.
+
+See 300.rtp-xyz/dox/rtp-xyz-architecture.md §9 for the corrected,
+detailed writeup on why "voxel art regenerates automatically" was a
+wrong claim in an earlier draft of the architecture docs, and what the
+real asset-pipeline situation actually is - identical situation here,
+not re-explained in this file to avoid drift between two copies of the
+same investigation.
+================================================================================

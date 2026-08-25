@@ -1,0 +1,6 @@
+<chtpm>
+  <text label="WRAITH PROBE PROJECT" /><br/>
+  <text label="This nested project exists to test Wraith launcher autodetect." /><br/>
+  <text label="Project ID: wraith/wraith-projects/probe-project" /><br/>
+  <text label="If this opens as a normal Wraith window, discovery is working." /><br/>
+</chtpm>

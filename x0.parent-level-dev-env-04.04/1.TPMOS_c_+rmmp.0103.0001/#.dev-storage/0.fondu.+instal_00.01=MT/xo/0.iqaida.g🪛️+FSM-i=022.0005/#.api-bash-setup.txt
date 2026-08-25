@@ -1,0 +1,44 @@
+▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+
+  Run this command in your terminal before starting the agent:
+
+   1 export GEMINI_API_KEY="your_actual_api_key_here"
+
+  2. To make it permanent:
+  Add that same line to your shell configuration file (e.g., ~/.bashrc or
+  ~/.zshrc).
+  
+  -----
+  To determine which file to use, check which shell you are currently running by
+  executing:
+
+   1 echo $0
+
+   * If it outputs bash: Use ~/.bashrc.
+   * If it outputs zsh: Use ~/.zshrc.
+
+
+▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+✦ You can add the line to the very end of your ~/.bashrc file. Adding it at the
+  end ensures it is loaded after other environment configurations, preventing
+  potential overrides.
+
+  How to do it
+   1. Open the file in your preferred text editor (e.g., nano ~/.bashrc or vi
+      ~/.bashrc).
+   2. Scroll to the bottom of the file.
+   3. Add this line:
+
+   1     # Google Gemini API Key
+   2     export GEMINI_API_KEY="your_actual_api_key_here"
+   4. Save and close the file.
+   5. Apply the changes to your current terminal session:
+
+   1     source ~/.bashrc
+
+  Important Security Reminder
+  Because ~/.bashrc is often tracked in version control (if you have your home
+  directory in a git repo), do not commit this file after adding your API key.
+  Ensure your .gitignore is configured to ignore secrets if you are working in a
+  dotfiles repository.
+

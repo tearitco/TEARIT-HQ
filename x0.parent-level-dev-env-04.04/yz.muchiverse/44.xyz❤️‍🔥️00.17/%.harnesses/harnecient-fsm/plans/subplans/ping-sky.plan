@@ -1,0 +1,4 @@
+# ping-sky.plan — a tiny reusable sub-plan (lives under subplans/ by
+# convention, not required, just keeps top-level plans/ from getting
+# cluttered with things meant to be INCLUDEd rather than run directly).
+STEP | what color is the sky | grep -qi "blue" "$STEP1_OUT"

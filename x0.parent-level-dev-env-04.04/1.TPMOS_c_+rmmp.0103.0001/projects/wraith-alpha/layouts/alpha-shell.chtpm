@@ -1,0 +1,18 @@
+<layout id="wraith_alpha_shell">
+    <module>projects/wraith-alpha/manager/+x/wraith-alpha_manager.+x</module>
+    <interact src="projects/wraith-alpha/session/history.txt" />
+    <panel title="WRAITH ALPHA - DESKTOP">
+        <text label="[ KPI 1: Keyboard Nav Proof ]" /><br/>
+        <text label="Use arrows to move selector. Windows and controls stay indexable." /><br/>
+        <br/>
+        ${desktop_shell_markup}
+        <br/>
+        <text label="Desktop: ${desktop_mode} | Open: ${desktop_window_count} | Focus: ${desktop_focused_window_title} | Mode: ${desktop_active_window_mode}" /><br/>
+        <br/>
+        <text label="[ DESKTOP DEBUG ]" /><br/>
+        <text label="Idx:${active_gui_index} Key:${current_key_label} | Mouse X:${mouse_x} Y:${mouse_y} B:${mouse_btn} | Click X:${last_click_x} Y:${last_click_y}" /><br/>
+        <br/>
+        <text label="[ PARSER ] RAW: ${PARSER_KBD_DEBUG}" /><br/>
+        <text label="View:" /><button compact="true" label="ASCII${desktop_presenter_ascii_selected}" onClick="DESKTOP_ACTION:view_ascii" /><text label=" " /><button compact="true" label="GL${desktop_presenter_gl_selected}" onClick="DESKTOP_ACTION:view_gl" /><br/>
+    </panel>
+</layout>

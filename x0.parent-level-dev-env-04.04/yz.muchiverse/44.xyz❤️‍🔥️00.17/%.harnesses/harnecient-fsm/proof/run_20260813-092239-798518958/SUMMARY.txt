@@ -1,0 +1,7 @@
+run_plan_file — /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/harnecient-fsm/plans/self-code-demo.plan (depth 0)
+started: Thu Aug 13 09:22:39 AM PDT 2026
+
+LOOP_UNTIL 1 [/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/harnecient-fsm/plans/subplans/self-code-attempt.plan]: FAIL (3 iterations exhausted, see /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/harnecient-fsm/proof/run_20260813-092239-798518958/step1.loop*.log)
+
+finished: Thu Aug 13 09:23:47 AM PDT 2026
+overall: FAIL

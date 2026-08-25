@@ -1,0 +1,4 @@
+OFFSET_Y=7
+OFFSET_X=0
+DATE=2026-06-15
+NOTES=Calibrated against [ CLICK HERE TO CALIBRATE MOUSE ] at Row 3. Terminal reported Y=10.

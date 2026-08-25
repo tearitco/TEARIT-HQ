@@ -1,0 +1,7 @@
+COMPOUND: Vitamin C
+DISCOVERED FROM: carbon
+
+[Use Case] Used as a dietary supplement and antioxidant.
+[Effect] Supports immune function and collagen production.
+[Side Effect] Generally safe, rare mild stomach upset at high doses.
+[Market Price] $5 per unit.

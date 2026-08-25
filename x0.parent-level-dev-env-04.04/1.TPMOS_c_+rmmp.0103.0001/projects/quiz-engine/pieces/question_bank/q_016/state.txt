@@ -1,0 +1,5 @@
+name=Fructose-6-phosphate
+formula=C6H13O9P
+type=Ketose Phosphate
+groups=-OH
+relevance= Phosphate

@@ -1,0 +1,16 @@
+project_id=op-ed-gl
+active_target_id=xlector
+last_key=27
+is_map_control=0
+camera_mode=4
+cam_x=0.00
+cam_y=2.00
+cam_z=10.00
+cam_pitch=30.00
+cam_yaw=0.00
+cam_roll=0.00
+armed_glyph=#
+current_z=0
+current_map=map_01_z0.txt
+xelector_x=12
+xelector_y=2

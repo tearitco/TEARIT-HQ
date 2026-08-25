@@ -1,0 +1,2 @@
+BAD dossier (3 trials): 2 APPROVED, 1 REJECTED
+GOOD dossier (3 trials): 3 APPROVED, 0 REJECTED

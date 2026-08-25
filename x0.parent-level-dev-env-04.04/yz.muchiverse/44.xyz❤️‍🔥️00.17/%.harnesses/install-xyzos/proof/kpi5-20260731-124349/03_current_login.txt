@@ -1,0 +1,4 @@
+current_user_id=installUser_1031662
+current_user_uuid=6f426953-3c1e-4117-bd04-689543ee66fc
+current_xyzfs=xyzfs/users/6f426953-3c1e-4117-bd04-689543ee66fc
+logged_in_at=1785527054

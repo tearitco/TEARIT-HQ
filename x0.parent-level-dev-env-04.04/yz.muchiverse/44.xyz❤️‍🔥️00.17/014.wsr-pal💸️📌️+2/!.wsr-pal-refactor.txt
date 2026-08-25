@@ -1,0 +1,327 @@
+WSR-PAL REFACTOR - bring this project up to the current, real,
+live-tested standard the rest of the pal-native family (mutaclsym,
+zoo_0000) already has. Written 2026-07-17 by an agent that spent the
+whole day building and debugging that standard on those two projects -
+NOT by the agent that will do this work. Read this file fully before
+touching any code. Direct instruction: another agent does the actual
+work here; this file gives it everything it needs.
+
+Companion reading, in this priority order:
+  1. `2.muchi-verse/xyzos-standards.txt` - the durable, cross-project
+     rule book. Sections 1, 6, 7, 8, 9, 10, 11, 12 are all directly
+     relevant to this refactor (see below for which applies where).
+  2. `2.muchi-verse/PAL-VS-C-ARCHITECTURE.txt` - the real pal-vs-C
+     philosophy (ops are C for now, by convention, not by permanent
+     design; ECALL exists for a reason).
+  3. `2.muchi-verse/!.handoff-july17.txt` - the FULL blow-by-blow of
+     every bug found and fixed today building this out on mutaclsym/
+     zoo_0000, in the order they were found. Long, but each section is
+     a real, live-tested lesson - skimming it will cost more time than
+     reading it, because several of these bugs are NOT obvious from
+     reading the "final" code alone.
+  4. `2.muchi-verse/chtpm-to-pal-layout-plan.txt` - the original design
+     doc for the chtpm bridge itself.
+
+========================================================================
+0. WHAT WSR-PAL ALREADY HAS - DON'T REBUILD THIS
+========================================================================
+
+wsr-pal is a real, working economic simulation (per `project_wsr_pal_
+port.md` in memory) - corporations, government, population, weather,
+real estate, all five `decision_mode` tiers live-tested. This is NOT a
+toy project being retrofitted; treat its existing game logic as
+correct and load-bearing.
+
+It ALREADY does two things right that mutaclsym had to be corrected on
+today - don't "fix" these, they're already the target shape:
+  - Real piece.pdl METHOD-table-driven menus (`wsr_menu_input.c`/
+    `wsr_compose_frame.c`, `pieces_template/wsr_main_menu/piece.pdl`
+    etc.) - this is xyzos-standards.txt §12's own rule, already followed
+    here. mutaclsym's own hero/piece.pdl had to be wired up to this
+    pattern for the FIRST time today; wsr-pal's menu system already
+    uses it.
+  - `system/chtpm_parser_pal` IS ALREADY built from `shared-ops/
+    chtpm_parser_pal.c` in `scripts/build.sh` - the base chtpm bridge
+    binary compiles and works. What's missing is everything ABOVE
+    that: no `.chtpm` layout has been authored, no `button.sh` action
+    launches it, no `<module>`/`<interact>` wiring exists.
+
+One real, load-bearing difference in wsr-pal's own piece.pdl
+convention worth understanding before wiring `${piece_methods}` up:
+its METHOD `VALUE` column holds COMMAND STRINGS wsr_menu_input.c
+interprets itself (`STUB`, `CYCLE_CORP`, `GOTO:wsr_trade_menu`,
+`TICK_ALL:1`), NOT literal `ops/+x/<name>.+x` executable paths like
+mutaclsym's own hero/piece.pdl uses. This should still work correctly
+with `load_dynamic_methods()` (see §12.3.5 below) since chtpm's own
+dispatch is POSITION-based (digit N = row N in the METHOD table, not
+the VALUE string itself) - `wsr_menu_input.c`'s own existing digit
+handling doesn't care whether the digit arrived via a real keyboard or
+a chtpm-relayed `KEY:n` - but this is a real, untested assumption
+(this agent ran out of time to verify it live) - confirm it with a
+real test before trusting it.
+
+========================================================================
+1. WHAT'S MISSING - THE FULL GAP LIST
+========================================================================
+
+1.1 shared-ops migration is INCOMPLETE (xyzos-standards.txt §1)
+------------------------------------------------------------------------
+`system/prisc+x.c` is a LOCAL COPY, confirmed via `diff` to differ from
+`shared-ops/prisc+x.c` by 239 lines - meaning it does NOT have:
+  - The `read_history` literal-path 3-arg fix (needed for the
+    interact+module pattern's own `interact_relay.txt` reading - see
+    §2 below, this is a HARD BLOCKER for that whole pattern).
+  - `OP_ECALL` (the real syscall instruction - see
+    PAL-VS-C-ARCHITECTURE.txt; likely not needed for THIS refactor
+    specifically, but the divergence means wsr-pal is missing every
+    other prisc+x.c fix from today too, not just the ones this doc
+    calls out by name).
+Fix: switch `scripts/build.sh` to build `system/prisc+x` from
+`"$SHARED_OPS/prisc+x.c"` (matching mutaclsym's own build.sh exactly),
+delete the local copy, rebuild, re-verify wsr-pal's own existing
+"run" mode still works identically (real regression risk here - test
+via the direct-key-injection method, §9.3 in xyzos-standards.txt, before
+assuming this is safe).
+
+`system/keyboard_input.c` is ALSO local - CONFIRMED, per direct
+research earlier this session (see `project_chtpm_to_pal_layout_
+bridge.md` in memory), this is INTENTIONAL and CORRECT: it "genuinely
+differs on quit-key handling (breaks directly on raw ETX/3, doesn't
+normalize to 'q' like the shared version)". Do NOT switch this one to
+shared-ops - this is the established "don't force-share when behavior
+genuinely differs" precedent (xyzos-standards.txt §1c). It DOES need the
+same chtpm-bridge dual-write shared-ops/keyboard_input.c has (writing
+`KEY_PRESSED: N` to `pieces/keyboard/history.txt` in addition to its
+own existing write) - check whether this was already added; if not,
+add it, matching shared-ops/keyboard_input.c's own `append_key()`
+shape exactly (same format, same second file, ETX/3 quirk untouched).
+
+1.2 No chtpm layout, no button.sh wiring at all
+------------------------------------------------------------------------
+`pieces/chtpm/` does not exist. No `.chtpm` file has been authored.
+`button.sh` has no `chtpm` action (only `compile|c|build`, `run|r`,
+`kill|k|stop`, `reset`, `check|verify`). This is ALL new work - see §2.
+
+1.3 No interact+module pattern
+------------------------------------------------------------------------
+No `main_loop_chtpm.pal` variant, no `interact_relay.txt` convention,
+no `<module>`/`<interact src>` tags anywhere. See §3.
+
+1.4 No GL/RGB rendering at all
+------------------------------------------------------------------------
+No `ops/compose_rgb_frame.c`, no `system/gl_mirror.c`, obviously no
+`shared-ops/chtpm_rgb_render.c` wiring either. This is the single
+BIGGEST, most bug-prone piece of work in this whole refactor - today's
+entire `!.handoff-july17.txt` thread (nine numbered follow-ups) is
+almost entirely about race conditions and rendering bugs in exactly
+this piece. See §4 - read it in full, do not shortcut it.
+
+1.5 kill_all.sh not wired in
+------------------------------------------------------------------------
+`2.muchi-verse/kill_all.sh` already has `chtpm_rgb_render`/
+`chtpm_parser_pal`/`gl_mirror` entries (added today, ready to use) -
+wsr-pal's own `button.sh kill` action just needs to call it, matching
+mutaclsym's/zoo_0000's own `kill` action exactly (xyzos-standards.txt
+§8). Also: confirmed wsr-pal's own `kill` action still has the
+relative-vs-absolute-path `pkill` bug named in `project_chtpm_to_pal_
+layout_bridge.md` ("almost certainly still exists... not yet fixed
+there") - fix this regardless of the rest of this refactor, it's a
+real, separate, already-diagnosed bug (orphaned `keyboard_input`
+processes pinned at ~100% CPU, found via `ps aux`, not by any kill
+action ever catching them).
+
+1.6 No dynamic piece_methods wiring for chtpm (once the layout exists)
+------------------------------------------------------------------------
+Covered in §12 below, once §2-4 are done.
+
+========================================================================
+2. BUILDING THE CHTPM LAYOUT + button.sh chtpm ACTION
+========================================================================
+
+Copy the SHAPE of mutaclsym's own `pieces/chtpm/layouts/game.chtpm`
+and its `chtpm` action in `button.sh` (both files, read them in full -
+they're short). Real structure needed:
+
+  <panel time_reactive="true">
+      <module>${module_path}</module>
+      <interact src="pieces/apps/player_app/interact_relay.txt" />
+      ... chrome (title, a real INTERACT button, e.g. "Control Sim") ...
+      ${piece_methods}<br/>
+      ... embedded ${game_map} or wsr-pal's own equivalent live view ...
+      ... footer text ...
+  </panel>
+
+Real decision needed, not obvious from mutaclsym's own shape: wsr-pal
+has NO map/movement concept at all (it's a menu-driven economic sim,
+closer to egg-pals' own shape than mutaclsym's) - the "Control X"
+INTERACT button's own real purpose here is less clear than "Control
+Hero" was. Read `xyzos-standards.txt` §7's own egg-pals account
+("Purely digit-menu-driven, no map/movement at all -
+`onClick="INTERACT"` here relays DIGIT keys straight through to
+`menu_input.c`'s own real dispatch") - wsr-pal is architecturally
+closer to egg-pals than to mutaclsym/zoo_0000 for this specific
+question. Model the interact button and module relay on egg-pals'
+own `eggpal.chtpm`, not mutaclsym's.
+
+`button.sh`'s own `chtpm` action needs, in this order (copy mutaclsym's
+own action's real structure exactly, adapting paths):
+  1. `cd "$SCRIPT_DIR"`, reset ALL of: `player_app/history.txt`,
+     `interact_relay.txt`, `pieces/keyboard/history.txt`,
+     `pieces/display/pending_command.txt`,
+     `pieces/system/quit_flag.txt` (see §9.2 in xyzos-standards.txt for
+     WHY this one specifically - a real, confirmed bug when it's
+     skipped), `pieces/system/gl_focus.lock` (rm -f).
+  2. Write `pieces/apps/player_app/state.txt` with `module_path=...`
+     (the module's own launch command) and, once §12 is wired up,
+     `active_target_id=...` too.
+  3. Export `PRISC_PROJECT_ROOT`/`PRISC_PROJECT_ID`.
+  4. Launch `system/renderer`, `system/chtpm_parser_pal
+     pieces/chtpm/layouts/<name>.chtpm`, `system/chtpm_rgb_render`
+     (once §4 is built), `system/gl_mirror` (once §4 is built) - all
+     backgrounded, PIDs captured.
+  5. A `trap` cleaning up all of the above on EXIT/INT/TERM - matching
+     mutaclsym's own trap exactly, including the explicit
+     `pkill -f "system/prisc\+x"` (chtpm_parser_pal has no SIGTERM
+     handler of its own, only SIGINT triggers its own cleanup).
+  6. `./system/keyboard_input` in the foreground (the actual play
+     session).
+  7. Kill everything again after keyboard_input exits (belt-and-
+     suspenders alongside the trap).
+
+========================================================================
+3. THE INTERACT + MODULE PATTERN
+========================================================================
+
+Full account: xyzos-standards.txt §7, `!.handoff-doc-j17.txt`. Real
+mechanism: `<module>${module_path}</module>` launches a SECOND,
+persistent `system/prisc+x <some_new_pal_script>.pal` process the
+instant the layout is parsed. `<interact src="...">` + a button's
+`onClick="INTERACT"` relay EVERY subsequent key into that file while
+engaged, until ESC.
+
+Build `pal/main_loop_chtpm.pal` as a variant of wsr-pal's own real
+`pal/main_loop.pal` - byte-identical except the `read_history` line
+reads from `pieces/apps/player_app/interact_relay.txt` via the
+LITERAL-PATH 3-ARG FORM (`read_history <path> xD, xS`) - this REQUIRES
+§1.1's shared-ops prisc+x.c migration to be done FIRST, since that
+3-arg form doesn't exist in wsr-pal's own current, stale, local
+prisc+x.c copy. Two real, already-found-and-fixed bugs to avoid
+re-discovering the hard way:
+  - Do NOT point `<interact src>` at the SAME file `keyboard_input.c`
+    already writes unconditionally (`player_app/history.txt`) - real,
+    live, confirmed double-dispatch bug (2 keypresses registered as 4).
+    Use a genuinely separate file (`interact_relay.txt`).
+  - Do NOT keep a `beq x2, x9, quit` ('q' halts) in the CHTPM variant
+    of main_loop.pal - while INTERACT is engaged, chtpm relays EVERY
+    key including 'q', so a player quitting normally would silently
+    kill the module specifically while chtpm keeps relaying into a
+    dead process - "stuck, no input response," a real, live-confirmed
+    bug. The module never owns quitting in chtpm mode; that's chtpm's
+    job alone (top-level 'q', or ESC then 'q').
+
+========================================================================
+4. GL/RGB RENDERING - READ THIS SECTION MOST CAREFULLY
+========================================================================
+
+This is where today's real time went. `xyzos-standards.txt` §11 is the
+authoritative, condensed rule list - follow it exactly, in order:
+  §11.1 - the two-stage pulse (`rgb_frame_changed.txt`, separate from
+          `frame_changed.txt`) is MANDATORY, not optional. Skipping
+          this causes a REAL, CONFIRMED PERMANENT STALL (not a brief
+          lag) under real play - this was the single most expensive
+          bug found today, requiring three separate rounds of "still
+          doesn't look right" before the actual root cause (not a
+          proxy/guessed fix) was found.
+  §11.2 - atomic writes (`<path>.tmp` + `rename()`) for both
+          `rgb_frame.raw` and its receipt.
+  §11.3 - settle-poll `current_frame.txt`'s own size before reading it
+          after a pulse change (a SEPARATE race from §11.1 - both are
+          real, both were found live, neither one's fix substitutes
+          for the other).
+  §11.4 - `gl_mirror.c` reads `frame_w`/`frame_h` from the receipt
+          file dynamically, never hardcoded `WIDTH`/`HEIGHT` #defines.
+  §11.5 - tile-shaped content (any matched emoji) blits at native
+          pixel width (16px), plain text at the narrower glyph width
+          (8px) - a running pixel x-position, not a fixed column
+          count.
+  §11.6 - real registry colors (`rgb_top_emoji` field), never a hashed
+          fallback, for anything with a registry row; hardcoded
+          entries for hero/xlector-equivalent pieces IF wsr-pal's own
+          emoji_mode gives its own pieces (corp tickers? the player
+          cursor equivalent?) a real, distinct multi-byte emoji
+          representation the same way mutaclsym's hero (🧑)/xlector
+          (🎯) do - check whether wsr-pal even HAS an emoji-mode
+          concept at all before assuming this applies; it may not.
+
+Practical build order that worked today, recommended here too:
+  1. Build `ops/compose_rgb_frame.c` FIRST (the regular "run" mode
+     renderer, no chtpm involved yet) - get `system/gl_mirror` showing
+     wsr-pal's own real content correctly in regular "run" mode before
+     touching chtpm mode at all. This isolates "is the GL pipeline
+     itself sound" from "is the chtpm-specific two-stage pulse sound."
+  2. THEN build/wire `shared-ops/chtpm_rgb_render.c` into wsr-pal's own
+     `scripts/build.sh` and `button.sh chtpm` action (it's a SHARED
+     file already - no new C code needed for the daemon itself, just
+     wiring: build it, launch it, make sure both it AND
+     `compose_rgb_frame.c` grow the SAME `rgb_frame_changed.txt`).
+  3. Size `FRAME_W`/`FRAME_H` in `chtpm_rgb_render.c`'s own #defines
+     for whatever wsr-pal's own real chtpm chrome + embedded content
+     actually needs - do NOT assume mutaclsym's own 640x768 is right;
+     count wsr-pal's own real max line count first (same method used
+     today: launch a real session, `wc -l pieces/display/
+     current_frame.txt`, add real headroom).
+  4. Test via `dump_rgb_png.+x` throughout, but READ xyzos-standards.txt
+     §11's own header comment on this file's real limitation: a static
+     PNG dump proves bytes are correct, it CANNOT catch either of the
+     two real timing races in §11.1/§11.3 - those need a live burst-
+     keypress test with a checksum trace (see `!.handoff-july17.txt`
+     sec. 8 for the exact trace methodology used to find them - a
+     Python `pty.fork()` + real `keyboard_input` binary, sampling
+     `rgb_frame.receipt.txt` vs. `gl_display.receipt.txt` checksums
+     every ~30ms through a rapid keypress burst).
+
+========================================================================
+5. VERIFICATION - THE STANDARD FOR THIS WHOLE REFACTOR
+========================================================================
+
+Per xyzos-standards.txt §5 and §9.3: test through the REAL playable
+interface, not isolated op calls. Prefer the direct file-injection
+method for MOST testing (fast, deterministic - see §9.3), but for
+anything involving GL/RGB timing specifically, use the real-pty +
+real-keyboard_input method (§4 above) since direct injection cannot
+reproduce the two real timing races that method actually found.
+
+Before declaring ANY piece of this refactor done, confirm:
+  - `./button.sh compile` reaches zero warnings (matching every other
+    project's own standard).
+  - Regular "run" mode is COMPLETELY UNCHANGED after the shared-ops
+    prisc+x.c migration (§1.1) - a real regression risk, test it
+    explicitly, don't assume "the diff looked safe."
+  - `./button.sh chtpm` (once it exists) launches cleanly, shows real
+    wsr-pal content (not a blank/black window), and arrow/digit nav
+    visibly moves a `[>]` cursor among real menu items (this was the
+    LAST bug found today, and the most architecturally important one -
+    see xyzos-standards.txt §12 in full).
+  - `./button.sh kill` actually kills everything - check `ps aux`
+    directly afterward, don't trust the exit code alone.
+
+========================================================================
+6. WHAT NOT TO RE-LITIGATE
+========================================================================
+
+- Don't patch `shared-ops/chtpm_parser_pal.c` beyond its own existing
+  "exactly 2 patches" (search "PAL-NATIVE PATCH" in that file). If
+  wsr-pal's own piece.pdl/directory layout doesn't match what
+  `resolve_dynamic_pdl_path()` expects, use a SYMLINK matching one of
+  its own existing fallback paths (see xyzos-standards.txt §12.3.5) -
+  this exact situation already came up for mutaclsym today.
+- Don't rebuild wsr-pal's own real economic-sim ops (corp_*/gov_*/
+  player_*/pop_*/realestate_*/weather_*) - none of this refactor
+  touches game logic, only the rendering/input/menu-chrome layer
+  around it.
+- Don't switch `system/keyboard_input.c` to shared-ops (§1.1 above -
+  it's local on purpose).
+- Don't build a NEW menu-cursor/accumulator system - wsr-pal's own
+  `wsr_menu_input.c` already does this correctly (per §0 above); the
+  work here is CONNECTING it to chtpm's own top-level nav via
+  `${piece_methods}`, not replacing it.

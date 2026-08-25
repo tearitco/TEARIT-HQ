@@ -1,0 +1,7 @@
+tile_id=grass
+label=Grass
+rgb_top=34,139,34
+rgb_side=27,110,27
+extrude=1.0
+solid=1
+walkable=1

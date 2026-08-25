@@ -1,0 +1,8 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | ava
+STATE        | source               | blocks
+NODE         | id=1 type=show_text    | text=ava: hi! come talk to me anytime
+NODE         | id=2 type=on_interact  | text=call ops/+x/chat_relay.+x ava
+NODE         | id=3 type=comment      | text=real deskpal event package (not door_guard demo)
+NODE         | id=4 type=ret          | text=

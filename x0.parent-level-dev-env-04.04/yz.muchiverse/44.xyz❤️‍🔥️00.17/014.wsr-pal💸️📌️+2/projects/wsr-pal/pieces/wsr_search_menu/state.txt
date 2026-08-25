@@ -1,0 +1,13 @@
+high_roe=20
+low_pe=10
+price_pct_book=95
+div_yield=5
+min_market_cap=0
+max_market_cap=1000
+debt_to_equity=2
+beta=1.5
+payout_ratio=50
+growth_rate=0
+current_ratio=1
+publicly_traded=1
+has_bonds=0

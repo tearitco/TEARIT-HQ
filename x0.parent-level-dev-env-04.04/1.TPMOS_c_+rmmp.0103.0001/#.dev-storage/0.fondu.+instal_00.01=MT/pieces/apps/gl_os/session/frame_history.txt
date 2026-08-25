@@ -1,0 +1,150 @@
+
+--- FRAME UPDATE at 2026-06-02 00:46:28 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Project Explorer    ]           ║
+║    [ ] 2. [Debug Layouts (Dev Only)]           ║
+║    [ ] 3. [Terminal Apps       ]           ║
+║    [ ] 4. [Settings            ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-06-02 00:46:28 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Project Explorer    ]           ║
+║    [ ] 2. [Debug Layouts (Dev Only)]           ║
+║    [ ] 3. [Terminal Apps       ]           ║
+║    [ ] 4. [Settings            ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-06-02 00:46:31 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Project Explorer    ]           ║
+║    [ ] 2. [Debug Layouts (Dev Only)]           ║
+║    [ ] 3. [Terminal Apps       ]           ║
+║    [ ] 4. [Settings            ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-06-02 00:46:31 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [fuzz-op-gl          ]           ║
+║    [ ] 2. [op-ed-gl            ]           ║
+║    [ ] 3. [aow-2d              ]           ║
+║    [ ] 4. [piececraft-3d       ]           ║
+║    [ ] 5. [emoji-studio        ]           ║
+║    [ ] 6. [chtmgl-alpha        ]           ║
+║    [ ] 7. [chtmgl-beta         ]           ║
+║    [ ] 8. [media-editor        ]           ║
+║    [ ] 9. [+-demo              ]           ║
+║    [ ] 10. [checkers            ]           ║
+║    [ ] 11. [404-test            ]           ║
+║    [ ] 12. [test_fondu          ]           ║
+║    [ ] 13. [xsr                 ]           ║
+║    [ ] 14. [p2p-net             ]           ║
+║    [ ] 15. [hangman             ]           ║
+║    [ ] 16. [template            ]           ║
+║    [ ] 17. [user                ]           ║
+║    [ ] 18. [gltpm-demo          ]           ║
+║    [ ] 19. [groq-ollama         ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-06-02 00:46:31 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [fuzz-op-gl          ]           ║
+║    [ ] 2. [op-ed-gl            ]           ║
+║    [ ] 3. [aow-2d              ]           ║
+║    [ ] 4. [piececraft-3d       ]           ║
+║    [ ] 5. [emoji-studio        ]           ║
+║    [ ] 6. [chtmgl-alpha        ]           ║
+║    [ ] 7. [chtmgl-beta         ]           ║
+║    [ ] 8. [media-editor        ]           ║
+║    [ ] 9. [+-demo              ]           ║
+║    [ ] 10. [checkers            ]           ║
+║    [ ] 11. [404-test            ]           ║
+║    [ ] 12. [test_fondu          ]           ║
+║    [ ] 13. [xsr                 ]           ║
+║    [ ] 14. [p2p-net             ]           ║
+║    [ ] 15. [hangman             ]           ║
+║    [ ] 16. [template            ]           ║
+║    [ ] 17. [user                ]           ║
+║    [ ] 18. [gltpm-demo          ]           ║
+║    [ ] 19. [groq-ollama         ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-06-02 00:46:34 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Control Map (ENTER) ]           ║
+║    [ ] 2. [Menu Mode (ESC)     ]           ║
+║    [ ] 3. [Deselect (9)        ]           ║
+║    [ ] 4. [Scan                ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-06-02 00:46:34 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Control Map (ENTER) ]           ║
+║    [ ] 2. [Menu Mode (ESC)     ]           ║
+║    [ ] 3. [Deselect (9)        ]           ║
+║    [ ] 4. [Scan                ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-06-02 00:46:34 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Control Map (ENTER) ]           ║
+║    [ ] 2. [Menu Mode (ESC)     ]           ║
+║    [ ] 3. [Deselect (9)        ]           ║
+║    [ ] 4. [Scan                ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-06-02 00:46:38 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Control Map (ENTER) ]           ║
+║    [ ] 2. [Menu Mode (ESC)     ]           ║
+║    [ ] 3. [Deselect (9)        ]           ║
+║    [ ] 4. [Scan                ]           ║
+
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-06-02 00:47:03 ---
+╔═══════════════════════════════════════════╗
+║  G L - O S   D E S K T O P                ║
+╠═══════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)     ║
+║    [>] 1. [Control Map (ENTER) ]           ║
+║    [ ] 2. [Menu Mode (ESC)     ]           ║
+║    [ ] 3. [Deselect (9)        ]           ║
+║    [ ] 4. [Scan                ]           ║
+
+╚═══════════════════════════════════════════╝

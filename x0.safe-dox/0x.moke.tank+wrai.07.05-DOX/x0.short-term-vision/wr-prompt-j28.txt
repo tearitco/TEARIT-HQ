@@ -1,0 +1,42 @@
+
+
+this is our framework "TPMOS" 
+
+currently we are working on wraith-alpha
+
+we may do 'file system' type addtions next :
+
+
+
+current file sys look : 
+/home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/fs-looks.txt
+
+i think u should ask me some questions
+
+understand the issues and state of these projects vs peak vision
+
+
+
+
+p2p ai powered users, rl / diffusion learning llms, in gameplay. 3d graphics, 
+html like mark up for wriath gl , 
+game editors that are easy to use and allow for file system manipulation
+
+stock market simulation with 'humans on earth' (like civilization game) but also
+with "r&d" 
+but also modes for "pvp and other fun mini games using "collectible pieces" 
+
+crypto mining , trading on auction etc. 
+
+
+and soulpen franchise levels. <ignore this last one for now, ill explain later>
+
+
+for now i think u should look over code , ask me questions 
+try some of the code, using _.testing
+
+and we can create different "planning and architectural documents for each of the paths forward"
+in a central planning dir
+
+i can then look over those documents in the central dir, before even thinking of disseminating them
+into individual folders

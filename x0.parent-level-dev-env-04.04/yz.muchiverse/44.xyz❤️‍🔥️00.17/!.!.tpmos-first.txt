@@ -1,0 +1,121 @@
+
+
+
+📅️j23-25 : 16 : 
+you maybe tempted to just "fix wsr" 
+
+i wouldn't do that. i would scan them all with ai , and get architecture docs made
+that u read. 
+
+my goals: 
+i want them all to have a p2p like architecture for running player/npc entities
+where i kinda writes to a ledger , updates all the necessary "files" 
+and lets the next entity write to the ledger, updates the necessary files etc
+(this could even be done on line as a ring architecture ; 
+players write to ledger their turn ; w/e happen happens next turn ; this is turn based multiplayer
+the npcs are treated like "real players" 
+this way we can swap in human or meta ai controllers over the ai. 
+
+therefore
+it seems the current bottle neck is in mutaclysm , 4 not being like this
+and also having some bugs related to key input that this introduced. 
+(i have an older mutaclysm 2 use as reference for its "interact mode" 
+
+
+
+
+
+whats wrong , where : 
+
+whats right : 
+i think wsr is the colest 2 vision
+
+docs? there maybe random docs in mutaclsym that are right from attempt even tho 
+the code is wrong kuz keyboard bug blocking 
+
+
+even in different steps/dirs  , etc. if it makes sense u could run it 1 pass. this saves 75% tokens.
+<lot of stuff is obvious corrections's u shouldn't have had 2 do if u were doing arch correctly >  
+
+
+📅️j23-25 : 
+
+the right thing to do is to make
+
+
+"Mutaclysm" 
+"wsr" 
+"p2p chat 
+all have a master ledger / p2p-ring architecture. 
+
+
+they should all use the same mechanism (like earlier wsr ; we shoulda finished that first, 
+but aware of the visual of the code, even read thru it. try 2 read it urself. 
+
+use sonnet , then use haiku, then read it. rest if they are being violent. 
+just have a normal pace. its all good. we still use tpmos/wraith gui conventions
+and maybe even their arch. but maybe not. maybe we backport "NPC/Multiplayer " arch
+its not really a backport cuz it never existed in the right way or barely at all so its all good. 
+
+its actually not me whos rushing , its them. 
+they will start making noise, being subtly violent spamming , anti spamming etc. 
+u need 2 combat that somehow. they will try 2 destroy sleep cycle rape. etc. remain sane. 
+stay out of jail/ hospital. w/e 
+
+
+everytime i start getting work momemtn . even note taking
+they rp like im thier slave and start resisting it 4 their own fun. (even right now
+or i would righ tmore about what needs 2 be done and even read the code) 
+
+
+digress. anyways this is the answer. youll probably do it next week its not that hard
+
+just put . p2p/ muta and wsr (agents)  all in 1 room and sort it out = the real 4x. 
+(other has no chtpm lol; and tpmos/wraith was hard 4 human 2 read. i think were ready finally <3)
+
+
+< i may literally move them 2 a new folder, and kinda just use fuzz op 
+
+since mutaclysm is jacked up and u dont kno why ; i may do wsr and go back 2 muta later. 
+
+(the "er muta" maybe using stale binaries. so we dont even know )
+
+
+❤️‍🔥️
+heres what i would do : 
+
+get it to explain every fucking peice of the proposed architecture before we code it. 
+even better if u do this with wsr. and push forward and literally audit the code first. 
+
+if its not readable , its not good enough. 
+we sorted gui shit out. we have those standards. now its mechanical. 
+
+
+🍀️⛲️🪙️🧭️🔍️🍀️⛲️🪙️🧭️🔍️🍀️⛲️🪙️🧭️🔍️🍀️⛲️🪙️🧭️🔍️🍀️⛲️🪙️🧭️🔍️
+first step  = move the 4 out. not by hand
+tell it there maybe shared code, and move any of it all out. then , just 4 projs no more
+🍀️⛲️🪙️🧭️🔍️🍀️⛲️🪙️🧭️🔍️🍀️⛲️🪙️🧭️🔍️🍀️⛲️🪙️🧭️🔍️
+📬️
+ij ust moved them. if they need libs, ask the ai... duh 📬️
+
+🔫️i really wanna make a game that plays like starwars batlefront 
+(in 2d and 3d ; i played the shit outta that) ; watch vids, youll get it. (battlefield 2) 
+<its subtle. but u dont deploy the army like in tactics, 
+u simple spawn as whichever unit , till u die over and over, 
+and it contributes 2 the "points" remember? do that. its not 'die-cringe' its super addictive
+<esp if robots/ clones/ avatars w/e > 
+<u capture the flags 2 get huge point boosts or w/e ; always time based> 
+<and u could probably see how they fele like missions naturally; or could be moreso? >
+<at the end theres a scoreboard 4 both teams, and u can get xp/ levle ups 2 apply 2 diff charas u play
+<or even unlock new charas?others can play them but not u till then 
+
+fortkknite could be like this 2 . is what im sayin. and u could put up lasting turrets
+other stff like minecraft could be like this , bulding a huge defense place
+that only ur team knows etc. traps etc. fun. better hand 2 hand in fps = smashbros fps ...
+(which is also a super classic multiplayer party game interestingly enough)
+🔫️
+ofc it can be 2d chomchio style 2. 
+u just run 1 'piece' till u die. (u may run it for a good run but its setup so u will die probably at
+some point. 
+📅️
+

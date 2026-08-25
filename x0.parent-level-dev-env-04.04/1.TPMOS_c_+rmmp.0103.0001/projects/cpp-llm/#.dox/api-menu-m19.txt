@@ -1,0 +1,47 @@
+# Plan: Dynamic API Selection Menu (m19)
+**Project:** cpp-llm
+**Objective:** Replace the binary API toggle with a scrollable/selectable list of all APIs defined in `config/apis.txt`.
+
+## 1. UI Design (CHTPM)
+We will follow the **Navigation & Tree Views** pattern from `CHTPM_TPM_DOX+1.md`.
+- **Variable:** `${api_list_area}` will be injected into the layout.
+- **Visuals:** 
+    ║ [>] 1. Local (localhost)
+    ║ [ ] 2. Macbook (10.0.0.144)
+    ║ [ ] 3. Debian (10.0.0.16)
+- **Controls:**
+    - **ARROW_UP / ARROW_DOWN:** Move the `[>]` selection marker.
+    - **ENTER:** Connect to the selected API.
+    - **[2] Switch API:** This button will now toggle the "API Menu Mode" (visible/hidden).
+
+## 2. Manager Logic (cpp-llm_manager.c)
+### A. State Management
+- Add `int g_menu_mode` (0: Chat, 1: API Selection).
+- Add `int g_selected_api_idx` to track the cursor.
+- Add an array to store loaded APIs: `struct { char name[64]; char url[256]; } g_api_list[16];`.
+
+### B. Input Handling
+- **If g_menu_mode == 1:**
+    - Intercept Key 65 (Up), 66 (Down) to change `g_selected_api_idx`.
+    - Intercept Key 10/13 (Enter) to:
+        1. Set `g_api_url` to `g_api_list[g_selected_api_idx].url`.
+        2. Call `resolve_local_model()`.
+        3. Set `g_menu_mode = 0`.
+        4. Update `g_sys_msg` with the new host/model.
+    - Intercept Key 27 (ESC) to cancel and return to chat.
+
+### C. Projection (gui_state.txt)
+- The manager will loop through `g_api_list` and build a string for `${api_list_area}`:
+    ```c
+    const char *marker = (i == g_selected_api_idx) ? "[>]" : "[ ]";
+    snprintf(line, sizeof(line), "║ %s %d. %-60s ║\\n", marker, i+1, g_api_list[i].name);
+    ```
+
+## 3. Implementation Steps
+1.  **Refactor Manager:** Create `load_apis()` to parse `config/apis.txt` on startup.
+2.  **Update Main Loop:** Add the state machine logic for `g_menu_mode`.
+3.  **Update Layout:** Add a conditional block or variable slot in `cpp-llm.chtpm` to show the menu when active.
+4.  **Verification:** Add 5+ dummy APIs to `apis.txt` to ensure the list renders correctly.
+
+---
+*Next: Rebuild and Verify.*

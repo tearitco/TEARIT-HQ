@@ -1,0 +1,13 @@
+<panel>
+    <module>projects/user/manager/+x/user_manager.+x</module>
+    <text label="╔═══════════════════════════════════════════════════════════╗" /><br/>
+    <text label="║           U S E R   P R O F I L E                         ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  Welcome, ${current_user}                                     ║" /><br/>
+    <text label="║  Status: ${session_status}                                    ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  Response: ${auth_response:-You are logged in.}                 ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  [4] Logout                                               ║" onClick="KEY:4" href="projects/user/layouts/user_main.chtpm" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+</panel>

@@ -1,0 +1,32 @@
+id 2
+name Route 1
+conn 12 0 maps/pallet/map.txt 12 23 0
+conn 12 24 maps/viridian/map.txt 12 0 2
+trainer YOUNGSTER 4 8 3 1 5 5
+trainer LASS 20 16 3 1 3 6
+##################################################
+#................................................#
+#................................................#
+#..TTTTTTTT......TTTTTTTT......TTTTTTTT......TTTT#
+#..TTTTTTTT......TTTTTTTT......TTTTTTTT......TTTT#
+#..TTTTTTTT......TTTTTTTT......TTTTTTTT......TTTT#
+#..TTTTTTTT......TTTTTTTT......TTTTTTTT......TTTT#
+#................................................#
+#..TTTTTTTT......TTTTTTTT......TTTTTTTT......TTTT#
+#..TTTTTTTT......TTTTTTTT......TTTTTTTT......TTTT#
+#..TTTTTTTT......TTTTTTTT......TTTTTTTT......TTTT#
+#..TTTTTTTT......TTTTTTTT......TTTTTTTT......TTTT#
+#................................................#
+#..TTTTTTTT......TTTTTTTT......TTTTTTTT......TTTT#
+#..TTTTTTTT......TTTTTTTT......TTTTTTTT......TTTT#
+#..TTTTTTTT......TTTTTTTT......TTTTTTTT......TTTT#
+#..TTTTTTTT......TTTTTTTT......TTTTTTTT......TTTT#
+#................................................#
+#..TTTTTTTT......TTTTTTTT......TTTTTTTT......TTTT#
+#..TTTTTTTT......TTTTTTTT......TTTTTTTT......TTTT#
+#..TTTTTTTT......TTTTTTTT......TTTTTTTT......TTTT#
+#..TTTTTTTT......TTTTTTTT......TTTTTTTT......TTTT#
+#................................................#
+#................................................#
+#..........@@@@@@@@@@@@@@@@@@....................#
+##################################################

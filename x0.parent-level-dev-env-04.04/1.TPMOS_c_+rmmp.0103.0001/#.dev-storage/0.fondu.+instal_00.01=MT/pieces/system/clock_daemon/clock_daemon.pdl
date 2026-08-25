@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | clock_daemon
+META         | version            | 1.0
+META         | determinism        | strict
+
+STATE        | time                 | 08:00:50
+STATE        | turn                 | 0
+STATE        | mode                 | auto
+
+
+

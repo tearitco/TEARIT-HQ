@@ -1,0 +1,2 @@
+--- real view.txt FILE line after typing ---
+ FILE:   [^] 2. [hi_]

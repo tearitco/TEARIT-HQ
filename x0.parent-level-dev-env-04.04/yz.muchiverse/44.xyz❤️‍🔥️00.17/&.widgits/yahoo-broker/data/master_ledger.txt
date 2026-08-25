@@ -1,0 +1,2 @@
+timestamp|epoch|player|turn|word|action_type
+2026-08-05T18:04:40|0|simhash|0|add_credit:100.00:5000.00|add_credit

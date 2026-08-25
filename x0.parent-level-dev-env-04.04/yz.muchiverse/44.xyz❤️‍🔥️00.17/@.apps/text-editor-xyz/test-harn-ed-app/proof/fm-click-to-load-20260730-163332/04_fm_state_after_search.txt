@@ -1,0 +1,8 @@
+mode=file_browser
+cursor_pos=0
+path_buffer=
+browse_dir=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.15/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/xyzfs/users/e8bf229a-62d3-4d6f-810e-e2aaf031cd73/home/documents
+browse_mode=load
+search_text=click-load-fixture-181850.txt
+field_active=1
+status_line=Browse to a file or type path

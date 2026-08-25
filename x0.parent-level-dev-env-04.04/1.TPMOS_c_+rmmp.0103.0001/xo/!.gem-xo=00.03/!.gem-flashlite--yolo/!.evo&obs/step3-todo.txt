@@ -1,0 +1,74 @@
+# STEP 3 TODO: GL-OS Infrastructure & Mirrored Project Windows
+**Task:** Enable GL project selection, implement mirrored project windows, and prototype 3D ASCII view.
+**Collaborators:** User & Gemini CLI
+**Date:** 2026-04-22
+
+---
+
+## 1. INFRASTRUCTURE: Theater Switch & Mirror Window
+**Objective:** Allow selection of GL projects and launch them in mirrored virtual windows.
+
+- [ ] **1.1 GL-Route Mapping:**
+    - Audit `pieces/os/project_routes.kvp` or relevant registry.
+    - Add entries for GL projects (`fuzz-op-gl`, `op-ed-gl`).
+    - Standardize `.gl` extension for GL-native layouts.
+- [ ] **1.2 Context-Based Menu Navigation:**
+    - Update `execute_option` to manage `menu_context` (`CTX_MAIN`, `CTX_DESKTOP_APPS`).
+    - Implement `create_mirrored_window` helper function.
+- [ ] **1.3 Virtual Window Logic (`create_mirrored_window`):**
+    - Function to create a new `DesktopWindow` of type "project_mirror".
+    - Stores `project_id` (e.g., "fuzz-op").
+    - Associates window with a specific project's frame (`current_frame.txt`) and state files.
+    - Uses `pieces/display/current_frame.txt` for rendering initial state.
+- [ ] **1.4 File-State Mirroring:**
+    - Ensure GL renderer reads from project-specific state files when a mirrored window is active.
+    - Emphasize file-state synchronization, not direct process memory access.
+
+---
+
+## 2. EXPLORATIVE POC: 3D ASCII Projection
+**Objective:** Use ASCII characters to simulate 3D depth in the terminal.
+
+- [ ] **2.1 Isometric Logic Op (`project_3d_ascii.+x`):**
+    - Create a standalone Op that reads a 2D map and Z-level data.
+    - Output a skewed ASCII representation where `Z` determines character "height" or vertical offset.
+- [ ] **2.2 Op-Ed Integration:**
+    - Add a toggle in `op-ed` to switch viewport to "3D Mode" using this projection.
+- [ ] **2.3 Fuzz-Op Integration:**
+    - Verify entity rendering in the skewed 3D ASCII view.
+
+---
+
+## 3. GL-OS: 3D Tile Engine Prototype
+**Objective:** A basic 3D environment in GL-OS mirroring project data.
+
+- [ ] **3.1 Tile Extrusion Logic:**
+    - In `gl_desktop.c` or a new GL plugin, implement a renderer that draws 3D cubes.
+    - **Tile Height = Z-Level**: Map `cursor_z` or piece `pos_z` to cube's Y-scale.
+- [ ] **3.2 RGB Tile Format (8x8x8):**
+    - Define `.txt` format for storing 512 RGB values.
+    - Create sample tiles in `pieces/display/tiles/`.
+- [ ] **3.3 Camera Controller (3 Modes):**
+    - Implement **Free Camera**: Independent movement and rotation.
+    - Implement **1st Person**: Camera attached to the `player_piece` eye-level.
+    - Implement **3rd Person**: Camera follows behind the `player_piece`.
+- [ ] **3.4 File-State Sync:**
+    - Ensure GL renderer reads project `state.txt` and `view.txt` for tile positioning.
+
+---
+
+## 4. KPIs (Success Criteria)
+
+| ID | KPI | Metric |
+| :--- | :--- | :--- |
+| **K1** | **Theater Swap** | Selecting "Fuzz-Op-GL" or "Op-Ed-GL" in the Loader launches a GL window mirroring ASCII project state. |
+| **K2** | **3D ASCII Parity** | Toggling 3D Mode in Op-Ed shows an isometric grid. |
+| **K3** | **GL File Sync** | Moving a piece in ASCII Op-Ed reflects its 3D position in the GL window. |
+| **K4** | **Z-Level Impact** | Changing Z-level in Op-Ed updates tile height in both ASCII and GL views. |
+
+---
+
+## 5. NEXT STEPS (Immediate Collaboration)
+1.  Implement `create_mirrored_window` helper function in `gl_desktop.c`.
+2.  Update `execute_option` to call `create_mirrored_window` for "Fuzz-Op-GL" and "Op-Ed-GL".
+3.  Refine `write_gl_os_state` to correctly write project context (e.g., project ID) for mirrored windows.

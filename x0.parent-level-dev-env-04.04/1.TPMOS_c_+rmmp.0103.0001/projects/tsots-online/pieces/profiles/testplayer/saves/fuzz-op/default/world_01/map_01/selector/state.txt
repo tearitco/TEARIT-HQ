@@ -1,0 +1,7 @@
+name=Selector
+type=selector
+pos_x=12
+pos_y=2
+pos_z=0
+on_map=1
+map_id=map_01_z0.txt

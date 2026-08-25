@@ -1,0 +1,26 @@
+module_path=projects/slop-ed-dev/manager/+x/slop-ed-dev_manager.+x
+active_layout_id=slop-ed-dev.chtpm
+app_title=OP-ED ADVANCED EDITOR
+project_id=slop-ed-dev/games/default-0000
+active_game=projects/slop-ed-dev/games/default-0000
+active_gui_index=1
+last_key=None
+selector_pos=(5,5,0)
+browser_mode_header=<text label="║  MODE: LOAD GAME | GAME: projects/slop-e ║" /><br/>
+browser_current_dir_line=<text label="║  DIR: projects/slop-ed-dev/games          ║" /><br/>
+search_query_val=
+file_path_input_val=hi
+autocomplete_suggestions_markup=<text label="║  SUGGESTIONS:                               ║" /><br/><text label="║  " /><button label="hi-m3/" onClick="SET_AUTOCOMPLETE:hi-m3/" /><text label="                         " /><text label=" ║" /><br/><text label="║  " /><button label="hi-mac1/" onClick="SET_AUTOCOMPLETE:hi-mac1/" /><text label="                       " /><text label=" ║" /><br/><text label="║  " /><button label="hi-m2/" onClick="SET_AUTOCOMPLETE:hi-m2/" /><text label="                         " /><text label=" ║" /><br/>
+directory_browser_markup=<text label="║  " /><button label="<- BACK" onClick="SET_DIR:projects/slop-ed-dev" /><text label="                        " /><text label=" ║" /><br/><text label="║  " /><button label="[DIR] default-0000/" onClick="SET_DIR:projects/slop-ed-dev/games/default-0000" /><text label="            " /><text label=" ║" /><br/><text label="║  " /><button label="[DIR] fuzz-op-mirror/" onClick="SET_DIR:projects/slop-ed-dev/games/fuzz-op-mirror" /><text label="          " /><text label=" ║" /><br/><text label="║  " /><button label="[DIR] hi-m2/" onClick="SET_DIR:projects/slop-ed-dev/games/hi-m2" /><text label="                   " /><text label=" ║" /><br/><text label="║  " /><button label="[DIR] hi-m3/" onClick="SET_DIR:projects/slop-ed-dev/games/hi-m3" /><text label="                  " /><text label=" ║" /><br/><text label="║  " /><button label="[DIR] hi-mac1/" onClick="SET_DIR:projects/slop-ed-dev/games/hi-mac1" /><text label="                " /><text label=" ║" /><br/>
+browser_action_buttons_markup=<text label="║  " /><button label="LOAD GAME" onClick="SET_LOAD_ACTION" /><text label="                     " /><text label=" ║" /><br/><text label="║  " /><button label="CANCEL" href="projects/slop-ed-dev/layouts/file_menu.chtpm" /><text label="                        " /><text label=" ║" /><br/>
+project_selection_markup=<text label="║  " /><button label="hi-m3                         " onClick="SET_LOAD_GAME:projects/slop-ed-dev/games/hi-m3" /><text label="  ║" /><br/>
+<text label="║  " /><button label="fuzz-op-mirror                " onClick="SET_LOAD_GAME:projects/slop-ed-dev/games/fuzz-op-mirror" /><text label="  ║" /><br/>
+<text label="║  " /><button label="hi-mac1                       " onClick="SET_LOAD_GAME:projects/slop-ed-dev/games/hi-mac1" /><text label="  ║" /><br/>
+<text label="║  " /><button label="hi-m2                         " onClick="SET_LOAD_GAME:projects/slop-ed-dev/games/hi-m2" /><text label="  ║" /><br/>
+<text label="║  " /><button label="default-0000                  " onClick="SET_LOAD_GAME:projects/slop-ed-dev/games/default-0000" /><text label="  ║" /><br/>
+
+editor_response=[RESP]: Loaded game: projects/slop-ed-dev/games/default-0000
+editor_status_2=[POS]: (5,5,0) | [H-BEAT]: 0 | [KEY]: None               
+map_palette_view=ADD map_0002.txt [map_0001.txt] 
+glyph_palette_view=[#] . R T @ & Z X ? ! 
+armed_glyph=#

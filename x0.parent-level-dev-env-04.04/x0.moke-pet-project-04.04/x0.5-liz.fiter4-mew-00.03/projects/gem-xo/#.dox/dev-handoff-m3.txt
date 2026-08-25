@@ -1,0 +1,74 @@
+# TPMOS Technical Handoff: Project Groq-Ollama (M3)
+**Status:** Scaffolding Complete | Registration Active
+**Date:** 2026-05-04
+**Objective:** Transition from PoC scaffold to functional local LLM integration.
+
+---
+
+## 1. Current State Summary
+- **Structure:** `projects/gem-api/` contains compliant Piece/Module/Layout hierarchy.
+- **UI:** `gem-api.chtpm` active with `cli_io` and dynamic variables.
+- **Registration:** Project is officially routed in `project_routes.kvp` and `ops_catalog.txt`.
+- **Binaries:** `gem-api_manager.+x` and `gem-api_bridge.+x` compiled and running (stubs).
+
+---
+
+## 2. Immediate Technical Debt / Tasks (Phase 2)
+
+### T1: Real-World AI Bridge (`ops/src/gem-api_bridge.c`)
+- **Requirement:** Replace the simulation logic with a real wrapper for `/usr/local/bin/gem-api`.
+- **Logic:** 
+    - Use `popen()` or `fork()/exec()` to call the system `gem-api` command.
+    - Capture `stdout` into a buffer.
+    - Sanitize output (remove escape codes) before writing to the project state.
+- **Validation:** Running `./ops/+x/gem-api_bridge.+x "Hello"` should return a real response from the local model.
+
+### T2: Manager Input Loop (`manager/gem-api_manager.c`)
+- **Requirement:** Implement the "Live Submission" pattern.
+- **Logic:**
+    - Monitor `pieces/apps/player_app/gui_state.txt` for the `gem-api_input` KVP.
+    - Detect `ENTER` keypress by monitoring `pieces/keyboard/history.txt`.
+    - On `ENTER`, transition `iqabel` to `THINKING` state.
+    - Pass the buffer to `gem-api_bridge`.
+- **Safety:** Ensure `usleep(100000)` throttling is maintained during the wait for AI response.
+
+### T3: Dynamic Response Area (`layouts/gem-api.chtpm`)
+- **Requirement:** Multiline text rendering.
+- **Logic:**
+    - The Manager must wrap `gem-api_bridge` output into ASCII borders.
+    - Populate `${gem-api_response_area}` in `state.txt` with formatted lines.
+    - Handle overflow (scrolling or truncation at 20 lines).
+
+---
+
+## 3. iqabel Agent Integration (Phase 3)
+
+### T4: FSM Engine
+- Implement the state machine in `iqabel/piece.pdl`:
+    - `IDLE`: Waiting for user or ledger event.
+    - `THINKING`: Querying AI Bridge.
+    - `ACTING`: Parsing JSON from AI and executing a PAL script via `prisc`.
+    - `LEARNING`: Writing result to `pieces/memories/` based on `ledger.txt` success.
+
+### T5: JSON Command Parser
+- **Requirement:** Extract executable intent from AI prose.
+- **Logic:** Look for ` ```json ` blocks in the bridge output.
+- **Actions:** Map JSON `action` fields to TPMOS Ops (e.g., `move_piece`, `create_item`).
+
+---
+
+## 4. Engineering Standards & Constraints
+- **Pathing:** NEVER use absolute paths. Resolve root via `argv[1]` (passed by `run.sh`).
+- **Persistence:** All AI responses must be logged to `pieces/debug/gem-api_history.log`.
+- **CPU Safety:** Do not block the manager on the AI query; run the bridge as a child process and poll for completion to keep the UI responsive.
+
+---
+
+## 5. Verification Gate (KPIs)
+- [ ] `gem-api` project loads via `LOAD_PROJECT:gem-api`.
+- [ ] Typing in `Ask Groq-Ollama: ` and hitting Enter triggers the Bridge.
+- [ ] `iqabel`'s state in the UI changes from `IDLE` to `THINKING` during queries.
+- [ ] AI output is correctly displayed within the CHTPM layout.
+
+---
+*"Geography is destiny. The bridge is the mouth of the machine."*

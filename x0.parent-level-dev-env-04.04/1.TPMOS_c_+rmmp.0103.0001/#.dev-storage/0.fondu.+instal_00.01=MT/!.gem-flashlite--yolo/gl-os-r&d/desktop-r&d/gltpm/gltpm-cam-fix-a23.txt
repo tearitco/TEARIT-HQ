@@ -1,0 +1,40 @@
+# GLTPM Camera & Interaction Pipeline Fix (A23)
+
+## 1. Problem Statement
+In "Interact Mode" (`is_map_control = 1`), WASDERZX and Arrow keys in the modular `gltpm_app` are not responding. Additionally, numeric keys 1, 2, 3 (which switch camera modes in the hardcoded POC) are not functional.
+
+## 2. Comparative Analysis
+
+### 2.1 Hardcoded POC (`project_mirror`)
+- **Logic:** Input is handled directly in `gl_desktop.c`. 
+- **Mechanism:** WASD directly increments/decrements `win->cam_pos[i]`. 1/2/3 directly set `win->camera_mode`.
+- **Result:** Instant visual update because the host "owns" the camera.
+
+### 2.2 Modular Standard (`gltpm_app` + `fuzz-op-gl`)
+- **Logic:** "Dumb Theater" model. The host should only route input.
+- **Mechanism:** WASD/Arrows must be injected into `projects/fuzz-op-gl/session/history.txt`.
+- **Manager Role:** `fuzz-op-gl_manager.c` reads the history, updates `cam_x/y/z` and `selector_pos_x/y` in `state.txt`.
+- **Host Role:** Re-reads `state.txt` on the next pulse and updates `win->cam_pos` via `sync_gltpm_menu_from_scene`.
+
+### 2.3 The "Deadlock" Bug
+In the current `gl_desktop.c`:
+1.  **Global Block Conflict:** A "Project Mirror Controls" block exists at a high level in `keyboard()`. It checks `strcmp(win->type, "project_mirror")`.
+2.  **Modular Omission:** The `gltpm_app` block in `keyboard()` does not handle WASDERZX or 1/2/3 keys; it only handles movement routing if `is_map_control` is active.
+3.  **Key Clobbering:** Numeric keys 1/2 are often captured by the "Terminal" global block (to create new windows), preventing them from reaching the project routing logic.
+
+## 3. Implementation Plan
+
+### 3.1 `gl_desktop.c` (Host Fix)
+- **Priority Routing:** Move the `gltpm_app` input block to the very top of `keyboard()` and `special_keyboard()`.
+- **Mode Switching:** Specifically handle keys '1', '2', '3' in `gltpm_app` interact mode.
+    - Action: Set `win->camera_mode` locally (for visual response) AND inject `KEY_PRESSED` into history so the manager stays in sync.
+- **Full Spectrum WASD:** Add 'e', 'q', 'r', 'f', 'z', 'x' to the routed key list to support rotation and vertical flight.
+
+### 3.2 `fuzz-op-gl_manager.c` (Manager Fix)
+- **Camera mode sync:** Ensure the manager's `gltpm_input_thread` updates the `camera_mode` variable in `state.txt` when it receives 1, 2, or 3.
+- **Xelector vs Camera:** Ensure the manager handles both `w/a/s/d` (Camera) and `1000-1003` (Xelector/Arrows) and flushes them to `state.txt`.
+
+## 4. Troubleshooting
+- **If view doesn't move:** Check `projects/fuzz-op-gl/session/history.txt`. If keys are there, the manager is not updating `state.txt`.
+- **If view moves but is jerky:** Check `pieces/apps/player_app/view.txt` update frequency. The manager must `trigger_render()` after every move.
+- **If 1/2/3 don't change perspective:** Verify `sync_gltpm_menu_from_scene` is reading `camera_mode` from the re-parsed scene.

@@ -1,0 +1,17 @@
+<panel>
+    <module>projects/user/manager/+x/user_manager.+x</module>
+    <text label="╔═══════════════════════════════════════════════════════════╗" /><br/>
+    <text label="║           U S E R   A U T H E N T I C A T I O N           ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  " /><button label="Create Profile" href="projects/user/layouts/user_signup.chtpm" /><text label="                        ║" /><br/>
+    <text label="║  " /><button label="Login (Auth)" href="projects/user/layouts/user_login.chtpm" /><text label="                           ║" /><br/>
+    <text label="║  " /><button label="Get Session" onClick="KEY:3" /><text label="                            ║" /><br/>
+    <text label="║  " /><button label="Logout" onClick="KEY:4" /><text label="                                 ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  Response: ${auth_response}                               ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  " /><button label="Clear" onClick="KEY:5" /><text label="                                  ║" /><br/>
+    <text label="║  " /><button label="Back" href="pieces/apps/playrm/layouts/loader.chtpm" /><text label="                                   ║" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+</panel>

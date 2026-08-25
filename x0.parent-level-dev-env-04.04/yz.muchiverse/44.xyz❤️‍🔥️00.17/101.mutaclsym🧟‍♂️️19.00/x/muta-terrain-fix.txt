@@ -1,0 +1,178 @@
+MUTA-TERRAIN-FIX.txt — prescribed fix for 3D voxel texture rendering
+Written 2026-08-18. For a fresh, more powerful agent to execute. Read in full before touching code —
+this is the result of real, live research this session, not guesswork. Do not re-derive what's
+already answered here.
+
+================================================================================
+THE PROBLEM (direct, confirmed, live)
+================================================================================
+The 3D voxel view (muta_render_3d.+x, project 19.00) renders real geometry (confirmed: walls,
+floors, doors all show correct flat colors matching terrain_legend.txt's own rgb/height data) but
+NEVER shows real emoji-derived TEXTURE on any voxel face — always flat solid color. This is true
+even for glyphs whose asset folder ALREADY EXISTS on disk (e.g. the wall glyph's own
+pieces/registry/emoji_assets/1F9F1/ folder, confirmed present before this fix).
+
+================================================================================
+ROOT CAUSE — TWO INCOMPATIBLE ASSET-NAMING CONVENTIONS, NEVER RECONCILED
+================================================================================
+This project has TWO SEPARATE, PARALLEL terrain-texture systems that were never unified. Confirmed
+by direct file reads, not inference:
+
+--------------------------------------------------------------------------------
+SYSTEM A — the OLD, COMPLETE, REAL system (+18.0G, the classic 2D game)
+--------------------------------------------------------------------------------
+File: pieces/registry/terrain/terrain_types.txt (7-field format, ALREADY COPIED into 19.00 this
+session, real content, not a stub):
+    glyph|id|name|walkable(0/1)|rgb_top(R,G,B)|unicode|rgb_top_emoji(R,G,B)
+Example real row: `#|t_wall|Wall|0|90,90,100|🧱|150,60,50`
+
+ops/compose_rgb_frame.c (the CLASSIC renderer, +18.0G's own, ~line 316-330) derives the asset
+FOLDER NAME from the registry's own **`id` field** (second column) - e.g. glyph `#` → id `t_wall`
+→ reads pieces/registry/emoji_assets/t_wall/voxels_16.csv.
+
+CONFIRMED, REAL, PRE-BUILT ASSET LIBRARY EXISTS for this exact convention - `find
+.../101.mutaclsym+18.0G/pieces/registry/emoji_assets/ -maxdepth 1` lists REAL, COMPLETE folders for
+EVERY terrain glyph (t_wall, t_floor, t_door, t_grass, t_dirt, t_pavement, t_rubble, t_water_sh,
+t_water_dp, t_tree, t_window, t_stairs_down, t_stairs_up), EVERY furniture glyph (f_chair, f_table,
+f_bed, f_counter, f_sink, f_crate, f_grave), plus items/monsters/entities (apple, jerky, backpack,
+scrap_metal, rag, stick, rock, water_bottle, zombie, zombie_child, sp_frog, sp_turtle, hero,
+xlector, and more). This is a REAL, COMPLETE, working asset library - not sparse, not ad-hoc,
+already fully built. HOW these were originally generated (a batch/setup tool, most likely) was NOT
+found this session - worth a quick search (`grep -rl "t_wall" ops/ scripts/` in +18.0G) before
+assuming it needs to be regenerated from scratch; it may already all exist and just need copying.
+
+--------------------------------------------------------------------------------
+SYSTEM B — the NEW, INCOMPLETE, board-viewer-ported system (muta_render_3d.c, 19.00's own 3D view)
+--------------------------------------------------------------------------------
+File: pieces/system/terrain_legend.txt (DIFFERENT format, DIFFERENT file):
+    glyph|height|r|g|b|asset_hex|name
+muta_render_3d.c (verbatim copy of board-viewer's bv_render_3d.c) derives the asset folder name
+from THIS file's own **`asset_hex` field**, expecting a UNICODE CODEPOINT HEX string (e.g. "1F9F1"
+for 🧱), reading pieces/registry/emoji_assets/1F9F1/voxels_16.csv - same emoji_assets/ ROOT
+directory as System A, but a COMPLETELY DIFFERENT naming convention for the subfolder.
+
+The ONLY 5 real assets under this codepoint-hex convention that exist at all
+(1F33F/1F9D9/1F9F1/25C6/FFFD) were generated AD HOC via chtpm_rgb_render.c's own live on-demand
+generation path (system/chtpm_rgb_render.c's own ensure_emoji_asset_generated(), confirmed real,
+reads at ~line 570-595) - NOT a deliberate, complete pre-build. Confirmed this session: piececraft-
+xyz (board-viewer's own real host project) has ZERO terrain_types.txt-equivalent file at all - it
+relies ENTIRELY on this live on-demand path, which only ever produces sparse, incidental coverage
+(whatever glyphs happened to get rendered during real gameplay), never a complete library.
+
+--------------------------------------------------------------------------------
+WHY THIS SESSION'S OWN terrain_legend.txt EDITS DIDN'T HELP
+--------------------------------------------------------------------------------
+This session set terrain_legend.txt's own asset_hex fields to real Unicode codepoints (matching
+terrain_types.txt's own `unicode` field values, e.g. wall=1F9F1, floor=1F7EB, door=1F6AA, etc.) -
+correct IN THEORY for System B's own convention, but:
+1. chtpm_rgb_render.c's own on-demand generation (the ONLY thing that can create a NEW
+   codepoint-hex asset) is gated behind "no curated color match found first" (match_emoji_color(),
+   checked BEFORE the on-demand path, ~line 682 of chtpm_rgb_render.c) - and since terrain_types.txt
+   (by design, deliberately complete) has a curated rgb_top_emoji entry for EVERY real glyph, that
+   curated match ALWAYS wins, so the on-demand generation branch is STRUCTURALLY UNREACHABLE for
+   any glyph with a real terrain_types.txt row. This is not a bug in chtpm_rgb_render.c - it's
+   correct, intentional behavior for ITS OWN 2D flat-color-swap use case - but it means NEW
+   codepoint-hex assets can never be created this way for terrain, only flat color ever renders.
+2. muta_render_3d.c itself (unlike chtpm_rgb_render.c) has NO on-demand generation call of its own
+   at all - it is a PURE READER of pre-existing pieces/registry/emoji_assets/<hex>/voxels_16.csv
+   files. It can never create a new asset under any circumstance, regardless of what
+   terrain_legend.txt says.
+Net effect: setting real Unicode codepoints in terrain_legend.txt can ONLY ever produce visible
+texture for the 5 pre-existing codepoint-hex folders that already happen to exist (by coincidence
+of prior ad-hoc generation) - everything else is permanently flat-color no matter what codepoint is
+chosen, until something else creates the missing folders.
+
+================================================================================
+THE FIX — use System A's real, complete asset library, not System B's sparse one
+================================================================================
+Direct user conclusion this session, confirmed correct by the research above: "terrain_types.txt
+sounds like the most compliant model." System A is real, complete, and already built. System B is
+incomplete by construction and cannot become complete through the live on-demand path alone. Do
+NOT try to generate 20+ new codepoint-hex assets from scratch - copy the real, complete,
+already-working library instead.
+
+STEP 1 - Find out how +18.0G's own asset library was originally built (quick search, don't skip):
+    grep -rl "t_wall\|emoji_assets" .../101.mutaclsym+18.0G/scripts/ .../101.mutaclsym+18.0G/ops/*.c
+If a real batch/generation script is found, note it - it may be reusable if 19.00 later adds NEW
+glyphs the copied library doesn't cover yet. If nothing is found, the library was likely built
+via manual/one-off invocation of emoji_gen_atlas.+x + emoji_xtract.+x per glyph at some earlier
+point - not required to reproduce that process now, since the OUTPUT already exists and can simply
+be copied.
+
+STEP 2 - Copy the real, complete asset library wholesale from +18.0G into 19.00:
+    cp -r .../101.mutaclsym+18.0G/pieces/registry/emoji_assets/* \
+          .../101.mutaclsym19.00/pieces/registry/emoji_assets/
+(19.00 currently only has the 5 sparse codepoint-hex folders under this same directory - merging is
+safe, no real name collisions expected between registry-ID folders like "t_wall" and codepoint-hex
+folders like "1F9F1".)
+
+STEP 3 - Modify muta_render_3d.c to resolve asset folders the SAME way compose_rgb_frame.c does:
+registry `id` field, not Unicode codepoint. Concretely:
+- terrain_legend.txt's own `asset_hex` column should hold the registry `id` string (e.g. "t_wall",
+  "t_floor", "t_door") instead of a Unicode codepoint hex - this is a simple DATA change (edit
+  pieces/system/terrain_legend.txt's own 6th column for every row) once the code side (below)
+  expects that convention.
+- OR, likely simpler and more consistent long-term: have terrain_legend.txt import/reuse
+  terrain_types.txt's own real `id` field directly (they're both keyed by the SAME glyph column) -
+  consider whether terrain_legend.txt should exist as a separate file at all, versus muta_render_3d.c
+  reading terrain_types.txt directly (glyph|id|name|walkable|rgb_top|unicode|rgb_top_emoji) and
+  using its own `id` field as the asset folder name, matching compose_rgb_frame.c's own real,
+  working convention exactly - this avoids maintaining TWO registries with the same glyph keys and
+  is the more "compliant" (matching direct user framing) design. Evaluate both options for real risk
+  before choosing - terrain_legend.txt also carries a `height` field terrain_types.txt does not have
+  at all (needed for the 3D raymarcher's own real per-glyph height/geometry, NOT just texture) - a
+  full merge may need terrain_types.txt to GAIN a height column rather than eliminating
+  terrain_legend.txt outright. This design decision was NOT made this session - make it deliberately,
+  don't just delete one file without checking what unique data it alone provides first.
+- Either way, the C-side change: `get_voxel8_cached()`/`sample_voxel8_pixel()` and their own asset-
+  path construction in muta_render_3d.c currently build the path as
+  `pieces/registry/emoji_assets/<asset_hex-value-from-file>/voxels_16.csv` - this doesn't need to
+  change AT ALL if the terrain_legend.txt DATA itself is changed to hold `t_wall`-style ids instead
+  of codepoints (the code is naming-convention-agnostic, it just uses whatever string is in that
+  column) - confirm this by re-reading the exact snprintf/path-building call before assuming a
+  C code change is even needed; it may be a pure DATA fix (Option 3a above), not a code fix at all.
+
+STEP 4 - Furniture glyphs (h/&/b/k/s/c) need the SAME real ids from furniture_types.txt (also
+already copied into 19.00 this session, real content: h=f_chair, &=f_table, b=f_bed, k=f_counter,
+s=f_sink, c=f_crate) - terrain_legend.txt's own furniture rows need the SAME id-based asset_hex
+fix as terrain rows above.
+
+STEP 5 - REAL TESTING REQUIRED before considering this done (per this project's own established
+discipline - do not trust a code/data change without live, visual proof):
+1. Full clean launch (`bash button.sh kill` first, confirm zero stray processes, then
+   `bash button.sh run` for real - NOT manual isolated op invocations, which do not trigger a fresh
+   render cycle through the real daemon/marker pipeline and produce misleading stale results - this
+   exact mistake was made repeatedly earlier this session, costing significant time).
+2. Reset the hero to a KNOWN interior position before testing (pos_x=8, pos_y=2 is a real, confirmed
+   walkable floor tile inside the first room, per direct row/column reading of +18.0G's own
+   map.txt row 2: `#..................#..................##`).
+3. Dump a real PNG via `PRISC_PROJECT_ROOT=<session_dir> ops/+x/dump_rgb_png.+x <out.png>` (reads
+   the raw frame file directly - no window-capture race risk) and VISUALLY confirm real emoji/voxel
+   texture (not flat color) on at least the wall and floor.
+4. Also re-verify the map GEOMETRY itself still matches +18.0G's own real map.txt layout (walled
+   rooms, door gaps) - a real regression was found and fixed once already this session (an
+   accidental `mua_generate_chunk.+x` invocation overwrote the real converted map with random
+   procedural noise; the fix was re-running `ops/+x/convert_og_map_to_voxels.+x <+18.0G path>
+   <19.00 path>` - confirm this hasn't silently regressed again before assuming textures are the
+   only remaining problem).
+
+================================================================================
+RELATED, SEPARATE, LOWER-PRIORITY FOLLOW-UP (not required for this fix)
+================================================================================
+piececraft-xyz (board-viewer's own real host project) has NO terrain_types.txt-equivalent registry
+at all, and would benefit from the same real, complete, pre-built asset-library approach instead of
+relying purely on sparse, incidental on-demand generation - but this is a SEPARATE project or
+board-viewer's own separate house-standard, and touching it is explicitly OUT OF SCOPE for this fix
+unless separately requested.
+
+================================================================================
+DO NOT
+================================================================================
+- Do not attempt to generate 15-20+ new codepoint-hex emoji assets from scratch via repeated
+  emoji_gen_atlas.+x/emoji_xtract.+x calls - the real, complete, already-built library in +18.0G
+  makes this unnecessary busywork.
+- Do not delete/replace terrain_legend.txt without first confirming what unique data (the `height`
+  field specifically) it provides that terrain_types.txt does not, per Step 3 above.
+- Do not trust a manual/isolated op invocation as a valid test of whether textures render - only a
+  full `button.sh run` + real PNG dump is a valid, trustworthy test, confirmed the hard way this
+  session (see Step 5.1's own warning).

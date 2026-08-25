@@ -1,0 +1,61 @@
+# Fuzz-Op-GL Repair Analysis & Stage 2 Plan
+
+**Date:** April 24, 2026
+**Subject:** Addressing Camera Sovereignty, Input Routing, and Xelector Synchronization
+
+## 1. Identified Issues & Vision Alignment
+
+### A. Camera Sovereignty & Input Conflict
+*   **Vision:** Camera is a sovereign Piece. Manager (`fuzz-op-gl_manager.c`) manages `camera_mode`, `cam_pos`, and `cam_rot` in its state and `session/state.txt`. Host (`gl_desktop.c`) renders based on this state. WASD/ZXQE are for Host-side camera fly/pan, injected into history ONLY for Manager to save state. Arrow keys are for Manager-controlled Xelector movement.
+*   **Current Reality:**
+    *   **Host Overwrites Camera:** Host's local `win->cam_pos`/`cam_rot` updates via WASD are likely being overwritten by Manager's static `cam_pos`/`cam_rot` on frame sync, causing camera glitches/re-centering. Host is not sovereign for camera state.
+    *   **Manager Ignores WASD Fly:** Manager's `gltpm_input_thread` WASD handling seems disabled or incorrect, leading to WASD keys potentially being routed to `route_input` and moving the Xelector.
+    *   **Local Host Camera Mode:** Host still updates `win->camera_mode` locally, conflicting with Manager's authority.
+*   **Deviation:** Negative. Camera control is not sovereign, and input routing is confused.
+
+### B. Xelector (Wireframe Cursor) Visibility & Sync
+*   **Vision:** The Xelector is a Sovereign Piece, rendered as a distinct visual (voxel wireframe) that precisely mirrors its Manager-defined state (`xelector_pos`).
+*   **Current Reality:**
+    *   **Invisibility/Desync:** Xelector wireframe is either invisible or decoupled from its intended position. This is likely due to:
+        *   Host's `draw_xelector` potentially using incorrect coordinates or visibility logic.
+        *   Manager's `xlector_pos` updates not being reflected correctly in the Host's rendering cycle, possibly due to sync timing or incorrect state loading.
+        *   The Xelector's rendering might be conditional (e.g., blinking logic that makes it appear off).
+    *   **Arrow Keys:** Arrow keys inject `KEY_PRESSED` events to history, which the Manager *should* process for `xlector` movement. The issue is that this movement isn't reflected in the Host's visual `xelector_pos`.
+*   **Deviation:** Negative. Xelector rendering and synchronization are inconsistent.
+
+---
+
+## 3. Repair Strategy & Implementation Plan
+
+### Goal 1: Establish Absolute Camera Sovereignty & Correct Input Routing
+
+*   **Manager (`fuzz-op-gl_manager.c`):**
+    *   **Sovereign Camera State:** Manager MUST be the sole authority for `camera_mode`, `cam_pos`, and `cam_rot`. It will save these to `session/state.txt`.
+    *   **Input Handling:** `gltpm_input_thread` will parse injected camera commands (e.g., `CAMERA_MOVE: dx,dy,dz`) from history and update camera state. It will **IGNORE** local WASD/ZXQE input for camera fly.
+    *   **Synchronization:** Manager must pulse `frame_changed.txt` after saving camera state.
+*   **Host (`gl_desktop.c`):**
+    *   **Local WASD Fly:** Implement direct WASD/ZXQE camera movement logic *within the Host's `keyboard()` handler* for `gltpm_app` when `is_map_control` is active. This provides smoother local control.
+    *   **Inject WASD:** After local Host camera movement, inject `CAMERA_MOVE` events to history for Manager to save.
+    *   **Read-Only Camera State:** `win->cam_pos`/`cam_rot` should be updated ONLY via `refresh_gltpm_window()` (reading from Manager's state). Remove local updates for `camera_mode` from Host's keyboard handler.
+    *   **Arrow Keys:** Ensure Arrow keys are injected to history for Manager to handle `xlector` movement.
+
+### Goal 2: Xelector Visibility & Synchronization
+
+*   **Manager:**
+    *   Ensure arrow key input correctly calls `move_entity.+x xlector` and saves updated `xlector_pos` to `session/state.txt`.
+    *   Confirm `save_manager_state()` writes `xelector_pos_x` and `xelector_pos_y`.
+*   **Host (`gl_desktop.c`):**
+    *   Ensure `refresh_gltpm_window()` correctly syncs `win->xelector_pos` from Manager's `session/state.txt`.
+    *   Implement `draw_xelector` using voxel DNA (`DNA_XEL`) and ensure it's drawn at the correct elevation (`sel_gl_y = 1.1f + (win->xelector_pos[2] * 0.5f)`) to prevent invisibility.
+    *   Make Xelector blinking more frequent or persistent if needed.
+
+### Goal 3: Documentation & File Structure
+
+*   **Document:** Update `gl-fuzz-architecture-blueprint.txt` with these finalized definitions:
+    *   Xelector (Wireframe Piece) vs. Selector (Navigation).
+    *   Camera Sovereignty (Manager is authority).
+    *   Input Routing (Host for Camera Fly, Manager for Piece movement).
+*   **Create:** `ascii&gl-vision.txt` detailing the 3D ASCII map and camera piece vision, comparing current status vs. ideal.
+
+---
+*Documented by Gemini CLI - 2026-04-24*

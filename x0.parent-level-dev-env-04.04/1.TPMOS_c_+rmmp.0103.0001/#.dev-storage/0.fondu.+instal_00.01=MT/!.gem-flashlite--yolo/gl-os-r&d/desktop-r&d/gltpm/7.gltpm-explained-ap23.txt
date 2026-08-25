@@ -1,0 +1,34 @@
+GLTPM Implementation Details & Explanation (April 23, 2026)
+
+Greetings! I have addressed the concerns regarding the GLTPM integration in GL-OS.
+
+1. MENU VISIBILITY IN GL-OS DESKTOP:
+   - The root menu of the GL-OS terminal (the window that opens at startup) now clearly has 3 options:
+     1. [Desktop Apps]    (Legacy project mirrors: fuzz-op-gl, op-ed-gl)
+     2. [GLTPM Apps]      (NEW: data-driven virtual windows)
+     3. [Terminal Apps]   (WIP)
+   - I have fixed a bug where navigating back from "Desktop Apps" would sometimes hide the other options.
+   - I have also added a "GLTPM Apps ->" shortcut directly inside the "Desktop Apps" menu for easier discovery.
+   - If you see 4 options (fuzz-op-gl, op-ed-gl, 3D Cube, back), you are inside the "Desktop Apps" sub-menu. Select "back" or press '2' in the main menu to see the GLTPM options.
+
+2. COMPILATION VERIFICATION:
+   - When you run `./button.sh compile` (or `sh button.sh c`), look for these specific lines in the output:
+     "=== 2b. GL-OS APP (OpenGL) ==="
+       ✓ pieces/apps/gl_os/plugins/+x/gl_desktop.+x
+     "=== 4. PROJECT MANAGERS ==="
+       ✓ projects/gltpm-demo/manager/+x/gltpm-demo_manager.+x
+   - The GLTPM parser code (`gltpm_parser.c`) is included directly into `gl_desktop.c`, so it is compiled as part of the `gl_desktop.+x` binary.
+   - I have added a startup message to the console: "[GL-OS] Desktop Environment Starting... (GLTPM Support ENABLED)" to confirm the correct code is running.
+
+3. ARCHITECTURE SYNC:
+   - The new GLTPM path uses `pieces/apps/gl_os/plugins/gltpm_parser.c` to load layouts from projects.
+   - The demo project is located at `projects/gltpm-demo/`.
+   - It reads project state from `projects/gltpm-demo/session/state.txt` and map data from `projects/gltpm-demo/maps/demo_world.map.txt`.
+   - Interaction is routed via `projects/gltpm-demo/session/history.txt` to the demo manager.
+
+To test the implementation:
+1. Run `./button.sh compile`.
+2. Run `./button.sh run` or `./button.sh debug`.
+3. In the GL-OS terminal window, select "2. GLTPM Apps".
+4. Select "1. demo_world.gltpm".
+5. A new virtual window will open showing the demo scene rendered from real files!

@@ -1,0 +1,48 @@
+[19:55:28] === PHASE 1: bank screen ===
+[19:55:28] PASS: booted into bank layout
+[19:55:28] PASS: bank frame shows Bank Balance
+[19:55:28] === PHASE 2: broker select ===
+[19:55:28] PASS: Enter -> broker_select layout
+[19:55:28] === PHASE 3: broker trading screen ===
+[19:55:29] PASS: Enter on Yahoo Finance -> broker layout
+[19:55:30] PASS: broker frame rendered (game_map)
+[19:55:30] PASS: broker_state seeded selected_broker=yahoo_finance
+[19:55:30] === PHASE 4: cli_io amt_input + ADD_CREDIT METHOD ===
+[19:55:30] PASS: ADD_CREDIT ran: message landed in gui_state
+[19:55:30] PASS: account file created (usr_acc.<hash>.txt)
+[19:55:30] === PHASE 5: WATCHLIST_ADD via sym_input cli_io + METHOD ===
+[19:55:30] PASS: WATCHLIST_ADD ran: message landed in gui_state
+[19:55:30] === PHASE 6: CHECK_BALANCE ===
+[19:55:31] PASS: CHECK_BALANCE ran: bank balance shown
+[19:55:31] === PHASE 7: marker discipline ===
+[19:55:35] PASS: broker_screen_changed stable between idle cycles (4 bytes)
+[19:55:35] === PHASE 8: LOOKUP_STOCK (offline simulated quote) ===
+[19:55:35] PASS: LOOKUP_STOCK ran: NVDA price fetched
+[19:55:35] === PHASE 9: DEBUG_LEDGER (--debug--) ===
+[19:55:35] PASS: DEBUG_LEDGER ran: ledger path reported
+[19:55:35] === PHASE 10: master ledger recorded transactions ===
+[19:55:35] PASS: ledger header present
+[19:55:35] PASS: ledger has add_credit row from ADD_CREDIT
+[19:55:35] === PHASE 11: BUY_STOCK (top-up then buy NVDA) ===
+[19:55:35] PASS: top-up credit ran before buy
+[19:55:36] PASS: BUY_STOCK ran: bought message landed
+[19:55:36] PASS: ledger has buy row
+[19:55:36] PASS: NVDA holding recorded in account file
+[19:55:36] === PHASE 12: SELL_STOCK (sell the NVDA share) ===
+[19:55:36] PASS: SELL_STOCK ran: sold message landed
+[19:55:36] PASS: ledger has sell row
+[19:55:36] PASS: NVDA holding removed after full sell
+[19:55:36] === PHASE 13: OPTIONS_PRICING (Black-Scholes -> option_prices.NVDA.csv) ===
+[19:55:36] PASS: OPTIONS_PRICING ran: csv confirmed
+[19:55:36] PASS: option_prices.NVDA.csv written (10 expirations)
+[19:55:36] PASS: csv has header + 10 rows
+[19:55:36] === PHASE 14: BUY_OPTIONS (METHOD 13, key '>') ===
+[19:55:37] PASS: top-up credit ran before option buy
+[19:55:37] PASS: BUY_OPTIONS ran: bought message landed
+[19:55:37] PASS: ledger has buy_option row
+[19:55:37] PASS: option holding recorded in account file
+[19:55:37] === PHASE 15: SELL_OPTIONS (sell the option back) ===
+[19:55:37] PASS: SELL_OPTIONS ran: sold message landed
+[19:55:37] PASS: ledger has sell_option row
+[19:55:37] 
+[19:55:37] === SUMMARY: 31 PASS, 0 FAIL ===

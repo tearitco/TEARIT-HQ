@@ -1,0 +1,773 @@
+2fix-j29.txt
+Date: 2026-06-29
+Status: Closed in current epoch
+
+==================================================
+BUG
+==================================================
+
+Symptom:
+- some Wraith projects appear to open in the GL/Wraith desktop window
+- but the ASCII "mother terminal" / desktop shell does not show the expected project body
+- instead it can remain on launcher-like content or show a fallback/missing-body state
+
+Important clarification from user:
+- the project launch itself is happening
+- the problem is specifically the ASCII terminal-equivalent / frame-debug path
+- additional clarification:
+  - the mother terminal should always remain an ASCII surface
+  - the GL presenter may be in `GL` mode at the same time
+  - the shell/debug row in the mother terminal should not mirror the GL presenter selection state
+
+==================================================
+ROOT CAUSE FOUND IN CURRENT EPOCH
+==================================================
+
+The Wraith ASCII shell reads project-owned session files for non-terminal project windows:
+
+- `session/wraith_body.txt`
+- `session/state.txt`
+- `session/scene.objects.pdl`
+
+The manager path is in:
+- `projects/wraith-alpha/manager/wraith-alpha_manager.c`
+
+Relevant behavior:
+- `project_probe_body_lines(...)` reads `session/wraith_body.txt`
+- `append_project_scene_objects(...)` reads `session/state.txt` and `session/scene.objects.pdl`
+
+If these files are missing, the project may still launch as an active Wraith window, but the ASCII shell degrades to fallback text such as:
+- `Missing project body file: session/wraith_body.txt`
+
+So this is not primarily a launcher-dispatch bug.
+It is a project-ownership / session-file completeness bug for ASCII frame-debug rendering.
+
+==================================================
+AUDIT RESULT
+==================================================
+
+During this epoch the following hosted Wraith projects were missing the expected session triad:
+
+- `blank-project`
+- `fs`
+- `probe-project`
+
+Projects already carrying the triad:
+
+- `chtmgl-wraith`
+- `emoji-studio-wraith`
+- `piececraft-wraith`
+- `wraith-3d-cube`
+- `wraith-ed`
+
+Special case:
+- `terminal` is handled through the launcher-terminal path and is not the same kind of project-body seam.
+
+==================================================
+FIX RULE GOING FORWARD
+==================================================
+
+If a Wraith-hosted project should be debuggable in the ASCII shell without screenshots, it should ship a minimal project-owned session set from day one:
+
+1. `session/wraith_body.txt`
+2. `session/state.txt`
+3. `session/scene.objects.pdl`
+
+This should be treated as part of the reusable Wraith project contract, not as optional polish.
+
+==================================================
+FIX APPLIED IN CURRENT EPOCH
+==================================================
+
+Added minimal session files for:
+
+- `projects/wraith-alpha/wraith-projects/fs`
+- `projects/wraith-alpha/wraith-projects/blank-project`
+- `projects/wraith-alpha/wraith-projects/probe-project`
+
+Purpose:
+- make these projects render meaningful ASCII project-body content
+- preserve frame-debug usefulness
+- keep GL and ASCII paths aligned enough for fast verification
+
+==================================================
+NEXT CHECK
+==================================================
+
+Retest inside Wraith:
+
+1. open `blank-project`
+2. open `probe-project`
+3. open `fs`
+4. verify the ASCII shell shows project-owned body lines instead of fallback missing-body text
+5. verify project-owned scene objects also appear in receipts/frame data
+
+If a project still opens in GL but not meaningfully in ASCII after the session triad exists, then the next suspect is action/nav focus mapping rather than missing project session files.
+
+==================================================
+SECOND BUG IN SAME AREA
+==================================================
+
+There is a second mode-truth bug:
+
+- the mother terminal has no GL surface
+- but the shell debug/view row was mirroring the shared presenter mode flag
+- this made the terminal claim `GL*` or appear to require switching back to `ASCII*`
+
+That is the wrong truth model.
+
+Correct rule:
+- mother terminal / shell view is always ASCII
+- GL/ASCII presenter mode switching belongs to the GL/RGB side
+- shell-visible debug indicators should describe the shell surface, not mirror the GL presenter mode
+
+Fix applied:
+- decoupled shell-facing `ASCII*` / `GL` labels from the global GL presenter mode in `wraith-alpha_manager.c`
+- kept the real GL presenter mode exported separately for the RGB/GL path
+
+==================================================
+THIRD BUG IN SAME AREA
+==================================================
+
+Observed behavior:
+- after clicking a launcher like `terminal`, the GL side could reflect the new Wraith state immediately
+- but the mother terminal could lag until a later click/input
+
+Current understanding:
+- Wraith manager updates were writing fresh shell state
+- but only poking the generic frame marker was sometimes too weak for dynamic shell markup refresh
+- Wraith shell uses state-backed dynamic markup such as `desktop_shell_markup`, so the parser should also be nudged through its state-change seam
+
+Fix applied:
+- `trigger_render()` in `wraith-alpha_manager.c` now writes both:
+  - `pieces/display/frame_changed.txt`
+  - `pieces/apps/player_app/state_changed.txt`
+
+Goal:
+- force immediate mother-terminal refresh on manager-driven Wraith state changes
+- remove the need for a second click just to make ASCII catch up
+
+==================================================
+RECEIPT HISTORY
+==================================================
+
+Added archive path for receipt snapshots:
+
+- `pieces/debug/frames/session_receipt_history.txt`
+
+Purpose:
+- keep receipt history beside `session_frame_history.txt`
+- allow frame/receipt comparison by timestamp and frame hint
+- make GL-vs-ASCII update lag easier to audit without screenshots
+
+Current contents per snapshot:
+- `current_frame.meta.pdl`
+- `projects/wraith-alpha/session/rgb/current_frame.receipt.pdl`
+- `projects/wraith-alpha/session/rgb/gl_input.receipt.pdl`
+- `projects/wraith-alpha/session/rgb/gl_display.receipt.pdl`
+
+==================================================
+FOCUS / SELECTOR DRIFT NOTES
+==================================================
+
+New observations from screenshots:
+
+1. In the launcher/terminal view:
+   - GL shows the default selector on row `1`
+   - ASCII mother terminal can fail to show the same selector on row `1`
+
+2. After activating the `ASCII` debug/view control:
+   - focus moves to the debug selector row (`Idx:8` in the screenshot)
+   - neither surface then shows row `1` as the default active nav target
+
+3. `fs` currently shows an extra smaller blue nested square in the GL window.
+
+4. `fs` scroll utility controls should live on one utility strip:
+   - `^_UP`
+   - `v_DOWN`
+   - thumb/range text
+   - no extra spacer row between them
+
+5. visible manual refresh should not be part of the UI contract.
+   - directory changes should arrive through a project-owned watcher op
+   - watcher writes a marker/receipt seam
+   - manager polls that marker and reruns the active project op
+
+==================================================
+INVESTIGATION
+==================================================
+
+### A. Why ASCII and GL disagree on row `1`
+
+Current understanding:
+- GL selector state comes from `current_frame.objects.pdl` written directly by `wraith-alpha_manager.c`
+- ASCII shell rendering depends on parser-composed `current_frame.txt` from `desktop_shell_markup`
+
+Likely issue:
+- the manager-owned semantic object path marks row `1` selected correctly
+- but the shell-markup path is not faithfully reflecting that same nav-selected state for the title button in the mother terminal
+
+This means the two surfaces are not deriving the selector glyph from the same final truth.
+
+### B. Why row `1` disappears after clicking `ASCII`
+
+This one is not random.
+
+The screenshot shows:
+- `Idx:8`
+
+So after the user clicks or navigates to `ASCII`, focus genuinely moves to the debug selector control.
+
+==================================================
+FOURTH BUG IN SAME AREA
+==================================================
+
+Symptom from live `fs` launcher test:
+
+- `fs` now correctly labels hosted projects as `PROJ:...`
+- selecting a project emits a launch command
+- but pressing Enter on a `PROJ:` row does nothing in live Wraith
+
+Observed live evidence:
+
+- frame/receipt rows carried actions like:
+  - `DESKTOP_ACTION:launch_piececraft-wraith`
+- manager log showed:
+  - `Command received: DESKTOP_ACTION:launch_piececraft-wraith`
+- but no follow-on launch window creation occurred
+
+Root cause:
+
+- `fs` launcher ids were sanitized with hyphens preserved:
+  - `piececraft-wraith`
+- Wraith manager launcher discovery sanitizes launcher ids to underscore form:
+  - `piececraft_wraith`
+- `find_launcher_by_command(...)` was doing an exact string compare, so:
+  - `DESKTOP_ACTION:launch_piececraft-wraith`
+  - did not match
+  - `DESKTOP_ACTION:launch_piececraft_wraith`
+
+Expectation vs live outcome:
+
+- expectation:
+  - once `fs` detected a Wraith project and rendered `PROJ:...`, selecting it would launch the hosted project window
+- live outcome:
+  - project detection/rendering worked
+  - dispatch failed at the manager command-normalization seam
+
+Fix rule:
+
+1. project launch commands should use the canonical Wraith launcher id format
+2. project-owned command dispatch should normalize project ids before writing `DESKTOP_ACTION:launch_*`
+3. redraw-sensitive projects should use project-owned marker flow instead of depending on incidental second clicks
+
+==================================================
+FINAL STATUS
+==================================================
+
+Closed in this epoch:
+
+- ASCII mother-terminal and GL presenter now stay aligned enough for frame-debug work
+- missing session triad projects were repaired
+- shell-view truth no longer incorrectly mirrors GL mode
+- manager refresh path was tightened
+- `fs` launch ids were normalized so `PROJ:` rows launch correctly
+- `fs` got project-owned watch/marker refresh instead of a visible refresh control
+- `chtmgl-video-isolate` now advances frames inside Wraith by:
+  - swapping `session/current_frame.png`
+  - writing `session/video.playback`
+  - appending to `session/fs_watch.marker`
+- `chtmgl-video-isolate` now consumes command history once using a stored cursor instead of replaying `VIDEO_PLAY` on every redraw
+- color ASCII preview was moved into the visible shell region
+
+Remaining note:
+- after recompiling Wraith, an already-running Wraith app must be restarted to pick up the new runtime behavior
+2. manager dispatch should tolerate legacy/variant command spellings when practical
+
+Fix applied:
+
+- `fs` project command generation now normalizes separators to `_`
+- manager launcher lookup now accepts normalized equivalents instead of only exact raw-string equality
+
+Result expected after rebuild/restart:
+
+- `PROJ:piececraft-wraith/` still renders with the human-facing label
+- underlying action resolves to the existing Wraith launcher
+- selecting hosted projects launches them instead of no-oping
+
+That explains why row `1` is no longer the active selector in either surface afterward.
+
+Question is not "why did it vanish?" but:
+- should toggling view mode steal nav focus?
+
+Current recommendation:
+- no, presenter/view toggle should change mode without permanently stealing primary window-nav focus
+- after mode switch, focus should likely return to the previously active shell/window control, usually row `1`
+
+### D. Why `FS_SCROLL_DOWN` showed as unhandled
+
+Root cause:
+- earlier runs were carrying stale generated project/session output from before command trimming and scroll handling were aligned
+- the source path now handles `FS_SCROLL_DOWN`, but old `wraith_body.txt` / desktop state could still show:
+  - `Last: Unhandled command FS_SCROLL_DOWN`
+
+Rule going forward:
+- treat generated session files as cache-like runtime outputs
+- when validating a scene/action fix, confirm the underlying source and then regenerate the project/session output before trusting stale body text
+
+### E. Utility strip layout rule
+
+For filesystem-style browser projects in Wraith:
+- utility controls may share the same scene `y`
+- ASCII shell should mirror same-`y` scene objects onto one rendered line
+- this keeps GL and frame-debug ASCII close enough to compare without screenshots
+- the standardized form is:
+  - `^_UP`
+  - `v_DOWN`
+  - thumb/range indicator on the same row
+  - then content rows below, one selectable item per row
+
+==================================================
+FIFTH BUG IN SAME AREA
+==================================================
+
+Observed after adding basic `fs` project launch:
+
+- local proof from `fs/ops/src/+x/wraith_project_input.+x` showed project rows as:
+  - `PROJ:blank-project/`
+  - with `DESKTOP_ACTION:launch_*`
+- but live Wraith still showed:
+  - `DIR:blank-project/`
+  - and Enter descended into the directory instead of launching
+
+Root cause:
+
+- Wraith manager executes project input binaries from:
+  - `ops/+x/wraith_project_input.+x`
+- compile flow for nested Wraith projects was refreshing:
+  - `ops/src/+x/wraith_project_input.+x`
+- the runtime `ops/+x` binary remained stale
+
+Evidence:
+
+- stale runtime binary timestamp:
+  - `fs/ops/+x/wraith_project_input.+x` from `2026-06-29 05:28`
+- fresh compiled binary timestamp:
+  - `fs/ops/src/+x/wraith_project_input.+x` from `2026-06-29 22:27`
+
+Meaning:
+
+- compile succeeded
+- local proof succeeded
+- live Wraith still ran the old binary
+
+Fix:
+
+- update nested Wraith compile flow in `#.dev-storage/#.tools/compile_all.sh`
+- when compiling `ops/src/*.c`, also copy the resulting binary into:
+  - `ops/+x/`
+
+Rule going forward:
+
+- nested Wraith project compile output must refresh the exact runtime path the manager executes
+- local proof against `src/+x` is not enough if manager runtime still points at `ops/+x`
+
+### C. Why the nested blue square appeared in `fs`
+
+==================================================
+FOURTH BUG IN SAME AREA
+==================================================
+
+Observed after `fs` became live:
+
+- GL used `session/scene.objects.pdl` and showed the real file rows
+- ASCII mother terminal only showed `session/wraith_body.txt`
+- after partial fixes, ASCII then mirrored only part of the scene and initially lost file names after the first token
+
+Root cause chain:
+
+1. Wraith body text is plain summary/context, not the true project nav layer.
+2. Real numbered nav rows belong in `scene.objects.pdl`.
+3. ASCII shell originally ignored project scene rows.
+4. After ASCII began reading project scene rows, label parsing still truncated at spaces.
+
+Fix direction now in effect:
+
+- `wraith_body.txt` carries compact summary lines only
+- `scene.objects.pdl` carries the real file rows
+- ASCII shell appends project scene controls into `desktop_shell_markup`
+- `fs` scene labels were rewritten to single-token forms such as:
+  - `DIR:pieces/`
+  - `FIL:file-op-dox.txt(3KB)`
+
+This preserves parser/nav agreement and keeps ASCII/GL closer to the same truth.
+
+==================================================
+FIFTH BUG / FEATURE GAP
+==================================================
+
+Observed:
+
+- GL had room to show more live rows than ASCII
+- ASCII row budget was tighter because it spent lines on summary text
+- directory changes still depended on explicit user action to rerender
+
+Current implementation direction:
+
+- compress ASCII summary lines
+- add project-owned scroll controls:
+  - `^_UP`
+  - `v_DOWN`
+  - thumb/range indicator
+- remove visible refresh button
+- add project-owned watcher op plus session marker file
+- let manager poll the active project marker and rerender automatically
+
+This is both a bug fix and a reusable Wraith project pattern.
+
+Root cause:
+- it is coming from the scaffold `fs/session/scene.objects.pdl`
+- I added a `panel` object there as part of the earlier minimal project-scene bridge
+
+That panel is being rendered inside the already existing Wraith project window, so it looks like an accidental extra inner framed box.
+
+This is a scaffold-content mistake, not a deep renderer bug.
+
+==================================================
+PRESCRIBED FIX
+==================================================
+
+Before editing:
+
+1. Keep one selector truth source for shell nav.
+   - the ASCII shell and GL semantic projection should both reflect the same effective nav-selected item
+
+2. Presenter mode toggles should not leave focus stranded on the debug row unless explicitly intended.
+   - likely restore previous active nav after `DESKTOP_ACTION:view_ascii`
+   - likely restore previous active nav after `DESKTOP_ACTION:view_gl`
+
+3. Remove the extra nested `panel` from `fs/session/scene.objects.pdl`
+   - keep only lightweight text/object content for the scaffold
+   - do not draw a second framed panel inside the host project window unless that is explicitly desired
+
+==================================================
+CHECK-IN BEFORE FIX
+==================================================
+
+This is the current prescription before code changes:
+
+- fix nav-selector parity between manager semantic objects and ASCII shell markup
+- keep row `1` as the practical default focus after mode toggles instead of leaving focus on row `8`
+- remove the accidental nested `fs` scaffold panel
+
+==================================================
+FIX APPLIED FOR NAV / FS PANEL
+==================================================
+
+Implemented in current epoch:
+
+1. Wraith launches now reset shell nav back to row `1`
+   - file: `projects/wraith-alpha/manager/wraith-alpha_manager.c`
+   - reason: launching project row `8` should not leave that raw numeric index stranded across a different shell shape
+
+2. Wraith view toggles now restore shell nav to row `1`
+   - file: `projects/wraith-alpha/manager/wraith-alpha_manager.c`
+   - reason: switching presenter mode should not permanently steal focus to the debug row
+
+3. Shared CHTPM parser now resyncs focus from saved `active_gui_index` during Wraith state-driven reparse
+   - file: `pieces/chtpm/plugins/chtpm_parser.c`
+   - reason: ASCII mother-terminal was preserving stale focus across a Wraith shell shape change, causing selector drift or missing `>`
+
+4. Removed the accidental nested `fs` scaffold panel
+   - file: `projects/wraith-alpha/wraith-projects/fs/session/scene.objects.pdl`
+   - reason: the host project window already frames the content; the extra inner panel was accidental scaffold noise
+
+Build status:
+- recompiled `pieces/chtpm/plugins/+x/chtpm_parser.+x`
+- recompiled `projects/wraith-alpha/manager/+x/wraith-alpha_manager.+x`
+
+==================================================
+VIDEO ISOLATE FOLLOW-UP
+==================================================
+
+Date: 2026-06-30
+
+Observed:
+- GL presenter now renders the CHTMGL video isolate correctly, including image/video poster color blocks.
+- Mother terminal still failed when we tried to flatten `scene.objects.pdl` into shell rows.
+
+Deeper architectural finding:
+- the Wraith shell is a linear audit surface
+- the CHTMGL video isolate scene is a two-column, overlap-friendly scene
+- flattening hundreds of `poster_preview_cell` scene objects into shell markup is the wrong abstraction
+
+Short-term fix chosen:
+- use project-owned `session/wraith_body.txt` again for the mother terminal
+- let that body file carry prebuilt row markup for the video isolate poster preview and controls
+- keep GL on the semantic scene path
+
+Longer-term fix:
+- if we want true reusable colored grid content in shell-space, add a dedicated terminal-grid / precolored-block primitive to Wraith/CHTPM rather than abusing many inline `<text fg= bg=>` nodes
+
+==================================================
+VIDEO ISOLATE RESULT AFTER "EASIER FIX"
+==================================================
+
+Date: 2026-06-30
+Status: Easier fix rejected by live run
+
+Observed after reverting to body-driven shell rows:
+- GL remained correct
+- mother terminal still staggered badly once dense colored preview rows and transport controls were present
+
+Conclusion:
+- passthrough body markup is still not a reliable shell substrate for dense colored cell streams
+- the failure is no longer about scene flattening alone
+- the shell renderer itself needs a first-class primitive for this content shape
+
+TPMOS/Wraith-aligned fix direction:
+- add a dedicated reusable shell/grid primitive instead of continuing ad hoc row composition
+- keep it op-friendly and reusable across projects
+
+Recommended primitive:
+- `grid`
+
+Recommended capabilities:
+- fixed rows/cols
+- optional per-cell `fg`
+- optional per-cell `bg`
+- optional per-cell `border`
+- direct nav mapping when needed
+- stable rendering in ASCII mother terminal
+- semantic export path so GL and shell can derive from the same grid payload without duplicate formatting logic
+
+Recommended data contract:
+- project op writes a grid payload file in session scope
+- manager/parser reads that payload through one primitive
+- no more hundreds of inline `<text ...>` nodes for preview surfaces
+
+Why this is the right direction:
+- reusable op/data pattern
+- avoids repeating formatter hacks per project
+- matches TPMOS preference for reusable ops and stable contracts
+- keeps Wraith shell an audit surface while still allowing structured media previews
+
+Immediate next task for future epoch:
+1. define shell-grid payload format
+2. add parser support for `grid`
+3. teach Wraith manager/project body path to reference the grid payload
+4. optionally let GL semantic export reuse the same payload generator
+
+==================================================
+PROPOSED `grid` PAYLOAD FORMAT
+==================================================
+
+Status:
+- proposed contract
+- intended for reusable ops, Wraith shell, and later GL reuse
+
+Primary file location:
+- `session/*.grid.pdl`
+
+Suggested first concrete filename for current case:
+- `projects/wraith-alpha/wraith-projects/chtmgl-video-isolate/session/poster_preview.grid.pdl`
+
+Why `*.grid.pdl`:
+- consistent with TPMOS structured file habits
+- easy for ops/managers/parsers to discover
+- no hardcoded filename list required if we later allow `source=` references
+
+--------------------------------------------------
+TOP-LEVEL RECORDS
+--------------------------------------------------
+
+1. Header/config lines:
+- `GRID id=<grid_id>`
+- `rows=<int>`
+- `cols=<int>`
+- `cell_w=<int>`
+- `cell_h=<int>`
+- `default_fg=<hex>`
+- `default_bg=<hex>`
+- `default_border=<hex>`
+- `nav_mode=<none|cell|row|custom>`
+- `source_ref=<path-or-ref>`
+- `title=<token_or_underscored_text>`
+
+2. Cell lines:
+- `CELL row=<int> col=<int> ch=<char_or_hex> fg=<hex> bg=<hex> border=<hex> nav=<int> action=<token> label=<token_or_single_char>`
+
+3. Optional row metadata lines:
+- `ROW row=<int> label=<token> nav=<int> action=<token>`
+
+4. Optional block metadata lines:
+- `META key=<token> value=<token>`
+
+--------------------------------------------------
+MINIMUM REQUIRED FIELDS
+--------------------------------------------------
+
+Required header:
+- `GRID id=...`
+- `rows=...`
+- `cols=...`
+
+Required cell fields:
+- `row`
+- `col`
+
+Everything else may inherit defaults.
+
+--------------------------------------------------
+CHAR ENCODING RULE
+--------------------------------------------------
+
+Preferred:
+- `ch=<single_ascii_char>`
+
+For whitespace or awkward symbols:
+- `ch_hex=<two_digit_hex>`
+
+Examples:
+- `ch=:`
+- `ch=*`
+- `ch_hex=20` for space
+
+Reason:
+- avoids parser ambiguity for literal spaces
+- cleaner than overloading `label= `
+
+--------------------------------------------------
+COLOR RULE
+--------------------------------------------------
+
+Accepted color form:
+- `#RRGGBB`
+
+Inheritance:
+- cell missing `fg` inherits `default_fg`
+- cell missing `bg` inherits `default_bg`
+- cell missing `border` inherits `default_border`
+
+--------------------------------------------------
+NAV RULE
+--------------------------------------------------
+
+Default:
+- `nav_mode=none`
+
+If interactive grid is needed later:
+- `nav_mode=cell`
+  - each `CELL` may provide `nav` and `action`
+- `nav_mode=row`
+  - each `ROW` may provide `nav` and `action`
+- `nav_mode=custom`
+  - manager/parser delegates to an explicit mapping op or companion metadata
+
+For poster previews:
+- use `nav_mode=none`
+
+--------------------------------------------------
+RENDERING RULES
+--------------------------------------------------
+
+Shell / mother terminal:
+- parser reads grid payload directly
+- renders a stable fixed-size rectangular block
+- no inline `<text fg= bg=>` explosion
+- each grid row becomes one terminal row
+
+GL / Wraith RGB:
+- optional later reuse of the same payload
+- each cell may map to one semantic text cell or one colored tile
+- should not require a second formatter contract
+
+--------------------------------------------------
+SUGGESTED SHELL TAG
+--------------------------------------------------
+
+Suggested future CHTPM/Wraith usage:
+
+- `<grid source="session/poster_preview.grid.pdl" />`
+
+Optional attributes:
+- `x`
+- `y`
+- `rows`
+- `cols`
+- `nav_mode`
+- `fallback`
+
+Example:
+- `<grid source="session/poster_preview.grid.pdl" />`
+
+Reason:
+- shell markup stays small
+- grid content lives in a project-owned payload file
+- ops can rewrite payload without rewriting layout markup
+
+--------------------------------------------------
+EXAMPLE PAYLOAD
+--------------------------------------------------
+
+```text
+GRID id=poster_preview
+rows=3
+cols=5
+cell_w=1
+cell_h=1
+default_fg=#F7FAFC
+default_bg=#0B1118
+default_border=#0B1118
+nav_mode=none
+source_ref=session/current_frame.png
+title=ASCII_POSTER
+
+CELL row=1 col=1 ch=: fg=#F7FAFC bg=#D40109 border=#D40109
+CELL row=1 col=2 ch=. fg=#F7FAFC bg=#BC0000 border=#BC0000
+CELL row=1 col=3 ch=- fg=#F7FAFC bg=#CD510D border=#CD510D
+CELL row=1 col=4 ch=+ fg=#0B1118 bg=#00FE00 border=#00FE00
+CELL row=1 col=5 ch_hex=20 fg=#F7FAFC bg=#0000FD border=#0000FD
+
+CELL row=2 col=1 ch=: fg=#F7FAFC bg=#FC0000 border=#FC0000
+CELL row=2 col=2 ch=: fg=#F7FAFC bg=#FC0000 border=#FC0000
+CELL row=2 col=3 ch=* fg=#0B1118 bg=#00FEFE border=#00FEFE
+CELL row=2 col=4 ch=# fg=#0B1118 bg=#FDFE00 border=#FDFE00
+CELL row=2 col=5 ch=- fg=#F7FAFC bg=#FD00FC border=#FD00FC
+
+CELL row=3 col=1 ch=. fg=#F7FAFC bg=#1212EB border=#1212EB
+CELL row=3 col=2 ch_hex=20 fg=#F7FAFC bg=#0000FD border=#0000FD
+CELL row=3 col=3 ch=: fg=#F7FAFC bg=#560FFF border=#560FFF
+CELL row=3 col=4 ch=* fg=#0B1118 bg=#00FEFE border=#00FEFE
+CELL row=3 col=5 ch=+ fg=#0B1118 bg=#5BDF00 border=#5BDF00
+```
+
+--------------------------------------------------
+OPS GUIDANCE
+--------------------------------------------------
+
+Recommended reusable op shape:
+- source media/image/frame
+- transform to grid payload
+- write:
+  - `session/<name>.grid.pdl`
+  - optional receipt/debug file beside it
+
+Suggested reusable op names:
+- `image_to_grid`
+- `frame_to_grid`
+- `grid_write`
+- `grid_watch`
+
+Guideline:
+- prefer extending one reusable grid op with args over inventing a project-specific formatter each time
+
+--------------------------------------------------
+MIGRATION RULE
+--------------------------------------------------
+
+Per earlier project rule:
+- if an existing op already approximates this, copy+modify locally first
+- keep old behavior working
+- prove the new reusable version locally
+- replace upstream usage only after it works

@@ -1,0 +1,14 @@
+# LSR Setup Configuration
+# Format: TYPE | NAME | TICKER | EXTRA_ATTR
+# TYPE: CORP, GOV
+
+GOV | Lunar Authority | LUN | tax_rate=0.10
+GOV | Earth Alliance | EAR | tax_rate=0.20
+CORP | Lunar Mining Corp | LMC | industry=MINING
+CORP | Starfarer Logistics | SFL | industry=TRANSPORT
+CORP | Bio-Dome Systems | BDS | industry=AGRICULTURE
+CORP | Orbital Energy | ORE | industry=ENERGY
+CORP | Mare Tranquillitatis | MTR | industry=TOURISM
+CORP | Selene Research | SLR | industry=RESEARCH
+CORP | He-3 Refineries | HE3 | industry=REFINERY
+CORP | Lunar Construction | LCN | industry=CONSTRUCTION

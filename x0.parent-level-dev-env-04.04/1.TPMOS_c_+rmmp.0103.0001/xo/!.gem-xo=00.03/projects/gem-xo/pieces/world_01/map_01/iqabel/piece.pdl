@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | iqabel
+META         | type               | agent
+META         | model              | gem-api-code
+STATE        | fsm_state          | IDLE
+STATE        | last_query         | none
+STATE        | last_response      | none
+STATE        | rl_policy          | default
+METHODS      | query              | Ask iqabel a question
+METHODS      | execute_script     | Execute a PAL script
+METHODS      | learn              | Update RL policy from ledger

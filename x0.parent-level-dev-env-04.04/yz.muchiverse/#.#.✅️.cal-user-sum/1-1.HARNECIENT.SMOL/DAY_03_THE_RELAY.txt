@@ -1,0 +1,32 @@
+# 🔌 DAY 03 — The Relay 🔀
+# ======================
+# Title: "🔌 DAY 03 — The Relay 🔀"
+# Characters: TOMO, RAHWEH, MAXINE, IQA, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), MAXINE (en-GB-MaisieNeural), IQA (en-US-AnaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+
+**TOMO:** A relay is a **plain text file** sitting in the house's `#.desktop/` folder. A window's code polls that file every ~300ms, reads whatever is appended to it, and treats each line as a key press — expressed as a bare decimal ASCII code. 🎹
+
+**RAHWEH:** So I don't click the window... I write numbers to a file?
+
+**TOMO:** Exactly. And that's the *point*. A file is **auditable**, **reproducible**, and scriptable. You can't easily script a human hand, but you can script a file. So the house made the file the hand. ✍️
+
+**TOMO:** Raw codes are the truth, but nobody wants to type `69 10 13` all day. So the house made nav.sh — a small bash driver that writes the codes for you. Look at #.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh: it has nav <n, row <n, key <name, esc, type <text, frame, hqcell <n, mgrcode <code.
+
+**MAXINE:** And the critical bit — the digit system. A digit key *moves focus*, it does NOT activate. You always need a separate Enter. Like a real bracket-badge system. [1] means "look at item 1", Enter means "do it."
+
+**IQA:** So I can't just press the number and expect the thing to happen?
+
+**TOMO:** Correct! That's deliberate and consistent across the whole house. The Boss confirmed it directly: "i do expect to press enter. (as usual)." So: digit to focus, Enter to act. Always. ✅
+
+**RAHWEH:** Why do I need to know this?
+
+**TOMO:** Because when something "doesn't open," you need to know *which* layer failed. The parser path can be broken while the manager path works — and vice versa. That exact split is h-ai's current real bug (Day 08). Knowing the two layers is how you debug a window's open path without guessing. 🩺
+
+**THE NARRATOR:** Standing Rule 1 — *"All testing goes through relay/inject (`nav.sh`), never direct CLI binary calls." Here is the deeper reason: the product is the window and its nav. If you test the binary directly, you test a ghost. The relay tests the real input path a human uses, with real focus, real polling, real timing. It also means you can run a whole test while the window is actually on screen — and prove it with the window's own PNG receipt (that's Day 08).
+
+**IQA:** So every harness in this book is really just... a bunch of numbers in a file?
+
+**TOMO:** *nods* And a bunch of proofs that the window *did* what those numbers said. 🔢➡️🪟
+
+**RAHWEH:** I think I get it now. The relay is why "reproducible" is even possible here.

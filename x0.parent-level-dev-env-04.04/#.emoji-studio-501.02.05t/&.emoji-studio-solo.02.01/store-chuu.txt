@@ -1,0 +1,42 @@
+we want a program in only gcc c glut
+
+that shows a list of emojis, user can click, 
+and will convert chosen emoji from emoji_atlas.png
+to a single .csv (2d 8/16/32/64x64 representation , less data)
+(including transparency and transform)
+
+and then will render that using the .csv data file. 
+
+it will only convert  once . if u choose same emoji no need to convert it again
+unless u want different size.
+
+as 3d of voxels 
+(ie if its a 64x64 csv , we will render 1 slice of it but extrude it 64 voxels
+(if its 8x8 csv we will render 1 slice (16 voxels) but extrude it 16 voxesl
+the emo-entity will be the same size but a 64x64 voxel will 
+have smaller subvoxels than the 8x8; get it? 
+
+on a 2d 64x64 grid each square 64 pixels wide and long,
+ the emoji will be placed as a 
+3d voxel size 64x64x64
+
+however if its 8x8 , each "voxel 
+
+
+
+the csv will have 
+colors & transparency of each block
+
+but will also have meta data , like "scale" of piece " and transform
+and position relative to scale
+
+(so if half size its scaled to 32x32 
+and may be positined in middle of 64x64 space or in right corner up top
+etc, get it? 
+
+
+there is some example code in this dir, 
+but i want it to work in the gl-os framework
+we will create a new gl-os program called "emoji-studio"
+
+

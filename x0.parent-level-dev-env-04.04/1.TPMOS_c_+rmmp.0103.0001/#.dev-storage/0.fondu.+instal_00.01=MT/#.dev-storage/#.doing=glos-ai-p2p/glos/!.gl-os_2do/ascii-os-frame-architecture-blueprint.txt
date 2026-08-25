@@ -1,0 +1,517 @@
+# ASCII-OS FRAME ARCHITECTURE - COMPLETE BLUEPRINT
+**Date:** March 24, 2026
+**Purpose:** Enable ANY agent to implement frame-based terminals (like ASCII-OS)
+**Audience:** New agents who have NEVER seen this codebase
+
+---
+
+## THE ONE TRUTH (Read This First)
+
+**ASCII-OS terminals do NOT generate text.**
+**ASCII-OS terminals DISPLAY frames from files.**
+
+This is the difference between:
+- **TV (ASCII-OS)** - Displays video signal from cable (file)
+- **Projector (Current GL-OS)** - Generates image from computer (text commands)
+
+**GL-OS must become a TV, not a projector.**
+
+---
+
+## COMPLETE DATA FLOW (Step-by-Step)
+
+### Step 1: Module Writes Frame
+
+**WHO:** CHTPM Parser (or any module)
+**WHAT:** Writes complete UI frame to file
+**WHERE:** `pieces/display/current_frame.txt`
+**WHEN:** Every time UI changes (input, state change, etc.)
+
+**CODE (chtpm_parser.c - compose_frame function):**
+```c
+void compose_frame() {
+    // 1. Load variables from state files
+    load_vars();
+    
+    // 2. Compose complete frame as string
+    char *frame = malloc(MAX_BUFFER);
+    
+    // 3. Render all UI elements into frame string
+    //    This includes borders, text, indicators, etc.
+    render_element(i, frame, &current_interactive);
+    
+    // 4. Write complete frame to file
+    char *cur_f = build_path_malloc("pieces/display/current_frame.txt");
+    FILE *out_f = fopen(cur_f, "w");
+    fprintf(out_f, "%s", frame);  // Write ENTIRE frame
+    fclose(out_f);
+    free(cur_f);
+    
+    // 5. Touch marker file to signal renderer
+    char* renderer_pulse = build_path_malloc("pieces/display/renderer_pulse.txt");
+    FILE *marker = fopen(renderer_pulse, "a");
+    fprintf(marker, "P\n");  // "Pulse" - something changed
+    fclose(marker);
+    free(renderer_pulse);
+    
+    free(frame);
+}
+```
+
+**RESULTING FILE (pieces/display/current_frame.txt):**
+```
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║           C H T P M + O S   C L I   v2.0                 ║
+║                                                           ║
+║  CHTPM+OS Main Menu                                      ║
+║                                                           ║
+║  [>] 1. [Help]                                             ║
+║  [ ] 2. [Launch FuzzPet]                                   ║
+║  [ ] 3. [Status]                                           ║
+║                                                           ║
+╠═══════════════════════════════════════════════════════════╣
+║  Running Applications: None                               ║
+║  System Time: 15:30:45  | Turn: 123                       ║
+╠═══════════════════════════════════════════════════════════╣
+║                                                           ║
+║  $ [ ] 8. []                                                  ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
+Nav > _
+```
+
+**KEY POINTS:**
+- Frame is COMPLETE UI (borders, text, cursors, everything)
+- Frame is WRITTEN to file (not displayed directly)
+- Marker file is TOUCHED to signal change
+- Module does NOT display - it only writes file
+
+---
+
+### Step 2: Renderer Reads Frame
+
+**WHO:** Renderer daemon (`pieces/display/renderer`)
+**WHAT:** Reads frame from file and displays it
+**WHERE:** Reads `pieces/display/current_frame.txt`
+**WHEN:** Every time marker file changes (or continuously polls)
+
+**CODE (renderer.c - render_display function):**
+```c
+void render_display() {
+    // 1. Get timestamp for history
+    time_t rawtime;
+    struct tm *timeinfo;
+    char timestamp[100];
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", timeinfo);
+    
+    // 2. Print frame separator (for history)
+    printf("\n\n\n\n\n");  // 5 blank lines
+    printf("--- FRAME UPDATE at %s ---\n", timestamp);
+    
+    // 3. Read complete frame from file
+    FILE *frame_file = fopen("pieces/display/current_frame.txt", "r");
+    if (frame_file) {
+        // Get file size
+        fseek(frame_file, 0, SEEK_END);
+        long file_size = ftell(frame_file);
+        fseek(frame_file, 0, SEEK_SET);
+        
+        // Read entire file
+        if (file_size > 0) {
+            char *content = malloc(file_size + 1);
+            size_t bytes_read = fread(content, 1, file_size, frame_file);
+            content[bytes_read] = '\0';
+            
+            // 4. Display frame (print to stdout)
+            printf("%s", content);
+            
+            free(content);
+        }
+        fclose(frame_file);
+    }
+    fflush(stdout);
+}
+
+int main() {
+    // 5. Poll for changes
+    while (1) {
+        if (stat(pulse_path, &st) == 0) {
+            if (st.st_size != last_marker_size) {
+                render_display();  // Frame changed - display it
+                last_marker_size = st.st_size;
+            }
+        }
+        usleep(16667);  // 60 FPS poll
+    }
+}
+```
+
+**RESULTING OUTPUT:**
+```
+(frame appears on screen exactly as written in file)
+```
+
+**KEY POINTS:**
+- Renderer does NOT generate content
+- Renderer only READS and DISPLAYS
+- Renderer polls marker file for changes
+- Renderer adds timestamp for history tracking
+
+---
+
+### Step 3: Terminal Displays Frame History
+
+**WHO:** Terminal (user interface)
+**WHAT:** Shows history of frames with scroll
+**WHERE:** Reads from frame history file
+**WHEN:** Continuously, with scroll navigation
+
+**PSEUDOCODE (How terminal SHOULD work):**
+```c
+void terminal_display() {
+    // 1. Read frame history file
+    FILE *history = fopen("pieces/display/frame_history.txt", "r");
+    
+    // 2. Parse frames (separated by timestamps)
+    while (fgets(line, sizeof(line), history)) {
+        if (strstr(line, "--- FRAME UPDATE at")) {
+            // New frame starting
+            current_frame++;
+        } else {
+            // Add line to current frame
+            frames[current_frame][line_count++] = line;
+        }
+    }
+    fclose(history);
+    
+    // 3. Display visible frames (based on scroll position)
+    int start_frame = total_frames - scroll_offset - visible_frames;
+    for (int f = start_frame; f < total_frames - scroll_offset; f++) {
+        for (int line = 0; line < frame_height; line++) {
+            printf("%s", frames[f][line]);
+        }
+    }
+}
+```
+
+**RESULTING DISPLAY:**
+```
+(scrollable terminal showing multiple frames)
+┌─────────────────────────────────────────┐
+│ --- FRAME UPDATE at 15:30:40 ---        │
+│ ╔═══════════════════════════════════╗   │
+│ ║  Previous frame content           ║   │
+│ ╚═══════════════════════════════════╝   │
+│                                         │
+│ --- FRAME UPDATE at 15:30:45 ---        │
+│ ╔═══════════════════════════════════╗   │
+│ ║  Current frame content            ║   │
+│ ╚═══════════════════════════════════╝   │
+│                                         │
+│ $ _ (cursor)                            │
+└─────────────────────────────────────────┘
+```
+
+**KEY POINTS:**
+- Terminal shows MULTIPLE frames (history)
+- Frames are separated by timestamps
+- User can scroll through frame history
+- Newest frames at bottom (like Linux terminal)
+
+---
+
+## COMPLETE FILE STRUCTURE
+
+```
+pieces/
+├── display/
+│   ├── current_frame.txt          ← Current frame (written by module)
+│   ├── renderer_pulse.txt         ← Marker file (touched when frame changes)
+│   ├── state.txt                  ← Renderer state (frame_history=on/off)
+│   ├── ledger.txt                 ← Display audit log
+│   └── renderer                   ← Renderer daemon (reads & displays)
+│
+├── debug/frames/
+│   └── session_frame_history.txt  ← Complete frame history (all frames)
+│
+└── chtpm/plugins/
+    └── chtpm_parser.c             ← Module that writes frames
+```
+
+---
+
+## CRITICAL ARCHITECTURAL PATTERNS
+
+### Pattern 1: Separation of Concerns
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│    MODULE       │     │    RENDERER     │     │    TERMINAL     │
+│  (chtpm_parser) │     │   (renderer)    │     │   (user view)   │
+├─────────────────┤     ├─────────────────┤     ├─────────────────┤
+│ Generates frame │────▶│ Reads frame     │────▶│ Shows history   │
+│ Writes to file  │     │ Displays frame  │     │ with scroll     │
+│ Touches marker  │     │ Polls marker    │     │ Navigation      │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+      WRITE                   READ                    DISPLAY
+```
+
+**Module NEVER displays.**
+**Renderer NEVER generates.**
+**Terminal NEVER modifies.**
+
+### Pattern 2: File-Based IPC
+
+```
+Module writes:
+  pieces/display/current_frame.txt
+  pieces/display/renderer_pulse.txt (marker)
+
+Renderer reads:
+  pieces/display/current_frame.txt (frame)
+  pieces/display/renderer_pulse.txt (marker for changes)
+
+NO DIRECT COMMUNICATION between module and renderer.
+ALL communication through FILES.
+```
+
+### Pattern 3: Marker File Pattern
+
+```c
+/* Writer (module) */
+FILE *marker = fopen("renderer_pulse.txt", "a");
+fprintf(marker, "P\n");  // Append one character
+fclose(marker);
+// File size increases by 2 bytes each time
+
+/* Reader (renderer) */
+stat(pulse_path, &st);
+if (st.st_size != last_marker_size) {
+    // File changed - re-render
+    render_display();
+    last_marker_size = st.st_size;
+}
+```
+
+**Why append, not write?**
+- Append always changes file size
+- Size change is easy to detect
+- No timestamp/mtime issues (1-second resolution problem)
+
+---
+
+## GL-OS IMPLEMENTATION REQUIREMENTS
+
+### GL-OS Must Have:
+
+1. **Frame File:**
+   - `pieces/apps/gl_os/session/current_frame.txt`
+   - Contains complete rendered frame
+   - Written by GL-OS modules
+
+2. **Marker File:**
+   - `pieces/apps/gl_os/session/gl_os_pulse.txt`
+   - Touched when frame changes
+   - Polled by GL-OS renderer
+
+3. **Frame History:**
+   - `pieces/apps/gl_os/session/frame_history.txt`
+   - Contains all frames with timestamps
+   - Read by GL-OS terminal
+
+4. **Renderer:**
+   - Reads `current_frame.txt`
+   - Polls `gl_os_pulse.txt`
+   - Displays to OpenGL window
+
+5. **Terminal:**
+   - Reads `frame_history.txt`
+   - Shows frames with scroll
+   - Works like ASCII-OS terminal
+
+### GL-OS Must NOT:
+
+1. **Generate text commands** - Generate FRAMES
+2. **Store text in memory** - Store FRAMES in files
+3. **Display directly** - Write to file, let renderer display
+
+---
+
+## IMPLEMENTATION CHECKLIST
+
+### For New Agent:
+
+- [ ] Create `pieces/apps/gl_os/session/current_frame.txt` on startup
+- [ ] Create `pieces/apps/gl_os/session/gl_os_pulse.txt` on startup
+- [ ] Create `pieces/apps/gl_os/session/frame_history.txt` on startup
+- [ ] Modify GL-OS modules to WRITE frames (not display)
+- [ ] Modify GL-OS renderer to READ frames (not generate)
+- [ ] Modify GL-OS terminal to SHOW frame history (not text)
+- [ ] Implement marker file polling (like ASCII-OS)
+- [ ] Test frame display matches ASCII-OS exactly
+- [ ] Test scroll behavior matches Linux terminal
+- [ ] Test cross-OS compatibility (copy frames between OSes)
+
+---
+
+## TESTING PROCEDURE
+
+### Test 1: Frame Generation
+```bash
+# Start GL-OS
+./run_chtpm.sh
+
+# Check if frame file is created
+cat pieces/apps/gl_os/session/current_frame.txt
+
+# Should show complete UI frame (borders, text, everything)
+# NOT just text commands
+```
+
+### Test 2: Frame Display
+```bash
+# Watch frame file changes
+watch -n 0.1 cat pieces/apps/gl_os/session/current_frame.txt
+
+# Navigate in GL-OS
+# Frame should update as you navigate
+# File should change, not just display
+```
+
+### Test 3: Frame History
+```bash
+# Check frame history
+cat pieces/apps/gl_os/session/frame_history.txt
+
+# Should show multiple frames with timestamps
+# Each frame separated by "--- FRAME UPDATE at ..."
+```
+
+### Test 4: Cross-OS Compatibility
+```bash
+# Copy ASCII-OS frame to GL-OS
+cp pieces/display/current_frame.txt \
+   pieces/apps/gl_os/session/current_frame.txt
+
+# GL-OS should display ASCII-OS frame
+# Same format, different file location
+```
+
+---
+
+## COMMON MISTAKES (DON'T MAKE THESE)
+
+### ❌ MISTAKE 1: Module Displays Directly
+```c
+// WRONG - Module should NOT display
+void render_menu() {
+    printf("╔══════════════╗\n");
+    printf("║  Menu        ║\n");
+    printf("╚══════════════╝\n");
+}
+
+// RIGHT - Module writes to file
+void render_menu() {
+    FILE *f = fopen("current_frame.txt", "w");
+    fprintf(f, "╔══════════════╗\n");
+    fprintf(f, "║  Menu        ║\n");
+    fprintf(f, "╚══════════════╝\n");
+    fclose(f);
+}
+```
+
+### ❌ MISTAKE 2: No Marker File
+```c
+// WRONG - Renderer won't know when to update
+void update_frame() {
+    FILE *f = fopen("current_frame.txt", "w");
+    fprintf(f, "%s", frame);
+    fclose(f);
+    // No marker file touched!
+}
+
+// RIGHT - Touch marker file
+void update_frame() {
+    FILE *f = fopen("current_frame.txt", "w");
+    fprintf(f, "%s", frame);
+    fclose(f);
+    
+    FILE *m = fopen("renderer_pulse.txt", "a");
+    fprintf(m, "P\n");
+    fclose(m);
+}
+```
+
+### ❌ MISTAKE 3: Text Instead of Frames
+```c
+// WRONG - Terminal shows text
+void terminal_show() {
+    printf("$ help\n");
+    printf("Available commands:\n");
+    printf("  1. Desktop Apps\n");
+}
+
+// RIGHT - Terminal shows frames
+void terminal_show() {
+    FILE *f = fopen("frame_history.txt", "r");
+    // Read and display complete frames
+    // With timestamps, borders, everything
+}
+```
+
+---
+
+## REFERENCE IMPLEMENTATION
+
+**Study these files to understand the pattern:**
+
+1. **Module (writes frames):**
+   - `pieces/chtpm/plugins/chtpm_parser.c`
+   - Function: `compose_frame()`
+   - Writes to: `pieces/display/current_frame.txt`
+   - Touches: `pieces/display/renderer_pulse.txt`
+
+2. **Renderer (reads & displays):**
+   - `pieces/display/renderer.c`
+   - Function: `render_display()`
+   - Reads from: `pieces/display/current_frame.txt`
+   - Polls: `pieces/display/renderer_pulse.txt`
+
+3. **Frame History:**
+   - `pieces/debug/frames/session_frame_history.txt`
+   - Format: `--- FRAME UPDATE at TIMESTAMP ---`
+   - Contains: Complete frames with timestamps
+
+---
+
+## SUMMARY (The Elevator Pitch)
+
+**ASCII-OS Architecture:**
+1. **Module** writes complete UI frame to file
+2. **Renderer** reads frame from file and displays
+3. **Terminal** shows frame history with scroll
+4. **All communication through files** (no direct calls)
+5. **Marker file signals changes** (append pattern)
+
+**GL-OS Must Match:**
+1. GL-OS modules write frames to `pieces/apps/gl_os/session/current_frame.txt`
+2. GL-OS renderer reads from that file
+3. GL-OS terminal shows frame history
+4. Same format as ASCII-OS (for compatibility)
+5. Separate files (for isolation)
+
+**Result:**
+- GL-OS terminal works EXACTLY like ASCII-OS terminal
+- Frames scroll up (Linux terminal style)
+- Cross-OS compatibility (can share frames)
+- TPM compliant (file-based, auditable)
+
+---
+
+**END OF BLUEPRINT**
+
+**If you understand this document, you can implement frame-based terminals.**
+**If not, re-read until the "Module writes, Renderer reads, Terminal displays" pattern is crystal clear.**

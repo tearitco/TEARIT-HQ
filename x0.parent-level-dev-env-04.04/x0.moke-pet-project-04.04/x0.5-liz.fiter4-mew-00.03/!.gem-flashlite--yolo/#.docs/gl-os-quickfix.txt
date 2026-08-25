@@ -1,0 +1,16 @@
+# GL-OS Quickfix - Submenu Functionality Issue
+**Date:** May 30, 2026
+
+## 1. ISSUE: Submenus failing to open
+**Problem:** Submenus (e.g., in Project Explorer) no longer expand or trigger actions after the recent refactoring of `gl_desktop.c`.
+
+**Investigation:**
+- The `execute_option` logic relies on `win->menu_context` and `win->selected_index` to determine which menu/submenu to open.
+- The recent refactoring to `load_gl_projects` might have altered how `win->menu_options` or `win->option_count` are populated when launching projects.
+- The `gltpm_parser.c` logic that builds `piece_methods` might be getting overridden or not synced back to the GUI state correctly, resulting in empty menu options.
+- The `is_active_layout` check in `main()` might be blocking the input dispatch for projects now that they are sovereign.
+
+**Fix Strategy:**
+1. Check `dispatch_gltpm_button` in `gl_desktop.c` to see if it is correctly setting the menu context for sovereign windows.
+2. Verify that `load_gl_projects` correctly populates `win->menu_options` for new project types.
+3. Trace the `KEY:n` dispatch flow to ensure commands are correctly reaching the project-specific manager.

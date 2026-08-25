@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | name               | planet aether
+META         | start_map          | map_start
+META         | start_x            | 3
+META         | start_y            | 3

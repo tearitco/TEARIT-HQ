@@ -1,0 +1,196 @@
+# XLECTOR Refactoring Plan
+
+## Problem: Spiritual Namespace Collision
+
+The term **"selector"** is overloaded across multiple distinct concepts in the codebase, causing confusion for developers and AI agents when debugging or making changes.
+
+### The Three "Selectors"
+
+| # | Name | What It Is | Current Term |
+|---|------|------------|--------------|
+| 1 | **Map Cursor (X-piece)** | The `X` character rendered on the map grid, moved with WASD/arrows, used to select entities | `selector` |
+| 2 | **Nav Menu Cursor** | The `[>]` indicator showing which menu option is highlighted in CHTPM layouts | `navigation selector` |
+| 3 | **Wallet Picker** | UI element for choosing crypto wallets in p2p-net project | `wallet_selector` |
+
+The **primary collision** is between #1 and #2. When someone says "the selector isn't moving," it's ambiguous whether they mean the map cursor X or the menu highlight.
+
+### The Deeper Issue: Map Cursor vs Control Mode
+
+Within the map cursor concept, `"selector"` is used as:
+- **A piece_id**: `projects/*/pieces/selector/` — the actual piece directory, state file, PDL
+- **A type value**: `type=selector` in state.txt
+- **A sentinel/mode**: `active_target_id = "selector"` — meaning "free cursor mode, not controlling an entity"
+- **Op names**: `move_selector`, `toggle_selector`
+- **C variables/functions**: `save_selector_state()`, `cursor_x/y/z` in manager code
+
+The string `"selector"` simultaneously means **"the cursor piece"** AND **"the default/free mode"**. This conflates two concepts: the entity itself, and the control state.
+
+## Solution: Rename Map Cursor to "XLECTOR"
+
+The map cursor (the `X` on the grid) will be renamed to **XLECTOR** (pronounced "x-lector", like "selector" but with the X made explicit).
+
+### Why "XLECTOR"?
+- It preserves the phonetic similarity to "selector" (so existing mental models still work)
+- The `X` is explicit — it's the X-piece, the thing that renders as X on the map
+- It's distinct from "nav selector" and "wallet selector"
+- Short, memorable, unambiguous
+
+## Refactoring Scope
+
+### What Changes (Map Cursor → XLECTOR)
+
+| Dimension | Current | New |
+|-----------|---------|-----|
+| Piece directory | `pieces/selector/` | `pieces/xlector/` |
+| State file | `pieces/selector/state.txt` | `pieces/xlector/state.txt` |
+| Type value | `type=selector` | `type=xlector` |
+| Piece type string | `"selector"` | `"xlector"` |
+| Op names | `move_selector`, `toggle_selector` | `move_xlector`, `toggle_xlector` |
+| C functions | `save_selector_state()`, `load_selector_state()` | `save_xlector_state()`, `load_xlector_state()` |
+| C variable default | `active_target_id = "selector"` | `active_target_id = "xlector"` |
+| Icon mapping | `strcmp(type, "selector")` → `"X"` | `strcmp(type, "xlector")` → `"X"` |
+| create_piece.c | `strcmp(type, "X") || strcmp(type, "selector")` | `strcmp(type, "X") || strcmp(type, "xlector")` |
+| Documentation | "selector", "X selector", "selector cursor" | "xlector", "XLECTOR", "xlector cursor" |
+| Kill script | `nuke_by_name "move_selector"` | `nuke_by_name "move_xlector"` |
+
+### What Does NOT Change
+
+| Term | Reason |
+|------|--------|
+| `[>]` nav indicator | Still called "nav selector" or "menu selector" — different concept, no collision |
+| `wallet_selector` | Scoped to p2p-net project, no practical collision |
+| `active_target_id` variable name | The variable itself keeps its name; only its sentinel value changes from `"selector"` to `"xlector"` |
+| C variables `cursor_x`, `cursor_y`, `cursor_z` | These are local manager variables, not piece references — they can stay as-is (or be renamed to `xlector_x` etc. if desired, but lower priority) |
+
+## Execution Plan
+
+### Phase 1: Documentation (this file is Phase 1)
+- [ ] Update `#.docs/02-REFERENCE/OPS_DICTIONARY.txt` — rename move_selector → move_xlector, toggle_selector → toggle_xlector
+- [ ] Update `#.docs/02-REFERENCE/TPMOS_APP_REFERENCE.txt` — all selector references that mean the map cursor
+- [ ] Update `CODEBASE_MAP.txt` — `selector/ # Editor cursor` → `xlector/ # Editor cursor`
+- [ ] Update `TPMOSTEXTBOOK_v03.01/CH7_FUZZ_OP_OP_ED.md` — selector system → xlector system
+- [ ] Update `#.testing/op-ed-testing-guide.txt` — all map cursor references
+- [ ] Update `#.docs/future-facing/^.RMMPMO-editor1.md` — all map cursor references
+- [ ] Update `pieces/buttons/dev-notes/win-butt-suc-note-m31.txt` — if it references map cursor
+- [ ] Create this file (`#.docs/xlector.txt`) — you are here
+
+### Phase 2: fuzz-op (test project)
+- [ ] Backup current fuzz-op state
+- [ ] Rename `projects/fuzz-op/pieces/selector/` → `projects/fuzz-op/pieces/xlector/`
+- [ ] Update `projects/fuzz-op/pieces/xlector/state.txt` — `type=xlector`
+- [ ] Update `projects/fuzz-op/pieces/xlector/selector.pdl` → `xlector.pdl`, update piece_id inside
+- [ ] Update `projects/fuzz-op/pieces/xlector/piece.pdl` if it references type
+- [ ] Update `projects/fuzz-op/manager/fuzz-op_manager.c` — `active_target_id = "xlector"`, all string comparisons
+- [ ] User tests fuzz-op — if it works, proceed to Phase 3
+
+### Phase 3: op-ed (main editor)
+- [ ] Backup current op-ed state
+- [ ] Rename `projects/op-ed/pieces/selector/` → `projects/op-ed/pieces/xlector/`
+- [ ] Update `projects/op-ed/pieces/xlector/state.txt`
+- [ ] Update `projects/op-ed/manager/op-ed_manager.c` — all selector references, function names, active_target_id
+- [ ] User tests op-ed
+
+### Phase 4: Shared C Code (ops and plugins)
+- [ ] Backup current code
+- [ ] Update `pieces/apps/playrm/ops/src/move_selector.c` → `move_xlector.c` (rename file + internal references)
+- [ ] Update `pieces/apps/playrm/ops/src/toggle_selector.c` → `toggle_xlector.c`
+- [ ] Update `pieces/apps/playrm/ops/src/interact.c` — calls with `"xlector"` instead of `"selector"`
+- [ ] Update `pieces/apps/playrm/ops/src/render_map.c` — icon mapping `strcmp(type, "xlector")`
+- [ ] Update `pieces/apps/playrm/ops/src/create_piece.c` — type mapping
+- [ ] Update `pieces/apps/playrm/plugins/playrm_module.c` — active_target_id comparisons
+- [ ] Update `pieces/apps/player_app/world/plugins/player_render.c` — if it references selector type
+- [ ] Update kill scripts (`nuke_by_name` references)
+- [ ] Rebuild ops
+- [ ] User tests
+
+### Phase 5: Other Projects (low priority)
+- [ ] `projects/demo_1/pieces/selector/` → `xlector/`
+- [ ] `projects/man-add/pieces/selector/` → `xlector/`
+- [ ] `projects/man-ops/pieces/selector/` → `xlector/`
+- [ ] `projects/man-pal/pieces/selector/` → `xlector/`
+- [ ] `projects/template/pieces/selector/` → `xlector/`
+- [ ] `pieces/world/map_01/selector/` → `xlector/`
+- [ ] Update their state.txt and PDL files
+
+### Phase 6: Cleanup
+- [ ] Verify no remaining `type=selector` references that should be `type=xlector`
+- [ ] Verify no remaining `"selector"` string comparisons in C code that should be `"xlector"`
+- [ ] Update any remaining docs
+- [ ] Full integration test
+
+## Key Principles
+
+1. **The icon stays "X"** — XLECTOR still renders as `X` on the map. Only the type/name changes.
+2. **Backward compatibility during transition** — `create_piece.c` should accept both `"X"` and `"xlector"` as type inputs (same pattern as current `"X"` / `"selector"` handling).
+3. **One project at a time** — fuzz-op first, test, then op-ed, then shared code, then others.
+4. **Backups before every phase** — copy current state before making changes.
+5. **Nav selector and wallet selector are untouched** — they keep their names. Only the map cursor becomes XLECTOR.
+
+## State Tracking
+
+When you (the user) save state between phases, note here:
+
+- [ ] Phase 1 (Documentation) — COMPLETE
+- [ ] Phase 2 (fuzz-op) — COMPLETE (backup at selector.bak.20260405_150630)
+  - Runtime test found 3 bugs (see #.docs/xlector-bugs.txt):
+    - BUG 1 (BLOCKER): xlector renders as "?" — FIXED, clean cut on shared ops
+    - BUG 2 (ANNOYANCE): Triple frame render — pre-existing, not our bug
+    - BUG 3 (MINOR): gl-os 404 — pre-existing, not our bug
+- [ ] Phase 3 (op-ed) — COMPLETE (23 refs fixed, is_active_layout fix, compiled)
+  - New bugs found: BUG 10 (double X), BUG 11 (methods not working)
+  - Both documented in xlector-bugs.txt, awaiting investigation
+- [ ] Phase 4 (Shared C code) — pending
+- [ ] Phase 5 (Other projects) — pending
+- [ ] Phase 6 (Cleanup) — pending
+
+---
+
+## CPU Health Risk Investigation Note
+
+**Added:** 2026-04-05
+**Trigger:** User reported possible CPU throttling/crash on lower-power laptop during prior session.
+
+### Possible Causes
+
+1. **Qwen launching multiple sub-agents** — The most likely culprit. Sub-agents spawn child processes; if Qwen spawned several simultaneously on a low-power machine, aggregate CPU load could trigger thermal throttling or OOM kills.
+2. **Module lacking signal handling** — Per `#.docs/!.cpu_health+1.txt`, modules using `system()` without explicit `SIGINT` handlers can orphan child processes on Ctrl+C. The editor module (`editor_module.c`) was specifically flagged for this risk.
+3. **Missing process group management** — Modules without `setpgid(0, 0)` leave orphaned processes on abrupt termination.
+
+### Investigation Steps
+
+Before closing this ticket, verify:
+
+- [ ] All running modules have `signal(SIGINT, handle_sigint)` registered
+- [ ] All modules call `setpgid(0, 0)` in `main()`
+- [ ] No modules use `system()` for critical operations — prefer `fork/exec/waitpid`
+- [ ] Focus throttling is active: `is_active_layout()` → 100ms sleep when not in focus
+- [ ] History polling uses `stat()` before `fopen()`
+- [ ] No orphaned `.+x` processes: `ps aux | grep -E "\.\+x" | grep -v grep`
+- [ ] CPU per-module usage < 5% normal, < 20% warning threshold
+
+### Reference
+
+See `#.docs/!.cpu_health+1.txt` for:
+- Legacy fuzzpet CPU-safe reference (`fuzz_legacy_manager.c`)
+- Process group management patterns
+- CPU health monitoring commands
+- Process count thresholds (normal: 0-5, warning: 6-15, critical: 16+)
+
+### Kill Script Fix (2026-04-05)
+The kill script regex was broken — `\.+x` in ERE means "one or more dots then x" NOT "literal dot, literal plus, x".
+Result: ZERO processes were ever killed → old processes accumulated → CPU overload → crashes.
+Fixed in `run_orchestrator.sh` and `kill_all.sh` — now uses `[+][.]` character classes.
+Big warning comments added to both files and `#.docs/^.pmo.ld-faq+8/PITFALLS_ACTIVE_2026-03-18.txt` entry #81.
+**Future agents: DO NOT change these regexes without testing first.**
+
+### Verdict Template
+
+When investigation is complete, fill in:
+
+```
+Investigation Date: ____
+Cause Identified: [Our program / Qwen sub-agents / Unknown]
+Evidence: [process counts, CPU%, orphaned processes found, etc.]
+Fix Applied: [signal handlers, setpgid, fork/exec/waitpid, etc.]
+Result: [CPU-safe confirmed / Further investigation needed]
+```

@@ -1,0 +1,182 @@
+WRAITH LOOK CODEX REFERENCE J3
+Derived from !.look-of-wraith-gui.txt
+
+Date:
+2026-06-03
+
+Purpose:
+This note converts the user's visual sketch into an implementation reference
+for Codex. The source sketch is:
+
+!.look-of-wraith-gui.txt
+
+This is not a pixel-perfect spec. It is a composition and intent reference for
+phase A of Wraith.
+
+1. Core conclusion
+
+The sketch matches the GL-OS understanding better than the current Wraith panel
+demo.
+
+The intended phase A shell should read like:
+
+- one outer framed shell window
+- one left-side menu/app list inside that shell
+- one main `Wraith Terminal v1.0` shell window
+- one overlapping `GAME MAP` window with its own title bar and controls
+- the `GAME MAP` window should begin inside the shell body and break through
+  the shell border so it reads as a separate focusable movable window
+- one footer/taskbar strip across the bottom
+
+It should not read like:
+
+- a dashboard
+- a control panel next to a preview panel
+- a settings page
+- a documentation card with buttons
+- a nested parent/child window hierarchy
+
+2. Composition the sketch is pointing at
+
+Top-level composition:
+
+- desktop background field
+- outer shell window with title bar and chrome
+- menu/app list inside outer shell
+- one overlapping game/content window
+- footer/taskbar/start strip
+
+The important part is shell-plus-window overlap with independent chrome.
+
+The sketch implies a live desktop shell with a separate movable content window,
+not a nested parent/child hierarchy and not a flat dashboard.
+
+3. Outer shell window
+
+The outer shell should be the main desktop object.
+
+Expected characteristics:
+
+- full framed border
+- title bar across the top
+- title text such as `Wraith Terminal v1.0` or equivalent
+- window controls drawn in the title bar
+- large enough to hold the app list and nested content area
+
+This should feel like one application shell.
+
+4. Left navigation list
+
+The left side should look like a launcher/menu list, not a vertical pile of
+feature buttons.
+
+Expected characteristics:
+
+- numbered entries
+- one active selection marker like `[>]`
+- list items similar to:
+  - Project Loader
+  - App Store (Fondu)
+  - Status
+  - GL-OS
+  - Process Monitor
+  - Toggle Frame History
+  - Help
+
+The list should feel like a window manager / shell menu, not an ops test panel.
+
+5. Overlapping content window
+
+The overlapping `GAME MAP` window is a major part of the look.
+
+Expected characteristics:
+
+- the window has its own frame and title bar
+- the window has controls/chrome in the header
+- title like `GAME MAP:` or the active app title
+- content that reads like a real app surface
+- map/terminal/app content inside, not explanatory prose
+- it partially overlaps the main shell
+- it visibly breaks the shell border
+- it can be focused and moved independently from the shell
+
+For phase A, this window can host:
+
+- an ASCII map
+- a terminal/text region
+- a process/status surface
+- a loader list for the selected project
+
+The important part is that it behaves like a real movable window, not a child
+panel tucked neatly inside the shell.
+
+6. Footer / taskbar strip
+
+The sketch clearly implies a bottom strip with shell-level information.
+
+Expected characteristics:
+
+- start/menu anchor at the left
+- active window or app labels in the middle
+- clock/session info at the right
+
+This matters because it makes the frame read as a desktop shell instead of a
+floating widget set.
+
+7. Text content guidance
+
+The current Wraith frame still uses explanatory sentences such as:
+
+- `Wraith parses CHTMGL and emits auditable frame files.`
+- `Focus, z-order, hit maps, and metadata are all file-backed.`
+
+Those are useful for notes, but not as the main user-facing shell content.
+
+Phase A shell content should mostly be:
+
+- menu entries
+- app/window titles
+- map cells
+- terminal lines
+- status/taskbar text
+
+Explanatory architecture prose should move to audit files, inspectors, or docs.
+
+8. Primitive guidance
+
+The user's note says:
+
+`use the real primatives used in 'gl-os' when possible`
+
+Interpretation:
+
+- prefer GL-OS-style window/title/menu/taskbar composition
+- use `pieces/apps/gl_os/plugins/gl_desktop.c` as the behavioral reference for
+  dynamic shell state
+- reuse TPMOS/GL-OS framing ideas
+- keep the implementation file-driven and auditable
+- treat visible subwindow content as projected surfaces composed into the frame,
+  not as hidden widget state
+- do not treat the sketch as permission to invent an unrelated UI language
+
+9. Immediate implementation implication
+
+The current Wraith layout should be considered an interim bridge, not the
+intended visual target.
+
+The next layout rewrite should move toward:
+
+- outer shell frame first
+- menu list second
+- overlapping `GAME MAP` window third
+- footer/taskbar fourth
+
+Only after that should smaller details be tuned.
+
+10. Short version
+
+For phase A, Wraith should look like a GL-OS-style ASCII shell with floating,
+overlapping peer windows and a footer/taskbar, not like a left-controls/right-
+preview demo and not like a nested child-window layout. Those windows should be
+composed from file-backed projected surfaces so the frame remains auditable and
+RGB-ready.

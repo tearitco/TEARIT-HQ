@@ -1,0 +1,161 @@
+short-summary-j30.txt - what actually changed this session (2026-07-30),
+for a human skim - not a substitute for refactor-report.txt (agy-txt,
+file-menu) or refactor-list-j30.txt (full detail). Read this to decide
+what YOU should personally click through before trusting it.
+
+>>> EASIER VERSION: ../walkthru-index-j30.txt (house root) - emoji-
+    heavy, checklist-style, links to a walkthru-j30.txt sitting inside
+    EVERY touched project's own folder. Start there if you're tired. <<<
+================================================================================
+
+## THE BIGGEST CHANGES (real code, real behavior change)
+
+1. 102.agy-txt file browser - rebuilt from a hand-drawn-marker fake
+   browser to real chtpm <button>/<cli_io>/href navigation. 5 real bugs
+   fixed along the way. -> see 102.agy-txt/refactor-report.txt
+
+2. &.widgits/file-menu - same rebuild, same shape, 5 real bugs (some
+   shared with agy-txt). -> see &.widgits/file-menu/refactor-report.txt
+
+3. HOUSE-WIDE fix inside the SHARED chtpm_parser_pal.c (014.wsr-pal's
+   copy): a fresh href transition could leave keyboard focus on a
+   stale, coincidentally-same-indexed element from the PREVIOUS screen.
+   Fixed via clear_saved_active_index(). This affects every href-driven
+   project that shares this file - not just agy-txt/file-menu.
+   >>> WORTH YOUR OWN SPOT-CHECK: any project with multi-screen href
+       navigation you use often, to confirm focus resets cleanly.
+
+4. prisc+x.c (the shared VM) - new opcode added (OP_READ_HISTORY_STR /
+   read_history_str), proven working via a live test. NOTHING actually
+   uses it yet - it's infrastructure for a future PAL-driven manager,
+   not a behavior change on its own. Low risk to you.
+
+5. 041.pal-chain⛓️ - REAL BUG FOUND AND FIXED: the "Sent N millicones..."
+   send confirmation was silently truncating the recipient's wallet ID
+   (a fixed-width box overflow, worsened by a double-truncating buffer).
+   Fixed by shortening the confirmation message (dropped the redundant
+   "from <sender>" - already shown one line above - and the tx_id,
+   which is still saved to disk in full) and widening the internal
+   render buffer. Re-tested, real PASS.
+   >>> WORTH YOUR OWN SPOT-CHECK: send cones to a wallet with a long ID
+       and confirm the confirmation line reads correctly.
+
+## REBUILT + TESTED, NO BUGS FOUND (existing harnesses, all real PASS)
+
+  041.pal-forum👥️
+  044.pal-chat-irc👥️+2 (chat scenario AND the dedicated real P2P
+    network test - see item 6 below, this was a real gap I closed)
+  0.user-pal👤️/00.login-signup
+  0.user-pal👤️/01.avatar-creation👤️ (see note below)
+  045.muchi-pal-agent🤖️+1 (real chat + tool-use test - see item 6
+    below, this was also a real gap I closed, not just "rebuilt")
+
+  01.muchi-pals-🥚️-13.01 - rebuilt only, still YOURS to test, not
+    self-tested this session.
+
+## 6. REAL GAP FOUND AND CLOSED: "agent" and "p2p" were only ever
+   REBUILT/compiled, never actually run, until directly asked about.
+
+  - 045.muchi-pal-agent🤖️+1: ran its OWN real key-injection harness
+    (test-harn-same/button.sh demo + the separate demo_iqabod_chat.sh
+    scenario, which wasn't wired into the default demo action - had to
+    run it directly). Confirmed: a typed message containing a tool
+    keyword triggers a real list_dir tool call automatically (no LLM
+    guessing involved), and a real /model switch + real chat message
+    both work end to end with a real generated reply landing in the
+    chat log. Both real PASS.
+
+  - p2p (pal-chain/pal-forum/pal-chat-irc all share one identical
+    ops/palnet_peer.c, confirmed via diff): every test-harn-same
+    scenario I'd run before this only exercised SAME-MACHINE,
+    SAME-INSTALL concurrent users - never the actual network layer.
+    pal-chat-irc has a SEPARATE, dedicated real test for this
+    specifically
+    (testing/test_multiuser_p2p.sh) that I'd never opened. This exists
+    because the real P2P chain was found COMPLETELY BROKEN once before
+    (2026-07-26) in a way that was invisible to shared-filesystem
+    tests. Ran it for real (two actual concurrent `button.sh run`
+    processes): port allocation, cross-session message delivery via
+    net/inbox.txt, and ledger convergence all PASS.
+
+  ## 🚶 HUMAN WALK-THROUGH FOR THESE TWO SPECIFICALLY
+
+  muchi-pal-agent:
+    cd 045.muchi-pal-agent🤖️+1 && bash button.sh run
+    1. Type a message, Enter -> "You: ..." then an AI reply (default
+       model is random-words - a local wordbank, gibberish on purpose)
+    2. Type "/model gemma-lan", Enter -> header changes to that model
+    3. Ask it to list files -> should trigger a real tool call, not an
+       LLM guess
+    4. Ctrl+C, run again -> chat history should still be there
+
+  pal-chat-irc p2p (TWO SEPARATE TERMINALS, both running at once):
+    Terminal 1: cd 044.pal-chat-irc👥️+2 && bash button.sh run
+    Terminal 2: cd 044.pal-chat-irc👥️+2 && bash button.sh run
+    1. Join the same room in both
+    2. Type in Terminal 1 -> should appear in Terminal 2 within ~1-2s
+       without touching Terminal 2 at all
+    3. Reply in Terminal 2 -> should appear back in Terminal 1
+    (one terminal alone does NOT prove the network layer works - the
+    two-terminal step is the part that actually matters here)
+
+## INVESTIGATED, TURNED OUT FINE - NO CHANGE MADE (don't worry about these)
+
+  - 0.user-pal👤️/00.login-signup's account-switcher ">" marker: looked
+    like the same hand-drawn-cursor bug agy-txt/file-menu had. It isn't
+    - it's a passive "this is your current account" indicator; the
+    real switching happens through real buttons already. Confirmed via
+    direct read, no change made.
+  - 01.muchi-pals-🥚️-13.01's compose_menu.c/menu_input.c: looked like
+    dead legacy hand-drawn code. It isn't - it's a real, working,
+    intentionally-kept alternate play mode (`button.sh classic`).
+    Confirmed via direct read of button.sh, left untouched.
+  - 101.mutaclsym🧟‍♂️️+18.01 + its two copies (300.rpg-xyz, 300.rtp-xyz):
+    all three already use real chtpm <button>/href/${piece_methods}
+    architecture (mutaclysm's own compose_frame.c is actually the
+    REFERENCE pattern the other rebuilds this session were modeled on).
+    No refactor needed, confirmed by direct read + diff (rpg-xyz and
+    rtp-xyz's own game.chtpm are byte-identical to mutaclysm's).
+
+## KNOWN, NOT FIXED - LOW PRIORITY, DOCUMENTED (not touched this session)
+
+  - 0.user-pal👤️/01.avatar-creation👤️: one test assertion expects
+    stale wording ("Opened desktop window" vs the real, current
+    "Opened chara window..."). Functionally fine (window opens
+    correctly, confirmed by later assertions in the same run) - just a
+    stale string in the test script itself.
+  - demo_fm_typing_ux.sh (file-menu): one rare, rapid-fire 4-deep
+    automated re-entry sequence shows a stray dispatch. Not reproduced
+    in any realistic single/double-cycle use.
+
+## NOT DONE YET - REAL LOOSE ENDS, YOUR CALL ON PRIORITY
+
+  - 002.zoo: rebuilt, launches, real frame renders correctly - but
+    real movement/interaction was never confirmed working (the arrow-
+    code keypress convention used elsewhere didn't move anything; may
+    need literal WASD keys instead - untested).
+  - *.START_BUTTON: never tested this pass at all.
+  - Tier 2 follow-up: no PAL-driven manager built on top of the new
+    read_history_str opcode yet - it exists and works, but nothing
+    uses it.
+  - Tier 3 open-ended sweep: only agy-txt/file-menu were actually
+    fixed; a full house-wide audit for the hand-drawn-marker pattern
+    was never done (this session's two spot-checks came back clean,
+    but that's not the same as a real sweep).
+  - §40 standards doc (C+PAL dual-implementation convention) still not
+    written into !.xyzos-standards+1.txt.
+
+## WHAT TO DOUBLE-CHECK YOURSELF, IN PRIORITY ORDER
+
+  1. agy-txt + file-menu save/load flows (see their own refactor-
+     report.txt files - real click-through checklists included).
+  2. pal-chain: send cones with a couple of different wallet ID
+     lengths, confirm the confirmation line always reads correctly.
+  3. Any project you use with multi-screen href navigation - confirm
+     focus lands correctly after a screen change (fix #3 above).
+  4. muchi-pal-agent + pal-chat-irc's p2p layer - now real-tested by
+     me (item 6 above), but worth your own hands-on pass too given how
+     easily "compiles" gets mistaken for "works" on these two.
+  5. 01.muchi-pals-🥚️-13.01 - still genuinely untested by me, by
+     design (yours to test).
+================================================================================

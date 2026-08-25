@@ -1,0 +1,24 @@
+# DAY 12 — code-tools-harness: the probe that measured 9/9 📊
+# ==========================================================
+# Title: "DAY 12 — code-tools-harness: the probe that measured 9/9 📊"
+# Characters: TOMO, MAXINE, RAHWEH
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), MAXINE (en-GB-MaisieNeural), RAHWEH (zh-CN-YunxiaNeural)
+# Topic: HARNECIENT Training Session
+
+**TOMO:** One C file, `run_native_tools.c`, in &.widgits/ai-cell/code-tools-harness/. Build it with: cc -O2 -Wall -Wextra -o runnativetools runnativetools.c It has a small hand-rolled JSON decoder (the house convention: never pull in a JSON library for one field), a tolerant tool-call extractor, real exec helpers, and a scenario runner. Inside it you'll find the whole family of scenarios we've been talking about:
+
+**MAXINE:** How does the harness *know* a scenario passed?
+
+**TOMO:** It checks **machine facts**, in order: 1. 📖 read → PASS if the file's real content made it into the transcript. 2. 🔧 edit → PASS only if the output file compiles (gcc) and the binary prints 15 (the correct sum(1..5)). The model's words were never consulted. 3. ▶️ run → PASS if the executed command's real output appears in the tool-role messages (it scans all tool messages, not just the last — a bug we paid for once).
+
+**TOMO:** And every run writes raw transcripts into `results/<model>/<scenario>.json` plus a results/summary.txt. Open any JSON and you can relive the exact model reply — noise, fences, and all. The transcript is the evidence. The verdict line is the judge. 🧾⚖️
+
+**TOMO:** The work lives at `/tmp/code-tools-harness-work/` — **plain ASCII**, on purpose, because the 8B tokenizer corrupts emoji-laden house paths (a measured fact, §4 of LEARNINGS). The fixture is a sample.c with a classic bug: for (i = 0; i < N; ...) sums 1..9 instead of 1..5. The fix is i <= N. Every scenario restores the pristine buggy file first, so run 99 is identical to run 1. Idempotent, always. 🔁
+
+**RAHWEH:** So the fixture is tiny and the bug is real.
+
+**TOMO:** Exactly — that's the art of a good probe. Small enough to read in one breath, real enough that "fixed" has a computable meaning (prints 15, not 10). No ambiguity, no vibes. 📐
+
+**TOMO:** Everything in [Day 04](DAY_04_THE_PROBLEM.md) and Day 07 came out of this harness. Quick recap of what to remember, not re-derive: - ✅ Harnecient = 9/9 on 3B, 1b, 270m. Use it. It's the reliable option. - ❌ Naive text-JSON = flaky, hallucinates. Don't. - ⚠️ 8B native = works for read/run and hinted edit, but read-then-edit FAILS (parallel calls, guessed search, hallucinated success). - 💥 The directory crash (§9) — fopen() on a directory succeeds, ftell() returns LONGMAX → malloc explodes. Bounds-check file sizes before allocating. Never trust paths/sizes from a model. - 🔑 JSON quirks: \uXXXX escapes (&& arrives as \u0026\u0026); arguments arrives as dict OR string — decode both ways.
+
+**TOMO:** That's the whole point of measurement. Next: the harnesses that touch real windows.

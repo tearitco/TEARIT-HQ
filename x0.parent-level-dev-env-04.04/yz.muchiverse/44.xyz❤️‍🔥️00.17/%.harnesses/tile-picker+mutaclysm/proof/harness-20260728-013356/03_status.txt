@@ -1,0 +1,4 @@
+last_cmd=PLACE_TILE
+result=ok
+message=placed T at map_start(5,2)
+at=1785227636

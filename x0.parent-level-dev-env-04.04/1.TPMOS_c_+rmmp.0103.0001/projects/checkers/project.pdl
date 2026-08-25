@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | checkers
+META         | version            | 1.0
+META         | author             | TPM-AI Team
+META         | entry_layout       | projects/checkers/layouts/setup.chtpm
+
+STATE        | player_piece       | xlector
+STATE        | title              | TPMOS RL CHECKERS
+STATE        | turn               | red
+STATE        | p1_type            | human
+STATE        | p2_type            | ai
+
+RESPONSE     | default            | *Waiting for setup*

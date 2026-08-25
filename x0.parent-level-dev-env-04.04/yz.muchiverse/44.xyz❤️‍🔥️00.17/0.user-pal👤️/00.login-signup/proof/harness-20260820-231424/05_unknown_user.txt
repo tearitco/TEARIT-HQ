@@ -1,0 +1,38 @@
++============================================================+
+|  U S E R - P A L                                           |
++============================================================+
+|                                                            |
+|  Not logged in.                                            |
+|                                                            |
+|  Enter a user ID (and display name, if new), then          |
+|  Create Account / Log In — or Switch: an account below.  |
+|                                                            |
+|  Accounts on this machine:                                 |
+|    jb — JB Test                                          |
+|    avmenu_1653663 — MenuTest                             |
+|    claude-0001 — AgentClaude0001                         |
+|    schar_1744476 — SessionChar                           |
+|    uloginB_2451230 — LoginHarnessB                       |
+|    uloginA_2451230 — LoginHarnessA                       |
+|    avmenu_1654388 — MenuTest                             |
+|                                                            |
+|  No such user 'uloginGhost_2451230'.                       |
+|                                                            |
++============================================================+
+
+| [ ] 1. User ID: [uloginGhost_2451230]                                        |
+| [ ] 2. Display Name (new accounts only): [LoginHarnessB]                                        |
+[ ] 3. [Create Account]
+[>] 4. [Log In]
+[ ] 5. [Log Out]
+[ ] 6. [Switch: avmenu_1653663 (MenuTest)]
+[ ] 7. [Switch: avmenu_1654388 (MenuTest)]
+[ ] 8. [Switch: claude-0001 (AgentClaude0001)]
+[ ] 9. [Switch: jb (JB Test)]
+[ ] 10. [Switch: schar_1744476 (SessionChar)]
+[ ] 11. [Switch: uloginA_2451230 (LoginHarnessA)]
+[ ] 12. [Switch: uloginB_2451230 (LoginHarnessB)]
+ Switch: rows log in as that account | Ctrl+C quit
+
++=========================================================+
+Nav > _

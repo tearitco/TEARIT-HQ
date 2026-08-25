@@ -1,0 +1,21 @@
+╔═════════════════════════════════════════════════════════╗
+║   H O U S E   L O A D E R                               ║
+╠═════════════════════════════════════════════════════════╣
+║  Pre-screen — pick a category:                        ║
+║                                                         ║
+║    System     house programs under ./                   ║
+║    Widgets    &.widgits/ installed widgets              ║
+║    Apps       @.apps/ installed apps                    ║
+║    App Store  @.app-store/ available packages           ║
+║                                                         ║
+║  Pick a category.                                       ║
+╚═════════════════════════════════════════════════════════╝
+
+[>] 1. [System]
+[ ] 2. [Widgets]
+[ ] 3. [Apps]
+[ ] 4. [App Store]
+ Ctrl+C quit | Enter opens category
+
++=========================================================+
+Nav > _

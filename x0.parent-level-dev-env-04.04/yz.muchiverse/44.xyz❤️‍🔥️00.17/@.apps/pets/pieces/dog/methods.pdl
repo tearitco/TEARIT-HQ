@@ -1,0 +1,10 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+METHOD       | Events               | sh -c 'cd "$0" && H="$(cd ../../.. && pwd)" && exec env EE_PKG_NAME=dog-$(cat "$0/instance_id.txt") EE_PKG_DIR="$H/@.apps/pets/pieces/dog/event_pkg" sh "$H/&.widgits/event-editor/button.sh" run-widget'
+METHOD       | Events (mock)        | sh -c 'cd "$0" && H="$(cd ../../.. && pwd)" && exec sh "$H/&.widgits/event-editor/gl_mock/button.sh" run'
+METHOD       | Events (ez)          | sh -c 'cd "$0" && H="$(cd ../../.. && pwd)" && exec env EZ_PKG_NAME=dog-$(cat "$0/instance_id.txt") EZ_PKG_DIR="$H/@.apps/pets/pieces/dog/event_pkg" sh "$H/&.widgits/event-ez/button.sh" run-widget'
+METHOD       | Play                 | sh -c 'cd "$0" && H="$(cd ../../.. && pwd)" && test -f "$H/@.apps/pets/pieces/dog/event_pkg/pages/page_1/event.pal" && exec "$(find "$H" -maxdepth 1 -name "101.mutaclsym🧟‍♂️️*" -type d 2>/dev/null | head -1)/system/prisc+x" "$H/@.apps/pets/pieces/dog/event_pkg/pages/page_1/event.pal"'
+METHOD       | User                 | OPEN_USER
+METHOD       | Dir                  | xdg-open
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void

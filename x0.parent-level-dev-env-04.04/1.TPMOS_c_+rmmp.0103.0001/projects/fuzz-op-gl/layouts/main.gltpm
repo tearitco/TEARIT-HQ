@@ -1,0 +1,18 @@
+<scene title="Fuzz-Op GLTPM (Sovereign A23)" bg="15,20,34" />
+<camera mode="${camera_mode}" x="${cam_x}" y="${cam_y}" z="${cam_z}" pitch="${cam_pitch}" yaw="${cam_yaw}" roll="${cam_roll}" />
+
+<interact src="projects/fuzz-op-gl/session/history.txt" />
+
+# The following text block is the game map canvas.
+# It will be converted to 3D tiles using assets/tiles/registry.txt
+${game_map}
+
+<panel title="Actions">
+    <button id="btn_interact" label="Control Map (ENTER)" onClick="INTERACT" />
+    <button id="btn_scan" label="Scan" onClick="OP fuzz-op-gl::scan" />
+    <button id="btn_collect" label="Collect" onClick="OP fuzz-op-gl::collect" />
+    <button id="btn_place" label="Place" onClick="OP fuzz-op-gl::place" />
+</panel>
+
+<text label="Status: ${status_text}" />
+<text label="[KEY]: ${last_key}" />

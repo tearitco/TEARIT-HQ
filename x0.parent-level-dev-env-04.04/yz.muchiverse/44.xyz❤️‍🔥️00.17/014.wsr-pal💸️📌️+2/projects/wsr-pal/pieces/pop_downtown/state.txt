@@ -1,0 +1,13 @@
+current_state=1
+decision_mode=1
+total_population=10000
+birth_rate=2.0
+death_rate=1.5
+food_supply=15.0
+food_demand=0.0
+avg_wage=0.0
+unemployment_rate=100.0
+housing_units_needed=0
+housing_units_available=0
+last_action=
+human_decision=

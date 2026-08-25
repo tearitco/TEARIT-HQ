@@ -1,0 +1,7 @@
+name=Selector
+type=selector
+pos_x=5
+pos_y=5
+pos_z=0
+on_map=1
+emoji=🎯

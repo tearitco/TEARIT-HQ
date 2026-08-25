@@ -1,0 +1,162 @@
+
+=== FRAME @ 1785108452 ===
++============================================================+
+|  P A L - C H A T - I R C   [login]                         |
++============================================================+
+|                                                            |
+|  Welcome to pal-chat-irc.                                  |
+|  Create an account, or log in with an existing user ID.    |
+|                                                            |
+|  Welcome to pal-chat-irc.                                  |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108465 ===
++============================================================+
+|  P A L - C H A T - I R C   [login]                         |
++============================================================+
+|                                                            |
+|  Welcome to pal-chat-irc.                                  |
+|  Create an account, or log in with an existing user ID.    |
+|                                                            |
+|  Account created - logged in as bob. Click Continue.       |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108467 ===
++============================================================+
+|  P A L - C H A T - I R C   [room_list]                     |
++============================================================+
+|                                                            |
+|  Logged in as: bob                                         |
+|                                                            |
+|  Enter a room name to join or create it, then              |
+|  click Enter Room.                                         |
+|                                                            |
+|  Account created - logged in as bob. Click Continue.       |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108467 ===
++============================================================+
+|  P A L - C H A T - I R C   [room_list]                     |
++============================================================+
+|                                                            |
+|  Logged in as: bob                                         |
+|                                                            |
+|  Enter a room name to join or create it, then              |
+|  click Enter Room.                                         |
+|                                                            |
+|  Enter a room name, then click Join / Create Room.         |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108468 ===
++============================================================+
+|  P A L - C H A T - I R C   [room_list]                     |
++============================================================+
+|                                                            |
+|  Logged in as: bob                                         |
+|                                                            |
+|  Enter a room name to join or create it, then              |
+|  click Enter Room.                                         |
+|                                                            |
+|  Room 'lobby' ready - click Enter Room.                    |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108470 ===
++============================================================+
+|  P A L - C H A T - I R C   [room_list]                     |
++============================================================+
+|                                                            |
+|  Logged in as: bob                                         |
+|                                                            |
+|  Enter a room name to join or create it, then              |
+|  click Enter Room.                                         |
+|                                                            |
+|  Enter a room name, then click Join / Create Room.         |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108471 ===
++============================================================+
+|  P A L - C H A T - I R C   [room]                          |
++============================================================+
+|                                                            |
+|  Room: lobby (as bob)                                      |
++============================================================+
+|  <userA> hello from real session A                         |
+|  <userA> second message - proving live push to an idle sess|
+|                                                            |
+|  Enter a room name, then click Join / Create Room.         |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108471 ===
++============================================================+
+|  P A L - C H A T - I R C   [room]                          |
++============================================================+
+|                                                            |
+|  Room: lobby (as bob)                                      |
++============================================================+
+|  <userA> hello from real session A                         |
+|  <userA> second message - proving live push to an idle sess|
+|                                                            |
+|  Enter a room name, then click Join / Create Room.         |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108471 ===
++============================================================+
+|  P A L - C H A T - I R C   [room]                          |
++============================================================+
+|                                                            |
+|  Room: lobby (as bob)                                      |
++============================================================+
+|  <userA> hello from real session A                         |
+|  <userA> second message - proving live push to an idle sess|
+|                                                            |
+|  Enter a room name, then click Join / Create Room.         |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108471 ===
++============================================================+
+|  P A L - C H A T - I R C   [room]                          |
++============================================================+
+|                                                            |
+|  Room: lobby (as bob)                                      |
++============================================================+
+|  <userA> hello from real session A                         |
+|  <userA> second message - proving live push to an idle sess|
+|                                                            |
+|  Enter a room name, then click Join / Create Room.         |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108482 ===
++============================================================+
+|  P A L - C H A T - I R C   [room]                          |
++============================================================+
+|                                                            |
+|  Room: lobby (as bob)                                      |
++============================================================+
+|  <userA> hello from real session A                         |
+|  <userA> second message - proving live push to an idle sess|
+|  <bob> hi alice, replying for real                         |
+|                                                            |
+|  Posted to lobby.                                          |
+|                                                            |
++============================================================+
+---

@@ -1,0 +1,14 @@
+# Bug Report: Asymmetric Message Sync (May 25, 2026)
+
+## Issue Description
+Messages sent from a client do not appear in the sender's own `chat_log.txt` (and thus UI) immediately, nor do they reliably propagate to all peers.
+
+## Symptoms
+1. **Sender UI:** Message typed does not appear in the sender's message log after pressing Enter.
+2. **Peer UI:** Peers occasionally receive messages but with significant delay, or not at all.
+3. **Host UI:** Host appears to receive messages (based on logs), but the sender's UI state is not getting updated.
+
+## Proposed Fix
+1. **Local Echo:** Modify `chat-op_manager.c` to append the message to the local `chat_log.txt` *immediately* upon sending, regardless of network confirmation.
+2. **Unified Broadcast:** Ensure `p2p_socket_daemon.c` broadcasts the `MSG|` to all sockets, and ensure the Host also logs messages to its own `chat_log.txt` when it receives them from a client.
+3. **Consistency:** Verify that the Host's relay logic does not filter out connected peers.

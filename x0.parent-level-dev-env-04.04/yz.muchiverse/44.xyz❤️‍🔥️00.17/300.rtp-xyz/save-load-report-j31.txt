@@ -1,0 +1,141 @@
+================================================================================
+save-load-report-j31.txt - 300.rtp-xyz: real save/load, done 2026-07-31,
+for future agents. See dox/rtp-xyz-architecture.md §2/§7 for the
+design this executes. This is the first working milestone toward that
+doc's own M3.
+================================================================================
+
+## WHAT WAS BUILT
+
+manager/rtp_manager.c - a new persistent daemon, modeled directly on
+slop-ed-dev_manager.c's real pattern (TPMOS reference tree, read in
+full this session - NOT present anywhere in this house, only under
+~/Downloads and ~/Desktop/.../SHIP TPMOS snapshots). Owns a new
+layout, pieces/chtpm/layouts/project_menu.chtpm, reachable via a new
+"Save / Load" button added to game.chtpm.
+
+Real save: "Save Now (new slot)" -> auto-numbered save_N directory
+(same real shape as the existing ops/save_game.c: world_01/ + registry/
++ project.pdl + save_meta.txt with turn/timestamp), written under the
+REAL house xyzfs path - direct instruction "real house, but create
+concessions for default/dev": resolves xyzfs/users/<uuid>/home/
+projects/rtp-xyz/ by walking up from project_root and taking the
+first real user dir found (no login system exists in this project),
+falling back to a project-local pieces/saves_local/ dir if no xyzfs/
+users/ is reachable at all.
+
+Real load: pick a listed save, Enter -> real rm -rf + cp -r of
+world_01/ + registry/ (+ project.pdl if present) back over the live
+project, then transitions back to game.chtpm.
+
+## REAL BUGS FOUND AND FIXED DURING THIS BUILD (all live-verified, not
+   just compiled - read this before touching this daemon again)
+
+1. **onClick prefix pitfall (house-wide PITFALL #99)**: chtpm_parser_
+   pal.c's own send_command() silently DROPS any onClick string that
+   doesn't start with SET_/OP:/MP3:/PROJECT_ACTION:/SETTINGS_PAGE:/
+   LAUNCH:/LOAD_PROJECT:/KEY: before it ever reaches inject_command().
+   Original commands were named "LOAD:<name>"/"SAVE_NEW" - silently
+   never fired. Renamed to "SET_LOAD:<name>"/"SET_SAVE_NEW". Any new
+   onClick value in this project MUST start with one of those
+   prefixes or it will do nothing, with zero error message anywhere.
+
+2. **Wrong relay file**: assumed pieces/apps/player_app/history.txt
+   (the file game.chtpm's own PAL module reads). Wrong - a manager
+   daemon's own commands are relayed through whatever the LAYOUT's own
+   `<interact src="...">` attribute names (interact_history_path,
+   set fresh per layout-parse). project_menu.chtpm reuses the same
+   pieces/apps/player_app/interact_relay.txt game.chtpm already uses
+   (matches 102.agy-txt's own real agy_browser_manager.c precedent) -
+   NOT player_app/history.txt.
+
+3. **Wrong gui_state.txt path, twice**:
+   - First guess: projects/rtp-xyz/manager/gui_state.txt (the
+     resolve_project_gui_state_path() shape) - wrong, that's for
+     wraith-alpha-style EMBEDDED sub-projects, not a standalone
+     top-level project.
+   - Real path (confirmed via 102.agy-txt's own agy_browser_manager.c
+     header comment, a documented real gotcha): pieces/apps/
+     player_app/manager/gui_state.txt is the correct DEFAULT path
+     when no project_id is set anywhere (true for this project) -
+     chtpm_parser_pal.c calls load_state_file() on this exact path
+     unconditionally in that case.
+
+4. **Real collision on that default path, live-caught**: ops/
+   compose_frame.c (mutaclysm's own GAME-SPECIFIC frame composer,
+   NOT a generic "recompose whatever's active" tool) ALSO
+   unconditionally rewrites this exact same shared gui_state.txt file
+   with its own craft_panel_items/inventory_panel_items content,
+   every time it runs. rtp_manager.c's own original trigger_render()
+   shelled out to this SAME binary (copying slop-ed-dev's own
+   trigger_render() pattern too literally, without checking whether
+   the target binary was project-agnostic) - clobbered this daemon's
+   own writes within the same tick, every time, silently. REMOVED
+   trigger_render() entirely - the real, generic redraw signal is
+   hit_frame_marker() (pulsing frame_changed.txt) alone; no separate
+   binary call needed.
+
+5. **Real, non-obvious raw-markup staleness, the hardest bug of this
+   build**: even after fixing 1-4, the Save/Load screen's own dynamic
+   content (save_root_kind, the save list) rendered EMPTY on first
+   arrival and NEVER updated afterward, despite gui_state.txt having
+   fresh, correct content on disk at all times (confirmed via direct
+   reads). Root cause, found by reading chtpm_parser_pal.c's own
+   compose_frame() directly: a bare `${var}` substitution OUTSIDE any
+   `<text label="...">` wrapper (raw markup injection, the SAME
+   pattern `${piece_methods}`/`${game_map}` use) is only re-resolved
+   when compose_frame() re-runs parse_chtm() - and it ONLY does that
+   when piece_methods, active_target_id, or input_text SPECIFICALLY
+   change (a hardcoded dirty-check list, not generic to any
+   gui_state.txt variable). A custom variable name like
+   "save_list_markup" is substituted into the in-memory var table
+   (get_var/set_var) but the ALREADY-parsed XML tree is never rebuilt,
+   so the injection point stays frozen at whatever it resolved to on
+   the very first parse (usually empty). FIX: publish the real save-
+   list markup AS `piece_methods` itself (already wired to force a
+   reparse on change), not a custom variable name - project_menu.chtpm
+   has no active_target_id/hero context of its own competing for that
+   variable, so this is safe. project_menu.chtpm's own `${save_list_
+   markup}` reference was changed to `${piece_methods}` to match. If
+   you ever add MORE dynamic raw-markup content to a NEW manager
+   daemon in this house, this is the mechanism to reuse - a custom
+   variable name will NOT work for a bare/raw injection point, only
+   for content already wrapped in a real `<text label="${var}">` tag
+   (which DOES re-substitute on every frame, confirmed via
+   ${last_message} rendering correctly throughout this whole
+   investigation).
+
+## VERIFICATION - real, live, end-to-end (not just "it compiles")
+
+1. Fresh launch -> focus "Save / Load" -> Enter -> real screen shows
+   "(xyzfs (real house))" and a real "Save Now" button, confirmed live.
+2. "Save Now" -> real save_N directory created under the REAL house
+   xyzfs/users/<uuid>/home/projects/rtp-xyz/ path (confirmed via
+   direct `find`, not assumed) with real world_01/ + save_meta.txt
+   (turn/timestamp) content.
+3. Re-entering the screen shows the real save listed with its own
+   real metadata ("save_1 (turn 0)"), confirmed live.
+4. Manually mutated live hero pos_x (4 -> 99) to create a detectable
+   difference, then triggered a real Load of the earlier save via
+   real key injection (focus + Enter) - confirmed live: current_layout
+   returned to game.chtpm AND hero's own pos_x genuinely reverted to
+   4 (the saved value), proving this is a real state restore, not a
+   no-op.
+
+## WHAT'S NOT DONE YET
+
+- No real K3-style automated harness exists for this flow yet (this
+  session's own verification was live but ad-hoc/manual key injection,
+  not a committed, re-runnable script). A real
+  test-harn-rtp-manager/ or %.harnesses/rtp-xyz-full-loop/ (per dox/
+  rtp-xyz-architecture.md §8) is a real, separate follow-up task.
+- Only ONE save slot was exercised (save_1). Multiple-save selection,
+  deletion, and Save-As-a-named-slot (vs always auto-numbered) are not
+  built - matches this project's own real "no free-text input
+  mechanism exists yet" limitation (same reasoning ops/save_game.c's
+  own header comment already gives for its own auto-numbering choice).
+- rpg-xyz's own equivalent (the &.widgits/project-menu/ widget, a
+  different architecture - separate GL process, not a CHTPM <module>)
+  is a SEPARATE, not-yet-started task - see dox/rpg-xyz-
+  architecture.md §7.
+================================================================================

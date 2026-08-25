@@ -1,0 +1,479 @@
+# AI Profile: Project Token Analysis & Coupling Assessment
+**Generated:** 2026-03-17
+**Codebase:** PMO_c_+rmmp_40.00+0 (RMMP-MO Editor / True Piece Method)
+
+---
+
+## SHARED APPS ANALYSIS (CRITICAL - Coupling Issues Identified)
+
+| Shared App     | Tokens   | Category      | Coupling      | Decoupling Status |
+|----------------|----------|---------------|---------------|-------------------|
+| fuzzpet_app    | ~1,200+  | TOKEN HEAVY   | VERY HIGH     | NEEDS DECOUPLING  |
+| rmmp-editor    | ~450     | TOKEN MEDIUM  | HIGH          | MODERATE          |
+| op-ed          | ~600     | TOKEN MEDIUM  | MEDIUM        | ACCEPTABLE        |
+
+---
+
+## Summary Table
+
+| Project   | Tokens  | Category    | Coupling      | Uncouple Difficulty |
+|-----------|---------|-------------|---------------|---------------------|
+| fuzz-op   | ~915    | TOKEN HEAVY | HIGH          | HARD                |
+| man-pal   | ~197    | TOKEN MEDIUM| MEDIUM-HIGH   | MODERATE            |
+| demo_1    | ~134    | TOKEN LIGHT | MEDIUM        | MODERATE            |
+| template  | ~67     | TOKEN LIGHT | LOW           | EASY                |
+| op-ed     | ~63     | TOKEN LIGHT | LOW           | EASY                |
+| man-ops   | ~25     | TOKEN LIGHT | LOW           | EASY                |
+| man-add   | ~23     | TOKEN LIGHT | LOW           | EASY                |
+
+---
+
+## SHARED APPS DETAILED ANALYSIS
+
+### 1. FUZZPET_APP (Token Heavy / CRITICAL Decoupling Needed)
+
+**Token Count:** ~1,200+ lines (manager + traits + world)
+**Category:** TOKEN HEAVY
+**Coupling Level:** VERY HIGH
+**Decoupling Status:** NEEDS DECOUPLING - Causes zombie flicker & project switching bugs
+
+**Core Files:**
+- `manager/fuzzpet_manager.c` - 434 lines (main game loop)
+- `traits/zombie_ai.c` - 169 lines (AI logic)
+- `traits/move_entity.c` - movement handling
+- `world/plugins/+x/map_render.+x` - rendering
+
+**Why Token Heavy:**
+- Full game manager with input threading, mirror sync, method dispatch
+- Z-level support, clock integration, emoji mode
+- Multiple entity types (fuzzpet, zombie, selector, pets)
+- Response logging, debug output, state persistence
+
+**CRITICAL COUPLING BUGS (Per !.zombie_flicker.txt):**
+
+#### Bug 1: Hardcoded Project Paths in zombie_ai.c
+```c
+// BUG: Prioritizes projects/fuzz-op/ for entity state
+if (asprintf(&path, "%s/projects/fuzz-op/pieces/%s/state.txt", ...) == -1) return -1;
+if (access(path, F_OK) != 0) {
+    // Fallback to world/map_01 for fuzzpet_app
+    asprintf(&path, "%s/pieces/world/map_01/%s/state.txt", ...);
+}
+```
+**Impact:** When running fuzzpet_app, zombie chases "ghost" player from previous fuzz-op session.
+
+#### Bug 2: Shared Global State Files
+- `pieces/world/map_01/` - Shared entity storage
+- `pieces/apps/fuzzpet_app/fuzzpet/` - Shared mirror state
+- `pieces/display/frame_changed.txt` - Global render trigger
+- `pieces/apps/player_app/history.txt` - Global input history
+- `pieces/apps/player_app/manager/state.txt` - Global manager state
+
+**Impact:** Project switching fails because state isn't refreshed. Old project data bleeds into new project.
+
+#### Bug 3: Multi-Pulse Contention (Flicker)
+1. `move_entity.+x` updates state → hits `frame_changed.txt`
+2. Renderer prints OLD frame (parser hasn't updated)
+3. Manager calls `trigger_render()` → `map_render.+x`
+4. `map_render` updates `view.txt` → hits `view_changed.txt`
+5. Parser composes NEW frame → hits `frame_changed.txt`
+6. Renderer prints NEW frame
+
+**Result:** Rapid OLD→NEW frame sequence causes visible flicker.
+
+#### Bug 4: Ghost Frame on Startup
+- `view.txt` is shared across projects
+- `chtpm_parser` reads existing `view.txt` on first render pulse
+- If project context not initialized, stale map from previous session displays
+
+**To Decouple fuzzpet_app (Required Changes):**
+1. **Fix zombie_ai.c:** Remove hardcoded `projects/fuzz-op/` path, use project_root from kvp
+2. **Fix collision detection:** Consistent path resolution for all entity state reads
+3. **Project-aware state:** Read project ID from `pieces/apps/player_app/manager/state.txt` before any operation
+4. **Dedicated view files:** Each project should have its own `view.txt` in `projects/{id}/`
+5. **Fix render pipeline:** Single pulse after state update complete (not before)
+6. **State isolation:** Replace `pieces/world/map_01/` with `projects/{id}/pieces/`
+
+---
+
+### 2. RMMP-EDITOR (Token Medium / Moderate Coupling)
+
+**Token Count:** ~450 lines
+**Category:** TOKEN MEDIUM
+**Coupling Level:** HIGH
+**Decoupling Status:** MODERATE
+
+**Core Files:**
+- `plugins/editor_module.c` - 452 lines (editor logic)
+
+**Dependencies:**
+- `pieces/apps/playrm/ops/+x/` - render_map, move_entity, create_piece, undo_action
+- `pieces/apps/editor/ops/+x/` - place_tile, delete_piece
+- `pieces/apps/player_app/history.txt` - Input polling
+- `pieces/apps/player_app/manager/state.txt` - Global state
+- `pieces/display/` - frame_changed, current_layout, active_gui_index
+
+**Coupling Issues:**
+- Uses shared `pieces/apps/player_app/` for input and state
+- Writes to `pieces/apps/editor/response.txt` and `state.txt`
+- Depends on `pieces/locations/location_kvp` for path resolution
+
+**To Decouple:**
+- Create project-local input history
+- Isolate editor state per-project
+- Use project-local view files
+
+---
+
+### 3. OP-ED (Token Medium / Acceptable Coupling)
+
+**Token Count:** ~600 lines
+**Category:** TOKEN MEDIUM
+**Coupling Level:** MEDIUM
+**Decoupling Status:** ACCEPTABLE
+
+**Core Files:**
+- `plugins/op-ed_module.c` - 592 lines (editor logic)
+
+**Improvements Over rmmp-editor:**
+- CPU-safe patterns (signal handling, fork/exec/waitpid)
+- PDL reader integration (optional method dispatch)
+- Better project isolation (reads project_id from state)
+- `sync_current_map()` preserves state across switches
+
+**Dependencies:**
+- `pieces/apps/playrm/ops/+x/render_map.+x`
+- `pieces/apps/editor/ops/+x/place_tile.+x`
+- `pieces/master_ledger/plugins/+x/piece_manager.+x`
+- `pieces/apps/player_app/manager/state.txt`
+
+**Why Acceptable:**
+- Project-aware (reads `current_project` from state)
+- Uses `projects/{id}/pieces/` for selector state
+- Clean shutdown handling
+- No hardcoded paths to specific projects
+
+---
+
+---
+
+## Detailed Project Profiles
+
+### 1. FUZZ-OP (Token Heavy / Hard to Uncouple)
+
+**Token Count:** ~915 lines across 26 files
+**Category:** TOKEN HEAVY
+**Coupling Level:** HIGH
+**Uncouple Difficulty:** HARD
+
+**Why Token Heavy:**
+- Full game implementation with multiple entity types (fuzzpet, zombie, selector, pets)
+- Complex manager (fuzz-op_manager.c ~500+ lines) with CPU-safe patterns
+- Z-level support (3 map files for different levels)
+- Mirror sync system for UI display
+- Multiple piece types with plugins and state files
+
+**Why Hard to Uncouple:**
+- Heavy dependencies on framework ops:
+  - `pieces/system/pdl/+x/pdl_reader.+x`
+  - `pieces/master_ledger/plugins/+x/piece_manager.+x`
+  - `pieces/apps/playrm/ops/+x/` (render_map, move_entity, scan, collect, place, inventory)
+  - `pieces/apps/fuzzpet_app/traits/+x/` (zombie_ai, fuzzpet_action)
+- Requires global state: `pieces/locations/location_kvp`, `pieces/display/`
+- Manager uses focus throttling tied to `pieces/display/current_layout.txt`
+- Piece state persistence via `pieces/master_ledger/`
+
+**To Uncouple (Would Require):**
+- Stubbing or reimplementing 10+ external ops
+- Creating mock global state files
+- Rewriting manager to remove framework dependencies
+- Implementing own render system
+
+**Best Use Case:** Reference implementation for CPU safety patterns, full game template
+
+---
+
+### 2. MAN-PAL (Token Medium / Moderate to Uncouple)
+
+**Token Count:** ~197 lines across 7 files
+**Category:** TOKEN MEDIUM
+**Coupling Level:** MEDIUM-HIGH
+**Uncouple Difficulty:** MODERATE
+
+**Why Token Medium:**
+- Assembly-style scripts (game_loop.asm, move.asm) with custom VM opcodes
+- Clock daemon integration for 60 FPS polling
+- More complex than skeleton projects but less than full games
+
+**Why Moderate to Uncouple:**
+- Depends on clock daemon: `pieces/system/clock_daemon/plugins/+x/clock_daemon.+x`
+- Uses shared ops: `pieces/apps/playrm/ops/+x/move_entity.+x`
+- Scripts use system calls (read_layout, read_history, hit_frame, sleep, exec)
+- Custom VM opcode system requires interpreter
+
+**To Uncouple (Would Require):**
+- Implementing or stubbing the clock daemon
+- Reimplementing VM opcode interpreter
+- Creating mock system call handlers
+
+**Best Use Case:** PAL brain demo, clock daemon integration example
+
+---
+
+### 3. DEMO_1 (Token Light / Moderate to Uncouple)
+
+**Token Count:** ~134 lines across 12 files
+**Category:** TOKEN LIGHT
+**Coupling Level:** MEDIUM
+**Uncouple Difficulty:** MODERATE
+
+**Why Token Light:**
+- Simple NPC and chest interaction demo
+- No manager module
+- Basic piece definitions
+
+**Why Moderate to Uncouple:**
+- Assembly scripts reference external handlers:
+  - `scripts/chest_open.asm`
+  - `scripts/npc_greeting.asm`
+- PDL files reference standard ops (move, interact, select, talk, open)
+- Requires script interpreter for .asm files
+
+**To Uncouple (Would Require):**
+- Implementing script interpreter or converting to direct ops
+- Stubbing piece operation handlers
+
+**Best Use Case:** Quick interaction demo, NPC/chest template
+
+---
+
+### 4. TEMPLATE (Token Light / Easy to Uncouple)
+
+**Token Count:** ~67 lines across 8 files
+**Category:** TOKEN LIGHT
+**Coupling Level:** LOW
+**Uncouple Difficulty:** EASY
+
+**Why Token Light:**
+- Minimal structure: selector piece only
+- 5 map files for different layouts
+- No scripts, no manager
+
+**Why Easy to Uncouple:**
+- No external dependencies in code
+- No custom scripts or ops
+- Only requires basic piece state rendering
+
+**To Uncouple (Would Require):**
+- Basic piece state reader
+- Simple map renderer
+
+**Best Use Case:** Starting point for new projects, minimal template
+
+---
+
+### 5. OP-ED (Token Light / Easy to Uncouple)
+
+**Token Count:** ~63 lines across 7 files
+**Category:** TOKEN LIGHT
+**Coupling Level:** LOW
+**Uncouple Difficulty:** EASY
+
+**Why Token Light:**
+- Skeleton demo project
+- Only selector and player_5_5 pieces
+- No manager module in project (uses shared app)
+
+**Why Easy to Uncouple:**
+- Minimal piece definitions
+- References standard player ops but doesn't require them
+- No custom scripts
+
+**Note:** The actual editor logic lives in `pieces/apps/op-ed/` (shared app), not this project directory. This project is just the data/state container.
+
+**To Uncouple (Would Require):**
+- Basic piece state handling
+- Simple map rendering
+
+**Best Use Case:** Editor project container, player interaction demo
+
+---
+
+### 6. MAN-OPS (Token Light / Easy to Uncouple)
+
+**Token Count:** ~25 lines across 3 files
+**Category:** TOKEN LIGHT
+**Coupling Level:** LOW
+**Uncouple Difficulty:** EASY
+
+**Why Token Light:**
+- Minimal manager skeleton
+- Only selector piece
+- Single map file
+
+**Why Easy to Uncouple:**
+- No external dependencies
+- No scripts
+- No manager implementation in project
+
+**Best Use Case:** Manager ops testing, minimal project structure
+
+---
+
+### 7. MAN-ADD (Token Light / Easy to Uncouple)
+
+**Token Count:** ~23 lines across 3 files
+**Category:** TOKEN LIGHT
+**Coupling Level:** LOW
+**Uncouple Difficulty:** EASY
+
+**Why Token Light:**
+- Minimal manager skeleton
+- Only selector piece
+- Single map file
+
+**Why Easy to Uncouple:**
+- No external dependencies
+- No scripts
+- No manager implementation in project
+
+**Best Use Case:** Manager add testing, minimal project structure
+
+---
+
+## Framework Dependency Map
+
+### Core System Dependencies (Used by Heavy Projects)
+
+```
+pieces/system/
+├── pdl/+x/pdl_reader.+x          ← fuzz-op
+├── clock_daemon/                 ← man-pal
+└── kvp_db/                       ← (global state)
+
+pieces/master_ledger/
+└── plugins/+x/piece_manager.+x   ← fuzz-op
+
+pieces/apps/playrm/ops/+x/
+├── move_entity.+x                ← fuzz-op, man-pal
+├── render_map.+x                 ← fuzz-op
+├── scan_op.+x                    ← fuzz-op
+├── collect_op.+x                 ← fuzz-op
+├── place_op.+x                   ← fuzz-op
+└── inventory_op.+x               ← fuzz-op
+
+pieces/apps/fuzzpet_app/traits/+x/
+├── zombie_ai.+x                  ← fuzz-op
+└── fuzzpet_action.+x             ← fuzz-op
+
+pieces/display/
+├── frame_changed.txt             ← fuzz-op (render trigger)
+└── current_layout.txt            ← fuzz-op (focus detection)
+```
+
+### Dependency Severity
+
+| Dependency Type | Projects Affected | Replacement Difficulty |
+|-----------------|-------------------|------------------------|
+| pdl_reader      | fuzz-op           | MEDIUM (parser logic)  |
+| piece_manager   | fuzz-op           | MEDIUM (state CRUD)    |
+| playrm ops      | fuzz-op, man-pal  | LOW-MEDIUM (simple ops)|
+| fuzzpet traits  | fuzz-op           | MEDIUM (AI logic)      |
+| clock_daemon    | man-pal           | MEDIUM (timing system) |
+| display signals | fuzz-op           | LOW (file watchers)    |
+
+---
+
+## Recommendations
+
+### For Token-Constrained AI Contexts
+
+**Use These Projects:**
+1. **template** - Clean slate, no dependencies
+2. **op-ed** - Editor project container
+3. **man-add / man-ops** - Minimal manager skeletons
+
+**Avoid:**
+- **fuzz-op** - Will consume 60%+ of typical context windows
+- **man-pal** - Script interpreter complexity
+- **fuzzpet_app (SHARED)** - ~1,200+ lines with heavy coupling
+
+### For Quick Prototyping
+
+**Start With:** template or op-ed
+- Add pieces as needed
+- Import ops incrementally
+- Easy to understand structure
+
+### For Full Feature Reference
+
+**Use:** fuzz-op
+- CPU-safe manager patterns
+- Complete game loop
+- Z-level implementation
+- Mirror sync system
+
+### For Uncoupling into Isolated Workspace
+
+**Easiest:** template, op-ed, man-add, man-ops
+- Copy project directory
+- Add minimal renderer
+- Works standalone
+
+**Moderate Effort:** demo_1, man-pal
+- Need script interpreter
+- Some op stubbing required
+
+**Hard:** fuzz-op
+- Requires significant stubbing
+- Consider extracting patterns instead of full uncoupling
+- Better to use as reference than standalone
+
+**CRITICAL - Decouple First:** fuzzpet_app
+- Has hardcoded project paths causing zombie AI bugs
+- Shared global state causes project switching failures
+- Multi-pulse render causes flicker
+- **Fix zombie_ai.c first** before any other work
+
+---
+
+## Decoupling Priority List
+
+| Priority | Component      | Issue                              | Effort  |
+|----------|----------------|------------------------------------|---------|
+| P0       | zombie_ai.c    | Hardcoded fuzz-op paths            | LOW     |
+| P0       | fuzzpet_app    | Shared pieces/world/map_01/        | MEDIUM  |
+| P1       | fuzzpet_app    | Multi-pulse render (flicker)       | MEDIUM  |
+| P1       | fuzzpet_app    | Project-unaware state reads        | LOW     |
+| P2       | rmmp-editor    | Shared player_app state            | LOW     |
+| P2       | fuzzpet_app    | Ghost frame on startup             | LOW     |
+| P3       | All apps       | Global frame_changed.txt           | MEDIUM  |
+
+---
+
+## Token Optimization Tips
+
+1. **Reference by Name:** Instead of including full fuzz-op context, reference `projects/fuzz-op/manager/fuzz-op_manager.c` for CPU-safe patterns
+
+2. **Use Templates:** Start from `template/` and add only needed pieces
+
+3. **Modular Ops:** Import individual ops from `pieces/apps/playrm/ops/` instead of entire framework
+
+4. **PDL Optional:** Remember PDL integration is optional (per architecture docs). Hardcoded ops work fine for simple projects.
+
+5. **Shared Apps:** The real logic lives in `pieces/apps/` - projects are data containers. Reference shared apps when needed.
+
+---
+
+*Last Updated: 2026-03-17*
+*Analysis Based On: 7 projects + 3 shared apps, ~3,100+ total lines*
+
+## Key Findings
+
+**fuzzpet_app is the source of zombie flicker bugs:**
+1. `zombie_ai.c` has hardcoded `projects/fuzz-op/` paths - zombie chases ghost players
+2. Shared `pieces/world/map_01/` causes state bleed between projects
+3. Multi-pulse render pipeline causes screen flicker
+4. Project switching fails due to non-project-aware state resolution
+
+**Fix zombie_ai.c first** - it's the highest priority (P0) and lowest effort fix.

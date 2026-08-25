@@ -1,0 +1,213 @@
+# TPM Compliance Note: Method Dispatch Pattern
+**Date:** 2026-03-22
+**Status:** CRITICAL COMPLIANCE REQUIREMENT
+**Priority:** High (Architecture-Wide)
+
+---
+
+## The Violation (What NOT to Do)
+
+**WRONG - Hardcoded Key Checks:**
+```c
+// ❌ TPM VIOLATION in user_module.c
+if (auth_screen == 1) {
+    if (key == '2') { /* username */ }
+    if (key == '3') { /* password */ }
+    if (key == '4') { /* confirm */ }
+    if (key == '5') { /* back */ }  // HARDCODED!
+}
+```
+
+**Why This Violates TPM:**
+1. **Couples module to PDL method order** - If you reorder methods in PDL, module breaks
+2. **Duplicates method definition** - Method is defined in PDL AND in module key checks
+3. **Not auditable** - Can't tell from PDL alone what keys do what
+4. **Fragile** - Adding/removing methods requires editing module code
+
+---
+
+## The Correct TPM Pattern
+
+### 1. PDL Defines Methods (Single Source of Truth)
+
+**pieces/apps/user/pieces/user_login/piece.pdl:**
+```
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | user_login
+METHOD       | username          | void
+METHOD       | password          | void
+METHOD       | confirm           | void
+METHOD       | back              | void
+```
+
+### 2. Parser Generates Buttons from PDL
+
+**load_dynamic_methods()** converts PDL methods to:
+```xml
+<button label="username" onClick="KEY:2" /><br/>
+<button label="password" onClick="KEY:3" /><br/>
+<button label="confirm" onClick="KEY:4" /><br/>
+<button label="back" onClick="KEY:5" /><br/>
+```
+
+Key numbers are assigned sequentially starting at 2.
+
+### 3. Module Dispatches by Method Name, Not Key Number
+
+**CORRECT - Method-Based Dispatch:**
+```c
+// ✅ TPM COMPLIANT
+// Module reads active_target_id to know which piece is active
+// Then dispatches based on method name, not key number
+
+static void dispatch_method(const char* method_name) {
+    const char* active_id = get_var("active_target_id");
+    
+    if (strcmp(active_id, "user_login") == 0) {
+        if (strcmp(method_name, "username") == 0) {
+            input_mode = 1;
+            cli_buffer[0] = '\0';
+        }
+        else if (strcmp(method_name, "password") == 0) {
+            input_mode = 2;
+            cli_buffer[0] = '\0';
+        }
+        else if (strcmp(method_name, "confirm") == 0) {
+            // confirm login
+        }
+        else if (strcmp(method_name, "back") == 0) {
+            auth_screen = 0;
+        }
+    }
+    else if (strcmp(active_id, "user_signup") == 0) {
+        // similar dispatch for signup methods
+    }
+}
+```
+
+### 4. Even Better: Use PDL Method Value
+
+If PDL has `METHOD | back | go_home`, the module can read the VALUE and dispatch:
+
+```c
+// PDL: METHOD | back | go_home
+// Module reads method VALUE from PDL, not just key number
+```
+
+---
+
+## The Proper Implementation Flow
+
+```
+1. User presses Enter on focused button
+2. Parser sends onClick="KEY:3" (for example)
+3. inject_raw_key(3) writes to history
+4. Module reads key from history
+5. Module looks up WHICH method corresponds to key 3 for current active_target_id
+6. Module dispatches to that method's handler
+```
+
+**Key Insight:** The module needs a **method lookup table** per piece, not hardcoded key checks.
+
+---
+
+## Required Refactoring
+
+### Files to Fix:
+
+1. **pieces/apps/user/plugins/user_module.c**
+   - Remove `if (key == '2')`, `if (key == '3')`, etc.
+   - Add method dispatch table per active_target_id
+   - Map key numbers to method names dynamically
+
+2. **pieces/apps/user/pieces/*.pdl**
+   - Keep METHOD definitions (these are correct)
+   - Method order determines key number (this is OK)
+
+3. **pieces/chtpm/plugins/chtpm_parser.c**
+   - `load_dynamic_methods()` is correct - generates buttons from PDL
+   - Could optionally store method_name→key mapping for module to read
+
+---
+
+## The Ultimate TPM-Compliant Pattern
+
+**Module reads method from state, not key number:**
+
+```c
+// After user presses button, parser writes to state:
+// last_method=username
+// last_method_key=2
+
+// Module reads:
+const char* method = get_var("last_method");
+if (strcmp(method, "username") == 0) { ... }
+```
+
+**Or better - module has method table:**
+
+```c
+typedef struct {
+    int key;
+    const char* name;
+    void (*handler)(void);
+} MethodEntry;
+
+static MethodEntry user_login_methods[] = {
+    {2, "username", handle_username},
+    {3, "password", handle_password},
+    {4, "confirm", handle_confirm},
+    {5, "back", handle_back},
+    {0, NULL, NULL}  // sentinel
+};
+
+static void dispatch_key(int key) {
+    const char* active_id = get_var("active_target_id");
+    MethodEntry* methods = get_methods_for_piece(active_id);
+    
+    for (int i = 0; methods[i].name; i++) {
+        if (methods[i].key == key) {
+            methods[i].handler();
+            return;
+        }
+    }
+}
+```
+
+---
+
+## Compliance Checklist
+
+When reviewing TPM compliance for method dispatch:
+
+- [ ] Module does NOT have `if (key == 'N')` hardcoded checks
+- [ ] Module dispatches by method NAME, not key number
+- [ ] PDL is the single source of truth for methods
+- [ ] Adding/removing methods only requires PDL changes
+- [ ] Method handlers are modular (can be moved/changed without affecting dispatch)
+
+---
+
+## Related Violations to Audit
+
+Check these patterns in existing code:
+
+1. **Hardcoded key checks in any module:**
+   ```c
+   if (key == '2') { ... }  // ❌ VIOLATION
+   ```
+
+2. **Hardcoded method order assumptions:**
+   ```c
+   // Assuming "back" is always KEY:5
+   if (key == '5') go_back();  // ❌ VIOLATION
+   ```
+
+3. **Missing method dispatch layer:**
+   - Module directly handles keys without method lookup
+   - No separation between "which key" and "which method"
+
+---
+
+**End of TPM Compliance Note**

@@ -1,0 +1,184 @@
+# WRAITH-ALPHA PROBLEMS AND SOLUTIONS
+Date: 2026-06-06
+
+Purpose:
+Quick reconnect note for the current Wraith Alpha desktop issues and their fixes.
+
+Current live baseline:
+- `Terminal` launch, `-` minimize, and `x` close are working again after the rollback.
+- toolbar restore is still the active unresolved bug.
+- several older problems below describe earlier phases and are retained for historical context.
+
+Problem 1: collapse glyph was not reliably visible
+- Symptom: the terminal chrome rendered, but the `-` control did not always show up.
+- Root cause: collapse state was being pushed through the generic GUI merge path, which was too easy to corrupt or partially overwrite.
+- Solution: store collapse state in a dedicated desktop UI state file:
+  - `projects/wraith-alpha/session/desktop_ui_state.txt`
+- Result: the parser loads a deterministic source for:
+  - `desktop_window_1_collapsed`
+  - `fold_terminal`
+  - `desktop_window_1_body_visible`
+  - `desktop_window_1_collapse_glyph`
+
+Problem 2: launcher index `5` existed in nav, but was not drawn as a visible target
+- Symptom: `Manager Index: 5` was visible, but the launcher line itself still looked like plain text.
+- Root cause: the launcher was rendered as text instead of as an interactive indexed button.
+- Solution: render the launcher as a compact button with `onClick="SET_ACTIVE:5"`.
+- Result: the launcher now participates in the visible numbered nav model and should display as an indexed control.
+
+Problem 3: chrome semantics were miscommunicated
+- Symptom: the second and third titlebar controls were being described with the wrong lifecycle semantics.
+- Correct contract:
+  - `-` collapses the body
+  - `o` toggles fullscreen/half-screen
+  - `x` quits the current process/window
+- Result: the blueprints and live frame should now use the same control meaning.
+
+Problem 4: collapse state was being overwritten on reload
+- Symptom: `-` appeared to do nothing even after pressing it.
+- Root cause: `load_vars()` loaded `desktop_ui_state.txt` before the later project `gui_state.txt` pass, so the collapse state got overwritten back to the generic values.
+- Solution: load `desktop_ui_state.txt` last so it wins over generic GUI state during frame composition.
+- Result: collapse/fullscreen state should survive the next render loop and actually change the visible frame.
+
+Problem 5: collapse state was not wired to the body rows
+- Symptom: the titlebar glyph changed, but the window body stayed visible.
+- Root cause: the layout still used `desktop_window_1_open` for body rows instead of `desktop_window_1_body_visible`.
+- Solution: keep the title chrome on `desktop_window_1_open` and bind the body region to `desktop_window_1_body_visible`.
+- Result: `-` collapses only the body while leaving the window chrome visible.
+
+Problem 6: desktop chrome actions were too dependent on generic command routing
+- Symptom: selecting `-`, `o`, or `x` showed the right index, but the persisted desktop UI state did not reliably change.
+- Root cause: the actions were only going through the generic `send_command()` path, which made the chrome controls too indirect for a hardening phase.
+- Solution: handle `SET_ACTIVE:2`, `SET_ACTIVE:3`, and `SET_ACTIVE:4` directly in the key/input path and persist the desktop UI state immediately.
+- Result: the chrome controls now have a direct desktop-action path plus persistent state writes, which should survive the next restart and render cycle.
+
+Problem 7: the live frame still did not change after selecting the chrome controls
+- Symptom: the titlebar selection moved to `3` or `4`, Enter was pressed, but `projects/wraith-alpha/session/desktop_ui_state.txt` stayed at `open=true`, `collapsed=false`, `mode=half`.
+- Root cause candidates:
+  - the running parser process was still stale and not using the rebuilt binary
+  - or the selected chrome control is not reaching `handle_desktop_action_command()` even though the label is visible
+  - or the focus state shown in the parser frame is not the same thing as the manager's `active_gui_index` when digits are used
+- Current proof:
+  - manager log shows the keypresses were received
+  - the desktop UI state file did not change after those Enter presses
+  - the frame still rendered the open half-screen terminal
+- Next check:
+  - confirm `parser.out` contains `DESKTOP ACTION:` lines after pressing `-`, `o`, or `x`
+  - if those lines are missing, the live parser is still stale or the action handler is not being reached
+  - if those lines exist but the frame stays open, a later reload path is overwriting the desktop UI state
+
+Problem 8: the captured frame may still be from a pre-patch runtime session
+- Symptom: the user is still seeing the old open frame even after the direct desktop-action patch was added.
+- Evidence:
+  - the local `parser.out` file is still empty
+  - `desktop_ui_state.txt` is still unchanged
+  - the visible frame keeps showing the open terminal and `Window Mode: half`
+- Interpretation:
+  - the session the user is watching was launched before the latest direct-action patch was rebuilt
+  - until that live Wraith Alpha session is restarted, the new `handle_desktop_action_command()` logging and persistence path cannot be proven
+- Next step:
+  - restart the live Wraith Alpha session after the latest rebuild
+  - then press `-`, `o`, and `x` again and check `parser.out` for `DESKTOP ACTION:` entries
+  - only after that can we tell whether the handler is correct or whether there is still a dispatch bug
+
+Problem 9: manager and parser were not staying on the same indexed target
+- Symptom: the parser showed the chrome focus moving to `3` or `4`, but `Manager Index` stayed at `1` until arrow navigation happened.
+- Root cause: the manager only treated arrow keys as index changes, so digit jumps were visible in the parser but not persisted into `active_gui_index`.
+- Solution: treat digit keys as real index jumps in the manager too, and raise the active range to include the visible launcher target.
+- Result: the manager state should now match the visible keyboard-selected target before Enter is processed, which keeps the parser from snapping back to `1`.
+
+Problem 10: parser reload order still let stale manager index win in-frame
+- Symptom: `projects/wraith-alpha/session/alpha_state.txt` showed `active_gui_index=3`, but the rendered frame still printed `Manager Index: 1`.
+- Root cause: Wraith Alpha loads multiple state sources during `load_vars()`, so a later generic reload can still leave the parser rendering from stale focus state even when the manager file is correct.
+- Solution: re-sync Wraith Alpha manager state after each parser reload by re-reading `projects/wraith-alpha/session/alpha_state.txt` before focus initialization and frame composition.
+- Result: the rendered desktop index should now follow the live manager state instead of drifting back to an older value.
+
+Problem 11: launch semantics risked being conflated with boot convenience
+- Symptom: Wraith Alpha needs to boot empty, but it can be tempting to treat the first launched project as a special case.
+- Root cause: default-open policy, project identity, and launch transport were being discussed too loosely in the same bucket.
+- Solution: keep them distinct:
+  - project identity stays in TPMOS project metadata
+  - boot convenience decides what opens first, but the empty desktop is the default
+  - launcher/context-window UI emits standard project-launch commands
+- Result: future work can launch `Terminal` or other projects without inventing a second app system or altering how projects are defined.
+
+Problem 12: terminal instances need proc numbering and exact restore targets
+- Symptom: `Terminal` is meant to behave like a real desktop app surface, which means each click should open a new instance and minimized instances need to restore exactly.
+- Root cause: the docs still risked describing `Terminal` as a single surface instead of a proc-numbered instance model.
+- Solution: define `Terminal` as a launchable project that creates a new proc-numbered instance on each click, and use the lower toolbar as the shared restore strip for exact numbered instances.
+- Result: the user can open many terminals, minimize any of them, and restore the exact instance from the toolbar without reusing a generic bucket or losing identity.
+
+Problem 13: debug text was visually competing with the desktop surface
+- Symptom: keyboard proof and parser debug output appeared on the desktop area in a way that made the desktop look less like a stable UI and more like an overlay of implementation notes.
+- Root cause: debug and proof output were not clearly separated from the desktop chrome in the presentation contract.
+- Solution: keep the debug/proof block below the desktop frame while hardening, then silence or reduce it later once the desktop is stable.
+- Result: the desktop stays readable as the product surface, and the debug block remains available without being mistaken for the desktop itself.
+
+Problem 14: the dock needed to belong to the desktop instead of living as a separate launcher band
+- Symptom: the lower taskbar / launch strip felt like a separate UI zone, which made the desktop read more like a window with an add-on launcher than a full desktop shell.
+- Root cause: the presentation model still separated the dock from the desktop surface.
+- Solution: adopt Option A, where the dock is part of the desktop surface and sits below the window chrome/body but above the debug block.
+- Result: the desktop reads as one coherent surface with chrome, dock, and debug in distinct layers.
+
+Problem 15: terminal needed to become a real project instead of a hardcoded auto-open surface
+- Symptom: `Terminal` was still being treated as the default thing that appears, which blurred the line between project identity and boot convenience.
+- Root cause: the runtime contract still allowed auto-open terminal behavior to masquerade as the terminal project model.
+- Solution: define `Terminal` as a normal project with its own layout, launched through the standard project path; the desktop shell boots empty first.
+- Result: the desktop shell can boot first, then launch `Terminal` like any other project instance, which keeps the model consistent and future-proof.
+
+Problem 16: fullscreen behavior needed to be distinct from half-screen resizing
+- Symptom: fullscreen and half-screen could be confused if the desktop chrome remained visible or if later mouse resizing was treated as part of fullscreen.
+- Root cause: the presentation contract had not been stated clearly enough.
+- Solution: fullscreen hides the desktop surface and shows only the active window; half-screen remains the normal resizable state, and mouse-based manual resizing is a later addition for half-screen only.
+- Result: fullscreen is a clean single-window presentation mode, while half-screen remains the place where future mouse resizing can happen.
+
+Problem 17: dock launch did not open the first terminal instance
+- Symptom: the dock showed `Terminal` and Enter reached the manager, but the live frame still reported `Open Windows: 0`.
+- Root cause: the manager was not yet mirroring launch state into `desktop_ui_state.txt`, and the parser loads that file last.
+- Solution: make the manager own the first launch mutation, set `desktop_window_count=1` on dock Enter, and write the same state into `desktop_ui_state.txt` so the parser cannot revert the desktop to closed.
+- Result: the first dock launch should now produce a visible `Terminal #1` window instead of only changing the focus cursor.
+
+Problem 18: booting Wraith Alpha should not restore the prior terminal count
+- Symptom: the desktop could still come up with `Terminal #1` already open even though the boot contract says the desktop starts empty.
+- Root cause: startup state sync was still reading the persisted desktop UI file and letting the old window count survive into the first frame.
+- Solution: force the manager's initial state write to zero on startup, then allow only the dock Enter path to set the count to one.
+- Result: boot is empty again, and the first dock launch is the only thing that opens the terminal.
+
+Problem 19: launcher identity was being confused with minimized-instance identity
+- Symptom: the dock launcher label showed `Terminal #1`, which made the first launch look like a minimized restore target instead of a plain launcher entry.
+- Root cause: the dock was using the focused window title instead of the launcher title.
+- Solution: render the dock launcher as plain `Terminal`, and reserve proc-numbered labels for minimized restore targets only.
+- Result: the launcher stays unnumbered, while minimized instances can use `Terminal #N` in the toolbar.
+
+Problem 20: recovery notes need to preserve launcher-vs-restore identity
+- Symptom: after a disconnect, the visible label rules could be reconstructed incorrectly from memory.
+- Root cause: the recovery docs were not explicit enough that the launcher entry and minimized restore targets use different label rules.
+- Solution: state directly in the recovery docs that the launcher is plain `Terminal`, while only minimized restore targets show `Terminal #N`.
+- Result: future restarts should preserve the same UI meaning without reintroducing numbered launcher labels.
+
+Verification steps:
+1. Restart the live Wraith Alpha process.
+2. Confirm the collapse control shows `-` when open.
+3. Press `-` and verify the terminal body collapses while the chrome remains.
+4. Press `o` and verify the window mode flips between half and full.
+5. Press `x` and verify the window/process quits.
+6. Confirm the launcher now draws as an indexed target with `5.` visible.
+7. Keep keyboard debug visible until these behaviors are hardened.
+
+Recovery path:
+- If the session disconnects again, open:
+  - `er/wraith-alpha-restart-handoff.txt`
+  - `er/wraith-alpha-problems-solutions.txt`
+- Then inspect:
+  - `1.TPMOS_c_+rmmp.0102.0018/projects/wraith-alpha/layouts/alpha-shell.chtpm`
+  - `1.TPMOS_c_+rmmp.0102.0018/projects/wraith-alpha/ops/wraith_parser_alpha.c`
+### Registry Transition
+- `Terminal #1` is the bootstrap restore proof.
+- The final toolbar must be dynamic and registry-driven.
+- Hardcoded `Terminal`-specific restore slots are acceptable only until the registry is in place.
+- Layout-level button hardcoding should be replaced by manager-projected toolbar markup.
+
+### Flexible Schema Risk
+- The first registry schema may be wrong in detail.
+- Keep the registry projection stable and change only the manager-side source of truth if a field needs correction.
+- Avoid moving registry semantics into the parser just to compensate for a mistaken assumption.

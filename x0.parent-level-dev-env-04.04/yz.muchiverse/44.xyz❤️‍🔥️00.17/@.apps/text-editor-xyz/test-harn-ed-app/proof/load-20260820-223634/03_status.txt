@@ -1,0 +1,4 @@
+last_cmd=NEW
+result=ok
+message=buffer cleared
+at=1787290599

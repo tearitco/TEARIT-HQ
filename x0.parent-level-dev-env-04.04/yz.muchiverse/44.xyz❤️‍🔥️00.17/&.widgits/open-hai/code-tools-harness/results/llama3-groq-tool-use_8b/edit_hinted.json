@@ -1,0 +1,11 @@
+{
+"model": "llama3-groq-tool-use:8b",
+"scenario": "edit_hinted",
+"turns": [
+  {"role":"user","content":"Use the edit_file tool to fix /tmp/code-tools-harness-work/sample.c: search for the exact block 'for (int i = 1; i < N; i++)' and replace it with 'for (int i = 1; i <= N; i++)'. Then reply with the corrected printf line."},
+  {"role":"assistant","tool_call":{"name":"edit_file","arguments":{"path":"/tmp/code-tools-harness-work/sample.c","search":"for (int i = 1; i \u003c N; i++)","replace":"for (int i = 1; i \u003c= N; i++)"}}},
+  {"role":"tool","content":"[edit_file] replaced one occurrence. New contents:\n#include <stdio.h>\n\n/* sample fixture for the native-tools probe (code read/edit/exec).\n * Deliberate off-by-one bug: loop stops at N-1, so it prints 10\n * instead of 15. The edit scenario must change `i < N` to `i <= N`. */\n#define N 5\n\nint main(void) {\n    int sum = 0;\n    for (int i = 1; i <= N; i++) sum += i; /* bug: should be i <= N */\n    printf(\"sum(1..%d) = %d\\n\", N, sum);\n    return 0;\n}\n"},
+  {"role":"assistant","content":"The corrected printf line is `printf(\"sum(1..%d) = %d\\n\", N, sum);`."}
+],
+"verdict": {"emitted_native_tool_calls":true,"edit_compiles_and_prints_15":true}
+}

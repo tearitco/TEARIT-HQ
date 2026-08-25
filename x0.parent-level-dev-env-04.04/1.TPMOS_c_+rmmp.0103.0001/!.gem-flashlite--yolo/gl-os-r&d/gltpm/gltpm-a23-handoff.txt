@@ -1,0 +1,59 @@
+# GLOS Update Prep: Integration & Workflow (A24)
+
+## I. Current State: Xelector & Camera Parity
+
+*   **Sovereign Source of Truth:** The Xelector's position (`pos_x`, `pos_y`, `pos_z`) and the Camera's state (`cam_pos`, `cam_rot`, `camera_mode`, `is_map_control`) are now definitively managed by their respective Piece state files (`projects/<project_id>/pieces/xlector/state.txt` and `projects/<project_id>/pieces/camera/state.txt`).
+*   **Manager's Role:** The Manager (`fuzz-op-gl_manager.c`) correctly reads user input, calls relevant Ops (`move_entity.+x`), updates the Piece state files, and then persists the current state of the world and camera to `projects/<project_id>/session/state.txt`.
+*   **Host's Role (`gl_desktop.c`):** The Host's rendering pipeline now correctly reads from the `session/state.txt` (via the parser), synchronizes Xelector and Camera states to its internal `win->xelector_pos` and `win->camera_mode` etc., and renders the visual representation (blinking wireframe Xelector, 3D camera view).
+*   **Visual Confirmation:**
+    *   The Xelector wireframe is now visible and accurately tracks the `xlector` Piece's movements.
+    *   Camera movement via WASD/QE/ZX and mode switching via 1-4 keys are functional and reflected in the HUD.
+*   **Input Routing:** Arrow keys in Map Control mode are correctly injected into `session/history.txt` and processed by the manager to call `move_entity.+x` on the `xlector`.
+
+## II. Next Phase: Dynamic Traits Menu & Entity Interaction
+
+### A. Goal: Interactive Entities & Contextual Menus
+
+The immediate objective is to enable seamless interaction with entities in the scene. When the Xelector targets an entity and the user presses 'Enter', the system should:
+1.  **Select Entity:** Update `active_target_id` to the targeted entity.
+2.  **Persist State:** Save this `active_target_id` to `session/state.txt`.
+3.  **Trigger Host Refresh:** Ensure `frame_changed.txt` is pulsed.
+4.  **Dynamic Menu Population:** The GLTPM parser should then dynamically query the selected entity's PDL for its methods and render them as selectable buttons (e.g., "Scan," "Collect," "Feed").
+
+### B. Implementation Steps
+
+1.  **Manager: Entity Selection & State Update (`fuzz-op-gl_manager.c`)**
+    *   **Input Detection:** Modify `gltpm_input_thread` to detect the ENTER key press (`13` or `10`) when `is_map_control` is active.
+    *   **Target Identification:** If an entity overlaps with the Xelector's current position (this logic may need to be triggered by the Manager or an Op), set `active_target_id` to that entity's ID.
+    *   **State Persistence:** Ensure `save_manager_state()` correctly writes the `active_target_id` to `session/state.txt`.
+    *   **Pulse:** `save_manager_state()` already calls `trigger_render()`.
+
+2.  **Host: Menu Redering & State Sync (`gl_desktop.c`)**
+    *   **Active Target Read:** `refresh_gltpm_window()` should read `active_target_id` from `session/state.txt`.
+    *   **Dynamic Menu Generation:** The `draw_window()` function (or a dedicated `draw_gltpm_menu()`) should:
+        *   If `active_target_id` is NOT "xlector", query the entity's PDL using `pdl_reader.+x <active_target_id> list_methods`.
+        *   Dynamically create `<button>` elements for each method, populating the `label` and `onClick` attributes (e.g., `onClick="OP <project_id>::<method_name>"`).
+        *   This dynamic button generation will then feed into the standard CHTPM menu rendering logic.
+    *   **Selection Indication:** Ensure the `[>]` indicator correctly highlights the currently selected menu item.
+
+3.  **Zombie AI Activation:**
+    *   **Piece Initialization:** Verify `projects/fuzz-op-gl/pieces/zombie_01/state.txt` and `piece.pdl` exist with basic properties (position, type="zombie", behavior="aggressive").
+    *   **Manager Logic:** Implement logic in `gltpm_input_thread` or a separate AI thread to periodically check nearby entities and potentially trigger `move_entity.+x` Ops for zombies.
+
+## III. Documentation Updates
+
+*   **`xelector-fix-proof.txt`:** Updated to reflect the successful fix for Xelector visibility and movement, confirming its state is read from `xlector/state.txt` and synced.
+*   **`glos-update-prep.txt`:** Updated to include the concept of "Interactive Entities" and the manager's role in setting `active_target_id`.
+*   **`handoff-parity-a24.txt`:** Updated to mention the successful fix for Xelector movement and the next steps regarding entity interaction and dynamic menus.
+*   **New Document:** `gltpm-entity-interaction-a24.md` (to be created) will detail the Xelector-entity overlap detection, `active_target_id` mechanism, and PDL method dispatch for interaction.
+
+## IV. Next Steps: Iteration & Validation
+
+1.  **Implement Xelector-Entity Overlap Detection:** In the Manager, add logic to check if Xelector position overlaps with any entity's position.
+2.  **Implement Dynamic Menu Population:** Update the Host parser to query PDL based on `active_target_id` and render buttons.
+3.  **Test Entity Interaction:** Verify that selecting an entity and pressing a method key correctly calls the Op.
+4.  **Zombie Behavior:** Test if zombies are spawned and exhibit basic AI (e.g., movement).
+5.  **Final Compilation & Test:** Run `./button.sh compile` and perform end-to-end tests.
+
+---
+*Documented by Gemini CLI - 2026-04-24*

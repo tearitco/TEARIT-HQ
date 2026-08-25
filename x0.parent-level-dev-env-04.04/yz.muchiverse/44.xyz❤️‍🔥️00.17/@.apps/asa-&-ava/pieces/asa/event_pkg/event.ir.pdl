@@ -1,0 +1,8 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | asa
+STATE        | source               | blocks
+NODE         | id=1 type=show_text    | text=asa: hey, I'm here if you want to talk
+NODE         | id=2 type=on_interact  | text=call ops/+x/chat_relay.+x asa
+NODE         | id=3 type=comment      | text=real deskpal event package (not door_guard demo)
+NODE         | id=4 type=ret          | text=

@@ -1,0 +1,250 @@
+XYZOS-STANDARDS+1 — additions established 2026-07-28 session
+========================================================================
+App + widget architecture, launch profiles, file-mediated IPC between
+separate programs, gl_window as primary surface, and the widget cmd bus.
+
+========================================================================
+35. UI SURFACE PRIORITY — GL IS PRIMARY, ASCII IS SECONDARY
+========================================================================
+Full rationale: &.widgits/file-menu/widget+plan.txt §0, PITFALL 49.
+This section is the canonical, standing rule.
+
+35.1 GL WINDOW IS THE PRIMARY USER SURFACE
+  - The user sees GL windows, not terminals
+  - ASCII/terminal renderer is secondary (dev, harness, headless, debug)
+  - For widgets: ascii_renderer=0 at launch; stdout→/dev/null
+
+35.2 WIDGETS ARE GL WINDOWS, NOT SECOND TERMINALS
+  - A widget is a SEPARATE PROGRAM with its own session directory
+  - TTY→/dev/null (no keyboard_input, no ascii renderer, no terminal)
+  - The ONLY UI is the GL window (via gl_mirror or equivalent)
+  - Input comes through gl_mirror's GLUT keyboard callbacks →
+    interact_relay.txt (to be implemented in gl_mirror, not present v1)
+  - For v1: widget still writes chrome to view.txt; ASCII is the
+    display surface until GL forwarding is wired
+
+35.3 LAUNCH PROFILES (every program going forward)
+  PROFILE app  (default `./button.sh run`)
+    gl_window=1          # primary
+    ascii_renderer=0|1   # secondary; often 1 in dev, optional product
+    keyboard_input       # foreground (enters raw mode)
+    registers in xyzfs runtime
+
+  PROFILE widget  (`RUN_PROFILE=widget ./button.sh run-widget`)
+    gl_window=1          # REQUIRED — this IS the UI
+    ascii_renderer=0     # renderer not started; stdout→/dev/null
+    keyboard_input=0     # no TTY takeover
+    gl_mirror=1          # GL window for display + GLUT keyboard fwd
+    chtpm_parser_pal=1   # layout parsing (needed for PAL loop)
+    prisc+x=1            # persistent PAL loop (fm_menu_input, compose)
+    still: session files, current_frame.txt, rgb_frame.raw,
+           frame_history (for harness testing)
+    registers in xyzfs runtime as widget, not app
+
+  PROFILE widget is set via env var:
+    export RUN_PROFILE=widget
+    ./button.sh run-widget <focus>
+
+  Or passed inline:
+    RUN_PROFILE=widget ./button.sh run-widget <focus>
+
+========================================================================
+36. APPS ARCHITECTURE — SEPARATE PROGRAMS, NOT MERGED SESSIONS
+========================================================================
+36.1 THE CORRECT PATTERN
+  An app is ONE LAUNCHER that starts MULTIPLE independent programs:
+  - Each program has its OWN session directory with its OWN
+    system/, ops/, pal/, pieces/ hierarchy
+  - Each program runs its OWN persistent processes (prisc+x,
+    chtpm_parser_pal, gl_mirror, renderer, keyboard_input as
+    applicable per profile)
+  - Programs communicate via FILE-MEDIATED IPC (widget cmd bus),
+    not shared TTY or shared session directory
+
+  INCORRECT (prevents widget-as-separate-gl-window):
+    Merge editor and widget ops into one session
+    Share one TTY between both
+    Handoff control via TTY
+
+  CORRECT (pattern implemented 2026-07-28):
+    App button.sh creates workdir
+    Editor starts in its own session dir (foreground, owns TTY)
+    Widget starts in its own session dir (background, TTY→/dev/null)
+    App tracks both PIDs and kills both on exit
+
+36.2 THE HANDOFF PATTERN (for replacing the launcher with an app)
+  START_BUTTON same-TTY handoff remains valid:
+    START_BUTTON → handoff_launch.txt → exec target button.sh → loop
+  This is for REPLACING the loader with a full app (same TTY)
+  It is NOT the model for widgets-alongside-apps
+
+36.3 APP LAUNCHER RESPONSIBILITIES
+  1. Create shared workdir (/tmp/.<app-name>-<timestamp>-$$)
+  2. Create separate session dirs for each component
+  3. Start widget programs in widget profile (background, /dev/null)
+  4. Start foreground program (editor, game, etc.) — owns TTY
+  5. Publish widget_bridge.txt so widgets can discover inbox paths
+  6. Track all PIDs
+  7. On exit: kill widgets, kill foreground, clean up session dirs
+
+========================================================================
+37. FILE-MEDIATED IPC (WIDGET CMD BUS) — HOW SEPARATE PROGRAMS TALK
+========================================================================
+37.1 THE PATTERN (kin to #.drag-drop-test file-mediated exchange)
+  Widget writes commands to editor's inbox:
+    <editor_session>/pieces/system/widget_cmds/inbox.txt
+  Editor reads commands from inbox on idle tick
+  Editor writes status to same directory:
+    <editor_session>/pieces/system/widget_cmds/status.txt
+
+37.2 DISCOVERY (how widget finds the inbox)
+  Editor session publishes a bridge info file:
+    <editor_session>/pieces/system/widget_bridge.txt
+  Widget's fm_set_focus op reads the bridge file to learn the
+  inbox/buffer/state paths for the focused editor session
+
+  Bridge file fields:
+    SESSION_ROOT=<absolute path of editor session dir>
+    INBOX_PATH=<path relative to SESSION_ROOT>/pieces/system/widget_cmds/inbox.txt
+    STATUS_PATH=<path relative to SESSION_ROOT>/pieces/system/widget_cmds/status.txt
+    BUFFER_PATH=<path relative to SESSION_ROOT>/pieces/system/editor_buffer.txt
+    STATE_PATH=<path relative to SESSION_ROOT>/pieces/system/editor_state.txt
+
+37.3 COMMAND PROTOCOL (single line per command)
+  NEW               — create new empty document
+  SAVE              — save current buffer to current file_path
+  SAVE_AS:<path>    — save current buffer to new path
+  LOAD:<path>       — load file into buffer
+  PING              — health check (editor responds in status.txt)
+
+37.4 FORMAT
+  Commands are plain text, one per line, in inbox.txt
+  Widget appends (echo "CMD" >> inbox.txt)
+  Editor reads and truncates (or tracks position) on each idle tick
+
+========================================================================
+38. SESSION DIRECTORY LIFECYCLE
+========================================================================
+38.1 NAMING CONVENTION
+  Template: /tmp/.<program-name>-session-<timestamp>-<pid>
+  Example:  /tmp/.file-menu-session-1722182400-12345
+  Each program's button.sh creates its own
+
+38.2 STRUCTURE
+  <session-dir>/
+    system/    → symlink to ../system  (or copied binaries)
+    ops/       → symlink to ../ops
+    pal/       → symlink to ../pal
+    pieces/
+      system/
+      display/
+      keyboard/
+      apps/player_app/
+      chtpm/   → symlink to ../pieces/chtpm
+    projects/<project-id>/
+      pieces/<piece-id>/
+
+38.3 CLEANUP
+  Session dir is rm -rf'd on exit (trap EXIT INT TERM)
+  Each program cleans up its own session
+  App launcher may additionally clean up child session dirs
+
+========================================================================
+39. PAL LOOP PATTERNS
+========================================================================
+39.1 FILE-MENU WIDGET LOOP (persistent, from main_loop_chtpm.pal)
+  loop:
+    fm_compose_frame        # always compose initial frame
+    hit_frame               # signal renderer
+    read_position           # track frame_changed.txt position
+  check_key:
+    read_history interact_relay.txt  # read any GLUT key events
+    if key:
+      fm_menu_input <key>   # process key
+      fm_compose_frame      # recompose
+      hit_frame
+    else:
+      sleep 30ms
+    j loop
+
+39.2 IDLE TICK (key=0) RESPONSIBILITIES
+  When menu_input is called with key=0 (idle):
+    - Check if any external state changed (e.g., editor buffer changed)
+    - Optionally recompose if state changed (not always)
+    - Must NOT unconditionally bump_screen/hit_frame on idle
+      (see PITFALL 48 — causes frame spam at ~33 fps)
+  When menu_input is called with a real key (>0):
+    - Process the key, update state
+    - Signal recompose + render
+
+========================================================================
+40. GL MIRROR ARCHITECTURE
+========================================================================
+40.1 gl_mirror.c (from 014.wsr-pal/system/)
+  - Reads rgb_frame.raw and displays as GL texture
+  - Reads dimensions from rgb_frame.receipt.txt (frame_w, frame_h)
+  - Receives keyboard events via GLUT callbacks (glutKeyboardFunc)
+  - Should forward key events to interact_relay.txt of the session
+    (NOT yet implemented as of 2026-07-28)
+
+40.2 FORWARDING KEYBOARD FROM GL TO INTERACT_RELAY
+  Not yet built. When implemented:
+    gl_mirror GLUT callback writes the key code to:
+      pieces/apps/player_app/interact_relay.txt
+    The persistent PAL loop (fm_menu_input) reads from this file
+  This replaces keyboard_input for widget profiles
+
+40.3 PENDING: gl_mirror keyboard forwarding
+  The missing piece for widget GL input (v2 feature).
+  For v1: widget has no GL input; chrome is displayed via ASCII
+  renderer or written to view.txt for harness testing.
+  When gl_mirror grows GLUT→interact_relay forwarding, the widget
+  profile becomes fully keyboard-interactive in GL.
+
+========================================================================
+41. FILE-MENU WIDGET — OP REFERENCE
+========================================================================
+41.1 fm_set_focus (call once before widget launch)
+  Usage: fm_set_focus <focus_dir> <editor_session_root>
+  Effect: reads editor_session_root's widget_bridge.txt and writes
+  the discovery info into focus_dir's bridge_info.txt
+  Called by: app launcher, or pre-set via button.sh focus action
+
+41.2 fm_enqueue_cmd (write a command to the inbox)
+  Usage: fm_enqueue_cmd <widget_focus_dir> <command_string>
+  Effect: appends command to inbox.txt in the focused editor's
+  session directory
+  Called by: fm_menu_input when user selects an action
+
+41.3 fm_compose_frame (render the file-menu chrome)
+  Usage: fm_compose_frame
+  Effect: reads fm_state.txt (mode + path_buffer), composes the
+  FILE MENU ASCII chrome, writes to pieces/apps/player_app/view.txt
+  Called by: PAL loop after state change or idle
+
+41.4 fm_menu_input (process a key in the file-menu context)
+  Usage: fm_menu_input <keycode>
+  Effect: updates fm_state.txt mode/path_buffer, dispatches
+  fm_enqueue_cmd for SAVE/LOAD/etc., or toggles mode
+  Called by: PAL loop after reading a key from interact_relay.txt
+
+========================================================================
+42. APP STORE / TOKEN ECONOMY VISION (established 2026-07-28)
+========================================================================
+42.1 LOCAL TOKENS v1
+  - "Voucher" tokens for demo/purchase flow
+  - Central user wallet in xyzfs user directory
+  - Stray ops (per-project faucets) still work for backward compat
+  - Purchases logged to a local purchase ledger
+
+42.2 BLOCKCHAIN CONES (future)
+  - Bridge to real blockchain token for production
+  - Architecture supports dual system (local voucher OR blockchain)
+  - Purchases must write to blockchain TX/ledger to be legit
+
+42.3 APP STORE v1 SCOPE
+  - Show user balance
+  - Catalog of installable apps
+  - Purchase flow with local tokens
+  - Log purchases to ledger
+  - Appears as section in START_BUTTON

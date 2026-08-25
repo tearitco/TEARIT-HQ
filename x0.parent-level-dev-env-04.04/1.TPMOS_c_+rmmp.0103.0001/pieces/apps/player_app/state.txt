@@ -1,0 +1,4 @@
+active_target_id=loader
+project_id=slop-ed-dev/games/default-0000
+app_title=PIECEMARK PLAYER
+emoji_mode=OFF

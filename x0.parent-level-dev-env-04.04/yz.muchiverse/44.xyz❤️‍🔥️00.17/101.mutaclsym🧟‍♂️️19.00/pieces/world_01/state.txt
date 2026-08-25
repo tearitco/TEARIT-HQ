@@ -1,0 +1,10 @@
+name=World 01
+type=world
+seed=12345
+tick=0
+active=1
+game_time_epoch_sec=1767268800
+game_time_epoch_ms=1767268800000
+autotick_enabled=0
+autotick_speed=min
+autotick_last_real_ms=0

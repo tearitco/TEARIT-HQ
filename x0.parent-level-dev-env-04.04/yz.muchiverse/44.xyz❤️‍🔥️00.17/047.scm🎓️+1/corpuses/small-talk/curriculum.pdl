@@ -1,0 +1,6 @@
+corpus: small-talk
+reply_shape: single
+temperature: 0.9
+features: greet,question,neg,repeat,topic_roleplay
+intents: casual
+fallback: "I'm not sure what to say about that yet."

@@ -1,0 +1,10 @@
+name=Selene Research
+ticker=SLR
+type=corporation
+cash=5000.00
+stock_price=10.00
+industry=RESEARCH
+on_map=1
+pos_x=18
+pos_y=7
+pos_z=0

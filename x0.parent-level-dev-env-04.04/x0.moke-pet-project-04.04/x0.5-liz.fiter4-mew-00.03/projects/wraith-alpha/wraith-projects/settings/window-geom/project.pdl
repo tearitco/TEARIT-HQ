@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | wraith-alpha/wraith-projects/settings/window-geom
+META         | version            | 1.0
+META         | author             | TPMOS
+META         | manager            | projects/wraith-alpha/wraith-projects/settings/window-geom/manager/+x/window-geom_manager.+x
+META         | entry_layout       | projects/wraith-alpha/wraith-projects/settings/window-geom/layouts/window-geom.chtpm
+
+STATE        | title              | WINDOW GEOMETRY
+STATE        | status             | ready
+
+RESPONSE     | default            | Window Geometry viewer ready.

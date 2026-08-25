@@ -1,0 +1,193 @@
+================================================================================
+ngn-vs-rm — our engine suite (ngn: mutaclsym/rpg-xyz/rtp-xyz/rpg-maker-
+clone/event-editor, collectively) vs RPG Maker MZ's real, existing
+capabilities and flows. Every "ngn" claim below was verified by reading
+real files this session (see 1-rtp-rpg-xyz-scaffold.md's own citations)
+or by direct testing (see xyzai-vs-iqabod.md's sibling doc for the same
+discipline applied to topic 2). RPG Maker MZ facts are the actual
+product's well-documented, publicly known feature set - stated plainly
+where ngn doesn't yet have an equivalent, not glossed over.
+================================================================================
+
+========================================================================
+0. ONE-TABLE SUMMARY
+========================================================================
+Legend: ✅ real, working, verified this session | 🟡 partial/exists in
+one variant but not unified | ❌ does not exist yet in ngn
+
+| Capability                          | RPG Maker MZ          | ngn      |
+|--------------------------------------|------------------------|----------|
+| Tile-based map editor                | ✅ multi-layer, autotile| 🟡 (201.rpg-maker-clone: single-layer 20x15; mutaclsym: 40x16 terrain+furniture, no autotile) |
+| Event system (switches/variables/    | ✅ core feature, deep   | 🟡 (real+working in 201.rpg-maker-clone only; ❌ in mutaclsym itself; PLANNED for rtp/rpg-xyz, see M3) |
+|   conditional branches/loops)        |                        |          |
+| Database editor (Actors/Classes/     | ✅ full GUI             | ❌ (plain pipe-delimited .txt registries, hand-edited, no GUI) |
+|   Skills/Items/Enemies/Troops/etc.)  |                        |          |
+| Turn-based battle system w/ formulas | ✅ core feature         | ❌ (mutaclsym has real-time bump-combat only - monster steps adjacent, deals fixed damage, no menu/formula/turn-order) |
+| Common Events (reusable event chains)| ✅                      | ❌       |
+| Plugin system (JS, marketplace)      | ✅ huge ecosystem       | ❌ (PAL is a bytecode VM for THIS house's own ops, not an end-user scripting/plugin layer) |
+| Character generator                  | ✅ built in             | ❌       |
+| RTP (free bundled asset package)     | ✅                      | 🟡 (emoji-based art via the real, generic on-demand FreeType pipeline - see PITFALL 57 - is a genuinely different but real asset story, not a gap) |
+| Playtest button in editor            | ✅ one click            | 🟡 (button.sh run - a real equivalent, less polished) |
+| Save/load                            | ✅                      | ✅ (mutaclsym: real, harness-provable; 201.rpg-maker-clone: real, own format) |
+| Deployment (browser/NW.js/mobile)    | ✅                      | ❌       |
+| Multi-window/multi-tool live editing | ❌ (single app window)  | ✅ (real, this is ngn's own genuine differentiator - see §4) |
+| Filesystem-as-database (every state  | ❌ (proprietary project | ✅ (every op reads/writes plain text/pipe-delimited files - |
+|   is a plain, greppable file)        | file format)           |   this is the house's own core design law) |
+| Automated, real-key-injection test   | ❌ (no such concept -   | ✅ (real, house-wide discipline - §36.6, PITFALL 58 as the |
+|   harness discipline                 | you click-test by hand)|   concrete cautionary tale) |
+
+========================================================================
+1. THE BIGGEST REAL GAP: the event system
+========================================================================
+RPG Maker MZ's actual defining feature - the thing every "RPG Maker
+clone" project is really trying to clone - is the EVENT EDITOR: place an
+event on a tile, give it a trigger (Action Button / Player Touch / Event
+Touch / Autorun / Parallel), then build a command LIST for what happens
+(Show Text, Conditional Branch on a Switch/Variable, Control Switches,
+Change Party Member, Transfer Player, Play SE, Change Self Switch, Loop,
+Break Loop, Plugin Command, etc. - MZ ships ~100 command types).
+Switches and variables are GLOBAL, persistent, and every event's
+Conditional Branch can test them - this is the actual mechanism behind
+every "talk to the guard, he gives you a key, the key opens the door"
+quest structure.
+
+VERIFIED THIS SESSION: mutaclsym itself has ZERO of this. No
+switches.pdl, no events/ directory, no conditional-branch concept
+anywhere in its own ops/ (confirmed via direct grep - "battle",
+"turn_order", "initiative" all return zero hits; "switches"/"event" as
+RPG-Maker-style concepts don't exist in mutaclsym's own pieces/ tree
+either). What mutaclsym DOES have is real: movement, camera, inventory,
+crafting, combat-by-collision, save/load, procedural map generation - a
+real survival-roguelike core, genuinely working, genuinely save/
+loadable, genuinely playable - just not an event-scripted RPG engine.
+
+The REAL, working event system in this house lives in a SEPARATE,
+disconnected codebase: 201.rpg-maker-clone (own freeglut binary, own
+map/switch/event file formats, own play interpreter with
+CMD_SHOW_TEXT/CMD_SET_SWITCH/CMD_IF_SWITCH/CMD_TRANSFER/etc. - see that
+project's own ARCHITECTURE.md, already summarized in
+1-rtp-rpg-xyz-scaffold.md). It is real and it works, but its own
+ARCHITECTURE.md says plainly: "Not the CHTPM -> rgb -> gl_mirror path.
+This is the pure GLUT product path" - i.e. it deliberately bypasses this
+house's own core rendering/session architecture. rtp-xyz/rpg-xyz's own
+plan (rpg-xyz-plan.md, M3) intends to port this event/switch capability
+INTO the real CHTPM-native pipeline (rtp_event_editor.c as a
+slop-ed-dev-style daemon module) - as of this session, that porting has
+not happened; the plan exists, the code doesn't yet.
+
+BOTTOM LINE: ngn currently has "a real survival engine with no events"
+(mutaclsym) and "a real event engine with no house-native integration"
+(201.rpg-maker-clone) as two separate things. RPG Maker MZ has both,
+unified, in one app. Closing this gap IS rtp-xyz/rpg-xyz's whole reason
+to exist - see 1-rtp-rpg-xyz-scaffold.md §5c for the concrete build
+plan (port 201.rpg-maker-clone's own command IR + switches concept into
+a real CHTPM `<module>` daemon).
+
+========================================================================
+2. THE SECOND REAL GAP: no database editor, no battle system
+========================================================================
+RPG Maker MZ's Database window is a full GUI over Actors, Classes,
+Skills, Items, Weapons, Armors, Enemies, Troops, States, Animations,
+Tilesets, Common Events, and System settings - a non-programmer designs
+an entire RPG's numeric backbone (stat growth curves, skill formulas,
+elemental resistances, damage formulas as literal JS expressions typed
+into a text field) without touching a text editor.
+
+ngn's equivalent is 4 plain pipe-delimited .txt files per project
+(terrain_types.txt, furniture_types.txt, items.txt, monster_types.txt -
+~110 lines total in mutaclsym's own current set, confirmed this
+session), hand-edited directly, no GUI, no formula system, no
+stat-growth-curve concept at all. This is a real, deliberate trade-off
+in this house's own design philosophy (files-are-the-API, greppable,
+diffable, no proprietary binary project format) - not a bug - but it
+means "designing numeric game balance" in ngn today means editing text
+files by hand, where RPG Maker MZ gives you sliders, curve graphs, and a
+formula sandbox.
+
+Combat: RPG Maker MZ's battle system is a dedicated mode - party vs.
+troop, turn order by agility, a menu (Attack/Skill/Item/Guard), a real
+damage FORMULA per skill (e.g. `a.atk * 4 - b.def * 2`), elemental/state
+effects, victory screen with EXP/gold/drops. mutaclsym's own "combat"
+(verified this session, tick_monsters.c) is real-time bump damage: a
+monster steps onto/adjacent-to the hero's tile, hero_take_damage()
+subtracts a fixed amount from hp, no menu, no formula, no turn order, no
+victory screen. This is closer to a roguelike's contact damage than an
+RPG battle system. Nothing in rtp-xyz/rpg-xyz's own plan doc currently
+proposes building a real turn-based battle system - worth naming
+explicitly as a scoped-out, not-yet-planned gap if "clone RPG Maker MZ"
+is a real goal, versus "clone RPG Maker MZ's MAP/EVENT layer specifically,
+keep survival-roguelike combat" as a deliberately different design
+choice.
+
+========================================================================
+3. WHAT NGN GENUINELY DOES BETTER (not just different, actually better)
+========================================================================
+This section exists so the comparison isn't read as "ngn loses." Two
+real, structural advantages, verified this session, that RPG Maker MZ
+simply does not have:
+
+MULTI-WINDOW LIVE EDITING (§4 of 1-rtp-rpg-xyz-scaffold.md's own "what
+dragging GL windows means" section): RPG Maker MZ is one single-window
+application - you cannot have the map editor and the event editor open
+as two independent, simultaneously-live windows exchanging content in
+real time. ngn's rpg-xyz variant is explicitly designed this way
+(separate widget processes - event-editor, tile-picker, map-picker -
+each its own real GL window, handing content to each other via the real,
+working #.desktop/ tray mechanism, confirmed live this session via
+event_editor_open.request/.log). This is a genuinely different, more
+flexible editing model, not just a worse imitation of RPG Maker's single
+window.
+
+AUTOMATED, PROVABLE CORRECTNESS: RPG Maker MZ has no concept of an
+automated test harness - "does my event actually fire" is answered by a
+human clicking Play and watching. ngn's own §36.6 discipline (real key
+injection, real running processes, assert the rendered frame AND the
+files on disk, PITFALL 58 as the concrete incident that justifies this)
+means a NEW ngn feature can be PROVEN correct without a human's eyes on
+a screen - text-editor-xyz's own test-harn-ed-app is the working
+existence proof. This is a real, structural advantage for an AI-assisted
+or continuously-tested development workflow (see 3-continuous-harness-
+xyzfs.md's own harness design), something RPG Maker MZ was never built
+to support since it assumes a single human designer clicking through a
+GUI.
+
+FILESYSTEM-AS-DATABASE: every piece of ngn's own state - map, hero
+position, inventory, switches (once built), even a chat log with an AI -
+is a plain text file, greppable, diffable, editable by any tool,
+readable by an autonomous agent without a proprietary parser. RPG Maker
+MZ's own project files are JSON but not meant for hand-editing or for a
+non-Node.js process to easily manipulate live. This is directly why
+topic 3's continuous-harness ambition (an agent that plays the game,
+posts on the forum, chats with the AI, all via real key injection and
+real file assertions) is even POSSIBLE in ngn's own architecture in a
+way it fundamentally isn't in RPG Maker MZ's.
+
+========================================================================
+4. CONCRETE, ACTIONABLE GAP-CLOSING LIST (ties back to topic 1's own plan)
+========================================================================
+In priority order, cross-referenced to 1-rtp-rpg-xyz-scaffold.md's own
+sections:
+
+1. Port 201.rpg-maker-clone's real event/switch/command-IR system into
+   the real CHTPM-native pipeline (rtp-xyz's rtp_event_editor.c module,
+   or rpg-xyz's own event-editor widget once its current [~]/[ ] stub
+   status - see 1-rtp-rpg-xyz-scaffold.md §2 - is closed). This closes
+   §1's gap, the single biggest one.
+2. Multi-layer map editing + autotile-equivalent (mutaclsym's own
+   single terrain+furniture layer is a real but limited map model
+   compared to MZ's multi-layer tile stacking) - lower priority than #1,
+   not currently blocking anything else.
+3. A real database GUI is the largest, most speculative gap to close -
+   explicitly NOT recommended as a near-term goal; the text-file
+   registries are a deliberate, working design choice consistent with
+   this house's own laws, and building a GUI database editor is a
+   multi-week project on its own, not a "quickly spin up" task.
+4. A real turn-based battle system, if wanted at all, should be scoped
+   as its OWN decision (does ngn want to be an RPG-Maker-style tactical/
+   turn-based game, or stay a survival-roguelike with event-driven
+   quests layered on top?) rather than assumed as an implicit goal of
+   "compare against RPG Maker MZ."
+
+========================================================================
+END OF ngn-vs-rm
+========================================================================

@@ -1,0 +1,55 @@
+SECTION      | hq_label            | HQ
+SECTION      | hq_menu_1_label     | $.restart
+SECTION      | hq_menu_1_cmd       | sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new
+SECTION      | hq_menu_2_label     | hide/show
+SECTION      | hq_menu_2_cmd       | sh $.crypts/scripts/hide-show-desks.sh
+SECTION      | hq_menu_3_label     | dir
+SECTION      | hq_menu_3_cmd       | xdg-open .
+SECTION      | hq_menu_4_label     | X.quit
+SECTION      | hq_menu_4_cmd       | quit
+SECTION      | hq_menu_5_label     | settings
+SECTION      | hq_menu_5_cmd       | livedesk:open-settings
+SECTION      | hq_menu_6_label     | stats
+SECTION      | hq_menu_6_cmd       | livedesk:open-stats
+SECTION      | hq_menu_7_label     | cancel
+
+# top-left command strip (2do task #4). Defaults match what's written
+# below, so editing here is the only thing needed to change labels or
+# commands - no recompile. Submenu rows: strip_btn_N_menu_M_label / _cmd.
+# A row with a label and an empty command is a real "cancel" (click just
+# dismisses). Commands are run via setsid nohup from house_root (§F-18).
+# strip_x_offset scoots the whole strip right from the left screen edge.
+# strip_y_offset scoots the whole strip down from the top screen edge -
+# defaults to 40 (below GNOME Shell's own native top panel), direct
+# instruction 2026-08-09.
+# strip_user_cmd runs when the user/guest button is clicked (a no-op until
+# wired to a user-switcher - DIRECT INSTRUCTION 2026-08-08).
+SECTION      | strip_x_offset         | 200
+SECTION      | strip_y_offset         | 50
+SECTION      | strip_user_cmd         |
+SECTION      | datetime_lang          | zh
+SECTION      | strip_btn_0_label       | file
+SECTION      | strip_btn_0_menu_0_label | new
+SECTION      | strip_btn_0_menu_0_cmd   | livedesk:new
+SECTION      | strip_btn_0_menu_1_label | save
+SECTION      | strip_btn_0_menu_1_cmd   | livedesk:save
+SECTION      | strip_btn_0_menu_2_label | save-as
+SECTION      | strip_btn_0_menu_2_cmd   | livedesk:save-as
+SECTION      | strip_btn_0_menu_3_label | load
+SECTION      | strip_btn_0_menu_3_cmd   | livedesk:load
+SECTION      | strip_btn_1_label        | desks
+SECTION      | strip_btn_1_cmd          | livedesk:desks
+SECTION      | strip_btn_2_label        | pals
+SECTION      | strip_btn_2_cmd          | livedesk:pals
+SECTION      | strip_btn_3_label        | palettes
+SECTION      | strip_btn_3_menu_0_label | new-palette
+SECTION      | strip_btn_4_label        | edit
+SECTION      | strip_btn_4_menu_0_label | copy
+SECTION      | strip_btn_5_label        | player
+SECTION      | strip_btn_5_menu_0_label | play
+SECTION      | strip_btn_5_menu_1_label | pause
+SECTION      | strip_btn_5_menu_2_label | reset
+SECTION      | strip_btn_6_label        | db
+SECTION      | strip_btn_7_label        | plugins
+SECTION      | strip_btn_8_label        | store
+SECTION      | strip_btn_9_label        | network

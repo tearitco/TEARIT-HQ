@@ -1,0 +1,13 @@
+============================================================
+ MOKE-PET AUTONOMOUS
+============================================================
+ STATUS: RUNNING
+ ACTIVE: liz_gen_5414
+ EPOCH:  507
+ PHASE:  after-train
+ HP:     10
+ HUNGER: 0
+ LIFE:   alive
+ TYPE:   lizard
+ LOG:    System Initialized.
+============================================================

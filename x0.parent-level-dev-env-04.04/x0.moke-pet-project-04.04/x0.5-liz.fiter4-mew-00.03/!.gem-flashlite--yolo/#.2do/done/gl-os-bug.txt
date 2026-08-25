@@ -1,0 +1,409 @@
+GL-OS PROJECT SELECTION CRASH - TECHNICAL INVESTIGATION REPORT
+Date: 2026-05-10
+Scope: GL-OS entire OpenGL host exits/crashes when a GL project is selected.
+
+Status: first source patch applied and gl_desktop.+x rebuilt.
+
+Patch applied on 2026-05-10:
+- pieces/apps/gl_os/plugins/gl_desktop.c
+- Removed the early free(frame_marker) in refresh_gltpm_window(), leaving
+  frame_marker owned by the function-level cleanup at exit.
+- Added DesktopWindow.gltpm_global_marker_size so pieces/display/frame_changed.txt
+  no longer reuses gltpm_frame_marker_size.
+- Initialized gltpm_global_marker_size to -1 in create_gltpm_window().
+- Rebuilt pieces/apps/gl_os/plugins/+x/gl_desktop.+x.
+
+
+1. Symptom
+----------
+
+Observed behavior:
+- Launch GL-OS.
+- Open the GL-OS Project Explorer.
+- Select a GL project such as piececraft-3d, fuzz-op-gl, aow-2d, or another
+  project from pieces/apps/gl_os/gl_os_projects.kvp.
+- The whole GL-OS OpenGL desktop window exits/crashes instead of only failing
+  to open the selected child project window.
+
+Important negative evidence:
+- The failure is not specific to piececraft-3d.
+- Prior process-isolation attempts around GLTPM manager children did not fix it.
+- That points away from a single project manager binary and toward host-side
+  GL-OS project-window refresh/parse logic.
+
+
+2. Previous Attempted Fixes That Did Not Resolve It
+---------------------------------------------------
+
+Earlier attempts recorded in this file:
+- Reordered generic parser view loading so GL-OS session view wins before
+  pieces/apps/player_app/view.txt.
+- Rebuilt chtpm_parser.+x.
+- Isolated GLTPM project manager children in gl_desktop.c with setsid(),
+  /dev/null stdio, closed inherited FDs, and zero-initialized new GLTPM window
+  structs.
+- Rebuilt gl_desktop.+x.
+
+Conclusion from those failures:
+- The crash is probably not caused by stdout/stderr inheritance, stale uninit
+  window struct fields, or the manager child terminating normally.
+- The host dies after selection, so prioritize synchronous code executed inside
+  gl_desktop when a project is selected.
+
+
+3. Launch/Crash Path
+--------------------
+
+The relevant host-side selection path is:
+
+1. pieces/apps/gl_os/plugins/gl_desktop.c:1050 execute_option()
+2. In CTX_DESKTOP_APPS, project choices call create_gltpm_window():
+   - piececraft-3d -> projects/piececraft-3d/layouts/main.gltpm
+   - fuzz-op-gl -> projects/fuzz-op-gl/layouts/main.gltpm
+   - aow-2d -> projects/aow-2d/layouts/main.gltpm
+3. create_gltpm_window() at gl_desktop.c:1260:
+   - increments window_count
+   - memset()s the DesktopWindow
+   - copies project_id and gltpm_layout_path
+   - launch_gltpm_manager(&windows[idx])
+   - refresh_gltpm_window(&windows[idx])
+4. refresh_gltpm_window() at gl_desktop.c:664:
+   - reads project session markers
+   - calls gltpm_load_scene()
+   - syncs buttons/menu from GLTPM scene
+
+This path is executed in the GL host process, not just in the project manager
+child. Any heap error here can terminate the entire OpenGL window.
+
+
+4. Most Likely Root Cause: Double Free in refresh_gltpm_window()
+----------------------------------------------------------------
+
+File:
+- pieces/apps/gl_os/plugins/gl_desktop.c
+
+Function:
+- refresh_gltpm_window()
+
+Relevant current logic:
+- frame_marker is allocated by asprintf() at line 679.
+- If the asprintf succeeds, the function stat()s the marker file.
+- frame_marker is freed inside that block at line 687.
+- The pointer is not set to NULL.
+- At function exit, line 724 runs:
+  if (frame_marker) free(frame_marker);
+
+This is a classic double-free:
+
+    asprintf(&frame_marker, ...)
+    ...
+    free(frame_marker);      // first free
+    ...
+    if (frame_marker) free(frame_marker);  // second free, stale non-null ptr
+
+Why it matches the symptom:
+- Project selection calls create_gltpm_window().
+- create_gltpm_window() immediately calls refresh_gltpm_window().
+- refresh_gltpm_window() allocates frame_marker for
+  projects/<project_id>/session/frame_changed.txt.
+- Existing GL projects already have frame_changed.txt files:
+  - projects/piececraft-3d/session/frame_changed.txt
+  - projects/fuzz-op-gl/session/frame_changed.txt
+  - projects/fuzz-op/session/frame_changed.txt
+  - projects/gltpm-demo/session/frame_changed.txt
+- A libc allocator abort from double-free kills the gl_desktop process, which
+  appears to the user as the whole GL window closing.
+
+Why previous fixes missed it:
+- The bug is in parent/host cleanup, not child manager process isolation.
+- setsid(), /dev/null redirection, and child fd cleanup do not affect parent
+  heap ownership.
+
+Recommended fix:
+- Make ownership single-exit and clear freed pointers, or remove the early free.
+- Minimal patch shape:
+
+    if (asprintf(&frame_marker, "%s/projects/%s/session/frame_changed.txt",
+                 project_root, win->project_id) != -1) {
+        if (stat(frame_marker, &st) == 0) {
+            if (st.st_size != win->gltpm_frame_marker_size) {
+                win->gltpm_frame_marker_size = st.st_size;
+                should_reload = 1;
+            }
+        }
+    }
+    ...
+    if (frame_marker) free(frame_marker);
+
+Alternative safe patch:
+
+    free(frame_marker);
+    frame_marker = NULL;
+
+after the first free.
+
+Better structural fix:
+- Use a cleanup label for refresh_gltpm_window().
+- Every allocated path variable is freed exactly once at the label.
+- Do the same for layout_marker and global_marker for consistency.
+
+Verification prescription:
+- Rebuild gl_desktop.+x.
+- Run under AddressSanitizer if possible:
+  gcc -g -O0 -fsanitize=address -fno-omit-frame-pointer ...
+- Launch GL-OS, select each project in gl_os_projects.kvp.
+- Confirm no allocator abort and no host exit after the first refresh tick.
+
+
+5. Secondary Cause Candidate: Global Project Sync Can Clobber New GLTPM Windows
+-------------------------------------------------------------------------------
+
+File:
+- pieces/apps/gl_os/plugins/gl_desktop.c
+
+Function:
+- sync_with_global_project()
+
+Current behavior:
+- Every gltpm_app refresh calls sync_with_global_project().
+- That function reads:
+  pieces/apps/player_app/manager/state.txt
+- If the file contains project_id=<something>, it overwrites the GLTPM window's
+  own win->project_id and may rewrite win->gltpm_layout_path.
+
+Current observed state:
+- pieces/apps/player_app/manager/state.txt contains:
+  project_id=piececraft-3d
+  active_target_id=xlector
+
+Risk:
+- If the user selects fuzz-op-gl while player_app state still says
+  piececraft-3d, the newly-created fuzz-op-gl GLTPM window can be immediately
+  coerced into piececraft-3d during refresh.
+- If player_app state contains a stale or non-GL project, refresh can search for
+  projects/<stale>/layouts/main.gltpm, fail to find a valid GLTPM layout, or
+  keep a mismatched project_id/layout pair.
+- This is unlikely to be the direct "entire host exits" cause by itself, but it
+  can mask the real crash, reload the wrong assets, and produce nondeterministic
+  project-selection behavior.
+
+Recommended fix:
+- Do not call sync_with_global_project() for explicit GLTPM app windows created
+  from the GL-OS Project Explorer.
+- Add a window flag such as follows_global_project or source_kind.
+- Only project mirrors or explicitly "follow active player_app" windows should
+  sync from pieces/apps/player_app/manager/state.txt.
+
+Minimal patch shape:
+
+    typedef struct {
+        ...
+        int follows_global_project;
+        ...
+    } DesktopWindow;
+
+    // explicit project launch:
+    windows[idx].follows_global_project = 0;
+
+    // mirror/follow window:
+    windows[idx].follows_global_project = 1;
+
+    if (win->follows_global_project) {
+        sync_with_global_project(win);
+    }
+
+Verification prescription:
+- Set player_app state to piececraft-3d.
+- Launch fuzz-op-gl from GL-OS.
+- Confirm the created window remains project_id=fuzz-op-gl and keeps
+  projects/fuzz-op-gl/layouts/main.gltpm after refresh.
+
+
+6. Third Cause Candidate: Marker State Field Reuse Causes Spurious Reloads
+--------------------------------------------------------------------------
+
+File:
+- pieces/apps/gl_os/plugins/gl_desktop.c
+
+Function:
+- refresh_gltpm_window()
+
+Current behavior:
+- win->gltpm_frame_marker_size is used for both:
+  - projects/<id>/session/frame_changed.txt
+  - pieces/display/frame_changed.txt
+- The global marker check comments acknowledge this is a hack.
+
+Risk:
+- The two unrelated files can have different sizes and cause a reload every
+  timer tick.
+- Continuous reload means gltpm_load_scene() repeatedly mallocs/substitutes up
+  to MAX_GLTPM_BUFFER and rereads player_app/view.txt.
+- Even after the double-free is fixed, this can create high CPU, flicker,
+  unstable menu selection, and repeated exposure to parser memory bugs.
+
+Recommended fix:
+- Add a separate field:
+  long global_frame_marker_size;
+- Initialize it to -1 in create_gltpm_window().
+- Use it only for pieces/display/frame_changed.txt.
+
+Verification prescription:
+- Instrument reload count per window.
+- Let GL-OS idle for 30 seconds.
+- Reload count should stay stable unless a project or global frame marker
+  actually changes.
+
+
+7. Fourth Cause Candidate: GLTPM Parser Uses player_app/view.txt for All Projects
+--------------------------------------------------------------------------------
+
+File:
+- pieces/apps/gl_os/plugins/gltpm_parser.c
+
+Function:
+- gltpm_load_scene()
+
+Current behavior:
+- game_map is loaded only from:
+  pieces/apps/player_app/view.txt
+- It does not prefer a project-local view file.
+
+Risk:
+- Selecting a GL project can render stale or unrelated ASCII output from the
+  generic player app.
+- If the parser refactor changed player_app view generation, the GLTPM host may
+  ingest unexpected content as raw canvas rows.
+- This likely causes wrong visuals more than immediate host termination, but it
+  is a real cross-project state leak and should be fixed after the crash.
+
+Recommended resolution order:
+1. projects/<project_id>/manager/view.txt
+2. projects/<project_id>/session/view.txt
+3. pieces/apps/player_app/view.txt as a fallback only
+
+Verification prescription:
+- Put unique sentinel text in each candidate view path.
+- Select each project.
+- Confirm ${game_map} resolves from that project's own path first.
+
+
+8. Fifth Cause Candidate: Parser Refactor Can Relaunch/Kill GL-OS Session Module
+--------------------------------------------------------------------------------
+
+File:
+- pieces/chtpm/plugins/chtpm_parser.c
+
+Relevant functions:
+- handle_launch_command()
+- parse_chtm()
+- launch_module()
+- cleanup_module()
+
+Current behavior:
+- LAUNCH:GL-OS special-cases GL-OS and starts gl_desktop in the background via
+  system("<module_path> &").
+- It also switches current_layout to pieces/apps/gl_os/layouts/desktop.chtpm and
+  calls parse_chtm().
+- desktop.chtpm contains:
+  <module>pieces/apps/gl_os/plugins/+x/gl_os_session.+x</module>
+- parse_chtm() launches gl_os_session through launch_module().
+- launch_module() calls cleanup_module() before launching a new module unless
+  the path equals current_module_path.
+
+Risk:
+- If current_module_pid points at a stale or wrong process, layout changes can
+  terminate a process the user expects to remain alive.
+- The current GL crash-on-project-select is better explained by the double-free
+  in gl_desktop, but parser lifecycle remains a separate fragility from the
+  recent modular refactor.
+
+Recommended containment:
+- Treat GL-OS host and GL-OS session as app-owned persistent processes, not as
+  generic CHTPM layout modules.
+- Do not let generic layout navigation cleanup kill GL-OS host/session unless
+  the user explicitly exits GL-OS.
+- Track app-owned pids separately from current_module_pid.
+
+Verification prescription:
+- Log current_module_pid/current_module_path before every cleanup_module().
+- Launch GL-OS, select projects, return to main, relaunch GL-OS.
+- Confirm cleanup only kills the intended generic module.
+
+
+9. Immediate Fix Order
+----------------------
+
+Priority 0:
+- Fix the double-free in refresh_gltpm_window().
+- Rebuild gl_desktop.+x.
+- Retest selection of every project in gl_os_projects.kvp.
+
+Priority 1:
+- Stop explicit GLTPM windows from syncing to stale player_app project_id.
+- Add follows_global_project or equivalent window-source state.
+
+Priority 2:
+- Split gltpm_frame_marker_size and global_frame_marker_size.
+- Confirm idle windows do not reload every tick.
+
+Priority 3:
+- Make gltpm_load_scene() load project-local view data before generic
+  player_app/view.txt.
+
+Priority 4:
+- Revisit chtpm_parser GL-OS process ownership so generic module cleanup cannot
+  accidentally terminate GL-OS-owned processes.
+
+
+10. Concrete Regression Tests
+-----------------------------
+
+Crash smoke:
+- Start GL-OS.
+- Project Explorer -> piececraft-3d.
+- Project Explorer -> fuzz-op-gl.
+- Project Explorer -> aow-2d.
+- Project Explorer -> op-ed-gl if present.
+- Expected: host process stays alive after each selection.
+
+Stale global state test:
+- Write project_id=piececraft-3d to pieces/apps/player_app/manager/state.txt.
+- Select fuzz-op-gl.
+- Expected after fix: the new window still has project_id=fuzz-op-gl.
+
+Marker reload test:
+- Record reload count in refresh_gltpm_window().
+- Do not touch project/session marker files.
+- Expected after fix: no continuous reload caused only by comparing global and
+  project marker sizes against the same field.
+
+View-source test:
+- Put distinguishable map/view text in:
+  projects/<id>/manager/view.txt
+  projects/<id>/session/view.txt
+  pieces/apps/player_app/view.txt
+- Expected after fix: project-local view wins.
+
+Parser lifecycle test:
+- Add debug logging to cleanup_module().
+- Launch GL-OS and select projects.
+- Expected: project selection inside GL-OS does not trigger chtpm_parser to
+  clean up gl_desktop or gl_os_session.
+
+
+11. Summary
+-----------
+
+The best current explanation for "entire GL window closes when a project is
+selected" is a host-side double-free in gl_desktop.c:refresh_gltpm_window().
+The code frees frame_marker inside the allocation block and then frees it again
+at function exit. Project selection immediately invokes this function, and the
+affected projects already have session/frame_changed.txt marker files, making
+the crash path highly plausible and reproducible.
+
+After that is fixed, investigate stale player_app global project sync, marker
+state reuse, project-local view resolution, and generic chtpm_parser process
+ownership. Those secondary issues may not be the immediate process killer, but
+they can keep GL-OS project selection unstable and make future crash reports
+look unrelated.

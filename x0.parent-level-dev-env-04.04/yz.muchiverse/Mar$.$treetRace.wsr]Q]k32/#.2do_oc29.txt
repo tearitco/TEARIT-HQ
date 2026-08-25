@@ -1,0 +1,37 @@
+Mars StreetRace Dynamic Stock Price Implementation Plan:
+
+Step 1: Add weights.txt during setup to set static 'biases' for each corporation
+- Modify setup_corporations.c to create a weights.txt file for each corporation during setup
+- The weights.txt file will contain risk appetite (1-100) for each corporation, including banks
+
+Step 2: Create analysis_loop.c module
+- This module will analyze each company and calculate stock price based on:
+  - Market cap (calculated from current stock price and shares outstanding)  
+  - Leverage (debt to equity ratio)
+  - Book value (equity/net worth)
+  - Bank bias (from weights.txt)
+- Calculate new stock price based on these fundamentals
+
+Step 3: Update day_loop.c to call analysis_loop.c
+- Add system() call or fork to execute analysis_loop.c daily
+- This will recalculate stock prices for all companies
+
+Step 4: Update the schedule to include analysis_loop execution
+- Modify presets/schedule.txt to ensure analysis_loop runs daily
+
+Step 5: Update corporation sheet format to show new stock prices
+- Preserve the existing format while using dynamic prices
+
+Implementation sequence:
+1. Modify setup_corporations.c to add weights.txt creation
+2. Create analysis_loop.c module
+3. Update day_loop.c 
+4. Test functionality
+
+5. addition . i want to make a module that runs and reads from data/news.txt 
+where i want the company names and prices recorded plus there percent change from previous day
+and outputs this information to {ticker in user gui: FINANCIAL NEWS HEADLINES [<- scroll data 2 left here]}
+we will have the data be read from data/news.txt ; but the point is 
+we should probably keep a file in corporate directory called price_history
+that records each price change , and percentage up or down, when calculating new price
+or whever u think appropriate

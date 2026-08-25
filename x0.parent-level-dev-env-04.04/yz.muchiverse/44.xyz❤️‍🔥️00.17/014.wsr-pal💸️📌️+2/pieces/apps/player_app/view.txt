@@ -1,0 +1,20 @@
++============================================================+
+|  wsr_main_menu   Turn:0   Active: corp_AFL                 |
++============================================================+
+|----------------------------------                          |
+|Your Wallet:                                                |
+|Cash..........           1613                               |
+|----------------------------------                          |
+|Active Corp Balance Sheet:                                  |
+|Cash (CD's)..            5000                               |
+|Stock Price...           115.04                             |
+|Owned By......           (independent)                      |
+|----------------------------------------------              |
+|FINANCIAL NEWS [CMZ: $0.10 (-99.38%)]                       |
+|                                                            |
+|WORLD STATUS                                                |
+|Population: 10000          Temperature: 15C                 |
+|                                                            |
+|  > Not yet available in this build.                        |
+|  (type digit(s), Enter to select, ctrl+c to quit)          |
++============================================================+

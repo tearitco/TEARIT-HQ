@@ -1,0 +1,169 @@
+TPMOS Textbook Update Notes
+Date: 2026-06-24
+
+Goal: revise the consolidated textbook so it matches the current TPMOS direction, current project boundaries, and the actual engineering standards we are using now.
+
+## 1. High-Priority Corrections
+
+### 1.1 Fuzzpets are not primarily a security system
+Current textbook language leans too hard toward security and control framing.
+
+Update the record to say:
+- fuzz-op / fuzzpets are primarily for rapid iterative development, simulation, and control-loop experimentation
+- security can be a future business use case, but it is not the founding purpose
+- the pet stack is useful because it is easy to mutate, observe, and rerun
+
+### 1.2 op-ed is not finished
+The book should not imply that op-ed is a finished editor.
+
+It should say:
+- the core editor loop works
+- the event/block editing path is still evolving
+- PAL scripting integration is a major dependency
+- the editor is a platform, not a final product
+
+### 1.3 PAL should be described as reusable infrastructure
+PAL is not just a chapter topic.
+
+It should be framed as:
+- the shared scripting layer for ops and projects
+- the glue for reusable behavior
+- something that should expand across apps, not stay trapped in one editor
+
+### 1.4 Wraith needs clearer positioning
+Wraith should be presented as the future GUI direction and visual shell path.
+
+The textbook should avoid implying it is legacy or a side branch.
+
+## 2. Specific Chapter Revisions
+
+### Chapter 6: PAL
+Add / revise language so it emphasizes:
+- PAL as a reusable orchestration layer
+- PAL calling ops rather than duplicating C logic
+- stable interfaces over hardcoded project assumptions
+
+Also add stronger guidance around:
+- path resolution
+- command dispatch
+- error handling for failed ops
+
+### Chapter 7: fuzz-op & op-ed
+Rewrite the framing so it separates the two cleanly:
+- fuzz-op = simulation / pets / fast iteration / control loops
+- op-ed = sovereign editing / map and piece editing / script binding
+
+Also revise examples so they do not blur the editor and the simulation in a way that sounds like one app is merely a skin of the other.
+
+### AI / LLM Chapters
+Update local LLM language to reflect current intent:
+- narrow interface first
+- bridge or op boundary first
+- decision loop integration later
+- training / distillation is a separate infra problem
+
+Do not oversell current LLM maturity.
+
+### Network / P2P Chapters
+Keep the network roadmap, but frame it as infrastructure:
+- mining
+- trading
+- chat
+- remote coordination
+
+This should be described as a reusable layer, not as a feature already complete everywhere.
+
+## 3. Missing Or Weakly Covered Topics
+
+### 3.1 Wraith / visual shell
+Add a chapter or appendix that covers:
+- ASCII shell to visual shell mirroring
+- manager-projected frame state
+- renderer ownership of visual output
+- future GUI patterns
+- the current GL track, including `chtmgl-alpha` as the latest GL-facing project family
+
+### 3.2 Generated setup / bootstrap tooling
+Add a section for simple shell-based bootstrap flows:
+- generated pet tank setup
+- minimal project launch
+- KVP / config generation
+- clean teardown and relaunch
+
+### 3.3 Editor architecture and op-based reuse
+Add guidance on:
+- when to create an op instead of repeating logic
+- when to keep logic in the manager
+- why reusable logic belongs in ops even if the immediate feature feels small
+
+### 3.4 Project/session/path handling
+The textbook should document the current rule that:
+- path resolution is a first-class concern
+- project/session state must be resolved consistently
+- hardcoded project defaults are an anti-pattern unless they are explicit fallbacks
+
+### 3.5 XO-pets controller/editor plug-in model
+Add a concrete future-facing section that explains:
+- controllers can be dropped in as ops or small op bundles
+- editors are just higher-level controllers with authoring affordances
+- PAL should be the preferred way to script repeated bot behavior
+- the engine should expose a small reusable contract instead of embedding controller logic in C
+
+This section should include at least one complete hypothetical PAL loop and one example op contract so the architecture is obvious to readers.
+
+## 4. Updates To Specific Claims
+
+Replace or soften claims that are too absolute:
+- “the editor is complete”
+- “fuzzpets are security tooling”
+- “one parser or one manager handles everything”
+- “local LLM integration is already solved”
+- “network features are already generic across all apps”
+
+Preferred tone:
+- current
+- evolving
+- reusable
+- narrow boundary first
+
+## 5. Suggested New Appendices Or Notes
+
+### Appendix A: TPMOS Current Priority Map
+List the active lanes:
+- wraith
+- xo-pets
+- local LLM integration
+- network / exo coordination
+- op-ed and PAL reuse
+
+### Appendix B: Design Rules
+Summarize the rules we are actually following:
+- ops over duplication
+- parser for render, manager for control
+- project-specific state in the project
+- reusable logic in ops or PAL
+- use small smoke tests before broad rollout
+
+### Appendix C: Fact Check List
+Add a checklist for future revisions:
+- does the chapter match the current repo?
+- does the example path still exist?
+- is the role of the manager correct?
+- is the feature mature, in progress, or only planned?
+
+## 6. Revision Order Recommendation
+If editing the textbook in place, do it in this order:
+
+1. Fix the fuzzy / security framing.
+2. Clarify PAL as reusable infrastructure.
+3. Reframe op-ed and fuzz-op as separate but compatible lanes.
+4. Add Wraith and visual-shell coverage.
+5. Add the current priority map and design rules.
+
+## 7. Bottom Line
+The textbook should read like a live architecture guide, not a frozen brochure.
+It should tell future agents:
+- what TPMOS is now
+- what is still evolving
+- where to put reusable logic
+- and which project should own which kind of work

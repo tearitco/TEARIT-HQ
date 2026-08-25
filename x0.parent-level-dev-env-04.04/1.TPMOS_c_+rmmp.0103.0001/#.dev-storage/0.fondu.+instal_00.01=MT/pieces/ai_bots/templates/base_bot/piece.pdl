@@ -1,0 +1,4 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | base_bot
+META         | type               | bot

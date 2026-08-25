@@ -1,0 +1,19 @@
+<panel time_reactive="true">
+    <module>projects/hangman/manager/+x/hangman-engine_manager.+x</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+    
+    <text label="╔══════════════ HANGMAN ══════════════╗" /><br/>
+    <text label="║ Word: ${display_word}                 ║" /><br/>
+    <text label="║ Lives Left: ${remaining_lives}          ║" /><br/>
+    <text label="║ Guessed: ${guessed_letters}           ║" /><br/>
+    <text label="╠════════════════════════════════════════╣" /><br/>
+    <text label="║ Enter your guess: " /><cli_io id="guess" label="${guess_input}" /><br/>
+    <text label="║                                        ║" /><br/>
+    <text label="╠════════════════════════════════════════╣" /><br/>
+    <text label="║ Result: ${last_guess_result}           ║" /><br/>
+    <text label="║ Word: ${secret_word}                   ║" /><br/>
+    <text label="╠════════════════════════════════════════╣" /><br/>
+    <button label="[1] Submit Guess" onClick="KEY:1" /><br/>
+    <button label="[2] New Game" onClick="KEY:2" /> <button label="[ESC] Exit" href="pieces/chtpm/layouts/os.chtpm" /><br/>
+    <text label="╚════════════════════════════════════════╝" /><br/>
+</panel>

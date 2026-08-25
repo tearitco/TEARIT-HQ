@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | wraith-alpha/wraith-projects/wraith-ed
+META         | version            | 0.1
+META         | author             | TPMOS
+META         | manager            | projects/wraith-alpha/wraith-projects/wraith-ed/manager/+x/wraith-ed_manager.+x
+META         | entry_layout       | projects/wraith-alpha/wraith-projects/wraith-ed/layouts/wraith-ed.chtpm
+
+STATE        | title              | WRAITH ED
+STATE        | status             | editor_probe
+STATE        | mode               | game_editor
+STATE        | reference          | projects/op-ed + projects/piececraft-3d
+
+RESPONSE     | default            | Wraith Ed Ready.

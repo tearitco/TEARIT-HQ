@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | q_024
+META         | type               | question
+
+STATE        | name               | Cysteine
+STATE        | type               | HSCH2CH(NH2)COOH

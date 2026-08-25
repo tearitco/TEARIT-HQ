@@ -1,0 +1,17 @@
+# Bot5 Development 2DO List
+
+## Current Status
+- [x] Pure Orchestration Core (fork/exec)
+- [x] Independent binaries (no linking)
+- [x] Process tracking (proc_list.txt)
+- [x] Graceful shutdown (SIGTERM)
+
+## Next Goal: TPMOS Integration
+- [ ] Implement `<sudorun>` capability to execute TPMOS scripts.
+- [ ] Specifically support: `<sudorun>("../button.sh c")` to compile the system.
+- [ ] Ensure the orchestrator can capture exit codes from these external scripts.
+- [ ] Integrate this into the FSM logic (e.g., `TRANSITION: COMPILING_SYSTEM`).
+
+## Technical Strategy
+- Create a `sudorun` wrapper inside `orchestrator.c` that handles `fork()` and `execl("/bin/bash", "bash", ...)` for script execution.
+- This maintains the "no linking" and "no headers" rule by keeping script execution isolated from the bot's core logic.

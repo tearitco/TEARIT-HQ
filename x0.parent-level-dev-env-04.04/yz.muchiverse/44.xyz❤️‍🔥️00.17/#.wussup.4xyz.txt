@@ -1,0 +1,337 @@
+*tell agent , "always consider future agents, and write readme/testing and other helpful docs"
+----------------------------------------------------------------------------
+
+📅️AUG 18  :
+⌚️⌚️⌚️⌚️
+<clox were started> 
+done much since then . 
+i actually really value the collab convos in sidebar. they need to be "widenable" 
+and user input needs 2 be assured. also forkable. dumpable etc.
+ (we need copy paste in x11, i also would like a "notebook" app in hq or wherever  but hq seems appropriate
+ (that keeps a calendar of notes, and master note for that month/year, in the visual 
+ shape of a calendar; with text audit availiable. )
+ <these could be made for different subjects so have macro of that as well. 
+ u shoudn't be asked 2 organize ur own notes. we know the best way is calendar based. 
+ 
+ either u get a calendar for each subject,
+ or u get a subject for each calendar day. 
+(and ofc u may skip days on a subject but u still get 2 see the subject
+and can ask a very basic agent 2 prune or compact the information 
+(this could even go under clock actually)
+
+>could it b3 1 apple app? < theres no need. ship all , they all need 'taskbar spine'but shure
+they coulds "START" with 1 app , and get more if they wanted, always having 'taskbar'+ ai helpers 
+(SUPER HARNESS) os/msft would have 2 rebuild os (which they may w/e)b
+but they will work on w/r os , right now
+  ⌚️⌚️⌚️⌚️
+📅️AUG 13  :
+wish 2 have 'clocks/cals' under time and realclock , gameclock0000 etc
+and can set reminders on real clock or on game clock
+and those can turn into scripts. / jobs. which u can program here
+as well as in common events cuz why not? clock is like an event
+it doens't have 2 be common but can still be common nice 2 have least-priv
+
+
+WSR CAN BE IN "TOYS AS A GUI APP NOW" 
+(just an x11 window mirroring WSR windows)
+
+📅️AUG 7  :
+
+ai likes to call them "livedesk & deskpals" entire thing is "harnecient"+hai 
+
+📅️AUG 5  :
+unreal has a grid and "per 'cube' fidelity 2 handle longer distance degradation (they turn eveyrthing into voxels ;) 
+ask about doing the same
+
+📅️AUG 1  : everything should be widgets. its more modular. = ezier 2 dev & audit!💯️
+
+
+when we have completely independant agetns running on gemma 
+i want an anouncer/ref , giving a "stream" of what they are all doing
+like its a sports game. this is literally the demo 2 sell 2 customers/b2b
+(they can check the data, rewind the tapes etc, if they dont believe)
+(they can even 'posses' and play and see if its 'real')
+(wuts the point of this? i dunno , wuts the point of an llm agent? w/e u want it 2 be)
+
+<imagine this on projector on wall , u kno? +voice control of cursword...>
+
+
+
+🎯️
+<make sure u can turn a "zoo" into a "dir" and back again 
+(dropping things in a dir , they dissapear and freeze (like a flexbox) 
+but turning it into a zoo means they are interactive. 
+(u can movee turns in zoo manutally or using game mex widget btw ) 🎯️
+📅️j30: 
+
+todo says to do  'fix editor save/load' 
+
+but its a bigger job. 
+
+a fine small job is 2 do , step by step with 'oc' or w/e (not mindless scaffolding of editor)
+
+"WSR" <- get that pushed forward manually u willhave 2 anyways. 
+
+push agent ai/ask about iqabella; spoken of in : //44.xyz❤️‍🔥️00.10/#.haiku+/30.jul-30-handoff/2.ai
+
+and finally do compeltely isolate "installs to ~/ " spokemon of in  ://#.haiku+/30.jul-30-handoff/3.harness-install-xyzos~
+
+
+📅️j28:
+its ok. focus on ai. focus on local chat , etc. 
+
+focus on testing login, focus on summarizing the work that was done looking it over etc .
+finding the documentation etc. 
+
+
+
+
+
+
+
+
+
+
+📅️j28:
+no, cant do anything fast... it all points 2 needing 2 slow down. finish our infra
+and thats how we get real juice instead of wasting 2 slop.🐢️
+📅️j28:
+i blew thru weekly limits on day one. lol . w/e 
+
+honestly next time u should wait or something... 
+but use open-code. 
+and be more granular and focused on "local ai / wsr / testing of mutaclysm and user login dragn drop starting pet stuff
+etc hooking back into "local ai chat & wsr r&d stuff + normal wsr gameplay etc. keep it low level ;
+deliberatly breaking apart and handtesting muta 2 widgits. not getting lazy . if ur lazy rest or read code )
+
+
+📅️j27:
+POST GROK SIGNUP : 
+emoji extrude isn't really what i wanted . i wanted the blocks that move backwrds
+and show 'blur' on sides and top..{use a config or .pdl file 2 do either or depending on game 
+; get more into this after u already do game save/loads editor/ level of thot
+more than individual game save load files, which is actualy micro to 'project save/loading 4 edits'}
+2.
+switching views goes to the other level
+is it a 'teleport' to a different map, or a z level/ 
+wwe should probably start thinking 
+
+
+3. also , read the code. 
+maybe after doing 
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.12/x0.parent-level-dev-env-04.03/yz.muchiverse/44.xyz❤️‍🔥️00.08/0.a-z-pets-plan/a-z-pets-plan-midterm.md
+
+(login, projct-vs-game save load , blah blah ; but they definately read the code!?) 
+_________________________________________________________________________
+
+🎄️
+🎁️
+🫕️
+44.xyz❤️‍🔥️00.09/-1.metatree%0A👼️%0A⭐️%0A🎄️%0A🎁️/-1.metatree👼️%0A⭐️%0A🎄️%0A🎁️%0A🫕️.txt
+
+🎪️MTENT REVENGE ? yes have botted accounts we wanted and content get , hololive etc, asap🎪️s
+🧲️"u-harness? guai" etc. competitor 2 harnecient, all on our 'paltform.' 🧲️
+
+🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️🦄️
+I DID A BIG BATCH CONVERT OF THE 'IMPORTANT APPS'(NOT GAMES, NETWORKING ETC, 
+TEST THEM 1 BY 1 WITH THE AIS HELP . , DO THEY WORK ; IF NOT FIX THEM IN PLACE B4 GOING FORWARD. 
+(USE 1.TPMOS/OG IF U NEED 2 COMPARE, BUT GET THEM DONE)
+
+💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️
+* after u check & fix irc. just do forum and blockchain in same window
+
+
+2nd window? yea sure exactly do pal drag and drop into a mutaclysm clone ; on top of existing ZOO. 
+
+THATS IT thats teh 2 and both involve more than 2. 
+💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️💞️
+
+🗣️
+is chat the correct code architecture? + is it using seperate sessions so multiple terms can connect local?
+make it test 2 running at same tiem 
+
+then do forum & blockchain , there definately not done.
+
+
+📅️j26 : 
+
+focus .
+get the chat agent back... (does its dir list still work?, etc)
+do 
+egg-pet  + z00 drop in and immediately start doing editor. 
+
+
+on side? do wsr / make sure the p2p-irc still works after convert......
+
+FUN & PROFIT @ SAME TIME ?  : do avatar creation logic
+
+the other stuff is 4 fun? and science w/e tho. its taking 2 much tokens ; w8 
+
+---------------------------------------------------------------------
+
+
+
+📅️j25 ; pre 8 : 
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.10/x0.parent-level-dev-env-04.03/yz.muchiverse/44.xyz❤️‍🔥️00.03/01.mutaclsym🧟‍♂️️+p&z
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.10/x0.parent-level-dev-env-04.03/yz.muchiverse/44.xyz❤️‍🔥️00.03/014.wsr-pal💸️📌️+1
+
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.10/x0.parent-level-dev-env-04.03/yz.muchiverse/44.xyz❤️‍🔥️00.03/044.pal-chat-irc👥️+1
+
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.10/x0.parent-level-dev-env-04.03/yz.muchiverse/44.xyz❤️‍🔥️00.03/045.muchi-pal-agent🤖️
+
+📅️j24-25 : 
+
+got it doing stuff with "classic tpmos"
+
+asked it how to drop in / out
+
+
+will ask it to "explain trace again ; or find the old one (in dir?)
+and replace (not orch w/e but)
+
+
+ 'manager' used to to 'beable to run .pal (we used 2 do this in 2.muchi-verse-0.2)
+it can run either .pal or .c i think
+
+
+
+📅️j23-25 : 16 : 
+you maybe tempted to just "fix wsr" 
+
+i wouldn't do that. i would scan them all with ai , and get architecture docs made
+that u read. 
+
+my goals: 
+i want them all to have a p2p like architecture for running player/npc entities
+where i kinda writes to a ledger , updates all the necessary "files" 
+and lets the next entity write to the ledger, updates the necessary files etc
+(this could even be done on line as a ring architecture ; 
+players write to ledger their turn ; w/e happen happens next turn ; this is turn based multiplayer
+the npcs are treated like "real players" 
+this way we can swap in human or meta ai controllers over the ai. 
+
+therefore
+it seems the current bottle neck is in mutaclysm , 4 not being like this
+and also having some bugs related to key input that this introduced. 
+(i have an older mutaclysm 2 use as reference for its "interact mode" 
+
+
+
+
+
+whats wrong , where : 
+
+whats right : 
+i think wsr is the colest 2 vision
+
+docs? there maybe random docs in mutaclsym that are right from attempt even tho 
+the code is wrong kuz keyboard bug blocking 
+
+
+even in different steps/dirs  , etc. if it makes sense u could run it 1 pass. this saves 75% tokens.
+<lot of stuff is obvious corrections's u shouldn't have had 2 do if u were doing arch correctly >  
+
+
+📅️j23-25 : 
+
+the right thing to do is to make
+
+
+"Mutaclysm" 
+"wsr" 
+"p2p chat 
+all have a master ledger / p2p-ring architecture. 
+
+
+they should all use the same mechanism (like earlier wsr ; we shoulda finished that first, 
+but aware of the visual of the code, even read thru it. try 2 read it urself. 
+
+use sonnet , then use haiku, then read it. rest if they are being violent. 
+just have a normal pace. its all good. we still use tpmos/wraith gui conventions
+and maybe even their arch. but maybe not. maybe we backport "NPC/Multiplayer " arch
+its not really a backport cuz it never existed in the right way or barely at all so its all good. 
+
+its actually not me whos rushing , its them. 
+they will start making noise, being subtly violent spamming , anti spamming etc. 
+u need 2 combat that somehow. they will try 2 destroy sleep cycle rape. etc. remain sane. 
+stay out of jail/ hospital. w/e 
+
+
+everytime i start getting work momemtn . even note taking
+they rp like im thier slave and start resisting it 4 their own fun. (even right now
+or i would righ tmore about what needs 2 be done and even read the code) 
+
+
+digress. anyways this is the answer. youll probably do it next week its not that hard
+
+just put . p2p/ muta and wsr (agents)  all in 1 room and sort it out = the real 4x. 
+(other has no chtpm lol; and tpmos/wraith was hard 4 human 2 read. i think were ready finally <3)
+
+
+< i may literally move them 2 a new folder, and kinda just use fuzz op 
+
+since mutaclysm is jacked up and u dont kno why ; i may do wsr and go back 2 muta later. 
+
+(the "er muta" maybe using stale binaries. so we dont even know )
+
+
+❤️‍🔥️
+heres what i would do : 
+
+get it to explain every fucking peice of the proposed architecture before we code it. 
+even better if u do this with wsr. and push forward and literally audit the code first. 
+
+if its not readable , its not good enough. 
+we sorted gui shit out. we have those standards. now its mechanical. 
+
+
+🍀️⛲️🪙️🧭️🔍️🍀️⛲️🪙️🧭️🔍️🍀️⛲️🪙️🧭️🔍️🍀️⛲️🪙️🧭️🔍️🍀️⛲️🪙️🧭️🔍️
+first step  = move the 4 out. not by hand
+tell it there maybe shared code, and move any of it all out. then , just 4 projs no more
+🍀️⛲️🪙️🧭️🔍️🍀️⛲️🪙️🧭️🔍️🍀️⛲️🪙️🧭️🔍️🍀️⛲️🪙️🧭️🔍️
+📬️
+ij ust moved them. if they need libs, ask the ai... duh 📬️
+
+🔫️i really wanna make a game that plays like starwars batlefront 
+(in 2d and 3d ; i played the shit outta that) ; watch vids, youll get it. (battlefield 2) 
+<its subtle. but u dont deploy the army like in tactics, 
+u simple spawn as whichever unit , till u die over and over, 
+and it contributes 2 the "points" remember? do that. its not 'die-cringe' its super addictive
+<esp if robots/ clones/ avatars w/e > 
+<u capture the flags 2 get huge point boosts or w/e ; always time based> 
+<and u could probably see how they fele like missions naturally; or could be moreso? >
+<at the end theres a scoreboard 4 both teams, and u can get xp/ levle ups 2 apply 2 diff charas u play
+<or even unlock new charas?others can play them but not u till then 
+
+fortkknite could be like this 2 . is what im sayin. and u could put up lasting turrets
+other stff like minecraft could be like this , bulding a huge defense place
+that only ur team knows etc. traps etc. fun. better hand 2 hand in fps = smashbros fps ...
+(which is also a super classic multiplayer party game interestingly enough)
+🔫️
+ofc it can be 2d chomchio style 2. 
+u just run 1 'piece' till u die. (u may run it for a good run but its setup so u will die probably at
+some point. 
+📅️
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CP: 
+
+

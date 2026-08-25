@@ -1,0 +1,5 @@
+# event-ez widget ops for prisc+x
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}
+ez_menu_input void ops/+x/ez_menu_input.+x {behavior pick + save}
+ez_compose_frame void ops/+x/ez_compose_frame.+x {view.txt + gui_state}

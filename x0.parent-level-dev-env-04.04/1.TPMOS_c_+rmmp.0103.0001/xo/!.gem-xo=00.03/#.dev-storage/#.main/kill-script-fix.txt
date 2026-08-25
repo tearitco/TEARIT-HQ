@@ -1,0 +1,58 @@
+================================================================================
+KILL SCRIPT FIX - Surgical Process Cleanup
+================================================================================
+Date: April 1, 2026
+Problem: Ctrl+C was locking terminal + kill was too aggressive (killing browsers)
+
+SOLUTION:
+---------
+
+1. Restored old surgical kill_all.sh from #.ref/legacy_scripts/
+   Location: pieces/os/kill_all.sh
+   
+2. Updated kill_all.sh to include:
+   - Fondu project managers (test_fondu_manager, user_manager, fuzz-op_manager)
+   - Runs diagnostic first (check_pmo_procs.sh)
+   - Uses path-specific patterns to avoid killing browsers
+
+3. Updated kill.sh to call pieces/os/kill_all.sh
+
+4. Updated orchestrator.c to call pieces/os/kill_all.sh on Ctrl+C
+
+5. Fixed keyboard_input_linux.c signal handlers:
+   - SIGINT/SIGTERM/SIGHUP now restore terminal before exit
+   - Properly closes tty fd
+
+HOW IT WORKS:
+-------------
+
+The surgical_kill() function uses path-specific regex patterns:
+  - pieces/.*/\+x/${name}\.\+x
+  - projects/.*/\+x/${name}\.\+x
+  - pieces/system/.*/${name}
+
+This ensures ONLY our binaries in our directories are killed, not system
+processes or browsers that happen to have similar names.
+
+Example: pkill -f "orchestrator" might kill browser tabs with "orchestrator"
+         in the title. surgical_kill "orchestrator" only kills:
+         pieces/*/plugins/+x/orchestrator.+x
+
+USAGE:
+------
+
+./button.sh k         # Kill all CHTPM processes (safe)
+./pieces/os/kill_all.sh  # Direct call
+
+WHAT GETS KILLED:
+-----------------
+
+System: orchestrator, chtpm_parser, renderer, keyboard_input, etc.
+Legacy: fuzzpet_manager, playrm_module, etc.
+System Apps: op-ed_module, man-*-module, user_module, etc.
+Fondu Projects: test_fondu_manager, user_manager, fuzz-op_manager
+Ops: move_*, interact, render_map, project_loader, etc.
+
+NOT killed: browsers, system tools, unrelated processes.
+
+================================================================================

@@ -1,0 +1,12 @@
+current_state=1
+decision_mode=1
+owned_by=corp_AST
+x=-5
+y=0
+z=20
+property_type=commercial
+value=120.00
+rent_price=3.50
+occupied=0
+last_action=
+human_decision=

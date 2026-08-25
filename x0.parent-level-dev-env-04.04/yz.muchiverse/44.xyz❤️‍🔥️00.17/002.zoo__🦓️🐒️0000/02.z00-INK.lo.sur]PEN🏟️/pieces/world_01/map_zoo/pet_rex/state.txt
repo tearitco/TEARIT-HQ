@@ -1,0 +1,15 @@
+name=Rex
+type=pet
+species=dog
+pos_x=2
+pos_y=10
+pos_z=0
+on_map=1
+map_id=map_zoo
+hunger=0
+happiness=75
+energy=80
+decision_mode=0
+digit_accum=0
+action_cursor=-1
+last_key=0

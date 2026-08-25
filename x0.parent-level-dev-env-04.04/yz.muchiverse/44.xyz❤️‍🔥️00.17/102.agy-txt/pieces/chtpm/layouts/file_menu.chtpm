@@ -1,0 +1,10 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="${game_map}" /><br/>
+    <button label="NEW FILE" onClick="KEY:1" /><br/>
+    <button label="SAVE" onClick="KEY:2" /><br/>
+    <button label="SAVE AS..." href="pieces/chtpm/layouts/file_browser_save.chtpm" /><br/>
+    <button label="LOAD..." href="pieces/chtpm/layouts/file_browser_load.chtpm" /><br/>
+    <button label="BACK TO EDITOR" href="pieces/chtpm/layouts/editor.chtpm" /><br/>
+</panel>

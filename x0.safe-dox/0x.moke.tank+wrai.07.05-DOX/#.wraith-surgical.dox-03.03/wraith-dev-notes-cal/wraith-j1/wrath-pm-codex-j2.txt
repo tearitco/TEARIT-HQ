@@ -1,0 +1,600 @@
+WRATH-PM-CODEX-J2
+Super Plan for wraith-pm: Sovereign Map-Composer Desktop
+
+Status:
+Planning document for the new wraith-pm project.
+
+Name note:
+The requested filename is wrath-pm-codex-j2.txt. The project name inside the plan is wraith-pm.
+
+1. One-line goal
+
+wraith-pm is a Sovereign Map-Composer project that orchestrates a dynamic ASCII desktop. It treats windows as sovereign map entities (Pieces) with pos_x, pos_y, and pos_z, composing them into an auditable text grid (view.txt) that is rendered by the standard TPMOS CHTPM parser via the ${game_map} projection.
+
+2. What we are remaking
+
+We are not remaking the legacy glos path, nor are we building a virtualized markup parser.
+
+We are remaking the working GL-OS desktop and window-management concept using the high-performance 'fuzz-op' map-rendering standard:
+
+- The Desktop: A sovereign map composed of dynamic pieces.
+- The Windows: Transient map entities (Pieces) spawned and deleted by the manager.
+- The Orchestration: Manager-driven mutation of piece coordinates and Z-levels in windows_state.pdl.
+- The Input: A standard TPMOS input-routing pipeline that translates keys and mouse clicks into map-entity movements.
+
+Wraith keeps the good parts of GL-OS behavior (focus, drag, Z-order) but implements them within the absolute auditability of the TPMOS Piece/Map hierarchy.
+
+*Note: This document has been corrected from historical unclarity (the 'Virtual Parser' assumption) to further up-to-date iterative clarity. It remains flexible until final data structures are achieved.*
+
+3. Existing TPMOS rules to preserve
+
+The TPMOS bible says the hierarchy is PIECE -> MODULE -> OS, and the OS/theater composes frames but must not discover project Piece state or synthesize Piece methods. See !.TPMOS_ONBORD_BIBLE_10.md lines 8-20.
+
+Managers own project projection and publish flat UI data to gui_state.txt. See lines 17-29.
+
+The marker-file discipline matters: frame_changed.txt and pulse files wake the renderer instead of blind polling. See lines 51-57.
+
+Parser ownership matters: current_frame.txt is owned by the parser, and daemons should trigger render by writing frame_changed.txt. See lines 93-101.
+
+Testing stays frame-based: inject keys into pieces/keyboard/history.txt, verify current_frame.txt or session_frame_history.txt, then record frame snippets and state diffs. See lines 106-110.
+
+wraith-pm should copy these rules instead of inventing a hidden-memory desktop.
+
+4. What is actually working today
+
+4.1 ASCII TPMOS desktop path
+
+The CHTPM parser exports the current layout to pieces/display/current_layout.txt in chtpm_parser.c lines 1326-1330.
+
+It loads variables, substitutes them into layout markup, tokenizes markup, and builds UIElement entries in lines 1332-1489.
+
+It renders UI elements into a text frame in render_element(), including:
+
+- text elements at lines 1562-1565
+- scrollers at lines 1576-1583
+- cli_io inputs at lines 1584-1608
+- interactive controls with [>] and [^] state at lines 1609-1614
+
+compose_frame() writes pieces/display/current_frame.txt and appends P to renderer_pulse.txt at lines 1628-1670.
+
+This is the ASCII-first pattern wraith-pm should preserve.
+
+4.2 GL-OS desktop path
+
+gl_desktop.c has a project model and dynamic scanner:
+
+- GLProject is defined at lines 160-166.
+- get_pdl_value() reads project.pdl metadata at lines 179-218.
+- run_gl_project_scan_op() launches the scanner op with fork/exec or _spawn at lines 220-245.
+- load_gl_projects() loads cache, gl_os_projects.kvp, and project.pdl folders at lines 278-344.
+
+gl_desktop.c has the actual desktop window state:
+
+- GLTPMScene contains title, size, bg_color, tiles, sprites, buttons, texts, nodes, camera state, and interaction state at lines 346-370.
+- DesktopWindow contains window id, position, size, title, type, project_id, minimized state, terminal state, camera/map control, scroll state, text selection, GLTPM layout path, frame markers, and scene at lines 372-430.
+
+gl_desktop.c writes session view and state:
+
+- write_view() writes DESKTOP_VIEW, BG, WINDOW_COUNT, and WINDOW records, then appends to view_changed.txt at lines 783-807.
+- write_session_state() writes project_id, session_status, window_count, windows, active_window, then calls write_gl_os_frame() at lines 809-833.
+- write_gl_os_state() writes window_count, active_window_id, bg_color, geometry defaults, debug_info, window_list, menu_options, and desktop_view at lines 1203-1293.
+
+gl_desktop.c writes audit and frame data:
+
+- write_gl_os_audit_frame_inline() writes GL_OS_AUDIT_FRAME, timestamp, active_layout, window_count, active_window_id, windows, and active_menu options at lines 853-905.
+- write_gl_os_frame() writes state, audit frame, then parse_and_write_frame() at lines 3910-3918.
+- main() creates session paths for state, history, view, current_frame, gl_os_pulse, frame_history, and audit_frame at lines 3940-3949.
+- main() creates input_focus.lock at lines 3953-3961.
+- main() clears session files, creates a terminal window, writes the initial frame, registers GLUT display/keyboard/mouse/motion/timer/joystick callbacks at lines 3963-3982.
+
+The current GL-OS session frame proves the desktop is already audit-friendly:
+
+- pieces/apps/gl_os/session/current_frame.txt lines 1-8 show an ASCII desktop menu with selected options.
+- pieces/apps/gl_os/session/audit_frame.txt lines 1-16 show active layout, window count, active window id, window geometry, and active menu option selection.
+
+4.3 CHTMGL and GLTPM layout path
+
+The current CHTMGL samples already use explicit metadata:
+
+- chtmgl-alpha index.chtmgl line 1 defines a window title, width, height, and color.
+- lines 4-9 define a panel with x/y/width/height/color and controls including button, checkbox, and sliders.
+- lines 12-19 define another panel, image, video, and canvas.
+- lines 22-26 define a menu and menuitems.
+
+media-editor editor.chtmgl:
+
+- line 1 defines the full window.
+- lines 3-6 define an asset panel and scroller.
+- lines 9-11 define an editor canvas.
+- lines 14-20 define inspector controls and slider metadata.
+- lines 23-27 define timeline controls.
+
+The current GLTPM parser already extracts shape/color-ish metadata:
+
+- gltpm_parse_rgb() supports #RRGGBB and r,g,b at gltpm_parser.c lines 141-167.
+- gltpm_load_tile_metadata() loads tile ascii, unicode, rgb_top, and extrude at lines 186-228.
+- gltpm_load_scene() loads project/session/gui/camera variables at lines 496-507.
+- It substitutes variables at lines 638-640.
+- It parses scene title/bg/camera at lines 654-671.
+- It parses window/panel/div/header/menu/ul/canvas nodes with id, x, y, width, height, and color at lines 672-725.
+- It parses interactive controls button/checkbox/slider as buttons with id, label, onClick, x, y, width, height at lines 747-781.
+- It parses text nodes at lines 782-808.
+- It parses img nodes with source, geometry, and texture lookup at lines 809-858.
+
+wraith-pm should keep the CHTMGL metadata idea, but Wraith should read it directly. We should stop treating CHTMGL as CHTPML/CHTPM parser territory.
+
+5. Why CHTMGL needs shape and color metadata
+
+CHTMGL should carry metadata for shapes and colors because wraith-pm has two render products:
+
+1. ASCII frame:
+   A character-cell desktop that humans and AI can read.
+
+2. Graphics/RGB frame:
+   A raster frame that can be presented in GL or streamed to future RGB/HDMI devices.
+
+If the layout only says "font text here", then the converter can only draw fonts. That is too weak.
+
+If the layout says:
+
+- tag type: window, panel, canvas, button, slider, image
+- geometry: x, y, width, height
+- color: bg, border, foreground, accent
+- shape: rect, rounded_rect, line, sprite, tile, glyph, canvas primitive
+- semantic id: object_id, role, focusable, hit region
+
+then the same layout can produce:
+
+- an ASCII approximation
+- a graphics primitive list
+- an RGB frame
+- a hit-test layer for mouse
+- an AI-readable audit frame
+
+The metadata is not decoration. It is the bridge from ASCII to real graphics.
+
+6. Target architecture
+
+Pipeline:
+
+input events
+  -> wraith-pm state
+  -> Wraith CHTMGL parser
+  -> semantic scene tree
+  -> ASCII frame
+  -> audit frame
+  -> optional graphics primitive frame
+  -> RGB frame
+  -> output backends
+
+Backends:
+
+- CLI presenter: prints ASCII frame and captures keyboard/mouse terminal events.
+- GL presenter: consumes RGB frame and displays it in an OpenGL window.
+- RGB/HDMI presenter later: consumes the same RGB frame without needing GL.
+- AI/debug presenter: reads ASCII frame, audit frame, object map, and frame diffs.
+
+The frame must exist before GL renders. GL is not the source of truth.
+
+7. Core files for wraith-pm
+
+Proposed project layout:
+
+wraith-pm/
+  project.pdl
+  README.txt
+  layouts/
+    desktop.chtmgl
+    terminal.chtmgl
+    project_explorer.chtmgl
+  session/
+    state.txt
+    history.txt
+    input_events.txt
+    current_frame.txt
+    current_frame.meta.txt
+    current_frame.rgb.txt
+    current_frame.ascii.txt
+    frame_changed.txt
+    renderer_pulse.txt
+    frame_history.txt
+    audit_frame.txt
+    object_map.txt
+    hit_map.txt
+  manager/
+    gui_state.txt
+    projects_cache.txt
+  plugins/
+    wraith_pm_host.c
+    wraith_chtmgl_parser.c
+    wraith_ascii_renderer.c
+    wraith_ascii_to_graphics.c
+    wraith_rgb_writer.c
+    wraith_gl_presenter.c
+    wraith_project_scan.c
+    wraith_audit_frame.c
+  plugins/+x/
+
+8. Contracts
+
+8.1 CHTMGL layout contract
+
+Minimum tags:
+
+- window
+- panel
+- header
+- menu
+- menuitem
+- button
+- checkbox
+- slider
+- text
+- textfield
+- scroller
+- canvas
+- img
+- video placeholder
+
+Minimum attributes:
+
+- id
+- role
+- title or label
+- x, y, width, height
+- color, bg, fg, border
+- shape
+- onClick
+- href or layout
+- source/src
+- value/min/max for sliders
+- focusable
+- object_id or auto-generated stable object id
+
+8.2 Scene tree contract
+
+The Wraith parser should produce nodes like:
+
+node|id=btn1|tag=button|role=button|x=10|y=40|w=180|h=30|fg=#ffffff|bg=#333333|shape=rect|text=Test Button|onClick=EVENT:test_click|focusable=1
+
+This scene tree is the bridge between CHTMGL and every renderer.
+
+8.3 ASCII frame contract
+
+current_frame.txt remains a readable text frame:
+
+- fixed terminal width/height
+- visible focus markers
+- menu selection markers
+- window titlebars
+- panel boundaries
+- text content
+- simplified slider bars
+- simplified canvas placeholders or map content
+
+8.4 Audit frame contract
+
+audit_frame.txt should include:
+
+- timestamp
+- project_id
+- active_layout
+- frame_index
+- terminal size
+- window_count
+- active_window_id
+- selected_index
+- mouse/cursor position
+- list of windows
+- list of controls
+- active menu/options
+- dirty regions
+- links to RGB/object/hit maps
+
+This is the AI/debug frame.
+
+8.5 RGB frame contract
+
+current_frame.rgb.txt should be sparse and inspectable:
+
+pixel x y r g b a object_id
+
+For speed later, add binary:
+
+current_frame.rgba.bin
+current_frame.object_id.bin
+
+But keep text RGB because it is useful for audit and AI.
+
+8.6 Object and hit-map contract
+
+object_map.txt:
+
+object_id|tag|id|role|x|y|w|h|label|action
+
+hit_map.txt:
+
+cell_x cell_y object_id
+
+or for pixel precision:
+
+x y object_id
+
+This makes CLI mouse possible. A terminal click maps to a cell, the cell maps to object_id, object_id maps to action.
+
+9. Rendering approach
+
+9.1 ASCII renderer
+
+Input: scene tree.
+Output: current_frame.txt.
+
+Rules:
+
+- draw windows and panels as box characters or ASCII fallback
+- draw focused controls with [>]
+- draw active controls with [^]
+- draw buttons as [label]
+- draw sliders as [====|-----]
+- draw checkboxes as [x] or [ ]
+- draw canvas as either a text canvas, map projection, or named placeholder
+- draw images as metadata-backed colored blocks or labels until graphic conversion is enabled
+
+9.2 ASCII-to-graphics converter
+
+Input:
+
+- current_frame.txt
+- current_frame.meta.txt
+- object_map.txt
+- CHTMGL scene tree
+
+Output:
+
+- graphics primitive list
+- current_frame.rgb.txt
+- current_frame.rgba.bin later
+
+Important:
+The converter should not be "font renderer only." It should use CHTMGL metadata to turn ASCII UI into graphics:
+
+- window border -> rectangles/lines
+- panel -> filled rect
+- button -> filled rect + text/glyph label
+- slider -> track rect + thumb rect
+- checkbox -> rect + check mark
+- canvas -> tile/sprite/primitive region
+- text -> glyph pixels only where text is actually intended
+
+This is why shape and color metadata belongs in CHTMGL.
+
+9.3 GL presenter
+
+Input:
+
+- current_frame.rgb.txt or rgba.bin
+
+Output:
+
+- OpenGL window showing the exact RGB frame.
+
+This should copy the frame-first idea from the wraith rgb-font project:
+
+- write RGB frame first
+- GL only uploads/presents the frame
+- GL does not become the source of UI truth
+
+The closest current reference is the older report's 105.rgb_gl]2d path: it reads pixel records into a buffer and uploads them to a GL texture.
+
+10. Input routing
+
+Keyboard:
+
+- CLI keyboard writes session/input_events.txt or history.txt.
+- GL presenter keyboard writes the same event file.
+- Events are logical, not backend-specific.
+
+Mouse:
+
+- CLI mouse event gives terminal cell x/y.
+- Convert cell to frame pixel region.
+- Lookup hit_map/object_map.
+- Dispatch onClick/href/focus/select.
+
+GL mouse:
+
+- GL presenter receives pixel x/y.
+- Lookup object_map directly.
+- Dispatch the same event format as CLI.
+
+Event format:
+
+EVENT key code=...
+EVENT mouse x=.. y=.. button=.. state=..
+EVENT click object_id=.. action=..
+EVENT slider id=.. value=..
+EVENT canvas id=.. x=.. y=..
+
+Keep GL-OS prefixes where useful:
+
+- SLIDER:<id>:<val>
+- CANVAS:<x>,<y>
+- EVENT:<name>
+- VAR;<name>=<val>
+
+These are already documented in GL-OS_ARCHITECTURE.md lines 57-63.
+
+11. Project loading
+
+Copy the working GL-OS pattern:
+
+1. Read curated project list.
+2. Scan projects/ for project.pdl.
+3. Extract app_title or title.
+4. Extract entry_layout.
+5. Register in Project Explorer.
+
+References:
+
+- GL-OS spec lines 22-35 describe the discovery lifecycle and launch priority.
+- gl_desktop.c lines 179-218 read PDL values.
+- gl_desktop.c lines 278-344 load curated KVP and project.pdl projects.
+- gl_os_projects.kvp lines 1-8 show curated GL project ids.
+
+wraith-pm change:
+
+- Prefer .chtmgl layouts.
+- Support .gltpm only as compatibility input while remaking layouts.
+- Do not route CHTMGL through CHTPML/CHTPM parser.
+- Wraith owns CHTMGL parsing.
+
+12. Build stages
+
+Stage 0: Reference capture
+
+- Keep FRAME_FIRST_RENDER_REPORT.md as the RGB-frame reference.
+- Keep this file as the build plan.
+- Capture current GL-OS current_frame.txt and audit_frame.txt as target behavior.
+
+Stage 1: Minimal wraith-pm skeleton
+
+Create:
+
+- project.pdl
+- session files
+- desktop.chtmgl
+- wraith_project_scan.c
+- wraith_pm_host.c
+
+Goal:
+Open no GL. Render only current_frame.txt.
+
+Stage 2: Wraith CHTMGL parser
+
+Implement:
+
+- parse tags and attributes
+- substitute vars from session/state.txt and manager/gui_state.txt
+- emit scene_tree.txt
+- emit object_map.txt
+
+Use CHTMGL samples as tests:
+
+- chtmgl-alpha/layouts/index.chtmgl
+- chtmgl-beta/layouts/index.chtmgl
+- media-editor/layouts/editor.chtmgl
+
+Stage 3: ASCII desktop renderer
+
+Implement:
+
+- windows
+- panels
+- menus
+- buttons
+- sliders
+- scrollers
+- text fields
+- canvas placeholders
+
+Output:
+
+- session/current_frame.txt
+- session/audit_frame.txt
+- session/frame_history.txt
+
+Stage 4: CLI input and mouse
+
+Implement:
+
+- keyboard nav
+- focus and active state
+- terminal mouse support if available
+- hit_map lookup
+- event dispatch to session/history.txt
+
+Goal:
+Use wraith-pm fully in CLI.
+
+Stage 5: ASCII-to-graphics converter
+
+Implement:
+
+- current_frame.txt + scene_tree.txt -> graphics primitives
+- primitives -> current_frame.rgb.txt
+- text glyphs only for actual text
+- UI shapes from metadata, not font approximations
+
+Output:
+
+- current_frame.rgb.txt
+- object ids in RGB records
+- optional rgba.bin
+
+Stage 6: GL presenter
+
+Implement:
+
+- read RGB frame
+- upload as texture
+- display in GL
+- write GL input events to same event stream
+
+Goal:
+The user can choose:
+
+- ASCII only
+- ASCII plus GL presenter
+
+Stage 7: RGB/HDMI path
+
+Implement later:
+
+- dense framebuffer export
+- timing/output adapter
+- same RGB frame sent to physical screen output path
+
+The key is that this should not require changing the desktop logic. Only the presenter changes.
+
+13. Non-goals
+
+- Do not revive legacy glos.
+- Do not make GL required for the first usable desktop.
+- Do not make the renderer depend on screenshots.
+- Do not make CHTMGL require CHTPML/CHTPM parsing.
+- Do not infer UI semantics from colors after the fact.
+- Do not make RGB output the only audit file. Keep ASCII and audit text.
+
+14. First milestone definition
+
+Milestone J2.1 is complete when:
+
+1. wraith-pm renders a desktop.chtmgl layout to session/current_frame.txt.
+2. It writes session/audit_frame.txt with windows, controls, selected index, and object ids.
+3. It supports keyboard navigation in CLI.
+4. It has object_map.txt and hit_map.txt ready for mouse mapping.
+5. It can parse at least window, panel, text, button, slider, canvas from CHTMGL.
+6. No GL window is required.
+
+15. Second milestone definition
+
+Milestone J2.2 is complete when:
+
+1. ASCII frame converts to current_frame.rgb.txt.
+2. CHTMGL color/shape metadata affects graphics output.
+3. GL presenter displays the RGB frame as a texture.
+4. GL input and CLI input write the same event format.
+5. The same frame can be audited as ASCII, metadata, and RGB.
+
+16. Final intention
+
+wraith-pm starts as an ASCII project. It remakes the useful current GL-OS desktop and CHTMGL layout behavior, but it makes frames sovereign.
+
+The core product is not a GL window. The core product is:
+
+- an ASCII frame
+- a semantic scene tree
+- an audit frame
+- an RGB frame
+
+GL is optional. GL can render the ASCII-derived RGB frame. Later, RGB/HDMI screens can consume the same RGB data. This gives us a desktop that is visible in CLI, debuggable by AI, convertible to graphics, and ready for real screen output without changing the underlying project state or layout logic.

@@ -1,0 +1,1750 @@
+
+--- FRAME at 2026-07-28 04:38:51 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:38:51 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:38:52 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:38:52 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:38:53 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:38:53 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:38:54 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:38:54 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:38:55 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:38:55 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:38:56 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:38:56 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:38:57 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:38:57 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:38:58 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:38:58 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:38:59 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:38:59 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:39:00 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:39:00 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:39:01 ---
+TTG  Community Tabletop Tactics                 
+House dual-render  ·  master_ledger  ·  ASCII+
+                                                
+ > [1] Play 1v1 vs AI (5 min, ante 50 TC)       
+   [2] Quit                                     
+                                                
+Clocks: 2/5/10/30 via future menu  |  Board 12x1
+Pieces: King Soldier Wizard Farmer  |  Pot winne
+                                                
+Enter/1 start   arrows menu   q quit            
+                                                
+TTG — Enter play  arrows select  q quit       
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+TTG_FRAME 48x22  PR0-2 skeleton                 
+                                                
+
+
+--- FRAME at 2026-07-28 04:39:01 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 05:00 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:01 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 05:00 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:02 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 05:00 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:02 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:59 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:03 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:59 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:03 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:59 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:04 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:58 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:04 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:58 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:05 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:57 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:05 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:57 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:06 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:56 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:06 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:56 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:07 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:55 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:07 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:55 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:08 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:54 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:08 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:54 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:09 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:53 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:10 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:53 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:10 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:52 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:11 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:52 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:11 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:51 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:12 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:51 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:12 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:50 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:13 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:50 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:13 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:49 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:14 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:49 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:14 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:49 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:15 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:48 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:15 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:48 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:16 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:47 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:16 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:47 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:17 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:46 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:17 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:46 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:18 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:45 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:18 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:45 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:19 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:44 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:19 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:44 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:20 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:43 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:20 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:43 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:21 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:42 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:21 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:42 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:22 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:41 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:22 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:41 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:23 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:40 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:23 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:40 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:24 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:39 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:24 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:39 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:25 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:39 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+
+
+--- FRAME at 2026-07-28 04:39:25 ---
+TTG 1v1 pot:100 T0 seat0/You                    
+Clk 04:38 05:00  ELO —  |  [?]help            
+  0123456789ab                                  
+0 ..S.W..S.F..                                  
+1 ............                                  
+2 ...S..K.....                                  
+3 ............                                  
+4 ............                                  
+5 ............                                  
+6 ............                                  
+7 ............                                  
+8 ............                                  
+9 ...s..k.....                                  
+a ............                                  
+b ..s.w..s.f..                                  
+                                                
+Sel (none)  cursor 6,2                          
+[Arrows]cursor [Enter]sel/move [A]atk [E]nd [U]n
+Msg: Match start — seat0 human vs AI. Arrows m
+                                                
+K/S/W/F seat0  k/s/w/f seat1  + cursor empty    
+ledger: data/master_ledger.txt  units: pieces/un
+

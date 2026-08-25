@@ -1,0 +1,7 @@
+kind=tsc_duel
+project_id=tsc_elo
+piece_id=
+host=127.0.0.1
+port=9951
+pid=26828
+last_seen=1785806260

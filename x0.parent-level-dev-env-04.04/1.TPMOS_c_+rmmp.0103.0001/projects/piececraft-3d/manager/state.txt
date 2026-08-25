@@ -1,0 +1,4 @@
+active_piece=xlector
+last_response=Initialized.
+inv_stone=0
+inv_wood=0

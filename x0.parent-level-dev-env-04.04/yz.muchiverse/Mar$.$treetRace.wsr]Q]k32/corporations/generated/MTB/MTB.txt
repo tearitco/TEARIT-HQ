@@ -1,0 +1,83 @@
+FINANCIAL PROFILE FOR MARTIAN TRUST BANK (MTB)
+================================================
+FINANCIAL BALANCE SHEET: MARTIAN TRUST BANK (MTB)
+--------------------------------------------------
+(Amounts in millions of U.S. Dollars, except per share amounts)
+
+ASSETS:
+  Free Cash and Equivalents:		1764.53
+  Stock in Subsidiary Corps.:		0.00
+  Options Long/Short: Net Value:	0.00
+  Government Bonds (mkt. value):	0.00
+  Corporate Bonds (mkt. value):	0.00
+  Business Loan Portfolio:		946.23
+  Consumer Loan Portfolio:		479.38
+  Mortgage Loans/Securities:		488.62
+  Less: Bad Debt Reserves:		-213.11
+  ---------------------------------------------
+  Total Assets:				3465.65
+  ---------------------------------------------
+
+LIABILITIES AND EQUITY:
+  Long-Term Bonds Issued:		0.00
+  Demand Deposits:			389.52
+  Certificates of Deposit:		602.33
+  Interbank Debt -- Fed Funds:		0.00
+  Accrued Income Tax Payable:		0.00
+  ---------------------------------------------
+  Total Liabilities:			991.85
+  ---------------------------------------------
+  Equity (Net Worth):			2473.80
+  =============================================
+
+STOCK AND EARNINGS DATA:
+------------------------
+  Net Worth Per Share:			51.48
+  Current Stock Price:			52.96
+  52-Week High/Low Stock Price:		75.36 / 42.38
+  Shares of Stock Outstanding:		48.05 million
+  Total Stock Capitalization:		2544.69 million
+  2022 Earnings Per Share:		0.00 (Operating Earnings)
+  2023 Earnings Per Share:		0.00 (Operating Earnings)
+  2024 Earnings Per Share:		0.00 (Operating Earnings)
+  2025 Earnings Per Share:		0.00 (Operating Earnings)
+  2026 E/P/S through Qtr. #2:		0.00 (Operating Earnings)
+  ---------------------------------------------
+
+VARIOUS FINANCIAL RATIOS:
+-------------------------
+  Price/Earnings Ratio:			NMF (No Meaningful Figure)
+  Dividend Yield:			0.00%
+  Debt to Equity Ratio:			0.00 to 1
+  Bad Debt Reserve Ratio:		11.13%
+  Reserves to Deposits %:		21.49%
+  Return on Equity (2025):		NMF (No Meaningful Figure)
+  ---------------------------------------------
+
+*** CREDIT INFO: ***
+-------------------
+  Credit Rating:			AA
+  Borrowing Rate (Interbank):		9.21% (LIBOR is: 8.91%)
+  ---------------------------------------------
+
+VARIABLE SETTINGS (Changeable by controlling player):
+----------------------------------------------------
+  Dividend Payout Per Share:		0.00
+  % of Net Interest for Advertising:	1%
+  ---------------------------------------------
+
+MISCELLANEOUS INFO:
+-------------------
+  Industry Group:			BANKING
+  Incorporated in:			UNITED STATES
+  Controlled (and actively managed) by:	test_acc
+  Wholly owned by:			test_acc
+  Tax Loss Carryover:			$493.73 million
+  Annual CEO Salary (approx.):		$0.20 million (Plus possible bonuses)
+  Today's (Game) Date:			January 1, 2026
+  Next Earnings Report:			April 1, 2026
+  ---------------------------------------------
+
+FOOTNOTE TO FINANCIAL STATEMENT:
+-------------------------------
+[1] The company is not currently engaged in any interest rate swap transactions and has no undisclosed off-balance sheet liabilities.

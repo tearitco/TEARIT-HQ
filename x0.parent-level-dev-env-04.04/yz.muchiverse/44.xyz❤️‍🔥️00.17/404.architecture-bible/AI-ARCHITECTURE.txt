@@ -1,0 +1,322 @@
+MUTACLSYM AI ARCHITECTURE
+Registry + Self-Contained Ops pattern applied to monster behavior
+================================================================================
+This follows the muchiverse pattern: REGISTRY (what behaviors exist) + SWITCH
+(pick one) + SELF-CONTAINED OPS (do the work). Designed before built, as per
+family convention.
+
+================================================================================
+1. STRATEGY REGISTRY
+================================================================================
+
+File: pieces/registry/ai/ai_strategies.txt
+Format: id|name|description
+Example:
+  0|preset_chase|Always step directly toward hero, no hesitation
+  1|weighted_flee|Chase normally but flee if health drops below flee_hp_pct
+  2|wander_with_detection|Random walk until hero detected, then chase
+
+Each row is a STRATEGY TEMPLATE. A row defines:
+  - id: integer code (0, 1, 2, ...) used in monster state.txt
+  - name: human-readable label
+  - description: what this strategy does
+
+ADDING A NEW STRATEGY (the full process):
+  1. Edit ai_strategies.txt: add a new row with an unused id
+  2. Edit pick_ai_strategy.c:
+     - Write a decide_<strategy_name>() function with the behavior
+     - Add a case in main()'s switch statement that calls it
+  3. Rebuild: gcc -o +x/pick_ai_strategy.+x ops/pick_ai_strategy.c
+  4. No state.txt changes needed - monsters using the old ai_mode values keep
+     working, only monsters that set ai_mode to the new id will use it.
+
+RESULT: new strategy available immediately, no hardcoded constants,
+  no recompilation of other ops needed.
+
+================================================================================
+2. SWITCH OPERATION
+================================================================================
+
+File: ops/switch_ai_mode.c
+Purpose: change a monster's ai_mode without editing state.txt by hand
+Usage: switch_ai_mode.+x <monster_state_path> <strategy_id>
+
+Example:
+  switch_ai_mode.+x pieces/world_01/map_start/monsters/zombie_02/state.txt 2
+  → Looks up strategy id=2 in the registry ("wander_with_detection")
+  → Updates zombie_02/state.txt: ai_mode=2
+  → Monster now uses wander_with_detection behavior next tick
+
+INPUT CONTRACT:
+  - monster_state_path: path to pieces/.../monsters/<id>/state.txt
+  - strategy_id: integer from pieces/registry/ai/ai_strategies.txt
+
+OUTPUT CONTRACT:
+  - Reads registry to verify strategy_id exists
+  - If found: rewrites ai_mode field in state.txt, returns 0
+  - If not found: prints error to stderr, returns 1
+
+DESIGN: Exactly parallel to switch_model.c in muchi-pal-agent - a dedicated
+  op that changes one state field by registry lookup, nothing more.
+
+================================================================================
+3. STRATEGY OPS (the actual behavior)
+================================================================================
+
+Files:
+  ops/decide_chase.c
+  ops/decide_weighted_flee.c
+  ops/decide_wander.c
+
+DESIGN: Each strategy is its OWN COMPLETE OP, not a function inside a larger file.
+
+Each strategy op:
+  - Takes command line args: state_path, hero_x, hero_y, map_path
+  - Reads monster state from state_path (pos, hp, etc.)
+  - Computes decision (where to move)
+  - Outputs to stdout: "target_x target_y action_type reason"
+  - Exit 0 on success
+
+DECIDE_CHASE (ops/decide_chase.c):
+  One-step toward hero. Simplest strategy.
+  Usage: decide_chase.+x <state_path> <hero_x> <hero_y> <map_path>
+  Output: "25 10 move chasing"
+
+DECIDE_WEIGHTED_FLEE (ops/decide_weighted_flee.c):
+  Chase if health > threshold, flee if health < threshold.
+  Checks hp, max_hp, flee_hp_pct from state.txt.
+  Usage: decide_weighted_flee.+x <state_path> <hero_x> <hero_y> <map_path>
+  Output: "23 8 move fleeing" or "24 10 move chasing"
+
+DECIDE_WANDER (ops/decide_wander.c):
+  Random walk; detect hero by line-of-sight or sound, then chase.
+  Most complex: needs map_path to check LOS.
+  Usage: decide_wander.+x <state_path> <hero_x> <hero_y> <map_path>
+  Output: "18 5 move wandering" or "24 10 move detected_and_chasing"
+
+DISPATCHER: ops/pick_ai_strategy.c
+  Main entry point. Reads ai_mode, looks up strategy in registry,
+  shells to the appropriate decide_*.+x op, validates result,
+  writes action.txt. Does NOT contain strategy logic itself.
+
+PROPERTIES:
+  - Each strategy is self-contained (own file, own binary, own logic)
+  - Registry maps ai_mode → op_name (e.g., "0" → "decide_chase")
+  - Dispatcher is generic, doesn't need to change when strategies change
+  - New strategy = new .c file + one registry row. No other edits needed.
+
+ADDING A NEW STRATEGY:
+  1. Write ops/decide_myname.c with your decision logic
+  2. Compile: gcc -o ops/+x/decide_myname.+x ops/decide_myname.c -lm
+  3. Add row to pieces/registry/ai/ai_strategies.txt:
+     3|my_strategy_name|decide_myname|description
+  4. Done. No pick_ai_strategy.c changes needed.
+
+================================================================================
+4. INSTANCE STATE (monsters in the game world)
+================================================================================
+
+File: pieces/world_01/map_start/monsters/<id>/state.txt
+Format: key=value
+
+Example (zombie_02):
+  monster_type=zombie
+  pos_x=23
+  pos_y=8
+  hp=20
+  max_hp=20
+  damage=3
+  ai_mode=1
+  flee_hp_pct=0
+
+CRITICAL FIELDS FOR AI:
+  - ai_mode: integer 0-2 (or higher if you add strategies), registry lookup
+  - pos_x, pos_y: current location on map
+  - hp, max_hp: health (needed by weighted_flee strategy)
+  - flee_hp_pct: health threshold (needed by weighted_flee strategy)
+
+To change a monster's strategy at runtime:
+  switch_ai_mode.+x <path> <strategy_id>
+  OR
+  edit state.txt by hand and set ai_mode=<new_id>
+
+No need to rebuild anything.
+
+================================================================================
+5. FULL FLOW (one tick example with dispatcher)
+================================================================================
+
+Scenario: zombie_02 is at (23,8) with ai_mode=1 (weighted_flee), hp=5/20.
+Hero is at (20,10).
+
+Tick sequence:
+
+  1. Game calls pick_ai_strategy.+x (the dispatcher):
+     ./ops/+x/pick_ai_strategy.+x pieces/.../zombie_02/state.txt 20 10 map.txt
+
+  2. pick_ai_strategy DISPATCHER:
+     - Reads ai_mode=1 from state.txt
+     - Looks up ai_mode=1 in pieces/registry/ai/ai_strategies.txt
+     - Finds row: 1|weighted_flee|decide_weighted_flee|...
+     - Extracts op_name: "decide_weighted_flee"
+
+  3. pick_ai_strategy SHELLS TO THE STRATEGY OP:
+     popen("./ops/+x/decide_weighted_flee.+x pieces/.../zombie_02/state.txt 20 10 map.txt", "r")
+
+  4. decide_weighted_flee.+x (the strategy op):
+     - Reads pos_x=23, pos_y=8 from state.txt
+     - Reads hp=5, max_hp=20, flee_hp_pct=0 from state.txt
+     - Calculates: current_hp_pct = (5*100)/20 = 25%
+     - Checks: is 25 < 0 (flee_hp_pct)? NO
+     - Decides: chase instead
+     - Calculates: one step toward hero at (20,10)
+     - Outputs to stdout: "22 8 move chasing"
+     - Exits 0
+
+  5. pick_ai_strategy READS STRATEGY OUTPUT:
+     - Reads from pipe: "22 8 move chasing"
+     - Parses: target=(22,8), action_type="move", reason="chasing"
+
+  6. pick_ai_strategy VALIDATES:
+     - Is (22,8) walkable? Check map.txt via glyph_walkable()
+     - Is (22,8) the hero's position? No
+     - All good, write action.txt: "22 8 move chasing"
+
+  7. tick_monsters.c reads action.txt:
+     - Moves zombie_02 to (22,8)
+     - game_log records the move
+     - Next tick, pick_ai_strategy runs again
+
+KEY SEPARATION: Each strategy op is independent. The dispatcher just looks up
+  "which op to call" in the registry and passes through the result. If you add
+  a new strategy op, the dispatcher doesn't need to change.
+
+================================================================================
+6. FUTURE EXTENSION: NPC BANK
+================================================================================
+
+CURRENT: Monster types are defined in pieces/registry/monsters/monster_types.txt
+  (zombie, ogre, ghost, etc. - templates). Each type has stats (hp, damage,
+  asset_id) and a default ai_mode. Individual monsters then get a state.txt
+  with instance-specific values.
+
+PLANNED (per section 4.4 of $.zest-er-summary-FIN):
+  For broader NPC support (not just monsters), create pieces/registry/npc/
+  npc_bank.txt with the SAME structure as monster_types.txt, but reused
+  for any entity that has behavior (NPCs, talking NPCs, merchants, etc.).
+
+  Format would be: id|type|glyph|hp|default_ai_mode|...
+
+  Then pick_ai_strategy.c becomes pick_entity_strategy.c and works for
+  any entity, not just glyphs 'Z', 'O', '?'. The ai_mode values stay the
+  same (0=chase, 1=flee, 2=wander - or whatever the domain needs).
+
+BENEFIT: Same REGISTRY + SWITCH + DECISION pattern works for humans,
+  animals, NPCs, not just monsters. The strategy logic doesn't change,
+  only the entity types that use it.
+
+  See also: pieces/registry/terrain/, furniture/ - same pattern applied to
+  environment. All registries follow the same pipe-delimited structure.
+
+NOT YET BUILT: This is designed but not coded. Wait for an explicit request
+  to build the NPC bank before adding it. monster_types.txt works fine for
+  now.
+
+================================================================================
+7. DESIGN DECISIONS
+================================================================================
+
+Why separate switch_ai_mode.c instead of baking it into pick_ai_strategy.c?
+  - Follows muchiverse convention: one verb, one binary, no multi-purpose ops
+  - Easier to test in isolation (change ai_mode, verify state.txt changes)
+  - Easier to wire into a UI command (/ai-strategy <monster> <id>) later
+  - Allows a game/admin tool to call it without running the full strategy
+    decision
+
+Why is the strategy logic in C, not a script?
+  - Performance: monster AI ticks every frame, script overhead adds up
+  - Current C code is simple enough to maintain in one file
+  - If a strategy becomes complex, extract it to a separate op (no pattern
+    change needed, still registry-driven)
+
+Why ai_mode as integer, not string?
+  - State file is key=value, integers are easier to parse/store
+  - Registry maps id→name, so the human-readable part stays there
+  - Pattern matches switch_model.c (provider_kind/api_url/model_name
+    are strings, but current_model_id is an id in state.txt)
+
+Why not hardcode the strategy names as #defines?
+  - Defeats the whole point of registry-driven behavior
+  - If id=3 suddenly becomes an error (because row 3 was deleted), the registry
+    catches it, not silent undefined behavior
+  - Adding a new strategy doesn't require touching header files
+
+================================================================================
+8. TESTING (file-injection style, per $.zest-er-summary-FIN sec. 3B)
+================================================================================
+
+Test that strategy switching works:
+
+  # Scenario: zombie_02 is currently in chase mode (ai_mode=0)
+  # Goal: switch it to flee mode (ai_mode=1) and verify state.txt changed
+
+  1. Check initial state:
+     grep ai_mode pieces/world_01/map_start/monsters/zombie_02/state.txt
+     → ai_mode=0
+
+  2. Run switch_ai_mode:
+     ./ops/+x/switch_ai_mode.+x pieces/world_01/map_start/monsters/zombie_02/state.txt 1
+
+  3. Verify change:
+     grep ai_mode pieces/world_01/map_start/monsters/zombie_02/state.txt
+     → ai_mode=1 (changed)
+
+Test that strategy execution works:
+
+  1. Set a monster to wander mode (ai_mode=2):
+     switch_ai_mode.+x pieces/.../ghost_001/state.txt 2
+
+  2. Simulate a tick by calling pick_ai_strategy directly:
+     ./ops/+x/pick_ai_strategy.+x pieces/.../ghost_001/state.txt 20 10 pieces/.../map.txt
+
+  3. Check action.txt:
+     cat pieces/.../ghost_001/action.txt
+     → Should show a move (not toward hero if hero not in LOS/sound range)
+     → Should show reason like "wandering"
+
+HONEST LIMIT: file-injection testing verifies the DATA (registry lookup,
+  state.txt changes) but not the RENDERING (whether a real terminal displays
+  the monster moving correctly). For that, run a real game session and watch.
+
+================================================================================
+9. SUMMARY: THE PATTERN (WITH DISPATCHER)
+================================================================================
+
+✓ REGISTRY (ai_strategies.txt): what strategies exist (id|name|op_name|description)
+✓ SWITCH OP (switch_ai_mode.c): look up id in registry, update state.txt
+✓ DISPATCHER (pick_ai_strategy.c): read ai_mode, look up op_name, shell to it
+✓ STRATEGY OPS (decide_*.c): independent binaries that decide where to move
+✓ INSTANCE STATE (monster state.txt): which strategy is active (ai_mode=X)
+
+ADDING A NEW STRATEGY (no picker/dispatcher changes):
+  1. Write ops/decide_newname.c (self-contained, outputs "target_x target_y action type reason")
+  2. Compile: gcc -o ops/+x/decide_newname.+x ops/decide_newname.c -lm
+  3. Add row to ai_strategies.txt: id|name|decide_newname|description
+  4. Done - pick_ai_strategy.c doesn't change
+
+CHANGING A MONSTER'S STRATEGY AT RUNTIME:
+  switch_ai_mode.+x <state_path> <strategy_id>
+
+This is the same REGISTRY + SWITCH pattern every other muchiverse feature uses,
+but with STRATEGY OPS added as a separate layer:
+  model_list.txt + switch_model.c + send_message.c (handles all providers)
+  terrain_types.txt + glyph_walkable_3d() + raymarch_walls_3d() (one renderer)
+  ai_strategies.txt + switch_ai_mode.c + pick_ai_strategy.c (dispatcher)
+    + decide_chase.c + decide_weighted_flee.c + decide_wander.c (strategies)
+
+The dispatcher pattern lets strategies be TRULY independent - no shared code
+inside pick_ai_strategy, just registry lookup and result validation. Adding
+new strategies is just "new .c file + registry row," nothing else touches.
+
+================================================================================
+END AI-ARCHITECTURE.txt

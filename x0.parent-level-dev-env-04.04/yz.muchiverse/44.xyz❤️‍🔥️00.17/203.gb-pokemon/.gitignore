@@ -1,0 +1,6 @@
+gb-pokemon
+*.o
+*.pid
+.gb-pokemon.pid
+saves/slot0/save.txt
+saves/slot0/party.pdl

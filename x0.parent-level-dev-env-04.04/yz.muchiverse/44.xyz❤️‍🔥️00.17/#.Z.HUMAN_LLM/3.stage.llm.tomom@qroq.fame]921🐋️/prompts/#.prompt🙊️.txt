@@ -1,0 +1,149 @@
+
+💬️
+ai momentum velocity
+
+
+gcc c program that takes in .txt files as args, 
+makes a vocab  , 
+then does sgd + momentum to find similiarity from 
+word 
+
+(prompt user for word)
+
+give similiarity score also
+
+
+💬️
+
+
+
+>yt stanford spring 2025 lecture 3
+Miso Bot
+APP
+ — 
+2:49 PM
+https://youtube.com/watch?v=dyNGd06MWn4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+https://github.com/methuselahsim/Understanding-Transformers-Step-by-Step-math-example
+🙊️
+📼️📼️📼️📼️📼️📼️📼️📼️📼️v
+https://youtube.com/watch?v=i0P56Pm1Q3U
+YouTube
+Yifan - Beyond the Hype
+I Reverse-Engineered Claude Code: Learn These Agent Tricks
+
+
+(how 'ai cli bots' are architected , ie : BEYOND TRANSFOMERS) 🔖️
+📼️📼️📼️📼️📼️📼️📼️📼️📼️📼️📼️📼️📼️📼️
+
+📼️🙊️
+📍️aug6. the REAL 2 do is 2 get a simple llm maybe even 🇱🇰️, 
+make tests for it, manipulate the weights so u can literally see logits change pic , etc
+and we can take it from there basically do w/e we want...
+(and wat we want it to do peice integration, make tools/bench♏️, hardcode biases 4 ♋️, etc
+
+📍️📍️📍️📍️📍️📍️📍️📍️📍️📍️📍️📍️📍️📍️📍️📍️📍️📍️📍️📍️📍️📍️📍️📍️
+
+🚡️
+
+🚡️
+🏎️
+
+wut about rl? wut about rag? m8 we just need 2 see biases change logits, 
+(+ maybe doing that "1 word association score thingi)
+(but yea then we may start adding knowledge distillation (learning) + curliq (hard) + ? 
+& creation of mods? can it be hardcoded 2 create template mods + tack on shit
+ie hardcoding executable? meta learning and stuff where does that fall . w/e lets gooo
+
+dont think just push🏎️
+
+🧠️dont worry about forgettign brilliant little arch thingy for lmm. -jc 
+🤯️
+🔬️
+📍️
+🦽️->🦼️-> 🏍️
+
+ie :
+🦽️- home made , not attached 2 peice logic
+🦽️-homemade , attached 2 1p peices; running ♟️ai rl/ biases<-will be big (tracked biases)🚇️
+🏍️ -> interacting with others items, physics ready 2 code out wu again. 
+
+👩🏻‍🦼️👩🏻‍🦽️
+once we do this i bet we can also see solutinos for training against "llama2" or ollama3
+that these llm's have no idea about 
+(but vaugely have hinted @ ie : knowledge distilation scores♏️💯️
+
+👩🏻‍🏫️dont worry about compabitibility we can come back up 2 that, i 
+rather have smol but moving/working movable metrix even if i have 2 use biases w.e🚇️
+👩🏻‍🦼️👩🏻‍🦽️
+when we move 2 gpu we will have max leverage + already have min provability 💝️
+🦪️
+wut if no gpu's work? still gonn be enuff 2 do game bias stuff & learn'
++ others can train numeriar, till we bootstrap cash🦪️
+📍️⛳️📲️
+
+
+
+
+🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️🔬️
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+_____________________________________🐼️
+
+🥅️whenever u get around 2 it, u should move those llama 2 corpuses, and even "QURIQLUM 2 that 1 or more corpus metadir/🫁️
+♠️
+🧰️🚇️
+👬🏽️
+🍀️ ai as an os . do this with gemini.oncli. on desktop. 
+just have it loop till whenever toekns "unexpire 4 free" 
+and create its own training programs etc. {everything can be a .txt = weights/keywords/executes. w/e }🍀️
+
+
+
+
+
+
+
+
+👮🏽‍♂️️
+https://youtube.com/watch?v=l6ZA2PXzkxY
+>yt the peak of quantum stupidity
+quantum cop founder👮🏽‍♂️️

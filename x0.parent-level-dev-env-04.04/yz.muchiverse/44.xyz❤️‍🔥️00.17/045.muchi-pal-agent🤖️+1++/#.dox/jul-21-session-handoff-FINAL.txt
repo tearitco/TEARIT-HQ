@@ -1,0 +1,226 @@
+JUL-21 SESSION HANDOFF - FINAL (COLD-START, ASSUME ZERO MEMORY)
+================================================================================
+Written 2026-07-21 by Sonnet, session closing per direct user request.
+Follows the family's own standing handoff template (see $.zest-er-summary-
+FIN❤️‍🔥️+.txt sec. 7, one level up in yz.muchiverse/). Read !.xyzos-standards.
+txt sec. 33 and !.xyzos-pitfalls.txt sec. P1 alongside this - those hold the
+durable, family-wide rule versions of everything below; this file is the
+muchi-pal-agent-specific chronological account.
+
+================================================================================
+1. WHAT ACTUALLY HAPPENED THIS SESSION (chronological, root causes not
+   just symptoms)
+================================================================================
+
+STARTING POINT: api-fix.txt (a prior agent's diagnosis) claimed muchi-pal-
+agent's async-polling architecture was fundamentally wrong ("random-words"
+= corrupted JSON from a race condition) and proposed a full persistent-
+daemon rewrite (Option A). That diagnosis was WRONG - checked live state
+first and found "random-words" is a literal, working, intentional model
+entry in model_list.txt (provider_kind=script, picks random words from a
+wordbank, no network at all) - the user had it active during testing and
+that's what confused a prior agent. No architecture rewrite was needed or
+done. This was the first instance of a pattern that repeated all session:
+check the actual live state / actual reference code before proposing a
+big fix.
+
+BUG 1 - GEMINI PERMANENTLY POISONED BY /model: `send_message.c`'s /model
+listing command logged a role="tool" turn with tool_name=NULL.
+build_gemini_request() treated ANY role="tool" line as a real
+functionResponse, so it sent `{"name":"", ...}` - Gemini permanently
+400s on that ("Name cannot be empty"), and because context is cumulative,
+one /model command broke Gemini for the rest of the session. FIXED: that
+listing line is now tagged kind="info", skipped by all four request
+builders (ollama/gemini/gemma/llamacpp).
+
+BUG 2 - GEMMA TOOL-CALLING REMOVED (direct instruction: "gemma should
+never parse tool etc. we got tool to work, while using gemma by pre-
+prompting our own fsm/or bt and running a script"): prompt_keyword.txt
+used to instruct gemma to emit `TOOL: verb args` syntax; check_response.
+c's gemma branch used to scan for it; gemma_strategy.c's own "Strategy B"
+routed EVERY non-tool message (including a bare "hi") into that same
+TOOL: prompt. All removed. Gemma is unconditionally plain conversational
+text now - tool execution is 100% pre-decided by gemma_strategy.c
+(keyword detection) + strategy_execute_a.c (pre-execution), matching
+!.GRAND-PLAN-TOOL-SCAFFOLD.txt's three-layer design. Cross-referenced and
+corrected an OLDER, conflicting plan in the one-level-up $.zest-er-
+summary-FIN❤️‍🔥️+.txt sec. 4.1 (proposed giving gemma its OWN TOOL:
+keyword parsing - superseded, corrected inline per that file's own
+established [CORRECTION] convention, not deleted).
+
+BUG 3 - THE REAL DOUBLE-LOG / STUCK-THINKING ROOT CAUSE: button.sh
+classified `pieces/world_01/session_01/chat/` (state.txt holding
+ai_state/curl_pid, context_log.txt) as SHARED, symlinked data - the same
+bucket as pal-chat-irc's real multi-user `users/`/`rooms/`. Wrong
+analogy: those fields are SINGLE-OWNER "am I mid-flight on one specific
+API call" bookkeeping, the direct structural equivalent of pal-chat-irc's
+own PRIVATE, per-session `pieces/apps/player_app/state.txt`. Confirmed
+live via `ps aux`: THREE separate `button.sh run` sessions had
+accumulated over an hour (closed terminals send SIGHUP, which the old
+`trap ... EXIT INT TERM` never caught), all polling/mutating the same
+shared files at once - that's the double-log mechanism, not a logic bug
+in check_response.c itself. FIXED: button.sh now copies world_01 into
+each session privately (seeded from canonical for continuity, persisted
+back on exit), traps SIGHUP, and reaps any live instance of the
+project's own binaries (matched by /proc/$pid/exe, not cwd - a rogue
+prisc+x/chtpm_parser_pal pair launched directly from the project root,
+bypassing button.sh entirely, was invisible to a cwd-only guard and had
+been running for over an hour).
+
+BUG 4 - RESPONSE COMPUTED CORRECTLY BUT NEVER RENDERED LIVE: even with
+BUG 3 fixed, a single session could still show "Thinking..." frozen
+indefinitely while the real answer was already correct on disk (only
+visible after a full quit+restart). Root cause, found by reading gem-dev
+_manager.c's main loop and pal-chat-irc's chat_inbox_watcher.c directly
+(NOT by theorizing - see !.xyzos-standards.txt sec. 33.0): both references
+have the SAME process that detects completion also trigger the render
+itself, synchronously, right there - never just ping a marker and trust
+a separate, later poll to notice. check_response.c only did the latter.
+FIXED: added trigger_render() to check_response.c (ported directly from
+chat_inbox_watcher.c's own function of the same name) - shells out to
+compose_frame.+x the instant a response is ready, on every outcome
+branch (success, PENDING_PERM, curl failure, error).
+
+BUG 5 - CURL TIMEOUT TOO SHORT FOR THE REAL 8B MODEL: connect_op.c used
+`--max-time 30`, justified by a comment claiming "groq-ollama (8B) in
+<1s." Found gem-dev's own real debugging handoff for this EXACT model on
+this EXACT host (1.TPMOS_c_+rmmp.0102.0028/projects/gem-dev/#.dox/groq-
+api-handoff.txt, llama3-groq-tool-use:8b on 10.0.0.144:11434) - it needed
+600s and documents curl timeout (exit 28) as a real, expected failure
+mode, not rare. FIXED: connect_op.c now uses `-sS --max-time 600`
+(matching gem-dev verbatim), and check_response.c surfaces curl's real
+exit code as two distinct messages (timeout vs. host-unreachable)
+instead of one generic "could not connect."
+
+BUG 6 - GEMINI'S REAL ERROR TEXT WAS NEVER SURFACED: check_response.c's
+gemini branch only ever tried the success shape (candidates[0].content.
+parts[0].text/.functionCall) and fell through to a generic "empty or
+unparseable response" on failure - silently swallowing Gemini's own real
+error body (`{"error":{"message":"..."}}` - a malformed function-
+declaration schema, safety block, quota hit, etc). gem-dev_manager.c's
+own check_ai_status() already does an error.message extraction as a
+fallback - ported it verbatim into check_response.c's gemini branch.
+
+FEATURE - PER-SECOND "STILL WAITING" COUNTER (direct user request): the
+existing "Thinking... [poll #N, frame #M]" display never actually told a
+user how much real TIME had passed (poll rate isn't 1/sec, and compose_
+frame only ran on state-change events, never on a plain idle tick, so
+the counter looked frozen even during a real multi-second wait). FIXED:
+send_message.c writes a `thinking_start` epoch timestamp when a request
+begins; compose_frame.c computes and displays real elapsed seconds
+(gem-dev_manager.c's own g_thinking_start/g_thinking_secs pattern);
+main_loop_chtpm.pal now force-renders once per second (~10 idle ticks)
+regardless of state change, so the counter actually visibly ticks.
+
+DOCS: split the family-wide lessons between two files per direct
+request ("i want to seperate this between !.xyzos-standards.txt and
+!.xyzos-pitfalls.txt so one will be good for onboarding and one for
+debugging") - !.xyzos-standards.txt sec. 33 has the terse, prescriptive
+rule list; !.xyzos-pitfalls.txt (NEW FILE) sec. P1 has the full live-
+caught narrative/evidence behind each one. Corrected the superseded
+gemma-tool-use plan in $.zest-er-summary-FIN❤️‍🔥️+.txt sec. 4.1 (see BUG
+2 above).
+
+================================================================================
+2. CURRENT STATE - WHAT'S VERIFIED WORKING, WHAT ISN'T YET
+================================================================================
+
+VERIFIED WORKING LIVE (user confirmed):
+  - gemma-local: sends, thinks, and renders the reply live, without a
+    restart, with the elapsed-seconds counter actually ticking.
+  - gemini-flash: plain chat works. Native tool-calling PARTIALLY works -
+    list_dir succeeded, write_file calls were dispatched (functionCall
+    correctly parsed into PENDING_PERM, tool_name/args correct) but
+    file_ops.c's own write never actually created the files (test-file.
+    txt/new-file.txt do not exist in sandbox/ despite an apparently-
+    successful call), and read_file failed ("Error: tool execution
+    failed or produced no output") even for cleanup Verified list_dir.+x
+    itself works correctly when run directly (shows jul-21.txt fine) -
+    the earlier "list_dir isn't showing jul-21.txt" report was almost
+    certainly stale scrollback from before that file existed, not a
+    live bug, but NOT independently re-confirmed after the file existed.
+
+NOT YET VERIFIED / STILL BROKEN, next agent should start here:
+  - manager/path_nav_manager.c (the "*" file-picker) - NEW finding, only
+    diagnosed at the very end of this session, NOT fixed: `MAX_PICKS`
+    (line 56) = 10 is a GLOBAL budget shared across the ENTIRE recursive
+    tree (append_dir_markup()'s own `else if (g_pick_count < MAX_PICKS)`
+    gate at line 247), but directories always fully recurse regardless
+    of that budget (no gating on directories at all, only on individual
+    FILE entries). This project's own top-level directory now has 15
+    files - the budget is fully exhausted before recursion ever reaches
+    ANY subdirectory (sandbox/, ops/, pieces/, etc). Live-caught symptom
+    matching this exactly: sandbox/ correctly renders as "expanded"
+    ([-] - per this file's own header comment, that marker means
+    "children were included in THIS render pass," not "click to
+    expand") but sandbox/'s own jul-21.txt never appears at all - no
+    `else` branch shows a budget-exceeded file as plain/unclickable
+    text, it's just silently dropped. FIRST CONCRETE STEP for whoever
+    fixes this: either (a) raise MAX_PICKS substantially and/or make it
+    PER-DIRECTORY instead of global (so exhausting the budget on
+    sibling files at one level doesn't starve every subdirectory of any
+    depth), or (b) show budget-exceeded files as plain, non-clickable
+    text instead of dropping them entirely, so the tree is at least
+    visually complete even if not every file is selectable. Not
+    reproduced/tested against a live nav-mode session this session -
+    diagnosed from source + a live top-level file count only.
+  - execute_tool.c's write_file/read_file dispatch for gemini's tool
+    calls - real, reproducible failure, NOT yet root-caused. Checked
+    !.GRAND-PLAN-TOOL-SCAFFOLD.txt and ROADMAP-models.txt directly per
+    user request - NEITHER document specifies any per-model restriction
+    on which of the 7 tools may be used; ollama/gemini are documented as
+    having the identical full tool set (handoff.txt line 108-111: "used
+    by ollama + gemini (both have real tool schemas)"). So this is NOT
+    intentional gating - it's a real bug in the write/read dispatch
+    path (execute_tool.c -> file_ops.c), not investigated further this
+    session (interrupted before the direct file_ops.+x test could run).
+    FIRST CONCRETE STEP: run `file_ops.+x write <path> <content>` and
+    `file_ops.+x read <path>` DIRECTLY (matching handoff.txt's own §6
+    testing discipline) from inside sandbox/, exactly as execute_tool.c
+    itself would invoke them, to isolate whether the bug is in
+    execute_tool.c's shell-command construction (likely: path/content
+    are interpolated into a single-quoted shell string with NO escaping
+    - a content value containing a single quote would break the command
+    outright) or inside file_ops.c itself.
+  - groq-tool-use-mac (ollama native tool-calling): not re-tested since
+    the timeout fix (BUG 5) landed - "could not connect" was observed
+    once but that predates the 600s timeout change, may already be
+    fixed. Test fresh before assuming it's still broken.
+  - cpp-llm-mac (llamacpp): same - "could not connect" observed once,
+    not re-tested since BUG 5.
+
+================================================================================
+3. STANDING CONVENTIONS / GOTCHAS A NEWCOMER TO THIS PROJECT MUST KNOW
+================================================================================
+  - Read !.xyzos-standards.txt sec. 33 and !.xyzos-pitfalls.txt sec. P1
+    FIRST - they're the durable version of everything in section 1
+    above.
+  - world_01/session_01/chat/ is now session-private (copied, not
+    symlinked) - see button.sh's own corrected header comment.
+  - Gemma NEVER calls tools, ever, under any circumstance - this is a
+    settled, direct, repeated instruction, not an open design question.
+    Tool execution for gemma lives entirely in gemma_strategy.c +
+    strategy_execute_a.c, running BEFORE send_message.c is ever called.
+  - check_response.c's completion handling must always end by calling
+    trigger_render() (or an equivalent direct compose_frame invocation) -
+    do not revert to marker-only signaling.
+  - connect_op.c's curl timeout is 600s, matching gem-dev's own real
+    figure for this exact model/host - do not shrink it back down
+    without a real reason.
+
+================================================================================
+4. USER COLLABORATION NOTES LEARNED THIS SESSION
+================================================================================
+  - Wants reference implementations (gem-dev, pal-chat-irc) checked
+    DIRECTLY, every new symptom, before any new theory or debug
+    instrumentation is proposed - already saved as a standing feedback
+    memory this session (see /home/no/.claude/projects/.../memory/
+    feedback_check_reference_before_theorizing.md).
+  - Corrects firmly and expects it to stick immediately, without
+    re-litigating - matches the family's own documented collaboration
+    style in $.zest-er-summary-FIN❤️‍🔥️+.txt sec. 6.
+  - Wants documentation split by AUDIENCE (onboarding-terse vs.
+    debugging-detailed), not one file trying to serve both.
+  - Explicitly okay with corrections added inline (not deleting original
+    text) in long-lived planning docs - same convention already
+    established in $.zest-er-summary-FIN❤️‍🔥️+.txt.

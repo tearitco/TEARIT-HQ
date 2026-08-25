@@ -1,0 +1,7 @@
+module_path=projects/cyoa-engine/manager/+x/cyoa-engine_manager.+x
+active_layout_id=projects/cyoa-engine/layouts/cyoa.chtpm
+app_title=RED WHITE AND U: CYOA PLAYER
+book_name=Select a Book
+page_num=0
+page_content=║  Please select a book from the menu below:      ║
+choices_content=║  Use Arrows to navigate, ENTER to select        ║

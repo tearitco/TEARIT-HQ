@@ -1,0 +1,42 @@
+# mano-pet-pre-report-j17.txt
+# Investigation Report for xo-pet-v1 Project (Simplified PoC)
+
+## 1. Current State of Moke-Pet (moke-pet-project-2.0)
+The Moke-Pet system is a headless, autonomous simulation environment. 
+
+### Empirical Testing Results:
+- **Bug Fix**: Refactored `manager.c` to resolve its directory dynamically.
+- **Incomplete DNA**: `piece.pdl` files currently lack several methods.
+- **Execution**: Simulation works but needs full PDL methods to execute all phases.
+
+## 2. Current State of Mew Bot (iqamoji-bot-xo5)
+- **Nature**: An autonomous agent framework designed to run a TPMOS console.
+- **Keyboard Muscle**: `keyboard_muscle.c` is a real-time key injector stub.
+- **User Input Philosophy**: `xo-pet-v1` will start with manual keyboard input. The `bot-xo5` script demonstrates how the pet can later control itself through the same interface.
+
+## 3. Plan for xo-pet-v1 (Simplified PoC)
+The goal is a basic menu-driven simulation project.
+
+### Implementation Details:
+- **Project Location**: `x0.5-liz.fiter4-mew-00.00/projects/xo-pet-v1`.
+- **Xelector (Control Hub)**:
+    - **Methods**: `Start Sim`, `Pause Sim`.
+    - **Possession Submenu**: A list of living lizards to possess.
+- **Pet Control**:
+    - Possessed pets show `Eat`, `Attack`, `Mate` as buttons.
+- **Simulation Control**:
+    - **End Turn Button**: User manually advances the epoch.
+- **DNA Scaffolding**:
+    - `xo-pet-init.sh` will populate full `piece.pdl` methods for all entities.
+
+## 4. Building xo-pet-v1
+1. **Initialize Environment**: Run updated `xo-pet-init.sh`.
+2. **Project Setup**: Create the simplified structure.
+3. **Menu-Driven Manager**: Focus on `active_target_id` switching via menu.
+4. **Testing**: 
+    - Possession via submenu.
+    - Start/Pause via Xelector.
+    - End Turn advancement.
+
+---
+*Report prepared by Gemini CLI - 2026-06-18*

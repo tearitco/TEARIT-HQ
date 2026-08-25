@@ -1,0 +1,465 @@
+# Windows/Linux Parity Analysis for CHTPM+OS
+# Date: March 31, 2026
+# Author: Automated Analysis
+
+================================================================================
+## EXECUTIVE SUMMARY
+================================================================================
+
+The Windows (PowerShell/Batch) scripts have fundamental differences from their
+Linux counterparts that explain the reported issues:
+- CLI not working properly
+- In-game functions not working
+- Only OpenGL window opens
+
+ROOT CAUSES IDENTIFIED:
+1. Windows scripts use hardcoded MSYS2 paths (/c/msys64/...) that may not exist
+2. Path separator inconsistencies (backslash vs forward slash)
+3. Windows scripts skip critical initialization that Linux run_chtpm.sh performs
+4. Process spawning differs fundamentally between platforms
+5. File-based IPC paths may be malformed on Windows
+
+================================================================================
+## 1. COMPARISON: compile_all.ps1 vs compile_all.sh
+================================================================================
+
+### 1.1 Compiler Flags
+
+| Aspect              | Windows (compile_all.ps1)           | Linux (compile_all.sh)              |
+|---------------------|-------------------------------------|-------------------------------------|
+| OpenGL Flags        | -LC:/msys64/mingw64/lib -lopengl32  | -lGL -lglut -lX11 (Linux)           |
+|                     | -lglu32 -lfreeglut -lwinmm -lgdi32  | -framework OpenGL -framework GLUT   |
+|                     | -luser32                            | (macOS)                             |
+| FreeType Flags      | -LC:/msys64/mingw64/lib -lfreetype  | -lfreetype (auto-detects path)      |
+| Include Paths       | -IC:/msys64/mingw64/include/freetype2 | -I/opt/homebrew/include/freetype2 |
+| Thread Flags        | -lpthread                           | -pthread                            |
+| Platform Defines    | -D_WIN32 (explicit)                 | (auto-detected)                     |
+
+### 1.2 CRITICAL ISSUE: Hardcoded Paths
+
+compile_all.ps1 has HARDCODED paths:
+  - C:/msys64/mingw64/lib
+  - C:/msys64/mingw64/include/freetype2
+
+PROBLEM: If MSYS2 is installed elsewhere (default is C:\msys64 but users may
+customize), compilation fails silently or produces broken binaries.
+
+Linux compile_all.sh DETECTS paths dynamically:
+  - Checks /opt/homebrew/include (Apple Silicon)
+  - Checks /usr/local/include (Intel Mac)
+  - Checks /usr/include (Linux standard)
+
+### 1.3 Compilation Order
+
+Windows: gcc -D_WIN32 -std=gnu11 source.c -o output.exe [FLAGS]
+Linux:   gcc [FLAGS] source.c -o output
+
+Both place source before libraries (correct), but Windows script sometimes
+calls gcc directly with & gcc instead of using Compile-Piece function,
+leading to inconsistent flag application.
+
+### 1.4 Missing Executables in Windows Build
+
+Comparing the two scripts, compile_all.ps1 is MISSING:
+  - projects/fuzz-op/manager/+x/fuzz-op_manager.+x (compiled on Linux)
+
+This could cause runtime errors if the project expects this binary.
+
+================================================================================
+## 2. COMPARISON: run_chtpm.ps1 vs run_chtpm.sh
+================================================================================
+
+### 2.1 Initialization Completeness
+
+| Initialization Step          | run_chtpm.sh | run_chtpm.ps1 | Impact            |
+|------------------------------|--------------|---------------|-------------------|
+| Kill existing processes      | ✓ (kill_all.sh) | ✓ (kill_all.ps1) | Both OK          |
+| Create location_kvp          | ✓ Full       | ✓ Full        | Both OK           |
+| Reset selector state         | ✓            | ✓             | Both OK           |
+| Reset manager state          | ✓            | ✓             | Both OK           |
+| Reset user app state         | ✓            | ✓             | Both OK           |
+| Reset template project       | ✓            | ✓             | Both OK           |
+| Reset editor state           | ✓ Full       | ✓ Full        | Both OK           |
+| Reset op-ed state            | ✓ FULL       | ✓ FULL        | Both OK           |
+| Reset clock daemon           | ✓            | ✓             | Both OK           |
+| Reset fuzzpet state          | ✓            | ✓             | Both OK           |
+| Clear ALL history files      | ✓ 30+ files  | ✓ 20+ files   | PS missing some   |
+| Create debug directories     | ✓            | ✓             | Both OK           |
+| Reset world map              | ✓            | ✓             | Both OK           |
+| Launch PAL watchdog          | ✓            | ✗ DISABLED    | NO THROTTLING!    |
+
+### 2.2 CRITICAL: Watchdog Disabled on Windows
+
+run_chtpm.ps1 explicitly states:
+  "# NOTE: Watchdog disabled until basic runtime is working"
+
+This means:
+- Runaway Prisc VM processes are NOT killed on Windows
+- CPU throttling is NOT active
+- Fork bombs are possible on Windows
+
+IMPACT: In-game functions may hang or become unresponsive because runaway
+processes consume resources.
+
+### 2.3 Missing History File Clears in PowerShell
+
+run_chtpm.ps1 does NOT clear these files (but Linux does):
+  - pieces/joystick/ledger.txt
+  - pieces/apps/fuzzpet_app/world/map_z*.txt (cleanup)
+  - pieces/apps/op-ed/view_changed.txt (mentioned but may fail)
+
+IMPACT: Stale state may cause input/display glitches.
+
+### 2.4 Path Format in location_kvp
+
+Windows run_chtpm.ps1:
+  project_root=C:\Users\...\TPMOS_c_+rmmp_53.00
+  pieces_dir=C:\Users\...\TPMOS_c_+rmmp_53.00\pieces
+
+Linux run_chtpm.sh:
+  project_root=/home/no/.../TPMOS_c_+rmmp_53.00
+  pieces_dir=/home/no/.../TPMOS_c_+rmmp_53.00/pieces
+
+The C code must handle both path formats. If the Windows binaries were compiled
+with Linux-style path assumptions, file I/O will fail.
+
+================================================================================
+## 3. COMPARISON: kill_all.ps1 vs kill_all.sh
+================================================================================
+
+### 3.1 Process Killing Strategy
+
+| Method              | kill_all.sh (Linux)           | kill_all.ps1 (Windows)         |
+|---------------------|-------------------------------|--------------------------------|
+| Primary approach    | pgrep -f pattern + pkill -9   | Get-Process + Stop-Process     |
+| Pattern matching    | Regex on full path            | Path wildcard matching         |
+| Fallback            | pkill -9 -f ".*\.+x"          | Where-Object Path -like        |
+| Watchdog cleanup    | pkill -f pal_watchdog.sh      | Stop-Job (PowerShell jobs)     |
+
+### 3.2 Potential Issues on Windows
+
+1. PowerShell's Get-Process may not catch processes started by bash/MSYS2
+2. Path matching "*\+x\*.+x*" assumes backslashes, but MSYS2 may use forward
+3. Watchdog job cleanup only works if watchdog was started as PS job (it's not)
+
+================================================================================
+## 4. COMPARISON: Runner Scripts
+================================================================================
+
+### 4.1 run_orchestrator.sh (MSYS2 Bash)
+
+This script is SHARED between platforms (runs under MSYS2 bash on Windows).
+
+Key features:
+- Uses pwd -W to get Windows paths (C:/...)
+- Exports PATH with /c/msys64/mingw64/bin
+- Clears state files before launch
+- Uses exec to replace shell with orchestrator
+
+This is the MOST RELIABLE way to run on Windows because:
+1. Bash handles path conversion automatically
+2. MSYS2 provides POSIX compatibility layer
+3. File I/O uses native Windows paths from pwd -W
+
+### 4.2 run_chtpm.ps1 (Native PowerShell)
+
+PROBLEMS:
+1. Does NOT call run_orchestrator.sh - launches orchestrator directly
+2. Bypasses MSYS2 path conversion
+3. May have DLL loading issues (PATH not set correctly)
+4. Child processes spawned by orchestrator may inherit wrong working directory
+
+### 4.3 run_chtpm.bat / run_chtpm_terminal.bat
+
+These call bash.exe or msys2_shell.cmd to run run_orchestrator.sh.
+
+This is CORRECT because it uses the MSYS2 compatibility layer.
+
+### 4.4 win_debug.bat (GL-OS Desktop)
+
+PROBLEM: Calls run_gl_desktop.sh via mintty, but:
+1. Assumes MSYS2 is at C:\msys64
+2. mintty may not inherit correct PATH
+3. GL context creation may fail if freeglut DLLs not found
+
+================================================================================
+## 5. ROOT CAUSE ANALYSIS: Why Windows Scripts Don't Work Properly
+================================================================================
+
+### Issue 1: "Opens GL window but CLI doesn't work"
+
+CAUSE: run_chtpm.ps1 launches orchestrator.+x directly without:
+  - Setting PATH to include MSYS2 mingw64/bin
+  - Running through MSYS2's path conversion layer
+
+The orchestrator spawns child processes (renderer, chtpm_parser, etc.). These
+children inherit the environment and may:
+  - Fail to load DLLs (freeglut, freetype)
+  - Have wrong working directory
+  - Fail to open files due to path format issues
+
+SOLUTION: Always use run_chtpm.bat or run_chtpm_terminal.bat which call
+run_orchestrator.sh through MSYS2 bash.
+
+### Issue 2: "In-game functions don't work"
+
+CAUSE 1: Watchdog disabled
+  - No CPU throttling
+  - Runaway processes consume resources
+  - Input handling becomes unresponsive
+
+CAUSE 2: Missing history file clears
+  - Stale input in keyboard/history.txt
+  - Old state in app-specific files
+  - Race conditions in file-based IPC
+
+CAUSE 3: Path format mismatch
+  - Windows paths (C:\...) vs POSIX paths (/c/...)
+  - C code may not handle both correctly
+  - File I/O fails silently
+
+CAUSE 4: Process spawning differences
+  - Linux: fork()/exec() - child inherits everything
+  - Windows: _spawnl(_P_DETACH) - must manually _chdir()
+  - Children may have wrong working directory
+
+### Issue 3: "Scripts only work partially"
+
+CAUSE: Inconsistent initialization
+
+run_chtpm.sh does 7 major steps:
+  1. Nuclear cleanup
+  2. location_kvp setup
+  3. Entity reset (selector, manager, user, template)
+  4. App state reset (editor, op-ed, clock)
+  5. FuzzPet state reset
+  6. Clear 30+ history/ledger files
+  7. World map reset + watchdog launch
+
+run_chtpm.ps1 does similar steps BUT:
+  - Watchdog is DISABLED
+  - Some history files not cleared
+  - No map_z*.txt cleanup
+  - Uses different path format
+
+================================================================================
+## 6. RECOMMENDATIONS
+================================================================================
+
+### Immediate Fixes (No Code Changes)
+
+1. ALWAYS use MSYS2 bash wrappers on Windows:
+   - Use: run_chtpm.bat, run_chtpm_terminal.bat, win_debug.bat
+   - Avoid: run_chtpm.ps1 (direct launch issues)
+
+2. Enable watchdog on Windows:
+   - Edit run_chtpm.ps1: Uncomment/enable pal_watchdog.ps1
+   - Or run separately: .\pal_watchdog.ps1
+
+3. Verify MSYS2 installation path:
+   - Confirm C:\msys64 exists
+   - If not, update hardcoded paths in compile_all.ps1
+
+4. Manual history cleanup before running:
+   - Run kill_all.bat first
+   - Manually delete pieces/*/history.txt files
+   - Then run via .bat wrapper
+
+### Structural Fixes (Script Refactoring)
+
+1. Unify compilation:
+   - Move compile logic to compile_all.sh
+   - Have compile_all.ps1 call bash compile_all.sh via MSYS2
+   - Ensures identical compiler flags
+
+2. Unify initialization:
+   - Move ALL init logic to run_chtpm.sh
+   - Have run_chtpm.ps1 call bash run_chtpm.sh via MSYS2
+   - Ensures identical state setup
+
+3. Fix watchdog:
+   - Create cross-platform watchdog (C binary, not shell)
+   - Or implement proper Windows process monitoring
+
+4. Path handling:
+   - Always use pwd -W on Windows to get native paths
+   - Store paths in location_kvp with correct format
+   - C code should use platform-agnostic path functions
+
+### Long-Term Architecture
+
+1. Single entry point:
+   - Create chtpm-launcher (C binary)
+   - Handles platform detection
+   - Sets up environment correctly
+   - Spawns orchestrator with correct context
+
+2. Path abstraction layer:
+   - Add piece_path_normalize() function
+   - Converts between /c/... and C:\...
+   - Use consistently in all file I/O
+
+3. Process management:
+   - Use job objects on Windows (like cgroups on Linux)
+   - Ensures clean shutdown of all children
+   - Prevents orphaned processes
+
+================================================================================
+## 7. FILE-BASED IPC: Platform-Specific Concerns
+================================================================================
+
+### File Locking
+
+Linux: flock() or fcntl() - well-supported
+Windows: LockFile() - different semantics
+
+RISK: If both renderer and parser try to read/write current_frame.txt
+simultaneously, Windows may behave differently than Linux.
+
+MITIGATION: Current implementation uses "pulse" files (frame_changed.txt)
+which is safer than direct locking.
+
+### Line Endings
+
+Linux: LF (\n)
+Windows: CRLF (\r\n)
+
+RISK: If C code doesn't handle CRLF, parsing may fail.
+
+MITIGATION: Use text mode fopen() on Windows, or normalize in C code.
+
+### Path Separators in C Code
+
+The C code should use:
+  - forward slashes (/) work on both platforms
+  - Or use platform-specific PATH_SEP macro
+
+Check these files for path handling:
+  - pieces/chtpm/plugins/chtpm_parser.c
+  - pieces/chtpm/plugins/chtpm_player.c
+  - pieces/master_ledger/plugins/piece_manager.c
+
+================================================================================
+## 8. TESTING CHECKLIST FOR WINDOWS
+================================================================================
+
+Before declaring Windows parity:
+
+[ ] compile_all.ps1 produces all binaries (compare count with Linux)
+[ ] All .+x files are executable (test each manually)
+[ ] run_chtpm.bat launches without errors
+[ ] CLI accepts keyboard input
+[ ] Input appears in keyboard/history.txt
+[ ] Parser processes input (check app history files)
+[ ] Display updates (current_frame.txt changes)
+[ ] Renderer shows updated frame
+[ ] GL renderer opens window (if enabled)
+[ ] Clock daemon runs (check state.txt updates)
+[ ] Watchdog runs (check watchdog.log)
+[ ] Ctrl+C kills all processes cleanly
+[ ] No orphaned processes in Task Manager
+[ ] Save/Load works (roundtrip parity)
+[ ] Switching apps works (editor -> player -> fuzzpet)
+
+================================================================================
+## 9. CONCLUSION
+================================================================================
+
+The Windows scripts have these fundamental issues:
+
+1. **Path handling**: Hardcoded MSYS2 paths, inconsistent separators
+2. **Initialization**: Watchdog disabled, missing history clears
+3. **Process management**: Different spawn semantics, potential orphans
+4. **Environment**: DLL loading may fail without proper PATH setup
+5. **IPC**: File locking and line endings may differ
+
+RECOMMENDED APPROACH:
+- Don't edit C code (as requested)
+- Fix PowerShell/Batch scripts to defer to MSYS2 bash
+- Use run_orchestrator.sh as the single source of truth
+- Enable watchdog on Windows
+- Add comprehensive error logging
+
+The architecture is sound - the issues are in the platform-specific glue code.
+
+================================================================================
+## 10. MARCH 31, 2026 UPDATE: PARITY STATUS
+================================================================================
+
+**RESOLVED Issues:**
+- ✓ Terminal display now works (integrated render thread)
+- ✓ ASCII box characters (all layouts converted)
+- ✓ Nav line shows last key pressed
+- ✓ last_key variable displays in status line
+- ✓ Compile script kills processes before building
+- ✓ Ctrl+C kills all child processes
+- ✓ Number key navigation works (jumps to menu items)
+- ✓ Keyboard injection works (writing to history file)
+
+**REMAINING Issues (Need Deeper Research):**
+- ✗ Physical arrow keys don't work in MSYS2/mintty
+  - Root cause: `_kbhit()` doesn't work in pseudo-terminals
+  - Attempted fixes: fgetc() fallback, escape sequence parsing
+  - Status: Still broken - may need native Windows console only
+- ✗ Joystick input not verified
+  - XInput code written but not tested
+  - Need: Physical controller test, verify event output
+
+**Files Modified (March 31, 2026):**
+1. `pieces/chtpm/plugins/orchestrator.c` - Render thread, console handler, readKey fixes
+2. `pieces/chtpm/plugins/chtpm_parser.c` - last_key setting in process_key()
+3. `pieces/chtpm/layouts/*.chtpm` (10 files) - Unicode→ASCII conversion
+4. `#.buttons/windows/legacy/compile_all.ps1` - Process kill at start
+5. `pieces/joystick/plugins/joystick_input_win.c` - NEW (XInput implementation)
+
+================================================================================
+## 11. APRIL 1, 2026 UPDATE: THE ARROW & ENTER SAGA
+================================================================================
+
+**Current Status:** Core binaries (`orchestrator`, `keyboard_input`, `parser`, `player`) now build with 100% clean output on Windows (MinGW), but behavioral issues with Arrow and Enter keys persist in the MSYS2/mintty environment.
+
+### 11.1 Technical Breakthroughs (What we did)
+
+1.  **The Signedness Bug:** 
+    Identified a critical flaw in `pieces/chtpm/plugins/orchestrator.c`. The `readKey()` function used a `char c` to capture input. On Windows, `char` is signed, meaning the arrow key prefix `0xE0` (224) was interpreted as `-32`. The comparison `if (c == 224)` always failed.
+    - **FIX:** Changed `c` to `int` in `orchestrator.c` and `keyboard_input.c`.
+    - **Nuance:** Added `(unsigned char)` casting for Linux/POSIX branches to ensure high-bit consistency.
+
+2.  **Header Decoupling (Header-less Convention):**
+    As per user preference, removed `#include "win_compat.h"` and `#include "win_spawn.h"` from the entire project (20+ files).
+    - **FIX:** Inlined Windows-specific logic (Process spawning, `_mkdir`, `Sleep` macros) directly into the `.c` files.
+    - **Nuance:** Fixed several "Code Duplication" bugs at the end of files (`gl_os_session.c`, `man-pal_module.c`, `op-ed_module.c`, `user_module.c`) that appeared to be artifacts of previous automated edits.
+
+3.  **Compilation Stability:**
+    Resolved `pid_t` redefinition conflicts and missing `DIR`/`dirent` errors by properly ordering headers and including `<dirent.h>` (available in MinGW) across all modules.
+
+### 11.2 Why the Keylogger Reference Worked
+The `#.tools\keylog-win+aro+c-1\keylog.c` reference succeeded because:
+- It used `int ch` for `_getch()` (avoiding the signedness trap).
+- It was tested in a **native Windows Console** (cmd.exe or PowerShell), where `conio.h` functions are the gold standard.
+- It correctly handled the two-byte sequence: Prefix `0xE0` followed by Scan Code (`72`, `80`, `75`, `77`).
+
+### 11.3 Why Enter and Arrows still fail (Hypotheses)
+
+1.  **Terminal Environment (The Mintty Trap):** 
+    We are running via `button.ps1` which invokes MSYS2 bash. If this is running inside **mintty** (the default MSYS2 terminal), `_kbhit()` and `_getch()` often fail because mintty emulates a pipe rather than a real Windows Console.
+    - **UNTESTED:** Running the orchestrator in a native Windows `conhost` (CMD or PowerShell) without the MSYS2 wrapper.
+
+2.  **The MSYS2 Escape Sequence Conflict:**
+    MSYS2/mintty often sends ANSI escape sequences (like `\x1b[A`) for arrows even on Windows. While we added a fallback to `fgetc(stdin)` to catch these, the timing or buffer state might be causing them to be misread or dropped.
+
+3.  **Enter Key (`10` vs `13`):**
+    The code in `chtpm_parser.c` looks for `10` or `13`. On Windows, Enter usually sends `\r` (13), but terminal emulators often translate this to `\n` (10). 
+    - **Observation:** If the orchestrator captures the key but doesn't write it to `history.txt` correctly, the parser never sees it.
+
+4.  **Redundant Input Threads:**
+    The Orchestrator now has an internal keyboard thread, but `keyboard_input.c` is ALSO spawned as a separate process in some layouts. They might be fighting for the same STDIN handle, causing one to "steal" the Enter/Arrow key from the other.
+
+### 11.4 Future Recommendation
+When revisiting, focus on **Physical Console Isolation**:
+1. Disable the internal keyboard thread in `orchestrator.c` and rely solely on `keyboard_input.c`, or vice versa.
+2. Debug the exact integer code being written to `pieces/keyboard/history.txt` when Enter is pressed. If the file shows `10` or `13` but nothing happens, the bug is in `chtpm_parser.c:process_key`. If the file is empty, the bug is in the `readKey` capture loop.
+
+================================================================================
+# END OF ANALYSIS
+================================================================================

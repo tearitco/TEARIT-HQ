@@ -1,0 +1,12 @@
+side_1_unit_0_profession=warrior
+side_1_unit_0_hp=20
+side_1_unit_1_profession=chef
+side_1_unit_1_hp=15
+side_1_unit_2_profession=farmer
+side_1_unit_2_hp=15
+side_2_unit_0_profession=warrior
+side_2_unit_0_hp=20
+side_2_unit_1_profession=clown
+side_2_unit_1_hp=15
+side_2_unit_2_profession=lawyer
+side_2_unit_2_hp=15

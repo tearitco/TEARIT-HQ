@@ -1,0 +1,7 @@
+project_id=quiz-engine
+q_id=q_026
+q_name=Histidine
+q_formula=His (H)
+q_type=Imidazole-CH2CH(NH2)COOH
+q_groups=Amino Acid
+q_relevance=-NH2

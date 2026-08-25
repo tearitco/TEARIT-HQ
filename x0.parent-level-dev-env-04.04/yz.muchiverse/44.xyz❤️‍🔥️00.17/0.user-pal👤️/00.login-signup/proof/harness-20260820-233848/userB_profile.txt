@@ -1,0 +1,5 @@
+user_id=uloginB_2489937
+display_name=LoginHarnessB
+uuid=fbec8abc-8206-40ca-855f-681d334cf26e
+xyzfs_path=xyzfs/users/fbec8abc-8206-40ca-855f-681d334cf26e
+created_at=1787294352

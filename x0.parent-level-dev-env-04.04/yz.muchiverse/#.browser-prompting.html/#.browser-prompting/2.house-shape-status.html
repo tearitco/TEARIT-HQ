@@ -1,0 +1,169 @@
+<title>House Shape Status — Browser Prompting</title>
+
+<style>
+  :root {
+    --bg: #f4f3ef; --surface: #ffffff; --surface-2: #ececE6; --border: #dcdad2;
+    --text: #1c1c1a; --text-dim: #6b6a63; --accent: #1a8a4a; --accent-warm: #b5720a;
+    --status-wip: #2563a8; --code-bg: #ececE6; --code-text: #2b2b28;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  :root:not([data-theme="light"]) { @media (prefers-color-scheme: dark) {
+    --bg: #14161a; --surface: #1b1e24; --surface-2: #21252c; --border: #2b2f37;
+    --text: #e9e7e2; --text-dim: #9599a1; --accent: #22c55e; --accent-warm: #f0a63f;
+    --status-wip: #5b9dd9; --code-bg: #16181c; --code-text: #dcdad4;
+  } }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --surface: #1b1e24; --surface-2: #21252c; --border: #2b2f37;
+    --text: #e9e7e2; --text-dim: #9599a1; --accent: #22c55e; --accent-warm: #f0a63f;
+    --status-wip: #5b9dd9; --code-bg: #16181c; --code-text: #dcdad4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  a:focus-visible, .navlink:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
+  .sidebar { border-right: 1px solid var(--border); background: var(--surface); padding: 28px 20px 40px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .brand { font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 4px; }
+  .brand strong { display: block; font-family: var(--sans); font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em; color: var(--text); text-transform: none; margin-top: 2px; }
+  nav { margin-top: 24px; display: flex; flex-direction: column; gap: 20px; }
+  .navgroup-label { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 8px; }
+  .navlinks { display: flex; flex-direction: column; gap: 2px; }
+  .navlink { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; color: var(--text); text-decoration: none; font-size: 0.88rem; }
+  .navlink:hover { background: var(--surface-2); }
+  .navlink.current { background: var(--surface-2); font-weight: 700; }
+  .navlink .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--border); }
+  .navlink .dot.done { background: var(--accent); }
+  .navlink .dot.wip { background: var(--status-wip); }
+  main { padding: 56px 40px 120px; min-width: 0; }
+  .col { max-width: 760px; margin: 0 auto; }
+  .hero-eyebrow { font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 10px; }
+  h1.pagetitle { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; margin: 0 0 14px; }
+  .lede { font-size: 1.08rem; color: var(--text-dim); max-width: 62ch; margin: 0 0 48px; }
+  section.doc { padding-top: 44px; margin-top: 8px; border-top: 1px solid var(--border); scroll-margin-top: 24px; }
+  section.doc:first-of-type { border-top: none; padding-top: 0; }
+  .section-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  h2 { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
+  h3 { font-size: 1.08rem; font-weight: 700; margin: 28px 0 10px; }
+  .section-path { font-family: var(--mono); font-size: 0.8rem; color: var(--text-dim); margin: 0 0 18px; }
+  .pill { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-dim); white-space: nowrap; }
+  .pill.done { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+  .pill.wip { color: var(--status-wip); border-color: color-mix(in srgb, var(--status-wip) 45%, var(--border)); }
+  .pill.deferred { color: var(--accent-warm); border-color: color-mix(in srgb, var(--accent-warm) 45%, var(--border)); }
+  p { margin: 0 0 16px; max-width: 68ch; }
+  ul, ol { margin: 0 0 16px; padding-left: 22px; }
+  li { margin-bottom: 6px; max-width: 64ch; }
+  code { font-family: var(--mono); font-size: 0.86em; background: var(--code-bg); color: var(--code-text); padding: 0.12em 0.4em; border-radius: 4px; }
+  .callout { border: 1px solid var(--border); border-left: 3px solid var(--accent); background: var(--surface); border-radius: 6px; padding: 14px 18px; margin: 0 0 20px; }
+  .callout.warn { border-left-color: var(--accent-warm); }
+  .callout .callout-label { font-family: var(--mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); display: block; margin-bottom: 6px; }
+  .callout.warn .callout-label { color: var(--accent-warm); }
+  .callout p:last-child { margin-bottom: 0; }
+  footer.pagefoot { max-width: 760px; margin: 64px auto 0; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.85rem; }
+  @media (max-width: 880px) { .shell { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); } main { padding: 40px 20px 100px; } }
+  html { scroll-behavior: smooth; }
+</style>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">yz.muchiverse / browser prompting</div>
+    <div class="brand"><strong>Delegation Map</strong></div>
+    <nav aria-label="Documentation sections">
+      <div>
+        <div class="navgroup-label">Start Here</div>
+        <div class="navlinks">
+          <a class="navlink" href="1.platform-primer.html"><span class="dot done"></span>Platform Primer</a>
+          <a class="navlink current" href="2.house-shape-status.html"><span class="dot done"></span>House Shape Status</a>
+        </div>
+      </div>
+      <div>
+        <div class="navgroup-label">Topics</div>
+        <div class="navlinks">
+          <a class="navlink" href="3.ai-agents.html"><span class="dot wip"></span>AI Agents</a>
+          <a class="navlink" href="4.open-hai-free-ai.html"><span class="dot done"></span>open-hai + Free AI</a>
+          <a class="navlink" href="5.bugs-toys-gl.html"><span class="dot wip"></span>Bugs / Toys / GL</a>
+          <a class="navlink" href="6.architecture-explainers.html"><span class="dot wip"></span>Architecture Explainers</a>
+          <a class="navlink" href="7.platform-passes.html"><span class="dot wip"></span>Grok's Lanes</a>
+          <a class="navlink" href="8.project-starters.html"><span class="dot wip"></span>Project Starters</a>
+        </div>
+      </div>
+      <div>
+        <div class="navlinks">
+          <a class="navlink" href="../index.html">← Browser Prompting index</a>
+          <a class="navlink" href="../1.index-house.html">← Muchiverse House Docs</a>
+        </div>
+      </div>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="col">
+      <div class="hero-eyebrow">Read this yourself — not necessarily a browser-AI upload</div>
+      <h1 class="pagetitle">🏚️➡️🏡 Is The House In Shape?</h1>
+      <p class="lede">Honest status report, not a delegation map.</p>
+
+      <section class="doc" id="solid">
+        <div class="section-head"><h2>What's genuinely solid right now</h2><span class="pill done">Verified this session</span></div>
+        <ul>
+          <li><strong>Taskbar terminal ASCII mirror</strong> — new, real, built + live-tested. Matches TPMOS's real <code>renderer.c</code>/<code>keyboard_input.c</code> split exactly in form after fixing a real staircase bug caused by combining them.</li>
+          <li><strong>Taskbar input/dispatch architecture</strong> — <strong>cutover complete (2026-08-19)</strong>. The feature-flag dual path (<code>KHTPM_NEW_DISPATCH_MODE</code>) is gone; old inline dispatch was deleted outright. Capture-only-writers + one-read-back-dispatcher, matching mutaclysm's real <code>x11_mirror.c</code>/<code>game_dispatch.c</code> shape, is now the only path — live-verified with genuine X11 input, bottom tab bar confirmed fully covered. A same-day frame-unification pass (<code>strip_frame.cells.pdl</code>) introduced and then fixed a real bug (arrow-key submenu nav wiped every tick by a change-signal filename collision) — see <code>tb-bugfix-au19.txt</code> and <code>au11-hq/TASKBAR-FRAME-UNIFICATION-HANDOFF.md</code>.</li>
+          <li><strong>open-hai + free-tier OpenRouter</strong> — confirmed working live, real conversations and real tool calls (<code>list_dir</code>) both verified. See the open-hai page.</li>
+        </ul>
+      </section>
+
+      <section class="doc" id="tpmos-gap">
+        <div class="section-head"><h2>Taskbar vs TPMOS — spirit, form, and the honest gap</h2></div>
+        <ul>
+          <li><strong>Spirit</strong>: very close now for the ASCII-mirror slice. Same "capture writes, dispatch reads, render displays" philosophy, same marker-pulse discipline, same dual-rate (60Hz active / 10Hz idle) poll standard.</li>
+          <li><strong>Form</strong>: necessarily different — TPMOS's real shape is N independent sibling processes under one orchestrator; the taskbar is still mostly ONE process with Xlib event-loop dispatch, now with an opt-in alternate path rather than a true multi-binary split. Deliberate, acknowledged, still under evaluation.</li>
+          <li><strong>Not yet TPMOS-shaped</strong>: bottom-tab-bar activation via relay (renders, doesn't activate yet), <code>cli_io</code> typing support, and real X11 capture is still the default (new mode is opt-in only).</li>
+        </ul>
+      </section>
+
+      <section class="doc" id="docs">
+        <div class="section-head"><h2>Documentation organization</h2><span class="pill wip">Sprawled, not stale</span></div>
+        <p>
+          Direct count: <code>au11-hq/</code> alone has <strong>36+ files</strong>, spanning
+          1.8KB to 172KB, on topics from taskbar architecture to chat-hai memory design to event
+          runtime mechanics. <code>INDEX.md</code> (157 lines) is the one genuinely reliable
+          routing layer — kept current, not stale.
+        </p>
+        <p>
+          <strong>Honest characterization</strong>: not wrong, but excessive in volume relative to
+          any one task's real need — exactly the problem this <code>browser-prompting/</code>
+          directory (and this HTML doc) exists to solve.
+        </p>
+        <h3>Where to actually look, as a human</h3>
+        <ul>
+          <li><code>au11-hq/INDEX.md</code> — the master router. Always start here.</li>
+          <li><code>au11-hq/HANDOFF.md</code> — living architecture + status snapshot.</li>
+          <li>Anything else in <code>au11-hq/</code> — task-specific deep dives, only relevant when INDEX.md points you there.</li>
+          <li><strong>This browser-prompting doc set</strong> — the purpose-built layer for browser-AI-sized bites.</li>
+        </ul>
+      </section>
+
+      <section class="doc" id="widgets">
+        <div class="section-head"><h2>@.apps/ / &.widgits/ drift</h2><span class="pill deferred">Not independently re-verified</span></div>
+        <p>
+          Not directly re-audited this session — but plausible given <code>&amp;.widgits/
+          _shared-lib/</code> is the real single source of truth for several build-time-copied
+          files (confirmed this session: <code>khtpm_css_parser.c</code>/<code>.h</code> get
+          copied fresh into the taskbar's own <code>ops/</code> dir on every build) — meaning any
+          drift between shared source and per-project copies is a real, structural risk class.
+        </p>
+      </section>
+
+      <section class="doc" id="bottom-line">
+        <div class="section-head"><h2>Bottom line</h2></div>
+        <p>
+          The house is NOT in disrepair — what got directly tested this session worked, and
+          worked well, after real debugging. The two honest gaps: (1) breadth — lots of
+          subsystems, each individually solid-ish but not all re-verified recently, and (2)
+          documentation VOLUME outpacing any single task's real need.
+        </p>
+      </section>
+
+      <footer class="pagefoot">Snapshot as of 2026-08-18 — re-verify anything load-bearing before trusting it months later.</footer>
+    </div>
+  </main>
+</div>

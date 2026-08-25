@@ -1,0 +1,10 @@
+tile_id=glass
+ascii=g
+unicode=🪟
+label=Glass (translucent)
+rgb_top=180,220,255
+rgb_side=150,200,245
+extrude=2.0
+solid=1
+walkable=0
+alpha=110

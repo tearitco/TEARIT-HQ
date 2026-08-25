@@ -1,0 +1,6 @@
+2026-08-02T12:28:39|1|plant|wheat:plot_0
+2026-08-02T12:28:41|1|day_end|health:995
+2026-08-02T12:28:44|2|harvest|wheat:50:plot_1
+2026-08-02T12:28:46|2|day_end|health:990
+2026-08-02T12:28:47|3|mine|gold:1
+2026-08-02T12:28:49|3|mine|silver:1

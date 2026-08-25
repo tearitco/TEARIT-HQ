@@ -1,0 +1,8 @@
+project_id=wraith-alpha/wraith-projects/terminal
+title=WRAITH TERMINAL
+mode=shell
+status=ready
+is_map_control=0
+cwd=/home/no/Desktop/🤖️🪤️🏠️/🚽️🧻️/🚽️🥡️-00.00/ZEST-01.00/x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027
+input_line=
+last_action=Ran command

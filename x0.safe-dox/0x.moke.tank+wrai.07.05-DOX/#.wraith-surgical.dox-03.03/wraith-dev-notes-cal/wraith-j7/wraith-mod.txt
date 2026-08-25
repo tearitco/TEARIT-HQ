@@ -1,0 +1,37 @@
+WRAITH-ALPHA: MODIFICATION PLAN (REGISTRY REFACTOR)
+Project: Terminal / Desktop Management
+Date: 2026-06-07
+
+GOAL: 
+Move from hardcoded terminal slots to a manager-owned window registry. 
+This fix re-enables "Restore" while making the toolbar dynamic.
+
+1. MANAGER REFACTOR (manager/wraith-alpha_manager.c)
+   - Add a 'Window' struct:
+     typedef struct { char id[32]; char title[64]; int state; } Window;
+   - Add a registry array: 
+     static Window g_windows[MAX_WINDOWS];
+   - Implement 'generate_toolbar_markup()':
+     This function loops through the registry and builds a string:
+     "<button label=\"Terminal\" onClick=\"SET_ACTIVE:1\" />" (Launcher)
+     If window[i].state == MINIMIZED: 
+       append "<button label=\"Terminal #1\" onClick=\"SET_ACTIVE:2\" />"
+   - Update 'update_state()':
+     Write the generated markup to 'desktop_toolbar_markup' in both state files.
+
+2. LAYOUT REFACTOR (layouts/alpha-shell.chtpm)
+   - Remove hardcoded buttons: ${desktop_launcher_1_title} and ${desktop_window_1_restore_title}.
+   - Replace the taskbar area with a single variable:
+     | [ TASKBAR ] ${desktop_toolbar_markup} |
+
+3. INPUT ROUTER REFACTOR (manager/wraith-alpha_manager.c)
+   - Update 'route_input()' for the ENTER key.
+   - Instead of checking for hardcoded Index 2, 3, 4:
+     - If Index == 1: Launch new (Add to registry).
+     - If Index > 1: Lookup the corresponding entry in the registry.
+     - Execute state change (Restore/Close) based on that entry.
+
+4. VALIDATION
+   - Launching "Terminal" adds to the registry and updates the taskbar.
+   - Minimizing updates the registry and reflects in the projected markup.
+   - Restoring via the projected button successfully changes registry state.

@@ -1,0 +1,7 @@
+tile_id=wall
+label=Wall
+rgb_top=90,90,100
+rgb_side=60,60,70
+extrude=2.0
+solid=1
+walkable=0

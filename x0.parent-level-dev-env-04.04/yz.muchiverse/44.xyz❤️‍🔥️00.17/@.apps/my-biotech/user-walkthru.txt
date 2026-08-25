@@ -1,0 +1,172 @@
+MY-BIOTECH — USER WALKTHROUGH
+================================================================================
+How to launch this yourself and confirm it's working exactly as intended.
+Written 2026-08-02. If what you see doesn't match this, something regressed —
+that's the point of this doc.
+
+--------------------------------------------------------------------------------
+0. KNOWN ISSUE: GAME STATE CURRENTLY PERSISTS ACROSS RELAUNCHES WITH NO REAL
+   SAVE/LOAD (same bug as my-chara-txt, being redesigned — not intended)
+--------------------------------------------------------------------------------
+Every `./button.sh run` gets a fresh EPHEMERAL session dir, but the actual
+game state (pieces/system/config.txt: day/health/money) is seeded ONCE at the
+project root and shared, unmodified, by every launch forever — same root
+cause as my-chara-txt. See @.apps/sv-ld-ses-strat.md for the real fix plan
+(the real &.widgits/file-menu widget popping open for Save/Load). Not built
+yet as of this walkthrough's own writing.
+
+To force a genuinely FRESH game before testing:
+
+    cd "@.apps/my-biotech"
+    ./button.sh kill
+    rm -f pieces/system/config.txt
+    rm -rf pieces/sessions
+    rm -rf data/research data/corpus
+    rm -f data/discovered_compounds.txt data/master_ledger.txt \
+          data/research_status.txt data/research.pid
+    ./button.sh run
+
+Note this ALSO wipes discovered_compounds.txt / master_ledger.txt / all past
+dossiers — those are the real persistent "game data" here, same conflation
+problem as my-chara-txt's config.txt+plots.txt.
+
+--------------------------------------------------------------------------------
+1. LAUNCH
+--------------------------------------------------------------------------------
+    cd "@.apps/my-biotech"
+    ./button.sh run
+
+You should see a real GL/terminal screen titled "M Y - B I O T E C H" with:
+
+    [>] 1. [Research (query gemma-lan)]
+    [ ] 2. [End Turn (advance 1 day)]
+
+If instead you see "[Map Loading...]" and it never resolves — something's
+broken with the render pipeline.
+
+--------------------------------------------------------------------------------
+2. TEST: RESEARCH (real, live Gemma call — async, takes ~30-90s)
+--------------------------------------------------------------------------------
+Select "Research" (item 1), press Enter.
+
+EXPECTED IMMEDIATELY: a message like "Researching <element>... (gemma-lan
+call in progress, check back shortly)" — the element is chosen at random
+from a fixed list (sulfur, nitrogen, carbon, phosphorus, chlorine). The UI
+should NOT freeze or block — you should be able to keep pressing keys, watch
+the day/health counters if you End Turn, etc., while research runs in the
+background.
+
+WHILE IT RUNS, the screen should show a live progress line like:
+    ⏳ Researching... [step] (Ns elapsed)
+with the step name and elapsed-seconds counter actually changing over time
+(re-navigate/refresh to see it tick — it's driven by data/research_status.txt
+being polled, not push-updated instantly).
+
+If you select Research again WHILE one is already running, EXPECTED: message
+"Already researching - check back in a moment." (the double-launch guard —
+this should NOT start a second worker process).
+
+WHEN IT FINISHES (30-90s later, depends on real LLM latency), the message
+should change to something like "<Compound> -> discovered" or similar,
+naming a real compound the research turned up from that element.
+
+--------------------------------------------------------------------------------
+3. VERIFY THE REAL DOSSIER ON DISK
+--------------------------------------------------------------------------------
+    ls data/research/
+    # one subdirectory per element you've researched, e.g. data/research/chlorine/
+    cat data/research/<element>/dossier.txt
+
+EXPECTED FORMAT — a real, gemma-generated document, NOT a template with
+blanks filled in:
+
+    COMPOUND: <Name>
+    DISCOVERED FROM: <element>
+
+    [Use Case] <a real sentence about what this compound is used for>
+    [Effect] <a real sentence about its primary effect>
+    [Side Effect] <a real sentence about a known side effect/hazard>
+    [Market Price] <a real dollar-figure sentence>
+    [FDA Verdict] APPROVED or REJECTED (<real reasoning text explaining why,
+    not empty, not generic>)
+
+The [FDA Verdict] reasoning is the important one to actually read — it
+should reference specifics from the dossier's own [Side Effect]/[Use Case]
+text (e.g. "potential health hazards, including skin irritation and burns"),
+not a canned phrase. This is the describe+deterministic-classify judge
+pattern (PITFALL 69 / xyzos-standards §42) — if you ever see this field come
+back empty or generic ("this compound is safe"/"this compound is unsafe"
+with nothing else), that's a real regression back toward the classify-first
+approach that was proven unreliable — worth flagging.
+
+--------------------------------------------------------------------------------
+4. VERIFY THE GAME'S OTHER RECORDS
+--------------------------------------------------------------------------------
+    cat data/discovered_compounds.txt
+    # one line per researched compound: Name|element|VERDICT|day
+    # e.g.: Chlorine|chlorine|REJECTED|1
+
+    cat data/master_ledger.txt
+    # append-only, one line per real game event:
+    # <timestamp>|<day>|research_attempt|element:<x>|compound:<Name>
+    # <timestamp>|<day>|compound_discovered|<Name>
+    # <timestamp>|<day>|day_end|
+    # should never shrink between actions, only grow
+
+--------------------------------------------------------------------------------
+5. TEST: END TURN
+--------------------------------------------------------------------------------
+Navigate to "End Turn" (item 2), press Enter.
+
+EXPECTED: Day advances by 1, message like "Day 3 began." — and a
+"day_end" line appended to data/master_ledger.txt (step 4). At Day 11 (past
+max_days=10), EXPECTED: "GAME OVER (reached max_days)." message and
+pieces/system/config.txt shows game_state=game_over.
+
+If you End Turn WHILE a research worker is still running in the background,
+EXPECTED: the day still advances normally — the worker is untouched by this
+and keeps running/finishes on its own, since it's tracked outside the
+session (see §0 code comment reasoning about data/research.pid).
+
+--------------------------------------------------------------------------------
+6. CLEAN SHUTDOWN CHECK
+--------------------------------------------------------------------------------
+Press Ctrl+C to quit. Then, in a separate terminal:
+
+    ps aux | grep my-biotech
+
+EXPECTED: no output, UNLESS a research worker was still in-flight when you
+quit — that's INTENTIONAL (the worker is meant to survive session teardown
+and finish on its own, see the code comment in
+ops/mybiotech_menu_input.c referenced above). Re-launch the game a minute
+later and check data/research/<element>/dossier.txt — it should now exist
+even though you weren't watching, proving the worker really did survive.
+
+--------------------------------------------------------------------------------
+7. THE AUTOMATED REGRESSION HARNESSES (do the same checks, unattended)
+--------------------------------------------------------------------------------
+    cd "@.apps/my-biotech/test-harn-same"
+    ./button.sh compile
+    ./scenarios/demo_research_and_end_turn.sh          # full flow: steps 2-5 above
+    ./scenarios/demo_fda_review_discrimination.sh       # judge-reliability regression test
+
+EXPECTED: "OVERALL: PASS", 11/11 and 6/6 respectively. The second one is the
+important one to re-run if you ever touch mybiotech_fda_verdict.c or the
+prompt text it sends to gemma — it runs N=3 trials each against a
+deliberately-bad dossier (should get REJECTED) and a deliberately-good one
+(should get APPROVED), and is what originally caught + proved the fix for
+the describe-vs-classify judge unreliability (PITFALL 69). Same "Exit code
+143 at the top is not a failure" note as the other sibling harnesses.
+
+--------------------------------------------------------------------------------
+KNOWN GAPS (things intentionally NOT built yet, don't report these as bugs)
+--------------------------------------------------------------------------------
+- Element selection on Research is fully random from a fixed 5-element list —
+  no Store/elements.txt weighted selection, no player choice of which element
+  to research (design doc MY_BIOTECH_DESIGN.md §3/§7 calls this P4 scope).
+- No way to spend/sell a discovered compound yet (discovery + FDA verdict is
+  the whole loop right now — no economy connecting a REJECTED/APPROVED
+  compound back to money/health/game_state).
+- No my-lawyer-style "present your case" step — my-biotech's dossier-writing
+  + FDA_REVIEW judge pattern is the one my-lawyer's design explicitly copies,
+  but my-lawyer itself is design-only, not built.

@@ -1,0 +1,58 @@
+# WRASCI-2-GL BLUEPRINT: THE RGB MIRROR MANDATE
+Date: 2026-06-17
+Status: ARCHITECTURAL SPECIFICATION
+
+## 1. CURRENT PROGRESS (THE POC BASELINE)
+- **PIPELINE ALIVE**: The 3-process fork model is functional. 
+    - `wraith-alpha_manager` forking/execing the pipeline.
+    - `wraith_rgb_daemon` (Middle Fork) generating raw RGBA bytes.
+    - `wraith_gl` (Pure Consumer) uploading bytes to a texture at 60FPS.
+- **BINARIES VERIFIED**: All components compile and run using `button.sh c`.
+- **DATA BRIDGE**: `session/rgb/` directory is the sovereign shared memory via files.
+
+## 2. FUNCTIONAL DESIRES (THE "LOOK")
+The GL window should not be a "dummy" view. It must mirror the ASCII desktop with high fidelity, referencing the UI aesthetic of `gl_desktop.c`:
+- **PIXEL PARITY**: Every character cell in `current_frame.txt` maps to a pixel region in the GL window.
+- **CHROMATIC FIDELITY**: Colors defined in `current_frame.objects.pdl` (e.g., `#E8F1F2`, `#0F1720`) must be applied to the background and foreground of the cells.
+- **WINDOW CHROME**: Window borders, titlebars, and buttons (o, -, x) should look like modern GL-OS components, not just text approximations.
+- **60FPS FLUIDITY**: Updates must be instantaneous upon interaction in the ASCII shell.
+
+## 3. TECHNICAL IMPLEMENTATION ROADMAP
+To move from "Blank Pink Screen" to "Functional Mirror," the following must be implemented in the `wraith_rgb_daemon`:
+
+### A. Cell Rasterization (The Core Logic)
+- **FONT ENCAPSULATION**: The daemon must handle font rasterization internally.
+- **SOVEREIGN AUDITABILITY (.txt Bitmaps)**: Following the TPMOS mandate, fonts and symbols must be stored as human-readable `.txt` files. This allows pixels to be audited directly in any text editor.
+    - **Format**: A grid where `#` represents a solid pixel and `.` represents an empty space.
+    - **Example (8x8 'A')**:
+        ```
+        ..###..
+        .#...#.
+        .#...#.
+        .#####.
+        .#...#.
+        .#...#.
+        .#...#.
+        ```
+- **UNIVERSAL ASSET ARCHITECTURE**: Implement `projects/wraith-alpha/assets/` to store these text-based atlases:
+    - `fonts/ascii/`: Individual `.txt` files per character or grouped blocks.
+    - `fonts/unicode/`: Symbols and extended characters.
+    - `fonts/cjk/`: Chinese, Japanese, and Korean glyphs.
+    - `emojis/`: Text-based sprite descriptions or grouped `.txt` atlases.
+- **INDEPENDENT SCALING**: The GL window visual is decoupled from the ASCII grid. The presenter handles UX-driven magnification of the underlying RGBA buffer.
+- **RABBIT HOLE AVOIDANCE**: Use a simple text-to-pixel parser in the daemon. Keep it CPU-bound.
+
+### B. Metadata Integration
+- **PDL OVERLAY**: Read `current_frame.objects.pdl` to identify which pixel regions correspond to windows, banners, or buttons.
+- **COLOR LOOKUP**: Extract `#RRGGBB` values from PDL and apply them to the rasterizer.
+
+### C. The Bridge Handshake
+- **PULSE DISCIPLINE**: Ensure `rgb_frame_changed.txt` is only pulsed *after* the raw buffer is fully written to disk to avoid tearing.
+
+## 4. FUTURE GOALS: INPUT LOOPBACK
+- **SYNC PARITY**: The GL window will eventually accept mouse and keyboard input.
+- **ROUTING**: Events captured in the GL window must be formatted as TPMOS commands and appended to `history.txt`.
+- **RESULT**: The ASCII GUI will mirror the state changes triggered from the GL presenter, achieving full two-way synchronization.
+
+---
+"If it's not in a file, it's a lie. The blueprint is the contract."

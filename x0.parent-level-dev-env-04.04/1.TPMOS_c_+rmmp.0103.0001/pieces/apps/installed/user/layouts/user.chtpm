@@ -1,0 +1,37 @@
+<!-- user.chtpm - User Profile Management UI -->
+<layout id="user" name="User Profile System">
+
+  <header>
+    <text>USER PROFILE SYSTEM</text>
+  </header>
+
+  <main>
+    <panel title="User Management">
+      <text>[1] Create Profile</text>
+      <text>[2] Login (Auth)</text>
+      <text>[3] Get Session</text>
+      <text>[4] Logout</text>
+    </panel>
+
+    <panel title="Current User">
+      <text>Username: ${active_user:-none}</text>
+      <text>Status: ${session_status:-none}</text>
+    </panel>
+
+    <panel title="Instructions">
+      <text>Press 1-4 to select action</text>
+      <text>Enter username when prompted</text>
+      <text>Press ESC to exit</text>
+    </panel>
+  </main>
+
+  <footer>
+    <text>Project: ${project_id}</text>
+    <text>Layout: user</text>
+  </footer>
+
+  <interact src="pieces/apps/player_app/history.txt" />
+
+  <module path="projects/user/manager/+x/user_manager.+x" />
+
+</layout>

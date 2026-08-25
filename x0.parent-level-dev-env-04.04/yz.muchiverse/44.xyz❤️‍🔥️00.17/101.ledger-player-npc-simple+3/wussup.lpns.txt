@@ -1,0 +1,74 @@
+
+
+
+i want to test ur understanding of ledger, 
+pal, 
+and our architecture by creating a simple 1-4 player application using the master ledger system
+
+
+will show a game setup screen prompting user 1-4 players? 
+
+then for each player , human or computer. 
+
+
+then "epoch length of test"  1- 10
+
+--------------
+
+then for the test. 
+
+all "participants" 
+are put in a que. p1,p2,p3,p4 
+
+
+when its a human players turn , they will see the "input screen" where they wil input a random word
+
+that will be stored to ledger ie : epoch1 : p1 : "hello" 
+
+*computer playeres will choose from a bank of random words" 
+
+
+obviously humans dont see computer player turns, they are done in the background. 
+
+<persisten options : 
+ledger option : allows player to view ledger during their turn
+
+menu option : 
+however, we will also make a menu screen, and in that menu screen it will allow us to tweak
+human or computer player at any time. 
+obviously computer only players will play automatically , one at a time each epoch> 
+
+
+this is meant to be an investigation and demonstration of the architecture from 'mars street  / p2p / monsters'
+
+so we can examine and fix or refine ,or use as master demo. 
+we need to use the "pal architecture" present in pal-irc, etc 
+
+
+one thing i wanna make sure : each player gets their own dir made (deletes old dirs) 
+
+(give them option to make custom name or leave blank 4auto)
+their dir should contain a copy of their ledgers entries only that updates when ledger updates, get it? 
+
+
+Done? 
+now it should add 10 other "npc's" that also take turns. just like the setup players would
+they are also player, they get the same things players get, 
+their own copy of the ledger, in their own dir etc. 
+
+
+DONE? 
+
+
+now we want to make a map. 
+and let player enter xy coordinates. 2 move their number "1-4" on the game board for there
+turn into unoccupied space.  
+
+
+
+<done , make both read a config.txt file that has an auto game setup , with 1 human player
+the rest computer/npc ; should skip setup screen if config is present> 
+
+
+<done. now read it, clean it up w/e ; u win> 
+

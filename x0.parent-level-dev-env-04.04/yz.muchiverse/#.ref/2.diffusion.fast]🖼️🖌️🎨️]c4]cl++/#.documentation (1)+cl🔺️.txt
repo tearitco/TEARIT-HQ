@@ -1,0 +1,168 @@
+Neural Network Image Processing Module (neural_net.c)🔺️
+==================================================
+
+Overview
+--------
+`neural_net.c` implements a lightweight U-Net-like neural network for image processing, supporting training (denoising) and inference (enhancement) on RGB images. It integrates OpenCL for GPU acceleration on AMD GPUs, offloading convolution operations. Designed for Ubuntu 22.04 with an eGPU setup, it ensures stability and compatibility with `main.c` and `noise_schedule.c`.
+
+Key Features
+------------
+- Architecture: Shallow U-Net with convolutions, patch-based attention (64x64 patches), and group normalization.
+- GPU Acceleration: 3x3 convolution offloaded to AMD GPU via OpenCL (ROCm).
+- Training: Predicts noise, updates kernels via backpropagation.
+- Inference: Enhances images, producing JPEG and float array outputs.
+- Stability: Robust memory management and CPU fallback.
+- Color Balance: Per-channel normalization ensures full RGB range.
+- Logging: Stats in `neural_log.txt` and `noise_stats.txt`.
+
+Dependencies
+------------
+- STB Image (`stb_image.h`, `stb_image_write.h`): JPEG I/O.
+- Standard C Libraries: `stdio.h`, `stdlib.h`, `math.h`, `string.h`, `time.h`.
+- OpenCL: `CL/cl.h` (ROCm-provided).
+- AMD ROCm: OpenCL runtime and drivers.
+
+Compilation
+-----------
+```bash
+gcc -o +x/neural_net.+x neural_net.c -lOpenCL -lm
+```
+Ensure `libOpenCL.so` is in `/usr/lib/x86_64-linux-gnu`.
+
+Usage
+-----
+```bash
+./+x/neural_net.+x <input_image> <output_file> <mode:train/infer> <kernel_file>
+```
+- `<input_image>`: RGB JPEG (min 64x64).
+- `<output_file>`: Float array (e.g., `neural_output_N.dat`).
+- `<mode>`: `train` (update kernels) or `infer` (enhance image).
+- `<kernel_file>`: 54 floats for two 3x3x3 kernels (e.g., `kernels_N.dat`).
+
+Inputs
+------
+- Image: RGB JPEG, normalized to [0, 1].
+- Kernels: Two 3x3x3 float arrays (`kernels`, `kernels2`) from `<kernel_file>`.
+
+Outputs
+-------
+- `output.jpg`: Enhanced image (inference).
+- `<output_file>`: Processed pixel float array.
+- `neural_log.txt`: Loss, channel stats, OpenCL status.
+- `noise_stats.txt`: Output and kernel statistics.
+- `<kernel_file>`: Updated kernels (training).
+
+Hyperparameters
+---------------
+- `NUM_EPOCHS=100`: Training iterations.
+- `LEARNING_RATE=0.01f`: Gradient step size.
+- `WEIGHT_DECAY=0.001f`: Kernel regularization.
+- `KERNEL_REGULARIZATION=0.001f`: Kernel deviation penalty.
+- `PATCH_SIZE=64`: Attention patch size.
+
+OpenCL Integration
+------------------
+- **Setup**: Initializes OpenCL platform, device, context, queue, and convolution kernel.
+- **Convolution**: 3x3 convolution on GPU, parallelized across width and height per channel.
+- **Fallback**: CPU convolution if OpenCL fails.
+- **Requirements**:
+  - AMD ROCm 5.5.3.
+  - User in `render` and `video` groups.
+  - Kernel 5.15.0 recommended.
+- **Verification**: `clinfo` confirms GPU detection.
+
+Functions
+---------
+1. **init_opencl(FILE *log_fp)**
+   - Initializes OpenCL resources.
+   - Returns 1 on success, 0 on failure.
+
+2. **cleanup_opencl()**
+   - Releases OpenCL resources.
+
+3. **convolve_opencl(float *input, float *output, int width, int height, int channels, float kernels[3][3][3], FILE *log_fp)**
+   - GPU-based 3x3 convolution with ReLU.
+   - Falls back to CPU on error.
+   - Logs execution status.
+
+4. **convolve_cpu(float *input, float *output, int width, int height, int channels, float kernels[3][3][3], FILE *log_fp)**
+   - CPU-based 3x3 convolution with ReLU.
+
+5. **group_norm(float *input, int width, int height, int channels, FILE *log_fp)**
+   - Normalizes channel mean/variance (CPU).
+   - Skips if variance < 1e-3f.
+
+6. **attention(float *input, float *output, int width, int height, int channels, float *work_buffer, size_t work_size, FILE *log_fp)**
+   - Patch-based self-attention (CPU).
+
+7. **max_pool(float *input, float *output, int width, int height, int channels, FILE *log_fp)**
+   - 2x2 max pooling (CPU).
+
+8. **upsample(float *input, float *output, int width, int height, int channels, FILE *log_fp)**
+   - Nearest-neighbor upsampling (CPU).
+
+9. **add_residual(float *output, float *input, int size, float residual_weight)**
+   - Blends output with input (weight=0.2).
+
+Setup Instructions
+------------------
+1. **Connect eGPU**: Plug AMD GPU into Thunderbolt 3 enclosure, authorize:
+   ```bash
+   sudo tbtadm approve-all
+   ```
+2. **Install ROCm**:
+   ```bash
+   wget https://repo.radeon.com/amdgpu-install/5.5.3/ubuntu/jammy/amdgpu-install_5.5.50503-1620033.22.04_all.deb
+   sudo dpkg -i amdgpu-install_5.5.50503-1620033.22.04_all.deb
+   sudo apt update
+   sudo amdgpu-install --usecase=opencl,rocm --opencl=rocr,legacy --no-dkms --accept-eula
+   ```
+3. **Add User**:
+   ```bash
+   sudo usermod -a -G render,video $USER
+   reboot
+   ```
+4. **Verify OpenCL**:
+   ```bash
+   clinfo
+   ```
+5. **Compile**:
+   ```bash
+   sudo apt install libopencl-clang-dev
+   gcc -o +x/neural_net.+x neural_net.c -lOpenCL -lm
+   ```
+6. **Run**:
+   ```bash
+   ./+x/neural_net.+x munqi.jpg neural_output_0.dat train kernels_0.dat
+   ```
+
+Troubleshooting
+---------------
+- **Compilation Errors**:
+  - Ensure `libopencl-clang-dev` is installed.
+  - Check `libOpenCL.so` path: `-L/usr/lib/x86_64-linux-gnu`.
+- **OpenCL Issues**:
+  - If `clinfo` shows no devices, verify ROCm installation or groups.
+  - Check `neural_log.txt` for OpenCL errors.
+- **Color Issues**:
+  - Verify `neural_log.txt` channel stats (`G(Mean>0, Var>0)`, `B(Mean>0, Var>0)`).
+  - Adjust residual weight to 0.3f if needed.
+- **Performance**:
+  - Confirm GPU usage with `rocm-smi`.
+  - Implement additional OpenCL kernels for `group_norm`, `attention`.
+
+Example Run
+-----------
+```bash
+./+x/neural_net.+x munqi.jpg neural_output_0.dat train kernels_0.dat
+```
+- Produces `output.jpg`, `neural_output_0.dat`.
+- Logs to `neural_log.txt`, `noise_stats.txt`.
+
+Author
+------
+Grok 3, created by xAI, with OpenCL fixes for AMD GPUs.
+
+Last Updated
+------------
+May 24, 2025

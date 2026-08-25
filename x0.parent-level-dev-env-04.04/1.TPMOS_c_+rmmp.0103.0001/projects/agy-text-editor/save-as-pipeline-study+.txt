@@ -1,0 +1,37 @@
+# Legacy Save-As Pipeline Study (Pre-Op Refactor)
+
+## 1. Objective
+Document the working, internal-C-based Save/Load pipeline for `agy-text-editor` as it functioned prior to the introduction of external `+x` ops.
+
+## 2. Working Pipeline Analysis
+
+### A. The "Save" Flow (The Gold Standard)
+1.  **Trigger:** User inputs path via `cli_io` or existing `active_file_path`.
+2.  **Buffer Management:** Editor content always lives in the in-memory `document_lines[100][MAX_LINE]` buffer.
+3.  **Persistence:** 
+    - The `save_buffer_to_document()` function is called on every significant interaction.
+    - It writes the contents of `document_lines` to `projects/agy-text-editor/pieces/document.txt` (The Working Disk Buffer).
+4.  **Execution (Save As):** 
+    - `save_to_path(target_path)` opens `document.txt` (READ) and `target_path` (WRITE).
+    - It performs a direct byte-by-byte copy.
+    - This relied on standard C `fopen/fread/fwrite` (No external ops).
+
+### B. The "Load" Flow
+1.  **Trigger:** User selects a file in the browser, triggering `load_from_path(source_path)`.
+2.  **In-Memory Load:** 
+    - Function opens `source_path` (READ).
+    - Reads content directly into `document_lines`.
+    - If empty, creates a blank line.
+3.  **Disk Sync:** Immediately calls `save_buffer_to_document()` to overwrite the Working Disk Buffer (`document.txt`) with the newly loaded data.
+4.  **UI Sync:** Updates `active_file_path`, resets cursor, and triggers a theater refresh (`update_gui_state` + `trigger_render`).
+
+## 3. Why This Worked
+- **No Race Conditions:** Since the manager owned both the in-memory buffer and the disk-write operations, it never waited for external processes to complete.
+- **Immediate State Consistency:** The in-memory buffer and the disk buffer (`document.txt`) were always in sync.
+- **Low Latency:** Standard C I/O is nearly instantaneous compared to the process overhead (`fork`/`exec`) of the external op-based architecture.
+- **Reliability:** There were no path resolution issues because the logic was self-contained within the manager, using the absolute `project_root` determined at startup.
+
+## 4. Key Differences from Op-Based (v99.29) Failures
+- **Prefix Errors:** The ops-based system required external command injection (`LOAD_FILE:`), which the parser blocked (Pitfall #99). The legacy system avoided this by calling internal C functions directly.
+- **Blocking/Deadlocks:** The ops-based system introduced 5-second `while` loops waiting for marker files, which caused the UI to freeze if an op failed. The legacy system completed operations in the same thread, ensuring immediate feedback.
+- **Process Complexity:** The legacy system is a "Thin Brain" managing "Internal Muscle," whereas the v99.29 system attempted to make the manager a "Heavy Brain" coordinating external binaries, leading to the synchronization bugs.

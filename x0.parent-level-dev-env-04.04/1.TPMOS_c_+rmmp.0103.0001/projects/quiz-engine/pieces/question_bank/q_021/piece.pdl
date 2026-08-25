@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | q_021
+META         | type               | question
+
+STATE        | name               | Glycine
+STATE        | type               | NH2CH2COOH

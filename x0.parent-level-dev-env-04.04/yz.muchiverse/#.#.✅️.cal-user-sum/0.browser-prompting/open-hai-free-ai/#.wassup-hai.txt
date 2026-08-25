@@ -1,0 +1,59 @@
+
+
+WASSUP-HAI =
+
+quick note on the free-AI / open-hai situation, 2026-08-18.
+
+your openrouter key WORKS. tested it live, not guessing. it does real
+chat and real tool_calls on free models. so "does openrouter work for
+free" - yes, but with real limits, see below.
+
+QUOTA - yes free apis have quota, this surprised u so writing it down.
+openrouter's own real policy (their docs, not something i verified
+against your account specifically): if you've EVER put $10+ into your
+account (even if you're at $0 now) you get like 1000 free-model
+requests/day. if you never bought credits, it's more like 50/day.
+check https://openrouter.ai/settings/credits to see which bucket
+you're actually in - i didn't check that part.
+
+on TOP of that daily thing, individual free models also get rate-
+limited minute-to-minute because they're a SHARED pool across every
+openrouter user, not just you. that's what we hit live - gemma-4-26b
+(the model open-hai defaulted to) gave a real 429 "temporarily rate-
+limited upstream." not your key's fault, just a popular free model
+being congested right then.
+
+fix i already made: swapped/added 2 other free models that worked
+first try - nvidia/nemotron-3.5-lightning:free and
+cohere/north-mini-code:free. both did real tool_calls, no rate limit
+hit. added to BOTH khtpm_open_hai_manager.c and
+khtpm_open_hai_render.c (yes they keep SEPARATE model lists, real
+annoying drift risk, has to be hand-synced every time - flagged this
+in the manager.c comments too).
+
+OTHER FREE APIS worth knowing about (not openrouter):
+- google ai studio (ai.google.dev) - direct gemini access, not
+  through openrouter, so not sharing openrouter's congested pool.
+  usually the most generous real free tier out there right now.
+- groq (groq.com) - fast, free, real tool-calling, open models
+  (llama etc). worth trying if openrouter free tier keeps being
+  annoying.
+- mistral has a small free tier too.
+none of these are wired into open-hai yet, just flagging they exist
+in case openrouter free tier stays unreliable.
+
+REAL SAFETY THING confirmed live: list_dir / read_file just run, no
+approval needed. write_file / edit_file / run all need you to
+manually APPROVE or DENY (sidebar, or write "APPROVE"/"DENY" to
+state/request.txt). so read-only testing = can run unattended.
+anything that WRITES = you gotta be there to click approve. this is
+by design, not a bug, don't try to "fix" it into auto-approve without
+thinking hard first.
+
+REAL GOTCHA found live: asked it to read a path with an "&" in it
+(&.widgits/open-hai/README.md) and it dropped the & when it called
+the tool. gave it a plain path (list_dir path=".") right after and
+that worked perfect. so: keep paths simple/unambiguous for these
+free models, don't trust them with weird-character paths yet.
+
+full writeup with the actual test transcripts: 1.live-test-findings-2026-08-18.md, same dir.

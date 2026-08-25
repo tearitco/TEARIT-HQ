@@ -1,0 +1,64 @@
+
+
+--- FRAME UPDATE at 2026-04-30 22:36:55 ---
+╔═══════════════════════════════════════════════════════════╗
+║ LAYOUT ID: lsr.chtpm ║
+║                                                           ║
+║             LSR             ║
+║                                                           ║
+║  Pet Name:                                      ║
+║  Status: active                                         ║
+║  Turn: 0 | Time: 08:00:00                           ║
+║                                                           ║
+║  Hunger: /100 | Happiness: /100           ║
+║  Energy: /100 | Level:                        ║
+║                                                           ║
+║  GAME MAP:                                                ║
+║  [>] 1. [Control Map]                                     ║
++=========================================================+
+| [Z-LEVEL]: 1                                               |
++=========================================================+
+|  ####################                                     |
+|  #  UUUUUUUUUUUUUUUT#                                     |
+|  #  U..............T#                                     |
+|  #  U....RRR.......T#                                     |
+|  #  U....RRR.......T#                                     |
+|  #  U....RRR.......T#                                     |
+|  #  U.X..RRR.......T#                                     |
+|  #  U...............#                                     |
+|  #  UUUUUUUUUUUUUUUU#                                     |
+|  ####################                                     |
+
+║                                                           ║
+╠═══════════════════════════════════════════════════════════╣
+║ [RESP]:                                     ║
+║ [ACTIVE]: xlector | [KEY]: None                  ║
+╠═══════════════════════════════════════════════════════════╣
+║  [No Methods] ║
+║  [ ] 2. [Back to Selector (9)]                         ║
+║  [ ] 3. [Exit to Menu]                          ║
+╚═══════════════════════════════════════════════════════════╝
+
++=========================================================+
+Nav > _
+
+1. i dont see a setup screen. , pls refer to @!.gemini-reports/ 
+2. i dont see the lsr method yet. 
+3.
+its spamming frames , should be more like fuzz-op and others
+
+
+(the previous session was supposed to have implimented this as per : "
+i actually want the old lsr map 2 pop up first , like fuzzpet 
+(then all entities will have a "lsr" method , that will launch the lsr interface)
+and all the entities will exist 'on the map somewhere' can be on first layer
+and add aditional z layer per entity. when entity is selected thru lsr map, 
+selector peice will teleport to that entity's z layer.
+also it can work vice versa. 
+we can show lsr menu first then just show menu later it doesn't mmake a differennt
+its just a mmenu 2 get 2 2d/3d play , get it/ tho in gl-os u will prolli do 'map first anyways'"
+prompt, 
+but i dont see any of it. 
+
+pls write may1-report.txt explaining what was done , and what is yet to be done
+

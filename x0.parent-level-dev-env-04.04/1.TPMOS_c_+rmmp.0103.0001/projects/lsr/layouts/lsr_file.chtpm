@@ -1,0 +1,15 @@
+<panel>
+    <module>manager/lsr_manager.+x</module>
+    <interact src="pieces/keyboard/history.txt" />
+
+    <text label="_______________________________________________________" /><br/>
+    <text label="--- File Menu ---" /><br/>
+    <br/>
+    <text label="1. Save Game" /><br/>
+    <text label="2. Load Game" /><br/>
+    <text label="3. Back to Main Menu" /><br/>
+    <br/>
+    <text label="[SAVED]: ${last_save_status}" /><br/>
+    <br/>
+    <text label="Enter your choice: ${choice_buffer}" /><br/>
+</panel>

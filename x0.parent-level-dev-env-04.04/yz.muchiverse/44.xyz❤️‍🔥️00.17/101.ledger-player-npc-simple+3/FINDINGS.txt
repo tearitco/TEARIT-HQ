@@ -1,0 +1,88 @@
+=== FINDINGS: LPNS+3 TPMOS WORD GAME ===
+Date: 2026-07-24
+
+--- ARCHITECTURE ---
+Reference project: x0.moke-pet-project-04.04 (x0.pet)
+Parser used: chtpm_parser.c (ORIGINAL from x0.pet, NOT the PAL fork)
+  - Copied directly from x0.moke-pet-project-04.04/pieces/chtpm/plugins/chtpm_parser.c
+  - Applied [Map Loading...] guard fix (same as PAL fork fix)
+  - Compiles with: gcc -o system/chtpm_parser system/chtpm_parser.c -lm
+Key difference from PAL fork: No suppress_next_gui_sync, no PAL-specific auto-activate,
+no wraith-alpha extras. Simpler, proven code.
+
+--- BUG 1: [Map Loading...] FIX ---
+Root cause: chtpm_parser.c load_vars() line 1187-1189 (SAME in both original and PAL)
+  - load_state_file("pieces/apps/player_app/state.txt") loads game_map correctly at line 976
+  - BUT later, the view_path check at line 1187 OVERRIDES game_map with
+    "[Map Loading...]" when view_path is NULL (no view.txt found)
+  - This happens AFTER state.txt is loaded, clobbering the real value
+Fix applied: Added guard `if (strlen(get_var("game_map")) == 0)` before
+  setting the default. Now state.txt value persists.
+  - Applied to BOTH chtpm_parser.c and chtpm_parser_pal.c
+
+--- BUG 2: [^] (cli_io starts active) ---
+Root cause: orchestrator.c mkdir did NOT create pieces/apps/player_app/manager/
+  - gui_state.txt clear failed silently (directory didn't exist)
+  - Old gui_state.txt from previous runs persisted
+  - cli_buffers.txt also persisted with old input
+Fix applied: 
+  - mkdir now creates manager/ subdirectory
+  - Clear cli_buffers.txt and interact_relay.txt on startup
+
+--- RENDERING PIPELINE (from x0.pet study) ---
+1. chtpm_parser writes frame to pieces/display/current_frame.txt
+2. chtpm_parser pulses pieces/display/renderer_pulse.txt (appends "P\n")
+3. renderer.c monitors frame_changed.txt and renderer_pulse.txt
+4. renderer reads current_frame.txt, displays to stdout with timestamp
+5. renderer also appends to pieces/display/frame_history.txt (scrollback)
+
+--- KEY FILES ---
+- orchestrator.c: fork/exec launcher, clears all state, compiles binaries
+- chtpm_parser_pal.c: PAL fork parser, layout rendering, keyboard processing
+- game_manager.c: polls player_app/history.txt, calls word_turn_input
+- keyboard_input.c: raw terminal, writes KEY_PRESSED to keyboard/history.txt
+- renderer.c: reads current_frame.txt, writes to stdout + frame_history.txt
+- word_compose_frame.c: writes game_map to state.txt
+- word_turn_input.c: updates ledger, accepts word argument
+- lpns_word_menu.chtpm: layout with module/interact/cli_io/button tags
+
+--- DATA FLOW ---
+keyboard_input -> keyboard/history.txt -> chtpm_parser_pal reads/processes
+                                              |
+                                    cli_io typing -> Enter -> gui_state.txt
+                                              |              + inject KEY:13
+                                              v
+                              player_app/history.txt -> game_manager reads
+                                              |
+                                    word_turn_input -> word_compose_frame
+                                              |              |
+                                              v              v
+                                    frame_changed.txt   state.txt
+                                              |
+                                    renderer -> stdout
+
+--- PAL PARSER GOTCHAS (vs original x0.pet) ---
+1. load_vars() has view_path check that overrides game_map (fixed)
+2. load_vars() prints DEBUG to stdout for directory_listing and last_key
+3. launch_module() forks child process (game_manager) - tracked by current_module_pid
+4. <interact src="..."> sets interact_history_path for inject_raw_key()
+5. sync_cli_input_from_gui_state() restores cli_io input_buffer from gui_state.txt
+6. suppress_next_gui_sync prevents race condition on Enter-to-send
+7. Auto-activate cli_io if cli_input variable is set (line 3351-3360)
+
+--- ORIGINAL x0.pet chtpm_parser.c STUDY ---
+- No frame history/scrollback mechanism (single current_frame.txt)
+- compose_frame() writes to current_frame.txt, pulses renderer_pulse.txt
+- Same prefix logic: [^] active, [>] focused, [ ] inactive
+- Nav mode: Enter on cli_io -> active_index = focus_index (activates)
+- Letter keys in nav mode: silent no-ops (except w/s = up/down)
+- No auto-activate cli_io on startup
+- q/Q exits the program
+
+--- NEXT STEPS ---
+1. Test if [Map Loading...] fix works (game_map should render)
+2. Test if [^] fix works (cli_io should start as [>])
+3. Test full cli_io typing flow: type word -> Enter -> gui_state.txt -> game_manager
+4. Test End Turn button (KEY:101)
+5. Test Ctrl+C cleanup (all children killed)
+6. Consider frame_history.txt scrollback display (renderer already writes it)

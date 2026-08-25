@@ -1,0 +1,4 @@
+app_title=FUZZ-OP PET SIM
+emoji_mode=OFF
+active_target_id=loader
+project_id=fuzz-op

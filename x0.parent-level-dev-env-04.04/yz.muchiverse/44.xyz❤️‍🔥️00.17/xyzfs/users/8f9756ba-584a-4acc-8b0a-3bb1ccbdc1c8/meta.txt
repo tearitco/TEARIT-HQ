@@ -1,0 +1,4 @@
+uuid=8f9756ba-584a-4acc-8b0a-3bb1ccbdc1c8
+user_id=avmenu_1653663
+display_name=MenuTest
+created_at=1785197437

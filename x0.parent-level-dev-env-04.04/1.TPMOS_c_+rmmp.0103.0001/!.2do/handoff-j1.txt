@@ -1,0 +1,54 @@
+# J1 Technical Handoff & Roadmap (June 1, 2026)
+
+## 1. Overview
+This document serves as the comprehensive technical handoff for the "J1" Refactor, transitioning the CHTMGL rendering engine from a flat coordinate model to a Tree-Based Hierarchical Scene Graph.
+
+### Status: Architectural Stabilization
+- **Hierarchical Rendering:** Successfully integrated `glPushMatrix`/`glPopMatrix` and `ScissorStack` for scoped clipping.
+- **`<img>` Integration:** Fully operational with `stb_image` texture loading and `GLTPMNode` metadata. Orientation issue resolved by flipped texture coordinate mapping.
+- **Stability:** Virtual window initialization is now constrained by `clamp_window_bounds` to prevent offscreen rendering.
+
+---
+
+## 2. Technical Debt & Failed Implementations
+Several features were initiated but stalled due to instability in the hierarchical traversal logic.
+
+### 2.1 Hierarchical Menu Navigation
+- **Issue:** The attempt to implement selectable indices for menus and canvases (`NAV_ENTRY` structure, `active_node_index`) resulted in severe build instability and incorrect UI rendering/shifting.
+- **Cause:** Complex coupling between terminal menu indices and the scene graph nodes. Navigation depth management requires a more robust state machine for the menu context (`menu_context`).
+
+### 2.2 <audio> / <video> Placeholder Logic
+- **Issue:** Tags were successfully added to the parser but lack an integration path into the audio/video controller daemons.
+- **Status:** Structural `GLTPMNode` fields `media_src` and `is_playing` are present, but the renderer provides only rudimentary color-coded placeholders.
+
+---
+
+## 3. Implementation Roadmap: Next Phase
+
+### 3.1 Emoji Picker (List-Style)
+*   **Grid Layout:** Implement a 2x2 grid layout (16x16 pixels per cell).
+*   **Renderer Strategy:** Utilize the `GLTPMNode` rendering logic to iterate through a range of atlas indices.
+*   **Thumb Scroll:** Integrate with the `scroll_offset` logic in `draw_scroll_thumb`.
+*   **Technical Requirement:** The picker must dynamically populate based on the `emoji_atlas` and handle selection events which propagate up to the `active_emoji` state.
+
+### 3.2 Canvas Xelector & Control Delegation
+*   **Objective:** Overlay a glowing wireframe (`xelector`) on a `<canvas>` node and delegate input control.
+*   **Technical Implementation:**
+    *   **Coordinate Sync:** The Host must maintain `xelector_pos[3]` and sync it to the project-specific `session/state.txt` ONLY when `is_map_control == 1`.
+    *   **Delegation:** Modify the input loop in `gl_desktop.c` (currently `special_keyboard` and `keyboard`) to conditionally pass arrow/WASD inputs to the `history.txt` of the targeted project mirror/canvas, bypassing standard menu navigation when control is "sovereign".
+    *   **Visual Logic:** The Xelector must be drawn after the canvas content but within the node's local transformation matrix stack.
+
+---
+
+## 4. Technical Recommendations (Guidance for Fixes)
+
+1. **Refine Hierarchical Parser:** Transition from line-based parsing to a **token-based visitor pattern**. Line-based logic is inherently fragile for nested XML-like tags. A tokenizer yielding `TAG_START`, `TAG_END`, and `ATTR` tokens will eliminate tag identification and nesting bugs. Enforce strict self-closing tag semantics (`<tag />`).
+
+2. **Decouple Menu Navigation:** Decouple rendering state from control state. Implement a formal `NavigationStack` state machine to track the hierarchy path (`PUSH_NODE`, `POP_NODE`). The renderer should be a read-only observer of this stack, while the input handling layer executes commands to modify it, preventing visual instability during traversal.
+
+3. **Media Proxy/Daemon Pattern:** Playback logic (decoding/streaming) must be externalized to background processes. The Host/Renderer should only act as a proxy, querying state via shared memory or named pipes (FIFOs). Direct library manipulation (e.g., ffmpeg inside the main render loop) is the primary cause of stutter.
+
+4. **Input Router & Write-Locks:** To fix the Xelector "snap-back," implement an input router in `special_keyboard` that intercepts inputs before they reach the manager sync logic. Introduce a `WriteLock` mechanism: when the user interacts locally, set a `last_local_interaction` timestamp in the `DesktopWindow`. The sync logic must block updates from the manager for ~500ms following local input to prevent stale file-backed state from overriding responsive Host input.
+
+---
+*"One Traversal, Total Control. The UI is the document; the document is the world."*

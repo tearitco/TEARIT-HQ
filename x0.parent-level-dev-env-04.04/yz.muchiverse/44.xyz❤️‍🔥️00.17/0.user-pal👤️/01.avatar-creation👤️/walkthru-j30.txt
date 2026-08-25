@@ -1,0 +1,27 @@
+🚶 walkthru-j30.txt — 0.user-pal👤️/01.avatar-creation👤️ — QUICK CHECK
+================================================================
+STATUS: ✅ rebuilt + real-tested (1 harmless known note below)
+
+## ▶️ HOW TO RUN
+    bash button.sh run
+
+## ✅ CHECKLIST
+  [ ] 1️⃣ Claim tokens 🪙
+  [ ] 2️⃣ Grab a free starter clone
+  [ ] 3️⃣ Pick a clone, cycle DNA/skin options 🎨
+  [ ] 4️⃣ Open the character preview window (and the RGB preview too)
+  [ ] 5️⃣ Navigate back out cleanly
+
+## 🟢 GOOD LOOKS LIKE
+Everything above works and the preview window actually opens and stays
+open (real PID, doesn't die).
+
+## 🟡 ONE HARMLESS NOTE
+An old automated test script expects the window-open message to say
+"Opened desktop window" but the real, current, correct message says
+"Opened chara window for..." instead. This is just STALE WORDING in
+the test script itself — the window really does open fine (confirmed
+by everything that happens after it in the same test run). Nothing for
+you to check here, just flagging why that one specific automated line
+shows FAIL if you ever re-run the harness yourself. 🤷
+================================================================

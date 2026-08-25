@@ -1,0 +1,1100 @@
+UNIVERSAL CONTEXT MENU -- DESIGN STATUS -- 2026-07-13
+Not built yet. This supersedes/refines the "PHASE B" section of
+2do-jul12.txt with a few corrections found while re-verifying its claims
+against current code (same discipline as the geometry fix pass -- don't
+trust a prior planning doc's claims without rechecking).
+
+BASE = x0.parent-level-dev-env-02.01/1.TPMOS_c_+rmmp.0102.0027/
+
+
+THE CONCEPT
+=============
+A menu whose CONTENTS depend on whatever is currently focused (or, when
+opened with no implicit target, whatever the user picks from a list of
+open windows) -- generalizing the chrome "&" icon's "one action, scoped to
+whatever's focused" pattern into a real per-project, PDL-declared ACTION
+LIST, modeled directly on `!.gem-flashlite--yolo/fuzz-op-r&d/fo-menu-sys.md`'s
+Fuzz-Op dynamic menu system (see CONTENT MODEL below) -- not a small fixed
+hardcoded action set.
+
+First real payload once built: an emoji picker, offered only when a
+text-editing field is the resolved focus target (now that emoji rendering
+actually works end-to-end -- see the earlier emoji fix this session).
+
+
+THREE ENTRY POINTS -- each resolves its target differently
+==============================================================
+This is the piece I had wrong initially -- there isn't one uniform
+"resolve active_window() and go" path. There are three distinct ways in,
+and only two of them have an implicit target at all:
+
+1. HOTKEY -- Ctrl+Q (locked, see HOTKEY section below for the full
+   verification trail). Fires from wherever the user currently is. Target
+   resolves immediately via `active_window()`, exactly like window-geom's
+   own chrome-icon click: non-NULL -> that window's declared METHODs;
+   NULL -> desktop's declared METHODs. No picker step -- the hotkey IS the
+   implicit target.
+
+2. NEW CHROME BUTTON -- glyph ':' (locked), 5th icon alongside o/-/x/&,
+   added specifically "for accessibility": an explicit, mouse/nav-
+   selectable alternative to the hotkey for anyone who can't or doesn't
+   want to use it. Same resolution as the hotkey (the window whose chrome
+   row you clicked it on), same target-snapshot pattern as '&'/
+   open_window_geom_for_project(). Fitting it in is not "just add one
+   array entry" -- see CHROME ICON COUNT note under STEPS.
+
+3. LAUNCHER CLICK (opening it cold, like any top-level app -- e.g. from
+   the normal project launcher list, exactly how "settings" itself is
+   opened) -- THIS is why it's "settings-like" and not just a bigger
+   window-geom. There is no implicit target when entered this way: no
+   specific window was clicked on, no hotkey fired from inside anything.
+   So the FIRST screen it shows is a picker: every currently OPEN project
+   ("procs" showing in the taskbar) pulled from desktop_ui_state.txt's
+   live desktop_registry_<N>_* fields, plus a "Desktop" entry for
+   desktop-scoped actions. The user picks one, and THEN the menu shows
+   that target's declared METHODs -- same second screen the hotkey/chrome-
+   button paths jump straight to, just reached via an extra selection step
+   instead of an implicit resolve.
+
+Entry points 1 and 2 share one resolver function (`active_window()`,
+snapshot-at-trigger-time, same as window-geom). Entry point 3 is a
+genuinely different first screen (a project picker), not a variant of the
+same resolver -- build it as its own explicit step, not a hack bolted onto
+active_window() returning some fake "nothing picked yet" sentinel.
+
+
+HOW IT WILL KNOW THE "FOCUSED" WINDOW (entry points 1 & 2 only)
+====================================================================
+Reuses `active_window()` (wraith-alpha_manager.c:1165) directly -- the SAME
+resolver every other focus-aware function in this file already uses
+(resolve_frame_width/height, write_semantic_projection_files,
+open_window_geom_for_project's own caller at chrome-icon-click time). It
+returns either a real `Window *` or NULL. NULL is not a hypothetical edge
+case to newly invent handling for -- it is already a first-class,
+well-exercised state in this codebase: build_desktop_shell_markup(NULL) and
+write_semantic_projection_files() both already have real "no window
+focused" branches (desktop banner + taskbar only, no chrome/panel).
+
+Concretely: `Window *target = active_window();` at trigger time.
+  - target != NULL  -> menu resolves that window's project_id and looks up
+    ITS declared METHOD entries (see CONTENT MODEL).
+  - target == NULL  -> menu resolves the desktop's own declared METHODs
+    (a "virtual" target -- see CONTENT MODEL for where these live).
+
+This is a SNAPSHOT at trigger time, not a live binding -- same as
+window-geom's own wg_target.txt (written once, in open_window_geom_for_project(),
+never updated again while that window-geom instance stays open). If focus
+changes after the context menu is already open, the menu does NOT
+retarget. Matches existing precedent; not treated as a bug to fix here.
+
+Entry point 3 (launcher click) skips this resolver entirely for its first
+screen -- see THREE ENTRY POINTS above.
+
+
+CONTENT MODEL -- PDL METHOD entries, fo-menu-sys.md pattern
+================================================================
+Confirmed with the user: NOT a small fixed built-in action list. Each
+Wraith project gets its own new `METHOD | <name> | <op-path>` section in
+its project.pdl, mirroring fuzz-op's `piece.pdl` exactly:
+
+    METHOD | resize   | projects/wraith-alpha/wraith-projects/settings/window-geom/...
+    METHOD | close     | <op path>
+    METHOD | emoji     | <op path>              (only listed if focus is a text field --
+                                                   filtering logic still TBD, see STILL OPEN)
+
+Lifecycle, ported directly from fo-menu-sys.md section 3 ("The Lifecycle
+of an Action") to this codebase's own terms:
+  1. Projection: context-menu's manager resolves the target (window's
+     project_id, or the desktop's own pseudo-project_id) and calls
+     `pdl_reader.+x <target> list_methods` to turn its METHOD section into
+     markup, writes gui_state.txt.
+  2. Render: chtpm_parser substitutes `${target_methods}`, renders
+     `<button>` elements per fo-menu-sys.md pitfall #26 (never raw
+     `[2] Feed` text).
+  3. Input: user presses a digit or clicks a method button.
+  4. Injection: `KEY:N` -> raw key `'0'+N` (fo-menu-sys.md pitfall #80 --
+     inject the ASCII digit byte, not the raw integer N).
+  5. Resolution: context-menu's manager calls
+     `pdl_reader.+x <target> get_method <name>` to get the handler Op path.
+  6. Execution: manager executes that handler Op.
+  7. Sync: manager refreshes gui_state.txt, calls trigger_render(), pulses
+     the marker file -- same as every other project in this codebase
+     already does, not a new mechanism.
+
+CONCRETE GAP FOUND (checked pieces/system/pdl/pdl_reader.c directly, don't
+assume "just call it" is already true): `resolve_piece_pdl_path()`
+(pdl_reader.c:138-160) only searches `projects/<current_project>/pieces/`
+(recursive) and the global `pieces/` tree, plus two legacy fallback
+patterns (`pieces/world/map_01/<id>/<id>.pdl`, `pieces/<id>/<id>.pdl`). It
+NEVER looks in `projects/wraith-alpha/wraith-projects/<name>/project.pdl`
+-- the actual location of every Wraith project's own PDL. `get_method()`/
+`list_methods()` themselves (lines 162-243) are directly reusable as-is
+(same `METHOD | name | handler` parsing this doc assumes) -- only the PATH
+RESOLUTION needs a new candidate branch. Per Bible section 11 (reuse, this
+tool already exists and does 95% of the job) this should be a small
+addition to `resolve_piece_pdl_path()` -- try
+`%s/projects/%s/project.pdl` (project_root, piece_id) as one more
+candidate, since Wraith project_ids are already full paths like
+`wraith-alpha/wraith-projects/piececraft-wraith` -- NOT a new parser
+duplicating get_method/list_methods' logic. Do this small extension before
+assuming context-menu can call pdl_reader.+x directly against a project_id.
+
+Desktop's own METHOD list needs a home -- likely a small always-present
+project.pdl-shaped file for "the desktop as a pseudo-project" (exact
+location still TBD, see STILL OPEN) rather than hardcoding desktop actions
+directly in context-menu's own manager, so the SAME `pdl_reader.+x
+list_methods`/`get_method` codepath serves both real projects and the
+desktop uniformly -- one dispatcher, not two.
+
+Existing projects (piececraft-wraith, wrai-text-editor, window-geom, etc.)
+do NOT have METHOD sections yet -- adding them is real, in-scope work for
+this build, not a one-time optional nicety. A project with no METHOD
+section should render an empty/near-empty menu gracefully (fo-menu-sys.md
+doesn't document this case explicitly; decide the exact "no methods"
+fallback markup while implementing, don't leave it silently blank with no
+indication).
+
+
+SIMILAR TO / DIFFERENT FROM "settings" AND "window-geom" -- CORRECTED
+============================================================================
+Original version of this table wrongly assumed context-menu should nest
+inside settings/ like window-geom does. Corrected per direct user
+clarification: context-menu is a NEW TOP-LEVEL project, a sibling of
+settings (and of piececraft-wraith, wrai-text-editor, etc.) -- a direct
+child of wraith-projects/, not nested inside settings/'s own directory.
+The reason it still reads as "settings-like" has nothing to do with
+directory placement -- it's about entry-point behavior (see THREE ENTRY
+POINTS above): opened cold via the launcher list, like settings, it has no
+implicit target and must show its own picker screen first, the same way
+settings is something you browse INTO rather than something scoped to one
+specific other window. window-geom never has to do this because it's
+NEVER opened cold -- only ever via a chrome-icon click that already
+supplies a target.
+
+                    settings              window-geom            context-menu (planned)
+  ------------------------------------------------------------------------------------------
+  project_id         wraith-alpha/          wraith-alpha/           wraith-alpha/
+                      wraith-projects/       wraith-projects/        wraith-projects/
+                      settings               settings/window-geom    context-menu (tbd exact name)
+  Directory depth     direct child of        nested INSIDE           direct child of
+                      wraith-projects/       settings/'s own dir     wraith-projects/, SAME
+                                             (namespacing only --     level as settings, NOT
+                                             NOT one of settings'     nested inside it
+                                             own pages)
+  Appears in          YES -- discover_       NO -- discover_         YES -- same as settings, since
+  launcher list?      launcher_projects()    launcher_projects()     it's a direct child of
+                      only readdir()s        only readdir()s the     wraith-projects/. This is
+                      direct children of     direct children of      REQUIRED, not incidental --
+                      wraith-projects/,      wraith-projects/, so    entry point 3 (launcher click)
+                      settings IS one        window-geom (one        depends on it being reachable
+                                             level deeper) is        this way.
+                                             invisible to it
+  How it's opened     Normal launcher        Chrome icon '&' on      THREE ways (see THREE ENTRY
+                      click, like any        a SPECIFIC window,      POINTS above): hotkey
+                      top-level app           captured at click       (Ctrl+Q), new chrome icon
+                                             time                     (':' glyph), or normal
+                                             (open_window_geom_       launcher click (shows a
+                                             for_project())           project picker first, since
+                                                                      this entry has no implicit
+                                                                      target -- unlike the other
+                                                                      two)
+  Internal            YES -- its own         NO -- single-purpose,   Two real screens either way:
+  multi-page system?  SETTINGS_PAGE:         no pages                (a) the picker (entry point 3
+                      command switches                                only) and (b) the resolved
+                      between embedded                                target's method list (all
+                      pages, one manager                              three entry points land
+                      hosts several                                   here). Whether (b) itself
+                      screens                                        ever grows SETTINGS_PAGE:-style
+                                                                      sub-pages is still open --
+                                                                      default to flat for now.
+  "Target" concept?   NO -- settings         YES -- wg_target.txt    YES for entry points 1/2
+                      configures the         snapshot of the         (same active_window()
+                      app/desktop itself,    window that was         snapshot pattern). Entry
+                      not some OTHER         focused at open time    point 3 has NO target until
+                      window                                         the user picks one from the
+                                                                      picker screen -- genuinely
+                                                                      settings-like for that one
+                                                                      path, window-geom-like for
+                                                                      the other two.
+
+Bottom line: context-menu is a hybrid by design, not a clean fit into
+either existing precedent -- top-level and browsable like settings (because
+entry point 3 requires it), but snapshot-target-scoped like window-geom for
+the other two entry points. That's the actual shape, not a compromise to
+simplify away.
+
+
+THE HOTKEY -- LOCKED: Ctrl+Q. Chrome-button glyph LOCKED: ':'
+================================================================
+Two candidates ruled out before landing here, both worth keeping on
+record so they don't get re-proposed blind later:
+  - Bare Ctrl+Alt (or bare Shift, bare Alt) -- ruled out. Neither renderer
+    can detect a modifier held BY ITSELF: GLUT only reports modifier state
+    DURING an actual keyboard/mouse event (glutGetModifiers() is only
+    meaningful inside an input callback, not pollable on its own), and a
+    raw terminal emits nothing at all for a lone modifier keypress. Any
+    usable trigger has to be a real chord (modifier + a real key).
+  - Ctrl+; -- ruled out. Terminals encode Ctrl+<key> by masking the byte
+    with 0x1F (the same `letter & 0x1f` trick already used for Ctrl+C in
+    this codebase). ';' is 0x3B; masked with 0x1F that's 0x1B -- ESC.
+    This is the exact same well-known aliasing that makes Ctrl+[ equal to
+    ESC in every terminal. ESC is one of the most heavily-relied-on bytes
+    in this codebase already (exits map_control mode, AND is the mandatory
+    lead byte of every arrow-key/SGR-mouse escape sequence the raw reader
+    parses) -- Ctrl+; would either do nothing, get eaten mid-escape-
+    sequence-parse, or fire the "leave map_control" behavior by accident.
+    Not usable at any letter/punctuation whose `& 0x1F` lands on 27 (also
+    rules out Ctrl+[ itself, for the same reason).
+
+Ctrl+Q chosen and verified clean:
+  - `'q' & 0x1F` = 0x11 = 17 decimal. Not 27 (ESC), not 13/10 (Enter), not
+    8/127 (Backspace), nowhere near WASD's plain-ASCII range (87/119 'W'/'w'
+    etc) or the arrow codes (1000-1003).
+  - The one real historical risk for Ctrl+Q specifically -- terminal
+    XON/XOFF software flow control silently swallowing it before any
+    program ever sees the byte -- was checked directly, not assumed away:
+    pieces/keyboard/plugins/keyboard_input.c's raw-mode setup explicitly
+    disables IXON (`raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP |
+    IXON);`, line 103). With IXON off, Ctrl+Q/Ctrl+S are NOT intercepted
+    by the tty driver -- byte 17 arrives to this program like any other
+    Ctrl+letter combo.
+  - Grepped wraith-alpha_manager.c, text_edit_key.c, and wraith_gl.c for
+    any existing use of raw key value 17 -- none found. Unclaimed.
+
+Chrome-button glyph ':' -- no technical constraint here at all; icon
+glyphs are just a printable character rendered as a button label
+(g_chrome_icons[] entries are 'o'/'-'/'x'/'&', all plain printable ASCII,
+no collision check needed beyond "not already one of those four"). ':' is
+fine. The glyph and the hotkey don't have to match mechanically -- they
+just both happen to be picked for the same feature here.
+
+2do-jul12.txt originally claimed Ctrl+<letter> "already works end-to-end
+today via the exact mechanism Ctrl+C's shutdown uses in both renderers."
+That framing was checked directly against the actual Ctrl+C code in both
+renderers and found to overstate things -- the BYTE MECHANISM is
+confirmed correct, but "end-to-end" is not, for the reason below (still
+relevant: this is what step 2 under STEPS actually has to build).
+
+What's actually confirmed:
+- ASCII: pieces/keyboard/plugins/keyboard_input.c puts the terminal in raw
+  mode with ISIG explicitly disabled (`raw.c_lflag &= ~(ECHO|ICANON|IEXTEN|ISIG)`,
+  line 106) -- meaning Ctrl+<any letter> arrives as a plain byte (1-26),
+  NOT as a SIGINT/signal, for every letter, not just C. main()'s loop
+  computes Ctrl+C generically as `(('c') & 0x1f)` (line ~237) -- i.e. the
+  exact standard control-code formula, confirmed already in use here, and
+  directly reusable for Ctrl+Q (`('q' & 0x1f)` = 17, see above).
+- GL: wraith_gl.c's keyboard() callback receives Ctrl+C as literal byte
+  value 3 via GLUT's own translation (line 505, `if (key == 3)`) -- same
+  confirmation, GLUT already hands Ctrl+<letter> combos to this callback
+  as their control-code byte, no extra plumbing needed to RECEIVE it.
+- Collision safety reconfirmed independently: text_edit_key.c's WASD
+  camera keys are matched as literal lowercase/uppercase ASCII ('w'=119,
+  'W'=87 etc, text_edit_key.c:131-152) -- completely disjoint from Ctrl+Q's
+  byte 17.
+
+CORRECTION (2026-07-13, found while actually implementing this): the
+paragraph above (kept for the record, since it was a real intermediate
+belief, not deleted to hide a wrong guess) claimed the ASCII/GL
+"forwarding path" was new work needed, reasoning from the fact that both
+Ctrl+C handlers intercept-and-consume their byte instead of forwarding it.
+That reasoning was WRONG on the actual consequence: rereading both loop
+bodies line by line (keyboard_input.c's `while(1)` loop, wraith_gl.c's
+`keyboard()`) shows each one ONLY special-cases a small, explicit set of
+bytes (keyboard_input.c: just 'c'&0x1f=3; wraith_gl.c: 3, 8, 10, 13, 127).
+Byte 17 (Ctrl+Q) is not in either set, so it ALREADY falls through to the
+normal forward call in both files (`writeCommand(c)` /
+`append_keyboard_event((int)key)`) with ZERO changes needed to either
+reader. Confirmed live: wrote `KEY_PRESSED: 17` directly into
+pieces/keyboard/history.txt while the manager was running and watched
+route_input(17) fire correctly in alpha_manager.log, both with a window
+focused and with none -- see DECIDED below for the actual live-test
+transcript. The real (and only) new code needed was downstream, inside
+route_input() itself, which had nothing that gave byte 17 any meaning at
+all before this pass -- that's what got built, not a reader-level
+forwarding fix.
+
+Right-click: CONFIRMED with the user -- a fourth entry point, alongside
+hotkey/chrome-icon/launcher-click. Mechanics confirmed cheap --
+handle_mouse() (~wraith-alpha_manager.c:4543ish, re-verify exact line
+before implementing since the geometry-pass edits shifted line numbers in
+this file) already receives the SGR button number end-to-end in both
+paths; nothing branches on button value today, so it needs one new
+`if (btn == 2)` / `if (button == GLUT_RIGHT_BUTTON)` branch per side.
+Resolution is an alias for entry points 1/2's resolution, NOT entry point
+3's picker: right-click on a window -> active_window() snapshot, same as
+the hotkey; right-click on bare desktop -> NULL/desktop case. A
+right-click always has an implicit target (whatever's under/behind it),
+the same way a cold launcher-click never does.
+
+
+DECIDED (mix of carried-forward-from-2do-jul12.txt and new this pass)
+=============================================================
+1. Architecture: a real launched project window (launch_window_instance()),
+   NOT a floating overlay -- matches this codebase's page-based navigation
+   model (PROJECT_PAGE:), not a fight against the grain. Top-level project,
+   sibling of settings, NOT nested inside it (corrected this pass).
+2. Hotkey: Ctrl+Q. Chrome-button glyph: ':'. Both locked, see HOTKEY
+   section above for the full verification trail.
+3. Content model: PDL `METHOD | name | op-path` entries per project
+   (fo-menu-sys.md pattern), dispatched via pdl_reader.+x's existing
+   get_method/list_methods -- NOT a small fixed built-in action set. See
+   CONTENT MODEL above, including the concrete pdl_reader.c path-
+   resolution gap that needs closing first.
+4. FOUR entry points (hotkey / new chrome icon / right-click / launcher
+   click), each resolving its target differently -- see THREE ENTRY
+   POINTS above (right-click is the 4th, confirmed in the HOTKEY section's
+   right-click note -- an alias for entry points 1/2's resolution, not a
+   new resolution mechanism). Launcher click is the only one with no
+   implicit target; it shows an open-projects picker (sourced from
+   desktop_ui_state.txt's desktop_registry_<N>_id/title/project_id/
+   instance_no/state/open/minimized/visible fields, confirmed live format
+   this session) before landing on the same method-list screen the other
+   three entry points reach directly.
+
+
+STILL OPEN -- decide while implementing, don't guess silently
+==================================================================
+- Flat action list vs. eventual internal paging for the method-list screen
+  itself -- default to flat/single-page for a first build; only grow a
+  SETTINGS_PAGE:-style mechanism if/when the action list actually gets
+  crowded enough to need it. Don't build paging preemptively.
+- Whether picker selection inserts an emoji via apply_editor_key()'s
+  existing key-based insert path, or needs a new insert-by-codepoint Op in
+  pieces/system/file_ops/ per Bible section 11 (decide based on whether any
+  OTHER planned feature also wants "insert an arbitrary codepoint at
+  cursor" -- not just this one picker).
+- Exact final project name/directory (context-menu/ as a direct child of
+  wraith-projects/ is the working assumption; exact name not yet locked).
+- Where the desktop's own "pseudo-project" METHOD list lives on disk (see
+  CONTENT MODEL above).
+- Exact "no METHODs declared" fallback markup for a project that hasn't
+  been given a METHOD section yet (see CONTENT MODEL above).
+
+
+PROGRESS SO FAR (2026-07-13, mid-implementation)
+=====================================================
+DONE and live-tested:
+  1. pdl_reader.c's resolve_piece_pdl_path() extended with the
+     `projects/<piece_id>/project.pdl` candidate (see CONTENT MODEL
+     above). Verified live: appended temporary METHOD lines to
+     piececraft-wraith/project.pdl, ran `pdl_reader.+x
+     wraith-alpha/wraith-projects/piececraft-wraith list_methods` and
+     `get_method test_action`, got correct output, reverted the temp
+     lines afterward.
+  2. route_input()'s Ctrl+Q intercept (wraith-alpha_manager.c) --
+     checked BEFORE map_control/typing-state gating (so it fires even
+     while a text field is being typed into, required for the emoji-
+     picker use case). Calls new `open_context_menu_for_active_window()`
+     (right after open_window_geom_for_project(), same file), which
+     resolves active_window() and logs which window (or "desktop" if
+     NULL) it would target. Currently a STUB -- logs only, does not
+     launch anything yet, since the context-menu project itself doesn't
+     exist. Live-tested by writing `KEY_PRESSED: 17` directly into
+     pieces/keyboard/history.txt against a running manager process and
+     confirming the correct log line for both the no-window and
+     window-focused cases in alpha_manager.log.
+  3. Confirmed NO changes were needed in keyboard_input.c or
+     wraith_gl.c's keyboard() -- see the correction note in the HOTKEY
+     section above.
+  4. Full compile_all.sh sweep clean (229/229) after each change.
+  5. 5th chrome icon added (glyph ':', CHROME_ACTION_OPEN_CONTEXT_MENU),
+     confirmed genuinely trivial as CHROME ICON COUNT note below
+     predicted it WOULDN'T be -- turned out this codebase already
+     engineered around that historical risk (CHROME_CONTENT_START is
+     published to a file at manager startup and read live by all nine
+     per-project ops binaries, both renderers' chrome loops are already
+     `for (ci = 0; ci < CHROME_ICON_COUNT; ci++)`, not hardcoded
+     per-icon blocks) -- so it really was just: enum value, array entry,
+     one switch case. Icon order is data-driven too (both renderers
+     iterate g_chrome_icons[] positionally), so reordering afterward
+     (per direct user feedback -- ':' and '&' moved to the FRONT, before
+     o/-/x, since users expect the two "opens another window" actions
+     grouped and visually distinct from the three plain window-state
+     controls) was equally trivial: reorder the array literal, nothing
+     else. Final on-screen/nav order: ':' (nav 2) -> '&' (nav 3) -> 'o'
+     (nav 4) -> '-' (nav 5) -> 'x' (nav 6).
+  6. Found and fixed TWO real bugs while live-testing the new icon
+     (neither was a regression I introduced from nothing -- both were
+     pre-existing latent bugs my icon addition was simply the first
+     thing to actually trigger):
+     a. `raw[4096]` in build_desktop_shell_markup() (wraith-alpha_manager.c)
+        was HALF the size of body_content[8192] (its own destination
+        buffer) despite being the actual source of virtually everything
+        that ends up in it. Already close to full for the terminal
+        window's launcher-list view (15+ entries); the 5th icon's ~58
+        extra bytes pushed it over. appendf() truncates silently via
+        strncat, so the launcher loop stopped writing mid-tag with no
+        closing <br/>, and the unconditional taskbar text appended right
+        after landed on that same unterminated line -- visible as
+        garbled text ("| |[ ] 20. [wrai| [ TASKBAR ]...") reported live.
+        Fixed by matching raw's capacity to body_content's (8192).
+     b. cell_width_px/cell_height_px -- hardcoded 10/18 in THREE places
+        (wraith-alpha_manager.c's meta.pdl emission, wraith_rgb_daemon.c's
+        parse_frame_meta() fallback default, wraith_gl.c's
+        hit_test_semantic_action() fallback default) -- never actually
+        matched wraith_rgb_daemon.c's real GLYPH_W(8)/GLYPH_H(16)
+        constants, which are what its buffer is ACTUALLY sized from
+        (WIDTH=COLS*GLYPH_W=1024, HEIGHT=ROWS*GLYPH_H=640). Every
+        object's obj->x/y gets scaled by whatever cell_w/cell_h it reads,
+        and fill_rect_px() clamps x1 to WIDTH then returns early if
+        x0>=x1 -- so any column beyond WIDTH/10=102.4 silently drew
+        nothing. The new context-menu icon (originally placed at column
+        103, before the reorder above moved it to column 63) was the
+        first object in this codebase's history to actually cross that
+        threshold, making a long-latent bug visible for the first time.
+        Fixed all three hardcoded 10/18 pairs to 8/16, confirmed by
+        reading the actual rasterized current_frame.rgba32 bytes at the
+        icon's pixel coordinates before/after (icon background color
+        #162534 present after the fix, was general desktop background
+        before). This bug would have affected ANY object placed past
+        column 102 regardless of what caused it to be there -- not
+        specific to chrome icons or to this feature.
+  7. Full compile_all.sh sweep clean (229/229) again after the bug fixes
+     and reorder.
+
+WHY "context-menu" ISN'T IN THE PROJECT/LAUNCHER LIST YET (asked live,
+answering here so it doesn't come up as a surprise again): the launcher
+list (discover_launcher_projects()) is a plain directory scan of
+wraith-projects/ -- it shows whatever real project directories exist.
+NO project directory for context-menu has been created yet. Everything
+built so far (Ctrl+Q, the chrome icon, both bug fixes) is entry-point
+PLUMBING that correctly resolves a target and then calls
+open_context_menu_for_active_window() -- which is STILL a stub that only
+logs, because there is nothing to launch_window_instance() into yet. This
+is expected, not a bug: it's exactly STEPS item 2 below, not yet started.
+The dispatch mechanism firing correctly (confirmed via the Ctrl+Q and
+chrome-icon live tests above) is real, verified progress toward that step
+-- it's just not the step itself.
+
+
+PLANNED ARCHITECTURE (not built yet -- concrete enough to resume cold)
+==========================================================================
+Nothing below exists on disk yet. This is a specific enough plan that a
+fresh agent (or a new session) should be able to start implementing
+directly from it, without re-deriving the design from the sections above.
+Modeled file-for-file on window-geom's actual structure (re-confirmed
+live this pass via `find` + reading its real project.pdl), since it's the
+closest existing precedent for the target-snapshot half of this feature.
+
+DIRECTORY LAYOUT (proposed, exact name "context-menu" not yet bikeshedded
+-- change freely, everything below just assumes whatever it's called):
+
+  projects/wraith-alpha/wraith-projects/context-menu/
+    project.pdl
+    layouts/context-menu.chtpm
+    manager/context-menu_manager.c
+    ops/src/wraith_project_input.c
+    session/                          (created at runtime, not checked in)
+      cm_target.txt                   (NEW -- see TARGET RESOLUTION below)
+      state.txt
+      gui_state.txt
+      history.txt
+      wraith_body.txt
+      regenerate_marker.txt
+
+  Direct child of wraith-projects/ (NOT nested under settings/, per the
+  corrected placement decided earlier in this doc) -- this is what makes
+  discover_launcher_projects() find it and populate the launcher list.
+
+project.pdl TEMPLATE (copy window-geom's shape exactly, these are the
+only lines that actually matter to the runtime):
+
+    SECTION      | KEY                | VALUE
+    ----------------------------------------
+    META         | project_id         | wraith-alpha/wraith-projects/context-menu
+    META         | version            | 1.0
+    META         | author             | TPMOS
+    META         | manager            | projects/wraith-alpha/wraith-projects/context-menu/manager/+x/context-menu_manager.+x
+    META         | entry_layout       | projects/wraith-alpha/wraith-projects/context-menu/layouts/context-menu.chtpm
+
+    STATE        | title              | CONTEXT MENU
+    STATE        | status             | ready
+
+    RESPONSE     | default            | Context menu ready.
+
+  window-geom also has a settings_entry.pdl -- confirmed this pass that
+  file is ONLY for registering as a page inside settings' own internal
+  SETTINGS_PAGE: system. context-menu does NOT need one, since it's
+  top-level, not one of settings' pages.
+
+TWO SCREENS, ONE STATE FILE (session/cm_target.txt):
+  - MISSING or empty -> PICKER screen. Reads
+    projects/wraith-alpha/session/desktop_ui_state.txt's
+    desktop_registry_<N>_id/title/project_id/instance_no/state/open/
+    minimized/visible fields (confirmed live format this session),
+    renders one numbered button per open window plus a "Desktop" entry.
+    Selecting one WRITES that target's project_id (or the literal string
+    "desktop" for the Desktop entry) into cm_target.txt and re-renders --
+    same file, now non-empty, so the NEXT render shows the method-list
+    screen instead. This mirrors window-geom's wg_target.txt exactly,
+    just with an added "file doesn't exist yet" branch window-geom never
+    needed (window-geom is NEVER opened without a target already known).
+  - PRESENT and non-empty -> METHOD-LIST screen. Reads the target's
+    METHOD section (via pdl_reader.+x <target> list_methods, or the
+    desktop's own pseudo-project source if target=="desktop" -- see
+    DESKTOP PSEUDO-PROJECT below), renders one numbered button per
+    method. Selecting one calls `pdl_reader.+x <target> get_method
+    <name>` to resolve the handler, then executes it (see HANDLER VALUE
+    CONVENTION below -- this is a real open question, not settled).
+
+TARGET RESOLUTION PER ENTRY POINT (who writes cm_target.txt, and when):
+  - Hotkey (Ctrl+Q) / new chrome icon / right-click (entry points 1, 2, 4
+    -- all three already funnel into open_context_menu_for_active_window()
+    in wraith-alpha_manager.c, currently a stub): when this function
+    actually launches the project (replacing today's log-only stub), it
+    must WRITE cm_target.txt with the resolved window's project_id (or
+    "desktop") BEFORE calling launch_window_instance() -- same
+    write-then-launch order open_window_geom_for_project() already uses
+    for wg_target.txt. This makes the window open DIRECTLY on the
+    method-list screen, skipping the picker, matching the "hotkey IS the
+    implicit target" design from THREE ENTRY POINTS above.
+  - Launcher click (entry point 3): opened the normal way
+    (launch_wraith_project_command() / discover_launcher_projects()), NO
+    target pre-written -- cm_target.txt stays whatever it was left as
+    from the last session (see RESET QUESTION below). First render reads
+    it: empty/missing -> picker; still set from a previous session ->
+    jumps straight to that stale target's method-list, which is
+    probably NOT what a cold launcher-click should do.
+
+DECIDED, 2026-07-13 (both of the below were STILL OPEN as of the previous
+version of this doc -- resolved by direct user instruction, not guessed):
+
+  - RESET QUESTION -- DECIDED: no special context-menu-specific focus or
+    persistence logic AT ALL. Resize/close/minimize triggered from the
+    context menu must behave EXACTLY like triggering them from the chrome
+    icons already does today -- same functions, same resulting state,
+    nothing extra. After a close, whatever ALREADY decides "which window
+    or the desktop takes focus next" (existing logic, not something new
+    to build) just runs unmodified -- context-menu does not try to
+    preserve, restore, or steer focus afterward. Practically: cm_target.txt
+    should be cleared on close (of either the target window or the
+    context-menu window itself) so a stale target is never silently
+    reused -- this is the natural consequence of "act normal," not a
+    separate feature to design.
+  - HANDLER VALUE CONVENTION -- DECIDED: for actions that already exist as
+    manager-internal functions (resize -> open_window_geom_for_project(),
+    close -> close_active_window(), minimize -> minimize_active_window()),
+    the METHOD handler must route to those EXACT SAME functions -- not a
+    reimplementation, not new resize/close logic living inside
+    context-menu's own ops binary. Concretely: add a small number of new
+    DESKTOP_ACTION: cases in route_command() (e.g.
+    DESKTOP_ACTION:open_context_menu_resize) that resolve cm_target.txt
+    back to a project_dir/Window* the same way project_dir_for_window()
+    already does for a live window, then call the identical existing
+    function the chrome icon calls. This is effectively option (a) from
+    the previous version of this note, scoped down: ONLY for actions that
+    already have a manager-internal implementation. Anything that's
+    genuinely project-specific (piececraft-wraith's reset_camera, etc.)
+    still uses fo-menu-sys.md's plain literal-executable-path convention
+    unchanged -- no wrapper needed for those, they're real standalone Ops
+    already.
+
+DESKTOP PSEUDO-PROJECT: proposed location
+projects/wraith-alpha/session/desktop.pdl (or similar -- NOT under
+wraith-projects/, since it's not a real launchable project and shouldn't
+appear in the launcher list) with its own METHOD section, so
+cm_target.txt=="desktop" resolves through the SAME pdl_reader.+x
+list_methods/get_method codepath as everything else -- requires the
+pdl_reader.c path-resolution extension from earlier in this doc to gain
+ONE more candidate (or just place this file somewhere pdl_reader.c
+already knows to look, e.g. actually reuse the existing
+`projects/<piece_id>/project.pdl` candidate by treating "desktop" as if
+it were a project_id resolving to this file -- exact mechanism not yet
+chosen, flagging rather than guessing).
+
+EXAMPLE METHOD SECTIONS (illustrative proposals, NOT yet written to any
+real project.pdl -- consistent with the now-decided HANDLER VALUE
+CONVENTION above: DESKTOP_ACTION: wrappers only for the three actions
+that already exist as manager-internal functions, plain literal-Op-path
+METHODs for everything genuinely project-specific):
+
+  piececraft-wraith/project.pdl, appended:
+    METHOD | resize        | DESKTOP_ACTION:open_context_menu_resize
+    METHOD | close          | DESKTOP_ACTION:open_context_menu_close
+    METHOD | reset_camera   | PROJECT_ACTION:reset_view
+
+  wrai-text-editor/project.pdl, appended:
+    METHOD | resize   | DESKTOP_ACTION:open_context_menu_resize
+    METHOD | close     | DESKTOP_ACTION:open_context_menu_close
+    METHOD | emoji     | DESKTOP_ACTION:open_context_menu_emoji_picker
+        (emoji only actually offered when the resolved focus is a text
+        field -- the FILTERING logic for this is still undesigned, see
+        STILL OPEN in CONTENT MODEL above; listing it unconditionally
+        here is the naive version, not the final one)
+
+  desktop pseudo-project, appended (once its file exists):
+    METHOD | new_terminal | DESKTOP_ACTION:launch_terminal
+    METHOD | settings      | DESKTOP_ACTION:launch_settings
+    METHOD | create_folder | DESKTOP_ACTION:open_context_menu_create_folder
+    METHOD | change_background | DESKTOP_ACTION:open_context_menu_change_bg
+        (both added 2026-07-13 per direct user request -- see their own
+        dedicated sections below, DESKTOP: CREATE FOLDER and DESKTOP:
+        CHANGE BACKGROUND. Unlike resize/close/emoji above, these two are
+        NOT thin wrappers around an existing manager function -- neither
+        piece of underlying functionality exists yet at all. Listed here
+        for completeness of the desktop METHOD list; the real work is in
+        those two sections.)
+
+  None of these four handler names (open_context_menu_resize/close/
+  emoji_picker) exist in route_command() yet -- they'd need to be added
+  as new DESKTOP_ACTION: cases there, each one calling the corresponding
+  existing function (open_window_geom_for_project(), close_active_window(),
+  a new emoji-insert path) with whatever target cm_target.txt currently
+  holds, resolved back to a real project_dir the same way
+  project_dir_for_window() already does for a live Window*.
+
+
+DESKTOP: CREATE FOLDER -- planned, not built (added 2026-07-13)
+====================================================================
+Per direct user instruction: a "user/desktop" style filesystem, plain
+mkdir, Linux-home-directory shaped. No login system yet -- explicitly
+deferred by the user ("we will later make a login so just use guest/
+default or w/e") -- so for now this always operates on a single hardcoded
+"guest" identity, not a real per-login user.
+
+REUSED, not reinvented -- checked before designing this from scratch
+(Bible section 11): projects/user/ already has EXACTLY this per-user
+directory convention, just for a different purpose (game-save profiles,
+not desktop files). Confirmed live:
+  - projects/user/ops/create_profile.c: `create_profile.+x <project_path>
+    <username>` -- mkdirs `<project_path>/pieces/profiles/<username>/`
+    (validates username is alnum+underscore only) and writes an initial
+    state.txt. This is a real, already-working, generic Op -- reuse it
+    to bootstrap the guest profile, don't write a second mkdir-a-profile
+    tool.
+  - A real example profile already exists on disk:
+    projects/user/pieces/profiles/testplayer/, containing state.txt and
+    saves/<project-name>/ (one subdirectory per project's save data --
+    e.g. saves/fuzz-op/, saves/agy-text-editor/).
+
+PROPOSED (not yet built):
+  1. Bootstrap projects/user/pieces/profiles/guest/ once (at manager
+     startup, or lazily on first desktop-folder-related action) by
+     calling the EXISTING create_profile.+x with username="guest" --
+     idempotent already (create_profile.c returns success with "already
+     exists" if the dir is already there, confirmed reading its code).
+  2. Add a NEW subdirectory alongside the existing saves/ convention:
+     projects/user/pieces/profiles/guest/desktop/ -- this is the actual
+     "user desktop" folder tree. "Create folder" mkdirs INSIDE this tree,
+     never anywhere else (not inside wraith-projects/, not at repo root).
+  3. New small Op needed (does not exist yet) -- propose
+     pieces/system/file_ops/create_user_folder.c (system-level, not
+     fs-project-specific, since "safely mkdir a validated name inside a
+     known root" is generic enough to belong in pieces/system/file_ops/
+     alongside text_editor_view.+x/text_edit_key.+x per this codebase's
+     own REUSE RULE precedent) -- same username validation approach as
+     create_profile.c (alnum + underscore only), rooted at
+     .../guest/desktop/ instead of .../pieces/profiles/.
+  4. UI gap, not yet solved: creating a folder needs a NAME, which means
+     a text-input step, not a single keypress/click like resize or
+     close. No existing context-menu screen design covers this. Check
+     wrai-text-editor's file_menu/file_browser pages first (mentioned
+     elsewhere in this codebase's history as already having some
+     name-entry-adjacent UI) for a reusable input-field pattern before
+     building a new one -- not yet checked, flagging rather than
+     assuming either that it exists or that it doesn't.
+  5. Whether "create folder" should also immediately open some kind of
+     folder-browsing view afterward, or just silently mkdir and return to
+     the method-list -- not decided, default to the latter (simplest)
+     unless a browsing UI already gets built for other reasons (see
+     CHANGE BACKGROUND below, which needs one anyway for picking an
+     image -- if that gets built first, reuse it here too rather than
+     building two separate browsers).
+
+
+DESKTOP: CHANGE BACKGROUND -- planned, not built (added 2026-07-13)
+========================================================================
+Two sub-features per direct user instruction: (a) a set of built-in
+"auto" patterns to pick from, (b) let the user load their own image as
+the background. Checked the ACTUAL current background rendering before
+scoping this -- it is NOT a simple menu-wiring task like resize/close;
+there is currently ZERO override mechanism for the desktop background at
+all, so this is genuinely new rendering infrastructure.
+
+CURRENT STATE (confirmed by reading the code, not assumed):
+  - wraith_rgb_daemon.c's parse_frame_meta() hardcodes
+    `bg[0]=15; bg[1]=23; bg[2]=32;` (a solid navy) and NEVER reads any
+    "FRAME | bg_..." key from current_frame.meta.pdl -- there isn't even
+    a parse branch for one. clear_buffer(buffer, bg[0], bg[1], bg[2])
+    fills the ENTIRE raster with this single solid color before any
+    object draws on top. This is the one and only place "background"
+    exists today. No pattern support, no image support, no per-project
+    override -- confirmed via full-file grep, not inferred.
+  - ASCII has no equivalent concept at all -- its "background" is just
+    whatever the terminal itself shows outside drawn characters.
+
+WHAT WOULD NEED TO EXIST (proposed, nothing below is built):
+  1. A background CONFIG file, likely
+     projects/user/pieces/profiles/guest/desktop/background.txt (same
+     guest-profile tree as CREATE FOLDER above -- natural fit, both are
+     "things about the user's desktop") declaring mode (solid/pattern/
+     image) and a value (color triple / pattern name / image path).
+  2. wraith-alpha_manager.c's meta.pdl emission needs new FRAME | bg_mode
+     and FRAME | bg_value fields (reading the config file above), the
+     same "manager reads config, publishes into meta.pdl, daemon reads
+     meta.pdl" shape every other cross-binary value in this doc already
+     uses (cell_width_px, frame_width, etc.) -- not a new pattern, the
+     SAME one.
+  3. wraith_rgb_daemon.c's background fill needs to branch on bg_mode:
+     - solid: unchanged, today's clear_buffer() call.
+     - pattern (the "auto patterns" case): propose PROCEDURAL generation
+       (checkerboard, gradient, dots -- computed directly in C, no asset
+       files needed) rather than pre-rendered pattern assets, since
+       "auto" implies built-in/zero-setup. A small named-pattern enum +
+       one generator function per pattern is enough; this is genuinely
+       simple compared to (4) below.
+     - image: load and blit a user-supplied image to fill WIDTH x HEIGHT
+       before objects draw. REUSE stb_image.h -- already vendored in
+       this exact repo at pieces/system/emoji_extract/lib/ for the emoji
+       rendering work done earlier this session. Don't add a second copy
+       or a different image library; this is exactly the kind of
+       duplication the REUSE RULE exists to prevent. Decode once per
+       background change (not per frame -- cache the decoded/resized
+       pixel buffer, only re-decode when bg_value's image path changes),
+       then tile or stretch-to-fit (which of the two -- not decided) into
+       the WIDTH x HEIGHT buffer before clear_buffer()'s normal solid-fill
+       call is skipped in favor of this blit.
+  4. ASCII CANNOT show a pattern or image -- this is a genuine, permanent
+     exception to this session's own "GL and ASCII must mirror" rule
+     (unlike x/y/width/height geometry, which now correctly mirrors both
+     ways). Explicitly flag this as an ACKNOWLEDGED, PERMANENT asymmetry
+     when building it -- don't try to force ASCII parity, and don't let a
+     future "renderers must agree" live-test treat this one specific gap
+     as a bug. Decide (not yet decided) what ASCII shows instead: keep
+     its plain default appearance regardless of GL's background, or show
+     some crude text indicator (e.g. a single repeated fill character) --
+     leaning toward the former (simplest, and ASCII users likely don't
+     expect image support from a text terminal anyway) but not decided.
+  5. "Load image" needs a way for the user to POINT AT a file -- the
+     natural answer, given CREATE FOLDER above, is to browse the SAME
+     guest/desktop/ tree (so a user drops an image file into their
+     desktop folder via some external means -- exact mechanism for
+     getting a file INTO that tree at all is itself unaddressed, e.g. no
+     upload/import mechanism exists in this codebase -- then picks it via
+     a folder-browsing UI). If a browsing UI gets built for CREATE FOLDER
+     first, change-background's image picker should reuse that SAME UI,
+     not build a second one -- noted as a design synergy in CREATE
+     FOLDER's own section above, repeating here since it's the same
+     point from the other direction.
+
+
+STEPS, remaining
+==================
+1. Build the new context-menu project per PLANNED ARCHITECTURE above
+   (directory layout, project.pdl template, two-screen cm_target.txt
+   state machine already specified there -- start there, not from
+   scratch). RESET QUESTION and HANDLER VALUE CONVENTION are now DECIDED
+   (see that section) -- implement per those decisions, don't re-open
+   them. Replace
+   open_context_menu_for_active_window()'s stub body with the real
+   write-cm_target.txt-then-launch_window_instance() call once this
+   exists (same order open_window_geom_for_project() already uses for
+   wg_target.txt). This is what makes the project actually appear in the
+   launcher list (see WHY "context-menu" ISN'T IN THE LIST YET above) --
+   a real project directory with a project.pdl is what
+   discover_launcher_projects() scans for, nothing else creates that.
+2. Add METHOD sections to the project.pdl of every project that should
+   offer context-menu actions (piececraft-wraith, wrai-text-editor,
+   window-geom, etc. -- and decide/create the desktop's own pseudo-project
+   METHOD source, see STILL OPEN). Do this alongside step 1, not before
+   it -- there's no way to verify a METHOD section renders correctly
+   without the project that reads it existing yet.
+3. Add right-click branching in handle_mouse() (ASCII-side dispatch in
+   wraith-alpha_manager.c) and mouse() (GL, wraith_gl.c) -- confirmed
+   entry point, resolves via active_window() same as hotkey/chrome-icon
+   (call the same open_context_menu_for_active_window()), not the picker.
+4. Wire the emoji picker as the first real menu action/METHOD, gated on
+   the resolved focus actually being a text-editing field.
+5. Live-test: hotkey from desktop (no window focused, already done above
+   at the route_input() level -- re-test at the FULL feature level once
+   step 1 lands), hotkey from inside a project window, new chrome icon
+   (already confirmed live at the dispatch level, re-test once step 1
+   makes it launch something real), right-click from both contexts, and
+   cold launcher-click-into-picker -- confirm ASCII and GL show the same
+   thing every time (same "two renderers must agree" discipline applied
+   to window geometry's live test this session).
+6. Update this doc (or start a dated successor, matching this session's
+   own geom-st8.txt pattern) once built and live-tested.
+
+CHROME ICON COUNT note (RESOLVED, kept for the record): this caution was
+written before actually adding the icon. Turned out to be over-cautious
+in the way it was worried about -- CHROME_CONTENT_START is published to
+pieces/display/chrome_reserved_nav_count.txt at manager startup and read
+live by all nine per-project ops binaries (a 2026-07-11 fix, already in
+place), and both renderers' chrome loops were already
+`for (ci = 0; ci < CHROME_ICON_COUNT; ci++)`, not hardcoded per-icon
+blocks -- so adding icon #5 (and reordering all 5 afterward) really was
+just editing the g_chrome_icons[] array literal, confirmed live, no
+nav-numbering bug found. What the caution DIDN'T anticipate, and what
+actually broke, were two totally different pre-existing latent bugs
+(undersized raw[] buffer, mismatched cell_width_px/cell_height_px) that
+had nothing to do with CHROME_CONTENT_START at all -- see PROGRESS SO FAR
+item 6 above. Lesson: a documented invariant being correctly engineered
+around doesn't mean a change is risk-free, just that THAT SPECIFIC risk
+was already handled -- still worth live-testing every renderer after any
+chrome-row change, which is what caught both real bugs here.
+
+
+BASICS PASS -- BUILT 2026-07-13 (context-menu project now actually exists)
+================================================================================
+Everything below is a real build, not a plan anymore. Scope deliberately
+narrowed per direct user instruction ("let's just do the basics for now"):
+only the method-list screen, only resize + close (the two METHODs that
+already have manager-internal functions to route to), only piececraft-wraith
+given real METHOD entries. Picker screen, emoji picker, right-click,
+create-folder, change-background are all still just planned (see their own
+sections above) -- NOT built in this pass.
+
+WHAT EXISTS NOW ON DISK:
+  - projects/wraith-alpha/wraith-projects/context-menu/ -- real project:
+    project.pdl, layouts/context-menu.chtpm, manager/context-menu_manager.c
+    (init-only, settings_manager.c's CURRENT pattern -- NOT window-geom_manager.c's
+    older still-polling one, confirmed by reading both before picking a
+    template), ops/src/wraith_project_input.c (the real logic).
+  - piececraft-wraith/project.pdl gained two METHOD lines:
+    `METHOD | resize | DESKTOP_ACTION:open_context_menu_resize` and
+    `METHOD | close | DESKTOP_ACTION:open_context_menu_close`.
+  - wraith-alpha_manager.c: open_context_menu_for_active_window() no longer
+    a stub -- writes session/cm_target.txt (context-menu's own target-
+    snapshot file, same pattern as window-geom's wg_target.txt) then
+    launch_window_instance()s it for real. Two new DESKTOP_ACTION: cases in
+    route_command() (open_context_menu_resize/close) resolve cm_target.txt
+    back to a project_id/Window* and call the EXACT SAME existing functions
+    the chrome icons use (open_window_geom_for_project(),
+    a new find_window_by_project_id()-based close -- NOT close_active_window(),
+    see below for why) -- per the HANDLER VALUE CONVENTION decided earlier
+    in this doc.
+
+TWO REAL BUGS FOUND AND FIXED WHILE LIVE-TESTING (both confirmed live with
+before/after evidence, not theoretical):
+  1. derive_repo_root() (context-menu's ops file, copied from settings')
+     only recognized an ABSOLUTE project_dir. wraith-alpha_manager.c
+     actually passes a RELATIVE one on a project's very FIRST invocation
+     (fired by the project's own manager at launch time, hardcoded relative
+     PROJECT_DIR macro -- same pattern settings_manager.c uses) and only
+     switches to an ABSOLUTE one on SUBSEQUENT KEY:/PROJECT_ACTION:
+     dispatches (run_active_project_input_op() -> project_dir_for_window(),
+     g_project_root-based). settings' ops never needed repo_root on that
+     first call, so this pre-existing inconsistency never surfaced there --
+     context-menu's ops DOES need it immediately (to invoke pdl_reader.+x),
+     so it silently computed a wrong path and pdl_reader.+x failed quietly
+     (stderr to /dev/null), showing "no methods declared" even though
+     piececraft-wraith genuinely had METHOD lines. Fixed by recognizing
+     both forms.
+  2. Stale key replay: context-menu's own session/history.txt is
+     append-only and read via "just take the last KEY_PRESSED line," with
+     no "already consumed" tracking -- the EXACT footgun settings' own ops
+     file documents as a previously-fixed real bug (2fix-july6.txt bug 1).
+     Confirmed live: after testing resize once, simply opening context-menu
+     AGAIN later (targeting a different window) silently re-ran resize
+     again on open, because the old "KEY_PRESSED: 1" line was still the
+     last line in history.txt. Fixed by truncating context-menu's own
+     session/history.txt every time open_context_menu_for_active_window()
+     opens it fresh -- a brand-new open has no meaningful history yet by
+     definition.
+  3. close_active_window() (used by the chrome 'x' icon) could NOT be
+     reused as-is for the context-menu close action: it always operates on
+     active_window(), but by the time the close DESKTOP_ACTION fires,
+     active_window() is the CONTEXT MENU window itself (opening it made it
+     active), not the original target. Added find_window_by_project_id()
+     instead, and route the close DESKTOP_ACTION through that -- same
+     underlying close mechanics (WSTATE_CLOSED + compact_registry()), just
+     targeting the right window. Not a bug found live, but a real design
+     gap caught by careful reading before it would have shipped broken.
+
+CONFIRMED WORKING, LIVE, THIS PASS:
+  - Ctrl+Q on a focused window (piececraft-wraith) -> cm_target.txt written
+    correctly -> context-menu window opens -> method-list shows "resize"
+    and "close" as real numbered buttons (confirmed via session/wraith_body.txt
+    content directly).
+  - Selecting "resize" (KEY:1) -> pdl_reader.+x get_method resolves the
+    handler -> queued to desktop_actions.txt -> parent picks it up ->
+    open_window_geom_for_project() actually runs -> confirmed via
+    window-geom's OWN wg_target.txt correctly showing piececraft-wraith's
+    project_id afterward. Full round trip, not just "the button exists."
+
+STILL NEEDS TESTING (interrupted mid-verification, not yet confirmed
+either way -- pick up here):
+  - "close" (KEY:2) end-to-end -- was mid-test when this doc-update was
+    requested. The two bug fixes above (repo_root, history.txt truncation)
+    happened DURING this test; close itself has not yet been re-verified
+    working after those fixes landed. Test it next.
+  - The 5th chrome icon (':') actually launching the REAL context-menu
+    project now that open_context_menu_for_active_window() isn't a stub
+    anymore -- only tested against the stub earlier in this doc's history.
+  - GL rendering of the context-menu window's content -- only verified via
+    the ASCII-adjacent data files (wraith_body.txt, gui_state.txt) so far,
+    not via actual rasterized pixels the way the chrome-icon position bug
+    was confirmed earlier in this doc.
+  - What happens if Ctrl+Q is pressed with NO window focused (desktop
+    case) now that a real project launches -- cm_target.txt would get
+    "desktop" written, which the desktop pseudo-project (not built) can't
+    resolve, so the method-list should show "desktop has no methods
+    declared" -- expected per this pass's scope, but not yet actually
+    watched happen live.
+
+KNOWN, EXPECTED LIMITATION (not a bug -- worth knowing before testing):
+  Pressing a context-menu button's key (KEY:1, KEY:2, ...) only reaches
+  context-menu's OWN dispatch logic while context-menu IS the currently
+  ACTIVE/focused window -- this is how EVERY project's KEY: dispatch
+  already works in this codebase (route_command()'s "KEY:" branch always
+  targets whatever active_window() currently is), not something specific
+  to context-menu. Concretely: if you open the context menu, click
+  "resize" (which opens window-geom and makes IT the active window), then
+  try to click "close" on the ORIGINAL (now-background) context-menu
+  window without re-focusing it first, that click will be misrouted to
+  window-geom instead. Normal interactive use (actually clicking the
+  visible, focused menu) won't hit this -- it only bit this session's
+  automated raw-key-injection testing, where key presses were scripted
+  out of natural focus order.
+
+WHAT TO CHECK / REPORT BACK ON (live in your own session):
+  1. Open any project with METHOD entries (currently only piececraft-wraith
+     has them -- resize, close). Press Ctrl+Q while it's focused. Does a
+     CONTEXT MENU window open showing "resize" and "close" as clickable
+     buttons, in both ASCII and GL?
+  2. Click "resize" -- does a WINDOW GEOM window actually open, correctly
+     targeting piececraft-wraith (not itself, not some other window)?
+  3. Re-open the context menu on piececraft-wraith (Ctrl+Q again -- may
+     need to re-focus piececraft-wraith first per the limitation above),
+     click "close" -- does piececraft-wraith's window actually disappear
+     from the taskbar?
+  4. Try the 5th chrome icon (':') instead of Ctrl+Q -- same result?
+  5. Try Ctrl+Q with NO window focused (bare desktop) -- does it open
+     showing "desktop has no methods declared" without crashing anything?
+  6. Try opening context-menu from the launcher list directly (cold, no
+     window focused first) -- expected to show "No target selected"
+     (picker screen isn't built yet) -- confirm it says that and doesn't
+     crash, rather than expecting a real picker yet.
+  Report back whatever breaks, looks wrong, or works -- this section will
+  get updated with the results either way, don't fix silently.
+
+
+SPRINT CLOSE-OUT -- 2026-07-13, later same day (context-menu basics DONE)
+================================================================================
+Resumed after the checklist above was handed off. User reported close
+"staying open, not killed" -- investigated and found close's underlying
+mechanics actually correct (confirmed via registry state), but found and
+fixed a REAL separate bug while checking: multi-instance ambiguity (see
+below). Then built the emoji picker + right-click on top, per direct
+user request, and found FIVE MORE real bugs live-testing that. Full list,
+all confirmed fixed with before/after evidence:
+
+  1. Multi-instance close ambiguity: find_window_by_project_id() matched
+     the FIRST open window with a given project_id -- with two instances
+     of the same project open, close could hit the wrong one (would look
+     exactly like "the window I'm looking at won't close"). Added
+     find_window_by_id() (unique per instance) as the primary resolution
+     path; cm_target.txt is now 2 lines (project_id + unique id) instead
+     of 1. Verified live: opened two piececraft-wraith instances, closed
+     one, confirmed the OTHER stayed open untouched.
+  2. Interact-mode emoji filtering built and verified: cm_target.txt
+     gained a 3rd line (interact_mode, computed via
+     read_project_map_control_for_dir() on the RESOLVED target, checked
+     inside open_context_menu_for_active_window() itself so all entry
+     points behave consistently, not just right-click). context-menu's
+     ops filters METHOD names by an "emoji_" prefix convention: only
+     emoji_ methods shown when interact_mode=1, only non-emoji_ methods
+     otherwise. Verified live: right-click on wrai-text-editor while in
+     INTERACT showed exactly the 10 emoji_ methods, none of resize/close.
+  3. text_edit_key.c extended with a new "insert <utf8_text>" mode
+     (pieces/system/file_ops/) -- the existing apply_key() only ever
+     wrote ONE byte per keystroke, structurally incapable of inserting a
+     4-byte emoji. Reused the file/tool per Bible section 11 rather than
+     adding a new one. Verified standalone (CLI test) before wiring it
+     into anything else.
+  4. Markup-line-length bug: publish_state() built ALL button tags as one
+     giant concatenated string with embedded <br/> MARKUP tags but no
+     real '\n' between them, then wrote it as one fprintf("%s\n", ...)
+     call. wraith-alpha_manager.c's project_probe_body_lines() reads
+     wraith_body.txt through a 256-BYTE fgets() buffer per physical
+     line -- 10 buttons concatenated exceeded that, so the line got split
+     mid-tag across multiple reads, and the non-'<'-starting continuation
+     chunks got treated as plain text -- reported live as literal
+     "<br/>"/"onClick=" text visible in GL. Fixed by giving each button
+     its own real '\n' (matches window-geom's own write_wraith_body()
+     pattern, which does this too, just never explained why).
+  5. Emoji labels showed the METHOD NAME ("emoji_grin") instead of the
+     actual emoji glyph -- reported live. Added resolve_display_label(),
+     which resolves each method's real handler via get_target_method_handler()
+     and extracts the emoji from the "...insert_emoji:<emoji>" handler
+     string for display, falling back to the bare method name for
+     non-emoji methods (resize/close).
+  6. Off-by-one in the new insert_emoji DESKTOP_ACTION prefix match:
+     strncmp()/pointer-arithmetic both used 47 for a prefix that's
+     actually 46 bytes (`printf '...' | wc -c` confirmed) -- the branch
+     silently never matched, so the emoji dispatch queued correctly but
+     was never actually picked up by route_command(). No error, no
+     crash, just silent no-op -- exactly the kind of bug that "looks
+     like it should work" on code review alone. Fixed the literal.
+  7. Missing update_state()/trigger_render() on BOTH the Ctrl+Q and
+     right-click paths to open_context_menu_for_active_window() -- every
+     OTHER path that opens a window (chrome-icon dispatch, taskbar
+     activation) calls both right after; these two didn't. Symptom: a
+     newly-opened window's geometry/content wouldn't actually reach
+     current_frame.objects.pdl until some UNRELATED later action
+     happened to trigger a render itself -- confirmed live via a width
+     check taken immediately after a right-click showing the OLD active
+     window's width, self-correcting only after a later keypress. This
+     one is exactly why the width fix (item 8 below) looked broken on
+     first test and turned out not to be.
+  8. context-menu's own project.pdl given WINDOW | window_width | 48 (half
+     of the 96 default) specifically to prove geometry modification works
+     end-to-end for a NEW project, not just the ones tested during Phase
+     A. Confirmed live, isolated from bug #7's staleness: w=48 in
+     current_frame.objects.pdl immediately after either a direct launch
+     or a right-click-triggered open.
+  9. id_prefix inconsistency: open_context_menu_for_active_window() used
+     the literal "context-menu" (hyphen) for launch_window_instance()'s
+     id_prefix, while the normal launcher path computes
+     sanitize_token("context-menu") = "context_menu" (underscore) for the
+     exact same project -- two different window->id styles for what's
+     otherwise the identical project. Harmless for correctness (id is
+     just an internal lookup key, used consistently) but confusing in
+     logs/registries. Fixed to match the launcher's own convention.
+ 10. BUILD SYSTEM GAP, the deepest one: pieces/system/file_ops/ (text_edit_key.c,
+     text_editor_view.c, dir_browse.c, file_copy.c) was NEVER covered by
+     compile_all.sh at all -- confirmed via grep, zero references, unlike
+     pieces/system/pdl/ and pieces/system/emoji_extract/ which this
+     session added explicitly. This meant EVERY compile_all.sh run this
+     session reported "0 failures" while silently leaving
+     text_edit_key.+x running whatever binary a manual gcc invocation
+     produced on 2026-07-11 -- item 3's new "insert" mode had zero effect
+     until this was found and fixed, despite every earlier test showing
+     the dispatch chain "succeeding" (correct log lines, correct queued
+     commands) right up to the actual file mutation. Added a proper loop
+     for this directory to compile_all.sh, matching the CHTPM OPS loop's
+     shape. This is a standing risk for ANY future change to that
+     directory (agy-text-editor and wrai-text-editor both depend on it)
+     that predates this session and wasn't specific to the emoji feature
+     -- worth remembering as a class of bug: "compile_all.sh reported
+     success" is NOT sufficient evidence a specific file was actually
+     rebuilt, only that whatever the script DOES cover succeeded.
+
+FINAL VERIFIED STATE (all live-tested end to end, in order, same run):
+  right-click on wrai-text-editor while in INTERACT -> context-menu opens
+  at its own configured half-width (48, immediately, no staleness) ->
+  shows the 10 real emoji glyphs as buttons (not method names, not raw
+  markup text) -> selecting one actually inserts that exact emoji into
+  wrai-text-editor's document.txt at the live cursor position, with
+  cursor_x correctly advanced by the emoji's byte length.
+
+NOT covered by this pass (unchanged from BASICS PASS section above):
+  picker screen (cold launcher-click), create-folder, change-background.
+  See multi-win-j13.txt (repo root) for the next planned pivot -- true
+  overlapping multi-window support -- which is a separate, larger
+  architectural effort from anything in this file.
+
+
+STANDING RULES CARRIED FORWARD (unchanged from 2do-jul12.txt)
+==================================================================
+- Reuse rule: check for an existing function/mechanism, including in the
+  SAME file, before writing a new one (this session's own late mistake
+  with project_is_map_control()/read_project_map_control_for_dir()).
+- Verify-with-evidence discipline: this doc itself is an example -- the
+  hotkey section above corrects a claim from 2do-jul12.txt that turned out
+  to be half-right on re-check, not a guess accepted at face value.
+- Distrust unenforced "mirrored" comments/claims (bugs #8, #12, #13).
+- wraith_gl.c is shared infrastructure across ALL projects, not just
+  wraith-alpha -- any keyboard()/mouse() change there needs the same care
+  as before.

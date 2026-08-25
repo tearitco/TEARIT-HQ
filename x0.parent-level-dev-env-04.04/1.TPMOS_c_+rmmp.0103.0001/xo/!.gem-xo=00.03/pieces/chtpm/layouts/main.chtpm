@@ -1,0 +1,21 @@
+<panel time_reactive="true">
+    <module>pieces/apps/fuzzpet_app/manager/plugins/+x/fuzzpet_manager.+x</module>
+
+    <text label="+===========================================================+" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|             F U Z Z P E T   D A S H B O A R D             |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  Pet Name: ${fuzzpet_name}                                     |" /><br/>
+    <text label="|  Status: ${fuzzpet_status}                                         |" /><br/>
+    <text label="|  Turn: ${clock_turn} | Time: ${clock_time}                          |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  Hunger: ${fuzzpet_hunger}/100 | Happiness: ${fuzzpet_happiness}/100           |" /><br/>
+    <text label="|  Energy: ${fuzzpet_energy}/100 | Level: ${fuzzpet_level}                       |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  GAME MAP:                                                |" /><br/>
+    <text label="|  " /><button label="Control Map" onClick="INTERACT" /><text label="                                     |" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="|  " />${piece_methods}<text label=" |" /><br/>
+    <text label="|  " /><button label="Back to Selector (9/ESC)" onClick="BACK" /><text label="                  |" /><br/>
+    <text label="|  " /><link label="Exit to Main Menu" href="pieces/chtpm/layouts/os.chtpm" /><text label="                         |" /><br/>
+</panel>

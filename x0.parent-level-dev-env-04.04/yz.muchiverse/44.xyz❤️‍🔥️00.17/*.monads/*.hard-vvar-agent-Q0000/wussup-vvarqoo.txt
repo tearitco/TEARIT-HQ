@@ -1,0 +1,19 @@
+________________________________________________________________
+
+this is a perfect handson lab for monad bot tsting. 
+
+yes let it battle/ move around. but also]
+
+let it learn, build itself. charge. buy batteries , chat 
+
+
+write other bots. etc
+
+
+
+use gemma1b if u need to 
+
+try  2 use groq / gemini
+
+also i may  want a right-sidebar continuous progerss report
+________________________________________________________________

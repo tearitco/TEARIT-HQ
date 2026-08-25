@@ -1,0 +1,32 @@
+🚶 walkthru-j30.txt — 002.zoo__🦓️🐒️0000 — QUICK CHECK
+================================================================
+STATUS: ⏳ INCOMPLETE — build/launch confirmed, real interaction NOT
+confirmed by me yet
+
+## ▶️ HOW TO RUN
+    cd "02.z00-INK.lo.sur]PEN🏟️"
+    bash button.sh run
+    (headless: NO_GL=1 bash button.sh run)
+
+## ✅ CHECKLIST
+  [ ] 1️⃣ Confirm it launches and the zoo grid renders (walls, animals,
+        hunger/happiness/energy stats) 🦓🐒
+  [ ] 2️⃣ 🕹️ TRY MOVING THE CURSOR/CHARACTER — try BOTH:
+        - arrow keys
+        - literal W/A/S/D letters
+        I injected a numeric arrow-code keypress during testing and
+        nothing visibly moved — I ran out of time to confirm whether
+        arrows just don't work in this test method, or whether WASD
+        letters are actually what's needed (the on-screen hint text
+        says "[wasd/arrows] Move", so one of the two should work for
+        real, human keyboard input even if my simulated key didn't
+        land right)
+  [ ] 3️⃣ Try [enter] to select/act, [9] to release a pet, [e] for
+        emoji
+
+## 🟢 GOOD LOOKS LIKE
+You can actually move around and interact — this is the one thing
+still genuinely unverified from this session. Let me know what you
+find (especially whether arrows or WASD is what actually works) and
+I'll close this out. 🙏
+================================================================

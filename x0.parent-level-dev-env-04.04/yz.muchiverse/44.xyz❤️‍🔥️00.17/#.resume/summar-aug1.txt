@@ -1,0 +1,94 @@
+# summar-aug1.txt — session summary 2026-08-01 (tomom@qroq T@Q + resume)
+# Short answers to the questions the human asked, for future reading.
+
+=================================================================
+Q1. CAN WE CALL THIS CHAT (opencode) FROM THE AGENT FRAMEWORK AS AN API?
+=================================================================
+YES — proven live today. opencode has a headless HTTP server mode:
+
+    setsid opencode serve --port 4123 --hostname 127.0.0.1 \
+          < /dev/null > /tmp/opencode/serve.log 2>&1 &
+
+  curl -s http://127.0.0.1:4123/global/health   # -> {"healthy":true}
+
+The 045.muchi-pal-agent framework now has a real op for it (built + tested
+today, house style, self-contained C):
+
+  cd 045.muchi-pal-agent🤖️+1
+  ./ops/+x/opencode_ask.+x "your question"
+
+It POSTs /session -> POST /session/<id>/message -> prints the reply text.
+It does REAL TOOL USE (searched the project dir in the live test), so it's
+a full escalation rung above llama3, not just a text chat.
+Server spec: http://<host>:<port>/doc . OpenAPI 3.1. The server shares the
+TUI's session DB — clean up throwaway sessions with DELETE /session/<id>.
+
+=================================================================
+Q2. WHAT DID WE DO WITH THE T@Q (tomom@qroq) PROJECT TODAY?
+=================================================================
+1. FIXED A DATA-LOSS BUG in the macsync.sh harness (MY fault, live-caught):
+   push used rsync --delete against a source that lacked curriculum/*_train/,
+   so it WIPED the Mac's trained matrices. FIXED by excluding two things:
+     - curriculum/*_train/   (trained matrices — Mac-only, NEVER deleted)
+     - +x/*.+x               (platform binaries — Linux ELF vs Mac Mach-O)
+   pull BRINGS the matrices home, so THIS box is now the backup.
+   History lesson is documented in ai-dev-resume-aug1.txt. DO NOT REMOVE
+   the excludes.
+2. RETRAINED all 10 subject curricula on the Mac (each beats its uniform
+   baseline): Astronomy 4.081, Biology 4.352, Chemistry 4.133, Economics
+   4.083, Geography 4.011, History 4.324, Literature 4.209, Mathematics
+   4.673, Physics 4.499, Programming 4.149. ALL PULLED HOME (backup).
+3. WIRED chatbot_moe_v1.c to the trained matrices: it now loads
+   attention_model.txt / mlp_model.txt / output_layer.txt per curriculum and
+   runs the REAL forward pass (attention over vocab -> residual -> ReLU MLP
+   -> output layer), instead of the old 7-dim dot product. Fixed a segfault
+   along the way (output layer was never being loaded).
+   Verified generating from all 10 trained subjects on the Mac.
+
+=================================================================
+Q3. WHAT ABOUT THE META-GEMMA PROJECT (046.open-gema)?
+=================================================================
+Reviewed it; state verified: ops/ + rag/ + memory/ exist and are proven;
+harness/ is EMPTY and src/agent.c is EMPTY — the builder loop has never run.
+THE single most useful next move is: write harness/k3-cli.sh (K1..K8).
+Full recommended order is in SUPERVISION-HANDOFF.txt section 4.
+
+=================================================================
+Q4. WHERE IS EVERYTHING? (quick map)
+=================================================================
+- T@Q code + trained models (backup):
+    #.Z.HUMAN_LLM/3.stage.llm.tomom@qroq.fame]921🐋️/
+- Sync harness + creds:
+    #.Z.HUMAN_LLM/macsync.sh  (push | pull | check)
+    #.Z.HUMAN_LLM/.MAC-ACCESS.txt
+- Agent framework (the one the human means by "current agent framework"):
+    045.muchi-pal-agent🤖️+1/
+- Meta-gemma loop:
+    046.open-gema🤖️+1/
+- This + the resume doc:
+    #.resume/summar-aug1.txt
+    #.resume/ai-dev-resume-aug1.txt
+
+=================================================================
+Q5. WHAT WERE THE LIVE CAUGHT BUGS / LESSONS?
+=================================================================
+- macsync push --delete wiped Mac-only trained matrices -> fixed with
+  excludes (see Q2). This is the most important lesson of the day.
+- opencode_ask prompt must be JSON-escaped AND quoted in the message body
+  (unquoted %s -> invalid JSON -> server silently returns an error part
+  with no text). Fixed + retested.
+- opencode serve's working dir = the dir you launch it in. Launch inside
+  the project you want it to work on.
+
+=================================================================
+Q6. HARD RULES TO NEVER FORGET (verified 2026-08-01)
+=================================================================
+- This box orchestrates ONLY. No model training/inference here (CPU is
+  shared with desktop apps). Model calls go to the Mac (10.0.0.144:11434)
+  or Linux node (10.0.0.187:11434).
+- macsync.sh push/pull excludes: curriculum/*_train/ + +x/*.+x. NEVER
+  remove them.
+- This box is SOURCE OF TRUTH for code; Mac-edited code must be rsynced
+  back + md5-verified (./macsync.sh check) before the session ends.
+- Weights stay human-readable TEXT (user requirement) — no binary serial.
+- FILE-TRUTH: verify by reading files, never assume.

@@ -1,0 +1,13 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | wsr-pal
+META         | version            | 0.1
+META         | author              | uhogs
+
+STATE        | starting_screen    | wsr_main_menu
+STATE        | title              | WSR-PAL
+
+EVENT_IN     | project_start      | void
+
+RESPONSE     | project_start      | wsr-pal initialized.
+RESPONSE     | default            | *waiting...*

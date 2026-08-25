@@ -1,0 +1,19 @@
++============================================================+
+|  P A L - C H A T - I R C   [room]                          |
++============================================================+
+|                                                            |
+|  Room: lobby (as bob)                                      |
++============================================================+
+|  <userA> hello from real session A                         |
+|  <userA> second message - proving live push to an idle sess|
+|                                                            |
+|  Enter a room name, then click Join / Create Room.         |
+|                                                            |
++============================================================+
+
+| [>] 1. Message: []                                        |
+[No Methods][ ] 2. [Leave Room]
+ (Ctrl+C to quit)
+
++=========================================================+
+Nav > _

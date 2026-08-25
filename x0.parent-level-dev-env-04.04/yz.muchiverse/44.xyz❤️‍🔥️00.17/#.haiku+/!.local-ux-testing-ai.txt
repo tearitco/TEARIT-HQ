@@ -1,0 +1,275 @@
+========================================================================
+LOCAL UX TESTING (AI AGENTS) - how to actually drive a CHTPM+PAL project
+through real keyboard-equivalent input, headlessly, without a real tty,
+and without letting test processes run away with CPU.
+Derived live on 2026-07-26 while testing 044.pal-chat-irc's real login/
+signup/room-join/type-message flow for 2 concurrent users. Read this
+BEFORE building a key-injection test for any project in this family -
+the interaction model below (Enter-to-activate, ESC vs Enter-to-send,
+multi-digit nav) is NOT documented anywhere else this thoroughly, and
+getting it wrong produces garbage keystrokes that cascade into confusing
+false failures (see the debugging trail in this file for what that
+looks like).
+========================================================================
+
+PART 0: WHY THIS DOC EXISTS - THE MISTAKE THAT MOTIVATED IT
+========================================================================
+
+A prior pass on 044.pal-chat-irc tested its multi-session P2P layer by
+calling ops/+x/chat_post_message.+x and friends DIRECTLY (correct argv,
+correct env), and separately by simulating two independent nodes
+talking over real TCP. Both passed. A report was written saying the
+multi-user chat "works." It didn't - the REAL orchestrator-launched
+palnet_peer was completely broken (PITFALL 20 in !.xyzos-pitfalls+1.txt),
+and neither test caught it because neither one went through the actual
+code path a real user's `./button.sh run` hits, NOR through the actual
+keyboard/menu UX a real user drives. Op-level and isolated-node tests
+prove the underlying logic is sound; they do NOT prove a real user
+clicking through real menus, typing real text, gets a working feature.
+This doc is the missing piece: how to actually DO the real-UX test, not
+just the underlying-logic test.
+
+========================================================================
+PART 1: THE INTERACTION MODEL (reverse-engineered live, not assumed)
+========================================================================
+
+Every screen in this CHTPM+PAL family renders as a NUMBERED list of
+navigable items (buttons, cli_io text fields, hrefs) below the main
+content panel, e.g.:
+
+  | [>] 1. User ID: [alice]                                        |
+  | [ ] 2. Display Name (new accounts only): []                    |
+  [ ] 3. [Create Account]
+  [ ] 4. [Log In]
+
+  Nav > _
+
+Two MODES exist, shown by the bottom status line:
+  "Nav > _"                    = navigation mode (moving focus between
+                                  items, nothing "active"/typing yet)
+  "Active [^]:  (ESC to exit)" = one specific item is now ACTIVE - for a
+                                  cli_io text field, this means keys you
+                                  inject NOW get typed as literal
+                                  characters into its buffer
+
+MARKERS on each item:
+  [ ]  = not focused
+  [>]  = nav-focused (highlighted, not yet "active")
+  [^]  = ACTIVE (currently accepting typed characters, if it's a cli_io)
+
+STEP-BY-STEP MECHANICS (all confirmed via live key injection + frame
+diffing, not read from source and assumed):
+
+1. FOCUS AN ITEM BY NUMBER (works in Nav mode only):
+   Inject the item's number as ASCII DIGIT KEYPRESSES, one keystroke per
+   digit, exactly as a human typing that number would produce:
+     item 1-9:  ONE keypress   - e.g. ASCII '3' (code 51) -> focuses item 3
+     item 10+:  MULTIPLE keypresses - e.g. '1' (49) THEN '0' (48) -> focuses
+                item 10
+   THIS IS NOT OPTIONAL FOR MULTI-DIGIT ITEMS. Do NOT try to inject a
+   single "combined" key code like 58 (ASCII ':', i.e. '0'+10) for item
+   10 - that is not a valid character and does nothing useful. The
+   parser (chtpm_parser_pal.c ~line 3064-3095) accumulates digits
+   itself: pressing '1' jumps to item 1 immediately (do_jump() fires on
+   every valid intermediate value), then pressing '0' re-accumulates to
+   1*10+0=10 and jumps again, landing on item 10. Reset happens on any
+   non-digit key (arrows, Enter, etc) - so don't interleave anything
+   else between the digits of a multi-digit number.
+   NEVER ASSUME AN ITEM IS DEFAULT-FOCUSED, EVEN "ITEM 1" ON A SCREEN
+   YOU'VE NEVER VISITED - focus can restore from prior state (observed
+   live: entering room_list fresh landed nav-focus on an EXISTING ROOM
+   IN THE LIST, not on the Room Name field, for a session that had never
+   touched that screen before). Always explicitly focus by looking up
+   the item's CURRENT number from the live frame text (numbers shift
+   depending on how many rooms/messages/etc already exist) - never
+   hardcode a number.
+
+2. ACTIVATE THE FOCUSED ITEM: inject Enter (code 13).
+   - For a BUTTON/href/command item: Enter EXECUTES it immediately
+     (navigates, or shells out to the ops binary, e.g. SIGNUP/LOGIN/
+     JOIN_ROOM). One Enter, one action - no separate "activate" step for
+     these, unlike cli_io below.
+   - For a cli_io TEXT FIELD: Enter switches it into ACTIVE/typing mode
+     (status line changes to "Active [^]: ... (ESC to exit)"). It does
+     NOT submit/execute anything yet.
+
+3. WHILE ACTIVE (typing into a cli_io):
+   - Printable ASCII (32-126): appended as literal characters to that
+     field's buffer, live-synced so the frame shows it growing, e.g.
+     "User ID: [alice]".
+   - Backspace (code 127 or 8): removes the last character.
+   - EXIT WITHOUT SUBMITTING: inject ESC (code 27). Returns to Nav mode,
+     buffer content is preserved/saved. Use this for ordinary form
+     fields (User ID, Display Name, Room Name) where submission is a
+     SEPARATE numbered button (Create Account / Log In / Join-Create
+     Room) you focus+Enter afterward.
+   - SUBMIT DIRECTLY FROM WITHIN THE FIELD: inject Enter AGAIN (code 13,
+     while still active) instead of ESC. This is the room chat message
+     field's OWN special path (chat_menu_input.c: `key==13 &&
+     active_piece=="room"` calls handle_post_message() directly, bypassing
+     the normal numbered-item dispatch entirely) - it saves+clears the
+     buffer, sends the message, and per that code's own comment STAYS
+     ACTIVE for the next message (no need to re-Enter to type again).
+     Do NOT use ESC after typing a chat message if you want to send it -
+     ESC just discards typing-mode with no built-in "send" trigger for
+     ordinary fields; the room message field is the one special case
+     with its own Enter-to-send semantics.
+
+CONCRETE WORKED EXAMPLE (login -> signup -> room -> message), the exact
+sequence proven live for real 2-user chat in
+testing/test_real_ux_2users.sh:
+
+  [fresh login screen, item 1 = User ID already default-focused here -
+   but don't rely on that, look it up anyway]
+  13                    -> Enter: activate User ID (now in typing mode)
+  a l i c e              -> type "alice" (one KEY_PRESSED line per char)
+  27                     -> ESC: exit typing, back to Nav
+  2                      -> focus item 2 (Display Name) - looked up, not
+                            assumed
+  13                    -> Enter: activate it
+  A l i c e              -> type "Alice"
+  27                     -> ESC
+  3                      -> focus item 3 (Create Account) - looked up
+  13                    -> Enter: EXECUTES SIGNUP (shells out to
+                            chat_create_user.+x then chat_switch_user.+x
+                            on success)
+  [wait ~0.5s for the op to run and compose_frame to update]
+  5                      -> focus "Continue to Rooms" (its number - was 5
+                            in this run, WILL DIFFER, always look it up)
+  13                    -> Enter: EXECUTES the href, navigates to
+                            room_list.chtpm
+
+  [on room_list.chtpm]
+  1                      -> focus "Room Name" field - LOOKED UP, do not
+                            assume it's still item 1 (it might not be
+                            default-focused at all)
+  13                    -> Enter: activate it
+  u x t e s t _ 1 2 3   -> type the room name
+  27                     -> ESC
+  2                      -> focus "Join / Create Room" - looked up
+  13                    -> Enter: EXECUTES JOIN_ROOM (mkdir's the room if
+                            new, sets current_room)
+  [wait ~0.5s]
+  1 0                    -> focus "Enter Room" (was item 10 in this run -
+                            TWO keypresses, '1' then '0', per the
+                            multi-digit rule above)
+  13                    -> Enter: EXECUTES the href, navigates into
+                            room.chtpm
+
+  [on room.chtpm, Message field already default-focused]
+  13                    -> Enter: activate Message field
+  h e l l o   b o b      -> type the message text
+  13                    -> Enter AGAIN (not ESC!): SENDS the message,
+                            stays active for the next one
+
+========================================================================
+PART 2: KEY INJECTION MECHANICS (file format, timing)
+========================================================================
+
+File: <session_dir>/pieces/keyboard/history.txt
+Format (STRICT): [YYYY-MM-DD HH:MM:SS] KEY_PRESSED: <decimal code>
+  Malformed lines, raw integers without the prefix, or a wrong timestamp
+  shape are silently ignored by the parser - always use this exact
+  format, a fixed/fake-but-valid timestamp is fine, the parser doesn't
+  check it against real time.
+
+ASCII codes you'll actually need:
+  Enter = 13         ESC = 27          Backspace = 127 (or 8)
+  '0'-'9' = 48-57     any other printable char = its normal ASCII value
+  (use `printf '%d' "'$ch"` in bash to get a character's ASCII code)
+
+TIMING: sleep ~0.1-0.3s between individual key injections, and ~0.5-1s
+after any action that shells out to an op (SIGNUP, JOIN_ROOM, message
+post) before reading the resulting frame - these run a real fork/exec +
+compose_frame cycle, not instant. Frame content is at
+<session_dir>/pieces/display/current_frame.txt (the FULL rendered frame
+with numbered items and the Nav/Active status line) - NOT
+pieces/apps/player_app/view.txt (that's only the inner content panel,
+composed by chat_compose_frame.c, missing the piece_methods/status line
+the CHTPM parser adds on top). Read current_frame.txt, not view.txt, to
+see what a real user's terminal actually shows.
+
+DISCOVERING AN ITEM'S CURRENT NUMBER (never hardcode):
+  grep -oP '\]\s*\K[0-9]+(?=\.\s*\[?LABEL_SUBSTRING)' current_frame.txt
+  e.g. label "Create Account", "Display Name", "Enter Room", "lobby",
+  etc. See testing/test_real_ux_2users.sh's item_num()/focus_item() for
+  a working implementation.
+
+========================================================================
+PART 3: CPU MANAGEMENT - DO NOT LET TEST SESSIONS RUN AWAY
+========================================================================
+
+This is not optional polish - a runaway headless session pegs a full
+CPU core indefinitely and WILL degrade the whole machine if left
+running or if multiple accumulate across a testing session.
+
+1. system/keyboard_input.c used to busy-spin at ~100% CPU with no real
+   tty (exactly the headless case you're in) - ROOT-CAUSED AND FIXED
+   directory-wide, see !.xyzos-pitfalls+1.txt PITFALL 22. If you're
+   working in a project/checkout from BEFORE 2026-07-26, check whether
+   its copy has the fix (`grep usleep system/keyboard_input.c`) - if
+   not, apply the same one-line fix before doing any headless testing,
+   or you WILL peg a core per session.
+
+2. NEVER leave a background test session (`bash button.sh run &`)
+   running past the end of your test. Always:
+     a) call the project's own `pieces/os/kill_all.sh` (or `./button.sh
+        kill`)
+     b) sleep ~1s
+     c) INDEPENDENTLY VERIFY with your own `ps aux | grep -E
+        "system/(orchestrator|renderer|keyboard_input|chtpm_parser_pal)|
+        ops/\+x/(palnet_peer|chat_inbox_watcher)|prisc\+x"` - do NOT
+        trust kill_all.sh's own "All terminated" message or button.sh
+        kill's exit code. In THIS project (044.pal-chat-irc), both were
+        observed to leave palnet_peer/chat_inbox_watcher alive even
+        after being hardened to kill by PID directly - the root cause
+        was never fully nailed down (see PITFALL 21 update in
+        xyzos-pitfalls). The only 100%-reliable pattern found: call
+        kill_all.sh, verify independently, and if anything survived,
+        kill -9 it by PID yourself, from OUTSIDE kill_all.sh's own
+        process tree.
+     d) if step (c) still finds stragglers, `kill -9` them directly by
+        PID and re-verify.
+
+3. Use `setsid ... & disown` (not bare `&`) when backgrounding a session
+   across multiple separate tool-call boundaries in an agent harness -
+   a plain `&` background job can die when the launching shell process
+   itself exits between tool calls, which is confusing to debug (looks
+   like "the session crashed" when actually it just got SIGHUP'd).
+
+4. Wrap your whole test script in a `trap cleanup EXIT` that does steps
+   2a-2d above UNCONDITIONALLY (success or failure) - see
+   testing/test_multiuser_p2p.sh and testing/test_real_ux_2users.sh in
+   044.pal-chat-irc for working examples. Consider also wrapping the
+   whole invocation in `timeout N bash your_script.sh` as an outer
+   safety net.
+
+5. Before starting ANY new test pass, always run a fresh `ps aux | grep`
+   check first - don't assume a clean slate, a previous session
+   (yours or a prior agent's) may still be running.
+
+========================================================================
+PART 4: WHERE TO LOOK FOR WORKING CODE
+========================================================================
+
+044.pal-chat-irc/testing/test_multiuser_p2p.sh
+  - Direct op-level P2P regression test (fast, no UI navigation, catches
+    orchestrator-launch/argv bugs and delivery/dedup issues). NOT a
+    substitute for a real key-injected pass, but a good fast first
+    check before investing in the slower full-UX version below.
+
+044.pal-chat-irc/testing/test_real_ux_2users.sh
+  - THE reference implementation of everything in Part 1-3 above: two
+    full users, real signup, real login, real room join, real typed
+    messages, verifying the OTHER (idle) session updates with zero
+    action taken on its side. Read this file's item_num()/focus_item()/
+    type_text()/login_flow()/join_room_flow()/send_message() functions
+    as the concrete, tested implementation of this doc's abstract
+    description - copy/adapt the pattern for other projects in this
+    family rather than re-deriving it from scratch (the numbered-item +
+    cli_io interaction model is shared across all of them, only the
+    exact labels/screens differ).
+
+========================================================================
+END OF !.local-ux-testing-ai.txt
+========================================================================

@@ -1,0 +1,27 @@
+# single_tick.pal - same FSM dispatch as main_loop.pal, exactly ONE
+# tick, no batch loop, then halt - the human-drivable counterpart, same
+# reasoning as muchi-evo-pal's own single_tick.pal.
+li x3, 0
+li x4, 1
+li x5, 2
+
+read_state corp_ORB current_state x2
+beq x2, x3, do_idle
+beq x2, x4, do_deciding
+beq x2, x5, do_trading
+j done
+
+do_idle:
+corp_tick_idle corp_ORB
+j done
+
+do_deciding:
+corp_decide corp_ORB
+j done
+
+do_trading:
+corp_trade corp_ORB
+j done
+
+done:
+halt

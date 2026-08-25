@@ -1,0 +1,77 @@
+# pets_module.pal - PHASE 2 PROTOTYPE (2026-07-30): pieces/chtpm/
+# layouts/pets.chtpm's own DEDICATED module, genuinely separate from
+# main_loop_chtpm.pal (still shared by main/user/faucet/store/
+# processes). This is the first real test of giving one screen its own
+# module process instead of every screen sharing one - see dox/
+# 05-per-screen-module-prototype.md for the full writeup/rationale.
+#
+# Deliberately reuses the SAME ops (muchi_menu_input, muchi_compose_
+# frame) main_loop_chtpm.pal already uses - this prototype tests ONLY
+# whether a genuinely distinct <module> string per screen is safe
+# (real relaunch on navigation, no flicker regression, tick_pets stays
+# correct) - splitting those ops into pets-only files is a SEPARATE,
+# later step, not conflated with this one.
+#
+# Real risk being tested directly: launch_module()'s liveness check
+# (system/chtpm_parser_pal.c) only reuses an already-running process
+# when the incoming <module> string matches current_module_path
+# EXACTLY - a genuinely different string (this file, vs main_loop_
+# chtpm.pal) means every transition INTO or OUT OF pets.chtpm forces a
+# real kill+fork+exec, unlike navigating between screens that still
+# share main_loop_chtpm.pal. Structure below is a straight copy of
+# main_loop_chtpm.pal's own proven shape (including its own DOUBLE-
+# RENDER FIX: run the idle-sync once before the first compose, so a
+# freshly-launched module's first frame is already correct, not a
+# stale "[No Methods]" flash) precisely so that known fix still
+# applies here too.
+#
+# tick_pets.c is real-time/wall-clock based (last_tick_ts, not a loop-
+# iteration counter - confirmed via direct read) and egg_window.c
+# already independently self-ticks its own pet regardless of which
+# module is running - so a brief gap in this module's own epoch loop
+# during a screen transition does NOT lose or corrupt any pet
+# metabolism data, it just catches up next tick. Confirmed safe before
+# writing this file, not assumed.
+li x1, 0
+li x3, 0
+li x4, 100
+
+li x9, 0
+muchi_menu_input x9
+muchi_compose_frame
+hit_frame
+read_pos x7, "pieces/display/muchi_screen_changed.txt"
+
+loop:
+li x9, 0
+muchi_menu_input x9
+read_pos x8, "pieces/display/muchi_screen_changed.txt"
+beq x7, x8, check_key
+addi x7, x8, 0
+j render
+
+check_key:
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, no_key
+muchi_menu_input x2
+j render
+
+no_key:
+addi x3, x3, 1
+beq x3, x4, do_tick
+j after_tick
+
+do_tick:
+tick_pets
+li x3, 0
+j after_tick
+
+after_tick:
+sleep 30000
+j loop
+
+render:
+muchi_compose_frame
+hit_frame
+sleep 30000
+j loop

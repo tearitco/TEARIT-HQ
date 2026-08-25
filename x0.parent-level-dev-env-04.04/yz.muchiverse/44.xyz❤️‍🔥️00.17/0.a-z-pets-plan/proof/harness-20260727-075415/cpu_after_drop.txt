@@ -1,0 +1,4 @@
+    PID %CPU %MEM     ELAPSED CMD
+ 190294  0.0  0.0       00:07 timeout 90 ./system/gl_mirror
+    PID %CPU %MEM     ELAPSED CMD
+ 190294  0.0  0.0       00:10 timeout 90 ./system/gl_mirror

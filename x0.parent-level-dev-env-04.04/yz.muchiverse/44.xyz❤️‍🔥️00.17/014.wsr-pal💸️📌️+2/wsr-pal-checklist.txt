@@ -1,0 +1,257 @@
+WSR-PAL FEATURE CHECKLIST (2026-07-17)
+================================================================================
+
+CORE GAME LOOP & MENU SYSTEM
+================================================================================
+[✓] DONE: Main menu displays all 32 original WSR options
+[✓] DONE: Bracket cursor navigation ([>] / [ ])
+[✓] DONE: Arrow keys/WASD to move cursor
+[✓] DONE: Digit typing to jump to options (1-9, 0)
+[✓] DONE: Enter to select
+[✓] DONE: Submenus (Financing, Trade, Management, Derivatives)
+[✓] DONE: Navigation between menus (GOTO: commands)
+[✓] DONE: End Turn works, advances world by 1 tick
+[✓] DONE: Select Corp. cycles active corporation
+[✓] DONE: Toggle Ticker display
+[✓] DONE: New Game resets world from template
+
+HUMAN PLAYER TRADING SYSTEM
+================================================================================
+[✓] DONE: player_you wallet piece exists (cash tracking)
+[✓] DONE: Buy shares (10 shares at current market price)
+[✓] DONE: Sell shares (10 shares at current market price)
+[✓] DONE: Short sell (open short position)
+[✓] DONE: Cover short (close short position)
+[✓] DONE: Portfolio tracking (holdings.txt)
+[ ] TODO: List Portfolio menu option shows real holdings with buy vs current price
+[ ] TODO: Screener (research tool to find stocks by criteria)
+[ ] TODO: Free-text quantity entry (currently hardcoded to 10 shares)
+
+STOCK MARKET MECHANICS
+================================================================================
+[✓] DONE: Real fundamental-value formula (from analysis_loop.c port)
+[✓] DONE: Stock price updates once per End Turn
+[✓] DONE: Price movement logged in price_history.txt
+[✓] DONE: Market cap recalculates with new stock price
+[✓] DONE: Financial news shows top movers (by % change)
+[✓] DONE: AI corporations trade using weighted tier (buy/hold/sell decisions)
+[ ] TODO: Support for more AI decision_mode tiers at scale (currently weighted is default)
+[ ] TODO: Short-selling price impact model (shorting should affect price)
+
+CORPORATION MANAGEMENT
+================================================================================
+[✓] DONE: Create new corporation (Startup New Corp wizard)
+[✓] DONE: Real 5-step wizard (industry/country/funding/name/ticker)
+[✓] DONE: New corp is created with seed capital and basic financials
+[ ] TODO: New corp automatically set as active (user can immediately manage it)
+[✓] DONE: Elect self as CEO (corp_set_owner)
+[✓] DONE: Resign as CEO
+[✓] DONE: Capital Contribution (add cash to corp you own)
+[✓] DONE: Public Stock Offering (issue new shares)
+[✓] DONE: Issue Bonds (corp borrows at interest rate)
+[✓] DONE: Call Bonds (repay bonds early)
+[✓] DONE: Extraordinary Dividend (pay dividend to shareholders)
+[✓] DONE: R&D Spend (affects risk_bias/competitive advantage)
+[✓] DONE: Marketing Spend (nudges stock price)
+[✓] DONE: Growth Rate (nudges book_value)
+[✓] DONE: AutoPilot Toggle (corp auto-trades if enabled)
+[✓] DONE: Bond interest accrues each End Turn
+[ ] TODO: Shareholder cap table (dividends only work if owned_by=player_you, not fractional)
+[ ] TODO: Debt service tracking (principal paydown schedule)
+
+DERIVATIVES & OPTIONS
+================================================================================
+[✓] DONE: Long Futures (5-turn directional bet, no margin)
+[✓] DONE: Short Futures (opposite direction)
+[✓] DONE: Call Options (right to buy at strike, 5% premium)
+[✓] DONE: Put Options (right to sell at strike, 5% premium)
+[✓] DONE: Auto-settlement at expiry (intrinsic value payout)
+[ ] TODO: Margin calls / risk limits (can go negative on short/losing future)
+[ ] TODO: Greeks display (delta, gamma, theta, vega)
+[ ] TODO: Option chain by strike price and expiry
+
+FINANCING & LOANS
+================================================================================
+[✓] DONE: Request Loan from bank (AFL, AZN hardcoded as banks)
+[✓] DONE: Loan approval logic (bank must have 2x requested amount)
+[✓] DONE: Loan interest accrues each End Turn
+[✓] DONE: Repay Loan (pay back to bank)
+[ ] TODO: Multiple simultaneous loans per corp
+[ ] TODO: Loan default mechanics (can't pay interest, corp gets dissolved)
+[ ] TODO: Loan restructuring (negotiate new terms)
+
+COMPANY INFORMATION & FINANCIALS
+================================================================================
+[✓] DONE: Balance sheet display (cash, stock price, owned_by, book value)
+[✓] DONE: Price history tracking (daily price changes)
+[✓] DONE: Financial news headlines (top movers)
+[ ] TODO: Full financial statements (assets, liabilities, equity details)
+[ ] TODO: Income statement (revenue, expenses, net income)
+[ ] TODO: Cash flow statement
+[ ] TODO: Earnings reports (quarterly/annual)
+[ ] TODO: Debt structure breakdown (which loans, maturity dates, rates)
+[ ] TODO: Shareholder list (who owns how much)
+
+GOVERNMENT & MACROECONOMICS
+================================================================================
+[✓] DONE: 7 real governments created (USA, UK, France, Germany, Japan, Canada, Australia)
+[✓] DONE: Government fiscal policy decision_mode (raise tax/cut spending based on deficit)
+[✓] DONE: Government pieces track tax rate, spending, deficit, debt
+[ ] TODO: Government actions visible in UI (display policy decisions)
+[ ] TODO: Tax impact on player/corps (tax paid each turn)
+[ ] TODO: Government bonds issuance
+[ ] TODO: Interest rate policy (affects all loans/bonds)
+
+POPULATION & COMMODITIES
+================================================================================
+[✓] DONE: Population piece with real growth formula
+[✓] DONE: Food consumption tracked
+[✓] DONE: Death rate affected by food shortage
+[✓] DONE: Weather system (seasonal temperature cycle)
+[ ] TODO: Commodity prices (wheat, corn, crude oil, etc.) - named but not modeled
+[ ] TODO: Agricultural production tied to weather/land
+[ ] TODO: Commodity trading by player (futures already support this conceptually)
+
+ARTIFICIAL INTELLIGENCE & DECISION-MAKING
+================================================================================
+[✓] DONE: decision_mode=0 (preset) - trivial affordability check
+[✓] DONE: decision_mode=1 (weighted) - real fundamental-value formula
+[✓] DONE: decision_mode=2 (rl) - stub (falls back to weighted)
+[✓] DONE: decision_mode=3 (llm) - live LLM calls to gemma3:270m (works, but slow)
+[✓] DONE: decision_mode=4 (human) - park-and-wait for player input
+[ ] TODO: RL tier actual implementation (not stub)
+[ ] TODO: Collective intelligence (corps learning from each other's trades)
+
+UI/UX & DISPLAY
+================================================================================
+[✓] DONE: Terminal scrollback support (frames in stdout for history)
+[✓] DONE: Bracket cursor with multi-option-per-line layout
+[✓] DONE: Compact menu display (32 options fit on screen)
+[✓] DONE: Status messages after actions
+[✓] DONE: Turn counter display
+[✓] DONE: Active corp indicator
+[✓] DONE: Player cash display
+[✓] DONE: Financial news line
+[✓] DONE: World status (population, temperature)
+[ ] TODO: Screener UI (search stocks by market cap, P/E, dividend yield, etc.)
+[ ] TODO: Watchlist (save favorite stocks)
+[ ] TODO: Charts (simple ASCII price chart)
+[ ] TODO: Trade confirmation dialogs (are you sure?)
+[ ] TODO: Color support (if terminal supports it)
+
+INPUT & CONTROLS
+================================================================================
+[✓] DONE: Keyboard input (keycodes to history.txt)
+[✓] DONE: Arrow key support (1002/1003)
+[✓] DONE: WASD support (w/s for up/down)
+[✓] DONE: Digit typing and Enter to select
+[✓] DONE: Ctrl-C to quit
+[✓] DONE: History cursor persistence (no replay on restart)
+[✓] DONE: Multi-step wizard input (Startup New Corp flow)
+[ ] TODO: Free-text input for amounts (quantities, loan amounts)
+[ ] TODO: Free-text input for ticker symbols (currently auto-generated)
+
+DATA PERSISTENCE & SAVE/LOAD
+================================================================================
+[✓] DONE: State.txt persistence for all pieces
+[✓] DONE: New Game reset from pieces_template
+[✓] DONE: Turn counter persistence
+[ ] TODO: Multiple save slots (not just New Game reset)
+[ ] TODO: Load game from previous save
+[ ] TODO: Save/Load to named files
+[ ] TODO: Autosave (every N turns)
+
+TESTING & VERIFICATION
+================================================================================
+[✓] DONE: Can inject keys and test through playable interface
+[✓] DONE: Can monitor frame output via current_frame.txt
+[✓] DONE: Can verify state changes via state.txt files
+[✓] DONE: End-to-end test: new game, buy stock, sell stock, watch price move
+[ ] TODO: Comprehensive regression test suite
+[ ] TODO: AI behavior verification (weighted tier makes sensible trades)
+[ ] TODO: Edge case testing (insufficient funds, no shares to sell, etc.)
+[ ] TODO: Performance testing (can tick 1000 turns smoothly)
+
+MISSING/STUBBED FEATURES (FROM ORIGINAL WSR)
+================================================================================
+[ ] STUB: File menu (0)
+[ ] STUB: Game Options (2)
+[ ] STUB: Settings (3)
+[ ] STUB: Help (4)
+[ ] STUB: Select Player (5)
+[ ] STUB: Culture (6)
+[ ] STUB: Entity Info (7)
+[ ] STUB: History (9)
+[ ] STUB: General (10)
+[ ] STUB: Tools (11)
+[ ] STUB: Private (14)
+[ ] STUB: Other Trans (16)
+[ ] STUB: Misc. Menu (18)
+[ ] STUB: Chart (19)
+[ ] STUB: Auto (20)
+[ ] STUB: Watchlist (21)
+[ ] STUB: Research Report (23)
+[ ] STUB: Financial Profile (26)
+[ ] STUB: List Options (27) - options exist but no listing
+[ ] STUB: DB Search (28)
+[ ] STUB: Earnings Report (29)
+[ ] STUB: Shareholder List (30)
+[ ] STUB: My Corporations (31)
+[ ] TODO: Tax-Free Liquidation (7 in Financing)
+[ ] TODO: Spin Off Subsidiary (8 in Financing)
+
+NEXT PRIORITY ITEMS (In Order)
+================================================================================
+1. [ ] Auto-set active corp when creating new corporation
+2. [ ] Implement real List Portfolio (option 24) with buy price vs current price
+3. [ ] Implement Screener (option 23 Research Report - search by criteria)
+4. [ ] Fix all submenus to fully support cursor navigation
+5. [ ] Add free-text quantity entry (not hardcoded 10 shares/500 dollars)
+6. [ ] Implement full shareholder cap table (fractional dividend payouts)
+7. [ ] Build save/load system (multiple save slots)
+8. [ ] Implement remaining STUB options based on priority
+9. [ ] Add ASCII charts for price history
+10. [ ] Performance optimization (tick 1000+ turns smoothly)
+
+================================================================================
+HUMAN PLAYTEST SCENARIOS (What a player should be able to do)
+================================================================================
+[ ] Start new game, see world populated with 50 corps and 7 govs
+[ ] Navigate main menu with arrows and digit typing
+[ ] Cycle through different corporations (Select Corp.)
+[ ] Create a new corporation with custom industry/country/name/ticker
+[ ] Buy shares in multiple corporations
+[ ] Watch stock prices move up/down as AI makes trades
+[ ] See financial news update with top movers
+[ ] Sell shares at a profit/loss
+[ ] Open a short position, then cover it
+[ ] Take a loan from a bank for a corp I own
+[ ] Issue bonds and watch interest accrue
+[ ] Open a long futures position and watch it settle after 5 turns
+[ ] Buy a call option, watch stock rise, exercise at expiry
+[ ] Research a company (screener) to find good entry points
+[ ] View portfolio showing buy price vs current price with % gain/loss
+[ ] Create multiple corps and switch between them
+[ ] Watch government raise taxes due to deficit
+[ ] See population grow/shrink based on food supply
+[ ] Quit with Ctrl-C and restart, see state preserved
+
+================================================================================
+KNOWN ISSUES / BUGS
+================================================================================
+[ ] LATENT: main_loop.pal replays entire history on crash (cursor persistence helps but doesn't fully fix)
+[ ] LATENT: Dividend payments only work if owned_by=player_you (no fractional shareholder tracking)
+[ ] EDGE CASE: Can short infinitely without margin calls
+[ ] EDGE CASE: Can go negative on short position (no risk limit)
+[ ] MINOR: Lowercase 'q' in corp names would quit (fixed - now use Ctrl-C)
+[ ] MINOR: Futures/options display doesn't show strike price or expiry countdown
+
+================================================================================
+SESSION COMPLETE WHEN:
+================================================================================
+1. Human can play full 10-turn game without hitting stubs
+2. All menus support arrow/WASD/digit/Enter consistently
+3. Portfolio listing works with real data
+4. Stock prices visibly change and AI trades are observable
+5. No flicker (frames smooth from scrollback)
+6. Verified via actual keystroke playtest (not just code review)

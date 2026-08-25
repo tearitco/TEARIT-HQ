@@ -1,0 +1,12 @@
+SECTION      | KEY                | LABEL              | PICKER
+--------------------------------------------------------------
+CATEGORY     | user-pallet        | My Pallet          | stub
+CATEGORY     | emojis             | Emojis             | tile-picker
+CATEGORY     | elements           | Chemicals+Compounds| chemistry
+CATEGORY     | rmmv               | RPG Maker Tiles    | rmmv
+CATEGORY     | piececraft         | Piececraft Blocks  | minecraft
+CATEGORY     | cdda               | CDDA Tiles         | cdda
+CATEGORY     | df                 | Dwarf Fortress     | df
+CATEGORY     | kenney             | Kenney 3D          | stub
+CATEGORY     | paint              | Paint Colors       | paint
+CATEGORY     | generate           | Generate           | generate

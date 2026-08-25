@@ -1,0 +1,5 @@
+name=Acetone
+formula=(CH3)2CO
+type=Ketone
+groups=C=O
+relevance=Simplest ketone; solvent

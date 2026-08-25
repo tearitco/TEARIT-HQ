@@ -1,0 +1,205 @@
+EVENT COMMANDS - REMAINING WORK LIST
+=====================================
+2026-08-24. Companion to event.commands.1/2/3.txt (the RMMV menu pages
+this house's events runtime mirrors). This file lists every command from
+those pages that the compiled-events pipeline does NOT yet run, grouped
+by the same categories, each with what it does.
+
+Pipeline reminder: event-ez authors NODE rows -> compiles event.pal ->
+play_event.sh -> prisc+x -> cmd_N.sh wrapper -> shared op in
+*.monads/*.muchi-pet/ops/. A command is only "done" when it has BOTH an
+event-ez palette entry AND a real op binary.
+
+PARITY RULE (2026-08-24, direct instruction): every runtime op we land
+here is ALSO wired into db-hq's global/common events as we go - db-hq
+and events-hq run the SAME shared ops, so an op landing in one without
+the other counts as half-done.
+
+DB COUPLING (2026-08-24): advanced eventing leans on database-side
+state - Control Switches/Variables/Self-Switch/Timer want their kv
+files (switches.txt, variables.txt, etc.), Change Items/Weapons/Armors
+want the Items/Weapons/Armors tabs, Conditional Branch reads all of
+them. Land those db pieces IN STEP with the event commands that use
+them (see db-tabs-remaining.txt coupling note).
+
+AFTER EVENTS: the tiling + chemistry palettes are next
+(palletes/pallets-help.txt "ADDED 2026-08-24" section; sources:
+tiling-palettes-chemistry.txt).
+
+STATUS LEGEND
+[DONE]     live end-to-end today
+[EZ-ONLY]  save handler exists in event-ez, runtime op missing
+[NEXT]     next on the agreed depth-first ladder
+[ ]        not started
+
+ALREADY DONE (for orientation, not remaining)
+  Show Text......[DONE] mr_show_text.+x - message box popup via
+                 SHOW_TEXT_FILE relay; optional speaker as first line;
+                 box stays until clicked exactly (screenshot-safe).
+  Change Gold....[DONE] mr_change_gold.+x - +/- gold, audits
+                 inventory.txt (qolq=N) + history.txt.
+
+THE LADDER (agreed order, depth-first)
+  1. Wait........[NEXT] pause event N seconds/frames before next node.
+  2. Show Choices[EZ-ONLY] KEY:9 handler already appends
+                 type=show_choices IR rows; needs mr_show_choices.+x -
+                 popup list, writes chosen index to a result file the
+                 event branch reads (same convention as
+                 khtpm_show_choices.c).
+  3. Input Number  popup digit entry, result to file/variable.
+  4. Play SE.....trigger a sound effect file.
+
+REMAINING, BY CATEGORY
+
+Message (page 1)
+  Show Choices...............see ladder #2 above.
+  Input Number...............prompt player to type a number (e.g. a
+                             passcode); stores result for later nodes.
+  Select Item................opens item list, player picks one; result
+                             item id stored for branching.
+  Show Scrolling Text........long credits-style text that scrolls
+                             through the popup box automatically.
+
+Party (page 1)
+  Change Items...............give/remove inventory items by id+count.
+  Change Weapons.............give/remove weapons by id+count.
+  Change Armors..............give/remove armors by id+count.
+  Change Party Member........add/remove party members (entity ids).
+
+Game Progression (page 1)
+  Control Switches...........set named ON/OFF flags (natural fit: one
+                             kv file per pal, e.g. switches.txt).
+  Control Variables..........set numeric variables (variables.txt).
+  Control Self Switch........per-event A/B/C/D flags - same idea,
+                             scoped to one event package.
+  Control Timer..............start/stop/countdown a timer value.
+
+Actor (page 1)
+  Change HP/MP/TP............modify an actor stat by amount.
+  Change State...............add/remove status conditions.
+  Recover All................full heal (hp/mp/states).
+  Change EXP / Level.........grant experience / set level.
+  Change Parameter...........modify a raw stat (atk, def...).
+  Change Skill...............teach/forget skills.
+  Change Equipment...........equip/unequip weapon/armor slots.
+  Change Name/Class/Nickname/Profile...edit actor identity fields.
+
+Flow Control (page 1)
+  Conditional Branch.........if/else over switches, variables, items,
+                             gold, timers - the big one for real quests.
+  Loop / Break Loop..........repeat nodes until broken.
+  Exit Event Processing......stop running this page immediately.
+  Common Event...............run a shared/reusable event package.
+  Label / Jump to Label......named jump targets inside event.pal.
+  Comment....................author note; compiler emits nothing.
+
+Movement (page 2)
+  Transfer Player............move player entity to another map/spot.
+  Set Vehicle Location.......reposition a vehicle entity.
+  Set Event Location.........teleport THIS event to new coords.
+  Scroll Map.................pan the camera smoothly.
+  Set Movement Route.........scripted walk path for any entity.
+  Get on/off Vehicle.........mount/dismount vehicle handling.
+
+Character (page 2)
+  Change Transparency........make player sprite visible/invisible.
+  Change Player Followers....show/hide follower entities.
+  Gather Followers...........followers snap back into line.
+  Show Animation.............play a sprite/sheet animation on target.
+  Show Balloon Icon..........small emotion bubble over an entity.
+  Erase Event................temporarily remove this event from map.
+
+Timing (page 2)
+  Wait.......................see ladder #1 above.
+
+Screen (page 2)
+  Fadeout/Fadein Screen......black the frame out/in (fits renderer:
+                             overlay alpha on window).
+  Tint Screen................color-shift whole frame.
+  Flash Screen...............one quick full-frame flash.
+  Shake Screen...............jitter window contents briefly.
+  Set Weather Effect.........rain/snow/storm particle overlay.
+
+Audio & Video (page 2)
+  Play BGM...................loop music track (stops previous).
+  Fadeout BGM................fade current music out over N sec.
+  Save BGM / Replay BGM......remember + restore music state.
+  Play BGS...................loop ambient sound (separate channel).
+  Fadeout BGS................fade ambience out.
+  Play ME....................one-shot musical sting.
+  Play SE....................see ladder #4 above.
+  Stop SE....................kill all playing sound effects.
+  Play Movie.................play a video file fullscreen.
+
+Picture (page 2)
+  Show Picture...............image overlay in a corner/slot (popup
+                             image variant of SHOW_TEXT_FILE relay).
+  Move Picture...............animate a shown picture's position.
+  Rotate Picture.............spin a shown picture.
+  Tint Picture...............color-shift a shown picture.
+  Erase Picture..............remove a shown picture.
+
+Scene Control (page 3)
+  Battle Processing..........start a battle encounter scene.
+  Shop Processing............open buy/sell interface.
+  Name Input Processing......player types an actor name.
+  Open Menu Screen...........open the main menu scene.
+  Open Save Screen...........open save UI.
+  Game Over..................jump to game-over state.
+  Return to Title Screen.....back to title.
+
+Map (page 3)
+  Change Map Name Display....toggle/map the location banner text.
+  Change Tileset.............swap the active tileset sheet.
+  Change Battle Background...set backdrop used by battles.
+  Change Parallax............set scrolling background layer image.
+  Get Location Info..........store map id / coords into a variable.
+
+Battle (page 3)
+  Change Enemy HP/MP/TP......modify enemy stats mid-battle.
+  Change Enemy State.........add/remove enemy statuses.
+  Enemy Recover All..........full-heal an enemy.
+  Enemy Appear...............reveal a hidden enemy.
+  Enemy Transform............swap an enemy for another kind.
+  Show Battle Animation......play animation on battle target.
+  Force Action...............compel an actor/enemy action this turn.
+  Abort Battle...............end battle immediately.
+
+System Settings (page 3)
+  Change Battle BGM..........set music used in battles.
+  Change Victory/Defeat ME...set win/lose stings.
+  Change Vehicle BGM.........set riding music.
+  Change Save Access.........enable/disable saving.
+  Change Menu Access.........enable/disable menu button.
+  Change Encounter...........enable/disable random encounters.
+  Change Formation Access....enable/disable formation editing.
+  Change Window Color........recolor UI chrome.
+  Change Actor Images........swap actor sprites/portraits.
+  Change Vehicle Image.......swap vehicle sprites.
+
+Advanced (page 3)
+  Script.....................run raw code - house analogue: exec a
+                             shell script node (prisc+x already has
+                             exec; would be a passthrough authoring
+                             surface with guardrails).
+  Plugin Command.............call an installed extension - no direct
+                             analogue yet.
+                             
+                             
+                             
+ User/Agent Defined : 
+ <to be suggested/discovered and recorded here as potential addtions>
+ 
+ Networking
+
+PRACTICALITY NOTES (which remain cheap next)
+  Cheap soon (pure file/kv or relay work): Wait, Show Choices,
+  Input Number, Control Switches, Control Variables, Conditional
+  Branch, Comment, Exit Event Processing, Label/Jump, Change Items.
+  Medium (renderer features): fade/tint/flash/shake, Show Picture,
+  Show Balloon Icon, Show Scrolling Text, Play SE (needs an audio
+  story for the desktop - currently none).
+  Deep (whole new scenes/systems): everything under Scene Control,
+  Battle, Movement routes, Vehicles.
+  
+  Post : User defined (some may insist on being done earlier, such as things commonly used in house)

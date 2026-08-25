@@ -1,0 +1,5 @@
+name=Ethane
+formula=C2H6
+type=Alkane
+groups=None
+relevance=Two-carbon chain; example of alkane properties like low reactivity.

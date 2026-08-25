@@ -1,0 +1,63 @@
+⚔️
+To simulate the Federal Reserve's decision-making process, your model needs to replicate its Dual Mandate: achieving maximum employment and maintaining price stability (defined as 2% inflation). [1, 2, 3, 4] 
+The Fed operates as a data-dependent machine. If inflation is too high, it raises rates to cool the economy. If unemployment spikes, it lowers rates to stimulate growth. [5, 6, 7, 8, 9] 
+------------------------------
+## 1. The Core Decision Engine (The Taylor Rule)
+To code the baseline logic for your simulation's AI Fed, developers typically use a variation of the Taylor Rule. This formula calculates what the nominal federal funds rate should be based on economic data:
+$$R = r^* + \pi + 0.5(\pi - \pi^*) + 0.5(y - y^*)$$ 
+
+* R: The target Federal Funds Rate.
+* $r^*$: The neutral real interest rate (historically simulated around 1.0% to 2.0%).
+* π: Current inflation rate.
+* $\pi^*$: Target inflation rate (always set your simulation constant to 2.0%).
+* y: Current Real GDP growth rate.
+* $y^*$: Potential or trend GDP growth rate ($y - y^*$ represents the output gap). [10, 11, 12, 13, 14] 
+
+------------------------------
+## 2. The Inflation Input (Price Stability Mandate)
+The Fed does not use the standard Consumer Price Index (CPI) reported in the news as its primary metric. For your simulation, track these specific indices: [15] 
+
+* Core PCE Price Index: The Core Personal Consumption Expenditures index is the Fed's preferred metric. It excludes volatile food and energy prices to show true underlying inflation. [16, 17, 18, 19] 
+* Supercore Inflation: Core services inflation excluding housing. The Fed watches this closely to understand if wage growth is driving sticky service costs. [20, 21] 
+* Inflation Expectations: Surveys like the University of Michigan Consumer Sentiment Index track whether citizens expect inflation to rise. If expectations rise, a wage-price spiral occurs, forcing the Fed to hike rates proactively. [22, 23] 
+
+------------------------------
+## 3. The Labor Market Input (Maximum Employment Mandate)
+The Fed watches the job market to see if the economy is overheating (causing wage inflation) or cracking (signals a recession). [24, 25] 
+
+* Non-Farm Payrolls (NFP): The net number of jobs created or lost each month. Healthy growth is usually +150,000 to +200,000 jobs.
+* U-3 Unemployment Rate: The headline percentage of unemployed workers. The Fed compares this against the NAIRU (Non-Accelerating Inflation Rate of Unemployment, usually simulated around 4.0% to 4.5%). If unemployment drops significantly below NAIRU, wage inflation risks spike. [26, 27, 28, 29] 
+* JOLTS Job Openings: The ratio of open, unfilled jobs to available unemployed workers. A high ratio (e.g., 1.5+ jobs per unemployed person) indicates an incredibly tight labor market that pressures businesses to raise wages. [30, 31, 32] 
+* Average Hourly Earnings: Measures wage inflation. If wages grow faster than productivity (e.g., > 4% annually), it forces businesses to increase product prices, keeping inflation high. [33, 34, 35] 
+
+------------------------------
+## 4. Financial Stability & Banking Inputs
+To prevent your simulation's banking system from collapsing when rates rise, the Fed tracks systemic liquidity:
+
+* The Yield Curve: Specifically the spread between the 10-Year and 2-Year US Treasuries. An inverted yield curve (short-term rates higher than long-term rates) historically predicts recessions. [36, 37, 38, 39] 
+* Senior Loan Officer Opinion Survey (SLOOS): Reports whether commercial banks are tightening lending standards. If banks stop lending, credit freezes, slowing the economy down naturally without needing further Fed rate hikes.
+* Financial Conditions Index (FCI): A composite index tracking stock market performance, bond spreads, and the strength of the dollar. [40] 
+
+------------------------------
+## 5. Step-by-Step Simulation Logic Flow
+When running your simulation's "FOMC Meeting" cycle (usually every 6 weeks), program the logic to ask these sequential questions: [41] 
+
+                  [ Is Core PCE > 2.0%? ]
+                        /          \
+                     YES            NO
+                     /                \
+    [ Is Unemployment < NAIRU? ]     [ Is Unemployment Rising? ]
+            /            \                  /             \
+         YES              NO              YES              NO
+         /                  \              /                 \
+    HIKE RATES        HOLD RATES     CUT RATES        HOLD RATES
+(Cool Economy)     (Wait for Data) (Stimulate Jobs)  (Equilibrium)
+
+------------------------------
+## ✅ Summary of the Fed's Primary Metrics
+In your simulation, the Fed will raise rates if Core PCE is high (>2.5%), NFP job growth is booming (>250k), and wage growth is steep (>4.5%). Conversely, it will lower rates if Core PCE drops toward 2.0% while the Unemployment Rate climbs past 4.5%. [42] 
+To help you build the mechanics, how do you want to handle the banking side? I can provide the logic for how commercial banks react to Fed rate cuts via the discount window, how interest rate risk impacts bank balance sheets, or how the overnight repo market clears bank reserves.
+
+[1] [https://www.federalreserveeducation.org](https://www.federalreserveeducation.org/resources/lessons/lesson--what-happens-when-the-federal-reserve-raises-interest-rates.pdf)
+
+⚔️

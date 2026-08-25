@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | ai-labs
+META         | version            | 1.0
+STATE        | training_active    | 0
+STATE        | model_count        | 0

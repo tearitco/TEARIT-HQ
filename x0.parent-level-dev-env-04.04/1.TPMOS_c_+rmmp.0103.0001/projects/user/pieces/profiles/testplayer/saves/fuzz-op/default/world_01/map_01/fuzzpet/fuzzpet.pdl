@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | fuzzpet
+META         | version            | 1.0
+META         | determinism        | strict
+
+STATE        | energy               | 100
+STATE        | hunger               | 0
+STATE        | energy               | 0
+STATE        | happiness            | 100
+STATE        | emoji_mode           | 0
+
+
+

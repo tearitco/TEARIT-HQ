@@ -1,0 +1,16 @@
+edit_x=9
+edit_y=0
+edit_width=0
+edit_height=0
+settings_menu_markup=<button label="Window Geometry" onClick="SETTINGS_PAGE:window-geom" /><br/>
+settings_entry_count=1
+active_layout=
+project_picker_markup=<button label="wraith-alpha/wraith-projects/wrai-text-editor" onClick="SETTINGS_PAGE:window-geom:wraith-alpha/wraith-projects/wrai-text-editor" /><br/><button label="PIECECRAFT WRAITH" onClick="SETTINGS_PAGE:window-geom:wraith-alpha/wraith-projects/piecec
+target_project_id=wraith-alpha/wraith-projects/wrai-text-editor
+win_x=0 (not set)
+win_y=0 (not set)
+win_w=0 (not set)
+win_h=0 (not set)
+edit_w=0
+edit_h=0
+status=Ready to edit

@@ -1,0 +1,5 @@
+active_corp_index=0
+turn_number=0
+ticker_on=0
+active_menu_piece=wsr_main_menu
+last_message=Not yet available in this build.

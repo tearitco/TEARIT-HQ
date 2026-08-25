@@ -1,0 +1,107 @@
+# feed_pet.pal - real pal-native rebuild of ops/feed_pet.c's own core
+# mutation: deduct FEED_COST(5) tokens from the fixed user_01 target,
+# lower the active-target pet's hunger by HUNGER_RELIEF(30) clamped to
+# >=0. Two real, named things the dispatcher (ops/muchi_menu_input.c)
+# must do first, same division of labor as coin_flip.pal (xyzos-standards
+# .txt sec.21.3/21.5):
+#   1. PRECONDITION GATE: verify tokens >= 5 in C before ever launching
+#      this script (this ISA has no >= against an unbounded value - see
+#      coin_flip.pal's own header comment for the full why) and refuse
+#      with the same message the C original gave otherwise.
+#   2. COPY IN/OUT: the pet's own "hunger" key into/out of
+#      pieces/system/active_target.txt, per the active-target pattern
+#      (xyzos-standards.txt sec.21.2) - user_01's own tokens need no such
+#      indirection (fixed, singular target, same as claim_tokens.pal).
+#
+# hunger is clamped [0,100] everywhere else in this project
+# (ops/tick_pets.c's own clampi calls) - after -30 the only reachable
+# out-of-range values are -30..-1, a small, fully enumerable set, same
+# clamp idiom pet_pet_prototype.pal used for its own +10-overflow case
+# (this ISA has no blt/bge, only beq - see that file's own header
+# comment on why a general clamp isn't directly expressible here).
+
+li x15, 6
+li x13, 0
+ecall "pieces/world_01/map_lobby/user_01/state.txt" "tokens"
+addi x1, x12, -5
+
+li x15, 7
+addi x12, x1, 0
+ecall "pieces/world_01/map_lobby/user_01/state.txt" "tokens"
+
+li x15, 6
+li x13, 0
+ecall "pieces/system/active_target.txt" "hunger"
+addi x1, x12, -30
+
+li x2, -30
+beq x1, x2, clamp_0
+li x2, -29
+beq x1, x2, clamp_0
+li x2, -28
+beq x1, x2, clamp_0
+li x2, -27
+beq x1, x2, clamp_0
+li x2, -26
+beq x1, x2, clamp_0
+li x2, -25
+beq x1, x2, clamp_0
+li x2, -24
+beq x1, x2, clamp_0
+li x2, -23
+beq x1, x2, clamp_0
+li x2, -22
+beq x1, x2, clamp_0
+li x2, -21
+beq x1, x2, clamp_0
+li x2, -20
+beq x1, x2, clamp_0
+li x2, -19
+beq x1, x2, clamp_0
+li x2, -18
+beq x1, x2, clamp_0
+li x2, -17
+beq x1, x2, clamp_0
+li x2, -16
+beq x1, x2, clamp_0
+li x2, -15
+beq x1, x2, clamp_0
+li x2, -14
+beq x1, x2, clamp_0
+li x2, -13
+beq x1, x2, clamp_0
+li x2, -12
+beq x1, x2, clamp_0
+li x2, -11
+beq x1, x2, clamp_0
+li x2, -10
+beq x1, x2, clamp_0
+li x2, -9
+beq x1, x2, clamp_0
+li x2, -8
+beq x1, x2, clamp_0
+li x2, -7
+beq x1, x2, clamp_0
+li x2, -6
+beq x1, x2, clamp_0
+li x2, -5
+beq x1, x2, clamp_0
+li x2, -4
+beq x1, x2, clamp_0
+li x2, -3
+beq x1, x2, clamp_0
+li x2, -2
+beq x1, x2, clamp_0
+li x2, -1
+beq x1, x2, clamp_0
+j write_back
+
+clamp_0:
+li x1, 0
+
+write_back:
+li x15, 7
+addi x12, x1, 0
+ecall "pieces/system/active_target.txt" "hunger"
+
+halt

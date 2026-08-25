@@ -1,0 +1,10 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | book-stack
+STATE        | menu_stay_open     | 1
+STATE        | grab_pointer       | 1
+STATE        | grab_keyboard      | 1
+METHOD       | Read                 | sh -c 'cd "$0" && H="$(cd ../../../.. && pwd)" && exec "$(find "$H" -maxdepth 1 -name "101.mutaclsym🧟‍♂️️*" -type d 2>/dev/null | head -1)/system/prisc+x" "../../pieces/reader/event_pkg/pages/page_1/event.pal"'
+METHOD       | Dir                  | xdg-open
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void

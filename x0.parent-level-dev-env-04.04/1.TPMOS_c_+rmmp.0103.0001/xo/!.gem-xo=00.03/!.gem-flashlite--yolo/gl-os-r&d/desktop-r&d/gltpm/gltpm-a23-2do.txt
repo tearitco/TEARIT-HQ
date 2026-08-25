@@ -1,0 +1,24 @@
+# GLTPM Iteration 2 (A23) - Implementation Checklist
+
+## [x] Phase 1: Host-side Parser Refactor (gltpm_parser.c)
+- [x] [x] Implement pre-parse variable substitution (substitute `${var}` in the entire buffer before tag parsing).
+- [x] [x] Implement Glyph Registry loader (reads `assets/tiles/registry.txt`).
+- [x] [x] Implement ASCII-to-Tile "Canvas" logic (convert multi-line text into 3D tile/sprite metadata).
+- [x] [x] Add auto-discovery for `.tile.txt` and `.sprite.txt` metadata during canvas parsing.
+
+## [x] Phase 2: Host-side UI & Input (gl_desktop.c)
+- [x] [x] Flip menu rendering order in `draw_window` (or equivalent) to Top-Down.
+- [x] [x] Update `dispatch_gltpm_button` to handle `onClick="INTERACT"` by setting `win->is_map_control = 1`.
+- [x] [x] Standardize `history.txt` key codes in `keyboard` and `special_keyboard` (Arrows = 1000-1003, Enter = 13, ESC = 27).
+- [x] [x] Ensure `Nav >` buffer targets buttons from top to bottom.
+
+## [x] Phase 3: Manager-side Updates (fuzz-op-gl_manager.c)
+- [x] [x] Update `gltpm_input_thread` to handle `COMMAND: INTERACT`.
+- [x] [x] Update `gltpm_input_thread` and `route_input` to support standardized key codes (1000-1003).
+- [x] [x] Ensure camera coordinates are correctly flushed to `state.txt` for the host to read.
+
+## [x] Phase 4: Project Migration & Verification
+- [x] [x] Update `projects/fuzz-op-gl/layouts/main.gltpm` to use `${game_map}` instead of hardcoded `<tilemap>` and `<sprite>` tags.
+- [x] [x] Verify KPI-1: ASCII map from `fuzz-op` renders correctly in 3D.
+- [x] [x] Verify KPI-2: Immediate entry into "Interact Mode" on Enter.
+- [x] [x] Verify KPI-3: Menu options are correctly ordered and navigable.

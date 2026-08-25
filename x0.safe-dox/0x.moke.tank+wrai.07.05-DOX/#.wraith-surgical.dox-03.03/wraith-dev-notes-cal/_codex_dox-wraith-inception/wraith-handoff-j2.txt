@@ -1,0 +1,311 @@
+WRAITH HANDOFF J2
+Intent correction and next stages
+
+Date:
+2026-06-02
+
+Context:
+The first Wraith bootstrap created a project-local parser and frame bundle, but
+the current user-visible TPMOS launcher experience is wrong for the intended
+product.
+
+Observed current experience:
+The Project Loader lists wraith-pm. Selecting it loads a flat CHTPM-style text
+view like:
+
+Frame Pipeline[>] 1. [Render Frame][ ] 2. [RGB Daemon Later]Frames and metadata
+are the product.ASCII Desktop Preview[ ] 3. []CHTMGL parsed by Wraith before
+GL.[ ] 4. [Inspect Metadata][ ] 5. [Mouse Hit Map]
+
+Interpretation:
+This is not the intended Wraith desktop.
+
+What is happening:
+The existing TPMOS CHTPM project-loader path is reading the Wraith CHTMGL layout
+through the old CHTPM parser/render flow. That parser extracts button/text-ish
+content and flattens layout structure into a single text stream. It does not
+present Wraith's frame bundle, desktop model, windows, z-levels, or mouse
+behavior.
+
+Important correction:
+The user does not want "a CHTMGL project shown as flattened CHTPM text."
+
+The user wants Wraith to load a desktop shell that mirrors GL-OS first, but in
+ASCII/colored ASCII frames.
+
+Primary Wraith intention:
+
+- Wraith is a Sovereign Map project that orchestrates windows as map entities.
+- Wraith mirrors the GL-OS desktop concept but within the auditable CHTPM/Map foundation.
+- Wraith composes a 2D ASCII grid (view.txt) and publishes it via ${game_map}.
+- Windows are Pieces with dynamic lifecycles (Spawn/Delete).
+- Sub-project windows are sovereign; they provide their own view variables or files, and Wraith projects them into the window entities.
+
+Important architectural rule:
+
+- Wraith is a TPMOS Project (Map), not a new Theater (OS).
+- It follows the Piece Russian-Doll standard: sub-projects are nested in `projects/wraith-pm/wraith-projects/`.
+- Every window is a Piece directory with a `state.txt` (Authority).
+- The desktop orchestration happens through the Wraith manager mutating these piece files.
+
+*Note: This document has been corrected from historical unclarity to further up-to-date iterative clarity. It remains flexible until desired outcomes and data structures are achieved.*
+
+Expected first real Wraith desktop:
+
+- A desktop surface similar to GL-OS.
+- One large framed shell window, not a loose dashboard.
+- At least two floating peer windows inside it, each with its own title bar,
+  controls, border, and content area.
+- Windows as objects with x/y/w/h, title bar, content area, border, z-index.
+- Focus state.
+- Z-level ordering.
+- Mouse hit map for title bars, resize handles, content, controls.
+- Mouse drag support planned from the beginning.
+- Keyboard focus routing.
+- CHTMGL windows/panels/buttons/text/media mapped to Wraith desktop objects.
+- ASCII frame output remains auditable through current_frame.txt,
+  current_frame.ansi.txt, cells.pdl, objects.pdl, hitmap.pdl, and audit.txt.
+- each visible project window should be composable from file-backed projected
+  state so the exact same desktop frame can later feed RGB conversion
+
+Important visual correction:
+
+The target look is closer to the composition sketched in `!.look-of-wraith-gui.txt`:
+
+- outer shell frame with title bar/chrome
+- left-side menu/app list inside that shell
+- one main `Wraith Terminal v1.0` shell window
+- one overlapping `GAME MAP` window with its own chrome and controls
+- the `GAME MAP` window starts inside the shell region and breaks through the
+  shell border so it reads as a separate movable window
+- footer/taskbar/start-bar style strip
+
+This jives with the GL-OS intention more than a "left controls, right preview"
+dashboard. Future agents should treat that sketch as a composition reference,
+while still using real GL-OS/TPMOS primitives and file contracts.
+
+Important correction after the first nav implementation:
+- the sketch should not be treated as the literal long-term content model
+- hard-coded rows like menu labels or `Control Map` can be used as temporary
+  visual proof, but not as the real subwindow abstraction
+- real Wraith subwindows should become projected surfaces, closer to `fuzz-op`
+  map/content regions, with mutable `x/y/z/focus` window state
+
+What the current bootstrap did correctly:
+
+- Created projects/wraith-pm.
+- Created a project-local wraith_parser.c.
+- Created colored ASCII frame artifacts and PDL metadata.
+- Added separate image/video decode ops that write region-local cell PDL.
+- Proved full TPMOS compile passes with Wraith ops.
+
+What the current bootstrap did not solve:
+
+- It did not integrate Wraith as the visible project runtime.
+- It did not replace the CHTPM text parser path when selecting wraith-pm.
+- It did not create a real ASCII desktop/window manager.
+- It did not implement focus/z-order/window move/drag.
+- It did not mirror GL-OS desktop behavior yet.
+
+Next stage 1: stop loading Wraith through CHTPM flattening
+
+Goal:
+Selecting wraith-pm from Project Loader should not display flattened CHTMGL
+text.
+
+Options to investigate:
+
+- Add a Wraith-specific project launch path in the loader/module dispatch.
+- Make wraith-pm_manager write a CHTPM-compatible shell frame that points to
+  Wraith's current_frame.txt, if that is the least invasive bridge.
+- Add a Wraith display bridge that copies/streams
+  projects/wraith-pm/session/current_frame.txt into pieces/display/current_frame.txt
+  so the current ASCII renderer shows Wraith's frame directly.
+- Longer term: make Wraith a first-class renderer/presenter beside CHTPM and
+  GL-OS, not a layout accidentally parsed by CHTPM.
+
+Preferred near-term bridge:
+Wraith should write its rendered frame markup to `projects/wraith-pm/manager/view.txt`. The Wraith manager then pulses `pieces/display/frame_changed.txt`, signaling the host `chtpm_parser` to load the content via its automated `${game_map}` variable. This ensures only ONE parser writes to the display path, eliminating flicker.
+
+Important bridge correction after testing:
+
+- Directly pointing `pieces/display/current_layout.txt` at
+  `projects/wraith-pm/layouts/desktop.chtmgl` is wrong
+- the old CHTPM parser flattens `.chtmgl` and destroys Wraith window geometry
+- Wraith must enter the old theater through a thin wrapper `.chtpm` layout
+- that wrapper launches `projects/wraith-pm/manager/+x/wraith-pm_manager.+x`
+- the manager runs `wraith_parser.+x`, reads `session/current_frame.txt`, and
+  publishes a manager-owned projection through `projects/wraith-pm/manager/gui_state.txt`
+- CHTPM should render the projection, not parse raw Wraith layout semantics
+
+Next stage 2: build Wraith desktop state
+
+Create explicit desktop/session state files:
+
+projects/wraith-pm/session/desktop_state.pdl
+projects/wraith-pm/session/window_stack.pdl
+projects/wraith-pm/session/focus_state.pdl
+projects/wraith-pm/session/mouse_state.pdl
+projects/wraith-pm/session/windows_state.pdl
+
+Important modeling rule:
+
+- these state files should own geometry, focus, z-order, mouse, and lifecycle
+- visible window content should come from projected window surfaces published by
+  Wraith itself or by project-local managers
+- good forms include manager-published variables, `window_<id>.view.txt`,
+  `window_<id>.cells.pdl`, or equivalent file-backed view artifacts
+- the Wraith parser should compose those sources into the final auditable frame
+  bundle
+
+Minimum records:
+
+WINDOW | id=terminal_1 | title=Terminal x=4 y=4 w=58 h=16 z=10 focused=true
+WINDOW | id=inspector | title=Frame Audit x=66 y=4 w=28 h=16 z=5 focused=false
+FOCUS | active_window | terminal_1
+MOUSE | x | 0
+MOUSE | y | 0
+DRAG | active | false
+
+Next stage 3: mirror GL-OS concepts
+
+Read the current GL-OS desktop code and layouts again before implementing:
+
+- pieces/apps/gl_os/plugins/gl_desktop.c
+- pieces/apps/gl_os/plugins/gltpm_parser.c
+- pieces/apps/gl_os/plugins/gl_os_renderer.c
+- pieces/apps/gl_os/session/state.txt
+- pieces/apps/gl_os/layouts/desktop.chtpm or current active desktop layout
+- projects/chtmgl-alpha/layouts/index.chtmgl
+- projects/media-editor/layouts/editor.chtmgl
+
+Extract the concepts Wraith must mirror:
+
+- project/window scanning
+- window object model
+- desktop background/surface
+- active/focused window
+- z-order
+- controls/buttons
+- CHTMGL layout parsing
+- media regions
+- frame audit behavior
+
+Next stage 4: Wraith object model
+
+wraith_parser.c should evolve from immediate drawing into:
+
+CHTMGL/state
+-> WraithDesktop
+-> WraithWindow[]
+-> WraithNode[]
+-> WraithCellFrame
+-> frame artifacts
+
+Needed structs:
+
+- WraithDesktop
+- WraithWindow
+- WraithNode
+- WraithCell
+- WraithHitRegion
+- WraithInputEvent
+
+The parser/renderer can still be in C, but the distinction matters:
+layout parsing is not the same thing as desktop/window management.
+
+Next stage 5: terminal window
+
+Add a real terminal/text window as the first desktop object.
+
+Minimum:
+
+- title: Wraith Terminal
+- content: text buffer from projects/wraith-pm/session/terminal.txt
+- cursor position
+- focus flag
+- scroll offset placeholder
+- hit region for content
+
+Later:
+
+- CLI input routing
+- command history
+- mouse text selection
+- AI-debug inspect mode
+
+Next stage 6: mouse and drag
+
+Mouse support should be planned through metadata before full input works.
+
+Hit map needs roles such as:
+
+- titlebar
+- window_body
+- resize_handle
+- button
+- terminal_cell
+- desktop_background
+
+Drag flow:
+
+MOUSE_DOWN on titlebar -> set drag active + window id + offset
+MOUSE_MOVE while drag active -> update window x/y
+MOUSE_UP -> clear drag
+rerender -> pulse frame_changed
+
+Next stage 7: z-levels
+
+Every window/object needs z metadata.
+
+Rules:
+
+- focused window rises to top unless pinned.
+- hit testing should select topmost object at x/y.
+- render order should sort by z ascending, then active focus overlay.
+- objects.pdl and hitmap.pdl must expose z.
+
+Next stage 8: keep media ops separate
+
+The user's correction about image/video ops remains valid.
+
+Image/video decode ops should stay separate:
+
+- wraith_image_decode.c
+- wraith_video_decode.c
+
+They can run synchronously during frame composition and write media cell PDL for
+the parser/desktop renderer to merge.
+
+Next stage 9: RGB and GL later
+
+Do not jump directly to GL before the desktop shell is visible in ASCII.
+
+Correct order:
+
+1. Wraith ASCII desktop shell visible in current TPMOS renderer.
+2. CHTMGL layouts mapped into Wraith desktop/window objects.
+3. Focus, z-order, terminal window, hit maps.
+4. Mouse drag metadata and then live mouse events.
+5. RGB converter daemon from frame + metadata.
+6. wraith-gl.c presents RGB only.
+
+Acceptance criteria for the next coding session:
+
+- Selecting wraith-pm no longer shows flattened CHTMGL text.
+- The user sees an ASCII desktop frame with an outer shell window and floating
+  bordered peer windows.
+- There is a visible terminal/text window.
+- The composition feels like GL-OS-style desktop chrome, not a panel demo.
+- At least one window has focus.
+- objects.pdl includes window records with z values.
+- hitmap.pdl includes titlebar/body/control roles.
+- A manager/render bridge publishes the Wraith frame to the current display path
+  or otherwise makes it visible through the TPMOS renderer.
+
+One-sentence correction for future agents:
+Wraith is an ASCII-first GL-OS-style desktop/window manager that reads CHTMGL
+and emits auditable colored frames; it is not a normal CHTPM layout and should
+not be presented through CHTPM's flattening parser. Geometry and focus can
+borrow GL-OS patterns, but visible window content should stay file-backed and
+frame-composed like other TPMOS projected surfaces.

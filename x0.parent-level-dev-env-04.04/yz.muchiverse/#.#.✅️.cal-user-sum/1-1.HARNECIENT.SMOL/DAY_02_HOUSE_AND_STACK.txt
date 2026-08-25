@@ -1,0 +1,26 @@
+# 🏠 DAY 02 — The House and the Stack 🏰
+# ====================================
+# Title: "🏠 DAY 02 — The House and the Stack 🏰"
+# Characters: TOMO, RAHWEH, MAXINE, IQA, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), MAXINE (en-GB-MaisieNeural), IQA (en-US-AnaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+
+**TOMO:** Look at the top of the screen. That strip is the **livedesk taskbar** — 14 real header cells: HQ, USER, file, desks, pals, palettes, edit, player, db, plugins, store, network — and then a 15th element: the time. Every cell is a real button in a real layout file (.monads/.livedesk-taskbar/khtpmstripheader.chtpm), and each opens a real window.
+
+**RAHWEH:** 14 cells... and a time?
+
+**TOMO:** Yes. And remember this, because we are going to *change* that time slot later — that's our Day 19 secret. 😏
+
+**MAXINE:** Why do I keep hearing "real" everywhere?
+
+**TOMO:** Because that's the whole philosophy. **A window is a real managed X11 window.** A chat is a real file on disk. A state is a real text file. Nothing is fake, nothing is cached-in-memory-and-lying. If it's not in a file, it's a lie. That slogan is our bedrock. 🪨
+
+**IQA:** So a galaxy and a button can both be a Piece?
+
+**TOMO:** In this house, yes. One engine, one container model, all sizes. Inception style. 🌀
+
+**MAXINE:** Rule 1 feels important but weird. Why would we *not* call the binaries directly?
+
+**THE NARRATOR:** Because the product is the *window*. If you test the binary directly, you are testing a different thing than the user uses. The relay is the real input path. Tomorrow we dissect exactly how that works. 🧬
+
+**TOMO:** And all of it **provable**. That's what makes it safe to build on. Tomorrow, the relay — the bloodstream of the whole place. 💉

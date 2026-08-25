@@ -1,0 +1,7 @@
+name=Chest
+type=chest
+pos_x=10
+pos_y=7
+pos_z=0
+on_map=1
+on_interact=scripts/chest_open.asm

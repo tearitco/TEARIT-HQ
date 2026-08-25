@@ -1,0 +1,12 @@
+# House-wide compile report — 2026-08-22 01:20:35
+
+**Summary: 5 scripts — PASS=5 FAIL=0 TIMEOUT=0**
+
+| Status | Script | Log |
+|---|---|---|
+| PASS | *.monads/*.hard-vvar-agent-Q0000/pieces/features/build_self.sh | $.crypts/build-reports/20260822-012020/*.monads_*.hard-vvar-agent-Q0000_pieces_features_build_self.sh.log |
+| PASS | *.monads/*.livedesk-taskbar/ops/build_db_hq_manager.sh | $.crypts/build-reports/20260822-012020/*.monads_*.livedesk-taskbar_ops_build_db_hq_manager.sh.log |
+| PASS | *.monads/*.livedesk-taskbar/ops/build_db_hq.sh | $.crypts/build-reports/20260822-012020/*.monads_*.livedesk-taskbar_ops_build_db_hq.sh.log |
+| PASS | *.monads/*.livedesk-taskbar/ops/build_entity_menu.sh | $.crypts/build-reports/20260822-012020/*.monads_*.livedesk-taskbar_ops_build_entity_menu.sh.log |
+| PASS | *.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh | $.crypts/build-reports/20260822-012020/*.monads_*.livedesk-taskbar_ops_build_khtpm_strip.sh.log |
+

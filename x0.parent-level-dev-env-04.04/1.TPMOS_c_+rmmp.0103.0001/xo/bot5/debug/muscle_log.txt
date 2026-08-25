@@ -1,0 +1,39 @@
+[2026-04-21 05:38:45] STARTUP: Root verified = /home/no/Desktop/Piecemark-IT/SP_00.00/!.TPMOS-TRAINING/#.reference/quizmark-lab-n24/1.TPMOS_c_+rmmp_79.08
+[2026-04-21 05:38:45] FSM: STARTUP
+[2026-04-21 05:38:45] FSM: WAIT_FOR_OS (8s)
+[2026-04-21 05:38:53] FSM: INJECT_ENTER
+[2026-04-21 05:38:53] INJECT SUCCESS: Key 13 -> /home/no/Desktop/Piecemark-IT/SP_00.00/!.TPMOS-TRAINING/#.reference/quizmark-lab-n24/1.TPMOS_c_+rmmp_79.08/pieces/keyboard/history.txt
+[2026-04-21 05:38:53] SESSION END
+[2026-04-21 05:43:45] STARTUP: Root verified = /home/no/Desktop/Piecemark-IT/SP_00.00/!.TPMOS-TRAINING/#.reference/quizmark-lab-n24/1.TPMOS_c_+rmmp_79.08
+[2026-04-21 05:43:45] FSM: STARTUP
+[2026-04-21 05:43:45] FSM: WAITING 2s for TPMOS parser init...
+[2026-04-21 05:43:47] FSM: INJECTING ENTER (13)
+[2026-04-21 05:43:47] INJECT SUCCESS: Key 13 -> /home/no/Desktop/Piecemark-IT/SP_00.00/!.TPMOS-TRAINING/#.reference/quizmark-lab-n24/1.TPMOS_c_+rmmp_79.08/pieces/keyboard/history.txt
+[2026-04-21 05:43:47] FSM: HOLDING (Press Ctrl+C to exit)
+[2026-04-21 05:43:48] FSM: HOLDING (Press Ctrl+C to exit)
+[2026-04-21 05:43:49] FSM: HOLDING (Press Ctrl+C to exit)
+[2026-04-21 05:43:50] FSM: HOLDING (Press Ctrl+C to exit)
+[2026-04-21 05:43:51] SESSION END
+[2026-05-04 03:51:26] STARTUP: Root verified = /home/debilu/Desktop/CAL/may-1/1.TPMOS_c_+rmmp_98.14
+[2026-05-04 03:51:26] FSM: STARTUP
+[2026-05-04 03:51:26] FSM: WAITING 2s for TPMOS parser init...
+[2026-05-04 03:51:28] FSM: INJECTING ENTER (13)
+[2026-05-04 03:51:28] INJECT SUCCESS: Key 13 -> /home/debilu/Desktop/CAL/may-1/1.TPMOS_c_+rmmp_98.14/pieces/keyboard/history.txt
+[2026-05-04 03:51:28] FSM: HOLDING (Press Ctrl+C to exit)
+[2026-05-04 03:51:29] FSM: HOLDING (Press Ctrl+C to exit)
+[2026-05-04 03:51:30] FSM: HOLDING (Press Ctrl+C to exit)
+[2026-05-04 03:51:31] FSM: HOLDING (Press Ctrl+C to exit)
+[2026-05-04 03:51:32] SESSION END
+[2026-06-18 01:46:35] STARTUP: Root verified = /home/debilu/Desktop/CAL/jul-16/0x.moke.tank+wrai.3.5/wraith-surgical-03.03/1.TPMOS_c_+rmmp.0102.0022
+[2026-06-18 01:46:35] FSM: STARTUP
+[2026-06-18 01:46:35] FSM: WAITING 2s for TPMOS parser init...
+[2026-06-18 01:46:37] FSM: INJECTING ENTER (13)
+[2026-06-18 01:46:37] INJECT SUCCESS: Key 13 -> /home/debilu/Desktop/CAL/jul-16/0x.moke.tank+wrai.3.5/wraith-surgical-03.03/1.TPMOS_c_+rmmp.0102.0022/pieces/keyboard/history.txt
+[2026-06-18 01:46:37] FSM: INJECTING MOUSE TEST EVENT (32, 10, 10)
+[2026-06-18 01:46:37] INJECT MOUSE SUCCESS: (32, 10, 10) -> /home/debilu/Desktop/CAL/jul-16/0x.moke.tank+wrai.3.5/wraith-surgical-03.03/1.TPMOS_c_+rmmp.0102.0022/pieces/keyboard/history.txt
+[2026-06-18 01:46:37] FSM: HOLDING (Press Ctrl+C to exit)
+[2026-06-18 01:46:38] FSM: HOLDING (Press Ctrl+C to exit)
+[2026-06-18 01:46:39] FSM: HOLDING (Press Ctrl+C to exit)
+[2026-06-18 01:46:40] FSM: HOLDING (Press Ctrl+C to exit)
+[2026-06-18 01:46:41] FSM: HOLDING (Press Ctrl+C to exit)
+[2026-06-18 01:46:42] SESSION END

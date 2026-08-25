@@ -1,0 +1,98 @@
+# event-editor widget+plan
+# House: 44.xyz  |  &.widgits/event-editor
+# Date: 2026-07-28
+# Status: widget profile locked = file-menu shape (headless GL default)
+
+================================================================================
+0. THESIS (LOCKED)
+================================================================================
+
+Event editor is a **separate widget**, same product shape as **file-menu
+for the editor** — not an in-process mutaclysm view, not freeglut UI.
+
+  Editor     → file-menu widget      (docs SAVE/LOAD)
+  Mutaclysm  → event-editor widget   (events / desktop packages)
+
+  DEFAULT:  ./button.sh run-widget
+    gl_window=1              PRIMARY UI
+    ascii_renderer=0         no second TTY (headless GL)
+    current_frame.txt        still written by CHTPM (ASCII = nav source)
+    gl_mirror                blits rgb of that frame (muta menu law)
+
+  OPTIONAL ASCII secondary:  SHOW_ASCII=1  or  ./button.sh run --ascii
+
+  mutaclysm (app)  ──Space/Event──►  export + open request
+                                          │
+                                          v
+                         &.widgits/event-editor  run-widget
+                                          │
+                    #.desktop/ packages  OR  drop import → mutaclysm world
+
+UI law §35: GL primary; ASCII secondary/optional.
+
+================================================================================
+1. WHY WIDGET (not in-process)
+================================================================================
+
+  - Independent launch (no mutaclysm running required)
+  - Edit desktop packages for multiple hosts (muta, zoo, future RPG)
+  - Second GL window while mutaclysm keeps playing (file bus, not second TTY)
+  - Same pattern as file-menu / tile-picker / proc-monitor
+  - Drop-in reuse of #.drag-drop-test exchange ideas
+
+================================================================================
+2. HOUSE DESKTOP (#.desktop/)
+================================================================================
+
+Shared tray at house root (see #.desktop/README.txt):
+
+  events/   entities/   tiles/   inbox/
+
+Env: XYZ_DESKTOP_ROOT overrides path.
+
+Picker flow:
+  tp_set_brush → tp_place_desktop  (writes #.desktop/tiles/<id>/)
+  (optional) later place into focused muta via import
+
+Event-editor flow:
+  ee_open <package_dir>
+  ee_save
+  ee_export_desktop / already on desktop
+  ee_import_muta <muta_session_or_world> [x y map]
+
+Mutaclysm Event (context menu):
+  xlector @ cell → package snapshot → #.desktop/events/… → ee open request
+
+================================================================================
+3. OPS (v1 scaffold)
+================================================================================
+
+  ee_resolve_desktop.+x     print desktop root
+  ee_open_request_write.+x  muta → write open request for widget
+  ee_open_request_read.+x   widget reads pending request
+  ee_package_init.+x        create empty event package dir
+  ee_import_to_world.+x     copy package into world_01/<map>/events/…
+  ee_export_entity.+x       copy entity tree to #.desktop/entities/
+
+Compile: ./button.sh compile
+
+================================================================================
+4. GL / run-widget (later)
+================================================================================
+
+  button.sh run-widget → GL chrome (proposal shared with other widgets)
+  Scratch blocks L0 = numbered command list; L1 = button palette
+  ASCII secondary: show event.pal
+
+================================================================================
+5. KPI
+================================================================================
+
+  KPI-EE1: open request file written from muta Event menu
+  KPI-EE2: package exists under #.desktop/events/
+  KPI-EE3: ee_import_to_world places package under world events/
+  KPI-EE4: tile-picker can place a tile stamp onto #.desktop/tiles/
+  KPI-EE5: harness green without DISPLAY
+
+================================================================================
+END

@@ -1,0 +1,118 @@
+# Grok J28 Session — Sprint Index & Walkthrough
+
+**Date:** 2026-07-27 → 2026-07-28  
+**Scope:** user-pal identity → avatar factory → house clone wave → TTG design/build → GoldenEye voxel  
+**Handoff:** `!.clone-clowning.md`
+
+---
+
+## Sprint index (one sentence each)
+
+## Sprint index (one sentence each)
+
+1️⃣ **1. User-pal GUI login harness** — Proved the existing login GUI with key-injection harness and fixed first-paint `[Map Loading…]`.
+
+2️⃣ **2. UUID + xyzfs signup** — Signup mints a UUID and provisions `xyzfs/users/<uuid>/` for multi-user isolation (no character creation yet).
+
+3️⃣ **3. Avatar-creation scaffold** — Built `01.avatar-creation` as a muchi-pals-style faucet/store/clones app with DNA cycles and xyzfs save.
+
+4️⃣ **4. Avatar menu FX live** — Fixed dead menus (`active_target_id` + `panel_content`) so Claim/Buy/Select/DNA/Open Window actually work.
+
+5️⃣ **5. Kill-on-quit hygiene** — Reaped rogue windows/UI binaries and hardened TERM→grace→KILL quit paths (~60fps loops).
+
+6️⃣ **6. session.pdl + desktop spawn** — Added `xyzfs/session.pdl` (guest/logged-in) and harness-proved mint character → GL `avatar_window`.
+
+7️⃣ **7. CPU thrash cleanup** — Killed runaway `find`/game leftovers; dirty-draw + smaller radius for glut-craft idle CPU.
+
+8️⃣ **8. RPG Maker MZ one-page** — Reworked `201.rpg-maker-clone` toward single-page tileset + map tree + canvas layout.
+
+9️⃣ **9. Clone agents (civ / GBC / DF)** — Spawned SNES Civ, GBC Pokémon (color amend), and Dwarf Fortress build subagents; DF MVP landed.
+
+🔟 **10. MZ v4 quality push** — Factory tiles, layers/tools, zoom, transfer events, richer demo maps for RPG Maker.
+
+1️⃣1️⃣ **11. SW Battlefront slice** — Freeglut+shaders clone with Supremacy, Deathmatch, Freeplay, ships, AI, HUD.
+
+1️⃣2️⃣ **12. TTG-tactics design** — Approved mutaclysm-aligned design for clocked community-piece tactics + pot/Elo (rev 2).
+
+1️⃣3️⃣ **13. clone-clowning handoff** — Wrote `!.clone-clowning.md` prioritizing TTG / RPG / Battlefront under dual-render law.
+
+1️⃣4️⃣ **14. TTG PR0–PR2 build** — Implemented `ttg_loop`, dual compose, unit dirs, ledger; harnesses 01–03 PASS.
+
+1️⃣5️⃣ **15. GoldenEye voxel split** — Quick freeglut 2–4p split-screen DM with seed levels and AI panes.
+
+1️⃣6️⃣ **16. GoldenEye blank-screen fix** — Fixed depth/text/viewport bugs so menu and panes actually draw.
+
+1️⃣7️⃣ **17. GoldenEye outdoors/vehicles** — Multi-story buildings, windows/roofs, tank/heli, no mouse look.
+
+1️⃣8️⃣ **18. GoldenEye arrow + jump** — ↑↓ move, ←→ strafe, J jump, A/D turn.
+---
+
+## Chapter walkthroughs
+
+### 1. User-pal GUI login harness
+Work started from the current pets plan, not stale haiku notes. The existing `00.login-signup` GUI was treated as real product: create/login/logout, `current_login.txt`, session isolation. A pal-forum-style `test-harn-same/` injected keys and asserted frames. First paint stuck on `[Map Loading…]` until `view.txt` was pre-seeded before chtpm launch; after that the harness went green.
+
+### 2. UUID + xyzfs signup
+Character creation was deferred. Create Account now mints a kernel UUID, writes it into `users/<id>/profile.txt`, and builds `xyzfs/users/<uuid>/home|projects`. Login/logout/whoami/compose carry uuid and xyzfs path; legacy profiles get UUID backfill. Harness proved two users with distinct trees.
+
+### 3. Avatar-creation scaffold
+`01.avatar-creation` copied the muchi-pals pets/store/faucet pattern: claim tokens, free/buy clones, list avatars, cycle DNA (gender, skin-tone face emoji, hair, clothes, height, weight), open desktop windows via `egg_window`-style binary. State lives in the player’s xyzfs under `home/avatars/<avatar_uuid>/` plus local lobby pieces.
+
+### 4. Avatar menu FX live
+Menus looked alive but methods never fired: `active_target_id` stayed `main`, so piece methods were empty, and panels used `panel_content` while compose only filled `game_map`. Bridging per screen and filling panel text made faucet, store, select, DNA cycles, and open-window real; `demo_menu_fx.sh` passed end-to-end.
+
+### 5. Kill-on-quit hygiene
+Stray `avatar_window` / chtpm / renderer processes and stale `window.pid` files were swept. Quit now sets a soft flag, SIGTERMs UI and desktop windows, waits briefly, then SIGKILLs; `EMERGENCY_KILL.sh` matches by exe basename to avoid killing Chrome. Open-window tracks pids and replaces prior windows per clone.
+
+### 6. session.pdl + desktop spawn
+Durable session identity moved into `xyzfs/session.pdl` (`mode=logged_in|guest`, user fields, `active_avatar_*`). Login/logout/generate_clone/open_window write it; character creation reads it. Harness path: logout guest → signup/login → mint → session active avatar → spawn GL window → cleanup. Child stdio redirect fixed a hang where the window held the harness pipe open.
+
+### 7. CPU thrash cleanup
+Agent-side Desktop-wide `find` and leftover event-editor/GL mocks were pegging cores, not always the games. glut-craft stopped full-world redraw every 16ms when idle (dirty flag + smaller render radius). Critics scored craft and RPG as playable prototypes, not ship-ready.
+
+### 8. RPG Maker MZ one-page
+User expectation was one editor page like MZ (tileset + map tree + canvas), not a title-menu toy. Default mode became that layout with procedural A–R tiles, paint tools, and event markers; freeglut remained the visual shell while map/event data stayed file-based under `projects/demo/maps/`.
+
+### 9. Clone agents (civ / GBC / DF)
+Parallel PROMPT-driven subagents targeted SNES Civilization, GBC Pokémon (explicitly color, not mono GB), and Dwarf Fortress. DF returned a dig/stockpile/craft MVP with a timer-only loop; civ/pokemon stayed lower priority later when the handoff parked them.
+
+### 10. MZ v4 quality push
+Further RPG passes added checkerboard palette, icon toolbar, ground/object layers, pencil/rect/fill/erase, zoom/grid, play camera, object glyphs, and transfer between Factory 1/2 with a small story loop (guard → crystal → warp). Still no real autotile PNG atlas or deep database.
+
+### 11. SW Battlefront slice
+`204.sw-battlefront` delivered Supremacy (posts/tickets), Deathmatch (frags + kill buffs), and Freeplay (multi-planet mine/build), five ship types, AI bots, GLSL hulls/sky/lasers, and a timer-driven loop. Honest ceiling: high-polish freeglut vertical slice, not licensed Battlefront or full survival MMO.
+
+### 12. TTG-tactics design
+User asked for a tabletop tactics design locked to masterledger/CHTPM/GL-RGB dual view—not freeglut. Design covered 12×12 board, community-role pieces, clocks, ante pot, Elo, AI-via-keycodes, dual 48×22 frame, and harness scenarios 01–08. Review loop closed at zero open issues (rev 2).
+
+### 13. clone-clowning handoff
+`!.clone-clowning.md` became the standing agent brief: architecture laws L1–L10, priority matrix (TTG / RPG / Battlefront active; craft/DF/civ/pokemon parked), critic axes, harness pattern, status board, and session log. Goal: continuous improvement while migrating freeglut experiments toward mutaclysm law.
+
+### 14. TTG PR0–PR2 build
+Implementation followed the design: `ttg_loop`, history key inject, unit entity dirs, master ledger, ASCII+RGB compose, vendored muta system tools. Harnesses for legal move, illegal move, and attack/regicide went green. Next slices called out: clocks, pot polish, Elo, pure key-path AI.
+
+### 15. GoldenEye voxel split
+Quick request for a 4-pane voxel GoldenEye-in-Minecraft: seed + 2–4 players at menu, human top-left, AI elsewhere, rooms/guns/minimap. Shipped as freeglut `goldeye_clysim` under `007-goldeye*`—explicitly not dual-render standard.
+
+### 16. GoldenEye blank-screen fix
+User saw nothing. Root causes included 2D text with depth test on (silent raster fail), fixed-size viewports ignoring reshape, and weak contrast. Rewrite made the menu panel and split panes readable with stronger level/player/gun drawing.
+
+### 17. GoldenEye outdoors/vehicles
+Mouse look removed; generation expanded to outdoor plazas, multi-story buildings, stairs, windows (for sniping), roofs, forced open spawns, and outdoor tank/helicopter boardables with AI able to use them.
+
+### 18. GoldenEye arrow + jump
+Final control pass: up/down = forward/back, left/right = strafe, **J** = jump; turn via A/D (needed without mouse). README and key handlers updated; binary recompiled.
+
+---
+
+## Where things stand
+
+| Track | State |
+|-------|--------|
+| **user-pal + xyzfs + avatars** | Login/UUID/session/menus/window harness path working |
+| **TTG-tactics** | Design approved; PR0–PR2 + harness 01–03 green |
+| **RPG Maker / Battlefront** | Playable freeglut; arch migration still open (handoff) |
+| **GoldenEye** | Keyboard-first voxel split with outdoors/vehicles |
+| **Parked** | craft, DF, civ, pokemon (per handoff) |
+
+**Next natural steps (from handoff):** TTG clocks/Elo/AI keys; RPG/BF quality + dual-frame bridges; keep updating `!.clone-clowning.md` status board.

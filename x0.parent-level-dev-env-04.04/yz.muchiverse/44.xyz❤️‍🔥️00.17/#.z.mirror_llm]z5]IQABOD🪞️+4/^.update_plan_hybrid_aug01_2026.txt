@@ -1,0 +1,162 @@
+# IQABOD UPDATE REPORT — HYBRID AGENT PLAN (2026-08-01)
+
+STATUS: IQABOD is NO LONGER a pure-LLM project. Correction locked in.
+It is a HYBRID AGENT: tiny LLM core + RL policy + BT/FSM control +
+tool slots + multi-corpus memory. Mission: write BOOKS and CODE through
+INFRASTRUCTURE, not through parameter count alone. Convo stays a real
+goal (semi-coherent now, thousands of params, 100K later), but it is
+only ONE of the layers — not the whole brain.
+
+----------------------------------------------------------------------
+## 1. WHY THIS CORRECTION (no cop-outs)
+----------------------------------------------------------------------
+- Pure tiny-LLM path tops out at word-salad. That was the cop-out.
+- The gemma-agent pattern PROVED the winning shape: LLM proposes,
+  deterministic scaffolding executes (tools + BT/FSM + RAG + gcc).
+- IQABOD gets the SAME augmentation, PLUS we train the control layer
+  (RL) so IT learns to pick corpora, tools, and BT nodes itself —
+  not just predict the next token.
+- So the model is NOT a thing that writes books. It is a THING THAT
+  LEARNS TO RUN THE MACHINES THAT WRITE BOOKS. Massive BT/FSM infra is
+  the road to books+code with a tiny core. LLM weight growth is a
+  side-track for convo quality, scaled: dim 16 -> 32 -> 64 -> ...
+  100K later.
+
+----------------------------------------------------------------------
+## 2. ARCHITECTURE (5 layers)
+----------------------------------------------------------------------
+| layer | what it is                      | weights          | trained |
+| L0    | token core (transformer)       | LLM weights .weights    | distill+train (existing) |
+| L1    | action policy (choose)         | RL weights .rlw         | RL + behavior-clone |
+| L2    | control (BT/FSM runtime)       | NONE (C code)           | compiled only |
+| L3    | tools (rag/search/edit/exec)   | NONE (ops binaries)     | configured |
+| L4    | memory (multi-corpus registry) | corpus/curriculum       | vocab_only+index |
+
+L2/L3 are DETERMINISTIC and big — that is the "massive infrastructure".
+L1 is small and is the NEW trained brain layer. L0 stays tiny-ish.
+
+----------------------------------------------------------------------
+## 3. WHAT "WRITE A BOOK / CODE" MEANS (concrete)
+----------------------------------------------------------------------
+- BOOK = BT with nodes:
+  PLAN -> RETRIEVE(corpus via L4/rag) -> DRAFT(section) -> EDIT ->
+  VERIFY(coherence+consistency) -> COMMIT
+- CODE = same BT shape, nodes are tool calls:
+  PLAN -> SEARCH(045 ops) -> EDIT(src) -> BUILD(gcc) -> FIX(errors) -> TEST
+- The tiny LLM only fills LOCAL blanks (next sentence / next snippet).
+  STRUCTURE comes from BT, CORRECTNESS from tools + verify gates.
+- RL learns WHICH node/corpus/tool to pick at each state. LLM weights
+  only carry the local-generation skill.
+
+----------------------------------------------------------------------
+## 4. RL DESIGN (concrete, small, CPU-fine)
+----------------------------------------------------------------------
+- action space (start 10): choose_corpus, choose_topic, choose_tool,
+  choose_bt_node, extend, diverge, rewrite, verify, stop, fail
+- state: last N tokens + current loss + last BT node + last tool result
+- reward: task success, loss drop, coherence/verify gate pass, length
+  penalty
+- algorithm: REINFORCE with baseline (fits CPU + tiny nets)
+- storage: NEW RL weights file <name>.rlw beside <name>.weights
+  (same pipeline discipline: save after each RL batch)
+- warm-start: behavior cloning — teacher llama3-groq / gemma3:270m
+  pick corpus/topic/plan actions live, we log (state, action) demos
+  into a demo file, policy pre-trains on demos, then RL polishes.
+
+----------------------------------------------------------------------
+## 5. DISTILL LOOP — KEEPS RUNNING, EXPANDED
+----------------------------------------------------------------------
+- STILL distill (llama teacher -> gemma student -> corpus -> train)
+- STILL train (main_orchestrator train corpus.txt)
+- STILL add corpuses (multi-topic corpus registry, already supported:
+  vocab_only <corpus> -> curriculum/<name>/<name>.txt)
+- NEW: teacher also demonstrates DECISIONS (corpus/tool/node picks) —
+  behavior demos feed L1, not just text into L0.
+- fork runner per iteration becomes: distill(text) + train(L0) +
+  demo-actions(L1 warm) + RL-step(L1) + eval + KPI log.
+
+----------------------------------------------------------------------
+## 6. ROADMAP (in order, no excuses)
+----------------------------------------------------------------------
+1. BT/FSM runtime skeleton in C (on Linux node, next to orchestrator):
+   node types + tick loop + tiny book/code BT definitions. Deterministic.
+2. RL module: .rlw load/save, REINFORCE step, demo buffer.
+3. Behavior-clone collector: log teacher action demos per iteration.
+4. Corpus registry + RL-picked curriculum (L4 + L1 working together).
+5. Tool slots: wire 045 ops/ (search/edit/exec/rag) into BT nodes.
+6. BOOK-BT + CODE-BT harness: target = produce a book outline AND a
+   compile-checked code snippet through the BT, verified.
+7. Scale: dim 16 -> 32 -> 64 (convo quality marches toward 100K later).
+8. KPI log extended: RL rows (action, reward, policy loss) alongside
+   IQA_DISTILL rows; reports show BOTH tracks.
+
+----------------------------------------------------------------------
+## 7. WHAT STAYS UNCHANGED
+----------------------------------------------------------------------
+- loss.txt / IQA_DISTILL KPI pipeline (extended, not replaced)
+- hourly auto-checkin + report.sh (extended with RL rows)
+- trainer lock, lr=0.02 config fix, fixed gen prompt "How are you?"
+- RAG pipeline (build_index -> rag_search -> compact) already green
+- THIS box stays orchestrator-only; compute on Mac (API), training on
+  Linux (CPU). BT/RL runtime lives on Linux where weights live.
+
+----------------------------------------------------------------------
+## 8. NEXT ACTIONS (this session)
+----------------------------------------------------------------------
+- [ ] write BT/FSM runtime skeleton + first BT (greeting-convo prove-out)
+- [ ] add .rlw save/load + REINFORCE step to generation_module family
+- [ ] extend fork run.sh: distill + train + demo-collect + RL + eval
+- [ ] corpus registry file (topic -> corpus path), RL picks by state
+- [ ] then BOOK-BT / CODE-BT prove-out on Linux
+
+THE RULE: if the current machinery can't do it, we BUILD the machinery.
+No cop-outs. Push forward.
+
+----------------------------------------------------------------------
+## 9. THE MAC AUGMENTED TRAINING SYSTEM (2026-08-01)
+----------------------------------------------------------------------
+MAC REALITY: Intel x86_64, macOS 15.1, 12 cores, 32 GB RAM, python 3.9,
+no brew/conda/torch, NO MLX (MLX is Apple-Silicon-only -> dead path).
+BUT our trainer is PLAIN PORTABLE C (main_orchestrator +
+generation_module, zero deps). gcc/clang exists on Mac via CommandLine
+Tools -> THE SAME TRAINER RUNS ON THE MAC. That is the whole trick.
+Mac = light training node: not a data center, doesn't need to be.
+
+WHAT "AUGMENTED TRAINING" MEANS (the ask, baked into the loop):
+- SLMs (small LLMs) ARE already on Mac: llama3-groq-tool-use (teacher)
+  + gemma3:270m (student) via ollama API -> distillation compute is
+  ALREADY on Mac. Keep it.
+- TRAINING LOOP = THE FSM. The loop is a state machine with nodes:
+  SELECT_CORPUS -> DISTILL -> TRAIN_CORPUS_MODULE -> EVAL ->
+  RL_UPDATE -> ROUTER_UPDATE -> DECIDE(next corpus / keep / expand).
+  The transitions between nodes ARE where RL + meta learning happen.
+- RL BAKED IN "BETWEEN THE CORPORA": after each corpus burst, reward =
+  eval delta (loss drop + coherence/verify pass). REINFORCE updates the
+  .rlw policy that chose (corpus, epochs, temp). The corpus boundary is
+  the RL step. No separate RL phase - it lives in the loop.
+- CORPUS MODULES + META ROUTER (instead of one contiguous model):
+  per-corpus .weights files (curriculum/<name>/<name>.txt, ALREADY
+  supported by vocab_only) = the expert modules. NEW: meta router
+  (tiny .mw net, <10K params) maps current state embedding -> which
+  corpus module(s) to activate. Model size becomes INCREMENTAL:
+  include more corpus modules -> bigger total model; active set per
+  forward = router-picked subset (sparse MoE at corpus granularity).
+- FSM/BT RUNTIME = the same loop: the BT that trains itself is the BT
+  that writes books. One runtime, two personalities.
+
+PARAM BUDGET (honest, CPU-trainable on this Mac):
+- LLM core: dim 16 (now, ~10K) -> 64 -> 256 (vocab ~2-4K) => core ~1M
+- per corpus module: ~same order as core (~0.1-1M each)
+- router: <10K
+- TOTAL realistic now: ~1M-10M (dim 64-256 + a few corpus modules).
+  100M is a LATER goal; needs dim ~512-1024 + many corpus modules and
+  longer CPU wall-time. Honest ceiling on THIS Mac: dim 256-512,
+  minutes-hours per corpus burst. Fine. The BT/tools carry the work,
+  the LLM only fills local blanks.
+
+RUNTIME SHARING: Mac (API SLMs) + Linux (current training) can BOTH run
+the same trainer binary. Mac does convo/small-corpus bursts, Linux does
+heavy corpora. Weights travel via the store. One pipeline, two nodes.
+
+THE RULE STANDS: if the current machinery can't do it, we BUILD the
+machinery. No cop-outs. Push forward.

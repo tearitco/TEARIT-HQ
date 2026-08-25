@@ -1,0 +1,9 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/room_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="${game_map}" /><br/>
+    <cli_io id="message_text_input" label="Message" target_id="message_text_input" /><br/>
+    ${piece_methods}
+    <button label="Leave Room" href="pieces/chtpm/layouts/room_list.chtpm" /><br/>
+    <text label=" (Ctrl+C to quit)" /><br/>
+</panel>

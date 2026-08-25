@@ -1,0 +1,9 @@
+# Piececraft Wraith Tile Registry
+.=grass
+#=wall
+T=tree
+R=stone
+e=tree_emoji
+k=rock_emoji
+d=dog_emoji
+g=glass

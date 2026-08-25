@@ -1,0 +1,35 @@
+# Custom operations for yahoo-app's own prisc+x program, modeled
+# directly on @.apps/my-chara-txt's own default_op.txt (the same
+# proven menu-only shape - see that file for the real precedent).
+# Format: name type handler {description}
+# NOTE: this file is prisc+x's OP TABLE (parse_ops_file requires
+# name/type/handler columns). It is NOT a process manifest - the
+# system process paths (system/prisc+x, system/orchestrator, ...)
+# belong in button.sh, not here. Ops called via system() from the
+# menu_input op (lookup_stock, buy_stock, etc.) still get registered
+# here for consistency; only the ones PAL actually references
+# (yahoo_menu_input, yahoo_compose_frame, broker_menu_input,
+# broker_compose_frame) are required.
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}
+yahoo_menu_input void ops/+x/yahoo_menu_input.+x {piece.pdl METHOD dispatch for whichever yahoo-app screen is current}
+yahoo_compose_frame void ops/+x/yahoo_compose_frame.+x {render the current yahoo-app screen into view.txt + regenerate broker piece.pdl}
+broker_menu_input void ops/+x/broker_menu_input.+x {broker-select screen METHOD dispatch}
+broker_compose_frame void ops/+x/broker_compose_frame.+x {render the broker screen}
+deposit_withdraw void ops/+x/deposit_withdraw.+x {deposit/withdraw funds}
+lookup_stock void ops/+x/lookup_stock.+x {lookup a stock price}
+portfolio_new void ops/+x/portfolio_new.+x {create a new portfolio}
+profit_loss void ops/+x/profit_loss.+x {profit and loss report}
+buy_stock void ops/+x/buy_stock.+x {buy stock}
+sell_stock void ops/+x/sell_stock.+x {sell stock}
+buy_option void ops/+x/buy_option.+x {buy option}
+sell_option void ops/+x/sell_option.+x {sell option}
+sell_option_inventory void ops/+x/sell_option_inventory.+x {sell option from inventory}
+options_pricing void ops/+x/options_pricing.+x {options pricing}
+predictions void ops/+x/predictions.+x {predictions}
+add_credit void ops/+x/add_credit.+x {add credit to bank balance}
+read_price void ops/+x/read_price.+x {read a price}
+fetch_stock void ops/+x/fetch_stock.+x {fetch stock data}
+ledger_append void ops/+x/ledger_append.+x {append an action to the master ledger}
+yahoo_compose_rgb_frame void ops/+x/yahoo_compose_rgb_frame.+x {RGBA frame composer}
+research_refresh void ops/+x/research_refresh.+x {batch-cycle daily refresh of the research universe}

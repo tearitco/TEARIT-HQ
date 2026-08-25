@@ -1,0 +1,153 @@
+
+📅️📅️📅️📅️may6[
+
+just fixed clock op . < with flash in 25% tokens> 
+
+
+ that leaves some ascii issues that require more
+investigation 
+
+1. pal? file save/load editor? (mirror in 3d?)
+2. lsr ? state? < y doesn't fuzz op ask newgame/loadgame first? w/e but...>
+(do we wait for pal 4 diligence ? mental options? )
+
+do we wait for pal b4 we keep doing 'aida'? 
+
+
+<books can be done with aida even if chrome is gone but
+can we test that theory on a book maybe u dont care much about? 
+
+write a tiny outline, make aida write the book herself etc. 
+(about her adventures as a robot. we do this. it neednt be canon
+but can be in universe as u edit...) 
+
+u can at least use gemini 2 chaperone that process? 
+also id beef up knowledge dist / fsm / rl / imitation / chat etc! ✴️
+
+
+tho it would be nice if we got this lingering pal 
+thing out of the way. 
+also sometimes we wanna "PLAY WSR" and lsr should scratch it
+
++ wu . can u just pull an existing version of wu into 'op's style'
+and hack on it? 
+
+can u add save / load 2 fuzz op? + building / markets etc 
+(just 2 mirror 3d. id wait for editor save load first 
+2 make sure we do it the 'common way')
+
+
+(also i wanna do stuff condusive to crm/onboarding 
+so that definately means saving/loading states , related 2 players
+then they can start mining the blockchain
+(u can. and start training models. these are 2 passive income strategies
+that u can use with ur own software 2 give HUGE roi)
+2nd roi 2 look for? when ai recruits more ai 2 work here. 
+(and works on its own on projects; thats wut groq already can and should 
+be doing so wuts the excuse ? its 100% free tokens. 
+then we can research beefing up gpus , etc. ) 🚆️
+📅️📅️📅️📅️
+may6
+AIDA: 
+
+[Aida] Agent Active. (exit, /yolo, /clear)
+[3%] Aida >> @
+[tab]  #.dox/   #.wussup.xo-aida.txt   agent   agent.c   config/ [3%] Aida >> @.
+[3%] Aida >> @..
+[3%] Aida >> @../
+[tab]  ../#.cal-may-6.txt   ../#.reading-me/   ../0.iq-aida-c+5+mac+16/   ../1.TPMOS_c_+rmmp_98.21.zip   ../1.TPMOS_c_+rmmp_98.22/[3%] Aida >> @../1
+[3%] Aida >> @../1
+[3%] Aida >> @../1
+[3%] Aida >> @../1.TPMOS_c_+rmmp_98.22/
+
+it needs to show the sub folders and subdirs, 
+and when those are selected (using tab, show those subdirs)
+do u know how to do that? 
+
+2. add a sandbox config for how many 
+parent directories above , the agent can edit (default = 1 "../") 
+
+
+
+
+
+
+
+________________________________________________
+
+
+▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+
+   
+   
+   (the old pmo_00.01 
+   is basically primative +- , so u need 2 make that work somehow
+and since u put it off, thats where we are , confused
+but its no biggi imo) 
+
+-------------------------------------
+ currently our /user/ project gui looks really bad. to the point where its     
+   not operable. [Pasted Text: 160 lines]; see that? this is bad (not only       
+   are numbered indexes being repeated,also , its too         
+   cluttered. some of these are submenus(that should be new layouts) that should only show once "login or    
+   signup" is chosen ; 
+   
+   also there should be a default user that you look for
+   either last logged in , or guest. which exists
+   until manually removed .(but lets save that for phase 2
+   once we verify ui / layouts are working) ;
+   first lets write a plan within user/ ie : user/ui-fix.txt
+   and await my approval
+   
+   (make sure theres always a []back option when changing layout
+   
+   {we should write a chtpm layout dev design guide at some point
+   along with guidance wether 2 use new layouts/ submenus or +-}
+   
+   
+   info between layouts that needs to be remembered
+   can be written to a .txt file within the user/ 
+   
+  🎣️ 
+  cav? +- doesn't do "activation submenus" 
+  thats ok. 
+  
+  but do we still have : 
+  
+  +- works perfectly but we want to allow other design option
+  "activation submenu
+    main level should have main level numbers, then    (tab indented)   
+   sub menus can have numbers starting back at 1, because nothing else should    
+   be index jump able if a menu has "^" activation focus .
+   
+   i would put an example of this in +- demo (at the bottom or w/e)
+   to show the other option 
+   
+   (in the meantime , just do new view for login
+   its most clean anywyas)
+  🎣️       
+▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+
+
+
+
+
+
+sum&suc_piececraft-3d-a28.txt 
+ 
+ 🔋️   
+ [daw + espn , so not 2 forget!]
+ SharkPreneur: Seth Greene and Kevin Harrington
+Episode 1205: Building the IMDb for Athletes: AthleteAgent.com’s ...
+https://youtube.com/watch?v=5ruIIP2Hjf0       
+🪔️im saving it for when i get full days of energy back from them   🪔️🔋️                                                              
+▄▄▄▄▄▄▄▄
+ 
+ 📅️📅️📅️📅️📅️📅️📅️📅️📅️📅️📅️📅️📅️📅️📅️📅️📅️📅️📅️📅️📅️
+ 
+ 
+ 
+ 
+ 
+ 
+ 

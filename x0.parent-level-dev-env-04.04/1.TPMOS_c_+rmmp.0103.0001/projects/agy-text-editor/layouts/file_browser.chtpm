@@ -1,0 +1,24 @@
+<panel>
+    <module>projects/agy-text-editor/manager/+x/agy-text-editor_manager.+x</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+    
+    <text label="╔══════════════ FILE BROWSER ════════════════╗" /><br/>
+    ${browser_mode_header}
+    ${browser_current_dir_line}
+    <text label="║ SEARCH: " /><cli_io id="search_query" target_id="search_query" label="${search_query_val}" /><br/>
+    <text label="║ FILE:   " /><cli_io id="file_path_input" target_id="file_path_input" label="${file_path_input_val}" /><br/>
+    <text label="║                                             ║" /><br/>
+    <text label="║ ACTIVE: " /><text label="${active_project}" /><br/>
+    <text label="║                                             ║" /><br/>
+    ${autocomplete_suggestions_markup}
+    <text label="║                                             ║" /><br/>
+    <text label="╠════════════ DIRECTORY CONTENTS ═════════════╣" /><br/>
+    ${directory_browser_markup}
+    <text label="║                                             ║" /><br/>
+    <text label="╠═════════════════════════════════════════════╣" /><br/>
+    ${browser_action_buttons_markup}
+    <text label="║                                             ║" /><br/>
+    <text label="╠═════════════════════════════════════════════╣" /><br/>
+    <row label="${editor_response_line}" /><br/>
+    <text label="╚═════════════════════════════════════════════╝" /><br/>
+</panel>

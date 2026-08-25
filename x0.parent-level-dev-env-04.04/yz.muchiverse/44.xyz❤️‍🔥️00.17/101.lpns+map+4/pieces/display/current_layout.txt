@@ -1,0 +1,1 @@
+pieces/chtpm/layouts/lpns_main_menu_pal.chtpm

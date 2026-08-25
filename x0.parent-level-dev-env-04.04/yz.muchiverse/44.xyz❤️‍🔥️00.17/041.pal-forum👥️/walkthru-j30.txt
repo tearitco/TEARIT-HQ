@@ -1,0 +1,20 @@
+🚶 walkthru-j30.txt — 041.pal-forum👥️ — QUICK CHECK
+================================================================
+STATUS: ✅ rebuilt + real-tested, no bugs found
+
+## ▶️ HOW TO RUN
+    bash button.sh run
+
+## ✅ CHECKLIST
+  [ ] 1️⃣ Sign up as a user
+  [ ] 2️⃣ Make a post 📝
+  [ ] 3️⃣ Sign up as a second user, follow the first 👥
+  [ ] 4️⃣ Check your feed refreshes and shows their post
+  [ ] 5️⃣ Like a post ❤️
+
+## 🟢 GOOD LOOKS LIKE
+Nothing weird — this one just needed a rebuild (no code changed), and
+the existing test harness (signup/post/follow/feed/like) ran clean.
+Real click-through is still worth a quick pass since I only ran the
+automated version, not a hands-on session. 🙂
+================================================================

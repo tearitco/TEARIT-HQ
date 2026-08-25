@@ -1,0 +1,41 @@
+SEARCH: | [ ] 1. : []                                        |
+FILE:   | [^] 2. : [hi_]                                     |
+MODE: SAVE AS FILE
+DIR: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.15/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/xyzfs/users/e8bf229a-62d3-4d6f-810e-e2aaf031cd73/home/documents
+
+ACTIVE: docs/untitled.txt
+
+DIRECTORY CONTENTS:
+[ ] 3. [&lt;- BACK]
+[ ] 4. [[DIR] hihi2-1034975.txt3typed-after-enter.txt..]
+[ ] 5. [[FIL] -100583 (20B)]
+[ ] 6. [[FIL] -10058t (20B)]
+[ ] 7. [[FIL] 1.load-me!.txt (37B)]
+[ ] 8. [[FIL] dbg2-save-973734.txt (11B)]
+[ ] 9. [[FIL] fm-enter-save-984279.txt (38B)]
+[ ] 10. [[FIL] hi2-174681.txt (20B)]
+[ ] 11. [[FIL] hi2-183630.txt (20B)]
+[ ] 12. [[FIL] hihi2-1015247.txt (20B)]
+[ ] 13. [[FIL] hihi2-1015247.txt3 (20B)]
+[ ] 14. [[FIL] hihi2-1024984.txt (20B)]
+[ ] 15. [[FIL] hihi2-1024984.txt3 (20B)]
+[ ] 16. [[FIL] hihi2-1034975.txt (20B)]
+[ ] 17. [[FIL] hihi2-1034975.txt3 (20B)]
+[ ] 18. [[FIL] hihi2-10443 (20B)]
+[ ] 19. [[FIL] hihi2-1044t (20B)]
+[ ] 20. [[FIL] k3-save-214567.txtk3-save-214567.txt]
+[ ] 21. [[FIL] k3-save-219601.txtk3-save-219601.txt]
+[ ] 22. [[FIL] load_target_172309.txt (65B)]
+[ ] 23. [[FIL] load_target_991970.txt (65B)]
+[ ] 24. [[FIL] my.txt (20B)]
+[ ] 25. [[FIL] save-test-966602.txt (11B)]
+[ ] 26. [[FIL] saved_169613.txt (57B)]
+[ ] 27. [[FIL] saved_988844.txt (55B)]
+[ ] 28. [[FIL] untitled.txt (11B)]
+[ ] 29. [SAVE AS]
+[ ] 30. [CANCEL]
+
+
+
++=========================================================+
+Active [^]:  (ESC to exit)

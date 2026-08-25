@@ -1,0 +1,8 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/game_loop.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="${game_map}" /><br/>
+    <button label="ANSWER (INTERACT)" onClick="INTERACT" id="answer_canvas" /><br/>
+    <button label="MAIN MENU" href="pieces/chtpm/layouts/menu.chtpm" /><br/>
+    <text label="Esc exits INTERACT | Ctrl+C quit" /><br/>
+</panel>

@@ -1,0 +1,3 @@
+; Wraith Ed PAL event placeholder.
+SHOW_TEXT "Hello from Wraith Ed."
+END

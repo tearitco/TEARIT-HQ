@@ -1,0 +1,10 @@
+{
+  "model": "stable-code:latest",
+  "scenario": "run",
+  "turns": [],
+  "error": "HTTP 400: {\"error\":\"model is required\"}",
+  "verdict": {
+    "emitted_native_tool_calls": false,
+    "note": "server rejected tools"
+  }
+}

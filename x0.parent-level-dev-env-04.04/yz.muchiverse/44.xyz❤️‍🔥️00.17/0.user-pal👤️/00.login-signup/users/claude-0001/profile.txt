@@ -1,0 +1,5 @@
+user_id=claude-0001
+display_name=AgentClaude0001
+uuid=04c8ce55-11a5-47f3-933d-ac009ca4ac72
+xyzfs_path=xyzfs/users/04c8ce55-11a5-47f3-933d-ac009ca4ac72
+created_at=1786515329

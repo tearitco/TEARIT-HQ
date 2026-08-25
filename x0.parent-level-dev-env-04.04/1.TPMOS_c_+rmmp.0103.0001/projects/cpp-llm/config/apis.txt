@@ -1,0 +1,5 @@
+macbook|http://10.0.0.144:11434
+local|http://localhost:11434
+aida_mac|http://10.0.0.144:8080
+desktop|http://10.0.0.187:11434
+debian|http://10.0.0.16:11434

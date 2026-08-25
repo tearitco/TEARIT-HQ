@@ -1,0 +1,11 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | room
+META         | version            | 1.0
+
+# No METHOD rows on purpose - Enter sends the typed message directly
+# (chat_menu_input.c's own handle_post_message(), triggered on
+# key==13, same category as this family's own hardcoded 'q'-quits-
+# everywhere shortcut - not part of the numbered, piece.pdl-driven
+# menu at all). Direct user correction, 2026-07-20: "we dont need that
+# second option to send chat... just remove it from pdl."

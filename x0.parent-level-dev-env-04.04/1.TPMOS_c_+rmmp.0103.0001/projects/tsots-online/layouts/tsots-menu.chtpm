@@ -1,0 +1,12 @@
+<panel>
+    <module>projects/tsots-online/manager/+x/tsots_online_manager.+x</module>
+    <text label="╔═══════════════════════════════════════════════════════════╗" /><br/>
+    <text label="║ MENU:                                                     ║" /><br/>
+    <text label="║ " /><button label="Profile" onClick="KEY:1" /><br/>
+    <text label="║ " /><button label="Wallet" onClick="KEY:2" /><br/>
+    <text label="║ " /><button label="Blockchain" onClick="KEY:3" /><br/>
+    <text label="║ " /><button label="Auction" onClick="KEY:4" /><br/>
+    <text label="║ " /><button label="IRC" href="projects/tsots-irc/layouts/tsots-irc.chtpm" /><br/>
+    <text label="║ " /><button label="Back" href="projects/tsots-online/layouts/tsots-login.chtpm" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+</panel>

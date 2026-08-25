@@ -1,0 +1,11 @@
+{
+"model": "llama3-groq-tool-use:8b",
+"scenario": "run",
+"turns": [
+  {"role":"user","content":"Use the exec_cmd tool to compile and run /tmp/code-tools-harness-work/sample.c: gcc -o sample sample.c && ./sample. Then tell me what the program printed."},
+  {"role":"assistant","tool_call":{"name":"exec_cmd","arguments":{"cmd":"gcc -o sample sample.c \u0026\u0026 ./sample"}}},
+  {"role":"tool","content":"[exec_cmd] exit=0\nsum(1..5) = 10\n"},
+  {"role":"assistant","content":"The program printed: `sum(1..5) = 10`."}
+],
+"verdict": {"emitted_native_tool_calls":true,"ran_cleanly":true,"model_relayed_output":true}
+}

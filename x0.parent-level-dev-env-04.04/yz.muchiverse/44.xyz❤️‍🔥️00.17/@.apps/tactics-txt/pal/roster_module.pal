@@ -1,0 +1,46 @@
+# roster_module.pal - pieces/chtpm/layouts/roster.chtpm's own dedicated
+# module, per xyzos-standards §41's per-screen module convention.
+# Same proven shape as this project's own setup_module.pal/main_module.pal.
+li x1, 0
+
+# REAL fix 2026-08-03 - see main_module.pal's own comment for the full
+# root cause (a brand new per-screen module always starts its own
+# interact_relay.txt read cursor at 0, but that file is append-only
+# for the whole session, so every screen switch replayed the entire
+# key history against the new screen's own item list). Drain any
+# pre-existing backlog before the real loop starts listening.
+drain:
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, drain_done
+j drain
+drain_done:
+
+li x9, 0
+tactics_menu_input x9
+tactics_compose_frame
+hit_frame
+read_pos x7, "pieces/display/tactics_screen_changed.txt"
+
+loop:
+li x9, 0
+tactics_menu_input x9
+read_pos x8, "pieces/display/tactics_screen_changed.txt"
+beq x7, x8, check_key
+addi x7, x8, 0
+j render
+
+check_key:
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, no_key
+tactics_menu_input x2
+j render
+
+no_key:
+sleep 30000
+j loop
+
+render:
+tactics_compose_frame
+hit_frame
+sleep 30000
+j loop

@@ -1,0 +1,11 @@
+Country pop gdp 
+1	Solar Empire	10 100 
+2	Blood Queen Monarchy 10	100
+3	Red African Union	10 100
+4	Robot State	10 100
+5	Sinder Rouge Monarchy	10 100
+6	United Clones	10 100
+7	Farland	10 100
+8	Inland	10 100
+9	Mutangia 8 100
+10	Clown Anarchist Party 12 100

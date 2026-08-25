@@ -1,0 +1,15 @@
+<panel>
+    <text label="+===========================================================+" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|             F O N D U   A P P   S T O R E                 |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  [UNDER CONSTRUCTION]                                     |" /><br/>
+    <text label="|  The Fondu Installer is being initialized.                |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  Available Apps:                                          |" /><br/>
+    <text label="|  (None yet - please use Project Loader for now)           |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  " /><button label="Back to Main Menu" href="pieces/chtpm/layouts/os.chtpm" /><text label="                  |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="+===========================================================+" /><br/>
+</panel>

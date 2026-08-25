@@ -1,0 +1,4 @@
+inbox_path=pieces/system/widget_cmds/inbox.txt
+kind=board_game
+project_id=piececraft-xyz
+display_name=Piececraft-xyz

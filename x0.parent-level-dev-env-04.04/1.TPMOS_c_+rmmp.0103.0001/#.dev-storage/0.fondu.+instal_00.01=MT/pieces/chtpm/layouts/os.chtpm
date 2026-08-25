@@ -1,0 +1,23 @@
+<panel>
+    <text label="+===========================================================+" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|           C H T P M + O S   C L I   v2.0                 |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  CHTPM+OS Main Menu                                      |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  " /><button label="Project Loader" href="pieces/apps/playrm/layouts/loader.chtpm" /><text label="                             |" /><br/>
+    <text label="|  " /><button label="App Store (Fondu)" href="pieces/chtpm/layouts/appstore.chtpm" /><text label="                          |" /><br/>
+    <text label="|  " /><button label="Status" onClick="LAUNCH:STATUS" /><text label="  " /><button label="GL-OS" onClick="LAUNCH:GL-OS" /><text label="                                          |" /><br/>
+    <text label="|  " /><button label="Process Monitor" href="pieces/chtpm/layouts/processes.chtpm" /><text label="                            |" /><br/>
+    <text label="|  " /><menu label="Settings">
+        <button label="Toggle Frame History (Current: ${display_frame_history})" onClick="LAUNCH:TOGGLE_HISTORY" />
+    </menu><text label="                                         |" /><br/>
+    <text label="|  " /><button label="Help" onClick="LAUNCH:HELP" /><text label="                                            |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="+===========================================================+" /><br/>
+    <text label="|  Running Applications: None                               |" /><br/>
+    <text label="|  System Time: ${clock_time} | Turn: ${clock_turn} | Key: ${last_key} |" /><br/>
+    <text label="+===========================================================+" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  $ " /><cli_io label="" /><text label="                                                 |" /><br/>
+</panel>

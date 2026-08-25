@@ -1,0 +1,495 @@
+aug-16-handoff.txt — open-hai chat interface, real work queue for a
+fresh/"virgin" agent to pick up. Written 2026-08-16, end of a long
+session that (a) finished the khtpm entity-menu/Stage-2c refactor work
+(see local-2do-15.txt at the yz.muchiverse root and au11-hq/khtpm-
+merge-how2.md for that — unrelated to this doc, don't re-derive it)
+and (b) got OpenRouter working end-to-end in this app, including real
+native tool-calling that bypasses the local keyword-detection harness
+(see au11-hq/OPENROUTER-INTEGRATION-HANDOFF.md — READ THAT FIRST, this
+doc assumes it's already true and builds on top of it).
+
+======================================================================
+0. NAMING — READ THIS FIRST, it affects every path below
+======================================================================
+
+Direct instruction: "first of all we want to change its name to
+open-hai. not open-hai. that was wrong."
+
+The REAL on-disk name today is still "open-hai" everywhere — directory
+(&.widgits/open-hai/), binaries (khtpm_open_hai_render.+x, khtpm_open_hai_
+manager.+x), source files (khtpm_open_hai_render.c, khtpm_open_hai_
+manager.c), every internal path/variable (g_house_root-relative "&.
+widgits/open-hai/state" etc). This handoff file itself lives at the OLD
+path (&.widgits/open-hai/aug-16-handoff.txt) because the rename hasn't
+happened yet — that's real, current-state ground truth, not an
+oversight.
+
+Renaming "open-hai" -> "open-hai" is a REAL, mechanical, but WIDE-
+BLAST-RADIUS rename (directory name + every binary name + every file
+name + every internal path string + the taskbar's own launcher config
+that starts it + button.sh entries + audit dir paths + state file
+paths). This was NOT started this session — deliberately deferred so a
+fresh agent can do it as ONE clean, careful pass (real risk of missing
+a reference and silently breaking the app if done piecemeal alongside
+other changes). Real approach for whoever does this:
+  1. grep -rli "open-hai\|open_hai" across the whole house first to get
+     a REAL, complete list of every file that needs touching — don't
+     assume you've found them all from memory.
+  2. Decide the real new binary/file naming convention up front
+     (khtpm_open_hai_render.c? open_hai_render.c? match whatever this
+     house's own naming convention actually is for similar apps —
+     check a few other &.widgits/ apps first) BEFORE renaming anything.
+  3. Rename in one clean pass: directory, files, binaries, build
+     scripts, internal path strings, taskbar/autostart launcher
+     entries (search autostart.pdl and any *.chtpm/*.pdl referencing
+     "open-hai" specifically).
+  4. Verify live afterward — kill any running instance, rebuild,
+     relaunch via the REAL taskbar path (not a manual binary launch),
+     confirm it still opens/works.
+  5. Update OPENROUTER-INTEGRATION-HANDOFF.md's own file paths too
+     (it currently references khtpm_open_hai_manager.c/render.c by
+     their pre-rename names throughout).
+
+======================================================================
+1. "+ New chat" gets accidentally pressed — real, exact location
+======================================================================
+
+Direct report: "theres lots of sessions open cause 1.new chat gets
+accidently pressed. i move that. ideally input would be '1' but w/e"
+
+Real, confirmed cause: &.widgits/open-hai/ops/khtpm_open_hai_render.c,
+function draw_sidebar() (~line 1047). "+ New chat" is LITERALLY the
+first nav_add() call in the whole sidebar:
+
+    int nav_newchat = nav_add(NAV_NEWCHAT, -1);   // line ~1052
+
+This makes it real nav index 1 — the single easiest, most muscle-
+-memory-prone slot to hit by accident (e.g. pressing "1" meaning to do
+something else, or a stray first digit in a multi-digit jump landing
+here before the second digit arrives). Direct instruction: MOVE it out
+of that position (user is fine with it not literally being digit "1"
+that's bound to New Chat — the complaint is about accidental presses,
+not about wanting a specific keybinding). Real options, pick one after
+seeing the real current layout live:
+  - Move the nav_add(NAV_NEWCHAT, -1) call to LATER in draw_sidebar()
+    (e.g. after HISTORY, or into a corner/toolbar-like spot) so its
+    real nav index shifts away from 1.
+  - Add a real confirmation step ("press again to confirm") before
+    actually creating a new session — more real code, but doesn't
+    require moving the button visually.
+  - Some combination — real UX call, not dictated here.
+Whatever you pick, verify live: relay-inject digit "1" + Enter a few
+times in a row and confirm it does NOT spawn a new session every time
+if that's still bound to something reachable at index 1 after your
+change.
+
+Related real cleanup while you're in there: this session's own testing
+left MANY real stray sessions in &.widgits/open-hai/sessions/ (visible
+in the HISTORY sidebar, timestamps clustered around 2026-08-16 04:00-
+06:30) — some are real accidental-New-Chat presses from this exact bug
+during testing, most are legitimate test artifacts from verifying the
+OpenRouter work. Real cleanup is optional/your call — Backspace on a
+sidebar row deletes that session live (per the sidebar's own real
+"HISTORY (audit — Backspace deletes)" label), or just leave them, they
+don't hurt anything functionally.
+
+======================================================================
+2. Layout: session history takes the full sidebar height — shrink it
+======================================================================
+
+Direct instruction: "instead of sesion history taking up full rect, it
+can take up a square and leave room for teh other features."
+
+Real, confirmed cause: same draw_sidebar() function, the HISTORY loop:
+
+    for (int i = 0; i < g_n_sessions && y < g_win_h - 90; i++) {
+        ...
+    }
+
+This grows to fill nearly the entire remaining sidebar height (only
+reserving a fixed 90px at the bottom for the MODEL row). Direct
+instruction is to bound this to roughly a square region instead, real
+next steps:
+  - Pick a real fixed height (or fraction of g_win_h) for the HISTORY
+    list instead of "grow until near the bottom" — e.g. cap the loop's
+    own y bound to something like `y < history_start_y + SIDEBAR_W`
+    (a real square, width==height) or a simpler fixed pixel cap.
+  - Real, necessary follow-up: sessions beyond what fits need EITHER a
+    real scroll mechanism for the HISTORY list specifically (this app
+    already has scroll for the main transcript — draw_transcript()'s
+    own g_scroll_offset-style state, real precedent to copy the shape
+    of, not invent from scratch) OR some other real "see more" access
+    path. Don't just silently hide sessions beyond the cap with no way
+    to reach them.
+  - This frees real vertical space in the sidebar for section 3 below
+    (Image/Audio tabs) — that's the real reason for this ask, not
+    cosmetic on its own.
+
+======================================================================
+3. Real feature exploration: "more robust and contemporary harness"
+======================================================================
+
+Direct instruction: "we wanna explore what features we might
+impliment to make open-hai a more robust and contemporary harness (ie
+planning/asking questions etc, just like claude has... we will be
+speaking of openrouter free model)."
+
+This is EXPLORATION, not a spec — the user wants ideas surfaced and
+discussed before anything gets built. Real context for whoever picks
+this up:
+  - The real, live-verified OpenRouter path (see OPENROUTER-
+    INTEGRATION-HANDOFF.md) already proves native tool_calls work
+    cleanly on at least one real free model (google/gemma-4-26b-a4b-
+    it:free, confirmed this session). That's the real foundation any
+    "planning/asking clarifying questions" feature would build on —
+    OpenAI-compatible `tools` param + `tool_calls` response, not the
+    local Harnecient-hack keyword detector (that's real for Ollama/
+    Harnecient models specifically — see HARNECIENT-HACK.md in au11-hq
+    for why THAT approach exists and when it's still the right one).
+  - "Just like claude has" — real, concrete things that could map to
+    real OpenRouter-model behavior worth investigating: multi-turn
+    planning before acting (needs real conversation history sent per-
+    request — OPENROUTER-INTEGRATION-HANDOFF.md's own "not done" list
+    already flags this as the #1 real gap blocking anything more
+    sophisticated than single-shot Q&A), asking a real clarifying
+    question before running a tool (needs UI to actually show/wait-for
+    a plain-text model reply that ISN'T a tool call, mixed with turns
+    that ARE — the current code path only really exercises the "did a
+    tool call happen y/n" branch), some kind of visible "plan" step
+    before execution (a real, bigger design question — no existing
+    scaffolding for this in the codebase, real ground-up work).
+  - Real starting point for design discussion, not implementation:
+    read au11-hq/HARNECIENT-HACK.md (the DESCRIBE-not-CLASSIFY
+    philosophy this whole house's tool-calling convention is built on)
+    and OPENROUTER-INTEGRATION-HANDOFF.md's own real "not done" list
+    together before proposing anything — the real question is how much
+    of "contemporary harness" behavior the free OpenRouter models can
+    actually deliver reliably (rate limits, free-tier model quality,
+    real cost-of-experimentation caveats already noted in the handoff
+    doc) vs. how much needs real local scaffolding regardless of
+    backend.
+
+======================================================================
+4. New "Image" and "Audio" tabs — explore later, not now
+======================================================================
+
+Direct instruction: "ALSO we want to add 'image' and 'audio tabs,
+whch we can explore later."
+
+Explicitly deferred by the user's own wording ("explore later") — not
+asking for implementation in the next pass necessarily, just flagging
+it as a real, intended future direction so it's not forgotten. Real
+context if/when it's picked up: OpenRouter's own real /v1/models list
+(confirmed live this session, see the handoff doc) includes real
+"Image"-tagged and video-generation-tagged models alongside the Text
+ones (e.g. bytedance-seed/seedream-*, google/gemini-*-image-preview,
+kling-* for video) — a real, live, checkable source for what backend
+capability would actually power these tabs, not a guess. No UI
+scaffolding for tabs (Chat vs Image vs Audio) exists yet in this app
+at all — real, ground-up layout/state work, likely related to the
+section 2 layout change above (freed sidebar space) but probably also
+needs its own top-level tab strip, not just a sidebar rearrangement.
+
+======================================================================
+5. "Book text" needs a dark theme too
+======================================================================
+
+Direct instruction: "investigate how to turn the 'book text' dark like
+everything else."
+
+Real, confirmed location: *.monads/*.livedesk-taskbar/ops/
+tp_desktop_window_rgb.c, the SHOW_TEXT_FILE relay handler's own popup
+window creation (~line 2286):
+
+    swa2.background_pixel = WhitePixel(dpy, DefaultScreen(dpy));
+
+This is text_popup_win — a REAL, separate, inline-created X11 window
+(NOT the same code path as the entity context menu work done earlier
+this session, and NOT touched by this session's own white-flash fix
+pass, which only covered db-hq/events-hq/chat-hai's own top-level
+window backgrounds). This is what book-stack's "Read" -> pick a book
+-> the actual verse/text CONTENT window uses (khtpm_show_text.c writes
+a real "SHOW_TEXT_FILE:<path>" relay command into the entity's own
+interact_relay.txt, and THIS is the code that displays it — see this
+session's own earlier real investigation in local-2do-15.txt's "Show
+Choices picker" entry for the full real call chain if more context is
+needed: Read -> prisc+x -> event.pal -> dispatch.sh -> a branch script
+-> khtpm_show_text.+x -> this relay handler).
+
+Real fix shape (same pattern already proven 3x this session on db-hq/
+events-hq/chat-hai): change `WhitePixel(dpy, DefaultScreen(dpy))` to a
+real dark color, e.g. `alloc_pixel("#141414")` if this file already has
+an alloc_pixel() helper (it does — grep confirmed one exists in this
+same file, reused by other windows), matching the exact dark value the
+rest of this house's khtpm apps use. Real, necessary follow-up: the
+TEXT drawn inside this popup (line-by-line, see the surrounding code
+for exactly how text_lines[] get rendered) almost certainly uses a
+DARK text color meant to be readable on the OLD white background —
+changing just the background to dark without checking/fixing the text
+color would make it unreadable (dark-on-dark). Check and fix both
+together, verify with a real live test (book-stack's Read -> pick any
+book -> confirm the popup is dark AND the text is legible), not just a
+compile-clean check.
+
+======================================================================
+6. chat-hai text sometimes gets truncated — real starting point
+======================================================================
+
+Direct instruction: "chat-hai's text sometimes gets truncated in
+window. we will want to investigate a user friendly fix for that."
+
+Real, confirmed starting point: &.hq-apps/chat-hai/ops/chat_hai_hq_
+render.c, the real text-wrapping function (search "WRAP_MAX_LINES" in
+that file, ~line 1024):
+
+    if (*p && n == WRAP_MAX_LINES) {
+        /* still more text left after hitting the cap - mark truncation
+         * on the last line rather than silently dropping the tail. */
+        size_t l = strlen(lines[n - 1]);
+        if (l < WRAP_LINE_BUF - 4) snprintf(lines[n - 1] + l, WRAP_LINE_BUF - l, "…");
+    }
+
+This is a REAL, DELIBERATE cap (WRAP_MAX_LINES) on how many wrapped
+lines a single message can occupy on screen — when a message's real
+wrapped content exceeds that cap, the tail is cut and a "…" is
+appended instead of silently vanishing. This is almost certainly what
+the user is seeing as "truncation" - it's not a bug in the sense of an
+accident, it's a real, intentional limit that may just be too
+aggressive/surprising in normal use. Real investigation starting
+points for whoever picks this up:
+  - Find WRAP_MAX_LINES's own real value (grep `#define WRAP_MAX_LINES`
+    in this file) and judge whether it's simply too small for how long
+    real persona/chat replies tend to run.
+  - Real "user friendly fix" options: raise the cap (simplest, may
+    just push the same problem to even-longer messages), add a real
+    scroll-within-message affordance (bigger, more correct fix - this
+    file's own comment history (search "no more fixed-72-char content
+    truncation" ~line 531) shows this house has ALREADY solved a
+    similar problem once before by replacing a hard truncation with
+    real wrapping - read that surrounding context for the house's own
+    established pattern/preference before inventing a new approach),
+    or make the cap dynamic based on real available window height
+    instead of a fixed constant.
+  - Verify live: send/inject a real long message (relay injection, see
+    section 7 below) and visually confirm the fix via a real frame
+    dump, not just code review.
+
+======================================================================
+7. Relay injection — how to test any of this for real
+======================================================================
+
+This house's entire testing convention for khtpm-family apps (open-hai
+included, once renamed) is REAL LIVE TESTING via file-based relay
+injection — never trust a "should work" from reading code alone; every
+fix in this session's own local-2do-15.txt was verified this way.
+Real, concrete recipe, using open-hai/open-hai as the running example
+(same shape applies to chat-hai/db-hq/events-hq/entity windows, just
+different relay file names/paths):
+
+  RELAY FILE LOCATIONS (real, confirmed this session):
+    - open-hai/open-hai's own UI-input relay (simulates keypresses):
+        #.desktop/open_hai_agent_relay.txt
+      Each line is a DECIMAL ASCII CODE, not a literal character:
+        13  = Enter
+        27  = Escape
+        48-57 = digits '0'-'9' (nav-jump / multi-digit accumulator)
+        112 = 'p' (dumps a real PNG frame - see below)
+      Multi-digit nav jump: write the digits as SEPARATE lines in
+      order, e.g. to jump to real nav index 24: write "2" then "4"
+      then "13" (Enter) as three separate lines - the app accumulates
+      digits itself, matching the real on-screen "[ ]24. ..." badges.
+
+    - open-hai/open-hai's own REQUEST protocol (bypasses the UI
+      entirely, talks straight to the manager - useful for testing
+      backend/model logic without simulating keystrokes):
+        &.widgits/open-hai/state/request.txt
+      Write ONE line, e.g.:
+        SEND|your message here
+        APPROVE
+        DENY
+        NEWSESSION
+      The manager polls this file, clears it immediately after
+      reading (never re-fires), and acts on it within ~1 poll cycle
+      (well under 1 second in practice).
+
+  REAL "NEVER REPLAY BACKLOG ON FIRST POLL" GOTCHA (this bit EVERY
+  relay test done incorrectly this session at least once - don't skip
+  this step):
+    Every khtpm app's own relay-polling code treats its FIRST read of
+    the relay file after launch as just "establishing a baseline" - it
+    does NOT process whatever's already sitting in the file at that
+    moment (this is real, deliberate, prevents an app from replaying
+    stale commands left over from a previous test run). Real, correct
+    sequence:
+      1. `echo -n > <relay_file>`     # clear it, empty
+      2. sleep ~1 second               # let the app's first poll see
+                                        #   the empty file and set its
+                                        #   own baseline cursor
+      3. write your REAL command(s) to the file (echo/printf > it)
+      4. sleep ~1-2 seconds            # let the app actually poll and
+                                        #   act on it
+      5. check the real result (transcript.txt, a dumped PNG, etc)
+    Skipping step 1-2 (writing your real command immediately after
+    launch) means it gets silently swallowed as "pre-existing
+    backlog" and NOTHING happens - this looks exactly like a bug in
+    your fix when it's actually a test-timing mistake.
+
+  REAL FRAME DUMPS (visually verify what the GUI actually shows,
+  don't just trust text-file state):
+    Write "112" (the digit code for 'p') to the UI relay file (same
+    baseline-first rule as above) - every khtpm app this session
+    touched has a real dump_frame_png()-style hook that writes a real
+    PNG to a predictable path (e.g. open-hai/open-hai's own is
+    &.widgits/open-hai/pieces/audit/open-hai-frame.png - check each
+    app's own dump_frame_png() function for its exact real path if
+    unsure). Read that PNG file directly (the Read tool renders images)
+    to SEE the real, current on-screen state - this is how every
+    layout/color/text bug in this session was actually confirmed
+    fixed, not assumed.
+
+  REAL PROCESS HYGIENE (do this every time, not just when convenient):
+    Before launching ANY test instance: `pgrep -af "<app-name>"` first
+    to confirm there isn't already a real, possibly-user's-actual-live
+    instance running - launching a duplicate causes real confusing
+    behavior (two windows, relay commands going to the wrong one,
+    etc). After testing: kill ONLY the PID(s) you yourself launched
+    (check parent/child PID relationships with `ps -o pid,ppid,cmd` if
+    unsure which is which) - never blind-kill by name pattern if a
+    real pre-existing user instance might share that pattern. If
+    you're not sure whether a running instance is the user's real one
+    or a stray from earlier testing, ASK rather than guessing/killing.
+
+======================================================================
+8. Onboarding docs to reference for more context
+======================================================================
+
+Real, existing docs in this house directly relevant to open-hai/
+open-hai work, in the order you'll probably need them:
+
+  1. &.widgits/open-hai/ONBOARDING.md — the app's own real onboarding
+     doc (pre-existing, not written this session - read this FIRST for
+     whatever it already documents about the app's real architecture/
+     conventions before assuming anything from this handoff alone).
+  2. #.#.✅️.cal-user-sum/au11-hq/OPENROUTER-INTEGRATION-HANDOFF.md —
+     REQUIRED reading before touching anything backend/model-related.
+     The complete real state of OpenRouter/TokenRouter integration,
+     what's live-verified, what's a real known gap.
+  3. #.#.✅️.cal-user-sum/au11-hq/HARNECIENT-HACK.md — the real
+     philosophy behind this house's local tool-calling approach for
+     non-tooled models (DESCRIBE-not-CLASSIFY) - essential context for
+     section 3's "contemporary harness" exploration, and for
+     understanding why open-hai/open-hai has TWO real tool-calling
+     mechanisms (local keyword harness AND real API-native tool_calls)
+     instead of just one.
+  4. #.#.✅️.cal-user-sum/au11-hq/khtpm-merge-how2.md — background on
+     the broader khtpm-family architecture (Elem/CSS render model,
+     shell/manager split convention) if any of this work ends up
+     touching open-hai/open-hai's own rendering internals more deeply.
+     Its own "SESSION CLOSE" section at the top has a real, accurate
+     summary of where the whole khtpm family stands as of 2026-08-16.
+  5. local-2do-15.txt (yz.muchiverse root, NOT inside 44.xyz❤️‍🔥️00.17)
+     — the real, full chronological log of this entire 2026-08-16
+     session, every fix/finding with direct user quotes. Useful for
+     tracing WHY something is the way it is if this handoff doc's own
+     summary isn't enough context.
+  6. #.#.✅️.cal-user-sum/au11-hq/INDEX.md — routes to every other real
+     doc in the house by topic; check here if something needed isn't
+     listed above.
+
+======================================================================
+END OF HANDOFF — real, current as of 2026-08-16, end of session.
+======================================================================
+
+======================================================================
+9. Taskbar bug: text and sprites stop rendering after running a while
+   (bars still render) — investigated, NOT root-caused, real findings
+   below for whoever picks this up next
+======================================================================
+
+Direct report: "there seems to be a bug that got introduced after
+refactor, where tb will stop rendering text and sprites after running
+for a while. (but the bars are still there.)"
+
+Real investigation done this session (2026-08-16), real findings, NOT
+a fix — could not reproduce live in the time available:
+
+  - Checked *.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c's real
+    text-drawing path (strip_draw_utf8()) — XftColorAllocValue/
+    XftColorFree are correctly PAIRED, called and freed every single
+    text draw. Not leaking.
+  - Checked the 3 real cached Pixmap/GC/XftDraw buffers (g_hq_buf/
+    g_popup_buf/g_strip_buf) — all 3 correctly guarded
+    (`if (!g_strip_buf) { create }` / free-before-recreate-on-resize
+    patterns) — created once, reused, not recreated every frame.
+  - Checked the real sprite cache (tab_sprite(), g_sprite_cache[64] —
+    KTB_MAX_TABS) — REAL, notable but likely NOT the cause: this cache
+    only ever GROWS (new sprite paths get added, nothing ever evicts
+    an old entry even after that entity/tab closes). Once all 64 slots
+    are used, tab_sprite() returns NULL for any NEW path and that
+    tab's sprite silently doesn't draw — but this wouldn't explain TEXT
+    disappearing too, and this session alone opened/closed far more
+    than 64 distinct entity paths during testing without (as far as
+    directly observed) losing sprites - worth a real, harder look if
+    revisited, but probably not the whole story.
+  - Checked khtpm_taskbar_manager.c's real per-cycle functions (called
+    every ~100-200ms via the main loop's ktb_reload() - load_tabs(),
+    load_shortcuts(), load_theme(), sync_tab_claims/sync_strip_claims,
+    registry_lock_acquire()) for fopen()/fclose() imbalances — all
+    correctly balanced on direct inspection. (One early awk-based
+    whole-file scan flagged ktb_fopen() as a false positive — that
+    function is a Windows-only wrapper, `#define ktb_fopen fopen` on
+    Linux, real code never even compiles that branch on this house's
+    actual platform - don't waste time re-checking it.)
+  - Real LIVE test: relaunched the whole desktop clean via `sh
+    $.crypts/button.sh reset`, then monitored BOTH the strip parser
+    (khtpm_strip_parser.+x) and the manager (khtpm_taskbar_manager_
+    main.+x) real open-file-descriptor counts (`ls /proc/<pid>/fd |
+    wc -l`) and real memory (`VmRSS` from /proc/<pid>/status) over a
+    real 90-second window on an otherwise-idle desktop. ZERO growth in
+    either metric on either process (4 FDs, ~12MB/~2.5MB RSS, both
+    exactly flat start to finish).
+
+REAL, HONEST CONCLUSION: no leak or resource-exhaustion pattern was
+found in the code paths most likely to run repeatedly, and a 90-second
+live idle test showed no measurable drift. This does NOT rule out a
+real bug — it likely needs either (a) much longer real uptime than 90s
+to manifest, or (b) real user interaction (opening/closing entities,
+right-clicking, tab switching) to trigger, which the idle test didn't
+exercise. Direct user decision after being offered "reproduce it live
+and I'll inspect in the act" vs. "keep auditing blind": *"if u didn't
+see anything out of the ordinary in code, i guess we will just have to
+document it and move on."*
+
+REAL NEXT STEPS for whoever picks this up:
+  1. Best approach: catch it live. When it happens again, DO NOT
+     restart/reset the taskbar — leave the broken process running and
+     immediately check `ls /proc/<pid>/fd | wc -l` (compare against
+     the ~4 baseline confirmed above - any dramatically higher number
+     is a real, confirmed FD leak, not a guess), `cat /proc/<pid>/
+     status | grep VmRSS` (memory growth), and `ls -la /proc/<pid>/fd`
+     (to see WHAT kind of file descriptors are piled up - regular
+     files vs sockets vs anonymous inodes point to different real
+     causes). This is far more reliable than further blind code
+     reading.
+  2. If it turns out to be the sprite cache filling up (real,
+     mechanically possible, just not confirmed) — real fix is adding
+     real cache eviction (e.g., LRU, or evict entries for
+     paths/entities no longer present in the current tab list) to
+     tab_sprite()'s cache-full branch instead of just refusing new
+     entries.
+  3. Also worth checking, not yet investigated this pass: whether the
+     REAL bug might be specific to db-hq/events-hq/chat-hai's own
+     windows (which DID get real code changes this session - the
+     white-flash fix, alloc_pixel("#141414") swap) rather than the
+     taskbar binary itself (which was only ever rebuilt via the shared
+     build_khtpm_strip.sh script, never actually edited this session -
+     confirmed via a real byte-identical diff check before this
+     session's own Stage 2c taskbar reconnaissance concluded no port
+     was needed, see khtpm-merge-how2.md's own "SESSION CLOSE"
+     section). If "tb" in the user's report means the taskbar's own
+     top strip specifically (not a db-hq/events-hq/chat-hai sub-
+     window), the real regression - if there is one - almost
+     certainly predates this session's own changes, since the
+     taskbar's own source was never touched. Worth confirming directly
+     with the user which window(s) exactly are affected before
+     assuming "after refactor" means "caused by this session's work."

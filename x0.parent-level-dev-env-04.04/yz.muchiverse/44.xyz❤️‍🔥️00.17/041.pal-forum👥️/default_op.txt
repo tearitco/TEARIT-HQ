@@ -1,0 +1,8 @@
+# Custom operations for pal-forum's own prisc+x program, modeled
+# directly on pal-chain's own default_op.txt (same menu-only, no-map
+# shape - see that file for the real precedent this copies).
+# Format: name type handler {description}
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}
+forum_menu_input void ops/+x/forum_menu_input.+x {piece.pdl METHOD dispatch for whichever pal-forum screen is current}
+forum_compose_frame void ops/+x/forum_compose_frame.+x {render the current pal-forum screen into view.txt}

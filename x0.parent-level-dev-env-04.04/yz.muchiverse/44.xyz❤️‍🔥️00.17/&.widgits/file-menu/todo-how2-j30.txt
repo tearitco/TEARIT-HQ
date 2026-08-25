@@ -1,0 +1,264 @@
+STATUS UPDATE (2026-07-30, same day): all 3 bugs below FIXED, per the
+"BUG 2 first" order this file itself recommends. `field_active` added
+to fm_state.txt (ops/fm_menu_input.c: set on typed-char/backspace/
+PASTE, cleared on any arrow move; ops/fm_compose_frame.c: read for
+rendering). ESC now checks it first (clears + stays in file_browser
+if set; only exits to main_menu otherwise). Enter on cursor_pos==1
+(FILE field) now reassigns to confirm_idx and falls into the EXISTING
+confirm logic (no duplicated code) - fires regardless of field_active,
+since selecting a file entry from the directory listing also populates
+path_buffer without typing, and that flow must submit on Enter too.
+Cursor render now emits `[^] N. [value_]` while field_active, `[>]`
+while merely selected, `[ ]` otherwise - confirmed byte-for-byte
+matching the user's own originally-expected `[^] 2. [hi_]` format.
+
+VERIFIED: (1) rebuilt via scripts/build.sh, compiles clean (only
+pre-existing unrelated warnings); (2) re-ran @.apps/text-editor-xyz/
+test-harn-ed-app/scenarios/demo_save.sh (the existing, already-proven
+harness, which uses fm_paste()+digit-jump-to-confirm, NOT the new
+Enter/Esc paths) - still ALL PASS, confirming no regression to the
+already-shipped flow; (3) new behavior verified directly via isolated
+op calls (PRISC_PROJECT_ROOT pointed at a scratch fm_state.txt, real
+`fm_menu_input.+x <key>` invocations, not simulated) - typing 'hi' sets
+field_active=1 and path_buffer=hi; first ESC clears field_active only
+(mode stays file_browser, path_buffer preserved); second ESC (no
+longer active) exits to main_menu, matching the original behavior for
+that case; Enter on cursor_pos=1 with path_buffer set sends the
+command and clears path_buffer, identical to pressing Enter directly
+on the confirm row.
+
+CORRECTION (2026-07-30, same day, real human test): the isolated
+op-level testing above was NOT sufficient, exactly as PITFALL 63 warns
+- a real human test found a 4th real bug that BOTH the isolated tests
+above AND the first version of the real black-box harness below
+missed: Enter pressed on an EMPTY, not-yet-active FILE field fell into
+the submit branch, found nothing to submit, and silently did nothing -
+looked like "activation waits for a second keypress," because the
+NEXT keystroke (an actual character) is what silently engaged
+field_active. This is the exact interaction order this house's OTHER
+apps train users to try FIRST (press Enter on a field to activate it,
+per 102.editor-📄️00.00/102.agy-txt's own onClick="INTERACT"
+convention) - and neither the isolated op test nor the first real
+black-box harness pass ever tried it, both jumping straight to typing
+instead. Same root pattern as the 3 bugs this file already documents,
+caught by the same author while fixing them, in the same session -
+recorded honestly, not smoothed over. Fixed: `ops/fm_menu_input.c`'s
+Enter branch now checks `!field_active && !path_buffer[0]` first and
+ENGAGES (sets field_active=1) instead of attempting an empty submit;
+only falls through to the confirm_idx submit path once the field is
+already active OR already has real content (e.g. pre-filled by
+clicking a directory entry, which still must submit on Enter with zero
+typing involved).
+
+REAL BLACK-BOX HARNESS NOW BUILT (closes the "Level-2-harness follow-
+up" gap this file used to flag as missing): @.apps/text-editor-xyz/
+test-harn-ed-app/scenarios/demo_fm_typing_ux.sh - real per-character
+typing via interact_relay.txt (gl_mirror.c's own real format, matching
+this project's own buttonless-layout convention, NOT PASTE/digit-jump),
+real frame evidence captured and checked for the exact `[^]`/trailing-
+cursor render, real Enter-submits, real Esc-scoping (both presses),
+AND the Enter-first-to-activate case that was missed the first time.
+11/11 PASS. The two original, already-shipped scenarios (demo_save.sh,
+demo_load.sh) were re-run after every edit in this fix pass and still
+ALL PASS - no regression to the proven digit-jump/PASTE flow.
+
+STILL NOT DONE: a live, real-GL, real-keyboard HUMAN pass (the harness
+above is real key injection through the real running app, per §36.6,
+but is still not literally a human at a keyboard/GL window - the
+distinction PITFALL 63/§38 exist to name, and the one that already
+caught the 4th bug above once). Do that before considering this fully
+closed, then update this STATUS block.
+================================================================================
+todo-how2-j30.txt - 3 real bugs in file-menu's own file_browser mode,
+found via live human testing 2026-07-30 of @.apps/text-editor-xyz (the
+real widget pair - 102.editor-📄️00.00 + this widget), NOT via either
+project's own synthetic harness. Written for a virgin agent with zero
+conversation memory - every claim below cites exact file/line, read
+directly, not guessed.
+
+Context this file assumes you do NOT need to re-derive: file-menu's
+own file_browser mode (`ops/fm_menu_input.c`'s `handle_file_browser()`,
+line ~283-437, rendered by `ops/fm_compose_frame.c`) IS a real, working,
+complete directory browser - search, live path typing, descend into
+dirs, go up a level via a BACK entry, PASTE mode for emoji paths. This
+is NOT the same finding as `102.agy-txt/xyz-agy-handoff-j30.txt` (a
+SEPARATE project's own file browser, currently a much more minimal
+stub, still being planned against THIS file as its own blueprint - see
+that file's §3b for the cross-reference). This file is about 3 real
+BUGS in file-menu's own already-working implementation, not missing
+capability.
+================================================================================
+
+## 0. Fixed layout-index contract (needed to read the bugs below)
+
+`handle_file_browser()`, `ops/fm_menu_input.c` line ~298-310:
+```
+0 = SEARCH field
+1 = FILE field
+2 = BACK
+3 .. 2+entry_count = directory entries (live, re-scanned every dispatch)
+2+entry_count+1 = confirm button
+2+entry_count+2 = cancel button
+```
+`cursor_pos` (persisted in `pieces/system/fm_state.txt`) selects which
+row is current. Arrow keys move it; digit/Enter dispatch acts on
+whichever row `cursor_pos` currently points at.
+
+--------------------------------------------------------------------------------
+## BUG 1 - Enter on the FILE field does nothing (user: "hitting enter doesn't save the file")
+
+`ops/fm_menu_input.c`, inside `handle_file_browser()`, the `key == 10
+|| key == 13` branch, lines 318-321:
+```c
+if (cursor_pos == 0) {
+    /* SEARCH field selected; typing goes to search_text */
+} else if (cursor_pos == 1) {
+    /* FILE field selected; typing goes to path_buffer */
+}
+```
+Both branches are EMPTY - the comments describe what happens for
+PRINTABLE keys (handled separately, lines 417-436), not what Enter
+itself should do. Pressing Enter while `cursor_pos` is 0 or 1 falls
+through every other `else if` in this same block and hits the trailing
+`return;` at line 390 - genuinely a no-op. To actually save/load, the
+user must separately arrow-navigate DOWN to the confirm button's own
+index (`2+entry_count+1`) and press Enter THERE. Nothing in the UI
+currently tells the user this - after typing a filename, the obvious,
+expected action (press Enter) does nothing, which reads as "doesn't
+work" exactly as reported.
+
+**TPMOS/house-native comparison**: this house's own chtpm engine has a
+real, DIFFERENT, richer convention for exactly this - `<cli_io>`
+elements (`014.wsr-pal💸️📌️+2/system/chtpm_parser_pal.c`, the
+`strcmp(el->type, "cli_io") == 0` branch, line ~3393-3421) treat Enter
+as SUBMIT: syncs the typed value to gui_state, clears the input buffer,
+and fires `inject_raw_key(13)` - dispatching a real KEY:13 action to
+the project's own manager/op, i.e. Enter-in-the-field IS the confirm
+action, no separate button to navigate to. TPMOS's own
+`agy-text-editor_manager.c` (`1.TPMOS_c_+rmmp.0103.0001/projects/
+agy-text-editor/manager/`) relies on exactly this - its own
+`file_path_input`/`search_query` cli_io fields submit on Enter. FM's
+buttonless architecture never adopted an equivalent - it has no
+concept of "this specific row, when Enter is pressed, should trigger
+the SAME action as pressing Enter on the confirm row instead of doing
+nothing."
+
+**Fix direction (not yet implemented)**: cheapest real fix staying
+inside FM's own buttonless model - make the `cursor_pos == 1` (and
+arguably `== 0`) Enter branch DO what the confirm-index branch already
+does (jump to it: `cursor_pos = confirm_idx;` then fall through to that
+existing logic, OR literally call the same code path). Do not invent a
+parallel second implementation of the confirm logic - reuse the
+existing `cursor_pos == confirm_idx` branch (line 366-384) by either
+falling through to it or extracting it into a small helper both cases
+call.
+
+--------------------------------------------------------------------------------
+## BUG 2 - no "active typing" state; ESC always exits the whole browser (user: "the file name input never goes active so hitting esc exits the save as menu")
+
+`ops/fm_menu_input.c`, `handle_file_browser()`, line 312-316:
+```c
+if (key == 27) {
+    write_kv(fm_path, "mode", "main_menu");
+    write_kv(fm_path, "status_line", "");
+    return;
+}
+```
+ESC is handled ONCE, unconditionally, at the top of the function,
+regardless of `cursor_pos`. There is no separate "currently
+typing/engaged" state anywhere in `fm_state.txt` (compare to `mode`,
+`browse_mode`, `cursor_pos`, `search_text`, `path_buffer` - none of
+these represent "actively receiving keystrokes" as distinct from
+"this row happens to be selected"). Any printable key lands in
+`search_text`/`path_buffer` purely because `cursor_pos` is 0 or 1 at
+the time (lines 417-436) - there was never an explicit "engage" step
+to begin with, so there is nothing for ESC to narrowly undo. The user's
+report is exactly correct: there is no "active" state to enter, so ESC
+can only ever do the one thing it's coded to do - leave the whole
+browser.
+
+**TPMOS/house-native comparison**: `<cli_io>` elements have a REAL
+active/focused state, tracked by the engine itself (`active_gui_index`
+family, `is_interact_typing()`-equivalent tracking, `export_active_index()`
+in chtpm_parser_pal.c) - focusing a cli_io element is a distinct step
+from having it merely be the nearest selectable row, and ESC on a
+focused cli_io is understood by users as "stop typing here," not "leave
+this screen" (matching editor.chtpm's/agy-txt's own onClick="INTERACT"
+convention too - ESC exits INTERACT typing, stays on the same layout).
+FM's own file_browser mode has no equivalent third state.
+
+**Fix direction (not yet implemented)**: introduce a real
+"editing"/"engaged" boolean into `fm_state.txt` (e.g. `field_active=1`),
+set when the user does something explicit to begin typing into
+SEARCH/FILE (a real "engage" action is needed here, since FM currently
+has no such trigger AT ALL - could be as simple as Enter-on-the-row
+setting it, or a dedicated key), and change the ESC branch to check it
+first: if engaged, clear `field_active` and STAY in file_browser mode
+(matching the other apps' own ESC-exits-INTERACT-only convention);
+only exit to `main_menu` on ESC when NOT engaged. This is a real
+behavior change, not a one-line fix - do not ship it without a level-2
+harness scenario proving both ESC paths (engaged vs not) explicitly,
+since this is exactly the kind of interaction-order bug synthetic
+PASTE-only testing has already been shown (twice this handoff week) to
+miss.
+
+--------------------------------------------------------------------------------
+## BUG 3 - no cursor indicator on the FILE/SEARCH field while typing (user: expected `[^] 2. [hi_]`, got `[>] 2. [hi]` with no trailing marker)
+
+`ops/fm_compose_frame.c`, lines 103-110:
+```c
+fprintf(f, " SEARCH: [>] %d. [%s]\n", idx + 1, search_text);
+...
+fprintf(f, " SEARCH: [ ] %d. [%s]\n", idx + 1, search_text);
+...
+fprintf(f, " FILE:   [>] %d. [%s]\n", idx + 1, path_buffer);
+...
+fprintf(f, " FILE:   [ ] %d. [%s]\n", idx + 1, path_buffer);
+```
+Only TWO visual states exist here: `[>]` (this row is `cursor_pos`,
+i.e. selected) and `[ ]` (not selected) - there is no third `[^]`
+state, and `path_buffer`/`search_text` are printed with no trailing
+cursor glyph at all. This is a direct, expected CONSEQUENCE of BUG 2 -
+there is no "engaged/actively typing" state in `fm_state.txt` for this
+rendering code to check in the first place, so it has nothing to
+render a distinct indicator FOR. The `[^]` convention the user expects
+comes from the OTHER apps (agy-txt/editor's own INTERACT-typing status
+line uses exactly `[^]` for "engaged" vs `[>]`/`[ ]` for merely
+selected/unselected - see 102.agy-txt's own frame dumps from this same
+handoff week for a direct visual reference).
+
+**Fix direction (not yet implemented)**: once BUG 2 introduces a real
+`field_active` state, this is a small, mechanical follow-up: render
+`[^]` instead of `[>]` when `field_active` is set AND `cursor_pos`
+matches this row, and append a trailing `_` to `path_buffer`/
+`search_text` in that same case (matching agy-txt's own, separately
+cosmetic, `[X]`-suffix attempt at a cursor glyph - see
+`102.agy-txt/xyz-agy-handoff-j30.txt` §3 for that one; do NOT copy its
+exact hardcoded-`[X]` approach, it doesn't track position and reads
+oddly - a plain trailing `_` appended only while actually engaged, as
+shown in the user's own example, is the simpler, correct version).
+
+--------------------------------------------------------------------------------
+## Recommended fix order for a virgin agent
+
+1. BUG 2 first (introduce `field_active` in `fm_state.txt` + the real
+   engage trigger + the narrowed ESC branch) - BUG 1 and BUG 3 both
+   become simpler once this exists (BUG 1's fix can optionally require
+   `field_active` before treating Enter-in-field as submit, matching
+   cli_io's own "must be focused to submit" semantics; BUG 3's fix
+   reads directly off the new flag).
+2. BUG 1 (wire Enter-while-on-SEARCH/FILE to reuse the existing
+   confirm-index logic, not a new parallel implementation).
+3. BUG 3 (rendering follow-up, mechanical once 1-2 land).
+4. Add a level-2 harness scenario (real key injection, matching
+   `102.editor-📄️00.00/test-harn-ed-app`'s own established shape) that
+   explicitly drives: select FILE field -> type -> Enter (expect
+   submit, not no-op) -> separately, select FILE field -> type -> ESC
+   (expect still in file_browser, field cleared/disengaged, NOT kicked
+   to main_menu) -> confirm both via real state/frame assertions, not
+   just "it compiles." This class of bug (an interaction/state-machine
+   gap, not a data bug) has now been missed by synthetic testing twice
+   in one week (see chtpm_parser_pal.c gl_focus.lock fix and
+   102.agy-txt's own still-open path-display bug) - do not repeat that
+   pattern a third time here.
+================================================================================

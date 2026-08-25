@@ -1,0 +1,230 @@
+# AI-DEV-RESUME-aug1.txt — where to pick up, how to add value
+# For: future agents landing on this workspace. Read top to bottom, verify
+# every claim against disk (FILE-TRUTH), never assume. Written 2026-08-01.
+# Covers: 045.muchi-pal-agent + T@Q (tomom@qroq) + 046.open-gema (meta-gemma).
+
+=================================================================
+0. THE FAMILY MAP (3 projects, one escalation story)
+=================================================================
+You are in 44.xyz❤️‍🔥️00.10 (the "xyz/muchiverse" working dir). Three active
+projects, in this relationship:
+
+  T@Q (tomom@qroq)  ->  tiny C-language "LLM": per-curriculum expert weights,
+                        trained by a shell-out pipeline, human-readable text
+                        matrices. Located: #.Z.HUMAN_LLM/3.stage.llm.tomom@qroq.fame]921🐋️/
+
+  045.muchi-pal-agent🤖️+1 ->  the AGENT FRAMEWORK. gemma3:270m chat + tool
+                        router + iqabod distillation bank. It is the current
+                        "current agent framework" the user works in. Located:
+                        045.muchi-pal-agent🤖️+1/
+
+  046.open-gema🤖️+1  ->  the META-GEMMA loop: gemma authors its own
+                        src/agent.c via a builder loop, supervised by a
+                        bigger agent. Located: 046.open-gema🤖️+1/
+
+Escalation ladder (the dream): gemma handles small stuff -> hands UP to
+llama3 (or opencode) for management review -> instructions back DOWN ->
+loop until the human is barely involved. A NEW rung was proven live today
+(2026-08-01): opencode (this workspace's own CLI agent) can be called as an
+HTTP API by the 045 framework via ops/opencode_ask.c.
+
+=================================================================
+1. T@Q (tomom@qroq) — verified state, 2026-08-01
+=================================================================
+WHAT IT IS: a toy-but-real LLM in C. Vocab entries carry 7 floats
+(embedding, pe, weight, bias1..bias4); a forward pass = attention over the
+whole vocab -> residual -> ReLU MLP (7->16) -> output layer. Trained per
+curriculum by trainer.c shelling out to forward_prop/backward_prop/optimizer
+(~3000 subprocess spawns -> MUST run on the Mac, never on this box, R1).
+
+WHERE IT LIVES: #.Z.HUMAN_LLM/3.stage.llm.tomom@qroq.fame]921🐋️/
+  - 6 C sources (md5-SAME home vs Mac, verified): optimizer.c, backward_prop.c,
+    forward_prop.c, trainer.c, vocab_model.c, chatbot_moe_v1.c
+  - curriculum_bank.txt = 10 subject curricula (Astronomy..Programming)
+  - curriculum/<Subject>/<Subject>.txt = source corpus (vocab = word list)
+  - curriculum/<Subject>_train/ = TRAINED MATRICES (attention_model.txt,
+    mlp_model.txt, output_layer.txt, loss.txt) — generated ONLY on the Mac
+
+RECENT WORK (this session):
+  - Fixed perl rename corruption (G@H->T@Q; every capital G got clobbered).
+  - Wired chatbot_moe_v1.c to the trained matrices: it now runs the real
+    forward pass per curriculum (not just a 7-dim dot product). Verified
+    generating on all 10 trained subjects from the Mac.
+  - Retrained all 10 curricula on the Mac (each beats its uniform baseline):
+    Astronomy 4.081, Biology 4.352, Chemistry 4.133, Economics 4.083,
+    Geography 4.011, History 4.324, Literature 4.209, Mathematics 4.673,
+    Physics 4.499, Programming 4.149. ALL PULLED HOME (backup on this box).
+  - macsync.sh harness: push/pull/check. CRITICAL RULES baked in:
+      * push EXCLUDES curriculum/*_train/  (never deleted, never sent)
+      * push AND pull EXCLUDE +x/*.+x      (platform binaries; each machine
+        builds its own - Linux ELF here, Mach-O on the Mac)
+      * pull BRINGS curriculum/*_train/ home = this box is the backup.
+    History: push --delete once wiped the Mac's trained matrices. The
+    excludes exist precisely so that can never happen again. DO NOT REMOVE.
+
+HOW TO TRAIN / PICK UP:
+  - Train on the Mac (only): sshpass -p 1234 ssh lfs.master@10.0.0.144
+      cd tomom-qroq && ./+x/trainer.+x curriculum/<Subject>_train/<Subject>_train.txt
+  - After training on the Mac: run ./macsync.sh pull (from #.Z.HUMAN_LLM) so
+    the matrices are backed up home. NEVER push over un-pulled Mac edits.
+  - Rebuild binaries on each machine after code changes (gcc *.c -lm).
+  - config.txt in corpus]similarity10 sets the working hyperparams:
+    epochs=10, lr=0.001, beta1=0.9, beta2=0.999, max_grad_norm=1.0,
+    dropout 0.1/0.2, noise 0.01/0.005. Default lr=1e-5 never leaves the
+    random floor (proven).
+
+NEXT USEFUL VALUE (unfinished threads):
+  - Chatbot generates from trained matrices but responses are still naive
+    (toy model, 7-dim embeddings). Natural next step: bigger EMBEDDING_DIM /
+    HIDDEN_DIM and re-train, or feed chatbot the context window (it currently
+    uses only the last word).
+  - debug_chain.txt logging exists; no harness yet asserts chatbot quality.
+  - http_server.c exists (127.0.0.1) — could serve the chatbot as a LAN API
+    for the 045 agent to call.
+
+=================================================================
+2. 045.muchi-pal-agent — verified state, 2026-08-01
+=================================================================
+WHAT IT IS: the user's live agent framework. gemma3:270m over the LAN
+routes intent through deterministic C ops; iqabod (IQABELLA) is a bank of
+small per-curriculum experts + a router, trained by distillation (teacher =
+llama3/gemma). THIS box orchestrates only — never model compute.
+
+READ FIRST (in this order):
+  - agent-onbording.txt  (who you work for, house standards, constraints)
+  - agent-gl-plan.txt    (current GL/RGB window plan)
+  - CHAT-INTEGRATION-ARCHITECTURE.txt (goal design for chtpm chat)
+  - !.GRAND-PLAN-TOOL-SCAFFOLD.txt    (the tool/FSM scaffold)
+  - ROADMAP-models.txt   (big-picture model roadmap)
+  - lan-paths.txt        (the three machines, endpoints, storage rules)
+  - ⛔️.compute-constraint.READ-FIRST.txt (never run models on this box)
+
+HOUSE CONVENTIONS (non-negotiable):
+  - ops are SELF-CONTAINED C binaries in ops/ (built to ops/+x/). They talk
+    via state files / files on disk; no persistent memory between runs.
+  - FILE-TRUTH: verify by reading files, never assume. grep, not rg.
+  - harness-before-hype: prove with tests (see %.harnesses/).
+  - Emoji-heavy names/headers; terse writing.
+  - Only commit/push when explicitly asked. Ask before deleting anything.
+
+VERIFIED STATE:
+  - Tool pipeline WORKS: list_dir, write_file, edit_file, read_file,
+    exec_cmd, search_in_files — deterministic keyword routing, 5/5 harness
+    passes. model_after_tool=no (tool result IS the answer).
+  - gemma3:270m CANNOT write code (proven) — chat/tools only.
+  - llama3:latest (Mac) writes correct, playable code.
+  - iqabod mechanism works (trains ~0.1s/10 epochs on Linux node), loss
+    plateaus at random floor without lr=0.1 in store config.txt.
+  - ops/+x/opencode_ask.+x  **NEW TODAY** — calls headless opencode serve as
+    a full agent arm over HTTP (see section 4). TESTED LIVE.
+
+NEXT USEFUL VALUE (unfinished threads):
+  - chtpm chat UI (CHAT-INTEGRATION-ARCHITECTURE.txt) — the agent is still
+    on the old prisc+x/renderer stack; the family has moved to chtpm.
+  - GL window (agent-gl-plan.txt): renderer/chtpm_rgb_render/gl_mirror need
+    syncing from wsr-pal and a real build path.
+  - FSM engine / RL bank / qualifications registry / school layer / harvest
+    room-to-corpus op (all designed, not built — see ROADMAP + onboarding).
+  - iqabod conversational quality: LR fix proven, next is better curricula.
+
+=================================================================
+3. 046.open-gema (meta-gemma) — verified state, 2026-08-01
+=================================================================
+WHAT IT IS: a CLI coding agent (mini-opencode) that runs on gemma3:270m.
+gemma does NOT write big code from nothing — it routes intent through
+deterministic C tools (ops/) and reasons over tiny RAG windows. The
+deliverable is src/agent.c, authored by gemma itself through the builder
+loop. THIS box supervises; gemma computes on the Mac (10.0.0.144:11434).
+
+READ FIRST: SUPERVISION-HANDOFF.txt (supervisor rules R1-R6, current state,
+how to ask gemma, traceability T1-T4, warning signs). Also DESIGN-DOC.txt
+(supervisor view) + ARCH-DOC.txt (agent view).
+
+VERIFIED STATE:
+  - ops/ populated and PROVEN: connect_op, json_parser, list_dir,
+    edit_file, search_in_files, cmd_exec.
+  - rag/ has build_index.c, rag_search.c, compact.c; memory/ has generated
+    inverted indexes (index.pdl, index-compact.pdl).
+  - harness/ is EMPTY — k3-cli.sh NOT yet written. This is the next real
+    piece of work (per handoff, recommended move #3).
+  - src/agent.c is EMPTY — the builder loop has NOT run yet.
+  - builder/ (steps/ + run.sh) described but NOT created.
+
+NEXT USEFUL VALUE (recommended order from handoff):
+  1. create builder/run.sh + builder/steps/01-bootstrap.txt (echo loop)
+  2. run the builder for step 01 to prove gemma can author ANYTHING
+  3. write harness/k3-cli.sh with K1..K8 (or at least K1/K2 first)
+  4. loop steps 01..07 per DESIGN-DOC section 4
+  5. whenever a step fails 3x -> improve the TOOLS, record why in memory/
+
+=================================================================
+4. NEW: opencode as an API arm (proven live today)
+=================================================================
+opencode (this workspace's CLI agent) can be called over HTTP by the 045
+framework — a new escalation rung above llama3, WITH full tool use.
+
+HOW TO START THE SERVER (from the project dir you want it rooted in):
+  setsid opencode serve --port 4123 --hostname 127.0.0.1 \
+        < /dev/null > /tmp/opencode/serve.log 2>&1 &
+
+VERIFY: curl -s http://127.0.0.1:4123/global/health  -> {"healthy":true}
+
+CALL IT (op built today, 045 house style):
+  cd 045.muchi-pal-agent🤖️+1
+  ./ops/+x/opencode_ask.+x "your question"            # defaults to :4123
+  ./ops/+x/opencode_ask.+x "your question" "http://127.0.0.1:4123"
+
+WHAT THE OP DOES: POST /session -> {id} -> POST /session/<id>/message with
+the question -> prints the text parts of the reply. Same curl shape as
+connect_op (600s max-time, -sS). Exit 0 = got a reply.
+
+KEY API FACTS (server spec at http://<host>:<port>/doc):
+  - POST /session                  create a thread (returns {id,...})
+  - POST /session/<id>/message     send prompt, WAITS for reply
+    body: {"parts":[{"type":"text","text":"..."}]}
+  - GET  /session/<id>/message     list messages
+  - GET  /session                  list sessions (shares the TUI's DB)
+  - The server shares the local session database with the TUI: don't create
+    throwaway sessions without cleaning up (DELETE /session/<id>).
+  - auth: set OPENCODE_SERVER_PASSWORD for basic auth.
+
+LIVE-TESTED OUTPUT (2026-08-01):
+  $ ./ops/+x/opencode_ask.+x "Reply with exactly: BRIDGE_OK"
+  BRIDGE_OK
+  $ ./ops/+x/opencode_ask.+x "List the files in ops/ and name the first"
+  Files in `ops/`: `+x/` directory and 27 files. First alphabetically: `+x/`
+
+LESSONS / BUGS CAUGHT TODAY (all fixed):
+  - The prompt must be JSON-escaped and QUOTED inside the body
+    ("text":"...") — an unquoted %s produced invalid JSON and the server
+    returned an error part with no text (silent no-reply). Fixed + tested.
+  - Server working dir = the dir you launched it in. Launch it inside the
+    project you want it to work on (else it searches from the wrong root).
+
+=================================================================
+5. HOW TO ADD VALUE (future agents) — the meta-rule
+=================================================================
+- For each of the 3 projects, the highest-value unfinished thread is listed
+  at the end of its section above. Pick ONE, do it, verify it (harness /
+  compile / md5), leave a trace (append to the project's convo/log files).
+- CROSS-CUTTING opportunity: wire the T@Q chatbot (http_server.c exists) as
+  a LAN API the 045 agent can call, and/or use opencode_ask as the "teacher"
+  for iqabod distillation instead of llama3.
+- The 046 meta-gemma loop's #1 blocker is harness/ empty. Writing k3-cli.sh
+  is the single most useful thing you can do there.
+- Never run model training/inference on THIS box (compute constraints).
+- After any Mac-side code edit: ./macsync.sh pull, then verify C sources
+  SAME (./macsync.sh check). This box is source of truth for code.
+
+=================================================================
+6. END-TO-END VERIFICATION (run these before you claim anything)
+=================================================================
+  # T@Q sync integrity:
+  cd #.Z.HUMAN_LLM && ./macsync.sh check          # expect all SAME
+  # 10 trained models backed up home:
+  ls #.Z.HUMAN_LLM/3.stage.llm.tomom@qroq.fame]921🐋️/curriculum/*_train/ | wc -l   # 10
+  # opencode API arm:
+  curl -s http://127.0.0.1:4123/global/health     # expect {"healthy":true}
+  cd 045.muchi-pal-agent🤖️+1 && ./ops/+x/opencode_ask.+x "Reply with: OK"
+  # 046 harness (should exist once built):
+  test -x 046.open-gema🤖️+1/harness/k3-cli.sh && echo "harness present"

@@ -1,0 +1,35 @@
+# New Agent Implementation Prompt: Emoji Pipeline
+
+## Goal
+Implement a C/OpenGL/GLUT application ("emoji-studio") that renders a 2D emoji picker using FreeType and a 3D voxel representation of the selected emoji based on a generated CSV file.
+
+## Requirements
+1.  **Picker UI (2D):**
+    - Render a list of emojis using `FreeType` and the `/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf` font.
+    - Map emoji name to codepoint using `#.emoji.xtract.stb]c4/parsed_emojis.txt`.
+    - User clicks an emoji to select it.
+
+2.  **Voxel Pipeline (3D):**
+    - When an emoji is selected, generate a single `.csv` file representing the emoji at a specific resolution (8, 16, 32, or 64).
+    - The CSV must contain `r,g,b,a` data for each pixel.
+    - If the CSV for that emoji/resolution already exists, skip regeneration.
+    - Render the emoji as a 3D object:
+        - `8x8` CSV -> `8x8` grid, extruded 8 voxels high.
+        - `64x64` CSV -> `64x64` grid, extruded 64 voxels high.
+        - The total object size remains constant (64x64x64 volume), but subvoxel size varies.
+    - Support metadata in the CSV for scale, transformation, and positioning within the 64x64 space.
+
+3.  **Architecture:**
+    - Use `fork()`/`exec()` to orchestrate the generation of CSVs using the provided extraction tools (located in `#.emoji.xtract.stb]c4/+x/`).
+    - The host handles the UI and OpenGL rendering.
+
+4.  **Files Provided:**
+    - `#.emoji.xtract.stb]c4/parsed_emojis.txt`: Mapping for picker.
+    - `emoji-studio_host.c`: The host application (needs refinement).
+    - `store-chuu.txt`: Architectural requirements.
+
+## Current Tasks
+1.  Fix syntax errors in `emoji-studio_host.c` (likely caused by previous `write_file` mishaps).
+2.  Implement `initFreeType` to correctly populate the picker.
+3.  Implement `generate_voxel_csv` using the `xtract` tools (orchestration via `fork`/`exec`).
+4.  Implement the OpenGL rendering loop to read the generated CSVs and render them as 3D voxel grids with varying extrusion heights based on resolution.

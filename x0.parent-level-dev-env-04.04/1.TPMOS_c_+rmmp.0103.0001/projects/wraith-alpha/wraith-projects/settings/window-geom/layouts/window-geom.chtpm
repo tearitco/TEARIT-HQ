@@ -1,0 +1,25 @@
+<layout id="window-geom">
+    <module>projects/wraith-alpha/wraith-projects/settings/window-geom/manager/+x/window-geom_manager.+x</module>
+    <panel>
+        <text label="WINDOW GEOMETRY" /><br/>
+        <text label=" " /><br/>
+        <text label="Current: ${current_geometry}" /><br/>
+        <text label=" " /><br/>
+        <text label="Edit via CLI Input:" /><br/>
+        <cli_io id="edit_x" label="  X position" target_id="1" /><br/>
+        <cli_io id="edit_y" label="  Y position" target_id="2" /><br/>
+        <cli_io id="edit_width" label="  Width" target_id="3" /><br/>
+        <cli_io id="edit_height" label="  Height" target_id="4" /><br/>
+        <text label=" " /><br/>
+        <text label="Or use buttons:" /><br/>
+        <text label="  X: " /><button label="[-]" onClick="KEY:5" /><text label=" [edit_x] " /><button label="[+]" onClick="KEY:6" /><br/>
+        <text label="  Y: " /><button label="[-]" onClick="KEY:7" /><text label=" [edit_y] " /><button label="[+]" onClick="KEY:8" /><br/>
+        <text label="  W: " /><button label="[-]" onClick="KEY:9" /><text label=" [edit_width] " /><button label="[+]" onClick="KEY:10" /><br/>
+        <text label="  H: " /><button label="[-]" onClick="KEY:11" /><text label=" [edit_height] " /><button label="[+]" onClick="KEY:12" /><br/>
+        <text label=" " /><br/>
+        <button label="[ 13 ] Apply Changes" onClick="KEY:13" /><br/>
+        <button label="[ 14 ] Back to Settings" onClick="DESKTOP_ACTION:navigate_active_window:wraith-alpha/wraith-projects/settings" /><br/>
+        <text label=" " /><br/>
+        <text label="${edit_status}" /><br/>
+    </panel>
+</layout>

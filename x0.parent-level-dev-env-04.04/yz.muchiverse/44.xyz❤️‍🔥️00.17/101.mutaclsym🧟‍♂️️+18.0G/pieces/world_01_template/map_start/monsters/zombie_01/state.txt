@@ -1,0 +1,4 @@
+monster_type=zombie
+pos_x=22
+pos_y=9
+hp=20

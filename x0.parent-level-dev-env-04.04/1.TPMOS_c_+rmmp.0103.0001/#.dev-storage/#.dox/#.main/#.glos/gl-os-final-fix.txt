@@ -1,0 +1,77 @@
+================================================================================
+GL-OS FINAL FIX (April 2, 2026)
+================================================================================
+
+ISSUE: GL-OS ASCII layout showed empty values for ${bg_color}, ${window_count}, ${desktop_view}
+
+ROOT CAUSE: Parser's load_vars() function wasn't loading GL-OS session state.
+- load_vars() loaded: pieces/apps/player_app/state.txt
+- load_vars() loaded: pieces/apps/player_app/manager/state.txt
+- load_vars() DID NOT load: pieces/apps/gl_os/session/state.txt
+
+The GL-OS specific variables (bg_color, window_count, desktop_view, gl_response)
+were written to pieces/apps/gl_os/session/state.txt by gl_desktop.c, but the
+parser never loaded them for variable substitution.
+
+FIX APPLIED:
+Added GL-OS session state loading in load_vars() function:
+
+    // GL-OS SESSION STATE (loads bg_color, window_count, desktop_view, etc.)
+    if (strstr(current_layout, "pieces/apps/gl_os/layouts/desktop.chtpm") != NULL) {
+        load_state_file("pieces/apps/gl_os/session/state.txt", NULL);
+    }
+
+This ensures that when the GL-OS desktop layout is active, the parser loads
+the GL-OS session state file which contains:
+- bg_color=#000044
+- window_count=N
+- desktop_view=DESKTOP_VIEW\nBG: #000044\nWINDOW_COUNT: N\nWINDOW | ...
+- gl_response=
+
+STATE FILE LOADING ORDER:
+1. pieces/apps/player_app/state.txt (base state)
+2. pieces/apps/player_app/manager/state.txt (engine state)
+3. pieces/apps/gl_os/session/state.txt (GL-OS specific - loaded LAST to override)
+
+VERIFICATION:
+After launching GL-OS, the ASCII layout should show:
+╔═══════════════ G L - O S   D E S K T O P ═══════════════╗
+║  BG: #000044                                      ║
+║  Windows: 1                               ║
+╠═══════════════════════════════════════════════════════════╣
+DESKTOP_VIEW
+BG: #000044
+WINDOW_COUNT: 1
+WINDOW | 1 | 70 | 70 | 400 | 300 | Terminal 1 | terminal | 0
+
+╠═══════════════════════════════════════════════════════════╣
+║  [t] New Terminal  [f] New Folder  [n] New File         ║
+║  [c] Close Window  [ESC] Deselect                       ║
+╠═══════════════════════════════════════════════════════════╣
+║  Response:                                ║
+╚═══════════════════════════════════════════════════════════╝
+
+================================================================================
+SUMMARY OF ALL GL-OS FIXES
+================================================================================
+
+1. Removed projects/gl-os/ (never supposed to exist)
+   - Was developmental scaffolding
+   - GL-OS is APP-ONLY
+
+2. Fixed parser LAUNCH:GL-OS handling
+   - Changed module from gl_os_session.+x to gl_desktop.+x
+   - Removed set_var("project_id", "gl-os") - GL-OS is APP, not PROJECT
+
+3. Added desktop state variables to gl_desktop.c write_gl_os_state()
+   - Added: bg_color=#000044
+   - Added: name=Desktop, type=desktop, pos_x=0, pos_y=0, width=800, height=600
+   - Added: session_status=active
+   - Added: desktop_view (reads from view.txt)
+   - Added: gl_response (default empty)
+
+4. Added GL-OS session state loading in parser load_vars()
+   - Loads pieces/apps/gl_os/session/state.txt when GL-OS layout is active
+   - Provides bg_color, window_count, desktop_view, gl_response variables
+
+================================================================================

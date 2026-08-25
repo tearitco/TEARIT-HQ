@@ -1,0 +1,6 @@
+My Balance Sheet: United Clones
+Cash (CD's)..		31.8000
+Other Assets....		25.4400
+Total Assets.....		104.9400
+Less Debt....		-63.6000
+Net Worth........		11.1300

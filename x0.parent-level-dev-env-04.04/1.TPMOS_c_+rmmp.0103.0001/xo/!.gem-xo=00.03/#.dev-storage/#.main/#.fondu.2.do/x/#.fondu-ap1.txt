@@ -1,0 +1,38 @@
+# Fondu Architecture: App Installation & Lifecycle Specification - April 1, 2026
+
+## 1. VISION
+"Fondu" is the internal TPMOS system for melting the boundary between "Project Source" and "Installed App". It provides a production-ready, non-editable deployment target while allowing for a lighter developer environment by moving inactive projects to a "Trunk" directory.
+
+## 2. PROJECT RE-CATEGORIZATION
+The workspace will now follow three distinct life-stages:
+- **`projects/` (Active):** Editable source code. Included in daily dev builds.
+- **`pieces/apps/installed/` (Production):** Non-editable binaries and required assets. Populated via Fondu.
+- **`projects/trunk/` (Archived):** Source-only storage for finished or dormant projects. Excluded from standard compile cycles to save time.
+
+## 3. INSTALLER ARCHITECTURE ("The Fondu Installer")
+The installer (`fondu.+x`) will be a standalone C utility with the following responsibilities:
+
+### A. Source Acquisition
+- Recursively pull all `.c`, `.h`, `.chtpm`, and `.pdl` files from a specified source directory (local folder or remote mount).
+- Maintain internal directory structure integrity (e.g., `pieces/`, `manager/`, `layouts/`).
+
+### B. Automated Compilation
+- Detect and execute a project-specific build script (or use a standard Fondu build template).
+- Generate platform-specific binaries for the target environment (Linux/Windows).
+- Place executables into `pieces/apps/installed/<app_id>/+x/`.
+
+### C. Registry Management
+- Automatically update `pieces/os/app_list.txt` to register the new app.
+- Update `pieces/os/project_routes.kvp` to map the app to its default layout.
+
+## 4. LEGACY DEPRECATION PLAN
+As part of the shift to Fondu and Ops-based development, the following will be decommissioned:
+- **Deprecated Pieces:** `pieces/apps/fuzzpet_app`, `pieces/apps/editor`, `pieces/apps/gl_os`.
+- **Primary Alternative:** All functionality is now encapsulated within `projects/fuzz-op`, `projects/op-ed`, and `projects/gl-os`.
+- **Cleanup:** Legacy code will be moved to `projects/trunk/legacy_archive/` once parity is fully verified.
+
+## 5. NEXT STEPS
+1. Create `pieces/apps/installed/` directory.
+2. Create `projects/trunk/` directory.
+3. Develop the core `fondu.c` installer logic.
+4. Port `fuzz-op` as the first "Fondu-Installed" production app.

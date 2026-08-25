@@ -1,0 +1,9 @@
+auth_screen=0
+username_input=
+password_input=
+auth_response=Ready.
+session_status=IDLE
+current_user=
+last_key=
+active_target_id=0
+input_mode=text

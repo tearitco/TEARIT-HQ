@@ -1,0 +1,15 @@
+RELATION | bravo-moxie | 4
+RELATION | moxie-pip | 9
+RELATION | pip-sage | 6
+RELATION | echo-nova | 240
+RELATION | nova-quill | 213
+RELATION | echo-quill | 220
+RELATION | moxie-sage | 5
+RELATION | bravo-sage | 5
+RELATION | bravo-pip | 4
+RELATION | daoist-evolutionist | 93
+RELATION | evolutionist-theologian | 78
+RELATION | daoist-theologian | 82
+RELATION | evolutionist-synthesist | 5
+RELATION | synthesist-theologian | 7
+RELATION | daoist-synthesist | 2

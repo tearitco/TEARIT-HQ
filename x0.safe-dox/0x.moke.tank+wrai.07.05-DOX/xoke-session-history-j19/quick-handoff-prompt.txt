@@ -1,0 +1,58 @@
+Quick Handoff Prompt
+
+Start here:
+- `communication-doc.txt`
+- `quick-summary.txt`
+- `progress-report-j19.txt`
+
+Goal:
+- keep moke-pet autonomous
+- keep XO-PET optional
+- keep the live CHTPM project surface as the main manual control path
+- the autonomous root manager has already been moved into `pieces/world_tank_01/`
+- `sh button.sh auto` was re-verified after the move
+- continue with the concise `acts:` end-turn output work next
+
+Important current truth:
+- visible switcher name should be `xolector`
+- `xelector` is only a compatibility alias
+- project controls are separate from pet methods
+- pets must expose `release` / `esc`
+- pets should expose `ai`
+- `ai` should only advance one step unless resume is active
+- follow the fuzz-op convention: commands come from one history file and the manager owns the state transition
+
+What was fixed:
+- controller runner now writes ASCII key codes
+- the manager now watches `projects/xo-pet-v1/history.txt` and the shared `pieces/keyboard/history.txt`
+- the manager now buffers numeric nav input and commits on `Enter`
+- the manager now treats numeric `1/2/3` as project controls
+- launcher accepts `r` as a controller alias
+- project controls are split from active methods
+- live XO-PET layout now interpolates runtime fields correctly
+- `sh button.sh c` now rebuilds the XO-PET manager binary as part of the compile flow
+- `STEP` now writes compact `acts:` turn summaries into the live XO-PET frame
+
+First tests to run:
+1. `sh button.sh auto`
+2. `sh button.sh r`
+3. navigate to `xo-pet-v1`
+4. verify the menu shows project controls, pet switcher, and methods
+5. verify step count, sim status, and log update when pressing `3` then `Enter`
+6. if the controller is used, verify `PAUSE`, `SET_POSSESS`, and `STEP` land through `projects/xo-pet-v1/history.txt`
+7. after the autonomous move, verify the concise `acts:` turn summary is still being emitted
+
+If the live menu looks wrong:
+- inspect `x0.moke-pet-project-2.2/x0.5-liz.fiter4-mew-00.02/projects/xo-pet-v1/manager/xo-pet_manager.c`
+- inspect `x0.moke-pet-project-2.2/x0.5-liz.fiter4-mew-00.02/projects/xo-pet-v1/layouts/xo-pet.chtpm`
+- inspect the ASCII-vs-raw input conversion in the controller runner
+
+Do not:
+- add `<interact>` yet
+- move simulation logic into the renderer
+- depend on the monolith as the active bundle
+- start turn-summary refactors before the autonomous manager move is validated
+- add a second controller command path for `STEP`
+
+Rollback note:
+- if the next pass regresses, restore the current manager binary from `projects/xo-pet-v1/pieces/manager/+x/xo-pet-v1_manager.+x` and compare `projects/xo-pet-v1/history.txt` against the manager input thread first

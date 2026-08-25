@@ -1,0 +1,597 @@
+================================================================================
+ARCHI_TEST_SUM-J28.txt — Architecture & Test Summary
+Session date: 2026-07-27 → 2026-07-28
+House: 44.xyz… / muchiverse
+Audience: YOU (manual tester) + future agents
+================================================================================
+
+WHY THIS FILE EXISTS
+--------------------
+A lot was built in one long session (editor, START_BUTTON, widgets, mutaclysm
+save/load, map-picker, tile-picker, proc-monitor, docs). **Agent coding for
+the agreed scope is FINISHED** (re-verified ALL PASS 2026-07-28 — see §10).
+You have not fully hand-tested it. This is the checklist to go down **in
+priority order**.
+
+Also: agent runs left long `sleep` processes and broad kills that can thrash
+the machine. Prefer the harness `./button.sh demo` scripts (they should
+cleanup). If CPU spikes: check for leftover `sleep 60`/`sleep 120`/`sleep 300`
+from harnesses and kill **those PIDs only**, not blanket pkill on the house.
+
+================================================================================
+0. PRIORITY ORDER FOR YOUR MANUAL TESTING
+================================================================================
+
+Do these first (highest risk / highest value):
+
+  P0  Mutaclysm still plays (did we break the game?)
+  P1  Editor INTERACT + file-menu LOAD/SAVE (original product path)
+  P2  Mutaclysm user save slots via file-menu ops (demo-project / NEW / LOAD)
+  P3  Map-picker switch map + xlector teleport
+  P4  Tile-picker PLACE_TILE on map.txt
+  P5  Proc-monitor register / focus / kill
+  P6  START_BUTTON category launcher (if you care about dock UX)
+  P7  Docs-only sanity (README / plans — no “run”, just skim)
+  P8  Event Editor RMMV GLUT mock (look/nav only — see §11)  [later same session]
+
+Within each priority: run the **harness demo first** (fast, no human UI),
+then optional **live human** smoke if green.
+
+================================================================================
+1. WHAT WAS DONE THIS SESSION (inventory)
+================================================================================
+
+1.1 102.editor (AGY text editor)
+  - INTERACT canvas typing, backspace, enter, arrows (L/R + U/D line)
+  - NEW / CLEAR / EXIT methods
+  - Widget cmd bus: editor_widget_cmds.+x
+      inbox: LOAD: / SAVE / SAVE_AS: / NEW / PING
+      files: pieces/system/widget_cmds/*, widget_bridge.txt,
+             editor_buffer.txt, editor_state.txt
+  - Idle drains widget inbox (no unconditional frame spam for that path)
+  - Harness: test-harn-same/scenarios/demo_interact_canvas.sh
+  - Multi-project: %.harnesses/file-menu+editor/
+
+1.2 &.widgits/file-menu
+  - Ops (not full GL UI yet):
+      fm_set_focus.+x   — point at host session (reads widget_bridge)
+      fm_enqueue_cmd.+x — NEW/SAVE/LOAD/SAVE_AS (editor)
+                          SEED_DEMO/SAVE_GAME_AS/LOAD_GAME/NEW_GAME (muta)
+                          LIST_MAPS/SWITCH_MAP (muta maps)
+  - Focus records kind=text_buffer | game_world
+
+1.3 101.mutaclsym (world IO — NEW ops, did not rewrite game loop)
+  - muta_world_io.+x  seed-demo | save | load | new-game | list
+  - muta_widget_cmds.+x  drains game cmds + map cmds + place tile
+  - muta_map_io.+x    list | switch | current  (hero map_id + pos + xlector)
+  - muta_place_tile.+x  ASCII cell write into map.txt
+  - LIVE world still: pieces/world_01/
+  - User slots (harness/fake or real): …/saves/<slot>/world_01/
+  - demo-project seed from live or world_01_template
+
+1.4 &.widgits/map-picker
+  - mp_list_maps.+x, mp_switch_map.+x
+  - Harness: %.harnesses/map-picker+mutaclysm/
+
+1.5 &.widgits/tile-picker
+  - tp_set_brush.+x, tp_place.+x
+  - Harness: %.harnesses/tile-picker+mutaclysm/
+  - v1: **ASCII glyphs only** on terrain map.txt (not full emoji paint yet)
+
+1.6 &.widgits/proc-monitor
+  - runtime_register / runtime_list [--gc] / runtime_focus / runtime_kill [--soft]
+  - Harness: %.harnesses/proc-monitor/
+  - Registry root is **caller-supplied** (not auto-wired into mutaclysm/editor
+    button.sh yet)
+
+1.7 *.START_BUTTON
+  - Category pre-screen: System / Widgets / Apps / App Store
+  - Auto-compile on run (dev)
+  - Same-TTY handoff for launching System apps
+  - scan_root=.. for house programs
+  - Harness: test-harn-same for home/system list (earlier)
+
+1.8 Documentation (no “product” UI)
+  - ❤️.XYZOS_README.md (or XYZOS_README.md) — onboarding bible
+  - %.harnesses/muta-zoo.md
+  - &.widgits/WIDGETS_ROADMAP.txt
+  - &.widgits/GL_CHROME_WIDGETS_PROPOSAL.md
+  - #.notes/AFTER-widgets-apps-store.txt  (@apps only after lived combo)
+  - USER_REPORT.txt under several harnesses/widgets
+  - Standards: #.haiku+ §34 idle spam, §35 GL primary, §36 harness placement
+               pitfalls 48–49
+
+1.9 Intentionally NOT built yet
+  - Full GL chrome for widgets (proposal only)
+  - Emoji multi-byte tiles on map
+  - Click-on-map paint (use coords/cmd for now)
+  - Auto runtime_register on every button.sh run
+  - Real xyzfs login path for saves (harnesses use workdir user_fs)
+  - @.apps install / app-store UX
+  - File-menu visual chtpm menus (ops-only)
+
+================================================================================
+2. HOW TO TEST — COMMANDS (copy/paste)
+================================================================================
+
+From house root (44.xyz…):
+
+--- P0 Mutaclysm not broken (LIVE human preferred) ---
+  cd 101.mutaclsym*
+  ./button.sh compile    # if needed
+  ./button.sh run        # or run --pal if that’s your habit
+  # Play 30–60s: move, see map, open GL if you use it, quit cleanly (Ctrl+C)
+  # EXPECT: game still runs; no crash on start; world maps present
+
+--- P1 Editor canvas unit harness ---
+  cd 102.editor*
+  ./test-harn-same/button.sh demo
+  # EXPECT: ALL PASS (type, backspace, arrows, CLEAR)
+  # Proof: 102.editor*/proof/harness-*/
+
+--- P1b Editor × file-menu (CRITICAL product path) ---
+  cd %.harnesses/file-menu+editor
+  ./button.sh demo
+  # EXPECT: ALL PASS
+  #   LOAD fixture → buffer match
+  #   SAVE_AS → disk match
+  #   NEW → empty buffer
+  # Proof: %.harnesses/file-menu+editor/proof/
+
+--- P2 Mutaclysm × file-menu saves ---
+  cd %.harnesses/file-menu+mutaclysm
+  ./button.sh demo
+  # EXPECT: ALL PASS
+  #   SEED demo-project
+  #   SAVE_GAME_AS t1
+  #   mutate live map; LOAD t1 restores
+  #   NEW_GAME; demo still loadable; LOAD demo-project
+  # Proof: %.harnesses/file-menu+mutaclysm/proof/
+
+--- P3 Map-picker ---
+  cd %.harnesses/map-picker+mutaclysm
+  ./button.sh demo
+  # EXPECT: list maps; SWITCH_MAP map_02 teleports hero+xlector; back to map_start
+  # Proof: %.harnesses/map-picker+mutaclysm/proof/
+
+--- P4 Tile-picker ---
+  cd %.harnesses/tile-picker+mutaclysm
+  ./button.sh demo
+  # EXPECT: cell becomes T then X on map_start map.txt
+  # Proof: %.harnesses/tile-picker+mutaclysm/proof/
+
+--- P5 Proc-monitor ---
+  cd %.harnesses/proc-monitor
+  ./button.sh demo
+  # EXPECT: register/list/focus/soft/kill/gc PASS
+  # Proof: %.harnesses/proc-monitor/proof/
+  # NOTE: uses short-lived sleep PIDs; should clean up. If not, kill those PIDs.
+
+--- P6 START_BUTTON (optional human) ---
+  cd *.START_BUTTON
+  ./button.sh compile
+  ./button.sh run
+  # EXPECT: HOUSE LOADER; System lists house apps; Esc/Ctrl+C clean
+  # Optional: open System → 102.editor (same-TTY handoff — editor takes terminal)
+
+--- P7 Docs skim ---
+  ❤️.XYZOS_README.md  (or XYZOS_README.md)
+  %.harnesses/muta-zoo.md
+  &.widgits/GL_CHROME_WIDGETS_PROPOSAL.md
+  #.notes/AFTER-widgets-apps-store.txt
+
+================================================================================
+3. WHAT TO TEST *FOR* (pass criteria)
+================================================================================
+
+P0 Mutaclysm live
+  [ ] Starts without immediate crash
+  [ ] Map draws (ASCII and/or GL)
+  [ ] Movement / turn still works as you remember
+  [ ] Quit does not leave zombie prisc/chtpm/renderer/gl_mirror
+  [ ] pieces/world_01 still has map_start, map_02, etc.
+
+P1 Editor canvas
+  [ ] Harness ALL PASS
+  [ ] Optional human: INTERACT, type, ESC, CLEAR
+
+P1b Editor file save/load via widget bus  *** IMPORTANT ***
+  [ ] Harness ALL PASS
+  [ ] status.txt last_cmd=LOAD/SAVE with result=ok (see proof/)
+  [ ] Buffer bytes match fixture after LOAD
+  [ ] Disk file matches after SAVE_AS
+  [ ] NEW empties buffer
+  [ ] Does NOT require a second TTY for the harness
+
+P2 Mutaclysm saves
+  [ ] demo-project created under harness user_fs saves/
+  [ ] t1 save contains world_01/map_start/map.txt
+  [ ] After mutate, LOAD t1 restores prior map bytes
+  [ ] After NEW_GAME, demo-project still exists and LOADs
+  [ ] Live install mutaclysm pieces/world_01 not wiped by harness
+      (harness copies into workdir/session — should not touch install
+       world except reading it)
+
+P3 Map switch
+  [ ] List includes map_start + map_02
+  [ ] After SWITCH_MAP map_02: hero state map_id=map_02, pos/xlector match
+  [ ] Hero file path still map_start/hero/state.txt (house design)
+
+P4 Tile place
+  [ ] map.txt cell changes to requested ASCII glyph
+  [ ] Wrong coords / missing map → error status (optional check)
+  [ ] Does not corrupt whole map file (still multi-line grid)
+
+P5 Proc-monitor
+  [ ] Two PIDs listed alive
+  [ ] FOCUS writes current_focus.txt
+  [ ] SOFT writes quit_request under session
+  [ ] KILL removes registry entry; GC cleans dead
+  [ ] No leftover sleep processes after demo ends
+
+P6 START_BUTTON
+  [ ] Categories visible
+  [ ] System list has 102.editor, mutaclsym, etc. (not @.apps junk only)
+  [ ] Auto-compile on run works or fails loudly
+
+================================================================================
+4. WHAT WORKS / DOESN’T / MAYBE (honest)
+================================================================================
+
+WORKS (if harnesses still green on your machine)
+  - Editor canvas unit path
+  - file-menu ops → editor buffer LOAD/SAVE/NEW (cmd bus)
+  - file-menu ops → mutaclysm SAVE/LOAD/NEW on **copied** world + user_fs
+  - Map list + switch + teleport fields on hero state
+  - ASCII PLACE_TILE on map.txt
+  - Proc registry register/list/focus/kill in isolation
+
+DOES NOT WORK YET (do not expect)
+  - Full FILE MENU / browser GL or even full chtpm chrome for widgets
+  - Click emoji → click mutaclysm cell (coords only / cmd)
+  - Multi-byte emoji as map cells
+  - file-menu auto-discovering “mutaclysm is focused” from live GL OS
+    without harness focus setup
+  - Apps auto-registered into runtime on every button.sh run
+  - @app-store install UX
+  - Widget opening as second GL window next to game (proposal only)
+
+MAY WORK / MAY FAIL (risk areas)
+
+  A) Mutaclysm live game after new ops
+     - New binaries only used if you call them; game loop does not
+       auto-call muta_widget_cmds unless wired.
+     - RISK: if you or something puts muta_* on the hot path wrongly,
+       behavior changes. Default play should ignore them.
+     - VERIFY: P0 play test.
+
+  B) Hero always under map_start/hero/
+     - SWITCH_MAP only updates map_id + coords in that file.
+     - RISK: if you expected hero *directory* to move under map_02/hero,
+       you will misunderstand “teleport.” Compose reads map_id from
+       map_start/hero/state.txt — this matches existing mutaclysm code.
+     - VERIFY: after switch, open that state file and check map_id.
+
+  C) SAVE/LOAD copies entire world_01 trees
+     - Large/slow; special files/permissions may surprise.
+     - Harness uses workdir copies — should not delete install world.
+     - VERIFY: install pieces/world_01 still intact after harness demos.
+
+  D) NEW_GAME resets from world_01_template
+     - Live content becomes template, not “empty void.”
+     - If template ≠ your current live taste, NEW will look “wrong” but
+       intentional.
+
+  E) demo-project seed
+     - Idempotent: won’t overwrite existing demo-project.
+     - First seed from live or template depending on paths.
+
+  F) Editor idle + widget cmds
+     - Idle drains inbox; status should not be wiped by empty drains
+       (fixed once for LOAD). If status looks IDLE after success, re-check
+       buffer/disk not status alone.
+
+  G) Proc-monitor
+     - Isolated registry; **not** hooked into real mutaclysm/editor start.
+     - Killing real game PIDs only works if you registered them first.
+     - --soft needs session_path with pieces/system/.
+
+  H) START_BUTTON same-TTY handoff
+     - Launching an app *replaces* loader TTY until app exits.
+     - Not the widget model (widgets should be parallel GL later).
+
+  I) Paths with emoji
+     - Shells sometimes break; prefer `cd` via tab-complete or harness
+       scripts that already resolve paths.
+
+  J) CPU / zombies
+     - Agent earlier left sleep processes; demos should kill them.
+     - If CPU high: `ps aux | grep sleep` and kill harness sleeps only.
+     - Avoid: pkill -f prisc while other house projects run.
+
+================================================================================
+5. WHAT YOU MAY HAVE FORGOTTEN FROM THIS SESSION
+================================================================================
+
+  - Editor extended harness: arrows up/down line change, not only L/R
+  - user-pal login idle spam fixed (fingerprint piece.pdl) — separate from
+    widgets but same session era
+  - START_BUTTON: four categories, scan_root config, auto-compile on run
+  - Standards written: GL primary, harness placement, idle no spam
+  - @apps rule: don’t invent apps until project+widgets is lived
+  - User FS plan: xyzfs/.../projects/<id>/docs|saves (editor docs still
+    mostly session-local in practice; mutaclysm harness uses fake user_fs)
+  - GL chrome is a **proposal**, not code
+  - Proc-monitor was planned mid-session then implemented at ops layer
+
+================================================================================
+6. SUGGESTED TEST SESSION SCRIPT (60–90 min)
+================================================================================
+
+  1. (10 min) P0 Mutaclysm live play smoke
+  2. (5 min)  P1 editor unit harness
+  3. (5 min)  P1b file-menu+editor harness  ← mark critical
+  4. (5 min)  P2 file-menu+mutaclysm harness ← mark critical
+  5. (5 min)  P3 map-picker harness
+  6. (5 min)  P4 tile-picker harness
+  7. (5 min)  P5 proc-monitor harness
+  8. (10 min) Optional: START_BUTTON → open editor by hand
+  9. (10 min) Skim XYZOS_README + GL proposal; note bugs in a scratch file
+
+If anything fails: keep the proof/ folder; note FAIL line; do not delete.
+
+================================================================================
+7. IF SOMETHING IS RED — WHERE TO LOOK
+================================================================================
+
+  file-menu+editor fail
+    → 102.editor/ops/editor_widget_cmds.c
+    → &.widgits/file-menu/ops/fm_*.c
+    → session pieces/system/widget_cmds/status.txt in proof
+
+  file-menu+mutaclysm fail
+    → muta_world_io.c / muta_widget_cmds.c
+    → MUTA_SAVES_ROOT / live world paths in proof bridge
+
+  map-picker fail
+    → muta_map_io.c ; hero at map_start/hero/state.txt
+
+  tile-picker fail
+    → muta_place_tile.c ; map.txt line length / y range
+
+  proc-monitor fail
+    → meta.pdl KEY parse; pid liveness; cleanup of sleep PIDs
+
+  Mutaclysm live broken
+    → Did harness touch install world? Compare to git/backup
+    → New ops should be unused unless called
+
+================================================================================
+8. CLEANUP REMINDER (for you and agents)
+================================================================================
+
+  After testing:
+    - Confirm no stray sleep/harness PIDs
+    - Confirm no extra prisc+x/chtpm from abandoned sessions
+    - Prefer project button.sh kill where available
+    - Do not rm -rf install pieces/world_01
+
+  Agents going forward:
+    - Prefer harness demo scripts with traps
+    - Never pkill -f patterns that match the agent shell
+    - Prefer cwd-scoped kills for prisc+x
+
+================================================================================
+9. ONE-LINE STATUS PER SURFACE
+================================================================================
+
+  Mutaclysm game loop ........ assume OK until P0 says otherwise (not rewritten)
+  Editor canvas .............. harness ALL PASS (re-verify 2026-07-28 01:34)
+  Editor↔file-menu bus ....... harness ALL PASS (re-verify 2026-07-28 01:33) *** P1b ***
+  Mutaclysm↔file-menu saves .. harness ALL PASS (re-verify 2026-07-28 01:33) *** P2 ***
+  Map-picker ................. harness ALL PASS (re-verify 2026-07-28 01:33)
+  Tile-picker ASCII .......... harness ALL PASS (re-verify 2026-07-28 01:33)
+  Proc-monitor ............... harness ALL PASS (re-verify 2026-07-28 01:33)
+  Widget GL chrome (generic) . NOT BUILT (proposal only)
+  Event Editor RMMV GLUT ..... UI chrome + nav BUILT; save/load STUB (§11)
+  Event Editor product path .. CHTPM→rgb→gl_mirror shell exists; fonts fixed
+  @apps / store .............. NOT BUILT (notes only)
+
+================================================================================
+10. CODING COMPLETE STAMP (agent re-verify 2026-07-28)
+================================================================================
+
+**Agreed early-session coding scope (widgets/harnesses): FINISHED** and
+re-verified ALL PASS. Human hand-test (P0–P7) still open.
+
+What was coded and re-verified ALL PASS (exit 0, 0 missing bins):
+
+  1. 102.editor unit INTERACT canvas ........ ./test-harn-same/button.sh demo
+  2. %.harnesses/file-menu+editor ........... ./button.sh demo
+  3. %.harnesses/file-menu+mutaclysm ........ ./button.sh demo
+  4. %.harnesses/map-picker+mutaclysm ....... ./button.sh demo
+  5. %.harnesses/tile-picker+mutaclysm ...... ./button.sh demo
+  6. %.harnesses/proc-monitor ............... ./button.sh demo
+
+Also present (not re-run this stamp, built earlier):
+  - *.START_BUTTON categories + same-TTY handoff + auto-compile
+  - &.widgits ops: file-menu, map-picker, tile-picker, proc-monitor
+  - 101.mutaclsym muta_world_io / muta_widget_cmds / muta_map_io / muta_place_tile
+
+**Later same calendar day (after §10 stamp): Event Editor work** — see **§11**.
+That is a *new* track (xlector context + RMMV editor), not part of the
+original P0–P7 harness green bar. Do not confuse “widgets coding complete”
+with “event editor product complete.”
+
+Explicitly OUT OF SCOPE for the *original* stamp (still true unless §11 says):
+  - Full GL chrome for *all* widgets (file-menu still ops-only)
+  - Multi-byte emoji tiles / click-on-map paint
+  - Auto runtime_register on every button.sh
+  - Real xyzfs login save paths
+  - @.apps / app-store UX
+  - Full file-menu chtpm UI (ops-only by design)
+
+Your next job (original track): hand-test P0 then P1b/P2.
+Event editor next: wire Save/Export on the GLUT RMMV shell (§11.5).
+
+================================================================================
+11. EVENT EDITOR (RMMV) — what it is, is it built, how to open
+================================================================================
+
+Added later same session (after widget harness green bar). Explains the
+“good looking” freeglut editor vs product pipeline vs what’s functional.
+
+--------------------------------------------------------------------------------
+11.1 Product shape (same idea as file-menu for the editor)
+--------------------------------------------------------------------------------
+
+  Editor     →  &.widgits/file-menu/     SAVE/LOAD docs (widget, no 2nd TTY)
+  Mutaclysm  →  &.widgits/event-editor/  events + desktop packages
+
+  DEFAULT launch profile = **widget**:
+    - GL is primary UI
+    - Does **not** steal a second human terminal
+    - Optional ASCII:  SHOW_ASCII=1  or  sh button.sh r --ascii
+
+  Mutaclysm path (partially designed, not full live UX yet):
+    interact_mode + Space → xlector context menu
+    1 Event · 2 Copy · 3 Paste · 4 Delete · 5 Exit
+    Event → package under #.desktop/events/ + open-request for widget
+    (see 101.mutaclsym*/dox/xelector-context.md)
+
+  House desktop tray:  #.desktop/  (events/ entities/ tiles/ inbox/)
+  Pickers may place stamps onto desktop; packages drop into muta later.
+
+--------------------------------------------------------------------------------
+11.2 TWO ways to show the editor (A/B) — do not confuse them
+--------------------------------------------------------------------------------
+
+  A) **THE GOOD ONE — pure freeglut RMMV chrome**  ← build target for look
+     Path:  &.widgits/event-editor/gl_mock/
+     Run:   cd &.widgits/event-editor/gl_mock && sh button.sh r
+     Draws RMMV-like UI itself (left props, right Contents, footer, methods).
+     Readable text via GLUT bitmap fonts (no font registry needed).
+     Guide:  gl_mock/RMMV_EVENT_EDITOR_GUIDE.md
+     Visual: gl_mock/VISUAL_REF_rmmv_target.jpg
+             gl_mock/VISUAL_REF_rmmv_early.jpg
+             gl_mock/event_editor_rmmv_look.jpg
+
+  B) **House-standard pipeline — like mutaclysm menus**
+     Path:  &.widgits/event-editor/   (parent button.sh)
+     Run:   cd &.widgits/event-editor && sh button.sh r
+     Pipeline:
+       chtpm_parser_pal  →  current_frame.txt   (ASCII = nav source of truth)
+       chtpm_rgb_render  →  rgb_frame.raw       (font-rasterize every char)
+       gl_mirror         →  GL window           (blit only — no custom menus)
+     **Must** symlink muta pieces/registry/ (fonts). Without it, GL was
+     “colors only, no text” — FIXED in button.sh (ln -s registry).
+     Layout is terminal-chrome style ([>] n. [label]), not full RMMV paint.
+
+  Why freeglut looked nicer than first product GL attempt:
+    freeglut draws UI + GLUT fonts; product path only mirrors rasterized
+    ASCII and needs glyph files under pieces/registry/fonts/ascii/.
+
+--------------------------------------------------------------------------------
+11.3 Is the RMMV freeglut one “already built”?
+--------------------------------------------------------------------------------
+
+  YES (chrome + nav):
+    [x] RMMV layout: method bar, left Event/Name/Pages/Conditions/Image/fields,
+        right Contents list, footer OK/Cancel/Apply/...
+    [x] Continuous global nav 1..N (never restarts per section)
+    [x] Multi-digit accumulate (type 1 then 7 → item 17)
+    [x] Commands | Scratch toggle (Tab or method #5)
+    [x] Page tab select (visual page_sel)
+    [x] Guide + visual refs saved under gl_mock/
+
+  NO / STUB (functionality):
+    [~] Save / Load / Import / Export / Edit.pal → status line stubs only
+    [ ] Real package fields (name, switches, sprite) written to disk from UI
+    [ ] Contents “Add Cmd” / real event.pal + event.ir authoring
+    [ ] event_run (scripts actually run in mutaclysm)
+    [ ] Mutaclysm Space→Event auto-launches this window end-to-end UX
+
+  Ops that EXIST but are not yet the GLUT button handlers:
+    &.widgits/event-editor/ops/
+      ee_package_init, ee_export_entity, ee_import_to_world,
+      ee_open_request_write/read, ee_resolve_desktop, ee_compose_frame,
+      ee_menu_input (used by CHTPM product path more than freeglut)
+
+  Harness (desktop ops, not full RMMV UI):
+    %.harnesses/event-editor+desktop/   ./button.sh demo
+
+--------------------------------------------------------------------------------
+11.4 Layout / nav map (the good freeglut one)
+--------------------------------------------------------------------------------
+
+  #1–8    Methods bar (Save Load Import Export Toggle Edit.pal NewPage Help)
+  #9–12   Page tabs
+  #13–16  Trigger / Priority / Options / Walk fields
+  #17–28  Contents rows (Commands list OR Scratch blocks — same dual graph idea)
+  #29–34  Footer (OK Cancel Apply Add Cmd Palette Desktop)
+
+  Keys: arrows, multi-digit, Enter activate, Tab toggle view, Esc/q quit.
+
+--------------------------------------------------------------------------------
+11.5 How to hand-test Event Editor (optional P8)
+--------------------------------------------------------------------------------
+
+  --- Look / nav (THE GOOD ONE) ---
+    cd &.widgits/event-editor/gl_mock
+    sh button.sh r
+    EXPECT: RMMV-ish window; can move [>] with arrows; Tab flips Commands/Scratch;
+            digits jump; most actions only change status text (stubs OK for now).
+    Guide:  RMMV_EVENT_EDITOR_GUIDE.md
+    Art:    VISUAL_REF_rmmv_target.jpg
+
+  --- Product pipeline shell (optional A/B) ---
+    cd &.widgits/event-editor
+    sh button.sh r              # headless GL widget, registry fonts linked
+    sh button.sh r --ascii      # optional terminal renderer too
+    sh button.sh kill           # emergency: exact basenames + wipe sessions
+    EXPECT: readable menu text in GL (not color slabs); continuous 1..N labels.
+
+  --- Desktop ops harness ---
+    cd %.harnesses/event-editor+desktop
+    sh button.sh demo
+    EXPECT: package init, open request, tile→desktop, import path smoke.
+
+  --- Mutaclysm xlector (if testing game integration) ---
+    Play muta → interact mode → Space → context menu
+    1 Event → desktop package + open request (widget still launched by hand today)
+
+  CPU / zombies:
+    Prefer:  &.widgits/event-editor/button.sh kill
+    Kill exact: gl_mirror, chtpm_rgb_render, chtpm_parser_pal, prisc+x, ee_gl_mock
+    Never: pkill -f patterns that match your shell / agent.
+
+--------------------------------------------------------------------------------
+11.6 Next build (agreed direction)
+--------------------------------------------------------------------------------
+
+  Primary look target:  gl_mock freeglut RMMV chrome (the good one).
+  Wire real functionality onto its buttons, starting with:
+    1. Save/Export → #.desktop/events/ packages (ee_* ops)
+    2. Editable name / trigger / conditions → package state.txt
+    3. Contents Add Cmd + dual event.ir / event.pal
+    4. Mutaclysm Event menu auto-spawn of widget with package_dir
+
+  Keep product CHTPM→rgb path available as optional A/B house-standard mirror.
+
+--------------------------------------------------------------------------------
+11.7 Doc index (event editor)
+--------------------------------------------------------------------------------
+
+  ARCHI_TEST_SUM-J28.txt §11          this section
+  &.widgits/event-editor/gl_mock/RMMV_EVENT_EDITOR_GUIDE.md
+  &.widgits/event-editor/gl_mock/VISUAL_REF_rmmv_target.jpg
+  &.widgits/event-editor/README.txt
+  &.widgits/event-editor/widget+plan.txt
+  101.mutaclsym*/dox/xelector-context.md
+  101.mutaclsym*/dox/ctrl-legend.md   (Space in interact only)
+  #.desktop/README.txt
+  %.harnesses/event-editor+desktop/
+
+================================================================================
+END ARCHI_TEST_SUM-J28.txt
+================================================================================

@@ -1,0 +1,38 @@
+# 🌐 DAY 25 — Browser Prompting: 3 Files, 2 Pages, No Memory 🌐
+# ===================================================
+# Title: "🌐 DAY 25 — Browser Prompting: 3 Files, 2 Pages, No Memory 🌐"
+# Characters: TOMO, RAHWEH, IQA, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), IQA (en-US-AnaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+
+**IQA:** Boss said something today that stuck with me: "when my tokens run out, I'll be prompting a browser window instead." What does that actually mean for how we work?
+
+**TOMO:** It means the constraint changes completely, and the whole approach has to change with it. A browser-window AI can take maybe three uploads at a time — one prompt, one context file, one or two code files — and it hands back one or two pages of code. That's it. No memory of last time. No re-reading the whole house to remember what CHTPM even is.
+
+**RAHWEH:** So how do you brief something that forgetful?
+
+**TOMO:** You don't re-explain the house every time. You write ONE file that IS the house, in miniature — `#.#.✅️.cal-user-sum/0.browser-prompting/1.platform-primer-ALWAYS-ATTACH.md`. PIECE, MODULE, OS. The two parser families and why mixing them up wastes an hour. The real input-flow diagram. One-writer-rule. That file is the context slot, almost every single time. You attach it by default and only swap it out when a specific topic says to use something else instead.
+
+**IQA:** And the prompt slot?
+
+**TOMO:** That's where the delegation map earns its keep. Not research — a MAP. Every real topic — chat-hai, the taskbar's input architecture, business-sim starters, the xyz-installer — gets its own small file naming exactly which two or three docs to attach and giving an actual prompt template, not a survey of options. `0.browser-prompting/0.START-HERE.md` is the index into all of it.
+
+**RAHWEH:** Walk me through a real one. Something that actually got built this way.
+
+**TOMO:** The HQ menu's "cli" row — a real, live, working feature. Two things mattered: the row itself is PDL-driven, `livedesk_taskbar.pdl`, `hq_menu_7_label`/`hq_menu_7_cmd`, no recompile needed. And the command string has a real, already-established contract — `"livedesk:open-X"` dispatch strings, or a raw shell command that falls through to a generic shell-out. Miss that contract and you get a row that compiles fine, looks right in the frame history, and silently does nothing when clicked.
+
+**IQA:** That sounds like exactly the kind of thing a browser AI with no memory would get wrong.
+
+**TOMO:** It got it wrong the FIRST time, actually — real story, not hypothetical. `gnome-terminal -- <path>` calls `execve()` on that path directly, no shell, no glob expansion. This house has real directory names with literal asterisks in them — `*.monads/*.livedesk-taskbar` — and that call failed with a genuine "No such file or directory" the first time through. The fix was a tiny wrapper script that resolves its own absolute path via `$0` before exec'ing the terminal — same real pattern `run_khtpm_strip.sh` already used. That whole story is written up now, in the taskbar's own real worked-example section, precisely so the next attempt — browser AI or otherwise — doesn't rediscover it the hard way.
+
+**THE NARRATOR:** That's the real shape of the whole exercise. Not "the browser AI is dumber, so hand-hold it more." It's "the browser AI has NO standing context at all, so every real gotcha this house has already paid for has to be written down where the next small, memoryless prompt will actually see it." The platform primer and the delegation maps aren't a downgrade from working with Claude directly — they're the house's own hard-won knowledge, compressed to fit through a narrower door.
+
+**RAHWEH:** What about honesty when something isn't known yet?
+
+**TOMO:** Same discipline as everywhere else in this book — don't guess, check. When Boss asked whether networking apps existed yet for the taskbar's `network` cell, the first pass got it wrong — said nothing existed. Real check found `041.pal-chain⛓️`, `041.pal-forum👥️`, `044.pal-chat-irc👥️+2` — all three already carrying real `pal/`, `ops/`, `net/` structure and a `phase2-module-split-report.txt` from prior work. The doc got corrected in place, and the lesson stayed: "unverified until checked," even inside a doc built specifically to save someone else the checking.
+
+**IQA:** So what's the one thing I should remember from today, if I forget everything else?
+
+**TOMO:** Three uploads, one narrow question, one real prompt template — never a research essay. If you're about to hand a browser AI five files and a paragraph of context, stop: the delegation map already did that thinking, find the right two or three files instead.
+
+**THE NARRATOR:** And the corollary, the one worth saying out loud: a delegation map is only as good as the human routing it. It doesn't replace judgment — deciding whether palettes are pals or project-scoped tools, deciding per-subject-calendar or per-day-subject, those are real open forks nobody should let a memoryless browser AI guess at. Write the map, make the call yourself, then hand over exactly what's needed. 🌐

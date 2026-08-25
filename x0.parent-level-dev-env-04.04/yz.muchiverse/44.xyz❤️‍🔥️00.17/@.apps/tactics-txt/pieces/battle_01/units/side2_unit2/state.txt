@@ -1,0 +1,7 @@
+entity_type=tactics_unit
+profession_id=lawyer
+pos_x=9
+pos_y=7
+hp=15
+owner_id=2
+owner_side=2

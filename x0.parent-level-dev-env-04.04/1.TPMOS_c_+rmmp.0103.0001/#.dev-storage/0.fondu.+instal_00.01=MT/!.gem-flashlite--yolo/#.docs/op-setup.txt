@@ -1,0 +1,269 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    OP-BASED PROJECT SETUP GUIDE                               ║
+║              Lessons from op-ed, fuzz-op, and user (failed)                   ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+================================================================================
+CRITICAL DISTINCTION: APP vs PROJECT
+================================================================================
+
+**UPDATE (April 1, 2026):** All modern development is shifting to **TYPE 2: PROJECT (User Content)**. Legacy apps in `pieces/apps/` are being deprecated or moved to the "Trunk".
+
+There are TWO types of "op-based" entities in CHTPM:
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TYPE 1: APP (System Tools)                                                  │
+│ Path: pieces/apps/<app_id>/                                                │
+│ Examples: op-ed, man-pal, man-add, editor, playrm                          │
+│                                                                             │
+│ Structure:                                                                  │
+│   pieces/apps/op-ed/                                                        │
+│   ├── op-ed.pdl                    # App descriptor                        │
+│   ├── layouts/                     # UI layouts                            │
+│   │   └── op-ed.chtpm              # Main layout                           │
+│   ├── plugins/                     # Module source                         │
+│   │   └── +x/                                                              │
+│   │       └── op-ed_module.+x      # Compiled module                       │
+│   ├── ops/+x/                      # Operations                            │
+│   └── pieces/                      # App-specific pieces                   │
+│                                                                             │
+│ How it's launched:                                                          │
+│   - Module reads layout_path from op-ed.pdl                                │
+│   - Module calls resolve_my_layout() to get its layout path                │
+│   - Module checks is_active_layout() every frame                           │
+│   - User navigates to it via buttons (href= in CHTPM)                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TYPE 2: PROJECT (User Content)                                              │
+│ Path: projects/<project_id>/                                                │
+│ Examples: fuzz-op, man-pal (when loaded as project), template              │
+│                                                                             │
+│ Structure:                                                                  │
+│   projects/fuzz-op/                                                         │
+│   ├── project.pdl                  # Project descriptor                    │
+│   ├── history.txt                  # Input history                         │
+│   ├── layouts/                     # Project layouts                       │
+│   │   └── fuzz-op.chtpm            # Main layout                           │
+│   ├── manager/                     # Project manager                       │
+│   │   └── +x/                                                              │
+│   │       └── fuzz-op_manager.+x   # Compiled manager                      │
+│   ├── maps/                        # Map files                             │
+│   └── pieces/                      # Project pieces                        │
+│                                                                             │
+│ How it's launched:                                                          │
+│   - Selected from loader menu (playrm/loader.chtpm)                        │
+│   - project_loader.c reads project.pdl for entry_layout                    │
+│   - Writes entry_layout to pieces/display/layout_changed.txt               │
+│   - Parser switches to that layout                                         │
+│   - Parser sets module_path based on project_id                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+THE USER PROJECT MISTAKE (WHAT WENT WRONG)
+================================================================================
+
+We tried to make "user" a PROJECT but it's behaving like an APP.
+
+SYMPTOMS:
+- Layout ID shows "user.chtpm" but CONTENT shows game.chtpm
+- Fuzzpet variables appear (Pet Name, Hunger, etc.)
+- Game map displays instead of auth UI
+
+ROOT CAUSE:
+The display reads from pieces/display/current_layout.txt which says:
+  pieces/apps/playrm/layouts/game.chtpm
+
+But the parser thinks it's using:
+  projects/user/layouts/user.chtpm
+
+The loader writes to layout_changed.txt BUT the display/orchestrator
+doesn't properly pick it up because:
+
+1. project_loader.c writes entry_layout to layout_changed.txt
+2. BUT the display is already running game.chtpm from a previous selection
+3. The parser reads the new layout but display doesn't refresh
+
+================================================================================
+CORRECT PATTERNS (FROM WORKING EXAMPLES)
+================================================================================
+
+PATTERN 1: op-ed (APP-BASED) - RECOMMENDED FOR USER
+────────────────────────────────────────────────────
+
+pieces/apps/op-ed/op-ed.pdl:
+  SECTION      | KEY                | VALUE
+  META         | app_id             | op-ed
+  META         | layout_path        | pieces/apps/op-ed/layouts/op-ed.chtpm
+  META         | version            | 1.0
+
+pieces/apps/op-ed/plugins/op-ed_module.c main():
+  resolve_my_layout();  // Read layout_path from PDL
+  scan_projects(); scan_maps();
+  
+  while (!g_shutdown) {
+      if (!is_active_layout()) { 
+          usleep(100000);  // Sleep if not active
+          continue; 
+      }
+      // Process input, render, etc.
+  }
+
+is_active_layout() implementation:
+  - Reads pieces/display/current_layout.txt
+  - Compares to my_layout_path (from PDL)
+  - Returns 1 if match, 0 otherwise
+
+HOW TO LAUNCH:
+  - Via button: <button label="LOADER" href="pieces/apps/op-ed/layouts/op-ed.chtpm" />
+  - Or via loader selecting op-ed project (which sets project_id=op-ed)
+
+PATTERN 2: fuzz-op (PROJECT-BASED)
+──────────────────────────────────
+
+projects/fuzz-op/project.pdl:
+  SECTION      | KEY                | VALUE
+  META         | project_id         | fuzz_legacy
+  META         | version            | 1.0
+  STATE        | starting_map       | map_01_z0
+  STATE        | player_piece       | fuzzpet
+
+projects/fuzz-op/manager/fuzz-op_manager.c:
+  - Reads project_id from player_app/manager/state.txt
+  - Checks is_active_layout() for "game.chtpm" or "fuzz-op.chtpm"
+  - Processes input for game logic
+
+HOW TO LAUNCH:
+  - Select from loader menu
+  - project_loader.c reads project.pdl
+  - Writes entry_layout to layout_changed.txt
+  - Parser switches layout
+
+================================================================================
+DECISION: WHAT SHOULD "USER" BE?
+================================================================================
+
+OPTION A: Make user an APP (like op-ed) ✓ RECOMMENDED
+─────────────────────────────────────────────────────
+Path: pieces/apps/user/
+
+Structure:
+  pieces/apps/user/
+  ├── user.pdl
+  ├── layouts/
+  │   └── user.chtpm
+  ├── plugins/
+  │   └── +x/
+  │       └── user_module.+x
+  └── pieces/
+      ├── profiles/
+      └── session/
+
+Launch method:
+  - Add button to os.chtpm or loader: href="pieces/apps/user/layouts/user.chtpm"
+  - OR create projects/user/ that just sets project_id=user and lets
+    parser's load_vars() set module_path to pieces/apps/user/plugins/+x/user_module.+x
+
+Pros:
+  - Clean separation from game projects
+  - Follows op-ed pattern (working reference)
+  - No loader complexity
+
+Cons:
+  - Requires modifying os.chtpm or loader to add button
+
+OPTION B: Make user a proper PROJECT (like fuzz-op)
+────────────────────────────────────────────────────
+Path: projects/user/
+
+Requirements:
+  1. project.pdl MUST have entry_layout field
+  2. project_loader.c MUST read entry_layout and write to layout_changed.txt
+  3. user_manager.c MUST check is_active_layout() for "user.chtpm"
+  4. Parser MUST have user case in load_vars() (already exists)
+
+Current issues:
+  - Display doesn't refresh when layout_changed.txt is written
+  - game.chtpm content persists from previous selection
+
+Fix needed:
+  - Display/renderer must poll layout_changed.txt
+  - OR orchestrator must signal display to reload
+
+================================================================================
+RECOMMENDED FIX FOR USER (RIGHT NOW)
+================================================================================
+
+Since user is already in projects/, let's make it work as a PROJECT:
+
+Step 1: Ensure project.pdl has entry_layout ✓ DONE
+  META | entry_layout | projects/user/layouts/user.chtpm
+
+Step 2: Ensure project_loader.c reads and writes layout_changed.txt ✓ DONE
+  - get_entry_layout() function added
+  - Writes to layout_changed.txt after selection
+
+Step 3: Recompile project_loader.+x ✓ DONE
+
+Step 4: KILL ALL PROCESSES and restart
+  ./kill_all.sh
+  ./run_chtpm.sh
+
+Step 5: Test - select user from loader
+
+If STILL broken, the issue is:
+  - Display doesn't re-read current_layout.txt after layout_changed.txt
+  - Need to check orchestrator or display refresh logic
+
+================================================================================
+WHAT TO AVOID (LESSONS LEARNED)
+================================================================================
+
+1. DON'T mix APP and PROJECT patterns
+   - Pick one: pieces/apps/ OR projects/
+   - Don't create projects/user/ that acts like pieces/apps/user/
+
+2. DON'T assume layout_changed.txt triggers refresh
+   - Display may cache current_layout.txt
+   - May need to restart or signal refresh
+
+3. DON'T forget is_active_layout() in module
+   - Every module MUST check if it's the active layout
+   - Sleep when not active to save CPU
+
+4. DON'T use system() - use fork/exec/waitpid
+   - CPU-safe pattern from op-ed_module.c
+
+5. DON'T forget to clear view.txt
+   - Stale map data persists between projects
+   - Module should clear on startup
+
+6. DON'T assume parser variables clear automatically
+   - Parser loads fuzzpet state EVERY FRAME
+   - Must explicitly clear for non-fuzz-op projects
+
+================================================================================
+TESTING CHECKLIST
+================================================================================
+
+Before claiming an op-based project works:
+
+[ ] Structure matches pattern (APP or PROJECT)
+[ ] PDL has required fields (app_id/layout_path OR project_id/entry_layout)
+[ ] Module compiles without warnings
+[ ] Module has is_active_layout() check
+[ ] Module has signal handlers (SIGINT, SIGTERM)
+[ ] Module has setpgid(0, 0)
+[ ] Module uses fork/exec/waitpid (NOT system())
+[ ] Module writes to correct state files
+[ ] Module clears view.txt on startup (if needed)
+[ ] Layout file exists at specified path
+[ ] Layout has <module> tag with correct path
+[ ] Layout has <interact> tag
+[ ] compile_all.sh includes compilation command
+[ ] run_chtpm.sh initializes state files
+[ ] kill_all.sh includes module in kill list
+
+================================================================================
+END OF OP-SETUP GUIDE
+================================================================================

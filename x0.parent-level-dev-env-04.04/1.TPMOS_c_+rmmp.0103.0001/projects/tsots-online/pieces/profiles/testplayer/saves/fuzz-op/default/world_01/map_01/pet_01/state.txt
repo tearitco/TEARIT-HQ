@@ -1,0 +1,13 @@
+name=Fuzzball
+type=pet
+pos_x=11
+pos_y=1
+pos_z=0
+on_map=1
+hunger=0
+happiness=100
+energy=100
+level=1
+owner=world
+emoji=🐶
+map_id=map_01_z0.txt

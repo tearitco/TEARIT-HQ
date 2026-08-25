@@ -1,0 +1,84 @@
+h-ai (open-hai) progress report - 2026-08-12
+===========================================
+
+GOAL
+----
+Prove h-ai's LAN Ollama models can do real agent work (tool use, code
+writing) through h-ai's own UI, and report exactly what works vs not.
+This session also added real tools + UI/UX upgrades into h-ai itself.
+
+WHAT GOT DONE THIS SESSION
+--------------------------
+1. REAL TOOLS, WORKING THROUGH THE REAL UI (relay-injected keystrokes)
+   All six verified live via the app, transcripts on disk:
+   - list_dir       "list /tmp"              -> instant, read-only pre-exec
+   - read_file      "read /tmp/open-hai.log"  -> instant, read-only pre-exec
+   - search_in_files "search open-hai in /tmp"-> instant, read-only pre-exec
+   - write_file     "write F containing ..." -> approve/deny gated
+   - edit_file      "edit F replace A with B"-> approve/deny gated
+   - cmd_exec       "run echo hi"            -> approve/deny gated
+   Approve = sidebar nav item, Deny = next nav item (agent-45 shape).
+   Deny verified: file NOT created, "[tool denied] cmd_exec touch ..."
+   logged to transcript. Read-only tools pre-execute (Strategy A).
+
+2. EMOJI RENDERING (real pixel tiles, chtpm pipeline)
+   User: "chtpm uses a function to convert emoji to .csv first use that".
+   - Generated 35 emoji voxel CSVs (16x16 r,g,b,a) using chtpm's own
+     emoji_gen_atlas (FreeType + NotoColorEmoji) then emoji_xtract,
+     stored in &.widgits/open-hai/pieces/registry/emoji_assets/<hex-cp>/
+   - Runtime loader + blit ported from chtpm_rgb_render.c: draw_text
+     now segments text runs vs emoji tiles and blits tiles inline;
+     FE0F/ZWJ/ZWSP consumed silently (no tofu). text_width mirrors it
+     so word-wrap math stays honest.
+   - Confirmed visually by user ("good i see them now").
+   Covered set includes the whole house-root path: robot, mouse-trap,
+   house, takeout, ladder, heart+fire, money-wings, pushpin, zombie,
+   bust, zebra, monkey, stadium, egg, doc, etc. + a common chat set.
+
+3. WINDOW DRAG-RESIZE
+   - Bottom-right grip (draw_resize_grip) + resize state machine.
+   - Drag bottom-right corner to resize bigger/smaller; min 620x420;
+     XResizeWindow -> ConfigureNotify rebuilds pixmap/xftdraw (same
+     rebuild path the WM-resize already used). Wants a manual drag
+     test by a human.
+
+4. LINE SPACING +5% (readability)
+   - LINE_H 18 -> 19 (user: lines "completely stacked").
+
+5. TOPBAR DARKER
+   - Topbar fill 0x1a1a1a -> 0x0d0d0d, darker than sidebar (0x141414)
+     and transcript (0x1a1a1a).
+
+6. AUDIT ARTIFACTS OUT OF /tmp INTO XYXFS HOUSE DIRS
+   - New: <house>/&.widgits/open-hai/pieces/audit/
+     - open-hai-frame.png + .receipt.txt (receipt gains tool_pending/tool)
+     - payload-<pid>.json, response-<pid>.json, toolout-<pid>.txt
+     - open-hai.log (button.sh now logs here too)
+   - Emoji CSVs: pieces/registry/emoji_assets/ (auditable, pre-generated)
+   - README updated to match.
+
+7. EARLIER THIS SESSION (still live)
+   - Tools subsystem (detect_tool parser, approve/deny, banner).
+   - Thinking animation (topbar dots while pending).
+   - User messages blue (#4d9fff), AI responses purple (#c084fc).
+   - Hierarchy typography: bullet points bold + brighter + underline,
+     indented subtext italic + dim.
+
+VERIFIED vs NOT
+---------------
+Verified via PNG+receipt + transcripts:
+- tools work end-to-end through the UI (all 6, incl. approve + deny)
+- emoji tiles render (user confirmed visually)
+- audit dir relocation live (receipt now read from house dir)
+- welcome message advertises tools
+
+NOT yet manually verified (code in place, needs human):
+- drag-resize (needs real mouse drag on the grip)
+- +5% spacing / darker topbar / colors / typography (user saw window,
+  no complaints filed)
+
+NOT done yet (unchanged from before):
+- Ollama native /api/chat tools-API probe (stable-code 3B first, then
+  llama3-groq-tool-use 8B) - next up
+- api-test-results.md writeup
+- restore real sessions from /tmp/open-hai-sessions-backup-*

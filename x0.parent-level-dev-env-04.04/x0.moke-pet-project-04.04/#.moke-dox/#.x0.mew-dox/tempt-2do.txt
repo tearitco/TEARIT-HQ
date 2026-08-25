@@ -1,0 +1,73 @@
+XO-PET / MOKE-PET FIRST STEPS
+
+Goal:
+Refactor the pet simulation so moke-pet owns simulation truth and xo-pet layers controller/UI behavior on top using the same project pattern as fuzz-op.
+AI should default to one step at a time unless `resume` is active, and every step must persist a rewindable snapshot.
+The project bundle should keep project-local controller/session state in a fuzz-op style `session/state.txt`, while `gui_state.txt` remains the projection surface.
+The `x0.moke-pet-project-2.2/button.sh` launcher should support `auto` and `controller` flags so users do not have to type an executable name.
+The nested `x0.5-liz.fiter4-mew-00.02/button.sh` is compatibility only.
+If no controller uid pair is provided, `xo-pet-launch.sh` should auto-generate one and attach using that generated pair.
+Default launch mode should be `reset`; `resume` must preserve runtime scratch files for continued sessions.
+When a controller is active, the engine should step epoch-by-epoch, let AI act for the current turn, then wait for a user `end turn` before processing the rest of the cycle.
+Keep manual navigation first; auto key injection can be added later for testing, but it should drive the same manual entry path.
+Do not place navigation injection inside the public `button.sh` launcher; if we automate loader traversal, it should live in a separate helper that still writes to `pieces/keyboard/history.txt`.
+
+First steps:
+
+1. Define the shared engine contract.
+- Document the minimum shared fields for world state, entity state, controller/session state, and projection state.
+- Mirror fuzz-op style: `project_id`, `active_target_id`, session flags, and `gui_state.txt` as the render projection.
+- Lock the common turn order: breathe, scan, choose action, execute, check_death, train, epoch++.
+- Add simple-but-scalable controller fields such as `controller_active=1/0` and `controller_uid=...` only if a controller is present.
+
+2. Separate simulation from input.
+- Keep simulation progression in the manager / core loop.
+- Keep user input in a thin controller layer.
+- Do not let the renderer or parser own action selection.
+
+3. Add controller mode to the manager.
+- Default to AI if no controller is attached.
+- Allow a controller to attach to one pet.
+- Allow step, pause, and release-control actions.
+- Treat AI as one-step unless continuous resume is active.
+- Make controller discovery work from the project top level or `controllers/` folder.
+- When controller mode is active, keep the visible loader/menu flow manual-first and use injected keys only as a test automation path.
+
+4. Reuse the same Ops.
+- Keep `scan`, `eat`, `rest`, `breathe`, `check_death`, `train`, `attack`, and `mate` as the core actions.
+- Avoid inventing a second method model for xo-pet.
+- Keep the executable in a `+x/` directory per TPMOS convention.
+
+5. Make the projection conditional.
+- When a controller is attached, show current pet stats, available methods, and control mode.
+- When no controller is attached, show autonomous world status and a selector / attach prompt.
+- Show total steps taken and snapshot/rewind count in the projection.
+- Keep the projection fields compatible with fuzz-op style `session/state.txt` -> `manager/gui_state.txt` flow.
+- Keep the UI repaint handshake on the standard marker pulse (`frame_changed.txt`), because that is what the TPMOS render loop watches.
+- Note the split: the XO manager writes `manager/gui_state.txt`, while the controller runner reads that file directly; the marker pulse lives in the generic CHTPM host path, not in the manager itself.
+- Keep launcher behavior separate from nav testing: `button.sh` launches modes, while nav injection lives in a dedicated helper or direct PTY test session.
+
+6. Update the architecture docs.
+- Update `!.world_architecture+1=rusindol.txt` to describe the shared engine and optional controller layer.
+- Update the moke-pet blueprint or handoff so it explicitly allows manual control as an optional mode.
+- Update the xo-pet blueprint to describe the same code path in interactive and autonomous modes.
+- Make the enclosure ownership rule explicit in the docs: project bundle -> session/controller surface -> world/map -> entities.
+- Add launcher docs for `x0.moke-pet-project-2.2/button.sh auto` and `x0.moke-pet-project-2.2/button.sh controller <uid_pair>`.
+- Document `reset` as the default startup mode and `resume` as the persistence mode.
+- Document uid auto-generation when `--controller` is provided without a pair.
+
+7. Then code in small slices.
+- First: keep the top-level `button.sh` as the public entrypoint, with a flag-based `xo-pet-launch.sh` launcher underneath that selects auto or controller mode, auto-generating a uid pair when omitted, and supports reset/resume startup control.
+- Second: shared state and method projection.
+- Third: snapshot persistence for every step.
+- Fourth: controller attach / release.
+- Fifth: pause / step / resume semantics.
+- Sixth: verify the autonomous path still matches current moke-pet behavior.
+- Seventh: verify xo-pet can run the same engine with a controller attached.
+- Eighth: if needed later, add auto-navigation / key injection for test automation without changing the manual path.
+- Ninth: if the projection appears frozen, debug the marker-file pulse and renderer watcher before touching method dispatch or controller state.
+
+Success criterion:
+One simulation engine, two ways to drive it:
+autonomous by default, human-steered when a controller is present.
+AI is one-step by default unless resume is active, and every step can be rewound.

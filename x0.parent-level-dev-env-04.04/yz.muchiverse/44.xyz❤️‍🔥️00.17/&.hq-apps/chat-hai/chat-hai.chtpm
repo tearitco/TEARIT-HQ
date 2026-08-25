@@ -1,0 +1,54 @@
+<!-- chat-hai.chtpm — IRC-like chat layout: left sidebar for session list,
+     right panel for messages, input at the bottom (via CSS positioning).
+     Rendered by ops/chat_hai_hq_render.c against chat-hai.css.
+
+     The sidebar (left) holds the session/channel list. The panel (right)
+     contains two parts (layered via CSS):
+     - messages area: scrolling feed from transcript.ledger (sidebar-like)
+     - input area: text field + send button (positioned at bottom via CSS)
+
+     Note: The chtpm model normally puts sidebar left and panel right.
+     We reuse this, but the panel's layout (messages on top, input below)
+     is managed by the renderer's redraw() and CSS positioning.
+
+     <module> tag added 2026-08-16 (Stage 2d shell/manager split, same
+     real mechanism proven on db-hq/events-hq - see local-2do-15.txt's
+     own chat-hai entry for the full reasoning). chat_hai_loop.sh was
+     ALREADY a fully independent process (its own PID/log/state dir,
+     owns all persona/session/relationship business logic) - the only
+     change here is launching it via the shell's own real fork()+execv()
+     instead of button.sh's separate manual start.
+
+     REAL BEHAVIOR CHANGE, confirmed with direct instruction 2026-08-16:
+     the loop used to deliberately OUTLIVE the shell (button.sh checked
+     if it was already running and left it alone, so closing the window
+     didn't kill an in-flight persona conversation). Tying its lifetime
+     to the shell (full parity with db-hq/events-hq) means closing
+     chat-hai's window now ALSO stops the persona loop - a real,
+     deliberate change from the old behavior, not an accidental
+     regression. -->
+<window id="chat-window" class="chat-window">
+  <module src="&.hq-apps/chat-hai/ops/chat_hai_loop.sh" />
+  <sidebar id="sessions" class="sessions">
+    <item label="(sessions loading)"/>
+  </sidebar>
+  <panel id="content" class="content">
+    <!-- Upper: messages feed (dynamically injected)
+         Lower: status + controls + input box -->
+    <text id="status" class="status-text" label="[running]"/>
+    <button id="toggle-pause" class="btn-control" label="Stop"/>
+    <button id="speed-toggle" class="btn-control" label="Speed: 6s"/>
+    <!-- Sound control moved OUT of the control row 2026-08-16 (direct
+         instruction: "not in chrome bar. there is room below it. above
+         chat") - now a Settings affordance in the strip below the chrome
+         bar (see the renderer's g_settings_elem/g_settings_sound_elem,
+         drawn by draw_settings_bar()). Removing it here shrinks the
+         control row back to two cells (toggle-pause, speed-toggle). -->
+    <!-- REAL FIX 2026-08-15 (direct instruction: "send should auto send
+         when enter is pressed... we dont need a send button") - Enter
+         already sent the composer (see handle_key()'s own Enter branch,
+         unchanged), the button was redundant. Removing it lets
+         composer-text take the FULL row width instead of sharing it. -->
+    <text id="composer-text" class="composer-text" label="> "/>
+  </panel>
+</window>

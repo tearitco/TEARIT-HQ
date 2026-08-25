@@ -1,0 +1,7 @@
+sprite_id=xelector
+ascii=X
+unicode=🎯
+label=Xelector
+rgb=255,255,0
+asset_type=wireframe_cube
+anchor=center

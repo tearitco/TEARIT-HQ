@@ -1,0 +1,15 @@
+# cpp-llm Known Bugs & Status
+
+## 1. Connectivity Failure
+- **Symptom:** Connection to API host (`10.0.0.144`) fails or uses incorrect endpoint when running remotely.
+- **Root Cause (Hypothesis):** 
+    - The `resolve_my_ip()` logic may not be returning `10.0.0.144` on the machine where the manager is running, causing it to fall through to the remote-compatible `/v1/chat/completions` endpoint path even if it should be using `/completion`.
+    - Alternatively, the `g_ai_url` variable might be overridden or misconfigured.
+- **Status:** Investigating why `resolve_my_ip` is not correctly identifying the host machine, if it is running on `.144`.
+
+## 2. UI/Display Issue
+- **Symptom:** Debug message "Detected IP: ..." is not appearing in the UI.
+- **Root Cause:** 
+    - Compilation error: `g_sys_msg` is defined as a `static` variable in `cpp-llm_manager.c`, but it is not accessible within the scope of the `resolve_my_ip` function which was placed earlier in the file or lacks access. 
+    - Previous fix attempt resulted in `error: ‘g_sys_msg’ undeclared`.
+- **Status:** Need to move `g_sys_msg` declaration or pass it as an argument/make it global to `resolve_my_ip`.

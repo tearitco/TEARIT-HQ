@@ -1,0 +1,1 @@
+MVP: freeglut viewer owns GL (see docs/MVP_NOTE.txt). Full CHTPM shell is Phase 2.

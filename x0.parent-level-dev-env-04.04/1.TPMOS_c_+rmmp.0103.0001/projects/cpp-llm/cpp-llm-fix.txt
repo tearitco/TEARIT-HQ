@@ -1,0 +1,74 @@
+cpp-llm fix plan: dynamic `*` completion + reusable sandbox config
+
+Goal
+----
+Bring cpp-llm in line with the working gem-xo / gem-dev completion behavior without changing cpp-llm's API-call style.
+
+What is broken now
+------------------
+- Typing `*` in cpp-llm does not open the dynamic path suggestion menu.
+- The current cpp-llm manager only treats the input as plain `cli_io` text.
+- There is no completion state machine, no suggestion list, and no path-selection handler in cpp-llm yet.
+- cpp-llm also still hardcodes its sandbox directory in `main()` instead of loading it from config.
+
+What gem-xo / gem-dev already proved
+------------------------------------
+- `*` triggers completion mode as soon as the input contains a star.
+- The manager stores the pre-completion input, asks `complete_path`, and renders the suggestion list.
+- Choosing a suggestion replaces the `*` fragment in the current buffer and returns focus to the input field.
+- Sandbox path is not hardcoded anymore in the working projects:
+  - `sandbox_root` is read from config.
+  - `complete_path` is called with the configured sandbox root, not a fixed literal path.
+- The reusable path logic lives in an op, which is the right pattern for TPMOS reuse.
+
+cpp-llm-specific differences
+----------------------------
+- cpp-llm uses a different API flow than gem-dev / gem-xo.
+- That API flow should stay untouched.
+- The missing feature is only the `*` completion path, not the model / endpoint logic.
+- cpp-llm already has `ops/src/complete_path.c`, so the completion backend exists and should be reused rather than duplicated.
+
+Current cpp-llm gaps to close
+-----------------------------
+1. Add config-driven sandbox root handling.
+   - `config/context.txt` should gain `sandbox_root=...`.
+   - Manager should read that key instead of using `projects/cpp-llm/sandbox` directly.
+
+2. Add completion state to the manager.
+   - Track when the current input contains `*`.
+   - Preserve the pre-completion buffer.
+   - Store up to 5 candidate labels.
+   - Render the suggestions block in the layout.
+   - Allow selecting a candidate and restoring the input cursor/state.
+
+3. Reuse the existing op for path lookup.
+   - Call `ops/+x/complete_path` from the manager.
+   - Pass the configured sandbox root / path prefix into the op.
+   - Do not inline filesystem scanning in the manager.
+
+4. Keep cpp-llm's API path as-is.
+   - Do not refactor the OpenAI-compatible / llama.cpp bridge.
+   - Do not change the JSON parsing flow unless it is required by the completion UI.
+
+Safe implementation shape
+-------------------------
+- Add the minimum completion state variables and helpers to `cpp-llm_manager.c`.
+- Add a suggestion display section to `cpp-llm.chtpm` if the layout needs to show the menu.
+- Load `sandbox_root` from `config/context.txt`.
+- Use the existing `complete_path` op for matches.
+- Keep the rest of the manager and API bridge unchanged.
+
+What not to do
+--------------
+- Do not rewrite cpp-llm to match gem-dev's API pipeline.
+- Do not add a new path-scanning implementation in the manager.
+- Do not keep sandbox paths hardcoded if the project already uses config for this in other agents.
+- Do not create a header-only split for the completion logic if the project standard is to keep it in the `.c` manager or an op.
+
+Recommended next step
+---------------------
+If this plan looks correct, implement only the completion/config pieces first, then verify:
+- typing `*` opens suggestions
+- selecting a suggestion updates the buffer
+- sandbox root comes from config
+- API behavior remains unchanged

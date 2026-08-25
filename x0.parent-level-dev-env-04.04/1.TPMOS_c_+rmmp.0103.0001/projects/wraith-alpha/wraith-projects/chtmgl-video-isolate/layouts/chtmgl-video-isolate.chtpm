@@ -1,0 +1,11 @@
+<chtpm>
+  <module>projects/wraith-alpha/wraith-projects/chtmgl-video-isolate/manager/+x/chtmgl-video-isolate_manager.+x</module>
+  <text label="CHTMGL VIDEO ISOLATE" /><br/>
+  <text label="Project ID: wraith-alpha/wraith-projects/chtmgl-video-isolate" /><br/>
+  <text label="Status: ready" /><br/>
+  <text label="Scope: isolated video tag / poster / transport experiments" /><br/>
+  <text label="Rule: keep heavy video work out of chtmgl-wraith until proven" /><br/>
+  <text label="Video: #.media-library/sample-10s-vp9.mp4" /><br/>
+  <text label="Poster: session/poster.png" /><br/>
+  <text label="Transport: play pause resume stop refresh" /><br/>
+</chtpm>

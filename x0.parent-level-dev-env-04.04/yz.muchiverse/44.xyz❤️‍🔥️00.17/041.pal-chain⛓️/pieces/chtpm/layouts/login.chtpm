@@ -1,0 +1,27 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/login_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|                        P A L - C H A I N                    |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <cli_io id="wallet_id_input" label="Wallet ID" target_id="wallet_id_input" /><br/>
+    <!-- id deliberately does NOT contain "password" (real, live-caught
+         bug, 2026-07-19): chtpm_parser_pal.c auto-repopulates any
+         cli_io whose id matches that substring from a STALE, separate
+         cli_buffers.txt masked-buffer cache on every layout (re)parse -
+         independent of gui_state.txt, so after chain_menu_input.c
+         clears password_input from gui_state.txt post-login, this
+         field kept visually showing "****" as if still filled, and
+         clicking Log In failed with "enter a password" since the real
+         backing value was actually empty. target_id (what actually
+         gets read back) is unaffected either way - only id triggers
+         chtpm's own special-cased masking/caching. -->
+    <cli_io id="pw_field" label="Password" target_id="password_input" /><br/>
+    ${piece_methods}
+    <button label="Create New Wallet" href="pieces/chtpm/layouts/signup.chtpm" /><br/>
+    <button label="Continue to Wallet" href="pieces/chtpm/layouts/wallet_main.chtpm" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label=" (Ctrl+C to quit)" /><br/>
+</panel>

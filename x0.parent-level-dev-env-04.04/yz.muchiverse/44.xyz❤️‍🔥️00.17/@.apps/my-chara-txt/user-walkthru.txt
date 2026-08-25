@@ -1,0 +1,224 @@
+MY-CHARA-TXT — USER WALKTHROUGH
+================================================================================
+How to launch this yourself and confirm it's working exactly as intended.
+Written 2026-08-02. If what you see doesn't match this, something regressed —
+that's the point of this doc.
+
+--------------------------------------------------------------------------------
+0. KNOWN ISSUE: GAME STATE CURRENTLY PERSISTS ACROSS RELAUNCHES WITH NO REAL
+   SAVE/LOAD (this is a real bug, being redesigned — not intended behavior)
+--------------------------------------------------------------------------------
+Right now, each `./button.sh run` gets a fresh EPHEMERAL session (keyboard
+history, UI plumbing) — but the actual game state (pieces/system/config.txt,
+plots.txt: day/health/money/grain/plot contents) is seeded ONCE at the project
+root and shared, unmodified, by every single launch forever. There is currently
+NO way to have multiple separate playthroughs, name a save, or start a
+genuinely fresh game except by manually deleting these files by hand (below).
+
+This is a real, confirmed architecture bug, not a feature — see
+@.apps/sv-ld-ses-strat.md for the real fix plan (the real &.widgits/file-menu
+widget should pop open for Save/Load, same as @.apps/text-editor-xyz already
+does, letting you name and switch between real save slots). Not built yet as
+of this walkthrough's own writing.
+
+To force a genuinely FRESH game before testing (the only way to do this today,
+recommended for this walkthrough so your results match what's described below):
+
+    cd "@.apps/my-chara-txt"
+    ./button.sh kill
+    rm -f pieces/system/config.txt pieces/system/plots.txt
+    rm -rf pieces/sessions
+    ./button.sh run
+
+--------------------------------------------------------------------------------
+1. LAUNCH
+--------------------------------------------------------------------------------
+    cd "@.apps/my-chara-txt"
+    ./button.sh run
+
+You should see a real terminal screen titled "M Y - C H A R A" with the
+frame below, AND (new, added same session as the automation layer) a
+SEPARATE real GL window titled "my-chara-txt RGB mirror" should also pop
+open automatically, mirroring the same text content as a rendered image —
+if you don't want this second window, run `NO_GL=1 ./button.sh run`
+instead. If the GL window doesn't appear at all, that's expected/graceful
+if your machine has no display or GLUT dev libraries — not a bug.
+
+Terminal content:
+
+    Day 1 / 10
+    Health: 100 / 100
+    Money: 500
+    Grain: 10
+
+    [>] 1. [Farm]
+    [ ] 2. [Mine]
+    [ ] 3. [End Turn (advance 1 day)]
+
+If instead you see "[Map Loading...]" and it never resolves into the above
+within a couple seconds — something's broken with the render pipeline, not
+expected behavior.
+
+--------------------------------------------------------------------------------
+2. TEST: END TURN (the original, most-tested loop)
+--------------------------------------------------------------------------------
+Navigate down to "End Turn" (arrow-down or 's' twice, or just type the digit
+'3'), press Enter.
+
+EXPECTED: Day advances to 2, Health drops to 95 (flat -5/day decay), and a
+message like "Day 2 began." appears. Do this a few more times — Health should
+keep dropping by 5 each time, Day should keep climbing. At Day 11 (or if Health
+hits 0), you should see a "GAME OVER" message and pieces/system/config.txt
+should show game_state=game_over.
+
+VERIFY ON DISK (in another terminal, while the game is still running or after
+quitting):
+    cat pieces/system/config.txt
+    # day= and health= should match what the screen showed
+    cat data/master_ledger.txt
+    # should have one "day_end" line per End Turn you pressed, append-only,
+    # never shrinking
+
+--------------------------------------------------------------------------------
+3. TEST: FARM (plant on a plot)
+--------------------------------------------------------------------------------
+From the main screen, select "Farm" (item 1, already default-selected — just
+press Enter). You should land on a screen showing 3 plots:
+
+    [>] 1. [Plot 0: Empty (plant wheat/corn)]
+    [ ] 2. [Plot 1: Empty (plant wheat/corn)]
+    [ ] 3. [Plot 2: Empty (plant wheat/corn)]
+
+Select any empty plot and press Enter.
+
+EXPECTED: a message like "Planted wheat on plot 1! Now have X grain." (grain
+count should have gone DOWN by the planting cost, not up — if you see the
+number go up when planting, that's backwards from what's intended). The
+selected plot's own row should change to show it's no longer empty (growing/
+planted state).
+
+VERIFY ON DISK:
+    cat pieces/system/plots.txt
+    # the plot you planted should show plot_N_state=<something other than empty>
+    # and plot_N_crop=<wheat or corn>
+
+Navigate back to main ("Back to main" button) and confirm the Grain count on
+the main screen dropped to match what plots.txt/the in-game message showed.
+
+--------------------------------------------------------------------------------
+4. TEST: MINE (RNG silver/gold)
+--------------------------------------------------------------------------------
+From the main screen, select "Mine" (item 2), press Enter, then select the
+"Mine" action on that screen.
+
+EXPECTED: a result message telling you whether you got silver or gold (per
+the piece.pdl's own stated 70%/30% odds — run it several times if you want to
+sanity-check the odds roughly hold over ~10-20 tries, though a small sample
+proves nothing statistically).
+
+VERIFY ON DISK:
+    cat pieces/system/config.txt
+    # silver_in_inventory= or gold_in_inventory= should have incremented
+    # matching whichever the message said you got
+
+--------------------------------------------------------------------------------
+4a. TEST: AUTOMATION (Manual/Semi/Full supervision dial) — ADDED 2026-08-02
+--------------------------------------------------------------------------------
+From the main screen, select "Automation" (a new 3rd button, after Farm/Mine).
+You should see:
+
+    Supervision: manual
+    Decision mode: 0 (0=preset)
+    Risk level: 5/10
+
+    [>] 1. [Set Manual (you control every action)]
+    [ ] 2. [Set Semi (auto one action, then pause)]
+    [ ] 3. [Set Full (auto continuously, ~1/sec)]
+
+--- 4a.1 MANUAL (the default, should feel identical to before this existed) ---
+Do nothing for 5-10 seconds. Health/day/grain should NOT change on their own —
+manual mode is a pure no-op gate. If you see day/health ticking on its own
+while still in Manual, that's a real regression.
+
+--- 4a.2 SEMI (one action, then it waits for you) ---
+Select "Set Semi". Within ~1 second you should see exactly ONE automated
+action happen (a message prefixed "[AUTO] ..." — harvest, plant, or day_end
+depending on farm state), and a new row appears:
+
+    Paused for confirmation: YES (use Continue)
+    [ ] 4. [Continue (resume auto-play)]
+
+Wait several seconds — nothing further should happen (still paused). Select
+"Continue" — exactly one more "[AUTO] ..." action should fire, then it pauses
+again. This "one action per Continue" behavior is the whole point of Semi
+mode — if it ever fires more than one action per Continue, or fires again
+without you pressing Continue, that's a real bug.
+
+--- 4a.3 FULL (unattended, runs to completion on its own) ---
+Select "Set Full". Leave it alone and just watch — you do NOT need to press
+anything. Expect roughly one "[AUTO] ..." action per second (harvest → plant
+→ mine/day_end, cycling), day counting up in the main screen if you flip back
+to check. It should run all the way to "GAME OVER (reached max_days)" (or
+health hitting 0) entirely on its own, and then STOP — no more ledger lines,
+no more messages, once game_state=game_over.
+
+WHILE THIS IS RUNNING, IN A SEPARATE TERMINAL, WATCH CPU (this matters — a
+prior session crash was CPU-related):
+    watch -n1 'ps aux | grep -E "prisc\+x|chtpm_parser_pal|orchestrator|keyboard_input" | grep -v grep'
+Every process should stay in the low single-digit % range throughout, the
+same as it is in Manual mode. If any process climbs toward double digits or
+keeps climbing over time, STOP the test immediately (Ctrl+C, then
+`./button.sh kill`) and report it — that would be a real regression of the
+Pitfall 22/51 busy-spin class of bug this house has hit before.
+
+VERIFY ON DISK once GAME OVER is reached:
+    cat data/master_ledger.txt
+    # should show a coherent harvest/plant/day_end cycle, day advancing
+    # each cycle, and NO new lines appended after the GAME OVER line even
+    # if you wait another 10+ seconds.
+    grep -E "day=|game_state=" pieces/system/config.txt
+    # day should be one past max_days (11 if max_days=10), game_state=game_over
+
+--------------------------------------------------------------------------------
+5. CLEAN SHUTDOWN CHECK
+--------------------------------------------------------------------------------
+Press Ctrl+C to quit. Then, in a separate terminal:
+
+    ps aux | grep my-chara-txt
+
+EXPECTED: no output (or only this grep command itself). If you see leftover
+orchestrator/prisc+x/keyboard_input processes still running, something didn't
+clean up correctly — that's a real bug worth reporting, not expected.
+
+--------------------------------------------------------------------------------
+6. THE AUTOMATED REGRESSION HARNESS (does the same End Turn check, unattended)
+--------------------------------------------------------------------------------
+    cd "@.apps/my-chara-txt/test-harn-same"
+    ./button.sh demo
+
+EXPECTED: "OVERALL: PASS" at the end, 10/10 individual checks passing. This is
+the same End Turn flow from step 2 above, run via real key injection instead
+of you typing — useful to re-run any time you want a fast confirm that the
+core loop hasn't regressed, without playing by hand. Note: the terminal may
+show "Exit code 143" right at the top even on a full pass — that's just the
+harness's own cleanup killing the backgrounded session, not a failure (the
+real result is the "OVERALL: PASS"/"FAIL" line near the bottom).
+
+--------------------------------------------------------------------------------
+KNOWN GAPS (things intentionally NOT built yet, don't report these as bugs)
+--------------------------------------------------------------------------------
+- No Store or Exchange screen yet (buy/sell nothing beyond what Farm/Mine
+  produce/consume).
+- No Inventory viewer screen (grain/silver/gold counts only show on the main
+  screen summary).
+- Farm/Mine/Automation were built after the original P2 checkpoint and haven't
+  gone through a dedicated automated harness scenario the way End Turn has
+  (step 6 only covers End Turn) — worth adding demo_farm.sh / demo_mine.sh /
+  demo_automation.sh scenarios as a next step for the same unattended-
+  regression coverage.
+- Automation's "weighted"/"rl"/"llm" decision tiers (decision_mode 1-3) are
+  NOT implemented yet — only "preset" (0) is real. Setting decision_mode to
+  anything else currently just runs the same preset logic (an honest
+  fallback, not a crash) — see HANDOFF_NEXT_SESSION.md for the real plan.
+- No Save/Load (see §0 above) — automation runs against the one persistent
+  config.txt/plots.txt, same limitation as manual play.

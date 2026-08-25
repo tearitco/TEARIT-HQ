@@ -1,0 +1,13 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+STATE        | enabled              | 1
+STATE        | restore-last-open     | 0
+MOUNT        | uuid                 | b7ced73c-5231-4462-b98d-64e38fe2df9e
+MOUNT        | mountpoint           | /media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e
+LAUNCH       | tool-bar             | '*.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x' '.'
+LAUNCH       | self                 | '*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/self'
+LAUNCH       | m8_redhorned         | '*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/m8_redhorned'
+LAUNCH       | m1_ninjadragon       | '*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/m1_ninjadragon'
+LAUNCH       | book-stack           | '*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/book-stack'
+LAUNCH       | asa                  | '*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/asa'
+LAUNCH       | ava                  | '*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/ava'

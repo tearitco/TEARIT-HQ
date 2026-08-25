@@ -1,0 +1,48 @@
+True Swords Clash (The Sword of the Spirit)
+Theme: A turn-based RPG duel flavored with spiritual warfare. Players battle using "Miracles" powered by "Mana" earned through knowledge challenges.
+
+Game Setup
+- Players: 2 (Human vs. Human or Human vs. AI).
+- Board Size: N/A (Duel Interface).
+- Starting Resources:
+    - HP (Health): 100.
+    - Mana: 0.
+- Source Text: Usually played with the Bible, but compatible with other public domain texts (Tao Te Ching, I Ching, etc.).
+
+Core Gameplay Loop
+The game is played in turns. On your turn, you must choose one of two primary actions:
+1. Attempt for Mana (Gathering Resources)
+2. Execute a Miracle (Attacking/Supporting)
+
+1. The Mana Challenge
+To gain Mana, you must choose an amount (2 to 10) and complete a challenge:
+- You are shown a number of shuffled verses/sentences from the source text equal to the Mana requested.
+- You must sort them into their original chronological order.
+- Success: You receive the requested Mana.
+- Failure: You receive no Mana and your turn ends.
+
+2. Miracles (Skills & Combat)
+Each Miracle has a specific Mana cost. Miracles can deal direct damage, heal, or apply long-term status effects.
+
+- Hail Mary (0 Mana): Flip a coin. Heads: Double your current Mana. Tails: Lose all current Mana.
+- Slash (1 Mana): Deals 2 HP damage. Roll a 6-sided die; if you roll a 6, the enemy begins "Bleeding" (-1 HP per turn).
+- Fire (2 Mana): Roll a 6-sided die. The result is the HP damage dealt to the opponent.
+- Berserk (3 Mana): Flip a coin. Heads: Deals 13 HP damage. Tails: Miss.
+- Heal (4 Mana): Restore 10 HP to yourself and remove all negative status effects.
+- Judgement (5 Mana): Flip a coin. Heads: Steal all of the opponent's Mana and add it to your own.
+- Poison (6 Mana): Inflicts a "Poison" status on the enemy (-2 HP per turn).
+- Locust (7 Mana): Inflicts a "Locust" status on the enemy (-1 Mana per turn).
+- Blessing (8 Mana): Grants a "Blessing" status to yourself (+1 Mana per turn).
+- Angel (9 Mana): Steals 10 HP from the opponent (Heals you 10, Damages them 10) and removes your negative status effects.
+- Holy Sword (10 Mana): Deals 25 HP damage. Roll a 6-sided die; if you roll a 6, the enemy begins "Bleeding."
+
+Status Effects
+- Bleeding: -1 HP at the start of every turn.
+- Poison: -2 HP at the start of every turn.
+- Locust: -1 Mana at the start of every turn.
+- Blessing: +1 Mana at the start of every turn.
+Note: "Heal" or "Angel" can be used to clear negative effects.
+
+Win State
+- Victory: Reduce the opponent's HP to 0.
+- Forfeit: A player may surrender at any time, forfeiting the stakes.

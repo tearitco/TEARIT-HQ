@@ -1,0 +1,4 @@
+last_cmd=LOAD
+result=ok
+message=Loaded 35 bytes from /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.13/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.09/%.harnesses/file-menu+editor/fixtures/hello_from_harness.txt
+at=1785227633

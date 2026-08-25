@@ -1,0 +1,40 @@
+
+
+
+
+
+--- TASKBAR FRAME UPDATE at 2026-08-24 18:09:58 ---
+[>] 16. cursword
+[^] 1. HQ
+[ ] 2. jb
+[ ] 3. file:pre-design
+[ ] 4. desks:office
+[ ] 5. pals
+[ ] 6. palettes
+[ ] 7. edit
+[ ] 8. player
+[ ] 9. db
+[ ] 10. plugins
+[ ] 11. toys
+[ ] 12. store
+[ ] 13. network
+[ ] 14. h-ai
+[ ] 15. 2026年08月24日 周一 18:09
+[>] 1. $.restart
+[ ] 2. hide/show
+[ ] 3. dir
+[ ] 4. X.quit
+[ ] 5. settings
+[ ] 6. stats
+[ ] 7. cli
+[ ] 8. cursword
+[ ] 9. cancel
+[>] 1. $.restart
+[ ] 2. hide/show
+[ ] 3. dir
+[ ] 4. X.quit
+[ ] 5. settings
+[ ] 6. stats
+[ ] 7. cli
+[ ] 8. cursword
+[ ] 9. cancel

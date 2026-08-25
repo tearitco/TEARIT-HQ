@@ -1,0 +1,12 @@
+<panel>
+    <module>projects/tsots-online/manager/+x/tsots_online_manager.+x</module>
+    <text label="╔═══════════════════════════════════════════════════════════╗" /><br/>
+    <text label="║                 L O G I N   S C R E E N                   ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <cli_io id="username_input" label="User: " target_id="1" /><br/>
+    <cli_io id="password_input" label="Pass: " target_id="2" input_mode="password" /><br/>
+    <text label="║ " /><button label="1. Login" onClick="KEY:1" /><br/>
+    <text label="║ " /><button label="2. Signup" href="projects/tsots-online/layouts/tsots-signup.chtpm" /><br/>
+    <text label="║ " /><button label="3. Guest" href="projects/tsots-online/layouts/tsots-menu.chtpm" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+</panel>

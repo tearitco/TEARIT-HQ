@@ -1,0 +1,12 @@
+module_path=projects/wraith-alpha/wraith-projects/wrai-text-editor/manager/+x/wrai-text-editor_manager.+x
+app_title=WRAI TEXT EDITOR
+project_id=wraith-alpha/wraith-projects/wrai-text-editor
+active_layout=projects/wraith-alpha/wraith-projects/wrai-text-editor/layouts/editor.chtpm
+active_file_path=none
+current_dir=projects/wraith-alpha/wraith-projects/wrai-text-editor/pieces
+response=Ready.
+editor_map=<text label="║                                           ║" /><br/><text label="║                                           ║" /><br/><text label="║                                           ║" /><br/><text label="║  😀[X]                                  ║" /><br/><text label="║                                           ║" /><br/><text label="║  WRAI EMOJI TEST                          ║" /><br/><text label="║  😀 😅 😆 😇 🚀                 ║" /><br/><text label="║  🌍 🐶 🎉 ❤️ ⭐                ║" /><br/>
+browser_mode_header=║  MODE: LOAD FILE
+directory_browser_markup=
+search_query_val=type to filter
+file_path_input_val=path

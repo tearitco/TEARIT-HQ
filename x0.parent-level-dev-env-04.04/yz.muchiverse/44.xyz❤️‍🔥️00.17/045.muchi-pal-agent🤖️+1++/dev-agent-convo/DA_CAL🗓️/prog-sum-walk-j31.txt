@@ -1,0 +1,129 @@
+📅 prog-sum-walk-j31.txt — j31 (2026-07-31) — PROGRESS + USER WALKTHRU
+=========================================================================
+PART OF: dev-agent-convo/DA_CAL🗓️/ — day-calendar notes for 045.muchi-pal-agent🤖️+1
+COMPANIONS: #.wussup/agent-prog-report-j31.md (full), dev-agent-convo/00–05 docs
+
+═══════════════════════════════════════════════════════════
+PART 1 — LAST SESSION PROGRESS (what got done + proved)
+═══════════════════════════════════════════════════════════
+
+🌐 LAN NODES (verified live)
+  - MAC 10.0.0.144 (lfs.master/1234) — ollama LAN-open :11434; heavy lifting
+  - LINUX 10.0.0.187 (jb/root) — ollama LAN-open :11434; iqabod training node
+  - Both reach each other over LAN (Linux curls the Mac teacher directly).
+
+🐛 IQABOD ROOT-CAUSE BUG — FOUND + FIXED + PROVEN
+  - The bug: training loop fed the whole corpus position into the KV cache
+    with NO seq_len guard (generation caps at 32, training didn't). Any
+    corpus >32 tokens = heap corruption = "free(): invalid pointer" crash.
+  - That's why iqabod had only ever learned ≤32-token toy corpora AND why
+    loss always plateaued at the random floor. Real conversations = crash.
+  - FIX: sliding-window training — pos = i % seq_len + zero KV cache at
+    window boundary (generation_module.c, one targeted change).
+  - Recompiled on the Linux node → the 80-token conv-g1 corpus now trains
+    clean, no crash.
+
+⚙️ SECOND BOTTLENECK — LEARNING RATE (also fixed)
+  - Default lr=1e-5 sat on the random floor (4.38 = ln 80). Nothing learned.
+  - Store config.txt now: learning_rate=0.1, epochs=100 → loss fell
+    4.38 → 0.0002. iqabod genuinely learns now. 🎉
+
+💬 FIRST REAL RESULT — conv-g1 conversation curriculum
+  - Teacher llama3:latest (Mac) wrote a 15-line greeting corpus on Linux.
+  - Trained at lr=0.1 → generation is COHERENT:
+      "hello is a common greeting Good morning used in the early hours
+       day suitable any time after breakfast Hi casual way to greet
+       someone How are you"
+  - <UNK> leaks: GONE after the config retrain (0 across all probes).
+  - Output = near-verbatim recitation (expected at this tiny scale — that's
+    the proof of learning, generalization comes next with bigger corpora).
+
+🛠️ SUPERVISOR v1 — BUILT + VERIFIED END-TO-END (house pattern)
+  - ops/train_step.+x        train one curriculum on a node (SSH from here)
+  - ops/eval_curriculum.+x   held-out probes → loss + <UNK>% report rows
+  - ops/list_curricula.+x    reads curricula.pdl manifest (tiny, local)
+  - %.harnesses/iqabod-loop/button.sh — set-and-forget loop:
+        enqueue <name> <node> | once | loop | status
+    Queue + training-report.txt live in the harness dir (tiny, on THIS box).
+  - Real harness run verified:
+        TRAIN|conv-g1|linux|epochs=100|final_loss=0.0002
+        EVAL_SUM|conv-g1|linux|probes=3|ssh_fail=0|max_unk=0
+
+🗂️ STORAGE RULE — INTACT (pointer here, payload on nodes)
+  - THIS box holds ONLY: curricula.pdl manifest, queue, reports, docs.
+  - Heavy corpus/vocab/weights live on the nodes in ~/iqabod-store/<name>/.
+  - Zip-and-ship safe.
+
+🔒 CPU-COMPUTE PRACTICES (confirmed this session)
+  - All iqabod compute runs on the LAN nodes over SSH — never on this box.
+  - This box: file work, gcc on tiny ops, ssh orchestration only.
+  - No stray processes left behind after the session (checked).
+
+📌 NEXT (in order)
+  1. Curriculum g2 enqueue + gap-report teacher prompting (D3: weak spots →
+     llama3 fills them → retrain 0.1s = expanded brain)
+  2. Router op (intent/topic → pick curriculum expert)
+  3. Bridge harness (gemma routes + iqabod generates → file lands)
+  4. Behavior-tree decision engine
+  5. escalate_to_llama op (management-review rung)
+
+═══════════════════════════════════════════════════════════
+PART 2 — USER WALKTHRU TEST (YOU do this, ~10 min)
+═══════════════════════════════════════════════════════════
+
+Two things to poke with your own hands today:
+  (A) the agent chat UI + tools   (B) the iqabod loop
+
+───────────────────────────────────────────────────────────
+A) AGENT CHAT + TOOL WALKTHRU (full guide: user-walkthru.md)
+───────────────────────────────────────────────────────────
+▶️ HOW TO RUN
+    cd 045.muchi-pal-agent🤖️+1
+    bash button.sh run
+    → chat UI opens, header shows model (gemma-lan default)
+
+✅ DO THESE (one tool per turn, plain English + Enter)
+  [ ] 1️⃣ Type a normal chat message → you should see "You: …" then an AI
+        reply (from the LAN Mac's gemma3:270m; model REMEMBERS across
+        restarts)
+  [ ] 2️⃣ /model gemma-lan → header changes to model: gemma-lan
+  [ ] 3️⃣ list the files → a REAL list_dir tool fires BEFORE any AI call
+        → "[list_dir result]: …" appears AFTER your message (no "TOOL:"
+        garbage — that old bug is fixed)
+  [ ] 4️⃣ create file hello.py containing print('hello world')
+        → [write_file result]: Written 21 bytes to hello.py
+  [ ] 5️⃣ run python3 hello.py → [exec_cmd result]: hello world
+  [ ] 6️⃣ edit hello.py replace hello with hi
+  [ ] 7️⃣ run python3 hello.py → [exec_cmd result]: hi world
+  [ ] 8️⃣ create file book.txt containing Chapter 1: Hello
+  [ ] 9️⃣ append to book.txt the line "It was a dark and stormy night."
+  [ ] 10️⃣ read file book.txt → both lines
+  [ ] 11️⃣ search for dark in book.txt → "[Line 2]: …"
+  [ ] 12️⃣ Ctrl+C, run again → history still there 🧠
+
+🟢 GOOD LOOKS LIKE: chat works, model switch works, tools fire
+deterministically pre-LLM, results render after your message, history
+persists. That's the product.
+
+───────────────────────────────────────────────────────────
+B) IQABOD LOOP WALKTHRU (supervisor v1 — set-and-forget)
+───────────────────────────────────────────────────────────
+▶️ HOW TO RUN (LAN nodes must be up; this box only orchestrates)
+    export PRISC_PROJECT_ROOT="<abs path to 045.muchi-pal-agent🤖️+1>"
+    %.harnesses/iqabod-loop/button.sh status      # see queue + last report
+
+✅ DO THESE
+  [ ] 1️⃣ status → shows queue line "conv-g1 linux" + last TRAIN/EVAL rows
+  [ ] 2️⃣ once → runs train + eval on the Linux node, appends report rows,
+        prints QUEUE_DONE (takes ~1 min, runs on the NODE not this box)
+  [ ] 3️⃣ enqueue conv-g1 linux   (already queued; re-add is harmless)
+  [ ] 4️⃣ loop → cycles forever, every 5 min (Ctrl+C to stop)
+
+🟢 GOOD LOOKS LIKE: loss row ~0.0002, EVAL_SUM max_unk=0, coherent greeting
+recitations, this box never goes busy.
+
+═══════════════════════════════════════════════════════════
+VERDICT j31: everything above is REAL-TESTED green (harness + live nodes).
+The two big unlocks this session: (1) iqabod can now train on real
+conversation corpora, (2) the human can supervise it with one command.
+═══════════════════════════════════════════════════════════

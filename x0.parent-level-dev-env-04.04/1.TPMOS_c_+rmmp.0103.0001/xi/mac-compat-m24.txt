@@ -1,0 +1,57 @@
+# macOS Compatibility Report (May 2026)
+**Status:** IMPLEMENTED & VERIFIED
+
+## Overview
+The CHTPM project was originally designed for Linux (GCC) and recently extended for Windows. This document details the shims and build system updates implemented to enable full macOS compatibility.
+
+## 1. Build System Updates (`compile_all.sh`)
+The compilation script now automatically detects macOS (`Darwin`) and adjusts the following:
+
+- **Compiler Flags**: 
+  - Removed `-Wno-format-truncation` which is unsupported by Clang.
+  - Retained `-Wno-format-extra-args` (compatible).
+- **Graphics Frameworks**:
+  - Replaced Linux-style linking (`-lglut -lGLU -lGL`) with macOS Frameworks: `-framework GLUT -framework OpenGL`.
+- **FreeType Resolution**:
+  - Integrated `pkg-config` for dynamic path resolution of `freetype2`.
+  - Added fallback paths for common Homebrew locations (`/opt/homebrew` and `/usr/local/opt`).
+
+## 2. Source Code Shims
+The following shims ensure cross-platform compilation:
+
+### A. OpenGL / GLUT Includes
+Standardized pattern across `gl_renderer.c`, `gl_desktop.c`, and `gl_os_renderer.c`:
+```c
+#ifdef __APPLE__
+  #include <GLUT/glut.h>
+  #include <OpenGL/glu.h>
+#else
+  #include <GL/glut.h>
+  #include <GL/glu.h>
+#endif
+```
+
+### B. System Utilities (`win_compat.h`)
+While initially created for Windows, `win_compat.h` provides the `MKDIR`, `REALPATH`, and `SETENV` macros which correctly resolve to POSIX equivalents on macOS.
+
+### C. Joystick Support
+`joystick_input.c` includes a shim for the Linux `js_event` structure, allowing the code to compile on macOS even though the `/dev/input/js*` devices are missing.
+
+## 3. macOS Setup Instructions
+To compile and run CHTPM on macOS, ensure the following are installed:
+
+```bash
+# Install dependencies via Homebrew
+brew install freetype pkg-config
+
+# Compile all binaries
+./button.sh compile
+
+# Verify binaries
+./button.sh check
+```
+
+## 4. Verification Results
+- **Compiled Binaries**: 144/144
+- **Verification Status**: PASS
+- **Tested Components**: `keyboard_input`, `chtpm_parser`, `gl_renderer` (build-only).

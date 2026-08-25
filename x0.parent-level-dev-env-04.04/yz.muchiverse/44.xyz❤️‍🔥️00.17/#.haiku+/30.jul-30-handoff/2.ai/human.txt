@@ -1,0 +1,106 @@
+================================================================================
+WHAT I JUST DID, IN PLAIN ENGLISH
+(companion to TODO.txt / xyzai-vs-iqabod.md / PITFALL 60, which are the
+technical versions of this same story)
+================================================================================
+
+THE QUESTION YOU ASKED
+
+"Did you test the AI agent using its harness?"
+
+Short answer: no, not the first time. I had tested my fix by hand -
+calling three small command-line tools one after another myself,
+watching what they did, and confirming the output looked right. That's
+a real test, but it's not the same thing as "using the project's own
+harness," which means launching the actual chat app the way a person
+actually uses it and typing real keystrokes into it.
+
+You caught that gap. Good catch - it turned out to matter.
+
+
+WHAT I DID NEXT
+
+I wrote a new test script for this project's existing test harness
+(same style the project already had for a different feature - "does
+the AI correctly notice when someone asks it to list files"). My new
+script does what a real person would do:
+
+  1. Launch the real chat app, for real, as its own program.
+  2. Type "/model iqabod-test" and press Enter - switches the AI model.
+  3. Type "hello how are you" and press Enter - sends a real chat message.
+  4. Wait and watch what actually happens on screen / in the saved chat
+     log, the same way you'd watch it happen if you were sitting there.
+
+I ran it.
+
+It failed.
+
+
+WHAT THE FAILURE TOLD ME
+
+The model switch worked. The AI correctly started "thinking." But no
+reply ever showed up in the conversation. My EARLIER manual test had
+NOT caught this - it worked fine when I ran the three tools by hand.
+
+So something about the difference between "I called the tools myself"
+and "the real running app called the tools" was the actual problem.
+
+I dug in and found it: when the real app runs, it creates a fresh,
+temporary working folder for that one session (something like
+"session-12345/") and tells every tool "your home base is THIS folder."
+When I tested by hand earlier, I had been running the tools from the
+project's own main folder instead - one level "closer" to everything
+else.
+
+My fix from earlier (make sure it uses a normal relative path like
+"../IQABOD" instead of a hardcoded old path that doesn't exist anymore)
+was CORRECT in spirit, but it did its math from the wrong starting
+point when running inside one of those temporary session folders. It
+was looking for IQABOD two folders over from the wrong place - so it
+found nothing, and quietly gave up.
+
+
+THE FIX
+
+I taught the code a new step: before it goes looking for IQABOD, first
+figure out "wait, am I currently inside one of those temporary session
+folders?" - and if so, back out of it first, THEN do the normal
+"go find my sibling project" math. One small added function handles
+this.
+
+
+PROOF, NOT JUST A CLAIM
+
+I re-ran the exact same real-app test again after the fix. This time:
+
+  - Model switch: worked.
+  - Path used: confirmed to be the new, correct relative path, not the
+    old dead one.
+  - The AI actually finished thinking (didn't get stuck).
+  - A real reply from the AI actually showed up in the saved
+    conversation.
+
+All four checks passed.
+
+I also re-ran the OLDER test (the "list files" detection one) both
+before and after this change, twice, just to make sure I hadn't broken
+something else while fixing this. It passed both times.
+
+
+THE HONEST TAKEAWAY
+
+This is a good, concrete example of exactly why "did you test it for
+real" is worth asking every time, even for a fix that already "passed."
+A test that's slightly easier to run (calling tools by hand) can hide a
+real bug that only shows up when the actual program runs the way it
+actually runs. The fix that looked done an hour ago was not actually
+done - it just hadn't been checked the right way yet.
+
+Both fixes (the original dead-path problem, and this session-folder
+problem) and the new test script are saved in this project going
+forward, so this same mistake can be re-checked automatically next
+time, not just remembered.
+
+================================================================================
+END
+================================================================================

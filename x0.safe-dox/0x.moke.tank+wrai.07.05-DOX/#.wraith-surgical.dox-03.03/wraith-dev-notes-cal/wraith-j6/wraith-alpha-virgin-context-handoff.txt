@@ -1,0 +1,61 @@
+# WRAITH-ALPHA VIRGIN CONTEXT HANDOFF
+Date: 2026-06-06
+
+Purpose:
+Give the next fresh context a clean, minimal starting point for the remaining
+Wraith Alpha restore bug after rollback.
+
+Current baseline:
+- The repo is rolled back to the old Wraith Alpha baseline.
+- `Terminal` launch works again.
+- `-` minimize works again.
+- `x` close works again.
+- Restore from the toolbar is still broken.
+- The launcher/dock should stay plain `Terminal`.
+- Minimized restore targets should eventually be proc-numbered, but that is
+  still target intent, not fully proven live.
+
+What is currently proven live:
+- Boot starts at the normal top-level loader again.
+- Wraith Alpha starts with an empty desktop.
+- The dock shows plain `Terminal`.
+- Launching `Terminal` opens `Terminal #1`.
+- Minimizing `Terminal #1` moves it into the toolbar state.
+- Closing the window works.
+
+What is still broken:
+- Clicking or selecting the toolbar restore entry does not reliably reopen the
+  exact minimized terminal instance.
+- The restore path is the only remaining Wraith Alpha desktop bug after the
+  rollback.
+
+Docs now aligned to this state:
+- [wraith-alpha-blueprint.txt](../wraith-alpha-blueprint.txt)
+- [wraith-alpha-presentation-stack.txt](../wraith-alpha-presentation-stack.txt)
+- [er/wraith-alpha-restart-handoff.txt](./wraith-alpha-restart-handoff.txt)
+- [er/wraith-alpha-short-term-2do.txt](./wraith-alpha-short-term-2do.txt)
+- [er/wraith-alpha-problems-solutions.txt](./wraith-alpha-problems-solutions.txt)
+
+First files to inspect:
+- `1.TPMOS_c_+rmmp.0102.0018/projects/wraith-alpha/layouts/alpha-shell.chtpm`
+- `1.TPMOS_c_+rmmp.0102.0018/projects/wraith-alpha/manager/wraith-alpha_manager.c`
+- `1.TPMOS_c_+rmmp.0102.0018/projects/wraith-alpha/ops/wraith_parser_alpha.c`
+- `1.TPMOS_c_+rmmp.0102.0018/projects/wraith-alpha/session/desktop_ui_state.txt`
+- `1.TPMOS_c_+rmmp.0102.0018/projects/wraith-alpha/session/alpha_state.txt`
+
+Recommended next move:
+1. Reintroduce only the restore-from-toolbar path.
+2. Test it immediately after that one change.
+3. Do not add registry expansion, multi-window hardening, or mouse work yet.
+
+What not to assume:
+- Do not assume the earlier toolbar-registry work is still active.
+- Do not assume the live parser/runtime is stale unless proven.
+- Do not assume `Terminal` numbering or registry fields are final.
+- Do not touch the boot/default-index fix unless a future bug proves it needs revision.
+
+Short version:
+- launch works
+- minimize works
+- close works
+- restore is the last broken piece

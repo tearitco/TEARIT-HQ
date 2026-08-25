@@ -1,0 +1,10 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | chtmgl-beta
+META         | version            | 1.0
+META         | entry_layout       | projects/chtmgl-beta/layouts/index.chtmgl
+META         | author             | Gemini-CLI
+
+STATE        | app_title          | CHTMGL Integration Beta
+STATE        | status             | Ready
+STATE        | SOVEREIGN          | true

@@ -1,0 +1,6 @@
+tk_drag_sim: source='test_pet_az' (400,400 80x80) target='mutaclsym RGB mirror' (20,90 640x768)
+X Error of failed request:  BadWindow (invalid Window parameter)
+  Major opcode of failed request:  25 (X_SendEvent)
+  Resource id in failed request:  0x1800002
+  Serial number of failed request:  203
+  Current serial number in output stream:  204

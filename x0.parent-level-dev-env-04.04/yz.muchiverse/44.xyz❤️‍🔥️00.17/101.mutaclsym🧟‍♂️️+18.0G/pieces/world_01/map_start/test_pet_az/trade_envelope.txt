@@ -1,0 +1,16 @@
+origin_game|unknown_game
+kind|pet
+payload_id|test_pet_az
+display_name|test_pet_az
+species_id|sp_test
+species_name|TestPet
+skills|
+hunger|100
+energy|100
+hp|25
+hp_max|25
+mp|13
+mp_max|13
+level|1
+xp|0
+exported_at|1785164281

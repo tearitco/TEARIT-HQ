@@ -1,0 +1,26 @@
+# info_test_module.pal - PHASE 2 per-screen module split (2026-07-31,
+# #.haiku+/!.xyzos-standards+1.txt §41), proven first in 01.muchi-
+# pals-🥚️-13.01, now applied here. pieces/chtpm/layouts/info_test.chtpm's
+# own DEDICATED module - game.chtpm and info_test.chtpm used to both
+# resolve to the SAME project-wide ${module_path} variable (confirmed:
+# pieces/apps/player_app/state.txt's own module_path=system/prisc+x
+# pal/main_loop_chtpm.pal, identical for the whole project regardless
+# of layout) - each now gets its own distinct, literal module string,
+# so chtpm_parser_pal.c's real launch_module() liveness check (kill+
+# relaunch on genuine navigation, reuse while staying on one screen)
+# applies per screen. Identical CONTENT to the original main_loop_
+# chtpm.pal on purpose (including for info_test.chtpm - the real game
+# world/monsters keep simulating via game_dispatch's own end_turn/
+# tick_monsters even while viewing the info screen, matching original
+# behavior exactly) - only the FILENAME differs, which is all launch_
+# module()'s own strcmp() actually compares.
+li x1, 0
+
+compose_frame
+compose_rgb_frame
+hit_frame
+
+loop:
+exec ./ops/+x/game_dispatch
+sleep 16667
+j loop

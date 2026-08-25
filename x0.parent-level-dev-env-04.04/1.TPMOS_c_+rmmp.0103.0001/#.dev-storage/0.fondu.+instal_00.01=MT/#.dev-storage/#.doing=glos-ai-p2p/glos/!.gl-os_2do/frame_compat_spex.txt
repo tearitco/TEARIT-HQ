@@ -1,0 +1,215 @@
+# GL-OS / ASCII-OS FRAME COMPATIBILITY SPECIFICATION
+**Date:** March 24, 2026
+**Critical:** Architectural Compatibility for Cross-OS Frame Sharing
+
+---
+
+## CORE PRINCIPLE: SAME FORMAT, SEPARATE FILES
+
+**GL-OS and ASCII-OS are like Linux and Windows:**
+- Linux CAN read Windows files (same data, different OS)
+- Windows CAN read Linux files (same data, different OS)
+- But by DEFAULT, they use their own files
+- **Same format = theoretical compatibility**
+- **Separate files = practical isolation**
+
+---
+
+## FRAME FILE STRUCTURE (COMMON FORMAT)
+
+Both OSes use the SAME frame history format:
+
+```
+--- FRAME UPDATE at YYYY-MM-DD HH:MM:SS ---
+╔═══════════════════════════════════════════╗
+║                                           ║
+║  Frame content here                       ║
+║  Multiple lines                           ║
+║  Preserved exactly                        ║
+║                                           ║
+╚═══════════════════════════════════════════╝
+
+--- FRAME UPDATE at YYYY-MM-DD HH:MM:SS ---
+╔═══════════════════════════════════════════╗
+║  Next frame...                            ║
+╚═══════════════════════════════════════════╝
+```
+
+### File Locations (SEPARATE)
+
+**ASCII-OS (CHTPM):**
+```
+pieces/display/frame_history.txt          ← Current frame history
+pieces/display/current_frame.txt          ← Current frame only
+pieces/debug/frames/session_frame_history.txt  ← Debug history
+```
+
+**GL-OS:**
+```
+pieces/apps/gl_os/session/frame_history.txt   ← GL-OS frame history
+pieces/apps/gl_os/session/current_frame.txt   ← GL-OS current frame
+pieces/apps/gl_os/debug/frames/session_frame_history.txt  ← GL-OS debug
+```
+
+---
+
+## TERMINAL IMPLEMENTATION (CRITICAL)
+
+### ASCII-OS Terminal (REFERENCE)
+
+**Displays:**
+- Actual rendered frames from `pieces/display/frame_history.txt`
+- Each frame is a complete screen capture
+- Frames scroll up as new ones arrive (Linux terminal style)
+- Old frames preserved in history
+
+**Behavior:**
+```
+User sees:
+┌─────────────────────────────────┐
+│ [Frame 1]                       │
+│ CHTPM OS Menu                   │
+│ 1. Help                         │
+│ 2. Launch FuzzPet               │
+└─────────────────────────────────┘
+     ↓ (new frame arrives)
+┌─────────────────────────────────┐
+│ [Frame 1] (scrolled up)         │
+│ [Frame 2]                       │
+│ Fuzzpet Dashboard               │
+│ Pet Name: SELECTOR              │
+└─────────────────────────────────┘
+```
+
+### GL-OS Terminal (MUST MATCH)
+
+**Displays:**
+- Actual rendered frames from `pieces/apps/gl_os/session/frame_history.txt`
+- Each frame is a complete screen capture
+- Frames scroll up as new ones arrive (Linux terminal style)
+- Old frames preserved in history
+
+**Behavior (SAME AS ASCII-OS):**
+```
+User sees:
+┌─────────────────────────────────┐
+│ [Frame 1]                       │
+│ GL-OS Menu                      │
+│ [>] 1. Desktop Apps             │
+│ [ ] 2. Terminal Apps            │
+└─────────────────────────────────┘
+     ↓ (new frame arrives)
+┌─────────────────────────────────┐
+│ [Frame 1] (scrolled up)         │
+│ [Frame 2]                       │
+│ $ cube                          │
+│ Launching 3D Cube...            │
+└─────────────────────────────────┘
+```
+
+**NOT Text Commands:**
+```
+WRONG (Current Implementation):
+$ help
+Available Categories:
+  1. Desktop Apps
+  2. Terminal Apps
+
+RIGHT (Frame-Based):
+[Actual rendered frame from frame_history.txt]
+Shows complete UI state, not just text
+```
+
+---
+
+## IMPLEMENTATION RULES
+
+### GL-OS Terminal MUST:
+1. **Read frames from file** - `pieces/apps/gl_os/session/frame_history.txt`
+2. **Display complete frames** - Not just text, but rendered UI
+3. **Scroll frames up** - As new frames arrive (Linux terminal behavior)
+4. **Preserve history** - Old frames in scrollback
+5. **Use same format** - Identical to ASCII-OS frame format
+
+### GL-OS Terminal MUST NOT:
+1. **Don't just show text** - Must show rendered frames
+2. **Don't use different format** - Must match ASCII-OS exactly
+3. **Don't clear on new frame** - Frames scroll up, don't disappear
+
+---
+
+## CROSS-OS COMPATIBILITY (FUTURE)
+
+### Frame Bridge (Future Feature)
+```c
+/* Display ASCII-OS frames in GL-OS terminal */
+void display_ascii_os_frames_in_gl_os(void) {
+    /* Copy ASCII-OS frames to GL-OS */
+    system("cp pieces/display/frame_history.txt "
+           "pieces/apps/gl_os/session/frame_history.txt");
+    /* GL-OS terminal now shows ASCII-OS output */
+}
+
+/* Display GL-OS frames in ASCII-OS terminal */
+void display_gl_os_frames_in_ascii_os(void) {
+    /* Copy GL-OS frames to ASCII-OS */
+    system("cp pieces/apps/gl_os/session/frame_history.txt "
+           "pieces/display/frame_history.txt");
+    /* ASCII-OS terminal now shows GL-OS output */
+}
+```
+
+### Why This Matters:
+1. **Debugging** - Compare output between OSes
+2. **Session Migration** - Move user session between OSes
+3. **Unified History** - Combined frame history
+4. **Cross-OS Replay** - Replay actions in either OS
+
+---
+
+## TESTING COMPATIBILITY
+
+### Test 1: Frame Format
+1. Generate frame in ASCII-OS
+2. Copy to GL-OS frame history
+3. GL-OS terminal should display it correctly
+4. ✓ PASS if frame renders without errors
+
+### Test 2: Scroll Behavior
+1. Both OSes should have identical scroll behavior
+2. Thumb at bottom = newest frames
+3. Scroll up = older frames
+4. ✓ PASS if behavior matches exactly
+
+### Test 3: Frame Content
+1. GL-OS terminal should show FRAMES, not just text
+2. Each frame should be complete UI state
+3. Frames should scroll up (not disappear)
+4. ✓ PASS if matches Linux terminal behavior
+
+---
+
+## SUMMARY
+
+**GL-OS and ASCII-OS are like Linux and Windows:**
+- Different OSes
+- Separate files by default
+- SAME FORMAT for compatibility
+- COULD read each other's files (theoretically)
+- DON'T by default (practically isolated)
+
+**GL-OS Terminal MUST:**
+- Show FRAMES (rendered UI), not just text
+- Scroll frames up (Linux terminal style)
+- Use same format as ASCII-OS
+- Store frames in GL-OS session directory
+
+**This is CRITICAL for:**
+- Data portability
+- Debugging
+- Future cross-OS features
+- TPM compliance
+
+---
+
+**END OF FRAME COMPATIBILITY SPECIFICATION**

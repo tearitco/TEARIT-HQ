@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | pet_01
+META         | version            | 1.0
+
+STATE        | name               | Fuzzball
+STATE        | type               | pet
+
+METHOD       | interact           | projects/op-ed/games/fuzz-op-mirror/scripts/pet_interact.asm
+METHOD       | feed               | pieces/ops/fuzzpet_action.+x pet_01 feed
+METHOD       | play               | pieces/ops/fuzzpet_action.+x pet_01 play
+METHOD       | sleep              | pieces/ops/fuzzpet_action.+x pet_01 sleep
+
+RESPONSE     | default            | *purr*

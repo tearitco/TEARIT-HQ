@@ -1,0 +1,19 @@
+# terrain_legend.txt - real, per-host data-bank board-viewer reads
+# instead of hardcoding aomorai-editor's own terrain in its C source
+# (Phase 0 of PIECECRAFT_XYZ_DESIGN.md §0a, board-viewer-side work
+# already done - see &.widgits/board-viewer/ops/bv_render_3d.c's own
+# load_terrain_legend()). Real Phase 1 vocabulary (civ-vs-piece.md §2
+# decision: "expand now") - a real voxel block set, not civ-txt's
+# strategy-game glyphs. '#' deliberately avoided (board-viewer's own
+# comment-line/wall-glyph collision, already found and fixed once for
+# tactics-txt per design §0a - never reintroduce it here).
+# Format: glyph|height|r|g|b|asset_hex|name  ("-" asset_hex = no texture)
+_|0.0|135|206|235|-|air
+.|0.3|110|70|40|1F7EB|dirt
+s|0.5|120|120|120|1FAA8|stone
+,|0.6|90|170|60|1F33F|grass
+:|0.4|210|190|140|1F3D6|sand
+~|-0.2|40|110|200|1F30A|water
+T|0.8|100|60|30|1FAB5|wood
+%|0.7|40|130|50|1F343|leaves
+*|0.5|150|150|160|1F48E|ore

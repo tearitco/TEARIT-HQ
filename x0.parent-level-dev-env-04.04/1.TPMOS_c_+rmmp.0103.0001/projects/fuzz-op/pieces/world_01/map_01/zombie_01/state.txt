@@ -1,0 +1,9 @@
+name=Zombie
+type=zombie
+pos_x=10
+pos_y=2
+pos_z=0
+on_map=1
+behavior=aggressive
+speed=1
+map_id=map_01_z0.txt

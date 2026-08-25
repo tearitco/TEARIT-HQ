@@ -1,0 +1,23 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | zombie_01
+META         | version            | 1.0
+META         | determinism        | strict
+
+STATE        | name               | Zombie
+STATE        | type               | zombie
+STATE        | pos_x              | 8
+STATE        | pos_y              | 3
+STATE        | pos_z              | 0
+STATE        | on_map             | 1
+STATE        | behavior           | aggressive
+STATE        | speed              | 1
+STATE        | map_id             | map_01.txt
+
+METHOD       | on_turn            | ./pieces/apps/fuzzpet_app/traits/+x/zombie_ai.+x zombie_01
+METHOD       | chase              | void
+
+EVENT_IN     | on_turn            | void
+EVENT_IN     | chase              | void
+
+RESPONSE     | default            | *groan*

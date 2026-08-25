@@ -1,0 +1,32 @@
+# Moke-Pet Phase 3: Auditing & RL Training - Detailed To-Do List
+
+## Objective
+Establish a simple reinforcement learning loop by auditing epoch logs and updating sovereign pet intelligence (weights).
+
+## 1. Reward Definition
+- [ ] **Define Reward Heuristics**:
+  - `EAT`: +10 points.
+  - `ATTACK`: +5 points (if successful, stub for now).
+  - `REST`: -1 point (penalty for inaction if food was present).
+  - `NOTHING`: -2 points.
+
+## 2. Training Op (`train.c`)
+- [ ] **Implement `train.c`**:
+  - Arguments: `train <epoch_log_path> <entity_id>`.
+  - Logic:
+    - Parse log file for entity actions.
+    - Calculate cumulative reward.
+    - Load `memory/weights.txt` (or create if missing).
+    - Update weights based on reward (e.g., `weight = weight + reward`).
+    - Save updated `weights.txt`.
+
+## 3. Manager Integration
+- [ ] **Post-Epoch Trigger**:
+  - In `manager.c`, after all entities have acted and the log is closed:
+    - Loop through lizards and dispatch `train.+x` with the current epoch log.
+- [ ] **Verification**:
+  - Run multiple epochs and verify that `liz_bulb/memory/weights.txt` increases after eating.
+
+## 4. Documentation & Handoff
+- [ ] Update `moke-pet-blueprint.txt` with the completed Phase 3 logic.
+- [ ] Finalize `xo-pet-gui-future.txt` with notes on how `weights.txt` can influence future `decision_op` logic in the GUI.

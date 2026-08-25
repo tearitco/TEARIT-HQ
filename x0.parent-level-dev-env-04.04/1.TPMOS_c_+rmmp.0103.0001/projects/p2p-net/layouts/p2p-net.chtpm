@@ -1,0 +1,22 @@
+<panel time_reactive="true">
+    <module>projects/p2p-net/manager/+x/p2p_manager.+x</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+
+    <text label="╔══════════════ P2P-NET : BASIC RING (V1) ═════════════════╗" /><br/>
+    <text label="║ STATUS: ${network_status} | NODE: ${node_name}                    ║" /><br/>
+    <text label="║ ME: ${my_endpoint} | IDX: ${ring_index}/${ring_size}             ║" /><br/>
+    <text label="║ LEADER: ${leader_endpoint}                                 ║" /><br/>
+    <text label="║ PREV: ${prev_hop}                                          ║" /><br/>
+    <text label="║ NEXT: ${next_hop}                                          ║" /><br/>
+    <text label="╠══════════════ RING HOSTS ══════════════════════════════════╣" /><br/>
+    <scroller id="RING_HOSTS" label="${ring_hosts}" height="4" /><br/>
+    <text label="╠══════════════ CHAT LEDGER ═════════════════════════════════╣" /><br/>
+    <scroller id="MESSAGE_LOG" label="${messages}" height="10" />
+    <text label="╠════════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║ Type message (Enter to send):                             ║" /><br/>
+    <cli_io id="message_input" label="${input_text}" /><br/>
+    <text label="╠════════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║ MANAGER: ${manager_status}                                ║" /><br/>
+    <text label="║ LAST KEY: ${last_key}                                     ║" /><br/>
+    <text label="╚════════════════════════════════════════════════════════════╝" /><br/>
+</panel>

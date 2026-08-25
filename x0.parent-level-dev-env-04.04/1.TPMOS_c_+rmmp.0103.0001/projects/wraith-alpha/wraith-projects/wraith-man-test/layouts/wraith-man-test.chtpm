@@ -1,0 +1,18 @@
+<chtpm>
+  <module>projects/wraith-alpha/wraith-projects/wraith-man-test/manager/+x/wraith-man-test_manager.+x</module>
+  <interact src="projects/wraith-alpha/wraith-projects/wraith-man-test/session/history.txt" />
+
+  <text label="╔════════════════════════════════════════════╗" /><br/>
+  <text label="║   WRAITH MANAGER TEST PROJECT            ║" /><br/>
+  <text label="║   Testing: Manager Launch + State Update  ║" /><br/>
+  <text label="╚════════════════════════════════════════════╝" /><br/>
+  <br/>
+  <text label="" /><br/>
+  <text label="Manager Status: ${status}" /><br/>
+  <text label="Test Output: ${test_output}" /><br/>
+  <text label="" /><br/>
+  <text label="Manager Output:" /><br/>
+  <text label="${manager_output}" /><br/>
+  <br/>
+  <text label="[ESC] Menu" /><br/>
+</chtpm>

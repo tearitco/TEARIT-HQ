@@ -1,0 +1,31 @@
+# mutaclsym item registry (global, non-located content)
+# Format: id|name|category(weapon/food/drink/tool/armor/container/material)|glyph|weight|power|unicode
+# power's meaning depends on category: weapon=melee damage bonus,
+# food=hunger restored, drink=thirst restored, armor=damage reduction,
+# tool/container/material=unused (0). glyph is what an item instance shows
+# on the map when lying on the ground. eat.c consumes (deletes) food/drink
+# items; craft.c consumes material (and other) items per
+# pieces/registry/recipes/recipes.txt.
+# unicode: same ASCII<->emoji toggle field as terrain_types.txt/
+# furniture_types.txt (see that file's own header comment) - no
+# rgb_top_emoji here, since items never had a per-instance rgb_top in
+# the GL mirror to begin with (ops/compose_rgb_frame.c's glyph_to_rgb()
+# only consults the terrain/furniture registries; items/monsters already
+# fall back to the same flat glyph_fallback_rgb() regardless of this
+# toggle - a pre-existing limitation, not something emoji mode changes).
+stick|Stick|material|/|100|0|🪵
+rag|Rag|material|~|50|0|🧻
+scrap_metal|Scrap Metal|material|=|200|0|🔩
+rock|Rock|weapon|,|500|3|🪨
+pointy_stick|Pointy Stick|weapon|/|300|4|🗡️
+knife_steak|Steak Knife|weapon|/|150|5|🔪
+baseball_bat|Baseball Bat|weapon|\|900|8|🏏
+water_bottle|Water Bottle|drink|!|500|20|🥤
+apple|Apple|food|*|150|10|🍎
+jerky|Jerky|food|%|100|15|🍖
+tshirt|T-Shirt|armor|[|150|1|👕
+jacket|Jacket|armor|[|900|3|🧥
+leather_gloves|Leather Gloves|armor|[|100|1|🧤
+backpack|Backpack|container|(|800|0|🎒
+flashlight|Flashlight|tool|;|200|0|🔦
+lighter|Lighter|tool|;|50|0|🔥

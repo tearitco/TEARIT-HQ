@@ -1,0 +1,15 @@
+[META]
+project_id = piececraft-3d
+version = 1.1
+exposes_ops = true
+entry_layout = projects/piececraft-3d/layouts/main.gltpm
+module_path = projects/piececraft-3d/manager/+x/piececraft-3d_manager.+x
+
+[STATE]
+starting_map = map_01
+active_target_id = xlector
+is_map_control = 0
+
+[OPS]
+ops_dir = projects/piececraft-3d/ops/
+manifest = projects/piececraft-3d/ops/ops_manifest.txt

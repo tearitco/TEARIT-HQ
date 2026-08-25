@@ -1,0 +1,35 @@
+# Custom operations for wsr-pal's prisc+x program (the pal/prisc+x
+# port, per Mar$.$treetRace.wsr]Q]k32/dox/00-overview.md's own 5-phase
+# plan - this is phases 1-2, "entities become pieces, verbs become
+# ops," starting with ONE corporation as the vertical slice).
+# Format: name type handler {description}
+halt void builtin_halt {stop execution}
+corp_tick_idle void ops/+x/corp_tick_idle.+x {idle -> deciding}
+corp_decide void ops/+x/corp_decide.+x {deciding -> trading, per decision_mode}
+corp_trade void ops/+x/corp_trade.+x {trading -> idle, executes buy/sell/hold}
+corp_set_human_decision void ops/+x/corp_set_human_decision.+x {queue a manual trade choice - not called from .pal, invoked directly by button.sh choose}
+gov_tick_idle void ops/+x/gov_tick_idle.+x {idle -> deciding, government}
+gov_decide void ops/+x/gov_decide.+x {deciding -> trading, per decision_mode, government fiscal policy}
+gov_trade void ops/+x/gov_trade.+x {trading -> idle, executes raise_tax/cut_spending/hold}
+gov_set_human_decision void ops/+x/gov_set_human_decision.+x {queue a manual policy choice - not called from .pal, invoked directly by button.sh choose}
+corp_buy_stake void ops/+x/corp_buy_stake.+x {buyer acquires shares IN another corp - cross-corp holdings, not a .pal-dispatched FSM op, invoked directly}
+corp_attempt_merger void ops/+x/corp_attempt_merger.+x {acquirer offers to buy 100% of target at a premium, probabilistic acceptance - not a .pal-dispatched FSM op, invoked directly}
+corp_ipo void ops/+x/corp_ipo.+x {create a brand new corp_<ticker> piece at runtime with seed capital - not a .pal-dispatched FSM op, invoked directly}
+corp_update_price void ops/+x/corp_update_price.+x {real analysis_loop.c port: recomputes stock_price for one corp using the fundamental-value formula, unconditionally, once per End Turn - not a .pal-dispatched FSM op, invoked directly from tick_all.sh}
+wsr_news_op void ops/+x/wsr_news_op.+x {real news_loop.c port: scans every corp's latest price move, writes top-movers news.txt - not a .pal-dispatched FSM op, invoked directly from tick_all.sh}
+player_trade void ops/+x/player_trade.+x {human player's own buy/sell/short/cover of a corp's stock - not a .pal-dispatched FSM op, invoked directly from a piece.pdl RUN: command}
+corp_set_owner void ops/+x/corp_set_owner.+x {sets/clears a corp's owned_by field - founding/electing/resigning as CEO - not a .pal-dispatched FSM op, invoked directly}
+corp_action void ops/+x/corp_action.+x {real logic for management/financing menu options (capital contribution, stock offering, bonds, dividends, R&D/marketing/growth spend, autopilot toggle) - not a .pal-dispatched FSM op, invoked directly}
+corp_apply_finances void ops/+x/corp_apply_finances.+x {per-turn bond/loan interest, R&D/marketing/growth spend, dividend payout - not a .pal-dispatched FSM op, invoked directly from tick_all.sh}
+bank_loan_op void ops/+x/bank_loan_op.+x {loan request/repay between the player's owned corp and a bank-tagged corp - not a .pal-dispatched FSM op, invoked directly}
+player_open_derivative void ops/+x/player_open_derivative.+x {open a futures or options position - not a .pal-dispatched FSM op, invoked directly}
+player_settle_futures void ops/+x/player_settle_futures.+x {per-turn settlement of open futures/options positions - not a .pal-dispatched FSM op, invoked directly from tick_all.sh}
+wsr_wizard_input void ops/+x/wsr_wizard_input.+x {real 5-step Startup New Corp prompt flow (industry/country/funding/name/ticker) - not a .pal-dispatched FSM op, invoked directly from wsr_menu_input.c when a wizard is active}
+pop_tick_idle void ops/+x/pop_tick_idle.+x {idle -> updating, population}
+pop_update void ops/+x/pop_update.+x {updating -> idle, applies growth/decline}
+weather_tick_idle void ops/+x/weather_tick_idle.+x {idle -> updating, weather}
+weather_update void ops/+x/weather_update.+x {updating -> idle, applies seasonal cycle}
+out void builtin_out {print register to stdout}
+wsr_menu_input void ops/+x/wsr_menu_input.+x {main menu digit/Enter accumulator - dispatches End Turn/Cycle Corp/New Game}
+compose_frame void ops/+x/wsr_compose_frame.+x {render the main game screen into current_frame.txt}
+update_history_cursor void ops/+x/update_history_cursor.+x {persist the history read cursor to prevent replay on process restart}

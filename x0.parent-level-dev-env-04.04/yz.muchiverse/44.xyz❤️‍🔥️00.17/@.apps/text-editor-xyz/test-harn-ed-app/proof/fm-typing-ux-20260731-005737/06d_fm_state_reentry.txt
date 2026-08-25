@@ -1,0 +1,5 @@
+path_buffer=
+browse_dir=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.15/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/xyzfs/users/584a4c9b-cf42-4f9c-904b-9bca6be6d525/home/documents
+search_text=
+status_line=
+last_layout=pieces/chtpm/layouts/file_menu_browser_save.chtpm

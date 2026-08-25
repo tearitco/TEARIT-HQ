@@ -1,0 +1,9 @@
+project_id=wraith-alpha/wraith-projects/web-cam
+device=/dev/video0
+capture_profile=fast
+state=streaming
+detail=fast
+frame_width=240
+frame_height=180
+frame_loaded=1
+history_cursor=196

@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | ev_map_start_12_2
+STATE        | source               | blocks
+NODE         | id=1 type=show_text    | text=(empty event)
+NODE         | id=2 type=ret          | 

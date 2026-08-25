@@ -1,0 +1,9 @@
+# Shared livedesk restore set
+# Keep this list in sync with $.crypts/autostart.pdl and $.crypts/scrypts/openall/run.sh
+tool-bar
+ava
+asa
+hard-vvar-agent-Q0000
+m1_ninjadragon
+m8_redhorned
+book-stack

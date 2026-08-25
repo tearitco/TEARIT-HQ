@@ -1,0 +1,21 @@
+
+if i was gonna completely redo gl. 
+
+
+i would do the desktop in ascii first.(in cli) then have a converter convert that 2 rgb. 
+
+then open a gl window and have it consume it as rgb. 
+i actually think that would be a helluva lot easier than what ur doing currently
+u should still go thru with it for reference but maybe do that 2. 
+
+
+as "RGB-ASCII" project. ; that would be cool . why not? 
+
+(use wraith eye project as reference and lets just get that implace just incase w/e) 
+
+
+++++ u know whats really interesting? 
+doing this all in frame buffer
+
+
+{may even be wise 2 do these b4 php}

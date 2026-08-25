@@ -1,0 +1,3 @@
+# event.pal - real prisc+x opcodes, COMPILED from event.ir.pdl by event-ez
+# pkg=m6_golddeity page=1 - cleared (no NODE commands)
+halt

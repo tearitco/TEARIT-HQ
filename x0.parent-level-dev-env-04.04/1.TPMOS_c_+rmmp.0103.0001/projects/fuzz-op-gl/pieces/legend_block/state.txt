@@ -1,0 +1,13 @@
+name=LegendBlock
+type=reference
+pos_x=0.0
+pos_y=0.0
+pos_z=0.0
+# Face Colors (R,G,B 0-255)
+face_top_rgb=0,255,0
+face_bottom_rgb=127,76,25
+face_front_rgb=255,255,255
+face_back_rgb=0,0,0
+face_right_rgb=255,0,0
+face_left_rgb=0,0,255
+status=active

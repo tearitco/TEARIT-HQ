@@ -1,0 +1,28 @@
+/* reminder.css — livedesk-clock reminder popup styling (house standard:
+ * X11 RGB window + CSS via khtpm_css_parser, same pattern as db-hq
+ * dashboard.css / khtpm_hq_render.c. NOT a GL window — see the house
+ * standard note at the bottom of lc_reminder_popup.c). */
+
+window {
+  background-color: #1e1e2e;
+  color: #ffffff;
+  border: 2px solid #4a9eff;
+  font-family: Noto Sans CJK SC;
+  font-size: 15px;
+}
+
+.title {
+  color: #4a9eff;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.note {
+  color: #cdd6f4;
+  font-size: 14px;
+}
+
+.meta {
+  color: #a6adc8;
+  font-size: 13px;
+}

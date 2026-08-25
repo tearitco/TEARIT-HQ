@@ -1,0 +1,35 @@
+PMO LD FAQ+7 - READ THIS FIRST (2026-03-18)
+===========================================
+
+Why this note exists
+--------------------
+This folder contains older TPM/PMO doctrine and implementation guides.
+Many files use strong labels like "authoritative" from their original dates.
+Those labels were valid at the time, but roadmap/architecture has advanced.
+
+How to use this folder now
+--------------------------
+1) Treat these docs as historical principles and design context.
+2) For current build order and architecture decisions, follow Mar 18 docs first:
+   - *.st.mar_18+3🍀️.md
+   - *.🍀️quickstart.mar_18+4.md
+   - *.prompt_m18.txt (Step 1 execution prompt)
+3) If old and new guidance conflict, prefer the Mar 18 docs.
+4) Read `PITFALLS_ACTIVE_2026-03-18.txt` before touching pathing, state rewrite loops, loader mapping, or event persistence.
+5) Follow the manual backup mandate in the pitfalls doc before risky edits (no git rollback assumed).
+6) In `pieces/chtpm` support modules (excluding parser), keep logic generic plumbing and avoid app-specific hardcoding.
+7) For missing metadata (`entry_layout`, `player_piece`), prefer scan/registry-derived values over static default guesses.
+
+Current non-negotiables (Mar 18)
+--------------------------------
+- Step 1 first: op-ed save/load/local play + pal/op-event no-code flow.
+- Canonical piece path: projects/<project>/pieces/world_<id>/map_<id>/<piece_id>/
+- No required /pieces/ under map dirs.
+- Recursive containment is first-class (pieces can contain pieces).
+- Modularity over hardcoding is core doctrine (editor-player recursion depends on this).
+- Keep fallback compatibility only as migration bridge.
+- Voice/network/gl-os/install/kernel are later-phase tracks.
+
+Reasonable but firm rule
+------------------------
+Do not implement new behavior from this folder alone without cross-checking current roadmap files.

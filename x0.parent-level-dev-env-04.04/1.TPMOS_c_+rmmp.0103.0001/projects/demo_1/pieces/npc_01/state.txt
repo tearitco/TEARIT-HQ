@@ -1,0 +1,7 @@
+name=Old Man
+type=npc
+pos_x=7
+pos_y=4
+pos_z=0
+on_map=1
+on_interact=scripts/npc_greeting.asm

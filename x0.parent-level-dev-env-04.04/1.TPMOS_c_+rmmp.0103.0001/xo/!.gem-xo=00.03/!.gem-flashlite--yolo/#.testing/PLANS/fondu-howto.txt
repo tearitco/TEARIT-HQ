@@ -1,0 +1,343 @@
+================================================================================
+FONDU HOW-TO GUIDE
+================================================================================
+Date: April 1, 2026
+Version: 1.0 (Phase 1 - Lifecycle + Ops Registry)
+
+Quick Reference: How to use Fondu and what to test.
+
+================================================================================
+WHAT IS FONDU?
+================================================================================
+
+Fondu is the TPMOS project lifecycle manager. It:
+- Moves projects between states (active ↔ archived ↔ installed)
+- Registers ops so other projects can call them
+- Maintains compile manifests
+- Automates deployment for users
+
+Location: `pieces/system/fondu/fondu.+x`
+
+================================================================================
+BASIC USAGE
+================================================================================
+
+./pieces/system/fondu/fondu.+x <command> [project_name]
+
+Commands:
+  --install <project>    - Deploy to production (read-only)
+  --uninstall <app>      - Remove from production
+  --archive <project>    - Move to trunk (source only)
+  --restore <project>    - Restore from trunk
+  --list                 - Show all projects
+  --list-ops             - Show available ops
+  --help                 - Show help
+
+================================================================================
+COMMON WORKFLOWS
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ WORKFLOW 1: Deploy a project to production                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  You finished developing a project and want a read-only production version: │
+│                                                                             │
+│  $ ./pieces/system/fondu/fondu.+x --install <project_name>                  │
+│                                                                             │
+│  Example:                                                                   │
+│  $ ./pieces/system/fondu/fondu.+x --install fuzz-op                         │
+│                                                                             │
+│  What happens:                                                              │
+│  1. Copies project to pieces/apps/installed/<project>/                      │
+│  2. Sets read-only permissions (chmod 555)                                  │
+│  3. Registers ops in pieces/os/ops_registry/<project>.txt                   │
+│  4. Updates pieces/os/compiled_projects.txt                                 │
+│  5. Generates ops_catalog.txt                                               │
+│                                                                             │
+│  Verify:                                                                    │
+│  $ ./pieces/system/fondu/fondu.+x --list                                    │
+│  → Should show: <project> (production)                                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ WORKFLOW 2: Remove an installed app                                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  You want to remove a production app (source stays intact):                 │
+│                                                                             │
+│  $ ./pieces/system/fondu/fondu.+x --uninstall <app_name>                    │
+│                                                                             │
+│  Example:                                                                   │
+│  $ ./pieces/system/fondu/fondu.+x --uninstall fuzz-op                       │
+│                                                                             │
+│  What happens:                                                              │
+│  1. Deletes pieces/apps/installed/<project>/                                │
+│  2. Removes ops from pieces/os/ops_registry/                                │
+│  3. Updates compiled_projects.txt                                           │
+│  4. Regenerates ops_catalog.txt                                             │
+│                                                                             │
+│  Verify:                                                                    │
+│  $ ls pieces/apps/installed/                                                │
+│  → Should NOT show the app                                                  │
+│  $ ls projects/<project>/                                                   │
+│  → Source should STILL exist!                                               │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ WORKFLOW 3: Archive a project (move to trunk)                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  You're not working on this project right now, want to exclude it from      │
+│  compile cycles:                                                            │
+│                                                                             │
+│  $ ./pieces/system/fondu/fondu.+x --archive <project_name>                  │
+│                                                                             │
+│  Example:                                                                   │
+│  $ ./pieces/system/fondu/fondu.+x --archive lsr                             │
+│                                                                             │
+│  What happens:                                                              │
+│  1. Moves projects/<project>/ → projects/trunk/<project>/                   │
+│  2. Removes from compiled_projects.txt                                      │
+│  3. Unregisters ops                                                         │
+│                                                                             │
+│  Verify:                                                                    │
+│  $ ./pieces/system/fondu/fondu.+x --list                                    │
+│  → Should show under ARCHIVED, not ACTIVE                                   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ WORKFLOW 4: Restore a project from trunk                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  You want to work on an archived project again:                             │
+│                                                                             │
+│  $ ./pieces/system/fondu/fondu.+x --restore <project_name>                  │
+│                                                                             │
+│  Example:                                                                   │
+│  $ ./pieces/system/fondu/fondu.+x --restore lsr                             │
+│                                                                             │
+│  What happens:                                                              │
+│  1. Moves projects/trunk/<project>/ → projects/<project>/                   │
+│  2. Adds back to compiled_projects.txt                                      │
+│  3. Re-registers ops                                                        │
+│                                                                             │
+│  Verify:                                                                    │
+│  $ ./pieces/system/fondu/fondu.+x --list                                    │
+│  → Should show under ACTIVE, not ARCHIVED                                   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ WORKFLOW 5: Discover available ops                                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  You want to see what ops are available for PAL scripts:                    │
+│                                                                             │
+│  $ ./pieces/system/fondu/fondu.+x --list-ops                                │
+│                                                                             │
+│  Output example:                                                            │
+│  === test_fondu ===                                                         │
+│    increment_counter    - Increment counter by 1                            │
+│    decrement_counter    - Decrement counter by 1                            │
+│    reset_counter        - Reset counter to 0                                │
+│    get_status           - Get current status message                        │
+│                                                                             │
+│  === user ===                                                               │
+│    create_profile       - Creates a new user profile                        │
+│    auth_user            - Authenticates a user session                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+KPIs: WHAT TO TEST
+================================================================================
+
+After ANY Fondu operation, verify these KPIs:
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ KPI 1: Install works                                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Command: ./fondu --install <project>                                        │
+│                                                                             │
+│ Verify:                                                                     │
+│ [ ] pieces/apps/installed/<project>/ exists                                 │
+│ [ ] Files are read-only (chmod 555)                                         │
+│ [ ] pieces/os/ops_registry/<project>.txt exists                             │
+│ [ ] ./fondu --list shows project as "installed"                             │
+│ [ ] ./fondu --list-ops shows project's ops                                  │
+│ [ ] Source in projects/<project>/ is UNTOUCHED                              │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ KPI 2: Uninstall works                                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Command: ./fondu --uninstall <project>                                      │
+│                                                                             │
+│ Verify:                                                                     │
+│ [ ] pieces/apps/installed/<project>/ is DELETED                             │
+│ [ ] pieces/os/ops_registry/<project>.txt is DELETED                         │
+│ [ ] ./fondu --list does NOT show as installed                               │
+│ [ ] ./fondu --list-ops does NOT show project's ops                          │
+│ [ ] Source in projects/<project>/ STILL EXISTS (critical!)                  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ KPI 3: Archive works                                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Command: ./fondu --archive <project>                                        │
+│                                                                             │
+│ Verify:                                                                     │
+│ [ ] projects/trunk/<project>/ exists                                        │
+│ [ ] projects/<project>/ is DELETED (moved, not copied)                      │
+│ [ ] ./fondu --list shows under ARCHIVED                                     │
+│ [ ] pieces/os/compiled_projects.txt does NOT include project                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ KPI 4: Restore works                                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Command: ./fondu --restore <project>                                        │
+│                                                                             │
+│ Verify:                                                                     │
+│ [ ] projects/<project>/ exists                                              │
+│ [ ] projects/trunk/<project>/ is DELETED (moved back)                       │
+│ [ ] ./fondu --list shows under ACTIVE                                       │
+│ [ ] pieces/os/compiled_projects.txt INCLUDES project                        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ KPI 5: Ops are discoverable                                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Command: ./fondu --list-ops                                                 │
+│                                                                             │
+│ Verify:                                                                     │
+│ [ ] All installed projects' ops are listed                                  │
+│ [ ] Ops are grouped by project                                              │
+│ [ ] Descriptions are shown                                                  │
+│ [ ] After uninstall, ops disappear from list                                │
+│ [ ] After install, ops appear in list                                       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ KPI 6: Files don't break                                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ After ANY Fondu command, verify:                                            │
+│                                                                             │
+│ [ ] pieces/os/master_ledger.txt still exists and readable                   │
+│ [ ] pieces/display/current_layout.txt unchanged                             │
+│ [ ] pieces/apps/player_app/history.txt unchanged                            │
+│ [ ] Other projects (not being operated on) are untouched                    │
+│ [ ] Manifest files have no duplicates or corruption                         │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ KPI 7: PAL scripts can call ops (ULTIMATE TEST)                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Setup:                                                                      │
+│ 1. ./fondu --install user                                                   │
+│ 2. Create PAL script: OP user::create_profile "testplayer"                  │
+│ 3. Run PAL script                                                           │
+│                                                                             │
+│ Verify:                                                                     │
+│ [ ] user::create_profile executes successfully                              │
+│ [ ] Profile created in projects/user/pieces/profiles/                       │
+│ [ ] No errors in master_ledger.txt                                          │
+│                                                                             │
+│ If this works → Ops ecosystem is functional!                                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+QUICK TEST SCRIPT (Copy-Paste This)
+================================================================================
+
+# Full Fondu test cycle with test_fondu project
+
+echo "=== FONDU KPI TEST ==="
+
+# Test install
+echo "1. Testing --install..."
+./pieces/system/fondu/fondu.+x --install test_fondu
+[ -d pieces/apps/installed/test_fondu ] && echo "✓ Install dir exists" || echo "✗ FAIL"
+[ -f pieces/os/ops_registry/test_fondu.txt ] && echo "✓ Ops registry exists" || echo "✗ FAIL"
+
+# Test list-ops
+echo ""
+echo "2. Testing --list-ops..."
+./pieces/system/fondu/fondu.+x --list-ops | grep -q "increment_counter" && echo "✓ Ops listed" || echo "✗ FAIL"
+
+# Test uninstall
+echo ""
+echo "3. Testing --uninstall..."
+./pieces/system/fondu/fondu.+x --uninstall test_fondu
+[ ! -d pieces/apps/installed/test_fondu ] && echo "✓ Install dir removed" || echo "✗ FAIL"
+[ ! -f pieces/os/ops_registry/test_fondu.txt ] && echo "✓ Ops registry removed" || echo "✗ FAIL"
+[ -d projects/test_fondu ] && echo "✓ Source preserved" || echo "✗ FAIL: SOURCE LOST!"
+
+# Test archive
+echo ""
+echo "4. Testing --archive..."
+./pieces/system/fondu/fondu.+x --archive test_fondu
+[ -d projects/trunk/test_fondu ] && echo "✓ Archived to trunk" || echo "✗ FAIL"
+[ ! -d projects/test_fondu ] && echo "✓ Original removed" || echo "✗ FAIL"
+
+# Test restore
+echo ""
+echo "5. Testing --restore..."
+./pieces/system/fondu/fondu.+x --restore test_fondu
+[ -d projects/test_fondu ] && echo "✓ Restored to projects" || echo "✗ FAIL"
+[ ! -d projects/trunk/test_fondu ] && echo "✓ Trunk copy removed" || echo "✗ FAIL"
+
+echo ""
+echo "=== TEST COMPLETE ==="
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Problem: "Permission denied" when uninstalling
+Solution: Fondu should handle this automatically. If not, check that the
+          remove_directory() function is setting chmod 755 before deletion.
+
+Problem: Ops don't show in --list-ops
+Solution: Check that ops_manifest.txt exists in project/ops/ and has correct
+          format: op_name|description|args_format
+
+Problem: Project disappears after uninstall
+Solution: This is a BUG! Uninstall should only remove from installed/, never
+          touch projects/. Check cmd_uninstall() in fondu.c.
+
+Problem: Archive fails with "Directory not empty"
+Solution: Check that trunk/<project>/ doesn't already exist. Fondu should
+          handle this but may need cleanup.
+
+================================================================================
+FILES FONDU TOUCHES
+================================================================================
+
+Reads:
+- projects/<project>/project.pdl
+- projects/<project>/ops/ops_manifest.txt
+
+Writes:
+- pieces/apps/installed/<project>/ (created on install)
+- pieces/os/ops_registry/<project>.txt
+- pieces/os/compiled_projects.txt
+- pieces/os/ops_catalog.txt
+
+Moves:
+- projects/<project>/ ↔ projects/trunk/<project>/
+
+================================================================================
+END OF FONDU HOW-TO GUIDE
+================================================================================

@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | q_027
+META         | type               | question
+
+STATE        | name               | Isoleucine
+STATE        | type               | (CH3)CHCH2CH(NH2)COOH

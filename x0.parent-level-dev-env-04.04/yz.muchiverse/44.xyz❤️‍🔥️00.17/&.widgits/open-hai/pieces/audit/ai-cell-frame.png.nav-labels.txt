@@ -1,0 +1,29 @@
+1|New Chat|New Chat
+2|* 08-16 04:49 Reply with exactly one word: pong|Session 1
+3|* 08-16 00:29 list files in &.widgits/ai-cell|Session 2
+4|* 08-16 00:22 (empty)|Session 3
+5|* 08-16 00:13 (empty)|Session 4
+6|* 08-16 00:06 (empty)|Session 5
+7|* 08-15 22:59 (empty)|Session 6
+8|* 08-15 05:09 (empty)|Session 7
+9|* 08-15 03:28 (empty)|Session 8
+10|* 08-15 02:26 (empty)|Session 9
+11|* 08-15 02:25 (empty)|Session 10
+12|* 08-15 02:13 (empty)|Session 11
+13|* 08-15 02:02 (empty)|Session 12
+14|* 08-15 00:56 (empty)|Session 13
+15|* 08-14 23:21 (empty)|Session 14
+16|* 08-14 22:45 hello from relay|Session 15
+17|* 08-14 22:43 (empty)|Session 16
+18|* 08-13 22:53 (empty)|Session 17
+19|* 08-13 21:36 (empty)|Session 18
+20|* 08-13 21:18 (empty)|Session 19
+21|* 08-13 18:24 (empty)|Session 20
+22|* 08-13 07:10 (empty)|Session 21
+23|* 08-13 03:00 howdy , how are u ?|Session 22
+24|Model: google/gemma-4-26b-a4b-it:free|Model: google/gemma-4-26b-a4b-it:free
+25|Stats|Stats
+26|Scroll Up|Scroll Up
+27|Scroll Down|Scroll Down
+28|Composer|Composer
+29|Close|Close

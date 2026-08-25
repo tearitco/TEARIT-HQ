@@ -1,0 +1,22 @@
++============================================================+
+|  U S E R - P A L                                           |
++============================================================+
+|                                                            |
+|  Logged in as: asw_b_2131489                               |
+|  uuid: fd437a41-27ff-48e0-a63e-e75c07b5b0bc                |
+|  xyzfs: xyzfs/users/fd437a41-27ff-48e0-a63e-e75c07b5b0bc   |
+|                                                            |
+|  Enter a user ID (and display name, if new), then          |
+|  Create Account / Log In — or Switch: an account below.  |
+|                                                            |
+|  Accounts on this machine:                                 |
+|    jb — JB Test                                          |
+|    avmenu_1653663 — MenuTest                             |
+|    asw_a_2131489 — Alice                                 |
+|  > asw_b_2131489 — Bob                                   |
+|    schar_1744476 — SessionChar                           |
+|    avmenu_1654388 — MenuTest                             |
+|                                                            |
+|  Switched account -> asw_b_2131489. Switched account -> asw|
+|                                                            |
++============================================================+

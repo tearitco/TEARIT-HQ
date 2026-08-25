@@ -1,0 +1,724 @@
+livedesk-win-fix-lvl2.txt
+======================================================================
+Livedesk / KHTPM / muchi-pals Windows — Level-2 investigation + fix plan
+======================================================================
+Date:     2026-08-06
+Status:   RESEARCH + PRESCRIPTION for next implementation round
+          (do not implement in this document pass)
+Audience: next agent after Phase-1 crypts + minimal KHTPM stubs
+
+Reference of truth (WORKS on this machine):
+  C:\Users\jbro8\OneDrive\Desktop\MUCHI_DESK_PALS_WIN\egg-pals+5.2win (1)\egg-pals\
+
+House targets (current tree):
+  $.crypts/                          autostart + button.ps1 (Phase-1 DONE)
+  &.widgits/tile-picker/ops/         KHTPM: tp_desktop_window*.c
+  &.widgits/livedesk-taskbar/ops/    tp_taskbar*.c
+  #.desktop/entities/*               desk packages (ava, asa, book-stack, pets…)
+  @.apps/MUCHI_RANCHER/entities/*    ranch monsters as packages
+  01.muchi-pals-*-13.01/             local egg-pals lineage (missing button.ps1)
+
+Related prior docs:
+  khtpm-win-fix.txt                 Phase-1 done; Phase-2 full parity open
+  $.crypts/WIN-PORT-NOTES.txt        what crypts/stubs already do
+  !.linux-absolute-FIXME-a6.txt      absolute-path cleanup (meta.pdl still dirty)
+  windows-house-guide.md             house Win port doctrine (014.wsr)
+  014.wsr-pal*/button.ps1            preferred button.ps1 style (native, not bash)
+
+======================================================================
+0. User symptoms → root causes (one glance)
+======================================================================
+
+Symptom (user)                         Root cause (verified)
+-------------------------------------  ------------------------------------------
+Desk stamps are blue squares           Win stub paints GDI fill only; ignores
+(book-stack = blue square)             package sprite.csv / atlas.png
+Emoji not displayed on screen          Same: no GL texture path on Win stub;
+                                       DrawTextA cannot render color emoji
+asa / ava "not converted" from PNG     Packages ALREADY have atlas.png +
+                                       sprite.csv on disk; conversion ran on
+                                       Linux. Win window never LOADS them.
+muchi-pal not a desktop window         crypts/autostart.pdl never launches
+                                       01.muchi egg_window or a muchi package;
+                                       muchi app itself has no button.ps1
+Right-click no KHTPM context menu      Win stub RMB = DestroyWindow only;
+                                       Linux tp_desktop_window has full
+                                       open_context_menu + meta.pdl METHOD /
+                                       objects.pdl pages
+Local muchi button lost on Windows     01.muchi-pals has button.sh only;
+                                       NO button.ps1 (ref egg-pals HAS one)
+
+======================================================================
+1. What the working egg-pals reference actually does
+======================================================================
+
+Path: egg-pals+5.2win (1)/egg-pals/
+
+1.1 Entry
+  button.ps1  → thin forwarder to bash + button.sh (historical style)
+  button.sh   → compile / run / check / icons / kill
+  scripts/build.sh → platform-aware:
+    MINGW*|MSYS*: -lopengl32 -lgdi32 -luser32
+    emoji_gen_atlas: -municode (wmain so emoji argv not '?')
+
+1.2 Emoji → pixels pipeline (THE missing livedesk visual path)
+  system/emoji_gen_atlas.c
+    FreeType color bitmap (Segoe UI Emoji on Win: C:/Windows/Fonts/seguiemj.ttf)
+    UTF-8 emoji symbol → atlas.png (64×64 RGBA)
+    Windows: wmain + -municode (critical)
+
+  system/emoji_xtract.c
+    stb_image load PNG → NxN RGBA CSV (sprite.csv)
+    Format egg_window / tp_desktop_window both understand:
+      # resolution=N
+      r,g,b,a
+      <r>,<g>,<b>,<a> × N*N
+
+1.3 Display window
+  system/egg_window.c — dual backend:
+    #ifdef _WIN32  → Win32 + WGL + SetWindowRgn alpha mask + TrackPopupMenu
+    #else          → X11 Shape + GLX
+  Loads pieces/world_01/map_lobby/<pet_id>/sprite.csv → GL texture quad
+  NOT GDI text. Color emoji is a TEXTURE, never a font string.
+
+1.4 Context menu (Win half)
+  WM_RBUTTONUP → TrackPopupMenu (Close etc.)
+  Same interaction class as livedesk METHOD menus, simpler item list.
+
+1.5 Lesson for house convention
+  Ref button.ps1 is a bash forwarder. House doctrine now prefers NATIVE
+  button.ps1 (014.wsr, $.crypts) that does not require Git-Bash for
+  compile/run/kill. Next muchi button.ps1 should follow 014/crypts style,
+  not reintroduce bash-only as the only path (bash optional for sh parity).
+
+======================================================================
+2. What house livedesk has today (inventory)
+======================================================================
+
+2.1 Launcher layer — OK for boot
+  $.crypts/button.ps1              works
+  $.crypts/ops/crypt_autostart.c   relative PDL, CreateProcessW, kill by name
+  $.crypts/autostart.pdl           launches taskbar + 4 packages (relative)
+  Smoke-tested: 4× tp_desktop_window.exe + tp_taskbar.exe, livedesk_open filled
+
+2.2 KHTPM Linux truth — FULL feature set (~140KB)
+  &.widgits/tile-picker/ops/tp_desktop_window.c
+    - load_sprite_csv() + GL texture + draw_sprite()  [lines ~693–793]
+    - XShape alpha mask from sprite alpha
+    - open_context_menu / objects.pdl multi-page / meta.pdl METHOD rows
+    - nav claims, interact_relay, history, soft focus, XGrab
+    - ensure_taskbar_running()
+
+  &.widgits/tile-picker/ops/tp_place_desktop.c
+    - on place: emoji_gen_atlas → emoji_xtract → package atlas.png + sprite.csv
+    - (uses /proc/self/exe — Linux-only self path today)
+
+2.3 KHTPM Windows today — MINIMAL STUB ONLY (~15KB)
+  tp_desktop_window_win.c
+    - solid GDI blue FillRect + DrawTextA(entity name / glyph as text)
+    - drag, CLOSE/ACTIVATE relay, livedesk_open register
+    - RMB → close (NOT context menu)
+    - NO load_sprite_csv, NO WGL, NO alpha region, NO meta.pdl methods
+
+  tp_taskbar_win.c
+    - bottom bar, tabs from livedesk_open, $ → button.ps1, X close
+    - good enough for Phase-1; not the visual bug
+
+2.4 Desk packages on disk (assets often ALREADY present)
+  #.desktop/entities/ava/       glyph.txt=👩  atlas.png  sprite.csv  meta.pdl
+  #.desktop/entities/asa/       glyph.txt     atlas.png  sprite.csv  meta.pdl
+  #.desktop/entities/book-stack/ glyph=📚    atlas.png  sprite.csv  meta.pdl
+  #.desktop/entities/dog|cat|chicken/  glyph + sprite.csv (no atlas.png on some)
+
+  So "solo PNG not converted" is often FALSE for ava/asa/book — PNGs exist.
+  What failed is RUNTIME DISPLAY on the Win stub.
+
+  Caveat: sprite.csv may be all transparent / weak if emoji_gen failed
+  (font missing) on some packages — verify by inspecting non-zero alpha
+  pixels. book-stack sample starts with 0,0,0,0 rows (transparent border
+  is normal; interior should have data).
+
+2.5 Local 01.muchi-pals — half-ready
+  HAS:
+    system/egg_window.c with full #ifdef _WIN32 WGL path + TrackPopupMenu
+      + load_sprite (ported further than ref; ~52KB)
+    system/emoji_gen_atlas.c, emoji_xtract.c
+    button.sh (Cygwin/MSYS aware .exe selection)
+    ops/hatch_egg.c with emoji_gen → sprite.csv pipeline
+  MISSING:
+    button.ps1
+    (likely) fresh .exe builds under emoji house path without proper
+    compile script in PowerShell
+  NOT wired into $.crypts autostart as a desk stamp (by design: muchi
+  is a full CHTPM app; desk uses KHTPM packages). "Convert muchi-pal to
+  desktop window" means either:
+    A) hatch pets then Open Window (egg_window) from muchi UI, OR
+    B) place pet packages under #.desktop and launch via KHTPM, OR
+    C) add a LAUNCH row that starts muchi button.ps1 run (app, not stamp)
+
+======================================================================
+3. Gap matrix (ref egg-pals vs house Win livedesk)
+======================================================================
+
+Capability                    egg-pals ref Win    house KHTPM Win stub   house Linux KHTPM
+----------------------------  ------------------  ---------------------  -----------------
+Win32 window + drag           yes (egg_window)    yes (stub)             X11
+WGL / OpenGL texture          yes                 NO                     GLX yes
+load sprite.csv               yes                 NO                     yes
+alpha silhouette (region)     SetWindowRgn yes    NO                     XShape yes
+emoji_gen + xtract toolchain  yes + .exe          tools live under
+                                                  01.muchi system/ only;
+                                                  not called on Win place
+RMB context menu              TrackPopupMenu      close only             full METHOD menu
+objects.pdl multi-page        n/a (simple)        NO                     yes
+meta.pdl METHOD dispatch      n/a                 NO                     yes
+button.ps1 native             bash-forwarder      crypts: yes            sh
+muchi button.ps1              n/a (standalone)    MISSING                button.sh only
+relative paths / emoji CWD    PRISC_PROJECT_ROOT  house "." relative     abs leftover in
+                                                  good                   meta.pdl (FIXME-a6)
+
+======================================================================
+4. Why book-stack is a blue square (detail)
+======================================================================
+
+tp_desktop_window_win.c WM_PAINT:
+  HBRUSH blue → FillRect entire client
+  DrawTextA "[N] book-stack\n📚"  — glyph string is UTF-8; GDI A path +
+  system font will not show color emoji (often tofu/box/missing).
+
+Linux path would:
+  load_sprite_csv("<package>/sprite.csv")
+  glClear + draw textured quad
+  optional shape mask so only emoji silhouette is opaque
+
+book-stack HAS sprite.csv + atlas.png. Fix is render path, not re-convert,
+unless CSV is empty of opaque pixels (then re-run emoji_gen with Segoe).
+
+======================================================================
+5. Why RMB does not open KHTPM context window
+======================================================================
+
+Linux (tp_desktop_window.c):
+  Button3 / right-click → open_context_menu()
+    - load METHOD rows from meta.pdl and/or objects.pdl pages
+    - override_redirect popup, nav claims, ACTIVATE_NAV, CLOSE, shell cmds
+    - Show Text / Show Choices helpers (khtpm_show_*)
+
+Win stub:
+  WM_RBUTTONUP → append_history + DestroyWindow  (deliberate stub shortcut)
+
+Required for parity:
+  Port open_context_menu semantics to Win32:
+    Option A (fast, matches egg-pals): TrackPopupMenu built from METHOD
+      labels; execute action string via CreateProcess / system.
+    Option B (closer to Linux look): second WS_POPUP "context" HWND with
+      row list, nav digits, same measure_context_popup_w logic.
+  Prefer A first for reliability; B for visual parity with Linux livedesk.
+
+Also: meta.pdl METHOD commands still embed /home/no/... absolute paths
+(see !.linux-absolute-FIXME-a6.txt). Even a perfect menu will fail to
+launch Chat/Events/Play until those rows are relative or expanded.
+
+======================================================================
+6. "Convert solo PNG of asa/ava" — clarify
+======================================================================
+
+Two different operations users may mean:
+
+  (1) glyph/emoji → atlas.png + sprite.csv
+      Already done for ava/asa/book-stack on this tree (files present).
+      Toolchain: emoji_gen_atlas + emoji_xtract (house copies under
+      01.muchi-pals/system/ and used by tp_place_desktop on Linux).
+
+  (2) arbitrary artist PNG (not emoji) → sprite.csv
+      emoji_xtract can crop an atlas cell; for a solo full-frame PNG
+      you still run emoji_xtract with index 0 if atlas is single-cell,
+      OR add a "png_to_sprite_csv" helper (resize + write CSV) —
+      egg-pals xtract already area-averages a cell to NxN.
+
+  (3) display converted asset in a desk window
+      This is the FAIL on Windows today (stub).
+
+Prescription: do not re-convert first; prove sprite.csv loads under WGL.
+If texture is blank, re-run gen with Windows emoji font.
+
+======================================================================
+7. "Muchi-pal to desktop window" — clarify + options
+======================================================================
+
+01.muchi-pals is a FULL CHTPM session (menu + tick + hatch), not one
+KHTPM stamp. egg_window is the floating pet renderer.
+
+Next-round options (pick with user if ambiguous):
+
+  D1  Restore muchi app on Windows (button.ps1 compile/run) so user can
+      hatch and "Open Window" → egg_window.exe (already Win-ported in
+      house egg_window.c). Closest to egg-pals ref product.
+
+  D2  On hatch / export, also write a #.desktop/entities/<pet>/ package
+      (glyph, sprite.csv, meta.pdl) and register with livedesk so crypts
+      can LAUNCH it as KHTPM — true "on the desk" stamp.
+
+  D3  Add optional LAUNCH | muchi-app | '01.muchi-pals-…/button.ps1' run
+      to autostart.pdl (starts the app, not a stamp).
+
+Recommend D1 + D2 long-term; D1 is unblocks "local muchi button" now.
+
+======================================================================
+8. Restore local muchi button.ps1 (prescribed shape)
+======================================================================
+
+File: 01.muchi-pals-*-13.01/button.ps1
+Model: $.crypts/button.ps1 + 014.wsr button.ps1 (native PowerShell)
+NOT only the old egg-pals bash forwarder (keep button.sh for Linux).
+
+Actions to mirror button.sh:
+  compile|c|build  → scripts/build.ps1 OR inline gcc list
+  check
+  run|r|start      → kill previous, set PRISC_PROJECT_ROOT=., spawn
+                     renderer / prisc+x / keyboard_input (.exe prefer)
+  kill|k           → ProcessName only + taskkill (no .Path hang)
+  icons            → gen poop/sleep overlays if scripts exist
+  help
+
+Build notes from ref build.sh (must land in build.ps1):
+  system/egg_window.c: -lopengl32 -lgdi32 -luser32
+  system/emoji_gen_atlas.c: freetype2 + -municode
+  system/emoji_xtract.c: -lm (stb header-only)
+  Prefer -o name.exe under emoji paths (same ld lesson as crypts)
+
+Also ship/verify:
+  MSYS MinGW on PATH
+  FreeType via pacman mingw-w64-x86_64-freetype
+  Segoe UI Emoji present (default on Windows)
+
+======================================================================
+9. Level-2 implementation plan (ordered)
+======================================================================
+
+PHASE L2-A — Visual truth for existing desk packages (highest UX win)
+  Goal: ava/asa/book-stack show emoji texture, not blue square.
+
+  A1. Port load_sprite_csv + GL texture upload + draw_sprite from
+      tp_desktop_window.c into Win path. Preferred structure:
+        Keep shared pure-C helpers (load CSV, pixel buffer) outside X11.
+        Win: WGL context on the HWND (copy egg_window.c Win half:
+          PIXELFORMATDESCRIPTOR, wglCreateContext, SwapBuffers).
+      Reference implementations (copy, don't invent):
+        - egg-pals+5.2win …/system/egg_window.c  (#ifdef _WIN32 block)
+        - house 01.muchi-pals/system/egg_window.c (newer, already in tree)
+        - Linux load_sprite_csv in tp_desktop_window.c (~722–757)
+
+  A2. Alpha silhouette on Win: SetWindowRgn from sprite alpha
+      (egg_window build_shape_mask Win branch). Without this, emoji
+      sits on opaque blue/black rect even if texture works.
+
+  A3. On package open: prefer sprite.csv; if missing, try atlas.png via
+      stb_image (tile-picker already has stb_image.h) → optional; or
+      invoke emoji_gen_atlas.exe + emoji_xtract.exe with package glyph.txt
+      using 01.muchi system tools or copied into tile-picker/ops.
+
+  A4. Rebuild tp_desktop_window.exe via $.crypts/button.ps1 compile
+      (link -lopengl32 -lgdi32 -luser32). Smoke (ALL required):
+        crypts run → asa + ava(adam) + book-stack + m6_golddeity
+        all show real sprite textures (not blue squares).
+        Also open m1..m8 package_dir once each after completeness pass.
+
+  A5. Evidence: screenshot or note package history.txt "sprite loaded
+      res=64"; optional K3-style report KHTPM_WIN_REPORT_*_sprite.txt
+
+PHASE L2-B — RMB context menu (KHTPM interaction)
+  B1. Parse meta.pdl METHOD | label | action  (and objects.pdl if present)
+      into in-memory list (reuse Linux parser structure).
+  B2. WM_RBUTTONUP → TrackPopupMenu with labels; on select:
+        CLOSE / void / shell action with house-relative expand
+        (reuse crypt_autostart resolve patterns).
+  B3. Do NOT hardcode absolute /home/no paths — expand or fix PDL first
+      (coordinate with !.linux-absolute-FIXME-a6.txt):
+        Priority packages for relative rewrite in same round:
+          #.desktop/entities/asa/meta.pdl
+          #.desktop/entities/ava/meta.pdl          (adam)
+          @.apps/asa-&-ava/pieces/{asa,ava}/methods.pdl
+          @.apps/MUCHI_RANCHER/entities/m6_*/meta.pdl + objects.pdl
+          @.apps/MUCHI_RANCHER/entities/m8_*/meta.pdl + objects.pdl
+          @.apps/MUCHI_RANCHER/ops/*.sh
+  B4. Complete meta/objects for m1–m5, m7 (clone relative template from m6)
+      so every rancher RMB has more than empty/Close-only.
+  B5. Later: multi-page objects.pdl + nav digits (Linux parity stretch).
+
+PHASE L2-C — Emoji toolchain available from livedesk place path on Win
+  C1. Ensure emoji_gen_atlas.exe + emoji_xtract.exe build on Win
+      (from 01.muchi or copy into &.widgits/tile-picker/ops).
+  C2. Port tp_place_desktop self-path (/proc) to Win GetModuleFileName
+      and system() → CreateProcess for gen/xtract.
+  C3. One-shot "repair assets" script: for each #.desktop/entities/* if
+      glyph.txt present and sprite.csv missing/empty → regenerate.
+  C4. -municode on emoji_gen_atlas (emoji argv).
+
+PHASE L2-D — Restore 01.muchi-pals Windows button
+  D1. Add button.ps1 (native) + scripts/build.ps1 if needed.
+  D2. Prove: compile → check → run classic or chtpm path → hatch →
+      Open Window → egg_window shows pet sprite.
+  D3. Document in 01.muchi-pals WIN-PORT-NOTES or walkthru addendum.
+  D4. Optional: D2 desk export of hatched pet into #.desktop/entities.
+
+PHASE L2-E — Taskbar / polish (after A–B)
+  E1. Taskbar tab click raise/ACTIVATE already partial — verify with
+      textured windows.
+  E2. Soft-focus / keyboard grab: defer (egg-pals uses simpler model).
+  E3. Full Linux objects.pdl multi-page visual parity: last.
+
+======================================================================
+10. Explicit non-goals for L2 first pass
+======================================================================
+
+  - Full XGrab soft-focus parity
+  - Rewriting every METHOD path in every pet meta.pdl in this same PR
+    (can do minimal relative rewrite for ava/asa/book only if menus block)
+  - aomorai-editor 3D
+  - House-wide terminal history-off policy
+  - Replacing Linux X11 path with Win code (keep #ifdef / separate _win.c;
+    prefer growing _win.c toward egg_window quality OR #ifdef merge)
+
+======================================================================
+11. Recommended code strategy (avoid another dead stub)
+======================================================================
+
+  BAD: keep painting GDI text forever and "add emoji fonts to GDI"
+  GOOD: texture path identical to egg_window (CSV → GL → quad)
+
+  BAD: reimplement context menus from scratch without reading Linux
+  GOOD: parse same meta.pdl METHOD rows; TrackPopupMenu as first UI
+
+  BAD: button.ps1 that only calls bash (fragile if bash missing)
+  GOOD: native compile/run/kill; optional bash for Linux-only scripts
+
+  BAD: GetFullPathNameA / fopen on emoji absolute house paths
+  GOOD: CWD = house or package-relative; CreateProcessW; relative PATH=
+        in livedesk_open (already correct in Phase-1)
+
+  Prefer **merging Win WGL into one tp_desktop_window binary**:
+    Option 1: expand tp_desktop_window_win.c until feature parity, still
+              separate from Linux .c (current split).
+    Option 2: #ifdef _WIN32 blocks inside tp_desktop_window.c like
+              egg_window.c (single source of truth; larger merge).
+  Recommendation: Option 2 long-term (egg_window proven); Option 1 if
+  merge risk too high for one round — but **lift code from egg_window**,
+  do not invent a third windowing model.
+
+======================================================================
+12. File checklist for next agent
+======================================================================
+
+Read first:
+  [ ] egg-pals+5.2win (1)/egg-pals/system/egg_window.c   (#ifdef _WIN32)
+  [ ] egg-pals+5.2win (1)/egg-pals/system/emoji_gen_atlas.c
+  [ ] egg-pals+5.2win (1)/egg-pals/system/emoji_xtract.c
+  [ ] egg-pals+5.2win (1)/egg-pals/scripts/build.sh
+  [ ] egg-pals+5.2win (1)/egg-pals/button.ps1 / button.sh
+  [ ] house 01.muchi-pals-*/system/egg_window.c           (newer Win port)
+  [ ] house 01.muchi-pals-*/button.sh
+  [ ] &.widgits/tile-picker/ops/tp_desktop_window.c       load_sprite + menu
+  [ ] &.widgits/tile-picker/ops/tp_desktop_window_win.c   current stub
+  [ ] &.widgits/tile-picker/ops/tp_place_desktop.c        gen pipeline
+  [ ] #.desktop/entities/{ava,asa,book-stack}/sprite.csv  prove assets
+  [ ] $.crypts/button.ps1 + autostart.pdl
+  [ ] !.linux-absolute-FIXME-a6.txt                       menu path fix
+
+Implement (order):
+  [ ] L2-A sprite WGL render in KHTPM Win
+  [ ] L2-B TrackPopupMenu from meta.pdl
+  [ ] L2-D 01.muchi-pals/button.ps1 + build.ps1
+  [ ] L2-C place/repair emoji toolchain on Win
+  [ ] L2-E polish
+
+Gates (do not claim "livedesk looks right" until):
+  G1  book-stack / ava(adam) / asa / m6_golddeity show non-blue sprite
+  G1b At least one incomplete rancher (e.g. m1) shows sprite after
+      glyph+meta repair (proves matrix, not only golddeity)
+  G2  RMB on ava, asa, AND a rancher opens menu (≥ Close + METHOD/objects)
+  G3  01.muchi-pals .\button.ps1 compile && .\button.ps1 check PASS
+  G4  muchi hatch + egg_window shows sprite on Win (if D1 chosen)
+  G5  crypts run still boots taskbar + entities without abs /home/no
+  G6  autostart can launch all ranchers user wants (relative paths)
+
+======================================================================
+13. FIRST-CLASS SCOPE — adam / asa / MUCHI_RANCHER (user 2026-08-06)
+======================================================================
+
+User directive: the L2 visual + menu fix is NOT only for book-stack.
+It must also cover **adam**, **asa**, and **muchi-rancher**.
+
+13.1 Naming
+  - **asa**  = desk package #.desktop/entities/asa  (+ @.apps/asa-&-ava/pieces/asa)
+  - **adam** = conversation name for the male half of "Adam & Eve"
+               (project asa-&-ava). Desk package is **ava**:
+               #.desktop/entities/ava  (+ @.apps/asa-&-ava/pieces/ava)
+               Design file: @.apps/asa-&-ava/asa&ava-design-plan.md
+               ("Adam & Eve" in conversation → real project name asa-&-ava).
+  - **muchi-rancher** = @.apps/MUCHI_RANCHER/entities/m1..m8
+               (same KHTPM binary + package_dir pattern as pets)
+
+  If a future desk package is literally named "adam", treat it the same
+  package contract; today there is no #.desktop/entities/adam.
+
+13.0 ASSET BLOCKER (user 2026-08-06: "wait u need the assets") — CRITICAL
+----------------------------------------------------------------------
+  Earlier inventory over-weighted existing sprite.csv / tiny atlas.png.
+  Those are often **emoji fallbacks** (or prior extracts), NOT the
+  intended solo portraits / monster sheets. Real source assets are
+  MISSING from this Windows checkout and from Desktop.
+
+  A. asa-&-ava SOLO PORTRAITS (required for adam + asa look)
+     asset.pal on desk + app pieces currently says:
+       #.desktop/entities/ava/asset.pal  → asset_path=/home/no/Desktop/nyeoni8.png
+       #.desktop/entities/asa/asset.pal  → asset_path=/home/no/Desktop/il-dj.png
+       @.apps/asa-&-ava/pieces/ava/asset.pal  → same nyeoni8.png
+       @.apps/asa-&-ava/pieces/asa/asset.pal  → same il-dj.png
+
+     On this machine (2026-08-06):
+       C:\Users\jbro8\OneDrive\Desktop\nyeoni8.png  → NOT FOUND
+       C:\Users\jbro8\OneDrive\Desktop\il-dj.png    → NOT FOUND
+       pieces/*/assets/ dirs exist but are EMPTY
+       house tree has NO copy of those PNGs
+
+     Without them, re-conversion can only re-bake emoji from glyph.txt
+     (👩/etc.), not the real character art the user expects.
+
+  B. MUCHI_RANCHER MONSTER SHEETS (required for proper ranch sprites)
+     ops/mr_monster_extract.c documents source sheets:
+       $BigMonster1.png  (96px cells, 4 rows × 3 walk frames)
+       $BigMonster2.png  (120px cells, same layout)
+     Extract → entities/mN_*/sprite.csv
+
+     On this machine: BigMonster1/2.png NOT on Desktop, NOT in house.
+     entities m1–m8 already have sprite.csv (likely extracted once on
+     Linux); m1–m5,m7 lack glyph/meta — but if sheets are elsewhere,
+     we should re-extract + re-vendor sheets into the tree so Windows
+     can rebuild.
+
+  C. What IS in-tree (usable as interim display only)
+     - #.desktop/entities/{ava,asa}/sprite.csv + tiny atlas.png (~2KB)
+       = emoji-gen output, NOT nyeoni8/il-dj portraits
+     - rancher entities/*/sprite.csv = prior extract; no sheet PNGs
+     - roster.pdl has emoji glyphs per monster
+
+  D. VENDOR PATHS (next agent: once user drops files, put them HERE —
+     house-relative, never /home/no/Desktop)
+
+     @.apps/asa-&-ava/pieces/ava/assets/portrait.png     ← from nyeoni8.png
+     @.apps/asa-&-ava/pieces/asa/assets/portrait.png     ← from il-dj.png
+     #.desktop/entities/ava/assets/portrait.png          ← copy or link
+     #.desktop/entities/asa/assets/portrait.png
+     @.apps/MUCHI_RANCHER/pieces/monster/sheets/BigMonster1.png
+     @.apps/MUCHI_RANCHER/pieces/monster/sheets/BigMonster2.png
+
+     Then rewrite asset.pal to:
+       asset_path=assets/portrait.png
+     (relative to package dir) and re-run tp_asset_to_sprite /
+     emoji_xtract-style PNG→sprite.csv into package sprite.csv.
+
+  E. User action needed before "looks right" for adam/asa/rancher art
+     [ ] Provide nyeoni8.png (adam/ava) and il-dj.png (asa)
+         — paste into vendor paths above OR tell agent where they live
+     [ ] Provide $BigMonster1.png + $BigMonster2.png if ranchers must
+         be re-extracted (optional if existing sprite.csv is accepted)
+     [ ] Agent must NOT claim portrait parity using only emoji CSV
+
+  F. Pipeline after assets land
+     1. Vendor PNGs under relative paths (D)
+     2. Fix asset.pal relative
+     3. PNG → sprite.csv (tp_asset_to_sprite / rancher extract / xtract)
+     4. L2-A WGL load_sprite_csv displays them
+     5. L2-B menus on top
+
+  Renderer fix (L2-A) can still proceed on CURRENT sprite.csv so desk
+  is not blue — but user-visible "real" adam/asa/rancher art requires
+  the missing PNGs first (or user acceptance of emoji placeholders).
+
+13.2 Asset inventory (2026-08-06 scan) — what L2 must paint
+
+  Package                              glyph  atlas.png  sprite.csv  meta  objects
+  -----------------------------------  -----  ---------  ----------  ----  -------
+  #.desktop/entities/asa               yes    yes        yes(~1648α) yes   no
+  #.desktop/entities/ava (adam)        yes    yes        yes(~1823α) yes   no
+  #.desktop/entities/book-stack        yes    yes        yes         yes   no
+  @.apps/MUCHI_RANCHER/.../m6_golddeity yes   no         yes(~3017α) yes   yes
+  @.apps/MUCHI_RANCHER/.../m8_redhorned yes   no         yes         yes   yes
+  m1_ninjadragon … m5, m7              NO     no         yes(ok α)   NO    NO
+
+  opaque_pixels counts show sprite.csv is REAL for asa/ava/ranchers —
+  Win blue square is renderer failure, not empty assets.
+
+  App templates @.apps/asa-&-ava/pieces/{asa,ava}/ have methods.pdl +
+  chat.sh + event_pkg but NO desk glyph/sprite there (desk copies live
+  under #.desktop/entities/*). Solo artist PNGs under pieces/*/assets
+  were empty on this scan — if user re-adds PNGs, L2-C must convert
+  them into sprite.csv for the desk package.
+
+13.3 Autostart today vs needed
+
+  $.crypts/autostart.pdl currently LAUNCHES:
+    tool-bar, m6_golddeity, book-stack, ava (adam), asa
+
+  Gaps:
+    - m1–m5, m7, m8 not auto-launched (m8 has meta+objects ready)
+    - incomplete ranchers lack glyph.txt + meta.pdl so even if launched
+      menus are empty and title is "?"
+
+  L2 must:
+    1) One shared KHTPM Win renderer fix → all packages that HAVE
+       sprite.csv look correct (asa, ava, m6, m1…m8).
+    2) Package completeness pass for ALL ranchers:
+         - ensure glyph.txt (from design / master asset / emoji)
+         - ensure meta.pdl (copy template from m6/m8 or generate)
+         - ensure objects.pdl (Menu/Play/Events rows relative)
+         - regenerate atlas.png if glyph present and atlas missing
+    3) Expand autostart.pdl LAUNCH rows (or a rancher "roster.pdl")
+       so user can boot full ranch — still HOUSE-RELATIVE paths only.
+
+13.4 Menu / methods for adam + asa + rancher
+
+  Desk menus come from package meta.pdl METHOD rows (and objects.pdl
+  when present). App-side duplicates:
+    @.apps/asa-&-ava/pieces/ava/methods.pdl   ← adam
+    @.apps/asa-&-ava/pieces/asa/methods.pdl
+    #.desktop/entities/{ava,asa}/meta.pdl     ← what KHTPM reads
+    MUCHI_RANCHER entities m6/m8 meta+objects; others missing
+
+  RMB TrackPopupMenu must read the package under argv package_dir —
+  so adam/asa/rancher all work once L2-B lands, IF meta exists and
+  paths are relative (FIXME-a6 still required for Chat/Events/Play).
+
+13.5 MUCHI_RANCHER-specific ops (beyond generic KHTPM)
+
+  Rancher objects.pdl actions today (m6/m8) point at:
+    @.apps/MUCHI_RANCHER/ops/open_rp_menu.sh
+    @.apps/MUCHI_RANCHER/ops/play_event.sh
+    @.apps/MUCHI_RANCHER/ops/open_event_ez.sh
+  still absolute /home/no on disk (FIXME-a6 P3).
+
+  After relative rewrite, Win menu execute must:
+    - run .sh via bash if present OR provide .ps1 twins later
+    - prefer ops/+x/*.exe for mr_change_gold etc.
+  Minimum L2 for rancher: show sprite + RMB Close + Events (ez) if
+  open_event_ez can be made relative; full Play/prisc may lag until
+  path + shell port.
+
+13.6 Acceptance matrix (must all pass)
+
+  Entity          Texture G1   RMB menu G2   In autostart   Notes
+  --------------  -----------  ------------  -------------  --------------------
+  asa             required     required      already        adam&eve half
+  ava (adam)      required     required      already        adam in speech
+  m6_golddeity    required     required      already        ranch flagship
+  m8_redhorned    required     required      add optional   has meta+objects
+  m1..m5, m7      required     after meta    add optional   complete packages
+  book-stack      required     required      already        regression
+
+13.7 Implementation note for next agent
+
+  Do NOT special-case only book-stack when coding L2-A/B.
+  Any package_dir with sprite.csv must texture; any with meta.pdl must
+  menu. Then run a **batch verify** over:
+    #.desktop/entities/{asa,ava,book-stack}
+    @.apps/MUCHI_RANCHER/entities/m*
+  Fix package completeness for ranchers in the same round as renderer
+  so adam/asa/rancher all ship together.
+
+======================================================================
+14. One-page summary for the human
+======================================================================
+
+We are close because **launch + process model work**. We are not there
+because **the Windows KHTPM window is a blue placeholder**, not the real
+emoji-textured, menu-bearing desk stamp that Linux KHTPM and the working
+egg-pals egg_window already implement.
+
+**In-scope entities for the same fix (user):**
+  - **asa** and **adam (ava)** — desk packages already have sprite.csv
+  - **MUCHI_RANCHER** monsters m1–m8 — all have sprite.csv; only m6/m8
+    have full meta/objects; rest need package completion + optional
+    autostart rows
+  - book-stack still a regression gate
+
+The egg-pals reference proves the Win recipe:
+  FreeType emoji → PNG → CSV → WGL textured shaped window + RMB menu.
+
+House already has sprite.csv for asa/ava/ranchers and a Win-capable
+egg_window inside 01.muchi-pals — but:
+  - livedesk uses the wrong Win renderer (GDI stub),
+  - muchi is missing button.ps1,
+  - incomplete rancher packages lack glyph/meta for menus,
+  - METHOD paths still absolute (FIXME-a6).
+
+Next round: **one KHTPM WGL path for all packages**, **RMB menus**,
+**rancher package completeness + autostart**, **muchi button.ps1**,
+**relative methods for asa/adam/rancher**.
+
+END livedesk-win-fix-lvl2.txt
+
+======================================================================
+15. POST-L2 REVIEW + architecture answer (user feedback)
+======================================================================
+
+User: ava/asa still not visible; rancher menu incomplete; toolbar not
+nav-parity; should we have used a Win header shim + Linux logic?
+
+15.1 ava/asa "missing"
+  Primary screen 1536x864. Linux-saved desktop_pos had ava/asa y=1520
+  (OFF-SCREEN) and m6 x=2320 (OFF-SCREEN). Processes ran; not visible.
+  Fixed: clamp_screen() + reset positions (ava 400,200 asa 500,200).
+
+15.2 Rancher menu
+  Linux multi-page objects.pdl; Win only showed main + deferred GOTO.
+  Fixed L2.1: GOTO:/BACK reopens TrackPopupMenu on page.
+  Still short of full Linux (nav claim rows, soft-focus, relative sh).
+
+15.3 Toolbar Nav
+  Linux: digit+Enter jump, ACTIVATE_NAV into menus, shortcuts.pdl.
+  Win L2.1 lite: center Nav:_ field, digits+Enter jump by INDEX.
+  Full parity needs shared nav_claim_rows logic.
+
+15.4 Architecture: Win shim reusing Linux logic — YES better long-term
+  Separate tp_*_win.c stubs got us running fast but reimplemented a
+  thin subset → design drift (menus/nav/focus).
+
+  Better pattern = egg_window.c style:
+    #ifdef _WIN32  windowing only
+    #else          X11 only
+    SHARED         sprite, objects.pdl machine, methods, registry, history
+
+  L3: extract shared pure-C from tp_desktop_window.c / tp_taskbar.c;
+  shrink platform files to create/poll/swap/popup only.
+  Do not keep growing diverged _win.c forever.
+
+
+======================================================================
+16. ARCH RULE (user 2026-08-06) — no dual rewrites
+======================================================================
+
+User: "yes no need to rewrite the code each time it changes"
+
+MANDATORY going forward:
+  - Do NOT grow feature parity by re-coding menus/nav/registry/sprites
+    separately in tp_*_win.c each time Linux changes.
+  - ONE shared implementation of design functions (objects.pdl machine,
+    meta METHOD parse, nav claims, livedesk_open, history, relay, sprite).
+  - Windows / Linux only differ at the WINDOWING SHIM boundary
+    (create window, events, GL context, popup shell, clipboard, process).
+  - Pattern of truth: egg_window.c (#ifdef _WIN32 vs X11, shared rest).
+
+When Linux KHTPM gains a feature, the next Win port step is:
+  1) move that feature into shared C if it is not already
+  2) implement only the missing platform hook (if any)
+  NOT: copy the feature into a parallel win file again.
+
+L3 work package (when scheduled):
+  - Split tp_desktop_window.c → khtpm_core_*.c + khtpm_plat_win.c +
+    khtpm_plat_x11.c (or #ifdef blocks in one file like egg_window)
+  - Same for tp_taskbar.c
+  - Retire diverged tp_desktop_window_win.c / tp_taskbar_win.c once
+    shared binary builds on Win
+  - Temporary stubs remain only until that merge lands
+

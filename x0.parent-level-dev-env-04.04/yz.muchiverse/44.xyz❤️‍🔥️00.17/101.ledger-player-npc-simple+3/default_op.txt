@@ -1,0 +1,5 @@
+# LPNS+3 (Word Game) Operations - TPMOS pattern
+# Format: name type handler {description}
+
+word_compose_frame void ops/word_compose_frame {render game state into current_frame.txt}
+word_turn_input void ops/word_turn_input {process player action (1=word, 3=end_turn)}

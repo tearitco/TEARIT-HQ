@@ -1,0 +1,22 @@
+# 📐 DAY 09 — The Relay Plan 🗺
+# ===========================
+# Title: "📐 DAY 09 — The Relay Plan 🗺"
+# Characters: TOMO, MAXINE
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), MAXINE (en-GB-MaisieNeural)
+# Topic: HARNECIENT Training Session
+
+**TOMO:** The plan is four phases, in order. Learn their shapes and you can track progress at a glance.
+
+**TOMO:** The model is hardcoded (`stable-code:latest`). We add a **sidebar "Model" item** that selects from a fixed whitelist, and persist the choice in &.widgits/ai-cell/pieces/state/model.txt so it survives restart. Each entry carries its mode:
+
+**TOMO:** The enum `BackendMode` already has `BACKEND_OLLAMA_RAW` and the unimplemented BACKENDAGENT45LEGACY. We add BACKENDHARNECIENT — and when active, the chat path becomes the full my-lawyer protocol inside the GUI: 1. 🧑‍🏫 Persona from pieces/registry/personas/<model.txt (new dir, mirrors my-lawyer). 2. 🧩 Deterministic dispatch (already built in detecttool()). 3. 💬 Model-suggested hand-hold (NEW): after a read, ask the model one short plain-text question, parse its noisy reply tolerantly, apply the canonical app-side edit, then deterministic run — model interprets the real output. This is harnecientread/edit/run from the code-tools-harness, moved into the window. 4. 🚫 Never send a tools field on Harnecient modes. 5. 🪂 Fallback everywhere — unparseable reply degrades to plain chat. No crashes (remember the directory crash: never trust model output).
+
+**TOMO:** The customer-facing proof — driven PURELY through the relay (standing rule 1): 1. Inject ASCII codes into #.desktop/aicellagentrelay.txt to type a task into the composer and press Enter. 2. The task is a real-world one: read #.desktop/stripvartabs.txt, write its contents to an output file, then append a marker to #.desktop/stripstate.txt. 3. h-ai Harnecient mode does it: deterministic read → model question → write (approve/deny via relay) → run (approve/deny). 4. The harness asserts the taskbar files actually changed + the receipt shows the tool fired. That loop — 👤 human → 🔌 relay → 🪟 window → 🧠 non-tooled model → 🛠️ deterministic dispatch → 📁 real effects → ✅ verified — is the entire product story in one sentence.
+
+**TOMO:** `&.widgits/ai-cell/relay-harness/` — pure-C assert ops + bash driver, scenarios 01–04 (model switch, relay read, control-tb, approve/deny), a runall.sh, and a proof/SUMMARY.md N/N table. Same DNA as code-tools-harness and test-harn-same, but at the REAL window level. (Full day on harnesses: Day 11-13.)
+
+**MAXINE:** What could go wrong?
+
+**TOMO:** A few things, all with fallbacks baked in: - 270m latency/quality in a live GUI → the model is choosable; demo on 1b/3B if needed. - Approve/deny reachable via relay? Nav items are digit-jump + Enter, so it should work — but it's the first thing we test (scenario 04). We keep approve/deny; it's the product's human-in-the-loop guarantee, we don't bypass it. - detecttool() keyword collisions ("write a C function...") → the conservative pathish-token guard already prevents false fires; we add a scenario for it. - Model noise → tolerant parsing + canonical-edit + fallback-to-chat, always.
+
+**TOMO:** Written, approved, and *indexed*. Tomorrow: the target — controlling the taskbar.

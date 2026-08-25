@@ -1,0 +1,115 @@
+J19 Progress Report
+
+Fresh Agent Handoff
+
+This repo is in a controlled refactor. The goal is not a new UX. The goal is to keep TPMOS / CHTPM conventions intact while making XO-PET and moke-pet share one simulation contract with optional human control.
+
+Read this first:
+- `communication-doc.txt`
+- `quick-summary.txt`
+- `quick-handoff-prompt.txt`
+- `x0.moke-pet-project-2.2/xo-control-fix-j19.txt`
+
+Current architectural rule:
+- project -> controllers/enclosure -> map -> entities
+- controllers are modular and can be dropped into or removed from an enclosure dir
+- keep executables in `+x/` directories per TPMOS convention
+- keep the controller-facing projection CHTPM-shaped
+- follow the fuzz-op pattern for command propagation: one canonical history file, manager consumption, and state projection back into `gui_state.txt`
+
+Current control model:
+- visible switcher name: `xolector`
+- `xelector` stays as a compatibility alias in code and legacy paths
+- `xolector` is the pet switcher, not a world pet
+- `xolector` methods are pet-selection methods only
+- project controls are separate and always visible
+- pet methods replace the switcher methods when a pet is possessed
+- `release` / `esc` returns to `xolector`
+- `AI` is a pet method and should behave like one-step delegated control unless resume is active
+
+What was fixed in this pass:
+- the autonomous root manager source and binary were moved under `pieces/world_tank_01/`
+- `sh button.sh auto` now launches the manager from `pieces/world_tank_01/+x/manager.+x`
+- `sh button.sh c` now also rebuilds the XO-PET manager binary at `projects/xo-pet-v1/pieces/manager/+x/xo-pet-v1_manager.+x`
+- the controller runner now emits ASCII key codes instead of raw digits
+- the manager now watches the shared `pieces/keyboard/history.txt` input stream in addition to the project-local history
+- the manager now buffers numeric nav input and only commits it when `Enter` is pressed
+- the manager now treats numeric `1/2/3` as project controls so `START`, `PAUSE`, and `STEP` match the visible buttons
+- project controls are rendered separately from active methods
+- the switcher no longer carries `start_sim` / `pause_sim` as methods
+- pets now expose `ai` and return to `xolector` on `release`
+- the launcher accepts `r` as a controller alias
+- the XO-PET manager now pulses both standard frame-marker files after every `gui_state.txt` write
+- the XO-PET layout now uses parser-friendly label interpolation for `sim_status`, `active_target_id`, `epoch`, `step_count`, and `last_response`
+- the XO-PET manager now builds a `turn_summary` buffer for each epoch and exposes it in the frame after `STEP` / `END TURN`
+- orchestrator startup now clears stale XO project controller files so old commands do not replay into fresh ASCII sessions
+- the XO-PET layout now shows `METHODS (xolector)` / `METHODS (pet_id)` correctly instead of a blank owner label
+
+Current implementation details:
+- autonomous moke-pet manager source and binary now live under `pieces/world_tank_01/`
+- XO-PET manager source and binary now live under `projects/xo-pet-v1/pieces/manager/`
+- autonomous moke-pet writes:
+  - `pieces/display/current_frame.txt`
+  - `pieces/display/frame_changed.txt`
+  - `pieces/chtpm/frame_buffer/current_frame.txt`
+  - `pieces/chtpm/frame_buffer/frame_changed.txt`
+- XO controller manager writes:
+  - `projects/xo-pet-v1/manager/gui_state.txt`
+  - `projects/xo-pet-v1/session/frame_####.txt`
+  - `projects/xo-pet-v1/session/state.txt`
+- headless parser smoke test now renders the XO-PET project layout with:
+  - project controls
+  - pet switcher list
+  - active methods
+  - live log
+- `button.sh controller` still fails in this API shell because `/dev/tty` is unavailable; that is an environment limit, not a layout regression
+
+What still needs a fresh UI check:
+- confirm `start`, `pause`, and `step` are accepted from the live projection path
+- confirm `release` returns control to `xolector`
+- confirm `AI` appears as a pet method and advances one step when paused
+
+Verified in this pass:
+- `script -qec "sh button.sh controller"` provides a real tty-backed path in this environment
+- the XO-PET live frame now shows populated runtime fields instead of blank placeholders
+- the manager build completed cleanly after the input-routing change
+- the root cause was traced to `route_input()` treating `3` as a method slot instead of a step control
+- a direct manager smoke test proved `KEY_PRESSED: 51` only buffers, and `KEY_PRESSED: 13` commits the selection and advances one epoch
+- `script -qec "sh button.sh r"` through the top-level launcher lands in the live ASCII XO-PET frame
+- `pieces/debug/frames/session_frame_history.txt` now shows a clean startup at `xolector` with `METHODS (xolector):`
+- controller input routing bug was fixed: `run_xo-pet-controller.sh` no longer shadows its real `write_keypress` helper, and `start`/`pause`/`step` now write command words instead of raw ASCII integers
+- the controller runner no longer uses the brittle fractional `sleep 0.3` tail delay, so shell portability is cleaner
+- the visible project-open regression was traced to `chtpm_parser.c` still constructing `projects/xo-pet-v1/manager/+x/...`; that path was changed to `projects/xo-pet-v1/pieces/manager/+x/...`
+- after rebuilding, the live `button.sh r` path again opens `xo-pet-v1` into the populated XO-PET frame instead of the blank selector shell
+- possession now swaps from `xolector` into pet-specific methods, and `liz_bulb` exposes `scan`, `eat`, `breathe`, `check_death`, `train`, `attack`, `mate`, `rest`, `nothing`, `ai`, and `release`
+
+What not to do:
+- do not replace the CHTPM loader with a bespoke terminal panel
+- do not move simulation logic into the renderer
+- do not depend on the monolith for the active XO-PET bundle
+- do not add `<interact>` yet
+- do not invent a second command path for `STEP` or the other project controls
+
+Latest path / test update:
+- the root autonomous launcher now runs `pieces/world_tank_01/+x/manager.+x`
+- `button.sh c` rebuilds the world manager before delegating to the bundle compiler
+- `button.sh c` rebuilds the XO-PET manager binary before delegating to the bundle compiler
+- XO-PET runtime code now points at `projects/xo-pet-v1/pieces/manager/` instead of the old naked `projects/xo-pet-v1/manager/` path.
+- `run_orchestrator.sh` cleanup now clears the new `pieces/manager` scratch files.
+- `start_sim.c`, `pause_sim.c`, `possess.c`, `possess_bulb.c`, and `possess_char.c` now write controller state into `pieces/manager/`.
+- The manager binary was rebuilt under `projects/xo-pet-v1/pieces/manager/+x/`.
+- End-turn testing before this fix confirmed the manager writes a non-empty `turn_summary` into `projects/xo-pet-v1/pieces/manager/gui_state.txt` and `projects/xo-pet-v1/session/state.txt`.
+- The current fix extends the manager to consume the shared keyboard history so the visible `button.sh r` navigation can again reach the XO-PET step handler.
+- The shared `pieces/display/current_frame.txt` / `pieces/debug/frames/session_frame_history.txt` path stayed stale in this launch path, so visual frame-history proof still needs a renderer/parser attach if that becomes the next debugging target.
+- `run_xo-pet.sh` reset now clears `projects/xo-pet-v1/history.txt` and `projects/xo-pet-v1/session/state.txt`, preventing stale command replay on fresh launches.
+- `run_xo-pet.sh` now starts the renderer alongside the manager so the frame pipeline can mirror `current_frame.txt` into session history when the parser is driving the XO-PET view.
+- Clean baseline verification succeeded: `step_count` moved from `0` to `1` after a single `COMMAND: STEP`, and `gui_state.txt` reflected the new `turn_summary` / `xolector` state.
+- A live controller `STEP` should now again write the compact `acts:` turn summary into `projects/xo-pet-v1/pieces/manager/gui_state.txt` and the visible session frame.
+
+If this thread disconnects:
+1. reopen `communication-doc.txt`
+2. inspect `x0.moke-pet-project-2.2/x0.5-liz.fiter4-mew-00.02/projects/xo-pet-v1/pieces/manager/xo-pet_manager.c`
+3. inspect `x0.moke-pet-project-2.2/x0.5-liz.fiter4-mew-00.02/projects/xo-pet-v1/layouts/xo-pet.chtpm`
+4. smoke-test `sh button.sh auto`
+5. smoke-test `sh button.sh r`
+6. if `STEP` regresses again, compare `projects/xo-pet-v1/history.txt` against the manager input thread and restore the last-known-good binary at `projects/xo-pet-v1/pieces/manager/+x/xo-pet-v1_manager.+x`

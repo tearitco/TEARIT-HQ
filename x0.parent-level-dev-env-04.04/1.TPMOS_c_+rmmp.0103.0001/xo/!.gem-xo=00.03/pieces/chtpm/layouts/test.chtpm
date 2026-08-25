@@ -1,0 +1,11 @@
+<panel>
+    <text label="=== TEST PAGE ===" /><br/>
+    <text label="This is a secondary layout to test HREF navigation." /><br/><br/>
+    
+    <text label="Pet Name: ${fuzzpet_name}" /><br/>
+    <text label="Status: ${fuzzpet_status}" /><br/><br/>
+    
+    <link label="Back to Dashboard" href="pieces/chtpm/layouts/main.chtpm" /><br/><br/>
+    
+    <button label="Click Me" onClick="DISPLAY" /><br/><br/>
+</panel>

@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | name               | to_factory_2
+META         | trigger            | action
+META         | cmds               | 5

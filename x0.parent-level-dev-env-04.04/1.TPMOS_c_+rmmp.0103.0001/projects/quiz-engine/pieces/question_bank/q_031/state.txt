@@ -1,0 +1,5 @@
+name=Tryptophan
+formula=Trp (W)
+type=Indole-CH2CH(NH2)COOH
+groups=Amino Acid
+relevance=-NH2

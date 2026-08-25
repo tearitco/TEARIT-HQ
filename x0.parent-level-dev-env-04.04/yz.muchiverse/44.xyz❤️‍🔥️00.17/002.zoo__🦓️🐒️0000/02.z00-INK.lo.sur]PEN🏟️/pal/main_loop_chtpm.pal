@@ -1,0 +1,65 @@
+# zoo_0000 interact-turn dispatch - CHTPM-MODULE VARIANT, PERSISTENT
+# LOOP.
+#
+# REVERTED BACK TO PERSISTENT (2026-07-19, see xyzos-standards.txt sec.
+# 0-CORRECTED and yz.muchiverse/2.muchi-verse/agent-b-notepad.txt for
+# the full investigation): this file's own one-shot conversion (paired
+# with chtpm_parser_pal.c's own then-new run_module_synchronous() - a
+# BLOCKING fork+exec+waitpid call on the "Control Zoo" onClick=
+# "INTERACT" button) hangs the entire chtpm_parser_pal process the
+# instant any key is pressed while "in control", the same live-caught
+# bug egg-pals-13's own main_loop_chtpm.pal had (see that file's own
+# header comment for the full account - identical root cause, same
+# fix). Direct re-check against real 1.TPMOS's own chtpm_parser.c
+# (line 2878) confirmed its own INTERACT handling is plain, fire-and-
+# forget inject_raw_key() - no wait, no fork from that function at all;
+# reverted at the source (shared-ops/chtpm_parser_pal.c). With that
+# fixed, this file goes back to a genuine PERSISTENT loop, matching
+# real fuzz-op_manager.c's own architecture (a persistent daemon with
+# its own independent poll thread, not a one-shot script re-forked per
+# keystroke) and this family's own wsr-pal/pal-chain precedent.
+#
+# WHY interact_relay.txt, NOT history.txt LIKE fuzz-op's <interact> TAG:
+# real TPMOS's own raw keyboard capture writes ONLY to
+# pieces/keyboard/history.txt - chtpm_parser.c is the SOLE writer of
+# whatever file a project's own <interact src="..."> names. This
+# family's shared-ops/keyboard_input.c is NOT single-purpose the same
+# way - it ALSO writes every raw keystroke directly and unconditionally
+# to pieces/apps/player_app/history.txt, for projects whose own regular
+# non-chtpm "run" mode still reads that file via prisc+x's read_history
+# op. interact_relay.txt is never touched by keyboard_input.c - only
+# chtpm_parser_pal's own inject_raw_key() (INTERACT branch) writes to
+# it, restoring the single-writer guarantee fuzz-op gets for free from
+# real TPMOS's own narrower raw-capture design.
+#
+# chtpm_parser_pal's own menu nav (arrows/digits/Enter before "Control
+# Zoo" is engaged, and ESC to return to it afterward) is unaffected by
+# any of the above either way - it's driven entirely by chtpm_parser_pal
+# reading pieces/keyboard/history.txt directly inside its own process_key(),
+# never by this file's own read_history line.
+#
+# compose_rgb_frame is NOT called here: it draws real 2D tile graphics
+# straight from game-state files and never touches current_frame.txt -
+# button.sh's own "run" action launches system/chtpm_rgb_render
+# alongside chtpm_parser_pal, a separate, persistent daemon that
+# font-rasterizes current_frame.txt itself (chrome AND embedded game
+# map, verbatim) into the SAME rgb_frame.raw gl_mirror reads. Calling
+# compose_rgb_frame here too would overwrite that daemon's own output
+# with the OLD chrome-blind tile view on every run.
+li x1, 0
+
+compose_frame
+hit_frame
+
+loop:
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, no_key
+xlector_input x2
+tick_pets
+compose_frame
+hit_frame
+j loop
+
+no_key:
+sleep 30000
+j loop

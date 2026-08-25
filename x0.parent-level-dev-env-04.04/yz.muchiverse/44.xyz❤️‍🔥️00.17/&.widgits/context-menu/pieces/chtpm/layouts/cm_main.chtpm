@@ -1,0 +1,33 @@
+<!-- cm_main.chtpm - CHTPM context menu, 2026-08-05.
+     Real, per-user proposal ("we could chtpm parser for the context
+     menu, what do u think?") + explicit correction ("clicking user was
+     supposed to show only the new options, plus back button, like
+     chtpm href nav"). Static element COUNT (8 method slots + User +
+     Close + Cancel), each method slot's LABEL is variable-substituted
+     per entity - this is a SAFE pattern (substituting text inside an
+     already-declared static tag), unlike dynamically INJECTING new
+     <button> tags via a bare ${var} (event-ez's own Gallery hit a real,
+     still-unresolved bug doing that - see EVENT_SCRIPTING_PROGRESS_
+     AND_GOALS.md's own "KNOWN BUG" note). onClick="KEY:n" only safely
+     encodes n=1-9 (n>9 injects a raw non-printable byte per
+     chtpm_parser_pal.c's own send_command(), confirmed via source) -
+     hence the 8-slot cap; User/Close/Cancel are fixed, not part of the
+     dynamic 8.
+-->
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="${cm_header}" /><br/>
+    <button label="${cm_label_1}" onClick="KEY:1" /><br/>
+    <button label="${cm_label_2}" onClick="KEY:2" /><br/>
+    <button label="${cm_label_3}" onClick="KEY:3" /><br/>
+    <button label="${cm_label_4}" onClick="KEY:4" /><br/>
+    <button label="${cm_label_5}" onClick="KEY:5" /><br/>
+    <button label="${cm_label_6}" onClick="KEY:6" /><br/>
+    <button label="${cm_label_7}" onClick="KEY:7" /><br/>
+    <button label="${cm_label_8}" onClick="KEY:8" /><br/>
+    <button label="User" href="pieces/chtpm/layouts/cm_user.chtpm" /><br/>
+    <button label="Close" onClick="KEY:9" /><br/>
+    <button label="Cancel" onClick="KEY:0" /><br/>
+    <text label="${last_message}" /><br/>
+</panel>

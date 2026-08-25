@@ -1,0 +1,81 @@
+🚶 walkthru-j30.txt — 045.muchi-pal-agent🤖️+1 — QUICK CHECK
+================================================================
+STATUS: ✅ rebuilt + REAL tested (you asked specifically — done! 🙌)
+
+## ▶️ HOW TO RUN
+    bash button.sh run
+
+## ✅ CHECKLIST
+  [ ] 1️⃣ Type a normal chat message, press Enter → 💬 you should see
+        "You: [message]", then a short pause, then an AI reply below
+        it (default model is now `gemma-lan` — the LAN Mac's local
+        gemma3:270m — and it REMEMBERS your last chosen model across
+        restarts; the very first boot defaults to gemma-lan)
+  [ ] 2️⃣ Type `/model gemma-lan`, Enter → header at top should change
+        to `model: gemma-lan` 🔄
+  [ ] 3️⃣ Ask it something that needs a directory listing (e.g. "list
+        the files in this folder") → it should trigger a REAL tool
+        call automatically (not ask the AI to guess)
+  [ ] 4️⃣ Ctrl+C, run it again → your conversation history should
+        still be there 🧠
+
+## 🟢 GOOD LOOKS LIKE
+Chat works, model switching works, tool-calling works automatically,
+history persists across restarts.
+
+## 🤖 WHAT I ALREADY REAL-TESTED FOR YOU (not just "it compiles")
+  - Real key-injected message containing a tool keyword → confirmed
+    it deterministically triggered a real `list_dir` call BEFORE any
+    LLM was even asked, exactly as designed. PASS ✅
+  - Real `/model iqabod-test` switch + real chat message → confirmed
+    the model switch took, confirmed a real reply landed in the chat
+    log from actual generation (not stale/leftover data). PASS ✅
+
+================================================================
+## 📌 UPDATE 2026-07-31 — "dir list" bug FIXED (see 2&3-jul31-sprint.md)
+================================================================
+What you saw: typing "dir list" gave you a weird "Aida: TOOL: read file
+jul-21.txt" instead of a clean listing.
+Why: build_gemma_request() replayed OLD model-driven tool calls as literal
+"assistant: TOOL: ..." text; the 270M model copied the format back at you.
+ALSO a display bug: the listing rendered ABOVE your message.
+
+Fixed (all harness-proven, proof/harness-20260731-113214/):
+  - Gemma's prompt now skips stale tool_call turns (filter at build only —
+    no persisted files were touched).
+  - New toggle model_after_tool=no (default): when a tool pre-runs, the
+    LLM call is skipped entirely — the tool result IS the answer
+    (sys_msg="Tool result shown."). Set model_after_tool=yes to have Aida
+    react to tool results again.
+  - Listing now renders AFTER your "You: ..." line (tool_result.pending
+    handshake strategy_execute_a → send_message).
+Harness now asserts all of it: KPI#2 no "TOOL:" hallucination in last 12
+frame lines, KPI#3 result-after-message ordering. OVERALL PASS.
+
+TO VERIFY YOURSELF (user test): bash button.sh run, type "dir list", Enter
+→ you should see → [Strategy A] header, your message, then the listing,
+with no "TOOL:" garbage. That is the product now.
+===============================================================
+## 📌 UPDATE 2026-07-31 (later) — AGENTIC TOOLS DONE 🛠️
+===============================================================
+Newest directive: harness gemma for basic agentic coding BEFORE install —
+write/edit/read/run/search — using the proven list_dir pattern. Implemented +
+proven (design doc: #.haiku+/30.jul-30-handoff/5.tool-scaffold-gemma-agentic.md):
+
+  - strategy_execute_a.c now dispatches write_file + edit_file (with append
+    sub-mode), plus hardened read/run/search; files land in your SESSION dir.
+  - 2 real-keystroke harnesses, all 8 KPIs PASS:
+      H1 hello_python (proof/harness-20260731-114822/),
+      H2 edit_book     (proof/harness-20260731-114843/).
+  - Regression: list_dir / iqabod / model_remember all still green.
+
+TO VERIFY YOURSELF (user test): follow user-walkthru.md with YOUR OWN code or
+book, e.g.:
+    create file hello.py containing print('hello world')
+    run python3 hello.py            → [exec_cmd result]: hello world
+    edit hello.py replace hello with hi
+    append to book.txt the line "It was a dark and stormy night."
+    read file book.txt
+    search for dark in book.txt
+One tool per turn; the result is the answer (no model call needed).
+================================================================

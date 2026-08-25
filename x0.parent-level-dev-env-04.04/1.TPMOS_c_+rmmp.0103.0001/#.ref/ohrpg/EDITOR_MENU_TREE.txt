@@ -1,0 +1,70 @@
+name=EDITOR_MENU_TREE.txt
+OHRRPGCE Editor Menu Tree
+
+Main Menu (Custom.exe)
+├── Edit Graphics
+│   ├── Tilesets
+│   ├── Sprites (Heroes, NPCs, Enemies, Weapons, etc)
+│   ├── Box Styles
+│   ├── Palettes
+│   ├── Portraits
+│   └── Graphics Import/Export
+├── Edit Maps
+│   ├── Map List
+│   ├── Map Drawing/Editing
+│   ├── Zones (zone properties)
+│   ├── Map Links/Doors/Warps
+│   └── Map Music/Backdrops
+├── Edit Heroes
+│   ├── Hero List
+│   ├── Hero Stats/Spells/Graphics/Equipment
+│   └── Hero Tag Triggers
+├── Edit Enemies
+│   ├── Enemy List
+│   ├── Enemy Appearance/Stats/Sounds/AI
+│   └── Enemy Attacks
+├── Edit Attacks
+│   ├── Attack List
+│   ├── Attack Properties (damage, status, sounds, scripts)
+│   └── Animation Preview
+├── Edit Battle Formations
+│   ├── Formation List
+│   ├── Formation Layout Editor
+│   └── Enemy Setups
+├── Edit Items
+│   ├── Item List
+│   ├── Usable/Battle Props
+│   ├── Equipment Props
+│   └── Item Scripts
+├── Edit Shops
+│   ├── Shop List
+│   ├── Shop Inventory
+│   └── Prices/Shopkeeper
+├── Edit Text Boxes
+│   └── Text Box Editor
+├── Edit Tag Names
+│   └── Tag List Editor
+├── Edit Menus
+│   └── Menu Editor (custom game menus)
+├── Edit Slice Collections
+│   └── Slice Editor (UI/HUD custom slices)
+├── Edit Vehicles
+│   ├── Vehicle List
+│   └── Vehicle Properties/Graphics
+├── Import Music
+├── Import Sound Effects
+├── Edit Global Text Strings
+│   ├── Stat Names
+│   ├── Menu Captions
+│   └── Other UI Strings
+├── Edit General Game Settings
+│   └── Player/Gameplay Defaults
+├── Script Management
+│   ├── Script Editor
+│   ├── Script Import/Export
+│   └── Test Scripts
+├── Distribute Game
+│   └── Export/Package/Distribute
+└── Test Game / Quit or Save
+
+Most menus have submenus for creating/editing lists of items, stats, graphics, etc.

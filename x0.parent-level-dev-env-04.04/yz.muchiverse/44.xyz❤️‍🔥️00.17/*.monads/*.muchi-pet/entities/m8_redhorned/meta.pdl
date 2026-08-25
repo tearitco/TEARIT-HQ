@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | m8_redhorned
+STATE        | kind                 | monster
+STATE        | glyph                | ðŸ‘º
+STATE        | instance_id          | 4TSG
+STATE        | footprint_tiles      | 2
+METHOD       | Ledger               | gedit "*.monads/*.muchi-pet/entities/m8_redhorned/master_ledger.txt"
+METHOD       | Events (ez)          | *.monads/*.muchi-pet/ops/open_event_ez.sh
+METHOD       | Dir                  | xdg-open
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void

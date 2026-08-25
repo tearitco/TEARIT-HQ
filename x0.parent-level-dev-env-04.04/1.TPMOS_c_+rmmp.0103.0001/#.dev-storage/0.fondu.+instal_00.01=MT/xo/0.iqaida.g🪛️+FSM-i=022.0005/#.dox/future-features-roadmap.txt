@@ -1,0 +1,61 @@
+# Aida: Future Features Roadmap (TPMOS Edition)
+
+This document outlines the architectural and technical path for implementing advanced features while strictly adhering to the TPMOS Canonical Standards (Zero shared memory, file-based state, fork/exec tool patterns).
+
+---
+
+## 1. File Path Completion (@-trigger)
+
+### 🧩 Architectural Concept: "The completionist-pulse"
+TPMOS forbids complex, persistent UI states in the main orchestrator. Path completion should be a transient "side-effect" of a dedicated tool.
+
+### 🛠️ Technical Implementation (Phase 2: Reactive & Selection):
+- **Trigger**: In the main `agent.c` loop, detect when the user types `@`.
+- **Reaction**: 
+  - **Auto-Pulse**: Instead of waiting for `<Tab>`, the agent calls `./tools/complete_path` on *every* keystroke after the `@` trigger.
+  - **Subdir Search**: If the prefix contains a `/`, the tool automatically navigates and scans the targeted directory.
+- **UI: The Dropdown**:
+  - The orchestrator uses ANSI escape codes (`\033[s` / `\033[u`) to save/restore cursor positions.
+  - Suggestions are rendered *below* the active prompt.
+  - **Selection**: Users can cycle through matches using `Tab` or `Arrow Keys`. The selection is physically "injected" into the prompt buffer when a terminator (Space or Enter) is hit.
+- **Geography**: 
+  - The results are written to a temporary state file: `state/completions.tmp`.
+  - The main loop reads this file and presents the options to the user.
+
+---
+
+## 2. Conversation Summarization (/summarize)
+
+### 🧩 Architectural Concept: "Memory Compression"
+Summarization is a data-transformation task that resets the "Geography" of the session. It prevents context bloat by replacing a linear history with a thematic essence.
+
+### 🛠️ Technical Implementation:
+- **Trigger**: Command `/summarize` in the CLI.
+- **Action**: 
+  1. Fork/Exec `./tools/json_state read state/context.json` to get the full history.
+  2. Send this history to the LLM with a special "Compressor" persona: *"Condense this conversation into a 5-paragraph summary of facts, decisions, and current state."*
+  3. LLM returns the summary.
+  4. Fork/Exec a new tool `./tools/memory_compress.c` that:
+     - Backups `state/context.json` to `state/context_old.json`.
+     - Overwrites `state/context.json` with a single `system` message containing the summary.
+- **Geography**: The `context.json` is physically truncated, and the UI percentage (divisor-based) immediately drops to ~1%, restoring full cognitive capacity to the model.
+
+---
+
+## 3. Persistent Memory Tier
+
+### 🧩 Architectural Concept: "The Archive"
+Long-term facts should live outside the active `context.json`.
+
+### 🛠️ Technical Implementation:
+- **Tool**: `tools/fact_store.c`
+- **Logic**: When the agent identifies a "durable fact" (e.g., "The project uses Port 8080"), it calls `fact_store add "key" "value"`.
+- **Geography**: Facts live in `state/memory.json`. 
+- **Retrieval**: At every startup or `/clear`, the agent reads `memory.json` and injects it as part of the initial `system` prompt, ensuring long-term continuity without linear history bloat.
+
+---
+
+## 📋 TPMOS Reminder for New Features
+1. **If it's not in a file, it's a lie.** (No global variables for completions).
+2. **One-Writer Rule.** (Only one process touches `context.json` at a time).
+3. **Fork/Exec for everything.** (Even UI hints should be tool-driven if complex).

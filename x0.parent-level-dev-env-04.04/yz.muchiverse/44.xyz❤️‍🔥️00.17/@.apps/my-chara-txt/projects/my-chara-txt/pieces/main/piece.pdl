@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | main
+META         | version            | 1.0
+
+METHOD       | End Turn (advance 1 day)               | END_TURN

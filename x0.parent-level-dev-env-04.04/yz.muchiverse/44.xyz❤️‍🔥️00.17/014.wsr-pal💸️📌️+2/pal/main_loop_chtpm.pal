@@ -1,0 +1,99 @@
+# wsr-pal main_loop.pal - CHTPM-MODULE VARIANT (see
+# chtpm-to-pal-layout-plan.txt §8 and xyzos-standards.txt §7, and this
+# family's own real precedent in egg-pals' pal/main_loop_chtpm.pal,
+# modeled on directly - wsr-pal has no map/movement concept, same
+# shape as egg-pals, NOT mutaclsym's own movement-plus-menu variant).
+#
+# Real, needed differences from the regular pal/main_loop.pal:
+#   - read_history reads pieces/apps/player_app/interact_relay.txt via
+#     the literal-path 3-arg form (path, xD, xS) instead of the
+#     default-path 2-arg form - REQUIRES shared-ops/prisc+x.c (this
+#     project's own system/prisc+x is now built from there, see
+#     !.wsr-pal-refactor.txt §1.1). See main_loop.pal's own header
+#     comment / zoo_0000's own real bug for WHY a separate file is
+#     required (double-dispatch, not guessed).
+#   - x1 (the read_history position register) starts at 0 and is NEVER
+#     persisted via update_history_cursor.+x - deliberately, unlike
+#     the regular main_loop.pal: that op writes history_cursor into
+#     pieces/apps/player_app/state.txt, the SAME field/file the
+#     REGULAR "run" mode's own main_loop.pal already uses for ITS OWN
+#     cursor - calling it here would corrupt run mode's own resume
+#     position the next time it launches. interact_relay.txt is reset
+#     fresh by button.sh's own chtpm action every launch (no crash-
+#     resume need), so a plain in-register position (matching egg-
+#     pals' own real precedent) is both correct and simpler.
+#   - No 'q'-halts-the-module quit path (real main_loop.pal's own
+#     `beq x2, x3, quit`) - while chtpm's own onClick="INTERACT" is
+#     engaged, it relays EVERY key including 'q', so a player
+#     instinctively quitting would kill THIS module specifically while
+#     chtpm keeps relaying into a file nothing reads anymore - a real,
+#     live-confirmed "stuck, no input response" bug in mutaclsym/
+#     egg-pals both, fixed there the same way: quitting the WHOLE
+#     session is chtpm's own job (top-level 'q', or ESC then 'q'), not
+#     this module's.
+#   - wsr_menu_input 0, EVERY loop iteration, cheaply: real classic
+#     chtpm_parser.c's own launch_module() guard is liveness-based
+#     (`current_module_pid > 0`), confirmed by direct read of
+#     pieces/chtpm/plugins/chtpm_parser.c - NOT the path-only guard an
+#     earlier pass in this same shared chtpm_parser_pal.c mistakenly
+#     introduced (see that file's own "CORRECTED ENTRY" comment on
+#     launch_module()). With the real guard restored, this module now
+#     correctly stays running as ONE persistent process across every
+#     real `href` screen switch this project makes, matching classic
+#     chtpm's own precedent exactly - it is never killed/relaunched just
+#     because the player navigated to a different screen.
+#     BUT a pure href click still never itself runs any op - nothing
+#     updates pieces/apps/player_app/state.txt's own active_target_id at
+#     the moment of navigation, so ${piece_methods} would keep showing
+#     the PREVIOUS screen's own piece.pdl until something re-derives it.
+#     `wsr_menu_input 0` does that re-derivation - but REAL BUG,
+#     LIVE-CAUGHT (visible as constant screen flicker): an earlier
+#     version of this file ALSO called compose_frame/hit_frame
+#     unconditionally on every one of these ticks (~33/sec), regardless
+#     of whether anything had actually changed. wsr_menu_input.c's own
+#     key=0 handling is now itself cheap and a genuine no-op when the
+#     screen hasn't changed (see that file's own header comment) - it
+#     only bumps pieces/display/wsr_screen_changed.txt on a REAL
+#     transition. `read_pos`'s own literal-path argument (`read_pos rd,
+#     "path"`) is a real, existing prisc+x.c op whose parser never
+#     actually implemented the literal-path form its own comment always
+#     promised (completed as part of this fix, not a new op) - using it
+#     here to cheaply check whether that marker grew, without spawning
+#     any process, and only running compose_frame/hit_frame when it did
+#     OR a real relayed key was found - matching the ORIGINAL, non-
+#     flickering idle behavior for the "nothing happened" case.
+li x1, 0
+
+# One unconditional render before the loop - populates the content area
+# (wsr_compose_frame.+x's own view.txt, read by ${game_map}) on the
+# very first launch, when active_target_id is ALREADY correctly seeded
+# by button.sh (matching current_layout.txt) - the per-tick gating
+# below would otherwise treat that as "nothing changed" and skip
+# rendering it even once.
+compose_frame
+hit_frame
+read_pos x7, "pieces/display/wsr_screen_changed.txt"
+
+loop:
+li x9, 0
+wsr_menu_input x9
+read_pos x8, "pieces/display/wsr_screen_changed.txt"
+beq x7, x8, check_key
+addi x7, x8, 0
+j render
+
+check_key:
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, no_key
+wsr_menu_input x2
+j render
+
+no_key:
+sleep 30000
+j loop
+
+render:
+compose_frame
+hit_frame
+sleep 30000
+j loop

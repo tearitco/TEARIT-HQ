@@ -1,0 +1,7 @@
+# event.pal — mini interpreter script
+show_text Crystal hums. Factory doors unlock!
+set_switch door_open 1
+ret
+ret
+ret
+ret

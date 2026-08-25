@@ -1,0 +1,26 @@
+# trigger_list.txt - maps a trigger word to an action for
+# provider_kind=script chat responses (send_message.c's own script
+# branch has the full design comment, including run_script_capture's
+# own comment for why kind=script execs via argv, never a shell).
+#
+# Format: trigger|kind|target
+#
+#   kind=corpus - target is a wordbank file (pieces/registry/wordbanks/
+#                 <name>.txt), relative to project_root. A message
+#                 containing this word gets its random 5-10-word pick
+#                 from THIS file instead of the model's own default
+#                 wordbank (model_list.txt's model_name field for
+#                 whichever /model is active).
+#   kind=script - target is an executable (relative to project_root,
+#                 must be chmod +x). Run directly with the user's own
+#                 message as argv[1]; its stdout becomes the chat
+#                 response verbatim (trailing newlines trimmed only).
+#
+# Matching is case-insensitive, whole-word only ("cat" won't match
+# "category"), first match wins top-to-bottom. No match at all falls
+# through to the default wordbank, unchanged from before this feature
+# existed. This is a working starter (weather.txt/get_time.sh below
+# are real, runnable examples), not a real curriculum - add rows for
+# whatever real corpora/scripts are wanted.
+weather|corpus|pieces/registry/wordbanks/weather.txt
+time|script|pieces/registry/scripts/get_time.sh

@@ -1,0 +1,153 @@
+<title>Grok's Lanes — Browser Prompting</title>
+
+<style>
+  :root {
+    --bg: #f4f3ef; --surface: #ffffff; --surface-2: #ececE6; --border: #dcdad2;
+    --text: #1c1c1a; --text-dim: #6b6a63; --accent: #1a8a4a; --accent-warm: #b5720a;
+    --status-wip: #2563a8; --code-bg: #ececE6; --code-text: #2b2b28;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  :root:not([data-theme="light"]) { @media (prefers-color-scheme: dark) {
+    --bg: #14161a; --surface: #1b1e24; --surface-2: #21252c; --border: #2b2f37;
+    --text: #e9e7e2; --text-dim: #9599a1; --accent: #22c55e; --accent-warm: #f0a63f;
+    --status-wip: #5b9dd9; --code-bg: #16181c; --code-text: #dcdad4;
+  } }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --surface: #1b1e24; --surface-2: #21252c; --border: #2b2f37;
+    --text: #e9e7e2; --text-dim: #9599a1; --accent: #22c55e; --accent-warm: #f0a63f;
+    --status-wip: #5b9dd9; --code-bg: #16181c; --code-text: #dcdad4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  a:focus-visible, .navlink:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
+  .sidebar { border-right: 1px solid var(--border); background: var(--surface); padding: 28px 20px 40px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .brand { font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 4px; }
+  .brand strong { display: block; font-family: var(--sans); font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em; color: var(--text); text-transform: none; margin-top: 2px; }
+  nav { margin-top: 24px; display: flex; flex-direction: column; gap: 20px; }
+  .navgroup-label { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 8px; }
+  .navlinks { display: flex; flex-direction: column; gap: 2px; }
+  .navlink { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; color: var(--text); text-decoration: none; font-size: 0.88rem; }
+  .navlink:hover { background: var(--surface-2); }
+  .navlink.current { background: var(--surface-2); font-weight: 700; }
+  .navlink .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--border); }
+  .navlink .dot.done { background: var(--accent); }
+  .navlink .dot.wip { background: var(--status-wip); }
+  main { padding: 56px 40px 120px; min-width: 0; }
+  .col { max-width: 760px; margin: 0 auto; }
+  .hero-eyebrow { font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 10px; }
+  h1.pagetitle { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; margin: 0 0 14px; }
+  .lede { font-size: 1.08rem; color: var(--text-dim); max-width: 62ch; margin: 0 0 48px; }
+  section.doc { padding-top: 44px; margin-top: 8px; border-top: 1px solid var(--border); scroll-margin-top: 24px; }
+  section.doc:first-of-type { border-top: none; padding-top: 0; }
+  .section-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  h2 { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
+  h3 { font-size: 1.08rem; font-weight: 700; margin: 28px 0 10px; }
+  .pill { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-dim); white-space: nowrap; }
+  p { margin: 0 0 16px; max-width: 68ch; }
+  ul, ol { margin: 0 0 16px; padding-left: 22px; }
+  li { margin-bottom: 6px; max-width: 64ch; }
+  code { font-family: var(--mono); font-size: 0.86em; background: var(--code-bg); color: var(--code-text); padding: 0.12em 0.4em; border-radius: 4px; }
+  pre { background: var(--code-bg); color: var(--code-text); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; overflow-x: auto; margin: 0 0 20px; }
+  pre code { background: none; padding: 0; font-size: 0.84rem; line-height: 1.55; }
+  .callout { border: 1px solid var(--border); border-left: 3px solid var(--accent); background: var(--surface); border-radius: 6px; padding: 14px 18px; margin: 0 0 20px; }
+  .callout.warn { border-left-color: var(--accent-warm); }
+  .callout .callout-label { font-family: var(--mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); display: block; margin-bottom: 6px; }
+  .callout.warn .callout-label { color: var(--accent-warm); }
+  .callout p:last-child { margin-bottom: 0; }
+  footer.pagefoot { max-width: 760px; margin: 64px auto 0; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.85rem; }
+  @media (max-width: 880px) { .shell { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); } main { padding: 40px 20px 100px; } }
+  html { scroll-behavior: smooth; }
+</style>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">yz.muchiverse / browser prompting</div>
+    <div class="brand"><strong>Delegation Map</strong></div>
+    <nav aria-label="Documentation sections">
+      <div>
+        <div class="navgroup-label">Start Here</div>
+        <div class="navlinks">
+          <a class="navlink" href="1.platform-primer.html"><span class="dot done"></span>Platform Primer</a>
+          <a class="navlink" href="2.house-shape-status.html"><span class="dot done"></span>House Shape Status</a>
+        </div>
+      </div>
+      <div>
+        <div class="navgroup-label">Topics</div>
+        <div class="navlinks">
+          <a class="navlink" href="3.ai-agents.html"><span class="dot wip"></span>AI Agents</a>
+          <a class="navlink" href="4.open-hai-free-ai.html"><span class="dot done"></span>open-hai + Free AI</a>
+          <a class="navlink" href="5.bugs-toys-gl.html"><span class="dot wip"></span>Bugs / Toys / GL</a>
+          <a class="navlink" href="6.architecture-explainers.html"><span class="dot wip"></span>Architecture Explainers</a>
+          <a class="navlink current" href="7.platform-passes.html"><span class="dot wip"></span>Grok's Lanes</a>
+          <a class="navlink" href="8.project-starters.html"><span class="dot wip"></span>Project Starters</a>
+        </div>
+      </div>
+      <div>
+        <div class="navlinks">
+          <a class="navlink" href="../index.html">← Browser Prompting index</a>
+          <a class="navlink" href="../1.index-house.html">← Muchiverse House Docs</a>
+        </div>
+      </div>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="col">
+      <div class="hero-eyebrow">Delegation map</div>
+      <h1 class="pagetitle">🚀 Grok's Lanes</h1>
+      <p class="lede">Windows/Mac compat catch-up, and 103.media-studio continuation.</p>
+
+      <section class="doc" id="winmac">
+        <div class="section-head"><h2>🪟🍎 Windows/Mac compatibility catch-up</h2></div>
+        <p>Bring Windows usability back up to date after heavy Linux-focused refactors. Some shims exist but untested since the refactors.</p>
+        <h3>Real cross-platform rules (from TPMOS's own real standards)</h3>
+        <ul>
+          <li><code>#ifndef _WIN32</code> for Linux/macOS blocks, <code>#ifdef _WIN32</code> for Windows — NEVER refactor established POSIX logic "to clean it up" for Windows compat. Surgical wraps only.</li>
+          <li>Linux: <code>fork()</code>+<code>exec()</code>+<code>waitpid()</code>. Windows: <code>_spawnl()</code> with <code>_P_NOWAIT</code> (shared console) or <code>_P_DETACH</code> (background daemon).</li>
+          <li>Linux orchestrators block on <code>pthread_join()</code>. Windows needs a persistent <code>while(!should_exit) { Sleep(100); }</code> loop — detached Windows processes return immediately.</li>
+          <li>Path separators: <code>/</code> for all internal logic/<code>fopen()</code>, only convert to <code>\</code> for native Windows <code>_spawn</code>/<code>system()</code> calls.</li>
+          <li><code>setpgid</code> has no Windows equivalent — needs explicit <code>taskkill</code> or tracked-PID cleanup.</li>
+          <li>Hardcoded Linux font paths will crash Windows — always provide a <code>C:/Windows/Fonts/</code> fallback.</li>
+        </ul>
+        <h3>Prompt shape</h3>
+        <pre><code>CONTEXT: [platform primer + this section's cross-platform rules]
+CODE: [the file with the untested Windows shim]
+PROMPT:
+  "This shim was written for Windows compat but never tested since a heavy Linux-focused
+  refactor. Audit it against the real cross-platform rules (surgical #ifdef wraps, fork/exec vs
+  _spawnl, path separator handling). Fix drift, don't rewrite POSIX logic. Flag anything you
+  can't verify without a live Windows machine rather than guessing."</code></pre>
+      </section>
+
+      <section class="doc" id="media-studio">
+        <div class="section-head"><h2>🎬🎨 103.media-studio continuation</h2></div>
+        <p>Location: <code>103.media-studio/</code> — subdirs: <code>100.tts-point-2-anything</code>, <code>103.3d=blender-clone</code>, <code>103.daw</code>, <code>103.img-editor</code>, <code>103.vid-edit</code>, <code>shared/</code>.</p>
+        <h3>The real decision</h3>
+        <p><strong>Option A</strong> — keep building out-of-house-spec (no navs/manager pattern): faster short-term, but every app is a FUTURE merge cost, no relay/dispatch/render conventions.</p>
+        <p><strong>Option B</strong> — merge into house spec now: slower per-feature, but immediately taskbar-integrated and testable the same way this session tested the taskbar (relay injection, audit trails).</p>
+        <div class="callout">
+          <span class="callout-label">Honest guidance</span>
+          <p>
+            Given this is ALSO about to hand off to browser AI, <strong>Option B compounds
+            better</strong> — house-spec code is exactly what the Platform Primer describes in
+            one upload. Out-of-spec code needs its OWN bespoke context doc every time. Pragmatic
+            middle path: let Grok prototype fast for a genuinely new feature's FIRST pass, but
+            require merge-to-house-spec as the SECOND pass before it's done.
+          </p>
+        </div>
+        <h3>Prompt shape</h3>
+        <pre><code>CONTEXT: [platform primer + this section]
+CODE: [the ONE media-studio sub-app being worked on]
+PROMPT:
+  "This is currently built out-of-house-spec for speed. [Describe the new feature/fix]. Build it
+  house-spec from the start (PIECE/MODULE/OS, file-backed state, thin manager) rather than adding
+  to the existing spec-divergent pile."</code></pre>
+      </section>
+
+      <footer class="pagefoot">Grok's own lane for Windows compat + media-studio — separate from the browser-AI-facing topics elsewhere in this doc set.</footer>
+    </div>
+  </main>
+</div>

@@ -1,0 +1,38 @@
+# 🎭 DAY 24 — The Moderator & Shared Mind
+# =========================================
+# Title: "🎭 DAY 24 — The Moderator & Shared Mind"
+# Characters: TOMO, RAHWEH, MAXINE, IQA, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), MAXINE (en-GB-MaisieNeural), IQA (en-US-AnaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+
+**TOMO:** Memory and relationships give each persona a past. Today gives the group a present — and a future. Two pieces: the moderator pass, and the shared document.
+
+**RAHWEH:** The moderator is the `conductor` persona, right? It exists in the roster but never speaks because `MODERATOR_EVERY=0`.
+
+**TOMO:** Exactly. One line of shell changes that to a real, deterministic schedule. Every K rounds, the harness picks conductor, feeds it a DESCRIBE prompt over the recent ledger plus samples from every persona's memory file and the relations table: "In one or two sentences, what's an interesting thread worth the group returning to, or a gap in what they've covered?" Never "rate this conversation" or "pick the best topic." Those are CLASSIFY shapes, and they fail.
+
+**MAXINE:** And the model's reply becomes what?
+
+**TOMO:** Light steering. The harness folds conductor's plain sentence into the next few personas' prompts as a note — "conductor noted: you've been talking about Inception for a while, maybe explore something else." Same fold-real-result-back-in shape as the judge worker from Day 12. The conductor never commands. It suggests. The harness decides how much weight the suggestion gets.
+
+**IQA:** And the shared document?
+
+**TOMO:** `state/notes/<topic-slug>.md`. When the harness's topic-keyword scorer detects sustained discussion of one subject across several turns, it asks the currently-speaking persona to add one sentence to the shared notes file. The model's full reply still goes to the ledger as normal; the harness extracts the notes sentence and appends it to the real file with a dated header.
+
+**MAXINE:** So it's a document that grows across all personas, not bounded by any one context window?
+
+**TOMO:** Precisely. The ledger is a rolling transcript. The shared notes file is a growing artifact — the closest thing the system has to a real "what have we figured out together." A human can open it directly and watch the conversation's understanding evolve. That's the concrete shape of "evolving conversation" — not just more lines in a transcript, but a file that gets smarter over time.
+
+**RAHWEH:** What about the repetition problem from Day 22? The word-overlap gate and the fresh-angle pre-prompt?
+
+**TOMO:** Both are live now. `fresh_angle()` uses `gemma3:270m` as a hidden pre-prompt — same staged shape as `search_precedent` from the code-tools harness. A fast, DESCRIBE-only ask: "describe ONE specific new detail different from what they just said." Its output feeds the real generation prompt as a steering hint, never the final artifact. Then a deterministic word-overlap gate compares the freshly-generated reply against that persona's own last message. Fifty-five percent overlap or higher — the reply is dropped, logged, never written. Live-verified: caught a ninety-five-percent overlap from bravo within minutes of deploying.
+
+**THE NARRATOR:** One honest number from `compute_stats.sh`: fifty-one real local-model calls that day, thirty-eight marked pass, an estimated fifteen thousand output tokens and about twenty-three cents that would have cost the API to generate directly. Small money, repeated for free. That's the metric.
+
+**TOMO:** And the pipeline? `effective_tier()` watches `state/observations.log` — same pipe-delimited shape as Day 12's substrate. If a persona's last three attempts include two or more drops, the next attempt escalates from `smol` to `tiny` — `gemma3:1b`, confirmed on the same LAN host. The harness knows from its own gates. The model is never asked "was your last reply bad."
+
+**MAXINE:** So the whole system is deterministic decisions plus plain-text generation, exactly the Day 05 split?
+
+**TOMO:** Exactly. The model generates text. The harness decides who speaks, what they remember, when they escalate, what goes in the shared notes, and whether the reply is novel enough to keep. The API never finds out. That is the Harnecient Way — applied to conversation.
+
+**THE NARRATOR:** And so Volume 2 opens. The house now has a memory, a social web, a moderator, and a shared mind. Tomorrow: the factory floor becomes a zoo, and the pets learn to move.

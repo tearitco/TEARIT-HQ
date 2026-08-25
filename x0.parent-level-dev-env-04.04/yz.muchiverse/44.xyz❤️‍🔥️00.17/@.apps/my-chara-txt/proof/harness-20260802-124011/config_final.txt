@@ -1,0 +1,16 @@
+game_id=my-chara-001
+player_name=Adam
+day=11
+max_days=10
+health=50
+money=500
+grain_in_inventory=260
+silver_in_inventory=0
+gold_in_inventory=0
+game_state=game_over
+supervision_mode=full
+decision_mode=0
+risk_level=5
+compute_tier=0
+paused_for_confirmation=1
+last_auto_tick=1785699647

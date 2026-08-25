@@ -1,0 +1,48 @@
+<panel>
+    <module>projects/slop-ed-dev/manager/+x/slop-ed-dev_manager.+x</module>
+    
+    <text label="╔════════════ SLO P - E D   A D V A N C E D ════════════╗" /><br/>
+    <row label="PROJECT: ${project_id} | GAME: ${active_game}" />
+    <row label="LAYOUT: slop-ed-dev.chtpm" />
+    <row label=" " />
+    
+    <row label=" GAME MAP:" />
+    <button label="Control Map" onClick="INTERACT" /><br/>
+    <text label="${game_map}" /><br/>
+    
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    
+    <row label="${editor_response}" />
+    <row label="[POS]: ${selector_pos} | [ARMED]: [ ${armed_glyph} ] | [KEY]: ${last_key}" />
+    
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    
+    <scroller id="MAPS" label="${map_palette_view}" onClick="INTERACT" /><br/>
+    <scroller id="GLYPHS" label="${glyph_palette_view}" onClick="INTERACT" /><br/>
+    
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    
+    <text label="║ " />
+    <button label="TOGGLE EMOJI" onClick="KEY:4" /> 
+    <text label=" " />
+    <button label="DB" onClick="KEY:5" />
+    <text label="║ " />
+    <button label="PROJECT" onClick="KEY:6" />
+    <text label=" " />
+    <button label="EVENT" onClick="KEY:8" />
+    <text label="                             ║" /><br/>
+    
+    <text label="║ " />
+    <button label="FILE" href="projects/slop-ed-dev/layouts/file_menu.chtpm" />
+    <text label=" " />
+    <button label="LOADER" href="pieces/apps/playrm/layouts/loader.chtpm" />
+    <text label=" " />
+    <button label="EXIT" href="pieces/chtpm/layouts/os.chtpm" />
+    <text label="                                 ║" /><br/>
+    
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+    <text label=" [1]: Grid | [2/3]: Palettes | [4]: Emoji Toggle | [ESC]: Nav" /><br/>
+    
+    <!-- Interact: Inject keys to player_app/history.txt -->
+    <interact src="pieces/apps/player_app/history.txt" />
+</panel>

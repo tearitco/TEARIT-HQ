@@ -1,0 +1,208 @@
+HOUSE COMMANDS - REMAINING WORK LIST
+=====================================
+2026-08-24. Companion to event.commands.1/2/3.txt (the RMMV menu pages
+this house's events runtime mirrors) and db-tabs-remaining.txt. This file
+lists every HOUSE-SPECIFIC command that the compiled-events pipeline does
+NOT yet run. These are capabilities beyond vanilla RPG Maker MV that the
+house runtime provides as standalone ops, but which are not yet exposed
+as event-palette buttons.
+
+Scope boundary: anything already in event.commands.remaining.txt (RMMV
+event commands) is NOT repeated here. This file covers only the extra
+ops that make this house more than a plain RMMV clone.
+
+Pipeline reminder: event-ez authors NODE rows -> compiles event.pal ->
+play_event.sh -> prisc+x -> cmd_N.sh wrapper -> shared op in
+*.monads/*.muchi-pet/ops/. A command is only "done" when it has BOTH an
+event-ez palette entry AND a real op binary wired into the event dispatch.
+
+STATUS LEGEND
+[DONE]     live end-to-end today as a standalone op
+[EZ-ONLY]  save handler exists in event-ez, runtime op missing
+[NEXT]     next on the agreed depth-first ladder
+[ ]        not started
+
+ALREADY DONE AS STANDALONE OPS (for orientation, not remaining)
+  file_ops..........[DONE] tools/file_ops.c - read/write files with
+                    sandbox depth guard; used by muchi-pal-agent.
+  list_dir..........[DONE] tools/list_dir.c - recursive directory listing.
+  cmd_exec...........[DONE] tools/cmd_exec.c - fork/exec shell commands
+                    with yolo-mode bypass; stdout piped back.
+  json_parser........[DONE] ops/json_parser.c - tolerant JSON extraction
+                    (fence-stripping, dot-notation, unescape); Harnecient
+                    primitive reused everywhere.
+  tts_speak..........[DONE] ops/tts_speak.c - edge-tts -> mpg123 playback,
+                    temp mp3 cleanup.
+  connect_op.........[DONE] ops/connect_op.c - curl wrapper for LAN LLM
+                    calls; used by chat-hai/my-lawyer.
+  web_search.........[DONE] ops/web_search.c - live web search primitive.
+  prisc+x............[DONE] system/prisc+x - PAL VM with OP_EXEC,
+                    OP_READ_STATE, OP_READ_HISTORY, OP_HIT_FRAME, etc.
+  compose_frame......[DONE] ops/wsr_compose_frame.c / forum_compose_frame.c
+                    - render a view from layout spec.
+
+THE LADDER (agreed order, depth-first)
+  1. TTS Speak.......[NEXT] speak() already works standalone; needs
+                     mr_tts_speak.+x wired to event.pal so events can
+                     narrate without a visible text box.
+  2. List Dir / File Ops read/write/mkdir are proven ops; needs
+                     event palette entry so events can create journals,
+                     save slots, or inspect the world tree.
+  3. Exec Shell......cmd_exec.c already runs sandboxed shell; expose as
+                     "Execute Script" event command (guarded by yolo.flag).
+  4. Forum Read/Post. forum_*.c ops exist in pal-forum; wire "Open Forum"
+                     and "Post Message" as scene-like event commands.
+  5. IRC Poll........irc_agent_poll.c exists; expose as event command that
+                     blocks until a message arrives or timeout.
+  6. Ask Model.......chat-hai's qwen.sh ask is a plain curl wrapper; expose
+                     "Ask Model" as an event command returning plain text.
+  7. Harnecient Step.the 6 Harnecient Hack components as composable event
+                     commands (DESCRIBE ask, tolerant parse, deterministic
+                     dispatch, write artifact, fallback).
+  8. FSM / RL / BT...harnecient-fsm/ proof-of-concept exists; lift into
+                     event-runtime as state-machine and behavior-tree nodes.
+  9. Transformer/LSTM#.ref diffusion / neural_net code exists; too heavy
+                     for 270m runtime but useful as a "Generate Image"
+                     event command in a future GPU-enabled build.
+  10. Layout Cmds....wsr_compose_frame.c already renders; expose "Render
+                     Layout" and "Hit Frame" as event commands for custom
+                     HUD/popup scenes.
+
+REMAINING, BY CATEGORY
+
+Audio & Speech
+  TTS Speak...........speak arbitrary text aloud via edge-tts + mpg123;
+                       useful for accessibility or narrator events without
+                       showing a text box.
+  Play Sound Effect...play a .wav/.mp3 once (complements RMMV Play SE
+                       with a house-native path resolver).
+  Stop All Audio......kill any playing TTS or SFX mid-event.
+
+File System
+  Create Directory....mkdir with sandbox guard; events can create per-save
+                       journals or session folders.
+  Write File..........overwrite a file with string content; natural fit
+                       for saving event outcomes to .txt/.csv/.json.
+  Append File..........add a line to an existing file (ledger/journal mode).
+  Read File............return file contents as a string for branching.
+  Delete File..........remove a file by path (guarded by sandbox depth).
+  List Directory.......return non-hidden entries in a folder; events can
+                       inspect world state or find assets dynamically.
+  Copy / Move File....filesystem shuffle with same sandbox guard.
+
+Script / Runtime Execution
+  Execute Shell.......run a shell command string via cmd_exec; sandbox
+                       depth + yolo.flag guard. House analogue of RMMV
+                       "Script" but with real stdout capture.
+  Execute PAL.........run a .pal script through prisc+x and return the
+                       exit code + any ecall output.
+  Execute Python/JS...run a .py or .js file via system interpreter and
+                       capture stdout; useful for one-off math or text
+                       processing without compiling a C op.
+
+Networking
+  Web Search..........search the live web and return top results as text;
+                       already proven in op form, needs event wrapper.
+  Connect URL.........fetch a URL via curl and return body; events can
+                       pull remote content or call local LAN APIs.
+  Forum Read..........read latest posts/DMs from pal-forum ledger files;
+                       events can display in-game bulletin boards.
+  Forum Post..........append a new post/DM to pal-forum ledger; events
+                       can let players leave messages.
+  IRC Poll............poll irc_agent_poll for new messages; blocks event
+                       until message arrives or timeout.
+  Blockchain Write....append a signed entry to pal-chain data/blockchain.txt;
+                       events can create immutable quest logs.
+  Blockchain Read.....search blockchain history for a key; events can
+                       verify past deeds or contracts.
+
+AI / Model APIs
+  Ask Model (smol)....ask a local LLM tier (gemma3:270m/1b) via qwen.sh
+                       and return plain text; Harnecient primitive.
+  Ask Model (big).....same but routes to a larger tier (tiny/small/router)
+                       for harder asks; event can escalate on its own.
+  DESCRIBE Ask........Harnecient-style: ask the model to DESCRIBE something
+                       in one sentence, never classify or rate. Returns
+                       plain text suitable for deterministic scoring.
+  Tolerant Parse......json_parser.+x as an event command: take raw model
+                       output and extract the first valid JSON/value.
+  Deterministic Dispatch.ask the model for a description, then score it
+                       with a hand-authored keyword rule set (never ask the
+                       model to pick a tool or category directly).
+  Write Artifact......append the model's output to a real file that grows
+                       turn-by-turn; the event can read it back next time.
+  FSM Step............advance a finite-state-machine node by one transition;
+                       events can drive quest stages deterministically.
+  RL Step.............take one reinforcement-learning action and observe
+                       reward; events can train simple NPC policies.
+  Behavior Tree Tick..evaluate one BT node and return status (success/
+                       fail/running); events can compose complex NPC AI.
+  Transformer Encode..run a tiny attention/transformer forward pass on
+                       text; future-proofing for semantic quest matching.
+  LSTM Predict........run a tiny LSTM forward pass on a token sequence;
+                       future-proofing for dialogue generation or music.
+
+Harnecient Hack Commands
+  Component 1: Plain Ask.ask a non-tooled model a plain-text question
+                       with NO tools field; the API never knows.
+  Component 2: Persona Prompt.load a persona .pdl and prepend its
+                       system-prompt to the ask; keeps model output shaped.
+  Component 3: Tolerant Extract.run json_parser on the raw reply; never
+                       trust clean output, always sanitize.
+  Component 4: Deterministic Dispatch.pick a tool based on keyword
+                       overlap or signal count, never let the model choose.
+  Component 5: Real Artifact.write the result to a real file that a
+                       human can open; never hidden state.
+  Component 6: Fallback.on any empty/failed step, substitute a
+                       deterministic canned string; never block the event.
+
+Layout / Renderer
+  Render Layout.......compose a frame from a layout spec via wsr_compose;
+                       events can draw custom HUDs, popups, or scenes.
+  Hit Frame...........advance the renderer by one frame and return user
+                       input history; events can build interactive menus.
+  Tint Screen..........color-shift the whole frame for N frames (already
+                       in RMMV list, but house version accepts live hex).
+  Flash Screen.........one quick full-frame flash (house version returns
+                       immediately; RMMV version blocks the event).
+  Shake Screen.........jitter window contents (house version is non-blocking
+                       and composable with other screen effects).
+  Show Picture.........image overlay at named slot (house version loads
+                       from house asset paths, not RMMV img/pictures/).
+  Set Weather.........rain/snow/storm particle overlay via renderer
+                       (house version is a real shader, not a sprite loop).
+
+Scratch Bridge (commands in scratch-commands.txt that are NOT in the
+RMMV event list and make sense as house event commands)
+  Broadcast Message...send a named event that other entities/events can
+                       listen for; decouples trigger from handler.
+  Wait Seconds........already in event list as "Wait", but Scratch version
+                       is frame-based; house can support both.
+  Change Variable......increment/decrement a numeric variable by amount;
+                       already in RMMV list as "Control Variables".
+  If Then.............already in RMMV list as "Conditional Branch".
+  Forever Loop.........already in RMMV list as "Loop".
+  Move Steps...........move the player or target entity N pixels in its
+                       facing direction; simpler than RMMV "Set Movement
+                       Route" for one-off nudges.
+  Touching?............collision check against another entity or tile;
+                       returns true/false for event branches.
+  Switch Costume.......swap the active sprite sheet for the player or
+                       target NPC; events can change outfits on the fly.
+
+PRACTICALITY NOTES (which remain cheap next)
+  Cheap soon (pure file/kv or relay work): TTS Speak, List Dir, File Ops,
+  Exec Shell, Web Search, Connect URL, Ask Model, DESCRIBE Ask, Tolerant
+  Parse, Write Artifact. These all already have working standalone ops
+  that just need event-ez palette buttons + cmd_N wrappers.
+  Medium (needs new event UI): Forum Read/Post, IRC Poll, Blockchain
+  Read/Write, FSM Step, RL Step, Behavior Tree Tick. These need a new
+  result-handling pattern (blocking wait, timeout, or async callback).
+  Deep (whole new subsystems): Transformer Encode, LSTM Predict. These
+  require loading model weights and running inference; the reference
+  code exists in #.ref diffusion/neural_net but is not yet compiled into
+  any live op.
+  
+  Post : User defined (some may insist on being done earlier, such as
+  TTS Speak, Ask Model, and Exec Shell because they show up a lot in
+  house apps already).

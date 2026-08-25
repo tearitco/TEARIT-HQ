@@ -1,0 +1,19 @@
+<panel>
+    <text label="+============== P I E C E M A R K   E D I T O R ============+" /><br/>
+    <text label="| LAYOUT ID: chtpm/editor.chtpm                             |" /><br/>
+    <text label="|  " />
+    <button label="[MAP]" onClick="SET_TAB:MAP" /> 
+    <button label="[PIECES]" onClick="SET_TAB:PIECES" /> 
+    <button label="[DB]" onClick="SET_TAB:DB" /> 
+    <button label="[EVENTS]" onClick="SET_TAB:EVENTS" />
+    <text label="     |" /><br/>
+    <text label="+===========================================================+" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="+===========================================================+" /><br/>
+    <text label="| PALETTE: " /><text label="${editor_palette}" /><text label=" |" /><br/>
+    <text label="| TOOL:    " /><text label="${editor_tool}" /><text label="    | POS: (${selector_x},${selector_y},${selector_z}) |" /><br/>
+    <text label="+===========================================================+" /><br/>
+    <text label="|  " /><button label="Back to Menu" href="pieces/chtpm/layouts/os.chtpm" /><text label="                              |" /><br/>
+    <text label="+===========================================================+" /><br/>
+    <text label=" [1-4]: Switch Tab | [WASD]: Move | [SPACE]: Use Tool | [Q]: Quit" /><br/>
+</panel>

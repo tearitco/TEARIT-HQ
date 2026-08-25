@@ -1,0 +1,81 @@
+$.crypts Windows port notes
+==========================
+Date: 2026-08-21 (supersedes 2026-08-06 stub claims)
+
+Current (livedesk strip)
+------------------------
+  powershell -ExecutionPolicy Bypass -File .\button.ps1 compile
+  powershell -ExecutionPolicy Bypass -File .\button.ps1 run
+  powershell -ExecutionPolicy Bypass -File .\button.ps1 kill
+  powershell -ExecutionPolicy Bypass -File .\button.ps1 install-desktop
+
+  Desktop: livedesk-start-button.exe (+ livedesk-house-root.txt)
+
+  autostart.pdl pal args are HOUSE-RELATIVE (xyzfs/users/.../pals/<name>).
+  Linux spelling *.monads stays; Win aliases to _.monads.
+  Taskbar = khtpm_strip_parser.c + x11_win shim, not tp_taskbar / parser_win sketch.
+  Entity rgb.exe not built yet.
+
+See house 8.21.GROK-win.md and #.WIN-COMPAT-RULE.md.
+
+What worked 2026-08-06 (history)
+--------------------------------
+  powershell -ExecutionPolicy Bypass -File .\button.ps1 compile
+  powershell -ExecutionPolicy Bypass -File .\button.ps1 check
+  powershell -ExecutionPolicy Bypass -File .\button.ps1 on|off|status
+  powershell -ExecutionPolicy Bypass -File .\button.ps1 run
+  powershell -ExecutionPolicy Bypass -File .\button.ps1 kill
+
+Pipeline:
+  button.ps1
+    -> compile crypt_autostart.exe if needed
+    -> compile KHTPM Win stubs if missing
+    -> chdir house root
+    -> crypt_autostart.exe $.crypts\autostart.pdl
+         quit livedesk (CLOSE relays + taskkill by name)
+         launch relative LAUNCH rows:
+           tp_taskbar.exe .
+           tp_desktop_window.exe <entity package>
+
+Files added/changed
+-------------------
+  button.ps1                         Windows entry (parity with button.sh)
+  ops/crypt_autostart.c              #ifdef _WIN32 + relative expand + .exe prefer
+  autostart.pdl                      HOUSE-RELATIVE LAUNCH paths (no /home/no/...)
+  #.desktop/livedesk_shortcuts.pdl   relative $ shortcut
+  &.widgits/tile-picker/ops/tp_desktop_window_win.c   Win32 KHTPM stub
+  &.widgits/livedesk-taskbar/ops/tp_taskbar_win.c     Win32 taskbar stub
+
+Binary names on Windows
+-----------------------
+  ops/+x/crypt_autostart.exe
+  &.widgits/tile-picker/ops/+x/tp_desktop_window.exe
+  &.widgits/livedesk-taskbar/ops/+x/tp_taskbar.exe
+
+  Linux still uses *.+x ELF. crypt_autostart on Win PREFERS .exe and will
+  not try to exec Linux ELF (error 193).
+
+Emoji path rules (same as 014.wsr)
+----------------------------------
+  - CWD = house root; all paths relative
+  - never GetFullPathNameA on emoji abs paths
+  - CreateProcessW for launches from crypt_autostart
+  - KHTPM stubs keep package paths relative in livedesk_open.txt
+
+KHTPM L2 (2026-08-06) — textures + RMB
+---------------------------------------
+  - WGL + sprite.csv texture + SetWindowRgn (egg_window pattern)
+  - RMB TrackPopupMenu from objects.pdl + meta.pdl METHOD
+  - Linux asset_path= left as-is; Windows additive:
+      asset_path_win=C:\Users\jbro8\OneDrive\Desktop\assets-4win\nyeoni8.png
+      asset_path_win=...\il-dj.png
+  - Monster sheets re-extracted from assets-4win\$BigMonster1/2.png
+  - 01.muchi-pals\button.ps1 restored (compile/run/kill/check)
+  - Soft-focus / multi-page GOTO still deferred
+
+Linux
+-----
+  button.sh + crypt_autostart.c POSIX path unchanged in spirit.
+  autostart.pdl relative paths work on Linux too (setsid nohup).
+  Linux asset_path= untouched; asset_path_win= is Windows-only additive.
+  Win window is separate *_win.c; Linux still builds tp_desktop_window.c.

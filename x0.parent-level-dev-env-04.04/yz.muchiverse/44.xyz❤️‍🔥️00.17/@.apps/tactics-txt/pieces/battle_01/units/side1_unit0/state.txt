@@ -1,0 +1,7 @@
+entity_type=tactics_unit
+profession_id=warrior
+pos_x=0
+pos_y=3
+hp=20
+owner_id=1
+owner_side=1

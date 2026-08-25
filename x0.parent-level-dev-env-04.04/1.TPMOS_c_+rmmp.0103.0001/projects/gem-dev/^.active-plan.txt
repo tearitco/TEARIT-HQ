@@ -1,0 +1,35 @@
+# ^.active-plan.txt - Active Style Completion Menu
+
+## 1. Goal
+Refactor the path completion UI in `gem-dev` to use the "Active Submenu" pattern from `+-demo.chtpm`. This will move suggestions into a dedicated, navigatable scope, preventing UI clutter and making the "selector" behavior more predictable.
+
+## 2. Structural Changes
+
+### A. Markup Generator (`get_completion_methods_op.c`)
+- Instead of returning a flat list of buttons, return a nested structure:
+  ```xml
+  <button label="[ Suggestions ]" onClick="ACTIVATE" id="comp_root">
+      <br/>
+      <button label="[Back]" onClick="BACK" id="comp_back" /><br/>
+      <button label="file1" onClick="KEY:2" id="comp_1" /><br/>
+      <button label="file2" onClick="KEY:3" id="comp_2" /><br/>
+      ...
+  </button>
+  ```
+- This ensures the suggestions occupy a single line in the main layout but expand into a scoped menu when the user selects them.
+
+### B. Manager Logic (`gem-dev_manager.c`)
+- **Auto-Focus**: When `*` is detected and suggestions are generated, the Manager can attempt to set `active_gui_index` in `pieces/display/active_gui_index.txt` to the ID of `comp_root`.
+- **Handling BACK**: The `BACK` button will return the user to the main layout navigation.
+- **Selection**: `KEY:N` will still work within the scoped menu to select a file.
+
+## 3. Benefits
+- **Organization**: Keeps the suggestion area clean.
+- **Navigation**: Use of `[>]` selector is native and consistent with the rest of the OS.
+- **Professionalism**: Matches the "Active Submenu" design established in the TPMOS framework.
+
+## 4. Implementation Steps
+1.  **Update Op**: Modify `get_completion_methods_op.c` to output the nested XML.
+2.  **Update Manager**: Ensure `g_piece_methods` is correctly populated with the new structure.
+3.  **Update Layout**: Confirm `${piece_methods}` is placed where the expansion won't break the frame.
+4.  **Rebuild**: Mandatory `./button.sh compile`.

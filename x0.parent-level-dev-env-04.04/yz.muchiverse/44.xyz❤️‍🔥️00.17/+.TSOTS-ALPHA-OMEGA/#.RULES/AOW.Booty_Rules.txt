@@ -1,0 +1,39 @@
+Booty Land (Armor of War)
+Theme: A "Civilization-Lite" exploration and conquest game involving island nations, pirates, and naval warfare.
+
+Game Setup
+- Board Size: Large variable grid (approx. 25x25) consisting of water and randomly generated islands/continents.
+- Total Players: 4 (Alpha, Bravo, Charlie, Delta).
+- Starting Setup: 
+    - Each player starts with one Capital (Base) on a random land tile.
+    - Starting Bank: 3 Credits (enough to buy 1 basic unit).
+    - The Land: A central treasury of 1200 "Tokens" exists on the board to be plundered.
+
+Pieces (Units)
+1. Capital (Base): Your headquarters. It allows you to "Tax" or "Buy Units." It has a powerful defense (coin flip against any attacker).
+2. Mech/Tank: Powerful land unit. (2 Moves). Strong vs. Capitals.
+3. Truck: Land transport. (2 Moves). Can carry 1 naval unit or Mech.
+4. Jet/Plane: High mobility. (3 Moves). Can fly over any tile but is weak in combat.
+5. Cruiser (Ship): Naval transport. (1 Move). Can carry 1 truck or mech.
+6. Submarine: Stealthy naval unit. (3 Moves). Can only attack other Ships/Subs.
+
+Core Rules
+- Turn Structure: Only 1 Action per turn (Move a unit OR take a Capital Action).
+- Capital Actions:
+    - Tax: Receive 10 Credits (minus 1 for every military unit you currently own).
+    - Production: Spend Credits to build Mechs, Jets, Trucks, or Ships.
+    - Investments: Buy Gold Mines or War Bonds for long-term income.
+- Combat (Coin Flips): Combat is determined by heads/tails success.
+    - Mech vs. Capital: 1 heads flip.
+    - Mech vs. Truck: 1 heads flip.
+    - Mech vs. Plane: 2 heads flips.
+    - Mech vs. Sub/Cruiser: 3 heads flips.
+    - Truck vs. Capital: 3 heads flips.
+    - Jet vs. Capital: 3 heads flips.
+    - Cruiser vs. Capital: 1 heads flip.
+- Transporting: Entering or exiting a transport (Truck or Ship) takes 1 full turn. If a transport is destroyed, the unit inside is also lost.
+- Movement: You cannot move and attack in the same turn.
+
+Win State
+- Total Conquest: Capture all enemy Capitals. (Capturing a Capital grants you all their money and units).
+- Economic Victory: Accumulate the most wealth from "The Land" or eliminate all other players' ability to pay for units.

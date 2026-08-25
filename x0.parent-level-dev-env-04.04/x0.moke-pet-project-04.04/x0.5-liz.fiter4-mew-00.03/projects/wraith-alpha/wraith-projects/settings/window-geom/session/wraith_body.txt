@@ -1,0 +1,20 @@
+WINDOW GEOMETRY EDITOR (standalone)
+
+Project: wraith-alpha/wraith-projects/piececraft-wraith
+Current: x=0 y=0 width=0 height=0
+
+Edit via CLI Input:
+<text label="  X position: " /><cli_io id="edit_x" label="" target_id="edit_x" input_mode="numeric" /><br/>
+<text label="  Y position: " /><cli_io id="edit_y" label="" target_id="edit_y" input_mode="numeric" /><br/>
+<text label="  Width: " /><cli_io id="edit_width" label="" target_id="edit_width" input_mode="numeric" /><br/>
+<text label="  Height: " /><cli_io id="edit_height" label="" target_id="edit_height" input_mode="numeric" /><br/>
+
+Or use buttons (working values: x=0 y=0 w=0 h=0):
+<button label="[-] X" onClick="KEY:5" /><button label="[+] X" onClick="KEY:6" /><br/>
+<button label="[-] Y" onClick="KEY:7" /><button label="[+] Y" onClick="KEY:8" /><br/>
+<button label="[-] W" onClick="KEY:9" /><button label="[+] W" onClick="KEY:10" /><br/>
+<button label="[-] H" onClick="KEY:11" /><button label="[+] H" onClick="KEY:12" /><br/>
+
+<button label="Apply Changes" onClick="KEY:13" /><br/>
+
+Status: Editing wraith-alpha/wraith-projects/piececraft-wraith

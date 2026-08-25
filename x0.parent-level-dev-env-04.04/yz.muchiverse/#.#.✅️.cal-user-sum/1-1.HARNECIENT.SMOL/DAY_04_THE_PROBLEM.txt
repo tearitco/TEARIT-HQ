@@ -1,0 +1,40 @@
+# 🧨 DAY 04 — The Problem 💥
+# ========================
+# Title: "🧨 DAY 04 — The Problem 💥"
+# Characters: TOMO, MAXINE, RAHWEH, IQA
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), MAXINE (en-GB-MaisieNeural), RAHWEH (zh-CN-YunxiaNeural), IQA (en-US-AnaNeural)
+# Topic: HARNECIENT Training Session
+
+**TOMO:** Start with the smallest: `gemma3:270m` and `gemma3:1b`. We asked them to follow a simple TOOL: text format — literally "say TOOL: name and I'll do it for you." Result: they hallucinate tool lines and echo the format back. They don't understand the contract. They see a shape and imitate it without meaning it.
+
+**MAXINE:** Imitation without comprehension. That's not a bug, that's just what a 270 million parameter model is.
+
+**TOMO:** Precisely. So our success metric became literally **"no TOOL: hallucination in the last 12 turns" — and we still lost. The wall stood.
+
+**RAHWEH:** What about the bigger one, `stable-code:latest` (3B)?
+
+**TOMO:** This one is special. You send Ollama a request *with* a `tools` field and the server answers:
+
+**MAXINE:** So it's not that the model is bad at tools — the API flat-out *refuses*?
+
+**TOMO:** Correct. The model family doesn't support native tool calling, and Ollama rejects the request before the model even sees it. It is not a prompt problem. It is not a routing problem. There is no model-side tool calling on the 3B, period. Don't re-test it — that's written in stone in LEARNINGS.md §1.
+
+**IQA:** But you have a model that DOES support tools — the 8B (llama3-groq-tool-use:8b)?
+
+**TOMO:** We do. And natively, it works — until it has to *think*. Watch this: we asked it to read a file and then fix the bug in it. It fired readfile and editfile as parallel calls in the same message — it edited before the read result existed. It guessed the old text. The exact-block match failed. And then... it hallucinated that it had succeeded. 🎭
+
+**RAHWEH:** It lied to us?! About whether it did the thing?!
+
+**TOMO:** It believed its own story. This is the second reason we never let models route tools: they will confidently report success for work they never did. A harness that trusts the model's word is a harness that is already broken.
+
+**MAXINE:** What if we just ask the model to output a tool call as text — like JSON it writes with its fingers?
+
+**TOMO:** Tried it. It's *flaky and hallucinatory*. The 3B, on a simple "say hello" prompt, invented a fake readfile ./example.txt call out of thin air. Small models will confidently emit tool-looking text that means nothing. And one of those fake calls almost took down our harness — a whole crash story you'll hear on Day 07. 💥
+
+**TOMO:** Put all four bricks together and the wall is obvious. Small models cannot: follow tool contracts, emit structured calls reliably, wait for context before acting, or honestly report what they did. Asking them to do any of those things is the original sin — demanding intelligence from a machine whose whole talent is producing plausible sentences.
+
+**MAXINE:** So the answer isn't a better prompt... it's *not asking at all*?
+
+**TOMO:** *smiles* Now you're thinking like a Harnecient. Tomorrow: the hack. 🪄
+
+**TOMO:** Every model is *a text generator*. Reliable *text*, unreliable *actions*. Tomorrow we stop asking it for actions and start giving it a job it can actually do.

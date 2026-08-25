@@ -1,0 +1,223 @@
+MUTACLSYM — FINAL HANDOFF (2026-07-16)
+================================================================================
+Written at the end of a session that shipped monster AI decision_mode,
+procedural generation v1, and multi-Z buildings, at the user's request,
+because they may not revisit this project for a while and want a fresh
+agent (or their future self) to be able to pick it up cold. Read this
+whole document before touching code.
+
+**This is a POINTER document, not a replacement for the others.** The
+real depth lives in three sibling docs in this same `dox/` directory:
+  - `00-HANDOFF.md` — the living status checklist. Read this SECOND
+    (after this file) and trust IT over this file if anything conflicts
+    - it's the one meant to be kept current going forward, this one is
+    a snapshot frozen at the moment it was written.
+  - `01-cdda-architecture.md` — deep phase-by-phase design reasoning,
+    citations, the camera/viewport writeup, open decisions log.
+  - `02-procgen-design.txt` — the procedural generation deep-dive
+    (pipeline passes, a real bug found+fixed, live-verification detail).
+Multi-Z buildings did NOT get their own deep-dive doc - it's thin
+enough (content + two small renderer tweaks) that `00-HANDOFF.md`'s own
+checklist entry for it is the complete write-up. Don't go looking for a
+`03-multi-z-design.txt` that doesn't exist.
+
+Also worth knowing before you start: this whole `ZEST-10.00` tree
+has a `.git/` directory but it is NOT a real initialized repository
+(confirmed: `git log` fails with "not a git repository", the `.git/`
+folder only contains an empty `info/` subdirectory) - there is no
+version history to `git blame`/`git log` your way through here. This
+document and its siblings ARE the history. If you want real version
+control going forward, that's a decision for the user to make
+explicitly, not something to silently set up.
+
+================================================================================
+1. WHAT SHIPPED THIS SESSION (all live-verified, not just designed)
+================================================================================
+
+**Monster AI decision_mode** (`ops/tick_monsters.c`) — retrofitted onto
+the same `decision_mode` chassis (`preset|weighted|rl|llm|human`)
+already used by `wsr-pal`/`muchi-evo-pal`, per direct instruction that
+mutaclsym's AI should "use the same kinda infrastructure" as
+`yz.muchiverse/2.muchi-verse/GAME-AI-SPEED-DOCTRINE.txt`. Per-instance
+`decision_mode` field on each monster's own `state.txt` (NOT a
+`monster_types.txt` registry column - confirmed that's the real family
+convention by reading `wsr-pal/ops/corp_decide.c` directly). Only 2
+tiers built (0=preset default/unchanged, 1=weighted/flees below its own
+`flee_hp_pct`) - deliberately not all 5, since a monster's chase-or-
+flee decision is a small fixed-shape node that doesn't need GOAP/BT/
+rl/llm/human (doctrine §3, "bespoke nodes not one-size-fits-all").
+
+**map_02 populated** — 4 monsters (2 preset zombie, 2 weighted
+zombie_child), 8 items. Along the way, discovered `00-HANDOFF.md`/
+`01-cdda-architecture.md` both claimed map_02 was already an 80x32
+map - it was actually still 40x16 in the real files. Resolved with the
+user: don't hand-re-author the expansion, since real procgen (below)
+supersedes that need. map_02 stays 40x16 permanently now - this is a
+closed decision, not an open question for a future agent to re-litigate.
+
+**Procedural generation v1** (`ops/generate_map.c`, new op) — a one-
+shot authoring-time CLI tool (`./button.sh generate <map_id> <seed>
+[w] [h] [link_map_id] [link_x] [link_y]`), NOT part of the per-tick pal
+loop. Seeded xorshift32 PRNG (fully reproducible - verified by
+generating twice into independent copies and diffing byte-identical
+output). Three composable passes: biome (patch-scatter, not real
+Perlin - honestly scoped), structure (rooms+corridors), population
+(reuses the decision_mode mix above + reads real item/monster
+registries, doesn't hardcode ids). Wires a bidirectional `<`/`>`
+stairway back into an existing map. A real generated map (`map_gen_01`,
+seed `20260716`, linked from `map_02` at (36,13)) exists in the live
+project, reachable through normal play. Full deep-dive, including a
+real ordering bug that was found and fixed
+(`population_pass()` was originally called before the map directory
+existed, so its own `mkdir`/`fopen` calls silently failed) in
+`02-procgen-design.txt`.
+
+**Multi-Z buildings** — design decision: per-floor map files, NOT a
+z-level field on one map. Each floor is an ordinary map directory
+(`building_01_gf`, `building_01_f2`) linked via the exact same
+`transitions.txt` `<`/`>` mechanism every other inter-map link already
+uses (`map_start`<->`map_02`<->`map_gen_01`) - genuinely zero new
+movement/collision/rendering machinery, since "one floor up" and "next
+area over" are the same operation from the engine's point of view. The
+only real code change: `compose_frame.c`/`compose_rgb_frame.c` read an
+optional `z` field from a map's own `state.txt` and print `Floor: N` in
+both mirrors' headers when set (absent/0 for every existing outdoor
+map, so nothing else changed visually). A real 2-floor building is
+wired into `map_02` at (28,7): ground floor has the outside door at
+(8,9) and an upstairs at (8,3); floor 2 (a monster + an item) has the
+matching downstairs at (8,3). Live-verified round trip: enter, climb,
+confirm the floor-2 monster's chase AI is live, descend, exit, correct
+landing coordinates at every hop, both ASCII and RGB mirrors agreeing
+on `Floor: N`.
+
+**All of the above is synced identically into both `pieces/world_01/`
+(the live tree) and `pieces/world_01_template/`** (what `ops/
+title_input.c`'s New Game option `rm -rf`s+`cp -r`s onto `world_01/`) -
+confirmed byte-identical via `diff -rq` at the end of this session.
+This matters: anything a future agent adds to `world_01/` directly and
+forgets to mirror into `world_01_template/` will silently vanish the
+next time someone picks New Game. This exact bug class was already hit
+once for real in this family's history (wsr-pal's New Game template
+was once snapshotted mid-state) - don't repeat it.
+
+Full zero-warning build confirmed (`./button.sh compile` then `./
+button.sh check`, all 21 binaries present) at the end of this session.
+
+================================================================================
+2. WHERE TO PICK UP NEXT (roughly priority order, none blocking on
+   each other)
+================================================================================
+  1. More procgen passes - additional biome flavors, non-rectangular
+     rooms, corridor/room-wall collision avoidance (a real named v1
+     simplification - corridors currently carve through anything in
+     their path, including another room's wall, if the paths cross),
+     caves, chained/recursive generation (a generated map spawning
+     further generated maps on exploration, rather than always linking
+     back to one fixed existing map). See `02-procgen-design.txt` §3.
+  2. More/bigger multi-Z buildings, or a real building-GENERATOR (right
+     now `building_01_gf`/`building_01_f2` are hand-authored, the way
+     `map_start`'s original rooms were - `generate_map.c` only builds
+     outdoor biome+room maps right now, it doesn't know how to generate
+     a fully-interior multi-floor structure end to end. That's a real,
+     not-yet-designed extension, not a bug.).
+  3. Vehicles - genuinely undesigned. Needs a decision first (multiple
+     map cells directly vs. an internal mini-grid, real CDDA's model) -
+     see `01-cdda-architecture.md` Phase 6's own note. Don't start
+     without deciding this, same discipline as every other open
+     decision in this family.
+  4. Phase 8 - professions/scenarios/starting presets, day-night,
+     weather. Not designed at all yet.
+  5. The orchestrator (`locations.txt` launcher across mutaclsym/
+     egg-pals/future games) - small, mechanical, not blocked on
+     anything, described in `../platform-vision.txt` §1 (moved to
+     yz.muchiverse/2.muchi-verse/'s own top level 2026-07-20, alongside
+     this project itself - it's a family-wide vision doc, not
+     mutaclsym-specific, see this file's own path stale-reference fix
+     the same day). Genuinely a lower-stakes side quest whenever
+     someone wants it.
+  6. Cross-game item/pet portability + trading platform - far-term,
+     genuinely hard, not even fully designed. See `../platform-vision.txt`
+     §2/§3.
+  7. Real `rl`/`llm`/`human` decision_mode tiers for monsters were
+     deliberately NOT built (see §1 above) - only add these if a real
+     design need actually shows up (e.g. a boss monster that should
+     make a genuinely complex tactical choice), not speculatively.
+
+================================================================================
+3. STANDING SAFETY RULES (apply to every future session, not just this
+   one - already learned the hard way earlier in this project's life)
+================================================================================
+  - **Check for a live session before touching `pieces/` or rebuilding
+    binaries**: `ps aux | grep -E "prisc\+x pal|keyboard_input$|\./
+    system/renderer"`. A real process-collision/corruption incident
+    happened once from orphaned background test processes writing to
+    the same live state file concurrently.
+  - **Test in a scratch copy** (`cp -r` the whole project elsewhere,
+    `export PRISC_PROJECT_ROOT=<scratch>`, run there), not against the
+    live tree, whenever exercising input-handling or anything that
+    writes to `pieces/`. Only land changes in the live tree once
+    they're known-good.
+  - **Rebuilding binaries while a live session is running is itself
+    risky** - the live session's next keypress execs whatever's
+    currently on disk in `ops/+x/`, including a transiently broken
+    mid-edit version.
+  - **Verify `pwd` before any script writing relative paths**,
+    especially a heredoc/python block - the harness's shell resets cwd
+    between separate tool calls with no warning. `cd`/use absolute
+    paths WITHIN the same command block that does the writing.
+  - **Zero warnings is the bar** (`-Wall -Wextra`), not "it compiles."
+    `./button.sh compile` then `./button.sh check` before ever claiming
+    something works.
+  - **Test through the actual playable interface**, not just by reading
+    the code or trusting a clean exit code: real keycodes appended to
+    `pieces/apps/player_app/history.txt` (a plain "one int per line"
+    file - `ops/title_input.c`'s comment documents the digit/ASCII
+    keycodes; movement is `w`/`a`/`s`/`d` (119/97/115/100) or arrow
+    codes 1000-1003), then read `pieces/display/current_frame.txt` /
+    `message_log.txt` / the relevant piece's `state.txt` directly. No
+    pty needed for this - `keyboard_input`'s own pty requirement only
+    matters if you drive it AS a real terminal program; writing
+    straight to `history.txt` and running `system/prisc+x`+`system/
+    renderer` in the background is sufficient and is what every
+    verification this session actually did. `ops/+x/dump_rgb_png.+x`
+    dumps the current RGB-mirror frame as a real viewable PNG - use it
+    after touching `compose_rgb_frame.c` or any registry/asset it
+    reads; checksums alone have missed a real rendering bug before
+    (see `00-HANDOFF.md`'s "#-glyph" bug-class section).
+  - **The `#`-as-glyph-and-comment-marker bug class**: both
+    terrain_types.txt (wall glyph is literally `#`) and any future
+    registry using `#` as a real glyph need `line[1]=='|'` as the
+    comment-skip test, not just `line[0]=='#'` - this has been
+    reintroduced fresh at least 3 times already by copying the wrong
+    pattern. Check this first in any new code reading a pipe-delimited
+    registry.
+  - **Sync `world_01_template/` whenever you touch `world_01/`'s static
+    content** (maps, spawned items/monsters, transitions) - see §1's
+    closing paragraph above.
+
+================================================================================
+4. QUICK ORIENTATION FOR A COLD START
+================================================================================
+  - `./button.sh help` from `mutaclsym/` explains every verb.
+  - `./button.sh compile && ./button.sh check && ./button.sh run` is
+    the normal human-playable path (needs a real terminal).
+  - `./button.sh gl` is the optional GL/RGB mirror window (needs GLUT
+    dev libs - build skips it gracefully if unavailable).
+  - `./button.sh generate <map_id> <seed>` procedurally generates a new
+    map, linked from `map_02` by default.
+  - Architecture in one sentence: three independent processes
+    (`keyboard_input` reads raw terminal input, `prisc+x` runs
+    `pal/main_loop.pal` - a tiny custom VM dispatching to individual C
+    "ops" in `ops/` - `renderer` prints frames), plus an optional 4th
+    (`gl_mirror`) that blits a CPU-computed RGBA32 buffer
+    (`ops/compose_rgb_frame.c`) as a single textured quad - it's the
+    ONLY file in this whole project family allowed to call GL/GLUT
+    directly, per the RISC-V-portability GOVERNING CONSTRAINT in
+    `yz.muchiverse/2.muchi-verse/GRAND-ARCHITECTURE.md`.
+  - One op = one binary, no shared headers, even within this same
+    project - each op duplicates its own tiny helpers
+    (`read_kv_str`/`resolve_root`/etc). Deliberate convention, not an
+    oversight - matches `cdda-tpm-std-fast.txt`'s own standard.
+
+That's the whole handoff. Good luck to whoever (or whenever) picks this
+back up.

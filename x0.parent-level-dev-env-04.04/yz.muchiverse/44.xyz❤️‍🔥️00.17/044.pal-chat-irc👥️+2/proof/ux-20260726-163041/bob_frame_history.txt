@@ -1,0 +1,146 @@
+
+=== FRAME @ 1785108645 ===
++============================================================+
+|  P A L - C H A T - I R C   [login]                         |
++============================================================+
+|                                                            |
+|  Welcome to pal-chat-irc.                                  |
+|  Create an account, or log in with an existing user ID.    |
+|                                                            |
+|  Welcome to pal-chat-irc.                                  |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108660 ===
++============================================================+
+|  P A L - C H A T - I R C   [login]                         |
++============================================================+
+|                                                            |
+|  Welcome to pal-chat-irc.                                  |
+|  Create an account, or log in with an existing user ID.    |
+|                                                            |
+|  Account created - logged in as bob_31259. Click Continue. |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108662 ===
++============================================================+
+|  P A L - C H A T - I R C   [room_list]                     |
++============================================================+
+|                                                            |
+|  Logged in as: bob_31259                                   |
+|                                                            |
+|  Enter a room name to join or create it, then              |
+|  click Enter Room.                                         |
+|                                                            |
+|  Account created - logged in as bob_31259. Click Continue. |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108662 ===
++============================================================+
+|  P A L - C H A T - I R C   [room_list]                     |
++============================================================+
+|                                                            |
+|  Logged in as: bob_31259                                   |
+|                                                            |
+|  Enter a room name to join or create it, then              |
+|  click Enter Room.                                         |
+|                                                            |
+|  Enter a room name, then click Join / Create Room.         |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108665 ===
++============================================================+
+|  P A L - C H A T - I R C   [room_list]                     |
++============================================================+
+|                                                            |
+|  Logged in as: bob_31259                                   |
+|                                                            |
+|  Enter a room name to join or create it, then              |
+|  click Enter Room.                                         |
+|                                                            |
+|  Room 'uxtest_31259' ready - click Enter Room.             |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108666 ===
++============================================================+
+|  P A L - C H A T - I R C   [room_list]                     |
++============================================================+
+|                                                            |
+|  Logged in as: bob_31259                                   |
+|                                                            |
+|  Enter a room name to join or create it, then              |
+|  click Enter Room.                                         |
+|                                                            |
+|  Room 'uxtest_31259' ready - click Enter Room.             |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108672 ===
++============================================================+
+|  P A L - C H A T - I R C   [room_list]                     |
++============================================================+
+|                                                            |
+|  Logged in as: bob_31259                                   |
+|                                                            |
+|  Enter a room name to join or create it, then              |
+|  click Enter Room.                                         |
+|                                                            |
+|  Room 'uxtest_31259' ready - click Enter Room.             |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108672 ===
++============================================================+
+|  P A L - C H A T - I R C   [room_list]                     |
++============================================================+
+|                                                            |
+|  Logged in as: bob_31259                                   |
+|                                                            |
+|  Enter a room name to join or create it, then              |
+|  click Enter Room.                                         |
+|                                                            |
+|  Room 'uxtest_31259' ready - click Enter Room.             |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108674 ===
++============================================================+
+|  P A L - C H A T - I R C   [room_list]                     |
++============================================================+
+|                                                            |
+|  Logged in as: bob_31259                                   |
+|                                                            |
+|  Enter a room name to join or create it, then              |
+|  click Enter Room.                                         |
+|                                                            |
+|  Room 'uxtest_31259' ready - click Enter Room.             |
+|                                                            |
++============================================================+
+---
+
+=== FRAME @ 1785108677 ===
++============================================================+
+|  P A L - C H A T - I R C   [room_list]                     |
++============================================================+
+|                                                            |
+|  Logged in as: bob_31259                                   |
+|                                                            |
+|  Enter a room name to join or create it, then              |
+|  click Enter Room.                                         |
+|                                                            |
+|  Room 'uxtest_31259' ready - click Enter Room.             |
+|                                                            |
++============================================================+
+---

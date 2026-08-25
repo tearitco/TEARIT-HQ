@@ -1,0 +1,1414 @@
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 1 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 2 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 3 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 4 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 5 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 6 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 7 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 8 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 9 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 10 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 11 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 12 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 13 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 14 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 15 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 16 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 17 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 18 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 19 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 20 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 21 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 22 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 23 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 24 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 25 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 26 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 27 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 28 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 29 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 30 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 31 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 32 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 33 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 34 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 35 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 36 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 37 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 38 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 39 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 40 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 41 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 42 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 43 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 44 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 45 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 46 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 47 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 48 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 49 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 50 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 51 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 52 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 53 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 54 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 55 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 56 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 57 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 58 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 59 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 60 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 61 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 62 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 63 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 64 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 65 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 66 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 67 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 68 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 69 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 70 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 71 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 72 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 73 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 74 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 75 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 76 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 77 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 78 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 79 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 80 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 81 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 82 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 83 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 84 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 85 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 86 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 87 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 88 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 89 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 90 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 91 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 92 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 93 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 94 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 95 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 96 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 97 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 98 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 99 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 100 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 1 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 2 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 3 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 4 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 5 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 6 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 7 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 8 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 9 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 10 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 11 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 12 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 13 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 14 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 15 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 16 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 17 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 18 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 19 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 20 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 21 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 22 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 23 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 24 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 25 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 26 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 27 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 28 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 29 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 30 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 31 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 32 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 33 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 34 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 35 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 36 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 37 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 38 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 39 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 40 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 41 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 42 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 43 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 44 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 45 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 46 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 47 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 48 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 49 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 50 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 51 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 52 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 53 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 54 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 55 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 56 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 57 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 58 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 59 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 60 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 61 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 62 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 63 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 64 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 65 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 66 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 67 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 68 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 69 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 70 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 71 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 72 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 73 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 74 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 75 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 76 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 77 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 78 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 79 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 80 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 81 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 82 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 83 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 84 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 85 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 86 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 87 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 88 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 89 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 90 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 91 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 92 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 93 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 94 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 95 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 96 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 97 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 98 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 99 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Training epoch 100 completed
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Residual added with weight 0.100000
+Convolution completed
+Group norm applied
+Max pooling completed
+Convolution completed
+Group norm applied
+Upsampling completed
+Residual added with weight 0.100000

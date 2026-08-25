@@ -1,0 +1,201 @@
+TODO - NET HEALTH TRACE/TEST/CLEANUP PASS - 2026-07-26
+Purpose: full continuation plan for a future agent if this session disconnects.
+Written after confirming file-by-file state on disk (not from memory of older docs).
+
+================================================================================
+0. HOW WE GOT HERE (read these first, in this order, for background)
+================================================================================
+
+  1. !.!..j25-conversion-task.md   (top-level dir) - original 4-project conversion plan
+     (01.mutaclsym, 014.wsr-pal, 044.pal-chat-irc, 045.muchi-pal-agent) -> orchestrator.c,
+     button.sh --pal, renderer flicker fix, kill_all.sh. Marked complete 2026-07-25.
+  2. !.!.convert-report-j26.md     (top-level dir) - later pass: 'q'-key removal, single-
+     marker renderer, pre-sync-before-first-compose fix, cruft cleanup. ALSO extended
+     scope to 041.pal-chain and 041.pal-forum. This is the most authoritative status doc
+     for all 6 projects as of 2026-07-26 morning.
+  3. quick-summar-j26.txt          (top-level dir, written THIS session) - re-verified
+     044/041.pal-chain/041.pal-forum against convert-report-j26.md's claims by reading
+     the actual files on disk. Confirms convert-report is accurate (no drift), and adds
+     the master-ledger architecture comparison the user specifically asked for.
+  4. LEDGER_ADVANCED_STUDY.txt     (top-level dir) - doctrine for the "master ledger"
+     pattern (append-only log as source of truth, ring-topology turns, NPC banking,
+     SCALE_BANK fidelity). This is what 101.ledger-player-npc-simple+3 implements.
+  5. +3_ARCHITECTURE_SUMMARY.txt   (top-level dir) - the "PAL standards" persistent-
+     module/prisc+x/event-loop pattern that orchestrator/chtpm_parser_pal/renderer all
+     implement across every project in this xyz tree, ledger or not.
+
+  KEY TAKEAWAY from quick-summar-j26.txt (full detail there, don't re-derive):
+    - 044.pal-chat-irc+2 DOES use the orchestrator/chtpm/pal+ops architecture (confirmed
+      on disk: system/orchestrator.c, chtpm_parser_pal.c, renderer.c, keyboard_input.c,
+      7 ops, session-scoped button.sh). Matches convert-report-j26.md exactly.
+    - 044 does NOT use the master ledger pattern (no data/master_ledger.txt, no
+      system/game_manager.c, no ledger_append/sync_player_ledger/view_ledger ops).
+      It uses rooms/<room>/messages.txt + users/<user>/profile.txt flat files instead.
+      This is a real, permanent architectural difference from 101.ledger-player-npc-
+      simple+3, not a bug - chat doesn't need ring-based turns or NPC banking. Just
+      don't assume ledger/replay semantics exist in 044 when writing the trace doc below.
+    - 041.pal-chain: converted (orchestrator.c + kill_all.sh + 'q' removal + backup
+      cleanup all present) but the last live smoke test HUNG and was never root-caused.
+      Treat as non-functional until proven otherwise.
+    - 041.pal-forum: NOT STARTED at all - confirmed no orchestrator.c, no kill_all.sh,
+      .pre-href-fix-2026-07-22 backup still present, 'q'/'Q' branch still present at
+      system/chtpm_parser_pal.c:3328.
+
+================================================================================
+1. REMAINING STEPS, IN ORDER (this is the actual plan - follow top to bottom)
+================================================================================
+
+STEP A - pc-irc-trace-j26.md (NOT YET WRITTEN as of this doc)
+  Location to create: top-level dir, i.e.
+    /home/no/Desktop/.../44.xyz00.07/pc-irc-trace-j26.md
+  What it must contain: trace the IO and functionality flow of 044.pal-chat-irc+2 AS
+  USER EXPERIENCE, mapped to the actual code files, e.g.:
+    login screen -> pieces/chtpm/layouts/login.chtpm -> ops/chat_create_user.c /
+      ops/chat_switch_user.c -> users/<name>/profile.txt
+    room list screen -> pieces/chtpm/layouts/room_list.chtpm -> ops/chat_menu_input.c
+      write_room_choices() (line ~210) -> ${room_choices} template var -> user clicks a
+      room -> ops/chat_menu_input.c resolves KEY:100+index click (line ~226) -> href to
+      room.chtpm
+    room screen -> pieces/chtpm/layouts/room.chtpm -> ops/chat_post_message.c appends to
+      rooms/<room>/messages.txt -> ops/chat_compose_frame.c reads messages.txt + renders
+    background P2P -> ops/palnet_peer.c (own_kind=irc_node, seek_kind=irc_node, full
+      mesh) + ops/chat_inbox_watcher.c, both launched automatically by button.sh's "run"
+      action, must survive tick-to-tick (orchestrator's 3-layer kill must not touch them
+      mid-session, only on final quit)
+    quit -> Ctrl+C only (system/keyboard_input.c) -> system/orchestrator.c's 3-layer kill
+      -> pieces/os kill (session-scoped, see button.sh's SESSION_DIR symlink setup)
+  Use quick-summar-j26.txt's architecture findings so the trace doc doesn't imply ledger/
+  replay semantics that don't exist in this project.
+  DO NOT START STEP B until this doc exists and architecture is confirmed sound (it
+  already has been, per quick-summar-j26.txt - so this is really just "write the trace,
+  then move on", not "wait for a new audit").
+
+STEP B - Live test 044.pal-chat-irc+2 using the testing methodology in:
+    #.haiku+/tpmos-re-dox/_.0.aigent-testing-k3.txt
+  Key conventions from that doc to actually follow (don't skip):
+    - Key injection format is STRICT: `[YYYY-MM-DD HH:MM:SS] KEY_PRESSED: <code>` into
+      pieces/keyboard/history.txt (or the session's copy under pieces/sessions/<id>/
+      pieces/keyboard/history.txt once button.sh run has created a session dir).
+    - If no /dev/tty (headless agent shell), use the doc's "API sandbox" workaround:
+      launch chtpm_parser_pal + renderer directly (skip keyboard_input), inject keys by
+      appending to history.txt, inspect pieces/display/current_frame.txt.
+    - After the test cycle, write a root-dir FRAME_REPORT_<YYYYMMDD-HHMM>_<topic>.txt
+      per that doc's "Mandatory Post-Test Report Gate" section (evidence + PASS/FAIL +
+      "safe to proceed" line) BEFORE making any code changes based on what you find.
+    - Test at minimum: login->create user->switch user, room_list->join room, post
+      message->appears, two-terminal P2P (one user's message visible to the other),
+      inbox watcher delivering a remote message, Ctrl+C clean quit with no orphaned
+      processes (check `ps aux | grep -E "chtpm_parser|renderer|orchestrator|palnet_peer|
+      chat_inbox_watcher"` before and after).
+
+STEP C - UI bug cleanup (only after B passes / issues are known)
+  Known bug to fix: "rooms should be in a +/- dropdown menu" (direct user request).
+  Current implementation (confirmed this session):
+    - pieces/chtpm/layouts/room_list.chtpm renders `${room_choices}` as a flat list of
+      buttons/lines (one per room), not a collapsible dropdown/select widget.
+    - `${room_choices}` is written by write_room_choices() in
+      044.pal-chat-irc+2/ops/chat_menu_input.c (around line 210), format documented in
+      that file's own comment above the function (~line 159, ~line 198).
+    - Companion click-resolution logic is right below it (~line 226, ~line 412) -
+      resolves a KEY:100+index click back to a specific room.
+    - CHTPM HAS NO EXISTING DROPDOWN/SELECT TAG ANYWHERE IN THIS TREE (grepped for
+      "dropdown" and "<select" across the whole 44.xyz tree - zero hits). This means a
+      "+/- dropdown" either needs a new CHTPM tag/widget invented from scratch, or a
+      collapse/expand affordance built out of existing show/hide via a toggle state var
+      (visibility="${...}" pattern already used elsewhere, e.g. room_list.chtpm's own
+      `visibility="${room_selected}"` on the Enter Room button). Look at how OTHER
+      projects show/hide conditional UI before inventing a new tag - check wsr-pal's
+      multi-screen href navigation and mutaclsym's title-screen toggle for prior art.
+  Do this cleanup only after the trace + live test are done, per direct user sequencing.
+
+STEP D - Same refactor & testing pass for 041.pal-chain and 041.pal-forum
+  D1) 041.pal-chain - root-cause the hang FIRST, before anything else on this project.
+      Location: 041.pal-chain⛓️/
+      Suspect areas (per convert-report-j26.md, not yet checked this session):
+        - system/orchestrator.c - is it actually backgrounding/forking before the shell
+          returns, or blocking on ensure_directories()/log_pid()'s flock()?
+        - ops/palnet_peer.c launched with args `chain_node pal-chain - net/outbox.txt
+          net/inbox.txt chain_node` - does it block on a network call before
+          daemonizing?
+      How to root-cause: run `bash -x button.sh run` with no controlling tty and a
+      timeout (e.g. `timeout 10 bash -x button.sh run`), see exactly which line never
+      returns. Or add fprintf(stderr,...) breadcrumbs into orchestrator.c at each
+      fork/exec step and re-run.
+      Do NOT mark this project "done" until a live run completes and Ctrl+C quits
+      cleanly with no orphaned processes (blockchain.txt-related: chain_miner,
+      chain_inbox_watcher, palnet_peer, chtpm_rgb_render all need to die too - check
+      pieces/os/kill_all.sh covers all of them, it's supposed to already).
+      Once fixed: if the bug is in the ported orchestrator.c/kill_all.sh TEMPLATE itself
+      (not something chain-specific), it likely needs back-porting to 01.muchi-pals'
+      copy too (per convert-report-j26.md's own recommendation #2).
+  D2) 041.pal-forum - full conversion from scratch, using whatever pal-chain's fix
+      turns out to be (don't re-port the same possibly-broken pattern twice - confirm
+      pal-chain's hang is understood first).
+      Location: 041.pal-forum👥️/
+      Confirmed missing (this session, on disk):
+        - system/orchestrator.c - absent
+        - pieces/os/kill_all.sh - absent (pieces/os/ doesn't even exist yet)
+        - system/chtpm_parser_pal.c.pre-href-fix-2026-07-22 - still present, remove
+        - 'q'/'Q' quit branch at system/chtpm_parser_pal.c:3328 - still present, remove
+        - --pal flag / button.sh integration - not checked in detail, assume same gap
+        - renderer single-marker + skip-if-unchanged fix - not yet re-verified, assume
+          still old dual-marker shape until checked
+      Steps: same template as 044/014/045's original j25 conversion (orchestrator.c,
+      kill_all.sh, button.sh --pal + session isolation if pal-chain's session model
+      applies here too, renderer fix, 'q' removal, project.pdl, backup cleanup), then
+      the same audit + functional test checklist from !.!..j25-conversion-task.md's
+      "Audit Plan" and "Functional tests per project" sections.
+      Once both are converted, apply the SAME trace-doc + aigent-testing-k3.txt live
+      test + UI-cleanup treatment 044 is getting in steps A-C above, to both pal-chain
+      and pal-forum.
+
+================================================================================
+2. FILE LOCATION QUICK REFERENCE
+================================================================================
+
+  Top-level dir (all paths below relative to):
+    /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.12/x0.parent-level-dev-env-04.03/
+    yz.muchiverse/44.xyz❤️‍🔥️00.07/
+
+  Docs already written:
+    !.!..j25-conversion-task.md              - original conversion plan (4 projects)
+    !.!.convert-report-j26.md                 - status snapshot, all 6 projects
+    quick-summar-j26.txt                      - THIS session's arch comparison + 041 status
+    LEDGER_ADVANCED_STUDY.txt                 - master ledger doctrine
+    +3_ARCHITECTURE_SUMMARY.txt               - PAL standards / persistent-module pattern
+    040.net-health/todo-nethealth-j26.txt      - this file
+
+  Docs still to write (in order):
+    pc-irc-trace-j26.md                       - top-level dir, STEP A above
+    FRAME_REPORT_<timestamp>_<topic>.txt       - top-level dir, STEP B above (one per test cycle)
+    (any UI-fix notes)                        - wherever makes sense, STEP C
+    (041 conversion + trace + test docs)       - mirror the 044 docs, STEP D
+
+  Reference/canonical projects:
+    101.ledger-player-npc-simple+3             - master-ledger + game_manager.c reference
+    101.lpns+map+4                             - orchestrator.c reference (per j25 doc)
+    101.mutaclsym🧟‍♂️️+18.00                    - canonical renderer flicker-fix reference
+                                                  (single-marker renderer_pulse.txt)
+
+  Projects in scope for this pass:
+    044.pal-chat-irc👥️+2                       - STEPS A, B, C (current focus)
+    041.pal-chain⛓️                             - STEP D1 (hang unresolved)
+    041.pal-forum👥️                            - STEP D2 (not started)
+
+  Testing methodology doc:
+    #.haiku+/tpmos-re-dox/_.0.aigent-testing-k3.txt
+
+  UI bug specifics (STEP C):
+    044.pal-chat-irc👥️+2/pieces/chtpm/layouts/room_list.chtpm  (renders ${room_choices})
+    044.pal-chat-irc👥️+2/ops/chat_menu_input.c                  (write_room_choices(),
+                                                                   ~line 210; click
+                                                                   resolution ~line 226)
+
+================================================================================
+3. IF DISCONNECTED - RESUME HERE
+================================================================================
+
+  Read this file, then quick-summar-j26.txt, then jump straight to whichever of
+  STEP A / B / C / D1 / D2 above is not yet marked done (check top-level dir for
+  pc-irc-trace-j26.md and any FRAME_REPORT_*.txt to see how far STEP A/B got before
+  assuming you need to start over - don't redo work that's already on disk).

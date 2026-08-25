@@ -1,0 +1,7 @@
+# Current state for a generic label UI piece
+
+label=Default Label
+x=0
+y=0
+width=100
+height=20

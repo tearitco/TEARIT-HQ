@@ -1,0 +1,3 @@
+send_message
+register_user
+get_messages

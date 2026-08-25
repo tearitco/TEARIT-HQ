@@ -1,0 +1,5 @@
+user_id=diag_2516764
+display_name=Diag
+uuid=e84ab629-bf60-4a6b-bab8-754251da6432
+xyzfs_path=xyzfs/users/e84ab629-bf60-4a6b-bab8-754251da6432
+created_at=1787297077

@@ -1,0 +1,25 @@
+<scene title="PIECECRAFT-3D (Sovereign)" bg="135,206,235" />
+<camera mode="${camera_mode}" x="${cam_x}" y="${cam_y}" z="${cam_z}" pitch="${cam_pitch}" yaw="${cam_yaw}" roll="${cam_roll}" />
+
+<interact src="projects/piececraft-3d/session/history.txt" />
+
+# The voxel world map
+${game_map}
+
+<panel title="Sovereign Control">
+    <text label="Target: ${active_target_id}" />
+    <text label="Control: ${is_map_control ? '[MAP]' : '[MENU]'}" />
+    <text label="Status: ${last_response}" />
+    <button label="Control Map (ENTER)" onClick="INTERACT" />
+    <button label="Menu Mode (ESC)" onClick="ESC" />
+    <button label="Deselect (9)" onClick="KEY:9" />
+</panel>
+
+<panel title="Actions">
+    ${piece_methods}
+</panel>
+
+<panel title="Inventory" position="RIGHT">
+    <text label="Stone: ${inv_stone}" />
+    <text label="Wood: ${inv_wood}" />
+</panel>

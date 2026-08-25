@@ -1,0 +1,40 @@
+================================================================================
+ MUCHI-PAL-CHAT   [IDLE]   model: gemma-lan                api: http://10.0.0.144:11434
+================================================================================
+
+→ [Strategy A] Detected tool: write_file
+
+You: create file book.txt containing Chapter 1: Hello
+
+[write_file result]: Written 16 bytes to book.txt
+
+
+→ [Strategy A] Detected tool: edit_file
+
+You: append to book.txt the line "It was a dark and stormy night."
+
+[edit_file result]: Appended 31 bytes to book.txt
+
+→ [Strategy A] Detected tool: read_file
+
+You: read file book.txt
+
+[read_file result]: Chapter 1: Hello
+It was a dark and stormy night.
+
+→ [Strategy A] Detected tool: search_in_files
+
+You: search for dark in book.txt
+
+[search_in_files result]: book.txt [Line 2]: It was a dark and stormy night.
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+[SYS]: Tool result shown.
+(type /model <id> to switch models)
+
+| [^] 1. Message: [_]                                     |
+ (Ctrl+C to quit)
+
++=========================================================+
+Active [^]:  (ESC to exit)

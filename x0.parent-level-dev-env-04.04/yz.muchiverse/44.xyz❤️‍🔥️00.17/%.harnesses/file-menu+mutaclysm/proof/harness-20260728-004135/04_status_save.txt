@@ -1,0 +1,4 @@
+last_cmd=SAVE_GAME_AS
+result=ok
+message=saved slot t1
+at=1785224496

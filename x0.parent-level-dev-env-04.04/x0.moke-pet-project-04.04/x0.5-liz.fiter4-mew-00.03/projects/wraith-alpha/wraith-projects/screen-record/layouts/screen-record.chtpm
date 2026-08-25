@@ -1,0 +1,10 @@
+<chtpm>
+  <module>projects/wraith-alpha/wraith-projects/screen-record/manager/+x/screen-record_manager.+x</module>
+  <text label="WRAITH SCREEN RECORD" /><br/>
+  <text label="Project ID: wraith-alpha/wraith-projects/screen-record" /><br/>
+  <text label="Status: ready" /><br/>
+  <text label="Scope: record GL session to mp4" /><br/>
+  <text label="Capture: X11 full display, Pulse audio when available" /><br/>
+  <text label="Transport: start stop refresh" /><br/>
+  <text label="Rule: prove locally before shared reusable op extraction" /><br/>
+</chtpm>

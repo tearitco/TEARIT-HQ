@@ -1,0 +1,5 @@
+project_id=wraith-alpha
+current_map=map_01.txt
+active_target_id=selector
+current_z=0
+last_key=None

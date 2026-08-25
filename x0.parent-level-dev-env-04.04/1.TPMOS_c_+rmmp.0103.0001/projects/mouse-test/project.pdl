@@ -1,0 +1,5 @@
+SECTION | KEY | VALUE
+META | project_id | mouse-test
+META | entry_layout | projects/mouse-test/layouts/main.chtpm
+STATE | starting_map | map_01.txt
+STATE | player_piece | selector

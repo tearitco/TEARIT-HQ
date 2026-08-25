@@ -1,0 +1,23 @@
+<panel>
+    <module>pieces/system/prisc/prisc+x projects/man-pal/scripts/game_loop.asm</module>
+    
+    <text label="╔══════════════ M A N - P A L   D E M O ════════════╗" /><br/>
+    <row label="TITLE: ${app_title} | PROJECT: ${project_id}" /><br/>
+    <row label=" " /><br/>
+    
+    <row label=" GAME MAP:" /><br/>
+    <button label="Control Map" id="map" onClick="INTERACT" /><br/>
+    <text label="${game_map}" /><br/>
+    
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <row label="[POS]: (${hero_pos_x},${hero_pos_y}) | [TIME]: ${clock_time} | [KEY]: ${last_key}" /><br/>
+    <row label="[STATUS]: Active Pulse (PAL)" /><br/>
+    
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  " /><button label="Exit to Menu" href="pieces/chtpm/layouts/os.chtpm" /><text label="                          ║" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+    <text label=" [ESC]: Nav | Movement delegated to PAL script" /><br/>
+    
+    <!-- Interact: Inject keys to player_app/history.txt -->
+    <interact src="pieces/apps/player_app/history.txt" />
+</panel>

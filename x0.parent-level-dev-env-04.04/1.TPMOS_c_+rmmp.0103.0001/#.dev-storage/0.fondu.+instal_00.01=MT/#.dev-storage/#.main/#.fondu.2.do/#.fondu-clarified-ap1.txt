@@ -1,0 +1,584 @@
+# Fondu Architecture: Clarified Specification
+**Date:** April 1, 2026
+**Status:** SCOPE CLARIFIED - ALL PROJECTS MODEL
+**Priority:** PHASED IMPLEMENTATION
+
+---
+
+## CORE INSIGHT: EVERYTHING IS A PROJECT
+
+**Original Confusion:** Agents created "APPs" vs. "PROJECTs" as if they were different species.
+
+**Clarified Reality:** There is only **PROJECTS**. "Apps" are just projects launched from the OS menu.
+
+---
+
+## CRITICAL ADDENDUM: OPS ARE THE PRODUCT
+
+**The Real Goal:** Fondu isn't just moving directories - it's enabling **user-scriptable, reusable ops** that game developers can compose.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ THE OPS ECOSYSTEM                                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  projects/user/                  projects/fuzz-op/                          │
+│  ├── ops/                        ├── manager/                               │
+│  │   ├── create_profile.+x  ────┼─> │ uses user ops via PAL scripts         │
+│  │   ├── auth_user.+x           │   │                                        │
+│  │   └── get_session.+x         │   │   # In fuzz-op PAL script:             │
+│  └── project.pdl                │   │   OP user::create_profile "player1"    │
+│                                 │   │   OP user::auth_user "player1"         │
+│  (Reusable "muscle" ops)         │   └────────────────────────────────────────┘
+│                                  │
+│  Any project can expose ops →    │
+│  Other projects can call them →  │
+│  Fondu makes them available →    │
+│  Users script compositions →     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**KISS Principle:** Fondu automates what humans do manually:
+1. Move project between states (dev → production → archive)
+2. Register ops so other projects can call them
+3. Compile only what's needed
+4. Keep everything modular and swappable
+
+**Why C from the start:** Fondu itself should be a modular C utility with swappable ops - dogfooding the architecture it deploys.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ UNIFIED PROJECT MODEL                                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  projects/                                                                  │
+│  ├── fuzz-op/          # Game project (launched from loader menu)          │
+│  ├── op-ed/            # Editor project (launched from OS menu button)     │
+│  ├── user/             # User profile project (launched from OS menu)      │
+│  │   └── ops/          # EXPOSED OPS: create_profile, auth_user, etc.      │
+│  ├── lsr/              # Future sim project                                │
+│  └── trunk/            # Archived projects (source only, not compiled)     │
+│       └── legacy_archive/                                                   │
+│                                                                             │
+│  pieces/apps/                                                               │
+│  ├── installed/        # Fondu deployment target (NON-EDITABLE)            │
+│  │   ├── fuzz-op/      # Same project, compiled & locked                   │
+│  │   └── op-ed/        # Same project, compiled & locked                   │
+│  └── player_app/       # SYSTEM ONLY (unified input buffer - special case) │
+│                                                                             │
+│  LAUNCH POINTS (all load projects):                                         │
+│  ├── OS Menu Button → pieces/apps/op-ed/ → project.pdl → entry_layout      │
+│  ├── Loader Menu    → projects/fuzz-op/ → project.pdl → entry_layout       │
+│  └── Fondu App      → pieces/apps/installed/fuzz-op/ → app.pdl → layout    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**The Rule:** If it has a `project.pdl` (or `app.pdl` after Fondu), it's a project. Location determines launch method, not type.
+
+---
+
+## PART 1: FONDU SCOPE & PRIORITIES
+
+### 1.1 What Fondu Actually Is
+
+**Simple Definition:** Fondu is a **project lifecycle manager** that moves projects between three states:
+
+```
+┌──────────────┐      ┌──────────────┐      ┌──────────────┐
+│   ACTIVE     │      │   ARCHIVED   │      │  INSTALLED   │
+│  projects/   │─────>│projects/trunk│─────>│pieces/apps/  │
+│              │      │              │      │installed/    │
+│ - Editable   │      │ - Source     │      │ - Compiled   │
+│ - In compile │      │ - Not built  │      │ - Read-only  │
+│ - Dev-facing │      │ - Backup     │      │ - User-facing│
+└──────────────┘      └──────────────┘      └──────────────┘
+       ↑                      ↑                      ↑
+       │                      │                      │
+       └──────────────────────┴──────────────────────┘
+                    Fondu moves projects between states
+```
+
+### 1.2 Priority Scope (In Order)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PRIORITY 1: PROJECT LIFECYCLE BASICS + OPS REGISTRY (Do this first)        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  [ ] 1. Create directory structure                                          │
+│      - projects/trunk/ (for archived projects)                              │
+│      - pieces/apps/installed/ (for deployed projects)                       │
+│      - pieces/os/ops_registry/ (for exposed ops)                            │
+│                                                                             │
+│  [ ] 2. Create "manifest" system                                            │
+│      - pieces/os/compiled_projects.txt (list of projects to compile)        │
+│      - pieces/os/ops_registry/<project_id>.txt (list of ops per project)    │
+│      - Fondu adds/removes entries from both lists                           │
+│                                                                             │
+│  [ ] 3. Create fondu.c (C from start - modular, op-swappable)               │
+│      - fondu --archive <project>  → moves to trunk/, unregisters ops        │
+│      - fondu --restore <project>  → moves back to projects/, recompiles     │
+│      - fondu --install <project>  → copies to installed/, registers ops     │
+│      - fondu --uninstall <app>    → removes from installed/, unregisters    │
+│      - fondu --list               → shows all projects and their state      │
+│      - fondu --list-ops           → shows all available ops                │
+│                                                                             │
+│  GOAL: Automated tool for users to manage projects + discover callable ops  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PRIORITY 2: AUTOMATED COMPILATION + OP DISCOVERY (Do this second)          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  [ ] 1. Fondu reads compiled_projects.txt                                   │
+│  [ ] 2. For each project in list:                                           │
+│      - Copy to temp build directory                                         │
+│      - Run make/compile                                                     │
+│      - Place binaries in pieces/apps/installed/<project>/+x/                │
+│      - Scan ops/ directory, register each op in ops_registry/               │
+│  [ ] 3. Update app_list.txt registry                                        │
+│  [ ] 4. Generate ops catalog (human-readable list of callable ops)          │
+│                                                                             │
+│  GOAL: Users can `fondu --list-ops` to see what's available to script       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PRIORITY 3: REMOTE TRUNK & VERSIONING (Future - don't do yet)              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  [ ] Remote trunk mounting (pull projects from network/Git)                 │
+│  [ ] Version tracking and rollback                                          │
+│  [ ] Dependency resolution                                                  │
+│  [ ] App store UI                                                           │
+│                                                                             │
+│  GOAL: Package manager features (only after Phase 1-2 proven)               │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 1.3 What Fondu Is NOT (Yet)
+
+- NOT a package manager with dependency resolution
+- NOT a remote repository system
+- NOT a versioning system
+- NOT an app store (yet)
+
+**Fondu Phase 1 IS:** A modular C utility that:
+1. Moves projects between states (active ↔ archived ↔ installed)
+2. Maintains compile manifest (compiled_projects.txt)
+3. Registers exposed ops (ops_registry/)
+4. Automates deployment for end users (not just devs)
+
+**Why C from Start:** Fondu dogfoods the architecture - it's a modular C utility with swappable ops, just like the projects it deploys.
+
+---
+
+## PART 2: THE "USER" QUESTION
+
+### 2.1 What Is "user" Supposed To Be?
+
+**Current State:** `pieces/apps/user/` exists but is ambiguous.
+
+**Clarified Answer:** `user` should be a **PROJECT** that exposes **user-management ops** for other projects to call.
+
+```
+projects/user/
+├── project.pdl              # Defines user project
+│   ├── project_id = user
+│   ├── entry_layout = projects/user/layouts/user.chtpm
+│   └── exposes_ops = true   # Marks this project as an op provider
+├── ops/                     # EXPOSED OPS (callable by other projects)
+│   ├── +x/
+│   │   ├── create_profile.+x
+│   │   ├── auth_user.+x
+│   │   ├── get_session.+x
+│   │   └── update_profile.+x
+│   └── ops_manifest.txt     # Lists exposed ops (for registry)
+├── layouts/
+│   └── user.chtpm           # User profile UI
+├── manager/
+│   └── +x/user_manager.+x   # User session logic (may call ops too)
+└── pieces/
+    ├── profiles/            # User profiles
+    └── session/             # Session state
+```
+
+**Launch method:** OS menu button → loads `projects/user/` via `project.pdl`
+
+**Key Point:** Game developers can script against user ops:
+```pal
+# In fuzz-op PAL script:
+OP user::create_profile "player1"
+OP user::auth_user "player1"
+OP user::get_session "player1" > session_id
+```
+
+### 2.2 Does "user" Use the Same Player App?
+
+**Answer:** YES - `pieces/apps/player_app/` is the **unified input buffer** for ALL projects.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ INPUT FLOW (All Projects)                                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Keyboard → pieces/keyboard/history.txt                                     │
+│       ↓                                                                     │
+│  Parser reads → injects into active project buffer                          │
+│       ↓                                                                     │
+│  pieces/apps/player_app/history.txt  ← UNIVERSAL INPUT BUFFER               │
+│       ↓                                                                     │
+│  Active project manager polls this buffer                                   │
+│       ↓                                                                     │
+│  - user_manager.c (if user project active)                                  │
+│  - fuzz-op_manager.c (if fuzz-op active)                                    │
+│  - op-ed_manager.c (if op-ed active)                                        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Point:** `player_app` is NOT a project - it's SYSTEM INFRASTRUCTURE (like `keyboard/`, `display/`, `chtpm/`). Every project uses it as the shared input queue.
+
+### 2.3 Does "op-based" Matter for user?
+
+**Answer:** YES - `user` SHOULD be op-based, because its ops are the reusable "muscle" that game devs script against.
+
+**The Pattern:**
+```
+projects/user/ops/+x/
+├── create_profile.+x    # Standalone op (fork/exec/waitpid pattern)
+├── auth_user.+x         # Standalone op
+└── get_session.+x       # Standalone op
+
+projects/user/manager/+x/
+└── user_manager.+x      # Orchestrates ops, handles UI state
+```
+
+**Why this matters:**
+- Game projects call `user::create_profile` via PAL scripts
+- Fondu registers these ops in `ops_registry/user.txt`
+- Users can swap user ops without changing game code
+- Everything is modular and testable in isolation
+
+---
+
+## PART 3: IMPLEMENTATION CHECKLIST
+
+### Phase 1: Directory Structure + Ops Registry
+
+```
+[ ] 1. Create directories:
+    - mkdir projects/trunk/
+    - mkdir projects/trunk/legacy_archive/
+    - mkdir pieces/apps/installed/
+    - mkdir pieces/os/ops_registry/
+
+[ ] 2. Create manifest files:
+    - touch pieces/os/compiled_projects.txt
+    - touch pieces/os/ops_registry/README.txt (explain format)
+
+[ ] 3. Write fondu.c (modular C utility):
+    - main.c with command parsing (--archive, --restore, --install, --uninstall, --list, --list-ops)
+    - ops/ subdirectory for fondu's own ops (dogfooding)
+    - registry.c for ops_registry management
+    - compile.c for build automation
+
+[ ] 4. Define ops_manifest.txt format:
+    - Each project with ops has: projects/<id>/ops/ops_manifest.txt
+    - Lists op_name, description, args format
+
+[ ] 5. Test manually:
+    - Create test project with dummy ops
+    - fondu --install test_project
+    - Verify ops registered in ops_registry/
+    - fondu --list-ops (should show test_project ops)
+    - fondu --uninstall test_project
+    - Verify ops unregistered
+```
+
+### Phase 2: Automated Compilation + Ops Catalog
+
+```
+[ ] 1. Update compile_all.sh to read compiled_projects.txt
+[ ] 2. Only compile projects in the list
+[ ] 3. Fondu --install triggers:
+    - Compile project
+    - Deploy to pieces/apps/installed/
+    - Scan ops/ops_manifest.txt
+    - Register each op in pieces/os/ops_registry/<project>.txt
+    - Update app_list.txt
+[ ] 4. Generate human-readable ops catalog:
+    - pieces/os/ops_catalog.txt (all available ops, grouped by project)
+    - Include: op_name, project, description, args
+[ ] 5. Deployed projects are chmod 555 (read-only)
+```
+
+### Phase 3: Legacy Cleanup
+
+```
+[ ] 1. Move fuzzpet_app → projects/trunk/legacy_archive/
+[ ] 2. Move editor → projects/trunk/legacy_archive/
+[ ] 3. Move gl_os → projects/trunk/legacy_archive/
+[ ] 4. Update documentation references
+```
+
+### Phase 4: User Project (Op-Based)
+
+```
+[ ] 1. Create projects/user/ structure:
+    - project.pdl with exposes_ops = true
+    - ops/+x/ with create_profile.+x, auth_user.+x, etc.
+    - ops/ops_manifest.txt listing exposed ops
+    - manager/+x/user_manager.+x (orchestrator)
+
+[ ] 2. Implement user ops (CPU-safe pattern):
+    - fork/exec/waitpid for each op
+    - setpgid(0, 0) for process groups
+    - Signal handlers (SIGINT, SIGTERM)
+
+[ ] 3. Register user ops:
+    - Run: ./fondu --install user
+    - Verify ops appear in ops_registry/user.txt
+
+[ ] 4. Test PAL script integration:
+    - Create test PAL script that calls user::create_profile
+    - Verify op executes correctly
+
+[ ] 5. Add OS menu button to launch user project
+```
+
+---
+
+## PART 4: MANIFEST FILE FORMATS
+
+### pieces/os/compiled_projects.txt
+
+```
+# Compiled Projects List
+# Fondu reads this to determine which projects to build
+# Format: One project_id per line
+# Lines starting with # are comments
+
+# Active projects (compiled on every build)
+op-ed
+fuzz-op
+user
+
+# Archived projects (NOT compiled - in trunk/)
+# To restore: run fondu --restore <project>
+# legacy_project_1
+# legacy_project_2
+```
+
+### pieces/os/ops_registry/<project_id>.txt
+
+```
+# Ops Registry: <project_id>
+# Auto-generated by fondu --install <project_id>
+# Format: op_name|description|args_format
+
+create_profile|Creates a new user profile|username:string
+auth_user|Authenticates a user session|username:string
+get_session|Gets active session data|session_id:string
+update_profile|Updates user profile fields|username:string,field:string,value:string
+```
+
+### pieces/os/ops_catalog.txt
+
+```
+# Ops Catalog (Human-Readable)
+# Auto-generated by fondu --install
+# Use: fondu --list-ops to view this
+
+=== user ===
+  create_profile    - Creates a new user profile
+                      Args: username (string)
+  
+  auth_user         - Authenticates a user session
+                      Args: username (string)
+  
+  get_session       - Gets active session data
+                      Args: session_id (string)
+
+=== fuzz-op ===
+  move_entity       - Moves an entity on the map
+                      Args: entity_id, dx, dy
+  
+  place_tile        - Places a tile on the map
+                      Args: x, y, tile_id
+```
+
+### projects/<id>/ops/ops_manifest.txt
+
+```
+# Ops Manifest for <project_id>
+# Defines exposed ops for this project
+# Format: op_name|description|args_format
+
+create_profile|Creates a new user profile|username:string
+auth_user|Authenticates a user session|username:string
+get_session|Gets active session data|session_id:string
+```
+
+### pieces/os/app_list.txt
+
+```
+# Registered Apps (for OS menu)
+# Fondu updates this when installing projects
+op-ed
+player_app
+playrm
+user
+# Auto-added by Fondu:
+# fuzz-op (installed)
+```
+
+---
+
+## PART 5: FONDU COMMAND REFERENCE
+
+### Basic Usage
+
+```bash
+# Show all projects and their current state
+./fondu --list
+
+# Output example:
+# ACTIVE:     fuzz-op, op-ed, user, lsr
+# ARCHIVED:   (none)
+# INSTALLED:  fuzz-op (production)
+
+# Show all available ops (from ops_catalog.txt)
+./fondu --list-ops
+
+# Output example:
+# === user ===
+#   create_profile    - Creates a new user profile
+#   auth_user         - Authenticates a user session
+# 
+# === fuzz-op ===
+#   move_entity       - Moves an entity on the map
+#   place_tile        - Places a tile on the map
+
+# Move project to trunk (source only, not compiled)
+./fondu --archive lsr
+
+# Restore project from trunk to active
+./fondu --restore lsr
+
+# Install project as read-only "app" + register ops
+./fondu --install fuzz-op
+
+# Uninstall an installed app + unregister ops
+./fondu --uninstall fuzz-op
+```
+
+### What Each Command Does
+
+| Command | Source | Destination | Compile? | Register Ops? | Editable? |
+|---------|--------|-------------|----------|---------------|-----------|
+| `--archive` | projects/ | projects/trunk/ | No | No | Yes (source) |
+| `--restore` | projects/trunk/ | projects/ | Yes | Yes | Yes |
+| `--install` | projects/ | pieces/apps/installed/ | Yes | Yes | No |
+| `--uninstall` | pieces/apps/installed/ | (deleted) | N/A | No | N/A |
+| `--list` | N/A | stdout | No | No | N/A |
+| `--list-ops` | ops_catalog.txt | stdout | No | No | N/A |
+
+---
+
+## PART 6: OPEN QUESTIONS & DECISIONS
+
+### 6.1 Decisions Made
+
+| Question | Decision |
+|----------|----------|
+| APP vs. PROJECT? | Everything is a PROJECT |
+| Where does user live? | projects/user/ (consistent) |
+| Does user use player_app? | Yes (shared input buffer) |
+| Is user op-based? | **YES** - ops are reusable "muscle" for game devs |
+| Fondu implementation? | **C from start** - modular, op-swappable (dogfooding) |
+| Fondu scope? | Phase 1: lifecycle + ops registry; Phase 2: auto-compile + catalog |
+| Manifest format? | Simple text lists (compiled_projects.txt, ops_registry/*.txt) |
+| Ops discovery? | `fondu --list-ops` reads ops_catalog.txt |
+
+### 6.2 Remaining Questions
+
+1. **Should OS menu buttons read from app_list.txt automatically?**
+   - Current: Buttons hardcoded in os.chtpm
+   - Future: Dynamic menu from app_list.txt
+
+2. **Should installed projects have a different project.pdl format?**
+   - Option A: Same format, just different location
+   - Option B: Convert to app.pdl with extra metadata
+   - **Decision: Option A** (simpler, consistent)
+
+3. **Should Fondu have its own ops? (dogfooding)**
+   - Example: `fondu_ops/register_project.c`, `fondu_ops/unregister_project.c`
+   - **Decision: Yes** - makes Fondu modular and extensible
+
+---
+
+## PART 7: SUMMARY
+
+### The Clarified Vision
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ONE MODEL TO RULE THEM ALL                                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  • Everything is a PROJECT                                                  │
+│  • Location determines launch method, not type                              │
+│  • Projects expose OPS → other projects call them via PAL scripts           │
+│  • Fondu manages: Active ↔ Archived ↔ Installed                             │
+│  • Fondu registers: ops_registry/ (discoverable via --list-ops)             │
+│  • player_app is SYSTEM, not a project (shared input buffer)                │
+│  • Fondu is C from start (modular, op-swappable, dogfooding the arch)       │
+│                                                                             │
+│  THE KISS PRINCIPLE:                                                        │
+│  "Automate what humans do manually, keep everything swappable"              │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Immediate Next Actions
+
+1. **Create directory structure** (5 min)
+   - `projects/trunk/`, `pieces/apps/installed/`, `pieces/os/ops_registry/`
+
+2. **Create manifest templates** (5 min)
+   - `pieces/os/compiled_projects.txt`
+   - `pieces/os/ops_registry/README.txt`
+
+3. **Write fondu.c skeleton** (1-2 hours)
+   - Command parsing (--archive, --restore, --install, --uninstall, --list, --list-ops)
+   - File operations (move, copy, delete)
+   - Registry management (add/remove ops)
+
+4. **Test with dummy project** (30 min)
+   - Create test project with fake ops
+   - Run through full lifecycle
+
+5. **Implement user project ops** (next session)
+   - `create_profile`, `auth_user`, `get_session`
+   - Register via Fondu
+   - Test PAL script integration
+
+### Confidence Level
+
+**VERY HIGH** - This model is:
+- Simpler (one concept: projects with ops)
+- More consistent (everything follows same pattern)
+- User-automatable (not just dev tooling)
+- Modular by design (C from start, op-swappable)
+- Dogfooding the architecture (Fondu itself is modular C)
+
+---
+
+**File Location:** This doc supersedes `#.fondu-ap1.txt` for scope/priorities. Keep both for reference, but follow this for implementation.
+
+**Key Insight:** Ops are the product. Fondu just makes them discoverable and swappable.

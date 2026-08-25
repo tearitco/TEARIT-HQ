@@ -1,0 +1,6 @@
+🕹️
+
+how would it know the original tokens from the teacher model ? it doesn't. 
+🕹️
+we need to extract them in lamma c
+but cant it make weights on the fly , or prompt specifically for associations it knows/wants the weights to mach?🕹️

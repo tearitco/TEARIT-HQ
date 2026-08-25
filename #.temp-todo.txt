@@ -1,0 +1,41 @@
+📅️july18  : 
+
+
+
+
+
+1. you are obviously handling login and user sessions backwards
+and were getting 2 a point where its starting 2 bite u in the ass. 
+thats ok, cuz what would u login 2 otherwise? no data strux etc.
+ but now its time 2 fix it
+tpmos should have been like this   : login before doing ANYTHING , then session/login is all saved
+somewhere 
+even sub programs that want a login, would skip the login screen if u were already logged in
+and login should only be one screen
+(forums seems to currently be confusing that , but that kind of refactor is ez
+i even think refactoring tpmos is ez if u actually had an app that used login data
+which u didn't but as we do forum/chat/chain u will so dont sweat it but it will suggest
+itself more and more if u keep doing that , so just handle it
+
+
+2.mutaclsym, egg-pal, wsr-pal , zoo, editor ? probably all share "ops"
+this would be ok, if they were 'git versionined some how deep in the computers root' 
+(and old versions literally saved that could be used, ie v-1.0 or something at least test this?)
+(and have a system in palce?)
+stop being a degenerate and we can actually ship a platform sooner 
+
+gitlet fondu connection? 
+
+(fondu in tpmos is probably vesgital
+
+<we really need to stop goofing around, and figure out a solution for this>
+
+
+3. image editor (to horizontal flip, it means were in a good place with arch)
+
+4. tree view of fs. linux doesnt have this (mac/win does; i miss it )
+(dir list .+x has it but its a bit cluttered and not 'actionable')
+(just do it in a "desk-pal" window)
+
+5. can we drop pal projects into tpmos and expect them 2 work. y not? and vice versa
+(this is similiar 2 what x0 pet was btw)

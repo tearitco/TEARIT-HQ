@@ -1,0 +1,13 @@
+# clean_pet.pal - real pal-native rebuild of ops/clean_pet.c's own core
+# mutation (reset poop_count to 0). Same active-target indirection as
+# toggle_sleep.pal (xyzos-standards.txt sec.21.2) - the dispatcher copies
+# the selected pet's poop_count into pieces/system/active_target.txt
+# first, this script always writes that same fixed path. Unconditional
+# reset, no read-then-branch even needed - the simplest case of the
+# whole pattern.
+
+li x12, 0
+li x15, 7
+ecall "pieces/system/active_target.txt" "poop_count"
+
+halt

@@ -1,0 +1,7 @@
+type=capital
+owner=bravo
+credits=3
+units=0
+pos_x=22
+pos_y=2
+z_level=0

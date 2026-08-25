@@ -1,0 +1,12 @@
+project=Untitled
+tempo=120
+playhead=2178
+track=0
+octave=4
+loop_end=3840
+n_tracks=4
+notes=13
+track0 name=Inst 1 vol=0.780 pan=0.000 mute=0 solo=0 armed=1 eq=0.50/0.50 rev=0.08 dist=0.00 peq=1 prev=0 pdist=1
+track1 name=Bass vol=0.780 pan=0.000 mute=0 solo=0 armed=0 eq=0.50/0.50 rev=0.08 dist=0.15 peq=1 prev=0 pdist=1
+track2 name=Pads vol=0.780 pan=0.000 mute=0 solo=0 armed=0 eq=0.50/0.50 rev=0.25 dist=0.00 peq=1 prev=1 pdist=0
+track3 name=Arp vol=0.780 pan=0.000 mute=0 solo=0 armed=0 eq=0.50/0.50 rev=0.08 dist=0.00 peq=1 prev=0 pdist=0

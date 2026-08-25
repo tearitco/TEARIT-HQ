@@ -1,0 +1,18 @@
+
+
+WXYZ = 
+
+i just want 1 simple note / warning here. 
+
+haiku can do stuff if u set it up and make the stuff really tiny
+that u were going 2 to by hand anyways
+
+most of ur infra is built, and doing stuff even with sonnet / opus is gonna break it 
+
+u dont need that u could do it by hand
+if anything , run over the code u wanna edit , get an 'explanation or documentation fill in for that project'
+
+then modularize it more if need be but dont change functionality. till u can see it with ur eyes
+
+(i recommend u try 2 push thru 2 rmmv style stuff first , and dont push for more game mex till u do this btw
+or youll just have 2 refactor) 🔍️

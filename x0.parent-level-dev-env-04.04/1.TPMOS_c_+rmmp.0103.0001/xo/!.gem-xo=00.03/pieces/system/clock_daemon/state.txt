@@ -1,0 +1,4 @@
+turn=0
+time=08:00:00
+mode=turn
+tick_rate=1

@@ -1,0 +1,5 @@
+name=Benzoic Acid
+formula=C6H5COOH
+type=Aromatic Carboxylic Acid
+groups=-COOH
+relevance=Preservative; tests aromatic acid properties and salts.

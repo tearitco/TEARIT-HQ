@@ -1,0 +1,12 @@
+id=u_s0_soldier_02
+seat=0
+role=Soldier
+x=7
+y=0
+hp=22
+max_hp=22
+atk=10
+def=3
+alive=1
+moved=0
+acted=0

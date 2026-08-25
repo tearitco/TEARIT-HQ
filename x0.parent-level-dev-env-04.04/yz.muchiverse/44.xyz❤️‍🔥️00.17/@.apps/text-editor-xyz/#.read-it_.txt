@@ -1,0 +1,21 @@
+
+
+-----------------------------------------------------------------
+🗓️
+your here cuz u have FAQ questions about the basic arch of an app and its widgets and pipelines . read the code : 
+
+document below : 
+
+📜️
+📅️aug1: 
+
+
+already i noticed the app has a sessions/ dir ? cool
+& test-harn/
+❔️
+does it have a button.sh? yup. (PERFECT)
+but would obv still run from ./START_BUTTON
+
+
+
+📜️

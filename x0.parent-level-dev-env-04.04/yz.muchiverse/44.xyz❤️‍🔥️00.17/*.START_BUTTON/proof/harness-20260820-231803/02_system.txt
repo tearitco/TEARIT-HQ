@@ -1,0 +1,61 @@
+╔═════════════════════════════════════════════════════════╗
+║   S Y S T E M   P R O G R A M S                         ║
+╠═════════════════════════════════════════════════════════╣
+║  Select an entry below (numbered methods).              ║
+║                                                         ║
+║  Pick a category.                                       ║
+╚═════════════════════════════════════════════════════════╝
+
+[>] 1. [$.crypts]
+[ ] 2. [%.harnesses/event-editor+desktop]
+[ ] 3. [%.harnesses/file-menu+editor]
+[ ] 4. [%.harnesses/file-menu+mutaclysm]
+[ ] 5. [%.harnesses/install-xyzos]
+[ ] 6. [%.harnesses/iqabod-loop]
+[ ] 7. [%.harnesses/map-picker+mutaclysm]
+[ ] 8. [%.harnesses/proc-monitor]
+[ ] 9. [%.harnesses/tile-picker+mutaclysm]
+[ ] 10. [&.hq-apps/chat-hai]
+[ ] 11. [*.monads/*.book-stack]
+[ ] 12. [*.monads/*.hard-vvar-agent-Q0000]
+[ ] 13. [*.monads/*.muchi-pet]
+[ ] 14. [+.TSOTS-ALPHA-OMEGA/TSOTS-OG+01.00]
+[ ] 15. [0.user-pal👤️/00.login-signup]
+[ ] 16. [0.user-pal👤️/01.avatar-creation👤️]
+[ ] 17. [002.zoo__🦓️🐒️0000/02.z00-INK.lo.sur]PEN🏟️]
+[ ] 18. [007-goldeye+01.00]
+[ ] 19. [01.muchi-pals-🥚️-13.01]
+[ ] 20. [014.wsr-pal💸️📌️+2]
+[ ] 21. [041.pal-chain⛓️]
+[ ] 22. [041.pal-forum👥️]
+[ ] 23. [044.pal-chat-irc👥️+2]
+[ ] 24. [045.muchi-pal-agent🤖️+1++]
+[ ] 25. [101.drag-drop-test=ON🀄️]
+[ ] 26. [101.ledger-player-npc-simple+3]
+[ ] 27. [101.lpns+map+4]
+[ ] 28. [101.mutaclsym🧟‍♂️️+18.0G]
+[ ] 29. [101.mutaclsym🧟‍♂️️19.00]
+[ ] 30. [102.agy-txt]
+[ ] 31. [102.editor-📄️00.00]
+[ ] 32. [103.media-studio/103.3d=blender-clone]
+[ ] 33. [103.media-studio/103.daw]
+[ ] 34. [103.media-studio/103.img-editor]
+[ ] 35. [103.media-studio/103.vid-edit]
+[ ] 36. [150.gl-canvas]
+[ ] 37. [151.screen-rec+01.02]
+[ ] 38. [200.glut-craft]
+[ ] 39. [201.dwarf-fortress]
+[ ] 40. [201.rpg-maker-clone]
+[ ] 41. [202.snes-civ]
+[ ] 42. [203.gb-pokemon]
+[ ] 43. [204.sw-battlefront]
+[ ] 44. [205.ttg-tactics]
+[ ] 45. [209.sp-irl]
+[ ] 46. [300.rpg-xyz]
+[ ] 47. [300.rtp-xyz]
+[ ] 48. [Refresh list]
+[ ] 49. [Back to categories]
+ Enter = run in this terminal | Esc/Back returns
+
++=========================================================+
+Nav > _

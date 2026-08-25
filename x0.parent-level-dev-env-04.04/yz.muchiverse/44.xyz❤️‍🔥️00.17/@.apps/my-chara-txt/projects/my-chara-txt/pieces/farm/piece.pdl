@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | farm
+
+METHOD       | Plot 0: Growing (3 days left)       | NOOP
+METHOD       | Plot 1: Empty (plant wheat/corn)    | PLANT_CHOOSE:1
+METHOD       | Plot 2: Empty (plant wheat/corn)    | PLANT_CHOOSE:2

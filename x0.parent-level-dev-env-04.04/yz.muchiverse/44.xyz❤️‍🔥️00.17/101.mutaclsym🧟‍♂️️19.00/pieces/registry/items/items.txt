@@ -1,0 +1,12 @@
+# id|name|category|glyph|weight|power|unicode
+apple|Apple|food|a|1|15|🍎
+bread|Bread|food|b|1|20|🍞
+water|Water|drink|w|1|25|💧
+jerky|Jerky|food|j|1|10|🥩
+soup|Soup|drink|s|1|30|🍵
+sword|Sword|weapon|/|3|8|🗡️
+axe|Axe|weapon|axe|4|12|🪓
+shield|Shield|armor|]|5|5|🛡️
+rock|Rock|misc|r|2|0|🪨
+scrap|Scrap Metal|=|1|1|0|⚙️
+rag|Rag|misc|~|1|0|🧶

@@ -1,0 +1,17 @@
+# PDLO for a generic label UI piece (v1.0)
+
+SECTION      | KEY             | TYPE
+-------------------------------------------------------------
+META         | piece_id        | ui_components/label
+META         | version         | 1.0
+META         | determinism     | strict
+
+STATE        | label           | string
+STATE        | x               | int
+STATE        | y               | int
+STATE        | width           | int
+STATE        | height          | int
+
+METHOD       | set_label       | void | c:plugins/+x/set_label.+x
+
+EVENT_OUT    | label_updated   | void

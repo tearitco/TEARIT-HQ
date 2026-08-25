@@ -1,0 +1,11 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | book-stack
+STATE        | menu_stay_open     | 1
+STATE        | grab_pointer       | 1
+STATE        | grab_keyboard      | 1
+STATE        | grab_pointer_while_stay_open | 1
+METHOD       | Read                 | sh -c 'export PACKAGE_DIR="$0"; H="$1"; READER_PATH=$(find "$H" -path "*monads/*book-stack/pieces/reader/event_pkg/pages/page_1/event.pal" 2>/dev/null | head -1); MUTA_ROOT="$(find "$H" -maxdepth 1 -name "101.mutaclsym🧟‍♂️️*" -type d 2>/dev/null | head -1)"; cd "$MUTA_ROOT" && exec "$MUTA_ROOT/system/prisc+x" "$READER_PATH"'
+METHOD       | Dir                  | sh -c 'exec xdg-open "$0"'
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void

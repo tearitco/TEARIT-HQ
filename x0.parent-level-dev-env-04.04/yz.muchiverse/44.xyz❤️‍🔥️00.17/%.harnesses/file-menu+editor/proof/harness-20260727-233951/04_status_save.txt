@@ -1,0 +1,4 @@
+last_cmd=IDLE
+result=ok
+message=inbox empty or only blanks
+at=1785220792

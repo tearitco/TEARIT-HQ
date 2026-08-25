@@ -1,0 +1,103 @@
+wsr-pal Windows port notes (2026-08-06)
+================================================================================
+Reference: 1.TPMOS_c_+rmmp.0103.0001 (button.ps1, win_compat.h, freeglut flags)
+and house bible §9 "Preventing Cross-Platform Compatibility Drift".
+
+GOAL
+----
+Linux remains canonical (button.sh + build.sh). Windows adds button.ps1 +
+scripts/*.ps1 and surgical #ifdef _WIN32 in C. Do NOT refactor POSIX logic
+"clean" — wrap only.
+
+ENTRY
+-----
+  Windows:  .\button.ps1 compile | run | kill | check | tick-all | help
+  Linux:    ./button.sh  <same actions>
+
+Toolchain (same as 1.TPMOS install_deps.ps1):
+  MSYS2 MinGW64: gcc, freeglut
+  PATH: C:\msys64\mingw64\bin
+  pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-freeglut
+
+WHAT WAS PORTED
+---------------
+Scripts:
+  button.ps1
+  scripts/build.ps1, ensure_entities.ps1, tick_all.ps1, active_corp.ps1
+  pieces/os/kill_all.ps1
+
+System (surgical wraps):
+  orchestrator.c   CreateProcess + Sleep loop; Linux fork/exec kept
+  keyboard_input.c conio _getch (TPMOS pattern); Linux termios kept
+  renderer.c       usleep/getcwd
+  gl_mirror.c      GLUT_DISABLE_ATEXIT_HACK + freeglut; no SIGHUP on Win
+  chtpm_rgb_render.c  temp path + mkdir
+  prisc+x.c        already partial; temp path + popen aliases
+  chtpm_parser_pal.c already had CreateProcess/_spawn paths
+
+Ops:
+  connect_op.c     system(curl) on Windows
+  corp_ipo.c       _mkdir + pure-C corp count
+  corp_decide / gov_decide  GetTempPath instead of /tmp
+  wsr_menu_input   pure-C count_corps; dual shell for tick/ops
+  wsr_compose_frame pure-C sorted get_nth_corp (no ls|sed)
+  wsr_wizard_input dual cmd for IPO
+
+OPTIONAL / NOT REQUIRED FOR CORE PLAY
+-------------------------------------
+  emoji_gen_atlas  needs FreeType (ft2build.h) — install
+                   mingw-w64-x86_64-freetype if you want runtime emoji gen.
+  ensure_entities  only seeds from Mar$.$treetRace.../generated if present;
+                   this tree already has projects/wsr-pal/pieces/* populated.
+
+KNOWN WINDOWS LIMITS (from 1.TPMOS WINDOWS-RUN-GUIDE)
+-----------------------------------------------------
+  - Prefer native Windows console over mintty for keyboard_input arrows
+  - .+x runs via cmd /c "path\to\bin.+x" (or register extension)
+  - Ctrl+C cleanup uses kill_all.ps1 + tracked PIDs (no process groups)
+
+LIVE FIXES FOUND ON FIRST Windows run (2026-08-06)
+--------------------------------------------------
+1) prisc+x spawn failed (debug: handle=0xffffffff):
+   - CreateProcessA cannot open absolute paths with emoji folder names
+   - MinGW binaries are name.exe while layout says system/prisc+x
+   - Fix: win_spawn uses CreateProcessW + relative path + .exe resolve
+
+2) Frames never updated / Active:(none):
+   - PRISC_PROJECT_ROOT absolute Unicode path → fopen fails
+   - MinGW opendir/readdir returns 0 entries on OneDrive paths
+   - Fix: PRISC_PROJECT_ROOT="." (CWD is project); list dirs with _findfirst
+
+3) After "Ready. Press Ctrl+C":
+   - Look for freeglut window "wsr-pal RGB mirror"
+   - Terminal renderer may also scroll frames if history mode on
+   - If blank: .\button.ps1 kill then re-run; check debug.txt for win_spawn
+
+4) Windows rename() does NOT overwrite (unlike POSIX):
+   - write_file_atomic in chtpm_rgb_render must remove() dest first
+   - Without this, rgb_frame.raw freezes at first frame → GL never updates
+
+5) button.ps1 run sets SKIP_ORCH_COMPILE=1 so orchestrator does not
+   recompile everything on every launch (30-60s stall looked like hang).
+
+6) button.ps1 kill must NOT access Process.Path (hangs). Name-only + taskkill.
+
+7) Terminal "fast scroll / tear" (history mode ON by default):
+   - TPMOS: pieces/display/state.txt "off" => in-place clear redraw
+     (Windows: Console API clear in windows_renderer.c; Linux: ANSI)
+   - History ON still scrolls frames intentionally; file history is
+     frame_history.txt / session_frame_history (K3).
+   - Windows-specific: write_crlf + CRLF frames can double CR - normalize
+     if terminal UX is prioritized. GL path is independent and OK.
+   - Full port notes: ../../windows-house-guide.md (house root).
+
+VERIFY
+------
+  .\button.ps1 compile
+  .\button.ps1 check
+  .\button.ps1 tick-all 1
+  $env:NO_GL=1; .\button.ps1 run     # headless-ish (still starts processes)
+  .\button.ps1 kill
+
+GL link flags (build.ps1 / orchestrator Windows path):
+  -lopengl32 -lglu32 -lfreeglut -lwinmm -lgdi32 -luser32

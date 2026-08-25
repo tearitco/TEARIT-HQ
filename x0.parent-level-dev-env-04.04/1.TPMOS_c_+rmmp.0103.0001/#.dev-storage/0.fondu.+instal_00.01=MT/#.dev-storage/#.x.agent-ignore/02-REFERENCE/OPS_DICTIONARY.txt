@@ -1,0 +1,543 @@
+================================================================================
+TPMOS OPS DICTIONARY - Complete Reference
+================================================================================
+Date: April 1, 2026
+Version: 1.0
+
+This is THE living dictionary of all ops (operations) in TPMOS.
+Add new ops here as they are created.
+
+================================================================================
+BEST PRACTICE: CENTRALIZED OPS DIRECTORY
+================================================================================
+
+WHERE TO PUT OPS:
+─────────────────
+All ops for a project should live in ONE central location:
+
+  projects/<project_id>/ops/
+  ├── +x/                    # Compiled binaries
+  │   ├── op_one.+x
+  │   ├── op_two.+x
+  │   └── op_three.+x
+  ├── src/                   # Source code (optional, can be in root)
+  │   ├── op_one.c
+  │   ├── op_two.c
+  │   └── op_three.c
+  └── ops_manifest.txt       # Registry of all ops (REQUIRED for Fondu)
+
+This is the canonical structure. Don't scatter ops in traits/, plugins/, etc.
+
+
+ops_manifest.txt FORMAT:
+────────────────────────
+# Comment lines start with #
+# Format: op_name|description|args_format
+
+create_profile|Creates a new user profile|project_path:string,username:string
+auth_user|Authenticates a user session|project_path:string,username:string
+get_session|Get current session data|project_path:string,username:string
+
+
+PROJECT.PDL REGISTRATION:
+─────────────────────────
+In your project.pdl, declare that your project exposes ops:
+
+  [META]
+  project_id = user
+  exposes_ops = true
+  entry_layout = projects/user/layouts/user.chtpm
+  
+  [OPS]
+  ops_dir = projects/user/ops/
+  manifest = projects/user/ops/ops_manifest.txt
+
+
+FONDU INSTALLATION:
+───────────────────
+When you run: ./fondu --install <project>
+
+Fondu will:
+  1. Read project.pdl → finds exposes_ops = true
+  2. Read ops/ops_manifest.txt → gets list of ops
+  3. Copy ops/+x/*.+x to pieces/apps/installed/<project>/ops/+x/
+  4. Register ops in pieces/os/ops_registry/<project>.txt
+  5. Update pieces/os/ops_catalog.txt
+
+Now other projects can call your ops via PAL:
+  OP user::create_profile "player1"
+
+
+EXTERNAL OPS KVP (OPTIONAL):
+────────────────────────────
+For advanced setups, you can maintain an external KVP file:
+
+  projects/<project_id>/ops/ops_registry.kvp
+  
+  Format:
+    op_create_profile=projects/user/ops/create_profile.c|username:string
+    op_auth_user=projects/user/ops/auth_user.c|username:string
+    op_get_session=projects/user/ops/get_session.c|username:string
+
+This is useful for:
+  - Dynamic op discovery
+  - Ops that span multiple directories
+  - External/trunk ops that aren't in projects/
+
+
+WHY CENTRALIZE OPS?
+───────────────────
+✓ Fondu can install them as a bundle
+✓ Other projects can discover them via --list-ops
+✓ Clean separation of "muscle" (ops) from "brain" (manager)
+✓ Easy to test ops standalone
+✓ Reusable across projects (PAL scripts call by project::op_name)
+✓ Single source of truth for what ops exist
+
+DON'T:
+  ✗ Scatter ops in traits/, plugins/, manager/, etc.
+  ✗ Hardcode op paths in C code (use project::op_name)
+  ✗ Forget to update ops_manifest.txt when adding ops
+
+================================================================================
+HOW TO READ THIS DICTIONARY
+================================================================================
+
+Each op entry contains:
+- OP NAME: The command name (e.g., user::create_profile)
+- LOCATION: Where the source code lives
+- PURPOSE: One-line description
+- ARGS: Arguments it takes
+- RETURNS: What it outputs/changes
+- EXAMPLE: How to call it in PAL script
+- STATUS: Active / Legacy / Deprecated
+
+================================================================================
+SECTION 1: USER MANAGEMENT OPS (projects/user/)
+================================================================================
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ user::create_profile                                                       │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  projects/user/ops/create_profile.c                              │
+│ Purpose:   Create a new user profile                                       │
+│ Args:      username (string, alphanumeric + underscore only)               │
+│ Returns:   Creates profile directory + state.txt                           │
+│ Example:   OP user::create_profile "player1"                               │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ user::auth_user                                                            │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  projects/user/ops/auth_user.c                                   │
+│ Purpose:   Authenticate user and create session                            │
+│ Args:      username (string, must have existing profile)                   │
+│ Returns:   Creates session file, increments session_count                  │
+│ Example:   OP user::auth_user "player1"                                    │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ user::get_session                                                          │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  projects/user/ops/get_session.c                                 │
+│ Purpose:   Get current session data for a user                             │
+│ Args:      username (string, must have active session)                     │
+│ Returns:   Prints session data to stdout                                   │
+│ Example:   OP user::get_session "player1"                                  │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+SECTION 2: TEST OPS (projects/test_fondu/)
+================================================================================
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ test_fondu::increment_counter                                              │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  projects/test_fondu/ops/increment_counter.c                     │
+│ Purpose:   Increment counter by 1 (for testing Fondu)                      │
+│ Args:      None (uses project path)                                        │
+│ Returns:   Updates counter in state.txt                                    │
+│ Example:   OP test_fondu::increment_counter                                │
+│ Status:    ✓ ACTIVE (TEST ONLY)                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ test_fondu::decrement_counter                                              │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  projects/test_fondu/ops/decrement_counter.c                     │
+│ Purpose:   Decrement counter by 1 (for testing Fondu)                      │
+│ Args:      None (uses project path)                                        │
+│ Returns:   Updates counter in state.txt                                    │
+│ Example:   OP test_fondu::decrement_counter                                │
+│ Status:    ✓ ACTIVE (TEST ONLY)                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ test_fondu::reset_counter                                                  │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  projects/test_fondu/ops/reset_counter.c                         │
+│ Purpose:   Reset counter to 0 (for testing Fondu)                          │
+│ Args:      None (uses project path)                                        │
+│ Returns:   Sets counter=0 in state.txt                                     │
+│ Example:   OP test_fondu::reset_counter                                    │
+│ Status:    ✓ ACTIVE (TEST ONLY)                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ test_fondu::get_status                                                     │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  projects/test_fondu/ops/get_status.c                            │
+│ Purpose:   Get status message (for testing Fondu)                          │
+│ Args:      None (uses project path)                                        │
+│ Returns:   Prints "Status: OK" to stdout                                   │
+│ Example:   OP test_fondu::get_status                                       │
+│ Status:    ✓ ACTIVE (TEST ONLY)                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+SECTION 3: PLAYER/PLAYRM OPS (pieces/apps/playrm/ops/)
+================================================================================
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ playrm::move_player                                                        │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/playrm/ops/src/move_player.c                        │
+│ Purpose:   Move player entity on map                                       │
+│ Args:      entity_id, dx, dy                                               │
+│ Returns:   Updates entity position                                         │
+│ Example:   OP playrm::move_player "hero" 1 0                               │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ playrm::move_xlector                                                       │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/playrm/ops/src/move_xlector.c                       │
+│ Purpose:   Move map xlector cursor (the X piece)                           │
+│ Args:      dx, dy                                                          │
+│ Returns:   Updates xlector coordinates                                     │
+│ Example:   OP playrm::move_xlector 0 1                                     │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ playrm::move_z                                                             │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/playrm/ops/src/move_z.c                             │
+│ Purpose:   Move entity in Z dimension (depth/layer)                        │
+│ Args:      entity_id, dz                                                   │
+│ Returns:   Updates entity Z coordinate                                     │
+│ Example:   OP playrm::move_z "hero" 1                                      │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ playrm::interact                                                           │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/playrm/ops/src/interact.c                           │
+│ Purpose:   Interact with object/entity at current position                 │
+│ Args:      entity_id (optional)                                            │
+│ Returns:   Triggers interaction logic                                      │
+│ Example:   OP playrm::interact "chest_01"                                  │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ playrm::place_tile                                                         │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/playrm/ops/src/place_tile.c                         │
+│ Purpose:   Place a tile on the map                                         │
+│ Args:      x, y, tile_id                                                   │
+│ Returns:   Updates map at (x,y)                                            │
+│ Example:   OP playrm::place_tile 5 3 "grass_01"                            │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ playrm::create_piece                                                       │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/playrm/ops/src/create_piece.c                       │
+│ Purpose:   Create a new piece entity                                       │
+│ Args:      piece_type, x, y, properties                                    │
+│ Returns:   Creates new piece directory + state                             │
+│ Example:   OP playrm::create_piece "tree" 10 15 "oak"                      │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ playrm::toggle_xlector                                                     │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/playrm/ops/src/toggle_xlector.c                     │
+│ Purpose:   Toggle xlector visibility/state                                 │
+│ Args:      state (on/off)                                                  │
+│ Returns:   Updates xlector state                                           │
+│ Example:   OP playrm::toggle_xlector "on"                                  │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ playrm::render_map                                                         │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/playrm/ops/src/render_map.c                         │
+│ Purpose:   Render current map to view.txt                                  │
+│ Args:      None                                                            │
+│ Returns:   Writes view.txt                                                 │
+│ Example:   OP playrm::render_map                                           │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ playrm::project_loader                                                     │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/playrm/ops/src/project_loader.c                     │
+│ Purpose:   Load a project by ID                                            │
+│ Args:      project_id                                                      │
+│ Returns:   Loads project, sets as active                                   │
+│ Example:   OP playrm::project_loader "fuzz-op"                             │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ playrm::menu_op                                                            │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/playrm/ops/src/menu_op.c                            │
+│ Purpose:   Display/interact with menu                                      │
+│ Args:      menu_id, action                                                 │
+│ Returns:   Menu state changes                                              │
+│ Example:   OP playrm::menu_op "main_menu" "select"                         │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ playrm::inventory_op                                                       │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/playrm/ops/src/inventory_op.c                       │
+│ Purpose:   Manage inventory (add/remove/list items)                        │
+│ Args:      entity_id, action, item_id                                      │
+│ Returns:   Updates inventory state                                         │
+│ Example:   OP playrm::inventory_op "player" "add" "sword_01"               │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ playrm::fuzzpet_action                                                     │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/playrm/ops/src/fuzzpet_action.c                     │
+│ Purpose:   Execute fuzzpet action (feed/sleep/play)                        │
+│ Args:      pet_id, action_type                                             │
+│ Returns:   Updates pet stats                                               │
+│ Example:   OP playrm::fuzzpet_action "pet1" "feed"                         │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ playrm::console_print                                                      │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/playrm/ops/src/console_print.c                      │
+│ Purpose:   Print message to console                                        │
+│ Args:      message (string)                                                │
+│ Returns:   Prints to console output                                        │
+│ Example:   OP playrm::console_print "Hello, World!"                        │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ playrm::get_ops_list                                                       │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/playrm/ops/src/get_ops_list.c                       │
+│ Purpose:   Get list of available ops                                       │
+│ Args:      None                                                            │
+│ Returns:   Lists all registered ops                                        │
+│ Example:   OP playrm::get_ops_list                                         │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ playrm::scan_op                                                            │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/playrm/ops/src/scan_op.c                            │
+│ Purpose:   Scan area for entities/objects                                  │
+│ Args:      x, y, radius                                                    │
+│ Returns:   List of entities in range                                       │
+│ Example:   OP playrm::scan_op 10 10 5                                      │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ playrm::stat_decay                                                         │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/playrm/ops/src/stat_decay.c                         │
+│ Purpose:   Decay entity stats over time                                    │
+│ Args:      entity_id, stat_name, amount                                    │
+│ Returns:   Updates stat value                                              │
+│ Example:   OP playrm::stat_decay "hero" "hunger" 1                         │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ playrm::undo_action                                                        │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/playrm/ops/src/undo_action.c                        │
+│ Purpose:   Undo last action                                                │
+│ Args:      None                                                            │
+│ Returns:   Reverts last state change                                       │
+│ Example:   OP playrm::undo_action                                          │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+SECTION 4: EDITOR OPS (Legacy - projects/trunk/legacy_archive/editor/)
+================================================================================
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ editor::place_tile (LEGACY)                                                │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  projects/trunk/legacy_archive/editor/ops/place_tile.c           │
+│ Purpose:   Place tile (editor version)                                     │
+│ Args:      x, y, tile_type                                                 │
+│ Returns:   Updates editor map                                              │
+│ Example:   OP editor::place_tile 5 5 "floor_01"                            │
+│ Status:    ⚠ LEGACY (use playrm::place_tile instead)                       │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ editor::delete_piece (LEGACY)                                              │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  projects/trunk/legacy_archive/editor/ops/delete_piece.c         │
+│ Purpose:   Delete a piece entity                                           │
+│ Args:      piece_id                                                        │
+│ Returns:   Removes piece directory                                         │
+│ Example:   OP editor::delete_piece "tree_05"                               │
+│ Status:    ⚠ LEGACY (use playrm::create_piece with delete action)          │
+└────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+SECTION 5: FUZZPET LEGACY OPS (projects/trunk/legacy_archive/fuzzpet_app/)
+================================================================================
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ fuzzpet::move_entity (LEGACY)                                              │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  projects/trunk/legacy_archive/fuzzpet_app/traits/move_entity.c  │
+│ Purpose:   Move entity with collision detection                            │
+│ Args:      entity_id, dx, dy                                               │
+│ Returns:   New position or collision                                       │
+│ Example:   OP fuzzpet::move_entity "pet1" 1 0                              │
+│ Status:    ⚠ LEGACY (use playrm::move_player)                              │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ fuzzpet::storage_trait (LEGACY)                                            │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  projects/trunk/legacy_archive/fuzzpet_app/traits/storage_trait.c│
+│ Purpose:   Manage storage/inventory                                        │
+│ Args:      entity_id, item_id, action                                      │
+│ Returns:   Inventory state                                                 │
+│ Example:   OP fuzzpet::storage_trait "player" "potion" "add"               │
+│ Status:    ⚠ LEGACY (use playrm::inventory_op)                             │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ fuzzpet::zombie_ai (LEGACY)                                                │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  projects/trunk/legacy_archive/fuzzpet_app/traits/zombie_ai.c    │
+│ Purpose:   Simple AI for zombie entities                                   │
+│ Args:      entity_id, target_id                                            │
+│ Returns:   AI decision (move/attack)                                       │
+│ Example:   OP fuzzpet::zombie_ai "zombie1" "player1"                       │
+│ Status:    ⚠ LEGACY (reference only)                                       │
+└────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+ADDING NEW OPS TO THIS DICTIONARY
+================================================================================
+
+When you create a new op, add it here with this template:
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ <project>::<op_name>                                                       │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  <path to .c file>                                               │
+│ Purpose:   <one-line description>                                          │
+│ Args:      <argument list with types>                                      │
+│ Returns:   <what it changes/outputs>                                       │
+│ Example:   OP <project>::<op_name> <args>                                  │
+│ Status:    ✓ ACTIVE / ⚠ LEGACY / ✗ DEPRECATED                             │
+└────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+QUICK REFERENCE: Ops by Category
+================================================================================
+
+USER MANAGEMENT:
+  user::create_profile, user::auth_user, user::get_session
+
+MOVEMENT:
+  playrm::move_player, playrm::move_xlector, playrm::move_z
+  ⚠ LEGACY: fuzzpet::move_entity
+
+MAP EDITING:
+  playrm::place_tile, playrm::create_piece
+  ⚠ LEGACY: editor::place_tile, editor::delete_piece
+
+INTERACTION:
+  playrm::interact, playrm::toggle_xlector, playrm::menu_op
+
+INVENTORY/ITEMS:
+  playrm::inventory_op, playrm::fuzzpet_action
+  ⚠ LEGACY: fuzzpet::storage_trait
+
+UTILITY:
+  playrm::render_map, playrm::project_loader, playrm::console_print
+  playrm::get_ops_list, playrm::scan_op, playrm::stat_decay, playrm::undo_action
+
+TESTING:
+  test_fondu::increment_counter, test_fondu::decrement_counter
+  test_fondu::reset_counter, test_fondu::get_status
+
+================================================================================
+FONDU LIFECYCLE OPS
+================================================================================
+
+Fondu is the project lifecycle manager. It provides these commands:
+
+Location: pieces/system/fondu/fondu.+x
+
+Commands:
+  --install <project>    - Deploy to production + register ops
+  --uninstall <app>      - Remove from production + unregister ops
+  --archive <project>    - Move to trunk (source only)
+  --restore <project>    - Restore from trunk + recompile
+  --list                 - Show all projects and states
+  --list-ops             - Show all available ops
+  --help                 - Show help
+
+Status: ✅ FULLY IMPLEMENTED (Phase 1 complete)
+Reference: #.docs/fondu-investigation-report.txt
+
+================================================================================
+OPS STATUS BY PROJECT (April 2026)
+================================================================================
+
+✅ FULLY IMPLEMENTED:
+  - Fondu lifecycle ops (6 commands)
+  - test_fondu ops (4 ops)
+  - user ops (create_profile, auth_user, etc.)
+  - playrm ops (movement, placement, interaction)
+
+⚠️ PARTIALLY IMPLEMENTED:
+  - op-ed ops (81% complete - 13/16 features)
+    Missing: delete_piece, mirror_sync
+
+❌ CONCEPTUAL / PLANNED (NOT IMPLEMENTED):
+  - P2P-NET ops (all P2P ops are planned only)
+    See: #.docs/P2P_LEGAL_NOTICE.txt (conceptual framework)
+    See: p2p-ops.txt (1491 lines of specifications - NOT IMPLEMENTED)
+    Status: 8 phases planned, 0 implemented
+
+================================================================================
+END OF OPS DICTIONARY
+================================================================================

@@ -1,0 +1,16 @@
+
+🗓️
+
+gl-2-rgb reads any frame from debug/wraith? + metadata? and converts it using primatives .
+
+
+gl reads the primatives 
+
+🗓️
+📅️jun 15 : 
+is mouse catching the nav yet? we should place a "#"
+symbol on screen wherever clicked so we can see how 
+close or far off mouse is and show ai . 
+
+
+📅️

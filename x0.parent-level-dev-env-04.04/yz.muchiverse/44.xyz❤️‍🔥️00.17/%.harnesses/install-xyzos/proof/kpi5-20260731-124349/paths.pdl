@@ -1,0 +1,17 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | xyzos_paths
+META         | version            | 1.0
+META         | notes             | Logical name -> real path for this install.
+META         | notes             | Edit HERE if the layout ever changes. Legacy
+META         | notes             | ops that still hardcode paths are listed in the
+META         | notes             | install design doc (§3). Going-forward label for
+META         | notes             | a user's home dir is home-🏠️; the physical dir
+META         | notes             | is still 'home' today (Option B, v1).
+
+PATHS        | user_home_root     | xyzfs/users
+PATHS        | user_home_dir      | home
+PATHS        | account_registry   | apps/00.login-signup/users
+PATHS        | identity_state     | apps/00.login-signup/xyzfs/session.pdl
+PATHS        | installed_ledger   | app-store/installed_apps.pdl
+PATHS        | catalog            | app-store/catalog.pdl

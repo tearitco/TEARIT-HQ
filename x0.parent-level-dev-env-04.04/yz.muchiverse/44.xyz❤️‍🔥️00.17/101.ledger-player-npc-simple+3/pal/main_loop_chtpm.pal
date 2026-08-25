@@ -1,0 +1,14 @@
+# Word game main_loop - PAL version of game_manager
+# Architecture mirrors C game_manager.c exactly:
+#   C: polling_thread -> poll_history() -> usleep(16667) -> loop
+#   PAL: exec game_dispatch -> sleep 16667 -> loop
+# game_dispatch handles: read all keys, dispatch, NPC, compose, signal
+
+# Initial frame render
+exec ./ops/word_compose_frame
+hit_frame
+
+loop:
+  exec ./ops/game_dispatch
+  sleep 16667
+  j loop

@@ -1,0 +1,46 @@
+# OP-ED Project Planning Directive (m24)
+**Baseline:** Legacy Save/Load system verified and functional.
+
+## 1. Core Architecture: The PAL Orchestrator
+The primary goal is to move `op-ed` toward a **"Thin Engine"** model. The Player will be a standalone PAL script (`player_loop.asm`) rather than a C manager.
+
+### Component Reuse:
+- **Renderer:** Reuse `render_map.+x` for both Editor and Player.
+- **Physics:** Reuse `move_entity.+x` for movement and collision.
+- **Input:** Both modules will poll `pieces/keyboard/history.txt`.
+
+## 2. Milestone 1: Game Context (Save & Load)
+Unlike the `agy-text-editor` which loads/saves a single `.txt` file, `op-ed` must perform a **Sovereign Context Switch**.
+
+- **Game Loading:** Updates the `current_project` ID in the system state and refreshes the Editor UI to resolve paths relative to `projects/op-ed/games/[PROJECT]/`.
+- **Game Saving:** Persists the currently edited maps and piece states into their respective subdirectories within the sovereign game folder.
+- **The Result:** All project assets (maps, pieces, scripts) are encapsulated. Saving a game means the entire directory is the "Save File."
+- **Verification:** The system is successful when the Editor can switch between two different games (e.g. `test-game` and `fuzz-op-mirror`) and changes made in one do not bleed into the other.
+
+## 3. Milestone 2: The Fuzz-Op Mirror (Lab Project)
+We will build a "Lab" project to verify the Player logic.
+- **Location:** `projects/op-ed/games/fuzz-op-mirror/`.
+- **Logic:** Port `fuzzpet_action.+x` mechanics (hunger, play, sleep) into the mirror pieces.
+- **Simulation:** A background PAL script will handle stats decay over time.
+
+## 3. Milestone 2: The Script Handover (Event Editor)
+The Editor must enable "Logic Injection":
+- **Trigger:** Clicking a piece in "Event Mode" (Index 7).
+- **Action:** Transition to a specialized Script Editor layout.
+- **Target:** Save `.asm` files directly into the piece's directory (e.g., `pieces/npc_1/on_interact.asm`).
+- **Persistence:** These scripts are then called by the Player using `prisc+x`.
+
+## 4. Milestone 3: The Standalone Exporter
+The Exporter will package a game for distribution.
+- **Muscle:** `export_game_op.+x`.
+- **Process:**
+    1. Copy the standard TPMOS binaries (`prisc+x`, `parser+x`, `render_map.+x`).
+    2. Copy the specific `games/[PROJECT]` directory.
+    3. Generate a manifest that tells the standalone Parser to boot the specific project.
+
+## 5. Engineering Guardrails (Pitfall Prevention)
+- **Common Sense First:** Use established, synchronous C logic for all file operations until PAL scripting is 100% proven.
+- **No standard drift:** Any new interact modes must mirror the `op-ed` RPG Maker visual style (Enter to interact, Arrows to navigate).
+- **One Stream:** All modules MUST poll the single hardware truth: `pieces/keyboard/history.txt`.
+
+**Conclusion:** By assuming the legacy file-ops are settled, we are now free to build the behavioral "Brains" of the system: the PAL Player and the Event Scripting interface.

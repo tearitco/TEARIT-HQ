@@ -1,0 +1,5 @@
+name=Benzaldehyde
+formula=C6H5CHO
+type=Aromatic Aldehyde
+groups=-CHO
+relevance=Aromatic carbonyl; in flavors

@@ -1,0 +1,126 @@
+
+📅️🎮
+
+id rather get to the point of storing data like this in tpmos, even if it pulls it (tho it shouldnt' 
+but if it does it could be at "startup" ) so y? depends on if ur saving trunk somewhere else for some reason
+
+but this all seems like a "FONDU" thing🫕️(which is a good name for a replacement github/npm/homebrew etc)🫕️
+📅️🎮
+
+
+📅️july 5 : window gui ux should be #1 more or less "done"
+as it relates 2 using seperate windows for micro menu ops 4 editor (just a raw map display & basic controls)
+
++ expanding or hiding of more tpmos based options based on window focus
+
+
+((and even opening all of a user/dev defined set of windows in specific sizes and positions <- big later))
+((even bigger if u can make it look like 1 page more or less , which imo is like a 'meta layout' 
+((maybe u wanna use the same layout scheme but beable to embed / position micro layouts?))
+
+
+jul4 :🎇️
+ask it to make all "voxels" 8x8x8 ; and ask it to do the emojis right, according to emoji studio. 
+<we will try to to rpg editor (map picker, tile placer) in seperate but malleable windows
+that will let us also finish "windowing nuances" quickly; use fabel
+<this and leading 2 this is goal, but THEN when u can edit <EVENTS> we will do minecraft stuff <USING EVENTS AI>
+and "PAL" aka we can finally finalize the PAL PUSH HERE
+THEN? THEN WE CAN LOOK INTO AI , AI ACCOUNT CONTROL , P2P and discord integration 
+(for auto chat bots in discord server)
+also : nothing. just do that . lol. <but do it with exo tank loading or inner project loading
+(that can be done just as a "project loader" app [points a kvp to project 2 default load]; also projects can be nest or not ; but user 
+should beable 2 do that easily [thru project search crawling]
+🔥️
+
+php? do tpm.js browser first...
+
+
+then do blockchian login, fake cloud, etc fake payments using crypto or "usdt" etc. 
+copy rpg maker when u can obviously (like tile loading etc) and , have ascii-fbx phiscale &, w/e good luck.🍀️
+
+
+🔠️at some point we may try to make UI look better (FOR WRAITH), altho w/e , dont ; 
+make "in game menus look better ; but using a different system than "LAYOUT" use "INSIDE WRTML or something"
+
+(and hold off on this to ur doing other op ed basics ; its something we can do later
+or inside of op-ed-wr as a way to beef up uis , yes thru code, no not thru layout stuff [ie inner-html/js]get it? ; but would it not show in ascii? [no, it wouldn't nor would it need 2 ; were implying full commitment to 
+fullscreen WRAITH as a game/console display mode. <- should be ez enough. but do game basics in 
+ascii/wraith first before we get fancy. ie try to push rmmv as far as u can, and using seperate windows for now
+so we can iron out that , theres lots of nuance there im sure.+ positioning of ascii on wraith vs fullscreen u may desire to do that fix soonter than u think but thats wut u do BEFORE FONT FORMATTING INNERWRAITH STUFF])
+🔠️
+
+💵️does bvp make a stockprice double in a week? do it like wsr first if u can 
+then ask it 2 look at real stocks and tweak our "weights"
+💵️
+🎹️daw l8er
+
+
+https://youtube.com/watch?v=Hp2wcje-q04 
+YouTube
+ChillPanic
+THIS Is What Ai Music DAW SHOULD Look Like! (Suno Studio Take Notes)
+
+
+https://youtube.com/watch?v=UN2CQLZIlbI 
+YouTube
+BenoniStudio
+MUST WATCH 🔥 The AI DAW is HERE! Moises AI Studio - MIND BLOWN 🤯
+🃏️🃏️🃏️🃏️🃏️
+https://youtube.com/watch?v=-xrrv35beoU
+YouTube
+Mon EvenStar
+Every Item I Loot Becomes Inventory in my Own Fantasy Shop!... | Fe..
+
+https://store.steampowered.com/developer/AGS
+<looks like a legit 🤖️🪤️🏠️ game stable strategy  + u can publish others with warchest thru fondue>
+
+🃏️🃏️🃏️🃏️🃏️🃏️
+⁉️https://www.blockbench.net/
+here are some top yt channels & keywords for voxel games with ai:
+
+🔹 channels:
+
+    Voxel Valley – voxel ai experiments, npc behavior
+    BlockAI Studio – tutorials + gameplay of ai-driven voxel worlds
+    CodeWithVoxels – diy ai voxel bots & mods
+
+
+🔹 search terms:
+
+    voxel game ai npc behavior
+    minecraft ai mod gameplay
+    voxelon ai agents
+    custom voxel ai simulator
+
+
+🔹 games to look for:
+
+    voxelon – open-world voxel with ai mobs & scripting
+    blockbench ai mods – community ai experiments
+    ai voxel survival – indie ai-driven voxel games on itch.io
+
+
+want a video generated from a voxel ai concept? just ask. 🎮
+YouTube
+Voxel Valley
+Image
+__________________________________________________________________
+📅️
+
+
+
+
+🎮️
+physical games could be an "NFC TAG" that u swipe on game or w/e
+u could mail it . 
+can be for wallets and logins 2. u could store it or put it in a box cuz y? 
+cuz its a "TOY/ DISPLAY ITEM" not just a "GAME" for them. ; they're gamerslop goys not robots... 
+🎮️
+
+
+🧩️IT
+also funni they asked me about []navs being "non user friendly (nope their more
+
+but also between navs and "MANAGED MODULES/OPS" its very "TPMOSONLY viBR>[]ANDED" type deal .  i like. 
+
+in or out of >[] ; its both just like xo-liz pets w/e🧩️Piecemark-IT

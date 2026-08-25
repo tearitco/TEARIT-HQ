@@ -1,0 +1,835 @@
+GLTPM DEVELOPMENTAL ROADMAP
+Date: 2026-04-23
+Status: Authoritative implementation handoff for GL-OS -> GLTPM compliance work
+Audience: The next agent who will implement this
+
+======================================================================
+0. ONE-SENTENCE MISSION
+======================================================================
+
+Turn GL-OS into a TPM-compliant host that can open NEW GLTPM virtual windows
+inside the existing `gl_desktop.c` desktop, using CHTPM-like layouts,
+filesystem truth, marker-driven refresh, and Op-based dispatch, while keeping
+the current `project_mirror` windows as legacy reference behavior only.
+
+======================================================================
+1. NON-NEGOTIABLE CLARIFICATION
+======================================================================
+
+This is the most important distinction in the whole document:
+
+1. A new GLTPM app MUST open as a virtual window INSIDE the existing GL-OS
+   desktop window.
+2. It MUST NOT open a second OS-level GL window.
+3. The current `project_mirror` windows in `gl_desktop.c` stay in the codebase
+   as references and fallbacks while GLTPM is built.
+4. The new GLTPM path should be launched by NEW entries in the GL desktop menu.
+5. Do not silently replace the legacy `fuzz-op-gl` / `op-ed-gl` mirror entries
+   until the new GLTPM path is stable.
+
+Short version:
+
+- Keep legacy mirrors.
+- Add new GLTPM menu entries.
+- New GLTPM content lives inside GL-OS virtual windows.
+- No second GL window.
+
+======================================================================
+2. WHAT EXISTS RIGHT NOW
+======================================================================
+
+The current system already has enough pieces to build this cleanly. The work is
+mostly an architecture alignment problem, not a blank-slate rewrite.
+
+2.1 Current GL-OS host behavior in `pieces/apps/gl_os/plugins/gl_desktop.c`
+
+Important hotspots:
+
+- `resolve_root()` resolves `project_root` from
+  `pieces/locations/location_kvp` at lines 160-174.
+- `write_view()` writes desktop window summaries to
+  `pieces/apps/gl_os/session/view.txt` and touches
+  `view_changed.txt` at lines 288-311.
+- `write_session_state()` / `write_gl_os_state()` write desktop session
+  variables for parser substitution at lines 314-338 and 350-448.
+- `parse_and_write_frame()` reads `session/state.txt`, substitutes into
+  `pieces/apps/gl_os/layouts/terminal.chtml`, and writes
+  `session/current_frame.txt` / frame history at lines 449-574.
+- `init_terminal_menu()` builds the current joystick-first launcher terminal at
+  lines 575-610.
+- `execute_option()` currently switches menu contexts and launches either
+  legacy project mirrors or the cube demo at lines 612-677.
+- `create_mirrored_window()` creates the current legacy `project_mirror`
+  windows with hardcoded Fuzz-Op-style menu options at lines 687-730.
+- `draw_tile()` already provides a reusable cube/tile primitive at lines
+  1035-1050.
+- `draw_window()` already knows how to render:
+  - terminal windows
+  - cube windows
+  - `project_mirror` windows
+  at lines 1053-1373.
+- The current `project_mirror` render is mock data:
+  grid, fake entities, xelector, direction cube, menu overlay at lines
+  1274-1371.
+- `timer()` already includes active-layout and idle backoff at lines 1476-1502.
+- `joystick()`, `keyboard()`, `special_keyboard()`, and `mouse()` already
+  provide a usable input stack at lines 1504-2037.
+- `main()` already sets up all host session files, input-focus lock, initial
+  terminal, and GLUT callbacks at lines 2057-2113.
+
+2.2 Current CHTPM parser behavior in `pieces/chtpm/plugins/chtpm_parser.c`
+
+Important reusable behaviors:
+
+- `${desktop_view}` special-case loading from
+  `pieces/apps/gl_os/session/view.txt` at lines 213-235.
+- generic `key=value` state loading via `load_state_file()` at lines 273-294.
+- dynamic method loading from PDL via `load_dynamic_methods()` at lines
+  438-495.
+- `load_vars()` already understands `desktop.chtpm`, project layouts, module
+  resolution, and view/state loading at lines 538-801.
+- project/local input injection via `inject_raw_key()` and `inject_command()`
+  at lines 803-876.
+- safe module launch via `fork/exec` in `launch_module()` at lines 877-964.
+- layout switching and project loading in `send_command()` at lines 1008-1115.
+- tokenization and tag parsing in `parse_chtm()` at lines 1199-1367.
+- text-frame rendering in `render_element()` / `compose_frame()` at lines
+  1380-1493.
+- input routing and interaction rules in `process_key()` at lines 1494-1697.
+- the marker-driven render law in `main()` at lines 1699-1809.
+
+2.3 Current layout files
+
+- `pieces/apps/gl_os/layouts/desktop.chtpm`
+  - ASCII desktop shell
+  - loads `gl_os_session.+x`
+  - reads `${desktop_view}`
+  - lines 1-21
+- `pieces/apps/gl_os/layouts/terminal.chtml`
+  - current frame template for the GL host terminal
+  - lines 1-6
+
+2.4 Current reality of the legacy mirrors
+
+The current `project_mirror` path is NOT the target architecture.
+
+It currently does all of the following with mock/internal behavior:
+
+- hardcoded menu options
+- mock grid generation
+- mock entity rendering
+- in-window camera control
+- placeholder action handling (`Action selected (logic placeholder)`)
+
+That makes it useful as a reference for:
+
+- window type handling
+- camera state fields
+- xelector handling
+- menu overlay rendering
+- joystick / keyboard interaction structure
+
+But it is NOT yet TPM compliant enough to be the final GLTPM runtime.
+
+======================================================================
+3. THE TARGET ARCHITECTURE
+======================================================================
+
+The target is not "make project_mirror smarter."
+
+The target is:
+
+`gl_desktop.c` = host/window manager/orchestrator
+`gltpm_parser` = GL layout parser derived from CHTPM ideas
+`gltpm windows` = virtual windows rendered inside the GL-OS host
+`project manager + ops` = sovereign project logic and file writers
+
+3.1 New window role split
+
+Keep these window classes conceptually separate:
+
+- `terminal`
+  - existing launcher / debug / ASCII support
+- `cube`
+  - demo/reference
+- `project_mirror`
+  - legacy reference path only
+- NEW: `gltpm_app`
+  - the real target runtime
+
+3.2 Ownership model
+
+- `gl_desktop.c`
+  - owns desktop-level window management
+  - owns host rendering loop
+  - owns host input collection
+  - owns host-level session files under `pieces/apps/gl_os/session/`
+- GLTPM project manager
+  - owns project state
+  - owns Op dispatch
+  - owns project session files under `projects/<id>/session/`
+- GLTPM parser/runtime code
+  - reads layout + state + assets
+  - builds cached scene data for one virtual window
+  - does NOT become a second OS window
+
+3.3 Compliance slogan
+
+The architecture should read like this:
+
+Piece -> Module -> OS
+project files -> manager/ops -> GLTPM parser -> GL-OS host window
+
+======================================================================
+4. DESIGN LAWS FOR THIS IMPLEMENTATION
+======================================================================
+
+4.1 Filesystem truth
+
+If it is not in a file, it is a lie.
+
+This must remain true for:
+
+- project state
+- layout selection
+- tile definitions
+- sprite metadata
+- active camera mode
+- xelector position
+- pending Op requests
+- render pulses
+
+4.2 Root/path law
+
+Resolve `project_root` from `pieces/locations/location_kvp`.
+Do not hardcode relative roots. Use `asprintf` / root-joined paths.
+
+4.3 Marker law
+
+The marker is the clock.
+
+Do not invent ad-hoc `dirty=1` rendering paths that bypass marker files.
+Reuse the CHTPM render-chain discipline:
+
+- content/state changes append to a marker
+- marker growth is what causes parse/rebuild/render refresh
+
+4.4 One-writer law
+
+Do not let both the host and the project manager write the same truth file.
+
+Recommended ownership:
+
+- host writes: `pieces/apps/gl_os/session/*`
+- project manager writes: `projects/<id>/session/*`
+- GLTPM runtime reads project files and may write only host-window-local cache
+  or selection state if that ownership is explicitly defined
+
+4.5 Process law
+
+Do not use `system()` for new orchestration work.
+Use `fork/exec/waitpid`, signal handling, and process-group cleanup patterns.
+
+Important note:
+
+- `chtpm_parser.c` still uses `system()` for the special GL-OS launch case at
+  lines 981-996.
+- Do NOT copy that pattern into new GLTPM work.
+
+4.6 No shared-header law
+
+Stay consistent with the repo's pattern:
+
+- each `.c` should remain largely self-contained
+- use duplicated local structs/helpers if needed
+- avoid introducing a giant shared abstraction layer too early
+
+======================================================================
+5. WHAT "GLTPM LAYOUT COMPLIANCE" SHOULD MEAN
+======================================================================
+
+The new GLTPM layouts should feel familiar to anyone who understands CHTPM,
+but they are not plain terminal frame layouts.
+
+They should:
+
+- keep the tag/attribute mental model from CHTPM
+- keep `${var}` substitution
+- keep `visibility`
+- keep `onClick`
+- keep `href`-style transitions where useful
+- keep `<interact>`-style routing ideas
+- add GL-specific scene tags and coordinates
+- render ASCII/tile/sprite/model content into a GL virtual window
+
+In other words:
+
+CHTPM gives the grammar habits.
+GLTPM gives the rendering semantics.
+
+======================================================================
+6. PROPOSED GLTPM FILE LAYOUT
+======================================================================
+
+This is the recommended minimum structure for a new GLTPM project:
+
+`projects/<project_id>/`
+  `project.pdl`
+  `layouts/`
+    `entry.gltpm`
+    `hud.gltpm`
+  `session/`
+    `state.txt`
+    `view.txt`
+    `history.txt`
+    `layout_changed.txt`
+    `frame_changed.txt`
+    `render_pulse.txt`
+  `assets/`
+    `tiles/`
+      `registry.txt`
+      `<tile_id>.tile.txt`
+    `sprites/`
+      `registry.txt`
+      `<sprite_id>.sprite.txt`
+      optional binary/image payloads
+  `manager/`
+    `gui_state.txt`
+    `src/<project_id>_manager.c`
+    `+x/<project_id>_manager.+x`
+  `pieces/`
+    sovereign project data
+
+Notes:
+
+- `state.txt` = current gameplay / scene vars
+- `view.txt` = optional precomposed textual or map summary
+- `manager/gui_state.txt` = transient UI selection/input state
+- `history.txt` = input/event queue for the manager
+- `frame_changed.txt` = project-side "something meaningful changed"
+- `render_pulse.txt` = host/runtime-side "scene cache rebuilt"
+
+======================================================================
+7. PROPOSED NEW GLTPM WINDOW DATA
+======================================================================
+
+Extend `DesktopWindow` or create a GLTPM-specific sub-struct for windows of
+type `gltpm_app`.
+
+Minimum fields:
+
+- `project_id`
+- `layout_path`
+- `session_dir`
+- `asset_dir`
+- `camera_mode`
+- `cam_pos[3]`
+- `cam_rot[3]`
+- `xelector_pos[3]`
+- `active_layer`
+- `selected_element_id`
+- `selected_tile_id`
+- `selected_sprite_id`
+- `last_state_marker_size`
+- `last_layout_marker_size`
+- `last_render_pulse_size`
+- cached parsed scene graph pointer/index
+- cached layout vars buffer
+- `legacy_mode` flag only if needed for staged migration
+
+Do NOT overload the legacy `project_mirror` fields forever.
+It is fine to reuse some fields short-term, but the end state should make the
+new runtime explicit in code.
+
+======================================================================
+8. THE NEW MENU DESIGN IN GL DESKTOP
+======================================================================
+
+Do not destroy the existing menu tree immediately. Extend it.
+
+Recommended menu structure:
+
+- Desktop Apps
+  - Legacy Mirrors
+    - fuzz-op-gl (legacy)
+    - op-ed-gl (legacy)
+  - GLTPM Apps
+    - fuzz-op.gltpm
+    - op-ed.gltpm
+    - demo_world.gltpm
+  - 3D Cube Demo
+  - back
+
+Recommended implementation rule:
+
+- legacy entries still call `create_mirrored_window()`
+- GLTPM entries call a NEW launcher, for example:
+  `create_gltpm_window(project_id, layout_path, title)`
+
+This keeps the reference path alive while making the new path unambiguous.
+
+======================================================================
+9. PROPOSED GLTPM PARSER SCOPE
+======================================================================
+
+Create a new parser for GLTPM. Do not mutate `chtpm_parser.c` into a giant
+hybrid monster unless absolutely necessary.
+
+Recommended new file:
+
+- `pieces/apps/gl_os/plugins/gltpm_parser.c`
+
+Its job:
+
+1. Read a `.gltpm` layout file.
+2. Load `session/state.txt`, `manager/gui_state.txt`, and any required
+   view/map data.
+3. Reuse the CHTPM mental model:
+   - tokenization
+   - attributes
+   - `${var}` substitution
+   - visibility checks
+   - `onClick`
+   - `href`
+4. Produce a GL scene graph instead of an ASCII frame.
+
+Recommended first-pass supported tags:
+
+- `<panel>`
+- `<row>`
+- `<text>`
+- `<button>`
+- `<br>`
+- `<scene>`
+- `<layer>`
+- `<tilemap>`
+- `<tile>`
+- `<sprite>`
+- `<entity>`
+- `<camera>`
+- `<hotspot>`
+- `<hud>`
+- `<interact>`
+
+Recommended first-pass supported attributes:
+
+- `id`
+- `label`
+- `visibility`
+- `onClick`
+- `href`
+- `x`
+- `y`
+- `z`
+- `w`
+- `h`
+- `tile_id`
+- `sprite_id`
+- `model_id`
+- `glyph`
+- `unicode`
+- `ascii`
+- `camera_mode`
+- `anchor`
+- `layer`
+
+Do not chase every future idea at once.
+The first milestone only needs enough grammar to render a real scene and route
+real actions.
+
+======================================================================
+10. HOW TO REUSE CHTPM IDEAS CORRECTLY
+======================================================================
+
+Copy the ideas, not the terminal assumptions.
+
+Reusable directly from `chtpm_parser.c`:
+
+- tokenizer pattern
+- attribute parsing pattern
+- `${var}` substitution
+- `visibility` evaluation
+- `href` / `onClick` command dispatch structure
+- project/path resolution rules
+- marker-driven refresh discipline
+- `history.txt` input injection model
+
+Do NOT directly inherit these terminal assumptions:
+
+- ASCII frame-only rendering
+- `current_frame.txt` as the final artifact for GL content
+- the exact interactive index visualization format (`[>]`, `[ ]`, `[^]`)
+
+For GLTPM:
+
+- parse into scene elements
+- render scene elements in OpenGL
+- optionally also generate ASCII fallback data, but that is secondary
+
+======================================================================
+11. TILE, SPRITE, AND ASCII / UNICODE COMPLIANCE
+======================================================================
+
+This is part of the actual requirement, not a nice-to-have.
+
+Every GL tile should have an ASCII / Unicode association so it can be:
+
+- replicated in ASCII
+- referenced in docs
+- used in debugging
+- exported to text-mode views if needed
+
+11.1 Recommended tile metadata file format
+
+Suggested file:
+
+`projects/<id>/assets/tiles/<tile_id>.tile.txt`
+
+Suggested minimum fields:
+
+- `tile_id=grass`
+- `ascii=.`
+- `unicode=.`            or a real unicode glyph if desired
+- `label=Grass`
+- `rgb_top=34,139,34`
+- `rgb_side=27,110,27`
+- `rgb_edge=18,70,18`
+- `extrude=1.0`
+- `solid=0`
+- `walkable=1`
+- `category=ground`
+
+11.2 Recommended sprite metadata format
+
+`projects/<id>/assets/sprites/<sprite_id>.sprite.txt`
+
+Suggested minimum fields:
+
+- `sprite_id=player_idle`
+- `ascii=@`
+- `unicode=@`
+- `label=Player Idle`
+- `asset_type=billboard`
+- `source=player_idle.png`
+- `anchor=bottom_center`
+- `frame_count=1`
+
+11.3 Recommended asset registry files
+
+`registry.txt` should map IDs to files and allow quick validation.
+
+This gives the implementation agent a way to:
+
+- validate layout references early
+- produce human-readable debug output
+- build ASCII fallback/debug views
+
+11.4 Why this matters
+
+Without ASCII / Unicode association:
+
+- docs drift from visuals
+- terminal fallback becomes ad-hoc
+- debugging scene composition becomes painful
+- TPM file-truth becomes harder to inspect
+
+======================================================================
+12. INPUT AND OP DISPATCH MODEL
+======================================================================
+
+The host should capture input.
+The project manager should interpret project logic.
+
+Recommended split:
+
+12.1 Host responsibilities
+
+- determine active GLTPM window
+- determine current mode:
+  - menu mode
+  - scene navigation mode
+  - map/xelector mode
+  - text-input mode
+- convert input into normalized events
+- write events into project `history.txt` or a project-local command file
+- wake the project marker
+
+12.2 Project manager responsibilities
+
+- read `history.txt`
+- run Ops
+- update project state / piece state
+- append to project `frame_changed.txt`
+
+12.3 `onClick` command policy
+
+Recommended command forms:
+
+- `OP fuzz-op::scan`
+- `OP fuzz-op::collect`
+- `OP editor::place_tile map_0001_z0.txt 5 5 #`
+- `LOAD_LAYOUT:hud`
+- `SET_CAMERA:3`
+- `FOCUS:inventory_panel`
+
+Recommended first implementation rule:
+
+- `gltpm_parser` should parse `onClick`
+- `gl_desktop.c` should dispatch the command
+- actual game logic should remain in project manager / ops
+
+Do not embed game logic directly in `gl_desktop.c`.
+
+======================================================================
+13. CAMERA, XELECTOR, AND MAP MODE
+======================================================================
+
+Reuse the camera interaction ideas already proven in the legacy mirror path.
+
+Required parity baseline from `camera_vision_manifest.txt`:
+
+- camera modes 1-4
+- WASD + ZX movement in free mode
+- QE rotation
+- arrow-key xelector control
+- ESC exits map mode
+- menu overlay parity for Fuzz-Op-style actions
+
+Current useful reference in code:
+
+- camera state initialization: `gl_desktop.c` lines 704-708
+- camera transforms: lines 1249-1269
+- xelector rendering: lines 1307-1311
+- map-mode keyboard controls: lines 1602-1619
+- arrow-key xelector controls: lines 1693-1699
+
+Target rule:
+
+For GLTPM windows, camera and xelector must become data-driven, not mock-driven.
+
+That means:
+
+- xelector position can come from project `manager/gui_state.txt` or
+  `session/state.txt`
+- entity positions come from project truth files
+- tile heights / extrusions come from map/tile data
+
+======================================================================
+14. RENDER PIPELINE FOR GLTPM
+======================================================================
+
+Recommended flow:
+
+1. host menu launches `create_gltpm_window(project_id, layout_path, title)`
+2. window stores project/session/layout paths
+3. GLTPM parser loads layout + state + assets
+4. parser builds cached scene graph
+5. host `draw_window()` sees type `gltpm_app`
+6. host renders cached scene into that virtual window rectangle
+7. when project `frame_changed.txt` grows, parser rebuilds scene cache
+8. host appends `render_pulse.txt` or host-local pulse if needed
+
+Important optimization rule:
+
+Do not reparse layout files every frame.
+
+Suggested invalidation sources:
+
+- project `layout_changed.txt`
+- project `frame_changed.txt`
+- window-local camera/input state change
+- asset reload marker only if hot-reload is needed
+
+======================================================================
+15. STAGED IMPLEMENTATION PLAN
+======================================================================
+
+Stage 1: Prepare host/window separation
+
+- add a new window type: `gltpm_app`
+- add new menu entries for GLTPM apps
+- keep legacy `project_mirror` path untouched
+- add window fields for project/layout/session/cache state
+
+Exit condition:
+
+- selecting a GLTPM menu entry opens a new virtual window of type
+  `gltpm_app`
+- no second GL window opens
+
+Stage 2: Create GLTPM parser skeleton
+
+- create `gltpm_parser.c`
+- port tokenizer / attribute parsing / `${var}` substitution concepts
+- support a tiny subset of tags:
+  `scene`, `tilemap`, `tile`, `sprite`, `button`, `text`
+
+Exit condition:
+
+- parser can load one `.gltpm` file and build an in-memory scene graph
+
+Stage 3: Data-driven tile rendering
+
+- generalize `draw_tile()` usage
+- replace mock grid generation for GLTPM windows with parsed tilemap data
+- read tile metadata files from project assets
+
+Exit condition:
+
+- one real project map renders from files
+
+Stage 4: Real state/entity sync
+
+- read project `session/state.txt` and/or piece state files
+- render real entity positions using sprite/tile metadata
+- stop using fake Fuzzball/Zombie/Tree for GLTPM windows
+
+Exit condition:
+
+- moving project truth files changes the GLTPM scene
+
+Stage 5: Input -> history -> ops
+
+- route button/tile/camera interaction into project `history.txt`
+- manager reads events
+- manager calls Ops
+- project state changes append project marker
+
+Exit condition:
+
+- selecting `[scan]`, `[collect]`, `[place]`, etc. causes real file-backed
+  project behavior
+
+Stage 6: ASCII / Unicode compliance layer
+
+- require every tile/sprite to declare `ascii` and `unicode`
+- build optional ASCII export/debug view from same scene data
+- ensure docs/debuggers can identify visual assets textually
+
+Exit condition:
+
+- one GLTPM scene can be described in a stable textual fallback form
+
+Stage 7: Harden CPU/process behavior
+
+- signal handling
+- process cleanup
+- marker-only refresh
+- no duplicate writers
+- idle throttling preserved
+
+Exit condition:
+
+- runtime remains responsive without hot-spinning or orphaning processes
+
+======================================================================
+16. CONCRETE FILES TO TOUCH FIRST
+======================================================================
+
+High-priority files:
+
+1. `pieces/apps/gl_os/plugins/gl_desktop.c`
+   - add menu entries
+   - add `gltpm_app` window type
+   - add launcher
+   - add draw path
+   - add input dispatch path
+
+2. `pieces/apps/gl_os/plugins/gltpm_parser.c`
+   - new file
+   - scene graph builder
+
+3. one seed GLTPM layout, for example:
+   - `projects/fuzz-op/layouts/fuzz-op.gltpm`
+   or
+   - `projects/gltpm_demo/layouts/entry.gltpm`
+
+4. one seed tile registry and a few tile metadata files
+
+5. project manager input handling for real Op dispatch
+
+Files to consult but not over-edit first:
+
+- `pieces/chtpm/plugins/chtpm_parser.c`
+- `pieces/apps/gl_os/layouts/desktop.chtpm`
+- `pieces/apps/gl_os/layouts/terminal.chtml`
+- `!.gem-flashlite--yolo/#.docs/render-chain-design.txt`
+- `!.gem-flashlite--yolo/!.evo&obs/!.TPMOS_ONBORD_BIBLE_2.md`
+
+======================================================================
+17. KNOWN PITFALLS TO AVOID
+======================================================================
+
+1. Do not open a second GLUT window for GLTPM content.
+2. Do not replace legacy mirrors before the new path works.
+3. Do not use `system()` for the new orchestration path.
+4. Do not bypass marker files with custom render triggers.
+5. Do not let both `gl_os_session.c` and `gl_desktop.c` fight over the same
+   truth files without a clear ownership decision.
+6. Do not keep the mock-grid renderer as the hidden backend for the "new"
+   feature; real file-driven rendering must replace it for `gltpm_app`.
+7. Do not parse the layout on every frame.
+8. Do not forget ASCII / Unicode mapping for tiles.
+9. Do not let `gl_desktop.c` become game-logic soup; keep ops in managers.
+10. Do not hardcode project paths that bypass `project_root`.
+
+======================================================================
+18. RECOMMENDED FIRST VERTICAL SLICE
+======================================================================
+
+If you want the fastest meaningful proof:
+
+1. Add `GLTPM Apps` to the existing terminal menu.
+2. Add one new launcher entry: `demo_world.gltpm`.
+3. Open a `gltpm_app` virtual window.
+4. Parse one `.gltpm` file with:
+   - one camera
+   - one tilemap
+   - one sprite
+   - one button overlay
+5. Read tile/sprite metadata from files.
+6. Route one button press to project `history.txt`.
+7. Have a manager append a marker and change one visible thing.
+
+If that works, the architecture is real.
+
+======================================================================
+19. ACCEPTANCE CHECKLIST
+======================================================================
+
+The work is on target only if ALL of these are true:
+
+- GLTPM apps open inside GL-OS as virtual windows
+- no second GL window opens
+- legacy mirror windows still exist for reference
+- GLTPM layout parser is separate from the ASCII parser path
+- layouts are CHTPM-like and use file-backed `${var}` substitution
+- real tiles/entities come from project files, not hardcoded mock data
+- input is routed to project history / command files
+- project managers / ops perform the real logic
+- marker files drive refresh
+- every tile has ASCII / Unicode association
+
+======================================================================
+20. FINAL IMPLEMENTATION INTENT
+======================================================================
+
+The correct end state is not "OpenGL mirror of ASCII."
+
+The correct end state is:
+
+- GL-OS hosts virtual windows.
+- GLTPM layouts define interactive GL scenes in a TPM-friendly markup style.
+- project managers and ops stay sovereign.
+- CHTPM principles stay intact:
+  - file truth
+  - path discipline
+  - marker-driven refresh
+  - piece/module/os hierarchy
+- the current mirror windows remain as references while the new runtime comes
+  online.
+
+If you are unsure between "quick hack inside project_mirror" and "clean new
+gltpm_app path", choose the clean new `gltpm_app` path.
+
+That is the whole point of this roadmap.

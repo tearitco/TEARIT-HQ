@@ -1,0 +1,24 @@
+=== PIECEMARK-IT ADVANCED TESTING REPORT ===
+Date: Wed Mar 25 11:59:29 AM PDT 2026
+---------------------------------------------
+[BOOT] PASS: Orchestrator and Parser are live.
+[NAV] Testing path to User Auth...
+[NAV] FAIL: Failed to reach User Auth.
+[NAV] FAIL: Failed to reach op-ed.
+[TPM] Auditing op-ed_module.c for hardcoded keys...
+[TPM] VIOLATION: Hardcoded ASCII key check '4' found in op-ed_module.c
+[TPM] FAIL: KEY:4 gave no response in op-ed.
+[KPI] FAIL: Selector state did not update pos_y (Still 5).
+[NAV] FAIL: Could not return to Project Manager.
+---------------------------------------------
+KPI SUMMARY:
+- Parity Score: 0/100
+- TPM Compliant: NO (VIOLATIONS FOUND)
+- Stability: PASS
+---------------------------------------------
+ARCHITECTURAL ASSESSMENT:
+1. UI UX: Frame history shows correct navigation, but state sync can be slow (1.5s delay needed for reliable FSM).
+2. TPM: Serious violation in op-ed_module.c - coupling logic to button sequence.
+3. Isolation: Projects and Apps are correctly separated in pieces/ and projects/ directories.
+---------------------------------------------
+FINAL VERDICT: UNSTABLE - REQUIRES REFACTORING

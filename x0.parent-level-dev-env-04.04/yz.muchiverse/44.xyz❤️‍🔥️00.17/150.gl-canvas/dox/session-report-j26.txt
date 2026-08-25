@@ -1,0 +1,225 @@
+gl-canvas — SESSION REPORT (2026-07-26)
+========================================
+Picks up from dox/pure-pet-handoff.txt (the prior handoff). That doc's
+"Priority 1-4" punch list is now DONE. This report covers what changed,
+what broke along the way (including a real system crash), and what
+works now, with direct evidence.
+
+================================================================================
+STARTING POINT (per pure-pet-handoff.txt)
+================================================================================
+gl-canvas existed and compiled (5 binaries) but was never confirmed
+working at runtime. Two open issues were handed off:
+  ISSUE 1: pet_purely window "not visible in XQueryTree" - UNRESOLVED
+  ISSUE 2: gl_canvas's fgDisplay.Display Xdnd-init hack - UNTESTED
+  ISSUE 3: tk_drag_sim synthetic events - UNTESTED
+  ISSUE 4: test script path resolution - fixed once, untested after
+
+================================================================================
+PART 1: ISSUE 1 WAS A FALSE DIAGNOSIS, NOT A REAL BUG
+================================================================================
+Ran pet_purely live and checked with `xwininfo -root -tree` /
+`xwininfo -name <pet_id>` directly (not xlsclients, which the prior
+handoff had relied on). The window WAS there the whole time: mapped,
+IsViewable, Override Redirect State: yes, listed as a root child.
+
+xlsclients only lists WM-MANAGED windows (it walks the window manager's
+own client list). An override_redirect window is by definition never
+managed by the WM, so xlsclients was guaranteed to never show it,
+correctness aside. That's a diagnostic-tool mismatch, not a bug in
+pet_purely.c. Lesson for future agents: to check whether a raw/
+override_redirect X11 window really exists, use `xwininfo -root -tree`
+or `xwininfo -name <title>`, never xlsclients.
+
+================================================================================
+PART 2: TWO REAL BUGS FOUND IN THE ORIGINAL XDND CODE
+================================================================================
+1. gl_canvas.c's own startup window-lookup (the fgDisplay.Display hack)
+   searched only DIRECT children of root for a window titled
+   "gl-canvas". But mutter/gnome-shell reparents every normal top-level
+   window into an invisible decoration frame - confirmed live via
+   `xwininfo -root -tree`, which showed gl-canvas one level below an
+   unnamed frame window that was the actual root child. The direct-
+   children search silently found nothing and never printed either of
+   its own two possible log lines (neither the success message nor the
+   "display is NULL" warning) - the loop just fell through empty. Fixed
+   with a recursive find_window_by_name(). (This exact same bug existed
+   independently in test-harn/ops/tk_drag_sim.c's own window-by-title
+   lookup and was fixed there too.)
+
+2. tk_drag_sim.c computed the drag path using XGetGeometry's raw x/y,
+   which are relative to a window's PARENT, not the screen. For
+   pet_purely (override_redirect, parent = root) this was harmless, but
+   for gl-canvas (parent = the WM's decoration frame) it meant the
+   "target" coordinates were frame-relative numbers used as if they
+   were absolute screen coordinates - the synthetic drag warped the
+   pointer to the wrong place on screen entirely, nowhere near the
+   actual gl-canvas window. Fixed with XTranslateCoordinates to get
+   true root-relative coordinates for both source and target.
+
+================================================================================
+PART 3: A REAL SYSTEM CRASH, AND ITS ROOT CAUSE
+================================================================================
+While manually testing a real drag after the two fixes above, the
+user's machine crashed and had to reboot (confirmed via `uptime`
+showing the box had only been up ~2 minutes right after).
+
+Root cause found: gl_canvas.c's `glutIdleFunc(check_xdnd_events)` had
+no throttle at all. freeglut calls an idle function back-to-back with
+no yield of its own - pet_purely already had a `usleep(16000)` in its
+own loop, but gl_canvas didn't, so it was pegging a full CPU core
+continuously just polling for Xdnd events, even with nothing happening,
+from the moment it launched (not just during a drag). Combined with
+other running load (this session's own tooling, Chrome, etc.) on this
+particular laptop, that appears to have been enough to bring the system
+down. Fixed by adding the same `usleep(16000)` throttle used everywhere
+else in this project family. Verified stable afterward across several
+bounded (`timeout`-wrapped) runs with active CPU sampling between
+steps - process CPU stayed in the 0.5-4% range idle, no crash recurred
+across repeated manual and automated drag tests for the rest of the
+session.
+
+================================================================================
+PART 4: REAL XDND WAS RIPPED OUT, NOT JUST PATCHED
+================================================================================
+Even after both bugs above were fixed, a real manual drag-and-drop
+still did not complete the actual protocol handoff (no "got pet_id"
+message, no imported_pets.txt entry). Xdnd's ClientMessage/Selection
+events only deliver to the X11 connection that created the target
+window, and getting the WM-reparented target's identity + the
+XdndAware detection walk fully correct in a way that's actually
+verified end-to-end proved to be a real time sink for what is, in this
+project, only ever going to be two programs we ourselves wrote talking
+to each other - not a general-purpose desktop drag target that needs to
+interoperate with arbitrary third-party Xdnd apps.
+
+Decision (made with the user): drop real Xdnd, replace it with a
+coordinate check + a plain drop-queue file. Both directions now work
+this way:
+
+  DROP IN (pet_purely -> gl_canvas):
+    pet_purely already tracks its own window's live screen position on
+    every drag. On ButtonRelease, it looks up gl-canvas's current
+    on-screen rect (recursive window-by-name search + XTranslateCoordinates,
+    same fix as Part 2) and checks whether the release point lands
+    inside it. If so, it writes its pet_id to incoming_drop.txt
+    (write-to-temp-then-rename, so gl_canvas's idle-driven poll never
+    sees a half-written file) and exits itself immediately - no
+    round-trip/handshake needed since we already know the drop
+    succeeded.
+    gl_canvas's idle function polls for that file, and if present, reads
+    the pet_id, spawns ./system/import_pet in the background (appends a
+    timestamped line to imported_pets.txt - an append-only ledger,
+    deliberately left untouched by the pull-out flow below, so it stays
+    a full history rather than "current state"), and removes the file.
+
+  PULL OUT (gl_canvas -> pet_purely), new this session:
+    gl_canvas now has glutMouseFunc/glutMotionFunc/glutEntryFunc
+    handlers. Clicking inside the canvas while a pet is present starts a
+    "reverse drag" (the rendered quad follows the cursor for visual
+    feedback, shrinking to a smaller size while dragging). GLUT's own
+    window entry/leave event (not X11) fires natively the instant the
+    cursor crosses the gl-canvas window's edge, regardless of drag
+    speed - when that happens mid-drag, gl_canvas computes the current
+    screen position (its own window's screen offset, via
+    glutGet(GLUT_WINDOW_X/Y), plus the last tracked cursor position),
+    spawns a brand new ./system/pet_purely process there with the same
+    pet_id, and clears its own "pet is in the canvas" display state.
+
+The real Xdnd protocol code was NOT just commented out in place -
+it was extracted into its own standalone, still-compiling modules
+(matching this project family's own "small self-contained ops" style)
+so it stays available for reference/reuse without cluttering the live
+code paths:
+  system/xdnd_source.c / .h  - drag SOURCE side (was in pet_purely.c)
+  system/xdnd_target.c / .h  - drop TARGET side (was in gl_canvas.c)
+Neither is compiled into any binary right now - button.sh's compile
+step does not reference them. Both were sanity-compiled standalone
+(`gcc -std=c11 -Wall -Wextra -c`) with zero warnings to confirm they're
+still valid C on their own, in case a future agent wants a real,
+protocol-compliant Xdnd implementation to build on instead of
+reinventing it from scratch.
+
+================================================================================
+PART 5: WHAT'S CONFIRMED WORKING, WITH EVIDENCE
+================================================================================
+Full round trip tested live (user-driven, not simulated) this session,
+in this exact order, in one continuous run:
+
+1. pet_purely 'manual_test_pet' dragged from the desktop into gl-canvas.
+   gl_canvas.log: "gl_canvas: importing pet 'manual_test_pet'"
+                  "imported: manual_test_pet"
+   imported_pets.txt: "[2026-07-26 21:45:47] pet_id=manual_test_pet"
+   pet_purely's own process exited with code 0 (a clean self-exit from
+   check_drop_on_release(), not a timeout/kill) - confirms the drop
+   really was detected, not just visually coincidental.
+
+2. The pet (now rendered inside gl-canvas) was clicked and dragged back
+   toward the window's edge.
+   gl_canvas.log: "gl_canvas: releasing pet 'manual_test_pet' back to
+   desktop at (384,279)"
+   A brand new pet_purely process was independently confirmed running
+   at exactly that position via `ps aux` immediately afterward:
+     pet_purely manual_test_pet 384 279
+   incoming_drop.txt did not exist afterward (correctly consumed both
+   times it was written, no leftover state).
+
+Both automated bounded runs (this session, several times, via `timeout`
++ background launches with active `ps`/loadavg sampling in between) and
+the final manual test above showed no crash and low, stable per-process
+CPU (roughly 0.5-4%).
+
+================================================================================
+PART 6: KNOWN LIMITATIONS / FUTURE WORK
+================================================================================
+- Single-pet canvas: gl_canvas tracks exactly one "pet currently inside"
+  at a time (g_drop_pet_id is a single buffer, not a list). Dropping a
+  second pet while one is already present will silently overwrite the
+  first's in-memory display state (imported_pets.txt still gets both
+  ledger lines - only the ephemeral "what's showing right now" state is
+  single-slot). Fine for this test project; would need a real
+  list/array if gl-canvas ever needs to hold multiple pets at once.
+
+- Continuity across the window boundary during pull-out: once the pet
+  is handed back to a freshly spawned pet_purely, the ORIGINAL mouse
+  button (still physically held down from the click inside the canvas)
+  does not carry over into a live drag of the new window - the new
+  pet_purely starts with no pressed-button state of its own. In
+  practice this means: click-drag out of the canvas correctly places
+  the pet back on the desktop at the release point, but continuing to
+  drag it further requires releasing and clicking again on the new
+  window. Matches the scope of "pull it back out," not "one unbroken
+  drag across two separate windows" (which would need a shared pointer
+  grab - effectively reimplementing Xdnd's own job, the exact
+  complexity this session moved away from).
+
+- gl_canvas's `system(cmd)` calls (spawning import_pet / pet_purely) use
+  the pet_id directly inside a shell string with only single-quoting,
+  not real shell-escaping. Fine for test pet_ids (alphanumeric/
+  underscore, as used throughout this session) but would be a command-
+  injection risk if pet_id could ever come from a less trusted source.
+  Worth hardening if gl-canvas moves beyond a local test tool.
+
+- xdnd_source.c/xdnd_target.c are extracted and still compile clean
+  standalone, but are unused/unwired - if a future agent wants real
+  Xdnd (e.g. to interoperate with a genuinely external drag source or
+  target), start there rather than from scratch, but budget real time
+  for the WM-reparenting + cross-connection debugging this session hit.
+
+================================================================================
+PART 7: FILES CHANGED THIS SESSION
+================================================================================
+  system/gl_canvas.c        - rewritten: dropped Xdnd, added drop-file
+                               polling (with CPU throttle) + reverse-
+                               drag (mouse/motion/entry callbacks)
+  system/pet_purely.c       - rewritten: dropped Xdnd, added coordinate-
+                               check + drop-file writing + self-close
+  system/xdnd_source.c/.h   - NEW: extracted, unused, standalone-compiles
+  system/xdnd_target.c/.h   - NEW: extracted, unused, standalone-compiles
+  test-harn/ops/tk_drag_sim.c - fixed WM-reparenting window search +
+                               parent-relative vs screen-relative
+                               coordinate bug
+  dox/session-report-j26.txt - this file
+
+button.sh's compile step is unchanged in shape (same 5 binaries); it
+simply does not reference the two new xdnd_*.c files.

@@ -1,0 +1,43 @@
+🪰️goal is 2 modify the 'mosquito' into blood mutant🆑️
+
+(im writing this as a test book to have my ai navigate
+the cyoa and read it outloud without my input , making its own choices
+as a way to get a foothold into making an op-bot and reverse
+engineering that for bot editor 
+
+i want u to look at cyoa setup by running @_.0.test
+then, i want you to look at my bot. 
+make a fsm that we can use ops and "pal / prisc " scripting
+(we will write the script, bot will read it, and use prisc 2 execute ops with user input vars , ie : 
+<pal> enter  (<op{executable c library} that passes "enter key + timestamp>enters project menu)
+<pal> go-to-cyoa  ( op that inputs the menu sequence needed to go to the cyot project  <can parse project list frame or w/e>)
+
+<pal> cyoa-fsm ( op bot the will make random page choices looping over and over again till it reads "the end" )
+<instead of normal .c this should be another 'prisc/pal' script that gets run and is a 'fsm' ai 
+that allows user to add or remove ops. 
+(later we can add a rl option to the fsm, which can launch a op in 'gcc c exe' that will keep track of rl weights
+and make choices based on past weights, trying to learn paths that lead 2 the end of the book in the least amount of pages[debug testing]
+(and we will find a way to grade it )
+
+-------------------------------------------------------
+<if u cant getinto this get into pal scripting> ;
+<or chat. chat i just want to start write messages to bottom
+and they write to screen, as a post and doing it again will post again
+we will hook up multi user network later.
+--------------------------------------------------------------
+
+
+(later i will also add an 'attention mechanism' that will actually read the book pages, 
+and pick based on sentiment (choosing path based on 'happy'/ 'sad' , and seeing results that we can later do testing on ) 
+
+
+{and soon later we will hook this into quiz where it can guess words / hangman also ; 
+u did this ones ops/pal prisc right (if not get a unique document made for pal/prisc first with example; wheres the old one?❤️‍🔥️}
+
+
+
+
+we will actually mention this at the begining as a reminder
+the user can run the test bot as well . and tweak it etc
+even in story they can tweak it. the best path should lead 2 cyborg
+and build from there. 

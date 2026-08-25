@@ -1,0 +1,3 @@
+strategy_a=0.9
+strategy_b=0.1
+strategy_c=0.0

@@ -1,0 +1,2 @@
+2026-08-20T22:44:54|1|research_attempt|element:carbon|compound:Xylazine
+2026-08-20T22:44:58|1|compound_discovered|Xylazine

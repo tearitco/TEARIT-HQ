@@ -1,0 +1,5 @@
+PAGE | main
+OBJECT | label=Events (hq) | action=sh -c 'exec "$1/&.widgits/events-hq/button.sh" "$0" "$1"'
+OBJECT | label=Dir | action=sh -c 'exec xdg-open "$0"'
+OBJECT | label=Close | action=CLOSE
+OBJECT | label=Cancel | action=void

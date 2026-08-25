@@ -1,0 +1,13 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | wraith/wraith-projects/probe-project
+META         | version            | 1.0
+META         | author             | TPMOS
+META         | entry_layout       | projects/wraith/wraith-projects/probe-project/layouts/probe-project.chtpm
+
+STATE        | title              | WRAITH PROBE PROJECT
+STATE        | status             | ready
+STATE        | mode               | probe
+STATE        | current_context    | session
+
+RESPONSE     | default            | Probe Project Ready.

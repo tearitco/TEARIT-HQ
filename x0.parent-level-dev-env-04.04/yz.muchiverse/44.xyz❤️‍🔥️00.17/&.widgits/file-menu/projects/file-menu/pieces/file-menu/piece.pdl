@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | file-menu
+META         | version            | 1.0
+METHOD       | NEW                 | 1
+METHOD       | SAVE                | 2
+METHOD       | SAVE AS             | 3
+METHOD       | LOAD                | 4
+METHOD       | FOCUS               | 5

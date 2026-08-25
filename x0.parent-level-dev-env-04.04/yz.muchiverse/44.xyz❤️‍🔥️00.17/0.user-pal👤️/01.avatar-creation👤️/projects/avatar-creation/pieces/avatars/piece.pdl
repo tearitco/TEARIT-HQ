@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | avatars
+META         | version            | 1.0
+
+METHOD       | 👨🏽 Starter  faaa365c-49c0-41a4-812f-2d380af92b65 | SELECT_AVATAR:faaa365c-49c0-41a4-812f-2d380af92b65

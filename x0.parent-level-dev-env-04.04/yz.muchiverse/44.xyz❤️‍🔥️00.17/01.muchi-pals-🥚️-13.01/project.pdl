@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | muchi-pals
+META         | version            | 0.1
+META         | author              | uhogs
+
+STATE        | starting_world     | world_01
+STATE        | starting_map       | map_lobby
+STATE        | title              | MUCHI-PALS
+
+EVENT_IN     | project_start      | void
+
+RESPONSE     | project_start      | muchi-pals initialized.
+RESPONSE     | default            | *waiting...*

@@ -1,0 +1,5 @@
+spirl
+*.o
+*.pid
+saves/slot0/save.txt
+saves/slot0/party.pdl

@@ -1,0 +1,21 @@
+<chtpm>
+  <module>projects/wraith-alpha/wraith-projects/wraith-3d-cube/manager/+x/wraith-3d-cube_manager.+x</module>
+  <text label="WRAITH 3D CUBE" /><br/>
+  <text label="Nested Wraith project for 3D audit testing." /><br/>
+  <text label="Project ID: wraith-alpha/wraith-projects/wraith-3d-cube" /><br/>
+  <text label="Surface: ${game_map} | Action: INTERACT | Mode: is_map_control" /><br/>
+  <text label="Camera: mode=${camera_mode} pos=${cam_x},${cam_y},${cam_z} rot=${cam_pitch},${cam_yaw},${cam_roll}" /><br/>
+  <text label="+--------+" /><br/>
+  <text label="|  +----+|" /><br/>
+  <text label="| /    /||" /><br/>
+  <text label="|+----+ ||" /><br/>
+  <text label="||    | / " /><br/>
+  <text label="||    |/  " /><br/>
+  <text label="|+----+   " /><br/>
+  <text label="+--------+" /><br/>
+  <text label="Audit: cube_id=cube_probe_01 rot=x15,y35,z0 depth=front/right/top" /><br/>
+  <button label="Interact Cube Surface" onClick="INTERACT" /><br/>
+  <button label="POV Mode 1" onClick="CAMERA_MODE:1" /><br/>
+  <button label="POV Mode 3" onClick="CAMERA_MODE:3" /><br/>
+  <button label="POV Mode 4" onClick="CAMERA_MODE:4" /><br/>
+</chtpm>

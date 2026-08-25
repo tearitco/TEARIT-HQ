@@ -1,0 +1,7 @@
+# retry-demo.plan — forces an assertion that CANNOT pass (checks for
+# a substring that will never appear in a real_file_check chat reply),
+# to prove MAX_RETRIES>0 actually asks for and tries an alternative
+# phrasing, logs each retry attempt separately, and still correctly
+# FAILS once retries are exhausted (not a false pass, not a silent
+# hang). Run with: MAX_RETRIES=2 bash run_plan.sh plans/retry-demo.plan
+STEP | what color is the sky | grep -qi "this-string-will-never-appear-xyz123" "$STEP1_OUT"

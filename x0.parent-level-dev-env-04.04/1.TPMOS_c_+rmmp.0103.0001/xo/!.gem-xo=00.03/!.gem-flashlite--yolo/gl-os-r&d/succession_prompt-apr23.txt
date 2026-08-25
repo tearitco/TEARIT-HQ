@@ -1,0 +1,39 @@
+# SUCCESSION PROMPT - APRIL 23, 2026: GL-OS & SYSTEM STABILIZATION
+**Status:** IMMEDIATE HANDOVER REQUIRED
+**Objective:** Finalize System-Wide Compilation Cleanup & Build Pipeline Integrity.
+
+## 1. CONTEXT: THE TPMOS ECOSYSTEM
+You are working on **TPMOS (True Piece Method OS)**. 
+- **The Hierarchy:** PIECE (Soul/File) -> MODULE (Logic/Daemon) -> OS (Theater/Renderer).
+- **Geography is Destiny:** Projects live in `projects/`, system apps in `pieces/apps/`.
+- **GL-OS:** A high-fidelity OpenGL host (`gl_desktop.c`) that renders "Virtual Windows" mirroring project states.
+
+## 2. CURRENT STATE: CAMERA & MIRRORING
+- **KPI K1 (Swap) & K3 (Camera) are DONE.**
+- `gl_desktop.c` can launch "Project Mirror" windows (e.g., `fuzz-op-gl`).
+- **Interaction:** [Control Map] toggles between Menu Nav (Arrows) and Camera/Xelector control (WASD/Arrows).
+- **Camera Modes:** 1st and 3rd person modes automatically follow the "Xelector" (map cursor) grid coordinates.
+
+## 3.  (done) 
+
+## 4. MISSION B: BUILD PIPELINE INTEGRITY
+The `compile_all.sh` script (located in `#.dev-storage/#.tools/`) was silently failing for `gl_desktop.c`.
+**Task:** Ensure the build script is bulletproof.
+- **Goal:** Running `./button.sh compile` must reliably produce `pieces/apps/gl_os/plugins/+x/gl_desktop.+x`.
+- **Verification:** 
+    - The script now has a `if [ -f "$dst" ]` check. Make sure this isn't bypassed.
+    - Ensure `-lm` is always included for GL apps.
+    - Validate that the binary produced by the script is identical to a manual `gcc` call.
+
+## 5. RECENT BUG REPORT (FOR AWARENESS)
+- **Regression:** Adding struct fields to `DesktopWindow` caused crashes because the array wasn't initialized.
+- **Fix:** I added `memset(windows, 0, sizeof(windows))` in `main()`. Keep this pattern for any new global state.
+
+## 6. NEXT STEPS (POST-CLEANUP)
+Once warnings are zeroed and the build is stable:
+1. **Real Data Sync:** Update `gl_desktop.c` to read `projects/fuzz-op-gl/session/state.txt` instead of using mock grid/entities. 
+2. **Menu Triggers:** Map menu options (`scan`, `collect`) to actual Op execution via the project manager.
+
+**Mantra:** "If it's not in a file, it's a lie. The marker is the clock."
+Good luck, Agent.
+

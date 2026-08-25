@@ -1,0 +1,12 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/user_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|                         U S E R                           |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <button label="Back" href="pieces/chtpm/layouts/main.chtpm" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${panel_content}" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label=" [ctrl+c] Quit" /><br/>
+</panel>

@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | roster
+
+METHOD       | Deselect                            | DESELECT_UNIT
+METHOD       | Move                                | MOVE_UNIT:side1_unit0
+METHOD       | Attack                              | ATTACK_UNIT:side1_unit0

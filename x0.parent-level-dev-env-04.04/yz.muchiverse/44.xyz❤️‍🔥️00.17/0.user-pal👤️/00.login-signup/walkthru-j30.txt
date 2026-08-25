@@ -1,0 +1,23 @@
+🚶 walkthru-j30.txt — 0.user-pal👤️/00.login-signup — QUICK CHECK
+================================================================
+STATUS: ✅ rebuilt + real-tested, no bugs found
+
+## ▶️ HOW TO RUN
+    bash button.sh run
+
+## ✅ CHECKLIST
+  [ ] 1️⃣ Create a new account (user ID + display name) 🆕
+  [ ] 2️⃣ Log out
+  [ ] 3️⃣ Log back in with that same ID
+  [ ] 4️⃣ Create a SECOND account, then use the account list to switch
+        between the two without retyping the ID 🔀
+
+## 🟢 GOOD LOOKS LIKE
+Real multi-user signup/login/uuid/filesystem setup all works, account
+switcher list shows a marker next to whichever one is currently active.
+
+Side note: I double-checked whether this screen had the same "hand-
+drawn cursor" bug agy-txt/file-menu had — it doesn't. The ">" marker
+here is just a status indicator, the real switching already goes
+through real buttons. Nothing was broken, nothing changed. ✅
+================================================================

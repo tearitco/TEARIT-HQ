@@ -1,0 +1,11 @@
+project_id=wraith-alpha/wraith-projects/wraith-ed
+is_map_control=0
+game_id=test-game-01
+current_map=map_0001_z0
+cursor_x=5
+cursor_y=3
+cursor_z=0
+active_glyph=T
+active_tile=tree
+mode=map_edit
+last_action=Unhandled key 1002

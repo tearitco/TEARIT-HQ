@@ -1,0 +1,42 @@
+# send_screen_module.pal - PHASE 2 per-screen module split (2026-07-31,
+# #.haiku+/!.xyzos-standards+1.txt §41), proven first in 01.muchi-
+# pals-🥚️-13.01, now applied here. pieces/chtpm/layouts/send_screen.chtpm's
+# own DEDICATED module - every other pal-chain screen gets its own
+# too, so chtpm_parser_pal.c's real launch_module() liveness check
+# (kill+relaunch on genuine navigation, reuse while staying on one
+# screen) applies per screen, not once for the whole project. Reuses
+# the SAME shared ops (chain_menu_input, compose_frame) every other
+# screen's module also calls - splitting those into per-screen
+# dedicated files is a separate, later step, not done here. Structure
+# is a straight copy of the original main_loop_chtpm.pal's own shape.
+li x1, 0
+
+li x9, 0
+chain_menu_input x9
+compose_frame
+hit_frame
+read_pos x7, "pieces/display/chain_screen_changed.txt"
+
+loop:
+li x9, 0
+chain_menu_input x9
+read_pos x8, "pieces/display/chain_screen_changed.txt"
+beq x7, x8, check_key
+addi x7, x8, 0
+j render
+
+check_key:
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, no_key
+chain_menu_input x2
+j render
+
+no_key:
+sleep 30000
+j loop
+
+render:
+compose_frame
+hit_frame
+sleep 30000
+j loop

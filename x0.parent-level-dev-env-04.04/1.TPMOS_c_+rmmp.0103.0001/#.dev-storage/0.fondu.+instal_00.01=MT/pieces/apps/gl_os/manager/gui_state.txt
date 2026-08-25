@@ -1,0 +1,6 @@
+module_path=pieces/apps/gl_os/plugins/+x/gl_os_session.+x
+active_layout_id=desktop.chtpm
+app_title=GL-OS DESKTOP
+windows=
+bg_color=#000044
+active_window=-1

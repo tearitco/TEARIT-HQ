@@ -1,0 +1,16 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | demo_1
+META         | version            | 1.0
+META         | author             | Gemini-CLI
+
+STATE        | selector_enabled   | 1
+STATE        | starting_map       | map_0001
+STATE        | player_piece       | hero
+STATE        | current_z          | 0
+
+EVENT_IN     | project_start      | void
+EVENT_IN     | project_save       | void
+
+RESPONSE     | project_start      | Demo Project 1 Initialized.
+RESPONSE     | default            | *waiting...*

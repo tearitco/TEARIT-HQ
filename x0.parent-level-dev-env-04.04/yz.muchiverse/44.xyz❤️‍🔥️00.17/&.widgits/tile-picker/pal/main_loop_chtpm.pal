@@ -1,0 +1,34 @@
+# tile-picker main_loop_chtpm.pal - persistent screen-dispatch loop,
+# modeled directly on file-menu's own pal/main_loop_chtpm.pal (read in
+# full 2026-08-04). Pre-sync menu_input before first compose to
+# initialize state.
+li x1, 0
+
+li x9, 0
+tp_menu_input x9
+tp_compose_frame
+hit_frame
+read_pos x7, "pieces/display/tp_screen_changed.txt"
+
+loop:
+li x9, 0
+tp_menu_input x9
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, no_key
+tp_menu_input x2
+j render_always
+
+no_key:
+read_pos x8, "pieces/display/tp_screen_changed.txt"
+beq x7, x8, no_render
+addi x7, x8, 0
+
+render_always:
+tp_compose_frame
+hit_frame
+sleep 16667
+j loop
+
+no_render:
+sleep 16667
+j loop

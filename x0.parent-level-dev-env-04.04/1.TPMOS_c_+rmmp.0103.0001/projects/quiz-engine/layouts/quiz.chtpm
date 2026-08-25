@@ -1,0 +1,24 @@
+<panel time_reactive="true">
+    <module>projects/quiz-engine/manager/+x/quiz-engine_manager.+x</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+    
+    <text label="╔═══════════════════════════════════════════════════════════╗" /><br/>
+    <text label="║             TPM-AI QUIZ ENGINE: MCAT COMPOUNDS             ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║ Compound: ${q_name}" /><br/>
+    <text label="║ Formula:  ${q_formula}" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║ Question: What is the TYPE of this compound?              ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║ Answer: " /><cli_io id="answer" label="${answer_input}" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║ Result: ${last_result}                                    ║" /><br/>
+    <text label="║ Correct Answer: ${correct_answer}                         ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  " /><button label="[1] Submit" onClick="KEY:1" /><text label="                                 ║" /><br/>
+    <text label="║  " /><button label="[2] Next Question" onClick="KEY:2" /><text label="                          ║" /><br/>
+    <text label="║  " /><button label="[ESC] Exit" href="pieces/chtpm/layouts/os.chtpm" /><text label="                                 ║" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+</panel>

@@ -1,0 +1,22 @@
+# DAY 14 — How to Prompt the Future Agents 💬
+# ==========================================
+# Title: "DAY 14 — How to Prompt the Future Agents 💬"
+# Characters: TOMO, MAXINE, IQA, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), MAXINE (en-GB-MaisieNeural), IQA (en-US-AnaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+
+**TOMO:** A fresh agent does not know the house. It does not know the standing rules, the directory map, the already-measured facts, or the landmines. If you don't tell it, it will: use python (🔪 forbidden), trust the model's word, re-test the 3B native tools (🚫 already dead), call binaries directly instead of the relay, or invent a new state pattern when chtpm/tpmos already have one.
+
+**MAXINE:** So the first prompt is really a *prevention* prompt. It stops the disasters before they start.
+
+**TOMO:** Use this shape. Adjust the task line. The rest is load-bearing.
+
+**IQA:** Why does it list the docs instead of just saying "read everything"?
+
+**TOMO:** Because "read everything" = reading the whole house = thousands of tokens of irrelevant context that crowd out the actual work. Route them, don't flood them. A few targeted docs beat the whole library every time. 🎯
+
+**THE NARRATOR:** Sessions drift. Here's the cheapest correction:
+
+**TOMO:** If an agent goes sideways, don't argue with it — *re-anchor*: "Stop. Re-read [doc, section]. The task is [one line]. Show me what you have so far in a file." A re-anchor costs a few tokens and ends the drift instantly. And if the drift is your fault (ambiguous ask), just say so — clarity is cheaper than cleanup. 🧹
+
+**TOMO:** Exactly. And tomorrow: how to spend almost no tokens at all. 💸

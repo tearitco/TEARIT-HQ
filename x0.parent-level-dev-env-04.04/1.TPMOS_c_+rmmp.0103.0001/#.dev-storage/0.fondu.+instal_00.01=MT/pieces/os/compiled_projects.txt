@@ -1,0 +1,2 @@
+# Template-only clone.
+# Leave this list empty until a real project is promoted out of template.

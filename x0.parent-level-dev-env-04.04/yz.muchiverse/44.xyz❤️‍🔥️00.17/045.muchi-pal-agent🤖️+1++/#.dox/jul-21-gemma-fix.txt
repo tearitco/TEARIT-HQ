@@ -1,0 +1,470 @@
+JUL-21 GEMMA FIX — IT'S A PIPELINE BUG, NOT AN API/CONNECTIVITY BUG
+================================================================================
+Written 2026-07-21 by Sonnet, after wasting real API calls confirming
+what the user already told me directly: "gemma local still isn't
+working... why are we still stuck on this?" followed by "i told u its a
+pipeline issue. u didn't believe me." Recording that correction here so
+the next session doesn't repeat it.
+
+================================================================================
+EVIDENCE THE MODEL/API/SERVER ARE ALL FINE (STOP RE-TESTING THIS)
+================================================================================
+
+1. User ran `ollama run gemma3:270m` directly in their own terminal:
+     >>> hi
+     Hi there! How can I help you today?
+   Millisecond-range response, no issue.
+
+2. Direct curl to the EXACT endpoint/payload shape connect_op.c sends
+   (http://localhost:11434/api/chat, gemma3:270m, same messages[] shape
+   build_gemma_request() emits) returned a fully valid response in
+   ~1.09s:
+     {"model":"gemma3:270m",...,"message":{"role":"assistant",
+      "content":"Hi there! How can I help you today?\n"},"done":true,...}
+
+3. After the check_response.c/gemma_strategy.c/send_message.c edits
+   earlier this session, state.txt DID eventually show
+   "sys_msg=Response received." and context_log.txt DID receive a real
+   assistant reply:
+     user|text||hi
+     assistant|text||Hi there! I'm here to help you with your tasks...
+     assistant|text||Hi there! I'm here to help you with your tasks...
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   LOGGED TWICE for a single "hi" turn - both lines byte-identical.
+
+CONCLUSION: the model answers correctly and quickly every time it's
+asked, directly (CLI) or over HTTP (curl). The API is not the problem
+and must not be re-tested again this cycle - every curl/ollama-run
+confirmation from here just burns tokens restating fact #1-2 above.
+
+================================================================================
+THE ACTUAL BUG: SOMEWHERE IN THE PIPELINE, NOT THE ENDPOINT
+================================================================================
+
+Two concrete, already-observed pipeline symptoms, neither explained by
+"the API is slow/down/wrong":
+
+  A) GUI showed "THINKING" stuck for 11 polls / 41 frames on a request
+     that the raw API answers in ~1 second. Something between
+     send_message.c's fork and check_response.c's PID-liveness check
+     (or the render loop around it, main_loop_chtpm.pal) is not
+     recognizing completion promptly, or is re-polling far more slowly
+     than the real latency would require.
+
+  B) The SAME assistant reply got appended to context_log.txt TWICE for
+     ONE user turn. That is not something a slow/flaky API call could
+     produce on its own - two writes happened somewhere in this
+     project's own C code (check_response.c's append_log_turn, most
+     likely called twice across two different poll/tick cycles because
+     the state.txt ai_state="THINKING" -> "IDLE" transition and/or the
+     chat_screen_changed.txt marker gate didn't actually stop a second
+     poll from re-reading the same already-parsed llm_response.json and
+     re-appending it before ai_state visibly flipped to IDLE).
+
+Both point at the SAME kind of problem the earlier "random-words"
+misdiagnosis in api-fix.txt was chasing before it turned out to be a
+red herring: a poll-loop / state-transition ordering issue in THIS
+project's own pipeline code (send_message.c -> connect_op.c ->
+check_response.c -> main_loop_chtpm.pal's render gate), not anything
+external.
+
+================================================================================
+NEXT STEP (DIRECT INSTRUCTION - DO THIS, NOT MORE API TESTING)
+================================================================================
+
+Compare muchi-pal-agent's actual pipeline wiring against the OTHER pal
+projects in this same family that are already proven working, and find
+where the divergence is:
+
+  - 1.pal-chat-irc (ops/palnet_peer.c, ops/chat_inbox_watcher.c,
+    ops/chat_compose_frame.c) - a persistent daemon shape, but more
+    importantly: chat_inbox_watcher.c's own trigger_render() comment
+    (line 55-88 in that file) is a documented, LIVE-CAUGHT bug of
+    exactly this same species - "did the marker get pinged" vs. "did
+    the thing that should only happen once actually only happen once."
+  - $.4x/civ-pal/civ-pal (pal/main_loop.pal, ops/compose_frame.c,
+    ops/end_turn.c) - the plainest working example of a persistent
+    PAL loop dispatching one-shot ops synchronously, once per tick,
+    with a single marker-file gate (current_frame.txt) - use this as
+    the reference for what a CORRECT single-fire poll/render cycle
+    looks like, then diff muchi-pal-agent's main_loop_chtpm.pal +
+    check_response.c's own ai_state/marker handling against it to find
+    exactly where a second, redundant fire is possible.
+
+Specifically worth checking against those references (no API calls
+needed - this is all local file/logic reading):
+  - Does check_response.c's ai_state="THINKING" guard (line ~163) get
+    re-checked/re-read freshly on EVERY poll, or could a stale in-memory
+    copy let two ticks both believe THINKING is still true right as the
+    response lands?
+  - Does chat_screen_changed.txt's marker-append happen BEFORE or AFTER
+    ai_state flips to "IDLE" in check_response.c (~line 300-330)? If a
+    second poll can slip in between those two writes, that's the double-
+    append window.
+  - Compare against civ-pal's end_turn.c/compose_frame.c: does THAT
+    project ever risk two ticks both acting on the same "turn ready"
+    condition, or does its own state write ordering close that window
+    in a way check_response.c's doesn't?
+
+Do not open connect_op.c or json_parser.c again looking for a
+network/parsing bug - both are confirmed fine per the evidence above.
+The bug is in the poll/state-transition wiring around them.
+
+================================================================================
+UPDATE 2026-07-21 (later same day) — ROOT CAUSE FOUND, CONFIRMED LIVE.
+DIRECT USER CORRECTION APPLIED: "something your missing about the
+projects your comparing to, is that they run 'seperate sessions'
+instead of clobbering concurrent runs... implement all the standards
+for the pal pipeline, your simply focusing on the wrong issue."
+================================================================================
+
+`ps aux` at the time of the double-log bug showed THREE separate
+`system/prisc+x pal/main_loop_chtpm.pal` processes running concurrently
+(PIDs 2208605 launched 14:02, 2213228 launched 14:03, 2414365 launched
+15:18 - three different `button.sh run` invocations, none of them ever
+killed cleanly before the next one started), each with its own sibling
+`chtpm_parser_pal`. Each one runs its own independent ~100ms poll loop
+that calls `check_response` unconditionally every tick (main_loop_chtpm.
+pal line 25). That's not a hypothesis - it's the literal, currently-
+running process list. Three independently-timed poll loops, all racing
+on the SAME state.txt/context_log.txt, is exactly how the same assistant
+reply got appended twice: two of those three processes both read
+ai_state=THINKING, both saw curl_pid dead, and both walked all the way
+through check_response.c's parse-and-append before either one flipped
+ai_state to IDLE (see the whole loop-guard analysis above - it still
+holds, it just doesn't originate from ONE process misbehaving, it's
+THREE processes each individually behaving exactly as designed).
+
+MY FIRST INSTINCT WAS WRONG: patch check_response.c to atomically claim
+llm_response.json (rename-as-lock) before parsing, so N racing readers
+can only succeed once. That would have suppressed the double-log
+symptom, but it is not what the other two working reference projects
+actually do, and the user caught this directly - so recording the
+correction plainly: the reference projects don't survive concurrent
+runs by out-racing each other safely, they never let concurrent runs
+SHARE the racing state in the first place.
+
+THE ACTUAL DIFFERENCE - diff the three `button.sh run` actions:
+
+  pal-chat-irc (WORKING, session-isolated from day one - see its own
+  button.sh header: "BUILT SESSION-ISOLATED... the first project in
+  this family with both from its very first version, not retrofitted"):
+    - `pieces/apps/player_app/state.txt` (the ai_state-equivalent poll/
+      ownership file) is written FRESH, inside $SESSION_DIR, on every
+      single `run` - never shared, never symlinked.
+    - The ONLY things symlinked shared across concurrent sessions are
+      `users/` and `rooms/` - real MULTI-USER data that every session
+      legitimately needs to see and mutate together (that's the whole
+      point of a chat room). And even there, `chat_inbox_watcher.c`
+      guards every shared write with `already_has_line()` before
+      appending - concurrent writers are EXPECTED and handled
+      idempotently, not assumed away.
+
+  civ-pal (WORKING, no multi-session concept needed - single-player,
+  no shared mutable state to race on at all):
+    - Nothing comparable to world_01 exists; not a relevant comparison
+      for the sharing question, only for "what does one correct,
+      single-fire poll/render cycle look like" (still valid, see above).
+
+  muchi-pal-agent (BROKEN):
+    - button.sh's own header comment says it outright: "SHARED
+      (symlinked, never copied): ... pieces/world_01/ (the REAL
+      persistent chat session data - state.txt, context_log.txt -
+      this project's own equivalent of pal-forum's own users/ or
+      pal-chain's own wallets/)."
+    - THIS IS THE MISCLASSIFICATION. pal-chat-irc's users/rooms/ are
+      multi-user data - many real people's messages, meant to merge.
+      muchi-pal-agent's world_01/session_01/chat/state.txt holds
+      ai_state/curl_pid/pending_tool_name - SINGLE-OWNER "am I
+      currently mid-flight on ONE specific API call" bookkeeping, the
+      direct structural equivalent of pal-chat-irc's own PRIVATE
+      pieces/apps/player_app/state.txt, not its shared users/rooms/.
+      Sharing it across concurrent `run`s was never a deliberate,
+      matching architectural choice the way pal-chat-irc's sharing is -
+      it's a copy-paste of the "SHARED (symlinked)" list that put the
+      wrong file in the wrong bucket, then never got an
+      already_has_line()-style idempotency guard because nobody
+      expected concurrent writers to exist there in the first place.
+
+PRESCRIBED FIX (matches the family standard - "implement all the
+standards for the pal pipeline" - not a local patch):
+
+  1. In button.sh's `run` action, move `pieces/world_01/session_01/
+     chat/state.txt` and `context_log.txt` OUT of the shared/symlinked
+     set and INTO the same per-session, copied-fresh-into-$SESSION_DIR
+     bucket `pieces/apps/player_app/state.txt` already correctly uses
+     (the `cat > pieces/apps/player_app/state.txt << 'EOSTATE'` block
+     is the exact pattern to copy). Each `button.sh run` then gets its
+     own private ai_state/curl_pid/context_log, so two concurrent
+     terminals can never race on the same poll-ownership file again -
+     by construction, not by locking.
+        - If cross-session conversation continuity (resuming the SAME
+          chat history in a later `run`) is actually wanted, seed the
+          new session's copy from the last session's on launch (a
+          plain `cp`, not a symlink) - continuity and exclusivity are
+          two separate concerns and don't have to trade off against
+          each other.
+  2. Fix button.sh's `kill_own_module`/trap cleanup so a `run` that
+     exits (even via Ctrl+C) actually reaps its own `prisc+x`/
+     `chtpm_parser_pal` pair every time - the fact that THREE stacked
+     from 14:02 to 15:18 without ever being cleaned up means the
+     existing cwd-matched reap isn't firing reliably, or `run`s are
+     being backgrounded/detached in a way that skips the trap
+     entirely. Worth an explicit `pgrep`-before-`run` guard too
+     (refuse or warn if a `main_loop_chtpm.pal` for this same project
+     is already alive), matching sec. 0-CORRECTED item 4's own
+     liveness-based single-instance precedent (`launch_module()`'s
+     guard).
+  3. Only AFTER (1) makes world_01 session-private does it become safe
+     to decide whether check_response.c still needs any idempotency
+     guard at all - with true session isolation it shouldn't (matches
+     civ-pal: one process, one owner, no race possible), so this is
+     probably not needed once (1)/(2) land. Don't add it preemptively;
+     that would be re-introducing the sec. 0-CORRECTED anti-pattern of
+     patching a race instead of removing the reason it can happen.
+
+REAL INSIGHT, stated plainly: the bug was never "check_response.c has
+a logic error." check_response.c is internally correct FOR A WORLD
+WHERE ONLY ONE COPY OF IT EVER RUNS AT A TIME. The actual defect is one
+line in button.sh's own SHARED-vs-SESSION classification, made once,
+early, by pattern-matching pal-chat-irc's users/rooms/ sharing without
+checking whether world_01's own fields were the same KIND of shared
+data - they're not. This is exactly why "compare to a working pal
+project's shape" was the right instruction from the start; the shape
+that was missing wasn't in check_response.c's poll logic at all, it was
+in button.sh's session-isolation boundary, one directory-classification
+
+================================================================================
+HANDOFF STATUS UPDATE 2026-07-21, END OF SESSION (WRITE THIS EVEN IF
+NOTHING ELSE - USER ASKED FOR THIS EXPLICITLY "in case of imminent
+handoff")
+================================================================================
+
+WHAT'S ACTUALLY DONE, VERIFIED:
+
+  ✅ send_message.c / check_response.c / gemma_strategy.c: Gemma tool-
+     calling (the `TOOL:` prompt hack) fully removed per direct
+     instruction - Gemma is always plain text now, tools are pre-
+     decided/pre-run by gemma_strategy.c + strategy_execute_a.c before
+     Gemma is ever called. Compiles clean, -Wall -Wextra.
+  ✅ send_message.c / check_response.c / text_to_pal_prompt.c: the real
+     Gemini bug fixed - a `/model` listing turn (tool_name=NULL) used to
+     get replayed into every Gemini request as a broken functionResponse,
+     permanently 400ing that provider for the rest of the session. Now
+     tagged kind="info" and skipped by all four request builders. Live
+     poisoned line in context_log.txt was hand-patched too (since
+     superseded by the button.sh fix below, which now copies world_01
+     per-session anyway).
+  ✅ send_message.c / connect_op.c / check_response.c: stale-response
+     misattribution closed - llm_response.json + a new .status sidecar
+     (curl's real exit code) are cleared before every request and
+     checked before parsing, so a failed connection can no longer be
+     silently misread as a fresh (wrong) answer.
+  ✅ button.sh: THE ACTUAL ROOT CAUSE, fixed and RE-VERIFIED LIVE twice
+     today (see below for why "fixed once" wasn't enough) - world_01 is
+     now copied per-session (private, exclusive, seeded + persisted for
+     continuity) instead of symlinked shared, closing the concurrent-
+     poll-ownership race that produced the double-logged replies and
+     the "stuck THINKING" symptom.
+
+WHAT HAPPENED AFTER THE FIRST button.sh FIX LOOKED DONE (READ THIS -
+it's the actual reason to distrust "I killed the stale processes,
+confirmed via ps, done" without a SECOND check):
+
+  The first version of reap_stale_sessions() matched stale processes by
+  cwd falling under pieces/sessions/ - correct for anything launched via
+  `button.sh run`, but TWO processes (a prisc+x + chtpm_parser_pal pair,
+  PIDs 2208605/2213226/2213228, alive since 14:02/14:03) had cwd == the
+  PROJECT ROOT ITSELF. They were launched directly, bypassing button.sh
+  entirely (almost certainly earlier direct-invocation testing per
+  handoff.txt's own discipline, run against the full chtpm_parser_pal/
+  prisc+x pair instead of a single op binary) - completely invisible to
+  a cwd-scoped guard, and they kept polling/mutating the CANONICAL
+  pieces/world_01 directly for over an hour, racing every subsequent
+  properly-isolated session regardless of the fix.
+
+  A first `pkill -9 -f "system/prisc\+x"` (etc.) attempt to clear them
+  APPEARED to succeed (empty `ps` grep afterward, exit code consistent
+  with "nothing left") but those exact same PIDs were confirmed STILL
+  ALIVE at the very next check, unchanged start times. Root cause of
+  the false-clear not fully confirmed (possibly a sandboxed-tool
+  signal-delivery quirk, possibly something else) - what mattered
+  operationally: a bare pkill exit code was not sufficient evidence of
+  a real kill. Only killing by exact PID (`kill -9 <pid>`) and then
+  re-running `ps aux | grep ...` a SECOND time actually confirmed they
+  were gone.
+
+  reap_stale_sessions() in button.sh is now widened to match by binary
+  identity (`/proc/$pid/exe` resolving under this project root) instead
+  of by cwd, specifically so it also catches a rogue direct launch like
+  this one, not just a stacked `run`. This is now the live, current
+  version of button.sh - not a TODO.
+
+CURRENT LIVE STATE AS OF THIS WRITING:
+  - Exactly ONE legitimate session running (PIDs 2463558-2463561,
+    started 15:32, via a real `button.sh run` after the button.sh fix
+    was in place) - confirmed via `ps aux`, no rogues remain.
+  - That session's own copy of world_01 was seeded (via the normal
+    continuity-copy) from a canonical context_log.txt that STILL HAD
+    the old double-logged "Aida: Hi there..." lines baked in from
+    BEFORE this fix landed - so if that specific duplicate is still
+    visible on screen, it is OLD, already-committed history being
+    redisplayed, not new evidence of a fresh double-write happening
+    now. A genuinely fresh test (new `button.sh run`, fresh "hi") is
+    the only way to confirm the double-write itself is actually gone
+    going forward - NOT YET DONE THIS SESSION.
+  - The most recent frame shown ("Thinking... poll #13, frame #48")
+    for a NEW "hi" sent in that same live session was captured WHILE
+    the two rogue processes were still alive and racing - it is NOT
+    yet confirmed whether that specific stuck-THINKING instance
+    resolves on its own now that only one process is polling. Next
+    agent/session: check this FIRST, before assuming it's fixed or
+    assuming it's still broken.
+
+NEXT STEPS FOR WHOEVER PICKS THIS UP:
+  1. Confirm no rogue processes exist (`ps aux | grep -E
+     "prisc\+x|chtpm_parser_pal"`), matched against $SCRIPT_DIR - if
+     anything shows a cwd or exe path that ISN'T under pieces/sessions/
+     for a currently-live session, that's a rogue, kill it by exact
+     PID, and RE-CHECK with a second `ps` call before trusting it's
+     gone (see the false-clear above - don't skip the re-check).
+  2. Start completely fresh: `./button.sh kill` (or manual kill of
+     anything found in step 1), then a clean `./button.sh run`, then
+     send one NEW message to gemma-local and watch whether it resolves
+     in ~1-2 real seconds with exactly ONE logged reply. That is the
+     actual, still-outstanding confirmation this whole investigation
+     has been building toward.
+  3. If it's still stuck or still double-logs even with a single,
+     confirmed-alone process: the bug is NOT the concurrent-session
+     race anymore (that mechanism is now closed by construction), so
+     go back to check_response.c's own internal poll-guard logic (ai_
+     state re-read freshness, marker-write ordering) - the earlier
+     "diff against civ-pal's single-fire poll cycle" angle from the
+     first half of this document, not the session-isolation angle.
+decision upstream of every symptom chased today.
+
+================================================================================
+SECOND UPDATE 2026-07-21, SAME DAY, STEP 3 ABOVE HAPPENED - THE
+CONCURRENT-SESSION RACE IS CONFIRMED FIXED, BUT A SEPARATE, REAL BUG
+SURFACED UNDERNEATH IT ("doesn't show response till i quit nd restart")
+================================================================================
+
+GOOD NEWS FIRST - THE double-write BUG FROM EARLIER TODAY IS ACTUALLY
+GONE, confirmed from the user's own latest frame dump: every message
+sent WITHIN the fresh, properly-isolated session (the three "hi"s,
+then "new") each got exactly ONE reply. The only duplicate visible on
+screen ("Aida: Hi there! I'm here to help you with your tasks..."
+appearing twice) is the SAME pre-existing duplicate pair from BEFORE
+today's button.sh fix landed, carried forward by the continuity-copy -
+old, already-committed history being redisplayed, not a fresh
+double-write. Step 2 from the prior update is done and passed.
+
+THE NEW SYMPTOM: sending "new" put the app into THINKING, the frame
+counter froze at a fixed value ("poll #15, frame #52") across multiple
+distinct screen redraws over 5+ real seconds, and never changed again
+until the user killed the session (Ctrl+C) and ran `button.sh r` fresh
+- at which point the correct reply ("Aida: Hi! I'm here to help you
+with your tasks...") appeared immediately. That last fact is the whole
+diagnosis in miniature: the ANSWER WAS COMPUTED AND SAVED CORRECTLY
+(context_log.txt had it, state.txt had it, button.sh's own exit trap
+persisted it back to the canonical copy on Ctrl+C) - a fresh restart's
+own one-time startup `compose_frame` (main_loop_chtpm.pal line 20,
+runs unconditionally before entering the poll loop) just read that
+already-correct data off disk and displayed it. So this is NOT a
+compute-side hang and NOT a lost/corrupted response. It's a LIVE
+RENDER-REFRESH bug: something stops the running session from ever
+redrawing again with fresh data, even though the data itself becomes
+correct in the background.
+
+HARD EVIDENCE, not speculation - pieces/world_01/session_01/chat/
+compose_frame_debug.txt (compose_frame.c already writes one line to
+this file on every single invocation, unprompted, an existing debug
+convention from earlier work today - this is what made this diagnosis
+possible instead of guessing):
+
+  [compose_frame] sys_msg='Querying AI...' at 1784673463
+  [compose_frame] about to write 9 turns to view.txt, sys_msg='Querying AI...'
+
+  ^ THE LAST LINE IN THE ENTIRE FILE. No matching "Response received."
+  entry ever follows it, even though the response WAS eventually
+  correct on disk (per the restart proof above). This means
+  compose_frame.+x was invoked exactly ONCE for this turn - immediately
+  after send_message.c's own `do_submit -> render` step (the synchronous
+  render that always happens right after Enter, matching main_loop_
+  chtpm.pal line 39: `send_message / j render`) - and NEVER AGAIN.
+
+WHAT THIS RULES OUT (do not re-chase these):
+  - compose_frame.c itself hanging - it ran fine once, its own debug
+    line proves it returned normally that time.
+  - hit_frame - a native prisc+x VM opcode (OP_HIT_FRAME, prisc+x.c line
+    1046-1054), just appends one line to a marker file, no subprocess,
+    cannot hang.
+  - irc_agent_poll - runs immediately before compose_frame in the same
+    `render:` sequence; since compose_frame's own debug line DID fire,
+    irc_agent_poll must have already returned (synchronous, single-
+    threaded dispatch) - also confirmed irc_agent_active is unset/off
+    in state.txt regardless, so it self-filters as a near-instant no-op
+    per its own header comment.
+  - PID reuse in check_response.c's `kill(pid, 0)` liveness probe -
+    seriously considered (this project forks dozens of short-lived
+    processes per turn, and check_response.+x itself gets spawned fresh
+    EVERY ~100ms tick even when idle, which is a lot of churn) but
+    `/proc/sys/kernel/pid_max` on this machine is 4194304 and the
+    live PID counter was only ~2.46 million at the time - nowhere near
+    a wraparound, so an immediate reuse collision is not well
+    supported by the actual numbers here. Not ruled out with 100%
+    certainty, but not the leading theory anymore either.
+
+WHERE THIS LEAVES THE DIAGNOSIS: the freeze has to be somewhere in the
+sequence `j render -> loop: -> check_response -> read_pos -> (no_key ->
+sleep 100000 -> j loop) OR (response_arrived -> j render)`, i.e. inside
+check_response.c itself on THIS specific invocation, or in the
+interpreter's own tick/dispatch around it - NOT confirmed which,
+because check_response.c has no equivalent of compose_frame.c's own
+debug-log line yet. Worth noting from the same debug file's earlier
+history: every OTHER "Querying AI..." -> "Response received." gap
+recorded today (even ones from hours before any of this session's
+work) took MINUTES, not the ~1 second the raw API genuinely needs -
+this specific dead-freeze may just be the same underlying slowness
+taken to its extreme, not a fully separate mechanism. That pattern
+(consistently, dramatically slower than the raw API, every single
+time, not just this once) points at check_response.c's OWN poll/parse
+path costing far more than expected on every call, not a one-off fluke.
+
+PRESCRIBED FIX (what to actually build, in order):
+
+  1. Add a debug-log line to check_response.c, mirroring compose_
+     frame.c's own already-proven pieces/world_01/session_01/chat/
+     compose_frame_debug.txt convention EXACTLY (same directory, same
+     one-line-per-invocation shape) - log at minimum: timestamp,
+     ai_state as read, curl_pid as read, the kill(pid,0)/errno result,
+     and which branch was taken (early-return-still-thinking vs.
+     proceeded-to-parse vs. which provider branch). This is not
+     optional scaffolding - it is the ONLY way to get hard evidence for
+     whichever of these is actually true, instead of guessing again:
+       a) check_response.+x is barely ever being invoked at all (the
+          interpreter's own tick loop itself is stalling somewhere
+          else, unrelated to check_response's own body) - the debug
+          log would show a LONG GAP between consecutive timestamped
+          lines.
+       b) check_response.+x IS being invoked every ~100ms as expected,
+          but keeps deciding "still thinking, bail early" far longer
+          than curl actually takes - the debug log would show MANY
+          rapid entries all hitting the early-return branch, and would
+          show exactly what curl_pid/kill() result it kept seeing.
+       c) check_response.+x reaches the parsing branch but then stalls
+          INSIDE it (e.g. a slow/blocking run_tool_capture() call to
+          json_parser.+x) - the debug log would show one entry that
+          enters the parse branch and then nothing further from THIS
+          op for a long time, with the NEXT log line only appearing
+          after the freeze breaks.
+  2. Once (1) shows which of a/b/c is real, the actual code fix is
+     narrow and obvious from there - don't guess-patch check_response.c
+     further before that evidence exists, that's exactly the mistake
+     the earlier (pre-session-isolation) investigation made chasing
+     compose_frame/hit_frame/irc_agent_poll all afternoon without ever
+     nailing it down.
+
+ONLY AFTER THIS IS RESOLVED: move on to the still-open gemini-flash and
+groq (ollama, llama3-groq-tool-use:8b) native tool-calling path fixes -
+direct instruction from the user, in this order, not in parallel.

@@ -1,0 +1,5 @@
+name=Phenylalanine
+formula=Phe (F)
+type=C6H5CH2CH(NH2)COOH
+groups=Amino Acid
+relevance=-NH2

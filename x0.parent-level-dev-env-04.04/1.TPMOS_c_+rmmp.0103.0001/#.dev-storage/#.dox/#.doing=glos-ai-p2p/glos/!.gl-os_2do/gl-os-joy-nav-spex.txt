@@ -1,0 +1,211 @@
+# GL-OS JOYSTICK NAVIGATION SPECIFICATION
+**Date:** March 24, 2026
+**Status:** CRITICAL - Must Match ASCII-OS Behavior
+
+---
+
+## EXPECTED BEHAVIOR (Same as ASCII-OS)
+
+### ASCII-OS Reference (from #.piece.mark.c-look_0.txt)
+
+```
+--- FRAME UPDATE at 2026-03-04 06:26:17 ---
+╔═══════════════════════════════════════════════╗
+║  CHTPM+OS Main Menu                          ║
+║                                               ║
+║  [>] 1. [Help]                                 ║
+║  [ ] 2. [Launch FuzzPet]                       ║
+║  [ ] 3. [Status]                               ║
+╚═══════════════════════════════════════════════╝
+
+--- FRAME UPDATE at 2026-03-04 06:26:19 ---
+╔═══════════════════════════════════════════════╗
+║  CHTPM+OS Main Menu                          ║
+║                                               ║
+║  [ ] 1. [Help]                                 ║
+║  [>] 2. [Launch FuzzPet]                       ║  ← Selection moved!
+║  [ ] 3. [Status]                               ║
+╚═══════════════════════════════════════════════╝
+```
+
+**Key Points:**
+1. ONLY ONE item has `[>]` at a time
+2. Items are numbered sequentially (1., 2., 3.)
+3. Text is in brackets: `[Text]`
+4. Joystick UP/DOWN moves the `[>]` indicator
+5. EACH frame shows the CURRENT selection state
+
+---
+
+## GL-OS CURRENT OUTPUT (WRONG)
+
+```
+╔═══════════════════════════════════════════════╗
+║  Win:1  Act:1  M(0,0) S=0                    ║
+╠═══════════════════════════════════════════════╣
+║  MENU (Joystick UP/DOWN to navigate)         ║
+║  ║  [>] 1. [Desktop Apps]                    ║  ← Extra ║, always [>]
+║  ║  [>] 2. [Terminal Apps]                   ║  ← Extra ║, always [>]
+╚═══════════════════════════════════════════════╝
+```
+
+**Problems:**
+1. ❌ BOTH items show `[>]` (should be only ONE)
+2. ❌ Extra `║` at start of each menu line
+3. ❌ Selection doesn't change when joystick is used
+4. ❌ Frame doesn't update when joystick moves selection
+
+---
+
+## REQUIRED FIXES
+
+### 1. Fix Menu Format
+
+**Remove extra `║` from menu generation:**
+
+```c
+/* WRONG - includes extra ║ */
+snprintf(line, sizeof(line), "║  %s %d. [%s]                            ║\n", 
+         indicator, i + 1, menu_items[i]);
+
+/* RIGHT - no extra ║ */
+snprintf(line, sizeof(line), "  %s %d. [%s]\n", 
+         indicator, i + 1, menu_items[i]);
+```
+
+### 2. Fix Selection State
+
+**Joystick must update `selected_index`:**
+
+```c
+void joystick(unsigned int buttonMask, int x, int y, int z) {
+    if (active_window_id != -1) {
+        for (int i = 0; i < window_count; i++) {
+            if (windows[i].id == active_window_id && 
+                strcmp(windows[i].type, "terminal") == 0) {
+                
+                /* Y axis - move selection */
+                if (y < -500 && last_joy_y >= -500) {
+                    /* Joystick UP - move selection up */
+                    windows[i].selected_index--;
+                    if (windows[i].selected_index < 0) 
+                        windows[i].selected_index = 0;
+                    
+                    /* WRITE NEW FRAME */
+                    write_gl_os_state();
+                    parse_and_write_frame();
+                    
+                } else if (y > 500 && last_joy_y <= 500) {
+                    /* Joystick DOWN - move selection down */
+                    windows[i].selected_index++;
+                    if (windows[i].selected_index >= 2) 
+                        windows[i].selected_index = 0;  /* Wrap around */
+                    
+                    /* WRITE NEW FRAME */
+                    write_gl_os_state();
+                    parse_and_write_frame();
+                }
+                last_joy_y = y;
+            }
+        }
+    }
+    glutPostRedisplay();
+}
+```
+
+### 3. Fix Frame Writing
+
+**State file must have CORRECT selected_index:**
+
+```c
+void write_gl_os_state(void) {
+    /* ... */
+    
+    /* Get selected_index from terminal window */
+    int selected_idx = 0;
+    for (int i = 0; i < window_count; i++) {
+        if (windows[i].id == active_window_id && 
+            strcmp(windows[i].type, "terminal") == 0) {
+            selected_idx = windows[i].selected_index;
+            break;
+        }
+    }
+    
+    /* Build menu with CORRECT selection */
+    for (int i = 0; i < 2; i++) {
+        const char *indicator = (i == selected_idx) ? "[>]" : "[ ]";
+        /* ... */
+    }
+}
+```
+
+---
+
+## TESTING PROCEDURE
+
+### Test 1: Initial State
+1. Start GL-OS
+2. Check clipboard.txt
+3. **Expected:**
+   ```
+     [>] 1. [Desktop Apps]
+     [ ] 2. [Terminal Apps]
+   ```
+4. **Only FIRST item should have `[>]`**
+
+### Test 2: Joystick DOWN
+1. Push joystick DOWN
+2. Check clipboard.txt
+3. **Expected:**
+   ```
+     [ ] 1. [Desktop Apps]
+     [>] 2. [Terminal Apps]
+   ```
+4. **Selection should move to SECOND item**
+
+### Test 3: Joystick DOWN Again
+1. Push joystick DOWN again
+2. Check clipboard.txt
+3. **Expected:**
+   ```
+     [>] 1. [Desktop Apps]
+     [ ] 2. [Terminal Apps]
+   ```
+4. **Should wrap around to FIRST item**
+
+### Test 4: Joystick UP
+1. Push joystick UP
+2. Check clipboard.txt
+3. **Expected:** Selection moves UP (opposite of DOWN)
+
+---
+
+## DEBUG OUTPUT
+
+**Console should show:**
+
+```
+[JOY NAV] Joystick DOWN detected
+[JOY NAV] selected_index: 0 -> 1
+[JOY NAV] Writing new frame...
+[FRAME DEBUG] State written: selected_idx=1
+[FRAME DEBUG] Frame written to current_frame.txt
+```
+
+---
+
+## SUCCESS CRITERIA
+
+- [ ] Menu format correct (no extra `║`)
+- [ ] Only ONE item has `[>]` at a time
+- [ ] Joystick DOWN moves `[>]` to next item
+- [ ] Joystick UP moves `[>]` to previous item
+- [ ] Selection wraps around (0 → 1 → 0)
+- [ ] Frame updates immediately on joystick input
+- [ ] Clipboard.txt shows correct selection state
+
+---
+
+**END OF SPECIFICATION**
+
+**This document defines the EXACT behavior required. GL-OS must match ASCII-OS navigation behavior exactly.**

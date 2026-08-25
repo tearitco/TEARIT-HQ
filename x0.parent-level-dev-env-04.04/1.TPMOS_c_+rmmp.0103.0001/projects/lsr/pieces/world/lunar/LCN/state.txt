@@ -1,0 +1,10 @@
+name=Lunar Construction
+ticker=LCN
+type=corporation
+cash=5000.00
+stock_price=10.00
+industry=CONSTRUCTION
+on_map=1
+pos_x=15
+pos_y=7
+pos_z=0

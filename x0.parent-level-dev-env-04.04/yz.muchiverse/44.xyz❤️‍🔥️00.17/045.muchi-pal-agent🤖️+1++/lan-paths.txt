@@ -1,0 +1,61 @@
+LAN PATHS — where LAN work points (2026-07-31)
+==============================================
+For the human: this doc maps every LAN-related path/endpoint so you always
+know where things are and what points where. Kept next to the agent.
+
+## The three machines
+| machine  | address               | login                 | role on this network |
+|----------|-----------------------|-----------------------|----------------------|
+| THIS BOX | (local)               | no                    | orchestration ONLY, never model compute. Ships daily. |
+| MAC      | 10.0.0.144            | lfs.master / 1234     | heavy lifting: code-gen (llama3), big-scale iqabod runs |
+| LINUX    | 10.0.0.187            | jb / root             | reliable always-on gemma3:270m node, iqabod training |
+
+## Model endpoints (plain HTTP, no SSH needed)
+- MAC ollama:      http://10.0.0.144:11434   (LAN-open, OLLAMA_HOST=0.0.0.0)
+- LINUX ollama:    http://10.0.0.187:11434   (I set host=0.0.0.0 via snap)
+- LINUX can reach MAC's ollama directly (verified) — training runs on
+  LINUX call the teacher on MAC over the LAN.
+
+## Directory map (the storage rule: pointer on this box, payload on nodes)
+THIS BOX (small manifest/reports ONLY — ships daily, never heavy):
+- 045.muchi-pal-agent🤖️+1/pieces/registry/curricula.pdl   <- the manifest
+- 045.muchi-pal-agent🤖️+1/dev-agent-convo/                <- session docs
+- 045.muchi-pal-agent🤖️+1/#.wussup/                       <- progress reports
+
+LINUX node (jb@10.0.0.187) — real payload lives here:
+- ~/iqabod-store/curricula/     <- planned root for the expert bank
+- ~/iqabod-store/conv-g1/       <- first conversation curriculum (corpus+weights)
+- ~/iqabod-test/+x/             <- iqabod binaries (main_orchestrator, generation_module)
+- ~/iqabod-test/curriculum/     <- iqabod's own default curriculum dir
+- ~/iqabod-store/<name>/corpus.txt   <- raw corpus text (what teacher wrote)
+- ~/iqabod-store/<name>/curriculum/<name>/{<name>.txt,<name>.txt.weights} <- vocab+weights
+
+MAC node (lfs.master@10.0.0.144):
+- ~/iqabod-store/curricula/     <- planned (for big-scale runs later)
+- ~/games/number_game.py        <- deployed playable llama3 game (proof)
+
+## The training flow (what points at what)
+1. LINUX curls http://10.0.0.144:11434 (llama3 teacher) -> corpus text
+   -> saved to ~/iqabod-store/<name>/corpus.txt on LINUX
+2. LINUX runs ./+x/main_orchestrator.+x vocab_only + train
+   -> weights land in ~/iqabod-store/<name>/curriculum/<name>/ on LINUX
+3. LINUX evaluates -> small report row sent BACK to this box
+   -> appended to curricula.pdl / training-report.txt here (tiny only)
+Nothing heavy ever sits on THIS box.
+
+## SSH command cheatsheet
+  Linux:  sshpass -p root ssh jb@10.0.0.187
+  Mac:    sshpass -p 1234 ssh lfs.master@10.0.0.144
+  scp to Linux node store: sshpass -p root scp <file> jb@10.0.0.187:~/iqabod-store/
+
+## Supervisor v1 (added 2026-07-31) - what points where
+- ops train_step/eval_curriculum/list_curricula (+x in ops/+x/) run on THIS
+  box but SSH into the nodes (sshpass, creds above) - orchestration only.
+- %.harnesses/iqabod-loop/button.sh is the set-and-forget loop:
+    enqueue <name> <node>   -> curriculum-queue.txt (tiny, on this box)
+    once | loop | status
+  Queue + training-report.txt live in %.harnesses/iqabod-loop/ (tiny).
+- Store config.txt on each node store dir MUST set learning_rate=0.1
+  (default 1e-5 never leaves the random floor - proven). conv-g1 has it.
+- Sliding-window training fix lives in generation_module.c (local mirror +
+  compiled binary on Linux node). Rebuild on node, not here.

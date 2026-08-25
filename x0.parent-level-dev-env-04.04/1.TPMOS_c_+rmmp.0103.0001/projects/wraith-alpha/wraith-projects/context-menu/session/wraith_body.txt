@@ -1,0 +1,16 @@
+CONTEXT MENU
+
+Target: wraith-alpha/wraith-projects/wrai-text-editor
+
+<button label="😀" onClick="KEY:1" /><br/>
+<button label="😅" onClick="KEY:2" /><br/>
+<button label="😆" onClick="KEY:3" /><br/>
+<button label="😇" onClick="KEY:4" /><br/>
+<button label="🚀" onClick="KEY:5" /><br/>
+<button label="🌍" onClick="KEY:6" /><br/>
+<button label="🐶" onClick="KEY:7" /><br/>
+<button label="🎉" onClick="KEY:8" /><br/>
+<button label="❤️" onClick="KEY:9" /><br/>
+<button label="⭐" onClick="KEY:10" /><br/>
+
+Ran: emoji_grin

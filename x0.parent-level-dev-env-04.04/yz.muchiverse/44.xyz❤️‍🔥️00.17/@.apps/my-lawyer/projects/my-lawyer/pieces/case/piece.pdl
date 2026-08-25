@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | case
+
+METHOD       | Your case is complete (see defendant_case.txt) | NOOP
+METHOD       | Present to Judge                      | PRESENT_JUDGE
+METHOD       | Settle (instant, lower risk)          | SETTLE

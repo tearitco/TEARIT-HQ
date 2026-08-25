@@ -1,0 +1,10 @@
+name=Mare Tranquillitatis
+ticker=MTR
+type=corporation
+cash=5000.00
+stock_price=10.00
+industry=TOURISM
+on_map=1
+pos_x=15
+pos_y=1
+pos_z=0

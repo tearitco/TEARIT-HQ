@@ -1,0 +1,13 @@
+# gender|index|emoji|label
+male|0|👨|default
+male|1|👨🏻|light
+male|2|👨🏼|medium-light
+male|3|👨🏽|medium
+male|4|👨🏾|medium-dark
+male|5|👨🏿|dark
+female|0|👩|default
+female|1|👩🏻|light
+female|2|👩🏼|medium-light
+female|3|👩🏽|medium
+female|4|👩🏾|medium-dark
+female|5|👩🏿|dark

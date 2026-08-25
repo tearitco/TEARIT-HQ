@@ -1,0 +1,12 @@
++============================================================+
+|  user: afx_2517994  tokens: 10                             |
+|                                                            |
+|  CHOOSE CLONE — Enter a row to manage that clone.        |
+|  (name + full uuid; methods below are the live list)       |
+|                                                            |
+|  👨🏽 Starter                                          |
+|     faaa365c-49c0-41a4-812f-2d380af92b65                   |
+|                                                            |
+|  > Choose a clone.                                         |
+|                                                            |
++============================================================+

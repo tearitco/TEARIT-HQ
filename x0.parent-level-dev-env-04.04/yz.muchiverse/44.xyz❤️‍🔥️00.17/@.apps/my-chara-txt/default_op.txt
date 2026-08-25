@@ -1,0 +1,9 @@
+# Custom operations for my-chara-txt's own prisc+x program, modeled
+# directly on 041.pal-chain's own default_op.txt (same menu-only, no-map
+# shape - see that file for the real precedent this copies).
+# Format: name type handler {description}
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}
+mychara_menu_input void ops/+x/mychara_menu_input.+x {piece.pdl METHOD dispatch for whichever my-chara-txt screen is current}
+mychara_compose_frame void ops/+x/mychara_compose_frame.+x {render the current my-chara-txt screen into view.txt}
+mychara_ai_decide void ops/+x/mychara_ai_decide.+x {decision_mode-branching automation brain, self-gating no-op unless supervision_mode is semi/full}

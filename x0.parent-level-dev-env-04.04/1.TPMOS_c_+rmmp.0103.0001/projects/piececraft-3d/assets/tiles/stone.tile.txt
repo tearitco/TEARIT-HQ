@@ -1,0 +1,7 @@
+tile_id=stone
+label=Stone
+rgb_top=128,128,128
+rgb_side=100,100,100
+extrude=1.5
+solid=1
+walkable=0

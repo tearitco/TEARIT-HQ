@@ -1,0 +1,4 @@
+last_cmd=SAVE_AS
+result=error
+message=cannot resolve save path (outside user's xyzfs home?)
+at=1785470582

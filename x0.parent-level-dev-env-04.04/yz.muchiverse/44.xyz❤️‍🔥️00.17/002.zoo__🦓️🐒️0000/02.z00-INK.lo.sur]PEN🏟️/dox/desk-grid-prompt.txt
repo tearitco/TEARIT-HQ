@@ -1,0 +1,102 @@
+DESKTOP GRID BACKGROUND - image generator prompt + exact math
+========================================================================
+
+UPDATE: a real, deterministic generator now exists - prefer it over the
+image-generator prompt below, which can't be trusted to place grid
+lines at pixel-exact coordinates the way real code can:
+
+    z0.egg-pals+plats-8.00/tools/gen_desktop_grid.c
+    ./gen_desktop_grid <out.png> <width> <height> <cell_px> \
+        <line_r> <line_g> <line_b> <bg_r> <bg_g> <bg_b> [thickness]
+
+Uses stb_image_write.h (same header this codebase family's own
+emoji_gen_atlas.c already uses), takes colors as plain CLI args, and
+guarantees every line lands exactly on a multiple of `cell_px` - no
+image-generation model can promise that. This is a standalone tool,
+NOT part of zoo_0000 or any other single game project - it just knows
+about the shared 80px grid, matching this file's own math below.
+Example for this exact machine's real screen: `./gen_desktop_grid
+wallpaper.png 2496 1664 80 60 60 70 30 30 38 1` - verified working,
+produces a 31x20-cell grid with the same 16px/64px unused margin
+documented below.
+
+The text prompt below is kept as a fallback only, e.g. if you want an
+image generator's own artistic background FILL with the grid overlaid
+by hand afterward rather than a plain flat-color grid.
+========================================================================
+
+Where these numbers come from (verified, not estimated):
+
+  - egg-pals' own desktop-pet window (system/egg_window.c) snaps every
+    pet to an 80x80 pixel grid cell - `#define GRID_CELL_PX 80`
+    (egg_window.c line 101). Each pet's own window IS exactly one
+    cell, no smaller/larger.
+  - The grid origin is (0,0) - the real top-left corner of the screen,
+    same as your desktop's own coordinate system. Column/row N's pixel
+    origin is exactly (N*80, N*80) - confirmed in code at
+    egg_window.c lines 491-494/906-913 (`g_grid_x * GRID_CELL_PX`).
+  - egg_window.c detects your ACTUAL screen size at runtime via X11's
+    `DisplayWidth`/`DisplayHeight` (line 828-829) - it does not assume
+    a fixed resolution. Your real, currently-connected display
+    resolution (checked just now via `xrandr`/`xdpyinfo`):
+
+        2496 x 1664 pixels
+
+  - Column/row count formula, straight from the source (line 830-831):
+    `max_col = (screen_w / GRID_CELL_PX) - 1`,
+    `max_row = (screen_h / GRID_CELL_PX) - 1`. At your resolution:
+
+        31 columns (0-30), 20 rows (0-19)
+        grid covers 2480 x 1600 pixels of your 2496 x 1664 screen
+        16px unused strip on the RIGHT edge, 64px unused strip on the
+        BOTTOM edge (real leftover, not a rounding error - the grid
+        genuinely does not reach the screen's own right/bottom edge at
+        this resolution, since 2496 and 1664 aren't exact multiples of
+        80)
+
+  - If you ever change display/resolution, re-run `xrandr --current`
+    (look for the line with a `*`) and redo the two divisions above -
+    these numbers are only correct for 2496x1664.
+
+------------------------------------------------------------------------
+PROMPT TO GIVE THE IMAGE GENERATOR
+------------------------------------------------------------------------
+
+Generate a desktop wallpaper image, exactly 2496 x 1664 pixels.
+
+Overlay a precise grid of 80x80 pixel squares, aligned so the grid's
+top-left corner is exactly at pixel (0,0) of the image (no offset,
+no centering - the grid must start flush at the top-left).
+
+The grid should be 31 columns wide and 20 rows tall (2480 x 1600
+pixels of grid, leaving a 16px strip unused on the right edge and a
+64px strip unused on the bottom edge of the full 2496x1664 image - do
+NOT stretch or rescale the grid to fill those strips; leave them as
+plain background/whatever fill fits the overall aesthetic).
+
+Each grid line must fall EXACTLY on multiples of 80 pixels (x = 0, 80,
+160, 240, ... 2480; y = 0, 80, 160, ... 1600) - this is a hard
+technical requirement, not an aesthetic suggestion: real desktop pet
+windows will snap to these exact same pixel coordinates, so any drift
+in the generated grid will make the pets visibly misaligned with the
+background.
+
+[Add your own visual style/theme instructions below this line - the
+above is only the technical grid spec the image must satisfy exactly.]
+
+------------------------------------------------------------------------
+NOTES FOR WHOEVER USES THIS FILE NEXT
+------------------------------------------------------------------------
+- This grid is used by BOTH egg-pals' own desktop-pet window
+  (system/egg_window.c) AND z0.zoo_0000's own port of it
+  (system/zoo_window.c, built and live-verified - see
+  dox/pet-import-export-standard.md §3) - same GRID_CELL_PX=80
+  constant, same (0,0) origin in both, so this one background is
+  correct for both. zoo_0000's own pieces are currently confined to
+  the top-left 20x12 cell sub-region of this same grid (columns 0-19,
+  rows 0-11) - its own "pen" - not the full 31x20 grid; see
+  zoo_window.c's own header comment for why.
+- The "16px right / 64px bottom unused" margin is a real, permanent
+  gap at this specific resolution given a fixed 80px cell size - it
+  does not change unless GRID_CELL_PX itself changes in egg_window.c,
+  or the screen resolution changes.

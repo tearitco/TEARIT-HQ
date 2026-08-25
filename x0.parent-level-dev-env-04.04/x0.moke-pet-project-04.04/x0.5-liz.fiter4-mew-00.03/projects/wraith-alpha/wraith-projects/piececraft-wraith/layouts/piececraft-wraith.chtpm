@@ -1,0 +1,13 @@
+<chtpm>
+  <module>projects/wraith-alpha/wraith-projects/piececraft-wraith/manager/+x/piececraft-wraith_manager.+x</module>
+  <interact src="projects/wraith-alpha/wraith-projects/piececraft-wraith/session/history.txt" />
+
+  <!-- NOTE: this layout is is_map_control=1, so Wraith renders the window body from
+       state.txt's game_map= field and this file's own <button>/<text> markup is NOT
+       parsed. Clickable nav lives in session/scene.objects.pdl (tag=control objects),
+       written by piececraft-wraith_manager.c's update_scene_objects(). See
+       HANDOFF-WRAITH-STATE-MYSTERY.md for the full explanation. -->
+  <text label="Position: (${xel_x},${xel_y},${xel_z}) | Mode: ${display_mode} | Debug: ${debug_mode_on}" /><br/>
+  <br/>
+  <text label="${game_map}" /><br/>
+</chtpm>

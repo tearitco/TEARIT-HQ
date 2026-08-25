@@ -1,0 +1,19 @@
+<scene title="AOW-2D: BOOTY LAND" bg="30,40,20" />
+<camera mode="4" x="0" y="10" z="0" pitch="-90" yaw="0" roll="0" />
+
+<interact src="projects/aow-2d/session/history.txt" />
+
+${game_map}
+
+<panel title="Actions">
+    <button label="Tax Land (T)" onClick="KEY:t" />
+    <button label="Buy Unit (B)" onClick="KEY:b" />
+    <button label="End Turn (E)" onClick="KEY:e" />
+</panel>
+
+<panel title="Stats" position="RIGHT">
+    <text label="Player: ${active_player}" />
+    <text label="Credits: ${credits}" />
+    <text label="Units: ${units}" />
+    <text label="Log: ${last_log}" />
+</panel>

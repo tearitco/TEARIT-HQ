@@ -1,0 +1,11 @@
+name=ev_harness_demo
+kind=map_event
+map_id=map_start
+pos_x=3
+pos_y=4
+trigger=action
+sprite=
+self_A=0
+self_B=0
+self_C=0
+self_D=0

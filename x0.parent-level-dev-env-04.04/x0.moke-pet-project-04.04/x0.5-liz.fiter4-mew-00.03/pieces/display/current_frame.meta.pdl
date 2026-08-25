@@ -1,0 +1,25 @@
+SECTION | KEY | VALUE
+FRAME | frame_id | 000004
+FRAME | project_id | wraith-alpha
+FRAME | source_layout | projects/wraith-alpha/layouts/alpha-shell.chtpm
+FRAME | cols | 96
+FRAME | rows | 30
+FRAME | viewport_width_px | 768
+FRAME | viewport_height_px | 480
+FRAME | cell_width_px | 8
+FRAME | cell_height_px | 16
+FRAME | rgb_width_px | 960
+FRAME | rgb_height_px | 540
+FRAME | focused_object_id | 3
+FRAME | focused_object_dom_id | chtmgl_video_isolate_3
+FRAME | focused_object_label | CHTMGL VIDEO ISOLATE #3
+FRAME | focused_object_role | panel
+FRAME | mouse_x | 614
+FRAME | mouse_y | 226
+FRAME | mouse_cursor_visual_uses_offset | true
+FRAME | mouse_hit_offset_x | 0
+FRAME | mouse_hit_offset_y | 0
+FRAME | drag_active | false
+RASTER | font_policy | converter_owns_glyphs
+RASTER | gl_policy | gl_presents_rgb_only
+WARNINGS | count | none

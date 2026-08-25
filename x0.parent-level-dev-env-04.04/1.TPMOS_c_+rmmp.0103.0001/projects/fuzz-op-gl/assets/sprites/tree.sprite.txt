@@ -1,0 +1,7 @@
+sprite_id=tree
+ascii=R
+unicode=🌲
+label=Tree
+rgb=50,200,50
+asset_type=cube_sprite
+anchor=center

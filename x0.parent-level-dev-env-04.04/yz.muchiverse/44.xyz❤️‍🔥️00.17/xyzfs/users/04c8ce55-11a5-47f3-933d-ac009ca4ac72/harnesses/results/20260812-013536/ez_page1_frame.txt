@@ -1,0 +1,18 @@
++==========================================+
+| EVENT PAGE 1 - common_events               |
++==========================================+
+When does this page run? (RMMV Trigger)
+| [>] 1. Trigger: on_click / on_spawn / parallel: []                                        |
+[ ] 2. [Save Trigger]
+------------------------------------------
+-- EVENT COMMANDS (runs top to bottom) --
+Pick New Event Command to add a line.
+• Change Gold: 50
+[ ] 3. [New Event Command...]
+[ ] 4. [Clear All Commands on This Page]
+------------------------------------------
+[ ] 5. [< Back to Event Pages]
+widget profile: GL primary; SHOW_ASCII=0
+
++=========================================================+
+Nav > _

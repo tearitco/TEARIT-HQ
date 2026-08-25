@@ -1,0 +1,24 @@
+  MODE: SAVE AS FILE
+  DIR: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.15/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/xyzfs/users/e8bf229a-62d3-4d6f-810e-e2aaf031cd73/home/documents
+
+ SEARCH: [ ] 1. []
+ FILE:   [^] 2. [_]
+
+  ACTIVE: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.15/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/xyzfs/users/e8bf229a-62d3-4d6f-810e-e2aaf031cd73/home/documents/hi2-112370.txt
+
+  DIRECTORY CONTENTS:
+  [ ] 3. [<- BACK]
+  [ ] 4. [FIL] 1.load-me!.txt (37B)
+  [ ] 5. [FIL] hi2-112370.txt (20B)
+  [ ] 6. [FIL] hi2-699642.txt (20B)
+  [ ] 7. [FIL] load_target_109978.txt (65B)
+  [ ] 8. [FIL] load_target_697310.txt (65B)
+  [ ] 9. [FIL] load_target_708684.txt (65B)
+  [ ] 10. [FIL] my.txt (20B)
+  [ ] 11. [FIL] saved_107296.txt (55B)
+  [ ] 12. [FIL] saved_694681.txt (57B)
+
+  [ ] 13. [SAVE AS]
+  [ ] 14. [CANCEL]
+
+  Type path or browse to a file

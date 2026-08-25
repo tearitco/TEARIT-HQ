@@ -1,0 +1,37 @@
+# dms_module.pal - PHASE 2 per-screen module split (2026-07-31,
+# #.haiku+/!.xyzos-standards+1.txt §41), proven first in 01.muchi-
+# pals-🥚️-13.01, now applied here. pieces/chtpm/layouts/dms.chtpm's
+# own DEDICATED module - every other pal-forum screen gets its own
+# too. Reuses the SAME shared ops (forum_menu_input, forum_compose_
+# frame) every other screen's module also calls - splitting those
+# into per-screen dedicated files is a separate, later step. Structure
+# is a straight copy of the original main_loop_chtpm.pal's own shape.
+li x1, 0
+
+forum_compose_frame
+hit_frame
+read_pos x7, "pieces/display/forum_screen_changed.txt"
+
+loop:
+li x9, 0
+forum_menu_input x9
+read_pos x8, "pieces/display/forum_screen_changed.txt"
+beq x7, x8, check_key
+addi x7, x8, 0
+j render
+
+check_key:
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, no_key
+forum_menu_input x2
+j render
+
+no_key:
+sleep 30000
+j loop
+
+render:
+forum_compose_frame
+hit_frame
+sleep 30000
+j loop

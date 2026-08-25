@@ -1,0 +1,290 @@
++-picker.txt — Scroll selectors & [+]/[-] fold dropdowns
+=========================================================
+Investigated 2026-07-27 against live sources. Goal: same-page notes
+before we replace "Cycle Skin Tone" with a fold-hidden scroll strip.
+
+Sources read:
+  1.TPMOS_c_+rmmp.0103.0001/projects/op-ed/
+    layouts/op-ed.chtpm
+    manager/op-ed_manager.c
+  1.TPMOS_c_+rmmp.0103.0001/projects/+-demo/
+    layouts/+-demo.chtpm          ← canonical fold tree demo
+  1.TPMOS_c_+rmmp.0103.0001/pieces/chtpm/plugins/chtpm_parser.c
+  0.user-pal/01.avatar-creation/
+    system/chtpm_parser_pal.c
+    pieces/chtpm/layouts/avatar_manage.chtpm
+    pieces/registry/dna/skin_tones.txt
+
+--------------------------------------------------------------------
+0. Two separate mechanisms (easy to mix up)
+--------------------------------------------------------------------
+
+| Mechanism        | What it is                         | Where it lives        |
+|------------------|------------------------------------|-----------------------|
+| <scroller> strip | Horizontal choice list, [current]  | op-ed MAPS / GLYPHS   |
+| [+] / [-] fold   | Collapse children until opened     | +-demo tree, parser   |
+
+op-ed map select uses the **scroller only** (always on the GUI).
+The user request for skin tone is **both**: keep the strip off the
+menu until [+] opens it, then left/right like MAPS.
+
+--------------------------------------------------------------------
+1. What map select looks like in op-ed
+--------------------------------------------------------------------
+
+From layouts/op-ed.chtpm (always-visible rows, no fold):
+
+  <scroller id="MAPS"   label="${map_palette_view}" onClick="INTERACT" /><br/>
+  <scroller id="GLYPHS" label="${glyph_palette_view}" onClick="INTERACT" /><br/>
+
+Parser renders a scroller roughly as:
+
+  [>] 2. MAPS:   ADD [map_0001.txt] map_0002.txt
+  [ ] 3. GLYPHS: . # [~] @ & …
+
+  - pref [>] / [ ] = focus marker
+  - display number = nav digit
+  - id left of colon
+  - label right of colon is the substituted palette string
+
+Footer in layout:  [1]: Grid | [2/3]: Palettes | …
+
+--------------------------------------------------------------------
+2. How the strip string is built (manager, not parser)
+--------------------------------------------------------------------
+
+op-ed_manager.c owns the data:
+
+  project_maps[MAX_ITEMS]   // names + "ADD" at index 0
+  map_idx                   // preview cursor in the strip
+  stage_map_idx             // committed map used for edit/place
+  glyph_idx, emoji_mode, ascii_glyphs[] / emoji_glyphs[]
+
+Each frame it writes vars (state / gui var table), e.g.:
+
+  map_palette_view = "ADD [map_0001.txt] map_0002.txt "
+  glyph_palette_view = ". # [~] @ & … "
+  armed_glyph = …
+
+Build loop (maps) is literally:
+
+  for each map i:
+    if i == map_idx: wrap name in [brackets]
+    append name + " "
+
+chtpm only substitutes ${map_palette_view} into the scroller label.
+It does **not** know maps, indices, or DNA — the app does.
+
+--------------------------------------------------------------------
+3. How keys route for MAPS (focus slots in the manager)
+--------------------------------------------------------------------
+
+Digits 1–9 set gui_focus_index (handled in op-ed_manager, not the
+parser alone). Layout comment maps:
+
+  gui_focus_index == 1  → map grid / xlector (wasd, place, …)
+  gui_focus_index == 2  → MAPS scroller
+        a / ← (key 1000) : map_idx--  (wrap)
+        d / → (key 1001) : map_idx++  (wrap)
+        Enter            : stage_map_idx = map_idx
+                           (map_idx==0 → create_new_map())
+                           sync_current_map(); "Map Switched"
+  gui_focus_index == 3  → GLYPHS scroller
+        a/d cycle glyph_idx only (no separate commit; arm is live)
+
+In chtpm terms: scroller is interactive (is_interactive includes
+"scroller"); onClick="INTERACT" hands keys to the module path while
+that element is active. The **module** decides left/right vs commit.
+
+Important split:
+  - map_idx     = what you are *looking at* on the strip
+  - stage_map_idx = what is *actually loaded* for editing
+  Enter commits preview → stage (skin tone will do the same for DNA).
+
+--------------------------------------------------------------------
+4. The [+] / [-] fold dropdown (parser-native)
+--------------------------------------------------------------------
+
+Independent of scroller. Any element whose *label* contains:
+
+  [+]   → default collapsed  (is_folded = true)
+  [-]   → default expanded   (is_folded = false)
+
+Parser (chtpm_parser.c / our chtpm_parser_pal.c):
+
+  On parse:
+    - look up fold_<id> in gui_state (or sanitized label if no id)
+    - "folded" / "open" override the label default
+    - rewrite label marker so UI always shows truth:
+        folded → force [+], open → force [-]
+
+  On Enter while that row is focused:
+    - toggle fold_<id> open ↔ folded in gui_state
+    - re-parse layout (parse_chtm)
+    - restore focus by id
+
+  On render / nav:
+    - children of a folded parent are skipped (not drawn, not
+      navigable) unless parent onClick is ACTIVATE (scoped menu
+      still walks children when active)
+
+Canonical example: projects/+-demo/layouts/+-demo.chtpm
+
+  <button label="[dir1/][-] Dir1" id="dir1" …>
+      <button label="[2.txt] file" … />
+      <button label="[subdir/][+] Subdir" id="subdir4" …>
+          <button label="[5.txt] file" … />
+      </button>
+  </button>
+
+  Closed subdir: one line  [subdir/][+] Subdir
+  Open:          [-] Subdir + children listed under it
+
+That is exactly "not on the gui if it doesn't need to be".
+
+Note: wraith window-geom uses buttons labeled [+]/[-] as *inc/dec*
+KEY handlers — those are NOT fold markers (no children / no fold
+state). Fold needs children + the parser fold path above.
+
+--------------------------------------------------------------------
+5. Combining them for skin tone (the agreed UX)
+--------------------------------------------------------------------
+
+Closed (default — skin strip not burning vertical space):
+
+  [+] Skin tone  👨🏽
+
+Open after Enter on that row:
+
+  [-] Skin tone  👨🏽
+  [>] SKIN:  👨 👨🏻 👨🏼 [👨🏽] 👨🏾 🏿
+
+Layout sketch for avatar_manage.chtpm (or composed panel_content):
+
+  <button id="skin_pick" label="[+] Skin tone  ${skin_emoji}"
+          onClick="ACTIVATE">
+      <scroller id="SKIN" label="${skin_palette_view}"
+                onClick="INTERACT" />
+  </button>
+
+  Same template later for hair / shirt / pants / height, all
+  default-folded so manage stays short.
+
+--------------------------------------------------------------------
+6. What avatar-creation has today (contrast)
+--------------------------------------------------------------------
+
+avatar_manage.chtpm is thin:
+
+  ${panel_content}
+  cli_io rename / age
+  ${piece_methods}     ← injects METHOD rows from menu/compose
+  Back to List
+
+piece_methods currently includes blind cyclers:
+
+  Cycle Gender
+  Cycle Skin Tone     ← Enter = one step, no strip, no neighbors
+  Cycle Hair Color
+  …
+
+Problems vs op-ed:
+  - No overview of options on one line
+  - No collapse — each DNA field is always a full METHOD row
+  - Only "next", no left/right scroll affordance
+
+Data we already have (reuse, do not invent a second palette):
+
+  pieces/registry/dna/skin_tones.txt
+    male|0|👨|default
+    male|1|👨🏻|light
+    …
+    female|1|👩🏻|light
+    …
+
+  Filter by current gender from selected clone state.
+  cycle_dna.c already reads this file — picker should share it.
+
+--------------------------------------------------------------------
+7. Parser status in our tree — CONFIRMED
+--------------------------------------------------------------------
+
+0.user-pal/01.avatar-creation/system/chtpm_parser_pal.c already has:
+
+  [x] UIElement.is_folded
+  [x] is_interactive includes "scroller"
+  [x] native [+]/[-] fold parse + gui_state fold_<id>
+  [x] scroller render branch
+  [x] children skipped when is_folded
+  [x] Enter toggles fold and re-parses
+
+Same blocks exist in 00.login-signup's chtpm_parser_pal.c.
+No port from TPMOS 0103 needed for the markup itself.
+
+Still required (app side, not parser):
+  - build skin_palette_view / skin_idx / skin_emoji vars each frame
+  - route a/d/Enter when SKIN scroller is the active interact
+  - write DNA on commit (local lobby + xyzfs avatar)
+  - layout: replace or supplement Cycle Skin Tone METHOD with
+    fold+scroller (piece_methods generation and/or static chtpm)
+
+--------------------------------------------------------------------
+8. App-side vars & keys (mirror map_idx)
+--------------------------------------------------------------------
+
+Vars (compose / menu state):
+
+  skin_idx            // 0..N-1 preview cursor
+  skin_palette_view   // "👨 👨🏻 [👨🏼] 👨🏽 … "
+  skin_emoji          // current (preview or committed) face glyph
+
+Keys when SKIN scroller is active (same idea as gui_focus==2):
+
+  a / ←  : skin_idx--
+  d / →  : skin_idx++
+  Enter  : commit skin_index + skin_emoji (+ species_emoji) to
+           clone DNA (local + xyzfs); message; optional close fold
+
+Nav mode:
+
+  focus fold header → Enter toggles [+]/[-]
+  when open, focus scroller → INTERACT for a/d/Enter
+
+How we get "focus slot" without op-ed's gui_focus_index:
+  - Prefer real scroller + INTERACT (parser active_index / module)
+  - Or: while fold open, avatar_menu_input treats next keys as
+    strip scroll until Enter/Esc (works even if piece_methods
+    stays METHOD-based)
+
+Preferred: real <scroller onClick="INTERACT"> so we stay on the
+TPMOS page.
+
+--------------------------------------------------------------------
+9. Minimal same-page checklist
+--------------------------------------------------------------------
+
+[x] op-ed MAPS = <scroller> + manager-built ${map_palette_view}
+[x] Current item shown with [brackets] on one horizontal strip
+[x] a/d (arrows) move index while that focus slot is active
+[x] Enter commits (stage_map_idx / for us: write DNA)
+[x] [+]/[-] fold is parser-native; +-demo is the tree example
+[x] Fold can hide a whole section so it is not always on the GUI
+[x] Our chtpm_parser_pal already has scroller + fold
+[x] Replace "Cycle Skin Tone" with fold+scroller strip
+[x] Wire skin_idx a/d live-apply into avatar menu path
+[x] Same fold+scroller for gender/hair/shirt/pants/height/weight
+[x] a/d live-apply (glyph style) — not Enter commit (cli_io also injects Enter)
+
+--------------------------------------------------------------------
+10. Explicit non-goals (this note)
+--------------------------------------------------------------------
+
+- Not a separate full-screen "palette app"
+- Not blind Cycle* with no neighbor preview
+- Not 10 always-visible DNA rows on manage
+- Not implementing yet — this file is alignment only
+
+When we implement: skin tone first fold+scroller; other DNA fields
+copy the same template.
+
+EOF

@@ -1,0 +1,10 @@
+cursor=1
+digit_accum=0
+active_corp_index=0
+turn_number=0
+ticker_on=0
+active_menu_piece=wsr_main_menu
+last_message=Welcome. Type a number then Enter to choose, q to quit.
+prompt_active=0
+prompt_step=0
+prompt_buffer=

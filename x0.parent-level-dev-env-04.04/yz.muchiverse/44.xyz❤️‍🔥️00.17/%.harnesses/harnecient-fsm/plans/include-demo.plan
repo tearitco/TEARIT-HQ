@@ -1,0 +1,3 @@
+# include-demo.plan — proves INCLUDE runs a real sub-plan as a real
+# subroutine and the parent's overall verdict reflects the child's.
+INCLUDE | subplans/ping-sky.plan

@@ -1,0 +1,11 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | gltpm-demo
+META         | version            | 1.0
+META         | entry_layout       | projects/gltpm-demo/layouts/demo_world.gltpm
+
+STATE        | title              | Demo World GLTPM
+STATE        | current_map        | demo_world
+STATE        | player_piece       | hero
+
+RESPONSE     | default            | GLTPM demo ready.

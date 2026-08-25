@@ -1,0 +1,9 @@
+# Binary paths for cpp-llm project
+# Machine: no-Surface-Laptop-3 (10.0.0.238)
+groq_ollama_bin=/usr/bin/cpp-llm
+
+# Machine: debilu (10.0.0.16)
+# groq_ollama_bin=/home/debilu/.nvm/versions/node/v22.18.0/bin/cpp-llm
+
+# Machine: mac (10.0.0.144)
+# groq_ollama_bin=/usr/local/bin/cpp-llm

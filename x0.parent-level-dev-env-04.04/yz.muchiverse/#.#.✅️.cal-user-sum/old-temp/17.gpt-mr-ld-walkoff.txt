@@ -1,0 +1,73 @@
+# 17.gpt-mr-ld-walkoff
+
+## How this system works
+This desktop is a file-driven livedesk. Each app/widget is a directory with its own launcher, metadata, ledger/history, and icon assets. The taskbar and desktop window are separate widgets, and most behavior is driven from `.pdl` files plus shell launchers that call compiled widget binaries.
+
+Core flow:
+- `$.crypts/autostart.pdl` defines the startup set.
+- `$.crypts/button.sh run` triggers the main reset/launch path.
+- `$.crypts/scrypts/openall/run.sh` launches the curated desk set.
+- `&.widgits/tile-picker/ops/tp_desktop_window.c` registers windows into `#.desktop/livedesk_open.txt` and `#.desktop/livedesk_nav_claims.txt`.
+- `&.widgits/livedesk-taskbar/ops/tp_taskbar.c` reads those live files to render the bar, close windows, and handle shortcuts.
+- Each entity keeps its own `history.txt`, `meta.pdl`, `asset.pal`, and optional ledger/state files.
+
+How to debug it:
+- Check the launcher scripts first: they show the intended launch paths.
+- Check `#.desktop/livedesk_open.txt` to see which windows actually registered.
+- Check each entity’s `history.txt` to confirm whether it reached `WINDOW_OPEN` and `LIVEDESK_INDEX`.
+- Check `meta.pdl` and `asset.pal` when a window opens but renders wrong.
+- Check `autostart.pdl`, `restore-list.txt`, and `livedesk_shortcuts.pdl` when a button or shortcut does not do what you expect.
+- Rebuild the affected widget binary after source edits, then relaunch and re-check the live files.
+
+How to modify it safely:
+- Prefer changing `.pdl` or launcher scripts before editing C, if the change is just configuration.
+- Keep launch commands quoted, because paths here contain literal `&` and `*` characters.
+- After changing a widget launcher or C source, rebuild the widget and relaunch the desk.
+- After changing a shortcut or autostart rule, verify the live startup path actually uses the intended file.
+
+## Good candidates for config/.pdl
+Useful variables/choices that would be easier to tune from config instead of code:
+- Taskbar restore mode: whether `run` should use the curated desk set or a last-open restore snapshot.
+- Taskbar shortcut rows: button glyphs and commands in `#.desktop/livedesk_shortcuts.pdl`.
+- Autostart membership: which monads launch in `$.crypts/autostart.pdl`.
+- Openall membership: which apps belong in `$.crypts/restore-list.txt`.
+- Brain model and host for q0000: the LAN Ollama model URL and fallback model in `pieces/brain/state.txt`.
+- q0000 self asset path: the robot source image and asset target in `button.sh`/`asset.pal`.
+- q0000 method rows: the methods copied into `entities/self/meta.pdl` from `methods.pdl`.
+- Window footprint size: `footprint_tiles` in entity `meta.pdl`.
+- Entity glyph/portrait selection: `glyph.txt` and `asset.pal`.
+- Report/ledger paths: where progress logs and master ledgers are read.
+
+## What we did with q0000
+Done:
+- Added a real robot image seed from `/home/no/Desktop/_.qoo+.png`.
+- Made `run`/`window` open the q0000 self window and start the brain.
+- Added `headless` for brain-only mode.
+- Added `tool-chat` for the tooled llama path.
+- Seeded `entities/self/asset.pal` so the robot image is used instead of a glyph stub.
+- Added method rows and documented the current LAN llama3.2:3b setup.
+
+Still to do:
+- Fix why q0000 sometimes opens but does not persist into `#.desktop/livedesk_open.txt`.
+- Trace the failure between `WINDOW_OPEN` and the missing live registry append.
+- Confirm whether the issue is a crash, a process exit, or a registration race.
+- Finish the q0000 launcher verification after the live registry issue is fixed.
+
+## Confusions and pitfalls from this run
+- The biggest pitfall was a destructive quit path in the taskbar that rewrote `$.crypts/autostart.pdl` from the current live windows. That made the desk forget the curated startup list.
+- The `$` shortcut was initially treated as “restore whatever was open last,” which conflicted with the desired curated desk behavior.
+- `ava`, `asa`, and `book-stack` were easy to confuse because they exist in different launcher families and some launch from app-folder scripts while others launch from monad scripts.
+- Paths contain literal `&` and `*`, so shell quoting matters everywhere. A missing quote silently breaks the launcher.
+- `livedesk_open.txt` looked like the source of truth, but it is only as good as each widget’s registration timing.
+- `X` on the taskbar only closes windows that actually appear in `livedesk_open.txt`, so missing registry entries look like “close is broken” even when the button logic is working.
+- q0000 appeared to launch because `WINDOW_OPEN` was logged, but it still failed to remain in the live registry. That made it look like a launcher bug when it was really a later lifecycle/registration failure.
+- `restore-list.txt`, `autostart.pdl`, and `openall/run.sh` were easy to get out of sync. Once that drift starts, the desk state becomes hard to reason about.
+- The taskbar and desktop widget rebuilds had to be done separately; rebuilding one did not prove the other was fixed.
+- Some of the live process checks were misleading because stale history files and old launches still contained valid-looking `WINDOW_OPEN` lines from earlier sessions.
+
+## Short takeaway
+The system is file-driven and works best when launch rules stay in `.pdl` files and live state is rechecked after every rebuild. The main failure mode in this run was confusing curated startup, last-open restore, and live registry state as if they were the same thing.
+
+
+
+3️⃣️ calle  the live-desk ,& do "haiku' rename to "HQ" (same vibe all 3 times 3️⃣️

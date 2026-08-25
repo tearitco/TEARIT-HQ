@@ -1,0 +1,5 @@
+name=Propylene
+formula=C3H6
+type=Alkene
+groups=C=C
+relevance=Common in polymerization; tests alkene naming and reactivity.

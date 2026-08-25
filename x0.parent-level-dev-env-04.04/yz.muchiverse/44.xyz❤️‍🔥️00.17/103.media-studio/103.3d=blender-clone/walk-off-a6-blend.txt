@@ -1,0 +1,46 @@
+# walk-off-a6-blend.txt — Muchi Blend Phase-1 handoff
+**Date:** 2026-08-06  
+**Path:** `103.media-studio/13.3d=blender-clone/`  
+**Siblings:** `103.daw/`, `103.vid-edit/`, `103.img-editor/`  
+
+## Run
+```bash
+cd 103.media-studio/13.3d=blender-clone && sh button.sh r
+```
+
+## What works now
+- Blender-shaped UI: File, tools, 3D viewport, outliner, status
+- Orbit (MMB), pan (Shift+MMB), zoom (wheel)
+- Objects: cube / sphere / ground primitives
+- G/R/S grab-rotate-scale with X/Y/Z constrain, confirm/cancel
+- Select via click / outliner / number keys
+- Wireframe Z, frame selected `.`
+- **Import .obj / .fbx** (Assimp) + house-path drag-drop (`media_drop_path`, kind=4 mesh)
+- Title-bar ✕ quit (WM_DELETE not eaten by XDND)
+- CPU-safe fps cap + main-loop sleep
+
+## Depends
+- `libassimp-dev` (`pkg-config assimp`)
+- freeglut + GL/GLU/X11
+
+## Not yet
+- Edit mode, modifiers, UV, materials, lights as objects, animation, OBJ export
+- Full mesh raycast pick / multi-select
+- CHTPM shell / canvas-widgit FBO path
+
+## Next toward Blender
+1. Raycast pick + multi-select  
+2. Edit mode edge/vert  
+3. Simple material color + texture  
+4. Export OBJ  
+5. House canvas.raw FBO snapshot for shared widget  
+
+## Architecture
+`ops/be_main.c` + `button.sh` + `../shared/media_drop_path.c` + Assimp.
+
+## Pitfalls
+- XDND must put back non-Xdnd ClientMessages (or handle WM_DELETE)  
+- Don’t busy-spin freeglut event loop  
+- Cap imported mesh size (MAX_V / MAX_I)  
+
+*End walk-off-a6-blend*

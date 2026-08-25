@@ -1,0 +1,59 @@
+XO Control Fix J19
+
+Problem summary
+
+Two different failures were being conflated before this pass:
+
+1. the controller runner was writing raw digit values instead of ASCII key codes
+2. the XO-PET manager was still mixing project controls into the switcher method list
+
+What changed
+
+- `sh button.sh r` is now accepted as a controller alias
+- the runner converts raw digits to ASCII before writing `KEY_PRESSED`
+- the manager accepts `COMMAND: START`, `COMMAND: PAUSE`, and `COMMAND: STEP`
+- the visible switcher name is now `xolector`
+- `xelector` remains a compatibility alias in code and legacy PDL paths
+- project controls are rendered separately from the active methods
+- pets expose `ai` and `release`
+
+Current launcher split
+
+- `button.sh auto` -> autonomous moke-pet manager
+- `button.sh controller` -> local CHTPM orchestrator surface
+- `button.sh r` -> compatibility alias for controller mode
+
+Current XO-PET controller contract
+
+- `project_controls` are always visible
+- `xolector` methods are pet-selection methods only
+- `piece_methods` are the active target methods
+- `pet_list` is the direct possession/switch surface
+- the manager still writes `projects/xo-pet-v1/manager/gui_state.txt`
+- the manager still writes `projects/xo-pet-v1/session/frame_####.txt`
+- the manager still reads the history stream the parser writes to
+
+Visible repaint contract
+
+- keep using the TPMOS marker pulse and frame-buffer files
+- if the UI looks stale, inspect the frame marker flow before changing menu logic
+
+Autonomous mode
+
+- autonomous mode still writes per-entity snapshots
+- autonomous mode still emits frame-buffer projection files
+- autonomous mode remains the simulation truth source
+
+Why the old menu looked wrong
+
+- the old layout exposed only a dead `POSSESS PET` shell
+- that was not the intended controller split
+- the project needed the controls separated from the switcher methods
+
+Recommended handoff conclusion
+
+1. verify `button.sh r`
+2. navigate to `xo-pet-v1`
+3. confirm the live menu shows `project_controls`, `pet_list`, and active methods
+4. confirm the controller runner prints the same control model
+

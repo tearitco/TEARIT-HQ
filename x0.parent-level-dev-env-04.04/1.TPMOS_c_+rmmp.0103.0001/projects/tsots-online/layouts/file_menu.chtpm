@@ -1,0 +1,36 @@
+<panel time_reactive="true">
+    <module>projects/tsots-online/manager/+x/file_manager.+x</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+
+    <text label="╔═══════════════════════════════════════════════════════════╗" /><br/>
+    <text label="║ FILE MANAGEMENT: ${current_project}                       ║" /><br/>
+    <text label="║ tsots-online: ${active_tsots-online}                                        ║" /><br/>
+    <text label="║ Slot: ${active_slot}                                        ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║ ACTIONS (Permanent Indices 1-5):                          ║" /><br/>
+    <text label="║  1. " /><button label="New Project" onClick="FILE:NEW" /><br/>
+    <text label="║  2. " /><button label="Save Slot" onClick="FILE:SAVE" /><br/>
+    <text label="║  3. " /><button label="Save As..." onClick="FILE:SAVE_AS" /><br/>
+    <text label="║  4. " /><button label="Load Project" onClick="FILE:LOAD" /><br/>
+    <text label="║  5. " /><button label="Delete Slot" onClick="FILE:DELETE" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  Name: " /><cli_io id="file_name" label="${input_file_name}" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  7. " /><button label="Back to Game" onClick="FILE:BACK" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  FOUND SAVES (Select to set Slot):                        ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║ " /><button label="${slot_0_name}" onClick="FILE:SELECT:${slot_0_name}" visibility="${slot_0_exists}" /><br/>
+    <text label="║ " /><button label="${slot_1_name}" onClick="FILE:SELECT:${slot_1_name}" visibility="${slot_1_exists}" /><br/>
+    <text label="║ " /><button label="${slot_2_name}" onClick="FILE:SELECT:${slot_2_name}" visibility="${slot_2_exists}" /><br/>
+    <text label="║ " /><button label="${slot_3_name}" onClick="FILE:SELECT:${slot_3_name}" visibility="${slot_3_exists}" /><br/>
+    <text label="║ " /><button label="${slot_4_name}" onClick="FILE:SELECT:${slot_4_name}" visibility="${slot_4_exists}" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║ [RESP]: ${file_response}                                    ║" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+</panel>

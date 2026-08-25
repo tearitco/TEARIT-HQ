@@ -1,0 +1,10 @@
+{
+"model": "gemma3:1b",
+"scenario": "harnecient_read",
+"turns": [
+  {"role":"user","content":"Task: harnecient_read."},
+  {"role":"tool","content":"[read_file] #include <stdio.h>\n\n/* sample fixture for the native-tools probe (code read/edit/exec).\n * Deliberate off-by-one bug: loop stops at N-1, so it prints 10\n * instead of 15. The edit scenario must change `i < N` to `i <= N`. */\n#define N 5\n\nint main(void) {\n    int sum = 0;\n    for (int i = 1; i < N; i++) sum += i; /* bug: should be i <= N */\n    printf(\"sum(1..%d) = %d\\n\", N, sum);\n    return 0;\n}\n"},
+  {"role":"assistant","content":"The code calculates the sum of numbers from 1 to N."}
+],
+"verdict": {"deterministic_read":true,"model_summarized":true}
+}

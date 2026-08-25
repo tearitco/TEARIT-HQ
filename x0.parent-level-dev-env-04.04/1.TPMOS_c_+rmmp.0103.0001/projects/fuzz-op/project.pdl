@@ -1,0 +1,18 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | fuzz-op
+META         | version            | 1.0
+META         | entry_layout       | projects/fuzz-op/layouts/fuzz-op.chtpm
+META         | author             | TPMOS Team
+
+STATE        | selector_enabled   | 1
+STATE        | starting_map       | map_01_z0
+STATE        | player_piece       | xlector
+STATE        | current_z          | 0
+STATE        | title              | FUZZ-OP PET SIM
+
+EVENT_IN     | project_start      | void
+EVENT_IN     | project_save       | void
+
+RESPONSE     | project_start      | Fuzz-Op Pet Sim Initialized.
+RESPONSE     | default            | *waiting...*

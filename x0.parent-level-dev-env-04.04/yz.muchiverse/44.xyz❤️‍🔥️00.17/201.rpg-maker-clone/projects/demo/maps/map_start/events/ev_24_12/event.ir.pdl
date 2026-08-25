@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | name               | switch_crystal
+META         | trigger            | action
+META         | cmds               | 5

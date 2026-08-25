@@ -1,0 +1,21 @@
+# REPORT: irc SUB-PROJECT INITIALIZATION FAILURE
+
+## 1. THE PROBLEM
+The `projects/tsots-online/irc-module` (a copy of `p2p-net`) is not initializing its network ring. The host list is empty, and the manager is not discovering its own IP or peers.
+
+## 2. KEY PITFALLS FOUND
+1. **PDL Mismatch**: `project.pdl` had an `entry_layout` pointing to a non-existent `projects/tsots-irc/` directory instead of the actual `projects/tsots-online/irc-module/` directory. This likely prevented the CHTPM orchestrator from loading the correct UI state.
+2. **Configuration Drift**: The `irc-module` directory structure differs slightly from the reference `p2p-net`. While the code attempts to resolve paths dynamically, some hardcoded paths or expected directory structures may be misaligned.
+3. **Networking Initialization**: `discover_my_ip()` and `load_known_hosts()` are likely failing silently. The `node_config.txt` is sparse, and `ring_hosts.txt` is not being populated, indicating the networking bootstrap phase is not completing.
+
+## 3. YOUR TASKS
+1. **Verify Path Resolution**: Ensure `resolve_paths()` in `irc_manager.c` correctly sets `project_root` for all sub-directories.
+2. **Debug `load_known_hosts()`**: Verify if it is successfully reading `known_hosts.pdl`. If it's not finding it, ensure the path resolution matches the new folder structure (`projects/tsots-online/irc-module/...`).
+3. **Debug Networking Bootstrap**: Ensure the server socket is binding (check `ring_debug.log`). If `bind_server_socket()` fails, the node won't be able to handshake or discover peers.
+4. **Test Networking Locally**: Run the manager with increased debug logging to trace why it fails to discover peers.
+
+## 4. MANDATE
+- **HANDS OFF P2P-NET**: Do NOT touch the original `projects/p2p-net/`. It is the master reference.
+- All fixes MUST be confined to `projects/tsots-online/irc-module/`.
+
+**"Geography is destiny. If it's not in a file, it's a lie."**

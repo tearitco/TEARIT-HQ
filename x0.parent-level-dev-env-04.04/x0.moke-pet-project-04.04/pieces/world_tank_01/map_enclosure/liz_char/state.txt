@@ -1,0 +1,2 @@
+type | lizard
+name | liz_char

@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | automation
+
+METHOD       | Set Manual (you control every action) | SET_SUPERVISION:manual
+METHOD       | Set Semi (auto one action, then pause) | SET_SUPERVISION:semi
+METHOD       | Set Full (auto continuously, ~1/sec)  | SET_SUPERVISION:full

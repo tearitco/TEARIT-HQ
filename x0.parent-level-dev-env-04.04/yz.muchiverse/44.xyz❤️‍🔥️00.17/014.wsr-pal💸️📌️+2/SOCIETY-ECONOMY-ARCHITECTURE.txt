@@ -1,0 +1,605 @@
+SOCIETY-ECONOMY ARCHITECTURE — population, labor, commodities, banks,
+the ledger/auction marketplace, physical locations, and R&D, as the
+games start to merge
+================================================================================
+Status: PLANNING DOCUMENT, written per direct request BEFORE more code,
+specifically to confirm the vision is understood correctly first ("do u
+need to do more scaffolding documentation on this first 2 make sure u
+get it right?" - yes). Sibling to `MUCHICIVO_BIBLE.txt`,
+`COMPOSABLE-MATERIALS-ARCHITECTURE.md`, and `GAME-AI-SPEED-DOCTRINE.txt`
+in this directory - this document is where all three actually converge
+into one economic simulation, not a fourth independent system.
+
+**Named gap this document exists to avoid repeating**: the ORIGINAL
+wsr-pal (per this session's own direct reading, `wsr-pal/dox/
+00-overview.md` and `WSR-PAL-PORT-STATUS.txt`) had real scaffolding -
+UI, starting data, registries - but was sparse on actual functionality:
+its `ai/` directory (the promised approximate-vs-real AI trading
+tiering) was three byte-identical copies of the main menu; `tax_loop.c`
+was a placeholder; `payroll_loop.c`/`dividend_loop.c` were both the
+same wrong copy. Real data existed, real mechanics didn't. This
+document's whole job is making sure the NEXT layer doesn't repeat that
+- every mechanic below is designed against something already proven
+this session, not invented fresh and hoped-for.
+
+================================================================================
+0. WHAT GROUNDS THIS (nothing below is invented without a real anchor)
+================================================================================
+- `COMPOSABLE-MATERIALS-ARCHITECTURE.md` - the composable chain (atom->
+  molecule->cell->organism->structure->environment), `composed_of`
+  reusing `craft.c`'s real recipe mechanism, growth/shrink policy. A
+  citizen is an organism-tier composable; a commodity is an atom/
+  molecule-tier composable; a storefront is a structure-tier composable
+  - none of this is new data modeling, it's applying an already-
+  designed chain to new domains.
+- `GAME-AI-SPEED-DOCTRINE.txt` - the hard rule (AI APIs = training/rare-
+  moment only, never the routine in-game path) and the GOAP/FSM/ML/BT
+  comparison. Every routine decision below (a bank evaluating a loan, a
+  company deciding to hire) is a `decision_mode`-governed node, same
+  chassis, same rule - local/instant by default.
+- `y0.muchi-pal-chat/ROADMAP-models.txt` §12 - the grade/subject
+  curriculum ladder AND §12.3's qualification/exam mechanism. This
+  document's "expertise"/"schools" system (§3 below) is NOT a new
+  design, it's that exact system, just consumed by the economy instead
+  of only described abstractly.
+- `ROADMAP-models.txt` §11.1/§11.2 - corpus generation + LLM-as-judge,
+  and §5's original R&D-agent worked example (`idle ->
+  propose_candidate -> synthesize -> test_on_cell -> record_result`).
+  This document's R&D tiering (§9) is that worked example, given its
+  real place in a bigger system.
+- `MUCHICIVO_BIBLE.txt` §4/§5 - Tier 2's tech tree (reusing `composed_
+  of` again) and Tier 3's own "R&D gives companies internal corpuses"
+  framing, already named as directly connected to Phase A's real,
+  tested corpus-generation pipeline.
+- This session's own wsr-pal port (`WSR-PAL-PORT-STATUS.txt`) - 50 real
+  corporations + 7 real governments, live-tested this session across
+  multiple rounds with zero errors, real fundamental-value/fiscal
+  logic, a real multi-entity dynamic-discovery tick driver
+  (`tick_all.sh`, mirroring Moke-Pet's own cited pattern). Everything
+  below is a LAYER ON TOP of that proven foundation, not a replacement
+  for it.
+- `GRAND-ARCHITECTURE.md` §0 - the shared `wraith_rgb_daemon.c`
+  presenter, proven twice this session (piececraft-wraith originally,
+  piececraft-3d-pal's merge confirming it a second time). Physical
+  locations (§7) need zero new rendering code when that day comes.
+
+================================================================================
+0.5 GROUNDED AGAINST THE REAL "WALL STREET RAIDER" MANUAL (this
+    project's own real naming ancestor - `wsr-pal`/"Wall $treet Race" -
+    read directly, 7058-line official manual, not recalled/guessed)
+================================================================================
+Read in full before writing further, per direct instruction, to correct
+anything mis-remembered rather than build on a wrong assumption.
+**Confirms**: stock pricing IS formula/algorithm-driven, explicitly NOT
+an order book ("the stock pricing algorithm considers earnings trends,
+growth rates, credit rating, interest rate levels, the economy,
+industry characteristics, recent large buy/sell transactions" - a
+"trade secret," no bid/ask/specialist mechanic anywhere in the manual) -
+this directly validates `analysis_loop.c`'s own real formula (already
+ported into `corp_decide.c` this session) as a genuine simplification
+of WSR's real design philosophy, not a wrong one. Credit rating
+pervasively gates loan terms, consistent with `risk_bias`'s own role
+here. AI difficulty (1-4) makes computer players more aggressive at
+higher levels - a real, simple lever worth adopting for our own
+`decision_mode` tiers later (not scoped yet).
+
+**One important correction, stated honestly**: the ledger mechanic (§6)
+as designed - a BORROWER posting an open loan request for ANY bank to
+fulfill - is NOT how real WSR works. Real WSR's lending is a
+deterministic bank-relationship/credit-line formula (size determined by
+credit rating/existing debt/rate environment), never an open request-
+for-bid. What IS real and bulletin-board-shaped in WSR is the opposite
+direction: a seller (of stock, business assets, or a bank's OWN loan
+portfolio) posts a fixed-price listing, and it sits on a shared list
+until any other player/bank accepts it (`FOR SALE ITEMS`/`OFFER TO SELL
+STOCK`/`BUY OR SELL BANK LOANS`). §6 below is kept as designed anyway -
+it's a genuine, reasonable EXTENSION past what WSR does (open-request
+matching is arguably more interesting/flexible than WSR's own
+narrower "list an asset, wait for a taker" shape), but it should be
+understood plainly as OUR OWN invention from here forward, not
+inherited precedent - don't cite "WSR does this" for the open-loan-
+request-broadcast case specifically, it doesn't.
+
+**Real WSR mechanics this document was missing, worth adding**:
+corporate actions - mergers (stock-for-stock, premium-based, needs
+target-shareholder-vote + antitrust approval), greenmail/LBO (forced
+tender-offer buybacks above a premium threshold), spin-offs (taxable/
+nontaxable), IPOs/private offerings/startups (seed a new company, float
+a bond/IPO). All menu-driven, player/AI-initiated transactions with a
+probabilistic "will the counterparty accept" resolution keyed on
+premium offered - closer to a real negotiation model than anything
+currently in §5-6. Not yet scoped into the build order (§11) - a real
+gap this document should have named from the start, now named.
+
+**Confirms the population/labor/production layer is THIS project's own
+addition, not inherited from WSR at all** - real WSR is a pure paper-
+asset/financial simulation: no labor market, no citizens/population
+agents, no production chain. Its "commodities" are 5 tradeable paper/
+physical-holding assets (crude oil, gold, silver, wheat, corn, with
+storage/spoilage costs) - NOT a manufacturing/agriculture simulation;
+a corporation's "business assets" is one abstracted financial number,
+not discrete factories with real output. Government in WSR is purely
+tax-rate-setter + bond-issuer + antitrust regulator - no elections, no
+fiscal policy depth, no citizen agents. **This means §2-§4/§9's whole
+population/labor/schools/manufacturing/R&D layer has zero WSR
+precedent to lean on - it's grounded entirely in THIS project's OTHER
+systems instead** (`EVO-DESIGN.txt`'s population mechanism,
+`COMPOSABLE-MATERIALS-ARCHITECTURE.md`'s composable chain,
+`ROADMAP-models.txt`'s curriculum ladder) - worth being explicit about
+this so nobody later assumes there's a WSR mechanic to check the
+population/labor design against. There isn't one.
+
+================================================================================
+0.75 CLASSIC / NEW / LEARN - a general mode-selector principle,
+     resolved from two clarifying questions into one unifying answer
+================================================================================
+Two open questions from §0.5 (should production couple directly into
+valuation or stay indirect; should the ledger's open loan-request
+broadcast stay as designed or narrow to WSR's real shape) both got the
+SAME answer, generalized: **every mechanic that has both a "real WSR"
+version and a "this project's own extended" version should be a
+user-selectable mode, not a single hardcoded choice** - `classic`
+(faithfully matches real WSR's actual mechanic, per §0.5's citations -
+useful as a purist mode AND as a known-ground-truth baseline), `new`
+(this project's own richer/extended design - direct production-
+valuation coupling, the open loan-request ledger), and `learn`
+(FSM/RL/research-driven - the mechanic's own behavior is tuned from
+data rather than fixed by either `classic` or `new`'s hardcoded
+formula).
+
+**Direct mapping onto the already-built `decision_mode` chassis** (not
+a new selector mechanism, a config axis choosing WHICH formula/tier a
+given decision draws from): `classic` and `new` both resolve to
+`decision_mode=0`(preset)/`1`(weighted) - same chassis, different
+formula/data source per mode; `learn` resolves to `decision_mode=2`
+(real `rl`, not yet built - see `GAME-AI-SPEED-DOCTRINE.txt` §4's own
+next-priority framing, now with a second concrete reason to build it).
+
+**`learn` mode's stated purpose is real and worth naming explicitly**:
+"if they are just trying to run headless to make a more robust sim for
+b2b type highly accurate purposes" - this is `MUCHICIVO_BIBLE.txt` §7's
+own "sell as both game and product" framing, made concrete for the
+economic sim specifically: a `learn`-mode, headless, long-running
+instance of this simulation is itself a real potential product
+(economic/financial modeling), not just a gameplay mode.
+
+Concretely, per the two resolved questions:
+  - Production coupling (§4): `classic` = indirect only (production
+    changes Cash/Inventory, the existing fundamental-value formula
+    reads those, no formula changes - matches how WSR's own abstracted
+    "business assets" number actually works); `new` = direct
+    (`fundamental_value()` gets explicit production-capacity/output
+    terms, industry-specific formulas); `learn` = the coupling weights
+    themselves are tuned from logged outcomes, not fixed by either.
+  - Ledger loan-request shape (§6): `classic` = deterministic credit-
+    line lending only, no open broadcast, matching real WSR exactly;
+    `new` = the open broadcast-or-targeted ledger as originally
+    designed; `learn` = which shape a given bank/company prefers (or
+    how it weighs broadcast vs. targeted offers) is itself a tuned
+    parameter.
+This same three-way split should be the DEFAULT way any future "should
+this match real WSR or our own extension" question gets resolved
+going forward - not re-litigated per mechanic, applied as a standing
+pattern.
+
+================================================================================
+1. THE VISION, RESTATED (confirming understanding before building)
+================================================================================
+A population pool of citizens who live real economic lives - eat, pay
+rent, earn wages, buy goods - supplies LABOR (hired by companies based
+on real, earned expertise from schools) and DEMAND (driving commodity/
+product prices via supply and demand, same shape as the stock-price
+formula already ported this session). Companies produce: agricultural
+companies grow named crops, manufacturing companies (e.g. auto)
+transform mined/bought commodities into products, with any commodity
+not yet individually modeled falling into a generic "bulk bank"
+(industrial_materials) bucket - the SET of tracked commodities is data/
+config, not hardcoded, deliberately incremental. Banks issue loans.
+ALL of loans, goods, and services trade through a LEDGER - a plain-text
+marketplace where an entity posts either a BROADCAST ask (open to any
+qualified respondent) or a TARGETED offer (addressed to one specific
+counterparty), and other entities' own local decision-making chooses
+whether to respond. Companies may have physical brick-and-mortar
+locations (real xyz coordinates, eventually rendered in 3D via the
+already-proven shared presenter) that gate retail access UNLESS the
+civilization tech tree has unlocked "the internet," at which point
+e-commerce companies can trade without one. R&D is tiered: rare,
+expensive LLM-distillation calls PROPOSE genuinely novel breakthroughs
+(companies/colleges doing cutting-edge research), while routine
+teaching/training happens constantly via cheap, local, already-trained
+IQABOD-style curricula (teachers "doing light training otherwise") -
+this is the direct answer to "how does this tie into iqabod and fsm":
+it's the SAME §12 curriculum/qualification system and the SAME
+decision_mode chassis, just given their real economic role instead of
+being described in the abstract.
+
+If any of the above doesn't match the intent, this is the section to
+correct before anything below gets built.
+
+================================================================================
+2. POPULATION POOL - aggregate by default, individual when it matters
+================================================================================
+Directly reuses `EVO-DESIGN.txt` §2's own resolved design question
+(SimEarth-style aggregate population vs. E.V.O.-style per-individual
+creature) - same tradeoff, same answer: most citizens are an AGGREGATE
+count/stat bucket on a population-pool piece (cheap, matches
+`GAME-AI-SPEED-DOCTRINE.txt`'s "most agents, cheapest tier" framing
+directly - a population number doesn't need its own FSM), promoted to
+an individual `citizen_<id>` piece only when something makes them
+notable (a named worker with rare expertise, a player-controlled
+citizen, an NPC with a name in a quest). A population-pool piece per
+locale/city tracks: total_population, average_wage, unemployment_rate,
+per-commodity consumption demand (derived from population size x a
+per-capita need constant, same shape §4's supply/demand formula reads).
+"Living a life": eats (consumes food commodities via the ledger or a
+direct auto-fulfillment for staples, §6), pays rent (to whichever
+structure-tier composable owns their housing), earns wages (from an
+employer match, §3), buys goods (feeds company revenue, §4/§6).
+
+================================================================================
+3. LABOR MARKET & EXPERTISE - directly IS ROADMAP-models.txt §12
+================================================================================
+Not a new system - the grade/subject curriculum ladder and §12.3's
+qualification/exam mechanism, consumed here for real. A citizen's
+"expertise" = which curricula they've completed AND passed the
+qualification exam for (`grade1_english` through `college_pharma_phd`,
+per §12.1's naming convention). A school is a §12.3-qualified TEACHER
+curriculum running the training loop routinely - this is the literal
+"teachers can do light training otherwise" the request named, already
+fully designed in `ROADMAP-models.txt`, just not yet wired to an
+economic consequence.
+  - Hiring: a company posts a job listing on the ledger (§6) naming a
+    required expertise tag; population-pool citizens (or individuals,
+    if promoted) with matching qualifications can respond. Wages are a
+    real, tunable formula keyed on expertise tier - same shape as
+    `corp_decide.c`'s fundamental-value formula (a few real weighted
+    factors blended), not arbitrary.
+  - This is where R&D staffing comes from too (§9): a college or
+    corporate R&D department "hires" citizens with research-tier
+    expertise, and THEIR work is what the rare LLM-propose/local-
+    validate loop actually runs on.
+
+================================================================================
+4. COMMODITIES & PRODUCTION - the composable chain, applied to goods
+================================================================================
+A commodity is an atom/molecule-tier composable
+(`COMPOSABLE-MATERIALS-ARCHITECTURE.md` §2), with one new field this
+document adds: `bulk_bank=1` on a single generic `industrial_materials`
+composable - the deliberate fallback bucket for anything not yet
+individually modeled, named directly per the request ("if not one of
+the main metals or commodities yet just use a bulk bank... defintely
+have it as a variable"). The SET of individually-tracked commodities
+(wheat, corn, named metals, etc.) is DATA, not hardcoded logic - adding
+a new one is adding a composable row, not writing new code, matching
+`craft.c`'s recipe mechanism's own existing extensibility.
+  - Agricultural companies "grow" a crop: a production op (generalizing
+    `muchi-evo-pal`'s own `bot_eat` shape - consume land/labor/time,
+    produce a commodity) whose OUTPUT quantity is a real function of
+    hired labor (§3) and time.
+  - Manufacturing companies (auto, etc.) consume commodities via
+    `composed_of` (the SAME recipe mechanism `craft.c` already proves,
+    now the fifth documented reuse across this whole family - crafting,
+    tech trees, ecosystem population, creature evolution, and now
+    manufacturing - worth naming as the throughline it clearly is) to
+    produce finished products.
+  - Supply/demand pricing: population-pool consumption demand (§2) vs.
+    company production supply, blended via the SAME fundamental-value-
+    style formula shape already ported and proven this session
+    (`corp_decide.c`'s `fundamental_value()` - book-value-style anchor
+    x a supply/demand multiplier x momentum blend). Not a new pricing
+    engine to invent, the same real formula shape applied to a second
+    market.
+
+================================================================================
+5. BANKS & LOANS
+================================================================================
+A bank is a new entity type (`bank_<name>` piece, same shape as
+`corp_*`/`gov_*`), `decision_mode`-governed on its own lending
+decisions - evaluating a loan request reuses `corp_decide.c`'s own
+risk-assessment shape (a real, if simplified, credit-risk formula
+keyed on the borrower's real financials, same spirit as the fundamental
+-value formula). Loans themselves are ledger posts (§6), not a separate
+mechanism - a bank is just one more entity TYPE that knows how to
+respond to one more ledger POST TYPE.
+
+================================================================================
+5.5 CORPORATE ACTIONS (real WSR precedent, §0.5 - confirmed added to
+    the build order, given a real design here rather than just a
+    build-order bullet)
+================================================================================
+Ported honestly from the real manual's own mechanics (§0.5's
+citations), not invented: menu-driven, player-OR-AI-initiated
+transactions against another corp piece, each resolved by a
+probabilistic "does the counterparty accept" check keyed on the offered
+premium (higher premium = higher acceptance odds) - closer to a real
+negotiation model than anything else in this document, and a genuinely
+different SHAPE from the ledger (§6, post-and-wait) or the fundamental-
+value formula (§4, no negotiation at all).
+  - **Merger**: stock-for-stock exchange at a 5-100% premium over the
+    target's current `stock_price`. Resolution: an acceptance
+    probability from the premium (real WSR's own shape - target
+    shareholder vote, "yours always for, rivals against, Public/neutral
+    split by premium," §0.5's citation), gated by a simple government-
+    approval check (reuses a `gov_*` piece's own existing state, no new
+    government mechanism needed - a natural, cheap use of already-real
+    data).
+  - **Greenmail/LBO**: forced tender-offer buyback at ≥10%
+    (greenmail)/≥25% (LBO) premium over `stock_price` - mechanically a
+    variant of the SAME accept-probability-from-premium shape as
+    merger, not a separate mechanism.
+  - **Spin-off**: split a corp piece's `composed_of`-style asset list
+    (once §4's production/inventory fields exist) into a new corp
+    piece, taxable or not per a simple flag - reuses `craft.c`'s own
+    consume/produce shape in reverse (one piece's assets becoming two
+    pieces' assets, still the same underlying mechanism).
+  - **IPO/startup**: create a brand-new `corp_<ticker>` piece from
+    scratch (minimum seed capital, per real WSR's own $100M/$1000M-for-
+    a-bank thresholds) - the FIRST real "player/AI creates a new
+    economic entity at runtime" mechanic in this whole family; every
+    other entity type so far (creatures, corps, governments) has been
+    pre-seeded from real data or hand-authored, never spawned during
+    play. Worth building carefully as the reference shape for any
+    future runtime-entity-creation need.
+`decision_mode` governs WHO initiates these (a `weighted`/`llm`-tier
+corp piece deciding "should I try to acquire this rival" is a real,
+sensible use of the existing chassis, not a new decision-making system)
+- the transaction MECHANICS above are the same regardless of which tier
+chose to attempt one.
+
+================================================================================
+6. THE LEDGER/AUCTION MARKETPLACE (the piece explicitly called out as
+   the most-liked mechanic - designed concretely, not just named)
+================================================================================
+A plain-text marketplace directory, `pieces/world_01/ledger/` - one
+file per posted ask/offer, matching this whole environment's "one
+directory entry per real thing" doctrine (the same shape a piece
+already has). Two post shapes:
+  - **BROADCAST** - open to any qualified respondent. e.g. a loan
+    request (`kind=loan_request poster=corp_ORB amount=500
+    max_rate=5.0`), a job listing (`kind=job_listing poster=corp_TRF
+    required_expertise=college_math101 wage_offer=40`), a sell offer
+    with no fixed buyer (`kind=sell_offer poster=corp_AGRI
+    commodity=wheat qty=1000 price=2.50`).
+  - **TARGETED** - addressed to one specific counterparty, same file
+    shape plus a `target=<piece_id>` field (e.g. offering to sell
+    specifically to `corp_TRF`, or a company approaching one specific
+    bank instead of broadcasting).
+Each tick, entities capable of responding to a given `kind` (banks for
+`loan_request`, companies for `job_listing`/commodity offers,
+population-pool/citizens for retail offers) scan the ledger directory -
+**the exact same dynamic-discovery pattern `tick_all.sh` already proves
+this session** (scan a directory for matching entries, no hardcoded
+list) - filtered to entries with no `target` field, or where
+`target` matches their own piece id. Their own `decision_mode`-governed
+logic (§0's chassis, local/instant per the doctrine) decides whether to
+fulfill. Fulfilling = a real trade execution (mirrors `corp_trade.c`'s
+own consume/produce/update-both-parties shape) that then archives or
+deletes the ledger entry.
+
+================================================================================
+7. PHYSICAL LOCATIONS & THE 3D PATH
+================================================================================
+A storefront is a structure-tier composable (`COMPOSABLE-MATERIALS-
+ARCHITECTURE.md` §2) with real xyz coordinates. Retail purchases by
+population-pool citizens require proximity to a real location UNLESS
+§8's e-commerce unlock applies. Rendering, when this actually gets
+built, needs ZERO new code - the shared `wraith_rgb_daemon.c` presenter
+(`GRAND-ARCHITECTURE.md` §0) is the same "one daemon, every project
+gets a mirror for free" bet already proven TWICE this session
+(piececraft-wraith originally, piececraft-3d-pal's real merge
+confirming it a second time, independently).
+
+================================================================================
+8. TECH-TREE GATING - "invented internet" as a real seam between civ
+   and economy tiers
+================================================================================
+"Internet" is a tech-tree node (`MUCHICIVO_BIBLE.txt` §4's Tier 2 tech
+tree, itself reusing `craft.c`'s `composed_of` mechanism for
+prerequisites - not a new tech-tree engine). Once unlocked, a company
+may register `ecommerce=1`, bypassing §7's physical-location
+requirement for retail. This is a concrete, checkable example of
+`MUCHICIVO_BIBLE.txt`'s own tier-boundary framework actually mattering
+- a Tier 2 unlock changing a Tier 3 business rule - not just a
+conceptual claim, a real mechanic with a real trigger condition.
+
+================================================================================
+9. R&D TIERING - the direct answer to "see how this ties into our
+   original iqabod and fsm goals now?"
+================================================================================
+Yes - this is where nearly everything built this session actually
+converges, not a new mechanism:
+  - **Routine/light training** ("teachers and stuff can do light
+    training otherwise") = `ROADMAP-models.txt` §12's grade/subject
+    curriculum ladder, running locally via IQABOD, governed by
+    `GAME-AI-SPEED-DOCTRINE.txt`'s own rule that ongoing weight-tuning
+    is fine to run as background/between-tick work as long as it never
+    blocks a live decision on a network call - training a curriculum
+    incrementally is exactly that shape, not an exception to the rule.
+  - **Cutting-edge R&D breakthroughs** ("we WILL use llm and
+    distillation... a little bit can go a long way") = the doctrine's
+    own explicitly-named exception (rare, special moments) PLUS
+    `ROADMAP-models.txt` §5's original R&D-agent worked example
+    (`idle -> propose_candidate -> synthesize -> test_on_cell ->
+    record_result`, `decision_mode=llm` specifically for the "propose
+    something genuinely novel" step) PLUS §12.3's qualification-
+    crossing "breakthrough" event framing. A company or college's R&D
+    department, staffed by research-tier-expertise citizens (§3),
+    occasionally (NOT every tick - rare, exactly per the doctrine) calls
+    a real LLM to propose a genuinely novel research direction; that
+    proposal then gets tested/validated LOCALLY (no further API calls),
+    and if it works, becomes a permanent local asset - a new trained
+    curriculum, a new product recipe, a new commodity. This is
+    precisely `MUCHICIVO_BIBLE.txt` §5's "R&D that gives companies
+    internal corpuses" line, now given its exact mechanical place: rare
+    LLM call PROPOSES, local IQABOD-style training/testing VALIDATES,
+    the result becomes a real owned/tradeable economic asset.
+This is the whole synthesis: population/labor draws on §12's schools,
+R&D draws on §11's distillation pipeline and §5's worked example,
+routine economic decisions draw on the `decision_mode` chassis governed
+by the speed doctrine, commodities/production/tech-tree draw on the
+composable chain and `craft.c`'s recipe mechanism - nothing here is a
+sixth new system, it's the first five actually meeting each other.
+
+================================================================================
+10. WHAT'S REAL PRECEDENT VS. PURE SCAFFOLDING IN THE ORIGINAL WSR-PAL
+    (so nothing here accidentally re-trusts something that was never
+    real)
+================================================================================
+REAL, worth building on: the 50 corporations' and 7 governments' actual
+financial data (already migrated this session); `analysis_loop.c`'s
+real fundamental-value formula (already ported); `presets/schedule.txt`
+'s real interval-scheduler concept (not yet reused, still worth
+reusing for §2-§9's own tick cadence).
+PURE SCAFFOLDING, nothing to preserve: `ai/*.c` (byte-identical menu
+copies, zero AI logic), `tax_loop.c` (a "Hello, TAX!" stub),
+`payroll_loop.c`/`dividend_loop.c` (both the same wrong copy). None of
+§2-§9 above are extensions of these files - they're new, real
+mechanisms designed against the DATA that was real, not the code that
+wasn't.
+
+================================================================================
+11. BUILD ORDER (vertical slice first, same discipline as every other
+    document in this family - this is a lot of surface area, build the
+    smallest real loop first)
+================================================================================
+  1. **Corporate actions** (§0.5's real WSR find - mergers/greenmail/
+     LBO/spin-offs/IPOs), added per direct confirmation ("add to build
+     order now"). Slotted FIRST/early on purpose - unlike everything
+     else in this list, it needs ZERO new subsystems, only the corp
+     pieces ALREADY built and live-tested this session
+     (`corp_decide.c`/`corp_trade.c`/the real migrated 50-corp data).
+     Real, well-documented, immediately buildable value before any of
+     the harder population/ledger/labor work below.
+  2. Population pool as an aggregate stat bucket ONLY (no individuals
+     yet) - total_population, one commodity's consumption demand.
+  3. ONE commodity (wheat) + ONE agricultural company producing it +
+     the population pool consuming it - prove supply/demand pricing
+     works before adding more commodities/companies. Production
+     coupling defaults to `classic`/indirect (§0.75) for this first
+     slice - `new`/direct and `learn` modes come later, once indirect
+     is proven.
+  4. The ledger mechanism, proven with ONE post kind (a plain sell
+     offer) - prove dynamic-discovery-based fulfillment works before
+     adding loan requests/job listings/targeted posts. Build per
+     `UPSCALE-DOWNSCALE-ENGINE-COMPONENTS.txt` §2's own instruction:
+     generic `ledger_post`/`ledger_scan` ops taking `kind` as data, not
+     hardcoded per post type, so this is portable from day one.
+  5. Banks + loan requests as the SECOND ledger post kind - proves the
+     ledger generalizes past one post shape. `classic` mode (§0.75)
+     should also be wired here alongside `new`, since it's the cheaper
+     of the two (no ledger involvement at all, just the deterministic
+     credit-line formula) - a natural first `classic` implementation.
+  6. Labor market: hook ONE company's hiring to `ROADMAP-models.txt`
+     §12's REAL existing curriculum/qualification data (not a
+     placeholder expertise tag) - this is the load-bearing "does the
+     schools-to-jobs connection actually work" test.
+  7. Physical locations + rendering - deliberately late, per §7's own
+     "zero new code when this day comes" framing; no reason to build it
+     before the economic mechanics it displays exist.
+  8. Tech-tree gating (§8) - needs Tier 2's tech tree to exist first
+     (per `MUCHICIVO_BIBLE.txt`'s own build order), genuinely blocked
+     until then, not just deferred by choice.
+  9. R&D tiering (§9) - deliberately LAST, since it's the highest-
+     leverage but also highest-complexity piece (needs population/
+     labor/expertise AND the ledger AND real commodities/companies all
+     already working to have something meaningful to research about).
+  10. `learn` mode (§0.75) for any of the above - deliberately last of
+      all, since it needs real `rl` (still a stub per
+      `GAME-AI-SPEED-DOCTRINE.txt` §4) to mean anything beyond a
+      relabeled `weighted`.
+
+================================================================================
+12. WEATHER, BREEDING (HUMAN AND ANIMAL), FACTORIES-ON-COMPANY-BOOKS,
+    HOSPITALS, HIGHWAYS - extending §2-§7, not new systems
+================================================================================
+Each of these maps onto a mechanism this document (or its siblings)
+already named - worth being explicit that none of them are a sixth
+architecture to invent:
+  - **Weather** - `EVO-DESIGN.txt` §2's own "ecosystem/planetary" tier
+    (the SimEarth-flavored layer), already specified as mostly
+    `decision_mode=preset`/deterministic per `GAME-AI-SPEED-DOCTRINE.txt`
+    (a climate system is, appropriately, always the cheapest tier by
+    default). Nothing new needed except actually building that tier -
+    it was designed, not yet implemented.
+  - **Population breeding/change, human AND animal** - `EVO-DESIGN.txt`
+    §2's own aggregate population-tier dynamics ("population/biomass
+    per species... competing for niches... a selection pressure") IS
+    this mechanism. The real unification worth naming explicitly: §2 of
+    THIS document (the human population pool) and `EVO-DESIGN.txt` §2
+    (ecosystem-tier species population) are not two systems that happen
+    to look similar - they are the SAME mechanism, applied to citizens
+    in one case and wild/farmed creatures in the other. A farm's
+    livestock is a population-pool bucket exactly like a city's
+    citizenry, just consumed as a commodity input (§4) instead of
+    supplying labor (§3). One aggregate-population mechanism, reused
+    across both the evo tier and the economy tier - not duplicated.
+  - **Factories/manufacturing on company books** - directly grounded in
+    REAL data already read this session: a corporation's real balance
+    sheet (per `ORB.txt`, already migrated) has an actual `Working
+    Capital (A/R, Inven.)` line - inventory is ALREADY a tracked
+    balance-sheet field in the real data, not something to invent
+    parallel to it. Manufacturing output should increase THAT real
+    field (and the real `Total Assets` roll-up it feeds), sales should
+    decrease it and increase `Cash`/`Free Cash and Equivalents` (also
+    already-real fields `corp_trade.c` already reads/writes) - §4's
+    production mechanic should route through the corporation piece's
+    EXISTING real financial fields, never a separate shadow inventory
+    system.
+  - **Hospitals** - a structure-tier composable (§7) citizens visit;
+    the mechanical hook is population health/mortality feeding back
+    into the SAME breeding/population-dynamics mechanism named above
+    (a healthier population has a different growth-rate input to that
+    same formula) - not a separate health-simulation engine.
+  - **Highways** - structure-tier composables connecting physical
+    locations (§7); their mechanical role is logistics for the ledger
+    (§6) - goods moving between a producer's and a buyer's location
+    plausibly costs time/money proportional to highway
+    connectivity/distance, a real, if simple, extension of ledger
+    fulfillment rather than a new transportation-simulation system.
+None of these are scoped into the build order (§11) yet - named here so
+they're not lost, and so their mechanical homes are clear before they
+are scoped, per this document's own stated purpose.
+
+================================================================================
+13. ABSTRACT VS. DETAILED, PER SYSTEM, BY CONFIG - the fractal-zoom
+    mechanism EXPOSED AS A REAL PLAYER-FACING SETTING (direct
+    instruction: "they can be abstract or detailed depending on config
+    or gameplay style selected")
+================================================================================
+This is not a new mechanism - it is `wrai-dust-fable` §14's "fractal
+zoom applies to AI compute, not just pixels" idea and
+`COMPOSABLE-MATERIALS-ARCHITECTURE.md`'s own granularity/λ axis, made
+explicit as something the PLAYER chooses, not just an internal cost
+optimization the engine picks silently. Worth stating plainly since
+it's the single idea that ties §2's population pool, §12's weather, and
+every other system in this whole family together:
+
+**Every system in this document (and its siblings) already has, or
+should have, an abstract default and a detailed option on the SAME
+granularity axis** - a `sim_granularity` (or per-system override) config
+value picks which end a given playthrough runs at:
+  - Population: abstract = an aggregate stat bucket (§2's default,
+    cheap, `decision_mode=preset` for the whole pool); detailed =
+    individual `citizen_<id>` pieces with their own health/relationships
+    /expertise, promoted per `wrai-dust-fable` §14's own "detail only
+    for what's currently in focus" framing - not everyone, just whoever
+    the config says should be detailed (e.g. only citizens the player
+    is directly interacting with).
+  - Weather: abstract = one global climate number (§12); detailed = a
+    real per-region `EVO-DESIGN.txt`-style ecosystem-tier simulation.
+  - Companies: abstract = the formula-driven `weighted` tier already
+    built and proven this session; detailed = a real per-department
+    breakdown (R&D, manufacturing, retail each their own sub-piece).
+This is genuinely the SAME switch, not a different one per system - a
+single config axis (or a small number of per-domain overrides) that
+moves EVERY applicable system along the same cheap<->detailed spectrum
+`GAME-AI-SPEED-DOCTRINE.txt` §2 already uses to reason about compute
+cost, now framed as a feature (let the player pick their preferred
+simulation depth / performance tradeoff) rather than only an
+implementation detail. Worth building the CONFIG MECHANISM once,
+generically (a `sim_granularity` field read by whichever
+tick-loop/population-pool/weather-system op is running, same "one
+mechanism, many consumers" pattern `craft.c`'s recipe reuse already
+established repeatedly in this document), rather than inventing a
+separate abstract/detailed toggle per system as each one gets built.
+

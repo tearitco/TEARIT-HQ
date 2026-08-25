@@ -1,0 +1,2 @@
+OBJECT tag=panel id=probe_panel role=project_panel x=35 y=6 w=40 h=12 z=24 source=semantic:probe_panel fg=#E8F1F2 bg=#162534 border=#7EDFF2 action=- label=PROBE_PROJECT
+OBJECT tag=text id=probe_title role=project_header x=37 y=7 w=24 h=1 z=26 source=semantic:probe_header fg=#E8F1F2 bg=#162534 border=#7EDFF2 action=- label=WRAITH_PROBE_PROJECT

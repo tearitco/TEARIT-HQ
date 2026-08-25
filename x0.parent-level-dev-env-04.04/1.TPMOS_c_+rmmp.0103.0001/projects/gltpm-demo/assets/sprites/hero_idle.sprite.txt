@@ -1,0 +1,7 @@
+sprite_id=hero_idle
+ascii=@
+unicode=@
+label=Hero
+asset_type=billboard
+rgb=255,220,90
+frame_count=1

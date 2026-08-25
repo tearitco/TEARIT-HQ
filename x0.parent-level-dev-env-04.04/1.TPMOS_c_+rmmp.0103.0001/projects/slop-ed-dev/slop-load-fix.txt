@@ -1,0 +1,38 @@
+# Slop-Load Fix Investigation & Plan
+
+## Current State
+- `slop-ed-dev_manager.c` contains a full file browser implementation (Agy-inspired) including `SET_DIR`, `SET_PATH`, `SET_AUTOCOMPLETE` commands.
+- `file_menu.chtpm` has a "LOAD GAME..." button that transitions to `file_browser.chtpm`.
+- `load_menu.chtpm` exists but is currently incomplete/unused as it relies on `${project_selection_markup}` which isn't published by the manager.
+- `save_game_to_path` and `load_game_from_path` work but are tied to the browser's input buffers.
+
+## Issues
+- File browser is "out of place slop" according to user.
+- Loading should use TPMOS standard project selection markup.
+
+## Proposed Changes
+1. **Remove Browser Code**:
+   - Delete browser-related global variables: `current_browser_dir`, `file_path_input_buffer`, `search_query_buffer`, `browser_mode`.
+   - Remove browser-related markup generation in `write_gui_state`.
+   - Remove browser-related commands in `handle_command`.
+   - Remove `file_browser.chtpm` layout (or just don't use it).
+
+2. **Implement Standard Loading**:
+   - In `write_gui_state`, scan `projects/slop-ed-dev/games/` to generate `${project_selection_markup}`.
+   - Use standard `<button label="[NAME]" onClick="SET_LOAD_GAME:projects/slop-ed-dev/games/[NAME]" />` pattern.
+   - Add `SET_LOAD_GAME` to `handle_command`.
+   - Update `file_menu.chtpm` to link "LOAD GAME..." to `projects/slop-ed-dev/layouts/load_menu.chtpm`.
+
+3. **Refactor "Save As"**:
+   - Instead of browser, add a `cli_io` for `save_as_name` in `file_menu.chtpm`.
+   - Update `handle_command` to handle `SET_SAVE_AS` using the new buffer.
+   - Ensure it still switches context to the new save location after saving.
+
+4. **Maintain Defaults**:
+   - Ensure `main()` still auto-loads `projects/slop-ed-dev/games/default-0000`.
+
+## Verification Plan
+- Verify default project loads on start.
+- Verify "LOAD GAME..." shows a list of projects from `games/` folder.
+- Verify selecting a project from the list loads it correctly.
+- Verify "SAVE AS" with a new name creates a new folder in `games/` and switches to it.

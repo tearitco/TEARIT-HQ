@@ -1,0 +1,20 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | wraith-alpha/wraith-projects/piececraft-wraith
+META         | version            | 0.1
+META         | author             | TPMOS
+META         | manager            | projects/wraith-alpha/wraith-projects/piececraft-wraith/manager/+x/piececraft-wraith_manager.+x
+META         | entry_layout       | projects/wraith-alpha/wraith-projects/piececraft-wraith/layouts/piececraft-wraith.chtpm
+
+STATE        | title              | PIECECRAFT WRAITH
+STATE        | status             | ready
+STATE        | mode               | z_map_probe
+STATE        | reference          | projects/piececraft-3d
+
+RESPONSE     | default            | Piececraft Wraith Ready.
+WINDOW | window_x | 0
+WINDOW | window_y | 0
+WINDOW | window_width | 0
+WINDOW | window_height | 0
+METHOD | resize | DESKTOP_ACTION:open_context_menu_resize
+METHOD | close | DESKTOP_ACTION:open_context_menu_close

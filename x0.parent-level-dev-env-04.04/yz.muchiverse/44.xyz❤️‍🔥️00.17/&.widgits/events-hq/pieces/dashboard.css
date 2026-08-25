@@ -1,0 +1,95 @@
+/* dashboard.css — events-hq Phase 1, ported color/type feel from
+   au11-hq/rpgmaker-mv-event-editor.html's own dark theme, minus
+   anything needing flex/grid/gradients/shadows (khtpm_css_parser.c
+   doesn't support those yet - see 2do-rgb-hq.md). */
+
+window {
+  background-color: #252525;
+  font-family: DejaVu Sans;
+  font-size: 11px;
+}
+
+.toolbar {
+  background-color: #2f2f2f;
+  border: 1px solid #444444;
+}
+
+.event-name {
+  color: #eeeeee;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.page-tabs {
+  background-color: #333333;
+  border: 1px solid #444444;
+}
+
+.tab {
+  background-color: #333333;
+  color: #999999;
+  border: 1px solid #444444;
+  font-size: 10px;
+}
+
+.tab.active {
+  background-color: #3a3a3a;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.left-panel {
+  background-color: #2a2a2a;
+  border: 1px solid #444444;
+}
+
+.block-title {
+  background-color: #2a2a2a;
+  color: #cccccc;
+  font-weight: bold;
+  font-size: 10px;
+  position: absolute;
+  top: -8px;
+  left: 10px;
+}
+
+.prop-value {
+  color: #aaaaaa;
+  font-size: 11px;
+}
+
+.command-list {
+  background-color: #1e1e1e;
+  border: 1px solid #444444;
+}
+
+.empty-msg {
+  color: #666666;
+  font-size: 11px;
+}
+
+.cmd-change_gold {
+  color: #7ec27e;
+  font-size: 11px;
+}
+
+.cmd-show_text {
+  color: #7ea7e0;
+  font-size: 11px;
+}
+
+.cmd-show_choices {
+  color: #e0a87e;
+  font-size: 11px;
+}
+
+.footer {
+  background-color: #2f2f2f;
+  border: 1px solid #444444;
+}
+
+.btn-primary {
+  background-color: #4a9eff;
+  color: #ffffff;
+  font-size: 11px;
+}

@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | system
+META         | version            | 1.0
+
+METHOD       | (empty)                  | NOOP
+METHOD       | Refresh list             | REFRESH

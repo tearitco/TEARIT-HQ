@@ -1,0 +1,38 @@
+=== OHRRPGCE MENU CLONING GUIDE ===
+
+1. MENU_DATA_STRUCTURE.txt
+   - MenuDef fields and properties
+   - MenuDefItem structure (caption, type, subtype, tags)
+   - Position/alignment settings
+   - Display options (colors, spacing, box style)
+
+2. MENU_ITEM_TYPES.txt
+   - mtypeLabel (display only)
+   - mtypeField (editable field)
+   - mtypeMenu (leads to submenu)
+   - Game-specific types (spell menus, item menus)
+   - Custom type definitions
+
+3. MENU_NAVIGATION_MAP.txt
+   - Which menu items lead to which menus
+   - Menu hierarchy and relationships
+   - Escape key behavior (esc_menu setting)
+   - Script triggers on menu close/select
+
+4. MENU_STATE_MANAGEMENT.txt
+   - MenuState tracking (position, scroll, selection)
+   - Input handling (keyboard, mouse)
+   - Selection persistence
+   - Menu lifecycle
+
+5. MENU_RENDERING_OPTIONS.txt
+   - Box styles and borders
+   - Text colors and alignment
+   - Translucency
+   - Scrollbar display
+   - Menu sizing (auto-fit or fixed)
+
+6. MENU_FILE_FORMAT.txt
+   - How menus are serialized (menus.bin, menuitem.bin)
+   - Binary structure for persistence
+   - Loading/saving procedures

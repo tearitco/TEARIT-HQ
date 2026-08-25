@@ -1,0 +1,9 @@
+<panel time_reactive="true">
+    <module>projects/aow/manager/+x/aow_manager.+x</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+    <text label="Welcome to AOW!" />
+    <text label="Project: ${project_id}" />
+    <text label="Active Target: ${active_target_id}" />
+    <text label="Last Key: ${last_key}" />
+    <text label="Response: ${last_response}" />
+</panel>

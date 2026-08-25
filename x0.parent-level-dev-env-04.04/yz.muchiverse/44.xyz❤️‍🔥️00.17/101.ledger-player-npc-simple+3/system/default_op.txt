@@ -1,0 +1,6 @@
+# LPNS+3 (Word Game) Operations for prisc+x
+# Format: name type handler {description}
+
+word_compose_frame void ops/word_compose_frame {render game state into view.txt}
+word_hit_frame void ops/word_hit_frame {signal renderer to update}
+word_turn_input void ops/word_turn_input {process player word/end_turn action}

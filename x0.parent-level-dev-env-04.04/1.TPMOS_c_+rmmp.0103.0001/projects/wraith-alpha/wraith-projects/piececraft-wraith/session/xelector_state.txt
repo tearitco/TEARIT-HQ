@@ -1,0 +1,5 @@
+xel_x=4
+xel_y=2
+xel_z=0
+map_id=map_01
+piece_type=player_character

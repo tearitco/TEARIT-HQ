@@ -1,0 +1,255 @@
+CODEX TPMOS ONBORD
+Practical notes for future Codex/API agents
+
+Purpose:
+This is not a replacement for the TPMOS bible or testing docs. It is a short
+Codex-specific field note from the first wraith-pm planning/testing session.
+Active Codex notes now live in _codex_dox. See NOTES_POLICY.txt and
+INVENTORY.txt before adding or deleting planning notes.
+
+1. Read these first
+
+From the TPMOS root:
+
+- !.gem-flashlite--yolo/!.evo&obs/!.TPMOS_ONBORD_BIBLE_10.md
+- !.gem-flashlite--yolo/#.docs/GL-OS_ARCHITECTURE.md
+- !.gem-flashlite--yolo/#.testing/_.0.aigent-testing-j2.txt
+- FRAME_REPORT_* files
+
+From the workspace root:
+
+- _codex_dox/NOTES_POLICY.txt
+- _codex_dox/INVENTORY.txt
+- _codex_dox/tomojizu-soul-synthesis-codex-j2.txt
+- _codex_dox/pre-planning-codex-j2.txt
+- _codex_dox/wrath-pm-codex-j2.txt
+- _codex_dox/FRAME_FIRST_RENDER_REPORT.md
+- _codex_dox/wraith-pm-frame-rgb-bridge-codex-j2.txt
+
+2. No git: archive before edits
+
+This workspace does not use git for rollback.
+
+Before editing existing files, create an archive batch under the workspace root:
+
+_codex_archives/YYYY-MM-DD/EPOCH/
+
+Each archive batch should include:
+
+- MANIFEST.txt
+- copies of existing files that will be edited, preserving relative paths
+
+New files do not need pre-edit copies, but the manifest should list them.
+
+3. Linux vs Windows binaries
+
+This checkout may contain Windows PE .+x binaries. On Linux, that causes:
+
+cannot execute binary file: Exec format error
+
+Approved recovery:
+
+sh #.dev-storage/#.tools/remove_binaries.sh
+./button.sh compile
+
+In the June 2 Codex smoke test, this rebuilt 185 Linux binaries with 0 failures
+and required binary verification passed.
+
+4. API shell may not have /dev/tty
+
+Normal ./button.sh run launches the keyboard muscle. In a Codex/API sandbox,
+keyboard_input_linux.c may fail with:
+
+open /dev/tty: No such device or address
+
+That does not mean TPMOS is broken on a real terminal. It means the API shell
+does not expose terminal keyboard capture.
+
+For Codex frame testing, use the headless fallback:
+
+./pieces/chtpm/plugins/+x/chtpm_parser.+x pieces/chtpm/layouts/os.chtpm
+./pieces/display/plugins/+x/renderer.+x
+
+Then inject keys into:
+
+pieces/keyboard/history.txt
+
+Required format:
+
+[YYYY-MM-DD HH:MM:SS] KEY_PRESSED: <code>
+
+Example:
+
+[2026-06-02 22:33:15] KEY_PRESSED: 13
+
+Then inspect:
+
+pieces/display/current_frame.txt
+pieces/debug/frames/session_frame_history.txt
+
+Stop manually launched parser/renderer processes after testing.
+
+5. Proven headless test result
+
+In the first Codex test drive, a headless parser/renderer session successfully
+consumed this injected key:
+
+[2026-06-02 22:33:15] KEY_PRESSED: 13
+
+The frame changed from the CHTPM main menu to:
+
+PIECE MARK LOADER
+LAYOUT ID: playrm/loader.chtpm
+
+This proves file-based key injection and frame review work without live terminal
+keyboard capture.
+
+6. Root frame reports are part of the workflow
+
+After a test cycle, create a root report:
+
+FRAME_REPORT_<YYYYMMDD-HHMM>_<topic>.txt
+
+Include:
+
+- test scope
+- key injections/actions
+- frame snippets
+- PASS/FAIL/INCONCLUSIVE verdicts
+- whether it is safe to proceed
+
+7. wraith-pm intention
+
+wraith-pm is not a GL-first project.
+
+It is:
+
+- CHTMGL input
+- Wraith-owned parser
+- colored ASCII frame first
+- image/video-to-colored-ASCII from the start
+- audit frame for AI/debug
+- optional ASCII/metadata-to-RGB conversion
+- optional GL presenter that displays RGB
+- future RGB/HDMI output from the same RGB data
+
+Do not build a monochrome-only prototype unless the user explicitly changes the
+plan. Color is part of the first contract.
+
+7b. Tomojizu HR/culture layer
+
+For TPMOS collaboration, the user may ask agents to behave as Tomojizu to
+adhere to the TPMOS HR/culture framework. Treat this as an interaction layer:
+warm, grounded, emoji-friendly chat is acceptable when requested, but source
+code, PDL, logs, test reports, commands, and technical judgments must remain
+precise, auditable, and engineering-focused.
+
+Read:
+
+_codex_dox/tomojizu-soul-synthesis-codex-j2.txt
+
+8. Wraith parser rule
+
+Wraith needs its own parser layer, likely named:
+
+pieces/wraith/plugins/wraith_parser.c
+
+or, if project-local during the first slice:
+
+projects/wraith-pm/plugins/wraith_parser.c
+
+This parser should be understood as a sibling/descendant of the existing parser
+patterns, not as a thin GL wrapper.
+
+Important precedents:
+
+- pieces/chtpm/plugins/chtpm_parser.c parses CHTPM into UIElement records,
+  handles variable substitution, focus/active state, interactions, and then
+  compose_frame() writes the current text frame.
+- pieces/apps/gl_os/plugins/gltpm_parser.c parses CHTMGL/GLTPM layout tags into
+  a GLTPMScene, including attributes such as id, x/y, width/height, color,
+  label, onClick, src, and image nodes.
+- gltpm_parse_rgb() already supports #RRGGBB and r,g,b color input. Wraith
+  should keep that kind of color contract, but emit colored ASCII cells first.
+
+The intended Wraith parser path is:
+
+CHTMGL layout + project/session state
+-> wraith_parser.c internal element tree
+-> colored ASCII frame artifacts
+-> metadata artifacts, preferably PDL where structured records are useful
+-> object map and hit map
+-> audit frame files for AI/debug
+-> optional RGB converter daemon
+-> pure RGB/RGBA framebuffer artifacts
+-> optional GL presenter / future RGB or HDMI output
+
+Do not skip the parser by trying to render CHTMGL directly in GL. Wraith is
+meant to understand the layout, color, shape, source media, and interaction
+metadata before any GL upload happens.
+
+9. RGB bridge rule
+
+The ASCII frame bundle is the product. RGB and GL are downstream consumers.
+
+The intended converter path is:
+
+current_frame.txt / current_frame.ansi.txt
++ current_frame.cells.pdl
++ current_frame.meta.pdl
++ current_frame.objects.pdl
++ current_frame.hitmap.pdl
+-> wraith_rgb_daemon.c
+-> current_frame.rgb24 / current_frame.rgba32
++ current_frame.rgb.pdl
+-> wraith-gl.c
+
+wraith_rgb_daemon.c may run as an optional daemon. It should watch the Wraith
+frame pulse, read frame + metadata files, rasterize glyphs/shapes/colors/images
+into pure RGB/RGBA bytes, and pulse an RGB frame update.
+
+wraith-gl.c should watch the RGB pulse and present the RGB/RGBA buffer. It
+should not parse CHTMGL, own fonts, or make layout decisions.
+
+See _codex_dox/wraith-pm-frame-rgb-bridge-codex-j2.txt for the fuller bridge
+plan.
+
+10. GL presenter rule
+
+GL should not own text, fonts, buttons, or layout semantics.
+
+The intended path is:
+
+CHTMGL/text/ASCII cells
+-> colored cell frame
+-> glyph/shape rasterizer
+-> RGB/RGBA framebuffer
+-> GL uploads framebuffer as texture
+
+Fonts convert to RGB before GL. GL is a presenter, not the source of UI truth.
+
+11. CHTMGL metadata matters
+
+CHTMGL should carry shape/color/geometry metadata because wraith-pm needs to
+render both:
+
+- readable colored ASCII
+- graphics/RGB frames
+
+Metadata should include x/y/w/h, fg/bg/border color, shape, role, id, action,
+source asset, and object_id/hit regions where possible.
+
+12. Practical caution
+
+The project has many generated files and runtime state files. Before changing
+source, separate:
+
+- source files and docs
+- generated .+x binaries
+- session/runtime state
+- frame reports
+
+Do not treat runtime state churn as meaningful source changes unless the task is
+explicitly about runtime state.
+
+End.

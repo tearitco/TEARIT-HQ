@@ -1,0 +1,9 @@
+METHOD       | Create Account          | SIGNUP
+METHOD       | Log In                  | LOGIN
+METHOD       | Log Out                 | LOGOUT
+METHOD       | Switch: asw_a_2131489 (Alice) * | SWITCH:asw_a_2131489
+METHOD       | Switch: asw_b_2131489 (Bob) | SWITCH:asw_b_2131489
+METHOD       | Switch: avmenu_1653663 (MenuTest) | SWITCH:avmenu_1653663
+METHOD       | Switch: avmenu_1654388 (MenuTest) | SWITCH:avmenu_1654388
+METHOD       | Switch: jb (JB Test) | SWITCH:jb
+METHOD       | Switch: schar_1744476 (SessionChar) | SWITCH:schar_1744476

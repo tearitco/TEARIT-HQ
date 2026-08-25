@@ -1,0 +1,16 @@
+# terrain_legend.txt - real, per-host data-bank board-viewer reads
+# instead of hardcoding civ-txt's own terrain in its C source (see
+# &.widgits/board-viewer/ops/bv_render_3d.c's own load_terrain_legend()
+# header comment for the full root-cause writeup - Phase 0 of
+# @.apps/piececraft-xyz/PIECECRAFT_XYZ_DESIGN.md §0a). These 5 rows
+# reproduce EXACTLY the values board-viewer's own terrain_height()/
+# terrain_color()/terrain_asset_hex()/glyph_name()/glyph_emoji() used
+# to hardcode for civ-txt's own '.'/'f'/'^'/'~'/'C' glyphs (see
+# ops/civ_menu_input.c's own CONFIRM_START board generator) - a pure
+# refactor, zero behavior change.
+# Format: glyph|height|r|g|b|asset_hex|name  ("-" asset_hex = no texture)
+.|0.0|120|170|80|1F33E|plains
+f|0.4|30|110|40|1F332|forest
+^|0.8|140|120|100|26F0|hills
+~|-0.3|40|90|180|1F30A|water
+C|1.2|200|180|60|1F3F0|CAPITAL

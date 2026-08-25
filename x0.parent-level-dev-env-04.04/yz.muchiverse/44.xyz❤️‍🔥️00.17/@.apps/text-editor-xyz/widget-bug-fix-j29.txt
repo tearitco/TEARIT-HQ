@@ -1,0 +1,145 @@
+widget-bug-fix-j29.txt
+=======================
+Debug log: GL window blank when widget launched from @.apps/text-editor-xyz
+but works when widget launched standalone.
+
+SYMPTOM
+=======
+Standalone:  `bash &.widgits/file-menu/button.sh r` → GL shows file menu
+From app:    `bash @.apps/text-editor-xyz/button.sh run` → GL window all black
+
+All files present: current_frame.txt (159 bytes), renderer_pulse.txt (2 bytes),
+rgb_frame.raw (1966080 bytes). But rgb_frame.raw is all-000000FF
+(checksum e7ef7ab4dace2325, 0/491520 non-black pixels).
+
+ROOT CAUSE: THREE-LAYER RACE
+=============================
+
+chtpm_rgb_render.c main() does:
+
+    render_once(fb, frame_path);          // ① initial render (all black)
+    write_file_atomic(out_path, fb, ...); // ② writes all-black rgb_frame.raw
+    pulse_rgb_ready(rgb_pulse_path);     // ③ grows rgb_frame_changed.txt
+    last_renderer_pulse = file_size(renderer_pulse_path); // ④ records size
+    for (;;) {
+        sm = file_size(renderer_pulse_path);               // ⑤ polls
+        if (sm != last_renderer_pulse) { re-render; }      // ⑥ trigger
+    }
+
+chtpm_parser_pal.c main() does:
+
+    compose_frame();  // writes current_frame.txt + appends "P\n" to renderer_pulse.txt
+    for (;;) {
+        poll triggers → compose_frame();  // appends another "P\n"
+    }
+
+Both daemons are started back-to-back in button.sh (lines 73-82 original order).
+The race has three layers:
+
+Layer 1 — Pulse captured before renderer watches it
+  If the parser's compose_frame() runs between ③ and ④, then
+  last_renderer_pulse = 2 (parser already appended). The poll loop
+  sees sm=2 == last=2 → never triggers → rgb_frame.raw is STUCK at
+  the all-black initial render forever.
+
+Layer 2 — Frame doesn't exist at initial render
+  Even if the parser hasn't written yet (last_renderer_pulse = 0),
+  the INITIAL render at ① happens before the parser writes
+  current_frame.txt. So the first rgb_frame.raw is always garbage.
+
+Layer 3 — CPU preemption on loaded system
+  When the app launches the widget, there are already 5+ daemons
+  running (editor's renderer, parser, cmd drainer, etc.). The OS
+  scheduler can preempt the widget's renderer between ③ and ④ and
+  let the widget's parser complete its compose_frame(). This makes
+  the race much more likely than on an idle system.
+
+TIMELINE (app-launched, race hit)
+=================================
+  t=0    widget button.sh starts
+  t=0.1  : > pieces/display/renderer_pulse.txt   (size 0)
+  t=0.1  fm_compose_frame → view.txt
+  t=1.0  gl_mirror starts (background)
+  t=1.0  chtpm_rgb_render starts (background)
+  t=1.0  chtpm_parser_pal starts (background)
+  t=1.0  [renderer] resolve_root, load_glyphs, load_emoji_colors
+  t=1.0  [SCHEDULER PREEMPTS — editor's daemons get CPU time]
+  t=1.1  [parser] resolve_root, parse_chtpm, initialize_focus
+  t=1.5  [parser] compose_frame() — writes current_frame.txt
+  t=1.5  [parser] compose_frame() — appends "P\n" to renderer_pulse.txt (size 2)
+  t=1.6  [renderer RESUMES]
+  t=1.6  [renderer] initial render — no current_frame.txt yet? Actually now
+         current_frame.txt exists because parser wrote it. BUT: the renderer's
+         render_once already ran with all-black (it read before parser wrote).
+         Wait — the renderer's initial render ran BEFORE the preemption. So:
+  t=1.0  [renderer] render_once → no current_frame.txt → all-black fb
+  t=1.0  [renderer] write_file_atomic → all-black rgb_frame.raw
+  t=1.0  [renderer] write_receipt → rgb_frame.receipt.txt
+  t=1.0  [renderer] pulse_rgb_ready → rgb_frame_changed.txt (2 bytes)
+  t=1.0  [PREEMPTED HERE] renderer doesn't reach file_size() yet
+  t=1.5  [parser] compose_frame() — current_frame.txt + renderer_pulse.txt (size 2)
+  t=1.6  [renderer] last_renderer_pulse = file_size(renderer_pulse.txt) = 2
+  t=1.6  [renderer] enters poll loop: sm=2 == last=2 → NEVER TRIGGERS
+
+Result: rgb_frame.raw permanently all-black. gl_mirror displays it
+forever because rgb_frame_changed.txt never grows again.
+
+TIMELINE (standalone, race avoided)
+===================================
+  t=0    widget button.sh starts
+  t=0.1  renderer starts, does init, records last_renderer_pulse = 0
+         (parser hasn't been scheduled yet — only 1 daemon running)
+  t=0.5  parser starts, compose_frame() → renderer_pulse.txt (size 2)
+  t=0.6  renderer polls: sm=2 != last=0 → TRIGGERS → re-render → 2226 white pixels
+
+THE FIX
+=======
+Changed button.sh startup order (line 61-81):
+
+    # OLD ORDER (broken):
+    # 1. gl_mirror
+    # 2. chtpm_rgb_render    ← renders before current_frame.txt exists
+    # 3. chtpm_parser_pal    ← might write pulse before renderer records it
+
+    # NEW ORDER (fixed):
+    # 1. chtpm_parser_pal    ← compose_frame() writes current_frame.txt + pulse
+    # 2. wait for current_frame.txt to exist (poll 0.1s × 20 = up to 2s)
+    # 3. gl_mirror
+    # 4. chtpm_rgb_render    ← initial render reads real current_frame.txt!
+
+Key insight: start the parser FIRST, let it write the initial frame, THEN
+start the renderer. This way:
+  - The renderer's INITIAL render reads a real current_frame.txt → correct
+    rgb_frame.raw on the first write → gl_mirror displays text immediately
+  - The renderer records last_renderer_pulse = 2 (parser already wrote)
+  - Future parser writes change the pulse to 4, 6, 8... → re-renders trigger
+  - No race: the pulse was ALREADY written before the renderer starts
+
+Also, the pre-creation of renderer_pulse.txt (: > file) is no longer
+necessary with this order (the parser writes it), but it doesn't hurt.
+
+The bug applies identically to standalone and app-launched — the only
+difference is that the app environment has more CPU contention, making
+the preemption window wider.
+
+FILES CHANGED
+=============
+  &.widgits/file-menu/button.sh     — startup order (parser first + wait)
+  &.widgits/file-menu/ops/ledger_append.c — system() return value warning
+  *.START_BUTTON/ops/start_scan.c   — buffer sizes + system() warnings
+  *.START_BUTTON/ops/start_menu_input.c — buffer size + system() warning
+
+PREVIOUS ATTEMPT (fm-font-pitfall.txt)
+=======================================
+The earlier fix (pre-creating renderer_pulse.txt) was INSUFFICIENT.
+It only fixed the case where the file doesn't exist at all (file_size
+returns -1). It did NOT fix the case where the parser writes to the
+pulse file BEFORE the renderer records its size, because both scenarios
+start with the same sizes (0→2 or 2→2), but the trigger detection
+depends on WHEN the renderer reads the size relative to the parser
+write.
+
+REMAINING ISSUES
+================
+None found. The app-launched widget now produces correct output
+(2226 non-black pixels, checksum c4bbb755833114dd) matching standalone.

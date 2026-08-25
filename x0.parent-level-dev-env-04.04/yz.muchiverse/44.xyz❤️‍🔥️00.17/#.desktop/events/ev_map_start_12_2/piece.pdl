@@ -1,0 +1,8 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | ev_map_start_12_2
+META         | version            | 1.0
+STATE        | name                 | ev_map_start_12_2
+STATE        | kind                 | map_event
+METHOD       | on_interact          | ops/+x/event_run.+x
+RESPONSE     | default              | *event idle*

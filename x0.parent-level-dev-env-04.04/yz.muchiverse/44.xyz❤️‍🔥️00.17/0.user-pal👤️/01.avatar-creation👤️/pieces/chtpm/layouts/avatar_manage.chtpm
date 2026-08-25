@@ -1,0 +1,41 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/avatar_manage_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|              M A N A G E   C L O N E                      |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${panel_content}" /><br/>
+    ${piece_methods}
+    <text label=" DNA: Enter [+] open fold — each option is a numbered row (Enter applies)" /><br/>
+    <!-- Fold only. Children = one button per option (std nav numbers). KEY 3xx = SET_DNA. -->
+    <button id="skin_pick" label="[+] Skin  ${skin_emoji}">
+        <br/>
+        ${dna_opts_skin}
+    </button><br/>
+    <button id="gender_pick" label="[+] Gender  ${gender_view}">
+        <br/>
+        ${dna_opts_gender}
+    </button><br/>
+    <button id="hair_pick" label="[+] Hair  ${hair_color}">
+        <br/>
+        ${dna_opts_hair}
+    </button><br/>
+    <button id="shirt_pick" label="[+] Shirt  ${shirt_color}">
+        <br/>
+        ${dna_opts_shirt}
+    </button><br/>
+    <button id="pants_pick" label="[+] Pants  ${pants_color}">
+        <br/>
+        ${dna_opts_pants}
+    </button><br/>
+    <button id="height_pick" label="[+] Height  ${height_cm}cm">
+        <br/>
+        ${dna_opts_height}
+    </button><br/>
+    <button id="weight_pick" label="[+] Weight  ${weight_kg}kg">
+        <br/>
+        ${dna_opts_weight}
+    </button><br/>
+    <text label="+============================================================+" /><br/>
+    <text label=" 1=Open Chara  2=Rename  3=Age  | [ctrl+c] Quit" /><br/>
+</panel>

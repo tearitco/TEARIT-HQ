@@ -1,0 +1,5 @@
+# self-code-demo.plan — the real self-coding target use case, wrapped
+# in LOOP_UNTIL for real retry-on-failure (a small model may not get a
+# one-line bash command right every time - this gives it up to 3 real
+# attempts, fresh artifacts each time, before giving up).
+LOOP_UNTIL | 3 | subplans/self-code-attempt.plan

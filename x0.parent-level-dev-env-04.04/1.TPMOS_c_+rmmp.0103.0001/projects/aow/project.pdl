@@ -1,0 +1,7 @@
+# Project Descriptor
+META | project_id | aow
+META | version | 1.0
+STATE | starting_map | map_01
+STATE | player_piece | selector
+METADATA | author | Gemini CLI
+METADATA | date | 2026-04-17

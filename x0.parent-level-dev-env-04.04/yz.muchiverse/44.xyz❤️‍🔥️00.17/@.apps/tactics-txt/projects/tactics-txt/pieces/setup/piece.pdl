@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | setup
+
+METHOD       | Mode: Classic (fixed staff armies)  | SET_MODE:classic
+METHOD       | Confirm & Start                     | CONFIRM_START

@@ -1,0 +1,38 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "functionCall": {
+              "name": "read_file",
+              "args": {
+                "path": "jul-21.txt"
+              }
+            },
+            "thoughtSignature": "CnoBEU0yD3eyQxCojXMHbRR9ZI6D7R/KBQQUaaetl7pmuM96sMcfMhm6/nivUGJQwZuQ3KDGJsCUoRGYBNuZKGBURcnXJ88p9aPxwHKW8Unz37G4uetEAWpPl83GJtXUofxX2T1uCR3InbwBWI03rE+CkkbdWJZp8SNxSg=="
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0,
+      "finishMessage": "Model generated function call(s)."
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1044,
+    "candidatesTokenCount": 20,
+    "totalTokenCount": 1092,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1044
+      }
+    ],
+    "thoughtsTokenCount": 28,
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-2.5-flash",
+  "responseId": "TQFgasneLe2N_PUPh9i0yAo"
+}

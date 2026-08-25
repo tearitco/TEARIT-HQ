@@ -1,0 +1,114 @@
+TODO-MUTA-0G+ — restoring +18.0G's obstacles/collision/zombies/teleport into 19.00
+Written 2026-08-20, before implementation. Direct user request: "restore zombies movement and
+teleport and collision... and also the other obstacles/furniture items etc that were in the 0g
+levels, mobspawner, etc" (as ops if possible, from +18.0G).
+
+================================================================================
+CONTEXT — why this is smaller than it looks
+================================================================================
++18.0G is the original, hand-crafted 2D map version of mutaclysm (40x16 map.txt, real
+furniture.txt/transitions.txt/terrain registry). 19.00 is the voxel-chunk rewrite. When 19.00's
+`ops/move_player.c` was ported from +18.0G, richness (collision/combat/transitions) was
+DELIBERATELY bypassed via an early `return 0;` (direct 2026-08-18 instruction: "just copy
+piececraft xelector, we can add richness later") — but the real, working collision/combat/
+transition code was never deleted, just left unreachable below that return. This document is the
+plan to re-enable it, not to rewrite it from scratch.
+
+`ops/tick_monsters.c` (zombie AI + mob-spawner) is essentially UNCHANGED from +18.0G — the only
+diff is the hero-state path (already migrated to `pieces/hero_01/state.txt` earlier today). It
+was already being CALLED by `game_dispatch.c` on every hero move this whole time, just had zero
+monsters to act on because no spawner data exists yet.
+
+Confirmed present and already correct, needing zero changes:
+  - pieces/world_01/map_start/furniture.txt (real content, furniture glyphs placed)
+  - pieces/world_01/map_start/transitions.txt (one real entry: 30|11|map_02|4|4)
+  - pieces/registry/terrain/terrain_types.txt (glyph|id|name|walkable|rgb_top|... legend)
+  - ops/tick_monsters.c (zombie AI + run_spawners(), byte-identical to +18.0G except the
+    already-migrated hero_path line)
+
+Confirmed MISSING (the real gap):
+  - pieces/world_01/map_start/spawners.txt does not exist in EITHER +18.0G or 19.00 — this
+    feature was built but never authored with real data, even in the original. Not a porting
+    gap, a content-authoring gap.
+  - pieces/world_01/map_start/monsters/ is empty in both — no hand-placed zombies either.
+
+================================================================================
+STEP 1 — re-enable collision/combat/transitions in ops/move_player.c
+================================================================================
+File: ops/move_player.c, "ACTIVE mode, possessed" branch (~line 565-643).
+Change: remove the early `return 0;` at line 642 (and its "REAL SIMPLIFICATION 2026-08-18" header
+comment block above it, which explicitly documents this as the bypass to remove later — this IS
+that later). Falls through into the already-written code at line 644 onward:
+  - find_monster_at() — bump-attack instead of moving, real damage/kill logic, message_log entry.
+  - find_transition() — real map_id/dest_x/dest_y teleport on stepping onto a transition tile.
+  - file_glyph_at() + glyph_walkable() (terrain) + furniture_walkable() (furniture) — real
+    per-tile collision check; blocked moves get a "You can't go that way." message instead of
+    silently no-op'ing (a real, deliberate UX fix from the same 2026-08-18 pass).
+This is the SAME map.txt/furniture.txt/transitions.txt already used to generate the voxel chunks
+(convert_og_map_to_voxels.c reads the identical map.txt) — no coordinate translation needed, 2D
+map-space IS the voxel chunk's own X/Y space (chunk_x*16+col, chunk_y*16+row), already 1:1.
+
+================================================================================
+STEP 2 — remove the now-stale "MULTI-CHUNK SUPPORT" manifest-switch block
+================================================================================
+File: ops/move_player.c, ~line 723-741, inside the same unreachable-until-now section.
+This block re-points pieces/system/board_manifest.txt to a DIFFERENT chunk_<x>_<y> directory
+every time the hero crosses a 16-tile boundary (`chunk_x = px / 16`) — written for the OLD
+per-16-cell separate-chunk-files layout. Today's earlier work (this same session) MERGED
+chunk_0_0/chunk_1_0/chunk_2_0 into a single 48-wide chunk_0_0 (see SIMLINK_PITFALL.md's sibling
+fix and this session's own map-merge work) specifically so the full map renders at once.
+Leaving this block in would make the hero's own movement silently repoint board_manifest.txt at
+chunk_1_0/chunk_2_0 paths THAT NO LONGER EXIST the moment px crosses 16 or 32 — breaking 3D
+rendering entirely for exactly the two "other rooms" that were just fixed. Must be deleted (not
+just made inert), since board_manifest.txt already correctly and permanently points at the merged
+chunk_0_0 from the merge step — nothing should ever rewrite it again for this single-chunk map.
+
+================================================================================
+STEP 3 — author a real spawners.txt for map_start
+================================================================================
+File: pieces/world_01/map_start/spawners.txt (new file, format already defined in
+tick_monsters.c's own header comment):
+  spawner_id|map_id|x|y|room_x0|room_y0|room_x1|room_y1
+  - x/y: the grave/spawner tile itself (never spawned on)
+  - room_x0/y0/x1/y1: the room's OUTER wall rectangle (spawn area is the interior, one tile in)
+run_spawners() tops every listed spawner back up to 4 living zombie/zombie_child entities each
+time it's called (on every hero-acted turn, already wired via game_dispatch.c → tick_monsters.c).
+Needs: pick a real room from map.txt (read the actual 40x16 layout, choose an enclosed room with
+a sensible "grave" flavor tile or just any enclosed room), compute its real wall rectangle, write
+one real spawner line. Not guessable from outside — must read map.txt directly before writing
+this file.
+
+================================================================================
+STEP 4 — verification plan (test each piece live, PNG/state proof, not just "no crash")
+================================================================================
+1. Rebuild (bash scripts/build.sh), confirm build ok.
+2. Relaunch fresh (avoid the stale-session-file artifact class documented in
+   _.0.aigent-testing-k9.txt Rule 9-12 and this session's own "movement stuck" false alarm).
+3. Wall collision: move the hero into a known wall tile (from map.txt), confirm pos_x/pos_y do
+   NOT change and message_log.txt gets "You can't go that way."
+4. Furniture collision: move into a known non-walkable furniture glyph, same check.
+5. Transition: move the hero onto (30,11) (the one real transitions.txt entry), confirm map_id
+   changes to map_02 and pos lands at (4,4). NOTE: map_02's own voxel chunk data does not exist
+   yet (only map_start was ever converted) - the 2D/text side should work, but real is real: flag
+   this as a known follow-up rather than silently declaring it done if 3D rendering breaks after
+   a transition.
+6. Spawner + zombie AI: after spawners.txt is authored, run several turns (end_turn/tick_monsters
+   fire automatically on hero movement), confirm pieces/world_01/map_start/monsters/ gets real
+   zombie entity dirs created, and that a zombie's own position changes turn-over-turn (real AI
+   movement, not just spawned-and-static). Confirm bump-attack: walk the hero into a spawned
+   zombie's tile, confirm combat message + monster hp decreases (or dies) rather than the hero
+   just occupying/passing through its tile.
+7. Full-map regression: re-confirm camera mode switching and the merged 48-wide 3D view (both
+   already fixed earlier this session) still work after these changes - re-run the same PNG-dump
+   checks, don't assume unrelated changes can't regress something already fixed.
+
+================================================================================
+EXPLICITLY OUT OF SCOPE for this pass (flag, don't silently attempt)
+================================================================================
+- map_02's own voxel conversion (transitions.txt points there, but only map_start has ever been
+  converted to voxel chunks) - a real, separate follow-up once this pass's own scope is done.
+- Possession-model rework (muta-remaining-bugs.txt Bug 3) - unrelated, already a separate tracked
+  item, not touched by this pass.
+- Any furniture/terrain glyph not already in terrain_types.txt's own legend - if map.txt or
+  furniture.txt reference a glyph missing from the registry, that's a real, separate content gap
+  to flag, not silently patch over with a guessed default.

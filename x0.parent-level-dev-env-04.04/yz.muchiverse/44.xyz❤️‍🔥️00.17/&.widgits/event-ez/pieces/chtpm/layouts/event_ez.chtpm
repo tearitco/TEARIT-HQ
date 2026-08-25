@@ -1,0 +1,18 @@
+<!-- event_ez.chtpm — Event list (gallery). RMMV-ish: pick a page to edit. -->
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+==========================================+" /><br/>
+    <text label="| EVENT EDITOR — ${pkg_name}               |" /><br/>
+    <text label="+==========================================+" /><br/>
+    <text label="What is this? Each PAGE is one event script" /><br/>
+    <text label="(like RPG Maker Event pages). Open a page," /><br/>
+    <text label="then add commands (e.g. Change Gold)." /><br/>
+    <text label="------------------------------------------" /><br/>
+    <text label="HOW TO: number or arrows, then Enter." /><br/>
+    <text label="------------------------------------------" /><br/>
+    <text label="-- EVENT PAGES --" /><br/>
+    ${page_gallery_rows}
+    <text label="------------------------------------------" /><br/>
+    <text label="${last_message}" /><br/>
+</panel>

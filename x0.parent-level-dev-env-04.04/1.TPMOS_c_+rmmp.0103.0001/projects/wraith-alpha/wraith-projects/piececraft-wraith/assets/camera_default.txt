@@ -1,0 +1,20 @@
+# Piececraft default camera / view.
+# Applied to session/state.txt on EVERY window open (by wraith-alpha's
+# reset_project_view_from_default(), called from launch_window_instance),
+# so the map always starts at this known angle instead of the last
+# session's mouse-orbited / panned position.
+#
+# Generic Wraith mechanism: any project that ships assets/camera_default.txt
+# gets exactly these keys reset on open. Only the keys listed here are
+# touched — xelector position (xel_x/xel_y/xel_z) is intentionally NOT
+# listed, so reopening keeps where the player was, only the view resets.
+# Add xel_* lines here if you also want the player start position reset.
+#
+# camera_mode: 1/2/3 POV preset (1 = default tilt). Pans are world units,
+# yaw/pitch are degrees (mouse-orbit deltas). See py3d-inspo.md.
+camera_mode=1
+cam_pan_x=0.00
+cam_pan_y=0.00
+cam_pan_z=0.00
+cam_yaw=0.00
+cam_pitch=0.00

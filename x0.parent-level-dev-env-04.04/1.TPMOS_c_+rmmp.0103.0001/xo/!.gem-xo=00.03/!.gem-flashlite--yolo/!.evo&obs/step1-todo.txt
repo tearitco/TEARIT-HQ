@@ -1,0 +1,66 @@
+# STEP 1 TODO: XO Bot Imitation & Memory Piece
+**Task:** Implement the "Memory Piece" infrastructure and the `record_session` Op.
+**Collaborators:** User & Gemini CLI
+**Date:** 2026-04-22
+
+---
+
+## 1. INFRASTRUCTURE: Exo-Sovereign Memory (Data)
+**Objective:** Establish the bot's private data tree outside the system piece tree.
+
+- [x] **1.1 Directory Scaffold:**
+    - `xo/bot5/pieces/` (Exo-Data Piece Root)
+    - `xo/bot5/pieces/memories/` (Private Experience Storage)
+    - `xo/bot5/pieces/weights/` (Cognitive Policy Weights)
+- [x] **1.2 PDL Descriptor:**
+    - `xo/bot5/pieces/piece.pdl` initialized (Exo-Bot Identity).
+
+---
+
+## 2. OP: record_session (Brain Code)
+**Objective:** A standalone C binary in `xo/bot5/cognition/` that captures the user's experience.
+
+- [x] **2.1 Target Directory Logic:**
+    - On launch, generate a timestamped folder: `pieces/bots/xo/memories/rec_YYYYMMDD_HHMMSS/`.
+- [x] **2.2 Dual-Stream Monitoring (stat-first):**
+    - **Stream A (The View):** Poll `pieces/display/current_frame.txt`.
+    - **Stream B (The Act):** Poll `pieces/keyboard/history.txt`.
+- [x] **2.3 Temporal Linking:**
+    - ENTRY Format: `F:XXXX | [TIMESTAMP] KEY_PRESSED: <code>`
+- [x] **2.4 Signal Safety:**
+    - Op handles `SIGINT` and writes `session_complete.txt`.
+
+---
+
+## 3. OP: rename_memory (Management Code)
+**Objective:** Allow user agency over memory labels.
+
+- [x] **3.1 Path Resolution:**
+    - Lives in `xo/bot5/cognition/rename_memory.c`.
+- [x] **3.2 Registry Sync:**
+    - Updates `pieces/bots/xo/memory_map.kvp`.
+
+---
+
+## 4. NEXT STEPS (Phase 2 Preparation)
+1. Recompile `xo/bot5/cognition/*.c` to verify external operating paths.
+2. Update the `bot5` orchestrator to optionally launch the recorder.
+3. Integrate `replay_memory.c` into the cognition layer.
+
+---
+
+## 4. KPIs (Success Criteria)
+
+| ID | KPI | Metric |
+| :--- | :--- | :--- |
+| **K1** | **Capture Fidelity** | Log reflects 100% of keys injected during a 60-second session. |
+| **K2** | **Zero Latency** | `record_session` uses < 2% CPU (stat-first polling). |
+| **K3** | **Auditability** | User can manually read `frame_001.txt` and see the exact UI state captured. |
+| **K4** | **Persistence** | Memory folders survive a full system reboot (`kill_all` -> `run`). |
+
+---
+
+## 5. NEXT STEPS (Immediate Collaboration)
+1. Verify `pieces/bots/xo/` exists.
+2. Draft `record_session.c` boilerplate (fork from `cpu_safe_module_template.c`).
+3. Implement frame-diff logic (only record frame if content hash or timestamp changes).

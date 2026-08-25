@@ -1,0 +1,288 @@
+================================================================================
+BOOK-STACK "READ" OPTION - PATH BUG INVESTIGATION REPORT
+================================================================================
+Date: 2026-08-18
+Status: UNRESOLVED - Needs deeper investigation
+Report by: Claude Code (Haiku 4.5)
+
+================================================================================
+SYMPTOM
+================================================================================
+When user clicks "Read" option on book-stack piecemark, nothing happens.
+Expected: Menu showing book options (Bible text, Bible TTS, Tao Te Ching)
+Actual: No menu appears, no error message visible
+
+================================================================================
+WHAT HAS BEEN ATTEMPTED
+================================================================================
+
+1. FIXED PATH DRIFT (Version Directory Rename)
+   - Changed: $H/101.mutaclsym🧟‍♂️️+18.01/system/prisc+x
+   - To: $(find "$H" -maxdepth 1 -name "101.mutaclsym🧟‍♂️️*" -type d 2>/dev/null | head -1)/system/prisc+x
+   - Status: DONE in meta.pdl and menu.chtpm
+   - Impact: Allows binary discovery regardless of version directory name
+
+2. FIXED GLOB EXPANSION IN QUOTED STRINGS
+   - Problem: $H/*.monads/*.book-stack/... doesn't expand inside double quotes
+   - Solution: Uses find commands instead
+   - Status: DONE in meta.pdl (for finding event.pal path)
+
+3. FIXED DISPATCH.SH PATH RESOLUTION
+   - Rewrote dispatch.sh with:
+     * PACKAGE_DIR: find + grep pattern matching
+     * CHOICES_FILE: find + grep pattern matching
+     * CHOICES_BIN (khtpm_show_choices.+x): find by name
+   - Status: DONE - all paths verified to resolve correctly
+
+4. FIXED EVENT.PAL DISPATCH CALL
+   - Changed from: exec dispatch.sh (relative path)
+   - To: exec /full/path/to/dispatch.sh (absolute path with literal asterisks)
+   - Status: DONE - file verified at that path
+
+================================================================================
+CURRENT FILE STATE - ALL VERIFIED
+================================================================================
+
+1. META.PDL (book-stack's method definition)
+   Path: xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/book-stack/meta.pdl
+   Read method:
+   | sh -c 'export PACKAGE_DIR="$0"; H="$1"; READER_PATH=$(find "$H" -path "*monads/*book-stack/pieces/reader/event_pkg/pages/page_1/event.pal" 2>/dev/null | head -1); exec "$(find "$H" -maxdepth 1 -name "101.mutaclsym🧟‍♂️️*" -type d 2>/dev/null | head -1)/system/prisc+x" "$READER_PATH"'
+   Status: ✅ Correct - all paths dynamic
+
+2. MENU.CHTPM (book-stack's UI menu)
+   Path: xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/book-stack/menu.chtpm
+   Read item:
+   | <item label="Read" action="sh -c 'export PACKAGE_DIR=&quot;$0&quot;; H=&quot;$1&quot;; exec &quot;$(find &quot;$H&quot; -maxdepth 1 -name &quot;101.mutaclsym🧟‍♂️️*&quot; -type d 2&gt;/dev/null | head -1)/system/prisc+x&quot; &quot;$(find &quot;$H&quot; -path &quot;*monads/*book-stack/pieces/reader/event_pkg/pages/page_1/event.pal&quot; 2&gt;/dev/null | head -1)&quot;'"/>
+   Status: ✅ Correct - HTML entity encoded version of meta.pdl
+
+3. EVENT.PAL (entry point script)
+   Path: *.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/event.pal
+   Content:
+   | # event.pal - page_1's real top-level script - Show Choices dispatch
+   | exec /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/dispatch.sh
+   | halt
+   Status: ✅ Correct - absolute path with literal asterisks
+
+4. DISPATCH.SH (orchestrator for choices)
+   Path: *.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/dispatch.sh
+   Key lines:
+   | SCRIPT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)" || { echo "Error: can't find script dir"; exit 1; }
+   | HOUSE="$(cd "$SCRIPT_DIR/../../../../../../.." 2>/dev/null && pwd)" || { echo "Error: can't find house"; exit 1; }
+   | PACKAGE_DIR=$(find "$HOUSE" -type d -name "book-stack" 2>/dev/null | grep -E "monads.*book-stack/entities" | head -1)
+   | CHOICES_FILE=$(find "$HOUSE" -type f -name "choices.objects.pdl" 2>/dev/null | grep "book-stack" | head -1)
+   | CHOICES_BIN=$(find "$HOUSE" -type f -name "khtpm_show_choices.+x" 2>/dev/null | head -1)
+   Status: ✅ Correct - all paths resolve without errors
+
+5. CHOICES.OBJECTS.PDL (menu definition for picker)
+   Path: *.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/choices.objects.pdl
+   Size: 169 bytes
+   Status: ✅ File exists and is readable
+
+6. KHTPM_SHOW_CHOICES.+X (binary that displays menu)
+   Path: &.widgits/tile-picker/ops/+x/khtpm_show_choices.+x
+   Type: ELF 64-bit LSB pie executable
+   Permissions: -rwxrwxr-x
+   Status: ✅ Binary exists and is executable
+
+================================================================================
+PATH RESOLUTION VERIFICATION
+================================================================================
+
+All paths tested and verified to resolve correctly:
+
+1. PRISC+X BINARY:
+   ✅ /home/no/.../101.mutaclsym🧟‍♂️️19.00/system/prisc+x
+   Type: ELF 64-bit executable
+   Exists: YES
+   Executable: YES
+
+2. EVENT.PAL FILE:
+   ✅ /home/no/Desktop/.../44.xyz❤️‍🔥️00.17/*.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/event.pal
+   (Path contains literal asterisks in directory names)
+   Exists: YES
+   Readable: YES
+   Content: Valid prisc script
+
+3. DISPATCH.SH SCRIPT:
+   ✅ /home/no/Desktop/.../44.xyz❤️‍🔥️00.17/*.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/dispatch.sh
+   (Path contains literal asterisks in directory names)
+   Exists: YES
+   Readable: YES
+   Executable: YES
+   Error checking: Added (validates all paths before executing)
+
+4. PACKAGE_DIR (entity directory):
+   ✅ /home/no/Desktop/.../44.xyz❤️‍🔥️00.17/*.monads/*.book-stack/entities/book-stack
+   (Path contains literal asterisks)
+   Exists: YES
+   Is directory: YES
+
+5. CHOICES_FILE:
+   ✅ /home/no/Desktop/.../44.xyz❤️‍🔥️00.17/*.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/choices.objects.pdl
+   (Path contains literal asterisks)
+   Exists: YES
+   Is file: YES
+
+6. KHTPM_SHOW_CHOICES BINARY:
+   ✅ /home/no/Desktop/.../&.widgits/tile-picker/ops/+x/khtpm_show_choices.+x
+   Exists: YES
+   Executable: YES
+   Type: ELF 64-bit
+
+================================================================================
+DIRECTORY STRUCTURE NOTE
+================================================================================
+
+IMPORTANT: Directory names contain LITERAL ASTERISKS
+- *.monads (directory is literally named with an asterisk prefix)
+- *.book-stack (directory is literally named with an asterisk prefix)
+
+This means paths like:
+  /house/root/*.monads/*.book-stack/pieces/...
+
+are VALID filesystem paths, not glob patterns. When passed to programs, they
+need to be quoted properly to prevent shell interpretation of the asterisks.
+
+All fixes account for this and properly quote these paths.
+
+================================================================================
+EXECUTION FLOW (WHAT SHOULD HAPPEN)
+================================================================================
+
+1. User clicks "Read" in book-stack menu
+   → Triggers meta.pdl Read method
+
+2. Meta.pdl Read executes:
+   → export PACKAGE_DIR="$0"  (entity directory)
+   → find prisc+x binary dynamically
+   → find event.pal file dynamically
+   → exec prisc+x with event.pal path
+
+3. Prisc+x loads and executes event.pal script
+
+4. Event.pal executes:
+   → exec /absolute/path/to/dispatch.sh
+
+5. Dispatch.sh executes:
+   → cd to its own directory
+   → find HOUSE root
+   → find PACKAGE_DIR using find+grep
+   → find CHOICES_FILE using find+grep
+   → find CHOICES_BIN using find by name
+   → validate all paths exist
+   → call khtpm_show_choices.+x with paths
+   → display menu and wait for user choice
+   → execute chosen branch script
+
+6. Expected outcome:
+   → Menu appears with options:
+      * Bible verse (text)
+      * Bible verse (with TTS)
+      * Tao Te Ching (random chapter)
+
+ACTUAL OUTCOME:
+   → Nothing visible to user
+   → No menu appears
+   → No error message visible
+
+================================================================================
+UNKNOWN UNKNOWNS - AREAS THAT NEED INVESTIGATION
+================================================================================
+
+1. PRISC+X BEHAVIOR
+   - How does prisc+x handle file paths with literal asterisks in them?
+   - Does it properly pass $0 (the script path) to the executed script?
+   - Does it preserve shell environment variables (PACKAGE_DIR export)?
+   - Does it change working directory when executing a script?
+
+2. EVENT.PAL SYNTAX
+   - Is "exec /path/to/dispatch.sh" valid in prisc's own script language?
+   - Should there be different syntax for executing external scripts?
+   - Does prisc support shell variable expansion like $(find ...)?
+
+3. DISPATCH.SH EXECUTION CONTEXT
+   - When called from event.pal via prisc+x, is dispatch.sh launched with
+     correct working directory?
+   - Can dispatch.sh find itself using dirname "$0" in this context?
+   - Are error messages from dispatch.sh being suppressed/hidden?
+
+4. KHTPM_SHOW_CHOICES.+X BEHAVIOR
+   - Does this binary require specific environment variables?
+   - What happens if it receives invalid/empty PACKAGE_DIR or CHOICES_FILE?
+   - Does it display GUI menu or terminal-based menu?
+   - How does it communicate results back to caller?
+
+5. HIDDEN ERROR MESSAGES
+   - Are errors from prisc+x, event.pal, dispatch.sh being logged somewhere?
+   - Is there a debug/verbose mode for prisc+x?
+   - Are errors being written to stderr vs. stdout?
+   - Is there a prisc debug log file?
+
+================================================================================
+HYPOTHESIS
+================================================================================
+
+The most likely issues (in order of probability):
+
+1. PRISC+X LIMITATIONS
+   Prisc+x may not properly handle:
+   - File paths with literal asterisks
+   - Exporting/inheriting PACKAGE_DIR environment variable
+   - Executing external shell scripts via "exec"
+
+2. EVENT.PAL SYNTAX ERROR
+   The "exec /path/to/dispatch.sh" line may not be valid prisc syntax.
+   Might need to be a different command or wrapper.
+
+3. DISPATCH.SH SILENT FAILURE
+   Dispatch.sh may be running but failing silently at a specific point:
+   - dirname "$0" might not work as expected
+   - find commands might not find paths with literal asterisks
+   - khtpm_show_choices.+x might not exist or be incompatible
+
+4. WORKING DIRECTORY ISSUE
+   Prisc+x might not cd into event.pal's directory before executing it,
+   causing dispatch.sh to be unable to find itself.
+
+================================================================================
+RECOMMENDATION FOR INVESTIGATION
+================================================================================
+
+1. CHECK PRISC+X SOURCE/DOCUMENTATION
+   - Understand how prisc handles file paths with special characters
+   - Understand how it handles "exec" statements
+   - Understand environment variable inheritance
+
+2. ADD DEBUG LOGGING
+   - Modify dispatch.sh to write debug output to a log file
+   - Log each step: dirname, HOUSE calculation, find results, etc.
+   - Check if this log file gets created when "Read" is clicked
+
+3. TEST DISPATCH.SH DIRECTLY
+   - Run dispatch.sh manually with correct PACKAGE_DIR set
+   - See if khtpm_show_choices.+x actually displays a menu
+
+4. VERIFY KHTPM_SHOW_CHOICES.+X
+   - Run it manually with test PACKAGE_DIR and CHOICES_FILE
+   - Confirm it actually displays the expected menu
+   - Check for any error messages or requirements
+
+5. ALTERNATIVE APPROACH
+   - Consider if event.pal should be a shell wrapper script instead
+   - Consider if dispatch.sh should be embedded/compiled into prisc+x
+   - Consider if there's a prisc built-in command for showing choices
+
+================================================================================
+FILES CREATED FOR THIS INVESTIGATION
+================================================================================
+
+- /tmp/.../BOOK_STACK_FIX.md - Original design rationale
+- /tmp/.../PATH_DRIFT_FIX_COMPLETE.md - Implementation report
+- /tmp/.../VERIFICATION_SNAPSHOT.txt - Before/after examples
+- /tmp/.../QUICK_REFERENCE.txt - Quick lookup guide
+- /tmp/.../COMPREHENSIVE_PATH_DRIFT_SCAN.py - Scanning script
+- /tmp/.../bookstack-path-bug.txt - This file
+
+================================================================================
+END OF REPORT
+================================================================================

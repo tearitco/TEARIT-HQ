@@ -1,0 +1,175 @@
+mutaclsym — procedural generation v1, and the monster decision_mode
+retrofit that shipped alongside it
+================================================================================
+Status: real, built, and live-verified (not a vision doc) - see
+00-HANDOFF.md's checklist for the one-line summary. This is the deep-
+dive companion to that checklist entry, same relationship
+01-cdda-architecture.md has to 00-HANDOFF.md.
+
+Why these two things shipped together: the user asked that mutaclsym's
+monster AI and its procgen both "use the same kinda infrastructure" as
+`yz.muchiverse/2.muchi-verse/GAME-AI-SPEED-DOCTRINE.txt` - the family-
+wide `decision_mode` chassis (`preset|weighted|rl|llm|human`, always
+local, never a live LLM call in the game loop). Monster AI is a direct
+instance of that chassis; procgen is NOT a decision_mode node (it's
+deterministic world synthesis, not an agent making a choice) but
+follows the doctrine's governing PHILOSOPHY identically - 100% local,
+seeded/reproducible, zero AI-API calls anywhere. Both are documented
+here together so that distinction stays explicit rather than blurring
+later.
+
+================================================================================
+1. Monster decision_mode (ops/tick_monsters.c)
+================================================================================
+Before this pass, mutaclsym's monster AI had ZERO decision_mode concept
+- pure hardcoded chase-and-melee, unlike wsr-pal/muchi-evo-pal which
+already used the chassis. Retrofitted to match their exact convention
+(confirmed by reading `wsr-pal/ops/corp_decide.c` and
+`muchi-evo-pal/ops/bot_choose.c` directly, not assumed from docs):
+`decision_mode` is a plain `key=value` field living in each monster
+PIECE's own `state.txt` (per-instance, set at spawn time - NOT a
+monster_types.txt registry column).
+
+  - `0` (preset, default when the field is absent - every monster piece
+    that predates this change keeps behaving byte-identically): always
+    steps toward the hero, attacks if adjacent. Unchanged code path.
+  - `1` (weighted): reads that same instance's own `flee_hp_pct` field
+    (no separate weights file - matches wsr-pal's `risk_bias` living
+    directly in its piece's state.txt). Computes
+    `hp_pct = hp * 100 / max_hp`, where `max_hp` is that monster TYPE's
+    `hp` column in `monster_types.txt` (see `monster_max_hp()`) and
+    `hp` is the live instance's own current value. Below `flee_hp_pct`,
+    steps AWAY from the hero (inverted dx/dy) instead of toward.
+    Otherwise identical to preset.
+
+Deliberately no `2`/`3`/`4` (rl/llm/human) branches, unlike wsr-pal/
+muchi-evo-pal's own dispatch chains which wire all 5 (with rl honestly
+stubbed to weighted). A monster's chase-or-flee decision is exactly the
+kind of small, fixed-shape node doctrine §3 says FSM/weighted already
+fits - it doesn't need GOAP/BT, and an "LLM-controlled" or "human-
+controlled" zombie isn't a real design need here the way an LLM/human-
+controlled corporation or creature-lineage piece is elsewhere in this
+family. Bespoke fit, not mechanical uniformity.
+
+**Live-verified** (via real keypresses -> history.txt ->
+current_frame.txt/message_log.txt/state.txt, not just reading the
+code): a `zombie_child` instance (decision_mode=1, flee_hp_pct=60,
+hp=10) took one hero melee hit (HERO_ATTACK_DAMAGE=5) down to hp=5
+(50%), and on that SAME tick moved away instead of attacking back,
+since 50 < 60. A `zombie` instance with no decision_mode field at all
+(true default-path test) kept closing distance turn over turn,
+unchanged from pre-existing behavior.
+
+**Balancing note**: zombie_child's default hp(10)/HERO_ATTACK_DAMAGE(5)
+means a flee_hp_pct of exactly 50 would tie exactly at the first hit's
+new hp% (50 < 50 is false) - it would never trigger until the SECOND
+hit, which also kills it (hp=0). Used 60 instead so the flee behavior
+is actually reachable and observable before death. Worth remembering
+if flee_hp_pct is ever tuned per-type: it needs real headroom above
+`(1 - HERO_ATTACK_DAMAGE/max_hp) * 100`, not just "sounds about right."
+
+================================================================================
+2. Procedural generation v1 (ops/generate_map.c)
+================================================================================
+A one-shot AUTHORING-time CLI tool (`./button.sh generate <map_id>
+<seed> [w] [h] [link_map_id] [link_x] [link_y]`, defaults 80x40,
+linked from map_02 at (36,13)) - NOT part of pal/main_loop.pal's per-
+tick loop, same spirit as save_game.c. Deterministic: the same seed
+always produces byte-identical output (map.txt, and every spawned
+item/monster's exact type+position), verified by generating twice into
+two fully independent project copies and diffing.
+
+Self-contained xorshift32 PRNG, no external deps, matching this
+project's "one op = one binary, no shared headers" convention.
+
+Pipeline of genuinely separate passes over one shared in-memory grid -
+kept as separate functions, not fused, specifically so more passes can
+be added later (per direct instruction: "keep it flexible, we may add
+more features to it later") without redesigning the earlier ones:
+
+  1. **biome_pass** - grass base, tree border. Scatters 4-8 patches
+     (dirt/shallow-water/tree-cluster flavor, chosen and radius-sized
+     by the seeded PRNG) as circular blobs. Honestly a stochastic patch
+     scatter, NOT a real Perlin/simplex noise implementation - right-
+     sized for v1, not claimed to be more sophisticated than it is.
+  2. **structure_pass** - places 3-5 non-overlapping rectangular rooms
+     (wall border, floor interior, one door on the bottom wall),
+     connects each to the previously-placed room via an L-shaped
+     corridor. Reuses 100% of the existing terrain glyph registry - no
+     new tile types needed. Known v1 simplification: a corridor is
+     carved unconditionally along its path, so it CAN punch through
+     another room's wall if the paths cross. Not hidden - just not
+     worth the extra bookkeeping for a first slice.
+  3. **population_pass** - scatters monsters/items on walkable tiles at
+     least 4 tiles from the entry point, with real collision-avoidance
+     against each other. Item/monster ids are read straight out of the
+     real `items.txt`/`monster_types.txt` registries via `load_ids()`
+     (not hardcoded) - the generator automatically uses whatever's
+     actually registered. Monsters alternate preset/weighted
+     (`flee_hp_pct=60`) using the exact same decision_mode convention
+     as §1, and spawn at their TYPE's real registry hp (`monster_type_hp()`)
+     - not a made-up constant (an earlier draft hardcoded hp=20 for
+     every spawn regardless of type, which would have silently doubled
+     zombie_child's real toughness and made its flee math meaningless;
+     caught and fixed before this doc was written).
+  4. **emit + link** - writes `map.txt`/`furniture.txt`/`state.txt` in
+     the exact shapes `compose_frame.c`/`move_player.c`/
+     `tick_monsters.c` already read, then wires a BIDIRECTIONAL
+     stairway back into the link map: appends a `transitions.txt` entry
+     on both sides and stamps the `>`/`<` glyph pair, matching the
+     existing `map_start` <-> `map_02` convention exactly (transitions
+     are pure coordinate lookups independent of the tile glyph
+     underneath - `move_player.c`'s `find_transition()` - but the
+     stairs glyphs are there for player-visible affordance, so new
+     content should keep using them too).
+
+**A real bug found and fixed during this build**: `population_pass()`
+originally ran BEFORE `write_map_files()`, so its `mkdir(items_dir,...)`
+/`mkdir(monsters_dir,...)` calls (subdirectories of the not-yet-created
+map directory) failed silently (return values weren't checked,
+matching this project's existing style elsewhere) - no items/monsters
+ever actually got written, though the function returned normally and
+`map.txt` looked fine. Caught specifically by checking the ACTUAL
+directories after a test run, not by trusting a clean exit code - the
+same "verify by looking, not by assuming" discipline
+`00-HANDOFF.md`'s bug-class section already documents for the
+`#`-glyph collision. Fixed by simply swapping the call order.
+
+**Live-verified end to end** (real keypresses through the actual pal
+loop, not CLI-only): generated a real 80x40 map twice with the same
+seed into two independent project copies - byte-identical `map.txt`
+and identical spawned monster/item placements+types both times. Walked
+a real hero through the new stairway from `map_02` into the generated
+map, confirmed arrival at the intended entry point; teleported near
+both the top-left and bottom-right interior corners and confirmed the
+camera clamps correctly at each (showing the map's real border, never
+scrolling past it) - the actual "camera + chase AI verified against a
+real, not synthetic, map bigger than one screen" proof that
+`01-cdda-architecture.md` §5a's camera work had been waiting on.
+Confirmed a spawned monster chases the hero correctly across the
+generated map. `dump_rgb_png.+x` confirmed the GL/RGB mirror renders
+the new biome/room content correctly (no `#`-glyph-class rendering
+bugs) - grass/dirt/water/tree-cluster colors and room walls all
+correct.
+
+A real map (`map_gen_01`, seed `20260716`, linked from `map_02` at
+(36,13)) now exists in both `pieces/world_01/` and
+`pieces/world_01_template/` (kept byte-identical, same reasoning as
+`map_02`'s population in §1 - anything only in `world_01` gets wiped by
+the next New Game reset), reachable through completely normal play.
+
+================================================================================
+3. Explicitly deferred (procgen-specific - see 00-HANDOFF.md for the
+   broader mutaclsym backlog)
+================================================================================
+  - More biome flavors (currently just dirt/shallow-water/tree-cluster
+    patches) - a real 4th+ pass could slot in without touching the
+    first three, per this pipeline's whole point.
+  - Non-rectangular rooms, room-shape variety, multiple doors per room.
+  - Corridor-through-room-wall collision (§2's named v1 simplification).
+  - Caves / non-outdoor biomes entirely.
+  - Chained/recursive generation (a generated map itself spawning
+    further generated maps on further exploration) - v1 always links
+    back to one existing, already-real map (`map_02` by default).
+  - Multi-Z, vehicles - unrelated to procgen specifically, still
+    undesigned per `00-HANDOFF.md`/`01-cdda-architecture.md`.

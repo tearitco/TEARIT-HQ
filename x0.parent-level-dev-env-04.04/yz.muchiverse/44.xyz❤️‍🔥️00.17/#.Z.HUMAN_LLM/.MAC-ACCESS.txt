@@ -1,0 +1,100 @@
+# 🔑🌐 MAC ACCESS (10.0.0.144) — read me before doing ANY heavy training
+# Purpose: offload tomom@qroq / iqabod training to the LAN Mac so this
+# box's CPU stays free. Written 2026-08-01. VERIFIED WORKING ✅
+
+================================================================
+HOW TO CONNECT (password auth)
+================================================================
+HOST      : 10.0.0.144
+USER      : lfs.master
+PASS      : 1234
+KEY       : ~/.ssh/id_ed25519 is on THIS box but was DENIED for that
+            user on the Mac. Do NOT use the key for this host.
+CLI       : sshpass -p '1234' ssh -o PreferredAuthentications=password \
+              -o PubkeyAuthentication=no lfs.master@10.0.0.144 '<cmd>'
+ARCH      : x86_64, macOS 15.1.1, has gcc/clang/cc
+OLLAMA    : http://10.0.0.144:11434 (LLM inference only)
+HOME      : /Users/lfs.master
+
+REAL MODELS PULLED (checked 2026-08-12 via /api/tags, not guessed):
+  gemma3:1b, gemma3:270m, llama3-groq-tool-use:latest/8b (has "tools"
+  capability), llama2:latest, llama2-uncensored:latest,
+  nomic-embed-text:latest (embeddings only), stable-code:latest (3B,
+  family stablelm - a CODE model, this is almost certainly the
+  "ollama-3b" referred to for delegated implementation work),
+  llama3:latest.
+
+REAL FIX 2026-08-12 (direct report: "i recently restart the mac so u
+may need to restart ollama port services"): after a Mac restart,
+Ollama.app's own child `ollama serve` process only binds
+`localhost:11434` by default - NOT reachable from 10.0.0.x directly,
+only via SSH+localhost. `launchctl setenv OLLAMA_HOST 0.0.0.0:11434`
+alone does NOT fix this - the GUI app's own child process does not
+inherit it (tried, confirmed still localhost-only after restarting the
+app). REAL fix: kill the app-launched serve process and run the
+daemon directly with the env var in that shell:
+  ssh ... "kill <old ollama.app pids>; \
+    OLLAMA_HOST=0.0.0.0:11434 nohup \
+    /Applications/Ollama.app/Contents/Resources/ollama serve \
+    > /tmp/ollama-lan.log 2>&1 & disown"
+Verify with `lsof -iTCP:11434 -sTCP:LISTEN -P` on the Mac - must show
+`*:11434`, not `localhost:11434`. Confirmed working end-to-end this
+session: direct `curl http://10.0.0.144:11434/api/generate` from the
+Linux box succeeded with a real completion from stable-code:latest.
+CAVEAT: this fix does not survive a Mac reboot/Ollama.app relaunch -
+if OLLAMA is unreachable again, re-run the fix above before assuming
+anything else is wrong.
+
+================================================================
+TEST THE CONNECTION
+================================================================
+  sshpass -p '1234' ssh -o PreferredAuthentications=password \
+    -o PubkeyAuthentication=no lfs.master@10.0.0.144 "uname -m; echo ok"
+
+================================================================
+WHERE THE T@Q TRAIN RUNS ON THE MAC
+================================================================
+  /Users/lfs.master/tomom-qroq/          <-- rsynced copy of T@Q dir
+  Workflow:
+    rsync -av --delete "<local>/#.Z.HUMAN_LLM/3.stage.llm.tomom@qroq.fame]921🐋️/" \
+      lfs.master@10.0.0.144:/Users/lfs.master/tomom-qroq/   (sshpass + same opts)
+    ssh ... "cd /Users/lfs.master/tomom-qroq && ./+x/trainer.+x curriculum/.../....txt"
+  BRING-BACK (CRITICAL): any code edited on the Mac MUST be rsynced BACK
+  to this box, same dir, before the session ends. This box is the source
+  of truth. Command:
+    rsync -av lfs.master@10.0.0.144:/Users/lfs.master/tomom-qroq/ \
+      "<local>/#.Z.HUMAN_LLM/3.stage.llm.tomom@qroq.fame]921🐋️/"
+  Verify no drift afterward: md5 of optimizer.c/backward_prop.c/
+  forward_prop.c/trainer.c must match between the two (SAME = good).
+
+================================================================
+RULES
+================================================================
+R1. NEVER run trainer/forward/backward loops on this Linux box. The
+    trainer spawns ~3000 system() calls + fscanf churn per run. Offload.
+R2. Compile on the Mac (gcc on macOS is fine for these C files):
+    for f in forward_prop backward_prop optimizer trainer vocab_model \
+             chatbot_moe_v1 attention mlp_layer; do
+      gcc "$f.c" -o "+x/$f.+x" -lm
+    done
+R3. OLLAMA (10.0.0.144:11434) is for LLM inference (gemma3:270m). It is
+    NOT a shell; you cannot run training through it. Training = SSH + gcc.
+R4. If 1234 stops working, ask the human for the new pass and update this
+    file (this is the single source of truth for Mac access).
+R5. Mind the Mac's resources too: don't run 10 parallel trainers. One at
+    a time. It's the shared LAN LLM host.
+R6. CLEANUP: if a local SSH session dies (Ctrl-C, disconnect, timeout), the
+    remote trainer may keep running. Before/after any train run, check and
+    kill leftovers so we never leave orphan procs on the Mac:
+      ssh ... "pgrep -fl 'tomom-qroq' || echo clean"
+      ssh ... "pkill -f tomom-qroq && echo killed"   (no matching procs = no-op, safe)
+    Also clean remote temp dirs from debug sessions when done:
+      ssh ... "rm -rf /tmp/ghd* /tmp/ghmini* /tmp/ghtrace* /tmp/ghopt* /tmp/gh_dbg*"
+
+================================================================
+FAQS
+================================================================
+Q: Why can't I just run ./+x/*.+x locally for a quick test?
+A: Mini tests are OK (12-word vocab, 3 epochs ≈ seconds). But any full
+   corpus train (108+ words) or iterative bug-hunting on full corpora
+   MUST go to the Mac. Bug-hunt on /tmp/ghmini (tiny) first.

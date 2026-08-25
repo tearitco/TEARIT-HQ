@@ -1,0 +1,29 @@
+# CHTPM CLI Windows Fix Report (ju-1)
+
+## 1. Terminal Input Interactivity
+**Issue:** Selecting projects or navigating menus in the ASCII terminal appeared non-interactive, while the GL mirror worked.
+**Cause:** 
+- `keyboard_input_win.c` was correctly capturing keys, but Windows terminal buffering or focus issues sometimes prevented the "Nav >" prompt from updating in real-time.
+- The use of `system("start ...")` for project loading was triggering Windows "Open With" dialogs because `.x` files are not registered executables. This "stole" focus and blocked the terminal.
+
+**Solution:**
+- Refactored `chtpm_parser.c` to handle `LOAD_PROJECT` internally. It now reads the PDL and switches the layout directly without spawning an external `resolve_project_op.+x`. This makes transitions instantaneous and avoids focus stealing.
+- Updated `keyboard_input_win.c` to restore `ENABLE_PROCESSED_INPUT`, allowing `Ctrl+C` to work as expected.
+
+## 2. Project Selection & Blank Menus
+**Issue:** The project list would sometimes vanish or appear blank.
+**Cause:** 
+- The `loader_module` was attempting to call `get_projects_op.+x` via `popen()`. On Windows, `popen()` defaults to `cmd.exe`, which doesn't know how to run `.x` files.
+- Path quoting issues in `system()` calls caused failures when the project path contained spaces (common in Windows user directories).
+
+**Solution:**
+- Refactored `loader_module.c` to perform project scanning and markup generation natively in C. This removes the dependency on external Op binaries for the most critical UI elements.
+- Switched from `system()` to `_spawnv(_P_NOWAIT, ...)` in `chtpm_parser.c` for background tasks like launching GL-OS. This bypasses the shell association layer and executes the binary directly.
+
+## 3. Summary of Core Changes
+1. **Parser Internalization:** `LOAD_PROJECT` is now a first-class citizen inside `chtpm_parser.c`.
+2. **Direct Spawning:** Replaced shell-dependent `system()` calls with direct `_spawnv` for Windows.
+3. **Native UI Generation:** The Project Loader scans and builds its own menu markup to avoid cross-process communication failures on Windows.
+4. **Signal Restoration:** Fixed console mode flags to allow standard terminal signals (`Ctrl+C`).
+
+**Status:** The ASCII terminal is now fully interactive, projects load correctly, and GL-OS launches as a background process without triggering Windows file association prompts.

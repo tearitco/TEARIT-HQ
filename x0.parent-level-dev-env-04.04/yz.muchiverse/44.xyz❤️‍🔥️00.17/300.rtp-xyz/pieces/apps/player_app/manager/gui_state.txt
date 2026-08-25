@@ -1,0 +1,2 @@
+craft_panel_items=<button label="Sharpen a Stick (missing)" onClick="KEY:49" /><br/><button label="Craft a Knife (missing)" onClick="KEY:50" /><br/><button label="Sew a Shirt (missing)" onClick="KEY:51" /><br/>
+inventory_panel_items=<text label="(nothing carried)" /><br/>

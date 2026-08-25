@@ -1,0 +1,13 @@
+<!-- menu.chtpm — book-stack-choices's real entity context menu, Stage 2c
+     ROLLOUT (2026-08-16, direct instruction "yes we need to finish those").
+     Converted 1:1 from this entity's own real objects.pdl (same PAGE/OBJECT
+     rows, same action strings verbatim) via the same real mechanical
+     conversion rule proven on ava/asa (scratchpad objects_to_chtpm.py).
+-->
+<window class="entity-menu">
+  <page name="main">
+    <item label="Bible verse (text)" action="bible_text"/>
+    <item label="Bible verse (with TTS)" action="bible_tts"/>
+    <item label="Tao Te Ching (random chapter)" action="tao"/>
+  </page>
+</window>

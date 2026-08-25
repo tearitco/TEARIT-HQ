@@ -1,0 +1,8 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | main
+
+METHOD       | End Turn                            | END_TURN
+METHOD       | Eat (from inventory)                 | EAT
+METHOD       | Pick Up                             | PICKUP
+METHOD       | Drop                               | DROP

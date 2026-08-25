@@ -1,0 +1,5213 @@
+#define _POSIX_C_SOURCE 200809L /* CLOCK_MONOTONIC + getline() under -std=c11 strict mode - bumped from 199309L 2026-08-16 for chai_load_ledger()'s real getline() fix, see that function's own header comment */
+/* khtpm_entity_menu_render.c — entity context menu, Stage 2c PROOF
+ * (2026-08-16, direct instruction: "oh use chtpm. its standard" -
+ * overriding the smaller module-only-bolt-on option initially
+ * recommended). ONE-ENTITY TEST CASE ONLY - see local-2do-15.txt's own
+ * entity-context-menu entry for the full reasoning/rollout plan. Every
+ * OTHER entity still uses tp_desktop_window_rgb.c's own built-in popup
+ * engine (objects.pdl/meta.pdl) until this is proven live on ava first.
+ *
+ * Real .chtpm tag vocabulary, 1:1 with objects.pdl's own real semantics
+ * (same action-string convention dispatch_action() already uses - a
+ * real shell command, "CLOSE", "void", plus objects.pdl's own "GOTO:
+ * <page>"/"BACK" reserved forms for multi-page nav):
+ *   <window class="entity-menu">
+ *     <page name="main">
+ *       <item label="..." action="..."/>
+ *       ...
+ *     </page>
+ *     <page name="other-page"> ... </page>
+ *   </window>
+ * <page name="..."> uses e->id to hold the page name (reusing the
+ * shared Elem struct's existing field, not a new one). <item>'s action
+ * string lives in e->onclick (also an existing Elem field) - label
+ * holds the visible text, onclick holds the command, matching that
+ * field's own original purpose.
+ *
+ * Real entity decoding (2026-08-16 finding): this parser only supports
+ * double-quote-delimited attribute values with NO entity decoding
+ * anywhere else in this house's khtpm family - action strings need
+ * literal " characters (for "$0"-style var quoting inside their own
+ * sh -c '...' wrappers), so apply_attr() decodes &quot;/&amp; for the
+ * "action" attribute specifically - real, minimal XML entity decoding,
+ * only the 2 entities actually needed, not a general-purpose scheme.
+ *
+ * Shares khtpm_render_core.c (Elem struct + hit_test/find_by_tag/
+ * find_by_id) with db-hq/events-hq/chat-hai - a REAL step toward Stage
+ * 2c's eventual convergence, not just proximity - this is genuinely the
+ * 4th consumer of that shared core.
+ *
+ * Usage: khtpm_entity_menu_render.+x <package_dir> <house_root>
+ * (matches dispatch_action()'s own existing calling convention exactly -
+ * package_dir first, house_root second - so tp_desktop_window_rgb.c's
+ * eventual integration point doesn't need a different argv shape). */
+#include "khtpm_css_parser.h"
+#include "khtpm_render_core.c" /* real .c, not a header - see that file's own comment */
+#include "khtpm_taskbar_manager.h" /* REAL, db-hq mode only (§5d.10) - ktb_init()/ktb_quit_and_save() KtbState persistence, ported from khtpm_hq_render.c's own real usage */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <dirent.h> /* REAL, chat-hai mode only - session-dir listing */
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/select.h>
+#include <sys/wait.h> /* REAL, db-hq mode only - launch_module()/cleanup_module(), real fork()+execl() */
+#include <signal.h> /* REAL, db-hq mode only - handle_term_signal() */
+#include <time.h>
+#include <X11/Xlib.h>
+#include <X11/Xatom.h> /* 2026-08-24 - XA_WINDOW for the XdndAware property (XDND drop support) */
+#include <X11/Xutil.h>
+#include <X11/keysym.h>
+#include <X11/Xft/Xft.h>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "lib/stb_image_write.h"
+
+#define PATH_BUF 4096
+/* REAL Stage 5 §5d.10 (2026-08-16) - bumped 256->512 to match db-hq's
+ * own original headroom (khtpm_hq_render.c) now that db-hq mode's own
+ * 15-tab/sidebar/panel tree shares this same pool. */
+#define MAX_ELEMS 512
+#define MAX_PAGE_STACK 8
+
+static Elem g_pool[MAX_ELEMS];
+static int g_n_elems = 0;
+static char g_package_dir[PATH_BUF];
+static char g_house_root[PATH_BUF];
+
+/* REAL, db-hq mode only (§5d.10) - module launch, ported VERBATIM from
+ * khtpm_hq_render.c (real fork()+execl(), already TPMOS-compliant - see
+ * that file's own header comment, "explain to me your plan and why its
+ * different from the tpmos/wraith examples"). Harmless when g_is_db_hq
+ * is 0 (never called). */
+static pid_t g_dbhq_module_pid = -1;
+
+static void dbhq_cleanup_module(void) {
+    if (g_dbhq_module_pid > 0) {
+        kill(g_dbhq_module_pid, SIGTERM);
+        waitpid(g_dbhq_module_pid, NULL, WNOHANG);
+        g_dbhq_module_pid = -1;
+    }
+}
+
+static void dbhq_handle_term_signal(int sig) {
+    (void)sig;
+    dbhq_cleanup_module();
+    _exit(0);
+}
+
+static void dbhq_launch_module(const char *src) {
+    if (!src || !src[0]) return;
+    char full_path[PATH_BUF];
+    if (src[0] == '/') snprintf(full_path, sizeof(full_path), "%s", src);
+    else snprintf(full_path, sizeof(full_path), "%s/%s", g_house_root, src);
+
+    g_dbhq_module_pid = fork();
+    if (g_dbhq_module_pid == 0) {
+        execl(full_path, full_path, g_house_root, (char *)NULL);
+        _exit(1);
+    } else if (g_dbhq_module_pid < 0) {
+        fprintf(stderr, "khtpm_entity_menu_render: db-hq: launch_module: fork failed for %s\n", full_path);
+        g_dbhq_module_pid = -1;
+    }
+}
+
+static Elem *elem_new(const char *tag) {
+    if (g_n_elems >= MAX_ELEMS) return NULL;
+    Elem *e = &g_pool[g_n_elems++];
+    memset(e, 0, sizeof(*e));
+    snprintf(e->tag, sizeof(e->tag), "%s", tag);
+    return e;
+}
+
+/* ---------- tiny generic tag-tree parser (same shape as db-hq/events-hq's
+ * own hand-rolled parser, not reinvented) ---------- */
+static void skip_ws(const char **p) { while (**p && isspace((unsigned char)**p)) (*p)++; }
+
+static void parse_attr_value(const char **p, char *out, size_t outsz) {
+    skip_ws(p);
+    if (**p != '"') { out[0] = '\0'; return; }
+    (*p)++;
+    size_t n = 0;
+    while (**p && **p != '"') { if (n + 1 < outsz) out[n++] = **p; (*p)++; }
+    out[n] = '\0';
+    if (**p == '"') (*p)++;
+}
+
+/* Real, minimal XML entity decode - ONLY &quot;/&amp;, the 2 this file's
+ * own action= values actually need (see this file's own header comment
+ * for why - real shell commands embed literal " for their own "$0"-style
+ * var quoting). Decodes in place. */
+static void decode_entities(char *s) {
+    /* REAL BUG FIX 2026-08-18, direct live investigation (book-stack's
+     * "Read" menu item did nothing, no error, no menu - see
+     * bookstack-path-bug.txt): this function's own header comment
+     * claimed only &quot;/&amp; needed support, but book-stack's own
+     * real action= string (menu.chtpm) also uses &gt; (from its own
+     * "2>/dev/null" shell redirects inside nested $(find ...) command
+     * substitutions, HTML-attribute-encoded like everything else in
+     * that string). Undecoded &gt; fell through to the else branch
+     * UNCHANGED (literal 4-char text "&gt;", not ">"), corrupting
+     * "2>/dev/null" into "2&gt;/dev/null" - which /bin/sh parses as
+     * `find ... -type d 2` (extra literal arg "2", real find error) `&`
+     * (background) `gt` (nonexistent command) `/dev/null` (its arg) -
+     * a genuinely broken pipeline, not a cosmetic glitch. This silently
+     * emptied out both $(find "$H" ...) substitutions in book-stack's
+     * real Read action, so MUTA_ROOT/READER_PATH ended up empty and the
+     * final `exec` failed with nothing visible (backgrounded, stdout/
+     * stderr redirected to /dev/null by dispatch()'s own wrapper) -
+     * exactly matching the live, reported symptom. &amp; MUST be
+     * decoded LAST among the entities that start with '&' (matches the
+     * standard HTML-entity-decode ordering rule) so a real "&amp;gt;"
+     * sequence in source data isn't double-decoded into ">" - not a
+     * concern for this file's own real, hand-authored action strings
+     * today, but the safe, correct order regardless. */
+    char *r = s, *w = s;
+    while (*r) {
+        if (strncmp(r, "&quot;", 6) == 0) { *w++ = '"'; r += 6; }
+        else if (strncmp(r, "&gt;", 4) == 0) { *w++ = '>'; r += 4; }
+        else if (strncmp(r, "&lt;", 4) == 0) { *w++ = '<'; r += 4; }
+        else if (strncmp(r, "&amp;", 5) == 0) { *w++ = '&'; r += 5; }
+        else *w++ = *r++;
+    }
+    *w = '\0';
+}
+
+/* 2026-08-24 - data-driven X11 XDND drop support (first consumer:
+ * bookmarks' drag-a-dir-onto-the-window). A <window drop_action="...">
+ * attribute opts THIS window into being a real XDND drop target: on a
+ * drop of a text/uri-list selection, the first dropped path is
+ * exported as $DROP_PATH and drop_action is run exactly like dispatch()
+ * runs item actions (same "$0"=package_dir/"$1"=house_root positional
+ * convention) - but WITHOUT setting g_quit, because a drop should not
+ * end the window's session the way picking an item does. Windows
+ * without the attribute never attach XdndAware and are byte-for-byte
+ * unchanged (zero risk to the 7 existing menu.chtpm entities).
+ *
+ * House-history note (why real XDND is safe HERE when gl_mirror.c
+ * removed it): gl_mirror's real-Xdnd block died for two documented
+ * reasons - GLUT+WM-reparenting broke its own window self-lookup for
+ * attaching XdndAware, and its check_xdnd_events() idle poll had no
+ * CPU throttle (crashed the machine once). Neither hazard exists in
+ * this renderer: we create and keep our own Window id directly (no
+ * lookup), and the popup loop below is a blocking select()+XNextEvent
+ * with a 150ms cap - attaching XDND costs zero idle CPU. */
+static char g_drop_action[1024] = "";
+
+static void apply_attr(Elem *e, const char *name, const char *val) {
+    if (strcmp(name, "id") == 0 || strcmp(name, "name") == 0) {
+        snprintf(e->id, sizeof(e->id), "%s", val);
+    } else if (strcmp(name, "class") == 0) {
+        char tmp[128]; snprintf(tmp, sizeof(tmp), "%s", val);
+        char *tok = strtok(tmp, " ");
+        while (tok && e->n_classes < CSS_MAX_CLASSES) {
+            snprintf(e->classes[e->n_classes], sizeof(e->classes[0]), "%s", tok);
+            e->n_classes++;
+            tok = strtok(NULL, " ");
+        }
+    } else if (strcmp(name, "label") == 0) {
+        snprintf(e->label, sizeof(e->label), "%s", val);
+    } else if (strcmp(name, "action") == 0) {
+        char decoded[sizeof(e->onclick)];
+        snprintf(decoded, sizeof(decoded), "%s", val);
+        decode_entities(decoded);
+        snprintf(e->onclick, sizeof(e->onclick), "%s", decoded);
+    } else if (strcmp(name, "src") == 0) {
+        /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode only, ported
+         * from khtpm_hq_render.c's own apply_attr(): <module src="..."/>
+         * real, wraith_parser_alpha.c convention. Reused e->label to
+         * hold it - <module> elements are never drawn, safe reuse. */
+        snprintf(e->label, sizeof(e->label), "%s", val);
+    } else if (strcmp(name, "drop_action") == 0) {
+        /* 2026-08-24 - see the g_drop_action block comment above.
+         * Window-level attr; decoded through the SAME entity decoder
+         * action= uses, so &quot;/&amp;/&gt;/&lt; all behave
+         * identically for shell quoting inside drop actions. */
+        char decoded[sizeof(g_drop_action)];
+        snprintf(decoded, sizeof(decoded), "%s", val);
+        decode_entities(decoded);
+        snprintf(g_drop_action, sizeof(g_drop_action), "%s", decoded);
+    }
+}
+
+static const char *parse_element(const char *p, Elem *parent) {
+    skip_ws(&p);
+    if (*p != '<') return p;
+    p++;
+    if (*p == '!') {
+        const char *end = strstr(p, "-->");
+        return end ? end + 3 : p + strlen(p);
+    }
+    char tag[32]; size_t tn = 0;
+    while (*p && !isspace((unsigned char)*p) && *p != '>' && *p != '/') {
+        if (tn + 1 < sizeof(tag)) tag[tn++] = *p;
+        p++;
+    }
+    tag[tn] = '\0';
+    Elem *e = elem_new(tag);
+    e->parent = parent;
+    if (parent && parent->n_children < MAX_CHILDREN) parent->children[parent->n_children++] = e;
+
+    for (;;) {
+        skip_ws(&p);
+        if (*p == '/' && p[1] == '>') { p += 2; return p; }
+        if (*p == '>') { p++; break; }
+        if (!*p) return p;
+        char attr[32]; size_t an = 0;
+        while (*p && *p != '=' && !isspace((unsigned char)*p) && *p != '>' && *p != '/') {
+            if (an + 1 < sizeof(attr)) attr[an++] = *p;
+            p++;
+        }
+        attr[an] = '\0';
+        skip_ws(&p);
+        char val[1024] = "";
+        if (*p == '=') { p++; parse_attr_value(&p, val, sizeof(val)); }
+        if (attr[0]) apply_attr(e, attr, val);
+    }
+
+    for (;;) {
+        skip_ws(&p);
+        if (!*p) return p;
+        if (p[0] == '<' && p[1] == '/') {
+            const char *end = strchr(p, '>');
+            return end ? end + 1 : p + strlen(p);
+        }
+        p = parse_element(p, e);
+    }
+}
+
+static Elem *parse_chtpm(const char *path) {
+    FILE *f = fopen(path, "r");
+    if (!f) return NULL;
+    fseek(f, 0, SEEK_END);
+    long sz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    char *buf = malloc((size_t)sz + 1);
+    if (!buf) { fclose(f); return NULL; }
+    size_t rd = fread(buf, 1, (size_t)sz, f);
+    buf[rd] = '\0';
+    fclose(f);
+    const char *p = buf;
+    Elem *root = NULL;
+    while (*p) {
+        skip_ws(&p);
+        if (!*p) break;
+        if (*p == '<' && p[1] == '!') { p = parse_element(p, NULL); continue; }
+        if (*p != '<') break;
+        if (!root) {
+            root = elem_new("__root");
+            const char *after = parse_element(p, root);
+            p = after;
+        } else {
+            p = parse_element(p, root);
+        }
+    }
+    free(buf);
+    if (root && root->n_children > 0) return root->children[0];
+    return root;
+}
+
+/* ---------- page navigation (real, matches objects.pdl's own GOTO:/
+ * BACK semantics exactly - not reinvented) ---------- */
+static Elem *g_window;
+static char g_page_stack[MAX_PAGE_STACK][32];
+static int g_page_stack_n = 0;
+static char g_current_page[32] = "main";
+
+static Elem *find_page(const char *name) {
+    for (int i = 0; i < g_window->n_children; i++) {
+        Elem *c = g_window->children[i];
+        if (strcmp(c->tag, "page") == 0 && strcmp(c->id, name) == 0) return c;
+    }
+    return NULL;
+}
+
+/* ---------- X11/Xft ---------- */
+static Display *dpy;
+static Window win;
+static int screen;
+static GC gc;
+static Pixmap buf;
+static XftDraw *xftdraw_buf;
+static Colormap cmap;
+static XftFont *font_ui;
+static int g_win_x = 300, g_win_y = 300;
+static int g_win_w = 260, g_win_h = 200;
+static int g_quit = 0;
+/* REAL FIX 2026-08-16, direct live report ("it breaks on events or just
+ * when right clicking sometimes" - intermittent): the stale-event drain
+ * right after XMapRaised only discards events already sitting in the X
+ * server's queue AT THAT INSTANT - it does not cover a trailing event
+ * from the initiating right-click that the server hasn't delivered yet
+ * (real race, not fully closed by the drain alone). Add a short
+ * time-based debounce on top: ignore ButtonPress entirely until this
+ * many ms after the window mapped, closing the race regardless of
+ * exact event-arrival timing. */
+static struct timespec g_map_time;
+#define PHANTOM_CLICK_GUARD_MS 150
+static int g_focus_nav = 1;
+static int g_n_nav = 0;
+static Elem *g_nav[MAX_ELEMS];
+/* REAL Stage 5 §5d.10 (2026-08-16) - scaled() is now mode-aware: db-hq
+ * mode has a real, user-adjustable DPI scale (g_dbhq_font_scale, read
+ * from #.desktop/hq_ui.pdl, ported verbatim from khtpm_hq_render.c's
+ * own scaled()); popup modes (entity-menu/taskbar-settings) still have
+ * no real DPI-scale source, so stay identity. Must be declared BEFORE
+ * khtpm_draw_core.c's own font_for() (below) references it, and before
+ * g_dbhq_font_scale's own declaration below uses it transitively via
+ * db-hq's ported layout code - forward-declare the flag/scale here. */
+static int g_is_db_hq = 0;
+/* PAUSED 2026-08-25 mid-migration - see the direct finding that stopped
+ * this: stats-hq's real dashboard.chtpm DOES have a <tabbar> (real
+ * session-timestamp tabs, e.g. "2026-08-13 22:53:37"), contradicting
+ * this comment's own first-draft claim that it was tab-free generic
+ * content. db-hq's own dbhq_*() tab-switching code matches tab clicks
+ * against a FIXED TAB_LABELS[] array specific to db-hq's own Common
+ * Events tabs - stats-hq's timestamp tabs would never match those
+ * labels, so blindly aliasing g_is_stats_hq into g_is_db_hq's exact
+ * path (the original plan here) would likely render fine but leave tab
+ * click-switching silently broken. Flagged for the user before writing
+ * any more of this - not resumed yet. */
+static int g_is_stats_hq = 0;
+static double g_dbhq_font_scale = 1.0;
+static int scaled(int base_px) {
+    if (g_is_db_hq) return (int)(base_px * g_dbhq_font_scale + 0.5);
+    return base_px;
+}
+/* REAL Stage 5 (2026-08-16, khtpm-merge-how2.md §5d) - shared, generic
+ * draw_elem()/render_tree()/font_for() (was hand-rolled, per-app pixel
+ * drawing - see khtpm_draw_core.c's own header comment). Included here
+ * (after dpy/screen/cmap/gc/buf/xftdraw_buf/g_focus_nav are all
+ * already declared above, which it needs). */
+#include "khtpm_draw_core.c"
+#define ROW_H 24
+#define CHROME_H 24
+
+static CssSheet g_sheet;
+
+/* REAL Stage 5 §5d.3 step 6 (2026-08-16, khtpm-merge-how2.md) - the
+ * actual literal binary merge. This binary now serves BOTH the real
+ * generic menu shape (entity-menu's own original job) AND taskbar-
+ * settings' own real swatch-picker shape, selected by a real, data-
+ * driven signal (`<window class="swatch-picker">`), matching wraith-
+ * alpha's own real "one binary, behavior selected by loaded data"
+ * shape - not zero-app-C, but genuinely ONE compiled binary, no
+ * dlopen/plugin indirection. Set once in main() after parse_chtpm(). */
+static int g_is_swatch_picker = 0;
+
+/* REAL, swatch-picker-only state - ported verbatim from taskbar-
+ * settings' own real g_phase/g_chosen_bg_idx/g_chosen_fg_idx/
+ * g_palette_hex/g_palette_name (khtpm_taskbar_settings_render.c,
+ * kept as a real, documented per-mode exception - the 2-phase pick
+ * is genuinely stateful UI interaction, not something the shared
+ * dispatch()/assign_nav_and_layout() can express generically, same
+ * real precedent as chat-hai's panel exception in Stage 3). Unused,
+ * harmless, when g_is_swatch_picker is 0. */
+#define SWATCH 34
+#define SWATCH_GAP 8
+#define SWATCH_COLS 6
+static int g_phase = 0;
+static int g_chosen_bg_idx = -1;
+static int g_chosen_fg_idx = -1;
+static const char *g_palette_hex[12];
+static const char *g_palette_name[12];
+
+/* ======================================================================
+ * REAL, db-hq-mode-only state + functions (§5d.10, 2026-08-16) - ported
+ * from khtpm_hq_render.c, kept as its own real, documented mode branch
+ * per the same precedent as the swatch-picker's own 2-phase pick state
+ * above (a genuinely different window shape/interaction model, not
+ * forced into the popup modes' shared shape). Harmless, unused, when
+ * g_is_db_hq is 0. Reuses this file's own dpy/screen/cmap/gc/buf/
+ * xftdraw_buf/win/g_win_x/g_win_y/g_house_root/g_window/g_nav/g_n_nav/
+ * g_focus_nav/g_quit globals directly (same real names, same real
+ * purpose, no duplication needed).
+ * ====================================================================== */
+#define DB_HQ_MAX_EVENTS 128
+static char g_dbhq_events[DB_HQ_MAX_EVENTS][64];
+static int g_dbhq_n_events = 0;
+static int g_dbhq_selected_event = -1;
+static char g_dbhq_events_state_path[PATH_BUF];
+static time_t g_dbhq_events_state_mtime = 0;
+static char g_dbhq_action_path[PATH_BUF];
+
+static const char *DB_HQ_TAB_LABELS[] = {
+    "Actors", "Classes", "Skills", "Items", "Weapons", "Armors",
+    "Enemies", "Troops", "States", "Animations", "Tilesets",
+    "Common Events", "System", "Types", "Terms"
+};
+#define DB_HQ_N_TABS 15
+#define DB_HQ_COMMON_EVENTS_TAB 11
+static int g_dbhq_current_tab = DB_HQ_COMMON_EVENTS_TAB;
+
+static int g_dbhq_focus_grab_enabled = 0;
+static int g_dbhq_chrome_h = 26;
+static Elem g_dbhq_close_elem_storage;
+static Elem *g_dbhq_close_elem = &g_dbhq_close_elem_storage;
+static int g_dbhq_close_x, g_dbhq_close_y, g_dbhq_close_w, g_dbhq_close_h;
+static int g_dbhq_digit_accum = 0;
+static char g_dbhq_last_key_label[32] = "";
+static int g_dbhq_has_real_focus = 0;
+/* REAL FIX 2026-08-16, direct live report ("moved it up 2 high and one
+ * is stuck" - a WM-managed window dragged above the taskbar header strip
+ * can end up under/behind it, effectively unreachable/stuck). Clamp
+ * drag's y to never go above this, for db-hq/events-hq/chat-hai alike -
+ * matches the header strip's own real height + a small margin. */
+/* REAL FIX (2026-08-17, live report: "mutaclysm still not moved 50
+ * down (overlaps header still)"): the real taskbar header strip
+ * occupies y=50 to y=86 (36px tall, confirmed live via xwininfo) - it
+ * STARTS at y=50, it doesn't END there. A floor of 50 put windows
+ * right at the header's own top edge, still fully overlapping it. Real
+ * floor is the header's own bottom edge + a small margin. */
+#define WM_MANAGED_DRAG_MIN_Y 90
+static int g_dbhq_dragging = 0;
+static int g_dbhq_drag_last_x = 0, g_dbhq_drag_last_y = 0;
+
+static void dbhq_load_font_scale(void) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", g_house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[128];
+    while (fgets(line, sizeof(line), f)) {
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char *val = eq + 1;
+        char *nl = strchr(val, '\n');
+        if (nl) *nl = '\0';
+        if (strcmp(line, "font_scale") == 0) {
+            double v = atof(val);
+            if (v >= 0.5 && v <= 3.0) g_dbhq_font_scale = v;
+        } else if (strcmp(line, "focus_grab") == 0) {
+            g_dbhq_focus_grab_enabled = atoi(val) != 0;
+        } else if (strcmp(line, "window_x") == 0) {
+            g_win_x = atoi(val);
+        } else if (strcmp(line, "window_y") == 0) {
+            g_win_y = atoi(val);
+        }
+    }
+    fclose(f);
+}
+
+/* Returns 1 if the common-events list actually changed (caller should
+ * re-inject sidebar items + redraw), 0 if unchanged - real, mtime-gated,
+ * ported verbatim. The manager binary (khtpm_hq_manager.c, launched via
+ * dbhq_launch_module() from the <module> tag) owns the real directory
+ * scan; this only reads its published state file. */
+static int dbhq_load_common_events(void) {
+    struct stat st;
+    if (stat(g_dbhq_events_state_path, &st) != 0) return 0;
+    if (st.st_mtime == g_dbhq_events_state_mtime) return 0;
+    g_dbhq_events_state_mtime = st.st_mtime;
+
+    g_dbhq_n_events = 0;
+    FILE *f = fopen(g_dbhq_events_state_path, "r");
+    if (!f) return 0;
+    char line[128];
+    while (g_dbhq_n_events < DB_HQ_MAX_EVENTS && fgets(line, sizeof(line), f)) {
+        size_t len = strlen(line);
+        while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) line[--len] = '\0';
+        if (len == 0) continue;
+        snprintf(g_dbhq_events[g_dbhq_n_events], sizeof(g_dbhq_events[0]), "%s", line);
+        g_dbhq_n_events++;
+    }
+    fclose(f);
+    return 1;
+}
+
+/* REAL FIX 2026-08-25 (direct live report: "i was hoping it was more
+ * human readable like before") - parses just the date/name portion
+ * (before the first "|") out of a stats-hq raw data line, for a clean
+ * sidebar label. Real db-hq's own g_dbhq_events[] never contains "|" in
+ * a common-event NAME, so this is a no-op passthrough for real db-hq. */
+static void dbhq_sidebar_label_for(int i, char *out, size_t outsz) {
+    const char *src = g_dbhq_events[i];
+    const char *bar = strchr(src, '|');
+    size_t len = bar ? (size_t)(bar - src) : strlen(src);
+    if (len >= outsz) len = outsz - 1;
+    memcpy(out, src, len);
+    out[len] = '\0';
+}
+
+static void dbhq_inject_sidebar_items(Elem *sidebar) {
+    if (!sidebar) return;
+    sidebar->n_children = 0;
+    for (int i = 0; i < g_dbhq_n_events; i++) {
+        Elem *item = elem_new("item");
+        item->parent = sidebar;
+        snprintf(item->classes[0], sizeof(item->classes[0]), "data-item");
+        item->n_classes = 1;
+        if (g_is_stats_hq) {
+            dbhq_sidebar_label_for(i, item->label, sizeof(item->label));
+            /* REAL FIX - id holds the real index so click-matching
+             * doesn't depend on the label (now just the date, not the
+             * full raw line anymore) staying unique/stable - see the
+             * "item" click branch below. */
+            snprintf(item->id, sizeof(item->id), "%d", i);
+        } else {
+            snprintf(item->label, sizeof(item->label), "%s", g_dbhq_events[i]);
+        }
+        item->active = (i == g_dbhq_selected_event);
+        if (sidebar->n_children < MAX_CHILDREN) sidebar->children[sidebar->n_children++] = item;
+    }
+    if (g_dbhq_n_events == 0) {
+        Elem *item = elem_new("item");
+        item->parent = sidebar;
+        snprintf(item->label, sizeof(item->label), "(none yet)");
+        if (sidebar->n_children < MAX_CHILDREN) sidebar->children[sidebar->n_children++] = item;
+    }
+}
+
+/* REAL FIX 2026-08-25 (direct live report: "i was hoping it was more
+ * human readable like before") - stats-hq's own panel-population,
+ * parallel to db-hq's single-text-field update, since stats-hq needs 5
+ * separate itemized lines (matching the OLD template exactly: Session/
+ * User Messages/AI Responses/Total Turns/Tool Calls+Delegation), not
+ * one combined summary. Parses stats_hq_manager.c's own raw pipe-
+ * delimited publish format (date|turns|user_msgs|ai_msgs|tools|pct). */
+static void stats_populate_panel(int idx) {
+    if (idx < 0 || idx >= g_dbhq_n_events) return;
+    char buf[128];
+    snprintf(buf, sizeof(buf), "%s", g_dbhq_events[idx]);
+    char *date = buf;
+    char *turns_s = strchr(buf, '|');
+    if (!turns_s) return;
+    *turns_s++ = '\0';
+    char *umsg_s = strchr(turns_s, '|');
+    if (!umsg_s) return;
+    *umsg_s++ = '\0';
+    char *amsg_s = strchr(umsg_s, '|');
+    if (!amsg_s) return;
+    *amsg_s++ = '\0';
+    char *tools_s = strchr(amsg_s, '|');
+    if (!tools_s) return;
+    *tools_s++ = '\0';
+    char *pct_s = strchr(tools_s, '|');
+    if (!pct_s) return;
+    *pct_s++ = '\0';
+
+    Elem *title = find_by_id(g_window, "stat-title");
+    Elem *msgs = find_by_id(g_window, "stat-msgs");
+    Elem *ai = find_by_id(g_window, "stat-ai");
+    Elem *turns = find_by_id(g_window, "stat-turns");
+    Elem *tools = find_by_id(g_window, "stat-tools");
+    /* REAL FIX 2026-08-25 (direct live report: "it used to show how
+     * much money was saved from token calls") - "Overall Stats" (sidebar
+     * entry 0, written by stats_hq_manager.c's own write_overall_line())
+     * reuses this exact same 6-field record shape but with DIFFERENT
+     * real meaning per field (delegation rate/model calls/passes/tokens
+     * saved/$ saved, not a session's turns/messages/tools) - same
+     * parsing above, just different labels here. */
+    if (strcmp(date, "Overall Stats") == 0) {
+        if (title) snprintf(title->label, sizeof(title->label), "Overall Stats (all sessions)");
+        if (msgs) snprintf(msgs->label, sizeof(msgs->label), "Delegation Rate: %s%%", turns_s);
+        if (ai) snprintf(ai->label, sizeof(ai->label), "Model Calls: %s   Passed: %s", umsg_s, amsg_s);
+        if (turns) snprintf(turns->label, sizeof(turns->label), "Tokens Saved: ~%s", tools_s);
+        if (tools) snprintf(tools->label, sizeof(tools->label), "$ Saved (Claude API): ~$%s", pct_s);
+        return;
+    }
+    if (title) snprintf(title->label, sizeof(title->label), "Session: %s", date);
+    if (msgs) snprintf(msgs->label, sizeof(msgs->label), "User Messages: %s", umsg_s);
+    if (ai) snprintf(ai->label, sizeof(ai->label), "AI Responses: %s", amsg_s);
+    if (turns) snprintf(turns->label, sizeof(turns->label), "Total Turns: %s", turns_s);
+    if (tools) snprintf(tools->label, sizeof(tools->label), "Tool Calls: %s   Delegation: %s%%", tools_s, pct_s);
+}
+
+static void dbhq_apply_css(Elem *e, int hover) {
+    css_compute_style(&g_sheet, e->tag, e->id[0] ? e->id : NULL, e->classes, e->n_classes, hover, &e->style);
+}
+
+/* Real, single-slot font cache for text measurement, ported verbatim
+ * (khtpm-merge-how2.md §3.2's own cache pattern, already proven). */
+static int dbhq_measure_text_px(const CssStyle *st, const char *text) {
+    char spec[128];
+    const char *fam = st->has_font_family ? st->font_family : "DejaVu Sans";
+    int size = scaled(st->has_font_size ? st->font_size : 12);
+    snprintf(spec, sizeof(spec), "%s:pixelsize=%d%s", fam, size, (st->has_font_weight && st->font_weight_bold) ? ":bold" : "");
+
+    static char cached_spec[128] = "";
+    static XftFont *cached_font = NULL;
+    XftFont *f;
+    if (cached_font && strcmp(cached_spec, spec) == 0) {
+        f = cached_font;
+    } else {
+        if (cached_font) XftFontClose(dpy, cached_font);
+        f = XftFontOpenName(dpy, screen, spec);
+        if (!f) f = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=10");
+        cached_font = f;
+        snprintf(cached_spec, sizeof(cached_spec), "%s", spec);
+    }
+    if (!f) return (int)strlen(text) * 8;
+    XGlyphInfo ext;
+    XftTextExtentsUtf8(dpy, f, (const FcChar8 *)text, (int)strlen(text), &ext);
+    return ext.width;
+}
+
+/* Real db-hq layout pass, ported verbatim (already Stage-3-complete -
+ * calls the shared css_layout_pass() 3x: tabbar/sidebar/panel). */
+static void dbhq_layout_pass(Elem *window) {
+    dbhq_apply_css(window, 0);
+    window->x = 0; window->y = 0;
+    int default_w = scaled(900);
+    int content_total_h = window->style.has_height ? window->style.height : scaled(600);
+
+    Elem *tabbar = find_by_tag(window, "tabbar");
+    Elem *sidebar = find_by_tag(window, "sidebar");
+    Elem *panel = find_by_tag(window, "panel");
+
+    int tabbar_h = scaled(30);
+    int tab_widths[MAX_CHILDREN];
+    int tabbar_natural_w = scaled(4);
+    if (tabbar) {
+        dbhq_apply_css(tabbar, 0);
+        for (int i = 0; i < tabbar->n_children; i++) {
+            Elem *tab = tabbar->children[i];
+            tab->active = (i == g_dbhq_current_tab);
+            dbhq_apply_css(tab, 0);
+            tab_widths[i] = dbhq_measure_text_px(&tab->style, tab->label) + scaled(34);
+            tab->w = tab_widths[i];
+            tabbar_natural_w += tab_widths[i] + 1;
+        }
+    }
+    window->w = window->style.has_width ? window->style.width : (tabbar_natural_w > default_w ? tabbar_natural_w : default_w);
+    window->h = content_total_h + g_dbhq_chrome_h;
+
+    g_dbhq_close_w = scaled(56); g_dbhq_close_h = g_dbhq_chrome_h - scaled(6);
+    g_dbhq_close_x = window->w - g_dbhq_close_w - scaled(4);
+    g_dbhq_close_y = scaled(3);
+
+    if (tabbar) {
+        tabbar->style.has_display = 1; tabbar->style.display_flex = 1;
+        tabbar->style.has_flex_direction = 1; tabbar->style.flex_row = 1;
+        css_layout_pass(tabbar, 0, g_dbhq_chrome_h, window->w, tabbar_h);
+        for (int i = 0; i < tabbar->n_children; i++) {
+            Elem *tab = tabbar->children[i];
+            tab->x += scaled(4) + i;
+            tab->y = g_dbhq_chrome_h + scaled(2); tab->h = tabbar_h - scaled(4);
+        }
+    }
+
+    int content_y = g_dbhq_chrome_h + tabbar_h;
+    int content_h = content_total_h - tabbar_h;
+    int sidebar_w = scaled(210);
+
+    if (g_dbhq_current_tab != DB_HQ_COMMON_EVENTS_TAB) return;
+
+    if (sidebar) {
+        dbhq_apply_css(sidebar, 0);
+        if (sidebar->style.has_width && !sidebar->style.width_is_pct) sidebar_w = sidebar->style.width;
+        sidebar->style.has_display = 1; sidebar->style.display_flex = 1;
+        sidebar->style.has_flex_direction = 1; sidebar->style.flex_row = 0;
+        sidebar->style.has_padding = 1; sidebar->style.padding = scaled(4);
+        int item_h = scaled(22);
+        for (int i = 0; i < sidebar->n_children; i++) {
+            Elem *item = sidebar->children[i];
+            dbhq_apply_css(item, 0);
+            item->style.has_height = 1; item->style.height = item_h;
+        }
+        css_layout_pass(sidebar, 0, content_y, sidebar_w, content_h);
+    }
+
+    if (panel) {
+        dbhq_apply_css(panel, 0);
+        int margin = scaled(8);
+        panel->x = sidebar_w + margin;
+        panel->y = content_y + margin;
+        panel->w = window->w - sidebar_w - margin * 2;
+        panel->h = content_h - margin * 2;
+        panel->style.has_display = 1; panel->style.display_flex = 1;
+        panel->style.has_flex_direction = 1; panel->style.flex_row = 0;
+        panel->style.has_padding = 1; panel->style.padding = scaled(12);
+        panel->style.has_gap = 1; panel->style.gap = scaled(6);
+        for (int i = 0; i < panel->n_children; i++) {
+            Elem *c = panel->children[i];
+            dbhq_apply_css(c, 0);
+            if (strcmp(c->tag, "title") == 0) {
+                c->w = dbhq_measure_text_px(&c->style, c->label) + scaled(10);
+                c->h = scaled(14);
+                continue;
+            }
+            c->style.has_height = 1; c->style.height = scaled(22);
+        }
+        css_layout_pass(panel, panel->x, panel->y, panel->w, panel->h);
+    }
+}
+
+static void dbhq_assign_nav_indices(Elem *window) {
+    g_n_nav = 0;
+    Elem *tabbar = find_by_tag(window, "tabbar");
+    if (tabbar) {
+        for (int i = 0; i < tabbar->n_children && g_n_nav < MAX_ELEMS; i++) {
+            Elem *tab = tabbar->children[i];
+            tab->nav_index = ++g_n_nav;
+            g_nav[g_n_nav - 1] = tab;
+        }
+    }
+    if (g_dbhq_current_tab == DB_HQ_COMMON_EVENTS_TAB) {
+        Elem *sidebar = find_by_tag(window, "sidebar");
+        if (sidebar) {
+            for (int i = 0; i < sidebar->n_children && g_n_nav < MAX_ELEMS; i++) {
+                Elem *item = sidebar->children[i];
+                item->nav_index = ++g_n_nav;
+                g_nav[g_n_nav - 1] = item;
+            }
+        }
+        Elem *panel = find_by_tag(window, "panel");
+        if (panel) {
+            for (int i = 0; i < panel->n_children && g_n_nav < MAX_ELEMS; i++) {
+                Elem *c = panel->children[i];
+                if (strcmp(c->tag, "button") != 0) { c->nav_index = 0; continue; }
+                c->nav_index = ++g_n_nav;
+                g_nav[g_n_nav - 1] = c;
+            }
+        }
+    }
+    if (g_n_nav < MAX_ELEMS) {
+        g_dbhq_close_elem->nav_index = ++g_n_nav;
+        g_nav[g_n_nav - 1] = g_dbhq_close_elem;
+    }
+    if (g_focus_nav < 1) g_focus_nav = 1;
+    if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
+}
+
+static void dbhq_render_placeholder_tab(Elem *window) {
+    char pspec[48];
+    snprintf(pspec, sizeof(pspec), "DejaVu Sans:pixelsize=%d", scaled(12));
+    XftFont *font = XftFontOpenName(dpy, screen, pspec);
+    XftColor col = xft_color("#888888");
+    char msg[64];
+    snprintf(msg, sizeof(msg), "%s \xe2\x80\x94 (coming soon)", DB_HQ_TAB_LABELS[g_dbhq_current_tab]);
+    XGlyphInfo extents;
+    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)msg, (int)strlen(msg), &extents);
+    int tx = (window->w - extents.width) / 2;
+    int ty = window->h / 2;
+    XftDrawStringUtf8(xftdraw_buf, &col, font, tx, ty, (const FcChar8 *)msg, (int)strlen(msg));
+    XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
+    XftFontClose(dpy, font);
+}
+
+static void dbhq_soft_focus(void) {
+    XRaiseWindow(dpy, win);
+    XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
+    XFlush(dpy);
+}
+
+static void dbhq_grab_keyboard_retry(void) {
+    for (int attempt = 0; attempt < 5; attempt++) {
+        int rc = XGrabKeyboard(dpy, win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+        if (rc == GrabSuccess) break;
+        XSync(dpy, False);
+        usleep(5000);
+    }
+}
+
+static void dbhq_draw_chrome_bar(void) {
+    XSetForeground(dpy, gc, alloc_pixel("#2b2b2b"));
+    XFillRectangle(dpy, buf, gc, 0, 0, g_window->w, g_dbhq_chrome_h);
+
+    char tspec[48];
+    snprintf(tspec, sizeof(tspec), "DejaVu Sans:pixelsize=%d:bold", scaled(10));
+    XftFont *titlefont = XftFontOpenName(dpy, screen, tspec);
+    if (!titlefont) { snprintf(tspec, sizeof(tspec), "DejaVu Sans:pixelsize=%d", scaled(10)); titlefont = XftFontOpenName(dpy, screen, tspec); }
+    XftColor titlecol = xft_color("#eeeeee");
+    char title[16];
+    snprintf(title, sizeof(title), "db-hq %s", g_dbhq_has_real_focus ? "^" : " ");
+    int ty = (g_dbhq_chrome_h + titlefont->ascent - titlefont->descent) / 2;
+    XftDrawStringUtf8(xftdraw_buf, &titlecol, titlefont, scaled(8), ty, (const FcChar8 *)title, (int)strlen(title));
+    XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &titlecol);
+    XftFontClose(dpy, titlefont);
+
+    g_dbhq_close_elem->x = g_dbhq_close_x; g_dbhq_close_elem->y = g_dbhq_close_y;
+    g_dbhq_close_elem->w = g_dbhq_close_w; g_dbhq_close_elem->h = g_dbhq_close_h;
+    snprintf(g_dbhq_close_elem->label, sizeof(g_dbhq_close_elem->label), "x");
+    css_style_init(&g_dbhq_close_elem->style);
+    g_dbhq_close_elem->style.has_border_color = 1;
+    snprintf(g_dbhq_close_elem->style.border_color, sizeof(g_dbhq_close_elem->style.border_color), "%s",
+             g_dbhq_close_elem->nav_index == g_focus_nav ? "#ff8c00" : "#888888");
+    g_dbhq_close_elem->style.has_border_width = 1; g_dbhq_close_elem->style.border_width = 1;
+    g_dbhq_close_elem->style.has_fg_color = 1;
+    snprintf(g_dbhq_close_elem->style.fg_color, sizeof(g_dbhq_close_elem->style.fg_color), "#eeeeee");
+    draw_elem(g_dbhq_close_elem, 0);
+}
+
+/* Real db-hq redraw content (called from the shared redraw()'s
+ * g_is_db_hq branch) - chrome fill/tabbar/sidebar/panel/placeholder,
+ * ported verbatim. Present (XGetImage->XPutImage) stays in the shared
+ * redraw(), not duplicated here. */
+static void dbhq_redraw_content(void) {
+    dbhq_layout_pass(g_window);
+    dbhq_assign_nav_indices(g_window);
+    XSetForeground(dpy, gc, alloc_pixel(g_window->style.has_bg_color ? g_window->style.bg_color : "#141414"));
+    XFillRectangle(dpy, buf, gc, 0, 0, g_window->w, g_window->h);
+    if (g_dbhq_current_tab != DB_HQ_COMMON_EVENTS_TAB) {
+        Elem *tabbar = find_by_tag(g_window, "tabbar");
+        if (tabbar) { draw_elem(tabbar, 0); render_tree(tabbar, 1); }
+        dbhq_render_placeholder_tab(g_window);
+    } else {
+        render_tree(g_window, 0);
+    }
+    dbhq_draw_chrome_bar();
+}
+
+static void dbhq_open_in_editor(const char *name) {
+    FILE *f = fopen(g_dbhq_action_path, "w");
+    if (!f) return;
+    fprintf(f, "open:%s\n", name);
+    fclose(f);
+}
+
+static void dbhq_activate_elem(Elem *hit) {
+    if (!hit) return;
+    if (strcmp(hit->tag, "closebtn") == 0) { g_quit = 1; return; }
+    if (strcmp(hit->tag, "tab") == 0) {
+        for (int i = 0; i < DB_HQ_N_TABS; i++) if (strcmp(hit->label, DB_HQ_TAB_LABELS[i]) == 0) { g_dbhq_current_tab = i; break; }
+        dbhq_redraw_content();
+        return;
+    }
+    if (strcmp(hit->tag, "item") == 0) {
+        if (g_is_stats_hq) {
+            /* REAL FIX 2026-08-25 - match by the real index stashed in
+             * item->id (dbhq_inject_sidebar_items()'s own g_is_stats_hq
+             * branch), not by label - the label is now just the date,
+             * not the full raw data line, so it can't be matched back
+             * against g_dbhq_events[] by string equality anymore. */
+            int idx = atoi(hit->id);
+            if (idx >= 0 && idx < g_dbhq_n_events) g_dbhq_selected_event = idx;
+        } else {
+            for (int i = 0; i < g_dbhq_n_events; i++) if (strcmp(g_dbhq_events[i], hit->label) == 0) { g_dbhq_selected_event = i; break; }
+        }
+        Elem *sidebar = find_by_tag(g_window, "sidebar");
+        dbhq_inject_sidebar_items(sidebar);
+        if (g_is_stats_hq) {
+            stats_populate_panel(g_dbhq_selected_event);
+        } else {
+            Elem *panel_text = find_by_tag(g_window, "text");
+            if (panel_text && g_dbhq_selected_event >= 0) snprintf(panel_text->label, sizeof(panel_text->label), "%s", g_dbhq_events[g_dbhq_selected_event]);
+        }
+        dbhq_redraw_content();
+        return;
+    }
+    if (strcmp(hit->id, "open-editor") == 0) {
+        if (g_dbhq_selected_event >= 0) dbhq_open_in_editor(g_dbhq_events[g_dbhq_selected_event]);
+        return;
+    }
+}
+
+static void dbhq_handle_click(int px, int py) {
+    if (px >= g_dbhq_close_elem->x && px < g_dbhq_close_elem->x + g_dbhq_close_elem->w &&
+        py >= g_dbhq_close_elem->y && py < g_dbhq_close_elem->y + g_dbhq_close_elem->h) {
+        g_focus_nav = g_dbhq_close_elem->nav_index;
+        dbhq_activate_elem(g_dbhq_close_elem);
+        return;
+    }
+    Elem *hit = hit_test(g_window, px, py);
+    if (!hit) return;
+    if (hit->nav_index > 0) g_focus_nav = hit->nav_index;
+    dbhq_activate_elem(hit);
+}
+
+static void dbhq_handle_key(KeySym ks, char ch) {
+    if (ks == XK_Return || ks == XK_KP_Enter) {
+        if (g_dbhq_digit_accum > 0 && g_dbhq_digit_accum <= g_n_nav) g_focus_nav = g_dbhq_digit_accum;
+        g_dbhq_digit_accum = 0;
+        if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav) dbhq_activate_elem(g_nav[g_focus_nav - 1]);
+        return;
+    }
+    if (ks == XK_Escape) {
+        if (g_dbhq_digit_accum > 0) { g_dbhq_digit_accum = 0; return; }
+        g_quit = 1;
+        return;
+    }
+    if (ch >= '0' && ch <= '9') {
+        int d = ch - '0';
+        int new_val = g_dbhq_digit_accum * 10 + d;
+        if (new_val > 0 && new_val <= g_n_nav) {
+            g_dbhq_digit_accum = new_val;
+            g_focus_nav = new_val;
+        } else if (d > 0 && d <= g_n_nav) {
+            g_dbhq_digit_accum = d;
+            g_focus_nav = d;
+        } else {
+            g_dbhq_digit_accum = 0;
+        }
+        return;
+    }
+    if (ks == XK_Up || ks == XK_Left) {
+        if (g_focus_nav > 1) g_focus_nav--;
+        g_dbhq_digit_accum = 0;
+        return;
+    }
+    if (ks == XK_Down || ks == XK_Right || ks == XK_Tab) {
+        if (g_focus_nav < g_n_nav) g_focus_nav++;
+        g_dbhq_digit_accum = 0;
+        return;
+    }
+    g_dbhq_digit_accum = 0;
+}
+/* ====================== end db-hq mode block ========================= */
+
+/* ======================================================================
+ * REAL, events-hq-mode-only state + functions (§5d.11, 2026-08-16) -
+ * ported from khtpm_events_hq_render.c. UNLIKE db-hq's own port, this
+ * app's own draw_elem()/render_tree()/font_for()/alloc_pixel()/
+ * xft_color() turned out NOT to be behaviorally identical to the
+ * shared khtpm_draw_core.c versions (single-arg signatures, no hover
+ * state, inline tab-active-fill special case) - kept here as real,
+ * evhq_-prefixed per-mode copies rather than silently reusing the
+ * shared ones, a real, documented exception to the "already shared via
+ * khtpm_draw_core.c" assumption that held for db-hq. Also real,
+ * genuinely different from db-hq: events-hq is legitimately
+ * MULTI-INSTANCE (one window per entity's event_pkg, scoped by
+ * pkg_dir - see button.sh's own same_entity_pids()), takes 2 extra
+ * real argv params (pkg_dir/entity_label) db-hq doesn't have, and its
+ * own module launch passes 3 args not 1. Harmless, unused, when
+ * g_is_events_hq is 0.
+ * ====================================================================== */
+static int g_is_events_hq = 0;
+static int g_is_chat_hai = 0; /* REAL Stage 5 - chat-hai mode, WM-managed family, 3rd/last app */
+#define EVHQ_CHROME_H 26
+static void dump_frame_png(void); /* forward decl - evhq_handle_key()'s own real 'p' case calls the shared one, defined later in this file */
+
+static char g_evhq_pkg_dir[PATH_BUF];
+static char g_evhq_entity_label[128];
+
+static pid_t g_evhq_module_pid = -1;
+static void evhq_cleanup_module(void) {
+    if (g_evhq_module_pid > 0) {
+        kill(g_evhq_module_pid, SIGTERM);
+        waitpid(g_evhq_module_pid, NULL, WNOHANG);
+        g_evhq_module_pid = -1;
+    }
+}
+static void evhq_handle_term_signal(int sig) {
+    (void)sig;
+    evhq_cleanup_module();
+    _exit(0);
+}
+static void evhq_launch_module(const char *src) {
+    if (!src || !src[0]) return;
+    char full_path[PATH_BUF];
+    if (src[0] == '/') snprintf(full_path, sizeof(full_path), "%s", src);
+    else snprintf(full_path, sizeof(full_path), "%s/%s", g_house_root, src);
+    g_evhq_module_pid = fork();
+    if (g_evhq_module_pid == 0) {
+        execl(full_path, full_path, g_house_root, g_evhq_pkg_dir, g_evhq_entity_label, (char *)NULL);
+        _exit(1);
+    } else if (g_evhq_module_pid < 0) {
+        fprintf(stderr, "khtpm_entity_menu_render: events-hq: launch_module: fork failed for %s\n", full_path);
+        g_evhq_module_pid = -1;
+    }
+}
+
+static unsigned char *g_evhq_sprite_pixels = NULL;
+static int g_evhq_sprite_res = 0;
+static void evhq_load_entity_sprite(void) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/../sprite.csv", g_evhq_pkg_dir);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[256];
+    int res = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "# resolution=", 13) == 0) { res = atoi(line + 13); break; }
+    }
+    if (res <= 0) { fclose(f); return; }
+    unsigned char *pixels = malloc((size_t)res * (size_t)res * 4);
+    if (!pixels) { fclose(f); return; }
+    int count = 0;
+    while (count < res * res && fgets(line, sizeof(line), f)) {
+        int r, g, b, a;
+        if (sscanf(line, "%d,%d,%d,%d", &r, &g, &b, &a) == 4) {
+            pixels[count * 4 + 0] = (unsigned char)r; pixels[count * 4 + 1] = (unsigned char)g;
+            pixels[count * 4 + 2] = (unsigned char)b; pixels[count * 4 + 3] = (unsigned char)a;
+            count++;
+        }
+    }
+    fclose(f);
+    if (count != res * res) { free(pixels); return; }
+    g_evhq_sprite_pixels = pixels;
+    g_evhq_sprite_res = res;
+}
+
+typedef struct {
+    int id;
+    char type[32];
+    char params[512];
+} EvhqCmdNode;
+#define EVHQ_MAX_CMDS 64
+#define EVHQ_MAX_PAGES 16
+static char g_evhq_pages[EVHQ_MAX_PAGES][64];
+static int g_evhq_n_pages = 0;
+static int g_evhq_current_page = 0;
+static EvhqCmdNode g_evhq_cmds[EVHQ_MAX_CMDS];
+static int g_evhq_n_cmds = 0;
+static char g_evhq_trigger[64] = "(unknown)";
+static char g_evhq_mgr_pages_state_path[PATH_BUF];
+static char g_evhq_mgr_selected_page_path[PATH_BUF];
+static char g_evhq_mgr_page_state_path[PATH_BUF];
+static char g_evhq_mgr_action_path[PATH_BUF];
+static time_t g_evhq_pages_state_mtime = 0;
+static time_t g_evhq_page_state_mtime = 0;
+
+static void evhq_init_manager_paths(void) {
+    char mgr_dir[PATH_BUF];
+    snprintf(mgr_dir, sizeof(mgr_dir), "%s/.hq_manager", g_evhq_pkg_dir);
+    snprintf(g_evhq_mgr_pages_state_path, sizeof(g_evhq_mgr_pages_state_path), "%s/pages.state.txt", mgr_dir);
+    snprintf(g_evhq_mgr_selected_page_path, sizeof(g_evhq_mgr_selected_page_path), "%s/selected_page.txt", mgr_dir);
+    snprintf(g_evhq_mgr_page_state_path, sizeof(g_evhq_mgr_page_state_path), "%s/page.state.txt", mgr_dir);
+    snprintf(g_evhq_mgr_action_path, sizeof(g_evhq_mgr_action_path), "%s/action.txt", mgr_dir);
+}
+static int evhq_load_pages(void) {
+    struct stat st;
+    if (stat(g_evhq_mgr_pages_state_path, &st) != 0) return 0;
+    if (st.st_mtime == g_evhq_pages_state_mtime) return 0;
+    g_evhq_pages_state_mtime = st.st_mtime;
+    g_evhq_n_pages = 0;
+    FILE *f = fopen(g_evhq_mgr_pages_state_path, "r");
+    if (!f) return 0;
+    char line[128];
+    while (g_evhq_n_pages < EVHQ_MAX_PAGES && fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        if (line[0] == '\0') continue;
+        snprintf(g_evhq_pages[g_evhq_n_pages], sizeof(g_evhq_pages[0]), "%s", line);
+        g_evhq_n_pages++;
+    }
+    fclose(f);
+    if (g_evhq_current_page >= g_evhq_n_pages) g_evhq_current_page = 0;
+    return 1;
+}
+static void evhq_write_selected_page(void) {
+    if (g_evhq_current_page < 0 || g_evhq_current_page >= g_evhq_n_pages) return;
+    FILE *f = fopen(g_evhq_mgr_selected_page_path, "w");
+    if (!f) return;
+    fprintf(f, "%s\n", g_evhq_pages[g_evhq_current_page]);
+    fclose(f);
+}
+static int evhq_load_page_state(void) {
+    struct stat st;
+    if (stat(g_evhq_mgr_page_state_path, &st) != 0) return 0;
+    if (st.st_mtime == g_evhq_page_state_mtime) return 0;
+    g_evhq_page_state_mtime = st.st_mtime;
+    g_evhq_n_cmds = 0;
+    snprintf(g_evhq_trigger, sizeof(g_evhq_trigger), "(unset)");
+    FILE *f = fopen(g_evhq_mgr_page_state_path, "r");
+    if (!f) return 1;
+    char line[600];
+    while (fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        if (strncmp(line, "TRIGGER|", 8) == 0) {
+            snprintf(g_evhq_trigger, sizeof(g_evhq_trigger), "%s", line + 8);
+        } else if (strncmp(line, "CMD|", 4) == 0 && g_evhq_n_cmds < EVHQ_MAX_CMDS) {
+            char *p = line + 4;
+            char *bar1 = strchr(p, '|');
+            if (!bar1) continue;
+            *bar1 = '\0';
+            g_evhq_cmds[g_evhq_n_cmds].id = atoi(p);
+            char *type_start = bar1 + 1;
+            char *bar2 = strchr(type_start, '|');
+            if (!bar2) continue;
+            *bar2 = '\0';
+            snprintf(g_evhq_cmds[g_evhq_n_cmds].type, sizeof(g_evhq_cmds[0].type), "%s", type_start);
+            snprintf(g_evhq_cmds[g_evhq_n_cmds].params, sizeof(g_evhq_cmds[0].params), "%s", bar2 + 1);
+            g_evhq_n_cmds++;
+        }
+    }
+    fclose(f);
+    return 1;
+}
+static void evhq_request_append_node(const char *type, const char *params_line) {
+    FILE *f = fopen(g_evhq_mgr_action_path, "w");
+    if (!f) return;
+    fprintf(f, "append:%s|%s\n", type, params_line);
+    fclose(f);
+}
+
+static int g_evhq_has_real_focus = 0;
+static char g_evhq_last_key_label[32] = "";
+static int g_evhq_dragging = 0;
+static int g_evhq_drag_last_x = 0, g_evhq_drag_last_y = 0;
+static int g_evhq_toolbar_y = 0, g_evhq_toolbar_h = 0;
+static Elem g_evhq_close_elem_storage;
+static Elem *g_evhq_close_elem = &g_evhq_close_elem_storage;
+static int g_evhq_close_x, g_evhq_close_y, g_evhq_close_w, g_evhq_close_h;
+static int g_evhq_digit_accum = 0;
+
+static int g_evhq_picker_open = 0;
+static int g_evhq_picker_type = -1;
+static int g_evhq_picker_focus = 1;
+static char g_evhq_field1[256] = "", g_evhq_field2[256] = "";
+static int g_evhq_active_field = 0;
+static const char *EVHQ_PICKER_TYPES[] = { "change_gold", "show_text", "show_choices" };
+static const char *EVHQ_PICKER_LABELS[] = { "Change Gold", "Show Text", "Show Choices" };
+
+static void evhq_apply_css(Elem *e) {
+    css_compute_style(&g_sheet, e->tag, e->id[0] ? e->id : NULL, e->classes, e->n_classes, 0, &e->style);
+}
+static int evhq_measure_text_px(const CssStyle *st, const char *text) {
+    char spec[128];
+    const char *fam = st->has_font_family ? st->font_family : "DejaVu Sans";
+    int size = st->has_font_size ? st->font_size : 11;
+    snprintf(spec, sizeof(spec), "%s:pixelsize=%d%s", fam, size, (st->has_font_weight && st->font_weight_bold) ? ":bold" : "");
+    static char cached_spec[128] = "";
+    static XftFont *cached_font = NULL;
+    XftFont *f;
+    if (cached_font && strcmp(cached_spec, spec) == 0) f = cached_font;
+    else {
+        if (cached_font) XftFontClose(dpy, cached_font);
+        f = XftFontOpenName(dpy, screen, spec);
+        if (!f) f = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=11");
+        cached_font = f;
+        snprintf(cached_spec, sizeof(cached_spec), "%s", spec);
+    }
+    if (!f) return (int)strlen(text) * 7;
+    XGlyphInfo ext;
+    XftTextExtentsUtf8(dpy, f, (const FcChar8 *)text, (int)strlen(text), &ext);
+    return ext.width;
+}
+
+static void evhq_layout_pass(Elem *window) {
+    evhq_apply_css(window);
+    window->x = 0; window->y = 0;
+    window->w = 720; window->h = 480;
+    g_evhq_close_w = 56; g_evhq_close_h = EVHQ_CHROME_H - 6;
+    g_evhq_close_x = window->w - g_evhq_close_w - 4;
+    g_evhq_close_y = 3;
+    Elem *toolbar = find_by_id(window, "toolbar");
+    Elem *pagetabs = find_by_id(window, "pagetabs");
+    Elem *left = find_by_id(window, "left");
+    Elem *right = find_by_id(window, "right");
+    Elem *footer = find_by_id(window, "footer");
+    int toolbar_h = 46, tabs_h = 26, footer_h = 34;
+    int y = EVHQ_CHROME_H;
+    if (toolbar) {
+        evhq_apply_css(toolbar);
+        toolbar->x = 0; toolbar->y = y; toolbar->w = window->w; toolbar->h = toolbar_h;
+        g_evhq_toolbar_y = toolbar->y; g_evhq_toolbar_h = toolbar->h;
+        for (int i = 0; i < toolbar->n_children; i++) {
+            Elem *c = toolbar->children[i]; evhq_apply_css(c);
+            c->x = 46; c->y = toolbar->y + toolbar_h / 2 - 9; c->w = window->w - 56; c->h = 18;
+        }
+        y += toolbar_h;
+    }
+    if (pagetabs) {
+        evhq_apply_css(pagetabs);
+        for (int i = 0; i < pagetabs->n_children; i++) {
+            Elem *tab = pagetabs->children[i]; evhq_apply_css(tab);
+            tab->w = evhq_measure_text_px(&tab->style, tab->label) + 30;
+        }
+        pagetabs->style.has_display = 1; pagetabs->style.display_flex = 1;
+        pagetabs->style.has_flex_direction = 1; pagetabs->style.flex_row = 1;
+        css_layout_pass(pagetabs, 0, y, window->w, tabs_h);
+        for (int i = 0; i < pagetabs->n_children; i++) {
+            Elem *tab = pagetabs->children[i];
+            tab->x += 4 + i;
+            tab->y = y + 2; tab->h = tabs_h - 4;
+        }
+        y += tabs_h;
+    }
+    int content_y = y, content_h = window->h - y - footer_h;
+    int left_w = 220;
+    if (left) {
+        evhq_apply_css(left);
+        for (int i = 0; i < left->n_children; i++) {
+            Elem *c = left->children[i]; evhq_apply_css(c);
+            if (strcmp(c->tag, "title") == 0) { c->w = evhq_measure_text_px(&c->style, c->label) + 10; c->h = 14; continue; }
+            c->style.has_height = 1; c->style.height = 18;
+        }
+        left->style.has_display = 1; left->style.display_flex = 1;
+        left->style.has_flex_direction = 1; left->style.flex_row = 0;
+        left->style.has_padding = 1; left->style.padding = 10;
+        left->style.has_gap = 1; left->style.gap = 6;
+        css_layout_pass(left, 4, content_y + 8, left_w, content_h - 12);
+    }
+    if (right) {
+        evhq_apply_css(right);
+        for (int i = 0; i < right->n_children; i++) {
+            Elem *c = right->children[i]; evhq_apply_css(c);
+            if (strcmp(c->tag, "title") == 0) { c->w = evhq_measure_text_px(&c->style, c->label) + 10; c->h = 14; continue; }
+            c->style.has_height = 1; c->style.height = 18;
+        }
+        right->style.has_display = 1; right->style.display_flex = 1;
+        right->style.has_flex_direction = 1; right->style.flex_row = 0;
+        right->style.has_padding = 1; right->style.padding = 12;
+        right->style.has_gap = 1; right->style.gap = 4;
+        css_layout_pass(right, left_w + 8, content_y + 8, window->w - left_w - 16, content_h - 12);
+    }
+    if (footer) {
+        evhq_apply_css(footer);
+        for (int i = 0; i < footer->n_children; i++) {
+            Elem *c = footer->children[i]; evhq_apply_css(c);
+            c->w = evhq_measure_text_px(&c->style, c->label) + 20;
+        }
+        footer->style.has_display = 1; footer->style.display_flex = 1;
+        footer->style.has_flex_direction = 1; footer->style.flex_row = 1;
+        footer->style.has_gap = 1; footer->style.gap = 8;
+        css_layout_pass(footer, 0, window->h - footer_h, window->w, footer_h);
+        for (int i = 0; i < footer->n_children; i++) {
+            Elem *c = footer->children[i];
+            c->x += 10;
+            c->y = footer->y + 6; c->h = footer_h - 12;
+        }
+    }
+}
+
+static void evhq_inject_commands(Elem *window) {
+    Elem *right = find_by_id(window, "right");
+    if (!right) return;
+    Elem *title = NULL;
+    for (int i = 0; i < right->n_children; i++) if (strcmp(right->children[i]->tag, "title") == 0) title = right->children[i];
+    right->n_children = 0;
+    if (title) right->children[right->n_children++] = title;
+    if (g_evhq_n_cmds == 0) {
+        Elem *e = elem_new("text");
+        snprintf(e->classes[0], sizeof(e->classes[0]), "empty-msg"); e->n_classes = 1;
+        snprintf(e->label, sizeof(e->label), "(no commands yet)");
+        right->children[right->n_children++] = e;
+        return;
+    }
+    for (int i = 0; i < g_evhq_n_cmds && right->n_children < MAX_CHILDREN; i++) {
+        Elem *e = elem_new("text");
+        char cls[48]; snprintf(cls, sizeof(cls), "cmd-%s", g_evhq_cmds[i].type);
+        snprintf(e->classes[0], sizeof(e->classes[0]), "%s", cls); e->n_classes = 1;
+        snprintf(e->label, sizeof(e->label), "%d. %s  %s", g_evhq_cmds[i].id, g_evhq_cmds[i].type, g_evhq_cmds[i].params);
+        right->children[right->n_children++] = e;
+    }
+}
+static void evhq_refresh_page_data(Elem *window) {
+    evhq_write_selected_page();
+    evhq_load_page_state();
+    Elem *tv = find_by_id(window, "trigger-value");
+    if (tv) snprintf(tv->label, sizeof(tv->label), "%s", g_evhq_trigger);
+    evhq_inject_commands(window);
+    Elem *pagetabs = find_by_id(window, "pagetabs");
+    if (pagetabs) {
+        pagetabs->n_children = 0;
+        for (int i = 0; i < g_evhq_n_pages && pagetabs->n_children < MAX_CHILDREN; i++) {
+            Elem *t = elem_new("tab");
+            snprintf(t->label, sizeof(t->label), "%s", g_evhq_pages[i]);
+            t->active = (i == g_evhq_current_page);
+            pagetabs->children[pagetabs->n_children++] = t;
+        }
+    }
+    Elem *en = find_by_id(window, "event-name");
+    if (en) snprintf(en->label, sizeof(en->label), "%s", g_evhq_entity_label);
+}
+static void evhq_assign_nav_indices(Elem *window) {
+    g_n_nav = 0;
+    Elem *pagetabs = find_by_id(window, "pagetabs");
+    if (pagetabs) for (int i = 0; i < pagetabs->n_children && g_n_nav < MAX_ELEMS; i++) {
+        pagetabs->children[i]->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = pagetabs->children[i];
+    }
+    Elem *footer = find_by_id(window, "footer");
+    if (footer) for (int i = 0; i < footer->n_children && g_n_nav < MAX_ELEMS; i++) {
+        footer->children[i]->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = footer->children[i];
+    }
+    if (g_n_nav < MAX_ELEMS) { g_evhq_close_elem->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = g_evhq_close_elem; }
+    if (g_focus_nav < 1) g_focus_nav = 1;
+    if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
+}
+
+static unsigned long evhq_alloc_pixel(const char *spec) {
+    if (!spec || !spec[0]) return BlackPixel(dpy, screen);
+    XColor c;
+    if (spec[0] == '#') { if (XParseColor(dpy, cmap, spec, &c) && XAllocColor(dpy, cmap, &c)) return c.pixel; }
+    else if (XAllocNamedColor(dpy, cmap, spec, &c, &c)) return c.pixel;
+    return BlackPixel(dpy, screen);
+}
+static XftColor evhq_xft_color(const char *spec) {
+    XftColor xc; XRenderColor rc = {0, 0, 0, 0xffff};
+    if (spec && spec[0] == '#' && strlen(spec) >= 7) {
+        unsigned int r, g, b; sscanf(spec + 1, "%02x%02x%02x", &r, &g, &b);
+        rc.red = (unsigned short)(r * 257); rc.green = (unsigned short)(g * 257); rc.blue = (unsigned short)(b * 257);
+    }
+    XftColorAllocValue(dpy, DefaultVisual(dpy, screen), cmap, &rc, &xc); return xc;
+}
+static XftFont *evhq_font_for(const CssStyle *st) {
+    char spec[128];
+    const char *fam = st->has_font_family ? st->font_family : "DejaVu Sans";
+    int size = st->has_font_size ? st->font_size : 11;
+    snprintf(spec, sizeof(spec), "%s:pixelsize=%d%s", fam, size, (st->has_font_weight && st->font_weight_bold) ? ":bold" : "");
+    static char cached_spec[128] = "";
+    static XftFont *cached_font = NULL;
+    if (cached_font && strcmp(cached_spec, spec) == 0) return cached_font;
+    if (cached_font) XftFontClose(dpy, cached_font);
+    XftFont *f = XftFontOpenName(dpy, screen, spec);
+    if (!f) f = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=11");
+    cached_font = f;
+    snprintf(cached_spec, sizeof(cached_spec), "%s", spec);
+    return f;
+}
+static void evhq_draw_elem(Elem *e) {
+    if (e->style.has_bg_color) { XSetForeground(dpy, gc, evhq_alloc_pixel(e->style.bg_color)); XFillRectangle(dpy, buf, gc, e->x, e->y, e->w, e->h); }
+    if (e->style.has_border_color) {
+        XSetForeground(dpy, gc, evhq_alloc_pixel(e->style.border_color));
+        XDrawRectangle(dpy, buf, gc, e->x, e->y, e->w - 1, e->h - 1);
+    }
+    if (strcmp(e->tag, "tab") == 0 && e->active && !e->style.has_bg_color) {
+        XSetForeground(dpy, gc, evhq_alloc_pixel("#3a3a3a")); XFillRectangle(dpy, buf, gc, e->x, e->y, e->w, e->h);
+    }
+    if (e->nav_index > 0 && e->nav_index == g_focus_nav) {
+        XSetForeground(dpy, gc, evhq_alloc_pixel("#ff8c00"));
+        XDrawRectangle(dpy, buf, gc, e->x - 1, e->y - 1, e->w + 1, e->h + 1);
+    }
+    int pad = 4;
+    int label_x = e->x + pad;
+    if (e->nav_index > 0) {
+        char badge[16];
+        int focused = (e->nav_index == g_focus_nav);
+        snprintf(badge, sizeof(badge), "[%c]%d.", focused ? '>' : ' ', e->nav_index);
+        char numspec[48]; snprintf(numspec, sizeof(numspec), "DejaVu Sans Mono:pixelsize=9");
+        XftFont *numfont = XftFontOpenName(dpy, screen, numspec);
+        if (numfont) {
+            XftColor numcol = evhq_xft_color(focused ? "#ff8c00" : "#9a9a9a");
+            XGlyphInfo numext; XftTextExtentsUtf8(dpy, numfont, (const FcChar8 *)badge, (int)strlen(badge), &numext);
+            int numy = e->y + (e->h + numfont->ascent - numfont->descent) / 2;
+            XftDrawStringUtf8(xftdraw_buf, &numcol, numfont, label_x, numy, (const FcChar8 *)badge, (int)strlen(badge));
+            XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &numcol);
+            label_x += numext.width + 5;
+            XftFontClose(dpy, numfont);
+        }
+    }
+    if (e->label[0]) {
+        XftFont *font = evhq_font_for(&e->style);
+        if (font) {
+            XftColor col = evhq_xft_color(e->style.has_fg_color ? e->style.fg_color : "#cccccc");
+            int ty = e->y + (e->h + font->ascent - font->descent) / 2;
+            XftDrawStringUtf8(xftdraw_buf, &col, font, label_x, ty, (const FcChar8 *)e->label, (int)strlen(e->label));
+            XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
+        }
+    }
+}
+static void evhq_render_tree(Elem *e) {
+    for (int i = 0; i < e->n_children; i++) {
+        Elem *c = e->children[i];
+        if (strcmp(c->tag, "title") == 0) continue;
+        if (strcmp(c->tag, "module") == 0) continue;
+        evhq_draw_elem(c);
+        evhq_render_tree(c);
+    }
+    for (int i = 0; i < e->n_children; i++) if (strcmp(e->children[i]->tag, "title") == 0) evhq_draw_elem(e->children[i]);
+}
+static void evhq_draw_entity_glyph(void) {
+    if (!g_evhq_sprite_pixels || g_evhq_sprite_res <= 0) return;
+    int size = 36;
+    int ox = 6, oy = g_evhq_toolbar_y + (g_evhq_toolbar_h - size) / 2;
+    int bg_r = 0x2f, bg_g = 0x2f, bg_b = 0x2f;
+    for (int y = 0; y < size; y++) {
+        int sy = y * g_evhq_sprite_res / size;
+        for (int x = 0; x < size; x++) {
+            int sx = x * g_evhq_sprite_res / size;
+            const unsigned char *px = &g_evhq_sprite_pixels[(sy * g_evhq_sprite_res + sx) * 4];
+            int a = px[3];
+            if (a == 0) continue;
+            int r = (px[0] * a + bg_r * (255 - a)) / 255;
+            int g = (px[1] * a + bg_g * (255 - a)) / 255;
+            int b = (px[2] * a + bg_b * (255 - a)) / 255;
+            char spec[8]; snprintf(spec, sizeof(spec), "#%02x%02x%02x", r, g, b);
+            XSetForeground(dpy, gc, evhq_alloc_pixel(spec));
+            XDrawPoint(dpy, buf, gc, ox + x, oy + y);
+        }
+    }
+}
+static void evhq_draw_chrome_bar(void) {
+    XSetForeground(dpy, gc, evhq_alloc_pixel("#1c1c1c"));
+    XFillRectangle(dpy, buf, gc, 0, 0, g_window->w, EVHQ_CHROME_H);
+    char tspec[48]; snprintf(tspec, sizeof(tspec), "DejaVu Sans:pixelsize=10:bold");
+    XftFont *titlefont = XftFontOpenName(dpy, screen, tspec);
+    if (titlefont) {
+        XftColor titlecol = evhq_xft_color("#eeeeee");
+        char title[48]; snprintf(title, sizeof(title), "events-hq %s", g_evhq_has_real_focus ? "^" : " ");
+        int ty = (EVHQ_CHROME_H + titlefont->ascent - titlefont->descent) / 2;
+        XftDrawStringUtf8(xftdraw_buf, &titlecol, titlefont, 8, ty, (const FcChar8 *)title, (int)strlen(title));
+        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &titlecol);
+        XftFontClose(dpy, titlefont);
+    }
+    g_evhq_close_elem->x = g_evhq_close_x; g_evhq_close_elem->y = g_evhq_close_y;
+    g_evhq_close_elem->w = g_evhq_close_w; g_evhq_close_elem->h = g_evhq_close_h;
+    snprintf(g_evhq_close_elem->label, sizeof(g_evhq_close_elem->label), "x");
+    css_style_init(&g_evhq_close_elem->style);
+    g_evhq_close_elem->style.has_border_color = 1;
+    snprintf(g_evhq_close_elem->style.border_color, sizeof(g_evhq_close_elem->style.border_color), "%s", g_evhq_close_elem->nav_index == g_focus_nav ? "#ff8c00" : "#888888");
+    g_evhq_close_elem->style.has_fg_color = 1;
+    snprintf(g_evhq_close_elem->style.fg_color, sizeof(g_evhq_close_elem->style.fg_color), "#eeeeee");
+    evhq_draw_elem(g_evhq_close_elem);
+}
+static void evhq_draw_picker_overlay(void) {
+    int pw = 360, ph = 160;
+    int px = (g_window->w - pw) / 2, py = (g_window->h - ph) / 2;
+    XSetForeground(dpy, gc, evhq_alloc_pixel("#2a2a2a"));
+    XFillRectangle(dpy, buf, gc, px, py, pw, ph);
+    XSetForeground(dpy, gc, evhq_alloc_pixel("#4a9eff"));
+    XDrawRectangle(dpy, buf, gc, px, py, pw - 1, ph - 1);
+    XftFont *font = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=11");
+    XftFont *bfont = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=11:bold");
+    if (!font || !bfont) return;
+    XftColor white = evhq_xft_color("#eeeeee");
+    XftColor gray = evhq_xft_color("#999999");
+    int ty = py + 20;
+    if (g_evhq_picker_type < 0) {
+        const char *hdr = "Add Command";
+        XftDrawStringUtf8(xftdraw_buf, &white, bfont, px + 14, ty, (const FcChar8 *)hdr, (int)strlen(hdr));
+        ty += 26;
+        for (int i = 0; i < 3; i++) {
+            int focused = (i + 1 == g_evhq_picker_focus);
+            char badge[16]; snprintf(badge, sizeof(badge), "[%c]%d.", focused ? '>' : ' ', i + 1);
+            XftColor *bc = focused ? &white : &gray;
+            XftDrawStringUtf8(xftdraw_buf, bc, font, px + 20, ty, (const FcChar8 *)badge, (int)strlen(badge));
+            char line[64]; snprintf(line, sizeof(line), "%s", EVHQ_PICKER_LABELS[i]);
+            XftDrawStringUtf8(xftdraw_buf, &white, font, px + 60, ty, (const FcChar8 *)line, (int)strlen(line));
+            if (focused) { XSetForeground(dpy, gc, evhq_alloc_pixel("#ff8c00")); XDrawRectangle(dpy, buf, gc, px + 16, ty - 14, pw - 32, 18); }
+            ty += 22;
+        }
+        const char *hint = "Digits/arrows + Enter select, Escape cancels";
+        XftDrawStringUtf8(xftdraw_buf, &gray, font, px + 14, py + ph - 14, (const FcChar8 *)hint, (int)strlen(hint));
+    } else {
+        char hdr[64]; snprintf(hdr, sizeof(hdr), "%s", EVHQ_PICKER_LABELS[g_evhq_picker_type]);
+        XftDrawStringUtf8(xftdraw_buf, &white, bfont, px + 14, ty, (const FcChar8 *)hdr, (int)strlen(hdr));
+        ty += 30;
+        const char *f1_label = strcmp(EVHQ_PICKER_TYPES[g_evhq_picker_type], "change_gold") == 0 ? "Amount:" :
+                                strcmp(EVHQ_PICKER_TYPES[g_evhq_picker_type], "show_text") == 0 ? "Text:" : "Choices (comma-sep):";
+        char f1line[300]; snprintf(f1line, sizeof(f1line), "%s %s%s", f1_label, g_evhq_field1, g_evhq_active_field == 0 ? "_" : "");
+        XftColor *c1 = g_evhq_active_field == 0 ? &white : &gray;
+        XftDrawStringUtf8(xftdraw_buf, c1, font, px + 20, ty, (const FcChar8 *)f1line, (int)strlen(f1line));
+        ty += 24;
+        if (strcmp(EVHQ_PICKER_TYPES[g_evhq_picker_type], "change_gold") != 0) {
+            const char *f2_label = strcmp(EVHQ_PICKER_TYPES[g_evhq_picker_type], "show_text") == 0 ? "Speaker (opt):" : "Default index:";
+            char f2line[300]; snprintf(f2line, sizeof(f2line), "%s %s%s", f2_label, g_evhq_field2, g_evhq_active_field == 1 ? "_" : "");
+            XftColor *c2 = g_evhq_active_field == 1 ? &white : &gray;
+            XftDrawStringUtf8(xftdraw_buf, c2, font, px + 20, ty, (const FcChar8 *)f2line, (int)strlen(f2line));
+            ty += 24;
+        }
+        const char *hint2 = "Enter: next/submit  Escape: cancel";
+        XftDrawStringUtf8(xftdraw_buf, &gray, font, px + 14, py + ph - 14, (const FcChar8 *)hint2, (int)strlen(hint2));
+    }
+    XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &white);
+    XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &gray);
+    XftFontClose(dpy, font); XftFontClose(dpy, bfont);
+}
+static void evhq_redraw_content(void) {
+    evhq_layout_pass(g_window);
+    evhq_assign_nav_indices(g_window);
+    XSetForeground(dpy, gc, evhq_alloc_pixel("#252525"));
+    XFillRectangle(dpy, buf, gc, 0, 0, g_window->w, g_window->h);
+    evhq_render_tree(g_window);
+    evhq_draw_entity_glyph();
+    evhq_draw_chrome_bar();
+    if (g_evhq_picker_open) evhq_draw_picker_overlay();
+}
+static void evhq_activate_elem(Elem *hit) {
+    if (!hit) return;
+    if (strcmp(hit->tag, "closebtn") == 0) { g_quit = 1; return; }
+    if (strcmp(hit->tag, "tab") == 0) {
+        for (int i = 0; i < g_evhq_n_pages; i++) if (strcmp(hit->label, g_evhq_pages[i]) == 0) { g_evhq_current_page = i; break; }
+        evhq_refresh_page_data(g_window);
+        return;
+    }
+    if (strcmp(hit->id, "add-command") == 0) {
+        g_evhq_picker_open = 1; g_evhq_picker_type = -1; g_evhq_picker_focus = 1;
+        g_evhq_field1[0] = '\0'; g_evhq_field2[0] = '\0'; g_evhq_active_field = 0;
+        return;
+    }
+}
+static void evhq_handle_click(int px, int py) {
+    if (px >= g_evhq_close_elem->x && px < g_evhq_close_elem->x + g_evhq_close_elem->w &&
+        py >= g_evhq_close_elem->y && py < g_evhq_close_elem->y + g_evhq_close_elem->h) {
+        g_focus_nav = g_evhq_close_elem->nav_index; evhq_activate_elem(g_evhq_close_elem); return;
+    }
+    Elem *hit = hit_test(g_window, px, py);
+    if (!hit) return;
+    if (hit->nav_index > 0) g_focus_nav = hit->nav_index;
+    evhq_activate_elem(hit);
+}
+static void evhq_submit_picker(void) {
+    const char *type = EVHQ_PICKER_TYPES[g_evhq_picker_type];
+    char params[512];
+    if (strcmp(type, "change_gold") == 0) snprintf(params, sizeof(params), "amount=%s", g_evhq_field1[0] ? g_evhq_field1 : "0");
+    else if (strcmp(type, "show_text") == 0) {
+        if (g_evhq_field2[0]) snprintf(params, sizeof(params), "text=%s speaker=%s", g_evhq_field1, g_evhq_field2);
+        else snprintf(params, sizeof(params), "text=%s", g_evhq_field1);
+    } else snprintf(params, sizeof(params), "choices=%s default=%s", g_evhq_field1, g_evhq_field2[0] ? g_evhq_field2 : "0");
+    evhq_request_append_node(type, params);
+    g_evhq_picker_open = 0;
+}
+static void evhq_handle_key(KeySym ks, char ch) {
+    if (g_evhq_picker_open) {
+        if (ks == XK_Escape) { g_evhq_picker_open = 0; return; }
+        if (g_evhq_picker_type < 0) {
+            if (ch >= '1' && ch <= '3') g_evhq_picker_focus = ch - '0';
+            else if (ks == XK_Up || ks == XK_Left) { if (g_evhq_picker_focus > 1) g_evhq_picker_focus--; }
+            else if (ks == XK_Down || ks == XK_Right || ks == XK_Tab) { if (g_evhq_picker_focus < 3) g_evhq_picker_focus++; }
+            else if (ks == XK_Return || ks == XK_KP_Enter) g_evhq_picker_type = g_evhq_picker_focus - 1;
+            return;
+        }
+        int single_field = (strcmp(EVHQ_PICKER_TYPES[g_evhq_picker_type], "change_gold") == 0);
+        char *active = g_evhq_active_field == 0 ? g_evhq_field1 : g_evhq_field2;
+        size_t asz = g_evhq_active_field == 0 ? sizeof(g_evhq_field1) : sizeof(g_evhq_field2);
+        if (ks == XK_Return || ks == XK_KP_Enter) {
+            if (!single_field && g_evhq_active_field == 0) { g_evhq_active_field = 1; return; }
+            evhq_submit_picker();
+            return;
+        }
+        if (ks == XK_BackSpace) { size_t l = strlen(active); if (l > 0) active[l - 1] = '\0'; return; }
+        if (ch >= 32 && ch <= 126) {
+            size_t l = strlen(active);
+            if (l + 1 < asz) { active[l] = ch; active[l + 1] = '\0'; }
+            return;
+        }
+        return;
+    }
+    if (ch == 'p') { dump_frame_png(); return; }
+    if (ks == XK_Return || ks == XK_KP_Enter) {
+        if (g_evhq_digit_accum > 0 && g_evhq_digit_accum <= g_n_nav) g_focus_nav = g_evhq_digit_accum;
+        g_evhq_digit_accum = 0;
+        if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav) evhq_activate_elem(g_nav[g_focus_nav - 1]);
+        return;
+    }
+    if (ks == XK_Escape) { if (g_evhq_digit_accum > 0) { g_evhq_digit_accum = 0; return; } g_quit = 1; return; }
+    if (ch >= '0' && ch <= '9') {
+        int d = ch - '0';
+        int new_val = g_evhq_digit_accum * 10 + d;
+        if (new_val > 0 && new_val <= g_n_nav) { g_evhq_digit_accum = new_val; g_focus_nav = new_val; }
+        else if (d > 0 && d <= g_n_nav) { g_evhq_digit_accum = d; g_focus_nav = d; }
+        else g_evhq_digit_accum = 0;
+        return;
+    }
+    if (ks == XK_Up || ks == XK_Left) { if (g_focus_nav > 1) g_focus_nav--; g_evhq_digit_accum = 0; return; }
+    if (ks == XK_Down || ks == XK_Right || ks == XK_Tab) { if (g_focus_nav < g_n_nav) g_focus_nav++; g_evhq_digit_accum = 0; return; }
+    g_evhq_digit_accum = 0;
+}
+static int evhq_nonfatal_x_error(Display *d, XErrorEvent *e) {
+    char ebuf[128]; XGetErrorText(d, e->error_code, ebuf, sizeof(ebuf));
+    fprintf(stderr, "khtpm_entity_menu_render: events-hq: X error (non-fatal): %s (request %d.%d)\n", ebuf, e->request_code, e->minor_code);
+    return 0;
+}
+/* ==================== end events-hq mode block ======================== */
+
+/* ============ REAL, chat-hai mode content (ported verbatim, chai_-prefixed) ============ */
+/* REAL BUG FOUND 2026-08-15 (direct report: "clicking ON the message in
+ * window crashed window"): g_n_elems is a bump-allocator index that
+ * elem_new() NEVER rewinds. chai_inject_sessions()/chai_inject_panel_feed() (see
+ * their own header comments) call elem_new() fresh every single
+ * chai_redraw() with no NULL-check before dereferencing the result - so
+ * after ~MAX_ELEMS cumulative allocations across the session's whole
+ * chai_redraw history (not tied to any one click, just whichever chai_redraw
+ * happens to be the one that finally exhausts the pool), elem_new()
+ * starts returning NULL and the very next `item->parent = ...` write
+ * segfaults. chai_n_elems_static is the fix: captured once, right after
+ * parse_chtpm() in main(), as the count of REAL .chtpm-declared
+ * elements; chai_layout_pass() rewinds g_n_elems to this baseline every
+ * frame before any dynamic injection runs, so the pool never grows
+ * across frames - bounded and deterministic, not merely "big enough for
+ * now." (Same underlying flaw existed in the file's original
+ * inject_sidebar_items(), not something this session's edits
+ * introduced - just newly triggered by feed items now living in the
+ * panel instead of a shorter-lived sidebar-only list.) */
+static int chai_n_elems_static = 0;
+/* REAL FIX 2026-08-15 (direct report: "typing... is really slow", then
+ * "why were not just using the same layout renderer... merging both
+ * features, for both cell and chat-hai?"): chai_layout_pass() used to
+ * unconditionally rewind g_n_elems and call BOTH chai_inject_sessions() and
+ * chai_inject_panel_feed() on EVERY chai_redraw - meaning every keystroke fully
+ * re-wrapped every visible message from scratch, even though typing
+ * only changes the composer. open-hai's own draw_transcript() already
+ * caches its wrapped layout ("(re)builds the flat-line cache used for
+ * scroll math" - only when content changes, not every frame); this is
+ * the same fix ported into chat-hai's own renderer (a full shared-
+ * renderer merge is real, larger future work - see
+ * chat-hai-design.md's own "Renderer consolidation" section - this is
+ * the scoped, chat-hai-only version of that fix, safe to do without
+ * touching open-hai/db-hq/events-hq at all).
+ *
+ * chai_feed_dirty/chai_sessions_dirty: set true whenever the underlying DATA
+ * actually changes (new ledger content, session switch/create/delete)
+ * - chai_layout_pass() only re-runs the expensive injection+wrap work when
+ * its own dirty flag is set, clearing it after. A keystroke-only
+ * chai_redraw (both flags clean) touches NEITHER chai_inject_sessions() nor
+ * chai_inject_panel_feed() at all - just repositions the already-built
+ * Elems, which is cheap (no wrapping, no XftFontOpenName calls).
+ *
+ * chai_n_elems_after_sessions: the elem-pool checkpoint right after
+ * sessions last rebuilt - lets chai_inject_panel_feed() rewind ONLY its own
+ * portion of the pool when feed is dirty but sessions isn't, instead
+ * of wiping sessions' already-valid Elems too. */
+static int chai_n_elems_after_sessions = 0;
+static int chai_feed_dirty = 1;
+static int chai_sessions_dirty = 1;
+static char g_house_root[PATH_BUF];
+
+/* REAL module launch (Stage 2d, 2026-08-16) - ported verbatim from
+ * khtpm_hq_render.c/khtpm_events_hq_render.c's own chai_launch_module()/
+ * chai_cleanup_module()/chai_handle_term_signal(), itself ported from
+ * wraith_parser_alpha.c's own chai_launch_module(). REAL BEHAVIOR CHANGE for
+ * chat-hai specifically, confirmed with direct instruction: unlike
+ * db-hq/events-hq (which never had an independent manager before this),
+ * chat_hai_loop.sh used to deliberately OUTLIVE the shell (button.sh's
+ * own "leave it running" guard) - tying its lifetime to the shell here
+ * is a real, deliberate change to that behavior, not an accidental
+ * side effect of adopting the real mechanism. */
+static pid_t chai_module_pid = -1;
+
+static void chai_cleanup_module(void) {
+    if (chai_module_pid > 0) {
+        kill(chai_module_pid, SIGTERM);
+        waitpid(chai_module_pid, NULL, WNOHANG);
+        chai_module_pid = -1;
+    }
+}
+
+static void chai_handle_term_signal(int sig) {
+    (void)sig;
+    chai_cleanup_module();
+    _exit(0);
+}
+
+static void chai_launch_module(const char *src) {
+    if (!src || !src[0]) return;
+    char full_path[PATH_BUF];
+    if (src[0] == '/') snprintf(full_path, sizeof(full_path), "%s", src);
+    else snprintf(full_path, sizeof(full_path), "%s/%s", g_house_root, src);
+
+    chai_module_pid = fork();
+    if (chai_module_pid == 0) {
+        execl(full_path, full_path, g_house_root, (char *)NULL);
+        _exit(1);
+    } else if (chai_module_pid < 0) {
+        fprintf(stderr, "chat-hai: chai_launch_module: fork failed for %s\n", full_path);
+        chai_module_pid = -1;
+    }
+}
+
+/* wraith-alpha-standard index nav state (see Elem.nav_index comment) -
+ * g_nav/g_n_nav/g_focus_nav/g_quit are the SAME shared globals every
+ * other mode already uses (declared once, near the top of this file) -
+ * reused here, not redeclared. */
+/* Real, visible bug found live (2026-08-12, direct report: "no > is on
+ * screen when it opens"): nav 1 used to ALWAYS be the chrome close
+ * button, whose "[>N]" badge is deliberately suppressed (too small a
+ * box to fit one - see chai_draw_elem()'s own comment) in favor of just an
+ * outline ring - so NO visible "[>N]" text existed anywhere on screen at
+ * launch. Fixed properly in chai_assign_nav_indices() (close moved to the
+ * LAST nav index instead, per direct instruction), so nav 1 defaulting
+ * here now lands on the first real content tab and shows immediately,
+ * matching the taskbar/context menus always showing an obvious ">" on a
+ * real row the instant they open. */
+static int chai_digit_accum = 0;
+static char chai_last_key_label[32] = ""; /* see chai_draw_chrome_bar()'s debug status line */
+
+/* Chrome-bar drag-to-move, direct request 2026-08-12 ("window should be
+ * draggable from header tab by mouse"). Now WM-managed with
+ * _MOTIF_WM_HINTS decorations=0 (see main()'s own header comment) - a
+ * real WM would normally supply titlebar-drag itself, but with
+ * decorations off there's no WM-drawn titlebar to drag, so this needs
+ * hand-rolled ButtonPress/MotionNotify/ButtonRelease drag, exact same
+ * proven shape as 01.muchi-pals-🥚️-13.01/system/egg_window.c's own X11
+ * drag block (ButtonPress records x_root/y_root, MotionNotify computes
+ * the delta and XMoveWindow's, ButtonRelease ends it) - ported, not
+ * reinvented. Scoped to the chrome bar only (not the whole window, since
+ * tabs/buttons elsewhere need normal single-click activation). */
+static int chai_dragging = 0;
+static int chai_drag_last_x = 0, chai_drag_last_y = 0;
+/* Running window position, purely accumulated via deltas - matches
+ * egg_window.c's own win_start_x/win_start_y exactly. Deliberately NOT
+ * re-read from the server mid-drag (XGetWindowAttributes' x/y are
+ * PARENT-relative, and a real WM-managed window may be reparented into
+ * a frame even with decorations=0 - mixing that with root-relative
+ * motion deltas would drift wrong). Initialized to the window's real
+ * creation position in main(). */
+static int chai_win_x = 100, chai_win_y = 100;
+/* chat-hai's own forced window size (screen-relative, real fix for the
+ * "chai_apply_css() clobbers a one-time override every chai_redraw" bug - see
+ * chai_layout_pass()'s own header comment where these are applied). 0 = not
+ * yet computed (main() sets these once, from real screen dimensions,
+ * before the first chai_redraw). */
+static int chai_forced_win_w = 0, chai_forced_win_h = 0;
+
+
+
+/* find_by_tag()/find_by_id() now come from khtpm_render_core.h (Stage 2a,
+ * 2026-08-16). find_by_id() disambiguates elements sharing a tag (e.g.
+ * <text id="status"> and <text id="composer-text"> both being tag
+ * "text" - see the real bug this fixed 2026-08-15: chai_composer_sync() was
+ * mutating "status"'s label via find_by_tag(window,"text") matching the
+ * FIRST "text" element in document order, not the composer). Real
+ * fixed-set of long-lived control elements (status/toggle-pause/
+ * composer-text/send) should be looked up by id via that, not by tag. */
+
+#define CHAI_MAX_EVENTS 128
+/* REAL FIX 2026-08-16 (truncation report): was [256] which silently
+ * truncated messages over 255 chars at load time via snprintf — most
+ * AI replies in gemma-lab are 500-2000+ chars, losing their tails
+ * before wrapping even sees them. Bumped to 1024 (128KB total, well
+ * within stack/static budget). */
+static char chai_events[CHAI_MAX_EVENTS][1024];
+static char chai_speakers[CHAI_MAX_EVENTS][32];
+static char chai_times[CHAI_MAX_EVENTS][8]; /* "HH:MM" - short timestamp, restored 2026-08-15 (direct report: "we got rid of the timestamps... not good") */
+static int chai_n_events = 0;
+static int chai_selected_event = -1;
+static int chai_paused = 0;
+/* "who's typing" (direct ask, 2026-08-15: "is it possible to show whos
+ * 'thinking' (AKA TYPING) if waiting for a request?") - mirrors
+ * chat_hai_loop.sh's own state/typing.txt (see that script's speak()
+ * function): empty when nobody's mid-request, a persona name while
+ * their qwen.sh call is in flight (the actually-slow part, ~20-40s per
+ * this session's own logged timings). */
+static char chai_typing_name[64] = "";
+
+/* ---------- data: sessions (2026-08-15, direct instruction: "we should
+ * beable to add / delete new sessions (that will start fresh, new
+ * memories)") — one independent .ledger file per session under
+ * state/sessions/, matching open-hai's own real disk-persisted
+ * deletable-history convention (chat-hai-design.md's own reference).
+ * state/sessions/active.txt names which one is currently live; both this
+ * renderer AND chat_hai_loop.sh (the actual chat scheduler) read it, so
+ * switching sessions here takes effect in the running loop within one
+ * round, not just visually. ---------- */
+
+#define CHAI_MAX_SESSIONS 32
+static char chai_session_names[CHAI_MAX_SESSIONS][64]; /* basename, no .ledger ext */
+static int chai_n_sessions = 0;
+static char chai_active_session[64] = "main";
+
+static void chai_sessions_dir_path(char *out, size_t outsz) {
+    snprintf(out, outsz, "%s/&.hq-apps/chat-hai/state/sessions", g_house_root);
+}
+
+static void chai_session_ledger_path(char *out, size_t outsz, const char *name) {
+    char dir[PATH_BUF];
+    chai_sessions_dir_path(dir, sizeof(dir));
+    snprintf(out, outsz, "%s/%s.ledger", dir, name);
+}
+
+static void chai_active_session_path(char *out, size_t outsz) {
+    char dir[PATH_BUF];
+    chai_sessions_dir_path(dir, sizeof(dir));
+    snprintf(out, outsz, "%s/active.txt", dir);
+}
+
+/* One-time migration (first launch after this feature landed): if
+ * state/sessions/ doesn't exist yet but the old single
+ * state/transcript.ledger does, seed sessions/main.ledger from it so
+ * existing conversation history isn't silently dropped. Safe to call
+ * every startup - only acts once (checked via directory existence). */
+static void chai_migrate_legacy_ledger_if_needed(void) {
+    char dir[PATH_BUF];
+    chai_sessions_dir_path(dir, sizeof(dir));
+    struct stat st;
+    if (stat(dir, &st) == 0) return; /* already migrated */
+    mkdir(dir, 0755);
+    char legacy[PATH_BUF], main_ledger[PATH_BUF];
+    snprintf(legacy, sizeof(legacy), "%s/&.hq-apps/chat-hai/state/transcript.ledger", g_house_root);
+    chai_session_ledger_path(main_ledger, sizeof(main_ledger), "main");
+    FILE *src = fopen(legacy, "r");
+    if (src) {
+        FILE *dst = fopen(main_ledger, "w");
+        if (dst) {
+            char buf[4096]; size_t n;
+            while ((n = fread(buf, 1, sizeof(buf), src)) > 0) fwrite(buf, 1, n, dst);
+            fclose(dst);
+        }
+        fclose(src);
+    } else {
+        FILE *dst = fopen(main_ledger, "w");
+        if (dst) fclose(dst);
+    }
+    char active[PATH_BUF];
+    chai_active_session_path(active, sizeof(active));
+    FILE *a = fopen(active, "w");
+    if (a) { fprintf(a, "main\n"); fclose(a); }
+}
+
+/* Scans state/sessions/*.ledger into chai_session_names[], and reads
+ * active.txt into chai_active_session. Cheap enough to call every frame
+ * (small dir, small file) - matches this file's existing "reload from
+ * disk every chai_redraw" convention (chai_load_ledger() itself). */
+static void chai_load_sessions_list(void) {
+    chai_n_sessions = 0;
+    char dir[PATH_BUF];
+    chai_sessions_dir_path(dir, sizeof(dir));
+    DIR *d = opendir(dir);
+    if (d) {
+        struct dirent *de;
+        while ((de = readdir(d)) != NULL && chai_n_sessions < CHAI_MAX_SESSIONS) {
+            size_t len = strlen(de->d_name);
+            if (len > 7 && strcmp(de->d_name + len - 7, ".ledger") == 0) {
+                size_t namelen = len - 7;
+                if (namelen >= sizeof(chai_session_names[0])) namelen = sizeof(chai_session_names[0]) - 1;
+                strncpy(chai_session_names[chai_n_sessions], de->d_name, namelen);
+                chai_session_names[chai_n_sessions][namelen] = '\0';
+                chai_n_sessions++;
+            }
+        }
+        closedir(d);
+    }
+    /* simple lexical sort so the list is stable across frames (readdir
+     * order is filesystem-dependent, not otherwise deterministic) */
+    for (int i = 0; i < chai_n_sessions - 1; i++)
+        for (int j = i + 1; j < chai_n_sessions; j++)
+            if (strcmp(chai_session_names[i], chai_session_names[j]) > 0) {
+                char tmp[64]; strcpy(tmp, chai_session_names[i]);
+                strcpy(chai_session_names[i], chai_session_names[j]);
+                strcpy(chai_session_names[j], tmp);
+            }
+    char active[PATH_BUF];
+    chai_active_session_path(active, sizeof(active));
+    FILE *f = fopen(active, "r");
+    if (f) {
+        if (fgets(chai_active_session, sizeof(chai_active_session), f)) {
+            char *nl = strchr(chai_active_session, '\n');
+            if (nl) *nl = '\0';
+        }
+        fclose(f);
+    }
+}
+
+static void chai_load_ledger(void); /* fwd decl, real def below - chai_switch_session() needs it */
+
+/* Writes state/sessions/active.txt = name and reloads. chat_hai_loop.sh
+ * re-reads the same file at the top of each round (see that script's own
+ * current_session()), so this takes effect for the running chat within
+ * one round, not just for this window's own display. */
+static void chai_switch_session(const char *name) {
+    snprintf(chai_active_session, sizeof(chai_active_session), "%s", name);
+    char active[PATH_BUF];
+    chai_active_session_path(active, sizeof(active));
+    FILE *f = fopen(active, "w");
+    if (f) { fprintf(f, "%s\n", name); fclose(f); }
+    chai_selected_event = -1;
+    chai_load_ledger();
+    if (chai_n_events > 0) chai_selected_event = chai_n_events - 1;
+    /* REAL FIX 2026-08-15 (see chai_feed_dirty's own header comment) - a
+     * session switch changes BOTH which messages the feed shows (new
+     * active session's ledger) AND which sidebar row is highlighted
+     * "active" - both need a real rebuild on the next chai_layout_pass(). */
+    chai_feed_dirty = 1;
+    chai_sessions_dirty = 1;
+}
+
+/* Real, working "add session" (direct instruction, 2026-08-15): creates
+ * a fresh, empty ledger (new = genuinely fresh memories, not a copy of
+ * any prior session) named by timestamp, and switches to it immediately
+ * so the effect is visible right away, matching open-hai's own
+ * click-to-create-then-see-it feel. */
+static void chai_create_new_session(void) {
+    char name[64];
+    time_t now = time(NULL);
+    struct tm *tmv = localtime(&now);
+    strftime(name, sizeof(name), "chat-%Y%m%d-%H%M%S", tmv);
+    char path[PATH_BUF];
+    chai_session_ledger_path(path, sizeof(path), name);
+    FILE *f = fopen(path, "w");
+    if (f) {
+        char t[32];
+        strftime(t, sizeof(t), "%Y-%m-%d %H:%M:%S", tmv);
+        fprintf(f, "[%s] system: new session started | Trigger: chat-hai\n", t);
+        fclose(f);
+    }
+    chai_load_sessions_list();
+    chai_switch_session(name);
+}
+
+/* Real, working "delete session" — Backspace on a focused sidebar
+ * session row (see chai_handle_key()'s own new branch), matching open-hai's
+ * documented "Backspace on a sidebar row deletes it" convention
+ * (chat-hai-design.md's own reference to that precedent). Refuses to
+ * delete the LAST remaining session (a chat app with zero sessions is a
+ * broken state, not an empty one) and always leaves the loop pointed at
+ * a real, existing ledger afterward. */
+static void chai_delete_session(const char *name) {
+    if (chai_n_sessions <= 1) return;
+    char path[PATH_BUF];
+    chai_session_ledger_path(path, sizeof(path), name);
+    remove(path);
+    chai_load_sessions_list();
+    if (strcmp(chai_active_session, name) == 0 && chai_n_sessions > 0) {
+        chai_switch_session(chai_session_names[0]); /* also sets both dirty flags, see its own header comment */
+    } else {
+        chai_load_sessions_list();
+        chai_sessions_dirty = 1; /* list changed even though active session didn't */
+    }
+}
+
+/* Loads the ACTIVE session's ledger (<house>/&.hq-apps/chat-hai/state/
+ * sessions/<chai_active_session>.ledger, see the sessions block above) into
+ * chai_events[] — the scrolling feed. REAL FIX 2026-08-15: previously read
+ * a single hardcoded state/transcript.ledger regardless of session.
+ * Lines use the master-ledger formula:
+ *   [YYYY-MM-DD HH:MM:SS] <speaker>: <message> | Trigger: chat-hai
+ * Display format: SHORT "HH:MM" timestamp kept (see chai_times' own header
+ * comment - a real regression this session accidentally dropped the
+ * timestamp ENTIRELY instead of just shortening the on-screen display
+ * of it, direct report: "not good i just wanted to make them smaller").
+ * No more fixed-72-char content truncation either - chai_inject_panel_feed()
+ * now real-wraps each message to however many lines it actually needs
+ * (see chai_wrap_lines()), so keep the FULL message text here. */
+/* REAL FIX 2026-08-16, direct live report ("u003e" literal text visible
+ * in rendered messages instead of ">"): ledger lines can contain raw
+ * JSON-style \uXXXX escapes (confirmed live in
+ * state/sessions/*.ledger - some upstream LLM-response path writes the
+ * JSON-encoded string straight into the ledger without decoding it
+ * first). Real, minimal decode - only the 3 escapes that actually
+ * appear in this house's own real ledger data (>/</& -
+ * ">"/"<"/"&", the same 3 that always travel together from JSON/HTML
+ * escaping of markup-like characters), same narrow-scope discipline as
+ * this file's own decode_entities() above (only &quot;/&amp; because
+ * that's literally all ITS one real call site needs). NOT a general
+ * \uXXXX-to-UTF8 decoder - do not widen scope without a real, confirmed
+ * need. Decodes in place.
+ *
+ * REAL, confirmed via hex dump of the actual live ledger data
+ * (state/sessions/gemma-lab.ledger): the literal bytes are bare
+ * "u003e" with NO leading backslash (`echo -n | xxd` showed
+ * `75 30 30 33 65` right after a plain space, not `5c 75 ...`) - some
+ * upstream JSON-decode step already consumed/stripped the backslash
+ * without recognizing the escape it introduced, leaving the bare
+ * "u003e" token behind. Matching WITHOUT a backslash, per the real
+ * data, not the textbook JSON escape form. */
+static void chai_decode_u_escapes(char *s) {
+    char *r = s, *w = s;
+    while (*r) {
+        if (strncmp(r, "u003e", 5) == 0) { *w++ = '>'; r += 5; }
+        else if (strncmp(r, "u003c", 5) == 0) { *w++ = '<'; r += 5; }
+        else if (strncmp(r, "u0026", 5) == 0) { *w++ = '&'; r += 5; }
+        else *w++ = *r++;
+    }
+    *w = '\0';
+}
+
+static void chai_load_ledger(void) {
+    chai_n_events = 0;
+    char ledger[PATH_BUF];
+    chai_session_ledger_path(ledger, sizeof(ledger), chai_active_session);
+    FILE *f = fopen(ledger, "r");
+    if (!f) return;
+    /* REAL FIX 2026-08-15 (direct report: "chat isn't updating" - the
+     * actual root cause after everything else this session): this loop
+     * used to read from the START of the file and stop the moment
+     * chai_n_events hit CHAI_MAX_EVENTS (128) - so once a session's ledger grew
+     * past 128 lines (trivially easy after a day of testing - main's
+     * was already at 175), every subsequent chai_load_ledger() call re-read
+     * the SAME first 128 (oldest) lines and NEVER reached anything
+     * appended after that point. The mtime-poll fix earlier this
+     * session (main loop's own stat()-and-reload) was firing correctly
+     * on every new message, calling chai_load_ledger() right on schedule -
+     * it just kept re-loading the same stale head of the file every
+     * time, which is why the feed looked completely frozen despite the
+     * chat loop visibly still running. Real fix: count total lines
+     * first, then skip to (total - CHAI_MAX_EVENTS) before parsing, so this
+     * always loads the TAIL (most recent), not the head. */
+    /* REAL FIX 2026-08-16, direct live report ("resembling"/"would shift"
+     * appearing as their own timestamp-less, speaker-less fake
+     * "messages" - real forward/start truncation): this used to read
+     * with fgets(line, 512, f) - real ledger lines run 1200-13700+
+     * bytes (confirmed live, state/sessions/gemma-lab.ledger). fgets()
+     * silently truncates at 511 bytes and returns; the NEXT fgets()
+     * call then picks up mid-sentence (no leading '[timestamp]', no
+     * speaker) and the loop treated that continuation fragment as its
+     * OWN separate chai_events[] entry - exactly the symptom reported
+     * (missing speaker, text starting mid-word). Real fix: getline()
+     * with a NULL/0 buffer - it grows the buffer as needed, so one call
+     * always returns one true logical (newline-terminated) line
+     * regardless of length, matching every other real ledger-reading
+     * convention in this house (no arbitrary fixed-size guess to
+     * silently violate later, same real lesson as the old fixed-72-char
+     * truncation fix above). */
+    long total_lines = 0;
+    {
+        char *probe = NULL; size_t probe_cap = 0;
+        while (getline(&probe, &probe_cap, f) != -1) total_lines++;
+        free(probe);
+    }
+    rewind(f);
+    long skip = total_lines > CHAI_MAX_EVENTS ? total_lines - CHAI_MAX_EVENTS : 0;
+    char *line = NULL; size_t line_cap = 0;
+    while (skip-- > 0 && getline(&line, &line_cap, f) != -1) { /* discard */ }
+    while (getline(&line, &line_cap, f) != -1 && chai_n_events < CHAI_MAX_EVENTS) {
+        char *nl = strchr(line, '\n');
+        if (nl) *nl = '\0';
+        char *trig = strstr(line, " | Trigger: chat-hai");
+        if (trig) *trig = '\0';
+        /* pull "HH:MM" out of "[YYYY-MM-DD HH:MM:SS] ..." (chars 12-16
+         * of a well-formed line) and advance content past the full
+         * bracketed timestamp, same split point as before - only the
+         * ON-SCREEN representation of the time got shorter, not gone. */
+        char *content = line;
+        chai_times[chai_n_events][0] = '\0';
+        if (line[0] == '[') {
+            char *bracket = strchr(line, ']');
+            if (bracket && bracket[1] == ' ') {
+                if (bracket - line >= 17) { /* "[YYYY-MM-DD HH:MM" is at least this long */
+                    snprintf(chai_times[chai_n_events], sizeof(chai_times[0]), "%.5s", line + 12);
+                }
+                content = bracket + 2;
+            }
+        }
+        if (content[0]) {
+            /* extract speaker name (text before the first ": ") for color-coding */
+            char *colon = strstr(content, ": ");
+            if (colon) {
+                int speaker_len = colon - content;
+                if (speaker_len > 0 && speaker_len < (int)sizeof(chai_speakers[0]) - 1) {
+                    strncpy(chai_speakers[chai_n_events], content, speaker_len);
+                    chai_speakers[chai_n_events][speaker_len] = '\0';
+                } else {
+                    strcpy(chai_speakers[chai_n_events], "user");
+                }
+            } else {
+                strcpy(chai_speakers[chai_n_events], "user");
+            }
+            /* REAL FIX 2026-08-15 (direct report: "explain why messages
+             * cut off outside window instead of wrapping" - see
+             * chai_wrap_lines()/chai_inject_panel_feed() for the actual fix): this
+             * used to hard-truncate at a FIXED 72 characters regardless
+             * of the panel's real pixel width, which is why long
+             * messages visibly ran off the right edge of the window
+             * instead of wrapping - a char-count guess has no relation
+             * to actual rendered pixel width (font, per-character width,
+             * and the panel's real width all vary). Full content is
+             * kept here now; wrapping happens where real geometry is
+             * known (chai_inject_panel_feed(), at panel width, not a guess). */
+            snprintf(chai_events[chai_n_events], sizeof(chai_events[0]), "%s", content);
+            chai_decode_u_escapes(chai_events[chai_n_events]);
+        } else continue;
+        chai_n_events++;
+    }
+    free(line);
+    fclose(f);
+}
+
+/* REAL FIX 2026-08-15 (direct instruction: "sessions are on left ...
+ * just like open-hai"): the sidebar (left column, per chat-hai.chtpm's
+ * own <sidebar id="sessions">) is the SESSIONS list, not the chat feed
+ * — a real, live layout bug had messages injected here instead, leaving
+ * the actual message panel with no feed content at all (only its fixed
+ * status/composer/send controls, stacked with no bounded scroll area,
+ * which is what visually read as "input takes up the entire vertical
+ * pane"). Real, working session list (2026-08-15 follow-up, direct
+ * instruction: "we should beable to add / delete new sessions") — one
+ * row per file in state/sessions/ (see chai_load_sessions_list()), plus a
+ * trailing "+ New Session" row (tag "newsession", disambiguated from
+ * real session rows by tag, not id, in chai_activate_elem()). Click a real
+ * row to chai_switch_session(); Backspace while it's focused deletes it (see
+ * chai_handle_key()'s own new branch) — matching open-hai's own
+ * disk-persisted deletable-history convention this was built to mirror. */
+static void chai_inject_sessions(Elem *sidebar) {
+    if (!sidebar) return;
+    sidebar->n_children = 0;
+    chai_load_sessions_list();
+    /* REAL FIX 2026-08-15 (direct report: "THE MAIN/NEW+ FONTS ARE
+     * BLACK ON DARK BACKGROUND") - class renamed from "data-item" to
+     * "session-item": the old CSS rule targeting these
+     * (".sessions .data-item") used a descendant combinator this
+     * parser doesn't support (see chat-hai.css's own header comment on
+     * the ".session-item" rule this class now matches) and silently
+     * never applied, leaving these black. */
+    for (int i = 0; i < chai_n_sessions; i++) {
+        Elem *item = elem_new("item");
+        item->parent = sidebar;
+        snprintf(item->classes[0], sizeof(item->classes[0]), "session-item");
+        item->n_classes = 1;
+        snprintf(item->label, sizeof(item->label), "%s", chai_session_names[i]);
+        item->active = (strcmp(chai_session_names[i], chai_active_session) == 0);
+        if (sidebar->n_children < MAX_CHILDREN) sidebar->children[sidebar->n_children++] = item;
+    }
+    Elem *newbtn = elem_new("newsession");
+    newbtn->parent = sidebar;
+    snprintf(newbtn->classes[0], sizeof(newbtn->classes[0]), "session-item");
+    newbtn->n_classes = 1;
+    snprintf(newbtn->label, sizeof(newbtn->label), "+ New Session");
+    if (sidebar->n_children < MAX_CHILDREN) sidebar->children[sidebar->n_children++] = newbtn;
+}
+
+/* Cached pointers to the panel's own fixed-position controls, captured
+ * once right after parse_chtpm() (see main()) — chai_inject_panel_feed()
+ * rebuilds panel->children every chai_layout_pass() with a variable-length
+ * run of feed items followed by these 4 known elements, so they must
+ * survive across n_children resets rather than being re-found by a
+ * tag/id walk that would itself be searching the very array being
+ * rebuilt. */
+static Elem *chai_status_elem = NULL;
+static Elem *chai_toggle_elem = NULL;
+static Elem *chai_speed_elem = NULL;
+static Elem *chai_sound_elem = NULL;
+static Elem *chai_composer_text_elem = NULL;
+/* "^" activation state for the composer, see chai_require_cli_activation's
+ * own header comment. Starts activated (1) - matches this app's
+ * historical always-on-typing default when require_cli_activation=0. */
+static int chai_composer_activated = 1;
+/* g_send_elem removed 2026-08-15 (direct instruction: "we dont need a
+ * send button" - Enter already sends, see chai_handle_key()'s Enter branch). */
+
+/* Composes chai_status_elem's label from BOTH chai_paused and chai_typing_name -
+ * called from the toggle-pause click handler AND the main loop's own
+ * typing.txt poll, so either one changing updates the same real status
+ * text instead of the two clobbering each other's writes. */
+static void chai_update_status_label(void) {
+    if (!chai_status_elem) return;
+    if (chai_typing_name[0]) {
+        snprintf(chai_status_elem->label, sizeof(chai_status_elem->label), "%s \xc2\xb7 %s typing\xe2\x80\xa6",
+                 chai_paused ? "[stopped]" : "[running]", chai_typing_name);
+    } else {
+        snprintf(chai_status_elem->label, sizeof(chai_status_elem->label), "%s", chai_paused ? "[stopped]" : "[running]");
+    }
+}
+
+/* Rebuilds panel->children as [ up to n_visible tail feed items (oldest
+ * of the visible window first, newest last) ..., status, toggle-pause,
+ * composer-text, send ]. n_visible is computed by the CALLER
+ * (chai_layout_pass(), from the FIXED bottom-controls height reserved BEFORE
+ * this runs — see that function's own comment) so there is no
+ * chicken-and-egg between "how tall is the feed" and "how many items
+ * are in it": the feed's pixel height is fixed by the bottom controls
+ * alone, item count is derived FROM that height, never the reverse.
+ * This is the same real fix class as open-hai's own transcript_geom()
+ * (composer height computed first, feed gets what's left) — see
+ * chat-hai-design.md's "Real layout spec" section, ported here rather
+ * than reinvented. */
+/* Forward decls - chai_apply_css()/chai_measure_text_px()/chai_wrap_lines() are defined
+ * further down this file (they need dpy/screen/Xft, real definitions
+ * near the rendering section), but chai_inject_panel_feed() here needs them
+ * for real per-message text wrapping (see chai_wrap_lines()'s own header
+ * comment). dpy/screen already have this exact "declared again earlier
+ * than their real definition" pattern elsewhere in this file (both
+ * appear a second time near the rendering section too) - same harmless
+ * C tentative-declaration shape, not new precedent. */
+static void chai_apply_css(Elem *e, int hover);
+static int chai_scaled(int base_px);
+static int chai_measure_text_px(const CssStyle *st, const char *text);
+#define CHAI_WRAP_MAX_LINES 8
+#define CHAI_WRAP_LINE_BUF 256
+static int chai_wrap_lines(const CssStyle *st, const char *text, int max_w, char lines[][CHAI_WRAP_LINE_BUF]);
+
+/* Receipt diagnostics — set each frame by chai_layout_pass() / chai_inject_panel_feed(),
+ * read by chai_dump_frame_png() to write /tmp/chat-hai-frame.png.receipt.txt.
+ * Lets agents verify layout math without needing to see the image. */
+static int chai_panel_w = 0;
+static int chai_wrap_w = 0;
+static int chai_tabbar_h = 0;
+static int chai_feed_font_css = 12;  /* CSS base font-size for feed items (before scaling) */
+
+static void chai_inject_panel_feed(Elem *panel, int n_visible) {
+    if (!panel) return;
+    panel->n_children = 0;
+    if (n_visible < 0) n_visible = 0;
+    if (chai_n_events == 0) {
+        Elem *item = elem_new("item");
+        item->parent = panel;
+        snprintf(item->label, sizeof(item->label), "(ledger empty — loop not running?)");
+        if (panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = item;
+    } else {
+        /* REAL FIX 2026-08-15 (direct report: "explain why messages cut
+         * off outside window instead of wrapping" - see chai_wrap_lines()'s
+         * own header comment): each message now becomes 1+ "item"
+         * Elems (one per wrapped line), instead of always exactly one
+         * possibly-overflowing Elem. n_visible counts LINES (unchanged
+         * meaning from before - chai_layout_pass()'s own per-child stacking
+         * loop already treats each panel "item" child as one line-height
+         * row, so no change needed there, just how many Elems this
+         * function produces per logical message). Timestamp restored
+         * (direct report: "we got rid of the timestamps... not good") -
+         * prefixed on each message's FIRST wrapped line only. */
+        /* REAL FIX 2026-08-16 (truncation report: "text is sometimes
+         * getting forward truncated"): chai_draw_elem() adds a default 4px left
+         * pad to label_x (line ~1556: "int pad = ... 4; int label_x =
+         * e->x + pad"), but wrap_w was computed as panel->w - chai_scaled(8)
+         * — the same width given to the Elem. Wrapping therefore
+         * overestimated the available drawing width by that 4px pad,
+         * causing the last ~1 char of every marginal wrapped line to
+         * overflow the element boundary. Subtract the pad here so
+         * wrap_w matches the actual space chai_draw_elem() will use. */
+        int wrap_w = panel->w - chai_scaled(8) - 4;
+        if (wrap_w < 20) wrap_w = 20;
+        chai_wrap_w = wrap_w;
+        Elem tmp_style_elem;
+        memset(&tmp_style_elem, 0, sizeof(tmp_style_elem));
+        snprintf(tmp_style_elem.tag, sizeof(tmp_style_elem.tag), "item");
+        snprintf(tmp_style_elem.classes[0], sizeof(tmp_style_elem.classes[0]), "data-item");
+        tmp_style_elem.n_classes = 1;
+        tmp_style_elem.parent = panel;  /* for descendant CSS: .content .data-item */
+        chai_apply_css(&tmp_style_elem, 0);
+        chai_feed_font_css = tmp_style_elem.style.has_font_size ? tmp_style_elem.style.font_size : 12;
+
+        typedef struct { int event_idx; int n; char lines[CHAI_WRAP_MAX_LINES][CHAI_WRAP_LINE_BUF]; } WrappedMsg;
+        static WrappedMsg wm[CHAI_MAX_EVENTS];
+        int n_msgs = 0, total_lines = 0;
+        for (int i = chai_n_events - 1; i >= 0 && n_msgs < CHAI_MAX_EVENTS; i--) {
+            char full[400];
+            if (chai_times[i][0]) snprintf(full, sizeof(full), "%s %s", chai_times[i], chai_events[i]);
+            else snprintf(full, sizeof(full), "%s", chai_events[i]);
+            int nl = chai_wrap_lines(&tmp_style_elem.style, full, wrap_w, wm[n_msgs].lines);
+            if (total_lines + nl > n_visible && n_msgs > 0) break; /* always keep at least the newest message, even if it alone overflows */
+            wm[n_msgs].event_idx = i;
+            wm[n_msgs].n = nl;
+            total_lines += nl;
+            n_msgs++;
+            if (total_lines >= n_visible) break;
+        }
+        for (int m = n_msgs - 1; m >= 0; m--) { /* emit oldest-first, matching the panel's own top-to-bottom stacking */
+            int i = wm[m].event_idx;
+            for (int l = 0; l < wm[m].n; l++) {
+                Elem *item = elem_new("item");
+                if (!item) break;
+                item->parent = panel;
+                snprintf(item->classes[0], sizeof(item->classes[0]), "data-item");
+                snprintf(item->classes[1], sizeof(item->classes[1]), "%s", chai_speakers[i]);
+                item->n_classes = 2;
+                snprintf(item->label, sizeof(item->label), "%s", wm[m].lines[l]);
+                item->active = (i == chai_selected_event);
+                if (panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = item;
+            }
+        }
+    }
+    /* Re-append the 4 cached fixed controls, in the SAME order
+     * find_by_id()/find_by_tag() callers elsewhere in this file expect
+     * (status first — chai_composer_sync()'s sibling logic and the
+     * toggle-pause handler both rely on status being found before any
+     * other "text"-tagged element, see find_by_id()'s own header
+     * comment for the bug this replaced). */
+    if (chai_status_elem && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = chai_status_elem;
+    if (chai_toggle_elem && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = chai_toggle_elem;
+    if (chai_speed_elem && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = chai_speed_elem;
+    if (chai_sound_elem && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = chai_sound_elem;
+    if (chai_composer_text_elem && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = chai_composer_text_elem;
+}
+
+/* ---------- layout: CSS overrides a small hand-rolled per-tag flow,
+ * since v1 deliberately has no flex/grid engine (see plan) ---------- */
+
+/* Order matches au11-hq/rpg-maker-database.html's own tab-bar exactly
+ * (line 301-316) - real RPG Maker MV order, 15 tabs total. Direct
+ * correction (2026-08-12): Common Events belongs right after Tilesets,
+ * not last; "Terms" is its own 15th tab, separate from "Types" (both
+ * exist in the mockup - not a typo/merge). */
+static const char *CHAI_TAB_LABELS[] = {
+    "Actors", "Classes", "Skills", "Items", "Weapons", "Armors",
+    "Enemies", "Troops", "States", "Animations", "Tilesets",
+    "Common Events", "System", "Types", "Terms"
+};
+#define CHAI_N_TABS 15
+#define CHAI_COMMON_EVENTS_TAB 11
+static int chai_current_tab = CHAI_COMMON_EVENTS_TAB; /* the only wired tab */
+
+static const CssSheet *chai_sheet;
+
+/* REAL 2026-08-16: ancestor callbacks for descendant-combinator CSS
+ * support (e.g. ".messages-feed .data-item"). get_parent returns the
+ * element's parent pointer (or NULL at root). get_info fills in an
+ * element's tag/id/classes — used to inspect ancestors during matching. */
+static void *chai_chat_hai_get_parent(const void *elem) {
+    const Elem *e = (const Elem *)elem;
+    return e->parent;
+}
+
+static void chai_chat_hai_get_info(const void *elem, const char **out_tag, const char **out_id,
+                               char out_classes[][32], int *out_n_classes) {
+    const Elem *e = (const Elem *)elem;
+    *out_tag = e->tag;
+    *out_id = e->id[0] ? e->id : NULL;
+    *out_n_classes = e->n_classes;
+    for (int i = 0; i < e->n_classes; i++)
+        snprintf(out_classes[i], 32, "%s", e->classes[i]);
+}
+
+static void chai_apply_css(Elem *e, int hover) {
+    css_compute_style_ex(chai_sheet, e->tag, e->id[0] ? e->id : NULL, e->classes, e->n_classes, hover, &e->style, e, chai_chat_hai_get_parent, chai_chat_hai_get_info);
+}
+
+/* X11/Xft globals - declared here (not down in the rendering section)
+ * because layout now needs to MEASURE real font metrics, not guess a
+ * fixed px-per-char width; that guess (7px/char) was the actual cause of
+ * "big and jumbled" text - it didn't match whichever font XftFontOpenName
+ * actually resolved, so boxes were sized wrong and labels overlapped. */
+
+/* user-defined UI scale, direct request: "even if the window needed to
+ * be bigger... or even reading this from a std user defined font size
+ * .pdl so user can adjust scale for readability/access". Shared across
+ * all -hq apps (not taskbar-specific), same key=value .pdl convention
+ * already used by khtpm_strip_parser.c's load_theme_opacity() (reads
+ * #.desktop/livedesk_taskbar.pdl the same way). Applies to BOTH font
+ * sizes and layout box sizes (chrome height, row heights, default window
+ * size) so a bigger font never gets clipped by boxes that didn't grow
+ * with it - text metrics are measured AFTER scaling (chai_measure_text_px()
+ * below), so nothing needs a second manual size fixup. */
+static double chai_font_scale = 1.0;
+
+/* focus_grab: KISS hail-mary, direct instruction 2026-08-12 ("all that
+ * focus stuff is overkill... keep it in a separate config/.pdl, do the
+ * same as a last hail mary"). Studied egg_window.c (a real "context"
+ * entity window, ALSO launched fresh from a click, confirmed reliably
+ * keyboard-usable) and found it does ZERO focus/grab calls for its main
+ * window - no XSetInputFocus, no XGrabKeyboard, nothing beyond plain
+ * override_redirect + XMapWindow. Default flips to that same bare-
+ * minimum behavior; the whole chai_soft_focus()/XGrabKeyboard machinery
+ * built earlier this session is kept but now OFF by default, toggleable
+ * back on via this key without a rebuild if the simple path doesn't
+ * actually fix it. */
+static int chai_focus_grab_enabled = 0;
+
+static void chai_load_font_scale(void) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", g_house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[128];
+    while (fgets(line, sizeof(line), f)) {
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char *val = eq + 1;
+        char *nl = strchr(val, '\n');
+        if (nl) *nl = '\0';
+        if (strcmp(line, "font_scale") == 0) {
+            double v = atof(val);
+            if (v >= 0.5 && v <= 3.0) chai_font_scale = v; /* sane clamp - not a layout-breaking value */
+        } else if (strcmp(line, "focus_grab") == 0) {
+            chai_focus_grab_enabled = atoi(val) != 0;
+        } else if (strcmp(line, "window_x") == 0) {
+            chai_win_x = atoi(val);
+        } else if (strcmp(line, "window_y") == 0) {
+            chai_win_y = atoi(val);
+        }
+    }
+    fclose(f);
+}
+
+/* REAL FIX 2026-08-15 (direct instruction: "all window dims can be read
+ * from .pdl isntead of hardcoded" - the standing !.HOUSE_STDS.md §A.7
+ * rule this file already violated three separate rounds in a row while
+ * iterating on screen position/size by hand-editing C constants and
+ * rebuilding each time). Reads chat_hai_config.pdl's own
+ * window_width/window_bottom_margin/window_right_margin/window_top_offset
+ * keys (unscaled base pixels - chai_font_scale still multiplies these the
+ * same way it scales everything else, see that .pdl's own header
+ * comment). Read ONCE at startup (unlike sleep_between, window geometry
+ * doesn't need live mid-session reread) - called from main(), before
+ * the screen-anchor block that consumes these values. */
+static int chai_cfg_window_width = 280;
+static int chai_cfg_bottom_margin = 50;
+static int chai_cfg_right_margin = 10;
+static int chai_cfg_top_offset = 100;
+
+/* REAL FIX 2026-08-16 (direct report: "when i clicked 'input' the focus
+ * nav '>' doesn't move into its bracket till i click elsewhere ... but it
+ * still allows input"): legacy chtpm_parser.c required a cli-io input to
+ * be explicitly "^" activated before it would accept keystrokes; this
+ * app never had that gate (typing always went straight into the
+ * composer regardless of focus/click, see chai_handle_key()'s printable-char
+ * branch), and separately chai_activate_elem() had no case at all for the
+ * composer-text element - a click moved g_focus_nav correctly but never
+ * called chai_redraw(), so the badge only caught up whenever some OTHER event
+ * happened to chai_redraw next. Direct follow-up ("in h-ai it move '>' and
+ * auto sets it to '^' im fine with that, and make it an option to have
+ * legacy from chtpm behavior"): default here is auto-activate-on-click/
+ * focus (own real bug now fixed below); require_cli_activation=1 in this
+ * .pdl switches to the legacy shape (click only focuses - '>' - typing
+ * is ignored until Enter on the empty, focused composer sets it to '^').
+ * khtpm_render_core.c candidates (db-hq/events-hq/open-hai/taskbar-
+ * settings/taskbar) do not have any cli-io text-input element at all
+ * currently (only buttons/tabs/nav rows), so this option has nothing to
+ * port to yet there - tracked as a real research/doc TODO in
+ * local-2do-15.txt rather than spec'd blind. */
+static int chai_require_cli_activation = 0;
+
+/* Incoming-message tone (2026-08-16): loaded from chat_hai_config.pdl's
+ * sound_on key at startup (like require_cli_activation above), flipped
+ * live by the Sound GUI button (chai_write_chat_hai_cfg()) and read fresh by
+ * chat_hai_loop.sh on every posted message - see that script. */
+static int chai_sound_on = 1;
+
+static void chai_load_window_geometry_config(void) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/&.hq-apps/chat-hai/chat_hai_config.pdl", g_house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        if (line[0] == '#') continue;
+        char key[64], val[64];
+        if (sscanf(line, " SECTION | %63[^|] | %63s", key, val) != 2) continue;
+        char *k = key; while (*k == ' ') k++;
+        char *ke = k + strlen(k); while (ke > k && ke[-1] == ' ') *--ke = '\0';
+        int n = atoi(val);
+        if (strcmp(k, "window_width") == 0) chai_cfg_window_width = n;
+        else if (strcmp(k, "window_bottom_margin") == 0) chai_cfg_bottom_margin = n;
+        else if (strcmp(k, "window_right_margin") == 0) chai_cfg_right_margin = n;
+        else if (strcmp(k, "window_top_offset") == 0) chai_cfg_top_offset = n;
+        else if (strcmp(k, "require_cli_activation") == 0) chai_require_cli_activation = n;
+        else if (strcmp(k, "sound_on") == 0) chai_sound_on = (n != 0);
+    }
+    fclose(f);
+}
+
+static int chai_scaled(int base_px) { return (int)(base_px * chai_font_scale + 0.5); }
+
+/* REAL FIX 2026-08-15 (direct report: "typing in chat-hai... is really
+ * slow... blocking render or something?"): every printable keystroke
+ * calls chai_redraw() (chai_handle_key()'s own printable-char branch), which
+ * re-wraps the ENTIRE visible feed via chai_wrap_lines() -> this function,
+ * called once per word-boundary candidate for EVERY visible message,
+ * every single keystroke. This function used to open a fresh XftFont
+ * (a real, non-trivial font-lookup cost) and close it again on EVERY
+ * call - with dozens of visible lines each needing several measure
+ * calls to wrap, that's potentially hundreds of XftFontOpenName/
+ * XftFontClose round-trips per keystroke. The font spec is almost
+ * always IDENTICAL across all those calls in one chai_redraw (same feed
+ * style) - real fix: cache the open font by its spec string, only
+ * reopen when the spec actually changes. Not a 30fps/LAN-vs-local
+ * issue (direct question) - this is synchronous CPU work on the main
+ * X11 event thread, unrelated to model inference speed entirely. */
+static int chai_measure_text_px(const CssStyle *st, const char *text) {
+    char spec[128];
+    const char *fam = st->has_font_family ? st->font_family : "DejaVu Sans";
+    int size = chai_scaled(st->has_font_size ? st->font_size : 12);
+    snprintf(spec, sizeof(spec), "%s:pixelsize=%d%s", fam, size, (st->has_font_weight && st->font_weight_bold) ? ":bold" : "");
+
+    static char cached_spec[128] = "";
+    static XftFont *cached_font = NULL;
+    XftFont *f;
+    if (cached_font && strcmp(cached_spec, spec) == 0) {
+        f = cached_font;
+    } else {
+        if (cached_font) XftFontClose(dpy, cached_font);
+        f = XftFontOpenName(dpy, screen, spec);
+        if (!f) f = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=10");
+        cached_font = f;
+        snprintf(cached_spec, sizeof(cached_spec), "%s", spec);
+    }
+    if (!f) return (int)strlen(text) * 8;
+    XGlyphInfo ext;
+    XftTextExtentsUtf8(dpy, f, (const FcChar8 *)text, (int)strlen(text), &ext);
+    return ext.width;
+}
+
+#define CHAI_WRAP_MAX_LINES 8
+#define CHAI_WRAP_LINE_BUF 256
+
+/* REAL FIX 2026-08-15 (direct report: "explain why messages cut off
+ * outside window instead of wrapping" - see chai_load_ledger()'s own header
+ * comment for the removed fixed-72-char truncation this replaces):
+ * real word-boundary wrapping at the ACTUAL pixel width available (via
+ * chai_measure_text_px(), not a character-count guess). Greedy: grows a
+ * candidate line one word at a time, backtracks to the last word
+ * boundary the moment it no longer fits max_w, same algorithm shape as
+ * open-hai's own wrap_text() (khtpm_open_hai_render.c) - not reinvented,
+ * chat-hai just didn't have its own copy of this until now. Returns the
+ * number of lines written (capped at CHAI_WRAP_MAX_LINES - a single message
+ * that's still too long past that point gets a trailing "…" on the
+ * last line rather than growing the feed unboundedly). */
+static int chai_wrap_lines(const CssStyle *st, const char *text, int max_w, char lines[][CHAI_WRAP_LINE_BUF]) {
+    int n = 0;
+    const char *p = text;
+    while (*p && n < CHAI_WRAP_MAX_LINES) {
+        const char *line_start = p;
+        const char *last_space = NULL;
+        const char *scan = p;
+        char candidate[CHAI_WRAP_LINE_BUF];
+        candidate[0] = '\0';
+        while (*scan) {
+            const char *next = scan;
+            while (*next && *next != ' ') next++;
+            int seglen = (int)(next - line_start);
+            if (seglen >= CHAI_WRAP_LINE_BUF) seglen = CHAI_WRAP_LINE_BUF - 1;
+            char test[CHAI_WRAP_LINE_BUF];
+            memcpy(test, line_start, (size_t)seglen);
+            test[seglen] = '\0';
+            if (chai_measure_text_px(st, test) > max_w && candidate[0]) break;
+            snprintf(candidate, sizeof(candidate), "%s", test);
+            if (*next == ' ') { last_space = next; scan = next + 1; } else { scan = next; break; }
+        }
+        (void)last_space;
+        if (!candidate[0]) { /* single word wider than max_w - hard cut so we always make progress */
+            size_t take = strlen(line_start);
+            if (take > CHAI_WRAP_LINE_BUF - 1) take = CHAI_WRAP_LINE_BUF - 1;
+            memcpy(candidate, line_start, take);
+            candidate[take] = '\0';
+        }
+        snprintf(lines[n], CHAI_WRAP_LINE_BUF, "%s", candidate);
+        n++;
+        p = line_start + strlen(candidate);
+        while (*p == ' ') p++;
+    }
+    if (*p && n == CHAI_WRAP_MAX_LINES) {
+        /* still more text left after hitting the cap - mark truncation
+         * on the last line rather than silently dropping the tail. */
+        size_t l = strlen(lines[n - 1]);
+        if (l < CHAI_WRAP_LINE_BUF - 4) snprintf(lines[n - 1] + l, CHAI_WRAP_LINE_BUF - l, "…");
+    }
+    return n;
+}
+
+/* Own drawn chrome bar (title + close), NOT a window-manager decoration -
+ * same idea as wraith-alpha's own chrome row (ops/wraith_parser_alpha.c's
+ * g_chrome_icons[]: nav 1 = title, icons after it, 'x' = CHROME_ACTION_
+ * CLOSE), direct instruction: "we will create our own chrome bar and
+ * title, ok? like in wraith-alpha". Kept to just title + close for this
+ * app (no minimize/geom/context-menu - wraith-alpha's fuller icon set
+ * isn't needed here). Window height grows by chai_chrome_h on top of the
+ * CSS/default content height, so nothing below has to shrink to fit it.
+ * chai_chrome_h (and every other layout constant in chai_layout_pass() below) is
+ * chai_scaled by chai_font_scale, not just font sizes - a bigger font with
+ * same-size boxes just clips, per direct instruction: "even if the
+ * window needed to be bigger". */
+static int chai_chrome_h = 26;
+static Elem chai_close_elem_storage;
+static Elem *chai_close_elem = &chai_close_elem_storage;
+static int chai_close_x, chai_close_y, chai_close_w, chai_close_h;
+
+/* Top Settings area (direct instruction 2026-08-16: "not in chrome bar.
+ * there is room below it. above chat") - the Sound toggle left the
+ * bottom control row and now lives behind a Settings affordance in the
+ * strip below the chrome bar / above the chat feed. The badge is a
+ * static, synthetic element (like chai_close_elem - not parsed from
+ * dashboard.chtpm): right-aligned in the tabbar row; when open
+ * (chai_settings_open), it drops a Sound row just under the tabbar and the
+ * content area shifts down to make room (see chai_layout_pass()'s
+ * settings_strip math). Ports open-hai's Settings panel shape
+ * (nav_add'd + hit-tested before the tree walk). */
+static Elem chai_settings_elem_storage;
+static Elem *chai_settings_elem = &chai_settings_elem_storage;
+static Elem chai_settings_sound_elem_storage;
+static Elem *chai_settings_sound_elem = &chai_settings_sound_elem_storage;
+static int chai_settings_open = 0;
+static int chai_settings_w;
+
+static void chai_layout_pass(Elem *window) {
+    /* REAL FIX 2026-08-15 (see chai_feed_dirty's own header comment for the
+     * full story): this used to unconditionally rewind g_n_elems here,
+     * EVERY call - now the rewind only happens inside the sidebar/panel
+     * blocks below, and ONLY when their own dirty flag says a real
+     * rebuild is needed. A keystroke-only chai_redraw touches g_n_elems not
+     * at all, reusing whatever was already built. */
+    chai_apply_css(window, 0);
+    /* REAL FIX 2026-08-15 (direct report: "its on right of screen but
+     * still wide and stout instead of thin and long" - after the first
+     * screen-anchor attempt): chai_apply_css() just above re-reads
+     * chat-hai.css's own fixed 900x700 into window->style EVERY call -
+     * chai_layout_pass() runs on every chai_redraw(), so a one-time override set
+     * in main() before the FIRST chai_layout_pass() call got silently
+     * clobbered back to the CSS default on the very next chai_redraw
+     * (relay input, a message arriving, anything). Force it here
+     * instead, unconditionally, every call - chai_forced_win_w/h are set
+     * once in main() from real screen dimensions and never touched by
+     * CSS again. */
+    if (chai_forced_win_w > 0) { window->style.has_width = 1; window->style.width = chai_forced_win_w; }
+    if (chai_forced_win_h > 0) { window->style.has_height = 1; window->style.height = chai_forced_win_h; }
+    window->x = 0; window->y = 0;
+    int default_w = chai_scaled(900);
+    int content_total_h = window->style.has_height ? window->style.height : chai_scaled(600);
+
+    Elem *tabbar = find_by_tag(window, "tabbar");
+    Elem *sidebar = find_by_tag(window, "sidebar");
+    Elem *panel = find_by_tag(window, "panel");
+
+    int tabbar_h = chai_scaled(30);
+    chai_tabbar_h = tabbar_h;
+    int tab_widths[MAX_CHILDREN];
+    int tabbar_natural_w = chai_scaled(4);
+    if (tabbar) {
+        chai_apply_css(tabbar, 0);
+        for (int i = 0; i < tabbar->n_children; i++) {
+            Elem *tab = tabbar->children[i];
+            tab->active = (i == chai_current_tab);
+            chai_apply_css(tab, 0);
+            /* real measured width, not a guessed px/char - a mismatched
+             * guess vs. the font XftFontOpenName actually resolved was
+             * the root cause of overlapping/"jumbled" tab labels.
+             * chai_measure_text_px() already applies chai_font_scale internally,
+             * so this only needs to scale its own fixed padding/badge
+             * allowance, not the measured part. Measured in this own
+             * pre-pass (not while assigning x) so the window can grow to
+             * fit ALL tabs first - 15 tabs (au11-hq/rpg-maker-database.
+             * html's real count) don't fit the old fixed 900px default,
+             * and this app has no flex-wrap engine to fall back on. */
+            tab_widths[i] = chai_measure_text_px(&tab->style, tab->label) + chai_scaled(34); /* "[>NN]" badge + padding */
+            tabbar_natural_w += tab_widths[i] + 1;
+        }
+    }
+    window->w = window->style.has_width ? window->style.width : (tabbar_natural_w > default_w ? tabbar_natural_w : default_w);
+    window->h = content_total_h + chai_chrome_h;
+
+    chai_close_w = chai_scaled(56); chai_close_h = chai_chrome_h - chai_scaled(6); /* wide enough for "[>NN] x" - badge + label both now, see chai_draw_elem()'s own comment */
+    chai_close_x = window->w - chai_close_w - chai_scaled(4);
+    chai_close_y = chai_scaled(3);
+
+    if (tabbar) {
+        tabbar->x = 0; tabbar->y = chai_chrome_h; tabbar->w = window->w; tabbar->h = tabbar_h;
+        int tx = chai_scaled(4);
+        for (int i = 0; i < tabbar->n_children; i++) {
+            Elem *tab = tabbar->children[i];
+            tab->x = tx; tab->y = chai_chrome_h + chai_scaled(2); tab->w = tab_widths[i]; tab->h = tabbar_h - chai_scaled(4);
+            tx += tab_widths[i] + 1;
+        }
+    }
+
+    /* Settings affordance (see the static elems' own header comment):
+     * badge right-aligned in the tabbar row (room there - the 15 tab
+     * labels overflow the thin 280px column off the right edge, so the
+     * strip's own right end is always clear), Sound row in a reserved
+     * strip under the tabbar while open. The badge's style is set here
+     * too so chai_measure_text_px() sees the same font the draw path uses. */
+    css_style_init(&chai_settings_elem->style);
+    chai_settings_elem->style.has_bg_color = 1;
+    snprintf(chai_settings_elem->style.bg_color, sizeof(chai_settings_elem->style.bg_color), "#2f3238");
+    chai_settings_elem->style.has_border_color = 1;
+    chai_settings_elem->style.has_border_width = 1;
+    chai_settings_elem->style.border_width = 1;
+    chai_settings_elem->style.has_fg_color = 1;
+    snprintf(chai_settings_elem->style.fg_color, sizeof(chai_settings_elem->style.fg_color), "#eeeeee");
+    chai_settings_elem->style.has_font_family = 1;
+    snprintf(chai_settings_elem->style.font_family, sizeof(chai_settings_elem->style.font_family), "DejaVu Sans");
+    chai_settings_elem->style.has_font_size = 1;
+    chai_settings_elem->style.font_size = 10;
+    chai_settings_w = chai_measure_text_px(&chai_settings_elem->style, "Settings") + chai_scaled(30);
+    chai_settings_elem->x = window->w - chai_settings_w - chai_scaled(4);
+    chai_settings_elem->y = chai_chrome_h + chai_scaled(2);
+    chai_settings_elem->w = chai_settings_w;
+    chai_settings_elem->h = tabbar_h - chai_scaled(4);
+    snprintf(chai_settings_elem->id, sizeof(chai_settings_elem->id), "settingsbtn");
+    snprintf(chai_settings_elem->tag, sizeof(chai_settings_elem->tag), "settingsbtn");
+
+    int settings_strip_reserved = 0;
+    if (chai_settings_open) {
+        int strip_h = chai_scaled(26);
+        int strip_top = chai_chrome_h + tabbar_h + chai_scaled(2);
+        settings_strip_reserved = strip_h + chai_scaled(2);
+        css_style_init(&chai_settings_sound_elem->style);
+        chai_settings_sound_elem->style.has_bg_color = 1;
+        snprintf(chai_settings_sound_elem->style.bg_color, sizeof(chai_settings_sound_elem->style.bg_color), "#2f3238");
+        chai_settings_sound_elem->style.has_border_color = 1;
+        chai_settings_sound_elem->style.has_border_width = 1;
+        chai_settings_sound_elem->style.border_width = 1;
+        chai_settings_sound_elem->style.has_fg_color = 1;
+        snprintf(chai_settings_sound_elem->style.fg_color, sizeof(chai_settings_sound_elem->style.fg_color), "#eeeeee");
+        chai_settings_sound_elem->style.has_font_family = 1;
+        snprintf(chai_settings_sound_elem->style.font_family, sizeof(chai_settings_sound_elem->style.font_family), "DejaVu Sans");
+        chai_settings_sound_elem->style.has_font_size = 1;
+        chai_settings_sound_elem->style.font_size = 10;
+        chai_settings_sound_elem->x = chai_scaled(4);
+        chai_settings_sound_elem->y = strip_top;
+        chai_settings_sound_elem->w = window->w - chai_scaled(8);
+        chai_settings_sound_elem->h = strip_h;
+        snprintf(chai_settings_sound_elem->id, sizeof(chai_settings_sound_elem->id), "sound-toggle");
+        snprintf(chai_settings_sound_elem->tag, sizeof(chai_settings_sound_elem->tag), "button");
+    }
+
+    int content_y = chai_chrome_h + tabbar_h + settings_strip_reserved;
+    int content_h = content_total_h - tabbar_h - settings_strip_reserved;
+    /* REAL FIX 2026-08-15 (direct instruction: "sessions select can be
+     * very small thin on right side not left") - was 210px on the LEFT
+     * (matching open-hai's own sidebar, per this file's earlier "copy
+     * open-hai" convention); reversed per direct instruction. Feed is
+     * now the main LEFT body, sessions a thin strip on the window's own
+     * RIGHT edge (the window itself is already screen-right-anchored,
+     * see main()'s own window_x default - this is the right edge of
+     * THIS window, one level in from that). */
+    int sidebar_w = chai_scaled(90);
+
+    if (chai_current_tab != CHAI_COMMON_EVENTS_TAB) {
+        /* placeholder tabs: no sidebar/panel geometry needed, drawn as
+         * one centered message directly against the window in render_pass() */
+        return;
+    }
+
+    if (sidebar) {
+        /* REAL FIX 2026-08-15 (see chai_feed_dirty's own header comment) -
+         * only rebuild when the session list/active session actually
+         * changed (chai_switch_session()/chai_create_new_session()/chai_delete_session()
+         * set chai_sessions_dirty=1). Must still run BEFORE the panel block
+         * below on any frame where it DOES rebuild, so sessions claim
+         * the pool slots first - chai_n_elems_after_sessions is the
+         * checkpoint the panel block rewinds to for its own dirty case. */
+        if (chai_sessions_dirty) {
+            g_n_elems = chai_n_elems_static;
+            chai_inject_sessions(sidebar);
+            chai_n_elems_after_sessions = g_n_elems;
+            chai_sessions_dirty = 0;
+        }
+        chai_apply_css(sidebar, 0);
+        if (sidebar->style.has_width && !sidebar->style.width_is_pct) sidebar_w = sidebar->style.width;
+        /* REAL Stage 3 port (2026-08-16) - same clean §5.1b pattern #1
+         * as db-hq/events-hq's own sidebars: column stack, uniform
+         * padding, zero gap, fixed-height rows. Container gets its real
+         * full box (window's right edge, not a margin-shrunk one) so
+         * chai_draw_elem()'s background fill isn't left with a sliver, per
+         * the bug class caught twice in db-hq/events-hq's own tabbars. */
+        int item_h = chai_scaled(22);
+        sidebar->style.has_display = 1; sidebar->style.display_flex = 1;
+        sidebar->style.has_flex_direction = 1; sidebar->style.flex_row = 0;
+        sidebar->style.has_padding = 1; sidebar->style.padding = chai_scaled(4);
+        sidebar->style.has_gap = 1; sidebar->style.gap = 0;
+        for (int i = 0; i < sidebar->n_children; i++) {
+            Elem *item = sidebar->children[i];
+            chai_apply_css(item, 0);
+            item->h = item_h;
+        }
+        css_layout_pass(sidebar, window->w - sidebar_w, content_y, sidebar_w, content_h);
+    }
+
+    if (panel) {
+        chai_apply_css(panel, 0);
+        int margin = chai_scaled(8);
+        panel->x = margin; /* LEFT edge of the window now - was sidebar_w + margin when sidebar lived on the left */
+        panel->y = content_y + margin;
+        panel->w = window->w - sidebar_w - margin * 2;
+        chai_panel_w = panel->w;
+        panel->h = content_h - margin * 2;
+
+        /* REAL FIX 2026-08-15 (chat-hai-design.md "Real layout spec",
+         * ported from open-hai's real transcript_geom()/draw_composer()
+         * shape — khtpm_css_parser.c has no flex/box-model engine, see
+         * that file's own "unrecognized properties, ignored" comment,
+         * so chat-hai.css's flex-based bottom-pin was decorative
+         * fiction and this must be pixel-computed here instead):
+         * bottom-pinned control rows have a FIXED height computed
+         * FIRST, independent of feed content; the feed then gets
+         * exactly what's left above them. This is why the feed
+         * correctly shrinks around fixed controls instead of a
+         * control accidentally claiming the whole pane (the original,
+         * real bug — a message-only sidebar list plus an unbounded
+         * generic per-child stack in the panel with no fixed row
+         * heights read as "input takes up the entire vertical pane"). */
+        /* REAL FIX 2026-08-15 (direct report: "i didn't see 'thinking/
+         * typing' in view yet... why isn't it rendered?"): status used
+         * to share ONE row with both toggle-pause AND speed-toggle,
+         * reserving a fixed chai_scaled(174) for the two buttons - that math
+         * was written when the window was still ~900px wide (§ROUND 1
+         * of the screen-anchor fix). Once the window was narrowed to
+         * ~280px unscaled (per "thin and long"), panel->w shrank to
+         * ~218px real pixels - almost EXACTLY equal to that same fixed
+         * 174*1.25=218px reservation, leaving status_elem's box at
+         * effectively ZERO width. The typing indicator text was being
+         * composed into the label correctly (confirmed via frame-
+         * history's own typing= field) - it just had no visible box
+         * left to draw into. Real fix: status gets its OWN full-width
+         * row; toggle-pause + speed-toggle move to a SEPARATE row below
+         * it, side by side. */
+        int status_row_h = chai_scaled(20);
+        int button_row_h = chai_scaled(22);
+        int composer_row_h = chai_scaled(30);
+        int row_gap = chai_scaled(4);
+        int bottom_h = status_row_h + row_gap + button_row_h + row_gap + composer_row_h;
+        int feed_top = panel->y + chai_scaled(4);
+        int feed_h = panel->h - chai_scaled(4) - bottom_h;
+        if (feed_h < 0) feed_h = 0;
+        int item_h = chai_scaled(18);
+        int n_visible = item_h > 0 ? feed_h / item_h : 0;
+
+        /* REAL FIX 2026-08-15 (direct report: "typing... is really
+         * slow" -> "why were not just using the same layout renderer...
+         * merging both features?" - see chai_feed_dirty's own header
+         * comment for the full reasoning): only re-wrap/rebuild the
+         * feed when the underlying ledger content actually changed
+         * (chai_feed_dirty set by the main loop's ledger-mtime poll, and
+         * by chai_switch_session()/chai_send_composer()/chai_send_cli_prompt() after
+         * their own chai_load_ledger() calls) - not on every chai_redraw. A
+         * keystroke-only chai_redraw skips this entirely, reusing the
+         * already-wrapped Elems from the last real rebuild - this is
+         * the actual fix for the slow-typing report, not just the
+         * font-cache/pixel-unpack fixes from earlier this session
+         * (real, confirmed contributors, but not the dominant cost). */
+        if (chai_feed_dirty) {
+            g_n_elems = chai_n_elems_after_sessions;
+            chai_inject_panel_feed(panel, n_visible);
+            chai_feed_dirty = 0;
+        }
+
+        int iy = feed_top;
+        int bottom_y = panel->y + panel->h - bottom_h;
+        int button_row_y = bottom_y + status_row_h + row_gap;
+        /* two buttons in the control row (toggle-pause, speed-toggle) -
+         * the Sound toggle left for the top Settings area 2026-08-16
+         * (direct instruction: "not in chrome bar. there is room below
+         * it. above chat"), see the static settings elems' own header
+         * comment. Two equal cells, one gap between, margins both sides:
+         * 4 + cell + 4 + cell + 4. */
+        int cell_w = (panel->w - chai_scaled(12)) / 2;
+        for (int i = 0; i < panel->n_children; i++) {
+            Elem *c = panel->children[i];
+            chai_apply_css(c, 0);
+            if (strcmp(c->tag, "item") == 0) {
+                /* feed message row - stacked top-down, fills the space
+                 * ABOVE the fixed bottom controls (see bottom_h above),
+                 * never the reverse - this is the actual scrolling-feed
+                 * area chat-hai was missing entirely before this fix
+                 * (messages used to live in the sidebar instead, see
+                 * chai_inject_sessions()'s own header comment). */
+                c->x = panel->x + chai_scaled(4);
+                c->y = iy;
+                c->w = panel->w - chai_scaled(8);
+                c->h = item_h;
+                iy += item_h;
+                continue;
+            }
+            if (c == chai_status_elem) {
+                /* own full-width row now - see this block's own header
+                 * comment for why it was invisible before. */
+                c->x = panel->x + chai_scaled(4); c->y = bottom_y;
+                c->w = panel->w - chai_scaled(8); c->h = status_row_h;
+            } else if (c == chai_toggle_elem) {
+                c->x = panel->x + chai_scaled(4); c->y = button_row_y;
+                c->w = cell_w; c->h = button_row_h;
+            } else if (c == chai_speed_elem) {
+                /* REAL, working GUI speed control (direct instruction,
+                 * 2026-08-15: "can have an input in gui also" - for
+                 * chat_hai_config.pdl's sleep_between setting). Cycles
+                 * fixed presets (see chai_activate_elem()'s own "speed-
+                 * toggle" branch), writes chat_hai_config.pdl, which
+                 * chat_hai_loop.sh re-reads every round (see that
+                 * script's own sleep_between() function). */
+                c->x = panel->x + chai_scaled(4) + cell_w + chai_scaled(4); c->y = button_row_y;
+                c->w = cell_w; c->h = button_row_h;
+            } else if (c == chai_composer_text_elem) {
+                /* the real cli-io composer row, pinned to the true
+                 * bottom of the window - same "input anchored at the
+                 * bottom, everything else flows above it" contract
+                 * open-hai's own composer uses. Full row width
+                 * since the send button (direct instruction: "we dont
+                 * need a send button") is gone. */
+                c->x = panel->x + chai_scaled(4); c->y = bottom_y + status_row_h + row_gap + button_row_h + row_gap;
+                c->w = panel->w - chai_scaled(8); c->h = composer_row_h;
+            }
+        }
+    }
+}
+
+/* wraith-alpha-standard index nav (ops/wraith_parser_alpha.c's own
+ * digit_accum/do_jump/display_num convention, direct instruction: "wraith
+ * alpha should be a huge inspiration for this"): every interactive
+ * element gets a sequential 1-based number, assigned in the same order
+ * they're laid out (tabs, then - if Common Events is open - sidebar
+ * items, then panel buttons). Must run AFTER chai_layout_pass() so it walks
+ * exactly what's currently visible (placeholder tabs have no sidebar/
+ * panel children to number). */
+static void chai_assign_nav_indices(Elem *window) {
+    g_n_nav = 0;
+    /* Chrome close control is now LAST, not nav 1 (direct instruction,
+     * 2026-08-12: "u can give close button last nav index if that
+     * helps") - its "[>N]" badge is deliberately suppressed (see
+     * chai_draw_elem()'s own comment, too small a box to fit one), so
+     * defaulting focus there at launch left NO visible "[>N]" text
+     * anywhere on screen. Content tabs now start at nav 1, matching the
+     * taskbar/context menus always showing an obvious ">" on a real row
+     * immediately. */
+    Elem *tabbar = find_by_tag(window, "tabbar");
+    if (tabbar) {
+        for (int i = 0; i < tabbar->n_children && g_n_nav < MAX_ELEMS; i++) {
+            Elem *tab = tabbar->children[i];
+            tab->nav_index = ++g_n_nav;
+            g_nav[g_n_nav - 1] = tab;
+        }
+    }
+    if (chai_current_tab == CHAI_COMMON_EVENTS_TAB) {
+        Elem *sidebar = find_by_tag(window, "sidebar");
+        if (sidebar) {
+            for (int i = 0; i < sidebar->n_children && g_n_nav < MAX_ELEMS; i++) {
+                Elem *item = sidebar->children[i];
+                item->nav_index = ++g_n_nav;
+                g_nav[g_n_nav - 1] = item;
+            }
+        }
+        Elem *panel = find_by_tag(window, "panel");
+        if (panel) {
+            /* REAL FIX 2026-08-15 (direct report: "open chat user input
+             * is supposed to have nav [] and number so its relay and
+             * human index accessible. why did we deviate from these
+             * stds?") — this loop used to skip anything not tag
+             * "button", which silently dropped composer-text (tag
+             * "text") from ever getting a nav_index/[>]N badge, unlike
+             * open-hai's own composer which IS a numbered
+             * cli-io target. The blanket "buttons only" rule was
+             * copied from the events-hq/db-hq template this file
+             * started as (see this file's own header comment) where
+             * the panel really does only ever contain buttons - never
+             * updated when chat-hai's composer-text landed. Explicit
+             * allowlist now: buttons AND the composer field, nothing
+             * else (status text and feed message rows still correctly
+             * get no nav_index - they're not digit-jump targets). */
+            for (int i = 0; i < panel->n_children && g_n_nav < MAX_ELEMS; i++) {
+                Elem *c = panel->children[i];
+                int navigable = (strcmp(c->tag, "button") == 0) || (c == chai_composer_text_elem);
+                if (!navigable) { c->nav_index = 0; continue; }
+                c->nav_index = ++g_n_nav;
+                g_nav[g_n_nav - 1] = c;
+            }
+        }
+    }
+    /* Settings badge (+ its Sound row while the panel is open) come
+     * before Close, matching open-hai's own Settings-before-Close nav
+     * ordering - always reachable by digit even with the panel closed. */
+    if (g_n_nav < MAX_ELEMS) {
+        chai_settings_elem->nav_index = ++g_n_nav;
+        g_nav[g_n_nav - 1] = chai_settings_elem;
+    }
+    if (chai_settings_open && g_n_nav < MAX_ELEMS) {
+        chai_settings_sound_elem->nav_index = ++g_n_nav;
+        g_nav[g_n_nav - 1] = chai_settings_sound_elem;
+    }
+    if (g_n_nav < MAX_ELEMS) {
+        chai_close_elem->nav_index = ++g_n_nav;
+        g_nav[g_n_nav - 1] = chai_close_elem;
+    }
+    if (g_focus_nav < 1) g_focus_nav = 1;
+    if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
+}
+
+/* ---------- rendering ---------- */
+
+
+static unsigned long chai_alloc_pixel(const char *spec) {
+    if (!spec || !spec[0]) return BlackPixel(dpy, screen);
+    XColor c;
+    if (spec[0] == '#') {
+        if (XParseColor(dpy, cmap, spec, &c) && XAllocColor(dpy, cmap, &c)) return c.pixel;
+    } else if (XAllocNamedColor(dpy, cmap, spec, &c, &c)) {
+        return c.pixel;
+    }
+    return BlackPixel(dpy, screen);
+}
+
+static XftColor chai_xft_color(const char *spec) {
+    XftColor xc;
+    XRenderColor rc = {0, 0, 0, 0xffff};
+    if (spec && spec[0] == '#' && strlen(spec) >= 7) {
+        unsigned int r, g, b;
+        sscanf(spec + 1, "%02x%02x%02x", &r, &g, &b);
+        rc.red = (unsigned short)(r * 257); rc.green = (unsigned short)(g * 257); rc.blue = (unsigned short)(b * 257);
+    }
+    XftColorAllocValue(dpy, DefaultVisual(dpy, screen), cmap, &rc, &xc);
+    return xc;
+}
+
+/* REAL FIX 2026-08-15 (direct report: "its not as fast as open-hai" -
+ * checked open-hai's own font handling directly rather than guessing:
+ * it opens each font ONCE at startup into persistent globals
+ * (font_ui/font_small/font_mono) and reuses them for the app's entire
+ * lifetime - only 5 total XftFontOpenName calls in that whole file.
+ * chai_font_for() here used to open+close a font for EVERY drawn element,
+ * EVERY chai_redraw - with 40-80+ visible feed lines, that's 40-80+ open/
+ * close pairs per keystroke, on top of the wrap-path fix already
+ * landed this session. Small cache, same "keyed by spec string" shape
+ * as chai_measure_text_px()'s own fix - the caller no longer closes the
+ * returned font (see chai_draw_elem()'s own call site, XftFontClose removed
+ * there), matching open-hai's own "never close, just reuse" pattern. */
+static XftFont *chai_font_for(const CssStyle *st) {
+    char spec[128];
+    const char *fam = st->has_font_family ? st->font_family : "DejaVu Sans";
+    int size = chai_scaled(st->has_font_size ? st->font_size : 12);
+    snprintf(spec, sizeof(spec), "%s:pixelsize=%d%s", fam, size, (st->has_font_weight && st->font_weight_bold) ? ":bold" : "");
+
+    static char cached_spec[128] = "";
+    static XftFont *cached_font = NULL;
+    if (cached_font && strcmp(cached_spec, spec) == 0) return cached_font;
+    if (cached_font) XftFontClose(dpy, cached_font);
+    XftFont *f = XftFontOpenName(dpy, screen, spec);
+    if (!f) f = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=10");
+    cached_font = f;
+    snprintf(cached_spec, sizeof(cached_spec), "%s", spec);
+    return f;
+}
+
+static void chai_draw_elem(Elem *e, int hover_id_hash) {
+    (void)hover_id_hash;
+    if (e->style.has_bg_color) {
+        XSetForeground(dpy, gc, chai_alloc_pixel(e->style.bg_color));
+        XFillRectangle(dpy, buf, gc, e->x, e->y, e->w, e->h);
+    }
+    if (e->style.has_border_color) {
+        XSetForeground(dpy, gc, chai_alloc_pixel(e->style.border_color));
+        int bw = e->style.has_border_width ? e->style.border_width : 1;
+        for (int i = 0; i < bw; i++)
+            XDrawRectangle(dpy, buf, gc, e->x + i, e->y + i, e->w - 1 - 2 * i, e->h - 1 - 2 * i);
+    }
+    if (strcmp(e->tag, "tab") == 0 && e->active && !e->style.has_bg_color) {
+        XSetForeground(dpy, gc, chai_alloc_pixel("#ffffff"));
+        XFillRectangle(dpy, buf, gc, e->x, e->y, e->w, e->h);
+    }
+    /* REAL BUG FOUND + DISABLED 2026-08-15 (direct report: "why is last
+     * chat highlighted? i cant read it. get rid of that for now") - the
+     * newest ledger line auto-becomes chai_selected_event on every load
+     * (see chai_load_ledger()'s own callers), which set item->active=1 on
+     * that message's Elem(s), which painted this LIGHT BLUE (#cce5ff)
+     * background behind it - but feed message text color comes from
+     * per-speaker CSS classes (chat-hai.css's .data-item.<speaker>
+     * rules), all light/pastel colors chosen to read against the app's
+     * DARK background (#16181f/#1e2130). Light pastel text on a light
+     * blue highlight = unreadable, every single time (always the newest
+     * message, since that's what auto-selects). Disabled per direct
+     * instruction rather than reworked - a real "selected message" UI
+     * (if wanted later) needs a per-speaker-aware contrast choice, not
+     * a single fixed highlight color; not in scope right now. */
+    /* wraith-alpha-standard focus ring: the currently-focused navigable
+     * element gets a highlighted outline, matching wraith_parser_alpha.c's
+     * "[>]" focus prefix convention (adapted to a visible box here since
+     * this is a graphical renderer, not the text-grid wraith-alpha draws
+     * into). */
+    if (e->nav_index > 0 && e->nav_index == g_focus_nav) {
+        XSetForeground(dpy, gc, chai_alloc_pixel("#ff8c00"));
+        XDrawRectangle(dpy, buf, gc, e->x - 1, e->y - 1, e->w + 1, e->h + 1);
+    }
+    int pad = e->style.has_padding ? e->style.padding : 4;
+    int label_x = e->x + pad;
+    /* nav-index badge: bracket-wrapped, moving ">" focus marker - matches
+     * the taskbar/toolbar's own convention (khtpm_taskbar_manager.c's
+     * hq_focus highlight; wraith_parser_alpha.c's "[>]"/"[ ]" prefix
+     * this whole nav system was ported from). "[>3]" when focused,
+     * "[ 3]" otherwise, in its own small muted font so it reads as a
+     * toolbar index badge, not run into the label's own text. */
+    /* Direct correction 2026-08-12 ("x close isn't getting a number...
+     * everything gets a number") - the close button used to be
+     * special-cased out of the badge (its box was too small and the
+     * badge pushed the label off-screen, see the earlier "off screen to
+     * the right" fix). Real fix is a wider box (chai_close_w, see
+     * chai_layout_pass()) and a shorter label ("x" not "[x]", since the
+     * badge itself now supplies the brackets) instead of an exception -
+     * every nav item gets a number, no special cases. */
+    if (e->nav_index > 0) {
+        char badge[16];
+        int focused = (e->nav_index == g_focus_nav);
+        /* REAL FIX 2026-08-12, direct correction ("db-hq and hai are
+         * using nav index in not quite the std the std is [].<#> not
+         * [<#>]"): verified against the actual real reference
+         * (1.TPMOS_c_+rmmp.0103.0001/projects/wraith-alpha/ops/
+         * wraith_parser_alpha.c ~line 2221-2224/2283) - the bracket
+         * holds ONLY the state glyph (`[^]`/`[>]`/`[]`/`[ ]`), the
+         * number is a SEPARATE suffix drawn after the closing bracket
+         * with a trailing period (`pref + "%d." `, e.g. `[>]1.`), NOT
+         * embedded inside the brackets as `[>1]`. This was wrong
+         * everywhere in this house's own khtpm/-hq family until now -
+         * see !.HOUSE_STDS.md #22's own correction for why this must
+         * not drift back. */
+        /* "^" activation glyph (2026-08-16, see chai_require_cli_activation's
+         * own header comment): the composer specifically shows "^" once
+         * activated, matching legacy chtpm_parser.c's cli-io convention
+         * ("the selector will need to be '^' activated") - every other
+         * navigable element keeps the plain "[>]" wraith-alpha focus
+         * marker unchanged. */
+        char state_ch = ' ';
+        if (focused) state_ch = (e == chai_composer_text_elem && chai_composer_activated) ? '^' : '>';
+        snprintf(badge, sizeof(badge), "[%c]%d.", state_ch, e->nav_index);
+        char numspec[48];
+        snprintf(numspec, sizeof(numspec), "DejaVu Sans Mono:pixelsize=%d", chai_scaled(9));
+        XftFont *numfont = XftFontOpenName(dpy, screen, numspec);
+        if (!numfont) { snprintf(numspec, sizeof(numspec), "DejaVu Sans:pixelsize=%d", chai_scaled(9)); numfont = XftFontOpenName(dpy, screen, numspec); }
+        XftColor numcol = chai_xft_color(focused ? "#ff8c00" : "#9a9a9a");
+        XGlyphInfo numext;
+        XftTextExtentsUtf8(dpy, numfont, (const FcChar8 *)badge, (int)strlen(badge), &numext);
+        int numy = e->y + (e->h + numfont->ascent - numfont->descent) / 2;
+        XftDrawStringUtf8(xftdraw_buf, &numcol, numfont, label_x, numy, (const FcChar8 *)badge, (int)strlen(badge));
+        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &numcol);
+        label_x += numext.width + 5;
+        XftFontClose(dpy, numfont);
+    }
+    if (e->label[0]) {
+        /* REAL FIX 2026-08-16 (truncation report: "text is sometimes
+         * getting forward truncated, recolored"): clip Xft drawing to
+         * the element's bounding box so overflow text (from any cause)
+         * is hidden rather than bleeding across neighboring elements.
+         * Without this, text that exceeds e->w draws unclipped across
+         * the sidebar or past the window edge — appearing "recolored"
+         * when it hits a different background. */
+        Region label_clip = XCreateRegion();
+        XRectangle label_rect = { (short)e->x, (short)e->y, (unsigned short)e->w, (unsigned short)e->h };
+        XUnionRectWithRegion(&label_rect, label_clip, label_clip);
+        XftDrawSetClip(xftdraw_buf, label_clip);
+        XDestroyRegion(label_clip);
+        /* chai_font_for() returns a CACHED, shared font now (see its own
+         * header comment) - do not close it here, closing would
+         * invalidate the cache for every other element drawn this same
+         * frame, undoing the whole fix. */
+        XftFont *font = chai_font_for(&e->style);
+        XftColor col = chai_xft_color(e->style.has_fg_color ? e->style.fg_color : "#000000");
+        XGlyphInfo extents;
+        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)e->label, (int)strlen(e->label), &extents);
+        int ty = e->y + (e->h + font->ascent - font->descent) / 2;
+        if (ty < e->y + font->ascent) ty = e->y + font->ascent + pad / 2;
+        XftDrawStringUtf8(xftdraw_buf, &col, font, label_x, ty, (const FcChar8 *)e->label, (int)strlen(e->label));
+        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
+        XftDrawSetClip(xftdraw_buf, NULL); /* reset — other elements draw unclipped */
+    }
+}
+
+/* absolute-positioned children (the floating block-title) are painted in
+ * a later pass than their parent, per the design doc's own suggested
+ * approach - this walk draws non-title children first, titles last. */
+static void chai_render_tree(Elem *e, int depth) {
+    if (depth == 0) chai_draw_elem(e, 0);
+    for (int i = 0; i < e->n_children; i++) {
+        Elem *c = e->children[i];
+        if (strcmp(c->tag, "title") == 0) continue; /* deferred */
+        if (strcmp(c->tag, "module") == 0) continue; /* pure config, never visual - see apply_attr()'s src= comment */
+        chai_draw_elem(c, 0);
+        chai_render_tree(c, depth + 1);
+    }
+    for (int i = 0; i < e->n_children; i++) {
+        Elem *c = e->children[i];
+        if (strcmp(c->tag, "title") == 0) chai_draw_elem(c, 0);
+    }
+}
+
+static void chai_render_placeholder_tab(Elem *window) {
+    char pspec[48];
+    snprintf(pspec, sizeof(pspec), "DejaVu Sans:pixelsize=%d", chai_scaled(12));
+    XftFont *font = XftFontOpenName(dpy, screen, pspec);
+    XftColor col = chai_xft_color("#888888");
+    char msg[64];
+    snprintf(msg, sizeof(msg), "%s — (coming soon)", CHAI_TAB_LABELS[chai_current_tab]);
+    XGlyphInfo extents;
+    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)msg, (int)strlen(msg), &extents);
+    int tx = (window->w - extents.width) / 2;
+    int ty = window->h / 2;
+    XftDrawStringUtf8(xftdraw_buf, &col, font, tx, ty, (const FcChar8 *)msg, (int)strlen(msg));
+    XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
+    XftFontClose(dpy, font);
+}
+
+/* Real, documented bug class (!.HOUSE_STDS.md F-19): under this house's
+ * Mutter/XWayland environment, a brand-new override_redirect window does
+ * NOT reliably receive real keyboard input on bare mapping alone -
+ * XGetInputFocus can report success while KeyPress events never arrive.
+ * This is almost certainly why arrows/digit-jump looked broken (direct
+ * report: "doesn't have > focus arrow move or digit jump yet") despite
+ * chai_handle_key()'s own logic being correct and already proven working
+ * through the relay (which bypasses X input focus entirely, so it never
+ * hit this). Fix is the SAME proven raise-then-focus-then-flush sequence
+ * already used by khtpm_strip_parser.c's taskbar_soft_focus() - ported,
+ * not reinvented, per that bug report's own explicit standard ("don't
+ * invent a fresh focus mechanism without first checking whether an
+ * already-proven pattern solves it").
+ *
+ * DIAGNOSTIC (also ported, khtpm_strip_parser.c's own chai_has_real_focus):
+ * XSetInputFocus() is a REQUEST, not a guarantee - this tracks whether
+ * the window ACTUALLY has focus right now via real FocusIn/FocusOut
+ * events, the only authoritative source. If this never goes true despite
+ * chai_soft_focus() being called, KeyPress events genuinely never reach this
+ * process - a different, deeper problem than db-hq's own key-handling
+ * logic (which is separately already proven correct via the relay). */
+static int chai_has_real_focus = 0;
+
+static void chai_soft_focus(void) {
+    XRaiseWindow(dpy, win);
+    XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
+    XFlush(dpy);
+}
+
+/* Real fix (found live, 2026-08-12): a grab taken ONCE at startup isn't
+ * enough for a long-lived window - a fresh FocusIn immediately followed
+ * by FocusOut appeared after a genuine physical click, meaning the grab
+ * had already been lost/preempted sometime after launch with nothing to
+ * recover it. tp_desktop_window.c's popups never hit this because
+ * they're short-lived and re-created (thus re-grabbed) fresh every time
+ * one opens - db-hq is one persistent window across its whole session,
+ * so it must re-request the grab on every interaction instead, not just
+ * once. Keyboard-only (see the call site's own note on why not
+ * XGrabPointer too). */
+static void chai_grab_keyboard_retry(void) {
+    for (int attempt = 0; attempt < 5; attempt++) {
+        int rc = XGrabKeyboard(dpy, win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+        if (rc == GrabSuccess) break;
+        XSync(dpy, False);
+        usleep(5000);
+    }
+}
+
+static Elem *g_window;
+
+/* RGB compose→present refactor (2026-08-12, direct instruction: "we
+ * should do db to rgb refactor. the need being auditability"). Proven
+ * first on a throwaway test binary (!.khtpm-rgb-refactor.md's own
+ * "Phase 0" - compose buffer vs. presented-window readback confirmed
+ * BYTE-IDENTICAL two independent ways before trusting this pattern on
+ * real code). `chai_redraw()` composes into `buf` (the offscreen Pixmap) via
+ * Xft/Xlib, then presents via `XGetImage`+`XPutImage` (proven
+ * pixel-identical to the old `XCopyArea` path in Phase 0).
+ *
+ * REAL FIX 2026-08-15 (direct report: "typing... is really slow" -
+ * see chai_dump_frame_png()'s own header comment for the full story): this
+ * used to ALSO keep a persistent `g_frame_rgb` byte-buffer copy,
+ * rebuilt via a per-pixel `XGetPixel` loop on EVERY chai_redraw (every
+ * keystroke) so `chai_dump_frame_png()` could write it out without its own
+ * capture. That per-pixel unpacking is real, non-trivial cost paid on
+ * the hot path for a feature (debug PNG dump) only used occasionally -
+ * removed from here; `chai_dump_frame_png()` now does its own on-demand
+ * capture+unpack instead, matching open-hai's own real, proven-fast
+ * `chai_dump_frame_png()` shape (checked directly, not assumed). */
+
+/* debug PNG dump - see the header comment above the stb_image_write.h
+ * include. RGB refactor (2026-08-12): writes the single persistent
+ * `g_frame_rgb` buffer chai_redraw() already derived for the real on-screen
+ * present - no separate XGetImage capture of its own anymore. This IS
+ * the auditability point of the refactor: what gets dumped is
+ * byte-for-byte the same buffer that was actually presented, not a
+ * fresh, possibly-different second capture. Bound to 'p' - not part of
+ * the normal render loop, purely an on-demand debug aid. */
+/* REAL FIX 2026-08-15 (direct report: "typing... is really slow", then
+ * confirmed "still slower than expected" even after the font-cache fix
+ * - direct question: "how does the openhai application achieve normal
+ * input latency... since the 2 are very similar" - real answer found by
+ * checking khtpm_open_hai_render.c directly, not assumed): chai_redraw() used
+ * to unconditionally rebuild a full RGB byte buffer (g_frame_rgb) via
+ * XGetPixel() in a per-pixel double loop, EVERY SINGLE REDRAW - every
+ * keystroke calls chai_redraw() (chai_handle_key()'s printable-char branch).
+ * XGetPixel is a real, non-trivial per-call cost (function-call
+ * overhead, no batch access) - for a ~350x1500px window that's ~500k
+ * XGetPixel calls on every keypress. open-hai's own real chai_redraw() does
+ * NOT do this - it only does XGetImage->XPutImage->XDestroyImage (cheap,
+ * no per-pixel unpacking) every frame, and reserves the expensive
+ * per-pixel unpack for its OWN chai_dump_frame_png() - called on-demand
+ * (the 'p' debug key), never on the hot path. Fixed to match: chai_dump_frame_png()
+ * now does its own FRESH on-demand XGetImage + unpack here, instead of
+ * reading a cache chai_redraw() no longer maintains. g_frame_rgb/g_frame_w/
+ * g_frame_h are gone - this function is now self-contained, matching
+ * open-hai's own chai_dump_frame_png() shape exactly. */
+static void chai_dump_frame_png(void) {
+    int w = g_window->w, h = g_window->h;
+    XImage *img = XGetImage(dpy, buf, 0, 0, (unsigned)w, (unsigned)h, AllPlanes, ZPixmap);
+    if (!img) { fprintf(stderr, "chat-hai: chai_dump_frame_png: XGetImage failed\n"); return; }
+    unsigned char *rgb = malloc((size_t)w * h * 3);
+    if (!rgb) { XDestroyImage(img); fprintf(stderr, "chat-hai: chai_dump_frame_png: malloc failed\n"); return; }
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            unsigned long px = XGetPixel(img, x, y);
+            size_t o = ((size_t)y * w + x) * 3;
+            rgb[o] = (unsigned char)((px >> 16) & 0xff);
+            rgb[o + 1] = (unsigned char)((px >> 8) & 0xff);
+            rgb[o + 2] = (unsigned char)(px & 0xff);
+        }
+    }
+    XDestroyImage(img);
+    int ok = stbi_write_png("/tmp/chat-hai-frame.png", w, h, 3, rgb, w * 3);
+    free(rgb);
+    /* Receipt: plain key=value for agents that can't see images.
+     * Format: same as ai-cell's receipt per testing guide. */
+    {
+        FILE *r = fopen("/tmp/chat-hai-frame.png.receipt.txt", "w");
+        if (r) {
+            time_t now = time(NULL);
+            char ts[32]; strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", localtime(&now));
+            fprintf(r, "ok=%d\n", ok);
+            fprintf(r, "w=%d\nh=%d\n", w, h);
+            fprintf(r, "timestamp=%s\n", ts);
+            fprintf(r, "font_scale=%.2f\n", chai_font_scale);
+            fprintf(r, "feed_font_css=%d\n", chai_feed_font_css);
+            fprintf(r, "feed_font_rendered=%d (=font_css * font_scale)\n", (int)(chai_feed_font_css * chai_font_scale));
+            fprintf(r, "panel_w=%d\n", chai_panel_w);
+            fprintf(r, "wrap_w=%d\n", chai_wrap_w);
+            fprintf(r, "chrome_h=%d\n", chai_chrome_h);
+            fprintf(r, "tabbar_h=%d (base=30)\n", chai_tabbar_h);
+            fprintf(r, "settings_open=%d\n", chai_settings_open);
+            fprintf(r, "sound_on=%d\n", chai_sound_on);
+            fprintf(r, "n_events=%d\n", chai_n_events);
+            fprintf(r, "n_sessions=%d\n", chai_n_sessions);
+            fprintf(r, "active_session=%s\n", chai_active_session[0] ? chai_active_session : "-");
+            fprintf(r, "n_nav=%d\n", g_n_nav);
+            fprintf(r, "focus_nav=%d\n", g_focus_nav);
+            fprintf(r, "paused=%d\n", chai_paused);
+            fprintf(r, "win_x=%d\nwin_y=%d\n", chai_win_x, chai_win_y);
+            /* First 3 feed items' geometry — lets agents verify per-element
+             * positioning and clip math without needing to see the image. */
+            Elem *panel_dbg = g_window ? find_by_tag(g_window, "panel") : NULL;
+            if (panel_dbg) {
+                int fcount = 0;
+                for (int i = 0; i < panel_dbg->n_children && fcount < 3; i++) {
+                    Elem *c = panel_dbg->children[i];
+                    if (strcmp(c->tag, "item") != 0) continue;
+                    int my_pad = c->style.has_padding ? c->style.padding : 4;
+                    fprintf(r, "feed[%d]: x=%d w=%d h=%d pad=%d label_x=%d nav=%d label=%.40s\n",
+                            fcount, c->x, c->w, c->h, my_pad, c->x + my_pad, c->nav_index, c->label);
+                    fcount++;
+                }
+            }
+            fclose(r);
+        }
+    }
+    fprintf(stderr, ok ? "chat-hai: wrote /tmp/chat-hai-frame.png (%dx%d)\n" : "chat-hai: chai_dump_frame_png: write failed\n", w, h);
+}
+
+/* Own chrome bar (title + close) - see chai_layout_pass()'s CHROME_H comment
+ * for the wraith-alpha precedent. Drawn unconditionally, every chai_redraw,
+ * regardless of which tab is open - matches wraith-alpha's own chrome
+ * row staying fixed while body content underneath changes. */
+static void chai_draw_chrome_bar(void) {
+    XSetForeground(dpy, gc, chai_alloc_pixel("#2b2b2b"));
+    XFillRectangle(dpy, buf, gc, 0, 0, g_window->w, chai_chrome_h);
+
+    char tspec[48];
+    snprintf(tspec, sizeof(tspec), "DejaVu Sans:pixelsize=%d:bold", chai_scaled(10));
+    XftFont *titlefont = XftFontOpenName(dpy, screen, tspec);
+    if (!titlefont) { snprintf(tspec, sizeof(tspec), "DejaVu Sans:pixelsize=%d", chai_scaled(10)); titlefont = XftFontOpenName(dpy, screen, tspec); }
+    XftColor titlecol = chai_xft_color("#eeeeee");
+    /* legacy taskbar's own "^" convention (direct instruction 2026-08-12:
+     * "legacy toolbar had a '^' indicator near digits, i noticed we lost
+     * that but we could add it here" / "'^' indicating window had
+     * focus") - real, ground-truth chai_has_real_focus (set only by an
+     * actual FocusIn event, "the only authoritative source" per
+     * khtpm_strip_parser.c's own F-19 diagnostic this was ported from),
+     * not a guess or a request-was-sent flag. */
+    char title[16];
+    snprintf(title, sizeof(title), "chat-hai %s", chai_has_real_focus ? "^" : " ");
+    int ty = (chai_chrome_h + titlefont->ascent - titlefont->descent) / 2;
+    XftDrawStringUtf8(xftdraw_buf, &titlecol, titlefont, chai_scaled(8), ty, (const FcChar8 *)title, (int)strlen(title));
+    XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &titlecol);
+    XftFontClose(dpy, titlefont);
+
+    chai_close_elem->x = chai_close_x; chai_close_elem->y = chai_close_y;
+    chai_close_elem->w = chai_close_w; chai_close_elem->h = chai_close_h;
+    snprintf(chai_close_elem->label, sizeof(chai_close_elem->label), "x");
+    css_style_init(&chai_close_elem->style);
+    chai_close_elem->style.has_border_color = 1;
+    snprintf(chai_close_elem->style.border_color, sizeof(chai_close_elem->style.border_color), "%s",
+             chai_close_elem->nav_index == g_focus_nav ? "#ff8c00" : "#888888");
+    chai_close_elem->style.has_border_width = 1; chai_close_elem->style.border_width = 1;
+    chai_close_elem->style.has_fg_color = 1;
+    snprintf(chai_close_elem->style.fg_color, sizeof(chai_close_elem->style.fg_color), "#eeeeee");
+    chai_draw_elem(chai_close_elem, 0);
+
+    /* Debug status line, direct request 2026-08-12 ("we could show
+     * digits in header like tb") - shows the last raw key this PROCESS
+     * actually received and the current digit accumulator, live, so
+     * it's visually obvious (not just in a log file) whether a real
+     * keypress ever reaches this window at all vs. reaches it but
+     * doesn't visibly move focus for some other reason - two very
+     * different bugs that look identical from the outside otherwise. */
+    char dbg[96];
+    snprintf(dbg, sizeof(dbg), "Key:%s  Digits:%d  Focus:%d/%d  RealFocus:%s",
+             chai_last_key_label[0] ? chai_last_key_label : "(none yet)",
+             chai_digit_accum, g_focus_nav, g_n_nav, chai_has_real_focus ? "yes" : "no");
+    char dspec[48];
+    snprintf(dspec, sizeof(dspec), "DejaVu Sans:pixelsize=%d", chai_scaled(9));
+    XftFont *dfont = XftFontOpenName(dpy, screen, dspec);
+    if (dfont) {
+        XftColor dcol = chai_xft_color("#88cc88");
+        XGlyphInfo dext;
+        XftTextExtentsUtf8(dpy, dfont, (const FcChar8 *)dbg, (int)strlen(dbg), &dext);
+        int dx = g_window->w - chai_close_w - chai_scaled(12) - dext.width;
+        int dy = (chai_chrome_h + dfont->ascent - dfont->descent) / 2;
+        XftDrawStringUtf8(xftdraw_buf, &dcol, dfont, dx, dy, (const FcChar8 *)dbg, (int)strlen(dbg));
+        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &dcol);
+        XftFontClose(dpy, dfont);
+    }
+}
+
+/* Top Settings area (see the static elems' own header comment): the
+ * Settings badge in the tabbar row, and - while open - the Sound row in
+ * the reserved strip under the tabbar. Both are static/synthetic like
+ * chai_close_elem, so they're drawn here AFTER chai_render_tree() (which only
+ * walks the parsed window tree) and hit-tested in chai_handle_click() before
+ * the tree walk. The focused/open border uses the same "#ff8c00" the
+ * focus ring uses. */
+static void chai_draw_settings_bar(void) {
+    snprintf(chai_settings_elem->style.border_color, sizeof(chai_settings_elem->style.border_color), "%s",
+             (chai_settings_open || chai_settings_elem->nav_index == g_focus_nav) ? "#ff8c00" : "#666666");
+    snprintf(chai_settings_elem->label, sizeof(chai_settings_elem->label), "Settings");
+    chai_draw_elem(chai_settings_elem, 0);
+    if (chai_settings_open) {
+        snprintf(chai_settings_sound_elem->style.border_color, sizeof(chai_settings_sound_elem->style.border_color), "%s",
+                 chai_settings_sound_elem->nav_index == g_focus_nav ? "#ff8c00" : "#666666");
+        snprintf(chai_settings_sound_elem->label, sizeof(chai_settings_sound_elem->label), "Sound: %s",
+                 chai_sound_on ? "on" : "off");
+        chai_draw_elem(chai_settings_sound_elem, 0);
+    }
+}
+
+/* REAL FIX 2026-08-15 (direct instruction: "you should check it with
+ * injection and framehistory.txt (we dont need a png dump to see if
+ * frames are updating from chat)") — matches the exact convention
+ * khtpm_strip_parser.c already uses for the taskbar
+ * (#.desktop/khtpm_strip_frame_history.txt): one text line appended
+ * per chai_redraw(), so an agent (or a human) can `tail -f` real state
+ * (event count, active session, paused flag, last message) without
+ * ever needing a screenshot. This is genuinely faster to verify against
+ * than a PNG dump for anything that's really a DATA question ("is the
+ * feed updating") rather than a real LAYOUT question ("does it look
+ * right") - use this for the former, PNG dumps for the latter. */
+static void chai_append_frame_history(void) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/chat_hai_frame_history.txt", g_house_root);
+    FILE *f = fopen(path, "a");
+    if (!f) return;
+    const char *last = chai_n_events > 0 ? chai_events[chai_n_events - 1] : "";
+    char last_short[80];
+    snprintf(last_short, sizeof(last_short), "%.60s", last);
+    fprintf(f, "session=%s n_events=%d paused=%d typing=%s focus_nav=%d/%d sound=%d settings=%d win_x=%d win_y=%d win_w=%d win_h=%d last=\"%s\"\n",
+            chai_active_session, chai_n_events, chai_paused, chai_typing_name[0] ? chai_typing_name : "-", g_focus_nav, g_n_nav, chai_sound_on,
+            chai_settings_open, chai_win_x, chai_win_y,
+            g_window ? g_window->w : 0, g_window ? g_window->h : 0, last_short);
+    fclose(f);
+}
+
+static void chai_redraw(void) {
+    chai_layout_pass(g_window);
+    chai_assign_nav_indices(g_window);
+    XSetForeground(dpy, gc, chai_alloc_pixel(g_window->style.has_bg_color ? g_window->style.bg_color : "#ececec"));
+    XFillRectangle(dpy, buf, gc, 0, 0, g_window->w, g_window->h);
+    if (chai_current_tab != CHAI_COMMON_EVENTS_TAB) {
+        Elem *tabbar = find_by_tag(g_window, "tabbar");
+        if (tabbar) { chai_draw_elem(tabbar, 0); chai_render_tree(tabbar, 1); }
+        chai_render_placeholder_tab(g_window);
+    } else {
+        chai_render_tree(g_window, 0);
+    }
+    chai_draw_chrome_bar();
+    chai_draw_settings_bar();
+
+    /* REAL FIX 2026-08-15 (see chai_dump_frame_png()'s own header comment for
+     * the full story - this used to also rebuild a full RGB byte buffer
+     * here via a per-pixel XGetPixel loop, on EVERY chai_redraw/keystroke;
+     * that unpacking now only happens on-demand inside chai_dump_frame_png()
+     * itself, matching open-hai's real, proven-fast chai_redraw() shape:
+     * present via XGetImage->XPutImage only, no per-pixel unpacking on
+     * the hot path). */
+    XSync(dpy, False);
+    int w = g_window->w, h = g_window->h;
+    XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)w, (unsigned)h, AllPlanes, ZPixmap);
+    if (frame) {
+        XPutImage(dpy, win, gc, frame, 0, 0, 0, 0, (unsigned)w, (unsigned)h);
+        XDestroyImage(frame);
+    } else {
+        /* fall back to the old direct blit if XGetImage ever fails, so
+         * a capture problem degrades to "no audit buffer this frame,"
+         * never "no picture at all." */
+        XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)w, (unsigned)h, 0, 0);
+    }
+    XFlush(dpy);
+    chai_append_frame_history();
+}
+
+/* ---------- hit testing / click dispatch ---------- */
+
+/* hit_test() now comes from khtpm_render_core.h (Stage 2a, 2026-08-16). */
+
+/* Composer: the user's jump-in line. Typed chars accumulate here (the
+ * panel <text id="composer-text"> mirrors it); Enter appends the line to
+ * the master-ledger formula and the next persona turn answers it. */
+#define CHAI_COMPOSER_BUF 128
+static char chai_composer[CHAI_COMPOSER_BUF] = "";
+static int chai_composer_len = 0;
+
+static void chai_composer_sync(void) {
+    /* REAL FIX 2026-08-15: was find_by_tag(g_window, "text"), which
+     * matches the FIRST "text"-tagged element in document order — that's
+     * "status", not "composer-text" (both share tag "text"). This
+     * silently mutated the status line instead of the composer every
+     * keystroke. See find_by_id()'s own header comment. */
+    if (chai_composer_text_elem) snprintf(chai_composer_text_elem->label, sizeof(chai_composer_text_elem->label), "> %s_", chai_composer);
+}
+
+static void chai_send_composer(void) {
+    while (chai_composer_len > 0 && chai_composer[chai_composer_len - 1] == ' ') chai_composer_len--;
+    chai_composer[chai_composer_len] = '\0';
+    if (chai_composer_len == 0) { chai_composer_sync(); chai_redraw(); return; }
+    char t[32];
+    time_t now = time(NULL);
+    struct tm *tmv = localtime(&now);
+    strftime(t, sizeof(t), "%Y-%m-%d %H:%M:%S", tmv);
+    char ledger[PATH_BUF];
+    chai_session_ledger_path(ledger, sizeof(ledger), chai_active_session);
+    FILE *f = fopen(ledger, "a");
+    if (f) {
+        fprintf(f, "[%s] user: %s | Trigger: chat-hai\n", t, chai_composer);
+        fclose(f);
+    }
+    chai_composer_len = 0;
+    chai_composer[0] = '\0';
+    chai_load_ledger();
+    if (chai_n_events > 0) chai_selected_event = chai_n_events - 1;
+    /* Feed re-injection happens inside chai_layout_pass() (called by chai_redraw()
+     * below), from the current chai_events/chai_n_events just reloaded above -
+     * but ONLY when chai_feed_dirty is set (see that flag's own header
+     * comment, real fix 2026-08-15 for the slow-typing report) - must
+     * set it explicitly here since new content just really did arrive. */
+    chai_feed_dirty = 1;
+    chai_composer_sync();
+    chai_redraw();
+}
+
+/* PRE-EXISTING BUG FOUND 2026-08-15: chai_send_cli_prompt() referenced an
+ * undeclared chai_cli_prompts[] and is never called from anywhere in this
+ * file - the binary running earlier this session was stale (built
+ * before this dead code landed, never rebuilt since; see
+ * chat-hai-design.md's own layout-fix section for the same "always
+ * fully rebuild+restart" lesson). Declaring the missing array (all
+ * unset for now) is the minimal fix to make this compile again; wiring
+ * real cli-io quick-prompts (digits 1-9, like open-hai's own
+ * numbered-shortcut composer) is unstarted, separate future work. */
+static const char *chai_cli_prompts[10] = {0};
+
+static void chai_send_cli_prompt(int digit) {
+    if (digit < 1 || digit > 9 || !chai_cli_prompts[digit]) return;
+    char t[32];
+    time_t now = time(NULL);
+    struct tm *tmv = localtime(&now);
+    strftime(t, sizeof(t), "%Y-%m-%d %H:%M:%S", tmv);
+    char ledger[PATH_BUF];
+    chai_session_ledger_path(ledger, sizeof(ledger), chai_active_session);
+    FILE *f = fopen(ledger, "a");
+    if (f) {
+        fprintf(f, "[%s] user: <%d> %s | Trigger: chat-hai\n", t, digit, chai_cli_prompts[digit]);
+        fclose(f);
+    }
+    chai_load_ledger();
+    if (chai_n_events > 0) chai_selected_event = chai_n_events - 1;
+    chai_feed_dirty = 1; /* see that flag's own header comment */
+    chai_redraw();
+}
+
+/* shared dispatch for both mouse clicks and keyboard index-activation
+ * (Enter on the focused nav_index) - wraith-alpha's own convention is
+ * that a numbered element behaves identically whichever input method
+ * reaches it. */
+/* ---------- chat_hai_config.pdl write (2026-08-16) ----------
+ * ONE writer for the whole .pdl, shared by the speed-toggle and
+ * sound-toggle GUI buttons - every click must preserve the other keys
+ * (window geometry, require_cli_activation, sound_on, sleep_between).
+ * chat_hai_loop.sh re-reads the file every round, so a click here goes
+ * live without any restart (same contract as sleep_between()). */
+static void chai_write_chat_hai_cfg(int sleep_secs, int sound) {
+    char cfg_path[PATH_BUF];
+    snprintf(cfg_path, sizeof(cfg_path), "%s/&.hq-apps/chat-hai/chat_hai_config.pdl", g_house_root);
+    FILE *wf = fopen(cfg_path, "w");
+    if (!wf) return;
+    fprintf(wf,
+        "# chat_hai_config.pdl - live-edited by the GUI buttons (chat_hai_hq_render.c)\n"
+        "SECTION | sleep_between | %d\n"
+        "SECTION | window_width | %d\n"
+        "SECTION | window_bottom_margin | %d\n"
+        "SECTION | window_right_margin | %d\n"
+        "SECTION | window_top_offset | %d\n"
+        "SECTION | require_cli_activation | %d\n"
+        "SECTION | sound_on | %d\n",
+        sleep_secs, chai_cfg_window_width, chai_cfg_bottom_margin, chai_cfg_right_margin,
+        chai_cfg_top_offset, chai_require_cli_activation, sound);
+    fclose(wf);
+}
+
+static void chai_activate_elem(Elem *hit) {
+    if (!hit) return;
+    /* Activating anything that ISN'T the Settings affordance closes the
+     * open panel first (same contract as open-hai's own Settings:
+     * non-settings activation dismisses it). */
+    if (chai_settings_open && hit != chai_settings_elem && hit != chai_settings_sound_elem) {
+        chai_settings_open = 0;
+        chai_redraw();
+    }
+    if (strcmp(hit->tag, "settingsbtn") == 0) {
+        chai_settings_open = !chai_settings_open;
+        chai_redraw();
+        return;
+    }
+    if (hit == chai_composer_text_elem) {
+        /* REAL FIX 2026-08-16 - see chai_require_cli_activation's own header
+         * comment. This case used to not exist at all, so BOTH the
+         * click path (chai_handle_click() always calls chai_activate_elem() on
+         * whatever it hit) and the Enter-on-empty-focused-composer path
+         * (chai_handle_key()'s XK_Return branch) silently did nothing here -
+         * the focus badge only ever caught up on some UNRELATED chai_redraw.
+         * Auto-activate default (require_cli_activation=0): always sets
+         * activated=1, badge shows "^" immediately. Legacy mode
+         * (require_cli_activation=1): still reached via Enter (the
+         * wraith-alpha "Enter activates the focused element" path),
+         * which is exactly the intended legacy activation gesture. */
+        chai_composer_activated = 1;
+        chai_redraw();
+        return;
+    }
+    if (strcmp(hit->tag, "closebtn") == 0) {
+        g_quit = 1;
+        return;
+    }
+    if (strcmp(hit->tag, "tab") == 0) {
+        for (int i = 0; i < CHAI_N_TABS; i++) if (strcmp(hit->label, CHAI_TAB_LABELS[i]) == 0) { chai_current_tab = i; break; }
+        chai_redraw();
+        return;
+    }
+    if (strcmp(hit->tag, "newsession") == 0) {
+        chai_create_new_session();
+        chai_redraw();
+        return;
+    }
+    if (strcmp(hit->tag, "item") == 0) {
+        /* Disambiguate by parent, NOT just tag - real sessions
+         * (sidebar) and feed messages (panel) both use tag "item" (see
+         * chai_inject_sessions()/chai_inject_panel_feed()'s own header comments).
+         * A sidebar item click switches the active session (real
+         * effect - chat_hai_loop.sh re-reads active.txt too, see
+         * chai_switch_session()); a panel item click just selects which
+         * message line is highlighted, as before. */
+        Elem *sidebar = find_by_tag(g_window, "sidebar");
+        if (hit->parent == sidebar) {
+            chai_switch_session(hit->label);
+            chai_redraw();
+            return;
+        }
+        for (int i = 0; i < chai_n_events; i++) if (strcmp(chai_events[i], hit->label) == 0) { chai_selected_event = i; break; }
+        chai_redraw();
+        return;
+    }
+    if (strcmp(hit->id, "send") == 0) {
+        chai_send_composer();
+        return;
+    }
+    if (strcmp(hit->id, "toggle-pause") == 0) {
+        /* REAL FIX 2026-08-15 (direct instruction: "the start stop of
+         * chat should be of the logic of the ai lan call itself if need
+         * be" - after "i still dont get results from start/stop" with
+         * the PRIOR pkill -STOP/-CONT approach): SIGSTOP on
+         * chat_hai_loop.sh's own bash PROCESS does not reliably freeze
+         * a curl call already in flight inside a command-substitution
+         * subshell - "stopped" chat kept producing replies mid-flight.
+         * Real fix: a plain control FILE (state/paused.txt) that the
+         * loop script checks in a wait-loop right before EVERY qwen.sh/
+         * curl call (see chat_hai_loop.sh's own speak() function,
+         * "REAL FIX 2026-08-15" comment there) - guarantees zero new
+         * LAN calls while paused, no OS-signal timing races. */
+        chai_paused = !chai_paused;
+        char pause_path[PATH_BUF];
+        snprintf(pause_path, sizeof(pause_path), "%s/&.hq-apps/chat-hai/state/paused.txt", g_house_root);
+        FILE *pf = fopen(pause_path, "w");
+        if (pf) { fprintf(pf, "%d\n", chai_paused ? 1 : 0); fclose(pf); }
+        if (chai_toggle_elem) {
+            snprintf(chai_toggle_elem->label, sizeof(chai_toggle_elem->label), "%s", chai_paused ? "Start" : "Stop");
+        }
+        chai_update_status_label();
+        chai_redraw();
+        return;
+    }
+    if (strcmp(hit->id, "speed-toggle") == 0) {
+        /* REAL, working GUI speed control (direct instruction,
+         * 2026-08-15: "can have an input in gui also" - for the same
+         * sleep_between setting chat_hai_config.pdl now exposes as a
+         * hand-editable file). Cycles a fixed preset list and writes
+         * the .pdl chat_hai_loop.sh's own sleep_between() function
+         * reads every round - no restart needed, matches that
+         * function's own header comment. */
+        static const int presets[] = { 2, 4, 6, 12, 20 };
+        static const int n_presets = (int)(sizeof(presets) / sizeof(presets[0]));
+        char cfg_path[PATH_BUF];
+        snprintf(cfg_path, sizeof(cfg_path), "%s/&.hq-apps/chat-hai/chat_hai_config.pdl", g_house_root);
+        int cur = 6, idx = 2; /* default matches chat_hai_config.pdl's own default */
+        FILE *rf = fopen(cfg_path, "r");
+        if (rf) {
+            char line[256];
+            while (fgets(line, sizeof(line), rf)) {
+                if (strstr(line, "sleep_between")) {
+                    char *bar2 = strrchr(line, '|');
+                    if (bar2) cur = atoi(bar2 + 1);
+                    break;
+                }
+            }
+            fclose(rf);
+        }
+        for (int i = 0; i < n_presets; i++) if (presets[i] == cur) { idx = i; break; }
+        int next_val = presets[(idx + 1) % n_presets];
+        chai_write_chat_hai_cfg(next_val, chai_sound_on);
+        if (chai_speed_elem) {
+            snprintf(chai_speed_elem->label, sizeof(chai_speed_elem->label), "Speed: %ds", next_val);
+        }
+        chai_redraw();
+        return;
+    }
+    if (strcmp(hit->id, "sound-toggle") == 0) {
+        /* Sound on/off for the incoming-message tone (direct instruction,
+         * 2026-08-16: "play a tone when a message is posted" - incoming
+         * only, toggleable off). Flipped here, written to the same .pdl
+         * the loop's own sound check reads fresh on every posted message
+         * (see chai_write_chat_hai_cfg()), so it goes live immediately. */
+        chai_sound_on = !chai_sound_on;
+        char cfg_path[PATH_BUF];
+        snprintf(cfg_path, sizeof(cfg_path), "%s/&.hq-apps/chat-hai/chat_hai_config.pdl", g_house_root);
+        int cur = 6;
+        FILE *rf = fopen(cfg_path, "r");
+        if (rf) {
+            char line[256];
+            while (fgets(line, sizeof(line), rf)) {
+                if (strstr(line, "sleep_between")) {
+                    char *bar2 = strrchr(line, '|');
+                    if (bar2) cur = atoi(bar2 + 1);
+                    break;
+                }
+            }
+            fclose(rf);
+        }
+        chai_write_chat_hai_cfg(cur, chai_sound_on);
+        if (chai_sound_elem) {
+            snprintf(chai_sound_elem->label, sizeof(chai_sound_elem->label), "Sound: %s", chai_sound_on ? "on" : "off");
+        }
+        chai_redraw();
+        return;
+    }
+}
+
+static void chai_handle_click(int px, int py) {
+    /* close button lives in the chrome bar, outside window's own tag
+     * tree (it's synthetic, not parsed from dashboard.chtpm) - check it
+     * before the tree walk. */
+    if (px >= chai_close_elem->x && px < chai_close_elem->x + chai_close_elem->w &&
+        py >= chai_close_elem->y && py < chai_close_elem->y + chai_close_elem->h) {
+        g_focus_nav = chai_close_elem->nav_index;
+        chai_activate_elem(chai_close_elem);
+        return;
+    }
+    /* Settings badge + its Sound row are static (synthetic, outside the
+     * parsed window tree) - same close-button treatment, hit-test them
+     * here before the tree walk. */
+    if (px >= chai_settings_elem->x && px < chai_settings_elem->x + chai_settings_elem->w &&
+        py >= chai_settings_elem->y && py < chai_settings_elem->y + chai_settings_elem->h) {
+        g_focus_nav = chai_settings_elem->nav_index;
+        chai_activate_elem(chai_settings_elem);
+        return;
+    }
+    if (chai_settings_open &&
+        px >= chai_settings_sound_elem->x && px < chai_settings_sound_elem->x + chai_settings_sound_elem->w &&
+        py >= chai_settings_sound_elem->y && py < chai_settings_sound_elem->y + chai_settings_sound_elem->h) {
+        g_focus_nav = chai_settings_sound_elem->nav_index;
+        chai_activate_elem(chai_settings_sound_elem);
+        return;
+    }
+    Elem *hit = hit_test(g_window, px, py);
+    if (!hit) return;
+    if (hit->nav_index > 0) g_focus_nav = hit->nav_index;
+    /* Legacy mode (require_cli_activation=1): a click on the composer
+     * only moves focus ("[>]") - it must NOT also activate ("[^]"), that
+     * would defeat the whole point of the legacy gate. Only Enter (via
+     * chai_handle_key()'s XK_Return branch -> chai_activate_elem()) activates it
+     * in this mode. Auto mode (default): click both focuses AND
+     * activates in one step, per direct instruction ("it move '>' and
+     * auto sets it to '^' im fine with that"). */
+    if (hit == chai_composer_text_elem && chai_require_cli_activation) { chai_redraw(); return; }
+    chai_activate_elem(hit);
+}
+
+/* wraith-alpha-standard digit-accumulation key handling (ports
+ * ops/wraith_parser_alpha.c's digit_accum/do_jump/Enter-activates
+ * convention): digits move focus live as they're typed (do_jump), Enter
+ * activates the focused element, any other key resets the accumulator. */
+static void chai_handle_key(KeySym ks, char ch) {
+    if (ch == 'p') { chai_dump_frame_png(); return; }
+    if (ks == XK_Return || ks == XK_KP_Enter) {
+        if (chai_digit_accum > 0 && chai_digit_accum <= g_n_nav) g_focus_nav = chai_digit_accum;
+        chai_digit_accum = 0;
+        if (chai_composer_len > 0) { chai_send_composer(); return; }
+        if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav) chai_activate_elem(g_nav[g_focus_nav - 1]);
+        return;
+    }
+    if (ks == XK_Escape) {
+        if (chai_digit_accum > 0) { chai_digit_accum = 0; return; }
+        /* Open Settings panel closes on Escape first (same contract as
+         * open-hai) - only a bare Escape with the panel closed quits. */
+        if (chai_settings_open) { chai_settings_open = 0; chai_redraw(); return; }
+        if (chai_composer_len > 0) { chai_composer_len = 0; chai_composer[0] = '\0'; chai_composer_sync(); chai_redraw(); return; }
+        g_quit = 1; /* no WM chrome/close button (override_redirect) - Escape closes instead */
+        return;
+    }
+    if (ks == XK_BackSpace) {
+        /* Real, working "delete session" (direct instruction, 2026-08-15:
+         * "we should beable to add / delete new sessions") - matches
+         * open-hai's own documented "Backspace on a sidebar row
+         * deletes it" convention (chat-hai-design.md's own reference).
+         * Only fires when the CURRENTLY FOCUSED nav element is a real
+         * sidebar session row (not the "+ New Session" button, not a
+         * panel feed message) - falls through to composer-edit
+         * otherwise, so this never eats a Backspace the user meant for
+         * their in-progress message. */
+        if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
+            Elem *f = g_nav[g_focus_nav - 1];
+            Elem *sidebar = find_by_tag(g_window, "sidebar");
+            if (f && f->parent == sidebar && strcmp(f->tag, "item") == 0) {
+                chai_delete_session(f->label);
+                chai_redraw();
+                return;
+            }
+        }
+        if (chai_composer_len > 0) {
+            chai_composer[--chai_composer_len] = '\0';
+            chai_composer_sync();
+            chai_redraw();
+        }
+        return;
+    }
+    if (ch >= '1' && ch <= '9') {
+        /* Digits 1-9: send the composer text (cli-io shortcut, like open-hai) */
+        chai_send_composer();
+        return;
+    }
+    if (ch == '0') {
+        chai_digit_accum = 0;
+        return;
+    }
+    if (ks == XK_Up || ks == XK_Left) {
+        if (g_focus_nav > 1) g_focus_nav--;
+        chai_digit_accum = 0;
+        chai_redraw();
+        return;
+    }
+    if (ks == XK_Down || ks == XK_Right || ks == XK_Tab) {
+        if (g_focus_nav < g_n_nav) g_focus_nav++;
+        chai_digit_accum = 0;
+        chai_redraw();
+        return;
+    }
+    /* printable chars (not digits, not 'p' receipt) go to the composer.
+     * Legacy gate (require_cli_activation=1, see its own header comment):
+     * only accepted once the composer is BOTH the focused element AND
+     * "^" activated - checked together so a stale activated flag left
+     * over from a previous focus never leaks input to the wrong place.
+     * Default (0): always accepted, matches this app's original
+     * always-on-typing behavior. */
+    if (ch >= 32 && ch <= 126) {
+        int composer_ready = !chai_require_cli_activation ||
+            (chai_composer_activated && chai_composer_text_elem && g_focus_nav == chai_composer_text_elem->nav_index);
+        if (composer_ready) {
+            if (chai_composer_len < CHAI_COMPOSER_BUF - 1) {
+                chai_composer[chai_composer_len++] = ch;
+                chai_composer[chai_composer_len] = '\0';
+            }
+            chai_composer_sync();
+        }
+        chai_redraw();
+        return;
+    }
+    chai_digit_accum = 0;
+}
+
+/* Agent relay (au11-hq/_.0.aigent-testing-k9.txt's documented "third
+ * option" for raw-Xlib programs: "give the program its OWN file-relay
+ * polling loop, additive alongside its existing XNextEvent() loop"):
+ * <house_root>/#.desktop/db_hq_agent_relay.txt, one decimal ASCII code
+ * per line (48-57 digits, 13 Enter, 27 Escape, 32-126 other printable) -
+ * SAME contract as khtpm_strip_parser.c's poll_agent_relay() (never
+ * replay backlog on first poll, resync-not-replay on truncation, leave a
+ * partial trailing line for next time), ported line-for-line from that
+ * function since it's already the proven, documented shape for this
+ * exact problem. Dispatches through the SAME chai_handle_key() the real
+ * KeyPress handler uses (see dispatch_key_code()'s own header comment in
+ * khtpm_strip_parser.c for why sharing beats duplicating). No XTest, no
+ * shared input focus with a real human on the same display. */
+
+
+
+
+
+
+
+
+/* ============ end chat-hai mode content ============ */
+
+static void assign_nav_and_layout(void) {
+    /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode branch, real WM-
+     * managed window shape, own layout/nav functions (ported verbatim,
+     * not forced into the popup modes' page/item shape below). */
+    if (g_is_db_hq) { dbhq_layout_pass(g_window); dbhq_assign_nav_indices(g_window); return; }
+    if (g_is_events_hq) { evhq_layout_pass(g_window); evhq_assign_nav_indices(g_window); return; }
+    if (g_is_chat_hai) { chai_layout_pass(g_window); chai_assign_nav_indices(g_window); return; }
+    g_n_nav = 0;
+    Elem *page = find_page(g_current_page);
+    if (!page) { g_win_h = CHROME_H + 8; return; }
+    if (g_is_swatch_picker) {
+        /* REAL, ported verbatim from taskbar-settings' own real grid
+         * math (khtpm_taskbar_settings_render.c's own
+         * assign_nav_and_layout()). */
+        int x0 = 16, y0 = CHROME_H + 44;
+        int sw_i = 0;
+        for (int i = 0; i < page->n_children; i++) {
+            Elem *item = page->children[i];
+            if (strcmp(item->tag, "item") != 0) continue;
+            if (strcmp(item->id, "close") == 0) {
+                item->x = g_win_w - 60; item->y = 0; item->w = 60; item->h = CHROME_H;
+            } else {
+                int col = sw_i % SWATCH_COLS, row = sw_i / SWATCH_COLS;
+                item->x = x0 + col * (SWATCH + SWATCH_GAP);
+                item->y = y0 + row * (SWATCH + SWATCH_GAP);
+                item->w = SWATCH; item->h = SWATCH;
+                item->label[0] = '\0'; /* real bug fix, §5d - swatch label= is unused metadata, not display text */
+                sw_i++;
+            }
+            item->nav_index = ++g_n_nav;
+            g_nav[g_n_nav - 1] = item;
+            css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
+        }
+        g_win_h = 280; /* real fixed height, matches taskbar-settings' own original WIN_H */
+    } else {
+        int y = CHROME_H;
+        for (int i = 0; i < page->n_children; i++) {
+            Elem *item = page->children[i];
+            if (strcmp(item->tag, "item") != 0) continue;
+            item->x = 0; item->y = y; item->w = g_win_w; item->h = ROW_H;
+            item->nav_index = ++g_n_nav;
+            g_nav[g_n_nav - 1] = item;
+            css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
+            y += ROW_H;
+        }
+        g_win_h = y + 8;
+    }
+    if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
+    if (g_focus_nav < 1) g_focus_nav = 1;
+}
+
+static void switch_page(const char *name) {
+    if (!find_page(name)) return;
+    snprintf(g_current_page, sizeof(g_current_page), "%s", name);
+    g_focus_nav = 1;
+}
+
+/* Real dispatch - same shape as tp_desktop_window_rgb.c's own
+ * dispatch_action(), ported not reinvented (this is a DIFFERENT process
+ * so it can't call that function directly, but the semantics must match
+ * exactly - CLOSE/void/GOTO:/BACK are handled here, everything else is a
+ * real shell command run with package_dir/house_root as args, same
+ * "%s '%s' '%s'" shape). */
+static void dispatch(const char *action) {
+    if (strcmp(action, "CLOSE") == 0) { g_quit = 1; return; }
+    /* REAL FIX 2026-08-16, direct live report ("cancel doesn't work
+     * yet"): the legacy dispatch (tp_desktop_window_rgb.c line ~2026)
+     * ALWAYS calls close_context_menu() before even looking at the
+     * action - "void" only skips running a shell command, it still
+     * closes the menu. This copy returned without setting g_quit, so
+     * Cancel/Stop silently left the window open. */
+    if (strcmp(action, "void") == 0) { g_quit = 1; return; }
+    if (strncmp(action, "GOTO:", 5) == 0) { switch_page(action + 5); return; }
+    if (strcmp(action, "BACK") == 0) {
+        if (g_page_stack_n > 0) { switch_page(g_page_stack[--g_page_stack_n]); }
+        return;
+    }
+    char cmd[PATH_BUF * 3];
+    snprintf(cmd, sizeof(cmd), "%s '%s' '%s' >/dev/null 2>&1 &", action, g_package_dir, g_house_root);
+    int rc = system(cmd);
+    (void)rc;
+    g_quit = 1; /* real menus close after a real action fires, matching tp_desktop_window_rgb.c's own UX (g_menu_stay_open aside - default behavior) */
+}
+
+/* REAL, ported verbatim from taskbar-settings' own real apply_theme()
+ * - builds the full apply_theme_op command string (bg/fg baked in)
+ * and fires it through the SAME shared dispatch() every mode uses. */
+static void apply_theme(const char *bg_hex, const char *fg_hex) {
+    char cmd[PATH_BUF * 3];
+    snprintf(cmd, sizeof(cmd), "'%s/*.monads/*.livedesk-taskbar/ops/+x/apply_theme_op.+x' '%s' '%s' '%s'",
+             g_house_root, g_house_root, bg_hex, fg_hex);
+    dispatch(cmd);
+}
+
+static void activate_focused(void) {
+    if (g_focus_nav < 1 || g_focus_nav > g_n_nav) return;
+    Elem *item = g_nav[g_focus_nav - 1];
+    if (g_is_swatch_picker) {
+        /* REAL, ported verbatim from taskbar-settings' own real
+         * 2-phase pick activate_focused(). */
+        if (strcmp(item->id, "close") == 0) { dispatch("CLOSE"); return; }
+        int idx = atoi(item->id + 2); /* "sw0".."sw11" */
+        if (idx < 0 || idx >= 12) return;
+        if (g_phase == 0) {
+            g_chosen_bg_idx = idx;
+            g_phase = 1;
+        } else if (g_phase == 1) {
+            g_chosen_fg_idx = idx;
+            g_phase = 2;
+            apply_theme(g_palette_hex[g_chosen_bg_idx], g_palette_hex[g_chosen_fg_idx]);
+        }
+        return;
+    }
+    if (item->onclick[0]) dispatch(item->onclick);
+}
+
+static void redraw(void) {
+    /* REAL §5d.12 (2026-08-16) - chat-hai mode: chai_redraw() is
+     * self-contained (own layout, own present via XGetImage->XPutImage,
+     * own frame-history append) - ported verbatim, not split into a
+     * content-only half like db-hq/events-hq, since its own real
+     * redraw() already did its own blit. Early return, no generic
+     * present needed. */
+    if (g_is_chat_hai) { chai_redraw(); return; }
+    /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode: own real content
+     * draw (chrome/tabbar/sidebar/panel), same shared present
+     * (XGetImage->XPutImage) below every mode already uses. */
+    if (g_is_db_hq || g_is_events_hq) {
+        if (g_is_db_hq) dbhq_redraw_content(); else evhq_redraw_content();
+        XSync(dpy, False);
+        XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_window->w, (unsigned)g_window->h, AllPlanes, ZPixmap);
+        if (frame) {
+            XPutImage(dpy, win, gc, frame, 0, 0, 0, 0, (unsigned)g_window->w, (unsigned)g_window->h);
+            XDestroyImage(frame);
+        } else {
+            XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)g_window->w, (unsigned)g_window->h, 0, 0);
+        }
+        XFlush(dpy);
+        return;
+    }
+    assign_nav_and_layout();
+    XSetForeground(dpy, gc, alloc_pixel("#1c1c1c"));
+    XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h);
+    XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
+    XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, CHROME_H);
+
+    /* REAL Stage 5 §5d.3 step 6 (2026-08-16) - real, data-selected
+     * chrome text. Swatch-picker mode's own real title/status text,
+     * ported verbatim from taskbar-settings' own redraw(); menu mode's
+     * own real page-name title, unchanged. */
+    if (g_is_swatch_picker) {
+        XftColor title_col = xft_color("#eeeeee");
+        XftDrawStringUtf8(xftdraw_buf, &title_col, font_ui, 10, 16,
+                           (const FcChar8 *)(g_window->label[0] ? g_window->label : "taskbar settings"),
+                           (int)strlen(g_window->label[0] ? g_window->label : "taskbar settings"));
+        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &title_col);
+        const char *status = g_phase == 0 ? "Pick PRIMARY, then Enter"
+                            : g_phase == 1 ? "Pick SECONDARY, then Enter"
+                            : "Applied - closing...";
+        XftColor status_col = xft_color("#ffffff");
+        XftDrawStringUtf8(xftdraw_buf, &status_col, font_ui, 16, CHROME_H + 26, (const FcChar8 *)status, (int)strlen(status));
+        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &status_col);
+    } else {
+        XftColor title_col = xft_color("#eeeeee");
+        XftDrawStringUtf8(xftdraw_buf, &title_col, font_ui, 8, 16, (const FcChar8 *)g_current_page, (int)strlen(g_current_page));
+        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &title_col);
+    }
+
+    /* REAL Stage 5 (2026-08-16, khtpm-merge-how2.md §5d) - was a manual
+     * per-item draw loop (background fill on focus, hand-picked colors);
+     * now the shared, generic render_tree() (same real focus-ring
+     * convention every other khtpm app already uses, khtpm_draw_core.c).
+     * Real, deliberate visual change: focus indicator is now a ring, not
+     * a full-row background fill - consistent with the house standard,
+     * not a regression. */
+    Elem *page = find_page(g_current_page);
+    if (page) render_tree(page, 0);
+
+    /* REAL, swatch-picker-only overlay (ported verbatim from taskbar-
+     * settings' own redraw()) - the "chosen" bg/fg ring + primary/
+     * secondary status lines, real, documented per-mode exceptions
+     * (khtpm_draw_core.c's own draw_elem() has no generic 3rd-state
+     * concept). */
+    if (g_is_swatch_picker && page) {
+        int sw_i = 0;
+        for (int i = 0; i < page->n_children; i++) {
+            Elem *item = page->children[i];
+            if (strcmp(item->tag, "item") != 0 || strcmp(item->id, "close") == 0) continue;
+            int chosen = (sw_i == g_chosen_bg_idx) || (sw_i == g_chosen_fg_idx);
+            if (chosen && item->nav_index != g_focus_nav) {
+                XSetForeground(dpy, gc, 0x22c55e);
+                XDrawRectangle(dpy, buf, gc, item->x - 2, item->y - 2, (unsigned)item->w + 4, (unsigned)item->h + 4);
+            }
+            sw_i++;
+        }
+        int x0 = 16, y0 = CHROME_H + 44;
+        XftColor accent = xft_color("#22c55e");
+        if (g_chosen_bg_idx >= 0) {
+            char line[64];
+            snprintf(line, sizeof(line), "primary: %s", g_palette_name[g_chosen_bg_idx]);
+            XftDrawStringUtf8(xftdraw_buf, &accent, font_ui, x0, y0 + 2 * (SWATCH + SWATCH_GAP) + 20, (const FcChar8 *)line, (int)strlen(line));
+        }
+        if (g_chosen_fg_idx >= 0) {
+            char line[64];
+            snprintf(line, sizeof(line), "secondary: %s", g_palette_name[g_chosen_fg_idx]);
+            XftDrawStringUtf8(xftdraw_buf, &accent, font_ui, x0, y0 + 2 * (SWATCH + SWATCH_GAP) + 38, (const FcChar8 *)line, (int)strlen(line));
+        }
+        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &accent);
+    }
+
+    XSync(dpy, False);
+    XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
+    if (frame) {
+        XPutImage(dpy, win, gc, frame, 0, 0, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h);
+        XDestroyImage(frame);
+    } else {
+        XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, 0, 0);
+    }
+    XFlush(dpy);
+}
+
+/* on-demand debug PNG dump, same real convention every other khtpm app
+ * uses (own separate capture, not the hot redraw path). */
+/* REAL Stage 1 follow-up (2026-08-16, khtpm-merge-how2.md "HOUSE
+ * STANDARD" section) - was a locally-duplicated XImage->RGB unpack
+ * loop (same shape as db-hq/taskbar-settings' own real duplicates, see
+ * that section's own header comment for the full real correction).
+ * Now the same real, standalone, cross-app op binary those already use
+ * (&.widgits/_shared-lib/ops/dump_frame_png_op.c), invoked via
+ * system() - captures the real, already-blitted WINDOW directly (own
+ * X connection), not this process's own `buf` back-buffer. */
+/* REAL Stage 5 §5d.3 step 6 (2026-08-16) - mode-aware output path,
+ * same real backward-compatibility reasoning as relay_path() above.
+ * Swatch-picker mode also writes the real receipt.txt taskbar-
+ * settings' own testing convention already relied on (nav/phase/
+ * bg_idx/fg_idx), ported verbatim. */
+static void dump_frame_png(void) {
+    char png[PATH_BUF];
+    if (g_is_chat_hai) { chai_dump_frame_png(); return; } /* REAL §5d.12 - self-contained, own /tmp/chat-hai-frame.png contract preserved */
+    if (g_is_events_hq) {
+        snprintf(png, sizeof(png), "/tmp/events-hq-frame.png"); /* real, preserves khtpm_events_hq_render.c's own external contract */
+        char cmd[PATH_BUF * 2];
+        snprintf(cmd, sizeof(cmd), "'%s/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x' 0x%lx '%s'",
+                 g_house_root, (unsigned long)win, png);
+        system(cmd); /* REAL, existing house-standard op-binary dispatch, reused verbatim - not new dispatch code */
+        return;
+    }
+    if (g_is_db_hq) {
+        snprintf(png, sizeof(png), "/tmp/db-hq-frame.png"); /* real, preserves khtpm_hq_render.c's own external contract */
+        char cmd[PATH_BUF * 2];
+        snprintf(cmd, sizeof(cmd), "'%s/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x' 0x%lx '%s'",
+                 g_house_root, (unsigned long)win, png);
+        system(cmd); /* REAL, existing house-standard op-binary dispatch, reused verbatim - not new dispatch code */
+        return;
+    }
+    if (g_is_swatch_picker) {
+        char audit_dir[PATH_BUF];
+        snprintf(audit_dir, sizeof(audit_dir), "%s/#.desktop/taskbar-settings-audit", g_house_root);
+        mkdir(audit_dir, 0755);
+        snprintf(png, sizeof(png), "%s/settings-frame.png", audit_dir);
+    } else {
+        snprintf(png, sizeof(png), "/tmp/entity-menu-frame.png");
+    }
+    char cmd[PATH_BUF * 2];
+    snprintf(cmd, sizeof(cmd), "'%s/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x' 0x%lx '%s'",
+             g_house_root, (unsigned long)win, png);
+    int ok = (system(cmd) == 0);
+    if (g_is_swatch_picker) {
+        char audit_dir[PATH_BUF], receipt[PATH_BUF];
+        snprintf(audit_dir, sizeof(audit_dir), "%s/#.desktop/taskbar-settings-audit", g_house_root);
+        snprintf(receipt, sizeof(receipt), "%s/settings-frame.png.receipt.txt", audit_dir);
+        FILE *rf = fopen(receipt, "w");
+        if (rf) {
+            fprintf(rf, "ok=%d w=%d h=%d t=%ld nav=%d n_nav=%d phase=%d bg_idx=%d fg_idx=%d\n",
+                    ok, g_win_w, g_win_h, (long)time(NULL), g_focus_nav, g_n_nav, g_phase, g_chosen_bg_idx, g_chosen_fg_idx);
+            fclose(rf);
+        }
+    }
+}
+
+static void handle_key(KeySym ks, char ch) {
+    /* REAL, events-hq mode only - routed BEFORE the shared 'p' dump
+     * check, matching its own real key-order exactly: when its picker
+     * overlay is open, 'p' must be swallowed as a literal typed
+     * character in the active field, not intercepted as a dump
+     * shortcut (its own original handle_key() checked g_picker_open
+     * first, 'p' only afterward). */
+    if (g_is_events_hq) { evhq_handle_key(ks, ch); return; }
+    if (g_is_chat_hai) { chai_handle_key(ks, ch); return; } /* REAL §5d.12 - own real 'p' handling inside, same key-order exception class as events-hq */
+    if (ch == 'p') { dump_frame_png(); return; }
+    if (g_is_db_hq) { dbhq_handle_key(ks, ch); return; }
+    if (ks == XK_Return || ks == XK_KP_Enter) { activate_focused(); return; }
+    if (ks == XK_Escape) { g_quit = 1; return; }
+    if (ks == XK_Up) { if (g_focus_nav > 1) g_focus_nav--; return; }
+    if (ks == XK_Down) { if (g_focus_nav < g_n_nav) g_focus_nav++; return; }
+    if (ch >= '1' && ch <= '9') { int d = ch - '0'; if (d <= g_n_nav) g_focus_nav = d; return; }
+}
+
+/* ---------- relay (same real testing convention every other khtpm app
+ * uses - #.desktop/entity_menu_agent_relay.txt) ---------- */
+static long g_relay_cursor = -1;
+/* REAL Stage 5 §5d.3 step 6 (2026-08-16) - mode-aware relay filename,
+ * preserves both real, pre-existing external contracts
+ * (taskbar_settings_agent_relay.txt / entity_menu_agent_relay.txt)
+ * instead of silently breaking one of them now that this is genuinely
+ * one shared binary. */
+static void relay_path(char *out, size_t outsz) {
+    snprintf(out, outsz, "%s/#.desktop/%s", g_house_root,
+             g_is_stats_hq ? "stats_hq_agent_relay.txt" :
+             g_is_db_hq ? "db_hq_agent_relay.txt" :
+             g_is_events_hq ? "events_hq_agent_relay.txt" :
+             g_is_chat_hai ? "chat_hai_agent_relay.txt" :
+             g_is_swatch_picker ? "taskbar_settings_agent_relay.txt" : "entity_menu_agent_relay.txt");
+}
+static void dispatch_relay_code(int code) {
+    if (code == 13) handle_key(XK_Return, 0);
+    else if (code == 27) handle_key(XK_Escape, 0);
+    else if (code == 8) handle_key(XK_BackSpace, 0); /* real, db-hq's own extra code - harmless no-op for other modes */
+    else if (code >= 32 && code <= 126) handle_key(0, (char)code);
+}
+static int poll_agent_relay(void) {
+    char path[PATH_BUF];
+    relay_path(path, sizeof(path));
+    struct stat st;
+    if (stat(path, &st) != 0) return 0;
+    if (g_relay_cursor < 0) { g_relay_cursor = st.st_size; return 0; }
+    if (st.st_size < g_relay_cursor) { g_relay_cursor = st.st_size; return 0; }
+    if (st.st_size == g_relay_cursor) return 0;
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    fseek(f, g_relay_cursor, SEEK_SET);
+    int n = 0;
+    char line[64];
+    long consumed = g_relay_cursor;
+    while (fgets(line, sizeof(line), f)) {
+        char *nl = strchr(line, '\n');
+        if (!nl) break;
+        *nl = '\0';
+        long here = ftell(f);
+        int code = atoi(line);
+        if (code > 0) { dispatch_relay_code(code); n++; }
+        consumed = here;
+    }
+    fclose(f);
+    g_relay_cursor = consumed;
+    return n;
+}
+
+/* ---- XDND drop target (see the g_drop_action block comment) ---- */
+static Atom ga_xdnd_aware, ga_xdnd_enter, ga_xdnd_position, ga_xdnd_leave,
+            ga_xdnd_drop, ga_xdnd_selection, ga_xdnd_status, ga_xdnd_finished,
+            ga_xdnd_action_copy, ga_uri_list;
+static Window g_xdnd_source = None;
+static int g_xdnd_awaiting = 0;
+
+static void xdnd_init_atoms(Display *dpy) {
+    ga_xdnd_aware      = XInternAtom(dpy, "XdndAware", False);
+    ga_xdnd_enter      = XInternAtom(dpy, "XdndEnter", False);
+    ga_xdnd_position   = XInternAtom(dpy, "XdndPosition", False);
+    ga_xdnd_leave      = XInternAtom(dpy, "XdndLeave", False);
+    ga_xdnd_drop       = XInternAtom(dpy, "XdndDrop", False);
+    ga_xdnd_selection  = XInternAtom(dpy, "XdndSelection", False);
+    ga_xdnd_status     = XInternAtom(dpy, "XdndStatus", False);
+    ga_xdnd_finished   = XInternAtom(dpy, "XdndFinished", False);
+    ga_xdnd_action_copy = XInternAtom(dpy, "XdndActionCopy", False);
+    ga_uri_list        = XInternAtom(dpy, "text/uri-list", False);
+}
+
+/* Advertise XDND v5 support - only when the loaded .chtpm actually
+ * declared a drop_action. Called right after the popup window maps. */
+static void xdnd_attach_if_needed(Display *dpy, Window w) {
+    if (!g_drop_action[0]) return;
+    long ver = 5;
+    XChangeProperty(dpy, w, ga_xdnd_aware, XA_WINDOW, 32, PropModeReplace,
+                    (unsigned char *)&ver, 1);
+    XSync(dpy, False);
+}
+
+/* In-place %XX decode for file:// URIs (spaces etc arrive escaped). */
+static void uri_decode_inplace(char *s) {
+    char *r = s, *w = s;
+    while (*r) {
+        if (r[0] == '%' && isxdigit((unsigned char)r[1]) && isxdigit((unsigned char)r[2])) {
+            char hex[3] = { r[1], r[2], 0 };
+            *w++ = (char)strtol(hex, NULL, 16);
+            r += 3;
+        } else {
+            *w++ = *r++;
+        }
+    }
+    *w = '\0';
+}
+
+/* SelectionNotify arrived: read the uri-list property, take the first
+ * entry that names an EXISTING DIRECTORY (falling back to the first
+ * existing path of any kind), export it as $DROP_PATH and run
+ * g_drop_action with dispatch()'s exact positional convention. Does
+ * NOT quit the window. Always answers XdndFinished so the source's
+ * drag cursor doesn't stick. */
+static void xdnd_handle_selection(Display *dpy, Window win) {
+    Atom actual = None; int fmt = 0; unsigned long n = 0, left = 0;
+    unsigned char *data = NULL;
+    char path[PATH_BUF] = "";
+    char first_any[PATH_BUF] = "";
+    if (XGetWindowProperty(dpy, win, ga_uri_list, 0, 65536, True /*delete*/,
+                           AnyPropertyType, &actual, &fmt, &n, &left, &data) == Success && data && n > 0) {
+        char *line = (char *)data, *end = (char *)data + n;
+        while (line < end && !path[0]) {
+            char *nl = memchr(line, '\n', (size_t)(end - line));
+            size_t len = nl ? (size_t)(nl - line) : (size_t)(end - line);
+            char item[PATH_BUF];
+            if (len >= sizeof(item)) len = sizeof(item) - 1;
+            memcpy(item, line, len); item[len] = '\0';
+            size_t L = strlen(item);
+            while (L > 0 && (item[L-1] == '\r' || item[L-1] == ' ')) item[--L] = '\0';
+            if (L > 0) {
+                char *p = item;
+                if (strncmp(p, "file://", 7) == 0) {
+                    p += 7;
+                    char *slash = strchr(p, '/');          /* skip host part */
+                    p = slash ? slash : p + strlen(p);
+                }
+                uri_decode_inplace(p);
+                struct stat st;
+                if (p[0] && stat(p, &st) == 0) {
+                    /* prefer the first dropped DIRECTORY; remember the
+                     * first existing path of any kind as a fallback so
+                     * a stray-file drop still lands somewhere useful
+                     * (the handler script decides what's valid). */
+                    if (S_ISDIR(st.st_mode)) snprintf(path, sizeof(path), "%s", p);
+                    else if (!first_any[0]) snprintf(first_any, sizeof(first_any), "%s", p);
+                }
+            }
+            line = nl ? nl + 1 : end;
+        }
+        XFree(data);
+    }
+    if (!path[0] && first_any[0]) snprintf(path, sizeof(path), "%s", first_any);
+    if (path[0]) {
+        setenv("DROP_PATH", path, 1);
+        char cmd[PATH_BUF * 3];
+        snprintf(cmd, sizeof(cmd), "%s '%s' '%s' >/dev/null 2>&1 &",
+                 g_drop_action, g_package_dir, g_house_root);
+        int rc = system(cmd);
+        (void)rc;
+    } else {
+        unsetenv("DROP_PATH");
+    }
+    if (g_xdnd_source != None) {
+        XEvent fin;
+        memset(&fin, 0, sizeof(fin));
+        fin.xclient.type = ClientMessage;
+        fin.xclient.window = g_xdnd_source;
+        fin.xclient.message_type = ga_xdnd_finished;
+        fin.xclient.format = 32;
+        fin.xclient.data.l[0] = (long)win;
+        XSendEvent(dpy, g_xdnd_source, False, NoEventMask, &fin);
+    }
+    g_xdnd_source = None;
+}
+
+int main(int argc, char **argv) {
+    /* REAL Stage 5 step 3/4 (2026-08-16, khtpm-merge-how2.md §5d.3) -
+     * was <package_dir> <house_root> [x] [y] (house_root NOT first,
+     * unlike every other khtpm app - a real, confirmed argv drift).
+     * Now the real, unified <house_root> <chtpm_path> [x] [y] contract
+     * - package_dir is ALWAYS dirname(chtpm_path) (every entity's own
+     * package dir IS where its menu.chtpm lives), so it's derived
+     * rather than passed separately - real, elegant simplification,
+     * not just a reorder. */
+    if (argc < 3) { fprintf(stderr, "usage: %s <house_root> <chtpm_path> [x] [y]\n", argv[0]); return 1; }
+    snprintf(g_house_root, sizeof(g_house_root), "%s", argv[1]);
+    char chtpm_path[PATH_BUF];
+    snprintf(chtpm_path, sizeof(chtpm_path), "%s", argv[2]);
+    snprintf(g_package_dir, sizeof(g_package_dir), "%s", chtpm_path);
+    { char *slash = strrchr(g_package_dir, '/'); if (slash) *slash = '\0'; }
+
+    g_window = parse_chtpm(chtpm_path);
+    if (!g_window) { fprintf(stderr, "khtpm_entity_menu_render: failed to parse %s\n", chtpm_path); return 1; }
+
+    /* REAL Stage 5 §5d.3 step 6 (2026-08-16, khtpm-merge-how2.md §5d) -
+     * real, data-driven mode detection - `<window class="swatch-
+     * picker">` (matches wraith-alpha's own real "one binary, behavior
+     * selected by loaded data" shape, not a new attribute/parser
+     * change - class= was already fully generic). */
+    for (int i = 0; i < g_window->n_classes; i++) {
+        if (strcmp(g_window->classes[i], "swatch-picker") == 0) { g_is_swatch_picker = 1; break; }
+        /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode, real, data-
+         * driven detection (`<window class="db-hq">`, same convention
+         * as swatch-picker's own). */
+        if (strcmp(g_window->classes[i], "db-hq") == 0) { g_is_db_hq = 1; break; }
+        /* REAL §5d.11 (2026-08-16) - events-hq mode, same real
+         * convention, matching its own real existing class attribute
+         * (`<window class="events-hq-window">`, unchanged - no new
+         * class token needed, this app's own class already existed). */
+        if (strcmp(g_window->classes[i], "events-hq-window") == 0) { g_is_events_hq = 1; break; }
+        /* REAL §5d.12 (2026-08-16) - chat-hai mode, last of the 5, same
+         * real convention, matching its own real existing class
+         * attribute (`<window class="chat-window">`, unchanged). */
+        if (strcmp(g_window->classes[i], "chat-window") == 0) { g_is_chat_hai = 1; break; }
+        /* REAL, NEW 2026-08-25 (au11-hq/TPMOS-COMPLIANCE-DEBT.md - full
+         * compliant rebuild, direct instruction: "do this completely
+         * tpmos compliant"). stats-hq reuses db-hq's ENTIRE proven
+         * sidebar+panel+dispatch+module-launch machinery (real, live
+         * code, not a second copy) - g_is_db_hq=1 too. g_is_stats_hq
+         * exists ONLY to give it its own state-file/relay-file names
+         * (see g_dbhq_events_state_path below and relay_path()) so a
+         * real db-hq window and a real stats-hq window can run
+         * simultaneously without colliding on the same files. The
+         * OLD stats-hq (open_stats_hq.sh's own bash regex-scrape +
+         * printf-XML <tabbar>, TPMOS-COMPLIANCE-DEBT.md's worst finding
+         * - tabs that render but never respond to clicks) is replaced
+         * entirely: a real, new, testable stats_hq_manager.c (matching
+         * khtpm_hq_manager.c's own real shape) now owns the session-
+         * stats scan and publishes into the SAME simple state-file
+         * format dbhq_load_common_events() already parses - sidebar
+         * items work for real because they ride the exact same generic
+         * item-click path db-hq's own Common Events already prove out
+         * live, not a new one. */
+        if (strcmp(g_window->classes[i], "stats-hq") == 0) { g_is_stats_hq = 1; g_is_db_hq = 1; break; }
+    }
+
+    /* REAL FIX 2026-08-16, direct live report ("doesn't open by her
+     * actual position like old context menu does") - launch_khtpm_menu()
+     * now passes the caller's real, screen-clamped popup x/y (the same
+     * px/py open_context_menu() itself computes via
+     * clamp_popup_to_screen()) as argv[3]/argv[4]. Optional so a
+     * standalone/relay-testing launch (2-arg) still works with the old
+     * 300,300 default. REAL §5d.11 (2026-08-16) - events-hq mode
+     * reinterprets argv[3]/argv[4] as its own real <pkg_dir>
+     * <entity_label> (it's legitimately multi-instance, scoped by
+     * pkg_dir, and never supported explicit x/y anyway - always starts
+     * at its own real 120,120 default) - moved this block to AFTER mode
+     * detection since it now needs to know which interpretation applies. */
+    if (g_is_events_hq) {
+        if (argc < 5) { fprintf(stderr, "usage: %s <house_root> <chtpm_path> <event_pkg_dir> <entity_label>\n", argv[0]); return 1; }
+        snprintf(g_evhq_pkg_dir, sizeof(g_evhq_pkg_dir), "%s", argv[3]);
+        snprintf(g_evhq_entity_label, sizeof(g_evhq_entity_label), "%s", argv[4]);
+    } else if (argc >= 5) {
+        g_win_x = atoi(argv[3]); g_win_y = atoi(argv[4]);
+    }
+
+    /* REAL Stage 5 (2026-08-16, khtpm-merge-how2.md §5d) - real, mode-
+     * selected CSS (was never loaded at all before this port for menu
+     * mode; swatch-picker mode keeps its own real taskbar_settings.css,
+     * unchanged content). db-hq/events-hq modes keep their own real
+     * convention - css_path derived by extension-swap from the .chtpm
+     * path itself (dashboard.chtpm -> dashboard.css), ported verbatim,
+     * not a fixed ops-dir filename like the other 2 modes. */
+    {
+        char css_path[PATH_BUF];
+        if (g_is_db_hq || g_is_events_hq || g_is_chat_hai) {
+            snprintf(css_path, sizeof(css_path), "%s", chtpm_path);
+            char *dot = strrchr(css_path, '.');
+            if (dot) snprintf(dot, sizeof(css_path) - (size_t)(dot - css_path), ".css");
+        } else {
+            snprintf(css_path, sizeof(css_path), "%s/*.monads/*.livedesk-taskbar/ops/%s",
+                     g_house_root, g_is_swatch_picker ? "taskbar_settings.css" : "entity_menu_default.css");
+        }
+        memset(&g_sheet, 0, sizeof(g_sheet));
+        css_load(css_path, &g_sheet);
+    }
+
+    /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode one-time init,
+     * ported verbatim from khtpm_hq_render.c's own main(): real state
+     * paths, font-scale/focus-grab/window-position .pdl read, common-
+     * events load, real fork()+execl() module launch (the <module
+     * src="..."/> tag), sidebar/panel content injection, signal
+     * handlers for the manager-cleanup-on-TERM real fix. */
+    if (g_is_db_hq) {
+        signal(SIGTERM, dbhq_handle_term_signal);
+        signal(SIGINT, dbhq_handle_term_signal);
+
+        /* g_is_stats_hq: own state/action filenames so a real db-hq AND
+         * a real stats-hq window can run at once without colliding
+         * (2026-08-25, see the class-dispatch loop's own comment above
+         * for the full rationale). */
+        snprintf(g_dbhq_events_state_path, sizeof(g_dbhq_events_state_path),
+                 g_is_stats_hq ? "%s/#.desktop/stats_hq_common_events.state.txt"
+                               : "%s/#.desktop/db_hq_common_events.state.txt", g_house_root);
+        snprintf(g_dbhq_action_path, sizeof(g_dbhq_action_path),
+                 g_is_stats_hq ? "%s/#.desktop/stats_hq_action.txt"
+                               : "%s/#.desktop/db_hq_action.txt", g_house_root);
+
+        g_win_x = 100; g_win_y = 100; /* real db-hq default, distinct from the popup modes' 300,300 */
+        dbhq_load_font_scale();
+        g_dbhq_chrome_h = scaled(26);
+
+        memset(g_dbhq_close_elem, 0, sizeof(*g_dbhq_close_elem));
+        snprintf(g_dbhq_close_elem->tag, sizeof(g_dbhq_close_elem->tag), "closebtn");
+
+        dbhq_load_common_events();
+        if (g_dbhq_n_events > 0) g_dbhq_selected_event = 0;
+
+        Elem *module_elem = find_by_tag(g_window, "module");
+        if (module_elem && module_elem->label[0]) dbhq_launch_module(module_elem->label);
+        atexit(dbhq_cleanup_module);
+
+        Elem *sidebar = find_by_tag(g_window, "sidebar");
+        dbhq_inject_sidebar_items(sidebar);
+        if (g_is_stats_hq) {
+            stats_populate_panel(g_dbhq_selected_event);
+        } else {
+            Elem *panel_text = find_by_tag(g_window, "text");
+            if (panel_text && g_dbhq_selected_event >= 0) snprintf(panel_text->label, sizeof(panel_text->label), "%s", g_dbhq_events[g_dbhq_selected_event]);
+        }
+    }
+
+    /* REAL §5d.11 (2026-08-16) - events-hq mode one-time init, ported
+     * verbatim from khtpm_events_hq_render.c's own main(): manager
+     * state paths, page-list load, entity sprite, real fork()+execl()
+     * module launch (3 real args, not 1 - see evhq_launch_module()'s
+     * own header comment), signal handlers, real initial page-data
+     * refresh. */
+    if (g_is_events_hq) {
+        XSetErrorHandler(evhq_nonfatal_x_error);
+        signal(SIGTERM, evhq_handle_term_signal);
+        signal(SIGINT, evhq_handle_term_signal);
+
+        memset(g_evhq_close_elem, 0, sizeof(*g_evhq_close_elem));
+        snprintf(g_evhq_close_elem->tag, sizeof(g_evhq_close_elem->tag), "closebtn");
+
+        if (access(g_evhq_pkg_dir, F_OK) != 0) mkdir(g_evhq_pkg_dir, 0755);
+        evhq_init_manager_paths();
+        evhq_load_pages();
+        evhq_load_entity_sprite();
+
+        g_win_x = 120; g_win_y = 120; /* real events-hq default, distinct from db-hq's 100,100 and the popup modes' 300,300 */
+
+        Elem *evhq_module_elem = find_by_tag(g_window, "module");
+        if (evhq_module_elem && evhq_module_elem->label[0]) evhq_launch_module(evhq_module_elem->label);
+        atexit(evhq_cleanup_module);
+
+        evhq_refresh_page_data(g_window); /* real, populates pagetabs/trigger/commands before the first layout pass */
+    }
+
+    /* REAL §5d.12 (2026-08-16) - chat-hai mode one-time init, ported
+     * verbatim from chat_hai_hq_render.c's own main(): signal handlers,
+     * font-scale/window-geometry .pdl reads, session/ledger migration+
+     * load, real fork()+execl() module launch, panel control-elem
+     * caching (must happen right after parse, before layout_pass()
+     * ever rebuilds panel->n_children - see chai_status_elem's own
+     * header comment), composer sync. Forced window geometry (needs a
+     * live X connection for DisplayWidth/Height) is set separately,
+     * right after dpy opens below. */
+    if (g_is_chat_hai) {
+        signal(SIGTERM, chai_handle_term_signal);
+        signal(SIGINT, chai_handle_term_signal);
+
+        /* REAL FIX (found live via gdb backtrace - SIGSEGV in
+         * css_compute_style_ex, chai_layout_pass -> assign_nav_and_
+         * layout -> main): chai_sheet was declared but never pointed at
+         * the shared g_sheet the generic CSS-load block above already
+         * populated (chat-hai's own original main() used a locally-
+         * scoped `static CssSheet sheet; g_sheet = &sheet;` that this
+         * port's generic CSS-load branch made redundant, but the
+         * pointer assignment itself was dropped in the process). */
+        chai_sheet = &g_sheet;
+
+        chai_load_font_scale();
+        chai_load_window_geometry_config();
+        if (chai_require_cli_activation) chai_composer_activated = 0;
+        chai_chrome_h = scaled(26);
+
+        memset(chai_close_elem, 0, sizeof(*chai_close_elem));
+        snprintf(chai_close_elem->tag, sizeof(chai_close_elem->tag), "closebtn");
+
+        chai_migrate_legacy_ledger_if_needed();
+        chai_load_sessions_list();
+        chai_load_ledger();
+        if (chai_n_events > 0) chai_selected_event = chai_n_events - 1;
+
+        Elem *chai_module_elem = find_by_tag(g_window, "module");
+        if (chai_module_elem && chai_module_elem->label[0]) chai_launch_module(chai_module_elem->label);
+        atexit(chai_cleanup_module);
+
+        chai_n_elems_static = g_n_elems;
+
+        Elem *chai_panel0 = find_by_tag(g_window, "panel");
+        chai_status_elem = chai_panel0 ? find_by_id(chai_panel0, "status") : NULL;
+        chai_toggle_elem = chai_panel0 ? find_by_id(chai_panel0, "toggle-pause") : NULL;
+        chai_speed_elem = chai_panel0 ? find_by_id(chai_panel0, "speed-toggle") : NULL;
+        chai_sound_elem = &chai_settings_sound_elem_storage;
+        chai_composer_text_elem = chai_panel0 ? find_by_id(chai_panel0, "composer-text") : NULL;
+
+        chai_composer_sync();
+    }
+
+    if (g_is_swatch_picker) {
+        /* real palette table, ported verbatim from taskbar-settings'
+         * own real main() - same 12 entries/order as the original
+         * g_palette[] array, sourced by id (sw0..sw11). */
+        static const char *hex[12] = { "#000000","#ffffff","#1a1a1a","#e5e5e5","#ef4444","#f97316","#eab308","#22c55e","#06b6d4","#3b82f6","#8b5cf6","#ec4899" };
+        static const char *name[12] = { "black","white","charcoal","silver","red","orange","yellow","green","cyan","blue","purple","pink" };
+        for (int i = 0; i < 12; i++) { g_palette_hex[i] = hex[i]; g_palette_name[i] = name[i]; }
+        g_win_w = 420; /* real fixed width, matches taskbar-settings' own original WIN_W */
+    }
+
+    /* REAL FIX (found live, first standalone test): g_win_h is DATA-
+     * DRIVEN (item count) but the window/pixmap used to be created at a
+     * fixed default height BEFORE this ever ran - redraw()'s first
+     * layout pass would then XGetImage a LARGER area than the actual
+     * Pixmap, a real geometry mismatch (X_GetImage BadMatch, confirmed
+     * live). Real fix: compute the real height once, up front, before
+     * creating anything X11-side - this menu's content is static per
+     * page switch, no need for ConfigureNotify-driven runtime resize.
+     * REAL Stage 5 §5d.10 (2026-08-16) - dpy/screen/cmap now open
+     * BEFORE this call, not after (moved up) - db-hq mode's own real
+     * layout pass needs a live X connection to measure font metrics
+     * (dbhq_measure_text_px()), unlike the popup modes' fixed-height
+     * rows which never needed dpy this early. Harmless reorder for
+     * popup modes - dpy/screen/cmap weren't used before this point
+     * either way. */
+    dpy = XOpenDisplay(NULL);
+    if (!dpy) { fprintf(stderr, "khtpm_entity_menu_render: cannot open display\n"); return 1; }
+    screen = DefaultScreen(dpy);
+    cmap = DefaultColormap(dpy, screen);
+    font_ui = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=12");
+
+    /* REAL §5d.12 (2026-08-16) - chat-hai mode: forced window geometry
+     * (chai_load_window_geometry_config()'s own .pdl-driven width/
+     * top-offset/margins), ported verbatim from chat_hai_hq_render.c's
+     * own main() - needs a live X connection for DisplayWidth/Height,
+     * so it runs here, right after dpy opens, before the shared
+     * assign_nav_and_layout() call below (chai_layout_pass() applies
+     * chai_forced_win_w/h every call, same real "re-apply every frame,
+     * not just once" fix its own header comment documents). */
+    if (g_is_chat_hai) {
+        int screen_w = DisplayWidth(dpy, screen);
+        int screen_h = DisplayHeight(dpy, screen);
+        chai_forced_win_w = scaled(chai_cfg_window_width);
+        chai_forced_win_h = screen_h - scaled(chai_cfg_top_offset) - scaled(chai_cfg_bottom_margin);
+        g_window->style.has_width = 1; g_window->style.width = chai_forced_win_w;
+        g_window->style.has_height = 1; g_window->style.height = chai_forced_win_h;
+        chai_win_x = screen_w - chai_forced_win_w - scaled(chai_cfg_right_margin);
+        chai_win_y = scaled(chai_cfg_top_offset);
+    }
+
+    assign_nav_and_layout();
+
+    /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode: real WM-managed
+     * window creation + own event loop, genuinely different shape from
+     * the popup modes below (chrome-bar drag, FocusIn/Out tracking,
+     * _MOTIF_WM_HINTS decorations-off-but-managed, WM_CLASS grab
+     * allowlist) - kept as its own real, separate branch rather than
+     * interleaved into the popup path, so the 2 already-working popup
+     * modes' code is untouched. Returns before reaching the popup
+     * window-creation code below. */
+    if (g_is_db_hq) {
+        int ww = g_window->w, wh = g_window->h;
+
+        XSetWindowAttributes swa;
+        swa.background_pixel = alloc_pixel("#141414");
+        swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
+        win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)ww, (unsigned)wh, 0,
+                             CopyFromParent, InputOutput, CopyFromParent,
+                             CWBackPixel | CWEventMask, &swa);
+        {
+            Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+            long hints[5] = { 2, 0, 0, 0, 0 };
+            XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
+
+            XWMHints *wmhints = XAllocWMHints();
+            if (wmhints) { wmhints->flags = InputHint; wmhints->input = True; XSetWMHints(dpy, win, wmhints); XFree(wmhints); }
+
+            Atom wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+            XSetWMProtocols(dpy, win, &wm_delete, 1);
+
+            XSizeHints *shints = XAllocSizeHints();
+            if (shints) { shints->flags = PPosition; shints->x = g_win_x; shints->y = g_win_y; XSetWMNormalHints(dpy, win, shints); XFree(shints); }
+        }
+        {
+            XClassHint *ch = XAllocClassHint();
+            if (ch) { ch->res_name = (char *)"MuchiverseLivedesk"; ch->res_class = (char *)"MuchiverseLivedesk"; XSetClassHint(dpy, win, ch); XFree(ch); }
+        }
+        XMapRaised(dpy, win);
+        XSync(dpy, False);
+        { XWindowAttributes wa; if (XGetWindowAttributes(dpy, win, &wa)) { g_win_x = wa.x; g_win_y = wa.y; } }
+        if (g_dbhq_focus_grab_enabled) { dbhq_grab_keyboard_retry(); dbhq_soft_focus(); }
+        XSync(dpy, False);
+        { XEvent stale_ev; while (XCheckWindowEvent(dpy, win, ButtonPressMask | KeyPressMask, &stale_ev)) { } }
+
+        gc = XCreateGC(dpy, win, 0, NULL);
+        buf = XCreatePixmap(dpy, win, (unsigned)ww, (unsigned)wh, (unsigned)DefaultDepth(dpy, screen));
+        xftdraw_buf = XftDrawCreate(dpy, buf, DefaultVisual(dpy, screen), cmap);
+
+        redraw();
+
+        if (argc > 3 && strcmp(argv[3], "--dump-and-exit") == 0) { dump_frame_png(); g_quit = 1; }
+
+        Atom wm_delete_loop = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+        while (!g_quit) {
+            if (poll_agent_relay() > 0 && !g_quit) redraw();
+            if (g_quit) break;
+            if (dbhq_load_common_events()) {
+                Elem *sidebar = find_by_tag(g_window, "sidebar");
+                dbhq_inject_sidebar_items(sidebar);
+                /* REAL FIX 2026-08-25 (direct live report: "missing the
+                 * information summary it once had") - this periodic
+                 * reload used to only refresh the sidebar, never the
+                 * panel text. Harmless for real db-hq (its panel only
+                 * ever updates on a real user click, and it's never
+                 * empty at real startup since common_events/ already
+                 * exists by the time the window opens). Fatal for
+                 * stats-hq: g_dbhq_events_state_path is populated by a
+                 * separate manager PROCESS launched a few lines after
+                 * the FIRST dbhq_load_common_events() call at init, so
+                 * that first call almost always sees zero sessions and
+                 * never sets g_dbhq_selected_event - panel_text stays on
+                 * its static placeholder forever, since nothing here
+                 * used to touch it again. Real fix: auto-select item 0
+                 * the first time real data actually arrives (not on
+                 * every reload - preserves whatever the user already
+                 * has selected), and keep the displayed text in sync
+                 * with whatever's currently selected on every reload. */
+                if (g_dbhq_selected_event < 0 && g_dbhq_n_events > 0) g_dbhq_selected_event = 0;
+                if (g_is_stats_hq) {
+                    stats_populate_panel(g_dbhq_selected_event);
+                } else {
+                    Elem *panel_text = find_by_tag(g_window, "text");
+                    if (panel_text && g_dbhq_selected_event >= 0 && g_dbhq_selected_event < g_dbhq_n_events)
+                        snprintf(panel_text->label, sizeof(panel_text->label), "%s", g_dbhq_events[g_dbhq_selected_event]);
+                }
+                redraw();
+            }
+
+            fd_set fds; FD_ZERO(&fds);
+            int xfd = ConnectionNumber(dpy); FD_SET(xfd, &fds);
+            struct timeval tv = { 0, 150000 };
+            select(xfd + 1, &fds, NULL, NULL, &tv);
+
+            while (XPending(dpy)) {
+                XEvent ev; XNextEvent(dpy, &ev);
+                if (ev.type == Expose) {
+                    redraw();
+                } else if (ev.type == ButtonPress) {
+                    if (g_dbhq_focus_grab_enabled) { dbhq_grab_keyboard_retry(); dbhq_soft_focus(); }
+                    if (ev.xbutton.button == 1 && ev.xbutton.y < g_dbhq_chrome_h &&
+                        !(ev.xbutton.x >= g_dbhq_close_elem->x && ev.xbutton.x < g_dbhq_close_elem->x + g_dbhq_close_elem->w &&
+                          ev.xbutton.y >= g_dbhq_close_elem->y && ev.xbutton.y < g_dbhq_close_elem->y + g_dbhq_close_elem->h)) {
+                        g_dbhq_dragging = 1;
+                        g_dbhq_drag_last_x = ev.xbutton.x_root;
+                        g_dbhq_drag_last_y = ev.xbutton.y_root;
+                    }
+                    if (ev.xbutton.button != 3) dbhq_handle_click(ev.xbutton.x, ev.xbutton.y);
+                    if (!g_quit) redraw();
+                } else if (ev.type == ButtonRelease && ev.xbutton.button == 1) {
+                    g_dbhq_dragging = 0;
+                } else if (ev.type == MotionNotify) {
+                    if (g_dbhq_dragging) {
+                        int dx = ev.xmotion.x_root - g_dbhq_drag_last_x;
+                        int dy = ev.xmotion.y_root - g_dbhq_drag_last_y;
+                        g_win_x += dx; g_win_y += dy;
+                        if (g_win_y < WM_MANAGED_DRAG_MIN_Y) g_win_y = WM_MANAGED_DRAG_MIN_Y;
+                        XMoveWindow(dpy, win, g_win_x, g_win_y);
+                        g_dbhq_drag_last_x = ev.xmotion.x_root;
+                        g_dbhq_drag_last_y = ev.xmotion.y_root;
+                    }
+                } else if (ev.type == KeyPress) {
+                    char buf8[8]; KeySym ks;
+                    int n = XLookupString(&ev.xkey, buf8, sizeof(buf8) - 1, &ks, NULL);
+                    buf8[n > 0 ? n : 0] = '\0';
+                    const char *kname = XKeysymToString(ks);
+                    snprintf(g_dbhq_last_key_label, sizeof(g_dbhq_last_key_label), "%s", kname ? kname : (buf8[0] ? buf8 : "?"));
+                    handle_key(ks, buf8[0]);
+                    if (!g_quit) redraw();
+                } else if (ev.type == FocusIn) {
+                    g_dbhq_has_real_focus = 1;
+                    redraw();
+                } else if (ev.type == FocusOut) {
+                    g_dbhq_has_real_focus = 0;
+                    redraw();
+                } else if (ev.type == ClientMessage && (Atom)ev.xclient.data.l[0] == wm_delete_loop) {
+                    g_quit = 1;
+                }
+            }
+        }
+
+        XUngrabKeyboard(dpy, CurrentTime);
+        XftDrawDestroy(xftdraw_buf);
+        XFreePixmap(dpy, buf);
+        XFreeGC(dpy, gc);
+        XDestroyWindow(dpy, win);
+        XCloseDisplay(dpy);
+
+        /* REAL FIX (2026-08-17, live report: "chat hai... when i use [x]
+         * to close, closes all desktop entures (bad)" - confirmed the
+         * SAME real bug also affects db-hq's own [X], byte-identical
+         * code). ktb_quit_and_save() is a real, TASKBAR-LEVEL quit
+         * action - it calls livedesk_close_all() + livedesk_kill_stray_
+         * entities() (real, desktop-wide entity teardown) and removes
+         * the shared taskbar pidfile (ktb_unlink_pidfile()). NONE of
+         * that is appropriate for a single sub-app window closing -
+         * this block was ported from db-hq's own original standalone
+         * code under a mistaken assumption it needed real "KtbState
+         * persistence" on exit; it never did. Removed entirely, not
+         * narrowed - `ktb` was only ever used for this one call. */
+        return 0;
+    }
+
+    /* REAL §5d.11 (2026-08-16) - events-hq mode: real WM-managed window
+     * creation + own event loop, kept as its own separate branch (not
+     * interleaved into db-hq's or the popup modes' code) since its real
+     * drag/focus/poll logic, while similar in shape to db-hq's, is a
+     * genuinely separate real implementation (own globals, own close
+     * elem, own picker-overlay-aware click gating) - same real
+     * per-mode-exception precedent as everywhere else in this file. */
+    if (g_is_events_hq) {
+        int ww = g_window->w, wh = g_window->h;
+
+        XSetWindowAttributes swa;
+        swa.background_pixel = alloc_pixel("#141414");
+        swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
+        win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)ww, (unsigned)wh, 0,
+                             CopyFromParent, InputOutput, CopyFromParent,
+                             CWBackPixel | CWEventMask, &swa);
+        {
+            Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+            long hints[5] = { 2, 0, 0, 0, 0 };
+            XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
+
+            XWMHints *wmhints = XAllocWMHints();
+            if (wmhints) { wmhints->flags = InputHint; wmhints->input = True; XSetWMHints(dpy, win, wmhints); XFree(wmhints); }
+
+            Atom wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+            XSetWMProtocols(dpy, win, &wm_delete, 1);
+
+            XSizeHints *shints = XAllocSizeHints();
+            if (shints) { shints->flags = PPosition; shints->x = g_win_x; shints->y = g_win_y; XSetWMNormalHints(dpy, win, shints); XFree(shints); }
+        }
+        {
+            XClassHint *ch = XAllocClassHint();
+            if (ch) { ch->res_name = (char *)"MuchiverseLivedesk"; ch->res_class = (char *)"MuchiverseLivedesk"; XSetClassHint(dpy, win, ch); XFree(ch); }
+        }
+        XMapRaised(dpy, win);
+        XSync(dpy, False);
+        { XWindowAttributes wa; if (XGetWindowAttributes(dpy, win, &wa)) { g_win_x = wa.x; g_win_y = wa.y; } }
+
+        gc = XCreateGC(dpy, win, 0, NULL);
+        buf = XCreatePixmap(dpy, win, (unsigned)ww, (unsigned)wh, (unsigned)DefaultDepth(dpy, screen));
+        xftdraw_buf = XftDrawCreate(dpy, buf, DefaultVisual(dpy, screen), cmap);
+
+        redraw();
+
+        Atom wm_delete_loop = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+        while (!g_quit) {
+            /* real, mtime-gated manager-publish poll, independent of the
+             * relay-injection poll below - see evhq_load_pages()/
+             * evhq_load_page_state()'s own header comments. */
+            if (evhq_load_pages() || evhq_load_page_state()) {
+                evhq_refresh_page_data(g_window);
+                redraw();
+            }
+            if (poll_agent_relay() > 0 && !g_quit) redraw();
+            if (g_quit) break;
+
+            fd_set fds; FD_ZERO(&fds);
+            int xfd = ConnectionNumber(dpy); FD_SET(xfd, &fds);
+            struct timeval tv = { 0, 150000 };
+            select(xfd + 1, &fds, NULL, NULL, &tv);
+
+            while (XPending(dpy)) {
+                XEvent ev; XNextEvent(dpy, &ev);
+                if (ev.type == Expose) {
+                    redraw();
+                } else if (ev.type == ButtonPress) {
+                    if (!g_evhq_picker_open && ev.xbutton.button == 1 && ev.xbutton.y < EVHQ_CHROME_H &&
+                        !(ev.xbutton.x >= g_evhq_close_elem->x && ev.xbutton.x < g_evhq_close_elem->x + g_evhq_close_elem->w &&
+                          ev.xbutton.y >= g_evhq_close_elem->y && ev.xbutton.y < g_evhq_close_elem->y + g_evhq_close_elem->h)) {
+                        g_evhq_dragging = 1;
+                        g_evhq_drag_last_x = ev.xbutton.x_root;
+                        g_evhq_drag_last_y = ev.xbutton.y_root;
+                    }
+                    if (ev.xbutton.button != 3 && !g_evhq_picker_open) evhq_handle_click(ev.xbutton.x, ev.xbutton.y);
+                    if (!g_quit) redraw();
+                } else if (ev.type == ButtonRelease && ev.xbutton.button == 1) {
+                    g_evhq_dragging = 0;
+                } else if (ev.type == MotionNotify) {
+                    if (g_evhq_dragging) {
+                        int dx = ev.xmotion.x_root - g_evhq_drag_last_x;
+                        int dy = ev.xmotion.y_root - g_evhq_drag_last_y;
+                        g_win_x += dx; g_win_y += dy;
+                        if (g_win_y < WM_MANAGED_DRAG_MIN_Y) g_win_y = WM_MANAGED_DRAG_MIN_Y;
+                        XMoveWindow(dpy, win, g_win_x, g_win_y);
+                        g_evhq_drag_last_x = ev.xmotion.x_root;
+                        g_evhq_drag_last_y = ev.xmotion.y_root;
+                    }
+                } else if (ev.type == KeyPress) {
+                    char buf8[8]; KeySym ks;
+                    int n = XLookupString(&ev.xkey, buf8, sizeof(buf8) - 1, &ks, NULL);
+                    buf8[n > 0 ? n : 0] = '\0';
+                    const char *kname = XKeysymToString(ks);
+                    snprintf(g_evhq_last_key_label, sizeof(g_evhq_last_key_label), "%s", kname ? kname : (buf8[0] ? buf8 : "?"));
+                    handle_key(ks, buf8[0]);
+                    if (!g_quit) redraw();
+                } else if (ev.type == FocusIn) {
+                    g_evhq_has_real_focus = 1;
+                    redraw();
+                } else if (ev.type == FocusOut) {
+                    g_evhq_has_real_focus = 0;
+                    redraw();
+                } else if (ev.type == ClientMessage && (Atom)ev.xclient.data.l[0] == wm_delete_loop) {
+                    g_quit = 1;
+                }
+            }
+        }
+
+        XftDrawDestroy(xftdraw_buf);
+        XFreePixmap(dpy, buf);
+        XFreeGC(dpy, gc);
+        XDestroyWindow(dpy, win);
+        XCloseDisplay(dpy);
+        return 0;
+    }
+
+    /* REAL §5d.12 (2026-08-16) - chat-hai mode: real WM-managed window
+     * creation + own event loop, last of the 3 WM-managed apps merged.
+     * Genuinely its own real branch (not interleaved into db-hq's or
+     * events-hq's) - real ledger-mtime poll + typing poll on top of the
+     * shared relay poll (chat-hai's own real "constantly scrolling
+     * feed" requirement, ported verbatim), plus ktb_init()/
+     * ktb_quit_and_save() on exit like db-hq. */
+    if (g_is_chat_hai) {
+        int ww = g_window->w, wh = g_window->h;
+
+        XSetWindowAttributes swa;
+        swa.background_pixel = alloc_pixel("#141414");
+        swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
+        win = XCreateWindow(dpy, RootWindow(dpy, screen), chai_win_x, chai_win_y, (unsigned)ww, (unsigned)wh, 0,
+                             CopyFromParent, InputOutput, CopyFromParent,
+                             CWBackPixel | CWEventMask, &swa);
+        {
+            Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+            long hints[5] = { 2, 0, 0, 0, 0 };
+            XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
+
+            XWMHints *wmhints = XAllocWMHints();
+            if (wmhints) { wmhints->flags = InputHint; wmhints->input = True; XSetWMHints(dpy, win, wmhints); XFree(wmhints); }
+
+            Atom wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+            XSetWMProtocols(dpy, win, &wm_delete, 1);
+
+            XSizeHints *shints = XAllocSizeHints();
+            if (shints) { shints->flags = PPosition; shints->x = chai_win_x; shints->y = chai_win_y; XSetWMNormalHints(dpy, win, shints); XFree(shints); }
+        }
+        {
+            XClassHint *ch = XAllocClassHint();
+            if (ch) { ch->res_name = (char *)"MuchiverseLivedesk"; ch->res_class = (char *)"MuchiverseLivedesk"; XSetClassHint(dpy, win, ch); XFree(ch); }
+        }
+        XMapRaised(dpy, win);
+        XSync(dpy, False);
+        { XWindowAttributes wa; if (XGetWindowAttributes(dpy, win, &wa)) { chai_win_x = wa.x; chai_win_y = wa.y; } }
+        XSync(dpy, False);
+        { XEvent stale_ev; while (XCheckWindowEvent(dpy, win, ButtonPressMask | KeyPressMask, &stale_ev)) { } }
+
+        gc = XCreateGC(dpy, win, 0, NULL);
+        buf = XCreatePixmap(dpy, win, (unsigned)ww, (unsigned)wh, (unsigned)DefaultDepth(dpy, screen));
+        xftdraw_buf = XftDrawCreate(dpy, buf, DefaultVisual(dpy, screen), cmap);
+
+        redraw();
+
+        if (argc > 3 && strcmp(argv[3], "--dump-and-exit") == 0) { dump_frame_png(); g_quit = 1; }
+
+        Atom wm_delete_loop = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+        time_t chai_last_ledger_mtime = 0;
+        while (!g_quit) {
+            /* real ledger-mtime poll, independent of the relay poll -
+             * ported verbatim, see chai_send_composer()'s sibling
+             * comment in the original for why this matters ("i dont see
+             * chat moving" - chat_hai_loop.sh writes on its own timer,
+             * with no signal to this process at all). */
+            char chai_ledger_check[PATH_BUF];
+            chai_session_ledger_path(chai_ledger_check, sizeof(chai_ledger_check), chai_active_session);
+            struct stat chai_lst;
+            if (stat(chai_ledger_check, &chai_lst) == 0 && chai_lst.st_mtime != chai_last_ledger_mtime) {
+                chai_last_ledger_mtime = chai_lst.st_mtime;
+                chai_load_ledger();
+                if (chai_n_events > 0) chai_selected_event = chai_n_events - 1;
+                chai_feed_dirty = 1;
+                redraw();
+            }
+            /* real "who's typing" poll, ported verbatim. */
+            {
+                char chai_typing_path[PATH_BUF];
+                snprintf(chai_typing_path, sizeof(chai_typing_path), "%s/&.hq-apps/chat-hai/state/typing.txt", g_house_root);
+                char chai_cur_typing[64] = "";
+                FILE *chai_tf = fopen(chai_typing_path, "r");
+                if (chai_tf) {
+                    if (fgets(chai_cur_typing, sizeof(chai_cur_typing), chai_tf)) {
+                        char *nl = strchr(chai_cur_typing, '\n');
+                        if (nl) *nl = '\0';
+                    }
+                    fclose(chai_tf);
+                }
+                if (strcmp(chai_cur_typing, chai_typing_name) != 0) {
+                    snprintf(chai_typing_name, sizeof(chai_typing_name), "%s", chai_cur_typing);
+                    chai_update_status_label();
+                    redraw();
+                }
+            }
+            if (poll_agent_relay() > 0 && !g_quit) redraw();
+            if (g_quit) break;
+
+            fd_set fds; FD_ZERO(&fds);
+            int xfd = ConnectionNumber(dpy); FD_SET(xfd, &fds);
+            struct timeval tv = { 0, 150000 };
+            select(xfd + 1, &fds, NULL, NULL, &tv);
+
+            while (XPending(dpy)) {
+                XEvent ev; XNextEvent(dpy, &ev);
+                if (ev.type == Expose) {
+                    redraw();
+                } else if (ev.type == ButtonPress) {
+                    if (ev.xbutton.button == 1 && ev.xbutton.y < chai_chrome_h &&
+                        !(ev.xbutton.x >= chai_close_elem->x && ev.xbutton.x < chai_close_elem->x + chai_close_elem->w &&
+                          ev.xbutton.y >= chai_close_elem->y && ev.xbutton.y < chai_close_elem->y + chai_close_elem->h)) {
+                        chai_dragging = 1;
+                        chai_drag_last_x = ev.xbutton.x_root;
+                        chai_drag_last_y = ev.xbutton.y_root;
+                    }
+                    if (ev.xbutton.button != 3) chai_handle_click(ev.xbutton.x, ev.xbutton.y);
+                    if (!g_quit) redraw();
+                } else if (ev.type == ButtonRelease && ev.xbutton.button == 1) {
+                    chai_dragging = 0;
+                } else if (ev.type == MotionNotify) {
+                    if (chai_dragging) {
+                        int dx = ev.xmotion.x_root - chai_drag_last_x;
+                        int dy = ev.xmotion.y_root - chai_drag_last_y;
+                        chai_win_x += dx; chai_win_y += dy;
+                        if (chai_win_y < WM_MANAGED_DRAG_MIN_Y) chai_win_y = WM_MANAGED_DRAG_MIN_Y;
+                        XMoveWindow(dpy, win, chai_win_x, chai_win_y);
+                        chai_drag_last_x = ev.xmotion.x_root;
+                        chai_drag_last_y = ev.xmotion.y_root;
+                    }
+                } else if (ev.type == KeyPress) {
+                    char buf8[8]; KeySym ks;
+                    int n = XLookupString(&ev.xkey, buf8, sizeof(buf8) - 1, &ks, NULL);
+                    buf8[n > 0 ? n : 0] = '\0';
+                    const char *kname = XKeysymToString(ks);
+                    snprintf(chai_last_key_label, sizeof(chai_last_key_label), "%s", kname ? kname : (buf8[0] ? buf8 : "?"));
+                    handle_key(ks, buf8[0]);
+                    redraw();
+                } else if (ev.type == FocusIn) {
+                    chai_has_real_focus = 1;
+                    redraw();
+                } else if (ev.type == FocusOut) {
+                    chai_has_real_focus = 0;
+                    redraw();
+                } else if (ev.type == ClientMessage && (Atom)ev.xclient.data.l[0] == wm_delete_loop) {
+                    g_quit = 1;
+                }
+            }
+        }
+
+        XUngrabKeyboard(dpy, CurrentTime);
+        XftDrawDestroy(xftdraw_buf);
+        XFreePixmap(dpy, buf);
+        XFreeGC(dpy, gc);
+        XDestroyWindow(dpy, win);
+        XCloseDisplay(dpy);
+
+        /* REAL FIX (2026-08-17, live report: "chat hai... when i use [x]
+         * to close, closes all desktop entures (bad)") - see db-hq's own
+         * real, identical fix above for the full explanation:
+         * ktb_quit_and_save() is a real, TASKBAR-LEVEL quit action
+         * (desktop-wide entity teardown + shared pidfile removal), never
+         * appropriate for a single sub-app window closing. Removed
+         * entirely, not narrowed - `chai_ktb` was only ever used for
+         * this one call. */
+        return 0;
+    }
+
+    XSetWindowAttributes swa;
+    swa.background_pixel = alloc_pixel("#1c1c1c"); /* real dark default - no white-flash bug, ai-cell's own proven pattern, not WhitePixel */
+    /* REAL FIX 2026-08-16, direct live report ("none of the buttons seem
+     * 2 work yet"): this window was a normal WM-managed window, unlike
+     * the legacy popup (override_redirect=True, open_context_menu() near
+     * line 1414). Most WMs (Mutter included) use click-to-focus - the
+     * FIRST click on a just-mapped, unfocused window only focuses it and
+     * never reaches the app as a real ButtonPress, and since this
+     * process launches fresh on every open, EVERY click was a first
+     * click. override_redirect bypasses window-manager management
+     * entirely (same as any real popup/menu), so clicks are delivered
+     * immediately - matches the legacy popup's own real behavior. */
+    swa.override_redirect = True;
+    swa.event_mask = ExposureMask | ButtonPressMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
+    win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h, 0,
+                         CopyFromParent, InputOutput, CopyFromParent, CWBackPixel | CWOverrideRedirect | CWEventMask, &swa);
+    Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+    long hints[5] = { 2, 0, 0, 0, 0 };
+    XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
+    Atom wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+    XSetWMProtocols(dpy, win, &wm_delete, 1);
+    /* PPosition - same real fix db-hq/events-hq/chat-hai already needed
+     * (khtpm-merge-how2.md's own white-flash/position entries) - without
+     * this the WM ignores the requested x/y. */
+    XSizeHints *shints = XAllocSizeHints();
+    if (shints) { shints->flags = PPosition; shints->x = g_win_x; shints->y = g_win_y; XSetWMNormalHints(dpy, win, shints); XFree(shints); }
+
+    XMapRaised(dpy, win);
+    XSync(dpy, False);
+    /* 2026-08-24 - XDND drop-target opt-in (no-op unless this .chtpm
+     * declared a window-level drop_action= attribute). */
+    xdnd_init_atoms(dpy);
+    xdnd_attach_if_needed(dpy, win);
+    /* override_redirect windows aren't given focus by the WM - grab it
+     * ourselves so KeyPress nav works immediately (soft, matches the
+     * legacy popup's own popup_soft_focus - RevertToPointerRoot so focus
+     * naturally falls back to whatever's under the cursor once we quit,
+     * no other window's focus is fought for). */
+    XSetInputFocus(dpy, win, RevertToPointerRoot, CurrentTime);
+    clock_gettime(CLOCK_MONOTONIC, &g_map_time);
+    /* REAL FIX 2026-08-16, direct live report ("it also pops up instead
+     * of context menu when i rightclick ava" - Chat fired immediately):
+     * same real cause class as tp_desktop_window_rgb.c's own documented
+     * window-ID-recycle phantom click fix (open_context_menu()) - the
+     * right-click that triggered this whole launch can still have a
+     * trailing Button event sitting in this window's queue the instant
+     * it maps. Drain it before the real event loop starts, so only
+     * input that arrives after this window genuinely existed can select
+     * a row. */
+    {
+        XEvent stale_ev;
+        while (XCheckWindowEvent(dpy, win, ButtonPressMask | KeyPressMask, &stale_ev)) {
+            /* discard - see comment above */
+        }
+    }
+
+    gc = XCreateGC(dpy, win, 0, NULL);
+    buf = XCreatePixmap(dpy, win, (unsigned)g_win_w, (unsigned)g_win_h, (unsigned)DefaultDepth(dpy, screen));
+    xftdraw_buf = XftDrawCreate(dpy, buf, DefaultVisual(dpy, screen), cmap);
+
+    redraw();
+
+    while (!g_quit) {
+        if (poll_agent_relay() > 0 && !g_quit) redraw();
+        if (g_quit) break;
+        fd_set fds; FD_ZERO(&fds);
+        int xfd = ConnectionNumber(dpy); FD_SET(xfd, &fds);
+        struct timeval tv = { 0, 150000 };
+        select(xfd + 1, &fds, NULL, NULL, &tv);
+
+        while (XPending(dpy)) {
+            XEvent ev; XNextEvent(dpy, &ev);
+            if (ev.type == Expose) redraw();
+            else if (ev.type == ButtonPress) {
+                struct timespec now;
+                clock_gettime(CLOCK_MONOTONIC, &now);
+                long ms_since_map = (now.tv_sec - g_map_time.tv_sec) * 1000L
+                                   + (now.tv_nsec - g_map_time.tv_nsec) / 1000000L;
+                if (ms_since_map < PHANTOM_CLICK_GUARD_MS) continue;
+                for (int i = 0; i < g_n_nav; i++) {
+                    Elem *it = g_nav[i];
+                    if (ev.xbutton.x >= it->x && ev.xbutton.x < it->x + it->w &&
+                        ev.xbutton.y >= it->y && ev.xbutton.y < it->y + it->h) {
+                        g_focus_nav = it->nav_index;
+                        activate_focused();
+                        break;
+                    }
+                }
+                if (!g_quit) redraw();
+            } else if (ev.type == KeyPress) {
+                char buf8[8]; KeySym ks;
+                int n = XLookupString(&ev.xkey, buf8, sizeof(buf8) - 1, &ks, NULL);
+                buf8[n > 0 ? n : 0] = '\0';
+                handle_key(ks, buf8[0]);
+                if (!g_quit) redraw();
+            } else if (ev.type == SelectionNotify && g_xdnd_awaiting) {
+                /* 2026-08-24 - XDND drop data arrived; run drop_action
+                 * with $DROP_PATH set (window stays open - see the
+                 * g_drop_action block comment). */
+                g_xdnd_awaiting = 0;
+                xdnd_handle_selection(dpy, win);
+                if (!g_quit) redraw();
+            } else if (ev.type == ClientMessage && g_drop_action[0] &&
+                       (Atom)ev.xclient.message_type == ga_xdnd_enter) {
+                g_xdnd_source = (Window)ev.xclient.data.l[0];
+            } else if (ev.type == ClientMessage && g_drop_action[0] &&
+                       (Atom)ev.xclient.message_type == ga_xdnd_position &&
+                       g_xdnd_source != None) {
+                /* Answer Status immediately so the drag source shows an
+                 * accept cursor and is allowed to release here. */
+                XEvent st;
+                memset(&st, 0, sizeof(st));
+                st.xclient.type = ClientMessage;
+                st.xclient.window = g_xdnd_source;
+                st.xclient.message_type = ga_xdnd_status;
+                st.xclient.format = 32;
+                st.xclient.data.l[0] = (long)win;
+                st.xclient.data.l[1] = 1;              /* bit0: we accept */
+                st.xclient.data.l[2] = 0;              /* full-window rect */
+                st.xclient.data.l[3] = (long)ga_xdnd_action_copy;
+                st.xclient.data.l[4] = (long)ga_xdnd_action_copy;
+                XSendEvent(dpy, g_xdnd_source, False, NoEventMask, &st);
+            } else if (ev.type == ClientMessage && g_drop_action[0] &&
+                       (Atom)ev.xclient.message_type == ga_xdnd_leave) {
+                g_xdnd_source = None;
+            } else if (ev.type == ClientMessage && g_drop_action[0] &&
+                       (Atom)ev.xclient.message_type == ga_xdnd_drop &&
+                       g_xdnd_source != None) {
+                /* Request the uri-list payload; SelectionNotify above
+                 * finishes the handshake. */
+                XConvertSelection(dpy, ga_xdnd_selection, ga_uri_list,
+                                  ga_uri_list, win, (Time)ev.xclient.data.l[2]);
+                g_xdnd_awaiting = 1;
+            } else if (ev.type == ClientMessage && (Atom)ev.xclient.data.l[0] == wm_delete) {
+                g_quit = 1;
+            }
+        }
+    }
+
+    XftDrawDestroy(xftdraw_buf);
+    XFreeGC(dpy, gc);
+    XFreePixmap(dpy, buf);
+    XDestroyWindow(dpy, win);
+    XCloseDisplay(dpy);
+    return 0;
+}

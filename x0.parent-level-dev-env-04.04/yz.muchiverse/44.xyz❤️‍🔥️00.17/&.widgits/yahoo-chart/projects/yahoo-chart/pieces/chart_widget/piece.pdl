@@ -1,0 +1,11 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | chart_widget
+METHOD       | 10y Chart                | CHART_RANGE:10y
+METHOD       | 5y Chart                 | CHART_RANGE:5y
+METHOD       | 2.5y Chart               | CHART_RANGE:2.5y
+METHOD       | 1y Chart                 | CHART_RANGE:1y
+METHOD       | 1mo Chart                | CHART_RANGE:1mo
+METHOD       | 1wk Chart                | CHART_RANGE:1wk
+METHOD       | Refresh                | REFRESH
+METHOD       | Back to Research                | BACK_TO_RESEARCH

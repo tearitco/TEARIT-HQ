@@ -1,0 +1,4 @@
+# loop-demo.plan — proves LOOP_UNTIL genuinely re-runs a sub-plan
+# multiple times until it passes, with a hard cap. The sub-plan only
+# passes on its 3rd real execution.
+LOOP_UNTIL | 5 | subplans/loop-counter.plan

@@ -1,0 +1,47 @@
+"/grill-me" interview me relentlessly about every aspect of this plan till we reach a shared understanding. walk down each branch of the design tree resolving dependencies between decisions one-by-one.
+
+depending on our understanding
+/write-a-prd
+or
+/write-issues
+
+
+
+
+
+
+
+
+To scan a project for Ubiquitous Language and Domain-Driven Design (DDD) effectively, your prompt should treat the AI as a "Domain Architect" tasked with identifying inconsistencies between business intent and technical implementation. [1, 2] 
+## The "Domain Architect" Scan Prompt
+
+Role: You are an expert Domain-Driven Design (DDD) Architect.
+Task: Scan the provided [Codebase/Documentation/Spec] to identify the project's Ubiquitous Language and evaluate its DDD Maturity.
+Analysis Requirements:
+
+   1. Extract the Glossary: Identify recurring domain-relevant nouns (Entities/Value Objects) and verbs (Domain Events/Commands). Map them to their apparent Bounded Contexts.
+   2. Detect Language Friction:
+   * Ambiguity: Where is the same word (e.g., "Order") used for different concepts in different contexts?
+      * Synonyms: Where are different words (e.g., "User" vs. "Client") used for the same concept?
+      * Technical Leaks: Flag technical jargon (e.g., "ProcessData", "UserRow") that should be replaced with business-centric terms.
+   3. Pattern Audit: Identify potential DDD tactical patterns:
+   * Aggregates: Which entities act as consistency boundaries?
+      * Value Objects: Are primitive types (strings/ints) being used for domain concepts that have rules?
+   4. Output:
+   * A canonical Glossary (term, definition, context).
+      * A list of "Language Smells" with specific refactoring suggestions.
+   
+Input Context: [Paste your code snippets or project description here]
+[1, 2, 3, 4, 5, 6, 7] 
+
+------------------------------
+## Refinement Checklist for Your "Grill-Me" Session
+To reach a "shared understanding" as you requested, let's start the walk down the design tree. I need to grill you on these three foundational dependencies first:
+
+   1. The "Core" Problem: DDD is for complex domains. Is this project a "CRUD" application (simple data entry) or a complex system with deep business logic? If it’s simple, full DDD might be over-engineering.
+   2. The Domain Expert: Who is the source of truth for the language? If there isn't a non-technical expert involved, the "Ubiquitous Language" often just becomes "Developer Slang" in disguise.
+   3. The Bounded Contexts: Have you already identified where the meaning of terms changes (e.g., a "Product" in the Catalog vs. a "Product" in Shipping)? This is the most common point of failure. [8] 
+
+Which of these three areas feels the shakiest in your current plan?
+
+[1] [https://www.danielschleicher.com](https://www.danielschleicher.com/software/engineering,/ai,/spec-driven/development/2026/01/04/removing-ambiguity-with-spec-driven-development.html)

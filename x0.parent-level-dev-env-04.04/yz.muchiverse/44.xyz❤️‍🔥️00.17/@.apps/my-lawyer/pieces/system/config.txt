@@ -1,0 +1,7 @@
+game_id=my-lawyer-001
+player_name=Adam Chen
+day=3
+max_days=10
+money=500
+active_case_id=1
+game_state=playing

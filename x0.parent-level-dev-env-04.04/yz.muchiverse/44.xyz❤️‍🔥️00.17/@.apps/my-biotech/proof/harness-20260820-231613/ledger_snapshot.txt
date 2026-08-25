@@ -1,0 +1,2 @@
+2026-08-20T23:16:18|1|research_attempt|element:sulfur|compound:Sulfur
+2026-08-20T23:16:21|1|compound_discovered|Sulfur

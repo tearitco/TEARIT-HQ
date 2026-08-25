@@ -1,0 +1,20 @@
+<panel>
+    <module>projects/op-ed/manager/+x/op-ed_manager.+x</module>
+    
+    <text label="╔════════════ F I L E   B R O W S E R ═══════════╗" /><br/>
+    ${browser_mode_header}
+    ${browser_current_dir_line}
+    <text label="║                                               ║" /><br/>
+    <text label="║  " /><cli_io id="search_query" label="SEARCH: ${search_query_val}" /><text label="     ║" /><br/>
+    <text label="║  " /><cli_io id="file_path_input" label="PATH:   ${file_path_input_val}" /><text label="     ║" /><br/>
+    <text label="║                                               ║" /><br/>
+    ${autocomplete_suggestions_markup}
+    <text label="║                                               ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════╣" /><br/>
+    ${directory_browser_markup}
+    <text label="╠═══════════════════════════════════════════════╣" /><br/>
+    ${browser_action_buttons_markup}
+    <text label="╚═══════════════════════════════════════════════╝" /><br/>
+    
+    <interact src="pieces/apps/player_app/history.txt" />
+</panel>

@@ -1,0 +1,22 @@
+1|* 08-16 04:49 Reply with exactly one word: pong|Session 1
+2|08-16 00:29 list files in &.widgits/ai-cell|Session 2
+3|08-16 00:22 (empty)|Session 3
+4|08-16 00:13 (empty)|Session 4
+5|08-16 00:06 (empty)|Session 5
+6|08-15 22:59 (empty)|Session 6
+7|08-15 05:09 (empty)|Session 7
+8|08-15 03:28 (empty)|Session 8
+9|08-15 02:26 (empty)|Session 9
+10|08-15 02:25 (empty)|Session 10
+11|08-15 02:13 (empty)|Session 11
+12|08-15 02:02 (empty)|Session 12
+13|Older Chats|Older Chats
+14|Newer Chats|Newer Chats
+15|New Chat|New Chat
+16|Model: google/gemma-4-26b-a4b-it:free|Model: google/gemma-4-26b-a4b-it:free
+17|Stats|Stats
+18|Settings|Settings
+19|Scroll Up|Scroll Up
+20|Scroll Down|Scroll Down
+21|Composer|Composer
+22|Close|Close

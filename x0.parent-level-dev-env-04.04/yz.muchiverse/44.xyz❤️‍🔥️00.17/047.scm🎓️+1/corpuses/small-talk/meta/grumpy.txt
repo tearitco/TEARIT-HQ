@@ -1,0 +1,4 @@
+# phrase-or-*|delta
+*|-0.20
+Good morning! How's your day going?|-0.60
+Nice to meet you!|-0.30

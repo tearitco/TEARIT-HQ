@@ -1,0 +1,71 @@
+================================================================================
+local-pitfalls-j31.txt - 300.rtp-xyz: real incidents from 2026-07-31
+testing, for future agents. Companion to 101.mutaclsym's own local-
+pitfalls-j31.txt (same camera-state incident, identical fix applied
+here) - read that file for the full Pitfall A writeup, not repeated
+here. This file adds the rtp-xyz-specific Pitfall B in full (the
+registry-deletion bug), since it originates in THIS project's own new
+code (manager/rtp_manager.c), not inherited from mutaclysm.
+================================================================================
+
+## PITFALL A (see 101.mutaclsym's own local-pitfalls-j31.txt for the
+   full writeup): resetting pieces/world_01 from world_01_template
+   silently drops camera positioning. Same fix applied here - real
+   camera field values restored into both pieces/world_01/map_start/
+   hero/state.txt and pieces/world_01_template/map_start/hero/
+   state.txt.
+
+## PITFALL B: manager/rtp_manager.c's own original save/load code
+   deleted pieces/registry/ permanently, with no error surfaced
+   anywhere
+
+SYMPTOM: 300.rtp-xyz's own pieces/registry/ (containing this whole
+project's real de-themed slime/slime_pup content, terrain, furniture,
+items) was found completely missing partway through unrelated testing
+- `ls pieces/registry` returned "No such file or directory."
+
+ROOT CAUSE: manager/rtp_manager.c's original do_save_new() built one
+long shell command chaining `mkdir -p && cp -r world_01 && cp -r
+registry && cp project.pdl` and checked only the FINAL combined exit
+code. The very first real save (`save_1`) was created reporting
+SUCCESS ("Saved to save_1...") but somehow never actually received a
+registry/ subdirectory - the exact step that silently failed was never
+identified, because run_command() (this daemon's own shell-out helper)
+redirects BOTH stdout and stderr to /dev/null in the forked child
+before exec, matching every other op in this house's own "quiet by
+default" convention - meaning even if `cp -r pieces/registry` DID
+print a real error, nothing would ever surface it. Later, testing the
+Load half of the same flow ran do_load()'s own `rm -rf pieces/
+world_01 pieces/registry && cp -r <save>/world_01 ... && cp -r
+<save>/registry ...` - since `<save>/registry` never existed (the
+original silent failure), the `rm -rf` had already destroyed the LIVE
+copy before the restore step even ran, and the restore had nothing
+valid to copy from. Permanent, silent data loss, no error message
+anywhere in the whole chain.
+
+FIX: rewrote both functions - see manager/rtp_manager.c's own header
+comment directly above do_save_new()/do_load() for the full technical
+detail. Summary: every real step now checks its OWN exit code
+separately (not one combined chain), do_save_new() verifies the
+destination's world_01/ and registry/ subdirectories are actually
+non-empty before declaring success (a `cp -r` of an empty/missing
+source can exit 0 while copying nothing - exactly how this happened),
+and do_load() now REFUSES to touch any live directory at all until
+the save's own source content is confirmed to exist and be non-empty
+first - a real, load-bearing safety gate, not just better logging.
+
+RECOVERY: pieces/registry/ was restored from 300.rpg-xyz's own intact
+copy (both projects were de-themed identically the same session, so
+this was a safe, verified-matching restore) - confirmed monster_types.
+txt still shows slime/slime_pup (not the old zombie content) after
+restore. The original corrupted save_1 (missing its own registry/) was
+deleted rather than left around as a misleading "valid-looking" save
+slot.
+
+LESSON: see 101.mutaclsym's own local-pitfalls-j31.txt Pitfall B
+section for the general "verify source before you rm -rf" principle -
+applies to any future manager daemon built with this same shell-out
+save/load shape (rpg-xyz's own upcoming project-menu widget, task #31,
+should follow this same guarded pattern from the start, not repeat
+this incident).
+================================================================================

@@ -1,0 +1,87 @@
+WRAITH MOUSE INTEGRATION REPORT (J9)
+Date: 2026-06-09
+Project: Wraith-Alpha Desktop Simulation
+
+1. EXISTING PATTERNS
+--------------------
+- Input Flow:
+  1. Input Daemon (`pieces/keyboard/plugins/keyboard_input.c`) reads raw terminal input.
+  2. If a project-specific lock file (e.g., `projects/mouse-test/session/mouse_enabled.lock`) exists, the daemon enables SGR mouse reporting.
+  3. Daemon writes `KEY_PRESSED: <code>` or `MOUSE_EVENT: btn x y` to `pieces/keyboard/history.txt`.
+  4. Project Manager (`wraith-alpha_manager.c`) tails the history file and updates internal state (e.g., `g_active_gui_index`).
+  5. Manager writes updated state to `gui_state.txt` and `alpha_state.txt`, then pulses `pieces/display/frame_changed.txt`.
+  6. Parser (`wraith_parser_alpha.c`) wakes up on the pulse, reloads variables, and renders the frame to `current_frame.txt`.
+
+- UI Rendering:
+  - Layouts (`alpha-shell.chtpm`) use `${var}` substitution for dynamic content.
+  - Interactive elements (buttons) use `onClick="SET_ACTIVE:n"` which the manager parses to execute actions.
+
+2. DESIRES
+----------
+- Goal: Integrate mouse support into Wraith-Alpha for improved desktop navigation.
+- Stage 1: Display real-time Mouse Coordinates (X, Y) in the [ DESKTOP DEBUG ] section.
+- Stage 2: Display Mouse Button state (Left, Right, Middle) next to coordinates.
+- Stage 3: Click-to-Select Navigation. Left-clicking on a taskbar button should update the manager's focus/index and trigger the action.
+- Stage 4: Titlebar Focus. Clicking on an open window's titlebar should set focus to that window.
+
+3. 2DO LIST FOR NEW AGENT
+-------------------------
+[ ] Update Input Daemon:
+    - Modify `pieces/keyboard/plugins/keyboard_input.c` to check for `projects/wraith-alpha/session/mouse_enabled.lock` in `mouse_reporting_requested()`.
+    - (Optional) Refactor to a generic `pieces/mouse/mouse_enabled.lock` pattern.
+[ ] Update Wraith Manager (`wraith-alpha_manager.c`):
+    - Add `enable_mouse_mode()` and `remove_mouse_lock()` to manage the lock file on startup/shutdown.
+    - Update `process_history_file()` to handle `MOUSE_EVENT:`.
+    - Implement `handle_mouse(btn, x, y)` logic:
+        - Publish `mouse_x`, `mouse_y`, `mouse_btn` to `gui_state.txt`.
+        - Implement "Hot Zone" detection: Map screen coordinates (x, y) to specific UI buttons or window areas.
+        - On Left Click (btn=0 or btn=32 depending on SGR mode), execute the corresponding action.
+[ ] Update Wraith Layout (`alpha-shell.chtpm`):
+    - Add `Manager Mouse: X:${mouse_x} Y:${mouse_y} B:${mouse_btn}` to the debug section.
+[ ] Verification:
+    - Run `./button.sh compile` to rebuild binaries.
+    - Launch Wraith and confirm mouse reporting is active in the terminal.
+    - Verify coordinates update in UI.
+
+4. KPIs (Key Performance Indicators)
+------------------------------------
+- Visual: Mouse coordinates and button state are clearly visible and update at 60 FPS (when moved).
+- Functional: Clicking the "Terminal" launcher button opens a new terminal instance.
+- Functional: Clicking a minimized terminal in the taskbar restores it.
+- Functional: Clicking the 'x' button on an open window closes it.
+
+5. LATER GOALS (Phase 2)
+------------------------
+- Stage 5: UI Cleanup & Multi-Window (Later Phase). 
+    - Implement a Collapsible Debug Menu: Use the parser's native folding pattern (`[+]`/`[-]`) to hide/show debug info below the desktop GUI.
+    - This allows for a cleaner visual field while preserving all debug capabilities in-situ.
+    - Implement multi-window rendering: allow windows to overlap and be re-ordered.
+    - Goal: Match the `(o).wraith-view-sketch.txt` visual standard to prove mouse focus and window dragging/resizing functionality.
+
+6. REFERENCE FILES
+------------------
+- Patterns: `1.TPMOS_c_+rmmp.0102.0020/projects/mouse-test/manager/mouse-test_manager.c`
+- Target Code: `1.TPMOS_c_+rmmp.0102.0020/projects/wraith-alpha/manager/wraith-alpha_manager.c`
+- Input Source: `1.TPMOS_c_+rmmp.0102.0020/pieces/keyboard/plugins/keyboard_input.c`
+- UI Layout: `1.TPMOS_c_+rmmp.0102.0020/projects/wraith-alpha/layouts/alpha-shell.chtpm`
+- Visual Standard: `@wraith-dev-notes-cal/(o).wraith-view-sketch.txt`
+
+7. PITFALLS & IMPLEMENTATION NUANCE
+-----------------------------------
+- Pitfall #46 (Dual Ownership): Mouse clicks should be the SOLE trigger for an action when clicking. Do not "fake" a keyboard press (`KEY_PRESSED: 13`) if the manager is already handling the `MOUSE_MOVE` command, as this can cause double-execution or race conditions between the parser and manager.
+- Pitfall #35 (One Input History Rule): The manager must continue to tail `projects/wraith-alpha/session/history.txt` as its primary semantic inbox. The parser's `handle_mouse` already routes mouse events here as `COMMAND: MOUSE_MOVE btn x y`.
+- SGR Mouse Codes (Nuance):
+    - Terminal coordinates (x, y) are typically 1-based, starting from top-left.
+    - Button codes (btn) in SGR mode:
+        - 0: Left Button Press
+        - 1: Middle Button Press
+        - 2: Right Button Press
+        - 3: Release (any button)
+        - 32+: Motion with button held (e.g., 32 is Left Drag)
+    - Recommendation: Log the raw `btn` value to `alpha_manager.log` during initial development to confirm terminal-specific behavior.
+- Coordinate Mapping (Specific to Wraith-Alpha):
+    - Taskbar Row: Typically rows 15-18 in a standard terminal view (needs verification via `alpha_manager.log`).
+    - Titlebar Row: Typically rows 4-6 when a window is open.
+    - Columns: Buttons like [x] are usually in the far right (columns 70-80).
+- State Sync: Ensure `mouse_x`, `mouse_y`, and `mouse_btn` are updated in `gui_state.txt` on EVERY move to ensure the "Manager Mouse" debug section feels responsive (60 FPS).
+- Marker Discipline: Every mouse-driven state change MUST append to `pieces/display/frame_changed.txt` to trigger a parser refresh.

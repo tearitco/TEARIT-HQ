@@ -1,0 +1,48 @@
+**Short answer: no — the J28 docs don’t cover widgets in depth.**
+
+### What’s actually in the J28 material
+
+| Doc | Widgets / text editor? |
+|-----|------------------------|
+| Sprint index (1–18) | **No** — login, xyzfs, avatars, clones, TTG, GoldenEye |
+| `grok-j28-deepseek.md` | **No** dedicated section |
+| Login / avatar harnesses | Prove **login + UUID + xyzfs + avatar menus/windows** — **not** widget or text-editor flows |
+| RPG “event editor” | Map **events** (`event.pal`), not a general text-editor widget |
+
+So: **nothing in those docs says what harnesses did with widgets + xyzfs in login or a text editor**, because that work wasn’t the focus of the summarized sprints.
+
+### What *was* mentioned (only in passing)
+
+From the longer session / handoff, widgets show up as **related house DNA**, not as a finished sprint writeup:
+
+- Path style: `&.widgits/` (house spelling)
+- **`&.widgits/event-editor`** — cited for CHTPM → RGB → `gl_mirror` lessons (fonts, ASCII boxes), and for CPU cleanup (`button.sh kill`, leftover `prisc` / `chtpm_*` / `gl_mirror`)
+- Handoff line: widgets sit next to muta / harnesses as shared architecture, **not** as “login-equivalent identity via xyzfs”
+
+There is **no** documented harness result like: “text editor saved into `xyzfs/users/<uuid>/…`” or “widget session.pdl integration.”
+
+### How they *would* relate to login (architecture only — not “what was shipped”)
+
+If widgets followed the **same law as login/avatars** (mutaclysm / handoff):
+
+```
+login  →  current_login.txt + xyzfs/session.pdl + xyzfs/users/<uuid>/
+widget →  same identity readers; docs/buffers under that user's xyzfs
+         (e.g. home/docs/ or projects/<app>/)
+         history.txt key inject → ops → ledger → compose_frame → dual ASCII+GL
+```
+
+That’s the **intended** parallel to login (shared session identity, per-user fs, harness via history, not freeglut-only state). It is **not** a report of completed widget harnesses from J28.
+
+### Bottom line
+
+- **Complete in-depth “only widgets” doc from this session:** **doesn’t exist** in the J28 summaries.  
+- **Harnesses + xyzfs for login/editor widgets:** **not documented** as done.  
+- Login/xyzfs/avatar harness success ≠ widget/editor harness success.
+
+If you want a **full widgets-only deep doc**, it needs either:
+
+1. The real tree (`&.widgits/…`, text-editor ops, any harness scenarios), or  
+2. A greenfield design doc in the same style as TTG/login (paths, session.pdl, xyzfs layout, harness list).
+
+I can draft that design-style doc from house patterns, or a deep dive from the live `&.widgits` tree if you point me at it / paste structure — but I shouldn’t invent “what the harnesses accomplished” for widgets when the J28 record doesn’t include that.

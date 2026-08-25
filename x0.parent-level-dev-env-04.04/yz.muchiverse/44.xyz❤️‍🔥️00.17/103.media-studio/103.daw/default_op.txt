@@ -1,0 +1,4 @@
+# Phase-1 DAW: single freeglut binary (daw_main) owns UI+audio.
+# Phase-2 will register compose/menu/render ops here like house-design-docs.md §1.
+halt void builtin_halt {stop}
+out void builtin_out {stdout}

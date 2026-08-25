@@ -1,0 +1,36 @@
+WRAITH-ALPHA: STANDARD OPERATING PROCEDURE (SOP)
+Project: Terminal / Desktop Management (Registry Standard)
+Date: 2026-06-07
+
+1. ARCHITECTURAL PHILOSOPHY: THIN THEATER
+   Wraith-Alpha follows the "Manager Projection" model. The layout (.chtpm) is a 
+   hollow shell. The Manager owns the canonical state and projects a UI 
+   representation (markup) for the Parser to render.
+
+2. WINDOW REGISTRY (CANONICAL STATE)
+   The Manager maintains a registry of all active window instances.
+   Each window entry must track:
+   - instance_id (e.g., "terminal_1")
+   - title (e.g., "Terminal #1")
+   - state (OPEN, MINIMIZED, CLOSED)
+   - mode (HALF, FULL)
+   - focus_priority (Z-index)
+
+3. UI PROJECTION (THE TOOLBAR)
+   The Manager is responsible for generating the 'desktop_toolbar_markup' variable.
+   - It iterates through the window registry.
+   - It generates <button> tags for launch targets and minimized restore targets.
+   - It publishes this markup to 'session/alpha_state.txt' and 'session/desktop_ui_state.txt'.
+   - The layout MUST NOT hardcode instance-specific slots; it simply renders ${desktop_toolbar_markup}.
+
+4. INPUT DISPATCH (DYNAMIC RESOLUTION)
+   - Navigation indices are managed by the Manager.
+   - When ENTER is pressed on a dynamic index, the Manager resolves the target 
+     from the registry.
+   - The Manager performs the state transition (e.g., Restore) and re-projects 
+     the updated UI markup.
+
+5. SYNC CONTRACT
+   - Manager writes state -> Parser pulses 'frame_changed.txt' -> Parser renders.
+   - Parser MUST re-load 'alpha_state.txt' on every render pulse to stay in 
+     sync with the Manager's canonical registry projection.

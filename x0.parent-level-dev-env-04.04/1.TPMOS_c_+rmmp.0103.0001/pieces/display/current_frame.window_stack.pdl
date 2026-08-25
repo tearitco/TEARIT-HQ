@@ -1,0 +1,7 @@
+SECTION | KEY | VALUE
+FRAME | frame_id | 000053
+STACK | 00 | object=4 title=GAME MAP: role=panel z=40 focused=true
+STACK | 01 | object=3 title=Wraith Terminal v1.0 role=panel z=10 focused=false
+STACK | 02 | object=5 title=taskbar role=banner z=5 focused=false
+STACK | 03 | object=2 title=WRAITH DESKTOP GUI role=banner z=2 focused=false
+STACK | 04 | object=1 title=WRAITH DESKTOP GUI role=window z=1 focused=false

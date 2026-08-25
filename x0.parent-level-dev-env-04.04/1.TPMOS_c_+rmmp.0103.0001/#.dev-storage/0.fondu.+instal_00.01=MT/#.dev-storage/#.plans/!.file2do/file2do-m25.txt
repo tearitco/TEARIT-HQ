@@ -1,0 +1,71 @@
+# PIECEMARK-IT / ASCII-FIRST MISSION - M25 (March 25, 2026)
+**Strategic Mandate:** "Stabilize the Core, Ignite the AI"
+**Priority:** Save/Load/Local Play & PAL Mastery
+
+---
+
+## 🏗️ 1. THE FOUNDATION: SAVE / LOAD / LOCAL PLAY
+*Finish the nervous system of op-ed before layering on GL-OS complications.*
+
+[ ] **1.1 Project Persistence (SAVE)**
+    - Write map mutations to `projects/<project>/maps/*.txt`.
+    - Persist piece state (`state.txt`) and DNA (`piece.pdl`) to `projects/<project>/pieces/`.
+    - Surgical saving (only modified "dirty" pieces/maps) for CPU health.
+
+[ ] **1.2 Editor State Restoration (LOAD)**
+    - Restore editor context (active project, current map, selector position).
+    - Handle world-container paths correctly (`W-first` resolution).
+
+[ ] **1.3 Integrated Local Play (PLAY)**
+    - Launch project in a "Player Mode" directly within the op-ed layout.
+    - Zero-touch play from saved artifacts (ensure parity between editor and player).
+
+---
+
+## 🦾 2. THE MUSCLES: PAL SCRIPTING (BUTTON STACKER)
+*Implement a visual Op-Stacker inspired by RPG Maker MV and Scratch.*
+
+[ ] **2.1 Button Stacker UI**
+    - Specialized pages of buttons for different Op categories (Movement, Logic, UI, Market).
+    - "Scratch-style" variable modification for each Op (e.g., set `warp_target_x=10`).
+
+[ ] **2.2 Piece Method Binding**
+    - Automated binding of `.asm` scripts to `piece.pdl` methods (e.g., `METHOD | on_interact | void | on_interact.asm`).
+    - Save scripts directly in project piece directories.
+
+[ ] **2.3 Core "Muscle" Library (Ops)**
+    - `show_msg.+x "text"` (Message boxes).
+    - `warp_player.+x <map> <x> <y>` (Teleport logic).
+    - `give_item.+x <id>` (Inventory management).
+    - `move_npc.+x <npc_id> <dir>` (Simple behaviors).
+
+---
+
+## 🧪 3. VERIFICATION & TESTING (STABILIZE THE CORE)
+*Zero-touch parity gate for GL-OS development.*
+
+[ ] **3.1 Z-Level Logic**
+    - Verify 3 levels (surface, underground, sky) preserve piece associations.
+    - Test Z-level transitions in local play.
+
+[ ] **3.2 Inter-Map Teleports**
+    - Verify `warp_player` correctly swaps `current_map` and renders destination map.
+    - Ensure piece state is not lost during map transitions.
+
+[ ] **3.3 NPC & Selector Ops**
+    - Test message box responses for NPCs.
+    - Ensure selector/player ops are perfectly mirrored in editor and player.
+
+[ ] **3.4 The "Mar 24" Gate**
+    - Full create -> edit -> save -> load -> play cycle with zero data loss or pointer drift.
+
+---
+
+## 🔭 4. NEAR-TERM HORIZON (NEXT PHASES)
+[ ] AI-Recurse Studio (Autonomous bots auto-battling via Master Scripts).
+[ ] Market/Auction House with bot-driven liquidity.
+[ ] Chemistry-based crafting (Blending elements for evolution).
+[ ] AI Distillation via local Gemma/Qwen (Generating `.pdl` and `.asm` files).
+
+---
+"Focus on the remaining hard stuff in ASCII-OS... it will be ok <3"

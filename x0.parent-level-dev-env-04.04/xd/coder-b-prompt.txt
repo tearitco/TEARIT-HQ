@@ -1,0 +1,180 @@
+CODER-B PROMPT - platform orchestrator + user-pal (shared identity layer)
+================================================================================
+
+Written by coder-a (working in parallel on muchi-pal-chat + wsr-pal) so
+you can pick this up cold. Read this whole file before touching code.
+
+Why this pair of tasks, not one of the other candidates (mutaclsym,
+piececraft-3d, chatbot training, muchi-civ, muchi-evo): these two are
+genuinely parallel-safe (zero file overlap with wsr-pal/muchi-pal-chat)
+AND they're real infrastructure every other project in this family will
+eventually plug into - not a side quest. Build these and you've built
+something that benefits ALL the games at once, which is the actual
+"synergy" ask.
+
+
+0. REQUIRED READING BEFORE YOU WRITE ANY CODE
+--------------------------------------------------------------------------
+Read these directly, don't guess their contents from this summary:
+
+  - y0.mutaclsym+05.00/platform-vision.txt (11KB, already a real design
+    pass for the orchestrator - §1 is well-specified, read it in full)
+  - y0.mutaclsym+05.00/nav-refactor-2.txt (platform-vision.txt names this
+    as a prerequisite - the numbered-choice/accumulator UI convention)
+  - mutaclsym/dox/01-cdda-architecture.md (item model, referenced by
+    platform-vision.txt §2)
+  - Any existing egg-pals export precedent: grep for export_card.c /
+    destroy_card.c under z0.egg-pals+plats-8.00 - real one-directional
+    piece->artifact export already exists there, worth reading before
+    designing anything bidirectional.
+
+Also skim these two memory-backed conventions from this session's work
+on wsr-pal - they apply here too:
+
+  - Menus/pickers that list more than a couple items should be data-
+    driven (a plain registry file), never hardcoded arrays. locations.txt
+    (per platform-vision.txt §1) already IS this - keep it that way, and
+    if you ever add a second data-driven list anywhere in this task, use
+    the same pipe-delimited convention this whole family already uses
+    (items.txt/recipes.txt/monster_types.txt, cited directly in
+    platform-vision.txt §1).
+  - AI (any tier beyond deterministic preset logic) never belongs in a
+    live control loop - irrelevant for pure account/registry work, but
+    if user-pal ever grows any decision-making piece (it almost
+    certainly won't), the decision_mode chassis + GAME-AI-SPEED-
+    DOCTRINE.txt (yz.muchiverse/2.muchi-verse/) is the governing doctrine
+    - don't invent a different pattern.
+  - Test anything with a human-facing interface through that actual
+    interface, not just by reading the code. For the orchestrator this
+    means: actually run it and confirm the exec handoff really replaces
+    the process (check with `ps`/`echo $$` before and after, or similar)
+    - don't just eyeball the shell script and call it done.
+
+Both conventions above were arrived at the hard way this session (had to
+rebuild wsr-pal's menu system once, after building it the "just
+hardcode it" way first) - worth avoiding the same detour here.
+
+
+1. TASK ONE: THE ORCHESTRATOR (near-term, build this first)
+--------------------------------------------------------------------------
+Scope is exactly platform-vision.txt §1 - it's already well-designed,
+your job is to build it, not redesign it. Summary (read the real section
+for full detail, this is a pointer not a replacement):
+
+  - `locations.txt`: pipe-delimited registry -
+    `id|display_name|project_root|launch_cmd`
+  - `orchestrator.sh`: reads locations.txt, prints a numbered list, reads
+    one line of input, `exec`s the chosen game's launch_cmd (real `exec`,
+    not a subprocess+wait - this REPLACES the orchestrator's own process,
+    per direct user instruction quoted in §1: "pass the shell thru as if
+    it didn't even exist"). Plain POSIX shell, NOT a pal/prisc+x VM app -
+    platform-vision.txt §1 already reasons through why (a one-shot
+    list+launch tool doesn't need a persistent 3-process VM/renderer/
+    keyboard_input loop) - don't second-guess this without a real reason,
+    it was a deliberate call, not an oversight.
+
+TWO OPEN DECISIONS platform-vision.txt explicitly left unresolved - make
+a real, documented call on both (don't build around them silently):
+
+  a. Does the orchestrator return to the picker after the launched game
+     quits (needs fork()+waitpid() instead of bare exec), or is it a
+     true one-shot handoff (bare exec, orchestrator process ceases to
+     exist, no picker on game-exit)? platform-vision.txt leans toward
+     "return to picker" (the actual "platform" feel) but says this isn't
+     decided. Pick one, document WHY in your status file, and get the
+     fork-vs-exec mechanics right for whichever you pick (these are not
+     interchangeable - re-read §1's process-model paragraph carefully,
+     it explains exactly why).
+  b. Where does `locations.txt` itself live, and does its `project_root`
+     column need to be relative to the orchestrator's own location or
+     absolute? Not decided in the source doc either - just pick something
+     consistent and say so.
+
+If either of these feels genuinely blocking rather than a reasonable
+default you can document and move past, ask the user directly rather
+than guessing - this family's convention throughout this session has
+been "flag real open decisions, don't silently resolve them," not "never
+ask questions."
+
+Test it for real: add both mutaclsym and egg-pals to locations.txt,
+launch each from the picker, confirm the exec handoff actually works
+(the orchestrator's own process should be GONE, not lingering as a
+parent). This is the "test through the playable interface" rule applied
+to a launcher instead of a game - the interface here IS the picker.
+
+
+2. TASK TWO: USER-PAL (shared identity/ownership layer)
+--------------------------------------------------------------------------
+`yz.muchiverse/2.muchi-verse/user-pal/` currently EXISTS AS AN EMPTY
+DIRECTORY - confirmed via `find`, nothing built yet, this is genuinely
+greenfield, not a partial port of anything.
+
+The ask, in the user's own words this session: "user-pal (to set up
+accounts all our apps can use of the same user data and store property/
+pets etc)". This is NOT the same thing as platform-vision.txt §2's
+cross-game trade-envelope format (that's item/pet TRANSLATION between
+different games' schemas) - user-pal is one level below that: a shared
+notion of WHO is playing and WHAT they own ACROSS every game, using each
+game's own native piece IDs (not a translated/neutral format). Think of
+it as an ownership INDEX, not an inventory duplicate.
+
+Per this whole session's established discipline: write a real design doc
+FIRST (e.g. `user-pal/USER-PAL-DESIGN.txt`), matching the shape of
+SOCIETY-ECONOMY-ARCHITECTURE.txt / EVO-DESIGN.txt / WSR-PAL-PORT-
+STATUS.txt already in this family - state what's real vs. aspirational,
+name open questions explicitly rather than silently deciding them. Then
+build a minimal PAL/prisc+x scaffold (per UPSCALE-DOWNSCALE-ENGINE-
+COMPONENTS.txt §4's drop-in checklist, already proven 3x this session:
+copy `system/prisc+x.c`/`connect_op.c`/`json_parser.c` verbatim, write a
+project-specific `default_op.txt`).
+
+Suggested minimal scope for a first real, testable slice (adjust if your
+design doc finds a better shape - this is a starting point, not a spec):
+
+  - One piece per user: `pieces/users/<username>/state.txt` - account
+    fields (created_at, display_name), NOT game-specific data.
+  - A property/ownership registry per user - a flat, appendable list of
+    `<game_id>|<piece_ref>|<kind>` rows (e.g.
+    `egg-pals|creature_042|pet`, `mutaclsym|item_pointy_stick_003|item`)
+    - deliberately just an INDEX pointing back at each game's own real
+    piece, not a copy of that piece's data. This is the cheapest useful
+    thing that's still real infrastructure, and it's exactly the anchor
+    platform-vision.txt §2's cross-game portability will need later
+    ("whose stuff is this") without you having to solve §2's much harder
+    trade-envelope-translation problem now - that's explicitly out of
+    scope for this task, don't build it.
+  - Two or three ops: `user_create`, `user_add_property`,
+    `user_list_property`. CLI-testable is enough for a first slice - no
+    interactive menu needed yet, this is backend registry work.
+
+STRETCH (only if the above is solid and tested with time left): wire ONE
+real game to actually register something into user-pal on creation -
+egg-pals is the natural pick since `export_card.c` already proves it has
+SOME notion of "this pet, exported, belongs to someone." Don't attempt
+this against wsr-pal or muchi-pal-chat - those are coder-a's active
+files this session, avoid touching them entirely to keep this genuinely
+parallel-safe.
+
+
+3. EXPLICITLY OUT OF SCOPE FOR THIS TASK
+--------------------------------------------------------------------------
+  - platform-vision.txt §2 (cross-game trade envelope / item translation)
+    and §3 (auction/trading platform) - both explicitly far-term per the
+    source doc itself, don't start either.
+  - Anything inside yz.muchiverse/2.muchi-verse/wsr-pal or
+    y0.muchi-pal-chat - coder-a's active working set this session.
+  - Any interactive menu/UI for user-pal beyond CLI ops - not needed for
+    a first slice, and if it does become needed later, use the piece.pdl
+    METHOD-table pattern (see feedback_menus_as_piece_pdl_method_tables
+    memory / wsr-pal's wsr_menu_input.c+wsr_compose_frame.c as the real,
+    just-built reference implementation), not a hardcoded menu.
+
+
+4. WHEN YOU'RE DONE (or need to hand off further)
+--------------------------------------------------------------------------
+Write a status doc (`ORCHESTRATOR-STATUS.txt` and/or fold user-pal's
+status into USER-PAL-DESIGN.txt itself) stating plainly what's built and
+tested vs. designed-but-not-built, matching every other *-STATUS.txt /
+*-DESIGN.txt in this family. Name the two orchestrator open-decisions
+you resolved and why. That's the deliverable, same as everything else in
+this project - real, tested, honestly scoped, documented.

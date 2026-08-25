@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | wraith-alpha/wraith-projects/chtmgl-video-isolate
+META         | version            | 0.1
+META         | author             | TPMOS
+META         | manager            | projects/wraith-alpha/wraith-projects/chtmgl-video-isolate/manager/+x/chtmgl-video-isolate_manager.+x
+META         | entry_layout       | projects/wraith-alpha/wraith-projects/chtmgl-video-isolate/layouts/chtmgl-video-isolate.chtpm
+
+STATE        | title              | CHTMGL VIDEO ISOLATE
+STATE        | status             | ready
+STATE        | mode               | video_isolate
+STATE        | reference          | x0.parent-level-dev-env-02.01/#.CHTMGL.E23=cordsclean]💯️
+
+RESPONSE     | default            | CHTMGL Video Isolate Ready.

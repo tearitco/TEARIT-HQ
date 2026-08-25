@@ -1,0 +1,16 @@
+<panel>
+    <text label="+===========================================================+" /><br/>
+    <text label="|           P R O C E S S   M O N I T O R                 |" /><br/>
+    <text label="+===========================================================+" /><br/>
+    <text label="|                                                           |" /><br/>
+    ${os_proc_list}
+    <text label="|                                                           |" /><br/>
+    <text label="+===========================================================+" /><br/>
+    <text label="|  CONTROLS:                                                |" /><br/>
+    <text label="|  " /><button label="Suspend FuzzPet" onClick="SIGNAL:fuzzpet_manager:STOP" /><text label="                       |" /><br/>
+    <text label="|  " /><button label="Resume FuzzPet" onClick="SIGNAL:fuzzpet_manager:CONT" /><text label="                        |" /><br/>
+    <text label="|  " /><button label="Refresh" onClick="REFRESH_PROC" /><text label="                             |" /><br/>
+    <text label="|  " /><button label="Back" href="pieces/chtpm/layouts/os.chtpm" /><text label="                              |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="+===========================================================+" /><br/>
+</panel>

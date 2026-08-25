@@ -1,0 +1,17 @@
+.|0.0|180|170|150|t_floor|floor
+#|2.0|80|80|80|t_wall|wall
+~|0.5|100|180|220|t_water_sh|water_shallow
+T|3.0|0|150|0|t_tree|tree
+^|1.5|180|180|180|stone|mountain
++|1.0|139|90|43|t_door|door
+@|0.0|200|100|100|brick|building
+*|2.5|255|215|0|gold|treasure
+%|0.2|120|110|100|t_rubble|rubble
+-|0.1|139|139|139|metal|bridge
+>|1.0|80|80|90|t_stairs_down|stairs_down
+h|1.0|170|130|90|f_chair|chair
+&|0.5|110|70|40|f_table|table
+b|1.0|200|100|100|f_bed|bed
+k|0.5|100|100|110|f_counter|counter
+s|0.5|200|200|210|f_sink|sink
+c|1.0|150|120|80|f_crate|crate

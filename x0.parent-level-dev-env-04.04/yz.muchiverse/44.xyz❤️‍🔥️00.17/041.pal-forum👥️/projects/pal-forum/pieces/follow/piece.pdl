@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | follow
+META         | version            | 1.0
+
+METHOD       | Follow                  | FOLLOW
+METHOD       | Unfollow                | UNFOLLOW

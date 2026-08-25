@@ -1,0 +1,231 @@
+M18 Testing Guide (Existing + New Features)
+Date: 2026-03-18
+Purpose: Standardize how agents test features (especially via key injection + frame review) to prevent regressions.
+
+Principles
+----------
+1) Test existing behavior first (regression baseline), then test new behavior.
+2) Test at three levels:
+   - black-box runtime (key injection + frame review)
+   - module/op level (direct state/op assertions)
+   - end-to-end user flow (play full project, create/edit/save/load, script, and replay)
+3) Record evidence in text (commands + observed output snippets).
+4) In no-git mode, create manual backups before risky changes.
+5) After each test pass, publish a frame-history report in repo root (`./`) before making code changes.
+
+High-Value Test Interfaces
+--------------------------
+1) Key injection file:
+- `pieces/keyboard/history.txt`
+- **EXACT FORMAT REQUIRED:** `[YYYY-MM-DD HH:MM:SS] KEY_PRESSED: <code>`
+- Example: `echo "[$(date '+%Y-%m-%d %H:%M:%S')] KEY_PRESSED: 10" >> pieces/keyboard/history.txt`
+- *Note:* The parser strictly looks for the `KEY_PRESSED: ` prefix. Raw integers or malformed lines are ignored.
+
+2) Routed app input:
+- `pieces/apps/player_app/history.txt`
+
+3) Frame artifacts:
+- `pieces/display/current_frame.txt`
+- `pieces/display/current_layout.txt`
+- `pieces/display/frame_changed.txt`
+- `pieces/master_ledger/frame_changed.txt`
+
+4) Runtime process checks:
+- orchestrator / parser / renderer / clock daemon process presence
+
+5) Project/runtime artifacts:
+- `projects/<project>/...` piece/state trees
+- project metadata (`project.pdl` and related fields)
+- event/script files and bindings
+
+Regression Test Matrix (Existing Features)
+-----------------------------------------
+R1) Stack launch + process health
+- Launch runtime.
+- Verify expected core processes are live.
+- Verify frame file exists and is rendering.
+
+R2) Key injection ingestion
+- Inject key lines to `pieces/keyboard/history.txt` using the `[TIMESTAMP] KEY_PRESSED: <code>` format.
+- Confirm new entries append and are consumed over time.
+- Confirm frame updates continue after key injections.
+
+R3) Layout/frame validity
+- Confirm `current_layout.txt` points to a valid layout path.
+- Confirm `current_frame.txt` is non-empty and structurally valid.
+
+R4) Local app state integrity
+- Confirm active status line in frame remains coherent (`ACTIVE`, `KEY`, `Z-LEVEL`).
+- Confirm no broken placeholders in frame output.
+
+R5) Op-level smoke checks
+- Run `render_map.+x` and verify `view.txt` updates.
+- For move/state ops, verify expected state deltas (or document if blocked by mode/context).
+
+R6) Compile regression
+- Run `./compile_all.sh` for touched areas before merge.
+
+Nuanced Full-Project Test Matrix (Required)
+-------------------------------------------
+These are required for tester-grade confidence, not optional.
+
+P1) Full project playthrough smoke (existing project)
+- Enter project loader.
+- Launch at least one target project (e.g., fuzz-op/op-ed-related flow).
+- Perform nuanced interactions (nav, mode switches, map control, action menu paths).
+- Verify frame + state coherence after each interaction cluster.
+
+P2) Editor-driven project creation
+- Enter editor flow.
+- Create a new project or project-like playable state.
+- Add pieces/entities and map content.
+- Verify piece placement appears in rendered frame and corresponding state files.
+
+P3) Save / load roundtrip (editor-created content)
+- Save created project.
+- Exit/re-enter flow.
+- Load same project.
+- Verify parity:
+  - piece positions/states
+  - map association
+  - active layout/metadata sanity
+
+P4) Script/event authoring and execution
+- Create script/event definitions for the created project.
+- Bind scripts/events to target pieces/actions.
+- Trigger in runtime play.
+- Verify expected state/result changes and response text.
+
+P5) Local play from created/saved project
+- Launch local play using saved project artifacts.
+- Confirm no manual file edits required.
+- Confirm project boots into expected layout/context.
+
+P6) Metadata correctness checks
+- Validate `entry_layout`, `player_piece`, and related metadata are resolved correctly.
+- Ensure values are scan/registry-derived where appropriate (no stale hardcoded defaults).
+
+P7) Cross-project sanity
+- Ensure testing one project does not corrupt another project's states/layout pointers.
+- Check at least one untouched project still launches normally.
+
+New Feature Test Plan (Template)
+--------------------------------
+For each new feature F:
+1) Define expected behavior in one sentence.
+2) Add deterministic setup steps (files/paths/state).
+3) Add key-injection path (if UI/input relevant).
+4) Add frame assertions (what text/layout must change).
+5) Add state-file assertions (which keys/values must change).
+6) Add project artifact assertions (save/load/script binding persistence).
+7) Add rollback/cleanup steps.
+8) Add failure signatures (what indicates miswire/hardcode regression).
+
+Recommended command skeleton:
+- Baseline capture:
+  - copy `current_frame.txt` and key state files to `/tmp/*before*`
+- Inject/trigger:
+  - append key/event inputs
+- Post capture:
+  - copy `current_frame.txt` and state files to `/tmp/*after*`
+- Diff:
+  - `diff -u before after`
+- Log:
+  - save key evidence lines in test report text file
+
+Mandatory Post-Test Report Gate (Root `./`)
+-------------------------------------------
+This is required so review does not depend on hunting under nested folders.
+
+Rule:
+1) After every test cycle, create a root report file in `./` with:
+- test scope
+- key injections/actions performed
+- frame evidence lines (timestamps + relevant frame snippets)
+- PASS/FAIL/INCONCLUSIVE verdicts
+- explicit "safe to proceed with code changes" line
+
+2) Source evidence from:
+- `pieces/debug/frames/session_frame_history.txt`
+
+3) Report filename convention (root dir):
+- `FRAME_REPORT_<YYYYMMDD-HHMM>_<topic>.txt`
+- Example: `FRAME_REPORT_20260318-0950_scroller.txt`
+
+4) Review gate:
+- Do not begin implementation edits until this root report is written and reviewed.
+
+Suggested command pattern:
+- `cp pieces/debug/frames/session_frame_history.txt ./FRAME_HISTORY_RAW_<YYYYMMDD-HHMM>.txt`
+- Create concise reviewed summary in:
+  - `./FRAME_REPORT_<YYYYMMDD-HHMM>_<topic>.txt`
+- Keep both raw copy and concise summary for traceability.
+
+M18 Smoke Pass Performed (This Session)
+---------------------------------------
+Executed:
+1) Started stack via background `run_chtpm.sh`.
+2) Verified live processes: orchestrator, chtpm_parser, renderer, clock_daemon.
+3) Injected keys into `pieces/keyboard/history.txt`.
+4) Verified frame output present in `pieces/display/current_frame.txt`.
+5) Captured runtime frame evidence from `/tmp/chtpm_m18.log`.
+6) Stopped stack cleanly via `kill_all.sh`.
+
+Observed:
+- PASS: runtime stack launches and renders frames.
+- PASS: keyboard history accepts injected keys.
+- PASS: frame artifacts are generated and readable.
+- PASS: process cleanup completed after `kill_all.sh`.
+- INCONCLUSIVE: selector movement via direct injection was not proven in this smoke run context; requires controlled active-mode test harness.
+- INCONCLUSIVE: direct `move_entity.+x` delta not observed in current context; requires dedicated fixture state and mode-aware harness.
+
+Known Testing Pitfalls
+----------------------
+1) Mode/context sensitivity:
+- Same key can do nothing if active mode/context is not correct. Check the current layout and focused element.
+
+2) Metadata/default traps:
+- Missing `entry_layout` / `player_piece` guessed defaults can misroute tests.
+
+3) Hardcoded-path drift:
+- Tests may pass in one layout/project but fail in another if pathing is not canonical/world-map-first.
+
+4) Cancellation sequence confusion:
+- Multi-key injections can net-zero movement and hide real behavior.
+
+5) False confidence from op-only tests:
+- Direct op passes do not prove end-to-end editor/save/load/script/play behavior.
+
+6) **INJECTION FORMAT ERROR**: 
+- Key injection MUST follow the `[TIMESTAMP] KEY_PRESSED: <code>` format. Raw integers or missing prefixes will be ignored by the parser.
+
+7) **GHOST BUG HUNTING**: 
+- If key injection is visible in the frame (e.g., in the `[KEY]:` status line), the input pipeline is functional. **Do not investigate "broken input" if the frame reflects the key.** If the application doesn't respond, check the application module's logic, active layout mode (Nav vs Active), or focus state.
+
+8) **RACE CONDITION FALSE POSITIVES**:
+- Sometimes a frame update happens just before an injection is processed. Always allow 1-2 seconds for the parser/module cycle to complete before capturing evidence.
+
+Best-Practice Additions for Future
+----------------------------------
+1) Build deterministic end-to-end harness scripts for P1-P7.
+2) Add per-feature test fixtures under `#.tools/`:
+- setup fixture
+- run test
+- verify expectations
+- cleanup fixture
+
+3) Keep an append-only session test report per day.
+4) Require at least one full create->save->load->script->play cycle before accepting major feature work.
+
+Minimal Daily Regression Checklist
+----------------------------------
+1) Runtime launches (processes alive)
+2) Frame renders (non-empty current_frame)
+3) Key injection path alive (history updates)
+4) Layout resolution valid (current_layout points to existing file)
+5) Compile check for touched code
+6) High-risk changes get before/after evidence
+7) At least one end-to-end project flow is validated (create/play or load/play)
+8) Root frame report created in `./` and reviewed before edits
+
+End of testing guide.

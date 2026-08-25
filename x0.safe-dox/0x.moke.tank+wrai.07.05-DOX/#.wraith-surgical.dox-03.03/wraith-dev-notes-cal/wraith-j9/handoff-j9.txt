@@ -1,0 +1,46 @@
+WRAITH MOUSE HANDOFF (J9) - UPDATED
+Date: 2026-06-09
+Status: SUCCESSFUL INTEGRATION / READY FOR UI REFINEMENT
+
+1. What is working now
+----------------------
+- **Parser-Side Hit-Testing:** The parser now tracks character offsets for all interactive elements. Mouse clicks (btn 0) are mapped to UI elements by scanning the last rendered frame.
+- **Click-to-Action:** Clicking taskbar buttons or window controls (o, -, x) now correctly triggers the corresponding `SET_ACTIVE` actions.
+- **Redraw Stability:** Mouse movement no longer triggers frame redraws. Only click transitions (press/release) mark the frame dirty, significantly reducing CPU load.
+- **Expanded Registry:** The window limit was increased from 10 to 20 to prevent "registry full" silent failures.
+- **Taskbar Capacity:** The taskbar layout was expanded to support 20 restore slots.
+- **Diagnostic Logging:** `debug.txt` now logs all click hits/misses and command injections for easy debugging.
+
+2. Major Fixes applied
+----------------------
+- Fixed a bug where Enter/Button launch stopped working because the manager's registry was full.
+- Replaced unstable dynamic frame snapshots with a fixed `MAX_BUFFER` array to prevent crashes.
+- Decoupled mouse motion from rendering to stop frame spam.
+
+3. Current architecture intent
+------------------------------
+- **One Frame Owner:** The parser/composer owns `pieces/display/current_frame.txt`.
+- **Stateless Mouse Logic:** The parser handles the coordinate-to-element mapping, keeping the manager focused on high-level state.
+- **Semantic Inbox:** All actions (mouse or keyboard) route through `projects/wraith-alpha/session/history.txt`.
+
+4. Known risks / open problems
+------------------------------
+- **Single Presenter:** Currently only one "open" window is rendered at a time (multi-window tiling is not yet implemented).
+- **Debug Noise:** Detailed logging is still active in `debug.txt`; it should be pruned once UI behavior is fully validated.
+
+5. Recommended next order of work
+---------------------------------
+1. Implement a basic tiling or stacking renderer in `alpha-shell.chtpm` to show multiple open windows simultaneously.
+2. Add hover-state feedback (if possible within terminal constraints) or a "status line" showing the currently hovered element.
+3. Clean up diagnostic logging once the coordinate mapping is proven perfectly stable.
+
+6. Files to inspect first
+-------------------------
+- `1.TPMOS_c_+rmmp.0102.0020/pieces/chtpm/plugins/chtpm_parser.c` (HitZone logic and `handle_mouse`)
+- `1.TPMOS_c_+rmmp.0102.0020/projects/wraith-alpha/manager/wraith-alpha_manager.c` (`MAX_WINDOWS` and `handle_mouse` trigger logic)
+- `1.TPMOS_c_+rmmp.0102.0020/projects/wraith-alpha/layouts/alpha-shell.chtpm` (Expanded taskbar buttons)
+
+7. Notes for the next agent
+---------------------------
+- The "Enter key dead" issue was purely a registry capacity problem. Do not assume input logic is broken if launches fail; check `alpha_manager.log` for "registry full".
+- The parser hit-testing uses a 1-based coordinate system matching the terminal's `(x, y)` output.

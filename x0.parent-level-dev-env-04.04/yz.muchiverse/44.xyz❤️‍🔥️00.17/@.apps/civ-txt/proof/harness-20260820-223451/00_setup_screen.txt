@@ -1,0 +1,19 @@
++============================================================+
+|                     C I V - T X T                          |
++============================================================+
+[Map Loading...]
++============================================================+
+[>] 1. [Victory: Conquest]
+[ ] 2. [Victory: Score + Turn Limit]
+[ ] 3. [Victory: Tech + Score]
+[ ] 4. [Map: Small (2 civs)]
+[ ] 5. [Map: Medium (3-4 civs)]
+[ ] 6. [Combat: Abstract (army-strength)]
+[ ] 7. [Combat: Per-unit (grid skirmish)]
+[ ] 8. [Confirm & Start]
++============================================================+
+[ ] 9. [Enter Game (after Confirm & Start)]
+ (Ctrl+C to quit)
+
++=========================================================+
+Nav > _

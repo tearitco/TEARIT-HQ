@@ -1,0 +1,18 @@
++============================================================+
+|  P A L - C H A T - I R C   [login]                         |
++============================================================+
+|                                                            |
+|  Welcome to pal-chat-irc.                                  |
+|  Create an account, or log in with an existing user ID.    |
+|                                                            |
++============================================================+
+
+| [^] 1. User ID: [_]                                     |
+| [ ] 2. Display Name (new accounts only): []                                        |
+[ ] 3. [Create Account]
+[ ] 4. [Log In]
+[ ] 5. [Continue to Rooms]
+ (Ctrl+C to quit)
+
++=========================================================+
+Active [^]:  (ESC to exit)

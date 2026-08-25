@@ -1,0 +1,7 @@
+# tile_id glyph color extrude
+grass . #1A8F22 1
+tree T #1FCB4C 3
+stone R #6C88B5 2
+wall # #2A3A4A 2
+actor @ #FFD166 2
+event ! #FF5C5C 2

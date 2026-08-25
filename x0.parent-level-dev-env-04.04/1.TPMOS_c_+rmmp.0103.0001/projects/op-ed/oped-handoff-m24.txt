@@ -1,0 +1,34 @@
+# OP-ED Behavioral Handoff (m24)
+
+## 1. Accomplishments
+- **Sovereign Context:** The Editor can now switch between multiple projects in `projects/op-ed/games/` using a standardized file browser.
+- **Thin Engine Player:** A basic PAL orchestrator (`projects/op-ed/player/PAL/player_loop.asm`) exists to handle realtime movement and scripted interactions.
+- **High-Level Event Builder:** Refactored `pal_editor_module.c` from a raw assembly editor into a high-level "Block Builder" with a 3-mode state machine (Browse -> Select Op -> Input Params).
+
+## 2. Current State & Known Issues
+- **Issue:** In the Event Builder (MODE_SELECT_OP), blocks are displayed as buttons but "aren't selectable."
+- **Investigation Notes:** 
+    - The buttons have `onClick="SET_SELECT_OP:n"`.
+    - `handle_command` receives this and calls `process_key(10)` (Enter).
+    - It's possible the `COMMAND: ` string isn't being parsed correctly or the mode transition is failing to trigger a render.
+- **Player Logic:** The player loop is functional but needs verification with `test-game-01` and its `talk.asm` script.
+
+## 3. How to Test
+1.  **File System:** Open `FILE` menu, select `LOAD GAME...`, select `test-game-01`. Verify maps and pieces refresh.
+2.  **Player:** Select `PLAY PROJECT` from the file menu. Move with WASD. Face the Villager and press Enter. Verify the dialogue appears in the response line.
+3.  **Event Builder:** Select `EVENT` from the editor (or press '7'). 
+    - Press 'A' to add a block. 
+    - Navigate the list and press Enter on "Show Text".
+    - If successful, you should see a prompt for "Message".
+
+## 4. Next Steps for Next Agent
+1.  **Fix Op Selection:** Debug why clicking the Op buttons doesn't advance the mode to `MODE_PARAM_INPUT`. Check `history.txt` to see if `COMMAND: SET_SELECT_OP:n` is arriving.
+2.  **Complete Parameter UI:** Implement the `cli_io` sync for `p1` and `p2` in `MODE_PARAM_INPUT`.
+3.  **Alpha Road:**
+    -   Integrate logic into the `save_script()` function to write the generated assembly lines to the correct piece folder.
+    -   Connect the "EVENT" button to the active piece's logic folder automatically.
+
+## 5. Reference Files
+- `projects/op-ed/progress-report-m24.txt` (Detailed technical breakdown)
+- `projects/op-ed/README.md` (General usage and roadmap)
+- `projects/op-ed/manager/pal_editor_module.c` (The Block Builder muscle)

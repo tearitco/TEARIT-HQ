@@ -1,0 +1,4 @@
+last_cmd=SEED_DEMO
+result=ok
+message=demo-project ready
+at=1785436647

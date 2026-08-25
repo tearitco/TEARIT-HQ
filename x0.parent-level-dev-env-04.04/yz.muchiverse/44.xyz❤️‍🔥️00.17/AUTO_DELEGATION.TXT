@@ -1,0 +1,143 @@
+# AUTO_DELEGATION.TXT — parallel AI value-add doctrine for this purview
+
+Read-me for the supervisor (opencode on this box) AND any future agent that
+takes over. Goal: keep as many AI-agent tasks BUILDING + LEARNING as possible,
+all the time, using the LAN nodes for the compute and this box for
+orchestration only.
+
+================================================================
+1. THE RESOURCE MAP (what can compute where)
+================================================================
+  THIS BOX (44.xyz❤️‍🔥️00.10)  = ORCHESTRATION ONLY. No model compute.
+                                 Runs tools, harnesses, SSH, builder loops.
+                                 Daily-shipping machine: keep only tiny
+                                 manifests/reports; heavy payloads live on
+                                 the nodes in ~/iqabod-store/<name>/.
+
+  MAC  (10.0.0.144:11434, no SSH) = API-only model server.
+    models: gemma3:270m (the star), llama3, llama3-groq-tool-use,
+            nomic-embed-text, llama2, stable-code.
+    Use for: gemma-authored code, gemma reasoning over RAG windows,
+             embeddings, cheap classification. ALWAYS leave a slot free
+             for the gemma-cli-agent (its ask path is latency-critical).
+
+  LINUX (jb@10.0.0.187, sshpass root, ssh OK) = TRAINING + HEAVY node.
+    models: gemma3:270m, qwen2.5-coder:7b, llama3.
+    Use for: iqabod/iqabella continuous training (conv-g1 store already
+             at ~/iqabod-store/conv-g1/ with +x/generation_module.+x,
+             +x/main_orchestrator.+x, curriculum/corpus), big generation,
+             llama3 reasoning, batch jobs that survive in tmux/screen.
+
+  RULE: every node that is awake should be doing at least one value-add
+        thread. Idle LAN = waste. This box should NEVER be the bottleneck.
+
+================================================================
+2. THE THREADS (what should ALWAYS be running/queued)
+================================================================
+  T1 open-gema self-build      (supervised by THIS box, compute on MAC)
+     gemma authors src/agent.c via builder/run.sh. Never stalls the loop:
+     when it does, that is a TOOL bottleneck -> fix tools, not gemma.
+     KPI: builder step pass-rate, harness K1-K8 green.
+
+  T2 iqabod/iqabella training   (compute on LINUX, jb@10.0.0.187)
+     Continuous curriculum loop: train_step on conv-g1 -> evaluate ->
+     next curriculum. Must run detached (tmux session iqabod) so it
+     survives disconnects. KPI: loss curve, max_unk, curriculum verdict.
+
+  T3 gemma-tools co-evolution   (THIS box authors tools, gemma evaluates)
+     Every bottleneck found in T1 feeds a tool/prompt/steps upgrade.
+     "Update our own gemma tools" is a thread, not a cleanup.
+     KPI: harness KPIs that only existed because a previous K failed.
+
+  T4 documentation + results    (THIS box)
+     prog-sum-walk-*.txt, harness summaries, verdicts. The daily-ship
+     artifact. Cheap, do it every time a thread lands.
+
+  T5 LAN keepalive / watch      (THIS box)
+     Every session start: verify Mac API up, Linux SSH up, threads alive
+     (ps/tmux ls). Restart anything that died. See section 4.
+
+================================================================
+3. DELEGATION DOCTRINE (what I hand to gemma vs do myself)
+================================================================
+  HAND TO GEMMA (as much as possible):
+    - writing/editing its own code (src/agent.c) through the builder
+    - reasoning over RAG-retrieved windows (never the whole codebase)
+    - writing doc blocks / compact memory summaries / "what does X do"
+    - choosing WHICH tool to fire for an intent (via keyword routing)
+  NEVER HAND TO GEMMA (too big, 270m can't):
+    - multi-step specs (break into one-function steps)
+    - free-form novel algorithms (spec it as behavior + test it)
+    - anything requiring the whole codebase in context (RAG window instead)
+  THIS BOX DOES (always):
+    - tool binaries, harnesses, step specs, compile feedback, retries
+    - the deterministic mechanics gemma is bad at (exact line edits, diffs)
+    - LAN wiring, state files, KPI asserts, node keepalives
+
+================================================================
+4. KEEPALIVE RITUAL (start of every session)
+================================================================
+  1. curl http://10.0.0.144:11434/api/tags          -> Mac up?
+  2. sshpass -p root ssh jb@10.0.0.187 'tmux ls'    -> T2 alive?
+  3. ps aux | grep builder/run.sh                   -> T1 alive?
+  4. If T2 dead: reattach/restart tmux session:
+     sshpass -p root ssh jb@10.0.0.187 'tmux new -d -s iqabod "cd ~/iqabod-store/conv-g1 && ./run_loop.sh"'
+     (if run_loop.sh absent, rebuild it from 045's train_step/eval_curriculum)
+  5. If T1 dead: cd 046.open-gema🤖️+1 && bash builder/run.sh
+  Rule: DO NOT start the session by asking "what should I do". Run the
+  ritual, report thread health, then proceed.
+
+================================================================
+5. FAN-OUT (never a single point of failure)
+================================================================
+  - The 3 compute threads (T1/T2/T3) run on different nodes and don't
+    block each other. If one dies, the others keep going.
+  - Start new value-add threads when idle capacity exists:
+      * qwen2.5-coder:7b on LINUX can review gemma's drafted agent.c
+        (static review -> cheap QA loop) -> feeds T1 feedback.
+      * nomic-embed-text on MAC can uplevel rag_search with embeddings
+        later (phase 2). Documented as future work, not now.
+      * llama3-groq-tool-use on MAC can validate tool schemas end-to-end.
+    But: only add a thread if it returns REAL value and has a KPI. No
+    thread for its own sake.
+  - One thread per bottleneck: when T1 hits a wall, the wall becomes a
+    T3 task. Never let a wall idle the LAN.
+
+================================================================
+6. STORAGE / CHECKPOINT DISCIPLINE
+================================================================
+  - This box ships daily -> local keeps manifests, KPIs, verdicts, docs.
+  - Heavy payloads (models, corpora, logs) live on the nodes in
+    ~/iqabod-store/<name>/.
+  - Every thread writes a KPI line to its button.sh / harness on each run:
+    <THREAD>|<run_id>|<status>|<kpi>. Verdicts go in the prog-sum docs.
+  - If a thread is killed mid-run, the harness rerun must be idempotent
+    (re-runnable, no partial-state assumptions).
+
+================================================================
+7. CURRENT SNAPSHOT (2026-08-01) — the truth right now
+================================================================
+  Mac  : UP, gemma3:270m + llama3-groq-tool-use serving (T1/T2 compute).
+  Linux: UP, ollama + main_orchestrator training (iqabod conv-g1).
+  IQA FORK (T2): LIVE - iqa-fork/runner:
+      teacher=llama3-groq-tool-use (Mac) writes a sentence on a topic;
+      student=gemma3:270m writes its attempt; teacher's line is distilled
+      into Linux ~/iqabod-store/conv-g1/corpus.txt; main_orchestrator
+      trains; KPI logged to iqa-fork/log.pdl.
+      FIXED 2026-08-01: (a) trainer lock .train.lock prevents concurrent
+      trainers (two trainers corrupted weights -> nan); (b) lr 0.1 ->
+      0.02 in conv-g1/config.txt (0.1 diverges at epoch 5+ -> nan);
+      (c) gen_sample uses FIXED prompt "How are you?" so reports compare
+      over time; (d) teacher/student logged as IQA_TEACH/IQA_STUD lines.
+      Reports (report.sh) now show avg/min/max loss + first/last
+      conversation sample + delta vs previous report.
+      Loop: setsid bash loop.sh 0 150 (detached, pid tracked by status.sh).
+      Reports: iqa-fork/report.sh -> iqa-fork/reports/REPORT-<date>.txt.
+      Schedule: hourly cron "0 * * * * auto-checkin.sh --fix" (reports +
+      auto-restart dead loops). Log: /tmp/auto_checkin.log.
+  This box: RAG pipeline green (build_index -> rag_search -> compact);
+           ops/ tools copied; open-gema builder/run.sh NOT yet wired.
+  Queue (in order):
+    Q1  build builder/run.sh + step specs -> RUN gemma to author agent.c
+    Q2  k3-cli.sh harness -> prove K1-K8 on gemma-authored agent.c
+    Q3  qwen review loop of agent.c (only after Q1 lands and compiles)

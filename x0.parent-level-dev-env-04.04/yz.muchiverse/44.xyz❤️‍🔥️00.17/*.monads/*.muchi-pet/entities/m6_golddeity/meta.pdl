@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | m6_golddeity
+STATE        | kind                 | monster
+STATE        | glyph                | 👹
+STATE        | instance_id          | KL56
+STATE        | footprint_tiles      | 2
+METHOD       | Ledger               | sh -c 'cd "$0" && exec gedit master_ledger.txt'
+METHOD       | Events (ez)          | sh -c 'exec "$1/*.monads/*.muchi-pet/ops/open_event_ez.sh" "$0" "$1"'
+METHOD       | Dir                  | xdg-open
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void

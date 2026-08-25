@@ -1,0 +1,74 @@
+/* dashboard.css — stats-hq styling, full compliant rebuild (2026-08-25,
+   au11-hq/TPMOS-COMPLIANCE-DEBT.md - direct live reports: "why isn't it
+   dark mode like db-hq" + "way too wide... tabs should be on the side").
+   Reuses db-hq's own real dashboard.css wholesale (../db-hq/dashboard.css,
+   the SAME dark palette already used across open-hai/chat-hai/taskbar-
+   settings this house-wide - #141414 base / #1a1a1a-#2a2a2a panels /
+   #eeeeee-#cccccc text), including the .sidebar/.data-item rules this
+   file never had before (the old version only ever used <tabbar>, never
+   <sidebar>, so those selectors were simply missing). .tab-bar/.tab
+   rules kept even though this window has no <tabbar> of its own - CSS
+   is generic and harmless if unused, and keeping db-hq's own file byte-
+   identical here (rather than trimming) makes future drift between the
+   two easier to spot, not harder. */
+
+window {
+  background-color: #141414;
+  font-family: Ubuntu;
+  font-size: 10px;
+}
+
+.tab-bar {
+  background-color: #1a1a1a;
+  border-color: #444444;
+  border: 1px solid #444444;
+}
+
+.tab {
+  background-color: #1a1a1a;
+  color: #aaaaaa;
+  border: 1px solid #444444;
+  font-size: 9px;
+}
+
+.tab.active {
+  background-color: #2a2a2a;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.sidebar {
+  background-color: #181818;
+  border: 1px solid #333333;
+}
+
+.data-item {
+  color: #cccccc;
+  font-size: 10px;
+}
+
+.data-item.active {
+  background-color: #2f5f8f;
+  color: #ffffff;
+}
+
+.settings-block {
+  background-color: #1c1c1c;
+  border: 1px solid #333333;
+  border-width: 1;
+}
+
+.block-title {
+  background-color: #2a2a2a;
+  color: #eeeeee;
+  font-weight: bold;
+  font-size: 9px;
+  position: absolute;
+  top: -8px;
+  left: 10px;
+}
+
+.event-name {
+  color: #dddddd;
+  font-size: 12px;
+}

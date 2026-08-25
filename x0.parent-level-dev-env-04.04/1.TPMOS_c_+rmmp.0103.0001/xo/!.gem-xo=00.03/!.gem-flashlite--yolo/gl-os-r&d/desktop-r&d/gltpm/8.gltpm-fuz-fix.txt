@@ -1,0 +1,33 @@
+# GLTPM Navigation & Focus Fix Plan
+**Date:** 2026-04-23
+**Issue:** GLTPM virtual windows lack the standard CHTPM "Nav >" behavior and visual focus indicators (`[>]`). Input is currently being routed to the project before the host-side menu navigation can process it.
+
+## 1. Root Causes
+- **Input Conflict:** The `special_keyboard` function in `gl_desktop.c` was updated to route all arrow keys to the project history for GLTPM windows, which broke the host-side `move_selection` logic.
+- **Focus Logic:** The `draw_window` function for `gltpm_app` renders buttons with custom colors but doesn't use the standard `[>]` / `[ ]` prefix that users expect from CHTPM parity.
+- **Missing Nav Buffer:** Standard CHTPM layouts use a small command buffer (e.g., `Nav > 4_`) to show the user what index they are jumping to. GLTPM currently executes the jump silently.
+
+## 2. Technical Fixes
+
+### A. Host-Side Navigation (The Theater)
+We will refactor `gl_desktop.c` to prioritize internal menu navigation **unless** the simulation is specifically in "Map Control" mode.
+- **Logic:** If `win->is_map_control == 0`, arrow keys call `move_selection(win, direction)` and numbers update a temporary `nav_buffer`.
+- **Sync:** The host must "peek" at the project's `state.txt` (via `gltpm_scene`) to see if `is_map_control=1`. If it is, the theater steps aside and routes input to `history.txt`.
+
+### B. Visual Parity (The Mirror)
+Update `draw_window` (specifically the `gltpm_app` button loop):
+- **Old:** `draw_rect(..., color)`
+- **New:** `snprintf(label, "[%s] %d. %s", indicator, i+1, button_text)`. 
+- This ensures the GL button text exactly mirrors the ASCII layout format.
+
+### C. The "Nav >" Command Prompt
+We will add a standard CLI-style input line at the bottom of the virtual window:
+- If the user types a number, it appears as `Nav > n_`.
+- On `ENTER`, the host processes the index and executes the button's `onClick` Op.
+
+## 3. Implementation Sequence
+1.  **Update `gl_desktop.c`**: Refactor `keyboard()` and `special_keyboard()` to handle internal navigation first.
+2.  **Update `draw_window()`**: Add the `[>]` / `[ ]` indicators and the `Nav >` text line.
+3.  **Refine `fuzz-op-gl_manager.c`**: Ensure it correctly flushes `is_map_control` to `state.txt` so the host knows when to yield control.
+
+By following this, the GLTPM window will behave as a pixel-perfect "Mirror" of the CHTPM interaction model.

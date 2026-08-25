@@ -1,0 +1,24 @@
+🚶 walkthru-j30.txt — 01.muchi-pals-🥚️-13.01 — QUICK CHECK
+================================================================
+STATUS: 👀 REBUILT ONLY — I did NOT test this one, it's on you
+
+## ▶️ HOW TO RUN
+    bash button.sh run
+
+## ✅ CHECKLIST (general smoke test — nothing specific known broken)
+  [ ] 1️⃣ Main menu buttons all navigate (User/Faucet/Store/Pets/
+        Processes) 🥚
+  [ ] 2️⃣ Feed/pet/train a creature
+  [ ] 3️⃣ Buy something from the Store
+  [ ] 4️⃣ Hatch an egg if you have one
+  [ ] 5️⃣ (bonus) there's also a `bash button.sh classic` mode — an
+        older plain-text menu kept intentionally as an alternate way
+        to play. Worth a peek if you're curious, not required.
+
+## 🟢 GOOD LOOKS LIKE
+Just... everything working normally, same as before. This project's
+own code wasn't touched at all this session — it only got recompiled
+against the shared system files, and it builds clean. No known bugs,
+but also no real hands-on test from me — flagging that honestly rather
+than claiming more confidence than I actually have. 🙏
+================================================================

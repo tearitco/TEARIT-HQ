@@ -1,0 +1,72 @@
+
+================================================================================
+SECTION 5: OP-ED OPS (uses pieces/apps/editor/ops/ - symlinks to playrm)
+================================================================================
+
+NOTE: op-ed uses the SAME ops as fuzzpet/playrm through symlinks.
+The editor ops directory provides compatibility with reference code structure.
+
+Location: pieces/apps/editor/ops/+x/
+Structure: Symlinks to pieces/apps/playrm/ops/+x/
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ editor::place_tile (symlink to playrm::place_tile)                         │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/editor/ops/+x/place_tile.+x → playrm/ops/+x/       │
+│ Purpose:   Place a tile on the map (editor mode)                           │
+│ Args:      map_path, x, y, glyph                                           │
+│ Returns:   Updates map file at (x,y)                                       │
+│ Example:   OP editor::place_tile "map_0001_z0.txt" 5 5 "#"                 │
+│ Used by:   op-ed project (projects/op-ed/)                                 │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ editor::scan_op (symlink to playrm::scan_op)                               │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/editor/ops/+x/scan_op.+x → playrm/ops/+x/           │
+│ Purpose:   Scan area for entities/objects                                  │
+│ Args:      x, y, radius                                                    │
+│ Returns:   List of entities in range                                       │
+│ Example:   OP editor::scan_op 10 10 5                                      │
+│ Used by:   op-ed project                                                   │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ editor::collect_op (symlink to playrm::collect_op)                         │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/editor/ops/+x/collect_op.+x → playrm/ops/+x/        │
+│ Purpose:   Collect item from map                                           │
+│ Args:      entity_id                                                       │
+│ Returns:   Adds item to inventory                                          │
+│ Example:   OP editor::collect_op "item_01"                                 │
+│ Used by:   op-ed project                                                   │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ editor::inventory_op (symlink to playrm::inventory_op)                     │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/editor/ops/+x/inventory_op.+x → playrm/ops/+x/      │
+│ Purpose:   Manage inventory (add/remove/list)                              │
+│ Args:      entity_id, action, item_id                                      │
+│ Returns:   Updates inventory state                                         │
+│ Example:   OP editor::inventory_op "player" "list" ""                      │
+│ Used by:   op-ed project                                                   │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ editor::place_op (symlink to playrm::place_op)                             │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Location:  pieces/apps/editor/ops/+x/place_op.+x → playrm/ops/+x/          │
+│ Purpose:   Place entity/operation on map                                   │
+│ Args:      x, y, entity_type                                               │
+│ Returns:   Creates entity at position                                      │
+│ Example:   OP editor::place_op 5 5 "tree"                                  │
+│ Used by:   op-ed project                                                   │
+│ Status:    ✓ ACTIVE                                                        │
+└────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================

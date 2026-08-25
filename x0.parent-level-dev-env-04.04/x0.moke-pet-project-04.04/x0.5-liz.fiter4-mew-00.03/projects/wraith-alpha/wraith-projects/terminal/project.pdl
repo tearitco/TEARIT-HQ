@@ -1,0 +1,16 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | wraith-alpha/wraith-projects/terminal
+META         | version            | 1.1
+META         | author             | TPMOS
+META         | manager            | projects/wraith-alpha/wraith-projects/terminal/manager/+x/terminal_manager.+x
+META         | entry_layout       | projects/wraith-alpha/wraith-projects/terminal/layouts/terminal.chtpm
+
+STATE        | title              | WRAITH TERMINAL
+STATE        | status             | ready
+STATE        | mode               | terminal
+STATE        | current_context    | session
+
+RESPONSE     | default            | Wraith Terminal Ready.
+WINDOW | window_x | 18
+WINDOW | window_y | 6

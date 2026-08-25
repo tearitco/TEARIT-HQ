@@ -1,0 +1,10 @@
+<panel>
+    <text label="+===========================================================+" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|           P R O J E C T   M A N A G E R                  |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  2. " /><button label="PLAYR Player" href="pieces/apps/playrm/layouts/loader.chtpm" /><text label="                               |" /><br/>
+    <text label="|  3. " /><button label="Back to Main Menu" href="pieces/chtpm/layouts/os.chtpm" /><text label="                  |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="+===========================================================+" /><br/>
+</panel>

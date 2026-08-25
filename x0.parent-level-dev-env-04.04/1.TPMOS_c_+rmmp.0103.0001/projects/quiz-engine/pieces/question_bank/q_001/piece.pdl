@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | q_001
+META         | type               | question
+
+STATE        | name               | Methane
+STATE        | type               | Alkane

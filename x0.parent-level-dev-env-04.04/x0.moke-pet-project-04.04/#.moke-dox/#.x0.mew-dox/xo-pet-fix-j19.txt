@@ -1,0 +1,99 @@
+XO-PET / FUZZ-OP / MOKE-PET FINDINGS
+Date: 2026-06-19
+
+1. What is going on
+
+The current xo-pet/fuzz-op line is an interactive TPMOS project, not a headless simulation.
+The manager publishes a GUI projection, the layout renders it, and the user chooses an active target.
+`xelector` is the default target, and the UI exposes the method list for that target first.
+After possession, the same menu pattern is reused to control the selected pet entity one action at a time.
+
+The moke-pet-project-2.1 line is different.
+Its manager runs a full epoch loop over every lizard and decides the action sequence itself:
+`breathe -> scan -> eat/rest -> check_death -> train -> epoch++`.
+There is no possession step and no player-driven action selection.
+
+2. Why xo-pet manager is not behaving as expected
+
+The behavior mismatch is not in the concept, it is in the projection and discovery paths.
+
+- The UI depends on `gui_state.txt` being written with a valid `pet_list` and `piece_methods`.
+- The manager only includes candidates whose `state.txt` reports `type | lizard`.
+- The active-target menu is built from the filesystem, so any naming/type mismatch in the world tree will make the selector look empty even when pieces exist.
+- The method menu is generated from the PDL reader output, so a bad project root, bad PDL path, or wrong entity path will produce an empty method list.
+- The runtime input path still uses `system()` in `route_input()`, which is weaker than the TPMOS-favored fork/exec pattern and can hide path/argument issues.
+
+The result is that the project can look “alive” in the frame renderer while still failing to project the correct pets or methods.
+
+3. fuzz-op vs xo-pet
+
+Similarities:
+
+- Both are TPMOS projects with a manager that orchestrates pieces and writes UI state.
+- Both use `piece.pdl` plus `ops/+x/` executables to define actions.
+- Both keep the parser thin and rely on manager-published projection data.
+- Both use an `active_target` concept and a possession-style selection flow.
+- Both advance by discrete turns rather than free-running animation.
+
+Differences:
+
+- fuzz-op is presented as the trait-menu / control-panel version of the pattern.
+- xo-pet is the more explicit pet simulator version, with stats, logs, and a clearer possession/turn loop.
+- fuzz-op emphasizes the current controllable entity and its method list.
+- xo-pet additionally shows simulation state, pet stats, possession list, and end-turn control in one view.
+- In fuzz-op, the selector is the default and methods are shown as the primary interaction.
+- In xo-pet, the selector plus target stats plus log output are all part of the same projection.
+
+4. moke-pet-project-2.1 vs xo-pet
+
+Similarities:
+
+- Both use sovereign file-backed entities and standalone Ops.
+- Both discover state through directories, not hidden memory.
+- Both rely on `scan`, `eat/rest`, `breathe`, `check_death`, and `train` patterns.
+- Both use a manager to coordinate action execution.
+
+Differences:
+
+- moke-pet is fully autonomous and headless.
+- xo-pet is user-driven and rendered through the GUI.
+- moke-pet manager chooses every entity action each epoch.
+- xo-pet manager waits for user input, then dispatches the selected method.
+- moke-pet is about simulation fidelity and emergent behavior.
+- xo-pet is about controllable interaction and menu projection.
+
+5. Proposed mew-pet render
+
+This is the shape I think you want:
+
+╔══════════════════════════════════════════════════════════╗
+║                         MEW-PET                         ║
+║  STATUS: RUNNING | ACTIVE: xelector | TURN: 12          ║
+╠══════════════════════════════════════════════════════════╣
+║  [SELECTOR]                                             ║
+║  [>] 1. Possess pet_01                                  ║
+║  [ ] 2. Possess pet_02                                  ║
+║  [ ] 3. Possess pet_03                                  ║
+╠══════════════════════════════════════════════════════════╣
+║  [ACTIVE ENTITY]                                         ║
+║  Name: pet_01 | HP: 72 | Hunger: 41 | Mood: calm        ║
+╠══════════════════════════════════════════════════════════╣
+║  [METHODS]                                               ║
+║  [ ] 2. scan                                             ║
+║  [ ] 3. feed                                             ║
+║  [ ] 4. play                                             ║
+║  [ ] 5. sleep                                            ║
+║  [ ] 6. inventory                                        ║
+║  [ ] 9. end_turn                                         ║
+╠══════════════════════════════════════════════════════════╣
+║  LOG: Selected pet_01.                                   ║
+╚══════════════════════════════════════════════════════════╝
+
+6. Bottom line
+
+fuzz-op and xo-pet are siblings in the same TPMOS pattern family.
+The difference is control model:
+user-selected execution in fuzz-op/xo-pet,
+manager-selected execution in moke-pet.
+
+The current xo-pet issue is most likely a projection/discovery bug, not a missing simulation concept.

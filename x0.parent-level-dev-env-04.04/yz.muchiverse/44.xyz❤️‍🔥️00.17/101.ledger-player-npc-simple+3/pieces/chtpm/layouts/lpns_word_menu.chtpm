@@ -1,0 +1,14 @@
+<panel>
+    <module>system/game_manager</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+    <text label="╔═══════════════════════════════════════════╗" /><br/>
+    <text label="║  LPNS - Word Game                        ║" /><br/>
+    <text label="╠═══════════════════════════════════════════╣" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="╠═══════════════════════════════════════════╣" /><br/>
+    <text label="║  " /><cli_io id="input_text" label="Type your word: " /><text label="  ║" /><br/>
+    <text label="║  " /><button label="[1] End Turn" onClick="KEY:101" /><text label="          ║" /><br/>
+    <text label="╚═══════════════════════════════════════════╝" /><br/>
+    <text label="+=========================================================+" /><br/>
+    <text label="KEY: ${last_key}" /><br/>
+</panel>

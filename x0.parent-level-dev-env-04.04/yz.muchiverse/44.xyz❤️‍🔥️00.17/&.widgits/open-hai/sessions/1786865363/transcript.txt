@@ -1,0 +1,3 @@
+A|ai-cell v1 — raw Ollama backend, model: stable-code:latest. Real tools: list/read/search run immediately; write/edit/run ask for your approve/deny first. Press composer then Enter to type. History is real and on disk - Backspace on a sidebar row deletes it.
+U|list files in &.widgits/ai-cell
+A|[list_dir] /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/ai-cell:\n  code-tools-harness/\n  ops/\n  calculate_session_stats.sh\n  ONBOARDING.md\n  state/\n  haiku-hai-api-testing.md\n  open_session_stats.sh\n  progress-report-2026-08-12.txt\n  README.md\n  pieces/\n  sessions/\n  button.sh\n  ./\n  ../\n

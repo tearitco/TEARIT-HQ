@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | store
+META         | version            | 1.0
+
+METHOD       | Claim Free Starter Clone (once)        | CLAIM_FREE
+METHOD       | Buy Clone (cost: 20 tokens)            | BUY_CLONE

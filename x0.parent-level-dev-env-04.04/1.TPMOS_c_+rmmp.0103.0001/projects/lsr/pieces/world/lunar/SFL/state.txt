@@ -1,0 +1,10 @@
+name=Starfarer Logistics
+ticker=SFL
+type=corporation
+cash=5000.00
+stock_price=10.00
+industry=TRANSPORT
+on_map=1
+pos_x=18
+pos_y=2
+pos_z=0

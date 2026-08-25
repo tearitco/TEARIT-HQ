@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | wsr_trade_menu
+META         | version            | 1.0
+
+METHOD       | Buy 10 shares          | RUN:./ops/+x/player_trade.+x $(bash scripts/active_corp.sh) buy 10
+METHOD       | Sell 10 shares         | RUN:./ops/+x/player_trade.+x $(bash scripts/active_corp.sh) sell 10
+METHOD       | Short 10 shares        | RUN:./ops/+x/player_trade.+x $(bash scripts/active_corp.sh) short 10
+METHOD       | Cover 10 shares        | RUN:./ops/+x/player_trade.+x $(bash scripts/active_corp.sh) cover 10

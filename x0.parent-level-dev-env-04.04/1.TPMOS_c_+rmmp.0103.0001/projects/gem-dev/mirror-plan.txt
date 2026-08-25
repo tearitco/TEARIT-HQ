@@ -1,0 +1,70 @@
+gem-dev mirror plan for gem-xo fixes
+====================================
+
+Scope
+-----
+- Mirror the gem-xo completion/input fixes into gem-dev.
+- Keep the parser untouched if possible.
+- Apply changes in `projects/gem-dev/manager/gem-dev_manager.c` first, then rebuild and verify.
+
+What gem-xo fixed
+------------------
+- Autofill now writes the selected path into the canonical manager-owned `gui_state.txt`.
+- The active `cli_io` focus is restored after choosing a suggestion.
+- The prompt buffer preserves spaces instead of trimming them away.
+- Startup clears stale GUI state so a fresh session does not inherit the previous input.
+
+Gem-dev state observed
+----------------------
+- Layout: `projects/gem-dev/layouts/gem-dev.chtpm`
+- Manager: `projects/gem-dev/manager/gem-dev_manager.c`
+- Canonical GUI state file: `projects/gem-dev/manager/gui_state.txt`
+- Parser reads `input_text` from manager state and renders `cli_io id="input_text"`.
+- Bug note explicitly says not to modify `pieces/chtpm/plugins/chtpm_parser.c`.
+
+Recommended mirror steps
+------------------------
+1. Audit `gem-dev_manager.c` input state handling.
+   - Confirm `input_text` is the only source for the prompt buffer.
+   - Make sure manager reads and writes the same `projects/gem-dev/manager/gui_state.txt` file.
+
+2. Preserve prompt whitespace.
+   - Stop trimming `input_text` when reading it back from gui state.
+   - Keep trailing spaces intact so the spacebar still behaves correctly after autofill.
+
+3. Make autofill atomic.
+   - In `handle_choose_path()`, write the selected completion into `input_text`.
+   - Clear completion mode and `g_piece_methods`.
+   - Pulse the render/state markers immediately after commit.
+
+4. Restore input focus after selection.
+   - Use `pieces/display/active_gui_index.txt` to point back to the active `cli_io`.
+   - Do not leave focus stranded on the suggestions submenu after commit.
+
+5. Clear startup stale state.
+   - Truncate `projects/gem-dev/manager/gui_state.txt` on launch.
+   - Truncate or reset `pieces/display/active_gui_index.txt`.
+   - Clear transient completion state before the first frame.
+
+6. Validate the trigger path.
+   - Ensure `*` detection happens as soon as it appears in the live buffer.
+   - Verify completion opens without waiting for an extra delimiter.
+
+Files to touch
+--------------
+- `projects/gem-dev/manager/gem-dev_manager.c`
+- Possibly `projects/gem-dev/run.sh` only if startup truncation is not already complete enough.
+
+Do not touch
+------------
+- `pieces/chtpm/plugins/chtpm_parser.c`
+
+Verification
+------------
+- Rebuild `gem-dev` after the mirror changes.
+- Confirm:
+  - fresh start has no stale input
+  - suggestion selection fills `cli_io`
+  - typing after autofill still works
+  - spacebar inserts spaces normally
+  - suggestion menu closes cleanly and focus returns to `cli_io`

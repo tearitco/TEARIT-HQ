@@ -1,0 +1,38 @@
+# 🔭 DAY 19 — The Telescope: where the engine is aimed 🌌
+# =====================================================
+# Title: "🔭 DAY 19 — The Telescope: where the engine is aimed 🌌"
+# Characters: TOMO, RAHWEH, THE NARRATOR, MAXINE, IQA
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural), MAXINE (en-GB-MaisieNeural), IQA (en-US-AnaNeural)
+# Topic: HARNECIENT Training Session
+
+**TOMO:** Once the h-ai harness proves the storefront, the loop becomes the workhorse. Two big jobs are already on the map:
+
+**RAHWEH:** Move capability and range — so "I walk there" has actual meaning in the world.
+
+**TOMO:** Exactly. And a Harnecient agent that says "move the hero two tiles north" will get the harness doing the range check and the move — with the model just describing the intent. Same pattern as always: model talks, code acts. 🧩
+
+**THE NARRATOR:** Here it is. The clock of this world is about to stop being a clock.
+
+**TOMO:** The **time slot in the livedesk taskbar** — the 15th element, today just a passive ${datetime} showing the real wall clock — will become a Fake Time display. And fake time starts at Year 0 A.D. The story of everything begins on day one. 🌄
+
+**MAXINE:** 0 A.D.? Not a future date, not "current year" — the very beginning of the calendar?
+
+**TOMO:** The very beginning. This is a world being born, and its calendar is born with it. Every empire, every story, every session — it all happens after year zero. That's not a gimmick; it's a founding commitment. When this lands, nobody should ever see the real wall-clock up there again. 🏛️
+
+**TOMO:** Fake time advances by **two** mechanisms, and they are different feelings: 1. ⏭️ endturn — time moves when the world takes a turn. Strategy-game rhythm: you end your turn, the world thinks, time advances. Discrete, deliberate, controllable. 2. ⏱️ The TIME TICKER — a real ticking clock that moves fake time continuously while it runs. The world breathes on its own. Days roll by even when nobody's acting.
+
+**RAHWEH:** So one is "step forward when I say so", the other is "just keep moving"?
+
+**TOMO:** Precisely. Endturn for control. Ticker for life. And both are *driven by the harness, deterministically, provably — because this is this house. 🏠
+
+**TOMO:** Inside that 15th time slot, we're adding **time options** — a chooser, not buried settings: 1. ▶️⏸️ "start/stop ticker" — pause or resume the fake clock. You control when the world breathes. 2. ⚡ "ticker speed" — a ticker speed chooser (slow / normal / fast...). The world runs at the pace you set.
+
+**IQA:** So the toolbar isn't just a clock anymore — it's a *time machine* with controls.
+
+**TOMO:** *grins* And it's the first thing a visitor to the desktop will touch. Remember what that slot currently is? The dead ${datetime} that follows the last real button. The house already flagged it in the h-ai taskbar-open bug (Day 08). When fake time lands, that slot becomes alive — and with it, the nav implications change too. Nothing stays the same after the calendar starts. 🌋
+
+**TOMO:** A few commitments to carry into that future session (they're also written in au11-hq/HARNECIENT-H-AI-RELAY.md's telescope section, so they won't be lost): - 📌 Nav numbers are not static — when the toolbar gains interactive options, header layout shifts. Re-derive from the current frame before any relay test. - 📌 Entities move with capability + range — enforce it, prove it with a harness. - 📌 Fake time starts 0 A.D. — endturn + ticker both advance it; options live in the 15th toolbar slot. - 📌 Every new capability gets its own plan doc and links back here. This book grows a Volume 2, not a memory. 📖
+
+**IQA:** And when we build that world, we'll write it down?
+
+**THE NARRATOR:** Always. If it's not in a file, it's a lie. And it will be in a file. The next volume starts the day the clock starts. And in the next chapter we look past the clock — at the 2D/3D worlds, the zoo, signup, the ledger, the money, and other players. 🕐✨

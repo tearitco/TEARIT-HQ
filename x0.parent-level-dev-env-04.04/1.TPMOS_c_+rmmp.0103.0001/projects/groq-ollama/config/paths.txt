@@ -1,0 +1,9 @@
+# Binary paths for groq-ollama project
+# Machine: no-Surface-Laptop-3 (10.0.0.238)
+groq_ollama_bin=/usr/bin/groq-ollama
+
+# Machine: debilu (10.0.0.16)
+# groq_ollama_bin=/home/debilu/.nvm/versions/node/v22.18.0/bin/groq-ollama
+
+# Machine: mac (10.0.0.144)
+# groq_ollama_bin=/usr/local/bin/groq-ollama

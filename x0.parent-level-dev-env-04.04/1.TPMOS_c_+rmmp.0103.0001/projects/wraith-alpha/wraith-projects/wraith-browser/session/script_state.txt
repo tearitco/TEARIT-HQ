@@ -1,0 +1,3 @@
+counter=1
+last_script=counter_inc
+last_result=counter=1

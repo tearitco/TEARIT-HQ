@@ -1,0 +1,47 @@
+# Handoff: OP-ED File System Parity Fix (m24)
+
+## 1. Objective
+Achieve 100% functional parity with the `agy-text-editor` file system (Save As / Load) while adapting it for project-level directory management in `op-ed`.
+
+## 2. Current Status: CRITICAL FAILURE
+The `op-ed_manager.c` is currently in a broken compilation state.
+- **Root Cause:** Incomplete `replace` operations led to dangling `if` blocks and braces (Lines 1012-1080).
+- **Prototype Drift:** `transition_to_layout` and `handle_command` have order-of-definition conflicts (Static vs Non-static).
+- **Logic Drift:** Attempted to use non-standard `KEY:s`, `KEY:l` which the Parser/CHTPM standard doesn't favor for menu navigation.
+
+## 3. The "agy" Perfect Standard
+To fix this, the next agent MUST align `op-ed_manager.c` with `projects/agy-text-editor/manager/agy-text-editor_manager.c`:
+
+### A. Command Routing
+`handle_command` should be a thin router that translates `KEY:n` commands from the parser into logical calls to `process_key(n)`.
+```c
+void handle_command(const char* cmd) {
+    if (strncmp(cmd, "KEY:", 4) == 0) {
+        process_key(atoi(cmd + 4));
+        return;
+    }
+    // ... handle SET_DIR, SET_LOAD_ACTION, SET_SAVE_ACTION ...
+}
+```
+
+### B. Layout Logic
+`process_key` must detect the `current_layout.txt` and branch logic accordingly.
+- **File Menu:** Keys 7 (Quick Save), 8 (Save As), 9 (Load) should trigger `transition_to_layout` to the browser.
+- **File Browser:** Keys 10/13 (Enter) on the input field should trigger `SET_LOAD_ACTION` or `SET_SAVE_ACTION`.
+
+### C. Directory Management
+While `agy` saves individual files, `op-ed` must save/load entire folders:
+- `save_game_to_path(rel_path)`: Uses `cp -r` to move maps/pieces into `projects/op-ed/games/[name]`.
+- `load_game_from_path(rel_path)`: Clears current maps/pieces and copies from the game folder.
+
+## 4. Required Fixes
+1.  **Sanitize Source:** Fix the syntax errors in `op-ed_manager.c`. Remove the dangling blocks and ensure all braces are matched.
+2.  **Move Prototypes:** Ensure `transition_to_layout` and `get_current_layout_name` are declared or defined before `handle_command`.
+3.  **Standardize Keys:** Update `file_menu.chtpm` to use `onClick="KEY:7"`, `KEY:8`, `KEY:9` (Avoid alphabetical keys for menu buttons).
+4.  **Browser Initialization:** Ensure `browser_mode` is set (0=Load, 1=Save) before transitioning to the browser layout.
+
+## 5. Verification Gate
+- [ ] `op-ed` compiles with `./button.sh compile`.
+- [ ] Clicking "LOAD GAME..." opens the browser at `projects/op-ed/games/`.
+- [ ] Selecting a folder and clicking "LOAD GAME" refreshes the map palette.
+- [ ] "SAVE GAME AS..." correctly creates a new directory in `games/`.

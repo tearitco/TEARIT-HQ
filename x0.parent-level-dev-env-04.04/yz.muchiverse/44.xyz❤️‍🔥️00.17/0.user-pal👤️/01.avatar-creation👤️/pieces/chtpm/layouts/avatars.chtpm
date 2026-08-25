@@ -1,0 +1,12 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/avatars_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|              C H O O S E   C L O N E                      |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${panel_content}" /><br/>
+    ${piece_methods}
+    <button label="Back to Main" href="pieces/chtpm/layouts/main.chtpm" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label=" Enter a row to manage that clone | [ctrl+c] Quit" /><br/>
+</panel>

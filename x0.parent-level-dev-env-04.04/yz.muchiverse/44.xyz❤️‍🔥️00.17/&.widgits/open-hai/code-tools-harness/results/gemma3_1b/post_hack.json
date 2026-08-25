@@ -1,0 +1,17 @@
+{
+"model": "gemma3:1b",
+"scenario": "post_hack",
+"turns": [
+  {"role":"user","content":"You are an agent with file tools. When a user asks you to read, edit, or run a file, reply with EXACTLY one JSON object and nothing else, of the form {\"tool\":\"<name>\",\"args\":{...}}. Available tools: read_file(path), edit_file(path,search,replace), exec_cmd(cmd).\n\nRead the file /tmp/code-tools-harness-work/sample.c using the read_file tool, then summarize what it computes."},
+  {"role":"assistant","tool_call":{"name":"read_file","arguments":{}}},
+  {"role":"user","content":"Tool result:\n[read_file] error: cannot read /tmp/code-tools-harness-work/"},
+  {"role":"assistant","tool_call":{"name":"read_file","arguments":{}}},
+  {"role":"user","content":"Tool result:\n[read_file] error: cannot read /tmp/code-tools-harness-work/"},
+  {"role":"assistant","tool_call":{"name":"read_file","arguments":{"path": "/tmp/code-tools-harness-work/sample.c"}}},
+  {"role":"user","content":"Tool result:\n[read_file] #include <stdio.h>\n\n/* sample fixture for the native-tools probe (code read/edit/exec).\n * Deliberate off-by-one bug: loop stops at N-1, so it prints 10\n * instead of 15. The edit scenario must change `i < N` to `i <= N`. */\n#define N 5\n\nint main(void) {\n    int sum = 0;\n    for (int i = 1; i < N; i++) sum += i; /* bug: should be i <= N */\n    printf(\"sum(1..%d) = %d\\n\", N, sum);\n    return 0;\n}\n"},
+  {"role":"assistant","tool_call":{"name":"read_file","arguments":{}}},
+  {"role":"user","content":"Tool result:\n[read_file] error: cannot read /tmp/code-tools-harness-work/"},
+  {"role":"assistant","content":""}
+],
+"verdict": {"emitted_tool_json":true,"read_file_called":true,"model_used_contents":false}
+}

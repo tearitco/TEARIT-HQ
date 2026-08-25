@@ -1,0 +1,38 @@
+# 🎮 DAY 16 — The Events Engine: the heart of the games 🎲
+# ======================================================
+# Title: "🎮 DAY 16 — The Events Engine: the heart of the games 🎲"
+# Characters: RAHWEH, TOMO, IQA, MAXINE, THE NARRATOR
+# Voices: RAHWEH (zh-CN-YunxiaNeural), TOMO (zh-CN-XiaoxiaoNeural), IQA (en-US-AnaNeural), MAXINE (en-GB-MaisieNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+
+**RAHWEH:** So the game content we're going to build with Harnecient is... event files?
+
+**TOMO:** Exactly that. And it's the perfect job for our harness, because events are *structured text. The model describes what should happen; the harness writes the real event files deterministically. Same pattern as my-lawyer writing case documents. 🧩
+
+**TOMO:** There are two kinds, and the split matters:
+
+**IQA:** So entity events are the personal scripts, and common events are the shared library?
+
+**TOMO:** *nods* And that shared library is the first thing the **db** cell manages. [Tomorrow](DAY_17_DB_HQ.md) is all about that.
+
+**TOMO:** Each page of an event is a small folder of files, and every file is plain text: - event.ir.pdl — what this page is about. The trigger + the conditions for firing it. - condition.pdl — the if. Switches, variables, state gates ("only if the flag is set"). - event.pal — the commands. The list of things that happen, in order. - cmd1.sh, cmd2.sh, ... — each command's real effect, run by the player widget.
+
+**MAXINE:** So the flow is: the event triggers → a condition decides → the PAL list runs → each command does its thing?
+
+**TOMO:** That's the whole machine. Trigger, condition, command — three plain files, no magic. And because it's all files, the harness can read it, edit it, and prove it. 🧾
+
+**TOMO:** Let's be honest about the scoreboard — we've verified these end-to-end with the testeventse2e.sh harness (2026-08-12): - 🪙 Change Gold — real, deterministic, verified. - 💬 Show Text — real, done in H1 of the task queue. - 🔀 Show Choices — real, done in H1 of the task queue. Branching dialogue works! And the full command reference is on disk — #.ref/menu/event.commands.1.txt, event.commands.2.txt, event.commands.3.txt — 145 commands total, RPG-Maker-MV style. The engine is real. The catalog is huge. What's missing is content — and that's the Harnecient job. 🎯
+
+**TOMO:** This is the rule that makes event systems powerful. An event isn't one page — it's many pages, each with its own trigger + condition. The runtime picks the highest-numbered page whose conditions are met.
+
+**MAXINE:** Why *highest* number and not first match?
+
+**TOMO:** Because it gives you *priority*. Page 3 can say "the boss is dead → show the victory text", page 1 can say "no boss yet → show the hint". When the boss dies, the higher page takes over automatically. You build story branches by stacking pages, not by rewriting. Same rule as RPG Maker MV — so the mental model carries over from the whole genre. 🏗️
+
+**THE NARRATOR:** This is the payoff sentence. Harnecient agents will **author event content the way my-lawyer authors case documents: - The model reads the event spec (ground-truth docs) and describes the game moment: "when the player clicks the merchant, show text 'Welcome, traveler' then show choices Buy/Leave." - The harness writes the real event.ir.pdl + event.pal + cmdN.sh files — deterministically, canonically, verified by checksums and receipts. - The runtime runs it. The player widget shows it. The harness scores it.
+
+**RAHWEH:** So the hack doesn't just code — it codes *stories*.
+
+**TOMO:** *grins* That's the product. [Day 18](DAY_18_DEMO_GAMES.md) is where we name the games.
+
+**TOMO:** And tomorrow we look at the database that feeds it. The **db** cell is the file-cabinet of the whole world. 🗄️

@@ -1,0 +1,66 @@
+FRAME REPORT — taskbar-frame-unification
+Date: 2026-08-19 05:50
+Scope: Verify cells.pdl pipeline end-to-end: parser writes cells.pdl, ASCII renderer reads it, key injection via relay updates focus.
+
+SETUP
+-----
+Build: sh run_khtpm_strip.sh new (build_khtpm_strip.sh)
+  - Zero errors, pre-existing warnings only (khtpm_taskbar_manager.c format-truncation, tp_desktop_window_rgb.c comments)
+  - Binaries: khtpm_strip_parser.+x (130944 bytes), khtpm_taskbar_manager_main.+x (92616 bytes), khtpm_strip_render_ascii.+x (21304 bytes)
+Launch: parser PID 93706, manager PID 93708 — confirmed exactly2 PIDs via pgrep.
+
+R1) PROCESS HEALTH — PASS
+--------------------------
+Before launch: zero stray khtpm processes confirmed.
+After launch: exactly 2 PIDs alive (parser 93706, manager 93708).
+After stop: clean shutdown, PIDs terminated, zero remaining.
+
+R3) CELLS.PDL PRODUCTION — PASS
+--------------------------------
+File: #.desktop/strip_frame.cells.pdl (1203 bytes at baseline, 14 cells)
+Schema verified:
+  CELL | idx=0 region=header | ch=[>] 1. HQ fg=default bg=default focused=1
+  CELL | idx=1 region=header | ch=[ ] 2. jb fg=default bg=default focused=0
+  ...
+  CELL | idx=14 region=header | ch=[ ] 15. 2026年08月19日 周三 05:47 fg=default bg=default focused=0
+
+All 15 header cells present. focused=1 on idx=0 (HQ). ch field includes [>]/[ ] focus marker.
+
+SIGNAL: strip_frame_changed.txt produced (2732 bytes initial, grew to8365 after nav injection). Size-poll mechanism functional.
+
+R2) KEY INJECTION VIA RELAY — PASS
+-----------------------------------
+Relay file: #.desktop/livedesk_agent_relay.txt
+Injection: echo "50" >> relay (digit 2), sleep 0.8s, echo "13" >> relay (Enter)
+Result: cells.pdl focus shifted from idx=0 (HQ, focused=1) to idx=1 (jb, focused=1).
+  Before: CELL | idx=0 ... ch=[>] 1. HQ ... focused=1
+  After:  CELL | idx=1 ... ch=[>] 2. jb ... focused=1
+
+Frame updates correctly reflected in cells.pdl after relay injection.
+
+ASCII RENDERER — PASS (with cosmetic note)
+--------------------------------------------
+Binary: khtpm_strip_render_ascii.+x (21304 bytes)
+Run: timeout 2 ./ops/+x/khtpm_strip_render_ascii.+x $HOUSE
+  - Reads cells.pdl: YES
+  - Prints all 15 cells: YES
+  - [>] focus indicator on focused cell: YES
+  - 60Hz polling loop active: YES (multiple re-renders until timeout)
+  - Writes strip_ascii_current_frame.txt: YES
+  - Appends strip_ascii_frame_history.txt: YES
+
+COSMETIC NOTE: ch field in cells.pdl includes [>] prefix (e.g. "ch=[>] 1. HQ"). The renderer wraps again: emit("[%s] %s", focused ? ">" : " ", ch_buf) producing "[>] [>] 1. HQ" — double focus indicator. Not a correctness bug (focus is visible, correct cell is marked), but cosmetic. Parser should write plain text in ch field; renderer adds the [>]/[ ] wrapper. Low priority follow-up.
+
+Evidence lines
+--------------
+[2026-08-19 05:47] Build: sh run_khtpm_strip.sh new — 3 binaries compiled, PID(s) 93706 93708 confirmed
+[2026-08-19 05:47] cells.pdl produced: 15 cells, idx=0 focused=1 (HQ)
+[2026-08-19 05:48] ASCII renderer output: all cells printed, [>] on HQ, 60Hz polling active
+[2026-08-19 05:49] Relay injection: "50\n13" → focus shifted to idx=1 (jb), cells.pdl updated
+[2026-08-19 05:49] strip_frame_changed.txt size grew to 8365 after nav injection
+[2026-08-19 05:50] Stop: PIDs 93706 93708 terminated, zero remaining
+
+VERDICT
+-------
+R1 PASS — R2 PASS — R3 PASS — ASCII RENDERER PASS (cosmetic double-[>] noted)
+SAFE TO PROCEED WITH CODE CHANGES.

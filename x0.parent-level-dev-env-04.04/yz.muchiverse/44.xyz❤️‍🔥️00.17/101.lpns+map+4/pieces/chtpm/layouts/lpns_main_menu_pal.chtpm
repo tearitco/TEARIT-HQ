@@ -1,0 +1,15 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+
+    <text label="╔═══════════════════════════════════════╗" /><br/>
+    <text label="║  LPNS - Ledger-Player-NPC-Simple     ║" /><br/>
+    <text label="║  (PAL Mode)                          ║" /><br/>
+    <text label="╠═══════════════════════════════════════╣" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="║                                       ║" /><br/>
+    <text label="║  " /><button label="Move (arrows)" onClick="INTERACT" /><text label="                   ║" /><br/>
+    <text label="║  " /><button label="End Turn" onClick="KEY:101" /><text label="                      ║" /><br/>
+    <text label="║  [KEY]: ${last_key}                   ║" /><br/>
+    <text label="╚═══════════════════════════════════════╝" /><br/>
+</panel>

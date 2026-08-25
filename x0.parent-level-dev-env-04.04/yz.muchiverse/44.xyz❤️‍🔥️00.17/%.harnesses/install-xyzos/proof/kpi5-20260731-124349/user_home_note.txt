@@ -1,0 +1,1 @@
+home-🏠️ = /tmp/xyzos-test-user/xyzos/apps/00.login-signup/xyzfs/users/6f426953-3c1e-4117-bd04-689543ee66fc/home (physical dir 'home' in v1)

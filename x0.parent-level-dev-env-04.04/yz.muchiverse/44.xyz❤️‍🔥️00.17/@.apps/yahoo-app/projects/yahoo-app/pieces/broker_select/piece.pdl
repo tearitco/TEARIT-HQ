@@ -1,0 +1,4 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | broker_select
+METHOD       | Yahoo Finance (full)                | SELECT_BROKER:yahoo_finance

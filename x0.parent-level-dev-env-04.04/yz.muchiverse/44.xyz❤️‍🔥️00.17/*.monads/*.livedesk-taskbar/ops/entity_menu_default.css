@@ -1,0 +1,9 @@
+/* entity_menu_default.css — real, shared default styling for every
+ * entity-menu package's own menu.chtpm (2026-08-16, khtpm-merge-how2.md
+ * Stage 5 §5d, real generic draw_elem() port). Every real menu.chtpm
+ * across every pal package shares this same visual shape today - no
+ * per-package CSS existed before this (confirmed: entity-menu never
+ * called css_load() at all until this port), so one real, shared file
+ * here matches actual current behavior, not a new design decision. */
+window { background: #1c1c1c; }
+item { color: #cccccc; }

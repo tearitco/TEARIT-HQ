@@ -1,0 +1,13 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | pal-forum
+META         | version            | 0.1
+META         | author              | uhogs
+
+STATE        | starting_screen    | login
+STATE        | title              | PAL-FORUM
+
+EVENT_IN     | project_start      | void
+
+RESPONSE     | project_start      | pal-forum initialized.
+RESPONSE     | default            | *waiting...*

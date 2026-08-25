@@ -1,0 +1,11 @@
+# iqa-fork/topics.txt - rotated one per run.sh invocation (first line is next)
+morning routines
+common foods
+basic weather
+colors and shapes
+time of day
+family and friends
+simple verbs
+numbers one to ten
+places in town
+greetings and politeness

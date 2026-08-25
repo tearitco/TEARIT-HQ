@@ -1,0 +1,14 @@
+<panel>
+    <module>pieces/apps/playrm/loader/plugins/+x/loader_module.+x</module>
+
+    <text label="╔══════════════ P I E C E M A R K   L O A D E R ════════════╗" /><br/>
+    <text label="║ LAYOUT ID: playrm/loader.chtpm                            ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  Select a project to begin:                               ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    ${project_list}
+    <text label="║                                                           ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  " /><button label="Back to Main Menu" href="pieces/chtpm/layouts/os.chtpm" /><text label="                                  ║" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+</panel>

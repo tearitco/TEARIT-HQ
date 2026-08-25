@@ -1,0 +1,525 @@
+@.AUG-6-CLAUDE-HANDOFF.txt
+Written 2026-08-06, end of a long session. You (the reading agent) have
+NO memory of any of this - read this whole file before touching any
+code discussed here. Where useful, cross-reference !.HOUSE_STDS.md
+(house-wide conventions) and TILE_PICKER_DESIGN.md
+(&.widgits/tile-picker/) - this doc does not repeat what's already
+written there.
+
+
+================================================================
+1. WHAT THE USER ASKED FOR THIS SESSION (the vision)
+================================================================
+
+A single, long request kicked this off:
+
+  - A real C autostart daemon, reading a .pdl config, living in
+    $.crypts/, with an on/off switch, that:
+      - mounts a specific already-mounted local partition (idempotent)
+      - launches the taskbar (livedesk-taskbar)
+      - launches asa & ava
+      - launches muchi-rancher
+  - The taskbar gets a real "X" (quit) button that saves the current
+    desktop session (which entities are open) back into the autostart
+    config, then closes everything - so next launch restores exactly
+    what was open.
+  - A new "book-stack" app (📚 emoji): click it, get a real "Show
+    Choices" menu (explicitly: "copy 'show text' rpg maker command",
+    do this "entirely with khtpm / eventscript page, and pal") offering
+    a random Bible verse (text or TTS) or a random Tao Te Ching chapter,
+    displayed via a real "Show Text" popup.
+  - Later in the session, additively:
+      - A generic taskbar "shortcut" system (glyph + command, data-driven
+        via a .pdl) - the $.crypts autostart script became the first
+        shortcut (the "$" icon next to X).
+      - A username overlay on the taskbar, showing the REAL logged-in
+        user-pal identity (not the OS $USER - corrected mid-session).
+      - A dark-background/bright-green "digital pager" color theme for
+        the taskbar, real, loaded from a .pdl.
+      - A real, shared, live "[N]" nav-numbering system so the taskbar's
+        own terminal-style input box could type a number and jump to
+        either a tab or a row inside some OTHER window's open context
+        menu.
+
+By the end of the session the user was seriously reconsidering the
+nav-numbering feature entirely (see §4) - it caused more bugs than it
+solved, and mouse-only interaction was more reliable before it existed.
+
+
+================================================================
+2. WHAT WORKS (verified, don't re-litigate unless something regresses)
+================================================================
+
+- $.crypts/autostart.pdl + $.crypts/ops/crypt_autostart.c
+  (compiled: $.crypts/ops/+x/crypt_autostart.+x) + $.crypts/button.sh
+  (run/on/off/status/compile/check/install-xdg). Real STATE/MOUNT/LAUNCH
+  row parsing, idempotent mount via udisksctl, real setsid-nohup launch
+  of each LAUNCH row. Tested working end to end, including the on/off
+  toggle.
+
+  IMPORTANT GOTCHA (real bug, found and fixed this session, but WATCH
+  FOR IT ANYWHERE ELSE A SHELL COMMAND STRING GETS BUILT FROM A PATH IN
+  THIS HOUSE): this house has REAL, LITERAL "&" characters in directory
+  names - "&.widgits/" and "asa-&-ava/" are both real paths. An
+  unquoted "&" in any string handed to system()/sh -c is the shell
+  background operator and SILENTLY TRUNCATES the command right there -
+  no error, it just launches a broken/partial command. Every LAUNCH row
+  and every generated shell command MUST single-quote the executable
+  path (not just trailing args). autostart.pdl and
+  tp_taskbar.c's own quit_and_save_session() LAUNCH-row generator were
+  both bitten by this and both fixed - if you add ANY new code that
+  builds a shell command from a house path, quote it.
+
+- Taskbar X button / quit_and_save_session() (tp_taskbar.c) - rewrites
+  autostart.pdl's LAUNCH rows to match currently-open entities (properly
+  quoted now), sends real CLOSE to each open entity's interact_relay.txt.
+  Verified working live.
+
+- book-stack's real content pipeline - @.apps/book-stack/pieces/reader/
+  event_pkg/pages/page_1/ (event.pal -> dispatch.sh -> branches/{bible_text,
+  bible_tts,tao}/run.sh). All three branch scripts independently verified
+  producing real, correct content (real Bible verse extraction, real Tao
+  chapter extraction, real TTS). This part is solid.
+
+- khtpm_show_choices.+x / khtpm_show_text.+x (&.widgits/tile-picker/ops/) -
+  generic, reusable "Show Choices"/"Show Text" ops, real RPG-Maker-style
+  event commands, built for book-stack but written to be reusable by any
+  entity's own event.pal. SHOW_PAGE/SHOW_TEXT_FILE relay commands in
+  tp_desktop_window.c reuse the exact same popup_win/methods[]/
+  draw_context_menu() machinery every normal context menu already uses.
+  MOUSE-CLICK interaction with these works. Keyboard does not reliably
+  (see §3).
+
+- Taskbar shortcuts (#.desktop/livedesk_shortcuts.pdl, "SHORTCUT | glyph
+  | command" rows) + username overlay (now reads the REAL user-pal login
+  via a real reused op: userpal_whoami.+x under
+  0.user-pal👤️/00.login-signup/, NOT getenv("USER")) + dark/green theme
+  (#.desktop/livedesk_theme.pdl, "COLOR | bg | #000000" / "COLOR | fg |
+  #00ff00", read by tp_taskbar.c). All three working, verified live.
+
+- Taskbar double-buffering (draws into an off-screen Pixmap, one atomic
+  XCopyArea onto the real window) - fixed a real, confirmed flicker bug
+  (single-buffered clear-then-redraw was always racy, only became
+  visible once the theme went from near-white to solid black).
+
+- Several real, confirmed, FIXED bugs from earlier in the session,
+  unlikely to need revisiting: X11 popup-window-ID-reuse causing phantom
+  clicks (stale event drain in open_context_menu()); CJK/Chinese text
+  not rendering (switched to Xutf8DrawString + a real fontset); header
+  row used to dismiss the menu with zero effect (now a no-op); missing
+  SIGTERM handler leaving permanently stale registry entries (now
+  handled, real cleanup runs on both normal exit and signal).
+
+- livedesk_nav_debug.+x (&.widgits/tile-picker/ops/, NEW this session) -
+  a real, read-only diagnostic "receipt" tool. Run it as
+  `livedesk_nav_debug.+x <house_root>` - dumps every line of
+  livedesk_open.txt / livedesk_nav_claims.txt with a live PID-liveness
+  check next to each one (DEAD/alive/MALFORMED), so a stale/corrupt
+  entry is visible directly instead of only inferred from a mismatched
+  on-screen number. USE THIS FIRST before assuming any future "nav
+  number looks wrong" report is a new bug - it might just be normal,
+  already-understood behavior (see §4).
+
+
+================================================================
+2b. MAJOR UPDATE, LATE THIS SESSION - A REAL ROOT-CAUSE FIX, AND THE
+    "k3-style key injection" QUESTION IS ANSWERED: YES
+================================================================
+
+The user asked directly: can an AI agent drive these KHTPM navs via
+file-based key injection, the same real "k3" convention already proven
+elsewhere in this house (see `_.0.aigent-testing-k3.txt` at the house
+root - CHTPM's own `pieces/keyboard/history.txt` /
+`KEY_PRESSED: <code>` convention)? Tested live, end to end, and the
+answer is YES - the NAV_KEY relay channel built in §3's 4th attempt
+DOES work correctly:
+
+  echo "RUN_METHOD:Read" > <package_dir>/interact_relay.txt   # opens SHOW_PAGE
+  echo "NAV_KEY:Enter"   > <package_dir>/interact_relay.txt   # picks focus_row, fires SHOW_PAGE_PICK, opens SHOW_TEXT_FILE
+
+Both confirmed working live via `history.txt` log lines
+(SHOW_PAGE/SHOW_PAGE_PICK(navkey)/SHOW_TEXT_FILE). This is a real,
+Wayland/XWayland-independent way for an AI or script to drive these
+menus - it never touches X11 input at all, purely file-based, exactly
+like CHTPM's own convention.
+
+WHY THIS WASN'T WORKING EARLIER THIS SESSION - THE REAL BUG: while
+proving the above, found and fixed a SEPARATE, SEVERE, ROOT-CAUSE bug
+in 101.mutaclsym🧟‍♂️️+18.01/system/prisc+x.c (the real PAL-script
+interpreter EVERY event.pal in this house runs through, not just
+book-stack's own): `parse_line()`'s own `char original[128]` buffer
+silently truncated ANY line over 127 bytes - which is EVERY real
+"exec <absolute path>" line in this house, since directory names here
+are routinely emoji-heavy (4+ UTF-8 bytes per emoji, several combined
+with variation selectors/ZWJ sequences - a single "❤️‍🔥️" is more than
+ten raw bytes). Confirmed via `strace -f -s 500 -e trace=execve` -
+prisc+x's own event.pal `exec` line was handing `/bin/sh -c` a
+COMMAND STRING CUT OFF MID-PATH, so `sh -c` genuinely couldn't find
+the file (real, correct behavior given a truncated argument - not an
+sh/dash quirk). This means EVERY RUN_METHOD-triggered PAL script this
+whole session that shells out via `exec` to a long absolute path may
+have been silently failing the same way, not just book-stack's own -
+worth a broad regression check next session (grep other .pal files
+under `event_pkg/` trees for `exec <long path>` and re-verify each one
+now that this is fixed).
+
+FIX APPLIED (real, minimal, already compiled and verified):
+`original[128]` -> `original[512]` + `snprintf` instead of
+`strncpy` (also fixes a secondary missing-null-terminator risk
+`strncpy` had). Rebuilt in place:
+`cd "<house>/101.mutaclsym🧟‍♂️️+18.01/system" && gcc -Wall -O2 -o prisc+x prisc+x.c`
+- confirmed via strace that the full path now survives intact.
+
+NOTE: other 256-byte buffers exist throughout prisc+x.c (arg1/arg2/
+arg3/literal_arg/literal_arg2/the two other `line[256]` buffers) -
+NOT touched this pass since they weren't the confirmed bug and have
+more headroom (256 vs our 237-byte test case) - but the same class of
+truncation risk exists there too for a sufficiently long path/line.
+If a similar "AI-injected relay command silently does nothing" report
+comes up again involving a DIFFERENT long literal argument (not exec),
+suspect this same buffer-size class of bug first.
+
+ALSO OBSERVED DURING THIS LIVE TEST: the SHOW_TEXT_FILE popup that
+NAV_KEY:Enter opened self-dismissed a few seconds later
+(SHOW_TEXT_DISMISSED in history.txt) with no deliberate input from
+either the agent or (as far as could be told) the user - almost
+certainly the SAME stale-queued-X11-event class of bug fixed earlier
+in open_context_menu() (window-ID reuse redelivering an old event to a
+new popup), but this happened on text_popup_win specifically, which
+does NOT have that same stale-event-drain fix applied (only
+open_context_menu()'s own popup got it - text_popup_win is created
+inline in the SHOW_TEXT_FILE relay handler with its own separate
+XCreateWindow/XGrabPointer/XGrabKeyboard, never passed through
+open_context_menu() at all). FIXED, same session: added the same
+stale-event-drain (XSync + XCheckWindowEvent loop) right after
+text_popup_win's own grabs. Compiled, not yet re-verified live with a
+fresh NAV_KEY test - do that first if this class of bug resurfaces.
+
+ANOTHER REAL BUG FOUND AND FIXED, LATE THIS SESSION - "book-stack
+worked the first time, every subsequent Read click failed": root
+cause found by reading history.txt closely (a second "CLICK
+method=Bible verse (text)..." appeared with NO preceding "Read" click
+or SHOW_PAGE line before it - proof the entity's own BASE menu, not a
+choice popup, was somehow showing the Bible-verse choice ROWS instead
+of the real Read/Dir/Close/Cancel methods). Confirmed in code:
+methods[]/n_methods (declared once in main(), &.widgits/tile-picker/
+ops/tp_desktop_window.c) is ONE SHARED array/count used for BOTH the
+entity's real base menu AND SHOW_PAGE's own Show-Choices popup -
+SHOW_PAGE's handler calls load_flat_objects() which OVERWRITES this
+exact same array with the choice rows, on purpose, to reuse
+open_context_menu()/draw_context_menu() wholesale (real, deliberate
+design) - but NOTHING ever restored it back to the real base menu
+afterward. So the first Show-Choices interaction permanently replaced
+the entity's own base menu contents for the rest of that process's
+life: every later right-click reopened the STALE choice rows, and
+clicking one just tried to dispatch "bible_text"/"bible_tts"/"tao" as
+literal shell commands (meaningless outside choice_mode), silently
+failing via system(). FIXED: the one real base-menu-open site (search
+"xev.xbutton.button == 3", right-click handler near the bottom of
+main()) now always reloads the CORRECT real base state fresh, every
+time, right before opening - either obj_pages[0] (for a paged-objects
+entity, resetting cur_page/page_stack_n too) or load_methods()'s flat
+methods.pdl output (for a plain entity like book-stack), matching
+whichever this entity's own using_objects flag says is real. NOT the
+"just call load_methods() unconditionally" version I wrote FIRST and
+then caught myself before compiling - that would have silently broken
+paged-object entities (MUCHI_RANCHER-style GOTO/BACK page navigation)
+by resetting using_objects=0 on every base-menu open regardless of
+whether the entity actually uses that system. Compiled, rebuilt,
+respawned - NOT yet independently re-verified live with a full
+Read->pick->Read-again cycle; do that first if this class of report
+comes up again.
+
+TWO MORE OPEN BUGS, USER-CONFIRMED LIVE, NEITHER DIAGNOSED YET:
+  - Clicking a taskbar tab while a DIFFERENT window's popup is open
+    closes that popup. tp_taskbar.c's own tab-click handler only calls
+    XRaiseWindow + XSetInputFocus on the target entity's BASE window -
+    it never touches interact_relay.txt or sends any close-shaped
+    command, so the mechanism isn't obvious from a read-through; needs
+    live `xev`/history.txt correlation (click the tab, immediately grep
+    the open popup's own history.txt for what happened around that
+    exact timestamp) rather than more code-reading guesses.
+  - Taskbar nav numbers "not always taking 1, even if other navs are
+    gone" - the self-healing prune (nav_claim_rows()/
+    livedesk_registry_add()) only runs when THAT specific function is
+    called (a new popup opening, a new window registering) - it does
+    NOT proactively renumber/compact everything else system-wide at
+    that moment beyond pruning genuinely dead PIDs. If the user's
+    complaint is "tab X is alive, other things are alive too, but tab X
+    got a higher number than expected" that may just be correct,
+    boring behavior (numbers are assigned in claim ORDER, not sorted by
+    liveness) - use livedesk_nav_debug.+x to check whether this is a
+    real bug (a DEAD or malformed entry still occupying a low number)
+    or expected behavior (a live entry just isn't the FIRST one to have
+    claimed a low number) before assuming new code is needed.
+
+================================================================
+3. WHAT'S STILL BROKEN - THE REAL UNRESOLVED PROBLEM
+================================================================
+
+Keyboard navigation inside context menus (arrow keys / Enter / digit
+jump) is fundamentally unreliable, DESPITE FOUR SEPARATE FIX ATTEMPTS
+this session, each addressing a real bug that was found - but the
+underlying problem was never fully solved:
+
+  1st attempt: XGrabKeyboard/XGrabPointer return values were never
+  checked; added a 5-attempt retry loop for a real, documented X11 race
+  (AlreadyGrabbed on rapid close-then-reopen). Real fix, but insufficient
+  alone.
+
+  2nd attempt: added XSetInputFocus + XRaiseWindow to every popup open,
+  intending to guarantee input priority. This was a REAL REGRESSION -
+  it's a global fight over ONE X focus/stacking order across every
+  entity's own separate process, so one entity's popup opening could
+  yank focus away from a DIFFERENT entity's already-open popup. REVERTED.
+
+  3rd attempt (the real root cause, finally found): THIS IS A WAYLAND
+  SESSION (GNOME Shell/Mutter, confirmed via
+  $XDG_SESSION_TYPE=wayland). Every popup here is a plain X11 window
+  running under XWayland. Mutter DELIBERATELY restricts XGrabKeyboard
+  from XWayland clients by default (a real, intentional Wayland
+  security policy - `gsettings describe
+  org.gnome.mutter.wayland xwayland-allow-grabs` explains this
+  directly). No amount of retrying the grab call inside our own C code
+  can override a compositor-level restriction. Real, partial fix
+  applied: popups now set a real WM_CLASS ("MuchiverseLivedesk") via
+  XSetClassHint, and a NEW script, $.crypts/enable_xwayland_grabs.sh,
+  sets `org.gnome.mutter.wayland xwayland-grab-access-rules` to
+  allowlist that one class (NOT the global xwayland-allow-grabs switch -
+  the user specifically chose the narrower, per-app allowlist over a
+  house-wide security downgrade). THIS SCRIPT WAS RUN AND THE SETTING
+  WAS CONFIRMED CHANGED (gsettings get shows it took), but the user
+  STILL reported broken keyboard nav after this - meaning either (a)
+  Mutter needs the X11 client itself restarted/reconnected after the
+  gsettings change to pick it up (untested - try restarting
+  tp_desktop_window AFTER confirming the gsettings value, in a clean,
+  isolated test), or (b) there's a second layer to this restriction not
+  yet understood, or (c) the WM_CLASS isn't actually reaching Mutter
+  correctly (verify with `xprop WM_CLASS` on a LIVE popup window, not
+  just code review - this was never actually re-verified live after the
+  rebuild).
+
+  4th attempt (in response to the grab approach still not working):
+  pivoted away from XGrabKeyboard entirely. Real idea: the TASKBAR's
+  own input box already reliably holds real X input focus via plain
+  XSetInputFocus (a normal focus assignment, NOT a grab - the
+  Wayland restriction is specifically about grabs, not normal focus).
+  So make the taskbar a remote keyboard: while its input box is active
+  and no digits have been typed, Up/Down/Enter get relayed as a NEW
+  "NAV_KEY:<key>" command into whichever entity's interact_relay.txt
+  currently owns an open popup (found via the first KIND=row line in
+  livedesk_nav_claims.txt - that state only exists while a popup is
+  genuinely open). Implemented on both sides (tp_desktop_window.c's
+  NAV_KEY relay handler, tp_taskbar.c's find_open_popup_path() +
+  input-box key handling). USER'S IMMEDIATE FEEDBACK: "u didn't add a
+  key logger yet, so its not picking up the keys" - meaning the
+  fundamental assumption (taskbar's own window reliably receives real
+  KeyPress events once "active") was NEVER independently verified
+  before building relay logic on top of it. THIS IS THE FIRST THING TO
+  CHECK NEXT SESSION - see §5 step 2.
+
+ADDITIONAL, SEPARATE, UNDIAGNOSED BUG: clicking a taskbar tab (or
+possibly anywhere on the taskbar - not narrowed down) while a DIFFERENT
+window's context menu is currently open closes that open popup. Never
+investigated - could be an intentional side effect of XSetInputFocus
+being called on tab-click (moving OS focus away, which the popup's OWN
+process might be reacting to by self-closing on a focus-loss check
+somewhere - CHECK for any such check in tp_desktop_window.c before
+assuming it needs a new fix), or could be a genuinely new bug from one
+of this session's later changes. Reproduce deliberately, don't guess.
+
+
+================================================================
+4. OPEN PRODUCT QUESTION - DOES "[N]" NAV EVEN SURVIVE?
+================================================================
+
+The user's own words, verbatim, near the end of this session: "im
+really considering going back to not having 'nav' in our wayland
+toolbar stuff. it was working better then. we may need to roll that
+back if we can."
+
+They explicitly chose NOT to roll back tonight (chose "just document,
+don't roll back" when asked directly) - so the code as of this handoff
+still has the full nav-claims/[N]-numbering/NAV_KEY system in place,
+still broken for keyboard use, but NOT reverted.
+
+This is a real, live decision for next session, not a bug to silently
+fix. Options to present, don't just pick one:
+  (a) Keep pushing on the keyboard-nav problem (verify §5 step 2 first -
+      it's possible the whole thing works once the taskbar's own key
+      receipt is confirmed/fixed).
+  (b) Roll back to mouse-only interaction - the nav-claims file, the
+      "[N]" numbers drawn in every menu, ACTIVATE_NAV, and NAV_KEY would
+      all need to be removed/disabled. This house is NOT a git repo (no
+      version control), so "rollback" means manually identifying and
+      removing this session's own nav-numbering code, not `git revert`.
+      The core files touched: &.widgits/tile-picker/ops/
+      tp_desktop_window.c (nav_claim_rows/nav_release_pid/popup_nav_base/
+      ACTIVATE_NAV/NAV_KEY - all real, identifiable, commented blocks,
+      search for "2026-08-05"/"2026-08-06" REAL FIX comments) and
+      &.widgits/livedesk-taskbar/ops/tp_taskbar.c (the terminal-style
+      input box, lookup_nav(), find_open_popup_path()).
+  (c) Some middle ground - e.g. keep [N] numbers as a pure DISPLAY/
+      addressing convenience (so an AI agent or script can still target
+      a specific row unambiguously) but drop the taskbar's own
+      keyboard-relay ambitions, since mouse clicks already work fine and
+      don't touch any of this broken machinery.
+
+Whichever direction is chosen, do it as a deliberate, scoped pass - not
+mixed in with unrelated fixes.
+
+
+================================================================
+5. WHAT TO CHECK/DO FIRST, NEXT SESSION
+================================================================
+
+You (the next agent) have no memory of this session. Do these IN ORDER
+before writing new code:
+
+  1. Read this whole file, then skim !.HOUSE_STDS.md and
+     &.widgits/tile-picker/TILE_PICKER_DESIGN.md for house-wide
+     conventions this doc doesn't repeat.
+
+  2. FIRST REAL DIAGNOSTIC TO RUN - do not build anything new before
+     this: confirm whether the taskbar's own window ever receives ANY
+     real KeyPress event at all once its input box is "active"
+     (input_active=1 in tp_taskbar.c). Find the taskbar's window id via
+     `xwininfo -root -tree` (look for the wide, short override_redirect
+     window spanning the bottom of the screen - no name, geometry like
+     "2496x32+0+1632"), then run `xev -id <that id>` in one terminal
+     while clicking the taskbar's Nav box and pressing arrow keys/Enter
+     in ANOTHER terminal/window. If xev shows NO KeyPress events at
+     all, the whole NAV_KEY relay design from §3's 4th attempt is
+     building on a false assumption and needs a different approach (an
+     override_redirect window doesn't get real Wayland seat keyboard
+     focus even via XSetInputFocus is a plausible, real possibility,
+     not yet ruled out). If xev DOES show KeyPress events reaching that
+     window, the bug is somewhere in tp_taskbar.c's own event dispatch
+     logic instead (check the XPending/XNextEvent loop, check that
+     input_active is actually being set on Nav-box click, check whether
+     ANOTHER branch in that big if/else if chain is silently swallowing
+     the KeyPress before it reaches the `input_active && xev.type ==
+     KeyPress` branch).
+
+  3. Run livedesk_nav_debug.+x <house_root> (see §2) BEFORE assuming any
+     nav-number report is a new bug - check for dead/malformed entries
+     first, they may explain it without any code change.
+
+  4. Reproduce and diagnose the "clicking taskbar closes an open popup"
+     bug deliberately (see §3, last paragraph) - don't guess at a fix
+     blind.
+
+  5. Bring the open product question in §4 back to the user EXPLICITLY
+     - don't silently decide FOR them. Their own words leaned toward
+     rollback; confirm that's still their preference before spending
+     more time on the keyboard-nav problem.
+
+  6. Genuinely deferred, not started, mentioned once and dropped -
+     lowest priority, only touch if explicitly asked again:
+       - Wiring dog/cat/chicken pets (@.apps/pets/pieces/{dog,cat,
+         chicken}/, each with its own real button.sh already) to open
+         automatically - user's own words: "it was going to be an event
+         page that runs, to test that kind of event" - i.e. this is
+         meant to be a KHTPM/event.pal exercise (like book-stack was),
+         not a hardcoded button.sh call. Do NOT hardcode it if this
+         comes up again.
+       - The "session id" / controller-ownership concept (tracking which
+         controller - human vs a specific AI/automation - legitimately
+         owns input to a given window right now, to prevent exactly the
+         kind of cross-talk that caused early confusion this session).
+         Raised once, early, never resolved, never revisited.
+
+  7. Process hygiene reminder for yourself: this session accumulated
+     MANY duplicate/stale tp_desktop_window.c and tp_taskbar.c processes
+     from repeated respawns during testing (some from genuine bugs,
+     some from the agent's own kill/relaunch cycles). Before assuming
+     "N processes are running" means N are SUPPOSED to be running, run
+     `ps aux | grep -E "tp_desktop_window|tp_taskbar"` and cross-check
+     against livedesk_nav_debug.+x's own output - don't trust process
+     count alone. When in doubt, kill everything found, clear
+     livedesk_open.txt and livedesk_nav_claims.txt to empty, and
+     relaunch fresh via $.crypts/button.sh run (the real, intended
+     entry point) rather than manually reconstructing individual nohup
+     commands.
+
+
+================================================================
+6. FILE INVENTORY - EVERYTHING TOUCHED/CREATED THIS SESSION
+================================================================
+
+New:
+  $.crypts/autostart.pdl
+  $.crypts/ops/crypt_autostart.c  (+ compiled ops/+x/crypt_autostart.+x)
+  $.crypts/button.sh
+  $.crypts/enable_xwayland_grabs.sh   (NEW, re-runnable, see §3)
+  &.widgits/tile-picker/ops/khtpm_show_choices.c (+ +x)
+  &.widgits/tile-picker/ops/khtpm_show_text.c (+ +x)
+  &.widgits/tile-picker/ops/livedesk_nav_debug.c (+ +x)   (NEW, see §2)
+  @.apps/book-stack/pieces/reader/event_pkg/pages/page_1/
+    (choices.objects.pdl, condition.pdl, dispatch.sh, event.pal,
+     branches/{bible_text,bible_tts,tao}/run.sh)
+  #.desktop/entities/book-stack/  (real live entity package)
+  #.desktop/livedesk_shortcuts.pdl
+  #.desktop/livedesk_theme.pdl
+  #.desktop/livedesk_registry.lock  (created on demand by flock, empty)
+  #.desktop/livedesk_popup.lock     (created on demand by flock, empty)
+
+Heavily modified (search each for "2026-08-05"/"2026-08-06" REAL FIX
+comments to find every change made this session, in place, with full
+reasoning inline - do not re-derive from scratch, read the comments
+first):
+  &.widgits/tile-picker/ops/tp_desktop_window.c
+  &.widgits/livedesk-taskbar/ops/tp_taskbar.c
+
+Both compile clean as of this handoff:
+  cd "<house>/&.widgits/tile-picker" && gcc -Wall -O2 -o ops/+x/tp_desktop_window.+x ops/tp_desktop_window.c -lX11 -lXext -lGL -lGLX
+  cd "<house>/&.widgits/livedesk-taskbar" && gcc -Wall -O2 -o ops/+x/tp_taskbar.+x ops/tp_taskbar.c -lX11
+
+
+================================================================
+7. LESSON LEARNED, WORTH REMEMBERING
+================================================================
+
+Every "focus problem" reported this session had a DIFFERENT real cause
+(X11 window-ID reuse, a self-inflicted global-focus-fight regression, a
+genuine cross-process grab race, a blocking-lock-induced input backlog,
+and finally a Wayland/XWayland compositor restriction) - resist the urge
+to treat a new focus complaint as "the same bug again." Diagnose each
+one fresh, from the actual live system (xev, xwininfo, xprop, the new
+livedesk_nav_debug.+x tool), before writing a fix. Guessing produced at
+least two real regressions this session (the XSetInputFocus/XRaiseWindow
+global fight, and the blocking-flock input-backlog bug) that then needed
+their own separate fixes.
+
+
+
+
+❯ ok, one more thing. we want to add an 'events-ez' widget to muchi-rancher,    
+  remember? (we got side tracked) and have we done feed event yet? its not      
+  opening anything new? did u forget about that? we were off on quite a         
+  tangent... is it in the handoff?                                              
+
+  Read 1 file, ran 5 shell commands (ctrl+o to expand)
+
+● Checked — you're right, this got dropped. Facts:
+
+  - Feed method: doesn't exist in m6_golddeity's current meta.pdl or in
+  MUCHI_RANCHER/pieces/monster/button.sh (only Ledger/Dir/Close/Cancel are
+  defined there). It briefly showed up in a nav-claims debug dump earlier this
+  session, but that was stale/transient state, not a real wired feature — it was
+  never actually built.
+  - event-ez widget (&.widgits/event-ez): exists as its own established widget,
+  but nothing in MUCHI_RANCHER references it at all. Never wired in.
+  - Not in the handoff doc — you're right to flag that.
+  @.AUG-6-CLAUDE-HANDOFF.txt was scoped narrowly to the taskbar/KHTPM
+  keyboard-focus saga; this genuinely got dropped when the session went sideways
+  into that debugging arc, and I didn't carry it forward. That's a real gap in
+  the doc, not intentional.
+
+● User answered Claude's questions:
+  ⎿  · Feed/event-ez for MUCHI_RANCHER got dropped this session - start it now, 
+     or add it to the handoff and pick it up next session? → Add to handoff, do 
+     next session (Recommended)
+  ⎿  You've hit your weekly limit · resets Aug 8, 8pm (America/Los_Angeles)
+     /upgrade to increase your usage limit.
+

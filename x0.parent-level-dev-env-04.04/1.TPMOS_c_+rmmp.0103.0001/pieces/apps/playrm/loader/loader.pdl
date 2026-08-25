@@ -1,0 +1,50 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | loader
+META         | version            | 1.0
+META         | determinism        | strict
+
+STATE        | name                 | Project Loader
+STATE        | status               | active
+
+METHOD       | move                 | void
+METHOD       | +-demo | LOAD_PROJECT:+-demo
+METHOD       | 404-test | LOAD_PROJECT:404-test
+METHOD       | agy-text-editor | LOAD_PROJECT:agy-text-editor
+METHOD       | ai-labs | LOAD_PROJECT:ai-labs
+METHOD       | aow | LOAD_PROJECT:aow
+METHOD       | aow-2d | LOAD_PROJECT:aow-2d
+METHOD       | bot-editor | LOAD_PROJECT:bot-editor
+METHOD       | bots-sov | LOAD_PROJECT:bots-sov
+METHOD       | chat-op | LOAD_PROJECT:chat-op
+METHOD       | checkers | LOAD_PROJECT:checkers
+METHOD       | chtmgl-alpha | LOAD_PROJECT:chtmgl-alpha
+METHOD       | chtmgl-beta | LOAD_PROJECT:chtmgl-beta
+METHOD       | cpp-llm | LOAD_PROJECT:cpp-llm
+METHOD       | cyoa-engine | LOAD_PROJECT:cyoa-engine
+METHOD       | demo_1 | LOAD_PROJECT:demo_1
+METHOD       | fuzz-op | LOAD_PROJECT:fuzz-op
+METHOD       | gem-dev | LOAD_PROJECT:gem-dev
+METHOD       | gitlet | LOAD_PROJECT:gitlet
+METHOD       | gltpm-demo | LOAD_PROJECT:gltpm-demo
+METHOD       | groq-ollama | LOAD_PROJECT:groq-ollama
+METHOD       | hangman | LOAD_PROJECT:hangman
+METHOD       | lsr | LOAD_PROJECT:lsr
+METHOD       | man-pal | LOAD_PROJECT:man-pal
+METHOD       | media-editor | LOAD_PROJECT:media-editor
+METHOD       | mouse-test | LOAD_PROJECT:mouse-test
+METHOD       | mp3-store | LOAD_PROJECT:mp3-store
+METHOD       | op-ed | LOAD_PROJECT:op-ed
+METHOD       | op-ed-gl | LOAD_PROJECT:op-ed-gl
+METHOD       | p2p-net | LOAD_PROJECT:p2p-net
+METHOD       | piececraft-3d | LOAD_PROJECT:piececraft-3d
+METHOD       | quiz-engine | LOAD_PROJECT:quiz-engine
+METHOD       | slop-ed-dev | LOAD_PROJECT:slop-ed-dev
+METHOD       | template | LOAD_PROJECT:template
+METHOD       | test_fondu | LOAD_PROJECT:test_fondu
+METHOD       | tsots-irc | LOAD_PROJECT:tsots-irc
+METHOD       | tsots-online | LOAD_PROJECT:tsots-online
+METHOD       | user | LOAD_PROJECT:user
+METHOD       | wraith-alpha | LOAD_PROJECT:wraith-alpha
+METHOD       | xsr | LOAD_PROJECT:xsr
+METHOD       | yahoo | LOAD_PROJECT:yahoo

@@ -1,0 +1,15 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | new-quest
+META         | version            | 0.1
+META         | author              | user
+
+STATE        | starting_world     | world_template
+STATE        | starting_map       | map_start
+STATE        | player_piece       | hero
+STATE        | title              | New Quest
+
+EVENT_IN     | project_start      | void
+
+RESPONSE     | project_start      | Quest initialized.
+RESPONSE     | default            | *waiting...*

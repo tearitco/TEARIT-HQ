@@ -1,0 +1,28 @@
+# TPMOS Project Succession: YAHOO
+Date: 2026-04-28
+Status: OPERATIONAL (Phase 1 Complete)
+
+## 🧬 Project Soul (Concept)
+A financial dashboard and trading simulator that treats stocks and users as sovereign Pieces. It replaces a monolithic C application with an asynchronous, Ops-driven TPMOS architecture.
+
+## 🧠 The Brain (Current Progress)
+- **Manager**: `yahoo_manager.c` handles input routing from `history.txt` and exports user state (balance, prices) to `manager/state.txt` for UI rendering.
+- **Ops (Muscles)**: 
+    - `fetch_stock`: Raw JSON retrieval from Yahoo Finance.
+    - `json_parser`: Converts raw JSON into TPMOS-standard `.kvp` files.
+    - `lookup_stock`: Orchestrates fetch/parse and updates user Piece state.
+    - `add_credit`: Modifies sovereign balance.
+    - `portfolio_new`: Aggregates holdings into a summary.
+- **Theater**: `main.chtpm` displays real-time data using `${var}` substitution.
+
+## 🗺️ Roadmap (Future Steps)
+1.  **Options Trading**: Bind `options_pricing.c` to a dedicated UI screen for contract selection.
+2.  **Predictive Analytics**: Activate `predictions.c` to show 1-day/1-month price forecasts.
+3.  **Visual Polish**: Enhance `main.chtpm` with conditional colors (green for profit, red for loss).
+
+## 🛠️ How to Continue
+- To add a feature: Create a new binary in `ops/`, register it in `ops_manifest.txt`, and call it from `yahoo_manager.c`.
+- To fix layout: Edit `layouts/main.chtpm`. Ensure variables match the keys in `manager/state.txt`.
+- Recompile: Run `sh button.sh c` from the TPMOS root.
+
+*"Money is just state, and state is just a file."*

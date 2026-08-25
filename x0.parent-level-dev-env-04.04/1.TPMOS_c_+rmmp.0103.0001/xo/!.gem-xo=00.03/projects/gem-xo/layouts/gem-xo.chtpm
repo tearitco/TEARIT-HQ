@@ -1,0 +1,34 @@
+<panel time_reactive="true">
+    <module>projects/gem-xo/manager/+x/gem-xo_manager.+x</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+
+    <text label="╔══════════════════════════════════════════════════════════════════════════════╗" /><br/>
+    <text label="║                 G E M - X O   L O C A L   A G E N T                          ║" /><br/>
+    <text label="╠══════════════════════════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║ ${ai_status_line} ║" /><br/>
+    <text label="║ [PIECE]: iqabel | [CTX]: ${ctx_pct} | [FSM]: ${iqabel_fsm}                   ║" /><br/>
+    <text label="╠══════════════════════════════════════════════════════════════════════════════╣" /><br/>
+    <text label="${gem-xo_response_area}" /><br/>
+    <text label="╠══════════════════════════════════════════════════════════════════════════════╣" /><br/>
+    <button label="[ Suggestions ]" onClick="ACTIVATE" id="comp_root" visibility="${comp_root_vis}">
+        <br/>
+        <button label="[Back]" onClick="BACK" id="comp_back" /><br/>
+        <button label="${comp_1_lbl}" onClick="KEY:2" id="comp_1" visibility="${comp_1_vis}" /><br/>
+        <button label="${comp_2_lbl}" onClick="KEY:3" id="comp_2" visibility="${comp_2_vis}" /><br/>
+        <button label="${comp_3_lbl}" onClick="KEY:4" id="comp_3" visibility="${comp_3_vis}" /><br/>
+        <button label="${comp_4_lbl}" onClick="KEY:5" id="comp_4" visibility="${comp_4_vis}" /><br/>
+        <button label="${comp_5_lbl}" onClick="KEY:6" id="comp_5" visibility="${comp_5_vis}" /><br/>
+    </button><br/>
+    <text label="╠══════════════════════════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  " /><cli_io id="input_text" label="Ask Agent: " /><text label="  ║" /><br/>
+<br/>
+    <button label="[2] Clear Context" onClick="KEY:1" /><br/>
+    <button label="[3] Switch API" onClick="ACTIVATE" id="api_menu_root">
+        <br/>
+        <button label="Back" onClick="BACK" id="api_back" /><br/>
+        ${gem-xo_api_menu}
+    </button><br/>
+    <button label="[4] Summarize" onClick="KEY:3" id="btn_sum" /><br/>
+    <button label="[ESC] Exit" href="LAUNCH:LOADER" id="btn_exit" /><br/>
+    <row label="[SYS]: ${sys_msg}" /><br/>
+</panel>

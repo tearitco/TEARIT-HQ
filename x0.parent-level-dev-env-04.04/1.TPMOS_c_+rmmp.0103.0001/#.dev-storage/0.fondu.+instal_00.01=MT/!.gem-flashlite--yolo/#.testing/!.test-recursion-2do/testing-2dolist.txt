@@ -1,0 +1,54 @@
+# 🍼 Testing Bot "Baby Steps" 2-Do List
+**Mandate:** KISS (Keep It Simple, Stupid)
+**Goal:** Prove navigation before complexity.
+
+---
+
+## 🟢 PHASE 0: NAV-SMOKE (The "Hello World" of Bots)
+*Objective: Just get to the User menu.*
+
+[ ] **0.1 Scaffold Bot Piece**
+    - Create `pieces/apps/bot_tester/baby_steps/` directory.
+    - Create `state.txt` [state=IDLE, goal=nav_to_user].
+
+[ ] **0.2 Write PAL Script (`nav_to_user.asm`)**
+    - `call pieces/apps/playrm/ops/+x/send_command.+x "LOAD_PROJECT:user"`
+    - `sleep 2000000` (2s for sync)
+    - `call pieces/apps/bot_tester/ops/+x/log_event.+x "BABY_STEPS: Reached User Menu"`
+
+[ ] **0.3 Manual Trigger Check**
+    - Run the script manually via `prisc+x`.
+    - Verify `master_ledger.txt` reflects the log event.
+
+---
+
+## 🟡 PHASE 1: IDENTITY GEN (The "First Breath")
+*Objective: Bot creates an account.*
+
+[ ] **1.1 Navigate to Signup**
+    - Script injects keys to reach the Signup screen.
+    - Assert `active_target_id=user_signup`.
+
+[ ] **1.2 Input Credentials**
+    - Inject username "bot_baby".
+    - Inject password "KISS_123".
+    - Press "Confirm".
+
+[ ] **1.3 Verify Profile Sovereignty**
+    - Check if `pieces/apps/user/pieces/profiles/bot_baby/state.txt` exists.
+
+---
+
+## 🔴 PHASE 2: RECURSIVE SESSION
+*Objective: Bot logs in and tests another project.*
+
+[ ] **2.1 Autonomous Login**
+    - Navigate to Login -> Input bot_baby/KISS_123.
+    - Verify session status changes to "logged_in".
+
+[ ] **2.2 Cross-Project Jump**
+    - While logged in, jump to `fuzz-op`.
+    - Verify pet status.
+
+---
+"Walk before you crawl, crawl before you run... wait, no, KISS!"

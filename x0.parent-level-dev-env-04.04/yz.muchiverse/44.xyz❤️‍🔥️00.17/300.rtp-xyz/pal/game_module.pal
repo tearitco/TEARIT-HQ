@@ -1,0 +1,25 @@
+# mutaclsym interact-turn dispatch - CHTPM-MODULE VARIANT, PERSISTENT
+# Architecture matches lpns+map+4 exactly: exec game_dispatch per tick.
+# game_dispatch.c reads ALL keys from interact_relay.txt, truncates,
+# dispatches each to move_player + choice, runs end_turn + tick_monsters,
+# composes frame, signals renderer. Only composes when keys were processed.
+#
+# Dispatch is decoupled via interact_relay.txt relay file:
+#   1. launch_module() forks this once at layout-parse time.
+#   2. chtpm_parser_pal.c's process_key() INTERACT branch writes
+#      each engaged key via inject_raw_key(eff) into interact_relay.txt.
+#      game_dispatch.c's own next tick picks it up.
+#
+# This process is terminated by chtpm_parser_pal.c's cleanup_module()
+# (SIGTERM + waitpid) on layout/module transitions.
+
+li x1, 0
+
+compose_frame
+compose_rgb_frame
+hit_frame
+
+loop:
+exec ./ops/+x/game_dispatch
+sleep 16667
+j loop

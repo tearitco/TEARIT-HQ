@@ -1,0 +1,19 @@
+╔══════════════ L O A D   F I L E ═══════════╗
+DIR: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.15/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/xyzfs/users/584a4c9b-cf42-4f9c-904b-9bca6be6d525/home/documents
+║                                             ║
+SEARCH: | [ ] 1. : []                                        |
+FILE:   | [^] 2. : [_]                                     |
+║                                             ║
+╠════════════ DIRECTORY CONTENTS ═════════════╣
+[ ] 3. [&lt;- BACK]
+[ ] 4. [[FIL] harness_1638268.txt (49B)]
+║                                             ║
+╠═════════════════════════════════════════════╣
+[ ] 5. [LOAD FILE]
+[ ] 6. [CANCEL]
+╠═════════════════════════════════════════════╣
+Command sent
+╚═════════════════════════════════════════════╝
+
++=========================================================+
+Active [^]:  (ESC to exit)

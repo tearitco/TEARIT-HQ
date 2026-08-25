@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | lsr
+META         | version            | 1.0
+STATE        | year               | 2026
+STATE        | pop_count          | 2
+STATE        | active_orgs        | 5

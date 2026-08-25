@@ -1,0 +1,33 @@
+# toggle_sleep.pal - real pal-native rebuild of ops/toggle_sleep.c's own
+# core mutation (flip a pet's asleep flag). This is the worked example
+# of xyzos-standards.txt sec.21.2's active-target indirection pattern:
+# ops/muchi_menu_input.c (the C dispatcher) already knows which real
+# pet is selected - it copies just that pet's "asleep" key into the
+# fixed, well-known pieces/system/active_target.txt BEFORE launching
+# this script, this script operates ONLY on that fixed path (the one
+# thing ecall's own literal-arg mechanism can address), and the
+# dispatcher copies the mutated key back into the real pet's own
+# state.txt afterward, then truncates the scratch file. This script
+# never knows or needs to know which real pet it just toggled.
+# No precondition gate needed (unconditional flip, unlike coin_flip.pal/
+# feed_pet.pal) - simplest possible case of the pattern.
+
+li x15, 6
+li x13, 0
+ecall "pieces/system/active_target.txt" "asleep"
+addi x1, x12, 0
+
+li x2, 1
+beq x1, x2, wake_up
+li x1, 1
+j write_back
+
+wake_up:
+li x1, 0
+
+write_back:
+li x15, 7
+addi x12, x1, 0
+ecall "pieces/system/active_target.txt" "asleep"
+
+halt

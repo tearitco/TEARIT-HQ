@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | wallet_main
+META         | version            | 1.0
+
+METHOD       | Check Balance           | CHAIN_BALANCE
+METHOD       | Start Mining            | CHAIN_START_MINING
+METHOD       | Stop Mining             | CHAIN_STOP_MINING
+METHOD       | Logout                  | CHAIN_LOGOUT

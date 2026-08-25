@@ -1,0 +1,15 @@
+<text label="WRAI TEXT EDITOR" /><br/>
+<text label="ACTIVE: none" /><br/>
+<button label="EDIT TEXT (INTERACT)" onClick="INTERACT" /><br/>
+<text label="║                                           ║" /><br/>
+<text label="║                                           ║" /><br/>
+<text label="║                                           ║" /><br/>
+<text label="║  😀[X]                                  ║" /><br/>
+<text label="║                                           ║" /><br/>
+<text label="║  WRAI EMOJI TEST                          ║" /><br/>
+<text label="║  😀 😅 😆 😇 🚀                 ║" /><br/>
+<text label="║  🌍 🐶 🎉 ❤️ ⭐                ║" /><br/>
+<button label="NEW FILE" onClick="PROJECT_ACTION:NEW_FILE" /><br/>
+<button label="CLEAR FILE" onClick="PROJECT_ACTION:CLEAR_FILE" /><br/>
+<button label="FILE MENU" onClick="PROJECT_PAGE:file_menu" /><br/>
+<text label="Ready." /><br/>

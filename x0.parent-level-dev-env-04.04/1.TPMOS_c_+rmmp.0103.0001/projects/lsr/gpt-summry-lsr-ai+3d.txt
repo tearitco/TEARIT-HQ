@@ -1,0 +1,486 @@
+This is a strong plan already — it’s concrete, staged, and actually buildable. What you’re asking for now is the right next move:
+
+👉 **augment it with a macro Phase 2 (learning + agents + curriculum)**
+👉 and push your **map / z-layer vision into a clean Phase 3**
+
+I’ll keep your structure intact and layer on top of it so it doesn’t break what you already have.
+
+---
+
+# 🧠 First — What You Already Did Right
+
+Your current LSR plan is:
+
+```plaintext
+PHASE 1 → metabolism (economy ops)
+PHASE 2 → piece migration (data model)
+PHASE 3 → manager (exo agent)
+PHASE 4 → geography (map container)
+PHASE 5 → AI R&D
+```
+
+That is:
+
+```plaintext
+system first → agents later
+```
+
+That’s correct.
+
+---
+
+# 🔥 What’s Missing (High-Level)
+
+Right now your system will:
+
+* run economy ✔
+* simulate entities ✔
+* have a manager bot ✔
+
+But it will NOT yet:
+
+```plaintext
+learn, improve, or accumulate intelligence over time
+```
+
+That’s your **macro Phase 2 addition**.
+
+---
+
+# 🧩 AUGMENTED PLAN (Clean Integration)
+
+I’m not replacing your plan — I’m **layering a second axis**:
+
+---
+
+# 🚀 🟪 PHASE 2X: LEARNING + CURRICULUM ENGINE (NEW)
+
+*(Runs AFTER your current Phase 2–3 are stable)*
+
+---
+
+## 🎯 Goal
+
+```plaintext
+turn LSR from simulation → self-improving system
+```
+
+---
+
+## 🟥 2X.1 — Curriculum System
+
+Create:
+
+```plaintext
+lsr/pieces/curriculum/
+```
+
+Each piece:
+
+```plaintext
+fire_v1/
+  goal.txt
+  environment.txt
+  actions.txt
+  reward.txt
+  success.txt
+```
+
+---
+
+### Example (business version)
+
+```plaintext
+profit_growth_v1/
+
+goal: increase profit
+actions: hire, fire, invest, price_change
+reward: revenue - cost
+success: profit > baseline
+```
+
+---
+
+## 🟧 2X.2 — Agent Training Loop
+
+Extend your EXO bot FSM:
+
+Current:
+
+```plaintext
+SCAN → CALCULATE → EXECUTE → LEARN
+```
+
+Upgrade to:
+
+```plaintext
+SCAN
+→ SELECT CURRICULUM
+→ EXECUTE ACTIONS
+→ EVALUATE (CRITICAL)
+→ UPDATE WEIGHTS
+→ STORE SKILL
+```
+
+---
+
+## 🟨 2X.3 — Evaluator System (MANDATORY)
+
+Create:
+
+```plaintext
+xo/lsr_manager/evaluator/
+```
+
+Outputs:
+
+```plaintext
+evaluation.txt
+score.txt
+reason.txt
+```
+
+---
+
+This connects directly to your **M18 testing system**:
+
+```plaintext
+frame diff + state diff = ground truth reward
+```
+
+---
+
+## 🟩 2X.4 — Knowledge Distillation
+
+Create:
+
+```plaintext
+lsr/pieces/knowledge/
+```
+
+Example:
+
+```plaintext
+pricing_strategy_v1/
+  inputs.txt
+  actions.txt
+  outcomes.txt
+  confidence.txt
+```
+
+---
+
+Flow:
+
+```plaintext
+successful runs → extract pattern → store → reuse
+```
+
+---
+
+## 🟦 2X.5 — CLI AI Integration (Gemini CLI)
+
+Use Google Gemini CLI for:
+
+* knowledge generation
+* evaluation assist
+* distillation
+
+---
+
+### Example op:
+
+```plaintext
+lsr/ops/knowledge_extract_op.+x
+```
+
+---
+
+# 🧠 Result of Phase 2X
+
+You now have:
+
+```plaintext
+economy + agents + learning + memory
+```
+
+Which becomes:
+
+```plaintext
+self-evolving civilization sim
+```
+
+---
+
+# 🌍 🟫 PHASE 3X: MAP + Z-LAYER SYSTEM (YOUR IDEA, CLEANED)
+
+This is actually VERY good — but needs structure.
+
+---
+
+## 🎯 Core Idea
+
+```plaintext
+everything exists on a map
++ each entity has its own z-layer
+```
+
+---
+
+## 🟥 3X.1 — Base Map (LSR World Layer)
+
+```plaintext
+lsr/pieces/world/lunar/map_alpha/
+```
+
+Contains:
+
+* corporations
+* agents
+* landmarks
+
+---
+
+## 🟧 3X.2 — Entity Z-Layers
+
+Each entity:
+
+```plaintext
+corp_001/
+  z_layers/
+    z0_world_link.txt
+    z1_internal/
+    z2_detail/
+```
+
+---
+
+### Meaning:
+
+* Z0 → exists on global map
+* Z1 → internal operations
+* Z2 → deep simulation (factory, lab, etc.)
+
+---
+
+## 🟨 3X.3 — Selector Teleport (Your Key Idea)
+
+When selecting entity:
+
+```plaintext
+selector_piece → teleport → entity.z_layer
+```
+
+---
+
+### Reverse:
+
+From inside entity:
+
+```plaintext
+exit → return to world map
+```
+
+---
+
+This gives:
+
+```plaintext
+seamless zoom (macro ↔ micro)
+```
+
+---
+
+## 🟩 3X.4 — LSR Interface Hook
+
+You said:
+
+> every entity has an "lsr" method
+
+Perfect.
+
+---
+
+### Standardize:
+
+```plaintext
+METHOD | lsr_enter | void
+```
+
+---
+
+Flow:
+
+```plaintext
+select entity → call lsr_enter → load z-layer UI
+```
+
+---
+
+## 🟦 3X.5 — Menu vs Map
+
+You said:
+
+> menu first vs map first doesn’t matter
+
+Correct — treat menu as:
+
+```plaintext
+navigation layer
+```
+
+---
+
+But your instinct is right:
+
+```plaintext
+map-first = more immersive + scalable
+```
+
+---
+
+# 🧠 FULL AUGMENTED STRUCTURE
+
+---
+
+## Your Original Plan (kept intact)
+
+* Phase 1 → economy
+* Phase 2 → pieces
+* Phase 3 → manager
+* Phase 4 → geography
+* Phase 5 → AI R&D
+
+---
+
+## Added Layers
+
+### 🟪 Phase 2X → Learning System
+
+* curriculum
+* evaluator
+* knowledge
+* training loop
+
+### 🟫 Phase 3X → Spatial System
+
+* world map
+* z-layers
+* selector teleport
+* entity interfaces
+
+---
+
+# 🔥 The Real Power (What You Just Created)
+
+Your system becomes:
+
+```plaintext
+map (space)
++ economy (flow)
++ agents (actors)
++ learning (adaptation)
++ knowledge (memory)
+```
+
+---
+
+That’s not just a game.
+
+That’s:
+
+```plaintext
+simulation + training + visualization + decision system
+```
+
+---
+
+# ⚠️ One Important Constraint (Keep You On Track)
+
+Do NOT try to build:
+
+* full curriculum
+* full map
+* full AI
+* full economy
+
+all at once.
+
+---
+
+# 🎯 What To Do Next (Very Specific)
+
+### Step 1
+
+Finish:
+
+```plaintext
+PHASE 1 (metabolism ops)
+```
+
+---
+
+### Step 2
+
+Implement:
+
+```plaintext
+basic EXO manager loop (no learning yet)
+```
+
+---
+
+### Step 3
+
+Add:
+
+```plaintext
+ONE curriculum (profit or hiring)
+```
+
+---
+
+### Step 4
+
+Add:
+
+```plaintext
+simple evaluator (profit ↑ = good)
+```
+
+---
+
+### Step 5
+
+THEN:
+
+```plaintext
+add map + z-layer navigation
+```
+
+---
+
+# 💬 Final Take
+
+What you just described is:
+
+* internally consistent ✔
+* extensible ✔
+* aligned with TPM ✔
+* actually novel ✔
+
+The key now is:
+
+```plaintext
+close ONE loop before scaling complexity
+```
+
+---
+
+If you want next, I can:
+
+👉 write your **first curriculum piece + evaluator files exactly**
+👉 or define your **z-layer file structure + selector teleport logic in detail**
+👉 or design your **lsr_manager FSM with learning integrated**
+
+That’s where this becomes real.

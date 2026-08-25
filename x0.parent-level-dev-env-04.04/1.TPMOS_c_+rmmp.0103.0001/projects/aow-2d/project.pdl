@@ -1,0 +1,10 @@
+[META]
+project_id = aow-2d
+version = 1.0
+exposes_ops = true
+entry_layout = projects/aow-2d/layouts/setup.chtpm
+module_path = projects/aow-2d/manager/+x/aow-2d_manager.+x
+
+[OPS]
+ops_dir = projects/aow-2d/ops/
+manifest = projects/aow-2d/ops/ops_manifest.txt

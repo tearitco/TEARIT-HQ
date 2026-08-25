@@ -1,0 +1,50 @@
+================================================================================
+phase2-module-split-report.txt - 045.muchi-pal-agent🤖️+1: what changed
+2026-07-31 and why, for future agents. See also the house-wide docs
+this work is part of: #.haiku+/!.xyzos-standards+1.txt §41, #.haiku+/
+!.xyzos-pitfalls+1.txt PITFALL 66, #.haiku+/refactor-list-j30.txt,
+01.muchi-pals-🥚️-13.01/dox/06-per-screen-module-standard.md.
+================================================================================
+
+## WHAT THIS IS AND WHY
+
+Same Phase 2 house-wide standard as 041.pal-chain⛓️'s own
+phase2-module-split-report.txt (read that file for the full
+reasoning). This project only has ONE real .chtpm layout, so the
+per-screen MODULE SPLIT itself does not apply here - there's only one
+screen, so there's nothing to split. Only the second half of Phase 2
+applies: the clear_saved_active_index() (PITFALL 66) port.
+
+## WHAT WAS DONE HERE
+
+clear_saved_active_index() ported into this project's own local
+system/chtpm_parser_pal.c, inserted after build_path_malloc(), called
+immediately before every real layout-transition parse_chtm() call
+site that exists in this project (even with one main layout, this
+project has internal state-driven re-renders that can still hit the
+same stale-focus-index bug PITFALL 66 describes). Debug-spam printf
+lines were already absent from this project's load_vars() before this
+work - nothing to remove here.
+
+## VERIFICATION
+
+Re-verified live 2026-07-31: clear_saved_active_index appears 9 times
+in chtpm_parser_pal.c (matches the expected def + call-sites pattern
+used everywhere else in this rollout). This is the same project whose
+own agent behavior was real-tested earlier this session (see this
+session's own "real testing of muchi-pal-agent" work, and this
+project's own test-harn-same/scenarios/demo_iqabod_chat.sh and
+demo_list_dir_tool.sh) - those harnesses were confirmed PASSING after
+this index-port change was applied, not re-run again for this doc.
+
+## IF YOU HIT A BUG HERE
+
+1. Doubling/dropped keystrokes: read #.haiku+/double-wr-grok-j31.txt
+   first - already root-caused and fixed house-wide.
+2. Stale focus after a re-render: confirm clear_saved_active_index()
+   is actually CALLED at the specific site involved, not just present
+   somewhere in the file.
+3. Real agent-behavior bugs (tool calls, chat logic) are unrelated to
+   this Phase 2 change - it only touches chtpm_parser_pal.c's own
+   focus-index handling.
+================================================================================

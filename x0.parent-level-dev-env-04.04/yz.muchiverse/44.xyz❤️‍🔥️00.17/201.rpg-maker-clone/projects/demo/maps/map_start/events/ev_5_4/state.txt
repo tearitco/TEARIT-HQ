@@ -1,0 +1,6 @@
+name=door_guard
+trigger=action
+x=5
+y=4
+sprite=G
+map=map_start

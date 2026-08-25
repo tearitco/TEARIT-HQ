@@ -1,0 +1,1 @@
+scenarios/demo_egg_to_mirror.sh: line 108: ./ops/compose_rgb_frame: No such file or directory

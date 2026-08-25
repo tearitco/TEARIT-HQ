@@ -1,0 +1,71 @@
+# CHTPM Render Chain Design
+**Date:** 2026-04-05
+**Status:** ARCHITECTURAL LAW — DO NOT VIOLATE
+
+---
+
+## The Design: Marker-Driven, Single Source of Truth
+
+Every frame render follows ONE path through ONE marker file:
+
+```
+INPUT (keyboard)
+  │
+  ├─ NAV LAYOUTS (project loader, main menu):
+  │   process_key() → writes "N\n" to frame_changed.txt
+  │
+  └─ GAME LAYOUTS (fuzz-op, op-ed, etc.):
+      process_key() → module reads history → module writes view.txt
+        → module writes "T\n" to frame_changed.txt (via render_map.c)
+
+PARSER MAIN LOOP:
+  stat(frame_changed.txt) → size grew? → dirty=1 → compose_frame()
+    → writes current_frame.txt → appends "P\n" to renderer_pulse.txt
+
+RENDERER MAIN LOOP:
+  stat(renderer_pulse.txt) → size grew? → render_display()
+    → prints frame to terminal
+```
+
+## The Golden Rules
+
+1. **compose_frame() ONLY fires when frame_changed.txt marker grows.**
+   - DO NOT add `dirty=1` from keyboard input, view changes, state changes, or anything else.
+   - If you need a new render trigger, WRITE TO THE MARKER.
+
+2. **render_display() ONLY fires when renderer_pulse.txt marker grows.**
+   - DO NOT add time-based or event-based render triggers.
+   - The marker IS the clock.
+
+3. **No second dedup layer.**
+   - The marker itself IS the dedup — it only grows when content actually changed.
+   - render_map.c only writes after view dedup.
+   - Nav only writes after keypress.
+   - Adding a "content didn't change" check in compose_frame() broke the design. Don't do it again.
+
+## Historical Violations (Do Not Repeat)
+
+### Triple-Rendering (Pre-Apr 5 2026)
+Three independent paths each triggered `compose_frame()` per keypress:
+1. Keyboard → `dirty=1` → compose_frame()
+2. frame_changed.txt → `dirty=1` → compose_frame()
+3. view_changed.txt → `dirty=1` → compose_frame()
+Result: 3 identical renders per keypress.
+
+### Kill Script Regex Broken
+The ERE regex `\.+x` means "one or more dots followed by x" — NOT "literal dot, literal plus, x".
+Result: ZERO processes were ever killed. Old instances accumulated → double-move, stale keys.
+Fix: Use character classes `[+][.]` instead of escaped `\+\.`.
+
+## Files With Comments
+
+| File | Comment Location |
+|------|-----------------|
+| `pieces/chtpm/plugins/chtpm_parser.c` | `compose_frame()` — warns against content dedup |
+| `pieces/chtpm/plugins/chtpm_parser.c` | `main()` — big banner explaining marker design |
+| `pieces/chtpm/plugins/chtpm_parser.c` | `process_key()` — nav marker write comment |
+| `pieces/chtpm/plugins/chtpm_parser.c` | main loop render trigger — warns against extra dirty=1 |
+| `pieces/apps/playrm/ops/src/render_map.c` | marker write after view dedup |
+| `pieces/display/renderer.c` | marker poll loop — warns against time-based triggers |
+| `pieces/buttons/shared/run_orchestrator.sh` | kill regex uses `[+][.]` character classes |
+| `pieces/os/kill_all.sh` | same, plus zombie_ai in surgical kill list |

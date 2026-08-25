@@ -1,0 +1,55 @@
+# research.pdl — pre-broker research universe / refresh policy
+#
+# The research terminal and yahoo-chart widget draw from this data set.
+# History is stored as per-symbol daily-close series in
+# data/research/<SYMBOL>.csv (one "YYYY-MM-DD,close" row per trading day),
+# which is what the chart widget slices by range.
+
+SECTION      | KEY                    | VALUE
+-------------------------------------------
+META         | piece_id               | research
+META         | universe_file          | data/research/universe.txt
+META         | universe_size          | 6830
+META         | series_dir             | data/research
+META         | series_suffix          | .csv
+META         | series_header          | date,close
+-------------------------------------------
+REFRESH      | cadence                | daily
+REFRESH      | mode                   | batch-cycle
+REFRESH      | batch_size             | 25
+REFRESH      | state_file             | data/research/cycle.txt
+REFRESH      | wrap                   | yes
+-------------------------------------------
+RATE         | min_delay_between      | 2
+RATE         | unit                   | seconds
+RATE         | live_only_delay        | 0
+RATE         | simulated_delay        | 0
+-------------------------------------------
+BACKOFF      | base_delay             | 2
+BACKOFF      | max_delay              | 64
+BACKOFF      | attempts               | 3
+BACKOFF      | doubling               | yes
+-------------------------------------------
+DATA         | granularity            | daily-close
+DATA         | intraday               | no
+DATA         | not_to_the_minute      | yes
+DATA         | offline_fallback       | deterministic-simulated-quote
+DATA         | simulated_marker       | (simulated)
+DATA         | dedupe                 | by-date
+```
+
+Policy notes:
+- **Cadence**: one pass over the universe is spread across a day. Each run
+  refreshes `batch_size` symbols (default 25) starting from `cycle.txt`
+  `position`, wrapping around, so the full 6830-symbol universe is re-visited
+  every ~274 runs and the most recently cycled symbols stay freshest.
+- **Rate limit**: live Yahoo requests wait `min_delay_between` seconds between
+  symbols so a batch never hammers the endpoint. Simulated (offline) rows use
+  no delay.
+- **Backoff**: a live fetch that fails is retried up to `attempts` times,
+  doubling the wait (`base_delay * 2^attempt`) up to `max_delay` seconds before
+  giving up for the run; the symbol still receives a deterministic simulated
+  quote so the series never gaps.
+- **History**: daily closes only (not to-the-minute). When a series has no data
+  yet (offline first run), the chart op backfills a deterministic synthetic
+  10-year daily series so a chart always renders.

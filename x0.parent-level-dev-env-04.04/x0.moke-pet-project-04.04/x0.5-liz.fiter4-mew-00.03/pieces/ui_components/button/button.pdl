@@ -1,0 +1,26 @@
+# PDLO for a generic button UI piece (v1.0)
+
+SECTION      | KEY             | TYPE
+-------------------------------------------------------------
+META         | piece_id        | ui_components/button
+META         | version         | 1.0
+META         | determinism     | bounded
+
+STATE        | label           | string
+STATE        | visual_state    | string
+STATE        | x               | int
+STATE        | y               | int
+STATE        | width           | int
+STATE        | height          | int
+STATE        | focus_index     | int
+
+METHOD       | set_label       | void | c:plugins/+x/set_label.+x
+METHOD       | set_focus_state | void | c:plugins/+x/set_focus_state.+x
+
+EVENT_IN     | on_click        | void
+EVENT_IN     | on_focus        | void
+EVENT_IN     | on_blur         | void
+
+EVENT_OUT    | clicked         | void
+EVENT_OUT    | focused         | void
+EVENT_OUT    | blurred         | void

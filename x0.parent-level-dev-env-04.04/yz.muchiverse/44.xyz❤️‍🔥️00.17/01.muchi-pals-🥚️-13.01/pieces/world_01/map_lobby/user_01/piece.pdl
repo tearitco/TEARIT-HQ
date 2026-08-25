@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | user_01
+META         | version            | 1.0
+
+STATE        | name                 | user_01
+STATE        | tokens               | 100
+
+RESPONSE     | default              | *waiting...*

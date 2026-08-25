@@ -1,0 +1,9 @@
+origin_game|zoo_0000
+kind|pet
+payload_id|pet_mochi
+display_name|Mochi
+species|cat
+hunger|40
+happiness|60
+energy|90
+exported_at|1784292490

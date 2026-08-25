@@ -1,0 +1,17 @@
+# terrain_legend.txt - real, per-host data-bank board-viewer reads
+# instead of hardcoding tactics-txt's own terrain in its C source (see
+# &.widgits/board-viewer/ops/bv_render_3d.c's own load_terrain_legend()
+# header comment for the full root-cause writeup - Phase 0 of
+# @.apps/piececraft-xyz/PIECECRAFT_XYZ_DESIGN.md §0a). '.'/'^'/'~' rows
+# reproduce EXACTLY the values board-viewer's own C source used to
+# hardcode for these glyphs (same semantics as civ-txt's own plains/
+# hills/water). '#' (wall, tactics-txt-only - see ops/tactics_menu_
+# input.c's own CONFIRM_START board generator) reproduces the real
+# height (1.8, taller than civ-txt's own capital) and flat gray color
+# board-viewer used to hardcode for it - no texture asset, same as
+# before this refactor. A pure refactor, zero behavior change.
+# Format: glyph|height|r|g|b|asset_hex|name  ("-" asset_hex = no texture)
+.|0.0|120|170|80|1F33E|grass
+^|0.8|140|120|100|26F0|high-ground
+~|-0.3|40|90|180|1F30A|water
+#|1.8|90|80|75|-|wall

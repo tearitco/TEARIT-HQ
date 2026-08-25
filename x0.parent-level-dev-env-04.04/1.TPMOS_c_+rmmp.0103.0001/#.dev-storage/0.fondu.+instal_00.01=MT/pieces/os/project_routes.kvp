@@ -1,0 +1,6 @@
+# Project Routes Configuration
+# Format: project_name=path
+# Used by LOAD_PROJECT command to route to correct layout
+# If a project is not listed here, the 404.chtpm page will be shown.
+
+template=pieces/apps/playrm/layouts/game.chtpm

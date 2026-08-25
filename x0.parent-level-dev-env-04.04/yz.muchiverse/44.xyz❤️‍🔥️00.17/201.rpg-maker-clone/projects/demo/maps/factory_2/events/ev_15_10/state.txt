@@ -1,0 +1,6 @@
+name=tech
+trigger=action
+x=15
+y=10
+sprite=T
+map=factory_2

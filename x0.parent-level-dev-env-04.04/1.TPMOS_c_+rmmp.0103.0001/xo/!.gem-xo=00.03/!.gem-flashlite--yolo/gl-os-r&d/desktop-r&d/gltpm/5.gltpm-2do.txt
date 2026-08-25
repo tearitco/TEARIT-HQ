@@ -1,0 +1,233 @@
+GLTPM 2DO
+Date: 2026-04-23
+Purpose: Small implementation checklist and KPI tracker for coding GLTPM
+
+======================================================================
+0. MISSION
+======================================================================
+
+Build the new GLTPM path inside `gl_desktop.c` without breaking the current
+legacy `project_mirror` reference windows.
+
+Hard requirement:
+
+- GLTPM apps open as virtual windows INSIDE GL-OS.
+- No second OS-level GL window.
+
+======================================================================
+1. DO NOT BREAK THESE RULES
+======================================================================
+
+1. Keep legacy `project_mirror` launches for reference.
+2. Add new GLTPM menu entries instead of silently replacing old ones.
+3. Use filesystem truth only.
+4. Resolve paths from `pieces/locations/location_kvp`.
+5. Use marker-driven refresh. Do not add ad-hoc render triggers.
+6. Keep ops and game logic in project managers, not in `gl_desktop.c`.
+7. Every tile must have ASCII and Unicode association.
+
+======================================================================
+2. PRIMARY FILES
+======================================================================
+
+Core files to change first:
+
+- `pieces/apps/gl_os/plugins/gl_desktop.c`
+- `pieces/apps/gl_os/plugins/gltpm_parser.c` (new)
+- one seed `.gltpm` layout
+- one seed tile registry + tile metadata files
+- one project manager input/ops path for real dispatch
+
+Reference files:
+
+- `pieces/chtpm/plugins/chtpm_parser.c`
+- `pieces/apps/gl_os/layouts/desktop.chtpm`
+- `!.gem-flashlite--yolo/gl-os-r&d/desktop-r&d/developmental_roadmap_gltpm.txt`
+
+======================================================================
+3. PHASES AND KPIS
+======================================================================
+
+K1. Host Window Split
+
+Tasks:
+
+- add new window type: `gltpm_app`
+- add new GLTPM menu section in the terminal launcher
+- keep existing legacy mirror entries
+- add a launcher such as `create_gltpm_window(project_id, layout_path, title)`
+
+KPI pass:
+
+- selecting a GLTPM entry opens a new virtual window inside GL-OS
+- legacy mirror entries still work
+- no second GLUT/OS window opens
+
+K2. GLTPM Parser Skeleton
+
+Tasks:
+
+- create `gltpm_parser.c`
+- port tokenizer / attribute parsing / `${var}` substitution ideas from
+  `chtpm_parser.c`
+- support first tags:
+  - `scene`
+  - `tilemap`
+  - `tile`
+  - `sprite`
+  - `button`
+  - `text`
+
+KPI pass:
+
+- one `.gltpm` file parses successfully
+- parser builds an in-memory scene structure
+- no ASCII-frame-only dependency is required for GL rendering
+
+K3. File-Driven Scene Render
+
+Tasks:
+
+- hook `gltpm_app` into `draw_window()`
+- render parsed tiles/sprites inside the virtual window rectangle
+- reuse/generalize `draw_tile()` where useful
+- remove mock-grid dependency for the GLTPM path
+
+KPI pass:
+
+- one GLTPM window renders a scene from real files
+- the scene is not hardcoded in `gl_desktop.c`
+
+K4. Real Data Sync
+
+Tasks:
+
+- load project `session/state.txt`
+- load `manager/gui_state.txt` if needed
+- load tile/sprite metadata from project assets
+- render real entity positions from project truth files
+
+KPI pass:
+
+- editing project truth files changes the GLTPM window output
+- GLTPM path is no longer using fake Fuzzball/Zombie/Tree data
+
+K5. Input -> Manager -> Ops
+
+Tasks:
+
+- route active GLTPM window input into project `history.txt`
+- support `onClick` command dispatch
+- have the project manager read the event and run real ops
+- append project `frame_changed.txt` when state changes
+
+KPI pass:
+
+- at least one action like `scan`, `collect`, or `place` causes a real
+  file-backed state change
+- GLTPM window updates after the manager/ops run
+
+K6. Camera + Xelector Compliance
+
+Tasks:
+
+- support camera modes 1-4
+- support WASD + ZX + QE camera motion where applicable
+- support arrow-key xelector motion
+- support ESC exiting map mode
+- move camera/xelector state to data-driven GLTPM window logic
+
+KPI pass:
+
+- camera controls work in a GLTPM window
+- xelector movement is visible and file-backed where required
+- controls do not depend on legacy mock-grid code
+
+K7. ASCII / Unicode Tile Compliance
+
+Tasks:
+
+- define tile metadata format
+- require `ascii=` and `unicode=` per tile
+- define sprite metadata format with text association too
+- create registry files for validation/debugging
+
+KPI pass:
+
+- every rendered tile has ASCII + Unicode mapping
+- one GLTPM scene can be described in stable text/debug form
+
+K8. Marker / CPU / Process Compliance
+
+Tasks:
+
+- use marker files for refresh
+- do not add extra dirty loops outside the agreed render path
+- preserve idle throttling
+- use `fork/exec/waitpid` patterns for any new process orchestration
+- avoid `system()` for new GLTPM work
+
+KPI pass:
+
+- refresh is marker-driven
+- runtime does not hot-spin
+- no new orphan-process pattern is introduced
+
+======================================================================
+4. FIRST VERTICAL SLICE
+======================================================================
+
+Best minimal proof:
+
+1. Add `GLTPM Apps` menu entry.
+2. Launch one `demo_world.gltpm` virtual window.
+3. Parse one `.gltpm` layout.
+4. Render one tilemap + one sprite + one button.
+5. Route one input event to project `history.txt`.
+6. Have the manager change one file and trigger one marker.
+7. See the change inside the same GL-OS virtual window.
+
+If this works, the architecture is valid.
+
+======================================================================
+5. ACCEPTANCE GATE
+======================================================================
+
+The feature is only real if all are true:
+
+- GLTPM opens inside GL-OS as a virtual window
+- no second GL window opens
+- legacy mirrors remain available
+- parser is separate from the ASCII parser path
+- scene render is file-driven
+- ops are manager-owned
+- markers drive updates
+- tiles are ASCII/Unicode compliant
+
+======================================================================
+6. RED FLAGS
+======================================================================
+
+Stop and fix course if any of these happen:
+
+- you are about to replace `project_mirror` instead of adding `gltpm_app`
+- you are about to open another GLUT window
+- you are hardcoding project scene data in `gl_desktop.c`
+- you are putting game logic directly into the host
+- you are bypassing marker files
+- you are skipping ASCII/Unicode mapping for tiles
+
+======================================================================
+7. RECOMMENDED ORDER
+======================================================================
+
+1. K1 Host Window Split
+2. K2 GLTPM Parser Skeleton
+3. K3 File-Driven Scene Render
+4. K4 Real Data Sync
+5. K5 Input -> Manager -> Ops
+6. K6 Camera + Xelector Compliance
+7. K7 ASCII / Unicode Tile Compliance
+8. K8 Marker / CPU / Process Compliance
+
+That order keeps the architecture clean and testable.

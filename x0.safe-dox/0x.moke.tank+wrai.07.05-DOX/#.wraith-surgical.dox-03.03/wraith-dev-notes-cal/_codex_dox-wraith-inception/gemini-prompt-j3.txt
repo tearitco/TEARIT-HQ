@@ -1,0 +1,87 @@
+GEMINI PROMPT J3
+Wraith continuation prompt for the next agent
+
+Date:
+2026-06-03
+
+Use this prompt to continue Wraith without re-deriving the same context.
+
+Start here:
+
+- Read `_codex_dox/user-report-j3.txt`
+- Read `_codex_dox/wraith-progress-j3.txt`
+- Read `_codex_dox/clock-in-j3.txt`
+- Read `_codex_dox/wraith-handoff-j2.txt`
+- Read `1.TPMOS_c_+rmmp.0102.0014/projects/wraith-pm/manager/wraith-pm_manager.c`
+- Read `1.TPMOS_c_+rmmp.0102.0014/projects/wraith-pm/ops/wraith_parser.c`
+- Read `1.TPMOS_c_+rmmp.0102.0014/projects/wraith-pm/layouts/desktop.chtmgl`
+- Read `1.TPMOS_c_+rmmp.0102.0014/projects/wraith-pm/session/state.txt`
+- Read `1.TPMOS_c_+rmmp.0102.0014/projects/wraith-pm/session/nav_state.txt`
+- Read `1.TPMOS_c_+rmmp.0102.0014/projects/wraith-pm/session/windows_state.pdl`
+
+Core intent:
+
+- Wraith is a desktop/window manager layer, not a monolithic app runtime.
+- Wraith must stay file-backed, auditable, and frame-first.
+- The composed frame bundle is the product.
+- RGB/GL later must consume the same frame bundle.
+
+What to inspect for standards:
+
+- `pieces/apps/gl_os/plugins/gl_desktop.c`
+- `projects/fuzz-op/manager/fuzz-op_manager.c`
+- `pieces/chtpm/plugins/chtpm_parser.c`
+
+Use `gl_os` for:
+
+- active window ownership
+- x/y/w/h/z/focus behavior
+- drag/resize/focus semantics
+- titlebar hit testing
+- project-local runtime boundaries
+
+Use `fuzz-op` and TPMOS projected-surface patterns for:
+
+- manager-routed selection state
+- file-backed projected subwindow surfaces
+- visible frame updates from state
+- numeric jump style behavior
+
+Important current state:
+
+- Wraith has a visible frame bridge and real frame artifacts.
+- Basic nav routing exists, but it still targets sketch/menu rows.
+- This is acceptable only as a temporary bridge.
+- The correct target is projected movable surfaces, not hard-coded sketch rows.
+- Mouse drag support now exists in a minimal form and moved `game_map_window`.
+- The next agent should verify that behavior against TPMOS standards and correct
+  any mismatch.
+
+What to do next:
+
+1. Reconcile Wraith with the existing TPMOS patterns if any current code drifts.
+2. Move nav away from sketch-menu labels and toward real projected surfaces.
+3. Expand `windows_state.pdl` as the source of truth for window geometry.
+4. Keep window content file-backed and project-local.
+5. Preserve the audit path for every frame.
+
+Do not overfit to the current Wraith implementation.
+
+- If current code is wrong, correct it.
+- If current code violates the standard pattern, replace it with the standard
+  pattern.
+- If a TPMOS source already solves the problem, copy that pattern instead of
+  inventing a new one.
+
+Working rule:
+
+- Prefer existing TPMOS behavior over new abstractions.
+- Prefer file contracts over hidden state.
+- Prefer small, verifiable changes over broad rewrites.
+
+Deliverable style:
+
+- Make small, concrete progress.
+- Check in after visible wins.
+- Keep the user updated with what was proven, what was corrected, and what is
+  still not implemented.

@@ -1,0 +1,2 @@
+search>local://js-lab.html
+page=js-lab.html status=scripted js=on counter=1

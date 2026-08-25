@@ -1,0 +1,359 @@
+CONFIDENT SOLUTIONS: ASCII PROJECT REGRESSIONS AFTER CHTPM PARSER REFACTOR
+Date: 2026-05-10
+Old parser reference:
+- #.ref/chtpm_parser_OLD.c
+
+Current parser:
+- pieces/chtpm/plugins/chtpm_parser.c
+
+Check-in 2026-05-10:
+- Patch 1 applied.
+- Restored resolve_dynamic_pdl_path() and load_dynamic_methods() in
+  pieces/chtpm/plugins/chtpm_parser.c.
+- load_vars() now loads projects/<project_id>/manager/state.txt before
+  method generation, then calls load_dynamic_methods() for loader or
+  active_target_id.
+- Rebuilt pieces/chtpm/plugins/+x/chtpm_parser.+x.
+- Smoke test:
+  timeout 2s pieces/chtpm/plugins/+x/chtpm_parser.+x \
+    projects/mp3-store/layouts/mp3-store.chtpm
+  Result in pieces/display/current_frame.txt:
+  MP3 Library now shows rb&u.book1.page76-v1.0, rb&u.book0.page33-v1.0,
+  Pause Audio, and Stop Audio.
+
+Affected symptoms:
+- p2p-net: connection/user/peer data no longer appears correctly.
+- mp3-store: MP3 entries no longer appear.
+- lsr: project does not open from project selection.
+
+
+1. What The Old Parser Proves
+-----------------------------
+
+The old parser gives high-confidence evidence for two regressions:
+
+1. Dynamic PDL method loading was removed.
+   - Old parser has resolve_dynamic_pdl_path() at #.ref/chtpm_parser_OLD.c:366.
+   - Old parser has load_dynamic_methods() at #.ref/chtpm_parser_OLD.c:438.
+   - Old load_vars() calls load_dynamic_methods() when active_target_id exists
+     at #.ref/chtpm_parser_OLD.c:592-601.
+   - Current parser has no resolve_dynamic_pdl_path() and no load_dynamic_methods().
+   - Current compose_frame() still checks get_var("piece_methods"), but nothing
+     reliably populates it generically.
+
+2. Project route fallback was removed from LOAD_PROJECT.
+   - Old send_command("LOAD_PROJECT:...") read project.pdl entry_layout first,
+     then fell back to pieces/os/project_routes.kvp.
+   - That route file contains:
+     lsr=projects/lsr/layouts/lsr_setup.chtpm
+   - Current parser delegates LOAD_PROJECT to resolve_project_op.
+   - Current resolve_project_op does not read pieces/os/project_routes.kvp.
+   - lsr/project.pdl has no entry_layout, and current resolve_project_op fallback
+     probes do not include lsr_setup.chtpm or lsr_main.chtpm.
+
+The old parser does NOT prove that generic project manager/state.txt loading was
+previously present. That remains a recommended hardening fix, because several
+current projects keep their durable UI state there, but it is not the direct
+old-vs-new regression.
+
+
+2. Regression A: Removed METHOD -> ${piece_methods} Pipeline
+------------------------------------------------------------
+
+Old behavior:
+- active_id = get_var("active_target_id")
+- load_dynamic_methods(active_id)
+- resolve PDL in this order:
+  1. projects/<project_id>/pieces/<active_id>/piece.pdl
+  2. projects/<project_id>/pieces/<active_id>/<active_id>.pdl
+  3. pieces/apps/<project_id>/pieces/<active_id>/piece.pdl
+  4. pieces/apps/<project_id>/pieces/<active_id>/<active_id>.pdl
+  5. pieces/apps/playrm/<active_id>/<active_id>.pdl
+  6. pieces/world/map_01/<active_id>/<active_id>.pdl
+  7. pieces/<active_id>/<active_id>.pdl
+- Read METHOD rows.
+- Convert methods into CHTPM buttons:
+  - parser commands stay literal:
+    LOAD_PROJECT:
+    LAUNCH:
+    MP3:
+    BACK
+    RELEASE
+  - non-parser commands become KEY:n buttons.
+- Set:
+  piece_methods=<button ... /><br/>...
+
+Current behavior:
+- compose_frame() checks piece_methods and reparses if it changes.
+- parse_chtm() uses substitute_vars_naked(), which can inject markup into text
+  nodes if piece_methods exists.
+- But the generic function that builds piece_methods is gone.
+
+Impact:
+- mp3-store has:
+  projects/mp3-store/pieces/mp3_player/piece.pdl
+  with METHOD rows:
+  METHOD | rb&u.book1.page76-v1.0 | MP3:PLAY:...
+  METHOD | rb&u.book0.page33-v1.0 | MP3:PLAY:...
+  METHOD | Pause Audio | MP3:TOGGLE_PAUSE
+  METHOD | Stop Audio | MP3:STOP
+- mp3-store layout renders ${piece_methods}.
+- Therefore MP3 entries disappearing is directly explained by this removed
+  old-parser behavior.
+
+Confidence:
+- High. This is an exact removed capability and directly matches the MP3 Store
+  symptom.
+
+Fix:
+- Restore resolve_dynamic_pdl_path() and load_dynamic_methods() into current
+  chtpm_parser.c.
+- Integrate with the refactored substitute_vars_naked path:
+  - Call load_dynamic_methods() in load_vars() after project_id and active_id are
+    known.
+  - Keep the old loader special case:
+    if current_layout contains playrm/layouts/loader.chtpm, load loader methods.
+  - Preserve parser command passthrough for MP3:, LOAD_PROJECT:, LAUNCH:, BACK,
+    RELEASE.
+
+Implementation note:
+- The current parser already has MAX_LINE increased to 65536 and heap line
+  loading in load_state_file(), so restore the old functions using heap buffers
+  where appropriate, not stack MAX_LINE where avoidable.
+
+
+3. Regression B: LOAD_PROJECT No Longer Uses project_routes.kvp
+---------------------------------------------------------------
+
+Old behavior:
+- send_command("LOAD_PROJECT:<name>") did project.pdl entry_layout lookup.
+- If no entry_layout was found, it read:
+  pieces/os/project_routes.kvp
+- If still unresolved, it used 404.chtpm.
+
+Current behavior:
+- send_command("LOAD_PROJECT:<name>") executes:
+  pieces/chtpm/ops/+x/resolve_project_op.+x <name> &
+- resolve_project_op:
+  - reads project.pdl entry_layout
+  - probes:
+    projects/%s/layouts/%s.chtpm
+    projects/%s/layouts/main.chtpm
+    projects/%s/layouts/quiz.chtpm
+    pieces/apps/%s/layouts/%s.chtpm
+  - falls back to projects/%s/layouts/%s.chtpm
+- It does not consult project_routes.kvp.
+
+Impact on lsr:
+- projects/lsr/project.pdl has no entry_layout.
+- Existing routes file has:
+  lsr=projects/lsr/layouts/lsr_setup.chtpm
+- Existing lsr layouts are:
+  lsr_setup.chtpm
+  lsr_main.chtpm
+  lsr_file.chtpm
+- Current fallback produces:
+  projects/lsr/layouts/lsr.chtpm
+  which does not exist.
+
+Confidence:
+- High. This is an exact removed fallback and exactly matches "lsr is not even
+  opening".
+
+Fix options:
+
+Preferred:
+- Add route-file fallback to resolve_project_op after project.pdl entry_layout
+  and before hardcoded/probe fallback.
+- This restores old behavior for all legacy projects still listed in
+  pieces/os/project_routes.kvp.
+
+Additional robust fallback:
+- Add probe:
+  projects/%s/layouts/%s_main.chtpm
+- This would find lsr_main.chtpm if the route file is missing, but it would skip
+  the old intended lsr_setup.chtpm boot screen. Therefore route-file fallback is
+  the more faithful fix.
+
+Project metadata cleanup:
+- Add explicit entry_layout to projects/lsr/project.pdl:
+  META | entry_layout | projects/lsr/layouts/lsr_setup.chtpm
+- This is still useful, but should not replace restoring route compatibility in
+  resolve_project_op.
+
+
+4. p2p-net: Most Likely Mechanism
+---------------------------------
+
+Old parser facts:
+- p2p-net has entry_layout in project.pdl:
+  projects/p2p-net/layouts/p2p-net.chtpm
+- Therefore old parser would also prefer that entry_layout before route fallback.
+- p2p-net.chtpm has no <module> and no <interact>.
+- p2p_manager writes rich display vars to:
+  pieces/apps/player_app/manager/state.txt
+- p2p_manager writes only a subset to:
+  projects/p2p-net/manager/state.txt
+
+Current risk:
+- resolve_project_op writes a generic player_app/manager/state.txt:
+  project_id
+  current_map
+  active_target_id
+  current_z
+  last_key
+- If p2p_manager is not running, that overwrites the rich p2p display variables.
+- Because p2p-net.chtpm has no <module>, parse_chtm() will not launch
+  p2p_manager when opening p2p-net.
+- The layout then asks for vars like peer_count and peer_list, but the active
+  state no longer contains them.
+
+Confidence:
+- Medium-high. This is not as directly proven by old parser diff as MP3/LSR,
+  but it matches the current p2p layout and manager wiring.
+
+Fix:
+- Modernize p2p-net layout:
+  - Add <panel time_reactive="true"> wrapper if needed.
+  - Add:
+    <module>projects/p2p-net/manager/+x/p2p_manager.+x</module>
+    <interact src="projects/p2p-net/history.txt" />
+- Update p2p_manager.write_state():
+  - write the same full display variable set to projects/p2p-net/manager/state.txt
+    that it currently writes to pieces/apps/player_app/manager/state.txt.
+  - format peer_list from projects/p2p-net/pieces/network/peers.txt or
+    peer_list.txt as a single display-friendly value.
+- Add parser hardening:
+  - load projects/<project_id>/manager/state.txt after project_id resolution so
+    project-local manager state can override stale generic player_app state.
+
+Why this may fix more than p2p-net:
+- Other older projects also have durable UI vars in projects/<id>/manager/state.txt
+  but rely on player_app state as a transient display bus.
+
+
+5. mp3-store: Exact Fix
+-----------------------
+
+Primary fix:
+- Restore load_dynamic_methods().
+
+Secondary fix:
+- Update mp3-store_manager.write_app_context() to write current display state to
+  projects/mp3-store/manager/state.txt:
+  project_id=mp3-store
+  active_target_id=mp3_player
+  current_mp3=<...>
+  player_status=<...>
+  last_key=None
+
+Why secondary fix matters:
+- Current write_app_context() writes current_mp3/player_status only to
+  pieces/apps/player_app/state.txt.
+- Any project switch can overwrite that bus.
+- Project-local manager state is the safer source after refactor.
+
+Expected result:
+- ${piece_methods} expands to buttons for the two local MP3s in #.mp3-library.
+- ${current_mp3} and ${player_status} render from stable project-local state.
+
+
+6. lsr: Exact Fix
+-----------------
+
+Primary fix:
+- Restore project_routes.kvp fallback in resolve_project_op.
+
+Secondary fixes:
+- Add entry_layout to projects/lsr/project.pdl:
+  META | entry_layout | projects/lsr/layouts/lsr_setup.chtpm
+- Fix module paths in lsr layouts:
+  Current:
+    <module>manager/lsr_manager.+x</module>
+  Actual binary:
+    projects/lsr/manager/+x/lsr_manager.+x
+  Replace with:
+    <module>projects/lsr/manager/+x/lsr_manager.+x</module>
+- Normalize lsr_manager.c path handling:
+  - read project_root from pieces/locations/location_kvp
+  - build absolute paths for state, history, pulse, and current_layout
+  - align history path with layout <interact>
+
+Expected result:
+- LSR opens to the setup layout through the same route that existed before the
+  refactor.
+- Its manager launches from a valid binary path when entering lsr_main.chtpm.
+
+
+7. Recommended Implementation Order
+-----------------------------------
+
+Patch 1: Restore parser dynamic methods.
+- Add resolve_dynamic_pdl_path().
+- Add load_dynamic_methods().
+- Call it from load_vars().
+- Rebuild chtpm_parser.+x.
+- Test mp3-store first because this has the clearest success signal.
+
+Patch 2: Restore route fallback in resolve_project_op.
+- Read pieces/os/project_routes.kvp if entry_layout is absent.
+- Rebuild resolve_project_op.+x.
+- Test lsr launch.
+
+Patch 3: Harden project-local state loading.
+- In chtpm_parser.c load_vars(), after project_id is resolved:
+  load_state_file("projects/<project_id>/manager/state.txt", NULL)
+- Ensure gui_state still wins for UI controls when intended.
+- Test p2p-net, mp3-store, lsr, and a known-good project.
+
+Patch 4: Project cleanup.
+- p2p-net layout: add module/interact.
+- p2p_manager: write full project-local state.
+- mp3-store_manager: write project-local current_mp3/player_status.
+- lsr metadata/layout paths: add entry_layout and fix module path.
+
+
+8. Minimal Code Restoration Checklist
+-------------------------------------
+
+From old parser to current parser:
+- Restore:
+  resolve_dynamic_pdl_path()
+  load_dynamic_methods()
+- Restore load_vars() block:
+  active_id = get_var("active_target_id")
+  if loader layout -> load_dynamic_methods("loader")
+  else if active_id -> load_dynamic_methods(active_id)
+- Keep current substitute_vars_naked(); it should inject ${piece_methods} markup
+  as long as piece_methods is populated before tokenization.
+
+From old LOAD_PROJECT behavior to resolve_project_op:
+- Restore route fallback:
+  pieces/os/project_routes.kvp
+- Prefer route fallback before inventing projects/<id>/layouts/<id>.chtpm.
+
+
+9. Confidence Summary
+---------------------
+
+mp3-store:
+- Confidence: high.
+- Cause: removed METHOD -> piece_methods generation.
+- Fix: restore dynamic method loading.
+
+lsr:
+- Confidence: high.
+- Cause: resolve_project_op removed project_routes fallback, and lsr has no
+  entry_layout matching current probes.
+- Fix: restore project_routes fallback; add entry_layout for future safety.
+
+p2p-net:
+- Confidence: medium-high.
+- Cause: p2p layout does not launch its manager, while project launch overwrites
+  the transient player_app state bus that used to contain p2p display vars.
+- Fix: add module/interact, write full project-local state, and load
+  project-local manager state in parser.
+
+Broad resolution:
+- Reintroduce compatibility behaviors from the old parser while keeping the
+  refactor's modular structure. Do not simply revert the whole parser.

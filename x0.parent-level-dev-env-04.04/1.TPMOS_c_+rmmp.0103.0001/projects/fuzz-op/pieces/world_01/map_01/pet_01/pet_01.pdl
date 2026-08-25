@@ -1,0 +1,37 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | pet_01
+META         | version            | 1.0
+META         | determinism        | strict
+
+STATE        | name                 | Fuzzball
+STATE        | type                 | pet
+STATE        | pos_x                | 5
+STATE        | pos_y                | 2
+STATE        | hunger               | 50
+STATE        | happiness            | 55
+STATE        | energy               | 100
+STATE        | level                | 1
+STATE        | on_map               | 1
+STATE        | owner                | world
+STATE        | pos_z                | 0
+STATE        | inventory            | []
+STATE        | emoji                | 🐶
+STATE        | pet_01               | 5
+
+METHOD       | move                 | void
+METHOD       | feed                 | void
+METHOD       | play                 | void
+METHOD       | sleep                | void
+METHOD       | toggle_emoji         | void
+
+EVENT_IN     | moved                | void
+EVENT_IN     | fed                  | void
+EVENT_IN     | played               | void
+EVENT_IN     | slept                | void
+
+RESPONSE     | moved                | Just moved!
+RESPONSE     | fed                  | Yum yum!
+RESPONSE     | played               | Wheee~ Best playtime ever!
+RESPONSE     | slept                | Zzz... feeling recharged!
+RESPONSE     | default              | *purrs*

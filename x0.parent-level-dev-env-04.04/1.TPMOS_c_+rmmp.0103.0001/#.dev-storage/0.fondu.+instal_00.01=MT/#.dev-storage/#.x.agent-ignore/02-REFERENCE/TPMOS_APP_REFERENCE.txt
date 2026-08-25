@@ -1,0 +1,383 @@
+================================================================================
+TPMOS APPLICATION REFERENCE GUIDE
+================================================================================
+Date: April 2, 2026 (Updated - Topology Corrected)
+Purpose: Unified reference for all TPMOS applications and their expected behavior
+
+================================================================================
+ARCHITECTURE OVERVIEW
+================================================================================
+
+TPMOS has TWO types of executable entities:
+
+1. APPs (pieces/apps/<app_id>/)
+   - System infrastructure and utilities
+   - Launched via LAUNCH:<APP_NAME> command or button href
+   - Module runs in background, writes to pieces/apps/<app>/state.txt
+   - Examples: player_app (input buffer), chtpm (parser), keyboard, display
+
+2. PROJECTs (projects/<project_id>/)
+   - User content, games, and installable apps
+   - Launched via Loader Menu or Fondu installation
+   - Module runs, writes to projects/<project>/manager/state.txt
+   - Can be installed to pieces/apps/installed/ via Fondu
+   - Examples: op-ed, fuzz-op, user, test_fondu, gl-os
+
+NOTE: Projects can be deployed as production apps via Fondu.
+      See: #.docs/fondu-investigation-report.txt
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ GL-OS (OpenGL Desktop Environment)                                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Type: APP                                                                   │
+│ Location: pieces/apps/gl_os/                                                │
+│ Launch: LAUNCH:GL-OS (from os.chtpm button)                                 │
+│ Module: pieces/apps/gl_os/plugins/+x/gl_desktop.+x                          │
+│ Layout: pieces/apps/gl_os/layouts/desktop.chtpm                             │
+│                                                                             │
+│ EXPECTED BEHAVIOR:                                                          │
+│ 1. Opens OpenGL window (separate window, not terminal)                      │
+│ 2. ASCII layout shows desktop view with:                                    │
+│    - BG: #000044 (blue background)                                          │
+│    - Windows: N (number of open windows)                                    │
+│    - Desktop view with window list                                          │
+│    - Menu: [t] New Terminal, [f] New Folder, [n] New File                   │
+│    - Response line for status messages                                      │
+│                                                                             │
+│ STATE VARIABLES (written by gl_desktop.c):                                  │
+│ - window_count=N                                                            │
+│ - active_window_id=N                                                        │
+│ - bg_color=#000044                                                          │
+│ - name=Desktop                                                              │
+│ - type=desktop                                                              │
+│ - desktop_view=DESKTOP_VIEW\nBG: #000044\nWINDOW_COUNT: N\n...              │
+│ - gl_response=                                                              │
+│                                                                             │
+│ KEY CONTROLS:                                                               │
+│ - [t] - Open new terminal window                                            │
+│ - [f] - Create new folder                                                   │
+│ - [n] - Create new file                                                     │
+│ - [c] - Close active window                                                 │
+│ - [ESC] - Deselect                                                          │
+│ - Right-click - Context menu (future)                                       │
+│                                                                             │
+│ NOTES:                                                                      │
+│ - GL-OS is APP-ONLY, never a PROJECT                                        │
+│ - Does NOT use project_id                                                   │
+│ - gl_desktop.+x opens OpenGL window AND writes ASCII state                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ OP-ED (Piece Editor)                                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Type: PROJECT (can be installed as APP via Fondu)                          │
+│ Location: projects/op-ed/                                                   │
+│ Launch: LOAD_PROJECT:op-ed (from loader menu)                               │
+│ Module: projects/op-ed/manager/+x/op-ed_manager.+x                          │
+│ Layout: projects/op-ed/layouts/op-ed.chtpm                                  │
+│                                                                             │
+│ STATUS: 81% Feature Complete (13/16 features working)                       │
+│ Reference: #.docs/op-ed-investigation-report.txt                            │
+│                                                                             │
+│ EXPECTED BEHAVIOR:                                                          │
+│ 1. Shows editor interface with map view                                     │
+│ 2. Cursor (X) can be moved with arrow/WASD keys                             │
+│ 3. Glyphs can be placed on map with ENTER                                   │
+│ 4. Backspace clears tile at cursor                                          │
+│ 5. MAPS palette shows available maps + ADD option                           │
+│ 6. GLYPHS palette shows available glyphs: # . R T @ & Z X ? !               │
+│ 7. SPACE selects piece at cursor                                            │
+│ 8. Ctrl+Z performs undo                                                     │
+│                                                                             │
+│ STATE VARIABLES (written by op-ed_manager.c):                               │
+│ - project_id=op-ed                                                          │
+│ - active_target_id=xlector                                                  │
+│ - cursor_x=N, cursor_y=N, cursor_z=N                                        │
+│ - gui_focus=N                                                               │
+│ - map_idx=N, stage_map_idx=N                                                │
+│ - current_map=map_0001_z0.txt                                               │
+│ - last_key=NONE/UP/DOWN/LEFT/RIGHT                                          │
+│ - ARMED=[glyph]                                                             │
+│ - POS: (x,y,z)                                                              │
+│ - RESP: Tile placed/Tile cleared                                            │
+│                                                                             │
+│ KEY CONTROLS:                                                               │
+│ - WASD/Arrow keys - Move cursor                                             │
+│ - 2-8 - Select glyph from palette                                           │
+│ - Arrow keys (with glyph armed) - Place tile                                │
+│ - Backspace - Clear tile at cursor                                          │
+│ - ESC - Return to navigation                                                │
+│                                                                             │
+│ NOTES:                                                                      │
+│ - Uses editor ops (symlinks to playrm ops)                                  │
+│ - History buffer cleared on launch (only reads NEW keys)                    │
+│ - Map files stored in projects/op-ed/maps/                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ FUZZ-OP (Pet Simulation Game)                                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Type: PROJECT                                                               │
+│ Location: projects/fuzz-op/                                                 │
+│ Launch: LOAD_PROJECT:fuzz-op (from loader menu)                             │
+│ Module: projects/fuzz-op/manager/+x/fuzz-op_manager.+x                      │
+│ Layout: projects/fuzz-op/layouts/fuzz-op.chtpm                              │
+│                                                                             │
+│ EXPECTED BEHAVIOR:                                                          │
+│ 1. Shows pet simulation with map view                                       │
+│ 2. Xlector (X) can select entities                                          │
+│ 3. ENTER selects entity, arrow keys move xlector                            │
+│ 4. Number keys 2-8 call entity methods                                      │
+│ 5. Shows pet stats: Hunger, Happiness, Energy, Level                        │
+│ 6. Shows turn count and game time                                           │
+│                                                                             │
+│ STATE VARIABLES (written by fuzz-op_manager.c):                             │
+│ - project_id=fuzz-op                                                        │
+│ - active_target_id=xlector/<entity>                                         │
+│ - current_z=N                                                               │
+│ - pet_name=<name>                                                           │
+│ - hunger=N/100, happiness=N/100, energy=N/100, level=N                      │
+│ - turn_count=N, game_time=HH:MM:SS                                          │
+│ - last_key=NONE/UP/DOWN/LEFT/RIGHT/ENTER                                    │
+│ - RESP: <action result>                                                     │
+│                                                                             │
+│ KEY CONTROLS:                                                               │
+│ - Arrow keys - Move xlector                                                 │
+│ - ENTER - Select entity                                                     │
+│ - 2-8 - Call entity methods (feed, play, sleep, etc.)                       │
+│ - ESC - Deselect                                                            │
+│                                                                             │
+│ NOTES:                                                                      │
+│ - Uses playrm ops for movement and interaction                              │
+│ - Entities: fuzzpet, pet_01, pet_02, zombie_01                              │
+│ - Zombie AI chases player                                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ FONDU (Project Lifecycle Manager)                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Type: SYSTEM TOOL                                                           │
+│ Location: pieces/system/fondu/                                              │
+│ Launch: ./pieces/system/fondu/fondu.+x <command> [project]                  │
+│                                                                             │
+│ COMMANDS:                                                                   │
+│ - --install <project> - Deploy project to production                        │
+│ - --uninstall <app> - Remove from production                                │
+│ - --archive <project> - Move to trunk                                       │
+│ - --restore <project> - Restore from trunk                                  │
+│ - --list - Show all projects                                                │
+│ - --list-ops - Show available ops                                           │
+│                                                                             │
+│ EXPECTED BEHAVIOR:                                                          │
+│ 1. --install:                                                               │
+│    - Copies project to pieces/apps/installed/<project>/                     │
+│    - Registers ops in pieces/os/ops_registry/<project>.txt                  │
+│    - Updates pieces/os/compiled_projects.txt                                │
+│    - Sets read-only permissions                                             │
+│                                                                             │
+│ 2. --uninstall:                                                             │
+│    - Removes from pieces/apps/installed/                                    │
+│    - Unregisters ops                                                        │
+│    - Source in projects/ is PRESERVED                                       │
+│                                                                             │
+│ 3. --archive:                                                               │
+│    - Moves projects/<project>/ to projects/trunk/                           │
+│    - Removes from compiled_projects.txt                                     │
+│                                                                             │
+│ 4. --restore:                                                               │
+│    - Moves from projects/trunk/ back to projects/                           │
+│    - Adds to compiled_projects.txt                                          │
+│                                                                             │
+│ NOTES:                                                                      │
+│ - Fondu is a command-line tool, not a module                                │
+│ - Used for deployment and lifecycle management                              │
+│ - All projects should be managed via Fondu                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ P2P-NET (Decentralized Network & Messaging)                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Type: PROJECT                                                               │
+│ Location: projects/p2p-net/                                                 │
+│ Launch: LOAD_PROJECT:p2p-net (from loader menu)                             │
+│ Module: projects/p2p-net/manager/+x/p2p_manager.+x                          │
+│ Layout: projects/p2p-net/layouts/p2p-net.chtpm                              │
+│                                                                             │
+│ EXPECTED BEHAVIOR:                                                          │
+│ 1. Dashboard showing wallet address, subnets, and peer list                 │
+│ 2. Multi-Agent Orchestration: Switch between multiple identities (wallets)  │
+│    seamlessly within the same terminal session (Key 7).                     │
+│ 3. Email-style persistent messaging between decentralized wallets.           │
+│ 4. Discovery via UDP broadcast and direct TCP connectivity.                 │
+│                                                                             │
+│ STATE VARIABLES (written by p2p_manager.c):                                 │
+│ - wallet_address=abc...                                                     │
+│ - wallet_selector=[abc...] def...                                           │
+│ - peer_count=N                                                              │
+│ - inbox_list=Formatted message list                                         │
+│ - p2p_response=Last op status                                               │
+│                                                                             │
+│ KEY CONTROLS:                                                               │
+│ - [1] Compose - Send new message                                            │
+│ - [2] Inbox - Check for new messages                                        │
+│ - [5] Join - Discover peers via UDP                                         │
+│ - [7] Switch - Cycle active identity (Multi-Agent mode)                     │
+│                                                                             │
+│ NOTES:                                                                      │
+│ - Infrastructure ready for wallet/mining expansion.                         │
+│ - Mandatory port cleanup (8000-8010) on system kill.                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+LAUNCH MECHANISMS
+================================================================================
+
+1. LAUNCH:<APP_NAME> (for APPs)
+   - Reads from pieces/os/app_list.txt
+   - Format: APP_NAME=path/to/module.+x
+   - Example: GL-OS=pieces/apps/gl_os/plugins/+x/gl_desktop.+x
+   - Does NOT set project_id
+   - Module runs in background
+
+2. LOAD_PROJECT:<PROJECT_ID> (for PROJECTs)
+   - Reads from pieces/os/project_routes.kvp
+   - Format: project_id=path/to/layout.chtpm
+   - Sets project_id in pieces/apps/player_app/manager/state.txt
+   - Sets active_target_id=xlector (for most projects)
+   - Module runs, manages project state
+
+================================================================================
+STATE FILE LOCATIONS
+================================================================================
+
+APPs:
+- pieces/apps/<app>/state.txt (module state)
+- pieces/apps/<app>/session/state.txt (session state, e.g., GL-OS)
+
+PROJECTs:
+- projects/<project>/manager/state.txt (project state)
+- pieces/apps/player_app/manager/state.txt (shared engine state)
+
+SHARED:
+- pieces/apps/player_app/history.txt (input buffer)
+- pieces/display/current_layout.txt (current layout path)
+- pieces/os/compiled_projects.txt (Fondu manifest)
+- pieces/os/ops_registry/<project>.txt (Fondu ops registry)
+
+================================================================================
+COMMON ISSUES AND FIXES
+================================================================================
+
+1. GL-OS shows wrong layout (op-ed map instead of desktop)
+   CAUSE: project_id was set, parser loads wrong state
+   FIX: Remove set_var("project_id", "gl-os") from parser
+   FIX: Ensure gl_desktop.c writes ALL state variables
+
+2. op-ed xlector moves randomly on launch
+   CAUSE: Reading old keys from history buffer
+   FIX: Add stat() check before main loop to skip existing keys
+   CODE: if (stat(hist_path, &st) == 0) last_pos = st.st_size;
+
+3. Project not found in loader
+   CAUSE: Missing from project_routes.kvp
+   FIX: Add entry: project_id=path/to/layout.chtpm
+
+4. Ops not working
+   CAUSE: Binary not compiled or symlink broken
+   FIX: Compile ops, check symlinks point to correct location
+
+================================================================================
+END OF REFERENCE GUIDE
+================================================================================
+
+================================================================================
+QUICK REFERENCE: COMMON ISSUES AND FIXES
+================================================================================
+
+GL-OS shows wrong content (op-ed map instead of desktop)
+─────────────────────────────────────────────────────────
+CAUSE: ${desktop_view} not loading from view.txt
+FIX: Parser get_var() has special handling for desktop_view
+CHECK: cat pieces/apps/gl_os/session/view.txt (should have DESKTOP_VIEW content)
+CHECK: grep "desktop_view" pieces/chtpm/plugins/chtpm_parser.c (should read view.txt)
+
+GL-OS button does nothing
+─────────────────────────────────────────────────────────
+CAUSE: app_list.txt missing GL-OS entry
+FIX: Add to pieces/os/app_list.txt:
+  GL-OS=pieces/apps/gl_os/plugins/+x/gl_desktop.+x
+CHECK: cat pieces/os/app_list.txt | grep GL-OS
+
+Xlector moves randomly in op-ed
+─────────────────────────────────────────────────────────
+CAUSE: Reading old keys from history buffer
+FIX: Add stat() check in op-ed_manager.c main():
+  if (stat(hist_path, &st) == 0) last_pos = st.st_size;
+CHECK: grep "last_pos = st.st_size" projects/op-ed/manager/op-ed_manager.c
+
+Project not found in loader
+─────────────────────────────────────────────────────────
+CAUSE: Missing from project_routes.kvp
+FIX: Add entry: project_id=path/to/layout.chtpm
+CHECK: cat pieces/os/project_routes.kvp | grep project_id
+
+Ops not working (place_tile, etc.)
+─────────────────────────────────────────────────────────
+CAUSE: Binary not compiled or symlink broken
+FIX: Compile ops, verify symlinks:
+  gcc -o pieces/apps/playrm/ops/+x/place_tile.+x pieces/apps/playrm/ops/src/place_tile.c -pthread
+CHECK: file pieces/apps/playrm/ops/+x/place_tile.+x
+
+================================================================================
+APP LAUNCH PATTERNS
+================================================================================
+
+LAUNCH:<APP_NAME> (for system apps)
+─────────────────────────────────────────────────────────
+Source: pieces/os/app_list.txt
+Format: APP_NAME=path/to/module.+x
+Examples:
+  GL-OS=pieces/apps/gl_os/plugins/+x/gl_desktop.+x
+  RMMP=pieces/apps/editor/plugins/+x/editor_module.+x
+  PLAYR=pieces/apps/playrm/plugins/+x/playrm_module.+x
+
+Does NOT set project_id
+Module runs in background (fork + exec)
+Layout determined by module
+
+LOAD_PROJECT:<PROJECT_ID> (for user projects)
+─────────────────────────────────────────────────────────
+Source: pieces/os/project_routes.kvp
+Format: project_id=path/to/layout.chtpm
+Examples:
+  op-ed=projects/op-ed/layouts/op-ed.chtpm
+  fuzz-op=pieces/apps/playrm/layouts/game.chtpm
+  user=pieces/apps/user/layouts/user.chtpm
+
+Sets project_id in pieces/apps/player_app/manager/state.txt
+Sets active_target_id=xlector (for most projects)
+Layout determined by project_routes.kvp
+
+================================================================================
+STATE FILE LOCATIONS
+================================================================================
+
+APPs (pieces/apps/<app_id>/):
+  - pieces/apps/<app>/state.txt (module state)
+  - pieces/apps/<app>/session/state.txt (session state, e.g., GL-OS)
+  - pieces/apps/<app>/session/view.txt (view content, e.g., GL-OS desktop)
+
+PROJECTs (projects/<project_id>/):
+  - projects/<project>/manager/state.txt (project state)
+  - projects/<project>/pieces/<piece>/state.txt (piece state)
+
+SHARED:
+  - pieces/apps/player_app/history.txt (input buffer)
+  - pieces/apps/player_app/manager/state.txt (engine state)
+  - pieces/display/current_layout.txt (current layout path)
+  - pieces/os/app_list.txt (APP launch routes)
+  - pieces/os/project_routes.kvp (PROJECT launch routes)
+
+================================================================================
+END OF APP REFERENCE
+================================================================================

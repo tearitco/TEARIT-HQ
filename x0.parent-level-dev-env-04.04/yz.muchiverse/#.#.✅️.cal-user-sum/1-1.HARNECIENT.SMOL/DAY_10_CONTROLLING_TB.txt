@@ -1,0 +1,30 @@
+# 🎛 DAY 10 — Controlling the Taskbar ("control tb") 🖥
+# ===================================================
+# Title: "🎛 DAY 10 — Controlling the Taskbar ("control tb") 🖥"
+# Characters: TOMO, RAHWEH, THE NARRATOR, 2. 🧠 H-AI (HARNECIENT MODE) ROUTES DETERMINISTICALLY, 3. ✅ THE HARNESS PROVES IT, MAXINE, IQA
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural), 2. 🧠 H-AI (HARNECIENT MODE) ROUTES DETERMINISTICALLY (en-US-AnaNeural), 3. ✅ THE HARNESS PROVES IT (en-US-AnaNeural), MAXINE (en-GB-MaisieNeural), IQA (en-US-AnaNeural)
+# Topic: HARNECIENT Training Session
+
+**TOMO:** The taskbar (`*.monads/*.livedesk-taskbar/`) is a two-process pair: the **parser** (rendering, hit-testing) and the manager (logic — tabs, desks, sessions). They talk over files in #.desktop/. Those files are our control surface. An agent with read/write tools can touch every one of them:
+
+**RAHWEH:** And h-ai's tools — read/write/edit/run — can operate on all of these.
+
+**TOMO:** Exactly. The Harnecient hand-hold gives the model *sight* of the taskbar's state and reach into its files, while the deterministic app-side code does the actual work. The model is the eyes and the voice; the harness is the hands. 👀🗣️🤖✍️
+
+**THE NARRATOR:** Here is the exact demonstration we're building in Phase 3/4 of the plan. A human (or an automated harness) types a task into the real h-ai window through the relay:
+
+**2. 🧠 H-AI (HARNECIENT MODE) ROUTES DETERMINISTICALLY:** - readfile → pre-executes (read-only), real tabs list lands in the transcript. - writefile → asks approve/deny in the nav → resolved via relay digits+Enter. - cmdexec (the append) → approve/deny again.
+
+**3. ✅ THE HARNESS PROVES IT:** - tabs-snapshot.txt exists and matches the real tabs content. - stripstate.txt contains the h-ai:verified marker. - h-ai's receipt shows tool=<name and toolpending=0. - The audited payload-<pid.json files contain no tools key — the API never knew.
+
+**MAXINE:** So "control tb" = the taskbar's real files changed because the window was asked to change them, and every step left a receipt.
+
+**TOMO:** *nods* And that loop is the *product*. Not a simulation. Not a demo that only works on my desk. A scripted, repeatable proof that a non-tooled model, through a real window, moved real furniture. 🪑
+
+**THE NARRATOR:** Because the taskbar is *load-bearing*. It's the first thing a user sees, the thing that launches everything else, the thing that must never break. If the Harnecient h-ai can touch that safely, deterministically, and with a human-in-the-loop approve/deny, it can touch anything. Prove the hard target; the easy ones follow. 🏔️
+
+**IQA:** And if it breaks the taskbar?
+
+**TOMO:** It can't — the harness restores fixtures before every scenario, the edits are canonical, and approve/deny means a human always signs off on writes and commands. The whole design is defense in depth. 🛡️
+
+**TOMO:** And when it runs green, seven words become a whole *sales pitch*. 📣

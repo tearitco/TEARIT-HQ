@@ -1,0 +1,775 @@
+agy-vs-wrai.txt — systematic functional comparison, agy-text-editor vs
+wrai-text-editor, 2026-07-12 (two passes: initial comparison, then a
+second pass after live testing surfaced three MORE real bugs the first
+pass's static reading missed)
+
+Both are now built on the same shared Ops (pieces/system/file_ops/:
+text_edit_key.+x, text_editor_view.+x, file_copy.+x, dir_browse.+x), per
+Bible section 11's REUSE RULE. This compares how each project's own
+manager/ops ORCHESTRATES those shared Ops, since that's the only place
+they can still functionally diverge. agy's own logic is the reference/
+already-correct side in every case below — every bug found was in
+wrai-text-editor's own orchestration layer.
+
+**Current status: bugs #1, #2, #4, #5 fixed and rebuilt. Bug #3 (missing
+autocomplete) intentionally not fixed — additive feature gap, not a
+correctness bug. Full functional parity is NOT yet independently
+re-verified live after bug #4's fix (the actual root cause of "nothing
+was accepting input" — see below) — that verification is the next thing
+to do, not assumed done just because the code compiles.**
+
+---
+
+## BUG #1 (CRITICAL — this is why typing didn't work): missing
+## bare-numeric-key fallback in process_history()
+
+**agy (correct):** its main loop, reading pieces/apps/player_app/history.txt
+(the file its layouts' `<interact src="...">` declares), handles THREE
+line shapes:
+  - "COMMAND: <x>" -> handle_command(x)
+  - "KEY_PRESSED: <n>" -> process_key(n)
+  - anything else -> `int key = atoi(line); if (key != 0 || line[0]=='0')
+    process_key(key);` <- THE FALLBACK
+
+That fallback exists because `chtpm_parser.c`'s `inject_raw_key()`
+(called for every keystroke while an INTERACT-mode element is active —
+see its own PRIORITY 1 branch, `if (interact_history_path[0] != '\0')`)
+writes ONLY the bare numeric key code — `fprintf(fp, "%d\n", code);` —
+no "KEY_PRESSED: " prefix at all. Every character you type while editing
+in agy arrives in its history file as a bare number, and only that
+fallback branch ever sees it.
+
+**wrai (bug):** `process_history()` only checks for `"COMMAND: "` and
+`"KEY_PRESSED: "` substrings — no bare-number fallback. Since
+`editor.chtpm` declares `<interact src="projects/wraith-alpha/wraith-projects/wrai-text-editor/session/history.txt" />`,
+every keystroke typed while INTERACT is active lands in THIS project's
+own `session/history.txt` as a bare number too (identical mechanism to
+agy) — and gets silently ignored, matching zero branches. This is the
+exact, full explanation for "not yet accepting input" from last night's
+handoff: the key genuinely never reaches `text_edit_key.+x` at all.
+
+**Fix:** add the same fallback agy already has, calling
+`text_edit_key.+x` for editor.chtpm's page instead of `process_key()`.
+Applied below.
+
+---
+
+## BUG #2 (CRITICAL — real data-loss risk): directory browser always
+## treats a file click as "load now", even in Save-As mode
+
+**agy (correct):** `update_gui_state()`'s file-listing loop:
+```c
+if (browser_mode == 0) snprintf(action, ..., "SET_LOAD_FILE:%s", target_file_path);
+else                    snprintf(action, ..., "SET_PATH:%s", target_file_path);
+```
+In LOAD mode, clicking a file loads it immediately. In SAVE-AS mode,
+clicking an EXISTING file only fills in the path field (`SET_PATH:`) —
+it does NOT load/overwrite the working buffer. This matters: while
+picking a save target, browsing past existing files must not destroy
+whatever you're currently editing.
+
+**wrai (bug):** `build_directory_browser_markup()` always emits
+`PROJECT_ACTION:SET_LOAD_FILE:%s` regardless of `browser_mode`. In
+Save-As mode, clicking any existing file in the listing immediately
+overwrites the current in-progress document with that file's contents
+— the opposite of what Save-As is for, and a real way to silently lose
+unsaved work.
+
+**Fix:** branch on `st->browser_mode` exactly like agy does, emitting
+`PROJECT_ACTION:SET_PATH:%s` in save mode. Requires also adding a
+`SET_PATH:` case to `handle_command()` (wrai never had one — see bug #3
+sibling note below, this part is not optional, it's required for the
+fix to do anything). Applied below.
+
+---
+
+## BUG #3 (missing feature, not a correctness bug): no autocomplete
+## suggestions in wrai's file browser
+
+**agy:** `find_autocomplete_matches()` + the `SUGGESTIONS:` block in
+`update_gui_state()` — as you type a path, it shows up to 4 matching
+files/dirs as clickable `SET_AUTOCOMPLETE:` buttons.
+
+**wrai:** not ported. `build_directory_browser_markup()` has no
+autocomplete section, and `handle_command()` has no `SET_AUTOCOMPLETE:`
+case.
+
+**Not fixed in this pass — deliberate, not accidental.** This is a
+real feature gap, but it's additive (nothing breaks without it, unlike
+bugs #1/#2), and porting it cleanly means reusing `dir_browse.+x` again
+with the typed-so-far prefix as the search term (same shared Op, same
+pattern already used for both the directory listing and agy's own
+autocomplete after ITS refactor) — a reasonable follow-up, not urgent.
+Flagging so it isn't mistaken for "already covered" just because the
+rest of the browser works.
+
+---
+
+## Minor UX inconsistencies (not bugs, noted for completeness)
+
+- **Search query doesn't reset on directory navigation.** agy's
+  `SET_DIR:` handler calls `clear_search_query()`; wrai's can't
+  easily do the equivalent (the search value lives in
+  chtpm_parser-owned gui_state.txt via `target_id`, not a project-owned
+  buffer wrai's ops can just clear the same way) — so an old search
+  term can carry over into a newly-opened directory's listing. Cosmetic,
+  low priority.
+- **After loading a file, wrai auto-navigates back to file_menu; agy
+  stays on the file browser** showing "Loaded X" as in-place
+  confirmation. Different UX choice, not wrong, just inconsistent with
+  the reference. Leave as-is unless you want them to match exactly.
+
+---
+
+## Everything else checked and found equivalent (no action needed)
+
+- NEW FILE / CLEAR FILE: same shape both sides (truncate the working
+  document, reset cursor via the shared cursor-state file).
+- SAVE (no active file yet) correctly redirects into Save-As with the
+  same "Specify Save-As path." response message both sides.
+- cli_io handling: wrai's approach (target_id-keyed gui_state.txt,
+  chtpm_parser's generic mechanism) is a legitimate, CORRECT
+  simplification over agy's older id[0]-prefix cli_buffers.txt
+  approach — not a gap, this is wrai using the more modern, generic
+  path that already existed in chtpm_parser but agy's own layout never
+  adopted (see last session's Pitfall #57/#58-adjacent finding: agy's
+  file_browser.chtpm was fixed to add target_id= for exactly this
+  reason). Backspace/Enter on cli_io fields is now handled generically
+  by chtpm_parser itself on wrai's side — agy needs its own extra
+  process_key() logic for the same thing only because its layout
+  predates target_id being the standard.
+- Response-message persistence (a stale message stays visible until
+  something explicitly overwrites it) is intentional and identical on
+  both sides — not a bug.
+
+---
+
+## Fix implementation notes (for whoever verifies this after me)
+
+Both fixes are in
+`projects/wraith-alpha/wraith-projects/wrai-text-editor/ops/src/wraith_project_input.c`.
+Rebuild after editing:
+```
+gcc -O2 -o projects/wraith-alpha/wraith-projects/wrai-text-editor/ops/+x/wraith_project_input.+x \
+       projects/wraith-alpha/wraith-projects/wrai-text-editor/ops/src/wraith_project_input.c -lm
+```
+No changes needed to the shared Ops themselves (`pieces/system/file_ops/`)
+or to agy-text-editor — both bugs were entirely in wrai's own
+orchestration layer, exactly where Bible section 11 says project-specific
+logic (as opposed to reusable Op logic) should live.
+
+---
+
+## SECOND PASS (2026-07-12, later same day) — found via LIVE testing,
+## not a static re-read. Three more real bugs, all now fixed.
+
+The first pass above was a careful reading of both source files
+side-by-side and genuinely found real bugs — but reading code is not
+the same as running it. Live testing (screenshots + frame dumps + the
+actual session files on disk) surfaced three MORE bugs the reading pass
+missed entirely, one of which was THE actual root cause of "typing does
+nothing" — bug #1 above (the missing bare-number fallback) was real and
+necessary but NOT sufficient on its own, because of bug #4 below.
+
+## BUG #4 (THE actual root cause of "not accepting input" /
+## "arrow key isn't moving the cursor") — write_state() hardcoded
+## is_map_control=0 on every write
+
+**This is the exact same bug class already found and fixed for
+piececraft-wraith earlier the SAME session** (that one hardcoded `=1`
+instead of `=0` — see j11.wraith-foundation-fix-fut.txt's bug 1 entry).
+Writing this project's ops from scratch, the identical mistake got
+reintroduced in the opposite direction.
+
+`is_map_control` is a SHARED field in `session/state.txt`:
+`wraith-alpha_manager.c`'s `set_project_map_control_in_dir()` (fired by
+this project's own EDIT TEXT (INTERACT) button, or by ESC) is the real
+owner and writes 0 or 1 there. `write_state()` — called at the end of
+EVERY invocation of this project's own ops, including the very
+invocation that processes the INTERACT command itself (`run_active_
+project_input_op()` is called synchronously from inside that same
+`route_command()` branch) — was hardcoding `is_map_control=0`
+unconditionally. So the sequence was: press Enter on INTERACT ->
+`is_map_control` set to 1 -> this project's ops runs synchronously as
+part of that SAME action -> `write_state()` immediately clobbers it
+back to 0 -> by the time the very next keystroke arrives,
+`is_map_control` reads 0 again -> `wraith-alpha_manager.c`'s
+`route_input()` never takes its map-control branch -> the key never
+gets forwarded to this project as `KEY_PRESSED:` at all. INTERACT mode
+was functionally dying after exactly one command, every single time —
+which is why arrows didn't move the cursor and typing did nothing, even
+after bug #1's fix (there was nothing left for that fix to catch,
+because the key was never being forwarded in the first place).
+
+Confirmed live via `alpha_manager.log`/`session/history.txt`: only
+`COMMAND: INTERACT` and `COMMAND: SAVE_AS` ever appeared — zero
+`KEY_PRESSED:` lines for any of the arrow presses or typed characters
+that were attempted in between.
+
+**Fix:** `write_state()` now reads the CURRENT `is_map_control` value
+out of the existing `session/state.txt` first (new
+`read_current_is_map_control()` helper) and preserves it, instead of
+hardcoding the literal — the exact same fix shape already applied to
+piececraft-wraith's `save_state()`. Rebuilt clean.
+
+## BUG #5 (ASCII/GL mismatch reported live via screenshot) — stale
+## Phase-1 scene.objects.pdl still being rendered in GL
+
+Confirmed live: a screenshot of the GL window showed old Phase-1
+test-harness content ("Status: Ready with emoji rendering enabled",
+"Font: Noto Color Emoji...", "Phase 1: Emoji Rendering Infrastructure
+(Complete)") overlaid on top of the real editor UI, while ASCII
+correctly showed only the current editor. `session/scene.objects.pdl`
+still contained the original hand-written, all-`nav=0` status panel
+from before this project was rewritten into a real editor — nothing
+had ever cleared it. `wraith-alpha_manager.c`'s
+`append_project_scene_objects()` unconditionally appends whatever it
+finds in a project's `scene.objects.pdl` on top of the body content for
+GL, regardless of what `wraith_body.txt` says — this project's editor
+never uses `scene.objects.pdl` (all real content goes through
+`wraith_body.txt`), so the leftover file was pure dead weight silently
+still being rendered.
+
+**Fix:** added `write_empty_scene_objects()`, called every invocation
+(same "own and rewrite your own state every time" discipline every
+other actively-maintained Wraith project follows), so this file can
+never go stale like this again. Also manually cleared the currently-
+stale file on disk immediately rather than waiting for the next
+keypress to self-heal it.
+
+## BUG #6 (matches agy's own UX, wasn't wired up) — Enter on the file
+## path field didn't trigger Save/Load
+
+**agy:** pressing Enter while focused on the file-path cli_io field
+calls `read_file_path_input()` then dispatches `SET_LOAD_ACTION`/
+`SET_SAVE_ACTION` depending on mode (`process_key()`'s `key==10||13`
+branch, checked against `get_active_gui_index()==2`).
+
+**wrai (bug):** chtpm_parser's own generic cli_io Enter-handling saves
+the typed value to `gui_state.txt` (correct, automatic) and then
+injects a raw `13` into `session/history.txt` as a bare number — but
+`process_history()`'s bare-number fallback only ever called
+`apply_editor_key()`, and only for the "editor" page. On the
+"file_browser" page, that bare `13` matched nothing and was silently
+dropped — the path got saved into `gui_state.txt` correctly (visible on
+screen), but nothing ever acted on it. This is why "file save doesn't
+seem to save" and why there was never a "Saved to X" confirmation
+message (agy's own notification-on-success mechanism was never broken
+— it just never got a chance to run, because `handle_command(st,
+"BROWSER_ACTION")` was never called).
+
+**Fix:** factored the editor-key and file-browser-Enter handling into
+one `dispatch_raw_key()` helper, called uniformly from both the
+`KEY_PRESSED:`-prefixed and bare-number branches of
+`process_history()`. On the `file_browser` page, Enter (`10`/`13`) now
+calls `handle_command(st, "BROWSER_ACTION")` — the same combined
+load/save dispatch the LOAD/SAVE button already used, so pressing Enter
+in the path field now does the same thing clicking that button does,
+matching agy's own Enter-triggers-the-action behavior. Safe even if
+Enter came from the search field instead: `BROWSER_ACTION` reads
+`file_path_input` itself and reports "Enter a file path first." if it's
+empty, mirroring agy's own graceful no-op for an unrelated Enter.
+
+## What's still NOT independently re-verified live
+
+All four fixes in this second pass compile clean and are reasoned
+through carefully against live evidence (log lines, session file
+contents, a screenshot), but — per this document's own stated purpose —
+reading/reasoning is not the same as testing. Before considering wrai-
+text-editor at full parity with agy, re-test ALL of the following in
+one live session, in order:
+1. Open the editor fresh (should land on Editor page, ASCII and GL
+   should now MATCH — no stale status panel in GL).
+2. Press Enter on EDIT TEXT (INTERACT), then actually type several
+   characters and use arrow keys — confirm the `[X]` cursor moves and
+   characters appear (bug #4's fix is what should make this work now).
+3. Press ESC, confirm you're back in normal nav (not stuck in
+   INTERACT), confirm arrows now navigate the desktop chrome again
+   (proof `is_map_control` correctly returns to 0 THIS time, not
+   permanently stuck at whatever the last write happened to be).
+4. Navigate to FILE MENU -> SAVE AS, browse into a directory with an
+   existing file, click it, confirm the PATH FIELD gets filled in
+   (not an immediate overwrite of your document — bug #2's fix).
+5. Type a NEW filename into the path field, press Enter (not the
+   button, specifically Enter — bug #6's fix), confirm a "Saved to X"
+   response message appears and the file actually exists on disk
+   afterward.
+6. Repeat step 4-5 shape for LOAD, confirming the loaded content
+   actually replaces the editor's document.
+
+---
+
+## THIRD PASS (2026-07-12, same day, live retest after second-pass
+## fixes) — bug #6's fix wasn't enough on its own; the real gap was
+## one level up, in shared desktop infrastructure, not this project
+
+Live retest after the second pass found: (a) editor typing/cursor
+movement DOES now work in ASCII (bug #4's fix confirmed live — a
+transient "hhii" double-character glitch appeared once and did not
+recur, not chased further since it self-resolved and wasn't
+reproducible), (b) GL rendering no longer shows the stale Phase-1 panel
+(bug #5's fix confirmed), but (c) pressing Enter specifically WHILE
+actively typing in the Save-As path field still did not trigger a save
+— bug #6's fix (dispatch_raw_key() handling Enter on the file_browser
+page) turned out not to be sufficient, because the event never reached
+wrai-text-editor's own session/history.txt in the first place.
+
+## BUG #7 (shared infrastructure, not project-specific — explains why
+## bug #6's fix alone didn't work): Enter-while-typing-in-a-cli_io had
+## NO working path to any embedded Wraith project
+
+Confirmed via `debug.txt`: `chtpm_parser.c`'s own raw-key relay
+(`inject_raw_key(13)`, fired by its generic cli_io Enter-handling)
+writes to `projects/wraith-alpha/session/history.txt` — the DESKTOP
+SHELL's own history file (matching the OUTER layout's `<interact>`
+declaration) — not the embedded project's own `session/history.txt`.
+`chtpm_parser` only recognizes an `<interact>` tag from the layout it's
+directly parsing (`current_layout`); a project's own `<interact
+src="...">` tag, buried inside markup that only gets SUBSTITUTED into
+the outer shell (not separately parsed), is never actually applied.
+
+Separately, `wraith-alpha_manager.c`'s `route_input()` — which DOES
+watch the correct per-project history file — has its own Enter-dispatch
+branch deliberately gated behind `!g_active_gui_is_typing` (added
+earlier the same session specifically so digit/arrow keys can't fight
+cli_io typing). That gate caught Enter too, so while typing, Enter fell
+all the way to the generic "any other key" branch, which only
+re-renders and never forwards anything anywhere. Net effect: the typed
+path value was saved into `gui_state.txt` correctly (visible on
+screen — this part already worked, from an earlier fix the same
+session), but literally nothing downstream ever acted on it, no matter
+what the receiving project's own ops tried to do with it — bug #6's
+fix had no event to catch.
+
+**Why agy-text-editor was never affected:** it's reached via
+`chtpm_parser`'s OWN `current_layout` directly (a standalone project,
+not embedded in Wraith), so ITS `<interact>` tag IS the one
+`chtpm_parser` recognizes, and its own main loop's bare-number fallback
+(bug #1's reference case) correctly catches the raw `13` written to the
+file agy actually watches. This bug could only ever manifest for a
+Wraith-embedded project — wrai-text-editor is the first one built that
+actually needed cli_io Enter-to-submit, which is why it was never
+caught before now.
+
+**Fix (in `wraith-alpha_manager.c`, not this project — this is why it
+belongs in this doc's "shared infrastructure" category, not a
+project-specific bug list):** added a narrow, Enter-only exception to
+`route_input()` — when `g_active_gui_is_typing` is true AND the key is
+`10`/`13` specifically (never digits/arrows, so the earlier fix that
+gate exists for is untouched), forward it to the active project via the
+same `append_project_history()` + `run_active_project_input_op()` shape
+the `is_map_control` branch already uses. This makes it arrive as a
+real `"KEY_PRESSED: 13"` line in the ACTIVE PROJECT's own
+`session/history.txt` — exactly the shape `dispatch_raw_key()` (bug
+#6's fix) already knows how to handle, and exactly the shape ANY other
+Wraith project's own ops can already parse without needing its own
+special-case code. Rebuilt `wraith-alpha_manager.c` clean.
+
+## GL still reported as "not moving [the cursor]" — not yet root-caused
+
+User report, live: "gl view is better [no more stale panel — bug #5's
+fix confirmed] but isn't moving xelector yet." Not yet diagnosed with
+concrete evidence — ASCII and GL are driven by the exact same
+underlying files (`session/document.txt`, `session/cursor.txt`,
+`wraith_body.txt`) written by the exact same ops invocation, so if
+ASCII correctly reflects cursor movement now (bug #4's fix), GL SHOULD
+too, unless there's a GL-specific rendering/refresh gap not yet found.
+Needs a fresh live GL screenshot/frame trace AFTER retesting with bug
+#4/#7's fixes in place (both could plausibly also fix this, if the
+symptom was caused by the same is_map_control-clobbering or
+Enter-routing gaps rather than something GL-specific) before
+theorizing further — do not guess at a GL-specific cause without
+re-confirming the symptom still reproduces post-fix first.
+
+## Fourth pass (code-level review against PITFALLS_ACTIVE_2026-03-18.txt,
+## per explicit user instruction to prioritize static review over
+## screenshot-driven debugging — no live test needed to confirm these,
+## the arithmetic mismatch is provable by reading the two functions
+## side by side)
+
+User report, live: "input for gl works now. however when i clicked to
+activate 'filename input' ... in gl, it tooks me to the screen of a new
+project (chtml video isolate) i think the keys input is bleeding thru
+somehow." Also flagged: the filename input field has no label, just
+shows the raw last-typed value.
+
+**Bug #8 (shared infrastructure, `wraith-alpha_manager.c` — not
+project-specific, but only exposed by a project whose embedded body has
+plain non-interactive `<text label=...>` lines, which wrai-text-editor
+is the first to have): nav-slot RESERVATION and nav-slot ASSIGNMENT used
+two different criteria, silently drifting apart.**
+
+`count_embedded_body_nav_slots()` (used by `count_project_nav_controls()`
+→ both `recompute_nav_bounds()` and `dispatch_menu_index()`) counted ANY
+`session/wraith_body.txt` line with a non-empty `label=` attribute as
+consuming a nav slot. But `emit_embedded_line_objects()` — the function
+that actually HANDS OUT real nav numbers during frame rendering — only
+assigns one when `action[0] || has_target_id` is true. Plain `<text
+label="..."/>` lines (no `onClick`/`href`, no `target_id`) get counted
+into the reservation but never actually receive a nav number.
+
+wrai-text-editor's `wraith_body.txt` has several of exactly these: the
+"WRAI TEXT EDITOR" header, the "DIR: ..." line, and — until this pass —
+the two blank `<text label="  " />` prefix chunks in front of the
+search/path `<cli_io>` fields on the file_browser page. Each one
+inflated the reserved count without ever being assigned a real number.
+
+`dispatch_menu_index()` doesn't read nav numbers off the actual rendered
+objects for a click — it re-derives `launcher_start`/`taskbar_start` by
+ARITHMETIC from this same inflated count
+(`launcher_start = CHROME_CONTENT_START + extra_project_slots`, where
+`extra_project_slots` comes straight from `count_project_nav_controls()`).
+Since the real per-frame numbering (via `emit_embedded_line_objects()`'s
+shared `next_nav` counter) runs out sooner than the inflated formula
+assumes, the computed segment boundaries drift away from where nav
+numbers are actually assigned — exactly the "two independent
+computations of the same number must never diverge" invariant
+`WRAITH_RGB_ARCHITECTURE.md` calls out. A real, legitimately-assigned nav
+number belonging to a project control (file_path_input) can fall on the
+wrong side of `dispatch_menu_index()`'s miscalculated boundary and get
+interpreted as a taskbar-slot index instead — this is the "keys input...
+bleeding thru" the user saw as a jump to a completely different
+project's window.
+
+Note the comment that was originally on `count_embedded_body_nav_slots()`
+claimed it "mirrors `emit_embedded_line_objects()`'s own chunk-detection
+criterion exactly" — true when it was written (2fix.txt, 2026-07-05,
+before target_id existed), but the 2026-07-11 target_id generalization
+narrowed `emit_embedded_line_objects()`'s real criterion without anyone
+updating this counter to match. A stale comment asserting two functions
+are in sync is exactly the kind of thing static review catches that a
+screenshot can't — the screenshot just shows "wrong window," not why.
+
+**Fix:** made `count_embedded_body_nav_slots()` extract the same
+`onClick`/`href`/`target_id` attributes `emit_embedded_line_objects()`
+does and use the identical `label[0] && (action[0] || has_target_id)`
+condition, so the two can no longer drift apart. Rebuilt
+`wraith-alpha_manager.c` clean (only pre-existing, unrelated
+`-Wformat-truncation` warnings on path buffers, present before this
+change too).
+
+**Bug #9 (wrai-text-editor-specific, `wraith_project_input.c`): GL's
+file_browser body wrote blank placeholder text instead of the
+descriptive prefixes ASCII uses.** `file_browser.chtpm` (ASCII) labels
+the two cli_io fields with `"║ SEARCH: "` / `"║ FILE:   "` prefix text
+before each field. The GL dual-write in
+`write_gui_state_and_body()` wrote `<text label="  " />` (two blank
+spaces) in both spots instead — so in GL, once you'd typed anything, the
+field showed only the raw typed value with zero context for what it
+was, matching the user's exact complaint. Fixed to write `"SEARCH: "` /
+`"FILE: "` instead, matching ASCII. (These same two tags were also two
+of the plain-label chunks inflating bug #8's reservation count — fixing
+the label text doesn't fix #8 by itself since the tags are still
+non-interactive `<text>`, but #8's fix now correctly excludes them from
+the count either way.) Rebuilt both `wraith-alpha_manager.c` and
+`wraith_project_input.c` clean, and copied the latter's binary from
+`ops/src/+x/` to the runtime `ops/+x/` path per
+`compile_wraith_project_tree()`'s convention.
+
+## Fifth pass (live retest of the fourth pass's fixes, plus one new bug
+## found from the retest evidence, plus a cross-project GL input bug
+## reported separately)
+
+Live retest of bug #8/#9's fixes confirmed #8 fixed (no more jump to a
+different project's window — nav 7 correctly stayed on this project's
+own file_path_input) and #9 fixed (frame dump showed "SEARCH: |
+[type to filter]" and "FILE:   | [^] 7. [_]" — both labels present).
+But a NEW bug surfaced: pressing Enter on the Save-As path field (after
+typing "_") landed on the File Menu page instead of saving — matching
+the user's report "clicking enter on filename input took me back to
+the other frame."
+
+**Bug #10 (wrai-text-editor-specific, `wraith_project_input.c`'s
+`main()`): `session/state_changed.txt`'s queued `PROJECT_PAGE:`
+transition is a one-shot event but was never cleared after being
+read, so it silently re-applied on every future invocation for the
+rest of the window's life.** Proven from the frame dump itself:
+`st->response` was still `"Enter Save-As path."` in the file_menu
+frame — unchanged from the file_browser frame — proving
+`BROWSER_ACTION` never actually ran (it would have overwritten
+`response`). `main()`'s queued-transition block runs BEFORE
+`process_history()`, so a stale, never-cleared `PROJECT_PAGE:file_menu`
+entry (queued at some earlier point in the window's life, e.g. an
+earlier "FILE MENU" click) clobbered `state.active_page` back to
+`"file_menu"` before `dispatch_raw_key()`'s `active_page ==
+"file_browser"` check for the Enter key even ran — so the Enter-forward
+(bug #6/#7's fix) never fired at all. Same bug class as bug #4's
+`is_map_control` clobber, different field: a value meant to be
+consumed-once and cleared was instead being treated as a durable,
+persistent setting. Fixed by truncating `state_changed.txt` immediately
+after reading its last queued line. Rebuilt `wraith_project_input.c`
+clean, copied to the runtime `ops/+x/` path.
+
+**GL arrow keys "sometimes register twice and skip" — user confirmed
+this is NOT project-specific ("its other wraith gl projects 2"), and
+static review confirms why: `projects/wraith-alpha/ops/wraith_gl.c` is
+the ONLY GL renderer/input file in the entire repo — every embedded
+Wraith project's window runs through this one shared GLUT process, so
+an input bug here affects all of them identically.** Root cause: no
+`glutIgnoreKeyRepeat()` call anywhere in `main()`'s setup. Without it,
+X11's auto-repeat mechanism generates synthetic `KeyRelease`+`KeyPress`
+pairs for held keys (and, at certain timing boundaries, even for a
+quick tap), and freeglut delivers each as a distinct call to
+`keyboard()`/`special_keyboard()` — neither of which has any
+repeat-suppression or dedup logic of its own (confirmed by reading both
+functions: `append_keyboard_event()` unconditionally appends on every
+call). ASCII's input path reads keys from the terminal directly, never
+touching GLUT/X11 callbacks at all, which is exactly why the user has
+"never had this problem in ascii." Fixed by adding
+`glutIgnoreKeyRepeat(1)` — GLUT's own standard API for filtering
+OS-generated auto-repeat events so only genuine distinct key-down
+transitions reach the callbacks — right after the other
+`glutXFunc()` registrations in `main()`. Rebuilt `wraith_gl.c` clean
+with the GL toolchain (`-lglut -lGLU -lGL -lm`). Needs a fresh live
+retest to confirm both the double-register and the skip symptom are
+gone — if skip persists independently after this, that's evidence of a
+genuinely separate cause and should be treated as a fresh, unconfirmed
+report rather than assumed fixed.
+
+## Updated live-retest checklist (supersedes the second pass's list —
+## re-run all of it, not just the new items)
+
+1-6 from the second pass, PLUS:
+7. Retest Save-As specifically via Enter-in-the-path-field (not the
+   button) — this is bug #6+#7 together; #6 alone was confirmed
+   insufficient.
+8. Retest cursor movement/typing specifically IN THE GL WINDOW (not
+   just ASCII) — take a fresh screenshot if it still doesn't move, so
+   the next pass has real evidence instead of guessing.
+9. Retest clicking file_path_input in GL — confirm it activates the
+   field in place instead of jumping to another window's taskbar slot,
+   and confirm the field now shows a "FILE: " prefix (and "SEARCH: "
+   for the search field) instead of a bare unlabeled value.
+10. Retest Save-As end to end: type a filename, press Enter, confirm
+    the response actually changes to "Saved to <path>" and File Menu's
+    "ACTIVE:" line shows the real path, not "none" — bug #10's fix.
+11. Retest arrow-key movement in GL specifically for double-register/
+    skip — tap (don't hold) an arrow key several times in a row and
+    confirm each tap produces exactly one step, in any open Wraith GL
+    project window (this is a shared-infrastructure fix, not
+    wrai-text-editor-specific, so it's worth spot-checking in another
+    project too, e.g. piececraft-wraith, if time allows).
+
+## Sixth pass (2026-07-12): "INTERACT / movement sometimes not working,"
+## not yet root-caused — diagnostic logging added instead of a guessed fix
+
+User report, live, right after confirming emoji rendering in GL now
+works: "selecting interact and input or moving xelector isn't working
+(or sometimes working)." Evidence available at the time: a tail of
+`alpha_manager.log` showing a digit key (54='6', selecting the EDIT
+TEXT (INTERACT) button's nav slot) → Enter → a burst of arrow/WASD keys,
+all within a ~4-second window; `session/history.txt` was empty and
+`is_map_control=0` by the time this was checked, but that reflects
+POST-shutdown state (the window's own manager truncates
+`session/state.txt` on every fresh open), not necessarily what was true
+DURING the reported failure. `session/document.txt` independently shows
+4 blank lines were successfully inserted earlier in the session
+(real Enter-driven edits DID work at some point), and
+`session/cursor.txt` shows a non-zero, non-default cursor position
+(real movement DID happen at some point) — consistent with "sometimes,"
+not "never."
+
+**Traced the full mechanism in `wraith-alpha_manager.c` end to end,
+looking for a NEW instance of this session's known bug classes
+(is_map_control clobber, one-shot-queue-not-cleared, nav-slot drift).
+Did not find one — the path looks correct on paper:**
+- `route_input()`'s Enter-dispatch (nav=6 → `action_for_nav_index()` →
+  `route_command("INTERACT")` → `set_project_map_control(1)` →
+  `set_project_map_control_in_dir()`) writes `is_map_control=1` to
+  wrai's `session/state.txt` SYNCHRONOUSLY via the same atomic
+  read-modify-write-rename pattern used elsewhere, then (since
+  `emit_history=1`) synchronously runs wrai's own ops binary via
+  `run_active_project_input_op()`, which `waitpid()`s — fully blocks
+  until that child exits before `route_input()` returns.
+- The map-control-forwarding branch (`if (read_project_map_control())
+  { ...append KEY_PRESSED, run ops, waitpid... }`) re-reads
+  `is_map_control` FRESH FROM DISK on every single call, no caching —
+  so even if two queued keys (e.g. the Enter that activates INTERACT
+  and an immediately-following arrow key) land in the SAME poll tick's
+  burst, each gets its own full, synchronous, disk-fresh check before
+  the next one is processed. No cross-call staleness found.
+- wrai's own `process_history()` uses an offset-tracking cursor file
+  (`session/history.cursor`), correctly advanced and saved after each
+  invocation — no evidence of old keys being silently replayed.
+- `write_state()`'s `is_map_control` preservation (bug #4's fix) is
+  still intact and, by this trace, still correctly ordered relative to
+  when the manager writes it.
+
+**One real (but minor, and not confirmed as THE cause) finding:**
+`read_project_map_control()` was being called TWICE per key — once to
+decide `g_active_gui_index` sync behavior, again a few lines later to
+decide whether to forward the key — two separate disk reads for one
+logical decision. Nothing was found that touches `state.txt` in
+between, so this isn't confirmed as a real bug, but it's unnecessary
+and a latent risk for a future edit to accidentally desync the two
+reads. Collapsed to a single read, reused for both checks.
+
+**Fix applied instead of a guess: precise diagnostic logging**, so the
+next occurrence has an unambiguous trail rather than 1-second-resolution
+timestamps to guess from. `route_input()` now logs, for every key:
+`map_control`'s actual value, `g_active_gui_index`, and
+`g_active_gui_is_typing`, all on the SAME line as the key itself — and
+separately logs explicitly whenever a key is actually forwarded to the
+active project (map-control branch) or triggers ESC-out. Rebuilt
+`wraith-alpha_manager.c` clean (0 errors, 88 pre-existing unrelated
+`-Wformat-truncation` warnings elsewhere in the file, same count
+class as before this change).
+
+**Next time this reproduces:** check `alpha_manager.log` for the new
+`(map_control=... gui_index=... typing=...)` suffix on each "Input
+received" line, specifically around the exact key that appeared not to
+register. If `map_control=0` shows up unexpectedly on a key that should
+have been in INTERACT mode, that's direct proof of exactly where/when
+the flag became wrong, and the next debugging step is `git blame`-style
+tracing backward from THAT specific moment rather than the whole
+mechanism again. If `map_control=1` throughout but the key still didn't
+visibly move the cursor, the bug is downstream in wrai's own ops
+(`apply_editor_key()`/`text_edit_key.+x`) or in the GL viewport-refresh
+path instead, not in the manager's dispatch — a different investigation
+entirely, don't assume it's the same bug class without this evidence.
+
+## Seventh pass (2026-07-12): GL confirmed fully working, then two more
+## shared-infrastructure bugs found — ASCII input entirely dead for
+## embedded projects, and a cosmetic GL indicator bug. Both root-caused
+## and fixed, not just logged this time.
+
+User confirmed GL's INTERACT/movement now works reliably (the sixth
+pass's diagnostic logging never actually got exercised — the underlying
+mechanism was fine all along, most likely a genuine one-off timing
+fluke, not a bug). Two NEW things surfaced immediately after:
+"now its working in gl but not mother-ascii terminal" and, in GL
+specifically, "the '>' doesn't go to '^' when enter pressed *but
+xelector input still works" (explicitly noted as cosmetic-only).
+
+**Bug #11 (shared infrastructure, `pieces/chtpm/plugins/chtpm_parser.c`
+— affects every wraith-alpha-embedded project's ASCII input, not just
+wrai-text-editor): `inject_raw_key()` wrote raw key codes in a format
+its own reader could never recognize.** Traced the full ASCII INTERACT
+path: `chtpm_parser.c`'s own "Active mode" handler for an
+`onClick="INTERACT"` element (~l.2749) calls `inject_raw_key(eff)` for
+every keystroke while engaged. `resolve_project_history_path()`
+(~l.392, with its own 2026-07-11 comment explaining this deliberately)
+correctly routes any `wraith-alpha/...`-prefixed project_id — which
+includes EVERY embedded project, wrai-text-editor included — to the
+SAME shared `projects/wraith-alpha/session/history.txt` file
+`wraith-alpha_manager.c`'s `process_history_file()` actually polls.
+That routing is correct and intentional. But `inject_raw_key()` wrote
+each key as a bare number (`fprintf(fp, "%d\n", code)`), while
+`process_history_file()`'s parser requires the literal `"KEY_PRESSED: "`
+substring to recognize a key line at all (matching the exact format
+GL's `wraith_gl.c::append_keyboard_event()` uses when writing to the
+SEPARATE `pieces/keyboard/history.txt` file it polls) — a bare number
+matches none of its `strstr()` checks and is silently dropped. This is
+why GL worked (correct format, correct file) and ASCII didn't
+(correct file, wrong format) for the exact same underlying action.
+
+Fix: `inject_raw_key()` now checks whether the resolved destination is
+specifically `projects/wraith-alpha/session/history.txt`
+(`history_target_needs_key_pressed_prefix()`, new helper) and, only in
+that case, writes with the `"KEY_PRESSED: "` prefix — every OTHER
+destination `inject_raw_key()` can write to (a project's own directly-
+declared `<interact>` target, or the `pieces/apps/player_app/history.txt`
+fallback) keeps the original bare-number format unchanged, since
+agy-text-editor's and other legacy consumers' own main loops
+intentionally expect that format (confirmed via wrai-text-editor's own
+`process_history()` comment referencing "agy-text-editor's own main
+loop has always had this exact fallback"). `inject_command()` needed no
+change — it already wrote with the correct `"COMMAND: "` prefix.
+Rebuilt `chtpm_parser.c` clean (0 errors, 3 pre-existing unrelated
+`-Wformat-truncation` warnings in different functions).
+
+**Bug #12 (shared infrastructure, `wraith-alpha_manager.c`, GL-only,
+purely cosmetic — confirmed by the user's own report that input kept
+working regardless): the nav-selector glyph for an `onClick="INTERACT"`
+embedded-body element never checked `is_map_control` at all.**
+`emit_embedded_line_objects()`'s glyph decision (the function
+responsible for wrai-text-editor's "EDIT TEXT (INTERACT)" button, a
+`role=project_body_embedded` object) only ever checked `has_target_id
+&& g_active_gui_is_typing` — correct for cli_io fields, but a plain
+`onClick="INTERACT"` button has no `target_id`, so this condition could
+never be true for it, meaning the glyph could only ever show `">"` or
+blank, never `"^"`, regardless of whether INTERACT was actually
+engaged. A SEPARATE function (`append_project_scene_objects()`, for
+`scene.objects.pdl`-sourced controls) already had the correct check
+(`is_map_control && action=="INTERACT"`) — but `emit_embedded_line_objects()`
+is a different code path (for `wraith_body.txt`-sourced embedded lines)
+that never shared or duplicated that logic at all.
+
+Fix: extracted `append_project_scene_objects()`'s own inline
+`is_map_control`-from-`state.txt` read into a new shared helper,
+`read_project_map_control_for_dir()` (project_dir-scoped, NOT the same
+as the existing global `read_project_map_control()`, which always
+resolves the desktop's globally-focused project — a function iterating
+embedded content for a specific window must scope this per-window, or
+every open INTERACT-capable window would show "^" simultaneously
+whenever ANY one of them was actually engaged). Both functions now call
+the same helper. `emit_embedded_line_objects()`'s glyph decision now
+also shows `"^"` when the selected element's `action=="INTERACT"` and
+that window's own project is genuinely in map-control mode. Rebuilt
+clean (0 errors, warning count went DOWN by one — removed a duplicate
+`snprintf` in the process of extracting the shared helper). Full
+`compile_all.sh` sweep confirmed 0 failures repo-wide after both fixes.
+
+## Eighth pass (2026-07-12, same day): bug #12's GL fix didn't mirror to
+## ASCII — a THIRD, deeper instance of the identical gap, in a third file
+
+User confirmed GL now correctly shows the "^" glyph, then reported:
+"ok things are working in gl , but aren't mirrored in ascii ( they both
+have to mirror each other)", with a live frame dump proving it — ASCII
+still showed `[>] 6. [EDIT TEXT (INTERACT)]` at a moment they'd
+confirmed GL showed `^`. The dump's own `[PARSER] RAW:` log lines
+showed only a digit-select (`54`='6') and ESC (`27`) — no Enter — which
+matters: it means whatever engaged GL's INTERACT mode this time almost
+certainly wasn't a keyboard Enter press at all, but a GL mouse click on
+the button (clicks route through `wraith_gl.c`'s hit-test →
+`wraith-alpha_manager.c`'s `dispatch_menu_index()`/`route_command()`
+entirely, bypassing `chtpm_parser.c` completely) — direct evidence
+pointing at the exact same architectural gap as bug #12, just in the
+OTHER renderer's file.
+
+**Bug #13 (shared infrastructure, `pieces/chtpm/plugins/chtpm_parser.c`
+— affects ASCII rendering for every wraith-alpha-embedded project's
+INTERACT indicator, not just wrai-text-editor): `render_element()`'s
+`is_active`/`"^"` glyph decision (~l.2207) was `idx == active_index`
+only — ASCII's own fully independent, locally-tracked "is this element
+active" state, which `active_index` (~l.2603) is ONLY EVER set to by
+THIS file's own key-handling code (specifically: Enter pressed on a
+locally-focused `onClick="INTERACT"` element). It has zero connection
+to `is_map_control` (the actual authoritative shared state
+`wraith-alpha_manager.c` owns) — so ANY activation that happens via a
+path this file doesn't itself directly witness (a GL mouse click, or
+even a keyboard Enter that arrived via a different route than this
+file's own normal-mode dispatch) correctly engages the real
+`is_map_control` flag (bug #11's fix made that forwarding work) but
+never touches THIS file's `active_index`, so ASCII's glyph silently
+falls out of sync — identical root shape to bug #12, independently
+present in the OTHER renderer because GL and ASCII maintain two
+completely separate "is this active" trackers instead of both reading
+one shared source of truth.
+
+Fix: added `current_project_is_map_control_active()` (new, mirrors
+`wraith-alpha_manager.c`'s `read_project_map_control_for_dir()` — same
+file, same key, no shared C function possible across two separate
+binaries, but the exact same logic) — resolves the currently-focused
+project via `get_var("project_id")` (this file only ever renders one
+focused project's embedded body in detail at a time, matching the
+desktop's own "Focus: `<window>`" invariant, so a single global lookup is
+correctly scoped here, unlike bug #12's GL-side fix which genuinely
+needed per-window scoping since GL emits objects for every open window
+in one pass) and reads that project's own `session/state.txt`.
+`render_element()`'s `is_active` now also becomes true when
+`el->onClick == "INTERACT"` and this returns true, independent of
+`active_index`. Rebuilt clean (0 errors, 3 pre-existing unrelated
+warnings, same as before this change). Full `compile_all.sh` sweep
+confirmed 0 failures repo-wide.
+
+**Standing lesson, now proven three times in one day (bugs #8, #12,
+#13):** whenever this codebase has TWO renderers (or two functions
+within one renderer) independently deciding the same visual fact from
+their own local state instead of one shared source of truth, they WILL
+drift. Any future "X works in GL but not ASCII" (or vice versa) report
+should start by asking exactly this question — grep both files for
+independent local trackers of the same concept — before assuming the
+underlying functional mechanism (which is usually what actually gets
+fixed first, correctly, and which visual indicators then fail to keep
+up with) is broken.

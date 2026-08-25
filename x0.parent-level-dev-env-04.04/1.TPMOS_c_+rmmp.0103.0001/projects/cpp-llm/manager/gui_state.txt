@@ -1,0 +1,23 @@
+module_path=projects/cpp-llm/manager/+x/cpp-llm_manager.+x
+active_layout_id=cpp-llm.chtpm
+ai_state=IDLE
+active_api=http://10.0.0.144:8080
+ai_status_line=[AI STATE]: IDLE | [API]: http://10.0.0.144:8080
+ctx_pct=6%
+iqabel_fsm=IDLE
+cpp-llm_response_area=║ File created successfully.                                                 ║
+cpp-llm_api_menu=        <button label="macbook" onClick="SET_API:http://10.0.0.144:11434" /><br/>        <button label="local" onClick="SET_API:http://localhost:11434" /><br/>        <button label="aida_mac" onClick="SET_API:http://10.0.0.144:8080" /><br/>        <button label="desktop" onClick="SET_API:http://10.0.0.187:11434" /><br/>        <button label="debian" onClick="SET_API:http://10.0.0.16:11434" /><br/>
+comp_root_vis=false
+comp_1_lbl=
+comp_1_vis=false
+comp_2_lbl=
+comp_2_vis=false
+comp_3_lbl=
+comp_3_vis=false
+comp_4_lbl=
+comp_4_vis=false
+comp_5_lbl=
+comp_5_vis=false
+sys_msg=Response received.
+thinking_secs=0
+input_text=

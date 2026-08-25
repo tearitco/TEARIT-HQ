@@ -1,0 +1,500 @@
+# grok-j28-deepseek.md — Deep walkthrough (sprints 1–7 + RPG + TTG/muta)
+
+**Date context:** 2026-07-27 → 2026-07-28  
+**Companion:** one-line index in the J28 session notes · agent handoff `!.clone-clowning.md`  
+**Audience:** humans and future agents who need *where / what / how to audit*, not just titles.
+
+---
+
+## 🗺️ Map of the house pieces this session touched
+
+| Emoji | Path (under house / muchiverse) | Role |
+|-------|----------------------------------|------|
+| 🔐 | `0.user-pal👤/00.login-signup/` | Login GUI, UUID, xyzfs, `session.pdl` |
+| 🧬 | `0.user-pal👤/01.avatar-creation👤/` | Clone factory (faucet/store/DNA/desktop windows) |
+| 📒 | `00.login-signup/xyzfs/` | Per-user trees + machine session identity |
+| 🎲 | `201.rpg-maker-clone/` | MZ-style one-page map editor (freeglut shell) |
+| ♟️ | `205.ttg-tactics/` | Design + early dual-render tactics runtime |
+| 📜 | `!.clone-clowning.md` | Standing handoff for clone group (after deep section) |
+| 🏛️ | `101.mutaclsym*` | Gold standard dual ASCII+GL / ledger / history |
+
+Ignore for this deep doc (parked or later): craft, DF, civ, pokemon, Battlefront detail, GoldenEye.
+
+---
+
+# Part A — User-pal identity stack (sprints 1️⃣–7️⃣)
+
+These seven sprints form **one pipeline**: prove login GUI → stamp users with UUID/xyzfs → factory for avatars → make menus *do* things → don’t leave 60fps zombies → durable session.pdl → prove mint → desktop GL window.
+
+---
+
+## 1️⃣ User-pal GUI login harness
+
+### What was already there
+Not greenfield. `00.login-signup/` already had:
+- Single-screen GUI: **Create Account** (auto-login) / **Log In** / **Log Out**
+- Ops: `userpal_create_account`, `userpal_login`, `userpal_logout`, `userpal_whoami`, `userpal_compose_frame`, `userpal_menu_input`
+- Human-facing id under `users/<user_id>/profile.txt`
+- Shared `current_login.txt` for “who is logged in on this machine”
+- Session-isolated `button.sh` launch
+
+### What we added
+| Piece | Path |
+|-------|------|
+| Harness kit | `00.login-signup/test-harn-same/` |
+| Scenario | `test-harn-same/scenarios/demo_login_signup.sh` |
+| tk_* ops | copied from pal-forum pattern (`tk_inject_key`, `tk_type_text`, `tk_focus_item`, `tk_assert_contains`) |
+| Proof dumps | `00.login-signup/proof/harness-*/` |
+
+Scenario path (keystrokes only): create → logout → login → logout → refuse unknown user.
+
+### Bug fixed: first paint
+**Symptom:** first frame stayed `[Map Loading…]` until some menu action.  
+**Cause:** chtpm first paint ran before `view.txt` existed; later compose marker was missed.  
+**Fix:** pre-seed compose/`view.txt` in `button.sh` **before** launching the parser loop.
+
+### How to audit manually
+```bash
+cd 0.user-pal👤/00.login-signup
+bash scripts/build.sh
+bash button.sh check
+
+# Headless-ish harness (AI-first)
+./test-harn-same/button.sh compile
+./test-harn-same/button.sh demo   # expect OVERALL: PASS
+
+# Human play
+./button.sh run
+# Create account, log out, log in; watch panel text change
+./button.sh kill
+```
+**Read:** `current_login.txt`, `users/<id>/profile.txt`, last proof under `proof/harness-*/`.
+
+---
+
+## 2️⃣ UUID + xyzfs on signup
+
+### Decision
+Character creation **out of scope**. Every human gets:
+1. Friendly login name (`user_id`)
+2. **Unique UUID** (fs key)
+3. Private tree `xyzfs/users/<uuid>/`
+
+### Layout
+```
+00.login-signup/
+├── users/<user_id>/profile.txt     # login name + uuid= + xyzfs_path=
+├── current_login.txt                # current_user_id / uuid / xyzfs
+└── xyzfs/
+    ├── bin/                         # reserved
+    ├── session.pdl                  # (sprint 6) guest vs logged_in
+    └── users/<uuid>/
+        ├── meta.txt
+        ├── home/                    # exchange/, net/, later avatars/
+        └── projects/
+```
+
+### Code touchpoints
+| File | Behavior |
+|------|----------|
+| `ops/userpal_create_account.c` | Mint UUID (`/proc/sys/kernel/random/uuid`), write profile, mkdir xyzfs tree, auto-login |
+| `ops/userpal_login.c` | Load uuid/xyzfs into `current_login.txt`; backfill UUID on legacy profiles |
+| `ops/userpal_logout.c` / `whoami.c` / `compose_frame.c` | Clear or display uuid/xyzfs fields |
+| `button.sh` | Durable `xyzfs/` + session symlink hygiene |
+
+### How to audit manually
+```bash
+cd 0.user-pal👤/00.login-signup
+export PRISC_PROJECT_ROOT="$(pwd)"
+./ops/+x/userpal_logout.+x
+./ops/+x/userpal_create_account.+x alice "Alice"
+./ops/+x/userpal_create_account.+x bob "Bob"
+cat users/alice/profile.txt users/bob/profile.txt
+# uuid= lines must differ
+U=$(grep '^uuid=' users/alice/profile.txt | cut -d= -f2)
+ls -la "xyzfs/users/$U/home" "xyzfs/users/$U/projects"
+./ops/+x/userpal_login.+x alice
+cat current_login.txt   # current_user_uuid + current_xyzfs
+./test-harn-same/button.sh demo   # multi-user path in scenario
+```
+
+**Association:** UUID is the **filesystem identity**; login name is **human-facing**. Avatar trees hang off the UUID path later.
+
+---
+
+## 3️⃣ Avatar-creation scaffold (muchi-pals clone manager)
+
+### Intent
+Not a one-shot wizard. **Near-copy of muchi-pals pets menu**: faucet → store → list clones → customize DNA → desktop windows. Multiple avatars per user, each with its own avatar UUID.
+
+### Tree
+```
+0.user-pal👤/01.avatar-creation👤/
+├── ops/          claim_tokens, buy_clone, generate_clone, cycle_dna,
+│                 apply_name_age, toggle_sleep, open_avatar_window,
+│                 avatar_menu_input, avatar_compose_frame
+├── pieces/chtpm/layouts/   main, faucet, store, avatars, customize
+├── pieces/registry/dna/    skin_tones, hair, shirt, pants, heights, weights
+├── pieces/world_01/map_lobby/<avatar_uuid>/   # local desktop contract (like eggs)
+├── system/       prisc, keyboard, renderer, chtpm_parser, avatar_window
+├── button.sh / scripts/build.sh
+└── README.txt
+```
+
+### Player fs (source of truth when logged in)
+```
+00.login-signup/xyzfs/users/<user_uuid>/home/
+├── wallet.txt
+└── avatars/
+    ├── inventory.txt
+    └── <avatar_uuid>/state.txt   (+ meta)
+```
+
+### Flow (product)
+```
+Main → Faucet (Claim +10 tokens)
+     → Store  (Free starter once / Buy clone 20 tokens)
+     → Avatars → Select → Sleep | Open Desktop Window | Cycle DNA…
+               → Customize (name/age fields + cycles)
+```
+
+### How to audit manually
+```bash
+# 1) Log in so xyzfs is yours
+cd 0.user-pal👤/00.login-signup && ./button.sh run   # or CLI login ops
+
+# 2) Clone factory
+cd ../01.avatar-creation👤
+./button.sh compile
+./button.sh demo          # headless mint if supported
+./button.sh run           # GUI
+
+# CLI smoke
+export PRISC_PROJECT_ROOT="$(pwd)"
+export USERPAL_LOGIN_ROOT="$(cd ../00.login-signup && pwd)"
+./ops/+x/claim_tokens.+x
+./ops/+x/buy_clone.+x
+XYZ=$(grep current_xyzfs= "$USERPAL_LOGIN_ROOT/current_login.txt" | cut -d= -f2-)
+cat "$USERPAL_LOGIN_ROOT/$XYZ/home/avatars/inventory.txt"
+```
+
+**Association:** Login UUID → xyzfs root → `home/avatars/*`. Local `map_lobby/<id>/` is the **desktop piece** mirror (same idea as muchi egg folders).
+
+---
+
+## 4️⃣ Avatar menu FX — why menus were dead
+
+### Root causes
+1. **`${piece_methods}` empty** — `active_target_id` in `pieces/apps/player_app/state.txt` stayed `main` on faucet/store/avatars screens, so METHOD rows from those `piece.pdl` files never loaded → UI showed **[No Methods]** or inert buttons.
+2. **Panel empty** — layouts referenced `${panel_content}`; compose only wrote `game_map` / `view.txt`.
+
+### Fixes
+| Fix | Where |
+|-----|--------|
+| `write_chtpm_bridge()` (muchi pattern) | `ops/avatar_menu_input.c` — on idle/sync, set `active_target_id` from `current_layout.txt` basename |
+| Fill `panel_content` from `view.txt` | compose / parser side so status + DNA show in panel |
+| DNA cycles on avatars detail | Select clone → cycle gender/skin/hair without dead-end |
+| KEY dispatch | CHTPM sends ASCII codes (`'2'` = 50), not integer 2 — harnesses must use correct keycodes |
+
+### Harness
+```bash
+cd 0.user-pal👤/01.avatar-creation👤
+bash test-harn-same/scenarios/demo_menu_fx.sh
+# Expect: claim → wallet+10; free starter → inventory UUID; select → cycle skin; open window process
+```
+
+### How to audit manually (GUI)
+1. Log in (sprint 1–2).
+2. `01.avatar-creation` → **Faucet** → Claim Tokens (message + wallet).
+3. **Store** → Free Starter (new row under Avatars).
+4. **Avatars** → select → Cycle Skin / Gender; watch face emoji + `state.txt`.
+5. **Open Desktop Window** → process `system/avatar_window` (then kill on quit).
+
+**Association:** CHTPM layout file name ↔ `active_target_id` ↔ `projects/.../pieces/<id>/piece.pdl` METHOD list ↔ KEY:N onClick → `avatar_menu_input.+x`.
+
+---
+
+## 5️⃣ Kill-on-quit / 60fps safety
+
+### Problem
+Desktop `avatar_window` and chtpm poll ~16ms. Quitting the terminal without reaping left cores warm. Stale `window.pid` files lied about liveness.
+
+### What landed
+| Mechanism | Path / behavior |
+|-----------|-----------------|
+| Soft stop | `quit_flag.txt` for poll loops |
+| Ordered kill | SIGTERM UI trio + windows → ~0.3s grace → SIGKILL |
+| Tracking | `open_avatar_window` writes `window.pid`, appends `pieces/system/avatar_window_pids.txt`, replaces prior window for same clone |
+| `button.sh kill` / `kill-windows` | Full vs windows-only |
+| `EMERGENCY_KILL.sh` | Match `/proc/pid/exe` **basename** (not cmdline) so Chrome/`-f` self-match avoided |
+
+### How to audit manually
+```bash
+cd 0.user-pal👤/01.avatar-creation👤
+./button.sh run
+# Open a desktop window from Avatars
+./button.sh kill
+# Verify:
+for n in avatar_window chtpm_parser_pal keyboard_input prisc+x; do
+  pgrep -x "$n" && echo STILL:$n || echo OK:no_$n
+done
+find . -name 'window.pid'
+```
+
+**Association:** Any freeglut/GL clone with `glutTimerFunc(16)` has the same rule — **kill when not testing**.
+
+---
+
+## 6️⃣ `xyzfs/session.pdl` + character → desktop window
+
+### session.pdl (machine-wide “who am I”)
+Path: `00.login-signup/xyzfs/session.pdl`
+
+| STATE key | Meaning |
+|-----------|---------|
+| `mode` | `logged_in` \| `guest` |
+| `user_id` / `user_uuid` / `display_name` | identity |
+| `xyzfs_path` | relative e.g. `xyzfs/users/<uuid>` |
+| `logged_in_at` | unix time |
+| `active_avatar_uuid` / `active_avatar_path` | last minted or opened clone |
+
+**Writers:** login (logged_in), logout (guest), `generate_clone` (sets active avatar), `open_avatar_window` (refreshes active).  
+**Readers:** avatar-creation prefers session.pdl → else `current_login.txt` → else guest fallback.
+
+### Desktop spawn
+`open_avatar_window` forks `system/avatar_window` (muchi `egg_window` lineage). Child does `setsid` + redirects stdio to `/dev/null` so harness pipes don’t hang.
+
+### Harness
+```bash
+bash 0.user-pal👤/01.avatar-creation👤/test-harn-same/scenarios/demo_session_character_window.sh
+# Proves: guest → logged_in → mint → active_avatar_* → LIVE avatar_window → cleanup
+```
+
+### How to audit manually
+```bash
+LOGIN=0.user-pal👤/00.login-signup
+cat "$LOGIN/xyzfs/session.pdl"
+# After login: mode=logged_in, non-empty user_uuid
+# After mint/open: active_avatar_uuid set
+# After logout: mode=guest, empty user fields
+```
+
+**Association chain:**
+```
+login → session.pdl + current_login.txt
+     → generate_clone → xyzfs/.../home/avatars/<aid>/ + map_lobby/<aid>/
+     → session.pdl active_avatar_*
+     → open_avatar_window → GL process + window.pid
+```
+
+---
+
+## 7️⃣ CPU thrash cleanup (side chapter)
+
+Not user-pal core, but same session hygiene:
+
+- Runaway agent `find /home/.../Desktop` (~100% CPU) killed.
+- Event-editor leftovers (`prisc`, `chtpm_*`, `gl_mirror`, `ee_gl_mock`) killed.
+- **glut-craft:** idle was still redrawing whole world every 16ms → **dirty-draw** + `RENDER_RADIUS` 48→28.
+- Critics: craft + RPG = solid prototypes, not AAA ship.
+
+**Audit:** `ps` top should not show house `system/*` bins or Desktop-wide `find` when idle; only chrome/desktop noise.
+
+---
+
+# Part B — RPG Maker (sprints 8️⃣ & 🔟)
+
+Freeglut **visual shell**, file-backed maps/events (house-friendly data even if dual-render brain is still incomplete).
+
+## What’s done
+
+### One-page MZ layout (sprint 8)
+Target: your MZ screenshot — not a title-menu toy.
+
+| Region | Content |
+|--------|---------|
+| Top | Menu strip + toolbar (Save, tools, Play, Database, …) |
+| Left | **Tileset tabs A B C D R** + procedural tile grid |
+| Bottom-left | **Map tree** (Factory 1 / Factory 2 labels) |
+| Center | **Map canvas** 32×32 cells, paint, event markers |
+| Bottom | Status line |
+
+### Data layout (audit these files)
+```
+201.rpg-maker-clone/
+├── src/main.c tileset.c project.c draw.c rpg.h
+├── projects/demo/
+│   ├── project.pdl
+│   ├── switches.pdl
+│   └── maps/
+│       ├── map_start/   map.txt  map_obj.txt  events/ev_x_y/
+│       └── factory_2/   …
+├── REFERENCE_rpg_maker_mz_expected.jpg
+├── UI_EXPECTATION.md
+└── README.md
+```
+
+- `map.txt` = ground layer glyphs  
+- `map_obj.txt` = upper/object layer  
+- `events/ev_<x>_<y>/` = `state.txt` + `event.pal` (+ optional IR PDL)
+
+### v4 quality push (sprint 10)
+- Procedural **factory** look: metal, server racks (blinking LEDs), pipes, hazard rails, water shimmer  
+- Checkerboard under palette (MZ transparent feel)  
+- Tools: Pencil / Rect / Fill / Erase · layers Ground / Objects  
+- Zoom `[` `]` · grid · MMB pan · purple event diamonds  
+- Play: camera follow, touch triggers, message resume, **Transfer Player** between maps  
+- Demo loop: guard → crystal unlock switch → warp `>` to Factory 2 → return pad  
+
+### Still not real MZ
+No PNG autotile atlas / walk-cycle sheets; database mostly stubs; event command insert still shallow. Architecture bridge (ASCII `current_frame` export, master_ledger paint log, dual gl_mirror) is **handoff work**, not finished.
+
+### How to audit manually
+```bash
+cd 201.rpg-maker-clone
+sh button.sh compile
+sh button.sh run
+# Editor: pick tile → paint; switch map tree; N event; S save; F3 play
+# Play: arrows, Space on G then S crystal, step on transfer
+sh button.sh kill
+
+# File truth without GUI
+head projects/demo/maps/map_start/map.txt
+ls projects/demo/maps/map_start/events/
+cat projects/demo/maps/map_start/events/ev_*/event.pal
+```
+
+**Association:** Editor memory ⇄ `map.txt` / `map_obj.txt` / `events/` on **S**ave; play reads same files. Reference image = visual bar.
+
+---
+
+# Part C — How TTG-tactics is mutaclysm-aligned (pre-handoff design → early build)
+
+This is the interesting architectural contrast: **freeglut clones look flashy; TTG was specified to obey muta law from day one.**
+
+## Mutaclysm signal flow (gold standard)
+
+```
+keyboard_input  →  history.txt   (decimal keycodes; humans, AI, harness write THE SAME file)
+       →  dispatch / chtpm_parser / interact
+       →  ops (+x binaries) mutate state
+       →  data/master_ledger.txt  +  entity dirs (pieces/units/*/state.txt)
+       →  compose_frame  →  pieces/display/current_frame.txt     [ASCII = truth]
+       →  rgb compose    →  rgb_frame.raw
+       →  system/renderer (terminal)  +  system/gl_mirror (GL blit only)
+```
+
+**Laws (from handoff L1–L10, compressed):** dual ASCII+GL · file-mediated · same input path · master ledger · human-readable maps · entity directories · tick/turn frames · nav-friendly UI · kill hygiene · **no freeglut product brain**.
+
+## How DESIGN.md maps onto those laws
+
+| Muta law | TTG design / early code |
+|----------|-------------------------|
+| Dual view | Frame **48×22** composed to `current_frame.txt` **and** `rgb_frame.raw`; vendor `gl_mirror` / `renderer` from muta |
+| File-mediated | `ttg_loop` polls files; no sockets for core loop |
+| Same input path | Append keycodes to history; AI must emit keys only (design); harnesses append keys |
+| Master ledger | `data/master_ledger.txt` append on move/attack/end |
+| Human-readable board | 12×12 tactics grid in ASCII frame + unit state files |
+| Entity dirs | `pieces/units/<id>/state.txt` (side, role, hp, pos, moved/acted flags) |
+| Turn / tick | Turn ring + clocks (2/5/10/30); flags `moved`/`acted` |
+| Nav-friendly | Cursor + numbered/key path (Enter select/move, arrows, A attack, E end) |
+| Kill hygiene | `button.sh kill`, exact names |
+| No freeglut product | Explicit non-goal for product path |
+
+## Product shape (still early)
+- Community-role pieces (MVP army: King + Soldiers + Wizard + Farmer per side)  
+- Wider than chess **12×12** · Chebyshev attack · BFS move · regicide  
+- Ante **tablechips** pot · Elo K=32 · AI difficulty tiers (key-only)  
+- Modes designed: 1v1 hot-seat MVP; 2v2 / 4-FFA / story later  
+
+## What’s implemented vs design-only
+| Layer | Status |
+|-------|--------|
+| DESIGN.md rev 2 | Approved (0 open review issues) |
+| `ttg_loop` + compose dual | Live |
+| Unit dirs + ledger | Live |
+| Harness 01 move / 02 illegal / 03 regicide | **PASS** |
+| Clocks polish, pot settle UI, Elo file, pure key AI | Still open |
+| Full roster / story / vehicles | Phase 2 |
+
+### How to audit TTG manually
+```bash
+cd 205.ttg-tactics
+sh button.sh compile
+sh scripts/harness_01_move.sh
+sh scripts/harness_02_illegal_move.sh
+sh scripts/harness_03_attack_regicide.sh
+sh button.sh run          # dual view if DISPLAY + vendored gl_mirror
+# Inspect:
+head -30 pieces/display/current_frame.txt
+tail -20 data/master_ledger.txt
+ls pieces/units/
+sh button.sh kill
+```
+
+**Why this matters vs RPG/Battlefront:** RPG already has good **files** (maps/events) but **brain is freeglut RAM**. TTG’s brain is the file loop; GL is a mirror. That’s the mutaclysm alignment.
+
+---
+
+# Part D — Quick association diagram (1–7)
+
+```
+[Human / harness keys]
+        │
+        ▼
+00.login-signup GUI ──compose──► view / frame
+        │ create/login
+        ▼
+users/<id>/profile.txt  ◄── uuid ──►  xyzfs/users/<uuid>/
+        │                              │
+        │                         session.pdl (guest|logged_in)
+        │                              │
+        └──────── USERPAL_LOGIN_ROOT ──┘
+                       │
+                       ▼
+              01.avatar-creation
+                 faucet/store/DNA
+                       │
+            home/avatars/<aid>/  +  map_lobby/<aid>/
+                       │
+                       ▼
+              open_avatar_window → system/avatar_window (GL)
+                       │
+                       ▼
+              button.sh kill / EMERGENCY_KILL (reap 60fps)
+```
+
+---
+
+# Part E — Suggested audit order (human, ~30 min)
+
+1. **Login harness** — `00.login-signup` demo PASS + create two users, compare UUIDs.  
+2. **session.pdl** — login/logout and cat file.  
+3. **Avatar menu FX** — claim, free starter, cycle skin, open window, then **kill**.  
+4. **RPG** — open editor, paint, save, confirm `map.txt` changed; F3 play transfer.  
+5. **TTG harnesses 01–03** — then optional `button.sh run` and read ASCII frame + ledger.
+
+---
+
+*End of deepseek walkthrough. One-line sprint index lives separately; agent continuous-improvement law lives in `!.clone-clowning.md`.*
+
+
+______________________________________
+
+
+Wrote **`grok-j28-deepseek.md`** (~19KB) at:
+
+`/home/workdir/artifacts/grok-j28-deepseek.md`
+
+### What’s inside
+
+| Part | Content |
+|------|---------|
+| **🗺️ Map** | Paths for login, avatars, xyzfs, RPG, TTG, muta |
+| **1️⃣–7️⃣** | Each sprint: what existed, what changed, file table, **manual audit commands**, associations |
+| **8️⃣ & 🔟 RPG** | One-page MZ layout, `map.txt` / events layout, v4 factory tools/play loop, gaps, audit |
+| **♟️ TTG ↔ mutaclysm** | Signal-flow diagram, law→design mapping table, implemented vs open, harness audit |
+| **Diagram** | Login → UUID/xyzfs → session.pdl → avatars → GL window → kill |
+| **Audit order** | ~30 min human checklist |
+
+Copy it next to `!.clone-clowning.md` in the house root if you want it beside the handoff.

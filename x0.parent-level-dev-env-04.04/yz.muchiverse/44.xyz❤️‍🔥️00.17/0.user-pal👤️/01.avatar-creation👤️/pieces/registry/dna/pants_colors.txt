@@ -1,0 +1,7 @@
+black
+blue
+gray
+khaki
+brown
+white
+green

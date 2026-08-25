@@ -1,0 +1,46 @@
+================================================================================
+ MUCHI-PAL-CHAT   [IDLE]   model: iqabod-test              api: ../#.z.mirror_llm]z5]IQABOD🪞️+4
+================================================================================
+
+Aida: I'm a large language model, so I don't have feelings or a personal state like humans do. However, I'm ready and eager to assist you with any coding, architecture, or documentation tasks you have! How can I help you today?
+
+You: make a test file test-file.txt
+
+Aida: [calling write_file {
+                "path": "test-file.txt",
+                "content": ""
+              }]
+
+[write_file result]: 
+
+You: write file new-file.txt containing "help me!"
+
+Aida: [calling write_file {
+                "content": "help me!",
+                "path": "new-file.txt"
+              }]
+
+[write_file result]: 
+
+You: read file jul-21.txt
+
+Aida: [calling read_file {
+                "path": "jul-21.txt"
+              }]
+
+[read_file result]: Error: tool execution failed or produced no output.
+
+You: hello how are you
+
+Aida: make a test file test-file.txt  write file new-file.txt containing help he love you <UNK> cold <END> you the <START> likes books cold i <UNK> <END> like i we cats likes cold dog
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+[SYS]: Response received.
+(type /model <id> to switch models)
+
+| [^] 1. Message: [_]                                     |
+ (Ctrl+C to quit)
+
++=========================================================+
+Active [^]:  (ESC to exit)

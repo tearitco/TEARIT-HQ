@@ -1,0 +1,13 @@
+
+done : 
+1. both projects emoji toggle fixed
+2. anti-hardcoding a&b refactor
+
+
+2do : 
+
+file save load
+check p2p -> multiplayer game early (lobby 1rst? do this 1rst)
+check z levels
+3d ascii
+

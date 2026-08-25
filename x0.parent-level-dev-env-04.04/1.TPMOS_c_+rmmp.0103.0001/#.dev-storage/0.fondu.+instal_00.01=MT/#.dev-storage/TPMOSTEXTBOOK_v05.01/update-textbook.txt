@@ -1,0 +1,649 @@
+# TPMOS Textbook Update Plan - update-textbook.txt
+# Date: 2026-04-03
+# Agent: ap3
+# Target: TPMOSTEXTBOOK_v03.00 → v03.01 (Code-Complete Edition)
+
+## OBJECTIVE
+Transform the TPMOS textbook from a conceptual guide into a **coder's reference** by:
+1. Adding **Windows compatibility** coverage throughout
+2. Adding **Fondu** deep-dive with code
+3. Adding **P2P-NET** implementation details with code
+4. Adding **real C code snippets** to EVERY chapter (currently ~0% executable code)
+5. Adding **3 NEW CHAPTERS**: fuzz-op/op-ed, PAL scripting, GL-OS deep-dive
+6. Including architectural patterns, developer examples, and API references
+7. Using **code highlighting** in PDF (with Chinese char fallback if needed)
+
+---
+
+## NEW CHAPTER STRUCTURE (15 chapters total, was 12)
+
+The textbook will grow from 12 to 15 chapters:
+
+| Ch# | Title | Status | Key Additions |
+|-----|-------|--------|---------------|
+| CH1 | The Soul of a Piece | UPDATE | Add C code snippets for state reading |
+| CH2 | The Filesystem is the Database | UPDATE | Add path resolution code + Windows compat |
+| CH3 | The 12-Step Pipeline | UPDATE | Add 4 pipeline code snippets |
+| CH4 | Muscles & Brains (Ops & Modules) | UPDATE | Add CPU-safe template, move_entity, Windows, Fondu |
+| CH5 | The App Factory | UPDATE | Add app manager code examples |
+| CH6 | PAL: The Assembly Language of TPMOS | **NEW** | Full PAL chapter with interpreter code |
+| CH7 | fuzz-op & op-ed: The Flagship Apps | **NEW** | Deep-dive into both apps + future features |
+| CH8 | GL-OS: Beyond ASCII | **NEW** (replaces old CH6) | 2D/3D rendering with TPM principles |
+| CH9 | The Guardians (Testing & Simulation) | RENUMBER (was CH7) | Add bot/PAL code |
+| CH10 | The Great Expansion (AI, LSR, & P2P) | RENUMBER (was CH8) | Add P2P-NET code (major addition) |
+| CH11 | The Infinite Loop (Recursive Forge) | RENUMBER (was CH9) | Add circuit simulation code |
+| CH12 | The Simulation Theater | RENUMBER (was CH10) | Add simulation code |
+| CH13 | Piecemark Labs & The Sovereign Venture | RENUMBER (was CH11) | Add contract/onboarding code |
+| CH14 | The Soul Pen & The Multiverse | RENUMBER (was CH12) | No code needed |
+| CH15 | Cross-Platform TPMOS (Windows/Linux/macOS) | **NEW** (optional) | Dedicated cross-platform guide |
+
+---
+
+## CHAPTER-BY-CHAPTER UPDATE PLAN
+
+### CH1: The Soul of a Piece (Philosophy)
+**Current:** 1 code block (.pdl example)
+**Add:**
+- [ ] **Code Snippet:** `state.txt` format example with comments
+  ```
+  name=Zombie
+  type=zombie
+  pos_x=9
+  pos_y=2
+  pos_z=0
+  on_map=1
+  ```
+- [ ] **Code Snippet:** How to read a Piece's state in C (10-line example using `fopen()`/`fgets()`)
+- [ ] **Architectural Note:** Data sovereignty in practice - why plaintext state files > binary databases
+- [ ] **API Reference:** `pdl_reader.+x` command syntax (`get_state`, `list_methods`, etc.)
+
+---
+
+### CH2: The Filesystem is the Database
+**Current:** 1 code block (directory tree)
+**Add:**
+- [ ] **Code Snippet:** `location_kvp` file format and parsing example in C
+  ```c
+  FILE *kvp = fopen("pieces/locations/location_kvp", "r");
+  while (fgets(line, sizeof(line), kvp)) {
+      char *eq = strchr(line, '=');
+      if (eq) {
+          *eq = '\0';
+          if (strcmp(trim_str(line), "project_root") == 0)
+              snprintf(project_root, sizeof(project_root), "%s", trim_str(eq + 1));
+      }
+  }
+  ```
+- [ ] **Code Snippet:** The `stat()` guard pattern (CPU-safe polling)
+  ```c
+  struct stat st;
+  if (stat(history_path, &st) == 0) {
+      if (st.st_size > last_pos) {
+          // New input available
+      }
+  }
+  ```
+- [ ] **Windows Compatibility Section:**
+  - Path differences: `/` vs `\` (use `build_path_malloc()` helper)
+  - `stat()` works on Windows via `<sys/stat.h>` (MSVCRT)
+  - `access()` → `_access()` on Windows (use `#ifdef _WIN32`)
+  - File permissions: `.+x` convention vs `.exe` on Windows
+- [ ] **Developer Example:** Cross-platform path resolution utility
+
+---
+
+### CH3: The 12-Step Pipeline
+**Current:** 0 code blocks
+**Add:**
+- [ ] **Code Snippet:** Step 1 - Input capture (`keyboard_input_linux.c` excerpt, 15 lines)
+  ```c
+  // Raw terminal mode, read single key without Enter
+  struct termios raw = termios;
+  raw.c_lflag &= ~(ICANON | ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &raw);
+  ```
+- [ ] **Code Snippet:** Step 2-3 - Parser routing (excerpt from `chtpm_parser.c`, 20 lines showing W-first resolution)
+- [ ] **Code Snippet:** Step 5-6 - Op execution via `fork()/exec()`
+  ```c
+  pid_t p = fork();
+  if (p == 0) {
+      freopen("/dev/null", "w", stdout);
+      execl(trait, trait, active_target_id, dir_str, NULL);
+      exit(1);
+  } else waitpid(p, NULL, 0);
+  ```
+- [ ] **Code Snippet:** Step 8 - `render_map.+x` overview (pseudo-code + key functions)
+- [ ] **Architectural Diagram:** ASCII art showing data flow through 12 steps
+- [ ] **Windows Compatibility Note:** `fork()/exec()` → `CreateProcess()` on Windows
+  - Reference: `pieces/buttons/windows/legacy/compile_all.ps1` handles this
+  - Dual-execution model still works, just different spawn mechanism
+
+---
+
+### CH4: Muscles & Brains (Ops & Modules)
+**Current:** 7 code blocks (all config/structural, NO C code)
+**Add:**
+- [ ] **Code Snippet:** The CPU-Safe Module Template (FULL example from `cpu_safe_module_template.c`)
+  - Signal handling (`handle_sigint`)
+  - `run_command()` with `fork()/exec()/waitpid()`
+  - Focus-aware throttling (`is_active_layout()`)
+  - `stat()`-first polling loop
+  - Bounded sleep (`usleep(16667)` for 60 FPS)
+- [ ] **Code Snippet:** `move_entity.c` - The canonical Op example (key 50-line excerpt)
+  - Shows: `resolve_paths()`, `get_state_int()`, `set_state_int()`, collision detection, tile interaction
+- [ ] **Code Snippet:** Why NOT `system()` - side-by-side comparison
+  ```c
+  // BAD: Can't kill, becomes orphaned
+  system("some_op arg1 arg2");
+
+  // GOOD: Full control, always reaped
+  pid_t pid = fork();
+  if (pid == 0) { execl(...); exit(1); }
+  else waitpid(pid, &status, 0);
+  ```
+- [ ] **Fondu Deep-Dive (EXPAND existing section):**
+  - [ ] Code Snippet: `fondu.c` installer flow (50-line excerpt)
+    - Reads `project.pdl`
+    - Copies ops to `pieces/apps/installed/`
+    - Updates `ops_registry` and `ops_catalog`
+  - [ ] Code Snippet: `ops_manifest.txt` parsing logic
+  - [ ] Developer Example: How to create a new Fondu-installable project
+    - Step 1: Create `project.pdl` with `exposes_ops = true`
+    - Step 2: Write `ops_manifest.txt`
+    - Step 3: Compile ops to `ops/+x/`
+    - Step 4: Run `./fondu --install <project>`
+  - [ ] Fondu uninstall/update flow (currently missing)
+  - [ ] Fondu dependency resolution between projects
+- [ ] **Windows Compatibility Section:**
+  - [ ] `.+x` binary convention → `.exe` on Windows
+  - [ ] `fork()/exec()` → `CreateProcess()` wrapper pattern
+  - [ ] Signal handling: `SIGINT` works, but cleanup differs
+  - [ ] Reference: `pieces/keyboard/src/keyboard_input_win.c` (Windows input)
+  - [ ] Reference: `pieces/display/windows_renderer.c` (Windows rendering)
+  - [ ] Cross-platform compile guide:
+    - Linux: `gcc -o foo.+x foo.c -pthread`
+    - Windows (MSYS2): `gcc -o foo.exe foo.c -pthread` (or use `compile_all.ps1`)
+
+---
+
+### CH5: The App Factory
+**Current:** 3 code blocks (directory tree, .pdl, XML)
+**Add:**
+- [ ] **Code Snippet:** `player_manager.c` - Main app loop excerpt (30 lines)
+  - Shows: history polling, key routing, state updates
+- [ ] **Code Snippet:** `op-ed_module.c` - Editor app example (20 lines)
+- [ ] **Code Snippet:** App `.pdl` with methods section
+  ```
+  METHOD | feed | pieces/apps/playrm/ops/+x/fuzzpet_action.+x feed
+  METHOD | sleep | pieces/apps/playrm/ops/+x/fuzzpet_action.+x sleep
+  ```
+- [ ] **Fondu App Installation:**
+  - [ ] How Fondu bundles entire apps (manager + layouts + ops + pieces)
+  - [ ] Code Snippet: App installation flow
+- [ ] **Developer Example:** Creating a new app from scratch
+  - Directory structure template
+  - Minimum viable manager (50 lines)
+  - Adding a layout (`.chtpm` file)
+  - Registering in `os.chtpm` buttons
+
+---
+
+### CH6: PAL: The Assembly Language of TPMOS [**NEW CHAPTER**]
+**Purpose:** Full chapter dedicated to PAL (Prisc Assembly Language) - how to use it to orchestrate ops for entire projects.
+**Current:** Scattered mentions in CH4, CH7, CH8 - no dedicated coverage.
+**Add:**
+- [ ] **What is PAL?** - Assembly-style scripting language for TPMOS
+  - Instruction set overview: `OP`, `call`, `sleep`, `jalr`, `beq`, `lw`, `sw`, `halt`
+  - Register model (16 registers, memory map)
+  - Label system for control flow
+- [ ] **Code Snippet:** `prisc+x.c` interpreter excerpt (40 lines)
+  - Shows: instruction parsing, register execution, custom op dispatch
+  - File: `pieces/system/prisc/prisc+x.c` (771 lines total)
+- [ ] **Code Snippet:** PAL instruction format
+  ```
+  ; Simple PAL program structure
+  start:
+      call user::create_profile "player1"
+      OP playrm::move_entity "player1" "right"
+      sleep 100
+      beq r0, r1, done
+      jalr game_loop
+  done:
+      halt
+  ```
+- [ ] **Developer Example:** Orchestrating a full project with PAL
+  - Example: User profile creation flow (10-line PAL script)
+  - Example: Game loop with NPC AI (20-line PAL script)
+  - Example: P2P-NET contract execution (15-line PAL script)
+- [ ] **Code Snippet:** Custom op registration in PAL
+  ```c
+  // How C ops become PAL-callable
+  typedef struct {
+      char name[32];
+      char handler[256];  // Path to .+x binary
+      char desc[128];
+  } CustomOp;
+  ```
+- [ ] **PAL + Fondu Integration:**
+  - How Fondu installs PAL scripts alongside ops
+  - PAL script discovery via `--list-ops`
+  - Cross-project PAL calls (`OP project::op_name args`)
+- [ ] **PAL Best Practices:**
+  - Keep scripts under 100 lines
+  - Use `call` for subroutines, `OP` for external ops
+  - Always `sleep` between heavy operations
+  - Error handling with `beq` checks
+- [ ] **Architectural Note:** PAL as the "glue" between TPMOS components
+  - Modules (Brains) call PAL scripts
+  - PAL scripts call Ops (Muscles)
+  - Ops update Piece state files
+  - State changes trigger renders
+- [ ] **Developer Exercise:** Write a PAL script that:
+  1. Creates a user profile
+  2. Moves the player 5 steps right
+  3. Checks if player reached a treasure tile
+  4. Updates happiness if treasure found
+  5. Renders the final state
+
+---
+
+### CH7: fuzz-op & op-ed: The Flagship Apps [**NEW CHAPTER**]
+**Purpose:** Deep-dive into TPMOS's two flagship applications - the pet simulation (fuzz-op) and the piece editor (op-ed). Show how they exemplify TPM principles.
+**Current:** Briefly mentioned in CH5, no dedicated coverage.
+**Add:**
+- [ ] **fuzz-op: The Pet Simulation**
+  - [ ] Architecture overview: manager + zombie AI + render pipeline
+  - [ ] **Code Snippet:** `fuzz-op_manager.c` - Main loop excerpt (40 lines)
+    - Shows: `route_input()`, selector system, Z-level changes, zombie AI calls
+  - [ ] **Code Snippet:** `zombie_ai.c` - Chase AI implementation (30 lines)
+    - Shows: path resolution, state reading, chase logic, bounds checking
+    - File: `pieces/apps/fuzzpet_app/traits/zombie_ai.c` (newly created)
+  - [ ] **Code Snippet:** `move_entity.c` op as used by fuzz-op (20 lines)
+  - [ ] Piece state examples: `zombie_01/state.txt`, `selector/state.txt`
+  - [ ] **Future Features:**
+    - Multi-zombie support (AI flocking)
+    - Hunger/happiness decay over time
+    - Breeding/genetics system
+    - Inventory and item collection
+    - Multi-map exploration (Z-levels 0-2)
+    - GL-OS 3D rendering of pet world
+- [ ] **op-ed: The Piece Editor**
+  - [ ] Architecture overview: grid editor + palettes + save system
+  - [ ] **Code Snippet:** `op-ed_module.c` - Editor main loop (30 lines)
+    - Shows: cursor movement, tile placement, save/load
+  - [ ] **Code Snippet:** Map file format (`.txt` grid files)
+    ```
+    ####################
+    #  ........@......T#
+    #  ......Z........T#
+    #  ...XR...@......T#
+    #  ....R..........T#
+    ####################
+    ```
+  - [ ] **Code Snippet:** Palette system (MAPS and GLYPHS palettes)
+  - [ ] Roundtrip parity: edit file → save → game updates instantly
+  - [ ] **Future Features:**
+    - Multi-layer map editing (Z-levels)
+    - Bulk operations (fill, copy/paste regions)
+    - Template library (pre-built map sections)
+    - GL-OS live preview (edit in 2D, see in 3D)
+    - Collaborative editing (multi-user via P2P-NET)
+    - Undo/redo history
+- [ ] **Shared Architecture Patterns:**
+  - [ ] Both use the same 12-step pipeline
+  - [ ] Both read/write Piece state files
+  - [ ] Both use `fork()/exec()` for ops
+  - [ ] Both trigger renders via `frame_changed.txt`
+  - [ ] Both respect CPU-safe mandates
+- [ ] **Developer Example:** Extending fuzz-op with a new feature
+  - Step 1: Add new Piece type (e.g., `pet_food`)
+  - Step 2: Write op for interaction (e.g., `eat_food.+x`)
+  - Step 3: Update manager to handle new key
+  - Step 4: Test with op-ed by placing food on map
+- [ ] **Scholar's Corner:** "The Day the Editor Became the Game" (expand existing anecdote with technical details)
+
+---
+
+### CH8: GL-OS: Beyond ASCII [**NEW CHAPTER - replaces old CH6**]
+**Purpose:** Deep-dive into GL-OS - how it renders 2D and 3D games/apps using the same TPM principles. This is the future-facing chapter showing where TPMOS is heading.
+**Current:** Old CH6 was conceptual only, no code.
+**Add:**
+- [ ] **GL-OS Architecture Overview**
+  - Watcher → Parser → Projection pipeline
+  - Frame bridge: `current_frame.txt` → OpenGL window
+  - Session management (separate from ASCII-OS but same format)
+- [ ] **Code Snippet:** GL-OS initialization (`gl_os_renderer.c`, 40 lines)
+  - GLFW window creation
+  - OpenGL context setup
+  - FreeType font loading for emoji/character rendering
+  - File: `pieces/apps/gl_os/plugins/gl_os_renderer.c`
+- [ ] **Code Snippet:** Frame parser - ASCII to 3D mapping (30 lines)
+  - How `#` becomes wall model, `@` becomes player model, etc.
+  - Character-to-model lookup table
+- [ ] **Code Snippet:** First-person mode camera controls (25 lines)
+  - WASD + mouse look
+  - Position sync with ASCII player state
+- [ ] **Code Snippet:** Free-cam implementation (20 lines)
+  - Fly over the world
+  - Camera bounds and clipping
+- [ ] **Code Snippet:** Emoji/character rendering with FreeType (30 lines)
+  - Load font file (`uming.ttc`)
+  - Render character as textured quad
+  - Position in 3D space
+- [ ] **2D Rendering (Future):**
+  - Sprite-based rendering mode
+  - Tile maps rendered as 2D graphics
+  - UI overlays (health bars, inventories)
+- [ ] **3D Rendering (Future):**
+  - Full 3D game support
+  - Model loading (OBJ/GLTF)
+  - Lighting and shadows
+  - Physics engine integration
+- [ ] **TPM Principles in GL-OS:**
+  - Same Piece state files drive 3D world
+  - Same 12-step pipeline (just different renderer)
+  - Same ops and modules work unchanged
+  - "Delete a character in text → 3D model disappears"
+- [ ] **Windows Compatibility Note:**
+  - GLFW is cross-platform (Windows/Linux/macOS)
+  - OpenGL drivers differ (Mesa vs NVIDIA vs Intel)
+  - FreeType is cross-platform
+  - Reference: `pieces/display/windows_renderer.c`
+- [ ] **Developer Example:** Adding a new 3D model to GL-OS
+  - Step 1: Place model file in `pieces/display/models/`
+  - Step 2: Map ASCII character to model in config
+  - Step 3: Test with `button.sh debug`
+  - Step 4: Verify in GL-OS window
+- [ ] **Future Vision:**
+  - GL-OS as primary game engine
+  - ASCII as "debug view" / "low-spec mode"
+  - Seamless switching between 2D/3D/ASCII
+  - Multi-monitor support (ASCII on one, GL on other)
+  - VR/AR potential (TPMOS in virtual reality)
+
+---
+
+### CH9: The Guardians (Testing & Simulation) [RENUMBERED, was CH7]
+**Current:** 1 code block (PAL script)
+**Add:**
+- [ ] **Code Snippet:** Testing bot FSM implementation (pseudo-C, 40 lines)
+  - States: IDLE, NAVIGATING, INTERACTING, ASSERTING
+  - State transition logic
+- [ ] **Code Snippet:** Bot navigation logic (20 lines)
+  - Pathfinding (simple A* or greedy)
+  - Tile interaction
+- [ ] **Code Snippet:** Ledger analysis - how bots read `master_ledger.txt`
+- [ ] **PAL Script Examples:**
+  - [ ] Testing a user profile creation flow
+  - [ ] Testing P2P-NET connection (link to CH10)
+  - [ ] Testing zombie AI behavior (link to fuzz-op, CH7)
+- [ ] **Developer Example:** Writing your first test bot
+  - Step 1: Define test scenario in PAL
+  - Step 2: Run bot with `prisc+x test_scenario.asm`
+  - Step 3: Check ledger for pass/fail
+  - Step 4: Iterate
+
+---
+
+### CH10: The Great Expansion (AI, LSR, & P2P) [RENUMBERED, was CH8]
+**Current:** 0 code blocks (MAJOR GAP)
+**Add:**
+- [ ] **P2P-NET Implementation (NEW SECTION - 2-3 pages):**
+  - [ ] **Code Snippet:** `p2p_manager.c` - Multi-agent orchestration (40 lines)
+    - Shows: profile switching, wallet management, network state
+  - [ ] **Code Snippet:** `connect_peer.c` - P2P node connection (30 lines)
+    - Shows: socket creation, peer discovery, handshake
+  - [ ] **Code Snippet:** `broadcast_join.c` - Joining the network (20 lines)
+  - [ ] **Code Snippet:** `check_inbox.c` / `compose_message.c` - Mail Piece system (25 lines)
+  - [ ] **Architectural Diagram:** P2P network topology (ASCII art)
+  - [ ] **File Format:** Blockchain block structure
+    ```
+    [BLOCK]
+    index=42
+    timestamp=1773622576
+    prev_hash=abc123...
+    transactions=tx_001,tx_002
+    nonce=12345
+    ```
+  - [ ] **Developer Example:** Creating a P2P identity
+    - Step 1: `p2p_manager` creates wallet Piece
+    - Step 2: `connect_peer` joins network
+    - Step 3: `compose_message` sends first message
+    - Step 4: `check_inbox` receives replies
+- [ ] **Smart Contract Examples:**
+  - [ ] PAL script: Direct marketing contract ("Like = Contract")
+    ```
+    ; like_contract.asm
+    call user::create_profile "buyer"
+    call user::create_profile "seller"
+    OP p2p::escrow_create "item_001" "buyer" "seller"
+    call p2p::escrow_confirm "item_001"
+    call p2p::escrow_release "item_001" "seller"
+    ```
+  - [ ] File-based escrow state machine (`state.txt` format)
+- [ ] **Dividend Points Data Structure:**
+  - How Div-Points are stored in Piece state
+  - Transaction ledger format
+- [ ] **AI-Labs Integration:**
+  - [ ] Code Snippet: `ai_manager.c` excerpt (if exists, or pseudo-code)
+  - [ ] How LLMs read/write Pieces
+  - [ ] Knowledge distillation pipeline (conceptual + file format)
+- [ ] **LSR Simulation:**
+  - [ ] Code Snippet: Dynamic R&D - how AI generates new `.pdl` files
+  - [ ] Mooncrete example (from Scholar's Corner) - show actual `.pdl`
+  - [ ] Corporate economy - how companies are Pieces
+
+---
+
+### CH11: The Infinite Loop (Recursive Forge) [RENUMBERED, was CH9]
+**Current:** 0 code blocks
+**Add:**
+- [ ] **Code Snippet:** NAND gate as a Piece (`.pdl` example)
+  ```
+  META | piece_id | nand_gate_01
+  STATE | input_a | 0
+  STATE | input_b | 0
+  STATE | output | 1
+  METHOD | evaluate | pieces/apps/playrm/ops/+x/nand_eval.+x nand_gate_01
+  ```
+- [ ] **Code Snippet:** NAND evaluation op (15 lines of C)
+  ```c
+  int a = get_state_int(piece_id, "input_a");
+  int b = get_state_int(piece_id, "input_b");
+  int out = !(a && b);
+  set_state_int(piece_id, "output", out);
+  ```
+- [ ] **Code Snippet:** PAL auto-battler script (20 lines)
+- [ ] **Code Snippet:** Circuit simulation loop (30 lines)
+  - Clock pulse mechanism
+  - Gate evaluation order
+  - State propagation
+- [ ] **Developer Example:** Building a 4-bit adder from NAND gates
+
+---
+
+### CH12: The Simulation Theater [RENUMBERED, was CH10]
+**Current:** 0 code blocks
+**Add:**
+- [ ] **Code Snippet:** Cell Piece example (`.pdl` + `state.txt`)
+- [ ] **Code Snippet:** Reaction op (chemical interaction, 20 lines)
+- [ ] **Code Snippet:** Market simulation PAL script (15 lines)
+- [ ] **Code Snippet:** Predictor fast-time loop (pseudo-code, 25 lines)
+- [ ] **Architectural Note:** How simulations reuse the same 12-step pipeline
+- [ ] **Developer Example:** Creating a new simulation Piece
+
+---
+
+### CH13: Piecemark Labs & The Sovereign Venture [RENUMBERED, was CH11]
+**Current:** 0 code blocks
+**Add:**
+- [ ] **Code Snippet:** Smart contract template (PAL script, 20 lines)
+- [ ] **Code Snippet:** Onboarding bot PAL script (15 lines)
+- [ ] **Code Snippet:** Token/Div-Points data structure
+- [ ] **Business/Dev Bridge:** How business logic maps to code
+
+---
+
+### CH14: The Soul Pen & The Multiverse [RENUMBERED, was CH12]
+**Current:** 0 code blocks
+**Add:**
+- [ ] **No code needed** - purely narrative/lore
+- [ ] Reference back to key technical chapters
+
+---
+
+### CH15: Cross-Platform TPMOS [**OPTIONAL NEW CHAPTER**]
+**Purpose:** Dedicated guide for building/running TPMOS on Windows, Linux, and macOS.
+**Add:**
+- [ ] **Build Systems:**
+  - Linux: `gcc`, `make`, `compile_all.sh`
+  - Windows: MSYS2/MinGW, `compile_all.ps1`, Visual Studio (optional)
+  - macOS: Clang, Homebrew dependencies
+- [ ] **Platform-Specific Code:**
+  - Input: `keyboard_input_linux.c` vs `keyboard_input_win.c`
+  - Rendering: `renderer.c` vs `windows_renderer.c`
+  - Process: `fork()/exec()` vs `CreateProcess()`
+  - Paths: `/` vs `\`, `access()` vs `_access()`
+- [ ] **Cross-Platform Patterns:**
+  ```c
+  #ifdef _WIN32
+      #include <windows.h>
+      #define usleep(us) Sleep((us)/1000)
+      #define access _access
+      #define F_OK 0
+  #else
+      #include <unistd.h>
+  #endif
+  ```
+- [ ] **Fondu on Windows:**
+  - PowerShell installer vs bash script
+  - `.exe` vs `.+x` binary convention
+  - Registry vs file-based op discovery
+- [ ] **Testing Across Platforms:**
+  - Which ops are cross-platform (most are)
+  - Which ops need platform-specific versions (input, rendering)
+  - CI/CD considerations
+- [ ] **Developer Setup Guides:**
+  - Linux: Already working (current setup)
+  - Windows: MSYS2 installation, GCC setup, compile steps
+  - macOS: Xcode tools, Homebrew, compile steps
+
+---
+
+## GLOSSARY Updates
+**Add:**
+- [ ] `.+x` - TPMOS binary extension (Linux); `.exe` on Windows
+- [ ] `CreateProcess()` - Windows equivalent of `fork()/exec()`
+- [ ] `Fondu` - Package manager for TPMOS ops and apps
+- [ ] `P2P-NET` - Decentralized networking layer
+- [ ] `Div-Points` - Dividend Points, earned through participation
+- [ ] `Escrow` - File-based contract enforcement mechanism
+- [ ] `Block` - Unit of blockchain ledger
+- [ ] `Wallet Piece` - P2P identity container
+- [ ] `PAL` - Prisc Assembly Language, TPMOS scripting language
+- [ ] `prisc+x` - PAL interpreter binary
+- [ ] `GL-OS` - OpenGL-based visualizer for TPMOS
+- [ ] `Frame Bridge` - Sync mechanism between ASCII and GL rendering
+- [ ] `op-ed` - TPMOS piece editor application
+- [ ] `fuzz-op` - TPMOS pet simulation project
+
+---
+
+## INDEX.md Updates
+**Update:**
+- [ ] Version number: v02.03 → v03.01 (Code-Complete Edition)
+- [ ] Add 3 new chapters: CH6 (PAL), CH7 (fuzz-op & op-ed), CH8 (GL-OS)
+- [ ] Renumber CH9-CH14
+- [ ] Add optional CH15 (Cross-Platform)
+- [ ] Update Mermaid dependency graph
+
+---
+
+## make_tpmos_pdf.py Updates
+**Modify:**
+- [ ] Update version string: `v02.03` → `v03.01`
+- [ ] Update cover page: "Version 03.01 (Code-Complete Edition)"
+- [ ] **CRITICAL:** Add code block rendering with syntax highlighting
+  - Detect ```` ```c ```` and ```` ``` ```` blocks
+  - Render with monospace font (Courier or similar)
+  - Add light background color for code blocks (e.g., light gray)
+  - Preserve indentation exactly
+  - Attempt basic syntax highlighting (keywords, strings, comments)
+    - If highlighting is too complex, fall back to plain monospace
+  - Use Chinese characters for comments/strings if they render better
+  - Add page break before code block if it won't fit on current page
+- [ ] Test PDF output with code blocks - remove highlighting if it breaks
+- [ ] Ensure Chinese font (`uming.ttc`) supports code characters
+
+---
+
+## IMPLEMENTATION ORDER
+
+### Phase 1: Core Code Snippets (Highest Priority)
+1. CH3: 12-step pipeline code (4 snippets)
+2. CH4: CPU-safe template + move_entity op (2 snippets)
+3. CH2: location_kvp parsing + stat() guard (2 snippets)
+
+### Phase 2: New Chapters (Core Additions)
+4. CH6: PAL chapter (full chapter, 6+ snippets)
+5. CH7: fuzz-op & op-ed chapter (full chapter, 6+ snippets)
+6. CH8: GL-OS chapter (full chapter, 6+ snippets)
+
+### Phase 3: Windows + Fondu + P2P
+7. CH4: Windows compatibility section
+8. CH4: Fondu deep-dive with code
+9. CH10: P2P-NET implementation (6+ snippets)
+10. CH15: Cross-Platform chapter (optional)
+
+### Phase 4: Remaining Chapters
+11. CH5: App factory code examples
+12. CH9: Testing bot code
+13. CH11-CH13: Simulation/business code
+
+### Phase 5: Polish
+14. Update GLOSSARY, INDEX, QUIZ/ANSWER_KEY
+15. Update make_tpmos_pdf.py for code rendering + highlighting
+16. Generate PDF and verify code blocks render correctly
+
+---
+
+## ESTIMATED SCOPE
+- **New chapters:** 3-4 (PAL, fuzz-op/op-ed, GL-OS, optional Cross-Platform)
+- **New code snippets:** ~40-50 C code blocks (currently 0)
+- **New PAL examples:** ~10-15 script examples
+- **New sections:** Windows compat (5 chapters), Fondu (2 chapters), P2P (1 chapter)
+- **New pages:** ~60-80 pages of code examples + explanations
+- **Total textbook growth:** ~70-100% larger (15 chapters vs 12)
+
+---
+
+## FILES TO MODIFY/CREATE
+1. `CH2_FILE_SYSTEM.md` - Add code snippets + Windows section
+2. `CH3_PIPELINE.md` - Add 4 code snippets
+3. `CH4_DEVELOPMENT.md` - Add CPU-safe template, move_entity, Windows, Fondu
+4. `CH5_SYSTEM_APPS.md` - Add app code examples
+5. `CH6_PAL.md` - **NEW FILE** - Full PAL chapter
+6. `CH7_FUZZ_OP_OP_ED.md` - **NEW FILE** - Flagship apps chapter
+7. `CH6_GL_OS.md` → `CH8_GL_OS.md` - **RENAME + EXPAND** - Full GL-OS chapter
+8. `CH7_TESTING.md` → `CH9_TESTING.md` - **RENAME** - Add bot/PAL code
+9. `CH8_FUTURE_HORIZONS.md` → `CH10_FUTURE_HORIZONS.md` - **RENAME** - Add P2P code
+10. `CH9_RECURSIVE_FORGE.md` → `CH11_RECURSIVE_FORGE.md` - **RENAME** - Add circuit code
+11. `CH10_SIMULATION_THEATER.md` → `CH12_SIMULATION_THEATER.md` - **RENAME** - Add sim code
+12. `CH11_BUSINESS_STRATEGY.md` → `CH13_BUSINESS_STRATEGY.md` - **RENAME** - Add contract code
+13. `CH12_SOUL_PEN.md` → `CH14_SOUL_PEN.md` - **RENAME**
+14. `CH15_CROSS_PLATFORM.md` - **NEW FILE** (optional)
+15. `GLOSSARY.md` - Add new terms
+16. `INDEX.md` - Update version + chapter list
+17. `make_tpmos_pdf.py` - Add code block rendering + highlighting
+
+---
+
+## APPROVAL REQUIRED
+Please review this plan and approve. Key decisions:
+1. **Chapter order:** Does CH6=PAL, CH7=fuzz-op/op-ed, CH8=GL-OS make sense? Or should GL-OS come before the apps chapter?
+2. **CH15 Cross-Platform:** Should this be a full chapter, or keep Windows notes integrated into existing chapters (CH2, CH4, etc.)?
+3. **Code depth:** Full source files (e.g., entire 250-line move_entity.c) or curated excerpts (30-50 lines)?
+4. **PDF highlighting:** If syntax highlighting breaks with Chinese font support, should I fall back to plain monospace with background color?
+
+---
+Ready to implement upon approval.

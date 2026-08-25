@@ -1,0 +1,15 @@
+SECTION|KEY|VALUE
+META|army_id|default_1v1
+META|board|12x12
+UNIT|side0|king|6|2
+UNIT|side0|soldier|2|0
+UNIT|side0|soldier|7|0
+UNIT|side0|soldier|3|2
+UNIT|side0|wizard|4|0
+UNIT|side0|farmer|9|0
+UNIT|side1|king|6|9
+UNIT|side1|soldier|2|11
+UNIT|side1|soldier|7|11
+UNIT|side1|soldier|3|9
+UNIT|side1|wizard|4|11
+UNIT|side1|farmer|9|11

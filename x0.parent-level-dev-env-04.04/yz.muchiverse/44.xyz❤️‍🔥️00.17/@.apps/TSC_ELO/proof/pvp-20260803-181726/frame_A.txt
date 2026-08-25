@@ -1,0 +1,21 @@
++============================================================+
+|                    T R U E   S W O R D S                    |
+|                         C L A S H                           |
++============================================================+
++================================================================+
+|   T R U E   S W O R D S   C L A S H                            |
++================================================================+
+|                                                                |
+|  Mode: HUMAN vs HUMAN  (no match started yet)                  |
+|                                                                |
+|  Waiting for the SETUP WIDGIT...                               |
+|  Use the MATCH SETUP window to pick HvH / HvC / CvC            |
+|  and an opponent rating, then press START MATCH.               |
+|                                                                |
+|  log: 2026-08-02T18:49:11|1|referee|0|setup:HvC:1000:1100|setup|
+
++============================================================+
+ 1:strike   2:heavy   3:heal   4:block   (Ctrl+C to quit)
+
++=========================================================+
+Nav > _

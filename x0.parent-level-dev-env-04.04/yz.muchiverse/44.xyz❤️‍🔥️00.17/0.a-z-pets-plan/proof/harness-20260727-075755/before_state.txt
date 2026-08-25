@@ -1,0 +1,13 @@
+hunger=100
+energy=100
+poop_count=0
+asleep=0
+grid_x=5
+grid_y=5
+z=0
+facing=right
+tick_seq=1
+species_id=sp_test
+species_name=TestPet
+name=test_pet_az
+skills=

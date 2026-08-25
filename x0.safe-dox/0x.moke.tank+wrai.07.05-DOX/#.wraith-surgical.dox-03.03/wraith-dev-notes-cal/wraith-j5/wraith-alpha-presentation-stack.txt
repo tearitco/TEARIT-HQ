@@ -1,0 +1,124 @@
+# WRAITH-ALPHA PRESENTATION STACK
+Date: 2026-06-05
+
+Purpose:
+Define how the Wraith Alpha desktop should be presented over time, starting
+with ASCII and extending later into RGB/GL/HDMI-style output.
+
+Rollback note:
+- the repo is currently on the older Wraith Alpha baseline
+- the registry/dock details below describe the target presentation stack, not
+  the currently active implementation
+- current live baseline: launch, minimize, and close are back, but toolbar
+  restore is still unresolved and should not be described as proven live
+
+Current rule:
+- the ASCII frame is the canonical presentation artifact
+- it must remain readable, inspectable, and faithful to desktop state
+- it should evolve into a framed GUI-style desktop, not a plain menu list
+
+ASCII target shape:
+- framed desktop layout
+- window title bars
+- top-left focus/index markers that are keyboard jump targets
+- inline title-bar indices for window focus and control selection
+- top-right window controls such as `[-]`, `[o]`, `[x]`
+- title chrome stays visible while the body region can collapse independently
+- taskbar or launcher strip
+- nested desktop windows with their own indexable controls
+- launcher entries such as `Terminal` that open project instances
+- overflow panels should expose nav-bracketed, keyboard-indexable scroll-thumb
+  controls so `^` / `v` actions are part of the same index model as the rest of
+  the desktop
+
+Presentation stack:
+1. Manager writes canonical desktop/window state.
+2. Parser renders the ASCII frame from that state.
+3. ASCII frame is the source artifact for any later converters.
+4. A future converter can translate the ASCII frame to RGB data.
+5. A GL presenter or HDMI-style ingestion path can consume the RGB output.
+
+Important constraint:
+- do not build a second UI model for RGB
+- do not let the RGB path invent different desktop meaning
+- the RGB path should present the same desktop, not a new one
+- the keyboard index model must stay visible and usable in every presentation
+  layer
+- the current ASCII desktop shape is provisional until running code and user
+  approval confirm the final control semantics
+
+Why this matters:
+- future agents need one canonical view to debug
+- accessibility indices and window controls must mean the same thing in every
+  presentation layer
+- ASCII-first keeps the desktop honest while the visual stack matures
+
+Non-goals for now:
+- do not implement the RGB converter before the ASCII desktop is stable
+- do not replace the ASCII source of truth with a graphics-only view
+- do not hardcode frame geometry that cannot be represented in the ASCII view
+
+If it's not in the ASCII frame contract, it should not exist yet in RGB.
+7. Launch UI Semantics
+- The visible Wraith launcher UI is a command surface, not a separate app runtime.
+- A context window, launcher panel, or terminal-based picker may appear inside the ASCII desktop, but it must still emit standard project-launch commands.
+- Booting empty is the target default. Launching `Terminal` or any other project is a dock/launcher action, not a new project type.
+- Keep launch semantics distinct from local window controls such as collapse, maximize, or quit.
+- The same ASCII frame can present launch targets and window chrome, but those targets must still resolve through the standard project launch path.
+- `Terminal` is a regular launchable project target in the toolbar and should open through the same launch path as any other project.
+- Launching `Terminal` again is allowed if the runtime supports multiple instances.
+- Do not treat terminal launch as a privileged UI mode; it is just another project surface.
+
+8. Project Surface Model
+- There is no separate `wraith-projects` category in the final UI model.
+- The launcher/toolbar enumerates projects directly.
+- `Terminal` is one project among many and may itself launch other projects using the same launch path.
+- The desktop boots empty by default; opening a project is a runtime action, not a category distinction.
+- Recursive launching is allowed if the runtime supports it, so `Terminal` can open `Terminal` just like any other project can open any other project.
+
+9. Lower Toolbar Presentation
+- The lower toolbar is the shared indexed strip for projects.
+- `Terminal` must render there as a normal selectable project target with no proc number.
+- Each `Terminal` click should create a new proc-numbered instance in the visible model.
+- Minimized projects use the same strip and the same index model for restore, and they should carry proc numbers in the visible label.
+- Keep the lower strip visually distinct from the main desktop chrome, but do not treat it as a separate project category.
+- Do not render unindexed filler like `Start` in the dock; only real targets belong there.
+- All launch/restore entries in the strip should remain keyboard-jumpable by index.
+- Restore labels should preserve proc numbers so the user can reopen the exact minimized instance.
+- Any content region that overflows its viewport should expose the same kind of
+  bracketed thumb-scroll controls so scrolling stays keyboard-indexable instead
+  of becoming pointer-only chrome.
+
+10. Debug Presentation
+- Debug and keyboard-proof output should sit below the desktop frame, not inside the desktop chrome.
+- Keep the proof visible while hardening, but keep it visually separated from the desktop surface itself.
+- Once the desktop is stable, the debug block can be reduced or silenced without altering the desktop model.
+
+11. Desktop Dock Presentation
+- Use Option A: the dock is part of the desktop surface, not an extra launcher band.
+- The dock belongs below the window chrome/body and above the debug block.
+- The dock is the shared strip for launch targets and minimized instances.
+- Keep it keyboard-indexable and visually distinct from the debug area beneath it.
+
+12. Terminal Project Presentation
+- `Terminal` should render through its own project layout, not as a permanently auto-opened desktop fixture.
+- The desktop boots empty first and then launches `Terminal` through the standard project path.
+- Auto-open terminal behavior is not part of the steady-state contract.
+- Future terminal instances should render as proc-numbered project instances, like any other project surface.
+
+13. Fullscreen Presentation
+- Fullscreen hides the desktop surface and leaves only the active window visible.
+- The dock/taskbar and desktop chrome should disappear while fullscreen is active.
+- Half-screen is the normal resizable window presentation.
+- Mouse-based manual resizing can come later for half-screen windows, but it should not change the fullscreen contract.
+## Toolbar Registry
+- The toolbar is a projected instance registry, not a fixed hardcoded control row.
+- Minimized project windows appear there as restore targets.
+- Each toolbar entry should carry enough manager-owned state to restore the exact instance.
+- `Terminal` remains the bootstrap launcher label; the registry itself must support multiple projects and multiple minimized windows.
+
+### Traits Guidance
+- Use a traits-like manager registry to describe each toolbar entry.
+- Keep the projection flexible so incorrect assumptions can be corrected in the manager without changing the layout contract.
+- Prefer additive fields over renaming or removing the projection shape.
+- The layout should render whatever registry items the manager publishes.

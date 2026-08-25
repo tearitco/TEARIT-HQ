@@ -1,0 +1,113 @@
+# main_loop_chtpm.pal - muchi-pals CHTPM-MODULE VARIANT, modeled
+# directly on pal-chain's own pal/main_loop_chtpm.pal (real, live-
+# verified precedent for this whole family's href+${piece_methods}
+# chtpm standard - see xyzos-standards.txt sec.6/12/16/18/19). ONE
+# persistent process, shared identically by EVERY .chtpm layout's own
+# <module> tag - screen switching is chtpm's own real href job, never
+# this script's (sec.18); this script never restarts across a
+# navigation, only chtpm_parser_pal's own liveness-checked
+# launch_module() guard keeps it that way (sec.19). Supersedes this
+# project's own earlier interact+module/"Control Pets" version (sec.16
+# retired that pattern for pure discrete-menu games like this one, in
+# favor of ${piece_methods} - see xyzos-standards.txt sec.0-CORRECTED
+# item 3 and sec.16 for why <module>/<interact> themselves still stay).
+#
+#   - read_history reads pieces/apps/player_app/interact_relay.txt via
+#     the literal-path 3-arg form (x1 = read cursor, never persisted
+#     beyond this run - a fresh module launch always starts at 0). See
+#     this project's own system/prisc+x.c top-of-file comment for why a
+#     SEPARATE file from history.txt is required here (double-dispatch
+#     bug, not a style choice).
+#   - muchi_menu_input 0, every loop iteration, cheaply re-derives the
+#     current screen from pieces/display/current_layout.txt (a genuine
+#     no-op when nothing changed - see that op's own header comment),
+#     only bumping pieces/display/muchi_screen_changed.txt on a real
+#     screen change.
+#   - read_pos's own literal-path argument (fixed this same session -
+#     see system/prisc+x.c's own "LOCAL FIX" comment on read_pos's
+#     parser; it silently ignored any path before this and always
+#     measured history.txt instead) gates muchi_compose_frame/hit_frame
+#     so idle ticks (~33/sec) don't re-render when nothing happened.
+#   - x3/x4 epoch tick counter: carried over from this project's own
+#     original main_loop_chtpm.pal/main_loop.pal (every ~100 loop
+#     iterations * ~30ms sleep =~ 3s) - real pet metabolism (hunger/
+#     energy/poop, tick_pets.c) must keep advancing regardless of which
+#     screen is showing or whether any key was pressed; losing the TICK
+#     ITSELF would be a real functionality regression, not just a UI
+#     reskin.
+#   FLICKER FIX (mass-refactor 2026-07-26, direct user report + direct
+#   correction: "there shouldn't be a forced re render. we should render
+#   when frame changes and marker file is appended. see 1.tpmos projects
+#   if this is unfamiliar 2 u"): do_tick used to `j render` unconditionally
+#   after every tick_pets call, forcing a full compose_frame/hit_frame
+#   (and therefore a renderer_pulse.txt bump -> a visible scroll-spammed
+#   "FRAME UPDATE" redraw) every ~3s even when nothing on the CURRENT
+#   screen changed - real 1.TPMOS's own render philosophy (and this
+#   file's own sibling, system/chtpm_parser_pal.c's giant "RENDER
+#   TRIGGER - MARKER-DRIVEN, SINGLE SOURCE OF TRUTH" comment: "compose_
+#   frame() ONLY fires when frame_changed.txt grows... DO NOT add dirty=1
+#   ... caused triple-rendering") is marker-driven only: a render happens
+#   because something that's actually visible changed and appended to a
+#   marker file, never on a bare timer. do_tick now falls through to
+#   after_tick instead of forcing render: the pet state itself keeps
+#   decaying silently every ~3s (real, unaffected), but the visible frame
+#   only redraws on genuine player input (muchi_menu_input via a keypress
+#   or a real screen change), same as every other idle tick already did.
+# DOUBLE-RENDER FIX (mass-refactor 2026-07-26, "flicker on nearly every
+# keypress" - root cause found via direct pty frame capture on an href
+# navigation: two distinct FRAME UPDATE prints for one Enter keypress,
+# the FIRST showing "[No Methods]" and the SECOND showing the real
+# populated screen). This is a fresh launch every time (this module gets
+# killed+relaunched on every href transition - see chtpm_parser_pal.c's
+# own cleanup_module() comment), and the unconditional muchi_compose_frame
+# below USED TO run before this module's own first muchi_menu_input(0)
+# idle-sync call - meaning the very first compose read piece.pdl/state
+# content from BEFORE this screen's own dynamic METHOD rows had ever been
+# generated for it (regenerate_pets_piece_pdl/write_chtpm_bridge, both
+# inside muchi_menu_input.c, only run once muchi_menu_input actually
+# executes). Running the idle-sync ONCE before the first compose - not
+# just every loop iteration afterward - means the FIRST render is already
+# correct, with no stale/incomplete flash beforehand.
+li x1, 0
+li x3, 0
+li x4, 100
+
+li x9, 0
+muchi_menu_input x9
+muchi_compose_frame
+hit_frame
+read_pos x7, "pieces/display/muchi_screen_changed.txt"
+
+loop:
+li x9, 0
+muchi_menu_input x9
+read_pos x8, "pieces/display/muchi_screen_changed.txt"
+beq x7, x8, check_key
+addi x7, x8, 0
+j render
+
+check_key:
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, no_key
+muchi_menu_input x2
+j render
+
+no_key:
+addi x3, x3, 1
+beq x3, x4, do_tick
+j after_tick
+
+do_tick:
+tick_pets
+li x3, 0
+j after_tick
+
+after_tick:
+sleep 30000
+j loop
+
+render:
+muchi_compose_frame
+hit_frame
+sleep 30000
+j loop

@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | +-demo
+META         | version            | 1.0
+META         | entry_layout       | projects/+-demo/layouts/+-demo.chtpm
+STATE        | starting_map       | map_01
+STATE        | player_piece       | xlector
+STATE        | current_world      | world_01
+RESPONSE     | default            | Project +-demo loaded.

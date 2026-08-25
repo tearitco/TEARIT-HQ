@@ -1,0 +1,33 @@
+# handoff-j18.txt - XO-PET V1 PoC Handoff
+
+## Current Status: PHASE 4+ (Troubleshooting Discovery)
+The project is implemented, but currently experiencing a "State Gap" where the GUI variables (Methods, Stats, List) appear empty.
+
+### Diagnosis:
+1.  **Manager Inactivity**: The Manager is not currently running because the `xo-pet.chtpm` layout was missing the `<module>` tag required to launch it.
+2.  **Path Resolution**: The Manager's internal `project_root` resolution was potentially nesting directories (`manager/manager/gui_state.txt`), preventing the Parser from finding the state.
+3.  **Discovery**: CHTPM requires a project to explicitly launch its brain. Without the `<module>` tag, the orchestrator has nothing to "fork."
+
+### Immediate Fixes:
+- Added `<module>${module_path}</module>` to the layout.
+- Refactored `xo-pet_manager.c` to use safer relative path discovery for `gui_state.txt`.
+- Ensuring `piece_methods` and `pet_list` variables are published in the first frame.
+
+---
+*Update: Handoff modified to include PoC stability fix.*
+
+### How to Run:
+1.  Navigate to `x0.moke-pet-project-2.2/x0.5-liz.fiter4-mew-00.02/projects/xo-pet-v1/`.
+2.  Execute `./run_xo-pet.sh` for the legacy PoC path.
+3.  Execute `./../../../xo-pet-launch.sh auto reset` for a clean launch, or `resume` to preserve the current runtime scratch files.
+3.  In the GUI:
+    - Use numbers 2-5 to control the Xelector.
+    - Once a pet is possessed, use 2-6 to control the pet.
+    - Press 9 to advance the simulation when `sim_status=RUNNING`.
+
+### Pending Improvements:
+- **AI Turn Visualization**: Currently, AI turns happen instantly during the End Turn phase. We could add a slight delay or frame-by-frame projection of AI actions.
+- **Naked Control Refinement**: Integrating the `bot-xo5` cognition to allow the pet to choose its own buttons when not under manual control.
+
+---
+*Status: Stable PoC. Ready for experimentation.*

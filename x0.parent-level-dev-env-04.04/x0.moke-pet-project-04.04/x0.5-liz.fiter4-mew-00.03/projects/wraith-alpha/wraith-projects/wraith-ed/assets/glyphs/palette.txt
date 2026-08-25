@@ -1,0 +1,7 @@
+# Glyph palette for first-pass Wraith Ed.
+. grass
+T tree
+R rock
+# wall
+@ actor
+! event

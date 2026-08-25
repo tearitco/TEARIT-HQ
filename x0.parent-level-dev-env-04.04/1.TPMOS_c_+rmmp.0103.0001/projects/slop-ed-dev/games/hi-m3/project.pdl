@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | slop-ed-dev/games/default-0000
+META         | version            | 1.0
+META         | entry_layout       | pieces/apps/slop-ed-dev/layouts/slop-ed-dev.chtpm
+
+STATE        | starting_map       | map_0001
+STATE        | player_piece       | hero
+STATE        | current_world      | world_01
+STATE        | current_map        | map_0001
+
+RESPONSE     | default            | Project slop-ed-dev/games/default-0000 Saved.

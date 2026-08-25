@@ -1,0 +1,15 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | loader
+META         | version            | 1.0
+META         | determinism        | strict
+
+STATE        | name                 | Project Loader
+STATE        | status               | active
+
+METHOD       | move                 | void
+METHOD       | gem-xo | LOAD_PROJECT:gem-xo
+METHOD       | template | LOAD_PROJECT:template
+METHOD       | wraith-alpha | LOAD_PROJECT:wraith-alpha
+METHOD       | wraith-alpha.bak.20260713-1712 | LOAD_PROJECT:wraith-alpha.bak.20260713-1712
+METHOD       | xo-pet-v1 | LOAD_PROJECT:xo-pet-v1

@@ -1,0 +1,43 @@
+# AOW-2D Project Handoff: Focus on 2D Tile-Based Gameplay
+Date: 2026-04-28
+Author: Gemini CLI (Tired but Thorough)
+Status: DEVELOPMENT (Phase 2 In Progress - Z-Level Management)
+
+## 😴 Current State: The Map is 2D, the World has Depth
+
+Alright, after all that work, here's the breakdown for `aow-2d`. We're aiming for a classic 2D tile-based experience, like a board game. The "3D screen" observation was a slight misinterpretation – we're rendering everything in 2D ASCII, but the underlying game state *does* include Z-levels. Think of it like layers on a map, rather than a fully 3D environment.
+
+### 🧠 The Brain (`aow-2d_manager.c`)
+- **Turn-Based Logic**: Fully implemented, handles player turns (Alpha, Bravo, Charlie, Delta).
+- **Action Economy**: Limited to one action per turn (Tax, Produce, Move).
+- **Capital Actions**: Basic `Tax` logic is in place (income = 10 - units).
+- **Z-Level Awareness**: The manager is aware of Z-levels in the game state, and we've prepared `state.txt` to store `z_level` for pieces.
+- **Input Handling**: Currently polls `history.txt` for commands.
+
+### ⚙️ The Muscles (Ops)
+- **Map Generation**: `gen_map.+x` creates a 25x25 grid with islands and player capitals, all on Z-level 0.
+
+### 💾 Persistence
+- Player Capitals (`capital_alpha`, etc.) are sovereign Pieces, storing credits and unit counts in their `state.txt` files.
+
+### 🗺️ Current Z-Level Implementation
+- **State Management**: Z-levels are stored in the Piece's `state.txt` (e.g., `z_level=0`).
+- **Rendering Abstraction**: The ASCII map renders the current Z-level. Higher Z-levels are conceptually "above" lower ones.
+- **User Interaction**:
+    - The plan is to map 'x' and 'z' keys to cycle through Z-levels for controllable pieces (like planes, when implemented).
+    - The manager logic will need to parse these inputs and update the piece's `z_level` in its `state.txt`.
+    - Pieces will only be allowed to change Z-levels if they have the appropriate 'airborne' or 'submersible' trait (to be defined).
+
+### 🚀 Future Roadmap
+1.  **Production Engine**: Implement `produce_unit.+x` to spend credits.
+2.  **Combat**: Build `combat.+x` Op using coin-flip logic.
+3.  **Unit Movement**: Implement pathfinding and Z-level aware movement for specific unit types (like planes).
+4.  **UI Update**: Modify `main.chtpm` to display the current Z-level and potentially allow Z-level switching via UI buttons.
+
+### 🤝 How to Continue
+- **Core Logic**: Modify `aow-2d_manager.c` to handle 'x'/'z' input for Z-level changes and validate piece permissions.
+- **Piece State**: Ensure all relevant pieces have a `z_level` entry in their `state.txt`.
+- **Rendering Integration**: Update `main.chtpm` and potentially `render_map.+x` to visually represent Z-levels if needed (e.g., through text or color changes).
+- **Recompile**: Run `sh button.sh c` from the TPMOS root after code changes.
+
+*"The Z-axis is just another dimension of state. If it's not in a file, it doesn't exist."*

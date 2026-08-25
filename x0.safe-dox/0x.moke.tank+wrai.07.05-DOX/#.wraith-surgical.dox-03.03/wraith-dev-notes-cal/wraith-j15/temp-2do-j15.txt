@@ -1,0 +1,96 @@
+# Wraith Alpha Mouse Sync & Visual Debug - 2DO (2026-06-15)
+
+## Goal
+Synchronize mouse click coordinates with navigation locations and implement a visual `<` marker at the click location for debugging.
+
+## Phase 1: Manager State Enhancement
+- [ ] Update `wraith-alpha_manager.c`:
+    - [ ] Add `g_last_click_x` and `g_last_click_y` global variables (initialized to -1).
+    - [ ] In `handle_mouse(int btn, int x, int y)`:
+        - [ ] If `btn == 0` (Left Click), update `g_last_click_x = x` and `g_last_click_y = y`.
+    - [ ] In `write_projection(FILE *f, int last_key)`:
+        - [ ] Export `last_click_x` and `last_click_y` to the state files.
+
+## Phase 2: Parser Visual Marker
+- [ ] Update `chtpm_parser.c`:
+    - [ ] In `compose_frame()`:
+        - [ ] Load `last_click_x` and `last_click_y` from variables (after `load_vars()`).
+        - [ ] After `strncpy(last_rendered_frame, frame, MAX_BUFFER - 1);`, implement an overlay loop:
+            - [ ] Iterate through `last_rendered_frame` using `r`, `c` counters.
+            - [ ] If `r == last_click_y` and `c == last_click_x`, replace the character at that offset with `<`.
+            - [ ] Note: Ensure this doesn't overwrite a newline and only happens if coordinates are valid (> 0).
+    - [ ] Enhance `handle_mouse(int btn, int x, int y)` logging:
+        - [ ] Log the character found at the click coordinate to `debug.txt` to see if it matches expectations.
+
+## Phase 3: Layout & Debug UI
+- [ ] Update `alpha-shell.chtpm`:
+    - [ ] Add `Last Click: X:${last_click_x} Y:${last_click_y}` to the `[ DESKTOP DEBUG ]` section.
+
+## Phase 4: Validation
+- [ ] Run `./button.sh compile` to rebuild.
+- [ ] Launch Wraith and click around.
+- [X] Verify that `<` appears exactly where the mouse pointer was during the click.
+    - [!] ISSUE: Clicking the "2" nav (window toolbar) causes the `<` to appear at the bottom of the window. Possible Y-coordinate inversion or offset.
+- [ ] Verify that clicking the taskbar "Terminal" or window controls ([o], [-], [x]) triggers the correct actions.
+- [ ] If coordinates are off, adjust the `r`/`c` counting logic in `chtpm_parser.c`.
+
+## Phase 5: Fix Y-Coordinate Displacement
+- [X] Investigate `render_element` and `compose_frame` in `chtpm_parser.c`.
+- [X] Check if panel titles or header logic add rows that shift the coordinate system.
+- [X] Verify if the terminal input daemon or SGR mode is sending 0-based or 1-based Y coordinates and if they match the parser's 1-based `r` counter.
+    - [!] Findings: X is off by +1 (Click 72 -> Marker 73). Y is off by +2 or more (Click 12 -> Marker 10).
+- [X] Implement robust logging in `chtpm_parser.c`:
+    - [X] In `handle_mouse` and `compose_frame`, log `(r, c)` and the character found at every step.
+- [X] Refactor overlay loop to handle short rows:
+    - [X] If `r == ly` and we reach `\n` before `c == lx`, pad the row with spaces in a temporary buffer before writing the marker.
+- [ ] Apply coordinate calibration:
+    - [ ] Test `lx - 1` and `ly - 2` (or whatever the logs reveal).
+
+## Phase 6: Calibration Target
+- [X] Update `alpha-shell.chtpm`:
+    - [X] Add `<button id="cal_target" label="[ CALIBRATE MOUSE ]" onClick="SET_ACTIVE:99" />` at a fixed location (e.g., Row 1 of GUI).
+- [X] Update `wraith-alpha_manager.c`:
+    - [X] Handle `action_idx == 99` by logging "CALIBRATION CLICK SUCCESS" with `g_mouse_x` and `g_mouse_y`.
+- [X] Fix the offset/inversion in `handle_mouse` and the debug overlay.
+    - [!] Calibration result: `OFFSET_Y = 7`.
+
+## Phase 7: Fix Hit-Testing & Corruption
+- [X] Decouple `last_rendered_frame` from Visual Markers:
+    - [X] In `chtpm_parser.c`, `compose_frame()`:
+        - [X] Capture `strncpy(last_rendered_frame, frame, MAX_BUFFER - 1)` **BEFORE** applying the visual marker and padding.
+- [X] Fix Visual Corruption:
+    - [X] Decoupling ensures `hit_zones` match the clean frame.
+- [X] Validation:
+    - [X] Verify mouse activation works (clicking buttons actually triggers actions).
+    - [X] Verify arrow navigation rendering returns to normal.
+
+## Phase 8: Two-Step Activation (Focus then Execute)
+- [X] Update `chtpm_parser.c`, `handle_mouse()`:
+    - [X] If `target_idx != -1`:
+        - [X] If `focus_index != target_idx`:
+            - [X] Set `focus_index = target_idx`.
+            - [X] Trigger a frame refresh.
+        - [X] If `focus_index == target_idx`:
+            - [X] Execute the `onClick` action.
+- [X] Validation:
+    - [X] First click on a button moves the `[>]` selector.
+    - [X] Second click on the same button activates it.
+
+## Phase 9: Restore Wraith Projects Launcher
+- [ ] Establish Wraith Project Registry:
+    - [ ] Create directory `projects/wraith-alpha/wraith-projects/`.
+    - [ ] Create `projects/wraith-alpha/wraith-projects/projects.kvp` with initial entries:
+        - `terminal=internal` (Special case for recursive launch)
+        - `blank-proj=projects/wraith-alpha/wraith-projects/blank/`
+- [ ] Create `projects/wraith-alpha/ops/get_wraith_launcher_op.c`:
+    - [ ] Read `projects/wraith-alpha/wraith-projects/projects.kvp`.
+    - [ ] Output dynamic CHTPM markup for the Terminal window body.
+    - [ ] First Item: `[ ].terminal` button -> `DESKTOP_ACTION:launch_terminal`.
+    - [ ] Subsequent Items: Buttons for each project in KVP -> `LOAD_PROJECT:name`.
+    - [ ] Format each line to be exactly 96 characters wide with `| |` and `|` borders.
+- [ ] Update `alpha-shell.chtpm`:
+    - [ ] Replace the 4 hardcoded `[ TERMINAL PROJECT ]` lines with `<op src="projects/wraith-alpha/ops/+x/get_wraith_launcher_op.+x" />`.
+- [ ] Validation:
+    - [ ] Open a Terminal window.
+    - [ ] Verify `[ ].terminal` appears first and launches a new `Terminal #n` instance.
+    - [ ] Verify other projects appear and can be selected/activated.

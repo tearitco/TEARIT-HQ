@@ -1,0 +1,11 @@
+last_message=Choose a clone.
+selected_avatar=
+last_screen=avatars
+pick_skin_idx=1
+pick_gender_idx=0
+pick_hair_idx=1
+pick_shirt_idx=3
+pick_pants_idx=0
+pick_height_idx=3
+pick_weight_idx=4
+picker_field=skin

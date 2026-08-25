@@ -1,0 +1,45 @@
+AI-LABS STRATEGIC PLAN (M21)
+=============================
+
+1. PROJECT GOAL
+---------------
+To create a "TPM-AI" laboratory for distilling knowledge, training local models, and managing multiple distinct chat instances.
+
+2. ARCHITECTURE (PROJECT-BASED)
+-------------------------------
+Path: `projects/ai-labs/`
+
+- manager/ai_orchestrator.+x: The brain that handles training and generation commands.
+- pieces/model_01/state.txt: Tracks the state of a specific "distilled" model (Loss, Epochs, Vocab size).
+- pieces/chat_pool/history.txt: Unified buffer for multiple chat instances.
+- projects/ai-labs/project.pdl: Global lab settings.
+
+3. SUB-OPTIONS & FEATURES
+-------------------------
+
+A. CHAT INSTANCE MANAGER
+- Ability to spawn "Piece-based" chat instances. Each instance is a directory with its own state and history.
+- Context: Each instance can have a different "personality" piece attached to it.
+
+B. KNOWLEDGE DISTILLATION LAB
+- Command: `vocab_only <corpus>` -> Creates a vocab piece.
+- Command: `distill <vocab_piece> <source_text>` -> Compresses knowledge into a TPM-compliant ledger format.
+- Sub-option: "Distillation Monitor" (UI showing loss.txt live in a window).
+
+C. TRAINING & GENERATION
+- Using `train <curriculum>` to update model pieces.
+- Using `generate <model> <temp> <len>` to output text to a view.txt.
+
+4. UI LAYOUT (ai-labs.chtpm)
+----------------------------
+- Main Menu:
+    [1] Lab Dashboard (Loss/Training Status)
+    [2] Chat Hub (List and launch chat instances)
+    [3] Distillation Bench (Convert text to vocab/ledgers)
+    [4] Training Yard (Run training on model pieces)
+    [5] (BLANK) - Infrastructure for future expansions.
+
+5. INFRASTRUCTURE NOTES
+-----------------------
+- Space is reserved for a 6th "Unknown" project for infra testing.
+- AI-Labs will use the `surgical_kill` pattern for background training processes.

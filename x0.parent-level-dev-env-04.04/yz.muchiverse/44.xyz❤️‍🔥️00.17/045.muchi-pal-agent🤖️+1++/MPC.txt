@@ -1,0 +1,239 @@
+MPC — muchi-pal-agent architecture plan
+================================================================================
+Status: gemini/ollama/llamacpp providers built and verified (see
+handoff.txt for the actual status). This document is the original plan for
+those three; for the next phase (iqabod/rl/fsm model options), see
+ROADMAP-models.txt instead - genuinely new territory, don't assume it's
+covered here.
+
+CORRECTION (2026-07-20, CHAT-INTEGRATION-ARCHITECTURE.txt sec. 0 - read
+that file for the full trace): this doc's own §2-4 describe mutaclsym's
+real running architecture as ONLY prisc+x/keyboard_input/renderer, and
+§4 claims free-text input is "the one thing mutaclsym's engine has
+never needed." Confirmed directly (by the user who requested this
+correction): whoever wrote this doc simply didn't know chtpm existed
+at the time, not a considered architectural call. The CURRENT mutaclsym
+(y0.mutaclsym+06.01/) also runs `system/chtpm_parser_pal.c` as a real,
+live part of its architecture (real `pieces/chtpm/layouts/game.chtpm`,
+launched by its own button.sh) - a fourth real component this doc's
+own file inventory (§2/§3) never mentions. What §4's claim gets subtly
+wrong: mutaclsym's own LAYOUTS never use free-text input (confirmed -
+game.chtpm has no `<cli_io>` anywhere, matching this doc's own accurate
+"single keystroke as a verb" description of how mutaclsym is actually
+used) - but the ENGINE (chtpm_parser_pal.c itself) already supports
+free-text `<cli_io>` natively (live per-keystroke gui_state sync,
+Enter-to-submit), independent of whether any given project's own
+layouts happen to use it. `buffer_key.c` (§4) duplicates a capability
+the shared engine already had, rather than adding one it genuinely
+lacked. Recorded so a future reader doesn't inherit the "mutaclsym's
+engine can't do free text" premise uncritically.
+
+Reference studied for this plan: y0.mutaclsym+04.01/mutaclsym/ (its own
+handoff doc dox/01-cdda-architecture.md, plus system/prisc+x.c,
+system/keyboard_input.c, system/renderer.c, pal/main_loop.pal,
+default_op.txt, ops/choice.c, ops/pdl_reader.c, and a hero piece's
+state.txt/piece.pdl, all read directly, not summarized secondhand).
+
+================================================================================
+1. WHAT THIS IS
+================================================================================
+A fourth standalone chat interface, functionally equivalent to gem-dev /
+groq-ollama / cpp-llm (multi-provider LLM chat with tool-calling: exec_cmd,
+read_file, write_file, edit_file, list_dir, search_in_files, web_search),
+but built on mutaclsym's newer "PAL/prisc+x" engine instead of the older
+TPMOS "one big manager.c" pattern those three use. Per your instruction:
+built using ONLY pal scripts + prisc+x ops - no manager binary at all.
+
+This is a from-scratch reimplementation of the request/response/tool-call
+logic already proven working in the other three, ported onto a different
+process architecture - not new LLM-integration work, mostly new plumbing
+work.
+
+================================================================================
+2. WHY THIS IS A REAL ARCHITECTURAL SHIFT, NOT A RENAME
+================================================================================
+gem-dev/groq-ollama/cpp-llm are each ONE long-running C process
+(`<name>_manager.c`, 700-1200 lines) that owns the whole state machine:
+reads keystrokes, renders the TUI, builds requests, parses responses, runs
+tools, gates permission - all in one binary's memory and one big loop.
+
+mutaclsym has NO manager. It's three independent, short-lived-or-polling
+processes that only ever talk through plain files, plus many tiny
+single-verb "op" binaries a `.pal` script dispatches by name:
+
+  system/keyboard_input   - owns the real tty in raw mode, decodes keys,
+                             appends one decimal keycode per line to
+                             pieces/apps/player_app/history.txt. Nothing
+                             else. Exits on 'q'.
+  system/prisc+x <script.pal>
+                          - a tiny generic bytecode VM (registers, li/beq/j/
+                             halt, plus a handful of builtin ops like
+                             read_history/sleep/hit_frame) that runs a
+                             `.pal` script. The script is the "brain" - it
+                             polls history.txt for new keycodes and
+                             dispatches to named ops (which are just
+                             `popen()`'d binaries looked up in
+                             default_op.txt) based on what it sees. The VM
+                             itself has ZERO domain knowledge - it doesn't
+                             know what "move_player" or "chat" means, only
+                             that `default_op.txt` maps that name to an
+                             executable.
+  system/renderer         - polls pieces/display/frame_changed.txt's SIZE
+                             (never mtime) for growth, and on growth prints
+                             pieces/display/current_frame.txt to stdout.
+                             Also owns nothing except that.
+
+Every "verb" (move, attack, in mutaclsym's case; send-message, switch-model,
+approve-tool here) is its own tiny op binary: no shared headers, resolves
+its own project root, reads the state files it needs, writes the state
+files it changes, exits. `cdda-tpm-std-fast.txt`'s "if it's not in a file,
+it's a lie" rule is the whole reason this works across process boundaries
+with no IPC beyond the filesystem.
+
+================================================================================
+3. WHAT GETS REUSED VERBATIM (or near enough)
+================================================================================
+- `system/prisc+x.c` - the VM has no game logic in it at all (confirmed by
+  reading it end to end). Copy the file unchanged. It becomes muchi-pal-
+  chat's engine exactly as it's mutaclsym's engine, just fed a different
+  default_op.txt and a different .pal script.
+- `system/keyboard_input.c` - also has zero game-specific logic. It already
+  emits one raw decimal keycode per line (including every printable ASCII
+  character as its own line) - which is exactly the raw material a text-
+  buffer accumulator needs. Copy unchanged.
+- `system/renderer.c` - polls a marker file's size, prints a frame, logs a
+  frame history. Also has zero game-specific logic. Copy unchanged.
+- `button.sh`'s shape (compile/run/kill/check verbs, launch renderer +
+  prisc+x backgrounded, keyboard_input foregrounded and tracked/killed on
+  exit) - copy the pattern, rename the binary list.
+- The actual provider request/response logic we already built three times
+  (Gemini functionCall JSON; Ollama native `tools[]` + `/api/chat`;
+  llama.cpp raw Llama3-token prompt + `/completion`) and the y/n
+  permission-gate logic (also already built three times, most recently
+  fully working in cpp-llm's execute_pending_tool()/deny_pending_tool()) -
+  reused as *logic*, rewritten as ops instead of manager functions. This
+  isn't new design, it's the third port of an already-proven pattern.
+- `cpp-llm/ops/src/connect_op.c` (generic "curl this file to this URL, into
+  this output file" op) - reusable close to verbatim for any provider that
+  goes through a background curl.
+
+================================================================================
+4. WHAT'S ACTUALLY NEW
+================================================================================
+The one thing mutaclsym's engine has never needed and this project
+absolutely needs: **free-text multi-character input.** mutaclsym only ever
+dispatches single keystrokes (wasd, a digit, Enter) directly as a verb. A
+chat message is arbitrary text typed over many keystrokes before Enter
+commits it. New pieces:
+
+- `ops/buffer_key.c` (genuinely novel, no mutaclsym equivalent) - takes one
+  keycode (argv), applies it to a persisted `input_buffer` field in the
+  session's state.txt: printable ASCII appends, backspace (127 or 8) drops
+  the last character, anything else is ignored. `main_loop.pal` calls this
+  on every non-Enter, non-quit keycode, mirroring exactly how
+  `choice.c` already self-filters on every tick in mutaclsym.
+- `ops/send_message.c` - on Enter: reads the current input_buffer, clears
+  it, appends a `user` turn to the conversation log piece, resolves which
+  provider_kind the session's current model is (gemini / ollama-native /
+  llamacpp-completion), builds that provider's request body accordingly,
+  forks curl (via connect_op or directly), records the child PID in
+  state.txt, sets ai_state=THINKING.
+- `ops/check_response.c` - called every tick from main_loop.pal while
+  ai_state=THINKING (ops have no persistent memory between calls, unlike a
+  manager's in-loop waitpid, so "is the curl done yet" has to be checked by
+  looking at whether the recorded PID is still alive each tick - same
+  polling shape prisc+x's own tick loop already uses for everything else).
+  Once done: parses the response per provider_kind, and either appends an
+  assistant turn + returns to IDLE, or - if a tool call was found - writes
+  a `pending_tool` (name/args) into state.txt and sets
+  ai_state=PENDING_PERM instead of executing anything.
+- `ops/execute_tool.c` / `ops/deny_tool.c` - dispatched from main_loop.pal
+  when the input_buffer is exactly "y"/"yes" or "n"/"no" while
+  ai_state=PENDING_PERM. Same dispatch-by-tool-name logic already proven in
+  all three existing managers, just as a standalone op instead of a
+  manager function.
+- `ops/switch_model.c` - **the feature you specifically asked for.** Detects
+  a `/model <id>` line in the input buffer (checked before send_message
+  would otherwise fire), looks `<id>` up in a new model registry (see §5),
+  and rewrites the session's current_model_id/current_api_url/
+  provider_kind fields directly. This is deliberately decoupled from
+  API-switching, unlike the existing three managers where picking a model
+  is a side-effect of resolve_local_model() firing off the back of
+  switching API endpoints - there's no way to just say "use this other
+  model on the API I'm already connected to" in any of them today. That
+  gap is what "vestigial" refers to, and this makes it a first-class,
+  standalone command.
+- `ops/compose_frame.c` - mutaclsym's compose_frame is a camera slicing a
+  2D map; this project's equivalent tails the conversation log (last N
+  turns) plus the live input_buffer (with a cursor) plus a status line
+  (ai_state, current model/API, pending-tool prompt if any) into
+  current_frame.txt. Same role (the one process^H^H^Hop responsible for
+  turning state into a screen), different content entirely.
+
+================================================================================
+5. PIECES / STATE LAYOUT
+================================================================================
+Following the registry-vs-instance split literally, per mutaclsym's own
+doctrine ("Registry pieces: global, non-located, static. World/map instance
+pieces: live, mutable, physically nested state."):
+
+  pieces/registry/models/model_list.txt
+      id|provider_kind|api_url|model_name
+      e.g. groq-tool-use-mac|ollama|http://10.0.0.144:11434|llama3-groq-tool-use:8b
+           gemini-flash|gemini|https://generativelanguage.googleapis.com|gemini-2.5-flash
+           cpp-llm-mac|llamacpp-completion|http://10.0.0.144:8080|(n/a, server-bound)
+      This is what /model <id> looks up - replaces apis.txt+model.txt's
+      role but unifies them into one switchable unit instead of two things
+      that currently only change together.
+
+  pieces/world_01/session_01/chat/
+      state.txt        - current_model_id, provider_kind, current_api_url,
+                          ai_state (IDLE/THINKING/PENDING_PERM), input_buffer,
+                          pending_tool_name, pending_tool_args, curl_pid
+      piece.pdl         - METHOD table: send_message, switch_model,
+                          execute_tool, deny_tool (same shape as hero's
+                          piece.pdl's move/end_turn/pickup/... table)
+      context_log.txt   - append-only conversation history, one line per
+                          turn (see open question below on format)
+
+================================================================================
+6. OPEN QUESTIONS - want your call before I start building
+================================================================================
+(a) Conversation log format: mutaclsym's own architecture doc argues
+    explicitly for plain pipe-delimited text over JSON ("no shared JSON
+    parser dependency... if a piece of logic strongly wants JSON's nesting,
+    convert it to flat fields at authoring time"). The three existing chat
+    managers all use a JSON array (`[{"role":...,"content":...}, ...]`,
+    via json_state.c/json_parser.c). Following mutaclsym's own doctrine
+    means a NEW plain-text log format here (e.g. `role|content|tool_name|
+    tool_args`, one line per turn) - more consistent with "only pal/prisc
+    ops," but it's new parsing code, not reuse of json_state.c/
+    json_parser.c as-is. My default: plain pipe-delimited, per doctrine -
+    confirm or override.
+
+(b) `/model <id>` as a typed chat command (parsed out of the input buffer,
+    like a slash-command) vs. a separate non-text keybind/numbered menu
+    (mutaclsym's own `choice.c` digit-dispatch style). My default: typed
+    slash-command, since that's the natural chat-UX expectation and
+    doesn't need a second dispatch path alongside free-text entry -
+    confirm or override.
+
+(c) Provider scope: assuming "same as our current 3 chats" means this
+    should support switching between all three provider kinds (Gemini
+    native function-calling, Ollama native tools[], llama.cpp raw-
+    completion prompt-JSON) via the model registry in §5, not just one
+    provider with multiple model names. Confirm or override.
+
+(d) Tool set: assuming the same 7 tools all three existing chats expose
+    (exec_cmd, read_file, write_file, edit_file, list_dir, search_in_files,
+    web_search) with the same sandbox_root confinement convention. Confirm
+    or override.
+
+================================================================================
+7. WHAT I HAVEN'T DESIGNED YET (deliberately, per your "just plan for now")
+================================================================================
+Exact `.pal` opcode sequence for main_loop.pal, exact state.txt field
+names/types, exact request-body-building code per provider_kind (it's a
+port of existing, working code, not new design, so not worth detailing
+until this plan is approved), build.sh/button.sh contents, and the model
+registry's starter contents (which models/APIs to seed it with).

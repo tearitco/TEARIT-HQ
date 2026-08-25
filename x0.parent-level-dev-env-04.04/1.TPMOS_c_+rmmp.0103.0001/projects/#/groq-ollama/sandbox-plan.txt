@@ -1,0 +1,24 @@
+# GROQ-OLLAMA Agent Sandboxing Strategy
+**Date:** 2026-05-13
+**Author:** Gemini Agent
+
+## 1. Requirement
+Confine all file-based operations (create, read, write, list) performed by the AI agent to a specific subdirectory: `projects/groq-ollama/sandbox/`.
+
+## 2. Technical Challenge: The CWD Conflict
+- **Internal State:** The agent needs to read `projects/groq-ollama/state/context.json` and its binaries in `projects/groq-ollama/ops/+x/`.
+- **AI Agenda:** The agent's tools (e.g. `list_dir .`) should resolve `.` to the sandbox, not the TPMOS root or the project root.
+
+## 3. Solution: Transient Chdir
+Instead of a global `chdir` at startup, the manager will:
+1.  Remain anchored in the **TPMOS Root** for its own lifecycle (resolving paths to `history.txt`, `gui_state.txt`, etc).
+2.  When a tool call is decided by the LLM:
+    - Fork a child process.
+    - Child process calls `chdir("projects/groq-ollama/sandbox")`.
+    - Child process executes the tool binary (referencing it via `../ops/+x/tool_name`).
+3.  This ensures the agent "thinks" its root is the sandbox, while the manager "knows" its root is the TPMOS installation.
+
+## 4. Implementation Details
+- Update `run_tool` to accept a `bool sandbox_aware` flag.
+- Tool paths in `run_tool` will be adjusted to `../ops/+x/` when running inside the sandbox.
+- Audit logs and context will remain in `projects/groq-ollama/state/` for safety.

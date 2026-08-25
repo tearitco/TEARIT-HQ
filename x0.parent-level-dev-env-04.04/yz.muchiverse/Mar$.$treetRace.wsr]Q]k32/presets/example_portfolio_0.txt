@@ -1,0 +1,17 @@
+STOCK & BOND PORTFOLIO LISTING FOR DUCKLING
+STOCK PORTFOLIO FOR DUCKLING (In U.S. Dollars)
+-----------------------------------------------------------------------------------
+STOCK PCT% SHARE DIV. VALUE: ANALYST'S
+COMPANY SYM. HELD PRICE YIELD (MILLIONS) RATING
+---------------------------- ----- ---- -------- ----- ------------- -------------
+FULL METAL BITS FMB 100% 19.53 0.0% 1953 NOT TRADED
+---------------------------- ----- ---- -------- ----- ------------- -------------
+TOTAL STOCK PORTFOLIO VALUE ($ Million): 1,953
+=============
+BOND PORTFOLIO FOR DUCKLING (In U.S. Dollars)
+-----------------------------------------------------------------------------------
+PRICE FACE MARKET BOND YIELD
+BOND ISSUER DESCRIPTION PAR=100 VALUE VALUE TO MATURITY
+--------------------------- -------------- ------- -------- ----------- -----------
+duckling OWNS NO BONDS ....
+-----------------------------------------------------------------------------------

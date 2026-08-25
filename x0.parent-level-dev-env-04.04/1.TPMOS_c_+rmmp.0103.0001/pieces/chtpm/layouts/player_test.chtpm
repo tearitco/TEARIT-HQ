@@ -1,0 +1,14 @@
+<panel>
+    <text label="+===========================================================+" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|           P L A Y R   T E S T   L A Y O U T               |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  This is a sovereign runner test.                         |" /><br/>
+    <text label="|  Status: ${test_status}                                     |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  " /><button label="Option 1" onClick="KEY:1" /><text label="                                     |" /><br/>
+    <text label="|  " /><button label="Option 2" onClick="KEY:2" /><text label="                                     |" /><br/>
+    <text label="|  " /><button label="Quit Test" onClick="QUIT" /><text label="                                     |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="+===========================================================+" /><br/>
+</panel>

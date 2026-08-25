@@ -1,0 +1,2 @@
+craft_panel_items=<text label="(no recipes)" /><br/>
+inventory_panel_items=<text label="(nothing carried)" /><br/>

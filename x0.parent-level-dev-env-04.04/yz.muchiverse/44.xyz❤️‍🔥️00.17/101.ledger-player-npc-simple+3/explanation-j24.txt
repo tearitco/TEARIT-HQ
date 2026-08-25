@@ -1,0 +1,160 @@
+=== EXPLANATION: LPNS+3 ISSUES (2026-07-24) ===
+
+STATUS: Switched from chtpm_parser_pal.c (PAL fork) to the ORIGINAL
+chtpm_parser.c copied directly from x0.moke-pet-project-04.04.
+This rules out ALL PAL-specific bugs. If issues persist, they are
+in the data flow (keyboard_input, game_manager, orchestrator) or the
+parser's own behavior as inherited from x0.pet.
+
+--- ISSUE 1: DEBUG SPAM ---
+The original chtpm_parser.c has two printf() calls inside load_vars()
+at lines 978-979 that print to STDOUT:
+
+    printf("DEBUG: Loaded directory_listing: %s\n", get_var("directory_listing"));
+    printf("DEBUG: Loaded last_key: %s\n", get_var("last_key"));
+
+These fire EVERY TIME load_vars() is called. load_vars() is called:
+  1. At startup (parse_chtm -> load_vars)
+  2. When pieces/apps/player_app/state_changed.txt GROWS in size (main loop)
+
+If state_changed.txt keeps growing, load_vars() is called in a loop,
+spamming DEBUG to stdout. This pollutes the terminal output and makes
+the UI appear stuck.
+
+WHAT TO CHECK:
+  - Is something writing to state_changed.txt after orchestrator clears it?
+  - The orchestrator clears it to size 0. chtpm_parser monitors it via
+    stat() size comparison. If nothing writes to it, it stays at size 0
+    and load_vars() is NOT called again after startup.
+  - Run: watch -n0.5 ls -la pieces/apps/player_app/state_changed.txt
+    to see if the file size changes after startup.
+
+FIX OPTIONS:
+  a) Remove the two printf lines from chtpm_parser.c (recommended)
+  b) Change them to fprintf(stderr, ...) so they don't pollute stdout
+  c) Find and stop whatever is writing to state_changed.txt
+
+--- ISSUE 2: CLI_IO NOT TAKING INPUT ---
+The data flow for cli_io input is:
+
+  User types key
+    -> keyboard_input captures it (raw terminal)
+    -> writes "KEY_PRESSED: N\n" to pieces/keyboard/history.txt
+    -> chtpm_parser main loop reads keyboard/history.txt (seek-based)
+    -> calls process_key(N) with the keycode
+    -> if cli_io is active (active_index == cli_io index):
+         printable chars -> appended to input_buffer
+         Enter -> saves to gui_state.txt, injects KEY:13 to player_app/history.txt
+    -> game_manager polls player_app/history.txt
+    -> reads keycode 13 -> calls execute_action(1) -> reads word from gui_state.txt
+
+WHAT TO CHECK:
+  1. Is keyboard_input actually writing to keyboard/history.txt?
+     Run: ./button.sh, then in another terminal:
+     watch -n0.5 cat pieces/keyboard/history.txt
+     Press keys and see if they appear.
+
+  2. Is chtpm_parser reading from the SAME path?
+     The parser reads from: pieces/keyboard/history.txt
+     keyboard_input writes to: pieces/keyboard/history.txt
+     These MUST match. Check the parser's hist_p variable:
+       snprintf(hist_p, sizeof(hist_p), "%s/pieces/keyboard/history.txt", project_root_path);
+
+  3. Is the parser's seek position correct?
+     The parser uses last_history_position to seek. On first read it starts
+     at position 0. If keyboard_input hasn't written anything yet, the read
+     returns nothing and last_history_position stays at 0.
+
+  4. Is cli_io ACTIVE when keys are typed?
+     In nav mode (active_index == -1), letter keys are SILENT NO-OPS.
+     Only navigation keys (arrows, w/s) and Enter do anything.
+     The user MUST press Enter on the cli_io to activate it first.
+     Then keys go into the input_buffer.
+
+COMMON MISTAKE: The user expects typing to work in [>] (focused) mode.
+In TPMOS, [>] means "selected, press Enter to activate". [^] means
+"active, accepting input". You must press Enter to go from [>] to [^].
+
+--- ISSUE 3: CLI_IO STARTING ACTIVE ([^]) ---
+The parser starts with active_index = -1 (nav mode). cli_io should
+show [>] (focused) not [^] (active).
+
+POSSIBLE CAUSES (in order of likelihood):
+
+  A) STALE keyboard/history.txt
+     If keyboard/history.txt has a KEY_PRESSED: 13 (Enter) from a
+     previous session, the parser reads it on startup and calls
+     process_key(13) in nav mode. Enter on focused cli_io activates it.
+     FIX: orchestrator clears keyboard/history.txt on startup (already done).
+
+  B) STALE gui_state.txt with cli_input variable
+     The parser auto-activates cli_io if get_var("cli_input") is non-empty
+     (line 3000 in original parser). If gui_state.txt from a previous run
+     has cli_input=something, it gets loaded and triggers activation.
+     FIX: orchestrator clears gui_state.txt (already done, but must create
+     the manager/ directory first).
+
+  C) keyboard_input capturing buffered terminal input
+     When keyboard_input enables raw mode, any buffered keystrokes in
+     stdin (from the terminal) get captured. If the user pressed Enter
+     before the parser started, that Enter gets written to history.txt.
+     This is a race condition between keyboard_input starting and the
+     parser entering its main loop.
+     FIX: keyboard_input should discard any existing stdin buffer before
+     entering the read loop. Or: delay keyboard_input startup by 100ms
+     after the parser starts.
+
+  D) game_manager side effects
+     game_manager is launched by the <module> tag in the layout. On
+     startup, game_manager starts a polling thread that reads
+     player_app/history.txt. If history.txt has stale keycodes from a
+     previous session, game_manager processes them. This could trigger
+     word_compose_frame which writes to state.txt. But state.txt != 
+     state_changed.txt, so this shouldn't trigger the parser's monitor.
+     However, check if game_manager writes to any file that the parser
+     monitors.
+
+--- ISSUE 4: [Map Loading...] ---
+FIXED. The original parser's load_vars() has a view_path fallback at
+line 1187 that sets game_map to "[Map Loading...]" when no view.txt
+file is found. This OVERWRITES the game_map loaded from state.txt.
+
+Fix: Added guard `if (strlen(get_var("game_map")) == 0)` before setting
+the default. Now state.txt value persists.
+
+--- ARCHITECTURE REFERENCE ---
+Original x0.pet parser: pieces/chtpm/plugins/chtpm_parser.c (3030 lines)
+Our copy: system/chtpm_parser.c (same file, with [Map Loading...] fix)
+
+Key differences from PAL fork (chtpm_parser_pal.c, 3382 lines):
+  - No suppress_next_gui_sync (PAL race condition fix)
+  - No PAL-specific auto-activate cli_io mechanism
+  - No wraith-alpha extras
+  - Simpler, proven codebase
+  - Same data flow: keyboard -> history.txt -> parser -> process_key
+  - Same rendering: compose_frame -> current_frame.txt -> renderer_pulse.txt
+
+Rendering pipeline:
+  chtpm_parser writes frame to pieces/display/current_frame.txt
+  chtpm_parser pulses pieces/display/renderer_pulse.txt (appends "P\n")
+  renderer.c monitors frame_changed.txt and renderer_pulse.txt
+  renderer reads current_frame.txt, displays to stdout with timestamp
+  renderer appends to pieces/display/frame_history.txt (scrollback)
+
+--- FILES ---
+system/orchestrator.c      - fork/exec launcher, clears state, compiles
+system/chtpm_parser.c      - ORIGINAL from x0.pet (3030 lines)
+system/game_manager.c      - polls player_app/history.txt, calls ops
+system/keyboard_input.c    - raw terminal, writes KEY_PRESSED
+system/renderer.c          - reads current_frame.txt, writes to stdout
+ops/word_compose_frame.c   - writes game_map to state.txt
+ops/word_turn_input.c      - updates ledger, accepts word argument
+pieces/chtpm/layouts/lpns_word_menu.chtpm - layout (module/interact/cli_io/button)
+button.sh                  - entry point: run|clean|kill|log
+
+--- NEXT STEPS ---
+1. Remove DEBUG printf from chtpm_parser.c (lines 978-979)
+2. Check if state_changed.txt is growing after startup (watch command)
+3. Verify keyboard_input writes to keyboard/history.txt when keys pressed
+4. Verify cli_io starts as [>] (focused) after clean startup
+5. Test: press Enter on cli_io -> type word -> Enter -> verify game_manager reads it

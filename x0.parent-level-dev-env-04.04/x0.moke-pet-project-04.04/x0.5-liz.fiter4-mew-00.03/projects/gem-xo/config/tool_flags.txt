@@ -1,0 +1,3 @@
+# Dev toggles for manager behavior.
+ignore_web_search=1
+raw_tool_followup=1

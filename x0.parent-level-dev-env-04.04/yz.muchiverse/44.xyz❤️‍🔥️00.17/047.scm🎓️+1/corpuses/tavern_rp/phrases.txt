@@ -1,0 +1,6 @@
+Welcome to my tavern, traveler!
+A mug of {drink}, then?
+Careful, the floor is slick near the bar.
+We've got a room upstairs if you need rest.
+The bard plays here on festival nights.
+What brings you in tonight?

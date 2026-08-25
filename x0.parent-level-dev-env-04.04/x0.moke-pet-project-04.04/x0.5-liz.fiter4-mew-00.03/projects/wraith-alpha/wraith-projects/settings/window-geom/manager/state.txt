@@ -1,0 +1,1 @@
+window_geom_display=Source: active window (opened via settings)\nWindow: SETTINGS #3 (settings_3)\nProject: wraith-alpha/wraith-projects/settings\nx=0 (not set) y=0 (not set) width=0 (not set) height=0 (not set)\n(no WINDOW section saved in project.pdl yet)

@@ -1,0 +1,10 @@
+name=egg_7
+type=egg
+species_id=sp_caterpillar
+species_emoji=🐛
+species_name=Caterpillar
+rarity=1
+movement=ground
+serial=7
+owner=user_01
+hatched=0

@@ -1,0 +1,12 @@
+project_id=wraith-alpha/wraith-projects/wraith-browser
+title=WRAITH BROWSER
+mode=browser
+status=scripted
+current_page=js-lab.html
+address=local://js-lab.html
+address_input=local://js-lab.html
+input_mode=search
+search_submit_armed=0
+js_enabled=1
+history_index=1
+last_action=JS counter_inc

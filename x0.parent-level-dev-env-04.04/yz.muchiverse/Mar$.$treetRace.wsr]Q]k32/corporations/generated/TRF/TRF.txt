@@ -1,0 +1,78 @@
+FINANCIAL PROFILE FOR TERRAFORM MACHINERY (TRF)
+================================================
+FINANCIAL BALANCE SHEET: TERRAFORM MACHINERY (TRF)
+--------------------------------------------------
+(Amounts in millions of U.S. Dollars, except per share amounts)
+
+ASSETS:
+  Free Cash and Equivalents:		420.87
+  Working Capital (A/R, Inven.):	69.74
+  Business Assets/Equipment:		1320.70
+  Stock in Subsidiary Cos.:		0.00
+  Options Long/Short: Net Value:	0.00
+  ---------------------------------------------
+  Total Assets:				1811.30
+  ---------------------------------------------
+
+LIABILITIES AND EQUITY:
+  Long-Term Bonds Issued:		0.00
+  Bank Loan:				190.24
+  Accrued Income Tax Payable:		0.00
+  ---------------------------------------------
+  Total Liabilities:			190.24
+  ---------------------------------------------
+  Equity (Net Worth):			1621.06
+  =============================================
+
+STOCK AND EARNINGS DATA:
+------------------------
+  Net Worth Per Share:			29.55
+  Current Stock Price:			40.54
+  52-Week High/Low Stock Price:		48.42 / 21.11
+  Shares of Stock Outstanding:		54.85 million
+  Total Stock Capitalization:		2223.44 million
+  2021 Earnings Per Share:		0.00 (Operating Earnings)
+  2022 Earnings Per Share:		0.00 (Operating Earnings)
+  2023 Earnings Per Share:		0.00 (Operating Earnings)
+  2024 Earnings Per Share:		0.00 (Operating Earnings)
+  2025 E/P/S through Qtr. #1:		(Not Yet Announced)
+  ---------------------------------------------
+
+VARIOUS FINANCIAL RATIOS:
+-------------------------
+  Price/Earnings Ratio:			NMF (No Meaningful Figure)
+  Dividend Yield:			0.00%
+  Debt to Equity Ratio:			0.12 to 1
+  Return on Equity (2024):		NMF (No Meaningful Figure)
+  ---------------------------------------------
+
+*** CREDIT INFO: ***
+-------------------
+  Credit Rating:			AA
+  Unused Bank Line of Credit:		1127.42 million
+  Borrowing Rate (Interest):		10.50% (Prime is: 10.00%)
+  Lending Bank:				MARTIAN TRUST BANK (MTB)
+  ---------------------------------------------
+
+VARIABLE SETTINGS (Changeable by controlling player):
+----------------------------------------------------
+  Dividend Payout Per Share:		0.00
+  Percent of Sales Spent on R & D:	4%
+  Growth Rate (Assets, Sales):		0%
+  ---------------------------------------------
+
+MISCELLANEOUS INFO:
+-------------------
+  Industry Group:			HEAVY MACHINERY
+  Incorporated in:			Farland
+  Controlled (and actively managed) by:	public
+  Public Owns:			%
+  Accrued R&D and/or Investment Tax Credits:	$123.63 million
+  Annual CEO Salary (approx.):		$1.96 million (Plus possible bonuses)
+  Today's (Game) Date:			January 1, 2025
+  Next Earnings Report:			January 27, 2025
+  ---------------------------------------------
+
+FOOTNOTE TO FINANCIAL STATEMENT:
+-------------------------------
+[1] The company is not currently engaged in any interest rate swap transactions and has no undisclosed off-balance sheet liabilities.

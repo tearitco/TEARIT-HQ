@@ -1,0 +1,19 @@
+<box title="${app_title}" width="60" height="24">
+<module>${module_path}</module>
+    <text label=" [ SIM ACTIVE: ${sim_status} (${sim_active}) ]" fg="${theme_status_fg}" bg="${theme_status_bg}" /><br/>
+    <text label=" [ ACTIVE ID: ${active_target_id} ]" fg="${theme_value_fg}" bg="${theme_value_bg}" /><br/>
+    <text label=" [ EPOCH: ${epoch} ]" fg="${theme_text_fg}" bg="${theme_text_bg}" /><br/>
+    <text label=" [ STEPS: ${step_count} ]" fg="${theme_text_fg}" bg="${theme_text_bg}" /><br/>
+    <hr/>
+    <text label=" PROJECT CONTROLS:" fg="${theme_header_fg}" bg="${theme_header_bg}" /><br/>
+    ${project_controls}<br/>
+    <hr/>
+    <text label=" PET SWITCHER:" fg="${theme_header_fg}" bg="${theme_header_bg}" /><br/>
+    ${pet_list}<br/>
+    <hr/>
+    <text label=" METHODS (${active_target}):" fg="${theme_header_fg}" bg="${theme_header_bg}" /><br/>
+    ${piece_methods}<br/>
+    <hr/>
+    <text label=" LOG: ${last_response}" fg="${theme_text_fg}" bg="${theme_text_bg}" /><br/>
+    <text label=" TURN SUMMARY: ${turn_summary}" fg="${theme_text_fg}" bg="${theme_text_bg}" /><br/>
+</box>

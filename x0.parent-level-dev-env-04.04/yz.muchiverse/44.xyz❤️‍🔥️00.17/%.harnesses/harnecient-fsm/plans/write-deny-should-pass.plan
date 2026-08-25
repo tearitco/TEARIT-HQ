@@ -1,0 +1,6 @@
+# write-deny-should-pass.plan — proves the DENY path: dispatches a
+# real write request, then explicitly denies it, and asserts the
+# target file was NOT created (deny worked) while the transcript DOES
+# contain the real "[tool denied]" note (proves it wasn't silently
+# ignored either).
+STEP | write /tmp/claude-1000/fsm-deny-test.txt containing should-not-exist | [ ! -f /tmp/claude-1000/fsm-deny-test.txt ] && grep -q "tool denied" "$STEP1_OUT" | DENY

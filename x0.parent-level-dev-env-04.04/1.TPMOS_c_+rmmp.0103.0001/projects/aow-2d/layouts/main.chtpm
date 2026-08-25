@@ -1,0 +1,19 @@
+<layout id="aow_main">
+    <module>projects/aow-2d/manager/+x/aow-2d_manager.+x</module>
+    <row><cell>=== AOW: BOOTY LAND ===</cell></row>
+    <row><cell>Player: ${active_player}</cell> <cell>Actions: ${actions_left}</cell></row>
+    <row><cell>Credits: ${credits}</cell> <cell>Units: ${units}</cell></row>
+    <row><cell>Z-Level: ${z_level}</cell></row>
+    <row><cell>Log: ${last_log}</cell></row>
+    <row><cell></cell></row>
+    <row><cell>GAME MAP:</cell></row>
+    <row><cell>${map_view}</cell></row>
+    <row><cell></cell></row>
+    <row>
+        <button label="[T] Tax Land" onClick="KEY:t" />
+        <button label="[B] Buy Unit" onClick="KEY:b" />
+        <button label="[X] Up Z" onClick="KEY:x" />
+        <button label="[Z] Down Z" onClick="KEY:z" />
+        <button label="[E] End Turn" onClick="KEY:e" />
+    </row>
+</layout>

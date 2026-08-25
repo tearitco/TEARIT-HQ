@@ -1,0 +1,40 @@
+# 2DO-J17: WRAITH ALPHA RGB GL MIRROR (GRAPHICS PHASE)
+Date: 2026-06-17
+Status: RASTERIZER V1 VERIFIED / MOVING TO FIDELITY REFINE
+
+Goal: Replace dummy pink frames with a pixel-accurate mirror of the ASCII shell.
+
+## 1. ARCHITECTURAL OVERVIEW (REF: wrasci-2-gl-blueprint-0.0.txt)
+- **PIPELINE**: Parser -> **CONVERTER (Middle Fork)** -> GL Presenter
+- **DAEMON**: `wraith_rgb_daemon.c` (V1: Loads .txt glyphs, blits ASCII frame).
+- **GL OPS**: `wraith_gl.c` (V1: 1024x640 resolution, NEAREST filtering).
+
+## 2. PHASE 1: ASSET & SCALING INTEGRATION (COMPLETED)
+- [x] **Infrastructure**: Create `projects/wraith-alpha/assets/{fonts,emojis}/` directories.
+- [x] **Asset Generation**: Created `generate_fonts.sh` to extract `.txt` bitmaps for ASCII set.
+- [x] **Verification**: ASCII characters 32-126 generated in `assets/fonts/ascii/`.
+- [x] **GL Presenter**: Implemented 1024x640 scaling (crisp NEAREST filtering).
+
+## 3. PHASE 2: RASTERIZATION LOGIC (IN PROGRESS - V1 VERIFIED)
+- [x] **Blitter**: Implemented `load_glyphs()` and `blit_char()` in daemon.
+- [x] **Mirror**: The "pink screen" is gone. GL mirror now shows real text from `current_frame.txt`.
+- [ ] **Fidelity**: Implement `render_chrome()` for real UI rectangles based on PDL.
+- [ ] **Color**: Parse `current_frame.objects.pdl` for character-specific coloring.
+
+## 4. PHASE 3: THE BRIDGE & SYNC
+- [ ] Synchronize writes: Only pulse `rgb_frame_changed.txt` when the full RGBA buffer is flushed.
+- [ ] Verify 60FPS fluid update cycle.
+
+## 5. PHASE 4: INPUT LOOPBACK (FUTURE)
+- [ ] Research GL-side mouse event capturing.
+- [ ] Implement command routing from GL window to `history.txt`.
+- [ ] Verify ASCII GUI mirrors GL-triggered state changes.
+
+## 6. VALIDATION
+- [ ] Run `./button.sh c`.
+- [ ] Confirm GL window shows "Wraith Alpha" text mirroring the shell.
+- [ ] Confirm colors match (e.g., background dark blue, text cyan).
+
+
+---
+"Geography is destiny. If it's not in a file, it's a lie. The marker is the clock."

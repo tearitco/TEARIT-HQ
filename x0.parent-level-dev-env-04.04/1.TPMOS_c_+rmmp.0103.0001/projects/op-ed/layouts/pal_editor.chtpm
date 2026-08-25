@@ -1,0 +1,19 @@
+<panel>
+    <module>projects/op-ed/manager/+x/pal_editor_module.+x</module>
+
+    <text label="╔══════════════ E V E N T   B U I L D E R ═══════════════════╗" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="║  Piece: ${pal_editor_piece}                                     ║" /><br/>
+    <text label="║  Event: ${pal_editor_event}                                     ║" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    ${pal_editor_display}
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║ [RESP]: ${last_response}                                    ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  " />${pal_editor_actions}<text label=" ║" /><br/>
+    <text label="║  " /><button label="[ESC] BACK" onClick="KEY:27" /><text label="                               ║" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+    
+    <interact src="pieces/apps/player_app/history.txt" />
+</panel>

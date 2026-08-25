@@ -1,0 +1,19 @@
+module_path=projects/agy-text-editor/manager/+x/agy-text-editor_manager.+x
+active_layout_id=editor.chtpm
+project_id=agy-text-editor
+active_project=projects/agy-text-editor/pieces/document.txt
+editor_map=<text label="║   hi   😅 😆 😇                     ║" /><br/><text label="║   [X]                                     ║" /><br/><text label="║  ? ne                                     ║" /><br/><text label="║                                           ║" /><br/><text label="║                                           ║" /><br/><text label="║                                           ║" /><br/><text label="║                                           ║" /><br/><text label="║                                           ║" /><br/>
+input_line=
+active_file_info_line=<text label="║  FILE: projects/agy-text-editor/pieces/do ║" /><br/>
+editor_response_line=║  Enter Save-As path.                      ║
+browser_mode_header=<text label="║  MODE: SAVE FILE AS                         ║" /><br/>
+browser_current_dir_line=<text label="║  DIR: projects/agy-text-editor            ║" /><br/>
+search_query_val=
+file_path_input_val=projects/agy-text-editor/pieces/document.txt
+autocomplete_suggestions_markup=<text label="║  SUGGESTIONS:                               ║" /><br/><text label="║  " /><button label="...ditor/pieces/document.txt" onClick="SET_AUTOCOMPLETE:projects/agy-text-editor/pieces/document.txt" /><text label="   " /><text label=" ║" /><br/>
+directory_browser_markup=<text label="║  " /><button label="<- BACK" onClick="SET_DIR:projects" /><text label="                        " /><text label=" ║" /><br/><text label="║  " /><button label="[DIR] layouts/" onClick="SET_DIR:projects/agy-text-editor/layouts" /><text label="                 " /><text label=" ║" /><br/><text label="║  " /><button label="[DIR] manager/" onClick="SET_DIR:projects/agy-text-editor/manager" /><text label="                 " /><text label=" ║" /><br/><text label="║  " /><button label="[DIR] pieces/" onClick="SET_DIR:projects/agy-text-editor/pieces" /><text label="                  " /><text label=" ║" /><br/><text label="║  " /><button label="[FIL] file-op-dox.txt (2KB)" onClick="SET_PATH:projects/agy-text-editor/file-op-dox.txt" /><text label="    " /><text label=" ║" /><br/><text label="║  " /><button label="[FIL] hi.txt (26B)" onClick="SET_PATH:projects/agy-text-editor/hi.txt" /><text label="             " /><text label=" ║" /><br/><text label="║  " /><button label="[FIL] project.pdl (575B)" onClick="SET_PATH:projects/agy-text-editor/project.pdl" /><text label="      " /><text label=" ║" /><br/><text label="║  " /><button label="...pipeline-study+.txt (2KB)" onClick="SET_PATH:projects/agy-text-editor/save-as-pipeline-study+.txt" /><text label="  " /><text label=" ║" /><br/><text label="║  " /><button label="[FIL] t (26B)" onClick="SET_PATH:projects/agy-text-editor/t" /><text label="                 " /><text label=" ║" /><br/>
+browser_action_buttons_markup=<text label="║  " /><button label="SAVE FILE" onClick="SET_SAVE_ACTION" /><text label="                     " /><text label=" ║" /><br/><text label="║  " /><button label="CANCEL" href="projects/agy-text-editor/layouts/file_menu.chtpm" /><text label="                        " /><text label=" ║" /><br/>
+slot_name_input=default
+slot_info_line=║  CURRENT SLOT: default                    ║
+slot_selection_markup=<text label="║  [Slots deprecated]                    ║" /><br/>
+file_path_input=hi

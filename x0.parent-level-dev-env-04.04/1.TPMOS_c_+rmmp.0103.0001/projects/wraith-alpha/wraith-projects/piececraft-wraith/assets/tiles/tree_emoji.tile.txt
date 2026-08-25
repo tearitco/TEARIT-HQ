@@ -1,0 +1,10 @@
+tile_id=tree_emoji
+ascii=e
+unicode=🌲
+label=Tree (emoji voxel)
+rgb_top=0,150,0
+rgb_side=0,110,0
+extrude=2.5
+solid=1
+walkable=0
+voxel_source=assets/emoji/tree_voxels_8.csv

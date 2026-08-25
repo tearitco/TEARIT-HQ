@@ -1,0 +1,79 @@
+FONDU-MT PLAN
+Date: 2026-06-03
+
+Goal
+Duplicate the TPMOS framework into `fondu-mt+installer_paths/` as a separate forked workspace, but with no real projects installed. The only project content that remains should be `projects/template/`. The result should still support keyboard-driven OS navigation and reach a project list that is effectively empty except for `template`.
+
+What I investigated
+- `_codex_dox/codex-tpmos-onbord.txt`
+- `!.gem-flashlite--yolo/!.evo&obs/!.TPMOS_ONBORD_BIBLE_10.md`
+- `!.gem-flashlite--yolo/#.testing/PLANS/fondu-howto.txt`
+- existing `projects/template/` structure
+- current `fondu-mt+installer_paths/` directory state
+
+Key constraints from the framework
+- TPMOS topology matters: `PIECE -> MODULE -> OS`.
+- Project loading is file/path driven. Layout routing, manager paths, and ops registration are all rooted in the filesystem.
+- The parser/theater should stay thin. Project-specific discovery belongs in project files, manager projections, and manifests.
+- Fondu is already the lifecycle layer for install/archive/list behavior, so the cleanest clone is one that preserves those conventions rather than inventing a new loader model.
+- We should not edit the existing framework in place.
+
+Current findings
+- `fondu-mt+installer_paths/` is currently empty.
+- `projects/template/` already exists in the source framework and is small enough to preserve as the lone starter project.
+- The framework expects project presence to be reflected through files under `projects/`, plus related routing/manifests under `pieces/os/` and installed-app locations.
+
+Implementation approach
+1. Create an isolated TPMOS copy under `fondu-mt+installer_paths/`.
+   - Copy the framework structure needed to boot the OS and keyboard flow.
+   - Treat this as a new root, not an overlay on the existing tree.
+
+2. Keep framework/runtime infrastructure, remove user projects.
+   - Preserve shared `pieces/`, launch/build scripts, layouts, parser/renderer/runtime assets, and Fondu machinery.
+   - Remove all source projects from the cloned `projects/` directory except `projects/template/`.
+   - Preserve any required empty directories such as `projects/trunk/` if the loader or Fondu expects them.
+
+3. Rebuild the cloned project catalog for the reduced world.
+   - Regenerate or rewrite the clone-local project manifest/routing files so only `template` appears as a valid project.
+   - Ensure compile manifests, route maps, and any project listing files do not reference removed projects.
+   - If there is an installed-app mirror in the clone, keep it empty unless `template` needs to be installed there explicitly.
+
+4. Preserve keyboard-first navigation.
+   - Keep the existing keyboard/history and parser/renderer flow intact.
+   - Do not redesign input. The clone should use the same OS navigation pattern as the source framework.
+   - Verify the menu path that leads to project loading still works when the list contains only `template`.
+
+5. Treat `template` as the only visible starter entry.
+   - Leave `projects/template/` intact unless a path fix is required inside the clone.
+   - If the loader expects a project registry file, `template` is the sole entry.
+   - If the desired UX is "empty project list except template", that means no placeholder fake projects and no stale archived entries surfacing in menus.
+
+6. Validate in the clone, not the source tree.
+   - Smoke test boot path.
+   - Smoke test keyboard navigation.
+   - Smoke test project loader screen contents.
+   - Confirm removed projects do not appear through routes, compiled manifests, or ops catalogs.
+
+What I will not do
+- No edits to the existing framework under `👁️.wraith.rgb-font.txt-00.04/...`.
+- No architecture rewrite.
+- No new project system.
+- No change to the thin-theater / manager-projection contract.
+
+Likely work items in the actual implementation pass
+- inventory which top-level directories/files are required for boot
+- copy required framework subtree into `fondu-mt+installer_paths/`
+- prune `projects/` down to `template` only
+- refresh clone-local route/manifest/catalog files
+- run headless keyboard/frame verification against the clone
+- write a short verification report
+
+Main risk
+The only real risk is hidden references to removed projects inside clone-local route files, compile manifests, or loader menus. The mitigation is straightforward: search the clone for `projects/` references and regenerate the small set of manifests/catalogs after pruning.
+
+Expected end state
+`fondu-mt+installer_paths/` becomes a self-contained TPMOS-style framework copy that:
+- boots independently
+- keeps keyboard/OS navigation
+- shows no real projects except `template`
+- leaves the original framework untouched

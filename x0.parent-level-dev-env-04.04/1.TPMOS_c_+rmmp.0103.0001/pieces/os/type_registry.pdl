@@ -1,0 +1,11 @@
+# Piece Type Registry
+# Format: TYPE | ICON | ID
+# Used by render_map.c (icon lookup) and create_piece.c (type→id/icon)
+# If you add a type, update BOTH C files that read this.
+
+TYPE | player  | @ | player
+TYPE | pet     | @ | pet
+TYPE | xlector | X | xlector
+TYPE | npc     | & | npc
+TYPE | chest   | T | chest
+TYPE | zombie  | Z | zombie

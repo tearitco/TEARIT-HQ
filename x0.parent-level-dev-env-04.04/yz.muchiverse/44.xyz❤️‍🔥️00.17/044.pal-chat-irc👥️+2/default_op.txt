@@ -1,0 +1,8 @@
+# Custom operations for pal-chat-irc's own prisc+x program, modeled
+# directly on pal-forum's own default_op.txt (same menu-only, no-map
+# shape - see that file for the real precedent this copies).
+# Format: name type handler {description}
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}
+chat_menu_input void ops/+x/chat_menu_input.+x {piece.pdl METHOD dispatch for whichever pal-chat-irc screen is current}
+chat_compose_frame void ops/+x/chat_compose_frame.+x {render the current pal-chat-irc screen into view.txt}

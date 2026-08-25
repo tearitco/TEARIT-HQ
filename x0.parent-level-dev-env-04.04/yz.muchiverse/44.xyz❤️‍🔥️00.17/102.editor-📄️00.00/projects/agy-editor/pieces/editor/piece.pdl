@@ -1,0 +1,10 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | editor
+META         | version            | 1.0
+
+METHOD       | INTERACT                | EDIT
+METHOD       | NEW FILE                | NEW
+METHOD       | CLEAR FILE              | CLEAR
+METHOD       | FILE MENU               | FM
+METHOD       | EXIT                    | EXIT

@@ -1,0 +1,22 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | chat
+META         | version            | 0.2
+
+STATE        | current_model_id     | groq-tool-use-mac
+STATE        | ai_state             | IDLE
+
+# No METHOD rows on purpose (2026-07-20, chtpm upgrade - see
+# CHAT-INTEGRATION-ARCHITECTURE.txt sec. 1) - this project has no
+# ${piece_methods}-driven numbered menu at all, real <cli_io> (chat.
+# chtpm) + Enter (send_message.c's own self-filtering on ai_state)
+# drives everything: an ordinary message, a "y"/"n" tool-permission
+# answer, or a "/model <id>" command, all typed into the same field.
+# This table was never actually consumed by any real dispatch even
+# before this change (no pdl_reader-style lookup was ever built here -
+# matches mutaclsym's own "fine while there's only one piece type"
+# precedent, cited in this file's own prior version) - kept as
+# documentation only, corrected to stop implying a menu that doesn't
+# exist.
+
+RESPONSE     | default              | *waiting...*

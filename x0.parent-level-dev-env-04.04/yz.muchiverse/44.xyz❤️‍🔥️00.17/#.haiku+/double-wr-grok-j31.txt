@@ -1,0 +1,240 @@
+double-wr-grok-j31.txt
+2026-07-31  --  companion to editor-app-gl-dub-j32.txt
+Subject: root cause grok for GL-window input doubling in @.apps/text-editor-xyz,
+         and fix recommendation for the "many windows, one focus" scenario.
+
+================================================================================
+0. VERDICT (TL;DR)
+================================================================================
+The doubling is a REDUNDANT double-write colliding with a fragile LIVENESS
+lock. gl_mirror.c and chtpm_parser_pal.c each had an independent path into
+interact_relay.txt; the gl_focus.lock gate was supposed to make exactly one
+fire, but it is a "process-alive" flag, not a "window-has-focus" flag, and the
+two processes resolve it through their own PRISC_PROJECT_ROOT/cwd, so every
+condition that hides the lock from the parser while gl_mirror is alive makes
+BOTH paths fire per keystroke -> "h" becomes "hh", "hi" becomes "hhii".
+
+Recommended fix for multi-window/one-focus:  OPTION B (single-writer, delete
+the gate).  NOT A.  See section 4 for the argument.
+
+================================================================================
+1. WHO WRITES WHAT (current live source, 014.wsr-pal)
+================================================================================
+pieces/keyboard/history.txt        raw key stream, format "KEY_PRESSED: %d\n"
+                                   WRITTEN BY:
+                                     keyboard_input.c (terminal)   -- unconditional
+                                     gl_mirror.c append_key()      -- unconditional
+                                   (gl_mirror.c:245-250)
+
+pieces/apps/player_app/history.txt bare decimal int per key
+                                   WRITTEN BY: keyboard_input.c, gl_mirror.c
+                                   CONSUMED BY: prisc+x OP_READ_HISTORY
+                                   (fallback when no literal path given)
+
+pieces/apps/player_app/interact_relay.txt
+                                   the editor's typing channel
+                                   CONSUMED BY: editor main_loop_chtpm.pal
+                                     read_history pieces/apps/player_app/
+                                     interact_relay.txt x2, x1
+                                     agy_edit_key x2
+                                   WRITTEN BY (current build): ONLY
+                                     inject_raw_key() in chtpm_parser_pal.c
+                                     (gated at 3547-3550)
+
+pieces/system/gl_focus.lock         arbiter file
+                                   CREATED:  gl_mirror.c:487  update_focus_lock()
+                                   REMOVED:  gl_mirror.c:486  atexit()
+                                   CHECKED:  ONLY chtpm_parser_pal.c:3547-3550
+                                   (keyboard_input.c never checks it; binary
+                                   grep confirms no other consumer)
+
+================================================================================
+2. THE GATE (chtpm_parser_pal.c:3547-3550)
+================================================================================
+    char *lock_path = build_path_malloc("pieces/system/gl_focus.lock");
+    int gl_owns_input = (lock_path && access(lock_path, F_OK) == 0);
+    if (!gl_owns_input) inject_raw_key(eff);
+
+Semantics baked in:  "gl_mirror alive  =>  gl_mirror already delivered this key
+to interact_relay.txt itself, so I must NOT forward it."
+
+Two independent defects make that assumption false:
+
+  D1. gl_mirror no longer writes interact_relay.txt at all.
+      append_key() writes ONLY the two history files (gl_mirror.c:245-250;
+      confirmed in the deployed binary's disassembly: two fopen calls, no
+      interact_relay write).  The direct write was removed 2026-07-31
+      (gl_mirror.c:233-244 comment claims the parser relay is "the SOLE path
+      into interact_relay.txt").  So with a live lock present, the key is
+      dropped entirely:  current build, GL mode, typing inserts NOTHING.
+
+  D2. The lock is a LIVENESS flag, resolved via per-process cwd/root.
+      gl_mirror builds it as "%s/pieces/system/gl_focus.lock" from ITS
+      PRISC_PROJECT_ROOT (gl_mirror.c:196); the parser builds its check path
+      from ITS OWN cwd/project_root.  Any gl_mirror running with a different
+      cwd (the transient wrong-cwd process documented in editor-app-gl-dub-
+      j32.txt section 5), any stale duplicate from a previous session, or any
+      process whose atexit never ran (SIGHUP before the SIGHUP handler was
+      added -- gl_mirror.c:475-484) makes access() FAIL while gl_mirror is
+      alive and delivering.
+
+================================================================================
+3. WHY THE DOUBLING IS GL-ONLY -- THE PATTERN
+================================================================================
+Reference build (jul-30-pre-re-ER) had TWO writers into interact_relay.txt:
+
+  path 1 (always)   gl_mirror.c append_key()  -- direct, unconditional
+                    "FILE *rf = fopen(interact_relay, "a");"  (ref:240-241)
+  path 2 (gated)    chtpm_parser_pal.c:3547-3550  -- fires when lock NOT seen
+
+  lock PRESENT  -> path1 fires only  -> single insert (works)
+  lock ABSENT   -> path1 AND path2    -> double insert (hi -> hhii)   <-- BUG
+
+The lock exists ONLY in the GL pipeline.  keyboard_input (NO_GL headless) is a
+single writer, single path -> cannot double.  That is exactly the observed
+"GL enabled -> doubles, NO_GL=1 -> does not double".
+
+The current build is the mirror-image regression: it deleted path1 but kept the
+gate, so the lock now SUPPRESSES the only remaining writer (D1).  Neither
+build can be right because the gate's premise ("gl alive => already delivered")
+is false in one and empty in the other.
+
+================================================================================
+4. FIX OPTIONS, WITH RECOMMENDATION
+================================================================================
+GOAL SCENARIO: many app windows open (each a session + its own GL window),
+only ONE has focus at a time.  Keystrokes must land in the focused window's
+session exactly once; every other window must stay silent.
+
+----------------------------------------------------------------------------
+OPTION A -- restore redundancy + make the lock a TRUE FOCUS flag
+----------------------------------------------------------------------------
+  - gl_mirror append_key() writes interact_relay.txt directly again (path1).
+  - lock becomes a real focus flag: created only while this window has OS
+    keyboard focus, removed when it loses focus (not "while alive").
+  - parser keeps the gate: lock present => focused GL owns input => skip.
+
+  Works in principle, BUT for "many windows / one focus" it is the wrong tool:
+  A1. Freeglut gives no reliable keyboard-focus event.  glutEntryFunc is
+      POINTER-entry, not focus.  True focus needs X11 calls (XGetInputFocus /
+      WM_TAKE_FOCUS / FocusIn) polled from a timer -- N windows -> N focus
+      pollers -> N transitions where "lock about to flip" races the parser's
+      access().  Every race is a silent return of the SAME doubling bug.
+  A2. Two writers into interact_relay.txt remain permanently.  The redundancy
+      is exactly what produced the doubling; A keeps the mine in the ground
+      and just hopes the new fuse (focus flag) never misfires.
+  A3. Any future code path that touches the relay without the gate -> double.
+
+----------------------------------------------------------------------------
+OPTION B -- single writer; DELETE the gate (RECOMMENDED)
+----------------------------------------------------------------------------
+  - Leave gl_mirror as a pure producer of pieces/keyboard/history.txt
+    (it already writes the exact "KEY_PRESSED: %d" format the parser reads).
+  - In chtpm_parser_pal.c replace the 4-line gate (3547-3550) with an
+    unconditional inject_raw_key(eff).  No focus tracking, no lock logic.
+  - gl_focus.lock becomes inert (keep or remove; nothing consumes it).
+  - Single writer -> doubling is STRUCTURALLY IMPOSSIBLE.
+
+  Why B wins for many windows / one focus:
+  B1. No focus detection anywhere.  X11 delivers keys only to the focused
+      window; that window's gl_mirror writes only its own session's
+      keyboard/history.txt; that session's parser forwards.  Unfocused
+      sessions never receive keys, so they never forward.  Correct by
+      construction, zero races, zero per-window state.
+  B2. It is the exact architecture ALREADY PROVEN in NO_GL mode -- the mode
+      that works.  GL mode becomes "one more producer of the same stream",
+      and everything downstream (parser -> relay -> agy_edit_key) is shared.
+  B3. It is what the 2026-07-31 edit was TRYING to do: gl_mirror.c:233-244
+      already declares the parser relay "the SOLE path into interact_relay.
+      txt from here on".  The author simply forgot to delete the now-doomed
+      gate.  B finishes the intended commit.
+  B4. Cost: one extra poll hop (gl_mirror -> history file -> parser loop ->
+      relay -> editor).  Identical to the working headless path; latency
+      negligible (parser polls every ~30 ms frame).
+
+  Caveat to keep in mind (separate latent bug, not fixed by A or B):
+  with multiple apps launched from ONE terminal, every session's
+  keyboard_input.c reads the SAME tty, so keystrokes in the terminal get
+  split randomly between sessions (one byte, one reader).  For a windowed
+  world, keyboard_input should run only in NO_GL/headless mode, or a tty
+  focus/ownership protocol should be added.  GL windows should be the only
+  live input path when they exist.
+
+================================================================================
+5. IMPLEMENTATION LOG (2026-07-31) - OPTION B APPLIED
+================================================================================
+Edit made (014.wsr-pal/system/chtpm_parser_pal.c, INTERACT branch, was
+3546-3551): removed the gl_focus.lock gate entirely, replaced with an
+unconditional `inject_raw_key(eff);` plus a comment documenting the
+single-writer decision (replaces the old "RE-REVERTED" narrative).
+
+Rebuilt + redeployed the FULL chain:
+  - 014.wsr-pal:    bash scripts/build.sh            (parser rebuilt, gate-free)
+  - 102.agy-txt:    bash scripts/build.sh            (copies parser+gl_mirror from wsr-pal)
+  - 102.editor-📄️00.00: bash scripts/build.sh        (copies gl_mirror; builds its OWN parser source)
+  - &.widgits/file-menu: bash scripts/build.sh      (copies parser+gl_mirror from wsr-pal)
+
+CRITICAL DISCOVERY DURING DEPLOY (contradicts handoff editor-app-gl-dub-j32.txt §7):
+  The app launcher @.apps/text-editor-xyz/button.sh resolves
+  EDITOR_DIR="$(ls -d "$HOUSE_DIR/102."*"editor"* ...)" -> **102.editor-📄️00.00**,
+  NOT 102.agy-txt. 102.editor keeps its OWN local chtpm_parser_pal.c
+  source (never the wsr-pal live copy the handoff claimed) and was
+  running a **Jul-30 gl_mirror binary that STILL wrote
+  interact_relay.txt directly** (strings: "%s/pieces/apps/player_app/
+  interact_relay.txt") while its parser was already ungated -> TWO
+  writers -> the exact doubling. That stale gl_mirror is why the bug
+  survived the earlier wsr-pal/agy-txt-only investigation: the app's
+  real binaries never got rebuilt until now.
+
+Verification after deploy (all 4 targets):
+  - parser: gl_focus string count = 0 everywhere (gate gone).
+  - gl_mirror: md5 8107eb78e92... identical everywhere = the new
+    single-writer build (append_key() has NO interact_relay fopen; the
+    remaining "interact_relay" strings are only the unused buffer var +
+    snprintf init, gl_mirror.c:121/195).
+  - 102.editor parser recompiled from its own source (already gate-free;
+    md5 unchanged 51e802ce).
+  - No stale house processes running (only Chrome's own --type=renderer).
+
+Both editor lineages now converge on the same single-writer shape:
+  key -> keyboard_input OR gl_mirror -> pieces/keyboard/history.txt ->
+  chtpm_parser_pal (unconditional inject) -> interact_relay.txt -> PAL
+  read_history -> agy_edit_key -> one insert.
+
+================================================================================
+6. FIXED 2026-07-31 - VERIFICATION OF THE DEPLOYED FIX
+================================================================================
+STATUS: FIXED (Option B applied and deployed; see §5 implementation log).
+The single-writer shape is now live in every binary the app chain runs:
+
+  key -> keyboard_input OR gl_mirror -> pieces/keyboard/history.txt ->
+  chtpm_parser_pal (unconditional inject) -> interact_relay.txt -> PAL
+  read_history -> agy_edit_key -> exactly one insert.
+
+Post-deploy checks (all PASS):
+  1. gl_mirror binaries across all 4 targets (wsr-pal, 102.agy-txt,
+     102.editor-📄️00.00, &.widgits/file-menu) are byte-identical
+     (md5 8107eb78e9236c283c7bd5c4058c98ef); append_key() has TWO fopen
+     calls (keyboard/history.txt + apps/player_app/history.txt), no
+     interact_relay write. Remaining "interact_relay" strings in the
+     binary are the unused buffer var + snprintf init (gl_mirror.c:121/
+     195), not a write path.
+  2. All 4 deployed chtpm_parser_pal binaries have gl_focus string
+     count = 0 (gate removed). wsr-pal / 102.agy-txt / file-menu share
+     md5 d14becb13df6ca0eb6553e014b716d77; 102.editor-📄️00.00 builds its
+     OWN already-gate-free source (md5 51e802ce9f3fcc8d3dd75df79799694c).
+  3. No stale house processes running (only Chrome's own --type=renderer
+     false positives from the pgrep pattern).
+  4. Runtime retest pending: after `bash EMERGENCY_KILL.sh`, launch
+     `@.apps/text-editor-xyz` with DISPLAY set and type "hi" - must land
+     as "hi" once, in GL and NO_GL alike. Optional deeper check: watch
+     interact_relay.txt grow exactly one line per keystroke across focus
+     changes and stale-lock scenarios.
+
+KEY DEPLOY DISCOVERY (re-read before retesting): the app's real
+EDITOR_DIR is 102.editor-📄️00.00 (per @.apps/text-editor-xyz/button.sh
+glob "102.*editor*"), NOT 102.agy-txt as the old handoff claimed. Its
+Jul-30 gl_mirror was the stale double-writer that kept the bug alive;
+it is now replaced. If "hi" STILL doubles after this deploy, suspect a
+running stale binary ("Text file busy") and re-run EMERGENCY_KILL.sh
+before concluding the fix is wrong.

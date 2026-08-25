@@ -1,0 +1,13 @@
+<panel time_reactive="true">
+    <text label="╔══════════════ HANGMAN AI: SETUP ════════════╗" /><br/>
+    <text label="║ Select Motive:                              ║" /><br/>
+    <text label="║                                             ║" /><br/>
+    <text label="║  1. [Manual Play]                           ║" /><br/>
+    <text label="║  2. [Bot Benchmarking]                      ║" /><br/>
+    <text label="║  3. [Multiplayer (P2P)]                     ║" /><br/>
+    <text label="║                                             ║" /><br/>
+    <text label="╠═════════════════════════════════════════════╣" /><br/>
+    <button label="Start Game" href="projects/hangman/layouts/game.chtpm" /><br/>
+    <button label="Exit" href="pieces/chtpm/layouts/os.chtpm" /><br/>
+    <text label="╚═════════════════════════════════════════════╝" /><br/>
+</panel>

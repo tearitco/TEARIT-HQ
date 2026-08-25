@@ -1,0 +1,13 @@
+high_return_on_equity:1
+low_pe_ratio:10
+stock_price_less_than_net_worth:200
+dividend_yield:5
+min_market_cap:1000
+max_market_cap:3000
+earnings_up_next_quarter:10
+management_rated:Good
+credit_rating:A
+analyst_rating:Hold
+industry_supply_demand_improving:0
+publicly_traded_only:0
+has_bonds_issued:0

@@ -1,0 +1,4 @@
+window_count=1
+active_window_id=0
+win_0_pos=50,50,400,300
+win_0_title=Terminal

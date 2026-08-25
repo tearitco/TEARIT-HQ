@@ -1,0 +1,6 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/menu_loop.pal</module>
+    <text label="${game_map}" /><br/>
+    <button label="PLAY ▶" href="pieces/chtpm/layouts/game.chtpm" id="play_btn" /><br/>
+    <text label="Ctrl+C quits | arrows/Enter navigate" /><br/>
+</panel>

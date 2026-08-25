@@ -1,0 +1,6 @@
+# event.pal — mini interpreter script
+show_text SYSTEM: reactor coolant nominal.
+ret
+ret
+ret
+ret

@@ -1,0 +1,53 @@
+
+🗣️
+just skip user login. 
+and go straight 2 avatar creation. an stat building leveling up badges etc. {house/world creation}
+thats honestly pmf, thats wut ppl care about. 
+then when it matters we can turn around and worry about login
+
+
+and we wanted to make a stable diffusion , and immediately give u a free pet 
+that u can talk 2  . and make affinity or dealing with other pets 'hard/impossible'
+
+(just milk them etc  + use same data but dont test managing 100 things at once
+later we may keep it like pokemon where u have only top 6 (otherwise u woudl stack them in flexboxes
+
+(and only let "existing player ; go 1 fbx deep for stuff, otherwise u have 2 deploy that entity
+
+obv thats an artificial constraint and we can undo it for a "dATABASE /CSV PROGRAM ie item management
+but we will not do that in game(not what the game is about, dont wanna confuse ;  keep game fun , tools 4 game productive and line between both thick.), good 2 know about both tho
+
+
+we were thinking . what about , i show u my/a picture and u stable diffuse it over
+a sprite, instead of making user spend time customizing. 
+or give them ratty shit and make them buy clothes so dont worry about clothes
+
+and how would it do facial features then, can ur diffusion do that? <thats wut matters>
+we can have it do body type manually , and u can change ur hair w/e +gta like "haircuts"
+(u can always load ur character into character edit screen ; instead of using ur wardrobe
+and can even pull from ur wardrobe later but lets keep it simple for now. 
+
+i actually would like to setup game loading first. 
+
+<u maybe more like "pulling in rmmv sprite as character"
+but actually were gonna wait on that and focus on having a basic avatr
+and managing its account data for now. 
+(im gonna have it mine on blockchain on my behalf, "LIKE ROLLER COIN"
+and will chat with it and stuff. maybe 'have it train my muchipal' w/o my input
+or with some input (ie tell it to focus on strength , etc) 
+later have it more like monster rancher where he can take it to competitions it can die etc. 
+then they can buy stuff for the ranch. and sell old stuff
+and sell crops ; on the auction market. 
+
+then we will turn the auction market into wsr
+by having other beings in other 'map account worlds' doing stuff
+but connect the online (no physical yet purely online) 
+<these run by real p2p ai running headless accounts, that i can open on my desk instead
+of my account and look at those > 
+
+but we will also make local full npc only worlds
+and those wont trade in between the other worlds (yet) just building ur own ecosytem (and backpedal 2 evo after stone ages lvl trading before we actually do wsr, by doing civilization 
+, tech trees and later snaking that thru an independantly finished WSR> ... yup...
+then we will do space and stuff 2 obvious. chem. r&d . -> maybe try 2 make an online portal
+and go back 2 school at this point lol 🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️
+🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️🀄️

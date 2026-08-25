@@ -1,0 +1,54 @@
+### AIDA TPMOS Fix - M25
+
+**Objective:** Enable correct tool call execution for the Gemini API, address raw JSON output, and restore batch Ollama functionality without conflict.
+
+---
+
+**Phase 1: Gemini API Tool Call Rectification**
+
+*   **1.1 Refine `handle_stream_chunk` for `functionCall`:**
+    *   **Problem:** The current `handle_stream_chunk` in `0.iqaida.g+-021.0001=ER(st)/agent.c` (the Gemini-configured agent) only captures the *first* `functionCall` found in the streamed response. Gemini models can return `functionCall` objects across multiple `data:` chunks. This leads to incomplete or missed tool call detections.
+    *   **Solution:** The implementation of `handle_stream_chunk` in the Gemini-configured agent needs to be modified to robustly accumulate `functionCall` JSON across all streamed `data:` chunks into `acc_func`. This may require a mechanism to concatenate JSON fragments or store them until a complete `functionCall` object can be formed. The goal is to ensure all parts of a streamed `functionCall` are captured.
+*   **1.2 Correct Post-Stream `functionCall` and `text` Parsing:**
+    *   **Problem:** The current logic in the Gemini-configured agent attempts to extract `tool` and `args` from `text_response` if `functionCall` is empty. This is an incorrect fallback for Gemini, as Gemini's `text` field will not contain tool call information in a parsable `tool` and `args` format. This is the primary cause of "raw JSON" output when a tool call was intended but not correctly identified as `functionCall`.
+    *   **Solution:** The post-stream parsing logic in the Gemini-configured agent needs to be modified. If a complete `functionCall` (accumulated in `acc_func`) is present, it *must* be prioritized for tool execution. If `functionCall` is empty, then `text_response` should be treated *only* as a plain text output. Any logic that tries to extract `tool` and `args` from `text_response` when interacting with the Gemini API should be removed.
+*   **1.3 Enhance `json_parser` usage for `functionCall` arguments:**
+    *   **Problem:** Ensure that the `./tools/json_parser` correctly extracts the `name` and the entire `args` JSON object from the `functionCall` structure returned by Gemini.
+    *   **Solution:** It should be verified that the existing `json_parser` can handle nested JSON for arguments. If not, `json_parser` should be enhanced to return the full `args` JSON string, or the calling `agent.c` logic should be adjusted to extract the `name` and the raw `args` JSON as a string, which can then be written to `tmp_args` for further processing by the specific tool.
+
+---
+
+**Phase 2: Ollama Batch Call Re-enablement & API Switching**
+
+*   **2.1 Standardize API Selection and Default Behavior:**
+    *   **Problem:** The Gemini-configured agent now defaults `current_api_url` to `https://generativelanguage.googleapis.com` and `current_model` to `gemini-2.5-flash`, potentially overriding Ollama settings on startup and making Ollama batch calls inaccessible.
+    *   **Solution:** Implement a clearer and more persistent API selection mechanism in the TPMOS agents. On startup, the `state/active_api.txt` file (or a similar configuration) should be read to determine the *last active* API and model.
+        *   If the active API is Ollama, the `current_api_url` should be set to `http://localhost:11434` and `resolve_local_model()` should be called to find an appropriate Ollama model.
+        *   If the active API is Gemini, `current_api_url` should be set to the Gemini endpoint and `current_model` to a default Gemini model.
+*   **2.2 Ensure Correct Streaming/Batch Mode per API:**
+    *   **Problem:** The user mentions the loss of batch Ollama calls due to streaming. The Gemini API is currently configured for streaming (`streamGenerateContent`). Ollama batch calls might require `stream: false`.
+    *   **Solution:** When building the prompt payload for an API call, TPMOS agents should dynamically set the `stream` parameter based on the `current_api_url`. If `current_api_url` points to `http://localhost:11434` (Ollama), `stream` should be ensured to be set to `false` in the payload for batch processing. For Gemini, `stream` can remain `true` for interactive streaming, but the tool call parsing (Phase 1) must be correct for streamed tool calls.
+
+---
+
+**Phase 3: Code Refinement & Testing**
+
+*   **3.1 Review and Update `gemini_payload_builder`:**
+    *   **Problem:** The existing `gemini_payload_builder` might not be robustly configured to include `tool_config` and `tools` sections in the request body for Gemini API calls, which are essential for enabling Gemini's tool use.
+    *   **Solution:** The `gemini_payload_builder` tool should be ensured to explicitly add the `tool_config` and `tools` sections to the JSON payload when constructing requests for the Gemini API, even for streaming calls. This will properly inform Gemini about the available tools.
+*   **3.2 Enhance Error Handling and Debugging:**
+    *   **Problem:** The current error reporting might not be sufficiently detailed when API calls or JSON parsing fail.
+    *   **Solution:** TPMOS agents should improve logging and error messages for API call failures (e.g., network errors, HTTP status codes), JSON parsing errors (e.g., malformed JSON), and issues during tool execution. This will aid in future debugging.
+*   **3.3 Develop Integration Tests:**
+    *   **Problem:** Absence of automated tests to verify the fixes.
+    *   **Solution:** Simple integration tests or manual verification steps should be created to confirm:
+        *   Gemini API successfully processes and executes tool calls (e.g., a `write_file` tool call).
+        *   Gemini API returns natural language responses without embedding raw JSON.
+        *   Switching to Ollama API correctly sets the `current_api_url` and allows for batch calls (non-streaming).
+        *   The `/api` command correctly toggles API contexts, and `resolve_local_model` for Ollama finds appropriate models.
+*   **3.4 Ensure Consistent UI Refresh and Clear Screen on Startup:**
+    *   **Problem:** Instances of the CLI displaying old frames on startup have been observed. This inconsistency in terminal refresh can lead to confusion regarding the most current output. Additionally, the API index selection might appear "off" due to inconsistent UI state after selection.
+    *   **Solution:**
+        *   Implement a robust screen clearing mechanism at the start of each main loop iteration within TPMOS agents. Specifically, it should be ensured that `frame_clear()` (or an equivalent terminal clear command) is actively called. For example, if `frame_clear()` is found commented out in an `agent.c` file, it should be uncommented and verified to clear the entire screen.
+        *   The display of `last_response` should always be preceded by a full screen clear, guaranteeing that previous outputs do not persist.
+        *   `refresh_ui` functions across TPMOS agent implementations should be reviewed to guarantee a consistent and complete terminal update strategy, which includes clearing prior content before rendering new interface elements, especially the prompt, dropdowns, and API selection indicators. This ensures that after API selection, the UI accurately reflects the chosen option.

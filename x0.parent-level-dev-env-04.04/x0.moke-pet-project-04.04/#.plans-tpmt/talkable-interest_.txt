@@ -1,0 +1,26 @@
+
+
+🦜️
+i tell mom/ ppl 
+
+tpmos can hve bots that just use fsm instead of llm
+
+
+but what does that mean? learning keywords and doing particular executions 
+without llm (thats what @/* does , or when it executes a command it could be using fsm
+or think like pal ; if u just say what u want right it gets done faster, 
+
+like how rpgmaker mv works. ofc 
+
+a data center could be faster than this. but we dont have or ship a data center
+were making a game / sim and giving it more direct focus 2 doing "r&d" 
+which ofc the current llm cant do guided r&d even on a pretty solid project
+it cant even tell us what direction to go in cuz oh, yea duh it needs lots of help with 
+architecture (tho its really good at it with help...) 
+
+and yes buncha stalkers are spazzing about tangents. 
+
+but i digress. if u had some actually functioning "FSM" soon that
+would be cool 2 show off and talk about , but w/e u know we will get to it
+and wouldn't be "giving away ideas" tis a "wholistic pipeline thingi and its not "ez" 
+🦜️

@@ -1,0 +1,4 @@
+# Current state for the system/input_dispatcher piece
+
+is_capturing=false
+connected_devices=keyboard,mouse

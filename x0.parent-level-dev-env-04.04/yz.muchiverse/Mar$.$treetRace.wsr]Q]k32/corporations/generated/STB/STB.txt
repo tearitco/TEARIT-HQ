@@ -1,0 +1,78 @@
+FINANCIAL PROFILE FOR STELLARBREW (STB)
+================================================
+FINANCIAL BALANCE SHEET: STELLARBREW (STB)
+--------------------------------------------------
+(Amounts in millions of U.S. Dollars, except per share amounts)
+
+ASSETS:
+  Free Cash and Equivalents:		187.19
+  Working Capital (A/R, Inven.):	74.21
+  Business Assets/Equipment:		1607.04
+  Stock in Subsidiary Cos.:		0.00
+  Options Long/Short: Net Value:	0.00
+  ---------------------------------------------
+  Total Assets:				1868.44
+  ---------------------------------------------
+
+LIABILITIES AND EQUITY:
+  Long-Term Bonds Issued:		0.00
+  Bank Loan:				278.67
+  Accrued Income Tax Payable:		0.00
+  ---------------------------------------------
+  Total Liabilities:			278.67
+  ---------------------------------------------
+  Equity (Net Worth):			1589.77
+  =============================================
+
+STOCK AND EARNINGS DATA:
+------------------------
+  Net Worth Per Share:			33.94
+  Current Stock Price:			33.26
+  52-Week High/Low Stock Price:		53.21 / 22.27
+  Shares of Stock Outstanding:		46.84 million
+  Total Stock Capitalization:		1557.75 million
+  2021 Earnings Per Share:		0.00 (Operating Earnings)
+  2022 Earnings Per Share:		0.00 (Operating Earnings)
+  2023 Earnings Per Share:		0.00 (Operating Earnings)
+  2024 Earnings Per Share:		0.00 (Operating Earnings)
+  2025 E/P/S through Qtr. #1:		(Not Yet Announced)
+  ---------------------------------------------
+
+VARIOUS FINANCIAL RATIOS:
+-------------------------
+  Price/Earnings Ratio:			NMF (No Meaningful Figure)
+  Dividend Yield:			0.00%
+  Debt to Equity Ratio:			0.18 to 1
+  Return on Equity (2024):		NMF (No Meaningful Figure)
+  ---------------------------------------------
+
+*** CREDIT INFO: ***
+-------------------
+  Credit Rating:			AA
+  Unused Bank Line of Credit:		1742.70 million
+  Borrowing Rate (Interest):		10.50% (Prime is: 10.00%)
+  Lending Bank:				LUNAR FINANCE (LUN)
+  ---------------------------------------------
+
+VARIABLE SETTINGS (Changeable by controlling player):
+----------------------------------------------------
+  Dividend Payout Per Share:		0.00
+  Percent of Sales Spent on R & D:	4%
+  Growth Rate (Assets, Sales):		0%
+  ---------------------------------------------
+
+MISCELLANEOUS INFO:
+-------------------
+  Industry Group:			BREWING & DISTILLING
+  Incorporated in:			Robot State
+  Controlled (and actively managed) by:	public
+  Public Owns:			%
+  Accrued R&D and/or Investment Tax Credits:	$55.94 million
+  Annual CEO Salary (approx.):		$0.97 million (Plus possible bonuses)
+  Today's (Game) Date:			January 1, 2025
+  Next Earnings Report:			January 27, 2025
+  ---------------------------------------------
+
+FOOTNOTE TO FINANCIAL STATEMENT:
+-------------------------------
+[1] The company is not currently engaged in any interest rate swap transactions and has no undisclosed off-balance sheet liabilities.

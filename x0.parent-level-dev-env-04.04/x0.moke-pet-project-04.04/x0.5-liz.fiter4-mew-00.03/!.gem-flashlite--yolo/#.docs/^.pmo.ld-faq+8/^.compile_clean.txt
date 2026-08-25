@@ -1,0 +1,58 @@
+# COMPILE CLEAN STANDARDS - PIECEMARK-IT
+Last Updated: 2026-03-11
+
+To avoid distracting compiler warnings (specifically -Wformat-truncation), 
+all C components must adhere to the following path construction standards:
+
+## 1. DYNAMIC ALLOCATION (PREFERRED)
+Always prefer `asprintf` over `snprintf` for constructing filesystem paths.
+This prevents theoretical truncation warnings and handles any path length.
+
+```c
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#include <stdio.h>
+#include <stdlib.h>
+
+// Standard usage:
+char *path = NULL;
+if (asprintf(&path, "%s/projects/%s/maps/%s", project_root, project_id, filename) != -1) {
+    FILE *f = fopen(path, "r");
+    // ... use file ...
+    free(path); // MANDATORY: free after use
+}
+```
+
+## 2. STATIC BUFFER STAGGERING (IF NECESSARY)
+If static buffers are required for performance or simplicity, use a staggered 
+sizing pattern to ensure the destination is significantly larger than any 
+possible source concatenation.
+
+- MAX_PATH: 4096 (For base directories like project_root)
+- MAX_CMD:  16384 (For final concatenated paths and shell commands)
+
+```c
+#define MAX_PATH 4096
+#define MAX_CMD 16384
+
+char project_root[MAX_PATH];
+char final_path[MAX_CMD];
+
+// Safe concatenation:
+snprintf(final_path, sizeof(final_path), "%s/sub/path/file.txt", project_root);
+```
+
+## 3. COMPILER FLAGS
+The project uses `-Wformat-truncation=1`. Do not disable this flag; 
+fix the code instead using the methods above.
+
+## 5. COMPILE BUTTONS
+The project includes cross-platform "buttons" for common tasks. 
+Always use these to verify your changes and check for warnings.
+
+- **Linux/macOS:** `./button.sh compile`
+- **Windows:** `.\button.ps1 compile`
+
+These scripts trigger the full compilation pipeline and will surface 
+any -Wformat-truncation or missing header warnings.

@@ -1,0 +1,25 @@
+module_path=projects/gem-dev/manager/+x/gem-dev_manager.+x
+active_layout_id=gem-dev.chtpm
+ai_state=IDLE
+active_api=https://generativelanguage.googleapis.com
+ai_status_line=[AI STATE]: IDLE | [API]: https://generativelanguage.googleapis.com
+ctx_pct=2%
+iqabel_fsm=IDLE
+gem-dev_response_area=║ File 'j15.txt' written successfully.                                       ║
+gem-dev_api_menu=        <button label="gemini" onClick="SET_API:https://generativelanguage.googleapis.com" /><br/>        <button label="local-oll" onClick="SET_API:http://localhost:11434" /><br/>        <button label="macbook-oll" onClick="SET_API:http://10.0.0.144:11434" /><br/>        <button label="aida_mac-cpp" onClick="SET_API:http://10.0.0.144:8080" /><br/>        <button label="desktop-oll" onClick="SET_API:http://10.0.0.187:11434" /><br/>        <button label="debian-oll" onClick="SET_API:http://10.0.0.16:11434" /><br/>
+piece_methods=
+comp_root_vis=false
+comp_1_lbl=
+comp_1_vis=false
+comp_2_lbl=
+comp_2_vis=false
+comp_3_lbl=
+comp_3_vis=false
+comp_4_lbl=
+comp_4_vis=false
+comp_5_lbl=
+comp_5_vis=false
+sys_msg=Response received.
+thinking_secs=0
+cli_input=
+input_text=

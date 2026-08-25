@@ -1,0 +1,21 @@
+# Developer Journal - May 29, 2026
+
+## Task: Resolve gem-dev Path Completion Rendering and Autofill
+
+### 1. Analysis of the "Stale Methods" and "Autofill" Issues
+- **Autofill Failure**: Fixed by Parser prefix sync (Turn 5).
+- **Stale Methods (Backspace Bug)**: Fixed by Parser writing to history on backspace (Turn 10, needs compile).
+- **Stale Methods (Startup Bug)**: Fixed by refactoring `update_completions()` (Turn 14).
+- **Frame Spamming**: The Manager was triggering a full render on every character input during completion mode.
+    - **Resolution**: Optimize main loop to only `trigger_render()` when the suggestions OR completion mode status actually change. Normal typing updates the internal buffer silently.
+
+### 2. Implementation Plan (Final Push - Optimized)
+1.  **Global Clear (Startup)**: Truncate `pieces/apps/player_app/history.txt` and `cli_buffers.txt` on startup.
+2.  **Manager Fix (Rendering)**: Refactor main loop to eliminate redundant `trigger_render()` calls during normal typing.
+3.  **Manager Fix (Completions)**: Ensure `update_completions()` is the only place where `g_piece_methods` is modified.
+4.  **BUILD EVERYTHING**: Recompiling both Parser and Manager is the only way to activate the backspace fix and the rendering optimizations.
+
+### 3. TPMOS Compliance Check
+- **Thin Theater**: Maintained.
+- **Sovereign State**: `cli_buffers.txt` remains the authority.
+- **Pulse Discipline**: Optimized marker hits to reduce CPU/IO overhead.

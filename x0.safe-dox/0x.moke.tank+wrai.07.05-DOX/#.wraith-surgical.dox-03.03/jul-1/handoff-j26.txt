@@ -1,0 +1,690 @@
+# Wraith Handoff J26
+
+Last updated: 2026-06-27
+Audience: a completely new agent with no prior thread context.
+
+## Mission
+
+Wraith is the TPMOS auditable GL desktop effort.
+
+The goal is not to make GL mirror ASCII glyphs forever. The goal is:
+
+- one Wraith session truth
+- one semantic scene/object stream
+- one ASCII audit projection for humans and agents
+- one graphical RGB/GL projection for actual UI presentation
+- receipts that prove what each stage consumed, converted, uploaded, and displayed
+
+ASCII is the audit/debug lens. GL is the richer presentation lens. Both must remain close enough that mismatches are obvious and actionable.
+
+## Current Architecture Contract
+
+Core rule:
+- one scene, two presenters
+- file-owned project truth
+
+Important terms:
+- `${game_map}` is the current canvas-like payload name, matching `fuzz-op` / `fuzz-op-gl`.
+- `INTERACT` is the direct-control action for a map/surface.
+- `is_map_control` is the modal state flag.
+- Do not rename these to `canvas` yet. Docs may describe them as canvas-like, but implementation should stay uniform for now.
+- Do not hardcode project-specific bodies, scene records, ops, cube/map/widget/emoji logic into `wraith-alpha_manager.c`.
+- Wraith Alpha discovers and hosts internal projects; each project owns its own layouts/state/body/scene/assets.
+- If it is not in a file or receipt, it is not project truth.
+
+Key docs:
+- `wraith-architecture-j25.md`
+- `WRAITH-GL-STD.md`
+- `wraith-chtmgl&3d.md`
+- `fast-2do.txt`
+- `2fix.txt`
+
+Important reference projects:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/gl-os` if present in the workspace, for desktop/window layout style.
+- `1.TPMOS_c_+rmmp.0102.0027/projects/chtmgl-alpha` for markup/widget rendering reference.
+- `1.TPMOS_c_+rmmp.0102.0027/projects/piececraft-3d` for z-level/tile/game-map reference.
+
+## Important Paths
+
+Wraith runtime/code:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/manager/wraith-alpha_manager.c`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/plugins/wraith_rgb_daemon.c`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/ops/wraith_gl.c`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/layouts/alpha-shell.chtpm`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/session/desktop_ui_state.txt`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/session/gl_intent.pdl`
+
+Current frame truth:
+- `pieces/display/current_frame.txt`
+- `pieces/display/current_frame.meta.pdl`
+- `pieces/display/current_frame.objects.pdl`
+- `pieces/display/current_frame.desktop_state.pdl`
+
+Project-owned Wraith bridge files:
+- `projects/wraith/wraith-projects/<project>/session/wraith_body.txt`
+- `projects/wraith/wraith-projects/<project>/session/scene.objects.pdl`
+
+RGB/GL receipts:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/session/rgb/current_frame.receipt.pdl`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/session/rgb/gl_display.receipt.pdl`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/session/rgb/gl_input.receipt.pdl`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/session/rgb/current_frame.rgba32`
+
+Internal Wraith projects:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/blank-project`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/probe-project`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/terminal`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/wraith-3d-cube`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/piececraft-wraith`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/chtmgl-wraith`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/emoji-studio-wraith`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/wraith-ed`
+
+Do not put Wraith internal projects at top-level `projects/<name>` unless the user explicitly requests a normal TPMOS project. Wraith validation projects should live under `projects/wraith/wraith-projects/`.
+
+## What Was Fixed
+
+The recent parity/debug sprint fixed the main Wraith GL basics:
+
+- GL is again a thin RGB texture presenter, not a second UI owner.
+- `wraith_rgb_daemon` owns conversion from ASCII or semantic objects into RGBA.
+- `ASCII` / `GL` mode is controlled by Wraith session state.
+- stale `wraith-pm` semantic artifacts are rejected.
+- GL startup no longer displays stale previous-session frames.
+- GL can navigate 10+ indices by accumulating digits like ASCII.
+- GL mouse coordinates are mapped through the displayed texture viewport, including fullscreen letterbox/scale cases.
+- `current_frame.receipt.pdl` now includes timestamps, source mtimes, object bounds, render bounds, text bounds, hit bounds, focus bounds, glyph size, cell size, z, label, action, and containment data.
+- `current_frame.receipt.pdl` now writes `SECTION | PRIMITIVES | SOURCE_AND_CONVERSION_AUDIT` for source-backed Wraith primitives.
+- Primitive receipt lines currently cover `zslice_piece`, `tile_zmap`, and `rgba_extrusion`.
+- Primitive receipt lines report source existence, source mtime, source byte size, parsed slice/map/pixel counts, surface bounds, preview projection mode, and whether final camera projection is active.
+- `gl_display.receipt.pdl` now records the RGBA checksum/byte count that GL uploaded plus viewport and display scale.
+- `gl_input.receipt.pdl` records raw mouse coordinates, texture viewport, mapped texture coordinates, and inside/outside status.
+- the major footer-text drift bug was fixed: semantic text was drawing at `GLYPH_H=16` row spacing while panels/receipts used `cell_height_px=18`.
+
+Verification rule:
+- `current_frame.receipt.pdl:render_checksum_fnv1a64` should match `gl_display.receipt.pdl:loaded_rgba_checksum_fnv1a64`.
+- If those differ, GL is not displaying the frame the RGB daemon says it rendered.
+- If those match but the screen looks wrong, inspect `text_px_*`, `hit_px_*`, and `focus_px_*` for the object in question.
+
+## Current Status
+
+The Wraith desktop GL path is stable enough to move from basic parity/debug repair into validation projects.
+
+Do not spend the next sprint on more footer/chrome color tweaking unless a fresh receipt proves a real regression.
+
+Confirmed live by user:
+- Step 1 is working: Wraith Alpha can host project-owned body/scene truth from files.
+- `session/wraith_body.txt` is the body/audit bridge.
+- `session/scene.objects.pdl` is the semantic scene bridge.
+- Future agents must not drift back into hardcoding cube, Piececraft, CHTMGL, or Emoji Studio project internals in `wraith-alpha_manager.c`.
+- If a project behavior is not authored in a project file, state file, history file, asset file, or receipt, it is not Wraith project truth.
+
+Current generic `INTERACT` bridge:
+- A project-owned `session/scene.objects.pdl` UI control may declare `nav=<n>`, `action=INTERACT`, and `target_surface=game_map`.
+- When external nav selects that control, the selector is `[>]`.
+- Pressing Enter on that nav enters project map/interact mode and writes `is_map_control=1` in the active project's `session/state.txt`.
+- While map/interact mode is active, the same selected project-local control should display `[^]` to show keyboard ownership moved from Wraith shell nav to the project `${game_map}` payload.
+- `ESC` exits map/interact mode and writes `is_map_control=0`.
+- While active, normal keypresses are appended to the active project's `session/history.txt`; they should not be interpreted as Wraith shell nav.
+- This bridge is generic host behavior. The project-specific manager/ops should consume `session/history.txt` and update project-owned `state.txt`, `wraith_body.txt`, and `scene.objects.pdl` frame by frame.
+- `session/history.txt` has been seeded in validation projects, including `wraith-ed`, so input history is auditable before the first event.
+
+Important chrome standard:
+- A `${game_map}` is the canvas/payload inside a window.
+- The visible `[>]` / `[^]` interact selector belongs to a project-owned UI control targeting the `${game_map}`, not inside the projected map/cube payload.
+- That control may be in a headerbar, toolbar, side menu, footer, or overlay depending on the project layout.
+- It must not replace or erase the normal Wraith window focus/chrome controls.
+- This avoids the current failure mode where a projected cube/model can obscure the `Control_Map` selector.
+- Future agents should migrate `piececraft-wraith` and `emoji-studio-wraith` scene files so the map control is a project UI item with `target_surface=game_map`, while the `${game_map}` object itself is non-nav payload.
+- New project windows should default to inactive shell/window nav (`is_map_control=0`) unless a project explicitly declares a resume policy.
+
+Latest status:
+- `wraith-3d-cube` has been migrated to this standard.
+- Its scene now emits `role=window_toolbar_item nav=5 action=INTERACT target_surface=game_map label=Control_Map`.
+- Its `role=game_map` surface is now `nav=0 action=-`.
+- `wraith_rgb_daemon` preserves `target_surface` in object receipts and renders `role=window_toolbar_item` as a filled/bordered chrome control.
+- Current cube state was reset to `is_map_control=0` after the 2026-06-27 22:51 screenshot showed stale active interact mode on startup.
+- Launch/open now resets map-control state generically without writing fake `ESC` history.
+- Do not treat the cube toolbar placement as the final universal UI standard; use `chtmgl-wraith` next to explore side/menu/footer/overlay controls around a `${game_map}` while preserving normal window chrome.
+- Apply the same standard next to `piececraft-wraith` and `emoji-studio-wraith`.
+
+Reference-driven design decisions:
+- `piececraft-3d` proves that Wraith should reuse `${game_map}`, `INTERACT`, `is_map_control`, camera fields, and file-owned maps/tiles rather than inventing a separate voxel-only API.
+- `chtmgl-alpha` proves Wraith needs richer project-local UI primitives around canvas-like payloads: panels, buttons, checkboxes, sliders, menus, image/media placeholders, and preview surfaces.
+- `emoji-studio` proves a second 2D-to-3D path: RGBA CSV rows where alpha is occupancy and RGB is material color.
+- `op-ed` proves the editor workflow Wraith needs next: sovereign game folders, map loading, glyph placement, PAL event drafting, save snapshots, and export manifests.
+- These references are standards and evidence, not permission to hardcode their project logic into `wraith-alpha_manager.c`.
+
+Current GL design risks from the 2026-06-27 23:45 CHTMGL screenshot:
+- `chtmgl-wraith` proves the widget vocabulary is starting to appear, but project panels/windows are not filled strongly enough.
+- Text and controls can visually bleed through container regions, so the next renderer fix should be fill priority: draw filled panel/surface backgrounds first, then borders, then controls/text/focus highlights.
+- Subwindows/panels are not yet draggable or resizable. Do not add project-specific drag code.
+- Generic Wraith move/resize should be host-owned: session/window registry stores geometry, scene exports `WINDOW_DRAG` and `WINDOW_RESIZE` controls, GL writes semantic input events, manager clamps/writes the updated registry, and receipts show old rect, raw/mapped mouse, delta, clamp reason, and final rect.
+
+Validation project status after latest pass:
+- `piececraft-wraith` now has a non-nav `${game_map}`, a `Control_Map` UI control with `target_surface=game_map`, a `tile_zmap` model, and local tile registry/tile definition files.
+- `chtmgl-wraith` now has static semantic records for CHTMGL-like panels, button, checkbox, slider, menu, a map-control item, and a preview surface.
+- `emoji-studio-wraith` now has a non-nav `${game_map}`, `Control_Extrusion` and `Res_8` controls, and an `rgba_extrusion` model pointing at `pieces/sample_emoji/voxels_8.csv`.
+- `wraith-ed` now has OP-ED/Piececraft/CHTMGL-inspired editor panels, a `${game_map}` tile map, project-owned input op, save/event/export artifact writers, and local assumptions/docs.
+- Validation projects should start with `is_map_control=0` unless a project explicitly declares a resume policy.
+- Each validation project now has an `ASSUMPTIONS.md` file documenting the design bets that need user correction.
+- `wraith_rgb_daemon` now renders a more visible pseudo-height `tile_zmap`, CHTMGL-style button/checkbox/slider/menu controls, and `widget_surface_probe` preview geometry.
+- receipts now include `widget_surface_probe` primitive audit lines.
+
+The next work is to validate Wraith against progressively harder internal projects:
+
+1. `wraith-3d-cube`
+2. `piececraft-wraith`
+3. `chtmgl-wraith`
+4. `emoji-studio-wraith`
+5. `wraith-ed`
+
+These are not just demos. They are acceptance gates for the Wraith scene/RGB/GL architecture.
+
+Current project momentum:
+- `wraith-3d-cube` is now a visible cube audit probe and should be verified first because it is smallest.
+- `piececraft-wraith` has the strongest momentum because `piececraft-3d` already uses `${game_map}`, `INTERACT`, `is_map_control`, maps, tile concepts, and the camera/POV command model Wraith needs.
+- `chtmgl-wraith` now has the richest UI surface for standard-setting, but still needs the most converter work because widget primitives are richer than the current RGB presenter.
+- `emoji-studio-wraith` exists to validate Emoji Studio's 2D RGBA CSV -> extruded 3D cells path inside `${game_map}`.
+- the specific plan for RGB-rendered 3D cubes, Piececraft-style block maps, and CHTMGL-style widgets is in `wraith-chtmgl&3d.md`.
+
+What to look for in the next screenshots:
+- `piececraft-wraith`: the map should look less flat than before; tree/rock/wall cells should have visible pseudo-height blocks.
+- `chtmgl-wraith`: controls should look like graphical widgets, not just text rows. The checkbox, slider, menu, and button should be visually distinct.
+- `emoji-studio-wraith`: extrusion should remain colored by CSV RGB with alpha-visible cells only; the resolution picker is still static.
+
+## Webcam Shared-KVP Note
+
+There is now an active `web-cam` shared-KVP experiment under:
+
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/web-cam`
+
+Current contract:
+
+- runtime truth may live in shared memory
+- hot writes must still remain auditable by dumping back to the same logical files
+- that dump should not stall the hot path
+
+Current implementation shape:
+
+- TPMOS shared KVP seam now lives under:
+  - `pieces/chtpm/ops/lib/tpmos_share_kvp_runtime.c`
+  - `pieces/chtpm/ops/+x/tpmos_share_kvp_db.+x`
+  - `pieces/chtpm/ops/+x/tpmos_share_kvp_adapter.+x`
+- text writes and appends:
+  - write to shared memory first
+  - also mirror/dump back to normal file paths for audit
+- hot decoded webcam frames now use:
+  - `pieces/chtpm/ops/lib/tpmos_live_frame_cache.c`
+- sampled `session/current_frame.png` remains audit/fallback truth, not primary hot transport
+
+Why this matters:
+
+- the DB does not exist just for speed
+- it exists so runtime can be memory-first while still producing readable file truth for agents and users
+- if hot keys are not auditable back to files, the seam is incomplete
+
+Current webcam status:
+
+- webcam is working again
+- webcam ASCII preview and webcam GL image preview now both target the same live frame cache source
+- if they diverge again, inspect receipt output to confirm whether the image panel used:
+  - `projection_mode=live_frame_cache`
+  - or file fallback
+
+Do not simplify this into “DB bad” or “files good”.
+The real target is:
+
+- memory-first runtime
+- per-write async audit mirroring
+- backend-aware wake-up/watch logic in the manager later
+
+Current status update:
+
+- webcam is working again after the structural TPMOS pass
+- share-KVP ownership is TPMOS-shared
+- live decoded webcam frames are now memory-first through `tpmos_live_frame_cache`
+- sampled PNG snapshots remain for audit/fallback
+- remaining latency, if any, is now more likely redraw/presenter cadence than raw source mismatch
+
+Important structural correction from user:
+
+- do not keep expanding the current `wraith_share_kvp.h` design
+- the user does not want implementation-heavy `.h` ownership here
+- standard-first reasoning applies:
+  - broken ownership/naming/seam conventions may be part of why the bug remains hard to reason about
+
+What is wrong with the current proof shape:
+
+1. `.h` carries implementation:
+- `wraith_share_kvp.h` currently contains substantial logic rather than lightweight declarations.
+
+## Browser Status Update: 2026-07-02
+
+There is now a first-pass internal browser project at:
+
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/wraith-browser`
+
+What is working:
+- project compiles cleanly
+- local page fixtures load
+- `browser_exec_js` op works for controlled JS actions
+- ASCII mother-terminal output is coherent
+- GL no longer uses the bad nested `source=session:wraith_body` panel trick
+- long-form browser text is no longer transported through fragile inline `label=` scene fields
+- GL now uses payload-backed text surfaces:
+  - `session/browser_gl_chrome.txt`
+  - `session/browser_gl_document.txt`
+  - scene objects use `role=text_asset`
+
+Important files:
+- browser host op:
+  - `projects/wraith-alpha/wraith-projects/wraith-browser/ops/src/wraith_project_input.c`
+- browser JS op:
+  - `projects/wraith-alpha/wraith-projects/wraith-browser/ops/src/browser_exec_js.c`
+- GL presenter:
+  - `projects/wraith-alpha/plugins/wraith_rgb_daemon.c`
+
+What was fixed:
+
+1. Scene-format bug
+- original browser GL tried to push paragraph text through inline `label=...`
+- that broke because the Wraith scene/receipt/GL path is not quote-safe for long-form inline text
+- browser now uses payload-backed text surfaces instead
+
+2. Added reusable GL text surface seam
+- `wraith_rgb_daemon.c` now supports:
+  - `role=text_asset`
+- this draws text from `source_ref=<file>` inside a boxed surface
+- this is the correct reusable seam for browser/editor/document-style long text
+
+What is still wrong right now:
+
+The remaining browser GL defect is layout overlap, not parsing.
+
+Live evidence from `Screenshot from 2026-07-02 01-25-43.png`:
+- left chrome area still looks garbled
+- some lines duplicate `WRAITH_BROWSER`
+- button rows fragment the lower chrome text lines
+- right document panel is much more stable, proving the `text_asset` seam itself works
+
+Root cause:
+- browser chrome text surface is too tall / too low relative to the nav controls
+- current scene:
+  - `browser_chrome_text x=18 y=7 w=38 h=7`
+  - `browser_home/browser_audit/browser_js_lab y=12`
+  - `browser_back/browser_forward/browser_reload y=14`
+  - `browser_toggle_js/browser_inc/browser_reset y=16`
+- `role=text_asset` renders text starting at `y + 1`
+- so a height `h=7` surface at `y=7` renders interior text rows at:
+  - 8
+  - 9
+  - 10
+  - 11
+  - 12
+- that means the fifth chrome text line lands exactly on the first button row at `y=12`
+- resulting symptom:
+  - button glyphs and chrome text draw into the same row
+  - visual corruption appears in the left browser pane
+
+Secondary issue:
+- browser title is duplicated intentionally by current data shape:
+  - titlebar/header object says `WRAITH_BROWSER`
+  - first line of `browser_gl_chrome.txt` also says `WRAITH_BROWSER`
+- that is not a parser bug, just current content duplication
+
+Likely fix:
+- tighten the browser left-column layout rather than changing `text_asset`
+- options:
+  1. reduce `browser_chrome_text` height so its interior text rows stop before button row `y=12`
+  2. move button rows down
+  3. remove duplicated title from `browser_gl_chrome.txt`
+  4. optionally split chrome text into:
+     - header/meta text asset
+     - controls below
+- do not revert to inline paragraph labels
+- do not remove `role=text_asset`; that seam is the correct direction
+
+Audit notes:
+- generated scene file to inspect:
+  - `projects/wraith-alpha/wraith-projects/wraith-browser/session/scene.objects.pdl`
+- payload text files to inspect:
+  - `projects/wraith-alpha/wraith-projects/wraith-browser/session/browser_gl_chrome.txt`
+  - `projects/wraith-alpha/wraith-projects/wraith-browser/session/browser_gl_document.txt`
+- if the next agent needs stronger receipts, add explicit primitive/object receipt reporting for `role=text_asset`:
+  - source_exists
+  - source_mtime_epoch
+  - source_bytes
+  - rendered_line_count
+  - rendered_char_count
+  - surface_cell_x/y/w/h
+- but the current root problem is already known from the scene row math above
+- that is not the desired TPMOS pattern going forward.
+
+2. Wraith-local naming is too narrow:
+- this is not really a Wraith-only service.
+- if kept, it should be lifted toward TPMOS-shared naming such as:
+  - `tpmos_share_kvp_db`
+  - `tpmos_share_kvp_read`
+  - `tpmos_share_kvp_write`
+  - `tpmos_share_kvp_dump`
+
+3. Project-local lazy startup is too narrow:
+- current runtime launches the DB from inside the `web-cam` project seam.
+- long-term this should be orchestrator-owned or otherwise TPMOS-shared, not a single-project daemon boot path.
+
+Expected future cleanup direction:
+
+- move share-KVP implementation out of the `web-cam` project
+- replace `.h`-driven implementation with normal `.c` units / ops
+- keep auditability by mirroring or dumping memory state back to the same logical file paths
+- preserve backend switchability:
+  - shared memory
+  - file
+  - other future backends
+
+Instruction for future agent:
+
+- do not treat this as optional polish after webcam is fixed
+- treat standards alignment as part of the fix plan itself
+
+Important correction:
+- Piececraft is not merely isometric.
+- It uses GL-OS camera state and POV switching:
+  - `camera_mode`
+  - `cam_x/cam_y/cam_z`
+  - `cam_pitch/cam_yaw/cam_roll`
+  - `CAMERA_SET`
+  - `CAMERA_MODE`
+  - `CAMERA_MOVE`
+- Wraith cube controls should use this same model.
+
+Code status:
+- `wraith-alpha_manager.c` now generically loads non-terminal project body text from each project's `session/wraith_body.txt`.
+- semantic export now emits `project_body_text` objects from those files and imports project-owned `session/scene.objects.pdl` records.
+- validation-project-specific hardcoding was removed from the manager.
+- generic `INTERACT`/`ESC` routing was added for project-owned `${game_map}` surfaces.
+- `wraith-alpha_manager.+x` was rebuilt after this change.
+- `wraith_rgb_daemon.c` now has first-pass source-backed preview primitives for:
+  - `role=zslice_piece`
+  - `role=tile_zmap`
+  - `role=rgba_extrusion`
+- `wraith_rgb_daemon.c` now writes primitive audit receipt lines for those roles.
+- `wraith_rgb_daemon.+x` was rebuilt after this change.
+- `zslice_piece` now has a projected wireframe path when the project scene label includes `rot=` / `camera=` metadata.
+- This is an intermediate projected cube renderer, not final Piececraft-grade filled/depth-sorted face rendering.
+
+## Next Task 1: wraith-3d-cube
+
+Purpose:
+- prove Wraith can render a simple 3D-ish object through the same scene truth into ASCII audit and GL graphical presentation.
+- prove `${game_map}` / `INTERACT` / `is_map_control` can be used for a 3D/canvas-like surface.
+- make the difference between ASCII audit and GL presentation clear and debuggable.
+
+Existing location:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/wraith-3d-cube`
+
+Expected behavior:
+- user launches `wraith-alpha` from the normal TPMOS loader.
+- inside Wraith, the terminal/launcher lists `wraith-3d-cube`.
+- selecting it opens a Wraith desktop window, not a top-level TPMOS project.
+- the project body shows a cube audit/probe.
+- ASCII should show a simplified cube frame and useful metadata.
+- GL should show a graphical-block or RGB-shape cube view.
+- receipts should prove what cube/map object was converted.
+
+Implementation direction:
+- keep it small first: one static or stepped cube is enough.
+- use a `${game_map}` region for the cube surface.
+- store the cube as a `pieces/cube_probe/artifact.txt` z-slice piece, matching the existing `piececraft-3d` / `fuzz-op-gl` piece convention.
+- do not rely on ASCII glyphs as the only cube source; ASCII is the audit view, while semantic metadata carries the piece artifact source, camera, rotation, and target surface.
+- RGB conversion should consume a semantic `PIECE_MODEL` / `zslice_piece` record and rasterize projected faces into `current_frame.rgba32`.
+- add an `INTERACT` seam only after the display path is correct.
+- do not copy `piececraft-3d` code unless intentionally reusing it; this is a smaller probe.
+
+Acceptance:
+- `wraith-3d-cube` opens as a real nested Wraith project window.
+- both ASCII and GL show the cube/project body.
+- receipt identifies Wraith-owned semantic objects, not stale foreign project truth.
+- GL screenshot can be debugged using receipts without guessing.
+
+Current status:
+- layout includes an ASCII cube, `${game_map}`/`INTERACT`/`is_map_control` declaration, and cube audit metadata.
+- session state file exists.
+- project body and scene records live in `session/wraith_body.txt` and `session/scene.objects.pdl`.
+- `session/scene.objects.pdl` declares the cube toolbar control with `nav=5 action=INTERACT target_surface=game_map`.
+- the cube `${game_map}` surface is payload-only with `nav=0`.
+- `pieces/cube_probe/artifact.txt` and `pieces/cube_probe/state.txt` now exist.
+- local implementation notes live in `IMPLEMENTATION.md`.
+- first-pass RGB preview for `role=zslice_piece` exists in `wraith_rgb_daemon.c`.
+- project-owned cube input op now exists at `ops/+x/wraith_project_input.+x`.
+- the op consumes `session/history.txt` with a `session/history.cursor` offset, processes keys only when `is_map_control=1`, and updates `session/state.txt`, `pieces/cube_probe/state.txt`, `session/wraith_body.txt`, and `session/scene.objects.pdl`.
+- supported keys: `W/S` rotate X, `A/D` rotate Y, `Q/E` rotate Z, `I/K/J/L` move camera, `M` changes camera mode, `R` resets.
+- smoke test appended `KEY_PRESSED: 68` (`D`) and confirmed `cube_rotation_y` changed from `35` to `40`.
+
+Live validation note from 2026-06-27 21:54:
+- `wraith-3d-cube` opens from inside Wraith and shows both the ASCII cube audit body and a GL/RGB cube-ish preview inside the `${game_map}` surface.
+- The `[>]` to `[^]` interact selector works enough to prove the host bridge enters map control.
+- `wraith-3d-cube/session/history.txt` records `COMMAND: INTERACT`.
+- Initial project-owned camera/rotation control is now implemented after that validation note.
+- Do not move those keybindings into `wraith-alpha_manager.c`; the current generic host hook only runs `<active-project>/ops/+x/wraith_project_input.+x` if present.
+
+## Next Task 2: piececraft-wraith
+
+Purpose:
+- validate Wraith against a real z-level/tile/game-map project.
+- use Piececraft-style 2D/3D map structure to test depth, tiles, map regions, and interaction.
+
+Reference source:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/piececraft-3d`
+
+Required Wraith project name:
+- `piececraft-wraith`
+
+Expected location:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/piececraft-wraith`
+
+Important naming:
+- do not call it `piececraft-3d` unless using the exact same code/project identity.
+- the Wraith validation project name is `piececraft-wraith`.
+
+Implementation direction:
+- inspect `piececraft-3d` for map/tile/z-level conventions.
+- create a Wraith internal project that uses the same concepts through Wraith's `${game_map}` contract.
+- preserve the existing Piececraft world convention: `maps/map_01_z*.txt`, `assets/tiles/registry.txt`, and `assets/tiles/*.tile.txt` with `extrude` values.
+- start with a minimal map slice, not the whole source project.
+- preserve receipt-backed auditability for z-level, tile id, visible layer, and selected/interacted cell.
+
+Acceptance:
+- Wraith can show a z-level/tile map in ASCII audit and GL.
+- GL map rendering does not bypass the semantic scene/RGB receipt path.
+- `INTERACT` mode can be entered/exited without breaking desktop nav.
+
+Current status:
+- project scaffold exists.
+- starter layout exists.
+- z=0 map slice exists.
+- session state exists.
+- README exists.
+- project body and scene records live in `session/wraith_body.txt` and `session/scene.objects.pdl`.
+- `session/scene.objects.pdl` declares the map surface with `nav=5 action=INTERACT`.
+- first-pass RGB preview for `role=tile_zmap` exists in `wraith_rgb_daemon.c`.
+- this is the strongest candidate for polish once cube launch/display is verified.
+
+## Next Task 3: chtmgl-wraith
+
+Purpose:
+- validate Wraith against markup-driven UI features.
+- prove CHTPM/CHTMGL-like widgets can become Wraith semantic scene primitives and RGB/GL shapes.
+
+Reference source:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/chtmgl-alpha`
+
+Required Wraith project name:
+- `chtmgl-wraith`
+
+Expected location:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/chtmgl-wraith`
+
+Important naming:
+- do not call it `chtmgl-alpha` unless using the same project as-is.
+- the Wraith validation project name is `chtmgl-wraith`.
+
+Implementation direction:
+- inspect `chtmgl-alpha` layouts and widget vocabulary.
+- start with a small Wraith page containing representative primitives:
+  - window
+  - header
+  - panel
+  - button
+  - checkbox
+  - slider
+  - image/media placeholder
+  - menu
+  - `${game_map}` surface if canvas-like behavior is needed
+- convert these into Wraith scene objects with stable nav ids and actions.
+- keep GL prettier than ASCII but not less auditable.
+
+Acceptance:
+- Wraith can render markup-like controls in ASCII and GL.
+- controls are indexable/navigable in both theaters.
+- receipts show object roles, labels, bounds, hit regions, focus regions, and actions.
+
+Current status:
+- project scaffold exists.
+- starter widget layout exists.
+- session state exists.
+- README exists.
+- project body and scene records live in `session/wraith_body.txt` and `session/scene.objects.pdl`.
+- `session/scene.objects.pdl` declares the preview surface with `nav=5 action=INTERACT`.
+- this is currently a placeholder/audit page, not yet a true widget converter validation.
+
+## Next Task 4: emoji-studio-wraith
+
+Purpose:
+- validate Wraith against Emoji Studio's 2D RGBA/image-to-3D extrusion model.
+- prove `${game_map}` can host an image-like 2D source that becomes 3D cells in RGB/GL.
+
+Reference source:
+- `#.emoji-studio-501.02.05t/&.emoji-studio-solo.02.01`
+
+Required Wraith project name:
+- `emoji-studio-wraith`
+
+Expected location:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/emoji-studio-wraith`
+
+Implementation direction:
+- preserve Emoji Studio's CSV convention:
+  - `pieces/<emoji_name>/voxels_8.csv`
+  - `pieces/<emoji_name>/voxels_16.csv`
+  - `pieces/<emoji_name>/voxels_32.csv`
+  - `pieces/<emoji_name>/voxels_64.csv`
+- alpha controls occupancy.
+- RGB controls material/color.
+- conversion applies only inside `${game_map}`.
+- emit semantic `IMAGE_EXTRUSION role=rgba_extrusion` objects.
+- render in `wraith_rgb_daemon.c`, not in `wraith_gl.c`.
+
+Current status:
+- project scaffold exists.
+- starter layout exists.
+- session state exists.
+- sample `pieces/sample_emoji/voxels_8.csv` exists.
+- README exists.
+- project body and scene records live in `session/wraith_body.txt` and `session/scene.objects.pdl`.
+- `session/scene.objects.pdl` declares the extrusion surface with `nav=5 action=INTERACT`.
+- first-pass RGB preview for `role=rgba_extrusion` exists in `wraith_rgb_daemon.c`.
+- next implementation step is project-owned emoji/extrusion ops that update source CSV/state files, not Wraith manager branches.
+
+## Next Task 5: wraith-ed
+
+Purpose:
+- validate Wraith as a real game editor, not only a renderer probe.
+- pull OP-ED functionality into Wraith in a file-owned/project-owned way.
+
+Reference sources:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/op-ed`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/piececraft-3d`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/piececraft-wraith`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/chtmgl-wraith`
+
+Required Wraith project name:
+- `wraith-ed`
+
+Expected location:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/wraith-ed`
+
+Current status:
+- project scaffold exists.
+- `project.pdl`, layout, README, and `ASSUMPTIONS.md` exist.
+- `session/state.txt`, `session/history.txt`, `session/wraith_body.txt`, and `session/scene.objects.pdl` exist.
+- `games/test-game-01/maps/map_0001_z0.txt` is the editable map.
+- `ops/+x/wraith_project_input.+x` exists and was compiled.
+- test input while `is_map_control=1` moved cursor east, placed glyph `T`, wrote `games/test-game-01/saves/save_latest.txt`, wrote `pal/events/event_cursor_05_03.pal`, and wrote `exports/test-game-01.export.pdl`.
+- startup `is_map_control` was reset to `0`.
+
+Next implementation direction:
+- add OP-ED-style game/map file browser.
+- add PAL event block-builder controls, not just one event draft.
+- add Piececraft z-level and camera controls.
+- add export receipts that prove every file copied or bundled.
+- keep all editor behavior in project-owned ops/files, not Wraith Alpha.
+
+## How To Work Safely
+
+Before changing coordinates or styling:
+- inspect `current_frame.receipt.pdl`
+- inspect `gl_display.receipt.pdl`
+- compare checksums
+- inspect `text_px_*`, `hit_px_*`, and `focus_px_*`
+- for cube/map/emoji surfaces, inspect `SECTION | PRIMITIVES | SOURCE_AND_CONVERSION_AUDIT`
+- if a primitive line says `final_projection=0`, the rendered shape is still a preview and camera controls should not be expected to affect GL yet
+
+Before adding a new Wraith project:
+- confirm it belongs under `projects/wraith/wraith-projects/`
+- confirm it appears in the Wraith internal launcher
+- confirm launching it mutates Wraith's window registry, not the top-level TPMOS loader
+
+Before adding richer GL behavior:
+- keep `wraith_gl.c` thin
+- put conversion logic in `wraith_rgb_daemon.c`
+- put session/window truth in the manager/session artifacts
+- keep receipts strong enough that a future agent can debug from files alone
+
+## Clean Slate For Next Sprint
+
+`2fix.txt` has been reset to current active risks only. Historical resolved debugging notes should be treated as archive context from this handoff, not as the next work queue.
+
+The next sprint should start with `wraith-3d-cube`.
+
+Immediate next sprint order:
+- Live-test Wraith GL after restarting/rebuilding the running RGB daemon so the new `zslice_piece` projected wireframe path is active.
+- Press `W/A/S/D/Q/E` while `[^]` is active and verify the cube wireframe changes and `session/state.txt` / `session/wraith_body.txt` update.
+- Extend the projected wireframe renderer into filled/depth-sorted faces.
+- Extend the primitive receipt section from projected-wireframe facts into final cube facts: projected face bounds, face draw order, depth range, and checksum.
+
+## Browser Follow-Up: 2026-07-02 02:11 PDT
+
+- TPMOS root CLI input `8` is now confirmed fixed by the user.
+- browser search activation semantics were also corrected so it can behave as a text-entry control before submit.
+
+Current remaining bug:
+- browser GL controls are on the correct architecture now, but are visually packed too tightly.
+- live screenshot `Screenshot from 2026-07-02 02-11-37.png` shows:
+  - host numbering/selectors are present inside the controls
+  - labels are clipped because each control rect is too narrow for the combined payload
+  - examples:
+    - `Home -> [Ho`
+    - `Audit -> [Au`
+    - `JS_Lab -> [JS_L`
+
+Interpretation:
+- this is not a CLI-IO bug anymore.
+- this is not a command-routing bug anymore.
+- this is now a Wraith GL control sizing/reflow problem.
+
+Best next step for a future agent:
+1. inspect browser control widths/x positions emitted by `projects/wraith-alpha/wraith-projects/wraith-browser/ops/src/wraith_project_input.c`
+2. widen/reflow controls in GL
+3. remove duplicate selector-style browser body text so host GL controls are the only selector truth

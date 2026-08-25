@@ -1,0 +1,2 @@
+active_menu_piece=login
+last_message=Enter a wallet ID and password, then click Log In.

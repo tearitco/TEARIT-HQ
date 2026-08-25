@@ -1,0 +1,15 @@
+derer is working.
+
+  You can now recompile the host using run.sh to verify that the emojis (or at least the placeholder) now
+  appear in the picker. If they appear, the next step would be to map the emoji_list indices to their
+  corresponding emoji codepoints for the final fix.
+▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+ > wait. we were never mean to use the atlas. we are meant to use the #.emoji.xtract.stb strategy but         
+   refined. we want to use emojis from parse_emojis.txt list to create a single .png atlas file per emoji we  
+   need to render, then convert that to .csv of the appropriate size , then render that.(instead of needing   
+   an overly large atlas, we will store the .csv/atlas as user requests emoji, hold them in cache folder ,    
+   and delete them when program quits. ) we mean to do this using an orchestration binary + fork() execution  
+   of seperate binaries . does that make sense? u can just render the emojis for picker from list, but thats  
+   where the atlas is meant to come from , explore teh xtract folder, and formulate a plan based on these as  
+   atlas-cache-m30.txt                                                                                        
+▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀

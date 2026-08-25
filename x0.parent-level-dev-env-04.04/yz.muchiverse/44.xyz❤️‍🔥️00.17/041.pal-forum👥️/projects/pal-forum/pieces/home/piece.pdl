@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | home
+META         | version            | 1.0
+
+METHOD       | Refresh Wall            | REFRESH_WALL
+METHOD       | Logout                  | LOGOUT

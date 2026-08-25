@@ -1,0 +1,13 @@
+<chtpm>
+  <module>projects/wraith-alpha/wraith-projects/wraith-ed/manager/+x/wraith-ed_manager.+x</module>
+  <text label="WRAITH ED" /><br/>
+  <text label="Project ID: wraith-alpha/wraith-projects/wraith-ed" /><br/>
+  <text label="References: op-ed editor/save/event flow + piececraft-wraith game_map" /><br/>
+  <text label="Surface: ${game_map} | Action: INTERACT | Mode: is_map_control" /><br/>
+  <button label="Control Editor Map" onClick="INTERACT" /><br/>
+  <button label="Load Map" onClick="KEY:76" /><br/>
+  <button label="Place Glyph" onClick="KEY:80" /><br/>
+  <button label="Save Game" onClick="KEY:83" /><br/>
+  <button label="PAL Event" onClick="KEY:69" /><br/>
+  <button label="Export" onClick="KEY:88" /><br/>
+</chtpm>

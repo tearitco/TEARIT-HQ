@@ -1,0 +1,86 @@
+# Exo-Testing-Bot v4 - Orchestrator-Centric Plan
+
+## Date
+2026-04-21
+
+## Project Goal
+Develop an orchestrator-style bot (`bot4`) that launches and manages child processes (simulated for v1), incorporating an FSM for its own control flow, mirroring the architecture of `pieces/chtpm/plugins/orchestrator.c`.
+
+## Architectural Model
+*   **Orchestrator-Centric:** The main bot process acts as the orchestrator, managing the lifecycle of child processes.
+*   **Mimics `orchestrator.c`:** Employs `fork()/exec()` for launching children and file-based logging (`proc_list.txt`) for process tracking.
+*   **No Shared Header Files:** Component declarations are internal to `.c` files.
+*   **File-Based IPC & State:** Communication and state rely on files.
+*   **Iterative Development:** Focus on core orchestration and FSM first.
+
+## Core Components (v1 - Orchestrator-Centric MVP)
+
+1.  **`main.c` (The Orchestrator):**
+    *   Entry point.
+    *   Initializes FSM and TPMOS interaction simulation.
+    *   Simulates launching child processes using `fork()` and `execl()` (or `_spawnl()` on Windows).
+    *   Logs child PIDs and names to a simulated file (e.g., `/tmp/bot4_proc_list.txt`).
+    *   Runs a loop to check FSM state and potentially react to simulated events.
+    *   Simulates receiving a shutdown signal (e.g., SIGINT) and attempts to manage child process termination via the simulated `kill_all_tracked_processes`.
+
+2.  **Child Process Simulation (`child_process_sim.c`):**
+    *   Simulates child processes that the orchestrator launches.
+    *   `initialize_child_process()`: Registers PID/name to the simulated `proc_list.txt`.
+    *   `child_main_loop()`: Simulates process activity (e.g., sleeps, logs).
+    *   `handle_child_signal()`: Gracefully exits upon signal.
+
+3.  **Simple State Manager (FSM - `fsm.c`):**
+    *   States: `INIT`, `LAUNCHING_CHILDREN`, `MONITORING`, `SHUTDOWN_SEQUENCE`, `DONE`, `ERROR`.
+    *   `initialize_fsm()`: Sets state to `FSM_INIT`.
+    *   `get_current_fsm_state()`, `transition_fsm_state()`, `run_fsm_cycle()`: Standard FSM management.
+
+4.  **TPMOS Interaction Simulation (`tpmos_interaction.c`):**
+    *   Provides simulated file I/O for `proc_list.txt`.
+    *   Includes functions like `log_pid()`, `kill_all_tracked_processes()`.
+    *   `initialize_tpmos_interaction()`: Sets up simulated files and clears `proc_list.txt`.
+    *   `cleanup_tpmos_interaction()`: Removes simulated files.
+
+5.  **Build System (`build_bot.sh`):**
+    *   Compiles `main.c`, `fsm.c`, `tpmos_orchestrator.c` (or integrated into `main.c`), and `child_process_sim.c` into `./exo-testing-bot-v3`.
+    *   Uses `gcc` with standard flags (`-Wall -Wextra -g`, `-pthread` if needed).
+
+6.  **Launch Script (`run.sh`):**
+    *   A simple shell script to execute the compiled bot binary. Mimics `./button.sh run`.
+
+## Key Performance Indicators (KPIs) for v1 (MVP)
+
+1.  **Compilability:**
+    *   **KPI:** `./xo/bot3/build_bot.sh` compiles successfully, producing `./xo/bot3/exo-testing-bot-v3`.
+    *   **Target:** 100% success.
+
+2.  **Launch Script:**
+    *   **KPI:** `./xo/bot4/run.sh` successfully executes the bot binary.
+    *   **Target:** Bot starts and prints initial messages.
+
+3.  **Orchestration Logic:**
+    *   **KPI:** The main orchestrator process successfully simulates launching child processes.
+    *   **Target:** Logs indicating child process starts.
+
+4.  **Process Registration:**
+    *   **KPI:** Simulated child processes log their PID/name to the simulated `proc_list.txt` file correctly.
+    *   **Target:** `/tmp/bot4_proc_list.txt` contains expected entries.
+
+5.  **FSM Control Flow:**
+    *   **KPI:** Orchestrator FSM progresses through states: `INIT` → `LAUNCHING_CHILDREN` → `MONITORING` → `SHUTDOWN_SEQUENCE`.
+    *   **Target:** Observable log messages confirming FSM state changes.
+
+6.  **Simulated Shutdown:**
+    *   **KPI:** Orchestrator simulates receiving a shutdown signal and correctly calls `kill_all_tracked_processes`.
+    *   **Target:** Simulated `proc_list.txt` is cleared, and simulated kill messages are logged.
+
+## Remaining Steps (Post v1)
+
+1.  **Real Child Process Spawning:** Replace simulation with actual `fork()/execl()`.
+2.  **IPC & Monitoring:** Implement proper inter-process communication and health checks.
+3.  **Complex FSM Logic:** Develop more sophisticated FSM states for testing scenarios.
+4.  **Actual Op Interaction:** Integrate with actual TPMOS Ops.
+5.  **Robustness & Reporting:** Enhance error handling and logging.
+
+This plan establishes a foundation for testing system-level process management and orchestration within the TPMOS context.
+
+no linking  no headers. orchestration only! mirror tpmos architecture whenever possible.

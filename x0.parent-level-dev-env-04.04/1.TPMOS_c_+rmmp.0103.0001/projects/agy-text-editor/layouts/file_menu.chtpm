@@ -1,0 +1,20 @@
+<panel>
+    <module>projects/agy-text-editor/manager/+x/agy-text-editor_manager.+x</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+    
+    <text label="╔══════════════ F I L E   M E N U ════════════╗" /><br/>
+    <text label="║                                             ║" /><br/>
+    <text label="║ ACTIVE: " /><text label="${active_project}" /><br/>
+    <text label="║                                             ║" /><br/>
+    ${active_file_info_line}
+    <text label="║                                             ║" /><br/>
+    <text label="║  " /><button label="NEW FILE" onClick="KEY:6" /><text label="                       ║" /><br/>
+    <text label="║  " /><button label="SAVE FILE" onClick="KEY:7" /><text label="                      ║" /><br/>
+    <text label="║  " /><button label="SAVE AS..." onClick="KEY:8" /><text label="                     ║" /><br/>
+    <text label="║  " /><button label="LOAD FILE..." onClick="KEY:9" /><text label="                   ║" /><br/>
+    <text label="║  " /><button label="BACK TO EDITOR" href="projects/agy-text-editor/layouts/editor.chtpm" /><text label="                 ║" /><br/>
+    <text label="║                                             ║" /><br/>
+    <text label="╠═════════════════════════════════════════════╣" /><br/>
+    <row label="${editor_response_line}" /><br/>
+    <text label="╚═════════════════════════════════════════════╝" /><br/>
+</panel>

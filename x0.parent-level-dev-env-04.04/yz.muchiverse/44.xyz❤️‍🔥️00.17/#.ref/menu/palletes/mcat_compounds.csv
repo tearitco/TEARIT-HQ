@@ -1,0 +1,37 @@
+Name,Formula,Type,Functional_Groups,MCAT_Relevance
+Methane,CH4,Alkane,None,Simplest hydrocarbon; base for organic nomenclature and combustion reactions.
+Ethane,C2H6,Alkane,None,Two-carbon chain; example of alkane properties like low reactivity.
+Ethylene,C2H4,Alkene,C=C,Key in addition reactions; industrial precursor to polymers.
+Propylene,C3H6,Alkene,C=C,Common in polymerization; tests alkene naming and reactivity.
+Methanol,CH3OH,Alcohol,-OH,Solvent and fuel; compares to ethanol in metabolism and toxicity.
+Ethanol,C2H5OH,Alcohol,-OH,Alcoholic beverage component; undergoes oxidation to acetaldehyde/acetic acid.
+Isopropanol,(CH3)2CHOH,Alcohol,-OH,Disinfectant; branched alcohol example for naming.
+Formaldehyde,HCHO,Aldehyde,-CHO,Simplest aldehyde; used in disinfection, tests carbonyl reactivity.
+Acetaldehyde,CH3CHO,Aldehyde,-CHO,Glycolysis/fermentation product; oxidizes to acetic acid.
+Benzaldehyde,C6H5CHO,Aromatic Aldehyde,-CHO,Aromatic carbonyl; in flavors, tests electrophilic aromatic substitution.
+Acetone,(CH3)2CO,Ketone,C=O,Simplest ketone; solvent, tests ketone vs. aldehyde reactivity.
+Formic Acid,HCOOH,Carboxylic Acid,-COOH,Simplest acid; in ant venom, tests acidity and esterification.
+Acetic Acid,CH3COOH,Carboxylic Acid,-COOH,Vinegar component; buffers, key in acetylation reactions.
+Benzoic Acid,C6H5COOH,Aromatic Carboxylic Acid,-COOH,Preservative; tests aromatic acid properties and salts.
+Glucose,C6H12O6,Aldose Sugar,-OH, Aldehyde (open chain),Glycolysis starting point; tests carbohydrate structure and isomers.
+Fructose-6-phosphate,C6H13O9P,Ketose Phosphate,-OH, Phosphate, Glycolysis intermediate; isomerizes from glucose-6-P.
+Fructose-1,6-bisphosphate,C6H14O12P2,Ketose Phosphate,-OH, Phosphate (two),Glycolysis key regulator; cleaved to DHAP/G3P.
+Dihydroxyacetone phosphate,(HOCH2)2C(O)OPO3H2,Ketone Phosphate,C=O, Phosphate,Glycolysis branch point; converts to G3P.
+Glyceraldehyde-3-phosphate,O=CHCH(OH)CH2OPO3H2,Aldehyde Phosphate,-CHO, -OH, Phosphate,Glycolysis energy-yield step; oxidized to 1,3-BPG.
+Pyruvate,CH3C(O)COOH,Keto Acid,C=O, -COOH,End of glycolysis; enters TCA or fermentation.
+Glycine,Gly (G),NH2CH2COOH,Amino Acid,-NH2, -COOH,Non-essential, non-polar; simplest AA, in hemoglobin.
+Alanine,Ala (A),CH3CH(NH2)COOH,Amino Acid,-NH2, -COOH,Non-essential, non-polar aliphatic; transamination reactions.
+Serine,Ser (S),HOCH2CH(NH2)COOH,Amino Acid,-NH2, -COOH, -OH,Non-essential, polar uncharged; in phospholipids.
+Cysteine,Cys (C),HSCH2CH(NH2)COOH,Amino Acid,-NH2, -COOH, -SH,Non-essential, polar uncharged; disulfide bonds in proteins.
+Aspartic Acid,Asp (D),HOOCCH2CH(NH2)COOH,Amino Acid,-NH2, -COOH (two),Non-essential, polar acidic; in urea cycle.
+Histidine,His (H),Imidazole-CH2CH(NH2)COOH,Amino Acid,-NH2, -COOH, Imidazole,Essential, polar basic; buffers in hemoglobin.
+Isoleucine,Ile (I),(CH3)CHCH2CH(NH2)COOH,Amino Acid,-NH2, -COOH,Essential, non-polar aliphatic; branched-chain AA catabolism.
+Leucine,Leu (L),(CH3)2CHCH2CH(NH2)COOH,Amino Acid,-NH2, -COOH,Essential, non-polar aliphatic; mTOR signaling.
+Lysine,Lys (K),H2N(CH2)4CH(NH2)COOH,Amino Acid,-NH2, -COOH (two),Essential, polar basic; histone modification.
+Phenylalanine,Phe (F),C6H5CH2CH(NH2)COOH,Amino Acid,-NH2, -COOH,Essential, non-polar aromatic; precursor to tyrosine/dopamine.
+Tryptophan,Trp (W),Indole-CH2CH(NH2)COOH,Amino Acid,-NH2, -COOH,Essential, non-polar aromatic; serotonin/melatonin precursor.
+Acetylcholine,(CH3)3N+CH2CH2OCOCH3,Neurotransmitter,-N+(CH3)3, Ester,Cholinergic synapse; muscle contraction, parasympathetic.
+Dopamine,HO-C6H4-CH2CH2NH2,Neurotransmitter,-OH, -NH2,Catecholamine; reward pathway, Parkinson's link.
+Serotonin,5-HT (HO-C8H6N-CH2CH2NH2),Neurotransmitter,-OH, -NH2,Indoleamine; mood regulation, GI motility.
+GABA,H2NCH2CH2CH2COOH,Neurotransmitter,-NH2, -COOH,Inhibitory; anxiety, epilepsy; from glutamate.
+Glutamate,Glu (E),HOOCCH2CH2CH(NH2)COOH,Neurotransmitter,-NH2, -COOH (two),Excitatory; precursor to GABA, learning.

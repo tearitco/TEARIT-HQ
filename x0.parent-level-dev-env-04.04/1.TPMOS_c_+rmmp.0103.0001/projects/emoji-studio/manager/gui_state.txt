@@ -1,0 +1,6 @@
+app_title=Emoji Studio
+active_piece=
+resolution=8
+emoji_count=0
+emoji_list_start
+emoji_list_end

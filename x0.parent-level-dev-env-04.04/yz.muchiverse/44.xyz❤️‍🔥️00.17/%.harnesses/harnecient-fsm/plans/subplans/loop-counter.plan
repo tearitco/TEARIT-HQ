@@ -1,0 +1,5 @@
+# loop-counter.plan — a sub-plan whose assertion only passes once a
+# counter file has been incremented enough times, to prove LOOP_UNTIL
+# genuinely re-runs the sub-plan (fresh, real, own artifacts each
+# time) rather than caching/faking a result.
+STEP | list files in /tmp/claude-1000 | n=$(cat /tmp/claude-1000/loop-counter.txt 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > /tmp/claude-1000/loop-counter.txt; [ "$n" -ge 3 ]

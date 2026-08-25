@@ -1,0 +1,53 @@
+# Vision Document: 3D ASCII Mapping & Sovereign Camera Pieces
+
+**Date:** April 24, 2026
+**Framework:** TPMOS Sovereign Architecture
+**Status:** Audit & Roadmapping
+
+---
+
+## 1. Addressing the Current Status
+
+### A. Map Rendering: 3D ASCII & Voxels
+**The Vision:** Render the ASCII map into 3D by reading Z-levels from the grid and transforming each ASCII symbol into an **8x8x8 voxel representation** (a "Piece DNA" reconstruction).
+**Current Reality:** 
+- **Z-Level Reading:** Partial. The Host (`gl_desktop.c`) supports Z-extrusion in `draw_tile()`, and the parser (`gltpm_parser.c`) reads `pos_z` from piece states. However, it does NOT yet dynamically parse a "Z-buffer" directly from a multi-layered ASCII map.
+- **Voxel Rendering:** **NOT IMPLEMENTED.** Currently, ASCII symbols are mapped to basic geometric primitives (cubes/tiles) via `registry.txt`. We are rendering "Placeholders," not the intended 8x8x8 voxel "Genetic Artifacts."
+- **Deviation:** Negative. The current rendering is too abstract and lacks the "Genetic" purity of the 3D-ASCII vision.
+
+### B. Camera as a "Piece" Entity
+**The Vision:** The Camera should not be a hardcoded local variable in the Host. It must be a **Sovereign Piece** with:
+1.  A dedicated directory: `projects/<id>/pieces/camera/`.
+2.  A persistent state file: `state.txt` (containing `pos_x`, `pos_y`, `pos_z`, `pitch`, `yaw`, `roll`).
+3.  Artifact updating: Manager updates camera state; Host only renders the "through-the-lens" view based on this state.
+**Current Reality:**
+- **GL Project:** **PARTIAL ALIGNMENT.** We have implemented `sync_camera_piece()` in `fuzz-op-gl_manager.c` which writes to `projects/fuzz-op-gl/pieces/camera/state.txt`. However, the Host (`gl_desktop.c`) still maintains local `cam_pos` and `cam_rot` variables which can lead to sovereignty drift.
+- **ASCII Project:** **NOT ALIGNMENT.** The camera in the ASCII project is purely virtual and lacks a sovereign piece identity.
+
+---
+
+## 2. Steps to Alignment (The Purity Roadmap)
+
+### Step 1: Voxel-Level Rendering (GL-OS)
+- **Task:** Implement a voxel-primitive engine in `gl_desktop.c` that can render an 8x8x8 grid of sub-cubes.
+- **DNA Mapping:** Create a `dna_to_voxel` tool that converts an ASCII symbol's "Shape DNA" into a voxel bitmask.
+- **Integration:** Update `draw_tile()` or create `draw_voxel_piece()` to use these bitmasks for rendering, rather than generic cubes.
+
+### Step 2: Absolute Camera Sovereignty (Both Projects)
+- **Task:** Finalize the "Camera-as-a-Piece" pattern.
+- **Manager Requirement:** The Manager MUST be the primary writer of `pieces/camera/state.txt`.
+- **Host Requirement:** The Host MUST treat local camera variables as CACHE ONLY, refreshed from the sovereign `state.txt` on every frame pulse.
+- **ASCII Alignment:** Implement a dummy "Camera Piece" in the ASCII project that tracks the viewport center, allowing parity with the GL version's spatial logic.
+
+### Step 3: Z-Buffer ASCII Parsing
+- **Task:** Refactor `gltpm_parser.c` and the ASCII `render_map.c` to support multi-layered map files (e.g., `map_01_z0.txt`, `map_01_z1.txt`).
+- **Composition:** The Parser must composite these layers into a single 3D scene, using the Z-index as a spatial coordinate.
+
+---
+
+## 3. Similarity & Golden Standards
+- **Ref: `ascii-os-frame-architecture-blueprint.txt`:** Our GL implementation must strictly mirror the "TV vs Studio" separation. The Manager is the Studio (calculating DNA/Voxels), the Host is the TV (showing the result).
+- **Ref: `fo-map_interact-blueprint.md`:** The `xlector` and `camera` pieces must remain sovereign and decoupled. One represents "What I am touching," the other represents "How I am looking."
+
+---
+*Documented by Gemini CLI - 2026-04-24*

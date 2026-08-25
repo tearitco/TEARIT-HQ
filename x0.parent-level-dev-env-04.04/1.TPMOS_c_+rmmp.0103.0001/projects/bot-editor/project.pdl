@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | bot-editor
+META         | version            | 1.0
+META         | author             | TPM-AI Team
+META         | entry_layout       | projects/bot-editor/layouts/editor.chtpm
+
+STATE        | player_piece       | xlector
+STATE        | title              | TPM BOT EDITOR
+STATE        | active_bot         | none
+
+RESPONSE     | default            | *Standing by*

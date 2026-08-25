@@ -1,0 +1,11 @@
+tile_id=tree
+ascii=R
+unicode=🌲
+label=Tree
+rgb_top=34,100,34
+rgb_side=20,80,20
+rgb_edge=10,60,10
+extrude=1.8
+solid=1
+walkable=0
+category=obstacle

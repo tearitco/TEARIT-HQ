@@ -1,0 +1,67 @@
+# Moke-Pet (Lizard Bot) Architectural Blueprint
+
+## 1. Core Philosophy
+The Moke-Pet system follows the **Container-First, Sovereign-Piece** model with **Dynamic Resource Discovery**.
+- **Tank = World/Map Container**: The primary boundary.
+- **Dynamic Identification**: Lizards do not have hardcoded food paths. They scan the container for any piece with `type: food` in its PDL/state.
+- **Sovereign Actions**: 
+    - `scan.+x`: Perceptual Op; populates `memory/observations.txt` with nearby pieces.
+    - `eat.+x`: Action Op; targets a specific piece ID from observations.
+    - `attack.+x`: Action Op; targets another lizard.
+
+## 2. Directory Structure (TPMOS Canonical)
+
+```
+projects/moke-tank-0.1/pieces/
+└── world_tank_01/
+    ├── state.txt               # Tank epoch metadata
+    ├── map_enclosure/          # Enclosure container
+    │   ├── liz_bulb/           # Sovereign Entity Piece (Bulb)
+    │   │   ├── stomach/        # Local piece container
+    │   │   ├── ops/            # Sovereign methods
+    │   │   ├── memory/         # RL/FSM state
+    │   │   └── piece.pdl       # Method registry
+    │   ├── liz_char/           # Sovereign Entity Piece (Char)
+    │   │   ├── stomach/
+    │   │   ├── ops/
+    │   │   ├── memory/
+    │   │   └── piece.pdl
+    │   ├── food_pool/          # Shared container (resources)
+    │   └── rock_pool/          # Shared container (obstacles)
+    └── logs/                   # Epoch audit records
+```
+
+## 3. Biological & Survival Mechanics (Evolution)
+- **Metabolism**: Every turn increases `hunger`. If `hunger > threshold`, the entity dies.
+- **Consumption**: `eat` moves food pieces to `stomach/`, removing them from the enclosure.
+- **Predation (Lethal Combat)**: 
+  - `attack` reduces enemy `hp`. 
+  - On death (`hp <= 0`), the entity directory is renamed (e.g., `liz_char` -> `food_char`) and its `type` is changed to `food`, making it edible.
+- **Reproduction (Mating)**: 
+  - If two lizards occupy the same space/condition, they can trigger a `mate` Op.
+  - A new sovereign entity directory is created and added to the manager's turn rotation.
+
+## 4. Implementation Phases
+... (Phases 1-3)
+### Phase 4: Metabolism & Mortality
+Implement `hunger` tracking in `stats.txt` and death-to-food conversion logic.
+
+### Phase 5: Interaction & Reproduction
+Implement `attack` (HP reduction) and `mate` (entity creation) logic.
+
+## 4. Future Directions
+- **Wraith UI Integration**: Dynamic rendering via `gui_state.txt`.
+- **P2P-net**: Discovery and migration between different `world_` containers.
+- **Language Node**: Integration with `Gemini`/`iqabellai` as a conversational Op.
+- **Optional Controller Mode**: Add rewindable snapshots, step counts, and pause/step/resume without changing the biological loop.
+
+## 5. Controller Compatibility Note
+- The same engine may later accept a controller that pauses, steps, or takes one-turn manual control.
+- If no controller is attached, the simulation remains fully autonomous.
+- If a controller selects AI, it should default to one step unless `resume` is active.
+- The same project root should own the enclosure directory whether launched autonomously or through the GUI.
+- Controllers may live at the project top level or under `controllers/`, but the executable should still be located in a `+x/` directory.
+- `xo-pet-launch.sh` is the descriptive entrypoint for this bundle.
+- `button.sh` is only a legacy wrapper kept during the rename.
+- `xo-pet-launch.sh` should accept `auto` and `controller <uid_pair>` so the user never has to specify an executable name manually.
+- If `controller` is used without a uid pair, `xo-pet-launch.sh` should auto-generate one for the session.

@@ -1,0 +1,217 @@
+<title>Platform Primer — Browser Prompting</title>
+
+<style>
+  :root {
+    --bg: #f4f3ef; --surface: #ffffff; --surface-2: #ececE6; --border: #dcdad2;
+    --text: #1c1c1a; --text-dim: #6b6a63; --accent: #1a8a4a; --accent-warm: #b5720a;
+    --status-wip: #2563a8; --code-bg: #ececE6; --code-text: #2b2b28;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  :root:not([data-theme="light"]) { @media (prefers-color-scheme: dark) {
+    --bg: #14161a; --surface: #1b1e24; --surface-2: #21252c; --border: #2b2f37;
+    --text: #e9e7e2; --text-dim: #9599a1; --accent: #22c55e; --accent-warm: #f0a63f;
+    --status-wip: #5b9dd9; --code-bg: #16181c; --code-text: #dcdad4;
+  } }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --surface: #1b1e24; --surface-2: #21252c; --border: #2b2f37;
+    --text: #e9e7e2; --text-dim: #9599a1; --accent: #22c55e; --accent-warm: #f0a63f;
+    --status-wip: #5b9dd9; --code-bg: #16181c; --code-text: #dcdad4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  a:focus-visible, .navlink:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
+  .sidebar { border-right: 1px solid var(--border); background: var(--surface); padding: 28px 20px 40px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .brand { font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 4px; }
+  .brand strong { display: block; font-family: var(--sans); font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em; color: var(--text); text-transform: none; margin-top: 2px; }
+  nav { margin-top: 24px; display: flex; flex-direction: column; gap: 20px; }
+  .navgroup-label { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 8px; }
+  .navlinks { display: flex; flex-direction: column; gap: 2px; }
+  .navlink { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; color: var(--text); text-decoration: none; font-size: 0.88rem; }
+  .navlink:hover { background: var(--surface-2); }
+  .navlink.current { background: var(--surface-2); font-weight: 700; }
+  .navlink .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--border); }
+  .navlink .dot.done { background: var(--accent); }
+  .navlink .dot.wip { background: var(--status-wip); }
+  main { padding: 56px 40px 120px; min-width: 0; }
+  .col { max-width: 760px; margin: 0 auto; }
+  .hero-eyebrow { font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 10px; }
+  h1.pagetitle { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; margin: 0 0 14px; }
+  .lede { font-size: 1.08rem; color: var(--text-dim); max-width: 62ch; margin: 0 0 48px; }
+  section.doc { padding-top: 44px; margin-top: 8px; border-top: 1px solid var(--border); scroll-margin-top: 24px; }
+  section.doc:first-of-type { border-top: none; padding-top: 0; }
+  .section-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  h2 { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
+  h3 { font-size: 1.08rem; font-weight: 700; margin: 28px 0 10px; }
+  .section-path { font-family: var(--mono); font-size: 0.8rem; color: var(--text-dim); margin: 0 0 18px; }
+  .pill { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-dim); white-space: nowrap; }
+  .pill.done { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+  .pill.wip { color: var(--status-wip); border-color: color-mix(in srgb, var(--status-wip) 45%, var(--border)); }
+  p { margin: 0 0 16px; max-width: 68ch; }
+  ul, ol { margin: 0 0 16px; padding-left: 22px; }
+  li { margin-bottom: 6px; max-width: 64ch; }
+  code { font-family: var(--mono); font-size: 0.86em; background: var(--code-bg); color: var(--code-text); padding: 0.12em 0.4em; border-radius: 4px; }
+  pre { background: var(--code-bg); color: var(--code-text); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; overflow-x: auto; margin: 0 0 20px; }
+  pre code { background: none; padding: 0; font-size: 0.84rem; line-height: 1.55; }
+  .callout { border: 1px solid var(--border); border-left: 3px solid var(--accent); background: var(--surface); border-radius: 6px; padding: 14px 18px; margin: 0 0 20px; }
+  .callout.warn { border-left-color: var(--accent-warm); }
+  .callout .callout-label { font-family: var(--mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); display: block; margin-bottom: 6px; }
+  .callout.warn .callout-label { color: var(--accent-warm); }
+  .callout p:last-child { margin-bottom: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 0 0 20px; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
+  .table-wrap { overflow-x: auto; margin: 0 0 20px; }
+  footer.pagefoot { max-width: 760px; margin: 64px auto 0; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.85rem; }
+  @media (max-width: 880px) { .shell { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); } main { padding: 40px 20px 100px; } }
+  html { scroll-behavior: smooth; }
+</style>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">yz.muchiverse / browser prompting</div>
+    <div class="brand"><strong>Delegation Map</strong></div>
+    <nav aria-label="Documentation sections">
+      <div>
+        <div class="navgroup-label">Start Here</div>
+        <div class="navlinks">
+          <a class="navlink current" href="1.platform-primer.html"><span class="dot done"></span>Platform Primer</a>
+          <a class="navlink" href="2.house-shape-status.html"><span class="dot done"></span>House Shape Status</a>
+        </div>
+      </div>
+      <div>
+        <div class="navgroup-label">Topics</div>
+        <div class="navlinks">
+          <a class="navlink" href="3.ai-agents.html"><span class="dot wip"></span>AI Agents</a>
+          <a class="navlink" href="4.open-hai-free-ai.html"><span class="dot done"></span>open-hai + Free AI</a>
+          <a class="navlink" href="5.bugs-toys-gl.html"><span class="dot wip"></span>Bugs / Toys / GL</a>
+          <a class="navlink" href="6.architecture-explainers.html"><span class="dot wip"></span>Architecture Explainers</a>
+          <a class="navlink" href="7.platform-passes.html"><span class="dot wip"></span>Grok's Lanes</a>
+          <a class="navlink" href="8.project-starters.html"><span class="dot wip"></span>Project Starters</a>
+        </div>
+      </div>
+      <div>
+        <div class="navlinks">
+          <a class="navlink" href="../index.html">← Browser Prompting index</a>
+          <a class="navlink" href="../1.index-house.html">← Muchiverse House Docs</a>
+        </div>
+      </div>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="col">
+      <div class="hero-eyebrow">Attach this by default</div>
+      <h1 class="pagetitle">🧱 Platform Primer</h1>
+      <p class="lede">
+        This IS your "1 context file" for most prompts. Paste this whole page (or trim sections
+        irrelevant to the task) as the CONTEXT upload alongside your PROMPT and CODE files. Written
+        so a browser-window AI with zero prior exposure to this house can orient in one read.
+      </p>
+
+      <section class="doc" id="what">
+        <div class="section-head"><h2>What this codebase is</h2></div>
+        <p>
+          A file-backed, module-driven desktop OS ("the house" / "muchiverse"), built as a
+          spiritual successor to <strong>TPMOS</strong> (<code>1.TPMOS_c_+rmmp.0103.0001/</code>,
+          a sibling dir one level up). Everything real is a <strong>file on disk</strong> — "if
+          it's not in a file, it's a lie." No hidden memory-only state that matters survives a
+          restart.
+        </p>
+      </section>
+
+      <section class="doc" id="shape">
+        <div class="section-head"><h2>The core shape: PIECE → MODULE → OS</h2></div>
+        <ul>
+          <li><strong>PIECE</strong> 🧬 — a directory with <code>state.txt</code> (+ a
+            <code>.pdl</code> descriptor). Owns its own state.</li>
+          <li><strong>MODULE</strong> 🧠 — a background daemon (<code>*_manager.c</code>) that
+            orchestrates pieces. "Thin" — delegates real work to standalone <strong>ops</strong>
+            (small, independently-testable <code>.c</code> → <code>+x/*.+x</code> binaries), never
+            inlines business logic into the manager itself.</li>
+          <li><strong>OS / renderer</strong> 🎭 — the "theater" layer. Substitutes
+            <code>${var}</code> into layout files, routes input, composes the visible frame.
+            Should NOT contain business logic or piece-specific lookups.</li>
+        </ul>
+        <div class="callout">
+          <span class="callout-label">Safe assumption</span>
+          <p>
+            You will almost always need BOTH a layout file (<code>.chtpm</code> markup) AND a
+            manager (<code>*_manager.c</code>) back from any real feature.
+          </p>
+        </div>
+      </section>
+
+      <section class="doc" id="families">
+        <div class="section-head"><h2>Two separate parser/renderer families</h2></div>
+        <p class="section-path">know which one you're in</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Family</th><th>Used by</th><th>Engine</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Legacy <code>chtpm_parser_pal.c</code></td><td>mutaclysm, piececraft-xyz, older projects</td><td>PAL-VM, text-grid</td><td><code>!.HOUSE_STDS.md</code> §A</td></tr>
+              <tr><td><code>khtpm_*</code> family</td><td>livedesk taskbar + every tb-launched sub-app (db-hq, chat-hai, open-hai, events-hq)</td><td>Raw Xlib/Xft, own <code>khtpm_css_parser.c</code></td><td><strong>No flexbox, no descendant CSS selectors</strong> — silently no-ops</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>If your task touches a taskbar sub-app, you're in <code>khtpm_*</code> — don't reach for legacy <code>.chtpm</code> tag knowledge, they've drifted apart.</p>
+      </section>
+
+      <section class="doc" id="input">
+        <div class="section-head"><h2>Input flow — the real, house-standard shape</h2></div>
+        <pre><code>KEYBOARD/MOUSE capture (raw termios, or Xlib KeyPress/ButtonPress, or XTest-injected for testing)
+       ↓ writes decimal codes / KEY_PRESSED:/MOUSE_EVENT: lines
+a shared relay/history FILE (e.g. livedesk_agent_relay.txt, pieces/keyboard/history.txt)
+       ↓ ONE reader polls it
+DISPATCHER (game_dispatch.c-style, or khtpm's dispatch_key_code())
+       ↓ mutates state.txt, composes a frame
+RENDERER (never touches raw input itself — pure "read state, print/draw")</code></pre>
+        <div class="callout warn">
+          <span class="callout-label">Rule of thumb</span>
+          <p>
+            Capture and render should be SEPARATE concerns/processes. Combining them causes real,
+            subtle bugs — raw termios disables <code>\n</code>→<code>\r\n</code> translation for
+            ANY writer on that tty, a real staircase-rendering bug this house hit in August 2026.
+          </p>
+        </div>
+      </section>
+
+      <section class="doc" id="conventions">
+        <div class="section-head"><h2>State/config conventions</h2></div>
+        <ul>
+          <li><strong>PDL files</strong> (<code>.pdl</code>): pipe-delimited, <code>SECTION | KEY | VALUE</code> — the house's <code>.ini</code>-equivalent.</li>
+          <li><strong>State files</strong>: <code>key=value\n</code> per line, or the pipe-delimited PDL shape depending on subsystem.</li>
+          <li><strong>Marker/pulse files</strong>: append a byte (<code>"P\n"</code>) to signal "something changed, redraw" — never a <code>dirty=1</code> flag. <code>stat()</code> the marker's size to detect growth cheaply.</li>
+          <li><strong>One-writer rule</strong>: exactly one process ever writes a given state/frame file. Violating this is a real, named house pitfall.</li>
+        </ul>
+      </section>
+
+      <section class="doc" id="dirs">
+        <div class="section-head"><h2>Directory shape (top-level, informal)</h2></div>
+        <ul>
+          <li><code>@.apps/</code> — system tool apps — some drift/lag behind current conventions, verify before trusting.</li>
+          <li><code>&amp;.widgits/</code> — shared reusable widgets/libraries (<code>_shared-lib/</code> is the real single source of truth for build-time-copied files).</li>
+          <li><code>xyzfs/bin/&lt;app&gt;/</code> — the "installed app" convention (only <code>muchi-pet</code>/<code>livedesk-clock</code> fully migrated so far).</li>
+          <li>Numbered project dirs (<code>101.mutaclsym…</code>, <code>103.media-studio/</code>, etc.) — individual games/apps, each usually self-contained.</li>
+          <li><code>#.desktop/</code> — the taskbar's own live runtime state.</li>
+        </ul>
+      </section>
+
+      <section class="doc" id="before">
+        <div class="section-head"><h2>Before you build anything new</h2></div>
+        <ol>
+          <li>Check if the pattern already exists elsewhere in this codebase.</li>
+          <li>If not, check TPMOS (<code>1.TPMOS_c_+rmmp.0103.0001/</code>) — it's the grandfather program, often more feature-complete.</li>
+          <li>Don't invent a new state-file format, relay convention, or dispatch pattern without checking both first.</li>
+        </ol>
+      </section>
+
+      <footer class="pagefoot">
+        Trim ruthlessly for your actual task — this is the "everything you might need to know
+        before guessing wrong" doc, not all of it applies to every prompt.
+      </footer>
+    </div>
+  </main>
+</div>

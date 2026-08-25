@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | xyzos_installed_apps
+META         | version            | 1.0
+
+STATE        | installed_count    | 2
+STATE        | login-signup       | 00.login-signup
+STATE        | avatar-creation    | 01.avatar-creation👤️
+STATE        | installed_at       | 2026-07-31

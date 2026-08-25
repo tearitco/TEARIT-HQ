@@ -1,0 +1,6 @@
+monster_type=zombie_child
+pos_x=13
+pos_y=14
+hp=4
+decision_mode=1
+flee_hp_pct=60

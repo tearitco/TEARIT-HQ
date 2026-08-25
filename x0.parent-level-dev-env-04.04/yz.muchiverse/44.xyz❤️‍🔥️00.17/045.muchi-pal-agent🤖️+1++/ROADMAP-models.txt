@@ -1,0 +1,1232 @@
+ROADMAP — iqabod / rl / fsm model options for muchi-pal-agent
+================================================================================
+Status: GOAL / DESIGN DOCUMENT ONLY. Nothing described here is built. Written
+after investigating the actual referenced projects (not guessed at) - see §0.
+All six original open questions (old §8) are now answered - see §8 for the
+resolved decisions. §9 (Studio) is still a named-only future goal. §10
+(multimodal generation) is no longer a placeholder - real existing
+precedent was found and read (emoji-studio's voxel-CSV pipeline + 22
+already-extracted emojis in wraith-alpha's asset library + piececraft-
+wraith's consumer format), giving image generation a concrete v1 target
+(§10.0-10.2); video is resolved as a non-problem (§10.3 - just a sequence
+of image frames); audio (§10.4) got a full pipeline write-up plus real
+scaffolded starter code in lab-audio/ (WAV I/O, a real FFT, a basic synth).
+§11 (NEW) documents using Gemini/local LLM APIs to auto-generate IQABOD
+training corpora (§11.1, buildable today, zero new IQABOD code) and to
+drive bulk RL reward-tuning via an LLM-as-judge FSM loop (§11.2 - the
+first concrete instance of §6.4's previously-abstract meta-RL hook).
+§12 (NEW) extends §11.1 into a grade/subject curriculum ladder
+(grade1..grade12, college_<subject><course_number>) with a qualification-
+gated teacher/student distillation mechanism ("corpus distillation" per
+§12.2a, ai_plan.txt's own precedent name for this exact idea - see
+§12.0) and a "literal school" piece/FSM simulation (§12.4) where a
+curriculum earns the right to teach the next grade by passing a held-
+out exam (§12.3), realizing §1's original modular-reusable-AI-in-games
+vision concretely.
+§13 (NEW) generalizes past academic text curricula entirely: a 3-way
+routing table (§13.1 - WORDS/iqabod curricula, BIAS/personality-tuning
+via feedback_tx_module.c, BEHAVIOR/FSM+RL via fsm_bot_programmer.txt's
+bot::* vocabulary) for personality/sports/games/physical skills;
+config-sheet-driven encourage/prune (§13.2); a real, honestly-scoped
+self-pruning gap (§13.3); and shared "trunk" curricula for NPCs so many
+instances don't each localize a full copy (§13.4 - grounded directly in
+this project's OWN already-working pieces/registry/ vs pieces/world_01/
+.../ split, just never applied to weight files before). §13.5 extends
+the FSM engine's "one system, N uses" framing to animal/zombie/creature
+behavior - no new engine needed, same bot::* vocabulary as testing bots
+and chat FSMs.
+
+STATUS UPDATE (2026-07-16): the `iqabod` provider_kind is now WIRED and
+LIVE-VERIFIED in send_message.c/check_response.c (see their own header
+comments) - forks main_orchestrator.+x directly, no HTTP/JSON, plain-text
+response parsing. Confirmed end-to-end against curriculum/test/test.txt
+(random weights, so output was vocabulary-garbage as §4 predicted for an
+untrained curriculum - the pipeline itself, not output quality, is what
+was being verified). §11.1's corpus-generation pipeline is the direct
+next step to make iqabod chat actually coherent.
+
+================================================================================
+0. WHAT WAS ACTUALLY READ BEFORE WRITING THIS
+================================================================================
+This is not designed from scratch - real precedent exists for every piece:
+
+- x0.parent-level-dev-env-03.00/#.ref/^.IQABOD-llm-06.00/ - "iqabod" itself.
+  A real, hand-written transformer in C (attention_module.c, rope_module.c,
+  generation_module.c, train_module.c, main_orchestrator.c - genuine
+  attention/RoPE/RMSNorm/SwiGLU-FFN/backprop, not a toy). Trained/run via
+  `main_orchestrator.+x {train|generate|vocab_only} <curriculum_file> ...`,
+  output goes to stdout (generate mode) - no HTTP server, no JSON, nothing
+  chat-shaped about it yet. Already has a `curriculum/<name>/<name>.txt`
+  (+`.txt.weights`) directory convention with three example curricula
+  (guess_the_letter, guess_the_word, test) already trained.
+  Also already has feedback_tx_module.c: a `process <vocab_file>
+  <token_sequence_comma_separated> <learning_rate>` command that updates a
+  curriculum's weights from a token sequence using a SIGNED learning rate -
+  this is most of the mechanism a reward/punishment signal needs, it
+  already exists, it just isn't wired to anything chat-shaped yet. One real
+  gap found: there's no exposed "tokenize this sentence to an id sequence"
+  command (vocab_module.c has read_corpus/generate_vocab/save_vocab/
+  load_vocab, not a standalone tokenizer) - something small needs adding
+  before feedback_tx_module.c can be fed a live chat turn.
+
+- 1.TPMOS.../#.dev-storage/#.plans/#.fsm+ai-training-plan-b1/
+  fsm_bot_programmer.txt - a complete (designed, not yet implemented) FSM
+  engine spec: PAL-scripted, piece-state-backed, a shared `bot::*` op
+  vocabulary (bot::navigate, bot::interact, bot::wait, bot::choose,
+  bot::decide, bot::assert, bot::record_pass/fail, bot::report), and
+  explicitly "one system, two uses" - the same engine drives both automated
+  testing bots and AI player bots, differing only in which piece it's
+  attached to. This is the real precedent for "fsm (automatic or
+  programmable with pal ops)."
+
+- same dir, ai_plan.txt - a real (designed, not implemented) "AI-Labs"
+  plan: dedicated project with its own menu (Lab Dashboard / Chat Hub /
+  Distillation Bench / Training Yard), not folded into a normal chat
+  action bar. Directly answers "sub-menu or meta-menu" - existing
+  precedent already chose a dedicated menu. See §7.
+
+- mutaclsym's own dox/01-cdda-architecture.md §4 (read earlier this
+  project) independently arrived at wanting exactly this FSM system for
+  monster/NPC AI + user-scripted automation + level-editor bots, and
+  explicitly says the fsm_bot_programmer.txt design is "the version worth
+  actually building" - i.e., two independent parts of this whole
+  environment already converged on the same design being the right one.
+  That convergence is a strong signal this is worth building once, shared,
+  not reinvented per-project - which is exactly the "huge dream" framing
+  this was pitched with: modular, reusable AI across games and chatbots.
+
+================================================================================
+1. THE VISION (settled)
+================================================================================
+`/model` grows from "which LLM backend" (ollama/gemini/llamacpp) to
+"which kind of responder" - a homemade trained model, a bank of
+reward-tuned variants of it, or a bank of fully deterministic/scriptable
+FSMs - and the FSM engine specifically is meant to be the SAME engine
+(same op vocabulary shape, same piece/state-file conventions) usable in
+mutaclsym or any other TPMOS game project, not a chat-only reinvention.
+Building the chat-side FSM ops should stay close enough to
+fsm_bot_programmer.txt's existing `bot::*` vocabulary shape (even though
+the actual op names will differ - chat has no navigate/attack) that
+porting an FSM authored for a game into a chatbot, or vice versa, is
+realistic later, not accidentally foreclosed by a chat-specific shortcut
+now.
+
+================================================================================
+2. THE THREE MODEL OPTIONS - OVERVIEW (updated after §8's Q&A)
+================================================================================
+- iqabod  - the homemade model itself. Plain conversational responder,
+            attempts prompt-engineered JSON tool-calling (like llamacpp's
+            provider) despite its small scale - tried anyway rather than
+            assumed impossible. Gets REAL multi-turn history support in
+            generation_module.c itself (§4, §8.3) - not a workaround.
+- rl      - iqabod's generation, reward/punishment-tunable via a numbered
+            scale (§8.2) fed into feedback_tx_module.c. Selected the SAME
+            way fsm is selected - a bank/picker of rl curricula, not one
+            fixed mode (§8.1 - this was a real correction to the original
+            plan, not a minor tweak: rl and fsm now share one selection
+            mechanism, see §5.1).
+- fsm     - a bank of pre-authored (or, later, drag-and-drop/PAL-Editor-
+            authored) deterministic state machines the user picks from,
+            built on the fsm_bot_programmer.txt engine shape adapted to
+            chat. See §6.
+
+Meta-RL (RL over WHICH OP/TOOL an FSM state invokes, "we are gonna later
+drop different ops into the fsm similar to tool calls") is still not a
+fourth model option - it lives inside the FSM system as one possible
+op-type an FSM state can be configured to use. Documented under §6.4 as a
+deferred FSM capability, not designed in detail yet - there isn't a
+concrete enough base FSM engine (§6.1-6.3 aren't built) to design what
+this op reads/writes against. Revisit once the FSM engine itself exists.
+
+================================================================================
+3. WHAT "CURRICULUM" MEANS HERE (borrowed, not reinvented)
+================================================================================
+iqabod already has a working notion of a curriculum:
+`curriculum/<name>/<name>.txt` (corpus) + `<name>.txt.weights` (trained
+weights), and `main_orchestrator.+x train curriculum/<name>/<name>.txt`
+updates it in place. Every model_list.txt-style registry entry for iqabod
+should point at one of these by name, the same way the existing
+gemini/ollama/llamacpp entries point at a model_name - not a new concept,
+reuse of an existing one. rl curricula are a SEPARATE bank from iqabod's
+base curriculum(s) - see §5.1 for why and how selection works.
+
+================================================================================
+4. IQABOD MODEL OPTION
+================================================================================
+Mechanically the closest of the three to the existing llamacpp provider:
+no HTTP server, shell out to a binary and capture stdout, same
+"provider_kind" branch shape send_message.c/check_response.c already have.
+
+- Persona: reuse prompt_json.txt (the strict-JSON-with-examples persona) -
+  iqabod has no native tool schema any more than llamacpp does, and is
+  smaller, so the same "ask for JSON in prose" approach is the only
+  realistic option, with expectations set low on compliance.
+- Request: no JSON request body at all (there's no HTTP endpoint) - the
+  chat-turn text becomes (part of) the prompt to
+  `main_orchestrator.+x generate <curriculum_file> <temperature> <limit>
+  "<prompt>"`, run the same non-blocking fork+detach way send_message.c
+  already forks connect_op, just exec'ing main_orchestrator.+x directly
+  instead (no curl/connect_op involved - this is a local process, not a
+  network call, so it's typically fast, but should still be forked
+  non-blocking on principle/consistency, not because it's expected to be
+  slow like the LAN model backends).
+- Multi-turn context: CORRECTED after actually reading
+  generate_text_with_dynamic_vocab_for_file() and process_prompt_tokens()
+  in generation_module.c (§8.3's "add real history support to
+  generation_module.c" was decided before that reading happened - this is
+  a genuine correction, not a reinterpretation). The existing single
+  `prompt` argument is already tokenized in full and every token is
+  pushed through a real transformer_forward() pass into the KV cache
+  before generation starts - i.e. the model already gives full, real
+  attention to everything in that one string, up to model->seq_len
+  (config.txt: seq_len=128) token positions. There is no more-real version
+  of "give it history" than "put the history in that string" - the
+  concatenate-recent-turns approach IS the real implementation, not a
+  workaround, given how this model already processes its prompt. NO
+  generation_module.c changes are needed for multi-turn context. What
+  send_message.c's iqabod branch actually needs to do: build one prompt
+  string from recent context_log.txt turns, budgeted to stay under
+  seq_len tokens (read from IQABOD's config.txt, or just keep a
+  conservative fixed budget - either is fine, don't over-engineer this).
+  Do NOT inject synthetic role-marker tokens ("User:"/"Aida:") into that
+  string - see the vocabulary caveat below for why that would actively
+  hurt rather than help.
+- Vocabulary is closed-world per curriculum - real constraint, found by
+  reading process_prompt_tokens(): tokenization is plain whitespace
+  splitting with EXACT-match vocab lookup, falling back to a literal
+  <UNK> token (or token 0 if no <UNK> entry exists) for anything not
+  already in that curriculum's trained vocabulary - no subword/BPE
+  fallback, no dynamic tokenizer. Two consequences, both real:
+    1. Synthetic role markers ("User:", "Aida:") would almost certainly
+       never appear in any curriculum's training corpus and would just
+       become <UNK> noise before every turn - don't add them.
+    2. The three existing example curricula (guess_the_letter,
+       guess_the_word, test) are specialized game/test corpora, not
+       general conversation - picking "/model iqabod" against any of them
+       today will mostly produce <UNK>-token garbage for anything outside
+       that curriculum's narrow vocabulary. A real general-conversation
+       curriculum needs to actually be trained (main_orchestrator.+x
+       vocab_only + train against a real conversational corpus) before
+       iqabod chat is usable for anything beyond a novelty demo - this is
+       a prerequisite, not a footnote, and should happen before or
+       alongside wiring the provider_kind branch, not after.
+- Response: stdout capture (matching run_tool_capture's existing pattern),
+  then the SAME persona-JSON tool/args-or-response parsing check_response.c
+  already does for llamacpp (strcmp(provider_kind, "iqabod") could
+  literally share that parsing branch, differing only in how the request
+  was built). Same UNK caveat applies to persona compliance - a small,
+  closed-vocabulary model reliably producing well-formed
+  {"tool":...}/{"response":...} JSON is optimistic; expect this to need
+  real iteration once there's a real conversational curriculum to test
+  against, the same way groq-ollama/cpp-llm's own persona wording needed
+  real live iteration (see their EMERGENCY docs) even with much larger
+  models.
+- MoE-style curriculum switching (multiple curricula, iqabod picks/blends
+  between them per-turn) - still explicitly a LATER goal, not this phase.
+  Document the seam for it now: model_list.txt's iqabod row names ONE
+  curriculum; a future MoE variant would need either a new provider_kind
+  or a way for one entry to reference a set. Not designed further than
+  that seam existing. (Related to, but distinct from, §9's "Studio"
+  combination idea - MoE blends within one model's own curricula
+  automatically; Studio is the user manually combining multiple different
+  models/curricula together. Don't conflate the two when building either.)
+
+================================================================================
+5. RL MODEL OPTION (response tuning)
+================================================================================
+### 5.1 Selection: a bank, same mechanism as fsm (RESOLVED, §8.1)
+Correction to the original plan: rl is NOT one fixed mode layered onto
+iqabod. Picking "/model rl" opens the SAME kind of bank/picker §6.3
+describes for fsm - a list of rl curricula (pieces/registry/
+rl_curricula/<name>/, or similar - exact registry shape TBD, but
+conceptually parallel to pieces/registry/fsms/<name>/) to choose from
+before chatting. This means the picker UI/overlay-panel mechanism itself
+should be built ONCE and reused for both rl and fsm selection, not
+implemented twice - worth designing as a shared op
+(chat_picker.c/pick_from_bank.c or similar) once either gets built, rather
+than writing fsm's picker first and rl's picker as a near-duplicate later.
+Each rl curriculum in the bank is isolated from iqabod's own base
+curriculum (§3) and from every other rl curriculum in the bank - picking
+one, giving it feedback, and picking a different one later are cleanly
+separate learned states, which is also what makes the eventual "Studio"
+idea (§9) of combining multiple of them coherent (you can't meaningfully
+combine curricula that were never kept separate).
+
+### 5.2 Reward/punishment syntax: a numbered scale (RESOLVED, §8.2)
+Exact command syntax still needs picking when this is built (e.g.
+`/rate 1-5` or `/rate -2..2` - not decided which numeric range/sign
+convention), but the mechanism is a numbered scale, not binary /good
+//bad. The scale value maps to feedback_tx_module.c's signed
+learning_rate argument - e.g. a scale of -2..2 could map roughly linearly
+to a learning_rate range, or a 1..5 scale could map with 3 as neutral/
+no-op - not decided, pick when building based on what actually feels
+right in testing, this doesn't need to be locked in on paper.
+
+### 5.3 Mechanism
+On a rating command, tokenize the just-completed exchange and call
+`feedback_tx_module.+x process <rl_curriculum_vocab_file> <token_sequence>
+<learning_rate>` with the scale value mapped to a learning_rate (sign and
+magnitude both meaningful - see §5.2). Real gap, still unresolved: there
+is currently no exposed "tokenize this text to an id sequence for me" op
+in IQABOD (see §0) - something small needs to be added there (or a
+chat-side op needs to replicate whatever tokenization
+generation_module.c already does internally) before this is wireable.
+Not a blocker to documenting the design, but IS a blocker to
+implementing it - flagged here so it isn't rediscovered as a surprise
+later.
+
+### 5.4 Reward granularity: recommended - response tokens only
+This was thrown back as "what's more customizable/modular/reusable/
+scalable and sensible?" - recommendation based on those exact criteria,
+not picked arbitrarily:
+  - Modular/reusable: the learning signal should be attributable to what
+    the MODEL actually produced, not the user's own uncontrolled prompt
+    text - rewarding/punishing prompt tokens conflates "the model did
+    well" with "the user happened to phrase something a certain way."
+  - Scalable: §10 adds image/video/sound generation as a future goal.
+    "Reward only what was generated" is the one framing that generalizes
+    cleanly to those modalities too (you can rate a generated image; you
+    can't sensibly apply the same signal to the user's text prompt that
+    requested it) - deciding "response-only" now sets a consistent
+    precedent instead of having to reconcile two different reward
+    philosophies later.
+  - Sensible: standard practice in reward-tuning generally credits/blames
+    the model's own output, not its input, for the same reason.
+  Tradeoff: needs isolating which tokens in the sequence are the response
+  before calling feedback_tx_module.c (a little more implementation work
+  than "reward the whole exchange"), which is a small, one-time cost.
+  Treat this as the working answer; override if it stops feeling right
+  once this is actually being built and tested.
+
+================================================================================
+6. FSM MODEL OPTION
+================================================================================
+### 6.1 Adapting fsm_bot_programmer.txt's shape to chat
+Same piece structure the spec already defines, chat-flavored:
+  pieces/registry/fsms/<fsm_name>/
+  ├── piece.pdl           (documents the op table, same as every other piece)
+  ├── states.txt          (state list)
+  ├── transitions.txt     (state -> state transition table)
+  └── on_tick.pal         (the dispatch script - beq-on-current_state,
+                           exactly fsm_bot_programmer.txt's pattern)
+A per-conversation instance's live current_state/etc lives in the usual
+session piece (pieces/world_01/session_01/chat/state.txt gets a
+current_fsm_state field, or a nested fsm/ subdirectory - not decided) the
+same way hero/state.txt holds action_cursor/digit_accum today.
+
+### 6.2 A chat-flavored op vocabulary (RESOLVED, §8.5 - proceed as-is)
+Confirmed as the working vocabulary - build with this, refine in practice
+rather than over-designing further on paper:
+  chat::respond "text"       - emit a canned response
+  chat::call_tool tool_name  - invoke one of the 7 existing tools directly,
+                              no LLM judgment involved (deterministic)
+  chat::match_pattern query  - branch based on whether the user's message
+                              matches a trigger phrase/pattern
+  chat::set_state "name"     - same as bot::set_state
+  chat::wait_for_input       - suspend until the next user message
+Mirrors bot::navigate/interact/wait/decide's shape (one verb, one concern,
+state-file-driven) on purpose, per §1's reusability goal.
+
+### 6.3 The FSM bank / picker
+"/model fsm" opens a picker (matching the existing craft/inventory
+overlay-panel precedent already proven out in mutaclsym's own
+compose_frame.c, §5 of its dox) listing every directory under
+pieces/registry/fsms/, not a single fixed FSM - matches "let us choose
+predefined fsm's from a bank" directly. Authoring new FSMs by hand
+(states.txt/transitions.txt/on_tick.pal) is the v1 path; "drag and drop
+programmable" (op-ed-style guided authoring, per fsm_bot_programmer.txt's
+own "Wire into op-ed" implementation-order step 5) is real precedent but
+explicitly future work there too, not scoped here. NOTE (new, from §5.1):
+this picker mechanism should be built shared/reusable, since rl needs the
+literal same kind of bank/picker UI - don't build fsm's picker in a way
+that's awkward to reuse for rl's curriculum bank a short time later.
+
+### 6.4 Meta-RL as a deferred FSM op-type
+Per your answer, meta-RL (picking which tool/op to use, "similar to tool
+calls") is a capability an FSM state could invoke - e.g. a
+`chat::rl_choose_op` node that consults a learned preference/association
+table (itself possibly a curriculum-shaped weights file, per "attention/
+association" in your original framing) instead of a hardcoded
+`chat::call_tool`. Not designed further than naming the shape - there
+isn't a concrete enough base FSM engine yet (§6.1-6.3 aren't built) to
+design what this op reads/writes against. Revisit once the FSM engine
+itself exists.
+
+================================================================================
+7. TRAINING / LAB SPACE - IN SCOPE for this phase (RESOLVED, §8.6)
+================================================================================
+Corrected from the original "document for later" draft - /lab is
+requested as part of THIS phase, alongside iqabod/rl/fsm model selection,
+not deferred. ai_plan.txt's shape: a dedicated menu/mode (their "AI-Labs"
+plan: Lab Dashboard / Chat Hub / Distillation Bench / Training Yard), not
+folded into the normal chat action bar. A `/lab` command (or a dedicated
+key, matching the existing [2] Clear Context / [3] Switch API-style
+numbered menu convention) should open a genuinely separate view/mode
+exposing:
+  - train <curriculum>          (wraps main_orchestrator.+x train)
+  - vocab_only <corpus>          (wraps main_orchestrator.+x vocab_only)
+  - distill (per ai_plan.txt's "Distillation Bench", not scoped further -
+    ai_plan.txt itself doesn't fully specify this either)
+  - a live loss.txt tail (ai_plan.txt's "Distillation Monitor")
+  - rl curriculum management (rate history? reset a curriculum back to
+    its base weights? not designed - a natural fit for this space once
+    §5 actually exists to manage)
+This is still a recommendation to flesh out at build time, not a
+finalized design - ai_plan.txt is itself a plan document, not a built
+system, so "existing precedent" here means "someone already thought hard
+about this shape and chose dedicated-menu over inline," not "there's
+working code to copy." Being in-scope for this phase means it should be
+built alongside iqabod/rl/fsm, not that every bullet above is fully
+speced - expect to make some of these calls during implementation.
+
+================================================================================
+8. RESOLVED QUESTIONS (previously open, now decided)
+================================================================================
+1. rl curriculum isolation -> RESOLVED, and reframed: see §5.1. rl is
+   selected via a bank/picker (same mechanism as fsm), each curriculum in
+   the bank isolated from iqabod's base and from each other.
+2. Reward syntax -> RESOLVED: a numbered scale, see §5.2. Exact
+   command word/range still to be picked at build time.
+3. iqabod multi-turn context -> CORRECTED after reading the actual
+   generation code (not just re-decided): no generation_module.c changes
+   needed - the existing single-prompt argument already gets full real
+   attention over every token, so building a formatted history string in
+   send_message.c IS the real implementation, not a workaround. See §4.
+   Found a more important real constraint while reading that code: closed
+   -world vocabulary (exact-match only, <UNK> fallback, no subwords) -
+   also documented in §4.
+4. Reward granularity -> RECOMMENDED (response-tokens-only), see §5.4 -
+   you asked for a recommendation against modularity/reusability/
+   scalability/sensibility criteria; this is that recommendation, treat
+   as the working answer, override if it stops feeling right in practice.
+5. chat::* op vocabulary -> RESOLVED: proceed as proposed, see §6.2.
+6. /lab scope -> RESOLVED: in scope for this phase, see §7.
+
+================================================================================
+9. STUDIO — combining/diffusing multiple models together (NEW, named goal
+   only, not designed)
+================================================================================
+Raised directly: "we may even want to 'diffuse' 2 or more [models] in
+studio." Named here so it isn't lost, deliberately not designed further -
+there's nothing to design against yet (no working rl/fsm bank to combine
+instances of). Open even at the naming level: does "combine" mean running
+multiple models on the same input and picking/blending outputs at
+generation time, averaging/merging curriculum weights offline into a new
+curriculum, or something else entirely? Revisit once §5/§6's banks
+actually exist and there's more than one real rl curriculum or fsm to
+want to combine.
+
+================================================================================
+10. MULTIMODAL GENERATION TOOLS — image/video/sound
+================================================================================
+### 10.0 What was actually read before writing this (v1 = emoji generation)
+Explicit v1 test case, not a placeholder: generate NEW emojis, at the
+same tile/pixel scale as an existing, already-standardized pipeline used
+in THREE places in this environment already (not invented for this
+roadmap):
+
+- #.emoji-studio-501.02.05t/&.emoji-studio-solo.02.01/emoji-xtract.c -
+  a TPM op: `emoji-xtract <atlas.png> <emoji_index> <resolution N>
+  <output.csv>`. Loads a PNG atlas (stb_image.h), box-downsamples one
+  emoji's region to an NxN grid, writes it as a CSV: a 3-line header
+  (`# resolution=N`, `# scale=1.0`, `# transform=0,0,0`), then one
+  `r,g,b,a` row per cell, row-major. emoji-studio_manager.c dispatches it
+  via plain `system()` - same op-calls-op convention every project in
+  this whole environment already uses, nothing new to learn there.
+- TPMOS's projects/wraith-alpha/assets/emoji/<unicode_codepoint>/ - one
+  directory per already-extracted emoji (22 so far - 1F600, 1F436, 2764,
+  etc, named by Unicode codepoint hex), each holding atlas.png (source)
+  + voxels_16.csv (already extracted, exact same CSV shape as above).
+  This is a real, existing, ready-to-use corpus - 22 real NxN RGBA grids
+  - the same role IQABOD's corpuses/*.txt files play for text.
+- TPMOS's .../piececraft-wraith/assets/tiles/rock_emoji.tile.txt - shows
+  the CONSUMER side: a game tile definition with `voxel_source=assets/
+  emoji/rock_voxels_8.csv` pointing at one of these CSVs, plus
+  rgb_top/rgb_side/extrude/solid/walkable fields the game reads directly.
+  This is "how wraith consumes emojis" - a tile.txt piece referencing a
+  voxel CSV by path, nothing more elaborate than that.
+- emoji-studio_host.c already renders this exact CSV shape in 3D
+  (OpenGL/GLUT, "voxel extrusion" - each non-transparent cell becomes an
+  extruded cube). A generated grid in this same format is viewable
+  immediately with existing code, no new renderer needed for v1.
+
+### 10.1 What "generate a new emoji" and "diffuse user-input emojis" mean
+concretely, given the above:
+- The corpus is small NxN (8/16/32/64, resolution is a CSV-header field,
+  not fixed) RGBA grids - structurally close enough to IQABOD's own
+  per-token float-vector rows (curriculum files are already
+  one-line-per-item, multiple float fields per line) that a generation
+  model for this could plausibly reuse IQABOD's own C module shapes
+  (attention/backprop/train loop) retargeted at RGBA-grid rows instead of
+  vocabulary rows, rather than writing a wholly separate ML stack. Not
+  decided whether it literally reuses IQABOD's code or is a sibling
+  module with the same shape - both are reasonable, pick when building.
+- "Diffuse emojis the user inputs" - the user supplies 2+ existing emoji
+  CSVs (their own, or picked from the 22 already in wraith-alpha's asset
+  library) as conditioning/seed input, and "our system" produces a new
+  grid influenced by both. Two readings, both worth naming since "diffuse"
+  was used loosely here the same way it was for Studio (§9):
+    (a) Literal diffusion model - iterative denoising from noise,
+        conditioned on the input grid(s). Real technique, and at 8x8/16x16
+        scale genuinely tractable to hand-write in C matching IQABOD's own
+        "real implementation, small scale" philosophy - not a toy
+        simplification, an actually-correct tiny diffusion model.
+    (b) Simpler interpolation/blend (average or weighted-mix the input
+        grids' RGBA values, or blend in a learned embedding space the way
+        an attention mechanism already would) - a smaller, faster v0
+        before (a), same relationship §0's "vertical slice first" pattern
+        already established for the rest of this project.
+  Recommendation: build (b) first as the actual vertical slice (prove the
+  whole pipeline - pick 2 emojis, produce a new CSV, render it in
+  emoji-studio_host.c - end to end with the dumbest possible "generation"
+  step), then decide whether (a) is worth the real complexity once (b)
+  is working and it's clear what's actually wanted from it.
+
+### 10.2 Integration shape with muchi-pal-agent (not decided, options only)
+Whether this becomes a new tool alongside the existing 7
+(exec_cmd/read_file/etc - an `generate_emoji` tool an LLM or FSM could
+call) or a `/lab`-style (§7) dedicated mode, or both, is not decided -
+picked here as an open option, not a design. Given §7's /lab is already
+in scope for this phase and is the natural home for "train/generate"
+actions that aren't a normal chat turn, /lab is the more likely fit, but
+this shouldn't be assumed over an actual tool-call form factor without
+deciding it deliberately when this gets built.
+
+### 10.3 Video — RESOLVED, no new architecture needed
+"Video is easy, just animate images" - a video is a sequence of §10.0-10.2's
+generated frames played back at a rate, nothing more. No separate
+generation model needed; whatever produces one emoji-scale grid can
+produce N of them. Reuse a frame-sequencer (screen-record's own
+wraith-projects/screen-record already has audio-track PID-tracked
+playback conventions to borrow the shape of, if not the substance) rather
+than inventing frame-to-frame continuity modeling for v1 - flicker/
+inconsistency between frames is an acceptable v1 cost, matching the
+"prove the pipeline crudely first" pattern §10.1 already recommended for
+images.
+
+### 10.4 Audio - genuinely new, no existing precedent (checked - grep
+    found nothing FFT/MIDI-related anywhere in this environment, and the
+    only existing "audio" code found, wraith_audio.c/play_audio.c, is
+    playback-only: spawns an external player, tracks its PID, kills it on
+    request - no synthesis, no format conversion, nothing to build on).
+    Real guidance follows, not a placeholder.
+
+**Format roles - three formats, three different jobs, don't conflate them:**
+  - WAV = the only format anything actually SYNTHESIZES into. A WAV file
+    is a small header plus raw PCM samples - on the order of 40 lines to
+    read or write correctly from scratch, no library needed. This is the
+    one format small hand-written C code should ever directly produce.
+  - MIDI-shaped note events = the intermediate/training representation,
+    analogous to tokens (text) and NxN RGBA grids (images) - a fixed-width
+    tuple per note (pitch, velocity, start_tick, duration, channel),
+    stored as a plain `pitch|velocity|start_tick|duration|channel` CSV,
+    matching this whole environment's plain-text-over-binary doctrine.
+    Real binary `.mid` file I/O (a well-documented but fiddlier
+    variable-length-delta-time byte format) is a LATER interop nicety for
+    exporting to real DAWs/synths, not the core internal representation -
+    don't build binary .mid parsing before the CSV form is even working.
+  - MP3 = export/distribution only, produced by shelling out to
+    `lame`/`ffmpeg` on a finished WAV, the same "external tool via
+    system()" pattern already used everywhere in this environment (curl,
+    ffmpeg in screen-record). Never hand-roll an MP3 encoder - there's no
+    stb_image.h-simple single-header option for it, unlike WAV.
+
+**The pipeline (your instinct, confirmed correct - this is the standard
+approach to automatic music transcription, not a simplification):**
+  1. Audio -> MIDI events (transcription): read WAV -> windowed FFT
+     (Short-Time Fourier Transform: slice into overlapping windows, e.g.
+     2048 samples with a Hann window, FFT each) -> per-window dominant
+     frequency (argmax magnitude bin in a musically-relevant range) ->
+     Hz-to-MIDI-note via `note = round(69 + 12*log2(freq/440))` -> onset/
+     duration tracking (consecutive windows with the same detected pitch
+     become one sustained note) -> write the note-event CSV above.
+     Monophonic (one note at a time) is the sane v1 scope - real
+     polyphonic transcription (multiple simultaneous notes) is a much
+     harder problem, don't attempt it before monophonic actually works.
+  2. Train/generate on the note-event CSVs, the same shape IQABOD already
+     trains on (curriculum rows) - plausibly literally reusing IQABOD's
+     own attention/backprop modules retargeted at a "pitch/velocity/
+     duration vocabulary" instead of a word vocabulary, same relationship
+     §10.1 already noted for images.
+  3. MIDI events -> audio (synthesis): for each note event, render one
+     voice (oscillator - sine/saw/square - shaped by an ADSR envelope:
+     attack/decay/sustain/release) into PCM samples, mix all active
+     voices into the output buffer, write WAV.
+  4. Optional: WAV -> MP3 via `lame`/`ffmpeg` for compact export.
+
+**"Different weight-tuned synths" - real connection to §5's RL design:**
+a synth's parameters (oscillator waveform, ADSR envelope timings, mix
+levels) are exactly the kind of thing a reward/punishment signal could
+tune - store a synth's parameter set as its own curriculum-shaped file,
+and /rate-ing a generated clip (§5.2's numbered scale) could reinforce or
+punish that specific synth's parameters the same way §5 already reinforces
+a text-generation curriculum. Not designed further than naming the
+connection - build the base synthesis pipeline (steps 1-4 above) first,
+wire reward tuning in once it's proven, matching every other "vertical
+slice first" decision in this whole roadmap.
+
+**Scaffolded (see lab-audio/, real working starter code, not stubs):**
+  - wav_io.c - WAV read/write reference implementation, runnable as
+    `wav_io.+x info <file.wav>` to prove the read path against a real
+    file. Copy its read/write logic into future ops per the
+    no-shared-headers doctrine (matching how resolve_root() is
+    duplicated everywhere already) rather than including it as a header.
+  - fft.c - real radix-2 Cooley-Tukey FFT (power-of-2 window sizes only),
+    doing windowed STFT pitch detection: `fft.+x <in.wav> <window_size>
+    <hop_size> <out.csv>` writes one row per window
+    (window_index,dominant_hz,midi_note,magnitude). This is stage 1 of
+    the transcription pipeline (§10.4 step 1) UP TO per-window pitch
+    detection - it deliberately does NOT do onset/duration assembly into
+    discrete notes yet (turning a stream of per-window pitch guesses into
+    properly segmented notes is a real algorithm - simple silence/
+    magnitude-threshold + same-pitch-run-length would be the next
+    increment - worth its own careful pass and its own test, not rushed
+    into this file).
+  - synth.c - basic parameterized synth: `synth.+x <note_events.csv>
+    <out.wav>` reads pitch|velocity|start_tick|duration|channel rows,
+    renders each as a sine oscillator shaped by a hardcoded ADSR envelope,
+    mixes, writes WAV. ADSR/waveform values are separated into named
+    constants specifically so they're easy to later load from a
+    curriculum-style file instead of hardcoding, per the RL-tuning
+    connection above - not wired to anything tunable yet, just left easy
+    to make tunable next.
+Not scaffolded: onset/duration note assembly (the real remaining gap
+between fft.c's per-window output and a genuinely usable note-event CSV),
+binary .mid I/O, the actual training loop, and any lame/ffmpeg wiring for
+MP3 export - all real next steps, not done here.
+
+### 10.5 Relevance to §5's reward mechanism
+Whatever reward-scope decision gets made for text responses (§5.4 -
+response-only tokens) should generalize to rating a generated emoji/image
+later without a redesign - part of why §5.4 recommends response-only
+scope now rather than whole-exchange: you can sensibly rate a generated
+image, you can't sensibly apply the same signal to the text prompt that
+requested it.
+
+================================================================================
+11. AUTO-TRAINING PIPELINE — using Gemini/local LLM APIs to bootstrap
+    IQABOD corpora & drive RL reward signals (NEW, requested directly:
+    "provide some documentation about how we can use the gemini api/
+    local api's to auto train our iqabod models and corpuses, both using
+    meta rl/fsm but even just the plan corpuses")
+================================================================================
+### 11.0 What was actually read before writing this
+IQABOD's real corpus/curriculum pipeline (main_orchestrator.c:160-320,
+read directly, not assumed):
+  - `corpuses/<name>.txt` - RAW plain text, whitespace-tokenized, no
+    special format at all. Real examples on disk right now:
+    `corpuses/test_corpus.txt` is just
+    ```
+    hello world
+    how are you
+    today is a good day
+    the cat ran quickly
+    she likes to read books
+    he plays games often
+    ```
+    - five plain sentences, nothing more.
+  - `main_orchestrator.+x vocab_only corpuses/<name>.txt` reads that raw
+    text (read_corpus_tokens -> generate_vocab_from_tokens), and WRITES
+    `curriculum/<name>/<name>.txt` (save_vocab_to_curriculum derives
+    <name> from the corpus filename's basename minus extension) - this
+    is the same numbered-embedding-row file §4 already documented
+    (word|embedding|pe|...|note per row, <PAD>/<START>/<END>/<UNK>
+    special tokens auto-prepended).
+  - `main_orchestrator.+x train corpuses/<name>.txt [epochs]` re-derives
+    that SAME <name>, requires `curriculum/<name>/<name>.txt` to already
+    exist (i.e. vocab_only must run first), and updates its weights in
+    place via `generation_module.+x train <curriculum_file> <epochs>
+    <learning_rate>` (learning_rate from config.txt).
+  - Net result: the entire "author a new curriculum" pipeline is exactly
+    two shell calls once a corpus.txt exists:
+    `vocab_only corpuses/<name>.txt && train corpuses/<name>.txt <N>`.
+    NOTHING about this needs IQABOD's own code to change - the only real
+    gap is WHERE `corpuses/<name>.txt`'s raw text comes from. Today
+    that's a human hand-typing example sentences (see the tiny existing
+    corpuses - 5-10 lines each). This section is about closing that gap
+    with an LLM API instead of a human, for both bulk corpus authoring
+    and bulk reward-signal generation.
+
+### 11.1 Corpus generation via LLM API (the simple case - "just the
+     plan corpuses")
+Concretely buildable today with ZERO new HTTP/JSON code - reuses
+muchi-pal-agent's own already-proven-live gemini/ollama/llamacpp request
+builders (build_gemini_request/build_ollama_request/build_llamacpp_request
+in send_message.c) verbatim, just pointed at a purpose-built persona
+instead of the tool-calling one:
+  1. New persona file, `pieces/registry/personas/corpus_author.txt` -
+     instructs the model to write N short, plain-vocabulary sentences,
+     one per line, deliberately AVOIDING complex punctuation/rare words.
+     This constraint is not a style preference - it's forced by §4's
+     closed-world exact-match vocabulary finding: every word the
+     generated corpus uses becomes a permanent vocabulary entry (or
+     <UNK> filler if it's a one-off), so a corpus author prompt should
+     explicitly ask for a small, repeated, controlled vocabulary
+     (similar to how `corpuses/guess_the_word.txt`/`test_corpus.txt`
+     already read - short, repetitive, simple sentences on purpose,
+     confirming this constraint was already being hand-followed even
+     before being written down here).
+  2. New `/lab` (§7) action, `generate_corpus <name> <topic/instruction>
+     <line_count>` - sends one request (any provider_kind: Gemini for
+     quality, or the LAN ollama/llamacpp Mac servers for
+     unlimited/no-API-key bulk generation, see §11.3) using
+     corpus_author.txt as the system/persona text and the user's
+     topic/instruction as the one user turn, writes the raw response
+     text straight to `corpuses/<name>.txt` (one response per corpus,
+     or loop N times appending more lines for a bigger corpus - either
+     works, loop-and-append is simpler to keep each request's output
+     small and on-topic).
+  3. `/lab` then wraps the existing two-shell-call pipeline from §11.0:
+     `vocab_only corpuses/<name>.txt` then `train corpuses/<name>.txt
+     <epochs>` - both literally the existing main_orchestrator.+x modes,
+     no new IQABOD-side code.
+  4. Loop this over many topics/instructions to build up a genuinely
+     general-conversation curriculum - directly closes §4's flagged
+     prerequisite ("a real general-conversation curriculum needs to
+     actually be trained... before iqabod chat is usable for anything
+     beyond a novelty demo").
+This is the highest-value, lowest-effort piece of this whole section -
+build it before §11.2, since §11.2's judge loop is more valuable once
+there's an actual conversational curriculum worth reward-tuning.
+
+### 11.2 Meta-RL/FSM auto-training loop ("using meta rl/fsm")
+This is a CONCRETE, buildable instance of §6.4's previously-abstract
+"meta-RL as a deferred FSM op-type" hook - §6.4 named the shape
+(`chat::rl_choose_op` consulting something instead of a hardcoded
+`chat::call_tool`) without a concrete enough base to design against yet.
+An external-LLM-as-judge auto-rater IS that concrete instance: an FSM
+state whose op consults Gemini/a local model instead of a human typing
+`/rate`, closing §5's numbered-scale reward loop (§5.2/§5.3) without
+requiring a human to sit and rate every turn - the only way bulk RL
+curriculum training is actually practical.
+
+**The loop, expressed in fsm_bot_programmer.txt's own op-vocabulary
+shape (§6.2), so this is a real FSM, not a bespoke script bolted on
+the side:**
+```
+state PROMPT:
+  chat::wait_for_input            (or, for unattended batch runs, pull
+                                    the next line from a prompt bank -
+                                    see below)
+  chat::set_state GENERATE
+
+state GENERATE:
+  chat::call_tool iqabod_generate  (main_orchestrator.+x generate
+                                     <rl_curriculum> ...)
+  chat::set_state JUDGE
+
+state JUDGE:
+  chat::call_tool ask_judge        (NEW op - sends {prompt, iqabod's
+                                     response} to an external LLM API
+                                     using reward_judge.txt as its
+                                     persona, gets back one number)
+  chat::set_state REWARD
+
+state REWARD:
+  chat::call_tool feedback_tx      (feedback_tx_module.+x process
+                                     <rl_curriculum_vocab_file>
+                                     <token_sequence> <learning_rate>,
+                                     the judge's score mapped to
+                                     learning_rate per §5.2)
+  chat::set_state PROMPT
+```
+Every `chat::call_tool` in that loop is either an EXISTING op
+(feedback_tx_module.+x, main_orchestrator.+x) or one new, narrow op
+(`ask_judge`) - not a new engine, a new FSM instance on top of §6's
+already-designed engine, plus one new op.
+
+- **Judge persona** - `pieces/registry/personas/reward_judge.txt`, a
+  SEPARATE persona from corpus_author.txt/native_tools.txt: instructs
+  the model to output ONLY a single number in the agreed range (§5.2's
+  exact scale still isn't picked - this doc doesn't resolve that either,
+  same "pick at build time" stance §5.2 already took), nothing else -
+  a much narrower, more constrained task than general chat, so it should
+  be a much smaller/simpler prompt than the tool-calling personas, and
+  is a good candidate for the fast/cheap end of whichever provider is
+  in use (a small ollama model is plausibly BETTER suited to this
+  narrow single-number-output task than to general tool-calling chat).
+- **ask_judge op** - same shape as any other provider request (reuses
+  build_gemini_request/build_ollama_request's JSON-building code,
+  connect_op for the network hop), but a stripped-down one-shot variant:
+  no context_log.txt history, no tools[] array, just
+  {persona=reward_judge.txt, user_turn="Prompt: <X>\nResponse: <Y>\nRate
+  1-5:"} in, parse the single number back out. Worth writing as its own
+  small op rather than contorting send_message.c's chat-shaped request
+  builders to fit a rating call - genuinely a different request shape,
+  not a variant of the existing three.
+- **Prompt bank for unattended runs** - the loop above needs many
+  prompts to iterate over without a human typing each one. Two options,
+  not decided which: (a) reuse a `corpuses/<name>.txt`'s own lines as a
+  ready-made prompt bank (already exists, zero new files, but conflates
+  "training corpus" and "eval prompt set" - the same lines used to BUILD
+  the vocabulary would also be used to TEST it, which is a real
+  train/eval leakage concern worth naming even though this is small-
+  scale/informal RL, not a benchmark), or (b) a dedicated
+  `pieces/registry/rl_prompts/<name>.txt` bank kept separate from any
+  training corpus. (b) is the more correct choice if this is meant to
+  produce a trustworthy reward signal; (a) is the faster v1. Flagging
+  the tradeoff rather than picking, matching this whole roadmap's
+  practice of not over-deciding things that are cheap to revisit.
+- **Batch/unattended execution** - this loop needs to run many
+  iterations without a human present, which the normal one-op-per-tick
+  chat UI (main_loop.pal, driven by real keypresses) isn't shaped for.
+  Simplest v1: a plain shell script (`lab_autotrain.sh`) directly
+  invoking the same ops in sequence in a bash loop - matches this whole
+  environment's existing "system()/shell everywhere" op-calls-op
+  convention, needs zero new engine work, and can start being useful
+  immediately. A dedicated PAL-scripted FSM piece actually driven
+  through prisc+x (the "real" version, matching §1's reusability goal -
+  same engine as game NPC/testing-bot FSMs) is the better long-term
+  home once §6.1-6.3's FSM engine itself is built; don't block starting
+  simple autotraining runs on that engine existing first.
+- **Rating log** - worth writing every judge call's (prompt, response,
+  score) triple to `pieces/registry/rl_curricula/<name>/rating_log.txt`
+  as it happens, purely for debugging/inspection ("is the auto-judge
+  behaving sanely, or rating everything a 3 out of laziness") - cheap to
+  add, valuable the first time the auto-judge's behavior looks
+  suspicious, matching the environment's general plain-text-log-
+  everything doctrine.
+
+### 11.3 Gemini vs. local (ollama/llamacpp) API for this pipeline
+Both are already fully wired (three real providers, §MPC.txt/handoff.txt)
+- this pipeline is provider-agnostic by construction (§11.1/§11.2's new
+ops are just one more request-building variant on top of the same
+connect_op/json_parser plumbing already proven for chat). Practical
+tradeoff for BULK automated use specifically (many corpus-generation or
+judge calls in a loop, unlike normal interactive chat):
+  - Gemini: best quality/instruction-following for corpus_author.txt and
+    reward_judge.txt's narrow tasks, but rate-limited on the free tier
+    and - per handoff.txt - the `GEMINI_API_KEY` in this dev environment
+    is currently invalid/unconfirmed, so it isn't actually runnable here
+    yet without that being fixed first.
+  - Local (LAN ollama/llamacpp Mac servers, groq-tool-use-mac/
+    cpp-llm-mac) - already proven live and working (see
+    !!.EMERGENCY-READ-ME-IT-WORKS.txt in groq-ollama/cpp-llm), no API
+    key, no rate limit, no per-call cost - the more realistic default
+    for actually running hundreds of corpus-authoring or judge calls in
+    a loop. Recommendation: default this pipeline to a local provider,
+    treat Gemini as an optional higher-quality swap-in for the SAME ops
+    once its API key issue is resolved - not an either/or architectural
+    choice, just a runtime `provider_kind` config value each op call
+    already takes.
+
+### 11.4 What this section deliberately does NOT do
+Same discipline as the rest of this roadmap: this documents a concrete,
+grounded plan (real file paths, real existing CLI args cited with
+file:line, real already-built code to reuse) - it does not implement any
+of it. `corpus_author.txt`/`reward_judge.txt` don't exist yet, `ask_judge`
+op doesn't exist yet, `lab_autotrain.sh` doesn't exist yet, and §7's
+`/lab` menu itself isn't built yet either (this section's `/lab` actions
+are written assuming §7 exists, since that's where they belong once it
+does - building this section's pieces doesn't require §7 to be built
+first, they could exist as standalone scripts/ops until /lab has a home
+for them, but /lab is still the intended long-term home per §7's own
+scope).
+
+================================================================================
+12. GRADE-LEVELED CURRICULUM LADDER & TEACHER-BOT DISTILLATION — the
+    "literal school" simulation (NEW, requested directly: "auto
+    distillation for a particular curriculum aka math 101, math 102,
+    history 101... go by grade, 1rst grade english/science, all the way
+    thru to college... existing bots with 'education/teaching 101'
+    qualifications can train others in literal schools, emulate like a
+    game")
+================================================================================
+### 12.0 What grounds this
+Two things read directly, not assumed:
+  - §11.0-11.1's own findings: IQABOD's curriculum naming is already
+    mechanical (`corpuses/<name>.txt` -> `curriculum/<name>/<name>.txt`),
+    so organizing `<name>` as `<grade>_<subject>` (e.g.
+    `grade1_english`, `college_math101`) costs nothing new - it's a
+    naming convention on top of already-working code, not new IQABOD
+    plumbing.
+  - `ai_plan.txt` (§0/§7's own cited precedent) already names this
+    exact idea under a different word: its "Knowledge Distillation Lab"
+    (ai_plan.txt lines 24-27) defines `distill <vocab_piece>
+    <source_text>` as "compress knowledge into a TPM-compliant ledger
+    format," with a "Distillation Bench" UI sub-option described as
+    "Convert text to vocab/ledgers." That IS §11.1's corpus-generation-
+    then-vocab_only pipeline, under the name this environment's own
+    prior planning already gave it. This section is that same mechanism
+    - chained teacher-corpus-to-student-corpus, organized by a
+    grade/subject ladder, and gated by a qualification check - not a
+    new concept, the concrete completion of an already-named one.
+
+### 12.1 The curriculum ladder (naming/organization convention)
+  - Subject × grade matrix, one curriculum per cell:
+    `corpuses/<grade>_<subject>.txt` -> `curriculum/<grade>_<subject>/
+    <grade>_<subject>.txt`, e.g. `grade1_english`, `grade1_science`,
+    ... `grade12_history`, `college_math101`, `college_math102`. Grade
+    axis: `grade1`..`grade12` then `college_<subject><course_number>`
+    for the numbered-course convention you named (matching real
+    "Math 101/102" course-numbering, not a K-12-style single grade
+    integer once past grade12). Subject axis for v1: english, math,
+    science, history (the four you named) - written as an extensible
+    list, not a hardcoded four; adding a subject is just adding more
+    corpus-generation calls, no structural change.
+  - New registry file, `pieces/registry/curricula_ladder.txt` - IQABOD's
+    own curriculum dirs carry NO ordering/prerequisite information
+    (each is just a standalone vocab+weights file, per §4/§11.0), so
+    this is genuinely new data this environment doesn't have anywhere
+    yet: one row per rung, e.g. `grade1_english|(none)|...` /
+    `grade2_english|grade1_english|...` naming each subject's ladder
+    order and its direct prerequisite.
+  - Real technical constraint this MUST respect (not just pedagogical
+    flavor - forced by §4's closed-world exact-match tokenizer finding):
+    each grade's corpus-generation prompt should be conditioned on the
+    PRIOR grade's actual vocabulary (read straight off the prior
+    curriculum file's word column - see §4's row format) and instructed
+    to reuse most of it, introducing only a controlled number of new
+    words. Generating each grade's corpus independently (e.g. asking an
+    LLM for "3rd grade science sentences" with no memory of what "2nd
+    grade science" actually used) would produce curricula that don't
+    actually share vocabulary - pedagogically ordered but NOT actually
+    building on each other in the model's own token space, defeating
+    the point of a ladder. This is the one genuinely new requirement
+    §11.1's corpus_author.txt persona doesn't yet have - the ladder
+    variant needs the prior grade's word list appended to its prompt.
+
+### 12.2 Teacher -> student distillation - two DIFFERENT mechanisms,
+     correctly distinguished (don't conflate them)
+**(a) Corpus distillation - buildable now, zero IQABOD code changes.**
+Directly extends §11.1: a TEACHER (an external LLM, or a QUALIFIED
+iqabod curriculum - see §12.3) generates the STUDENT grade's corpus
+text, its prompt conditioned on the prior grade's vocabulary (§12.1) and
+that ladder rung's stated topic. Output goes to `corpuses/<next_rung>.txt`
+same as any other §11.1 corpus, then the same `vocab_only`+`train` two-
+call pipeline builds the new curriculum. This is the whole mechanism -
+"distillation" here means literally what ai_plan.txt already called it
+(§12.0): compressing a teacher's generated text into a new curriculum's
+vocab+weights via the existing pipeline. This is the v1/v2 target -
+build this before (b).
+
+**(b) Weight/logit distillation - the textbook ML meaning of the word,
+genuinely NOT buildable without real IQABOD code changes, name it
+honestly as harder rather than hand-waving it into (a):**
+Classic distillation (Hinton et al.) trains the student against the
+teacher's full output probability distribution (temperature-scaled
+softmax over the whole vocabulary, not just the one sampled/argmax
+token), via a KL-divergence loss term. Two real obstacles, both worth
+naming precisely:
+  1. `train_module.c`'s training loop (per §0's earlier reading of this
+     codebase) targets hard next-token labels from a corpus, not a
+     soft per-token target distribution - accepting a distribution
+     target is new code, not a config flag.
+  2. A probability distribution is only available from a teacher whose
+     internals you can read. iqabod-as-teacher genuinely could expose
+     this (its own softmax output inside generation_module.c, before
+     argmax/temperature-sampling collapses it to one token) - but
+     Gemini/ollama/llamacpp's PUBLIC APIs return sampled tokens/text
+     only, never a full distribution over the vocabulary, so an
+     external-LLM teacher can only ever feed mechanism (a), never (b).
+     This is a hard API constraint, not a missing feature to route
+     around.
+Recommendation: (a) is the actual working mechanism for this whole
+section, matching every other "vertical slice first, real-ML-technique
+later if still needed" call already made in this roadmap (§10.1's
+blend-before-diffusion, §5.4's response-only-tokens). Only revisit (b)
+if (a)'s corpus-distillation ladder turns out insufficient once it's
+actually built and tested against a real multi-grade curriculum chain.
+
+### 12.3 Qualification ("teaching credential") mechanism
+How a curriculum EARNS the right to author the next rung / tutor a
+student, rather than any curriculum being usable as "teacher" on faith:
+  - A held-out FINAL EXAM prompt set per ladder rung, kept SEPARATE from
+    that rung's training corpus (the same train/eval leakage concern
+    §11.2 already flagged for the RL prompt bank - here it's load-
+    bearing, since "did this bot pass" needs to actually mean something,
+    not be answerable from memorized training sentences).
+  - Graded via §11.2's LLM-judge mechanism (reward_judge.txt persona,
+    any provider) for free-text subjects, or a plain string/numeric
+    exact-match check for closed-form answers where the subject allows
+    it (e.g. math - "2+2" -> "4" is a much more reliable check than an
+    LLM judge's opinion, and iqabod's exact-match tokenizer already
+    makes exact-match checking a natural fit here, not an extra
+    dependency).
+  - Passing threshold -> write a row to a new registry,
+    `pieces/registry/qualifications/<curriculum_name>.txt`: subject,
+    grade/rung, exam_score, date - a real, inspectable artifact (matches
+    §11.2's rating_log.txt precedent for "log every automated judgment
+    so it's auditable, not just a boolean nobody can double-check").
+  - Once qualified for rung N, that SAME curriculum becomes an eligible
+    TEACHER entry for rung N+1 in §12.2(a)'s corpus-generation call
+    (or directly tutors a student through §11.2's FSM loop) - selecting
+    from `model_list.txt`/the rl-fsm bank (§5.1) by consulting this
+    qualifications registry, rather than a human picking a teacher by
+    hand. This is mechanically trivial NOW specifically because iqabod
+    just became a first-class `provider_kind` (§11's status update,
+    live-verified) - "teacher" and "student" are just two curriculum
+    entries, and whichever one is qualified fills the teacher role.
+
+### 12.4 "Literal school" simulation - the game framing
+Directly realizes §1's original vision (same FSM engine reusable across
+games and chat - two independent parts of this environment already
+converged on wanting it) with a concrete payoff, not just an analogy:
+  - A "school" = a piece hierarchy, `pieces/world_01/school/<subject>/
+    <grade>/` - each subject/grade pairing is a piece running a class
+    FSM built on §6.2's `chat::*` op vocabulary shape, extended with a
+    few school-flavored ops in the same one-verb-one-concern style:
+    `school::lesson` (present material from that rung's curriculum/
+    corpus), `school::quiz` (ask exam questions from §12.3's held-out
+    set), `school::grade` (run §12.3's judge/exact-match check, write
+    the qualifications row), `school::promote` (advance a student
+    piece's `current_grade` field once qualified).
+  - "Teacher" and "student" are ROLES a piece plays, not separate code
+    paths - any curriculum (iqabod or an rl-bank entry, §5.1) can be
+    attached to either role; §12.3's qualifications registry decides
+    which curricula are eligible to fill the teacher role for a given
+    rung, while an unqualified/lower-rung curriculum sits in the
+    student role attempting that rung's exam. Exactly the "existing
+    bots with teaching qualifications train others" framing, expressed
+    as data (a registry lookup), not a special-cased teacher object.
+  - No new engine - this is §5.1's bank/picker + §6's FSM engine +
+    §12.1's ladder registry + §12.3's qualifications registry, given a
+    school theme. The "game" isn't a separate simulation bolted on top;
+    it's the literal same primitives (piece hierarchy, FSM states,
+    picker/bank) already designed for NPC AI and testing bots,
+    confirming §1's "modular, reusable AI in games or chatbots" framing
+    was accurate, not aspirational marketing copy.
+
+### 12.5 Build order (vertical slice first, same pattern as every other
+     section here)
+  1. §11.1 corpus generation for ONE subject across 2-3 grades (e.g.
+     english grade1/grade2/grade3) with §12.1's vocabulary-scaffolding
+     prompt addition - prove the ladder actually shares vocabulary
+     grade-to-grade before generalizing to 4 subjects × 12+ grades.
+  2. §12.3's qualifications registry + one hand-written exam prompt set
+     for that single subject/grade - prove "did it pass" is a
+     meaningful, auditable signal before automating teacher selection at
+     all.
+  3. §12.2(a)'s teacher-generates-next-grade loop, using the now-
+     qualified grade1 curriculum as teacher for grade2's corpus (or keep
+     using an external LLM teacher if grade1's iqabod curriculum isn't
+     coherent enough yet - don't force iqabod-as-teacher before §12.3
+     says it's earned that role).
+  4. The school piece/FSM layer (§12.4) - a UI/game layer on top of by-
+     then-proven data+qualification infrastructure, built last on
+     purpose, not first.
+  5. §12.2(b) (real logit distillation) - explicitly LAST, and only
+     revisited if (a)'s data-pipeline version proves insufficient once
+     actually tested - given the real added training-loop complexity
+     and the hard external-API logit-access limitation named in §12.2.
+
+================================================================================
+13. KNOWLEDGE/TRAIT TAXONOMY, CONFIG-DRIVEN GROWTH, SELF-PRUNING & SHARED
+    "TRUNK" CURRICULA — beyond academic subjects, beyond humans (NEW,
+    requested directly: "random knowledge... personality and other
+    things, user may prune or encourage... thru config sheet goals,
+    manually or otherwise... teaching it sports/ how to eat walk etc,
+    play certain specific video games... like a real being... use these
+    for animals, and zombies... config guides its behavior and growth
+    and can self prune to not be too big, and can reuse 'trunks' in
+    case of npc instead of localizing huge data repeatedly")
+================================================================================
+### 13.0 Scope
+§11/§12 both assumed one shape: WORDS - IQABOD text curricula. This
+section is about everything that ISN'T that: personality/disposition,
+physical/embodied skill (eat, walk), sports, specific video-game play -
+plus three cross-cutting mechanisms that apply across all of it: config-
+driven encourage/prune, self-pruning to bound size, and shared "trunk"
+data so many NPC instances don't each localize a full copy. Scope also
+widens explicitly past chat here: game NPCs, animals, zombies - not
+because they need a different engine, but because (§13.5) they turn out
+to need the SAME one.
+
+### 13.1 Three learning MECHANISMS, not one - a routing decision
+The actual answer to "sports/eat/walk/video games" is: route them to a
+DIFFERENT mechanism than §12's text-curriculum ladder, not stretch
+IQABOD's word-level transformer to cover them. When designing any new
+"thing the bot learns," decide which of these three it is first:
+  1. WORDS - IQABOD text curricula (§4/§11/§12). Conversational
+     knowledge, facts, academic subjects. The one mechanism actually
+     native to IQABOD's architecture (a word-level transformer).
+  2. BIAS - tunable dispositions/preferences, NOT vocabulary -
+     personality traits (curious, cautious, aggressive, friendly).
+     Mechanically the same primitive as §5/§11.2 (feedback_tx_module.c's
+     signed-learning-rate `process` call, §0/§5.3), but the real open
+     question - genuinely unresolved, flagged honestly rather than
+     designed past what's known - is WHAT it should be applied to: a
+     curriculum row's own bias1-4/attention_bias/ffn_bias columns
+     already exist per-token (§4's row format), so "personality" might
+     be modeled as a diffuse nudge across many tokens' existing bias
+     fields rather than a wholly separate file/system - or it might
+     need its own dedicated personality-weights file distinct from any
+     knowledge curriculum. Not decided here - this is the least-resolved
+     mechanism of the three (see §13.6 build order).
+  3. BEHAVIOR - FSM/RL-driven, NOT IQABOD text generation at all - motor/
+     physical skills, sports, specific video-game play. This is
+     fsm_bot_programmer.txt's already-designed `bot::*` op vocabulary
+     (bot::navigate/interact/wait/decide/assert/record_pass-fail/report,
+     §0) - the SAME engine §6 already designs for chat FSMs, just
+     attached to a different piece and extended with domain-specific
+     op-vocabularies (`sport::*`, `game::*`, following §6.2's one-verb-
+     one-concern convention) instead of `chat::*`. RL-tunable the same
+     shape §5 already designs - a numbered-scale reward loop, just
+     scored against "did the NPC perform the sport/game action well"
+     instead of "was this chat response good." No new engine needed -
+     mechanism 3 is §5+§6 as already designed, just pointed somewhere
+     other than chat.
+Academic subjects (§12) stay mechanism 1. Physical/game skills are
+mechanism 3, fully covered by already-designed infrastructure. Only
+personality (mechanism 2) has a real open design gap.
+
+### 13.2 Config-sheet-driven curation (encourage/prune, manual or
+     automatic)
+New file, `growth_policy.txt` - one per curriculum, at BOTH the trunk
+level (species/archetype-wide defaults, §13.4) and optionally the
+instance level (per-NPC override), mirroring the registry/instance split
+itself (§13.4). Fields:
+  - `auto_prune_enabled` / `max_vocab_size` (§13.3)
+  - `encouraged_curricula` / `discouraged_curricula` - "topic" pruning/
+    encouraging operates at the whole-curriculum granularity that
+    already exists via §12's naming convention (e.g. "encourage
+    grade3_science, discourage grade1_english" for a specializing NPC) -
+    fine-grained in-curriculum topic tagging (tagging individual words/
+    rows by topic) does NOT exist anywhere in IQABOD today - a real gap,
+    named honestly rather than assumed away; v1 curation is whole-
+    curriculum-scoped, not word-scoped.
+  - `reinforcement_source = human | judge | off` - this is the direct
+    answer to "manually or otherwise": human maps to §5.2's explicit
+    `/rate` command, judge maps to §11.2's automatic LLM-judge loop, and
+    this config field is what decides which one (or neither) drives a
+    given curriculum's ongoing reinforcement, rather than the two being
+    separate unrelated features.
+Mechanism: a periodic/background process (same shape as §11.2's
+lab_autotrain.sh) reads growth_policy.txt and, for encouraged/
+discouraged curricula, calls `feedback_tx_module.+x process` with a
+positive/negative learning_rate on recent activity - the exact same
+primitive §5.3/§11.2 already use, just triggered by standing policy
+instead of a one-off human/judge rating event.
+
+### 13.3 Self-pruning to bound size (real IQABOD gap, named honestly)
+Curriculum files grow monotonically today - every new word becomes a
+permanent vocab row (§4's row format; the real curriculum files read in
+§11.0 show plain `auto_generated` rows accumulating with no eviction
+path). Confirmed real gap: neither vocab_module.c nor generation_module.c
+has any usage-count tracking or a "remove a vocab entry" operation
+(consistent with §5.3's separately-flagged missing-tokenizer-op gap -
+this project's vocab/generation code has several real, small missing
+pieces, not just this one).
+  (a) Buildable now, chat-side only, crude: track each word's last-
+      referenced-turn/hit-count in a SEPARATE chat-side log (not inside
+      IQABOD's own file), periodically regenerate a pruned `corpuses/
+      <name>.txt` (drop rarely-used words' example lines) and re-run
+      `vocab_only` - produces a NEW, smaller curriculum FROM SCRATCH.
+      Real, honest cost: this loses any weight-learning progress on the
+      KEPT words too, since it's a fresh vocab build, not an in-place
+      edit - an actual downside, not a rounding error.
+  (b) Needs new IQABOD code, the correct mechanism: a real `prune
+      <vocab_file> <max_size>` mode added to vocab_module.c/
+      main_orchestrator.c that drops lowest-usage-count rows from an
+      EXISTING weights file directly, preserving weights for kept
+      tokens. Genuinely unbuilt - flagged the same way §12.2(b) was
+      flagged, not assumed to already exist.
+Recommend (a) as the actual interim step (buildable today, zero IQABOD
+changes), (b) once vocab growth is actually observed to be a real
+problem in practice - same "prove it's needed before building the
+harder version" discipline as everywhere else in this roadmap.
+
+### 13.4 Shared "trunk" curricula + per-instance deltas (avoid
+     "localizing huge data repeatedly")
+Direct, ALREADY-PROVEN precedent inside THIS project, not a new idea:
+muchi-pal-agent's own `pieces/registry/` (models/personas/fsms - one
+shared copy, global) vs `pieces/world_01/session_01/chat/` (one
+instance's own mutable state) split IS this exact pattern - just never
+yet applied to curriculum WEIGHT files specifically. "Trunk" = a
+registry-level curriculum; per-NPC state = an instance piece, the same
+relationship `model_list.txt` (registry, shared) already has to any one
+session's `state.txt` (instance, local).
+What's mechanically true today that constrains this: `feedback_tx_
+module.c`'s `process` command mutates the ONE `vocab_file` path it's
+given, IN PLACE (§0/§5.3) - IQABOD has no concept of "base file +
+override file" at all today. So, honestly split into what's buildable
+now vs. what needs new code:
+  v1 (buildable now, zero new IQABOD code, real known limitation): many
+     NPC instances of one archetype literally share ONE curriculum file
+     path - a registry-level trunk, e.g. `pieces/registry/curricula/
+     species/base_zombie/base_zombie.txt` - referenced by every instance
+     the same way every session already references the one shared
+     `model_list.txt` today. This genuinely, completely solves "don't
+     localize huge data repeatedly" (there is only ever one file) - but
+     the real cost, named honestly: every instance of that archetype
+     learns IDENTICALLY, since reinforcing the trunk affects every
+     reader of it - no per-individual divergence. Good enough for "all
+     zombies of this type generically get better at X over the game's
+     life," not for "this specific zombie remembers this specific
+     player."
+  v2 (needs new IQABOD code, the real per-instance-personality version):
+     a genuine base+delta mechanism - trunk stays shared/untouched, each
+     instance gets a small delta file (only the rows that differ from
+     the trunk), and generation_module.c gains a NEW capability to merge
+     base+delta before running inference (load trunk, apply delta on
+     top, generate). Unbuilt today - a real, appropriately-scoped
+     addition (same spirit as a LoRA adapter, though nothing here
+     requires that literal technique - a flat "override these N rows"
+     delta file is enough at this project's scale).
+Recommend v1 first - it's zero new code and immediately solves the
+literal cost you named - v2 only once individual-NPC memory/personality
+divergence is actually wanted and tested for.
+
+### 13.5 Generalizing beyond humans: animals, zombies, any archetype
+Mostly an AXIS, not a new mechanism: `pieces/registry/curricula/species/
+<species_name>/` (trunks, §13.4) alongside `curricula_ladder.txt`'s
+existing subject/grade axis (§12.1) - a species axis instead of, or
+alongside, a grade axis, same file-naming convention, same registry-vs-
+instance split.
+The routing table (§13.1) is WHY this generalizes cleanly: a deer's
+flee-from-player instinct and a zombie's wander/chase behavior are
+BEHAVIOR (mechanism 3) - literally fsm_bot_programmer.txt's already-
+designed `bot::*` vocabulary, the SAME engine as chat FSMs (§6) and
+sports/game-play (§13.1), not a new system per creature type. A "smart"
+animal or talkative zombie variant that also has a WORDS component
+(meaningful growls, simple speech) would use a small species-scoped
+iqabod curriculum (mechanism 1), same shape as any grade/subject
+curriculum.
+This concretely extends §0's "one system, two uses" framing (testing
+bots + AI player bots) to at least FOUR uses now: testing bots, chat
+FSMs, game NPC/creature behavior (animals/zombies), and sports/video-
+game-playing agents - all one `bot::*`/`chat::*`-shaped FSM engine,
+differing only in which piece it's attached to and which op-vocabulary
+extension it uses. This is the strongest evidence yet, across this
+whole roadmap, that building the FSM engine once and generically (§1's
+original "huge dream... modular, reusable AI in games or chatbots"
+framing) was the right call - it keeps paying off in directions that
+weren't the original chat-only motivation.
+
+### 13.6 Build order
+  1. `growth_policy.txt` + §13.3's (a) crude self-prune - cheapest,
+     immediately useful regardless of anything else here, and exercises
+     §11.2's judge-as-automatic-reinforcement idea in miniature via the
+     `reinforcement_source=judge` config field.
+  2. §13.4's v1 shared-trunk (zero new IQABOD code) - pick ONE non-human
+     archetype (e.g. a single "base_zombie" behavior+optional-words
+     trunk) as the vertical slice; prove multiple NPC instances actually
+     sharing one file works end to end before generalizing to many
+     species.
+  3. §13.1's BEHAVIOR routing for ONE physical/game skill (pick the
+     simplest available - one sport, or one simple video game's basic
+     play-loop) - depends on §6's base FSM engine existing first, which
+     §12.5 already deferred until data infra was proven; don't build
+     this before §6 exists.
+  4. Personality (mechanism 2, §13.1) - explicitly the LEAST resolved
+     item in this whole section, deferred on purpose, not just by
+     build-order convenience - revisit once mechanisms 1 and 3 are both
+     proven, since personality may end up borrowing pieces from both
+     rather than being a clean third thing.
+  5. §13.4's v2 real per-instance delta-merging and §13.3's (b) real
+     IQABOD-side pruning - both genuinely require new IQABOD code, both
+     explicitly LAST, both only once their v1 counterparts are proven
+     insufficient in practice - same discipline every (a)-vs-(b) split
+     in this whole roadmap already follows.
+
+CROSS-REFERENCE (2026-07-16): §13's WORDS/BIAS/BEHAVIOR routing table
+and its growth_policy.txt/self-prune/trunk mechanisms got extended into
+a 4th category, MATERIAL (composable physical objects - atoms/cells/
+organisms/environments, not just knowledge/personality/skill), in a new
+sibling document: `yz.muchiverse/2.muchi-verse/
+COMPOSABLE-MATERIALS-ARCHITECTURE.md`. That doc also gives a grounded
+answer to "hardcoded PAL ops vs. drop-in FSM pieces that can build/
+train/bugfix themselves," including a config/RL-driven promotion/
+demotion mechanism between the two layers - directly relevant to §6's
+FSM model option and §7's /lab space, read it alongside this file when
+either gets built.

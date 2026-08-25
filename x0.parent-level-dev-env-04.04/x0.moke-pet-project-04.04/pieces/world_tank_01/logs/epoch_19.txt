@@ -1,0 +1,37 @@
+[Mon Jun 15 22:34:25 2026] liz_bulb | rest | NONE
+[Mon Jun 15 22:34:25 2026] liz_char | rest | NONE
+[Fri Jun 19 03:16:23 2026] STATE | liz_bulb | phase=turn-start | hp=10 | hunger=2 | life=alive | type=lizard | control=auto
+[Fri Jun 19 03:16:23 2026] STATE | liz_bulb | phase=after-breathe | hp=10 | hunger=3 | life=alive | type=lizard | control=auto
+[Fri Jun 19 03:16:23 2026] STATE | liz_bulb | phase=after-scan | hp=10 | hunger=3 | life=alive | type=lizard | control=auto
+[Fri Jun 19 03:16:23 2026] liz_bulb | eat | pellet_1
+[Fri Jun 19 03:16:23 2026] STATE | liz_bulb | phase=after-eat | hp=10 | hunger=3 | life=alive | type=lizard | control=auto
+[Fri Jun 19 03:16:23 2026] STATE | liz_bulb | phase=after-check_death | hp=10 | hunger=3 | life=alive | type=lizard | control=auto
+[Fri Jun 19 03:16:23 2026] STATE | liz_char | phase=turn-start | hp=10 | hunger=1 | life=alive | type=lizard | control=auto
+[Fri Jun 19 03:16:23 2026] STATE | liz_char | phase=after-breathe | hp=10 | hunger=2 | life=alive | type=lizard | control=auto
+[Fri Jun 19 03:16:23 2026] STATE | liz_char | phase=after-scan | hp=10 | hunger=2 | life=alive | type=lizard | control=auto
+[Fri Jun 19 03:16:23 2026] liz_char | rest | NONE
+[Fri Jun 19 03:16:23 2026] STATE | liz_char | phase=after-rest | hp=10 | hunger=2 | life=alive | type=lizard | control=auto
+[Fri Jun 19 03:16:23 2026] STATE | liz_char | phase=after-check_death | hp=10 | hunger=2 | life=alive | type=lizard | control=auto
+[Fri Jun 19 03:16:23 2026] STATE | liz_gen_5414 | phase=turn-start | hp=10 | hunger=0 | life=alive | type=lizard | control=auto
+[Fri Jun 19 03:16:23 2026] STATE | liz_gen_5414 | phase=after-breathe | hp=10 | hunger=0 | life=alive | type=lizard | control=auto
+[Fri Jun 19 03:16:23 2026] STATE | liz_gen_5414 | phase=after-scan | hp=10 | hunger=0 | life=alive | type=lizard | control=auto
+[Fri Jun 19 03:16:23 2026] liz_gen_5414 | rest | NONE
+[Fri Jun 19 03:16:23 2026] STATE | liz_gen_5414 | phase=after-rest | hp=10 | hunger=0 | life=alive | type=lizard | control=auto
+[Fri Jun 19 03:16:23 2026] STATE | liz_gen_5414 | phase=after-check_death | hp=10 | hunger=0 | life=alive | type=lizard | control=auto
+[Fri Jun 19 03:16:23 2026] STATE | liz_bulb | phase=after-train | hp=10 | hunger=3 | life=alive | type=lizard | control=auto
+[Fri Jun 19 03:16:23 2026] STATE | liz_char | phase=after-train | hp=10 | hunger=2 | life=alive | type=lizard | control=auto
+[Fri Jun 19 03:16:23 2026] STATE | liz_gen_5414 | phase=after-train | hp=10 | hunger=0 | life=alive | type=lizard | control=auto
+[Fri Jun 19 16:42:05 2026] liz_char | rest | NONE
+[Fri Jun 19 16:42:05 2026] liz_gen_5414 | rest | NONE
+[Fri Jun 19 16:42:05 2026] liz_char | rest | NONE
+[Fri Jun 19 16:42:05 2026] liz_gen_5414 | rest | NONE
+[Fri Jun 19 16:42:39 2026] liz_char | rest | NONE
+[Fri Jun 19 16:42:39 2026] liz_gen_5414 | rest | NONE
+[Fri Jun 19 16:42:39 2026] liz_char | rest | NONE
+[Fri Jun 19 16:42:39 2026] liz_gen_5414 | rest | NONE
+[Fri Jun 19 16:43:00 2026] liz_char | rest | NONE
+[Fri Jun 19 16:43:00 2026] liz_gen_5414 | rest | NONE
+[Fri Jun 19 16:43:16 2026] liz_char | rest | NONE
+[Fri Jun 19 16:43:16 2026] liz_gen_5414 | rest | NONE
+[Fri Jun 19 16:43:16 2026] liz_char | rest | NONE
+[Fri Jun 19 16:43:16 2026] liz_gen_5414 | rest | NONE

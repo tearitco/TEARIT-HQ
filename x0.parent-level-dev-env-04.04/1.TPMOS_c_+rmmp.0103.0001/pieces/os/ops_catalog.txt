@@ -1,0 +1,5 @@
+# op_name|description|args_format
+send_message|Sends a chat message to a specified recipient or broadcasts it.|target_type|target_id|message_content
+register_user|Registers the current user with a given username.|username
+get_messages|Retrieves new chat messages from the P2P network.|
+groq-ollama_bridge|Bridge to local Groq-Ollama Agent.|prompt

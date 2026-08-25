@@ -1,0 +1,406 @@
+================================================================================
+WSR-PAL FEATURE RESEARCH & IMPLEMENTATION PLAN
+Date: 2026-07-17
+Status: Ready for implementation
+================================================================================
+
+PART 1: WHAT WE'RE BUILDING
+================================================================================
+
+Three features need to be built:
+
+1. LIST PORTFOLIO (Option 24)
+   - Show player's stock holdings with prices and gains/losses
+   - Show how much each stock is worth right now vs what you paid
+   - Let user select a stock to see more details
+
+2. SCREENER / RESEARCH REPORT (Option 23)
+   - Search/filter all stocks by criteria
+   - Show which stocks are undervalued (cheap vs fundamentals)
+   - Help player make informed buy decisions
+
+3. AUTO-ACTIVE CORP
+   - When player creates a new corporation, it auto-selects
+   - Currently: create corp → must manually cycle to it (annoying)
+   - Fix: create corp → it's immediately active (ready to manage)
+
+
+PART 2: TRANSACTION LOG - WHAT THIS MEANS
+================================================================================
+
+SIMPLE EXAMPLE:
+
+You decide to buy 100 shares of ORB at $50 each.
+System records this trade.
+
+Then next week, you buy another 50 shares at $52 each.
+System records this second trade too.
+
+TRANSACTION LOG is just a file that remembers EVERY TRADE:
+
+  File: pieces/player_you/transactions.txt
+
+  ORB|buy|100|50.00|2026-07-17
+  AFL|buy|200|25.50|2026-07-18
+  ORB|buy|50|52.00|2026-07-18
+  ORB|sell|30|60.00|2026-07-19
+
+Each line = one trade
+Format: TICKER|ACTION|SHARES|PRICE|DATE
+
+WHY DO WE NEED THIS?
+
+To show in Portfolio:
+  ORB: You own 120 shares total (100+50-30)
+       Average buy price: $50.92 per share
+       Current price: $116.00 per share
+       Total gain: +$7,833
+
+Without the transaction log, we can't calculate "average buy price" or "total gain".
+
+
+PART 3: HOW AI TRADING WORKS (IT'S REAL)
+================================================================================
+
+Original WSR game has an analysis_loop.c that calculates stock prices.
+wsr-pal PORTED this real logic. Here's how it works:
+
+FUNDAMENTAL VALUE CALCULATION:
+
+  For every stock, the AI calculates what it SHOULD be worth:
+
+  1. Start with: book_value / shares_outstanding
+     (This is the company's net worth per share)
+
+  2. Adjust for market size:
+     Large companies are more stable → price multiplier 1.05
+     Tiny companies are volatile → price multiplier 0.8
+
+  3. Adjust for debt level:
+     High debt (leverage) = risky → LOWER stock price
+     Low debt = safe → HIGHER stock price
+
+  4. Adjust for "risk bias":
+     Each company has a risk profile (1-100 scale)
+     Aggressive company (risk=90) → higher price multiplier
+     Conservative company (risk=10) → lower price multiplier
+
+  5. Blend with current price:
+     70% from calculated fundamentals
+     30% from what it's trading at now
+     (Prevents wild swings, maintains momentum)
+
+AI TRADING DECISION:
+
+  IF current_price < fundamental_value:
+     BUY (stock is undervalued)
+
+  IF current_price > fundamental_value:
+     SELL (stock is overvalued)
+
+PROOF IT WORKS:
+
+  Test from 2026-07-17:
+  - ORB stock was $167.73
+  - After 5 ticks, it moved to $115.04 (-31%)
+  - This happened because fundamentals changed (not random)
+  - Financial news correctly reported: "CMZ: -99.38% biggest mover"
+  - Different AI traders made different decisions based on their own risk profiles
+  - Result: realistic price discovery through competing analysis
+
+IMPORTANT: This is NOT vaporware. The original game had bugs where AI traders
+made byte-identical copies of each other (meaningless). wsr-pal uses REAL
+analysis_loop.c ported to our system. Each corporation's decision_mode=1
+(weighted) makes genuine fundamental-value trades.
+
+
+PART 4: HOW TO IMPLEMENT EACH FEATURE
+================================================================================
+
+FEATURE 1: AUTO-ACTIVE CORP (30 minutes)
+================================================================================
+
+CURRENT PROBLEM:
+  1. Player runs "Startup New Corp" wizard
+  2. Corp is created successfully
+  3. Player returns to main menu
+  4. Corp is NOT selected (active_corp_index still points to old corp)
+  5. Player must manually cycle to new corp using "Select Corp"
+
+FIX:
+  1. Edit ops/+x/corp_ipo.c (the operation that creates corps)
+  2. After corp is created, write one line:
+     active_corp_index=<number_of_new_corp>
+  3. Next time menu renders, new corp shows as [>] (selected)
+
+CODE CHANGE:
+  In corp_ipo.c, after creating corp:
+    fprintf(state_file, "active_corp_index=%d\n", new_corp_index);
+
+TEST:
+  1. Run new-game
+  2. Start Startup New Corp wizard
+  3. Complete all 5 steps
+  4. New corp should be highlighted in Select Corp. menu
+
+
+FEATURE 2: LIST PORTFOLIO (2-3 hours)
+================================================================================
+
+WHAT IT DOES:
+  1. Reads transactions.txt (all your trades)
+  2. Calculates current holdings per stock
+  3. Looks up current prices
+  4. Shows table:
+
+    PORTFOLIO LISTING
+
+    TICKER | SHARES | AVG PRICE | CURRENT | GAIN/LOSS
+    -------|--------|-----------|---------|----------
+     ORB   |   120  |   $50.92  |  $116.00| +$7,833 (+127%)
+     AFL   |   170  |   $25.50  |   $24.00|   -$255   (-3%)
+
+    TOTAL PORTFOLIO VALUE: $22,195
+
+WHEN USER CLICKS A STOCK:
+
+  Full Financial Sheet appears with:
+
+  FINANCIAL BALANCE SHEET FOR [COMPANY NAME]
+  ===========================================
+
+  ASSETS:
+    Free Cash and Equivalents:    $891.31M
+    Working Capital:              $452.55M
+    Business Assets/Equipment:    $607.12M
+    Stock in Subsidiary Cos.:     $0.00M
+    Options Long/Short Net Value: $0.00M
+    -----------------------------------
+    Total Assets:                 $1950.98M
+
+  LIABILITIES & EQUITY:
+    Long-Term Bonds Issued:       $0.00M
+    Bank Loan:                    $143.76M
+    Accrued Income Tax Payable:   $0.00M
+    -----------------------------------
+    Total Liabilities:            $143.76M
+    -----------------------------------
+    Equity (Net Worth):           $1807.22M
+
+  STOCK & EARNINGS DATA:
+    Net Worth Per Share:          $26.24
+    Current Stock Price:          $24.89
+    52-Week High/Low:             $29.97 / $13.27
+    Shares Outstanding:           68.88M
+    Total Stock Capitalization:   $1714.54M
+    EPS (2024):                   $0.00
+    Dividend Yield:               0.00%
+
+  FINANCIAL RATIOS:
+    Price/Earnings Ratio:         NMF
+    Debt to Equity Ratio:         0.08 to 1
+    Return on Equity (2024):      NMF
+
+  CREDIT INFO:
+    Credit Rating:                AA
+    Unused Bank Line:             $1871.19M
+    Borrowing Rate:               10.50%
+    Lending Bank:                 MARTIAN TRUST BANK (MTB)
+
+  COMPANY INFO:
+    Industry:                     SHIPPING
+    Incorporated In:              United Clones
+    Owner:                        Public
+    CEO Salary:                   $1.91M
+    Tax Credits:                  $143.08M
+    Next Earnings Report:         January 27, 2025
+
+
+FILES TO CREATE/MODIFY:
+
+  pieces/player_you/transactions.txt
+  - NEW FILE: stores all buy/sell trades
+  - Format: TICKER|ACTION|SHARES|PRICE|DATE
+  - Example:
+      ORB|buy|100|50.00|2026-07-17
+      AFL|buy|200|25.50|2026-07-18
+      ORB|sell|30|60.00|2026-07-19
+
+  ops/+x/player_list_portfolio.+x
+  - NEW OPERATION: reads transactions, calculates portfolio, displays table
+  - Called from main menu option 24
+  - Shows portfolio holdings with averages and % change
+
+  pieces_template/player_you/transactions.txt
+  - TEMPLATE: empty transactions file for new games
+
+INTEGRATION:
+
+  pieces/wsr_main_menu/piece.pdl
+  - Option 24 should call: RUN:./ops/+x/player_list_portfolio.+x
+  - This displays portfolio when user selects option 24
+
+TEST FLOW:
+  1. Start new game
+  2. Navigate to Trade menu (option 12)
+  3. Buy 100 shares of ORB at current price
+  4. Go back to main menu
+  5. Select List Portfolio (option 24)
+  6. Verify: shows ORB with 100 shares, current price, % change
+  7. Sell 30 shares
+  8. Check portfolio again: should show 70 shares, average updated
+
+
+FEATURE 3: SCREENER / RESEARCH REPORT (4-5 hours)
+================================================================================
+
+WHAT IT DOES:
+  1. Scans ALL corporations in pieces/corp_*/
+  2. Calculates fundamental value for each stock
+  3. Compares to current price to find opportunities
+  4. Lets user filter by criteria:
+     - Market cap (small/mid/large)
+     - P/E ratio (price vs fundamentals)
+     - Leverage (debt level)
+     - % price change (52-week movers)
+  5. Displays sorted list for user to browse
+
+EXAMPLE SCREENER OUTPUT:
+
+  RESEARCH REPORT - STOCKS UNDER FUNDAMENTAL VALUE
+
+  TICKER | PRICE | FUNDAMENTAL | UPSIDE | P/E | LEVERAGE | YIELD
+  -------|-------|-------------|--------|-----|----------|-------
+   ZZZ   | $45   |    $78.50   | +74%   | 0.57| 0.25     | 2.1%
+   XYZ   | $32   |    $55.00   | +72%   | 0.58| 0.18     | 1.8%
+   ABC   | $120  |    $95.00   | -21%   | 1.26| 0.95     | 0.5%
+
+  User can select a stock to see full details or buy immediately
+
+
+FILES TO CREATE:
+
+  ops/+x/screener.+x
+  - NEW OPERATION: calculates fundamentals, filters, sorts
+  - Input: filter criteria (market cap, P/E, etc.)
+  - Output: sorted table of stocks matching criteria
+
+  pieces/screener_menu/piece.pdl
+  - NEW MENU: filter options
+    [>] 1. [Undervalued Stocks]
+    [ ] 2. [High Growth]
+    [ ] 3. [Dividend Aristocrats]
+    [ ] 4. [Small Cap Gems]
+    [ ] 5. [Back to Main Menu]
+
+CALCULATION (from analysis_loop.c):
+
+  For each stock:
+    book_value_per_share = book_value / shares_outstanding
+    leverage_factor = 1.0 (adjusted if debt_to_equity > 1.0)
+    market_cap_multiplier = 1.0 (adjusted based on size)
+    risk_bias = 0.5 to 1.5 (from corp's risk profile)
+
+    fundamental_value = book_value_per_share
+                      * market_cap_multiplier
+                      * leverage_factor
+                      * risk_bias
+
+    upside = (fundamental_value - current_price) / current_price * 100%
+    p_e_ratio = current_price / (book_value_per_share * risk_bias)
+
+TEST FLOW:
+  1. Start new game
+  2. Main menu option 23 (Research Report)
+  3. Select "Undervalued Stocks"
+  4. See list of stocks trading below fundamental value
+  5. Select one → view details
+  6. Buy from research screen
+  7. Check portfolio → verify buy recorded
+
+
+PART 5: IMPLEMENTATION ORDER
+================================================================================
+
+RECOMMENDED SEQUENCE:
+
+Step 1: Auto-Active Corp (30 min)
+  - Smallest change, highest impact
+  - Unblocks corp creation workflow
+  - Easy to test
+
+Step 2: List Portfolio (2-3 hours)
+  - Essential for player feedback
+  - Must work before Screener
+  - Depends on transactions.txt setup
+  - Players can now verify trades worked
+
+Step 3: Screener (4-5 hours)
+  - Complex data aggregation
+  - Can be tested independently
+  - Improves trading strategy depth
+
+Step 4: Integration Testing (1-2 hours)
+  - Create corp → auto-selects
+  - Buy stock → appears in portfolio
+  - Research stock → buy from screener
+  - Check portfolio → shows position
+
+TOTAL TIME: 7-9 hours
+
+
+PART 6: DATA STRUCTURES NEEDED
+================================================================================
+
+TRANSACTIONS.TXT FORMAT:
+
+  File: pieces/player_you/transactions.txt
+
+  One trade per line:
+  TICKER|BUY_OR_SELL|SHARES|PRICE|DATE
+
+  Example:
+    ORB|buy|100|50.00|2026-07-17
+    AFL|buy|200|25.50|2026-07-18
+    ORB|buy|50|52.00|2026-07-18
+    ORB|sell|30|60.00|2026-07-19
+
+  Current holdings = SUM(buy shares) - SUM(sell shares) per ticker
+  Average cost basis = SUM(buy_shares * buy_price) / current_holdings
+
+
+WHO WRITES TRANSACTIONS.TXT?
+
+  player_trade.c (existing operation):
+    When player buys/sells, it updates both:
+    - pieces/player_you/holdings.txt (current snapshot)
+    - pieces/player_you/transactions.txt (NEW: append new trade)
+
+
+PART 7: QUESTIONS TO CLARIFY BEFORE STARTING
+================================================================================
+
+1. Screener Display:
+   What filters matter most for you?
+   - Undervalued stocks (price < fundamentals)?
+   - By market cap (small/mid/large)?
+   - By leverage (debt level)?
+   - By dividend yield?
+   All of above, or pick top 3?
+
+2. Portfolio Drill-Down:
+   When player selects a stock in portfolio, what should happen?
+   - Show full balance sheet?
+   - Show price history chart?
+   - Show trading options (buy/sell from portfolio screen)?
+   - Just show ticker details and return to menu?
+
+3. Auto-Active After Creates:
+   Should it also work for other creations?
+   - When issue bonds?
+   - When take loan?
+   - Or just for creating new corporations?
+
+================================================================================
+END RESEARCH DOCUMENT
+================================================================================

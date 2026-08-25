@@ -1,0 +1,36 @@
+# Plan: API Selection Menu Fix (m19) - Functional Standard Alignment
+**Project:** cpp-llm
+**Objective:** Replace manual menu tracking with the CHTPM Parser's native `ACTIVATE` pattern and `COMMAND:` injection.
+
+## 1. Functional Standard Strategy
+We will move away from "Manager Tracking" (handling arrows/selection manually) to "Parser Tracking" as per `CHTPM_TPM_DOX+1.md` and the `+-demo` reference.
+
+### A. Layout Changes (cpp-llm.chtpm)
+- Use `<button label="[3] Switch API" onClick="ACTIVATE">` to create a scoped activation menu.
+- The dynamic list `${cpp-llm_api_menu}` will be placed INSIDE this button.
+- This ensures the menu is hidden by the parser until the user "activates" the button with ENTER.
+
+### B. Manager Changes (cpp-llm_manager.c)
+- **Markup Generation:** 
+    - Stop writing `[>]` or `[ ]` manually.
+    - Wrap each API in a real `<button>` tag.
+    - Use `onClick="COMMAND:SET_API:<url>"` to avoid index conflicts and mapping issues.
+- **Input Loop:**
+    - Remove handling for keys `65` (UP) and `66` (DOWN).
+    - Remove `g_selected_api_idx`.
+    - Add parsing for the string `COMMAND: SET_API:`.
+    - When detected, extract the URL and call `resolve_local_model()`.
+- **Visibility:** 
+    - The manager will always write the list markup, but the parser will handle the visibility based on the `ACTIVATE` state.
+
+## 2. Implementation Steps
+1.  **Refactor `update_menu_markup`**: Change loop to output `<button label="${api_name}" onClick="COMMAND:SET_API:${api_url}" /><br/>`.
+2.  **Refactor Main Loop**:
+    - Update the history file reader to use `fgets` instead of `fscanf` to support string commands.
+    - Add `strstr` check for `COMMAND: SET_API:`.
+    - Cleanup the old arrow-key state logic.
+3.  **Update Layout**: Wrap the variable in the `ACTIVATE` button.
+4.  **Verify**: Ensure the `Nav >` indicator moves correctly between the API options and that selecting one triggers the switch.
+
+---
+*Next: Apply Refactor.*

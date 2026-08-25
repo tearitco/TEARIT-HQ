@@ -1,0 +1,3 @@
+**1** And it came to pass that the city slept beneath the dust.
+**02** Now the man of great wealth walked its streets, and none knew him.
+Write ONLY those verse lines, in order, starting at verse 1. No headers, no notes, no commentary.

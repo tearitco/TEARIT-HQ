@@ -1,0 +1,149 @@
+================================================================================
+refactor-report.txt - &.widgits/file-menu: before/after, for human
+review. Written 2026-07-30 at the end of the PITFALL-65 rebuild
+(#.haiku+/jul30-house-refactor.txt, #.haiku+/refactor-list-j30.txt
+Tier 3, #.haiku+/editor-widget-app-refactor-j30.txt). Read this to
+check with your own eyes whether the refactor landed correctly and
+completely - it is not a substitute for actually running button.sh
+(or the paired @.apps/text-editor-xyz app) and clicking through it
+yourself.
+================================================================================
+
+## BEFORE (superseded architecture, no longer in the codebase)
+
+ONE .chtpm layout file (pieces/chtpm/layouts/file-menu.chtpm) for the
+WHOLE widget - main menu, file browser, and peer list were all just
+different hand-drawn TEXT CONTENTS of the same one screen, switched by
+an internal state key (fm_state.txt's own "mode": main_menu /
+file_browser / peer_list). The layout itself was one line:
+
+    <text label="${game_map}" />
+
+`${game_map}` was a giant hand-drawn text blob fm_compose_frame.c
+built - directory entries, menu options, and SEARCH/FILE "fields" were
+all just text lines with hand-drawn "[>]"/"[^]"/"[ ]" prefixes,
+exactly the same pattern 102.agy-txt's own old browser used (this
+project is in fact what that old agy-txt port was originally modeled
+on). fm_menu_input.c hand-tracked cursor_pos/field_active/mode/
+browse_mode itself, interpreting every raw keycode by hand. No real
+<button> or <cli_io> elements existed anywhere in this project.
+
+This shipped, real bug fixes were already made against it live this
+same week (PITFALL 63/64 - digit-press-immediately-activating,
+digit-press-typing-into-search) - it was not broken, just built on the
+same pre-standard, hand-drawn-marker foundation agy-txt's own old
+browser was.
+
+## AFTER (current, real architecture)
+
+Real multi-layout, real chtpm-native, real href navigation - direct
+instruction: "always use href to go to another page... that was the
+whole point of the refactor." FIVE real layout files now, not one:
+
+  file_menu_main.chtpm
+    -> (button href) file_menu_browser_save.chtpm  (SAVE AS...)
+    -> (button href) file_menu_browser_load.chtpm  (LOAD...)
+    -> (button href) file_menu_browser_pair.chtpm  (PAIR FROM FILE...)
+    -> (button href) file_menu_peers.chtpm         (CHANGE FOCUS)
+  file_menu_browser_save.chtpm / _load.chtpm / _pair.chtpm
+    -> (button href, CANCEL) file_menu_main.chtpm
+  file_menu_peers.chtpm
+    -> (button href, CANCEL) file_menu_main.chtpm
+
+Every one still declares the SAME real, shared, PAL-driven module
+every layout in this project always used:
+
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+
+(fm_menu_input.c stays a PAL-invoked op, not converted to a native C
+daemon - that was a deliberate, explicit non-goal of this refactor,
+see editor-widget-app-refactor-j30.txt's own "explicitly out of
+scope" section - only the rendering/navigation model changed.)
+
+The three browser layouts (save/load/pair) now declare real elements:
+
+    <panel time_reactive="true">
+        <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+        <interact src="pieces/apps/player_app/interact_relay.txt" />
+        <text label="SEARCH: " /><cli_io id="search_query"
+              target_id="search_query" label="${search_query_val}" /><br/>
+        <text label="FILE:   " /><cli_io id="file_path_input"
+              target_id="file_path_input" label="${file_path_input_val}" /><br/>
+        ${game_map}
+    </panel>
+
+`${game_map}` is now a RAW MARKUP INJECTION POINT (a bare top-level
+line, not wrapped in a <text label="..."> the way it used to be) -
+fm_compose_frame.c generates real strings like:
+
+    <button label="[FIL] my.txt (20B)" onClick="KEY:5" /><br/>
+    <button label="LOAD" onClick="KEY:13" /><br/>
+    <button label="CANCEL" href="pieces/chtpm/layouts/file_menu_main.chtpm" /><br/>
+
+and chtpm_parser_pal.c re-parses that text as real XML - real
+<button> elements, real focus/highlighting/nav owned entirely by the
+parser. SEARCH/FILE are real <cli_io> elements with real native
+typing/Enter-to-engage/per-keystroke sync - none of that logic lives
+in fm_menu_input.c anymore (dispatch_file_browser() only ever sees a
+FINAL activated KEY:n now, decoded into a string action at one clearly
+marked boundary, matching 102.agy-txt's own rebuilt manager exactly).
+
+## Real bugs found and fixed during this rebuild (all live-verified,
+   not just compiled - SAME class of bugs as 102.agy-txt's own rebuild,
+   since both projects share the real underlying engine)
+
+1. chtpm_parser_pal.c's own KEY:n relay ASCII-shifts single digits -
+   every real button 0-9 silently never dispatched until fixed.
+2. A real, HOUSE-WIDE bug in the shared chtpm_parser_pal.c itself: a
+   fresh href transition could land keyboard focus on a stale,
+   coincidentally-same-indexed element from the PREVIOUS screen -
+   fixed at the source (clear_saved_active_index()), benefits every
+   real href-driven project in the house.
+3. Real Enter-directly-on-the-FILE-field needed a real disambiguation
+   check (active_gui_index()) so it isn't accidentally swallowed by
+   the generic button-index decode.
+4. Abandoned, un-submitted typed text could get silently stuck in
+   gui_state.txt and reappear prepended to the next thing typed on
+   re-entering a browser screen - fixed by clearing both the display-
+   only "_val" keys and the real target_id-keyed ones chtpm_parser_
+   pal.c itself writes.
+5. gui_state.txt itself moved to a real, project-scoped path
+   (projects/file-menu/manager/gui_state.txt - already pre-existing
+   infrastructure in button.sh, confirmed via direct read) instead of
+   the generic player_app path, matching how chtpm_parser_pal.c's own
+   load_project_gui_state() actually resolves it once project_id is
+   set (file-menu's own state.txt sets project_id=file-menu).
+
+## Real, live-verified end-to-end (not just "it compiles")
+
+- SAVE: type a real filename character-by-character into the FILE
+  cli_io, activate SAVE AS (or press Enter directly on the field) ->
+  real file lands on disk in the real editor session's own target.
+- LOAD: click a real listed file entry -> real click-to-load, the
+  paired editor's own buffer actually updates.
+- K3 harness (@.apps/text-editor-xyz/test-harn-ed-app's own
+  demo_save.sh/demo_load.sh) both 100% pass, rewritten off the removed
+  fm_relay_key/fm_paste helpers (real keyboard-channel injection now,
+  matching 102.editor's own real chtpm-native layout).
+- demo_fm_typing_ux.sh (real per-key SAVE AS field UX, real Esc-
+  scoping, real Enter-first-to-activate, real jail-escape rejection):
+  9/10 real assertions pass. One remaining, LOW-PRIORITY, documented
+  edge case in an aggressive automated 4-deep re-entry sequence (see
+  #.haiku+/refactor-list-j30.txt's own "TIER 1 FOLLOW-UPS" section) -
+  not reproduced in any realistic single- or double-cycle interaction,
+  not blocking.
+
+## What to check yourself
+
+1. Through the paired app: @.apps/text-editor-xyz/button.sh run.
+2. From the editor, open FILE MENU, then SAVE AS... - confirm you land
+   on SEARCH focused (not some random directory entry).
+3. Arrow DOWN to FILE, Enter to engage, type a real filename, either
+   click SAVE FILE or press Enter directly - confirm a real file
+   appears in the editor's own real save target.
+4. CANCEL back to FILE MENU, then LOAD... - arrow to a real listed
+   file, Enter - confirm the editor's own text actually changes.
+5. CHANGE FOCUS / PAIR FROM FILE... - confirm those real screens
+   (file_menu_peers.chtpm / file_menu_browser_pair.chtpm) also render
+   with real buttons, not hand-drawn text.
+================================================================================

@@ -1,0 +1,8 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | chicken
+STATE        | source               | event-ez
+NODE         | id=1 type=behavior     | text=Wander
+NODE         | id=2 type=target       | text=(none)
+NODE         | id=3 type=speed        | text=slow
+NODE         | id=4 type=ret          | text=

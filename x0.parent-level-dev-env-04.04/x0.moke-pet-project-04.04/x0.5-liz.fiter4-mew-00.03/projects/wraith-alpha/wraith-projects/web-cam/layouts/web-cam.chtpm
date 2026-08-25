@@ -1,0 +1,10 @@
+<chtpm>
+  <module>projects/wraith-alpha/wraith-projects/web-cam/manager/+x/web-cam_manager.+x</module>
+  <text label="WRAITH WEB CAM" /><br/>
+  <text label="Project ID: wraith-alpha/wraith-projects/web-cam" /><br/>
+  <text label="Status: ready" /><br/>
+  <text label="Scope: live webcam stream in Wraith window" /><br/>
+  <text label="Device: /dev/video0" /><br/>
+  <text label="Transport: start stop refresh" /><br/>
+  <text label="Rule: prove locally before shared reusable op extraction" /><br/>
+</chtpm>

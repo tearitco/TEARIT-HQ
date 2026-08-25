@@ -1,0 +1,7 @@
+# Custom operations for agy-editor's prisc+x
+# Format: name type handler {description}
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}
+editor_menu_input void ops/+x/editor_menu_input.+x {INTERACT canvas typing + METHOD dispatch}
+editor_compose_frame void ops/+x/editor_compose_frame.+x {render editor chrome + buffer into view.txt}
+editor_widget_cmds void ops/+x/editor_widget_cmds.+x {drain widget cmd inbox LOAD/SAVE/NEW}

@@ -1,0 +1,4 @@
+WRAITH FS
+Dir: projects/+-demo/manager/
+Entries: 3 | Window: 1-3 | navigated
+Last: Opened dir manager

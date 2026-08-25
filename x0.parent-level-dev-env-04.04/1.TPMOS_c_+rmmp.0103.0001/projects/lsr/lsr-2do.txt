@@ -1,0 +1,51 @@
+# LSR (Lunar Streetrace Raider) - MISSION CRITICAL 2DO
+# Version: 1.0 (Handover Edition)
+# Date: 2026-04-30
+
+## OVERVIEW
+This project is a TPMOS-compliant refactor and expansion of the "Martian Street Race" (WSR) simulation. The goal is to migrate the economy to the Lunar surface and implement a fully autonomous, bot-managed financial system.
+
+---
+
+## 🟥 PHASE 1: THE METABOLISM (IMMEDIATE)
+The "Missing Heart" of WSR must be implemented as standalone TPM Ops.
+- [ ] **Payroll Op:** Create `lsr/ops/payroll_op.c`. Should read a Piece's `state.txt`, deduct wages, and log to `master_ledger.txt`.
+- [ ] **Tax Op:** Create `lsr/ops/tax_op.c`. Should calculate taxes based on corporate revenue and transfer to Government Pieces.
+- [ ] **Dividend Op:** Create `lsr/ops/dividend_op.c`. Should distribute profit percentages to shareholders.
+
+## 🟧 PHASE 2: PIECE MIGRATION
+Convert old WSR data structures into TPM Pieces.
+- [ ] **Corporation Template:** Define `lsr/pieces/world/lunar/corp_template/piece.pdl`.
+- [ ] **Mass Import:** Script the conversion of corporations from `Mar$.$treetRace]Q]k32]4K/corporations/generated/` to `lsr/pieces/world/lunar/`.
+- [ ] **Government Mirror:** Create `state.txt` for the "Lunar Authority" in `lsr/pieces/world/lunar/gov/`.
+
+## 🟨 PHASE 3: THE MANAGER (EXO-BOT)
+The simulation manager must live in `xo/` as a sovereign agent.
+- [ ] **Scaffold Manager Bot:** Create `1.TPMOS_c_+rmmp_96.24/xo/lsr_manager/`.
+- [ ] **FSM Implementation:** Implement the Finite State Machine (SCAN -> CALCULATE -> EXECUTE -> LEARN).
+- [ ] **Clock Sync:** Ensure the bot respects the `wsr_clock.txt` "Pulse" before initiating a cycle.
+
+## 🟩 PHASE 4: LUNAR GEOGRAPHY
+Implement the Scale-Free Container Model.
+- [ ] **Map Containers:** Create `lsr/pieces/world/lunar/map_alpha/` as a container for Agent and Landmark pieces.
+- [ ] **Agent DNA:** Define `fadam` and `feve` Piece PDLs with worker/reproduction stats.
+
+## 🟦 PHASE 5: AI-DRIVEN R&D
+- [ ] **AI-Labs Link:** Implement `research_op.+x` to call the `ai-labs` module and generate tech recipe pieces.
+
+---
+
+## 📚 REFERENCE MATERIAL
+See the `reports/` directory in the root for full architectural blueprints:
+- `reports/MASTER_REPORT.md` (Executive Summary)
+- `reports/compliance_blueprint.md` (TPMOS Rules)
+- `reports/migration_strategy.md` (The FSM Plan)
+- `reports/game_loop_walkthrough.md` (Human vs. Robot Loop)
+
+## ⚠️ MANDATES
+1. "If it's not in a file, it's a lie." No global memory for game state.
+2. Use the **Stat-First Pattern** for all background processes.
+3. Every transaction MUST be audited in `master_ledger.txt`.
+
+---
+*Good luck, Agent. The moon is waiting.*

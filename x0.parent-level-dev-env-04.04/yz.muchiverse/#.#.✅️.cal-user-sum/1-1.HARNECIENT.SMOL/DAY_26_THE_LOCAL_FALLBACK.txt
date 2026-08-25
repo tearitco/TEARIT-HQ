@@ -1,0 +1,34 @@
+# 🐢 DAY 26 — The Local Fallback: 270m, 1b, and What Happens When Quota Runs Out 🐢
+# ===================================================
+# Title: "🐢 DAY 26 — The Local Fallback: 270m, 1b, and What Happens When Quota Runs Out 🐢"
+# Characters: TOMO, MAXINE, IQA, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), MAXINE (en-GB-MaisieNeural), IQA (en-US-AnaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+
+**MAXINE:** Yesterday was about prompting when Claude's tokens run dry. Today's the other half — what happens when even the FREE cloud APIs run dry?
+
+**TOMO:** Real thing that happened, not hypothetical. OpenRouter's free-tier `gemma-4-26b-a4b-it:free` — the model open-hai defaulted to — hit a real, live `429`. "Temporarily rate-limited upstream... shared pool." Not Boss's key being broken. A popular free model, congested, shared across every OpenRouter user at once.
+
+**IQA:** So what's the actual fallback, when the free cloud tier itself is unreliable?
+
+**TOMO:** Two, actually. First — just try a different free model. `nvidia/nemotron-3.5-lightning:free` and `cohere/north-mini-code:free` both answered on the first try, real tool_calls, no rate limit. That's the fast fix. But the DEEP fallback, the one that never runs out because it's not shared with anyone — local. `gemma3:270m` and `gemma3:1b`, already sitting on the LAN Ollama host, no key, no quota, no internet dependency at all.
+
+**MAXINE:** But those are tiny models. Can they actually do anything real?
+
+**TOMO:** This is where the Harnecient hack pays for itself again — same pattern this whole book keeps returning to. Native tool-calling on small models is flaky. Measured, not assumed: `code-tools-harness/api-test-results.md`, real C harness, real per-turn receipts. Both 270m and 1b called `read_file` in the naive test and then didn't even use what came back. That's the honest failure mode of asking a tiny model to decide WHEN and HOW to call a tool.
+
+**IQA:** So they just... can't?
+
+**TOMO:** They can't do THAT. But run the same two models through the Harnecient hack instead — the harness itself decides what tool runs, hands the model a clean result, and only asks it for a short plain-text answer — and the same table reads PASS, PASS, PASS. Nine for nine. Read, edit, run, on 270m AND 1b, plus `stable-code:latest`'s 3B for good measure. The model never routes anything. It just talks, about something the harness already resolved for it.
+
+**THE NARRATOR:** Worth saying exactly why that split matters. A model deciding "should I call read_file right now" is a classification problem, and small models are bad at classification under pressure — that's DAY 6's whole lesson, DESCRIBE don't CLASSIFY, showing up again in a completely different corner of the house. A model asked "here's a file's contents, summarize it" is a description problem, and even 270 million parameters can do that respectably. Same model, same weights — the only thing that changed is which problem it was asked to solve.
+
+**MAXINE:** Boss mentioned 7B being too slow for this, today, live.
+
+**TOMO:** Real, and worth being honest about the difference in kind. `api-test-results.md` measures CORRECTNESS — does the edit compile, does the run print the right thing — never latency. Nobody timed a stopwatch on this LAN host across model sizes. So that 7B-is-slow observation is real and current, but it's Boss's own live report, not a number sitting in a fact-doc yet. Until it is, the honest sentence is: 270m and 1b are the realistic local tier right now, not because 7B was measured and failed, but because it hasn't been measured for speed at all, and the one live report says don't count on it today.
+
+**IQA:** So if I only remember one number from this whole day —
+
+**TOMO:** Nine for nine. Two tiny models, three real code operations each, all passing, all through the same harness pattern this entire book has been teaching since Day 5. Free-tier cloud APIs can rate-limit you. A model sitting on your own LAN, driven by a harness instead of asked to route itself, doesn't have a quota to run out of.
+
+**THE NARRATOR:** And the actual instruction, if you're building on this: don't re-run those nine tests to feel reassured. They're on disk, they're dated, they're real. Cite them. Spend the tokens you'd have burned re-measuring on the next new tool the harness doesn't have yet instead. That's the whole playbook from Day 15, one more time, in a slightly smaller font. 🐢

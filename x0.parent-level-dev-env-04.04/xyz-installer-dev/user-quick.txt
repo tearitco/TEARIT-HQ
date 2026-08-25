@@ -1,0 +1,94 @@
+user-quick.txt — test the install work in 2 minutes, safely
+=============================================================
+
+What we just built (simple words)
+---------------------------------
+1. An INSTALLER that copies two working apps into a fresh folder called
+   ~/xyzos/ and compiles them there. It never touches the apps' original
+   files (the dev tree) — it only READS them.
+2. Two automatic tests (KPI#4, KPI#5) that prove the install works, using
+   a throwaway test folder that cleans up after itself.
+3. Docs (xyz-official-documentation/ + dev-doc/) — just files to read.
+
+The golden rule
+---------------
+Nothing you do here can break the dev tree or anything you already run.
+The installer refuses to run if ~/xyzos/ already exists, so it can never
+overwrite a real install by accident. And it copies FROM the dev tree,
+never writes back into it.
+
+Easiest test (recommended) — the automatic one
+-----------------------------------------------
+Run both harnesses. They use /tmp/xyzos-test-user, which is created,
+used, and auto-deleted. Nothing else is touched.
+
+    cd ~/Desktop/.../44.xyz❤️‍🔥️00.10/%.harnesses/install-xyzos
+    bash button.sh compile
+    bash button.sh kpi4        -> expect OVERALL: PASS
+    bash button.sh kpi5        -> expect OVERALL: PASS
+
+Green = the whole thing works. Proof files are saved in
+%.harnesses/install-xyzos/proof/ (kpi4-…/ and kpi5-…/ folders).
+
+Manual test — watch where files land (so you never lose track)
+--------------------------------------------------------------
+Step 1. Install into a safe throwaway home (NOT your real one):
+
+    bash xyz-installer-dev/xyzos-starter-install.sh . /tmp/xyzos-test-user
+
+    (the "." says "read the dev tree from here"; the second argument
+     says "put the install under /tmp/xyzos-test-user")
+
+Step 2. Check what it created — every new thing lives under
+        /tmp/xyzos-test-user/xyzos/:
+
+    ls /tmp/xyzos-test-user/xyzos/
+    -> apps/   app-store/   xyzfs/   button.sh   paths.pdl
+
+    ls /tmp/xyzos-test-user/xyzos/apps/
+    -> 00.login-signup   01.avatar-creation👤️   (the two apps, copied)
+
+    cat /tmp/xyzos-test-user/xyzos/paths.pdl
+    -> the "map" of where everything is. user_home_dir = home means
+       each user's files go to xyzfs/users/<uuid>/home/ (we call it
+       "home-🏠️/" in words — it's your xyzos home, not your Linux home).
+
+Step 3. Boot it and sign up (type real keys yourself):
+
+    /tmp/xyzos-test-user/xyzos/button.sh
+
+    - You see a login screen ("Not logged in.").
+    - Type a User ID + Display Name, press "Create Account".
+    - Screen should say "Logged in as: <your id>".
+
+Step 4. Find the files that were just created:
+
+    Account record:   /tmp/xyzos-test-user/xyzos/apps/00.login-signup/users/<your-id>/profile.txt
+                      (this is keyed by your NAME; it holds your uuid)
+    Your filesystem:  /tmp/xyzos-test-user/xyzos/apps/00.login-signup/xyzfs/users/<uuid>/
+                      (keyed by your UUID; contains meta.txt, home/, projects/)
+    Who's logged in:  /tmp/xyzos-test-user/xyzos/apps/00.login-signup/current_login.txt
+    Live screen:      /tmp/xyzos-test-user/xyzos/apps/00.login-signup/pieces/sessions/<id>/pieces/display/current_frame.txt
+
+Step 5. Log out, then log back in as the same id.
+        Same uuid comes back -> your files are still there. That's the point.
+
+Step 6. Clean up when done (this test home is throwaway):
+
+    Ctrl-C the app, then: rm -rf /tmp/xyzos-test-user
+
+If you ever feel lost about where something is
+-----------------------------------------------
+Read ~/xyzos/paths.pdl (or /tmp/…/xyzos/paths.pdl) — it's the single map
+of logical name -> real path. Everything the install does is visible as a
+file under ~/xyzos/. Nothing is written anywhere else on the system.
+
+Real install (later, when you're ready)
+---------------------------------------
+    bash xyz-installer-dev/xyzos-starter-install.sh      -> installs to ~/xyzos/
+    ~/xyzos/button.sh                                    -> boot + sign up as yourself
+
+What about the gitlet versioning strategy + docs?
+-------------------------------------------------
+They're just documents right now (dev-doc/01…, 02…). Nothing runs, nothing
+installs. Read them whenever you like; wiring them up is future work.

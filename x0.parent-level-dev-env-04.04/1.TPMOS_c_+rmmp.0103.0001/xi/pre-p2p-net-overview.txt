@@ -1,0 +1,157 @@
+Pre-P2P-NET Overview (M25, May 25 2026)
+
+Scope
+- Source references reviewed:
+  - top-refactor-m25.txt
+  - projects/chat-op/*
+  - projects/chat-op/1.forum.ring/*
+  - projects/p2p-net/*
+  - pieces/os/project_routes.kvp
+
+1) ABCD / forumring topology (what it means in this repo)
+
+The intent in projects/chat-op/1.forum.ring is a sequential ring handoff model, not star broadcast:
+- Ordered host list is the core state (ip_list style matrix rows).
+- Node sends to the "next" node in list order.
+- Receiver can answer back (syn/syn-ack/ack style), then flow continues.
+- When at bottom of list, wrap to upper list entries (ring close).
+- List updates are intended to move with the message payload ("pass list through chain"), not by separate global broadcast.
+
+Observed design artifacts in forumring code:
+- 1.ip-r-rw+sort]0000.c:
+  - Maintains ip list rows with timestamp + ip + port metadata.
+  - Re-sorts rows by timestamp descending.
+  - Picks "next" node by row adjacency after sort.
+- %.1.f2p.autoforum...c:
+  - Bootstraps local identity, runs sort module, then triggers send/recv modules.
+- 2.f2p.mod_1]send]0002.c and 2.f2p.mod_2]rcv]0002.c:
+  - Prototype handshake pipeline (syn, syn-ack, ack states).
+  - Payload/file-forwarding concept for passing state.
+
+Important: forumring is a design/prototype reference, not production-ready TPMOS app code. It encodes the target topology idea clearly: deterministic ordered forwarding, list-carrying, auditable path.
+
+2) Current chat-op behavior (actual functioning today)
+
+What is implemented now (projects/chat-op):
+- chat-op_manager.c:
+  - Reads input from gui_state/history stream.
+  - Local echo to chat_log.txt on Enter.
+  - Writes outbound text to pieces/network/outbox.txt.
+  - Starts p2p_socket_daemon.+x with mode.
+- p2p_socket_daemon.c:
+  - Uses TCP on port 8000.
+  - Tries known_hosts.pdl entries first; if none connect, becomes HOST.
+  - Host accepts clients; client keeps one upstream host socket.
+  - Message transport is host-relay (star), not ring.
+  - On new SYN, host attempts LOG_SYNC history push from chat_log.txt.
+  - Host sends PEER_TABLE messages, but clients do not parse/update a real peer table from it.
+- GUI:
+  - Displays peer_count, role, message log, and connected peers text.
+  - mode_selector supports DEV/USER modes.
+
+What is confirmed from local artifacts:
+- 3-peer chat worked in practice in prior runs:
+  - manager-debug.txt shows HOST with peer_count=3 and cross-peer messages.
+  - daemon_log.txt shows multiple accepts/handshakes/relays.
+- Discovery from known_hosts is active:
+  - known_hosts.pdl contains multiple static host IPs.
+  - daemon logs show probe -> host found/no host paths.
+
+Known functional gaps:
+- Late-join history is not reliable for newcomers:
+  - Intended LOG_SYNC path exists, but observed behavior includes empty message view on fresh client joins.
+  - Current daemon does single recv buffer parsing and weak framing; multi-record sync over TCP is fragile.
+- Topology is centralized host-relay, not auditable ring traversal.
+- Peer table propagation is incomplete on clients (PEER_TABLE received but not materially applied).
+
+3) Current p2p-net status (starting point for migration)
+
+projects/p2p-net currently is an incomplete shell:
+- Present: layout + manager source + manager state files.
+- Missing: project.pdl, ops binaries, network/chat data dirs expected by manager.
+- Manager references many nonexistent paths/ops:
+  - projects/p2p-net/ops/+x/*
+  - projects/p2p-net/pieces/network/*
+  - projects/p2p-net/pieces/chat/inbox/*
+- pieces/os/project_routes.kvp currently maps p2p-net to generic playrm layout, not p2p-net layout.
+
+Conclusion: p2p-net is not yet a runnable equivalent of chat-op.
+
+4) What needs to be done next (ring-first, auditable-first)
+
+A. Baseline migration
+- Copy working chat-op runtime pattern into p2p-net topology:
+  - manager lifecycle
+  - daemon process model
+  - chat ledger file usage
+  - GUI-state update loop
+- Preserve p2p-net naming/layout entry points so project menu loading remains consistent after fixups.
+- Add missing project.pdl and route/layout consistency.
+
+B. Introduce ring message contract (replace host-relay core)
+- Define one framed message format (line-delimited or length-prefixed), for example:
+  - type=LEDGER_SYNC
+  - msg_id
+  - origin_hash
+  - hop_index
+  - ring_version
+  - host_list_ledger (ordered)
+  - chat_ledger_delta or full snapshot
+  - checksum/hash
+- Every node forwards to deterministic next node in ordered list.
+- Add wrap rule (last -> first/second-top as specified) to close ring.
+
+C. Ledger behavior required now
+- On join:
+  - newcomer requests full ledger
+  - ring returns complete chat ledger snapshot
+  - newcomer applies snapshot before normal delta flow
+- During chat:
+  - append-only ledger entries with stable ids/timestamps
+  - dedupe by msg_id
+  - replay-safe writes
+
+D. Host list update in ring fashion
+- Treat host list as versioned ledger state, not side-channel text.
+- Membership changes produce list-update records.
+- List-update record circulates ring and is acknowledged by traversal (audit trail).
+- Resolve conflicts by monotonic version + deterministic tie-break.
+
+E. Auditability requirements
+- Persist per-hop trace:
+  - received_from
+  - forwarded_to
+  - ring_version
+  - ledger_hash_before/after
+  - timestamp
+- Make this trace visible in debug file for deterministic replay.
+
+F. Broadcast later (not first)
+- Keep ring as source of truth first.
+- After ring correctness, add optional broadcast acceleration as a performance layer only.
+- Broadcast must not be authoritative; ring ledger remains canonical for audit/recovery.
+
+5) Practical implementation order
+
+1. Make p2p-net minimally runnable by cloning chat-op runtime skeleton and fixing project/menu wiring.
+2. Replace host-relay daemon logic with ring-forward logic using framed protocol.
+3. Implement full-ledger sync on join (mandatory before delta chat).
+4. Implement host-list ledger updates and deterministic next-hop selection.
+5. Add audit logs and 3+ node deterministic test harness.
+6. Add optional broadcast optimization after ring passes reliability tests.
+
+Bottom line
+- chat-op is currently the stable functional reference.
+- forumring captures the intended ABCD ring topology direction.
+- immediate p2p-net goal should be: ring-based full-ledger propagation + ring-based host-list propagation, with auditable hop-by-hop state, before any broadcast hardening.
+
+6) User clarification captured (May 25, 2026)
+
+The current localhost defaults are only temporary. Required behavior:
+- Use real self-IP discovery (chat-op style), not fake/default localhost-only identity.
+- Use known host list handshake bootstrapping (chat-op style) on login/start.
+- If handshake to known hosts fails, node becomes temporary ring leader.
+- Ring leader status is temporary and only valid while that node is reachable.
+- If another node later tries handshake and leader is gone, mark leader offline in shared user list.
+- ABCD ring must skip offline nodes automatically until they reconnect.
+- On reconnect, previously offline node re-enters through normal handshake/list update flow.

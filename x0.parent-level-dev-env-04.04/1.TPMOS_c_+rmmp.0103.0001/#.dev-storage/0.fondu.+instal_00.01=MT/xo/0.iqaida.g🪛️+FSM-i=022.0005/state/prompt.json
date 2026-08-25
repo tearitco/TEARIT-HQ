@@ -1,0 +1,169 @@
+{
+  "systemInstruction": {
+    "parts": [{
+      "text": "You are Aida, an expert technical coding agent. \nWhen asked about code, architecture, or documentation:\n1. ALWAYS start by scanning the current directory (./) using `list_dir`, `search_in_files`, or `read_file` on key files (README.md, docs/, src/, config, main entry points). \n2. Base your answers on the local codebase first. Use `web_search` ONLY for external/official docs not present locally. \n3. When editing, use `edit_file` with exact matches. Cite file paths/lines when referencing code. \n4. Keep responses concise, proactive, and tool-efficient. \nYou have full access to shell, file ops, and web search. Stay in character as Aida.\nRespond in JSON format with either a 'response' key for text or a 'tool' key for actions. \nExample: {\"response\": \"Hello!\"} or {\"tool\": \"exec_cmd\", \"args\": {\"cmd\": \"ls\"}}\nTools: \n- 'exec_cmd' (args: {cmd: string})\n- 'read_file' (args: {path: string})\n- 'write_file' (args: {path: string, content: string})\n- 'edit_file' (args: {path: string, search: string, replace: string})\n- 'list_dir' (args: {path: string})\n- 'search_in_files' (args: {query: string})\n- 'web_search' (args: {query: string})\n"
+    }]
+  },
+  "contents": [
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hjihexit"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "functionCall": {
+          "name": "list_dir",
+          "args": {"path": "./"}
+        }
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "functionResponse": {
+          "name": "list_dir",
+          "response": {
+            "result": "run.sh\nagent\n#.bugs-no.txt\nreadme.md\nstate/\n#.rules.txt\nsession-history.txt\nnewfile.txt\n1.iq.gem-monolith-c-00.01/\ntools/\nmakefile\ndebug/\ntest_file.txt\n#.dox/\n#.api-bash-setup.txt\n1.iq.gem-monolith-c-00.00.7z\nclone-plan-m26.txt\nagent.c\nbuild.sh\nconfig/\n#.wussup.xo-aida.txt"
+          }
+        }
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "functionCall": {
+          "name": "exec_cmd",
+          "args": {"cmd": "hjihexit"}
+        }
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "functionResponse": {
+          "name": "exec_cmd",
+          "response": {
+            "result": "Permission Denied: Command execution aborted by user."
+          }
+        }
+      }]
+    }
+  ],
+  "tools": [{
+    "functionDeclarations": [
+      {
+        "name": "exec_cmd",
+        "description": "Run a shell command on the host system",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cmd": {
+              "type": "string",
+              "description": "The shell command line string to execute"
+            }
+          },
+          "required": ["cmd"]
+        }
+      },
+      {
+        "name": "read_file",
+        "description": "Read the contents of a file from the local filesystem",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "The absolute or relative path to the file to read"
+            }
+          },
+          "required": ["path"]
+        }
+      },
+      {
+        "name": "write_file",
+        "description": "Create a new file or overwrite an existing file with content",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "The path to write the file to"
+            },
+            "content": {
+              "type": "string",
+              "description": "The full string content to write to the file"
+            }
+          },
+          "required": ["path", "content"]
+        }
+      },
+      {
+        "name": "list_dir",
+        "description": "List all files and subdirectories in a directory",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "The directory path to list (defaults to . if empty)"
+            }
+          }
+        }
+      },
+      {
+        "name": "search_in_files",
+        "description": "Search local files recursively for a specific text query/pattern",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The text query to search for"
+            }
+          },
+          "required": ["query"]
+        }
+      },
+      {
+        "name": "edit_file",
+        "description": "Surgically search and replace a block of text in an existing file",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "The file path to edit"
+            },
+            "search": {
+              "type": "string",
+              "description": "The exact contiguous block of code/text to match"
+            },
+            "replace": {
+              "type": "string",
+              "description": "The new replacement text block"
+            }
+          },
+          "required": ["path", "search", "replace"]
+        }
+      },
+      {
+        "name": "web_search",
+        "description": "Search the internet using DuckDuckGo for up-to-date information",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The search query"
+            }
+          },
+          "required": ["query"]
+        }
+      }
+    ]
+  }]
+
+}

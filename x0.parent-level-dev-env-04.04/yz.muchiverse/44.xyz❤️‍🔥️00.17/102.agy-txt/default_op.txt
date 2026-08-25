@@ -1,0 +1,8 @@
+# Custom operations for agy-txt's prisc+x
+# Format: name type handler {description}
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}
+agy_compose_stub void ops/+x/agy_compose_stub.+x {Phase T2 stub - superseded by agy_compose_view for T3+}
+agy_edit_key void ops/+x/agy_edit_key.+x {INTERACT canvas typing, reused from editor_menu_input.c}
+agy_compose_view void ops/+x/agy_compose_view.+x {render buffer into view.txt, reused from editor_compose_frame.c}
+agy_widget_cmds void ops/+x/agy_widget_cmds.+x {drain widget cmd inbox NEW/SAVE/LOAD, reused from editor_widget_cmds.c}

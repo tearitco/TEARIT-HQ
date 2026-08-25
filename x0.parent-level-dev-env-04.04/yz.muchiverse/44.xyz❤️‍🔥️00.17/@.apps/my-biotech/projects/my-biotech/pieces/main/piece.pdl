@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | main
+
+METHOD       | Research (query gemma-lan)              | RESEARCH
+METHOD       | End Turn (advance 1 day)                 | END_TURN

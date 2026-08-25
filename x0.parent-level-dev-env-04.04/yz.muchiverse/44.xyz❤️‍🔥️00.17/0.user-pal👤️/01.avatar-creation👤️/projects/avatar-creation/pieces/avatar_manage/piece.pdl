@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | avatar_manage
+META         | version            | 1.0
+
+METHOD       | Open Chara (desktop 2D)                | OPEN_WINDOW
+METHOD       | Rename                                 | CLI_IO:avatar_name_input
+METHOD       | Age                                    | CLI_IO:avatar_age_input:numeric
+METHOD       | Apply Name / Age                       | APPLY_NAME_AGE
+METHOD       | Reopen RGB Preview                     | OPEN_PREVIEW
+METHOD       | Sleep / Wake                           | TOGGLE_SLEEP
+METHOD       | Back to Choose Clone                   | DESELECT

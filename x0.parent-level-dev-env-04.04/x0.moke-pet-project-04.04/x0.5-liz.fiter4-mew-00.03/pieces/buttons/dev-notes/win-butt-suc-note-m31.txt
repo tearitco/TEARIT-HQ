@@ -1,0 +1,555 @@
+# Windows Button Troubleshooting Note
+# Document: win-butt-suc-note-m31.txt
+# Date: March 31, 2026
+# Status: PARTIAL SUCCESS - Render working, input/cleanup issues remain
+# Purpose: Guide for future agents fixing Windows button system
+
+================================================================================
+## GOLDEN RULE: LINUX IS THE REFERENCE
+================================================================================
+
+**Linux Status: PERFECT ✓**
+
+The Linux implementation is the reference standard. All Windows behavior should
+match Linux exactly:
+
+```bash
+# Linux - This is PERFECT:
+./button.sh compile   # ✓ Compiles all binaries
+./button.sh run       # ✓ Displays menu, input works, history scrolls
+./button.sh kill      # ✓ Kills ALL processes (including GL)
+./button.sh debug     # ✓ Opens GL-OS desktop
+./button.sh watchdog  # ✓ Starts PAL watchdog
+```
+
+**Goal for Windows: FUNCTIONAL PARITY**
+
+Windows must behave IDENTICALLY to Linux:
+- Same keyboard input response
+- Same scrolling frame history
+- Same cleanup on Ctrl+C
+- Same process lifecycle
+
+When debugging, always compare against Linux behavior:
+1. Run on Linux, observe expected behavior
+2. Run on Windows, note the difference
+3. Fix Windows to match Linux
+
+**Reference Documentation:**
+- `#.docs/#.piece.mark.c-look_0.txt` - Expected terminal output (from Linux)
+- `#.buttons/windows_linux_parity.txt` - Full platform comparison
+
+================================================================================
+## CONTEXT: WHAT WE DID
+================================================================================
+
+On March 31, 2026, we reorganized all compile/run scripts into a unified
+"button" system and implemented Windows-specific text rendering.
+
+### Files Created/Modified
+
+**Root Launchers:**
+- `button.ps1` - Windows entry point (execution policy bypass integrated)
+- `button.sh` - Linux entry point (TESTED ✓)
+
+**New Windows Renderer:**
+- `pieces/display/windows_renderer.c` - Windows-specific text renderer
+- Uses Win32 Console API instead of ANSI escape codes
+- Compiled as `renderer.+x` on Windows
+
+**Orchestrator Updates:**
+- `pieces/chtpm/plugins/orchestrator.c` - Integrated render thread for Windows
+- Windows renders directly in orchestrator (child processes don't inherit console)
+- Linux spawns external renderer process (fork inherits stdout)
+
+**Documentation:**
+- `#.docs/windows_renderer.md` - Full Windows renderer documentation
+- `win-butt-prog-rep.txt` - Progress report with issue tracking
+
+**Directory Structure:**
+```
+#.buttons/
+├── README.md
+├── windows/
+│   ├── compile.ps1         (wrapper -> legacy/compile_all.ps1)
+│   ├── run.ps1             (wrapper -> MSYS2 bash -> run_orchestrator.sh)
+│   ├── kill.ps1            (wrapper -> legacy/kill_all.ps1)
+│   ├── debug_gl.ps1        (wrapper -> legacy/win_debug.bat)
+│   ├── watchdog.ps1        (wrapper -> legacy/pal_watchdog.ps1)
+│   └── legacy/             (original scripts)
+│       ├── compile_all.ps1 (updated: compiles windows_renderer.c)
+│       ├── run_chtpm.ps1
+│       ├── kill_all.ps1
+│       └── ... (other legacy scripts)
+├── linux/
+│   └── ... (Linux scripts)
+└── shared/
+    └── run_orchestrator.sh (cross-platform launcher)
+```
+
+### What Works (Windows - TESTED)
+```powershell
+powershell -ExecutionPolicy Bypass -File .\button.ps1 compile   # ✓ Compiles all 67 binaries
+powershell -ExecutionPolicy Bypass -File .\button.ps1 run       # ✓ Displays ASCII menu in terminal
+powershell -ExecutionPolicy Bypass -File .\button.ps1 kill      # ? Needs testing
+powershell -ExecutionPolicy Bypass -File .\button.ps1 debug     # ? Opens GL window
+powershell -ExecutionPolicy Bypass -File .\button.ps1 watchdog  # ? Untested
+```
+
+**Windows Gaps (vs Linux):**
+- ✗ Keyboard input doesn't update menu (Linux: works perfectly)
+- ✗ Frame history static, no scroll (Linux: scrolls with separators)
+- ✗ Ctrl+C leaves GL window open (Linux: kills everything)
+
+**Priority: Fix these gaps to achieve Linux parity**
+
+### What Works (Linux - VERIFIED PERFECT ✓)
+```bash
+./button.sh compile   # ✓ Compiles all binaries
+./button.sh run       # ✓ Full functionality:
+                      #   - ASCII menu displays
+                      #   - Keyboard input works (arrows, numbers)
+                      #   - Frame history scrolls (not static)
+                      #   - All child processes spawn
+                      #   - Ctrl+C kills EVERYTHING (including GL)
+./button.sh kill      # ✓ Kills all processes cleanly
+./button.sh debug     # ✓ Launches GL-OS desktop
+./button.sh watchdog  # ✓ Starts PAL watchdog
+```
+
+**Use Linux as the test reference:**
+```bash
+# On Linux, verify expected behavior:
+./button.sh run
+# Then press arrow keys - menu selection should move
+# Then press Ctrl+C - ALL windows close, no orphaned processes
+# Compare this to Windows to identify gaps
+```
+
+================================================================================
+## CURRENT STATUS: PARTIAL SUCCESS
+================================================================================
+
+**Working:**
+- ✓ All 67 components compile successfully
+- ✓ PowerShell terminal displays ASCII menu (render thread in orchestrator)
+- ✓ GL renderer opens in separate window
+- ✓ All child processes spawn correctly
+- ✓ Execution policy bypass integrated in button.ps1
+
+**Remaining Issues (GAPS VS LINUX):**
+
+1. **Keyboard input not updating display**
+   - Linux: Arrow keys move selector, numbers select items ✓
+   - Windows: Input captured but no frame changes ✗
+
+2. **Frame history shows only 1 frame**
+   - Linux: Scrolling history with `--- FRAME UPDATE ---` separators ✓
+   - Windows: Static single frame, clears each update ✗
+
+3. **Ctrl+C doesn't kill GL window**
+   - Linux: All processes terminated including GL ✓
+   - Windows: GL window remains orphaned ✗
+
+**These are the priority fixes to achieve Linux parity.**
+
+================================================================================
+## KNOWN ISSUES & POTENTIAL PROBLEMS
+================================================================================
+
+### Issue 1: MSYS2 Path Hardcoded
+**File:** `#.buttons/windows/run.ps1`
+**Line:** `& C:\msys64\usr\bin\bash.exe -lc "..."`
+
+**Problem:** Assumes MSYS2 is installed at `C:\msys64`. If user installed
+elsewhere (e.g., `D:\msys64` or `C:\Program Files\msys64`), this fails.
+
+**Fix:**
+```powershell
+# Option A: Detect MSYS2 installation
+$MSYS2_PATHS = @(
+    "C:\msys64\usr\bin\bash.exe",
+    "C:\Program Files\msys64\usr\bin\bash.exe",
+    "D:\msys64\usr\bin\bash.exe"
+)
+$BASH = $MSYS2_PATHS | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $BASH) {
+    Write-Error "MSYS2 bash.exe not found. Please install MSYS2 or update path in run.ps1"
+    exit 1
+}
+& $BASH -lc "..."
+
+# Option B: Use environment variable
+$BASH = $env:MSYS2_BASH ?? "C:\msys64\usr\bin\bash.exe"
+```
+
+---
+
+### Issue 2: Execution Policy (RESOLVED)
+**Status:** FIXED - button.ps1 now invokes all wrappers with bypass flag.
+
+**Usage:**
+```powershell
+.\button.ps1 run   # Works directly (bypass integrated)
+```
+
+If you still get errors, run once:
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+---
+
+### Issue 3: Keyboard Input Not Updating Display (UNRESOLVED - LINUX WORKS ✓)
+**File:** `pieces/chtpm/plugins/orchestrator.c`
+
+**Linux Behavior (PERFECT):**
+- Arrow keys move `[>]` selector in menu
+- Numbers select menu items
+- Frame updates immediately reflect input
+
+**Windows Symptom:**
+Pressing arrow keys/numbers doesn't change the menu selection.
+
+**Debug Steps (Compare to Linux):**
+```bash
+# On Linux (expected behavior):
+./button.sh run
+# Press arrow keys - selector moves
+# Check: pieces/keyboard/history.txt shows key codes
+# Check: pieces/display/current_frame.txt updates
+# Check: pieces/display/renderer_pulse.txt changes
+```
+
+```powershell
+# On Windows (debug):
+Get-Content pieces/keyboard/history.txt -Wait
+# Press keys - verify input is logged (same as Linux)
+
+Get-Content pieces/display/renderer_pulse.txt
+# Should update when frame changes (same as Linux)
+
+Get-Content pieces/display/current_frame.txt
+# Should show updated menu selection (same as Linux)
+```
+
+**Possible Causes:**
+1. Keyboard thread captures input but doesn't write to history correctly
+2. chtpm_parser not reading from keyboard history
+3. Renderer not detecting pulse file changes
+4. Frame history mode may be "off" (static UI instead of scrolling)
+
+**Fix Direction:**
+- Compare orchestrator.c keyboard_thread_func() between Linux and Windows
+- Ensure writeCommand() writes identical format on both platforms
+- Verify chtpm_parser reads history correctly on Windows
+
+---
+
+### Issue 4: Frame History Shows Only 1 Frame (UNRESOLVED)
+**File:** `pieces/chtpm/plugins/orchestrator.c` - render_thread_func()
+
+**Symptom:** Output shows single frame, not scrolling history.
+
+**Expected (per #.docs/#.piece.mark.c-look_0.txt):**
+```
+--- FRAME UPDATE at 2026-03-04 06:26:17 ---
+[frame 1]
+
+--- FRAME UPDATE at 2026-03-04 06:26:19 ---
+[frame 2]
+```
+
+**Problem:** Windows render thread clears screen every update instead of
+appending frames when history mode is "on".
+
+**Fix Direction:**
+- Modify render_thread_func() to check `pieces/display/state.txt`
+- If history mode is "on", don't clear screen - just print new frame
+- Add separator lines between frames
+
+---
+
+### Issue 5: Ctrl+C Doesn't Kill GL Window (UNRESOLVED)
+**File:** `pieces/chtpm/plugins/orchestrator.c` - handle_sigint()
+
+**Symptom:** Pressing Ctrl+C kills orchestrator but GL window remains open.
+
+**Possible Causes:**
+1. handle_sigint() cleanup not working on Windows
+2. GL renderer not registered with proc_manager
+3. `system("powershell.exe -File ./kill_all.ps1")` not executing properly
+4. GL renderer ignoring SIGTERM
+
+**Fix Direction:**
+```c
+// In handle_sigint(), add explicit GL renderer kill
+#ifdef _WIN32
+    system("taskkill /F /IM gl_renderer.+x 2>nul");
+    system("powershell.exe -File ./kill_all.ps1 >$null 2>&1");
+#else
+    system("pkill -9 -f gl_renderer");
+    system("./kill_all.sh >/dev/null 2>&1");
+#endif
+```
+
+---
+
+### Issue 6: Path Conversion in run.ps1
+**File:** `#.buttons/windows/run.ps1`
+**Line:** `$PROJECT_ROOT = Split-Path -Parent (Split-Path -Parent $SCRIPT_DIR)`
+
+**Problem:** Nested `Split-Path` may resolve incorrectly if script is called
+from different directory or via symlink.
+
+**Status:** Currently working, but may need fixing for edge cases.
+
+---
+
+### Issue 7: Shared run_orchestrator.sh May Not Detect Windows Correctly
+**File:** `#.buttons/shared/run_orchestrator.sh`
+**Line:** `if [[ "$(uname)" == *"MSYS"* ]] || [[ "$(uname)" == *"MINGW"* ]]; then`
+
+**Status:** Currently working under MSYS2 bash. May fail under Git Bash.
+
+---
+
+### Issue 8: pwd -W May Fail on Some Systems
+**File:** `#.buttons/shared/run_orchestrator.sh`
+**Line:** `WIN_PATH=$(pwd -W)`
+
+**Status:** Currently working under MSYS2 bash.
+
+================================================================================
+## TESTING CHECKLIST FOR WINDOWS (TARGET: LINUX PARITY)
+================================================================================
+
+### Pre-Test Setup
+- [ ] MSYS2 installed (verify: `C:\msys64\usr\bin\bash.exe --version`)
+- [ ] PowerShell ExecutionPolicy allows scripts
+- [ ] GCC/MinGW installed in MSYS2 (`gcc --version` works in MSYS2 bash)
+
+### Test Each Action (Compare to Linux!)
+
+**Compile:**
+```powershell
+.\button.ps1 compile
+```
+Expected: Runs compile_all.ps1, produces `. +x` binaries
+Check: `Test-Path "pieces\chtpm\plugins\+x\orchestrator.+x"` should be True
+Status: ✓ PASS (March 31, 2026)
+Linux Parity: ✓ MATCH
+
+**Run:**
+```powershell
+.\button.ps1 run
+```
+Expected: ASCII menu appears in PowerShell terminal
+Check: Menu with box-drawing characters, "Nav > _" prompt
+Status: ✓ PASS (menu displays, but input not working)
+Linux Parity: ✗ GAP - Input doesn't update display, history doesn't scroll
+
+**Kill:**
+```powershell
+.\button.ps1 kill
+```
+Expected: All `. +x` processes terminated
+Check: Task Manager shows no `. +x` processes
+Status: ? UNTESTED
+Linux Parity: ? UNKNOWN
+
+**Debug (GL-OS):**
+```powershell
+.\button.ps1 debug
+```
+Expected: Opens mintty window with GL-OS desktop
+Check: OpenGL window appears, renders ASCII frame
+Status: ✓ PASS (GL window opens)
+Linux Parity: ? UNKNOWN (does GL close on Ctrl+C?)
+
+**Watchdog:**
+```powershell
+.\button.ps1 watchdog
+```
+Expected: Background process monitors Prisc VM
+Check: `pieces\system\prisc\watchdog.log` gets new entries
+Status: ? UNTESTED
+Linux Parity: ? UNKNOWN
+
+**Help:**
+```powershell
+.\button.ps1 help
+```
+Expected: Shows usage menu with all actions
+Status: ✓ PASS
+Linux Parity: ✓ MATCH
+
+### Linux Parity Test (GOLD STANDARD)
+
+```bash
+# Run on Linux first - this is PERFECT:
+./button.sh run
+# 1. Menu displays with box-drawing characters ✓
+# 2. Press arrow keys - selector [>] moves ✓
+# 3. Press numbers - menu items activate ✓
+# 4. Frames scroll with "--- FRAME UPDATE ---" separators ✓
+# 5. Press Ctrl+C - ALL processes die, GL window closes ✓
+```
+
+```powershell
+# Run on Windows - match Linux behavior:
+.\button.ps1 run
+# 1. Menu displays with box-drawing characters ✓ (MATCH)
+# 2. Press arrow keys - selector [>] moves ✗ (GAP)
+# 3. Press numbers - menu items activate ✗ (GAP)
+# 4. Frames scroll with separators ✗ (GAP)
+# 5. Press Ctrl+C - ALL processes die ✗ (GAP)
+```
+
+**Priority: Fix gaps 2-5 to achieve Linux parity**
+
+================================================================================
+## QUICK FIX GUIDE
+================================================================================
+
+### If Windows Buttons Don't Work At All
+
+**Step 1: Verify File Structure**
+```powershell
+Test-Path "button.ps1"
+Test-Path "#.buttons\windows\compile.ps1"
+Test-Path "#.buttons\windows\legacy\compile_all.ps1"
+```
+
+**Step 2: Test Legacy Scripts Directly**
+```powershell
+& "#.buttons\windows\legacy\compile_all.ps1"
+& "#.buttons\windows\legacy\kill_all.ps1"
+```
+
+**Step 3: Check PowerShell Errors**
+```powershell
+$ErrorActionPreference = "Continue"
+.\button.ps1 compile 2>&1 | Out-String
+```
+
+### If Keyboard Input Not Working
+
+**Step 1: Check keyboard history**
+```powershell
+Get-Content pieces/keyboard/history.txt -Wait
+# Press arrow keys - should see entries like:
+# [2026-03-31 14:00:00] KEY_PRESSED: 1002
+```
+
+**Step 2: Check if parser is running**
+```powershell
+Get-Process | Where-Object {$_.Path -like "*chtpm_parser*"}
+```
+
+**Step 3: Check frame pulse file**
+```powershell
+Get-Content pieces/display/renderer_pulse.txt
+# Should update when menu selection changes
+```
+
+**Step 4: Enable history mode**
+```powershell
+echo "on" > pieces/display/state.txt
+```
+
+### If Compilation Fails
+
+**Symptom:** GCC not found, or wrong flags
+
+**Fix:**
+```powershell
+# Ensure MSYS2 MinGW is in PATH
+$env:PATH = "C:\msys64\mingw64\bin;" + $env:PATH
+
+# Or call bash to compile (uses MSYS2 environment)
+& C:\msys64\usr\bin\bash.exe -lc "cd '$PROJECT_ROOT' && ./#.buttons/linux/legacy/compile_all.sh"
+```
+
+### If GL Window Won't Close
+
+**Manual cleanup:**
+```powershell
+taskkill /F /IM gl_renderer.+x
+taskkill /F /IM orchestrator.+x
+# Or use button kill command
+.\button.ps1 kill
+```
+
+================================================================================
+## CONTACTS & RESOURCES
+================================================================================
+
+**Related Documents:**
+- `win-butt-prog-rep.txt` - Current progress report with issue tracking
+- `#.buttons/windows_linux_parity.txt` - Full Windows vs Linux analysis
+- `#.docs/windows_renderer.md` - Windows renderer documentation
+- `#.docs/#.piece.mark.c-look_0.txt` - Expected terminal output example
+- `#.buttons/README.md` - Button system documentation
+
+**MSYS2 Resources:**
+- Installation: https://www.msys2.org/
+- Package Manager: `pacman -S mingw-w64-x86_64-gcc`
+- Common Issues: https://www.msys2.org/docs/faq/
+
+**PowerShell Resources:**
+- Execution Policy: `Get-Help about_Execution_Policies`
+- Path Management: `Get-Help about_Path`
+
+================================================================================
+## AGENT NOTES
+================================================================================
+
+**Date Fixed:** March 31, 2026
+**Agent:** Qwen Code
+
+**Issues Found:**
+1. PowerShell execution policy blocking scripts
+2. 3 compile failures (SIGHUP, _mkdir implicit declaration)
+3. Terminal display not working (child processes don't inherit console)
+4. Keyboard input not updating display
+5. Frame history shows only 1 frame
+6. Ctrl+C doesn't kill GL window
+
+**Fixes Applied:**
+1. `button.ps1`: Added execution policy bypass for all wrapper calls
+2. `orchestrator.c`: Added SIGHUP/SIGQUIT stubs for Windows
+3. `response_handler.c`, `end_turn.c`: Fixed _mkdir with direct.h include
+4. `pieces/display/windows_renderer.c`: Created Windows-specific renderer
+5. `orchestrator.c`: Integrated render thread for Windows (renders directly)
+6. `#.buttons/windows/legacy/compile_all.ps1`: Compiles windows_renderer.c
+7. `#.docs/windows_renderer.md`: Created documentation
+
+**Testing Results (vs Linux Parity):**
+- compile: PASS ✓ (matches Linux)
+- run: PARTIAL ✗ (menu displays, but input/history gaps vs Linux)
+- kill: UNTESTED ? (need to verify parity with Linux)
+- debug: PARTIAL ? (GL opens, but does it close on Ctrl+C like Linux?)
+- watchdog: UNTESTED ?
+
+**Remaining Issues (GAPS VS LINUX):**
+1. Keyboard input captured but doesn't update display (Linux: works perfectly)
+2. Frame history shows 1 frame (Linux: scrolls with separators)
+3. Ctrl+C doesn't kill GL window (Linux: kills everything)
+
+**Priority: Fix these 3 gaps to achieve Linux parity**
+
+**Files Modified:**
+- `button.ps1` - Execution policy bypass integration
+- `pieces/chtpm/plugins/orchestrator.c` - SIGHUP stubs, integrated render thread
+- `pieces/master_ledger/plugins/response_handler.c` - _mkdir fix
+- `pieces/apps/fuzzpet_app/clock/plugins/end_turn.c` - _mkdir fix
+- `pieces/display/windows_renderer.c` - NEW (Windows renderer)
+- `#.buttons/windows/legacy/compile_all.ps1` - Compiles windows_renderer.c
+- `#.docs/windows_renderer.md` - NEW (documentation)
+- `win-butt-prog-rep.txt` - Progress report
+- `win-butt-suc-note-m31.txt` - This file (updated)
+
+================================================================================
+# END OF TROUBLESHOOTING NOTE
+================================================================================

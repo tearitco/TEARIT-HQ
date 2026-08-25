@@ -1,0 +1,12 @@
+current_state=1
+decision_mode=1
+owned_by=corp_AFL
+x=12
+y=0
+z=8
+property_type=residential
+value=45.00
+rent_price=1.20
+occupied=1
+last_action=
+human_decision=

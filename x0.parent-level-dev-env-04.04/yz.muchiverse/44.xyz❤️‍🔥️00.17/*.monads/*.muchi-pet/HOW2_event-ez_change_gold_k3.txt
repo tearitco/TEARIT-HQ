@@ -1,0 +1,115 @@
+# HOW2 — event-ez Change Gold (k3-proven 2026-08-06)
+# Agent PASS: GUI Save amount=25 via k3 → IR NODE → wrapper pal → inventory qolq
+# Full handoff (done/todo/CPU): house-root walk-off-au6.md
+
+## Agent result (PASS)
+- Visual: event-ez Gallery → Page 1 → Add Command → Change Gold → amount 25 → Save
+- IR: NODE id=2 type=change_gold amount=25 (id=1 amount=10 pre-existed)
+- pal: exec .../cmd_1.sh ; exec .../cmd_2.sh ; halt  (wrapper form — correct)
+- Run: prisc+x event.pal → inventory.txt qolq=35  (additive: 10+25)
+- Note: prisc may print "Could not open ... default_op.txt" but still ran exec lines
+
+## Your try (same path)
+
+### 0) Paths (house root = 44.xyz…00.10)
+EZ=&.widgits/event-ez
+PKG=@.apps/MUCHI_RANCHER/entities/m8_redhorned/event_pkg
+MUTA=101.mutaclsym*   (first match)
+
+### 1) Start event-ez
+```bash
+cd <house>
+export EZ_PKG_NAME=m8_redhorned
+export EZ_PKG_DIR="$(pwd)/@.apps/MUCHI_RANCHER/entities/m8_redhorned/event_pkg"
+cd &.widgits/event-ez
+sh button.sh compile   # if needed
+sh button.sh r         # GL window
+```
+Leave that terminal running (gl_mirror). In another terminal for k3 OR use the GL window with real keyboard if focus works.
+
+### 2) Find session (for k3 inject)
+```bash
+SESSION=$(ls -td &.widgits/event-ez/pieces/sessions/* | head -1)
+KH="$SESSION/pieces/keyboard/history.txt"
+FRAME="$SESSION/pieces/display/current_frame.txt"
+cat "$FRAME"   # watch after each inject
+```
+
+### 3) k3 inject helper
+```bash
+inject() { echo "[2026-04-21 08:08:15] KEY_PRESSED: $1" >> "$KH"; sleep 1.2; }
+# codes: '0'=48 … '9'=57  Enter=13  Esc=27
+```
+
+### 4) Sequence (match frame labels; re-read FRAME if numbers differ)
+
+**Gallery → Page 1**
+```
+inject 49; inject 13    # digit 1 + Enter  (first page button)
+# expect: PAGE 1  pkg=m8_redhorned
+```
+
+**Page 1 → Add Command** (usually item 3: [+] Add Command)
+```
+inject 51; inject 13    # digit 3 + Enter
+# expect: ADD COMMAND page=1
+```
+
+**Cmdpick → Change Gold** (item 1)
+```
+inject 49; inject 13
+# expect: CHANGE GOLD page=1 , Amount field
+```
+
+**Amount field → type 25 → Save**
+```
+inject 13               # Enter activates cli_io ( [^] typing )
+inject 50; inject 53    # '2' '5'
+inject 27               # Esc deactivates field
+inject 50; inject 13    # focus Save (item 2) + Enter → KEY:6 compile
+# frame should say: Saved Change Gold 25 ...
+```
+
+### 5) File sanity
+```bash
+cat "$EZ_PKG_DIR/pages/page_1/event.ir.pdl"
+cat "$EZ_PKG_DIR/pages/page_1/event.pal"
+ls "$EZ_PKG_DIR/pages/page_1/cmd_"*.sh
+```
+Expect NODE amount=… and `exec …/cmd_N.sh` (NOT bare 2-arg exec to mr_change_gold).
+
+### 6) Run compiled script
+```bash
+MUTA=$(ls -d 101.mutaclsym* | head -1)
+"$MUTA/system/prisc+x" "$EZ_PKG_DIR/pages/page_1/event.pal"
+cat @.apps/MUCHI_RANCHER/entities/m8_redhorned/inventory.txt
+# expect qolq=… (op is additive per amount nodes run)
+```
+
+### 7) Stop ez
+```bash
+cd &.widgits/event-ez && sh button.sh kill
+```
+
+### Human keyboard instead of inject
+Same order in the GL window if it has focus: digits to jump, Enter activate, type amount, Esc, digit-jump to Save, Enter.
+
+### If something fails
+- Stuck on gallery: cat FRAME; try other digit for page button
+- Save failed no amount: field not Esc'd after type
+- pal still 2-arg exec: re-Save after compile of ez_menu_input
+- inventory unchanged: check wrappers executable + mr_change_gold.+x exists
+
+## From the desktop (NEW — Events (ez) on monster menu)
+
+1. Right-click the monster window.
+2. Choose **Events (ez)**.
+3. event-ez GL window opens for that monster's event_pkg.
+4. Author Change Gold (same as k3/how2 above).
+5. When done: close ez window / `sh &.widgits/event-ez/button.sh kill`.
+
+If **Events (ez)** is missing: re-spawn the monster (active_monster + rancher button, or `$` if autostart launches rancher) so meta.pdl regenerates, OR right-click again after this session's meta patch (menu reloads methods each open).
+
+Wired via:
+- `@.apps/MUCHI_RANCHER/ops/open_event_ez.sh`
+- METHOD row in each entity `meta.pdl` + `pieces/monster/button.sh` template

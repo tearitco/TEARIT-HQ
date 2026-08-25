@@ -1,0 +1,123 @@
+================================================================================
+phase2-module-split-report.txt - 101.mutaclsym🧟‍♂️️+18.01: what changed
+2026-07-31 and why, for future agents. See also the house-wide docs
+this work is part of: #.haiku+/!.xyzos-standards+1.txt §41, #.haiku+/
+!.xyzos-pitfalls+1.txt PITFALL 66, #.haiku+/refactor-list-j30.txt,
+01.muchi-pals-🥚️-13.01/dox/06-per-screen-module-standard.md.
+================================================================================
+
+## WHAT THIS IS AND WHY
+
+Same Phase 2 house-wide standard as 041.pal-chain⛓️'s own
+phase2-module-split-report.txt (read that file for the full
+reasoning about launch_module()'s liveness check and why per-screen
+modules matter). This project's own module split was done LAST in
+this rollout, explicitly requested with "make sure u dont introduce
+any bugs like this in the next refactors" (referring to the real
+GL-typing-doubling bug that was just root-caused across the rest of
+the house - see #.haiku+/double-wr-grok-j31.txt) and "first make sure
+all processes are killed and added to emergency kill list."
+
+## WHAT WAS DONE HERE
+
+Before: both layouts (game.chtpm, info_test.chtpm) shared
+<module>system/prisc+x pal/main_loop_chtpm.pal</module>, which real
+continuous game-loop content is: compose_frame; compose_rgb_frame;
+hit_frame; then loop { exec ./ops/+x/game_dispatch; sleep 16667; j
+loop }.
+
+After: 2 new files, byte-identical content to that same loop, one per
+screen:
+    pal/game_module.pal
+    pal/info_test_module.pal
+game.chtpm's <module> line now reads
+    <module>system/prisc+x pal/game_module.pal</module>
+info_test.chtpm's now reads
+    <module>system/prisc+x pal/info_test_module.pal</module>
+
+clear_saved_active_index() (PITFALL 66) ported into this project's own
+local system/chtpm_parser_pal.c, inserted after build_path_malloc(),
+called at 6 real transition sites (verified by direct read after
+insertion). Debug-spam printf lines were already absent from this
+project's load_vars() before this work.
+
+## NEW: this project's FIRST-EVER real K3-style test harness
+
+test-harn-same/ was built from scratch (this project had NO test
+harness before 2026-07-31) - button.sh (compile/demo/kill), ops/
+(tk_inject_key.c, tk_assert_contains.c, tk_focus_item.c - copied
+verbatim from pal-chain's own project-agnostic versions, not
+reinvented), scenarios/demo_module_split_smoke.sh.
+
+mutaclsym runs IN-PLACE (confirmed via button.sh's own real "run"
+action: a plain `exec system/orchestrator` from the project root) -
+UNLIKE the pal-chain family, there is NO pieces/sessions/<id>/
+isolation. This means state (hero position, hp, inventory, monster
+positions, etc.) PERSISTS ACROSS HARNESS RUNS. Any new scenario that
+checks real game state must account for this - either reset relevant
+state before asserting on it, or make the assertion tolerant of
+whatever state a previous run left behind.
+
+## HARNESS STATUS AS OF 2026-07-31 (NOT fully green - read before
+   trusting a "PASS" from this harness)
+
+Real href navigation (game.chtpm -> info_test.chtpm -> back): PASSES.
+Confirms both new per-screen modules dispatch real keys and real href
+activation correctly.
+
+Real INTERACT-mode hero movement: FAILS, but this is a TEST-FIXTURE
+bug, not a real code bug and not a module-split regression - root-
+caused, not yet fixed:
+  - pieces/keyboard/history.txt confirmed the real 'd' keypress (ascii
+    100) landed; the hero's own state.txt showed last_key=100,
+    confirming game_dispatch's real key handling received it.
+  - The hero's own state.txt showed hp=0 (dead) at the time of the
+    failing run - left over from an EARLIER harness run's own combat
+    (Zombie Child), carried over because this project has no session
+    isolation. A dead hero can't move - that's why pos_x/pos_y didn't
+    change, not a dispatch bug.
+  - Separately, the harness's own movement-engage KEY SEQUENCE is
+    built on a wrong model of the real controls (digit-focus-by-item
+    + Enter-to-engage, copied from the pal-chain family's button
+    convention). The REAL control scheme here is different: arrow
+    keys move an on-screen Xlector cursor around the map, and Enter
+    possesses/selects "hero" once Xlector is over it (confirmed by
+    the user directly, and by hero/state.txt's own real fields:
+    xlector_pos_x, xlector_pos_y, possessed_id).
+  - A real reset mechanism already exists to fix the stale-state half
+    of this: pieces/world_01_template/ is a clean golden copy of
+    world_01/ (state.txt there has hp=100, pos_x=4, pos_y=4, etc.),
+    used by this project's own real "new game" flow (see
+    ops/title_input.c's own comment: "pristine pieces/world_01_
+    template/ (rm -rf + cp -r...)"). The harness should mirror that
+    same reset before each run instead of inventing a new one.
+  - NOT YET DONE: rebuilding the scenario's movement section against
+    the real Xlector control model (read ops/game_dispatch.c and the
+    real Xlector-related code before touching this - see task list),
+    plus adding a real world_01_template reset step. Tracked as an
+    open task, deliberately deferred in favor of finishing the
+    simpler remaining Phase 2 projects first.
+
+## WHAT WAS NOT CHANGED
+
+Shared ops binaries (game_dispatch, compose_frame, etc.) were NOT
+split per-screen - still shared across both new modules.
+300.rpg-xyz / 300.rtp-xyz (this project's own confirmed byte-identical
+copies of game.chtpm) have NOT yet received this same module split -
+separate, tracked, not-yet-done task.
+
+## IF YOU HIT A BUG HERE
+
+1. Doubling/dropped keystrokes: read #.haiku+/double-wr-grok-j31.txt
+   first - already root-caused and fixed house-wide. mutaclsym's own
+   architecture (real OS-level window-focus arbitration, no file-lock
+   needed for keyboard-vs-GL) was actually the REFERENCE point used to
+   help diagnose that bug elsewhere in the house - it was never itself
+   affected.
+2. Stale focus after a transition: confirm clear_saved_active_index()
+   is actually CALLED at the specific transition site involved.
+3. A harness "FAIL" on movement specifically: check hero/state.txt's
+   own hp field before assuming a real bug - if hp=0, that's stale
+   state from a prior run, not a real dispatch failure. Reset from
+   pieces/world_01_template/ first and re-test.
+================================================================================

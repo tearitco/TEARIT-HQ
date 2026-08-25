@@ -1,0 +1,4 @@
+# event.pal — lowered IR / hand-editable
+# created by ee_package_init
+show_text "(empty event)"
+ret

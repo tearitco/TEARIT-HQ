@@ -1,0 +1,198 @@
+SP-IRL Development Plan
+========================
+Phased expansion: party menu → inventory → trainers → maps → gyms
+
+Current baseline
+  - 1 map (25x25 pallet), 1 pokecenter
+  - Tall grass → wild tactics battles
+  - PvP tactics battles
+  - Save/load party + position
+  - No menus, no items, no NPCs, no gyms
+
+================================================================
+PHASE 1 — Party Menu UI
+================================================================
+Goal: Press a key in overworld to open a menu showing all 6 party
+      mons with HP, level, type, moves. Allow reordering.
+
+Steps:
+  P1.1  Add MODE_PARTY to GameMode enum in gb.h
+  P1.2  Add party_sel (cursor index), party_sub (0=main, 1=moves)
+        fields to Game struct
+  P1.3  In main.c handle_vk: route VK_A/VK_B/arrows when g.mode ==
+        MODE_PARTY — selection, back to MODE_OVERWORLD
+  P1.4  In keyboard(): route a hotkey (e.g. 'm' or Enter) from
+        MODE_OVERWORLD → MODE_PARTY
+  P1.5  In render.c render_party(): draw party list with:
+        - Species name, level, type color swatch
+        - HP bar + numeric HP/maxHP
+        - Fainted indicator if HP ≤ 0
+        - Cursor arrow on selected slot
+        - Sub-screen showing both moves with PP
+  P1.6  In render_frame(): add case MODE_PARTY → render_party()
+  P1.7  In MODE_PARTY: VK_B returns to MODE_OVERWORLD
+
+KPI: Walk in overworld, press M, see 6 slots with mon info + moves.
+     Press arrows to move cursor, X to close. Works with empty slots.
+
+================================================================
+PHASE 2 — Inventory System
+================================================================
+Goal: Items (Potions, Pokeballs etc.) stored on player, usable from
+      a bag menu. Items heal HP or catch wild mons (future).
+
+Steps:
+  P2.1  Define item table in gb.h / new item.h-item.c:
+        - Item { id, name[16], type (HEAL|CATCH|OTHER), heal_amt }
+        - enum ItemId { ITEM_POTION=1, ITEM_SUPER_POTION=2, ... }
+  P2.2  Add inventory array to Player struct:
+        - int items[ITEM_MAX];      /* count per id */
+        - int item_count;           /* total stacks */
+        - #define ITEM_MAX 16
+  P2.3  Write item_init() in item.c with 5 Potions at new game
+  P2.4  Add MODE_BAG to GameMode, bag_sel to Game
+  P2.5  In keyboard(): hotkey (e.g. 'B') from MODE_OVERWORLD →
+        MODE_BAG
+  P2.6  In render.c render_bag(): list items with counts, cursor
+  P2.7  Selecting an item with VK_A opens submenu:
+        - "Use on which mon?" → shows party (reuse party UI)
+        For HEAL items: pick mon, apply hp = min(max_hp, hp+amt)
+        Removes 1 from stack, if 0 → remove from bag
+  P2.8  In render_frame(): case MODE_BAG → render_bag()
+  P2.9  Save/load: extend save_write/save_load with inventory block
+  P2.10 Add item data file data/items.pdl, load in boot_data()
+
+KPI: Start new game, press B, see "Potion x5". Select → pick starter
+     → HP restored. Save, reload → potions still there. Potion count
+     decrements, reaches 0 → item disappears from bag.
+
+================================================================
+PHASE 3 — NPC Trainers on Overworld
+================================================================
+Goal: Stationary NPCs on the map that, when walked near, trigger a
+      tactics battle with a predefined team.
+
+Steps:
+  P3.1  Define Trainer struct in gb.h:
+        - { int x, y, w, h; int sight; /* activation range */
+           int party_n; PartyMon party[PARTY_MAX];
+           char name[16]; int defeated; int money; }
+  P3.2  Add trainers array to Map:
+        - Trainer trainers[MAX_TRAINERS]; int trainers_n;
+        - #define MAX_TRAINERS 16
+  P3.3  Extend map.txt format: after the grid, add trainer blocks
+        - "trainer <name> <x> <y> <sight> <mon1> <lv1> <mon2> <lv2>..."
+        - Update map_load() to parse these lines
+  P3.4  Add two new GameMode values: MODE_TRAINER_INTRO (show "name
+        wants to battle!"), MODE_TRAINER_BATTLE — same as wild but
+        with trainer flag and no exp on loss
+  P3.5  Add tactics_start_trainer(Game *g, Trainer *t) — deploys
+        player party on left, trainer mons on right, sets
+        tactics_wild→0 but trainer flag for end-of-battle flow
+  P3.6  In try_step()/overworld tick: check if player is within
+        sight range of any undefeated trainer; if so, stop movement,
+        display intro msg, start tactics battle
+  P3.7  On trainer battle win: set t->defeated=1, award EXP + money
+  P3.8  On trainer battle loss: blackout (warp + heal), trainer
+        NOT marked defeated (can rematch)
+  P3.9  In render_overworld(): draw trainers as a colored sprite
+        (e.g. blue-hat trainer) on their tile
+  P3.10 Save/load: persist defeated flags per trainer
+
+KPI: Walk near a trainer on the map → screen shows "[Name] wants
+     to battle!" → tactics grid battle starts. Win → trainer marked
+     defeated (greyed out), EXP awarded. Walk past again → no
+     trigger. Loss → blackout, trainer still active.
+
+================================================================
+PHASE 4 — Multiple Maps & Connections
+================================================================
+Goal: A small world with at least 3 maps (Pallet Town, Route 1,
+      Viridian City) connected by edge-walking transitions.
+
+Steps:
+  P4.1  Add map_id to Map struct + connection table:
+        - struct { char name[16]; int id; }
+        - Connection { int sx,sy, w,h; /* trigger zone on this map */
+          int dest_map, dest_x, dest_y; int dest_facing; }
+        - #define MAX_CONNS 8
+  P4.2  Extend map.txt format: metadata header lines
+        - "id <number>"
+        - "name <string>"
+        - "conn <sx> <sy> <w> <h> <dest_map> <dest_x> <dest_y> <facing>"
+        - Parse these before the grid in map_load()
+  P4.3  Add map list to Game (map array or load-at-once):
+        - Map maps[8]; int maps_n;
+        - Or simpler: single current map, load on transition
+  P4.4  On try_step(): if player enters an edge tile that matches
+        a connection zone, call map_transition(dest_map, dest_x,
+        dest_y, dest_facing)
+  P4.5  map_transition(): save current map if needed, load new
+        map from maps/<name>/map.txt, set player position
+  P4.6  Create 3 maps in maps/:
+        - maps/pallet/map.txt — Pallet Town (update)
+        - maps/route1/map.txt — Route 1 (narrow tall grass path)
+        - maps/viridian/map.txt — Viridian City (pokecenter+shop)
+  P4.7  Update render_overworld(): show HUD with map name
+  P4.8  Save/load: persist current map id
+
+KPI: Walk south out of Pallet → Route 1 loads. Walk south through
+     Route 1 → Viridian loads. Walk north back → Route 1 → Pallet.
+     Each map has distinct tile layout. Pokecenter in cities works.
+
+================================================================
+PHASE 5 — Gyms & Badges
+================================================================
+Goal: Gym buildings with a leader tactics battle. Beating all
+      gyms earns badges — tracked in save.
+
+Steps:
+  P5.1  Add badge tracking to Player:
+        - int badges[8];     /* 0=unearned 1=earned */
+        - int badge_count;
+  P5.2  Add new tile TILE_GYM, rendered as a gym building (dark
+        brick + door) in render.c draw_tile()
+  P5.3  Add to map.txt: 'G' tile for gym entrance
+  P5.4  Define GymLeader struct in gb.h:
+        - { int badge_id; char name[16];
+           PartyMon party[PARTY_MAX]; int party_n; }
+  P5.5  Add to map.txt gym data:
+        - "gym <badge_id> <leader_name> <mon> <lv> <mon> <lv> ..."
+  P5.6  When player steps on a 'G' tile and badge_id not earned:
+        - Show "Viridian Gym — Leader [name]!"
+        - Start tactics_start_gym() — similar to trainer battle
+        - On win: award badge, show "[name] was defeated! Got the
+          [Badge] Badge!"
+  P5.7  If badge already earned: show "[name] welcomes you back!"
+        and do nothing
+  P5.8  Gym battles use same tactics grid with gym flag for
+        end-of-battle flow (no wild catch option)
+  P5.9  Save/load: badges array
+  P5.10 Award a gym win item (e.g. TM or cash) as bonus
+
+KPI: Walk to gym G tile → leader intro → tactics battle → win
+     → badge earned. Check badge in save file. Re-enter gym →
+     "welcome back" message. Beat all gyms → badge_count == 8.
+
+================================================================
+Appendix — File Inventory
+================================================================
+New files to create:
+  src/item.c + item.h   — item table + inventory ops
+  (or inline in gb.h / new section)
+
+Files to modify:
+  gb.h     — 5 new enums, 4 new structs, 3 new arrays
+  main.c   — 5 new hotkey routes, map transition, trainer check
+  render.c — 3 new render functions, 2 new tile skins
+  map.c    — map connection parser, trainer parser, gym parser
+  save.c   — inventory, trainer flags, badges, current map id
+  tactics.c — trainer/gym battle start functions + end flow
+  button.sh — add item.pdl to data loading (or not needed)
+
+Maps to create:
+  maps/pallet/map.txt       — update with trainer + gym
+  maps/route1/map.txt       — new
+  maps/viridian/map.txt     — new
+
+================================================================

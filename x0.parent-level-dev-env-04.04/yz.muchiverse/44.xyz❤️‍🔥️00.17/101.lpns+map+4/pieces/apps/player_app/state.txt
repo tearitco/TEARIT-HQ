@@ -1,0 +1,3 @@
+module_path=system/game_manager
+project_id=lpns-map
+active_target_id=lpns_main_menu

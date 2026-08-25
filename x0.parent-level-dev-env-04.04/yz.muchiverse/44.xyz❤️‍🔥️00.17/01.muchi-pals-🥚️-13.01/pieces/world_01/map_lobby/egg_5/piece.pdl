@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+
+META         | piece_id           | egg_5
+META         | version            | 1.0
+
+STATE        | species_id           | sp_chick
+STATE        | serial               | 5
+
+METHOD       | hatch                | ops/+x/hatch_egg.+x
+
+# Add one more METHOD line per new op as it's built
+# (feed, speak, ...), same pattern as mutaclsym's
+# hero/piece.pdl.

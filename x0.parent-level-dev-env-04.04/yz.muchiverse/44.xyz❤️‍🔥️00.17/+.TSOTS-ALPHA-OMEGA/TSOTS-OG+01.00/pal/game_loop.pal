@@ -1,0 +1,35 @@
+# tsots game_loop.pal - same house pal-native module shape as
+# main_loop_chtpm.pal. The pre-loop idle auto-deals the first round
+# (tsots_input 0 runs tsots_deal when no round is active), then the
+# loop polls interact_relay.txt for answer keys.
+li x1, 0
+
+li x9, 0
+tsots_input x9
+tsots_compose
+hit_frame
+read_pos x7, "pieces/display/game_screen_changed.txt"
+
+loop:
+    li x9, 0
+    tsots_input x9
+    read_pos x8, "pieces/display/game_screen_changed.txt"
+    beq x7, x8, check_key
+    addi x7, x8, 0
+    j render
+
+check_key:
+    read_history pieces/apps/player_app/interact_relay.txt x2, x1
+    beq x2, x0, no_key
+    tsots_input x2
+    j render
+
+no_key:
+    sleep 30000
+    j loop
+
+render:
+    tsots_compose
+    hit_frame
+    sleep 30000
+    j loop

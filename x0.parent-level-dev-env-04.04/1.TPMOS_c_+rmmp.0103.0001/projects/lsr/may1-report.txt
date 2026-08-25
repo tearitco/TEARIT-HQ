@@ -1,0 +1,25 @@
+# LSR (Lunar Streetrace Raider) - MAY 1st STATUS REPORT
+
+## 1. Executive Summary
+The LSR project has successfully transitioned from the conceptual "WSR Refactor" phase into a functional TPM-compliant simulation. The core geography (Lunar Map) and entity data (Corporation Pieces) are established. However, the "Metabolism" (Economic Loops) and the seamless UI transition between the Map and the Financial Dashboard remain the primary gaps.
+
+## 2. Accomplishments (Done)
+- ✅ **Entity Migration:** ~100 Corporations migrated to the Piece Model in `projects/lsr/pieces/world/lunar/`.
+- ✅ **Map Integration:** Project is routed through the `playrm` engine, providing a physical "2D View" of the Martian/Lunar surface.
+- ✅ **Manager Core:** A basic manager bot (`lsr_manager.c`) is handling layout switching and state mirroring.
+- ✅ **Financial Dashboard:** The main UI (`lsr_main.chtpm`) is ready with placeholders for all economic indicators.
+
+## 3. Gaps & Concerns (Yet to be done)
+- ❌ **Missing "lsr" Method:** Entities on the map cannot be "entered" because they lack the `lsr` method in their `piece.pdl`.
+- ❌ **The "Missing Heart" (Metabolism):** Payroll, Tax, and Dividend Ops are NOT yet implemented. The economy is currently static.
+- ❌ **Setup Screen Deficiency:** The initialization process (`lsr_setup_corps.+x`) is a CLI script, not a CHTPM layout. The user expects a "Setup Screen" like the one pasted in `xsr-user-concern!-a30.txt`.
+- ❌ **Frame Spamming:** The current `lsr_manager` pulses too frequently (every 500ms regardless of change), leading to inefficient rendering.
+
+## 4. Immediate Roadmap (May 1 - May 7)
+1. **Inject "lsr" Method:** Update `lsr_setup_corps.c` to include `<method label="LSR" href="projects/lsr/layouts/lsr_main.chtpm" />` in every Piece PDL.
+2. **Implement Payroll Op:** Build the first metabolism loop in `projects/lsr/ops/payroll_op.c`.
+3. **Throttled Pulsing:** Refactor `lsr_manager.c` to use event-driven pulses (only on input or actual state change).
+4. **Setup Layout:** Create `projects/lsr/layouts/lsr_setup.chtpm` to provide the expected initialization experience.
+
+---
+*Report prepared for Agent Context. Geography is destiny.*

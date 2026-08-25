@@ -1,0 +1,17 @@
+/* taskbar_settings.css — Stage 2c real port, palette hex values preserved
+   exactly from khtpm_taskbar_settings_render.c's old g_palette[] array. */
+
+.swatch { width: 34px; height: 34px; }
+
+.sw-black    { background-color: #000000; }
+.sw-white    { background-color: #ffffff; }
+.sw-charcoal { background-color: #1a1a1a; }
+.sw-silver   { background-color: #e5e5e5; }
+.sw-red      { background-color: #ef4444; }
+.sw-orange   { background-color: #f97316; }
+.sw-yellow   { background-color: #eab308; }
+.sw-green    { background-color: #22c55e; }
+.sw-cyan     { background-color: #06b6d4; }
+.sw-blue     { background-color: #3b82f6; }
+.sw-purple   { background-color: #8b5cf6; }
+.sw-pink     { background-color: #ec4899; }

@@ -1,0 +1,3 @@
+current_user_id=jb
+current_user_uuid=0a9558a7-7c74-4358-833c-2d5b21edc421
+current_xyzfs=xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421

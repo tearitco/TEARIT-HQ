@@ -1,0 +1,136 @@
+AGENT ONBOARDING — READ BEFORE WORKING WITH THE USER
+=====================================================
+(created 2026-07-31; keep updated so the user never has to repeat this)
+
+## Who you're working for
+- A VISIONARY DEVELOPER, not an AI PhD. Don't lecture, don't assume jargon;
+  explain architecture in readable terms and ask questions when unsure.
+- Wants: READABLE, USABLE, SMALL-FOOTPRINT, MODULAR code. Small and clear
+  beats clever. One verb, one concern, per op/module.
+- Trusts the agent's technical judgement but ALWAYS within the house's
+  existing infra and standards — never deviate to "industry-standard"
+  patterns that clash with this family's conventions.
+
+## The mission (the user's dream vision)
+Turn the two LIGHT models into a code READER/EDITOR/WRITER team:
+- **gemma3:270m** → chat + tool-router + code reader/editor. Then upgrade
+  with RL / FSM / behavior-tree decision-making so it can choose tools and
+  act autonomously WITHOUT always needing a full LLM call.
+- **iqabod (IQABELLA)** → tiny generative model, trained via distillation
+  (teacher = llama3/gemma), able to do small-but-noticeable non-trivial
+  tasks: book writing, very basic (pal) code writing, code planning, or
+  just a reasonable conversation.
+- **The escalation ladder**: gemma handles small stuff → hands UP to llama
+  for "management review" → llama hands instructions back DOWN to gemma →
+  loop until done, to the point where the human is barely involved.
+- **The bridge**: gemma and (trained) iqabod share the SAME toolset and
+  decision layer — they're just different provider_kinds behind one router.
+
+## Compute & infrastructure (HARD CONSTRAINTS)
+- THIS computer is NOT a compute node. Never run local model inference /
+  training / codegen on it — it slows the CPU. This box does: file work,
+  agent harness runs, docs, orchestration. Model calls go over the LAN.
+- LAN nodes (all compute happens here):
+  - MAC: lfs.master@10.0.0.144 (pw 1234) — ollama already LAN-open at
+    http://10.0.0.144:11434. Heavy lifting + code-gen (llama3:latest).
+  - LINUX: jb@10.0.0.187 (pw root) — ollama LAN-exposed (I set
+    host=0.0.0.0), gemma3:270m only per user. Reliable, slower training.
+- sshpass is installed; use ssh/scp to the nodes when a task needs compute.
+
+## House standards (non-negotiable)
+- Emoji-heavy file names/headers; terse writing; FILE-TRUTH (verify by
+  reading files, never assume); harness-before-hype (prove with tests).
+- J2 Testing Guide (`#.haiku+/tpmos-re-dox/_.0.aigent-testing-k3.txt`) is
+  the test playbook: key-injection + frame review, regression baseline
+  before new behavior, 3 test levels, record text evidence.
+- grep not rg; `grep` full-frame not tail-N (tall UI footer). Sessions
+  wiped per launch; world_01 is private per-session.
+- Document ideas/goals/arch plans AS WE GO in the agent's
+  `dev-agent-convo/` folder. Keep this onboarding doc current too.
+- Only commit/push when explicitly asked. Ask before deleting anything.
+
+## Locked architecture decisions (2026-07-31) — read 04/05 in dev-agent-convo
+- Storage: THIS box ships daily → keep only a tiny manifest (curricula.pdl,
+  reports). Heavy corpus/vocab/weights live on the NODES (Linux ~/iqabod-store,
+  Mac ~/iqabod-store). Pointer, not payload (same as xyz-installer pointers.pdl).
+- iqabod = a BANK OF SMALL EXPERTS + a ROUTER (per-curriculum weights, never
+  merged, never all-in-one-place). NOT full MoE. Multiple labeled scale
+  systems across machines; prove toy-scale loop first.
+- The "genius idea" = on-demand distillation: gemma/llama prompted with the
+  <UNK>/weak-spot gap report to "fill in" what the small weights can't say →
+  retrain → expanded brain. Buildable, no new theory.
+- Supervisor = reusable OPS (train_step, eval_curriculum, list_curricula) +
+  a harness that calls them. Teacher = llama3 primary, gemma fallback.
+- First goal: reasonable conversation (grade curriculums); story writing +
+  basic pal coding = documented adjacent goals.
+
+## Current state (verified, so you don't rediscover)
+- Agent tool pipeline WORKS: list_dir, write_file, edit_file, read_file,
+  exec_cmd, search_in_files — deterministic keyword routing (Strategy A),
+  model_after_tool=no (tool result IS the answer). 5/5 harnesses PASS.
+- gemma3:270m cannot write code (proven) — chat/tools only.
+- llama3:latest (Mac) writes correct, playable code (game deployed).
+- iqabod: mechanism works, trains in ~0.1s/10 epochs (Linux node), loss
+  plateaus at random floor (≈2.62 = ln 14); LR (1e-5) too low. Pre-trained
+  32-token curriculum produces semi-coherent word order with <UNK> leaks.
+- Built ops: send_message, check_response, gemma_strategy, strategy_execute_a,
+  generate_corpus (LLM→corpuses/<name>.txt), irc_agent_poll (teacher/student
+  room polling), list_dir, search_in_files, edit_file, file_ops, exec_cmd,
+  switch_model, web_search, tts_speak, etc.
+- DESIGNED BUT NOT BUILT: FSM engine (ROADMAP §6), RL bank (§5), meta-RL
+  (§6.4/§11.2 judge loop), qualifications registry (§12.3), school layer
+  (§12.4), and harvest_room_to_corpus.c (the one missing distillation op).
+
+## LT Pipeline (W1) — Regenerating Living Testament chapters
+The agent can regenerate LT chapters using the cell pipeline. All ops are
+deterministic except fill_cell (270m) and verify_cell (1b), which call
+LAN nodes. The workflow:
+
+### Step-by-step (when user asks to regenerate a chapter):
+1. **Plan cells**: "plan cells for solpen ch01"
+   → plan_cells.+x solpen ch01
+   → Creates canon/work/solpen/ch01/cells/cell_01.pdl .. cell_07.pdl
+   → Creates cells.manifest + chapter.pdl
+
+2. **Fill each cell**: "fill cell 01 for solpen ch01"
+   → fill_cell.+x solpen ch01 cell_01
+   → Calls 270m on LINUX (10.0.0.187:11434) via curl
+   → Writes cell_01.txt (the generated verses)
+   ⚠️ This takes 2-30 seconds (LAN call). Progress shown in tool_progress.txt
+
+3. **Verify each cell**: "verify cell 01 for solpen ch01"
+   → verify_cell.+x solpen ch01 cell_01
+   → Calls 1b on MAC (10.0.0.144:11434) — describe-shaped only
+   → Writes cell_01.review (observed issues, never a verdict)
+
+4. **Apply cells**: "apply cells for solpen ch01"
+   → apply_cell.+x solpen ch01
+   → Assembles all cell_NN.txt → chapter.generated.txt
+   → Renumbers verses 1..N, joins continuations, drops noise
+
+5. **Grade chapter**: "grade chapter solpen ch01"
+   → grade_chapter.+x solpen ch01
+   → Deterministic 0-100 score vs gold chapter
+   → Writes proof/model-grades.csv
+
+### Key rules:
+- ⛔️ No local model compute — all inference on LAN nodes
+- 🚫 No llama/opencode/gemini — gemma family only (270m + 1b)
+- 🐍→🔧 GCC C everywhere — all new ops are C, warning-free
+- 🎓 Pass = 7-10/10 on grade_chapter
+- 📖 Gold chapters are in canon/lt/solpen/ (21 chapters, ch01-ch21)
+- 🔑 PITFALL 69: 1b is describe-shaped only, never a judge
+
+### File locations:
+- Ops: ops/+x/plan_cells.+x, fill_cell.+x, verify_cell.+x, apply_cell.+x, grade_chapter.+x
+- Source: canon/source/solpen/ (40 screenplay scenes)
+- Gold: canon/lt/solpen/ (21 LT chapters)
+- Work: canon/work/solpen/<chapter>/ (generated output)
+- Plan: canon/plan/solpen/<chapter>.plan (cell decomposition)
+- Ledger: canon/ledger/entity_index.pdl (38 franchise entities)
+- Lexicon: canon/lexicon/ (entities, places, items)
+
+### LAN endpoints:
+- LINUX 10.0.0.187:11434 — gemma3:270m (fill_cell)
+- MAC 10.0.0.144:11434 — gemma3:1b (verify_cell)
+- THIS BOX — orchestration only, no local inference

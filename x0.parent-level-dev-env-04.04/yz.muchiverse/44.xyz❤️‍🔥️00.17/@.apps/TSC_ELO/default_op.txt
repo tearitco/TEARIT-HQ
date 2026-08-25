@@ -1,0 +1,12 @@
+# Custom operations for TSC_ELO's own prisc+x program, modeled directly
+# on my-chara-txt's default_op.txt / 041.pal-chain's (same menu-only
+# shape - see those files for the precedent this copies).
+# Format: name type handler {description}
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}
+tsc_input void ops/+x/tsc_input.+x {relay a Mana-Challenge action from a keyboard keycode to player_action.txt; arg 0 = idle pre-sync no-op}
+tsc_compose void ops/+x/tsc_compose.+x {render the current duel screen into view.txt (ONE WRITER RULE)}
+tsc_deal void ops/+x/tsc_deal.+x {apply the current human player's action from player_action.txt and advance the turn}
+tsc_tick void ops/+x/tsc_tick.+x {referee: status effects, win check, dispatch tsc_ai on computer turns}
+tsc_ai void ops/+x/tsc_ai.+x {computer opponent auto-play brain}
+tsc_miracle void ops/+x/tsc_miracle.+x {Miracle phase pick (P1 stub)}

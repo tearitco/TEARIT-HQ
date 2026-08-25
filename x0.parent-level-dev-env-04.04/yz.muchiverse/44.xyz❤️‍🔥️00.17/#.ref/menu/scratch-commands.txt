@@ -1,0 +1,15 @@
+In Scratch, "code pieces" usually refer to the specific blocks that form the foundation of every project. While there are over 100 blocks, these 10 are considered the most essential for creating everything from simple animations to complex games. [1, 2] 
+
+* When Green Flag Clicked (Events): The "start" button for almost every script. Without this, your code won't run when the project begins.
+* Forever (Control): A loop that keeps code running indefinitely. It is vital for continuous actions like background music or checking if a player is touching a wall.
+* If [ ] Then (Control): The basis of logic. It allows a sprite to make decisions, such as "If touching enemy, then lose health".
+* Move [10] Steps (Motion): The simplest way to get a sprite moving. It moves the sprite forward in the direction it is currently facing.
+* Go to x: [ ] y: [ ] (Motion): Essential for resetting a game or placing a sprite in a specific starting position.
+* Touching [ ]? (Sensing): Used inside "If" blocks to detect collisions between sprites, the mouse pointer, or the edge of the stage.
+* Change [Variable] by (Variables): Used to track changing values like scores, health, or speed. Variables are the "memory" of your program.
+* Wait [1] Seconds (Control): Crucial for timing animations, dialogue, or preventing a script from running too fast.
+* Switch Costume to [ ] (Looks): The key to animation. By switching between different drawings of a sprite, you make it look like it's walking or talking.
+* Broadcast [Message] (Events): Allows different sprites to "talk" to each other. For example, when a player wins, one sprite can broadcast "Win," and a "Game Over" sprite will know to appear. [3, 4, 5, 6, 7, 8, 9, 10, 11] 
+
+For those looking to expand their Scratch skills, physical resources like [Coding Cards](https://scratch.mit.edu/ideas) or educational books provide structured challenges to master these blocks. [9, 12, 13, 14, 15] 
+Would you like to see a specific example of how to combine these blocks to make a simple movement script?

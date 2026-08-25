@@ -1,0 +1,6 @@
+# +-demo Project Ops Manifest
+
+# Format: op_name|description|args_format
+
+# No ops implemented yet for this demo project.
+# Future ops will be added here.

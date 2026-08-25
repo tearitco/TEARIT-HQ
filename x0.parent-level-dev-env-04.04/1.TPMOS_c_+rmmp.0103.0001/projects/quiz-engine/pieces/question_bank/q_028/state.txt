@@ -1,0 +1,5 @@
+name=Leucine
+formula=Leu (L)
+type=(CH3)2CHCH2CH(NH2)COOH
+groups=Amino Acid
+relevance=-NH2

@@ -1,0 +1,339 @@
+{
+  "systemInstruction": {
+    "parts": [{
+      "text": "You are Aida, a technical agent. Respond in JSON with 'response' or 'tool' keys."
+    }]
+  },
+  "contents": [
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hi"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": "Hello! How can I assist you today?"
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hi"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": "Welcome! What do you need help with?"
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "how are u today?"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": "I'm doing well, thank you!"
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hi how are u ?"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": "I'm doing well, thank you!"
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hi gemini . testing"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": ""
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hi test"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": "Hello!"
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hi"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": ""
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hi"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": ""
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hi"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": "{\n        \"parts\": [\n          {\n            \"text\": \"Hello! How can I help you today?\"\n          }\n        ],\n        \"role\": \"model\"\n      }"
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hi"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": ""
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hi"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": ""
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hi"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": "{\n        \"parts\": [\n          {\n            \"text\": \"Hello! How can I help you today?\"\n          }\n        ],\n        \"role\": \"model\"\n      }"
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hi"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": ""
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hi"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": "{\n        \"parts\": [\n          {\n            \"text\": \"Hello! How can I assist you today?\"\n          }\n        ],\n        \"role\": \"model\"\n      }"
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "create test file testi.txt and tell me what dir you made it in "
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "functionCall": {
+          "name": "write_file",
+          "args": {
+                "content": "This is a test file.",
+                "path": "testi.txt"
+              }
+        }
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hi, how do u do?"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": ""
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hi"
+      }]
+    },
+    {
+      "role": "model",
+      "parts": [{
+        "text": ""
+      }]
+    },
+    {
+      "role": "user",
+      "parts": [{
+        "text": "hola como esta"
+      }]
+    }
+  ],
+  "tools": [{
+    "functionDeclarations": [
+      {
+        "name": "exec_cmd",
+        "description": "Run a shell command on the host system",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cmd": {
+              "type": "string",
+              "description": "The shell command line string to execute"
+            }
+          },
+          "required": ["cmd"]
+        }
+      },
+      {
+        "name": "read_file",
+        "description": "Read the contents of a file from the local filesystem",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "The absolute or relative path to the file to read"
+            }
+          },
+          "required": ["path"]
+        }
+      },
+      {
+        "name": "write_file",
+        "description": "Create a new file or overwrite an existing file with content",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "The path to write the file to"
+            },
+            "content": {
+              "type": "string",
+              "description": "The full string content to write to the file"
+            }
+          },
+          "required": ["path", "content"]
+        }
+      },
+      {
+        "name": "list_dir",
+        "description": "List all files and subdirectories in a directory",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "The directory path to list (defaults to . if empty)"
+            }
+          }
+        }
+      },
+      {
+        "name": "search_in_files",
+        "description": "Search local files recursively for a specific text query/pattern",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The text query to search for"
+            }
+          },
+          "required": ["query"]
+        }
+      },
+      {
+        "name": "edit_file",
+        "description": "Surgically search and replace a block of text in an existing file",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "The file path to edit"
+            },
+            "search": {
+              "type": "string",
+              "description": "The exact contiguous block of code/text to match"
+            },
+            "replace": {
+              "type": "string",
+              "description": "The new replacement text block"
+            }
+          },
+          "required": ["path", "search", "replace"]
+        }
+      },
+      {
+        "name": "web_search",
+        "description": "Search the internet using DuckDuckGo for up-to-date information",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The search query"
+            }
+          },
+          "required": ["query"]
+        }
+      }
+    ]
+  }]
+
+}

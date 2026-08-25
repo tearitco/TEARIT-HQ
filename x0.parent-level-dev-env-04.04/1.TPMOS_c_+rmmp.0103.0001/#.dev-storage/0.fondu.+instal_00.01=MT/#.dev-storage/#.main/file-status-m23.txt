@@ -1,0 +1,147 @@
+# OP-ED Status & SAVE AS Implementation - M23
+**Date:** 2026-03-23
+**Status:** READY FOR SAVE AS FEATURE
+
+---
+
+## Current Feature Status (from 15.FEAT_LIST.txt)
+
+### ✅ Feature 1: Enhanced Placement & Context Interaction
+- **Status:** PARTIALLY COMPLETE
+- **Working:**
+  - Glyph palette navigation (keys 2, 3)
+  - Emoji toggle (key 4)
+  - Cursor movement on map grid
+- **NOT YET IMPLEMENTED:**
+  - [ENTER] to place glyph and create piece
+  - [SPACE] for context menu
+  - Context menu: [OPS], [COPY], [CUT], [DELETE]
+
+### ✅ Feature 2: Dynamic Map Management
+- **Status:** PARTIALLY COMPLETE
+- **Working:**
+  - Map scroller shows available maps
+  - Switch between existing maps
+- **NOT YET IMPLEMENTED:**
+  - "ADD" option at start of map list
+  - New map file creation
+  - Map sub-menu: [RENAME], [RESIZE]
+
+### 🚧 Feature 3: Integrated File Menu
+- **Status:** UI COMPLETE, LOGIC PENDING
+- **Working:**
+  - "FILE" button exists in op-ed.chtpm
+  - file_menu.chtpm layout created with:
+    - [SAVE PROJECT] (KEY:7)
+    - [SAVE AS (Clone)] (KEY:s) ← **NEXT TASK**
+    - [LOAD PROJECT] (href to load_menu.chtpm)
+    - [PLAY PROJECT] (KEY:p)
+    - [BACK TO EDITOR]
+- **NEEDS IMPLEMENTATION:**
+  - SAVE AS: Prompt for new project name, clone directory
+  - SAVE: Full project state persistence
+  - LOAD: Project browser with state restoration
+  - PLAY: Launch project in player mode
+
+### ⏳ Feature 4: Scripting & Advanced Ops
+- **Status:** NOT STARTED
+
+---
+
+## SAVE AS Implementation Plan
+
+### Overview
+Use the new `cli_io` input persistence to let user edit project name, then clone current project directory.
+
+### UI Flow
+1. User clicks "SAVE AS" in file_menu.chtpm
+2. Switch to `save_as_prompt.chtpm` layout
+3. Show `cli_io` field with current project name pre-filled
+4. User edits name, presses Enter
+5. Module clones project directory with new name
+6. Switch to new project context
+
+### Files to Create/Edit
+
+**1. pieces/apps/op-ed/layouts/save_as_prompt.chtpm:**
+```xml
+<panel>
+    <module>pieces/apps/op-ed/plugins/+x/op-ed_module.+x</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+    
+    <text label="╔══════════════ S A V E   A S ════════════╗" /><br/>
+    <row label="Current: ${project_id}" /><br/>
+    <row label=" " /><br/>
+    <text label="║  New Project Name: " /><cli_io id="save_as_name" label="${save_as_input}" /><text label=" ║" /><br/>
+    <text label="╠═════════════════════════════════════════════╣" /><br/>
+    <button label="CONFIRM" onClick="KEY:1" />
+    <button label="CANCEL" href="pieces/apps/op-ed/layouts/file_menu.chtpm" /><br/>
+    <row label="${editor_response}" /><br/>
+</panel>
+```
+
+**2. op-ed_module.c additions:**
+- `method_save_as_confirm()`: Clone project directory
+- `method_save_as_cancel()`: Return to file menu
+- State variables: `save_as_input[MAX_LINE]`
+
+**3. pieces/apps/player_app/state.txt:**
+- Add: `save_as_input=<current_project_name>`
+- Add: `cli_prompt=save_as_name` (for auto-focus)
+
+### Clone Logic
+```c
+void clone_project(const char* new_name) {
+    char src_path[MAX_PATH], dst_path[MAX_PATH];
+    
+    // Source: projects/<current_project>/
+    snprintf(src_path, sizeof(src_path), "%s/projects/%s", 
+             project_root, current_project);
+    
+    // Destination: projects/<new_name>/
+    snprintf(dst_path, sizeof(dst_path), "%s/projects/%s", 
+             project_root, new_name);
+    
+    // Create destination directory
+    char cmd[MAX_CMD];
+    snprintf(cmd, sizeof(cmd), "mkdir -p '%s'", dst_path);
+    run_command(cmd);
+    
+    // Copy all contents recursively
+    snprintf(cmd, sizeof(cmd), "cp -r '%s'/* '%s'/", src_path, dst_path);
+    run_command(cmd);
+    
+    // Update project.pdl with new project_id
+    // Update state files with new project context
+    
+    // Switch editor context to new project
+    strncpy(current_project, new_name, sizeof(current_project)-1);
+    
+    // Write response
+    write_editor_response("Saved as: %s", new_name);
+    
+    // Return to editor
+    // (layout switch via state trigger)
+}
+```
+
+### Test Steps
+1. Open op-ed, navigate to FILE → SAVE AS
+2. Default name should be pre-filled (e.g., "template")
+3. Edit to "my_new_project"
+4. Press CONFIRM
+5. Verify: `projects/my_new_project/` exists with all files
+6. Verify: Editor now shows "PROJECT: my_new_project"
+7. Verify: Can save/load in new project independently
+
+---
+
+## Related Files
+- `pieces/apps/op-ed/layouts/op-ed.chtpm` - Main editor
+- `pieces/apps/op-ed/layouts/file_menu.chtpm` - File menu
+- `pieces/apps/op-ed/plugins/op-ed_module.c` - Module logic
+- `projects/<project_id>/` - Project directories
+
+---
+
+**End of file-status-m23.txt**

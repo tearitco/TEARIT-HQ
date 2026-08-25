@@ -1,0 +1,30 @@
+# Regenerable runtime artifacts — recreated by the running system, never
+# meant to be committed. Keeps the repo from re-bloating with ledgers,
+# logs, receipts, framebuffers, and per-session state on every run.
+
+# --- Software framebuffers / large binary render output ---
+*.rgba32
+
+# --- Append-only audit logs / ledgers / receipts (auto-trimmed at runtime) ---
+**/ledger.txt
+**/master_ledger.txt
+**/master_ledger/master_ledger.txt
+*.log
+parser.out
+**/pieces/debug/frames/session_frame_history.txt
+**/pieces/debug/frames/session_receipt_history.txt
+**/session/history_archive.txt
+**/renderer_pulse.txt
+**/rgb_frame_changed.txt
+**/frame_changed.txt
+
+# --- Rolling receipt snapshots (bounded by pieces/config/receipts.conf) ---
+# Kept small at runtime, but still session-scoped noise for version control.
+**/pieces/debug/frames/
+
+# --- Per-session state that is regenerated on launch ---
+**/session/.manager.lock
+**/session/history.cursor
+
+# --- Build artifacts ---
+*.o

@@ -1,0 +1,20 @@
+CHTMGL WRAITH | image-first media probe
+[HEADER] CHTMGL Image Tag Probe
+IMG:id=missingno src=../../../../../#.media-library/missingno.png state=loaded dims=61x131 preview=24x12
+[ASCII Preview]
+                        
+        ####--*+-=-#+:+=
+         + ++ +-#=---#  
+        .==*+=**:-=:-+==
+        +*=*+==..=:==*+ 
+   =+++++=:----:::=*:  -
+ -####-+ :+-:- :#:-- -+=
+     :    .  . #----#   
+ +-----#+*--##-####:  -:
+ ####### ##:#%:-----:+  
+ #######--#%:-:+ : %#:-:
+ -:---%-----###++  + += 
+AUDIO:id=gowon src=../../../../../#.media-library/gowon.mp3 state=playing controls=play,pause,resume,stop
+Audit: shared decode drives both body preview and GL scene text rows
+Future: ANSI/color projection can reuse the same decoded RGB path
+Last: Audio playing: ../../../../../#.media-library/gowon.mp3

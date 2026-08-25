@@ -1,0 +1,4 @@
+current_epoch=1
+current_turn=2018
+hero_start_x=17
+hero_start_y=2

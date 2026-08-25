@@ -1,0 +1,7 @@
+# Custom operations for file-menu's prisc+x program
+# Format: name type handler {description}
+
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}
+fm_menu_input void ops/+x/fm_menu_input.+x {handle keyboard input and update menu state}
+fm_compose_frame void ops/+x/fm_compose_frame.+x {render the current file-menu screen into current_frame.txt}

@@ -1,0 +1,64 @@
+================================================================================
+phase2-module-split-report.txt - 0.user-pal👤️/00.login-signup: what
+changed 2026-07-31 and why, for future agents. See also the house-
+wide docs this work is part of: #.haiku+/!.xyzos-standards+1.txt §41,
+#.haiku+/!.xyzos-pitfalls+1.txt PITFALL 66, #.haiku+/refactor-list-
+j30.txt, 01.muchi-pals-🥚️-13.01/dox/06-per-screen-module-standard.md.
+================================================================================
+
+## WHAT THIS IS AND WHY
+
+Same Phase 2 house-wide standard as 041.pal-chain⛓️'s own
+phase2-module-split-report.txt (read that file for the full
+reasoning about launch_module()'s liveness check and why per-screen
+modules matter). This project only has ONE real .chtpm layout
+(login.chtpm), so the per-screen MODULE SPLIT itself is N/A - only
+the clear_saved_active_index() (PITFALL 66) port and debug-spam
+removal applied here.
+
+## WHAT WAS DONE HERE
+
+clear_saved_active_index() ported into this project's own local
+system/chtpm_parser_pal.c (3691 lines before this edit), inserted
+right after build_path_malloc(). A call was inserted immediately
+before parse_chtm() at all 7 real transition sites found by grepping
+for `focus_index = 0;` and checking which were followed by a real
+parse_chtm() call (as opposed to a mere focus re-init or the
+navigation-wraparound loops, which don't parse a new layout and don't
+need it). One additional startup site already used
+`unlink("pieces/display/active_gui_index.txt")` before parse_chtm() -
+left as-is, since sync_focus_from_saved_active_index() treats a
+missing file the same as clear_saved_active_index()'s own "0\n"
+content (both result in saved_idx <= 0, no override) - this matches
+the same pattern already used in pal-chain's own reference copy.
+
+Two DEBUG printf lines (`DEBUG: Loaded directory_listing...` /
+`DEBUG: Loaded last_key...`) removed from load_vars()'s modern-layout
+branch.
+
+## VERIFICATION
+
+Rebuilt via `bash scripts/build.sh` - "build ok", no new warnings or
+errors introduced (some pre-existing unrelated snprintf-truncation
+warnings in other ops files, not touched here). clear_saved_active_
+index appears 9 times in the rebuilt chtpm_parser_pal.c (matches the
+def + 8 real call-site references pattern used everywhere else in
+this rollout - 7 new calls + the 1 mention inside the function's own
+doc comment). Debug-spam grep count is now 0.
+
+NOT yet live-tested through a real running session (no K3 harness
+exists for this project yet) - this is a source-level, compile-
+verified change only. If you're picking this up next: run the app for
+real (button.sh run) and exercise a real login/signup flow before
+trusting this is bug-free in practice, not just "it compiles."
+
+## IF YOU HIT A BUG HERE
+
+1. Doubling/dropped keystrokes: read #.haiku+/double-wr-grok-j31.txt
+   first - already root-caused and fixed house-wide.
+2. Stale focus after a transition: confirm clear_saved_active_index()
+   is actually CALLED at the specific transition site involved.
+3. This project has real session isolation (pieces/sessions/<id>/,
+   see button.sh's own "run" action) - unlike mutaclsym, so state does
+   NOT persist across runs the way it can there.
+================================================================================

@@ -1,0 +1,19 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | egg_2
+META         | version            | 1.0
+
+STATE        | name                 | egg_2
+STATE        | species              | sp_turtle
+STATE        | species_name         | Turtle
+STATE        | map_id               | map_02
+STATE        | possessable          | 1
+
+METHOD       | move                 | ops/+x/move_entity.+x
+METHOD       | select               | ops/+x/xlector_input.+x
+METHOD       | feed                 | ops/+x/feed_pet.+x
+METHOD       | pet                  | ops/+x/pet_pet.+x
+METHOD       | play                 | ops/+x/play_pet.+x
+METHOD       | export               | ops/+x/pet_export.+x
+
+RESPONSE     | default              | *egg_2 settles in*

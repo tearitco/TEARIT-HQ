@@ -1,0 +1,51 @@
+emoji,compound_name,formula,category,hint,color_hex,state,melting_point,boiling_point,density,toxicity,reactivity,icon_tile,animation_frames
+🧪,Acetic Acid,CH₃COOH,0,"Carboxylic acid, pKa=4.76",,,,,,,,,
+🍷,Ethanol,CH₃CH₂OH,1,Primary alcohol,#e8e8ff,liquid,-114,78,0.789,3,2,ethanol.png,0
+🧈,Acetone,CH₃COCH₃,3,"Ketone, common solvent",#cceeff,liquid,-95,56,0.784,3,3,acetone.png,0
+🐟,Methylamine,CH₃NH₂,4,"Fishy odor, weak base",,,,,,,,,
+🛢️,Benzene,C₆H₆,5,"Aromatic, resonance stabilized",#ddeeff,liquid,5,80,0.876,7,3,benzene.png,0
+🍋,Citric Acid,C₆H₈O₇,0,Triprotic acid in citrus,,,,,,,,,
+🧂,Sodium Chloride,NaCl,6,"Ionic compound, electrolyte",#ffffff,solid,801,1465,2.16,0,0,salt.png,0
+⚡,Sulfuric Acid,H₂SO₄,0,Strong diprotic acid,#f5f5b8,liquid,10,337,1.83,8,8,sulfuric.png,0
+🧫,Glucose,C₆H₁₂O₆,2,"Aldohexose, blood sugar",#ffffff,solid,146,,1.54,0,1,glucose.png,0
+💊,Dopamine,C₈H₁₁NO₂,1,Catecholamine neurotransmitter,,,,,,,,,
+💧,Water,H₂O,6,The universal solvent,#4488ff,liquid,0,100,1.0,0,0,water.png,3
+💨,Ammonia,NH₃,4,"Pungent gas, weak base",#ccffcc,gas,-78,-33,0.0007,6,5,ammonia.png,0
+🔥,Methane,CH₄,8,Primary component of natural gas,#ffd700,gas,-182,-161,0.0007,1,4,methane.png,0
+🍎,Fructose,C₆H₁₂O₆,2,"Fruit sugar, a simple ketose",,,,,,,,,
+☕,Caffeine,C₈H₁₀N₄O₂,4,Stimulant found in coffee,#fbf6e4,solid,235,178,1.23,5,1,caffeine.png,0
+⚗️,Hydrochloric Acid,HCl,7,Strong monoprotic acid in stomach,,,,,,,,,
+🧼,Sodium Hydroxide,NaOH,6,"Strong base, also known as lye",,,,,,,,,
+🧴,Glycerol,C₃H₈O₃,1,"Polyol, component of lipids",,,,,,,,,
+,Aspirin,C₉H₈O₄,0,"Pain reliever, an ester of salicylic acid",,,,,,,,,
+🧊,Formaldehyde,CH₂O,3,Simplest aldehyde,,,,,,,,,
+🍬,Sucrose,C₁₂H₂₂O₁₁,2,"Table sugar, a disaccharide",#ffffff,solid,186,,1.59,0,0,sugar.png,0
+🥛,Lactic Acid,C₃H₆O₃,0,Found in sour milk and muscles,,,,,,,,,
+💧,Urea,CH₄N₂O,4,Main nitrogenous compound in urine,,,,,,,,,
+🌲,Toluene,C₇H₈,5,"Aromatic solvent, similar to benzene",,,,,,,,,
+🧂,Potassium Chloride,KCl,6,"Salt substitute, electrolyte",,,,,,,,,
+⚗️,Nitric Acid,HNO₃,7,Highly corrosive strong acid,,,,,,,,,
+🔥,Propane,C₃H₈,8,Alkane fuel used in grills,,,,,,,,,
+☠️,Methanol,CH₃OH,1,"Simplest alcohol, toxic",,,,,,,,,
+🧼,Phenol,C₆H₅OH,5,"Aromatic alcohol, used as a disinfectant",,,,,,,,,
+⚡,ATP,C₁₀H₁₆N₅O₁₃P₃,1,Energy currency of the cell,,,,,,,,,
+🐜,Formic Acid,HCOOH,0,"Simplest carboxylic acid, in ant stings",,,,,,,,,
+🔥,Butane,C₄H₁₀,8,Alkane fuel used in lighters,,,,,,,,,
+😊,Serotonin,C₁₀H₁₂N₂O,1,Neurotransmitter related to mood,,,,,,,,,
+🧬,Glycine,C₂H₅NO₂,4,Simplest amino acid,,,,,,,,,
+💊,Ibuprofen,C₁₃H₁₈O₂,0,NSAID pain reliever,,,,,,,,,
+🐚,Calcium Carbonate,CaCO₃,6,"Found in shells, limestone, and chalk",,,,,,,,,
+💥,Perchloric Acid,HClO₄,7,A powerful oxidizing strong acid,,,,,,,,,
+🥛,Lactose,C₁₂H₂₂O₁₁,2,Sugar found in milk,,,,,,,,,
+💣,TNT,C₇H₅N₃O₆,5,Well-known explosive compound,#fff200,solid,80,,1.65,4,9,tnt.png,0
+🎨,Aniline,C₆H₅NH₂,5,Precursor to many industrial chemicals,,,,,,,,,
+🍊,Vitamin C,C₆H₈O₆,0,An essential nutrient and antioxidant,,,,,,,,,
+⚕️,Isopropyl Alcohol,C₃H₈O,1,"Rubbing alcohol, a disinfectant",,,,,,,,,
+🍦,Vanillin,C₈H₈O₃,5,Primary component of vanilla bean extract,,,,,,,,,
+🐝,Histamine,C₅H₉N₃,4,Involved in local immune responses,,,,,,,,,
+🧪,Pyridine,C₅H₅N,5,"Aromatic, used as a precursor and solvent",,,,,,,,,
+🌋,Sodium Bicarbonate,NaHCO₃,6,"Baking soda, used in cooking and cleaning",,,,,,,,,
+🥤,Phosphoric Acid,H₃PO₄,0,Weak acid used in soft drinks,,,,,,,,,
+⛽,Octane,C₈H₁₈,8,Component of gasoline,,,,,,,,,
+🧬,Ribose,C₅H₁₀O₅,2,A key component of RNA,,,,,,,,,
+💊,Paracetamol,C₈H₉NO₂,5,Common analgesic and antipyretic,,,,,,,,,

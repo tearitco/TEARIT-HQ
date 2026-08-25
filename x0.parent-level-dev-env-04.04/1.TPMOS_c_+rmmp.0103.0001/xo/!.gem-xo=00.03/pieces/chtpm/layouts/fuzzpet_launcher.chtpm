@@ -1,0 +1,13 @@
+<panel>
+    <text label="+===========================================================+" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|             F U Z Z P E T   L A U N C H E R               |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  Select an option to begin:                               |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  " /><button label="New Game (Reset Pet)" onClick="LAUNCH:FUZZPET_NEW" href="pieces/chtpm/layouts/main.chtpm" /><text label="                       |" /><br/>
+    <text label="|  " /><button label="Load Game (Continue)" onClick="LAUNCH:FUZZPET" href="pieces/chtpm/layouts/main.chtpm" /><text label="                           |" /><br/>
+    <text label="|  " /><button label="Back to Main Menu" href="pieces/chtpm/layouts/os.chtpm" /><text label="                                  |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="+===========================================================+" /><br/>
+</panel>

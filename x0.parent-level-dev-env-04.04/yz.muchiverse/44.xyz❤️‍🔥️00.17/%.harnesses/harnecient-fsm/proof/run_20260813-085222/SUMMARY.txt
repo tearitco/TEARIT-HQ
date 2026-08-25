@@ -1,0 +1,7 @@
+run_plan.sh — /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/harnecient-fsm/plans/retry-demo.plan
+started: Thu Aug 13 08:52:26 AM PDT 2026
+
+STEP 1 [what color is the sky]: FAIL (assertion: grep -qi "this-string-will-never-appear-xyz123" "$STEP1_OUT"; output: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/harnecient-fsm/proof/run_20260813-085222/step1.retry2.out; 2 retries exhausted)
+
+finished: Thu Aug 13 08:53:18 AM PDT 2026
+overall: FAIL

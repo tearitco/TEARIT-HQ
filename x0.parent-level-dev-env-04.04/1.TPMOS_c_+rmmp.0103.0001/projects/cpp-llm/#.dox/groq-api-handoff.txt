@@ -1,0 +1,36 @@
+# TPMOS Technical Handoff: cpp-llm API Debugging (Phase 4)
+
+## 1. Network Context
+- **Local Machine:** 10.0.0.238 (Surface Laptop)
+- **Remote Mac (tmac):** 10.0.0.144:11434 (Master API)
+- **Remote Debian (debilu):** 10.0.0.16 (Secondary API)
+- **Status:** "Naked" connectivity to Mac is **VERIFIED** (HTTP 200). Mac is running with `OLLAMA_HOST=0.0.0.0`.
+
+## 2. Recent Refactors (Compliant)
+- **CPU Safety:** `cpp-llm_manager.c` is now non-blocking. It uses `fork` + `waitpid(WNOHANG)` to poll AI status.
+- **CPU Health:** PID tracking integrated. Manager and children log to `pieces/os/proc_list.txt`.
+- **Configurable Paths:** Binary paths are resolved via `projects/cpp-llm/config/paths.txt`.
+- **Timeouts:** AI query timeout increased to 300s.
+- **Error Handling:** Curl exit codes are checked (Code 7 = connection fail, Code 28 = timeout).
+
+## 3. The Remaining Bug: Empty JSON `{}`
+Despite connectivity, the Mac returns `{"message":{"role":"assistant","content":"{}"}}`.
+
+### Suspected Root Causes:
+1. **System Prompt Absence:** Observations of `prompt.json` show the `system` persona was missing in the actual request, even after the injection fix was applied.
+2. **Model Prioritization:** `llama3-groq-tool-use` exists on the Mac but the manager might still be defaulting to `llama3:latest` if `resolve_local_model` isn't triggered after an API switch (Button 2).
+3. **JSON Constraints:** Forcing `"format": "json"` on a simple "hi" prompt without a system prompt causes the model to lobotomize and return `{}`.
+
+## 4. Key Files & Logs
+- **Source:** `projects/cpp-llm/manager/cpp-llm_manager.c`
+- **Debug Log:** `projects/cpp-llm/state/curl_debug.log` (Contains verbose curl output)
+- **Last Request:** `projects/cpp-llm/state/prompt.json`
+- **Last Response:** `projects/cpp-llm/state/llm_response.json`
+- **Config:** `projects/cpp-llm/config/paths.txt` & `persona.txt`
+
+## 5. Recommended Next Steps
+- Verify `start_ai_query` logic for `stat(ctx_file, &st)`. It might be failing to detect that the file is missing/empty, skipping the persona injection.
+- Ensure `resolve_local_model()` is called immediately after an API switch (Button 2) so the model list is refreshed for the new host.
+- Monitor `curl_debug.log` during the next "hi" attempt.
+
+*End of Handoff.*

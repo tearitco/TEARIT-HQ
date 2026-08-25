@@ -1,0 +1,22 @@
+# TSC_ELO harness "book" - the deterministic answer corpus for
+# tsc_answer MODE BOOK (design TSC_P2P_PVP.md sec. 4.2). Format:
+#   <keyword>: <move>
+# First line whose keyword appears in the prompt wins. Keep this a
+# rules-of-thumb reference; GUESS is the fallback when nothing matches.
+#
+# Topics a harness FSM might ask about ("what should I play when...")
+lead: strike
+open: strike
+probe: strike
+down: heal
+hurt: heal
+low hp: heal
+low health: heal
+weakened: heal
+winning: heavy
+ahead: heavy
+finish: heavy
+danger: block
+scared: block
+turtle: block
+defensive: block

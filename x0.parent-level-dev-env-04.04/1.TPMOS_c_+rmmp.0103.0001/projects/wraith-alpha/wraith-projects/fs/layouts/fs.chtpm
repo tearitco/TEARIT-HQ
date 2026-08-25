@@ -1,0 +1,14 @@
+<panel>
+    <module>projects/wraith-alpha/wraith-projects/fs/manager/+x/fs_manager.+x</module>
+    <interact src="projects/wraith-alpha/session/history.txt" />
+    <text label="╔══════════════════ W R A I T H   F S ══════════════════╗" /><br/>
+    <text label="Project: wraith-alpha/wraith-projects/fs" /><br/>
+    <text label="Status: scaffold only" /><br/>
+    <text label="First surface: ASCII/CHTPM file browser pattern" /><br/>
+    <text label="Reference: projects/agy-text-editor" /><br/>
+    <text label="Later surface: CHTPMGL over same fs ops/state" /><br/>
+    <text label=" " /><br/>
+    <button label="Open Terminal" onClick="LAUNCH:terminal" /><br/>
+    <button label="Back to Wraith Desktop" href="projects/wraith-alpha/layouts/alpha-shell.chtpm" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════╝" /><br/>
+</panel>

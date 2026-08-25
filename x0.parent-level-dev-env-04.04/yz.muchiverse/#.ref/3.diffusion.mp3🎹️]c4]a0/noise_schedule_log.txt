@@ -1,0 +1,2 @@
+Spectral envelope computed
+Diffusion output saved as diffusion_output.raw

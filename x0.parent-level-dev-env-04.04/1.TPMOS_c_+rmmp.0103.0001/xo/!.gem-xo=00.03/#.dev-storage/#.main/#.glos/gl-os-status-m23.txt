@@ -1,0 +1,63 @@
+# GL-OS Status & Architecture Correction - M23
+**Date:** 2026-03-23
+**Status:** IMPLEMENTING - Terminal Command Logic
+
+---
+
+## Reference Architecture (from Python TPM_OS)
+
+**What GL-OS Should Be (based on #.ref/TPM_OS.py+3.9]ON!EST_f13/):**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              GL-OS Window (OpenGL Desktop)                  │
+│  BG: #000044 (dark blue)                                    │
+│                                                              │
+│  ┌─────────────────┐  ┌─────────────────┐                  │
+│  │  Terminal App   │  │  File Browser   │  ← Widgets/Apps  │
+│  │  (GL Render)    │  │  (GL Render)    │    inside GL     │
+│  └─────────────────┘  └─────────────────┘                  │
+│                                                              │
+│  Right-click → Context Menu                                │
+│    [New Terminal] [New Folder] [New File]                  │
+│                                                              │
+│  Windows: Draggable, resizable, Z-order (Focus)            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## TPM-Compliant C Implementation
+
+**Current Focus:** Implementing CLI interpreter inside GL-OS Terminal windows.
+
+**Implementation Status:**
+
+**Completed:**
+- ✅ OpenGL Window opening (800x600, bg #000044)
+- ✅ Basic window structure and rendering
+- ✅ Window creation (Terminal) via 'T' key, right-click menu, or startup
+- ✅ Session state and view persistence
+- ✅ **Drag Logic Fixed:** GLUT to OpenGL coordinate conversion corrected.
+- ✅ **Right-click Menu Fixed:** Menu selection handled for "New Terminal".
+- ✅ **Z-order (Focus) Fixed:** Clicking a window brings it to the front of the render stack.
+- ✅ **Toolbar & Taskbar:** Bottom bar with guest name, clock, and window management.
+- ✅ **Resizing:** Windows can be resized via bottom-right handle.
+- ✅ **Minimizing:** Windows can be minimized to the toolbar.
+
+**In Progress / Broken:**
+- ❌ **Terminal Content:** Terminals are currently static boxes.
+- ❌ **Command Interpreter:** Implementing "help" command to show app categories.
+- ❌ **Inner GL Windows:** Goal is to have apps that open inside the virtual desktop with their own logic.
+
+**Next Steps:**
+1. **Implement "help" command in `gl_desktop.c`:**
+   - Display options: `[]1.desktop` and `[]2.terminal`.
+   - "desktop" shows: 3D Cube, etc.
+   - "terminal" shows: FuzzPet, Project Manager, etc.
+2. Capture command output and display history in the terminal window.
+3. Integrate actual app launching from these commands.
+
+---
+
+**End of gl-os-status-m23.txt**

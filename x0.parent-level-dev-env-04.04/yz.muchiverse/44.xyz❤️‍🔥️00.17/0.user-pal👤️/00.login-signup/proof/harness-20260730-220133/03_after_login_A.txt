@@ -1,0 +1,36 @@
++============================================================+
+|  U S E R - P A L                                           |
++============================================================+
+|                                                            |
+|  Logged in as: uloginA_1138315                             |
+|  uuid: be561058-3101-41e0-8135-c076dc9e93d1                |
+|  xyzfs: xyzfs/users/be561058-3101-41e0-8135-c076dc9e93d1   |
+|                                                            |
+|  Enter a user ID (and display name, if new), then          |
+|  Create Account / Log In — or Switch: an account below.  |
+|                                                            |
+|  Accounts on this machine:                                 |
+|    jb — JB Test                                          |
+|    avmenu_1653663 — MenuTest                             |
+|  > uloginA_1138315 — LoginHarnessA                       |
+|    schar_1744476 — SessionChar                           |
+|    avmenu_1654388 — MenuTest                             |
+|                                                            |
+|  Logged in as 'uloginA_1138315'.                           |
+|                                                            |
++============================================================+
+
+| [ ] 1. User ID: [uloginA_1138315]                                        |
+| [ ] 2. Display Name (new accounts only): [LoginHarnessA]                                        |
+[ ] 3. [Create Account]
+[>] 4. [Log In]
+[ ] 5. [Log Out]
+[ ] 6. [Switch: avmenu_1653663 (MenuTest)]
+[ ] 7. [Switch: avmenu_1654388 (MenuTest)]
+[ ] 8. [Switch: jb (JB Test)]
+[ ] 9. [Switch: schar_1744476 (SessionChar)]
+[ ] 10. [Switch: uloginA_1138315 (LoginHarnessA) *]
+ Switch: rows log in as that account | Ctrl+C quit
+
++=========================================================+
+Nav > _

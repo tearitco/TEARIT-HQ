@@ -1,0 +1,120 @@
+================================================================================
+XYZ EDITOR — how to use it, and why you can trust Save/Load
+================================================================================
+
+WHAT THIS IS
+============
+XYZ Editor is a simple text editor with a companion FILE MENU window
+for loading and saving files. Both open together when you launch it.
+
+HOW TO START IT
+================
+From a terminal, in this folder:
+
+    ./button.sh run
+
+That's it. Two windows should open:
+  - The EDITOR window — where you type.
+  - The FILE MENU window — where you load and save.
+
+IMPORTANT: run it plainly like that, on its own line. Don't add an "&"
+to the end of the command (don't try to background it or run it "in
+the background") — doing that will cause the whole thing to silently
+freeze instead of opening. If you ever see nothing happen after
+running it, check whether you accidentally added an "&" and try again
+without it.
+
+HOW TO EDIT TEXT
+=================
+1. In the EDITOR window, "EDIT TEXT (INTERACT)" is already selected
+   when you start. Press Enter to start typing.
+2. Type normally.
+3. Press Esc when you're done typing, to stop and return to the menu.
+
+HOW TO SAVE A FILE
+====================
+1. After typing (and pressing Esc), select "FILE MENU" and press
+   Enter — this brings your attention to the FILE MENU window.
+2. In the FILE MENU window, choose "SAVE AS".
+3. Type (or paste) the full path where you want to save, e.g.
+   /home/yourname/Desktop/mynotes.txt
+4. Confirm. You'll see "Command sent" and the file will be written.
+
+HOW TO LOAD A FILE
+====================
+1. In the FILE MENU window, choose "LOAD".
+2. Type (or paste) the full path of the file you want to open.
+3. Confirm. The EDITOR window will update to show that file's content.
+
+IF SOMETHING GETS STUCK
+==========================
+If a window won't close, or the app seems frozen, run this from a
+terminal (in the house's own top-level folder, not this one):
+
+    sh EMERGENCY_KILL.sh
+
+This safely stops all the app's own background processes and clears
+old leftover session data. It will NOT touch anything unrelated (web
+browsers, other programs, etc.) — it's specific to this house's own
+tools. Then just run ./button.sh run again for a fresh start.
+
+--------------------------------------------------------------------------------
+WHY YOU CAN TRUST THIS
+--------------------------------------------------------------------------------
+
+Save and Load aren't just assumed to work — they were actually tested
+by having an automated test type real keystrokes into the real,
+running app (the exact same windows you see when you run it
+yourself), the same way a person would use it, and then checking the
+real result on disk afterward:
+
+  - LOAD was tested by: preparing a file with known content, telling
+    the FILE MENU (via real keypresses, arrow-key navigation and all)
+    to load it, and then confirming the EDITOR window's own on-screen
+    text actually showed that content — not just checking an internal
+    file behind the scenes, checking what you would actually SEE.
+
+  - SAVE was tested by: opening the real EDITOR window, really typing
+    new text into it via simulated keystrokes, telling FILE MENU (again
+    through real menu navigation) to save it to a chosen location, and
+    then opening that saved file afterward to confirm it contained
+    exactly what was typed.
+
+Both passed. You can re-run this proof yourself at any time:
+
+    cd test-harn-ed-app
+    ./button.sh demo
+
+This will briefly open the app on its own, run both tests, and print
+PASS or FAIL for each check. If you ever change anything in the
+editor or file-menu's own code, re-running this is the fastest way to
+confirm Save/Load still work correctly before trusting it again.
+
+WORTH KNOWING: while building this test, a real bug was actually found
+and fixed — the FILE MENU's own Save/Load buttons had a broken internal
+wiring that meant NOTHING actually got saved or loaded when used
+through the real menu, even though it looked like it was working. That
+bug is fixed now (confirmed by the very test described above), but it's
+a good reminder that "looks like it works" and "proven to work" aren't
+the same thing — which is exactly why this test exists.
+
+--------------------------------------------------------------------------------
+KNOWN LIMITATIONS (not blockers, just things to know)
+--------------------------------------------------------------------------------
+
+  - Emoji in the editor currently show up as a plain colored block
+    rather than the real emoji picture. This is cosmetic only — it
+    doesn't affect typing, saving, or loading text, including text
+    that contains emoji. A proper fix is planned (see this house's own
+    #.haiku+/!.pal-2do.txt if you're curious about the technical
+    details).
+  - If you start the EDITOR window on its own (without also starting
+    FILE MENU), pressing "FILE MENU" won't automatically open one for
+    you yet — you'd need to start FILE MENU separately. Using
+    ./button.sh run in this folder (as described above) always starts
+    both together, so this only matters if you go out of your way to
+    launch the editor by itself from elsewhere.
+
+================================================================================
+END OF USER GUIDE
+================================================================================

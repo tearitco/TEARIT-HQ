@@ -1,0 +1,361 @@
+# Wraith Fast 2Do
+
+Last updated: 2026-06-27
+
+## Current Baseline
+
+Wraith has moved past the immediate GL parity repair sprint.
+
+Completed enough to proceed:
+- GL presenter is thin and displays `projects/wraith-alpha/session/rgb/current_frame.rgba32`.
+- RGB conversion is owned by `wraith_rgb_daemon`.
+- ASCII/GL mode is session-controlled.
+- stale previous-session GL frames are cleared.
+- GL keyboard supports 10+ nav indices.
+- GL mouse coordinates are transformed through the displayed texture viewport.
+- RGB and GL receipts now expose enough data to debug display parity:
+  - `projects/wraith-alpha/session/rgb/current_frame.receipt.pdl`
+  - `projects/wraith-alpha/session/rgb/gl_display.receipt.pdl`
+  - `projects/wraith-alpha/session/rgb/gl_input.receipt.pdl`
+- `current_frame.receipt.pdl` now includes `SECTION | PRIMITIVES | SOURCE_AND_CONVERSION_AUDIT` for `zslice_piece`, `tile_zmap`, and `rgba_extrusion`.
+- semantic text projection now uses the same cell metrics as panels and receipts.
+- `wraith-3d-cube`, `piececraft-wraith`, and `chtmgl-wraith` now all exist as internal Wraith validation project tracks.
+- `emoji-studio-wraith` now exists as the fourth internal Wraith validation project track for RGBA/image extrusion inside `${game_map}`.
+- `wraith-ed` now exists as the fifth internal Wraith validation project track for OP-ED-style game editing, map editing, PAL event drafting, saves, and export manifests.
+- the Wraith manager now emits specialized non-terminal project body text/semantic objects for these probes instead of showing only the launcher list inside every project window.
+- user confirmed Step 1 live: project-owned `session/wraith_body.txt` and `session/scene.objects.pdl` bridge into Wraith Alpha without project-specific manager branches.
+- generic `INTERACT` bridge is now required for `${game_map}` windows: `[>]` selected, Enter enters map control, active selector becomes `[^]`, `ESC` exits, and keypresses are appended to project `session/history.txt`.
+- new standard: the visible interact selector belongs in a project-local UI control with `target_surface=game_map`; it may be headerbar, toolbar, side panel, footer, menu, or overlay. `${game_map}` is the payload/canvas and should not own the visible nav selector except as temporary compatibility.
+- launch/open now silently initializes project `is_map_control=0` so stale interact state does not carry into a newly opened Wraith project window.
+- first-pass RGB converter previews exist for `zslice_piece`, `tile_zmap`, and `rgba_extrusion`.
+- focused 3D/widget conversion plan lives in `wraith-chtmgl&3d.md`.
+
+Do not restart by tweaking footer/chrome visuals unless a fresh receipt proves a regression.
+
+## Momentum Assessment
+
+Current ranking:
+
+1. `piececraft-wraith` has the strongest momentum.
+
+Reason:
+- source reference `piececraft-3d` already uses `${game_map}`, `INTERACT`, and `is_map_control`.
+- source reference also has the camera/POV contract Wraith needs:
+  - `camera_mode`
+  - `cam_x/cam_y/cam_z`
+  - `cam_pitch/cam_yaw/cam_roll`
+  - `CAMERA_SET`
+  - `CAMERA_MODE`
+  - `CAMERA_MOVE`
+- it has a real z-map and tile vocabulary.
+- the Wraith version now has a starter map slice, local tile registry/tile definition files, state file, a `Control_Map` UI control, and a payload-only `${game_map}`.
+
+2. `wraith-3d-cube` is the smallest and safest first verification.
+
+Reason:
+- it is intentionally narrow.
+- it now has visible cube audit body content.
+- it should be used to prove the project-body/display/receipt path before making Piececraft deeper.
+
+3. `emoji-studio-wraith` has clear reference momentum but needs a new RGB extrusion primitive.
+
+Reason:
+- source reference already has `voxels_<res>.csv` files.
+- the conversion concept is clean: RGBA pixels become extruded colored cells.
+- it should stay limited to `${game_map}` surfaces.
+
+4. `chtmgl-wraith` is now the best standards probe for richer Wraith project UI, but still needs the most widget converter work.
+
+Reason:
+- source reference `chtmgl-alpha` uses richer widgets and a `canvas` tag.
+- Wraith is still standardizing on `${game_map}` for now.
+- the Wraith version now has static scene records for panels, button, checkbox, slider, menu, a map-control item, and a preview surface.
+- widget roles need first-class semantic/RGB primitives before it can be considered a true graphical CHTMGL renderer.
+
+## First Rule
+
+All new Wraith validation projects belong under:
+
+`1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/`
+
+Do not create top-level TPMOS projects for these validation targets.
+
+## Modularity Rule
+
+Do not hardcode validation-project bodies, scene records, ops, cube data, map data, widget data, or emoji extrusion data in `wraith-alpha_manager.c`.
+
+Current file-owned Wraith project bridge:
+- `session/wraith_body.txt` controls the body/audit text shown inside the Wraith window.
+- `session/scene.objects.pdl` controls project semantic objects imported into the frame.
+- project assets remain under that project: `pieces/**`, `maps/**`, `assets/**`, `layouts/**`.
+
+Wraith Alpha may discover and host projects. Individual Wraith projects must own their own layouts/state/scene/pieces/maps/assets. If it is not in a file or receipt, it is not project truth.
+
+## Current Step 2/3 Priority
+
+Immediate next implementation checks:
+- Verify live that `wraith-3d-cube` starts with `is_map_control=0`, shows `Control_Map` as a project UI control, and keeps the `${game_map}` surface payload-only.
+- Verify the generic launch/open reset: Wraith project windows should not inherit stale `is_map_control=1` unless a project declares a resume policy.
+- Verify `piececraft-wraith`, `chtmgl-wraith`, and `emoji-studio-wraith` launch with payload-only `${game_map}` records and project UI controls using `target_surface=game_map`.
+- Verify `piececraft-wraith` pseudo-height tile preview: trees/stone/walls should visually differ from grass.
+- Verify `chtmgl-wraith` widget preview: button, checkbox, slider, menu, and preview surface should be visually distinct in GL.
+- Verify `emoji-studio-wraith` extrusion preview and static `Res_8` control.
+- Verify `wraith-ed` launches from the Wraith internal launcher, shows editor controls, and renders its `${game_map}` tile map without body text bleeding through panels.
+- Use `chtmgl-wraith` to continue exploring richer project-local map controls: headerbar, toolbar, side menu, footer, and overlay controls targeting `${game_map}`.
+- Fix CHTMGL/project container fill priority so panels/surfaces fill before text/controls and receipts show fill rect, border rect, z, parent/container, and clip result.
+- Design then implement generic Wraith window move/resize as host-owned behavior: titlebar drag, edge/corner resize handles, file-owned geometry, semantic GL input events, and old/new rect receipts.
+- In both projects, Enter on that nav should switch `[>]` to `[^]`; `ESC` should switch it back.
+- While `[^]` is active, keyboard input should append to that project's `session/history.txt` instead of driving Wraith shell nav.
+- `session/history.txt` exists in the validation projects; use it as the next project-manager input queue.
+- Project-specific cube rotation, Piececraft camera movement, and map updates must be implemented in project-owned managers/ops, not in `wraith-alpha_manager.c`.
+- `wraith-ed` editor behavior must stay in `projects/wraith/wraith-projects/wraith-ed/ops/+x/wraith_project_input.+x` and project files, not in Wraith Alpha.
+
+## Task 1: Finish `wraith-3d-cube`
+
+Path:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/wraith-3d-cube`
+
+Goal:
+- a small cube probe that opens from the Wraith internal launcher.
+- ASCII shows an auditable cube/project body.
+- GL shows a graphical-block/RGB-shape cube using a software cube rasterizer in the RGB converter.
+- cube camera controls should follow Piececraft's camera command model.
+- receipts identify the cube/map region and converted primitives.
+
+Minimum implementation:
+- one Wraith project window.
+- one `${game_map}` cube surface.
+- one cube piece artifact stored as 2D z-slices under `pieces/cube_probe/artifact.txt`, following the existing `piececraft-3d` / `fuzz-op-gl` piece convention.
+- one static or stepped cube frame.
+- one clear ASCII audit projection.
+- one GL projection through the semantic RGB converter.
+
+Acceptance:
+- selecting `wraith-3d-cube` inside Wraith opens real project body content.
+- no top-level project launch is required.
+- GL and ASCII show the same project truth.
+- `current_frame.receipt.pdl` and `gl_display.receipt.pdl` checksums agree.
+
+Current status:
+- project exists.
+- layout has a cube audit body.
+- session state exists.
+- manager loads project body text from `session/wraith_body.txt`.
+- manager loads project semantic scene hooks from `session/scene.objects.pdl`.
+- scene declares `nav=5 action=INTERACT` for the cube `${game_map}` surface.
+- first-pass `zslice_piece` preview exists in `wraith_rgb_daemon.c`, fed by `pieces/cube_probe/artifact.txt`.
+- `zslice_piece` now switches to a projected wireframe cube when `rot=` / `camera=` metadata is present in the project scene label.
+- primitive receipt audit reports source existence/mtime/bytes, declared size, parsed slices/rows, occupied bits, surface bounds, projection mode, camera/rotation consumption, and `final_projection`.
+- live check confirms the cube opens and the `[^]` interact marker can appear.
+- `session/history.txt` records `COMMAND: INTERACT`.
+- project-owned cube input op exists at `ops/+x/wraith_project_input.+x`.
+- cube op consumes `session/history.txt`, stores its offset in `session/history.cursor`, and updates project-owned state/body/scene files.
+- smoke test confirmed `KEY_PRESSED: 68` rotates Y by +5.
+- the current GL cube is now an intermediate projected wireframe when the new RGB daemon is running, not final filled/depth-sorted faces.
+- next verification is a live launch from Wraith and receipt check.
+
+Immediate cube subtasks:
+- Restart/relaunch Wraith RGB daemon so the compiled projected wireframe path is used.
+- Live-test `W/A/S/D/Q/E/I/J/K/L/M/R` while `[^]` is active.
+- Replace projected wireframe with filled/depth-sorted cube faces.
+- Upgrade primitive receipts to include projected face bounds, face count, draw order, and depth range.
+
+## Task 2: Create `piececraft-wraith`
+
+Reference:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/piececraft-3d`
+
+New Wraith project path:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/piececraft-wraith`
+
+Goal:
+- validate Wraith against a z-level/tile/game-map project.
+- prove `${game_map}` + `INTERACT` + `is_map_control` work with map depth and tile metadata.
+- move toward the Piececraft GL-OS screenshot style using RGB-rendered camera-projected 3D blocks.
+- use Piececraft's existing `maps/map_01_z*.txt` + `assets/tiles/registry.txt` + `assets/tiles/*.tile.txt` standard, not a new voxel-only world format.
+
+Minimum implementation:
+- do not clone the whole project first.
+- start with a small z-level map slice.
+- expose tile id, z-level, selected cell, and interaction state in ASCII audit.
+- render a GL map surface through semantic/RGB conversion.
+
+Acceptance:
+- map region is visible in both ASCII and GL.
+- `INTERACT` mode can be entered/exited without breaking desktop nav.
+- receipts expose map bounds, active z-level, and selected/interacted cell.
+
+Current status:
+- project exists.
+- starter layout, map slice, session state, and README exist.
+- manager loads project body/scene records from project-owned session files.
+- scene declares `nav=5 action=INTERACT` for the map `${game_map}` surface.
+- first-pass `tile_zmap` preview exists in `wraith_rgb_daemon.c`, fed by `maps/map_01_z0.txt`.
+- this is currently the best candidate to polish after cube launch is verified.
+- next implementation step is a `voxel_tile`/`game_map` 3D block primitive in the RGB converter using camera mode/position/rotation.
+
+## Task 3: Create `chtmgl-wraith`
+
+Reference:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/chtmgl-alpha`
+
+New Wraith project path:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/chtmgl-wraith`
+
+Goal:
+- validate Wraith against markup-driven widgets and CHTMGL-like layout.
+- prove markup primitives become Wraith semantic scene objects, then RGB/GL shapes.
+- move from text placeholders to widget primitives: panels, buttons, checkbox, sliders, media boxes, menu, and `${game_map}` preview surface.
+
+Minimum implementation:
+- start with a small page, not the whole reference project.
+- include representative controls:
+  - window
+  - header
+  - panel
+  - button
+  - checkbox
+  - slider
+  - image/media placeholder
+  - menu
+  - `${game_map}` surface if canvas-like behavior is needed
+
+Acceptance:
+- controls are visible and indexable in ASCII and GL.
+- GL renders shapes/widgets rather than only terminal glyphs.
+- receipts expose roles, labels, bounds, hit regions, focus regions, and actions.
+
+Current status:
+- project exists.
+- starter layout, session state, and README exist.
+- manager loads project body/scene records from project-owned session files.
+- this needs the most future work: real widget semantic primitives and RGB conversion beyond text placeholders.
+
+## Task 4: Create `emoji-studio-wraith`
+
+Reference:
+- `#.emoji-studio-501.02.05t/&.emoji-studio-solo.02.01`
+
+New Wraith project path:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/emoji-studio-wraith`
+
+Goal:
+- validate Wraith against 2D RGBA/image-to-3D extrusion inside `${game_map}`.
+- preserve Emoji Studio's existing `pieces/<emoji_name>/voxels_<res>.csv` convention.
+- prove image-like content can become RGB-rendered 3D cells without changing normal Wraith UI rendering.
+
+Minimum implementation:
+- sample `pieces/sample_emoji/voxels_8.csv`.
+- ASCII audit body with source path, resolution, and conversion policy.
+- semantic `IMAGE_EXTRUSION role=rgba_extrusion` object.
+- RGB converter primitive that extrudes alpha-visible pixels into camera-projected colored cells.
+
+Acceptance:
+- launcher lists `emoji-studio-wraith`.
+- selecting it opens a specialized Wraith project body.
+- GL receipt identifies source CSV, resolution, visible pixel count, projected bounds, and checksum.
+- normal desktop/window/widget rendering remains unaffected.
+
+Current status:
+- project exists.
+- starter layout, sample CSV, session state, README exist.
+- manager loads project body/scene records from project-owned session files.
+- scene declares `nav=5 action=INTERACT` for the extrusion `${game_map}` surface.
+- first-pass `rgba_extrusion` preview exists in `wraith_rgb_daemon.c`, fed by `pieces/sample_emoji/voxels_8.csv`.
+- next implementation step is a receipt-rich extrusion primitive with visible pixel counts/projected bounds and project-owned edit ops.
+
+## Task 5 (NEW PRIORITY): Create `wrai-text-editor` — Emoji Rendering + FreeType Integration
+
+Reference:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/agy-text-editor` (template structure)
+- `#.emoji-studio-501.02.05t/&.emoji-studio-solo.02.01` (emoji-studio working implementation, use for pattern reference)
+
+New Wraith project path:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith-alpha/wraith-projects/wrai-text-editor`
+
+Goal:
+- Implement lazy-load FreeType emoji rendering with Noto Color Emoji font
+- Prove emoji glyphs render correctly in both ASCII (UTF-8 or fallback) and GL (voxel quads)
+- Validate on-demand emoji cache, config-driven font paths, and per-keystroke input validation
+- Use agy-text-editor project structure as template (multi-layout, manager + ops pattern)
+
+Minimum implementation:
+- Copy agy-text-editor structure (layouts/, manager/, pieces/, project.pdl)
+- Main layout displays text file with emoji content (pieces/document.txt sample)
+- FreeType integration in wraith_rgb_daemon.c (9 functions: load_config, init, decode_utf8, render, cache, bitmap_to_voxel, etc.)
+- Config file: pieces/config/wraith_debug.conf with [emoji_rendering] section
+- manager: standard init-only template, loads pieces/document.txt
+- ops: minimal input handler (navigate/scroll, no editing yet)
+
+Phase sequence:
+1. **Phase 1**: Core emoji infrastructure (FreeType lazy-load, cache, config) → compile clean → live test wrai-text-editor
+2. **Phase 2**: Right-click context menus (window-specific, per-project actions) → context menu in wrai-text-editor (Edit, Copy, etc.)
+3. **Phase 3**: Window-geom verification + overlapping windows (use context menu "Edit Geometry" to trigger settings/window-geom)
+
+Acceptance criteria:
+- wrai-text-editor opens from launcher
+- emoji glyphs render correctly (not blank, not garbled) in both ASCII and GL
+- cache working (repeated emoji renders fast, LRU eviction if cache full)
+- config override works (disable emoji → fallback to [?])
+- no crashes, no orphaned FreeType handles
+
+See: /ZEST-09.00/wraimoji-j10.txt (detailed implementation plan with 9 C functions, project structure, success criteria)
+
+## Task 6: Create `wraith-ed`
+
+References:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/op-ed`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/piececraft-3d`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/piececraft-wraith`
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/chtmgl-wraith`
+
+New Wraith project path:
+- `1.TPMOS_c_+rmmp.0102.0027/projects/wraith/wraith-projects/wraith-ed`
+
+Goal:
+- make Wraith's game editor probe.
+- pull OP-ED functionality into Wraith: sovereign game folders, map loading, glyph placing, game save snapshots, PAL event draft creation, and export manifests.
+- use `${game_map}` and project-local CHTMGL controls so editor behavior is auditable in ASCII and visible in GL.
+
+Current status:
+- project exists and should be launcher-discoverable by `project.pdl`.
+- local `ASSUMPTIONS.md` and `README.md` explain the OP-ED/Piececraft/CHTMGL reference split.
+- `ops/+x/wraith_project_input.+x` exists and was compiled.
+- test input moved the cursor, placed a `T` glyph, wrote `save_latest.txt`, wrote a PAL event draft, and wrote `exports/test-game-01.export.pdl`.
+- startup state was reset to `is_map_control=0`.
+
+Next implementation:
+- add real OP-ED-style file browser/game loader.
+- add PAL block-builder UI instead of single event draft.
+- add z-level map editing and Piececraft camera controls.
+- add export receipt with complete copied-file manifest.
+
+## Required Audit Workflow
+
+Before changing visual layout:
+1. Read `projects/wraith-alpha/session/rgb/current_frame.receipt.pdl`.
+2. Read `projects/wraith-alpha/session/rgb/gl_display.receipt.pdl`.
+3. Confirm `render_checksum_fnv1a64` matches `loaded_rgba_checksum_fnv1a64`.
+4. Inspect object `text_px_*`, `hit_px_*`, and `focus_px_*`.
+5. For cube/map/emoji render work, inspect `SECTION | PRIMITIVES | SOURCE_AND_CONVERSION_AUDIT`.
+6. Only then change coordinates, projection, or styling.
+
+Before changing mouse behavior:
+1. Read `projects/wraith-alpha/session/rgb/gl_input.receipt.pdl`.
+2. Check raw mouse, texture viewport, mapped texture coordinates, and `inside_texture`.
+3. Do not change ASCII mouse offsets to fix GL fullscreen issues.
+
+## Architecture Reminders
+
+- One scene, two presenters.
+- ASCII is an audit/debug projection.
+- GL is a graphical presentation projection.
+- `wraith_gl.c` should stay thin.
+- `wraith_rgb_daemon.c` should own RGB conversion.
+- the manager/session artifacts should own Wraith window/project truth.
+- `${game_map}`, `INTERACT`, and `is_map_control` are the uniform names for now.
+- `piececraft-wraith` and `chtmgl-wraith` are new Wraith project names; do not silently reuse source project names unless the code/project is truly the same.
+- 2D-to-3D conversion is special to `${game_map}` surfaces only:
+  - cube/entity: `pieces/<id>/artifact.txt` z-slice piece.
+  - world/map: `maps/map_01_z*.txt` plus tile registry/extrude.
+  - image/emoji: `pieces/<name>/voxels_<res>.csv` RGBA extrusion.

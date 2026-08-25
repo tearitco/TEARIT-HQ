@@ -1,0 +1,33 @@
+👼️
+dont keep building in here. make it so that a new project starts with nothing but login
+and can fondue download the rest of these projects . move it out the dir. will be ez setup + done
+⭐️
+🎄️
+what is meta tree? 
+
+for "big platforms or even small projects'
+instead of hardcoding hrefs
+we could make something like a trace tree. 
+so we could experiment with where 2 put login instead of commiting 2 hardcoding it . etc. 
+🎁️
+href could just point to a node on metatree instead, and chtpm_parser, would load 
+from there. 
+
+👼️
+⭐️
+🎄️
+🎁️
+🫕️
+make "EVERYTHING" have to be downloaded/installed, even if we autoinstall user login package
+🫕️
+
+
+<i just made project crawler for start> 
+
+
+but we should start it as (pre screen of projects) 
+
+system : <system programs that are in ./  [dont include widgets, or apps ,even tho they are button.sh 's]
+widgets : <system installed widgets (none yet but will be in the &.widgets/ folder > 
+apps : < list of installed apps @.apps/ (none yet) 
+app store < list of apps availiable for install @.app-store

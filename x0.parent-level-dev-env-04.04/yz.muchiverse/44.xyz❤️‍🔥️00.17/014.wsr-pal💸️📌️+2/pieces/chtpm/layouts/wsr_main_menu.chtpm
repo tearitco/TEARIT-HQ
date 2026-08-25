@@ -1,0 +1,19 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+==== W A L L   S T R E E T   R A I D E R ====================+" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${game_map}" />
+    <text label="+============================================================+" /><br/>
+    <br/>
+    <button label="Actions [+]" onClick="ACTIVATE">
+        <br/>
+        ${piece_methods_compact}
+        <br/>
+        <text label="--- Navigation ---" /><br/>
+        <button label="Buy/Sell  " href="pieces/chtpm/layouts/wsr_trade_menu.chtpm" /><button label="List Futures  " href="pieces/chtpm/layouts/wsr_derivatives_menu.chtpm" /><br/>
+        <button label="Financing  " href="pieces/chtpm/layouts/wsr_financing_menu.chtpm" /><br/>
+        <button label="Management  " href="pieces/chtpm/layouts/wsr_management_menu.chtpm" /><button label="DB Search  " href="pieces/chtpm/layouts/wsr_search_menu.chtpm" /><br/>
+        <button label="Back" onClick="BACK" /><br/>
+    </button><br/>
+</panel>

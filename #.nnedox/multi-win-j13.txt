@@ -1,0 +1,728 @@
+TRUE OVERLAPPING MULTI-WINDOW -- ARCHITECTURE PLAN -- 2026-07-13
+Not built yet. Written to resume cold. Companion to context-st8.txt (the
+context-menu/emoji-picker work, now DONE -- see that file's SPRINT
+CLOSE-OUT section) and geom-st8.txt (window geometry, DONE). This is the
+next planned pivot, per direct user instruction: "this was always the
+plan." Confirmed with the user before starting: no known open bugs from
+the last sprint (context-menu basics + emoji picker) remain -- 10 real
+bugs were found and fixed this session, all verified live, see
+context-st8.txt's SPRINT CLOSE-OUT for the full list.
+
+GOAL: multiple windows visible SIMULTANEOUSLY, independently positioned/
+sized, actually overlapping (not just multiple entries in a taskbar) --
+in BOTH renderers, "even in ascii mother" (direct user wording). Without
+breaking anything already built.
+
+
+THE CORE CONSTRAINT, TODAY -- confirmed by reading the code, not assumed
+================================================================================
+This entire codebase currently shows ONE window's content at a time.
+`launch_window_instance()` (wraith-alpha_manager.c) calls
+`minimize_all_open_windows_except(-1)` unconditionally, right at the top,
+every single time ANY window opens:
+
+    static void minimize_all_open_windows_except(int keep_slot) {
+        for (i = 0; i < g_window_count; i++) {
+            if (i == keep_slot) continue;
+            if (g_windows[i].state == WSTATE_OPEN) {
+                g_windows[i].state = WSTATE_MINIMIZED;
+            }
+        }
+    }
+
+This is PRE-EXISTING behavior, not something added this session -- every
+feature built this session (context-menu, resize, close, emoji picker)
+was tested against this single-active-window model and works within it.
+`active_window()` returns exactly one Window* (or NULL); nothing in this
+codebase today has a concept of "a window that's open, visible, but not
+focused."
+
+
+WHAT ALREADY WORKS IN OUR FAVOR (checked before planning, not assumed)
+================================================================================
+- Per-window x/y/width/height is ALREADY tracked and ALREADY correctly
+  applied in both renderers (Phase A, geom-st8.txt, fully done and
+  live-tested) -- the geometry PLUMBING for "windows can be positioned/
+  sized independently" already exists. What's missing is showing more
+  than one at once, not knowing where each one goes.
+- GL's pixel compositor (wraith_rgb_daemon.c) is ALREADY z-aware in a way
+  that should need ZERO core changes for multi-window, confirmed by
+  reading both mechanisms directly:
+    - sort_objects() sorts ascending by z, then draw_object() draws in
+      that order -- HIGHER z draws LAST, i.e. on top. Opaque rect fills
+      (fill_rect_px(), used for every window/panel background) already
+      correctly occlude whatever a lower-z object painted underneath.
+      This IS window overlap, mechanically, already working -- it's just
+      never been fed more than one window's worth of objects at once.
+    - hit_test_semantic_action() (wraith_gl.c) already picks the
+      HIGHEST-z match among all objects at a clicked pixel
+      (`if (z >= best_z) { best_z = z; ... }`). Click-through-to-the-
+      right-window-on-top is ALREADY the existing behavior, contingent
+      only on the manager emitting proper z values per window.
+  Conclusion: Phase 2 below (GL) is INTEGRATION work (get the manager to
+  emit multiple windows' objects with correct z), not new rendering
+  engine work. Confirm this holds under real testing, but it's the
+  lowest-risk phase by a wide margin.
+- ASCII is the opposite story -- see THE HARD PART below.
+
+
+THE HARD PART -- ASCII's fundamental mismatch, and why it's genuinely hard
+================================================================================
+build_desktop_shell_markup() is a pure LINEAR STRING BUILDER. Content is
+appended sequentially; "position" is expressed only as leading spaces and
+`<br/>` line breaks (append_with_origin_offset()'s whole job). There is
+no 2D buffer, no concept of "this character is at row 12, column 40" that
+could be independently overwritten by a different window's content at
+the same coordinate. Two windows' text CANNOT currently occupy the same
+conceptual space and have one visually cover the other -- the model
+doesn't support it at all today, not even partially.
+
+The obvious fix -- "build a 2D character grid, blit each window into it
+back-to-front, serialize row by row" -- has a real trap: chtpm_parser.c's
+markup is not plain text. It's an embedded-tag stream
+(`<button label="X" onClick="Y" />`, `<cli_io .../>`, etc.) that gets
+tag-parsed by scanning for '<' characters IN ORDER. A naive per-CHARACTER
+grid blit would happily slice a `<button ... />` tag in half if a
+front window's rectangle boundary happens to fall in the middle of it,
+or if two windows' tags land in overlapping column ranges on the same
+row -- producing corrupted, unparseable markup fragments. This is NOT a
+hypothetical: it's exactly the bug class found and fixed THIS session in
+context-menu's own body (SPRINT CLOSE-OUT item 4) -- wraith_body.txt
+lines split mid-tag across a 256-byte fgets() boundary produced literal
+"<br/>"/"onClick=" text on screen. A grid-blit compositor without tag
+awareness would reproduce that exact bug constantly, by design, for
+any overlapping window arrangement.
+
+PRAGMATIC PROPOSAL (not yet decided, but this is the recommended
+starting shape): ROW-LEVEL ownership, not cell-level, for phase 1.
+  - For each output row, determine which window "owns" it: if the row
+    falls within exactly one open window's y-range, that window's own
+    content (with its existing column-offset padding, unchanged from
+    today's append_with_origin_offset()) is used as-is, tags intact,
+    zero new risk.
+  - If a row falls within MULTIPLE windows' y-ranges (true row-level
+    overlap), the FRONTMOST (highest z-order) window's content for that
+    row wins WHOLESALE -- the back window's content for that specific
+    row is simply not shown, rather than attempting to splice the two
+    at a column boundary. This is a real, visible limitation (a
+    partially-obscured background window won't show the sliver of
+    itself that peeks out beside a foreground window on a shared row --
+    it'll just be blank/background-color there instead of showing
+    through) but it is SAFE: it can never corrupt a tag, because a tag
+    is never split -- only entire rows are chosen or discarded.
+  - Column-level splicing (true per-character overlap, showing the
+    actual sliver of a partially-covered window) is a real, harder,
+    OPTIONAL phase 2 refinement -- explicitly deferred, not attempted in
+    the first pass. Most realistic window arrangements (a picker in one
+    corner, an editor taking most of the screen) will look correct even
+    with row-level-only ownership; deep interleaved overlap is the rare
+    case this simplification visibly degrades, and even then it fails
+    SAFE (blank space, not corrupted markup) rather than fails LOUD.
+
+
+PROPOSED DATA MODEL CHANGES
+================================================================================
+- New field on Window: `int z_order;` (higher = more front). Not tracked
+  today at all -- WSTATE_OPEN/MINIMIZED/CLOSED plus g_active_window_slot
+  currently encode everything needed for single-window mode, but nothing
+  today expresses "which of several simultaneously-visible windows is on
+  top."
+- New function: `bring_window_to_front(Window *w)` -- sets w->z_order to
+  1 + the current maximum among all open windows, called on focus change
+  (launch, click-to-focus, taskbar activation). Replaces
+  minimize_all_open_windows_except(-1)'s role in launch_window_instance()
+  -- a newly launched/focused window comes to the front, but siblings
+  stay OPEN (visible), not MINIMIZED.
+- `active_window()`'s CONTRACT DOES NOT CHANGE: it still means "the
+  FOCUSED window" (highest z_order among open windows, equivalently).
+  Every existing feature that calls active_window() today (INTERACT mode,
+  close_active_window(), context-menu's resolution, resize/close/emoji
+  DESKTOP_ACTION handlers, digit-nav, etc.) keeps working completely
+  unmodified -- multi-window is ADDITIVE (more windows visible) on top of
+  an unchanged single-focus model, not a replacement of it. This is the
+  single most important compatibility guarantee to preserve.
+- WSTATE_OPEN/MINIMIZED/CLOSED semantics UNCHANGED. "Open" already means
+  "exists, not closed, potentially visible" -- multi-window just means
+  more than one OPEN window can be simultaneously RENDERED, which today's
+  states already technically allow (nothing in the WSTATE enum itself
+  says "and only one at a time"), it's launch_window_instance()'s own
+  minimize-everything-else call that currently enforces that, not the
+  state model.
+
+
+PHASES
+================================================================================
+
+PHASE 0 -- feature flag, before touching any rendering
+  Add `[desktop] multi_window_enabled` to pieces/config/wraith_debug.conf
+  (same config-file convention already used for
+  `[emoji_rendering] font_path`, confirmed precedent this session).
+  Default 0 (off) until proven. Every phase below is gated behind this
+  flag being on -- when off, launch_window_instance() and both renderers
+  behave EXACTLY as they do today, byte-for-byte, zero risk to anything
+  already shipped. This is the concrete mechanism for "without breaking
+  anything": a bad multi-window build is one config edit away from fully
+  reverting to known-good single-window behavior, no code rollback
+  needed.
+
+PHASE 1 -- DONE, 2026-07-13. data model + focus mechanics
+  1. Added Window.z_order, bring_window_to_front() (sets z_order to
+     1+max among all windows, forces state=WSTATE_OPEN, directly sets
+     g_active_window_slot -- see wraith-alpha_manager.c's own comment on
+     that function for why direct-set instead of relying on
+     recompute_active_window_slot() picking it up).
+  2. Made recompute_active_window_slot() z_order-aware (picks the OPEN
+     window with the HIGHEST z_order, not just the first found) -- a
+     strict superset of today's behavior, confirmed safe for flag-off
+     mode since z_order stays 0 for everyone there (ties broken by
+     first-found, identical to before).
+  3. launch_window_instance() gated as planned.
+  4. Click-to-focus / STILL OPEN item 3 above: NOT done yet, deferred to
+     when Phase 2/3 rendering exists (can't meaningfully click a window
+     that isn't drawn yet).
+
+  THREE separate single-window enforcement points found live, not one --
+  this doc's original plan only knew about
+  minimize_all_open_windows_except(). Two more were found by testing
+  Phase 1 with actual evidence (registry state) instead of trusting the
+  code read alone -- exactly the discipline this session has repeatedly
+  needed:
+    a. activate_taskbar_slot() -- called minimize_all_open_windows_except(-1)
+       unconditionally on its own, completely separate from
+       launch_window_instance(). Gated the same way.
+    b. normalize_registry() ITSELF -- the real one, found last and hardest
+       to spot: a loop that walks all windows in ARRAY ORDER and force-
+       minimizes any SECOND (or later) window it finds already in
+       WSTATE_OPEN, independent of z_order entirely. This runs
+       unconditionally from compact_registry(), from
+       minimize_all_open_windows_except() itself, AND directly inside
+       launch_window_instance() -- meaning even after (a) and
+       launch_window_instance() were both correctly gated, a second
+       window would STILL get minimized by THIS loop before
+       bring_window_to_front() (called after normalize_registry() in
+       launch_window_instance()) ever ran on it, and even then that only
+       fixed the window bring_window_to_front() was called ON, not
+       whichever OTHER window this loop had already minimized first.
+       Confirmed live: two windows launched in sequence, expecting both
+       OPEN, kept showing exactly one open (whichever was MOST RECENT)
+       no matter which of the first two points were fixed, until this
+       third one was found and gated too.
+
+  TWO off-by-one bugs, same class as this session's earlier ones (see
+  context-st8.txt SPRINT CLOSE-OUT item 6), found the SAME way -- a
+  debug canary log line that itself didn't appear turned out to be a
+  deploy-loop verification issue (see below), and once THAT was fixed,
+  the real bug (multi_window_enabled() itself) was exposed immediately:
+    - multi_window_enabled()'s strncmp()/pointer-offset used 22 for a
+      prefix ("multi_window_enabled=") that's actually 21 bytes
+      (`printf '...' | wc -c` confirmed, same verification method used
+      for the insert_emoji prefix bug). The flag read as 0 (off) no
+      matter what the config file said, for the same "looks right on
+      code review, silently wrong at the byte level" reason as before.
+    - Also worth recording as a process lesson, not a code bug: several
+      early attempts to verify this appeared to fail because a
+      gcc-to-/tmp + separate cp deploy step wasn't reliably landing
+      before the next test ran (a "Text file busy" error on one cp,
+      silent no-op chained commands on another) -- switched to
+      compiling DIRECTLY to the target binary path for verification
+      steps, which is the more trustworthy pattern when debugging
+      exactly this class of "my change isn't taking effect" confusion.
+
+  FINAL VERIFIED STATE: flag on -- launching two different projects in
+  sequence leaves BOTH at state=open in the registry simultaneously,
+  focus correctly on the most-recently-launched one. Flag off -- exact
+  original single-window behavior confirmed unchanged (first window
+  minimized, second open). Both confirmed via desktop_ui_state.txt's
+  registry, fresh manager restart between tests, no leftover state.
+
+PHASE 2 -- DONE, 2026-07-13. GL multi-window rendering
+  Built DIFFERENTLY from the original plan -- NOT a parametrized reuse of
+  the focused window's own emission code (window_chrome_row/panel/
+  emit_embedded_line_objects/chrome icons), on reflection during
+  implementation: that code assigns real nav= numbers throughout, which
+  a background window must never do (nav-index stays scoped to the
+  focused window only). Instead, a new, separate, deliberately simpler
+  function -- emit_background_window_objects() -- renders each
+  non-focused OPEN window's frame + title + a plain-text-only body
+  preview (embedded `<...>` markup lines skipped, not rendered as raw
+  text -- background window content isn't individually interactive in
+  this pass). The focused window keeps using 100% of its existing code,
+  completely untouched.
+
+  A REAL BUG found and fixed before this was even visually correct:
+  the first version computed background windows' z as NEGATIVE
+  (z_base = -100000 + z_order*100), reasoning "just needs to sort below
+  the focused window." Wrong -- wraith_root itself (the whole-desktop
+  background) is an OPAQUE FULL-SCREEN FILL at z=1, so anything with
+  z < 1 gets silently painted over and made invisible by the desktop's
+  OWN background, not by the focused window. Found by directly reading
+  draw_object()'s handling of tag=window before assuming the negative-z
+  idea would work, not by testing it and being surprised. Fixed: the
+  gap between desktop_banner (z=2, untouched) and the focused window's
+  own hardcoded window_chrome_row (z=9, untouched) leaves exactly
+  z=[3,8] as safe "above desktop background, below focused window"
+  space. Background windows get 2 z-levels each (panel, then title+body
+  sharing one level) within that range, ranked by z_order so more-
+  recently-unfocused windows sit visually in front of older ones -- a
+  real, documented limit of ~2-3 simultaneous background windows before
+  running out of room in that narrow band (not attempted to solve
+  further this pass).
+
+  New click-to-focus action: DESKTOP_ACTION:focus_window:<id>, put on
+  every object emit_background_window_objects() emits (panel, title,
+  body preview alike) -- clicking ANYWHERE on a background window's
+  visible rect focuses it, full stop, no pass-through interaction (the
+  simpler of the two STILL OPEN options, chosen for this pass). Prefix
+  length (28) verified via `printf '...' | wc -c` BEFORE writing the
+  strncmp/pointer-offset, not after -- this exact off-by-one class has
+  already bitten this session twice.
+
+  wraith_rgb_daemon.c: confirmed ZERO changes needed, as predicted.
+  hit_test_semantic_action(): confirmed ZERO changes needed for the code
+  itself, but its END-TO-END click path could NOT be live-tested from
+  here -- real GL clicks are hit-tested INSIDE wraith_gl.c's own mouse()
+  callback (a separate GLUT process) before a MOUSE_MOVE command is ever
+  queued, and there's no way to drive an actual GLUT window from this
+  environment. What WAS verified directly: (a) the downstream handler
+  (DESKTOP_ACTION:focus_window:<id> in route_command()) correctly
+  focuses the target window while leaving both windows open, confirmed
+  by injecting that command directly; (b) the actual RASTERIZED PIXELS
+  at a background window's visible (non-overlapped) region show its
+  real fill/title colors (#0F1620/#1A2530), not the desktop background
+  or anything else -- confirmed by reading current_frame.rgba32 bytes
+  directly, same technique used earlier this session for the chrome-icon
+  positioning bug. The ONE untested link is real-mouse-click ->
+  hit_test_semantic_action() -> this specific new action string, for a
+  human to confirm live.
+
+  FINAL VERIFIED STATE: two windows open (piececraft-wraith background,
+  wrai-text-editor focused and narrowed to 60 cols for this test only,
+  reverted after), pixel-checked at column 70 (past the focused window's
+  edge) -- shows the background window's title/body colors exactly,
+  confirming genuine visible overlap, not just correct data files.
+
+PHASE 3 -- ASCII multi-window rendering (the hard, novel part)
+  1. New row-ownership compositor (see PRAGMATIC PROPOSAL above) --
+     genuinely new code, not an extension of append_with_origin_offset().
+     Lives in wraith-alpha_manager.c alongside build_desktop_shell_markup(),
+     probably as a new function that CALLS a per-window body-generation
+     helper (refactored out of today's build_desktop_shell_markup(), which
+     currently generates ONE window's body inline) once per open window,
+     then composites the results by row-ownership before handing the
+     final stream to the SAME output path chtpm_parser.c already consumes
+     unchanged.
+  2. chtpm_parser.c: expected to need ZERO changes -- it receives a
+     normal linear tag-stream either way, multi-window compositing is
+     invisible to it by design (confirm this holds; the whole point of
+     doing compositing UPSTREAM of this file is that it shouldn't need
+     to know windows can overlap at all).
+  3. Live-test: same two-window scenario as Phase 2, but in ASCII mode --
+     confirm both windows' content appears, confirm row-level occlusion
+     looks reasonable (and confirm the KNOWN limitation -- no column-level
+     splicing -- degrades safely, not with corrupted tags, on a
+     deliberately-overlapping test case).
+
+PHASE 4 -- polish / explicitly deferred, do not bundle into the above
+  - Column-level (true cell) compositing for ASCII, if row-level proves
+    visually unsatisfying in practice.
+  - Drag-to-move / drag-to-resize by mouse (independent of this pivot --
+    geometry is already settable via window-geom's nudge buttons; live
+    dragging is a separate, later feature, not required for "windows can
+    overlap").
+  - Visual distinction between focused/unfocused window chrome (dimmer
+    border color for background windows, matching real desktop
+    conventions) -- cheap, nice-to-have, not required for correctness.
+
+
+STILL OPEN -- decide while implementing, don't guess silently
+================================================================================
+- Does clicking a background window's visible sliver ONLY focus it
+  (bring to front, first click "just" raises the window, like some real
+  desktop conventions), or does the SAME click ALSO register as input to
+  whatever control is under the cursor (focus + interact in one click,
+  like others)? Recommend the latter (one click does both) for
+  simplicity, matching how this codebase's EXISTING single-click-does-
+  everything model already works everywhere else -- but not decided.
+- Nav-index (digit-select cycling) scope: STRONGLY recommend it stays
+  scoped to ONLY the currently-focused window's own controls, not a
+  combined number space across every visible window's controls. Simpler,
+  matches standard OS Tab-cycling behavior (Tab cycles within the active
+  app), and avoids constant renumbering as focus/z-order changes. Treat
+  as decided-by-default unless a concrete reason emerges not to.
+- Taskbar behavior once windows can overlap: does clicking a taskbar
+  entry for an already-OPEN-and-visible (not minimized) window just
+  bring it to front (no state change), or does it toggle
+  minimize/restore like it may today? Check current taskbar-click
+  handling (activate_taskbar_slot()) before assuming either way.
+- Exact z_order arithmetic for GL (z_order * 100 + existing offset,
+  above) is a placeholder -- confirm the existing per-object z range
+  within one window's own emission (chrome vs body vs debug rows, etc.)
+  actually fits within a 100-wide band before locking this in; adjust
+  the multiplier if not.
+
+
+TESTING DISCIPLINE (carried forward from this session's own standing rules)
+================================================================================
+- Live-test every phase with real evidence (registry state, objects.pdl
+  content, actual rendered frames) before calling it done -- this
+  session's entire second half was finding bugs that looked correct on
+  code review alone (the off-by-one, the missing render triggers, the
+  build-script gap) and were only caught by actually running the thing.
+  Multi-window compositing has MORE surface area for exactly this kind
+  of bug, not less.
+- Re-verify EVERY feature built this session (resize, close, emoji
+  picker, right-click, Ctrl+Q, the 5th chrome icon) still works correctly
+  once windows can be simultaneously visible -- these were all built and
+  tested exclusively in the single-window world; multi-window changing
+  what "the active window" visually looks like alongside others is
+  exactly the kind of change that could silently break an assumption
+  none of that code needed to make until now.
+- GL and ASCII must still mirror each other for everything that ISN'T
+  the explicitly-acknowledged ASCII row-level-only limitation above --
+  don't let that one documented gap become an excuse to skip the
+  mirroring discipline for anything else.
+
+
+PHASE 3 -- DONE, 2026-07-13
+================================================================================
+Built the row-indexed compositor exactly as designed: desktop_rows[64][700]
+absolute row buffer, populated in order (top border -> background windows'
+rank-staggered title+body rows -> the focused window's own unchanged raw
+markup via split_and_place_rows() -> taskbar/bottom border), serialized to
+the same <br/>-joined format chtpm_parser.c already expects. body_row_cap
+(the height/row-budget system the user explicitly chose to build in full,
+over the smaller "switcher strip" alternative) is wired and dormant-by-
+construction for every existing project (only activates if a project.pdl
+explicitly sets WINDOW.height > 0, which none currently do).
+
+Three real, deterministic bugs found by live-testing (not caught by code
+review), all fixed and re-verified:
+
+1. read_gui_state_value()'s `char line[512]` (a PRE-EXISTING function, not
+   new this phase) silently truncated any gui_state.txt "key=value" line
+   whose value exceeded ~500 bytes -- fgets() just stops at the buffer
+   limit, no error, no warning. wrai-text-editor's editor_map (an 8-row
+   emoji grid, 569 value bytes) was the first value in this codebase to
+   ever cross that line, and got cut mid-tag, corrupting ASCII output with
+   a stray "<te" fragment where the second emoji row should have been.
+   Confirmed via exact byte-offset math (truncating at byte 500 of the
+   value reproduces the exact corruption seen) and confirmed it was NOT a
+   race/torn-read (stable across repeated re-renders against unchanged,
+   verified-clean source data). Affects the flag-OFF path identically
+   (same render_project_layout_body() -> substitute_layout_line() ->
+   read_gui_state_value() call chain) -- a latent bug this session's
+   multi-row emoji content happened to be the first to expose, not
+   something Phase 3 introduced. Fixed: line[512] -> line[4096] (the
+   largest `out` buffer any caller passes is 2048; 4096 gives headroom
+   without hand-syncing the two).
+
+2. The row-compositor block appended its own rows into `out` without
+   resetting it first -- but `out` already had the desktop top border
+   written into it by the unconditional append_frame_border() call earlier
+   in build_desktop_shell_markup() (the flag-OFF path relies on that call
+   staying there). Result: a duplicate border row (rows 0 AND 1 both showed
+   "+-WRAITH DESKTOP GUI-+") whenever no background window happened to
+   overwrite the collision. Fixed with `out[0] = '\0';` at the top of the
+   flag-ON block, since the compositor rebuilds its own row 0 from
+   desktop_rows[] anyway.
+
+3. composite_background_window_rows() placed a background window's title
+   at `row_offset` directly (0 for every project that has never used
+   window-geom's Apply -- i.e. nearly all of them), which collided with
+   desktop_rows[0] (the border) AND, with two+ background windows, with
+   EACH OTHER (confirmed live: with piececraft-wraith and wrai-text-editor
+   both backgrounded, only the array-later window's title survived --
+   the earlier one's row got silently overwritten). Fixed two ways:
+   row_offset now gets "+1" unconditionally (never targets row 0, matching
+   the focused window's own "content_start_row = 1 + row_offset"
+   convention), AND a `rank` parameter (identical z_order-descending,
+   array-order-tiebreak ranking write_semantic_projection_files() already
+   computes for GL's z_base) staggers each background window into its own
+   3-row band (title + 2 body-preview rows) so simultaneous background
+   windows no longer collide with each other. Same pragmatic, documented
+   limit as GL's z_base [3,7] range: this comfortably separates a
+   handful of background windows, not an unlimited stack.
+
+Verified live, in this order:
+- Single window, flag ON: no duplicate border, content starts at row 1
+  immediately (bug #2's fix confirmed).
+- Two windows (piececraft-wraith backgrounded, wrai-text-editor focused),
+  flag ON: both emoji rows intact, no "<te" corruption (bug #1's fix
+  confirmed); background window's title correctly collides with and loses
+  to the focused window's own content at row 1 -- confirmed this is the
+  DESIGNED "focused window always wins" behavior, not a bug, by then
+  temporarily setting piececraft-wraith's project.pdl WINDOW.window_y to
+  25 (past wrai-text-editor's ~19 content rows) and relaunching fresh:
+  the background window's title AND body-preview rows (each carrying a
+  working DESKTOP_ACTION:focus_window:<id> click target) appeared
+  correctly at rows 26-28, below the taskbar and bottom border, proving
+  genuine row-level visibility works whenever two windows' content
+  doesn't actually occupy the same rows -- matching real desktop-OS
+  z-order semantics (identically-positioned/sized windows fully occlude;
+  offset ones show through). Reverted window_y back to 0 immediately
+  after, same discipline as Phase 2's own temporary-geometry test.
+- Flag OFF, same two-window launch sequence, immediately after all three
+  fixes: single window rendered, the other two auto-minimized, 24-line
+  output identical in structure to this codebase's pre-Phase-3 format --
+  confirms zero regression to the existing single-window path.
+
+Not independently re-verified this pass (inherited risk, not a new gap):
+GL's Phase 2 click-to-focus real-mouse-input path was already flagged as
+untestable in this environment (no way to drive an actual GLUT window) --
+still true, still needs human verification.
+
+All three multi-win-j13.txt phases (1: data model/z_order, 2: GL
+rendering, 3: ASCII row compositor) are now DONE and live-tested. The
+feature flag defaults to 0 (off) in pieces/config/wraith_debug.conf as
+shipped -- flip multi_window_enabled=1 to turn true overlapping
+multi-window on for both renderers.
+
+
+PHASE 4a -- DRAG-TO-MOVE: DONE, 2026-07-13
+================================================================================
+Scope for this pass (explicit user choice among 3 options): drag-to-MOVE
+only, both renderers, reusing window-geom's existing persistence pattern.
+Drag-to-RESIZE is a separate, not-yet-started follow-up (Phase 4b).
+
+ARCHITECTURE FINDINGS (reviewed live, since context had been compacted --
+none of this was previously documented in multi-win-j13.txt):
+- WRAITH_RGB_ARCHITECTURE.md (2026-07-06) describes an older
+  character-grid rasterization model. The CURRENT wraith_rgb_daemon.c
+  reads typed OBJECT entries (write_semantic_projection_files()'s own
+  output) and draws them directly (rects, text, z-order) -- the doc is
+  stale for this, not re-verified against every claim it makes, but the
+  parts touched this pass (mouse forwarding, cell-size constants) were
+  read from the live source, not the doc.
+- GL renders everything via wraith_rgb_daemon.c's own RGB rasterization
+  into current_frame.rgba32; wraith_gl.c only blits that texture and
+  hit-tests clicks against current_frame.objects.pdl. Per direct user
+  correction: GL should therefore draw any future cursor INTO that
+  rasterized buffer if it ever gets one, not via glutSetCursor() (a
+  native-OS overlay outside this pipeline) -- GL gets NO rendered cursor
+  in this pass either way, see below.
+- Mouse events reach wraith-alpha_manager.c's handle_mouse() from TWO
+  independent sources sharing one command stream
+  (projects/wraith-alpha/session/history.txt), with no prior tag telling
+  them apart:
+  - GL (wraith_gl.c): pixel coordinates (0..WIDTH/HEIGHT texture space),
+    continuous via glutMotionFunc while a button is held.
+  - ASCII (chtpm_parser.c, the SHARED generic parser every chtpm project
+    uses, not wraith-alpha-specific): raw terminal character-cell
+    coordinates from the SGR mouse protocol (\x1b[<Pb;Px;PyM/m), gated
+    off by default per-terminal until a project requests it via
+    pieces/mouse/mouse_enabled.lock. chtpm_parser.c does its own local
+    click hit-testing AND unconditionally forwards every event onward in
+    the identical "COMMAND: MOUSE_MOVE btn x y" shape GL uses.
+  - Neither side previously signalled press vs. release vs. held-motion
+    -- all three looked identical on the wire, even though GL already
+    tracks GLUT_DOWN/GLUT_UP internally and ASCII's SGR parser already
+    reads the M/m terminator byte, both just discarded it before this
+    pass. The pre-existing camera-drag feature (g_drag_anchored) never
+    needed real release detection because it's bounded by a separate
+    mode toggle (map-control/interact), not by the mouse stream itself.
+
+DECISIONS (each surfaced to the user rather than assumed, since each had
+a real correctness/cost tradeoff):
+1. Coordinate-space tagging: chtpm_parser.c now sends "MOUSE_MOVE_CELL"
+   instead of "MOUSE_MOVE" ONLY when project_id starts with
+   "wraith-alpha" (covers the desktop shell and any nested embedded-
+   window standalone page) -- every other chtpm project (mouse-test,
+   etc.) is untouched, still gets plain "MOUSE_MOVE". Verified
+   mouse-test_manager.c's sscanf only reads 3 fields and safely ignores
+   trailing ones before relying on that safety.
+2. Release detection: real down/up state added to the wire format
+   (rejected an initial timeout-based recommendation after the user
+   pushed back on it -- correctly: both renderers already have the real
+   bit sitting right there, GL's own g_mouse_button/GLUT_DOWN/GLUT_UP and
+   ASCII's own SGR M/m terminator, timeout would have been strictly worse
+   for no real savings). New 4th field, is_press (1=down/held,
+   0=released), threaded through keyboard_input.c's writeMouseCommand(),
+   chtpm_parser.c's MOUSE_EVENT parsing + handle_mouse() + its own
+   outgoing COMMAND line, wraith_gl.c's emit_mouse_event(), and
+   wraith-alpha_manager.c's handle_mouse(). Backward-compatible: every
+   sscanf that reads the new 4-field shape falls back to a 3-field parse
+   with is_press defaulted to 1 if an old-format line is ever seen.
+3. Cursor glyph: ASCII gets one ("+" replaces the title label's leading
+   space while that specific window is being dragged -- %c substitution,
+   not an extra %s field; an earlier version doubled the leading space
+   even when NOT dragging, caught live by comparing the row's markup
+   before/after). GL gets NONE in this pass, per direct user correction:
+   GL doesn't do native-cursor tricks, it would need to draw the glyph
+   INTO the RGB rasterizer's own buffer to be consistent with how
+   everything else renders, and that's real, not-yet-built work, not a
+   place for a native-cursor shortcut.
+
+IMPLEMENTATION:
+- Title bar hit rect is read directly from write_semantic_projection_files()'s
+  own window_chrome_row emission (x=1+col_offset y=2+row_offset
+  w=frame_content_width h=1), not re-derived/guessed, so it can never
+  drift out of sync with what GL actually draws.
+- Coordinate unification: handle_mouse() converts GL's pixel (x,y) to
+  character-cell units by dividing by WRAITH_CELL_W/H (8/16, matching
+  wraith_rgb_daemon.c's glyph size and this file's own meta emission);
+  ASCII's already-cell (x,y) is used as-is. Both then hit-test against
+  the exact same title-bar rect and drive the exact same drag state.
+  g_window_drag_active/_slot/_anchor_cell_x/_y/_orig_x/_y (new globals):
+  the anchor point AND the window's original x/y are both captured once
+  at drag start, so every subsequent frame computes an ABSOLUTE new
+  position from the cumulative delta since the anchor, not an
+  incremental delta from the previous frame -- avoids integer-division
+  rounding drift accumulating over a long drag.
+- Persistence: write_pdl_value() reimplemented byte-for-byte from
+  window-geom's own copy (settings/window-geom/ops/src/wraith_project_input.c)
+  -- not shared via a header (TPMOS convention: no shared headers, every
+  .c is a self-contained island, same constraint WRAITH_RGB_ARCHITECTURE.md
+  documents for CHROME_CONTENT_START). persist_window_geometry_to_pdl()
+  calls it once, at drag release, writing to the SAME project.pdl WINDOW
+  section load_window_geometry_from_pdl() already reads at every launch
+  -- a moved window keeps its new position across a relaunch or manager
+  restart, not just for the live session.
+
+ONE REAL BUG FOUND LIVE (not caught by code review): the title-bar
+hit-test was originally gated on `!read_project_map_control()`.
+read_project_map_control() reads is_map_control, a STATIC per-project
+CAPABILITY flag ("this project's body is a live camera-drag surface",
+always 1 for piececraft-wraith and its siblings) -- NOT a live "interact
+mode is currently engaged" toggle, despite the pre-existing camera-drag
+code's own comment describing it as mode-gated. Gating on its negation
+silently made every map-control project's window permanently
+undraggable, even from a press squarely on the title row -- confirmed
+live: a full piececraft-wraith drag sequence produced zero movement and
+zero pdl writes. Fixed by checking the title-bar hit-test unconditionally
+first (title sits above the map body regardless of what the body
+supports, so a title-row press is never a camera-orbit gesture) and only
+falling through to the existing camera-drag logic for events the
+title-bar check didn't already claim. Re-verified after the fix: title
+drag works AND camera-drag on the map body still fires its own
+MOUSE_DRAG entries correctly (regression-checked, not just assumed).
+
+VERIFIED LIVE, in this order, via direct command injection (this
+environment can't drive a real GLUT window or a real terminal SGR
+sequence, same limitation flagged for Phase 2's click-to-focus):
+- ASCII-space (MOUSE_MOVE_CELL) drag on piececraft-wraith: press at
+  cell(5,2) [hits title], move to cell(15,5), release -- window.x/y went
+  0,0 -> 10,3 exactly as predicted, persisted to project.pdl immediately
+  on release.
+- A second ASCII-space drag from the window's NEW position (title bar
+  correctly tracked to its new row/col after the first move, not stale)
+  -- press at cell(15,5) [now hits the moved title], move to cell(20,8),
+  release -- persisted 15,6 exactly as predicted; mid-drag markup showed
+  "+ PIECECRAFT WRAITH #2" (glyph present), post-release markup showed
+  the plain title again (glyph correctly cleared).
+- GL-space (plain MOUSE_MOVE, pixel coords) drag from that new position:
+  press at pixel(140,130) [140/8=17, 130/16=8, hits the title],
+  move to pixel(220,190), release -- persisted 25,9, matching
+  (17->27, 8->11) delta (10,3) applied to (15,6) -- confirms the
+  pixel-to-cell conversion is correct, not just the already-cell path.
+- Camera-drag regression: a body-area click (well below the title row)
+  on piececraft-wraith still produced fresh MOUSE_DRAG history entries
+  and did NOT move the window (x/y stayed unchanged) -- confirms the
+  restructured gating didn't break the pre-existing feature it now sits
+  in front of.
+- wrai-text-editor (a NON-map-control project, no prior WINDOW section
+  in its project.pdl at all): a drag correctly exercised
+  write_pdl_value()'s "key not found, append a new line" path (not just
+  "key found, replace" as piececraft's test exercised) -- persisted
+  window_x=7/window_y=2 as a freshly-appended WINDOW section. Reverted
+  after (removed the section entirely, matching the file's original
+  state, not just zeroed the values) -- same test-geometry discipline as
+  every other phase's live verification this session.
+- Cosmetic regression caught and fixed mid-pass: the first glyph
+  implementation added an extra %s field instead of substituting into
+  the existing one, doubling the title's leading space even when NOT
+  dragging. Caught by comparing a normal (non-drag) title row's markup
+  before and after the drag feature landed, fixed to a %c substitution,
+  re-verified the row is back to a single leading space when idle.
+- Ordinary (non-drag) desktop flow re-verified after all of the above:
+  launching a window, SET_ACTIVE clicks, normal rendering -- all
+  unaffected, 24-line single-window output shape unchanged.
+
+NOT YET DONE / OPEN:
+- Phase 4b (drag-to-RESIZE, dragging a side/corner) -- not started.
+  Needs its own hit-test rects (edges/corners, not just the title band)
+  and almost certainly a different persisted pair (window_width/height,
+  same write_pdl_value() call, different keys) plus a resize-specific
+  ASCII glyph choice (deferred, not decided).
+- GL's real-mouse-input path (a physical drag in an actual GLUT window)
+  remains genuinely untested by me, same standing gap as every other
+  mouse-driven feature this session -- everything above was verified via
+  direct command injection matching the exact wire format each renderer
+  produces, not a live GLUT session.
+- keyboard_input_linux.c has its own, now-STALE duplicate of
+  writeMouseCommand()/SGR parsing (2-arg signature, missing is_press) --
+  confirmed via orchestrator.c that only keyboard_input.c (not the
+  _linux variant) is ever actually spawned, so this is dead code, not a
+  live inconsistency, and was deliberately left untouched rather than
+  fixed for hygiene on a file nothing runs.
+
+
+PHASE 4a FOLLOW-UP FIXES -- 2026-07-13, found from real (not injected)
+GL usage
+================================================================================
+User tested Phase 4a's drag-to-move in an actual running GL window
+(not command injection) and reported three real problems, all now
+fixed. Full root-cause writeups live in
+PITFALLS_ACTIVE_2026-03-18.txt entries 59 and 60 (referenced here, not
+duplicated):
+
+1. "Dragged down, couldn't drag back, mouse got offset." Root cause:
+   GL's mouse()/motion() only report events while the cursor is inside
+   the texture viewport -- if the drag's return path (or its release)
+   happened to land outside that rect even briefly, the event was
+   silently dropped, including GLUT_UP itself. A dropped release left
+   g_window_drag_active stuck true forever; every later click anywhere
+   got misread as "continue this stale drag" (the "offset" symptom).
+   Fixed: GLUT_UP now ALWAYS fires (map_window_mouse_to_texture_clamped()
+   clamps into the valid range instead of refusing to map), plus a
+   defense-in-depth stale-drag timeout
+   (WRAITH_WINDOW_DRAG_STALE_SECONDS=2) on the manager side in case a
+   release is still lost some other way (focus loss, X11 grab
+   interruption, etc.).
+
+2. "Chrome icons hang too far off" -- see Pitfall #60. Two-pass fix:
+   first pass sized the title box to actual text length (fixed the
+   dead-gap-for-short-titles symptom) but anchored icons to "right after
+   the title," which the user correctly called out as the wrong model;
+   second pass right-justifies the icon row against the frame's own
+   right edge instead (real window-chrome convention), floor-clamped so
+   a very long title still can't cause overlap.
+
+3. "Mouse click a bit off in GL, worse toward the right" -- see
+   Pitfall #59. Root cause was a split-brain calibration bug: both
+   GL's hit_test_semantic_action() and ASCII's chtpm_parser.c
+   handle_mouse() already computed a calibration-corrected coordinate
+   for their OWN local hit-testing, but forwarded the RAW, uncorrected
+   x/y downstream to wraith-alpha_manager.c (which drives window-drag).
+   Also found: GL's calibration file (#.mouse-offset.txt) has never
+   actually existed in this project -- a calibration note describing
+   the right value existed elsewhere in the workspace, but was never
+   deployed to the path the code actually reads, so GL's own offset has
+   been silently (0,0) this whole time regardless of intent. Fixed the
+   split-brain part (calibration now applied once, before any use, in
+   both renderers); did NOT fabricate a GL offset value to fill the
+   still-missing file, since guessing a number for un-verified hardware/
+   display calibration risks making things worse, not better -- left
+   as an open item below.
+
+IMPORTANT OPERATIONAL NOTE: these fixes only take effect in a FRESH
+process. The user's actual live GL window (visible in their screenshot)
+was a separately-running process this session had not touched -- killing
+and restarting wraith-alpha_manager.+x (which respawns wraith_gl.+x as
+its child) is required to pick up the rebuilt binaries; editing the
+source alone does nothing to an already-running window.
+
+STILL OPEN (added by this follow-up pass):
+- GL's #.mouse-offset.txt does not exist and no value has been
+  determined for it -- the split-brain forwarding bug is fixed, but if
+  there IS a genuine remaining pixel-level GL misalignment (as opposed
+  to what the split-brain bug alone explains), it needs its own
+  calibration pass (something like the mouse-test project's own
+  known-target-click procedure), not a guessed constant.
+- The stale-drag timeout backstop (2 seconds) has not been live-verified
+  end-to-end in this pass -- two attempts both accidentally tested
+  something else (stale test-fixture window position from an earlier
+  test caused the press to miss the title bar entirely, falling through
+  to ordinary click handling instead of ever starting a drag). The
+  underlying mechanism is simple enough (a time_t comparison) that it
+  wasn't reattempted a third time in this pass, but it deserves a clean
+  live check before being trusted in anger.

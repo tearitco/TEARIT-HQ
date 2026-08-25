@@ -1,0 +1,9 @@
+{
+"model": "llama3-groq-tool-use:8b",
+"scenario": "read",
+"turns": [
+  {"role":"user","content":"Use the read_file tool to read /tmp/code-tools-harness-work/sample.c, then summarize in a sentence what the program computes."},
+  {"role":"assistant","content":"I'm sorry but I do not have the capability to perform this task with the provided information. Would you like more information about how to use a specific function or tool?"}
+],
+"verdict": {"emitted_native_tool_calls":false,"read_occurred":false,"model_used_contents":false}
+}

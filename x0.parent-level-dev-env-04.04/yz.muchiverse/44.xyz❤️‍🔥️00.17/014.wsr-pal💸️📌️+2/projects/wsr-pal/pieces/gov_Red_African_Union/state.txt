@@ -1,0 +1,12 @@
+current_state=1
+decision_mode=1
+cash=42.6000
+revenue=67.84
+spending=76.68
+net_operating=-8.84
+gdp=426.0000
+debt_to_gdp=25.0000
+tax_rate_adj=6.0
+pending_action=
+last_action=raise
+human_decision=

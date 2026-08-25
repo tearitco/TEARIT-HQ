@@ -1,0 +1,224 @@
+DATABASE TABS - REMAINING WORK LIST
+=====================================
+2026-08-24. Companion to the db-hq app (the RMMV database window
+this house's desktop mirror). This file lists every tab and its
+sub-buttons/fields that the database UI does NOT yet run, grouped
+by the same RPG Maker MV tab order.
+
+Pipeline reminder: db-hq renders a 15-tab window (sidebar list +
+settings panel). A tab is only "done" when it has BOTH a real
+sidebar list populated from <house_root>/<tab_name>/ AND an
+editable settings panel with all fields wired to save back to
+that tab's kv files. Only Common Events is live today.
+
+EVENTING COUPLING (2026-08-24, direct instruction): db-hq and
+events-hq share the SAME events runtime - every event op landed via
+event.commands.remaining.txt is wired into db-hq's global/common
+events in the same pass (parity rule recorded there). Also land
+db-side pieces IN STEP with the event commands that consume them:
+Game Progression kv state (switches.txt / variables.txt /
+self-switches / timer) feeds Control Switches/Variables and
+Conditional Branch; Items/Weapons/Armors tabs feed Change
+Items/Weapons/Armors; System tab pairs with save/menu/encounter
+access commands. Advanced eventing is only as real as the db rows
+it reads.
+
+STATUS LEGEND
+[DONE]     live end-to-end today
+[EZ-ONLY]  sidebar list exists in db-hq, settings panel is placeholder
+[NEXT]     next on the agreed depth-first ladder
+[ ]        not started
+
+ALREADY DONE (for orientation, not remaining)
+  Common Events...[DONE] dbhq_common_events tab is fully wired;
+                  sidebar reads <house_root>/common_events/, settings
+                  panel edits name/trigger/settings, "Open in Editor"
+                  launches event-ez for the selected event.
+
+THE LADDER (agreed order, depth-first)
+  1. Items.........[NEXT] foundational for any playable game; pure
+                  kv file with no renderer dependencies.
+  2. Actors........player + follower identity files; needed before
+                  classes/skills can reference someone.
+  3. States........status effect definitions; referenced by actors,
+                  enemies, items, and skills.
+  4. Classes.......actor progression curves; references skills.
+  5. Skills........action definitions; referenced by classes, actors,
+                  weapons, enemies, troops.
+  6. Weapons.......equipment slot A; referenced by actors, classes.
+  7. Armors........equipment slot B/C/D; referenced by actors, classes.
+  8. Enemies........combat opponents; reference states/skills.
+  9. Troops........battle formation definitions; reference enemies.
+  10. Animations....visual/sound effect definitions; referenced by
+                  skills, items, enemies.
+  11. Tilesets......map tile sheets and flags; needed for new maps.
+  12. System.......global game settings (title, currency, vehicles,
+                  debug mode).
+  13. Types........element definitions (fire, ice, etc.); referenced
+                  by skills, items, armors, enemies.
+  14. Terms........UI string tables; lowest priority, only affects
+                  menus.
+
+REMAINING, BY CATEGORY
+
+Actors
+  Name....................editable character name in party menu.
+  Nickname................short display name (e.g. "The Brave").
+  Class...................class id link to Classes tab.
+  Initial Level / Max Lvl.entry-level and ceiling for this actor.
+  Independent.............checkbox: level independently of other actors.
+  Profile.................biography text shown in status menu.
+  Face Name / Face Index..portrait graphic selection for messages.
+  Character Name / Index...walking sprite sheet selection.
+  Battler Name / Index....battle animation sprite selection.
+  Initial Equipment.......Weapon/Shield/Head/Body/Accessory slot ids.
+  Change Maximum..........sidebar button to edit MHP/MMP curves.
+  Parameters..............MHP/MMP/ATK/DEF/MAT/MDF/AGI/LUK curves 1-99.
+  Traits..................Hit Rate/Evasion/Crit Rate/Attack Element/
+                          Add Skill Type/Equip Weapon/Equip Armor lists.
+
+Classes
+  Name....................class display name.
+  Text Color..............hex color used in menus.
+  Parameters..............MHP/MMP/ATK/DEF/MAT/MDF/AGI/LUK curves 1-99.
+  Experience Curve........XP required per level (base + delta).
+  Learning................list of (Required Level + Skill ID) pairs;
+                          actor gains skill when reaching that level.
+  Traits..................Equip Weapon/Armor types, Attack Element,
+                          State Rate modifiers, Attack Speed mods.
+
+Skills
+  Name / Icon / Desc.......identity fields shown in skill menu.
+  Scope...................One Enemy / All Enemies / One Ally / All Allies /
+                          The User / None + random variants.
+  Occasion................Always / Battle Only / Menu Only / Never.
+  Speed...................Normal / Attack Motion / Special Motion.
+  Animation ID............user and target battler animation on cast.
+  Success Chance / Type....percent hit and damage type (HP/MP/Recover/
+                          Drain/Nothing).
+  Damage Formula..........js-style expression evaluated at runtime.
+  Variance................damage spread percentage.
+  MP Cost / TP Cost.......resource price to use the skill.
+  Message 1 / 2...........text shown on success/failure in battle.
+  Required Class Level....actor class level needed to learn this skill.
+  Learning................(level + actor class) pairs that grant this skill.
+
+Items
+  Name / Icon / Desc.......identity fields shown in inventory.
+  Scope / Occasion / Speed..same as Skills but for items.
+  Animation ID............user/target animation on use.
+  Success Chance / Type....hit rate and damage/heal type.
+  Damage Formula..........runtime expression for item effect.
+  Variance................damage spread percentage.
+  Price...................sell/buy value in shops.
+  Parameter Changes.......Add Parameter, Operand (Add/Multiply), Value,
+                          Turns (how long a buff/debuff lasts).
+  Parameter Curve.........base parameter + change per level.
+  Healing HP / MP Rate....percent heal for consumables.
+  Number of Targets.......how many HP/MP/Parameter slots are affected.
+  Key Item................checkbox: not consumed on use.
+  Consumable..............checkbox: removed from inventory after use.
+  Common Event ID.........event to run automatically on use.
+
+Weapons
+  Name / Icon / Desc.......identity fields.
+  Price...................base buy value.
+  Parameters..............ATK/DEF/MAT/MDF/AGI/LUK/Handiness curves.
+  Animation ID............battle attack animation.
+  Scope / Speed / Type.....combat behavior on attack.
+  Damage Formula / Varianceruntime hit calculation.
+  MP Cost / TP Cost.......resource drain per hit.
+  Message 1 / 2...........battle text on success/failure.
+  Required Class Level....minimum class rank to equip.
+  Learning................class level pairs that unlock equip.
+  Traits..................Equip Weapon types allowed.
+
+Armors
+  Name / Icon / Desc.......identity fields.
+  Price...................base buy value.
+  Parameters..............DEF/MDF/AGI/LUK/Hit Rate/Evasion/Crit Rate.
+  Guard Element / State....auto-guard against element or status.
+  Animation ID............defend animation in battle.
+  Traits..................Equip Armor types allowed.
+
+Enemies
+  Name / Battler / Hue.....display and battle sprite.
+  Parameters..............MHP/MMP/ATK/DEF/MAT/MDF/AGI/LUK curves.
+  Parameters Curve.........base + change per level for scaling.
+  Traits..................Hit Rate/Evasion/Crit Rate/Attack Element/
+                          State Rate/Remove State Rate modifiers.
+  Actions.................priority, condition, action type, skill id,
+                          rating list that drives battle AI.
+
+Troops
+  Name....................formation display name.
+  Members.................list of (Enemy ID, X, Y, Hidden) placements.
+  Pages...................condition + span + action list per AI page.
+
+States
+  Name / Icon.............display and status icon in HUD.
+  Restriction.............None/Attack Enemy/Attack Anyone/Attack Friend/
+                          Do Not Attack/Do Nothing.
+  Priority................z-order when multiple states overlap.
+  Remove Flags............Battle End, Damage, Rest, Auto Remove options.
+  Parameters..............ATK/DEF/MAT/MDF/AGI/LUK rates (+/- buff).
+  Parameters Curve.........base + change per level.
+  Experience / Gold Rate...battle reward multipliers while active.
+  Drop Items..............Item ID + Denominator (1/N chance).
+  Actions.................Restrict Attack/Skill/Item flags.
+
+Animations
+  Name....................display name in database.
+  Frames..................Cell ID, Cell Timing, Cell SE, Cell Flash.
+  Effects..................Flash Scope, Flash Color, Flash Duration.
+  Screen Flash.............Color, Duration.
+  Screen Shake.............Power, Speed, Duration.
+  Sound Effects............SE played per frame or on effect trigger.
+
+Tilesets
+  Name....................display name in tileset list.
+  Tileset Name............actual graphic sheet filename.
+  Mode....................AutoTile A/B/C/D flag bits + Terrain Tags.
+  Flags...................Passable, Thrust, Damage, Ladder, Counter,
+                          Shadow, Boat/Ship/Airship Pass, Region.
+  Tile Info...............A1-A6, B, C, D, E tile graphic ids.
+
+System
+  Game Title / Version.....launcher display strings.
+  Currency................Unit name, Icon, Gold Multiplier.
+  Title Commands...........ordered list of New Game / Continue / etc.
+  Party Default Gold / Itemsstarting loot when a new game begins.
+  Battle BGM / Victory ME..music and sound for combat outcomes.
+  Vehicles................Boat, Ship, Airship: Image, Music, Start Map X/Y.
+  Options.................Always Dash, Command Remember, Touch UI,
+                          Dash Cancel flags.
+  Debug Mode..............checkbox: enable dev console/cheats.
+
+Types
+  Name / Text Color / Help..element display info.
+  Parameters..............HP/MP/ATK/DEF/MAT/MDF/AGI/LUK rates.
+  Parameters Curve.........base + change per level.
+  Experience / Gold Rate..battle reward modifiers.
+  Drop Items..............Item ID + Denominator.
+  Actions.................Restrict Attack/Skill/Item flags.
+
+Terms
+  Basic...................HP, MP, ATK, DEF, MAT, MDF, AGI, LUK strings.
+  Parameters..............Level, EXP, Gold labels.
+  Status..................various status-related UI labels.
+  Command.................Fight, Escape, Attack, Guard, Item, Skill,
+                          Equip, Status, Formation, Save, Game End, etc.
+  Message.................acquire item/exp/gold text templates.
+
+PRACTICALITY NOTES (which remain cheap next)
+  Cheap soon (pure file/kv): Items, Actors, States, Classes, Skills,
+  Weapons, Armors, Enemies, Troops, Types. These are all data files
+  with no renderer dependencies.
+  Medium (needs new UI widgets): Animations (frame editor), Tilesets
+  (graphic sheet picker), System (vehicle map selector), Terms (grid
+  of string fields).
+  Deep (whole new systems): Tileset autotile mapping, animation
+  playback in battles, vehicle travel scenes.
+  
+  Post : User defined (some may insist on being done earlier, such as
+  things commonly used in house like Items, Actors, and States)

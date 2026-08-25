@@ -1,0 +1,456 @@
+================================================================================
+                    OHRRPGCE MENU TREE - NAVIGATION MAP
+================================================================================
+Based on: OHRRPGCE Official Hamster Republic RPG Construction Engine
+Version: 23 (Latest)
+Documentation Date: 2026
+
+NOTE: This is the DEFAULT menu structure. Game authors can create custom menus
+by editing menus in the Custom editor or through script triggers. The tree below
+shows typical relationships and hierarchies.
+
+================================================================================
+                          MENU TREE STRUCTURE LEGEND
+================================================================================
+
+Menu Notation:
+  [ID] Menu Name
+    Type of menu (Special/Standard/Conditional)
+    
+Item Links:
+  → Links to another menu (submenu)
+  ⊕ Opens dialog/confirmation
+  ♦ Runs a script/trigger
+  ★ Special built-in behavior
+  ◊ Conditional (appears if tag/condition met)
+
+Prefixes:
+  • Auto-close item
+  ○ Non-closeable item
+  ◌ Hidden when disabled
+  ✓ Selectable by default
+
+================================================================================
+                        PRIMARY GAME MENU HIERARCHY
+================================================================================
+
+[0] MAIN MENU (Game Menu)
+  ├─ Items
+  │  └─ ★ Shows inventory (special item)
+  ├─ Spells
+  │  └─ ★ Shows spell list (special item)
+  ├─ Equipment
+  │  └─ ★ Equipment screen (special item)
+  ├─ Status
+  │  └─ ★ Party status display (special item)
+  ├─ Order
+  │  └─ ★ Party order/line-up (special item)
+  ├─ Team
+  │  └─ ★ Active party selection (special item)
+  ├─ Save
+  │  └─ ★ Save game menu (special item)
+  ├─ Load
+  │  └─ ★ Load game menu (special item)
+  ├─ Settings → [1] Settings Menu
+  └─ Quit → ⊕ Confirmation dialog
+
+[1] SETTINGS MENU
+  ├─ Audio → [2] Audio Settings
+  ├─ Graphics → [3] Graphics Settings
+  ├─ Controls → [4] Controls Settings
+  └─ Back
+     ESC = Close to main menu
+
+[2] AUDIO SETTINGS
+  ├─ Music Volume
+  │  └─ ★ Music volume slider (0-100%)
+  ├─ Sound Effects Volume
+  │  └─ ★ SFX volume slider (0-100%)
+  └─ Back
+     ESC = Return to Settings
+
+[3] GRAPHICS SETTINGS
+  ├─ Fullscreen
+  │  └─ ⊕ Toggle fullscreen mode
+  ├─ Windowed
+  │  └─ ⊕ Toggle windowed mode
+  ├─ Safe Margins → [5] Margin Adjustment
+  └─ Back
+     ESC = Return to Settings
+
+[4] CONTROLS SETTINGS
+  ├─ Remap Keyboard
+  │  └─ ♦ Script: input configuration
+  ├─ Gamepad Settings
+  │  └─ ♦ Script: gamepad config
+  └─ Back
+     ESC = Return to Settings
+
+[5] SAFE MARGINS MENU
+  ├─ Adjust Top Margin
+  ├─ Adjust Bottom Margin
+  ├─ Adjust Left Margin
+  ├─ Adjust Right Margin
+  └─ Back
+     ESC = Return to Graphics Settings
+
+================================================================================
+                       SPECIALIZED MENU TYPES
+================================================================================
+
+--- SHOP MENUS ---
+
+[10] SHOP MAIN MENU
+  ├─ Buy
+  │  └─ → [11] Buy Items Menu
+  ├─ Sell
+  │  └─ → [12] Sell Items Menu
+  ├─ Hire
+  │  └─ → [13] Hire Heroes Menu
+  └─ Leave
+     ESC = Exit shop
+
+[11] BUY ITEMS
+  ├─ [Items from shop inventory]
+  │  └─ ⊕ Confirm purchase/quantity
+  └─ Cancel
+     ESC = Return to shop
+
+[12] SELL ITEMS
+  ├─ [Inventory items]
+  │  └─ ⊕ Confirm sale/quantity
+  └─ Cancel
+     ESC = Return to shop
+
+[13] HIRE HEROES
+  ├─ [Available heroes]
+  │  └─ ⊕ Confirm hire
+  └─ Cancel
+     ESC = Return to shop
+
+--- BATTLE MENUS ---
+
+[20] BATTLE MAIN MENU (Active Time Battle)
+  ├─ Attack
+  │  └─ ★ Target selection (auto-advances)
+  ├─ Defend
+  │  └─ • Auto-closes (immediate action)
+  ├─ Item
+  │  └─ → [21] Item Selection
+  ├─ Spell
+  │  └─ → [22] Spell Selection
+  └─ Escape
+     └─ • Attempt flee (auto-closes)
+
+[21] BATTLE ITEMS
+  ├─ [Available items]
+  │  └─ ★ Target selection (auto-advances)
+  └─ Cancel
+     ESC = Return to actions
+
+[22] BATTLE SPELLS
+  ├─ [Learned spells]
+  │  └─ ★ Target selection (auto-advances)
+  └─ Cancel
+     ESC = Return to actions
+
+--- TEXTBOX CHOICE MENUS ---
+
+[30] TEXTBOX CHOICE MENU
+  ├─ [Choice 1]
+  │  └─ • Selects choice 1 (closes textbox)
+  ├─ [Choice 2]
+  │  └─ • Selects choice 2 (closes textbox)
+  ├─ [Choice 3] ◌ (optional, hidden if disabled)
+  │  └─ • Selects choice 3 (closes textbox)
+  └─ [Choice 4] ◌ (optional, hidden if disabled)
+     └─ • Selects choice 4 (closes textbox)
+
+--- CONDITIONAL/EVENT MENUS ---
+
+[40] INNKEEPER MENU
+  ├─ Rest (tag 5: "Can afford rest")
+  │  └─ • Rest party, advance time
+  └─ Leave
+     ESC = Exit inn
+
+[41] TAVERN RUMORS
+  ├─ "Tell me about the dungeon" ◌ (tag 10: quest active)
+  ├─ "Where is the healer?" ◌ (tag 15: healer missing)
+  └─ Leave
+     ESC = Exit tavern
+
+================================================================================
+                      MENU NAVIGATION FLOW DIAGRAM
+================================================================================
+
+GAME START
+  ↓
+  Title Screen
+  ├─ ESC → [0] Main Menu
+  ├─ New Game → Begin Adventure
+  └─ Continue → Load Game
+
+MAIN GAME LOOP
+  ├─ ESC (during gameplay) → [0] Main Menu
+  │  ├─ Save → Saves game
+  │  ├─ Load → [Load menu] → Resume from slot
+  │  ├─ Settings → [1] Settings Menu
+  │  └─ Quit → Title Screen
+  │
+  ├─ SHOP ENCOUNTER → [10] Shop Menu
+  │  ├─ Buy → [11] Purchase items
+  │  ├─ Sell → [12] Sell items
+  │  └─ Hire → [13] Recruit heroes
+  │
+  ├─ BATTLE ENCOUNTER → [20] Battle Menu
+  │  ├─ Action → Automatic target selection
+  │  ├─ Item → [21] Select useable item
+  │  └─ Spell → [22] Select spell
+  │
+  ├─ NPC INTERACTION → [30-99] Event Menu
+  │  ├─ Show conditional options
+  │  └─ Execute scripts based on choice
+  │
+  └─ MAP SCRIPT MENUS
+     └─ Custom menus from script triggers
+
+================================================================================
+                    MENU CLOSING & ESC BEHAVIOR
+================================================================================
+
+ESC KEY BEHAVIOR
+  [0] Main Menu
+    └─ ESC → Close menu, resume game
+  
+  [1-5] Settings Submenus
+    └─ ESC → Return to parent menu
+  
+  [10-13] Shop Menus
+    └─ ESC → Close shop, resume game
+  
+  [20-22] Battle Menus
+    └─ ESC → Return to previous menu (no exit from battle)
+  
+  [30+] Event Menus
+    └─ ESC → Depends on "no_close" flag
+           If NO_CLOSE: Cannot close with ESC
+           Otherwise: Close menu, resume game
+
+ON_CLOSE SCRIPT CALLBACKS
+  After menu closes (if set):
+    [12] Sell Menu → Script: Process item sale
+    [11] Buy Menu → Script: Process item purchase
+    [13] Hire Menu → Script: Update party roster
+    [20+] Battle Menus → Scripts: Not typically used
+    [30+] Event Menus → Scripts: Update quest flags
+
+================================================================================
+                        MENU ACCESS FROM SCRIPTS
+================================================================================
+
+SCRIPT COMMANDS FOR MENU CONTROL
+  open_menu(record_id)
+    Opens menu by ID
+    Pushes to menu stack
+    Returns to menu after script completes
+  
+  close_menu()
+    Closes top menu
+    Executes on_close script
+    Returns to previous menu
+  
+  get_menu_selection()
+    Returns currently selected item index
+    Useful in menu callbacks
+  
+  set_menu_selection(index)
+    Changes selected item
+    Updates display on next frame
+  
+  menu_is_open(record_id)
+    Returns YES if menu is in stack
+    Useful for conditional logic
+
+MENU ITEM TYPES FOR SCRIPTS
+  mtypeScript
+    Item runs specified plotscript
+    Passes item data as arguments
+    Menu stays open unless close_when_activated set
+  
+  mtypeMenu
+    Item opens another menu
+    New menu pushes to stack
+    Previous menu resumes when new closes
+  
+  mtypeTextBox
+    Item displays textbox
+    Returns selection/input from textbox
+    Menu remains active behind textbox
+
+================================================================================
+                    CUSTOM MENU DEVELOPMENT GUIDE
+================================================================================
+
+CREATING A CUSTOM MENU
+  1. Assign new record ID (e.g., 50)
+  2. Set menu properties:
+     - Name, box style, colors
+     - Positioning (anchor, offset)
+     - Behavior flags (translucent, allow_gameplay, etc.)
+  3. Add menu items:
+     - Caption and type
+     - Navigation or script references
+     - Conditional tags
+  4. Set callbacks:
+     - on_close script for post-menu processing
+     - esc_menu for ESC behavior
+  5. Open from game via:
+     - Script: open_menu(50)
+     - Menu item: mtypeMenu linking to ID 50
+     - NPC activation: triggered by event
+
+MENU NESTING LIMITS
+  - Maximum stack depth: Limited by available memory
+  - Typical depth: 2-5 menus (start menu → submenu → item selector)
+  - Safe practice: Don't exceed 10 nested menus
+  - ESC key always closes top menu, walks stack backwards
+
+PERFORMANCE CONSIDERATIONS
+  - Menus are relatively lightweight
+  - String drawing can be expensive with many items
+  - Sorting large item lists may cause frame hitches
+  - Use "no_controls" flag if menu is display-only
+  - Consider pagination for 50+ item lists
+
+================================================================================
+                         SPECIAL MENU SITUATIONS
+================================================================================
+
+NO-CLOSE MENUS
+  Used for: Dialog boxes, tutorials, locked menus
+  Behavior: ESC doesn't work, must activate item
+  Example:
+    [99] Important Message
+      ├─ "Click to Continue"
+      │  └─ • Close menu
+      └─ (no other options, no_close=YES)
+
+MENU CHAINS
+  Used for: Purchasing flow, multi-step dialogs
+  Behavior: Each item opens next menu via esc_menu
+  Example:
+    [50] Item Selected
+      ├─ "How many? → [51] Quantity Menu
+      └─ "Cancel" ESC closes
+    
+    [51] Quantity Menu
+      ├─ Slider for quantity
+      └─ "Buy" → [52] Confirm Menu
+    
+    [52] Confirm Purchase
+      ├─ "Yes - Complete purchase" (script: deduct gold)
+      └─ "No - Cancel" ESC back to [51]
+
+CONDITIONAL MENUS
+  Used for: Dynamic options based on game state
+  Behavior: Items show/hide based on tags or script values
+  Example:
+    [60] Adventure Options
+      ├─ "Enter Cave" ◌ (tag 10=quest active, hidden if tag off)
+      ├─ "Visit Inn" (always available)
+      ├─ "Speak to Mayor" ◌ (tag 5=haven't talked, hidden if already done)
+      └─ "Leave Town"
+
+FLOATING MENUS (HUDs)
+  Used for: Status displays, notifications
+  Behavior: Drawn over game, no interaction needed
+  Example:
+    [99] Game HUD
+      ├─ "HP: {hp}/{max_hp}"
+      ├─ "MP: {mp}/{max_mp}"
+      └─ "Funds: {gold}" (gold)
+      Properties: translucent=YES, no_box=YES, no_controls=YES
+
+================================================================================
+                       MENU ID ALLOCATION SCHEME
+================================================================================
+
+RECOMMENDED ID RANGES (not mandatory)
+  0-9:      Core system menus (main, settings, battle)
+  10-19:    Shop/commerce menus
+  20-29:    Battle interface menus
+  30-39:    Dialog/choice menus
+  40-49:    Event/quest menus
+  50-99:    Custom/supplemental menus
+  100+:     Extended custom menus
+
+IMPORTANT NOTE
+  Menu IDs are limited by gen(genMaxMenu)
+  Default: 255 menus maximum
+  Configure in General Settings editor if needed
+
+================================================================================
+                           MENU DEBUG INFO
+================================================================================
+
+DEBUG KEYS
+  F9 (with debug mode ON): Show menu debug info
+    - Current menu stack
+    - Selected items
+    - Menu state values
+    - Frame counts
+
+DEBUG CONSOLE COMMANDS
+  open_menu(id): Force open menu
+  close_menu(): Force close top menu
+  dump_menu_stack(): Show all open menus
+  menu_test(id): Test menu by ID
+
+LOGGING
+  Enable in config: debug=1
+  Check g_debug.txt for:
+    - Menu open/close events
+    - Item selection changes
+    - Script trigger fires
+    - Errors during menu operations
+
+================================================================================
+                          COMMON ISSUES & SOLUTIONS
+================================================================================
+
+ISSUE: Menu won't close
+  CAUSE: no_close=YES or esc_menu set to loop back
+  FIX: Add "Cancel" item with close_when_activated=YES
+  OR: Script calls close_menu() explicitly
+
+ISSUE: Selected item won't activate
+  CAUSE: Item is disabled (disabled=YES or tag condition failed)
+  FIX: Check tag values, enable item in editor
+  OR: Menu has no_controls=YES (menu is display-only)
+
+ISSUE: Menu appears off-screen
+  CAUSE: Positioning outside screen bounds
+  FIX: Check anchorhoriz/anchorvert/offset values
+  OR: Enable clamp_to_screen flag
+
+ISSUE: Menu items don't show
+  CAUSE: hide_if_disabled=YES with all items disabled
+  OR: itemlist is empty (check LoadMenuData)
+  FIX: Disable tag conditions, add visible items
+
+ISSUE: Menu too slow / framerate drop
+  CAUSE: Drawing too many items each frame
+  OR: On_close script is slow
+  FIX: Pagination, use no_controls for display-only
+  OR: Optimize script execution
+
+ISSUE: Previous menu still visible under new menu
+  CAUSE: New menu has translucent=YES or no_box=YES
+  FIX: Add opaque background, check visual design
+  (This is sometimes intentional for HUD-style menus)
+
+================================================================================
+                              END OF MENU TREE
+================================================================================
+

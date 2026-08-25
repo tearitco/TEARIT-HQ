@@ -1,0 +1,14 @@
+project_id=wraith-alpha/wraith-projects/wraith-3d-cube
+game_map=cube_probe_01
+is_map_control=0
+cube_rotation_x=10
+cube_rotation_y=0
+cube_rotation_z=0
+camera_mode=4
+cam_x=0.00
+cam_y=0.00
+cam_z=0.00
+cam_pitch=15.00
+cam_yaw=0.00
+cam_roll=0.00
+last_response=ROTATE_CUBE:y,-5

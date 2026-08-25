@@ -1,0 +1,36 @@
+# 2do-list-j17.txt - xo-pet-v1 Implementation Plan (Simplified PoC)
+
+## Objective
+Implement a menu-driven "xo-pet-v1" proof-of-concept where the user controls a pet or the simulation via a basic Xelector hub.
+
+---
+
+## Phase 1: Scaffolding & DNA
+- [ ] Create project directory: `x0.5-liz.fiter4-mew-00.00/projects/xo-pet-v1/`
+- [ ] Create subdirectories: `manager`, `ops`, `layouts`, `pieces`, `session`.
+- [ ] Update `xo-pet-init.sh` and run it to ensure full `piece.pdl` methods for all lizards.
+- **CHECK-IN 1**: "DNA Scaffolding Complete - Pieces are ready for Control"
+
+## Phase 2: Simple Submenu Manager
+- [ ] Implement `xo-pet_manager.c`:
+    - Resolve root dynamically.
+    - Handle `active_target_id` switching (Xelector <-> Pet).
+    - Publish `gui_state.txt` with `${pet_name}`, `${stats}`, and `${piece_methods}`.
+- [ ] Implement `possess_pet_op.c`: A simple Op to set `active_target_id` in the manager's state.
+- **CHECK-IN 2**: "Manager Ready - Possession Op Verified"
+
+## Phase 4: PoC Layout & UI
+- [ ] Create `xo-pet.chtpm`:
+    - Menu block for Simulation Control (Start/Pause).
+    - Submenu/List for Pet Selection.
+    - Dynamic block for active Pet Methods.
+    - "End Turn" button for manual Epoch advancement.
+- **CHECK-IN 3**: "UI Layout Ready - Review Menu Structure"
+
+## Phase 5: Sim Sync & Validation
+- [ ] Integrate the `moke-pet` epoch loop into the manager, triggered by "End Turn".
+- [ ] Verify that player actions (e.g., Eat) are executed correctly when a pet is possessed.
+- **CHECK-IN 4**: "PoC Complete - Simulation Functional"
+
+---
+*Simplified workflow focusing on menu-driven interaction.*

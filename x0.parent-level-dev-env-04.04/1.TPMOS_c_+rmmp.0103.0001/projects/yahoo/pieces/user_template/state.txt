@@ -1,0 +1,8 @@
+balance=0.00
+watchlist=
+stocks=
+options=
+history=
+last_lookup_symbol=
+last_lookup_price=0.00
+last_lookup_time=

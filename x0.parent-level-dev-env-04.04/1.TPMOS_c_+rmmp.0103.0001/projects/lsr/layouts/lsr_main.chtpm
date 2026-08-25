@@ -1,0 +1,43 @@
+<panel time_reactive="true">
+    <module>manager/lsr_manager.+x</module>
+    <interact src="pieces/keyboard/history.txt" />
+
+    <text label="_______________________________________________________" /><br/>
+    <button label="0.^]" onClick="KEY:0" /> <button label="1.File" onClick="KEY:1" /> <button label="2.Game Options" onClick="KEY:2" /> <button label="3.Settings" onClick="KEY:3" /> <button label="4.Help" onClick="KEY:4" /> <button label="+" onClick="KEY:10" /> <button label="-" onClick="KEY:11" /><br/>
+    <text label="Active Entity Selected: ${active_entity}" /><br/>
+    <button label="5.Select Player" onClick="KEY:5" /> <button label="6.Culture" onClick="KEY:6" /> <button label="7.Entity Info" onClick="KEY:7" /> <button label="8.Select Corp." onClick="KEY:8" /> <button label="9.History" onClick="KEY:9" /> <button label="10.General" onClick="KEY:10" /><br/>
+    <button label="11.Tools" onClick="KEY:11" /> <button label="12.Buy/Sell" onClick="KEY:12" /> <button label="13.Financing" onClick="KEY:13" /> <button label="14.Private" onClick="KEY:14" /> <button label="15.Management" onClick="KEY:15" /> <button label="16.Other Trans" onClick="KEY:16" /><br/>
+    <text label="Stock Symbol.... ${stock_symbol} Go" /> <text label="Stock Price.......${stock_price}" /><br/>
+    <text label="Controlled By.....${controlled_by}" /> <text label="Acting Now.......${player_name}" /><br/>
+    <br/>
+    <text label="${game_time}" /> <text label="Day Passage Speed: ${ticker_speed}" /><br/>
+    <text label="Player: ${player_name}" /><br/>
+    <text label="17.End Turn] 18.Misc. Menu] 19.Chart] 20.Auto] 21.Watchlist]" /><br/>
+    <text label="22.TICKER ${ticker_status}" /><br/>
+    <text label="----------------------------------" /><br/>
+    <text label="My Balance Sheet:" /><br/>
+    <text label="Cash (CD's)..      ${cash}" /><br/>
+    <text label="Other Assets....   ${other_assets}" /><br/>
+    <text label="Total Assets.....  ${total_assets}" /><br/>
+    <text label="Less Debt....      ${debt}" /><br/>
+    <text label="Net Worth........  ${net_worth}" /><br/>
+    <text label="----------------------------------------------" /><br/>
+    <text label="FINANCIAL NEWS HEADLINES [${news_headline}]" /><br/>
+    <br/>
+    <text label="-Quick Search Functions:-" /><br/>
+    <text label="23.Research Report] 24.List Portfolio] 25.List Futures]" /><br/>
+    <text label="26.Financial Profile] 27.List Options] 28.DB Search]" /><br/>
+    <text label="29.Earnings Report] 30.Shareholder List] 31.My Corporations]" /><br/>
+    <text label="----------------------------------" /><br/>
+    <text label="Commodity Prices/Indexes/Indicators:" /><br/>
+    <text label="Stock Index: ${stock_index}" /> <text label="Prime Rate: ${prime_rate}" /><br/>
+    <text label="Long Bond: ${long_bond}" /> <text label="Short Bond: ${short_bond}" /><br/>
+    <text label="Spot Crude: ${spot_crude}" /> <text label="Silver: ${spot_silver}" /><br/>
+    <text label="Spot Gold: ${spot_gold}" /> <text label="Spot Wheat: ${spot_wheat}" /><br/>
+    <text label="GDP Growth: ${gdp_growth}" /> <text label="Spot Corn: ${spot_corn}" /><br/>
+    <text label="------------------------------------------" /><br/>
+    <text label="Enter your choice (or 'n' to quit): ${choice_buffer}" /><br/>
+    <br/>
+    <button label="[3] Exit to Map" href="pieces/apps/playrm/layouts/game.chtpm" />
+    <button label="[0] Back to Main Menu" href="pieces/chtpm/layouts/os.chtpm" /><br/>
+</panel>

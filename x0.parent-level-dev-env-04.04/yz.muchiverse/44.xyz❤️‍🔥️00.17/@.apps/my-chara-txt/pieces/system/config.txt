@@ -1,0 +1,10 @@
+game_id=my-chara-001
+player_name=Adam
+day=3
+max_days=10
+health=90
+money=500
+grain_in_inventory=10
+silver_in_inventory=0
+gold_in_inventory=0
+game_state=playing

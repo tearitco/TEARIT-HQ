@@ -1,0 +1,47 @@
+# GLTPM Fuzz-Op: Sovereign Implementation Guide (Next Steps)
+**Date:** 2026-04-23
+**Status:** ARCHITECTURAL DIRECTION FOR FINAL PARITY
+
+## 1. Goal: From "Hardcoded Host" to "Sovereign Piece"
+The legacy `fuzz-op-gl` in `gl_desktop.c` is "fake" because the host owns the camera, the xelector coordinates, and the menu logic. For the new GLTPM version, `gl_desktop.c` must be a **dumb theater**. The `fuzz-op` manager must own everything.
+
+## 2. The Implementation Pattern: The "Pulse" Parity
+Every feature from the legacy mirror must be ported to the 12-step data flow.
+
+### A. The Project Menu (Data-Driven)
+- **Legacy:** Hardcoded strings in `create_mirrored_window`.
+- **Next Step:** The `.gltpm` layout should define the menu in a `<panel>` using `<button>` elements. 
+- **Parity:** Use `${var}` substitution for button labels so the manager can change "Control Map" to "Exit Map" dynamically in `state.txt`.
+
+### B. "Control Map" Mode (State-Driven)
+- **Legacy:** `win->is_map_control` flag in C memory.
+- **Next Step:** Define `is_map_control=0` or `1` in `projects/fuzz-op/session/state.txt`.
+- **Logic:** 
+  1. User clicks the button in GL.
+  2. Host writes `COMMAND: OP fuzz-op::toggle_map_mode` to `history.txt`.
+  3. Manager updates `is_map_control=1` in `state.txt` and hits the marker.
+  4. GL layout uses `visibility="${is_map_control}"` to show the "MAP CONTROL ACTIVE" HUD.
+
+### C. Camera & Xelector Controls (Input-Routing)
+- **Legacy:** Host modifies `win->cam_pos` and `win->xelector_pos` directly.
+- **Next Step:** 
+  1. Host captures WASD/Arrows and writes `KEY_PRESSED: <code>` to `history.txt`.
+  2. Manager reads the key. If `is_map_control == 1`, it calls `move_entity.+x xlector` or updates `cam_pos_x` in its own memory and flushes to `state.txt`.
+  3. GL Parser reads the new coordinates and repositions the `<camera>` or the `xelector` `<sprite>`.
+
+### D. The ESC Key Escape
+- **Legacy:** `win->is_map_control = 0` hardcoded in `gl_desktop.c` keyboard handler.
+- **Next Step:** 
+  1. Host writes `KEY_PRESSED: 27` to `history.txt`.
+  2. Manager sees the ESC key, sets `is_map_control=0` in `state.txt`, and flushes.
+  3. UI updates instantly because the `frame_changed.txt` marker was bumped.
+
+## 3. Mandatory Engineering Standards
+1. **No Shared Headers:** Do not add fields to `DesktopWindow` for specific projects. Use the `gltpm_scene` cache.
+2. **The Mirror Law:** If you can move the character in GL, you MUST see the coordinates change in `projects/fuzz-op/pieces/fuzzball/state.txt` in real-time.
+3. **Asset Association:** Every new visual element (Xelector, Camera Icon) needs a `.sprite.txt` or `.tile.txt` metadata file with a valid `ascii=` fallback.
+
+## 4. Next Agent Handoff
+Start by updating `projects/fuzz-op/layouts/main.gltpm` to include a data-driven camera:
+`<camera mode="${camera_mode}" x="${cam_x}" y="${cam_y}" z="${cam_z}" />`
+Then, update the `fuzz-op_manager.c` to process WASD input and write those `cam_x/y/z` variables to `state.txt`.

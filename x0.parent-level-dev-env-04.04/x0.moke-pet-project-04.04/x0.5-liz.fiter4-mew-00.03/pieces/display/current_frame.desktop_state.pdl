@@ -1,0 +1,12 @@
+SECTION | KEY | VALUE
+FRAME | frame_id | 000004
+DESKTOP | project_id | wraith-alpha
+DESKTOP | title | Wraith Alpha
+DESKTOP | cols | 96
+DESKTOP | rows | 30
+DESKTOP | object_count | 351
+DESKTOP | focused_object_id | 3
+WINDOW | id=wraith_root | title=WRAITH DESKTOP GUI x=0 y=0 w=96 h=30 z=1 focused=false role=window
+WINDOW | id=desktop_banner | title=WRAITH DESKTOP GUI x=0 y=0 w=96 h=2 z=2 focused=false role=banner
+WINDOW | id=chtmgl_video_isolate_3 | title=CHTMGL VIDEO ISOLATE #3 x=1 y=2 w=94 h=23 z=10 focused=true role=panel
+WINDOW | id=taskbar | title=taskbar x=0 y=28 w=96 h=2 z=40 focused=false role=banner

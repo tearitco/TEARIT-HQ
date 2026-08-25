@@ -1,0 +1,16 @@
+pos_x=18
+pos_y=3
+hp=100
+map_id=map_start
+interact_mode=0
+xlector_pos_x=18
+xlector_pos_y=3
+action_cursor=-1
+digit_accum=0
+active_panel=none
+panel_cursor=0
+panel_digit_accum=0
+emoji_mode=1
+render_mode=0
+camera_mode=1
+last_key=57

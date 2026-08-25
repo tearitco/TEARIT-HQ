@@ -1,0 +1,7 @@
+[META]
+id=eve
+type=player
+
+[METHODS]
+METHOD | Mine | projects/piececraft-3d/ops/+x/mining.+x
+METHOD | Place | projects/piececraft-3d/ops/+x/placing.+x

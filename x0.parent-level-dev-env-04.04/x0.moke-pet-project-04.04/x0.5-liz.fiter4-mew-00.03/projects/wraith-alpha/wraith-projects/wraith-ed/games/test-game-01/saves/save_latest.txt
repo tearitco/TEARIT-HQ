@@ -1,0 +1,5 @@
+game_id=test-game-01
+current_map=map_0001_z0
+cursor=5,3,0
+active_glyph=T
+saved_by=wraith-ed

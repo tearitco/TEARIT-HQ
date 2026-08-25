@@ -1,0 +1,28 @@
++============================================================+
+|  P A L - C H A T - I R C   [room_list]                     |
++============================================================+
+|                                                            |
+|  Logged in as: bob_31259                                   |
+|                                                            |
+|  Enter a room name to join or create it, then              |
+|  click Enter Room.                                         |
+|                                                            |
+|  Room 'uxtest_31259' ready - click Enter Room.             |
+|                                                            |
++============================================================+
+
+| [ ] 1. Room Name: [uxtest_31259]                                        |
+[>] 2. [Join / Create Room]
+[ ] 3. [guest]
+[ ] 4. [j26]
+[ ] 5. [lobby]
+[ ] 6. [muchi-test]
+[ ] 7. [t1]
+[ ] 8. [test-1]
+[ ] 9. [uxtest_31259]
+[ ] 10. [Enter Room]
+[ ] 11. [Back to Login]
+ (Ctrl+C to quit)
+
++=========================================================+
+Nav > _

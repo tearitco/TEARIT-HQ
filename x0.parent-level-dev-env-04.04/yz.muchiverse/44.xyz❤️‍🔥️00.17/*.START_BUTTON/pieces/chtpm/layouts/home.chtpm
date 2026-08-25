@@ -1,0 +1,10 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="${game_map}" /><br/>
+    <button label="System" href="pieces/chtpm/layouts/system.chtpm" /><br/>
+    <button label="Widgets" href="pieces/chtpm/layouts/widgets.chtpm" /><br/>
+    <button label="Apps" href="pieces/chtpm/layouts/apps.chtpm" /><br/>
+    <button label="App Store" href="pieces/chtpm/layouts/store.chtpm" /><br/>
+    <text label=" Ctrl+C quit | Enter opens category" /><br/>
+</panel>

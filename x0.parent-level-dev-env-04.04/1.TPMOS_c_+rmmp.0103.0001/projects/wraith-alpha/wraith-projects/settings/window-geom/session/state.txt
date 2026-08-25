@@ -1,0 +1,8 @@
+current_geometry=x=0 y=0 width=0 height=0
+focused_project_id=wraith-alpha/wraith-projects/piececraft-wraith
+focused_title=
+edit_x=
+edit_y=
+edit_width=
+edit_height=
+edit_status=Ready to edit

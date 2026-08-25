@@ -1,0 +1,233 @@
+# CRITIC_REPORT — 201.rpg-maker-clone
+
+**Critic:** harsh triple-A visual + gameplay review  
+**Date:** 2026-07-28  
+**Binary:** `rpg_clone` (freeglut editor+player)  
+**Quality bar:** `&.widgits/event-editor/gl_mock/ee_gl_mock.c` + real RMMV Event Editor DNA  
+**Compile:** `sh button.sh compile` → **OK** (warnings only; binary rebuilds)
+
+---
+
+## Verdict: **NEEDS_WORK**
+
+Not **FAIL** — the spine exists: Title → Map → Event → Play, house data on disk, a coherent demo loop (crystal → door switch → guard branch), and Event Editor chrome that is *actually* left/right RMMV layout, not a dumpster flat list.
+
+Not **SHIP** — this is a competent tech prototype wearing stolen gl_mock clothes. Map/Play look like a CS homework. Authoring is hostile (type-cycle commands, no real text entry). Half the RMMV chrome is cardboard. Multi-map transfer is a lie. You would not put this on a store page without a “student project / WIP” disclaimer.
+
+Ship the *loop idea*. Do not ship the *product*.
+
+---
+
+| Axis | Score |
+|------|------:|
+| **Visual** | **5 / 10** |
+| **Editor usability** | **4 / 10** |
+| **Play loop** | **6 / 10** |
+| **Data fidelity to house** | **8 / 10** |
+
+---
+
+## Visual — 5/10
+
+### What is honest about the Event Editor
+`display_event()` in `src/main.c` is essentially a **port of `ee_gl_mock.c` layout DNA**, not a flat list:
+
+| Chrome piece | gl_mock | clone |
+|--------------|---------|-------|
+| Title bar + green status strip | yes | yes (`draw_chrome_top`) |
+| METHODS strip #1–8 | yes | yes |
+| LEFT `Event` panel (Name / Pages / Conditions / Image / fields) | yes | yes |
+| RIGHT `Contents` + Commands\|Scratch chips | yes | yes |
+| 12 continuous content rows #17–28 | yes | yes |
+| Footer #29–34 OK/Cancel/Apply/… | yes | yes |
+| `[>]` focus, continuous 1..N, L/R zone jumps | yes | yes |
+| Dark blue-gray panels via `d_panel` | same recipe | same recipe |
+
+So: **if your failure mode was “flat list of commands” — that is not the failure mode here.** The EE window *looks* like the house’s “good” mock. That is the one visual win.
+
+### What still looks cheap (harsh)
+1. **Everything is GLUT bitmap fonts** (Helvetica 12/18 + 8x13). No DPI, no kerning, no UI scale. Fine for a mock; embarrassing next to real RMMV.
+2. **Map Editor / Play** are **colored rectangles + single-character glyphs**. No tileset atlas, no character sheet, no shadows, no scrolling camera, no “this is a game world” reading. Player is a blue box with **P**. Events are **G** / **S**. This is teletext with ambition.
+3. **Message box** is a single raster line. Long strings will clip off the right edge with no wrap. RMMV face window / name plate / multi-line text: absent.
+4. **Page tabs, Conditions checkboxes, Priority/Options/Walk fields** paint like RMMV but are **props**. Pages 2–4 do not load alternate command lists. Self-switches A–D are dead text. Variable / Item lines are decoration.
+5. **Image box** is a green square with one letter. Calling it “sprite” is marketing.
+6. **Title screen** is a vertical method list in a panel — serviceable, not elegant. No logo, no bg art, no game identity.
+7. **Idle timer at 16ms** redraws forever. Correct vs busy-spin (good), but still burns GPU redrawing static UI with no dirty-rect strategy. Acceptable for glut; not “polished.”
+
+**Against pure gl_mock EE:** layout parity is high (~8–9 for *that window only*).  
+**Against RMMV as a product:** overall visual is ~3–4. Averaged to **5** because the EE chrome is the stated bar and they hit the shape of it.
+
+---
+
+## Editor usability — 4/10
+
+Continuous nav works. That is not enough to call this an *editor*.
+
+### Pain
+| Task | Reality |
+|------|---------|
+| Edit Show Text string | **Impossible by typing.** Enter on content row *cycles command type*. Args only get default stubs when type changes. |
+| Set switch name / value | Same: cycle + hardcoded defaults (`door_open`, `1`). No field keyboard capture (documented STUB). |
+| Rename event | Name box is display-only. |
+| Multi-page events | Visual tabs only; one command array. |
+| Insert command at arbitrary index | Only append / “insert at first empty slot.” No palette modal. |
+| Delete command | Not exposed. Cycle until you hate life. |
+| Delete event from disk | Memory `used=0`; files under `events/ev_*` linger until you manually clean. Status admits “save to flush” but save only writes *used* events — orphans remain. |
+| Map paint vs tool rail | Arrows always move *map cursor*, not tools. Tools are digits / Tab / PgUp-PgDn. Easy to paint when you meant “activate tool 8.” |
+| Add Event from Event Editor | Uses map cursor `g_cx,g_cy` — fine if you came from map; confusing if you only opened F2. |
+
+### What works
+- Digit multi-jump to #17 content rows (same model as CHTPM / gl_mock).
+- Tab Commands ↔ Scratch rewrites labels from the same IR (good dual-view concept).
+- Method strip: Save / Load / Add / Del / Toggle View / Cycle Trigger / Add Cmd / Help — real side effects (not pure stubs).
+- Footer OK/Apply actually `project_save` + event write; Play jumps into runtime.
+- Map tools 1–5 brushes, Space paint, S save, E event, P play — learnable in 30 seconds *if* you read the footer.
+
+### Brutal take
+This is a **navigator over a tiny IR**, not an authoring surface. Compared to RMMV’s command dialogs (Show Text multi-line, Switch picker, Transfer map picker), this is a calculator that can only `+1` the opcode. gl_mock never claimed product I/O; **this binary claims editor** — then leaves text entry as STUB. That is a credibility hole.
+
+---
+
+## Play loop — 6/10
+
+### Demo script (as shipped on disk)
+- Start `(2,2)` on `map_start` 20×15.
+- **S** `switch_crystal` @ `(12,7)` — action → message → `set_switch door_open 1` → persists `switches.pdl`.
+- **Door** terrain `+` @ `(3,4)` blocked until `door_open`.
+- **G** `door_guard` @ `(5,4)` — action → talk → `met_guard` → branch on `door_open`.
+
+That is a real mini quest. Collision on `#` / `~`, touch vs action triggers, message advance on Space/Enter, Esc out of play: all wired. **This is why the score is not a 3.**
+
+### Where the loop is still toy-grade
+1. **No feel.** Instant tile snaps, no walk animation, no facing glyph, no bump SFX, no step cost.
+2. **Transfer is a STUB.** `project_load_map` may swap grid chars; **events are not re-scanned** for the destination map. README admits it. Do not market “multi-map RPG.”
+3. **No choices, no parallel, no autorun, no self-switches.** Branch is only `if_switch` / `end`.
+4. **Message box is one line, no face, no wait modes.**
+5. **Save of switches mid-script** is good (immediate write). **No player save / load position.** Quit mid-quest and you keep switches but restart at start_x/y — OK for demo, not a game.
+6. **Facing/action** only checks tile ahead then current tile. Fine. No “can’t talk through walls” special case beyond solid blocking (you can face a wall and not reach NPC behind it — correct).
+7. **`project_new_demo_defaults` diverges from hand-authored `map.txt`** (door at `(4,5)` in code defaults vs `(3,4)` on disk; room coords differ). Title “New Project” *rewrites* a different map than the curated demo. That is a product footgun: “New” can make the README walkthrough lie.
+
+### Compile notes (not crash, but dirty)
+`sh button.sh compile` succeeds. Flood of `-Wformat-truncation` on path/status `snprintf`s (`main.c`, `project.c`). Not ship-blocking; still amateur hygiene. No fix applied (non-trivial churn across buffers; not a crash).
+
+`button.sh` itself is fine: POSIX, compile/run/kill/help, pid file, `FOREGROUND=1`. No change needed.
+
+---
+
+## Data fidelity to house — 8/10
+
+**This is the strongest axis.** Someone actually respected house DNA.
+
+| Artifact | Status |
+|----------|--------|
+| `projects/demo/project.pdl` | PDL table `META \| key \| value` |
+| `switches.pdl` | `SWITCH \| key \| value` |
+| `maps/map_start/map.txt` | 20×15 single-byte terrain `. # ~ , +` |
+| `events/ev_X_Y/state.txt` | `key=value` (name, trigger, x, y, sprite, map) |
+| `event.pal` | line-oriented mini script (`show_text`, `set_switch`, `if_switch`, `end`, `ret`, …) |
+| `event.ir.pdl` | light META stub (not full IR graph) |
+| Discovery | `opendir` on `events/ev_*` |
+
+Interpreter duals the pal file well enough for the demo. Labels in Commands view even use RMMV-ish wording (“Control Switches”, “Conditional Branch”, “Exit Event Processing”) via `cmd_to_label`.
+
+### Dents in the 8
+- **Always-appended `ret` on save** (`project_save_event`) will **duplicate `ret` lines** across edit cycles if `ret` already exists in the list. Dirty files over time.
+- **Delete event** does not remove packages from disk.
+- **No second map package** to prove multi-map layout; transfer path is half-implemented.
+- `event.ir.pdl` is a receipt, not a real IR graph for muta import.
+
+Still: an agent can hand-edit `event.pal` / `map.txt` and the binary will load it. That is house-correct.
+
+---
+
+## Must-fix vs original RMMV / gl_mock
+
+Ordered by how hard they punch the product fantasy.
+
+### P0 — do not call it “RPG Maker–class” until these move
+1. **Type-in fields** for Name + Show Text + switch identifiers (even a dumb char buffer + Enter commit). Without this, EE is a museum exhibit with live Save.
+2. **Command insert palette** (modal list: Show Text / Switch / Conditional / Transfer / Exit) instead of opcode roulette.
+3. **Multi-line message box** + string wrap in Play (and editor preview).
+4. **Multi-map transfer that reloads events** (`load_events` after `project_load_map`) — or rip Transfer out of the UI until true.
+5. **Event delete flushes disk** (`rm -rf events/ev_x_y` or rename tombstone).
+6. **Stop lying with cardboard:** either wire Page 2–4 / Self-switches / Priority or dim them and label **STUB** in the chrome itself (status bar only is too quiet).
+
+### P1 — gl_mock / RMMV parity polish
+7. **Map art:** at least a 8×8 or 16×16 procedural tileset (wall edge, water frame) so Play is not Excel with a blue P.
+8. **Player / event facing sprites** (4-dir stick figures beat letters).
+9. **Fix New Project map** to match curated demo layout (or load from template files, not a second hard-coded geometry).
+10. **Command row ops:** delete, reorder, edit args without cycling type.
+11. **Silence format-truncation** (bigger path buffers or `%.*s`).
+12. **Save-event `ret` policy:** only write trailing `ret` if missing; don’t accumulate.
+
+### P2 — stretch (PROMPT already says so)
+13. Show Choices  
+14. Parallel / autorun pages  
+15. Self-switches A–D as real page conditions  
+16. Actor / party / battle — correctly out of scope; keep them out
+
+### Explicit gl_mock gap analysis
+gl_mock = **chrome shell, no I/O**.  
+clone = **chrome shell + real I/O + play interpreter**, still **shell-level authoring**.
+
+They closed the *ops* gap gl_mock left open. They did **not** close the *authoring UX* gap. Claiming “RMMV-ish Event Editor” is fair for **layout**; claiming “you can make a game in it” is only true if you enjoy cycling enums and hand-editing `event.pal` on the side.
+
+---
+
+## What works
+
+Be fair — this is not vaporware.
+
+1. **One freeglut binary** with four modes and F1/F2/F3 / Esc stack — correct product shape for the PROMPT.
+2. **Event Editor is left props + right contents + methods + footer** — matches house “good mock,” **not** the flat-list failure mode.
+3. **Continuous nav 1..N** with multi-digit accum, zone left/right, PgUp/PgDn — same interaction language as CHTPM / gl_mock.
+4. **House data round-trip** for map, switches, event packages; Play mutations persist switches.
+5. **Demo quest is playable in principle:** crystal opens door; guard dialogue branches.
+6. **POSIX `button.sh`** with compile/run/kill/help; compile succeeds.
+7. **Interpreter** handles Show Text, Set Switch, If/End skip, Ret, comment; depth-aware skip for nested if (basic).
+8. **README / ARCHITECTURE / PROMPT** are unusually honest about STUBs. Documentation quality > many house siblings.
+9. **Timer redraw ~60fps**, not a spin loop.
+10. **Self-contained** — no runtime dep on muta / CHTPM.
+
+---
+
+## Acceptance checklist (PROMPT) — critic audit
+
+| Item | Result |
+|------|--------|
+| `sh button.sh compile && sh button.sh run` | compile **YES**; run needs `DISPLAY` (present on this host) |
+| Paint map, place event Show Text, play message | **YES** path exists (place via tool 6 / method Add; text is default “Hello!” / cycle, not typed) |
+| Switches persist in `switches.pdl` | **YES** |
+| Save survives quit/reload | **YES** for map/events/switches |
+| Idle CPU throttled (~60fps timer) | **YES** |
+| POSIX button.sh | **YES** |
+
+MVP *checkbox* is mostly green. **Product bar is not.** Checkboxes are not stars.
+
+---
+
+## File-level notes (for the next agent)
+
+| Path | Role / critique |
+|------|-----------------|
+| `src/main.c` (~1290 lines) | God-file: modes, input, interpreter, all screens. EE draw is gl_mock clone. Play is thin but real. |
+| `src/draw.c` | Minimal chrome helpers — adequate, not a UI kit. |
+| `src/project.c` | Solid house I/O; save `ret` append + no event file delete are bugs. |
+| `src/rpg.h` | Clear types; fixed 20×15 / 48 events — fine for MVP. |
+| `projects/demo/**` | Good reference quest; keep as golden path. |
+| `&.widgits/event-editor/gl_mock/ee_gl_mock.c` | Visual DNA source — clone honored the layout. |
+
+**No critical crash fix applied.** Compile warnings documented only. `button.sh` left alone.
+
+---
+
+## Bottom line
+
+> **You built a working freeglut RPG Maker *skeleton* with a real gl_mock Event Editor face and a honest house data spine.**  
+> **You did not build an editor people can write stories in, or a game people want to look at.**
+
+**Verdict: NEEDS_WORK.**
+
+Priority for next pass: **text entry + command palette + honest STUB chrome + transfer/events reload + map not looking like prison bars.** Until then, keep the README humility. Do not inflate this to SHIP.
+
+*End CRITIC_REPORT.md*

@@ -1,0 +1,177 @@
+TACTICS-TXT — USER WALKTHROUGH (P1 skeleton)
+================================================================================
+How to launch this yourself and confirm the P1 skeleton is working as
+intended. Written 2026-08-02. This is a SKELETON — the 10x10 board, terrain,
+movement, attacks, skills, and Collection mode are NOT built yet (see KNOWN
+GAPS below). What IS real: real CHTPM nav, a real setup screen (Classic mode
+only), two fixed 3-unit rosters, and a real shared-turn / actions-remaining
+loop with ledger logging.
+
+--------------------------------------------------------------------------------
+0. RESET TO FRESH BEFORE TESTING (same caveat as my-chara-txt/civ-txt)
+--------------------------------------------------------------------------------
+    cd "@.apps/tactics-txt"
+    ./button.sh kill
+    rm -f pieces/system/config.txt
+    rm -rf pieces/sessions
+    : > data/master_ledger.txt
+    ./button.sh run
+
+(pieces/system/units.txt holds the two fixed rosters — leave it alone unless
+you want to test with different starting units/HP; it's not consumed or
+mutated by anything in this P1 pass, only read for display.)
+
+--------------------------------------------------------------------------------
+1. LAUNCH
+--------------------------------------------------------------------------------
+    cd "@.apps/tactics-txt"
+    ./button.sh run
+
+You should see a real terminal screen titled "T A C T I C S - T X T" showing
+the SETUP screen:
+
+    Mode: (not set)
+
+    Fixed 3-unit staff armies (Classic mode, P1 skeleton):
+      Side 1: warrior, chef, farmer
+      Side 2: warrior, clown, lawyer
+
+    [>] 1. [Mode: Classic (fixed staff armies)]
+    [ ] 2. [Confirm & Start]
+    [ ] 3. [Enter Battle (after Confirm & Start)]
+
+--------------------------------------------------------------------------------
+2. TEST: SET MODE + CONFIRM + ENTER BATTLE
+--------------------------------------------------------------------------------
+Select "Mode: Classic" (item 1) — the summary should update to "Mode:
+classic". Select "Confirm & Start" (item 2) — a message like "Setup
+confirmed. Battle started." should appear, and pieces/system/config.txt's
+game_state should flip from "setup" to "playing":
+
+    cat pieces/system/config.txt   # game_state=playing
+
+Then select "Enter Battle" (item 3, a real href navigation button). You
+should land on the MAIN screen showing both full rosters:
+
+    Turn: 1
+    Active side: 1
+    Actions remaining: 5/5
+
+    Side 1 roster:
+      warrior (hp: 20)
+      chef (hp: 15)
+      farmer (hp: 15)
+    Side 2 roster:
+      warrior (hp: 20)
+      clown (hp: 15)
+      lawyer (hp: 15)
+
+    [>] 1. [End Turn]
+
+CORRECTED NOTE (this walkthrough originally described this as a harmless
+"buffered rapid keypress" timing quirk — that explanation turned out to be
+WRONG, found while building this project's own test harness later the same
+session): you may see "Turn: 1, Active side: 2" already instead of "Active
+side: 1" right after entering the battle, even if you press keys slowly and
+deliberately. This is NOT a keypress-timing artifact — it's a real,
+confirmed bug in the shared CHTPM engine (`interact_relay.txt` replays a
+stale, already-handled keypress against whichever screen you just arrived
+on — here, that replay happens to resolve to a real End Turn, which is why
+it's visible/stateful here in a way it wasn't in civ-txt's own equivalent
+transition). See `HANDOFF_NEXT_SESSION.md` §5 for the full writeup — this
+is a known, open, shared-engine issue, not something wrong with
+tactics-txt specifically.
+
+--------------------------------------------------------------------------------
+3. TEST: END TURN (the shared-turn/actions-remaining loop)
+--------------------------------------------------------------------------------
+Select "End Turn" a few times.
+
+EXPECTED: "Active side" alternates 1 -> 2 -> 1 -> 2 ..., "Actions remaining"
+resets to 5/5 every time (P1 doesn't yet have any action that SPENDS from
+that pool — see Known Gaps), and "Turn" increments by exactly 1 only when
+wrapping back to side 1 (i.e. after BOTH sides have had a turn) — so you'll
+see Turn stay at 1 while side goes 1->2, then Turn becomes 2 when side goes
+2->1, etc.
+
+VERIFY ON DISK:
+    cat data/master_ledger.txt
+    # one "end_turn" line per press, format:
+    # timestamp|turn|side|end_turn|<details>
+    # side should alternate 1/2 correctly across consecutive lines
+
+--------------------------------------------------------------------------------
+3a. TEST: OPEN BOARD WIDGET (real, separate GL window - new 2026-08-02)
+--------------------------------------------------------------------------------
+From the main screen, select "View Board (opens separate GL window)". A
+brand new window should open, completely independent of tactics-txt's own
+terminal/GL window - closing it does NOT affect your tactics-txt session.
+
+What you should see: a real, generated 10x10 grid - grass, high-ground,
+water/mud, and real TALL walls (rendered as a brick emoji in 2D, a real
+extruded box - taller than anything in civ-txt's own board - in the 3D
+view). No units are shown on the board yet (tactics-txt's own P1 data has
+no unit x/y positions at all yet - see KNOWN GAPS).
+
+This is the SAME shared widget program civ-txt's own "View Board" button
+opens - same controls: select the "Nav Mode" item to move a selector
+cursor with arrow keys, ESC to exit nav mode, '0' to switch to a real 3D
+view once in nav mode, '1'-'4' for camera modes (first-person/third-
+person/free-roam/bird's-eye), q/e/r/t/w/a/s/d/c/v/f for camera
+rotate/pan/height/reset. See civ-txt's own user-walkthru.txt §4a for the
+full control breakdown if you want more detail - it's identical here.
+
+This has been compile/build-verified but NOT yet live-tested specifically
+for tactics-txt as of this writing - if something looks wrong here, check
+whether the same issue also affects civ-txt's own board widget (in which
+case it's a widget-level bug, see &.widgits/BOARD_WIDGET_PROGRESS.txt) or
+is specific to this project's own board.txt generation/glyph handling.
+
+--------------------------------------------------------------------------------
+3b. TEST: VIEW ROSTER / SELECT A UNIT (real per-unit data + methods, new)
+--------------------------------------------------------------------------------
+From the main screen, select "View Roster (select a unit)". You should see
+a numbered list of ONLY the active side's own 3 units (e.g. "side1_unit0
+(warrior, hp:20)"). Select one.
+
+EXPECTED: the screen now shows that unit's own real HP and board position
+(e.g. "Selected: side1_unit0 (warrior)" / "HP: 20   Position: (0,3)"), and
+the numbered options change to that unit's OWN real methods: "Deselect",
+"Move", "Attack". Move/Attack currently just show a "not yet implemented"
+message (real path-cost/combat math is later work) - that's expected, not
+a bug. Select "Deselect" to confirm it reverts cleanly back to the unit
+list.
+
+This is the first time in this house that a non-hero entity has its own
+real, dispatchable methods - see @.apps/PORTABLE_ENTITY_ARCHITECTURE.md if
+you want the full design reasoning.
+
+--------------------------------------------------------------------------------
+4. CLEAN SHUTDOWN CHECK
+--------------------------------------------------------------------------------
+Press Ctrl+C to quit. Then, in a separate terminal:
+
+    ps aux | grep tactics-txt
+
+EXPECTED: no output (or only this grep command itself).
+
+--------------------------------------------------------------------------------
+KNOWN GAPS (things intentionally NOT built yet, don't report these as bugs)
+--------------------------------------------------------------------------------
+- Real 10x10 terrain now exists (board.txt, real GL widget - §3a above),
+  but units have no x/y position yet — nothing to move toward, no
+  cover/elevation gameplay effect (P2, movement, still not started).
+- Real per-unit data + Move/Attack now exist (§3b above), but as real STUBS
+  - selecting Move/Attack shows a message, doesn't actually do anything yet
+  (no path-cost math, no combat resolution). "Actions remaining" still
+  always shows 5/5 because nothing currently spends from that pool.
+- No combat resolution (resolve_attack.c/resolve_skill.c) yet — units'
+  HP numbers shown are static, never change.
+- Collection mode doesn't exist yet — Classic mode's fixed rosters
+  (pieces/system/units.txt) are the only army source, and setup.chtpm only
+  offers "Mode: Classic" (no mode-select choice yet since there's only one).
+- No automation/decision_mode layer yet, unlike my-chara-txt — same shared
+  design as civ-txt (TACTICS_TXT_DESIGN.md §7), not yet ported.
+- No Save/Load (see §0 above).
+- See TACTICS_TXT_DESIGN.md's own §10 (Build Order) for the full P2-P10 plan
+  — the very next real increment is P2 (movement) per that doc.

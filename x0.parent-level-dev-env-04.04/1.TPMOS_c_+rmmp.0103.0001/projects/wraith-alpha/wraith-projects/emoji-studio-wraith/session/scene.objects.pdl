@@ -1,0 +1,6 @@
+# Project-owned Wraith scene records.
+# Emoji Studio standard: pieces/<name>/voxels_<res>.csv, alpha=occupancy, RGB=material.
+OBJECT tag=control id=control_surface role=window_toolbar_item x=35 y=5 w=28 h=1 z=26 nav=5 source=semantic:window_toolbar fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=INTERACT target_surface=game_map label=Control_Extrusion
+OBJECT tag=control id=resolution_picker role=emoji_resolution_picker x=65 y=5 w=18 h=1 z=26 nav=6 source=reference:emoji-studio fg=#E8F1F2 bg=#2A3E52 border=#FFD166 action=EVENT:resolution_picker label=Res_8
+OBJECT tag=surface id=game_map role=game_map x=35 y=6 w=32 h=14 z=16 nav=0 source=semantic:game_map_surface fg=#E8F1F2 bg=#0B1118 border=#7EDFF2 action=- label=
+OBJECT tag=model id=emoji_sample role=rgba_extrusion x=35 y=6 w=32 h=14 z=23 source=projects/wraith-alpha/wraith-projects/emoji-studio-wraith/pieces/sample_emoji/voxels_8.csv fg=#FACD37 bg=#0B1118 border=#FFD166 action=- label=IMAGE_EXTRUSION:source=pieces/sample_emoji/voxels_8.csv;resolution=8;alpha=occupancy;rgb=material;reference=emoji-studio/session/test_emoji.csv

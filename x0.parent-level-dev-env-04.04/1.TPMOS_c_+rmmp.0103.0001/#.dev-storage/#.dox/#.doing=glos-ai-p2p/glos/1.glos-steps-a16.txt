@@ -1,0 +1,42 @@
+# GL-OS SHORT-TERM STEPS AND KPIs
+
+## GOALS:
+1. Fix GL-OS joystick/keyboard navigation parity with ASCII-OS.
+2. Implement sub-layout navigation for "1. Desktop Apps".
+3. Implement "fuzz-op-gl" (ASCII mirror in virtual window).
+4. Implement "tile-based" rendering proof-of-concept for maps.
+5. Implement 2D/3D view toggle and camera modes.
+
+## PHASE 1: UI PARITY AND SUB-LAYOUTS
+- [ ] STEP 1: Fix `[>]` indicator in `write_gl_os_state` to only show for ONE item.
+- [ ] STEP 2: Update `execute_option` for "Desktop Apps" (index 0) to change `menu_options` to a sub-menu:
+  - "1. fuzz-op-gl"
+  - "2. back"
+- [ ] STEP 3: Ensure `execute_option` can handle sub-menu selections.
+- KPI: "Desktop Apps" opens a sub-menu that can be navigated with joystick.
+
+## PHASE 2: FUZZ-OP-GL (VIRTUAL WINDOW)
+- [ ] STEP 4: Create a new window type/app for "fuzz-op-gl".
+- [ ] STEP 5: "fuzz-op-gl" window should read and display `pieces/apps/fuzzpet_app/fuzzpet/current_frame.txt`.
+- [ ] STEP 6: Ensure input is routed to `fuzz-op` when the window is focused.
+- KPI: "fuzz-op-gl" launches in a minimizable GL window and mirrors ASCII fuzz-op.
+
+## PHASE 3: TILE RENDERING & VIEW TOGGLE
+- [ ] STEP 7: Create `pieces/display/tile_pallet.txt` with RGB values.
+- [ ] STEP 8: Implement logic to map ASCII characters (e.g., '#', '.') to RGB tiles.
+- [ ] STEP 9: Add "View Toggle" to `fuzz-op-gl` menu (2D <-> 3D).
+- [ ] STEP 10: Implement 3D camera modes (1st, 3rd, Free).
+- KPI: Map renders using colored squares instead of ASCII; toggleable 3D view works.
+
+## QUESTIONS FOR USER:
+1. Should "fuzz-op-gl" be a standalone binary launched by GL-OS, or a mode within `gl_desktop.c`'s window rendering logic?
+
+A: we want to use mostly the same "TPM" piece based philosophy
+but use a gl rendering system instead of command line. very little deviation. 
+2. For the 3D view, do we have a specific layout file or should I derive 3D coordinates from the 2D ASCII map (e.g., Z = height)?
+A: z levels will be used for height. assume a tile is 1 z high
+3. Does the "tile-based" rendering apply only to the "map" portion of the frame, or the entire UI?
+A: just the map , the menu will be the same. 
+
+(later we are going to add an option to both ascii and gl for 
+minimization/maximzation of menu using a key ; and hotkeys in nav's )

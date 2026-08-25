@@ -1,0 +1,10 @@
+auth_status=GUEST
+tsots_online_screen=<panel>
+    <text label="║ LOGIN:                                                    ║" /><br/>
+    <cli_io id="username_input" label="Username" target_id="1" /><br/>
+    <cli_io id="password_input" label="Password" target_id="2" input_mode="password" /><br/>
+    <text label="║ " /><button label="1. Login" onClick="KEY:1" /><br/>
+    <text label="║ " /><button label="2. Signup" onClick="KEY:2" /><br/>
+    <text label="║ " /><button label="3. Guest" onClick="KEY:3" /><br/>
+</panel>
+

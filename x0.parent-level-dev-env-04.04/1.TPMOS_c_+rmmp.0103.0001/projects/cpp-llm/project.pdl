@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | cpp-llm
+META         | version            | 1.0
+META         | entry_layout       | projects/cpp-llm/layouts/cpp-llm.chtpm
+STATE        | starting_map       | map_01
+STATE        | player_piece       | iqabel
+STATE        | current_world      | world_01
+RESPONSE     | default            | Project cpp-llm loaded. Local LLM interface active.

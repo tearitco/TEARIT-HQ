@@ -1,0 +1,100 @@
+# Future-Facing: External AI & Recursive R&D Architecture
+
+## 1. The "External Bot" Paradigm
+Unlike traditional AI integrations, the AI in TPMOS is an **External Agent**. It does not live "inside" an application; instead, it uses the OS's API of Ops to interact with projects.
+
+### Core Components of a Bot Piece:
+- `projects/ai-bots/pieces/bot_01/`
+- `weights.bin`: Local learning state (Attention/RL parameters).
+- `memory/`: Long-term memory stored as distilled ledgers.
+- `fsm/`: PAL scripts defining the bot's behavior (Deterministic Skeletal Control).
+
+## 2. Recursive R&D Workflow
+The AI uses the Quiz-Bot and Knowledge Distillation systems to "level up" its own capabilities before performing game-world tasks.
+
+### Step 1: Learning (Distillation)
+The bot targets a corpus of text (e.g., "Organic Chemistry"). `ai-labs` distills this into a searchable Knowledge Ledger.
+
+### Step 2: Testing (The Quiz Validation)
+The bot uses an FSM Op to "take" a quiz in the `quiz-bot` project. 
+- It "attends" to its local `weights.bin` and the Knowledge Ledger to find answers.
+- Its score on the quiz is fed back into its local RL buffer.
+- **Goal**: To maximize its "Understanding Score" for that specific corpus.
+
+### Step 3: Application (LSR Research)
+Once the bot has "passed" the quiz (demonstrated mastery), it is qualified to perform R&D in `LSR`.
+- A Corporation in `LSR` hires the bot to "Research Mooncrete".
+- The bot uses its high "Understanding Score" to generate high-quality tech recipes or products.
+- These products are then sold to other AI-controlled NPCs or user FuzzPets.
+
+## 3. External Testing & System Management
+Bots can be spawned to simulate "Users" for stress-testing the entire TPMOS ecosystem.
+
+### Multi-NPC Coordination:
+- A single "Overmind" FSM can control multiple NPCs across a P2P network.
+- **Use Case**: Testing network latency in `p2p-net` by having 10 bots simultaneously attempt to "visit" a map and take a quiz.
+
+### Learning Across Network:
+- Bots can exchange "Weights" pieces via `p2p-net`, effectively sharing "learned" knowledge of a quiz or a game strategy without re-training from scratch.
+
+## 4. Technical Guidance: Porting `aiqabod` to TPM-AI Ops
+
+The C modules in `aiqabod]kit-lite` provide the mathematical "muscles" for the bots. We will reformat them into three primary System Ops:
+
+### A. `ai::attend` (Wrapping `attention_module.c`)
+- **Functionality**: Instead of a full LLM forward pass, this Op calculates "Focus" weights.
+- **Op Syntax**: `OP ai::attend <target_piece> <ledger_container> <rD_output>`
+- **Logic**: It compares the `target_piece`'s current state against a Knowledge Ledger (container of pieces). It returns a list of the Top-N piece IDs that the bot should "attend" to based on the Attention Bias and Q/K/V projections stored in the curriculum.
+
+### B. `ai::distill` (Wrapping `vocab_module.c`)
+- **Functionality**: Converts raw text/logs into the 16-parameter Curriculum format.
+- **Logic**: This Op takes the `rl_training_data.txt` from the Quiz-Bot and generates new "Vocabulary Pieces" in the bot's memory. This is how the bot "learns" from its own quiz performance.
+
+### C. `ai::evolve` (Wrapping `feedback_tx_module.c`)
+- **Functionality**: Performs backpropagation on a bot's local weight piece.
+- **Op Syntax**: `OP ai::evolve <bot_piece> <reward_value>`
+- **Logic**: It applies the gradient descent logic from IQABOD to update the `weights.bin` or `state.txt` of the bot piece. This ensures the bot's policy actually shifts over time based on the Reinforcement Learning signal.
+
+## 5. The Bot-Editor: A Live AI IDE
+**Path:** `projects/bot-editor/`
+Following the `op-ed` pattern, this project serves as a live development environment for agents.
+
+### A. The Edit-Test-Export Loop
+1. **Load**: The editor scans `pieces/ai_bots/` and allows the developer to load an existing bot piece into the active workspace.
+2. **Tune**: Live adjustment of personality weights and FSM bindings via the UI.
+3. **Sandbox Test**: A "Test Mode" that launches the bot's FSM locally within the editor's context to verify logic (e.g., watching it traverse a dummy directory).
+4. **Export**: Once verified, the IDE bundles the bot into the standalone `exo-bot/` structure.
+
+### B. Global Repository Integration
+- **Sync-on-Save**: Every change in the Editor is flushed immediately to the piece's `state.txt` or `weights.bin` in the global repository.
+- **Shared Assets**: Multiple bots can share the same FSM script templates from the `templates/` directory.
+
+
+## 6. Piece-Op Empowered Testing Bots
+Testing bots are the ultimate "External Users." They are specified to interact with the OS at the lowest level to ensure system integrity.
+
+### The "Tester" Specification:
+1. **Identity Isolation**: The bot uses a unique `auth_token` piece to simulate a real user session via the `user::auth_user` op.
+2. **Action-Assertion Loop**:
+   - **Action**: Bot calls an Op (e.g., `p2p::send_packet`).
+   - **Assertion**: Bot calls `bot::assert` to verify the resulting `state.txt` of the target piece.
+3. **Regression Memory**: If a bot fails an assertion, it records the failure in its own `history.txt`. Future "generations" of the bot can "attend" to these failure points to prioritize testing known bugs.
+
+### Dual-Mode Execution:
+- **Standalone Mode**: The bot runs directly via the `bot-editor` manager, interacting with the OS but not visible in any game world. Used for CI/CD and stress-testing.
+- **Project-Specific Mode**: The bot is "Injected" into a project (e.g., `quiz-engine`). It is managed by the project's orchestrator but maintains its global identity and learning history.
+
+## 8. Filesystem-Capable Standalone Bots
+The ultimate evolution of the AI Agent in TPMOS is the **Standalone Executable Bot**. These agents are not just NPCs; they are autonomous filesystem operators.
+
+### A. Filesystem Ops for Bots
+Bots will be equipped with specialized Ops to interact directly with the host environment:
+- **`fs::ls`**: Allows the bot to traverse its current directory and discover pieces or raw data.
+- **`fs::mk`**: Allows the bot to create new files or piece directories.
+- **`fs::write`**: Allows the bot to persist its own thoughts, logs, or generated tech recipes to disk.
+
+### B. The "Project Export" Feature
+The `bot-editor` will provide a **Full Export** command. 
+1. **Packaging**: The bot's local `pieces/ai_bots/[ID]` directory is cloned.
+2. **Binary Linking**: A static version of the `prisc` interpreter and required `ai::*` ops are bundled.
+3. **Portability**: The result is a standalone TPMOS-style command-line directory that can be moved to any Linux/Unix environment and run as a self-contained agent without the full GL-OS overhead.

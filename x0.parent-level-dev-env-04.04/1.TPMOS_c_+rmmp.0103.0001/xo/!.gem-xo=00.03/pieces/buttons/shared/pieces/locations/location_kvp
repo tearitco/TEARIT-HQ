@@ -1,0 +1,11 @@
+project_root=
+pieces_dir=\pieces
+fuzzpet_app_dir=\pieces\apps\fuzzpet_app
+fuzzpet_dir=\pieces\apps\fuzzpet_app\fuzzpet
+editor_dir=\pieces\apps\editor
+system_dir=\pieces\system
+selector_dir=\pieces\world\map_01\selector
+os_procs_dir=\pieces\os\procs
+clock_daemon_dir=\pieces\system\clock_daemon
+manager_dir=\pieces\apps\fuzzpet_app\manager
+chat_app_dir=projects/chat-app/

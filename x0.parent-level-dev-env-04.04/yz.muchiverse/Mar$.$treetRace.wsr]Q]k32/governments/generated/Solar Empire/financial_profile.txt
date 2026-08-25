@@ -1,0 +1,90 @@
+FINANCIAL PROFILE FOR Solar Empire
+====================================================
+FINANCIAL STATEMENT: Solar Empire (CONSOLIDATED)
+----------------------------------------------------
+(Amounts in Martian Credits, to four decimal places)
+ASSETS:
+  Cash and Cash Equivalents:		261.1000
+  Tax Receivables (Net):		130.5500
+  Loans (Colony Development):		78.3300
+  Physical Assets (Habitats, Rovers):	208.8800
+  Investments (Trust Funds):		182.7700
+  ---------------------------------------------
+  Total Assets:				861.6300
+  ---------------------------------------------
+LIABILITIES AND NET POSITION:
+  Public Debt Outstanding:		522.2000
+  Intragovernmental Debt:		130.5500
+  Pension & Benefits Payable:		78.3300
+  Environmental & Legal Liabilities:	26.1100
+  Accrued Interest Payable:		13.0550
+  ---------------------------------------------
+  Total Liabilities:			770.2450
+  ---------------------------------------------
+  Net Position (Net Worth):		91.3850
+  =============================================
+FISCAL OPERATIONS (FY 2024):
+----------------------------
+  Total Revenue:			391.6500
+    - Individual Income Tax:		261.1000
+    - Corporate Income Tax:		78.3300
+    - Payroll Taxes (Social Security):	52.2200
+    - Other Revenue:			0.0000
+  Net Cost of Operations:		469.9800
+    - Social Security:			104.4400
+    - Health (Medicare, Clinics):	78.3300
+    - Net Interest on Debt:		26.1100
+    - Life Support Systems:		78.3300
+    - Colony Defense:			78.3300
+    - Income Security:			52.2200
+    - Other Spending:			39.1650
+  Net Operating (Cost)/Revenue:		-78.3300
+  ---------------------------------------------
+NET POSITION:
+-------------
+  Beginning of Period:			169.7150
+  Adjustments (Accounting Changes):	+0.5000
+  Net Operating (Cost)/Revenue:		-78.3300
+  ---------------------------------------------
+  End of Period (Net Worth):		91.3850
+  ---------------------------------------------
+VARIOUS FISCAL RATIOS:
+----------------------
+  Debt-to-GDP Ratio:			25.0000
+  Deficit-to-Spending Ratio:		16.6667
+  Interest-to-Revenue Ratio:		6.6667
+  Tax Revenue per Capita:		39.1650
+  Spending per Capita:			46.9980
+  ---------------------------------------------
+*** CREDIT INFO: ***
+-------------------
+  Sovereign Credit Rating:		AA+
+  Benchmark 10-Year Yield:		4.2100%
+  Effective Borrowing Rate:		3.8700%
+  Debt Ceiling Limit:			522.2000
+  Current Debt Level:			522.2000
+  ---------------------------------------------
+VARIABLE SETTINGS (Changeable by controlling player):
+----------------------------------------------------
+  % Change in Defense Spending:		0.0000%
+  % Change in Social Security:		0.0000%
+  Tax Rate Adjustment (Bracket Shift):	0.0000%
+  New Debt Issuance (Automatic):		YES (To Cover Deficit)
+  ---------------------------------------------
+MISCELLANEOUS INFO:
+-------------------
+  Government Type:			MARTIAN COLONY
+  Fiscal Year End:			September 30
+  Next Budget Deadline:			October 1, 2025
+  Next Debt Ceiling Vote:		TBD
+  Controlled (and actively managed) by:	Player_Name
+  Wholly owned by:			Citizens of Solar Empire
+  Inflation Rate (2024):			3.1000%
+  Unemployment Rate (2024):		4.0000%
+  GDP (Nominal, 2024):			2611.0000
+  ---------------------------------------------
+FOOTNOTE TO FINANCIAL STATEMENT:
+-------------------------------
+[1] This statement is consolidated and includes all colonial agencies and trust funds. Intragovernmental transactions are eliminated.
+[2] "Net Position" is analogous to net worth or equity in colonial finance. A negative value indicates liabilities exceed assets.
+[3] Interest on debt is projected based on current yield curve and debt rollover schedule.

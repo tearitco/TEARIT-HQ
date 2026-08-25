@@ -1,0 +1,87 @@
+# Model registry - what /model <id> switches between.
+# Format: id|provider_kind|api_url|model_name
+#
+# gemma-lan|ollama|... - added 2026-07-16, the LAN Mac's small
+# gemma3:270m ollama model (pulled specifically for this purpose - see
+# yz.muchiverse/2.muchi-verse/muchi-evo-pal/EVO-DESIGN.txt). Meant for
+# high-volume distillation/corpus-generation calls (generate_corpus.c),
+# NOT general tool-calling chat - it has no tools[] schema wired and is
+# far smaller than groq-tool-use-mac. Verified live: ~935ms round trip
+# over the LAN, vs. groq-tool-use's much larger/slower 8B model.
+# Preferred over localhost per direct instruction: this machine's own
+# CPU is slow and corpuses here are small, so the LAN Mac's GPU-backed
+# ollama is strictly better for this workload, not just a policy
+# preference - see the "no parallel/no localhost" memory note.
+#
+# BOOT DEFAULT AS OF 2026-07-31 (direct user request, 2&3-jul31-sprint):
+# gemma-lan is now the first-boot default model (world_01 template
+# state.txt), and the user's last chosen model is remembered across runs
+# via the top-level last_model.txt (written by switch_model.c, stamped
+# into each fresh session by button.sh run's apply_last_model). The "not
+# for tool-calling" caveat above is moot for CHAT: all tool execution is
+# handled deterministically by gemma_strategy.c + strategy_execute_a.c
+# BEFORE any LLM call, so the 270M model never has to emit a tool call
+# itself (and with model_after_tool=no it isn't even called after a
+# pre-run tool).
+#
+# provider_kind must be exactly one of: ollama, gemini, llamacpp, iqabod,
+# script, opencode - these are the only ones send_message.c/check_response.c
+# know how to build a request for / parse a response from (see
+# send_message.c's own header comment for which proven TPMOS fix each one
+# ports).
+#
+# provider_kind=opencode - NEW, 2026-08-01: the headless opencode server
+# (opencode serve --port 4123) as a chat provider. No JSON request, no
+# connect_op: send_message forks ops/+x/opencode_ask.+x (which POSTs
+# /session then /session/<id>/message and prints the reply), the same
+# background-child shape as iqabod. api_url = the headless server base URL
+# (opencode_ask's argv[2], defaults to http://127.0.0.1:4123). Unlike every
+# other provider, the answer is produced by a full tool-using agent, not a
+# pure model call - proven live 2026-08-01 (see ai-dev-resume-aug1.txt sec.
+# 4). Caveat: each call opens a FRESH session (no cross-turn memory yet).
+#
+# gemma-lan-1b|gemma|... - added 2026-08-02, direct user request ("add
+# gemma1b as an optional model... make sure its gemma1b on lan thats 2
+# big for this machine"). Pulled onto the SAME LAN Mac (10.0.0.144) that
+# already hosts gemma3:270m - confirmed via `ollama pull gemma3:1b`
+# against that box's own /api/pull, verified present via /api/tags
+# afterward. Same provider_kind="gemma" as gemma-lan (NOT "ollama" -
+# matches that entry's own existing, working shape exactly, not a typo).
+# NOT required to be the judge model for anything - direct user
+# clarification the same day: gemma3:270m is expected to be fine for
+# judging too (my-lawyer design doc), since outcome quality depends more
+# on each side's own corpus/RL competency and office-held bias than on
+# raw judge-model size. This entry exists as an optional, heavier LAN
+# tier for whoever wants it, not a hard dependency.
+#
+# For provider_kind=iqabod, the same two fields are reused for different
+# meanings (no schema change): api_url = IQABOD's own project root,
+# RELATIVE TO THIS PROJECT'S OWN project_root (not absolute - see
+# send_message.c's own iqabod-branch header comment for the real,
+# confirmed-dead-path incident this fixed, 2026-07-30, and
+# !.xyzos-standards+1.txt's own "relative paths house-wide" section).
+# IQABOD lives as a sibling of this project under the same house root,
+# hence "../<iqabod dir>". model_name = curriculum file path relative
+# to THAT root (e.g. curriculum/guess_the_word/guess_the_word.txt). See
+# ROADMAP-models.txt §4 for why the example curricula shipped with
+# IQABOD are narrow game/test corpora, not general conversation - expect
+# mostly <UNK> output against them until a real conversational curriculum
+# is trained. Only curricula with a real trained .weights file (verified
+# by direct listing, 2026-07-30) are wired below - guess_the_word has
+# one, guess_the_letter does not (untrained, would produce pure noise).
+
+groq-tool-use-mac|ollama|http://10.0.0.144:11434|llama3-groq-tool-use:8b
+gemma-lan|gemma|http://10.0.0.144:11434|gemma3:270m
+gemma-lan-1b|gemma|http://10.0.0.144:11434|gemma3:1b
+gemma-local|gemma|http://localhost:11434|gemma3:270m
+gemini-flash|gemini|https://generativelanguage.googleapis.com|gemini-2.5-flash
+cpp-llm-mac|llamacpp|http://10.0.0.144:8080|unused
+iqabod-test|iqabod|../#.z.mirror_llm]z5]IQABOD🪞️+4|curriculum/guess_the_word/guess_the_word.txt
+opencode|opencode|http://127.0.0.1:4123|-
+#
+# provider_kind=script - NEW, 2026-07-20: no API, no network, no
+# external process at all - picks 5-10 random words from a plain
+# wordbank file (send_message.c's own script branch has the full
+# design comment). api_url is unused for this kind (kept "-"),
+# model_name is a wordbank file path relative to project_root.
+random-words|script|-|pieces/registry/wordbanks/sample.txt

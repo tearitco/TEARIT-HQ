@@ -1,0 +1,203 @@
+================================================================================
+TPMOS: groq-ollama toolcall investigation vs. gem-dev (working reference)
+Investigated: 2026-07-15
+Project: x0.parent-level-dev-env-03.00/1.TPMOS_c_+rmmp.0102.0028/projects/groq-ollama
+Reference (known-good): .../projects/gem-dev
+================================================================================
+
+SUMMARY
+-------
+gem-dev talks to the Gemini API correctly because it has a permission-gated
+tool-call state machine, a Gemini-shaped payload builder, and a path-aware
+JSON parser. groq-ollama was forked from an earlier/thinner version of the
+same manager and never caught up — it's missing the permission gate entirely,
+never sends Ollama's native `tools` schema in the request, and uses a much
+cruder JSON parser. Confirmed live against the local Ollama server
+(localhost:11434, model llama3-groq-tool-use:8b) that this is the actual
+cause of broken tool calls, not just a theory (see LIVE TEST EVIDENCE below).
+
+Also confirmed: this box is CPU-bound for inference. Simple round trips took
+28s-90s+ in testing, with one request timing out entirely at 90s. Any fix
+work needs generous curl --max-time values and patience when testing live —
+this matches your "wait for it to respond" note.
+
+
+ROOT CAUSES, RANKED BY IMPACT
+------------------------------
+
+1. THE REQUEST NEVER TELLS OLLAMA ABOUT THE TOOLS (this is the main bug)
+   File: projects/groq-ollama/manager/groq-ollama_manager.c, start_ai_query(),
+   non-Gemini/non-llamacpp branch (~line 528-561).
+
+   Current body sent to POST {api_url}/api/chat:
+       {"model":"llama3-groq-tool-use:8b","format":"json","stream":false,
+        "messages":[...]}
+
+   There is no "tools" array. The only thing telling the model about tools
+   is a paragraph in config/persona.txt asking it to reply with
+   {"tool": "...", "args": {...}}. llama3-groq-tool-use:8b is specifically
+   fine-tuned to use Ollama/OpenAI-style native tool calling (a "tools"
+   array in the request -> "message.tool_calls" in the response), and with
+   "format":"json" forcing raw JSON output but no tools schema, it does not
+   reliably follow the prose instruction.
+
+   Proven live (see evidence below): the current payload shape makes the
+   model literally echo the example from the persona prompt
+   ({"response": "Hello!"}) instead of answering the question or calling a
+   tool. It is not attempting tool use at all.
+
+   Fix: build (or extend gemini_payload_builder-style tooling) an
+   Ollama-native payload for the non-Gemini branch:
+       {"model":..., "stream": false,
+        "messages": [...],
+        "tools": [ {"type":"function","function":{"name":...,
+                     "description":...,"parameters":{...}}}, ... ] }
+   Reuse the same 7 tool definitions gem-dev's gemini_payload_builder.c
+   already has (exec_cmd, read_file, write_file, list_dir, search_in_files,
+   edit_file, web_search) but in OpenAI/Ollama function-schema shape, not
+   Gemini's functionDeclarations shape. Drop "format":"json" for the
+   tool-enabled request — it fights with native tool_calls in Ollama.
+   NOTE: in my second live test (tools[] + system persona nudging it to use
+   tools) the model still sometimes refused / was very slow. Persona wording
+   will likely need iteration once native tools are wired up — budget time
+   for that, don't assume schema-only fixes it 100%.
+
+2. NO PERMISSION GATE — tools execute immediately, unlike gem-dev
+   File: groq-ollama_manager.c, check_ai_status() (~line 629-662).
+
+   gem-dev has a whole state machine gem-dev_manager.c doesn't:
+     - g_pending_tool_name / g_pending_function_call / g_pending_args_json
+     - AI state "PENDING_PERM", FSM state "WAIT_PERM"
+     - execute_pending_tool() / deny_pending_tool()
+     - the "Tool Execution Request ... Type 'y' to allow or 'n' to deny"
+       prompt shown in your gem-dev transcript
+   groq-ollama has none of this (grep confirms zero matches for
+   PENDING_PERM/WAIT_PERM/execute_pending_tool/deny_pending_tool in
+   groq-ollama_manager.c). Right now, if the model DID emit a valid
+   exec_cmd/write_file tool call, groq-ollama would run it immediately with
+   no confirmation step — both a UX mismatch with gem-dev and a safety gap
+   (unprompted exec_cmd).
+
+   Fix: port gem-dev's pending-tool state machine (manager lines ~62-68,
+   481-608, and the dispatch around line 1161-1179) into
+   groq-ollama_manager.c, adapting the ctx_file paths from
+   "projects/gem-dev/..." to "projects/groq-ollama/...".
+
+3. JSON parser is a shallow global key-scan, not a path-aware parser
+   Files: gem-dev/ops/src/json_parser.c vs groq-ollama/ops/src/json_parser.c
+
+   gem-dev's json_parser.c does real dot/array-path lookups, e.g.
+   "candidates[0].content.parts[0].text", walking the JSON tree properly.
+   groq-ollama's json_parser.c (extract_value()) just does a linear
+   strchr("\"") scan for the FIRST occurrence of a bare key name anywhere in
+   the file, ignoring nesting/depth entirely. Against Ollama's real
+   response shape:
+       {"message":{"role":"assistant","content":"","tool_calls":[
+          {"function":{"name":"list_dir","arguments":{"path":"."}}}
+       ]}}
+   this currently "works" for a single tool call only by luck (each key
+   happens to appear exactly once). It will misbehave the moment content
+   contains stray text with a key that looks like "name"/"content" before
+   the real one, or with multiple tool_calls, or once you add
+   parallel/multi tool call support. This is a latent bug, not just
+   stylistic debt.
+
+   Fix: replace groq-ollama/ops/src/json_parser.c with gem-dev's dot-path
+   version (or literally copy gem-dev's file over) and update call sites in
+   groq-ollama_manager.c to use real paths, e.g.
+   "message.tool_calls[0].function.name" /
+   "message.tool_calls[0].function.arguments" instead of bare "name" /
+   "arguments". Rebuild.
+
+4. build.sh silently drops gemini_payload_builder from the build
+   Files: groq-ollama/build.sh vs groq-ollama/ops/gemini_payload_builder.c
+
+   gem-dev keeps gemini_payload_builder.c in ops/src/, and build.sh compiles
+   everything under ops/src/*.c. groq-ollama's copy of the same file lives
+   one directory up, at ops/gemini_payload_builder.c (NOT ops/src/), and
+   build.sh only loops over "ops/src/*.c" — so this source file is never
+   rebuilt by ./build.sh. There is a binary at
+   ops/+x/gemini_payload_builder dated May 22 (stale, hand-built at some
+   point) and a second one, ops/+x/gemini_payload_builder.+x, with a much
+   newer timestamp of unclear origin. Right now this only matters for the
+   is_gemini branch of groq-ollama (the Ollama branch doesn't call it at
+   all — see #1), but it's a landmine: any future edit to
+   ops/gemini_payload_builder.c will look like it did nothing because
+   ./build.sh never recompiles it.
+
+   Fix: move ops/gemini_payload_builder.c into ops/src/ (matching gem-dev's
+   layout) so build.sh's existing loop picks it up, delete the stale
+   ops/+x/gemini_payload_builder and .+x duplicate, rebuild.
+
+5. Missing config/tool_flags.txt and the code that reads it
+   groq-ollama/config/ has no tool_flags.txt (gem-dev's has
+   ignore_web_search=1 / raw_tool_followup=1). groq-ollama_manager.c also
+   has no web_search_ignored()/raw_tool_followup_enabled() functions at
+   all — grep for "tool_flags.txt" in groq-ollama_manager.c returns
+   nothing. So even after tool calls work, web_search will always be live
+   (no kill switch) and there's no "show raw tool output" option matching
+   gem-dev's behavior.
+
+   Fix: copy config/tool_flags.txt from gem-dev into groq-ollama/config/,
+   and port web_search_ignored() / raw_tool_followup_enabled() (gem-dev
+   manager lines ~253-292) plus their call sites.
+
+6. No quota/error fallback logic
+   gem-dev's check_ai_status() has real fallback handling: on an API error
+   after a tool call, it shows the raw tool result instead of losing it; on
+   a quota-style error it can fall back to a direct DuckDuckGo search. None
+   of that exists in groq-ollama_manager.c — any curl/API failure just
+   drops back to IDLE with a generic "API Error" and throws away any
+   in-flight tool result. Lower priority than #1-#3, but worth porting once
+   the core tool-calling path works, since a flaky LAN Ollama host (see
+   below) will hit this path often.
+
+
+LIVE TEST EVIDENCE (against http://localhost:11434, model
+llama3-groq-tool-use:8b — this is the only one of the 4 configured Ollama
+hosts that answered right now; 10.0.0.144 / 10.0.0.187 / 10.0.0.16 all timed
+out / refused, so those machines are currently off or unreachable)
+
+Test A — exact current groq-ollama payload shape (system prompt describing
+tools in prose, "format":"json", NO native "tools" field), user asks
+"list the files in the current directory":
+    Response: {"response": "Hello!"}
+    (28.5s round trip; it literally copied the example text from the
+    persona prompt instead of answering or calling a tool.)
+
+Test B — native "tools": [...] array (OpenAI/Ollama function schema) with
+list_dir + exec_cmd defined, no system prompt, same user question:
+    Response (57.9s): "I'm sorry but I don't have the capability to perform
+    file operations such as listing files..." — declined to use the tool
+    even though it was offered natively.
+
+Test C — native tools[] + a system prompt explicitly telling it to prefer
+tool calls over refusing:
+    Timed out at 90s with no response at all.
+
+Takeaway: switching to a native tools[] payload is necessary (Test A proves
+the current approach doesn't even attempt tool use) but is not obviously
+sufficient by itself — this specific model needs correct system-prompt
+wording to reliably choose to call a tool instead of refusing (Test B), and
+this hardware is slow enough (Test C: 90s+ for a trivial exchange) that
+manual testing needs long curl timeouts and patience. Budget for a few
+rounds of persona/prompt iteration once the schema plumbing is in place, and
+don't read a single slow/failed manual test as "still broken" without
+retrying — this machine's inference latency is highly variable (28s / 58s /
+timeout across three near-identical calls above).
+
+
+SUGGESTED ORDER OF WORK
+------------------------
+1. Add native "tools" array to the Ollama request path (root cause #1) —
+   nothing else matters until the model is actually offered its tools.
+2. Iterate on persona/system prompt wording against live localhost Ollama
+   until tool calls come back reliably (informed by Test B/C above).
+3. Swap in gem-dev's path-aware json_parser.c (#3) so tool_calls/name/
+   arguments extraction is correct once the model starts emitting them.
+4. Port the PENDING_PERM/WAIT_PERM permission-gate state machine (#2) so
+   behavior matches the gem-dev demo (y/n confirmation before execution).
+5. Fix build.sh / file placement for gemini_payload_builder.c (#4) —
+   cheap, mechanical, do it whenever convenient.
+6. Add config/tool_flags.txt + the flag-reading functions (#5).
+7. Port quota/error fallback handling (#6) — lowest priority, do last.

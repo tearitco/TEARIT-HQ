@@ -1,0 +1,56 @@
+# STEP 2 TODO: P2P Chat Discovery & Interface
+**Task:** Enhance `chat-op` UI to display connected peers (hash+port+subnet).
+**Collaborators:** User & Gemini CLI
+**Date:** 2026-04-22
+
+---
+
+## 1. UI: Peer Status Dashboard
+**Objective:** Visualize the "Ring-Broadcast Hybrid" network state within `chat-op`.
+
+- [ ] **1.1 Layout Variable Setup:**
+    - Update `chat-op.chtpm` to include `${connected_peers_list}` and `${network_status}`.
+    - Format goal: `[HASH] | PORT:XXXX | SUBNET:CHAT`
+- [ ] **1.2 Multi-Peer Display:**
+    - Use the `<scroller>` or a list of `<text>` elements to show up to 10 active peers.
+
+---
+
+## 2. BACKEND: Discovery & Status Sync
+**Objective:** A background Op that identifies peers on the same machine/subnet.
+
+- [ ] **2.1 Peer Heartbeat Op (`check_peers.+x`):**
+    - **Discovery:** Read `pieces/network/subnets/chat.txt` to find active ports.
+    - **Pseudo-Sudo/Subnet Abstraction:** Support multiple instances on the same machine by scanning a range of ports (e.g., 8000-8010).
+    - **Identity:** Extract the user's hash (Wallet/Profile ID) and associate it with their bound port.
+- [ ] **2.2 State Mirroring:**
+    - Write active peer data to `projects/chat-op/manager/gui_state.txt` for the parser to pick up.
+    - Variables: `connected_peers_list`, `peer_count`.
+
+---
+
+## 3. HYBRID LOGIC: Preliminary Debug
+**Objective:** Establish visibility before full message routing.
+
+- [ ] **3.1 Port Collision Handling:**
+    - If port 8000 is taken, the next chat instance should automatically bind to 8001 (Internal Subnetting).
+- [ ] **3.2 Connection Visualization:**
+    - If a peer is in the logical "Ring", highlight them with a special marker (e.g., `(R)`).
+
+---
+
+## 4. KPIs (Success Criteria)
+
+| ID | KPI | Metric |
+| :--- | :--- | :--- |
+| **K1** | **Peer Visibility** | Launching two `chat-op` instances on one PC shows `Peer Count: 2` in both. |
+| **K2** | **Accurate Mapping** | UI correctly displays `Hash+Port` for each connected terminal. |
+| **K3** | **Zero-Config Join** | A new instance binds to the next available port and is instantly visible to others. |
+| **K4** | **Subnet Awareness** | Peers on different subnets are filtered or labeled correctly. |
+
+---
+
+## 5. NEXT STEPS (Immediate Collaboration)
+1. Audit `projects/chat-op/layouts/chat-op.chtpm` for scroller placement.
+2. Draft `p2p_heartbeat.c` to handle port scanning and `gui_state.txt` updates.
+3. Define the "Hash" generation rule (e.g., first 8 chars of `projects/user/pieces/profiles/<name>/state.txt` hash).

@@ -1,0 +1,5 @@
+name=Glutamate
+formula=Glu (E)
+type=HOOCCH2CH2CH(NH2)COOH
+groups=Neurotransmitter
+relevance=-NH2

@@ -1,0 +1,56 @@
+# main_module.pal - pieces/chtpm/layouts/main.chtpm's own dedicated
+# module, per xyzos-standards §41's per-screen module convention.
+# Same proven shape as @.apps/my-chara-txt's own main_module.pal.
+li x1, 0
+
+# REAL fix 2026-08-03: interact_relay.txt is a single append-only file
+# for the whole session (inject_raw_key() in chtpm_parser_pal.c only
+# ever appends, and it's truncated exactly once at orchestrator
+# startup - see launch_module()'s own comment for why a per-module
+# truncation would break persistent-module liveness). Every screen
+# switch kills the old per-screen module and forks a brand new one,
+# and a brand new one always starts this cursor (x1) at 0 - so without
+# this drain, EVERY screen switch replayed the ENTIRE session's key
+# history against the new screen's own piece.pdl item list. If some
+# earlier keystroke's resolved index happened to land on whatever
+# METHOD row the new screen put there, it fired - this is what was
+# opening the board widget "randomly" on screen switches (an old
+# keypress from a previous screen coincidentally matching "View
+# Board"'s own index on this one). Burn through everything already in
+# the file BEFORE the real loop starts listening, so only genuinely
+# NEW keys (typed after this module actually launched) ever dispatch.
+drain:
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, drain_done
+j drain
+drain_done:
+
+li x9, 0
+tactics_menu_input x9
+tactics_compose_frame
+hit_frame
+read_pos x7, "pieces/display/tactics_screen_changed.txt"
+
+loop:
+li x9, 0
+tactics_menu_input x9
+read_pos x8, "pieces/display/tactics_screen_changed.txt"
+beq x7, x8, check_key
+addi x7, x8, 0
+j render
+
+check_key:
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, no_key
+tactics_menu_input x2
+j render
+
+no_key:
+sleep 30000
+j loop
+
+render:
+tactics_compose_frame
+hit_frame
+sleep 30000
+j loop

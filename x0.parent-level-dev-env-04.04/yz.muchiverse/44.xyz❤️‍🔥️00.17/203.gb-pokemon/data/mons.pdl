@@ -1,0 +1,14 @@
+# mons.pdl — species table (id name type base_hp base_atk base_def base_spd)
+# type: 0=Normal 1=Grass 2=Fire 3=Water
+# house DNA: simple whitespace table, agents can edit without recompiling logic
+
+0  MISSINGNO  0  10  5  5  5
+1  LEAFY      1  45  49  49  45
+2  EMBER      2  39  52  43  65
+3  BUBBLE     3  44  48  65  43
+4  PIDGEY     0  40  45  40  56
+5  RATTATA    0  30  56  35  72
+6  CATERPIE   1  45  30  35  45
+7  WEEDLE     1  40  35  30  50
+8  MAGIKARP   3  20  10  55  80
+9  VULPIX     2  38  41  40  65

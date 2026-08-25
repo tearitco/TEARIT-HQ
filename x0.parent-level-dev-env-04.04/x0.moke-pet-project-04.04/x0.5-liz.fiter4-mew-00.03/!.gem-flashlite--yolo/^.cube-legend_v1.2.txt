@@ -1,0 +1,38 @@
+Cube Face Legend - Coordinate System and Colors
+===============================================
+
+This document defines the coordinate system and face colors for the Legend Block cube visualization.
+
+COORDINATE SYSTEM:
+- X-axis (red) : Left/Right (-x = left, +x = right)
+- Y-axis (green): Up/Down (-y = down, +y = up)  
+- Z-axis (blue): Forward/Back (-z = back, +z = forward)
+
+____________________________________________
+green = (y+)faces upward along positive Y-axis(top)
+brown = (y-)faces downward along negative Y-axis (bottom)
+back = (z+) faces backwards along positive z-axis(back)
+eyes = (z-)faces forward along negative z-axis(front)
+
+right = x+faces right along positive X-axis (right-hand)
+left = x- faces left along negative X-axis(left-hand)
+
+-----------------------------
+
+green = (y+)faces upward along positive Y-axis(top)
+brown = (y-)faces downward along negative Y-axis (bottom)
+back = (z+) faces backwards along positive z-axis(back) = black
+eyes = (z-)faces forward along negative z-axis(front) =  white
+
+right = x+faces right along positive X-axis (right-hand)= red
+left = x- faces left along negative X-axis(left-hand) = blue 
+
+_____________________________
+REFERENCE:
+The coordinate system used is API-based: [z, y, x] where z is the layer,
+y is the row, and x is the column, but internally stored as [x, y, z].
+
+______________________
+
+
+

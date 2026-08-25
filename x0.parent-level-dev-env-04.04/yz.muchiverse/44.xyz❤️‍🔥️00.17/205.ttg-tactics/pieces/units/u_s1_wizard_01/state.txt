@@ -1,0 +1,12 @@
+id=u_s1_wizard_01
+seat=1
+role=Wizard
+x=4
+y=11
+hp=16
+max_hp=16
+atk=12
+def=1
+alive=1
+moved=0
+acted=0

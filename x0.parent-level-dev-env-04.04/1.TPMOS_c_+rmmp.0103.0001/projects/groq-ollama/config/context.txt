@@ -1,0 +1,4 @@
+limit=65536
+divisor=300
+sandbox_depth=4
+sandbox_root=projects/groq-ollama/sandbox

@@ -1,0 +1,16 @@
+# keybinds.txt - real, per-host key->ACTION mapping board-viewer's own
+# ops/bv_menu_input.c reads (any key not consumed by camera/selector
+# controls, while genuinely inside real INTERACT mode, gets looked up
+# here and appended to this host's own real inbox if found - see that
+# file's own header comment for the full mechanism, built and verified
+# working this session). civ-vs-piece.md §2/§6a decisions: space=jump,
+# g=mine, h=build (raw keys, not the design doc's own §3a numbered
+# xelector context-menu sketch - direct instruction, a real, documented
+# divergence from that section, not a silent deviation).
+# Format: <raw keycode>=<ACTION>
+32=JUMP
+103=MINE
+104=BUILD
+47=END_TURN
+46=TOGGLE_AUTOTICK
+44=CYCLE_TICK_SPEED

@@ -1,0 +1,11 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|                    T R U E   S W O R D S                    |" /><br/>
+    <text label="|                         C L A S H                           |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label=" 1:strike   2:heavy   3:heal   4:block   (Ctrl+C to quit)" /><br/>
+</panel>

@@ -1,0 +1,464 @@
+# Fondu Architecture: Analysis & Clarified Specification
+**Date:** April 1, 2026
+**Author:** Qwen Code (AI Assistant)
+**Status:** SPECIFICATION CLARIFIED - READY FOR IMPLEMENTATION
+
+---
+
+## PART 1: CURRENT STATE ANALYSIS
+
+### 1.1 Where We Are
+
+The TPMOS codebase is mid-transition from a **Legacy App Architecture** to a **Project-Based Architecture**, with Fondu serving as the bridge between them.
+
+**Current Directory State:**
+```
+pieces/apps/
+├── fuzzpet_app/     # LEGACY - To be trunked
+├── editor/          # LEGACY - To be trunked
+├── gl_os/           # LEGACY - To be trunked
+├── op-ed/           # MODERN APP (reference pattern)
+├── player_app/      # SYSTEM (unified input buffer)
+├── playrm/          # SYSTEM (project loader)
+└── user/            # AMBIGUOUS - Needs resolution
+
+projects/
+├── fuzz-op/         # MODERN PROJECT (reference pattern)
+├── op-ed/           # MODERN PROJECT (dual with app)
+├── lsr/             # FUTURE (civ-lite sim)
+├── ai-labs/         # FUTURE (AI distillation)
+├── p2p-net/         # FUTURE (blockchain market)
+└── [NO TRUNK YET]   # MISSING - Needed for archives
+```
+
+### 1.2 What's Working
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| `fuzz_legacy_manager.c` pattern | ✓ Complete | CPU-safe canonical reference |
+| App vs. Project documentation | ✓ Complete | Clear distinction in `op-setup.txt` |
+| 12-Step Pipeline | ✓ Updated | Reflects project-based managers |
+| `op-ed` as APP reference | ✓ Working | Follows correct pattern |
+| `fuzz-op` as PROJECT reference | ✓ Working | Follows correct pattern |
+
+### 1.3 Critical Gaps
+
+| Gap | Risk Level | Impact |
+|-----|------------|--------|
+| Fondu installer not implemented | HIGH | Spec exists, no working code |
+| `pieces/apps/installed/` missing | MEDIUM | No deployment target |
+| `projects/trunk/` missing | MEDIUM | No archive location for legacy |
+| Legacy apps still in `pieces/apps/` | LOW | Confusion, but not blocking |
+| `user` app identity unresolved | MEDIUM | Highlights APP vs. PROJECT ambiguity |
+| No Fondu decision tree | MEDIUM | Developers unsure when to use which pattern |
+
+---
+
+## PART 2: FONDU SPECIFICATION CLARIFIED
+
+### 2.1 Vision Refinement
+
+**Original Vision:** "Melt the boundary between Project Source and Installed App"
+
+**Clarified Vision:** Fondu is a **build-and-deploy pipeline** that transforms editable Project source code into production-ready, non-editable App installations.
+
+**Key Insight:** Fondu should be **Option A first** (simple copy/compile tool), then evolve toward **Option B** (full package manager) once the pattern is proven.
+
+### 2.2 Lifecycle Stages (Clarified)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PROJECT LIFECYCLE                                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  [ACTIVE]                    [ARCHIVED]              [INSTALLED]            │
+│  projects/<id>/       →      projects/trunk/   →     pieces/apps/installed/ │
+│  - Editable source             - Source only           - Non-editable       │
+│  - In dev builds               - Excluded from         - Binaries + assets  │
+│  - Daily iteration               standard compile      - Production-ready   │
+│  - Developer-facing              - Read-only ref       - User-facing        │
+│                                                                             │
+│  Fondu Installer triggers:                                                  │
+│  1. Developer marks project "ready for production"                          │
+│  2. Fondu pulls from projects/                                              │
+│  3. Compiles binaries                                                       │
+│  4. Deploys to pieces/apps/installed/                                       │
+│  5. Registers in app_list.txt                                               │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.3 When to Use: APP vs. PROJECT vs. FONDU-INSTALLED
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ DECISION TREE: What should I build?                                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ Q1: Is this SYSTEM INFRASTRUCTURE (parser, renderer, orchestrator)?        │
+│     └─> Place in: pieces/system/ or pieces/chtpm/                          │
+│                                                                             │
+│ Q2: Is this a DEVELOPMENT PROJECT (game, simulation, user content)?        │
+│     ├─> YES: Create in projects/<project_id>/                              │
+│     │         - Use project.pdl with entry_layout                          │
+│     │         - Implement <project>_manager.c                              │
+│     │         - Launch via loader menu                                     │
+│     │         - Can later deploy via Fondu                                 │
+│     └─> NO: Continue...                                                    │
+│                                                                             │
+│ Q3: Is this a SYSTEM TOOL (editor, manual, utility)?                       │
+│     ├─> YES: Create in pieces/apps/<app_id>/                               │
+│     │         - Use <app_id>.pdl with layout_path                          │
+│     │         - Implement <app>_module.c                                   │
+│     │         - Launch via button href                                     │
+│     │         - Always system-managed, never trunked                       │
+│     └─> NO: Reconsider design                                              │
+│                                                                             │
+│ Q4: Should this project be deployable as a "production app"?               │
+│     └─> YES: Use Fondu Installer after development complete                │
+│     └─> NO: Keep as projects/ only (dev/internal use)                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.4 Fondu Installer: Phased Implementation
+
+#### PHASE 1: Minimal Viable Fondu (Recommended Starting Point)
+
+**Scope:** Simple build-and-copy tool with basic registry updates.
+
+```
+fondu.c Responsibilities:
+├── 1. Source Acquisition
+│   ├── Validate source directory (projects/<id>/)
+│   ├── Copy directory structure to temp build dir
+│   └── Detect build script (build.sh, Makefile, or use template)
+│
+├── 2. Compilation
+│   ├── Execute build script in temp dir
+│   ├── Compile all .c files to binaries
+│   └── Place in +x/ subdirectories
+│
+├── 3. Deployment
+│   ├── Create pieces/apps/installed/<app_id>/
+│   ├── Move compiled binaries from temp dir
+│   ├── Copy required assets (.chtpm layouts, .pdl files)
+│   └── Set non-editable permissions (chmod 555)
+│
+└── 4. Registry
+    ├── Append app_id to pieces/os/app_list.txt
+    └── Add route to pieces/os/project_routes.kvp
+```
+
+**Phase 1 Limitations (Intentional):**
+- No remote trunk support (local `projects/` only)
+- No dependency resolution (flat builds)
+- No versioning (latest only)
+- No rollback capability
+
+#### PHASE 2: Enhanced Fondu (Future)
+
+**Scope:** Add package management features once Phase 1 is proven.
+
+- Remote trunk mounting (external project sources)
+- Version tracking and rollback
+- Dependency resolution via `.pdl` manifests
+- Uninstall capability
+- App store UI integration
+
+### 2.5 Fondu Data Flow
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ FONDU INSTALLATION FLOW                                                      │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  DEVELOPER                 FONDU INSTALLER              INSTALLED APP        │
+│     │                           │                            │              │
+│     │  projects/fuzz-op/        │                            │              │
+│     │  [source ready]           │                            │              │
+│     │──────────────────────────>│                            │              │
+│     │  $ ./fondu fuzz-op        │                            │              │
+│     │                           │                            │              │
+│     │                           │ 1. Validate source         │              │
+│     │                           │ 2. Copy to /tmp/fondu_build│              │
+│     │                           │ 3. Run make/compile        │              │
+│     │                           │ 4. Create installed dir    │              │
+│     │                           │ 5. Deploy binaries         │              │
+│     │                           │ 6. Set permissions         │              │
+│     │                           │ 7. Update registry         │              │
+│     │                           │                            │              │
+│     │                           │───────────────────────────>│              │
+│     │                           │                            │ pieces/apps/ │
+│     │                           │                            │ installed/   │
+│     │                           │                            │ fuzz-op/     │
+│     │                           │                            │ ├── +x/      │
+│     │                           │                            │ ├── layouts/ │
+│     │                           │                            │ └── assets/  │
+│     │                           │                            │              │
+│     │<────────────────────────────────────────────────────────────────────  │
+│     │  "Installation complete: pieces/apps/installed/fuzz-op/"              │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.6 Installed App Structure
+
+```
+pieces/apps/installed/<app_id>/
+├── +x/
+│   ├── <app_id>_manager.+x      # Main manager binary
+│   ├── move_entity.+x           # Ops (if used)
+│   └── place_tile.+x            # Ops (if used)
+├── layouts/
+│   └── <app_id>.chtpm           # Entry layout
+├── assets/
+│   ├── piece.pdl                # Default piece DNA
+│   └── [other static assets]
+├── app.pdl                      # App descriptor (read-only)
+│   ├── app_id = <app_id>
+│   ├── version = 1.0.0
+│   ├── source_project = <project_id>
+│   ├── install_date = YYYY-MM-DD
+│   └── layout_path = pieces/apps/installed/<app_id>/layouts/<app_id>.chtpm
+└── pieces/
+    └── [runtime state - writable]
+```
+
+---
+
+## PART 3: IMPLEMENTATION ROADMAP
+
+### 3.1 Immediate Next Steps (In Order)
+
+```
+STEP 1: Create Directory Structure (30 min)
+├── mkdir -p pieces/apps/installed/
+├── mkdir -p projects/trunk/legacy_archive/
+└── Verify permissions
+
+STEP 2: Implement Fondu Core (2-4 hours)
+├── Write fondu.c with Phase 1 scope
+├── Include: source validation, copy, compile, deploy, register
+├── Test with blank/template project
+└── Document usage in #.docs/
+
+STEP 3: Migrate Legacy Apps (1 hour)
+├── Move fuzzpet_app → projects/trunk/legacy_archive/
+├── Move editor → projects/trunk/legacy_archive/
+├── Move gl_os → projects/trunk/legacy_archive/
+└── Update references in documentation
+
+STEP 4: Resolve "user" App (1 hour)
+├── Decision: Make "user" a proper APP (pieces/apps/user/)
+├── Follow op-ed pattern exactly
+├── Fix layout refresh bug if needed
+└── Test end-to-end
+
+STEP 5: First Fondu Deployment (1 hour)
+├── Develop fuzz-op in projects/ until stable
+├── Run: ./fondu fuzz-op
+├── Verify installation in pieces/apps/installed/
+├── Test launched app
+└── Document any issues
+
+STEP 6: Documentation Updates (30 min)
+├── Update README.md with Fondu section
+├── Update AGENT_ONBOARDING.md
+├── Add Fondu usage to op-setup.txt
+└── Create fondu-usage.txt quick reference
+```
+
+### 3.2 Risk Mitigation
+
+| Risk | Mitigation |
+|------|------------|
+| Fondu compile fails on Windows | Test on Linux first; Windows support in Phase 2 |
+| Legacy migration breaks existing workflows | Keep backup; migrate one app at a time |
+| "user" app still has issues | Defer; focus on Fondu core first |
+| Performance regression | Benchmark before/after; add profiling to fondu.c |
+
+### 3.3 Success Criteria
+
+Fondu Phase 1 is complete when:
+- [ ] `./fondu <project_id>` successfully deploys a project
+- [ ] Installed app launches and functions correctly
+- [ ] App appears in `app_list.txt` registry
+- [ ] Legacy apps moved to trunk without breaking system
+- [ ] Documentation updated and accurate
+
+---
+
+## PART 4: TECHNICAL NOTES
+
+### 4.1 Fondu.c Pseudocode
+
+```c
+/*
+ * fondu.c - TPMOS App Installer (Phase 1)
+ * Usage: ./fondu <project_id>
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+
+#define SOURCE_BASE "projects/"
+#define INSTALL_BASE "pieces/apps/installed/"
+#define BUILD_DIR "/tmp/fondu_build/"
+
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <project_id>\n", argv[0]);
+        return 1;
+    }
+
+    char *project_id = argv[1];
+    char source_path[512];
+    char install_path[512];
+    char build_path[512];
+
+    // 1. Validate source exists
+    snprintf(source_path, sizeof(source_path), "%s%s", SOURCE_BASE, project_id);
+    if (access(source_path, F_OK) != 0) {
+        fprintf(stderr, "Error: Project '%s' not found in %s\n", project_id, source_path);
+        return 1;
+    }
+
+    // 2. Create build directory
+    snprintf(build_path, sizeof(build_path), "%s%s", BUILD_DIR, project_id);
+    mkdir_recursive(build_path);
+
+    // 3. Copy source to build directory
+    copy_directory(source_path, build_path);
+
+    // 4. Detect and run build script
+    if (file_exists("%s/Makefile", build_path)) {
+        run_command("make -C %s", build_path);
+    } else if (file_exists("%s/build.sh", build_path)) {
+        run_command("%s/build.sh", build_path);
+    } else {
+        // Use standard TPMOS compile template
+        compile_all_c_files(build_path);
+    }
+
+    // 5. Create installation directory
+    snprintf(install_path, sizeof(install_path), "%s%s", INSTALL_BASE, project_id);
+    mkdir_recursive(install_path);
+
+    // 6. Deploy binaries and assets
+    deploy_binaries(build_path, install_path);
+    deploy_assets(build_path, install_path);
+
+    // 7. Set non-editable permissions
+    chmod_recursive(install_path, 0555);
+
+    // 8. Update registry
+    append_to_file("pieces/os/app_list.txt", project_id);
+    add_route("pieces/os/project_routes.kvp", project_id, install_path);
+
+    printf("✓ Installed: %s\n", install_path);
+    return 0;
+}
+```
+
+### 4.2 Directory Helper Functions Needed
+
+```c
+void mkdir_recursive(const char *path);
+void copy_directory(const char *src, const char *dst);
+void copy_file(const char *src, const char *dst);
+int file_exists(const char *format, ...);
+void run_command(const char *format, ...);
+void compile_all_c_files(const char *dir);
+void deploy_binaries(const char *src, const char *dst);
+void deploy_assets(const char *src, const char *dst);
+void chmod_recursive(const char *path, mode_t mode);
+void append_to_file(const char *path, const char *line);
+void add_route(const char *kvp_file, const char *key, const char *value);
+```
+
+### 4.3 Registry File Formats
+
+**app_list.txt:**
+```
+# One app_id per line
+op-ed
+player_app
+playrm
+fuzz-op  # Added by Fondu
+```
+
+**project_routes.kvp:**
+```
+# key=value format
+op-ed=pieces/apps/op-ed/
+fuzz-op=pieces/apps/installed/fuzz-op/
+user=pieces/apps/user/
+```
+
+---
+
+## PART 5: OPEN QUESTIONS
+
+### 5.1 Decisions Needed
+
+1. **Should Fondu support uninstall?**
+   - Phase 1: No (manual removal only)
+   - Phase 2: Add `./fondu --uninstall <app_id>`
+
+2. **Should installed apps be editable?**
+   - Recommendation: No (chmod 555, read-only)
+   - Exception: `pieces/` subdirectory for runtime state
+
+3. **Should Fondu validate dependencies?**
+   - Phase 1: No (assume self-contained)
+   - Phase 2: Parse `.pdl` for dependency manifests
+
+4. **Where should Fondu binary live?**
+   - Option A: `#.tools/fondu.+x` (system tool)
+   - Option B: `pieces/system/fondu/+x/fondu.+x` (core system)
+   - **Recommendation: Option A** (not part of runtime)
+
+### 5.2 Future Considerations
+
+- **Remote Trunk:** Mount external `projects/` from network/Git
+- **Versioning:** Track app versions, support rollback
+- **App Store UI:** Browser interface for installing/uninstalling
+- **Dependency Graph:** Resolve and install dependent projects
+- **Sandboxing:** Run installed apps in restricted environment
+
+---
+
+## PART 6: SUMMARY
+
+### The Plan, Simplified
+
+1. **Build Fondu Phase 1** (simple installer) before Phase 2 (package manager)
+2. **Create directories** (`installed/`, `trunk/`) before migrating anything
+3. **Migrate legacy apps** one at a time, testing after each
+4. **Resolve "user"** as an APP following `op-ed` pattern
+5. **Test Fondu** with a real project (fuzz-op or template)
+6. **Document everything** in usage guides
+
+### Key Clarifications Made
+
+| Original Ambiguity | Clarified Decision |
+|--------------------|-------------------|
+| Fondu scope | Phase 1: Local build tool; Phase 2: Package manager |
+| APP vs. PROJECT | Decision tree added to spec |
+| When to use Fondu | After project is stable, before production |
+| Installed app structure | Defined standard layout |
+| Legacy app fate | Move to `projects/trunk/legacy_archive/` |
+| "user" resolution | Make it an APP (op-ed pattern) |
+
+### Confidence Level
+
+**HIGH** - The architecture is sound, the patterns are proven (op-ed, fuzz-op), and the Fondu spec is now actionable. Implementation risk is low if Phase 1 scope is respected.
+
+---
+
+**Next Action:** Begin Step 1 (create directory structure) and Step 2 (implement fondu.c)

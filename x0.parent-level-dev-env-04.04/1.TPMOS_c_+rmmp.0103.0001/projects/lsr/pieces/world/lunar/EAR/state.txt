@@ -1,0 +1,9 @@
+name=Earth Alliance
+ticker=EAR
+type=government
+cash=1000000.00
+tax_rate=0.20
+on_map=1
+pos_x=13
+pos_y=7
+pos_z=0

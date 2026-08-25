@@ -1,0 +1,13 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/mining_status_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|                    M I N I N G   S T A T U S                |" /><br/>
+    <text label="+============================================================+" /><br/>
+    ${piece_methods}
+    <button label="Back to Wallet" href="pieces/chtpm/layouts/wallet_main.chtpm" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label=" (Ctrl+C to quit)" /><br/>
+</panel>

@@ -1,0 +1,13 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | hangman
+META         | version            | 1.0
+META         | author             | TPM-AI Team
+META         | entry_layout       | projects/hangman/layouts/setup.chtpm
+
+STATE        | player1_type       | human
+STATE        | player2_type       | ai
+STATE        | secret_word        | _ _ _ _ _
+STATE        | remaining_lives    | 6
+
+RESPONSE     | default            | *Waiting for setup*

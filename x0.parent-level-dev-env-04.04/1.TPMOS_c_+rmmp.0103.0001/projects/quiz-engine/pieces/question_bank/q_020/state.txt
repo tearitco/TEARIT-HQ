@@ -1,0 +1,5 @@
+name=Pyruvate
+formula=CH3C(O)COOH
+type=Keto Acid
+groups=C=O
+relevance= -COOH

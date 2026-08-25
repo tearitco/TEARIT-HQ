@@ -1,0 +1,11 @@
+tile_id=grass
+ascii=.
+unicode=.
+label=Grass
+rgb_top=34,139,34
+rgb_side=27,110,27
+rgb_edge=18,70,18
+extrude=1.0
+solid=0
+walkable=1
+category=ground

@@ -1,0 +1,39 @@
+# Exo-Testing-Bot v5 - Pure Orchestration Plan
+
+## Date
+2026-04-21
+
+## Project Goal
+Develop `bot5` as a pure orchestrator, strictly following the TPMOS architectural pattern where the orchestrator and its children are separate, standalone executables.
+
+## Constraints
+*   **No Linking:** Components are compiled into independent binaries. No object file linking.
+*   **No Shared Headers:** All declarations are local to each `.c` file.
+*   **Pure Orchestration:** The orchestrator manages external processes via `fork()` and `exec()`.
+*   **TPMOS Mirroring:** Uses `pieces/os/proc_list.txt` (simulated) for process tracking and signal-based cleanup.
+
+## Core Components
+
+1.  **`orchestrator.c` (The Conductor):**
+    *   Main entry point.
+    *   Uses `fork()` and `execl()` to launch children as separate binaries.
+    *   Tracks child PIDs in a local `proc_list.txt`.
+    *   Handles signals (SIGINT) to perform a sweep-kill of tracked processes.
+
+2.  **`child_process.c` (The Muscle):**
+    *   Standalone executable.
+    *   Performs simulated work (logging and sleeping).
+    *   Registers its own startup in the console.
+
+3.  **`build.sh` (The Forge):**
+    *   Compiles `orchestrator.c` -> `bot5_orchestrator`.
+    *   Compiles `child_process.c` -> `bot5_child`.
+    *   No shared linking.
+
+4.  **`run.sh` (The Button):**
+    *   Executes `./bot5_orchestrator`.
+
+## Key Performance Indicators (KPIs)
+*   **Process Isolation:** `ps` should show `bot5_orchestrator` and `bot5_child` as distinct processes.
+*   **File-Backed Tracking:** `proc_list.txt` correctly populates with child PIDs.
+*   **Signal Integrity:** SIGINT to the orchestrator successfully terminates the children.

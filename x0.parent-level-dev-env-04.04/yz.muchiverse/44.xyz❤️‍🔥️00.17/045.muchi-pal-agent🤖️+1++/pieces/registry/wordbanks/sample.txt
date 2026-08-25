@@ -1,0 +1,36 @@
+# wordbank - plain newline-delimited word list, one word per line,
+# comments (#) and blank lines ignored. Consumed by send_message.c's
+# own provider_kind=script branch: picks 5-10 random words from
+# whichever wordbank file model_list.txt's own model_name field points
+# at (repurposed the same way iqabod's own model_name field is - see
+# that provider_kind's own comment in send_message.c). This is a
+# genuinely no-API, no-network, no-external-process responder - the
+# real basic-response-without-LLM-APIs mechanism requested 2026-07-20.
+#
+# This particular file is a placeholder starter list, not a real
+# curriculum - swap in a real IQABOD curriculum's own word column
+# (curriculum/<name>/<name>.txt, first pipe-delimited field per row -
+# see ROADMAP-models.txt sec. 4 for that file's own row format) later
+# if a more "on-topic" wordbank is wanted, or keep hand-authoring plain
+# files like this one - both are valid, model_name just points at
+# whichever file is meant.
+hello
+world
+walking
+running
+today
+morning
+friends
+coffee
+sunshine
+breakfast
+stories
+share
+happy
+quiet
+river
+mountain
+garden
+music
+laughter
+journey

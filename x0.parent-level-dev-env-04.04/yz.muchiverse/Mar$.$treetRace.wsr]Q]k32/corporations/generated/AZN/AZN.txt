@@ -1,0 +1,78 @@
+FINANCIAL PROFILE FOR ASTROZON COMMERCE (AZN)
+================================================
+FINANCIAL BALANCE SHEET: ASTROZON COMMERCE (AZN)
+--------------------------------------------------
+(Amounts in millions of U.S. Dollars, except per share amounts)
+
+ASSETS:
+  Free Cash and Equivalents:		256.04
+  Working Capital (A/R, Inven.):	74.33
+  Business Assets/Equipment:		1533.27
+  Stock in Subsidiary Cos.:		0.00
+  Options Long/Short: Net Value:	0.00
+  ---------------------------------------------
+  Total Assets:				1863.64
+  ---------------------------------------------
+
+LIABILITIES AND EQUITY:
+  Long-Term Bonds Issued:		0.00
+  Bank Loan:				368.07
+  Accrued Income Tax Payable:		0.00
+  ---------------------------------------------
+  Total Liabilities:			368.07
+  ---------------------------------------------
+  Equity (Net Worth):			1495.57
+  =============================================
+
+STOCK AND EARNINGS DATA:
+------------------------
+  Net Worth Per Share:			20.72
+  Current Stock Price:			21.24
+  52-Week High/Low Stock Price:		38.10 / 16.88
+  Shares of Stock Outstanding:		72.20 million
+  Total Stock Capitalization:		1533.32 million
+  2021 Earnings Per Share:		0.00 (Operating Earnings)
+  2022 Earnings Per Share:		0.00 (Operating Earnings)
+  2023 Earnings Per Share:		0.00 (Operating Earnings)
+  2024 Earnings Per Share:		0.00 (Operating Earnings)
+  2025 E/P/S through Qtr. #1:		(Not Yet Announced)
+  ---------------------------------------------
+
+VARIOUS FINANCIAL RATIOS:
+-------------------------
+  Price/Earnings Ratio:			NMF (No Meaningful Figure)
+  Dividend Yield:			0.00%
+  Debt to Equity Ratio:			0.25 to 1
+  Return on Equity (2024):		NMF (No Meaningful Figure)
+  ---------------------------------------------
+
+*** CREDIT INFO: ***
+-------------------
+  Credit Rating:			AA
+  Unused Bank Line of Credit:		505.01 million
+  Borrowing Rate (Interest):		10.50% (Prime is: 10.00%)
+  Lending Bank:				MARTIAN TRUST BANK (MTB)
+  ---------------------------------------------
+
+VARIABLE SETTINGS (Changeable by controlling player):
+----------------------------------------------------
+  Dividend Payout Per Share:		0.00
+  Percent of Sales Spent on R & D:	4%
+  Growth Rate (Assets, Sales):		0%
+  ---------------------------------------------
+
+MISCELLANEOUS INFO:
+-------------------
+  Industry Group:			INTERNET SERV. / CONTENT
+  Incorporated in:			Robot State
+  Controlled (and actively managed) by:	public
+  Public Owns:			%
+  Accrued R&D and/or Investment Tax Credits:	$150.33 million
+  Annual CEO Salary (approx.):		$1.59 million (Plus possible bonuses)
+  Today's (Game) Date:			January 1, 2025
+  Next Earnings Report:			January 27, 2025
+  ---------------------------------------------
+
+FOOTNOTE TO FINANCIAL STATEMENT:
+-------------------------------
+[1] The company is not currently engaged in any interest rate swap transactions and has no undisclosed off-balance sheet liabilities.

@@ -1,0 +1,11 @@
+<panel>
+  <module>${module_path}</module>
+  <interact src="projects/mouse-test/session/history.txt" />
+  <text label="MOUSE TEST" />
+  <text label="---" />
+  <text label="X: ${mouse_x}" />
+  <text label="Y: ${mouse_y}" />
+  <text label="BTN: ${mouse_btn}" />
+  <text label="---" />
+  <button label="BACK" onClick="BACK" />
+</panel>

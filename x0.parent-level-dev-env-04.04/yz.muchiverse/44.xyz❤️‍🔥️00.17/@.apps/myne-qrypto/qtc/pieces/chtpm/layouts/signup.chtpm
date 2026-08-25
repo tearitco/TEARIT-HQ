@@ -1,0 +1,18 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/signup_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|                    C R E A T E   W A L L E T                |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <cli_io id="wallet_id_input" label="Wallet ID" target_id="wallet_id_input" /><br/>
+    <!-- id deliberately avoids "password" - see login.chtpm's own
+         identical comment for the real, live-caught stale-cli_buffers.txt
+         masking bug this sidesteps. -->
+    <cli_io id="pw_field" label="Password" target_id="password_input" /><br/>
+    ${piece_methods}
+    <button label="Back to Login" href="pieces/chtpm/layouts/login.chtpm" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label=" (Ctrl+C to quit)" /><br/>
+</panel>

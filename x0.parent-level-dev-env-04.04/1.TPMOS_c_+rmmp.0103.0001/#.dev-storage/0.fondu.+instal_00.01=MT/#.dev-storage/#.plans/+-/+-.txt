@@ -1,0 +1,21 @@
+
+we will focus on simply having a +-demo.chtpm layout with minimal , non existant manager / module code. 
+and will  impliment a native +- feature set within chtpm parser, to be used as layout tags, before
+worrying about dynamic or module facing features. does this make sense. we were 2 ambitious last time. lets slow down 
+an be more careful and deliberate first. 
+
+i would treat <[-]> perhaps as a dynamic "secondary tag" <[-]> indicating that when u press enter , header collapses
+[>] 1. [[dir1/][-] Dir1]
+[ ] 2. [[2.txt] file]
+[ ] 3. [[3.txt] file]
+[ ] 4. [[4.txt][+] subdir]
+[ ] 5. [[dir2/][-] Dir2] (this dir is empty , but in a default open state) 
+
+
+ie : after enter pressed 
+[>] 1. [[dir1/][+] Dir1]
+[ ] 2. [[dir2/][-] Dir2]
+----------------------------------------
+
+
+

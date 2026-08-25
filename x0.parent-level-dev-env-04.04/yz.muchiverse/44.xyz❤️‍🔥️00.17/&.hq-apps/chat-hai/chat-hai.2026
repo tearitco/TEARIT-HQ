@@ -1,0 +1,44 @@
+
+
+
+Qwen 2.5 Coder series of models are now updated in 6 sizes: 0.5B, 1.5B, 3B, 7B, 14B and 32B do they do toolcalls?
+
+(will probably swap all our calls out 2 just call qwen ladder 2 7b)
+<then have smarter model called less but organize art from smolls and reprompt smol>
+<y? they wil be  faster >
+<and haiku could prompt THAT 'manager' and manager can delegate>
+
+this is our next project. maybe make a chat-hai-design.md 
+chat-hai (it will be a selectable option under 14.h-ai. 
+its gui will be very similiar to hai, but should be slender and on side of
+desktop with a constantly scrolling chat feed going...
+----------------
+based on the information u read in : 
+
+then u can add an entry into index marking this as a hi priority app
+
+<i want a side 'chat bar scroll' like discord but its just entities chatting
+<it doesn't even have to be entities , 
+<i want to constantly have 4 gemma270 models chatting, recording memrories
+<maybe truncating them sometimes,always on mac. they should have relationship
+<and i should beable to jump in some times. 
+<there should be bigger models running 2 that "moderate"
+<SINCE THEY TAKE LONGER TO RESPOND.  & they can piece pieces from smols 
+<can even look over their memories & adjust them etc ; tune its joints etc> 
+<and they dont have to do a task just yet, 
+<but later they can be guided to do task. 
+<and we can even jump in and moderator will do what WE say 
+<this will be 'like hai interface, but its own thing>
+
+
+
+so basically proof of concept we get them  "jumproping" together
+then we they are doing well 
+we can jump in(as dev), give them more ops/challenges etc
+and one day maybe we can jump in as user, give real tasks, get results
+let them just chat etc. 
+we will have diff jobs/personalities etc just chatting always. 
+storing memories, marking them aspriority depending on certain topics
+or situations so they can use fsm/rl deterministic choice=ing to recal
+
+llamab or 

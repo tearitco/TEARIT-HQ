@@ -1,0 +1,14 @@
+project_id=wraith-alpha/wraith-projects/chtmgl-wraith
+reference_project=projects/chtmgl-alpha
+game_map=chtmgl_preview_surface
+is_map_control=0
+widget_probe=header,panel,button,checkbox,slider,img,media,menu,surface
+image_asset=../../../../../#.media-library/missingno.png
+image_loaded=1
+image_width=61
+image_height=131
+ascii_preview=24x12
+audio_asset=../../../../../#.media-library/gowon.mp3
+audio_loaded=1
+audio_state=playing
+last_response=Audio playing: ../../../../../#.media-library/gowon.mp3

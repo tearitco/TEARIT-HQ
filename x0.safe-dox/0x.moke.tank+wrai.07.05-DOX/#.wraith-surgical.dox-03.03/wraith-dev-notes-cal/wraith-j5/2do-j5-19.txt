@@ -1,0 +1,35 @@
+# 2DO: WRAITH-ALPHA DESKTOP STEP
+Date: 2026-06-05
+
+## Immediate Goal
+Move Wraith Alpha from the keyboard-nav proof into a real desktop composition layer.
+
+The desktop must be data-driven:
+- do not hardcode a terminal directly into the layout
+- do not make the UI depend on a single fixed window slot
+- let the manager publish desktop/window state, then let the parser render it
+
+## Build Order
+1. Add a desktop state shape for Wraith Alpha.
+2. Render the desktop shell from that state.
+3. Make a default terminal appear by data, not by hardcoded layout content.
+4. Keep the existing keyboard nav proof working while desktop rendering is added.
+5. Leave mouse/context-menu launch paths for a later pass.
+
+## Immediate KPIs
+- Desktop frame renders from Wraith Alpha manager state.
+- Default terminal opens automatically when the desktop loads.
+- The terminal open action is driven by state or registry data, not a hardcoded layout element.
+- Keyboard arrows still move the selector while desktop rendering exists.
+- Parser debug and manager debug remain visible and honest during the new desktop pass.
+
+## User-Verified KPIs
+Please verify these after the first desktop pass:
+- Does the default terminal appear without the layout hardcoding a terminal widget?
+- Is the default terminal coming from manager-published state or registry data?
+- Do the arrow-key selector proofs still work after desktop rendering is added?
+
+## Notes
+- Keep the current Wraith Alpha shell as the stable baseline until the desktop state path is ready.
+- Context-menu opening can be added later, but it should not be the primary dependency for the first desktop proof.
+- If the terminal appears only because the layout is hardcoded, the desktop step is not done yet.

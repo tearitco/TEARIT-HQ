@@ -1,0 +1,10 @@
+[META]
+project_id = user
+version = 1.0
+exposes_ops = true
+entry_layout = projects/user/layouts/user.chtpm
+module_path = projects/user/manager/+x/user_manager.+x
+
+[STATE]
+active_session = 
+session_count = 0

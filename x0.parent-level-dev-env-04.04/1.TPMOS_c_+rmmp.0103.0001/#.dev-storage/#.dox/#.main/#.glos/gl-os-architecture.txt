@@ -1,0 +1,49 @@
+================================================================================
+GL-OS ARCHITECTURE AND FIX (April 2, 2026)
+================================================================================
+
+GL-OS IS AN APP (NOT A PROJECT)
+================================================================================
+
+Location: pieces/apps/gl_os/
+Launch: LAUNCH:GL-OS (from main menu button)
+Module: pieces/apps/gl_os/plugins/+x/gl_desktop.+x
+Layout: pieces/apps/gl_os/layouts/desktop.chtpm
+
+GL-OS is NOT in project_routes.kvp - it's launched via app_list.txt:
+  GL-OS=pieces/apps/gl_os/plugins/+x/gl_desktop.+x
+
+GL-OS LAYOUT FIX
+================================================================================
+
+PROBLEM:
+The layout uses ${desktop_view} variable which should show the desktop/window
+content from pieces/apps/gl_os/session/view.txt. However, the state file format
+can't store multi-line values, so desktop_view was being truncated.
+
+SOLUTION:
+Modified parser's get_var() function to read ${desktop_view} directly from
+pieces/apps/gl_os/session/view.txt instead of from state.txt.
+
+File: pieces/chtpm/plugins/chtpm_parser.c
+Change: Added special case in get_var() for "desktop_view" variable
+
+This ensures ${desktop_view} always shows the current view.txt content,
+regardless of what's in state.txt.
+
+EXPECTED BEHAVIOR
+================================================================================
+
+When you click "GL-OS" button on main menu:
+1. gl_desktop.+x runs (opens OpenGL window)
+2. ASCII layout shows desktop.chtpm with:
+   - BG: #000044
+   - Windows: N
+   - Desktop view content (from view.txt)
+   - Menu options
+   - Response line
+
+The OpenGL window opens separately (requires DISPLAY server).
+The ASCII layout shows in the terminal as fallback/parallel display.
+
+================================================================================

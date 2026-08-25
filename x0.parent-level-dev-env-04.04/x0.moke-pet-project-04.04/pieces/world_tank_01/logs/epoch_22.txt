@@ -1,0 +1,17 @@
+[Mon Jun 15 22:34:25 2026] liz_bulb | rest | NONE
+[Mon Jun 15 22:34:25 2026] liz_char | rest | NONE
+[Fri Jun 19 03:43:09 2026] liz_bulb | eat | pellet_1
+[Fri Jun 19 03:43:09 2026] liz_char | rest | NONE
+[Fri Jun 19 03:43:09 2026] liz_gen_5414 | rest | NONE
+[Fri Jun 19 16:42:05 2026] liz_char | rest | NONE
+[Fri Jun 19 16:42:05 2026] liz_gen_5414 | rest | NONE
+[Fri Jun 19 16:42:05 2026] liz_char | rest | NONE
+[Fri Jun 19 16:42:05 2026] liz_gen_5414 | rest | NONE
+[Fri Jun 19 16:42:40 2026] liz_char | rest | NONE
+[Fri Jun 19 16:42:40 2026] liz_gen_5414 | rest | NONE
+[Fri Jun 19 16:43:01 2026] liz_char | rest | NONE
+[Fri Jun 19 16:43:01 2026] liz_gen_5414 | rest | NONE
+[Fri Jun 19 16:43:16 2026] liz_char | rest | NONE
+[Fri Jun 19 16:43:16 2026] liz_gen_5414 | rest | NONE
+[Fri Jun 19 16:43:16 2026] liz_char | rest | NONE
+[Fri Jun 19 16:43:16 2026] liz_gen_5414 | rest | NONE

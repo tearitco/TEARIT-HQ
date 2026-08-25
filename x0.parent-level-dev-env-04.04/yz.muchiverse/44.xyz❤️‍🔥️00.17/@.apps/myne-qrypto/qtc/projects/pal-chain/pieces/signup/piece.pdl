@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | signup
+META         | version            | 1.0
+
+METHOD       | Create Wallet           | SIGNUP

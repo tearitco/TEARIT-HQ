@@ -1,0 +1,23 @@
+<panel time_reactive="true">
+    <module>projects/cyoa-engine/manager/+x/cyoa-engine_manager.+x</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+
+    <text label="╔═══════════════════════════════════════════════════════════╗" /><br/>
+    <text label="║             ${app_title}                          ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║ Book: ${book_name}" /><text label=" ║" /><br/>
+    <text label="║ Page: ${page_num}" /><text label=" ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="${page_content}" /><br/>
+    <text label="║                                                           ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║ Choices:                                                  ║" /><br/>
+    <text label="${choices_content}" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  " />${piece_methods}<text label=" ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  " /><button label="Back to Book List (ESC)" onClick="KEY:27" /><text label="                     ║" /><br/>
+    <text label="║  " /><button label="Exit to Menu" href="pieces/chtpm/layouts/os.chtpm" /><text label="                          ║" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+</panel>

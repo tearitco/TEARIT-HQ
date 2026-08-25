@@ -1,0 +1,20 @@
+Warning: Audio music//-0.red5gumball)in.low.mars.orbit.mp3 truncated to 44100 samples
+Warning: Audio music//04.GrandDragon]MInor.mp3 truncated to 44100 samples
+Selected 2 audio files for blending:
+  0: -0.red5gumball)in.low.mars.orbit.mp3 (44100 samples, 1 channels)
+  1: 04.GrandDragon]MInor.mp3 (44100 samples, 1 channels)
+Executing: ./+x/neural_net.+x temp_input_0.raw neural_output_0.dat train kernels_0.dat 44100
+Error: Failed to execute neural_net.+x train for temp_input_0.raw
+Warning: Audio music//-0.red5gumball)in.low.mars.orbit.mp3 truncated to 44100 samples
+Warning: Audio music//04.GrandDragon]MInor.mp3 truncated to 44100 samples
+Selected 2 audio files for blending:
+  0: -0.red5gumball)in.low.mars.orbit.mp3 (44100 samples, 1 channels)
+  1: 04.GrandDragon]MInor.mp3 (44100 samples, 1 channels)
+Executing: ./+x/neural_net.+x temp_input_0.raw neural_output_0.dat train kernels_0.dat 44100
+Executing: ./+x/neural_net.+x temp_input_1.raw neural_output_1.dat train kernels_1.dat 44100
+Executing: ./+x/neural_net.+x temp_input_0.raw neural_output_0.dat infer kernels_0.dat 44100
+Generated output_0.raw for inspection
+Executing: ./+x/neural_net.+x temp_input_1.raw neural_output_1.dat infer kernels_1.dat 44100
+Generated output_1.raw for inspection
+Executing: ./+x/noise_schedule.+x neural_outputs_list.txt diffusion_output.raw 44100 temp_input_0.raw
+Output saved as diffusion_output.raw (44100 samples, 1 channels)

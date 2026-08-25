@@ -1,0 +1,13 @@
+NOTE track=0 pitch=60 start=0 len=240 vel=100
+NOTE track=0 pitch=62 start=240 len=240 vel=100
+NOTE track=0 pitch=64 start=480 len=240 vel=100
+NOTE track=0 pitch=65 start=720 len=240 vel=100
+NOTE track=0 pitch=67 start=960 len=240 vel=100
+NOTE track=0 pitch=65 start=1200 len=240 vel=100
+NOTE track=0 pitch=64 start=1440 len=240 vel=100
+NOTE track=0 pitch=62 start=1680 len=240 vel=100
+NOTE track=1 pitch=36 start=0 len=1920 vel=90
+NOTE track=1 pitch=43 start=1920 len=1920 vel=90
+NOTE track=0 pitch=72 start=1560 len=120 vel=100
+NOTE track=0 pitch=56 start=1920 len=120 vel=100
+NOTE track=0 pitch=45 start=1320 len=120 vel=100

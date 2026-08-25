@@ -1,0 +1,302 @@
+================================================================================
+HUMAN TEST GUIDE - P2P PHASE 1 (Network + Chat)
+================================================================================
+Date: April 2, 2026
+Version: 1.0 (Week 1 - configure_subnet complete)
+Status: TESTING IN PROGRESS
+
+This is a HUMAN-READABLE test guide. No code knowledge required.
+
+================================================================================
+WHAT YOU'RE TESTING
+================================================================================
+
+P2P Phase 1: Basic network connectivity + chat between terminals.
+
+End Goal: Two terminals can join the same subnet and send chat messages.
+
+================================================================================
+SETUP (Do This Once)
+================================================================================
+
+1. OPEN TWO TERMINALS
+   Terminal 1: Your normal terminal
+   Terminal 2: Open another terminal window
+
+2. NAVIGATE TO PROJECT
+   In BOTH terminals:
+   cd /path/to/TPMOS_c_+rmmp_55.01+25/TPMOS_c_+rmmp_55.25
+
+================================================================================
+WEEK 1 TESTS (configure_subnet)
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TEST 1.1: Configure "chat" Subnet                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ Command:                                                                    │
+│   ./projects/p2p-net/ops/+x/configure_subnet.+x chat broadcast continuous 8001 │
+│                                                                             │
+│ Expected Output:                                                            │
+│   Configured subnet 'chat':                                                 │
+│     Mode: broadcast / continuous                                            │
+│     Port: 8001                                                              │
+│     Config: .../projects/p2p-net/pieces/network/subnets/chat.txt            │
+│                                                                             │
+│ Verify:                                                                     │
+│   cat projects/p2p-net/pieces/network/subnets/chat.txt                      │
+│                                                                             │
+│ Expected Content:                                                           │
+│   subnet_name=chat                                                          │
+│   network_mode=broadcast                                                    │
+│   connection_mode=continuous                                                │
+│   port=8001                                                                 │
+│   max_peers=50                                                              │
+│   ping_interval=30                                                          │
+│   timeout=90                                                                │
+│   active=1                                                                  │
+│                                                                             │
+│ KPI: ✅ PASS / ❌ FAIL                                                      │
+│   [ ] Config file created                                                   │
+│   [ ] All fields present                                                    │
+│   [ ] Port is 8001                                                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TEST 1.2: Configure Multiple Subnets                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ Commands:                                                                   │
+│   ./projects/p2p-net/ops/+x/configure_subnet.+x general broadcast continuous 8000 │
+│   ./projects/p2p-net/ops/+x/configure_subnet.+x auction hybrid on_demand 8002   │
+│                                                                             │
+│ Verify:                                                                     │
+│   ls projects/p2p-net/pieces/network/subnets/                               │
+│                                                                             │
+│ Expected:                                                                   │
+│   chat.txt                                                                  │
+│   general.txt                                                               │
+│   auction.txt                                                               │
+│                                                                             │
+│ KPI: ✅ PASS / ❌ FAIL                                                      │
+│   [ ] All three config files exist                                          │
+│   [ ] Each has different port                                               │
+│   [ ] auction.txt has "hybrid" and "on_demand"                              │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TEST 1.3: Invalid Parameters (Error Handling)                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ Commands (should fail with error messages):                                 │
+│   ./projects/p2p-net/ops/+x/configure_subnet.+x test invalid_mode continuous 8000 │
+│   ./projects/p2p-net/ops/+x/configure_subnet.+x test broadcast invalid 8000      │
+│   ./projects/p2p-net/ops/+x/configure_subnet.+x test broadcast continuous 9999    │
+│                                                                             │
+│ Expected:                                                                   │
+│   Each should print an error message explaining what's wrong                │
+│                                                                             │
+│ KPI: ✅ PASS / ❌ FAIL                                                      │
+│   [ ] Invalid network_mode rejected                                         │
+│   [ ] Invalid connection_mode rejected                                      │
+│   [ ] Invalid port rejected                                                 │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+WEEK 2 TESTS (list_peers, broadcast_join) - COMING SOON
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TEST 2.1: List Peers (Empty List)                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ Command:                                                                    │
+│   ./projects/p2p-net/ops/+x/list_peers.+x chat                              │
+│                                                                             │
+│ Expected Output:                                                            │
+│   Connected Peers (subnet: chat)                                            │
+│   ─────────────────────────────────────────────────────                     │
+│   (empty - no peers yet)                                                    │
+│   Total: 0 peers                                                            │
+│                                                                             │
+│ KPI: ✅ PASS / ❌ FAIL                                                      │
+│   [ ] Command runs without error                                            │
+│   [ ] Shows subnet name                                                     │
+│   [ ] Shows 0 peers                                                         │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TEST 2.2: Broadcast Join (Two Terminals)                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ Terminal 1:                                                                 │
+│   ./projects/p2p-net/ops/+x/broadcast_join.+x chat                          │
+│                                                                             │
+│ Terminal 2:                                                                 │
+│   ./projects/p2p-net/ops/+x/broadcast_join.+x chat                          │
+│                                                                             │
+│ Then in BOTH terminals:                                                     │
+│   ./projects/p2p-net/ops/+x/list_peers.+x chat                              │
+│                                                                             │
+│ Expected:                                                                   │
+│   Each terminal should see the other in the peer list                       │
+│                                                                             │
+│ KPI: ✅ PASS / ❌ FAIL                                                      │
+│   [ ] broadcast_join completes without error                                │
+│   [ ] list_peers shows 1 peer                                               │
+│   [ ] Peer has wallet address, IP, port                                     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+WEEK 3 TESTS (send_message - CHAT) - COMING SOON
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TEST 3.1: Send Chat Message                                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ Setup: Both terminals have joined "chat" subnet (Test 2.2)                  │
+│                                                                             │
+│ Terminal 1:                                                                 │
+│   ./projects/p2p-net/ops/+x/send_message.+x <Terminal2_Wallet> "Hello!" chat │
+│                                                                             │
+│ Verify in Terminal 2:                                                       │
+│   cat projects/p2p-net/pieces/chat/chat_msgs.txt                            │
+│                                                                             │
+│ Expected:                                                                   │
+│   [timestamp] <Wallet1> → <Wallet2> (chat): Hello!                          │
+│                                                                             │
+│ KPI: ✅ PASS / ❌ FAIL                                                      │
+│   [ ] Message sent without error                                            │
+│   [ ] Message appears in chat log                                           │
+│   [ ] Timestamp present                                                     │
+│   [ ] Wallet addresses shown                                                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TEST 3.2: Multi-Network Chat (KEY FEATURE!)                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ Setup: Both terminals join BOTH subnets:                                    │
+│   ./projects/p2p-net/ops/+x/broadcast_join.+x general                       │
+│   ./projects/p2p-net/ops/+x/broadcast_join.+x chat                          │
+│                                                                             │
+│ Terminal 1:                                                                 │
+│   ./projects/p2p-net/ops/+x/send_message.+x <Wallet2> "Message on general!" general │
+│   ./projects/p2p-net/ops/+x/send_message.+x <Wallet2> "Message on chat!" chat     │
+│                                                                             │
+│ Verify:                                                                     │
+│   cat projects/p2p-net/pieces/chat/general_msgs.txt                         │
+│   cat projects/p2p-net/pieces/chat/chat_msgs.txt                            │
+│                                                                             │
+│ Expected:                                                                   │
+│   general_msgs.txt has "Message on general!"                                │
+│   chat_msgs.txt has "Message on chat!"                                      │
+│   Messages are in SEPARATE files!                                           │
+│                                                                             │
+│ KPI: ✅ PASS / ❌ FAIL                                                      │
+│   [ ] Both messages sent                                                    │
+│   [ ] Messages in separate files                                            │
+│   [ ] Subnet tags correct                                                   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+WEEK 4 TESTS (Full Integration) - COMING SOON
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TEST 4.1: Full Chat Session                                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ 1. Configure subnet:                                                        │
+│    ./projects/p2p-net/ops/+x/configure_subnet.+x chat broadcast continuous 8001 │
+│                                                                             │
+│ 2. Both terminals join:                                                     │
+│    ./projects/p2p-net/ops/+x/broadcast_join.+x chat                         │
+│                                                                             │
+│ 3. Verify peers:                                                            │
+│    ./projects/p2p-net/ops/+x/list_peers.+x chat                             │
+│                                                                             │
+│ 4. Send messages back and forth:                                            │
+│    Terminal 1: ./projects/p2p-net/ops/+x/send_message.+x <Wallet2> "Hi!" chat │
+│    Terminal 2: ./projects/p2p-net/ops/+x/send_message.+x <Wallet1> "Hello!" chat │
+│                                                                             │
+│ 5. Leave subnet:                                                            │
+│    ./projects/p2p-net/ops/+x/broadcast_leave.+x chat                        │
+│                                                                             │
+│ 6. Verify chat log:                                                         │
+│    cat projects/p2p-net/pieces/chat/chat_msgs.txt                           │
+│                                                                             │
+│ KPI: ✅ PASS / ❌ FAIL                                                      │
+│   [ ] All ops complete without error                                        │
+│   [ ] Peers see each other                                                  │
+│   [ ] Messages delivered                                                    │
+│   [ ] Chat log has both messages                                            │
+│   [ ] broadcast_leave completes cleanly                                     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+KPIS SUMMARY (Phase 1 Success Criteria)
+================================================================================
+
+□ All 8 ops implemented and compiled
+□ configure_subnet creates valid config files
+□ list_peers shows connected peers
+□ broadcast_join discovers peers via UDP
+□ connect_peer establishes TCP connection
+□ disconnect_peer closes connection cleanly
+□ ping_peer keeps connection alive
+□ send_message delivers chat messages
+□ broadcast_leave exits subnet gracefully
+□ Multi-network: One terminal can join multiple subnets
+□ Chat logs are subnet-specific (separate files)
+□ Error handling: Invalid parameters rejected with clear messages
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Problem: "Command not found"
+Solution: Make sure you're in the project root directory
+
+Problem: "Permission denied"
+Solution: Run: chmod +x projects/p2p-net/ops/+x/*.+x
+
+Problem: "Cannot create config file"
+Solution: Check that pieces/network/subnets/ directory exists
+
+Problem: "No peers found"
+Solution: Make sure both terminals joined the same subnet
+
+Problem: "Message not delivered"
+Solution: Verify peer is connected with list_peers first
+
+================================================================================
+TEST RESULTS LOG
+================================================================================
+
+Date: ___________  Tester: ___________
+
+Test 1.1 (Configure chat):     [ ] PASS  [ ] FAIL  Notes: _______________
+Test 1.2 (Multiple subnets):   [ ] PASS  [ ] FAIL  Notes: _______________
+Test 1.3 (Error handling):     [ ] PASS  [ ] FAIL  Notes: _______________
+Test 2.1 (List peers):         [ ] N/A   [ ] PASS  [ ] FAIL  Notes: _______________
+Test 2.2 (Broadcast join):     [ ] N/A   [ ] PASS  [ ] FAIL  Notes: _______________
+Test 3.1 (Send message):       [ ] N/A   [ ] PASS  [ ] FAIL  Notes: _______________
+Test 3.2 (Multi-network):      [ ] N/A   [ ] PASS  [ ] FAIL  Notes: _______________
+Test 4.1 (Full session):       [ ] N/A   [ ] PASS  [ ] FAIL  Notes: _______________
+
+Overall Phase 1 Status: [ ] PASS  [ ] FAIL  [ ] PARTIAL
+
+================================================================================
+END OF TEST GUIDE
+================================================================================

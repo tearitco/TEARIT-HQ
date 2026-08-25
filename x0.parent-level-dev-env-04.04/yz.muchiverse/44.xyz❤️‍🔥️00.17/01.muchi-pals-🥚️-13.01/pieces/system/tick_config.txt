@@ -1,0 +1,19 @@
+# Controls how pets get ticked (metabolism/movement) - see ops/tick_pets.c's
+# own header comment for the full explanation. Both modes can be on at
+# once safely; each pet's own last_tick_ts field keeps them from
+# double-ticking each other, so this is a preference, not a mutex.
+#
+# world_tick=1   - pal/main_loop.pal's terminal turn loop sweeps every
+#                  pet every ~100 loop iterations while the terminal
+#                  session is running. Set to 0 to disable.
+# self_tick=1    - each pet's own egg_window, once opened, ticks just
+#                  itself on a timer, independent of any terminal -
+#                  this is what lets a pet keep living after you close
+#                  the terminal session that opened its window. Set to
+#                  0 to disable (egg_window.c reads this key itself).
+# tick_interval_sec=3 - the shared minimum real-time gap between two
+#                  ticks of the same pet, enforced regardless of which
+#                  mode above is asking.
+world_tick=1
+self_tick=1
+tick_interval_sec=3

@@ -1,0 +1,43 @@
+# TPMOS INTEGRATION: Llama.cpp (Aida Mac) into cpp-llm Project
+# Date: May 20, 2026
+# Status: PRESCRIBED / PENDING APPROVAL
+
+## 1. OBJECTIVE
+Enable the `cpp-llm` project to seamlessly switch between local Ollama instances and remote Llama.cpp (Aida Mac) servers. This provides a "High-Resolution" (Llama 3 Groq) fallback when local resources are constrained.
+
+## 2. TECHNICAL DISCOVERY
+- **Local Ollama:** Runs on port `11434`. Uses `/api/chat` (messages) and `/api/tags` (model list).
+- **Aida Mac (Llama.cpp):** Runs on port `8080`. Uses `/v1/chat/completions` (OpenAI-compat) and `/v1/models`.
+- **Parser Compatibility:** The existing `json_parser` tool extracts keys globally. Both Ollama and OpenAI-compat responses contain the `"content"` key nested inside a `"message"` object. This allows for unified parsing logic.
+
+## 3. PRESCRIPTION (THE "EASY" PATH)
+
+### A. Configuration (config/apis.txt)
+Update the configuration to include the Aida Mac endpoint. To simplify manager logic, we will assume port `8080` implies `llamacpp` protocol.
+```text
+local|http://localhost:11434
+macbook|http://10.0.0.144:11434
+aida_mac|http://10.0.0.144:8080
+debian|http://10.0.0.16:11434
+```
+
+### B. Manager Logic (cpp-llm_manager.c)
+1. **Endpoint Resolution:** Modify `start_ai_query` to detect the protocol:
+   - If URL contains `:11434` -> Use `/api/chat`.
+   - If URL contains `:8080` -> Use `/v1/chat/completions`.
+2. **Model Discovery:** Modify `resolve_local_model`:
+   - If Ollama: Query `/api/tags`, parse for `"name"`.
+   - If Llama.cpp: Query `/v1/models`, parse for `"id"`.
+3. **API Parity:** Use a unified payload structure. Llama.cpp's `/v1/chat/completions` accepts the same `messages` array format as Ollama's `/api/chat`.
+
+## 4. PROJECT EVOLUTION
+- **Renaming:** Keep the project name as `cpp-llm` for now to maintain existing `chtpm` routes and `pdl` registrations.
+- **Unified Menu:** Use the existing `[3] Switch API` menu. The manager will automatically handle the underlying protocol shift based on the selected URL.
+
+## 5. NEXT STEPS
+1. Update `config/apis.txt` with the Aida Mac IP and port 8080.
+2. Refactor `cpp-llm_manager.c` to handle dual-protocol endpoints.
+3. Re-compile the manager using `build.sh`.
+4. Verify connectivity to `aida_mac`.
+
+"One brain, many muscles." - TPMOS Compliance Verified.

@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | m1_ninjadragon
+STATE        | kind                 | monster
+STATE        | glyph                | 🥷
+STATE        | footprint_tiles      | 2
+METHOD       | Events (hq)          | sh -c 'exec "$1/&.widgits/events-hq/button.sh" "$0" "$1"'
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void

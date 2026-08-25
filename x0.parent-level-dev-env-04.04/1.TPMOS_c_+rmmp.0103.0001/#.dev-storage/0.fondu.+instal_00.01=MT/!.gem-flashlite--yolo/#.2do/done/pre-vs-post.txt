@@ -1,0 +1,17 @@
+# Framework Analysis: Generic Resolution vs Modular State Injection
+
+## 1. The Fuzz-Op Modular Failure
+*   **Root Cause:** The parser (`chtpm_parser.c`) was refactored to be a "Generic Resolution" engine, but it lacks a modular way to inject piece-specific state (like Hunger/Energy) into the UI without hardcoding.
+*   **Missing Logic:** In the PRE-refactor version, the parser explicitly loaded piece stats. In the POST-refactor version, the `fuzz-op_manager` provides `gui_state.txt`, but it is NOT being triggered or used correctly to populate the `${hunger}`-style variables.
+*   **The Path Forward:** The `load_vars()` function in `chtpm_parser.c` should be updated to generically load state files for the `active_target_id` (if it exists under the project's pieces directory) and map those keys to UI variables. This must be done without `if (strcmp(proj_id, "fuzz-op") == 0)` blocks to maintain modularity.
+
+## 2. GL-OS Subwindow Regression
+*   **Observation:** Subwindows in GL-OS (like the Terminal or Project Explorer) are no longer opening or are inconsistent.
+*   **Technical Conflict:** The parser's `launch_module()` function calls `cleanup_module()`, which kills the `current_module_pid`. GL-OS is a background-running OpenGL process (`gl_desktop.+x &`). When it tries to "launch" a sub-module via the parser's `LAUNCH:` command, the parser may be killing the host GL-OS process or failing to manage the background lifecycle correctly.
+*   **Dumb Theater Mode Conflict:** The "direct CHTPM layout launching" added to `handle_launch_command` overwrites `current_layout`. If GL-OS subwindows are triggered via layout switches, they might be replacing the entire desktop instead of opening a window.
+*   **Recommendation:** `launch_module()` needs to distinguish between "Sovereign" modules (that own the screen) and "Background/Sub-window" modules. GL-OS requires a multi-process management strategy that the current single-PID parser doesn't support.
+
+## 3. Conclusion for Next Agent
+1.  **Modular State Injection:** Refactor `load_vars` to automatically look for `projects/${project_id}/pieces/${active_target_id}/state.txt` and load its variables into the parser's memory.
+2.  **Process Management:** Fix the PID conflict in `launch_module`. Modules launched from within a "Desktop" environment (like GL-OS) should not trigger `cleanup_module()` of the host.
+3.  **Variable Standardisation:** Ensure that all managers (like `fuzz-op_manager`) are correctly calling their `write_gui_state()` logic and that the parser is reading that file as the primary source of UI data.

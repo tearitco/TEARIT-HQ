@@ -1,0 +1,26 @@
+# NAKED CONNECTIVITY PROOF (May 20, 2026)
+# Status: DIAGNOSED
+
+## 1. ENDPOINT ACCESSIBILITY
+| Endpoint | Port | Protocol | Reachable | POST (Chat) |
+| :--- | :--- | :--- | :--- | :--- |
+| localhost | 11434 | Ollama | YES | SLOW (Timeouts > 15s) |
+| 10.0.0.144 | 11434 | Ollama | YES | TIMEOUT |
+| 10.0.0.144 | 8080 | Llama.cpp | YES | YES (8s) |
+
+## 2. EMPIRICAL EVIDENCE (CURL)
+
+### A. Llama.cpp (8080) - SUCCESS
+Command: `curl -v http://10.0.0.144:8080/v1/chat/completions -H "Content-Type: application/json" -d '{"model":"llama3-groq.gguf", "messages":[{"role":"user", "content":"hi"}], "stream":false}'`
+Result: `{"choices":[{"message":{"content":"Hi! How can I assist you today?"}}], ...}`
+Proof: Port 8080 on Aida Mac is functional and OpenAI-compatible.
+
+### B. Local Ollama (11434) - PARTIAL
+Command: `curl -v http://localhost:11434/api/chat -H "Content-Type: application/json" -d '{"model":"gemma3:270M", ...}'`
+Result: SUCCESS (12.5s)
+Command: `curl -v http://localhost:11434/api/chat -H "Content-Type: application/json" -d '{"model":"llama3:latest", ...}'`
+Result: TIMEOUT (> 15s)
+Proof: Local service is working, but 8B models are loading too slowly for standard timeout windows.
+
+## 3. ROOT CAUSE OF MANAGER HANG
+The `gem-dev_manager.c` was failing to resolve model names because `run_tool` was blocked from executing system `curl`. This caused it to use `llama3:latest` for `aida_mac`, which is an invalid model name for the `llama.cpp` server, leading to a hang or error.

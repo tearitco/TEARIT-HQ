@@ -1,0 +1,238 @@
+
+
+
+
+--- FRAME UPDATE at 2026-04-15 02:25:36 ---
++===========================================================+
+|                                                           |
+|           C H T P M + O S   C L I   v2.0                 |
+|                                                           |
+|  CHTPM+OS Main Menu                                      |
+|                                                           |
+|  [ ] 1. [Project Loader]                             |
+|  [>] 2. [Launch CYOA]                               |
+|  [ ] 3. [Status]  [ ] 4. [GL-OS]                                          |
+|  [ ] 5. [Process Monitor]                            |
+|  [ ] 6. [Toggle Frame History (Current: )]                                         |
+|  [ ] 7. [Help]                                            |
+|                                                           |
++===========================================================+
+|  Running Applications: None                               |
+|  System Time: 08:00:00 | Turn: 0 | Key: None |
++===========================================================+
+|                                                           |
+|  $ | [ ] 8. [****]                                                 |                                                 |
+
++=========================================================+
+Nav > _
+
+
+
+
+
+--- FRAME UPDATE at 2026-04-15 02:25:37 ---
+╔═══════════════════════════════════════════════════════════╗
+║             RED WHITE AND U: CYOA PLAYER                  ║
+╠═══════════════════════════════════════════════════════════╣
+║ Book: Select a Book ║
+║ Page: 0 ║
+╠═══════════════════════════════════════════════════════════╣
+║                                                           ║
+║  Please select a book from the menu below:      ║
+
+║                                                           ║
+╠═══════════════════════════════════════════════════════════╣
+║ Choices:                                                  ║
+║  Use Arrows to navigate, ENTER to select        ║
+
+╠═══════════════════════════════════════════════════════════╣
+║  [>] 1. [book_0]
+[ ] 2. [book_1]
+[ ] 3. [book_2]
+[ ] 4. [book_3]
+[ ] 5. [Audio: PLAY]
+[ ] 6. [Audio: STOP]
+ ║
+╠═══════════════════════════════════════════════════════════╣
+║  [ ] 7. [Back to Book List (ESC)]                     ║
+║  [ ] 8. [Exit to Menu]                          ║
+╚═══════════════════════════════════════════════════════════╝
+
++=========================================================+
+Nav > _
+
+
+
+
+
+--- FRAME UPDATE at 2026-04-15 02:25:38 ---
+╔═══════════════════════════════════════════════════════════╗
+║             RED WHITE AND U: CYOA PLAYER                  ║
+╠═══════════════════════════════════════════════════════════╣
+║ Book: Select a Book ║
+║ Page: 0 ║
+╠═══════════════════════════════════════════════════════════╣
+║                                                           ║
+║  Please select a book from the menu below:      ║
+
+║                                                           ║
+╠═══════════════════════════════════════════════════════════╣
+║ Choices:                                                  ║
+║  Use Arrows to navigate, ENTER to select        ║
+
+╠═══════════════════════════════════════════════════════════╣
+║  [>] 1. [book_0]
+[ ] 2. [book_1]
+[ ] 3. [book_2]
+[ ] 4. [book_3]
+[ ] 5. [Audio: PLAY]
+[ ] 6. [Audio: STOP]
+ ║
+╠═══════════════════════════════════════════════════════════╣
+║  [ ] 7. [Back to Book List (ESC)]                     ║
+║  [ ] 8. [Exit to Menu]                          ║
+╚═══════════════════════════════════════════════════════════╝
+
++=========================================================+
+Nav > 2_
+
+
+
+
+
+--- FRAME UPDATE at 2026-04-15 02:25:38 ---
+╔═══════════════════════════════════════════════════════════╗
+║             RED WHITE AND U: CYOA PLAYER                  ║
+╠═══════════════════════════════════════════════════════════╣
+║ Book: book_1 ║
+║ Page: 1 ║
+╠═══════════════════════════════════════════════════════════╣
+║                                                           ║
+║  You are Meg, a clone soldier of the Red Empire. Your      ║
+║  designation is 735. You are on the planet of Xylos, a     ║
+║  dusty rock in the outer rim. Your mission is to quell a   ║
+║  local uprising. You and your squad are marching through   ║
+║  the deserted streets of a small town. Your commander, a   ║
+║  grizzled veteran clone, barks orders. "Stay sharp," he    ║
+║  says. "These rebels are like rats. They could be          ║
+║  anywhere." Suddenly, you hear a noise from a nearby       ║
+║  alley. You raise your blaster, your heart pounding in     ║
+║  your chest. You see a flash of movement, and then a       ║
+║  small child runs out into the street. The child is        ║
+║  crying, their face smudged with dirt. They are holding a  ║
+║  small, wooden toy. Your training tells you that the       ║
+║  child could be a decoy, a trap. Your commander yells at   ║
+║  you to shoot. What do you do?                             ║
+
+║                                                           ║
+╠═══════════════════════════════════════════════════════════╣
+║ Choices:                                                  ║
+║  See dynamic menu below for choices             ║
+
+╠═══════════════════════════════════════════════════════════╣
+║  [>] 1. [If you follow your orders and shoot the child, (Page 2)]
+[ ] 2. [If you hesitate, (Page 3)]
+[ ] 3. [Audio: PLAY]
+[ ] 4. [Audio: STOP]
+ ║
+╠═══════════════════════════════════════════════════════════╣
+║  [ ] 5. [Back to Book List (ESC)]                     ║
+║  [ ] 6. [Exit to Menu]                          ║
+╚═══════════════════════════════════════════════════════════╝
+
++=========================================================+
+Nav > _
+
+
+
+
+
+--- FRAME UPDATE at 2026-04-15 02:25:39 ---
+╔═══════════════════════════════════════════════════════════╗
+║             RED WHITE AND U: CYOA PLAYER                  ║
+╠═══════════════════════════════════════════════════════════╣
+║ Book: book_1 ║
+║ Page: 1 ║
+╠═══════════════════════════════════════════════════════════╣
+║                                                           ║
+║  You are Meg, a clone soldier of the Red Empire. Your      ║
+║  designation is 735. You are on the planet of Xylos, a     ║
+║  dusty rock in the outer rim. Your mission is to quell a   ║
+║  local uprising. You and your squad are marching through   ║
+║  the deserted streets of a small town. Your commander, a   ║
+║  grizzled veteran clone, barks orders. "Stay sharp," he    ║
+║  says. "These rebels are like rats. They could be          ║
+║  anywhere." Suddenly, you hear a noise from a nearby       ║
+║  alley. You raise your blaster, your heart pounding in     ║
+║  your chest. You see a flash of movement, and then a       ║
+║  small child runs out into the street. The child is        ║
+║  crying, their face smudged with dirt. They are holding a  ║
+║  small, wooden toy. Your training tells you that the       ║
+║  child could be a decoy, a trap. Your commander yells at   ║
+║  you to shoot. What do you do?                             ║
+
+║                                                           ║
+╠═══════════════════════════════════════════════════════════╣
+║ Choices:                                                  ║
+║  See dynamic menu below for choices             ║
+
+╠═══════════════════════════════════════════════════════════╣
+║  [>] 1. [If you follow your orders and shoot the child, (Page 2)]
+[ ] 2. [If you hesitate, (Page 3)]
+[ ] 3. [Audio: PLAY]
+[ ] 4. [Audio: STOP]
+ ║
+╠═══════════════════════════════════════════════════════════╣
+║  [ ] 5. [Back to Book List (ESC)]                     ║
+║  [ ] 6. [Exit to Menu]                          ║
+╚═══════════════════════════════════════════════════════════╝
+
++=========================================================+
+Nav > 2_
+
+
+
+
+
+--- FRAME UPDATE at 2026-04-15 02:25:39 ---
+╔═══════════════════════════════════════════════════════════╗
+║             RED WHITE AND U: CYOA PLAYER                  ║
+╠═══════════════════════════════════════════════════════════╣
+║ Book: book_1 ║
+║ Page: 3 ║
+╠═══════════════════════════════════════════════════════════╣
+║                                                           ║
+║  You hesitate. Your finger hovers over the trigger, but    ║
+║  you can't bring yourself to shoot. The child looks so     ║
+║  small, so helpless. Your commander shoves you aside and   ║
+║  raises his own weapon, but it's too late. A woman runs    ║
+║  out from the alley, scoops up the child, and disappears   ║
+║  back into the shadows. Your commander is furious.         ║
+║  "What's wrong with you, 735?" he snarls. "You're a        ║
+║  soldier, not a social worker. I'll be reporting you for   ║
+║  insubordination." He storms off, leaving you alone in     ║
+║  the street. You have disobeyed a direct order. You have   ║
+║  shown weakness. But as you look at the empty alley where  ║
+║  the child and her mother disappeared, you feel a strange  ║
+║  sense of relief. You have chosen the path of defiance.    ║
+║  But where will it lead?                                   ║
+
+║                                                           ║
+╠═══════════════════════════════════════════════════════════╣
+║ Choices:                                                  ║
+║  See dynamic menu below for choices             ║
+
+╠═══════════════════════════════════════════════════════════╣
+║  [>] 1. [If you report to your commander for punishment, (Page 6)]
+[ ] 2. [If you desert your post and follow the woman and child, (Page 7)]
+[ ] 3. [Audio: PLAY]
+[ ] 4. [Audio: STOP]
+ ║
+╠═══════════════════════════════════════════════════════════╣
+║  [ ] 5. [Back to Book List (ESC)]                     ║
+║  [ ] 6. [Exit to Menu]                          ║
+╚═══════════════════════════════════════════════════════════╝
+
++=========================================================+
+Nav > _
+

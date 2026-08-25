@@ -1,0 +1,140 @@
+PAL-NET-STANDARD — file-mediated peer-to-peer networking
+========================================================================
+Restored 2026-08-02 from the reference implementation. The original doc
+this file was cited from (`2.muchi-verse/PAL-NET-STANDARD.txt`) was lost
+with the directory that housed it. This rewrite is written FROM the code
+that embodies it — `044.pal-chat-irc👥️+2/ops/palnet_peer.c` — so the two
+cannot drift. The reference implementation IS this standard; edit either
+only with the other in view.
+
+========================================================================
+0. THE CONTRACT — apps never touch sockets, peers move lines
+========================================================================
+0.1 Every networked app has TWO files it owns:
+      outbox_file  — append-only; the app appends ONE new line per
+                     event (a message, a move, a TX) it wants to send.
+      inbox_file   — append-only; the app's peer appends lines it
+                     receives from other nodes, sender-prefixed.
+0.2 A peer is a SEPARATE companion process (a standalone op, never
+    embedded in a GUI). It does 100% of the actual networking on the
+    app's behalf: it watches the outbox for new lines, broadcasts them,
+    and writes everything received into the inbox. The app never opens
+    a socket; it only ever reads/writes its two files.
+0.3 ONE WRITER per file. The app writes the outbox; the peer writes the
+    inbox. Whoever reads must tolerate a partial trailing line (the
+    writer may be mid-append) and wait for the newline to finish.
+0.4 The outbox is APPEND-ONLY and the peer tracks a byte offset of what
+    it has already broadcast. Each event is a distinct line — a mirror-
+    style "overwrite one value in place" consumer silently loses every
+    event after the first. New events go at the END, always.
+0.5 This is the same file-mediated, drain-on-tick philosophy as the
+    widget cmd bus (see #.haiku+/.pal-standards+1.txt §37), extended
+    from local (two programs, one machine) to remote (two nodes, any
+    machines) — the wire is just another inbox.
+
+========================================================================
+1. PRESENCE ROOT RESOLUTION
+========================================================================
+1.1 Peers on one deployment share ONE flat presence directory. The
+    app's project_root is resolved from PRISC_PROJECT_ROOT (else cwd).
+1.2 The presence directory is one level ABOVE the project root by
+    default (<project_root>/../net/presence), matching
+    shared-ops/pet_export.c's resolve_exchange_root(). PRISC_NET_ROOT
+    overrides it.
+1.3 Two apps in the SAME deployment therefore find each other across
+    separate sessions by scanning this one shared directory. Two apps
+    in different deployments (different roots) never see each other.
+
+========================================================================
+2. SYMMETRIC PEERS + DISCOVERY
+========================================================================
+2.1 Every instance of the peer binary is SYMMETRIC. There is no
+    client/server distinction anywhere. A node BOTH accepts incoming
+    connections on its own port AND actively seeks out other nodes.
+2.2 Node identity: <project_id>-<piece_id-or-kind>-<pid>. Written into
+    the presence file at startup and rewritten every heartbeat.
+2.3 Presence file format (one kv per line):
+      kind=      own kind, e.g. irc_node, zoo, pet, tsc_duel
+      project_id= the owning app
+      piece_id=  piece id if any, else empty
+      host=127.0.0.1
+      port=      the port this node is listening on
+      pid=
+      last_seen= unix time of last heartbeat
+2.4 seek_kind: when set, the peer actively scans the presence directory
+    for a node whose kind matches, skipping:
+      - hidden files,
+      - nodes of any other kind,
+      - ITSELF (never seek self),
+      - nodes already connected,
+      - STALE nodes (last_seen older than STALE_SEC = 15s, sec. 4),
+      - entries with no usable host or port.
+    On a match it opens a TCP connection to that host:port. This
+    outbound seeking is what makes a node genuinely peer-to-peer rather
+    than accept-only.
+2.5 Kinds are per-deployment labels. Any new app picks its own kind;
+    two nodes of the same kind in the same deployment mesh with each
+    other.
+
+========================================================================
+3. PORTS + WIRE PROTOCOL
+========================================================================
+3.1 Base port per kind — so two different kinds never collide on their
+    first-choice port. Named bases today: zoo=9900, pet=9901. Any kind
+    not named shares the fallback base 9950. A new kind SHOULD be given
+    its own named base when the fallback becomes crowded (not a closed
+    list).
+3.2 bind_with_retry: the peer binds the FIRST free port at
+    base_port_for_kind(kind) + 0..199, scanning upward until a bind +
+    listen succeeds (SO_REUSEADDR set; listening backlog 8; non-
+    blocking). It never fails on a single occupied port — a deployment's
+    process lifecycle is unpredictable, so the port is allocated, not
+    configured.
+3.3 All live data is TCP (127.0.0.1 for this deployment), newline-
+    delimited text. Two line kinds exist:
+      HELLO|<node_id>|<own_kind>    sent once per new connection, in
+                                    BOTH directions, to exchange
+                                    identity.
+      DATA|<sender_node_id>|<content>  relays one outbox line verbatim.
+                                    The receiver writes
+                                    <sender_node_id>|<content> as one
+                                    append-only line in its inbox_file.
+3.4 On accepting a new connection (or completing a seek connect) a node
+    sends HELLO immediately, then REPLAYS ITS FULL OUTBOX BACKLOG
+    (every line it has already consumed, 0..offset) as DATA lines to
+    that one peer. A node that connects late must catch up on the whole
+    history, not just the latest value — that is what converges two
+    ledgers.
+3.5 "Never send unconditionally": only NEW outbox lines (past the byte
+    offset) are broadcast, once, to every connected peer. A partial
+    trailing line is left for the next pass (sec. 0.3). If the outbox
+    was truncated out from under the peer (size-guard rotation), the
+    offset resets and the file is reread from the start.
+3.6 Receive side: any bytes from any peer are split on newlines and
+    handled as HELLO or DATA. A partial line at the end of a recv() is
+    dropped, best-effort — nothing here is a one-shot event that can't
+    be recovered from a later broadcast or backlog replay.
+
+========================================================================
+4. LIFECYCLE, HEARTBEAT, STALENESS, CLEANUP
+========================================================================
+4.1 The peer runs a select() loop (100ms timeout) handling accept/recv,
+    outbox-broadcast, seek-connect, and heartbeat.
+4.2 Heartbeat: every HEARTBEAT_SEC = 5s the peer rewrites its presence
+    file (fresh last_seen). This is what keeps the node discoverable.
+4.3 Staleness: a presence file whose last_seen is more than STALE_SEC =
+    15s old is treated as dead and ignored by seekers (sec. 2.4). A node
+    that exits cleanly unlinks its own presence file (sec. 4.4); a node
+    that dies hard is forgotten by age.
+4.4 Cleanup: on SIGINT/SIGTERM the peer closes every peer socket and
+    its listen socket, unlinks its own presence file, and exits 0.
+4.5 Dead peers are reaped lazily: a send is best-effort (MSG_NOSIGNAL),
+    and a connection that returns recv()==0 (or an error other than
+    EAGAIN/EWOULDBLOCK) is closed and removed from the peer set.
+4.6 Max 32 concurrent peer connections per node (MAX_PEERS). A node
+    that is full simply declines new connections.
+4.7 Because the outbox replay converges history and every message is a
+    distinct append-only line, DELIVERED messages may be duplicates (a
+    re-connect replays the backlog) — consumers MUST dedupe by their own
+    content id (e.g. already_has_line in chat_inbox_watcher.c, or a
+    (game_id,seq) ledger check) before applying a received line.

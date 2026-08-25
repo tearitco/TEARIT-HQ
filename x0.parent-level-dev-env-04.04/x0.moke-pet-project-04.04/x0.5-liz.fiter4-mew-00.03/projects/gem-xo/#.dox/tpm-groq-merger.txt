@@ -1,0 +1,46 @@
+# TPMOS Groq-Ollama Integration Plan (Aida Merger)
+**Date:** 2026-05-13
+**Status:** DRAFT
+
+## 1. Overview
+We are integrating the working local LLM + tool-calling logic from the standalone `Aida` agent (`0.iq-aida.c_surf+18+d`) into the TPMOS `gem-api` project (formerly `qwen`). This will give TPMOS a native, agentic interface capable of executing system tools and managing context state.
+
+## 2. Phase 1: Foundation (COMPLETED)
+- Renamed `projects/qwen` to `projects/gem-api`.
+- Renamed all internal files (`qwen_manager.c` -> `gem-api_manager.c`, etc.).
+- Updated all "qwen" string references to "gem-api" across the project codebase.
+- Verified `project.pdl` consistency.
+
+## 3. Phase 2: Tooling Migration
+The Aida agent relies on a suite of specialized C tools for JSON parsing and file operations. We will port these to the `gem-api` ops directory.
+- **Location:** `projects/gem-api/ops/src/`
+- **Tools:**
+  - `json_state.c`: Manages the `context.json` conversation history.
+  - `json_parser.c`: Extracts specific fields from LLM responses.
+  - `file_ops.c`, `edit_file.c`, `list_dir.c`, `search_in_files.c`: Core agent capabilities.
+  - `cmd_exec.c`: For executing system commands.
+
+## 4. Phase 3: Manager Refactoring
+The `gem-api_manager.c` must be updated to adopt the `agent.c` lifecycle:
+- **Context Management:** Use `json_state` to append user/assistant/tool messages.
+- **Pulse Loop:** Replace the simple bridge call with a multi-turn tool-calling loop.
+- **API Flexibility:** Implement the `/api` selection logic for switching between Ollama and Groq.
+- **Non-blocking UI:** Ensure the manager continues to pulse and update `gui_state.txt` while waiting for LLM responses (using the spinner pattern if possible within TPMOS).
+
+## 5. Phase 4: Bridge Evolution
+The current `gem-api_bridge.c` (formerly `qwen_bridge`) is a simple wrapper. We will likely move the core `curl` logic directly into the manager or a more robust bridge that supports:
+- JSON request formatting.
+- Header injection (for Groq API keys).
+- Timeout and error handling.
+
+## 6. Phase 5: UI & Layout Integration
+Update `layouts/gem-api.chtpm` to reflect the new capabilities:
+- **Context Statistics:** Display the current context percentage.
+- **Active API:** Show which endpoint is being used.
+- **Tool Feedback:** Visual indicators when the agent is "Searching", "Editing", or "Executing".
+- **Interaction:** Maintain the `cli_io` pattern but enhance it with the Aida-style command prefixes if needed.
+
+## 7. Next Steps
+1. Port all `.c` tools from `0.iq-aida.c_surf+18+d/tools/` to `projects/gem-api/ops/src/`.
+2. Update the `build.sh` in `gem-api` to compile these new tools.
+3. Begin refactoring `gem-api_manager.c`.

@@ -1,0 +1,17 @@
+origin_game|unknown_game
+kind|pet
+payload_id|test_pet_frog
+display_name|test_pet_frog
+species_id|sp_frog
+species_name|Frog
+species_emoji|🐸
+skills|peck
+hunger|100
+energy|100
+hp|20
+hp_max|20
+mp|10
+mp_max|10
+level|1
+xp|0
+exported_at|1785172064

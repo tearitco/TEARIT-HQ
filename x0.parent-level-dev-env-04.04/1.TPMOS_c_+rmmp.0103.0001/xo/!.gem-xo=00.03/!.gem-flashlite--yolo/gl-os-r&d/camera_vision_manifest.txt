@@ -1,0 +1,47 @@
+# GL-OS Camera & Map Control Vision Manifest
+**Date:** 2026-04-23
+**Status:** AUTHORITATIVE DIRECTION
+
+## 1. CORE OBJECTIVE: ASCII PARITY
+GL-OS "Project Mirror" windows must provide the exact same functional experience as their ASCII counterparts. When a user selects a project (e.g., Fuzz-Op), the GL window serves as the primary interface, maintaining all menu options, logic, and state transitions.
+
+## 2. MENU OPTIONS (FUZZ-OP PARITY)
+The project menu overlay MUST contain:
+1. [Control Map] - Toggles camera/xelector control.
+2. [scan]
+3. [collect]
+4. [place]
+5. [inventory]
+6. [toggle_emoji]
+7. [toggle_clock]
+8. [Back to Selector]
+9. [Exit to Menu]
+
+## 3. INTERACTIVE CONTROL SCHEME (MAP MODE)
+When [Control Map] is active:
+- **Camera Modes (Num 1-4):**
+  1. First Person: Eye-level of Fuzzball/Player.
+  2. Second Person: Top-down "Tactical" view.
+  3. Third Person: Follow "Zombie" or "Player" piece.
+  4. Free Camera: Full WASD/ZX flight.
+- **Movement (WASD + ZX):** Fly the camera (Free Mode) or slide the viewport.
+- **Xelector Control (Arrows):** Arrow keys move the visually distinct "Xelector" cursor on the map grid.
+- **Rotation (QE):** Turn head/camera left/right.
+- **ESC:** Relinquish map control, return focus to the Navigation Menu.
+
+## 6. XELECTOR & ENTITY INTEGRATION
+- **The Xelector:** A glowing wireframe cube that snaps to the map grid.
+- **Entities:** Pieces (Fuzzball, Zombie, Trees) rendered as distinct 3D sprites or colored cubes based on the project's map data.
+- **Selection:** Pressing 'ENTER' while Map Control is active triggers an interaction with the piece under the Xelector.
+
+## 4. DIRECTIONAL VISUAL AID (AXIS CUBE)
+A persistent "Direction Cube" in the viewport corner:
+- Front (Z+): Blue (Backward/Forward)
+- Top (Y+): Green (Elevation/Z-Level)
+- Right (X+): Red (Left/Right)
+- Includes RGB arrows for rapid orientation.
+
+## 5. REUSE & SOVEREIGNTY
+- Reuse logic from existing `fuzz-op` Ops.
+- Mirror state from `projects/fuzz-op/pieces/apps/fuzz-op/session/state.txt`.
+- Input is routed to the project's input history.

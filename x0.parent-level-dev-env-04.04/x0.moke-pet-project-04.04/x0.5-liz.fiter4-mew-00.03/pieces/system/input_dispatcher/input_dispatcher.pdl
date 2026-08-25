@@ -1,0 +1,16 @@
+# PDLO for the system/input_dispatcher piece (v1.0)
+
+SECTION      | KEY             | TYPE
+-------------------------------------------------------------
+META         | piece_id        | system/input_dispatcher
+META         | version         | 1.0
+META         | determinism     | open
+
+STATE        | is_capturing    | bool
+STATE        | connected_devices | string
+
+METHOD       | start_capture   | void | c:plugins/+x/input_capture.+x start
+METHOD       | stop_capture    | void | c:plugins/+x/input_capture.+x stop
+
+EVENT_OUT    | raw_key_event   | string
+EVENT_OUT    | raw_mouse_event | string

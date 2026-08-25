@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | q_030
+META         | type               | question
+
+STATE        | name               | Phenylalanine
+STATE        | type               | C6H5CH2CH(NH2)COOH

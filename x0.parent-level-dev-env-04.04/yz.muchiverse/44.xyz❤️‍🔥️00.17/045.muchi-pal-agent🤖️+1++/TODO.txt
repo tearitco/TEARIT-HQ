@@ -1,0 +1,216 @@
+TODO — next concrete build steps (started 2026-07-16)
+================================================================================
+Format: WHAT / HOW / KPI (the exact, testable "did this work") / WHY
+(short-term payoff / long-term payoff). Only items with a real KPI belong
+here - "explore X" is not a todo item in this file, it's a ROADMAP section.
+
+WHY THIS DIRECTION, NOT ANOTHER ONE (context for future-me/future-agent):
+`iqabod` is wired and live-verified (send_message.c/check_response.c),
+but every curriculum on disk right now (test/guess_the_word/
+guess_the_letter) is a narrow game corpus with no `.weights` file for
+`test` specifically - live-tested last session, output was pure
+`<UNK>`/`<PAD>` garbage, exactly as ROADMAP-models.txt §4 predicted.
+Every later phase (§12's grade ladder, §13's growth policy/trunks, the
+composable-materials FSM work in muchi-verse) assumes at least one real
+trained curriculum exists. Nothing else is worth building until that's
+true. §11.1 (corpus generation via an LLM API) is the one item in the
+whole roadmap family that's buildable RIGHT NOW with zero new IQABOD
+code and 100% reuse of already-proven infrastructure (ollama/gemini/
+llamacpp request builders, connect_op, json_parser). Start here.
+
+================================================================================
+PHASE A — TODAY'S TARGET: one real trained curriculum, end to end
+================================================================================
+
+[ ] A1. Write `pieces/registry/personas/corpus_author.txt`
+    HOW: plain persona text instructing: write N short, simple
+    sentences about a given topic, one per line, no numbering, common/
+    everyday words only, minimal punctuation, reuse vocabulary across
+    sentences rather than introducing many one-off words (the closed-
+    vocab constraint ROADMAP-models.txt §11.1/§4 already names as
+    load-bearing, not a style choice - every new word becomes a
+    permanent vocab row).
+    KPI: file exists, and a manual test call to any provider using it
+    as system text produces plain low-punctuation sentences (eyeball
+    check against `corpuses/test_corpus.txt`'s existing style as the
+    bar to match).
+    CONTRIBUTES short-term: unblocks A2. long-term: this persona is
+    reused for EVERY future corpus (§12's whole grade ladder depends on
+    it working well once, not being rewritten per grade).
+
+[ ] A2. Write `ops/generate_corpus.c`
+    HOW: new self-contained op (own resolve_root/read_full_file/
+    json_escaped, no shared headers, matching every other op in this
+    project). Usage: `generate_corpus.+x <provider_kind> <api_url>
+    <model_name> <topic_instruction> <line_count> <output_name>`.
+    Builds ONE request (reuse the exact 3 shapes send_message.c already
+    proved: ollama /api/chat, gemini generateContent, llamacpp
+    /completion) using corpus_author.txt as persona + topic_instruction
+    as the one user turn - no context history, no tools[], much simpler
+    than a chat turn. Calls connect_op.+x SYNCHRONOUSLY (this is a CLI
+    tool run directly, not inside prisc+x's tick loop, so the non-
+    blocking fork/detach dance send_message.c needs does NOT apply
+    here - block on curl directly, matching a plain one-shot script).
+    Parses the response the same way check_response.c does per
+    provider_kind (reuse json_parser.+x as-is). Appends the result text
+    to `<IQABOD_ROOT>/corpuses/<output_name>.txt`.
+    KPI: `./ops/+x/generate_corpus.+x ollama http://10.0.0.144:11434
+    llama3-groq-tool-use:8b "everyday activities like eating, walking,
+    and talking" 30 daily_life` produces a real
+    `corpuses/daily_life.txt` with ~30 plain sentences, no JSON/
+    markdown artifacts, no <UNK>-hostile punctuation.
+    CONTRIBUTES short-term: the actual missing piece between "iqabod is
+    wired" and "iqabod says something coherent." long-term: this one
+    op is what §12's entire grade-ladder loop and §13's trunk-teacher
+    mechanism both call repeatedly - get it right once here.
+
+[ ] A3. Write `train_corpus.sh` (tiny wrapper, matches lab-audio's
+    compile_lab.sh / this project's own shell-script convention)
+    HOW: `cd "$IQABOD_ROOT" && ./+x/main_orchestrator.+x vocab_only
+    corpuses/$1.txt && ./+x/main_orchestrator.+x train corpuses/$1.txt
+    ${2:-5}` - both existing IQABOD CLI modes, zero new IQABOD code,
+    exactly the two-call pipeline ROADMAP-models.txt §11.0 already
+    documented from reading main_orchestrator.c directly.
+    KPI: after running, `curriculum/daily_life/daily_life.txt` AND
+    `curriculum/daily_life/daily_life.txt.weights` both exist on disk
+    (the `.weights` file is the actual proof training ran, not just
+    vocab generation).
+    CONTRIBUTES short-term: closes Phase A. long-term: this script (or
+    its logic) is what §11.2's batch auto-training loop and §12's
+    grade-ladder build order both assume already works.
+
+[ ] A4. Add a `model_list.txt` entry pointing at the new curriculum
+    HOW: `daily-life-test|iqabod|<IQABOD_ROOT>|curriculum/daily_life/
+    daily_life.txt` - same 4-field schema already proven with
+    `iqabod-test`.
+    KPI: `./ops/+x/switch_model.+x daily-life-test` updates state.txt
+    correctly (already-proven mechanism, this is just confirming the
+    new entry parses).
+    CONTRIBUTES short-term: makes A5 possible. long-term: none new -
+    this is just registry bookkeeping, same shape every future
+    curriculum will use.
+
+[x] A5. End-to-end test: chat against the newly trained curriculum - DONE
+    2026-07-16. Corpus: `daily_life.txt` (51 tokens, 47 unique, LLM-
+    authored via generate_corpus.c against the LAN ollama server, topic
+    "everyday activities like eating, walking, and talking"). Trained
+    8 epochs (train_corpus.sh, lr=0.00001 from config.txt, loss
+    3.953->3.948 - real movement, tiny given the lr/data size, not
+    fake). Test input: "walking is fun". Actual output, recorded
+    verbatim for the honest baseline:
+      "every Walking is can a Walking Walking a Walking daily every
+      walk and share stories includes is Walking share often life
+      often stories share savory walk <UNK> can walk necessary every
+      <START> includes Walking <UNK> Cereal walk with includes with
+      Cereal do life Stories Cereal can <PAD> breakfast helps
+      breakfast share <START> <PAD> friends friends friends morning
+      Many people do"
+    Compare to the UNTRAINED baseline (curriculum/test/test.txt,
+    verified last session): almost entirely <PAD>/<START>/<END>/<UNK>
+    special-token noise with a handful of repeated real words. This
+    result: ~46/50 tokens are real corpus vocabulary (Walking, walk,
+    share, stories, breakfast, friends, Cereal, morning, people,
+    necessary, includes, savory, helps), only 4 special tokens. Real,
+    measured improvement - still word-salad, no grammar/sentence
+    structure (expected: near-random init weights, 8 epochs, tiny
+    fixed lr, 51-token corpus - "coherent chatbot" was never today's
+    bar). Original A5 text below, kept for the record of what was
+    being tested for:
+    HOW: same manual op-invocation test used last session (buffer_key
+    -> send_message -> poll check_response), no tty needed.
+    KPI (the real bar, be honest about what "success" means here): the
+    assistant reply should contain at least SOME real trained-corpus
+    vocabulary used in a locally-plausible way (not just <UNK>/<PAD>
+    repetition like the untrained `test` curriculum produced). This is
+    a genuinely small model with almost no data - "coherent chatbot" is
+    NOT the bar; "visibly better than pure garbage, using real words
+    from its own corpus" is. Write down the actual output in this file
+    or a short note once run, so the honest baseline is on record for
+    whoever tunes corpus size/epochs next.
+    CONTRIBUTES short-term: PROVES the whole §11.1 pipeline works, not
+    just its individual pieces. long-term: this is the concrete
+    evidence needed before investing in §12's full grade ladder (12+
+    grades x 4 subjects) - don't scale up a pipeline that hasn't been
+    checked once end to end.
+
+================================================================================
+PHASE B — SHORT-TERM NEXT (once Phase A's KPIs are all met, not before)
+================================================================================
+
+[ ] B1. Generate a SECOND corpus using A2/A3, this time named per
+    §12.1's ladder convention (`grade1_english`), with A1's persona
+    prompt EXTENDED to include §12.1's vocabulary-scaffolding
+    requirement (condition the prompt on... nothing yet, since this is
+    the FIRST rung - grade1 has no prior grade to condition on. Save
+    the "condition on prior grade's vocab" logic for B2).
+    KPI: `curriculum/grade1_english/` exists and trains same as A3.
+    CONTRIBUTES short-term: first real ladder rung. long-term: proves
+    the naming convention/registry shape §12.1 designed works in
+    practice, not just on paper.
+
+[ ] B2. Generate `grade2_english`, this time actually implementing
+    §12.1's vocabulary-scaffolding requirement: read grade1_english's
+    curriculum file's word column (§4's row format), feed it into the
+    generate_corpus prompt as "reuse these words, introduce only a few
+    new ones."
+    KPI: manually eyeball grade2_english.txt - does it actually reuse
+    grade1's vocabulary, or does it read like an unrelated corpus that
+    just happens to be pedagogically "grade 2"? This is the one thing
+    §12.1 flagged as the real technical risk of the whole ladder idea -
+    first real test of whether it actually works.
+    CONTRIBUTES short-term: n/a (this IS the test). long-term: this is
+    the load-bearing assumption under all of §12 - if this fails, §12
+    needs rethinking before going further, so find out early/cheap
+    (2 grades) not late/expensive (12 grades x 4 subjects).
+
+[ ] B3. Write `pieces/registry/curricula_ladder.txt` (§12.1's registry)
+    recording grade1_english -> grade2_english as one real prerequisite
+    edge, once B1/B2 exist to record.
+    KPI: file exists with one real row, not a template.
+    CONTRIBUTES short-term: n/a, bookkeeping. long-term: this is the
+    data §12.3's qualification/teacher-selection logic will eventually
+    query - build it as data grows, don't pre-build an empty schema.
+
+================================================================================
+PARALLEL TRACK — NOT BLOCKED BY PHASE A/B, PICK UP WHEN THERE'S A SEPARATE
+SESSION/APPETITE FOR IT (longer-term, different project: mutaclsym)
+================================================================================
+
+[ ] P1. `COMPOSABLE-MATERIALS-ARCHITECTURE.md` §8 step 1: add
+    `granularity`/`lambda`/`voxel_source`/`unicode` fields to ONE
+    existing mutaclsym `items.txt` row (not a new registry file yet),
+    and confirm the existing rendering path (`compose_rgb_frame.c` or
+    the shared wraith daemon per that doc's §0) can still read the row
+    without breaking - prove the field ADDITION is non-destructive
+    before building anything that USES the new fields.
+    KPI: mutaclsym still builds/runs after the field addition; the new
+    fields are present in the file but inert (not yet consumed by any
+    code) - this step is purely "prove you can extend the schema
+    without breaking what already works."
+    CONTRIBUTES short-term: nothing to muchi-pal-agent's own goals -
+    this is a genuinely separate workstream. long-term: this is step 1
+    of the entire "drag-and-drop composable objects" grand vision -
+    the actual reason any of this work is happening per the user's own
+    framing ("that is the grand vision and real reason we are doing
+    this"). Don't skip starting it just because Phase A/B feel more
+    urgent - schedule it deliberately, don't let it be perpetually
+    deferred.
+
+================================================================================
+EXPLICITLY NOT NOW (named so it isn't re-proposed as "the next step" by
+mistake later - these all have real prerequisites listed above that
+aren't met yet)
+================================================================================
+- §11.2's LLM-judge auto-training loop - needs Phase A's basic pipeline
+  proven first (can't judge/reward-tune a curriculum that doesn't exist
+  yet in a working form).
+- §13's growth_policy.txt / self-pruning / trunk sharing - needs
+  MULTIPLE curricula to actually exist before "shared trunk across
+  many NPCs" or "prune when too big" means anything concrete to test.
+- Any FSM/decision_mode/ops-bridge work (COMPOSABLE-MATERIALS §7) -
+  needs mutaclsym's own FSM layer to exist first (confirmed via direct
+  reading of its architecture doc: "Not implemented yet"), which itself
+  needs P1's registry groundwork first.
+- Real RPG-Maker file import, the Minecraft clone, P2P/networking -
+  named as explicitly deferred in their own source docs (wrai-dust-
+  fable §8/§15, GRAND-ARCHITECTURE.md §4), not reopened here.

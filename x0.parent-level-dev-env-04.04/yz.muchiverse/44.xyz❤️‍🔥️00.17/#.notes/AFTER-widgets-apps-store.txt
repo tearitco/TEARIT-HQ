@@ -1,0 +1,65 @@
+# TO DO AFTER — apps from project+widgets, app store, user profile (dev note)
+# Date: 2026-07-28
+# Status: NOTES ONLY — do not build apps until you have run the project
+#         with widgets by hand and want a faster open path.
+
+================================================================================
+1. The idea (good)
+================================================================================
+
+A **project + widgets** can run **all together** and feel like an entirely
+different **@app**:
+
+  - Open mutaclysm (sys/project) + file-menu + tile-picker + map-picker
+  - Optional: toolbar for the *app shell* (launch/focus widgets, not game UI)
+  - Same processes/cmd-bus under the hood; the "app" is a **launch recipe**
+    + chrome, not a rewrite of mutaclysm
+
+Get it: widgets compose surfaces; apps are **saved compositions** of
+(project + widget set + layout prefs).
+
+================================================================================
+2. Hard rule — when to make an @app
+================================================================================
+
+  DO NOT create @.apps/ entries until:
+    1. You have actually run the project with those widgets, and
+    2. You literally want a quicker way to open that combo.
+
+Then:
+  - Register the recipe in **@app-store** (catalog of available apps)
+  - User can **install** it → profile remembers install
+  - This is **prod-pretend testing** (local profile flags, not real billing yet)
+
+================================================================================
+3. Suggested later surfaces (user profile / store)
+================================================================================
+
+Under xyzfs/users/<uuid>/ (or @.apps install metadata):
+
+  - installed_apps.pdl / installed_apps.txt
+  - app launch recipes (project path, widgets list, gl flags, toolbar)
+  - Future (do not block maker work):
+      cloud sync, billing, AI usage meters, premium accounts,
+      customer-service chat — all **user-scoped**, not in game code
+
+House folders already reserved:
+
+  @.apps/        installed apps (empty now)
+  @.app-store/   catalog (empty now)
+  &.widgits/     widgets
+  %.harnesses/   multi-project proof
+
+================================================================================
+4. What to finish first (current work)
+================================================================================
+
+  [x] file-menu × editor cmd bus harness
+  [ ] file-menu × mutaclysm user saves + demo-project harness
+  [ ] tile-picker / map-picker against mutaclysm
+  [ ] GL run-widget for those widgets
+  [ ] Only then: optional @app recipe for "muta maker desk"
+
+================================================================================
+END
+================================================================================

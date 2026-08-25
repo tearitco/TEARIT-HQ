@@ -1,0 +1,25 @@
+# egg-pals emoji species pool (global, non-located content)
+# Format: emoji|id|name|rarity(1=common,2=uncommon,3=rare)|movement
+# movement: ground (default if omitted), flying, digging, aquatic - sets
+# the z-axis band tick_pets.c lets this species wander (ground pets stay
+# at z=0; flying roams above ground; digging/aquatic roam below it).
+# generate_egg.+x picks a random line, weighted toward rarity 1, as a new
+# egg piece's species. Extend this list freely - it's plain data, no code
+# change needed to add more species.
+🐣|sp_chick|Chick|1|ground
+🐸|sp_frog|Frog|1|ground
+🐢|sp_turtle|Turtle|1|ground
+🐛|sp_caterpillar|Caterpillar|1|ground
+🐌|sp_snail|Snail|1|ground
+🦎|sp_lizard|Lizard|1|ground
+🐹|sp_hamster|Hamster|1|ground
+🐁|sp_mouse|Mouse|1|digging
+🦊|sp_fox|Fox|2|ground
+🐺|sp_wolf|Wolf|2|ground
+🦉|sp_owl|Owl|2|flying
+🐙|sp_octopus|Octopus|2|aquatic
+🦈|sp_shark|Shark|2|aquatic
+🐲|sp_dragon_face|Dragon|3|flying
+🦄|sp_unicorn|Unicorn|3|ground
+👻|sp_ghost|Ghost|3|flying
+🔥|sp_flame|Flame|3|ground

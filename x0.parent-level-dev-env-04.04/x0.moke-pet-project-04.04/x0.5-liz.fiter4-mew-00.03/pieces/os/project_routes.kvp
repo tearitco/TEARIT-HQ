@@ -1,0 +1,5 @@
+gem-xo=projects/gem-xo/layouts/gem-xo.chtpm
+template=pieces/apps/playrm/layouts/game.chtpm
+wraith-alpha=projects/wraith-alpha/layouts/alpha-shell.chtpm
+wraith-alpha.bak.20260713-1712=projects/wraith-alpha/layouts/alpha-shell.chtpm
+xo-pet-v1=projects/xo-pet-v1/layouts/xo-pet.chtpm

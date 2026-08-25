@@ -1,0 +1,20 @@
+<chtpm>
+  <module>projects/wraith-alpha/wraith-projects/wrai-text-editor/manager/+x/wrai-text-editor_manager.+x</module>
+  <interact src="projects/wraith-alpha/wraith-projects/wrai-text-editor/session/history.txt" />
+
+  <text label="╔══════════════ FILE BROWSER ════════════════╗" /><br/>
+  <text label="${browser_mode_header}" /><br/>
+  <text label="║ DIR: " /><text label="${current_dir}" /><br/>
+  <text label="║ SEARCH: " /><cli_io id="search_query" target_id="search_query" label="${search_query_val}" /><br/>
+  <text label="║ FILE:   " /><cli_io id="file_path_input" target_id="file_path_input" label="${file_path_input_val}" /><br/>
+  <text label="║                                             ║" /><br/>
+  <text label="╠════════════ DIRECTORY CONTENTS ═════════════╣" /><br/>
+  ${directory_browser_markup}
+  <text label="║                                             ║" /><br/>
+  <text label="╠═════════════════════════════════════════════╣" /><br/>
+  <text label="║  " /><button label="LOAD/SAVE" onClick="PROJECT_ACTION:BROWSER_ACTION" /><text label="                       ║" /><br/>
+  <text label="║  " /><button label="CANCEL" onClick="PROJECT_PAGE:file_menu" /><text label="                            ║" /><br/>
+  <text label="╠═════════════════════════════════════════════╣" /><br/>
+  <text label="${response}" /><br/>
+  <text label="╚═════════════════════════════════════════════╝" /><br/>
+</chtpm>

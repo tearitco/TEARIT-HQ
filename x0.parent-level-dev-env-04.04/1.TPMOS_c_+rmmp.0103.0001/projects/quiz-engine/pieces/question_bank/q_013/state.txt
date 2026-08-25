@@ -1,0 +1,5 @@
+name=Acetic Acid
+formula=CH3COOH
+type=Carboxylic Acid
+groups=-COOH
+relevance=Vinegar component; buffers

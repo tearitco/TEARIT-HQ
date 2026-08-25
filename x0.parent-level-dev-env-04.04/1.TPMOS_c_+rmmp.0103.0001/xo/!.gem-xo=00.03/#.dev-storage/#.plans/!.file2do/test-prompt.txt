@@ -1,0 +1,9 @@
+
+> @\!.file2do/file2do-m25.txt is our task, i want to read over the existing  
+  codebase, docs,see if u can test capabilitites using @\#.docs/testing/ . (we would
+   also like to make a "testing fsm" that can run the architecture on its own and do
+   testing and u can test along side it and make its working right. then give me a 
+  testing_report.txt in !.file2do/ dir ,explaining if you have control of testing 
+  and can test any kpis you set and your assesment of the actual state of the ui ux
+
+(testing fsm will also be made using tpm)

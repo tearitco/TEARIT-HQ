@@ -1,0 +1,8 @@
+mode=file_browser
+cursor_pos=0
+path_buffer=typed-after-enter.txt3
+browse_dir=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.15/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/xyzfs/users/e8bf229a-62d3-4d6f-810e-e2aaf031cd73/home
+browse_mode=save_as
+search_text=
+field_active=0
+status_line=Type path or browse to a file

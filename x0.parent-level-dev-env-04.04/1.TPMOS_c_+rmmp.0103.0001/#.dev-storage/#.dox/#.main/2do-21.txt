@@ -1,0 +1,15 @@
+GL-OS DEVELOPMENT LOG - 2026-03-21
+===================================
+
+[X] 1. Project Infrastructure (projects/gl-os/)
+[X] 2. GL Window Initialization (Renderer + Manager)
+[X] 3. Input Capture (Mouse Click/Motion logging)
+[X] 4. Basic Context Menu (Right-Click to open menu window)
+[X] 5. Window Dragging (Title bar collision + movement)
+[ ] 6. Menu Interactions (Clicking menu items to launch terminals)
+[ ] 7. Terminal Interaction Loopback (Sending keys to specific windows)
+[ ] 8. Project: AI-LABS (Knowledge Distillation + Multi-Chat)
+[ ] 9. Project: P2P-NET (Blockchain + NFT Economy)
+[ ] 10. Project: USER (Identity, Login, Profiles)
+[ ] 11. Project: LSR (Lunar Streetrace Raider - Life/Market Sim)
+[ ] 12. Infrastructure: Blank Project Placeholder

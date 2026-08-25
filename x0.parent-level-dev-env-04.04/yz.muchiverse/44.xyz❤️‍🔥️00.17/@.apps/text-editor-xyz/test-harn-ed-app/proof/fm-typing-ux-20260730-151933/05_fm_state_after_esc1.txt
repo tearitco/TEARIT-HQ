@@ -1,0 +1,8 @@
+mode=file_browser
+cursor_pos=1
+path_buffer=hi
+browse_mode=save_as
+browse_dir=/tmp/.text-editor-xyz-editor-1785449974-203543
+search_text=
+field_active=0
+status_line=Type path or browse to a file

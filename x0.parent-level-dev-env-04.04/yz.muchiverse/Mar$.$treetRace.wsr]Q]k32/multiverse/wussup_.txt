@@ -1,0 +1,7 @@
+num_players:2
+game_length:100
+starting_cash:1000.00
+player_0_name:xo
+player_0_type:0
+player_1_name:jb
+player_1_type:0

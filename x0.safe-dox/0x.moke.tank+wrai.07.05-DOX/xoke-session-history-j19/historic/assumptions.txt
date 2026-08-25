@@ -1,0 +1,146 @@
+Assumption Audit
+Date: 2026-06-19
+
+Purpose
+- Record the false assumptions used in the last pass.
+- Reset the implementation target to the real ASCII TPMOS / CHTPM session pipeline.
+- Prevent the next code pass from validating the wrong surface again.
+
+What I got wrong
+
+1. I treated the XO-PET manager surface as the acceptance surface.
+- I proved that `projects/xo-pet-v1/manager/gui_state.txt` could populate a frame-like surface.
+- That was not the same thing as proving the user-facing ASCII CHTPM session was rendering the correct project menu.
+- The user-facing acceptance path is:
+  - `sh button.sh`
+  - `r`
+  - CHTPM main menu
+  - Project Loader
+  - `xo-pet-v1`
+  - resulting frame in the normal ASCII session history
+
+2. I treated `pieces/display/current_frame.txt` as sufficient proof by itself.
+- This was too weak.
+- It can show a project-shaped frame while the real visible session path the user is reading still shows the old menu shell.
+- The real evidence source for acceptance is the ASCII session history path the user cites, especially:
+  - `x0.moke-pet-project-2.2/x0.5-liz.fiter4-mew-00.02/pieces/debug/frames/session_frame_history.txt`
+- I should have required that path to match the intended XO-PET layout before claiming a fix.
+
+3. I incorrectly reasoned about GL-OS.
+- The user is correct: this is not a GL-OS session in the sense relevant to acceptance.
+- The examples the user kept providing are from the regular ASCII TPMOS / CHTPM session.
+- Mentioning GL-OS session history as if it were the acceptance target was a bad assumption and a distraction.
+
+4. I assumed `current_layout.txt` proving `projects/xo-pet-v1/layouts/xo-pet.chtpm` meant the visible frame was correct.
+- Code inspection shows `LOAD_PROJECT:xo-pet-v1` does set:
+  - `pieces/apps/player_app/manager/state.txt`
+  - `pieces/display/current_layout.txt`
+  - `current_layout = projects/xo-pet-v1/layouts/xo-pet.chtpm`
+- That is only proof of the intended handoff, not proof that the rendered session frame matches the intended layout.
+- I should have verified the render pipeline end-to-end instead of assuming the layout switch and the rendered frame were the same thing.
+
+5. I assumed the old `SIM STATUS / POSSESS PET` shell was gone because I could not find its text in the current source quickly.
+- That was careless.
+- The correct interpretation is:
+  - either an older pipeline stage is still composing the live frame
+  - or a legacy projection contract is still active somewhere in the ASCII path
+  - or the visible session is reading from a different generated artifact than the one I was checking
+- I should have kept investigating that live ASCII pipeline instead of declaring the fix done.
+
+6. I validated controller command wiring before validating the correct menu source.
+- Fixing command routing into `projects/xo-pet-v1/history.txt` may still be useful.
+- But it was premature to present that as the main fix while the live ASCII menu shape was still wrong.
+- The first acceptance gate should have been:
+  - does the live ASCII session show the intended XO-PET menu structure?
+- Only after that should possession, pause, step, and AI delegation be validated.
+
+Corrected assumptions
+
+1. The acceptance surface is the regular ASCII TPMOS / CHTPM session.
+- Not a bespoke terminal wrapper.
+- Not a manager-only projection.
+- Not a side artifact unless that artifact is exactly the one the user reads for the live session.
+
+2. The acceptance evidence must come from the same path the user is testing.
+- Primary evidence:
+  - `x0.moke-pet-project-2.2/x0.5-liz.fiter4-mew-00.02/pieces/debug/frames/session_frame_history.txt`
+- Supporting evidence:
+  - `pieces/display/current_layout.txt`
+  - `pieces/display/current_frame.txt`
+  - `pieces/apps/player_app/manager/state.txt`
+  - `projects/xo-pet-v1/manager/gui_state.txt`
+- Supporting evidence cannot replace the primary frame history.
+
+3. The loader-to-project pipeline must be proven end-to-end.
+- Relevant code already inspected:
+  - `pieces/apps/playrm/loader/loader_module.c`
+  - `pieces/chtpm/plugins/chtpm_parser.c`
+  - `projects/xo-pet-v1/project.pdl`
+  - `projects/xo-pet-v1/layouts/xo-pet.chtpm`
+- Current code says loader should hand off to:
+  - `projects/xo-pet-v1/layouts/xo-pet.chtpm`
+- That handoff is now confirmed in the live ASCII session history.
+- The old shell report was caused by validating at the wrong time and by stale XO project history replaying commands across sessions.
+
+4. Fuzz-op is a standards reference, not a copy target.
+- The useful lesson from fuzz-op is not its exact UI.
+- The useful lesson is:
+  - the live project layout in the normal ASCII session really does populate state and dynamic methods correctly
+  - acceptance must be judged in that same session model
+
+What needs to happen next
+
+1. Keep using the live ASCII session history as the acceptance source.
+2. Prevent stale project command history from replaying across orchestrator launches.
+3. Continue refining the real ASCII project layout path so the live session shows:
+  - project controls
+  - pet chooser / xolector shell
+  - selected pet methods
+  - step / status / hp / hunger / log in the intended structure
+
+Current concrete facts from code
+
+- `pieces/apps/playrm/loader/loader_module.c` writes:
+  - `project_id=xo-pet-v1`
+  - `active_target_id=selector`
+  - then pulses layout/frame reload
+
+- `pieces/chtpm/plugins/chtpm_parser.c` handles `LOAD_PROJECT:xo-pet-v1` by:
+  - reading `projects/xo-pet-v1/project.pdl`
+  - setting `current_layout` to `projects/xo-pet-v1/layouts/xo-pet.chtpm`
+  - writing `pieces/apps/player_app/manager/state.txt`
+  - reparsing and composing the frame
+
+- `projects/xo-pet-v1/project.pdl` declares:
+  - `entry_layout = projects/xo-pet-v1/layouts/xo-pet.chtpm`
+
+- `projects/xo-pet-v1/layouts/xo-pet.chtpm` currently contains the newer intended layout,
+  and the live ASCII session history now confirms that the visible session is using it.
+
+- `pieces/buttons/shared/run_orchestrator.sh` was not clearing:
+  - `projects/xo-pet-v1/history.txt`
+  - `projects/xo-pet-v1/manager/gui_state.txt`
+  - `projects/xo-pet-v1/manager/active_target.txt`
+  - `projects/xo-pet-v1/manager/sim_control.txt`
+  - `projects/xo-pet-v1/session/state.txt`
+- That allowed stale possession / step commands to replay into fresh controller sessions.
+
+- `projects/xo-pet-v1/layouts/xo-pet.chtpm` also had a minor label bug:
+  - `METHODS (${active_target})` was split across multiple nodes
+  - the owner name rendered blank
+  - this is now corrected by keeping the full label interpolation in one text node
+
+Rule for the next pass
+- Do not claim an ASCII menu fix until the user-facing ASCII frame history shows the intended menu structure after:
+  - `sh button.sh`
+  - `r`
+  - select `xo-pet-v1`
+
+Latest confirmed evidence
+- `pieces/debug/frames/session_frame_history.txt` now shows:
+  - `[ SIM ACTIVE: PAUSED (0) ]`
+  - `[ ACTIVE ID: xolector ]`
+  - `METHODS (xolector):`
+  - `possess_bulb`
+  - `possess_char`
+- This confirms the live ASCII session is on the XO-PET frame, not the older `SIM STATUS / POSSESS PET` shell.

@@ -1,0 +1,14 @@
+GL_OS_AUDIT_FRAME
+timestamp=2026-07-02 03:23:04
+project_id=gl-os
+active_layout=pieces/apps/gl_os/layouts/desktop.chtpm
+window_count=2
+active_window_id=2
+selected_index=0
+active_menu_options=
+║    [>] 1. [Control Map (ENTER) ]           ║
+║    [ ] 2. [Menu Mode (ESC)     ]           ║
+║    [ ] 3. [Deselect (9)        ]           ║
+║    [ ] 4. [Scan                ]           ║
+source=session/state.txt
+source=session/view.txt

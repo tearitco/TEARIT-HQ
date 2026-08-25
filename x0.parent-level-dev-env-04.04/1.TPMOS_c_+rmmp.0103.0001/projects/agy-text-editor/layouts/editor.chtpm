@@ -1,0 +1,16 @@
+<panel>
+    <module>projects/agy-text-editor/manager/+x/agy-text-editor_manager.+x</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+    
+    <text label="╔════════════ A G Y   E D I T O R ════════════╗" /><br/>
+    ${active_file_info_line}
+    <text label="║  " /><button label="EDIT TEXT (INTERACT)" onClick="INTERACT" /><text label="             ║" /><br/>
+    <text label="╠═════════════════════════════════════════════╣" /><br/>
+    ${editor_map}
+    <text label="╠═════════════════════════════════════════════╣" /><br/>
+    <text label="║  " /><button label="NEW FILE" onClick="KEY:6" /><text label="                                      ║" /><br/>
+    <text label="║  " /><button label="CLEAR FILE" onClick="KEY:2" /><text label="                                    ║" /><br/>
+    <text label="║  " /><button label="FILE MENU" href="projects/agy-text-editor/layouts/file_menu.chtpm" /><text label="                                     ║" /><br/>
+    <text label="║  " /><button label="EXIT TO OS" href="pieces/chtpm/layouts/os.chtpm" /><text label="                                    ║" /><br/>
+    <text label="╚═════════════════════════════════════════════╝" /><br/>
+</panel>

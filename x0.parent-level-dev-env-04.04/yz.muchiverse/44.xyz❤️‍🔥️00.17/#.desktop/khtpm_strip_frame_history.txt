@@ -1,0 +1,15 @@
+header.focus=0[type=button label=HQ onClick=ACTIVATE:1] header.active=-1 bottom.focus=-1 unified_nav_focus=0 has_real_x11_focus=0 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=28
+header.focus=2[type=button label=$.restart onClick=HQITEM:0] header.active=0 bottom.focus=0 unified_nav_focus=0 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=138
+header.focus=7[type=button label=stats onClick=HQITEM:5] header.active=0 bottom.focus=0 unified_nav_focus=0 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=5 element_count=138
+header.focus=0[type=button label=HQ onClick=ACTIVATE:1] header.active=-1 bottom.focus=0 unified_nav_focus=0 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
+header.focus=2[type=button label=$.restart onClick=HQITEM:0] header.active=0 bottom.focus=0 unified_nav_focus=0 has_real_x11_focus=0 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=138
+header.focus=7[type=button label=stats onClick=HQITEM:5] header.active=0 bottom.focus=0 unified_nav_focus=0 has_real_x11_focus=0 cliio_active=0 nav_armed=0 digit_buf= hq_focus=5 element_count=138
+header.focus=0[type=button label=HQ onClick=ACTIVATE:1] header.active=-1 bottom.focus=0 unified_nav_focus=0 has_real_x11_focus=0 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
+header.focus=67[type=button label=my pallet onClick=HQITEM:0] header.active=65 bottom.focus=0 unified_nav_focus=5 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=149
+header.focus=10[type=button label=palettes onClick=ACTIVATE:6] header.active=-1 bottom.focus=0 unified_nav_focus=5 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
+header.focus=2[type=button label=$.restart onClick=HQITEM:0] header.active=0 bottom.focus=0 unified_nav_focus=0 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=138
+header.focus=0[type=button label=HQ onClick=ACTIVATE:1] header.active=-1 bottom.focus=0 unified_nav_focus=0 has_real_x11_focus=0 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
+header.focus=29[type=button label=desk_01 onClick=HQITEM:0] header.active=27 bottom.focus=0 unified_nav_focus=3 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=105
+header.focus=6[type=button label=${desks_label} onClick=ACTIVATE:4] header.active=-1 bottom.focus=1 unified_nav_focus=3 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
+header.focus=2[type=button label=$.restart onClick=HQITEM:0] header.active=0 bottom.focus=1 unified_nav_focus=0 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=138
+header.focus=0[type=button label=HQ onClick=ACTIVATE:1] header.active=-1 bottom.focus=1 unified_nav_focus=0 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28

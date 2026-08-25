@@ -1,0 +1,102 @@
+================================================================================
+STOP: cpp-llm tool-calling WORKS as of 2026-07-15. Read this before you try
+to "fix" it again.
+================================================================================
+
+VERIFIED WORKING end to end on 2026-07-15: a real prompt built through the
+actual pipeline (text_to_llama3 -> json_escaper -> POST to the Mac's
+llama-server /completion at 10.0.0.144:8080) produced a clean, valid tool
+call in the response content:
+    {"tool": "write_file", "args": {"path": "j14.txt", "content": "date"}}
+
+--------------------------------------------------------------------------------
+1. WHY THIS PROJECT NEEDS A COMPLETELY DIFFERENT APPROACH THAN groq-ollama
+--------------------------------------------------------------------------------
+groq-ollama (talks to Ollama) was fixed by adding a native OpenAI-style
+tools[] array to the request and relying on the model's native tool_calls
+output. That approach does NOT work here. llama.cpp's /v1/chat/completions
+endpoint (chat-template + native tool schema) was tested directly against
+this exact server and the model either declined the tool entirely or
+produced nothing usable.
+
+The proven pattern instead (copied from a working reference project at
+AIDA.llc_MAC&SURF_12.00+0N/0.iq-aida.c_surf+20/agent.c, verified there on
+2026-05-14 and re-verified for cpp-llm on 2026-07-15) is:
+  1. Manually build the raw Llama3 token-formatted prompt yourself
+     (<|start_header_id|>role<|end_header_id|>\n\ncontent<|eot_id|>...) -
+     do NOT rely on llama-server's built-in chat template.
+  2. POST that raw prompt string to /completion (NOT /v1/chat/completions),
+     as {"prompt": "...", "n_predict": 512, "stream": false, "stop":
+     ["<|eot_id|>", "<|end_of_text|>"]}.
+  3. The persona must instruct strict JSON-only output with concrete
+     few-shot examples ({"tool":...,"args":...} / {"response":...}) - there
+     is no native tool-calling on this path, it is 100% prompt-engineered.
+  4. The response is flat: {"content": "...", ...} - no chat-completions
+     nesting to unwrap.
+
+Do not "fix" this by switching it to native tools[] or /v1/chat/completions
+- that was already tried and is the less reliable path on this server.
+
+--------------------------------------------------------------------------------
+2. Same caveats as groq-ollama apply here too:
+--------------------------------------------------------------------------------
+- The model is picky about phrasing (ambiguous requests get hedged/declined
+  instead of triggering a tool call - see groq-ollama's own
+  !!.EMERGENCY-READ-ME-IT-WORKS.txt for a concrete A/B example).
+- Inference on this hardware is slow and variable - the verification call
+  above took 1m54s for a ~515 token prompt. Use long curl/manager timeouts
+  and don't read one slow response as "broken."
+- Editing config/persona.txt has no effect on an already-running session
+  until context is cleared (state/context.json) - the old persona is baked
+  in as the first message.
+- The Mac's llama-server needs to actually be running and bound correctly
+  on port 8080 for any of this to work - check with
+  `curl http://10.0.0.144:8080/completion` before assuming the code broke.
+- NEVER launch a second manager/test process while a real session might be
+  running - they'll fight over shared state files. Check
+  `pgrep -af cpp-llm_manager` first.
+
+--------------------------------------------------------------------------------
+Fixes applied 2026-07-15 (for context, don't re-apply these):
+--------------------------------------------------------------------------------
+- start_ai_query() was building the raw Llama3 prompt via text_to_llama3 and
+  then THROWING IT AWAY, sending an unrelated OpenAI-chat-shaped body to
+  /v1/chat/completions instead. Fixed to actually use the built prompt and
+  post it to /completion.
+- text_to_llama3.c was copied from the reference project verbatim, but it
+  parsed CSV-formatted history ([SYSTEM],ts,content lines). Our actual
+  context.json is a JSON array ({"role":...,"content":...}, same format
+  json_state.c produces for every TPMOS agent project) - text_to_llama3 was
+  silently producing near-empty output. Rewrote it to parse the real JSON
+  format (it didn't matter before since its output was discarded anyway -
+  see above).
+- check_ai_status()'s response parsing had a confusing my_ip-based branch
+  guessing whether to parse a flat or nested response shape. Since the
+  request now always goes to /completion for the llama.cpp branch, the
+  response is always flat - simplified to match.
+- Swapped in the path-aware json_parser.c (old one was a shallow
+  first-match-anywhere scanner, same bug class fixed in groq-ollama) and
+  fixed the Ollama-via-cpp-llm branch's parsing paths to match the real
+  nested OpenAI response shape (choices[0].message.content etc).
+- Fixed config/persona.txt (and config/yolo.flag) being read via a bare
+  relative path that resolved against the TPMOS root, not the project
+  folder - same bug fixed in groq-ollama.
+- Strengthened persona.txt with concrete few-shot tool-call examples
+  (copied from the proven-working reference persona) - this endpoint has no
+  native tool schema, so persona wording is the only thing making tool
+  calls reliable.
+
+Full original investigation: tpmos-ai-fix.txt at the ZEST-10.00 repo root.
+Reference implementation this was ported from:
+AIDA.llc_MAC&SURF_12.00+0N/0.iq-aida.c_surf+20/ (agent.c, config/persona.txt,
+server.sh) - useful to consult if this needs revisiting.
+
+--------------------------------------------------------------------------------
+UPDATE 2026-07-15 (later same day): autocomplete (* path completion) polish
+--------------------------------------------------------------------------------
+Same port as applied to groq-ollama (see its !!.EMERGENCY-READ-ME-IT-WORKS.txt
+for the full explanation): suggestion labels now strip the sandbox_root
+prefix, keyboard focus jumps to the suggestion list and back
+(pulse_state_changed/read_active_gui_index), CHOOSE: history marker is
+handled, and polling speeds up to 20ms while completion mode is active.
+Don't re-simplify this back to the old version.

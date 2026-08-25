@@ -1,0 +1,24 @@
++============================================================+
+|  U S E R - P A L                                           |
++============================================================+
+|                                                            |
+|  Logged in as: uloginA_1644703                             |
+|  uuid: 71701726-fd1f-4407-a920-0d7a85e3f17c                |
+|  xyzfs: xyzfs/users/71701726-fd1f-4407-a920-0d7a85e3f17c   |
+|                                                            |
+|  Enter a user ID (and display name, if new), then          |
+|  choose Create Account or Log In below.                    |
+|                                                            |
+|  Logged in as 'uloginA_1644703'.                           |
+|                                                            |
++============================================================+
+
+| [ ] 1. User ID: [uloginA_1644703]                                        |
+| [ ] 2. Display Name (new accounts only): [LoginHarnessA]                                        |
+[ ] 3. [Create Account]
+[>] 4. [Log In]
+[ ] 5. [Log Out]
+ (Ctrl+C to quit)
+
++=========================================================+
+Nav > _

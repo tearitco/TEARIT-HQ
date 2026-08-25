@@ -1,0 +1,63 @@
+🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️
+🦉️DONT DO MV/FULL-NET right now. they will be "ez enuff" 2 add l8r, 
+i want 2 focus on getting a "BOTNET" up and running first 
+(having it do mex/tx competitions , etc) ;good talk tho.🦉️
+📬️
+🛗️
+isn't it automatically pushing things down due to time-stamps? 
+does that mean a-z will autoloop and auto drop? <-u will need 2 
+drop manually by pushing down and moving on if no response still, 
+and imo that same more realistic/important than "BOTNET"or even MV...
+
+📧️💌️its ez 2 test ips 1.1.1.1 - 2.2.2.2 but... 💌️
+💪🏼️i may send binary-only to e-fwens...
+but we at least wanna test how updates/nnex work locally first so 
+lets loop back around after we have SOME NNEX in place...
+{after all, theres literally no point if u dont have basic chat/nnex <3}its ok <3 sp  φ💪🏼️
+📧️
+
+🛗️
+📬️
+🔠️
+3️⃣️<3 p2p connects>
+a<-b   (a turns on . b turns on and sends 2 l8st rcvr-a )
+c<-a     (when a gets ack from b. instead of sending nothing it tries "c"
+{b<-c   (when c gets ack from a , it tries b. } {and also D?<multiverses?> }
+3️⃣️
+4️⃣️<4 p2p connects>
+a<-b
+c<-a
+d<-c <keeps going down list, if its at bottom of list , should send 2 2nd top...
+<cuz no one ever sent 2 second top unless there were only 2. > 
+4️⃣️
+Ⓜ️<chunked multiversal p2p connects>
+♾️
+a<-b   (a turns on . b turns on and sends 2 l8st rcvr-a )
+c<-a     (when a gets ack from b. instead of sending nothing it tries "c"
+{b<-c   (when c gets ack from a , it tries b. } {and also D?<multiverses? =*no> }
+		
+♾️[wut d?] <if lists get super long and u want 2 divide them...>
+<c doesn't have d, but d has c...ie : new list has redunanC : (c,d,e)> 
+c<-d
+e<-c [how ? c doens't have d, does c have 2 keep 2 lists? ]
+♾️e, if e is at bottom of list, it can check for ip_list_2.txt [or just stop]🔚️
+f<-e
+g<-f
+h<-g
+♾️♾️♾️♾️♾️♾️♾️♾️♾️♾️♾️♾️♾️🔚️
+
+
+❔️
+<so c sends and gets sent 2 twice? we dont need c's ip list. just 
+its blockchain,WAIT! we dont actually have 2 pass ip lists like this we can pass them thru the block chain . how is it usually done , i dont want to create confusion.
+❔️
+♾️
+Ⓜ️
+🔠️
+🥽️
+👾️
+🧟‍♂️️
+🆘️ 🪜️
+🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️🔡️
+
+

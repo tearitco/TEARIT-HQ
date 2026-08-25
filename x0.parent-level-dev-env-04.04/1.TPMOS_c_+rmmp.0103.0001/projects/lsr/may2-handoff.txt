@@ -1,0 +1,26 @@
+# LSR (Lunar Streetrace Raider) - MAY 2nd HANDOFF REPORT
+
+## 1. Project Pivot: Scale & Initialization
+The simulation is being refactored to align with a smaller, more focused scope.
+- **New Scale Target:** 10 total entities (e.g., 8 Corporations, 2 Governments).
+- **Initialization Constraint:** Hardcoded C scripts for setup are being deprecated. A local `setup_config.txt` and a flexible parser must drive entity creation.
+- **Current Bloat:** Existing `pieces/world/lunar/` contains 100+ entities (50 corps, 50 govs). This must be purged and re-initialized based on the new config.
+
+## 2. UI/UX Critical Gaps
+Current interface testing has revealed major navigation "dead ends":
+- **Dead-End Dashboard:** The financial dashboard (`lsr_main.chtpm`) lacks a "Back" button to return to the Main Menu or the Map.
+- **Map Isolation:** Once in the 2D Map view, there is no intuitive way to exit back to the LSR setup or main hub.
+- **Inactive Navigations:** The index buttons (e.g., `1.File`, `5.Select Player`) are currently static `<text>` labels. They need to be converted to functional `<button>` tags with corresponding logic in the manager.
+
+## 3. Data Integrity & Metabolism
+- **Method Injection:** While the "LSR" method has been added to Piece PDLs, it currently points to a single static dashboard. It should dynamically pass the `piece_id` to the manager to load entity-specific data.
+- **Missing Heart:** The Metabolism Ops (Payroll, Taxes, Dividends) remain the #1 technical blocker for a functional simulation.
+
+## 4. Required Next Steps
+1. **Config-Driven Setup:** Create `projects/lsr/config/setup_config.txt` and refactor `lsr_setup_corps.c` to parse this file.
+2. **UI Refactor:** Add `<button label="Back to Menu" href="pieces/chtpm/layouts/os.chtpm" />` to all LSR layouts.
+3. **Index Navigation:** Convert `lsr_main.chtpm` index labels into functional buttons.
+4. **Scope Purge:** Delete redundant entity pieces in `pieces/world/lunar/` that exceed the 10-entity limit.
+
+---
+*Report prepared for Agent Handoff. Smaller is smarter.*

@@ -1,0 +1,24 @@
+# 🎮 DAY 18 — The Demo Games: the whole point 🕹
+# ============================================
+# Title: "🎮 DAY 18 — The Demo Games: the whole point 🕹"
+# Characters: TOMO, RAHWEH, THE NARRATOR
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session
+
+**TOMO:** From `au11-hq/HANDOFF.md`, the demo-game line-up — a ladder from one desk to a civilization: | Game | What it is | What proves | |---|---|---| | 🏪 desk-shop | START. One desk, one NPC, dialogue. You walk up, the merchant greets you, you buy and sell. | The whole event loop: Show Text, Show Choices, Change Gold, inventory. | | 🏛️ desk-civ | A little civilization on the desk — grow, build, manage. | Reusable systems: state, timers, resources. | | 🎴 muchipal-desk | A card/board game on the desk. | Game rules as event logic; turn-based play. | | ⚔️ dsr | The flagship (short for the deep-survival/roguelike dream). | A whole vertical: rooms, entities, combat, save. |
+
+**RAHWEH:** And the first one is the shop?
+
+**TOMO:** desk-shop is the *start* — it's the smallest thing that still exercises the entire pipeline. Talk → choose → buy → state changes → desk reacts. If the harness can build that end-to-end, every bigger game is just more content on the same rails. 🚂
+
+**TOMO:** Remember the tree from [Day 17](DAY_17_DB_HQ.md)? Games *are* sessions. Maps *are* desks. Entities live on desks. Events are the scripts. So a "game" is just a session folder with game content inside it: sessions/<game/            ← the whole game commonevents/            ← shared scripts (shop logic, buy/sell) desks/                    ← the maps (the shop desk!) desk-shop/entities/     ← the NPC merchant merchant/eventpkg/   ← his dialogue pages
+
+**TOMO:** Here's the pipeline, straight from `au11-hq/HAIKU_TASKS.md`: 1. H1 — Show Text + Show Choices — ✅ DONE. The dialogue engine is real. 2. H2 — Palette picker (palette UI) — READY. The palette requirement below. 3. H5 — desk-shop (start) — blocked on H2. The palette must exist before the shop can be built properly. 4. H3, H4, H6–H8 — more event/db work, all in the same pattern. 🧵 So the very next move for the harness is: describe the merchant, the dialogue, the buy/sell rules → the harness writes the real event files → the player widget runs the shop. That's the product loop, live. 🎯
+
+**THE NARRATOR:** Before any demo game ships, the **palette picker** must exist. Why? Two rules from the house's own standing law (INDEX.md rule 6 and EVENTAIVISION.md §5): 1. Users can't be stuck with my colors — the game must let a player pick their own palette. 2. We have autonomous harnesses ready to sell — and a styled, paletted game is the thing you can actually sell.
+
+**TOMO:** RPG Maker tiles are the v1 asset source (`EVENT_AI_VISION.md` §5) — but with a mandatory swap-out path. Palettes are a hard requirement for demo games, not an afterthought. They're what turns "a toy I built" into "a toy anyone can own." 🎨
+
+**TOMO:** The Harnecient hack will **code the demo games**. An agent — the same 3B/1b/270m models that can't do tools — will describe game moments and the harness will write real game files: - event packages (event.ir.pdl, event.pal, cmdN.sh) for dialogue and triggers, - common events for shop logic and shared rules, - db content (inventory.txt, palettes, state) the cell manages, - game ops compiled and placed in xyzfs/bin/<game/ops/+x/. And every single file gets verified — receipts, checksums, N/N scoreboards — because trust the files, not the model's word (Day 11). The model is the designer-in-chief; the harness is the hands. The API never finds out. That is Harnecient. 🏛️
+
+**THE NARRATOR:** You're learning to build the *factory* that builds the games. And after the telescope, the book opens out even further — the 2D/3D worlds, the zoo, signup, the ledger, the money, and other players. The games are the point; the vision is why. 🚀

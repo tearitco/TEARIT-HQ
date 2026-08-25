@@ -1,0 +1,6 @@
+name=Map 01
+type=map
+map_file=map_01.txt
+map_file=map_01_z0.txt
+map_file=map_01_z1.txt
+map_file=map_01_z2.txt

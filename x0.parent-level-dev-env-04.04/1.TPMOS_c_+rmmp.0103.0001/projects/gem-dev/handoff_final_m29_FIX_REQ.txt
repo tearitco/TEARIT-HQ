@@ -1,0 +1,15 @@
+# HANDOFF: Completion System Refinement (m29 - FINAL FINAL)
+
+## 1. Executive Summary
+The path completion system successfully manages UI state atomicity. However, a new "Ghost Entry" behavior has emerged where autofill actions from a previous session seem to be retroactively applied upon restart.
+
+## 2. Outstanding UX Bugs
+- **Ghost Entries**: Selecting a path appears to persist across restarts. This indicates that the `history.txt` or `cli_buffers.txt` files are NOT being fully cleared or that the polling index `g_buf_last_pos` is being initialized incorrectly, causing the manager to "re-read" old entries as new.
+- **UI Sync Delay**: While the logic is atomic, the Parser still shows a slight latency in updating the UI, likely due to its own independent read-polling interval of `gui_state.txt`.
+
+## 3. Recommended Fixes for Next Agent
+1.  **Strict File Truncation**: Ensure that on Manager startup, ALL relevant files (`history.txt`, `cli_buffers.txt`, `gui_state.txt`) are *unlinked* and re-created (or truncated with `O_TRUNC`) before any polling begins.
+2.  **Parser Sync Force**: If possible, introduce a "render version" variable in `gui_state.txt` that the Parser *must* track. Only when the version increments should the Parser re-initialize its internal `cli_io` element's `input_buffer`.
+3.  **Handoff to Next Agent**: The code is logically stable, but the file-based state synchronization requires the next agent to adopt a strict "clean-start" policy for all persistent state files.
+
+*This handoff concludes my involvement.*

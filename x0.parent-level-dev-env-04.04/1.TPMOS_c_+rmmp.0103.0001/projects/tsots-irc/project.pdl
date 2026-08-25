@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | tsots-irc
+META         | entry_layout       | projects/tsots-online/irc-module/layouts/tsots-irc.chtpm
+STATE        | player_piece       | selector
+STATE        | current_world      | world_01
+RESPONSE     | default            | tsots-irc ring loaded.

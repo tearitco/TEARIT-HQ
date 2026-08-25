@@ -1,0 +1,9 @@
+# event.pal - page_1's real top-level script - Show Choices dispatch
+# macOS leg 2026-08-22: this line used to hardcode a Linux dev-box
+# absolute path (/home/no/Desktop/...) - silently no-op'd on any other
+# machine (prisc exec failed, halt exited 0, zero output). The exec
+# opcode already resolves relative targets against g_pal_dir (this
+# .pal's own directory, set from argv[1]'s realpath), so a plain
+# ./dispatch.sh points at the SAME file on Linux and is portable.
+exec ./dispatch.sh
+halt

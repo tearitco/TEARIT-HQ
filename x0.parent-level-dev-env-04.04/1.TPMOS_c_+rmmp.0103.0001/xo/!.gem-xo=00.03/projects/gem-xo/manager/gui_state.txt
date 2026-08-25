@@ -1,0 +1,24 @@
+module_path=projects/gem-xo/manager/+x/gem-xo_manager.+x
+active_layout_id=gem-xo.chtpm
+ai_state=IDLE
+active_api=https://generativelanguage.googleapis.com
+ai_status_line=[AI STATE]: IDLE | [API]: https://generativelanguage.googleapis.com
+ctx_pct=4%
+iqabel_fsm=IDLE
+gem-xo_response_area=║ You exceeded your current quota, please check your plan and billing detail ║\n║ s. For more information on this error, head to: https://ai.google.dev/gemi ║\n║ ni-api/docs/rate-limits. To monitor your current usage, head to: https://a ║\n║ i.dev/rate-limit.                                                          ║\n║ * Quota exceeded for metric: generativelanguage.googleapis.com/generate_co ║\n║ ntent_free_tier_requests, limit: 20, model: gemini-2.5-flash               ║\n║ Please retry in 27.116395322s.                                             ║
+gem-xo_api_menu=        <button label="gemini" onClick="SET_API:https://generativelanguage.googleapis.com" /><br/>        <button label="local-oll" onClick="SET_API:http://localhost:11434" /><br/>        <button label="macbook-oll" onClick="SET_API:http://10.0.0.144:11434" /><br/>        <button label="aida_mac-cpp" onClick="SET_API:http://10.0.0.144:8080" /><br/>        <button label="desktop-oll" onClick="SET_API:http://10.0.0.187:11434" /><br/>        <button label="debian-oll" onClick="SET_API:http://10.0.0.16:11434" /><br/>
+piece_methods=
+comp_root_vis=false
+comp_1_lbl=
+comp_1_vis=false
+comp_2_lbl=
+comp_2_vis=false
+comp_3_lbl=
+comp_3_vis=false
+comp_4_lbl=
+comp_4_vis=false
+comp_5_lbl=
+comp_5_vis=false
+sys_msg=Response received.
+thinking_secs=0
+input_text=

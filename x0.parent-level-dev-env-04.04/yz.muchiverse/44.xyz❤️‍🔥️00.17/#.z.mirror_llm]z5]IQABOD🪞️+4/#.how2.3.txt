@@ -1,0 +1,37 @@
+---------------------------------------------------------
+
+./+x/main_orchestrator.+x vocab_only corpuses/guess_the_word.txt
+
+./+x/main_orchestrator.+x train curriculum/guess_the_word/guess_the_word.txt
+
+./+x/main_orchestrator.+x generate curriculum/guess_the_word/guess_the_word.txt 1.0 2 "test"
+
+------------------------------------------------------------------------------
+
+*y is loss giving exact same for both times? seems fake.
+
+(its been happening for "3 generations" so its an old problem, its probably an ez fix tbh)
+
+cat loss.txt 
+1,training,current,token,2.521850
+2,training,current,token,2.505050
+3,training,current,token,2.493700
+4,training,current,token,2.482450
+5,training,current,token,2.473500
+6,training,current,token,2.472400
+7,training,current,token,2.446350
+8,training,current,token,2.445900
+9,training,current,token,2.441400
+10,training,current,token,2.426600
+
+1,training,current,token,2.521850
+2,training,current,token,2.505050
+3,training,current,token,2.493700
+4,training,current,token,2.482450
+5,training,current,token,2.473500
+6,training,current,token,2.472400
+7,training,current,token,2.446350
+8,training,current,token,2.445900
+9,training,current,token,2.441400
+10,training,current,token,2.426600
+

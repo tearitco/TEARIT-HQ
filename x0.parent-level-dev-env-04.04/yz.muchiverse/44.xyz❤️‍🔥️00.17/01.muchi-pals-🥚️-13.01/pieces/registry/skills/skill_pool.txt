@@ -1,0 +1,17 @@
+# egg-pals skill/move pool (global, non-located content)
+# Format: id|name|unlock_level|power|mp_cost
+# id matches the bare token stored in a pet's comma-separated skills=
+# field on its own state.txt (hatch_egg.c seeds skills=peck at hatch, so
+# "peck" here must match exactly - not a sk_-prefixed id).
+# train_pet.+x grants the lowest-unlock_level skill a pet doesn't already
+# have once it reaches that level; export_card.+x looks up a pet's known
+# skills here for the card's move list (power/mp_cost). Extend this list
+# freely - it's plain data, no code change needed to add more moves.
+peck|Peck|1|8|0
+scratch|Scratch|2|12|2
+tackle|Tackle|3|18|3
+bite|Bite|4|24|4
+flame_burst|Flame Burst|5|32|6
+roar|Roar|6|38|7
+slam|Slam|7|45|8
+super_move|Super Move|8|55|10

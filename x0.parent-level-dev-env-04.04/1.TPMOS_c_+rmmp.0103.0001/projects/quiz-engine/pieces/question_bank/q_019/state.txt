@@ -1,0 +1,5 @@
+name=Glyceraldehyde-3-phosphate
+formula=O=CHCH(OH)CH2OPO3H2
+type=Aldehyde Phosphate
+groups=-CHO
+relevance= -OH

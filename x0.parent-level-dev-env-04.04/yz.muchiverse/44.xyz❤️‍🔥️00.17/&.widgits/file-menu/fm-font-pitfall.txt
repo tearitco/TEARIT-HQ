@@ -1,0 +1,154 @@
+fm-font-pitfall.txt
+====================
+Why chtpm_rgb_render produces all-black rgb_frame.raw,
+and what to check when GL text is invisible.
+
+GL RENDER CHAIN
+===============
+All paths are relative, resolved via PRISC_PROJECT_ROOT env var.
+
+  parser_pal                  chtpm_rgb_render          gl_mirror
+  compose_frame()             main()                    main()
+    ├─ write current_frame.txt   ├─ initial render       ├─ load rgb_frame.raw
+    ├─ append "P\n" to           │   (no current_frame   │
+    │   renderer_pulse.txt       │    → all-black fb)    │
+    │                            ├─ record last_pulse =  │
+    │                            │   file_size(pulse)    │
+    │                            ├─ poll loop:           │
+    │                            │   file_size(pulse)    │
+    │                            │   != last_pulse →     │
+    │                            │   settle → render     │
+    │                            │   → write rgb_frame   │
+    │                            │   → write receipt     │
+    │                            │   → append "P\n" to   │
+    │                            │     rgb_frame_changed │
+    │                            │                       ├─ poll:
+    │                            │                       │   file_size(
+    │                            │                       │   rgb_frame_changed)
+    │                            │                       │   != last → load
+    │                            │                       │   rgb_frame.raw
+    └─ sleep 30000 ──────────────┘ ── usleep 33333 ──────┘ ── glutTimerFunc 33
+
+ROOT CAUSE: file_size() returns -1 for missing files
+=====================================================
+
+chtpm_rgb_render records the initial pulse size at line 819:
+
+    long last_renderer_pulse = file_size("pieces/display/renderer_pulse.txt");
+
+If renderer_pulse.txt does NOT exist before the renderer starts,
+file_size() returns -1. Then:
+
+  1. Renderer records last_renderer_pulse = -1
+  2. Parser writes current_frame.txt and appends "P\n" to
+     renderer_pulse.txt (size = 2)
+  3. Renderer polls: file_size(pulse) = 2
+  4. Checks: 2 != -1 → TRUE → triggers re-render
+  5. Settle loop waits ~200ms for current_frame.txt to stabilize
+
+BUT — Step 4 triggers INSTANTLY: the size went from -1 (file missing)
+to 2 (file exists). The settle loop waits up to 200ms.
+
+If the parser takes longer than 200ms to finish writing
+current_frame.txt (e.g., complex chtpm layout), the settle loop
+exits with a STABLE but PARTIAL file → render reads garbage →
+rgb_frame.raw is all-black.
+
+The settle loop is:
+
+    long prev = -2, cur = file_size(frame_path);
+    for (int a = 0; a < 20 && cur != prev; a++) {
+        prev = cur; usleep(10000); cur = file_size(frame_path);
+    }
+
+If current_frame.txt is still being written on attempt 1, its size
+fluctuates. If the fluctuation period exceeds 200ms (20 × 10ms),
+the loop exits with cur != prev, meaning the file was NEVER stable.
+But render_once runs anyway with whatever garbage was read.
+
+THE FIX
+=======
+
+Pre-create renderer_pulse.txt BEFORE starting the renderer, so
+file_size() returns 0 (not -1):
+
+    : > pieces/display/renderer_pulse.txt
+
+Now the sequence is:
+
+  1. pulse exists, size = 0
+  2. renderer records last_renderer_pulse = 0
+  3. initial render: current_frame.txt doesn't exist → all-black
+     This is expected and harmless — it's overwritten on re-render.
+  4. parser writes current_frame.txt AND appends to pulse (size 2)
+  5. renderer polls: 2 != 0 → triggers re-render
+  6. settle loop waits for current_frame.txt to stabilize
+     (now current_frame.txt already exists and is stable)
+  7. render_once reads correct current_frame.txt → non-black output
+
+The fix must go in the session init block, BEFORE any daemons
+start. In button.sh:
+
+    : > pieces/display/frame_changed.txt
+    : > pieces/display/renderer_pulse.txt    # <-- ADD THIS
+    : > pieces/system/fm_state.txt
+
+Reference pattern: mutaclysm orchestrator.c lines 270-271:
+
+    FILE *rp = fopen("pieces/display/renderer_pulse.txt", "w");
+    if (rp) fclose(rp);
+
+This creates (or truncates) the file to 0 bytes, same as : >.
+
+WHY THE GL WINDOW IS STILL BLANK FROM THE APP
+==============================================
+
+When run from @.apps/text-editor-xyz/button.sh, the app launches
+the widget via:
+
+    bash "$FM_DIR/button.sh" run-widget "$EDITOR_SESSION"
+
+This calls the widget's own button.sh (already fixed), which
+creates its OWN independent session with renderer_pulse.txt
+pre-created. The widget session is completely separate from the
+editor session.
+
+If the GL window still shows blank, check:
+
+1. Rebuild binaries: the button.sh fix is a shell script, but the
+   30fps cap (usleep 33333, glutTimerFunc 33) needs a rebuild:
+
+       bash &.widgits/file-menu/scripts/build.sh
+
+2. Check if chtpm_rgb_render is actually running:
+       ps aux | grep chtpm_rgb_render
+   The receipt file shows the last checksum. If it says
+   e7ef7ab4dace2325 (FNV-1a-64 of an all-000000FF buffer),
+   the renderer ran but produced no visible pixels.
+
+3. Check renderer_pulse.txt and current_frame.txt in the widget's
+   session dir (under &.widgits/file-menu/pieces/sessions/).
+
+4. If both pulse and frame exist but rgb_frame.raw is all-black,
+   the settle loop exited before the frame was stable. Add a
+   small startup delay between starting the renderer and parser,
+   or increase the settle loop's 20-attempt cap.
+
+5. The app might be picking up the wrong FM_DIR if there are
+   multiple file-menu* directories. The glob in button.sh:
+       FM_DIR="$(ls -d "$HOUSE_DIR/&.widgits/file-menu"* | head -1)"
+   picks alphabetically first: prefer file-menu over file-menu-working.
+
+PATH CONVENTION
+===============
+All paths in this project are RELATIVE and resolved via
+PRISC_PROJECT_ROOT. Never hardcode absolute paths in ops or
+daemons — use resolve_root() or asprintf with PRISC_PROJECT_ROOT.
+
+KEY FILES
+=========
+  chtpm_rgb_render.c line 819    records last_renderer_pulse
+  chtpm_rgb_render.c line 859    polls for pulse change
+  chtpm_parser_pal.c line 2997   grows renderer_pulse.txt (append "P\n")
+  prisc+x.c         line 1028    grows frame_changed.txt (hit_frame op)
+  mutaclysm orchestrator.c:270   reference: fopen(pulse, "w")

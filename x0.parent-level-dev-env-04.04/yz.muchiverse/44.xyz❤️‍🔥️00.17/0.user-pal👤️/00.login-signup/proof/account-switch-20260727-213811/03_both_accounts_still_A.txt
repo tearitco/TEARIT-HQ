@@ -1,0 +1,22 @@
++============================================================+
+|  U S E R - P A L                                           |
++============================================================+
+|                                                            |
+|  Logged in as: asw_a_2131489                               |
+|  uuid: e8bf229a-62d3-4d6f-810e-e2aaf031cd73                |
+|  xyzfs: xyzfs/users/e8bf229a-62d3-4d6f-810e-e2aaf031cd73   |
+|                                                            |
+|  Enter a user ID (and display name, if new), then          |
+|  Create Account / Log In — or Switch: an account below.  |
+|                                                            |
+|  Accounts on this machine:                                 |
+|    jb — JB Test                                          |
+|    avmenu_1653663 — MenuTest                             |
+|  > asw_a_2131489 — Alice                                 |
+|    asw_b_2131489 — Bob                                   |
+|    schar_1744476 — SessionChar                           |
+|    avmenu_1654388 — MenuTest                             |
+|                                                            |
+|  Both accounts exist; still A.                             |
+|                                                            |
++============================================================+

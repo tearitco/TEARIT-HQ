@@ -1,0 +1,33 @@
+# Moke-Pet Phase 2: Exo-Manager Orchestrator - Detailed To-Do List
+
+## Objective
+Develop a C-based `manager.c` that serves as the central control loop for the tank, handling turn-based execution of Op binaries and logging epoch state.
+
+## 1. Manager Structure & Discovery
+- [x] **Perception Phase**:
+  - Manager dispatches `scan.+x` for the active entity.
+  - `scan.+x` reads enclosure and writes to `liz_n/memory/observations.txt`.
+- [x] **Decision Phase**:
+  - Manager reads `observations.txt` to identify "edibles" or "enemies".
+- [x] **Action Phase**:
+  - Dispatch Action Op (e.g., `eat <target_id>`) based on findings.
+
+## 2. Sovereign Ops Implementation
+- [x] **`scan.c`**:
+  - Self-resolves pet root via `argv[0]`.
+  - Writes `id | type` to `memory/observations.txt`.
+- [x] **`eat.c`**:
+  - Self-resolves pet root via `argv[0]`.
+  - Targets dynamic piece IDs.
+
+## 3. Auditing & Logging
+- [ ] **Epoch Logging**:
+  - [ ] Implement `log_turn` in `manager.c`.
+  - [ ] Write turn details to `pieces/world_tank_01/logs/epoch_N.txt`.
+- [ ] **Epoch Transition**:
+  - [ ] Increment epoch in `state.txt`.
+
+## 4. Verification & Testing
+- [ ] **Orchestration Test**: Verify `manager` can successfully trigger `liz_bulb`'s `eat` op, then `liz_char`'s `rest` op.
+- [ ] **Concurrency/Wait**: Confirm the manager correctly waits for one op to finish before triggering the next.
+- [ ] **Log Verification**: Confirm `logs/epoch_1.txt` records the correct sequence of actions.

@@ -1,0 +1,150 @@
+Image Generation Guide for Neural Network Model
+==============================================
+
+Overview
+--------
+This guide explains how to adapt the neural network model (`neural_net.c`, `noise_schedule.c`, `main.c`) for image generation using reverse diffusion. The current model performs conditional denoising for image enhancement, but it can be modified for unconditional or class-conditional image generation from random noise, leveraging its DDIM-based reverse diffusion process.
+
+Current Model
+-------------
+- **Components**:
+  - `neural_net.c`: Trains a U-Net to predict noise, accelerated by OpenCL for convolution.
+  - `noise_schedule.c`: Performs DDIM reverse diffusion, blending noise predictions with edge conditioning.
+  - `main.c`: Orchestrates image loading, noise prediction, and blending.
+- **Diffusion**: Uses DDIM with a linear beta schedule (`beta_start=0.0001`, `beta_end=0.02`, 50 timesteps).
+- **Limitations**:
+  - Relies on input images and edge maps.
+  - Blends multiple noise predictions, not suited for novel generation.
+  - Lacks class conditioning.
+
+Modifications for Image Generation
+---------------------------------
+### 1. Update neural_net.c
+**Goal**: Process random noise and condition on timesteps (and optionally classes).
+
+**Changes**:
+- **Random Noise Input**:
+  - Add a `generate` mode to initialize input with Gaussian noise:
+    ```c
+    if (strcmp(argv[3], "generate") == 0) {
+        for (int i = 0; i < width * height * channels; i++) {
+            input[i] = ((float)rand() / RAND_MAX - 0.5f) * 2.0f;
+        }
+    }
+    ```
+- **Timestep Embedding**:
+  - Add a function to embed timesteps:
+    ```c
+    void embed_timestep(float *embedding, int t, int dim) {
+        for (int i = 0; i < dim; i++) {
+            float freq = 1.0f / powf(10000.0f, ((float)(i / 2) / dim));
+            embedding[i] = (i % 2 == 0) ? sinf(t * freq) : cosf(t * freq);
+        }
+    }
+    ```
+  - Pass embedding to `convolve_opencl` via a new buffer.
+- **Class Conditioning (Optional)**:
+  - Add a class label input (e.g., `argv[5]`) and embed it similarly.
+- **OpenCL**:
+  - Update the convolution kernel to incorporate embedding:
+    ```c
+    __kernel void convolve(__global const float *input, __global float *output,
+                          __global const float *kernel, __global const float *embedding,
+                          int width, int height, int channel) {
+        // Add embedding to input processing
+    }
+    ```
+
+### 2. Update noise_schedule.c
+**Goal**: Start from pure noise and remove original image dependency.
+
+**Changes**:
+- **Initialize Noise**:
+  - Replace blended `xt` with random noise:
+    ```c
+    float *xt = (float *)malloc(size * sizeof(float));
+    for (int i = 0; i < size; i++) {
+        xt[i] = ((float)rand() / RAND_MAX - 0.5f) * 2.0f;
+    }
+    ```
+- **Remove Original**:
+  - Eliminate edge map and blending (`xt[i] = xt[i] * 0.8f + original[i] * 0.2f`).
+- **Iterative Prediction**:
+  - Call `neural_net.c` for each timestep to get `eps_theta`:
+    ```c
+    for (int t = NUM_TIMESTEPS - 1; t >= 0; t--) {
+        char temp_output[256];
+        snprintf(temp_output, 256, "temp_noise_%d.dat", t);
+        // Call neural_net.c with xt, t, and optional class label
+    }
+    ```
+- **OpenCL**:
+  - Implement denoising in OpenCL:
+    ```c
+    __kernel void denoise_step(__global float *xt, __global float *xt_minus_1,
+                             __global float *eps_theta, float sqrt_alpha_t, ...) {
+        int idx = get_global_id(0);
+        float x0_pred = (xt[idx] - sqrt_one_minus_alpha_t * eps_theta[idx]) / sqrt_alpha_t;
+        xt_minus_1[idx] = sqrt_alpha_t_minus_1 * x0_pred + sqrt_one_minus_alpha_t_minus_1 * eps_theta[idx];
+    }
+    ```
+
+### 3. Update main.c
+**Goal**: Support generation mode.
+
+**Changes**:
+- Add `generate` mode:
+  ```bash
+  ./main generate <width> <height> <class_id> <output_image>
+  ```
+- Initialize noise and call `neural_net.c` per timestep, passing `xt` and `t`.
+- Invoke `noise_schedule.c` with generated predictions.
+
+### 4. Training for Generation
+- **Dataset**:
+  - Train on a diverse dataset (e.g., ImageNet, CIFAR-10) to learn general image distributions.
+  - Label images for class-conditional generation.
+- **Loss**:
+  - Use the existing MSE loss in `neural_net.c` to predict noise at random timesteps.
+- **Hyperparameters**:
+  - Increase `NUM_EPOCHS` to 1000+ for better convergence.
+  - Adjust `LEARNING_RATE` to 0.001f for stability.
+
+Usage
+-----
+```bash
+./main generate 256 256 0 diffusion_output.jpg
+```
+- Generates a 256x256 image, optionally conditioned on class `0`.
+- Outputs `diffusion_output.jpg`.
+
+Troubleshooting
+---------------
+- **Blurry Images**:
+  - Increase `NUM_TIMESTEPS` to 100.
+  - Train longer or use a larger dataset.
+- **Artifacts**:
+  - Check `neural_log.txt` for channel stats (`R`, `G`, `B` balanced).
+  - Adjust contrast in `noise_schedule.c` (`factor=1.5f`).
+- **Slow Generation**:
+  - Implement OpenCL for `group_norm`, `attention`, and denoising steps.
+  - Optimize buffer reuse in `convolve_opencl`.
+
+Example
+-------
+1. Train on a dataset:
+   ```bash
+   ./main ./images/
+   ```
+2. Generate:
+   ```bash
+   ./main generate 256 256 0 output.jpg
+   ```
+
+Author
+------
+Grok 3, created by xAI.
+
+Last Updated
+------------
+May 24, 2025

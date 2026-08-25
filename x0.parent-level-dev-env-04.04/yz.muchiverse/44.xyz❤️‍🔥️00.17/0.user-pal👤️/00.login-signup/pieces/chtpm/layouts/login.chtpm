@@ -1,0 +1,9 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="${game_map}" /><br/>
+    <cli_io id="user_id_input" label="User ID" target_id="user_id_input" /><br/>
+    <cli_io id="display_name_input" label="Display Name (new accounts only)" target_id="display_name_input" /><br/>
+    ${piece_methods}
+    <text label=" Switch: rows log in as that account | Ctrl+C quit" /><br/>
+</panel>

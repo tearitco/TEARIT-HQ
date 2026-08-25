@@ -1,0 +1,6 @@
+# Project-owned Wraith scene records.
+# Loaded by wraith-alpha manager; converted by wraith_rgb_daemon later.
+# Format is intentionally flat and auditable.
+OBJECT tag=control id=control_map role=window_toolbar_item x=35 y=5 w=24 h=1 z=26 nav=5 source=semantic:window_toolbar fg=#E8F1F2 bg=#122333 border=#7EDFF2 action=INTERACT target_surface=game_map label=Control_Map
+OBJECT tag=surface id=game_map role=game_map x=35 y=6 w=32 h=14 z=16 nav=0 source=semantic:game_map_surface fg=#E8F1F2 bg=#0B1118 border=#7EDFF2 action=- label=
+OBJECT tag=model id=cube_probe role=zslice_piece x=35 y=6 w=32 h=14 z=23 source=projects/wraith-alpha/wraith-projects/wraith-3d-cube/pieces/cube_probe/artifact.txt fg=#24C94A bg=#0B1118 border=#FFD166 action=- label=PIECE_MODEL:source=pieces/cube_probe/artifact.txt;rot=10,0,0;camera=4,0.00,0.00,0.00,15.00,0.00,0.00;selected=true

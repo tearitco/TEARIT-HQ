@@ -1,0 +1,2 @@
+z_base=pieces/system/chunks/chunk_0_0/chunk_0_0_z
+z_count=32

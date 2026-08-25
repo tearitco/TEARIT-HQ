@@ -1,0 +1,12 @@
+# event.pal — mini interpreter script
+show_text Halt! Who goes there?
+set_switch met_guard 1
+if_switch door_open 1
+show_text Door is open. You may pass.
+ret
+end
+show_text The door is sealed. Find the switch.
+ret
+ret
+ret
+ret

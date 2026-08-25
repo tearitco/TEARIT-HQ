@@ -1,0 +1,173 @@
+================================================================================
+USER REPORT — %.harnesses/file-menu+editor (dev snapshot)
+================================================================================
+Date:     2026-07-27
+Audience: humans + agents — multi-project proof before hand testing
+Location: %.harnesses/file-menu+editor/
+
+--------------------------------------------------------------------------------
+1. Why this harness exists (not inside one project)
+--------------------------------------------------------------------------------
+
+This is a **cross-project** harness (xyzos-standards §36):
+
+  Project A: 102.editor-…          (host — buffer + widget cmd consumer)
+  Project B: &.widgits/file-menu   (widget — focus + enqueue cmds)
+
+Same placement idea as #.drag-drop-test (muchi-pals × mutaclsym):
+the story is the **interaction**, so it does not live only under editor
+or only under the widget.
+
+Unit tests still live elsewhere when needed:
+
+  102.editor-…/test-harn-same/     # INTERACT canvas alone
+  &.widgits/file-menu/             # widget UI harness TBD with full UI
+
+--------------------------------------------------------------------------------
+2. Layout
+--------------------------------------------------------------------------------
+
+  %.harnesses/file-menu+editor/
+    button.sh                 # compile | demo | kill | help
+    README.txt
+    USER_REPORT.txt           # this file
+    ops/
+      hm_assert_file.c
+      hm_assert_kv.c
+    scenarios/
+      demo_load_save.sh       # the integration scenario
+    fixtures/
+      hello_from_harness.txt
+    workdir/                  # SAVE_AS targets, widget state
+    proof/
+      harness-YYYYMMDD-…/     # dumps from each demo run
+
+--------------------------------------------------------------------------------
+3. What the demo proves
+--------------------------------------------------------------------------------
+
+  ./button.sh demo
+
+Sequence:
+
+  1. Compile editor + file-menu ops + harness helpers
+  2. Boot a throwaway **editor session** (session-isolated)
+  3. Publish widget_bridge.txt via editor_widget_cmds
+  4. **file-menu** fm_set_focus → that session
+  5. **file-menu** fm_enqueue LOAD fixture
+  6. Editor drains inbox → buffer must equal fixture
+  7. Mutate buffer; **file-menu** SAVE_AS → disk must equal buffer
+  8. **file-menu** NEW → buffer empty
+  9. Copy system paths into proof/; tear down session
+
+Not proven here (out of scope for this harness slice):
+
+  - GL windows for either side
+  - Full FILE MENU / browser chtpm UI
+  - Process registry in xyzfs
+  - Human clicking FILE inside a live editor TTY/GL
+
+--------------------------------------------------------------------------------
+4. Latest proof run (green)
+--------------------------------------------------------------------------------
+
+Example directory:
+
+  proof/harness-20260727-234011/
+
+Checks:
+
+  PASS: file-menu focused on editor session
+  PASS: LOAD: editor buffer == fixture
+  PASS: LOAD status result=ok
+  PASS: SAVE_AS: disk file == buffer
+  PASS: NEW: buffer empty
+
+  === ALL PASS — file-menu + editor work together via cmd bus ===
+
+Sample artifacts:
+
+  00_fixture.txt
+    hello from file-menu harness
+    line2
+
+  03_buffer_after_load.txt   (byte-identical to fixture)
+
+  03_status_load.txt
+    last_cmd=LOAD
+    result=ok
+    message=Loaded 35 bytes from …/fixtures/hello_from_harness.txt
+
+  04_saved_file.txt
+    edited-in-editor-then-saved
+
+  04_status_save.txt
+    last_cmd=SAVE
+    result=ok
+
+  05_buffer_after_new.txt
+    (empty)
+
+Re-run anytime:
+
+  cd %.harnesses/file-menu+editor
+  ./button.sh demo
+
+If compile fails, fix editor or file-menu first; demo always compiles both.
+
+--------------------------------------------------------------------------------
+5. How the bus is wired (for debugging a red run)
+--------------------------------------------------------------------------------
+
+  file-menu ops/
+    fm_set_focus.+x  <widget_state> <editor_session>
+    fm_enqueue_cmd.+x <widget_state> LOAD|SAVE|SAVE_AS|NEW|PING [path]
+
+  editor ops/
+    editor_widget_cmds.+x   # drain inbox; publish bridge
+
+  Editor session files:
+    pieces/system/widget_bridge.txt
+    pieces/system/widget_cmds/inbox.txt
+    pieces/system/widget_cmds/status.txt
+    pieces/system/editor_buffer.txt
+
+Harness scenario always:
+  enqueue via **file-menu** ops → drain via **editor** op
+  (never forge inbox only without going through widget ops)
+
+--------------------------------------------------------------------------------
+6. Red-run checklist
+--------------------------------------------------------------------------------
+
+  [ ] EDITOR_DIR / FMENU_DIR resolved (button.sh help prints paths)
+  [ ] editor_widget_cmds.+x exists after compile
+  [ ] fm_set_focus / fm_enqueue_cmd exist
+  [ ] fixture path readable
+  [ ] no stale editor sessions holding paths
+  [ ] status.txt last_cmd matches last action (not clobbered — fixed)
+
+--------------------------------------------------------------------------------
+7. Sibling user report
+--------------------------------------------------------------------------------
+
+Widget-side narrative (same development period):
+
+  &.widgits/file-menu/USER_REPORT.txt
+
+Plans / standards:
+
+  &.widgits/file-menu/widget+plan.txt
+  #.haiku+/!.xyzos-standards+1.txt  §35 (GL primary), §36 (harness placement)
+
+--------------------------------------------------------------------------------
+8. One-line status
+--------------------------------------------------------------------------------
+
+**Harness green:** file-menu can focus an editor session and drive
+LOAD / SAVE_AS / NEW over the widget cmd bus. Ready for human UI work
+(GL + menus) on top of a proven integration path.
+
+================================================================================
+END USER_REPORT (harness file-menu+editor)
+================================================================================

@@ -1,0 +1,14 @@
+<chtpm>
+  <text label="EMOJI STUDIO WRAITH" /><br/>
+  <text label="Reference: #.emoji-studio-501.02.05t/&.emoji-studio-solo.02.01" /><br/>
+  <text label="Project ID: wraith-alpha/wraith-projects/emoji-studio-wraith" /><br/>
+  <text label="Surface: ${game_map} | Action: INTERACT | Mode: is_map_control" /><br/>
+  <text label="Source standard: 2D RGBA pixels -> extruded 3D columns/cells" /><br/>
+  <text label="[PICKER] emoji index, resolution 8/16/32/64" /><br/>
+  <text label="[PREVIEW] ${game_map} displays extruded emoji sample" /><br/>
+  <text label="[AUDIT] csv=pieces/sample_emoji/voxels_8.csv rgba rows -> height/color" /><br/>
+  <button label="Interact Emoji Surface" onClick="INTERACT" /><br/>
+  <button label="Resolution 8" onClick="EMOJI_RES:8" /><br/>
+  <button label="Resolution 16" onClick="EMOJI_RES:16" /><br/>
+  <button label="Resolution 32" onClick="EMOJI_RES:32" /><br/>
+</chtpm>

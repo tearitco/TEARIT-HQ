@@ -1,0 +1,20 @@
+# 🖥 DAY 13 — Relay Harnesses: touching real windows 🪟
+# ===================================================
+# Title: "🖥 DAY 13 — Relay Harnesses: touching real windows 🪟"
+# Characters: TOMO, IQA
+# Voices: TOMO (zh-CN-XiaoxiaoNeural), IQA (en-US-AnaNeural)
+# Topic: HARNECIENT Training Session
+
+**TOMO:** A relay harness has three parts, and you'll see this exact skeleton everywhere:
+
+**TOMO:** The relay contract is *bare decimal ASCII, one code per line*, polled roughly every 300ms. That polling creates timing traps: - 🐢 A digit+Enter sent too fast can fire Enter before the digit round-trips — activating the wrong (previous) focus target. The house solution: after digits, sleep well past two full poll cycles (~0.8s) before Enter. - 🔢 Digits accumulate server-side regardless of pacing, so back-to-back digits are fine — only the final Enter needs the settle time. Never hardcode "6 = composer" — always read the current frame first. This is a real trap that has burned real tests. 🔥
+
+**IQA:** So timing and reading the frame are the two skills of the relay tester?
+
+**TOMO:** *nods* Get those right and you can drive *any* window in the house blindfolded. 🎭
+
+**TOMO:** Remember [Day 03](DAY_03_THE_RELAY.md) — parser layer vs manager layer. The taskbar's nav.sh exposes both: nav/row/key/type (parser layer, raw keycodes) and hqcell/mgrcode (manager layer, resolved codes straight into striphistory.txt, e.g. hqcell 2 → 4000+2 = real USER-cell click). When a test fails, ask which layer you're actually driving. The manager layer bypasses hit-testing — it's for testing resolved actions; the parser layer tests the full human path. Both are legitimate; knowing which
+
+**TOMO:** The planned `relay-harness` for h-ai is this pattern aimed at the chat window: drive the composer through aicellagentrelay.txt, then assert on h-ai's receipt (not pixels!) plus the real taskbar files it changed. It borrows the assert-ops approach from test-harn-same and the receipt fields from h-ai's own audit dir. The skeleton is proven; we're just pointing it at a new window. 🎯
+
+**TOMO:** Proven skeleton, new window, receipts instead of guesswork. That's how we ship proof. 📦

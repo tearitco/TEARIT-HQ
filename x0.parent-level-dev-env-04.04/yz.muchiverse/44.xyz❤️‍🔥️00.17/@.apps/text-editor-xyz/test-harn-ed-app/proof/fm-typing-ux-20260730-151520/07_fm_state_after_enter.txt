@@ -1,0 +1,8 @@
+mode=main_menu
+cursor_pos=1
+path_buffer=
+browse_mode=save_as
+browse_dir=/tmp/.text-editor-xyz-editor-1785449720-91055
+search_text=
+field_active=1
+status_line=Command sent

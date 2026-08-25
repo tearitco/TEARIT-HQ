@@ -1,0 +1,4 @@
+last_cmd=LOAD
+result=error
+message=cannot resolve load path (outside user's xyzfs home?)
+at=1787292553

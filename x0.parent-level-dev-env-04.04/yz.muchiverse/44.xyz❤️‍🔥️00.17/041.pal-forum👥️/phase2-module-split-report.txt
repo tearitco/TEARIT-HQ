@@ -1,0 +1,61 @@
+================================================================================
+phase2-module-split-report.txt - 041.pal-forum👥️: what changed
+2026-07-31 and why, for future agents. See also the house-wide docs
+this work is part of: #.haiku+/!.xyzos-standards+1.txt §41, #.haiku+/
+!.xyzos-pitfalls+1.txt PITFALL 66, #.haiku+/refactor-list-j30.txt,
+01.muchi-pals-🥚️-13.01/dox/06-per-screen-module-standard.md.
+================================================================================
+
+## WHAT THIS IS AND WHY
+
+Same Phase 2 house-wide change as 041.pal-chain⛓️'s own
+phase2-module-split-report.txt - read that file for the full
+reasoning (launch_module()'s liveness check in chtpm_parser_pal.c
+reuses a running module process whenever the <module> string is
+identical across screens; per-screen modules give every real href
+transition a clean process boundary instead). This file only covers
+what's specific to pal-forum.
+
+## WHAT WAS DONE HERE
+
+Before: all 6 layouts (login, home, feed, post_compose, dms, follow)
+shared one <module>system/prisc+x pal/main_loop_chtpm.pal</module>.
+
+After: 6 new files, same content as the old shared loop, one per
+screen:
+    pal/login_module.pal
+    pal/home_module.pal
+    pal/feed_module.pal
+    pal/post_compose_module.pal
+    pal/dms_module.pal
+    pal/follow_module.pal
+Each layout's <module> line updated to point at its own file.
+
+clear_saved_active_index() (PITFALL 66) ported into this project's own
+local system/chtpm_parser_pal.c, inserted after build_path_malloc(),
+called immediately before every real layout-transition parse_chtm()
+site.
+
+## WHAT WAS NOT CHANGED
+
+Shared ops binaries were NOT split per-screen - still shared across
+all 6 new modules. Separate, later, not-yet-done step (dox/06 §4).
+
+## VERIFICATION
+
+Re-verified live 2026-07-31: all 6 pal/*_module.pal files exist, all 6
+layouts' <module> lines point at their own file, clear_saved_
+active_index appears 9 times in chtpm_parser_pal.c. Real K3 harness
+(test-harn-same/scenarios/demo_2user_forum.sh) was confirmed PASSING
+earlier in this same work session after the split was applied - not
+re-run again for this doc.
+
+## IF YOU HIT A BUG HERE
+
+1. Doubling/dropped keystrokes: read #.haiku+/double-wr-grok-j31.txt
+   first - this exact bug class is already root-caused and fixed
+   house-wide. Don't re-diagnose from scratch.
+2. Stale focus after a transition: confirm clear_saved_active_index()
+   is actually CALLED at the specific transition site involved, not
+   just present somewhere in the file.
+================================================================================

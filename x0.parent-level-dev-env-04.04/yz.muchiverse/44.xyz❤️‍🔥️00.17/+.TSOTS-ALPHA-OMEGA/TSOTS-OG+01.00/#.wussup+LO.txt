@@ -1,0 +1,5 @@
++@0
+
+single player (against computer) shifting difficulty as player levles up 
+
+(but can play against online "CORPUS AGENTS 2 ) 

@@ -1,0 +1,2 @@
+project_id=gem-dev
+sandbox_root=projects/gem-dev/sandbox

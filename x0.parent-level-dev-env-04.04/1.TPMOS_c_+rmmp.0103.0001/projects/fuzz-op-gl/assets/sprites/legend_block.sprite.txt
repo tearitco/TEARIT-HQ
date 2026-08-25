@@ -1,0 +1,3 @@
+label=LegendBlock
+ascii=L
+rgb=200,200,200

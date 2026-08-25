@@ -1,0 +1,6 @@
+My Balance Sheet: Solar Empire
+Cash (CD's)..		261.1000
+Other Assets....		208.8800
+Total Assets.....		861.6300
+Less Debt....		-522.2000
+Net Worth........		91.3850

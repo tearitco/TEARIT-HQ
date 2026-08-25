@@ -1,0 +1,41 @@
+# GL-OS PROGRESS REPORT
+**Date:** March 24, 2026
+**Status:** COMPLETE - Navigation FIXED | CPU Health IMPLEMENTED
+
+---
+
+## WORKING ✓
+
+### 1. TPM-Compliant Frame Rendering (innerHTML Pattern)
+- **Shared Parser Logic:** `gl_desktop.c` now correctly parses `.chtml` layouts and substitutes `${var}` from `state.txt`.
+- **Multi-line Support:** The state parser handles complex menu blocks without data loss.
+- **Unified Layout:** Terminal layout matches ASCII-OS "Theater" pattern.
+- **Correct Formatting:** Menu lines have proper side borders (`║`) and correct `[>]` placement.
+
+### 2. Navigation & Input (FIXED)
+- **Joystick Navigation:** Joystick axes fixed. UP/DOWN moves selection correctly.
+- **Arrow Key Navigation:** `special_keyboard` implemented. Arrow keys now move selection.
+- **Number Key Navigation:** Pressing '1' or '2' updates selection and refreshes frame immediately.
+- **Immediate Refresh:** All navigation inputs trigger `write_gl_os_frame()` for instant feedback.
+
+### 3. CPU Health & Throttling (NEW)
+- **Focus-Aware Throttling:** `is_active_layout()` implemented. GL-OS drops to 10 FPS (100ms timer) when not in focus.
+- **Idle Backoff:** GL-OS drops to 10 FPS (100ms timer) after 5 seconds of inactivity, even when focused.
+- **Nuclear Cleanup:** `kill_all.sh` now clears the `input_focus.lock` to ensure ASCII-OS input is restored on reset.
+
+### 4. TPM Input Isolation
+- GL-OS uses direct GLUT input and creates a lock file to prevent CHTPM daemons from writing conflicting input.
+- Isolation is automatically cleared by `kill_all.sh` or graceful exit.
+
+---
+
+## SUCCESS CRITERIA MET
+- [x] Joystick navigation works in both GL-OS and ASCII-OS (restored).
+- [x] Arrow keys work in GL-OS terminal menu.
+- [x] GL-OS does not consume excessive CPU when idle or backgrounded.
+- [x] Menu format matches ASCII-OS exactly.
+
+---
+
+**Successor Note:** The system is now stable, efficient, and fully navigable. The "innerHTML" pattern is the standard for any new GL-OS modules.
+"If it's not in a file, it's a lie."

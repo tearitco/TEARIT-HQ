@@ -1,0 +1,40 @@
+# TPMOS Path & Configuration Quick-Fix Guide
+
+## 1. Spaces in Project Paths (Critical)
+The project directory name contains spaces (e.g., `1.TPMOS_c_+rmmp 99.19d`).
+**Problem:** `system()` and `popen()` calls fail because they split the command at the space.
+**Fix:** ALWAYS wrap paths containing `project_root` in single quotes inside the command string.
+- **Wrong:** `asprintf(&cmd, "%s/bin/op.x", project_root);`
+- **Right:** `asprintf(&cmd, "'%s/bin/op.x'", project_root);`
+
+## 2. Project Loading Errors (404/Not Found)
+If a project (like `op-ed` or `slop-ed-dev`) fails to open:
+1. Check `projects/<id>/project.pdl`.
+2. Ensure `META | entry_layout` points to the correct relative path from the project root (e.g., `projects/op-ed/layouts/op-ed.chtpm` instead of a `pieces/apps/...` path).
+3. Ensure `META | project_id` matches the folder name.
+
+## 3. Missing Methods / [No Methods] (Parser Sovereignty Drift)
+If a project shows `[No Methods]` despite the manager publishing them:
+**Problem:** The `chtpm_parser.c` is attempting to discover methods itself and overwriting the manager's projection (Pitfall #103).
+**Fix:** Ensure the parser skips `load_dynamic_methods()` if `piece_methods` is already populated in `gui_state.txt`.
+
+## 4. Stale Variables / Method Pollution
+If a project shows data from a *previous* screen (e.g., `cyoa-engine` showing the project list from the `loader`):
+**Problem:** `chtpm_parser.c` does not clear its variable cache when switching layouts.
+**Fix:** Add `var_count = 0;` to the beginning of `load_vars()` in `pieces/chtpm/plugins/chtpm_parser.c`.
+
+## 5. Active Target Resolution (Missing Methods Fallback)
+If a project loads but the methods for the player piece are missing:
+**Problem:** `resolve_project_op.c` (used by `LOAD_PROJECT`) might not know which piece to focus on.
+**Fix:** Ensure `projects/<id>/project.pdl` contains `STATE | player_piece | <id>` (e.g., `engine` or `mp3_player`).
+
+## 6. Input Keys Not Working
+If digit keys (2-8) don't trigger methods:
+1. Ensure `piece_methods` is correctly rendered as `<button ... onClick="KEY:n" />`.
+2. Ensure `project_id` is correctly set in the parser's state so it reads the project-specific `history.txt`.
+3. Check `fuzz-op_manager.c` (or equivalent) to ensure it uses the project-specific `history.txt` path resolved from `project_root`.
+
+## 7. Recompilation
+After editing `.c` files, you MUST run:
+`./button.sh compile`
+(This updates the binaries in `+x/` folders).

@@ -1,0 +1,37 @@
+<!-- taskbar_settings.chtpm — Stage 2c, real port of khtpm_taskbar_settings_
+     render.c onto the shared Elem/CSS render model (2026-08-16, direct
+     instruction "lets finish menu.chtpm work then do stage 2"). This is
+     the first of 3 (taskbar-settings -> ai-cell -> the taskbar itself,
+     smallest/most-isolated first per direct choice). Uses the SAME
+     khtpm_render_core.c (5th real consumer: db-hq, events-hq, chat-hai,
+     khtpm_entity_menu_render.c, this) and khtpm_css_parser.c every other
+     khtpm app already shares.
+
+     12 swatches, each a static <item> with its own class (design
+     decision, direct choice: "Named CSS classes" over inline style) -
+     colors live in taskbar_settings.css, not here. Real palette/order
+     preserved exactly from the original g_palette[] array.
+
+     REAL Stage 4 proof (2026-08-16, khtpm-merge-how2.md §5b/§5b.2b) -
+     window label= is now the real, live-read window title (was a
+     hardcoded C string in khtpm_taskbar_settings_render.c's redraw()) -
+     first real, working proof that a khtpm app's own identity can live
+     in DATA, not baked-in C, using the SAME generic label= attribute
+     every <item> already uses - zero parser/struct changes needed. -->
+<window label="taskbar settings" class="swatch-picker">
+  <page name="main">
+    <item id="sw0" class="swatch sw-black" label="black"/>
+    <item id="sw1" class="swatch sw-white" label="white"/>
+    <item id="sw2" class="swatch sw-charcoal" label="charcoal"/>
+    <item id="sw3" class="swatch sw-silver" label="silver"/>
+    <item id="sw4" class="swatch sw-red" label="red"/>
+    <item id="sw5" class="swatch sw-orange" label="orange"/>
+    <item id="sw6" class="swatch sw-yellow" label="yellow"/>
+    <item id="sw7" class="swatch sw-green" label="green"/>
+    <item id="sw8" class="swatch sw-cyan" label="cyan"/>
+    <item id="sw9" class="swatch sw-blue" label="blue"/>
+    <item id="sw10" class="swatch sw-purple" label="purple"/>
+    <item id="sw11" class="swatch sw-pink" label="pink"/>
+    <item id="close" class="close-btn" label="x"/>
+  </page>
+</window>

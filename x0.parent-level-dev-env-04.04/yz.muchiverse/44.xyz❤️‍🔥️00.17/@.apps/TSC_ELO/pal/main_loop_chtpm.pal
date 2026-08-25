@@ -1,0 +1,46 @@
+# TSC_ELO main_loop_chtpm.pal - persistent screen-dispatch loop for the
+# host duel screen. Shape copied from file-menu's main_loop_chtpm.pal /
+# my-chara-txt's main_module.pal (the proven idle-sync-then-diff loop,
+# Pitfall 48): pre-sync once before the first compose so the first frame
+# is already correct, then loop on screen_changed-diff / real relayed
+# key, only recomposing when something actually changed.
+#
+# Every tick the referee (tsc_tick) is consulted: it applies status
+# effects, checks for a winner, and dispatches tsc_ai whenever the
+# current player is a computer. A relayed key is routed through
+# tsc_input (maps 1..4 to Mana-Challenge actions) and the human deal is
+# executed by tsc_deal (safe no-op when it isn't the human's turn).
+li x1, 0
+
+li x9, 0
+tsc_input x9
+tsc_compose
+hit_frame
+read_pos x7, "pieces/display/frame_changed.txt"
+
+loop:
+li x9, 0
+tsc_input x9
+tsc_tick
+read_pos x8, "pieces/display/frame_changed.txt"
+beq x7, x8, check_key
+addi x7, x8, 0
+j render
+
+check_key:
+read_history pieces/apps/player_app/interact_relay.txt x2, x1
+beq x2, x0, no_key
+tsc_input x2
+tsc_deal
+tsc_tick
+j render
+
+no_key:
+sleep 16667
+j loop
+
+render:
+tsc_compose
+hit_frame
+sleep 16667
+j loop

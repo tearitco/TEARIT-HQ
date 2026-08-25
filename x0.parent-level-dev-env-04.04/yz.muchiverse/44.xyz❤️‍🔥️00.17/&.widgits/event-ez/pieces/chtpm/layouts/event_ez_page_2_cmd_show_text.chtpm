@@ -1,0 +1,15 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+==========================================+" /><br/>
+    <text label="| Show Text (page 2)                      |" /><br/>
+    <text label="+==========================================+" /><br/>
+    <text label="Display a message to the player." /><br/>
+    <text label="HOW TO: Enter on field, type text, Esc," /><br/>
+    <text label="then OK to save the command." /><br/>
+    <cli_io id="ez_st_text" label="Message text" target_id="ez_st_text" /><br/>
+    <cli_io id="ez_st_speaker" label="Speaker name (optional)" target_id="ez_st_speaker" /><br/>
+    <button label="OK — Save Command" onClick="KEY:8" /><br/>
+    <button label="< Back" href="pieces/chtpm/layouts/event_ez_page_2.chtpm" /><br/>
+    <text label="${last_message}" /><br/>
+</panel>

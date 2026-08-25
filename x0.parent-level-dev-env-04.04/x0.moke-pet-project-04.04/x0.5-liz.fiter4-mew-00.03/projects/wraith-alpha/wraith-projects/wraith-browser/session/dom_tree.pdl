@@ -1,0 +1,10 @@
+NODE root document
+NODE title Browser JS Lab
+NODE h1 Controlled JS Lab
+NODE p This page is the first compatibility seam. Scripts are executed by a dedicated TPMOS op, not by hidden window logic.
+NODE p Use the chrome buttons to increment or reset the counter.
+NODE script type="tpmos-js" counter_demo
+NODE li counter_inc
+NODE li counter_reset
+NODE a href="index.html" Return home
+NODE a href="audit.html" Open the audit page

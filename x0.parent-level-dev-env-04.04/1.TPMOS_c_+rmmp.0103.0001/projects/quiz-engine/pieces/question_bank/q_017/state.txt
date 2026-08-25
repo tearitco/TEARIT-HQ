@@ -1,0 +1,5 @@
+name=Fructose-1
+formula=6-bisphosphate
+type=C6H14O12P2
+groups=Ketose Phosphate
+relevance=-OH

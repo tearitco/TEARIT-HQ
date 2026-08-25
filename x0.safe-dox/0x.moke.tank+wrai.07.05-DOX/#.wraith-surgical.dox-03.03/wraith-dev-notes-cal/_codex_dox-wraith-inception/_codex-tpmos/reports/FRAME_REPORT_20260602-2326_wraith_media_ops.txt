@@ -1,0 +1,82 @@
+WRAITH MEDIA OPS FRAME REPORT
+Timestamp: 2026-06-02 23:26 PDT
+Agent: Codex J2 / Tomojizu interaction layer
+
+Scope:
+- Move Codex-generated TPMOS reports out of raw TPMOS root.
+- Add separate synchronous media decode ops for Wraith.
+- Wire wraith_parser.c to call media decode ops and merge region-local PDL cells
+  into the global ASCII frame bundle.
+
+Report location policy:
+- Codex TPMOS reports now live under _codex-tpmos/reports/.
+- Existing Codex reports were moved from TPMOS root into that folder.
+- _codex_dox/NOTES_POLICY.txt was updated to document this.
+
+Reference reviewed:
+- i2a(sci).c]ON+BMP]🧙‍♂️️]0001/i2a.c
+
+Important reference ideas carried forward:
+- load RGB image pixels
+- map brightness to ASCII ramp glyphs
+- preserve color with RGB foreground/background
+- produce a cell-level representation
+
+Wraith-specific change:
+- Decoder ops write PDL cells instead of printing terminal output.
+- Parser synchronously calls decoder ops for media nodes and merges their output.
+
+Files added:
+- projects/wraith-pm/ops/wraith_image_decode.c
+- projects/wraith-pm/ops/wraith_video_decode.c
+- projects/wraith-pm/assets/sample.ppm
+- projects/wraith-pm/assets/sample-video.frames
+
+Files edited:
+- projects/wraith-pm/ops/wraith_parser.c
+- projects/wraith-pm/layouts/desktop.chtmgl
+- _codex_dox/NOTES_POLICY.txt
+- _codex_dox/INVENTORY.txt
+- _codex_dox/wraith-pm-frame-rgb-bridge-codex-j2.txt
+
+Contracts:
+- wraith_image_decode.+x <src> <out_pdl> <cols> <rows> <object_id>
+- wraith_video_decode.+x <src> <out_pdl> <cols> <rows> <object_id> <frame_index>
+
+Media cache outputs:
+- projects/wraith-pm/session/media_cache/object_0014.cells.pdl
+- projects/wraith-pm/session/media_cache/object_0015.cells.pdl
+
+Tests:
+1. Direct image op compile: PASS
+2. Direct video op compile: PASS
+3. Direct parser compile: PASS
+4. Direct image op run:
+   ./projects/wraith-pm/ops/+x/wraith_image_decode.+x projects/wraith-pm/assets/sample.ppm /tmp/wraith_image_test.pdl 8 4 99
+   Result: decoded_width=8, decoded_height=6, CELL records emitted.
+5. Direct video op run:
+   ./projects/wraith-pm/ops/+x/wraith_video_decode.+x projects/wraith-pm/assets/sample-video.frames /tmp/wraith_video_test.pdl 8 4 100 2
+   Result: video CELL records emitted.
+6. Parser run:
+   ./projects/wraith-pm/ops/+x/wraith_parser.+x projects/wraith-pm/layouts/desktop.chtmgl wraith-pm
+   Result: frame 000005 rendered.
+7. Frame review:
+   current_frame.txt shows image/video interiors generated from media op output.
+   current_frame.audit.txt reports warnings=none.
+8. Full TPMOS compile:
+   ./button.sh compile
+   Result: 189 compiled, 0 failed, 0 missing required binaries.
+   Wraith project ops verified:
+   - wraith-pm::wraith_image_decode
+   - wraith-pm::wraith_parser
+   - wraith-pm::wraith_video_decode
+
+Known limitations:
+- Video op is a deterministic synthetic frame generator for the first slice.
+- Image op supports stb_image formats where supported and has a P3 PPM fallback.
+- Parser passes video frame_index=0 for now; next slice should pass actual frame
+  count or media playback state from session metadata.
+
+Verdict:
+PASS. Wraith now has separate image/video decode ops that can run synchronously
+and write cells into the frame path before RGB or GL.

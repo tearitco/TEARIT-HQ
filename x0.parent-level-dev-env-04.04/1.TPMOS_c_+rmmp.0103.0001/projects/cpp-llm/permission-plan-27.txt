@@ -1,0 +1,42 @@
+# Permission System Design for cpp-llm
+
+## 1. Goal
+Implement a 'YES/NO' confirmation prompt for tool execution in `cpp-llm` when 'yolo mode' is disabled.
+
+## 2. Configuration
+- Check for `projects/cpp-llm/config/yolo.flag` existence (current approach used in `ops/src/cmd_exec.c`).
+- YOLO Mode:
+  - ON: Existing behavior (execute immediately).
+  - OFF: Wait for user confirmation ('y'/'n').
+
+## 3. Implementation Plan (cpp-llm_manager.c)
+
+### A. State Tracking
+- Introduce `g_permission_pending` (boolean) to indicate waiting for input.
+- Introduce `g_pending_tool_name` and `g_pending_args` to store the tool attempt.
+
+### B. Logic Flow (in `check_ai_status`)
+1. When AI suggests a tool (after line 433):
+   - If `yolo_mode` is OFF:
+     - Set `g_permission_pending = true`.
+     - Update UI to show: "EXECUTE [tool_name]? (y/n) <in red lettering>".
+     - Store tool/args in pending variables.
+     - Block further action.
+   - If `yolo_mode` is ON:
+     - Execute immediately (current behavior).
+
+### C. Input Handling (in `main` loop)
+1. Monitor input buffer (similarly to current `process_input_trigger`).
+2. If `g_permission_pending` is TRUE:
+   - Read input.
+   - If 'y': Execute the pending tool, reset `g_permission_pending`.
+   - If 'n': Discard pending tool, inform user, reset `g_permission_pending`.
+
+## 4. UI Considerations
+- Need to ensure the red text rendering works within the `<text>` layout capability. (Need to verify if CHTPM parser supports ANSI color codes in strings).
+- If not supported, consider a static red marker like "[!] EXECUTE tool?"
+
+## 5. Verification
+- Create a test file `projects/cpp-llm/config/yolo.flag` (or remove it to test OFF mode).
+- Trigger a tool-using AI query.
+- Verify prompt appearance and blocking behavior.

@@ -1,0 +1,15 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/send_screen_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+============================================================+" /><br/>
+    <text label="|                       S E N D   C O N E S                   |" /><br/>
+    <text label="+============================================================+" /><br/>
+    <cli_io id="to_wallet_input" label="Recipient Wallet ID" target_id="to_wallet_input" /><br/>
+    <cli_io id="amount_input" label="Amount (millicones)" target_id="amount_input" input_mode="numeric" /><br/>
+    ${piece_methods}
+    <button label="Back to Wallet" href="pieces/chtpm/layouts/wallet_main.chtpm" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label="${game_map}" /><br/>
+    <text label="+============================================================+" /><br/>
+    <text label=" (Ctrl+C to quit)" /><br/>
+</panel>

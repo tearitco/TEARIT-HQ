@@ -1,0 +1,5 @@
+name=Glycine
+formula=Gly (G)
+type=NH2CH2COOH
+groups=Amino Acid
+relevance=-NH2

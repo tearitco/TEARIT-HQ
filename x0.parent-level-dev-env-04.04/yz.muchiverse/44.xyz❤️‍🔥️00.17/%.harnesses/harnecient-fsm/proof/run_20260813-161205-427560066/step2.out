@@ -1,0 +1,3 @@
+```bash
+test -e items.txt u0026u0026 echo PASS || echo FAIL
+```

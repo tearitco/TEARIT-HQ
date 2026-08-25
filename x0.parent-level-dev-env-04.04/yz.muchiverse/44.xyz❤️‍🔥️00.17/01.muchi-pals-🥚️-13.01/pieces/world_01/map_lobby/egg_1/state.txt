@@ -1,0 +1,10 @@
+name=egg_1
+type=egg
+species_id=sp_mouse
+species_emoji=🐁
+species_name=Mouse
+rarity=1
+movement=digging
+serial=1
+owner=user_01
+hatched=0

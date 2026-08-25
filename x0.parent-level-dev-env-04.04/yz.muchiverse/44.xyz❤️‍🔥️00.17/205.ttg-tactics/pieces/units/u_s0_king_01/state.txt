@@ -1,0 +1,12 @@
+id=u_s0_king_01
+seat=0
+role=King
+x=6
+y=2
+hp=40
+max_hp=40
+atk=8
+def=4
+alive=1
+moved=0
+acted=0

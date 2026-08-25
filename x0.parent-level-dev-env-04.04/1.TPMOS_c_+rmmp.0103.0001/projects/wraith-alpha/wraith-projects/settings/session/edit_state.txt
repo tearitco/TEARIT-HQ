@@ -1,0 +1,6 @@
+target_project_id=wraith-alpha/wraith-projects/piececraft-wraith
+edit_x=9
+edit_y=0
+edit_width=0
+edit_height=0
+status=Ready to edit

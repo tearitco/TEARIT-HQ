@@ -1,0 +1,65 @@
+# Plan: Create and Test a New Project with Expand/Collapse Features
+
+## Objective
+To create a new TPMOS project that demonstrates "expand collapse" UI features, ensuring it can be selected from the loader and integrated into the GUI, before addressing directory traversal concerns.
+
+## Steps
+
+1.  **Identify Core UI Components for Expand/Collapse:**
+    *   The "expand collapse" functionality is primarily implemented for **tree views and directory listings**.
+    *   Key design documents and files indicating this functionality are:
+        *   `CHTPM_TPM_DOX+1.md` (located in `#.docs/^.pmo.ld-faq+8/^.chtpm-faq/`): Defines the design intent, standardized markers (`[+]` for collapsed, `[-]` for expanded directories/nodes), and UX rules for navigation and expansion (e.g., using the ENTER key).
+        *   `chtpm_parser.c` (located in `pieces/chtpm/plugins/`): Contains logic for parsing UI layouts (`.chtpm` files) and processing input, including handling navigation and potentially visibility expressions which could be related to showing/hiding elements.
+        *   `mp3_store_manager.c` (located in `projects/mp3-store/manager/`): Provides a concrete implementation example of a tree view with expand/collapse logic, including a `TreeItem` structure with an `is_expanded` flag, a `toggle_expand` function, and logic to generate directory listings using the standardized `[+]`/`[-]` markers, formatted via the `${directory_listing}` variable.
+    *   Relevant layout files identified:
+        *   `projects/mp3-store/layouts/mp3-store.chtpm`: Directly uses `${directory_listing}`.
+        *   `projects/op-ed/layouts/op-ed.chtpm`: Uses `<scroller>` elements which may imply navigable lists.
+    *   **Action:** Focus on adapting the tree view logic from `mp3_store_manager.c` and its associated layout `mp3-store.chtpm` for the demo project.
+
+2.  **Design and Create New Project Structure:**
+    *   Define a minimal project structure under `projects/+-demo/`.
+    *   **Mandatory Files:**
+        *   `project.pdl`: Define `project_id='+-demo'`, `entry_layout='projects/+-demo/layouts/+-demo.chtpm'`, `starting_map='map_01'`, `player_piece='selector'`.
+        *   `layouts/+-demo.chtpm`: A simple layout file that includes a text element for `${directory_listing}`.
+        *   `manager/`: Directory for manager source code.
+        *   `manager/+x/`: Directory for compiled manager binary.
+        *   `ops/`: Directory for op source files.
+        *   `ops/ops_manifest.txt`: Define available ops.
+        *   `ops/+x/`: Directory for compiled op binaries.
+        *   `pieces/`: Directory for piece state files.
+        *   `maps/`: Directory for map files.
+    *   **Demo Project Focus:** This project should primarily demonstrate the "expand collapse" functionality using a directory listing pattern.
+    *   **Self-contained:** Minimize external dependencies to ensure focused testing.
+
+3.  **Implement "Expand/Collapse" Logic in Demo:**
+    *   Adapt the tree view logic from `mp3_store_manager.c` (specifically `list_directory_contents`, `toggle_expand`, `is_expanded`) into a new manager module for `+-demo`.
+    *   The manager should populate the `${directory_listing}` variable using sample data that includes nested items to test expansion.
+    *   Ensure the core logic for toggling visibility and handling nested structures is present, following the patterns seen in `mp3_store_manager.c` and `CHTPM_TPM_DOX+1.md`.
+
+4.  **Compile and Register Project:**
+    *   Ensure all project binaries are compiled. Use `./button.sh compile` to build system components and project managers/ops.
+    *   Use `fondu --install +-demo` to register the project. This command:
+        *   Copies the project to `pieces/apps/installed/+-demo/` (if applicable for app-like projects) or ensures it's recognized as an active project.
+        *   Registers its ops in `pieces/os/ops_registry/+-demo.txt`.
+        *   Updates `pieces/os/compiled_projects.txt`.
+        *   Updates `pieces/os/ops_catalog.txt`.
+    *   This makes the project selectable in the loader menu and available for global op calls.
+
+5.  **Develop Test Scenarios:**
+    *   Define a comprehensive set of test cases to cover various "expand collapse" scenarios:
+        *   Expanding and collapsing single items.
+        *   Expanding and collapsing nested items (multi-level hierarchies).
+        *   Testing navigation with arrow keys and selection with ENTER.
+        *   Verifying marker changes (`[+]` to `[-]`).
+        *   Checking performance and responsiveness.
+
+6.  **Execute and Verify Functionality:**
+    *   Launch the demo project (`+-demo`) via the loader menu.
+    *   Systematically execute each test scenario.
+    *   Visually inspect the UI and confirm that the "expand collapse" actions behave as expected.
+    *   Record any discrepancies or unexpected behavior.
+
+7.  **Document Findings and Process:**
+    *   Summarize the results of the testing, noting successful verification of features and any issues encountered.
+    *   Add documentation for creating a new project to `#\.docs/03-HOW-TO/create-project.md`.
+    *   This documentation will serve as a baseline for further integration and testing.

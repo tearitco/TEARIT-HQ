@@ -1,0 +1,91 @@
+<i guess ill have to get claude or codex...; codex seems nicer, at least they have freetier and are run by a nonprofit? > 
+🗓️
+MAY21 ! : u can just use the file 'path' in config.txt for llamacpp. so yes. add that functionality. problem solved . move on from that hardcore. 
+
+<agy cli? lets be honest they will probably cut that off soon . youll have to pay for google ai or something , i duno>
+< can u quickly get chat going and stuff? i dunno ? fsm faster? shit. > at least they gave us a months warning fuck. 
+📅️may20:
+- remote llamaccp is connect but not local. honestly thats probably for the best. 
+but if u do connect it . u should put it in "home" or something first so . chill its all good 4 now. 
+move on to the next task tbh . ur good. 
+
+also this is NOT ai studio. thats "advanced. and yes we will get 2 it . maybe do file save and pal first. 
+then start investigating ai agents fsm and come back? 2 have a proving scenario ? etc? w/e we will see. 📅️
+
+
+
+
+YES : THEY ARE FUCKING UP GOOGLE CLI 2 : 
+
+No, Antigravity CLI (agy) does not give you more tokens—in fact, you will likely run out of capacity much faster than before.
+While the raw context window size remains massive, Google recently restructured [Antigravity's plan quotas](https://antigravity.google/blog/changes-to-antigravity-plans), which has caused a major uproar in the developer community. [1, 2] 
+## The Bad News: Token Consumption is Skyrocketing
+Even though the free tier for both tools theoretically permits hundreds of requests per day, the way tokens are actually deducted has changed completely: [3, 4] 
+
+* The Multi-Agent Penalty: The old gemini-cli was a basic chat control interface that only consumed tokens for your direct prompt and the model's response. agy is a complex, autonomous multi-agent tool. When you give agy a simple prompt, it automatically spawns background agent tasks, reads local context files, and runs self-correction loops. A single prompt can silently burn through hundreds of thousands of tokens behind the scenes. [5, 6, 7] 
+* The Gemini 3.5 Flash Inflation: Following the launch of the new Gemini 3.5 Flash model inside Antigravity 2.0, users are reporting massive jumps in token consumption, severely restricting how many cycles they can run daily. [2, 6, 8] 
+* Strict Hidden Caps: Google has introduced an aggressive, unified weekly rate-limit structure across all Antigravity tiers. If you use agy heavily on the free tier, you can expect to hit harsh 3-to-7-day cooldown blocks where the tool refuses to answer your prompts. [9, 10, 11, 12] 
+
+## How to protect your tokens on the new CLI
+If you want to move to agy but prevent it from burning your entire daily token allowance in three prompts, configure it to run defensively:
+
+   1. Disable Agent Autonomy: Force agy to act like the old gemini-cli instead of a full agent workflow. Run it with the headless or non-interactive flag to prevent it from scanning your entire folder structure.
+   2. Use an API Key Bypass: Instead of logging into agy with your standard individual Google account OAuth, use a dedicated [Google AI Studio API Key](https://ai.google.dev/gemini-api/docs/rate-limits). API keys still grant access to an independent, highly generous, and stable free-tier quota (up to 15 RPM) that completely bypasses Antigravity's restrictive agent pool limits. [4, 13] 
+
+Would you like the specific commands to configure agy to run in a low-token, basic terminal mode, or do you want help generating a developer API key to protect your daily quota?
+
+[1] [https://antigravity.google](https://antigravity.google/blog/changes-to-antigravity-plans)
+[2] [https://www.reddit.com](https://www.reddit.com/r/BetterOffline/comments/1til7od/google_antigravity_20_gemini_35_flash_new_rate/)
+[3] [https://developers.google.com](https://developers.google.com/gemini-code-assist/resources/quotas)
+[4] [https://geminicli.com](https://geminicli.com/docs/resources/quota-and-pricing/)
+[5] [https://antigravity.google](https://antigravity.google/docs/plans)
+[6] [https://discuss.ai.google.dev](https://discuss.ai.google.dev/t/very-dissapointed-with-new-token-cycle/146334)
+[7] [https://www.youtube.com](https://www.youtube.com/watch?v=pOrWqhDRPE0)
+[8] [https://www.youtube.com](https://www.youtube.com/watch?v=0Ej08fUb5TI)
+[9] [https://antigravity.google](https://antigravity.google/blog/changes-to-antigravity-plans)
+[10] [https://www.reddit.com](https://www.reddit.com/r/google_antigravity/comments/1q82mt3/google_antigravity_implementing_weekly_rate/)
+[11] [https://www.xda-developers.com](https://www.xda-developers.com/tried-googles-antigravity-limitation-made-close-it-good/)
+[12] [https://www.reddit.com](https://www.reddit.com/r/google_antigravity/comments/1qnvbz5/warning_google_ai_pro_subscription_silent_quota/)
+[13] [https://ai.google.dev](https://ai.google.dev/gemini-api/docs/rate-limits)
+__________________________________________________________________________
+
+Out of the box, none of them natively support Google OAuth login for free tier consumer accounts, as they are engineered strictly to connect via standard API keys. However, the community has built a direct workaround for OpenCode. [1, 2] 
+The breakdown of how these tools handle free consumer quotas and OAuth authentication highlights significant differences in implementation:
+## 1. OpenCode (With Community Plugin)
+
+* OAuth Status: Natively, OpenCode only accepts standard Google AI Studio API keys. However, you can install the third-party community plugin opencode-gemini-auth via NPM.
+* How it works: This plugin lets you complete a web-based Google OAuth login right inside OpenCode. It taps directly into the exact same free-tier consumer limits or Google AI Pro/Ultra subscription quotas used by the deprecated Gemini CLI.
+* Note: Google considers using third-party software with consumer OAuth a policy violation, so your account risks hitting automated abuse flags. [1, 2] 
+
+## 2. Aider
+
+* OAuth Status: No. Aider does not support Google account OAuth browser handshakes.
+* How it works: It strictly requires you to export your Gemini API key as an environment variable (export GEMINI_API_KEY="your_key"). You can easily generate a free-tier key with generous rate limits by visiting Google AI Studio.
+
+## 3. Crush
+
+* OAuth Status: No. Crush is built strictly for direct backend API connections.
+* How it works: Like Aider, it will not prompt a browser window to sign into your personal Google account. It requires a manual API key configuration. [1] 
+
+------------------------------
+## The Recommended Path: Google AI Studio (Free Tier)
+To completely bypass the headache of brittle OAuth plugins and account warning flags, the easiest solution is to use the official, completely free Gemini API key tier: [2, 3] 
+
+   1. Go to Google AI Studio and log in with your normal Google account.
+   2. Click Create API Key.
+   3. Select the Free Tier (which offers a highly generous daily quota for personal use).
+   4. Inject that key into OpenCode, Aider, or Crush. [1, 4] 
+
+If you'd like to get started with this setup, let me know:
+
+* Which of the three tools (OpenCode, Aider, or Crush) you want to configure first.
+* If you need the shell commands to permanently save your API key to your terminal profile (.bashrc or .zshrc).
+
+I can guide you through the quick, 2-minute setup to get your open-source terminal workflow up and running.
+
+[1] [https://syntackle.com](https://syntackle.com/blog/google-gemini-ai-subscription-with-opencode/)
+[2] [https://www.npmjs.com](https://www.npmjs.com/package/opencode-gemini-auth)
+[3] [https://www.reddit.com](https://www.reddit.com/r/opencodeCLI/comments/1q7yggk/psa_using_claude_code_oauth_in_thirdparty_tools/)
+[4] [https://github.com](https://github.com/anomalyco/opencode/issues/402)
+
+

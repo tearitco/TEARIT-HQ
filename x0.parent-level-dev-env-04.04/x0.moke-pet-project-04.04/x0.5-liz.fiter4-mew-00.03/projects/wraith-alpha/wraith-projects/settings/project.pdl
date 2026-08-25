@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | wraith-alpha/wraith-projects/settings
+META         | version            | 1.0
+META         | author             | TPMOS
+META         | manager            | projects/wraith-alpha/wraith-projects/settings/manager/+x/settings_manager.+x
+META         | entry_layout       | projects/wraith-alpha/wraith-projects/settings/layouts/settings.chtpm
+
+STATE        | title              | SETTINGS
+STATE        | status             | ready
+
+RESPONSE     | default            | Settings hub ready.

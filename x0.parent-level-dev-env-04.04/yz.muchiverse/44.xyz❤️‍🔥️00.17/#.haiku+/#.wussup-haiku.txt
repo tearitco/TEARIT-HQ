@@ -1,0 +1,42 @@
+
+
+AUG2 : 
+(trying) using haiku for now . limits restaretd
+
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.15/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/#.haiku+/HANDOFF_NEXT_SESSION.md
+
+i had a bunch of text based, pre-wsr games made. 
+
+
+i thougt of making a "my-lawyer" game.
+ where npcs post "lawsuits they want to prosecute or defend, including gov
+,settle or go 2 cort.
+ u research laws / prexisting cases, make a case and present it 2 judge
+ 
+ judge uses gemma-1b on lan (install if not there) 
+ to decide who made the better case. 
+ if lawyer wins they get more money 
+ the money can be used to run for offices . 
+ higher offices mean you gain a bias when offering settlements and when case is being judged
+ 
+ <thats fine cuz its textbased. 
+ 
+ also u said u wanted to do a civiliztion clone text based. 
+ thats probably ok. but we also want to do in ascii/gl soon.
+ but if u think it helps , go for it. (how could it not? ) 
+ 
+ 
+ 🤯️🤯️🤯️🤯️🤯️🤯️🤯️🤯️🤯️🤯️🤯️🤯️🤯️🤯️🤯️🤯️🤯️🤯️
+ even text based tpmojio could be helpful 
+ u can literally do the same stuff, but add ranged based stuff
+ or literally move on a small board. that hooks into a visual like a widget
+ and just loads their shit in, i actually really like that one.  
+ 
+ {howver i would do after civ ; and testing others, 
+ this lets u see if u can already manage multiple cities/ units etc. }
+ 
+ <however i actually think haiku can do both of these, after law prompt
+ after my-chara haiku push
+ [and actually i guess genesis will be more like my chara.]
+ [we can also make 'my-planet/isle' with life evolving , and use this as real basis.]STOPLOL
+ 🤯️🤯️🤯️🤯️🤯️🤯️🤯️🤯️🤯️🤯️🤯️

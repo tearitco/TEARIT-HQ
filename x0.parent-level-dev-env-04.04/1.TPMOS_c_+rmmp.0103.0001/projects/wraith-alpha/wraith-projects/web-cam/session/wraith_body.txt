@@ -1,0 +1,9 @@
+<text label="| |  WRAITH WEB CAM | live capture proof                                              |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  DEVICE:/dev/video0                                                             |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  PROFILE:fast                                                            |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  STATE:streaming                                                                      |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  DETAIL:fast" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  [ASCII Color Preview]                                                               |" /><br visibility="${desktop_active_window_body_visible}" />
+<grid source="projects/wraith-alpha/wraith-projects/web-cam/session/webcam_preview.grid.pdl" prefix="| |  " suffix="                                                           |" />
+<text label="| |  240x180 frame=1783992340256                                                              |" /><br visibility="${desktop_active_window_body_visible}" />
+<text label="| |  " /><button compact="true" label="Start" onClick="PROJECT_ACTION:WEBCAM_START" /><text label=" " /><button compact="true" label="Stop" onClick="PROJECT_ACTION:WEBCAM_STOP" /><text label=" " /><button compact="true" label="Fast" onClick="PROJECT_ACTION:WEBCAM_FAST" /><text label=" " /><button compact="true" label="Debug" onClick="PROJECT_ACTION:WEBCAM_DEBUG" /><text label=" " /><button compact="true" label="Refresh" onClick="PROJECT_ACTION:WEBCAM_REFRESH" /><text label="     |" /><br visibility="${desktop_active_window_body_visible}" />

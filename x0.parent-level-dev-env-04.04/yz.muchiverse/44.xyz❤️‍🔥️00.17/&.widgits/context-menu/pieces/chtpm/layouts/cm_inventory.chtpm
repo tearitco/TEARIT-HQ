@@ -1,0 +1,10 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="${cm_header}" /><br/>
+    <button label="Close [X]" onClick="KEY:9" /><br/>
+    <text label="-- INVENTORY --" /><br/>
+    <text label="(real items+targeting - not built yet)" /><br/>
+    <button label="Back" href="pieces/chtpm/layouts/cm_user.chtpm" /><br/>
+    <text label="${last_message}" /><br/>
+</panel>

@@ -1,0 +1,2 @@
+project_id=pal-chain
+active_target_id=signup

@@ -1,0 +1,24 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | curricula_registry
+META         | version            | 0.1
+META         | updated            | 2026-07-31
+META         | bugfix             | 2026-07-31 sliding-window training fix (generation_module.c) - unblocks >32-token corpora
+META         | lr_note            | 2026-07-31 default lr=1e-5 never left random floor (ln V); store config.txt now lr=0.1
+
+# Curricula manifest for the iqabod expert bank (see dev-agent-convo/
+# 04.arch-strategy + 05.genius-idea). THIS FILE LIVES ON THE LOCAL BOX
+# ONLY - a tiny pointer table. Heavy data (corpus/vocab/weights) stays on
+# the nodes in ~/iqabod-store/<name>/. Storage rule: pointer, not payload.
+#
+# Column meanings:
+#   topic       - subject of the curriculum
+#   grade       - ladder rung (conversation grades g1, g2, ...)
+#   vocab_budget- max tokens the corpus author should reuse
+#   teacher     - provider:model used to author the corpus
+#   node        - linux | mac (which machine holds the weights)
+#   path        - node-side dir: ~/iqabod-store/<name>/
+#   status      - planned | training | passing | failing
+#   report      - last training-report.txt row / verdict
+
+CURRICULUM    | conv-g1            | topic=simple_greetings|grade=g1|vocab_budget=40|teacher=ollama:llama3:latest@mac|node=linux|path=~/iqabod-store/conv-g1|status=training|report=loss0.00056@lr0.1/100ep|eval=coherent_recite|unk=start_only|verdict=PASS_proof-of-learning

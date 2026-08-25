@@ -1,0 +1,12 @@
+# stage-a-pilot1-harness.plan — Stage A pilot #1, harness-writing half
+# (EVENTS-PAL-BUILDOUT-PLAN.md §5b/§6): the .pal snippet itself is
+# built deterministically (pure substitution needs no model, correctly
+# minimal use per the Harnecient discipline - see the doc's own note).
+# What's genuinely worth delegating is the VERIFICATION HARNESS - a
+# real bash test script - which needs actual synthesis, not just
+# filling blanks. CHOOSE_MODEL picks the worker model for real; the
+# generated script is written via APPROVE but Claude still reviews and
+# manually runs it afterward before trusting any verdict it produces.
+CHOOSE_MODEL | write a short bash test script that starts a small VM program and checks a text file's contents afterward | true
+STEP | give me a bash test script for a program. the script should make a temporary items.txt file containing item_5=10, start the prisc+x virtual machine binary (path passed as argument 1) on a .pal file (path passed as argument 2), then check items.txt afterward equals item_5=13, and print PASS or FAIL. reply with only the bash script, no explanation, no markdown fences | grep -qi "pass\|fail" "$STEP2_OUT"
+STEP | write /tmp/claude-1000/scratchpad/stage_a_pilot/test_harness.sh | true | APPROVE

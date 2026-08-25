@@ -1,0 +1,7 @@
+project_id=slop-ed-dev/games/default-0000
+current_map=map_0001.txt
+active_target_id=hero
+current_z=0
+last_key=None
+active_game=projects/slop-ed-dev/games/default-0000
+gui_focus=1

@@ -1,0 +1,5 @@
+WRAITH PROBE PROJECT
+Status: ready
+Project ID: wraith-alpha/wraith-projects/probe-project
+Purpose: lightweight Wraith project probe
+Use: quick body/scene validation inside desktop shell

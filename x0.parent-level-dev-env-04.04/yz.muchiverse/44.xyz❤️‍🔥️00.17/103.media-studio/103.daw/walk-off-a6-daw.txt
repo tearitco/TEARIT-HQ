@@ -1,0 +1,241 @@
+# walk-off-a6-daw.txt — Muchi DAW (media-studio) handoff
+**Date:** 2026-08-06  
+**Path:** `103.media-studio/103.daw/`  
+**Audience:** future agents/humans picking up DAW work cold  
+**Also read:** `HOW2_DAW.md` (keys + quick try), house root `house-design-docs.md` §0–§1 (target architecture), `15.GROK_AU6-10.txt` §7 / P6 (hybrid media MVP), `!.HOUSE_STDS.md` (markers, gl_mirror, no Python in tests).
+
+---
+
+## 0. One-line status
+
+**Runnable Phase-1 DAW shell** (freeglut + PulseAudio soft-synth) that *looks* roughly like a Logic/GB-style layout: File menu, left channel strip, multi-track arrangement + regions, piano roll underneath, transport, basic inserts.  
+**Not** GarageBand: no real audio clips, no Apple-quality UX, no library/loops, no real plugins/VST, no CHTPM house shell yet.
+
+---
+
+## 1. How to run (now)
+
+```bash
+cd 103.media-studio/103.daw
+sh button.sh compile   # optional
+sh button.sh r         # launch window
+sh button.sh kill      # stop
+```
+
+- Binary: `ops/+x/daw_main.+x` (single C file: `ops/daw_main.c`)
+- Log: `/tmp/muchi-daw.log`
+- State: `pieces/apps/player_app/daw_state.txt`, `sequence.txt`
+- Canvas export (for later house widget): `canvas.raw` + `canvas.receipt.txt`
+- Quit: **Esc** (not `q` — house rule)
+
+---
+
+## 2. What is possible NOW (honest inventory)
+
+### UI / layout (pass 2–3)
+| Area | What works |
+|---|---|
+| **File menu** | New / Open-Load / Save / Save As / Quit; Ctrl+N/O/S |
+| **Transport** | Return-to-zero, stop, play, rec, cycle; LCD bars.beats.ticks; BPM |
+| **Left CHANNEL strip** | Active track: M/S/R, volume fader (click), pan, EQ on+low/high, Reverb, Distortion |
+| **Tracks area** | Horizontal lanes, color chip, track header M/S/R, mini fader, **+ Track** (`=` key) |
+| **Regions** | One MIDI region block per track spanning note extents; mini note sparks |
+| **Piano roll** | **Below** arrangement (not the main view); notes for selected track; click to place when armed/rec |
+| **Playhead** | Red line over arrangement + piano roll; auto-scroll while playing |
+| **Resize** | `reshape` updates live window size so UI stays top-left (fixed mid-session) |
+| **Musical typing** | a–l whites, wetyu blacks; z/x octave |
+| **Record** | R arms; typed notes land on sequence at playhead |
+| **Save/load** | Project name + tracks + notes to plain text files |
+| **Audio** | PulseAudio mono soft-synth; EQ/reverb/dist **actually tint the synth** (not VST) |
+
+### What agents must not claim
+- Real GarageBand / Logic / Pro Tools feature parity  
+- Real audio recording / WAV import-export  
+- Real MIDI I/O devices (USB controllers) — keyboard mapping only  
+- Real plugin hosts (AU/VST/LV2)  
+- Full CHTPM session (`prisc+x` / `chtpm_parser_pal` / `gl_mirror` canvas-widgit path)  
+- Multi-window screensets, automation lanes, tempo map, time signature changes beyond fixed 4/4 display  
+
+### Known gaps / rough edges
+- CPU can sit high (soft-synth scans notes every sample under lock)  
+- No mouse-drag on region edges / note length  
+- No dual-click “open editor” vs single-click select (Logic-style)  
+- Bottom mixer (**B**) overlaps conceptually with left strip (acceptable for MVP)  
+- File “Open” loads fixed house paths only (no file picker dialog)  
+- Freeglut is the GL host (Phase-1 exception to pure gl_mirror law — see §5)  
+
+---
+
+## 3. Architecture of *this* binary (so you don’t fight it)
+
+```
+button.sh
+  └── ops/daw_main.+x
+        ├── freeglut UI (draw_* at ≤30fps timer)
+        ├── pthread + PulseAudio simple → soft-synth
+        ├── in-memory Track[] + Note[]
+        └── writes sequence.txt / daw_state.txt / canvas.raw
+```
+
+**Single translation unit** by design for speed of iteration. When it grows, split:
+- `daw_state.c` — tracks/notes I/O  
+- `daw_audio.c` — synth + plugins  
+- `daw_ui.c` — layout/draw/mouse  
+- keep `button.sh` as the only user entry  
+
+**Layout constants** (top of `daw_main.c`): `MENU_H`, `STRIP_W`, `HDR_W`, `LANE_X`, `ARR_TOP`, live `g_win_w`/`g_win_h`.
+
+**Critical layout lessons already learned (do not regress):**
+1. Piano roll is an **editor under** the tracks area, not the whole window (GB/Logic).  
+2. Transport must start at **y = MENU_H**, never y=0, or File menu “overlaps” transport.  
+3. **reshape must set viewport + ortho to real window size** or resize leaves UI floating mid-window.  
+4. File **dropdown** redrawn last when open so it paints above tracks.  
+
+---
+
+## 4. What can be possible in the FUTURE (roadmap toward GarageBand)
+
+Ordered by dependency / user value — not all required for “video editor next.”
+
+### P0 — Closer to GB *feel* (still one binary OK)
+| Item | Why GB-like |
+|---|---|
+| **Library / loops browser** (right or left drawer) | GB is loop-first; even stub “Apple Loops–style” list of MIDI patterns / one-shots |
+| **Drag region move/resize** | Core arrange grammar |
+| **Track types: Audio vs Software Instrument** | GB track headers differ; empty audio track can show waveform placeholder |
+| **Smart Controls panel** (mapped knobs for selected track) | GB’s simplified plugin UI vs raw insert list |
+| **Transport polish** | Metronome click, count-in, better LCD (musical time vs seconds) |
+| **Lower CPU** | Voice table for sequence notes; don’t hold mutex per sample for full note scan |
+| **Native file dialogs** | Or simple path field for Open/Save As (zenity/`GtkFileChooser` optional) |
+
+### P1 — Real media (still hybrid house path)
+| Item | Notes |
+|---|---|
+| **WAV import → audio regions** | Decode via `sox`/`ffmpeg` `system()` in C (house: no Python) |
+| **Audio playback engine** | Sample-accurate mix of audio + MIDI synth |
+| **Export bounce** | Mix to WAV |
+| **MIDI file import/export** | Standard SMF for interchange |
+| **Hardware MIDI in** | ALSA seq / JACK optional |
+
+### P2 — House architecture (from `house-design-docs.md`)
+| Item | Notes |
+|---|---|
+| **`&.widgits/canvas-widgit/`** | Shared RGBA viewer; host writes `canvas.raw` only |
+| **Thin CHTPM shell** | `button.sh` session + `daw_compose_frame` / `daw_menu_input` chrome; GL only via canvas widget / gl_mirror |
+| **`check_rgba` op** | Headless asserts on canvas for CI |
+| **Markers** | Never grow `state_changed.txt`; follow §0 marker table |
+| **≤30fps** | Already timer 33ms; keep idle work cheap (media suite CPU lessons from event-ez) |
+
+### P3 — “GarageBand product” (long horizon)
+| Item | Notes |
+|---|---|
+| Touch/trackpad gestures, lessons mode, Live Loops grid | Distinct GB features |
+| Chord strips / auto-play | GB-specific  
+| Full mixer + sends + master bus | Pro Tools/Logic territory  
+| Plugin host (LV2) | Serious scope; don’t invent a second plugin format |
+
+---
+
+## 5. How to make it *better* and *closer to GarageBand*
+
+### 5.1 Study the real product (don’t invent chrome)
+GarageBand (and Logic) hierarchy:
+
+```
+Menu bar
+Control bar (transport + LCD + display modes)
+[ Library | ]  Inspector/Smart Controls optional
+Tracks area (headers + horizontal regions)     ← primary workspace
+Editors (Piano Roll / Audio Editor) UNDER split
+[ Loop browser / Media ]
+```
+
+**Do:** match that information hierarchy.  
+**Don’t:** put piano roll as the only view (pass-1 mistake).  
+**Don’t:** dock a permanent plugin column that steals ⅓ of the arrange area (pass-1 mistake).
+
+### 5.2 Concrete code priorities (if continuing DAW next)
+
+1. **Region interaction**  
+   - Click select region; drag move; edges resize length; double-click focuses piano roll.  
+2. **Audio track stub**  
+   - Track type flag; draw waveform from loaded mono buffer in region.  
+3. **Loop library stub**  
+   - Folder of `pieces/loops/*.mid.txt` or tiny pattern defs; drag onto arrange.  
+4. **CPU**  
+   - Pre-schedule active notes into voice slots each audio block, not O(notes) per sample under global lock.  
+5. **Visual polish**  
+   - Track icons (emoji/glyph), better region labels, darker GB-like greys, larger hit targets.  
+6. **Then** migrate draw path to `canvas.raw` + house canvas widget so media suite shares one GL policy.
+
+### 5.3 Hybrid rule (from advisory — keep it)
+- Phase-1 freeglut viewer is OK as **MVP** for “see how it looks.”  
+- Do **not** grow a permanent second GL framework.  
+- Long-term: host ops write buffers; **one** widget blits (house-design-docs §0).
+
+### 5.4 Testing discipline
+- Manual: `HOW2_DAW.md` checklist after every UI pass.  
+- Later headless: write known notes → save → reload → assert note count/pitches from file; audio optional.  
+- Never claim “GB clone done” without user eyeball on arrange + library + one audio loop.
+
+---
+
+## 6. Session history (what we already fixed — don’t re-break)
+
+| Pass | Change |
+|---|---|
+| **1** | Single piano-roll-centric UI + soft-synth (too toy-like) |
+| **2** | Tracks on top, piano roll below; +Track; regions; transport LCD; plugins less dominant |
+| **3** | File menu; left channel/EQ strip for active track |
+| **3b** | Transport no longer paints at y=0 over File; reshape uses live window size |
+
+---
+
+## 7. Relation to the rest of the house
+
+- **Done earlier this arc:** event-ez / MUCHI_RANCHER Change Gold loop, KHTPM focus lessons (pitfall 70), walk-off-au6.  
+- **Media suite advisory:** after events pause → DAW Phase-1 → then **video editor** (`103.media-studio/177.vid-edit/`) with same hybrid pattern.  
+- **User intent (2026-08-06):** DAW good enough for now after File + channel strip; **next product slice: video editor**.
+
+---
+
+## 8. File map
+
+```
+103.media-studio/103.daw/
+  button.sh                 # compile | r | kill | check
+  HOW2_DAW.md               # human/agent try card
+  walk-off-a6-daw.txt       # THIS file
+  default_op.txt            # stub for Phase-2 CHTPM
+  docs/MVP_NOTE.txt         # freeglut Phase-1 honesty
+  ops/daw_main.c            # entire app today
+  ops/+x/daw_main.+x
+  pieces/apps/player_app/
+    daw_state.txt
+    sequence.txt
+    canvas.raw
+    canvas.receipt.txt
+```
+
+House specs (not implemented fully here):
+- `house-design-docs.md` §1 DAW scaffolding (compose/menu/render ops, canvas widget spawn)
+- `103.media-studio/` siblings: empty `103.img-editor/`, `177.vid-edit/`
+
+---
+
+## 9. Suggested first PR for the next DAW agent (if returning)
+
+1. Read this file + run `button.sh r` for 5 minutes with HOW2.  
+2. Implement **region drag + edge resize** only (no new audio).  
+3. Or split `daw_main.c` into state/audio/ui without feature change.  
+4. Do **not** start LV2/VST or full CHTPM migration in the same PR as UI features.
+
+---
+
+## 10. Bottom line for future agents
+
+**Now:** a credible multi-track MIDI arrange + piano-roll + channel strip + File I/O soft-synth DAW shell you can demo.  
+**Future:** audio regions, loop library, Smart Controls, house canvas widget, real export.  
+**Closer to GarageBand means:** library/loops + audio tracks + arrange-first UX + simplified smart FX — **not** more dense piano-roll chrome alone.
+
+*End walk-off-a6-daw — 2026-08-06.*

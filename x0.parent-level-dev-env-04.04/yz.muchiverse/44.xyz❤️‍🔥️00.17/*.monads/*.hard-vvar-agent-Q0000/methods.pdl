@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+METHOD       | Tool-Chat            | sh -c 'cd "$0" && exec bash ../../pieces/features/tool_chat.sh'
+METHOD       | Events (ez)          | sh -c 'cd "$0" && H="$(cd ../../../.. && pwd)" && exec "$H/&.widgits/event-ez/button.sh"'
+METHOD       | Play                 | sh -c 'cd "$0" && exec bash ../../pieces/features/tool_chat.sh'
+METHOD       | Ledger               | sh -c 'cd "$0" && exec gedit ../../pieces/brain/master_ledger.txt'
+METHOD       | Dir                  | xdg-open
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void

@@ -1,0 +1,20 @@
+<panel time_reactive="true">
+    <module>projects/bot-editor/manager/+x/bot-editor_manager.+x</module>
+    <interact src="pieces/apps/player_app/history.txt" />
+    
+    <text label="╔═══════════════════════════════════════════════════════════╗" /><br/>
+    <text label="║               TPM BOT EDITOR: PERSONA IDE                 ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║ Active Bot: ${active_bot}" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║ Global Repository:                                        ║" /><br/>
+    ${bot_list}
+    <text label="║                                                           ║" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║ New Name: " /><cli_io id="username" label="${bot_name_input}" /><br/>
+    <text label="╠═══════════════════════════════════════════════════════════╣" /><br/>
+    <text label="║  " /><button label="[1] Create" onClick="KEY:1" /><text label="    " /><button label="[2] Test Sandbox" onClick="KEY:2" /><text label="          ║" /><br/>
+    <text label="║  " /><button label="[3] Export" onClick="KEY:3" /><text label="    " /><button label="[4] Load Selected" onClick="KEY:4" /><text label="         ║" /><br/>
+    <text label="║  " /><button label="[ESC] Exit" href="pieces/chtpm/layouts/os.chtpm" /><text label="                                 ║" /><br/>
+    <text label="╚═══════════════════════════════════════════════════════════╝" /><br/>
+</panel>

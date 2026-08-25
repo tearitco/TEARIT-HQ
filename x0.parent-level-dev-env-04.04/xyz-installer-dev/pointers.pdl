@@ -1,0 +1,11 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | xyz_installer_pointer
+META         | version            | 1.0
+META         | notes             | Points this installer package at its sources.
+META         | notes             | Edit HERE if the dev tree or package moves
+META         | notes             | (e.g. to ~/xyz-installer-dev/). Relative
+META         | notes             | paths resolve against the package's parent
+META         | notes             | dir (x0.parent-level-dev-env-04.04).
+
+POINTERS     | dev_tree           | yz.muchiverse/44.xyz❤️‍🔥️00.10

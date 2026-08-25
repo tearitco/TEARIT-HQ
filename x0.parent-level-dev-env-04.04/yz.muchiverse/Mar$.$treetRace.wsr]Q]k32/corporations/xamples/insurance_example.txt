@@ -1,0 +1,81 @@
+FINANCIAL PROFILE FOR IL INSURANCE (ILI)
+================================================
+FINANCIAL BALANCE SHEET: IL INSURANCE (ILI)
+--------------------------------------------------
+(Amounts in millions of U.S. Dollars, except per share amounts)
+
+ASSETS:
+  Free Cash and Equivalents:            2558.50
+  Stock in Subsidiary Corps.:            0.00
+  Options Long/Short: Net Value:         0.00
+  Government Bonds (mkt. value):         0.00
+  Corporate Bonds (mkt. value):         0.00
+  Subprime Mortgage Securities:          0.00
+  Index Futures: Marked to Mkt.:        0.00
+  Commodity A/C Margin Balance:         0.00
+  ---------------------------------------------
+  Total Assets:                        2558.50
+  ---------------------------------------------
+
+LIABILITIES AND EQUITY:
+  Long-Term Bonds Issued:                0.00
+  Bank Loan:                           280.00
+  Insurance Policy Reserves:           1378.50
+  Accrued Income Tax Payable:            0.00
+  ---------------------------------------------
+  Total Liabilities:                   1658.50
+  ---------------------------------------------
+  Equity (Net Worth):                   900.00
+  =============================================
+
+STOCK AND EARNINGS DATA:
+------------------------
+  Net Worth Per Share:                  18.00
+  Current Stock Price:                  20.18
+  52-Week High/Low Stock Price:         29.98 / 19.73
+  Shares of Stock Outstanding:          50.00 million
+  Total Stock Capitalization:          1009.15 million
+  2021 Earnings Per Share:               0.00 (Operating Earnings)
+  2022 Earnings Per Share:               0.00 (Operating Earnings)
+  2023 Earnings Per Share:               0.00 (Operating Earnings)
+  2024 Earnings Per Share:               0.00 (Operating Earnings)
+  2025 E/P/S through Qtr. #1:           (Not Yet Announced)
+  ---------------------------------------------
+
+VARIOUS FINANCIAL RATIOS:
+-------------------------
+  Price/Earnings Ratio:                 NMF (No Meaningful Figure)
+  Dividend Yield:                       0.00%
+  Debt to Equity Ratio:                 0.31 to 1
+  Return on Equity (2024):              NMF (No Meaningful Figure)
+  ---------------------------------------------
+
+*** CREDIT INFO: ***
+-------------------
+  Credit Rating:                        A
+  Unused Bank Line of Credit:           ZERO
+  Borrowing Rate (Interest):            11.00% (Prime is: 10.00%)
+  Lending Bank:                        IND. & COM. BANK OF CHINA (ICBC)
+  ---------------------------------------------
+
+VARIABLE SETTINGS (Changeable by controlling player):
+----------------------------------------------------
+  Dividend Payout Per Share:            0.00
+  % of Net Premiums for Advertising:    7%
+  Growth Rate (Insurance in Force):     6%
+  ---------------------------------------------
+
+MISCELLANEOUS INFO:
+-------------------
+  Industry Group:                       INSURANCE
+  Incorporated in:                      KOREA
+  Controlled (and actively managed) by:  sol supreme
+  Wholly owned by:                      sol supreme
+  Annual CEO Salary (approx.):          $0.69 million (Plus possible bonuses)
+  Today's (Game) Date:                  January 1, 2025
+  Next Earnings Report:                 January 8, 2025
+  ---------------------------------------------
+
+FOOTNOTE TO FINANCIAL STATEMENT:
+-------------------------------
+[1] The company is not currently engaged in any interest rate swap transactions and has no undisclosed off-balance sheet liabilities.

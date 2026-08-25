@@ -1,0 +1,6 @@
+What is the full absolute path to the 'groq-ollama' executable on this machine? 
+Please run:
+which groq-ollama
+
+And if that is empty, please check your NVM or global node bin folders.
+I need this path to fix the bridge connection in TPMOS.

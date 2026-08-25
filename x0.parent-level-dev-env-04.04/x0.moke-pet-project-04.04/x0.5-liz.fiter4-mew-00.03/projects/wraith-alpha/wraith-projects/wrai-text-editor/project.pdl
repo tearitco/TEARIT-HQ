@@ -1,0 +1,27 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | wraith-alpha/wraith-projects/wrai-text-editor
+META         | version            | 1.0
+META         | manager            | projects/wraith-alpha/wraith-projects/wrai-text-editor/manager/+x/wrai-text-editor_manager.+x
+META         | entry_layout       | projects/wraith-alpha/wraith-projects/wrai-text-editor/layouts/editor.chtpm
+META         | author             | jb
+
+STATE        | starting_map       | map_01.txt
+STATE        | player_piece       | selector
+STATE        | current_world      | world_01
+STATE        | current_map        | map_01
+STATE        | current_z          | 0
+
+RESPONSE     | default            | TEXT EDITOR Ready (FreeType emoji rendering).
+METHOD | resize | DESKTOP_ACTION:open_context_menu_resize
+METHOD | close | DESKTOP_ACTION:open_context_menu_close
+METHOD | emoji_grin | DESKTOP_ACTION:open_context_menu_insert_emoji:😀
+METHOD | emoji_sweat | DESKTOP_ACTION:open_context_menu_insert_emoji:😅
+METHOD | emoji_laugh | DESKTOP_ACTION:open_context_menu_insert_emoji:😆
+METHOD | emoji_halo | DESKTOP_ACTION:open_context_menu_insert_emoji:😇
+METHOD | emoji_rocket | DESKTOP_ACTION:open_context_menu_insert_emoji:🚀
+METHOD | emoji_earth | DESKTOP_ACTION:open_context_menu_insert_emoji:🌍
+METHOD | emoji_dog | DESKTOP_ACTION:open_context_menu_insert_emoji:🐶
+METHOD | emoji_party | DESKTOP_ACTION:open_context_menu_insert_emoji:🎉
+METHOD | emoji_heart | DESKTOP_ACTION:open_context_menu_insert_emoji:❤️
+METHOD | emoji_star | DESKTOP_ACTION:open_context_menu_insert_emoji:⭐

@@ -1,0 +1,78 @@
+GL-OS Media Editor (media-editor) - Design & Integration Blueprint
+===============================================================
+Date: May 30, 2026
+Version: 1.0 (m30)
+
+1. PROJECT OVERVIEW
+-------------------
+The `media-editor` is a rich media authoring tool for GL-OS. It will support dragging and dropping assets, scene manipulation, and animation scripting via PRISC.
+
+2. CHTMGL FEATURES TO INTEGRATE
+-------------------------------
+To support a professional media editor, the following CHTMGL features must be ported to TPMOS (starting with `chtmgl-alpha`):
+
+- **Advanced <canvas> (3D/2D):**
+  - Need to support `.obj` and `.fbx` (animation) loading directly into a canvas element.
+  - Implement "Gizmos" (translation/rotation/scale handles) as part of the canvas interaction layer.
+  - Add `view_mode="editor"` to enable grid lines and axes.
+
+- **Media Tags with Metadata:**
+  - `<img>`, `<audio>`, `<video>` need attributes for `autoplay`, `loop`, and `volume`.
+  - Integration with `stb_image` and `ffmpeg` (via tasks/ops) for thumbnail generation and stream scrubbing.
+
+- **Property Inspector Elements:**
+  - `<slider>` and `<textfield>` for real-time attribute editing (e.g., scale, position, color).
+  - `<checkbox>` for toggling visibility or physics properties.
+
+- **Timeline UI:**
+  - A specialized `<scroller>` or custom `<timeline>` tag for keyframe management.
+
+3. INTEGRATION INTO CHTMGL-ALPHA
+--------------------------------
+- **Phase 1 (Assets):** Implement a file-picker/drop-zone that updates `gui_state.txt` with absolute paths.
+- **Phase 2 (3D Renderer):** Update `gl_renderer.c` to handle 3D mesh rendering within element bounds.
+- **Phase 3 (IPC):** Use Mode 1 (Direct C) for gizmo manipulation to ensure sub-16ms latency. Use Mode 2 (PRISC) for multi-object animation sequences.
+
+4. MEDIA-EDITOR LAYOUT PROTOTYPE (layouts/editor.chtmgl)
+-------------------------------------------------------
+<window title="Media Editor" width="1024" height="768" color="#121212">
+    <!-- Sidebar: Asset Library -->
+    <panel id="assets" x="0" y="0" width="200" height="600" color="#1e1e1e">
+        <text label="Assets" x="10" y="10" />
+        <scroller id="asset_list" x="5" y="40" width="190" height="550" label="${asset_listing}" />
+    </panel>
+    
+    <!-- Main Editing Canvas -->
+    <canvas id="editor_viewport" x="200" y="0" width="624" height="600" view_mode="editor">
+        <text label="[3D Viewport]" x="10" y="10" color="#444444" />
+    </canvas>
+    
+    <!-- Property Inspector -->
+    <panel id="inspector" x="824" y="0" width="200" height="600" color="#1e1e1e">
+        <text label="Properties" x="10" y="10" />
+        <textfield id="prop_name" label="Name: ${selected_name}" x="5" y="40" />
+        <slider id="prop_x" label="X: ${selected_x}" x="5" y="80" min="-100" max="100" />
+        <slider id="prop_y" label="Y: ${selected_y}" x="5" y="110" min="-100" max="100" />
+        <button label="Apply" onClick="EVENT:apply_props" x="5" y="150" />
+    </panel>
+    
+    <!-- Timeline -->
+    <panel id="timeline" x="0" y="600" width="1024" height="168" color="#181818">
+        <text label="Timeline" x="10" y="10" />
+        <slider id="time_scrub" x="10" y="40" width="1004" height="30" min="0" max="${max_frames}" value="${current_frame}" />
+        <button label="Play" onClick="EVENT:play_anim" x="10" y="80" />
+    </panel>
+</window>
+
+5. MANAGER LOGIC (manager/editor_manager.c)
+------------------------------------------
+- **State Management:**
+  - `selected_piece_id`: Tracks which item in the canvas is active.
+  - `asset_cache`: A list of discovered media files in the project's `assets/` folder.
+- **IPC Handlers:**
+  - `SLIDER:time_scrub:<val>` -> Updates the scene state at time <val>.
+  - `CANVAS:editor_viewport:<x>,<y>` -> Raycasts to find clicked object, updates `selected_piece_id`.
+  - `EVENT:apply_props` -> Writes new coordinates to the Piece's `state.txt` and hits `frame_changed.txt`.
+- **PRISC Integration:**
+  - Animations are stored as `.asm` files in `scripts/animations/`.
+  - The manager calls `prisc+x <script_path>` to execute frame-by-frame updates during playback.

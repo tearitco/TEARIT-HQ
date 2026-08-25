@@ -1,0 +1,26 @@
+# cpp-llm Local Pitfalls & Architectural Post-Mortem (May 2026)
+
+## 1. The Port/Endpoint Mismatch (The "8080" Trap)
+- **Problem:** The manager was hardcoded to `10.0.0.144:8080` and used the deprecated `/completion` endpoint.
+- **Reality:** Modern llama.cpp/Ollama services on the remote Mac require the OpenAI-compatible `/v1/chat/completions` path for external network requests.
+- **Lesson:** Never assume an API path works everywhere. Verify with `curl` before hardcoding.
+
+## 2. Monolithic Debugging Failure (The "Code 127" Mystery)
+- **Problem:** Functional logic was baked into the `manager.+x`, making it impossible to see why `curl` was failing.
+- **Fix:** Decomposed connectivity into a standalone TPMOS Op: `ops/+x/connect_op`.
+- **Lesson:** TPMOS Principle: Managers ORCHESTRATE; Ops EXECUTE. Isolated executables are the only way to ensure debuggability.
+
+## 3. Geography is Destiny (Path Resolution)
+- **Problem:** Manager reported `Code 127` because it looked for `./ops/+x/connect_op` relative to the root, but the binary was in `projects/cpp-llm/ops/`.
+- **Lesson:** Always use `project_root` prefixed absolute paths for `execvp`.
+
+## 5. Payload Format Inconsistency
+- **Problem:** Different API endpoints (`/completion` vs `/v1/chat/completions`) expect different payload structures.
+- **Reality:** Standardizing on OpenAI-compatible `chat-completion` payloads (`messages` array) is the safest approach across llama.cpp and Ollama.
+- **Lesson:** Always verify the server's expected payload format with `curl` against *the actual target server* before committing code.
+
+## 6. Parser Limitations (Shallow Extraction)
+- **Problem:** `json_parser` Op cannot traverse deep nested JSON (e.g., `choices[0].message.content`).
+- **Fix:** If drilling deep, perform iterative extraction using temporary files, or upgrade the parser to support dot-notation path traversal.
+- **Lesson:** Understand the limitations of your tools. If the parser is shallow, don't force it to do deep work.
+

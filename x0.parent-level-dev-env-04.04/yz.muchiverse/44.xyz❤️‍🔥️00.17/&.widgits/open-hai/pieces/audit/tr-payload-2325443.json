@@ -1,0 +1,1 @@
+{"model":"qwen/qwen3.8-max-free","messages":[{"role":"user","content":[{"type":"text","text":"Reply with exactly one word: pong"}]}]}

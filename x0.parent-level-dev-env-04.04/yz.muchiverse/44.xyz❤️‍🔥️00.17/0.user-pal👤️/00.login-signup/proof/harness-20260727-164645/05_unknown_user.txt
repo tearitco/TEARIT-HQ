@@ -1,0 +1,22 @@
++============================================================+
+|  U S E R - P A L                                           |
++============================================================+
+|                                                            |
+|  Not logged in.                                            |
+|                                                            |
+|  Enter a user ID (and display name, if new), then          |
+|  choose Create Account or Log In below.                    |
+|                                                            |
+|  No such user 'uloginGhost_1642538'.                       |
+|                                                            |
++============================================================+
+
+| [ ] 1. User ID: [uloginGhost_1642538]                                        |
+| [ ] 2. Display Name (new accounts only): [LoginHarnessB]                                        |
+[ ] 3. [Create Account]
+[>] 4. [Log In]
+[ ] 5. [Log Out]
+ (Ctrl+C to quit)
+
++=========================================================+
+Nav > _

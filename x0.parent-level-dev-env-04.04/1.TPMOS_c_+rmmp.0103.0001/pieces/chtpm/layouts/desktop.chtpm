@@ -1,0 +1,25 @@
+<panel>
+    <text label="+===========================================================+" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|           P M O   G L - O S   D E S K T O P               |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  Launching GL-OS Desktop Environment...                   |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  A separate OpenGL window should open.                    |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  GL-OS Controls:                                          |" /><br/>
+    <text label="|    [Right-Click] Context Menu                             |" /><br/>
+    <text label="|    [Drag Titlebar] Move Window                            |" /><br/>
+    <text label="|    [X Button] Close Window                                |" /><br/>
+    <text label="|    [t] New Terminal  [c] Close Window                     |" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="+===========================================================+" /><br/>
+    <text label="|  System Time: ${clock_time} | Turn: ${clock_turn}         |" /><br/>
+    <text label="+===========================================================+" /><br/>
+    <text label="|                                                           |" /><br/>
+    <text label="|  " /><button label="Back to OS" href="pieces/chtpm/layouts/os.chtpm" /><text label="                                 |" /><br/>
+    <text label="|                                                           |" /><br/>
+    
+    <!-- Launch GL-OS desktop (opens OpenGL window) -->
+    <module>pieces/apps/gl_os/plugins/+x/gl_desktop.+x</module>
+</panel>

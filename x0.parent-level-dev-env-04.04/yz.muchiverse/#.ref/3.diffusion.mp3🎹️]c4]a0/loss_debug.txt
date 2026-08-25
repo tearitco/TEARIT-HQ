@@ -1,0 +1,15 @@
+Training kernel 0 for ../../../short-mp3-test-files//you are cool and you.mp3
+Warning: FFmpeg failed to process ../../../short-mp3-test-files//you are cool and you.mp3
+Error: Failed to load audio ../../../short-mp3-test-files//you are cool and you.mp3
+Training kernel 0 for music//-0.red5gumball)in.low.mars.orbit.mp3
+Executing FFmpeg: ffmpeg -y -i "music/-0.red5gumball\)in.low.mars.orbit.mp3" -f f32le -ar 44100 -ac 1 -loglevel quiet temp_audio.raw 2> ffmpeg_err.txt
+Warning: FFmpeg failed to process music//-0.red5gumball)in.low.mars.orbit.mp3 (exit code 256)
+Error: Failed to load audio music//-0.red5gumball)in.low.mars.orbit.mp3
+Training kernel 0 for music//-0.red5gumball)in.low.mars.orbit.mp3
+Executing FFmpeg: ffmpeg -y -i "music/-0.red5gumball\)in.low.mars.orbit.mp3" -f f32le -ar 44100 -ac 1 -loglevel quiet temp_audio.raw 2> ffmpeg_err.txt
+Warning: FFmpeg failed to process music//-0.red5gumball)in.low.mars.orbit.mp3 (exit code 256)
+Error: Failed to load audio music//-0.red5gumball)in.low.mars.orbit.mp3
+Training kernel 0 for music//-0.red5gumball)in.low.mars.orbit.mp3
+Executing FFmpeg: ffmpeg -y -i "music/-0.red5gumball\)in.low.mars.orbit.mp3" -f f32le -ar 44100 -ac 1 -loglevel quiet temp_audio.raw 2> ffmpeg_err.txt
+Warning: FFmpeg failed to process music//-0.red5gumball)in.low.mars.orbit.mp3 (exit code 256)
+Error: Failed to load audio music//-0.red5gumball)in.low.mars.orbit.mp3

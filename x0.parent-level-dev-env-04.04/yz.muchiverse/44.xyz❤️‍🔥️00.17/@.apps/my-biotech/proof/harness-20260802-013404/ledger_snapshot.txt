@@ -1,0 +1,2 @@
+2026-08-02T01:34:09|1|research_attempt|element:phosphorus|compound:Phosphorus
+2026-08-02T01:34:14|1|compound_discovered|Phosphorus

@@ -1,0 +1,18 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | xyzfs_session
+META         | version            | 1.0
+META         | notes              | Current logged-in user or guest for this machine
+
+STATE        | mode                 | logged_in
+STATE        | user_id              | claude-0001
+STATE        | user_uuid            | 1cdf9563-7361-41c3-bce4-3f276fc78bc0
+STATE        | display_name         | AgentClaude0001
+STATE        | xyzfs_path           | xyzfs/users/1cdf9563-7361-41c3-bce4-3f276fc78bc0
+STATE        | logged_in_at         | 1786515017
+STATE        | active_avatar_uuid   | 
+STATE        | active_avatar_path   | 
+
+# mode=logged_in | guest
+# xyzfs_path is relative to house root (parent of 0.user-pal)
+# active_avatar_* set by 01.avatar-creation when a clone is minted/opened

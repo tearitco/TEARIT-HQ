@@ -1,0 +1,37 @@
+# SCM progress report (au2) — write periodically to survive disconnects
+# Path: 047.scm🎓️+1/ — sibling of this file
+
+## SESSION GOAL (from user)
+1. Push thru SCM, make sure it's working correctly; augment/redesign as necessary.
+2. At some point SCM should write .pal code — "hello world in a GL window" and more.
+
+## WHERE THINGS STAND
+- SCM steps 1+2 DONE and verified earlier (loaders, router, features, selector,
+  slot fill, demo CLI). Build is warning-free (gcc -Wall -Wextra).
+- One real bug already caught+fixed: slot filler used `out[strlen(out)] = *p++`
+  which reads uninitialized stack → corrupt output. Fixed with explicit write
+  index. Also mem ring shift used overlapping snprintf → switched to memmove.
+- Verified: /rp tavern switches curricula; meta grumpy re-ranks; {drink} slots
+  fill ("A mug of water, then?"); memory gives turn variety.
+- eval/ dir exists but was EMPTY (design §9 probe bank / baseline gate not built yet).
+
+## RESEARCH DONE THIS SESSION (grounded, not assumed)
+- `.pal` = muchiverse assembly-style language (regs x0-x13+, ops: li, beq, addi, j,
+  sleep, halt, ret, ecall, exec, read_history, read_pos, compose_frame,
+  compose_rgb_frame, hit_frame, compose_title_frame, menu_*_input variants).
+- GL window = separate system/gl_mirror.c (wsr-pal) that blits
+  pieces/display/rgb_frame.raw (written by compose_rgb_frame) as a GLUT quad.
+- Real hello-style pal program verified: 101.mutaclsym/pal/main_loop.pal
+  (title phase: compose_title_frame / compose_rgb_frame / hit_frame / loop).
+- show_text IS used in real event.pal files (#.desktop/events/.../event.pal)
+  but is NOT a prisc+x/compose op (no C impl found) — treat as event-runtime op.
+
+## NEXT STEPS (in progress)
+- [ ] Phase A: eval harness — probes.txt written; need run.sh (baseline gate:
+      selector argmax-hit% must beat random-uniform 1/n), edge.sh (edge cases)
+- [ ] Phase A: run harness, fix bugs
+- [ ] Phase B: code_mode + out_file in pdl loader
+- [ ] Phase B: scm_pal.c — write_code (deterministic assemble) + pal syntax validator
+- [ ] Phase B: code mode in scm_select + CLI `write` mode
+- [ ] Phase B: corpuses/pal_hello + pal_counter template banks
+- [ ] Build + generate hello.pal + validate + verify all green

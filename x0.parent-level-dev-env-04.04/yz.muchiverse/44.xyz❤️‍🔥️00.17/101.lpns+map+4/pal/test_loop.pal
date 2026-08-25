@@ -1,0 +1,8 @@
+# Simple test loop
+li x1, 0
+
+loop:
+  li x2, 4
+  game_turn_input x2
+  sleep 2000000
+  j loop

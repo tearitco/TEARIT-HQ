@@ -1,0 +1,3 @@
+limit=65536
+divisor=300
+sandbox_root=projects/gem-xo/sandbox

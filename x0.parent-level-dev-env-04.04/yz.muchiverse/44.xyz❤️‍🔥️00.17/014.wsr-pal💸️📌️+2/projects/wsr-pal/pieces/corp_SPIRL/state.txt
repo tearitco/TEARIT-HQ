@@ -1,0 +1,14 @@
+current_state=1
+decision_mode=1
+cash=0.00
+stock_price=0.10
+book_value=0.00
+shares_outstanding=0.00
+market_cap=200.00
+debt_to_equity=0.00
+risk_bias=50
+shares_held=0
+pending_action=
+last_action=
+human_decision=
+owned_by=

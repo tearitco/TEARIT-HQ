@@ -1,0 +1,66 @@
+# gem-gnu-agent-tpmos-project-repair-roadmap.txt
+## TPMOS Project Repair and Development Roadmap
+
+**Date:** 2026-04-21
+**Author:** Gemini CLI Agent
+
+---
+
+### 1. Executive Summary
+
+This roadmap outlines the strategic direction for repairing and advancing the TPMOS project. The primary focus is on enhancing core functionalities and integrating key strategic goals: AI capabilities, P2P networking, and the advanced graphical rendering of GL-OS for 2D/3D virtual windows. A significant immediate task is the implementation of a foundational global chat application, "forum-op." This plan leverages existing project documentation and architecture to ensure a cohesive and scalable development path.
+
+---
+
+### 2. Current Top Goals & Strategic Priorities
+
+The overarching goals for TPMOS development are:
+
+*   **AI Integration:** Deepen the integration of AI capabilities, particularly leveraging local LLMs as outlined in `CH10_FUTURE_HORIZONS.md` and `update-textbook.txt`. This includes agent tooling and AI-driven content generation.
+*   **P2P Networking:** Enhance and expand the P2P-NET infrastructure, focusing on decentralized communication, asset management, and sovereign identity as described in `CH10_FUTURE_HORIZONS.md` and `CH13_BUSINESS_STRATEGY.md`.
+*   **GL-OS Advancement:** Significantly advance the capabilities of GL-OS for rendering 2D and 3D virtual windows within the desktop environment. This includes improving model rendering, camera controls, and UI overlays, as detailed in `CH8_GL_OS.md`.
+
+---
+
+### 3. Project Repair & Buildout Focus
+
+The immediate focus will be on:
+
+*   **GL-OS Buildout:** Enhancing GL-OS to become the primary visual theater for TPMOS applications, leveraging its potential for rich 2D/3D experiences. This involves refining rendering pipelines, expanding model support, and ensuring seamless integration with core TPMOS principles.
+*   **Core Infrastructure Stabilization:** Ensuring the reliability and performance of existing core systems, including the 12-step pipeline, PAL scripting, and Op execution, as documented in `CH3_PIPELINE.md`, `CH4_DEVELOPMENT.md`, and `CH6_PAL.md`.
+
+---
+
+### 4. Immediate Task: "forum-op" Global Chatroom
+
+**Objective:** Implement a basic, global chatroom application named "forum-op."
+
+**Key Functionality:**
+*   All users connecting to "forum-op" will join the same, single chat instance.
+*   Leverage the P2P-NET infrastructure for message broadcasting and reception.
+*   Implement a simple "App" structure as described in `CH5_SYSTEM_APPS.md`.
+
+**Technical Approach:**
+*   **App Structure:** Create a new app directory under `projects/forum-op/`.
+*   **P2P Communication:** Utilize P2P-NET's message broadcasting capabilities to send messages to all connected "forum-op" instances.
+*   **State Management:** User messages and presence will be managed via Piece state files.
+*   **Basic Scaffolding:** Focus on core message sending and receiving functionality, drawing lessons from existing app scaffolding documentation.
+
+---
+
+### 5. Documentation Enhancement Strategy
+
+*   **Onboarding Document:** The comprehensive `gemini-agent-tpmos-onboarding-document.txt` will serve as the primary reference for future agents, synthesizing all existing documentation.
+*   **Textbook Updates:** Continue to update and refine the TPMOS textbook (`TPMOSTEXTBOOK_v04.00/`) with detailed code examples, cross-platform considerations, and expanded explanations, as per the `update-textbook.txt` plan.
+
+---
+
+### 6. Future Development Considerations
+
+*   **AI-Agent Synergy:** Explore how AI agents can interact with and manage P2P-NET and GL-OS features.
+*   **Recursive Forge Expansion:** Investigate further applications of the recursive simulation capabilities (CH11) for complex AI training environments.
+*   **Sovereign Venture Growth:** Continue development of monetization and governance models as outlined in `CH13_BUSINESS_STRATEGY.md`.
+
+---
+
+**End of Roadmap.**

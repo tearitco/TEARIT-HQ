@@ -1,0 +1,16 @@
+<chtpm>
+  <module>projects/wraith-alpha/wraith-projects/wrai-text-editor/manager/+x/wrai-text-editor_manager.+x</module>
+  <interact src="projects/wraith-alpha/wraith-projects/wrai-text-editor/session/history.txt" />
+
+  <text label="╔════════════ W R A I   E D I T O R ═══════════╗" /><br/>
+  <text label="║  ACTIVE: " /><text label="${active_file_path}" /><br/>
+  <text label="║  " /><button label="EDIT TEXT (INTERACT)" onClick="INTERACT" /><text label="             ║" /><br/>
+  <text label="╠═════════════════════════════════════════════╣" /><br/>
+  ${editor_map}
+  <text label="╠═════════════════════════════════════════════╣" /><br/>
+  <text label="║  " /><button label="NEW FILE" onClick="PROJECT_ACTION:NEW_FILE" /><text label="                                      ║" /><br/>
+  <text label="║  " /><button label="CLEAR FILE" onClick="PROJECT_ACTION:CLEAR_FILE" /><text label="                                    ║" /><br/>
+  <text label="║  " /><button label="FILE MENU" onClick="PROJECT_PAGE:file_menu" /><text label="                                     ║" /><br/>
+  <text label="╚═════════════════════════════════════════════╝" /><br/>
+  <text label="${response}" /><br/>
+</chtpm>

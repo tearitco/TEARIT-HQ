@@ -1,0 +1,13 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | project_id         | pal-chat-irc
+META         | version            | 0.1
+META         | author              | uhogs
+
+STATE        | starting_room      | login
+STATE        | title              | PAL-CHAT-IRC
+
+EVENT_IN     | project_start      | void
+
+RESPONSE     | project_start      | pal-chat-irc initialized.
+RESPONSE     | default            | *waiting...*

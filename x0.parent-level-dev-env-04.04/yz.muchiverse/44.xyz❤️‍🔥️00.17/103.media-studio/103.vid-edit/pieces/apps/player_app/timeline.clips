@@ -1,0 +1,7 @@
+project=Demo Edit
+playhead_ms=0
+n_clips=4
+CLIP name=demo_blue.mp4 track=0 start=0 dur=3000 in=0 out=3000 audio=0 path=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.15/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/103.media-studio/103.vid-edit/media/demo_blue.mp4
+CLIP name=demo_orange.mp4 track=0 start=2500 dur=3000 in=0 out=3000 audio=0 path=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.15/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/103.media-studio/103.vid-edit/media/demo_orange.mp4
+CLIP name=demo_green.mp4 track=1 start=5000 dur=3000 in=0 out=3000 audio=0 path=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.15/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.10/103.media-studio/103.vid-edit/media/demo_green.mp4
+CLIP name=Audio bed track=2 start=0 dur=9000 in=0 out=9000 audio=1 path=

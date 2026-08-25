@@ -1,0 +1,63 @@
+================================================================================
+phase2-module-split-report.txt - 300.rpg-xyz: what changed 2026-07-31
+and why, for future agents. See also the house-wide docs this work is
+part of: #.haiku+/!.xyzos-standards+1.txt §41, #.haiku+/!.xyzos-
+pitfalls+1.txt PITFALL 66, #.haiku+/refactor-list-j30.txt, and
+101.mutaclsym🧟‍♂️️+18.01's own phase2-module-split-report.txt (this
+project is a confirmed byte-identical copy of that project's own
+pieces/chtpm/layouts/*.chtpm + pal/main_loop_chtpm.pal + system/
+chtpm_parser_pal.c BEFORE mutaclsym's own Phase 2 work - the exact
+same edits were mechanically re-applied here).
+================================================================================
+
+## WHAT WAS DONE HERE
+
+Before: both layouts (game.chtpm, info_test.chtpm) declared
+<module>${module_path}</module>. After: 2 new files, byte-identical
+content to pal/main_loop_chtpm.pal, one per screen:
+    pal/game_module.pal
+    pal/info_test_module.pal
+game.chtpm's <module> line now reads
+    <module>system/prisc+x pal/game_module.pal</module>
+info_test.chtpm's now reads
+    <module>system/prisc+x pal/info_test_module.pal</module>
+
+clear_saved_active_index() (PITFALL 66) ported into this project's own
+local system/chtpm_parser_pal.c, inserted after build_path_malloc(),
+called at 6 real transition sites (lines 1766, 1793, 1883, 3059, 3326,
+3361 after insertion - found via the same `focus_index = 0;` +
+following-parse_chtm() grep pattern used across this whole rollout).
+Debug-spam printf lines were already absent before this work.
+
+Applied identically (verified byte-for-byte identical chtpm_parser_
+pal.c between the two before AND after this edit) to this project's
+own sibling copy, 300.rtp-xyz.
+
+## VERIFICATION
+
+Rebuilt via `bash scripts/build.sh` - "build ok" in both projects, no
+new errors (pre-existing unrelated warnings only). clear_saved_
+active_index appears 8 times (1 def + 1 doc-comment mention + 6 real
+call sites - one fewer call site than mutaclsym's own 7-vs-6
+difference is because this project's own file structurally matches
+mutaclsym's PRE-Phase-2 file, which had 6 real parse_chtm() transition
+sites, not 7 like the pal-chain family).
+
+NOT live-tested through a real running session or K3 harness - this
+project has no test harness at all (same as mutaclsym before this
+session). Source-level + compile-verified only. mutaclsym's own new
+test-harn-same/ could very likely be copied here nearly as-is if a
+harness is ever needed - see mutaclsym's own harness status notes
+(navigation passes; movement check has a known test-fixture issue, not
+a real bug) before assuming a straight copy would be 100% green.
+
+## IF YOU HIT A BUG HERE
+
+1. Doubling/dropped keystrokes: read #.haiku+/double-wr-grok-j31.txt
+   first - already root-caused and fixed house-wide.
+2. Stale focus after a transition: confirm clear_saved_active_index()
+   is actually CALLED at the specific transition site involved.
+3. This project runs IN-PLACE like mutaclsym (same architecture,
+   confirmed via identical button.sh pattern) - no session isolation,
+   so game state persists across runs. Don't assume a fresh state.
+================================================================================
