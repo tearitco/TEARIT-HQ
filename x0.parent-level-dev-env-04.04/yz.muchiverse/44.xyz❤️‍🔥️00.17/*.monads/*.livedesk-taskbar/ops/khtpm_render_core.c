@@ -83,8 +83,20 @@ typedef struct Elem {
      * command (an unterminated quote, confirmed live: "sh: Unterminated
      * quoted string"). db-hq/chat-hai only ever WRITE this field today,
      * never read it (grep-confirmed before bumping this) - safe size
-     * increase, not a behavior change for them. */
-    char onclick[512];
+     * increase, not a behavior change for them.
+     *
+     * REAL BUG FIX 2026-08-25, same bug class recurring - bookmarks'
+     * own New+ postcmd (self path + consumed-newplus + house path + pal
+     * path, each single-quoted per the &-in-path fix, this house's own
+     * paths run 200+ bytes each with emoji dir names) measured 913
+     * bytes and got silently truncated at 512, corrupting the trailing
+     * argument and quote - New+ looked like it did nothing, no error
+     * (same class of silent failure the 64->512 bump's own header
+     * describes). 512 was already known to be an arbitrary "should be
+     * plenty" guess, not a measured bound - bumped again, this time with
+     * real headroom for this house's own long emoji-path convention
+     * rather than waiting for the next consumer to hit the ceiling. */
+    char onclick[1536];
     /* REAL, NEW 2026-08-24 (direct request: palettes must be "a matrix of
      * png render emojis ... like clock in toolbar or bookstack") - sprite=
      * attribute holds the path to a sprite DIRECTORY whose sprite.csv is

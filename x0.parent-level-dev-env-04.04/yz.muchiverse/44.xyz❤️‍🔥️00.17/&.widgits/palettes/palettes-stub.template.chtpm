@@ -1,0 +1,14 @@
+<!-- palettes-stub.template.chtpm — real TPMOS-compliant rebuild
+     (2026-08-25). Honest placeholder for a category whose real picker
+     isn't built yet - no <module> (nothing to manage, it's a static
+     doc-link). Provisioned ONCE per category by palettes_menu.sh (a
+     plain token substitution + copy, same shape bookmarks.template.chtpm
+     uses) into palettes-<key>.chtpm, then left alone. __TITLE__/__DOC__
+     are the only substituted tokens. -->
+<window class="database-window palettes">
+  <panel class="settings-block">
+    <title class="block-title" label="__TITLE__"/>
+    <text class="pal-hint" label="Picker not built yet - design is in the doc below."/>
+    <button class="bm-btn" label="Open Design Doc" onClick="open:__DOC__"/>
+  </panel>
+</window>

@@ -1,3 +1,18 @@
+FUTURE TODO, 2026-08-25 (not started, deliberately deferred - direct
+instruction "we can skip that and mark it as a later todo"): a more
+advanced chemistry layout - either SELECT premade "large compounds"
+(cars, worlds, people, animals, medicine/tools, etc) as pre-built
+tiles, OR CRAFT them via little-alchemy/Minecraft/CDDA-style
+combination (combine two items -> a result), matching this doc's own
+existing element recipe-tree seed data (`elements]new=RECIPEZ+]z2🏆.txt`
+- a real 2-parent combination chain already goes quark -> proton/neutron
+-> hydrogen -> helium -> ... -> heavier elements, unused by any renderer
+yet). When this gets built, the compliant shape is the same manager
+pattern palettes_manager.c now uses (2026-08-25 TPMOS-compliant
+rebuild, see au11-hq/TPMOS-COMPLIANCE-DEBT.md) - a real manager owns
+the combination-recipe lookup/crafting-state, not bash or renderer-side
+logic. Scope not designed yet beyond this note.
+
 PALETTES SYSTEM DESIGN
 ======================
 2026-08-24. Direct instruction: palette categories should DROP DOWN FROM

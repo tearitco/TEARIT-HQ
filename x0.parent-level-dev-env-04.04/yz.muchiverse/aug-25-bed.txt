@@ -1,0 +1,54 @@
+AUG 25 — WHERE THINGS STAND / WHAT TO DO NEXT
+
+DONE, PUSHED (commit 0dbcfcc, origin/main is up to date):
+- stats-hq: full TPMOS-compliant rebuild (real stats_hq_manager.c, sidebar+panel UI,
+  itemized + "Money Saved" aggregate view working)
+- palettes: migrated onto khtpm_entity_menu_render.c, sprite/badge/nav ported,
+  dark theme, real grid Up/Down (steps by row not by 1), click-to-place dispatch
+  fixed (was silently missing this whole time), font-cache dangling-pointer bug fixed
+- bookmarks: migrated onto khtpm_entity_menu_render.c, open:/exec:/input: dispatch
+  ported, chtpm-live-reload for New+ working, dark theme, real window size (was
+  wrongly inheriting db-hq's 900x600 default and exactly overlapping palettes — this
+  was the real cause of "keyboard doesn't work"), nav double-assignment bug fixed
+  (two passes were renumbering the same buttons, desyncing focus from the rendered
+  highlight), inline emoji-in-text rendering ported from open-hai (paths with emoji
+  dir names now render the actual emoji, not a tofu box)
+- khtpm_hq_render.c + build_db_hq.sh: DELETED (confirmed zero remaining launch sites
+  via grep first). khtpm-merge-how2.md and TPMOS-COMPLIANCE-DEBT.md updated to match.
+- New debugging-pitfall doc section added to CREATOR_AGENT.md §2.6 (state vs parser
+  lesson from tonight's bookmarks nav bug) + saved to auto-memory for future sessions.
+
+STILL OPEN / NOT STARTED:
+1. TPMOS-COMPLIANCE-DEBT.md items #2/#3 are only PARTIALLY resolved — palettes_menu.sh
+   and bm_menu.sh still `printf` raw .chtpm XML directly in bash with no real manager
+   process. Tonight's work fixed the *binary* they run on, not this. Real fix (matching
+   stats-hq's own pattern) is still open work, lower urgency since both are functional.
+2. Palettes and bookmarks currently SHARE db_hq_agent_relay.txt (relay_path() in
+   khtpm_entity_menu_render.c) — a collision risk if both are ever open+relay-tested at
+   once. Give each its own relay filename (small fix, same shape as g_is_stats_hq's own
+   branch there).
+3. Emoji-scroll/pagination feature the user asked about earlier tonight (not all 113
+   emoji tiles visible at once, wants mouse + keyboard scroll) — was deferred in favor of
+   the perf fix + bookmarks migration. Not designed yet. The OLD khtpm_hq_render.c (now
+   deleted, but still in git history at commit 93bfdd0/0dbcfcc's parent) had a real
+   working version of this (g_pal_scroll/g_pal_has_grid/g_pal_visible_rows, Page_Up/
+   Page_Down paging) — worth porting that shape rather than reinventing.
+4. GitHub Contributors graph — user reported it still showed the real name after the
+   force-push author fix. Likely just GitHub's cached stat lagging a force-push; wasn't
+   re-checked after tonight's normal (non-force) push. Worth a glance next session.
+5. Bookmarks window is fixed at 460x320 — reasonable for now but not verified against a
+   pal with many bookmark rows (only tested with 1). If someone has 10+ bookmarks the
+   window may need to grow or scroll — not yet handled.
+
+QUICK ORIENTATION FOR NEXT SESSION:
+- Read au11-hq/CREATOR_AGENT.md first (System B / khtpm_hq_render family section,
+  now includes §2.6's debugging lesson) before touching palettes/bookmarks/db-hq/
+  stats-hq again.
+- khtpm_entity_menu_render.c is now THE renderer for db-hq, stats-hq, palettes,
+  bookmarks, events-hq, chat-hai, taskbar-settings — one binary, mode flags
+  (g_is_db_hq/g_is_stats_hq/g_is_palettes/g_is_bookmarks/g_is_events_hq/g_is_chat_hai/
+  g_is_swatch_picker) branch behavior. khtpm_hq_render.c no longer exists.
+- Rebuild via: *.monads/*.livedesk-taskbar/ops/build_entity_menu.sh
+- Emergency kill-all-hq-windows: sh *.monads/*.livedesk-taskbar/ops/kill_hq_windows.sh <house_root>
+  (use this before relaunching anything — stray/ghost X11 windows caused real
+  confusion tonight until this was used to clean up)

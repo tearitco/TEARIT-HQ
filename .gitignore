@@ -54,3 +54,14 @@ y0.claude-temp/*.zip
 #.desktop/livedesk_launched_pids.txt
 #.desktop/*.state.txt
 #.desktop/*_action.txt
+
+# Manager-published state files (bookmarks_manager.c / palettes_manager.c,
+# 2026-08-25 TPMOS-compliant rebuilds) - regenerated from bookmarks.pdl /
+# the emoji pallet / chemistry CSV on every manager tick, never meaningful
+# to diff/commit, same rationale as the #.desktop/*.state.txt exclusion
+# above (this house's own real "if it's not in a file it's a lie" source
+# of truth is the .pdl/CSV, not these published projections).
+bookmarks_state.txt
+palettes-*_state.txt
+.bm_newplus.txt
+**/&.widgits/palettes/state/

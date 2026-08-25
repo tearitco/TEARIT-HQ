@@ -75,15 +75,6 @@ static Elem g_pool[MAX_ELEMS];
 static int g_n_elems = 0;
 static char g_package_dir[PATH_BUF];
 static char g_house_root[PATH_BUF];
-/* REAL, ported 2026-08-25 (Stage 3 bookmarks port) - db-hq mode never
- * had chtpm-live-reload before (only its state.txt did); bookmarks'
- * New+ regenerates the WHOLE bookmarks.chtpm on every add and expects
- * the running window to pick it up without a respawn (matching
- * khtpm_hq_render.c's own reload_if_changed()). Path + mtime stashed
- * globally so the db-hq main loop can mtime-gate a re-parse. */
-static char g_chtpm_path_g[PATH_BUF];
-static time_t g_chtpm_mtime_g = 0;
-
 /* REAL, db-hq mode only (§5d.10) - module launch, ported VERBATIM from
  * khtpm_hq_render.c (real fork()+execl(), already TPMOS-compliant - see
  * that file's own header comment, "explain to me your plan and why its
@@ -105,15 +96,29 @@ static void dbhq_handle_term_signal(int sig) {
     _exit(0);
 }
 
-static void dbhq_launch_module(const char *src) {
+static void dbhq_launch_module(const char *src, const char *extra_arg) {
     if (!src || !src[0]) return;
     char full_path[PATH_BUF];
     if (src[0] == '/') snprintf(full_path, sizeof(full_path), "%s", src);
     else snprintf(full_path, sizeof(full_path), "%s/%s", g_house_root, src);
 
+    /* REAL, NEW 2026-08-25 (bookmarks manager port) - modules now also
+     * get the package dir (chtpm's own dirname, i.e. the pal dir for a
+     * per-pal consumer like bookmarks) as argv[2]. Backward compatible:
+     * every existing manager (khtpm_hq_manager.c, stats_hq_manager.c)
+     * only reads argv[1] and ignores the extra arg.
+     * REAL, NEW 2026-08-25 (palettes manager port) - optional argv[3]
+     * from <module args="..."/> (see apply_attr()'s own "args" branch),
+     * for a manager that serves multiple category windows off one
+     * binary (palettes_manager.c) and needs to know which one. NULL/
+     * empty is the common case (bookmarks/stats-hq don't use it) -
+     * execl() just gets a shorter argv, no behavior change for them. */
     g_dbhq_module_pid = fork();
     if (g_dbhq_module_pid == 0) {
-        execl(full_path, full_path, g_house_root, (char *)NULL);
+        if (extra_arg && extra_arg[0])
+            execl(full_path, full_path, g_house_root, g_package_dir, extra_arg, (char *)NULL);
+        else
+            execl(full_path, full_path, g_house_root, g_package_dir, (char *)NULL);
         _exit(1);
     } else if (g_dbhq_module_pid < 0) {
         fprintf(stderr, "khtpm_entity_menu_render: db-hq: launch_module: fork failed for %s\n", full_path);
@@ -246,6 +251,15 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
          * real, wraith_parser_alpha.c convention. Reused e->label to
          * hold it - <module> elements are never drawn, safe reuse. */
         snprintf(e->label, sizeof(e->label), "%s", val);
+    } else if (strcmp(name, "args") == 0) {
+        /* REAL, NEW 2026-08-25 (palettes manager port) - optional extra
+         * static argv for a <module>, e.g. <module src="palettes_
+         * manager.+x" args="emojis"/> so ONE manager binary can serve
+         * multiple category windows (palettes-emojis.chtpm/palettes-
+         * elements.chtpm/...) and know which category it's publishing
+         * for. Reused e->id - same "module elements are never drawn,
+         * safe reuse" reasoning src= already uses for e->label. */
+        snprintf(e->id, sizeof(e->id), "%s", val);
     } else if (strcmp(name, "drop_action") == 0) {
         /* 2026-08-24 - see the g_drop_action block comment above.
          * Window-level attr; decoded through the SAME entity decoder
@@ -485,6 +499,46 @@ static char g_dbhq_events_state_path[PATH_BUF];
 static time_t g_dbhq_events_state_mtime = 0;
 static char g_dbhq_action_path[PATH_BUF];
 
+/* REAL, NEW 2026-08-25 (bookmarks manager port) - bookmarks' own state
+ * is name+path PAIRS, not single strings, and paths in this house run
+ * well past g_dbhq_events[][64]'s buffer - a separate, correctly-sized
+ * pair array, not a reuse of db-hq/stats-hq's own. Per-pal (unlike
+ * g_dbhq_events_state_path, which is house-wide), derived from
+ * g_package_dir at init. */
+#define BM_MAX_ROWS 64
+static char g_bm_names[BM_MAX_ROWS][256];
+static char g_bm_paths[BM_MAX_ROWS][PATH_BUF];
+static int g_bm_n_rows = 0;
+static char g_bm_state_path[PATH_BUF];
+static time_t g_bm_state_mtime = 0;
+/* the panel's 4 static children (title, hint, New+ button, Open Pal
+ * Folder button), captured once at init so dbhq_inject_bookmark_items()
+ * can rebuild panel->children[] as [title, hint, ...rows, new+, open]
+ * on every reload without losing them - see that function's own header. */
+static Elem *g_bm_static_title = NULL;
+static Elem *g_bm_static_hint = NULL;
+static Elem *g_bm_static_newplus = NULL;
+static Elem *g_bm_static_openfolder = NULL;
+
+/* REAL, NEW 2026-08-25 (palettes manager port, same shape as bookmarks'
+ * own g_bm_* block just above) - palettes_manager.c publishes
+ * `emoji<TAB>label<TAB>sprite_dir_or_empty` rows; the renderer chunks
+ * them into <row class="pal-grid-row"> blocks of PAL_COLS tiles each,
+ * same visual shape palettes_menu.sh's own emit_tiles_matrix() used.
+ * Column count/wide-class stay a renderer-side presentation constant
+ * (not published data) - genuinely a layout decision, not business
+ * logic the manager needs to own. */
+#define PAL_MAX_TILES 512
+static char g_pal_emoji[PAL_MAX_TILES][32];
+static char g_pal_label[PAL_MAX_TILES][256];
+static char g_pal_sprite[PAL_MAX_TILES][PATH_BUF];
+static int g_pal_n_tiles = 0;
+static char g_pal_state_path[PATH_BUF];
+static time_t g_pal_state_mtime = 0;
+static char g_pal_category[64];
+static Elem *g_pal_static_title = NULL;
+static Elem *g_pal_static_hint = NULL;
+
 static const char *DB_HQ_TAB_LABELS[] = {
     "Actors", "Classes", "Skills", "Items", "Weapons", "Armors",
     "Enemies", "Troops", "States", "Animations", "Tilesets",
@@ -582,6 +636,130 @@ static void dbhq_sidebar_label_for(int i, char *out, size_t outsz) {
     if (len >= outsz) len = outsz - 1;
     memcpy(out, src, len);
     out[len] = '\0';
+}
+
+/* REAL, NEW 2026-08-25 (bookmarks manager port) - mtime-gated read of
+ * bookmarks_manager.c's own published `name<TAB>path` state file, same
+ * convention as dbhq_load_common_events() above. Returns 1 if rows
+ * actually changed (caller should re-inject + redraw), 0 if unchanged. */
+static int dbhq_load_bookmark_state(void) {
+    struct stat st;
+    if (stat(g_bm_state_path, &st) != 0) return 0;
+    if (st.st_mtime == g_bm_state_mtime) return 0;
+    g_bm_state_mtime = st.st_mtime;
+
+    g_bm_n_rows = 0;
+    FILE *f = fopen(g_bm_state_path, "r");
+    if (!f) return 1;
+    char line[PATH_BUF];
+    while (g_bm_n_rows < BM_MAX_ROWS && fgets(line, sizeof(line), f)) {
+        size_t len = strlen(line);
+        while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) line[--len] = '\0';
+        if (len == 0) continue;
+        char *tab = strchr(line, '\t');
+        if (!tab) continue;
+        *tab = '\0';
+        snprintf(g_bm_names[g_bm_n_rows], sizeof(g_bm_names[0]), "%s", line);
+        snprintf(g_bm_paths[g_bm_n_rows], sizeof(g_bm_paths[0]), "%s", tab + 1);
+        g_bm_n_rows++;
+    }
+    fclose(f);
+    return 1;
+}
+
+/* REAL, NEW 2026-08-25 (bookmarks manager port) - rebuilds panel-
+ * >children[] as [title, hint, ...bookmark rows..., New+, Open Folder]
+ * from the 4 captured static elems + g_bm_names/g_bm_paths. Same
+ * elem_new()-per-row shape dbhq_inject_sidebar_items() already uses for
+ * db-hq/stats-hq's own dynamic sidebar - not a new pattern. */
+static void dbhq_inject_bookmark_items(Elem *panel) {
+    if (!panel) return;
+    panel->n_children = 0;
+    if (g_bm_static_title && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_bm_static_title;
+    if (g_bm_static_hint && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_bm_static_hint;
+    for (int i = 0; i < g_bm_n_rows && panel->n_children < MAX_CHILDREN; i++) {
+        Elem *row = elem_new("button");
+        row->parent = panel;
+        snprintf(row->classes[0], sizeof(row->classes[0]), "bm-bookmark");
+        row->n_classes = 1;
+        snprintf(row->label, sizeof(row->label), "%s  -  %s", g_bm_names[i], g_bm_paths[i]);
+        snprintf(row->onclick, sizeof(row->onclick), "open:%s", g_bm_paths[i]);
+        panel->children[panel->n_children++] = row;
+    }
+    if (g_bm_static_newplus && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_bm_static_newplus;
+    if (g_bm_static_openfolder && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_bm_static_openfolder;
+}
+
+/* REAL, NEW 2026-08-25 (palettes manager port) - mtime-gated read of
+ * palettes_manager.c's own published `emoji<TAB>label<TAB>sprite_dir`
+ * state file, same convention as dbhq_load_bookmark_state() above. */
+static int dbhq_load_palette_state(void) {
+    struct stat st;
+    if (stat(g_pal_state_path, &st) != 0) return 0;
+    if (st.st_mtime == g_pal_state_mtime) return 0;
+    g_pal_state_mtime = st.st_mtime;
+
+    g_pal_n_tiles = 0;
+    FILE *f = fopen(g_pal_state_path, "r");
+    if (!f) return 1;
+    char line[PATH_BUF];
+    while (g_pal_n_tiles < PAL_MAX_TILES && fgets(line, sizeof(line), f)) {
+        size_t len = strlen(line);
+        while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) line[--len] = '\0';
+        if (len == 0) continue;
+        char *tab1 = strchr(line, '\t');
+        if (!tab1) continue;
+        *tab1 = '\0';
+        char *tab2 = strchr(tab1 + 1, '\t');
+        if (!tab2) continue;
+        *tab2 = '\0';
+        int i = g_pal_n_tiles;
+        snprintf(g_pal_emoji[i], sizeof(g_pal_emoji[0]), "%s", line);
+        snprintf(g_pal_label[i], sizeof(g_pal_label[0]), "%s", tab1 + 1);
+        snprintf(g_pal_sprite[i], sizeof(g_pal_sprite[0]), "%s", tab2 + 1);
+        g_pal_n_tiles++;
+    }
+    fclose(f);
+    return 1;
+}
+
+/* REAL, NEW 2026-08-25 (palettes manager port) - rebuilds panel-
+ * >children[] as [title, hint, ...pal-grid-row blocks...] from the 2
+ * captured static elems + g_pal_emoji/label/sprite, chunked into
+ * PAL_COLS-wide rows - same visual shape palettes_menu.sh's own
+ * emit_tiles_matrix() used, now built as real Elems instead of printf'd
+ * XML. "elements" category gets the wider 4-col layout + pal-wide class
+ * (compound names/formulas need the room); everything else (emojis) gets
+ * the tight 10-col grid. */
+static void dbhq_inject_palette_tiles(Elem *panel) {
+    if (!panel) return;
+    int cols = (strcmp(g_pal_category, "elements") == 0) ? 4 : 10;
+    int wide = (strcmp(g_pal_category, "elements") == 0);
+
+    panel->n_children = 0;
+    if (g_pal_static_title && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_pal_static_title;
+    if (g_pal_static_hint && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_pal_static_hint;
+
+    Elem *row = NULL;
+    for (int i = 0; i < g_pal_n_tiles && panel->n_children < MAX_CHILDREN; i++) {
+        if (i % cols == 0) {
+            row = elem_new("row");
+            row->parent = panel;
+            snprintf(row->classes[0], sizeof(row->classes[0]), "pal-grid-row");
+            row->n_classes = 1;
+            panel->children[panel->n_children++] = row;
+        }
+        if (!row || row->n_children >= MAX_CHILDREN) continue;
+        Elem *tile = elem_new("button");
+        tile->parent = row;
+        snprintf(tile->classes[0], sizeof(tile->classes[0]), "pal-tile");
+        tile->n_classes = 1;
+        if (wide) { snprintf(tile->classes[1], sizeof(tile->classes[1]), "pal-wide"); tile->n_classes = 2; }
+        snprintf(tile->label, sizeof(tile->label), "%s", g_pal_label[i]);
+        if (g_pal_sprite[i][0]) snprintf(tile->sprite, sizeof(tile->sprite), "%s", g_pal_sprite[i]);
+        snprintf(tile->onclick, sizeof(tile->onclick), "exec:'%s/&.widgits/palettes/palettes_menu.sh' place '%s'", g_house_root, g_pal_emoji[i]);
+        row->children[row->n_children++] = tile;
+    }
 }
 
 static void dbhq_inject_sidebar_items(Elem *sidebar) {
@@ -1118,7 +1296,7 @@ static void dbhq_handle_key(KeySym ks, char ch) {
         if (ks == XK_Return || ks == XK_KP_Enter) {
             const char *spec = g_input_elem->onclick + 6;
             char target[PATH_BUF] = "";
-            char post[1024] = "";
+            char post[sizeof(g_input_elem->onclick)] = ""; /* real fix 2026-08-25 - onclick itself was just bumped 512->1536 after a real truncation bug; keep this in lockstep by deriving from it, not a second guessed constant */
             const char *bar = strchr(spec, '|');
             if (bar) {
                 size_t tl = (size_t)(bar - spec);
@@ -4660,8 +4838,6 @@ int main(int argc, char **argv) {
 
     g_window = parse_chtpm(chtpm_path);
     if (!g_window) { fprintf(stderr, "khtpm_entity_menu_render: failed to parse %s\n", chtpm_path); return 1; }
-    snprintf(g_chtpm_path_g, sizeof(g_chtpm_path_g), "%s", chtpm_path);
-    { struct stat cst; if (stat(chtpm_path, &cst) == 0) g_chtpm_mtime_g = cst.st_mtime; }
 
     /* REAL Stage 5 §5d.3 step 6 (2026-08-16, khtpm-merge-how2.md §5d) -
      * real, data-driven mode detection - `<window class="swatch-
@@ -4781,20 +4957,69 @@ int main(int argc, char **argv) {
         memset(g_dbhq_close_elem, 0, sizeof(*g_dbhq_close_elem));
         snprintf(g_dbhq_close_elem->tag, sizeof(g_dbhq_close_elem->tag), "closebtn");
 
-        dbhq_load_common_events();
-        if (g_dbhq_n_events > 0) g_dbhq_selected_event = 0;
-
         Elem *module_elem = find_by_tag(g_window, "module");
-        if (module_elem && module_elem->label[0]) dbhq_launch_module(module_elem->label);
+        if (module_elem && module_elem->label[0]) dbhq_launch_module(module_elem->label, module_elem->id);
         atexit(dbhq_cleanup_module);
 
-        Elem *sidebar = find_by_tag(g_window, "sidebar");
-        dbhq_inject_sidebar_items(sidebar);
-        if (g_is_stats_hq) {
-            stats_populate_panel(g_dbhq_selected_event);
+        /* REAL, NEW 2026-08-25 (bookmarks manager port) - bookmarks is
+         * per-pal (g_package_dir, the pal dir - not house-wide like db-hq/
+         * stats-hq's own g_house_root-relative state paths above) and
+         * has no sidebar/tabbar - it gets its own init branch instead of
+         * being forced through the sidebar-shaped path below. */
+        if (g_is_bookmarks) {
+            snprintf(g_bm_state_path, sizeof(g_bm_state_path), "%s/bookmarks_state.txt", g_package_dir);
+            Elem *panel = find_by_tag(g_window, "panel");
+            if (panel) {
+                g_bm_static_title = find_by_tag(panel, "title");
+                g_bm_static_hint = find_by_id(panel, "bm-hint");
+                g_bm_static_newplus = find_by_id(panel, "bm-newplus");
+                g_bm_static_openfolder = find_by_id(panel, "bm-openfolder");
+                dbhq_load_bookmark_state();
+                dbhq_inject_bookmark_items(panel);
+            }
+        } else if (g_is_palettes && module_elem && module_elem->label[0]) {
+            /* REAL, NEW 2026-08-25 (palettes manager port) - only real
+             * picker categories (emojis/elements) declare a <module> tag;
+             * stub categories (rmmv/cdda/...) are fully static (title +
+             * hint + one doc-link button) and must NOT go through this
+             * injection path - it only knows about title/hint, so it
+             * would silently wipe the stub's own doc-link button. Category
+             * is derived from the chtpm's own basename (palettes-<key>.
+             * chtpm), same "safe derivation direction" convention
+             * bm_menu.sh's own provision_bookmarks() comment documents -
+             * matches module_elem->id (<module args="<key>"/>) exactly,
+             * since palettes_menu.sh's launch_cat() names the file after
+             * the same key it passes as args=. */
+            const char *base = strrchr(chtpm_path, '/');
+            base = base ? base + 1 : chtpm_path;
+            char catbuf[64];
+            snprintf(catbuf, sizeof(catbuf), "%s", base);
+            char *dot = strrchr(catbuf, '.');
+            if (dot) *dot = '\0';
+            const char *prefix = "palettes-";
+            const char *cat = (strncmp(catbuf, prefix, strlen(prefix)) == 0) ? catbuf + strlen(prefix) : catbuf;
+            snprintf(g_pal_category, sizeof(g_pal_category), "%s", cat);
+            snprintf(g_pal_state_path, sizeof(g_pal_state_path), "%s/palettes-%s_state.txt", g_package_dir, g_pal_category);
+
+            Elem *panel = find_by_tag(g_window, "panel");
+            if (panel) {
+                g_pal_static_title = find_by_tag(panel, "title");
+                g_pal_static_hint = find_by_tag(panel, "text");
+                dbhq_load_palette_state();
+                dbhq_inject_palette_tiles(panel);
+            }
         } else {
-            Elem *panel_text = find_by_tag(g_window, "text");
-            if (panel_text && g_dbhq_selected_event >= 0) snprintf(panel_text->label, sizeof(panel_text->label), "%s", g_dbhq_events[g_dbhq_selected_event]);
+            dbhq_load_common_events();
+            if (g_dbhq_n_events > 0) g_dbhq_selected_event = 0;
+
+            Elem *sidebar = find_by_tag(g_window, "sidebar");
+            dbhq_inject_sidebar_items(sidebar);
+            if (g_is_stats_hq) {
+                stats_populate_panel(g_dbhq_selected_event);
+            } else {
+                Elem *panel_text = find_by_tag(g_window, "text");
+                if (panel_text && g_dbhq_selected_event >= 0) snprintf(panel_text->label, sizeof(panel_text->label), "%s", g_dbhq_events[g_dbhq_selected_event]);
+            }
         }
     }
 
@@ -4991,36 +5216,39 @@ int main(int argc, char **argv) {
         while (!g_quit) {
             if (poll_agent_relay() > 0 && !g_quit) redraw();
             if (g_quit) break;
-            /* REAL, NEW 2026-08-25 (Stage 3 bookmarks port) - db-hq mode
-             * never had chtpm-live-reload (only its state.txt did).
-             * bookmarks' New+ regenerates the WHOLE bookmarks.chtpm on
-             * every add and expects the running window to pick it up
-             * without a respawn, matching khtpm_hq_render.c's own
-             * reload_if_changed(). Scoped to g_is_bookmarks (its only
-             * real consumer) rather than every db-hq mode, since db-hq/
-             * stats-hq/palettes' own .chtpm never change after launch. */
-            if (g_is_bookmarks) {
-                struct stat cst;
-                if (stat(g_chtpm_path_g, &cst) == 0 && cst.st_mtime != g_chtpm_mtime_g) {
-                    /* Elems come from a static arena pool (g_pool[],
-                     * elem_new()), not individual malloc()s - there is
-                     * nothing to free() per-node. The old tree is simply
-                     * abandoned and the pool cursor reset before
-                     * re-parsing, exactly like a fresh launch (g_window
-                     * itself, and everything found via find_by_tag() on
-                     * it, gets re-derived below - nothing else holds a
-                     * live pointer into the old tree across a reload). */
-                    g_n_elems = 0;
-                    Elem *nw = parse_chtpm(g_chtpm_path_g);
-                    if (nw) {
-                        g_chtpm_mtime_g = cst.st_mtime;
-                        g_window = nw;
-                        if (g_input_elem) input_disarm();
-                        dbhq_redraw_content();
-                    }
-                }
+            /* REAL, NEW 2026-08-25 (bookmarks manager port, replaces the
+             * chtpm-live-reload workaround this same session had briefly
+             * added - see au11-hq/TPMOS-COMPLIANCE-DEBT.md's standing
+             * rule about not patching around a missing manager). A real
+             * bookmarks_manager.c now owns bookmarks.pdl -> state-file
+             * publishing; this only reads the published file and injects
+             * real <button> rows, same shape dbhq_load_common_events()/
+             * dbhq_inject_sidebar_items() already use for db-hq/stats-hq. */
+            if (g_is_bookmarks && dbhq_load_bookmark_state()) {
+                Elem *panel = find_by_tag(g_window, "panel");
+                dbhq_inject_bookmark_items(panel);
+                dbhq_redraw_content();
             }
-            if (dbhq_load_common_events()) {
+            /* REAL, NEW 2026-08-25 (palettes manager port) - same shape,
+             * only real picker categories set g_pal_state_path (empty
+             * string for a stub category, stat() just fails, no-op). */
+            if (g_is_palettes && g_pal_state_path[0] && dbhq_load_palette_state()) {
+                Elem *panel = find_by_tag(g_window, "panel");
+                dbhq_inject_palette_tiles(panel);
+                dbhq_redraw_content();
+            }
+            /* REAL FIX 2026-08-25 (found live during palettes manager
+             * port, code-review not yet reproduced) - this block used to
+             * run unconditionally for EVERY db-hq-family mode, including
+             * palettes/bookmarks. Both use tag="text" for their own
+             * static hint (same tag db-hq's own panel_text lookup below
+             * searches for), so g_dbhq_n_events>0 (true house-wide, from
+             * real db-hq's own common_events state file) would silently
+             * overwrite the palette/bookmark hint's label with a db-hq
+             * event string on the very first periodic tick. Scoped out -
+             * palettes/bookmarks own their own hint text now via
+             * g_pal_static_hint/g_bm_static_hint, never touched here. */
+            if (!g_is_palettes && !g_is_bookmarks && dbhq_load_common_events()) {
                 Elem *sidebar = find_by_tag(g_window, "sidebar");
                 dbhq_inject_sidebar_items(sidebar);
                 /* REAL FIX 2026-08-25 (direct live report: "missing the

@@ -1,10 +1,9 @@
-TAB | 885457 | 16 | cursword | /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword
 KEY | theme_bg | #1a1a1a
 KEY | theme_fg | #eab308
 KEY | digit_buf | 
 KEY | tab_focus_idx | 0
 KEY | nav_armed | 0
-KEY | n_tabs | 1
+KEY | n_tabs | 0
 KEY | n_shortcuts | 0
 KEY | hq_open | 0
 KEY | hq_n_menu | 0

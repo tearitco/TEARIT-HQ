@@ -5,6 +5,21 @@ finding.** Written 2026-08-25, direct instruction: "this cant propagate forward 
 codebase by naive agents." This doc exists specifically so a future agent (naive or not)
 reads this BEFORE copying any of the patterns below as a "working example."
 
+**STANDING RULE, added 2026-08-25 after a real, confirmed process failure — read this
+before touching ANY app listed as debt below:** if this doc is open in the same session
+where you're about to migrate/patch/fix one of the affected apps (palettes, bookmarks,
+or any future find), and the compliant manager+`<module>` pattern has ALREADY been built
+for a sibling app in that same session (stats-hq's `stats_hq_manager.c` is the reference
+example) — **stop and ask whether to build the real manager now instead of an interim
+patch, before writing any workaround code.** Don't silently do the narrower literal
+thing just because that's what was asked. Concretely, this bit tonight: bookmarks got
+migrated onto the merged renderer WITHOUT a manager, which required inventing a
+chtpm-live-reload mechanism in the renderer's own main loop just to let New+ show up
+live — a real ~25-line piece of plumbing that becomes dead code the moment a real
+manager (writing a state file the renderer polls) gets built, which was already the
+proven, working pattern one file over. The fix wasn't hard to see; the doc already said
+it. The miss was building around the gap instead of naming it and asking.
+
 ---
 
 ## Why this is severe, not cosmetic
@@ -98,33 +113,45 @@ the same `<module src="..."/>` mechanism db-hq's own dashboard uses, with real s
 item click switching (no more dead tabs). `dashboard.chtpm` is now static
 sidebar+panel markup, not bash-regenerated per launch.
 
-**#2/#3 (palettes/bookmarks) are PARTIALLY addressed — don't mistake this for resolved.**
-Both were migrated off the deprecated standalone `khtpm_hq_render.c` onto the merged
-`khtpm_entity_menu_render.c` binary (that file has since been deleted outright — see
-`khtpm-merge-how2.md`). That migration fixed the *decommission* concern (no more stale
-duplicate binary to maintain) and, for bookmarks, added the `open:`/`exec:`/`input:`
-generic dispatch + chtpm-live-reload it needed. **It did NOT touch the actual violation
-this doc is about**: `palettes_menu.sh`/`bm_menu.sh` still `printf` raw `.chtpm` XML
-directly in bash, with no manager process and no testable Op. That remediation (item 2/3
-below) is still real, open work — the renderer-binary migration was a separate, narrower
-fix that happened to land first because a live "keep the old window working" report
-forced the priority order.
+**#2/#3 (palettes/bookmarks) are now RESOLVED too, 2026-08-25 (same session, later
+pass).** Real managers built, matching stats-hq's own proven shape exactly:
+- `bookmarks_manager.c` — reads `<pal>/bookmarks.pdl`, publishes `<pal>/bookmarks_state.txt`
+  (`name<TAB>path` rows). `bookmarks.chtpm`/`.css` are now static, provisioned once per pal
+  from `bookmarks.template.chtpm`/`.css` (a plain token substitution + copy, not a
+  per-launch regeneration). The renderer's own `dbhq_inject_bookmark_items()` builds real
+  `<button>` rows from the published state at runtime. The chtpm-live-reload workaround
+  mentioned above is deleted — it's exactly the dead code this doc's own standing rule
+  predicted.
+- `palettes_manager.c` — one binary serves both real categories (`emojis`/`elements`),
+  told which one via `<module args="<category>"/>` (a small, generic renderer extension:
+  `<module>` tags can now carry static extra argv, not palettes-specific). Reads the emoji
+  pallet list or chemistry CSV (real quote-aware CSV parsing, not a naive `IFS=,` split -
+  the old bash version silently mis-split quoted fields with embedded commas), pre-generates
+  sprite tiles, publishes `palettes-<category>_state.txt`. The renderer's own
+  `dbhq_inject_palette_tiles()` builds real `<row>`/`<button>` grids at runtime. Stub
+  categories (rmmv/cdda/paint/...) stay fully static (title+hint+doc-link button, no
+  manager needed — nothing to manage).
+- Both `palettes_menu.sh`/`bm_menu.sh` are now thin launchers only: file ops (place a tile,
+  add a bookmark row, provision a static template once) — zero XML generation.
+- Real bugs found and fixed along the way (not architecture, but worth recording since they
+  were hiding behind the old bash-compose path): a `sed` substitution silently corrupted on
+  this house's own literal `&` in `&.widgits` (unescaped `&` in a sed replacement string);
+  the SAME `&`-in-path issue broke a `sh -c` postcmd (unquoted `&` parsed as background-job
+  operator) - fixed by single-quoting substituted paths, matching `do_add()`'s pre-existing
+  "no single quotes in bookmark name/path" rule; `Elem.onclick` (512 bytes) silently
+  truncated a real 913-byte postcmd (bumped to 1536, second time this exact buffer has hit
+  this — see its own header comment history); a pre-existing double nav-assignment bug in
+  `dbhq_assign_nav_indices()` (bookmarks' buttons got numbered twice, desyncing focus from
+  the rendered highlight); `.pal-wide`'s `min-width`/`width:auto` were never supported by
+  `css_layout_pass()` (only real `width:` is) — every wide element silently got `w=0`,
+  invisible background, and crowded overlapping labels.
 
-## Recommended remediation priority (stats-hq done; palettes/bookmarks still open)
+## Broader audit — still genuinely open
 
-1. **stats-hq first** — it's the only one that's actually broken (dead tabs), not just
-   non-standard. Needs a real compliant redesign: either a genuine manager binary
-   (heaviest, most correct) or, if stats-hq's own scope is judged too small to warrant a
-   full manager process, at minimum a real compiled Op (§12-testable) replacing the
-   inline bash regex-scrape, PLUS real tab-click wiring (either give stats-hq its own
-   `TAB_LABELS`-equivalent live array, or generalize the tab-match logic to be
-   data-driven instead of a fixed C array — check which approach the house's own
-   "no hardcoded UIs" standing rule 7 / `!.HOUSE_STDS.md` §K would actually prefer before
-   picking one).
-2. **palettes and bookmarks** — lower urgency (currently functional), but same
-   remediation shape once stats-hq's pattern is proven, so the fix isn't invented twice.
-3. **The broader audit** (see "Not yet audited" above) should happen before or alongside
-   #2, since it may surface more instances worth fixing in the same pass.
+The "Not yet audited" section above (every other `open_*.sh`/`*_menu.sh` launcher under
+`*.monads/`, `&.hq-apps/`, `&.widgits/`) has not been done. stats-hq/palettes/bookmarks
+were found via a targeted grep for the `printf`-XML/`__TOKEN__`-splice signature, not an
+exhaustive sweep. Worth doing before assuming no other instances exist.
 
 ## Cross-references
 - `house-compaction.md` — the separate (also real, also HIGH priority) receipt/frame-

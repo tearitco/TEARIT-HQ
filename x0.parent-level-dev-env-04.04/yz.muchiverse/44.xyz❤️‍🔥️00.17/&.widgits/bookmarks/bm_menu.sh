@@ -1,68 +1,63 @@
 #!/bin/sh
 # bm_menu.sh - Bookmarks manager for cursword (and any pal).
-# 2026-08-24, direct user goals:
+#
+# 2026-08-25, real TPMOS-compliant rebuild (au11-hq/TPMOS-COMPLIANCE-
+# DEBT.md's own standing rule, added the same day: don't patch around a
+# missing manager with renderer-side workarounds - build the real thing,
+# same shape as its own proven sibling). This script used to `printf`
+# raw .chtpm XML directly (compose_bookmarks()) and regenerate the whole
+# window file on every launch AND every New+ add - the exact anti-
+# pattern that doc exists to stop. That's gone. The real split now:
+#   - THIS script: file ops only (bookmarks.pdl read/write, one-time
+#     per-pal provisioning of the static chtpm/css). Never touches XML.
+#   - bookmarks_manager.c (real, compiled, independently-testable binary,
+#     `<module src="..."/>` in the chtpm, launched by the renderer):
+#     owns bookmarks.pdl -> bookmarks_state.txt publishing.
+#   - khtpm_entity_menu_render.c: reads bookmarks_state.txt, injects
+#     real <button> rows at runtime (dbhq_inject_bookmark_items()).
+#
+# Direct user goals this still serves (2026-08-24, unchanged):
 #   1. A Bookmarks button whose entries live as real .pdl rows (same
 #      pipe-delimited convention as every other registry in this house),
-#      seeded with #.ref/menu (event.commands.remaining.txt's home).
+#      seeded with #.ref/menu.
 #   2. A "New+" affordance where a path can be pasted and APPENDED to
-#      that .pdl.
-#   3. Entries are NAV-able and CLICKABLE rows in a db-hq-style window,
-#      and New+ takes its path from a NATIVE in-window input field
-#      (<cli-io> style: Enter arms, type, Enter commits - direct user
-#      instruction "new+ should allow input from <cli-io>"; zenity is
-#      GONE). Renderer side = khtpm_hq_render.c's generic input:
-#      mechanism (same session): commit appends the line to
-#      <pal>/.bm_newplus.txt then fires `consumed-newplus` detached;
-#      this script reads/truncates that file and upserts.
-#
-# USER PREFERENCE CORRECTION (2026-08-24, after a live look at both):
-# the window must stay the ORIGINAL db-hq-style khtpm_hq_render window
-# ("the old window - it was fine"), NOT the small entity-menu context
-# popup this briefly migrated to. Keyboard nav comes from
-# kptm_hq_render.c's own GENERIC pass added same day: every element
-# with an onClick= becomes a numbered [>]N. row (Up/Down, digit-jump,
-# Enter) - same list UX as open-hai's chat-session rows. Drag-drop of
-# directories is deliberately OUT OF SCOPE here per user choice; the
-# renderer-side XDND drop_action= capability lives on in the MERGED
-# entity-menu binary (!.HOUSE_STDS.md K.3-3) for any future consumer.
-#
-# Layout flow mirrors chat_button.sh / open_stats_hq.sh's own proven
-# shape: meta.pdl METHOD row -> shared script under &.widgits/<tool>/ ->
-# pal-local state dirs -> house-standard renderer binary.
+#      that .pdl, via a NATIVE in-window input field (<cli-io> style:
+#      Enter arms, type, Enter commits - zenity is GONE).
+#   3. Entries are NAV-able and CLICKABLE rows in a db-hq-style window.
+# Drag-drop of directories is deliberately OUT OF SCOPE (user choice).
 #
 # Canonical store: <pal>/bookmarks.pdl
 #   SECTION      | KEY                | VALUE
 #   ----------------------------------------
 #   BOOKMARK     | events-commands    | <abs path>
-# Window:       <pal>/bookmarks.chtpm regenerated fresh from the .pdl on
-#               every launch AND every New+ add - khtpm_hq_render.c's own
-#               mtime-gated live reload (same-day generic mechanism)
-#               swaps the new list into the running window, no respawn.
-# NO symlink mirror: an earlier revision mirrored rows as
-#               <pal>/bookmarks/<safe_name> symlinks - REMOVED per direct
-#               user rule "symlinks are disallowed for windows". Rows open
-#               their REAL target dirs directly, exactly like the entity
-#               menus' own Dir button (METHOD | Dir | xdg-open + $0).
+# Window: <pal>/bookmarks.chtpm + bookmarks.css, provisioned ONCE per pal
+#         (copied+token-substituted from bookmarks.template.chtpm/.css in
+#         this dir) - never regenerated after that. Real bookmark ROWS
+#         are injected at runtime by the renderer from bookmarks_manager.c's
+#         own published state file, not baked into the chtpm.
+# NO symlink mirror - rows open their REAL target dirs directly via
+#         open:<path>, same as the entity menus' own Dir button.
 #
 # Usage:
 #   bm_menu.sh <house_root> <pal_dir>            launch/refresh the window
 #   bm_menu.sh add <pal> <name> <path>           upsert one BOOKMARK row
 #   bm_menu.sh list <pal>                        print rows (name<TAB>path)
-#   bm_menu.sh compose <pal> [<house>]           regenerate chtpm
 #   bm_menu.sh consumed-newplus <house_root> <pal_dir>
 #                                                fired DETACHED by the
 #                                                window's own input field
-#                                                commit (renderer generic
-#                                                input: mechanism): reads
-#                                                + truncates the typed
-#                                                line, then recompose;
-#                                                live reload shows it
+#                                                commit: reads + truncates
+#                                                the typed line, upserts
+#                                                into bookmarks.pdl. The
+#                                                manager (already running,
+#                                                launched by the window's
+#                                                own <module> tag) notices
+#                                                the .pdl's mtime change on
+#                                                its own next poll tick and
+#                                                republishes - no recompose,
+#                                                no relaunch needed.
 #
-# No GUI toolkit dependency anymore (zenity GONE per direct instruction
-# "new+ should allow input from <cli-io>" - the window itself is the
-# entry field); the launcher keeps GDK_BACKEND=x11 like every other X11
-# window spawn on this Wayland+Xwayland desktop.
-# Everything else is pure file ops, which is what tests exercise.
+# No GUI toolkit dependency (zenity GONE); GDK_BACKEND=x11 like every
+# other X11 window spawn on this Wayland+Xwayland desktop.
 
 set -eu
 
@@ -81,10 +76,6 @@ pdl_rows() {  # pdl_rows <pal> -> "name<TAB>path" lines, in file order
         path=$(printf '%s' "$path" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
         [ -n "$name" ] && [ -n "$path" ] && printf '%s\t%s\n' "$name" "$path"
     done
-}
-
-safe_name() {  # filesystem-safe name (kept for potential future non-link use)
-    printf '%s' "$1" | tr ' /:' '___' | tr -cd 'A-Za-z0-9._+-'
 }
 
 do_add() {  # do_add <pal> <name> <path> - upsert (replace existing name)
@@ -116,111 +107,48 @@ do_add() {  # do_add <pal> <name> <path> - upsert (replace existing name)
     mv "$_tmp" "$_pal/bookmarks.pdl"
 }
 
-# compose_bookmarks <pal> [<house_root>]
-# Regenerates bookmarks.chtpm + bookmarks.css from the .pdl - the layout
-# is always a fresh compiled artifact of the store, never hand-maintained
-# (same visual-compiler rule event-ez follows for event.pal). Vocabulary
-# = db-hq/stats-hq's own real HQML subset (database-window class); item
-# and button elements carry onClick open:/exec:, which the renderer now
-# numbers into its nav list automatically.
-compose_bookmarks() {
-    _pal="$1"; _house="${2:-}"
+# provision_bookmarks <pal> <house> - copies the static chtpm/css
+# templates into the pal ONLY if they don't already exist there (a
+# one-time per-pal scaffold, not a per-launch regeneration - the real
+# distinction TPMOS-COMPLIANCE-DEBT.md's own anti-pattern write-up draws).
+# The only thing that ever varies between pals is baked in via a plain
+# token substitution at provision time, not re-derived every launch.
+provision_bookmarks() {
+    _pal="$1"; _house="$2"
     _self_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
     _self="$_self_dir/$(basename "$0")"
-    # House root defaults to climbing from THIS script's own fixed
-    # location (<house>/&.widgits/bookmarks/) - the safe derivation
-    # direction per !.HOUSE_STDS.md #20; a caller-supplied house wins.
-    [ -n "$_house" ] || _house=$(CDPATH= cd -- "$_self_dir/../../.." 2>/dev/null && pwd) || _house=""
-    {
-        printf '<window class="database-window bookmarks">\n'
-        printf '  <panel class="settings-block">\n'
-        printf '    <title class="block-title" label="cursword bookmarks"/>\n'
-        printf '    <text class="bm-hint" label="Click or Enter a bookmark to open it."/>\n'
-        pdl_rows "$_pal" | while IFS="$TAB" read -r n p; do
-            # fo-menu-sys.md pitfall #26 ("Button vs Text"): interactive
-            # list entries are <button> elements - the renderer's own
-            # natively laid-out/numbered/clickable vocabulary - NOT a
-            # custom tag leaning on extra machinery. The manager (this
-            # script) projects the PDL into that dialect. bm-bookmark =
-            # the user-requested look: BLACK text on YELLOW highlight,
-            # instantly readable as "this is a bookmark".
-            printf '    <button class="bm-bookmark" label="%s  -  %s" onClick="open:%s"/>\n' "$n" "$p" "$p"
-        done
-        printf '    <button class="bm-btn" label="+ New+ (Enter, type a path, Enter)" onClick="input:%s/.bm_newplus.txt|%s consumed-newplus %s %s"/>\n' \
-            "$_pal" "$_self" "$_house" "$_pal"
-        printf '    <button class="bm-btn" label="Open Pal Folder" onClick="open:%s"/>\n' "$_pal"
-        printf '  </panel>\n'
-        printf '</window>\n'
-    } > "$_pal/bookmarks.chtpm"
-
-    # CSS cribbed from stats-hq/dashboard.css's load-bearing subset -
-    # no new vocabulary invented (see that file's own header note).
-    cat > "$_pal/bookmarks.css" << 'EOF'
-/* bookmarks.css - generated by bm_menu.sh; reuses db-hq/stats-hq's own
- * load-bearing subset exactly. REAL FIX 2026-08-25 (Stage 3 bookmarks
- * port off the deprecated standalone khtpm_hq_render.c): now on the
- * merged dark-themed binary, same theme correction palettes.css got in
- * Stage 2 (real db-hq dark palette, not the old standalone's light
- * theme). #ffd700 bookmark-row gold kept as the deliberate accent. */
-/* REAL FIX 2026-08-25 (Stage 3 bookmarks port) - db-hq mode's own
- * dbhq_layout_pass() defaults an unsized window to 900x600 (scaled),
- * a size meant for db-hq's real Common Events content / palettes' own
- * 113-tile grid. Bookmarks never set its own width/height, so it
- * silently inherited that same huge default - which also happens to
- * exactly match palettes' own real launch position (both read
- * window_x/window_y from the same #.desktop/hq_ui.pdl), so the two
- * windows stacked pixel-for-pixel on top of each other. Real fix: give
- * bookmarks its own real, content-sized window instead of the
- * one-size-fits-all db-hq default. */
-window {
-  background-color: #141414;
-  font-family: Ubuntu;
-  font-size: 10px;
-  width: 460px;
-  height: 320px;
-}
-.settings-block {
-  background-color: #181818;
-  border: 1px solid #2a2a2a;
-  border-width: 1;
-}
-.block-title {
-  background-color: #1c1c1c;
-  color: #cccccc;
-  font-weight: bold;
-  font-size: 9px;
-  position: absolute;
-  top: -8px;
-  left: 10px;
-}
-.bm-hint {
-  color: #888888;
-  font-size: 9px;
-}
-.bm-btn {
-  color: #cccccc;
-  font-weight: bold;
-}
-.bm-bookmark {
-  background-color: #d9b64a;
-  color: #000000;
-  font-weight: bold;
-}
-EOF
+    if [ ! -f "$_pal/bookmarks.chtpm" ]; then
+        # REAL FIX 2026-08-25 (found live: New+ silently did nothing) -
+        # this house's own paths contain a literal '&' (&.widgits) and
+        # '#' (#.desktop et al) - both are sed-special in a replacement
+        # string ('&' re-inserts the matched text, '#' would end the
+        # s### expression early if used unescaped as a delimiter). Every
+        # substituted value needs backslash+& escaped before use.
+        _pal_esc=$(printf '%s' "$_pal" | sed 's/[&\]/\\&/g')
+        _house_esc=$(printf '%s' "$_house" | sed 's/[&\]/\\&/g')
+        _self_esc=$(printf '%s' "$_self" | sed 's/[&\]/\\&/g')
+        sed \
+            -e "s#__PAL__#$_pal_esc#g" \
+            -e "s#__HOUSE__#$_house_esc#g" \
+            -e "s#__SELF__#$_self_esc#g" \
+            "$_self_dir/bookmarks.template.chtpm" > "$_pal/bookmarks.chtpm"
+    fi
+    if [ ! -f "$_pal/bookmarks.css" ]; then
+        cp "$_self_dir/bookmarks.template.css" "$_pal/bookmarks.css"
+    fi
 }
 
 case "${1:-}" in
     add)     do_add "$2" "$3" "$4"; exit $? ;;
     list)    pdl_rows "$2"; exit 0 ;;
-    compose) compose_bookmarks "$2" "${3:-}"; exit 0 ;;
     consumed-newplus)
         # bm_menu.sh consumed-newplus <house> <pal>  (fired DETACHED by
         # the renderer after an input: commit appended the typed line to
-        # .bm_newplus.txt - see the generic input: mechanism in
-        # khtpm_hq_render.c). Read + truncate, upsert, recompose; live
-        # reload shows it. Name auto-derives from the path's basename
-        # (same habit as every other row source); bad paths are
-        # rejected + logged by do_add as usual.
+        # .bm_newplus.txt). Read + truncate, upsert into bookmarks.pdl -
+        # bookmarks_manager.c (already running for this pal's window)
+        # notices the .pdl's mtime change on its own next poll tick and
+        # republishes bookmarks_state.txt; the renderer picks that up on
+        # its own next tick. No recompose, no relaunch, real live update.
         HOUSE="$2"; PAL="$3"
         F="$PAL/.bm_newplus.txt"
         [ -f "$F" ] || exit 0
@@ -233,7 +161,6 @@ case "${1:-}" in
         BMNAME=$(basename "$(realpath -m -- "$NEWPATH")")
         if do_add "$PAL" "$BMNAME" "$NEWPATH"; then
             log "$PAL" "bookmark added via New+ input: $BMNAME -> $(realpath -m -- "$NEWPATH")"
-            compose_bookmarks "$PAL" "$HOUSE"
         else
             log "$PAL" "New+ input REJECTED (bad path or name): $NEWPATH"
         fi
@@ -244,7 +171,7 @@ esac
 HOUSE="$1"; PAL="$2"
 export GDK_BACKEND=x11
 
-compose_bookmarks "$PAL" "$HOUSE"
+provision_bookmarks "$PAL" "$HOUSE"
 
 # Single instance per pal: kill any previous renderer of THIS chtpm, then
 # relaunch (same escalation-free TERM-first habit chat_button.sh uses;
@@ -266,6 +193,10 @@ if [ ! -x "$BIN" ]; then
     echo "bm_menu: build failed, missing $BIN" >&2
     exit 1
 fi
+MGRBIN="$HOUSE/*.monads/*.livedesk-taskbar/ops/+x/bookmarks_manager.+x"
+if [ ! -x "$MGRBIN" ]; then
+    (cd "$HOUSE/*.monads/*.livedesk-taskbar/ops" && sh build_bookmarks_manager.sh) || true
+fi
 
-log "$PAL" "bookmarks window launched (db-hq style)"
+log "$PAL" "bookmarks window launched (real manager, TPMOS-compliant)"
 exec "$BIN" "$HOUSE" "$SELF_CHTPM"

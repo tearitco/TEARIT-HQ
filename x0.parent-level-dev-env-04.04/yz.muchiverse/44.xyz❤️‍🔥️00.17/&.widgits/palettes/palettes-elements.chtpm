@@ -1,81 +1,9 @@
-<window class="database-window">
+<!-- palettes-elements.chtpm — real TPMOS-compliant rebuild (2026-08-25),
+     same shape as palettes-emojis.chtpm - see that file's own header. -->
+<window class="database-window palettes">
+  <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="elements" />
   <panel class="settings-block">
     <title class="block-title" label="palettes: Chemicals+Compounds"/>
     <text class="pal-hint" label="Chemicals+Compounds - click to place."/>
-    <row class="pal-grid-row">
-      <button class="pal-tile pal-wide" label="🧪 Acetic Acid (CH₃COOH)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🧪"/>
-      <button class="pal-tile pal-wide" label="🍷 Ethanol (CH₃CH₂OH)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🍷"/>
-      <button class="pal-tile pal-wide" label="🧈 Acetone (CH₃COCH₃)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🧈"/>
-      <button class="pal-tile pal-wide" label="🐟 Methylamine (CH₃NH₂)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🐟"/>
-    </row>
-    <row class="pal-grid-row">
-      <button class="pal-tile pal-wide" label="🛢️ Benzene (C₆H₆)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🛢️"/>
-      <button class="pal-tile pal-wide" label="🍋 Citric Acid (C₆H₈O₇)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🍋"/>
-      <button class="pal-tile pal-wide" label="🧂 Sodium Chloride (NaCl)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🧂"/>
-      <button class="pal-tile pal-wide" label="⚡ Sulfuric Acid (H₂SO₄)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place ⚡"/>
-    </row>
-    <row class="pal-grid-row">
-      <button class="pal-tile pal-wide" label="🧫 Glucose (C₆H₁₂O₆)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🧫"/>
-      <button class="pal-tile pal-wide" label="💊 Dopamine (C₈H₁₁NO₂)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 💊"/>
-      <button class="pal-tile pal-wide" label="💧 Water (H₂O)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 💧"/>
-      <button class="pal-tile pal-wide" label="💨 Ammonia (NH₃)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 💨"/>
-    </row>
-    <row class="pal-grid-row">
-      <button class="pal-tile pal-wide" label="🔥 Methane (CH₄)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🔥"/>
-      <button class="pal-tile pal-wide" label="🍎 Fructose (C₆H₁₂O₆)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🍎"/>
-      <button class="pal-tile pal-wide" label="☕ Caffeine (C₈H₁₀N₄O₂)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place ☕"/>
-      <button class="pal-tile pal-wide" label="⚗️ Hydrochloric Acid (HCl)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place ⚗️"/>
-    </row>
-    <row class="pal-grid-row">
-      <button class="pal-tile pal-wide" label="🧼 Sodium Hydroxide (NaOH)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🧼"/>
-      <button class="pal-tile pal-wide" label="🧴 Glycerol (C₃H₈O₃)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🧴"/>
-      <button class="pal-tile pal-wide" label="🧊 Formaldehyde (CH₂O)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🧊"/>
-      <button class="pal-tile pal-wide" label="🍬 Sucrose (C₁₂H₂₂O₁₁)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🍬"/>
-    </row>
-    <row class="pal-grid-row">
-      <button class="pal-tile pal-wide" label="🥛 Lactic Acid (C₃H₆O₃)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🥛"/>
-      <button class="pal-tile pal-wide" label="💧 Urea (CH₄N₂O)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 💧"/>
-      <button class="pal-tile pal-wide" label="🌲 Toluene (C₇H₈)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🌲"/>
-      <button class="pal-tile pal-wide" label="🧂 Potassium Chloride (KCl)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🧂"/>
-    </row>
-    <row class="pal-grid-row">
-      <button class="pal-tile pal-wide" label="⚗️ Nitric Acid (HNO₃)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place ⚗️"/>
-      <button class="pal-tile pal-wide" label="🔥 Propane (C₃H₈)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🔥"/>
-      <button class="pal-tile pal-wide" label="☠️ Methanol (CH₃OH)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place ☠️"/>
-      <button class="pal-tile pal-wide" label="🧼 Phenol (C₆H₅OH)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🧼"/>
-    </row>
-    <row class="pal-grid-row">
-      <button class="pal-tile pal-wide" label="⚡ ATP (C₁₀H₁₆N₅O₁₃P₃)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place ⚡"/>
-      <button class="pal-tile pal-wide" label="🐜 Formic Acid (HCOOH)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🐜"/>
-      <button class="pal-tile pal-wide" label="🔥 Butane (C₄H₁₀)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🔥"/>
-      <button class="pal-tile pal-wide" label="😊 Serotonin (C₁₀H₁₂N₂O)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 😊"/>
-    </row>
-    <row class="pal-grid-row">
-      <button class="pal-tile pal-wide" label="🧬 Glycine (C₂H₅NO₂)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🧬"/>
-      <button class="pal-tile pal-wide" label="💊 Ibuprofen (C₁₃H₁₈O₂)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 💊"/>
-      <button class="pal-tile pal-wide" label="🐚 Calcium Carbonate (CaCO₃)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🐚"/>
-      <button class="pal-tile pal-wide" label="💥 Perchloric Acid (HClO₄)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 💥"/>
-    </row>
-    <row class="pal-grid-row">
-      <button class="pal-tile pal-wide" label="🥛 Lactose (C₁₂H₂₂O₁₁)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🥛"/>
-      <button class="pal-tile pal-wide" label="💣 TNT (C₇H₅N₃O₆)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 💣"/>
-      <button class="pal-tile pal-wide" label="🎨 Aniline (C₆H₅NH₂)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🎨"/>
-      <button class="pal-tile pal-wide" label="🍊 Vitamin C (C₆H₈O₆)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🍊"/>
-    </row>
-    <row class="pal-grid-row">
-      <button class="pal-tile pal-wide" label="⚕️ Isopropyl Alcohol (C₃H₈O)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place ⚕️"/>
-      <button class="pal-tile pal-wide" label="🍦 Vanillin (C₈H₈O₃)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🍦"/>
-      <button class="pal-tile pal-wide" label="🐝 Histamine (C₅H₉N₃)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🐝"/>
-      <button class="pal-tile pal-wide" label="🧪 Pyridine (C₅H₅N)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🧪"/>
-    </row>
-    <row class="pal-grid-row">
-      <button class="pal-tile pal-wide" label="🌋 Sodium Bicarbonate (NaHCO₃)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🌋"/>
-      <button class="pal-tile pal-wide" label="🥤 Phosphoric Acid (H₃PO₄)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🥤"/>
-      <button class="pal-tile pal-wide" label="⛽ Octane (C₈H₁₈)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place ⛽"/>
-      <button class="pal-tile pal-wide" label="🧬 Ribose (C₅H₁₀O₅)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 🧬"/>
-    </row>
-    <row class="pal-grid-row">
-      <button class="pal-tile pal-wide" label="💊 Paracetamol (C₈H₉NO₂)" onClick="exec:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh place 💊"/>
-    </row>
   </panel>
 </window>
