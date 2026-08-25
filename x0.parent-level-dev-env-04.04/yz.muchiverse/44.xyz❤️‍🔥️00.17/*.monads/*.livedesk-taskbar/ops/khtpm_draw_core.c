@@ -488,7 +488,13 @@ static void draw_elem(Elem *e, int hover_id_hash) {
          * GOLD tile's own bg and (wrongly) pick black for a badge that's
          * actually sitting on a dark chip. */
         XftColor numcol = xft_color(focused ? "#ff8c00" : (e->sprite[0] ? "#cccccc" : badge_contrast_color(&e->style)));
-        XftDrawStringUtf8(xftdraw_buf, &numcol, nav_badge_font, label_x, numy, (const FcChar8 *)nav_badge, (int)strlen(nav_badge));
+        /* REAL, NEW 2026-08-25 (live report: a narrow, right-edge-pinned
+         * element's badge ran off the visible window - see
+         * badge_align_left's own declaration comment in khtpm_render_
+         * core.c). Ends the badge AT the element's own left edge instead
+         * of starting it at label_x and growing rightward off-screen. */
+        int draw_x = e->badge_align_left ? (e->x - (int)nav_badge_ext.width - scaled(4)) : label_x;
+        XftDrawStringUtf8(xftdraw_buf, &numcol, nav_badge_font, draw_x, numy, (const FcChar8 *)nav_badge, (int)strlen(nav_badge));
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &numcol);
         /* REAL FIX 2026-08-25 (live report, corrupted badge rendering) -
          * nav_badge_font is now the shared cache added earlier this pass

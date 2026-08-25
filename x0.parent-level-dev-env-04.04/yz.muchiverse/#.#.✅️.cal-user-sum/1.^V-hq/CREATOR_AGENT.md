@@ -229,6 +229,34 @@ bug two call sites away from either symptom.
 
 ---
 
+## 2.7 Standing rule: no UI element without mirror keyboard accessibility
+
+Direct instruction, 2026-08-25: "there should be no ui element without mirror kbd
+accesibility." Every real interaction a mouse can do in this house's khtpm-family
+windows must have a keyboard-only equivalent that actually reaches it — not just
+"technically possible via some key," but genuinely reachable without ever needing the
+mouse. This is a real, live-caught gap class, not a hypothetical:
+
+Palettes' own grid scroll (`g_pal_scroll`, ported 2026-08-25 from the now-deleted
+`khtpm_hq_render.c`) initially only exposed scrolling via mouse wheel and `Page_Up`/
+`Page_Down` — a keyboard-only user pressing plain arrow keys at the top/bottom edge of
+the visible rows just hit a dead stop, because off-screen rows are deliberately excluded
+from nav numbering (see §2.6's own w>0/h>0 check). Page_Up/Down being keyboard-technically-
+possible was NOT good enough — it's a separate, less discoverable key than the arrow keys
+someone's already using to navigate, so the real fix was making the SAME arrow keys
+auto-scroll one row into view at the edge, landing on the same column, exactly like any
+accessible listbox/grid widget would.
+
+**How to apply:** whenever a window gains ANY mouse-only affordance (scroll, drag, a
+button with no natural nav_index, a hover-only reveal, etc.), ask directly "what does a
+user with only a keyboard do here" before considering the feature done - don't wait for
+a live report to find the gap, per the direct instruction this rule itself is written
+from. Known open instance as of this writing: bookmarks has no scroll at all yet (fixed-
+size window, no scroll for 10+ rows) - when it gets one, it should get this same
+edge-triggered arrow-key auto-scroll from the start, not as a follow-up fix.
+
+---
+
 ## 3. Verifying without eyes (agent workflow)
 
 - **Headless frame dump**: `khtpm_hq_render.+x <house> <file.chtpm>

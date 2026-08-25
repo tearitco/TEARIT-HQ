@@ -112,6 +112,16 @@ typedef struct Elem {
                      * redraw; 0 = not navigable. Ported from
                      * wraith_parser_alpha.c's own digit_accum/do_jump/
                      * display_num convention. */
+    /* REAL, NEW 2026-08-25 (live report: palettes' own scroll-arrow
+     * badges ran off the right edge of the screen - they're tiny
+     * (track-width) elements pinned at the window's own right edge, so
+     * draw_elem()'s normal inline-right badge position had nowhere to
+     * go. A real, generic capability (any narrow/edge-pinned element
+     * could hit the same problem), not a palettes-only hack: when set,
+     * draw_elem() ends the badge text AT the element's own left edge
+     * instead of starting it at the label position and growing right.
+     * Default 0 = every existing consumer's behavior is unchanged. */
+    int badge_align_left;
     struct Elem *children[MAX_CHILDREN];
     int n_children;
     struct Elem *parent;

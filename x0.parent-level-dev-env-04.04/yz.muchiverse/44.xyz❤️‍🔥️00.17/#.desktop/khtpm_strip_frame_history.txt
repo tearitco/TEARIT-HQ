@@ -46,3 +46,15 @@ header.focus=10[type=button label=palettes onClick=ACTIVATE:6] header.active=-1 
 header.focus=2[type=button label=$.restart onClick=HQITEM:0] header.active=0 bottom.focus=0 unified_nav_focus=0 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=138
 header.focus=0[type=button label=HQ onClick=ACTIVATE:1] header.active=-1 bottom.focus=1 unified_nav_focus=0 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
 header.focus=0[type=button label=HQ onClick=ACTIVATE:1] header.active=-1 bottom.focus=-1 unified_nav_focus=0 has_real_x11_focus=0 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
+header.focus=38[type=button label=db-ez onClick=HQITEM:0] header.active=36 bottom.focus=0 unified_nav_focus=8 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=61
+header.focus=67[type=button label=my pallet onClick=HQITEM:0] header.active=65 bottom.focus=0 unified_nav_focus=-1 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=149
+header.focus=10[type=button label=palettes onClick=ACTIVATE:6] header.active=-1 bottom.focus=0 unified_nav_focus=-1 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
+header.focus=39[type=button label=play onClick=HQITEM:0] header.active=37 bottom.focus=0 unified_nav_focus=7 has_real_x11_focus=0 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=72
+header.focus=13[type=button label=player onClick=ACTIVATE:8] header.active=-1 bottom.focus=1 unified_nav_focus=7 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
+header.focus=13[type=button label=player onClick=ACTIVATE:8] header.active=-1 bottom.focus=-1 unified_nav_focus=7 has_real_x11_focus=0 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
+header.focus=13[type=button label=player onClick=ACTIVATE:8] header.active=-1 bottom.focus=-1 unified_nav_focus=7 has_real_x11_focus=0 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
+header.focus=13[type=button label=player onClick=ACTIVATE:8] header.active=-1 bottom.focus=-1 unified_nav_focus=7 has_real_x11_focus=0 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
+header.focus=67[type=button label=my pallet onClick=HQITEM:0] header.active=65 bottom.focus=0 unified_nav_focus=5 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=149
+header.focus=10[type=button label=palettes onClick=ACTIVATE:6] header.active=-1 bottom.focus=0 unified_nav_focus=5 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
+header.focus=29[type=button label=desk_01 onClick=HQITEM:0] header.active=27 bottom.focus=0 unified_nav_focus=3 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=105
+header.focus=6[type=button label=${desks_label} onClick=ACTIVATE:4] header.active=-1 bottom.focus=0 unified_nav_focus=3 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28

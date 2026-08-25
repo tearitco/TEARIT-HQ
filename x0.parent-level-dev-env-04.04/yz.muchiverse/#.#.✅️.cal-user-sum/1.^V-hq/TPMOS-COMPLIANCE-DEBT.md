@@ -146,12 +146,28 @@ pass).** Real managers built, matching stats-hq's own proven shape exactly:
   `css_layout_pass()` (only real `width:` is) — every wide element silently got `w=0`,
   invisible background, and crowded overlapping labels.
 
-## Broader audit — still genuinely open
+## Broader audit — DONE, 2026-08-25 (later pass). Zero additional instances found.
 
-The "Not yet audited" section above (every other `open_*.sh`/`*_menu.sh` launcher under
-`*.monads/`, `&.hq-apps/`, `&.widgits/`) has not been done. stats-hq/palettes/bookmarks
-were found via a targeted grep for the `printf`-XML/`__TOKEN__`-splice signature, not an
-exhaustive sweep. Worth doing before assuming no other instances exist.
+Full sweep of every `.sh` file under the house root for the anti-pattern's real signature
+(not just the earlier targeted grep): `printf`/`echo` of a `<window`/`<button`/`<panel`/
+`<item`/`<tab`/`<row`/`<text`/`<title` tag, any heredoc (`<< EOF`) whose body contains one
+of those tags, and any script that writes (`>`/`>>`) to a `*.chtpm` path at all regardless
+of composition style. Confirmed clean:
+- The printf/echo-tag grep: zero matches anywhere (stats-hq/palettes/bookmarks were the
+  only three, both now fixed).
+- The heredoc sweep found ~20 files with a `.chtpm` string near a heredoc, but every one
+  checked was either an unrelated state-file write (`cat > pieces/system/ez_state.txt`) or
+  a comment/log line mentioning a `.chtpm` path, never actual markup composition.
+- The `> *.chtpm` write-sweep found only `bm_menu.sh`/`palettes_menu.sh`'s own new
+  one-time template-provisioning lines (real, intentional, not per-launch regeneration)
+  plus two unrelated false-positive matches (`k3_flow.sh`, a mutaclysm test scenario) that
+  don't actually write `.chtpm` content.
+
+Conclusion: the printf-XML anti-pattern this doc exists to flag was fully contained to the
+three apps already fixed. Other window-generating systems in this house (piececraft,
+mutaclysm, tile-picker, event-ez, the `045.muchi-pal-agent` family, etc.) use their own
+real compiled parsers/engines, not bash-composed `.chtpm` — genuinely different
+architecture, not the same debt under a different name.
 
 ## Cross-references
 - `house-compaction.md` — the separate (also real, also HIGH priority) receipt/frame-
