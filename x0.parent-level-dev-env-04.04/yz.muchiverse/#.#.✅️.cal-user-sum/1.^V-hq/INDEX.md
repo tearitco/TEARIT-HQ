@@ -76,6 +76,10 @@ Stop here if you just need to know "what's going on."
    and (B) hq-style `.chtpm`+`.css` windows via khtpm_hq_render (css filename derived from
    chtpm name — mismatch silently unstyles; apply_css_deep for nested elements; emoji tiles =
    sprite.csv pipeline, never font glyphs), plus the headless frame-dump verification workflow.
+   **2026-08-25 addition, §2.5**: the real nav-index assignment protocol (content 1..N first,
+   chrome/close control ALWAYS last — direct 2026-08-12 instruction, receipt-verified live,
+   not assumed) and the `g_close_elem`-is-a-separate-global gotcha that made it invisible to
+   the receipt tooling until fixed the same day.
 5b2. **`taskbar-tpmos-parallel-refactor.md` + `taskbar-history-txt-migration-investigation.md` —
    READ BEFORE TOUCHING `khtpm_strip_parser.c`'s REAL X11 INPUT/DISPATCH CODE** (2026-08-18,
    cutover completed 2026-08-19): the taskbar now has a real terminal ASCII mirror (HQ menu's "cli"

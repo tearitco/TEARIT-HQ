@@ -1,10 +1,4 @@
-CELL | idx=1 region=bottom | ch=[>] 16. self fg=default bg=default focused=1
-CELL | idx=2 region=bottom | ch=[ ] 17. m8_redhorned fg=default bg=default focused=0
-CELL | idx=3 region=bottom | ch=[ ] 18. m1_ninjadragon fg=default bg=default focused=0
-CELL | idx=4 region=bottom | ch=[ ] 19. asa fg=default bg=default focused=0
-CELL | idx=5 region=bottom | ch=[ ] 20. ava fg=default bg=default focused=0
-CELL | idx=6 region=bottom | ch=[ ] 21. book-stack fg=default bg=default focused=0
-CELL | idx=7 region=bottom | ch=[ ] 22. cursword fg=default bg=default focused=0
+CELL | idx=1 region=bottom | ch=[>] 16. cursword fg=default bg=default focused=1
 CELL | idx=0 region=header | ch=[>] 1. HQ fg=default bg=default focused=1
 CELL | idx=1 region=header | ch=[ ] 2. jb fg=default bg=default focused=0
 CELL | idx=2 region=header | ch=[ ] 3. file:pre-design fg=default bg=default focused=0
@@ -19,4 +13,4 @@ CELL | idx=10 region=header | ch=[ ] 11. toys fg=default bg=default focused=0
 CELL | idx=11 region=header | ch=[ ] 12. store fg=default bg=default focused=0
 CELL | idx=12 region=header | ch=[ ] 13. network fg=default bg=default focused=0
 CELL | idx=13 region=header | ch=[ ] 14. h-ai fg=default bg=default focused=0
-CELL | idx=14 region=header | ch=[ ] 15. 2026年08月25日 周二 02:48 fg=default bg=default focused=0
+CELL | idx=14 region=header | ch=[ ] 15. 2026年08月25日 周二 04:16 fg=default bg=default focused=0

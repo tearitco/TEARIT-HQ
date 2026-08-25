@@ -75,6 +75,14 @@ static Elem g_pool[MAX_ELEMS];
 static int g_n_elems = 0;
 static char g_package_dir[PATH_BUF];
 static char g_house_root[PATH_BUF];
+/* REAL, ported 2026-08-25 (Stage 3 bookmarks port) - db-hq mode never
+ * had chtpm-live-reload before (only its state.txt did); bookmarks'
+ * New+ regenerates the WHOLE bookmarks.chtpm on every add and expects
+ * the running window to pick it up without a respawn (matching
+ * khtpm_hq_render.c's own reload_if_changed()). Path + mtime stashed
+ * globally so the db-hq main loop can mtime-gate a re-parse. */
+static char g_chtpm_path_g[PATH_BUF];
+static time_t g_chtpm_mtime_g = 0;
 
 /* REAL, db-hq mode only (§5d.10) - module launch, ported VERBATIM from
  * khtpm_hq_render.c (real fork()+execl(), already TPMOS-compliant - see
@@ -208,11 +216,30 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
         }
     } else if (strcmp(name, "label") == 0) {
         snprintf(e->label, sizeof(e->label), "%s", val);
-    } else if (strcmp(name, "action") == 0) {
+    } else if (strcmp(name, "action") == 0 || strcmp(name, "onClick") == 0 || strcmp(name, "onclick") == 0) {
+        /* REAL FIX 2026-08-25 (Stage 2 palettes migration, direct live
+         * report: "no emojis just blank glyph... no navs"). This parser
+         * only ever recognized the attribute NAME "action" - db-hq's own
+         * dashboard.chtpm happens to use that name, so it always worked
+         * there. Palettes' own .chtpm (composed by palettes_menu.sh) uses
+         * the house's OTHER real onClick= convention (matching
+         * khtpm_hq_render.c's own attr_ci_eq(name,"onclick") and every
+         * tb-native dropdown row) - that attribute was being silently
+         * ignored entirely, so e->onclick never got set, which explains
+         * BOTH missing symptoms at once: no sprite (draw_elem() only
+         * blits when e->sprite[0], covered separately below, but even
+         * with that fixed nothing was numbered) AND no nav (assign_
+         * palettes_nav()'s own `e->onclick[0]` check was always false). */
         char decoded[sizeof(e->onclick)];
         snprintf(decoded, sizeof(decoded), "%s", val);
         decode_entities(decoded);
         snprintf(e->onclick, sizeof(e->onclick), "%s", decoded);
+    } else if (strcmp(name, "sprite") == 0) {
+        /* REAL FIX 2026-08-25 (Stage 2 palettes migration) - ported from
+         * khtpm_hq_render.c's own apply_attr() (attr_ci_eq(name,
+         * "sprite")) - was entirely missing here, so e->sprite never got
+         * set regardless of draw_elem()'s own sprite-blit support. */
+        snprintf(e->sprite, sizeof(e->sprite), "%s", val);
     } else if (strcmp(name, "src") == 0) {
         /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode only, ported
          * from khtpm_hq_render.c's own apply_attr(): <module src="..."/>
@@ -370,6 +397,32 @@ static int g_is_db_hq = 0;
  * click-switching silently broken. Flagged for the user before writing
  * any more of this - not resumed yet. */
 static int g_is_stats_hq = 0;
+/* REAL, NEW 2026-08-25 (Stage 2 palettes migration off the deprecated
+ * standalone khtpm_hq_render.c - au11-hq/TPMOS-COMPLIANCE-DEBT.md /
+ * khtpm-merge-how2.md). Palettes' own .chtpm is fully static content
+ * (composed once by palettes_menu.sh, no live state/manager needed,
+ * unlike db-hq/stats-hq) - rides g_is_db_hq=1 too for the shared
+ * chrome/dispatch machinery, but g_is_palettes gates its own generic,
+ * UNCONDITIONAL nav pass (see dbhq_assign_nav_indices()'s own
+ * g_is_palettes branch) - deliberately NOT the nav_index==0-guarded
+ * assign_generic_onclick_nav() pattern khtpm_hq_render.c used, since
+ * that pattern needed clear_nav_indices() to avoid a real, live bug
+ * found+fixed there this same session (stale nav_index staying non-zero
+ * after frame 1, silently skipping every element on frame 2+). Palettes
+ * has no tabbar/sidebar/panel-button structure to avoid double-counting
+ * against, so unconditional reassignment is both simpler and immune to
+ * that whole bug class by construction. */
+static int g_is_palettes = 0;
+/* REAL, NEW 2026-08-25 (Stage 3 bookmarks migration off khtpm_hq_render.c,
+ * same debt entry as palettes above) - bookmarks is also a single
+ * static panel of onClick-carrying <button> rows, no tabbar/sidebar,
+ * so it needs the exact same layout-gate/sidebar_w/apply_css_deep/
+ * generic-nav exceptions g_is_palettes already added - see every
+ * `g_is_palettes` site below, now OR'd with this flag rather than
+ * duplicated. Kept as its own flag (not folded into g_is_palettes)
+ * since bookmarks also needs the chtpm-live-reload + armed-input
+ * mechanism palettes has no use for. */
+static int g_is_bookmarks = 0;
 static double g_dbhq_font_scale = 1.0;
 static int scaled(int base_px) {
     if (g_is_db_hq) return (int)(base_px * g_dbhq_font_scale + 0.5);
@@ -647,6 +700,25 @@ static int dbhq_measure_text_px(const CssStyle *st, const char *text) {
 
 /* Real db-hq layout pass, ported verbatim (already Stage-3-complete -
  * calls the shared css_layout_pass() 3x: tabbar/sidebar/panel). */
+/* REAL FIX 2026-08-25 (Stage 2 palettes migration, direct live report:
+ * "no longer showing emojis or navs") - css_layout_pass() (shared,
+ * khtpm_render_core.c) is recursive but does NOT itself apply CSS to
+ * children - it only uses whatever e->style each Elem already has,
+ * meaning every Elem in the tree needs dbhq_apply_css() run on it
+ * BEFORE layout, not just direct children of whatever loop happens to
+ * touch them. dbhq_layout_pass()'s own panel loop only ever CSS'd
+ * panel's DIRECT children (rows), never grandchildren (palette tile
+ * buttons nested inside each row) - same real bug class already found
+ * and fixed once in khtpm_hq_render.c as "apply_css_deep()" (nested
+ * elements got zero style before), never ported to this shared/merged
+ * binary until now. Scoped to g_is_palettes to avoid changing db-hq's
+ * own already-working flat title/text/button behavior. */
+static void dbhq_apply_css_deep(Elem *e) {
+    if (!e) return;
+    dbhq_apply_css(e, 0);
+    for (int i = 0; i < e->n_children; i++) dbhq_apply_css_deep(e->children[i]);
+}
+
 static void dbhq_layout_pass(Elem *window) {
     dbhq_apply_css(window, 0);
     window->x = 0; window->y = 0;
@@ -691,9 +763,22 @@ static void dbhq_layout_pass(Elem *window) {
 
     int content_y = g_dbhq_chrome_h + tabbar_h;
     int content_h = content_total_h - tabbar_h;
-    int sidebar_w = scaled(210);
+    /* REAL FIX 2026-08-25 (Stage 2 palettes migration) - palettes has no
+     * <sidebar> at all (find_by_tag returns NULL below), but this
+     * default was applied unconditionally, wasting 210px of panel width
+     * that no sidebar was actually using. */
+    int sidebar_w = (g_is_palettes || g_is_bookmarks) ? 0 : scaled(210);
 
-    if (g_dbhq_current_tab != DB_HQ_COMMON_EVENTS_TAB) return;
+    /* REAL FIX 2026-08-25 (Stage 2 palettes migration, direct live
+     * report: "no longer showing emojis or navs") - this gate assumed
+     * every g_is_db_hq consumer has a real tabbar/tab-state concept.
+     * Palettes has no tabbar at all (g_dbhq_current_tab stays at its
+     * default, never equals DB_HQ_COMMON_EVENTS_TAB), so this early
+     * return skipped ALL panel/content layout below - every element
+     * stayed at its zero-initialized x/y/w/h, which is also why
+     * assign_palettes_nav()'s own `e->w > 0 && e->h > 0` check numbered
+     * nothing. */
+    if (!(g_is_palettes || g_is_bookmarks) && g_dbhq_current_tab != DB_HQ_COMMON_EVENTS_TAB) return;
 
     if (sidebar) {
         dbhq_apply_css(sidebar, 0);
@@ -729,10 +814,39 @@ static void dbhq_layout_pass(Elem *window) {
                 c->h = scaled(14);
                 continue;
             }
+            /* REAL FIX 2026-08-25 (Stage 2 palettes migration) - this
+             * unconditional 22px override was stomping palette rows'
+             * real CSS-driven height (.pal-grid-row's own 56px, needed
+             * for 48px sprite tiles) right after dbhq_apply_css() just
+             * computed it correctly two lines above. db-hq's own flat
+             * text/button panel children still want this default - only
+             * palettes skips it, since its rows size themselves from
+             * CSS. Also runs the deep CSS-apply here (not once for the
+             * whole panel up front) so it lands after this same loop's
+             * own per-row apply, not stomped by anything after. */
+            if (g_is_palettes) {
+                dbhq_apply_css_deep(c);
+                continue;
+            }
             c->style.has_height = 1; c->style.height = scaled(22);
         }
         css_layout_pass(panel, panel->x, panel->y, panel->w, panel->h);
     }
+}
+
+/* REAL, NEW 2026-08-25 (Stage 2 palettes migration) - any element
+ * carrying its own onClick= becomes a numbered row, tree-walk order.
+ * Unconditional (no nav_index==0 guard) - see g_is_palettes's own
+ * declaration comment for why that's the deliberate, safer choice here
+ * (no earlier pass in this mode to avoid double-counting against). */
+static void assign_palettes_nav(Elem *e) {
+    if (!e || g_n_nav >= MAX_ELEMS) return;
+    if (e->onclick[0] && e != g_dbhq_close_elem && e->w > 0 && e->h > 0) {
+        e->nav_index = ++g_n_nav;
+        g_nav[g_n_nav - 1] = e;
+    }
+    for (int i = 0; i < e->n_children && g_n_nav < MAX_ELEMS; i++)
+        assign_palettes_nav(e->children[i]);
 }
 
 static void dbhq_assign_nav_indices(Elem *window) {
@@ -745,7 +859,20 @@ static void dbhq_assign_nav_indices(Elem *window) {
             g_nav[g_n_nav - 1] = tab;
         }
     }
-    if (g_dbhq_current_tab == DB_HQ_COMMON_EVENTS_TAB) {
+    /* REAL FIX 2026-08-25 (live report: "it never puts a default '>' in
+     * bookmarks in 4 or any" + arrows not moving anything visibly) -
+     * g_dbhq_current_tab defaults to DB_HQ_COMMON_EVENTS_TAB for EVERY
+     * db-hq window, bookmarks included (nothing ever sets it otherwise
+     * for a tabbar-less window). This block's own panel loop was
+     * numbering bookmarks' <button> rows 1,2,3 - then the generic
+     * assign_palettes_nav() pass below ran unconditionally on the SAME
+     * tree and re-numbered those same buttons a second time (4,5,6,
+     * confirmed live via a debug dump: real content sat at nav_index
+     * 4-6 while g_focus_nav defaulted to/jumped to 1-3, so NOTHING ever
+     * matched - the ring/badge never had a valid target). Two passes
+     * fighting over one tree. Scoped out here exactly like
+     * dbhq_layout_pass()'s own tab-gate already excludes palettes. */
+    if (!(g_is_palettes || g_is_bookmarks) && g_dbhq_current_tab == DB_HQ_COMMON_EVENTS_TAB) {
         Elem *sidebar = find_by_tag(window, "sidebar");
         if (sidebar) {
             for (int i = 0; i < sidebar->n_children && g_n_nav < MAX_ELEMS; i++) {
@@ -763,6 +890,23 @@ static void dbhq_assign_nav_indices(Elem *window) {
                 g_nav[g_n_nav - 1] = c;
             }
         }
+    }
+    /* REAL, NEW 2026-08-25 (Stage 2 palettes migration) - generic,
+     * UNCONDITIONAL nav pass for palettes' own grid-of-tiles content
+     * (no tabbar/sidebar/panel-button structure above to conflict
+     * with). See g_is_palettes's own declaration comment for why this
+     * is deliberately unconditional, not the nav_index==0-guarded
+     * pattern khtpm_hq_render.c used (that pattern needs
+     * clear_nav_indices() every pass to stay correct - a real bug
+     * found+fixed there this session when that call was missing;
+     * unconditional reassignment sidesteps the whole bug class here). */
+    /* REAL 2026-08-25 (Stage 3 bookmarks port) - bookmarks' own flat
+     * button-per-row panel is the exact same "no tabbar/sidebar
+     * structure, every onclick-carrying element numbered" shape
+     * palettes already uses this generic pass for - reused, not
+     * duplicated. */
+    if (g_is_palettes || g_is_bookmarks) {
+        assign_palettes_nav(g_window);
     }
     if (g_n_nav < MAX_ELEMS) {
         g_dbhq_close_elem->nav_index = ++g_n_nav;
@@ -858,9 +1002,65 @@ static void dbhq_open_in_editor(const char *name) {
     fclose(f);
 }
 
+/* REAL, ported verbatim 2026-08-25 (Stage 3 bookmarks port) from
+ * khtpm_hq_render.c's own hq_run_detached()/g_input_elem mechanism -
+ * bookmarks' own onClick="open:<path>" row-open and
+ * onClick="input:<file>|<postcmd>" New+ field both depend on this;
+ * neither existed anywhere in this binary before. Kept generic (not
+ * db-hq-specific) since any future database-window consumer gets it
+ * for free, same reasoning khtpm_hq_render.c's own header used. */
+static void hq_run_detached(int is_open, const char *arg) {
+    pid_t mid = fork();
+    if (mid < 0) return;
+    if (mid == 0) {
+        pid_t gc = fork();
+        if (gc < 0) _exit(127);
+        if (gc == 0) {
+            setsid();
+            if (is_open) {
+                setenv("GDK_BACKEND", "x11", 1);
+                execlp("xdg-open", "xdg-open", arg, (char *)NULL);
+            } else {
+                execl("/bin/sh", "sh", "-c", arg, (char *)NULL);
+            }
+            _exit(127);
+        }
+        _exit(0);
+    }
+    waitpid(mid, NULL, 0);
+}
+
+static Elem *g_input_elem = NULL;
+static char g_input_buf[256];
+
+static void input_disarm(void) {
+    g_input_elem = NULL;
+    g_input_buf[0] = '\0';
+}
+
+
 static void dbhq_activate_elem(Elem *hit) {
     if (!hit) return;
     if (strcmp(hit->tag, "closebtn") == 0) { g_quit = 1; return; }
+    /* REAL, ported 2026-08-25 (Stage 3 bookmarks port) - generic
+     * data-driven onClick dispatch, checked BEFORE the domain-specific
+     * tag branches below (same order khtpm_hq_render.c's own
+     * activate_elem() used: an element with its own onclick handles
+     * itself, domain branches only run for elements WITHOUT one). */
+    if (hit->onclick[0]) {
+        if (strncmp(hit->onclick, "input:", 6) == 0) {
+            g_input_elem = hit;
+            g_input_buf[0] = '\0';
+            dbhq_redraw_content();
+            return;
+        }
+        if (strncmp(hit->onclick, "open:", 5) == 0)
+            hq_run_detached(1, hit->onclick + 5);
+        else if (strncmp(hit->onclick, "exec:", 5) == 0)
+            hq_run_detached(0, hit->onclick + 5);
+        dbhq_redraw_content();
+        return;
+    }
     if (strcmp(hit->tag, "tab") == 0) {
         for (int i = 0; i < DB_HQ_N_TABS; i++) if (strcmp(hit->label, DB_HQ_TAB_LABELS[i]) == 0) { g_dbhq_current_tab = i; break; }
         dbhq_redraw_content();
@@ -909,6 +1109,54 @@ static void dbhq_handle_click(int px, int py) {
 }
 
 static void dbhq_handle_key(KeySym ks, char ch) {
+    /* REAL, ported 2026-08-25 (Stage 3 bookmarks port) - armed input
+     * field owns every key first, same order/behavior as
+     * khtpm_hq_render.c's own handle_key(). First (only) consumer:
+     * bookmarks' New+ path entry. */
+    if (g_input_elem) {
+        if (ks == XK_Escape) { input_disarm(); dbhq_redraw_content(); return; }
+        if (ks == XK_Return || ks == XK_KP_Enter) {
+            const char *spec = g_input_elem->onclick + 6;
+            char target[PATH_BUF] = "";
+            char post[1024] = "";
+            const char *bar = strchr(spec, '|');
+            if (bar) {
+                size_t tl = (size_t)(bar - spec);
+                if (tl >= sizeof(target)) tl = sizeof(target) - 1;
+                memcpy(target, spec, tl);
+                snprintf(post, sizeof(post), "%s", bar + 1);
+            } else {
+                snprintf(target, sizeof(target), "%s", spec);
+            }
+            if (target[0]) {
+                FILE *f = fopen(target, "a");
+                if (f) { fprintf(f, "%s\n", g_input_buf); fclose(f); }
+            }
+            input_disarm();
+            g_dbhq_digit_accum = 0;
+            if (post[0]) hq_run_detached(0, post);
+            dbhq_redraw_content();
+            return;
+        }
+        if (ks == XK_BackSpace) {
+            size_t L = strlen(g_input_buf);
+            if (L > 0) {
+                L--;
+                while (L > 0 && (g_input_buf[L] & 0xC0) == 0x80) L--;
+                g_input_buf[L] = '\0';
+            }
+            dbhq_redraw_content();
+            return;
+        }
+        if (ch >= 32 && ch <= 126 && strlen(g_input_buf) < sizeof(g_input_buf) - 2) {
+            size_t L = strlen(g_input_buf);
+            g_input_buf[L] = ch;
+            g_input_buf[L + 1] = '\0';
+            dbhq_redraw_content();
+            return;
+        }
+        return;
+    }
     if (ks == XK_Return || ks == XK_KP_Enter) {
         if (g_dbhq_digit_accum > 0 && g_dbhq_digit_accum <= g_n_nav) g_focus_nav = g_dbhq_digit_accum;
         g_dbhq_digit_accum = 0;
@@ -932,6 +1180,31 @@ static void dbhq_handle_key(KeySym ks, char ch) {
         } else {
             g_dbhq_digit_accum = 0;
         }
+        return;
+    }
+    /* REAL FIX 2026-08-25 (live report: "i want emoji up down arrows to
+     * move down entire row, instead of sideways to skip to next row") -
+     * Up/Down used to be aliased straight onto Left/Right (+-1 linear
+     * index), so on a 10-wide grid, Up/Down behaved identically to
+     * Left/Right and only ever felt like it "skipped to next row" once
+     * it crossed a row boundary. Real fix, palettes only: Up/Down step
+     * by the grid's own column count (detected at runtime from how many
+     * leading g_nav[] entries share the first tile's y - no hardcoded
+     * column count to keep in sync with palettes_menu.sh's own
+     * emit_tiles_matrix call), landing on the tile directly above/below.
+     * Left/Right keep the plain +-1 linear step within a row. db-hq's
+     * own sidebar/panel (not a grid) keeps the original Up/Down==Left/
+     * Right behavior unchanged. */
+    if (g_is_palettes && g_n_nav > 0 && (ks == XK_Up || ks == XK_Down)) {
+        int cols = 1;
+        int y0 = g_nav[0]->y;
+        for (int i = 1; i < g_n_nav; i++) {
+            if (g_nav[i]->y == y0) cols++; else break;
+        }
+        int step = (ks == XK_Up) ? -cols : cols;
+        int nv = g_focus_nav + step;
+        if (nv >= 1 && nv <= g_n_nav) g_focus_nav = nv;
+        g_dbhq_digit_accum = 0;
         return;
     }
     if (ks == XK_Up || ks == XK_Left) {
@@ -4182,6 +4455,11 @@ static void handle_key(KeySym ks, char ch) {
      * first, 'p' only afterward). */
     if (g_is_events_hq) { evhq_handle_key(ks, ch); return; }
     if (g_is_chat_hai) { chai_handle_key(ks, ch); return; } /* REAL §5d.12 - own real 'p' handling inside, same key-order exception class as events-hq */
+    /* REAL 2026-08-25 (Stage 3 bookmarks port) - db-hq mode now has its
+     * own armed input field (g_input_elem, bookmarks' New+ path entry)
+     * and needs the SAME key-order exception as events-hq/chat-hai
+     * above: 'p' must type into an armed field, not trigger a dump. */
+    if (g_is_db_hq && g_input_elem) { dbhq_handle_key(ks, ch); return; }
     if (ch == 'p') { dump_frame_png(); return; }
     if (g_is_db_hq) { dbhq_handle_key(ks, ch); return; }
     if (ks == XK_Return || ks == XK_KP_Enter) { activate_focused(); return; }
@@ -4211,6 +4489,16 @@ static void dispatch_relay_code(int code) {
     if (code == 13) handle_key(XK_Return, 0);
     else if (code == 27) handle_key(XK_Escape, 0);
     else if (code == 8) handle_key(XK_BackSpace, 0); /* real, db-hq's own extra code - harmless no-op for other modes */
+    /* REAL, NEW 2026-08-25 (debug-only) - relay codes 200-203 for arrow
+     * keysyms, which have no ASCII code and so were unreachable through
+     * this text-file relay before now. Needed to reproduce a live report
+     * ("up/down arrows don't move nav in bookmarks") headlessly instead
+     * of guessing - outside the 0-126 real-keypress range so it can
+     * never collide with an actual typed character. */
+    else if (code == 200) handle_key(XK_Up, 0);
+    else if (code == 201) handle_key(XK_Down, 0);
+    else if (code == 202) handle_key(XK_Left, 0);
+    else if (code == 203) handle_key(XK_Right, 0);
     else if (code >= 32 && code <= 126) handle_key(0, (char)code);
 }
 static int poll_agent_relay(void) {
@@ -4372,6 +4660,8 @@ int main(int argc, char **argv) {
 
     g_window = parse_chtpm(chtpm_path);
     if (!g_window) { fprintf(stderr, "khtpm_entity_menu_render: failed to parse %s\n", chtpm_path); return 1; }
+    snprintf(g_chtpm_path_g, sizeof(g_chtpm_path_g), "%s", chtpm_path);
+    { struct stat cst; if (stat(chtpm_path, &cst) == 0) g_chtpm_mtime_g = cst.st_mtime; }
 
     /* REAL Stage 5 §5d.3 step 6 (2026-08-16, khtpm-merge-how2.md §5d) -
      * real, data-driven mode detection - `<window class="swatch-
@@ -4413,6 +4703,13 @@ int main(int argc, char **argv) {
          * item-click path db-hq's own Common Events already prove out
          * live, not a new one. */
         if (strcmp(g_window->classes[i], "stats-hq") == 0) { g_is_stats_hq = 1; g_is_db_hq = 1; break; }
+        /* REAL, NEW 2026-08-25 (Stage 2 palettes migration) - see
+         * g_is_palettes's own declaration comment. */
+        if (strcmp(g_window->classes[i], "palettes") == 0) { g_is_palettes = 1; g_is_db_hq = 1; break; }
+        /* REAL, NEW 2026-08-25 (Stage 3 bookmarks migration off the
+         * deprecated standalone khtpm_hq_render.c) - bm_menu.sh
+         * composes <window class="database-window bookmarks">. */
+        if (strcmp(g_window->classes[i], "bookmarks") == 0) { g_is_bookmarks = 1; g_is_db_hq = 1; break; }
     }
 
     /* REAL FIX 2026-08-16, direct live report ("doesn't open by her
@@ -4611,6 +4908,13 @@ int main(int argc, char **argv) {
     screen = DefaultScreen(dpy);
     cmap = DefaultColormap(dpy, screen);
     font_ui = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=12");
+    /* REAL, NEW 2026-08-25 (live report: bookmarks' own path labels
+     * carry real emoji dir names, rendered as tofu boxes - "open-hai
+     * has an implementation for this we can steal") - loads once, here,
+     * for every mode (not just db-hq/bookmarks): any label text in any
+     * consumer can legitimately contain emoji, this house's own
+     * directory names prove that. */
+    khtpm_load_emoji_tiles(g_house_root);
 
     /* REAL §5d.12 (2026-08-16) - chat-hai mode: forced window geometry
      * (chai_load_window_geometry_config()'s own .pdl-driven width/
@@ -4687,6 +4991,35 @@ int main(int argc, char **argv) {
         while (!g_quit) {
             if (poll_agent_relay() > 0 && !g_quit) redraw();
             if (g_quit) break;
+            /* REAL, NEW 2026-08-25 (Stage 3 bookmarks port) - db-hq mode
+             * never had chtpm-live-reload (only its state.txt did).
+             * bookmarks' New+ regenerates the WHOLE bookmarks.chtpm on
+             * every add and expects the running window to pick it up
+             * without a respawn, matching khtpm_hq_render.c's own
+             * reload_if_changed(). Scoped to g_is_bookmarks (its only
+             * real consumer) rather than every db-hq mode, since db-hq/
+             * stats-hq/palettes' own .chtpm never change after launch. */
+            if (g_is_bookmarks) {
+                struct stat cst;
+                if (stat(g_chtpm_path_g, &cst) == 0 && cst.st_mtime != g_chtpm_mtime_g) {
+                    /* Elems come from a static arena pool (g_pool[],
+                     * elem_new()), not individual malloc()s - there is
+                     * nothing to free() per-node. The old tree is simply
+                     * abandoned and the pool cursor reset before
+                     * re-parsing, exactly like a fresh launch (g_window
+                     * itself, and everything found via find_by_tag() on
+                     * it, gets re-derived below - nothing else holds a
+                     * live pointer into the old tree across a reload). */
+                    g_n_elems = 0;
+                    Elem *nw = parse_chtpm(g_chtpm_path_g);
+                    if (nw) {
+                        g_chtpm_mtime_g = cst.st_mtime;
+                        g_window = nw;
+                        if (g_input_elem) input_disarm();
+                        dbhq_redraw_content();
+                    }
+                }
+            }
             if (dbhq_load_common_events()) {
                 Elem *sidebar = find_by_tag(g_window, "sidebar");
                 dbhq_inject_sidebar_items(sidebar);

@@ -97,3 +97,10 @@ SHOW_TEXT queued file=/tmp/test_verse.txt
 [2026-08-24 20:04:28] INJECTED: CLOSE
 [2026-08-25 02:43:10] WINDOW_OPEN
 [2026-08-25 02:43:10] LIVEDESK_INDEX=11
+[2026-08-25 03:07:25] INJECTED: CLOSE
+[2026-08-25 03:57:05] WINDOW_OPEN
+[2026-08-25 03:57:05] LIVEDESK_INDEX=11
+[2026-08-25 03:57:13] CLICK method=Bookmarks action=sh -c 'exec sh "$1/&.widgits/bookmarks/bm_menu.sh" "$1" "$0"'
+[2026-08-25 04:16:38] WINDOW_OPEN
+[2026-08-25 04:16:38] LIVEDESK_INDEX=11
+[2026-08-25 04:16:40] CLICK method=Bookmarks action=sh -c 'exec sh "$1/&.widgits/bookmarks/bm_menu.sh" "$1" "$0"'

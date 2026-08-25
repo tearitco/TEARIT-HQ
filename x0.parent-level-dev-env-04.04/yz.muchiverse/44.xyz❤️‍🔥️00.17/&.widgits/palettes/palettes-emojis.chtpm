@@ -1,4 +1,4 @@
-<window class="database-window">
+<window class="database-window palettes">
   <panel class="settings-block">
     <title class="block-title" label="palettes: Emojis"/>
     <text class="pal-hint" label="Click an emoji to place it on the desk."/>

@@ -137,6 +137,98 @@ composer (skip if exists).
 
 ---
 
+## 2.5 Nav-index assignment protocol (System B / `khtpm_hq_render` family)
+
+**The standard, direct instruction (2026-08-12): content gets nav 1..N first;
+chrome/window controls (the close button) ALWAYS get the LAST nav index, never
+nav 1.** This is deliberate, not an oversight — defaulting focus onto an
+unlabeled close button left no visible `[>N]` badge anywhere on screen at
+launch, and numbering close as 1 collides with the natural expectation that
+digit `1` should jump to the first real content row.
+
+**Real order, `assign_nav_indices()` (`khtpm_hq_render.c`):**
+1. Any window-specific structural nav (tabbar tabs, sidebar items, panel
+   buttons — only for modes that have them, e.g. db-hq's Common Events).
+2. `assign_generic_onclick_nav(window)` — the generic pass: any element
+   anywhere in the tree carrying its own real `onClick=` becomes numbered,
+   in tree-walk order. This is what palettes' emoji tiles ride — no
+   palette-specific nav code exists, it's 100% this generic mechanism.
+3. `g_close_elem->nav_index = ++g_n_nav` — **always last**, after every real
+   content element above.
+
+**REAL BUG, FOUND + FIXED 2026-08-25 (correcting this section's own earlier,
+too-hasty claim below) — read this before trusting a single `--dump-and-exit`
+result for anything nav-related.** `assign_nav_indices()`'s own header comment,
+and `assign_generic_onclick_nav()`'s own separate comment, BOTH claimed
+`clear_nav_indices()` "zeroes the whole tree at the top of every
+`assign_nav_indices()` pass" — but the actual call was never wired in. Real,
+live consequence: **frame 1 numbers correctly** (every `Elem` starts at
+`nav_index=0` from `elem_new()`'s memset, so `assign_generic_onclick_nav()`'s
+`nav_index == 0` guard passes for everyone) — **frame 2 onward, every tile
+already has a non-zero nav_index from frame 1, so that same guard silently
+skips ALL of them.** `g_n_nav` never grows past ~0 again, so
+`g_close_elem->nav_index = ++g_n_nav` collapses to `nav=1` (colliding with
+tile 1's now-frozen, stale label) and no digit above 1 is ever valid again.
+
+This is exactly why a quick `--dump-and-exit` sanity check (which only ever
+renders frame 1) kept showing the CORRECT `nav=113`/`nav=114` split and made
+the bug look fixed/nonexistent — **the bug only manifests from frame 2
+onward, which a one-shot dump-and-exit process can never reach.** Confirmed
+by testing the SAME live, multi-frame, relay-driven window both before and
+after the fix (see `assign_nav_indices()`'s own real fix comment in the
+source for the exact repro). Real fix: `clear_nav_indices(window);` is now
+the literal first line of `assign_nav_indices()`, not just implied by a
+comment.
+
+**Standing rule from this**: never trust a single `--dump-and-exit` frame to
+validate ANY stateful/multi-frame behavior (nav persistence, live reload,
+scroll state) — it only ever proves frame-1 correctness. Drive at least 2-3
+real frames via relay (a digit/key press, then a second dump) before treating
+nav/focus behavior as verified.
+
+`g_close_elem` is a separate global (`&g_close_elem_storage`), NOT a child of
+the window's own Elem tree — it's drawn via its own direct
+`draw_elem(g_close_elem, 0)` call in `draw_chrome_bar()`, not the normal
+`render_tree()` walk. This means it's invisible to any tooling that only
+walks `g_window`'s children (the receipt-port's own `emit_hq_object()` had
+exactly this gap until 2026-08-25 — fixed by also emitting `g_close_elem`
+explicitly after the tree walk). Any new debug/audit tooling for this family
+needs the same explicit extra step, or it will silently miss the close
+button every time.
+
+---
+
+## 2.6 Pitfall: don't reach for the parser when nav state "isn't showing"
+
+2026-08-25, bookmarks migration (khtpm_entity_menu_render.c): live report
+was "it never puts a default '>' in bookmarks in 4 or any" plus arrows not
+visibly moving anything. The instinct was to suspect the low-level stuff —
+XftFont caching, draw order, the parser — and in fact a real dangling-font
+bug WAS found and fixed there first. But that fix didn't resolve this
+report. The actual bug was two `nav_index` assignment passes running back
+to back on the *same* tree in `dbhq_assign_nav_indices()`: an old
+`g_dbhq_current_tab == DB_HQ_COMMON_EVENTS_TAB` panel-button loop (which
+runs for EVERY db-hq window by default, since that tab enum is the
+default state even for a tabbar-less window) numbered bookmarks' buttons
+1-3, then a newer generic onclick-nav pass ran unconditionally right after
+and renumbered the *same* buttons 4-6 — so `g_focus_nav` (defaulting to /
+jumping to 1-3) never matched any live element's `nav_index` (which sat at
+4-6). Nothing about the parser, font cache, or draw order was wrong; two
+higher-level dispatch passes were fighting over one tree.
+
+**The lesson** (direct instruction, worth repeating for any future agent
+here): when nav/focus state "isn't showing" or "isn't moving," don't
+default to auditing the parser or the low-level draw primitives first.
+Print BOTH the state (`g_focus_nav`, keypress handler) and what's actually
+on the live Elems (`nav_index` at draw time) side by side — a debug
+`fprintf` in the two spots, one build/relaunch cycle — before touching
+anything structural. In this case the state (`g_focus_nav`) was updating
+perfectly on every real keypress the whole time; only the rendered
+`nav_index` values were wrong, and only because of an assignment-order
+bug two call sites away from either symptom.
+
+---
+
 ## 3. Verifying without eyes (agent workflow)
 
 - **Headless frame dump**: `khtpm_hq_render.+x <house> <file.chtpm>

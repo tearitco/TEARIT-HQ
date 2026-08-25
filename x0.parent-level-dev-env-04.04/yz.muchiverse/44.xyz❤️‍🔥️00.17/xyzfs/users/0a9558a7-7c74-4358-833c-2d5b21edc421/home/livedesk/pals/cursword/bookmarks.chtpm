@@ -1,4 +1,4 @@
-<window class="database-window">
+<window class="database-window bookmarks">
   <panel class="settings-block">
     <title class="block-title" label="cursword bookmarks"/>
     <text class="bm-hint" label="Click or Enter a bookmark to open it."/>

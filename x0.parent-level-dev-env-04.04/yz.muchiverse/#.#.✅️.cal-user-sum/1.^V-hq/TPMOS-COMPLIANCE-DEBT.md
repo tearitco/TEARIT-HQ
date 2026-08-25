@@ -89,7 +89,28 @@ taskbar-launched window/menu in the house. A real, thorough audit should grep ev
 
 ---
 
-## Recommended remediation priority (not yet started, awaiting direction)
+## Status update, 2026-08-25
+
+**#1 (stats-hq) is RESOLVED.** Got the full compliant rebuild this session: a real,
+separate `stats_hq_manager.c` (matching `khtpm_hq_manager.c`'s own shape — init, poll
+loop, publishes a structured `stats_hq_common_events.state.txt` projection), launched via
+the same `<module src="..."/>` mechanism db-hq's own dashboard uses, with real sidebar-
+item click switching (no more dead tabs). `dashboard.chtpm` is now static
+sidebar+panel markup, not bash-regenerated per launch.
+
+**#2/#3 (palettes/bookmarks) are PARTIALLY addressed — don't mistake this for resolved.**
+Both were migrated off the deprecated standalone `khtpm_hq_render.c` onto the merged
+`khtpm_entity_menu_render.c` binary (that file has since been deleted outright — see
+`khtpm-merge-how2.md`). That migration fixed the *decommission* concern (no more stale
+duplicate binary to maintain) and, for bookmarks, added the `open:`/`exec:`/`input:`
+generic dispatch + chtpm-live-reload it needed. **It did NOT touch the actual violation
+this doc is about**: `palettes_menu.sh`/`bm_menu.sh` still `printf` raw `.chtpm` XML
+directly in bash, with no manager process and no testable Op. That remediation (item 2/3
+below) is still real, open work — the renderer-binary migration was a separate, narrower
+fix that happened to land first because a live "keep the old window working" report
+forced the priority order.
+
+## Recommended remediation priority (stats-hq done; palettes/bookmarks still open)
 
 1. **stats-hq first** — it's the only one that's actually broken (dead tabs), not just
    non-standard. Needs a real compliant redesign: either a genuine manager binary

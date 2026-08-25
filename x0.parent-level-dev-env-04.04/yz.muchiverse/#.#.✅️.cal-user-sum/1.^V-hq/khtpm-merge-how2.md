@@ -28,13 +28,20 @@ chat-hai bugs found+fixed post-merge, and the legacy-source archive).
 Old standalone renderers for events-hq/chat-hai/taskbar-settings + their
 build scripts + old binaries are archived (zipped, dereferenced) at
 `_.ARCHIVED-pre-merge-legacy.zip` (house root). db-hq's own old
-standalone renderer (`khtpm_hq_render.c`/`build_db_hq.sh`) is
-**deliberately NOT archived** — `stats-hq` still independently launches
-that exact file against its own `dashboard.chtpm`; it's live code, not
-dead. (Note, 2026-08-24: this is also the same `khtpm_hq_render.c` flagged
-in `house-compaction.md` Part 1 for the missing-receipt compliance gap —
-that finding and this merge-status doc are about two different concerns
-on the same file, don't conflate them.)
+standalone renderer (`khtpm_hq_render.c`/`build_db_hq.sh`) was kept live
+past the initial merge because `stats-hq` and `palettes` (and later
+`bookmarks`) still independently launched it against their own `.chtpm`
+files. That's now resolved: **2026-08-25, all three were migrated onto
+the merged `khtpm_entity_menu_render.c` binary** (stats-hq got a full
+TPMOS-compliant rebuild with a real manager; palettes got sprite/badge/
+nav ports plus a font-cache and nav-double-assignment fix; bookmarks got
+the `open:`/`exec:`/`input:` generic mechanisms, chtpm-live-reload, and
+inline emoji-in-text rendering ported over). A `grep -r
+"khtpm_hq_render"` across the tree confirmed zero remaining launch sites
+(comment-only references remain in a few build scripts). `khtpm_hq_render.c`
+and `build_db_hq.sh` have been deleted outright (not zip-archived like the
+others — nothing referenced their binary artifacts, and full git history
+already preserves the file if it's ever needed again).
 
 **Still real, open work**: legacy GL migration — **current status now lives in
 `legacy-shared-fix.md`, not here** (as of 2026-08-17: 3 of 16 projects converted
