@@ -1,0 +1,14 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+==========================================+" /><br/>
+    <text label="| Change Gold (page 1)                    |" /><br/>
+    <text label="+==========================================+" /><br/>
+    <text label="Add gold to this character (use -N to spend)." /><br/>
+    <text label="HOW TO: Enter on field, type number, Esc," /><br/>
+    <text label="then OK to save the command." /><br/>
+    <cli_io id="ez_cg_amount" label="Gold amount (e.g. 25 or -5)" target_id="ez_cg_amount" /><br/>
+    <button label="OK — Save Command" onClick="KEY:6" /><br/>
+    <button label="< Back" href="pieces/chtpm/layouts/event_ez_page_1.chtpm" /><br/>
+    <text label="${last_message}" /><br/>
+</panel>

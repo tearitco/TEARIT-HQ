@@ -1,0 +1,17 @@
+<!-- picker.chtpm — layout for the Add/Edit Command picker overlay.
+     Parsed once at init; positions used as reference for dynamic
+     content (type list items, field rows) drawn in C. The panel
+     defines the overlay frame; buttons define row spacing/height. -->
+<panel id="picker-panel" class="picker-overlay">
+  <button id="picker-row-0" class="picker-row" label="Row 0"/>
+  <button id="picker-row-1" class="picker-row" label="Row 1"/>
+  <button id="picker-row-2" class="picker-row" label="Row 2"/>
+  <button id="picker-row-3" class="picker-row" label="Row 3"/>
+  <button id="picker-row-4" class="picker-row" label="Row 4"/>
+  <button id="picker-row-5" class="picker-row" label="Row 5"/>
+  <button id="picker-row-6" class="picker-row" label="Row 6"/>
+  <button id="picker-row-7" class="picker-row" label="Row 7"/>
+  <button id="picker-row-8" class="picker-row" label="Row 8"/>
+  <button id="picker-row-9" class="picker-row" label="Row 9"/>
+  <button id="picker-cancel" class="picker-cancel" label="Cancel"/>
+</panel>

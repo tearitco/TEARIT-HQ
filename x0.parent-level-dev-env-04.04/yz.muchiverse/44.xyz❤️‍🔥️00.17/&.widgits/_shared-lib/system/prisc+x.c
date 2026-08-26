@@ -346,9 +346,10 @@ void parse_line(char *line, int pass) {
      * (or any op taking a literal path argument) whose full line exceeded
      * 127 bytes - which is EVERY real absolute path in this house, since
      * directory names here are routinely emoji-heavy (4+ UTF-8 bytes
-     * each). 512 matches `line`'s own real buffer size with headroom. */
-    char original[512];
-    snprintf(original, sizeof(original), "%s", line);
+     * each). 1024 is safe headroom for real paths in this codebase. */
+    char original[1024];
+    strncpy(original, line, sizeof(original) - 1);
+    original[sizeof(original) - 1] = '\0';
     trim(line);
     
     if (line[0] == '#' || line[0] == '\0') return;

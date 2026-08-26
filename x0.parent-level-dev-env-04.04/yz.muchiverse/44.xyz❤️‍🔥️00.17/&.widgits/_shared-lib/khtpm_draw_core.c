@@ -358,6 +358,23 @@ static const char *badge_contrast_color(const CssStyle *st) {
     double luma = 0.299 * r + 0.587 * g + 0.114 * b;
     return luma > 140 ? "#000000" : "#cccccc";
 }
+/* REAL FIX 2026-08-25 (live report: "bright yellow highlight and orange
+ * nav text" unreadable on cursword's bookmark rows) - the FOCUSED badge
+ * used a single hardcoded #ff8c00 unconditionally, the exact same bug
+ * class badge_contrast_color() above already fixed for the UNFOCUSED
+ * case, just never ported to the focused branch. On the dark #141414
+ * chrome, orange-on-dark is fine (matches the focus rectangle); on a
+ * light/gold row background (e.g. bookmarks' own #d9b64a), orange-on-
+ * gold has almost no contrast. Same luma test as badge_contrast_color(),
+ * just a different pair of colors so focus stays visually distinct from
+ * the plain unfocused badge even on a light bg. */
+static const char *badge_focus_color(const CssStyle *st) {
+    if (!st->has_bg_color || st->bg_color[0] != '#' || strlen(st->bg_color) < 7) return "#ff8c00";
+    unsigned int r, g, b;
+    sscanf(st->bg_color + 1, "%02x%02x%02x", &r, &g, &b);
+    double luma = 0.299 * r + 0.587 * g + 0.114 * b;
+    return luma > 140 ? "#7a1a00" : "#ff8c00";
+}
 
 static void draw_elem(Elem *e, int hover_id_hash) {
     (void)hover_id_hash;
@@ -487,7 +504,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
          * light color - badge_contrast_color() would otherwise read the
          * GOLD tile's own bg and (wrongly) pick black for a badge that's
          * actually sitting on a dark chip. */
-        XftColor numcol = xft_color(focused ? "#ff8c00" : (e->sprite[0] ? "#cccccc" : badge_contrast_color(&e->style)));
+        XftColor numcol = xft_color(focused ? (e->sprite[0] ? "#ff8c00" : badge_focus_color(&e->style)) : (e->sprite[0] ? "#cccccc" : badge_contrast_color(&e->style)));
         /* REAL, NEW 2026-08-25 (live report: a narrow, right-edge-pinned
          * element's badge ran off the visible window - see
          * badge_align_left's own declaration comment in khtpm_render_

@@ -361,8 +361,8 @@ static void check_for_drop(void) {
  * func back-to-back with no yield of its own; the old check_xdnd_events()
  * had no throttle at all here, which is the exact CPU-spin bug that
  * crashed the machine once already in gl-canvas's own prototype of this
- * fix. gl_mirror already has its own glutTimerFunc(33, /* 30 fps cap */ timer, 0) driving
- * the render loop - this idle poll runs independently alongside it, not
+ * fix. gl_mirror already has its own glutTimerFunc(33, timer, 0) driving
+ * (30 fps cap) the render loop - this idle poll runs independently alongside it, not
  * a replacement for it. */
 static void idle_tick(void) {
     check_for_drop();

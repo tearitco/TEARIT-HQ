@@ -1,0 +1,13 @@
+CHANGE_GOLD delta=+5 qolq: 0 -> 5
+CHANGE_GOLD delta=+5 qolq: 5 -> 10
+CHANGE_GOLD delta=+5 qolq: 10 -> 15
+CHANGE_GOLD delta=+5 qolq: 15 -> 20
+CHANGE_GOLD delta=+5 qolq: 20 -> 25
+CHANGE_GOLD delta=+5 qolq: 25 -> 30
+SHOW_CHOICES default=0 choices=Say hello,Wave,Ignore
+CHANGE_GOLD delta=+5 qolq: 30 -> 35
+SHOW_CHOICES popup opened on /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword, choices=Say hello,Wave,Ignore default=0
+SHOW_CHOICES result=0 (Say hello) (TIMED OUT, used default)
+CHANGE_GOLD delta=+5 qolq: 35 -> 40
+SHOW_CHOICES popup opened on /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/m8_redhorned, choices=Say hello,Wave,Ignore default=0
+SHOW_CHOICES result=0 (Say hello) (TIMED OUT, used default)

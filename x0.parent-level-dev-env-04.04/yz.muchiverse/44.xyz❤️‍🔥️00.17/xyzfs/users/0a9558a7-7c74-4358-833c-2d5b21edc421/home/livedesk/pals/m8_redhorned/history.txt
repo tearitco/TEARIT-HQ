@@ -913,3 +913,27 @@ CHANGE_GOLD delta=+100 qolq: 0 -> 100
 [2026-08-25 04:49:58] LIVEDESK_INDEX=11
 [2026-08-25 05:36:48] WINDOW_OPEN
 [2026-08-25 05:36:48] LIVEDESK_INDEX=11
+CHANGE_GOLD delta=+10 qolq: 0 -> 10
+CHANGE_GOLD delta=+25 qolq: 10 -> 35
+CHANGE_GOLD delta=+10 qolq: 35 -> 45
+CHANGE_GOLD delta=+25 qolq: 45 -> 70
+CHANGE_GOLD delta=+10 qolq: 70 -> 80
+CHANGE_GOLD delta=+25 qolq: 80 -> 105
+CHANGE_GOLD delta=+10 qolq: 105 -> 115
+CHANGE_GOLD delta=+25 qolq: 115 -> 140
+CHANGE_GOLD delta=+10 qolq: 140 -> 150
+CHANGE_GOLD delta=+25 qolq: 150 -> 175
+CHANGE_GOLD delta=+10 qolq: 175 -> 185
+CHANGE_GOLD delta=+25 qolq: 185 -> 210
+CHANGE_GOLD delta=+10 qolq: 210 -> 220
+CHANGE_GOLD delta=+25 qolq: 220 -> 245
+CHANGE_GOLD delta=+7 qolq: 245 -> 252
+CHANGE_GOLD delta=-8 qolq: 252 -> 244
+[2026-08-26 00:49:13] WINDOW_OPEN
+[2026-08-26 00:49:13] LIVEDESK_INDEX=11
+[2026-08-26 00:49:14] INJECTED: SHOW_PAGE:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/common_events/greet_player/.show_choices_objects.tmp.pdl|/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/common_events/greet_player/.show_choices_result.tmp.txt
+[2026-08-26 04:09:18] INJECTED: CLOSE
+[2026-08-26 04:09:19] WINDOW_OPEN
+[2026-08-26 04:09:19] LIVEDESK_INDEX=11
+[2026-08-26 05:05:05] WINDOW_OPEN
+[2026-08-26 05:05:05] LIVEDESK_INDEX=11

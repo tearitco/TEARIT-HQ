@@ -1,0 +1,7 @@
+01_initial_state.png | 6 | Events-hq initial state: page tabs, trigger, command list, and footer buttons visible. Add Command at nav index 5.
+02_picker_open.png | 6 | Picker overlay opened after pressing Enter on "+ Add Command". Command types listed vertically, Cancel at bottom.
+03_after_arrow_down.png | 5 | Arrow-down moved focus from first item to second command type in the picker list.
+04_type_selected.png | 6 | Enter selected a command type (Show Text). Picker entered field-edit mode with editable text fields.
+05_after_escape.png | 5 | Escape closed the picker overlay, returning to the normal events-hq view.
+09_t5_after_submit.png | 6 | T5: Show Choices command submitted with fields "yes,no,maybe" and default "0". Picker closed, command added to event.ir.pdl.
+11_t6_after_cancel.png | 5 | T6: Escape cancelled the picker during field editing. No command added, picker closed cleanly.

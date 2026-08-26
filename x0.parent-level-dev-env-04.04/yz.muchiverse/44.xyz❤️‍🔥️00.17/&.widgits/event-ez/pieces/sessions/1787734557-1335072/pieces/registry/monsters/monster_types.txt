@@ -1,0 +1,21 @@
+# mutaclsym monster registry (global, non-located content)
+# Format: id|name|glyph|hp|damage|unicode
+# hp here doubles as the "max hp" reference ops/tick_monsters.c's
+# weighted decision_mode tier uses to compute a live instance's hp
+# percentage (see that op's own header comment).
+#
+# decision_mode and flee_hp_pct are NOT columns here - per the family's
+# decision_mode convention (GAME-AI-SPEED-DOCTRINE.txt, matching
+# wsr-pal/corp_decide.c + muchi-evo-pal/bot_choose.c), decision_mode is
+# a PER-INSTANCE state.txt field on each spawned monster piece, not a
+# per-type default: 0 (preset, default when absent) = always chase;
+# 1 (weighted) = flees below that instance's own flee_hp_pct (also a
+# state.txt field, no separate weights file).
+#
+# unicode: same ASCII<->emoji toggle field as terrain_types.txt/
+# furniture_types.txt/items.txt - see terrain_types.txt's own header
+# comment for the full reasoning. No rgb_top_emoji here either, same
+# "monsters never had a registry rgb_top to begin with" reason as
+# items.txt.
+zombie|Zombie|Z|20|5|🧟
+zombie_child|Zombie Child|z|10|3|🧟

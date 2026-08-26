@@ -1,5 +1,8 @@
-# event.pal - real prisc+x opcodes, COMPILED from event.ir.pdl by event-ez
-# pkg=m8_redhorned page=1 - regenerated fresh on every command save
+# event.pal - real prisc+x opcodes, COMPILED from event.ir.pdl by khtpm_events_hq_manager.c
+# pkg=m8_redhorned page=page_1 - regenerated fresh on every command save
 exec cmd_1.sh
 exec cmd_2.sh
+exec cmd_3.sh
+exec cmd_4.sh
+exec cmd_5.sh
 halt

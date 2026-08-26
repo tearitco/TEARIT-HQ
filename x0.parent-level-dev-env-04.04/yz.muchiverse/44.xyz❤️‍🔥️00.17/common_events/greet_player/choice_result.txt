@@ -1,0 +1,2 @@
+choice_result=0
+choice_label=Say hello

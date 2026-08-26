@@ -132,6 +132,40 @@ Stop here if you just need to know "what's going on."
 6e. **DB_CONTEXT.md** — explanation of what the "db" (database) cell is and how event commands
    like Show Text + Show Choices integrate with it. Read after completing an event-related task
    to understand the bigger picture.
+6f. **EVENTS_AND_DB_GUIDE_🎪.md** — human-readable, emoji-heavy nuance guide for events-hq/db-hq:
+   ASCII-vs-literal relay codes, focus-vs-selection confusion, the on-click/on_click trap, highest-
+   numbered-page-wins shadowing, single-instance-guard reminders. Read this FIRST if something
+   "isn't working" before diving into source — most gotchas are already catalogued here.
+6g. **EVENTS_ROADMAP_NEXT_STEPS.md** — direct 2026-08-25 gap assessment + agreed order: wire
+   common events into Play first (DONE + verified live 2026-08-25, see the doc's own Step 1
+   Status section — with one flagged limitation, common events act on their own dir not the
+   caller's, a real follow-up), then scope a `.pal`-scripted, RPG-Maker-style plugin system
+   before any battle/tactics/LOS/pathfinding work. Read before picking up any of that work so
+   you don't reorder it or re-derive the reasoning from scratch.
+6h2. **COMMON-EVENTS-MANAGER-HANDOFF.md** — LIVE HANDOFF for opencode (2026-08-25): Control
+   Switches/Variables, explicit Call Common Event, Conditional Branch (real compiler work using
+   `prisc+x`'s already-existing `OP_BEQ`/`OP_J` opcodes), and a real common-events manager copying
+   `101.lpns+map+4/system/game_manager.c`'s proven "one dispatcher, one shared ledger" shape.
+   Contains task-by-task KPIs, explicit STOP-AND-ALERT checkpoints, a Questions-for-Sonnet section,
+   and a Progress Log opencode updates as it works. Check this file's own Progress Log for current
+   status before assuming anything below it is stale.
+6h. **PLUGINS-ARCHITECTURE-SCOPING.md** — design-only scoping pass (2026-08-25, no code yet) for
+   the "10.plugins" taskbar cell: RPG-Maker-style per-project plugin list, `.pal` scripts that
+   trigger real ops (not reimplement logic), real house precedent to reuse (sidebar+panel merged
+   binary, shell+manager split, PDL registries). Lists open design questions (where plugin code
+   vs. per-project opt-in lives, what a plugin can actually hook into, load-order semantics) that
+   need a real decision before any Haiku-ready task gets carved out of this.
+6i. **`EVENT-COMMAND-REGISTRY-ARCHITECTURE.md`** (this directory — moved here 2026-08-26 as
+   part of a documentation-consolidation pass; real docs live here, `#.ref/menu/` is
+   basics/reference data only) — REQUIRED reading
+   before adding a new "type" to any hardcoded C array/switch anywhere in the house (event
+   commands, db tabs, plugin hooks, etc.). The three-tier test for when a C hardcode is genuinely
+   necessary (real branch/compiler logic) vs. avoidable bloat (a templatable dispatch, which is
+   what most "add a new command type" work actually is) — with a real, live-verified worked
+   example (`event_commands.registry.pdl`, a new command type added with zero recompile while both
+   binaries were already running). Written after Sonnet's own first-pass answer on this exact
+   question was too permissive and had to be corrected by direct user pushback — read it before
+   repeating that mistake.
 7. **2do-au11.txt** — the working task log: what's done, what's pending, timestamped progress notes.
    This is the most volatile file — always check its bottom (Progress Log) for the latest state.
 8. **archive/a11.focus-troubleshooting.md** — historical record of two entity-window bugs already fixed
@@ -172,7 +206,7 @@ Stop here if you just need to know "what's going on."
 | `#.house-docs.html/1.index-house=solo.html` | **The human-facing house doc — this is what the user actually reads**, not just an agent-routing file. Narrative "how the house actually works" page (Overview/Standards/Taskbar/Legacy Engines/Display/Input/AI Backends/Testing/Extending/Roadmap sections). Keep the "Known Issues & Roadmap" section in sync with real findings the same way `INDEX.md`'s own changelog is kept in sync — when you land a real fix or finding that changes user-facing state, update BOTH this file and INDEX.md, not just one. | Whenever a real, user-relevant finding or fix lands — added the khtpm_hq_render receipt/frame-history gap here 2026-08-24 |
 | `TPMOS-COMPLIANCE-DEBT.md` | **STANDING #1 PRIORITY, HIGH SEVERITY, undone** — real manager-pattern violations (stats-hq/palettes/bookmarks generate `.chtpm` via raw bash `printf`, no manager, no testable Op); stats-hq's own tabs are confirmed non-functional, not just non-standard. Full inventory + remediation priority in the doc. | When any listed app is remediated, or the broader "not yet audited" sweep finds more instances — update the inventory, don't just delete the doc |
 | `house-compaction.md` | **STANDING #1 PRIORITY, undone** — the khtpm_hq_render receipt/frame-history compliance-drift finding vs. TPMOS/wraith-alpha standard, plus the doc-compaction candidate list for `1.^V-hq/` (44 files). Agreed order: compact docs first, THEN fix the compliance drift, THEN resume palettes T1-T6. | When the compliance fix lands, or a compaction item from Part 3 is acted on — tick it off, don't just delete the doc |
-| `44.xyz❤️‍🔥️00.17/!.HOUSE_STDS.md` (house root) | **THE general house standards doc** ("from zero", §A–§K): CHTPM/PAL mechanics, session isolation/symlink ban, digit-dispatch, marker discipline, runtime-config-over-hardcode, rendering pipeline, CPU/testing discipline, widgets, 3D/raymarch, pitfalls F-18/F-19/#20/#21 (window focus/managed-window standards), §J two-parser-families warning, and **§K UI-authoring standards (2026-08-24): no hardcoded UIs ever (store→generated-artifact rule), context windows OLD vs NEW (`khtpm_entity_menu_render` is THE standard), generic renderer mechanisms (onClick open:/exec:, live reload) with honest port-status caveat, SHOW_PAGE chooser contract, bookmarks spec** | Whenever a standing house standard is set, corrected, or superseded |
+| `44.xyz❤️‍🔥️00.17/!.HOUSE_STDS.md` (house root) | **THE general house standards doc** ("from zero", §A–§K): CHTPM/PAL mechanics, session isolation/symlink ban, digit-dispatch, marker discipline, runtime-config-over-hardcode, rendering pipeline, CPU/testing discipline, widgets, 3D/raymarch, pitfalls F-18/F-19/#20/#21 (window focus/managed-window standards), §J two-parser-families warning, and **§K UI-authoring standards (2026-08-24): no hardcoded UIs ever (store→generated-artifact rule), context windows OLD vs NEW (`khtpm_entity_menu_render` is THE standard), generic renderer mechanisms (onClick open:/exec:, live reload) with honest port-status caveat, SHOW_PAGE chooser contract, bookmarks spec (superseded 2026-08-25, see its own note), and §K.6 (2026-08-25): no UI element without a mirror keyboard path** | Whenever a standing house standard is set, corrected, or superseded |
 | `HANDOFF.md` | Living architecture + status snapshot, "hand this to a fresh agent" doc | Architecture changes, status changes |
 | `livedesk-dir-map.md` | Real, current directory map of everything meaningful to the livedesk toolbar (taskbar, the 5 merged window apps, `#.desktop/` runtime state, toys-cell targets, tile-picker test tooling, `xyzfs/`'s real current scope) - written 2026-08-17 to inform a real, still-undecided xyzfs migration question (only `muchi-pet`/`livedesk-clock` have moved into `xyzfs/bin/` so far; everything else, including mutaclysm/the taskbar, is still outside it) | When the directory structure meaningfully changes, or before deciding/acting on any xyzfs migration |
 | `legacy-shared-fix.md` | Separate leg of work from `khtpm-merge-how2.md`: consolidating all 16 legacy-GL projects' `system/`+`ops/` engine binaries. **AS OF 2026-08-17: `chtpm_parser_pal.c`/`prisc+x.c` consolidation is DONE - all 12 real participants (of 16 total; 4 have neither file) now on ONE shared baseline (`&.widgits/_shared-lib/system/`), see §3.10.** `chtpm_rgb_render.c` also consolidated (9 projects, §5c.7 in the other doc). `gl_mirror.c`→`x11_mirror.c` display-shim migration: 3 of 16 projects done (mutaclysm/piececraft-xyz/my-chara-txt), 13 remain - real, open work. Also covers a real mutaclysm interact-mode regression found+fixed post-consolidation (§3.11) and mutaclysm's own separate, deferred camera/3D work (§2.6, handed off to `archive/opencode-mutafix-pie.md`). | Every time the remaining 13-project GL migration or mutaclysm's own deferred camera work advances |
@@ -242,7 +276,26 @@ the same fact across files — link instead (`see HANDOFF.md §X`).
    ARTIFACT of some store (`.ir.pdl`→pal, `bookmarks.pdl`→chtpm, `meta.pdl`→menu rows); extend
    generic renderer mechanisms instead of adding domain branches to renderers. New UI work rides
    the NEW context-window standard (`khtpm_entity_menu_render`), not bespoke windows. Full rule +
-   mechanics: `44.xyz❤️‍🔥️00.17/!.HOUSE_STDS.md` §K.
+   mechanics: `44.xyz❤️‍🔥️00.17/!.HOUSE_STDS.md` §K. **This extends to any fixed vocabulary of
+   dispatchable actions, not just windows/menus** — event commands, db tabs, plugin hooks, etc.
+   (2026-08-26, direct instruction: "we never hardcode stuff, always keeping things super modular
+   and abstract"). Real worked example + the three-tier test for when C is still legitimately
+   required (genuine branch/compiler logic) vs. when it's avoidable bloat (a templatable dispatch):
+   `EVENT-COMMAND-REGISTRY-ARCHITECTURE.md` (this directory). Read this before adding a
+   new "type" to any hardcoded C array/switch anywhere in the house.
+8. **No UI element without a mirror keyboard path** (2026-08-25): every real mouse interaction in
+   a khtpm-family window needs a keyboard path that genuinely reaches it — arrow-key auto-scroll
+   at a visible-region edge, real numbered/nav-dispatched Elems for mouse-only controls (never a
+   bespoke click-region check), and "disabled" means dimmed + inert, never unnumbered/vanished
+   from the tab order. Full rule + reference implementation (palettes' own scroll arrows):
+   `44.xyz❤️‍🔥️00.17/!.HOUSE_STDS.md` §K.6.
+9. **Proof-of-feature presentations require permission, always** (2026-08-25): a presentation
+   (paced narrated MP4 + REPRODUCE.md + yt-summary.txt, see `_.0.aigent-testing-k9.txt`'s own
+   "PRESENTATIONS" section for the full mechanics) is only built for a genuinely meaningful
+   deliverable — a real feature, a real bugfix, a real architectural change — never for a minor
+   tweak. Even when clearly warranted, **ask the user first before building one; never build one
+   unprompted.** DO proactively suggest making one once a lot of real work has landed in a
+   session — surfacing the suggestion is expected; deciding for the user is not.
 
 ---
 
@@ -300,6 +353,27 @@ The events ladders come first, then these land:
    `44.xyz❤️‍🔥️00.17/#.ref/menu/tiling-palettes-chemistry.txt`.
 
 ---
+
+**2026-08-25** (real manager rebuild for palettes/bookmarks + real grid scroll +
+keyboard-accessibility standard): `khtpm_hq_render.c` DELETED outright (stats-hq/
+palettes/bookmarks all migrated off it, confirmed via a full-tree grep for remaining
+launch sites first) — see `au11-hq/TPMOS-COMPLIANCE-DEBT.md` for the compliance audit
+that drove this (found ZERO other bash-composed-`.chtpm` instances house-wide besides
+the three already fixed). Palettes/bookmarks each got real `*_manager.c` binaries
+(`palettes_manager.c`, `bookmarks_manager.c`) replacing bash XML composition, per §K.1.
+Palettes' chemistry/emoji grid columns and window height are now layout-derived (real
+CSS tile width/gap/window-width, not hardcoded 4/10) with a real, working grid scroll
+(thumb click/drag, mouse wheel, Page_Up/Down, real numbered up/down arrow buttons) —
+a real bug (row containers moving but not their tiles, since the shared layout engine
+positions children independently) was found and fixed along the way, verified with
+before/after screenshots of a live drag, not just internal-state debug prints. New
+**Standing Rule 8 added: no UI element without a mirror keyboard path** (`!.HOUSE_STDS.md`
+§K.6) — arrow-key edge-autoscroll, real nav-dispatched Elems for mouse-only controls,
+"disabled" ≠ "unnumbered." Also added a real, generic `badge_align_left` field
+(`khtpm_render_core.c`/`khtpm_draw_core.c`) for edge-pinned elements whose nav badge
+would otherwise run off-screen. `!.HOUSE_STDS.md` §K.2/§K.5 corrected (stale
+"stats-hq only" / bash-composition claims) to match. Session trail: `aug-25-bed.txt`
+(`yz.muchiverse/`, house root's parent).
 
 **2026-08-24** (created `archive/` subfolder for lower-priority docs, per direct
 suggestion: closed-bug records, DONE/superseded handoffs, single-feature deep-dives, and

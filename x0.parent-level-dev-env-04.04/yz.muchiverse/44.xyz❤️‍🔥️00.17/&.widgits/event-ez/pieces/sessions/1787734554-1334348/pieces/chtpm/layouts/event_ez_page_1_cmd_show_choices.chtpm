@@ -1,0 +1,17 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+==========================================+" /><br/>
+    <text label="| Show Choices (page 1)                   |" /><br/>
+    <text label="+==========================================+" /><br/>
+    <text label="Display a list of choices to the player." /><br/>
+    <text label="Separate each choice with a newline." /><br/>
+    <text label="HOW TO: Enter on field, type choices," /><br/>
+    <text label="press Ctrl+J for new line, Esc when done," /><br/>
+    <text label="then OK to save the command." /><br/>
+    <cli_io id="ez_sc_choices" label="Choices (one per line)" target_id="ez_sc_choices" /><br/>
+    <cli_io id="ez_sc_default" label="Default choice (0-based index)" target_id="ez_sc_default" /><br/>
+    <button label="OK — Save Command" onClick="KEY:9" /><br/>
+    <button label="< Back" href="pieces/chtpm/layouts/event_ez_page_1.chtpm" /><br/>
+    <text label="${last_message}" /><br/>
+</panel>

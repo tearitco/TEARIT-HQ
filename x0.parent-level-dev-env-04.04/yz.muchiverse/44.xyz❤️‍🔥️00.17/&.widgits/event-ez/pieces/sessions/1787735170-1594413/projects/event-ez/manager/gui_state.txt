@@ -1,0 +1,6 @@
+pkg_name=asa-G9JB
+last_message=widget profile: GL primary; SHOW_ASCII=0
+page_gallery_rows=<button label="Page 1 - When: on_click (0 cmd)" href="pieces/chtpm/layouts/event_ez_page_1.chtpm" /><br/><button label="Page 2 - (new empty page)" href="pieces/chtpm/layouts/event_ez_page_2.chtpm" /><br/>
+command_list_rows_1=<button label="New Event Command..." href="pieces/chtpm/layouts/event_ez_page_1_cmdpick.chtpm" /><br/>
+command_list_rows_2=<button label="New Event Command..." href="pieces/chtpm/layouts/event_ez_page_2_cmdpick.chtpm" /><br/>
+command_list_rows=

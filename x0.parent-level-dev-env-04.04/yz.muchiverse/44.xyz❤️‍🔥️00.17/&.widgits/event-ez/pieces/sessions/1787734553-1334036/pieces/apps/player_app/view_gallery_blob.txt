@@ -1,0 +1,9 @@
++==========================================+
+| EVENT EDITOR — greet_player          |
++==========================================+
+| -- EVENT PAGES (open one to edit) --       |
+| 1. [on-click] (empty)                     |
+| 2. [ ] empty  <- click to add             |
++==========================================+
+| widget profile: GL primary; SHOW_ASCII=0  |
++==========================================+

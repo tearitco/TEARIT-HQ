@@ -86,13 +86,19 @@ Grouped by what writes/reads it:
 - **PDL config** (flat `key=value`, real convention now shared/documented): `hq_ui.pdl`
   (`window_x`/`window_y`/`font_scale`/`focus_grab` for the merged -hq binary),
   `livedesk_taskbar.pdl`, `livedesk_launchers.pdl`, `livedesk_shortcuts.pdl`, `livedesk_theme.pdl`
-- **Per-app agent-relay test files** (one per app, the real, ONLY sanctioned testing input path —
-  never direct CLI calls): `livedesk_agent_relay.txt` (taskbar), `entity_menu_agent_relay.txt`,
-  `taskbar_settings_agent_relay.txt`, `db_hq_agent_relay.txt`, `events_hq_agent_relay.txt`,
-  `chat_hai_agent_relay.txt`, `open_hai_agent_relay.txt`, `lc_reminder_relay.txt`
+- **Per-app agent-history test files** (one per app, the real, ONLY sanctioned testing input path —
+  never direct CLI calls; renamed 2026-08-25 from `*_agent_relay.txt` — same append-only,
+  cursor-based reader as always, only the name changed to match TPMOS history.txt parity. A line
+  starting with `#` is an audit comment: consumed but never dispatched): `livedesk_agent_relay.txt`
+  (taskbar, unrelated file/subsystem — retired in favor of `strip_input_history.txt`, see
+  `taskbar-history-txt-migration-investigation.md`), `entity_menu_history.txt`,
+  `taskbar_settings_history.txt`, `db_hq_history.txt`, `events_hq_history.txt`,
+  `chat_hai_history.txt`, `open_hai_agent_relay.txt` (not yet renamed — different owner/manager,
+  out of this pass's scope), `lc_reminder_relay.txt` (not yet renamed — different owner, out of
+  this pass's scope)
 - **Per-app frame history / debug**: `chat_hai_frame_history.txt`, `tp_taskbar_debug`,
   `tp_taskbar_restore.log`
-- **db-hq specific**: `db_hq_action.txt`, `db_hq_agent_relay.txt`, `db_hq_common_events.state.txt`
+- **db-hq specific**: `db_hq_action.txt`, `db_hq_history.txt`, `db_hq_common_events.state.txt`
 - **Misc real dirs**: `entities/`, `events/`, `harnesses/`, `inbox/`, `clocks/`, `tiles/`, `x`,
   `build_uid_sprite/` (this session's PID+clock-emoji taskbar marker), `taskbar-settings-audit/`,
   `#.dox`, `README.txt`

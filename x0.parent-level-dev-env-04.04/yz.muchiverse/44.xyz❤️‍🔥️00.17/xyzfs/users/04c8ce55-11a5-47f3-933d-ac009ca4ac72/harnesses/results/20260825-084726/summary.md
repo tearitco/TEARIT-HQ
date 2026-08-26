@@ -1,0 +1,1 @@
+- ❌ FAIL: h8_play_button: Gold value never reached 35 after Play action

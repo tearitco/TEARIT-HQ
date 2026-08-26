@@ -1,0 +1,18 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_loop_chtpm.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <text label="+==========================================+" /><br/>
+    <text label="| EVENT PAGE 2 - ${pkg_name}               |" /><br/>
+    <text label="+==========================================+" /><br/>
+    <text label="When does this page run? (RMMV Trigger)" /><br/>
+    <cli_io id="ez_trigger" label="Trigger: on_click / on_spawn / parallel" target_id="ez_trigger" /><br/>
+    <button label="Save Trigger" onClick="KEY:5" /><br/>
+    <text label="------------------------------------------" /><br/>
+    <text label="-- EVENT COMMANDS (runs top to bottom) --" /><br/>
+    <text label="Pick New Event Command to add a line." /><br/>
+    ${command_list_rows_2}
+    <button label="Clear All Commands on This Page" onClick="KEY:7" /><br/>
+    <text label="------------------------------------------" /><br/>
+    <button label="< Back to Event Pages" href="pieces/chtpm/layouts/event_ez.chtpm" /><br/>
+    <text label="${last_message}" /><br/>
+</panel>

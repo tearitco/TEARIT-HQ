@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | greet_player
+STATE        | source               | events-hq
+NODE         | id=1 type=change_gold | amount=1016
+NODE         | id=2 type=show_choices | choices=Say hello,Wave,Ignore|default=0
+NODE         | id=3 type=change_gold | amount=1

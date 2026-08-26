@@ -1,0 +1,6 @@
+module_path=system/prisc+x pal/main_loop_chtpm.pal
+project_id=event-ez
+active_target_id=event_ez
+launch_profile=widget
+ascii_renderer=0
+gl_window=1

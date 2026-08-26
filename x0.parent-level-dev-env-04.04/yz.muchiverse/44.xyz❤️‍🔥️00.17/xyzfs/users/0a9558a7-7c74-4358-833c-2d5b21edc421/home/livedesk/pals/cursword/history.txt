@@ -119,3 +119,43 @@ SHOW_TEXT queued file=/tmp/test_verse.txt
 SHOW_TEXT queued file=/tmp/test_verse.txt
 [2026-08-25 05:44:02] INJECTED: SHOW_TEXT_FILE:/tmp/test_verse.txt
 [2026-08-25 05:44:02] SHOW_TEXT_FILE /tmp/test_verse.txt (3 lines)
+[2026-08-25 09:22:02] WINDOW_OPEN
+[2026-08-25 09:22:02] LIVEDESK_INDEX=11
+[2026-08-25 09:22:06] CLICK method=Bookmarks action=sh -c 'exec sh "$1/&.widgits/bookmarks/bm_menu.sh" "$1" "$0"'
+[2026-08-25 19:58:09] WINDOW_OPEN
+[2026-08-25 19:58:09] LIVEDESK_INDEX=11
+[2026-08-25 19:58:13] CLICK method=Dir action=sh -c 'mkdir -p "$0/audit"; GDK_BACKEND=x11 xdg-open "$0" >>"$0/audit/dir.log" 2>&1'
+[2026-08-25 21:08:21] INJECTED: CLOSE
+[2026-08-25 21:08:42] WINDOW_OPEN
+[2026-08-25 21:08:42] LIVEDESK_INDEX=11
+[2026-08-25 21:08:52] CLICK method=Dir action=sh -c 'mkdir -p "$0/audit"; GDK_BACKEND=x11 xdg-open "$0" >>"$0/audit/dir.log" 2>&1'
+[2026-08-25 21:44:37] INJECTED: RUN_METHOD:Play
+SHOW_TEXT queued file=/tmp/test_verse.txt
+[2026-08-25 21:44:37] INJECTED: SHOW_TEXT_FILE:/tmp/test_verse.txt
+[2026-08-25 21:44:37] SHOW_TEXT_FILE /tmp/test_verse.txt (3 lines)
+[2026-08-25 21:46:05] SHOW_TEXT_DISMISSED
+[2026-08-25 21:48:39] INJECTED: RUN_METHOD:Play
+SHOW_TEXT queued file=/tmp/test_verse.txt
+[2026-08-25 21:48:39] INJECTED: SHOW_TEXT_FILE:/tmp/test_verse.txt
+[2026-08-25 21:48:39] SHOW_TEXT_FILE /tmp/test_verse.txt (3 lines)
+[2026-08-25 21:55:37] INJECTED: RUN_METHOD:Play
+SHOW_TEXT queued file=/tmp/test_verse.txt
+[2026-08-25 21:55:37] INJECTED: SHOW_PAGE:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/common_events/greet_player/.show_choices_objects.tmp.pdl|/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/common_events/greet_player/.show_choices_result.tmp.txt
+[2026-08-25 21:55:37] SHOW_PAGE objects=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/common_events/greet_player/.show_choices_objects.tmp.pdl result=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/common_events/greet_player/.show_choices_result.tmp.txt
+[2026-08-25 21:56:47] SHOW_PAGE_PICK action=1 -> /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/common_events/greet_player/.show_choices_result.tmp.txt
+[2026-08-25 21:56:48] SHOW_TEXT_DISMISSED
+[2026-08-25 21:56:54] INJECTED: RUN_METHOD:Play
+[2026-08-25 21:57:13] INJECTED: NAV_KEY:Down
+[2026-08-25 21:57:13] INJECTED: NAV_KEY:Enter
+[2026-08-25 22:42:38] CLICK method=Dir action=sh -c 'mkdir -p "$0/audit"; GDK_BACKEND=x11 xdg-open "$0" >>"$0/audit/dir.log" 2>&1'
+[2026-08-26 00:49:12] INJECTED: CLOSE
+[2026-08-26 00:49:13] WINDOW_OPEN
+[2026-08-26 00:49:13] LIVEDESK_INDEX=11
+[2026-08-26 03:04:24] CLICK method=Cancel action=void
+[2026-08-26 04:09:18] INJECTED: CLOSE
+[2026-08-26 04:09:39] WINDOW_OPEN
+[2026-08-26 04:09:39] LIVEDESK_INDEX=11
+[2026-08-26 05:43:49] WINDOW_OPEN
+[2026-08-26 05:43:49] LIVEDESK_INDEX=11
+[2026-08-26 05:43:54] CLICK method=Dir action=sh -c 'mkdir -p "$0/audit"; GDK_BACKEND=x11 xdg-open "$0" >>"$0/audit/dir.log" 2>&1'
+[2026-08-26 06:13:49] CLICK method=Dir action=sh -c 'mkdir -p "$0/audit"; GDK_BACKEND=x11 xdg-open "$0" >>"$0/audit/dir.log" 2>&1'

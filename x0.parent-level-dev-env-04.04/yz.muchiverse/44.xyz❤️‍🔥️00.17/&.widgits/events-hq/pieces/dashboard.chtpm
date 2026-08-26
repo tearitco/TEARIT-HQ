@@ -34,5 +34,6 @@
   </panel>
   <panel id="footer" class="footer">
     <button id="add-command" class="btn-primary" label="+ Add Command"/>
+    <button id="play-test" class="btn-play" label="▶ Play"/>
   </panel>
 </window>

@@ -1,0 +1,4 @@
+pkg_name=greet_player
+pkg_dir=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/common_events/greet_player/event_pkg
+behavior=
+last_message=widget profile: GL primary; SHOW_ASCII=0

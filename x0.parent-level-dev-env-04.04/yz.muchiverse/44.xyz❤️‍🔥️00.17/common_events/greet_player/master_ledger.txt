@@ -1,0 +1,16 @@
+[Prisc Error] Could not open ops file: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-08-25 09:42:47] Play triggered common event greet_player (page_1, trigger=on-click) via m8_redhorned
+[Prisc Error] Could not open ops file: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-08-25 20:18:15] Play triggered common event greet_player (page_1, trigger=on-click) via m8_redhorned
+[Prisc Error] Could not open ops file: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-08-25 20:18:30] Play triggered common event greet_player (page_1, trigger=on-click) via m8_redhorned
+[Prisc Error] Could not open ops file: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-08-25 20:21:33] Play triggered common event greet_player (page_1, trigger=on-click) via m8_redhorned
+[Prisc Error] Could not open ops file: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-08-25 21:44:37] Play triggered common event greet_player (page_1, trigger=on-click) via cursword
+[Prisc Error] Could not open ops file: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-08-25 21:48:39] Play triggered common event greet_player (page_1, trigger=on-click) via cursword
+[Prisc Error] Could not open ops file: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-08-25 21:56:07] Play triggered common event greet_player (page_1, trigger=on-click) via cursword
+[Prisc Error] Could not open ops file: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-08-26 00:46:58] Play triggered common event greet_player (page_1, trigger=on-click) via m8_redhorned

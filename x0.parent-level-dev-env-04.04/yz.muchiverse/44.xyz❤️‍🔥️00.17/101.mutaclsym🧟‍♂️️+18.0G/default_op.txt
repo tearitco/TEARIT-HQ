@@ -19,3 +19,4 @@ title_input void ops/+x/title_input.+x {title screen digit/Enter accumulator - N
 compose_title_frame void ops/+x/compose_title_frame.+x {render the title screen into current_frame.txt}
 choice void ops/+x/choice.+x {dispatch a digit key 2-9 to hero/piece.pdl's Nth METHOD}
 camera_control void ops/+x/camera_control.+x {handle 3D camera movement/rotation (w/a/s/d/q/e/r/t/c/v/f) when render_mode=1}
+call_event void ops/+x/call_event_op.+x {call a named common event by trigger - target arg1, trigger arg2}

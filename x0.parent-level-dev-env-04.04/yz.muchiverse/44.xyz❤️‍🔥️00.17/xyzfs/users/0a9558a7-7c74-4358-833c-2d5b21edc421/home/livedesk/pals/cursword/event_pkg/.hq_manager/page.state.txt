@@ -1,0 +1,3 @@
+TRIGGER|on-click
+CMD|1|show_text|file=/tmp/test_verse.txt
+CMD|2|show_choices|choices=yes,no,maybe|default=0|default=0

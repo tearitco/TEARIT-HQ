@@ -1,3 +1,6 @@
 TRIGGER|on-click
 CMD|1|change_gold|
 CMD|2|change_gold|
+CMD|3|change_gold|
+CMD|4|show_text|speaker=
+CMD|5|take_gold|

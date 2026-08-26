@@ -1,4 +1,4 @@
 SECTION      | KEY                | VALUE
 ----------------------------------------
 META         | piece_id           | m8_redhorned
-COND         | trigger              | on-click
+COND | trigger | on-click

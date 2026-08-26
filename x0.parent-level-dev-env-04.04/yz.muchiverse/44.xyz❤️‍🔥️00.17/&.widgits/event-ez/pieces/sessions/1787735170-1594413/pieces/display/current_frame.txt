@@ -1,0 +1,17 @@
++==========================================+
+| EVENT EDITOR — asa-G9JB               |
++==========================================+
+What is this? Each PAGE is one event script
+(like RPG Maker Event pages). Open a page,
+then add commands (e.g. Change Gold).
+------------------------------------------
+HOW TO: number or arrows, then Enter.
+------------------------------------------
+-- EVENT PAGES --
+[>] 1. [Page 1 - When: on_click (0 cmd)]
+[ ] 2. [Page 2 - (new empty page)]
+------------------------------------------
+widget profile: GL primary; SHOW_ASCII=0
+
++=========================================================+
+Nav > _

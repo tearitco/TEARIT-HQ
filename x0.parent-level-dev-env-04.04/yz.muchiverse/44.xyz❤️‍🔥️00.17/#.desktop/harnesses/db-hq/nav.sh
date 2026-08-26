@@ -1,11 +1,16 @@
 #!/bin/bash
-# nav.sh - agent-relay harness for db-hq (khtpm_hq_render.c), same
-# bare-decimal-ASCII-per-line contract as
-# #.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh (reviewed before
+# nav.sh - agent history harness for db-hq (khtpm_entity_menu_render.c,
+# the merged binary - the old standalone khtpm_hq_render.c was archived
+# during the manager rebuild), same bare-decimal-ASCII-per-line contract
+# as #.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh (reviewed before
 # writing this; ported not reinvented, per au11-hq/_.0.aigent-testing-
 # k9.txt's documented "third option" for raw-Xlib programs). db-hq's own
-# relay is #.desktop/db_hq_agent_relay.txt, consumed by
-# poll_agent_relay()/dispatch_relay_code() in khtpm_hq_render.c.
+# history file is #.desktop/db_hq_history.txt (renamed 2026-08-25 from
+# db_hq_agent_relay.txt - same append-only/cursor-based reader as always,
+# only the name changed), consumed by
+# poll_agent_history()/dispatch_relay_code() in khtpm_entity_menu_render.c.
+# A line starting with '#' is an audit comment - it advances the read
+# cursor but is never dispatched as a command.
 #
 # Unlike the taskbar (two-process parser+manager relay, ~300ms manager
 # poll cycle), db-hq is a single process polling its own relay every
@@ -25,7 +30,7 @@
 
 set -u
 HOUSE="${HOUSE:-$PWD}"
-RELAY="$HOUSE/#.desktop/db_hq_agent_relay.txt"
+RELAY="$HOUSE/#.desktop/db_hq_history.txt"
 
 send_code() {
   echo "$1" >> "$RELAY"

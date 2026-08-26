@@ -1,0 +1,567 @@
+/* ez_compose_frame - Event-EZ: "click nav buttons, fill in cli-io
+ * blanks" event authoring, 4th event-editor variant (2026-08-05).
+ *
+ * CHTPM digit_accum: 1-4 behavior buttons, 5=ez_target cli_io,
+ * 6=ez_speed cli_io, 7=Save. Continuous, never restart per section.
+ *
+ * Usage: ez_compose_frame.+x
+ */
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+
+#define MAX_LINE 2048
+#define MAX_PATH 4096
+#define PATH_BUF (MAX_PATH + 256)
+
+static char project_root[MAX_PATH] = ".";
+
+static void resolve_root(void) {
+    const char *env = getenv("PRISC_PROJECT_ROOT");
+    if (env && env[0]) snprintf(project_root, sizeof(project_root), "%s", env);
+}
+
+static void read_kv(const char *path, const char *key, char *out, size_t out_sz) {
+    out[0] = '\0';
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[MAX_LINE];
+    size_t klen = strlen(key);
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, key, klen) == 0 && line[klen] == '=') {
+            char *v = line + klen + 1;
+            v[strcspn(v, "\n")] = '\0';
+            snprintf(out, out_sz, "%s", v);
+            break;
+        }
+    }
+    fclose(f);
+}
+
+/* REAL FIX 2026-08-05, direct user correction ("play is meaningless to
+ * me as user/dev guide if i cant see the script in the event screen so
+ * i dont know wht ur doing... if i asked for more visibility thats
+ * always priority"): before this, the window only ever showed the
+ * CURRENTLY TYPED field values (blank on a fresh reopen) plus a
+ * transient "Saved: ..." message that vanished on the next render.
+ * There was no way to SEE what's actually on disk - what Play would
+ * really run - just by looking at the window. This reads page_1's own
+ * real condition.pdl (pipe-delimited SECTION|KEY|VALUE format) and
+ * event.ir.pdl (NODE rows) straight off disk and renders them verbatim,
+ * every single frame, regardless of what's currently typed. */
+static void read_pdl_value(const char *path, const char *key, char *out, size_t out_sz) {
+    out[0] = '\0';
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[MAX_LINE];
+    while (fgets(line, sizeof(line), f)) {
+        char *p = strchr(line, '|');
+        if (!p) continue;
+        p++;
+        while (*p == ' ') p++;
+        char *end = strchr(p, '|');
+        if (!end) continue;
+        char *label_end = end;
+        while (label_end > p && label_end[-1] == ' ') label_end--;
+        size_t klen = strlen(key);
+        if ((size_t)(label_end - p) != klen || strncmp(p, key, klen) != 0) continue;
+        char *v = end + 1;
+        while (*v == ' ') v++;
+        v[strcspn(v, "\r\n")] = '\0';
+        char *v_end = v + strlen(v);
+        while (v_end > v && v_end[-1] == ' ') v_end--;
+        *v_end = '\0';
+        snprintf(out, out_sz, "%s", v);
+        break;
+    }
+    fclose(f);
+}
+
+/* REAL, 2026-08-05: Gallery<->Page navigation - see design doc's own
+ * "Full nested flow, RPG-Maker-MV-accurate" section. Each page gets its
+ * own real, generated .chtpm file (event_ez_page_N.chtpm); a screen
+ * tells which page it is by reading chtpm_parser_pal.c's own real,
+ * pre-existing pieces/display/current_layout.txt ("EXPORT CURRENT
+ * LAYOUT FOR MODULE HEARTBEAT", written on every screen switch,
+ * confirmed via source - not invented here). Returns 0 if we're on the
+ * gallery (no page_N in the active layout's own filename). Superseded
+ * by current_screen_kind() below, which also classifies WHICH kind of
+ * per-page screen is active, not just the page number. */
+
+/* REAL, 2026-08-05, direct instruction ("this is at this point a proving
+ * grounds for our ability to do event management mirroring rpg maker" -
+ * see visual-event-compiler-pal.md §7): the Page screen now hosts a
+ * genuine, growing COMMAND LIST (Show Choices, Change Gold - the exact 2
+ * real RPG Maker commands confirmed in #.ref/menu/event.commands.1.txt)
+ * instead of the old flat Chase/Flee/Wander/Idle demo. Each real command
+ * lives on its OWN generated screen (same "page number encoded in
+ * filename, read back via current_layout.txt" trick current_page_number()
+ * already proves), so this reads current_layout.txt ONCE and classifies
+ * which of 3 real screen kinds is active. */
+typedef enum { SCREEN_GALLERY, SCREEN_PAGE, SCREEN_CMDPICK, SCREEN_CMD_CHANGE_GOLD } ScreenKind;
+
+static ScreenKind current_screen_kind(int *page_n_out) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/pieces/display/current_layout.txt", project_root);
+    FILE *f = fopen(path, "r");
+    *page_n_out = 0;
+    if (!f) return SCREEN_GALLERY;
+    char line[PATH_BUF];
+    ScreenKind kind = SCREEN_GALLERY;
+    if (fgets(line, sizeof(line), f)) {
+        char *p = strstr(line, "page_");
+        if (p) {
+            *page_n_out = atoi(p + 5);
+            if (strstr(line, "_cmdpick")) kind = SCREEN_CMDPICK;
+            else if (strstr(line, "_cmd_change_gold")) kind = SCREEN_CMD_CHANGE_GOLD;
+            else kind = SCREEN_PAGE;
+        }
+    }
+    fclose(f);
+    return kind;
+}
+
+/* REAL, 2026-08-05, direct instruction ("this is at this point a proving
+ * grounds for our ability to do event management mirroring rpg maker"):
+ * replaced the old flat Chase/Flee/Wander/Idle demo with a real, growing
+ * COMMAND LIST - ${command_list_rows_N} (N baked in at generation time,
+ * NOT a single shared key) is compose_gallery()'s own PRECOMPUTED naked-
+ * var injection (see build_command_list_rows()'s own header comment for
+ * the real staleness bug this precompute-at-gallery-time pattern fixes),
+ * populated from the page's own real event.ir.pdl NODE rows plus a
+ * trailing "[+] Add Command" row that hrefs to this page's own generated
+ * Command Picker screen. */
+static void write_page_layout(const char *layouts_dir, int n) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/event_ez_page_%d.chtpm", layouts_dir, n);
+    FILE *f = fopen(path, "w");
+    if (!f) return;
+    fprintf(f,
+        "<panel time_reactive=\"true\">\n"
+        "    <module>system/prisc+x pal/main_loop_chtpm.pal</module>\n"
+        "    <interact src=\"pieces/apps/player_app/interact_relay.txt\" />\n"
+        "    <text label=\"+==========================================+\" /><br/>\n"
+        "    <text label=\"| PAGE %d  pkg=${pkg_name}                 |\" /><br/>\n"
+        "    <text label=\"+==========================================+\" /><br/>\n"
+        "    <cli_io id=\"ez_trigger\" label=\"Trigger (on_spawn/on_click/parallel)\" target_id=\"ez_trigger\" /><br/>\n"
+        "    <button label=\"Save Trigger\" onClick=\"KEY:5\" /><br/>\n"
+        "    <text label=\"-- COMMANDS --\" /><br/>\n"
+        "    ${command_list_rows_%d}\n"
+        "    <text label=\"+==========================================+\" /><br/>\n"
+        "    <button label=\"Back to Pages\" href=\"pieces/chtpm/layouts/event_ez.chtpm\" /><br/>\n"
+        "    <text label=\"${last_message}\" /><br/>\n"
+        "</panel>\n",
+        n, n);
+    fclose(f);
+}
+
+/* Real, shared Command Picker screen for page N - lists real command
+ * TYPES this house's own event.pal actually supports (currently just
+ * Change Gold - Show Choices is a real, planned follow-up, not listed
+ * yet so there's no dead/non-functional button). Picking one navigates
+ * straight to that type's own Parameter screen for THIS page (plain
+ * href, page number carried in the target filename, same trick every
+ * other screen here already uses). */
+static void write_cmdpick_layout(const char *layouts_dir, int n) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/event_ez_page_%d_cmdpick.chtpm", layouts_dir, n);
+    FILE *f = fopen(path, "w");
+    if (!f) return;
+    fprintf(f,
+        "<panel time_reactive=\"true\">\n"
+        "    <module>system/prisc+x pal/main_loop_chtpm.pal</module>\n"
+        "    <interact src=\"pieces/apps/player_app/interact_relay.txt\" />\n"
+        "    <text label=\"+==========================================+\" /><br/>\n"
+        "    <text label=\"| ADD COMMAND  page=%d                     |\" /><br/>\n"
+        "    <text label=\"+==========================================+\" /><br/>\n"
+        "    <button label=\"Change Gold\" href=\"pieces/chtpm/layouts/event_ez_page_%d_cmd_change_gold.chtpm\" /><br/>\n"
+        "    <button label=\"Back\" href=\"pieces/chtpm/layouts/event_ez_page_%d.chtpm\" /><br/>\n"
+        "</panel>\n",
+        n, n, n);
+    fclose(f);
+}
+
+/* Real Change Gold parameter screen for page N - one real cli_io field
+ * (signed amount), Save compiles a real new command onto this page's own
+ * event.ir.pdl/event.pal (see ez_menu_input.c's own KEY:6) and returns to
+ * the Page screen with the new command row visible + a fresh "[+] Add
+ * Command" slot below it - same "always one more empty slot" growth
+ * pattern the page list itself already uses. */
+static void write_cmd_change_gold_layout(const char *layouts_dir, int n) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/event_ez_page_%d_cmd_change_gold.chtpm", layouts_dir, n);
+    FILE *f = fopen(path, "w");
+    if (!f) return;
+    fprintf(f,
+        "<panel time_reactive=\"true\">\n"
+        "    <module>system/prisc+x pal/main_loop_chtpm.pal</module>\n"
+        "    <interact src=\"pieces/apps/player_app/interact_relay.txt\" />\n"
+        "    <text label=\"+==========================================+\" /><br/>\n"
+        "    <text label=\"| CHANGE GOLD  page=%d                     |\" /><br/>\n"
+        "    <text label=\"+==========================================+\" /><br/>\n"
+        "    <cli_io id=\"ez_cg_amount\" label=\"Amount (+10 or -5)\" target_id=\"ez_cg_amount\" /><br/>\n"
+        "    <button label=\"Save\" onClick=\"KEY:6\" /><br/>\n"
+        "    <button label=\"Back\" href=\"pieces/chtpm/layouts/event_ez_page_%d.chtpm\" /><br/>\n"
+        "    <text label=\"${last_message}\" /><br/>\n"
+        "</panel>\n",
+        n, n);
+    fclose(f);
+}
+
+/* Sanitize a dynamically-injected button label: no double-quotes (would
+ * break the injected attribute string), no embedded newlines. */
+static void sanitize(const char *in, char *out, size_t n) {
+    size_t j = 0;
+    for (size_t i = 0; in[i] && j + 1 < n; i++) {
+        char c = in[i];
+        if (c == '"') c = '\'';
+        if (c == '\n' || c == '\r') c = ' ';
+        out[j++] = c;
+    }
+    out[j] = '\0';
+}
+
+static void ping(void) {
+    char p[PATH_BUF];
+    snprintf(p, sizeof(p), "%s/pieces/display/frame_changed.txt", project_root);
+    FILE *f = fopen(p, "a");
+    if (f) { fputc('.', f); fclose(f); }
+    snprintf(p, sizeof(p), "%s/pieces/display/ez_screen_changed.txt", project_root);
+    f = fopen(p, "a");
+    if (f) { fputc('.', f); fclose(f); }
+}
+
+/* Real, on-disk page count: how many pages/page_N/ dirs actually exist. */
+static int count_real_pages(const char *pkg_dir) {
+    if (!pkg_dir[0]) return 0;
+    int n = 1;
+    char path[PATH_BUF];
+    while (1) {
+        snprintf(path, sizeof(path), "%s/pages/page_%d", pkg_dir, n);
+        struct stat st;
+        if (stat(path, &st) != 0) break;
+        n++;
+    }
+    return n - 1;
+}
+
+/* REAL, 2026-08-05: reads this page's own real event.ir.pdl NODE rows
+ * (type=change_gold today, type=show_choices once that pass lands) and
+ * renders each as a real, plain <text> row (commands aren't clickable
+ * once saved - editing an existing command isn't in scope for this
+ * pass, only appending new ones), then a real "[+] Add Command" button
+ * hrefing to this page's own Command Picker screen - same "always one
+ * more empty slot at the end" growth pattern the page list itself uses.
+ *
+ * REAL FIX 2026-08-05, root-caused via live k3 testing (a fresh, empty
+ * page's own "[+] Add Command" button never appeared on first visit):
+ * chtpm_parser_pal's own ${var} naked-substitution only re-runs at the
+ * EXACT instant of an href-commit (parse_chtm(), called synchronously
+ * inside that SAME process) - but ez_compose_frame.+x (a SEPARATE
+ * process, only invoked by the PAL script's own loop) computes this
+ * page's real command rows slightly AFTER that instant, so the value
+ * gui_state.txt held AT COMMIT TIME was still stale/empty from
+ * whichever screen the player was on before. No later render re-
+ * triggers parse_chtm() just because gui_state.txt changed (confirmed
+ * via source - only active_target_id/piece_methods/input_text changes,
+ * or wait_for_view_change, force a reparse). Same real fix already used
+ * for the .chtpm FILES themselves (pre-generate every reachable page's
+ * own file at Gallery-compose time, before it's ever clicked): this
+ * function is now ALSO called once per real page, AT GALLERY-COMPOSE
+ * TIME, writing a per-page-NUMBERED var (command_list_rows_N, not a
+ * single shared key) - so by the time a page is actually clicked into,
+ * gui_state.txt already holds ITS OWN correct value from the last
+ * Gallery visit (guaranteed to have happened - there's no way to reach
+ * a page except through the Gallery first). */
+static void build_command_list_rows(const char *pkg_dir, int page_n, char *rows_out, size_t rows_out_sz) {
+    rows_out[0] = '\0';
+    size_t used = 0;
+    char ir_path[PATH_BUF];
+    snprintf(ir_path, sizeof(ir_path), "%s/pages/page_%d/event.ir.pdl", pkg_dir, page_n);
+    FILE *irf = fopen(ir_path, "r");
+    int shown = 0;
+    if (irf) {
+        char line[MAX_LINE];
+        while (fgets(line, sizeof(line), irf)) {
+            char *tp = strstr(line, "type=");
+            if (strncmp(line, "NODE", 4) != 0 || !tp) continue;
+            char type_buf[48] = "";
+            char *t = tp + 5, *sp = strchr(t, ' ');
+            char *pipe = strchr(t, '|');
+            size_t len = sp ? (size_t)(sp - t) : (pipe ? (size_t)(pipe - t) : strlen(t));
+            if (len >= sizeof(type_buf)) len = sizeof(type_buf) - 1;
+            memcpy(type_buf, t, len);
+            type_buf[len] = '\0';
+            if (strcmp(type_buf, "change_gold") != 0) continue; /* trigger/ret bookkeeping rows, skip */
+            char *ap = strstr(line, "amount=");
+            char amount[32] = "";
+            if (ap) {
+                snprintf(amount, sizeof(amount), "%s", ap + 7);
+                amount[strcspn(amount, "\r\n|")] = '\0';
+            }
+            shown++;
+            char label[96], clean[96];
+            snprintf(label, sizeof(label), "%d. Change Gold: %s", shown, amount);
+            sanitize(label, clean, sizeof(clean));
+            int wrote = snprintf(rows_out + used, rows_out_sz - used,
+                                  "<text label=\"%s\" /><br/>", clean);
+            if (wrote < 0 || (size_t)wrote >= rows_out_sz - used) break;
+            used += (size_t)wrote;
+        }
+        fclose(irf);
+    }
+    int wrote = snprintf(rows_out + used, rows_out_sz - used,
+                          "<button label=\"[+] Add Command\" href=\"pieces/chtpm/layouts/event_ez_page_%d_cmdpick.chtpm\" /><br/>",
+                          page_n);
+    if (wrote > 0 && (size_t)wrote < rows_out_sz - used) used += (size_t)wrote;
+}
+
+static void compose_gallery(const char *state, const char *view, const char *gui,
+                             const char *pkg, const char *pkg_dir, const char *msg,
+                             char *rows_out, size_t rows_out_sz,
+                             char *cmd_rows_kv_out, size_t cmd_rows_kv_out_sz) {
+    /* Real page-editor files must exist BEFORE the gallery can href to
+     * them - generate every real page's own file plus one trailing
+     * blank slot ("always one more empty page," RPG Maker's own
+     * convention) fresh every compose. Cheap, idempotent. Also
+     * PRECOMPUTES every real page's own command_list_rows_N value here
+     * (see build_command_list_rows()'s own header comment for why) -
+     * written into gui_state.txt by main() below. */
+    char layouts_dir[PATH_BUF];
+    snprintf(layouts_dir, sizeof(layouts_dir), "%s/pieces/chtpm/layouts", project_root);
+    int n_real = count_real_pages(pkg_dir);
+    cmd_rows_kv_out[0] = '\0';
+    size_t kv_used = 0;
+    for (int i = 1; i <= n_real + 1; i++) {
+        write_page_layout(layouts_dir, i);
+        write_cmdpick_layout(layouts_dir, i);
+        write_cmd_change_gold_layout(layouts_dir, i);
+        char page_cmd_rows[4096];
+        build_command_list_rows(pkg_dir, i, page_cmd_rows, sizeof(page_cmd_rows));
+        int kv_wrote = snprintf(cmd_rows_kv_out + kv_used, cmd_rows_kv_out_sz - kv_used,
+                                 "command_list_rows_%d=%s\n", i, page_cmd_rows);
+        if (kv_wrote < 0 || (size_t)kv_wrote >= cmd_rows_kv_out_sz - kv_used) break;
+        kv_used += (size_t)kv_wrote;
+    }
+
+    /* Real dynamic button injection, SAME proven mechanism the real
+     * CHTPM editor's own ${event_content_rows} already uses - a bare
+     * ${var} placeholder (not inside a <text> tag) gets substituted
+     * with raw markup BEFORE tokenization (parse_chtm()'s own
+     * substitute_vars_naked(), confirmed via source), so injected
+     * <button href="..."> tags parse as REAL new elements. Using href
+     * (a plain literal path, no prefix-matching) rather than onClick
+     * here - onClick strings other than a few recognized prefixes are
+     * silently rejected by send_command(), a real latent bug already
+     * found this session; href has no such restriction. */
+    rows_out[0] = '\0';
+    size_t used = 0;
+    for (int i = 1; i <= n_real + 1; i++) {
+        char label[80];
+        /* REAL FIX 2026-08-05, root-caused via live k3 testing + a real
+         * instrumented chtpm_parser_pal trace (see
+         * visual-event-compiler-pal.md): this used to bake its OWN
+         * "N. [...]" numbering into the label text - but
+         * chtpm_parser_pal's own render_element() ALREADY prepends a
+         * real "[ ]"/"[>]" cursor + real auto-numbered "N." for every
+         * navigable button automatically. The result was double,
+         * nested numbering ("[ ] 1. [1. [on-click]]") - confirmed via
+         * live trace this was purely cosmetic (do_jump()/href commit
+         * both traced CORRECTLY against the real element every time),
+         * not an actual navigation-targeting bug. Labels now carry only
+         * the real content - chtpm's own real nav chrome supplies the
+         * number and bracket. */
+        if (i <= n_real) {
+            char cond_path[PATH_BUF], trig[64] = "";
+            snprintf(cond_path, sizeof(cond_path), "%s/pages/page_%d/condition.pdl", pkg_dir, i);
+            read_pdl_value(cond_path, "trigger", trig, sizeof(trig));
+            snprintf(label, sizeof(label), "%s", trig[0] ? trig : "?");
+        } else {
+            snprintf(label, sizeof(label), "empty");
+        }
+        char clean[80]; sanitize(label, clean, sizeof(clean));
+        int wrote = snprintf(rows_out + used, rows_out_sz - used,
+                              "<button label=\"%s\" href=\"pieces/chtpm/layouts/event_ez_page_%d.chtpm\" /><br/>",
+                              clean, i);
+        if (wrote < 0 || (size_t)wrote >= rows_out_sz - used) break;
+        used += (size_t)wrote;
+    }
+
+    FILE *o = fopen(view, "w");
+    if (!o) return;
+    fprintf(o, "+==========================================+\n");
+    fprintf(o, "| EVENT-EZ  pkg=%-27.27s|\n", pkg);
+    fprintf(o, "+==========================================+\n");
+    fprintf(o, "| -- PAGES --                                |\n");
+    for (int i = 1; i <= n_real; i++) {
+        char cond_path[PATH_BUF], ir_path[PATH_BUF], trig[64] = "";
+        snprintf(cond_path, sizeof(cond_path), "%s/pages/page_%d/condition.pdl", pkg_dir, i);
+        snprintf(ir_path, sizeof(ir_path), "%s/pages/page_%d/event.ir.pdl", pkg_dir, i);
+        read_pdl_value(cond_path, "trigger", trig, sizeof(trig));
+        char summary[64] = "(empty)";
+        FILE *irf = fopen(ir_path, "r");
+        if (irf) {
+            char line[MAX_LINE];
+            while (fgets(line, sizeof(line), irf)) {
+                if (strncmp(line, "NODE", 4) != 0) continue;
+                char *txp = strstr(line, "text=");
+                if (!txp) continue;
+                char *v = txp + 5;
+                v[strcspn(v, "\r\n")] = '\0';
+                snprintf(summary, sizeof(summary), "%s", v);
+                break;
+            }
+            fclose(irf);
+        }
+        char row[96];
+        snprintf(row, sizeof(row), "%d. [%s] %.30s", i, trig[0] ? trig : "?", summary);
+        fprintf(o, "| %-42.42s|\n", row);
+    }
+    {
+        char row[64];
+        snprintf(row, sizeof(row), "%d. [ ] empty  <- click to add", n_real + 1);
+        fprintf(o, "| %-42.42s|\n", row);
+    }
+    fprintf(o, "+==========================================+\n");
+    if (msg[0]) fprintf(o, "| %-42.42s|\n", msg);
+    else fprintf(o, "| Click a page number to open/create it    |\n");
+    fprintf(o, "+==========================================+\n");
+    fclose(o);
+    (void)state; (void)gui;
+}
+
+static void compose_page(const char *state, const char *view, const char *gui,
+                          const char *pkg, const char *pkg_dir, const char *msg, int page_n,
+                          char *cmd_rows_out, size_t cmd_rows_out_sz) {
+    char saved_trigger[64] = "";
+    char cond_path[PATH_BUF], ir_path[PATH_BUF];
+    int have_saved_page = 0;
+    if (pkg_dir[0]) {
+        snprintf(cond_path, sizeof(cond_path), "%s/pages/page_%d/condition.pdl", pkg_dir, page_n);
+        snprintf(ir_path, sizeof(ir_path), "%s/pages/page_%d/event.ir.pdl", pkg_dir, page_n);
+        struct stat st;
+        if (stat(ir_path, &st) == 0) {
+            have_saved_page = 1;
+            read_pdl_value(cond_path, "trigger", saved_trigger, sizeof(saved_trigger));
+        }
+    }
+    build_command_list_rows(pkg_dir, page_n, cmd_rows_out, cmd_rows_out_sz);
+
+    FILE *o = fopen(view, "w");
+    if (!o) return;
+    fprintf(o, "+==========================================+\n");
+    fprintf(o, "| EVENT-EZ  pkg=%-13.13s page=%-8d|\n", pkg, page_n);
+    fprintf(o, "+==========================================+\n");
+    fprintf(o, "| trigger=%-33.33s|\n", have_saved_page && saved_trigger[0] ? saved_trigger : "(unset - Save Trigger)");
+    fprintf(o, "+==========================================+\n");
+    fprintf(o, "| -- COMMANDS (what Play runs) --            |\n");
+    fprintf(o, "| %-42.42s|\n", cmd_rows_out[0] ? "(see real page for live list)" : "(none yet - Add Command)");
+    fprintf(o, "+==========================================+\n");
+    if (msg[0]) fprintf(o, "| %-42.42s|\n", msg);
+    else fprintf(o, "| fill Trigger + Save, or Add a Command     |\n");
+    fprintf(o, "+==========================================+\n");
+    fclose(o);
+    (void)gui;
+}
+
+int main(void) {
+    resolve_root();
+
+    char state[PATH_BUF], view[PATH_BUF], gui[PATH_BUF];
+    snprintf(state, sizeof(state), "%s/pieces/system/ez_state.txt", project_root);
+    snprintf(view, sizeof(view), "%s/pieces/apps/player_app/view.txt", project_root);
+    snprintf(gui, sizeof(gui), "%s/projects/event-ez/manager/gui_state.txt", project_root);
+
+    char pkg[128], msg[MAX_LINE], pkg_dir[PATH_BUF];
+    read_kv(state, "pkg_name", pkg, sizeof(pkg));
+    read_kv(state, "last_message", msg, sizeof(msg));
+    read_kv(state, "pkg_dir", pkg_dir, sizeof(pkg_dir));
+    if (!pkg[0]) snprintf(pkg, sizeof(pkg), "(none)");
+
+    char page_gallery_rows[4096] = "";
+    char command_list_rows[4096] = "";
+    char command_list_rows_kv[32768] = "";
+    int page_n = 0;
+    ScreenKind kind = current_screen_kind(&page_n);
+    if (kind == SCREEN_PAGE) {
+        compose_page(state, view, gui, pkg, pkg_dir, msg, page_n, command_list_rows, sizeof(command_list_rows));
+    } else if (kind == SCREEN_GALLERY) {
+        compose_gallery(state, view, gui, pkg, pkg_dir, msg, page_gallery_rows, sizeof(page_gallery_rows),
+                         command_list_rows_kv, sizeof(command_list_rows_kv));
+    }
+    /* SCREEN_CMDPICK / SCREEN_CMD_CHANGE_GOLD: static, pre-generated by
+     * compose_gallery() above whenever the Gallery loads - no per-frame
+     * dynamic content of their own, nothing to compose here. */
+
+    {
+        char cmd[PATH_BUF];
+        snprintf(cmd, sizeof(cmd), "mkdir -p '%s/projects/event-ez/manager'", project_root);
+        if (system(cmd) != 0) { /* best-effort, dir likely already exists */ }
+    }
+
+    /* REAL FIX: a plain "a" (append) open here would grow gui_state.txt
+     * unbounded (this op runs every ~30ms in the PAL loop). chtpm_parser_
+     * pal.c owns writing ez_target=/ez_speed= itself on every keystroke
+     * (save_cli_io_gui_state(), confirmed via source read) - read the
+     * WHOLE file first, keep every line except our own pkg_name=/
+     * last_message= (which we're about to rewrite fresh), then write it
+     * all back plus our fresh values. Preserves the live cli_io keys
+     * without ever growing the file. */
+    char keep[64][MAX_LINE];
+    int n_keep = 0;
+    FILE *rf = fopen(gui, "r");
+    if (rf) {
+        char line[MAX_LINE];
+        while (n_keep < 64 && fgets(line, sizeof(line), rf)) {
+            if (strncmp(line, "pkg_name=", 9) == 0) continue;
+            if (strncmp(line, "last_message=", 13) == 0) continue;
+            if (strncmp(line, "page_gallery_rows=", 18) == 0) continue;
+            if (strncmp(line, "command_list_rows=", 18) == 0) continue;
+            /* REAL, 2026-08-05: only strip old command_list_rows_N=
+             * lines when we're ABOUT to write fresh replacements this
+             * exact pass (kind==SCREEN_GALLERY, command_list_rows_kv
+             * non-empty) - on a Page/Cmdpick/Cmd screen this op does
+             * NOT recompute them, so stripping unconditionally would
+             * silently erase the very data the Page screen needs to
+             * render (only the Gallery visit that precomputed them can
+             * safely replace them). */
+            if (command_list_rows_kv[0] && strncmp(line, "command_list_rows_", 19) == 0) continue;
+            snprintf(keep[n_keep], MAX_LINE, "%s", line);
+            n_keep++;
+        }
+        fclose(rf);
+    }
+    /* REAL FIX 2026-08-05, root-caused via live k3 reproduction + a
+     * real instrumented chtpm_parser_pal trace (see
+     * visual-event-compiler-pal.md / EVENT_SCRIPTING_PROGRESS_AND_GOALS.md
+     * "KNOWN BUG"): this used to fopen(gui, "w") directly - a plain
+     * truncate-in-place write. chtpm_parser_pal's own load_vars() reads
+     * this EXACT file from a SEPARATE, concurrently-running process on
+     * every parse_chtm() (this PAL loop re-runs ez_compose_frame every
+     * tick that processed a key - main_loop_chtpm.pal's own
+     * render_always path). A torn read (parser catching this file mid-
+     * truncate, after the old content was wiped but before the new
+     * page_gallery_rows= line was written) is EXACTLY what produced the
+     * live-observed symptom: page rows sometimes duplicated, sometimes
+     * missing entirely, no crash - a classic non-atomic-write race, not
+     * a parsing/counting bug in do_jump() itself (which traced correctly
+     * every single time once fed a consistent file). Write to a real
+     * temp file, then atomically rename() over the real path - same
+     * fix shape this house's own livedesk registry files already use. */
+    char gui_tmp[PATH_BUF];
+    snprintf(gui_tmp, sizeof(gui_tmp), "%s.tmp", gui);
+    FILE *g = fopen(gui_tmp, "w");
+    if (!g) return 1;
+    for (int i = 0; i < n_keep; i++) fputs(keep[i], g);
+    fprintf(g, "pkg_name=%s\n", pkg);
+    fprintf(g, "last_message=%s\n", msg[0] ? msg : "");
+    fprintf(g, "page_gallery_rows=%s\n", page_gallery_rows);
+    fprintf(g, "command_list_rows=%s\n", command_list_rows);
+    fclose(g);
+    rename(gui_tmp, gui);
+
+    ping();
+    return 0;
+}

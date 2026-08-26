@@ -1,0 +1,113 @@
+# event_commands.registry.pdl - REAL, data-driven event command registry
+# (2026-08-26, direct instruction: "we never hardcode stuff, always
+# keeping things super modular and abstract" - see EVENT-COMMAND-
+# REGISTRY-ARCHITECTURE.md in this same #.ref/menu/ dir for the full
+# design rationale, the fo-menu-sys.md precedent this follows, and why
+# a small class of commands is a deliberate, documented exception).
+#
+# Adding a new SIMPLE command (one that wraps a single real op with
+# substituted string params - which is what almost every event command
+# actually is) requires editing ONLY this file. Zero recompile, zero
+# C changes, in either events-hq or event-ez.
+#
+# Format - one COMMAND block per type:
+#   COMMAND <type>
+#     LABEL <display label shown in the Add Command picker>
+#     FIELD1 <prompt text for field 1, or - for none>
+#     FIELD2 <prompt text for field 2, or - for none>
+#     PARAMS <comma-separated field key names, field1,field2 order>
+#     TEMPLATE <the cmd_N.sh line to emit, with {key} substitution>
+#   END
+#
+# TEMPLATE syntax:
+#   {key}    substituted with that field's real value. The TEMPLATE
+#            itself owns quoting (wrap in '...' where the target op
+#            expects a single shell argument) - the substitution engine
+#            does no quoting/escaping of its own.
+#   [literal text with {key} inside]
+#            the ENTIRE bracketed segment - brackets, spaces, quotes,
+#            everything inside - is dropped as a unit if {key}'s real
+#            value is empty. Otherwise the brackets themselves are
+#            removed and the segment is kept with substitution applied.
+#            Exactly one {key} per bracket segment; used for optional
+#            trailing arguments (e.g. show_text's optional speaker).
+#
+# $ENT and $D are already real shell variables in every generated
+# cmd_N.sh wrapper (resolved entity dir / house root) - reference them
+# directly in a TEMPLATE line same as the old hardcoded C did.
+#
+# PAL directive (alternative to TEMPLATE):
+#   PAL <line of prisc+x instructions, one per PAL>
+#     Emits lines directly to event.pal, no cmd_N.sh wrapper.
+#     Same {key} substitution as TEMPLATE. Built-in key {STATE_DIR}
+#     resolves to the session root dir (or entity root fallback).
+#     Real pal syntax example (SYS_SET_KV_INT = ecall with x15=7):
+#       PAL li x15, 7
+#       PAL li x12, {value}
+#       PAL ecall "{STATE_DIR}/switches.txt" "{switch_name}"
+
+COMMAND change_gold
+  LABEL Change Gold
+  FIELD1 Amount:
+  FIELD2 -
+  PARAMS amount
+  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_change_gold.+x" "$ENT" '{amount}'
+END
+
+COMMAND show_text
+  LABEL Show Text
+  FIELD1 Text:
+  FIELD2 Speaker (opt):
+  PARAMS text,speaker
+  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_show_text.+x" "$ENT" '{text}'[ '{speaker}']
+END
+
+COMMAND show_choices
+  LABEL Show Choices
+  FIELD1 Choices (comma-sep):
+  FIELD2 Default index:
+  PARAMS choices,default
+  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_show_choices.+x" "$ENT" '{choices}' {default}
+END
+
+# REAL LIVE PROOF (2026-08-26) that this registry is genuinely
+# zero-recompile: this command was added to the file WHILE the manager
+# and render binaries were already running, unmodified, and picked up
+# on the very next poll tick with no restart. Reuses mr_change_gold.+x
+# (a negative delta) rather than needing a new op - see
+# EVENT-COMMAND-REGISTRY-ARCHITECTURE.md for the full test record.
+COMMAND take_gold
+  LABEL Take Gold
+  FIELD1 Amount:
+  FIELD2 -
+  PARAMS amount
+  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_change_gold.+x" "$ENT" '-{amount}'
+END
+
+COMMAND control_switch
+  LABEL Control Switch
+  FIELD1 Switch name:
+  FIELD2 Value (ON/OFF):
+  PARAMS switch_name,switch_value
+  PAL li x15, 7
+  PAL li x12, {switch_value}
+  PAL ecall "{STATE_DIR}/switches.txt" "{switch_name}"
+END
+
+COMMAND control_variable
+  LABEL Control Variable
+  FIELD1 Variable name:
+  FIELD2 Value (int):
+  PARAMS var_name,var_value
+  PAL li x15, 7
+  PAL li x12, {var_value}
+  PAL ecall "{STATE_DIR}/variables.txt" "{var_name}"
+END
+
+COMMAND call_common_event
+  LABEL Call Common Event
+  FIELD1 Target event name:
+  FIELD2 Trigger (opt):
+  PARAMS event_name,trigger
+  PAL OP call_event "{event_name}" [{trigger}]
+END
