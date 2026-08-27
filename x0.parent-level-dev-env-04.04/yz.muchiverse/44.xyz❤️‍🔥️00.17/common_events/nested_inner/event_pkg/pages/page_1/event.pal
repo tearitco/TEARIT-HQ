@@ -1,0 +1,8 @@
+# event.pal - nested_inner common event (called by test_target)
+# Writes marker file to prove nested call chain works
+li x15, 1
+li x13, 1
+ecall "/tmp/ce_nested_marker.txt"
+li x15, 3
+ecall "nested_inner_ran"
+halt

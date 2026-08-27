@@ -1,0 +1,15 @@
+# if/end (no else): reads switch, branches on x12
+li x15, 6
+ecall "/tmp/task3_switches.txt" "test_switch"
+li x2, 1
+bne x12, x2, _endif_1
+# if-true path: write on_marker
+li x15, 1
+li x13, 1
+ecall "/tmp/ce_task3_on_marker.txt"
+li x15, 3
+ecall "if_branch_executed"
+li x15, 2
+ecall ""
+_endif_1:
+halt

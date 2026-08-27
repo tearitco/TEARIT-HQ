@@ -1,3 +1,4 @@
 TRIGGER|on-click
-CMD|1|show_text|file=/tmp/test_verse.txt
-CMD|2|show_choices|choices=yes,no,maybe|default=0|default=0
+CMD|1|if|switch_name=test_switch|compare=on|compare=on
+CMD|2|call_common_event|event_name=test_target|trigger=on-click|trigger=on-click
+CMD|3|end|

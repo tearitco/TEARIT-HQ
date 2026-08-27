@@ -398,82 +398,160 @@ static int resolve_session_root(char *out, size_t outsz) {
 /* Real compile pass, ported line-for-line from the shell's own old
  * compile_page() (itself ported from ez_menu_input.c originally) -
  * event.pal is ALWAYS fully regenerated from event.ir.pdl, never
- * hand-patched, matching event-ez's own "visual compiler" semantics. */
+ * hand-patched, matching event-ez's own "visual compiler" semantics.
+ *
+ * TASK 3 (2026-08-26): Two-pass compilation with IfFrame nesting stack.
+ * Pass 1 reads all IR nodes into an array. Pass 2 generates PAL with
+ * label resolution for if/else/end blocks. This is the deliberate,
+ * documented exception to the registry-driven approach — conditional
+ * branching requires real compiler work (block structure, forward
+ * labels), not string template expansion. */
+#define MAX_IR_NODES 128
+#define MAX_IF_NEST 16
+typedef struct {
+    char type[48];
+    int id;
+    char keys[MAX_FIELDS][32];
+    char vals[MAX_FIELDS][256];
+    int n_params;
+} IrNode;
+typedef struct {
+    char end_label[32];
+    char else_label[32];
+    int has_else;
+} IfFrame;
 static void compile_page(int page_idx) {
     char pd[PATH_BUF]; page_dir(pd, sizeof(pd), page_idx);
     char ir_path[PATH_BUF]; snprintf(ir_path, sizeof(ir_path), "%s/event.ir.pdl", pd);
     char pal_path[PATH_BUF]; snprintf(pal_path, sizeof(pal_path), "%s/event.pal", pd);
 
-    FILE *pf = fopen(pal_path, "w");
-    if (!pf) return;
-    fprintf(pf, "# event.pal - real prisc+x opcodes, COMPILED from event.ir.pdl by khtpm_events_hq_manager.c\n");
-    fprintf(pf, "# pkg=%s page=%s - regenerated fresh on every command save\n", g_entity_label, g_pages[page_idx]);
+    /* Pass 1: Read all IR nodes into array */
+    IrNode nodes[MAX_IR_NODES];
+    int n_nodes = 0;
     FILE *irf = fopen(ir_path, "r");
     if (irf) {
         char line[512];
-        while (fgets(line, sizeof(line), irf)) {
+        while (fgets(line, sizeof(line), irf) && n_nodes < MAX_IR_NODES) {
             if (strncmp(line, "NODE", 4) != 0) continue;
+            IrNode *nd = &nodes[n_nodes];
+            nd->n_params = 0;
             char *tp = strstr(line, "type=");
             if (!tp) continue;
-            char type_buf[48] = "";
             char *t = tp + 5, *sp = strchr(t, ' ');
             char *pipe = strchr(t, '|');
             size_t len = sp ? (size_t)(sp - t) : (pipe ? (size_t)(pipe - t) : strlen(t));
-            if (len >= sizeof(type_buf)) len = sizeof(type_buf) - 1;
-            memcpy(type_buf, t, len); type_buf[len] = '\0';
+            if (len >= sizeof(nd->type)) len = sizeof(nd->type) - 1;
+            memcpy(nd->type, t, len); nd->type[len] = '\0';
             char *idp = strstr(line, "id=");
-            int node_id = idp ? atoi(idp + 3) : 1;
-            CommandDef *def = find_command_def(type_buf);
-            /* Parse params blob (everything after the SECOND pipe) */
+            nd->id = idp ? atoi(idp + 3) : 1;
             char *first_bar = strchr(line, '|');
             char *second_bar = first_bar ? strchr(first_bar + 1, '|') : NULL;
-            char keys[MAX_FIELDS][32], vals[MAX_FIELDS][256]; int n = 0;
             if (second_bar) {
                 char *pp = second_bar + 1;
                 while (*pp == ' ') pp++;
                 pp[strcspn(pp, "\r\n")] = '\0';
-                parse_params(pp, keys, vals, &n);
+                parse_params(pp, nd->keys, nd->vals, &nd->n_params);
             }
-            if (def && def->n_pal > 0) {
-                /* PAL mode: emit prisc+x instructions directly to
-                 * event.pal, no cmd_N.sh wrapper. Resolve STATE_DIR
-                 * once and inject as a synthetic key for expansion. */
-                char state_dir[PATH_BUF];
-                resolve_session_root(state_dir, sizeof(state_dir));
-                /* Add STATE_DIR as synthetic key/value */
-                if (n < MAX_FIELDS) {
-                    snprintf(keys[n], sizeof(keys[0]), "STATE_DIR");
-                    snprintf(vals[n], sizeof(vals[0]), "%s", state_dir);
-                    n++;
-                }
-                for (int pi = 0; pi < def->n_pal; pi++) {
-                    char expanded[512];
-                    expand_template(def->pal_lines[pi], keys, vals, n, expanded, sizeof(expanded));
-                    fprintf(pf, "%s\n", expanded);
-                }
-            } else {
-                /* TEMPLATE mode: generate cmd_N.sh wrapper as before */
-                char wrapper_path[PATH_BUF];
-                snprintf(wrapper_path, sizeof(wrapper_path), "%s/cmd_%d.sh", pd, node_id);
-                FILE *wf = fopen(wrapper_path, "w");
-                if (wf) {
-                    fprintf(wf, "#!/bin/sh\n");
-                    fprintf(wf, "cd \"$(dirname \"$0\")/../../..\" || exit 1\n");
-                    fprintf(wf, "ENT=\"$PWD\"\n");
-                    fprintf(wf, "D=\"$ENT\"\n");
-                    fprintf(wf, "while [ \"$D\" != \"/\" ] && [ ! -d \"$D/xyzfs\" ]; do D=\"$(dirname \"$D\")\"; done\n");
-                    if (def) {
-                        char expanded[512];
-                        expand_template(def->tmpl, keys, vals, n, expanded, sizeof(expanded));
-                        fprintf(wf, "%s\n", expanded);
-                    }
-                    fclose(wf);
-                    chmod(wrapper_path, 0755);
-                }
-                fprintf(pf, "exec cmd_%d.sh\n", node_id);
-            }
+            n_nodes++;
         }
         fclose(irf);
+    }
+
+    /* Pass 2: Generate PAL with label resolution */
+    FILE *pf = fopen(pal_path, "w");
+    if (!pf) return;
+    fprintf(pf, "# event.pal - real prisc+x opcodes, COMPILED from event.ir.pdl by khtpm_events_hq_manager.c\n");
+    fprintf(pf, "# pkg=%s page=%s - regenerated fresh on every command save\n", g_entity_label, g_pages[page_idx]);
+
+    IfFrame if_stack[MAX_IF_NEST];
+    int if_top = 0;
+    int label_counter = 0;
+
+    for (int ni = 0; ni < n_nodes; ni++) {
+        IrNode *nd = &nodes[ni];
+
+        if (strcmp(nd->type, "if") == 0) {
+            if (if_top >= MAX_IF_NEST) continue;
+            label_counter++;
+            IfFrame *fr = &if_stack[if_top];
+            snprintf(fr->end_label, sizeof(fr->end_label), "_endif_%d", label_counter);
+            snprintf(fr->else_label, sizeof(fr->else_label), "_else_%d", label_counter);
+            fr->has_else = 0;
+            if_top++;
+            /* Evaluate condition: read switch/variable, compare, branch */
+            char state_dir[PATH_BUF];
+            resolve_session_root(state_dir, sizeof(state_dir));
+            char switch_name[128] = "", compare[32] = "";
+            for (int pi = 0; pi < nd->n_params; pi++) {
+                if (strcmp(nd->keys[pi], "switch_name") == 0) snprintf(switch_name, sizeof(switch_name), "%s", nd->vals[pi]);
+                else if (strcmp(nd->keys[pi], "compare") == 0) snprintf(compare, sizeof(compare), "%s", nd->vals[pi]);
+            }
+            if (switch_name[0]) {
+                fprintf(pf, "li x15, 6\n");
+                fprintf(pf, "ecall \"%s/switches.txt\" \"%s\"\n", state_dir, switch_name);
+                fprintf(pf, "li x2, %s\n", strcmp(compare, "on") == 0 ? "1" : "0");
+                fprintf(pf, "bne x12, x2, %s\n", fr->else_label);
+            }
+            continue;
+        }
+        if (strcmp(nd->type, "else") == 0) {
+            if (if_top > 0) {
+                IfFrame *fr = &if_stack[if_top - 1];
+                fprintf(pf, "j %s\n", fr->end_label);
+                fprintf(pf, "%s:\n", fr->else_label);
+                fr->has_else = 1;
+            }
+            continue;
+        }
+        if (strcmp(nd->type, "end") == 0) {
+            if (if_top > 0) {
+                if_top--;
+                IfFrame *fr = &if_stack[if_top];
+                if (!fr->has_else) fprintf(pf, "%s:\n", fr->else_label);
+                fprintf(pf, "%s:\n", fr->end_label);
+            }
+            continue;
+        }
+        /* Normal registry-driven compilation (existing code) */
+        CommandDef *def = find_command_def(nd->type);
+        char keys[MAX_FIELDS][32], vals[MAX_FIELDS][256]; int n = nd->n_params;
+        for (int pi = 0; pi < n; pi++) {
+            snprintf(keys[pi], sizeof(keys[0]), "%s", nd->keys[pi]);
+            snprintf(vals[pi], sizeof(vals[0]), "%s", nd->vals[pi]);
+        }
+        if (def && def->n_pal > 0) {
+            char state_dir[PATH_BUF];
+            resolve_session_root(state_dir, sizeof(state_dir));
+            if (n < MAX_FIELDS) {
+                snprintf(keys[n], sizeof(keys[0]), "STATE_DIR");
+                snprintf(vals[n], sizeof(vals[0]), "%s", state_dir);
+                n++;
+            }
+            for (int pi = 0; pi < def->n_pal; pi++) {
+                char expanded[512];
+                expand_template(def->pal_lines[pi], keys, vals, n, expanded, sizeof(expanded));
+                fprintf(pf, "%s\n", expanded);
+            }
+        } else {
+            char wrapper_path[PATH_BUF];
+            snprintf(wrapper_path, sizeof(wrapper_path), "%s/cmd_%d.sh", pd, nd->id);
+            FILE *wf = fopen(wrapper_path, "w");
+            if (wf) {
+                fprintf(wf, "#!/bin/sh\n");
+                fprintf(wf, "cd \"$(dirname \"$0\")/../../..\" || exit 1\n");
+                fprintf(wf, "ENT=\"$PWD\"\n");
+                fprintf(wf, "D=\"$ENT\"\n");
+                fprintf(wf, "while [ \"$D\" != \"/\" ] && [ ! -d \"$D/xyzfs\" ]; do D=\"$(dirname \"$D\")\"; done\n");
+                if (def) {
+                    char expanded[512];
+                    expand_template(def->tmpl, keys, vals, n, expanded, sizeof(expanded));
+                    fprintf(wf, "%s\n", expanded);
+                }
+                fclose(wf);
+                chmod(wrapper_path, 0755);
+            }
+            fprintf(pf, "exec cmd_%d.sh\n", nd->id);
+        }
     }
     fprintf(pf, "halt\n");
     fclose(pf);

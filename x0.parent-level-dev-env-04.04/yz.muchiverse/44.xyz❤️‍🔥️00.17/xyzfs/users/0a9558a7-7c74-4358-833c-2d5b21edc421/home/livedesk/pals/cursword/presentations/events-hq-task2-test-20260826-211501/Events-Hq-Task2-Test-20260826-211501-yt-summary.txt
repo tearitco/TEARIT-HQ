@@ -1,0 +1,13 @@
+Events Hq Task2 Test 20260826 211501
+====================================
+
+Video file: Events-Hq-Task2-Test-20260826-211501.mp4
+
+Chapters:
+  00:00  Events-hq initial state before Task 2 test. Clean page with Add Command button visible.
+  00:08  Picker overlay open showing all command types. Call Common Event at the bottom of the list.
+  00:17  After submit: event.pal compiled with OP call_event line including trigger argument.
+  00:25  After submit: event.pal compiled with OP call_event, trigger bracket dropped (no second arg).
+  00:35  After playing event: marker file proves target common event executed successfully.
+
+Total runtime: 00:42

@@ -1,0 +1,25 @@
+# if/else/end: reads switch, branches on x12
+li x15, 6
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/switches.txt" "test_switch"
+li x2, 1
+bne x12, x2, _else_1
+# ON path: write on_marker
+li x15, 1
+li x13, 1
+ecall "/tmp/ce_task3_on_marker.txt"
+li x15, 3
+ecall "branch_on_executed"
+li x15, 2
+ecall ""
+j _endif_1
+_else_1:
+# OFF path: write off_marker
+li x15, 1
+li x13, 1
+ecall "/tmp/ce_task3_off_marker.txt"
+li x15, 3
+ecall "branch_off_executed"
+li x15, 2
+ecall ""
+_endif_1:
+halt

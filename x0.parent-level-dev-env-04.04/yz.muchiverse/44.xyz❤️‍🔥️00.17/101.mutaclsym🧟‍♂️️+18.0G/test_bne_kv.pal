@@ -1,0 +1,27 @@
+# Read switch value
+li x15, 6
+ecall "/tmp/switch_test/switches.txt" "test_switch"
+# x12 = switch value (1 or 0)
+li x2, 1
+bne x12, x2, _else_1
+# ON path: open marker, write "branch_on", close
+li x15, 1
+li x13, 1
+ecall "/tmp/switch_test/marker.txt"
+# x12 = fd
+li x15, 3
+ecall "branch_on"
+li x15, 2
+ecall ""
+j _endif_1
+_else_1:
+# OFF path: open marker, write "branch_off", close
+li x15, 1
+li x13, 1
+ecall "/tmp/switch_test/marker.txt"
+li x15, 3
+ecall "branch_off"
+li x15, 2
+ecall ""
+_endif_1:
+halt

@@ -1,0 +1,22 @@
+li x15, 6
+ecall "/tmp/task3_ascii_switches.txt" "test_switch"
+li x2, 1
+bne x12, x2, _else_1
+li x15, 1
+li x13, 1
+ecall "/tmp/ce_task3_on_marker.txt"
+li x15, 3
+ecall "ON"
+li x15, 2
+ecall ""
+j _endif_1
+_else_1:
+li x15, 1
+li x13, 1
+ecall "/tmp/ce_task3_off_marker.txt"
+li x15, 3
+ecall "OFF"
+li x15, 2
+ecall ""
+_endif_1:
+halt

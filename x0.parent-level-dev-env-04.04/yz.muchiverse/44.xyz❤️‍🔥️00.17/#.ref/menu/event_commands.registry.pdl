@@ -107,7 +107,24 @@ END
 COMMAND call_common_event
   LABEL Call Common Event
   FIELD1 Target event name:
-  FIELD2 Trigger (opt):
+  FIELD2 Trigger:
+  SELECT2 None:on-click:autorun:parallel
   PARAMS event_name,trigger
   PAL OP call_event "{event_name}" [{trigger}]
+END
+
+COMMAND if
+  LABEL If
+  FIELD1 Switch name:
+  FIELD2 Compare:
+  SELECT2 on:off
+  PARAMS switch_name,compare
+END
+
+COMMAND else
+  LABEL Else
+END
+
+COMMAND end
+  LABEL End
 END

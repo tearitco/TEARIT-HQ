@@ -1,0 +1,13 @@
+PASS: T1: IR has 5 nodes (if+cmd+else+cmd+end)
+PASS: T1: PAL has bne x12 (correct register)
+PASS: T1: PAL has _else_1 label
+PASS: T1: PAL has _endif_1 label
+PASS: T1: PAL has j _endif_1 (else skip)
+PASS: T1: PAL has ecall for test_switch
+PASS: T2: else-less — _else_1 falls straight through to _endif_1 (no else body)
+PASS: T2: PAL has _endif_1 label
+PASS: T2: PAL has bne x12
+PASS: T3: switch ON → on_marker created, off_marker absent
+PASS: T4: switch OFF → off_marker created, on_marker absent
+PASS: T5: else-less ON → on_marker created
+PASS: T6: else-less OFF → no marker (correct — if-branch skipped)

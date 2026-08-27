@@ -1,0 +1,1 @@
+gold_bonus=500

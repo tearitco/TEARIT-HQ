@@ -1,0 +1,9 @@
+# event.pal - test_target common event (called by call_common_event)
+# Writes marker file, then calls nested_inner to test nesting
+li x15, 1
+li x13, 1
+ecall "/tmp/ce_test_marker.txt"
+li x15, 3
+ecall "test_target_event_ran"
+OP call_event "nested_inner" on-click
+halt

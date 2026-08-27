@@ -11,3 +11,4 @@ header.focus=24[type=button label=${datetime} onClick=ACTIVATE:15] header.active
 header.focus=76[type=button label=clocks & cals onClick=HQITEM:0] header.active=74 bottom.focus=1 unified_nav_focus=14 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=83
 header.focus=24[type=button label=${datetime} onClick=ACTIVATE:15] header.active=-1 bottom.focus=1 unified_nav_focus=14 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
 header.focus=12[type=button label=edit onClick=ACTIVATE:7] header.active=12 bottom.focus=1 unified_nav_focus=6 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
+header.focus=12[type=button label=edit onClick=ACTIVATE:7] header.active=-1 bottom.focus=3 unified_nav_focus=3 has_real_x11_focus=0 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28

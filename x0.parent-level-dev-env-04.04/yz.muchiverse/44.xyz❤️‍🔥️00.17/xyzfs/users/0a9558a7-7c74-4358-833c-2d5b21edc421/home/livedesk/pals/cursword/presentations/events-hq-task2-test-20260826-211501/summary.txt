@@ -1,0 +1,6 @@
+PASS: T1: entered field-edit mode for call_common_event
+PASS: T1: picker closed after submit
+PASS: T1: event.pal has OP call_event with trigger arg
+PASS: T2: bracket dropped — last OP call_event has no trigger arg
+PASS: T3: target event ran — marker file created: 'test_target_event_ran'
+PASS: T4: nesting works — outer='test_target_event_ran', inner='nested_inner_ran'

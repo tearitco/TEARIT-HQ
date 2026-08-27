@@ -1,0 +1,11 @@
+li x15, 6
+ecall "/tmp/switch_test/switches.txt" "test_switch"
+li x2, 1
+bne x12, x2, _else_1
+li x15, 3
+ecall "branch_on"
+halt
+_else_1:
+li x15, 3
+ecall "branch_off"
+halt

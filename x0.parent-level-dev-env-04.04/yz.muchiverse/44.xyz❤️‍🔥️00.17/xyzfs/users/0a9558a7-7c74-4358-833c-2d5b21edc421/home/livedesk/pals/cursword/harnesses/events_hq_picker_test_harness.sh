@@ -75,7 +75,8 @@ send_text() {
   local s="$1" i c
   for ((i = 0; i < ${#s}; i++)); do
     c="${s:$i:1}"
-    echo "$c" | od -An -tu1 | tr -d ' ' >> "$RELAY"
+    printf '%s' "$c" | od -An -tu1 | tr -d ' \n' >> "$RELAY"
+    printf '\n' >> "$RELAY"
     sleep 0.05
   done
 }
@@ -293,11 +294,12 @@ log "=== T5: enter-to-submit ==="
 
 # Count commands before (find the active page from state dump)
 dump_state
-ACTIVE_PAGE=$(grep 'tag=tab id=' "$STATE" | head -1 | sed 's/.*label=//' | tr -d ' ')
+ACTIVE_PAGE=$(grep 'tag=tab id=' "$STATE" | head -1 | sed 's/.*label=//' | sed 's/<--.*//' | tr -d ' ')
 if [ -z "$ACTIVE_PAGE" ]; then ACTIVE_PAGE="page_1"; fi
 IR_PATH="$PKG_DIR/pages/$ACTIVE_PAGE/event.ir.pdl"
 log "active page: $ACTIVE_PAGE (ir: $IR_PATH)"
-CMDS_BEFORE=$(grep -c "^NODE" "$IR_PATH" 2>/dev/null || echo 0)
+CMDS_BEFORE=$(grep -c "^NODE" "$IR_PATH" 2>/dev/null)
+if [ -z "$CMDS_BEFORE" ]; then CMDS_BEFORE=0; fi
 log "commands before T5: $CMDS_BEFORE"
 
 # Re-open picker
@@ -332,7 +334,7 @@ sleep 0.3
 dump_state
 cp "$STATE" "$RESULTS/07_t5_field1_typed.txt"
 
-FIELD1_VAL=$(grep 'g_evhq_field1=' "$STATE" | head -1 | sed 's/.*g_evhq_field1=//')
+FIELD1_VAL=$(grep 'g_evhq_field1=' "$STATE" | head -1 | sed 's/.*g_evhq_field1=\[//' | sed 's/\].*//')
 log "field1 value after typing: '$FIELD1_VAL'"
 if [ "$FIELD1_VAL" = "yes,no,maybe" ]; then
   pass "T5: field1 text entered correctly"
@@ -372,7 +374,8 @@ else
 fi
 
 # Check if command was added
-CMDS_AFTER=$(grep -c "^NODE" "$IR_PATH" 2>/dev/null || echo 0)
+CMDS_AFTER=$(grep -c "^NODE" "$IR_PATH" 2>/dev/null)
+if [ -z "$CMDS_AFTER" ]; then CMDS_AFTER=0; fi
 log "commands after T5: $CMDS_AFTER"
 if [ "$CMDS_AFTER" -gt "$CMDS_BEFORE" ]; then
   pass "T5: command added to event.ir.pdl ($CMDS_BEFORE -> $CMDS_AFTER)"
@@ -406,7 +409,7 @@ sleep 0.3
 dump_state
 cp "$STATE" "$RESULTS/10_t6_text_before_cancel.txt"
 
-FIELD1_BEFORE=$(grep 'g_evhq_field1=' "$STATE" | head -1 | sed 's/.*g_evhq_field1=//')
+FIELD1_BEFORE=$(grep 'g_evhq_field1=' "$STATE" | head -1 | sed 's/.*g_evhq_field1=\[//' | sed 's/\].*//')
 log "field1 before cancel: '$FIELD1_BEFORE'"
 
 # Escape to cancel
@@ -423,7 +426,8 @@ else
 fi
 
 # Verify no new command was added
-CMDS_AFTER_CANCEL=$(grep -c "^NODE" "$IR_PATH" 2>/dev/null || echo 0)
+CMDS_AFTER_CANCEL=$(grep -c "^NODE" "$IR_PATH" 2>/dev/null)
+if [ -z "$CMDS_AFTER_CANCEL" ]; then CMDS_AFTER_CANCEL=0; fi
 if [ "$CMDS_AFTER_CANCEL" = "$CMDS_AFTER" ]; then
   pass "T6: no command added after cancel (still $CMDS_AFTER_CANCEL)"
 else

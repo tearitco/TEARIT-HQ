@@ -1,0 +1,81 @@
+<!-- dashboard.chtpm — db-hq, first real proof of the HQML CSS layer
+     (au11-hq/HQML-DESIGN+PLANS.md Phase 1), scoped to Common Events only
+     per au11-hq/todo-a12.txt. Rendered by khtpm_hq_render.c (a standalone
+     binary, NOT the taskbar's khtpm_strip_parser.c) against dashboard.css.
+
+     Tag vocabulary (own small set, distinct from the taskbar's 5-tag
+     ACTIVATE-scope system): window, tabbar, tab, sidebar, item, panel,
+     title, text, button. class/id attributes drive CSS selector matching.
+
+     The 15 tabs mirror au11-hq/rpg-maker-database.html's category list
+     and ORDER exactly (line 301-316 there - Common Events sits right
+     after Tilesets, "Types" and "Terms" are two separate tabs, direct
+     correction 2026-08-12); only "Common Events" is wired (its content
+     below is real). The other 14 render as a plain placeholder message
+     when clicked - see khtpm_hq_render.c's render_placeholder_tab().
+     Common Events' sidebar rows are populated at runtime from
+     <house_root>/common_events/ (see inject_sidebar_items() in
+     khtpm_hq_render.c) - the literal <item> tags below exist only so the
+     tag survives an empty directory.
+
+     Task 6 (2026-08-26, direct instruction: "same as how entities events
+     works... modeled off rpgmaker mv/mz" - one dialog, sidebar list of
+     event slots + the real command editor together, NOT a separate
+     spawned window/app) - selecting a sidebar item now opens a REAL,
+     embedded events-hq-style editor (page tabs' worth of trigger +
+     command list + Add Command + Play) directly in the "panel" below,
+     replacing its static placeholder content entirely
+     (dbhq_ce_open()/dbhq_ce_inject_panel() in khtpm_entity_menu_render.c).
+     A prior "Open in Editor" button used to spawn event-ez as a separate
+     app for this - that was unwanted drift (event-ez's own entity-side
+     launch path had also silently broken, unrelated bug, fixed same
+     day) and has been removed; do not re-add it. -->
+<!--
+
+     <module> tag added 2026-08-16 (Stage 2d shell/manager split, real
+     mechanism this time - direct correction: "explain to me your plan
+     and why its different from the tpmos/wraith examples" - first pass
+     hardcoded the manager launch into open_db_hq.sh instead of having
+     the shell itself parse+launch it). Matches the real reference
+     exactly (1.TPMOS_c_+rmmp.0103.0001/projects/wraith-alpha/layouts/
+     alpha-shell.chtpm's own <module>path</module> - checked that
+     wraith_parser_alpha.c's own module tag ALSO supports a `src="..."`
+     attribute form as its primary path, inner-text as fallback - this
+     house's own simpler parser only supports attributes, not inner
+     text, so `src=` is used here, not a deviation from the real std).
+     khtpm_hq_render.c's own main() finds this tag after parsing and
+     fork()+execv()s it itself - open_db_hq.sh no longer launches the
+     manager directly. -->
+<window class="database-window db-hq">
+  <!-- REAL Stage 5 §5d.10 (2026-08-16, khtpm-merge-how2.md) - added
+       "db-hq" class alongside the original "database-window" - real,
+       data-driven mode detection for khtpm_entity_menu_render.+x's own
+       g_is_db_hq branch, same convention as taskbar-settings' own
+       "swatch-picker" class. "database-window" kept, still used by
+       dashboard.css selectors. -->
+  <module src="*.monads/*.livedesk-taskbar/ops/+x/khtpm_hq_manager.+x" />
+  <tabbar class="tab-bar">
+    <tab label="Actors"/>
+    <tab label="Classes"/>
+    <tab label="Skills"/>
+    <tab label="Items"/>
+    <tab label="Weapons"/>
+    <tab label="Armors"/>
+    <tab label="Enemies"/>
+    <tab label="Troops"/>
+    <tab label="States"/>
+    <tab label="Animations"/>
+    <tab label="Tilesets"/>
+    <tab label="Common Events" class="active"/>
+    <tab label="System"/>
+    <tab label="Types"/>
+    <tab label="Terms"/>
+  </tabbar>
+  <sidebar id="sidebar" class="sidebar">
+    <item label="(loading)"/>
+  </sidebar>
+  <panel id="common-events-panel" class="settings-block">
+    <title class="block-title" label="Common Event"/>
+    <text class="event-name" label="(select an event to edit it)"/>
+  </panel>
+</window>

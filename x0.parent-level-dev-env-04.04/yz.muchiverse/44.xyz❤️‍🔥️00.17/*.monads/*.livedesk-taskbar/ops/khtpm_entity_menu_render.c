@@ -2363,6 +2363,8 @@ typedef struct {
     char field2[64];
     char param_names[4][32];
     int n_params;
+    char select2_options[8][32];
+    int n_select2;
 } EvhqCommandDef;
 static EvhqCommandDef g_evhq_cmd_defs[EVHQ_MAX_CMD_DEFS];
 static int g_evhq_n_cmd_defs = 0;
@@ -2408,6 +2410,18 @@ static void evhq_load_command_registry(void) {
                 cur->param_names[cur->n_params][l] = '\0';
                 cur->n_params++;
                 tok = comma ? comma + 1 : NULL;
+            }
+        } else if (strncmp(p, "SELECT2 ", 8) == 0) {
+            cur->n_select2 = 0;
+            char *tok = p + 8, *colon;
+            while (tok && *tok && cur->n_select2 < 8) {
+                colon = strchr(tok, ':');
+                size_t l = colon ? (size_t)(colon - tok) : strlen(tok);
+                if (l >= sizeof(cur->select2_options[0])) l = sizeof(cur->select2_options[0]) - 1;
+                memcpy(cur->select2_options[cur->n_select2], tok, l);
+                cur->select2_options[cur->n_select2][l] = '\0';
+                cur->n_select2++;
+                tok = colon ? colon + 1 : NULL;
             }
         } else if (strcmp(p, "END") == 0) {
             cur = NULL;
@@ -2896,9 +2910,9 @@ static void picker_chtpm_load(void) {
     Elem *root = parse_chtpm(path);
     if (root) {
         g_picker_layout.pw = root->w > 0 ? root->w : 360;
-        g_picker_layout.ph = root->h > 0 ? root->h : 160;
+        g_picker_layout.ph = root->h > 0 ? root->h : 280;
     } else {
-        g_picker_layout.pw = 360; g_picker_layout.ph = 160;
+        g_picker_layout.pw = 360; g_picker_layout.ph = 280;
     }
     g_picker_layout.px = (g_window->w - g_picker_layout.pw) / 2;
     g_picker_layout.py = (g_window->h - g_picker_layout.ph) / 2;
@@ -2977,7 +2991,12 @@ static void evhq_draw_picker_overlay(void) {
         if (has_field2) {
             Elem *f2 = reusable_slot(g_picker_slots, 16, 1, "button");
             if (f2) {
-                snprintf(f2->label, sizeof(f2->label), "%s %s%s", def->field2, g_evhq_field2, g_evhq_active_field == 1 ? "_" : "");
+                if (def->n_select2 > 0 && g_evhq_active_field == 1)
+                    snprintf(f2->label, sizeof(f2->label), "%s [%s] < >", def->field2, g_evhq_field2);
+                else if (def->n_select2 > 0)
+                    snprintf(f2->label, sizeof(f2->label), "%s %s", def->field2, g_evhq_field2);
+                else
+                    snprintf(f2->label, sizeof(f2->label), "%s %s%s", def->field2, g_evhq_field2, g_evhq_active_field == 1 ? "_" : "");
                 f2->x = L->row_x; f2->y = ty - 15; f2->w = L->row_w; f2->h = L->row_h;
                 f2->style.has_fg_color = 1; snprintf(f2->style.fg_color, sizeof(f2->style.fg_color), "#eeeeee");
                 f2->nav_index = 2;
@@ -3000,7 +3019,8 @@ static void evhq_draw_picker_overlay(void) {
                 ty += L->row_spacing + 2;
             }
         }
-        const char *hint2 = "Enter: next/submit  Escape: cancel";
+        const char *hint2 = def->n_select2 > 0 ? "Enter: next/submit  ←→: select  Esc: cancel"
+                                                  : "Enter: next/submit  Escape: cancel";
         XftDrawStringUtf8(xftdraw_buf, &gray, font, L->row_x, L->py + L->ph - 14, (const FcChar8 *)hint2, (int)strlen(hint2));
     }
     XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &white);
@@ -3130,23 +3150,25 @@ static void evhq_submit_picker(void) {
      * param_names[1] - positional, matching the picker's own two-field
      * UI exactly. An empty field2 still gets its own pipe segment (an
      * empty value, not an omitted one) so compile_page()'s generic
-     * parser always finds a fixed number of segments per command type. */
-    char params[512] = "";
-    if (def->n_params >= 1) snprintf(params, sizeof(params), "%s=%s", def->param_names[0], g_evhq_field1);
-    if (def->n_params >= 2) {
-        char seg[300]; snprintf(seg, sizeof(seg), "|%s=%s", def->param_names[1], g_evhq_field2);
-        strncat(params, seg, sizeof(params) - strlen(params) - 1);
-    }
-    /* Normalize known value shorthands: control_switch accepts ON/OFF
-     * (not 1/0) for user convenience, but the underlying ecall needs
-     * raw integers. Normalize before the params_line reaches the
-     * manager. */
+     * parser always finds a fixed number of segments per command type.
+     *
+     * Normalizations (control_switch ON/OFF, select2 None) run BEFORE
+     * building the params_line so the normalized values reach the manager. */
     if (strcmp(def->type, "control_switch") == 0 &&
         def->n_params >= 2 && g_evhq_field2[0]) {
         if (strcasecmp(g_evhq_field2, "ON") == 0)
             snprintf(g_evhq_field2, sizeof(g_evhq_field2), "1");
         else if (strcasecmp(g_evhq_field2, "OFF") == 0)
             snprintf(g_evhq_field2, sizeof(g_evhq_field2), "0");
+    }
+    if (def->n_select2 > 0 && g_evhq_field2[0] &&
+        strcasecmp(g_evhq_field2, "None") == 0)
+        g_evhq_field2[0] = '\0';
+    char params[512] = "";
+    if (def->n_params >= 1) snprintf(params, sizeof(params), "%s=%s", def->param_names[0], g_evhq_field1);
+    if (def->n_params >= 2) {
+        char seg[300]; snprintf(seg, sizeof(seg), "|%s=%s", def->param_names[1], g_evhq_field2);
+        strncat(params, seg, sizeof(params) - strlen(params) - 1);
     }
     /* Task 7 (2026-08-26) - editing an existing row sends "edit:", not
      * "append:". g_evhq_edit_cmd_id is armed by evhq_open_edit_picker()
@@ -3193,12 +3215,38 @@ static void evhq_handle_key(KeySym ks, char ch) {
             else if (ks == XK_Return || ks == XK_KP_Enter) {
                 if (g_evhq_picker_focus == g_evhq_n_cmd_defs + 1) { g_evhq_picker_open = 0; g_evhq_edit_cmd_id = -1; return; }
                 g_evhq_picker_type = g_evhq_picker_focus - 1;
+                /* Initialize select2 field to first option if empty */
+                if (g_evhq_picker_type >= 0 && g_evhq_picker_type < g_evhq_n_cmd_defs) {
+                    EvhqCommandDef *sel_def = &g_evhq_cmd_defs[g_evhq_picker_type];
+                    if (sel_def->n_select2 > 0 && g_evhq_field2[0] == '\0')
+                        snprintf(g_evhq_field2, sizeof(g_evhq_field2), "%s", sel_def->select2_options[0]);
+                }
             }
             return;
         }
         if (g_evhq_picker_type >= g_evhq_n_cmd_defs) return;
         int n_params = g_evhq_cmd_defs[g_evhq_picker_type].n_params;
         int single_field = (n_params <= 1);
+        /* Check if the active field is a SELECT2 cycle field */
+        EvhqCommandDef *cur_def = &g_evhq_cmd_defs[g_evhq_picker_type];
+        int active_is_select = 0;
+        int active_select_idx = -1;
+        if (g_evhq_active_field == 1 && cur_def->n_select2 > 0) {
+            active_is_select = 1;
+            char *active_val = g_evhq_field2;
+            for (int si = 0; si < cur_def->n_select2; si++) {
+                if (strcmp(active_val, cur_def->select2_options[si]) == 0) { active_select_idx = si; break; }
+            }
+            if (active_select_idx < 0 && active_val[0] == '\0') active_select_idx = 0;
+        }
+        if (active_is_select && (ks == XK_Left || ks == XK_Right)) {
+            if (active_select_idx >= 0) {
+                if (ks == XK_Left) active_select_idx = (active_select_idx - 1 + cur_def->n_select2) % cur_def->n_select2;
+                else active_select_idx = (active_select_idx + 1) % cur_def->n_select2;
+                snprintf(g_evhq_field2, sizeof(g_evhq_field2), "%s", cur_def->select2_options[active_select_idx]);
+            }
+            return;
+        }
         /* Same real Cancel addition as the type-list above - one extra
          * focus position past the last real field (index == n_params),
          * reachable via Left/Right (Tab has no ASCII code so isn't

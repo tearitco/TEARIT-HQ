@@ -131,15 +131,15 @@ void handle_sigint(int sig) {
 #define MEM_SIZE 4096
 #define STRING_POOL_START 0xF00
 
-typedef enum { OP_ADDI, OP_BEQ, OP_LW, OP_SW, OP_JALR, OP_J, OP_HALT, OP_CUSTOM, OP_READ_HISTORY, OP_EXEC, OP_HIT_FRAME, OP_READ_STATE, OP_READ_ACTIVE_TARGET, OP_READ_ENV_KEY, OP_SLEEP, OP_READ_LAYOUT, OP_READ_POS, OP_ECALL } OpBase;
+typedef enum { OP_ADDI, OP_BEQ, OP_BNE, OP_LW, OP_SW, OP_JALR, OP_J, OP_HALT, OP_CUSTOM, OP_READ_HISTORY, OP_EXEC, OP_HIT_FRAME, OP_READ_STATE, OP_READ_ACTIVE_TARGET, OP_READ_ENV_KEY, OP_SLEEP, OP_READ_LAYOUT, OP_READ_POS, OP_ECALL } OpBase;
 
 typedef struct {
     OpBase op;
     int rd, rs1, rs2, imm;
     char label_ref[32];
     char custom_name[32];
-    char literal_arg[256];
-    char literal_arg2[256];
+    char literal_arg[1024];
+    char literal_arg2[1024];
 } Inst;
 
 typedef struct {
@@ -439,7 +439,8 @@ void parse_line(char *line, int pass) {
                         i->rs1 = reg;
                     } else {
                         /* Treat as literal piece name/arg */
-                        strncpy(i->literal_arg, arg_copy, 255);
+                        strncpy(i->literal_arg, arg_copy, 1023);
+                        i->literal_arg[1023] = '\0';
                     }
                 }
             }
@@ -590,6 +591,11 @@ void parse_line(char *line, int pass) {
             if (sscanf(line, "%*s r%d, r%d, %s", &r_rs1, &r_rs2, i->label_ref) == 3) { i->rs1 = r_rs1; i->rs2 = r_rs2; }
             else if (sscanf(line, "%*s x%d, x%d, %s", &i->rs1, &i->rs2, i->label_ref) == 3) {}
             i->op = OP_BEQ;
+        } else if (strcmp(part, "bne") == 0) {
+            int r_rs1, r_rs2;
+            if (sscanf(line, "%*s r%d, r%d, %s", &r_rs1, &r_rs2, i->label_ref) == 3) { i->rs1 = r_rs1; i->rs2 = r_rs2; }
+            else if (sscanf(line, "%*s x%d, x%d, %s", &i->rs1, &i->rs2, i->label_ref) == 3) {}
+            i->op = OP_BNE;
         } else if (strcmp(part, "li") == 0) {
             /* li rd, imm -> addi rd, x0, imm */
             int r_rd;
@@ -619,8 +625,8 @@ void parse_line(char *line, int pass) {
              * registers, carry these operations' string data. */
             char *args = strstr(original, part) + strlen(part);
             while (*args == ' ' || *args == '\t') args++;
-            if (sscanf(args, "\"%255[^\"]\" \"%255[^\"]\"", i->literal_arg, i->literal_arg2) != 2) {
-                sscanf(args, "\"%255[^\"]\"", i->literal_arg);
+            if (sscanf(args, "\"%1023[^\"]\" \"%1023[^\"]\"", i->literal_arg, i->literal_arg2) != 2) {
+                sscanf(args, "\"%1023[^\"]\"", i->literal_arg);
             }
             i->op = OP_ECALL;
         }
@@ -1153,6 +1159,13 @@ int main(int argc, char **argv) {
                     for (int l = 0; l < label_count; l++)
                         if (strcmp(labels[l].name, i.label_ref) == 0) target = labels[l].addr;
                     if (regs[i.rs1] == regs[i.rs2]) next_pc = target;
+                    break;
+                }
+                case OP_BNE: {
+                    int target = -1;
+                    for (int l = 0; l < label_count; l++)
+                        if (strcmp(labels[l].name, i.label_ref) == 0) target = labels[l].addr;
+                    if (regs[i.rs1] != regs[i.rs2]) next_pc = target;
                     break;
                 }
                 case OP_J: {

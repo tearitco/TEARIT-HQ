@@ -8,7 +8,7 @@ TAB | 28942 | 22 | cursword | /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜
 KEY | theme_bg | #1a1a1a
 KEY | theme_fg | #eab308
 KEY | digit_buf | 
-KEY | tab_focus_idx | 0
+KEY | tab_focus_idx | 2
 KEY | nav_armed | 0
 KEY | n_tabs | 7
 KEY | n_shortcuts | 0
