@@ -41,8 +41,10 @@ This is a LIVING handoff doc, not a one-shot spec:
 2. `EVENTS_AND_DB_GUIDE_🎪.md` (same directory) — nuance/gotcha guide,
    read BEFORE debugging anything that "doesn't work" (ASCII-vs-literal
    relay codes, focus-vs-selection confusion, single-instance guard).
-3. `44.xyz❤️‍🔥️00.17/_.0.aigent-testing-k9.txt` — the real testing
-   convention (relay-only, never direct CLI; presentation-gating rule).
+3. `_.0.aigent-testing-k9.txt` (this same directory — moved here
+   2026-08-27 from the house root) — the real testing convention
+   (relay-only, never direct CLI; presentation-gating rule; the
+   presentation-archive/pointer convention).
 4. **The real precedent to copy the manager's SHAPE from, not just read
    about**: **CORRECTED 2026-08-25 (Sonnet) — the path below was wrong
    in the original version of this doc** (an old, since-discarded
@@ -2426,3 +2428,46 @@ works, not yet the full authored-command-to-real-gameplay-effect path.
 Whoever picks this back up (opencode, once quota resets, or Sonnet)
 should do that full KPI next, not assume this compiler fix alone closes
 Task 3.
+
+---
+
+### ✅ TASK 3 DONE (Sonnet, 2026-08-27) — full KPI closed with real, fresh evidence, presentation video built
+
+Re-ran ox-alpha's own real test harness (`events_hq_task3_test_harness.sh`
+in `cursword`'s own `harnesses/`) directly on top of the `skip_depth` fix
+above — not trusting the OLDER presentation run from before the fix,
+which predates it and can't be trusted as current evidence. **13/13
+tests PASS, fresh, today, on the fixed binary:**
+
+- T1/T2 (compile-time): a real `if`/`else`/`end` page compiles to the
+  correct `bne x12`/`_else_1`/`_endif_1`/`j _endif_1` structure, AND
+  each branch's real command (`OP call_event "test_target" on-click`)
+  is physically present in the output - both before `_else_1:` and
+  between `_else_1:` and `_endif_1:`. This is the direct, positive
+  confirmation the `skip_depth` fix holds.
+- **T3/T4 (runtime, the actual long-standing KPI)**: switch ON → real
+  `on_marker` file created, `off_marker` absent. Switch OFF → real
+  `off_marker` created, `on_marker` absent. Played twice, both real,
+  independently-verified divergent effects - exactly what this doc has
+  been asking for since Task 3 was first scoped.
+- T5/T6: the else-less shape (`if`/`end`, no `else`) also verified both
+  ways - if-branch runs on ON, correctly does nothing on OFF.
+
+**Presentation video built for human review**, then archived per the
+new archive/pointer convention (`_.0.aigent-testing-k9.txt`, added same
+day) - real media (6 PNG snapshots, MP4 with TTS narration,
+`summary.txt`/manifest, plus an emoji-heavy `owner-guide.md` explaining
+what this all means for a non-technical owner) now lives at
+`🧩️Piecemark-IT/中.SP_00.00/🗡️.crswrd.media-archive/August-27/
+events-hq-task3-test-20260827-002551/`, OUTSIDE any git repo. A small
+pointer file (`cursword/presentations/
+events-hq-task3-test-20260827-002551.pointer.txt`) marks where it went,
+for anyone who only has the (much lighter) git history to go on. Zero
+stray `khtpm_entity_menu_render`/`khtpm_events_hq_manager` processes
+confirmed before and after.
+
+**Task 3 (Conditional Branch + OP_BNE) is fully done. All its KPIs are
+checked with real, fresh evidence.** The Task-4 ⛔ stop review (already
+in force from the very start of this doc) is now the correct next real
+checkpoint - do not start Task 4 without that review happening first,
+same as every other ⛔ marker in this doc.

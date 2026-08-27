@@ -1,0 +1,9 @@
+POINTER MANIFEST — real presentation media lives outside this repo
+====================================================================
+Test: events-hq-task3-test-20260827-002551 (Task 3 FINAL, post-fix)
+Archived: 2026-08-27
+Real location: /home/no/Desktop/🧩️Piecemark-IT/中.SP_00.00/🗡️.crswrd.media-archive/August-27/events-hq-task3-test-20260827-002551/
+Contains: MP4 (TTS narration), PNG snapshots, manifest.txt, summary.txt,
+owner-guide.md (emoji-heavy human-facing explainer)
+This is the current, trustworthy Task 3 evidence - 13/13 tests pass on
+the fixed compile_page() (skip_depth bug removed).

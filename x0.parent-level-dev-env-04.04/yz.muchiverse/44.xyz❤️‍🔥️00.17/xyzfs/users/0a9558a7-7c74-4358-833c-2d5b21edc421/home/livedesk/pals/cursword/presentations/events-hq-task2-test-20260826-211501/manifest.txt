@@ -1,5 +1,0 @@
-01_initial_state.png | 6 | Events-hq initial state before Task 2 test. Clean page with Add Command button visible.
-02_picker_type_list.png | 6 | Picker overlay open showing all command types. Call Common Event at the bottom of the list.
-04_after_submit_with_trigger.png | 6 | After submit: event.pal compiled with OP call_event line including trigger argument.
-07_after_submit_no_trigger.png | 6 | After submit: event.pal compiled with OP call_event, trigger bracket dropped (no second arg).
-08_after_play.png | 6 | After playing event: marker file proves target common event executed successfully.

@@ -1,6 +1,0 @@
-01_initial_state.png | 6 | Events-hq initial state before Task 3 test. Clean page.
-02_t1_pal_structure.png | 6 | After compiling if/else/end: PAL has bne x12, _else_1, _endif_1 labels.
-03_t2_if_end_only.png | 6 | After compiling if/end (no else): PAL has _endif_1 but no _else.
-04_t3_runtime_on.png | 6 | Runtime switch ON: if-branch executed, on_marker created.
-05_t4_runtime_off.png | 6 | Runtime switch OFF: else-branch executed, off_marker created.
-06_t5_elseless_on.png | 6 | Runtime else-less ON: if-branch executed. OFF: no branch ran.
