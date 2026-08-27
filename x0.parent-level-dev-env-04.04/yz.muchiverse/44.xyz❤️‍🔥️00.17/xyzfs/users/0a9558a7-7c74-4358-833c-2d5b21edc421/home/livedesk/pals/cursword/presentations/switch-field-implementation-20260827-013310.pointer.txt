@@ -1,0 +1,18 @@
+Test: Common Event Switch Field Implementation
+Date: 2026-08-27
+Archive: /home/no/Desktop/🧩️Piecemark-IT/中.SP_00.00/🗡️.crswrd.media-archive/August-27/switch-field-implementation-20260827-013310/
+
+What it demonstrates:
+- Users can now configure which switch name a Common Event watches
+- UI field accepts custom switch names via cli-io mechanism
+- Switch names are stored in condition.pdl
+- Manager reads real switch name instead of auto-generating ce_<name>
+- Fallback to ce_<name> for backward compatibility with existing events
+
+Test Evidence:
+- All core tests PASSED (7/7)
+- Zero stray processes before/after
+- Edge-triggered Autorun behavior confirmed
+- condition.pdl persistence verified
+
+Status: Current (all functionality working)

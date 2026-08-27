@@ -2031,6 +2031,7 @@ static int g_evhq_current_page = 0;
 static EvhqCmdNode g_evhq_cmds[EVHQ_MAX_CMDS];
 static int g_evhq_n_cmds = 0;
 static char g_evhq_trigger[64] = "(unknown)";
+static char g_evhq_switch_name[128] = "";  /* for Common Events: configured switch to watch */
 static char g_evhq_mgr_pages_state_path[PATH_BUF];
 static char g_evhq_mgr_selected_page_path[PATH_BUF];
 static char g_evhq_mgr_page_state_path[PATH_BUF];
@@ -2097,6 +2098,7 @@ static int evhq_load_page_state(void) {
     g_evhq_page_state_mtime = st.st_mtime;
     g_evhq_n_cmds = 0;
     snprintf(g_evhq_trigger, sizeof(g_evhq_trigger), "(unset)");
+    snprintf(g_evhq_switch_name, sizeof(g_evhq_switch_name), "");  /* clear previous switch name */
     FILE *f = fopen(g_evhq_mgr_page_state_path, "r");
     if (!f) return 1;
     char line[600];
@@ -2104,6 +2106,8 @@ static int evhq_load_page_state(void) {
         line[strcspn(line, "\r\n")] = '\0';
         if (strncmp(line, "TRIGGER|", 8) == 0) {
             snprintf(g_evhq_trigger, sizeof(g_evhq_trigger), "%s", line + 8);
+        } else if (strncmp(line, "SWITCH|", 7) == 0) {
+            snprintf(g_evhq_switch_name, sizeof(g_evhq_switch_name), "%s", line + 7);
         } else if (strncmp(line, "CMD|", 4) == 0 && g_evhq_n_cmds < EVHQ_MAX_CMDS) {
             char *p = line + 4;
             char *bar1 = strchr(p, '|');
@@ -2240,10 +2244,7 @@ static void dbhq_ce_inject_panel(Elem *panel) {
      * the command list ("Scripting"). Real, nav-reachable button (not
      * static text) - activating it cycles None -> Autorun -> Parallel ->
      * None, writing the new value via the SAME evhq_request_trigger_
-     * update() entity events already use (reused, not reinvented).
-     * Switch-condition field intentionally NOT built yet - scope for
-     * THIS pass is the trigger cycle only; note this as a real follow-up
-     * rather than a silent gap. */
+     * update() entity events already use (reused, not reinvented). */
     Elem *trig = reusable_slot(g_dbhq_panel_slots, MAX_CHILDREN, next_slot_index++, "button");
     if (trig) {
         snprintf(trig->classes[0], sizeof(trig->classes[0]), "prop-value"); trig->n_classes = 1;
@@ -2251,6 +2252,37 @@ static void dbhq_ce_inject_panel(Elem *panel) {
         snprintf(trig->onclick, sizeof(trig->onclick), "CE:TRIGGER");
         snprintf(trig->label, sizeof(trig->label), "Trigger: %s", g_evhq_trigger);
         if (panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = trig;
+    }
+
+    /* REAL FIX (2026-08-27): a Switch field for Autorun/Parallel common events.
+     * Uses the same cli-io mechanism bookmarks' "New+" button already uses.
+     * Only relevant when trigger is Autorun or Parallel; greyed/hidden otherwise.
+     * Stores switch name in condition.pdl via khtpm_events_hq_manager.c handler. */
+    int show_switch_field = (strcasecmp(g_evhq_trigger, "Autorun") == 0 ||
+                             strcasecmp(g_evhq_trigger, "Parallel") == 0);
+    if (show_switch_field) {
+        Elem *sw = reusable_slot(g_dbhq_panel_slots, MAX_CHILDREN, next_slot_index++, "button");
+        if (sw) {
+            snprintf(sw->classes[0], sizeof(sw->classes[0]), "prop-value"); sw->n_classes = 1;
+            snprintf(sw->id, sizeof(sw->id), "ce-switch");
+
+            /* cli-io pattern: input:<file>|<post cmd> - reuses existing mechanism */
+            char target[PATH_BUF];
+            snprintf(target, sizeof(target), "%s/#.desktop/.dbhq_ce_switch_name.txt", g_house_root);
+            char post[900];
+            snprintf(post, sizeof(post),
+                "sh -c 'N=$(tail -1 \"%s\" | tr -d \"\\r\\n\"); [ -n \"$N\" ] && echo \"switch:$N\" >> \"%s/#.desktop/events_hq_history.txt\"'",
+                target, g_house_root);
+            snprintf(sw->onclick, sizeof(sw->onclick), "input:%s|%s", target, post);
+
+            /* Display current switch name (read from condition.pdl by the manager) */
+            if (g_evhq_switch_name[0]) {
+                snprintf(sw->label, sizeof(sw->label), "Switch: %s", g_evhq_switch_name);
+            } else {
+                snprintf(sw->label, sizeof(sw->label), "Switch: (unset, using ce_%s)", g_dbhq_ce_name);
+            }
+            if (panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = sw;
+        }
     }
 
     if (g_evhq_n_cmds == 0) {

@@ -557,15 +557,16 @@ static void compile_page(int page_idx) {
     fclose(pf);
 }
 
-/* Publishes the currently-selected page's trigger + command list.
- * Format: first line "TRIGGER|<value>", then one "CMD|<id>|<type>|<params>"
- * line per command - simple enough for the shell to parse without a
- * real structured-data library, matching this house's existing plain-
- * pipe-delimited convention elsewhere. */
+/* Publishes the currently-selected page's trigger + switch + command list.
+ * Format: first line "TRIGGER|<value>", second line "SWITCH|<value>" (if set),
+ * then one "CMD|<id>|<type>|<params>" line per command - simple enough for
+ * the shell to parse without a real structured-data library, matching this
+ * house's existing plain-pipe-delimited convention elsewhere. */
 static void publish_page_state(void) {
     char pd[PATH_BUF]; page_dir(pd, sizeof(pd), g_current_page);
 
     char trigger[64] = "(unset)";
+    char switch_name[128] = "";  /* empty string means not configured */
     char cpath[PATH_BUF]; snprintf(cpath, sizeof(cpath), "%s/condition.pdl", pd);
     FILE *cf = fopen(cpath, "r");
     if (cf) {
@@ -576,11 +577,22 @@ static void publish_page_state(void) {
             if (!pipe1) continue;
             char *pipe2 = strchr(pipe1 + 1, '|');
             if (!pipe2) continue;
-            char val[64]; snprintf(val, sizeof(val), "%s", pipe2 + 1);
+
+            /* Extract key (between first two pipes) */
+            char key[64] = "";
+            sscanf(pipe1 + 1, "%[^|]", key);
+
+            /* Extract value (after second pipe) */
+            char val[128];
+            snprintf(val, sizeof(val), "%s", pipe2 + 1);
             char *nl = strpbrk(val, "\r\n"); if (nl) *nl = '\0';
             char *s = val; while (*s == ' ') s++;
-            snprintf(trigger, sizeof(trigger), "%s", s);
-            break;
+
+            if (strstr(key, "trigger")) {
+                snprintf(trigger, sizeof(trigger), "%s", s);
+            } else if (strstr(key, "switch")) {
+                snprintf(switch_name, sizeof(switch_name), "%s", s);
+            }
         }
         fclose(cf);
     }
@@ -590,6 +602,9 @@ static void publish_page_state(void) {
     FILE *wf = fopen(tmp, "w");
     if (!wf) return;
     fprintf(wf, "TRIGGER|%s\n", trigger);
+    if (switch_name[0]) {
+        fprintf(wf, "SWITCH|%s\n", switch_name);
+    }
 
     char ir_path[PATH_BUF]; snprintf(ir_path, sizeof(ir_path), "%s/event.ir.pdl", pd);
     FILE *irf = fopen(ir_path, "r");
@@ -732,7 +747,16 @@ static void handle_action_request(void) {
         if (cf) {
             char lbuf[512];
             while (fgets(lbuf, sizeof(lbuf), cf)) {
-                if (strncmp(lbuf, "COND", 4) == 0) continue; /* skip old trigger line, write new one below */
+                /* REAL BUG FIX (2026-08-27, found live) - this used to
+                 * skip EVERY "COND" line unconditionally, silently
+                 * wiping the switch-name COND line (added same day)
+                 * every time the trigger was updated, and vice versa in
+                 * the switch: handler below. Only skip the line THIS
+                 * handler owns ("COND | trigger | ..."), preserve any
+                 * other COND line (e.g. "COND | switch | ...")
+                 * unchanged - confirmed live: setting trigger no longer
+                 * destroys an already-set switch name. */
+                if (strncmp(lbuf, "COND", 4) == 0 && strstr(lbuf, "| trigger |")) continue;
                 strncat(old_content, lbuf, sizeof(old_content) - strlen(old_content) - 1);
             }
             fclose(cf);
@@ -742,6 +766,43 @@ static void handle_action_request(void) {
         if (wf) {
             fprintf(wf, "%s", old_content);
             fprintf(wf, "COND | trigger | %s\n", new_trigger);
+            fclose(wf);
+        }
+
+        publish_page_state();
+        FILE *cw = fopen(g_action_path, "w");
+        if (cw) fclose(cw);
+        return;
+    }
+
+    /* Handle switch name update: "switch:<new_switch_name>"
+     * For Autorun/Parallel common events, stores the real switch name to watch */
+    if (strncmp(line, "switch:", 7) == 0) {
+        char pd[PATH_BUF]; page_dir(pd, sizeof(pd), g_current_page);
+        char cpath[PATH_BUF]; snprintf(cpath, sizeof(cpath), "%s/condition.pdl", pd);
+
+        char new_switch[128];
+        snprintf(new_switch, sizeof(new_switch), "%s", line + 7);
+        new_switch[strcspn(new_switch, "\r\n")] = '\0';
+
+        FILE *cf = fopen(cpath, "r");
+        char old_content[2048] = "";
+        if (cf) {
+            char lbuf[512];
+            while (fgets(lbuf, sizeof(lbuf), cf)) {
+                /* REAL BUG FIX (2026-08-27) - see the trigger: handler's
+                 * own comment above, same real bug, same fix: only skip
+                 * this handler's own COND line, preserve the trigger's. */
+                if (strncmp(lbuf, "COND", 4) == 0 && strstr(lbuf, "| switch |")) continue;
+                strncat(old_content, lbuf, sizeof(old_content) - strlen(old_content) - 1);
+            }
+            fclose(cf);
+        }
+
+        FILE *wf = fopen(cpath, "w");
+        if (wf) {
+            fprintf(wf, "%s", old_content);
+            fprintf(wf, "COND | switch | %s\n", new_switch);
             fclose(wf);
         }
 
