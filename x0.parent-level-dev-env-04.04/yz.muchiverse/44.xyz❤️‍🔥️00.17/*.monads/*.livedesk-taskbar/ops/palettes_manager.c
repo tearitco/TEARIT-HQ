@@ -715,7 +715,32 @@ static void publish(void) {
         snprintf(active_path, sizeof(active_path), "%s/rmmv_active.txt", g_package_dir);
         if (stat(active_path, &st) == 0) active_mtime = st.st_mtime;
         time_t newest = reg_mtime > active_mtime ? reg_mtime : active_mtime;
-        if (newest == 0 || newest == g_source_mtime) return;
+        /* REAL FIX 2026-08-28 (live report: real tab switches getting
+         * silently dropped, needing 2-3 real clicks to "catch up",
+         * symptom: old tab's tiles lingering as a visible "second
+         * layer" under the new tab) - st_mtime has only ONE-SECOND
+         * resolution; a real user clicking through tabs faster than
+         * that makes rmmv_active.txt's rewrite land on the SAME mtime
+         * as the previous real click, so this gate wrongly treated a
+         * genuinely new tab choice as "nothing changed" and never
+         * republished. File SIZE alone isn't a safe second signal here
+         * (real tab values are single letters - "tab=A" and "tab=B"
+         * are the identical byte length), so this compares the actual
+         * real CONTENT of the small active-state file instead - cheap
+         * (well under 200 bytes), catches every real change regardless
+         * of same-second mtime or coincidental length match. */
+        static char s_last_active_content[256] = "";
+        char active_content[256] = "";
+        FILE *af_check = fopen(active_path, "r");
+        if (af_check) {
+            size_t n = fread(active_content, 1, sizeof(active_content) - 1, af_check);
+            active_content[n] = '\0';
+            fclose(af_check);
+        }
+        int active_content_changed = (strcmp(active_content, s_last_active_content) != 0);
+        snprintf(s_last_active_content, sizeof(s_last_active_content), "%s", active_content);
+        if (newest == 0) return;
+        if (newest == g_source_mtime && !active_content_changed) return;
         g_source_mtime = newest;
         publish_rmmv();
         return;

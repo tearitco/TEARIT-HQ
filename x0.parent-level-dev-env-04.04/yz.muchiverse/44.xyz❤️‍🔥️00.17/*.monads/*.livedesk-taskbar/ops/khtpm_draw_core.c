@@ -79,9 +79,25 @@ typedef struct {
     unsigned char *rgba;
     int res;
     time_t mtime;
+    long last_used; /* real LRU tick - see g_hq_sprite_tick's own comment */
 } HqSprite;
-#define HQ_SPRITE_CACHE_N 128
+/* REAL FIX 2026-08-28, part 2 (live report, direct: "caching isn't
+ * having an effect this go round" - correctly caught a SECOND real
+ * bug this same session, not the same one already fixed) - a fixed-
+ * size cache with NO eviction, no matter how large, eventually
+ * overflows once a real user browses enough DISTINCT sprite paths in
+ * one session (confirmed live: World's A/B/C tabs alone already total
+ * 32+256+256=544 unique paths, past even the 512 this file was just
+ * bumped to). Bumping the number again would only move the same
+ * failure further out, not fix it - real LRU eviction (least-recently-
+ * used slot reused when the cache is full) is the actual durable fix,
+ * ported as the standard fixed-capacity-cache pattern, not invented
+ * from scratch. g_hq_sprite_tick is a simple monotonic counter, bumped
+ * on every real access (hit or fresh load) - the slot with the
+ * smallest stamp is the one nothing has touched longest. */
+#define HQ_SPRITE_CACHE_N 512
 static HqSprite g_hq_sprite_cache[HQ_SPRITE_CACHE_N];
+static long g_hq_sprite_tick = 0;
 
 static HqSprite *hq_sprite(const char *dir) {
     if (!dir || !dir[0]) return NULL;
@@ -103,6 +119,7 @@ static HqSprite *hq_sprite(const char *dir) {
                 memset(&g_hq_sprite_cache[i], 0, sizeof(HqSprite));
                 break;
             }
+            g_hq_sprite_cache[i].last_used = ++g_hq_sprite_tick;
             return &g_hq_sprite_cache[i];
         }
     }
@@ -129,17 +146,31 @@ static HqSprite *hq_sprite(const char *dir) {
     }
     fclose(f);
     if (count != res * res) { free(pixels); return NULL; }
+    int slot = -1;
     for (int i = 0; i < HQ_SPRITE_CACHE_N; i++) {
-        if (!g_hq_sprite_cache[i].rgba) {
-            snprintf(g_hq_sprite_cache[i].path, sizeof(g_hq_sprite_cache[i].path), "%s", pth);
-            g_hq_sprite_cache[i].rgba = pixels;
-            g_hq_sprite_cache[i].res = res;
-            g_hq_sprite_cache[i].mtime = mt;
-            return &g_hq_sprite_cache[i];
-        }
+        if (!g_hq_sprite_cache[i].rgba) { slot = i; break; }
     }
-    free(pixels);
-    return NULL;
+    if (slot < 0) {
+        /* Cache full - real LRU eviction (2026-08-28), not a silent
+         * drop. Find the slot with the OLDEST last_used stamp (the one
+         * nothing has touched longest) and reuse it - a real user
+         * cycling through more distinct sprites than the cache can
+         * hold at once should see the LEAST recently viewed ones
+         * re-decoded on return, not a fixed hard wall past which
+         * sprites just stop appearing. */
+        long oldest = g_hq_sprite_cache[0].last_used;
+        slot = 0;
+        for (int i = 1; i < HQ_SPRITE_CACHE_N; i++) {
+            if (g_hq_sprite_cache[i].last_used < oldest) { oldest = g_hq_sprite_cache[i].last_used; slot = i; }
+        }
+        free(g_hq_sprite_cache[slot].rgba);
+    }
+    snprintf(g_hq_sprite_cache[slot].path, sizeof(g_hq_sprite_cache[slot].path), "%s", pth);
+    g_hq_sprite_cache[slot].rgba = pixels;
+    g_hq_sprite_cache[slot].res = res;
+    g_hq_sprite_cache[slot].mtime = mt;
+    g_hq_sprite_cache[slot].last_used = ++g_hq_sprite_tick;
+    return &g_hq_sprite_cache[slot];
 }
 
 static void hq_blit_sprite(HqSprite *sp, int x0, int y0, int px, unsigned long bg_pixel) {

@@ -115,6 +115,8 @@ Stop here if you just need to know "what's going on."
 
 **RENDER-REFACTOR-2DO-PROGRESS.md** (2026-08-28, LIVE, updated as work happens) — the real status tracker for this same effort: what's actually done vs. not, the next concrete step (no re-deriving needed), and a decisions log. **If resuming this work cold (new session, or picking up after a break), read this file FIRST, before the assessment doc above.**
 
+**GROK-RENDER-INPUT-REFACTOR-HANDOFF.md** (2026-08-28, LIVE, async two-agent collaboration) — shared task/execution-record doc for this same effort, split between Sonnet and Grok working from different terminals. Has its own real hard-boundary/file-claim protocol (the shared render file can't be edited by both sides at once). Read before picking up any task from it.
+
 ---
 
 ## Tier 3 — Read only if working the specific task (large context budget)

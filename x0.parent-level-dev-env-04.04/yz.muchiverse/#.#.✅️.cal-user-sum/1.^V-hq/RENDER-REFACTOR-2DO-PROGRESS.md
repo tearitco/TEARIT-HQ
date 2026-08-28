@@ -159,3 +159,137 @@ DECISIONS LOG (append, don't rewrite history)
 - 2026-08-28: click/key dispatch explicitly staying on the live tree
   for Phase 2's first proof - confirmed acceptable per wraith-alpha's
   own real precedent (renderer.c doesn't handle input either).
+- 2026-08-28: user recalled this render+input refactor being claimed
+  "done" roughly a week prior. Searched real - NO doc anywhere claims
+  khtpm_entity_menu_render.c's render/input was migrated to a file-
+  derived pattern. What genuinely WAS completed and verified around
+  2026-08-19 is a different, separate program: the TASKBAR's own input
+  pipeline (khtpm_strip_parser.c family) was real-migrated to a relay/
+  history.txt dispatch (see taskbar-keyboard-relay-and-terminal-
+  render.md / taskbar-history-txt-migration-investigation.md, both
+  "Phase 3 - cutover complete 2026-08-19"). Confirmed, real, not
+  hallucinated - but a STRUCTURALLY DIFFERENT file (taskbar
+  deliberately stays on its own LayDoc architecture, never Elem/CSS -
+  see this same doc's own "SCOPE CONFIRMED" section). User's own
+  conclusion, agreed: the two got conflated somewhere - this file's
+  own render+input refactor was never actually started before tonight,
+  regardless of how that mix-up happened. Not treating this as "was
+  hallucinated then abandoned", treating it as "never began" - same
+  real starting point either way.
+- 2026-08-28: input-pipeline gap identified as a REAL, separate finding
+  from tonight's window-geometry staleness bug (found+fixed
+  independently) - real X11 input (ButtonPress/KeyPress) currently goes
+  straight from XNextEvent() to handle_click()/handle_key() in-process,
+  no file boundary, unlike wraith-alpha's real keyboard_input-writes-
+  file / chtpm_parser-reads-file convention. db_hq_history.txt is a
+  bolt-on agent-automation side channel only (keyboard-code-only, no
+  mouse coordinates/hit-test outcome) - not the real human-input path.
+  Scoping this as a genuinely separate refactor arm (input, alongside
+  render), both real, both needed, tracked together in this same doc.
+
+============================================================
+PHASE 3 (input half — real capture-then-consume, wraith-alpha
+parity for INPUT, not just render) — NOT STARTED
+============================================================
+Real, confirmed gap (2026-08-28): X11 input (ButtonPress/KeyPress)
+goes straight from XNextEvent() to dbhq_handle_click()/dbhq_handle_key()
+in the same loop tick — no file boundary, unlike wraith-alpha's real
+keyboard_input.c -> pieces/keyboard/history.txt -> chtpm_parser.c
+split. The existing db_hq_history.txt relay (history_path()/
+poll_agent_history()/dispatch_relay_code(), ~line 6527) is real and
+already does HALF of what's needed (append-only file, persistent
+cursor, generic dispatch) but only for AGENT-injected keyboard codes,
+not real human mouse/keyboard events, and carries no coordinates.
+
+HONEST NOTE, do not conflate with the earlier "2 clicks" bug: that
+was root-caused and fixed separately (real X11 window not shrinking
+to match content, so XPutImage left a stale strip on screen). This
+input refactor is a genuinely SEPARATE architectural goal — input
+auditability, matching what render now has — not a fix for that
+symptom. It may or may not change perceived click responsiveness;
+don't claim it fixes a bug it wasn't built to fix.
+
+REAL DESIGN:
+1. Extend the format of the SAME existing history file (do not invent
+   a second file — db_hq_history.txt already has a real, working,
+   single-cursor reader) with one new typed line, alongside the
+   existing bare-decimal-ASCII convention:
+     CLICK <x> <y> <button>\n
+   Chosen because: bare integers 0-255 are already the keyboard-code
+   convention (dispatch_relay_code() switches on the raw int) — a
+   line starting with the literal prefix "CLICK " can never collide
+   with a bare decimal, same disambiguation-by-prefix convention this
+   file already uses elsewhere for onclick strings ("CE:", "PICKER:").
+   KeyPress needs no new line type for printable/simple keys (already
+   representable as a bare decimal), but non-ASCII keysyms (arrows,
+   Page Up/Down, Escape-as-KeySym) need a second new type:
+     KEYSYM <int>\n
+   (the raw X11 KeySym value - dbhq_handle_key() already takes a
+   KeySym, so this is a direct, lossless passthrough, not a re-encoding
+   scheme like wraith-alpha's own ARROW_UP=1000 hack).
+
+2. Real capture step (write-only, replaces direct dispatch): at each
+   of the 4 real `ev.type == ButtonPress` sites (db-hq ~line 7702,
+   events-hq, chat-hai, taskbar-settings - grep `ev.type == ButtonPress`
+   for the other 3's exact line numbers, don't assume they're
+   identical shape) and 4 real `ev.type == KeyPress` sites, STOP
+   calling dbhq_handle_click()/dbhq_handle_key() (or the chai_/evhq_
+   equivalents) directly. Instead append the real event to that mode's
+   own history file via a new small helper:
+     static void dbhq_capture_click(int x, int y, int button);
+     static void dbhq_capture_key(KeySym ks, char ch);
+   (naming mirrors dbhq_append_frame_history()'s own real convention).
+   These do ONLY a file append - zero interpretation, mirroring
+   keyboard_input.c's own real discipline of capture doing nothing but
+   capture.
+
+3. Real consume step: extend dispatch_relay_code() (or add a sibling
+   dispatch_relay_line() that pre-parses the "CLICK "/"KEYSYM " prefix
+   before falling through to the existing bare-int path) so
+   poll_agent_history()'s existing per-tick read loop is the ONLY
+   place dbhq_handle_click()/dbhq_handle_key() ever get called for
+   real human input too - the exact same function, same code path,
+   whether the line came from a real mouse click or an agent's relay
+   injection. This is what makes it a real boundary, not a renamed
+   function call: the SAME poll_agent_history() that already runs
+   every loop tick (line ~7606) becomes the single real consumer for
+   BOTH input sources.
+
+4. Do NOT split into two OS processes. wraith-alpha's 2-process split
+   exists because IT needs the raw terminal in a mode X11 doesn't
+   require here - khtpm_entity_menu_render.c already owns its own X11
+   event queue natively. The real, sufficient boundary is two
+   DISTINCT STEPS in the same process/loop (capture this tick, a
+   read-and-dispatch pass either the same tick after capture or next
+   tick via the existing 150ms poll) with the FILE as the real
+   contract between them - matching this file's own existing
+   interact_relay.txt precedent (per-entity, one real file, multiple
+   real producers/consumers) more closely than it needs to invent a
+   process split wraith-alpha's own domain (a raw terminal) required
+   for different reasons.
+
+PILOT SCOPE (mirrors render Phase 2's own "one mode first" discipline):
+db-hq's ButtonPress path ONLY, not KeyPress yet, not the other 3
+modes' click paths yet. Reasons: (a) db-hq's dbhq_handle_click() is
+today's most mature, most-recently-fixed click path (arrows, close
+button, hit_test all real and working); (b) it already coexists with
+a WORKING poll_agent_history()/dispatch_relay_code() consumer loop -
+less new plumbing than chat-hai/events-hq, which the render refactor
+already found have their OWN separate, duplicated redraw/click/key
+code (same real duplication would need its own capture/consume wiring
+per mode, a later phase, not this pilot).
+
+REAL VERIFICATION STANDARD: a real, physical mouse click (or an
+XTest-simulated one, per this house's own Rule 11 in
+_.0.aigent-testing-k9.txt - relay alone can't prove hit-testing
+parity) on a real db-hq nav element must still activate correctly,
+AND the history file must show a real, readable "CLICK <x> <y> <button>"
+line was appended and consumed BEFORE dbhq_activate_elem() ran - i.e.
+prove the file boundary is real, not decorative, by showing you could
+audit "what was clicked" from the file alone after the fact.
+
+OPEN QUESTION for the user before implementation starts: should
+KeyPress capture (Phase 3b) happen in the SAME pass as ButtonPress
+(Phase 3a), or should ButtonPress be proven alone first, same
+one-thing-at-a-time discipline as the render refactor's own palettes-
+first pilot?

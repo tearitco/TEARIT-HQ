@@ -580,6 +580,25 @@ static char g_pal_sprite[PAL_MAX_TILES][PATH_BUF];
 static int g_pal_n_tiles = 0;
 static char g_pal_state_path[PATH_BUF];
 static time_t g_pal_state_mtime = 0;
+static off_t g_pal_state_size = -1;
+/* REAL FIX 2026-08-28 (upgrade over the size-only check above) - two
+ * different real rmmv tabs (e.g. B and C) can publish the SAME total
+ * byte count (256 lines each, "b kind 7,3" and "c kind 7,3" are the
+ * identical length) - size alone can miss a real B<->C switch the
+ * exact same way raw mtime already missed same-second switches. A
+ * real FNV-1a content checksum catches any actual byte difference
+ * regardless of length coincidence, still cheap for a file this small
+ * (a few KB at most). */
+static unsigned long dbhq_file_checksum(const char *path) {
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    unsigned long h = 2166136261UL;
+    int c;
+    while ((c = fgetc(f)) != EOF) { h ^= (unsigned long)c; h *= 16777619UL; }
+    fclose(f);
+    return h;
+}
+static unsigned long g_pal_state_checksum = 0;
 static char g_pal_category[64];
 /* REAL FIX 2026-08-27 (direct instruction: "flag hardcoded things in
  * parser... they are supposed to use generic .pdl read functions" -
@@ -618,6 +637,8 @@ static char g_pal_active_tileset[64] = "";
 static char g_pal_active_category[16] = "";
 static char g_pal_options_path[PATH_BUF];
 static time_t g_pal_options_mtime = 0;
+static off_t g_pal_options_size = -1;
+static unsigned long g_pal_options_checksum = 0;
 
 /* REAL, ported 2026-08-25 (live request: figure out scrolling for the
  * palette grid) - verbatim port of khtpm_hq_render.c's own real,
@@ -852,8 +873,26 @@ static void dbhq_inject_bookmark_items(Elem *panel) {
 static int dbhq_load_palette_state(void) {
     struct stat st;
     if (stat(g_pal_state_path, &st) != 0) return 0;
-    if (st.st_mtime == g_pal_state_mtime) return 0;
+    /* REAL FIX 2026-08-28 (live report: "have to press abc tab multiple
+     * (2/3 times) to get it to change") - st_mtime has only ONE-SECOND
+     * resolution on this filesystem. Clicking through tabs faster than
+     * a real second apart makes the manager's rewrite land on the SAME
+     * mtime as the previous one, so this gate silently treated a real
+     * content change as "nothing changed" - the renderer only actually
+     * caught up once enough real wall-clock time (or one more click,
+     * landing in a later second) had passed. Real fix: also compare
+     * file SIZE, which almost always differs between two genuinely
+     * different real publishes even within the same second - cheap
+     * (already have the stat() result), no manager-side change needed. */
+    if (st.st_mtime == g_pal_state_mtime && st.st_size == g_pal_state_size) {
+        unsigned long cksum = dbhq_file_checksum(g_pal_state_path);
+        if (cksum == g_pal_state_checksum) return 0;
+        g_pal_state_checksum = cksum;
+    } else {
+        g_pal_state_checksum = dbhq_file_checksum(g_pal_state_path);
+    }
     g_pal_state_mtime = st.st_mtime;
+    g_pal_state_size = st.st_size;
 
     g_pal_n_tiles = 0;
     FILE *f = fopen(g_pal_state_path, "r");
@@ -886,8 +925,18 @@ static int dbhq_load_palette_state(void) {
 static int dbhq_load_palette_options(void) {
     struct stat st;
     if (!g_pal_options_path[0] || stat(g_pal_options_path, &st) != 0) return 0;
-    if (st.st_mtime == g_pal_options_mtime) return 0;
+    /* REAL FIX 2026-08-28 - same real same-second-mtime staleness bug
+     * (+ same-size coincidence risk) as dbhq_load_palette_state()'s own
+     * header comment describes - same real content-checksum fix. */
+    if (st.st_mtime == g_pal_options_mtime && st.st_size == g_pal_options_size) {
+        unsigned long cksum = dbhq_file_checksum(g_pal_options_path);
+        if (cksum == g_pal_options_checksum) return 0;
+        g_pal_options_checksum = cksum;
+    } else {
+        g_pal_options_checksum = dbhq_file_checksum(g_pal_options_path);
+    }
     g_pal_options_mtime = st.st_mtime;
+    g_pal_options_size = st.st_size;
 
     g_pal_n_tilesets = 0;
     g_pal_n_tabs = 0;
@@ -1804,15 +1853,176 @@ static void dbhq_append_frame_history(void) {
     FILE *qf = fopen(seqpath, "w");
     if (qf) { fprintf(qf, "seq=%ld\n", g_dbhq_frame_seq); fclose(qf); }
 }
+/* ============================================================
+ * REAL FRAME-HISTORY-DERIVED PAINT (2026-08-28, Phase 2 of
+ * RENDER-FRAME-HISTORY-DRIFT-ASSESSMENT.md - see RENDER-REFACTOR-2DO-
+ * PROGRESS.md for the live status of this effort). First real, scoped
+ * proof: palettes' panel content (title/hint/tabs/tiles/tileset
+ * chooser) is serialized to a real flat file BEFORE painting, and a
+ * genuinely separate paint function reads ONLY that file (zero live
+ * Elem-tree pointer access) to draw pixels - matching the house-
+ * standard wraith-alpha pattern (chtpm_parser.c writes current_
+ * frame.txt, renderer.c draws ONLY from it) instead of this file's
+ * own prior drift (paint reading directly from a live, mutable Elem
+ * tree in the same process). Deliberately scoped to the PANEL subtree
+ * only (not the window chrome/close-button/scrollbar-track, which are
+ * either already-generic or raw-pixel affordances outside the Elem
+ * tree entirely) - see the progress doc for why this is a real,
+ * honest first slice and not the whole file done at once.
+ * ============================================================ */
+
+/* One frame-file line = one real Elem's worth of drawable state, in
+ * the EXACT SAME field order draw_elem() actually reads: tag, id,
+ * classes (comma-joined, since Elem itself stores them as an array),
+ * label, sprite, onclick, nav_index, active, x, y, w, h. Pipe-
+ * delimited (matches this house's own PDL convention elsewhere) -
+ * real, current onclick strings never contain a literal '|', but if a
+ * future one ever needs to, this format would need real escaping,
+ * not silently break (fields are read via strchr('|'), a literal pipe
+ * inside a field would misparse loudly, not corrupt quietly). */
+static void dbhq_serialize_frame_elem(FILE *f, Elem *e) {
+    char classes_joined[CSS_MAX_CLASSES * 33] = "";
+    for (int i = 0; i < e->n_classes; i++) {
+        if (i > 0) strcat(classes_joined, ",");
+        strcat(classes_joined, e->classes[i]);
+    }
+    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d\n",
+            e->tag, e->id, classes_joined, e->label, e->sprite, e->onclick,
+            e->nav_index, e->active, e->x, e->y, e->w, e->h);
+}
+
+/* Real recursive serializer, same traversal order render_tree() itself
+ * uses (non-title children first, in order, title deferred to last at
+ * each level) - PRESERVING draw order matters for real visual parity
+ * (a later-drawn element can visually overlap an earlier one). */
+static void dbhq_serialize_frame_subtree(FILE *f, Elem *e) {
+    for (int i = 0; i < e->n_children; i++) {
+        Elem *c = e->children[i];
+        if (strcmp(c->tag, "title") == 0 || strcmp(c->tag, "module") == 0) continue;
+        dbhq_serialize_frame_elem(f, c);
+        dbhq_serialize_frame_subtree(f, c);
+    }
+    for (int i = 0; i < e->n_children; i++) {
+        Elem *c = e->children[i];
+        if (strcmp(c->tag, "title") == 0) dbhq_serialize_frame_elem(f, c);
+    }
+}
+
+static void dbhq_write_palette_frame_file(Elem *panel) {
+    if (!panel) return;
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/palettes_frame.txt", g_house_root);
+    char tmp[PATH_BUF];
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    FILE *f = fopen(tmp, "w");
+    if (!f) return;
+    dbhq_serialize_frame_subtree(f, panel);
+    fclose(f);
+    rename(tmp, path);
+}
+
+/* Real, genuinely separate paint step - takes a PARSED LINE STRUCT,
+ * never an Elem*, proving by construction that this function cannot
+ * read anything except what the frame file itself said. Builds a real
+ * temporary Elem populated ONLY from the parsed fields, resolves its
+ * CSS style the exact same generic way the live tree does (css_
+ * compute_style() against tag/classes/active - reused, not
+ * reimplemented), then calls the SAME real draw_elem() every other
+ * path uses - zero duplicated drawing logic, zero new visual bugs
+ * possible from this function's own code (the only thing it does
+ * beyond "call the real, already-correct drawing code" is the file
+ * parse itself). */
+static void dbhq_paint_frame_line(const char *line) {
+    char buf2[2048];
+    snprintf(buf2, sizeof(buf2), "%s", line);
+    char *fields[12];
+    int nf = 0;
+    char *p = buf2;
+    while (nf < 12) {
+        fields[nf++] = p;
+        char *bar = strchr(p, '|');
+        if (!bar) break;
+        *bar = '\0';
+        p = bar + 1;
+    }
+    if (nf < 12) return; /* malformed line - honest skip, not a crash */
+
+    Elem tmp;
+    memset(&tmp, 0, sizeof(tmp));
+    snprintf(tmp.tag, sizeof(tmp.tag), "%s", fields[0]);
+    snprintf(tmp.id, sizeof(tmp.id), "%s", fields[1]);
+    tmp.n_classes = 0;
+    if (fields[2][0]) {
+        char classbuf[CSS_MAX_CLASSES * 33];
+        snprintf(classbuf, sizeof(classbuf), "%s", fields[2]);
+        char *cp = classbuf;
+        while (cp && *cp && tmp.n_classes < CSS_MAX_CLASSES) {
+            char *comma = strchr(cp, ',');
+            if (comma) *comma = '\0';
+            snprintf(tmp.classes[tmp.n_classes++], sizeof(tmp.classes[0]), "%s", cp);
+            cp = comma ? comma + 1 : NULL;
+        }
+    }
+    snprintf(tmp.label, sizeof(tmp.label), "%s", fields[3]);
+    snprintf(tmp.sprite, sizeof(tmp.sprite), "%s", fields[4]);
+    snprintf(tmp.onclick, sizeof(tmp.onclick), "%s", fields[5]);
+    tmp.nav_index = atoi(fields[6]);
+    tmp.active = atoi(fields[7]);
+    tmp.x = atoi(fields[8]);
+    tmp.y = atoi(fields[9]);
+    tmp.w = atoi(fields[10]);
+    tmp.h = atoi(fields[11]);
+
+    css_compute_style(&g_sheet, tmp.tag, tmp.id[0] ? tmp.id : NULL, tmp.classes, tmp.n_classes, tmp.active, &tmp.style);
+    draw_elem(&tmp, 0);
+}
+
+static void dbhq_paint_palette_frame_file(void) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/palettes_frame.txt", g_house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return; /* honest: no frame file yet, nothing to paint - not a fabricated fallback */
+    char line[2048];
+    while (fgets(line, sizeof(line), f)) {
+        size_t len = strlen(line);
+        while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) line[--len] = '\0';
+        if (len == 0) continue;
+        dbhq_paint_frame_line(line);
+    }
+    fclose(f);
+}
+
 static void dbhq_redraw_content(void) {
     dbhq_layout_pass(g_window);
     dbhq_assign_nav_indices(g_window);
     XSetForeground(dpy, gc, alloc_pixel(g_window->style.has_bg_color ? g_window->style.bg_color : "#141414"));
-    XFillRectangle(dpy, buf, gc, 0, 0, g_window->w, g_window->h);
+    /* REAL FIX 2026-08-28 (live corruption found testing Phase 2's
+     * frame-file paint) - clearing only g_window->w/h leaves stale
+     * pixels visible whenever content SHRINKS between redraws (a
+     * taller previous session's leftover rows) - the backing Pixmap
+     * only ever GROWS (see g_buf_w/g_buf_h's own header comment),
+     * it never shrinks back down, so clearing less than the real
+     * allocated buffer leaves old content sitting below the new,
+     * smaller content. Clear the FULL allocated buffer every time. */
+    XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)(g_buf_w > g_window->w ? g_buf_w : g_window->w), (unsigned)(g_buf_h > g_window->h ? g_buf_h : g_window->h));
     if (!dbhq_tab_is_real(g_dbhq_current_tab)) {
         Elem *tabbar = find_by_tag(g_window, "tabbar");
         if (tabbar) { draw_elem(tabbar, 0); render_tree(tabbar, 1); }
         dbhq_render_placeholder_tab(g_window);
+    } else if (g_is_palettes) {
+        /* REAL, Phase 2 first proof (2026-08-28) - window chrome draws
+         * normally (draw_elem() reads the live g_window directly, same
+         * as always - only PANEL CONTENT is frame-derived for this
+         * first scoped slice, see the big comment above dbhq_
+         * serialize_frame_elem()). Panel content is: (1) serialize the
+         * just-computed real layout to a real file, (2) paint ONLY
+         * from that file - two genuinely separate steps with the file
+         * as the real boundary between them, not a cosmetic detour
+         * that still secretly reads the live tree. */
+        draw_elem(g_window, 0);
+        Elem *panel = find_by_tag(g_window, "panel");
+        dbhq_write_palette_frame_file(panel);
+        dbhq_paint_palette_frame_file();
     } else {
         render_tree(g_window, 0);
         /* Task 6 (2026-08-26) - embedded Common Event editor's Add
@@ -3535,7 +3745,15 @@ static void evhq_redraw_content(void) {
     evhq_layout_pass(g_window);
     evhq_assign_nav_indices(g_window);
     XSetForeground(dpy, gc, evhq_alloc_pixel("#252525"));
-    XFillRectangle(dpy, buf, gc, 0, 0, g_window->w, g_window->h);
+    /* REAL FIX 2026-08-28 (live corruption found testing Phase 2's
+     * frame-file paint) - clearing only g_window->w/h leaves stale
+     * pixels visible whenever content SHRINKS between redraws (a
+     * taller previous session's leftover rows) - the backing Pixmap
+     * only ever GROWS (see g_buf_w/g_buf_h's own header comment),
+     * it never shrinks back down, so clearing less than the real
+     * allocated buffer leaves old content sitting below the new,
+     * smaller content. Clear the FULL allocated buffer every time. */
+    XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)(g_buf_w > g_window->w ? g_buf_w : g_window->w), (unsigned)(g_buf_h > g_window->h ? g_buf_h : g_window->h));
     evhq_render_tree(g_window);
     /* REAL, NEW 2026-08-28 (Phase C target #3) - events-hq has its OWN
      * redraw path (evhq_render_tree()/evhq_draw_elem()), entirely
@@ -5781,7 +5999,15 @@ static void chai_redraw(void) {
     chai_layout_pass(g_window);
     chai_assign_nav_indices(g_window);
     XSetForeground(dpy, gc, chai_alloc_pixel(g_window->style.has_bg_color ? g_window->style.bg_color : "#ececec"));
-    XFillRectangle(dpy, buf, gc, 0, 0, g_window->w, g_window->h);
+    /* REAL FIX 2026-08-28 (live corruption found testing Phase 2's
+     * frame-file paint) - clearing only g_window->w/h leaves stale
+     * pixels visible whenever content SHRINKS between redraws (a
+     * taller previous session's leftover rows) - the backing Pixmap
+     * only ever GROWS (see g_buf_w/g_buf_h's own header comment),
+     * it never shrinks back down, so clearing less than the real
+     * allocated buffer leaves old content sitting below the new,
+     * smaller content. Clear the FULL allocated buffer every time. */
+    XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)(g_buf_w > g_window->w ? g_buf_w : g_window->w), (unsigned)(g_buf_h > g_window->h ? g_buf_h : g_window->h));
     if (chai_current_tab != CHAI_COMMON_EVENTS_TAB) {
         Elem *tabbar = find_by_tag(g_window, "tabbar");
         if (tabbar) { chai_draw_elem(tabbar, 0); chai_render_tree(tabbar, 1); }
@@ -6344,6 +6570,7 @@ static void dbhq_dump_debug_state(void) {
             fprintf(f, "panel=NULL\n");
         }
     }
+    fprintf(f, "DEBUG g_buf_w=%d g_buf_h=%d g_window_w=%d g_window_h=%d\n", g_buf_w, g_buf_h, g_window->w, g_window->h);
     fprintf(f, "g_pal_track_x=%d g_pal_track_y=%d g_pal_track_w=%d g_pal_track_h=%d g_pal_thumb_y=%d g_pal_thumb_h=%d g_pal_total_rows=%d g_pal_visible_rows=%d g_pal_scroll=%d\n",
             g_pal_track_x, g_pal_track_y, g_pal_track_w, g_pal_track_h, g_pal_thumb_y, g_pal_thumb_h, g_pal_total_rows, g_pal_visible_rows, g_pal_scroll);
     fprintf(f, "g_n_nav=%d\n", g_n_nav);
@@ -6503,13 +6730,12 @@ static void redraw(void) {
          * requests a rectangle larger than the real Pixmap and X
          * rejects the whole request with BadMatch (a fatal, unhandled
          * default Xlib error handler - the process dies, not just that
-         * one draw call). Only grows, never shrinks (a smaller frame is
-         * harmless to read from an oversized buffer; recreating on every
-         * shrink too would just be needless GC/Pixmap churn). */
+         * one draw call). The Pixmap itself only ever grows (a smaller
+         * frame is harmless to read from an oversized buffer - real
+         * savings, not correctness). */
         if (g_window->w > g_buf_w || g_window->h > g_buf_h) {
             int new_w = g_window->w > g_buf_w ? g_window->w : g_buf_w;
             int new_h = g_window->h > g_buf_h ? g_window->h : g_buf_h;
-            XResizeWindow(dpy, win, (unsigned)new_w, (unsigned)new_h);
             if (xftdraw_buf) { XftDrawDestroy(xftdraw_buf); xftdraw_buf = NULL; }
             if (buf) XFreePixmap(dpy, buf);
             buf = XCreatePixmap(dpy, win, (unsigned)new_w, (unsigned)new_h, (unsigned)DefaultDepth(dpy, screen));
@@ -6522,6 +6748,33 @@ static void redraw(void) {
              * now that buf is the right size, or this frame would blit
              * garbage/black instead of the real content. */
             if (g_is_db_hq) dbhq_redraw_content(); else evhq_redraw_content();
+        }
+        /* REAL FIX 2026-08-28 (live report + real screenshot: switching
+         * between rmmv tabs/tilesets with very different real content
+         * sizes left an old, larger session's tiles visibly showing as
+         * a "second layer" below the new, smaller content) - the REAL
+         * on-screen X11 window was never resized DOWN to match shrunk
+         * content, only ever grown (the block above only grows the
+         * backing Pixmap, which is a different, legitimately-one-way
+         * concern - reading less than an oversized Pixmap is harmless).
+         * But XPutImage below only ever writes the TOP g_window->w x
+         * g_window->h pixels of the real window - if the real window is
+         * physically TALLER than that (never shrunk from an earlier,
+         * bigger session), the excess strip below is simply never
+         * touched again and keeps showing whatever was drawn there
+         * last, indefinitely. The real window's own SIZE (unlike the
+         * Pixmap's capacity) must track content exactly, both growing
+         * AND shrinking, every time it changes - checked via real
+         * XGetWindowAttributes rather than trusting a locally-tracked
+         * variable, since this is real, occasionally-stale-prone state
+         * (the WM can also resize/moves this override-redirect window). */
+        {
+            XWindowAttributes wa;
+            if (XGetWindowAttributes(dpy, win, &wa) &&
+                (wa.width != g_window->w || wa.height != g_window->h)) {
+                XResizeWindow(dpy, win, (unsigned)g_window->w, (unsigned)g_window->h);
+                XSync(dpy, False);
+            }
         }
         XSync(dpy, False);
         XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_window->w, (unsigned)g_window->h, AllPlanes, ZPixmap);
