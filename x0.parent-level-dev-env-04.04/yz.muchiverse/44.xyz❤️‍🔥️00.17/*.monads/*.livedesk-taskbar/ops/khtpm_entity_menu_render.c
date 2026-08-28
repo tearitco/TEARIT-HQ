@@ -1327,6 +1327,99 @@ static void dbhq_pal_shift_subtree(Elem *e, int dy) {
     for (int i = 0; i < e->n_children; i++) dbhq_pal_shift_subtree(e->children[i], dy);
 }
 
+/* REAL, GENERALIZED 2026-08-28 (RENDER-FRAME-HISTORY-DRIFT-ASSESSMENT.md
+ * Phase C) - this mechanism (scroll clipping + track/thumb/arrow
+ * geometry) used to be palettes-only, gated on g_is_palettes, using
+ * ONLY "pal-grid-row" as its row selector. A real Phase-A inventory
+ * confirmed this is the ONLY scroll mechanism anywhere in this file -
+ * db-hq's sidebar (Common Events/Terms/stats-hq), bookmarks, chat-hai's
+ * session sidebar, and events-hq's command list all have ZERO scroll
+ * support today - long lists silently overflow off-screen with no
+ * clipping at all. Since each window MODE runs as its own separate
+ * process of this same binary (g_is_palettes etc are set ONCE at
+ * startup and never change for that process's lifetime), there is
+ * only ever ONE scrollable region active per process - reusing the
+ * SAME g_pal_* globals for whichever mode's content is active is
+ * completely safe, no cross-mode collision possible. What changes
+ * here is WHO calls this and how rows are selected, not the mechanism
+ * itself (already real, live-verified for palettes).
+ *
+ * `container`: the Elem whose children are candidate rows (panel for
+ * palettes/bookmarks, sidebar for db-hq/chat-hai).
+ * `row_class`: NULL means "every direct child of container is a real
+ * row" (db-hq sidebar, chat-hai session sidebar - these containers
+ * hold nothing else); a real class name means "only children carrying
+ * this class count as rows, others (title/hint/tab-row/static rows)
+ * are left alone" (palettes' "pal-grid-row", bookmarks' "bm-bookmark").
+ * `panel_y`/`panel_h`: the real bounding box scrolling clips against -
+ * passed explicitly since callers differ on whether that's the panel
+ * or the sidebar's own box. */
+static void generic_scroll_layout_pass(Elem *container, const char *row_class, int box_y, int box_h) {
+    g_pal_has_grid = 0;
+    g_pal_total_rows = 0;
+    if (!container) return;
+    Elem *grid_rows[MAX_CHILDREN];
+    for (int i = 0; i < container->n_children && i < MAX_CHILDREN; i++) {
+        Elem *c = container->children[i];
+        if (!row_class || elem_has_class(c, row_class))
+            grid_rows[g_pal_total_rows++] = c;
+    }
+    if (g_pal_total_rows == 0) {
+        g_pal_arrow_up->w = 0; g_pal_arrow_up->h = 0; g_pal_arrow_up->onclick[0] = '\0';
+        g_pal_arrow_down->w = 0; g_pal_arrow_down->h = 0; g_pal_arrow_down->onclick[0] = '\0';
+        return;
+    }
+    g_pal_has_grid = 1;
+    int pad12 = scaled(12);
+    int top = box_y + pad12;
+    int bot = box_y + box_h - pad12;
+    int pitch = (g_pal_total_rows > 1)
+        ? grid_rows[1]->y - grid_rows[0]->y
+        : grid_rows[0]->h + scaled(6);
+    if (pitch <= 0) pitch = 1;
+    g_pal_visible_rows = (bot - top) / pitch;
+    if (g_pal_visible_rows < 1) g_pal_visible_rows = 1;
+    int max_scroll = g_pal_total_rows - g_pal_visible_rows;
+    if (max_scroll < 0) max_scroll = 0;
+    if (g_pal_scroll > max_scroll) g_pal_scroll = max_scroll;
+    if (g_pal_scroll < 0) g_pal_scroll = 0;
+    for (int i = 0; i < g_pal_total_rows; i++) {
+        Elem *r = grid_rows[i];
+        int dy = -(g_pal_scroll * pitch);
+        dbhq_pal_shift_subtree(r, dy);
+        if (r->y < top || r->y + r->h > bot) { r->w = 0; r->h = 0; }
+    }
+    g_pal_arrow_h = scaled(14);
+    g_pal_track_w = scaled(8);
+    g_pal_track_x = container->x + container->w - g_pal_track_w - scaled(2);
+    g_pal_track_y = top + g_pal_arrow_h;
+    g_pal_track_h = (bot - top) - 2 * g_pal_arrow_h;
+    if (g_pal_track_h < 0) g_pal_track_h = 0;
+    if (max_scroll == 0) {
+        g_pal_thumb_y = g_pal_track_y; g_pal_thumb_h = g_pal_track_h;
+    } else {
+        int th = (g_pal_track_h * g_pal_visible_rows) / g_pal_total_rows;
+        if (th < scaled(14)) th = scaled(14);
+        int ty = g_pal_track_y + ((g_pal_track_h - th) * g_pal_scroll) / max_scroll;
+        g_pal_thumb_y = ty; g_pal_thumb_h = th;
+    }
+    memset(g_pal_arrow_up, 0, sizeof(*g_pal_arrow_up));
+    snprintf(g_pal_arrow_up->tag, sizeof(g_pal_arrow_up->tag), "button");
+    g_pal_arrow_up->x = g_pal_track_x; g_pal_arrow_up->y = g_pal_track_y - g_pal_arrow_h;
+    g_pal_arrow_up->w = g_pal_track_w; g_pal_arrow_up->h = g_pal_arrow_h;
+    snprintf(g_pal_arrow_up->onclick, sizeof(g_pal_arrow_up->onclick), "scroll:up");
+    g_pal_arrow_up->badge_align_left = 1;
+    g_pal_arrow_up_disabled = (g_pal_scroll <= 0);
+
+    memset(g_pal_arrow_down, 0, sizeof(*g_pal_arrow_down));
+    snprintf(g_pal_arrow_down->tag, sizeof(g_pal_arrow_down->tag), "button");
+    g_pal_arrow_down->x = g_pal_track_x; g_pal_arrow_down->y = g_pal_track_y + g_pal_track_h;
+    g_pal_arrow_down->w = g_pal_track_w; g_pal_arrow_down->h = g_pal_arrow_h;
+    snprintf(g_pal_arrow_down->onclick, sizeof(g_pal_arrow_down->onclick), "scroll:down");
+    g_pal_arrow_down->badge_align_left = 1;
+    g_pal_arrow_down_disabled = (g_pal_scroll >= max_scroll);
+}
+
 static void dbhq_layout_pass(Elem *window) {
     dbhq_apply_css(window, 0);
     /* REAL FIX 2026-08-25 (live report: window height didn't shrink to
@@ -1451,112 +1544,26 @@ static void dbhq_layout_pass(Elem *window) {
         }
         css_layout_pass(panel, panel->x, panel->y, panel->w, panel->h);
 
-        /* REAL, ported 2026-08-25 - palettes matrix scroll post-pass,
-         * verbatim from khtpm_hq_render.c's own real, live-verified
-         * mechanism (see g_pal_scroll's own declaration comment). Rows
-         * were laid out stacked by the engine; shift them by the scroll
-         * offset, zero out any row not FULLY inside the panel's padding
-         * box (full-row steps only), and compute the thumb geometry. */
+        /* REAL, GENERALIZED 2026-08-28 (was palettes-only inline code,
+         * see generic_scroll_layout_pass()'s own header comment for the
+         * full "why"). Palettes' own tile grid is the only mode with a
+         * class-filtered row selector (title/hint/tab-row/chooser-row
+         * share the panel with real scrollable tile rows) - every other
+         * mode below scrolls a container whose children are ALL real
+         * rows (row_class=NULL). */
         if (g_is_palettes) {
+            generic_scroll_layout_pass(panel, "pal-grid-row", panel->y, panel->h);
+        } else if (dbhq_tab_is_real(g_dbhq_current_tab) && sidebar && sidebar->n_children > 0) {
+            /* REAL FIX 2026-08-28 (Phase C, fixes a real, previously-
+             * silent bug: db-hq's sidebar - Common Events, Terms, and
+             * stats-hq's session list, all the SAME function - had zero
+             * scroll support; a long enough list simply ran off the
+             * bottom of the window with no way to reach it). */
+            generic_scroll_layout_pass(sidebar, NULL, sidebar->y, content_h);
+        } else if (g_is_bookmarks) {
+            generic_scroll_layout_pass(panel, "bm-bookmark", panel->y, panel->h);
+        } else {
             g_pal_has_grid = 0;
-            g_pal_total_rows = 0;
-            Elem *grid_rows[MAX_CHILDREN];
-            for (int i = 0; i < panel->n_children && i < MAX_CHILDREN; i++) {
-                if (elem_has_class(panel->children[i], "pal-grid-row"))
-                    grid_rows[g_pal_total_rows++] = panel->children[i];
-            }
-            if (g_pal_total_rows > 0) {
-                g_pal_has_grid = 1;
-                int pad12 = scaled(12);
-                int top = panel->y + pad12;
-                int bot = panel->y + panel->h - pad12;
-                int pitch = (g_pal_total_rows > 1)
-                    ? grid_rows[1]->y - grid_rows[0]->y
-                    : grid_rows[0]->h + scaled(6);
-                if (pitch <= 0) pitch = 1;
-                g_pal_visible_rows = (bot - top) / pitch;
-                if (g_pal_visible_rows < 1) g_pal_visible_rows = 1;
-                int max_scroll = g_pal_total_rows - g_pal_visible_rows;
-                if (max_scroll < 0) max_scroll = 0;
-                if (g_pal_scroll > max_scroll) g_pal_scroll = max_scroll;
-                if (g_pal_scroll < 0) g_pal_scroll = 0;
-                for (int i = 0; i < g_pal_total_rows; i++) {
-                    Elem *r = grid_rows[i];
-                    int dy = -(g_pal_scroll * pitch);
-                    /* REAL FIX 2026-08-25 (live report: "thumb moves but
-                     * doesn't change display") - css_layout_pass() above
-                     * already positioned every TILE inside this row at
-                     * its own absolute y (draw_elem() reads e->y
-                     * directly, never parent-relative) - shifting only
-                     * the row container's own y left every tile exactly
-                     * where it was, so scrolling moved the thumb and the
-                     * (invisible) row box but not a single visible
-                     * pixel. khtpm_hq_render.c's own hand-rolled layout
-                     * engine didn't have this problem (different engine,
-                     * different children-positioning model) - porting
-                     * just this snippet verbatim wasn't actually a
-                     * verbatim-equivalent fix against THIS shared engine.
-                     * Real fix: shift the whole row subtree, not just
-                     * the row element itself. */
-                    dbhq_pal_shift_subtree(r, dy);
-                    if (r->y < top || r->y + r->h > bot) { r->w = 0; r->h = 0; }
-                }
-                /* REAL, NEW 2026-08-25 (live report: "no up down nav yet
-                 * (near thumb)") - real up/down arrow buttons at the two
-                 * ends of the track, the standard scrollbar affordance -
-                 * the track itself only ever supported click-to-jump/
-                 * drag, no single-row increment buttons. Track shrinks
-                 * by 2 arrow-heights so the buttons sit at its own top/
-                 * bottom ends, same real widget shape any OS scrollbar
-                 * uses. */
-                g_pal_arrow_h = scaled(14);
-                g_pal_track_w = scaled(8);
-                g_pal_track_x = panel->x + panel->w - g_pal_track_w - scaled(2);
-                g_pal_track_y = top + g_pal_arrow_h;
-                g_pal_track_h = (bot - top) - 2 * g_pal_arrow_h;
-                if (g_pal_track_h < 0) g_pal_track_h = 0;
-                if (max_scroll == 0) {
-                    g_pal_thumb_y = g_pal_track_y; g_pal_thumb_h = g_pal_track_h;
-                } else {
-                    int th = (g_pal_track_h * g_pal_visible_rows) / g_pal_total_rows;
-                    if (th < scaled(14)) th = scaled(14);
-                    int ty = g_pal_track_y + ((g_pal_track_h - th) * g_pal_scroll) / max_scroll;
-                    g_pal_thumb_y = ty; g_pal_thumb_h = th;
-                }
-
-                /* REAL, NEW 2026-08-25 (live instruction: "they need to
-                 * be numbered (1 and 2), with nav feature for
-                 * accessibility / disabled") - onclick is ALWAYS set
-                 * (both arrows keep a fixed, real nav_index 1/2 whether
-                 * enabled or not - "disabled" is a separate concept from
-                 * "unnumbered": a disabled control still has an identity
-                 * a screen-reader/keyboard user can land on and be told
-                 * "at the top already", not one that silently vanishes
-                 * from the tab order and shifts every OTHER number down
-                 * by one depending on scroll position). g_pal_scroll's
-                 * own clamp in this same function already makes
-                 * activating a disabled arrow a harmless no-op - no
-                 * separate activation guard needed. g_pal_arrow_up/
-                 * down_disabled drive the dimmed visual only. */
-                memset(g_pal_arrow_up, 0, sizeof(*g_pal_arrow_up));
-                snprintf(g_pal_arrow_up->tag, sizeof(g_pal_arrow_up->tag), "button");
-                g_pal_arrow_up->x = g_pal_track_x; g_pal_arrow_up->y = g_pal_track_y - g_pal_arrow_h;
-                g_pal_arrow_up->w = g_pal_track_w; g_pal_arrow_up->h = g_pal_arrow_h;
-                snprintf(g_pal_arrow_up->onclick, sizeof(g_pal_arrow_up->onclick), "scroll:up");
-                g_pal_arrow_up->badge_align_left = 1; /* live report: badge ran off the right edge - see its own declaration comment */
-                g_pal_arrow_up_disabled = (g_pal_scroll <= 0);
-
-                memset(g_pal_arrow_down, 0, sizeof(*g_pal_arrow_down));
-                snprintf(g_pal_arrow_down->tag, sizeof(g_pal_arrow_down->tag), "button");
-                g_pal_arrow_down->x = g_pal_track_x; g_pal_arrow_down->y = g_pal_track_y + g_pal_track_h;
-                g_pal_arrow_down->w = g_pal_track_w; g_pal_arrow_down->h = g_pal_arrow_h;
-                snprintf(g_pal_arrow_down->onclick, sizeof(g_pal_arrow_down->onclick), "scroll:down");
-                g_pal_arrow_down->badge_align_left = 1;
-                g_pal_arrow_down_disabled = (g_pal_scroll >= max_scroll);
-            } else {
-                g_pal_arrow_up->w = 0; g_pal_arrow_up->h = 0; g_pal_arrow_up->onclick[0] = '\0';
-                g_pal_arrow_down->w = 0; g_pal_arrow_down->h = 0; g_pal_arrow_down->onclick[0] = '\0';
-            }
         }
     }
 }
@@ -1640,7 +1647,7 @@ static void dbhq_assign_nav_indices(Elem *window) {
      * cleared in dbhq_layout_pass(), so it fails the same onclick[0]
      * check every other numbered element uses - excluded from nav
      * without a separate disabled-specific branch here. */
-    if (g_is_palettes && g_pal_has_grid) {
+    if (g_pal_has_grid) {
         if (g_pal_arrow_up->onclick[0] && g_n_nav < MAX_ELEMS) {
             g_pal_arrow_up->nav_index = ++g_n_nav;
             g_nav[g_n_nav - 1] = g_pal_arrow_up;
@@ -1819,7 +1826,7 @@ static void dbhq_redraw_content(void) {
      * from khtpm_hq_render.c's own draw_chrome_bar-adjacent draw call
      * (see g_pal_scroll's own declaration comment). Drawn only when this
      * window's panel actually carries grid rows. */
-    if (g_is_palettes && g_pal_has_grid && g_pal_track_h > 0) {
+    if (g_pal_has_grid && g_pal_track_h > 0) {
         XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
         XFillRectangle(dpy, buf, gc, g_pal_track_x, g_pal_track_y, (unsigned)g_pal_track_w, (unsigned)g_pal_track_h);
         XSetForeground(dpy, gc, alloc_pixel("#888888"));
@@ -2016,7 +2023,7 @@ static void dbhq_handle_click(int px, int py) {
      * already uses. A disabled arrow's onclick[0]=='\0' (cleared in
      * dbhq_layout_pass()) makes dbhq_activate_elem() a safe no-op for
      * it - no separate disabled check needed here either. */
-    if (g_is_palettes && g_pal_has_grid) {
+    if (g_pal_has_grid) {
         if (px >= g_pal_arrow_up->x && px < g_pal_arrow_up->x + g_pal_arrow_up->w &&
             py >= g_pal_arrow_up->y && py < g_pal_arrow_up->y + g_pal_arrow_up->h) {
             if (g_pal_arrow_up->nav_index > 0) g_focus_nav = g_pal_arrow_up->nav_index;
@@ -2131,7 +2138,7 @@ static void dbhq_handle_key(KeySym ks, char ch) {
      * Left/Right keep the plain +-1 linear step within a row. db-hq's
      * own sidebar/panel (not a grid) keeps the original Up/Down==Left/
      * Right behavior unchanged. */
-    if (g_is_palettes && g_n_nav > 0 && (ks == XK_Up || ks == XK_Down)) {
+    if (g_pal_has_grid && g_n_nav > 0 && (ks == XK_Up || ks == XK_Down)) {
         int cols = 1;
         int y0 = g_nav[0]->y;
         for (int i = 1; i < g_n_nav; i++) {
@@ -2189,7 +2196,7 @@ static void dbhq_handle_key(KeySym ks, char ch) {
      * re-number immediately so the scroll clamp/thumb/visible-tile-only
      * nav numbering all reflect the new position before the next redraw. */
     if (ks == XK_Page_Up || ks == XK_Page_Down) {
-        if (g_is_palettes && g_pal_has_grid) {
+        if (g_pal_has_grid) {
             int step = g_pal_visible_rows > 1 ? g_pal_visible_rows - 1 : 1;
             g_pal_scroll += (ks == XK_Page_Down) ? step : -step;
             dbhq_layout_pass(g_window);
@@ -7222,7 +7229,7 @@ int main(int argc, char **argv) {
                      * drag - checked BEFORE the chrome-bar window-drag
                      * check and the generic click dispatch below, same
                      * precedence the close-button check already uses. */
-                    if (ev.xbutton.button == 1 && g_is_palettes && g_pal_has_grid &&
+                    if (ev.xbutton.button == 1 && g_pal_has_grid &&
                         ev.xbutton.x >= g_pal_track_x && ev.xbutton.x < g_pal_track_x + g_pal_track_w &&
                         ev.xbutton.y >= g_pal_track_y && ev.xbutton.y < g_pal_track_y + g_pal_track_h) {
                         g_pal_thumb_dragging = 1;
@@ -7254,7 +7261,7 @@ int main(int argc, char **argv) {
                      * khtpm_hq_render.c's own real mechanism (see
                      * g_pal_scroll's own declaration comment). Clamp
                      * happens in dbhq_layout_pass()'s own post-pass. */
-                    if (g_is_palettes && g_pal_has_grid && (ev.xbutton.button == 4 || ev.xbutton.button == 5)) {
+                    if (g_pal_has_grid && (ev.xbutton.button == 4 || ev.xbutton.button == 5)) {
                         g_pal_scroll += (ev.xbutton.button == 5) ? 2 : -2;
                     } else if (ev.xbutton.button != 3 && ev.xbutton.button != 4 && ev.xbutton.button != 5) {
                         dbhq_handle_click(ev.xbutton.x, ev.xbutton.y);

@@ -145,6 +145,52 @@ but it is not a small or low-risk change, and a mistake here has wide
 blast radius (every khtpm/-hq window, not just palettes).
 
 ============================================================
+THE REAL END-GOAL (revised 2026-08-28, direct user correction — this
+supersedes the narrower "per-mode frame file" framing this doc
+originally proposed)
+============================================================
+The "modes" themselves (`g_is_db_hq`/`g_is_events_hq`/`g_is_chat_hai`/
+`g_is_palettes`/`g_is_bookmarks`/`g_is_stats_hq`/`g_is_swatch_picker`)
+are not a deliberate design — they're a direct historical artifact of
+Stage 5's own real scope (per `khtpm-merge-how2.md`): 5 previously-
+SEPARATE standalone binaries were copy-pasted into one file as
+parallel branches to cut process count, but their app-specific control
+flow (per-mode layout math, tab handling, scroll behavior, click
+routing) was preserved as-is, not redesigned into one shared engine.
+
+**Direct instruction, the real target:** the renderer should be a
+genuinely GENERIC engine — parse a layout description (`.chtpm`+CSS,
+which already exists and is already mostly generic), paint it, forward
+input events — with ZERO mode-specific branches. Every app-specific
+behavior (what a Terms-tab click does, how db-hq's scroll math works,
+what a chat-hai session sidebar looks like) belongs entirely in
+separate MANAGER processes, the same way a JS library attaches
+behavior to a generic DOM rather than the browser engine itself
+knowing about any specific website. This is a strictly BIGGER, BETTER
+end-state than this doc's original "make each mode's own rendering
+derive from its own frame file" framing — that framing still kept
+"modes" as a concept baked into the renderer; this one removes them
+from the renderer entirely.
+
+**What already proves half of this is achievable, today, for real:**
+the generic `onclick` dispatch (`open:`/`exec:`/`input:` prefixes,
+`dbhq_activate_elem()`'s own generic branch, checked BEFORE any mode-
+specific tag handling) already works exactly like this — a manager-
+side script gets invoked generically, with zero mode-specific code in
+the dispatcher itself. Multiple real managers already exist and
+already do the "manager owns behavior, renderer just displays"
+job for STATE (`khtpm_hq_manager.c`, `khtpm_events_hq_manager.c`,
+`palettes_manager.c`, `terms_hq_manager.c`, `bookmarks_manager.c`) —
+they publish plain state files the renderer's generic sidebar/panel
+injection (`dbhq_inject_sidebar_items()`, now proven mode-agnostic
+across Common Events AND Terms) already consumes without caring which
+manager wrote it. **The real gap is narrower than "rebuild everything
+from scratch"**: it's the LAYOUT/RENDER-DECISION code specifically
+(per-mode `*_layout_pass()`, `*_redraw_content()`, `*_handle_key()`
+functions) that still hard-branches on mode, not the state-publishing
+side, which is already largely generic.
+
+============================================================
 RECOMMENDED APPROACH (for discussion, not yet approved)
 ============================================================
 Given the size, a phased approach seems lower-risk than a single big
@@ -164,23 +210,67 @@ from the file" gap, but it DOES fix "the receipt isn't honest/complete"
 in the meantime, and is low-risk (append-only, no behavior change to
 drawing itself).
 
-**Phase 2 (the real fix, large, needs its own dedicated design pass
-per mode): make the frame-history file the thing render is DERIVED
-FROM**, not a receipt written after the fact — likely mode-by-mode
-(start with ONE window mode, e.g. palettes, since it's the one under
-active work and has no drag/modal-overlay complexity events-hq/chat-hai
-have), proving the pattern before extending to the other 6 modes.
-Requires: (a) a real, flat, serializable frame-snapshot format
-(wraith-alpha's `current_frame.txt` is the real reference shape); (b)
-separating "compute layout + decide what changed" from "paint pixels"
-into two real steps with the snapshot file as the boundary between
-them; (c) a real marker-file dirty-gate per window instance (not
-global, since 7 modes' windows are independent).
+**Phase 2 (the real fix, large, needs its own dedicated design pass):
+eliminate mode branches from the renderer, one mode at a time**, not
+just "make each mode's frame derive from a file." For each mode
+migrated: (a) whatever mode-specific layout/redraw/key logic exists
+today moves OUT into that mode's own manager (already real and
+running for most modes) as published, generic layout DATA — not just
+content data like today, but real computed positions/sizes/behavior
+hints; (b) the renderer's generic Elem/CSS/paint engine consumes that
+data the exact same way regardless of which manager produced it,
+matching the already-proven generic `onclick` dispatch and generic
+sidebar-injection pattern; (c) a real marker-file dirty-gate per
+window instance drives repaint, matching wraith-alpha's own real
+`frame_changed.txt` mechanism. Suggested pilot mode: palettes (see
+open question 2 below — still worth confirming, since db-hq/events-hq
+see more day-to-day use and may matter more for trust).
 
-**Not recommended:** attempting all 7 modes in one pass. The reference
-implementation this house already trusts is single-mode; matching that
-same incremental, provable-per-instance discipline here is the safer
-path, not a larger one-shot rewrite of the whole file.
+**Not recommended:** attempting all 7 modes in one pass, or assuming
+this is a full rewrite from nothing — the state-publishing half of
+this pattern (managers own data, renderer displays generically) is
+ALREADY real and working for several modes today; the actual lift is
+narrower than it first looks, concentrated in the per-mode layout/
+redraw/key-handling functions specifically.
+
+============================================================
+SCOPE CONFIRMED (2026-08-28, research pass before starting Phase 2)
+============================================================
+Three real questions were checked before committing to a pilot mode:
+
+1. **Does the taskbar (khtpm_taskbar_manager.c/khtpm_strip_parser.c) or
+   desktop entities need this refactor too?** No — and this was already
+   investigated once, with the conclusion REVERSED from what you'd
+   expect. The original 2026-08-15 merge plan called the taskbar's
+   separate `LayDoc`/`LayElement` architecture (`khtpm_strip_layout.h`)
+   "a mistake to correct." Real reconnaissance the very next day
+   reversed that: `LayDoc` was ported from the SAME wraith-alpha
+   `chtpm_parser.c` lineage this doc cites as the standard, and already
+   has real `${var}` substitution + activation-scoping that Elem/CSS
+   still lacks. Written verdict (merge archive, ~line 2124): **"LayDoc
+   is not behind the Elem model — it's ahead of it."** Direction
+   reversed: Elem/CSS should borrow FROM LayDoc, not replace it with
+   Elem/CSS. Standing status: no drift to correct here, confirmed
+   twice now (2026-08-16 and again in this research pass).
+2. **Does mutaclysm need this refactor?** No — it's a structurally
+   different, already-compliant pipeline (PAL/prisc+x VM +
+   `compose_frame.c`/`compose_rgb_frame.c` + `x11_mirror.c`), already
+   in the wraith-alpha family. It never touches `khtpm_entity_menu_
+   render.c` or Elem/CSS at all.
+3. **Was this exact refactor attempted before and done wrong?** No
+   written record of that anywhere. What DID happen: the original
+   Stage 5 merge plan explicitly scoped a follow-up ("Stage 2/3: one
+   shared parser for all X layouts") right after the binary-consolidation
+   stage — then that follow-up was simply never started, not botched.
+   This effort is picking up a previously-scoped, never-executed stage,
+   not fixing a past mistake.
+
+**Net scope, now confirmed real and unchanged from this doc's original
+sizing:** window-family modes only — db-hq, events-hq, chat-hai,
+palettes, bookmarks, stats-hq, taskbar-settings/swatch-picker, all
+within `khtpm_entity_menu_render.c`. Taskbar and mutaclysm are both
+real, confirmed-out-of-scope, for real documented reasons — not
+oversights.
 
 ============================================================
 OPEN QUESTIONS FOR THE USER BEFORE PHASE 2 STARTS
