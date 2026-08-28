@@ -44,20 +44,31 @@ place() {  # place <glyph> - real desk placement, tile-picker's own chain
     log "placed glyph $_g onto $DESK_DIR/tiles/"
 }
 
+# REAL FIX 2026-08-27 (direct instruction: "flag hardcoded things...
+# they are supposed to use generic .pdl read functions whenever
+# possible") - this used to be a hardcoded bash `case` statement
+# duplicating pallets.pdl's own real LABEL column verbatim (a real,
+# pre-existing violation of this exact standard - a NEW category added
+# to pallets.pdl would silently fall through to the "*) return 1" case
+# here and never get a real title, even though the label data already
+# existed). Now reads the real LABEL column directly, same real
+# IFS='|' parse shape list_cats() (below) already uses for pallets.pdl -
+# zero hardcoded category names anywhere in this function.
 title_for() {
-    case "$1" in
-        emojis)     printf 'palettes: Emojis' ;;
-        elements)   printf 'palettes: Chemicals+Compounds' ;;
-        user-pallet) printf 'palettes: My Pallet' ;;
-        rmmv)       printf 'palettes: RPG Maker Tiles' ;;
-        piececraft) printf 'palettes: Piececraft Blocks' ;;
-        cdda)       printf 'palettes: CDDA Tiles' ;;
-        df)         printf 'palettes: Dwarf Fortress' ;;
-        kenney)     printf 'palettes: Kenney 3D' ;;
-        paint)      printf 'palettes: Paint Colors' ;;
-        generate)   printf 'palettes: Generate' ;;
-        *)          return 1 ;;
-    esac
+    _key="$1"
+    # POSIX-sh-safe (no process substitution/bashism - this script is
+    # real #!/bin/sh): capture the loop's own stdout via command
+    # substitution instead of piping into the while loop, which would
+    # otherwise run it in a subshell under dash and lose the result.
+    _found=$(grep '^CATEGORY' "$SELF_DIR/pallets.pdl" | while IFS='|' read -r _sec _k _label _rest; do
+        _k=$(printf '%s' "$_k" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        if [ "$_k" = "$_key" ]; then
+            printf '%s' "$_label" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+            break
+        fi
+    done)
+    [ -n "$_found" ] || return 1
+    printf 'palettes: %s' "$_found"
 }
 
 # provision_stub <key> - copies the static stub template into
@@ -114,9 +125,40 @@ list_cats() {
     done
 }
 
+# set_rmmv <field> <pkg_dir> <value> - real 2026-08-27/28 (tile-picker
+# UI pass): writes rmmv_active.txt into the SAME live package dir
+# palettes_manager.c's own publish_rmmv() reads it from (passed as a
+# literal onclick arg by the renderer, which already has g_package_dir -
+# no new IPC channel needed). "tab" (a real sheet LETTER, A-E - 2026-08-28
+# rename from "category", since a tab click only specifies a LETTER, the
+# concrete a1/a2/... category is resolved manager-side from whatever
+# real file backs it) and "tileset" (a real filename PREFIX, e.g.
+# "World"/"Inside" - 2026-08-28: no longer a registry key, matches a
+# real "<tileset>_<suffix>.png" file directly). Merges the OTHER
+# field's current value in so clicking a tab doesn't stomp the active
+# tileset choice and vice versa - a plain overwrite would silently
+# reset whichever field the user isn't currently touching.
+set_rmmv() {
+    _field="$1"; _pkg="$2"; _val="$3"
+    _f="$_pkg/rmmv_active.txt"
+    mkdir -p "$_pkg"
+    if [ "$_field" = "tab" ]; then _other_field="tileset"; else _other_field="tab"; fi
+    _other_val=""
+    if [ -f "$_f" ]; then
+        _other_val=$(grep "^${_other_field}=" "$_f" | head -1 | cut -d= -f2-)
+    fi
+    {
+        [ -n "$_other_val" ] && printf '%s=%s\n' "$_other_field" "$_other_val"
+        printf '%s=%s\n' "$_field" "$_val"
+    } > "$_f"
+    log "rmmv active $_field set to '$_val' in $_pkg"
+}
+
 case "${1:-}" in
-    place)   shift; place "$@"; exit 0 ;;
-    list)    list_cats; exit 0 ;;
+    place)             shift; place "$@"; exit 0 ;;
+    list)              list_cats; exit 0 ;;
+    set-rmmv-tab)      shift; set_rmmv tab "$1" "$2"; exit 0 ;;
+    set-rmmv-tileset)  shift; set_rmmv tileset "$1" "$2"; exit 0 ;;
 esac
 
 # Arg forms:

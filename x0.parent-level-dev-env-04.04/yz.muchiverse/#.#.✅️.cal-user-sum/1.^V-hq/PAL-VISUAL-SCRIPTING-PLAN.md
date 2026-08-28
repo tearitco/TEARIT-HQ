@@ -103,6 +103,18 @@ when TEMPLATE obviously doesn't fit.
   guidance — but is a shared-VM change and needs its own sign-off,
   not bundled into Task 2 without asking.
 
+## Extended direction — harnesses themselves, moved to its own doc
+
+Direct instruction (2026-08-27): harnesses should eventually be
+PAL/event-authored, not just bash calling ops - and hand-written C
+generally is a long-term candidate for replacement by writing events,
+wherever the VM can express the thing. Full reasoning, a real
+feasibility check against `prisc+x.c`'s actual syscalls, and a priority
+list of "harness-friendly" event commands worth building next now live
+in `HARNESS-AUTHORING-GUIDE.md` §3 (indexed in `INDEX.md`) - read that
+before designing any new harness or deciding a new event command's
+priority.
+
 ## Where this fits with everything else already documented
 
 - `EVENT-COMMAND-REGISTRY-ARCHITECTURE.md` (this directory) — the

@@ -1,0 +1,8 @@
+PASS: real PNG produced and asserted genuine size: /tmp/db-hq-frame.png (362921 bytes)
+PASS: sibling poll file shows current_tab=0 (Actors)
+PASS: code-210 debug dump independently confirms Actors tab
+PASS: PAL verdict: done=1 pass=1 (archive /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/pal/presentations/db-hq-tab-switch-20260827-231148)
+PASS: zero stray render/hq-manager processes after cleanup
+PASS: restored git-clean: db_hq_history.txt (byte-exact)
+PASS: restored git-clean: db_hq_common_events.state.txt (byte-exact)
+PASS: restored git-clean: db_hq_action.txt (byte-exact)

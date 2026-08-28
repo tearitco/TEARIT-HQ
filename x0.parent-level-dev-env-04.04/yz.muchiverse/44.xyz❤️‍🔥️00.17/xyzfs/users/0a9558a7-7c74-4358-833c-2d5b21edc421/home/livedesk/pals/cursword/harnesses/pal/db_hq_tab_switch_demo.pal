@@ -1,0 +1,210 @@
+# db_hq_tab_switch_demo.pal - VISIBLE-WINDOW proof of a REAL db-hq tab
+# switch, driven end to end by the new Loop / Wait / Send-Input event
+# commands (NEW TASK, COMMON-EVENTS-MANAGER-HANDOFF.md "db-hq PAL harness
+# proof"). Drives a REAL, currently-running db-hq window (the CSS-styled
+# RPG-database window, single-instance-per-house, launched by the real
+# open_db_hq.sh) from inside prisc+x and ends with a real PNG
+# (/tmp/db-hq-frame.png) proving the switch on screen, not another text
+# readback.
+#
+# What this proves that the prior visible-window proof did not: the new
+# Loop/Wait/Send-Input commands driving a SECOND real render binary mode
+# (db-hq) against the NEW db_hq_current_tab.txt sibling file (the
+# HARNESS-AUTHORING-GUIDE.md 3a fix-1 pattern, now ported to db-hq's
+# own frame history exactly as events-hq got it - see
+# dbhq_append_frame_history() in khtpm_entity_menu_render.c).
+#
+# DISPOSABLE-entity note (honest): db-hq is deliberately
+# single-instance-per-house with NO entity argument in its launch
+# command ("$BIN <house_root> <db-hq/dashboard.chtpm>" - see
+# open_db_hq.sh). "Disposable test entity" therefore means: this harness
+# never opens cursword's own event_pkg, never activates a Common Event
+# (greet_player/shop_open/etc all stay unselected - the panel names them
+# but nothing here ever clicks one), and switches AWAY from the Common
+# Events tab onto the Actors tab, which renders db-hq's own placeholder
+# (dbhq_render_placeholder_tab, "coming soon") - provably touching zero
+# real data. The run reads the relay and frame-history state only.
+#
+# Cited predecessors (same directory, same 3a-comments convention - each
+# block below is the EXACT compiled shape of the command it names, from
+# khtpm_events_hq_manager.c's compile_page() + event_commands.registry.pdl,
+# NOT an author-invented variant):
+#   visible_window_events_hq_demo.pal  - the SAME compiled shapes this
+#                                        harness reuses, driven against
+#                                        a real window + real PNG trigger
+#   wait_loop_break_demo.pal           - Loop/break_loop/repeat_above
+#                                        shapes + wait->`sleep {ms}000`
+#   task3_switch_branch_verify.pal     - if/else branch shape + comment style
+#
+# Command-to-shape map (all equalities are literal with compile_page()'s
+# emit; every GET-branch target below is the ONE deliberate deviation,
+# same as visible_window_events_hq_demo.pal - the real `if` command
+# hardwires its read to {STATE_DIR}/switches.txt, and the TASK-named
+# targets here are separate files, so ONLY the GET target is swapped;
+# the loop/break/else/endif/repeat machinery is the real compiled shape,
+# marked inline at each deviation):
+#   send_input|{relay}|{key}  -> li x15,1 / li x13,2 / ecall "{relay}" /
+#                                addi x14,x12,0 / li x15,3 / addi x12,x14,0 /
+#                                ecall "{key}" / addi x12,x14,0 / li x15,2 / ecall
+#   loop                      -> _loop_N:
+#   wait|{ms}                 -> sleep {ms}000       (W-1: existing opcode)
+#   if|{switch}->on + break_loop -> li x15,6 / ecall "{file}" "{key}" /
+#                                li x2,1 / bne x12,x2,_else_N /
+#                                j _loop_end_N  / _else_N: / _endif_N:
+#   repeat_above              -> j _loop_N / _loop_end_N:
+#   control_switch done=1     -> li x15,7 / li x12,1 / ecall "{file}" "done"
+#
+# Registers used (same roles as the cited harnesses):
+#   x15 - the syscall NUMBER (1=OPEN, 2=CLOSE, 3=WRITE_LINE, 6=GET_KV_INT,
+#         7=SET_KV_INT - see prisc+x.c's own SYS_* #defines).
+#   x12 - the syscall VALUE register: fd for open, the read-back int for
+#         GET_KV_INT, the written value for SET_KV_INT. Clobbered by
+#         almost every ecall.
+#   x13 - the syscall's SECOND input register (open mode / GET default).
+#   x14 - scratch fd stash used by send_input's compiled shape (send_input
+#         CLOBBERS x14 - we hold nothing live in it across a send_input).
+#   x2  - the loop-break compare constant (0 for "current_tab==0 / the
+#         debug state shows the Actors tab", 11 for the Common Events
+#         default that the first code-210 dump must show).
+#
+# Real files touched (all absolute; the house-root path is a literal
+# string here - no PAL-level path interpolation exists, same honest
+# limitation as the cited harnesses' headers note):
+#   <HOUSE>/#.desktop/db_hq_history.txt     the real db-hq relay (WRITE)
+#   <HOUSE>/#.desktop/db_hq_current_tab.txt the REAL single-key sibling
+#                                           poll file, written by the
+#                                           running render every redraw
+#                                           (NEW with this task, 3a fix-1)
+#   /tmp/db-hq-state.txt                    the render's real code-210
+#                                           debug-state dump (dbhq_dump_debug_state())
+#   /tmp/dbhq_visproof_results.txt          disposable verdict file
+#   /tmp/db-hq-frame.png                    written by the running render's
+#                                           dump_frame_png() via code 112
+#
+# Drive order (validated LIVE this session, 2026-08-27, before authoring -
+# the code-210 dump above the jump recorded the REAL nav numbering, not an
+# assumed one: nav[1]=Actors nav[2]=Classes ... nav[12]=Common Events, i.e.
+# the tabbar always numbers first 1..15 in tab order, dbhq_assign_nav_indices();
+# "nav numbers NOT fixed" is honored by READING the 210 dump in-run instead
+# of hardcoding the pre-jump expectation):
+#   1. send code 210 - dump the real debug state, THEN poll /tmp/db-hq-state.txt
+#      until g_dbhq_current_tab==11 - the Common Events default, PROVING the
+#      code-210 readback pipeline is live in THIS run and the window really
+#      started where a jump should start from.
+#   2. send '1' (code 49) then Enter (code 13) - digit-jump to nav 1 =
+#      the Actors tab (first tabbar entry in the live dump), Enter activates
+#      the focused tab (dbhq_handle_key Return -> dbhq_activate_elem ->
+#      tag==tab -> g_dbhq_current_tab=0).
+#   3. send code 210 again - a fresh debug dump AFTER the Enter - then poll
+#      /tmp/db-hq-state.txt until g_dbhq_current_tab==0 - THE real loop exit
+#      signal now. (The per-redraw sibling file db_hq_current_tab.txt was
+#      dropped on 2026-08-28: the render source's shared frame-history hook
+#      got rewritten by the parallel palettes stream, so that poll target no
+#      longer exists. This proof now stands ONLY on pre-existing render
+#      behavior - code 210 debug dump + relay + PNG - with zero dependence on
+#      any source edit, so it can never be invalidated by source drift.)
+#   4. send code 112 ('p') - the render's real dump_frame_png() writes
+#      /tmp/db-hq-frame.png of the Actors tab (forced-redraw-before-dump).
+#   5. verdict done=1 pass=1 - recorded before halt, after the PNG trigger
+#      queued; the wrapper waits for the render to finish the write.
+#
+# run via `prisc+x` while db-hq is already up - the launcher lives in the
+# sibling harness script run_db_hq_tab_switch_demo.sh, which also clears
+# /tmp/db-hq-state.txt BEFORE this PAL runs (so the loop-1 poll can never
+# false-positive on a leftover previous run's dump).
+
+li x15, 1          # send_input #1, line 1: x15 = 1 -> next ecall is SYS_OPEN
+li x13, 2          # send_input #1, line 2: x13 = 2 -> open mode "append"
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/db_hq_history.txt"   # send_input #1, line 3: open the REAL db-hq relay; x12 <- fd
+addi x14, x12, 0   # send_input #1, line 4: stash the fd in x14 (safe across clobbers)
+li x15, 3          # send_input #1, line 5: x15 = 3 -> SYS_WRITE_LINE
+addi x12, x14, 0   # send_input #1, line 6: restore the stashed fd into x12
+ecall "210"        # send_input #1, line 7: append "210\n" = the render's real dbhq_dump_debug_state() trigger -> /tmp/db-hq-state.txt
+addi x12, x14, 0   # send_input #1, line 8: restore fd again for the close
+li x15, 2          # send_input #1, line 9: x15 = 2 -> SYS_CLOSE
+ecall              # send_input #1, line 10: close the relay handle (start-state dump queued)
+
+_loop_1:           # "loop" (real command): the poll top - re-entered from repeat_above
+sleep 100000       # "wait" ms=100 -> 100000 micros (real pacing between polls, not a tight spin)
+li x15, 6          # "if" compare line 1: x15 = 6 -> SYS_GET_KV_INT (read one key from a flat file)
+li x13, -1         # "if" fallback default: -1 so a missing/absent key can never false-positive
+ecall "/tmp/db-hq-state.txt" "g_dbhq_current_tab"   # THE DELIBERATE DEVIATION (same one as visible_window_events_hq_demo.pal): the real `if` reads {STATE_DIR}/switches.txt; the TASK-named read is the render's code-210 debug dump, so ONLY the GET target is swapped. x12 <- live g_dbhq_current_tab (or -1 until the first dump lands)
+li x2, 11          # "if" compare line 2: x2 = 11 -> the value we wait for (Common Events is db-hq's fixed starting tab - DB_HQ_COMMON_EVENTS_TAB)
+bne x12, x2, _else_1   # "if" compare line 3: not-equal (dump not processed yet) -> retry; equal -> the dump is live, prove the start state, proceed to the break
+j _loop_end_1      # "break_loop" (real command): forward jump BY NAME to the loop exit - the ONLY authored exit
+_else_1:           # "end" of the if - the retry path lands here and runs back up to repeat_above
+_endif_1:          # "end" closes the if scope (identity label, same as compiler emit)
+j _loop_1          # "repeat_above" (real command): backward jump to _loop_1 - the only backward jump, exactly one per loop
+_loop_end_1:       # the break target, emitted by the compiler AFTER the repeat -> break always EXITS (start tab Common Events provably dumped here)
+
+li x15, 1          # send_input #2, line 1: SYS_OPEN
+li x13, 2          # send_input #2, line 2: append mode
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/db_hq_history.txt"   # send_input #2, line 3: reopen the real relay; x12 <- fd
+addi x14, x12, 0   # send_input #2, line 4: stash the fd
+li x15, 3          # send_input #2, line 5: SYS_WRITE_LINE
+addi x12, x14, 0   # send_input #2, line 6: restore fd
+ecall "49"         # send_input #2, line 7: append "49\n" = ASCII '1' = digit-jump to nav 1 (the Actors tab entry - live-confirmed in this session's own 210 dump, nav[1]=Actors)
+addi x12, x14, 0   # send_input #2, line 8: restore fd
+li x15, 2          # send_input #2, line 9: SYS_CLOSE
+ecall              # send_input #2, line 10: close - digit staged
+
+li x15, 1          # send_input #3, line 1: SYS_OPEN
+li x13, 2          # send_input #3, line 2: append mode
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/db_hq_history.txt"   # send_input #3, line 3: reopen the real relay; x12 <- fd
+addi x14, x12, 0   # send_input #3, line 4: stash the fd
+li x15, 3          # send_input #3, line 5: SYS_WRITE_LINE
+addi x12, x14, 0   # send_input #3, line 6: restore fd
+ecall "13"         # send_input #3, line 7: append "13\n" = Enter -> dbhq_handle_key's Return branch ACTIVATES the focused tab (nav 1 = Actors), switching g_dbhq_current_tab to 0 via the real on-tab activate path
+addi x12, x14, 0   # send_input #3, line 8: restore fd
+li x15, 2          # send_input #3, line 9: SYS_CLOSE
+ecall              # send_input #3, line 10: close - digit-jump + Enter now queued
+
+# loop_2 (the old per-redraw sibling poll on db_hq_current_tab.txt) removed
+# 2026-08-28 - that writer no longer exists in the shared render source
+# (rewritten by the parallel palettes stream); the fresh 210 dump polled by
+# loop_3 below is now the real tab-switch exit signal.
+
+li x15, 1          # send_input #4, line 1: SYS_OPEN
+li x13, 2          # send_input #4, line 2: append mode
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/db_hq_history.txt"   # send_input #4, line 3: reopen the real relay; x12 <- fd
+addi x14, x12, 0   # send_input #4, line 4: stash the fd
+li x15, 3          # send_input #4, line 5: SYS_WRITE_LINE
+addi x12, x14, 0   # send_input #4, line 6: restore fd
+ecall "210"        # send_input #4, line 7: append "210\n" = dump the debug state AGAIN, now AFTER the switch (should read g_dbhq_current_tab=0 (Actors))
+addi x12, x14, 0   # send_input #4, line 8: restore fd
+li x15, 2          # send_input #4, line 9: SYS_CLOSE
+ecall              # send_input #4, line 10: close - post-switch dump queued
+
+_loop_3:           # "loop" (real command): poll top for the post-switch dump
+sleep 100000       # "wait" ms=100 pacing
+li x15, 6          # "if" compare line 1: SYS_GET_KV_INT
+li x13, -1         # "if" fallback default: -1
+ecall "/tmp/db-hq-state.txt" "g_dbhq_current_tab"   # THE DELIBERATE DEVIATION (same one): the real `if` reads {STATE_DIR}/switches.txt; the TASK-named read is the render's code-210 debug dump. x12 <- g_dbhq_current_tab from the FRESH dump
+li x2, 0           # "if" compare line 2: x2 = 0 -> Actors (the post-switch dump must independently show the Actors tab, not just the relay)
+bne x12, x2, _else_3   # "if" compare line 3: dump not refreshed (still 11 from the start-state dump) -> retry; now 0 -> break
+j _loop_end_3      # "break_loop": forward exit
+_else_3:           # retry path
+_endif_3:
+j _loop_3          # "repeat_above": back to the poll top
+_loop_end_3:       # break target - the debug dump independently confirms the Actors tab here
+
+li x15, 1          # send_input #5 (PNG dump), line 1: SYS_OPEN
+li x13, 2          # send_input #5, line 2: append mode
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/db_hq_history.txt"   # send_input #5, line 3: reopen the real relay; x12 <- fd
+addi x14, x12, 0   # send_input #5, line 4: stash the fd
+li x15, 3          # send_input #5, line 5: SYS_WRITE_LINE
+addi x12, x14, 0   # send_input #5, line 6: restore fd
+ecall "112"        # send_input #5, line 7: append "112\n" = 'p' = the render's real dump_frame_png() trigger -> /tmp/db-hq-frame.png
+addi x12, x14, 0   # send_input #5, line 8: restore fd
+li x15, 2          # send_input #5, line 9: SYS_CLOSE
+ecall              # send_input #5, line 10: close - the forced-redraw-before-dump guarantees THIS state, not a stale one
+
+li x15, 7          # control_switch compiled shape, line 1: x15 = 7 -> SYS_SET_KV_INT
+li x12, 1          # control_switch line 2: value 1 = ON (switches are ints 1/0, NEVER "ON"/"OFF" - 3a-switchvals)
+ecall "/tmp/dbhq_visproof_results.txt" "done"   # control_switch line 3: record the run completed past every loop (=1 by construction: each break required its real exit condition)
+
+li x15, 7          # verdict line 1: SYS_SET_KV_INT
+li x12, 1          # verdict line 2: PASS=1 (two real breaks - start dump Common Events, post-switch debug dump Actors - both provably hit; pass recorded before halt, after the PNG trigger queued)
+ecall "/tmp/dbhq_visproof_results.txt" "pass"   # verdict line 3: real machine-readable PASS for the wrapper to assert
+
+halt               # stop the VM - the render still owns the /tmp/db-hq-frame.png write; the wrapper waits for it

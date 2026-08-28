@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+TILESET      | outside.name       | World Map
+TILESET      | outside.a2         | rmmv/World_A2.png
+TILESET      | inside.name        | Inside
+TILESET      | inside.a2          | rmmv/Inside_A2.png

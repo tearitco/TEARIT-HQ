@@ -389,6 +389,21 @@ static Window win;
 static int screen;
 static GC gc;
 static Pixmap buf;
+/* Real fix 2026-08-28 (live crash: BadMatch on X_GetImage) - buf/win
+ * used to be created ONCE at their initial g_window->w/h and never
+ * resized, but content can genuinely grow taller AFTER window creation
+ * (g_pal_forced_h, set by dbhq_inject_palette_tiles() once real rows
+ * like the rmmv tab bar / tileset chooser exist) - redraw()'s own
+ * XGetImage always requested the CURRENT (grown) g_window->h against
+ * the ORIGINAL (smaller) Pixmap, which X rejects outright. These track
+ * the Pixmap's actual real allocated size so redraw() can detect
+ * "content grew past what's backing it" and recreate buf (+ the real
+ * X11 window itself, via XResizeWindow) to match, instead of assuming
+ * a window's size is fixed for its whole lifetime like every OTHER
+ * khtpm/-hq window in this file does (chat-hai/events-hq's own escape
+ * from this bug is simply never growing post-creation - palettes is
+ * the first mode where the content height is genuinely dynamic). */
+static int g_buf_w = 0, g_buf_h = 0;
 static XftDraw *xftdraw_buf;
 static Colormap cmap;
 static XftFont *font_ui;
@@ -566,9 +581,43 @@ static int g_pal_n_tiles = 0;
 static char g_pal_state_path[PATH_BUF];
 static time_t g_pal_state_mtime = 0;
 static char g_pal_category[64];
+/* REAL FIX 2026-08-27 (direct instruction: "flag hardcoded things in
+ * parser... they are supposed to use generic .pdl read functions" -
+ * this used to be `strcmp(g_pal_category, "elements") == 0` at the
+ * single real call site below. Now a real value read from the
+ * manager's own published `palettes-<category>_layout.txt` (a real
+ * "wide=0|1" line, sourced from pallets.pdl's own real WIDE column -
+ * see palettes_manager.c's publish_layout_flag()) - zero hardcoded
+ * category names anywhere in this file for this decision now. Read
+ * once per category load (layout rarely changes; not worth mtime-
+ * gating on every redraw like the tile content itself). */
+static int g_pal_layout_wide = 0;
 static Elem *g_pal_static_title = NULL;
 static Elem *g_pal_static_hint = NULL;
 static int g_pal_forced_h = 0;
+
+/* Real, generic tab/chooser options for the rmmv tile picker
+ * (2026-08-27) - published by palettes_manager.c's own publish_rmmv_
+ * options() from the SAME real tileset_registry.pdl, never hardcoded
+ * here. Empty (n==0) for every other category - stat() on a path that
+ * only rmmv ever writes just fails, no-op, same pattern g_pal_state_path
+ * already uses. */
+#define PAL_MAX_OPTS 16
+static char g_pal_opt_tileset_key[PAL_MAX_OPTS][64];
+static char g_pal_opt_tileset_label[PAL_MAX_OPTS][128];
+static int g_pal_n_tilesets = 0;
+/* Real A/B/C/D/E sheet-letter tabs (2026-08-28, per external review
+ * correction) - published by the manager's own rmmv_tab_letter_for()
+ * as "TAB|<letter>|<default category to switch to>" - the renderer
+ * never groups a1..a5 itself, it only shows whatever real letters the
+ * manager's own registry scan actually found. */
+static char g_pal_opt_tab_letter[PAL_MAX_OPTS];
+static char g_pal_opt_tab_cat[PAL_MAX_OPTS][16];
+static int g_pal_n_tabs = 0;
+static char g_pal_active_tileset[64] = "";
+static char g_pal_active_category[16] = "";
+static char g_pal_options_path[PATH_BUF];
+static time_t g_pal_options_mtime = 0;
 
 /* REAL, ported 2026-08-25 (live request: figure out scrolling for the
  * palette grid) - verbatim port of khtpm_hq_render.c's own real,
@@ -802,6 +851,59 @@ static int dbhq_load_palette_state(void) {
     return 1;
 }
 
+/* Real, generic loader for rmmv_options.txt (2026-08-27, tile-picker UI
+ * pass) - same mtime-gate shape as dbhq_load_palette_state() above.
+ * Populates zero hardcoded tilesets/categories - whatever the manager
+ * actually published from the real registry, nothing more. */
+static int dbhq_load_palette_options(void) {
+    struct stat st;
+    if (!g_pal_options_path[0] || stat(g_pal_options_path, &st) != 0) return 0;
+    if (st.st_mtime == g_pal_options_mtime) return 0;
+    g_pal_options_mtime = st.st_mtime;
+
+    g_pal_n_tilesets = 0;
+    g_pal_n_tabs = 0;
+    g_pal_active_tileset[0] = '\0';
+    g_pal_active_category[0] = '\0';
+    FILE *f = fopen(g_pal_options_path, "r");
+    if (!f) return 1;
+    char line[PATH_BUF];
+    while (fgets(line, sizeof(line), f)) {
+        size_t len = strlen(line);
+        while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) line[--len] = '\0';
+        char *p1 = strchr(line, '|');
+        if (!p1) continue;
+        *p1 = '\0';
+        char *rest = p1 + 1;
+        if (strcmp(line, "ACTIVE_TILESET") == 0) {
+            snprintf(g_pal_active_tileset, sizeof(g_pal_active_tileset), "%s", rest);
+        } else if (strcmp(line, "ACTIVE_CATEGORY") == 0) {
+            snprintf(g_pal_active_category, sizeof(g_pal_active_category), "%s", rest);
+        } else if (strcmp(line, "TAB") == 0) {
+            char *p2 = strchr(rest, '|');
+            if (!p2 || p2 != rest + 1) continue; /* letter is always exactly 1 char */
+            char letter = rest[0];
+            char *defcat = p2 + 1;
+            if (g_pal_n_tabs < PAL_MAX_OPTS) {
+                g_pal_opt_tab_letter[g_pal_n_tabs] = letter;
+                snprintf(g_pal_opt_tab_cat[g_pal_n_tabs], sizeof(g_pal_opt_tab_cat[0]), "%s", defcat);
+                g_pal_n_tabs++;
+            }
+        } else if (strcmp(line, "TILESET") == 0) {
+            char *p2 = strchr(rest, '|');
+            if (!p2) continue;
+            *p2 = '\0';
+            if (g_pal_n_tilesets < PAL_MAX_OPTS) {
+                snprintf(g_pal_opt_tileset_key[g_pal_n_tilesets], sizeof(g_pal_opt_tileset_key[0]), "%s", rest);
+                snprintf(g_pal_opt_tileset_label[g_pal_n_tilesets], sizeof(g_pal_opt_tileset_label[0]), "%s", p2 + 1);
+                g_pal_n_tilesets++;
+            }
+        }
+    }
+    fclose(f);
+    return 1;
+}
+
 /* REAL, NEW 2026-08-25 (live request: "update chemistry view thru
  * layout, not hardcoded") - column count used to be a literal 4/10
  * picked by hand to roughly match what the old bash emit_tiles_matrix()
@@ -838,27 +940,94 @@ static int dbhq_pal_cols_for(int wide) {
     return cols > 0 ? cols : 1;
 }
 
+/* REAL BUG FIX 2026-08-28 (live crash: SIGSEGV in dbhq_inject_palette_
+ * tiles(), confirmed via gdb backtrace after 2-3 real tab/tileset
+ * switches) - this function used the SHARED, never-recycled elem_new()/
+ * g_pool[MAX_ELEMS=512] for every row AND every tile, exactly the
+ * failure mode reusable_slot()'s own header comment already documents
+ * ("a long enough real session exhausts it... elem_new() returns NULL,
+ * guarded call sites just skip adding content" - except THIS function's
+ * call sites were NOT guarded against a NULL return, so it crashed
+ * instead of silently going blank). A single real switch to a non-
+ * autotile sheet (e.g. World_B.png = 256 real 1x1 tiles) already uses
+ * ~290 pool slots in ONE inject; a second switch exhausted the whole
+ * 512-slot pool outright. Real fix, same pattern already proven for
+ * db-hq's sidebar/panel/event-list (g_dbhq_sidebar_slots/g_dbhq_panel_
+ * slots/g_evhq_cmd_slots): dedicated, generously-sized, NEVER-freed
+ * arrays reused via reusable_slot() every rebuild instead of
+ * allocating fresh Elems from the shared pool each time. */
+static Elem g_pal_row_slots[64];
+static Elem g_pal_tile_slots[PAL_MAX_TILES];
+static Elem g_pal_tab_slots[PAL_MAX_OPTS];
+static Elem g_pal_tileset_slots[PAL_MAX_OPTS];
+
 static void dbhq_inject_palette_tiles(Elem *panel) {
     if (!panel) return;
-    int wide = (strcmp(g_pal_category, "elements") == 0);
+    int wide = g_pal_layout_wide; /* REAL FIX 2026-08-27 - was hardcoded strcmp(g_pal_category, "elements"), see g_pal_layout_wide's own header comment */
     int cols = dbhq_pal_cols_for(wide);
     g_pal_scroll = 0; /* new content, new scroll - avoids a stale offset past the new max (same habit khtpm_hq_render.c's own reload path used) */
+    int next_row_slot = 0, next_tile_slot = 0, next_tab_slot = 0, next_tileset_slot = 0;
 
     panel->n_children = 0;
     if (g_pal_static_title && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_pal_static_title;
     if (g_pal_static_hint && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_pal_static_hint;
 
+    /* Real A/B/C/D/E sheet-letter tab row (2026-08-27/28, per the
+     * user's own rmmv-tiles mockup + external review correction that
+     * tabs are real sheet LETTERS, not raw a1..a5 sub-category keys) -
+     * built fresh each redraw from g_pal_opt_tab_letter/_cat (whatever
+     * the manager's own rmmv_tab_letter_for() grouping actually found
+     * in the real registry for the active tileset). Every other
+     * category has n==0 here (options file never written), so this is
+     * a no-op for them. Active highlight compares the CURRENT active
+     * category's own letter-group, not a raw string match, so any
+     * a1..a5 category active still lights up the single "A" tab. */
+    if (g_pal_n_tabs > 0 && panel->n_children < MAX_CHILDREN) {
+        char active_letter = g_pal_active_category[0] ? (g_pal_active_category[0] == 'a' ? 'A' : (char)toupper((unsigned char)g_pal_active_category[0])) : '\0';
+        Elem *tabrow = reusable_slot(g_pal_row_slots, 64, next_row_slot++, "row");
+        if (tabrow) {
+        tabrow->parent = panel;
+        snprintf(tabrow->classes[0], sizeof(tabrow->classes[0]), "pal-tab-row");
+        tabrow->n_classes = 1;
+        for (int i = 0; i < g_pal_n_tabs && tabrow->n_children < MAX_CHILDREN; i++) {
+            Elem *tab = reusable_slot(g_pal_tab_slots, PAL_MAX_OPTS, next_tab_slot++, "button");
+            if (!tab) break;
+            tab->parent = tabrow;
+            snprintf(tab->classes[0], sizeof(tab->classes[0]), "pal-tab");
+            tab->n_classes = 1;
+            if (g_pal_opt_tab_letter[i] == active_letter) {
+                snprintf(tab->classes[1], sizeof(tab->classes[1]), "pal-tab-active");
+                tab->n_classes = 2;
+            }
+            snprintf(tab->label, sizeof(tab->label), "%c", g_pal_opt_tab_letter[i]);
+            /* Real 2026-08-28 fix - sends the TAB LETTER, not a resolved
+             * category (g_pal_opt_tab_cat[i] is kept only for the
+             * active-highlight comparison below; the manager itself now
+             * resolves letter -> concrete a1/a2/... category from a
+             * real directory scan, since which suffix backs a letter
+             * can change independently of which letter is active). */
+            snprintf(tab->onclick, sizeof(tab->onclick),
+                     "exec:'%s/&.widgits/palettes/palettes_menu.sh' set-rmmv-tab '%s' '%c'",
+                     g_house_root, g_package_dir, g_pal_opt_tab_letter[i]);
+            tabrow->children[tabrow->n_children++] = tab;
+        }
+        panel->children[panel->n_children++] = tabrow;
+        }
+    }
+
     Elem *row = NULL;
     for (int i = 0; i < g_pal_n_tiles && panel->n_children < MAX_CHILDREN; i++) {
         if (i % cols == 0) {
-            row = elem_new("row");
+            row = reusable_slot(g_pal_row_slots, 64, next_row_slot++, "row");
+            if (!row) break;
             row->parent = panel;
             snprintf(row->classes[0], sizeof(row->classes[0]), "pal-grid-row");
             row->n_classes = 1;
             panel->children[panel->n_children++] = row;
         }
         if (!row || row->n_children >= MAX_CHILDREN) continue;
-        Elem *tile = elem_new("button");
+        Elem *tile = reusable_slot(g_pal_tile_slots, PAL_MAX_TILES, next_tile_slot++, "button");
+        if (!tile) break;
         tile->parent = row;
         snprintf(tile->classes[0], sizeof(tile->classes[0]), "pal-tile");
         tile->n_classes = 1;
@@ -867,6 +1036,37 @@ static void dbhq_inject_palette_tiles(Elem *panel) {
         if (g_pal_sprite[i][0]) snprintf(tile->sprite, sizeof(tile->sprite), "%s", g_pal_sprite[i]);
         snprintf(tile->onclick, sizeof(tile->onclick), "exec:'%s/&.widgits/palettes/palettes_menu.sh' place '%s'", g_house_root, g_pal_emoji[i]);
         row->children[row->n_children++] = tile;
+    }
+
+    /* Real tileset chooser row (2026-08-27, "instead of opposite menu"
+     * per direct correction - chooser sits at the BOTTOM of the panel,
+     * after the tile grid, not top). Built from g_pal_opt_tileset_*
+     * (whatever real "<key>.name" rows publish_rmmv_options() found),
+     * same no-hardcoding shape as the tab row above. */
+    if (g_pal_n_tilesets > 0 && panel->n_children < MAX_CHILDREN) {
+        Elem *chooserrow = reusable_slot(g_pal_row_slots, 64, next_row_slot++, "row");
+        if (chooserrow) {
+        chooserrow->parent = panel;
+        snprintf(chooserrow->classes[0], sizeof(chooserrow->classes[0]), "pal-tileset-row");
+        chooserrow->n_classes = 1;
+        for (int i = 0; i < g_pal_n_tilesets && chooserrow->n_children < MAX_CHILDREN; i++) {
+            Elem *opt = reusable_slot(g_pal_tileset_slots, PAL_MAX_OPTS, next_tileset_slot++, "button");
+            if (!opt) break;
+            opt->parent = chooserrow;
+            snprintf(opt->classes[0], sizeof(opt->classes[0]), "pal-tileset-opt");
+            opt->n_classes = 1;
+            if (strcmp(g_pal_opt_tileset_key[i], g_pal_active_tileset) == 0) {
+                snprintf(opt->classes[1], sizeof(opt->classes[1]), "pal-tileset-active");
+                opt->n_classes = 2;
+            }
+            snprintf(opt->label, sizeof(opt->label), "%s", g_pal_opt_tileset_label[i]);
+            snprintf(opt->onclick, sizeof(opt->onclick),
+                     "exec:'%s/&.widgits/palettes/palettes_menu.sh' set-rmmv-tileset '%s' '%s'",
+                     g_house_root, g_package_dir, g_pal_opt_tileset_key[i]);
+            chooserrow->children[chooserrow->n_children++] = opt;
+        }
+        panel->children[panel->n_children++] = chooserrow;
+        }
     }
 
     /* REAL, NEW 2026-08-25 (same "thru layout, not hardcoded" request) -
@@ -884,6 +1084,11 @@ static void dbhq_inject_palette_tiles(Elem *panel) {
     int row_h = row_st2.has_height ? row_st2.height : scaled(56);
     int gap = row_st2.has_gap ? row_st2.gap : scaled(4);
     int rows = cols > 0 ? (g_pal_n_tiles + cols - 1) / cols : 0;
+    /* Real tab/chooser rows add their own row heights - counted as
+     * extra "rows" here rather than a second hardcoded height constant,
+     * since they share the exact same row_h/gap CSS shape. */
+    int extra_rows = (g_pal_n_tabs > 0 ? 1 : 0) + (g_pal_n_tilesets > 0 ? 1 : 0);
+    rows += extra_rows;
     int hint_h = scaled(24);
     /* dbhq_layout_pass() always does `content_h = window->style.height -
      * tabbar_h`, unconditionally reserving tabbar_h even with no real
@@ -1546,6 +1751,23 @@ static void dbhq_append_frame_history(void) {
     fprintf(f, "seq=%ld focus_nav=%d/%d tab=%d selected_event=%d\n",
             g_dbhq_frame_seq, g_focus_nav, g_n_nav, g_dbhq_current_tab, g_dbhq_selected_event);
     fclose(f);
+    /* REAL, NEW (2026-08-27, HARNESS-AUTHORING-GUIDE.md §3a) - the SAME
+     * single-key flat-file sibling convention evhq_append_frame_history()
+     * already uses (its own header comment explains the full "why"): a
+     * real PAL/prisc+x script can inject relay codes but SYS_GET_KV_INT
+     * only matches a key at the very START of a line, so it cannot read
+     * the multi-key db_hq_frame_history.txt line above. Small, cheap,
+     * zero-VM-change fix: also write single-key flat files a PAL script
+     * CAN poll today via SYS_GET_KV_INT. First real consumer: the db-hq
+     * tab-switch PAL harness (cursword/harnesses/pal/db_hq_tab_switch_demo.pal). */
+    char tabpath[PATH_BUF];
+    snprintf(tabpath, sizeof(tabpath), "%s/#.desktop/db_hq_current_tab.txt", g_house_root);
+    FILE *tf = fopen(tabpath, "w");
+    if (tf) { fprintf(tf, "current_tab=%d\n", g_dbhq_current_tab); fclose(tf); }
+    char seqpath[PATH_BUF];
+    snprintf(seqpath, sizeof(seqpath), "%s/#.desktop/db_hq_seq.txt", g_house_root);
+    FILE *qf = fopen(seqpath, "w");
+    if (qf) { fprintf(qf, "seq=%ld\n", g_dbhq_frame_seq); fclose(qf); }
 }
 static void dbhq_redraw_content(void) {
     dbhq_layout_pass(g_window);
@@ -6010,6 +6232,34 @@ static void redraw(void) {
      * (XGetImage->XPutImage) below every mode already uses. */
     if (g_is_db_hq || g_is_events_hq) {
         if (g_is_db_hq) dbhq_redraw_content(); else evhq_redraw_content();
+        /* Real fix 2026-08-28 (see g_buf_w/g_buf_h's own header comment)
+         * - content just drawn above may have grown g_window->w/h past
+         * the Pixmap's real allocated size (palettes' rmmv tab bar +
+         * tileset chooser rows are the first real case of this). Detect
+         * and recreate BEFORE the XGetImage below, which otherwise
+         * requests a rectangle larger than the real Pixmap and X
+         * rejects the whole request with BadMatch (a fatal, unhandled
+         * default Xlib error handler - the process dies, not just that
+         * one draw call). Only grows, never shrinks (a smaller frame is
+         * harmless to read from an oversized buffer; recreating on every
+         * shrink too would just be needless GC/Pixmap churn). */
+        if (g_window->w > g_buf_w || g_window->h > g_buf_h) {
+            int new_w = g_window->w > g_buf_w ? g_window->w : g_buf_w;
+            int new_h = g_window->h > g_buf_h ? g_window->h : g_buf_h;
+            XResizeWindow(dpy, win, (unsigned)new_w, (unsigned)new_h);
+            if (xftdraw_buf) { XftDrawDestroy(xftdraw_buf); xftdraw_buf = NULL; }
+            if (buf) XFreePixmap(dpy, buf);
+            buf = XCreatePixmap(dpy, win, (unsigned)new_w, (unsigned)new_h, (unsigned)DefaultDepth(dpy, screen));
+            xftdraw_buf = XftDrawCreate(dpy, buf, DefaultVisual(dpy, screen), cmap);
+            g_buf_w = new_w; g_buf_h = new_h;
+            XSync(dpy, False);
+            /* The just-resized Pixmap is undefined content (fresh
+             * XCreatePixmap, not a copy of the old one) - the content
+             * draw above already ran against the OLD buf, so re-run it
+             * now that buf is the right size, or this frame would blit
+             * garbage/black instead of the real content. */
+            if (g_is_db_hq) dbhq_redraw_content(); else evhq_redraw_content();
+        }
         XSync(dpy, False);
         XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_window->w, (unsigned)g_window->h, AllPlanes, ZPixmap);
         if (frame) {
@@ -6575,12 +6825,27 @@ int main(int argc, char **argv) {
             const char *cat = (strncmp(catbuf, prefix, strlen(prefix)) == 0) ? catbuf + strlen(prefix) : catbuf;
             snprintf(g_pal_category, sizeof(g_pal_category), "%s", cat);
             snprintf(g_pal_state_path, sizeof(g_pal_state_path), "%s/palettes-%s_state.txt", g_package_dir, g_pal_category);
+            /* REAL FIX 2026-08-27 - read the manager's own published
+             * wide-layout flag (see g_pal_layout_wide's own header
+             * comment) instead of hardcoding a category name here. */
+            g_pal_layout_wide = 0;
+            char layout_path[PATH_BUF];
+            snprintf(layout_path, sizeof(layout_path), "%s/palettes-%s_layout.txt", g_package_dir, g_pal_category);
+            FILE *lf = fopen(layout_path, "r");
+            if (lf) {
+                char lline[64];
+                if (fgets(lline, sizeof(lline), lf) && strncmp(lline, "wide=", 5) == 0)
+                    g_pal_layout_wide = atoi(lline + 5);
+                fclose(lf);
+            }
 
             Elem *panel = find_by_tag(g_window, "panel");
             if (panel) {
                 g_pal_static_title = find_by_tag(panel, "title");
                 g_pal_static_hint = find_by_tag(panel, "text");
+                snprintf(g_pal_options_path, sizeof(g_pal_options_path), "%s/rmmv_options.txt", g_package_dir);
                 dbhq_load_palette_state();
+                dbhq_load_palette_options();
                 dbhq_inject_palette_tiles(panel);
             }
         } else {
@@ -6782,6 +7047,7 @@ int main(int argc, char **argv) {
         gc = XCreateGC(dpy, win, 0, NULL);
         buf = XCreatePixmap(dpy, win, (unsigned)ww, (unsigned)wh, (unsigned)DefaultDepth(dpy, screen));
         xftdraw_buf = XftDrawCreate(dpy, buf, DefaultVisual(dpy, screen), cmap);
+        g_buf_w = ww; g_buf_h = wh;
 
         redraw();
 
@@ -6807,10 +7073,14 @@ int main(int argc, char **argv) {
             /* REAL, NEW 2026-08-25 (palettes manager port) - same shape,
              * only real picker categories set g_pal_state_path (empty
              * string for a stub category, stat() just fails, no-op). */
-            if (g_is_palettes && g_pal_state_path[0] && dbhq_load_palette_state()) {
-                Elem *panel = find_by_tag(g_window, "panel");
-                dbhq_inject_palette_tiles(panel);
-                dbhq_redraw_content();
+            if (g_is_palettes && g_pal_state_path[0]) {
+                int changed = dbhq_load_palette_state();
+                changed |= dbhq_load_palette_options();
+                if (changed) {
+                    Elem *panel = find_by_tag(g_window, "panel");
+                    dbhq_inject_palette_tiles(panel);
+                    dbhq_redraw_content();
+                }
             }
             /* REAL FIX 2026-08-25 (found live during palettes manager
              * port, code-review not yet reproduced) - this block used to
@@ -7030,6 +7300,7 @@ int main(int argc, char **argv) {
         gc = XCreateGC(dpy, win, 0, NULL);
         buf = XCreatePixmap(dpy, win, (unsigned)ww, (unsigned)wh, (unsigned)DefaultDepth(dpy, screen));
         xftdraw_buf = XftDrawCreate(dpy, buf, DefaultVisual(dpy, screen), cmap);
+        g_buf_w = ww; g_buf_h = wh;
 
         redraw();
 
@@ -7147,6 +7418,7 @@ int main(int argc, char **argv) {
         gc = XCreateGC(dpy, win, 0, NULL);
         buf = XCreatePixmap(dpy, win, (unsigned)ww, (unsigned)wh, (unsigned)DefaultDepth(dpy, screen));
         xftdraw_buf = XftDrawCreate(dpy, buf, DefaultVisual(dpy, screen), cmap);
+        g_buf_w = ww; g_buf_h = wh;
 
         redraw();
 

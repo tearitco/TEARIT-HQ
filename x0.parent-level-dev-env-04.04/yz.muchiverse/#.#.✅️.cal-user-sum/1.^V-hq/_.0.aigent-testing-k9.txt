@@ -1029,3 +1029,129 @@ pointer/archive split reads in practice, including a note on an EARLIER
 run being superseded by a later one after a real bug fix (kept in the
 archive for history, the pointer says so explicitly rather than silently
 deleting it).
+
+UPDATE 2026-08-27 - a presentation that only shows BEFORE/AFTER STATE
+looks "dead" to a human viewer; SHOW THE ACTUAL NAVIGATION/TYPING
+------------------------------------------------------------------------
+Direct feedback after reviewing the owner-report and marketing videos
+this session: "i didn't see evidence of u clicking / naving thru the
+options or inputing text cli-io key by key like a human would expect
+so it just looks kinda dead." Real gap, not a nitpick - every snapshot
+built this session was a state dump or a final-result PNG (a compiled
+`.pal` file's contents, a ledger's final line, a rendered panel AFTER
+the click already landed), never the actual moment of navigating a
+sidebar, pressing digits to jump nav focus, or watching cli-io echo
+typed characters one at a time with a live caret. A human watching a
+feature-proof video wants to SEE the interaction happen, not just be
+told "and then this changed."
+
+**Real fix, going forward, for any feature that has visible UI (not a
+headless manager/ledger)**: capture MULTIPLE frames across a single
+navigation sequence, not just a before/after pair -
+  1. A frame showing the sidebar/menu with nothing yet focused.
+  2. A frame (or several) showing focus/highlight moving as each digit-
+     jump or arrow-key lands - e.g. dump_frame_png() after EACH relay
+     code sent, not just after the whole sequence finishes, so the
+     `[>N]` nav badge or highlighted row visibly steps through options
+     across consecutive snapshots.
+  3. For cli-io typed text specifically: capture at least one
+     mid-typing frame showing the PARTIAL string with its live caret
+     (e.g. after sending only the first few characters via relay,
+     before Enter), not just empty-field-then-final-committed-value.
+     This is the single most "looks alive" detail available - a caret
+     mid-word reads as a human typing, an instantly-complete field
+     reads as fake/scripted.
+  4. Space these out in manifest.txt as their own rows with short holds
+     (3-4s each is fine for a fast nav step) rather than collapsing a
+     whole interaction into one caption - the POINT is showing the
+     steps, not just narrating that steps happened.
+
+This applies to any UI-visible feature; it does NOT apply to headless/
+no-window processes (e.g. common_events_manager.+x, whose real proof is
+ledger-text-to-PNG, already correctly disclosed as a different capture
+route in this session's owner-report pointer file) - there is no
+"navigation" to show for those, don't force it.
+
+Rule of thumb before calling a feature-proof presentation done: if
+every snapshot in it could have been produced by manually editing a
+state file with a text editor (no real UI interaction required to get
+that exact frame), the presentation hasn't actually proven the UI
+works, only that the underlying state is correct - add the missing
+interaction frames before considering it finished.
+
+UPDATE 2026-08-27 (same day) - real frame-history signal added for
+events-hq/db-hq, ending the "sleep-then-dump-and-hope" pattern
+------------------------------------------------------------------------
+Direct instruction: "is there a way view can send a signal when it has
+changed via frame history and is ready to be dumped, from now on.
+otherwise when u make ur reports they are always using lagged png. we
+need 2 fix this once and for all."
+
+**What was actually wrong** (found investigating this report, NOT a
+PNG-capture timing race as first suspected): `evhq_draw_elem()`
+(`khtpm_entity_menu_render.c`) had no `w<=0||h<=0` guard at all - Task
+5's Scratch/Blueprints stub view zeroed a hidden panel's own w/h
+(`evhq_zero_subtree()`), but the nav-badge/label text draw calls
+further down ran regardless of size, using only `e->x`/`e->y` (never
+touched by the zeroing), so old content kept rendering at its last real
+position. Proof this was a real render bug, not staleness: a second PNG
+dump 2+ seconds after the first came back byte-identical - genuinely
+stale-forever, not "hasn't caught up yet." Fixed by adding the missing
+`if (e->w <= 0 || e->h <= 0) return;` guard at the top of
+`evhq_draw_elem()` - `hit_test()` already had the equivalent behavior
+naturally (an empty coordinate range can never match), only drawing was
+missing it.
+
+**The real signal mechanism requested, now built** (ported from chat-
+hai's own proven `chai_append_frame_history()`, which already existed
+for exactly this reason - "we dont need a png dump to see if frames are
+updating"): `evhq_append_frame_history()` and `dbhq_append_frame_
+history()` now append one real line per completed redraw to
+`#.desktop/events_hq_frame_history.txt` / `#.desktop/db_hq_frame_
+history.txt` respectively - `seq=N` plus real state fields (focus_nav,
+view_mode, current tab/page, n_cmds, entity). `dump_frame_png()` was
+ALSO changed to force a real `redraw()` immediately before invoking the
+external PNG-dump op (previously the op captured whatever the LAST
+tick's redraw left on the visible window, which could be one full
+action behind if a relay code triggered a state change and a dump in
+the same poll cycle) - `chai_dump_frame_png()` got the matching fix
+(forces `chai_redraw()` first).
+
+**New required harness procedure, going forward, for db-hq/events-hq**
+(matches chat-hai's own pattern, now real everywhere in this binary):
+1. Read the frame-history file's last line, note its `seq=`.
+2. Send your input via the relay.
+3. Poll the frame-history file until a NEW line appears - **check its
+   STATE FIELDS match what you expect (e.g. `view_mode=1`), not just
+   that `seq` increased** - the file appends on every idle redraw tick
+   too (confirmed live: 6 lines appended in 2s with zero input sent),
+   so a bare seq-increase alone does not prove your specific action
+   landed, only that some redraw happened. The content of the new
+   line is the real proof.
+4. Only THEN send the PNG-dump relay code (112) if you need a pixel-
+   level check - by this point `dump_frame_png()`'s own forced-redraw
+   fix guarantees the window shows exactly this state anyway, so this
+   step is now a formality/pixel-appearance check, not a race.
+5. For a pure DATA question ("did the value change"), skip the PNG
+   entirely and just read the frame-history file's latest line - faster
+   and cannot be stale, same reasoning chat-hai's own convention
+   already established.
+
+This does not replace the text-state dump (`dbhq_dump_debug_state()`,
+code 210) - that's still the right tool for a full nav-tree snapshot.
+The frame-history file is for "did a redraw happen and what did it
+show," continuously, without having to explicitly request a dump.
+
+UPDATE 2026-08-27 (same day) - broader harness-BUILDING guidance moved
+to its own doc, per this file's own stated scope
+------------------------------------------------------------------------
+This file stays scoped to injection/nav testing PROCEDURE (per the
+2026-08-13 correction above: "this file stays scoped to injection/nav
+testing procedure only"). Broader guidance on how to actually DESIGN/
+BUILD a harness - the real bash convention, the PAL/events direction
+for future harness authoring, camera/POV director guidance for
+anything with real camera control, and a per-feature launch-mechanism
+reference table - now lives in `HARNESS-AUTHORING-GUIDE.md` (indexed in
+`INDEX.md`). Read that BEFORE designing any new harness, single-feature
+or multi-feature; this file remains the reference for the low-level
+injection/dump/frame-history mechanics themselves.

@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | tile_3407b8f7_1787904932
+STATE        | kind                 | tile_stamp
+STATE        | glyph                | a4 kind 2,5
+STATE        | created_at           | 1787904932
+METHOD       | Close                | CLOSE

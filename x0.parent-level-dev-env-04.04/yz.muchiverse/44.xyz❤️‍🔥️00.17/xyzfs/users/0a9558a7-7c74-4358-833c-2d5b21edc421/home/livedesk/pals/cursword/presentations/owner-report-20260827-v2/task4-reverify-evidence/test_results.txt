@@ -1,0 +1,8 @@
+PASS: no stray manager processes before start
+PASS: manager started (PID 632418)
+PASS: Autorun fired exactly once on 0→1 transition (ledger: 1 fires)
+PASS: Autorun still at 1 fire (did not re-trigger on 1→0)
+PASS: Parallel fired at least once while switch ON (fires: 3)
+PASS: Parallel fired again after cooldown expired (before: 3, after: 5)
+PASS: Parallel stopped firing after switch turned OFF (stayed at 5)
+PASS: no stray manager processes after cleanup

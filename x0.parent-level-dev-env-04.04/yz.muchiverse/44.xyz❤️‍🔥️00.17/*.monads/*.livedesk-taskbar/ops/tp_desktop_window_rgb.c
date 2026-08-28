@@ -211,8 +211,20 @@ static int WIN_PX = 64;
  * more than 30fps, cpu is getting hot"): same GRID_CELL_PX egg_window.c
  * uses (01.muchi-pals-🥚️-13.01/system/egg_window.c) - tile stamps should
  * snap to the SAME desktop grid egg-pals already use, not a separate
- * one. */
-#define GRID_CELL_PX 80
+ * one.
+ *
+ * REAL FIX 2026-08-27 (TILE-SYSTEM-DESIGN.md §0a, direct instruction:
+ * "this size should be set/read from a .pdl which can be changed"):
+ * converted from a compile-time #define to a real runtime variable, set
+ * once early in main() from an optional "GRID | cell_px | N" row in
+ * #.desktop/desk_grid.pdl (see read_grid_cell_px() below) - same real
+ * "compile-time constant -> runtime variable read from a real file,
+ * safe default preserves existing behavior" pattern this file's own
+ * WIN_PX/footprint_tiles conversion already established above. Defaults
+ * to 80 (this file's own original hardcoded value) when the file/row is
+ * absent, so every existing desktop is completely unaffected until
+ * someone actually writes a real desk_grid.pdl. */
+static int GRID_CELL_PX = 80;
 #define MAX_FPS 30
 #define MIN_FRAME_USEC (1000000 / MAX_FPS)
 
@@ -944,6 +956,42 @@ static int read_footprint_tiles(const char *package_dir) {
         char *label_end = end;
         while (label_end > p && label_end[-1] == ' ') label_end--;
         const char *key = "footprint_tiles";
+        size_t klen = strlen(key);
+        if ((size_t)(label_end - p) != klen || strncmp(p, key, klen) != 0) continue;
+        int v = atoi(end + 1);
+        if (v > 0) result = v;
+        break;
+    }
+    fclose(f);
+    return result;
+}
+
+/* REAL FIX 2026-08-27 (TILE-SYSTEM-DESIGN.md §0a) - reads an optional
+ * "GRID | cell_px | N" row from #.desktop/desk_grid.pdl (real,
+ * house-wide - NOT per-package, since the desktop grid is one shared
+ * thing every entity snaps to, unlike footprint_tiles which is
+ * per-entity). Same SECTION|KEY|VALUE parse shape as
+ * read_footprint_tiles() just above, adapted for a "GRID" section
+ * instead of "STATE". Defaults to 80 (this file's own original
+ * hardcoded GRID_CELL_PX value) when the file/row is absent. */
+static int read_grid_cell_px(const char *house_root) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/desk_grid.pdl", house_root);
+    FILE *f = pdl_open(path);
+    if (!f) return 80;
+    char line[PATH_BUF];
+    int result = 80;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "GRID", 4) != 0) continue;
+        char *p = strchr(line, '|');
+        if (!p) continue;
+        p++;
+        while (*p == ' ') p++;
+        char *end = strchr(p, '|');
+        if (!end) continue;
+        char *label_end = end;
+        while (label_end > p && label_end[-1] == ' ') label_end--;
+        const char *key = "cell_px";
         size_t klen = strlen(key);
         if ((size_t)(label_end - p) != klen || strncmp(p, key, klen) != 0) continue;
         int v = atoi(end + 1);
@@ -1972,6 +2020,11 @@ int main(int argc, char **argv) {
     if (!g_house_root[0]) snprintf(g_house_root, sizeof(g_house_root), ".");
 #endif
     snprintf(g_house_root_for_lock, sizeof(g_house_root_for_lock), "%s", g_house_root);
+    /* REAL FIX 2026-08-27 (TILE-SYSTEM-DESIGN.md §0a) - read the real,
+     * optional, house-wide grid cell size as early as possible (right
+     * after g_house_root resolves, before anything below uses
+     * GRID_CELL_PX). */
+    GRID_CELL_PX = read_grid_cell_px(g_house_root);
     /* Stage 2c PROOF - see launch_khtpm_menu()'s own header comment. */
     {
         char menu_chtpm_path[PATH_BUF];

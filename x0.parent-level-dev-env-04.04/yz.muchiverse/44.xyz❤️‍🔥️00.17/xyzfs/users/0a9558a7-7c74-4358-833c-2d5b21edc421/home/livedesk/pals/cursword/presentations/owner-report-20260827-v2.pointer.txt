@@ -1,0 +1,53 @@
+Test: Owner Report 2026-08-27-v2 — Task 5 + PNG-dump fix + re-verified Common Events (Tasks 1-4)
+Date: 2026-08-27
+Archive path: /home/no/Desktop/🧩️Piecemark-IT/中.SP_00.00/🗡️.crswrd.media-archive/August-27/owner-report-20260827-v2/
+What it demonstrates:
+- Supersedes owner-report-20260827 for Task 1-4 evidence. This is a RE-VERIFICATION using a now-hardened
+  capture pipeline (forced-redraw dump_frame_png() + real events_hq_frame_history.txt/db_hq_frame_history.txt
+  signal), done out of an abundance of caution and at the user's request. It is NOT a claim that the original
+  owner-report-20260827 captures were wrong or fabricated — that presentation used an older capture path which
+  has since been hardened, and this pass re-confirms the same real behavior with fresh, navigation-visible
+  evidence rather than before/after state dumps alone.
+- NEW this pass: Task 5's Scripting/Scratch/Blueprints view-mode toolbar, captured as real navigation (digit-
+  jump focus moving frame-by-frame across tabs via the real relay, not a single before/after pair), including
+  the fixed highlight-box sizing around the focused tab.
+- NEW this pass: the real evhq_draw_elem() bug found and fixed today (missing w<=0||h<=0 size guard caused a
+  hidden zeroed panel's stale nav-badge/label text to keep drawing). Scoped precisely: this bug ONLY affected
+  Task 5's brand-new zero-sized-panel feature — it did not exist before today and never affected Control
+  Switches, Conditional Branch, Call Common Event, or the Common Events manager, since none of those features
+  relied on zero-sized elements being hidden.
+- RE-VERIFIED (not re-proven-broken): Control Switch + Conditional Branch via a fresh disposable-switch prisc+x
+  run against the current binary; Call Common Event compiling to a real OP call_event reference via a fresh
+  compile through a disposable test entity's own manager action file; Common Events manager Autorun (fires
+  once per OFF->ON edge) and Parallel (fires repeatedly with ~1s cooldown) via a fresh run of the existing
+  common_events_manager_test_harness.sh against disposable common_events/test_autorun_event and
+  test_parallel_event.
+Test Evidence:
+- Owner-Report-20260827-V2.mp4 (11 frames, TTS narration, ~259s)
+- snapshots/00-05_*.png: real dump_frame_png() captures of live Task 5 navigation (digit-jump + Enter via the
+  events_hq_history.txt relay, each dump preceded by polling events_hq_frame_history.txt's latest line for the
+  expected focus_nav/view_mode field, per the new required procedure — not a fixed sleep-and-hope). Frames 00
+  and 05 (Scripting, before and after the round trip through Scratch/Blueprints) are byte-identical (md5).
+- snapshots/06-07_*.png: rendered text account of the evhq_draw_elem() bug and fix, referencing the actual code
+  comments already in khtpm_entity_menu_render.c — disclosed explicitly as a described/log account of today's
+  earlier debugging session, not a re-staged live repro (the pre-fix binary no longer exists to reproduce
+  byte-for-byte).
+- snapshots/08_*.png: Task 1-3 re-verification, disposable switch + disposable PAL executed directly via
+  today's prisc+x, on_marker/off_marker files as real branch proof.
+- snapshots/09_*.png: Task 2 re-verification, real event.ir.pdl + compiled event.pal from a disposable test
+  entity, showing OP call_event "test_target" on-click in both branches.
+- snapshots/10_*.png: Task 4 re-verification, real ledger output (common_events/.manager_ledger.txt) from a
+  fresh run of the existing common_events_manager_test_harness.sh, 8/8 checks passed.
+- manifest.txt, REPRODUCE.md (exact commands run, including the real ASCII-code relay convention discovered
+  this session: send the character's ASCII value, e.g. 50 for '2', not the literal digit)
+- Zero stray processes confirmed before and after (pgrep checked for khtpm_entity_menu_render.+x,
+  common_events_manager.+x, and prisc+x)
+- All test entities/events/switches were disposable (demo2-task5 under /tmp/v2demo/event_pkg,
+  common_events/test_autorun_event, common_events/test_parallel_event, v2demo_switch). cursword's own real
+  event_pkg/pages/page_1/ files (condition.pdl, event.ir.pdl, event.pal) were never touched. #.desktop/
+  events_hq_history.txt was restored to its original git-clean contents after use.
+Status: Current. Task 5 navigation frames are real live captures (11 total snapshots); Part 2 (the PNG-dump
+bug/fix) is honestly presented as a described technical account rather than a live repro, since reproducing
+the OLD buggy behavior is impractical now that the fix is already in the binary — flagged here rather than
+silently presented as a live demo. Task 2's "nesting" claim is, as in the original owner-report, verified only
+at the compile level (IR -> OP call_event reference), not a live multi-level runtime call chain.

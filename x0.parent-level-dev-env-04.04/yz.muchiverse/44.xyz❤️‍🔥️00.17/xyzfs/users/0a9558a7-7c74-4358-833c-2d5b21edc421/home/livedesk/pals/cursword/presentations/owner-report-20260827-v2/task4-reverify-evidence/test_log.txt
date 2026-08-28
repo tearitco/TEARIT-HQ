@@ -1,0 +1,27 @@
+[16:40:53] === Step 0: Zero stray processes check ===
+[16:40:53] ✓ PASS: no stray manager processes before start
+[16:40:53] === Step 1: Setup test common events ===
+[16:40:53] created test_autorun_event
+[16:40:53] created test_parallel_event
+[16:40:53] created switches.txt with both switches OFF
+[16:40:53] === Step 2: Launch common_events_manager ===
+[16:40:53] Starting manager: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.muchi-pet/ops/+x/common_events_manager.+x /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17
+[16:40:55] ✓ PASS: manager started (PID 632418)
+[16:40:55] === Step 3: Test Autorun edge-triggered ===
+[16:40:55] flipped ce_test_autorun_event 0→1
+[16:40:57] ✓ PASS: Autorun fired exactly once on 0→1 transition (ledger: 1 fires)
+[16:40:57] flipping ce_test_autorun_event back to 0 (should not trigger)
+[16:40:58] ✓ PASS: Autorun still at 1 fire (did not re-trigger on 1→0)
+[16:40:58] === Step 4: Test Parallel (repeated firing with cooldown) ===
+[16:40:58] cleared ledger
+[16:40:58] flipped ce_test_parallel_event 0→1
+[16:41:00] ✓ PASS: Parallel fired at least once while switch ON (fires: 3)
+[16:41:02] ✓ PASS: Parallel fired again after cooldown expired (before: 3, after: 5)
+[16:41:02] turning off ce_test_parallel_event switch
+[16:41:04] ✓ PASS: Parallel stopped firing after switch turned OFF (stayed at 5)
+[16:41:04] === Step 5: Cleanup and verify zero stray processes ===
+[16:41:06] ✓ PASS: no stray manager processes after cleanup
+[16:41:06] === Test Report ===
+[16:41:06] SOME TESTS FAILED
+[16:41:06] === cleanup ===
+[16:41:07] cleanup complete

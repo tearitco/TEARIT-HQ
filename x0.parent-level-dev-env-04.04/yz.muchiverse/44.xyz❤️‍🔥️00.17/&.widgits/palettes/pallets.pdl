@@ -1,12 +1,12 @@
-SECTION      | KEY                | LABEL              | PICKER
---------------------------------------------------------------
-CATEGORY     | user-pallet        | My Pallet          | stub
-CATEGORY     | emojis             | Emojis             | tile-picker
-CATEGORY     | elements           | Chemicals+Compounds| chemistry
-CATEGORY     | rmmv               | RPG Maker Tiles    | rmmv
-CATEGORY     | piececraft         | Piececraft Blocks  | minecraft
-CATEGORY     | cdda               | CDDA Tiles         | cdda
-CATEGORY     | df                 | Dwarf Fortress     | df
-CATEGORY     | kenney             | Kenney 3D          | stub
-CATEGORY     | paint              | Paint Colors       | paint
-CATEGORY     | generate           | Generate           | generate
+SECTION      | KEY                | LABEL              | PICKER      | WIDE
+---------------------------------------------------------------------------
+CATEGORY     | user-pallet        | My Pallet          | stub        | 0
+CATEGORY     | emojis             | Emojis             | tile-picker | 0
+CATEGORY     | elements           | Chemicals+Compounds| chemistry   | 1
+CATEGORY     | rmmv               | RPG Maker Tiles    | rmmv        | 0
+CATEGORY     | piececraft         | Piececraft Blocks  | minecraft   | 0
+CATEGORY     | cdda               | CDDA Tiles         | cdda        | 0
+CATEGORY     | df                 | Dwarf Fortress     | df          | 0
+CATEGORY     | kenney             | Kenney 3D          | stub        | 0
+CATEGORY     | paint              | Paint Colors       | paint       | 0
+CATEGORY     | generate           | Generate           | generate    | 0

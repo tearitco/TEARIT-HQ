@@ -149,6 +149,128 @@ Stop here if you just need to know "what's going on."
    Contains task-by-task KPIs, explicit STOP-AND-ALERT checkpoints, a Questions-for-Sonnet section,
    and a Progress Log opencode updates as it works. Check this file's own Progress Log for current
    status before assuming anything below it is stale.
+6h1a. **OPENCODE-CATCHUP-2026-08-27.md** — read this if you are opencode/
+   ox-alpha resuming `COMMON-EVENTS-MANAGER-HANDOFF.md` from your own last
+   log entry (line 2323, a premature "Task 3 DONE" claim). Tells you
+   exactly what happened since (the real bug found in that claim, its
+   fix, Tasks 4-7 all done, several new docs, two real PAL-authored
+   harness proofs, and the real next task queued) and exactly which line
+   to resume reading from (2617). A matching inline marker also sits at
+   line ~2401 of the handoff doc itself.
+6h2a. **PAL-VISUAL-SCRIPTING-PLAN.md** — vision doc for the events editor's
+   Scripting/Scratch/Blueprints tabs (Task 5 built the real stub toolbar;
+   real block/node rendering still unbuilt). Points at 6h2b for the
+   broader harness-authoring direction (moved there to keep this doc
+   scoped to visual-editor vision).
+6h2b. **HARNESS-AUTHORING-GUIDE.md** — the canonical doc for building/
+   updating ANY test/demo harness, single-feature or multi-feature.
+   Covers: the current real bash-harness convention (with real examples
+   to copy from); a grounded feasibility check for PAL/event-authored
+   harnesses against `prisc+x.c`'s actual syscalls (relay injection via
+   `SYS_OPEN`+`SYS_WRITE_LINE` already works today; polling frame-history
+   needs a small sibling-file fix, no VM change; no `SYS_SLEEP` exists
+   yet); a priority list of "harness-friendly" event commands worth
+   building next (Loop, Wait, a new Send-Input command); a per-feature
+   real launch-mechanism reference table (db-hq/events-hq/palettes/
+   entities/Mutaclysm/h-ai/chat-hai/my-lawyer/my-biotech/piececraft-xyz/
+   file-desk-switching); and camera/POV "director" guidance for anything
+   with real camera control (Mutaclysm, piececraft-xyz's board-viewer
+   map-view). Read this BEFORE designing any new harness — also
+   cross-referenced from `_.0.aigent-testing-k9.txt` (which stays scoped
+   to low-level injection/dump procedure, per its own stated rule) and
+   `PAL-VISUAL-SCRIPTING-PLAN.md`.
+6h3b. **CURSWORD-SOUL-VISION.md** — cursword's identity as the user's "SOUL":
+   the account's first entity, free, always-there, unkillable, tied to the
+   account — plus a capability roadmap (text chat real today; STT/TTS/image-
+   gen/sound-gen/UI-automation all not built yet). §3 scopes a genuinely NEW,
+   confirmed-undocumented-elsewhere idea: teaching cursword to navigate the
+   real UI via Gemma selecting from a library of FSM/BT actions (not raw
+   free-form control), with an RL-flavored context-scoring layer feeding
+   that Gemma harness — same "deterministic dispatch, not free-form LLM
+   output" doctrine as my-biotech/my-lawyer. §4 RESOLVES gap #0 from
+   `GAME-READINESS-GAP-ANALYSIS-2026-08-27.md` (continuous play pauses the
+   real clock unless marked non-blocking; turn-based folds the message into
+   the current turn with a settable turn-cost variable). §5 CORRECTS that
+   same doc's tile/palette gap — real precedent already exists (`rmmv`
+   palette category, a compiled RMMV tile extractor,
+   `RMMV_EVENT_EDITOR_GUIDE.md`'s UI-chrome-built-logic-not-wired shell) —
+   read before scoping tile/map or cursword-automation work.
+6h3a. **MARKETABLE-FEATURES.md** — real, cited catalog of EVERY taskbar cell's
+   actual working state (HQ/file/desks/pals/palettes/chemistry-palette/edit/
+   player/db/plugins/store/network/h-ai/datetime), plus entities/desk-pals,
+   Mutaclysm (real, relay-driven 3D space), h-ai (TWO real modes: single
+   chat backed by a real local Ollama LLM, and "chat-hai" — a real 4-agent
+   +moderator round-robin conversation loop sharing one ledger, NOT just
+   saved sessions), current emoji state, and files/desks switching. Written
+   2026-08-27 after the marketing/owner-report videos only covered a
+   curated subset and the user flagged several real, working things that
+   got missed — read this BEFORE scoping any future marketing/onboarding
+   material so nothing gets missed again. Ends with a "not yet covered in
+   any presentation" punch list.
+6h2c. **TILE-SYSTEM-DESIGN.md** — real, from-scratch design (no existing
+   tile/map canvas found anywhere in this codebase, verified by grep, not
+   assumed) for the tile system named in the "Confirmed next-steps order"
+   (autotiling + animated tiles, flagged 2026-08-27 as needing real
+   planning before implementation). **Major revision (§0a) after direct
+   correction**: a tile IS a real entity, spawned via the SAME
+   `tp_desktop_window_rgb.c` mechanism every desk-pal already uses
+   (confirmed: that binary already has the real `GRID_CELL_PX=80` grid
+   constant) — no separate map-canvas binary needed, that earlier draft
+   option was withdrawn. Covers: the tile/tileset/map data model (flat
+   PDL), the REAL RPG Maker MV autotile mechanism (§2, corrected
+   2026-08-27 against actual engine source — 48 shape slots per kind,
+   not 47, and each shape is composited from 4 real quadrant pieces,
+   not one whole pre-drawn tile — see 6h2d/6h2e below), the animated-
+   tile time function (pure function of wall-clock time), corrected
+   RPG Maker MV tile size (48px, not 32px), the tile-scaling decision
+   (48px assets scale up to fill the current grid cell), the hybrid
+   map-storage model (§4: no map-print file = live entities only;
+   map-print file = expanded on load; both = union — the SAME map-print
+   format is also what boardview loads for real play/sharing), and
+   (§4a) the real, confirmed requirement that tile entities drag-and-
+   drop into Mutaclysm/piececraft-xyz as their 3D equivalent —
+   extending a REAL, already-existing (but one-directional, pet-
+   specific) XDND mechanism documented in `#.DOX/drag-drop-how2.md`,
+   with a scoped "hook point" design pass (Phase 1.5) before the full
+   voxel/block conversion tables (Phase 2). **§4b (added 2026-08-27,
+   real mockup provided by the user)**: the actual tile-picker/
+   placement authoring UI, previously left undesigned — the real
+   integration point is `&.widgits/palettes/pallets.pdl`'s already-
+   reserved-but-currently-static `rmmv` category (confirmed the exact
+   real category the user meant by "6. palettes; 4. rpg maker tiles"),
+   becoming a real A/B/C/D/E-tabbed tile grid + a real multi-tileset
+   chooser (a genuinely new requirement — RPG Maker "tilesets" are
+   named bundles of images, not one fixed set), with click-to-select
+   arming a "current brush" that a subsequent real desktop click uses
+   to spawn/update a tile-entity there. Read before writing any
+   tile-placement or autotile code.
+6h2d. **RPG-CODE-INDEX-REF.md** — real findings extracted from an actual
+   deployed RPG Maker MV game's real, readable engine JS source
+   (`rpg_core.js` etc.) — the real `Tilemap` autotile mechanism (tile ID
+   encoding constants, the three real shape tables and their real sizes
+   48/16/4, the quadrant-compositing draw algorithm, and the honest gap
+   that neighbor→shape-index computation is editor-side/closed-source,
+   not in this runtime engine). Cited directly by TILE-SYSTEM-DESIGN.md
+   §2 for the real corrections made there. Add to this doc (don't
+   replace it) as more of the engine source gets read for other real
+   reasons later — it deliberately does not try to document the whole
+   engine up front.
+6h2e. **RMMV-ASSET-SOURCE-LOCATION.pdl** — records the real external
+   mount path to the RPG Maker MV game/engine source referenced above,
+   specifically so a future session can find it again if the drive/path
+   changes (direct instruction: "their location should be stored in a
+   related pdl file about tiles in case they move").
+6h3. **GAME-READINESS-GAP-ANALYSIS-2026-08-27.md** — real, grounded status check (code actually
+   read, not guessed): what's genuinely done vs. missing before a real RPG-Maker-style game can be
+   built on top of the events work above. Three real gaps, in build order: (1) palettes/tilesets/
+   map-authoring is 0% built for game tiles (today's "palette" is a UI color-theme picker, not a
+   tile system), (2) message/choice event commands (Show Text/Choices) + numeric switch/variable
+   IDs are not built, (3) no player/map/collision runtime loop exists in the real house code (only
+   in disconnected, self-critiqued prototypes). Also names a real design gap-before-the-gap: where
+   a message box even renders, and how that interacts with the Parallel-trigger tick loop, needs a
+   decision BEFORE Show Text or the tile system get scoped. Read this before picking up any
+   "let's build a real game now" work so effort doesn't go into gap #2/#3 before gap #0/#1 are
+   decided.
 6h. **PLUGINS-ARCHITECTURE-SCOPING.md** — design-only scoping pass (2026-08-25, no code yet) for
    the "10.plugins" taskbar cell: RPG-Maker-style per-project plugin list, `.pal` scripts that
    trigger real ops (not reimplement logic), real house precedent to reuse (sidebar+panel merged

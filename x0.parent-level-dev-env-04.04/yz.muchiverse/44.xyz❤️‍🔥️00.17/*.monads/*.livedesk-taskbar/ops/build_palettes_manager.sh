@@ -10,6 +10,10 @@ CC=${CC:-gcc}
 CFLAGS="-std=c11 -Wall -O2"
 
 echo "-- palettes manager -> +x/palettes_manager.+x"
-$CC $CFLAGS -o +x/palettes_manager.+x palettes_manager.c
+# REAL FIX 2026-08-27 (TILE-SYSTEM-DESIGN.md sec.4b, "rmmv" category
+# now uses stb_image.h to crop real tile PNGs - stb_image's PNG decode
+# path calls libm's pow(), needs -lm linked; no other category needed
+# it before this).
+$CC $CFLAGS -o +x/palettes_manager.+x palettes_manager.c -lm
 
 echo "OK +x/palettes_manager.+x"

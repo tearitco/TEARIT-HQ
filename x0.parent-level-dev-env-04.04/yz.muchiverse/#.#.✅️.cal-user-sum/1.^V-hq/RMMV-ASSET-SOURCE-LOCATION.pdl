@@ -1,0 +1,13 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+SOURCE       | mount_point        | /media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e
+SOURCE       | project_root       | /media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e/home/jbez/Desktop/^.📶️.SHARE]/^.🦾️]fullsharezip/💪🏾️].no-desk.sharezip/💌️.consol.idate]📟/xv.👨🏽‍🚀️RMMV+sec]linux 🐧️]0001/RMMV_TSOTS]LINUX=elf?🧝🏽️/__.Tearrmv SpaceShop388.m
+SOURCE       | game_www_dir       | <project_root>/www
+SOURCE       | tile_assets_dir    | <project_root>/www/img/tilesets
+SOURCE       | engine_js_dir      | <project_root>/www/js
+SOURCE       | engine_core_file   | <project_root>/www/js/rpg_core.js
+NOTE         | added              | 2026-08-27
+NOTE         | why                | Real RPG Maker MV tile assets + real, readable engine JS source (a real deployed game, "SpaceShop388", not the community-download SDK) - referenced while designing TILE-SYSTEM-DESIGN.md's autotile algorithm. Location recorded here in case the drive/mount path changes, per direct instruction ("their location should be stored in a related pdl file about tiles in case they move").
+NOTE         | mount_is_external  | 1
+NOTE         | mount_fstype       | ext2 (confirmed via `mount` at time of writing - re-check if path resolution ever fails, the drive may not be mounted at session start)
+NOTE         | see_also           | RPG-CODE-INDEX-REF.md (same directory) - real findings extracted from engine_core_file, cited directly in TILE-SYSTEM-DESIGN.md's autotile section

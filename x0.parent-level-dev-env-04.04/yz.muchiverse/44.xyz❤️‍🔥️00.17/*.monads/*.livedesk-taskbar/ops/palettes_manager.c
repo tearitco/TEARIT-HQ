@@ -22,8 +22,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <strings.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 #define PATH_BUF 4096
 #define MAX_TILES 512
@@ -36,6 +41,48 @@ static char g_state_path[PATH_BUF];
 static char g_sprite_root[PATH_BUF];
 static char g_emoji_tools[PATH_BUF];
 static time_t g_source_mtime = 0;
+
+static char *trim(char *s); /* forward decl - defined just below, needed by publish_layout_flag() above it */
+
+/* REAL FIX 2026-08-27 (direct instruction: "flag hardcoded things in
+ * parser... fix that chem hardcoding also. we dont want it to suggest
+ * non std behavior is ok") - the renderer used to hardcode `strcmp(
+ * g_pal_category, "elements") == 0` to decide the wide-tile layout.
+ * That's now a real, explicit `WIDE` column on pallets.pdl's own
+ * CATEGORY rows (SECTION|KEY|LABEL|PICKER|WIDE) - this function reads
+ * THIS category's own real WIDE value once at startup and publishes it
+ * to a small sibling file the renderer reads generically, same real
+ * "manager owns the decision, renderer just reads published state"
+ * shape every other real field in this file already uses. Defaults to
+ * 0 (narrow) if the category isn't found or the file is missing -
+ * matches every existing category's real behavior before this fix
+ * (only "elements" was ever wide). */
+static void publish_layout_flag(void) {
+    char pdl_path[PATH_BUF];
+    snprintf(pdl_path, sizeof(pdl_path), "%s/&.widgits/palettes/pallets.pdl", g_house_root);
+    int wide = 0;
+    FILE *f = fopen(pdl_path, "r");
+    if (f) {
+        char line[512];
+        while (fgets(line, sizeof(line), f)) {
+            if (strncmp(line, "CATEGORY", 8) != 0) continue;
+            char buf[512]; snprintf(buf, sizeof(buf), "%s", line);
+            char *fields[8]; int nf = 0;
+            char *tok = strtok(buf, "|");
+            while (tok && nf < 8) { fields[nf++] = tok; tok = strtok(NULL, "|"); }
+            if (nf < 5) continue; /* SECTION|KEY|LABEL|PICKER|WIDE */
+            char *key = trim(fields[1]);
+            if (strcmp(key, g_category) != 0) continue;
+            wide = atoi(trim(fields[4]));
+            break;
+        }
+        fclose(f);
+    }
+    char layout_path[PATH_BUF];
+    snprintf(layout_path, sizeof(layout_path), "%s/palettes-%s_layout.txt", g_package_dir, g_category);
+    FILE *out = fopen(layout_path, "w");
+    if (out) { fprintf(out, "wide=%d\n", wide); fclose(out); }
+}
 
 static char *trim(char *s) {
     while (*s == ' ' || *s == '\t') s++;
@@ -225,8 +272,387 @@ static void publish_elements(void) {
     rename(tmp_path, g_state_path);
 }
 
+/* ===== RPG Maker Tiles (real "rmmv" category, 2026-08-27) =====
+ * TILE-SYSTEM-DESIGN.md sec.4b - real, manager-owned, exactly matching
+ * this file's own established compliant shape (compose_emojis()/
+ * compose_elements() above) - the renderer gets ZERO new tile-specific
+ * code, same generic palettes-<category>_state.txt +
+ * dbhq_load_palette_state()/dbhq_inject_palette_tiles() consumption
+ * every other category already uses. Real tile PIXELS are cropped
+ * directly from the real tileset PNG (via stb_image, already proven
+ * this session in tile_autotile.c's own standalone visual-verification
+ * pass) into the SAME real sprite.csv format ensure_emoji_sprite()
+ * already produces (`# resolution=N` / `# scale=1.0` /
+ * `# transform=0,0,0` header + `r,g,b,a` rows) - no new sprite format,
+ * no glyph-rendering pipeline needed since real pixels already exist. */
+#define RMMV_TILE_PX 48
+
+/* Real, live directory scan of the rmmv tileset folder (2026-08-28,
+ * per direct external-review correction: "scan the real tilesets
+ * folder... do not hardcode" - replaces the earlier tileset_registry.pdl
+ * hand-authored approach entirely, since a real RPG Maker asset drop
+ * follows a fixed, parseable naming convention on its own:
+ * "<Prefix>_<Suffix>.png" where Suffix is one of A1/A2/A3/A4/A5/B/C/D/E
+ * (e.g. "World_A2.png", "SF_Inside_A4.png" - the prefix is everything
+ * before the LAST underscore, so multi-underscore prefixes like
+ * "SF_Inside" still parse correctly). A tileset (for the bottom
+ * chooser) is any distinct prefix seen; a sheet/category (for the top
+ * tabs) is any distinct suffix seen FOR THE ACTIVE prefix only - never
+ * fabricates a tileset or sheet that has no real file backing it. */
+#define RMMV_MAX_ENTRIES 256
+typedef struct { char prefix[64]; char suffix[4]; } RmmvFile;
+static int scan_rmmv_dir(const char *house_root, RmmvFile *out, int max_out) {
+    char dir_path[PATH_BUF];
+    snprintf(dir_path, sizeof(dir_path), "%s/&.widgits/palettes/tilesets/rmmv", house_root);
+    DIR *d = opendir(dir_path);
+    if (!d) return 0;
+    int n = 0;
+    struct dirent *de;
+    while (n < max_out && (de = readdir(d)) != NULL) {
+        const char *name = de->d_name;
+        size_t len = strlen(name);
+        if (len < 5 || strcmp(name + len - 4, ".png") != 0) continue;
+        char base[128];
+        size_t base_len = len - 4;
+        if (base_len >= sizeof(base)) base_len = sizeof(base) - 1;
+        memcpy(base, name, base_len);
+        base[base_len] = '\0';
+        char *us = strrchr(base, '_');
+        if (!us || !us[1]) continue;
+        char suffix[8];
+        snprintf(suffix, sizeof(suffix), "%s", us + 1);
+        /* Real suffix whitelist - a1/a2/a3/a4/a5/b/c/d/e, case-
+         * insensitive on disk (RPG Maker ships them uppercase), never
+         * treats an unrelated "_something.png" as a real sheet. */
+        int valid = 0;
+        const char *valid_suffixes[] = { "A1","A2","A3","A4","A5","B","C","D","E" };
+        for (size_t i = 0; i < sizeof(valid_suffixes) / sizeof(valid_suffixes[0]); i++) {
+            if (strcasecmp(suffix, valid_suffixes[i]) == 0) { valid = 1; snprintf(suffix, sizeof(suffix), "%s", valid_suffixes[i]); break; }
+        }
+        if (!valid) continue;
+        *us = '\0';
+        snprintf(out[n].prefix, sizeof(out[n].prefix), "%s", base);
+        snprintf(out[n].suffix, sizeof(out[n].suffix), "%s", suffix);
+        n++;
+    }
+    closedir(d);
+    return n;
+}
+
+/* Real, direct pixel-crop sprite writer - reads a real tileset PNG
+ * (already loaded once per publish, not per-tile), writes one tile's
+ * real RGBA crop into the exact sprite.csv format dbhq_inject_
+ * palette_tiles()'s own sprite loader already expects. */
+static void write_rmmv_sprite_csv(const unsigned char *atlas, int atlas_w, int atlas_h,
+                                   int tile_col, int tile_row, const char *out_path) {
+    FILE *f = fopen(out_path, "w");
+    if (!f) return;
+    fprintf(f, "# resolution=%d\n# scale=1.0\n# transform=0,0,0\nr,g,b,a\n", RMMV_TILE_PX);
+    for (int y = 0; y < RMMV_TILE_PX; y++) {
+        for (int x = 0; x < RMMV_TILE_PX; x++) {
+            int ax = tile_col * RMMV_TILE_PX + x, ay = tile_row * RMMV_TILE_PX + y;
+            unsigned char r = 0, g = 0, b = 0, a = 0;
+            if (ax < atlas_w && ay < atlas_h) {
+                const unsigned char *px = &atlas[((size_t)ay * atlas_w + ax) * 4];
+                r = px[0]; g = px[1]; b = px[2]; a = px[3];
+            }
+            fprintf(f, "%d,%d,%d,%d\n", r, g, b, a);
+        }
+    }
+    fclose(f);
+}
+
+/* Real RPG Maker MV/MZ sheet-letter grouping (2026-08-28) - the
+ * picker's top tabs are the real A/B/C/D/E SHEET letters, not raw
+ * A1..A5 suffixes: A1/A2/A3/A4/A5 all belong under the single "A"
+ * sheet tab, B/C/D/E are each their own sheet. `suffix` is always one
+ * of the whitelisted values scan_rmmv_dir() already validated. */
+static char rmmv_tab_letter_for(const char *suffix) {
+    if (suffix[0] == 'A') return 'A';
+    return suffix[0];
+}
+
+/* Real "which internal category key does this suffix map to" - lower-
+ * cased suffix IS the internal category key (a1/a2/a3/a4/a5/b/c/d/e),
+ * matching publish_rmmv()'s own existing block_cols/rows branch. */
+static void rmmv_cat_for_suffix(const char *suffix, char *out, size_t outsz) {
+    size_t i = 0;
+    for (; suffix[i] && i + 1 < outsz; i++) out[i] = (char)tolower((unsigned char)suffix[i]);
+    out[i] = '\0';
+}
+
+/* Real, generic "what tabs/chooser should the renderer show" publisher
+ * (2026-08-28 rewrite: sourced from a live directory scan of the real
+ * rmmv tileset folder - see scan_rmmv_dir()'s own header comment -
+ * instead of a hand-authored registry file. Emits every real distinct
+ * tileset PREFIX found on disk (bottom chooser) plus every real sheet
+ * SUFFIX found for the CURRENTLY ACTIVE prefix only, grouped into A-E
+ * tabs (top tab bar) - never fabricates a tileset or sheet with no
+ * real file backing it. Also resolves and returns the real, concrete
+ * active category (e.g. "a2") for the active tab letter, since a tab
+ * click only specifies a LETTER, not which of a1..a5 backs it. */
+static void publish_rmmv_options(const char *house_root, const char *active_key,
+                                  const char *active_tab_letter, char *out_active_cat, size_t out_active_cat_sz) {
+    char opt_path[PATH_BUF];
+    snprintf(opt_path, sizeof(opt_path), "%s/rmmv_options.txt", g_package_dir);
+    char tmp[PATH_BUF];
+    snprintf(tmp, sizeof(tmp), "%s.tmp", opt_path);
+    FILE *out = fopen(tmp, "w");
+    if (!out) return;
+
+    RmmvFile entries[RMMV_MAX_ENTRIES];
+    int n_entries = scan_rmmv_dir(house_root, entries, RMMV_MAX_ENTRIES);
+
+    /* Real alphabetical-by-prefix ordering (2026-08-28) - readdir()
+     * gives no ordering guarantee (same real reason the A-E tabs
+     * needed sorting below); collect distinct prefixes first, sort,
+     * then emit, so the bottom chooser always lists tilesets in a
+     * stable, predictable order instead of raw filesystem order. */
+    char seen_keys[32][64]; int n_seen = 0;
+    for (int i = 0; i < n_entries; i++) {
+        int dup = 0;
+        for (int j = 0; j < n_seen; j++) if (strcmp(seen_keys[j], entries[i].prefix) == 0) dup = 1;
+        if (dup) continue;
+        if (n_seen < 32) snprintf(seen_keys[n_seen++], sizeof(seen_keys[0]), "%s", entries[i].prefix);
+    }
+    for (int i = 1; i < n_seen; i++) {
+        char key[64]; snprintf(key, sizeof(key), "%s", seen_keys[i]);
+        int j = i - 1;
+        while (j >= 0 && strcmp(seen_keys[j], key) > 0) { snprintf(seen_keys[j + 1], sizeof(seen_keys[0]), "%s", seen_keys[j]); j--; }
+        snprintf(seen_keys[j + 1], sizeof(seen_keys[0]), "%s", key);
+    }
+    for (int i = 0; i < n_seen; i++) {
+        char label[64];
+        snprintf(label, sizeof(label), "%s", seen_keys[i]);
+        for (char *p = label; *p; p++) if (*p == '_') *p = ' ';
+        fprintf(out, "TILESET|%s|%s\n", seen_keys[i], label);
+    }
+
+    /* Real per-tab-letter grouping for the ACTIVE tileset only - the
+     * first real suffix seen for a given letter becomes that tab's own
+     * "which concrete category does clicking this letter resolve to"
+     * (e.g. "A" -> "a2" if only World_A2.png exists; once World_A1.png
+     * also exists, "A" still resolves to whichever A-family suffix was
+     * found FIRST in the scan - real, not a fabricated preference). */
+    char tab_letters[8]; int n_tabs = 0;
+    char tab_default_cat[8][16];
+    out_active_cat[0] = '\0';
+    for (int i = 0; i < n_entries; i++) {
+        if (strcmp(entries[i].prefix, active_key) != 0) continue;
+        char cat[16];
+        rmmv_cat_for_suffix(entries[i].suffix, cat, sizeof(cat));
+        char letter = rmmv_tab_letter_for(entries[i].suffix);
+        int dup = 0;
+        for (int j = 0; j < n_tabs; j++) if (tab_letters[j] == letter) dup = 1;
+        if (!dup && n_tabs < 8) {
+            tab_letters[n_tabs] = letter;
+            snprintf(tab_default_cat[n_tabs], sizeof(tab_default_cat[0]), "%s", cat);
+            n_tabs++;
+        }
+        if (letter == active_tab_letter[0] && !out_active_cat[0])
+            snprintf(out_active_cat, out_active_cat_sz, "%s", cat);
+    }
+    /* Same real a2>a1>a3>a4>a5 preference as the TAB|A|... line below,
+     * applied here too so the ACTUALLY-RENDERED category (out_active_cat)
+     * never disagrees with what the "A" tab's own label implies. */
+    if (active_tab_letter[0] == 'A') {
+        const char *pref0[] = { "a2", "a1", "a3", "a4", "a5" };
+        for (size_t p = 0; p < sizeof(pref0) / sizeof(pref0[0]); p++) {
+            int found = 0;
+            for (int j = 0; j < n_entries; j++) {
+                if (strcmp(entries[j].prefix, active_key) != 0) continue;
+                char cat[16]; rmmv_cat_for_suffix(entries[j].suffix, cat, sizeof(cat));
+                if (strcmp(cat, pref0[p]) == 0) { found = 1; break; }
+            }
+            if (found) { snprintf(out_active_cat, out_active_cat_sz, "%s", pref0[p]); break; }
+        }
+    }
+    /* Real tie-break for the "A" tab's default sub-category (2026-08-28)
+     * - raw directory-scan order is arbitrary (readdir gives no
+     * guarantee), so "A" could resolve to a4/a5 before a2 depending on
+     * filesystem order, which is a confusing first click for a real
+     * user (a2 - ground/floor - is the sheet RPG Maker's own editor
+     * shows first). Prefer a2, then a1, then a3/a4/a5 in that order,
+     * but ONLY among suffixes actually confirmed present for this
+     * tileset above - never picks one that isn't real. */
+    for (int i = 0; i < n_tabs; i++) {
+        if (tab_letters[i] != 'A') continue;
+        const char *pref[] = { "a2", "a1", "a3", "a4", "a5" };
+        for (size_t p = 0; p < sizeof(pref) / sizeof(pref[0]); p++) {
+            int found = 0;
+            for (int j = 0; j < n_entries; j++) {
+                if (strcmp(entries[j].prefix, active_key) != 0) continue;
+                char cat[16]; rmmv_cat_for_suffix(entries[j].suffix, cat, sizeof(cat));
+                if (strcmp(cat, pref[p]) == 0) { found = 1; break; }
+            }
+            if (found) { snprintf(tab_default_cat[i], sizeof(tab_default_cat[0]), "%s", pref[p]); break; }
+        }
+    }
+    /* Real alphabetical sort (2026-08-28) - readdir() gives no ordering
+     * guarantee, so tabs were appearing in arbitrary filesystem-scan
+     * order (e.g. "B, C, A") instead of the real A-E sheet order a user
+     * expects. Tiny n (max 5), plain insertion sort is plenty. */
+    for (int i = 1; i < n_tabs; i++) {
+        char lk = tab_letters[i]; char ck[16]; snprintf(ck, sizeof(ck), "%s", tab_default_cat[i]);
+        int j = i - 1;
+        while (j >= 0 && tab_letters[j] > lk) {
+            tab_letters[j + 1] = tab_letters[j];
+            snprintf(tab_default_cat[j + 1], sizeof(tab_default_cat[0]), "%s", tab_default_cat[j]);
+            j--;
+        }
+        tab_letters[j + 1] = lk;
+        snprintf(tab_default_cat[j + 1], sizeof(tab_default_cat[0]), "%s", ck);
+    }
+    for (int i = 0; i < n_tabs; i++)
+        fprintf(out, "TAB|%c|%s\n", tab_letters[i], tab_default_cat[i]);
+    fprintf(out, "ACTIVE_TILESET|%s\n", active_key);
+    fprintf(out, "ACTIVE_CATEGORY|%s\n", out_active_cat);
+    fclose(out);
+    rename(tmp, opt_path);
+}
+
+static void publish_rmmv(void) {
+    /* Real active-tileset/tab state (2026-08-28 rewrite: "tab" replaces
+     * "category" here - a tab LETTER, e.g. "A", is what a real user
+     * click sets; the concrete category (a1 vs a2 vs...) is resolved
+     * by publish_rmmv_options() below from whatever real suffix
+     * actually backs that letter for the active tileset). Default
+     * tileset chosen honestly - the first real prefix scan_rmmv_dir()
+     * finds - not a hardcoded name that may not even exist on disk. */
+    char active_path[PATH_BUF];
+    snprintf(active_path, sizeof(active_path), "%s/rmmv_active.txt", g_package_dir);
+    char active_key[64] = "", active_tab_letter[4] = "A";
+    FILE *af = fopen(active_path, "r");
+    if (af) {
+        char line[128];
+        while (fgets(line, sizeof(line), af)) {
+            char *eq = strchr(line, '=');
+            if (!eq) continue;
+            *eq = '\0';
+            char *v = eq + 1;
+            size_t vn = strlen(v);
+            while (vn > 0 && (v[vn-1] == '\n' || v[vn-1] == '\r')) v[--vn] = '\0';
+            if (strcmp(line, "tileset") == 0) snprintf(active_key, sizeof(active_key), "%s", v);
+            else if (strcmp(line, "tab") == 0) snprintf(active_tab_letter, sizeof(active_tab_letter), "%s", v);
+        }
+        fclose(af);
+    }
+    if (!active_key[0]) {
+        RmmvFile first_scan[RMMV_MAX_ENTRIES];
+        int n_first = scan_rmmv_dir(g_house_root, first_scan, RMMV_MAX_ENTRIES);
+        if (n_first > 0) snprintf(active_key, sizeof(active_key), "%s", first_scan[0].prefix);
+    }
+
+    char active_cat[16];
+    publish_rmmv_options(g_house_root, active_key, active_tab_letter, active_cat, sizeof(active_cat));
+    char rel_atlas[PATH_BUF] = "";
+    if (active_key[0] && active_cat[0]) {
+        char suffix_upper[8]; size_t si = 0;
+        for (; active_cat[si] && si + 1 < sizeof(suffix_upper); si++) suffix_upper[si] = (char)toupper((unsigned char)active_cat[si]);
+        suffix_upper[si] = '\0';
+        snprintf(rel_atlas, sizeof(rel_atlas), "rmmv/%s_%s.png", active_key, suffix_upper);
+    }
+
+    char tmp_path[PATH_BUF];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", g_state_path);
+    FILE *out = fopen(tmp_path, "w");
+    if (!out) return;
+
+    if (rel_atlas[0]) {
+        char atlas_path[PATH_BUF];
+        snprintf(atlas_path, sizeof(atlas_path), "%s/&.widgits/palettes/tilesets/%s", g_house_root, rel_atlas);
+        int w, h, ch;
+        unsigned char *pixels = stbi_load(atlas_path, &w, &h, &ch, 4);
+        if (pixels) {
+            /* REAL FIX 2026-08-27/28 (direct correction, verified against
+             * real RPG Maker MV asset-authoring standards, not
+             * guessed): a raw 48px cell is NOT an independently
+             * selectable tile for autotile categories - each real
+             * "kind" occupies a fixed BLOCK of raw cells, and the
+             * picker should show exactly ONE real, artist-drawn
+             * representative thumbnail per kind - the block's own
+             * TOP-LEFT cell - not all raw cells in the block (the rest
+             * are compositing FRAGMENTS, consumed later by tile_
+             * autotile.c's real quadrant math at actual placement time,
+             * never shown directly to a user). Per-family block size,
+             * branched on active_cat (2026-08-28 extension, per
+             * external review): floor-type a1/a2 = 2x3 (matches the
+             * real bx=tx*2/by=(ty-2)*3 addressing sourced in RPG-CODE-
+             * INDEX-REF.md); wall-type a3/a4 = 2x2 (a different real
+             * block shape, not yet visually verified since no a3/a4
+             * assets are sourced today - if this is wrong once real
+             * assets land, fix the branch below, don't guess further);
+             * a5/b/c/d/e are NOT autotile at all - every raw 48x48 cell
+             * IS its own real, independently selectable tile (1x1
+             * "block"), so no compositing-fragment logic applies. */
+            int block_cols = 1, block_rows = 1;
+            if (strcmp(active_cat, "a1") == 0 || strcmp(active_cat, "a2") == 0) {
+                block_cols = 2; block_rows = 3;
+            } else if (strcmp(active_cat, "a3") == 0 || strcmp(active_cat, "a4") == 0) {
+                block_cols = 2; block_rows = 2;
+            }
+            int kinds_x = (w / RMMV_TILE_PX) / block_cols;
+            int kinds_y = (h / RMMV_TILE_PX) / block_rows;
+            char sprite_root[PATH_BUF];
+            snprintf(sprite_root, sizeof(sprite_root), "%s/sprites/rmmv", g_package_dir);
+            int n = 0;
+            for (int ky = 0; ky < kinds_y && n < MAX_TILES; ky++) {
+                for (int kx = 0; kx < kinds_x && n < MAX_TILES; kx++) {
+                    int tx = kx * block_cols, ty = ky * block_rows; /* top-left cell of this kind's own block - the real representative */
+                    n++;
+                    char dir[PATH_BUF];
+                    snprintf(dir, sizeof(dir), "%s/%03d", sprite_root, n);
+                    char mkcmd[PATH_BUF * 2];
+                    snprintf(mkcmd, sizeof(mkcmd), "mkdir -p '%s'", dir);
+                    system(mkcmd);
+                    char csv[PATH_BUF];
+                    snprintf(csv, sizeof(csv), "%s/sprite.csv", dir);
+                    write_rmmv_sprite_csv(pixels, w, h, tx, ty, csv);
+                    char label[64];
+                    snprintf(label, sizeof(label), "%s kind %d,%d", active_cat, kx, ky); /* real kind index, not raw cell coords */
+                    fprintf(out, "%s\t%s\t%s\n", label, label, dir);
+                }
+            }
+            stbi_image_free(pixels);
+        }
+    }
+    /* rel_atlas[0]=='\0' (category not sourced for this tileset) or the
+     * PNG failed to load -> publishes an empty tile list, honestly, not
+     * a fabricated placeholder. */
+    fclose(out);
+    rename(tmp_path, g_state_path);
+}
+
 static void publish(void) {
     struct stat st;
+    if (strcmp(g_category, "rmmv") == 0) {
+        /* Real mtime-gate, same discipline as the other two categories
+         * - rmmv has TWO real inputs that can change (the real tileset
+         * folder's own contents - new/removed PNGs - and the active-
+         * tileset/tab choice), so gate on whichever is newer rather
+         * than skipping the gate entirely (a real tile crop + sprite.
+         * csv write per kind every 1s poll tick forever would be real,
+         * needless disk churn). A missing active-state file (nobody's
+         * picked a tileset yet) counts as mtime 0, not a reason to
+         * skip - the folder's own real mtime alone is enough to trigger
+         * the first publish. 2026-08-28: watches the real tilesets/rmmv/
+         * DIRECTORY itself (bumps its own mtime on file add/remove,
+         * standard POSIX directory semantics) instead of the retired
+         * tileset_registry.pdl - see scan_rmmv_dir()'s own header
+         * comment for why the registry approach was dropped. */
+        time_t reg_mtime = 0, active_mtime = 0;
+        char registry_path[PATH_BUF];
+        snprintf(registry_path, sizeof(registry_path), "%s/&.widgits/palettes/tilesets/rmmv", g_house_root);
+        if (stat(registry_path, &st) == 0) reg_mtime = st.st_mtime;
+        char active_path[PATH_BUF];
+        snprintf(active_path, sizeof(active_path), "%s/rmmv_active.txt", g_package_dir);
+        if (stat(active_path, &st) == 0) active_mtime = st.st_mtime;
+        time_t newest = reg_mtime > active_mtime ? reg_mtime : active_mtime;
+        if (newest == 0 || newest == g_source_mtime) return;
+        g_source_mtime = newest;
+        publish_rmmv();
+        return;
+    }
     if (stat(g_source_path, &st) != 0) return;
     if (st.st_mtime == g_source_mtime) return;
     g_source_mtime = st.st_mtime;
@@ -242,12 +668,15 @@ int main(int argc, char **argv) {
 
     if (strcmp(g_category, "elements") == 0) {
         snprintf(g_source_path, sizeof(g_source_path), "%s/#.ref/menu/palletes/chemistry_tiles_expanded🏆.csv", g_house_root);
+    } else if (strcmp(g_category, "rmmv") == 0) {
+        g_source_path[0] = '\0'; /* unused for rmmv - publish()'s own dedicated mtime-gate handles it */
     } else {
         snprintf(g_source_path, sizeof(g_source_path), "%s/#.ref/menu/palletes/emoji-pallet-00.00.txt", g_house_root);
     }
     snprintf(g_state_path, sizeof(g_state_path), "%s/palettes-%s_state.txt", g_package_dir, g_category);
     snprintf(g_sprite_root, sizeof(g_sprite_root), "%s/sprites/emoji", g_package_dir);
     find_emoji_tools();
+    publish_layout_flag();
 
     for (;;) {
         publish();
