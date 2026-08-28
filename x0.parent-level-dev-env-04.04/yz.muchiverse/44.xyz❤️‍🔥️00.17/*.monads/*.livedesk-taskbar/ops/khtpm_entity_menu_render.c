@@ -2984,7 +2984,15 @@ static void evhq_layout_pass(Elem *window) {
         }
     }
     if (right) {
-        if (g_evhq_view_mode != 0) { evhq_zero_subtree(right); }
+        if (g_evhq_view_mode != 0) {
+            evhq_zero_subtree(right);
+            /* REAL, NEW 2026-08-28 - a stub view mode hides "right"
+             * entirely (see evhq_zero_subtree() above); without this,
+             * g_pal_has_grid would keep whatever it was left as by the
+             * last real Scripting-mode pass, drawing a scroll track over
+             * a stub view that has no scrollable content at all. */
+            g_pal_has_grid = 0;
+        }
         else {
         evhq_apply_css(right);
         for (int i = 0; i < right->n_children; i++) {
@@ -2997,6 +3005,13 @@ static void evhq_layout_pass(Elem *window) {
         right->style.has_padding = 1; right->style.padding = 12;
         right->style.has_gap = 1; right->style.gap = 4;
         css_layout_pass(right, left_w + 8, content_y + 8, window->w - left_w - 16, content_h - 12);
+        /* REAL, GENERALIZED 2026-08-28 (Phase C target #3) - "right"'s
+         * command rows had zero scroll support before this; a long
+         * enough command list ran off the bottom of the panel with no
+         * way to reach it. "cmd-row" is the second class every
+         * evhq_inject_commands() row now carries (see that function's
+         * own comment) - title/empty-msg are left alone. */
+        generic_scroll_layout_pass(right, "cmd-row", content_y + 8, content_h - 12);
         }
     }
     Elem *viewmode_stub = find_by_id(window, "viewmode-stub");
@@ -3065,7 +3080,18 @@ static void evhq_inject_commands(Elem *window) {
         Elem *e = reusable_slot(g_evhq_cmd_slots, MAX_CHILDREN, next_slot_index++, "button");
         if (!e) break; /* pool exhausted - stop, don't crash */
         char cls[48]; snprintf(cls, sizeof(cls), "cmd-%s", g_evhq_cmds[i].type);
-        snprintf(e->classes[0], sizeof(e->classes[0]), "%s", cls); e->n_classes = 1;
+        snprintf(e->classes[0], sizeof(e->classes[0]), "%s", cls);
+        /* REAL, NEW 2026-08-28 (Phase C, generic scroll wiring) - "right"
+         * also holds a real "title" child (and an "empty-msg" text row
+         * when g_evhq_n_cmds==0), so row_class=NULL would wrongly treat
+         * those as scrollable rows too. Every cmd-<type> variant is
+         * distinct (cmd-say/cmd-wait/...), so there is no existing SHARED
+         * class across all of them for generic_scroll_layout_pass() to
+         * filter on - this second class is added purely so that filter
+         * has something real to match, same role "pal-grid-row"/
+         * "bm-bookmark" already play for their own modes. */
+        snprintf(e->classes[1], sizeof(e->classes[1]), "cmd-row");
+        e->n_classes = 2;
         snprintf(e->id, sizeof(e->id), "cmd-edit-%d", g_evhq_cmds[i].id);
         char desc[300]; evhq_describe_command(&g_evhq_cmds[i], desc, sizeof(desc));
         snprintf(e->label, sizeof(e->label), "%d. %s", g_evhq_cmds[i].id, desc);
@@ -3139,6 +3165,19 @@ static void evhq_assign_nav_indices(Elem *window) {
      * "right" panel, now real `button`-tagged Elems) were never walked
      * here at all before this fix - confirmed via direct live report,
      * the real root cause of "commands aren't nav-reachable/editable". */
+    /* REAL, NEW 2026-08-28 (Phase C target #3) - scroll arrows numbered
+     * BEFORE the rows they control, same order dbhq_assign_nav_indices()
+     * already uses for palettes/db-hq/bookmarks. A disabled arrow's
+     * onclick[0]=='\0' (cleared in generic_scroll_layout_pass()) excludes
+     * it here automatically. */
+    if (g_pal_has_grid) {
+        if (g_pal_arrow_up->onclick[0] && g_n_nav < MAX_ELEMS) {
+            g_pal_arrow_up->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = g_pal_arrow_up;
+        }
+        if (g_pal_arrow_down->onclick[0] && g_n_nav < MAX_ELEMS) {
+            g_pal_arrow_down->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = g_pal_arrow_down;
+        }
+    }
     Elem *right = find_by_id(window, "right");
     if (right) for (int i = 0; i < right->n_children && g_n_nav < MAX_ELEMS; i++) {
         Elem *c = right->children[i];
@@ -3498,6 +3537,44 @@ static void evhq_redraw_content(void) {
     XSetForeground(dpy, gc, evhq_alloc_pixel("#252525"));
     XFillRectangle(dpy, buf, gc, 0, 0, g_window->w, g_window->h);
     evhq_render_tree(g_window);
+    /* REAL, NEW 2026-08-28 (Phase C target #3) - events-hq has its OWN
+     * redraw path (evhq_render_tree()/evhq_draw_elem()), entirely
+     * separate from db-hq's dbhq_redraw_content() - the scroll track/
+     * thumb/arrow drawing dbhq_redraw_content() already does for
+     * g_pal_has_grid is NEVER reached from here, so it's replicated here
+     * (same geometry fields generic_scroll_layout_pass() already
+     * computed, same visual shape) rather than assumed shared. */
+    if (g_pal_has_grid && g_pal_track_h > 0) {
+        XSetForeground(dpy, gc, evhq_alloc_pixel("#2a2a2a"));
+        XFillRectangle(dpy, buf, gc, g_pal_track_x, g_pal_track_y, (unsigned)g_pal_track_w, (unsigned)g_pal_track_h);
+        XSetForeground(dpy, gc, evhq_alloc_pixel("#888888"));
+        XFillRectangle(dpy, buf, gc, g_pal_track_x + 1, g_pal_thumb_y,
+                       (unsigned)(g_pal_track_w - 2), (unsigned)g_pal_thumb_h);
+        int ax = g_pal_track_x, aw = g_pal_track_w;
+        int up_y0 = g_pal_track_y - g_pal_arrow_h;
+        int down_y0 = g_pal_track_y + g_pal_track_h;
+        int up_enabled = !g_pal_arrow_up_disabled;
+        int down_enabled = !g_pal_arrow_down_disabled;
+        XSetForeground(dpy, gc, evhq_alloc_pixel("#3a3a3a"));
+        XFillRectangle(dpy, buf, gc, ax, up_y0, (unsigned)aw, (unsigned)g_pal_arrow_h);
+        XFillRectangle(dpy, buf, gc, ax, down_y0, (unsigned)aw, (unsigned)g_pal_arrow_h);
+        XSetForeground(dpy, gc, evhq_alloc_pixel(up_enabled ? "#cccccc" : "#555555"));
+        XPoint up_tri[3] = {
+            { (short)(ax + aw / 2), (short)(up_y0 + 3) },
+            { (short)(ax + 2), (short)(up_y0 + g_pal_arrow_h - 3) },
+            { (short)(ax + aw - 2), (short)(up_y0 + g_pal_arrow_h - 3) },
+        };
+        XFillPolygon(dpy, buf, gc, up_tri, 3, Convex, CoordModeOrigin);
+        XSetForeground(dpy, gc, evhq_alloc_pixel(down_enabled ? "#cccccc" : "#555555"));
+        XPoint down_tri[3] = {
+            { (short)(ax + aw / 2), (short)(down_y0 + g_pal_arrow_h - 3) },
+            { (short)(ax + 2), (short)(down_y0 + 3) },
+            { (short)(ax + aw - 2), (short)(down_y0 + 3) },
+        };
+        XFillPolygon(dpy, buf, gc, down_tri, 3, Convex, CoordModeOrigin);
+        evhq_draw_elem(g_pal_arrow_up);
+        evhq_draw_elem(g_pal_arrow_down);
+    }
     evhq_draw_entity_glyph();
     evhq_draw_chrome_bar();
     if (g_evhq_picker_open) evhq_draw_picker_overlay();
@@ -3522,6 +3599,12 @@ static void evhq_activate_elem(Elem *hit) {
      * in this house's dispatch chain already uses. */
     if (hit->onclick[0]) {
         if (strncmp(hit->onclick, "PICKER:", 7) == 0) evhq_dispatch_picker_onclick(hit->onclick);
+        /* REAL, NEW 2026-08-28 (Phase C target #3) - same generic
+         * scroll:up/down dispatch dbhq_activate_elem() already uses. */
+        else if (strcmp(hit->onclick, "scroll:up") == 0 || strcmp(hit->onclick, "scroll:down") == 0) {
+            g_pal_scroll += (strcmp(hit->onclick, "scroll:down") == 0) ? 1 : -1;
+            evhq_redraw_content();
+        }
         return;
     }
     if (strcmp(hit->tag, "closebtn") == 0) { g_quit = 1; return; }
@@ -3610,6 +3693,24 @@ static void evhq_handle_click(int px, int py) {
     if (px >= g_evhq_close_elem->x && px < g_evhq_close_elem->x + g_evhq_close_elem->w &&
         py >= g_evhq_close_elem->y && py < g_evhq_close_elem->y + g_evhq_close_elem->h) {
         g_focus_nav = g_evhq_close_elem->nav_index; evhq_activate_elem(g_evhq_close_elem); return;
+    }
+    /* REAL, NEW 2026-08-28 (Phase C target #3) - same synthetic-elem
+     * coordinate check dbhq_handle_click() already uses for the scroll
+     * arrows (they're drawn Elems but not children of g_window's parsed
+     * tree, so hit_test() below would never find them). */
+    if (g_pal_has_grid) {
+        if (px >= g_pal_arrow_up->x && px < g_pal_arrow_up->x + g_pal_arrow_up->w &&
+            py >= g_pal_arrow_up->y && py < g_pal_arrow_up->y + g_pal_arrow_up->h) {
+            if (g_pal_arrow_up->nav_index > 0) g_focus_nav = g_pal_arrow_up->nav_index;
+            evhq_activate_elem(g_pal_arrow_up);
+            return;
+        }
+        if (px >= g_pal_arrow_down->x && px < g_pal_arrow_down->x + g_pal_arrow_down->w &&
+            py >= g_pal_arrow_down->y && py < g_pal_arrow_down->y + g_pal_arrow_down->h) {
+            if (g_pal_arrow_down->nav_index > 0) g_focus_nav = g_pal_arrow_down->nav_index;
+            evhq_activate_elem(g_pal_arrow_down);
+            return;
+        }
     }
     Elem *hit = hit_test(g_window, px, py);
     if (!hit) return;
@@ -3770,6 +3871,20 @@ static void evhq_handle_key(KeySym ks, char ch) {
     }
     if (ks == XK_Up || ks == XK_Left) { if (g_focus_nav > 1) g_focus_nav--; g_evhq_digit_accum = 0; return; }
     if (ks == XK_Down || ks == XK_Right || ks == XK_Tab) { if (g_focus_nav < g_n_nav) g_focus_nav++; g_evhq_digit_accum = 0; return; }
+    /* REAL, NEW 2026-08-28 (Phase C target #3) - same real Page_Up/
+     * Page_Down paging dbhq_handle_key() already uses for any
+     * g_pal_has_grid mode; events-hq's own command list had no keyboard
+     * scroll path at all before this. */
+    if (ks == XK_Page_Up || ks == XK_Page_Down) {
+        if (g_pal_has_grid) {
+            int step = g_pal_visible_rows > 1 ? g_pal_visible_rows - 1 : 1;
+            g_pal_scroll += (ks == XK_Page_Down) ? step : -step;
+            evhq_layout_pass(g_window);
+            evhq_assign_nav_indices(g_window);
+        }
+        g_evhq_digit_accum = 0;
+        return;
+    }
     g_evhq_digit_accum = 0;
 }
 static int evhq_nonfatal_x_error(Display *d, XErrorEvent *e) {
@@ -4938,6 +5053,21 @@ static void chai_layout_pass(Elem *window) {
             item->h = item_h;
         }
         css_layout_pass(sidebar, window->w - sidebar_w, content_y, sidebar_w, content_h);
+        /* REAL, GENERALIZED 2026-08-28 (Phase C target #2) - chat-hai's
+         * own session sidebar had zero scroll support before this; a
+         * long enough session list ran off the bottom with no way to
+         * reach it. row_class=NULL - every direct child (real sessions +
+         * "+ New Session") is a real row, same shape db-hq's own sidebar
+         * already uses. */
+        generic_scroll_layout_pass(sidebar, NULL, sidebar->y, content_h);
+    } else {
+        /* REAL, NEW 2026-08-28 - other chat-hai tabs (placeholder tabs,
+         * see the early `return` a few lines above this whole block)
+         * never reach here at all, so this path is dead in that case;
+         * kept for the case a future tab DOES have a real sidebar/panel
+         * layout without a scrollable list, so stale grid state from a
+         * PRIOR frame's sidebar never bleeds into it. */
+        g_pal_has_grid = 0;
     }
 
     if (panel) {
@@ -5094,6 +5224,17 @@ static void chai_assign_nav_indices(Elem *window) {
         }
     }
     if (chai_current_tab == CHAI_COMMON_EVENTS_TAB) {
+        /* REAL, NEW 2026-08-28 (Phase C target #2) - scroll arrows
+         * numbered BEFORE the sidebar rows they control, same order
+         * dbhq_assign_nav_indices() already uses. */
+        if (g_pal_has_grid) {
+            if (g_pal_arrow_up->onclick[0] && g_n_nav < MAX_ELEMS) {
+                g_pal_arrow_up->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = g_pal_arrow_up;
+            }
+            if (g_pal_arrow_down->onclick[0] && g_n_nav < MAX_ELEMS) {
+                g_pal_arrow_down->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = g_pal_arrow_down;
+            }
+        }
         Elem *sidebar = find_by_tag(window, "sidebar");
         if (sidebar) {
             for (int i = 0; i < sidebar->n_children && g_n_nav < MAX_ELEMS; i++) {
@@ -5648,6 +5789,41 @@ static void chai_redraw(void) {
     } else {
         chai_render_tree(g_window, 0);
     }
+    /* REAL, NEW 2026-08-28 (Phase C target #2) - chat-hai has its OWN
+     * redraw path (chai_render_tree()/chai_draw_elem()), entirely separate
+     * from db-hq's dbhq_redraw_content() - replicated here, same
+     * geometry generic_scroll_layout_pass() already computed. */
+    if (g_pal_has_grid && g_pal_track_h > 0) {
+        XSetForeground(dpy, gc, chai_alloc_pixel("#2a2a2a"));
+        XFillRectangle(dpy, buf, gc, g_pal_track_x, g_pal_track_y, (unsigned)g_pal_track_w, (unsigned)g_pal_track_h);
+        XSetForeground(dpy, gc, chai_alloc_pixel("#888888"));
+        XFillRectangle(dpy, buf, gc, g_pal_track_x + chai_scaled(1), g_pal_thumb_y,
+                       (unsigned)(g_pal_track_w - chai_scaled(2)), (unsigned)g_pal_thumb_h);
+        int ax = g_pal_track_x, aw = g_pal_track_w;
+        int up_y0 = g_pal_track_y - g_pal_arrow_h;
+        int down_y0 = g_pal_track_y + g_pal_track_h;
+        int up_enabled = !g_pal_arrow_up_disabled;
+        int down_enabled = !g_pal_arrow_down_disabled;
+        XSetForeground(dpy, gc, chai_alloc_pixel("#3a3a3a"));
+        XFillRectangle(dpy, buf, gc, ax, up_y0, (unsigned)aw, (unsigned)g_pal_arrow_h);
+        XFillRectangle(dpy, buf, gc, ax, down_y0, (unsigned)aw, (unsigned)g_pal_arrow_h);
+        XSetForeground(dpy, gc, chai_alloc_pixel(up_enabled ? "#cccccc" : "#555555"));
+        XPoint up_tri[3] = {
+            { (short)(ax + aw / 2), (short)(up_y0 + chai_scaled(3)) },
+            { (short)(ax + chai_scaled(2)), (short)(up_y0 + g_pal_arrow_h - chai_scaled(3)) },
+            { (short)(ax + aw - chai_scaled(2)), (short)(up_y0 + g_pal_arrow_h - chai_scaled(3)) },
+        };
+        XFillPolygon(dpy, buf, gc, up_tri, 3, Convex, CoordModeOrigin);
+        XSetForeground(dpy, gc, chai_alloc_pixel(down_enabled ? "#cccccc" : "#555555"));
+        XPoint down_tri[3] = {
+            { (short)(ax + aw / 2), (short)(down_y0 + g_pal_arrow_h - chai_scaled(3)) },
+            { (short)(ax + chai_scaled(2)), (short)(down_y0 + chai_scaled(3)) },
+            { (short)(ax + aw - chai_scaled(2)), (short)(down_y0 + chai_scaled(3)) },
+        };
+        XFillPolygon(dpy, buf, gc, down_tri, 3, Convex, CoordModeOrigin);
+        chai_draw_elem(g_pal_arrow_up, 0);
+        chai_draw_elem(g_pal_arrow_down, 0);
+    }
     chai_draw_chrome_bar();
     chai_draw_settings_bar();
 
@@ -5784,6 +5960,15 @@ static void chai_write_chat_hai_cfg(int sleep_secs, int sound) {
 
 static void chai_activate_elem(Elem *hit) {
     if (!hit) return;
+    /* REAL, NEW 2026-08-28 (Phase C target #2) - same generic scroll:up/
+     * down dispatch dbhq_activate_elem()/evhq_activate_elem() already
+     * use, checked first since the synthetic scroll-arrow Elems carry no
+     * tag/id chai_activate_elem() otherwise dispatches on. */
+    if (hit->onclick[0] && (strcmp(hit->onclick, "scroll:up") == 0 || strcmp(hit->onclick, "scroll:down") == 0)) {
+        g_pal_scroll += (strcmp(hit->onclick, "scroll:down") == 0) ? 1 : -1;
+        chai_redraw();
+        return;
+    }
     /* Activating anything that ISN'T the Settings affordance closes the
      * open panel first (same contract as open-hai's own Settings:
      * non-settings activation dismisses it). */
@@ -5964,6 +6149,24 @@ static void chai_handle_click(int px, int py) {
         chai_activate_elem(chai_settings_sound_elem);
         return;
     }
+    /* REAL, NEW 2026-08-28 (Phase C target #2) - same synthetic-elem
+     * coordinate check dbhq_handle_click()/evhq_handle_click() already
+     * use for the scroll arrows (drawn Elems, not part of g_window's
+     * parsed tree - hit_test() below would never find them). */
+    if (g_pal_has_grid) {
+        if (px >= g_pal_arrow_up->x && px < g_pal_arrow_up->x + g_pal_arrow_up->w &&
+            py >= g_pal_arrow_up->y && py < g_pal_arrow_up->y + g_pal_arrow_up->h) {
+            if (g_pal_arrow_up->nav_index > 0) g_focus_nav = g_pal_arrow_up->nav_index;
+            chai_activate_elem(g_pal_arrow_up);
+            return;
+        }
+        if (px >= g_pal_arrow_down->x && px < g_pal_arrow_down->x + g_pal_arrow_down->w &&
+            py >= g_pal_arrow_down->y && py < g_pal_arrow_down->y + g_pal_arrow_down->h) {
+            if (g_pal_arrow_down->nav_index > 0) g_focus_nav = g_pal_arrow_down->nav_index;
+            chai_activate_elem(g_pal_arrow_down);
+            return;
+        }
+    }
     Elem *hit = hit_test(g_window, px, py);
     if (!hit) return;
     if (hit->nav_index > 0) g_focus_nav = hit->nav_index;
@@ -6043,6 +6246,21 @@ static void chai_handle_key(KeySym ks, char ch) {
     }
     if (ks == XK_Down || ks == XK_Right || ks == XK_Tab) {
         if (g_focus_nav < g_n_nav) g_focus_nav++;
+        chai_digit_accum = 0;
+        chai_redraw();
+        return;
+    }
+    /* REAL, NEW 2026-08-28 (Phase C target #2) - same real Page_Up/
+     * Page_Down paging dbhq_handle_key() already uses for any
+     * g_pal_has_grid mode; chat-hai's own session sidebar had no
+     * keyboard scroll path at all before this. */
+    if (ks == XK_Page_Up || ks == XK_Page_Down) {
+        if (g_pal_has_grid) {
+            int step = g_pal_visible_rows > 1 ? g_pal_visible_rows - 1 : 1;
+            g_pal_scroll += (ks == XK_Page_Down) ? step : -step;
+            chai_layout_pass(g_window);
+            chai_assign_nav_indices(g_window);
+        }
         chai_digit_accum = 0;
         chai_redraw();
         return;
@@ -6544,7 +6762,16 @@ static void dispatch_relay_code(int code) {
      * agent testing, see dbhq_dump_debug_state()'s own header comment.
      * Code 210 (not a real keypress; 206-209 left free for any future
      * debug-only codes in this same reserved band). */
-    else if (code == 210 && (g_is_db_hq || g_is_events_hq)) dbhq_dump_debug_state();
+    /* REAL, NEW 2026-08-28 (Phase C testing) - dbhq_dump_debug_state()'s
+     * own g_n_nav/g_nav[] loop (the part that actually matters for
+     * verifying the generic scroll wiring) already reads only the
+     * SHARED globals every mode populates, not db-hq-specific state - the
+     * db-hq-only and events-hq-only fields it also prints are simply
+     * irrelevant (harmless stale/zero) noise for chat-hai. Extended here
+     * instead of writing a second, chai-only dump, since chat-hai had NO
+     * text-state dump at all before this (only chai_dump_frame_png(),
+     * PNG-only). */
+    else if (code == 210 && (g_is_db_hq || g_is_events_hq || g_is_chat_hai)) dbhq_dump_debug_state();
     else if (code >= 32 && code <= 126) handle_key(0, (char)code);
 }
 static int poll_agent_history(void) {
@@ -7401,7 +7628,17 @@ int main(int argc, char **argv) {
                         g_evhq_drag_last_x = ev.xbutton.x_root;
                         g_evhq_drag_last_y = ev.xbutton.y_root;
                     }
-                    if (ev.xbutton.button != 3 && !g_evhq_picker_open) evhq_handle_click(ev.xbutton.x, ev.xbutton.y);
+                    /* REAL, NEW 2026-08-28 (Phase C target #3) - mouse
+                     * wheel over the command list scrolls rows, same
+                     * mechanism db-hq's own main loop already uses for
+                     * g_pal_has_grid. */
+                    if (!g_evhq_picker_open && g_pal_has_grid && (ev.xbutton.button == 4 || ev.xbutton.button == 5)) {
+                        g_pal_scroll += (ev.xbutton.button == 5) ? 2 : -2;
+                        evhq_layout_pass(g_window);
+                        evhq_assign_nav_indices(g_window);
+                    } else if (ev.xbutton.button != 3 && !g_evhq_picker_open) {
+                        evhq_handle_click(ev.xbutton.x, ev.xbutton.y);
+                    }
                     if (!g_quit) redraw();
                 } else if (ev.type == ButtonRelease && ev.xbutton.button == 1) {
                     g_evhq_dragging = 0;
@@ -7549,7 +7786,17 @@ int main(int argc, char **argv) {
                         chai_drag_last_x = ev.xbutton.x_root;
                         chai_drag_last_y = ev.xbutton.y_root;
                     }
-                    if (ev.xbutton.button != 3) chai_handle_click(ev.xbutton.x, ev.xbutton.y);
+                    /* REAL, NEW 2026-08-28 (Phase C target #2) - mouse
+                     * wheel over the session sidebar scrolls rows, same
+                     * mechanism db-hq's own main loop already uses for
+                     * g_pal_has_grid. */
+                    if (g_pal_has_grid && (ev.xbutton.button == 4 || ev.xbutton.button == 5)) {
+                        g_pal_scroll += (ev.xbutton.button == 5) ? 2 : -2;
+                        chai_layout_pass(g_window);
+                        chai_assign_nav_indices(g_window);
+                    } else if (ev.xbutton.button != 3) {
+                        chai_handle_click(ev.xbutton.x, ev.xbutton.y);
+                    }
                     if (!g_quit) redraw();
                 } else if (ev.type == ButtonRelease && ev.xbutton.button == 1) {
                     chai_dragging = 0;
