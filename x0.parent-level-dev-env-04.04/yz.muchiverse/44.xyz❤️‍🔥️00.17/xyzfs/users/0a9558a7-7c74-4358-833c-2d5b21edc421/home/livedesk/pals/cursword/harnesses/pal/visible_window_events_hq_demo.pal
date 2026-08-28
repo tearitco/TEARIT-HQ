@@ -1,0 +1,119 @@
+# visible_window_events_hq_demo.pal - VISIBLE-WINDOW proof of the new
+# Loop / Wait / Send-Input event commands (NEW TASK, COMMON-EVENTS-
+# MANAGER-HANDOFF.md line 3526). Everything the three prior harnesses
+# proved about these commands was real but headless - text files read
+# back, no human-visible confirmation on screen. THIS harness drives a
+# REAL, currently-running events-hq GUI window end to end from inside
+# prisc+x and ends with a real PNG (/tmp/events-hq-frame.png) that
+# proves it, not another text-file readback.
+#
+# Cited predecessors (same directory, same 3a-comments convention -
+# each block below is the EXACT compiled shape of the command it names,
+# from khtpm_events_hq_manager.c's compile_page() + event_commands.registry.pdl,
+# NOT an author-invented variant):
+#   wait_loop_break_demo.pal        - the Loop/break_loop/repeat_above
+#                                     compiled shapes + wait->`sleep {ms}000`
+#   task5_view_tab_switch_demo.pal  - the real relay-open/digit-jump/Enter/
+#                                     poll-view_mode/PNG-112 GUI drive order
+#   task3_switch_branch_verify.pal  - branch shape + full-line-comment style
+#
+# Command-to-shape map (all equalities are literal with compile_page()'s
+# emit; the ONE deliberate deviation is marked inline below):
+#   send_input|{relay}|{key}  -> li x15,1 / li x13,2 / ecall "{relay}" /
+#                                addi x14,x12,0 / li x15,3 / addi x12,x14,0 /
+#                                ecall "{key}" / addi x12,x14,0 / li x15,2 / ecall
+#   loop                      -> _loop_N:
+#   wait|{ms}                 -> sleep {ms}000       (W-1: existing opcode)
+#   if|{switch}->on + break_loop -> li x15,6 / ecall "{file}" "{key}" /
+#                                li x2,1 / bne x12,x2,_else_N /
+#                                j _loop_end_N  / _else_N: / _endif_N:
+#   repeat_above              -> j _loop_N / _loop_end_N:
+#   control_switch done=1     -> li x15,7 / li x12,1 / ecall "{file}" "done"
+#
+# Registers used (same roles as the cited harnesses):
+#   x15 - the syscall NUMBER (1=OPEN, 2=CLOSE, 3=WRITE_LINE, 6=GET_KV_INT,
+#         7=SET_KV_INT - see prisc+x.c's own SYS_* #defines).
+#   x12 - the syscall VALUE register: fd for open, the read-back int for
+#         GET_KV_INT, the written value for SET_KV_INT. Clobbered by
+#         almost every ecall.
+#   x13 - the syscall's SECOND input register (open mode / GET default).
+#   x14 - scratch fd stash used by send_input's compiled shape (send_input
+#         CLOBBERS x14 - we hold nothing live in it across a send_input).
+#   x2  - the loop-break compare constant (1 = "view_mode is the value we
+#         waited for").
+#
+# Real files touched (all absolute; the house-root path is a literal
+# string here - no PAL-level path interpolation exists, same honest
+# limitation as task5's header notes):
+#   <HOUSE>/#.desktop/events_hq_history.txt          the real relay (WRITE)
+#   <HOUSE>/#.desktop/events_hq_view_mode.txt        the real single-key
+#                                                    sibling status file
+#                                                    (POLL, created by the
+#                                                    running render)
+#   /tmp/events_hq_visproof_results.txt              disposable verdict file
+#   /tmp/events-hq-frame.png                         written by the running
+#                                                    render's dump_frame_png()
+#
+# Drive order (proven valid by task5 + REPRODUCE.md): inject digit '2'
+# (code 50 - NOT literal "2", dispatch_relay_code() only treats 32-126 as
+# literal ASCII, so 50 is the digit) then Enter (13) to light up the
+# view-tab; poll events_hq_view_mode.txt until view_mode=1; inject the
+# real PNG-dump code (112 = 'p'). run via `prisc+x` while the events-hq
+# window is already up - the launcher lives in the sibling harness script
+# run_visible_window_events_hq_demo.sh.
+
+li x15, 1          # x15 = 1 -> next ecall is SYS_OPEN
+li x13, 2          # x13 = 2 -> open mode "append" (send_input's 2nd line)
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/events_hq_history.txt"   # send_input line 3: open the REAL events-hq relay; x12 <- fd
+addi x14, x12, 0   # send_input line 4: stash the fd in x14 (safe across clobbers)
+li x15, 3          # send_input line 5: x15 = 3 -> SYS_WRITE_LINE
+addi x12, x14, 0   # send_input line 6: restore the stashed fd into x12
+ecall "50"         # send_input line 7: append "50\n" = digit '2' keypress to the relay
+addi x12, x14, 0   # send_input line 8: restore fd again for the close
+li x15, 2          # send_input line 9: x15 = 2 -> SYS_CLOSE
+ecall              # send_input line 10: close the relay handle (digit-jump staged)
+
+li x15, 1          # second send_input, line 1: SYS_OPEN
+li x13, 2          # second send_input, line 2: append mode
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/events_hq_history.txt"   # second send_input, line 3: reopen the real relay; x12 <- fd
+addi x14, x12, 0   # second send_input, line 4: stash the fd
+li x15, 3          # second send_input, line 5: SYS_WRITE_LINE
+addi x12, x14, 0   # second send_input, line 6: restore fd
+ecall "13"         # second send_input, line 7: append "13\n" = Enter -> activates the focused view-tab
+addi x12, x14, 0   # second send_input, line 8: restore fd
+li x15, 2          # second send_input, line 9: SYS_CLOSE
+ecall              # second send_input, line 10: close - digit-jump + Enter now queued
+
+_loop_1:           # "loop" (real command): the poll top - re-entered from repeat_above
+sleep 100000       # "wait" ms=100 -> 100000 micros (real pacing between polls, not a tight spin)
+li x15, 6          # "if" compare line 1: x15 = 6 -> SYS_GET_KV_INT (read one key from a flat file)
+li x13, -1         # "if" fallback default: -1 so a missing/absent key can never false-positive
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/events_hq_view_mode.txt" "view_mode"   # THE ONE DELIBERATE DEVIATION: the real `if` command hardwires its read to {STATE_DIR}/switches.txt, which cannot express a sibling file; the TASK-named target is events_hq_view_mode.txt, so ONLY the GET target is swapped - the loop machinery below is the real compiled shape verbatim. x12 <- view_mode's current value (or -1)
+li x2, 1           # "if" compare line 2: x2 = 1 -> the value we are waiting for (view_mode=1)
+bne x12, x2, _else_1   # "if" compare line 3: not-equal (still 0/-1) -> fall through to _else_1 (retry); equal -> keep going to the break
+j _loop_end_1      # "break_loop" (real command): forward jump BY NAME to the loop exit - the ONLY authored exit
+_else_1:           # "end" of the if - the retry path lands here and runs back up to repeat_above
+_endif_1:          # "end" closes the if scope (identity label, same as compiler emit)
+j _loop_1          # "repeat_above" (real command): backward jump to _loop_1 - the only backward jump, exactly one per loop
+_loop_end_1:       # the break target, emitted by the compiler AFTER the repeat -> break always EXITS, never re-enters (view_mode==1 provably reached here)
+
+li x15, 1          # third send_input (PNG dump), line 1: SYS_OPEN
+li x13, 2          # third send_input, line 2: append mode
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/events_hq_history.txt"   # third send_input, line 3: reopen the real relay; x12 <- fd
+addi x14, x12, 0   # third send_input, line 4: stash the fd
+li x15, 3          # third send_input, line 5: SYS_WRITE_LINE
+addi x12, x14, 0   # third send_input, line 6: restore fd
+ecall "112"        # third send_input, line 7: append "112\n" = 'p' = the render's real dump_frame_png() trigger
+addi x12, x14, 0   # third send_input, line 8: restore fd
+li x15, 2          # third send_input, line 9: SYS_CLOSE
+ecall              # third send_input, line 10: close - the forced-redraw-before-dump (2026-08-27) guarantees THIS state, not a stale one
+
+li x15, 7          # control_switch compiled shape, line 1: x15 = 7 -> SYS_SET_KV_INT
+li x12, 1          # control_switch line 2: value 1 = ON (switches are ints 1/0, NEVER "ON"/"OFF" - §3a-switchvals)
+ecall "/tmp/events_hq_visproof_results.txt" "done"   # control_switch line 3: record the run completed past the loop (=1 by construction: the only path here is a real view_mode==1 break)
+
+li x15, 7          # verdict line 1: SYS_SET_KV_INT
+li x12, 1          # verdict line 2: PASS=1 (loop exit provably required view_mode==1; pass recorded before halt, after the PNG trigger queued)
+ecall "/tmp/events_hq_visproof_results.txt" "pass"   # verdict line 3: real machine-readable PASS for the wrapper to assert
+
+halt               # stop the VM - the render still owns the /tmp/events-hq-frame.png write; the wrapper waits for it

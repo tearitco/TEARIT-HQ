@@ -139,7 +139,7 @@ static void read_selected_page(void) {
  * deliberate, documented exception and stay hardcoded below this
  * engine, same as prisc+x's own opcode set is unavoidably C - see the
  * architecture doc for the full reasoning on where that line is. */
-#define MAX_PAL_LINES 8
+#define MAX_PAL_LINES 16
 typedef struct {
     char type[48];
     char label[64];
@@ -408,6 +408,7 @@ static int resolve_session_root(char *out, size_t outsz) {
  * labels), not string template expansion. */
 #define MAX_IR_NODES 128
 #define MAX_IF_NEST 16
+#define MAX_LOOP_NEST 16
 typedef struct {
     char type[48];
     int id;
@@ -420,6 +421,10 @@ typedef struct {
     char else_label[32];
     int has_else;
 } IfFrame;
+typedef struct {
+    char start_label[32];
+    char end_label[32];
+} LoopFrame;
 static void compile_page(int page_idx) {
     char pd[PATH_BUF]; page_dir(pd, sizeof(pd), page_idx);
     char ir_path[PATH_BUF]; snprintf(ir_path, sizeof(ir_path), "%s/event.ir.pdl", pd);
@@ -465,6 +470,8 @@ static void compile_page(int page_idx) {
 
     IfFrame if_stack[MAX_IF_NEST];
     int if_top = 0;
+    LoopFrame loop_stack[MAX_LOOP_NEST];
+    int loop_top = 0;
     int label_counter = 0;
 
     for (int ni = 0; ni < n_nodes; ni++) {
@@ -509,6 +516,44 @@ static void compile_page(int page_idx) {
                 IfFrame *fr = &if_stack[if_top];
                 if (!fr->has_else) fprintf(pf, "%s:\n", fr->else_label);
                 fprintf(pf, "%s:\n", fr->end_label);
+            }
+            continue;
+        }
+        /* Loop / Break Loop / Repeat Above - tier-3 structural markers,
+         * same deliberate exception as if/else/end above. Ordinary nodes
+         * between them ALWAYS emit (skip_depth is gone); these only ADD
+         * labels + jumps. RPG Maker semantics:
+         *   _loop_N:         <- "loop"
+         *     <body emits in IR order>
+         *   j _loop_N        <- "repeat_above" (backward = the loop)
+         *   _loop_end_N:     <- emitted right after, the ONLY break target
+         * A "break_loop" inside the body emits `j _loop_end_N` (forward by
+         * name - VM resolves all labels post-parse, so forward/backward
+         * both work). Shared label_counter with if/else/end guarantees
+         * global uniqueness; prefixes differ so no collision either way. */
+        if (strcmp(nd->type, "loop") == 0) {
+            if (loop_top >= MAX_LOOP_NEST) continue;
+            label_counter++;
+            LoopFrame *lf = &loop_stack[loop_top];
+            snprintf(lf->start_label, sizeof(lf->start_label), "_loop_%d", label_counter);
+            snprintf(lf->end_label, sizeof(lf->end_label), "_loop_end_%d", label_counter);
+            loop_top++;
+            fprintf(pf, "%s:\n", lf->start_label);
+            continue;
+        }
+        if (strcmp(nd->type, "break_loop") == 0) {
+            if (loop_top > 0) {
+                LoopFrame *lf = &loop_stack[loop_top - 1];
+                fprintf(pf, "j %s\n", lf->end_label);
+            }
+            continue;
+        }
+        if (strcmp(nd->type, "repeat_above") == 0) {
+            if (loop_top > 0) {
+                LoopFrame *lf = &loop_stack[loop_top - 1];
+                fprintf(pf, "j %s\n", lf->start_label);
+                fprintf(pf, "%s:\n", lf->end_label);
+                loop_top--;
             }
             continue;
         }

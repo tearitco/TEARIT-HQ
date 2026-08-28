@@ -1530,6 +1530,23 @@ static void evhq_load_command_registry(void); /* Task 7 (2026-08-26) - dbhq_ce_i
 static void evhq_draw_picker_overlay(void);
 static void evhq_handle_key(KeySym ks, char ch);
 
+/* REAL, requested "once and for all" fix (2026-08-27) - same real
+ * frame-history convention as evhq_append_frame_history() (see its own
+ * header comment for the full "why"), ported to db-hq too - db-hq mode
+ * covers palettes/bookmarks/stats-hq/Common-Events-editor as well since
+ * they all share this one dispatch, not just the plain entity-menu
+ * view. */
+static long g_dbhq_frame_seq = 0;
+static void dbhq_append_frame_history(void) {
+    g_dbhq_frame_seq++;
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/db_hq_frame_history.txt", g_house_root);
+    FILE *f = fopen(path, "a");
+    if (!f) return;
+    fprintf(f, "seq=%ld focus_nav=%d/%d tab=%d selected_event=%d\n",
+            g_dbhq_frame_seq, g_focus_nav, g_n_nav, g_dbhq_current_tab, g_dbhq_selected_event);
+    fclose(f);
+}
 static void dbhq_redraw_content(void) {
     dbhq_layout_pass(g_window);
     dbhq_assign_nav_indices(g_window);
@@ -1597,6 +1614,7 @@ static void dbhq_redraw_content(void) {
         draw_elem(g_pal_arrow_down, 0);
     }
     dbhq_draw_chrome_bar();
+    dbhq_append_frame_history();
 }
 
 /* REAL, ported verbatim 2026-08-25 (Stage 3 bookmarks port) from
@@ -2028,6 +2046,15 @@ static void evhq_describe_command(const EvhqCmdNode *cmd, char *out, size_t outs
 static char g_evhq_pages[EVHQ_MAX_PAGES][64];
 static int g_evhq_n_pages = 0;
 static int g_evhq_current_page = 0;
+/* Task 5 (2026-08-27) - Scripting|Scratch|Blueprints view-mode toolbar.
+ * 0=Scripting (today's real command list, default/unchanged behavior),
+ * 1=Scratch, 2=Blueprints (both real, clickable, nav-reachable STUBS
+ * only - see PAL-VISUAL-SCRIPTING-PLAN.md, no block/node rendering
+ * built yet). Shared by both events-hq mode and db-hq's embedded
+ * Common Events editor (g_is_db_hq/g_is_events_hq are mutually
+ * exclusive per process, so one variable is safe for both). */
+static int g_evhq_view_mode = 0;
+static const char *EVHQ_VIEW_STUB_LABELS[3] = { "", "Scratch view - coming soon", "Blueprints view - coming soon" };
 static EvhqCmdNode g_evhq_cmds[EVHQ_MAX_CMDS];
 static int g_evhq_n_cmds = 0;
 static char g_evhq_trigger[64] = "(unknown)";
@@ -2590,6 +2617,19 @@ static int evhq_measure_text_px(const CssStyle *st, const char *text) {
     return ext.width;
 }
 
+/* Task 5 (2026-08-27) - evhq_render_tree()/hit_test() both recurse into
+ * EVERY child regardless of the parent's own w/h (confirmed by reading
+ * both directly) - zeroing only a panel's own w/h leaves its children
+ * at their last real (nonzero) position, still drawn AND still
+ * clickable underneath the stub panel. Recursively zero the whole
+ * subtree instead so a hidden panel is genuinely inert, not just
+ * invisible-looking at the top level. */
+static void evhq_zero_subtree(Elem *e) {
+    if (!e) return;
+    e->w = 0; e->h = 0;
+    for (int i = 0; i < e->n_children; i++) evhq_zero_subtree(e->children[i]);
+}
+
 static void evhq_layout_pass(Elem *window) {
     evhq_apply_css(window);
     window->x = 0; window->y = 0;
@@ -2610,7 +2650,40 @@ static void evhq_layout_pass(Elem *window) {
         g_evhq_toolbar_y = toolbar->y; g_evhq_toolbar_h = toolbar->h;
         for (int i = 0; i < toolbar->n_children; i++) {
             Elem *c = toolbar->children[i]; evhq_apply_css(c);
-            c->x = 46; c->y = toolbar->y + toolbar_h / 2 - 9; c->w = window->w - 56; c->h = 18;
+            /* Task 5 (2026-08-27) - toolbar now has 2 real children
+             * (event-name, viewtabs), not 1 - the old "one child, full
+             * width" layout would stack them on top of each other.
+             * event-name stays left as before; viewtabs (real tag
+             * "tabbar") gets laid out to the right of it, same tab-
+             * measuring shape pagetabs already uses below. */
+            if (strcmp(c->tag, "tabbar") == 0) {
+                for (int j = 0; j < c->n_children; j++) {
+                    Elem *tab = c->children[j]; evhq_apply_css(tab);
+                    /* Direct live report (2026-08-27): "the highlight
+                     * square for scripting selector is slightly not as
+                     * big as some of the wording" - real cause: e->w
+                     * only measured the plain label text, but
+                     * evhq_draw_elem() ALSO draws a "[>]N." nav badge
+                     * BEFORE the label (own 9px mono font, ~5 chars +
+                     * 5px gap) that was never counted here, so the
+                     * focus-ring border (sized to e->w) came out
+                     * narrower than the actual visible content. +24 ->
+                     * +34 to cover the badge+gap for these single-digit
+                     * (1/2/3) viewtab indices. */
+                    tab->w = evhq_measure_text_px(&tab->style, tab->label) + 34;
+                }
+                int total_w = 0;
+                for (int j = 0; j < c->n_children; j++) total_w += c->children[j]->w + 4;
+                c->x = window->w - 56 - total_w; c->y = toolbar->y + toolbar_h / 2 - 11; c->w = total_w; c->h = 22;
+                int tx = c->x;
+                for (int j = 0; j < c->n_children; j++) {
+                    Elem *tab = c->children[j];
+                    tab->x = tx; tab->y = c->y; tab->h = c->h;
+                    tx += tab->w + 4;
+                }
+                continue;
+            }
+            c->x = 46; c->y = toolbar->y + toolbar_h / 2 - 9; c->w = window->w - 56 - 260; c->h = 18;
         }
         y += toolbar_h;
     }
@@ -2632,7 +2705,14 @@ static void evhq_layout_pass(Elem *window) {
     }
     int content_y = y, content_h = window->h - y - footer_h;
     int left_w = 220;
+    /* Task 5 (2026-08-27) - Scratch/Blueprints view modes: zero-size
+     * left/right/footer entirely (never drawn, never hit-testable -
+     * draw_elem()/hit_test() both already skip w<=0||h<=0 Elems
+     * elsewhere in this file) instead of touching their real content,
+     * so Scripting's own behavior is provably unchanged when active. */
     if (left) {
+        if (g_evhq_view_mode != 0) { evhq_zero_subtree(left); }
+        else {
         evhq_apply_css(left);
         for (int i = 0; i < left->n_children; i++) {
             Elem *c = left->children[i]; evhq_apply_css(c);
@@ -2644,8 +2724,11 @@ static void evhq_layout_pass(Elem *window) {
         left->style.has_padding = 1; left->style.padding = 10;
         left->style.has_gap = 1; left->style.gap = 6;
         css_layout_pass(left, 4, content_y + 8, left_w, content_h - 12);
+        }
     }
     if (right) {
+        if (g_evhq_view_mode != 0) { evhq_zero_subtree(right); }
+        else {
         evhq_apply_css(right);
         for (int i = 0; i < right->n_children; i++) {
             Elem *c = right->children[i]; evhq_apply_css(c);
@@ -2657,8 +2740,24 @@ static void evhq_layout_pass(Elem *window) {
         right->style.has_padding = 1; right->style.padding = 12;
         right->style.has_gap = 1; right->style.gap = 4;
         css_layout_pass(right, left_w + 8, content_y + 8, window->w - left_w - 16, content_h - 12);
+        }
+    }
+    Elem *viewmode_stub = find_by_id(window, "viewmode-stub");
+    if (viewmode_stub) {
+        if (g_evhq_view_mode == 0) { evhq_zero_subtree(viewmode_stub); }
+        else {
+            viewmode_stub->x = 0; viewmode_stub->y = content_y; viewmode_stub->w = window->w; viewmode_stub->h = content_h;
+            for (int i = 0; i < viewmode_stub->n_children; i++) {
+                Elem *c = viewmode_stub->children[i];
+                snprintf(c->label, sizeof(c->label), "%s", EVHQ_VIEW_STUB_LABELS[g_evhq_view_mode]);
+                c->x = viewmode_stub->x + 20; c->y = viewmode_stub->y + 20;
+                c->w = window->w - 40; c->h = 20;
+            }
+        }
     }
     if (footer) {
+        if (g_evhq_view_mode != 0) { evhq_zero_subtree(footer); }
+        else {
         evhq_apply_css(footer);
         for (int i = 0; i < footer->n_children; i++) {
             Elem *c = footer->children[i]; evhq_apply_css(c);
@@ -2672,6 +2771,7 @@ static void evhq_layout_pass(Elem *window) {
             Elem *c = footer->children[i];
             c->x += 10;
             c->y = footer->y + 6; c->h = footer_h - 12;
+        }
         }
     }
 }
@@ -2745,15 +2845,34 @@ static void evhq_refresh_page_data(Elem *window) {
             pagetabs->children[pagetabs->n_children++] = newpage;
         }
     }
+    /* Task 5 (2026-08-27) - viewtabs are statically declared in
+     * dashboard.chtpm (3 fixed tabs, real ids viewtab-0/1/2) - just
+     * sync the active flag here, no elem_new() needed. */
+    Elem *viewtabs = find_by_id(window, "viewtabs");
+    if (viewtabs) for (int i = 0; i < viewtabs->n_children; i++) {
+        viewtabs->children[i]->active = (i == g_evhq_view_mode);
+    }
     Elem *en = find_by_id(window, "event-name");
     if (en) snprintf(en->label, sizeof(en->label), "%s", g_evhq_entity_label);
 }
 static void evhq_assign_nav_indices(Elem *window) {
     g_n_nav = 0;
+    /* Task 5 (2026-08-27) - viewtabs nav-reachable first (top of window,
+     * always visible regardless of view mode). */
+    Elem *viewtabs = find_by_id(window, "viewtabs");
+    if (viewtabs) for (int i = 0; i < viewtabs->n_children && g_n_nav < MAX_ELEMS; i++) {
+        viewtabs->children[i]->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = viewtabs->children[i];
+    }
     Elem *pagetabs = find_by_id(window, "pagetabs");
     if (pagetabs) for (int i = 0; i < pagetabs->n_children && g_n_nav < MAX_ELEMS; i++) {
         pagetabs->children[i]->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = pagetabs->children[i];
     }
+    /* Task 5 (2026-08-27) - everything below here is Scripting-mode-only
+     * content (trigger/commands/footer) - skip granting nav when a stub
+     * view is showing instead, matching evhq_layout_pass()'s own
+     * evhq_zero_subtree() hiding of the exact same Elems, so nav can
+     * never reach something invisible. */
+    if (g_evhq_view_mode == 0) {
     /* Task H7 (2026-08-25) - trigger-value nav-reachable for editing */
     Elem *trigger_val = find_by_id(window, "trigger-value");
     if (trigger_val && g_n_nav < MAX_ELEMS) {
@@ -2772,6 +2891,7 @@ static void evhq_assign_nav_indices(Elem *window) {
     Elem *footer = find_by_id(window, "footer");
     if (footer) for (int i = 0; i < footer->n_children && g_n_nav < MAX_ELEMS; i++) {
         footer->children[i]->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = footer->children[i];
+    }
     }
     if (g_n_nav < MAX_ELEMS) { g_evhq_close_elem->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = g_evhq_close_elem; }
     if (g_focus_nav < 1) g_focus_nav = 1;
@@ -2809,6 +2929,18 @@ static XftFont *evhq_font_for(const CssStyle *st) {
     return f;
 }
 static void evhq_draw_elem(Elem *e) {
+    /* REAL BUG FIX (2026-08-27, Task 5) - this function had NO w<=0/h<=0
+     * guard at all; only XFillRectangle calls were naturally harmless at
+     * zero size, but the nav-badge/label XftDrawStringUtf8 calls further
+     * down draw regardless of e->w/e->h, using only e->x/e->y (which
+     * evhq_zero_subtree() does not touch) - so a "hidden" (zeroed)
+     * subtree's old badge+label text kept rendering at its last real
+     * position every time, which is what made Task 5's Scratch/
+     * Blueprints stub view look like it was showing stale/duplicate
+     * content. hit_test() was already correctly guarded (an empty
+     * px<x+0 range can never match), only drawing was not - this is a
+     * real, previously-nonexistent guard, not a duplicate check. */
+    if (e->w <= 0 || e->h <= 0) return;
     if (e->style.has_bg_color) { XSetForeground(dpy, gc, evhq_alloc_pixel(e->style.bg_color)); XFillRectangle(dpy, buf, gc, e->x, e->y, e->w, e->h); }
     if (e->style.has_border_color) {
         XSetForeground(dpy, gc, evhq_alloc_pixel(e->style.border_color));
@@ -3059,6 +3191,50 @@ static void evhq_draw_picker_overlay(void) {
     XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &gray);
     XftFontClose(dpy, font); XftFontClose(dpy, bfont);
 }
+/* REAL, requested "once and for all" fix (2026-08-27, direct
+ * instruction: "is there a way view can send a signal when it has
+ * changed via frame history and is ready to be dumped... we need 2 fix
+ * this once and for all") - same real, already-proven convention
+ * chai_append_frame_history() uses for chat-hai (2026-08-15, "you
+ * should check it with injection and framehistory.txt (we dont need a
+ * png dump to see if frames are updating)"), ported to events-hq/db-hq
+ * which never had it: one line appended to a real frame-history file
+ * EVERY completed redraw, with a monotonic seq number. A harness should
+ * now: read the file's last seq, send its input, then POLL this file
+ * until seq increases (real signal, not a sleep guess) before sending
+ * the PNG-dump relay code - eliminates the whole class of "is the frame
+ * actually ready yet" bug this session hit (which turned out to be a
+ * separate real draw-guard bug, see evhq_draw_elem()'s own w<=0/h<=0
+ * fix above, but this signal is real, general prevention against the
+ * NEXT such bug looking the same from a harness's point of view). */
+static long g_evhq_frame_seq = 0;
+static void evhq_append_frame_history(void) {
+    g_evhq_frame_seq++;
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/events_hq_frame_history.txt", g_house_root);
+    FILE *f = fopen(path, "a");
+    if (!f) return;
+    fprintf(f, "seq=%ld focus_nav=%d/%d view_mode=%d page=%d n_cmds=%d entity=%s\n",
+            g_evhq_frame_seq, g_focus_nav, g_n_nav, g_evhq_view_mode, g_evhq_current_page,
+            g_evhq_n_cmds, g_evhq_entity_label);
+    fclose(f);
+    /* REAL, NEW (2026-08-27, HARNESS-AUTHORING-GUIDE.md §3a) - a real
+     * PAL/prisc+x script can already inject relay codes (SYS_OPEN
+     * append + SYS_WRITE_LINE) but SYS_GET_KV_INT only matches a key at
+     * the very START of a line, so it cannot read the multi-key line
+     * above. Small, cheap, zero-VM-change fix: also write single-key
+     * flat files a PAL script CAN poll today via SYS_GET_KV_INT, one
+     * real file per field worth polling. First real consumer: the
+     * proof-of-concept PAL harness for Task 5's view-tab switch. */
+    char vmpath[PATH_BUF];
+    snprintf(vmpath, sizeof(vmpath), "%s/#.desktop/events_hq_view_mode.txt", g_house_root);
+    FILE *vf = fopen(vmpath, "w");
+    if (vf) { fprintf(vf, "view_mode=%d\n", g_evhq_view_mode); fclose(vf); }
+    char seqpath[PATH_BUF];
+    snprintf(seqpath, sizeof(seqpath), "%s/#.desktop/events_hq_seq.txt", g_house_root);
+    FILE *sf = fopen(seqpath, "w");
+    if (sf) { fprintf(sf, "seq=%ld\n", g_evhq_frame_seq); fclose(sf); }
+}
 static void evhq_redraw_content(void) {
     evhq_layout_pass(g_window);
     evhq_assign_nav_indices(g_window);
@@ -3068,6 +3244,7 @@ static void evhq_redraw_content(void) {
     evhq_draw_entity_glyph();
     evhq_draw_chrome_bar();
     if (g_evhq_picker_open) evhq_draw_picker_overlay();
+    evhq_append_frame_history();
 }
 static void evhq_activate_elem(Elem *hit) {
     if (!hit) return;
@@ -3120,6 +3297,16 @@ static void evhq_activate_elem(Elem *hit) {
             fprintf(af, "play");
             fclose(af);
         }
+        return;
+    }
+    /* Task 5 (2026-08-27) - viewtabs (id="viewtab-0/1/2") are also
+     * tag="tab", same as page tabs - MUST be checked first by id, or
+     * the generic page-tab branch below (matches by LABEL against
+     * g_evhq_pages[]) could coincidentally match if a real page is ever
+     * named "Scripting"/"Scratch"/"Blueprints". */
+    if (strncmp(hit->id, "viewtab-", 8) == 0) {
+        g_evhq_view_mode = atoi(hit->id + 8);
+        evhq_refresh_page_data(g_window);
         return;
     }
     if (strcmp(hit->tag, "tab") == 0) {
@@ -5010,7 +5197,13 @@ static Elem *g_window;
  * reading a cache chai_redraw() no longer maintains. g_frame_rgb/g_frame_w/
  * g_frame_h are gone - this function is now self-contained, matching
  * open-hai's own chai_dump_frame_png() shape exactly. */
+static void chai_redraw(void);
 static void chai_dump_frame_png(void) {
+    /* REAL FIX (2026-08-27) - same class of bug as dump_frame_png()'s
+     * own header comment describes for db-hq/events-hq: `buf` only
+     * holds whatever chai_redraw() drew on the PREVIOUS tick unless
+     * forced fresh here first. */
+    chai_redraw();
     int w = g_window->w, h = g_window->h;
     XImage *img = XGetImage(dpy, buf, 0, 0, (unsigned)w, (unsigned)h, AllPlanes, ZPixmap);
     if (!img) { fprintf(stderr, "chat-hai: chai_dump_frame_png: XGetImage failed\n"); return; }
@@ -5924,9 +6117,32 @@ static void redraw(void) {
  * Swatch-picker mode also writes the real receipt.txt taskbar-
  * settings' own testing convention already relied on (nav/phase/
  * bg_idx/fg_idx), ported verbatim. */
+/* REAL FIX (2026-08-27, direct instruction: "we need 2 fix this once
+ * and for all" - dump_frame_png_op.+x's own header comment ASSUMED "the
+ * caller has already flushed by the time this fires off a relay-
+ * triggered 'p' keypress" - false. A relay code is dispatched the
+ * instant it's read (dispatch_relay_code() -> handle_key()/
+ * evhq_handle_key() -> dump_frame_png(), all synchronous, all within
+ * ONE poll_agent_history() call) - the main loop's own redraw() for
+ * THIS SAME TICK has NOT run yet, so dump_frame_png_op.+x's XGetImage
+ * on the live window captured whatever the PREVIOUS tick's redraw()
+ * left on screen, one full action behind every single time. Root
+ * cause confirmed live: after sending Enter then 112 (dump) with real
+ * sleeps between them, the text-state dump (code 210, which reads the
+ * live Elem tree directly, no window/pixmap involved) already showed
+ * the correct post-Enter state, while the PNG consistently showed the
+ * pre-Enter layout - not a one-off race, the SAME stale frame came
+ * back byte-identical on a second dump 2s later, ruling out "hasn't
+ * caught up yet." Fix: force the SAME real redraw() the main loop
+ * would eventually call anyway, synchronously, right here, before
+ * ever invoking the external dump op - by construction the window
+ * always holds the current frame at capture time now, no sleep/poll
+ * needed by any caller ever again for this family. */
+static void redraw(void);
 static void dump_frame_png(void) {
     char png[PATH_BUF];
-    if (g_is_chat_hai) { chai_dump_frame_png(); return; } /* REAL §5d.12 - self-contained, own /tmp/chat-hai-frame.png contract preserved */
+    if (g_is_chat_hai) { chai_dump_frame_png(); return; } /* REAL §5d.12 - self-contained, own /tmp/chat-hai-frame.png contract preserved, own real-redraw-before-capture fix below */
+    redraw(); /* REAL FIX above - guarantees `win`'s real on-screen pixels reflect the state as of THIS tick's input, not the previous tick's */
     if (g_is_events_hq) {
         snprintf(png, sizeof(png), "/tmp/events-hq-frame.png"); /* real, preserves khtpm_events_hq_render.c's own external contract */
         char cmd[PATH_BUF * 2];

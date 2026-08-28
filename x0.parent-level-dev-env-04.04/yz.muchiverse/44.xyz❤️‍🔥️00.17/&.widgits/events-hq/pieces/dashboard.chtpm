@@ -20,6 +20,18 @@
   <module src="&.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x" />
   <panel id="toolbar" class="toolbar">
     <text id="event-name" class="event-name" label="(entity)"/>
+    <!-- Task 5 (2026-08-27) - Scripting|Scratch|Blueprints view-mode
+         toolbar, real per PAL-VISUAL-SCRIPTING-PLAN.md's stated scope:
+         Scripting is today's real command list (unchanged behavior);
+         Scratch/Blueprints are real, clickable, nav-reachable STUB tabs
+         only (no block/node rendering yet) - see evhq_activate_elem()'s
+         "viewtab-" branch and evhq_layout_pass()'s g_evhq_view_mode
+         content swap. -->
+    <tabbar id="viewtabs" class="view-tabs">
+      <tab id="viewtab-0" label="Scripting"/>
+      <tab id="viewtab-1" label="Scratch"/>
+      <tab id="viewtab-2" label="Blueprints"/>
+    </tabbar>
   </panel>
   <tabbar id="pagetabs" class="page-tabs">
     <tab label="(no pages yet)"/>
@@ -35,5 +47,14 @@
   <panel id="footer" class="footer">
     <button id="add-command" class="btn-primary" label="+ Add Command"/>
     <button id="play-test" class="btn-play" label="▶ Play"/>
+  </panel>
+  <!-- Task 5 (2026-08-27) - real, separate Elem subtree shown ONLY when
+       g_evhq_view_mode != 0 (Scratch/Blueprints); zero-sized and never
+       drawn/hit-testable in Scripting mode. Kept as its own subtree
+       (not text pasted over "right") so a real block/node editor can
+       replace this panel's children later without touching Scripting's
+       own left/right/footer at all. -->
+  <panel id="viewmode-stub" class="stub-panel">
+    <text id="viewmode-stub-text" class="empty-msg" label=""/>
   </panel>
 </window>

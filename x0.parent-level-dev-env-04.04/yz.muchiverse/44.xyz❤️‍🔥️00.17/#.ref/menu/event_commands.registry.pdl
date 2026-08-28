@@ -128,3 +128,59 @@ END
 COMMAND end
   LABEL End
 END
+
+# Loop / Break Loop / Repeat Above - tier-3 structural markers, handled as
+# special cases in compile_page() (same deliberate exception as if/else/end
+# - real backward/forward label generation isn't expressible as a PAL/TEMPLATE
+# string). No PAL/TEMPLATE lines on purpose. RPG Maker Loop semantics:
+#   Loop ... (body) ... Repeat Above           = repeat body forever
+#   Conditional Branch (true) -> Break Loop   = the only authored exit
+# "wait" is the pacing primitive that keeps a loop from being a tight spin.
+COMMAND loop
+  LABEL Loop
+END
+
+COMMAND break_loop
+  LABEL Break Loop
+END
+
+COMMAND repeat_above
+  LABEL Repeat Above
+END
+
+# Wait - real pacing (ms). Compiles to the VM's EXISTING `sleep <micros>`
+# opcode (W-1 decision, 2026-08-27: no new SYS_SLEEP syscall - reusing the
+# already-working opcode; {ms}000 is the ms->us unit conversion on a numeric
+# literal, done as string concatenation because the substitution engine has
+# no arithmetic). 0/negative ms expands to `sleep 0`/`sleep -N`, which the
+# executor's `if (i.imm > 0)` guard safely no-ops.
+COMMAND wait
+  LABEL Wait
+  FIELD1 Duration (ms):
+  FIELD2 -
+  PARAMS ms
+  PAL sleep {ms}000
+END
+
+# Send Input / Inject Key - wraps the real SYS_OPEN(append)+SYS_WRITE_LINE+
+# SYS_CLOSE chain into one command so a harness author writes one line per
+# keypress instead of three (HARNESS-AUTHORING-GUIDE.md §3b item 4). x14 is
+# used as scratch to stash the fd across the write (matching both proof
+# harnesses' own idiom) and is CLOBBERED by this command - document any use
+# of x14 around it. {relay} must be an absolute path to a real *_history.txt.
+COMMAND send_input
+  LABEL Send Input
+  FIELD1 Relay file path (absolute):
+  FIELD2 Key/code to inject:
+  PARAMS relay,key
+  PAL li x15, 1
+  PAL li x13, 2
+  PAL ecall "{relay}"
+  PAL addi x14, x12, 0
+  PAL li x15, 3
+  PAL addi x12, x14, 0
+  PAL ecall "{key}"
+  PAL addi x12, x14, 0
+  PAL li x15, 2
+  PAL ecall
+END

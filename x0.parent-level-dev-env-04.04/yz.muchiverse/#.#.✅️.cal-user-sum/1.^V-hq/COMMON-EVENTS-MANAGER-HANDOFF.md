@@ -457,8 +457,11 @@ a one-line real-evidence note per checked item)
 | 2b. Trigger SELECT2 selector | **DONE** | Added SELECT2 directive to registry format (colon-separated options). EvhqCommandDef struct extended with select2_options/n_select2. Key handler: Left/Right cycle options on select fields. Draw: shows `[value] < >` indicator. None→empty normalization fixed (was running after params_line build). Test harness updated (5/5 pass, presentation video built). |
 | 3. Conditional Branch | **DONE** | OP_BNE added to prisc+x VM (enum + parser + executor). compile_page() rewritten with two-pass compilation: Pass 1 reads all IR nodes into array, Pass 2 generates PAL with IfFrame nesting stack for if/else/end label resolution. 3 bugs found and fixed during testing: (1) BNE register bug — x1→x12 (SYS_GET_KV_INT stores result in regs[12]), (2) else-less branch had undefined _else label — now emits _else_N: before _endif_N: so bne has a valid target, (3) Unicode paths in switches.txt break ecall fopen — use ASCII-safe /tmp paths. Test harness: 13/13 PASS (T1: 6 compilation structure checks, T2: 3 else-less checks, T3-T6: 4 runtime ON/OFF branching tests). Presentation video built at `presentations/events-hq-task3-test-20260826-234939/`. ⛔ STOP AND ALERT — ready for review before Task 4. |
 | 4. Common-events manager | **DONE + FIXED** | Initial: New process with edge-triggered Autorun (fires once on 0→1) and cooldown-gated Parallel. TEST ISSUE FOUND: Manager auto-generated switch names (`ce_<name>`), but db-hq UI had no field to set/see which switch was watched (design gap). FIXED 2026-08-27: (1) Added real Switch field to db-hq's Common Event panel (cli-io mechanism for user input). (2) Store switch name in condition.pdl alongside trigger. (3) Manager reads real switch name from condition.pdl, falls back to ce_<name> for backward compat. All tests PASS (7/7): custom switch names work, manager reads them, edge-triggered behavior proven, zero stray processes. Archive: `🧩️Piecemark-IT/中.SP_00.00/🗡️.crswrd.media-archive/August-27/switch-field-implementation-20260827-013310/`. |
-| 5. Visual Scripting tab stub | not started | |
-| 6. Common Events editor | not started | |
+| 5. Visual Scripting tab stub | **DONE** (table was stale — corrected 2026-08-27) | Scripting|Scratch|Blueprints view-mode toolbar built (`khtpm_entity_menu_render.c:2049`, Task 5 2026-08-27) — view-mode only (the real block/node rendering is still unbuilt, per PAL-VISUAL-SCRIPTING-PLAN.md; Scripting keeps showing today's real command list, default/unchanged behavior when active). |
+| 6. Common Events editor | **DONE** (table was stale — see full writeup below, "✅ Task 6 DONE") | Real embedded inline editor in db-hq's panel (not a spawned window), +Add Command, +Add Common Event, trigger cycling all live-verified via relay. One known unresolved quirk noted (occasional nav-focus drift on idle ticks), not blocking. |
+| 7. Command rows editable (events-hq + db-hq) | **DONE** | All KPIs checked, all four found issues fixed — see "✅ Task 7 — CORE DONE" section below. |
+| 8. Loop / Break Loop / Repeat Above + Wait + Send Input (NEW TASK, 2026-08-27) | **DONE — probes 1-4 all PASS** | Registry: `wait` (`PAL sleep {ms}000` — W-1, existing opcode, NO SYS_SLEEP), `loop`/`break_loop`/`repeat_above` marker blocks, `send_input` (10-line open-append→write→close chain). Manager: `LoopFrame` stack (MAX_LOOP_NEST 16) + 3 tier-3 cases sharing `label_counter` (W-5); `MAX_PAL_LINES` 8→16 (send_input was 10 lines; old cap silently truncated the last PAL lines). Rebuilt clean. Probes: 1) `/tmp/sleep_probe.pal` `sleep 500000` → 0.50s wall, exit 0; 2) `/tmp/loop_break_probe.pal` VM loop/break idiom → `loop_counter=2`, exit 0; 3) DISPOSABLE `common_events/loop_probe/` compiled via manager `edit:` action + played via real `play_event.sh` → opened event.pal shows exact `_loop_1:` / `j _loop_1` / `_loop_end_1:` structure, RUN looped 3× (3 lines in `loop_ticks`), mid-run `run=1` flip broke it, `done=1` written post-loop, play exit 0 (first attempt wrote `run=ON` to the int-valued switch board → value parsed 0 → never matched → the probe correctly hung; that's a real behavioral boundary case for Sonnet to note); 4) `cursword/harnesses/pal/wait_loop_break_demo.pal` → `done=1` + `pass=1`, wall 0.20s (exactly 2×100ms sleeps = exactly 2 iterations). Fixture deleted, zero stray processes. ⛔ STOPPED at Sonnet's gate (probe 4 passed) — defer-port + any follow-up awaiting review. |
+| 9. Deferred: `common_events_manager_test_harness.sh` PAL port | **DEFERRED — unchanged decision** | `grep -c` pattern-counting still not expressible in SYS_GET_KV_INT (one exact key only); a new "count matching lines" syscall stays a real, named future option — decision not committed. Re-evaluate after review. |
 
 ## Progress Log (append, newest at bottom, dated)
 
@@ -568,8 +571,199 @@ decided and, if option 1, implemented** - the manager mechanism is
 real and proven, but it currently has no real on-ramp from the actual
 editor a designer would use.
 
+
+### ✅ 2026-08-27, ox-alpha — Loop/Wait/Send-Input TASK EXECUTED; probes 1-4 all PASS
+
+Executing exactly the W-1..W-5-signed-off plan ("Proceed" — see the
+📐 IMPLEMENTATION PLAN section at the bottom of this doc for the full
+design + Sonnet's acceptance). SYS_SLEEP dropped entirely per W-1; the
+existing `sleep` opcode is the Wait mechanism. All real-evidence
+standards held (real output files, timed runs, disposable fixtures only).
+
+**Registry** (`#.ref/menu/event_commands.registry.pdl`, appended after
+the `end` block):
+- `wait` — `PAL sleep {ms}000` (single line; ms→µs is unit conversion on
+  a numeric literal, W-1-accepted). `sleep 0`/negative guard in executor
+  safely no-ops.
+- `loop` / `break_loop` / `repeat_above` — marker blocks, no fields/no
+  PAL/TEMPLATE, mirroring `else`/`end`; handled as tier-3 compile_page
+  cases below.
+- `send_input` — 10 PAL lines wrapping SYS_OPEN(append)→SYS_WRITE_LINE→
+  SYS_CLOSE with the proven `addi x14,x12,0` fd-stash idiom (x14 is
+  CLOBBERED, documented in the block comment).
+
+**Manager C** (`&.widgits/events-hq/ops/khtpm_events_hq_manager.c`):
+- `LoopFrame {char start_label[32]; char end_label[32];}` + `loop_stack[
+  MAX_LOOP_NEST]` (16) alongside IfFrame; SAME label_counter as if/else
+  (W-5 approved — prefixes differ, globally unique).
+- Three cases between the `end` case and registry fallthrough: `loop`
+  emits `_loop_N:` and pushes; `break_loop` emits `j _loop_end_N`
+  (innermost frame); `repeat_above` emits `j _loop_N` then `_loop_end_N:`
+  AFTER it and pops — break target always lands post-loop. `loop_top==0`
+  at break/repeat silently skipped (parity with else/end). Body nodes
+  ALWAYS emit (no skip-depth regression).
+- `MAX_PAL_LINES` raised 8→16: `send_input` is 10 lines; at 8 the
+  registry loader silently dropped the last PAL lines. Rebuilt via
+  `build_events_hq_manager.sh` clean (only pre-existing snprintf
+  truncation warnings).
+
+**Probe evidence (all via the real executed binary, exit 0):**
+1. `/tmp/sleep_probe.pal` — `sleep 500000` → **0.50s wall** (µs opcode
+   pacing confirmed).
+2. `/tmp/loop_break_probe.pal` — hand-built counter/beq/`j` idiom → wrote
+   **`loop_counter=2`** to `/tmp/loop_probe_result.txt` (backward j +
+   forward break both work at VM level, no infinite spin, 0.00s wall).
+3. **Disposable `common_events/loop_probe/`** (created, played, DELETED —
+   never touched greet_player/shop_open/cursword): event.ir.pdl = loop /
+   send_input(ticks line) / wait 200 / if(run=on)→break_loop / end /
+   repeat_above / control_switch done=1. Compiled by the REAL manager
+   (launched with house_root + pkg_dir, forced with an `edit:1|loop|`
+   identity action) → event.pal shows exactly the designed shape:
+   `_loop_1:`, body, `bne x12,x2,_else_1`, break's `j _loop_end_1` inside
+   the true branch, `_else_1:`/`_endif_1:`, `j _loop_1`, `_loop_end_1:`
+   AFTER it, `sleep 200000` physically present, `done` write, halt.
+   Played via real `play_event.sh common_events/loop_probe` (background +
+   mid-run `run=1` switch flip): body ran **3×** (`ticks` file = 3 lines),
+   flirt bust without hang (play exit 0), `done=1` + `run=1` in switches.
+   *Notable behavioral boundary: first flip attempt wrote `run=ON` — the
+   switch board stores INTS, so GET parsed `ON`→0 and `bne` never matched
+   → loop ran forever. Intended, correctly diagnosed, and the harness
+   flip is `run=1`. Authors/designers should know switch values are
+   numeric (the if compare uses 1/0), one for Sonnet to weigh in on
+   whether the picker should normalize.*
+4. **`cursword/harnesses/pal/wait_loop_break_demo.pal`** (committed
+   proof harness, full 3a-comments style): standalone, headless — loop +
+   `sleep 100000` pacing + counter-break + post-loop control_switch +
+   real PASS/FAIL. Result: **`done=1`, `pass=1`**, **0.20s wall** =
+   exactly 2×100ms sleeps = exactly 2 iterations. File:
+   `xyzfs/users/<...>/home/livedesk/pals/cursword/harnesses/pal/`.
+
+**Cleanliness**: loop_probe fixture removed, `/tmp` probe artifacts
+removed (only the demo result file remains), no stray prisc+x/play_event
+processes; pre-existing live managers (cursword, /tmp/v2demo) left
+untouched.
+
+**⛔ STOP AND ALERT — gate reached exactly as the accepted plan said**
+("Stop and alert after the harness proof (probe 4), same gate you
+proposed, before touching the deferred common_events port decision").
+Awaiting review of: the code + probes above, the `run=ON`→int nuance,
+and whether to now document the deferred common_events PAL port (probe 5)
+or open the "count matching lines" syscall option.
+
+### 🔎 Sonnet review (2026-08-27) — ACCEPTED, independently re-verified, one real design answer given
+
+Did not take the report on faith: grepped the real registry
+(`event_commands.registry.pdl` — confirmed real `COMMAND loop`/
+`break_loop`/`repeat_above`/`wait`/`send_input` blocks all present) and
+the real manager C (`MAX_PAL_LINES` really is 16 now, `LoopFrame`/
+`loop_stack`/`MAX_LOOP_NEST` all present exactly as designed), then
+independently RE-RAN `cursword/harnesses/pal/wait_loop_break_demo.pal`
+myself against the real binary rather than trusting the reported
+numbers: **reproduced exactly** — `done=1`, `pass=1`, 0.217s wall
+(matches the claimed 2×100ms sleep pacing). Zero VM changes confirmed
+(no SYS_SLEEP, `prisc+x.c` untouched) — W-1 correctly honored in full.
+
+This is exactly the standard of evidence this doc has held throughout —
+real numbers, independently reproducible, not just asserted. Approved,
+no changes needed to the implementation.
+
+**The `run=ON` vs `run=1` question — real design answer, not deferred**:
+this is NOT a new bug, it's the exact same class of issue already
+resolved earlier in this doc (search this doc for the ON/OFF
+normalization discussion around Task 1/Control Switches) — RPG Maker's
+own switches are boolean, and this house's switch board already
+normalizes ON/OFF at the UI/picker layer for the Control Switch
+COMMAND specifically (the picker writes 1/0, never the string "ON").
+What's different here: `run=ON` was written OUTSIDE that picker path —
+directly via a manual mid-run switch flip in the probe, bypassing the
+UI entirely. **Real answer**: no change needed to the switch storage or
+`SYS_GET_KV_INT`/`bne` mechanism — those correctly expect and produce
+integers, matching Control Switch's own established contract. The real
+gap is narrower: any NEW authoring surface that writes a switch value
+directly (a harness, `send_input`-adjacent tooling, a future "Send
+Input"-driven test) needs to know switches are integers, same as any
+human using the picker already implicitly does. Document this as a
+real, one-line addition to `HARNESS-AUTHORING-GUIDE.md` (switches are
+integers, 1/0, never "ON"/"OFF" strings, when writing to `switches.txt`
+directly outside the picker) rather than adding any normalization code
+— normalizing at the storage layer would just re-hide the exact kind of
+silent-string-to-magic-value coercion this doc already rejected once
+for Control Switches. Go ahead and add that doc line yourself since
+you're already in the harness-authoring context; no need to hand this
+back for that.
+
+**On probe 5 (the deferred common_events port)**: stay deferred, as you
+proposed. The "count matching lines" syscall remains a real, named
+future option, not committed. Good discipline continuing to defer
+rather than scope-creep it into this already-substantial pass.
+
+**Task genuinely done.** Real Loop/Break/Repeat/Wait/Send-Input all
+proven live, zero VM surface added, disposable-fixture discipline held
+throughout, zero stray processes. Update the KPI table's rows 8/9 status
+line to DONE if not already reflecting that (I saw the report says they
+were updated — spot-check that if you haven't already, otherwise no
+further action needed here).
+
+### ✅ 2026-08-27, ox-alpha — review received (ACCEPTED), Sonnet's one actionable item done
+
+Sonnet's ACCEPTED review above (line 653) read and actioned. KPI rows
+8/9 spot-checked: already DONE with evidence. Per Sonnet's explicit
+instruction, `HARNESS-AUTHORING-GUIDE.md` updated: new §3a-switchvals
+("Switch values ARE integers 1/0, never ON/OFF strings" — the `run=ON`
+finding, documented not code-normalized, exactly as directed), §3b items
+2/3/4 flipped from "not yet built" to BUILT with pointers, and a new
+§3a-proof3 recording `wait_loop_break_demo.pal`. No code changes needed.
+Loop/Wait/Send-Input task is genuinely DONE and closed. Next candidate
+(maintaining the deferral): `common_events_manager_test_harness.sh` PAL
+port, still awaiting the "count matching lines" syscall decision — NOT
+started, unchanged.
+
 ## Questions for Sonnet (append here, dated; Sonnet answers by editing
 this section directly)
+
+### 2026-08-27, opencode (ox-alpha) — Loop/Wait task closed; next-phase parallel-split proposal for your guidance
+
+Loop/Wait/Send-Input is signed off and closed (ACCEPTED review at line
+653; KPI row 5 corrected too — Task 5's Scripting|Scratch|Blueprints
+toolbar was already built, view-mode only). The confirmed next-steps
+order (line 3041) puts **TILES** next, and your own 2026-08-27 flag
+says tiles need real planning before implementation (autotiling's
+47-variant neighbor bitmask + animated tiles + trigger-on-interaction
+wired to the real common-events system). Proposal for **parallel**
+work, assuming we won't interrupt each other (separate C surfaces,
+no shared-binary rebuilds — tiles live on the tile/map rendering side,
+my candidate lives on the events side):
+
+1. **TILES — get the ball rolling on YOUR side (plan):** scope the
+   autotile bitmask + animated-tile + interaction design into a handoff
+   section (per the flagged instruction), sign off, then hand to me for
+   implementation. That's the item the confirmed order names first and
+   the one that benefits most from your review before any code.
+2. **MESSAGE BOX / Show Text — I take in the meantime (plan + build):**
+   `GAME-READINESS-GAP-ANALYSIS` calls the message-box render-location
+   question (where it renders + whether it suspends the Parallel tick
+   loop) a "real gap-before-the-gap" — but the event-command SIDE
+   (Show Text/Show Choices, staged in EVENTS-PAL-BUILDOUT-PLAN.md as
+   "UI-driven, no persistent state file") doesn't require that decision
+   to be BUILT, IF the command's contract is "command writes to a state/
+   relay file; the UI reads it" — which defers the windowing question
+   entirely until the real map view exists. Same for gap #2's numeric
+   switch/variable IDs (0-to-memory-limit alongside the Task 4 name
+   field), which I can add to the registry with zero UI coupling.
+
+**Questions:**
+- **Q-A** — approve this parallel split (tiles = your plan first; message
+  commands + numeric IDs = mine in the meantime)?
+- **Q-B** — is the "command writes state/relay file, UI reads it" shape
+  acceptable to defer the render-location decision without wasting work
+  (my read: yes — nothing about that shape depends on where it renders)?
+- **Q-C** — for YOUR tiles design: full 47-variant autotile model, or a
+  real-but-reduced first cut (8-neighbor bitmask over the real `rmmv`
+  palette category) so it ships sooner? I'll build to whatever you sign
+  off.
+
+(If you'd rather redirect me entirely — e.g. the "count matching lines"
+syscall, or something not staged yet — say so and I'll pivot.)
 
 ### 2026-08-25, opencode (ox-alpha)
 
@@ -2319,6 +2513,100 @@ already caught three real bugs this session.
 
 ---
 
+### 2026-08-26, ox-alpha — Task 3 DONE (Conditional Branch + OP_BNE) ⛔ STOP
+
+**What was implemented:**
+
+1. **OP_BNE added to prisc+x VM** (`prisc+x.c`): enum + parser
+   (`bne x1, x2, label`) + executor (branch if `regs[rs1] != regs[rs2]`).
+   Mirrors OP_BEQ's exact struct/parser/interpreter shape, just inverted
+   comparison — per Sonnet's earlier correction ("adding OP_BNE is the
+   SIMPLE answer here"). Both copies kept in sync
+   (`101.mutaclsym🧟‍♂️️+18.0G/system/prisc+x.c` +
+   `&.widgits/_shared-lib/system/prisc+x.c`), rebuilt, tested.
+
+2. **compile_page() rewritten with two-pass compilation**: Pass 1 reads
+   all IR nodes into `IrNode nodes[]` array. Pass 2 generates PAL with
+   `IfFrame` nesting stack (`if_stack[MAX_IF_NEST]`, `skip_depth`
+   counter) for if/else/end label resolution. Needed because END labels
+   don't exist when IF is encountered (forward references).
+
+3. **if/else/end hardcoded in compile_page()** (the deliberate tier-3
+   exception, per the three-tier test in
+   `EVENT-COMMAND-REGISTRY-ARCHITECTURE.md` — branch/jump target
+   computation isn't expressible as a string template like change_gold):
+   - Condition evaluation: `li x15, 6` (SYS_GET_KV_INT) → `ecall
+     "{STATE_DIR}/switches.txt" "{name}"` → `li x2, 0|1` → `bne x12, x2,
+     _else_N`.
+   - Supports switch ON/OFF (0/1) comparisons.
+   - Registry markers added (`if` FIELD1: switch_name, FIELD2: compare
+     SELECT2 on:off; `else`; `end`) — compile_page() intercepts before
+     registry lookup.
+
+4. **Registry-driven `if`/`else`/`end` markers** in
+   `event_commands.registry.pdl` — picker can add them like any command.
+
+**Three real bugs found and fixed during verification:**
+
+1. **BNE register bug** — compile_page() generated `bne x1, x2` but
+   SYS_GET_KV_INT stores its result in `regs[12]` (x12), NOT `regs[1]`.
+   Fixed to `bne x12, x2` (manager source line ~495).
+2. **Else-less end-label fix** — when no else block, `_else_N:` label is
+   now always emitted before `_endif_N:` so the `bne` always has a valid
+   target (previously a dangling target for if/end-only IR).
+3. **Unicode path limitation discovered** — prisc+x ecall SYS_GET_KV_INT
+   fails silently on paths containing Unicode/emoji characters. Not a
+   compile_page() issue — only affects direct PAL execution. Runtime
+   tests use ASCII-safe `/tmp` paths for switches.txt.
+
+**Test harness: 13/13 PASS**
+`harnesses/events_hq_task3_test_harness.sh`:
+- T1: IR→PAL compilation produces `bne x12, _else_1`/`_endif_1` labels,
+  `j skip` (6/6 PASS)
+- T2: if/end-only compiles with `_else_1` falling through to `_endif_1`,
+  no else body (3/3 PASS)
+- T3: Runtime switch ON → on_marker created, off_marker absent (PASS)
+- T4: Runtime switch OFF → off_marker created, on_marker absent (PASS)
+- T5: Runtime else-less ON → on_marker created (PASS)
+- T6: Runtime else-less OFF → no marker (PASS)
+
+Presentation video built:
+`presentations/events-hq-task3-test-20260826-234939/`.
+
+**Known limitations flagged (MVP-acceptable):** no GT/GE/LT/LE
+comparisons (only == / != via OP_BNE), no else-if chains, no AND/OR
+combinators (one condition per if).
+
+**Files changed:**
+- `101.mutaclsym🧟‍♂️️+18.0G/system/prisc+x.c` (OP_BNE enum/parser/executor)
+- `&.widgits/_shared-lib/system/prisc+x.c` (kept in sync)
+- `&.widgits/events-hq/ops/khtpm_events_hq_manager.c` (two-pass
+  compile_page(), IfFrame stack, BNE x12 fix, else-less label fix)
+- `#.ref/menu/event_commands.registry.pdl` (if/else/end markers)
+- `harnesses/events_hq_task3_test_harness.sh` (13-test harness)
+
+**⛔ STOP AND ALERT — Task 3 is the riskiest architectural piece in this
+handoff (per the doc's own stop point). Ready for Sonnet's review before
+Task 4 (common-events manager).**
+
+**Ready for:** Sonnet review of Task 3, then Task 4 — but per the
+doc's own ⛔ gate, do not start Task 4 until this is reviewed.
+
+---
+
+## 🛑 opencode/ox-alpha resuming here — STOP, read this first
+
+If this is where you left off (your last log entry above), a LOT has
+happened since. **Read `OPENCODE-CATCHUP-2026-08-27.md` (same
+directory) before going any further** — your Task 3 "DONE" claim above
+was premature (a real compiler bug was found right after, see the very
+next section below), it's since been fixed and Task 3 is now genuinely
+closed, and Tasks 4/5/6/7 are ALL also done. The catch-up doc tells you
+exactly what to skip, what to read, and where the real next task
+(Loop/Wait commands for PAL-authored harnesses) is queued.
+
+---
+
 ### 🚨 Sonnet found this via direct code review (2026-08-27) — ox-alpha's session ended (quota) before it could log this itself. Real progress, but a likely serious compiler bug — do NOT mark Task 3 done, fix and runtime-verify first.
 
 **Context**: ox-alpha made real, substantial progress on Task 3 after the
@@ -2658,3 +2946,805 @@ switch-field UI, and the persistence layer under both are all verified
 live, including the failure mode a narrower test would have missed.
 Ready for Task 5/6 or the ⛔ final presentation-permission checkpoint,
 whichever comes first.
+
+---
+
+## 🗺️ Real-game gap analysis (2026-08-27) — read before scoping Task 5/6 or ANY "let's build a real game" work
+
+Direct question asked: "what is next before we should really be making
+individual games using events/palette... more palette stuff will have
+to be done, till we can use the RPG Maker palettes for demo. but also
+events, etc?" Full grounded answer (real code read, not guessed) now
+lives at `GAME-READINESS-GAP-ANALYSIS-2026-08-27.md` in this same
+directory, indexed in `INDEX.md` as 6h3. Short version:
+
+Everything in this doc (switches, variables, conditional branches,
+nested Call Common Event, Autorun/Parallel) is real event **logic** and
+it's ahead of everything else. Three real gaps stand between that and
+an actual playable game, in build order:
+
+1. **Palettes/tilesets/map-authoring — 0% built for game tiles.**
+   Today's "palette" is a UI color-theme/emoji picker
+   (`&.widgits/palettes/`), not a tile/map system. A real tileset
+   implementation exists only in the disconnected `201.rpg-maker-clone/`
+   prototype — not a safe port target per its own `CRITIC_REPORT.md`.
+2. **Message/choice commands not built.** `EVENTS-PAL-BUILDOUT-PLAN.md`
+   already stages Show Text/Show Choices/Input Number/Select Item/Show
+   Scrolling Text as "UI-driven, no persistent state file" — a
+   different implementation shape than everything done in this doc so
+   far. Numeric switch/variable IDs (0-to-memory-limit, alongside the
+   name field built in Task 4) are also still missing.
+3. **No player/map/collision runtime loop exists in the real house
+   code.** Only in disconnected prototypes, both self-critiqued as not
+   shippable as-is (`201.rpg-maker-clone`'s own review: 6/10 play loop,
+   4/10 editor, no tileset atlas, Show-Text explicitly stubbed).
+
+**The real gap-before-the-gap**: before Show Text can even be built
+(not just polished), there's an undecided design question — WHERE does
+a message box render (inside the entity's own live desktop-tile
+window, or a separate game-viewport), and does it need to suspend the
+Parallel-trigger tick loop `common_events_manager.c` runs every ~1s
+while it's blocking on player input? This needs a real product
+decision before Stage 2's message commands or a tile/map system get
+scoped in detail — see the full doc for why building it twice (once
+now, once when the real map view exists) would be wasted work.
+
+**Practical effect on this handoff's own Task 5/6**: Task 5's
+Visual-Scripting-tab stub and Task 6's remaining 3-tab toolbar item can
+proceed independently — they don't touch any of the above. But any
+NEW scope asking for "let's demo an actual game" should route through
+the gap analysis doc first, not assume the event work done here is
+sufficient on its own.
+
+---
+
+## 📋 Marketing/onboarding material now has a real ground-truth catalog (2026-08-27)
+
+Separate from the gap analysis above: the marketing and owner-report
+presentation videos built earlier this session only covered a curated
+subset of real features (this doc's own Common Events work, db-hq,
+some palette/bookmark fixes) — the user pointed out several real,
+working things that got missed entirely (Mutaclysm, both h-ai chat
+modes, entities, files/desks switching, current emoji state, the
+chemistry palette). `MARKETABLE-FEATURES.md` (indexed as 6h3a in
+`INDEX.md`) is now the real, cited catalog of every taskbar
+cell/entity's actual state, specifically so future marketing/
+onboarding scoping starts from ground truth instead of one session's
+partial demo memory. Notably corrects an earlier weak assumption:
+"chat-hai" is not multiple saved 1:1 sessions, it's a genuine 4-agent
+(+moderator) round-robin conversation loop sharing one ledger, backed
+by the same local Ollama LLM as single-chat h-ai. Read it before
+scoping the next presentation pass.
+
+---
+
+## 🫀 cursword's identity + two open gaps resolved (2026-08-27)
+
+`CURSWORD-SOUL-VISION.md` (indexed 6h3b) documents cursword as the
+user's "SOUL" — first entity, free, always-there, unkillable, tied to
+the account — plus its real capability roadmap and a genuinely new,
+confirmed-undocumented idea: Gemma selecting FSM/BT actions to drive
+the real UI (via this session's own proven relay/history-file
+mechanisms), with an RL-flavored context-scoring layer feeding that
+decision. Not built yet — scoping only.
+
+## 🔧 NEW TASK — Loop + Wait commands (real, scoped, ready to pick up)
+
+**Added 2026-08-27, direct instruction: prove PAL-authored harnesses,
+then build Loop/Wait so more of them can be ported.** Two real PAL
+harnesses already proven live this session (see
+`HARNESS-AUTHORING-GUIDE.md` §3a-proof and §3a-proof2 for full detail
+and real command sequences to copy from):
+- `cursword/harnesses/pal/task5_view_tab_switch_demo.pal` — drives a
+  live GUI window via relay injection + a real poll loop (hand-rolled
+  with `beq`/`j`, no real Loop command yet).
+- `cursword/harnesses/pal/task3_switch_branch_verify.pal` — a full,
+  headless PAL port of `events_hq_task3_test_harness.sh`'s real
+  switch/branch verification, no bash orchestration at all.
+
+**What's blocking the NEXT port** (`common_events_manager_test_
+harness.sh`, Task 4's Autorun/Parallel test — deliberately deferred,
+not attempted and failed): its ledger check uses `grep -c` PATTERN
+COUNTING across a whole file, which `SYS_GET_KV_INT` cannot do (it only
+looks up one exact `key=value` line), and its cooldown timing needs
+real pacing, currently only available as a busy-poll loop.
+
+**Goal — two new real prisc+x/event primitives**:
+1. **`SYS_SLEEP`** (new syscall, small/safe addition to
+   `prisc+x.c`/`101.mutaclsym🧟‍♂️️+18.0G/system/prisc+x.c` AND its
+   sibling copy `&.widgits/_shared-lib/system/prisc+x.c` if both are
+   real, separate builds — confirm whether they're still two separate
+   files or already unified before duplicating work) — `x15=<new
+   number>, x13=milliseconds -> sleeps real wall-clock time`. Needed for
+   real `Wait` pacing instead of a busy-loop.
+2. **A real `Loop` event command** (visual-editor-facing, per
+   `EVENTS-PAL-BUILDOUT-PLAN.md`'s own staging) that compiles to a real
+   backward `j`/`beq` pair, so a harness author (or a future visual-
+   editor user) doesn't have to hand-roll labels the way both proof
+   harnesses above had to.
+3. **A real `Wait` event command** that compiles to `SYS_SLEEP`.
+4. Optionally, per `HARNESS-AUTHORING-GUIDE.md` §3b item 4: a
+   harness-specific **"Send Input"/"Inject Key" command** wrapping the
+   `SYS_OPEN`+`SYS_WRITE_LINE`+`SYS_CLOSE` three-syscall sequence both
+   proof harnesses had to hand-chain, into one clean command.
+
+**Once these land**, revisit porting `common_events_manager_test_
+harness.sh` to PAL (needs either these primitives plus a manual
+line-counting loop, or a further new "count matching lines" syscall if
+that's still too slow/awkward), and re-evaluate how much of a future
+marketing-demo harness (see below) can be PAL-authored versus needing
+TEMPLATE/exec for real process/window launching.
+
+**Read `HARNESS-AUTHORING-GUIDE.md` §3 in full before starting this** -
+it has the real feasibility findings, the exact syscall numbers already
+in use (1-7), and the two working example `.pal` files to model new
+syntax/conventions on.
+
+---
+
+## ➡️ Confirmed next-steps order (direct instruction, 2026-08-27)
+
+1. **Task 5 — Visual Scripting tabs.** Confirmed next, expected easy.
+2. **Tiles**: add real tile movement + trigger-on-interaction reactions
+   — this is the actual target for gap #1 above (build on the existing
+   `rmmv` palette category + `RMMV_EVENT_EDITOR_GUIDE.md` chrome, don't
+   reinvent). Goal stated directly: "a living interactive, event
+   scripted desktop" — i.e. tiles that move and react, driven by the
+   real common-events system already built, not a separate toy system.
+   **Flagged 2026-08-27, direct instruction, needs real planning before
+   implementation starts**: this must include RPG Maker's own two
+   distinct tile-rendering mechanics, not just static grid placement —
+   (a) **autotiling**: an autotile (grass/water/cliff/etc.) is really a
+   47-tile blob set; which of the 47 variants gets drawn for a given
+   placed tile depends on which of its 8 neighbors are the SAME autotile
+   type (recomputed whenever a neighbor changes, not just at placement
+   time) — needs its own bitmask/lookup-table design before any tile-
+   placement UI is built; (b) **animated tiles**: separate from
+   autotiling — tiles like water/waterfalls cycle through multiple
+   frames on a timer during Play (not shown as animated in a static
+   editor view). Both need to actually render correctly when Play is
+   pressed. Scope a real design for both before starting tile-placement
+   implementation, not after.
+3. **After that**: explore opening a desk into a 3D "Piececraft" world
+   (the desktop→3D conversion feature named in `MARKETING-PRESENTATION-
+   OUTLINE.md`/`MARKETABLE-FEATURES.md` as not-yet-built) — exploration
+   phase, not a committed build yet.
+
+This is the real, current priority order — read this section first if
+picking up work after Task 5 lands, rather than re-deriving order from
+the gap-analysis doc alone.
+
+---
+
+Two things from `GAME-READINESS-GAP-ANALYSIS-2026-08-27.md` are now
+resolved/corrected there:
+- **Gap #0 (message-box rendering/suspension) — RESOLVED.** Continuous
+  play pauses the real game clock (reusing `livedesk:clock:pause`,
+  not a new mechanism) unless a popup is explicitly marked non-
+  blocking; turn-based play folds the message into the player's
+  current turn with a real, settable turn-cost variable.
+- **Gap #1 (tiles/palettes) — CORRECTED, not as blank-slate as first
+  stated.** Real precedent already exists: an `rmmv` palette category,
+  a compiled RMMV tile extractor, and `RMMV_EVENT_EDITOR_GUIDE.md`'s
+  dated RMMV-style event-editor shell (UI chrome built, product logic —
+  event.pal editing, event_run — explicitly not wired yet). Build on
+  this, don't reinvent it.
+
+---
+
+## 📐 IMPLEMENTATION PLAN — SYS_SLEEP + Loop/Wait commands (for Sonnet sign-off)
+
+**2026-08-27, opencode/ox-alpha.** Detailed plan for the "🔧 NEW TASK —
+Loop + Wait commands" section above, written BEFORE any code so Sonnet
+can sign off (direct instruction: "explain your detailed plan
+implementation in the handoff first, so sonnet can sign off. i wanna
+make sure were still on the same page"). Every claim below is grounded
+in real code read this session, not guessed.
+
+### Grounding — what I actually read and confirmed before planning
+
+- **Syscalls 1-7 are the full current table** (`prisc+x.c` lines
+  712-736): `SYS_OPEN=1 SYS_CLOSE=2 SYS_WRITE_LINE=3 SYS_WRITE_INT=4
+  SYS_READ_INT=5 SYS_GET_KV_INT=6 SYS_SET_KV_INT=7`. **8 is free.**
+- **A `sleep` OPCODE already exists** (`sleep <micros>` or `sleep x<reg>`,
+  parser ~line 532, executor ~line 1110, `usleep(i.imm)`/`usleep(regs[
+  i.rs1])`) — but it is NOT a syscall, takes **microseconds**, and was
+  never surfaced as a registry command. This is a real, relevant
+  discovery for this task — see **W-1** below.
+- **The two scoped prisc+x copies are STILL separate, and already
+  differ** (`101.mutaclsym🧟‍♂️️+18.0G/system/prisc+x.c` = 52843 bytes —
+  this is the binary scripts/build.sh line 27 compiles and
+  `play_event.sh`/harnesses run — vs `&.widgits/_shared-lib/system/prisc
+  +x.c` = 50768 bytes, the reference copy). See **W-3**.
+- **`addi x14, x12, 0` (reg-to-reg form) is real and supported**
+  (parser line 607) — the fd-stash idiom both proof harnesses already
+  use (`task5_view_tab_switch_demo.pal` line 30) works in registry PAL
+  templates, no VM change needed for a "Send Input" command.
+- **compile_page()'s tier-3 special-casing precedent** (lines 473-514):
+  `if`/`else`/`end` are intercepted BEFORE the registry fallthrough,
+  jump labels are plain strings resolved by the VM at execution time
+  against its collected `labels[]` table (so **forward AND backward
+  label references both work** — label resolution happens post-parse,
+  lines 1043-1223). A `_loop_N:` label referenced by a later `j _loop_N`
+  is already guaranteed to resolve.
+- **Registry PAL mode + zero-compile additions** for simple commands are
+  proven (`control_switch` 3-line PAL block, header comment lines
+  45-52). Anything expressible as PAL needs no manager or render rebuild.
+- **Picker is registry-driven** — any new `COMMAND` block appears in the
+  Add Command picker with zero C changes. `else`/`end` blocks prove a
+  command with NO `FIELD` lines is already valid (lines 124-133).
+- **Complexity guard for the compiler cases**: the `skip_depth` bug is
+  gone; ordinary nodes ALWAYS emit in IR order. Loop/repeat/break only
+  ADD labels + jumps — they never gate emission. No battle with the
+  runtime-branching model.
+
+### The design (4 deliverables)
+
+**1. `SYS_SLEEP` syscall (prisc+x, both copies)**
+```
+#define SYS_SLEEP 8  /* x15=8, x13=milliseconds -> sleeps real wall-clock time; x12=0 */
+```
+`exec_ecall()` gains one case, mirroring SYS_CLOSE's shape:
+```c
+case SYS_SLEEP: {
+    long long ms = regs[13];
+    if (ms > 0) usleep((useconds_t)(ms * 1000));
+    regs[12] = 0;
+    break;
+}
+```
+- Applied to BOTH scoped copies (`+18.0G` executed copy + `_shared-lib`
+  reference copy), kept in sync per house convention.
+- Rebuild line (exactly scripts/build.sh line 27): from the
+  `+18.0G` dir, `gcc -std=c11 -Wall -Wextra -O2 -o system/prisc+x
+  system/prisc+x.c`.
+- Scoped OUT: every other app-embedded prisc+x copy under the tree
+  (event-ez pieces, @.apps, etc.) — not used by this task's harnesses
+  or play_event.sh; not touched.
+
+**2. `Wait` event command (registry-ONLY, zero C, zero recompile)**
+
+New `COMMAND wait` block in `event_commands.registry.pdl`, PAL mode,
+exactly the same shape as `control_switch`'s proven 3-line block:
+```
+COMMAND wait
+  LABEL Wait
+  FIELD1 Duration (ms):
+  FIELD2 -
+  PARAMS ms
+  PAL li x15, 8
+  PAL li x13, {ms}
+  PAL ecall
+END
+```
+No manager/render change. `render`/`manager` both pick it up next run.
+
+**3. `Loop` / `Break Loop` / `Repeat Above` commands (tier-3 special
+case in compile_page — the genuine compiler work, same as if/else/end)**
+
+New registry marker blocks (no PAL/TEMPLATE, like `else`/`end`):
+```
+COMMAND loop               COMMAND break_loop         COMMAND repeat_above
+  LABEL Loop                 LABEL Break Loop           LABEL Repeat Above
+END                        END                        END
+```
+
+`compile_page()` (`&.widgits/events-hq/ops/khtpm_events_hq_manager.c`)
+gains a `LoopFrame` stack alongside `IfFrame`, all three cases inserted
+between the `end` case and the normal registry fallthrough:
+```c
+typedef struct { char start_label[32]; char end_label[32]; } LoopFrame;
+LoopFrame loop_stack[MAX_LOOP_NEST];   /* MAX_LOOP_NEST = 16, mirrors MAX_IF_NEST */
+int loop_top = 0;
+
+if (strcmp(nd->type, "loop") == 0) {           /* keeps the SAME label_counter
+    if (loop_top >= MAX_LOOP_NEST) continue;      as if/endif so all labels
+    label_counter++;                               are globally unique */
+    LoopFrame *lf = &loop_stack[loop_top];
+    snprintf(lf->start_label, ..., "_loop_%d", label_counter);
+    snprintf(lf->end_label, ..., "_loop_end_%d", label_counter);
+    loop_top++;
+    fprintf(pf, "%s:\n", lf->start_label);
+    continue;
+}
+if (strcmp(nd->type, "break_loop") == 0) {
+    if (loop_top > 0) {
+        LoopFrame *lf = &loop_stack[loop_top - 1];   /* innermost loop, like RPG Maker */
+        fprintf(pf, "j %s\n", lf->end_label);         /* forward jump — target label
+                                                        emitted later by repeat_above;
+                                                        forward-by-name resolves fine */
+    }
+    continue;
+}
+if (strcmp(nd->type, "repeat_above") == 0) {
+    if (loop_top > 0) {
+        LoopFrame *lf = &loop_stack[loop_top - 1];
+        fprintf(pf, "j %s\n", lf->start_label);        /* the backward jump = the loop */
+        fprintf(pf, "%s:\n", lf->end_label);           /* break_loop's escape target lands
+                                                         just past the repeat, NOT inside it */
+        loop_top--;
+    }
+    continue;
+}
+```
+- The `end_label` is emitted by `repeat_above` AFTER the backward `j`,
+  so a `break_loop` jumps to the instruction stream right after the
+  loop — it can never fall into the repeat. Exact RPG Maker semantics.
+- Nested loops and loops-interleaved-with-ifs are handled by the
+  separate stacks; a malformed/unbalanced IR (`loop_top==0` at
+  break/repeat) is silently skipped, parity with existing `else`/`end`.
+- **Trace-checked on real IR** (loop, A, if-true→break_loop, end, C,
+  repeat_above, D) — output is exactly:
+  ```
+  _loop_1:
+    <A's lines>
+    bne x12, x2, _else_1
+    j _loop_end_1        # break
+  _else_1:
+  _endif_1:
+    <C's lines>
+    j _loop_1            # repeat
+  _loop_end_1:
+    <D's lines>
+  halt
+  ```
+  This is the complete poll-until idiom with NO hand-rolled labels —
+  precisely what both proof harnesses had to hand-roll today.
+- Rebuild: `build_events_hq_manager.sh`. Render binary untouched.
+
+**4. (Optional, per task doc) `Send Input`/`Inject Key` command —
+registry-only**
+
+Feasible today via the proven 3-syscall chain + `addi x14,x12,0`
+fd-stash idiom, using x14 as scratch (matching both proof harnesses):
+```
+COMMAND send_input
+  LABEL Send Input
+  FIELD1 Relay file path (absolute):
+  FIELD2 Key/code to inject:
+  PARAMS relay,key
+  PAL li x15, 1
+  PAL li x13, 2
+  PAL ecall "{relay}"
+  PAL addi x14, x12, 0
+  PAL li x15, 3
+  PAL addi x12, x14, 0
+  PAL ecall "{key}"
+  PAL addi x12, x14, 0
+  PAL li x15, 2
+  PAL ecall
+END
+```
+Runs `OPEN(append)→WRITE_LINE→CLOSE` in one command. Note it clobbers
+x14 (documented). See **W-4**.
+
+### Verification plan (real-evidence standard, same as every task here)
+
+1. **SYS_SLEEP VM probe**: hand-build `/tmp/sleep_probe.pal`
+   (`li x15,8 / li x13,500 / ecall / halt`), run via the real binary,
+   measure elapsed wall time (`/usr/bin/time`) — assert ≥490ms, not a
+   busy-spin. Exit 0.
+2. **Loop/Break/Repeat VM probe**: hand-build a `.pal` with the
+   counter+break idiom (beq on a register counter, `j _loop_N`, etc.)
+   run standalone before wiring into compile_page — same
+   "test the VM behavior by hand first" discipline that caught 3 real
+   bugs this session.
+3. **compile_page() proof on a DISPOSABLE fixture only** (never
+   `greet_player`/`shop_open`/cursword's own event_pkg — house rule):
+   create `common_events/loop_probe/`, write an `event.ir.pdl` with
+   loop / control_variable(counter++) / wait(200) / if(counter==2) →
+   break_loop / end / repeat_above / control_switch(done=ON). Force a
+   real recompile (manager `edit:` action), read the actual `event.pal`
+   and confirm: `_loop_1:` label, real branch body, `j _loop_1`
+   backward, `_loop_end_1:` present, break's `j _loop_end_1` inside the
+   true branch, and wait's 3-line SYS_SLEEP sequence physically in the
+   file. Then play it and read the real `done=1` switch — proving the
+   loop actually iterates, breaks, and continues to the post-loop code.
+4. **Resulting PAL harness**: new `cursword/harnesses/pal/wait_loop_
+   break_demo.pal`, hand-authored with the new idiom + SYS_SLEEP pacing,
+   every line commented (3a-comments convention), writing a real
+   PASS/FAIL into a results file; run via the real binary, read results.
+5. **common_events_manager_test_harness.sh port**: STILL DELIBERATELY
+   DEFERRED, exactly per the task doc's own wording — its `grep -c`
+   pattern-counting stays unexpressible in SYS_GET_KV_INT (one exact
+   key only). Documented as a remaining gap; re-evaluated after this
+   pass. (A new "count matching lines" syscall stays a real, named
+   future option — decision deferred, not committed.)
+6. `pgrep` for zero stray processes before/after every live step;
+   delete the disposable fixture when done.
+
+### Scope boundaries (deliberate, so nothing sneaks in)
+
+- Only ONE new syscall number (8); no new opcodes, no VM table growth
+  beyond that. The existing `sleep` opcode is NOT touched either way —
+  see W-1 for the only way that changes.
+- No changes to the ~25 other app-embedded prisc+x copies.
+- No GT/GE/LT/LE in if-conditions, no else-if chain changes, no
+  break-on-condition field on Loop (that's what a conditional branch +
+  Break Loop composes to — no new combinators).
+- Wait/Send Input = registry data only. Loop/Break/Repeat = manager C
+  only. SYS_SLEEP = prisc+x C only. No render C changes anywhere.
+
+### Questions for Sonnet (W-1..W-5)
+
+**W-1 — existing `sleep` OPCODE vs. new SYS_SLEEP syscall.** A real
+`sleep <micros>` opcode already exists in prisc+x (parser line 532,
+`usleep(i.imm)` micros). Strictly, Wait could be `PAL sleep {ms}000`
+(append "000" to get micros) with ZERO VM change. I still recommend the
+task's scoped SYS_SLEEP: ms unit is natural for authors, it keeps the
+ecall-register idiom the harnesses already comment as "the real
+foundation", and `sleep {ms}000` is exactly the unit-encoded-in-the-
+string hack the house rejected for ON/OFF normalization. Confirm.
+
+**W-2 — Break Loop in this pass?** The task text scopes only "Loop
+(backward j/beq pair)". Without a break, Loop is un-exitable by any
+authored palette command (conditional branches can't jump over the
+repeat), so the poll-until idiom — the task's own stated motivation —
+is impossible. Recommend including `Break Loop` now (it's 6 lines of
+compiler C + a label `repeat_above` already emits). If you'd rather
+keep Loop infinite-only for MVP, say so and I'll drop break_loop.
+
+**W-3 — the two prisc+x copies already differ.** Confirmed separate
+files, different sizes (52843 vs 50768 bytes). House convention is
+"keep both in sync," so I'll apply SYS_SLEEP to both identically. But
+before editing: confirm the `+18.0G` local copy is the canonical
+executed binary (scripts/build.sh line 27 trade-off means the
+`_shared-lib` copy is reference-only), and whether to edit via
+`sync_shared_op.sh` or directly in both files. (I lean direct edit of
+both — it's what the previous literal_arg/OP_BNE fixes did.)
+
+**W-4 — Send Input in this pass?** Task doc lists it as OPTIONAL. It's
+registry-only (~0 C), proven-feasible, and directly serves the
+harness-authoring goal (one line per keypress). Recommend yes. Confirm
+or defer.
+
+**W-5 — shared label_counter for loop labels (minor).** Reusing the
+existing single `label_counter` for BOTH `_else_N/_endif_N` and
+`_loop_N/_loop_end_N` guarantees global uniqueness across interleaved
+ifs and loops (prefixes differ, so no collision risk even so). Any
+objection to shared numbering vs. a separate loop counter? Default is
+shared.
+
+**Once signed off, execution order:** SYS_SLEEP (both copies + rebuild +
+probe 1) → Wait registry block → Loop/Break/Repeat compiler cases
+(+ rebuild + probes 2-3) → Send Input (if W-4 yes) → PAL harness proof
+(probe 4) → defer-port documented (probe 5) → handoff KPI table updated
+with real evidence. ⛔ Stop and alert after the harness proof for
+
+---
+
+### 🔎 Sonnet review (2026-08-27) — plan ACCEPTED with one modification (W-1), all other W-questions answered
+
+Both technical claims independently re-verified directly against the
+real code before responding, not taken on faith: the `sleep` opcode
+really exists exactly as described (`prisc+x.c` line 532, `OP_SLEEP`
+executor at line 1110-1113, real `usleep(imm)` on the literal/register
+value) and the two files really do differ at exactly 52843 vs 50768
+bytes. This is careful, verified work — good catch on the pre-existing
+`sleep` opcode in particular, most agents would have added a redundant
+new syscall without checking whether one already existed.
+
+**W-1 — MODIFY: do not add a new SYS_SLEEP syscall. Use the existing
+`sleep` opcode instead, zero VM changes needed.** Your own W-1 write-up
+already reaches this same conclusion technically (`sleep {ms}000` works
+today with zero VM change) and only recommends SYS_SLEEP for
+authoring-consistency/ms-unit reasons. Given the goal is specifically
+proving MORE can be done with LESS new surface area (this whole task
+exists to prove PAL-authored harnesses are real and cheap to extend),
+reusing a real, already-working opcode is the better outcome than
+adding a parallel mechanism that does the same thing through a
+different door. Concretely:
+- `Wait` registry command compiles to a single `PAL sleep {ms}000` line
+  (string-concatenation of the ms value + "000" to get microseconds —
+  yes, this is "encoding a unit in the string," but note it's
+  DIFFERENT from the ON/OFF-normalization case that was rejected
+  earlier in this doc: that rejection was about encoding SEMANTIC
+  meaning (on/off) as a magic string transform on a value that should
+  have been a real enum/switch; this is encoding a UNIT CONVERSION
+  (ms→µs) on a numeric literal, the same kind of thing `li x13, {ms *
+  1000}` would do if the registry engine could do arithmetic in FIELD
+  substitution — a normal, narrow unit conversion, not a design smell).
+  If the registry substitution engine can't do the multiply-by-1000
+  itself, doing it as string concatenation in the template is fine.
+- Drop SYS_SLEEP from the VM entirely — one less syscall number to ever
+  need to remember, one less thing to keep in sync across the two
+  files, and it demonstrates real due diligence (checking for an
+  existing mechanism before adding a new one) as the harness-authoring
+  guide's own priority list gets built out.
+- This changes `Verification plan` probe 1 to: hand-build
+  `/tmp/sleep_probe.pal` using the real `sleep 500000` instruction
+  directly (µs), confirm ≥490ms elapsed — same probe, no VM change to
+  verify beforehand.
+
+**W-2 — APPROVED, include Break Loop now.** Your own reasoning is
+correct: without it the poll-until idiom (the task's entire stated
+motivation) is impossible. 6 lines of compiler C for that much real
+capability is a good trade.
+
+**W-3 — direct answer, confirmed by checking**: no `sync_shared_op.sh`
+exists anywhere in the tree (checked). Edit both files directly, same
+as the OP_BNE fix did — there is no automated sync mechanism to prefer
+instead. `101.mutaclsym🧟‍♂️️+18.0G/system/prisc+x` is confirmed the
+canonical EXECUTED binary — every real test/harness this session
+(Task 3's own test harness, both new PAL proof harnesses) ran against
+that exact path, never the `_shared-lib` copy directly.
+
+**W-4 — APPROVED, include Send Input this pass.** Registry-only, proven
+idiom, directly serves the stated goal. Yes.
+
+**W-5 — APPROVED, shared `label_counter`.** Correct as reasoned — no
+collision risk given the differing prefixes, and one counter is simpler
+than two to maintain.
+
+**Execution order**: as you proposed, with SYS_SLEEP replaced by "skip
+entirely, use the real `sleep` opcode directly" per W-1 above — probe 1
+still happens, just against the existing opcode instead of a new one.
+Proceed. ⛔ Stop and alert after the harness proof (probe 4), same gate
+you proposed, before touching the deferred common_events port decision.
+review before touching the common_events port decision.
+
+---
+
+## ⛔ EXECUTION RECORD (2026-08-27, ox-alpha) — W-1..W-5 plan PROCEEDED; probes 1-4 all PASS
+
+Follow-up to the review immediately above: executed exactly per your
+W-answers (no SYS_SLEEP anywhere — `wait` compiles to the real `sleep`
+opcode via `PAL sleep {ms}000`; Break Loop + Send Input included per
+W-2/W-4; shared label_counter per W-5; direct both-file edit moot since
+no prisc+x change was needed). Summary + every probe's real evidence is
+in the "✅ 2026-08-27, ox-alpha — Loop/Wait/Send-Input TASK EXECUTED;
+probes 1-4 all PASS" entry in the Progress Log section near the top of
+this doc (KPI table rows 8 and 9 also updated). Highlights:
+- Compiled event.pal for the disposable loop_probe fixture is EXACTLY
+  the trace-checked shape in the plan (break's `j _loop_end_1` inside
+  the true branch; `_loop_end_1:` emitted after `j _loop_1`).
+- Runtime: loop body ran 3×, mid-run switch flip broke it cleanly,
+  `done=1` written past the loop — real `play_event.sh` + real house.
+- **One real behavioral catch for you to adjudicate (stays open): the
+  switch board stores INTS — flipping `run=ON` makes `bne` never match
+  (`ON`→0). `run=1` works. Worth a normalization/UI note for authors?**
+- Deferred pump still deferred: common_events PAL port decision (probe
+  5) + any "count matching lines" syscall call await your review.
+⛔ Green-lit code surface: registry + manager C only; render untouched;
+prisc+x untouched (zero VM change this task — W-1 in full effect).
+
+**Sonnet's review of this execution is posted directly after the full
+write-up in the Progress Log section (search for "🔎 Sonnet review
+(2026-08-27) — ACCEPTED, independently re-verified" — line ~653 as of
+this writing): ACCEPTED, independently re-run and reproduced (`done=1`,
+`pass=1`, 0.217s wall, matches exactly), the `run=ON` vs `run=1`
+question answered (switches are integers by contract — document it in
+`HARNESS-AUTHORING-GUIDE.md`, no normalization code needed), probe 5
+correctly stays deferred. Task is genuinely done — no further sign-off
+needed here at the tail.
+**2026-08-27: review actioned** — §3a-switchvals + §3b BUILT statuses +
+§3a-proof3 added to `HARNESS-AUTHORING-GUIDE.md` exactly per Sonnet's
+instruction; closure logged in the Progress Log. Task CLOSED.**
+
+---
+
+## 🔧 NEW TASK — visible-window proof using the new Loop/Wait/Send-Input commands (opencode, pick this up next)
+
+**Added 2026-08-27, direct instruction.** Everything proven so far for
+Loop/Break/Repeat/Wait/Send-Input (`task5_view_tab_switch_demo.pal`,
+`task3_switch_branch_verify.pal`, `wait_loop_break_demo.pal`) is real,
+but headless — text files read back, no human-visible confirmation on
+screen. Direct ask: prove the SAME new commands driving a real, VISIBLE
+GUI window end to end, with a real PNG as the final proof — not another
+text-file readback.
+
+**Goal**: a new PAL harness (`cursword/harnesses/pal/` — same directory,
+same full-line-comment convention as the three existing ones, cite them
+directly rather than re-deriving style) that:
+1. Uses the new `send_input` command (not hand-chained
+   `SYS_OPEN`/`SYS_WRITE_LINE`/`SYS_CLOSE`, since that registry command
+   now exists — dogfood it) to inject a real digit-jump + Enter into a
+   REAL, currently-running events-hq window (reuse the exact launch
+   command from `cursword/harnesses/events_hq_task3_test_harness.sh`
+   against a DISPOSABLE test entity — never cursword's own
+   `event_pkg/pages/page_1/`).
+2. Uses the new `Loop`/`Break Loop`/`Repeat Above` idiom (not a
+   hand-rolled `beq`/`j` pair) to poll `events_hq_view_mode.txt` (the
+   sibling status file added this session — real, already exists) until
+   it reads the expected value — same shape as
+   `task5_view_tab_switch_demo.pal`'s hand-rolled version, but now using
+   the real Loop commands instead of raw labels.
+3. Uses `send_input` again to inject the real PNG-dump code (`112`).
+4. The render process's own `dump_frame_png()` (forced-redraw-fixed,
+   2026-08-27) produces a real PNG — **read it back / confirm it exists
+   and has plausible size, and say so plainly in your report** (you
+   don't have PNG-viewing ability yourself, so state the file path,
+   size, and that a human/Sonnet should look at it, rather than
+   claiming you visually confirmed content you couldn't have seen).
+
+**This is the real gap the previous three harnesses left**: they prove
+the MECHANISM works but produce no artifact a non-technical person (or
+a human owner) can actually look at. This one should.
+
+**Verification standard, same as every other task here**: zero stray
+`khtpm_entity_menu_render.+x` processes before/after, disposable test
+entity deleted when done, real relay/history files restored to their
+pre-test git-clean state, every PAL line commented per the 3a-comments
+convention. ⛔ Stop and alert once the PNG exists and its path/size is
+reported — Sonnet will look at the actual image before closing this.
+
+**Note on parallel work**: Sonnet is starting the Tiles design/
+implementation pass (autotile bitmask design + animated-tile system,
+per the "Confirmed next-steps order" section above) at the same time —
+different files, no overlap expected, but flag here if you touch
+anything under `&.widgits/palettes/`, `&.widgits/tile-picker/`, or
+`&.widgits/event-editor/` so we don't collide.
+
+---
+
+### ✅ 2026-08-27, opencode (ox-alpha) — visible-window Loop/Wait/Send-Input proof EXECUTED; PNG gate reached, awaiting Sonnet's image review
+
+Fulfilled all four numbered requirements of the NEW TASK above, against a
+REAL running events-hq window on a DISPOSABLE entity (`/tmp/eventshw_visproof/`,
+never cursword's `event_pkg`), using the real prisc+x VM:
+
+New files (same dir + full-line-comment convention as the three cited
+harnesses; bash wrapper per §1/§3a):
+- `cursword/harnesses/pal/visible_window_events_hq_demo.pal` — the drive
+  script. Each section is the EXACT compiled shape of the real command it
+  names (send_input ×3, loop/wait/break_loop/repeat_above, control_switch-
+  shaped verdict) — one deliberate, inline-commented deviation: the `if`'s
+  GET target is `events_hq_view_mode.txt` because the real `if` command
+  hardwires `{STATE_DIR}/switches.txt` and cannot express a sibling file.
+- `cursword/harnesses/run_visible_window_events_hq_demo.sh` — launch (exact
+  task3 launch line, entity `visproof-disposable`) + prisc+x run + verify +
+  cleanup (kills only procs it spawned; snapshots pre-existing managers and
+  never touches cursword's or /tmp/v2demo's — verified).
+
+Sequence driven end-to-end: `send_input "50"` (digit '2') → `send_input
+"13"` (Enter) → real Loop with `wait 100` + poll `events_hq_view_mode.txt`
+until `view_mode=1` → `send_input "112"` (real `dump_frame_png()` code).
+Verbatim from two clean runs (21:55 and 21:57, reproducible):
+
+```
+done=1 / pass=1
+PNG EXISTS: /tmp/events-hq-frame.png (20136 / 20071 bytes)
+view_mode file readback: view_mode=1
+zero stray render procs before AND after; disposable entity deleted;
+relay/history restored to git-clean (git status empty); 4 pre-existing
+managers untouched.
+```
+
+**THE PNG** — this is the artifact a human/Sonnet must look at:
+`cursword/harnesses/pal/presentations/events-hq-visible-window-20260827-215717/final_proof_events_hq.png`
+(20071 bytes, a real PNG written by the render's `dump_frame_png()`; I
+cannot visually confirm its content myself — I only assert it exists with
+plausible size and that the drive state (`view_mode=1`) was genuinely
+reached and recorded).
+
+**Honest limits, same as the cited harnesses** (not oversold): the house-
+root path is a literal embed in the .pal (no PAL-level interpolation);
+the poll read of view_mode.txt is the one raw-GET substitution described
+above. No file under `&.widgits/palettes/`, `tile-picker/`, or
+`event-editor/` touched — no overlap with Sonnet's tiles pass.
+
+⛔ **STOP AND ALERT**: task gate reached exactly as specified — the PNG
+path and size are reported above. Sonnet should view
+`final_proof_events_hq.png` before this task is closed. Nothing here is
+committed (no explicit commit ask).
+
+### 🔎 Sonnet review (2026-08-27) — APPROVED, image viewed directly, please commit
+
+Viewed `final_proof_events_hq.png` directly (not just trusting the
+reported byte size): real, correct — shows the `visproof-disposable`
+entity, the Scratch tab correctly highlighted/active, and "Scratch view
+- coming soon" rendered in the panel, exactly matching the claimed
+drive sequence (digit '2' + Enter → Loop/Wait poll for `view_mode=1` →
+PNG dump). Task genuinely closed — this is real, visible, human-
+checkable proof, not just a text-file readback.
+
+**Direct instruction: please commit your work now.** Confirm `git
+remote -v` shows `origin  https://github.com/tearitco/TEARIT-HQ.git`
+(both fetch and push) before committing — standing house rule, not
+optional. Stage the real, intended files from this and the prior
+Loop/Wait/Send-Input task (the new PAL harnesses under
+`cursword/harnesses/pal/`, the run script, the registry/manager C
+changes for `loop`/`break_loop`/`repeat_above`/`wait`/`send_input`, and
+your own `HARNESS-AUTHORING-GUIDE.md` edits) — do NOT `git add -A`
+blindly; check `git status` first and leave out anything that looks
+like stray test/scratch output (this session hit that mistake more
+than once with other agents). Do not push unless separately asked —
+commit locally for now. Sonnet is resuming the parallel Tiles work
+after this.
+
+---
+
+## 🔧 NEW TASK — a db-hq PAL harness proof (light, real, non-overlapping with Tiles work)
+
+**Added 2026-08-27.** Every real PAL harness proof so far
+(`task5_view_tab_switch_demo.pal`, `task3_switch_branch_verify.pal`,
+`wait_loop_break_demo.pal`, `visible_window_events_hq_demo.pal`) targets
+**events-hq**. db-hq (the same merged binary,
+`khtpm_entity_menu_render.c`, different mode) has never had one — real,
+light, useful gap to close, and it doesn't touch anything under
+`&.widgits/palettes/`, `tile-picker/`, or `event-editor/` (Sonnet's own
+parallel Tiles work), since this only drives db-hq's existing tab
+picker via the relay, no palette/tile code involved.
+
+**One small, real, first-yards prerequisite** (same class of fix Sonnet
+made for events-hq this session): `dbhq_append_frame_history()`
+(`khtpm_entity_menu_render.c` ~line 1540) only writes the multi-field
+`db_hq_frame_history.txt` line — there's no single-key sibling file
+`SYS_GET_KV_INT` can poll yet (mirroring `events_hq_view_mode.txt`,
+added earlier this session for events-hq). Add one real, small sibling
+file write there — `db_hq_current_tab.txt` (`current_tab=N`, using
+`g_dbhq_current_tab`) — same real pattern, same real reasoning, cited
+directly in `HARNESS-AUTHORING-GUIDE.md` §3a if you want the exact
+precedent to copy.
+
+**Goal**: a new PAL harness,
+`cursword/harnesses/pal/db_hq_tab_switch_demo.pal` (+ a bash launch
+wrapper, same convention as `run_visible_window_events_hq_demo.sh`),
+that:
+1. Launches a real db-hq window against a DISPOSABLE test entity (never
+   `greet_player`/`shop_open`/cursword's own real data).
+2. Uses `send_input` to digit-jump db-hq to a DIFFERENT real tab (e.g.
+   from its default tab to the Actors or Classes tab — check
+   `dbhq_dump_debug_state()`'s own output, code 210, for real, current
+   nav numbering rather than assuming a fixed index, same discipline
+   `_.0.aigent-testing-k9.txt`'s "nav numbers are NOT fixed" rule
+   already requires).
+3. Uses the real `Loop`/`Wait`/`Break Loop`/`Repeat Above` commands to
+   poll the new `db_hq_current_tab.txt` sibling file until it reads the
+   expected tab index.
+4. Uses `send_input` to inject the real PNG-dump code (`112`).
+5. Report the real PNG's path/size (same honest "I cannot see the
+   image myself" disclosure as the events-hq proof) — Sonnet will view
+   it before closing this task, same as last time.
+
+**Verification standard, unchanged**: zero stray
+`khtpm_entity_menu_render.+x` processes before/after, disposable
+fixture deleted, relay/history files restored to git-clean, every PAL
+line commented per the 3a-comments convention. ⛔ Stop and alert once
+the PNG exists and its path/size is reported.
+
+---
+
+## 🔧 NEW TASK — begin real Visual Scripting rendering (a scoped START, not the full canvas)
+
+**Added 2026-08-27, direct instruction ("maybe it could start on visual
+scripting also").** Read `PAL-VISUAL-SCRIPTING-PLAN.md` in full first —
+it is the real vision + policy doc, VISION PHASE, nothing built yet.
+Task 5 (done earlier this session) built the real Scripting/Scratch/
+Blueprints TAB STUBS — Scratch/Blueprints currently just show "coming
+soon" placeholder text. This task is the real FIRST STEP into making
+Scratch show something real — explicitly scoped small, not the whole
+draggable canvas.
+
+**Real, scoped goal**: when the Scratch tab is active for a page whose
+compiled `event.pal` contains a Control Switch's own known, exact
+instruction shape (`li x15,7` / `li x12,<V>` / `ecall "<path>"
+"<key>"` — the real, already-compiled pattern for that one command,
+per `PAL-VISUAL-SCRIPTING-PLAN.md`'s own cited example), render ONE
+real, labeled visual "block" element for it in the Scratch panel — real
+text like `[Set Switch <key> to <ON/OFF>]` inside a real, visually
+distinct rectangle (a real Elem with a border/background, not just
+plain text) — instead of the current static "Scratch view - coming
+soon" message. **Not in scope for this pass**: dragging, snapping,
+multi-command-type pattern matching, or editing FROM the block back
+into `.pal` — this is read-only, ONE command type, proving the
+"pattern-match a known instruction shape → real visual block" mechanism
+works end to end for the simplest real case, per the vision doc's own
+stated mechanism.
+
+**Real verification standard**: on a disposable test entity/common-event
+with a real Control Switch command already compiled, open the Scratch
+tab, PNG-dump it, and confirm — visually, a real block renders, not just
+that the code compiled. If the entity has ANY other command type too,
+Scratch should still show the "coming soon" placeholder for those (don't
+silently drop/hide unrecognized commands) — only the recognized Control
+Switch pattern gets a real block.
+
+⛔ **Stop and alert before starting** if anything about the real Elem
+placement/panel structure for this (where in the tree the block goes,
+whether it reuses `evhq_zero_subtree`'s existing stub-panel Elem or
+needs a new one) isn't obvious once you're looking at the real code —
+this is a first, precedent-setting step for the whole visual-scripting
+direction, worth asking rather than guessing past. Also flag here (not
+silently) if this genuinely can't be scoped smaller than described —
+better to shrink further than to build more than asked.
