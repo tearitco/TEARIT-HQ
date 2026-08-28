@@ -111,6 +111,8 @@ Stop here if you just need to know "what's going on."
 
 **HQML-DESIGN+PLANS.md** — Vision for a web-like markup language (HTML/CSS-like syntax) that would enable prettier UIs while keeping .pal scripting. Covers events-hqml (prettier event editor), db-hq (modern database UI), AI applications, network applications (forum/IRC). Design phase, technical requirements, implementation roadmap. Read this if designing new UIs or considering how to modernize existing ones.
 
+**RENDER-FRAME-HISTORY-DRIFT-ASSESSMENT.md** (2026-08-28) — real, confirmed drift: khtpm_entity_menu_render.c (7742 lines, 7 window modes: db-hq/events-hq/chat-hai/palettes/bookmarks/stats-hq/taskbar-settings) draws directly from a live, mutable Elem tree instead of from an auditable frame-history file the way wraith-alpha's own chtpm_parser/renderer pair does everywhere else in this house. Assessment only, no refactor code yet — sizes the gap, cites the real wraith-alpha reference pattern (marker-gated `dirty` write, renderer reads ONLY the frame file), and proposes a phased fix. Read before any render-architecture work on this file.
+
 ---
 
 ## Tier 3 — Read only if working the specific task (large context budget)

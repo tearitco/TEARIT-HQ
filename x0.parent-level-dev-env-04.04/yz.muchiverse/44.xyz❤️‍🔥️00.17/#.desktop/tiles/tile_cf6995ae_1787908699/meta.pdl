@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | tile_cf6995ae_1787908699
+STATE        | kind                 | tile_stamp
+STATE        | glyph                | a2 kind 6,0
+STATE        | created_at           | 1787908699
+METHOD       | Close                | CLOSE

@@ -561,6 +561,49 @@ static void publish_rmmv(void) {
     if (rel_atlas[0]) {
         char atlas_path[PATH_BUF];
         snprintf(atlas_path, sizeof(atlas_path), "%s/&.widgits/palettes/tilesets/%s", g_house_root, rel_atlas);
+        /* REAL FIX 2026-08-28 (same slow-tab-switch report) - a real
+         * cache-hit on every tile still paid for a full stbi_load() PNG
+         * decode of the whole atlas first (the actually-expensive part
+         * for a large non-autotile sheet like World_B.png at 768x768).
+         * stbi_info() reads only the real header (width/height/channels)
+         * - cheap - letting us compute the exact expected tile count and
+         * check whether every real cache file already exists BEFORE
+         * paying for a full decode neither is needed anymore. */
+        int info_w = 0, info_h = 0, info_ch = 0;
+        if (stbi_info(atlas_path, &info_w, &info_h, &info_ch)) {
+            int probe_cols = 1, probe_rows = 1;
+            if (strcmp(active_cat, "a1") == 0 || strcmp(active_cat, "a2") == 0) { probe_cols = 2; probe_rows = 3; }
+            else if (strcmp(active_cat, "a3") == 0 || strcmp(active_cat, "a4") == 0) { probe_cols = 2; probe_rows = 2; }
+            int probe_kx = (info_w / RMMV_TILE_PX) / probe_cols;
+            int probe_ky = (info_h / RMMV_TILE_PX) / probe_rows;
+            int expected = probe_kx * probe_ky;
+            char probe_root[PATH_BUF];
+            snprintf(probe_root, sizeof(probe_root), "%s/sprites/rmmv/%s_%s", g_package_dir, active_key, active_cat);
+            int all_cached = expected > 0;
+            struct stat probe_st;
+            for (int i = 1; i <= expected && all_cached; i++) {
+                char probe_csv[PATH_BUF];
+                snprintf(probe_csv, sizeof(probe_csv), "%s/%03d/sprite.csv", probe_root, i);
+                if (stat(probe_csv, &probe_st) != 0) all_cached = 0;
+            }
+            if (all_cached) {
+                /* Every real tile already cached - re-publish the SAME
+                 * labels/paths the full path below would produce,
+                 * without paying for stbi_load() at all. */
+                for (int ky = 0, n = 0; ky < probe_ky; ky++) {
+                    for (int kx = 0; kx < probe_kx; kx++) {
+                        n++;
+                        char dir[PATH_BUF], label[64];
+                        snprintf(dir, sizeof(dir), "%s/%03d", probe_root, n);
+                        snprintf(label, sizeof(label), "%s kind %d,%d", active_cat, kx, ky);
+                        fprintf(out, "%s\t%s\t%s\n", label, label, dir);
+                    }
+                }
+                fclose(out);
+                rename(tmp_path, g_state_path);
+                return;
+            }
+        }
         int w, h, ch;
         unsigned char *pixels = stbi_load(atlas_path, &w, &h, &ch, 4);
         if (pixels) {
@@ -593,21 +636,45 @@ static void publish_rmmv(void) {
             }
             int kinds_x = (w / RMMV_TILE_PX) / block_cols;
             int kinds_y = (h / RMMV_TILE_PX) / block_rows;
+            /* REAL FIX 2026-08-28 (live report: "switch to tile tab B is
+             * very slow... we have not implemented the caching algorithm
+             * used in emoji tiles") - ensure_emoji_sprite()'s own real
+             * cache-check ("if (stat(csv,&st)==0) return") was never
+             * ported here, so EVERY tab/tileset switch re-decoded the
+             * whole atlas PNG and rewrote every single sprite.csv from
+             * scratch (256 real file writes for a sheet like World_B.png,
+             * every time). Real fix, in two parts:
+             * 1. sprite_root is now namespaced by "<tileset>_<category>"
+             *    (was a bare "sprites/rmmv" shared across EVERY tileset/
+             *    category combination) - a real, necessary PREREQUISITE
+             *    for caching, not just a perf nicety: without this, tile
+             *    "001" for World/a2 and tile "001" for Inside/a2 would
+             *    collide in the SAME directory, and a naive skip-if-
+             *    cached check would then silently serve the WRONG
+             *    tileset's stale image after switching.
+             * 2. Each tile's sprite.csv is now skipped if it already
+             *    exists, exactly matching ensure_emoji_sprite()'s own
+             *    real, proven pattern - real RMMV tile pixel data never
+             *    changes once sourced, so a cache-hit is always correct,
+             *    not just fast. */
             char sprite_root[PATH_BUF];
-            snprintf(sprite_root, sizeof(sprite_root), "%s/sprites/rmmv", g_package_dir);
+            snprintf(sprite_root, sizeof(sprite_root), "%s/sprites/rmmv/%s_%s", g_package_dir, active_key, active_cat);
             int n = 0;
+            struct stat cache_st;
             for (int ky = 0; ky < kinds_y && n < MAX_TILES; ky++) {
                 for (int kx = 0; kx < kinds_x && n < MAX_TILES; kx++) {
                     int tx = kx * block_cols, ty = ky * block_rows; /* top-left cell of this kind's own block - the real representative */
                     n++;
                     char dir[PATH_BUF];
                     snprintf(dir, sizeof(dir), "%s/%03d", sprite_root, n);
-                    char mkcmd[PATH_BUF * 2];
-                    snprintf(mkcmd, sizeof(mkcmd), "mkdir -p '%s'", dir);
-                    system(mkcmd);
                     char csv[PATH_BUF];
                     snprintf(csv, sizeof(csv), "%s/sprite.csv", dir);
-                    write_rmmv_sprite_csv(pixels, w, h, tx, ty, csv);
+                    if (stat(csv, &cache_st) != 0) {
+                        char mkcmd[PATH_BUF * 2];
+                        snprintf(mkcmd, sizeof(mkcmd), "mkdir -p '%s'", dir);
+                        system(mkcmd);
+                        write_rmmv_sprite_csv(pixels, w, h, tx, ty, csv);
+                    } /* else already cached - real tile pixels never change once sourced */
                     char label[64];
                     snprintf(label, sizeof(label), "%s kind %d,%d", active_cat, kx, ky); /* real kind index, not raw cell coords */
                     fprintf(out, "%s\t%s\t%s\n", label, label, dir);

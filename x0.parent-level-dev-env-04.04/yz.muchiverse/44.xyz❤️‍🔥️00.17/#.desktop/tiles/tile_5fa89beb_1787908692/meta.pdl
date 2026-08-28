@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | tile_5fa89beb_1787908692
+STATE        | kind                 | tile_stamp
+STATE        | glyph                | a2 kind 5,0
+STATE        | created_at           | 1787908692
+METHOD       | Close                | CLOSE

@@ -12,4 +12,4 @@ CELL | idx=10 region=header | ch=[ ] 11. toys fg=default bg=default focused=0
 CELL | idx=11 region=header | ch=[ ] 12. store fg=default bg=default focused=0
 CELL | idx=12 region=header | ch=[ ] 13. network fg=default bg=default focused=0
 CELL | idx=13 region=header | ch=[ ] 14. h-ai fg=default bg=default focused=0
-CELL | idx=14 region=header | ch=[ ] 15. 2026年08月28日 周五 01:15 fg=default bg=default focused=0
+CELL | idx=14 region=header | ch=[ ] 15. 2026年08月28日 周五 02:28 fg=default bg=default focused=0

@@ -602,9 +602,83 @@ static void compile_page(int page_idx) {
     fclose(pf);
 }
 
+/* REAL, NEW (2026-08-28, HARNESS-AUTHORING-GUIDE.md §3a-proof3 +
+ * §3a-switchvals; Visual Scripting task #2, approved in
+ * COMMON-EVENTS-MANAGER-HANDOFF.md after the db-hq wrap-up gate):
+ * SCRATCHBLOCK publication - scans the freshly-compiled event.pal
+ * (compile_page() ALWAYS runs immediately before publish_page_state(),
+ * see the append:/edit: handlers) for the exact instruction shape
+ * Control Switch compiles to via the registry
+ * (event_commands.registry.pdl):
+ *     li x15, 7
+ *     li x12, <V>
+ *     ecall "{STATE_DIR}/switches.txt" "{key}"
+ * and emits one "SCRATCHBLOCK|<key>|<ON|OFF>" row per match, so the
+ * renderer's Scratch view can render real, labeled, bordered blocks
+ * instead of the static "coming soon" stub. §3a-proof3 established this
+ * mechanical instruction-shape-to-meaning matching as the real house
+ * principle (how the harness proofs recognize compiled conditional and
+ * loop shapes); §3a-switchvals fixes <V> as the integer 1/0 (ON/OFF
+ * only exist at the picker layer, never at storage) - that is exactly
+ * the ON/OFF mapping published here. Deliberately NOT keyed off the IR
+ * type row: a hand-written PAL using the same opcode shape gets the same
+ * visual block regardless of how it was authored. Purely additive - the
+ * renderer's existing page.state.txt parsing is strncmp-based and
+ * ignores unknown prefixes, so pre-patch renderers are unaffected. */
+static int line_li_reg_num(const char *line, const char *reg, int *num) {
+    char got[8] = "";
+    if (sscanf(line, "li %7s %d", got, num) != 2) return 0;
+    return strncmp(got, reg, 3) == 0;
+}
+
+static int ends_with_switches_path(const char *p) {
+    static const char *suffix = "switches.txt";
+    size_t n = strlen(p), sn = strlen(suffix);
+    if (n < sn) return 0;
+    return strcmp(p + n - sn, suffix) == 0;
+}
+
+static void publish_scratch_blocks(FILE *wf, const char *pd) {
+    char pal_path[PATH_BUF];
+    snprintf(pal_path, sizeof(pal_path), "%s/event.pal", pd);
+    FILE *pf = fopen(pal_path, "r");
+    if (!pf) return;
+    char line[512];
+    int num = 0;
+    int state = 0; /* 0=idle, 1=saw "li x15, 7", 2=saw "li x12, <V>" */
+    int val = 0;   /* the li x12 switch value (1=ON, 0=OFF, §3a-switchvals) */
+    while (fgets(line, sizeof(line), pf)) {
+        if (state == 0) {
+            if (line_li_reg_num(line, "x15", &num) && num == 7) state = 1;
+        } else if (state == 1) {
+            if (line_li_reg_num(line, "x15", &num) && num == 7) continue;
+            if (line_li_reg_num(line, "x12", &num) && (num == 0 || num == 1)) {
+                val = num;
+                state = 2;
+            } else {
+                state = 0;
+            }
+        } else {
+            char path[512] = "", key[256] = "";
+            if (sscanf(line, "ecall \"%511[^\"]\" \"%255[^\"]\"", path, key) == 2
+                    && key[0] && ends_with_switches_path(path)) {
+                fprintf(wf, "SCRATCHBLOCK|%s|%s\n", key, val ? "ON" : "OFF");
+                state = 0;
+            } else if (line_li_reg_num(line, "x15", &num) && num == 7) {
+                state = 1;
+            } else {
+                state = 0;
+            }
+        }
+    }
+    fclose(pf);
+}
+
 /* Publishes the currently-selected page's trigger + switch + command list.
  * Format: first line "TRIGGER|<value>", second line "SWITCH|<value>" (if set),
- * then one "CMD|<id>|<type>|<params>" line per command - simple enough for
+ * then one "CMD|<id>|<type>|<params>" line per command, then one
+ * "SCRATCHBLOCK|<key>|<ON|OFF>" line per Control Switch found in the
+ * compiled event.pal (see publish_scratch_blocks()) - simple enough for
  * the shell to parse without a real structured-data library, matching this
  * house's existing plain-pipe-delimited convention elsewhere. */
 static void publish_page_state(void) {
@@ -697,6 +771,12 @@ static void publish_page_state(void) {
         }
         fclose(irf);
     }
+
+    /* SCRATCHBLOCK rows (Visual Scripting task #2, see
+     * publish_scratch_blocks() above): appended after the CMD list,
+     * purely additive - new prefix, ignored by pre-patch renderers. */
+    publish_scratch_blocks(wf, pd);
+
     fclose(wf);
     rename(tmp, g_page_state_path);
 }

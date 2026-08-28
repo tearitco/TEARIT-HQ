@@ -674,7 +674,21 @@ static const char *DB_HQ_TAB_LABELS[] = {
 };
 #define DB_HQ_N_TABS 15
 #define DB_HQ_COMMON_EVENTS_TAB 11
+#define DB_HQ_TERMS_TAB 14
 static int g_dbhq_current_tab = DB_HQ_COMMON_EVENTS_TAB;
+static char g_dbhq_terms_state_path[PATH_BUF];
+/* Real, generic "which db-hq tabs actually have real backing data"
+ * check (2026-08-28) - replaces 3 separate hardcoded `== DB_HQ_COMMON_
+ * EVENTS_TAB` gates (layout, sidebar population, placeholder-vs-real
+ * dispatch) with one real registry. Common Events and Terms are both
+ * real today (real managers publishing real state files); the other
+ * 13 tabs still correctly fall through to the generic "(coming soon)"
+ * placeholder. Adding a NEW real tab later (per the events/db/
+ * networking delegation doc's own Task 2) means adding ONE line here,
+ * not re-finding and editing 3 separate gate sites again. */
+static int dbhq_tab_is_real(int tab) {
+    return tab == DB_HQ_COMMON_EVENTS_TAB || tab == DB_HQ_TERMS_TAB;
+}
 
 static int g_dbhq_focus_grab_enabled = 0;
 static int g_dbhq_chrome_h = 26;
@@ -731,14 +745,28 @@ static void dbhq_load_font_scale(void) {
  * ported verbatim. The manager binary (khtpm_hq_manager.c, launched via
  * dbhq_launch_module() from the <module> tag) owns the real directory
  * scan; this only reads its published state file. */
+/* REAL FIX 2026-08-28 (Terms tab wiring, part of the same dbhq_tab_is_
+ * real() generalization) - this loader used to always read the ONE
+ * hardcoded g_dbhq_events_state_path, correct only while Common Events
+ * was the sole real tab. Now picks the real state file for whichever
+ * REAL tab is currently active - Terms reuses this exact same generic
+ * "one label per line" loader/g_dbhq_events[] array (it was already
+ * generic, just never fed a second real source). A tracked "last
+ * loaded path" forces one real reload on tab switch even if the two
+ * files' mtimes happen to coincide - the mtime-gate alone can't detect
+ * "same timestamp, different file". */
+static char g_dbhq_events_last_path[PATH_BUF];
 static int dbhq_load_common_events(void) {
+    const char *path = (g_dbhq_current_tab == DB_HQ_TERMS_TAB) ? g_dbhq_terms_state_path : g_dbhq_events_state_path;
     struct stat st;
-    if (stat(g_dbhq_events_state_path, &st) != 0) return 0;
-    if (st.st_mtime == g_dbhq_events_state_mtime) return 0;
+    if (stat(path, &st) != 0) return 0;
+    int path_changed = strcmp(path, g_dbhq_events_last_path) != 0;
+    if (!path_changed && st.st_mtime == g_dbhq_events_state_mtime) return 0;
+    snprintf(g_dbhq_events_last_path, sizeof(g_dbhq_events_last_path), "%s", path);
     g_dbhq_events_state_mtime = st.st_mtime;
 
     g_dbhq_n_events = 0;
-    FILE *f = fopen(g_dbhq_events_state_path, "r");
+    FILE *f = fopen(path, "r");
     if (!f) return 0;
     char line[128];
     while (g_dbhq_n_events < DB_HQ_MAX_EVENTS && fgets(line, sizeof(line), f)) {
@@ -1369,7 +1397,7 @@ static void dbhq_layout_pass(Elem *window) {
      * stayed at its zero-initialized x/y/w/h, which is also why
      * assign_palettes_nav()'s own `e->w > 0 && e->h > 0` check numbered
      * nothing. */
-    if (!(g_is_palettes || g_is_bookmarks) && g_dbhq_current_tab != DB_HQ_COMMON_EVENTS_TAB) return;
+    if (!(g_is_palettes || g_is_bookmarks) && !dbhq_tab_is_real(g_dbhq_current_tab)) return;
 
     if (sidebar) {
         dbhq_apply_css(sidebar, 0);
@@ -1571,7 +1599,7 @@ static void dbhq_assign_nav_indices(Elem *window) {
      * matched - the ring/badge never had a valid target). Two passes
      * fighting over one tree. Scoped out here exactly like
      * dbhq_layout_pass()'s own tab-gate already excludes palettes. */
-    if (!(g_is_palettes || g_is_bookmarks) && g_dbhq_current_tab == DB_HQ_COMMON_EVENTS_TAB) {
+    if (!(g_is_palettes || g_is_bookmarks) && dbhq_tab_is_real(g_dbhq_current_tab)) {
         Elem *sidebar = find_by_tag(window, "sidebar");
         if (sidebar) {
             for (int i = 0; i < sidebar->n_children && g_n_nav < MAX_ELEMS; i++) {
@@ -1774,7 +1802,7 @@ static void dbhq_redraw_content(void) {
     dbhq_assign_nav_indices(g_window);
     XSetForeground(dpy, gc, alloc_pixel(g_window->style.has_bg_color ? g_window->style.bg_color : "#141414"));
     XFillRectangle(dpy, buf, gc, 0, 0, g_window->w, g_window->h);
-    if (g_dbhq_current_tab != DB_HQ_COMMON_EVENTS_TAB) {
+    if (!dbhq_tab_is_real(g_dbhq_current_tab)) {
         Elem *tabbar = find_by_tag(g_window, "tabbar");
         if (tabbar) { draw_elem(tabbar, 0); render_tree(tabbar, 1); }
         dbhq_render_placeholder_tab(g_window);
@@ -6091,11 +6119,21 @@ static void dbhq_dump_debug_state(void) {
             fprintf(f, "panel=NULL\n");
         }
     }
+    fprintf(f, "g_pal_track_x=%d g_pal_track_y=%d g_pal_track_w=%d g_pal_track_h=%d g_pal_thumb_y=%d g_pal_thumb_h=%d g_pal_total_rows=%d g_pal_visible_rows=%d g_pal_scroll=%d\n",
+            g_pal_track_x, g_pal_track_y, g_pal_track_w, g_pal_track_h, g_pal_thumb_y, g_pal_thumb_h, g_pal_total_rows, g_pal_visible_rows, g_pal_scroll);
     fprintf(f, "g_n_nav=%d\n", g_n_nav);
     for (int i = 0; i < g_n_nav; i++) {
         Elem *e = g_nav[i];
-        fprintf(f, "  nav[%d] tag=%s id=%s label=%s%s\n", i + 1, e->tag, e->id, e->label,
-                (i + 1 == g_focus_nav) ? "  <-- FOCUS" : "");
+        /* REAL FIX 2026-08-28 (live investigation: a visible pixel-level
+         * duplicate control couldn't be confirmed/denied from this dump
+         * alone - it only ever printed tag/id/label, never real screen
+         * geometry, so a pure draw-position bug is invisible here even
+         * though render and this dump both read the exact same live
+         * Elem tree). Real x/y/w/h added so a geometry bug is provable
+         * via the cheap text dump instead of falling back to a PNG +
+         * manual pixel inspection every time. */
+        fprintf(f, "  nav[%d] tag=%s id=%s label=%s x=%d y=%d w=%d h=%d%s\n", i + 1, e->tag, e->id, e->label,
+                e->x, e->y, e->w, e->h, (i + 1 == g_focus_nav) ? "  <-- FOCUS" : "");
     }
     fclose(f);
 }
@@ -6774,6 +6812,29 @@ int main(int argc, char **argv) {
         snprintf(g_dbhq_action_path, sizeof(g_dbhq_action_path),
                  g_is_stats_hq ? "%s/#.desktop/stats_hq_action.txt"
                                : "%s/#.desktop/db_hq_action.txt", g_house_root);
+
+        /* Real Terms tab wiring (2026-08-28, first tab to use dbhq_tab_
+         * is_real()'s new generic path alongside Common Events) - a
+         * second, independent real manager launched the SAME way
+         * Common Events' own khtpm_hq_manager.+x is below (plain fork+
+         * execl, not the <module src="..."/> single-slot mechanism,
+         * since that XML tag only supports one manager per window).
+         * Not gated to db-hq-only vs stats-hq since Terms is a real
+         * game-database concept, not a per-session stat - launches
+         * unconditionally alongside Common Events, same as it does. */
+        if (!g_is_stats_hq && !g_is_palettes && !g_is_bookmarks) {
+            snprintf(g_dbhq_terms_state_path, sizeof(g_dbhq_terms_state_path),
+                     "%s/#.desktop/db_hq_terms.state.txt", g_house_root);
+            char terms_bin[PATH_BUF];
+            snprintf(terms_bin, sizeof(terms_bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/terms_hq_manager.+x", g_house_root);
+            char terms_pkgdir[PATH_BUF];
+            snprintf(terms_pkgdir, sizeof(terms_pkgdir), "%s/#.desktop", g_house_root);
+            pid_t terms_pid = fork();
+            if (terms_pid == 0) {
+                execl(terms_bin, terms_bin, g_house_root, terms_pkgdir, (char *)NULL);
+                _exit(1);
+            }
+        }
 
         g_win_x = 100; g_win_y = 100; /* real db-hq default, distinct from the popup modes' 300,300 */
         dbhq_load_font_scale();
