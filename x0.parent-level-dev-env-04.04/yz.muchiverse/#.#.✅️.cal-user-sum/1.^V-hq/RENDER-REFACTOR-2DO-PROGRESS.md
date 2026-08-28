@@ -209,24 +209,33 @@ auditability, matching what render now has — not a fix for that
 symptom. It may or may not change perceived click responsiveness;
 don't claim it fixes a bug it wasn't built to fix.
 
-REAL DESIGN:
-1. Extend the format of the SAME existing history file (do not invent
-   a second file — db_hq_history.txt already has a real, working,
-   single-cursor reader) with one new typed line, alongside the
-   existing bare-decimal-ASCII convention:
-     CLICK <x> <y> <button>\n
-   Chosen because: bare integers 0-255 are already the keyboard-code
-   convention (dispatch_relay_code() switches on the raw int) — a
-   line starting with the literal prefix "CLICK " can never collide
-   with a bare decimal, same disambiguation-by-prefix convention this
-   file already uses elsewhere for onclick strings ("CE:", "PICKER:").
-   KeyPress needs no new line type for printable/simple keys (already
-   representable as a bare decimal), but non-ASCII keysyms (arrows,
-   Page Up/Down, Escape-as-KeySym) need a second new type:
-     KEYSYM <int>\n
-   (the raw X11 KeySym value - dbhq_handle_key() already takes a
-   KeySym, so this is a direct, lossless passthrough, not a re-encoding
-   scheme like wraith-alpha's own ARROW_UP=1000 hack).
+REAL DESIGN (REVISED 2026-08-28 - do not reinvent, a real, already-
+proven format exists and should be reused per direct instruction):
+1. `pieces/keyboard/history.txt` already has a REAL, in-production,
+   two-line-type convention (confirmed live in `&.widgits/_shared-lib/
+   system/chtpm_parser_pal.c`'s own poll loop - this is mutaclysm's
+   real format, not a proposal):
+     KEY_PRESSED: <decimal code>\n
+     MOUSE_EVENT: <button> <x> <y> <is_press>\n
+   Reuse this EXACT format for db_hq_history.txt's new lines, not the
+   earlier CLICK/KEYSYM shape this section originally proposed - same
+   house, same real, working precedent, no reason to diverge. The
+   taskbar's own real migration (see conflation note above) ALSO used
+   this exact shape when it added a 5th field for multi-window
+   disambiguation: `MOUSE_EVENT: <button> <x> <y> <is_press>
+   <window_name>` - khtpm_entity_menu_render.c is one-window-per-
+   process so likely doesn't need that 5th field, but note it as
+   available/reusable if a future mode ever needs it, don't reinvent
+   THAT either if it comes up.
+2. KeyPress: `KEY_PRESSED: <decimal code>` covers printable/simple keys
+   directly (bare decimal, matches the existing convention this file's
+   OWN dispatch_relay_code() already parses for agent-injected codes -
+   real overlap, not a new concept). Non-ASCII KeySyms (arrows, Page
+   Up/Down) need their real X11 KeySym integer value carried losslessly
+   - use the same `KEY_PRESSED: <code>` line with the raw KeySym int
+   when `ch` isn't a plain ASCII byte, rather than inventing a THIRD
+   line type - dbhq_handle_key() can tell the two apart the same way
+   it already does today (checking ch vs a KeySym constant range).
 
 2. Real capture step (write-only, replaces direct dispatch): at each
    of the 4 real `ev.type == ButtonPress` sites (db-hq ~line 7702,
