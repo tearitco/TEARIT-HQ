@@ -148,6 +148,39 @@ COMMAND repeat_above
   LABEL Repeat Above
 END
 
+# REAL, NEW 2026-08-29 - the remaining real Flow Control commands, same
+# real "structural marker, no PAL/TEMPLATE line, special-cased in
+# compile_page()" shape as if/else/end/loop/break_loop/repeat_above just
+# above. prisc+x already has real OP_J/OP_HALT/Label support (see
+# prisc+x.c's own OpBase enum) - these are genuinely small compiler
+# additions, not new VM work; the plan doc that once framed all of Flow
+# Control as blocked on "real VM support" was written before this file's
+# own if/else/end/loop code existed to check against.
+COMMAND comment
+  LABEL Comment
+  FIELD1 Text:
+  FIELD2 -
+  PARAMS text
+END
+
+COMMAND exit_event
+  LABEL Exit Event
+END
+
+COMMAND label
+  LABEL Label
+  FIELD1 Name:
+  FIELD2 -
+  PARAMS name
+END
+
+COMMAND jump_to_label
+  LABEL Jump to Label
+  FIELD1 Label name:
+  FIELD2 -
+  PARAMS name
+END
+
 # Wait - real pacing (ms). Compiles to the VM's EXISTING `sleep <micros>`
 # opcode (W-1 decision, 2026-08-27: no new SYS_SLEEP syscall - reusing the
 # already-working opcode; {ms}000 is the ms->us unit conversion on a numeric
