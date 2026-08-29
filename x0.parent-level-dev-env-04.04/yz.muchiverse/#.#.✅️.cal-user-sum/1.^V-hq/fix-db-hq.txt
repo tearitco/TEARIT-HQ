@@ -1,0 +1,237 @@
+fix-db-hq.txt — Common Events Add-Command picker: mouse still broken,
+nav bleeds into parent window (2026-08-29, handoff for fresh context)
+============================================================
+
+STATUS: NOT FIXED. Two real, live-reported, still-open bugs. Written
+because the investigating session is nearly out of context budget -
+do NOT blind-guess a fix on top of this without re-reading the actual
+code first, the hypotheses below are real leads, not confirmed causes.
+
+Direct user report, verbatim: "the background and window outline (for
+add command) is back, but mouse still isn't working. also nav arrows
+are still driving both sub menu and parent menu (bad) we need to fix
+those."
+
+So: the CSS fix (commit f8747b2) DID land correctly - visual chrome is
+back. Two bugs remain, both in Common Events' (db-hq) embedded
+Add-Command picker specifically - NOT confirmed whether events-hq's
+own direct picker (not embedded in db-hq) has the same bugs, that
+needs checking too, see "What to check first" below.
+
+============================================================
+BUG 1: mouse click still doesn't work in the picker (db-hq/Common
+Events context)
+============================================================
+
+Real code path, re-traced this session (not reproduced live - see
+"why this wasn't live-verified" at the bottom):
+
+1. `dbhq_handle_click(px,py)` (~line 3020ish, grep for
+   "g_dbhq_ce_editing && g_evhq_picker_open") - top branch, hit-tests
+   `g_nav[]` (which the picker owns exclusively while open, per
+   `evhq_draw_picker_overlay()`'s own header comment), calls
+   `click_focus_then_activate(e)`. If that returns 0 (this click just
+   moved focus, didn't match the already-focused elem), redraws and
+   returns WITHOUT activating - by design, this is the new two-step
+   click convention (2026-08-29, `click_focus_then_activate()`,
+   ~line 450).
+2. If it returns 1, calls `dbhq_activate_elem(e)`, which DOES
+   correctly dispatch `PICKER:` onclicks via
+   `evhq_dispatch_picker_onclick()` - confirmed real, this dispatch
+   was already fixed 2026-08-26 (see the comment right above it,
+   "cancel doesn't work" bug) and is NOT the problem.
+
+REAL SUSPECT, NOT YET CONFIRMED: `click_focus_then_activate()`
+compares `g_focus_nav != hit->nav_index`. `g_focus_nav` is ONE SHARED
+global used by BOTH the background window's own nav AND the picker's
+nav while it's open - they are NOT independent variables. The
+picker's own rows are numbered 1..N (see `evhq_draw_picker_overlay()`,
+`row->nav_index = i + 1`), which is the SAME low range db-hq's own
+background tabbar/sidebar/panel buttons use for their own nav_index.
+
+Working theory: if `g_focus_nav` still holds a background-window
+value at the moment of the FIRST click after opening the picker (e.g.
+the background had focus on nav_index 3, then the picker opens with
+its own row 1 at nav_index 1), `click_focus_then_activate()` sees
+`g_focus_nav(3) != hit->nav_index(1)` and treats this as "just move
+focus," requiring a SECOND click - which would read exactly like
+"mouse isn't working" to a user only clicking once.
+
+COUNTER-EVIDENCE against this theory, found this session, NOT
+resolved: `evhq_draw_picker_overlay()` sets `g_focus_nav =
+g_evhq_picker_focus;` at the TOP of its own type-list branch
+(`g_evhq_picker_focus` starts at 1 when the picker opens - see
+`g_evhq_picker_focus = 1;` at every place `g_evhq_picker_open` gets
+set to 1). If a redraw genuinely happens between "picker opens" and
+"user's first click" (it should - `dbhq_ce_handle_onclick()`'s
+`CE:ADDCMD` case doesn't force one directly, but SOMETHING must
+repaint the now-open picker onto the screen before the user can see
+it to click it), `g_focus_nav` should already be freshly 1 by the
+time of the first click, matching row 1's own nav_index - meaning the
+FIRST click on the FIRST row should activate immediately, no
+two-click issue. This contradicts the theory above for at least that
+one case. Does NOT rule out the theory for clicking a row OTHER than
+row 1 first, or scrolling before clicking, etc. - needs real testing,
+not more reasoning from the armchair.
+
+**What to check first, with a live window (see safety note at
+bottom)**: open Common Events' Add-Command picker, single-click a row
+that is NOT already focus-highlighted, note what happens (does focus
+move to it with no activation - matches two-step-by-design and is
+CORRECT per the new convention; or does literally nothing happen at
+all - a real bug). Then click that SAME row again - does it activate
+now? If yes, this may not be "broken," it may be the new two-step
+behavior working exactly as designed and the user hasn't yet adjusted
+to needing two clicks - worth explicitly asking them "are you
+clicking twice?" before assuming this is a code bug at all. If NO
+even on the second click, there's a real, separate bug beyond
+click_focus_then_activate() - re-trace dbhq_activate_elem() ->
+evhq_dispatch_picker_onclick() by hand with a debug fprintf (see
+"debug technique" below) to find where it actually breaks.
+
+============================================================
+BUG 2: nav arrows drive both the picker AND the parent/background
+window's own nav at the same time
+============================================================
+
+This is almost certainly real (not a misreading), and is likely THE
+SAME underlying root cause as Bug 1's leading theory: `g_focus_nav`
+is one shared global, and BOTH the picker's own Elems AND the
+background window's own Elems can carry the SAME nav_index numbers
+(both start counting from 1). `draw_elem()` (shared,
+`khtpm_draw_core.c`) draws a focus ring purely on `e->nav_index ==
+g_focus_nav`, with no concept of "which modal/window this element
+belongs to." So when `g_focus_nav` is, say, 2, BOTH "picker row 2"
+AND "background element with nav_index 2" get a focus ring drawn
+simultaneously if both are on screen - which is exactly what a user
+moving arrow keys while the picker is open would see: the background
+window's own tab/sidebar selection visibly changing in lockstep with
+the picker's own row selection, because they're reading the identical
+number.
+
+This was actually predicted, then WRONGLY dismissed as "cosmetic," in
+this same session's earlier work (see `EVENTS-HQ-RENDER-UNIFICATION-
+PLAN.md`'s own note, or search this file's git history around
+2026-08-29 for "ghost focus ring" / "Blueprints tab... orange ring
+simultaneously"). It is not cosmetic - the user is now reporting it
+as functionally confusing/bad, which it is.
+
+**Real candidate fixes, not yet attempted**:
+
+(a) **Zero the background's own nav_index while the picker is open.**
+    `dbhq_assign_nav_indices()` (~line 2230) and
+    `evhq_assign_nav_indices()` (~line 4553) both run on every
+    layout pass regardless of picker state. Add a check: if
+    `g_evhq_picker_open` (and for db-hq, also `g_dbhq_ce_editing`),
+    skip assigning real nav_index to background elements entirely
+    (leave them 0) - same real pattern `evhq_zero_subtree()` already
+    uses to hide Scripting-mode content when Scratch mode is active,
+    just applied to nav_index instead of w/h. This means
+    `g_focus_nav` can never coincidentally match a background
+    element while modal, because no background element has a nonzero
+    nav_index to match. Real risk: need to confirm this doesn't also
+    suppress background elements from being DRAWN (it shouldn't -
+    `draw_elem()`'s ring-check is separate from whether the element
+    draws at all) or break `g_n_nav`/`g_nav[]` bookkeeping the picker
+    itself depends on (the picker rebuilds `g_nav[]` from scratch
+    every draw inside `evhq_draw_picker_overlay()`, so this should be
+    safe, but verify).
+
+(b) **Give the picker's own nav_index range a real, non-overlapping
+    offset** (e.g. add 1000 to every picker row's nav_index, and to
+    `g_focus_nav` while the picker is open) so numeric collision with
+    the background is structurally impossible regardless of any
+    other bug. More invasive (touches every place that reads
+    `g_focus_nav` as a plain small int, e.g. digit-jump code that
+    checks `d <= g_n_nav`), higher risk of a NEW bug, not the
+    recommended first attempt.
+
+(a) is the better first attempt - smaller, matches an existing real
+pattern in this same file, lower risk.
+
+============================================================
+Also flagged by the user, separate, lower priority ("fix that after"):
+chat-hai orphaned background process
+============================================================
+
+Confirmed real and already cleaned up once this session (2 stray
+`chat_hai_loop.sh` processes killed, zero chat-hai renderer window
+running at the time). Root cause NOT investigated - real, open
+question: what is supposed to kill `chat_hai_loop.sh` when its
+renderer window exits/crashes, and why didn't that happen here?
+
+Real starting points for whoever picks this up:
+- `&.hq-apps/chat-hai/ops/chat_hai_loop.sh` - read it, find whether it
+  has ANY real liveness check on its own parent/companion renderer
+  PID, or whether it just loops forever unconditionally once started.
+- Compare against how `khtpm_events_hq_manager.+x` children get
+  cleaned up (or don't - the events-hq manager orphan bug found
+  earlier THIS SAME SESSION, same class of problem, not yet given a
+  systemic fix either - both may want the same real fix rather than
+  two separate one-off patches). Real candidate: a supervising process
+  should track its child's PID and `kill()` it on its own exit (an
+  `atexit()`/signal-handler pattern), OR children should poll a real
+  "am I still wanted" marker file the way other parts of this house
+  already do (matches the file-based-state-only house philosophy -
+  see `SKILLS.md` §1).
+- Do NOT just add this one loop.sh to the existing cleanup call sites
+  as a one-off patch without checking whether the SAME gap exists for
+  every OTHER manager/loop process this binary or its siblings spawn -
+  the user's own standing instruction is "no exceptions," a real,
+  general fix here is worth more than three separate copy-pasted
+  patches.
+
+============================================================
+Debug technique for whoever picks this up (proven this session)
+============================================================
+
+A temporary `fprintf(stderr, ...)` at the very top of
+`evhq_activate_elem()`/`dbhq_activate_elem()` (print `hit->id`,
+`hit->onclick`, `hit->nav_index`, and `g_focus_nav` at the moment of
+the call) is the fastest way to see EXACTLY what's happening without
+guessing - this found the real per-PID history-file bug earlier
+tonight in about 2 minutes once added. Remember to remove it before
+committing (it was left in and had to be cleaned up once already this
+session).
+
+To check `g_focus_nav` state without adding a print: relay code 210
+(`KEY_PRESSED: 210`) dumps real state to `/tmp/db-hq-state.txt`,
+including `g_focus_nav` and `g_n_nav` - see `dbhq_dump_debug_state()`.
+Add a `g_evhq_picker_open`/`g_evhq_picker_focus`/`g_evhq_picker_scroll`
+line to that dump function if they're not already in it - would have
+made this session's own investigation faster.
+
+============================================================
+Why this wasn't live-verified this session, and a real safety note
+for whoever picks this up
+============================================================
+
+At the time of writing, TWO visually-identical db-hq windows
+(1559x783, same position) were simultaneously running - one confirmed
+via process-start-time correlation to be the USER's own live session,
+the other a fresh test window this session launched. This WM does not
+expose `_NET_WM_PID` (`xdotool getwindowpid` returns nothing useful
+for these windows), so there is no reliable way to map a specific X
+window ID back to a specific PID here, and therefore no safe way to
+target ONLY the test window with `xdotool windowfocus`/relay input
+without real risk of accidentally driving the user's own window.
+
+**Before testing this live**: either (a) ask the user to close their
+own db-hq window first, confirm via `ps aux | grep khtpm_entity_menu`
+that zero db-hq processes remain, THEN launch exactly one fresh test
+window and proceed normally: `xdotool windowfocus`, per-PID history
+file writes (`#.desktop/db_hq_history/<pid>.txt` - the flat
+`db_hq_history.txt` no longer exists as of 2026-08-29's per-PID fix,
+see `HQ-WINDOW-MAP-AND-AGENT-INPUT.md`), `dump_frame_png_op.+x` for
+real pixel proof; or (b) use ONLY the isolated sandbox path
+(`/tmp/evhq_sandbox/event_pkg`) launched directly against
+`&.widgits/events-hq/pieces/dashboard.chtpm` (events-hq mode, not
+db-hq) to at least confirm/deny whether events-hq's own DIRECT picker
+(not embedded via Common Events) has the same two bugs - this doesn't
+prove the db-hq-specific case but is a safe, real signal with zero
+risk of touching a real window, and was this session's own preferred
+method all night for exactly this reason.
+
+Do not use `xdotool click` at absolute screen coordinates under any
+circumstances - see `SKILLS.md` §3 landmine #4, a real incident
+already happened this way earlier in this same overall project.

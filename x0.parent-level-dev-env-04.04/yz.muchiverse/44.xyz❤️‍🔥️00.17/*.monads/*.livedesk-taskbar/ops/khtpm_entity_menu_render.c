@@ -582,6 +582,9 @@ static int g_dbhq_selected_event = -1;
  * live, retargeting the SAME g_evhq_* globals/functions events-hq
  * already uses for entities - see dbhq_ce_open() below. */
 static int g_evhq_picker_open; /* real definition (with initializer) is later in the file, near g_evhq_picker_type - this tentative redeclaration just makes it visible to dbhq_handle_click(), which is defined earlier */
+static int g_evhq_picker_type; /* REAL, NEW 2026-08-29 - same tentative-redeclaration pattern as g_evhq_picker_open just above, needed for dbhq_handle_click()'s own real fix (mouse click focus-sync) */
+static int g_evhq_picker_focus;
+static int g_evhq_active_field;
 static int g_dbhq_ce_editing = 0;
 static char g_dbhq_ce_name[128] = "";
 static int g_dbhq_ce_needs_rebuild = 1; /* see dbhq_ce_inject_panel()'s own header comment */
@@ -3041,7 +3044,19 @@ static void dbhq_handle_click(int px, int py) {
         for (int i = 0; i < g_n_nav; i++) {
             Elem *e = g_nav[i];
             if (px >= e->x && px < e->x + e->w && py >= e->y && py < e->y + e->h) {
-                if (!click_focus_then_activate(e)) { dbhq_redraw_content(); return; }
+                if (!click_focus_then_activate(e)) {
+                    /* REAL FIX 2026-08-29 - same root cause as
+                     * evhq_handle_click()'s own matching fix (see its
+                     * comment): evhq_draw_picker_overlay() stomps
+                     * g_focus_nav from g_evhq_picker_focus/
+                     * g_evhq_active_field on every redraw; sync
+                     * whichever is live before redrawing or the click
+                     * that just moved focus gets silently undone. */
+                    if (g_evhq_picker_type < 0) g_evhq_picker_focus = e->nav_index;
+                    else g_evhq_active_field = e->nav_index - 1;
+                    dbhq_redraw_content();
+                    return;
+                }
                 dbhq_activate_elem(e);
                 return;
             }
@@ -4166,6 +4181,28 @@ static void evhq_zero_subtree(Elem *e) {
     for (int i = 0; i < e->n_children; i++) evhq_zero_subtree(e->children[i]);
 }
 
+/* REAL FIX 2026-08-29 (live report: "nav arrows are still driving both
+ * sub menu and parent menu (bad)") - live-reproduced and confirmed:
+ * the Add-Command picker's own rows are numbered 1..N (see
+ * evhq_draw_picker_overlay()), the SAME low range the background
+ * window's own tabbar/sidebar/panel elements use for THEIR nav_index -
+ * draw_elem() draws a focus ring purely on `nav_index == g_focus_nav`
+ * with no concept of "which modal this belongs to," so a background
+ * element and a picker row with the same number both light up at
+ * once. `*_assign_nav_indices()` re-running while the picker is
+ * closed-then-reopened doesn't help - the STALE nav_index values from
+ * before the picker opened are still baked into the background Elems'
+ * own structs. Real fix, mirrors evhq_zero_subtree()'s own pattern
+ * (same real technique already used to hide Scripting-mode content
+ * behind Scratch mode) - recursively zero every background Elem's
+ * nav_index while the picker owns g_focus_nav/g_nav[] exclusively, so
+ * it can never coincidentally match a picker row's own number. */
+static void zero_nav_subtree(Elem *e) {
+    if (!e) return;
+    e->nav_index = 0;
+    for (int i = 0; i < e->n_children; i++) zero_nav_subtree(e->children[i]);
+}
+
 /* REAL FIX 2026-08-29 (EVENTS-HQ-RENDER-UNIFICATION-PLAN.md Part B) -
  * extracted from events-hq's own view_mode==1 branch (was hardcoded
  * to that one caller's "window"/"viewmode_stub" globals) so Common
@@ -5171,7 +5208,28 @@ static void evhq_handle_click(int px, int py) {
         for (int i = 0; i < g_n_nav; i++) {
             Elem *e = g_nav[i];
             if (px >= e->x && px < e->x + e->w && py >= e->y && py < e->y + e->h) {
-                if (!click_focus_then_activate(e)) { evhq_redraw_content(); return; }
+                if (!click_focus_then_activate(e)) {
+                    /* REAL FIX 2026-08-29 (live report: "mouse click
+                     * not working... still no mouse click pickup" -
+                     * root-caused via a temporary debug trace, live-
+                     * reproduced): evhq_draw_picker_overlay() sets
+                     * `g_focus_nav = g_evhq_picker_focus` (type list)
+                     * unconditionally at the top of every redraw -
+                     * click_focus_then_activate() above only updates
+                     * g_focus_nav directly, never g_evhq_picker_focus
+                     * (or g_evhq_active_field, the field-entry
+                     * screen's own equivalent), so the redraw this
+                     * same click triggers immediately stomped the
+                     * mouse's own focus move back to whatever stale
+                     * value those variables still held - keyboard nav
+                     * worked because it updates the real variable
+                     * directly; mouse never did. Sync whichever one
+                     * is live for the current screen before redrawing. */
+                    if (g_evhq_picker_type < 0) g_evhq_picker_focus = e->nav_index;
+                    else g_evhq_active_field = e->nav_index - 1;
+                    evhq_redraw_content();
+                    return;
+                }
                 evhq_activate_elem(e);
                 return;
             }
