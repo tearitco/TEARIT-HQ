@@ -1,10 +1,4 @@
-item|||Chat||sh -c 'cd "$0" && H="$1" && exec gnome-terminal -- "$H/@.apps/asa-&-ava/pieces/asa/chat.sh"'|1|0|0|24|260|24
-item|||Events||sh -c 'exec "$1/&.widgits/events-hq/button.sh" "$0" "$1"'|2|0|0|48|260|24
-item|||Events (mock)||sh -c 'cd "$0" && H="$1" && exec sh "$H/&.widgits/event-editor/gl_mock/button.sh" run'|3|0|0|72|260|24
-item|||Events (ez)||sh -c 'cd "$0" && H="$1" && exec env EZ_PKG_NAME=asa-$(cat "$0/instance_id.txt") EZ_PKG_DIR="$H/@.apps/asa-&-ava/pieces/asa/event_pkg" sh "$H/&.widgits/event-ez/button.sh" run-widget'|4|0|0|96|260|24
-item|||Play||sh -c 'cd "$0" && H="$1" && test -f "$H/@.apps/asa-&-ava/pieces/asa/event_pkg/pages/page_1/event.pal" && exec "$H/101.mutaclsym🧟‍♂️️+18.01/system/prisc+x" "$H/@.apps/asa-&-ava/pieces/asa/event_pkg/pages/page_1/event.pal"'|5|0|0|120|260|24
-item|||Stop||void|6|0|0|144|260|24
-item|||Ledger||sh -c 'cd "$0" && H="$1" && exec gedit "$H/@.apps/asa-&-ava/pieces/asa/master_ledger.txt"'|7|0|0|168|260|24
-item|||Dir||sh -c 'exec xdg-open "$0"'|8|0|0|192|260|24
-item|||Close||CLOSE|9|0|0|216|260|24
-item|||Cancel||void|10|0|0|240|260|24
+item|||Read||sh -c 'export PACKAGE_DIR="$0"; H="$1"; exec "$(find "$H" -maxdepth 1 -name "101.mutaclsym🧟‍♂️️*" -type d 2>/dev/null | head -1)/system/prisc+x" "$(find "$H" -path "*monads/*book-stack/pieces/reader/event_pkg/pages/page_1/event.pal" 2>/dev/null | head -1)"'|1|0|0|24|260|24
+item|||Dir||sh -c 'exec xdg-open "$0"'|2|0|0|48|260|24
+item|||Close||CLOSE|3|0|0|72|260|24
+item|||Cancel||void|4|0|0|96|260|24

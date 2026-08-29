@@ -3257,6 +3257,39 @@ typedef struct { char key[128]; char status[16]; } EvhqBlockNode;
 static EvhqBlockNode g_evhq_blocks[EVHQ_MAX_BLOCKS];
 static int g_evhq_n_blocks = 0;
 static Elem g_evhq_block_slots[MAX_CHILDREN];
+/* Visual block editor (2026-08-29) - click-to-place, nav-based, no
+ * drag/drop: left sidebar of block pieces (click to pick, highlights),
+ * then click the "[].<#>" slot to append via evhq_request_append_node().
+ * All ops below are real registry commands (see DESIGN NOTE in
+ * !.OPEN-2do-events-db-networking-2026-08-28.md); cls1/cls2 are the
+ * two class tokens that make the piece look scratch-colored. */
+typedef struct {
+    const char *label;
+    const char *type;
+    const char *params;
+    const char *cls1;
+    const char *cls2;
+} EvhqPaletteItem;
+static const EvhqPaletteItem g_evhq_palette[] = {
+    { "Change Gold",  "change_gold",     "amount=10",                          "scratch-block", "gold"   },
+    { "Take Gold",    "take_gold",       "amount=10",                          "scratch-block", "green"  },
+    { "Switch ON",    "control_switch",  "switch_name=flag_0|switch_value=1",  "scratch-block", "orange" },
+    { "Show Text",    "show_text",       "text=Hello!",                        "scratch-block", "purple" },
+    { "Wait",         "wait",            "ms=100",                             "scratch-block", "pink"   },
+};
+#define EVHQ_PALETTE_MAX 8
+#define EVHQ_PALETTE_N ((int)(sizeof(g_evhq_palette) / sizeof(g_evhq_palette[0])))
+static Elem g_evhq_palette_slots[EVHQ_PALETTE_MAX];
+static Elem g_evhq_place_slots[2];
+static int g_evhq_selected_palette = -1;
+static char g_evhq_selected_type[32] = "";
+static char g_evhq_selected_params[128] = "";
+static const char *evhq_palette_cls_for_type(const char *type) {
+    if (!type || !type[0]) return NULL;
+    for (int i = 0; i < EVHQ_PALETTE_N; i++)
+        if (strcmp(type, g_evhq_palette[i].type) == 0) return g_evhq_palette[i].cls2;
+    return NULL;
+}
 static char g_evhq_trigger[64] = "(unknown)";
 static char g_evhq_switch_name[128] = "";  /* for Common Events: configured switch to watch */
 static char g_evhq_mgr_pages_state_path[PATH_BUF];
@@ -4038,18 +4071,94 @@ static void evhq_layout_pass(Elem *window) {
     Elem *viewmode_stub = find_by_id(window, "viewmode-stub");
     if (viewmode_stub) {
         if (g_evhq_view_mode == 0) { evhq_zero_subtree(viewmode_stub); }
-        else if (g_evhq_view_mode == 1 && g_evhq_n_blocks > 0) {
+        else if (g_evhq_view_mode == 1) {
+            /* Visual block editor (2026-08-29) - nav-based click-to-
+             * place, NOT drag/drop: left = block palette (onclick
+             * "BLOCK:SEL:<i>", selected gets .selected), right = the
+             * SCRATCHBLOCK rows + a "[].<#>" place slot (onclick
+             * "BLOCK:PLACE" -> evhq_request_append_node(), the same
+             * action.txt boundary append: already uses). */
+            if (g_evhq_selected_palette < 0) {
+                g_evhq_selected_palette = 0;
+                snprintf(g_evhq_selected_type, sizeof(g_evhq_selected_type), "%s", g_evhq_palette[0].type);
+                snprintf(g_evhq_selected_params, sizeof(g_evhq_selected_params), "%s", g_evhq_palette[0].params);
+            }
             evhq_zero_subtree(viewmode_stub);
             viewmode_stub->x = 0; viewmode_stub->y = content_y; viewmode_stub->w = window->w; viewmode_stub->h = content_h;
-            int slot = 0;
-            for (int i = 0; i < g_evhq_n_blocks && viewmode_stub->n_children < MAX_CHILDREN; i++) {
-                Elem *b = reusable_slot(g_evhq_block_slots, MAX_CHILDREN, slot++, "text");
+            int pslot = 0, bslot = 0;
+            for (int i = 0; i < EVHQ_PALETTE_N && pslot < EVHQ_PALETTE_MAX; i++) {
+                Elem *it = reusable_slot(g_evhq_palette_slots, EVHQ_PALETTE_MAX, pslot++, "block-item");
+                if (!it) break;
+                snprintf(it->classes[0], sizeof(it->classes[0]), "block-item");
+                it->n_classes = 1;
+                if (g_evhq_palette[i].cls1[0]) {
+                    snprintf(it->classes[it->n_classes], sizeof(it->classes[it->n_classes]), "%s", g_evhq_palette[i].cls1);
+                    it->n_classes++;
+                }
+                if (g_evhq_palette[i].cls2[0]) {
+                    snprintf(it->classes[it->n_classes], sizeof(it->classes[it->n_classes]), "%s", g_evhq_palette[i].cls2);
+                    it->n_classes++;
+                }
+                if (i == g_evhq_selected_palette) {
+                    snprintf(it->classes[it->n_classes], sizeof(it->classes[it->n_classes]), "selected");
+                    it->n_classes++;
+                }
+                snprintf(it->label, sizeof(it->label), "%s", g_evhq_palette[i].label);
+                snprintf(it->onclick, sizeof(it->onclick), "BLOCK:SEL:%d", i);
+                it->x = viewmode_stub->x + 8; it->y = viewmode_stub->y + 8 + i * 26;
+                it->w = 196; it->h = 22;
+                /* REAL FIX 2026-08-29, live visual verdict ("no color
+                 * anywhere... reads as two plain text lists"): classes
+                 * were assigned on every Elem in this block but
+                 * css_compute_style() was never called on any of them -
+                 * .style stayed whatever reusable_slot() left it at, so
+                 * draw_elem() had no real background/border color to
+                 * paint regardless of which classes were set. Same real
+                 * call dbhq_paint_frame_line() already uses for its own
+                 * temp Elems - reused here, not reinvented. */
+                css_compute_style(&g_sheet, it->tag, NULL, it->classes, it->n_classes, 0, &it->style);
+                viewmode_stub->children[viewmode_stub->n_children++] = it;
+            }
+            int bx = viewmode_stub->x + 220;
+            for (int i = 0; i < g_evhq_n_blocks && bslot < MAX_CHILDREN; i++) {
+                Elem *b = reusable_slot(g_evhq_block_slots, MAX_CHILDREN, bslot++, "text");
                 if (!b) break;
                 snprintf(b->classes[0], sizeof(b->classes[0]), "scratch-block"); b->n_classes = 1;
+                const char *cls2 = evhq_palette_cls_for_type(g_evhq_blocks[i].key);
+                if (cls2) { snprintf(b->classes[b->n_classes], sizeof(b->classes[b->n_classes]), "%s", cls2); b->n_classes++; }
                 snprintf(b->label, sizeof(b->label), "%s  [%s]", g_evhq_blocks[i].key, g_evhq_blocks[i].status);
-                b->x = viewmode_stub->x + 20; b->y = viewmode_stub->y + 20 + i * 30;
-                b->w = window->w - 40; b->h = 22;
+                b->x = bx; b->y = viewmode_stub->y + 8 + i * 26;
+                b->w = window->w - bx - 12; b->h = 22;
+                css_compute_style(&g_sheet, b->tag, NULL, b->classes, b->n_classes, 0, &b->style);
                 viewmode_stub->children[viewmode_stub->n_children++] = b;
+            }
+            Elem *pl = reusable_slot(g_evhq_place_slots, 2, 0, "block-place");
+            if (pl) {
+                snprintf(pl->classes[0], sizeof(pl->classes[0]), "block-place");
+                pl->n_classes = 1;
+                if (g_evhq_palette[g_evhq_selected_palette].cls1[0]) {
+                    snprintf(pl->classes[pl->n_classes], sizeof(pl->classes[pl->n_classes]), "%s", g_evhq_palette[g_evhq_selected_palette].cls1);
+                    pl->n_classes++;
+                }
+                if (g_evhq_palette[g_evhq_selected_palette].cls2[0]) {
+                    snprintf(pl->classes[pl->n_classes], sizeof(pl->classes[pl->n_classes]), "%s", g_evhq_palette[g_evhq_selected_palette].cls2);
+                    pl->n_classes++;
+                }
+                snprintf(pl->label, sizeof(pl->label), "[].%d  new block", g_evhq_n_cmds + 1);
+                snprintf(pl->onclick, sizeof(pl->onclick), "BLOCK:PLACE");
+                pl->x = bx; pl->y = viewmode_stub->y + 8 + g_evhq_n_blocks * 26;
+                pl->w = window->w - bx - 12; pl->h = 22;
+                css_compute_style(&g_sheet, pl->tag, NULL, pl->classes, pl->n_classes, 0, &pl->style);
+                viewmode_stub->children[viewmode_stub->n_children++] = pl;
+            }
+            Elem *cl = reusable_slot(g_evhq_place_slots, 2, 1, "block-clue");
+            if (cl) {
+                snprintf(cl->classes[0], sizeof(cl->classes[0]), "block-clue"); cl->n_classes = 1;
+                snprintf(cl->label, sizeof(cl->label), "sel: %s  ::  %s", g_evhq_selected_type, g_evhq_selected_params);
+                cl->x = viewmode_stub->x + 8; cl->y = viewmode_stub->y + 8 + EVHQ_PALETTE_N * 26 + 4;
+                cl->w = 196; cl->h = 18;
+                css_compute_style(&g_sheet, cl->tag, NULL, cl->classes, cl->n_classes, 0, &cl->style);
+                viewmode_stub->children[viewmode_stub->n_children++] = cl;
             }
         }
         else {
@@ -4647,6 +4756,22 @@ static void evhq_activate_elem(Elem *hit) {
         else if (strcmp(hit->onclick, "scroll:up") == 0 || strcmp(hit->onclick, "scroll:down") == 0) {
             g_pal_scroll += (strcmp(hit->onclick, "scroll:down") == 0) ? 1 : -1;
             evhq_redraw_content();
+        }
+        /* Visual block editor (2026-08-29) - click-to-place Scratch:
+         * BLOCK:SEL:<i> picks a palette piece, BLOCK:PLACE appends the
+         * chosen op via the same action.txt boundary append: uses. */
+        else if (strncmp(hit->onclick, "BLOCK:SEL:", 10) == 0) {
+            int idx = atoi(hit->onclick + 10);
+            if (idx >= 0 && idx < EVHQ_PALETTE_N) {
+                g_evhq_selected_palette = idx;
+                snprintf(g_evhq_selected_type, sizeof(g_evhq_selected_type), "%s", g_evhq_palette[idx].type);
+                snprintf(g_evhq_selected_params, sizeof(g_evhq_selected_params), "%s", g_evhq_palette[idx].params);
+            }
+            evhq_redraw_content();
+        }
+        else if (strcmp(hit->onclick, "BLOCK:PLACE") == 0) {
+            if (g_evhq_selected_palette >= 0 && g_evhq_selected_type[0])
+                evhq_request_append_node(g_evhq_selected_type, g_evhq_selected_params);
         }
         return;
     }
