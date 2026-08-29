@@ -1680,6 +1680,25 @@ static void clamp_popup_to_screen(Display *dpy, int *x, int *y, int w, int h) {
 }
 
 static Window open_context_menu(Display *dpy, GC gc, int *root_x, int *root_y, int nitems, MethodItem *items) {
+    /* REAL FIX 2026-08-29 (ENTITY-MENU-LEGACY-DEPRECATION-PLAN.md
+     * Phase 3 / TP-DESKTOP-LEGACY-POPUP-REMOVAL-CHECKLIST.md) - same
+     * real redirect this function already did at its own END (see the
+     * dead block this replaces, right before the final `return popup;`
+     * below) - g_use_khtpm_menu is checked ONCE per-process at the top
+     * of main(), never per-call-site, so moving the check here doesn't
+     * change WHICH calls redirect, only WHEN: this entity's own
+     * XCreateWindow/popup_lock_acquire/XGrabPointer/XGrabKeyboard never
+     * need to run at all now, instead of running fully then being
+     * destroyed a moment later. Zero semantic change - every entity
+     * behaves identically to before, just without the wasted work. */
+#ifndef _WIN32
+    if (g_use_khtpm_menu) {
+        int px = root_x ? *root_x : 0;
+        int py = root_y ? *root_y : 0;
+        launch_khtpm_menu(px, py);
+        return None;
+    }
+#endif
     popup_lock_acquire();
     /* +1 row for the id header (see g_full_id comment above). */
     int h = POPUP_ROW_H * ((nitems > 0 ? nitems : 1) + 1);
@@ -1805,57 +1824,14 @@ static Window open_context_menu(Display *dpy, GC gc, int *root_x, int *root_y, i
      * (we never XSetInputFocus other processes' tile windows here). */
     popup_soft_focus(dpy, popup);
 
-    /* Stage 2c PROOF (2026-08-16) - see launch_khtpm_menu()'s own header
-     * comment. Everything above this point (window creation, lock
-     * acquire, grabs) runs completely unchanged - the legacy popup is a
-     * real, fully-alive X window, just never shown, so every downstream
-     * caller's lock/lifecycle bookkeeping keeps working exactly as
-     * before. Only the VISIBLE result changes. */
-#ifdef _WIN32
-    /* khtpm_entity_menu_render.exe is not a Win PE yet. Linux hides the
-     * legacy popup and forks that binary; doing the same here destroyed
-     * the menu and launched nothing. Keep the Xlib menu until that app
-     * has its own shim. */
-    (void)0;
-#else
-    if (g_use_khtpm_menu) {
-        /* REAL FIX 2026-08-16, direct live report ("it also pops up
-         * instead of context menu when i rightclick ava" - the "Chat"
-         * item fired immediately instead of the menu showing): the
-         * XGrabPointer above (still active on this now-hidden popup) was
-         * delivering the initiating click's own trailing event straight
-         * through to whatever mapped next - the new renderer's window,
-         * landing on its first item. Explicitly release the grab before
-         * hiding the legacy popup, same real cause class as the
-         * window-ID-recycle phantom click fixed just above. */
-        XUngrabPointer(dpy, CurrentTime);
-        XUngrabKeyboard(dpy, CurrentTime);
-        XSync(dpy, False);
-        /* REAL FIX 2026-08-16, direct live report ("seems random" - Chat
-         * firing on ~every other right-click with no menu visible first):
-         * merely hiding (XUnmapWindow) left this a real, non-zero,
-         * still-alive X window - every ~20 call sites' own `popup_win`
-         * variable stayed set to it. The main event loop's real
-         * right-click handler is gated on `if (!popup_win)` (line ~2868)
-         * - a still-nonzero popup_win made the NEXT right-click get
-         * treated as "click INSIDE the already-open menu" (hit-tested
-         * against this stale, invisible popup's old geometry) instead of
-         * opening fresh, landing on whatever nav row happened to be
-         * nearest. Real fix: actually destroy the legacy popup (not just
-         * hide it) and return None/0 here, so the caller's popup_win
-         * genuinely goes back to 0 and the next right-click's own guard
-         * re-arms correctly - matching real "menu closed" semantics
-         * instead of a fake hidden-but-still-open one. Also release the
-         * lock acquired at the top of this function (popup_lock_acquire)
-         * since close_context_menu() - which normally balances it - is
-         * never reached on this path. */
-        XDestroyWindow(dpy, popup);
-        popup_lock_release();
-        launch_khtpm_menu(px, py);
-        return None;
-    }
-#endif
-
+    /* REAL FIX 2026-08-29 - the real g_use_khtpm_menu redirect that
+     * used to live here (create the legacy window fully, then destroy
+     * it and launch_khtpm_menu() instead) moved to the TOP of this
+     * function - see that real fix's own header comment. This point is
+     * now only ever reached when g_use_khtpm_menu is 0 (or on Windows,
+     * where khtpm_entity_menu_render.exe doesn't exist yet and the
+     * legacy Xlib menu is still the real, correct behavior) - the
+     * legacy popup created above is the REAL, visible result. */
     return popup;
 }
 

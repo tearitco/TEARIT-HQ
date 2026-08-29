@@ -374,3 +374,8 @@ seq=4 focus_nav=1/9 view_mode=0 page=0 n_cmds=0 entity=m1_ninjadragon
 seq=5 focus_nav=1/9 view_mode=0 page=0 n_cmds=0 entity=m1_ninjadragon
 seq=6 focus_nav=1/9 view_mode=0 page=0 n_cmds=0 entity=m1_ninjadragon
 seq=7 focus_nav=1/9 view_mode=0 page=0 n_cmds=0 entity=m1_ninjadragon
+seq=1 focus_nav=1/9 view_mode=0 page=0 n_cmds=0 entity=asa
+seq=2 focus_nav=1/9 view_mode=0 page=0 n_cmds=0 entity=asa
+seq=3 focus_nav=1/9 view_mode=0 page=0 n_cmds=0 entity=asa
+seq=4 focus_nav=1/9 view_mode=0 page=0 n_cmds=0 entity=asa
+seq=5 focus_nav=1/9 view_mode=0 page=0 n_cmds=0 entity=asa

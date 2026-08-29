@@ -10921,3 +10921,4 @@ SNAP pid=14425 tab=1 n=58
 14425 1 57 exec:'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-tileset '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'World'
 14425 1 58 closebtn
 REG pid=27358 tab=1 xid=1c00003 events-hq
+REG pid=40371 tab=1 xid=1c00003 events-hq

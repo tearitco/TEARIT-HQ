@@ -4,3 +4,5 @@ header.focus=67[type=button label=my pallet onClick=HQITEM:0] header.active=65 b
 header.focus=10[type=button label=palettes onClick=ACTIVATE:6] header.active=-1 bottom.focus=1 unified_nav_focus=5 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
 header.focus=51[type=button label=Open h-ai onClick=HQITEM:0] header.active=49 bottom.focus=1 unified_nav_focus=13 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=61
 header.focus=22[type=button label=h-ai onClick=ACTIVATE:14] header.active=-1 bottom.focus=1 unified_nav_focus=13 has_real_x11_focus=0 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
+header.focus=39[type=button label=play onClick=HQITEM:0] header.active=37 bottom.focus=1 unified_nav_focus=7 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=72
+header.focus=13[type=button label=player onClick=ACTIVATE:8] header.active=-1 bottom.focus=1 unified_nav_focus=7 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
