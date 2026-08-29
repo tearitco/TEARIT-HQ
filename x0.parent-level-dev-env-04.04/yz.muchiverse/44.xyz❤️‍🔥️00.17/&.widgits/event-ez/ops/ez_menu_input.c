@@ -425,13 +425,32 @@ int main(int argc, char **argv) {
                              * location under the anchor, matching this
                              * compiler's existing level of specificity;
                              * only the anchor+target changed, not the
-                             * search STRATEGY. */
+                             * search STRATEGY.
+                             *
+                             * UPDATED AGAIN 2026-08-29 ("mr was just one
+                             * project using events (probably the first)
+                             * but it doesn't own events"): mr_change_gold
+                             * and its sibling event-command ops moved a
+                             * second time, from *.monads/*.muchi-pet/ops/
+                             * (still a single project's own dir, false
+                             * ownership) to &.widgits/events-hq/ops/ - the
+                             * already-existing SHARED events-hq ops dir
+                             * (khtpm_events_hq_manager.c's own home),
+                             * since every entity/project in the house
+                             * compiles events that call these, not just
+                             * muchi-pet. Anchor search strategy unchanged
+                             * (still walks up for a directory containing
+                             * xyzfs) - only the target path changed. Old
+                             * binaries left in place at the old path as a
+                             * compatibility shim for already-compiled
+                             * cmd_N.sh wrappers; see the events-hq ops
+                             * dir's own build_mr_event_ops.sh header. */
                             fprintf(wf, "#!/bin/sh\n");
                             fprintf(wf, "cd \"$(dirname \"$0\")/../../..\" || exit 1\n");
                             fprintf(wf, "ENT=\"$PWD\"\n");
                             fprintf(wf, "D=\"$ENT\"\n");
                             fprintf(wf, "while [ \"$D\" != \"/\" ] && [ ! -d \"$D/xyzfs\" ]; do D=\"$(dirname \"$D\")\"; done\n");
-                            fprintf(wf, "exec \"$D/*.monads/*.muchi-pet/ops/+x/mr_change_gold.+x\" \"$ENT\" '%s'\n", amt);
+                            fprintf(wf, "exec \"$D/&.widgits/events-hq/ops/+x/mr_change_gold.+x\" \"$ENT\" '%s'\n", amt);
                             fclose(wf);
                             chmod(wrapper_path, 0755);
                         }
@@ -718,7 +737,7 @@ int main(int argc, char **argv) {
                             fprintf(wf, "ENT=\"$PWD\"\n");
                             fprintf(wf, "D=\"$ENT\"\n");
                             fprintf(wf, "while [ \"$D\" != \"/\" ] && [ ! -d \"$D/xyzfs\" ]; do D=\"$(dirname \"$D\")\"; done\n");
-                            fprintf(wf, "exec \"$D/*.monads/*.muchi-pet/ops/+x/mr_show_text.+x\" \"$ENT\" \"$HERE/msg_%d.txt\"\n", node_id);
+                            fprintf(wf, "exec \"$D/&.widgits/events-hq/ops/+x/mr_show_text.+x\" \"$ENT\" \"$HERE/msg_%d.txt\"\n", node_id);
                             fclose(wf);
                             chmod(wrapper_path, 0755);
                         }
@@ -813,7 +832,7 @@ int main(int argc, char **argv) {
                             fprintf(wf, "ENT=\"$PWD\"\n");
                             fprintf(wf, "D=\"$ENT\"\n");
                             fprintf(wf, "while [ \"$D\" != \"/\" ] && [ ! -d \"$D/xyzfs\" ]; do D=\"$(dirname \"$D\")\"; done\n");
-                            fprintf(wf, "exec \"$D/*.monads/*.muchi-pet/ops/+x/mr_show_choices.+x\" \"$ENT\" '%s' %d\n", ch, def);
+                            fprintf(wf, "exec \"$D/&.widgits/events-hq/ops/+x/mr_show_choices.+x\" \"$ENT\" '%s' %d\n", ch, def);
                             fclose(wf);
                             chmod(wrapper_path, 0755);
                         }
