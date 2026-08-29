@@ -506,6 +506,23 @@ The events ladders come first, then these land:
 
 ---
 
+**2026-08-29** (FURTHER real correction, same tile/map thread: direct
+follow-up "is there other recently edited docs (past 3 days) that
+mention xdnd?" surfaced the REAL primary doc this whole thread should
+have started from - `TILE-SYSTEM-DESIGN.md` (2026-08-27, same
+directory, missed by the earlier search below). Real, detailed,
+already has working verified code (autotile math ported+pixel-
+verified against real RMMV assets, a real tileset registry,
+`desk_grid.pdl` support in `tp_desktop_window_rgb.c`) answering exactly
+how a single placed tile works - a real desktop-tile ENTITY, not a
+separate canvas - and citing the real 2D→3D bridge doc (`#.DOX/
+drag-drop-how2.md`, not `101.drag-drop-test=ON🀄️`, which is a test
+HARNESS for that same real mechanism). Added a prominent pointer at
+the top of `MAPS-TILES-ZLEVELS-CONSOLIDATED-SPEC.md` (below) - that
+doc's own real remaining value is the piececraft-xyz/mutaclysm/
+cursword/Z-level material `TILE-SYSTEM-DESIGN.md` doesn't cover, not a
+competing single-tile spec. Read `TILE-SYSTEM-DESIGN.md` FIRST.) by claude
+
 **2026-08-29** (real correction, direct user catch: "previously we had
 spec'ed out that we could have both maps, individual tiles, or both...
 is there not documentation of this specific spec? maybe its disparate?"

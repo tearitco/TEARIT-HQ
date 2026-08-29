@@ -1,5 +1,23 @@
 # Maps / Tiles / Z-Levels — consolidated real spec (2026-08-29)
 
+**CORRECTION, same session, found via a direct "past 3 days, mentions
+xdnd" search after this doc was first written**:
+`TILE-SYSTEM-DESIGN.md` (same directory, dated 2026-08-27) is the
+REAL, primary, authoritative doc for how a placed 2D desktop tile
+works — read it FIRST, before this doc. It resolves the single-tile
+question this doc's own §2 left as "not built, not spec'd" with a real
+answer (a tile is a real `tp_desktop_window_rgb.c` entity, not a
+separate canvas), has real autotile math already ported and pixel-
+verified, and cites the REAL 2D→3D bridge doc (`#.DOX/drag-drop-
+how2.md` — not `101.drag-drop-test=ON🀄️`, which is a test HARNESS for
+that same real mechanism, not the spec itself). This doc's own real,
+still-standing value is the piececraft-xyz/mutaclysm/cursword/Z-level
+material `TILE-SYSTEM-DESIGN.md` does NOT cover (chunked voxel worlds,
+Z-level navigation, the piececraft-specific extension of the transfer
+mechanism) — read both, `TILE-SYSTEM-DESIGN.md` for single-tile/
+autotile/palette-picker mechanics, this doc for multi-tile chunked
+maps and the 3-way desktop/piececraft/mutaclysm relationship.
+
 **Why this doc exists**: direct user correction tonight — "previously
 we had spec'ed out that we could have both maps, individual tiles, or
 both... is there not documentation of this specific spec? maybe its
