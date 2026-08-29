@@ -4766,25 +4766,43 @@ static void picker_chtpm_load(void) {
     g_picker_layout_loaded = 1;
 }
 static Elem g_picker_slots[16];
+/* REAL, NEW 2026-08-29 (direct instruction: "no hand drawn c tho. we
+ * need to fix that... it should be a new created chtpm element or
+ * something, like how +- works") - the overlay's own chrome (panel
+ * background/border, title, hint text) used to be painted with raw
+ * XSetForeground/XFillRectangle/XDrawRectangle/XftDrawStringUtf8 calls
+ * carrying hardcoded hex colors, instead of real Elems drawn through
+ * the shared draw_elem() + real CSS classes (picker.chtpm already
+ * declared "picker-overlay" as this panel's real class - it was just
+ * never matched against any actual CSS rule before now, see
+ * dashboard.css's own new rules). Same real class of fix as the row/
+ * Cancel/Delete/field Elems just below, which already used draw_elem()
+ * but still set colors via inline snprintf(style.fg_color,...) instead
+ * of css_compute_style() - all of that inline styling is gone now too. */
+static Elem g_picker_chrome_slots[2]; /* 0=overlay panel, 1=title/hint (reused per screen, never both drawn at once) */
 static void evhq_draw_picker_overlay(void) {
     picker_chtpm_load();
     PickerLayout *L = &g_picker_layout;
-    XSetForeground(dpy, gc, evhq_alloc_pixel("#2a2a2a"));
-    XFillRectangle(dpy, buf, gc, L->px, L->py, L->pw, L->ph);
-    XSetForeground(dpy, gc, evhq_alloc_pixel("#4a9eff"));
-    XDrawRectangle(dpy, buf, gc, L->px, L->py, L->pw - 1, L->ph - 1);
-    XftFont *font = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=11");
-    XftFont *bfont = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=11:bold");
-    if (!font || !bfont) return;
-    XftColor white = evhq_xft_color("#eeeeee");
-    XftColor gray = evhq_xft_color("#999999");
+    Elem *overlay = reusable_slot(g_picker_chrome_slots, 2, 0, "panel");
+    if (overlay) {
+        snprintf(overlay->classes[0], sizeof(overlay->classes[0]), "picker-overlay"); overlay->n_classes = 1;
+        overlay->x = L->px; overlay->y = L->py; overlay->w = L->pw; overlay->h = L->ph;
+        css_compute_style(&g_sheet, overlay->tag, NULL, overlay->classes, overlay->n_classes, 0, &overlay->style);
+        draw_elem(overlay, 0);
+    }
     int ty = L->py + 20;
     evhq_load_command_registry();
     g_n_nav = 0;
     if (g_evhq_picker_type < 0) {
         g_focus_nav = g_evhq_picker_focus;
-        const char *hdr = "Add Command";
-        XftDrawStringUtf8(xftdraw_buf, &white, bfont, L->row_x, ty, (const FcChar8 *)hdr, (int)strlen(hdr));
+        Elem *title = reusable_slot(g_picker_chrome_slots, 2, 1, "title");
+        if (title) {
+            snprintf(title->classes[0], sizeof(title->classes[0]), "picker-title"); title->n_classes = 1;
+            snprintf(title->label, sizeof(title->label), "Add Command");
+            title->x = L->row_x; title->y = ty - 12; title->w = L->row_w; title->h = 16;
+            css_compute_style(&g_sheet, title->tag, NULL, title->classes, title->n_classes, 0, &title->style);
+            draw_elem(title, 0);
+        }
         ty += 26;
         /* Real visible-row budget for THIS frame - box bottom minus the
          * hint line minus one row reserved for Cancel, divided by row
@@ -4806,7 +4824,8 @@ static void evhq_draw_picker_overlay(void) {
             if (!row) break;
             snprintf(row->label, sizeof(row->label), "%s", g_evhq_cmd_defs[cmd_idx].label);
             row->x = L->row_x; row->y = ty - 15; row->w = L->row_w; row->h = L->row_h;
-            row->style.has_fg_color = 1; snprintf(row->style.fg_color, sizeof(row->style.fg_color), "#eeeeee");
+            snprintf(row->classes[0], sizeof(row->classes[0]), "picker-row"); row->n_classes = 1;
+            css_compute_style(&g_sheet, row->tag, NULL, row->classes, row->n_classes, 0, &row->style);
             row->nav_index = i + 1;
             snprintf(row->onclick, sizeof(row->onclick), "PICKER:TYPE:%d", cmd_idx);
             g_nav[g_n_nav++] = row;
@@ -4819,7 +4838,8 @@ static void evhq_draw_picker_overlay(void) {
             if (cancel) {
                 snprintf(cancel->label, sizeof(cancel->label), "Cancel");
                 cancel->x = L->row_x; cancel->y = ty - 15; cancel->w = L->row_w; cancel->h = L->row_h;
-                cancel->style.has_fg_color = 1; snprintf(cancel->style.fg_color, sizeof(cancel->style.fg_color), "#ff8080");
+                snprintf(cancel->classes[0], sizeof(cancel->classes[0]), "picker-cancel"); cancel->n_classes = 1;
+                css_compute_style(&g_sheet, cancel->tag, NULL, cancel->classes, cancel->n_classes, 0, &cancel->style);
                 snprintf(cancel->onclick, sizeof(cancel->onclick), "PICKER:CANCEL");
                 cancel->nav_index = shown + 1;
                 g_nav[g_n_nav++] = cancel;
@@ -4827,14 +4847,27 @@ static void evhq_draw_picker_overlay(void) {
                 ty += L->row_spacing;
             }
         }
-        const char *hint = (max_scroll > 0)
-            ? "Digits/arrows + Enter select, PageUp/PageDown scroll, Escape cancels"
-            : "Digits/arrows + Enter select, Escape cancels";
-        XftDrawStringUtf8(xftdraw_buf, &gray, font, L->row_x, L->py + L->ph - 14, (const FcChar8 *)hint, (int)strlen(hint));
+        Elem *hint = reusable_slot(g_picker_chrome_slots, 2, 1, "text");
+        if (hint) {
+            snprintf(hint->classes[0], sizeof(hint->classes[0]), "picker-hint"); hint->n_classes = 1;
+            snprintf(hint->label, sizeof(hint->label), "%s",
+                (max_scroll > 0)
+                    ? "Digits/arrows + Enter select, PageUp/PageDown scroll, Escape cancels"
+                    : "Digits/arrows + Enter select, Escape cancels");
+            hint->x = L->row_x; hint->y = L->py + L->ph - 14 - 11; hint->w = L->row_w; hint->h = 14;
+            css_compute_style(&g_sheet, hint->tag, NULL, hint->classes, hint->n_classes, 0, &hint->style);
+            draw_elem(hint, 0);
+        }
     } else if (g_evhq_picker_type < g_evhq_n_cmd_defs) {
         EvhqCommandDef *def = &g_evhq_cmd_defs[g_evhq_picker_type];
-        char hdr[64]; snprintf(hdr, sizeof(hdr), "%s", def->label);
-        XftDrawStringUtf8(xftdraw_buf, &white, bfont, L->row_x, ty, (const FcChar8 *)hdr, (int)strlen(hdr));
+        Elem *title = reusable_slot(g_picker_chrome_slots, 2, 1, "title");
+        if (title) {
+            snprintf(title->classes[0], sizeof(title->classes[0]), "picker-title"); title->n_classes = 1;
+            snprintf(title->label, sizeof(title->label), "%s", def->label);
+            title->x = L->row_x; title->y = ty - 12; title->w = L->row_w; title->h = 16;
+            css_compute_style(&g_sheet, title->tag, NULL, title->classes, title->n_classes, 0, &title->style);
+            draw_elem(title, 0);
+        }
         ty += 30;
         g_focus_nav = g_evhq_active_field + 1;
         int has_field2 = (def->n_params > 1 && strcmp(def->field2, "-") != 0);
@@ -4842,7 +4875,8 @@ static void evhq_draw_picker_overlay(void) {
         if (f1) {
             snprintf(f1->label, sizeof(f1->label), "%s %s%s", def->field1, g_evhq_field1, g_evhq_active_field == 0 ? "_" : "");
             f1->x = L->row_x; f1->y = ty - 15; f1->w = L->row_w; f1->h = L->row_h;
-            f1->style.has_fg_color = 1; snprintf(f1->style.fg_color, sizeof(f1->style.fg_color), "#eeeeee");
+            snprintf(f1->classes[0], sizeof(f1->classes[0]), "picker-row"); f1->n_classes = 1;
+            css_compute_style(&g_sheet, f1->tag, NULL, f1->classes, f1->n_classes, 0, &f1->style);
             f1->nav_index = 1;
             snprintf(f1->onclick, sizeof(f1->onclick), "PICKER:FIELD:0");
             g_nav[g_n_nav++] = f1;
@@ -4859,7 +4893,8 @@ static void evhq_draw_picker_overlay(void) {
                 else
                     snprintf(f2->label, sizeof(f2->label), "%s %s%s", def->field2, g_evhq_field2, g_evhq_active_field == 1 ? "_" : "");
                 f2->x = L->row_x; f2->y = ty - 15; f2->w = L->row_w; f2->h = L->row_h;
-                f2->style.has_fg_color = 1; snprintf(f2->style.fg_color, sizeof(f2->style.fg_color), "#eeeeee");
+                snprintf(f2->classes[0], sizeof(f2->classes[0]), "picker-row"); f2->n_classes = 1;
+                css_compute_style(&g_sheet, f2->tag, NULL, f2->classes, f2->n_classes, 0, &f2->style);
                 f2->nav_index = 2;
                 snprintf(f2->onclick, sizeof(f2->onclick), "PICKER:FIELD:1");
                 g_nav[g_n_nav++] = f2;
@@ -4872,7 +4907,8 @@ static void evhq_draw_picker_overlay(void) {
             if (cancel) {
                 snprintf(cancel->label, sizeof(cancel->label), "Cancel");
                 cancel->x = L->row_x; cancel->y = ty - 15; cancel->w = L->row_w; cancel->h = L->row_h;
-                cancel->style.has_fg_color = 1; snprintf(cancel->style.fg_color, sizeof(cancel->style.fg_color), "#ff8080");
+                snprintf(cancel->classes[0], sizeof(cancel->classes[0]), "picker-cancel"); cancel->n_classes = 1;
+                css_compute_style(&g_sheet, cancel->tag, NULL, cancel->classes, cancel->n_classes, 0, &cancel->style);
                 snprintf(cancel->onclick, sizeof(cancel->onclick), "PICKER:CANCEL");
                 cancel->nav_index = def->n_params + 1;
                 g_nav[g_n_nav++] = cancel;
@@ -4889,8 +4925,8 @@ static void evhq_draw_picker_overlay(void) {
             if (del) {
                 snprintf(del->label, sizeof(del->label), "Delete");
                 del->x = L->row_x; del->y = ty - 15; del->w = L->row_w; del->h = L->row_h;
-                del->style.has_bg_color = 1; snprintf(del->style.bg_color, sizeof(del->style.bg_color), "#cc4444");
-                del->style.has_fg_color = 1; snprintf(del->style.fg_color, sizeof(del->style.fg_color), "#ffffff");
+                snprintf(del->classes[0], sizeof(del->classes[0]), "picker-delete"); del->n_classes = 1;
+                css_compute_style(&g_sheet, del->tag, NULL, del->classes, del->n_classes, 0, &del->style);
                 snprintf(del->onclick, sizeof(del->onclick), "PICKER:DELETE");
                 del->nav_index = def->n_params + 2;
                 g_nav[g_n_nav++] = del;
@@ -4898,13 +4934,22 @@ static void evhq_draw_picker_overlay(void) {
                 ty += L->row_spacing + 2;
             }
         }
-        const char *hint2 = def->n_select2 > 0 ? "Enter: next/submit  ←→: select  Esc: cancel"
-                                                  : "Enter: next/submit  Escape: cancel";
-        XftDrawStringUtf8(xftdraw_buf, &gray, font, L->row_x, L->py + L->ph - 14, (const FcChar8 *)hint2, (int)strlen(hint2));
+        Elem *hint2 = reusable_slot(g_picker_chrome_slots, 2, 0, "text");
+        /* REAL: slot 0 is normally the overlay panel, but the panel has
+         * already been drawn for this frame by the time we get here -
+         * safe, deliberate reuse, same "one slot pool, sequenced by
+         * draw order within a single frame" pattern reusable_slot()'s
+         * own header comment documents. */
+        if (hint2) {
+            snprintf(hint2->classes[0], sizeof(hint2->classes[0]), "picker-hint"); hint2->n_classes = 1;
+            snprintf(hint2->label, sizeof(hint2->label), "%s",
+                def->n_select2 > 0 ? "Enter: next/submit  ←→: select  Esc: cancel"
+                                    : "Enter: next/submit  Escape: cancel");
+            hint2->x = L->row_x; hint2->y = L->py + L->ph - 14 - 11; hint2->w = L->row_w; hint2->h = 14;
+            css_compute_style(&g_sheet, hint2->tag, NULL, hint2->classes, hint2->n_classes, 0, &hint2->style);
+            draw_elem(hint2, 0);
+        }
     }
-    XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &white);
-    XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &gray);
-    XftFontClose(dpy, font); XftFontClose(dpy, bfont);
 }
 /* REAL, requested "once and for all" fix (2026-08-27, direct
  * instruction: "is there a way view can send a signal when it has
@@ -8967,10 +9012,20 @@ static void hq_idle_tick(void) {
 }
 
 static void popup_handle_click(int px, int py) {
+    /* REAL, NEW 2026-08-29 (direct instruction: "i think whole house
+     * should have the same single|doubleclick rule or it could be
+     * confusing... it should be house wide if possible/ez") - same
+     * click_focus_then_activate() every other mode's click handler now
+     * uses, applied here too for consistency. Real, honest trade-off
+     * this house's own click_two_step=0 escape hatch in hq_ui.pdl
+     * exists for: a right-click context menu is a different UX shape
+     * than a persistent window (it's about to close either way), but
+     * direct instruction was for uniformity over that distinction, so
+     * this follows it rather than silently keeping an exception. */
     for (int i = 0; i < g_n_nav; i++) {
         Elem *it = g_nav[i];
         if (px >= it->x && px < it->x + it->w && py >= it->y && py < it->y + it->h) {
-            g_focus_nav = it->nav_index;
+            if (!click_focus_then_activate(it)) { redraw(); return; }
             activate_focused();
             return;
         }
