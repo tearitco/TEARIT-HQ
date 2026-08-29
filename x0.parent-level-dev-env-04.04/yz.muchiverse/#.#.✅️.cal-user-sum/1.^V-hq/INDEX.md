@@ -506,6 +506,16 @@ The events ladders come first, then these land:
 
 ---
 
+**2026-08-29** (post-refactor audit, direct request: real explanation of
+"modes" + whether the 4-loop draw collapse held up at 9,950 lines -
+`*.monads/*.livedesk-taskbar/ops/parser-walkthru.md`, next to the
+renderer itself. Confirmed clean: draw_elem()/render_tree() each still
+exactly 1 real definition; per-mode layout/click/key/nav functions
+(77 dbhq_/50 chai_/49 evhq_) are separate on purpose, not regrown
+duplication - real reasoning why. One honest, acknowledged, not-yet-
+fixed piece of debt: the Add-Command picker overlay is still hand-
+drawn C, not a real .chtpm-declared generic element.) by claude
+
 **2026-08-29** (Part B done: Common Events shares events-hq's Scripting/
 Scratch/Blueprints tabs, 3 live bugs found+fixed along the way, plus the
 Part A ghosting regression finally root-caused+fixed - see
