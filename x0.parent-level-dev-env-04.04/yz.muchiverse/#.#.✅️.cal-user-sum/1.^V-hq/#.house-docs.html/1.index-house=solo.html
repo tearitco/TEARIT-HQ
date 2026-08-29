@@ -707,6 +707,34 @@
           (<code>XQueryTree</code> + <code>XGetClassHint</code>) is needed for those. See Testing
           Conventions below.
         </p>
+
+        <h3>2026-08-28 — map HQ without stealing the human; drive via history files</h3>
+        <p>
+          Agent tests used to yank focus out of the browser. Two separate causes, both live-fixed
+          in <code>khtpm_entity_menu_render.c</code>:
+        </p>
+        <ul>
+          <li>
+            <strong>WM-managed HQ</strong> (db-hq, events-hq, chat-hai): map with
+            <code>XMapWindow</code>. <code>XMapRaised</code> made Mutter activate the new window
+            (Settings / entity-menu, which are <code>override_redirect</code>, did <em>not</em>
+            steal; chat-hai did).
+          </li>
+          <li>
+            <strong>Override-redirect popups</strong> (entity-menu, taskbar Settings / swatch):
+            keep <code>XMapRaised</code> so they sit on top of the click that spawned them;
+            do <strong>not</strong> <code>XSetInputFocus</code> on map.
+          </li>
+          <li>
+            History poll must <strong>not</strong> require X focus. Each process has its own
+            <code>*_history.txt</code>; drive those files (or
+            <code>livedesk_agent_relay.txt</code> 1002/1001 for strip arrows), not xdotool first.
+          </li>
+        </ul>
+        <p>
+          Full table, leftover-PICK trap, and the remaining Mutter caveat:
+          <code>HQ-WINDOW-MAP-AND-AGENT-INPUT.md</code> (same <code>1.^V-hq/</code> directory).
+        </p>
       </section>
 
       <!-- ============ AI AGENT BACKENDS ============ -->
@@ -888,6 +916,12 @@ tp_test_send_click.+x "&lt;window_name_substring&gt;" &lt;button:1|2|3&gt; [rel_
             <strong>Toys-cell-launched sessions don't tear down their process tree</strong> when
             the display window is closed. Closing the window leaves the orchestrator and its own
             child processes running orphaned — nothing currently ties the two lifecycles together.
+          </li>
+          <li>
+            <strong>2026-08-28 map/focus:</strong> HQ uses <code>XMapWindow</code>; popups keep
+            <code>XMapRaised</code> without SetInputFocus-on-map. Mutter may still activate a
+            newly mapped WM-managed window. See Input &amp; Dispatch above and
+            <code>HQ-WINDOW-MAP-AND-AGENT-INPUT.md</code>.
           </li>
           <li>
             <strong>mutaclysm's own camera/3D-layer architecture</strong> is a real, separate,

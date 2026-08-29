@@ -25,6 +25,12 @@ already done and battle-tested.
 > layout file and hand-position things in C instead. If anything here
 > is unclear or you think you need something bigger than described,
 > **ask the user to check with the original house first.** 🙏
+>
+> **2026-08-28:** How to map a khtpm window without stealing the human's
+> other windows (HQ = `XMapWindow`, popups = `XMapRaised` + no focus grab
+> on map, poll history even when unfocused) is documented in
+> `../HQ-WINDOW-MAP-AND-AGENT-INPUT.md` — **read that file, do not copy
+> it into this prompt** (it will drift).
 
 ---
 

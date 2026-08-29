@@ -117,6 +117,54 @@ int main(int argc, char **argv) {
         fclose(f);
     }
 
+    /* REAL, NEW 2026-08-28 (ENTITY-MENU-LEGACY-DEPRECATION-PLAN.md
+     * Phase 1 - design decision A, a real durable generator instead of
+     * the one-off "scratchpad meta_to_chtpm.py" that produced the
+     * first 7 converted entities back on 2026-08-16/18 and then got
+     * lost, stalling that rollout). Every new entity gets a real
+     * menu.chtpm generated from the meta.pdl just written above, the
+     * SAME MOMENT it's created - not a manual backfill step someone
+     * has to remember to run. `tp_desktop_window_rgb.c`'s own
+     * `launch_khtpm_menu()` already checks for `menu.chtpm` and routes
+     * to the shared Elem/CSS renderer when one exists (confirmed real,
+     * this session) - this is the other half of that bridge: make sure
+     * one always exists going forward. Same house_root resolution the
+     * spawn block below already does - not worth a second walk, but
+     * kept inline here rather than factored out since this file
+     * already duplicates that walk inline where needed (matching its
+     * own existing style, not introducing a new one). */
+    {
+        char self_path[PATH_BUF];
+        ssize_t len = self_exe_readlink(self_path, sizeof(self_path));
+        if (len > 0) {
+            self_path[len] = '\0';
+            char step[PATH_BUF];
+            snprintf(step, sizeof(step), "%s", self_path);
+            char *house_root = NULL;
+            for (;;) {
+                char *slash = strrchr(step, '/');
+                if (!slash || slash == step) break;
+                *slash = '\0';
+                char desk[PATH_BUF], widg[PATH_BUF];
+                snprintf(desk, sizeof(desk), "%s/#.desktop", step);
+                snprintf(widg, sizeof(widg), "%s/&.widgits", step);
+                if (access(desk, F_OK) == 0 && access(widg, F_OK) == 0) {
+                    house_root = step;
+                    break;
+                }
+            }
+            if (house_root) {
+                char conv_path[PATH_BUF], conv_cmd[PATH_BUF * 2];
+                snprintf(conv_path, sizeof(conv_path), "%s/*.monads/*.livedesk-taskbar/ops/meta_to_menu_chtpm.py", house_root);
+                snprintf(conv_cmd, sizeof(conv_cmd), "python3 '%s' '%s' >/dev/null 2>&1", conv_path, dir);
+                int rc = system(conv_cmd);
+                (void)rc; /* real, honest no-op on failure - a missing menu.chtpm
+                           * just means this entity falls back to the legacy
+                           * popup engine, same as it always has, not a crash */
+            }
+        }
+    }
+
     /* remember last place in widget state */
     char last[PATH_BUF];
     snprintf(last, sizeof(last), "%s/last_desktop_place.txt", wdir);

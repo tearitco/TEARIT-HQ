@@ -447,7 +447,11 @@ static void draw_elem(Elem *e, int hover_id_hash) {
     int badge_label_x = label_x;
     if (e->nav_index > 0) {
         int focused = (e->nav_index == g_focus_nav);
-        snprintf(nav_badge, sizeof(nav_badge), "[%c]%d.", focused ? '>' : ' ', e->nav_index);
+        char prefix[8];
+        int is_scope = (g_dbhq_active_scope_root && e == g_dbhq_active_scope_root);
+        elem_cursor_prefix(e, g_focus_nav, is_scope, prefix, sizeof(prefix));
+        snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index);
+        (void)focused;
         /* REAL FIX 2026-08-25 (live perf report: "nav is really slow" with
          * 113 palette tiles on screen) - this was opening a fresh XftFont
          * via XftFontOpenName() for EVERY nav-badged element, EVERY redraw

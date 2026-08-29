@@ -1,0 +1,114 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+ACTOR        | id                 | 1
+ACTOR        | name               | Harold
+ACTOR        | nickname           | The Brave
+ACTOR        | class              | Hero
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | profile            | A young warrior seeking adventure.
+ACTOR        | face               | Actor1_1
+ACTOR        | character          | Actor1
+ACTOR        | battler            | Actor1_1
+ACTOR        | weapon             | Bronze Sword
+ACTOR        | shield             |
+ACTOR        | head               |
+ACTOR        | body               | Leather Armor
+ACTOR        | accessory          |
+ACTOR        | mhp                | 450
+ACTOR        | mmp                | 80
+ACTOR        | atk                | 32
+ACTOR        | def                | 28
+ACTOR        | mat                | 18
+ACTOR        | mdf                | 20
+ACTOR        | agi                | 30
+ACTOR        | luk                | 24
+ACTOR        | note               |
+ACTOR        | id                 | 2
+ACTOR        | name               | Therese
+ACTOR        | nickname           |
+ACTOR        | class              | Warrior
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | profile            |
+ACTOR        | face               |
+ACTOR        | character          |
+ACTOR        | battler            |
+ACTOR        | weapon             |
+ACTOR        | shield             |
+ACTOR        | head               |
+ACTOR        | body               |
+ACTOR        | accessory          |
+ACTOR        | mhp                | 400
+ACTOR        | mmp                | 60
+ACTOR        | atk                | 30
+ACTOR        | def                | 30
+ACTOR        | mat                | 16
+ACTOR        | mdf                | 18
+ACTOR        | agi                | 28
+ACTOR        | luk                | 22
+ACTOR        | note               |
+ACTOR        | id                 | 3
+ACTOR        | name               | Marsha
+ACTOR        | nickname           |
+ACTOR        | class              | Mage
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | profile            |
+ACTOR        | face               |
+ACTOR        | character          |
+ACTOR        | battler            |
+ACTOR        | weapon             |
+ACTOR        | shield             |
+ACTOR        | head               |
+ACTOR        | body               |
+ACTOR        | accessory          |
+ACTOR        | mhp                | 320
+ACTOR        | mmp                | 120
+ACTOR        | atk                | 18
+ACTOR        | def                | 16
+ACTOR        | mat                | 36
+ACTOR        | mdf                | 30
+ACTOR        | agi                | 26
+ACTOR        | luk                | 24
+ACTOR        | note               |
+ACTOR        | id                 | 4
+ACTOR        | name               | Lucius
+ACTOR        | nickname           |
+ACTOR        | class              | Priest
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | profile            |
+ACTOR        | face               |
+ACTOR        | character          |
+ACTOR        | battler            |
+ACTOR        | weapon             |
+ACTOR        | shield             |
+ACTOR        | head               |
+ACTOR        | body               |
+ACTOR        | accessory          |
+ACTOR        | mhp                | 340
+ACTOR        | mmp                | 110
+ACTOR        | atk                | 20
+ACTOR        | def                | 18
+ACTOR        | mat                | 28
+ACTOR        | mdf                | 34
+ACTOR        | agi                | 24
+ACTOR        | luk                | 26
+ACTOR        | note               |
+ACTOR        | id                 | 5
+ACTOR        | name               |
+ACTOR        | id                 | 6
+ACTOR        | name               |
+ACTOR        | id                 | 7
+ACTOR        | name               |
+ACTOR        | id                 | 8
+ACTOR        | name               |
+ACTOR        | id                 | 9
+ACTOR        | name               |
+ACTOR        | id                 | 10
+ACTOR        | name               |
+ACTOR        | id                 | 11
+ACTOR        | name               |
+ACTOR        | id                 | 12
+ACTOR        | name               |

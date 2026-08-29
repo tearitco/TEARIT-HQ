@@ -1,0 +1,38 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+STATE        | id                 | 1
+STATE        | name               | Knockout
+STATE        | restriction        | Cannot move
+STATE        | auto_remove        | Battle end
+STATE        | note               | 
+STATE        | id                 | 2
+STATE        | name               | Poison
+STATE        | restriction        | None
+STATE        | auto_remove        | Turn end 4
+STATE        | note               | 
+STATE        | id                 | 3
+STATE        | name               | Silence
+STATE        | restriction        | Cannot use magic
+STATE        | auto_remove        | Turn end 3
+STATE        | note               | 
+STATE        | id                 | 4
+STATE        | name               | Stun
+STATE        | restriction        | Cannot move
+STATE        | auto_remove        | Turn end 1
+STATE        | note               | 
+STATE        | id                 | 5
+STATE        | name               | 
+STATE        | id                 | 6
+STATE        | name               | 
+STATE        | id                 | 7
+STATE        | name               | 
+STATE        | id                 | 8
+STATE        | name               | 
+STATE        | id                 | 9
+STATE        | name               | 
+STATE        | id                 | 10
+STATE        | name               | 
+STATE        | id                 | 11
+STATE        | name               | 
+STATE        | id                 | 12
+STATE        | name               | 

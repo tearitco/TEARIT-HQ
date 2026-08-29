@@ -1,0 +1,42 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+TILESET      | id                 | 1
+TILESET      | name               | World
+TILESET      | mode               | world
+TILESET      | a1                 | World_A1
+TILESET      | a2                 | World_A2
+TILESET      | b                  | World_B
+TILESET      | id                 | 2
+TILESET      | name               | Dungeon
+TILESET      | mode               | area
+TILESET      | a1                 | Dungeon_A1
+TILESET      | a2                 | Dungeon_A2
+TILESET      | b                  | Dungeon_B
+TILESET      | id                 | 3
+TILESET      | name               | Inside
+TILESET      | mode               | area
+TILESET      | a1                 | Inside_A1
+TILESET      | a2                 | Inside_A2
+TILESET      | b                  | Inside_B
+TILESET      | id                 | 4
+TILESET      | name               | Outside
+TILESET      | mode               | area
+TILESET      | a1                 | Outside_A1
+TILESET      | a2                 | Outside_A2
+TILESET      | b                  | Outside_B
+TILESET      | id                 | 5
+TILESET      | name               | 
+TILESET      | id                 | 6
+TILESET      | name               | 
+TILESET      | id                 | 7
+TILESET      | name               | 
+TILESET      | id                 | 8
+TILESET      | name               | 
+TILESET      | id                 | 9
+TILESET      | name               | 
+TILESET      | id                 | 10
+TILESET      | name               | 
+TILESET      | id                 | 11
+TILESET      | name               | 
+TILESET      | id                 | 12
+TILESET      | name               | 

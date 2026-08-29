@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h> /* strcasecmp() - real, needed for the synthesized-Cancel check below */
 #include <ctype.h>
 #include <unistd.h>
 #include <time.h>
@@ -108,6 +109,35 @@ static int load_choices(const char *path) {
         if (g_n_items < MAX_ELEMS) g_items[g_n_items++] = e;
     }
     fclose(f);
+
+    /* REAL FIX 2026-08-28, direct live report ("show choices... is
+     * supposed to close when clicked" - it wasn't reliably, real root
+     * cause not yet pinned down; user's own pragmatic call: "dont
+     * worry about making it auto close. cant u just add cancel
+     * button?"). Real, guaranteed-safe escape hatch: if the caller's
+     * choices_file didn't already include its own real Cancel row,
+     * synthesize one - same pattern tp_desktop_window_rgb.c's own
+     * dispatch already uses for context menus with no real Cancel
+     * (see its own "if (!has_cancel...)" block). Empty onclick is the
+     * real sentinel activate_focused() below checks for "cancel, don't
+     * write a result" - khtpm_show_choices.c's own polling loop
+     * already treats a missing/empty result file as a real, legitimate
+     * cancel ("no pick made (cancelled or timed out)"), so this needs
+     * no new contract, just uses what the caller already handles. */
+    {
+        int has_cancel = 0;
+        for (int i = 0; i < g_n_items; i++) {
+            if (strcasecmp(g_items[i]->label, "Cancel") == 0) { has_cancel = 1; break; }
+        }
+        if (!has_cancel && g_n_items < MAX_ELEMS) {
+            Elem *e = elem_new();
+            if (e) {
+                snprintf(e->label, sizeof(e->label), "Cancel");
+                e->onclick[0] = '\0';
+                g_items[g_n_items++] = e;
+            }
+        }
+    }
     return g_n_items > 0;
 }
 
@@ -194,8 +224,15 @@ static void redraw(void) {
 static void activate_focused(void) {
     if (g_focus_nav < 1 || g_focus_nav > g_n_items) return;
     Elem *it = g_items[g_focus_nav - 1];
-    FILE *f = fopen(g_result_path, "w");
-    if (f) { fprintf(f, "%s\n", it->onclick); fclose(f); }
+    /* Real Cancel sentinel (see load_choices()'s own synthesized-Cancel
+     * comment) - empty onclick means "just close, no real pick was
+     * made." Don't write result_path at all; khtpm_show_choices.c's
+     * own polling loop already treats a missing result file as a real
+     * cancel, not an error. */
+    if (it->onclick[0]) {
+        FILE *f = fopen(g_result_path, "w");
+        if (f) { fprintf(f, "%s\n", it->onclick); fclose(f); }
+    }
     g_quit = 1;
 }
 

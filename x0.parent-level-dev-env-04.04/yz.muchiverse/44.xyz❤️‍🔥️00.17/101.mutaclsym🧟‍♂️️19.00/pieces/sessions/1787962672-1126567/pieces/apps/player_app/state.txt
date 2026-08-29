@@ -1,0 +1,5 @@
+module_path=system/prisc+x pal/game_module.pal
+project_id=mutaclysm
+active_target_id=main
+last_click_x=400
+last_click_y=509

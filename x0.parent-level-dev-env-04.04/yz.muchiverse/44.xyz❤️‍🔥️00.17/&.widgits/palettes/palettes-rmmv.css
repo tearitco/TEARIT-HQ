@@ -43,7 +43,7 @@ window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
  * though the manager+renderer wiring itself was already correct. */
 .pal-tab-row { display: flex; flex-direction: row; gap: 6px; height: 28px; }
 .pal-tab { background-color: #2a2a2a; color: #5ec8f2; font-weight: bold;
-  width: 64px; height: 24px; font-size: 12px; padding: 2px; }
+  width: 88px; height: 24px; font-size: 10px; padding: 2px; }
 .pal-tab-active { background-color: #d9b64a; color: #000000; }
 .pal-tileset-row { display: flex; flex-direction: row; gap: 4px; height: 28px; }
 .pal-tileset-opt { background-color: #2a2a2a; color: #cccccc; font-weight: bold;

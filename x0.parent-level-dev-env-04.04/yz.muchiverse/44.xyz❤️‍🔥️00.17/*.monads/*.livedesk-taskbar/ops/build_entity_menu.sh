@@ -30,6 +30,8 @@ cp "$SHARED/stb_image_write.h" lib/stb_image_write.h
 # standalone, shared op binary (system()-invoked, not text-included -
 # see khtpm-merge-how2.md's own "HOUSE STANDARD" section), build it
 # once, centrally, if missing.
+echo "-- swatch_picker_manager -> +x/swatch_picker_manager.+x"
+$CC -std=c11 -Wall -O2 -o +x/swatch_picker_manager.+x swatch_picker_manager.c
 OPS_BIN="$SHARED/ops/+x/dump_frame_png_op.+x"
 if [ ! -x "$OPS_BIN" ]; then
   (cd "$SHARED/ops" && sh build_dump_frame_png_op.sh)

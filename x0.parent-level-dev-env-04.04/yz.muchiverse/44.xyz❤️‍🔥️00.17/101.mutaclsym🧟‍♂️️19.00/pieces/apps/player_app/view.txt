@@ -1,9 +1,9 @@
-MUTACLSYM   map: map_start  turn: 3596
+MUTACLSYM   map: map_start  turn: 3605
 
 🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱
-🧱🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🧑🟫🟫🟫🟫🧱🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🧱🧱
 🧱🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🧱🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🧱🧱
-🧱🟫🟫🟫🪑🍽️🪑🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🚪🟫🟫🟫🟫🟫🛏️🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🧱🧱
+🧱🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🧱🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🧱🧱
+🧱🟫🟫🟫🪑🍽️🪑🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🚪🟫🧑🟫🟫🟫🛏️🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🧱🧱
 🧱🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫??🟫🟫🟫🟫🟫🧱🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🧱🧱
 🧱🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🧶🧶🧶🟫🟫🟫🟫🧱🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🧱🧱
 🧱🟫🟫🟫🟫🟫🟫🪨?🟫🟫🟫?🟫🟫🟫🟫🟫🟫🧱🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🧱🧱
@@ -16,10 +16,10 @@ MUTACLSYM   map: map_start  turn: 3596
 🧱🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🧱🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🟫🧱🧱
 🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱
 🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱
-HP:17  Hunger:0  Thirst:0  Stamina:100  Last key: 13
+HP:17  Hunger:0  Thirst:0  Stamina:100  Last key: 1001
 Inventory: (empty)
 You can't go that way.
 You can't go that way.
 You can't go that way.
 You can't go that way.
-[wasd/arrows] Move  [i] Interact  [e] Emoji
+[wasd/arrows] Look  [enter] Examine  [t] Throw  [esc] Back  [e] Emoji

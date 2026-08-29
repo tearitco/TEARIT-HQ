@@ -1,1 +1,3 @@
-tab=C
+tab=A
+tileset=Inside
+dir=tilesets

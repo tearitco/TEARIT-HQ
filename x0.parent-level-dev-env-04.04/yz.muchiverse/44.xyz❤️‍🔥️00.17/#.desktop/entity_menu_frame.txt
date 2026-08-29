@@ -1,0 +1,5 @@
+item|||Ledger||sh -c 'cd "$0" && exec gedit ../../pieces/brain/master_ledger.txt'|1|0|0|24|260|24
+item|||Brain log||sh -c 'cd "$0" && exec gedit ../../pieces/brain/llm_reply.json'|2|0|0|48|260|24
+item|||Dir||sh -c 'exec xdg-open "$0"'|3|0|0|72|260|24
+item|||Close||CLOSE|4|0|0|96|260|24
+item|||Cancel||void|5|0|0|120|260|24

@@ -1,0 +1,26 @@
+ACTIVE_DIR|tilesets
+DIR|tilesets|tilesets
+DIR|characters|characters
+DIR|faces|faces
+DIR|sv_actors|sv_actors
+DIR|sv_enemies|sv_enemies
+DIR|enemies|enemies
+DIR|battlebacks1|battlebacks1
+DIR|battlebacks2|battlebacks2
+DIR|parallaxes|parallaxes
+DIR|pictures|pictures
+DIR|animations|animations
+DIR|system|system
+DIR|titles1|titles1
+DIR|titles2|titles2
+TILESET|Dungeon|Dungeon
+TILESET|Inside|Inside
+TILESET|Outside|Outside
+TILESET|SF_Inside|SF Inside
+TILESET|SF_Outside|SF Outside
+TILESET|World|World
+TAB|A|a2
+TAB|B|b
+TAB|C|c
+ACTIVE_TILESET|World
+ACTIVE_CATEGORY|a2

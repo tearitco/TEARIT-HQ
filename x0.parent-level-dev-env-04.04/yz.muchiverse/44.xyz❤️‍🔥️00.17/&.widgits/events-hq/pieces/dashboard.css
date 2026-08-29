@@ -99,3 +99,16 @@ window {
   color: #000000;
   font-size: 11px;
 }
+
+/* Visual Scripting task #2 (2026-08-28) - Scratch-view block chip. Real
+   bordered block look, ready for the renderer's minimal fill-from-data
+   glue (injects one .scratch-block Elem per SCRATCHBLOCK|<key>|<ON|OFF>
+   row published by khtpm_events_hq_manager.c from its compiled
+   event.pal). Blue = block, mirrored off RPG Maker MV's own Show-Text
+   command color; a distinct green/red chip could later carry ON/OFF. */
+.scratch-block {
+  background-color: #7ea7e0;
+  color: #0a0a0a;
+  border: 1px solid #3a5a8a;
+  font-size: 11px;
+}

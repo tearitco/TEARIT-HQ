@@ -1,0 +1,11 @@
+<!-- menu.chtpm - real, generated entity context menu (meta_to_menu_chtpm.py, 2026-08-28 permanent converter). Converted 1:1 from /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/meta.pdl's own real METHOD rows - same real mechanical rule proven on ava/asa/book-stack's own hand conversions. Regenerate by deleting this file and re-running the converter; a real hand-edit here will be lost on the next regenerate, same tradeoff every generated file in this house already has. -->
+<window class="entity-menu">
+  <page name="main">
+    <item label="Dir" action="sh -c 'mkdir -p &quot;$0/audit&quot;; GDK_BACKEND=x11 xdg-open &quot;$0&quot; >>&quot;$0/audit/dir.log&quot; 2>&amp;1'"/>
+    <item label="Chat" action="sh -c 'exec sh &quot;$1/&amp;.widgits/open-hai/chat_button.sh&quot; &quot;$1&quot; &quot;$0/chat&quot; cursword-chat'"/>
+    <item label="Bookmarks" action="sh -c 'exec sh &quot;$1/&amp;.widgits/bookmarks/bm_menu.sh&quot; &quot;$1&quot; &quot;$0&quot;'"/>
+    <item label="Play" action="sh -c 'exec sh &quot;$1/*.monads/*.muchi-pet/ops/play_event.sh&quot; &quot;$0&quot;'"/>
+    <item label="Close" action="CLOSE"/>
+    <item label="Cancel" action="void"/>
+  </page>
+</window>

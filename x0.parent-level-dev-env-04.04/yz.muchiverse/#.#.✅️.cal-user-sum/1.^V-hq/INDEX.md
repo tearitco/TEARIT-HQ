@@ -43,10 +43,10 @@ to the main directory and drop the `archive/` prefix here.
    scoped (not over-built) recommendation for what livedesk's own receipt should contain:
    `house-compaction.md` Part 1 + Part 2. Compaction candidates (Part 3) are the
    immediate next step, not this.
-0. **palettes-handoff-2026-08-24.md — CURRENT ACTIVE HANDOFF (2026-08-24)** — if you were
-   handed THIS session's work: palettes dropdown+emoji sprite matrix is done and verified;
-   remaining tasks T1–T6 with per-task how-to AND how-to-check instructions inside. Start
-   there, then CREATOR_AGENT.md for background.
+0. **DB-HQ-HOUSE.md — CURRENT db-hq TAB WORK (2026-08-28)** — per-tab khtpm+house-nav
+   designs. **Leave Terms and Common Events alone.** Proof tab is **Actors**. Launch
+   default must be Actors `[1]`, not Common Events. Palettes T1–T6 is a separate
+   backlog (`palettes-handoff-2026-08-24.md`).
 1. **This file** — orientation, what exists, read order
 2. **HANDOFF.md → "⚡ TL;DR" + "🎯 Project State" sections only** — current status, what's next
 3. **$.claude-hai-budget.md — HIGH PRIORITY, direct instruction (2026-08-13)** — before doing scoped/mechanical work yourself, check whether it should be delegated to a Harnecient model (h-ai) instead, to save Claude token budget. Log delegation opportunities there, not just plans.
@@ -169,22 +169,34 @@ Stop here if you just need to know "what's going on."
    broader harness-authoring direction (moved there to keep this doc
    scoped to visual-editor vision).
 6h2b. **HARNESS-AUTHORING-GUIDE.md** — the canonical doc for building/
-   updating ANY test/demo harness, single-feature or multi-feature.
-   Covers: the current real bash-harness convention (with real examples
-   to copy from); a grounded feasibility check for PAL/event-authored
-   harnesses against `prisc+x.c`'s actual syscalls (relay injection via
-   `SYS_OPEN`+`SYS_WRITE_LINE` already works today; polling frame-history
-   needs a small sibling-file fix, no VM change; no `SYS_SLEEP` exists
-   yet); a priority list of "harness-friendly" event commands worth
-   building next (Loop, Wait, a new Send-Input command); a per-feature
-   real launch-mechanism reference table (db-hq/events-hq/palettes/
-   entities/Mutaclysm/h-ai/chat-hai/my-lawyer/my-biotech/piececraft-xyz/
-   file-desk-switching); and camera/POV "director" guidance for anything
-   with real camera control (Mutaclysm, piececraft-xyz's board-viewer
-   map-view). Read this BEFORE designing any new harness — also
-   cross-referenced from `_.0.aigent-testing-k9.txt` (which stays scoped
-   to low-level injection/dump procedure, per its own stated rule) and
-   `PAL-VISUAL-SCRIPTING-PLAN.md`.
+    updating ANY test/demo harness, single-feature or multi-feature.
+    Covers: the current real bash-harness convention (with real examples
+    to copy from); a grounded feasibility check for PAL/event-authored
+    harnesses against `prisc+x.c`'s actual syscalls (relay injection via
+    `SYS_OPEN`+`SYS_WRITE_LINE` already works today; polling frame-history
+    needs a small sibling-file fix, no VM change; no `SYS_SLEEP` exists
+    yet); a priority list of "harness-friendly" event commands worth
+    building next (Loop, Wait, a new Send-Input command); a per-feature
+    real launch-mechanism reference table (db-hq/events-hq/palettes/
+    entities/Mutaclysm/h-ai/chat-hai/my-lawyer/my-biotech/piececraft-xyz/
+    file-desk-switching); and camera/POV "director" guidance for anything
+    with real camera control (Mutaclysm, piececraft-xyz's board-viewer
+    map-view). Read this BEFORE designing any new harness — also
+    cross-referenced from `_.0.aigent-testing-k9.txt` (which stays scoped
+    to low-level injection/dump procedure, per its own stated rule) and
+    `PAL-VISUAL-SCRIPTING-PLAN.md`.
+6h2c. **!.OPEN-2do-events-db-networking-2026-08-28.md** — CURRENT opencode
+    task doc (2026-08-28, "renamed handoff" — the active successor to
+    COMMON-EVENTS-MANAGER-HANDOFF.md for opencode): Task 1 finish the
+    Events list (Message + Character commands, superficial-first per
+    direct user instruction tonight), Task 2 db-hq tab stubs, Task 3
+    Networking tab + pal-irc/pal-chain/pal-forum GUI mirrors. Carries the
+    HARD BOUNDARY (khtpm_entity_menu_render.c = claim/release via
+    GROK-RENDER-INPUT-REFACTOR-HANDOFF.md, deferred-edit protocol) plus
+    the ⛔ EXECUTION RECORD for Visual Scripting task #2 (Scratch view
+    real blocks from compiled Control Switch shapes) and that work's
+    deferred renderer glue. Read this FIRST as the current handoff for
+    opencode before touching events/db/networking work.
 6h3b. **CURSWORD-SOUL-VISION.md** — cursword's identity as the user's "SOUL":
    the account's first entity, free, always-there, unkillable, tied to the
    account — plus a capability roadmap (text chat real today; STT/TTS/image-
@@ -360,6 +372,7 @@ Stop here if you just need to know "what's going on."
 | `AU24-oc-handon.md` | Live, still-open task backlog (2026-08-24): events ladder (Show Text/Choices/Input Number/Wait/Play SE), common events in db, CURSword's remaining chat features (minimize/windows-list/voice I/O — §4 spawn mechanics itself is DONE, see `archive/CURSWORD-HQ-SPAWN.md`), test-artifact + video-report generation, hum/idle animation, execution priority order, critical rules, event-runtime quick-reference diagram | Before starting ANY of the events-ladder or CURSword-chat-feature work — this is the real task list, not just a snapshot |
 | `archive/a11.focus-troubleshooting.md` | Closed-bug record | Rarely (historical) |
 | `maintenance-fixes.md` | Small non-blocking polish items | Whenever one is noticed |
+| `HQ-WINDOW-MAP-AND-AGENT-INPUT.md` (THIS directory, 2026-08-28) | Live 2026-08-28: `XMapRaised` on WM-managed chat-hai stole the human browser; override_redirect Settings/entity did not. Map HQ with `XMapWindow`. Do not gate history poll on X focus. Swatch leftover `PICK:` trap. | Opening or driving khtpm_entity_menu_render windows without stealing the human |
 | `_.0.aigent-testing-k9.txt` (THIS directory, moved here 2026-08-27) | House-wide testing guide across ALL program families, with a 2026-08-11 khtpm-specific addendum + the presentation-archive convention at the bottom | When a testing mechanism is discovered/corrected for a NEW family |
 | `44.xyz❤️‍🔥️00.17/LINUX_ROUNDTRIP.md` | Linux return-leg status: Mach-O quarantine (76 files), house-wide recompile (44/44 PASS), manual rebuilds (treetRace, hm_assert, apply_theme_op), verification, livedesk smoke-test | When returning from macOS to Linux (or any roundtrip); read before relaunching |
 | `yz.muchiverse/ROUNDTRIP_FIX.md` | Concise fix log + re-run recipe for future roundtrips (purge Mach-O → compile-runner → manual extras → verify → relaunch) | When re-running the purge+rebuild recipe; includes rollback instructions |
@@ -546,6 +559,57 @@ au11-hq's own documented receipt convention and unlike the live, confirmed
 TPMOS/wraith-alpha `.receipt.pdl` standard; wrote `house-compaction.md` with full findings
 + a doc-compaction candidate list for `1.^V-hq/`; agreed order is compact-docs-first, then
 fix the drift, then resume palettes T1-T6) by Claude (Haiku)
+
+**Last updated:** 2026-08-28 (added `ENTITY-MENU-LEGACY-DEPRECATION-
+PLAN.md` - real plan to finish the stalled 2026-08-16/18 entity-
+context-menu migration: only 7 of 45+ real entities are on the new
+shared Elem/CSS renderer today, the rest still use
+`tp_desktop_window_rgb.c`'s legacy built-in popup engine. Confirmed a
+live bug in the ALREADY-migrated path (book-stack's menu: first item
+invisible/jumbled with header) that must be fixed before mass-
+rollout. Real design fork flagged for confirmation: generate a static
+`menu.chtpm` per entity (current shape) vs. read `meta.pdl` directly
+at popup-open time (recommended - no staleness surface). End goal:
+archive `tp_desktop_window_rgb.c`'s popup engine once nothing depends
+on it) by Sonnet
+
+**Last updated:** 2026-08-28 (added `HOUSE_FAQ.md` 🏠️❓️ - real Q&A doc,
+emoji-heavy, append-only, for recurring "why does it work that way"
+questions the user asks mid-session. Check this FIRST before
+re-deriving an architecture explanation from scratch or re-asking an
+agent - if the question's already been answered here, link it instead
+of re-answering; if not, answer for real then append it here so it
+doesn't get re-asked cold next time) by Sonnet
+
+**Last updated:** 2026-08-28 (added `RENDER-INPUT-REFACTOR-SUMMARY-2026-08-28.md`
+— readable summary of the full khtpm_entity_menu_render.c render+input refactor
+(frame-file paint, file-boundary input, marker-gated redraw, 4-loop collapse,
+popup conversion, focus-steal fix, cross-window Tab-cycle, LayDoc→Elem port);
+confirms mutaclysm-neo needed no work (it's the reference implementation);
+records 2 known open bugs (toys-launch PID/teardown gap, open-hai+gemma3 not
+responding, unrelated to tonight's changes). Full real-time trail in
+`GROK-RENDER-INPUT-REFACTOR-HANDOFF.md` + `RENDER-REFACTOR-2DO-PROGRESS.md` +
+`LAYDOC-ELEM-PORT-IMPLEMENTATION-PLAN.md`, this same directory) by Sonnet
+
+**2026-08-28 (docs-only correction pass, Grok — append, not rewrite):**
+- `HANDOFF.md` — HQ recipe still listed `XMapRaised`; appended WM-managed
+  HQ = `XMapWindow`, popups keep Raised. Cite `HQ-WINDOW-MAP-AND-AGENT-INPUT.md`.
+- `HQML-DESIGN+PLANS.md` — “new khtpm/-hq window → XMapRaised” was the
+  override_redirect/strip rule; appended that WM-managed HQ is MapWindow.
+- `_.0.aigent-testing-k9.txt` — entity_menu addendum: poll without X-focus
+  gate; map table; strip arrows via `livedesk_agent_relay.txt` 1002/1001.
+- `LAYDOC-ELEM-PORT-IMPLEMENTATION-PLAN.md` — Gap 7: do not build an Elem
+  synthetic root; strip already has unified_apply. (Gap 2 DEACTIVATE
+  correction was already appended by Sonnet.)
+Source trail: `GROK-RENDER-INPUT-REFACTOR-HANDOFF.md` Grok docs-only claim.
+
+**2026-08-28 (Q1–Q3 surfaces, Grok — after Sonnet ACK):**
+- `#.house-docs.html/1.index-house=solo.html` — Input/Map subsection + roadmap
+  bullet; links `HQ-WINDOW-MAP-AND-AGENT-INPUT.md`.
+- `!.co-work/c-htpm-agent-onboard-prompt.md` — one-line pointer to the helper
+  (no copy-paste of its body).
+- `0.browser-prompting/1.platform-primer-ALWAYS-ATTACH.md` — 5-line MapWindow /
+  unfocused-history note.
 
 **Last updated:** 2026-08-24 (added 🎯 Plans-after-events section: palettes
 categories registered in pallets-help.txt, db-hq↔events-hq event-op parity +

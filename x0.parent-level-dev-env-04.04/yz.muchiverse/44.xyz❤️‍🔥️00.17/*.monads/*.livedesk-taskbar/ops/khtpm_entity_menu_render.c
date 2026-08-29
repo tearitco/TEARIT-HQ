@@ -45,6 +45,7 @@
 #include "khtpm_render_core.c" /* real .c, not a header - see that file's own comment */
 #include "khtpm_taskbar_manager.h" /* REAL, db-hq mode only (§5d.10) - ktb_init()/ktb_quit_and_save() KtbState persistence, ported from khtpm_hq_render.c's own real usage */
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -53,6 +54,7 @@
 #include <sys/stat.h>
 #include <sys/select.h>
 #include <sys/wait.h> /* REAL, db-hq mode only - launch_module()/cleanup_module(), real fork()+execl() */
+#include <errno.h>
 #include <signal.h> /* REAL, db-hq mode only - handle_term_signal() */
 #include <time.h>
 #include <X11/Xlib.h>
@@ -68,6 +70,9 @@
 /* REAL Stage 5 §5d.10 (2026-08-16) - bumped 256->512 to match db-hq's
  * own original headroom (khtpm_hq_render.c) now that db-hq mode's own
  * 15-tab/sidebar/panel tree shares this same pool. */
+static void nav_tab_unregister(void);
+static void nav_ledger_publish(void);
+static void popup_handle_click(int px, int py);
 #define MAX_ELEMS 512
 #define MAX_PAGE_STACK 8
 
@@ -92,6 +97,7 @@ static void dbhq_cleanup_module(void) {
 
 static void dbhq_handle_term_signal(int sig) {
     (void)sig;
+    nav_tab_unregister();
     dbhq_cleanup_module();
     _exit(0);
 }
@@ -433,6 +439,9 @@ static Elem *g_nav[MAX_ELEMS];
  * g_dbhq_font_scale's own declaration below uses it transitively via
  * db-hq's ported layout code - forward-declare the flag/scale here. */
 static int g_is_db_hq = 0;
+/* LayDoc Gap 2: NULL = no ACTIVATE scope. Declared before draw_core
+ * include so elem_cursor_prefix can show [^] on the scope root. */
+static Elem *g_dbhq_active_scope_root = NULL;
 /* PAUSED 2026-08-25 mid-migration - see the direct finding that stopped
  * this: stats-hq's real dashboard.chtpm DOES have a <tabbar> (real
  * session-timestamp tabs, e.g. "2026-08-13 22:53:37"), contradicting
@@ -496,6 +505,8 @@ static CssSheet g_sheet;
  * shape - not zero-app-C, but genuinely ONE compiled binary, no
  * dlopen/plugin indirection. Set once in main() after parse_chtpm(). */
 static int g_is_swatch_picker = 0;
+static pid_t g_swatch_mgr_pid = -1;
+static unsigned g_swatch_action_seq = 0;
 
 /* REAL, swatch-picker-only state - ported verbatim from taskbar-
  * settings' own real g_phase/g_chosen_bg_idx/g_chosen_fg_idx/
@@ -512,6 +523,7 @@ static int g_phase = 0;
 static int g_chosen_bg_idx = -1;
 static int g_chosen_fg_idx = -1;
 static const char *g_palette_hex[12];
+static char g_palette_name_buf[12][32];
 static const char *g_palette_name[12];
 
 /* ======================================================================
@@ -621,7 +633,7 @@ static int g_pal_forced_h = 0;
  * here. Empty (n==0) for every other category - stat() on a path that
  * only rmmv ever writes just fails, no-op, same pattern g_pal_state_path
  * already uses. */
-#define PAL_MAX_OPTS 16
+#define PAL_MAX_OPTS 32
 static char g_pal_opt_tileset_key[PAL_MAX_OPTS][64];
 static char g_pal_opt_tileset_label[PAL_MAX_OPTS][128];
 static int g_pal_n_tilesets = 0;
@@ -633,6 +645,11 @@ static int g_pal_n_tilesets = 0;
 static char g_pal_opt_tab_letter[PAL_MAX_OPTS];
 static char g_pal_opt_tab_cat[PAL_MAX_OPTS][16];
 static int g_pal_n_tabs = 0;
+static char g_pal_opt_dir_key[PAL_MAX_OPTS][32];
+static char g_pal_opt_dir_label[PAL_MAX_OPTS][32];
+static int g_pal_n_dirs = 0;
+static char g_pal_active_dir[32] = "tilesets";
+static Elem g_pal_dir_slots[PAL_MAX_OPTS];
 static char g_pal_active_tileset[64] = "";
 static char g_pal_active_category[16] = "";
 static char g_pal_options_path[PATH_BUF];
@@ -696,8 +713,40 @@ static const char *DB_HQ_TAB_LABELS[] = {
 #define DB_HQ_N_TABS 15
 #define DB_HQ_COMMON_EVENTS_TAB 11
 #define DB_HQ_TERMS_TAB 14
-static int g_dbhq_current_tab = DB_HQ_COMMON_EVENTS_TAB;
+#define DB_HQ_ACTORS_TAB 0
+#define DB_HQ_CLASSES_TAB 1
+#define DB_HQ_SKILLS_TAB 2
+#define DB_HQ_ITEMS_TAB 3
+#define DB_HQ_WEAPONS_TAB 4
+#define DB_HQ_ARMORS_TAB 5
+#define DB_HQ_ENEMIES_TAB 6
+#define DB_HQ_TROOPS_TAB 7
+#define DB_HQ_STATES_TAB 8
+#define DB_HQ_ANIMATIONS_TAB 9
+#define DB_HQ_TILESETS_TAB 10
+#define DB_HQ_SYSTEM_TAB 12
+#define DB_HQ_TYPES_TAB 13
+static int g_dbhq_current_tab = 0; /* Actors — must match nav [1]; CE was a lie */
 static char g_dbhq_terms_state_path[PATH_BUF];
+static char g_dbhq_actors_state_path[PATH_BUF];
+#define DB_HQ_MAX_ACTORS 64
+typedef struct {
+    int id;
+    char name[64];
+    char nickname[64];
+    char class_name[64];
+    int init_lv, max_lv;
+    char profile[160];
+    char face[64], character[64], battler[64];
+    char weapon[64], shield[64], head[64], body[64], accessory[64];
+    int mhp, mmp, atk, defn, mat, mdf, agi, luk;
+    char note[160];
+} DbhqActor;
+static DbhqActor g_dbhq_actors[DB_HQ_MAX_ACTORS];
+static int g_dbhq_n_actors;
+static int g_dbhq_selected_actor;
+static time_t g_dbhq_actors_mtime;
+static Elem g_dbhq_actor_panel_slots[MAX_CHILDREN];
 /* Real, generic "which db-hq tabs actually have real backing data"
  * check (2026-08-28) - replaces 3 separate hardcoded `== DB_HQ_COMMON_
  * EVENTS_TAB` gates (layout, sidebar population, placeholder-vs-real
@@ -708,7 +757,13 @@ static char g_dbhq_terms_state_path[PATH_BUF];
  * networking delegation doc's own Task 2) means adding ONE line here,
  * not re-finding and editing 3 separate gate sites again. */
 static int dbhq_tab_is_real(int tab) {
-    return tab == DB_HQ_COMMON_EVENTS_TAB || tab == DB_HQ_TERMS_TAB;
+    return tab == DB_HQ_COMMON_EVENTS_TAB || tab == DB_HQ_TERMS_TAB || tab == DB_HQ_ACTORS_TAB
+        || tab == DB_HQ_CLASSES_TAB || tab == DB_HQ_SKILLS_TAB
+        || tab == DB_HQ_WEAPONS_TAB || tab == DB_HQ_ARMORS_TAB
+        || tab == DB_HQ_ENEMIES_TAB || tab == DB_HQ_TROOPS_TAB
+        || tab == DB_HQ_STATES_TAB || tab == DB_HQ_ANIMATIONS_TAB
+        || tab == DB_HQ_TILESETS_TAB || tab == DB_HQ_ITEMS_TAB
+        || tab == DB_HQ_SYSTEM_TAB || tab == DB_HQ_TYPES_TAB;
 }
 
 static int g_dbhq_focus_grab_enabled = 0;
@@ -786,18 +841,29 @@ static int dbhq_load_common_events(void) {
     snprintf(g_dbhq_events_last_path, sizeof(g_dbhq_events_last_path), "%s", path);
     g_dbhq_events_state_mtime = st.st_mtime;
 
-    g_dbhq_n_events = 0;
+    char tmp[DB_HQ_MAX_EVENTS][64];
+    int n = 0;
     FILE *f = fopen(path, "r");
     if (!f) return 0;
     char line[128];
-    while (g_dbhq_n_events < DB_HQ_MAX_EVENTS && fgets(line, sizeof(line), f)) {
+    while (n < DB_HQ_MAX_EVENTS && fgets(line, sizeof(line), f)) {
         size_t len = strlen(line);
         while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) line[--len] = '\0';
         if (len == 0) continue;
-        snprintf(g_dbhq_events[g_dbhq_n_events], sizeof(g_dbhq_events[0]), "%s", line);
-        g_dbhq_n_events++;
+        snprintf(tmp[n], sizeof(tmp[0]), "%s", line);
+        n++;
     }
     fclose(f);
+    if (n == g_dbhq_n_events) {
+        int same = 1;
+        for (int i = 0; i < n; i++) {
+            if (strcmp(tmp[i], g_dbhq_events[i]) != 0) { same = 0; break; }
+        }
+        if (same) return 0;
+    }
+    g_dbhq_n_events = n;
+    for (int i = 0; i < n; i++)
+        snprintf(g_dbhq_events[i], sizeof(g_dbhq_events[0]), "%s", tmp[i]);
     return 1;
 }
 
@@ -849,19 +915,29 @@ static int dbhq_load_bookmark_state(void) {
  * from the 4 captured static elems + g_bm_names/g_bm_paths. Same
  * elem_new()-per-row shape dbhq_inject_sidebar_items() already uses for
  * db-hq/stats-hq's own dynamic sidebar - not a new pattern. */
+static Elem *dbhq_bm_row_factory(void *row, void *ctx) {
+    int i = (int)(intptr_t)row;
+    Elem *e;
+    (void)ctx;
+    if (i < 0 || i >= g_bm_n_rows) return NULL;
+    e = elem_new("button");
+    snprintf(e->classes[0], sizeof(e->classes[0]), "bm-bookmark");
+    e->n_classes = 1;
+    snprintf(e->label, sizeof(e->label), "%s  -  %s", g_bm_names[i], g_bm_paths[i]);
+    snprintf(e->onclick, sizeof(e->onclick), "open:%s", g_bm_paths[i]);
+    return e;
+}
+
 static void dbhq_inject_bookmark_items(Elem *panel) {
     if (!panel) return;
     panel->n_children = 0;
     if (g_bm_static_title && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_bm_static_title;
     if (g_bm_static_hint && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_bm_static_hint;
-    for (int i = 0; i < g_bm_n_rows && panel->n_children < MAX_CHILDREN; i++) {
-        Elem *row = elem_new("button");
-        row->parent = panel;
-        snprintf(row->classes[0], sizeof(row->classes[0]), "bm-bookmark");
-        row->n_classes = 1;
-        snprintf(row->label, sizeof(row->label), "%s  -  %s", g_bm_names[i], g_bm_paths[i]);
-        snprintf(row->onclick, sizeof(row->onclick), "open:%s", g_bm_paths[i]);
-        panel->children[panel->n_children++] = row;
+    {
+        void *rows[BM_MAX_ROWS];
+        int i;
+        for (i = 0; i < g_bm_n_rows; i++) rows[i] = (void *)(intptr_t)i;
+        elem_inject_loop(panel, rows, g_bm_n_rows, dbhq_bm_row_factory, NULL);
     }
     if (g_bm_static_newplus && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_bm_static_newplus;
     if (g_bm_static_openfolder && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_bm_static_openfolder;
@@ -940,8 +1016,10 @@ static int dbhq_load_palette_options(void) {
 
     g_pal_n_tilesets = 0;
     g_pal_n_tabs = 0;
+    g_pal_n_dirs = 0;
     g_pal_active_tileset[0] = '\0';
     g_pal_active_category[0] = '\0';
+    snprintf(g_pal_active_dir, sizeof(g_pal_active_dir), "tilesets");
     FILE *f = fopen(g_pal_options_path, "r");
     if (!f) return 1;
     char line[PATH_BUF];
@@ -956,6 +1034,17 @@ static int dbhq_load_palette_options(void) {
             snprintf(g_pal_active_tileset, sizeof(g_pal_active_tileset), "%s", rest);
         } else if (strcmp(line, "ACTIVE_CATEGORY") == 0) {
             snprintf(g_pal_active_category, sizeof(g_pal_active_category), "%s", rest);
+        } else if (strcmp(line, "ACTIVE_DIR") == 0) {
+            snprintf(g_pal_active_dir, sizeof(g_pal_active_dir), "%s", rest);
+        } else if (strcmp(line, "DIR") == 0) {
+            char *p2 = strchr(rest, '|');
+            if (!p2) continue;
+            *p2 = '\0';
+            if (g_pal_n_dirs < PAL_MAX_OPTS) {
+                snprintf(g_pal_opt_dir_key[g_pal_n_dirs], sizeof(g_pal_opt_dir_key[0]), "%s", rest);
+                snprintf(g_pal_opt_dir_label[g_pal_n_dirs], sizeof(g_pal_opt_dir_label[0]), "%s", p2 + 1);
+                g_pal_n_dirs++;
+            }
         } else if (strcmp(line, "TAB") == 0) {
             char *p2 = strchr(rest, '|');
             if (!p2 || p2 != rest + 1) continue; /* letter is always exactly 1 char */
@@ -1049,6 +1138,38 @@ static void dbhq_inject_palette_tiles(Elem *panel) {
     if (g_pal_static_title && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_pal_static_title;
     if (g_pal_static_hint && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_pal_static_hint;
 
+    /* www/img directory tabs (db-hq-shaped names), two rows wrap. */
+    if (g_pal_n_dirs > 0) {
+        const int per = 6;
+        Elem *drow = NULL;
+        int dslot = 0;
+        for (int i = 0; i < g_pal_n_dirs && panel->n_children < MAX_CHILDREN; i++) {
+            if (i % per == 0) {
+                drow = reusable_slot(g_pal_row_slots, 64, next_row_slot++, "row");
+                if (!drow) break;
+                drow->parent = panel;
+                snprintf(drow->classes[0], sizeof(drow->classes[0]), "pal-tab-row");
+                drow->n_classes = 1;
+                panel->children[panel->n_children++] = drow;
+            }
+            if (!drow || drow->n_children >= MAX_CHILDREN) continue;
+            Elem *tab = reusable_slot(g_pal_dir_slots, PAL_MAX_OPTS, dslot++, "button");
+            if (!tab) break;
+            tab->parent = drow;
+            snprintf(tab->classes[0], sizeof(tab->classes[0]), "pal-tab");
+            tab->n_classes = 1;
+            if (strcmp(g_pal_opt_dir_key[i], g_pal_active_dir) == 0) {
+                snprintf(tab->classes[1], sizeof(tab->classes[1]), "pal-tab-active");
+                tab->n_classes = 2;
+            }
+            snprintf(tab->label, sizeof(tab->label), "%s", g_pal_opt_dir_label[i]);
+            snprintf(tab->onclick, sizeof(tab->onclick),
+                     "exec:'%s/&.widgits/palettes/palettes_menu.sh' set-rmmv-dir '%s' '%s'",
+                     g_house_root, g_package_dir, g_pal_opt_dir_key[i]);
+            drow->children[drow->n_children++] = tab;
+        }
+    }
+
     /* Real A/B/C/D/E sheet-letter tab row (2026-08-27/28, per the
      * user's own rmmv-tiles mockup + external review correction that
      * tabs are real sheet LETTERS, not raw a1..a5 sub-category keys) -
@@ -1059,7 +1180,8 @@ static void dbhq_inject_palette_tiles(Elem *panel) {
      * a no-op for them. Active highlight compares the CURRENT active
      * category's own letter-group, not a raw string match, so any
      * a1..a5 category active still lights up the single "A" tab. */
-    if (g_pal_n_tabs > 0 && panel->n_children < MAX_CHILDREN) {
+    if (g_pal_n_tabs > 0 && panel->n_children < MAX_CHILDREN &&
+        (g_pal_active_dir[0] == '\0' || strcmp(g_pal_active_dir, "tilesets") == 0)) {
         char active_letter = g_pal_active_category[0] ? (g_pal_active_category[0] == 'a' ? 'A' : (char)toupper((unsigned char)g_pal_active_category[0])) : '\0';
         Elem *tabrow = reusable_slot(g_pal_row_slots, 64, next_row_slot++, "row");
         if (tabrow) {
@@ -1120,13 +1242,22 @@ static void dbhq_inject_palette_tiles(Elem *panel) {
      * after the tile grid, not top). Built from g_pal_opt_tileset_*
      * (whatever real "<key>.name" rows publish_rmmv_options() found),
      * same no-hardcoding shape as the tab row above. */
-    if (g_pal_n_tilesets > 0 && panel->n_children < MAX_CHILDREN) {
-        Elem *chooserrow = reusable_slot(g_pal_row_slots, 64, next_row_slot++, "row");
-        if (chooserrow) {
-        chooserrow->parent = panel;
-        snprintf(chooserrow->classes[0], sizeof(chooserrow->classes[0]), "pal-tileset-row");
-        chooserrow->n_classes = 1;
-        for (int i = 0; i < g_pal_n_tilesets && chooserrow->n_children < MAX_CHILDREN; i++) {
+    /* Wrap tileset chooser at 4 per row (live: 6 prefixes, one row
+     * only showed ~4). Same wrap we'll use for img-dir tabs. */
+    if (g_pal_n_tilesets > 0 &&
+        (g_pal_active_dir[0] == '\0' || strcmp(g_pal_active_dir, "tilesets") == 0)) {
+        const int per = 4;
+        Elem *chooserrow = NULL;
+        for (int i = 0; i < g_pal_n_tilesets && panel->n_children < MAX_CHILDREN; i++) {
+            if (i % per == 0) {
+                chooserrow = reusable_slot(g_pal_row_slots, 64, next_row_slot++, "row");
+                if (!chooserrow) break;
+                chooserrow->parent = panel;
+                snprintf(chooserrow->classes[0], sizeof(chooserrow->classes[0]), "pal-tileset-row");
+                chooserrow->n_classes = 1;
+                panel->children[panel->n_children++] = chooserrow;
+            }
+            if (!chooserrow || chooserrow->n_children >= MAX_CHILDREN) continue;
             Elem *opt = reusable_slot(g_pal_tileset_slots, PAL_MAX_OPTS, next_tileset_slot++, "button");
             if (!opt) break;
             opt->parent = chooserrow;
@@ -1141,8 +1272,6 @@ static void dbhq_inject_palette_tiles(Elem *panel) {
                      "exec:'%s/&.widgits/palettes/palettes_menu.sh' set-rmmv-tileset '%s' '%s'",
                      g_house_root, g_package_dir, g_pal_opt_tileset_key[i]);
             chooserrow->children[chooserrow->n_children++] = opt;
-        }
-        panel->children[panel->n_children++] = chooserrow;
         }
     }
 
@@ -1164,7 +1293,7 @@ static void dbhq_inject_palette_tiles(Elem *panel) {
     /* Real tab/chooser rows add their own row heights - counted as
      * extra "rows" here rather than a second hardcoded height constant,
      * since they share the exact same row_h/gap CSS shape. */
-    int extra_rows = (g_pal_n_tabs > 0 ? 1 : 0) + (g_pal_n_tilesets > 0 ? 1 : 0);
+    int extra_rows = (g_pal_n_dirs > 0 ? (g_pal_n_dirs + 5) / 6 : 0) + (g_pal_n_tabs > 0 ? 1 : 0) + (g_pal_n_tilesets > 0 ? (g_pal_n_tilesets + 3) / 4 : 0);
     rows += extra_rows;
     int hint_h = scaled(24);
     /* dbhq_layout_pass() always does `content_h = window->style.height -
@@ -1261,6 +1390,379 @@ static void dbhq_inject_sidebar_items(Elem *sidebar) {
  * User Messages/AI Responses/Total Turns/Tool Calls+Delegation), not
  * one combined summary. Parses stats_hq_manager.c's own raw pipe-
  * delimited publish format (date|turns|user_msgs|ai_msgs|tools|pct). */
+
+static void dbhq_actor_clear(DbhqActor *a) {
+    memset(a, 0, sizeof(*a));
+    a->init_lv = 1;
+    a->max_lv = 99;
+}
+
+static void dbhq_actor_set_key(DbhqActor *a, const char *key, const char *val) {
+    if (strcmp(key, "id") == 0) a->id = atoi(val);
+    else if (strcmp(key, "name") == 0) snprintf(a->name, sizeof(a->name), "%s", val);
+    else if (strcmp(key, "nickname") == 0) snprintf(a->nickname, sizeof(a->nickname), "%s", val);
+    else if (strcmp(key, "class") == 0) snprintf(a->class_name, sizeof(a->class_name), "%s", val);
+    else if (strcmp(key, "init_lv") == 0) a->init_lv = atoi(val);
+    else if (strcmp(key, "max_lv") == 0) a->max_lv = atoi(val);
+    else if (strcmp(key, "profile") == 0) snprintf(a->profile, sizeof(a->profile), "%s", val);
+    else if (strcmp(key, "face") == 0) snprintf(a->face, sizeof(a->face), "%s", val);
+    else if (strcmp(key, "character") == 0) snprintf(a->character, sizeof(a->character), "%s", val);
+    else if (strcmp(key, "battler") == 0) snprintf(a->battler, sizeof(a->battler), "%s", val);
+    else if (strcmp(key, "weapon") == 0) snprintf(a->weapon, sizeof(a->weapon), "%s", val);
+    else if (strcmp(key, "shield") == 0) snprintf(a->shield, sizeof(a->shield), "%s", val);
+    else if (strcmp(key, "head") == 0) snprintf(a->head, sizeof(a->head), "%s", val);
+    else if (strcmp(key, "body") == 0) snprintf(a->body, sizeof(a->body), "%s", val);
+    else if (strcmp(key, "accessory") == 0) snprintf(a->accessory, sizeof(a->accessory), "%s", val);
+    else if (strcmp(key, "mhp") == 0) a->mhp = atoi(val);
+    else if (strcmp(key, "mmp") == 0) a->mmp = atoi(val);
+    else if (strcmp(key, "atk") == 0) a->atk = atoi(val);
+    else if (strcmp(key, "def") == 0) a->defn = atoi(val);
+    else if (strcmp(key, "mat") == 0) a->mat = atoi(val);
+    else if (strcmp(key, "mdf") == 0) a->mdf = atoi(val);
+    else if (strcmp(key, "agi") == 0) a->agi = atoi(val);
+    else if (strcmp(key, "luk") == 0) a->luk = atoi(val);
+    else if (strcmp(key, "note") == 0) snprintf(a->note, sizeof(a->note), "%s", val);
+}
+
+/* Parse house PDL: SECTION | KEY | VALUE  — ACTOR rows. No JSON. */
+static int dbhq_load_actors(void) {
+    const char *path = g_dbhq_actors_state_path;
+    struct stat st;
+    char fallback[PATH_BUF];
+    if (stat(path, &st) != 0) {
+        snprintf(fallback, sizeof(fallback), "%s/&.widgits/db-hq/data/actors.pdl", g_house_root);
+        path = fallback;
+        if (stat(path, &st) != 0) return 0;
+    }
+    if (st.st_mtime == g_dbhq_actors_mtime && g_dbhq_n_actors > 0) return 0;
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    DbhqActor tmp[DB_HQ_MAX_ACTORS];
+    int n = 0;
+    char line[512];
+    while (fgets(line, sizeof(line), f)) {
+        size_t len = strlen(line);
+        while (len > 0 && (line[len-1]=='\n' || line[len-1]=='\r')) line[--len] = '\0';
+        if (len == 0 || line[0] == '-' || strncmp(line, "SECTION", 7) == 0) continue;
+        char sec[64] = "", key[64] = "", val[256] = "";
+        char *p = line;
+        char *bar = strstr(p, "|");
+        if (!bar) continue;
+        *bar = '\0';
+        snprintf(sec, sizeof(sec), "%s", p);
+        p = bar + 1;
+        while (*p == ' ') p++;
+        bar = strstr(p, "|");
+        if (!bar) continue;
+        *bar = '\0';
+        /* trim key */
+        char *ke = bar - 1;
+        while (ke > p && (*ke == ' ' || *ke == '\t')) { *ke = '\0'; ke--; }
+        snprintf(key, sizeof(key), "%s", p);
+        p = bar + 1;
+        while (*p == ' ') p++;
+        snprintf(val, sizeof(val), "%s", p);
+        /* trim trailing space on sec */
+        for (int i = (int)strlen(sec)-1; i>=0 && (sec[i]==' '||sec[i]=='\t'); i--) sec[i]='\0';
+        if (strcmp(sec, "ACTOR") != 0) continue;
+        if (strcmp(key, "id") == 0) {
+            if (n >= DB_HQ_MAX_ACTORS) break;
+            dbhq_actor_clear(&tmp[n]);
+            dbhq_actor_set_key(&tmp[n], key, val);
+            n++;
+        } else if (n > 0) {
+            dbhq_actor_set_key(&tmp[n-1], key, val);
+        }
+    }
+    fclose(f);
+    g_dbhq_actors_mtime = st.st_mtime;
+    int same = (n == g_dbhq_n_actors);
+    if (same) {
+        for (int i = 0; i < n; i++) {
+            if (memcmp(&tmp[i], &g_dbhq_actors[i], sizeof(DbhqActor)) != 0) { same = 0; break; }
+        }
+    }
+    if (same) return 0;
+    g_dbhq_n_actors = n;
+    memcpy(g_dbhq_actors, tmp, sizeof(DbhqActor) * (size_t)n);
+    if (g_dbhq_selected_actor < 0 && n > 0) g_dbhq_selected_actor = 0;
+    if (g_dbhq_selected_actor >= n) g_dbhq_selected_actor = n > 0 ? n - 1 : -1;
+    return 1;
+}
+
+static void dbhq_actor_sidebar_label(int i, char *out, size_t outsz) {
+    snprintf(out, outsz, "%04d: %s", g_dbhq_actors[i].id, g_dbhq_actors[i].name);
+}
+
+static Elem *dbhq_actor_panel_row(Elem *panel, int *slot, const char *label) {
+    Elem *e = reusable_slot(g_dbhq_actor_panel_slots, MAX_CHILDREN, (*slot)++, "button");
+    if (!e) return NULL;
+    e->parent = panel;
+    snprintf(e->classes[0], sizeof(e->classes[0]), "data-item");
+    e->n_classes = 1;
+    snprintf(e->label, sizeof(e->label), "%s", label);
+    snprintf(e->onclick, sizeof(e->onclick), "ACTIVATE");
+    if (panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = e;
+    return e;
+}
+
+static void dbhq_inject_actors_panel(Elem *panel) {
+    if (!panel) return;
+    panel->n_children = 0;
+    int slot = 0;
+    if (g_dbhq_selected_actor < 0 || g_dbhq_selected_actor >= g_dbhq_n_actors) {
+        Elem *t = reusable_slot(g_dbhq_actor_panel_slots, MAX_CHILDREN, slot++, "title");
+        if (!t) return;
+        t->parent = panel;
+        snprintf(t->classes[0], sizeof(t->classes[0]), "block-title"); t->n_classes = 1;
+        snprintf(t->label, sizeof(t->label), "Actor");
+        if (panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = t;
+        dbhq_actor_panel_row(panel, &slot, "(select an actor)");
+        return;
+    }
+    DbhqActor *a = &g_dbhq_actors[g_dbhq_selected_actor];
+    char buf[256];
+    Elem *t = reusable_slot(g_dbhq_actor_panel_slots, MAX_CHILDREN, slot++, "title");
+    if (t) {
+        t->parent = panel;
+        snprintf(t->classes[0], sizeof(t->classes[0]), "block-title"); t->n_classes = 1;
+        snprintf(t->label, sizeof(t->label), "Actor %04d", a->id);
+        if (panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = t;
+    }
+    snprintf(buf, sizeof(buf), "Name          %s", a->name); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "Nickname      %s", a->nickname); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "Class         %s", a->class_name); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "Initial Level %d", a->init_lv); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "Max Level     %d", a->max_lv); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "Profile       %s", a->profile); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "Face          %s", a->face[0] ? a->face : "(none)"); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "Character     %s", a->character[0] ? a->character : "(none)"); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "Battler       %s", a->battler[0] ? a->battler : "(none)"); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "Weapon        %s", a->weapon[0] ? a->weapon : "None"); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "Shield        %s", a->shield[0] ? a->shield : "None"); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "Head          %s", a->head[0] ? a->head : "None"); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "Body          %s", a->body[0] ? a->body : "None"); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "Accessory     %s", a->accessory[0] ? a->accessory : "None"); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "MHP  %d", a->mhp); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "MMP  %d", a->mmp); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "ATK  %d", a->atk); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "DEF  %d", a->defn); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "MAT  %d", a->mat); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "MDF  %d", a->mdf); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "AGI  %d", a->agi); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "LUK  %d", a->luk); dbhq_actor_panel_row(panel, &slot, buf);
+    snprintf(buf, sizeof(buf), "Note          %s", a->note); dbhq_actor_panel_row(panel, &slot, buf);
+}
+
+static void dbhq_inject_actors_sidebar(Elem *sidebar) {
+    if (!sidebar) return;
+    sidebar->n_children = 0;
+    int next = 0;
+    for (int i = 0; i < g_dbhq_n_actors; i++) {
+        Elem *item = reusable_slot(g_dbhq_sidebar_slots, MAX_CHILDREN, next++, "item");
+        if (!item) break;
+        item->parent = sidebar;
+        snprintf(item->classes[0], sizeof(item->classes[0]), "data-item");
+        item->n_classes = 1;
+        dbhq_actor_sidebar_label(i, item->label, sizeof(item->label));
+        snprintf(item->id, sizeof(item->id), "%d", i);
+        item->onclick[0] = '\0';
+        item->active = (i == g_dbhq_selected_actor);
+        if (sidebar->n_children < MAX_CHILDREN) sidebar->children[sidebar->n_children++] = item;
+    }
+}
+
+static void dbhq_show_actors(void) {
+    dbhq_load_actors();
+    Elem *sidebar = find_by_tag(g_window, "sidebar");
+    dbhq_inject_actors_sidebar(sidebar);
+    Elem *panel = find_by_tag(g_window, "panel");
+    dbhq_inject_actors_panel(panel);
+}
+
+#define DBHQ_LIST_MAX 64
+#define DBHQ_KV_MAX 24
+#define DBHQ_N_LIST_TABS 12
+typedef struct {
+    int id;
+    char name[64];
+    char kv_key[DBHQ_KV_MAX][32];
+    char kv_val[DBHQ_KV_MAX][160];
+    int n_kv;
+} DbhqListRec;
+static const struct {
+    int tab;
+    const char *section;
+    const char *title;
+    const char *pdl_name;
+    const char *state_name;
+} g_dbhq_list_cfg[DBHQ_N_LIST_TABS] = {
+    { DB_HQ_CLASSES_TAB, "CLASS",  "Class",  "classes.pdl", "db_hq_classes.state.txt" },
+    { DB_HQ_SKILLS_TAB,  "SKILL",  "Skill",  "skills.pdl",  "db_hq_skills.state.txt" },
+    { DB_HQ_ITEMS_TAB,   "ITEM",   "Item",   "items.pdl",   "db_hq_items.state.txt" },
+    { DB_HQ_WEAPONS_TAB, "WEAPON", "Weapon", "weapons.pdl", "db_hq_weapons.state.txt" },
+    { DB_HQ_ARMORS_TAB,  "ARMOR",  "Armor",  "armors.pdl",  "db_hq_armors.state.txt" },
+    { DB_HQ_ENEMIES_TAB, "ENEMY", "Enemy", "enemies.pdl", "db_hq_enemies.state.txt" },
+    { DB_HQ_TROOPS_TAB, "TROOP", "Troop", "troops.pdl", "db_hq_troops.state.txt" },
+    { DB_HQ_STATES_TAB, "STATE", "State", "states.pdl", "db_hq_states.state.txt" },
+    { DB_HQ_ANIMATIONS_TAB, "ANIMATION", "Animation", "animations.pdl", "db_hq_animations.state.txt" },
+    { DB_HQ_TILESETS_TAB, "TILESET", "Tileset", "tilesets.pdl", "db_hq_tilesets.state.txt" },
+    { DB_HQ_SYSTEM_TAB, "SYSTEM", "System", "system.pdl", "db_hq_system.state.txt" },
+    { DB_HQ_TYPES_TAB, "TYPE", "Type", "types.pdl", "db_hq_types.state.txt" },
+};
+static DbhqListRec g_dbhq_list_recs[DBHQ_N_LIST_TABS][DBHQ_LIST_MAX];
+static int g_dbhq_list_n[DBHQ_N_LIST_TABS];
+static int g_dbhq_list_sel[DBHQ_N_LIST_TABS];
+static time_t g_dbhq_list_mtime[DBHQ_N_LIST_TABS];
+static char g_dbhq_list_state_path[DBHQ_N_LIST_TABS][PATH_BUF];
+
+static int dbhq_list_idx_for_tab(int tab) {
+    for (int i = 0; i < DBHQ_N_LIST_TABS; i++)
+        if (g_dbhq_list_cfg[i].tab == tab) return i;
+    return -1;
+}
+
+static void dbhq_list_rec_clear(DbhqListRec *r) {
+    memset(r, 0, sizeof(*r));
+}
+
+static void dbhq_list_rec_set(DbhqListRec *r, const char *key, const char *val) {
+    if (strcmp(key, "id") == 0) { r->id = atoi(val); return; }
+    if (strcmp(key, "name") == 0) { snprintf(r->name, sizeof(r->name), "%s", val); return; }
+    if (r->n_kv >= DBHQ_KV_MAX) return;
+    snprintf(r->kv_key[r->n_kv], sizeof(r->kv_key[0]), "%s", key);
+    snprintf(r->kv_val[r->n_kv], sizeof(r->kv_val[0]), "%s", val);
+    r->n_kv++;
+}
+
+static int dbhq_load_list_tab(int li) {
+    if (li < 0 || li >= DBHQ_N_LIST_TABS) return 0;
+    const char *path = g_dbhq_list_state_path[li];
+    struct stat st;
+    char fallback[PATH_BUF];
+    if (stat(path, &st) != 0) {
+        snprintf(fallback, sizeof(fallback), "%s/&.widgits/db-hq/data/%s",
+                 g_house_root, g_dbhq_list_cfg[li].pdl_name);
+        path = fallback;
+        if (stat(path, &st) != 0) return 0;
+    }
+    if (st.st_mtime == g_dbhq_list_mtime[li] && g_dbhq_list_n[li] > 0) return 0;
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    DbhqListRec tmp[DBHQ_LIST_MAX];
+    int n = 0;
+    char line[512];
+    while (fgets(line, sizeof(line), f)) {
+        size_t len = strlen(line);
+        while (len > 0 && (line[len-1]=='\n' || line[len-1]=='\r')) line[--len] = '\0';
+        if (len == 0 || line[0] == '-' || strncmp(line, "SECTION", 7) == 0) continue;
+        char sec[64] = "", key[64] = "", val[256] = "";
+        char *pcur = line;
+        char *bar = strstr(pcur, "|");
+        if (!bar) continue;
+        *bar = '\0';
+        snprintf(sec, sizeof(sec), "%s", pcur);
+        pcur = bar + 1;
+        while (*pcur == ' ') pcur++;
+        bar = strstr(pcur, "|");
+        if (!bar) continue;
+        *bar = '\0';
+        char *ke = bar - 1;
+        while (ke > pcur && (*ke == ' ' || *ke == '\t')) { *ke = '\0'; ke--; }
+        snprintf(key, sizeof(key), "%s", pcur);
+        pcur = bar + 1;
+        while (*pcur == ' ') pcur++;
+        snprintf(val, sizeof(val), "%s", pcur);
+        for (int i = (int)strlen(sec)-1; i>=0 && (sec[i]==' '||sec[i]=='\t'); i--) sec[i]='\0';
+        if (strcmp(sec, g_dbhq_list_cfg[li].section) != 0) continue;
+        if (strcmp(key, "id") == 0) {
+            if (n >= DBHQ_LIST_MAX) break;
+            dbhq_list_rec_clear(&tmp[n]);
+            dbhq_list_rec_set(&tmp[n], key, val);
+            n++;
+        } else if (n > 0) {
+            dbhq_list_rec_set(&tmp[n-1], key, val);
+        }
+    }
+    fclose(f);
+    g_dbhq_list_mtime[li] = st.st_mtime;
+    int same = (n == g_dbhq_list_n[li]);
+    if (same) {
+        for (int i = 0; i < n; i++)
+            if (memcmp(&tmp[i], &g_dbhq_list_recs[li][i], sizeof(DbhqListRec)) != 0) { same = 0; break; }
+    }
+    if (same) return 0;
+    g_dbhq_list_n[li] = n;
+    memcpy(g_dbhq_list_recs[li], tmp, sizeof(DbhqListRec) * (size_t)n);
+    if (g_dbhq_list_sel[li] < 0 && n > 0) g_dbhq_list_sel[li] = 0;
+    if (g_dbhq_list_sel[li] >= n) g_dbhq_list_sel[li] = n > 0 ? n - 1 : -1;
+    return 1;
+}
+
+static void dbhq_inject_list_sidebar(int li, Elem *sidebar) {
+    if (!sidebar) return;
+    sidebar->n_children = 0;
+    int next = 0;
+    for (int i = 0; i < g_dbhq_list_n[li]; i++) {
+        Elem *item = reusable_slot(g_dbhq_sidebar_slots, MAX_CHILDREN, next++, "item");
+        if (!item) break;
+        item->parent = sidebar;
+        snprintf(item->classes[0], sizeof(item->classes[0]), "data-item");
+        item->n_classes = 1;
+        snprintf(item->label, sizeof(item->label), "%04d: %s",
+                 g_dbhq_list_recs[li][i].id, g_dbhq_list_recs[li][i].name);
+        snprintf(item->id, sizeof(item->id), "%d", i);
+        item->onclick[0] = '\0';
+        item->active = (i == g_dbhq_list_sel[li]);
+        if (sidebar->n_children < MAX_CHILDREN) sidebar->children[sidebar->n_children++] = item;
+    }
+}
+
+static void dbhq_inject_list_panel(int li, Elem *panel) {
+    if (!panel) return;
+    panel->n_children = 0;
+    int slot = 0;
+    const char *title = g_dbhq_list_cfg[li].title;
+    if (g_dbhq_list_sel[li] < 0 || g_dbhq_list_sel[li] >= g_dbhq_list_n[li]) {
+        Elem *t = reusable_slot(g_dbhq_actor_panel_slots, MAX_CHILDREN, slot++, "title");
+        if (!t) return;
+        t->parent = panel;
+        snprintf(t->classes[0], sizeof(t->classes[0]), "block-title"); t->n_classes = 1;
+        snprintf(t->label, sizeof(t->label), "%s", title);
+        if (panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = t;
+        dbhq_actor_panel_row(panel, &slot, "(select a row)");
+        return;
+    }
+    DbhqListRec *r = &g_dbhq_list_recs[li][g_dbhq_list_sel[li]];
+    Elem *t = reusable_slot(g_dbhq_actor_panel_slots, MAX_CHILDREN, slot++, "title");
+    if (t) {
+        t->parent = panel;
+        snprintf(t->classes[0], sizeof(t->classes[0]), "block-title"); t->n_classes = 1;
+        snprintf(t->label, sizeof(t->label), "%s %04d", title, r->id);
+        if (panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = t;
+    }
+    char buf[256];
+    snprintf(buf, sizeof(buf), "Name          %s", r->name);
+    dbhq_actor_panel_row(panel, &slot, buf);
+    for (int i = 0; i < r->n_kv; i++) {
+        char pretty[48];
+        snprintf(pretty, sizeof(pretty), "%s", r->kv_key[i]);
+        for (char *c = pretty; *c; c++) if (*c == '_') *c = ' ';
+        if (pretty[0] >= 'a' && pretty[0] <= 'z') pretty[0] = (char)(pretty[0] - 32);
+        snprintf(buf, sizeof(buf), "%-13s %s", pretty, r->kv_val[i]);
+        dbhq_actor_panel_row(panel, &slot, buf);
+    }
+}
+
+static void dbhq_show_list_tab(void) {
+    int li = dbhq_list_idx_for_tab(g_dbhq_current_tab);
+    if (li < 0) return;
+    dbhq_load_list_tab(li);
+    dbhq_inject_list_sidebar(li, find_by_tag(g_window, "sidebar"));
+    dbhq_inject_list_panel(li, find_by_tag(g_window, "panel"));
+}
+
+
 static void stats_populate_panel(int idx) {
     if (idx < 0 || idx >= g_dbhq_n_events) return;
     char buf[128];
@@ -1622,11 +2124,37 @@ static void dbhq_layout_pass(Elem *window) {
  * Unconditional (no nav_index==0 guard) - see g_is_palettes's own
  * declaration comment for why that's the deliberate, safer choice here
  * (no earlier pass in this mode to avoid double-counting against). */
+static int dbhq_cli_io_navigable(Elem *e) {
+    if (strcmp(e->tag, "cli_io") != 0) return 1;
+    return (e == g_dbhq_active_scope_root);
+}
+static int dbhq_elem_is_navigable(Elem *e) {
+    if (!e) return 0;
+    if (!dbhq_cli_io_navigable(e)) return 0;
+    if (!g_dbhq_active_scope_root) return 1;
+    { Elem *p = e; while (p) { if (p == g_dbhq_active_scope_root) return 1; p = p->parent; } }
+    return 0;
+}
+static void dbhq_activate_scope(Elem *e) { g_dbhq_active_scope_root = e; }
+static void dbhq_back_scope(void) {
+    Elem *p = g_dbhq_active_scope_root ? g_dbhq_active_scope_root->parent : NULL;
+    while (p && strncmp(p->onclick, "ACTIVATE", 8) != 0) p = p->parent;
+    g_dbhq_active_scope_root = p;
+}
+static void dbhq_nav_take(Elem *e) {
+    if (!e || g_n_nav >= MAX_ELEMS) return;
+    if (!dbhq_elem_is_navigable(e)) { e->nav_index = 0; return; }
+    e->nav_index = ++g_n_nav;
+    g_nav[g_n_nav - 1] = e;
+}
+
 static void assign_palettes_nav(Elem *e) {
     if (!e || g_n_nav >= MAX_ELEMS) return;
     if (e->onclick[0] && e != g_dbhq_close_elem && e->w > 0 && e->h > 0) {
-        e->nav_index = ++g_n_nav;
-        g_nav[g_n_nav - 1] = e;
+        if (dbhq_elem_is_navigable(e)) {
+            e->nav_index = ++g_n_nav;
+            g_nav[g_n_nav - 1] = e;
+        } else e->nav_index = 0;
     }
     for (int i = 0; i < e->n_children && g_n_nav < MAX_ELEMS; i++)
         assign_palettes_nav(e->children[i]);
@@ -1638,8 +2166,7 @@ static void dbhq_assign_nav_indices(Elem *window) {
     if (tabbar) {
         for (int i = 0; i < tabbar->n_children && g_n_nav < MAX_ELEMS; i++) {
             Elem *tab = tabbar->children[i];
-            tab->nav_index = ++g_n_nav;
-            g_nav[g_n_nav - 1] = tab;
+            dbhq_nav_take(tab);
         }
     }
     /* REAL FIX 2026-08-25 (live report: "it never puts a default '>' in
@@ -1660,8 +2187,7 @@ static void dbhq_assign_nav_indices(Elem *window) {
         if (sidebar) {
             for (int i = 0; i < sidebar->n_children && g_n_nav < MAX_ELEMS; i++) {
                 Elem *item = sidebar->children[i];
-                item->nav_index = ++g_n_nav;
-                g_nav[g_n_nav - 1] = item;
+                dbhq_nav_take(item);
             }
         }
         Elem *panel = find_by_tag(window, "panel");
@@ -1669,8 +2195,7 @@ static void dbhq_assign_nav_indices(Elem *window) {
             for (int i = 0; i < panel->n_children && g_n_nav < MAX_ELEMS; i++) {
                 Elem *c = panel->children[i];
                 if (strcmp(c->tag, "button") != 0) { c->nav_index = 0; continue; }
-                c->nav_index = ++g_n_nav;
-                g_nav[g_n_nav - 1] = c;
+                dbhq_nav_take(c);
             }
         }
     }
@@ -1698,23 +2223,21 @@ static void dbhq_assign_nav_indices(Elem *window) {
      * without a separate disabled-specific branch here. */
     if (g_pal_has_grid) {
         if (g_pal_arrow_up->onclick[0] && g_n_nav < MAX_ELEMS) {
-            g_pal_arrow_up->nav_index = ++g_n_nav;
-            g_nav[g_n_nav - 1] = g_pal_arrow_up;
+            dbhq_nav_take(g_pal_arrow_up);
         }
         if (g_pal_arrow_down->onclick[0] && g_n_nav < MAX_ELEMS) {
-            g_pal_arrow_down->nav_index = ++g_n_nav;
-            g_nav[g_n_nav - 1] = g_pal_arrow_down;
+            dbhq_nav_take(g_pal_arrow_down);
         }
     }
     if (g_is_palettes || g_is_bookmarks) {
         assign_palettes_nav(g_window);
     }
     if (g_n_nav < MAX_ELEMS) {
-        g_dbhq_close_elem->nav_index = ++g_n_nav;
-        g_nav[g_n_nav - 1] = g_dbhq_close_elem;
+        dbhq_nav_take(g_dbhq_close_elem);
     }
     if (g_focus_nav < 1) g_focus_nav = 1;
     if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
+    nav_ledger_publish();
 }
 
 static void dbhq_render_placeholder_tab(Elem *window) {
@@ -1806,8 +2329,16 @@ static void dbhq_pal_scroll_to_y(int mouse_y) {
 /* Forward decls - real definitions live after the g_evhq_* globals
  * they share with events-hq's own entity editing (Task 6, 2026-08-26). */
 static void dbhq_ce_open(const char *ce_name);
+static int dbhq_ce_inject_panel(Elem *panel);
+static void dbhq_restore_tab_content(void);
 static void dbhq_ce_handle_onclick(const char *onclick);
-static void evhq_dispatch_picker_onclick(const char *onclick); /* Task 7 follow-up (2026-08-26) - shared mouse-click handler for the picker's real Elems, used by both dbhq_activate_elem() and evhq_activate_elem() */
+static void evhq_dispatch_picker_onclick(const char *onclick);
+static void nav_tab_register(const char *title);
+static void nav_tab_unregister(void);
+static void nav_tab_cycle(void);
+static void nav_tab_poll_active(void);
+static void nav_ledger_publish(void);
+ /* Task 7 follow-up (2026-08-26) - shared mouse-click handler for the picker's real Elems, used by both dbhq_activate_elem() and evhq_activate_elem() */
 static void dbhq_ce_draw_overlay_if_needed(void);
 static void dbhq_ce_handle_key_if_needed(KeySym ks, char ch, int *consumed);
 static void evhq_open_edit_picker(int cmd_index); /* Task 7 (2026-08-26) - defined after g_evhq_cmds/registry helpers; EvhqCmdNode itself declared just below */
@@ -1935,26 +2466,65 @@ static void dbhq_write_palette_frame_file(Elem *panel) {
 static void dbhq_paint_frame_line(const char *line) {
     char buf2[2048];
     snprintf(buf2, sizeof(buf2), "%s", line);
-    char *fields[12];
-    int nf = 0;
+
+    /* REAL FIX 2026-08-28, live bug (book-stack's entity-menu: first
+     * item invisible, jumbled into the header). Root cause, confirmed
+     * via a real PNG dump (relay 'p'/112), not guessed: book-stack's
+     * "Read" item's real onclick shell command contains literal "|"
+     * pipe characters (`find ... 2>/dev/null | head -1`, twice) - the
+     * OLD sequential from-the-front splitter below treated those as
+     * real field delimiters too, shifting nav_index/active/x/y/w/h to
+     * consume fragments of the onclick TEXT instead of the real
+     * numbers, so that one item painted at garbage coordinates
+     * (landing in the header band). Every other converted entity's
+     * menu.chtpm (ava/asa/self/3 monsters) happens to have zero pipe
+     * characters in any action string, which is why only book-stack
+     * ever hit this. Real fix: fields 0-4 (tag/id/classes/label/
+     * sprite) are still split from the FRONT (they never contain a
+     * real pipe in practice); fields 6-11 (nav_index/active/x/y/w/h)
+     * are always-numeric, so they're now peeled from the END instead.
+     * Field 5 (onclick) is "whatever's left in the middle" - safe to
+     * contain any number of real pipes, since neither anchor searches
+     * inside it anymore. */
+    char *front[5];
     char *p = buf2;
-    while (nf < 12) {
-        fields[nf++] = p;
+    for (int i = 0; i < 5; i++) {
+        front[i] = p;
         char *bar = strchr(p, '|');
-        if (!bar) break;
+        if (!bar) return; /* malformed line - honest skip, not a crash */
         *bar = '\0';
         p = bar + 1;
     }
-    if (nf < 12) return; /* malformed line - honest skip, not a crash */
+    char *tail[6]; /* [0]=nav_index [1]=active [2]=x [3]=y [4]=w [5]=h */
+    /* REAL FIX 2026-08-28, same-day self-correction (first attempt at
+     * this fix broke EVERY entity menu, not just book-stack's - see
+     * git blame if this comment ever needs re-deriving why): the front
+     * loop above already wrote NUL bytes earlier in buf2, so
+     * `strlen(buf2)` here would measure only up to the FIRST of those
+     * (basically just tag's length), not the real end of line. `p`
+     * itself still points at an intact, correctly-NUL-terminated
+     * remainder (the front loop never touched anything from `p`
+     * onward), so `p + strlen(p)` is the real end - `buf2 +
+     * strlen(buf2)` is not. */
+    char *scan_end = p + strlen(p);
+    for (int i = 5; i >= 0; i--) {
+        char *bar = NULL;
+        for (char *q = scan_end - 1; q >= p; q--) { if (*q == '|') { bar = q; break; } }
+        if (!bar) return; /* malformed line - honest skip, not a crash */
+        tail[i] = bar + 1;
+        *bar = '\0';
+        scan_end = bar;
+    }
+    char *onclick_field = p; /* everything between front[4] and tail[0], pipes and all */
 
     Elem tmp;
     memset(&tmp, 0, sizeof(tmp));
-    snprintf(tmp.tag, sizeof(tmp.tag), "%s", fields[0]);
-    snprintf(tmp.id, sizeof(tmp.id), "%s", fields[1]);
+    snprintf(tmp.tag, sizeof(tmp.tag), "%s", front[0]);
+    snprintf(tmp.id, sizeof(tmp.id), "%s", front[1]);
     tmp.n_classes = 0;
-    if (fields[2][0]) {
+    if (front[2][0]) {
         char classbuf[CSS_MAX_CLASSES * 33];
-        snprintf(classbuf, sizeof(classbuf), "%s", fields[2]);
+        snprintf(classbuf, sizeof(classbuf), "%s", front[2]);
         char *cp = classbuf;
         while (cp && *cp && tmp.n_classes < CSS_MAX_CLASSES) {
             char *comma = strchr(cp, ',');
@@ -1963,15 +2533,15 @@ static void dbhq_paint_frame_line(const char *line) {
             cp = comma ? comma + 1 : NULL;
         }
     }
-    snprintf(tmp.label, sizeof(tmp.label), "%s", fields[3]);
-    snprintf(tmp.sprite, sizeof(tmp.sprite), "%s", fields[4]);
-    snprintf(tmp.onclick, sizeof(tmp.onclick), "%s", fields[5]);
-    tmp.nav_index = atoi(fields[6]);
-    tmp.active = atoi(fields[7]);
-    tmp.x = atoi(fields[8]);
-    tmp.y = atoi(fields[9]);
-    tmp.w = atoi(fields[10]);
-    tmp.h = atoi(fields[11]);
+    snprintf(tmp.label, sizeof(tmp.label), "%s", front[3]);
+    snprintf(tmp.sprite, sizeof(tmp.sprite), "%s", front[4]);
+    snprintf(tmp.onclick, sizeof(tmp.onclick), "%s", onclick_field);
+    tmp.nav_index = atoi(tail[0]);
+    tmp.active = atoi(tail[1]);
+    tmp.x = atoi(tail[2]);
+    tmp.y = atoi(tail[3]);
+    tmp.w = atoi(tail[4]);
+    tmp.h = atoi(tail[5]);
 
     css_compute_style(&g_sheet, tmp.tag, tmp.id[0] ? tmp.id : NULL, tmp.classes, tmp.n_classes, tmp.active, &tmp.style);
     draw_elem(&tmp, 0);
@@ -2121,6 +2691,113 @@ static void input_disarm(void) {
 }
 
 
+
+/* Write rmmv_active.txt in-process (all three fields) and update
+ * g_pal_active_* so A-E / tileset highlight moves on press 1.
+ * Detached set_rmmv + 1s manager poll is why it took 2-3 presses. */
+static void dbhq_rmmv_write_active(const char *field, const char *val) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/rmmv_active.txt", g_package_dir);
+    char tab[8] = "", tileset[64] = "", dir[64] = "tilesets";
+    FILE *in = fopen(path, "r");
+    if (in) {
+        char line[128];
+        while (fgets(line, sizeof(line), in)) {
+            size_t n = strlen(line);
+            while (n > 0 && (line[n-1]=='\n' || line[n-1]=='\r')) line[--n] = '\0';
+            if (!strncmp(line, "tab=", 4)) snprintf(tab, sizeof(tab), "%s", line + 4);
+            else if (!strncmp(line, "tileset=", 8)) snprintf(tileset, sizeof(tileset), "%s", line + 8);
+            else if (!strncmp(line, "dir=", 4)) snprintf(dir, sizeof(dir), "%s", line + 4);
+        }
+        fclose(in);
+    }
+    if (strcmp(field, "tab") == 0) snprintf(tab, sizeof(tab), "%s", val);
+    else if (strcmp(field, "tileset") == 0) snprintf(tileset, sizeof(tileset), "%s", val);
+    else if (strcmp(field, "dir") == 0) snprintf(dir, sizeof(dir), "%s", val);
+    FILE *out = fopen(path, "w");
+    if (!out) return;
+    if (tab[0]) fprintf(out, "tab=%s\n", tab);
+    if (tileset[0]) fprintf(out, "tileset=%s\n", tileset);
+    fprintf(out, "dir=%s\n", dir);
+    fclose(out);
+}
+
+
+static int dbhq_rmmv_wait_publish(const char *want_cat, const char *want_set, const char *want_dir) {
+    /* One click must wait until the manager actually rewrote options
+     * (not until the next human click). Cache miss can take seconds. */
+    for (int n = 0; n < 80; n++) {
+        int och = dbhq_load_palette_options();
+        int sch = dbhq_load_palette_state();
+        if (och || sch) {
+            int ok = 1;
+            if (want_cat && want_cat[0] && strcmp(g_pal_active_category, want_cat) != 0) ok = 0;
+            if (want_set && want_set[0] && strcmp(g_pal_active_tileset, want_set) != 0) ok = 0;
+            if (want_dir && want_dir[0] && strcmp(g_pal_active_dir, want_dir) != 0) ok = 0;
+            if (ok) return 1;
+        }
+        usleep(100000);
+    }
+    return 0;
+}
+
+static int dbhq_rmmv_apply_onclick(const char *onclick) {
+    const char *p;
+    if ((p = strstr(onclick, "set-rmmv-tab "))) {
+        const char *q = strrchr(p, '\'');
+        if (!q || q == p) return 0;
+        const char *s = q - 1;
+        while (s > p && *s != '\'') s--;
+        if (*s != '\'' || q - s < 2) return 0;
+        char letter[4] = {0};
+        letter[0] = s[1];
+        dbhq_rmmv_write_active("tab", letter);
+        char want = letter[0];
+        if (want >= 'a' && want <= 'z') want = (char)(want - 32);
+        for (int i = 0; i < g_pal_n_tabs; i++) {
+            if (g_pal_opt_tab_letter[i] == want) {
+                snprintf(g_pal_active_category, sizeof(g_pal_active_category), "%s", g_pal_opt_tab_cat[i]);
+                break;
+            }
+        }
+        dbhq_rmmv_wait_publish(g_pal_active_category, NULL, NULL);
+        return 1;
+    }
+    if ((p = strstr(onclick, "set-rmmv-tileset "))) {
+        const char *q = strrchr(p, '\'');
+        if (!q || q == p) return 0;
+        const char *s = q - 1;
+        while (s > p && *s != '\'') s--;
+        if (*s != '\'') return 0;
+        char key[64];
+        size_t klen = (size_t)(q - s - 1);
+        if (klen >= sizeof(key)) klen = sizeof(key) - 1;
+        memcpy(key, s + 1, klen);
+        key[klen] = '\0';
+        dbhq_rmmv_write_active("tileset", key);
+        snprintf(g_pal_active_tileset, sizeof(g_pal_active_tileset), "%s", key);
+        dbhq_rmmv_wait_publish(NULL, key, NULL);
+        return 1;
+    }
+    if ((p = strstr(onclick, "set-rmmv-dir "))) {
+        const char *q = strrchr(p, 39);
+        if (!q || q == p) return 0;
+        const char *s = q - 1;
+        while (s > p && *s != 39) s--;
+        if (*s != 39) return 0;
+        char key[32];
+        size_t klen = (size_t)(q - s - 1);
+        if (klen >= sizeof(key)) klen = sizeof(key) - 1;
+        memcpy(key, s + 1, klen);
+        key[klen] = 0;
+        dbhq_rmmv_write_active("dir", key);
+        snprintf(g_pal_active_dir, sizeof(g_pal_active_dir), "%s", key);
+        dbhq_rmmv_wait_publish(NULL, NULL, key);
+        return 1;
+    }
+    return 0;
+}
+
 static void dbhq_activate_elem(Elem *hit) {
     if (!hit) return;
     if (strcmp(hit->tag, "closebtn") == 0) { g_quit = 1; return; }
@@ -2134,6 +2811,20 @@ static void dbhq_activate_elem(Elem *hit) {
          * scroll arrows) - same generic dispatch every other onclick
          * verb uses, so Enter-on-focused-nav and a mouse click share
          * this ONE code path, not two. */
+        if (strcmp(hit->onclick, "ACTIVATE") == 0 || strncmp(hit->onclick, "ACTIVATE:", 9) == 0) {
+            dbhq_activate_scope(hit);
+            dbhq_assign_nav_indices(g_window);
+            dbhq_redraw_content();
+            return;
+        }
+        /* Not "BACK": that is chtpm page-stack (popup dispatch /
+         * menu.chtpm action="BACK"). Scope-pop pairs with ACTIVATE. */
+        if (strcmp(hit->onclick, "DEACTIVATE") == 0) {
+            dbhq_back_scope();
+            dbhq_assign_nav_indices(g_window);
+            dbhq_redraw_content();
+            return;
+        }
         if (strcmp(hit->onclick, "scroll:up") == 0 || strcmp(hit->onclick, "scroll:down") == 0) {
             g_pal_scroll += (strcmp(hit->onclick, "scroll:down") == 0) ? 1 : -1;
             dbhq_redraw_content();
@@ -2147,8 +2838,16 @@ static void dbhq_activate_elem(Elem *hit) {
         }
         if (strncmp(hit->onclick, "open:", 5) == 0)
             hq_run_detached(1, hit->onclick + 5);
-        else if (strncmp(hit->onclick, "exec:", 5) == 0)
+        else if (strncmp(hit->onclick, "exec:", 5) == 0) {
+            /* rmmv tab/chooser: write active file HERE and re-inject so
+             * highlight moves on press 1. Still exec the script (now
+             * preserves all fields) so the manager's 100ms poll agrees. */
+            if (dbhq_rmmv_apply_onclick(hit->onclick)) {
+                Elem *panel = find_by_tag(g_window, "panel");
+                dbhq_inject_palette_tiles(panel);
+            }
             hq_run_detached(0, hit->onclick + 5);
+        }
         /* Task 6 (2026-08-26) - the embedded Common Event editor's own
          * buttons (dbhq_ce_inject_panel()), dispatched the same generic
          * onclick[0] way as every other real verb here. Delegated to a
@@ -2172,10 +2871,28 @@ static void dbhq_activate_elem(Elem *hit) {
     if (strcmp(hit->tag, "tab") == 0) {
         for (int i = 0; i < DB_HQ_N_TABS; i++) if (strcmp(hit->label, DB_HQ_TAB_LABELS[i]) == 0) { g_dbhq_current_tab = i; break; }
         g_dbhq_ce_editing = 0;
+        dbhq_restore_tab_content();
         dbhq_redraw_content();
         return;
     }
     if (strcmp(hit->tag, "item") == 0) {
+        if (g_dbhq_current_tab == DB_HQ_ACTORS_TAB) {
+            int idx = atoi(hit->id);
+            if (idx >= 0 && idx < g_dbhq_n_actors) g_dbhq_selected_actor = idx;
+            dbhq_show_actors();
+            dbhq_redraw_content();
+            return;
+        }
+        {
+            int li = dbhq_list_idx_for_tab(g_dbhq_current_tab);
+            if (li >= 0) {
+                int idx = atoi(hit->id);
+                if (idx >= 0 && idx < g_dbhq_list_n[li]) g_dbhq_list_sel[li] = idx;
+                dbhq_show_list_tab();
+                dbhq_redraw_content();
+                return;
+            }
+        }
         if (g_is_stats_hq) {
             /* REAL FIX 2026-08-25 - match by the real index stashed in
              * item->id (dbhq_inject_sidebar_items()'s own g_is_stats_hq
@@ -2395,7 +3112,14 @@ static void dbhq_handle_key(KeySym ks, char ch) {
         g_dbhq_digit_accum = 0;
         return;
     }
-    if (ks == XK_Down || ks == XK_Right || ks == XK_Tab) {
+    if (ks == XK_Tab || ks == XK_ISO_Left_Tab) {
+        /* Two db-hq share one history file; only the focused window
+         * may cycle, or both processes Tab-cycle and fight. */
+        if (g_dbhq_has_real_focus) nav_tab_cycle();
+        g_dbhq_digit_accum = 0;
+        return;
+    }
+    if (ks == XK_Down || ks == XK_Right) {
         if (g_focus_nav < g_n_nav) g_focus_nav++;
         g_dbhq_digit_accum = 0;
         return;
@@ -2524,6 +3248,15 @@ static int g_evhq_view_mode = 0;
 static const char *EVHQ_VIEW_STUB_LABELS[3] = { "", "Scratch view - coming soon", "Blueprints view - coming soon" };
 static EvhqCmdNode g_evhq_cmds[EVHQ_MAX_CMDS];
 static int g_evhq_n_cmds = 0;
+/* VS task #2 (2026-08-28) - Scratch view blocks, populated from
+ * SCRATCHBLOCK|<key>|<status> rows the manager publishes (switch =
+ * ON/OFF, Change Gold/exec-shim op = the real value, e.g. 10/-10).
+ * Rendered only in view mode 1 (Scratch). */
+typedef struct { char key[128]; char status[16]; } EvhqBlockNode;
+#define EVHQ_MAX_BLOCKS 16
+static EvhqBlockNode g_evhq_blocks[EVHQ_MAX_BLOCKS];
+static int g_evhq_n_blocks = 0;
+static Elem g_evhq_block_slots[MAX_CHILDREN];
 static char g_evhq_trigger[64] = "(unknown)";
 static char g_evhq_switch_name[128] = "";  /* for Common Events: configured switch to watch */
 static char g_evhq_mgr_pages_state_path[PATH_BUF];
@@ -2554,11 +3287,30 @@ static void evhq_init_manager_paths(void) {
  * COUNT actually grows, auto-selecting the newest (highest-numbered)
  * page - matches "+ New" always appending, never inserting. */
 static int g_evhq_pending_select_new_page = 0;
+static unsigned long g_evhq_pages_cksum;
+static unsigned long g_evhq_page_state_cksum;
+
+static unsigned long evhq_file_cksum(const char *path) {
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    unsigned long h = 5381;
+    int c;
+    while ((c = fgetc(f)) != EOF) h = ((h << 5) + h) + (unsigned char)c;
+    fclose(f);
+    return h;
+}
+
 static int evhq_load_pages(void) {
     struct stat st;
     if (stat(g_evhq_mgr_pages_state_path, &st) != 0) return 0;
     if (st.st_mtime == g_evhq_pages_state_mtime) return 0;
+    unsigned long ck = evhq_file_cksum(g_evhq_mgr_pages_state_path);
     g_evhq_pages_state_mtime = st.st_mtime;
+    if (ck == g_evhq_pages_cksum && g_evhq_n_pages >= 0) {
+        /* manager rewrote identical bytes — not a new frame */
+        return 0;
+    }
+    g_evhq_pages_cksum = ck;
     int prev_n_pages = g_evhq_n_pages;
     g_evhq_n_pages = 0;
     FILE *f = fopen(g_evhq_mgr_pages_state_path, "r");
@@ -2589,8 +3341,12 @@ static int evhq_load_page_state(void) {
     struct stat st;
     if (stat(g_evhq_mgr_page_state_path, &st) != 0) return 0;
     if (st.st_mtime == g_evhq_page_state_mtime) return 0;
+    unsigned long ck = evhq_file_cksum(g_evhq_mgr_page_state_path);
     g_evhq_page_state_mtime = st.st_mtime;
+    if (ck == g_evhq_page_state_cksum) return 0;
+    g_evhq_page_state_cksum = ck;
     g_evhq_n_cmds = 0;
+    g_evhq_n_blocks = 0;
     snprintf(g_evhq_trigger, sizeof(g_evhq_trigger), "(unset)");
     snprintf(g_evhq_switch_name, sizeof(g_evhq_switch_name), "");  /* clear previous switch name */
     FILE *f = fopen(g_evhq_mgr_page_state_path, "r");
@@ -2615,6 +3371,16 @@ static int evhq_load_page_state(void) {
             snprintf(g_evhq_cmds[g_evhq_n_cmds].type, sizeof(g_evhq_cmds[0].type), "%s", type_start);
             snprintf(g_evhq_cmds[g_evhq_n_cmds].params, sizeof(g_evhq_cmds[0].params), "%s", bar2 + 1);
             g_evhq_n_cmds++;
+        } else if (strncmp(line, "SCRATCHBLOCK|", 13) == 0 && g_evhq_n_blocks < EVHQ_MAX_BLOCKS) {
+            char *p = line + 13;
+            char *bar = strchr(p, '|');
+            if (!bar) continue;
+            *bar = '\0';
+            EvhqBlockNode *b = &g_evhq_blocks[g_evhq_n_blocks];
+            memset(b, 0, sizeof(*b));
+            snprintf(b->key, sizeof(b->key), "%s", p);
+            snprintf(b->status, sizeof(b->status), "%s", bar + 1);
+            g_evhq_n_blocks++;
         }
     }
     fclose(f);
@@ -2696,10 +3462,9 @@ static void dbhq_ce_open(const char *ce_name) {
  * dispatch mechanism bookmarks' onClick="open:..." already uses. */
 static Elem g_dbhq_panel_slots[MAX_CHILDREN]; /* see reusable_slot()'s own header comment */
 
-static void dbhq_ce_inject_panel(Elem *panel) {
-    if (!panel) return;
+static int dbhq_ce_inject_panel(Elem *panel) {
+    if (!panel) return 0;
     int pages_changed = evhq_load_pages();
-    evhq_write_selected_page();
     int state_changed = evhq_load_page_state();
     /* REAL BUG FIX 2026-08-26 (found via gdb backtrace, real SIGSEGV,
      * not guessed): elem_new() allocates from a FIXED-SIZE static pool
@@ -2714,8 +3479,9 @@ static void dbhq_ce_inject_panel(Elem *panel) {
      * when the underlying data actually changed (evhq_load_pages()/
      * evhq_load_page_state() are already self-mtime-gated and report
      * this), or on the first inject after dbhq_ce_open(). */
-    if (!g_dbhq_ce_needs_rebuild && !pages_changed && !state_changed) return;
+    if (!g_dbhq_ce_needs_rebuild && !pages_changed && !state_changed) return 0;
     g_dbhq_ce_needs_rebuild = 0;
+    evhq_write_selected_page();
     /* Task 7 (2026-08-26) - real bug fix: descriptions came out empty
      * ("change_gold" with no params) because g_evhq_cmd_defs[] was only
      * ever loaded by the picker overlay's own draw call - if a common
@@ -2727,7 +3493,7 @@ static void dbhq_ce_inject_panel(Elem *panel) {
     panel->n_children = 0;
     int next_slot_index = 0;
     Elem *title = reusable_slot(g_dbhq_panel_slots, MAX_CHILDREN, next_slot_index++, "title");
-    if (!title) return; /* pool exhausted - see elem_new()'s own NULL contract; nothing more we can safely build this pass */
+    if (!title) return 0; /* pool exhausted - see elem_new()'s own NULL contract; nothing more we can safely build this pass */
     snprintf(title->classes[0], sizeof(title->classes[0]), "block-title"); title->n_classes = 1;
     snprintf(title->label, sizeof(title->label), "Common Event: %s", g_dbhq_ce_name);
     panel->children[panel->n_children++] = title;
@@ -2821,6 +3587,51 @@ static void dbhq_ce_inject_panel(Elem *panel) {
     /* Direct instruction (2026-08-26): no "Back to list" button - the
      * sidebar list is always visible alongside this panel (RPG Maker MV/
      * MZ shape), so there's nothing to "go back" to. */
+    return 1;
+}
+
+
+static void dbhq_restore_tab_content(void) {
+    /* Switching away from Actors must rebuild CE/Terms chrome. Actors
+     * rewrote sidebar+panel in place; without this, nav [12] Common
+     * Events highlighted the tab but left Harold's panel on screen. */
+    if (g_is_palettes || g_is_bookmarks || g_is_stats_hq) return;
+    if (g_dbhq_current_tab == DB_HQ_ACTORS_TAB) {
+        dbhq_show_actors();
+        return;
+    }
+    if (dbhq_list_idx_for_tab(g_dbhq_current_tab) >= 0) {
+        dbhq_show_list_tab();
+        return;
+    }
+    if (g_dbhq_current_tab == DB_HQ_COMMON_EVENTS_TAB) {
+        dbhq_load_common_events();
+        Elem *sidebar = find_by_tag(g_window, "sidebar");
+        dbhq_inject_sidebar_items(sidebar);
+        if (g_dbhq_selected_event < 0 && g_dbhq_n_events > 0)
+            g_dbhq_selected_event = 0;
+        Elem *panel = find_by_tag(g_window, "panel");
+        if (g_dbhq_selected_event >= 0 && g_dbhq_selected_event < g_dbhq_n_events) {
+            dbhq_ce_open(g_dbhq_events[g_dbhq_selected_event]);
+            dbhq_ce_inject_panel(panel);
+        } else if (panel) {
+            panel->n_children = 0;
+        }
+        return;
+    }
+    if (g_dbhq_current_tab == DB_HQ_TERMS_TAB) {
+        dbhq_load_common_events();
+        Elem *sidebar = find_by_tag(g_window, "sidebar");
+        dbhq_inject_sidebar_items(sidebar);
+        return;
+    }
+    /* placeholder tabs: drop actor/CE children so gray message is honest */
+    {
+        Elem *sidebar = find_by_tag(g_window, "sidebar");
+        if (sidebar) sidebar->n_children = 0;
+        Elem *panel = find_by_tag(g_window, "panel");
+        if (panel) panel->n_children = 0;
+    }
 }
 
 /* Real definition of the forward-declared dispatcher (see the prototype
@@ -3227,6 +4038,20 @@ static void evhq_layout_pass(Elem *window) {
     Elem *viewmode_stub = find_by_id(window, "viewmode-stub");
     if (viewmode_stub) {
         if (g_evhq_view_mode == 0) { evhq_zero_subtree(viewmode_stub); }
+        else if (g_evhq_view_mode == 1 && g_evhq_n_blocks > 0) {
+            evhq_zero_subtree(viewmode_stub);
+            viewmode_stub->x = 0; viewmode_stub->y = content_y; viewmode_stub->w = window->w; viewmode_stub->h = content_h;
+            int slot = 0;
+            for (int i = 0; i < g_evhq_n_blocks && viewmode_stub->n_children < MAX_CHILDREN; i++) {
+                Elem *b = reusable_slot(g_evhq_block_slots, MAX_CHILDREN, slot++, "text");
+                if (!b) break;
+                snprintf(b->classes[0], sizeof(b->classes[0]), "scratch-block"); b->n_classes = 1;
+                snprintf(b->label, sizeof(b->label), "%s  [%s]", g_evhq_blocks[i].key, g_evhq_blocks[i].status);
+                b->x = viewmode_stub->x + 20; b->y = viewmode_stub->y + 20 + i * 30;
+                b->w = window->w - 40; b->h = 22;
+                viewmode_stub->children[viewmode_stub->n_children++] = b;
+            }
+        }
         else {
             viewmode_stub->x = 0; viewmode_stub->y = content_y; viewmode_stub->w = window->w; viewmode_stub->h = content_h;
             for (int i = 0; i < viewmode_stub->n_children; i++) {
@@ -4088,7 +4913,8 @@ static void evhq_handle_key(KeySym ks, char ch) {
         return;
     }
     if (ks == XK_Up || ks == XK_Left) { if (g_focus_nav > 1) g_focus_nav--; g_evhq_digit_accum = 0; return; }
-    if (ks == XK_Down || ks == XK_Right || ks == XK_Tab) { if (g_focus_nav < g_n_nav) g_focus_nav++; g_evhq_digit_accum = 0; return; }
+    if (ks == XK_Tab || ks == XK_ISO_Left_Tab) { if (g_evhq_has_real_focus) nav_tab_cycle(); g_evhq_digit_accum = 0; return; }
+    if (ks == XK_Down || ks == XK_Right) { if (g_focus_nav < g_n_nav) g_focus_nav++; g_evhq_digit_accum = 0; return; }
     /* REAL, NEW 2026-08-28 (Phase C target #3) - same real Page_Up/
      * Page_Down paging dbhq_handle_key() already uses for any
      * g_pal_has_grid mode; events-hq's own command list had no keyboard
@@ -6470,7 +7296,12 @@ static void chai_handle_key(KeySym ks, char ch) {
         chai_redraw();
         return;
     }
-    if (ks == XK_Down || ks == XK_Right || ks == XK_Tab) {
+    if (ks == XK_Tab || ks == XK_ISO_Left_Tab) {
+        if (chai_has_real_focus) nav_tab_cycle();
+        chai_digit_accum = 0;
+        return;
+    }
+    if (ks == XK_Down || ks == XK_Right) {
         if (g_focus_nav < g_n_nav) g_focus_nav++;
         chai_digit_accum = 0;
         chai_redraw();
@@ -6587,6 +7418,16 @@ static void dbhq_dump_debug_state(void) {
         fprintf(f, "  nav[%d] tag=%s id=%s label=%s x=%d y=%d w=%d h=%d%s\n", i + 1, e->tag, e->id, e->label,
                 e->x, e->y, e->w, e->h, (i + 1 == g_focus_nav) ? "  <-- FOCUS" : "");
     }
+    fprintf(f, "scope_root=%s\n", g_dbhq_active_scope_root ? g_dbhq_active_scope_root->id : "(none)");
+    if (g_window) {
+        ElemFlatEntry flat[MAX_ELEMS];
+        int nf = elem_flatten(g_window, flat, MAX_ELEMS);
+        fprintf(f, "flatten_n=%d\n", nf);
+        for (int i = 0; i < nf && i < 40; i++) {
+            Elem *e = flat[i].elem;
+            fprintf(f, "  flat[%d] parent=%d tag=%s id=%s\n", flat[i].index, flat[i].parent_index, e->tag, e->id);
+        }
+    }
     fclose(f);
 }
 
@@ -6603,31 +7444,51 @@ static void assign_nav_and_layout(void) {
     g_n_nav = 0;
     Elem *page = find_page(g_current_page);
     if (!page) { g_win_h = CHROME_H + 8; return; }
-    if (g_is_swatch_picker) {
-        /* REAL, ported verbatim from taskbar-settings' own real grid
-         * math (khtpm_taskbar_settings_render.c's own
-         * assign_nav_and_layout()). */
+    {
+        int i, grid = 0;
+        for (i = 0; i < page->n_children; i++) {
+            Elem *item = page->children[i];
+            int c;
+            if (strcmp(item->tag, "item") != 0) continue;
+            for (c = 0; c < item->n_classes; c++)
+                if (strcmp(item->classes[c], "swatch") == 0) { grid = 1; break; }
+            if (grid) break;
+        }
+        if (grid) {
+        /* Grid is data: any <item class="swatch">. Not g_is_swatch_picker. */
         int x0 = 16, y0 = CHROME_H + 44;
         int sw_i = 0;
-        for (int i = 0; i < page->n_children; i++) {
+        for (i = 0; i < page->n_children; i++) {
             Elem *item = page->children[i];
+            int is_sw = 0, is_close = 0, c;
             if (strcmp(item->tag, "item") != 0) continue;
-            if (strcmp(item->id, "close") == 0) {
+            for (c = 0; c < item->n_classes; c++) {
+                if (strcmp(item->classes[c], "swatch") == 0) is_sw = 1;
+                if (strcmp(item->classes[c], "close-btn") == 0) is_close = 1;
+            }
+            if (strcmp(item->id, "close") == 0) is_close = 1;
+            if (is_close) {
                 item->x = g_win_w - 60; item->y = 0; item->w = 60; item->h = CHROME_H;
-            } else {
+            } else if (is_sw) {
                 int col = sw_i % SWATCH_COLS, row = sw_i / SWATCH_COLS;
                 item->x = x0 + col * (SWATCH + SWATCH_GAP);
                 item->y = y0 + row * (SWATCH + SWATCH_GAP);
                 item->w = SWATCH; item->h = SWATCH;
-                item->label[0] = '\0'; /* real bug fix, §5d - swatch label= is unused metadata, not display text */
+                if (sw_i < 12) {
+                    snprintf(g_palette_name_buf[sw_i], sizeof(g_palette_name_buf[sw_i]), "%s", item->label);
+                    g_palette_name[sw_i] = g_palette_name_buf[sw_i];
+                }
+                item->label[0] = '\0';
                 sw_i++;
+            } else {
+                item->x = 0; item->y = CHROME_H; item->w = g_win_w; item->h = ROW_H;
             }
             item->nav_index = ++g_n_nav;
             g_nav[g_n_nav - 1] = item;
             css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
         }
-        g_win_h = 280; /* real fixed height, matches taskbar-settings' own original WIN_H */
-    } else {
+        g_win_h = 280;
+        } else {
         int y = CHROME_H;
         for (int i = 0; i < page->n_children; i++) {
             Elem *item = page->children[i];
@@ -6639,6 +7500,7 @@ static void assign_nav_and_layout(void) {
             y += ROW_H;
         }
         g_win_h = y + 8;
+        }
     }
     if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
     if (g_focus_nav < 1) g_focus_nav = 1;
@@ -6656,7 +7518,15 @@ static void switch_page(const char *name) {
  * exactly - CLOSE/void/GOTO:/BACK are handled here, everything else is a
  * real shell command run with package_dir/house_root as args, same
  * "%s '%s' '%s'" shape). */
+static void apply_theme(const char *bg_hex, const char *fg_hex);
 static void dispatch(const char *action) {
+    if (strncmp(action, "PICK:", 5) == 0) {
+        char ap[PATH_BUF];
+        snprintf(ap, sizeof(ap), "%s/#.desktop/taskbar_settings_action.txt", g_house_root);
+        FILE *af = fopen(ap, "w");
+        if (af) { fprintf(af, "seq=%u\n%s\n", ++g_swatch_action_seq, action); fclose(af); }
+        return;
+    }
     if (strcmp(action, "CLOSE") == 0) { g_quit = 1; return; }
     /* REAL FIX 2026-08-16, direct live report ("cancel doesn't work
      * yet"): the legacy dispatch (tp_desktop_window_rgb.c line ~2026)
@@ -6690,22 +7560,6 @@ static void apply_theme(const char *bg_hex, const char *fg_hex) {
 static void activate_focused(void) {
     if (g_focus_nav < 1 || g_focus_nav > g_n_nav) return;
     Elem *item = g_nav[g_focus_nav - 1];
-    if (g_is_swatch_picker) {
-        /* REAL, ported verbatim from taskbar-settings' own real
-         * 2-phase pick activate_focused(). */
-        if (strcmp(item->id, "close") == 0) { dispatch("CLOSE"); return; }
-        int idx = atoi(item->id + 2); /* "sw0".."sw11" */
-        if (idx < 0 || idx >= 12) return;
-        if (g_phase == 0) {
-            g_chosen_bg_idx = idx;
-            g_phase = 1;
-        } else if (g_phase == 1) {
-            g_chosen_fg_idx = idx;
-            g_phase = 2;
-            apply_theme(g_palette_hex[g_chosen_bg_idx], g_palette_hex[g_chosen_fg_idx]);
-        }
-        return;
-    }
     if (item->onclick[0]) dispatch(item->onclick);
 }
 
@@ -6797,22 +7651,20 @@ static void redraw(void) {
      * chrome text. Swatch-picker mode's own real title/status text,
      * ported verbatim from taskbar-settings' own redraw(); menu mode's
      * own real page-name title, unchanged. */
-    if (g_is_swatch_picker) {
+    {
+        const char *title = (g_window->label[0] ? g_window->label : g_current_page);
         XftColor title_col = xft_color("#eeeeee");
-        XftDrawStringUtf8(xftdraw_buf, &title_col, font_ui, 10, 16,
-                           (const FcChar8 *)(g_window->label[0] ? g_window->label : "taskbar settings"),
-                           (int)strlen(g_window->label[0] ? g_window->label : "taskbar settings"));
+        XftDrawStringUtf8(xftdraw_buf, &title_col, font_ui, 8, 16,
+                           (const FcChar8 *)title, (int)strlen(title));
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &title_col);
-        const char *status = g_phase == 0 ? "Pick PRIMARY, then Enter"
-                            : g_phase == 1 ? "Pick SECONDARY, then Enter"
-                            : "Applied - closing...";
-        XftColor status_col = xft_color("#ffffff");
-        XftDrawStringUtf8(xftdraw_buf, &status_col, font_ui, 16, CHROME_H + 26, (const FcChar8 *)status, (int)strlen(status));
-        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &status_col);
-    } else {
-        XftColor title_col = xft_color("#eeeeee");
-        XftDrawStringUtf8(xftdraw_buf, &title_col, font_ui, 8, 16, (const FcChar8 *)g_current_page, (int)strlen(g_current_page));
-        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &title_col);
+        if (g_is_swatch_picker) {
+            const char *status = g_phase == 0 ? "Pick PRIMARY, then Enter"
+                                : g_phase == 1 ? "Pick SECONDARY, then Enter"
+                                : "Applied - closing...";
+            XftColor status_col = xft_color("#ffffff");
+            XftDrawStringUtf8(xftdraw_buf, &status_col, font_ui, 16, CHROME_H + 26, (const FcChar8 *)status, (int)strlen(status));
+            XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &status_col);
+        }
     }
 
     /* REAL Stage 5 (2026-08-16, khtpm-merge-how2.md §5d) - was a manual
@@ -6823,7 +7675,26 @@ static void redraw(void) {
      * a full-row background fill - consistent with the house standard,
      * not a regression. */
     Elem *page = find_page(g_current_page);
-    if (page) render_tree(page, 0);
+    if (page) {
+        char fpath[PATH_BUF], tmpp[PATH_BUF];
+        snprintf(fpath, sizeof(fpath), "%s/#.desktop/%s", g_house_root,
+                 g_is_swatch_picker ? "taskbar_settings_frame.txt" : "entity_menu_frame.txt");
+        snprintf(tmpp, sizeof(tmpp), "%s.tmp", fpath);
+        FILE *ff = fopen(tmpp, "w");
+        if (ff) { dbhq_serialize_frame_subtree(ff, page); fclose(ff); rename(tmpp, fpath); }
+        {
+            FILE *rf = fopen(fpath, "r");
+            if (rf) {
+                char line[2048];
+                while (fgets(line, sizeof(line), rf)) {
+                    size_t len = strlen(line);
+                    while (len > 0 && (line[len-1]=='\n' || line[len-1]=='\r')) line[--len] = '\0';
+                    if (len) dbhq_paint_frame_line(line);
+                }
+                fclose(rf);
+            }
+        }
+    }
 
     /* REAL, swatch-picker-only overlay (ported verbatim from taskbar-
      * settings' own redraw()) - the "chosen" bg/fg ring + primary/
@@ -6995,10 +7866,313 @@ static void history_path(char *out, size_t outsz) {
              g_is_chat_hai ? "chat_hai_history.txt" :
              g_is_swatch_picker ? "taskbar_settings_history.txt" : "entity_menu_history.txt");
 }
+
+/* Phase 3a: capture-only. House format from pieces/keyboard/history.txt:
+ *   MOUSE_EVENT: <button> <x> <y> <is_press>
+ * Zero interpretation. Consume is poll_agent_history(). */
+static void dbhq_capture_click(int x, int y, int button) {
+    char path[PATH_BUF];
+    history_path(path, sizeof(path));
+    /* poll_agent_history() on first sight of a file sets cursor to EOF
+     * and returns without reading (skip leftover agent lines at window
+     * open). If the file did not exist yet, cursor is still -1 here, and
+     * a same-tick poll after this append would skip the click we just
+     * wrote. Pin cursor to pre-append size so only this new line is
+     * consumed. */
+    if (g_history_cursor < 0) {
+        struct stat st;
+        if (stat(path, &st) == 0) g_history_cursor = st.st_size;
+        else g_history_cursor = 0;
+    }
+    FILE *f = fopen(path, "a");
+    if (!f) return;
+    fprintf(f, "MOUSE_EVENT: %d %d %d 1\n", button, x, y);
+    fclose(f);
+}
+
+/* Phase 3b: capture-only. House format KEY_PRESSED: <decimal>.
+ * Printable ASCII as-is; Tab=9; Return/Esc/BS same as existing relay;
+ * arrows/page 200-205 (already in dispatch_relay_code). Other keys
+ * write the raw X11 KeySym so consume can handle_key(ks,0). */
+static int dbhq_key_history_code(KeySym ks, char ch) {
+    if (ch >= 32 && ch <= 126) return (unsigned char)ch;
+    if (ks == XK_Tab || ks == XK_ISO_Left_Tab) return 9;
+    if (ks == XK_Return || ks == XK_KP_Enter) return 13;
+    if (ks == XK_Escape) return 27;
+    if (ks == XK_BackSpace) return 8;
+    if (ks == XK_Up) return 200;
+    if (ks == XK_Down) return 201;
+    if (ks == XK_Left) return 202;
+    if (ks == XK_Right) return 203;
+    if (ks == XK_Page_Up) return 204;
+    if (ks == XK_Page_Down) return 205;
+    return (int)ks;
+}
+
+static void dbhq_capture_key(KeySym ks, char ch) {
+    char path[PATH_BUF];
+    history_path(path, sizeof(path));
+    if (g_history_cursor < 0) {
+        struct stat st;
+        if (stat(path, &st) == 0) g_history_cursor = st.st_size;
+        else g_history_cursor = 0;
+    }
+    FILE *f = fopen(path, "a");
+    if (!f) return;
+    fprintf(f, "KEY_PRESSED: %d\n", dbhq_key_history_code(ks, ch));
+    fclose(f);
+}
+
+/* Tab-cycle: live registry is per-pid files (so two processes cannot
+ * clobber one rewrite). Ledger is append-only audit. */
+static int g_nav_tab_ordinal;
+
+static void nav_tab_dir(char *out, size_t n) {
+    snprintf(out, n, "%s/#.desktop/nav_tab", g_house_root);
+}
+
+static void nav_tab_register(const char *title) {
+    char dir[PATH_BUF], path[PATH_BUF], ledger[PATH_BUF];
+    nav_tab_dir(dir, sizeof(dir));
+    mkdir(dir, 0777);
+    int max_ord = 0;
+    DIR *d = opendir(dir);
+    if (d) {
+        struct dirent *de;
+        while ((de = readdir(d))) {
+            if (de->d_name[0] == '.') continue;
+            char fp[PATH_BUF];
+            snprintf(fp, sizeof(fp), "%s/%s", dir, de->d_name);
+            pid_t pid = (pid_t)atoi(de->d_name);
+            if (pid > 1 && kill(pid, 0) != 0 && errno == ESRCH) {
+                unlink(fp);
+                continue;
+            }
+            FILE *rf = fopen(fp, "r");
+            if (!rf) continue;
+            int ord = 0;
+            unsigned long xid = 0;
+            if (fscanf(rf, "%d %lx", &ord, &xid) >= 1 && ord > max_ord) max_ord = ord;
+            fclose(rf);
+        }
+        closedir(d);
+    }
+    g_nav_tab_ordinal = max_ord + 1;
+    snprintf(path, sizeof(path), "%s/%d", dir, (int)getpid());
+    FILE *f = fopen(path, "w");
+    if (f) {
+        fprintf(f, "%d %lx %s\n", g_nav_tab_ordinal, (unsigned long)win,
+                title ? title : "hq");
+        fclose(f);
+    }
+    snprintf(ledger, sizeof(ledger), "%s/#.desktop/nav_master_ledger.txt", g_house_root);
+    FILE *lf = fopen(ledger, "a");
+    if (lf) {
+        fprintf(lf, "REG pid=%d tab=%d xid=%lx %s\n",
+                (int)getpid(), g_nav_tab_ordinal, (unsigned long)win,
+                title ? title : "hq");
+        fclose(lf);
+    }
+}
+
+static void nav_tab_unregister(void) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/nav_tab/%d", g_house_root, (int)getpid());
+    unlink(path);
+}
+
+static void nav_tab_cycle(void) {
+    char dir[PATH_BUF];
+    nav_tab_dir(dir, sizeof(dir));
+    typedef struct { int ord; unsigned long xid; pid_t pid; } Ent;
+    Ent ents[64];
+    int n = 0;
+    DIR *d = opendir(dir);
+    if (!d) return;
+    struct dirent *de;
+    while ((de = readdir(d)) && n < 64) {
+        if (de->d_name[0] == '.') continue;
+        pid_t pid = (pid_t)atoi(de->d_name);
+        char fp[PATH_BUF];
+        snprintf(fp, sizeof(fp), "%s/%s", dir, de->d_name);
+        if (pid > 1 && kill(pid, 0) != 0 && errno == ESRCH) {
+            unlink(fp);
+            continue;
+        }
+        FILE *rf = fopen(fp, "r");
+        if (!rf) continue;
+        int ord = 0;
+        unsigned long xid = 0;
+        if (fscanf(rf, "%d %lx", &ord, &xid) >= 2 && xid) {
+            ents[n].ord = ord;
+            ents[n].xid = xid;
+            ents[n].pid = pid;
+            n++;
+        }
+        fclose(rf);
+    }
+    closedir(d);
+    if (n < 1) return;
+    /* insertion sort by ordinal */
+    for (int i = 1; i < n; i++) {
+        Ent t = ents[i];
+        int j = i;
+        while (j > 0 && ents[j - 1].ord > t.ord) { ents[j] = ents[j - 1]; j--; }
+        ents[j] = t;
+    }
+    int me = -1;
+    pid_t selfpid = getpid();
+    for (int i = 0; i < n; i++) if (ents[i].pid == selfpid) { me = i; break; }
+    int nxt = (me >= 0) ? (me + 1) % n : 0;
+    char want[PATH_BUF];
+    snprintf(want, sizeof(want), "%s/#.desktop/nav_tab_active.txt", g_house_root);
+    unsigned long seq = 1;
+    FILE *rf2 = fopen(want, "r");
+    if (rf2) {
+        int t=0,p=0; unsigned long s=0;
+        if (fscanf(rf2, "tab=%d pid=%d seq=%lu", &t, &p, &s) >= 3) seq = s + 1;
+        fclose(rf2);
+    }
+    FILE *wf = fopen(want, "w");
+    if (!wf) return;
+    fprintf(wf, "tab=%d pid=%d seq=%lu\n", ents[nxt].ord, (int)ents[nxt].pid, seq);
+    fclose(wf);
+    /* Self-claim is handled by nav_tab_poll_active() in the loop so
+     * the TARGET process focuses its OWN window (X11 won't let us
+     * reliably activate a foreign client). */
+    if (ents[nxt].pid == selfpid)
+        nav_tab_poll_active();
+}
+
+static void nav_tab_poll_active(void) {
+    char want[PATH_BUF];
+    snprintf(want, sizeof(want), "%s/#.desktop/nav_tab_active.txt", g_house_root);
+    FILE *f = fopen(want, "r");
+    if (!f) return;
+    int tab = 0, pid = 0;
+    unsigned long seq = 0;
+    static unsigned long last_seq = 0;
+    if (fscanf(f, "tab=%d pid=%d seq=%lu", &tab, &pid, &seq) < 2) { fclose(f); return; }
+    fclose(f);
+    if (seq && seq == last_seq) return;
+    last_seq = seq;
+    if (tab != g_nav_tab_ordinal && pid != (int)getpid()) return;
+    XUngrabKeyboard(dpy, CurrentTime);
+    XRaiseWindow(dpy, win);
+    XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
+    if (g_is_db_hq && g_dbhq_focus_grab_enabled) dbhq_grab_keyboard_retry();
+    XFlush(dpy);
+}
+
+
+
+static unsigned long g_nav_ledger_ck;
+
+static void nav_ledger_publish(void) {
+    unsigned long ck = 5381;
+    ck = ((ck << 5) + ck) + (unsigned)g_n_nav;
+    ck = ((ck << 5) + ck) + (unsigned)g_nav_tab_ordinal;
+    for (int i = 0; i < g_n_nav; i++) {
+        Elem *e = g_nav[i];
+        if (!e) continue;
+        const char *s = e->id[0] ? e->id : (e->onclick[0] ? e->onclick : e->tag);
+        ck = ((ck << 5) + ck) + (unsigned)e->nav_index;
+        for (const char *p = s; *p; p++) ck = ((ck << 5) + ck) + (unsigned char)*p;
+    }
+    if (ck == g_nav_ledger_ck) return;
+    g_nav_ledger_ck = ck;
+
+    char cur[PATH_BUF], led[PATH_BUF];
+    snprintf(cur, sizeof(cur), "%s/#.desktop/nav_master_current.txt", g_house_root);
+    snprintf(led, sizeof(led), "%s/#.desktop/nav_master_ledger.txt", g_house_root);
+    FILE *cf = fopen(cur, "w");
+    FILE *lf = fopen(led, "a");
+    if (lf) fprintf(lf, "SNAP pid=%d tab=%d n=%d\n", (int)getpid(), g_nav_tab_ordinal, g_n_nav);
+    for (int i = 0; i < g_n_nav; i++) {
+        Elem *e = g_nav[i];
+        if (!e) continue;
+        const char *s = e->id[0] ? e->id : (e->onclick[0] ? e->onclick : e->tag);
+        char line[512];
+        snprintf(line, sizeof(line), "%d %d %d %s\n",
+                 (int)getpid(), g_nav_tab_ordinal, e->nav_index, s);
+        if (cf) fputs(line, cf);
+        if (lf) fputs(line, lf);
+    }
+    if (cf) fclose(cf);
+    if (lf) fclose(lf);
+}
+
+/* Phase 4: wraith-alpha frame_changed.txt — FILE marker, size-only.
+ * Helpers are mode-agnostic (path table, same shape as history_path()).
+ * Pilot WIRING is db-hq's loop only; other loops still call redraw()
+ * directly. Do not bake g_is_db_hq into mark/consume. */
+static long g_frame_changed_last_size = -1;
+
+static void frame_changed_path(char *out, size_t outsz) {
+    snprintf(out, outsz, "%s/#.desktop/%s", g_house_root,
+             g_is_palettes ? "palettes_frame_changed.txt" :
+             g_is_bookmarks ? "bookmarks_frame_changed.txt" :
+             g_is_stats_hq ? "stats_hq_frame_changed.txt" :
+             g_is_db_hq ? "db_hq_frame_changed.txt" :
+             g_is_events_hq ? "events_hq_frame_changed.txt" :
+             g_is_chat_hai ? "chat_hai_frame_changed.txt" :
+             g_is_swatch_picker ? "taskbar_settings_frame_changed.txt" :
+             "entity_menu_frame_changed.txt");
+}
+
+static void mark_frame_changed(void) {
+    char path[PATH_BUF];
+    frame_changed_path(path, sizeof(path));
+    FILE *f = fopen(path, "a");
+    if (!f) return;
+    fputc('.', f);
+    fclose(f);
+}
+
+static int consume_frame_changed(void) {
+    char path[PATH_BUF];
+    struct stat st;
+    frame_changed_path(path, sizeof(path));
+    if (stat(path, &st) != 0) {
+        g_frame_changed_last_size = 0;
+        return 0;
+    }
+    if (g_frame_changed_last_size < 0) {
+        g_frame_changed_last_size = st.st_size;
+        return 0;
+    }
+    if (st.st_size < g_frame_changed_last_size) {
+        g_frame_changed_last_size = st.st_size;
+        return 0;
+    }
+    if (st.st_size > g_frame_changed_last_size) {
+        g_frame_changed_last_size = st.st_size;
+        return 1;
+    }
+    return 0;
+}
+
+/* Pilot: only the true db-hq window uses marker wiring this pass.
+ * Palettes/bookmarks/stats-hq share this loop via g_is_db_hq=1. */
+static int dbhq_marker_pilot(void) {
+    return g_is_db_hq && !g_is_palettes && !g_is_bookmarks && !g_is_stats_hq;
+}
+
+static void dbhq_loop_request_redraw(void) {
+    if (dbhq_marker_pilot()) mark_frame_changed();
+    else redraw();
+}
+
+static void dbhq_loop_paint_if_dirty(void) {
+    if (!dbhq_marker_pilot()) return;
+    if (consume_frame_changed() && !g_quit) redraw();
+}
+
 static void dispatch_relay_code(int code) {
     if (code == 13) handle_key(XK_Return, 0);
     else if (code == 27) handle_key(XK_Escape, 0);
     else if (code == 8) handle_key(XK_BackSpace, 0); /* real, db-hq's own extra code - harmless no-op for other modes */
+    else if (code == 9) handle_key(XK_Tab, 0); /* Phase 3b: Tab is a real key, not a printable */
     /* REAL, NEW 2026-08-25 (debug-only) - relay codes 200-203 for arrow
      * keysyms, which have no ASCII code and so were unreachable through
      * this text-file relay before now. Needed to reproduce a live report
@@ -7026,7 +8200,17 @@ static void dispatch_relay_code(int code) {
      * PNG-only). */
     else if (code == 210 && (g_is_db_hq || g_is_events_hq || g_is_chat_hai)) dbhq_dump_debug_state();
     else if (code >= 32 && code <= 126) handle_key(0, (char)code);
+    else if (code > 255 && code != 200 && code != 201 && code != 202 &&
+             code != 203 && code != 204 && code != 205 && code != 210)
+        handle_key((KeySym)code, 0);
 }
+static int hq_window_has_x_focus(void) {
+    if (g_is_chat_hai) return chai_has_real_focus;
+    if (g_is_events_hq) return g_evhq_has_real_focus;
+    if (g_is_db_hq) return g_dbhq_has_real_focus;
+    return 1;
+}
+
 static int poll_agent_history(void) {
     char path[PATH_BUF];
     history_path(path, sizeof(path));
@@ -7035,6 +8219,14 @@ static int poll_agent_history(void) {
     if (g_history_cursor < 0) { g_history_cursor = st.st_size; return 0; }
     if (st.st_size < g_history_cursor) { g_history_cursor = st.st_size; return 0; }
     if (st.st_size == g_history_cursor) return 0;
+    /* Consume this process's own history mailbox even when another
+     * window has X focus. Requiring hq_window_has_x_focus() forced
+     * agents onto xdotool/XTest, which steals the human's browser
+     * (k9: file relay exists so a human can use the SAME display).
+     * Dual-consume of one file by two processes is a different bug
+     * (one history file per mode/process); do not "fix" it by
+     * ignoring the mailbox. Cursor still skips leftover on first
+     * sight (g_history_cursor < 0 above). */
     FILE *f = fopen(path, "r");
     if (!f) return 0;
     fseek(f, g_history_cursor, SEEK_SET);
@@ -7047,8 +8239,23 @@ static int poll_agent_history(void) {
         *nl = '\0';
         long here = ftell(f);
         if (line[0] != '#') { /* '#'-prefixed lines are audit comments, not commands */
-            int code = atoi(line);
-            if (code > 0) { dispatch_relay_code(code); n++; }
+            if (strncmp(line, "MOUSE_EVENT: ", 13) == 0) {
+                int button = 0, mx = 0, my = 0, is_press = 1;
+                int nf = sscanf(line + 13, "%d %d %d %d", &button, &mx, &my, &is_press);
+                if (nf >= 3 && is_press && button != 3 && button != 4 && button != 5) {
+                    if (g_is_db_hq) dbhq_handle_click(mx, my);
+                    else if (g_is_events_hq) evhq_handle_click(mx, my);
+                    else if (g_is_chat_hai) chai_handle_click(mx, my);
+                    else popup_handle_click(mx, my);
+                }
+                if (nf >= 3) n++;
+            } else if (strncmp(line, "KEY_PRESSED: ", 13) == 0) {
+                int code = atoi(line + 13);
+                if (code > 0) { dispatch_relay_code(code); n++; }
+            } else {
+                int code = atoi(line);
+                if (code > 0) { dispatch_relay_code(code); n++; }
+            }
         }
         consumed = here;
     }
@@ -7169,6 +8376,376 @@ static void xdnd_handle_selection(Display *dpy, Window win) {
     }
     g_xdnd_source = None;
 }
+
+static time_t g_chai_last_ledger_mtime;
+
+static void hq_request_redraw(void) {
+    if (dbhq_marker_pilot()) dbhq_loop_request_redraw();
+    else if (!g_quit) redraw();
+}
+
+static void hq_idle_tick(void) {
+    if (g_is_swatch_picker) {
+        char sp[PATH_BUF];
+        snprintf(sp, sizeof(sp), "%s/#.desktop/taskbar_settings_state.txt", g_house_root);
+        FILE *sf = fopen(sp, "r");
+        if (sf) {
+            char line[64];
+            int phase=g_phase, bg=g_chosen_bg_idx, fg=g_chosen_fg_idx, apply=0;
+            while (fgets(line, sizeof(line), sf)) {
+                if (strncmp(line, "phase=", 6)==0) phase=atoi(line+6);
+                else if (strncmp(line, "bg=", 3)==0) bg=atoi(line+3);
+                else if (strncmp(line, "fg=", 3)==0) fg=atoi(line+3);
+                else if (strncmp(line, "apply=", 6)==0) apply=atoi(line+6);
+            }
+            fclose(sf);
+            if (phase != g_phase || bg != g_chosen_bg_idx || fg != g_chosen_fg_idx) {
+                g_phase = phase; g_chosen_bg_idx = bg; g_chosen_fg_idx = fg;
+                redraw();
+            }
+            /* Only a completed 2-phase pick may close the picker.
+             * Leftover apply=1 from a prior instance must not quit on launch. */
+            if (apply && phase >= 2 && fg >= 0) g_quit = 1;
+        }
+    }
+    if (g_is_chat_hai) {
+        char chai_ledger_check[PATH_BUF];
+        chai_session_ledger_path(chai_ledger_check, sizeof(chai_ledger_check), chai_active_session);
+        struct stat chai_lst;
+        if (stat(chai_ledger_check, &chai_lst) == 0 && chai_lst.st_mtime != g_chai_last_ledger_mtime) {
+            g_chai_last_ledger_mtime = chai_lst.st_mtime;
+            chai_load_ledger();
+            if (chai_n_events > 0) chai_selected_event = chai_n_events - 1;
+            chai_feed_dirty = 1;
+            redraw();
+        }
+        {
+            char chai_typing_path[PATH_BUF];
+            snprintf(chai_typing_path, sizeof(chai_typing_path), "%s/&.hq-apps/chat-hai/state/typing.txt", g_house_root);
+            char chai_cur_typing[64] = "";
+            FILE *chai_tf = fopen(chai_typing_path, "r");
+            if (chai_tf) {
+                if (fgets(chai_cur_typing, sizeof(chai_cur_typing), chai_tf)) {
+                    char *nl = strchr(chai_cur_typing, '\n');
+                    if (nl) *nl = '\0';
+                }
+                fclose(chai_tf);
+            }
+            if (strcmp(chai_cur_typing, chai_typing_name) != 0) {
+                snprintf(chai_typing_name, sizeof(chai_typing_name), "%s", chai_cur_typing);
+                chai_update_status_label();
+                redraw();
+            }
+        }
+    }
+    if (g_is_events_hq) {
+        if (evhq_load_pages() || evhq_load_page_state()) {
+            evhq_refresh_page_data(g_window);
+            redraw();
+        }
+    }
+    if (poll_agent_history() > 0 && !g_quit) hq_request_redraw();
+    if (g_is_db_hq || g_is_events_hq || g_is_chat_hai) nav_tab_poll_active();
+    if (g_quit) return;
+    if (g_is_db_hq) {
+        if (g_is_bookmarks && dbhq_load_bookmark_state()) {
+            Elem *panel = find_by_tag(g_window, "panel");
+            dbhq_inject_bookmark_items(panel);
+            dbhq_redraw_content();
+        }
+        if (g_is_palettes && g_pal_state_path[0]) {
+            int changed = dbhq_load_palette_state();
+            changed |= dbhq_load_palette_options();
+            if (changed) {
+                Elem *panel = find_by_tag(g_window, "panel");
+                dbhq_inject_palette_tiles(panel);
+                dbhq_redraw_content();
+            }
+        }
+        if (!g_is_palettes && !g_is_bookmarks && g_dbhq_current_tab == DB_HQ_ACTORS_TAB) {
+            if (dbhq_load_actors()) {
+                dbhq_show_actors();
+                dbhq_loop_request_redraw();
+            }
+        } else if (!g_is_palettes && !g_is_bookmarks && dbhq_list_idx_for_tab(g_dbhq_current_tab) >= 0) {
+            int li = dbhq_list_idx_for_tab(g_dbhq_current_tab);
+            if (dbhq_load_list_tab(li)) {
+                dbhq_show_list_tab();
+                dbhq_loop_request_redraw();
+            }
+        } else if (!g_is_palettes && !g_is_bookmarks && dbhq_load_common_events()) {
+            Elem *sidebar = find_by_tag(g_window, "sidebar");
+            dbhq_inject_sidebar_items(sidebar);
+            if (g_dbhq_selected_event < 0 && g_dbhq_n_events > 0) g_dbhq_selected_event = 0;
+            if (g_is_stats_hq) {
+                stats_populate_panel(g_dbhq_selected_event);
+            } else {
+                Elem *panel_text = find_by_tag(g_window, "text");
+                if (panel_text && g_dbhq_selected_event >= 0 && g_dbhq_selected_event < g_dbhq_n_events)
+                    snprintf(panel_text->label, sizeof(panel_text->label), "%s", g_dbhq_events[g_dbhq_selected_event]);
+            }
+            dbhq_loop_request_redraw();
+        }
+        if (g_dbhq_ce_editing) {
+            Elem *panel = find_by_tag(g_window, "panel");
+            if (dbhq_ce_inject_panel(panel))
+                dbhq_loop_request_redraw();
+        }
+        dbhq_loop_paint_if_dirty();
+    }
+}
+
+static void popup_handle_click(int px, int py) {
+    for (int i = 0; i < g_n_nav; i++) {
+        Elem *it = g_nav[i];
+        if (px >= it->x && px < it->x + it->w && py >= it->y && py < it->y + it->h) {
+            g_focus_nav = it->nav_index;
+            activate_focused();
+            return;
+        }
+    }
+}
+
+static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
+
+    if (ev->type == Expose) {
+        redraw();
+        return;
+    }
+    if (ev->type == ClientMessage && (Atom)ev->xclient.data.l[0] == wm_delete) {
+        g_quit = 1;
+        return;
+    }
+    if (ev->type == ButtonPress) {
+        if (is_popup) {
+            struct timespec now;
+            clock_gettime(CLOCK_MONOTONIC, &now);
+            long ms_since_map = (now.tv_sec - g_map_time.tv_sec) * 1000L
+                               + (now.tv_nsec - g_map_time.tv_nsec) / 1000000L;
+            if (ms_since_map < PHANTOM_CLICK_GUARD_MS) return;
+            dbhq_capture_click(ev->xbutton.x, ev->xbutton.y, (int)ev->xbutton.button);
+            poll_agent_history();
+            if (!g_quit) redraw();
+        } else if (g_is_db_hq) {
+            if (g_dbhq_focus_grab_enabled) { dbhq_grab_keyboard_retry(); dbhq_soft_focus(); }
+            if (ev->xbutton.button == 1 && g_pal_has_grid &&
+                ev->xbutton.x >= g_pal_track_x && ev->xbutton.x < g_pal_track_x + g_pal_track_w &&
+                ev->xbutton.y >= g_pal_track_y && ev->xbutton.y < g_pal_track_y + g_pal_track_h) {
+                g_pal_thumb_dragging = 1;
+                dbhq_pal_scroll_to_y(ev->xbutton.y);
+                dbhq_layout_pass(g_window);
+                dbhq_assign_nav_indices(g_window);
+                dbhq_loop_request_redraw();
+                return;
+            }
+            if (ev->xbutton.button == 1 && ev->xbutton.y < g_dbhq_chrome_h &&
+                !(ev->xbutton.x >= g_dbhq_close_elem->x && ev->xbutton.x < g_dbhq_close_elem->x + g_dbhq_close_elem->w &&
+                  ev->xbutton.y >= g_dbhq_close_elem->y && ev->xbutton.y < g_dbhq_close_elem->y + g_dbhq_close_elem->h)) {
+                g_dbhq_dragging = 1;
+                g_dbhq_drag_last_x = ev->xbutton.x_root;
+                g_dbhq_drag_last_y = ev->xbutton.y_root;
+            }
+            if (g_pal_has_grid && (ev->xbutton.button == 4 || ev->xbutton.button == 5)) {
+                g_pal_scroll += (ev->xbutton.button == 5) ? 2 : -2;
+            } else if (ev->xbutton.button != 3 && ev->xbutton.button != 4 && ev->xbutton.button != 5) {
+                dbhq_capture_click(ev->xbutton.x, ev->xbutton.y, (int)ev->xbutton.button);
+                poll_agent_history();
+            }
+            if (!g_quit) dbhq_loop_request_redraw();
+        } else if (g_is_events_hq) {
+            if (!g_evhq_picker_open && ev->xbutton.button == 1 && ev->xbutton.y < EVHQ_CHROME_H &&
+                !(ev->xbutton.x >= g_evhq_close_elem->x && ev->xbutton.x < g_evhq_close_elem->x + g_evhq_close_elem->w &&
+                  ev->xbutton.y >= g_evhq_close_elem->y && ev->xbutton.y < g_evhq_close_elem->y + g_evhq_close_elem->h)) {
+                g_evhq_dragging = 1;
+                g_evhq_drag_last_x = ev->xbutton.x_root;
+                g_evhq_drag_last_y = ev->xbutton.y_root;
+            }
+            if (!g_evhq_picker_open && g_pal_has_grid && (ev->xbutton.button == 4 || ev->xbutton.button == 5)) {
+                g_pal_scroll += (ev->xbutton.button == 5) ? 2 : -2;
+                evhq_layout_pass(g_window);
+                evhq_assign_nav_indices(g_window);
+            } else if (ev->xbutton.button != 3 && !g_evhq_picker_open) {
+                g_evhq_has_real_focus = 1;
+                dbhq_capture_click(ev->xbutton.x, ev->xbutton.y, (int)ev->xbutton.button);
+                poll_agent_history();
+            }
+            if (!g_quit) redraw();
+        } else if (g_is_chat_hai) {
+            if (ev->xbutton.button == 1 && ev->xbutton.y < 26) {
+                chai_dragging = 1;
+                chai_drag_last_x = ev->xbutton.x_root;
+                chai_drag_last_y = ev->xbutton.y_root;
+            }
+            if (g_pal_has_grid && (ev->xbutton.button == 4 || ev->xbutton.button == 5)) {
+                g_pal_scroll += (ev->xbutton.button == 5) ? 2 : -2;
+                chai_layout_pass(g_window);
+                chai_assign_nav_indices(g_window);
+            } else if (ev->xbutton.button != 3) {
+                chai_has_real_focus = 1;
+                dbhq_capture_click(ev->xbutton.x, ev->xbutton.y, (int)ev->xbutton.button);
+                poll_agent_history();
+            }
+            if (!g_quit) redraw();
+        }
+        return;
+    }
+    if (ev->type == ButtonRelease && ev->xbutton.button == 1) {
+        g_dbhq_dragging = 0;
+        g_pal_thumb_dragging = 0;
+        g_evhq_dragging = 0;
+        chai_dragging = 0;
+        return;
+    }
+    if (ev->type == MotionNotify) {
+        if (g_is_db_hq && g_pal_thumb_dragging) {
+            dbhq_pal_scroll_to_y(ev->xmotion.y);
+            dbhq_layout_pass(g_window);
+            dbhq_assign_nav_indices(g_window);
+            dbhq_loop_request_redraw();
+        } else if (g_is_db_hq && g_dbhq_dragging) {
+            int dx = ev->xmotion.x_root - g_dbhq_drag_last_x;
+            int dy = ev->xmotion.y_root - g_dbhq_drag_last_y;
+            g_win_x += dx; g_win_y += dy;
+            if (g_win_y < WM_MANAGED_DRAG_MIN_Y) g_win_y = WM_MANAGED_DRAG_MIN_Y;
+            XMoveWindow(dpy, win, g_win_x, g_win_y);
+            g_dbhq_drag_last_x = ev->xmotion.x_root;
+            g_dbhq_drag_last_y = ev->xmotion.y_root;
+        } else if (g_is_events_hq && g_evhq_dragging) {
+            int dx = ev->xmotion.x_root - g_evhq_drag_last_x;
+            int dy = ev->xmotion.y_root - g_evhq_drag_last_y;
+            g_win_x += dx; g_win_y += dy;
+            if (g_win_y < WM_MANAGED_DRAG_MIN_Y) g_win_y = WM_MANAGED_DRAG_MIN_Y;
+            XMoveWindow(dpy, win, g_win_x, g_win_y);
+            g_evhq_drag_last_x = ev->xmotion.x_root;
+            g_evhq_drag_last_y = ev->xmotion.y_root;
+        } else if (g_is_chat_hai && chai_dragging) {
+            int dx = ev->xmotion.x_root - chai_drag_last_x;
+            int dy = ev->xmotion.y_root - chai_drag_last_y;
+            chai_win_x += dx; chai_win_y += dy;
+            if (chai_win_y < WM_MANAGED_DRAG_MIN_Y) chai_win_y = WM_MANAGED_DRAG_MIN_Y;
+            XMoveWindow(dpy, win, chai_win_x, chai_win_y);
+            chai_drag_last_x = ev->xmotion.x_root;
+            chai_drag_last_y = ev->xmotion.y_root;
+        }
+        return;
+    }
+    if (ev->type == KeyPress) {
+        char buf8[8]; KeySym ks;
+        int n = XLookupString(&ev->xkey, buf8, sizeof(buf8) - 1, &ks, NULL);
+        buf8[n > 0 ? n : 0] = '\0';
+        const char *kname = XKeysymToString(ks);
+        if (is_popup) {
+            dbhq_capture_key(ks, buf8[0]);
+            poll_agent_history();
+            if (!g_quit) redraw();
+        } else if (g_is_db_hq) {
+            snprintf(g_dbhq_last_key_label, sizeof(g_dbhq_last_key_label), "%s", kname ? kname : (buf8[0] ? buf8 : "?"));
+            dbhq_capture_key(ks, buf8[0]);
+            poll_agent_history();
+            if (!g_quit) dbhq_loop_request_redraw();
+        } else if (g_is_events_hq) {
+            snprintf(g_evhq_last_key_label, sizeof(g_evhq_last_key_label), "%s", kname ? kname : (buf8[0] ? buf8 : "?"));
+            g_evhq_has_real_focus = 1;
+            dbhq_capture_key(ks, buf8[0]);
+            poll_agent_history();
+            if (!g_quit) redraw();
+        } else if (g_is_chat_hai) {
+            snprintf(chai_last_key_label, sizeof(chai_last_key_label), "%s", kname ? kname : (buf8[0] ? buf8 : "?"));
+            chai_has_real_focus = 1;
+            dbhq_capture_key(ks, buf8[0]);
+            poll_agent_history();
+            redraw();
+        }
+        return;
+    }
+    if (ev->type == FocusIn) {
+        if (g_is_db_hq && !g_dbhq_has_real_focus) {
+            g_dbhq_has_real_focus = 1;
+            { struct stat st; char hp[PATH_BUF]; history_path(hp, sizeof(hp));
+              if (stat(hp, &st) == 0) g_history_cursor = st.st_size; }
+            dbhq_loop_request_redraw();
+        } else if (g_is_events_hq) {
+            g_evhq_has_real_focus = 1;
+            redraw();
+        } else if (g_is_chat_hai) {
+            chai_has_real_focus = 1;
+            redraw();
+        }
+        return;
+    }
+    if (ev->type == FocusOut) {
+        if (g_is_db_hq && g_dbhq_has_real_focus) {
+            g_dbhq_has_real_focus = 0;
+            dbhq_loop_request_redraw();
+        } else if (g_is_events_hq) {
+            g_evhq_has_real_focus = 0;
+            redraw();
+        } else if (g_is_chat_hai) {
+            chai_has_real_focus = 0;
+            redraw();
+        }
+        return;
+    }
+    /* XDND was popup-only because is_popup returned before HQ handlers.
+     * Same drop_action contract for every mode that declared it. */
+    if (ev->type == SelectionNotify && g_xdnd_awaiting) {
+        g_xdnd_awaiting = 0;
+        xdnd_handle_selection(dpy, win);
+        if (!g_quit) redraw();
+        return;
+    }
+    if (ev->type == ClientMessage && g_drop_action[0] &&
+        (Atom)ev->xclient.message_type == ga_xdnd_enter) {
+        g_xdnd_source = (Window)ev->xclient.data.l[0];
+        return;
+    }
+    if (ev->type == ClientMessage && g_drop_action[0] &&
+        (Atom)ev->xclient.message_type == ga_xdnd_position &&
+        g_xdnd_source != None) {
+        XEvent st;
+        memset(&st, 0, sizeof(st));
+        st.xclient.type = ClientMessage;
+        st.xclient.window = g_xdnd_source;
+        st.xclient.message_type = ga_xdnd_status;
+        st.xclient.format = 32;
+        st.xclient.data.l[0] = (long)win;
+        st.xclient.data.l[1] = 1;
+        st.xclient.data.l[2] = 0;
+        st.xclient.data.l[3] = (long)ga_xdnd_action_copy;
+        st.xclient.data.l[4] = (long)ga_xdnd_action_copy;
+        XSendEvent(dpy, g_xdnd_source, False, NoEventMask, &st);
+        return;
+    }
+    if (ev->type == ClientMessage && g_drop_action[0] &&
+        (Atom)ev->xclient.message_type == ga_xdnd_leave) {
+        g_xdnd_source = None;
+        return;
+    }
+    if (ev->type == ClientMessage && g_drop_action[0] &&
+        (Atom)ev->xclient.message_type == ga_xdnd_drop &&
+        g_xdnd_source != None) {
+        XConvertSelection(dpy, ga_xdnd_selection, ga_uri_list,
+                          ga_uri_list, win, (Time)ev->xclient.data.l[2]);
+        g_xdnd_awaiting = 1;
+    }
+}
+
+static void hq_run_event_loop(Atom wm_delete, int is_popup) {
+    while (!g_quit) {
+        hq_idle_tick();
+        if (g_quit) break;
+        fd_set fds; FD_ZERO(&fds);
+        int xfd = ConnectionNumber(dpy); FD_SET(xfd, &fds);
+        struct timeval tv = { 0, 150000 };
+        select(xfd + 1, &fds, NULL, NULL, &tv);
+        while (XPending(dpy)) {
+            XEvent ev; XNextEvent(dpy, &ev);
+            hq_dispatch_xevent(&ev, wm_delete, is_popup);
+        }
+        if (dbhq_marker_pilot()) dbhq_loop_paint_if_dirty();
+    }
+}
+
 
 int main(int argc, char **argv) {
     /* REAL Stage 5 step 3/4 (2026-08-16, khtpm-merge-how2.md §5d.3) -
@@ -7321,6 +8898,34 @@ int main(int argc, char **argv) {
                 execl(terms_bin, terms_bin, g_house_root, terms_pkgdir, (char *)NULL);
                 _exit(1);
             }
+            snprintf(g_dbhq_actors_state_path, sizeof(g_dbhq_actors_state_path),
+                     "%s/#.desktop/db_hq_actors.state.txt", g_house_root);
+            char actors_bin[PATH_BUF];
+            snprintf(actors_bin, sizeof(actors_bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/actors_hq_manager.+x", g_house_root);
+            pid_t actors_pid = fork();
+            if (actors_pid == 0) {
+                execl(actors_bin, actors_bin, g_house_root, terms_pkgdir, (char *)NULL);
+                _exit(1);
+            }
+            dbhq_load_actors();
+            {
+                char pub_bin[PATH_BUF];
+                snprintf(pub_bin, sizeof(pub_bin),
+                         "%s/*.monads/*.livedesk-taskbar/ops/+x/dbhq_pdl_publish_manager.+x", g_house_root);
+                for (int li = 0; li < DBHQ_N_LIST_TABS; li++) {
+                    snprintf(g_dbhq_list_state_path[li], sizeof(g_dbhq_list_state_path[li]),
+                             "%s/#.desktop/%s", g_house_root, g_dbhq_list_cfg[li].state_name);
+                    char src_rel[PATH_BUF];
+                    snprintf(src_rel, sizeof(src_rel), "&.widgits/db-hq/data/%s", g_dbhq_list_cfg[li].pdl_name);
+                    pid_t pid = fork();
+                    if (pid == 0) {
+                        execl(pub_bin, pub_bin, g_house_root, terms_pkgdir, src_rel,
+                              g_dbhq_list_cfg[li].state_name, (char *)NULL);
+                        _exit(1);
+                    }
+                    dbhq_load_list_tab(li);
+                }
+            }
         }
 
         g_win_x = 100; g_win_y = 100; /* real db-hq default, distinct from the popup modes' 300,300 */
@@ -7333,6 +8938,8 @@ int main(int argc, char **argv) {
         Elem *module_elem = find_by_tag(g_window, "module");
         if (module_elem && module_elem->label[0]) dbhq_launch_module(module_elem->label, module_elem->id);
         atexit(dbhq_cleanup_module);
+        if (!g_is_stats_hq && !g_is_palettes && !g_is_bookmarks && g_dbhq_current_tab == DB_HQ_ACTORS_TAB)
+            dbhq_show_actors();
 
         /* REAL, NEW 2026-08-25 (bookmarks manager port) - bookmarks is
          * per-pal (g_package_dir, the pal dir - not house-wide like db-hq/
@@ -7492,13 +9099,9 @@ int main(int argc, char **argv) {
     }
 
     if (g_is_swatch_picker) {
-        /* real palette table, ported verbatim from taskbar-settings'
-         * own real main() - same 12 entries/order as the original
-         * g_palette[] array, sourced by id (sw0..sw11). */
         static const char *hex[12] = { "#000000","#ffffff","#1a1a1a","#e5e5e5","#ef4444","#f97316","#eab308","#22c55e","#06b6d4","#3b82f6","#8b5cf6","#ec4899" };
-        static const char *name[12] = { "black","white","charcoal","silver","red","orange","yellow","green","cyan","blue","purple","pink" };
-        for (int i = 0; i < 12; i++) { g_palette_hex[i] = hex[i]; g_palette_name[i] = name[i]; }
-        g_win_w = 420; /* real fixed width, matches taskbar-settings' own original WIN_W */
+        for (int i = 0; i < 12; i++) { g_palette_hex[i] = hex[i]; g_palette_name[i] = g_palette_name_buf[i]; }
+        g_win_w = 420;
     }
 
     /* REAL FIX (found live, first standalone test): g_win_h is DATA-
@@ -7585,9 +9188,10 @@ int main(int argc, char **argv) {
             XClassHint *ch = XAllocClassHint();
             if (ch) { ch->res_name = (char *)"MuchiverseLivedesk"; ch->res_class = (char *)"MuchiverseLivedesk"; XSetClassHint(dpy, win, ch); XFree(ch); }
         }
-        XMapRaised(dpy, win);
+        XMapWindow(dpy, win);
         XSync(dpy, False);
         { XWindowAttributes wa; if (XGetWindowAttributes(dpy, win, &wa)) { g_win_x = wa.x; g_win_y = wa.y; } }
+        nav_tab_register(g_is_palettes ? "palettes" : g_is_bookmarks ? "bookmarks" : g_is_stats_hq ? "stats-hq" : "db-hq");
         if (g_dbhq_focus_grab_enabled) { dbhq_grab_keyboard_retry(); dbhq_soft_focus(); }
         XSync(dpy, False);
         { XEvent stale_ev; while (XCheckWindowEvent(dpy, win, ButtonPressMask | KeyPressMask, &stale_ev)) { } }
@@ -7598,193 +9202,17 @@ int main(int argc, char **argv) {
         g_buf_w = ww; g_buf_h = wh;
 
         redraw();
+        if (dbhq_marker_pilot()) {
+            /* snapshot so a leftover marker file does not force a second paint */
+            (void)consume_frame_changed();
+        }
 
         if (argc > 3 && strcmp(argv[3], "--dump-and-exit") == 0) { dump_frame_png(); g_quit = 1; }
 
         Atom wm_delete_loop = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-        while (!g_quit) {
-            if (poll_agent_history() > 0 && !g_quit) redraw();
-            if (g_quit) break;
-            /* REAL, NEW 2026-08-25 (bookmarks manager port, replaces the
-             * chtpm-live-reload workaround this same session had briefly
-             * added - see au11-hq/TPMOS-COMPLIANCE-DEBT.md's standing
-             * rule about not patching around a missing manager). A real
-             * bookmarks_manager.c now owns bookmarks.pdl -> state-file
-             * publishing; this only reads the published file and injects
-             * real <button> rows, same shape dbhq_load_common_events()/
-             * dbhq_inject_sidebar_items() already use for db-hq/stats-hq. */
-            if (g_is_bookmarks && dbhq_load_bookmark_state()) {
-                Elem *panel = find_by_tag(g_window, "panel");
-                dbhq_inject_bookmark_items(panel);
-                dbhq_redraw_content();
-            }
-            /* REAL, NEW 2026-08-25 (palettes manager port) - same shape,
-             * only real picker categories set g_pal_state_path (empty
-             * string for a stub category, stat() just fails, no-op). */
-            if (g_is_palettes && g_pal_state_path[0]) {
-                int changed = dbhq_load_palette_state();
-                changed |= dbhq_load_palette_options();
-                if (changed) {
-                    Elem *panel = find_by_tag(g_window, "panel");
-                    dbhq_inject_palette_tiles(panel);
-                    dbhq_redraw_content();
-                }
-            }
-            /* REAL FIX 2026-08-25 (found live during palettes manager
-             * port, code-review not yet reproduced) - this block used to
-             * run unconditionally for EVERY db-hq-family mode, including
-             * palettes/bookmarks. Both use tag="text" for their own
-             * static hint (same tag db-hq's own panel_text lookup below
-             * searches for), so g_dbhq_n_events>0 (true house-wide, from
-             * real db-hq's own common_events state file) would silently
-             * overwrite the palette/bookmark hint's label with a db-hq
-             * event string on the very first periodic tick. Scoped out -
-             * palettes/bookmarks own their own hint text now via
-             * g_pal_static_hint/g_bm_static_hint, never touched here. */
-            if (!g_is_palettes && !g_is_bookmarks && dbhq_load_common_events()) {
-                Elem *sidebar = find_by_tag(g_window, "sidebar");
-                dbhq_inject_sidebar_items(sidebar);
-                /* REAL FIX 2026-08-25 (direct live report: "missing the
-                 * information summary it once had") - this periodic
-                 * reload used to only refresh the sidebar, never the
-                 * panel text. Harmless for real db-hq (its panel only
-                 * ever updates on a real user click, and it's never
-                 * empty at real startup since common_events/ already
-                 * exists by the time the window opens). Fatal for
-                 * stats-hq: g_dbhq_events_state_path is populated by a
-                 * separate manager PROCESS launched a few lines after
-                 * the FIRST dbhq_load_common_events() call at init, so
-                 * that first call almost always sees zero sessions and
-                 * never sets g_dbhq_selected_event - panel_text stays on
-                 * its static placeholder forever, since nothing here
-                 * used to touch it again. Real fix: auto-select item 0
-                 * the first time real data actually arrives (not on
-                 * every reload - preserves whatever the user already
-                 * has selected), and keep the displayed text in sync
-                 * with whatever's currently selected on every reload. */
-                if (g_dbhq_selected_event < 0 && g_dbhq_n_events > 0) g_dbhq_selected_event = 0;
-                if (g_is_stats_hq) {
-                    stats_populate_panel(g_dbhq_selected_event);
-                } else {
-                    Elem *panel_text = find_by_tag(g_window, "text");
-                    if (panel_text && g_dbhq_selected_event >= 0 && g_dbhq_selected_event < g_dbhq_n_events)
-                        snprintf(panel_text->label, sizeof(panel_text->label), "%s", g_dbhq_events[g_dbhq_selected_event]);
-                }
-                redraw();
-            }
-            /* Task 6 (2026-08-26) - refresh the embedded Common Event
-             * editor every tick while it's open, independent of the
-             * common-events LIST's own mtime gate above (evhq_load_
-             * pages()/evhq_load_page_state() are already self-mtime-
-             * gated, so this is cheap when nothing actually changed -
-             * same real pattern events-hq's own top-level tick uses for
-             * an entity). BUG FIX 2026-08-26: call redraw() instead of
-             * dbhq_redraw_content() to ensure the offscreen buffer is
-             * actually blitted to the visible window (XCopyArea + XFlush),
-             * not just drawn - dbhq_redraw_content() draws to the pixmap
-             * but doesn't perform the screen blit, so the periodic tick's
-             * updates were invisible until a user interaction triggered an
-             * event handler's redraw() call. */
-            if (g_dbhq_ce_editing) {
-                Elem *panel = find_by_tag(g_window, "panel");
-                dbhq_ce_inject_panel(panel);
-                redraw();
-            }
-            fd_set fds; FD_ZERO(&fds);
-            int xfd = ConnectionNumber(dpy); FD_SET(xfd, &fds);
-            struct timeval tv = { 0, 150000 };
-            select(xfd + 1, &fds, NULL, NULL, &tv);
+        hq_run_event_loop(wm_delete_loop, 0);
 
-            while (XPending(dpy)) {
-                XEvent ev; XNextEvent(dpy, &ev);
-                if (ev.type == Expose) {
-                    redraw();
-                } else if (ev.type == ButtonPress) {
-                    if (g_dbhq_focus_grab_enabled) { dbhq_grab_keyboard_retry(); dbhq_soft_focus(); }
-                    /* REAL, NEW 2026-08-25 (live report: "the thumb for
-                     * mouse isn't working yet") - clicking inside the
-                     * scroll track (drawn pixels, not a real Elem, so
-                     * dbhq_handle_click()'s own hit_test() never found
-                     * it) now jumps the thumb to the cursor and arms
-                     * drag - checked BEFORE the chrome-bar window-drag
-                     * check and the generic click dispatch below, same
-                     * precedence the close-button check already uses. */
-                    if (ev.xbutton.button == 1 && g_pal_has_grid &&
-                        ev.xbutton.x >= g_pal_track_x && ev.xbutton.x < g_pal_track_x + g_pal_track_w &&
-                        ev.xbutton.y >= g_pal_track_y && ev.xbutton.y < g_pal_track_y + g_pal_track_h) {
-                        g_pal_thumb_dragging = 1;
-                        dbhq_pal_scroll_to_y(ev.xbutton.y);
-                        dbhq_layout_pass(g_window);
-                        dbhq_assign_nav_indices(g_window);
-                        redraw();
-                        continue;
-                    }
-                    /* REAL, NEW 2026-08-25 (live instruction: "they need
-                     * to be numbered... with nav feature") - the up/down
-                     * arrow buttons themselves are now real, numbered
-                     * Elems, handled by dbhq_handle_click()'s own
-                     * explicit check further below (same pattern as the
-                     * close button) so a mouse click and a keyboard
-                     * Enter-on-focused-nav share ONE dispatch path
-                     * (dbhq_activate_elem()) instead of this raw
-                     * coordinate math mutating g_pal_scroll directly and
-                     * separately. */
-                    if (ev.xbutton.button == 1 && ev.xbutton.y < g_dbhq_chrome_h &&
-                        !(ev.xbutton.x >= g_dbhq_close_elem->x && ev.xbutton.x < g_dbhq_close_elem->x + g_dbhq_close_elem->w &&
-                          ev.xbutton.y >= g_dbhq_close_elem->y && ev.xbutton.y < g_dbhq_close_elem->y + g_dbhq_close_elem->h)) {
-                        g_dbhq_dragging = 1;
-                        g_dbhq_drag_last_x = ev.xbutton.x_root;
-                        g_dbhq_drag_last_y = ev.xbutton.y_root;
-                    }
-                    /* REAL, ported 2026-08-25 - mouse wheel over a
-                     * palettes matrix grid scrolls rows, verbatim from
-                     * khtpm_hq_render.c's own real mechanism (see
-                     * g_pal_scroll's own declaration comment). Clamp
-                     * happens in dbhq_layout_pass()'s own post-pass. */
-                    if (g_pal_has_grid && (ev.xbutton.button == 4 || ev.xbutton.button == 5)) {
-                        g_pal_scroll += (ev.xbutton.button == 5) ? 2 : -2;
-                    } else if (ev.xbutton.button != 3 && ev.xbutton.button != 4 && ev.xbutton.button != 5) {
-                        dbhq_handle_click(ev.xbutton.x, ev.xbutton.y);
-                    }
-                    if (!g_quit) redraw();
-                } else if (ev.type == ButtonRelease && ev.xbutton.button == 1) {
-                    g_dbhq_dragging = 0;
-                    g_pal_thumb_dragging = 0;
-                } else if (ev.type == MotionNotify) {
-                    if (g_pal_thumb_dragging) {
-                        dbhq_pal_scroll_to_y(ev.xmotion.y);
-                        dbhq_layout_pass(g_window);
-                        dbhq_assign_nav_indices(g_window);
-                        redraw();
-                    } else if (g_dbhq_dragging) {
-                        int dx = ev.xmotion.x_root - g_dbhq_drag_last_x;
-                        int dy = ev.xmotion.y_root - g_dbhq_drag_last_y;
-                        g_win_x += dx; g_win_y += dy;
-                        if (g_win_y < WM_MANAGED_DRAG_MIN_Y) g_win_y = WM_MANAGED_DRAG_MIN_Y;
-                        XMoveWindow(dpy, win, g_win_x, g_win_y);
-                        g_dbhq_drag_last_x = ev.xmotion.x_root;
-                        g_dbhq_drag_last_y = ev.xmotion.y_root;
-                    }
-                } else if (ev.type == KeyPress) {
-                    char buf8[8]; KeySym ks;
-                    int n = XLookupString(&ev.xkey, buf8, sizeof(buf8) - 1, &ks, NULL);
-                    buf8[n > 0 ? n : 0] = '\0';
-                    const char *kname = XKeysymToString(ks);
-                    snprintf(g_dbhq_last_key_label, sizeof(g_dbhq_last_key_label), "%s", kname ? kname : (buf8[0] ? buf8 : "?"));
-                    handle_key(ks, buf8[0]);
-                    if (!g_quit) redraw();
-                } else if (ev.type == FocusIn) {
-                    g_dbhq_has_real_focus = 1;
-                    redraw();
-                } else if (ev.type == FocusOut) {
-                    g_dbhq_has_real_focus = 0;
-                    redraw();
-                } else if (ev.type == ClientMessage && (Atom)ev.xclient.data.l[0] == wm_delete_loop) {
-                    g_quit = 1;
-                }
-            }
-        }
-
+        nav_tab_unregister();
         XUngrabKeyboard(dpy, CurrentTime);
         XftDrawDestroy(xftdraw_buf);
         XFreePixmap(dpy, buf);
@@ -7841,9 +9269,10 @@ int main(int argc, char **argv) {
             XClassHint *ch = XAllocClassHint();
             if (ch) { ch->res_name = (char *)"MuchiverseLivedesk"; ch->res_class = (char *)"MuchiverseLivedesk"; XSetClassHint(dpy, win, ch); XFree(ch); }
         }
-        XMapRaised(dpy, win);
+        XMapWindow(dpy, win);
         XSync(dpy, False);
         { XWindowAttributes wa; if (XGetWindowAttributes(dpy, win, &wa)) { g_win_x = wa.x; g_win_y = wa.y; } }
+        nav_tab_register("events-hq");
 
         gc = XCreateGC(dpy, win, 0, NULL);
         buf = XCreatePixmap(dpy, win, (unsigned)ww, (unsigned)wh, (unsigned)DefaultDepth(dpy, screen));
@@ -7853,78 +9282,9 @@ int main(int argc, char **argv) {
         redraw();
 
         Atom wm_delete_loop = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-        while (!g_quit) {
-            /* real, mtime-gated manager-publish poll, independent of the
-             * relay-injection poll below - see evhq_load_pages()/
-             * evhq_load_page_state()'s own header comments. */
-            if (evhq_load_pages() || evhq_load_page_state()) {
-                evhq_refresh_page_data(g_window);
-                redraw();
-            }
-            if (poll_agent_history() > 0 && !g_quit) redraw();
-            if (g_quit) break;
+        hq_run_event_loop(wm_delete_loop, 0);
 
-            fd_set fds; FD_ZERO(&fds);
-            int xfd = ConnectionNumber(dpy); FD_SET(xfd, &fds);
-            struct timeval tv = { 0, 150000 };
-            select(xfd + 1, &fds, NULL, NULL, &tv);
-
-            while (XPending(dpy)) {
-                XEvent ev; XNextEvent(dpy, &ev);
-                if (ev.type == Expose) {
-                    redraw();
-                } else if (ev.type == ButtonPress) {
-                    if (!g_evhq_picker_open && ev.xbutton.button == 1 && ev.xbutton.y < EVHQ_CHROME_H &&
-                        !(ev.xbutton.x >= g_evhq_close_elem->x && ev.xbutton.x < g_evhq_close_elem->x + g_evhq_close_elem->w &&
-                          ev.xbutton.y >= g_evhq_close_elem->y && ev.xbutton.y < g_evhq_close_elem->y + g_evhq_close_elem->h)) {
-                        g_evhq_dragging = 1;
-                        g_evhq_drag_last_x = ev.xbutton.x_root;
-                        g_evhq_drag_last_y = ev.xbutton.y_root;
-                    }
-                    /* REAL, NEW 2026-08-28 (Phase C target #3) - mouse
-                     * wheel over the command list scrolls rows, same
-                     * mechanism db-hq's own main loop already uses for
-                     * g_pal_has_grid. */
-                    if (!g_evhq_picker_open && g_pal_has_grid && (ev.xbutton.button == 4 || ev.xbutton.button == 5)) {
-                        g_pal_scroll += (ev.xbutton.button == 5) ? 2 : -2;
-                        evhq_layout_pass(g_window);
-                        evhq_assign_nav_indices(g_window);
-                    } else if (ev.xbutton.button != 3 && !g_evhq_picker_open) {
-                        evhq_handle_click(ev.xbutton.x, ev.xbutton.y);
-                    }
-                    if (!g_quit) redraw();
-                } else if (ev.type == ButtonRelease && ev.xbutton.button == 1) {
-                    g_evhq_dragging = 0;
-                } else if (ev.type == MotionNotify) {
-                    if (g_evhq_dragging) {
-                        int dx = ev.xmotion.x_root - g_evhq_drag_last_x;
-                        int dy = ev.xmotion.y_root - g_evhq_drag_last_y;
-                        g_win_x += dx; g_win_y += dy;
-                        if (g_win_y < WM_MANAGED_DRAG_MIN_Y) g_win_y = WM_MANAGED_DRAG_MIN_Y;
-                        XMoveWindow(dpy, win, g_win_x, g_win_y);
-                        g_evhq_drag_last_x = ev.xmotion.x_root;
-                        g_evhq_drag_last_y = ev.xmotion.y_root;
-                    }
-                } else if (ev.type == KeyPress) {
-                    char buf8[8]; KeySym ks;
-                    int n = XLookupString(&ev.xkey, buf8, sizeof(buf8) - 1, &ks, NULL);
-                    buf8[n > 0 ? n : 0] = '\0';
-                    const char *kname = XKeysymToString(ks);
-                    snprintf(g_evhq_last_key_label, sizeof(g_evhq_last_key_label), "%s", kname ? kname : (buf8[0] ? buf8 : "?"));
-                    handle_key(ks, buf8[0]);
-                    if (!g_quit) redraw();
-                } else if (ev.type == FocusIn) {
-                    g_evhq_has_real_focus = 1;
-                    redraw();
-                } else if (ev.type == FocusOut) {
-                    g_evhq_has_real_focus = 0;
-                    redraw();
-                } else if (ev.type == ClientMessage && (Atom)ev.xclient.data.l[0] == wm_delete_loop) {
-                    g_quit = 1;
-                }
-            }
-        }
-
+        nav_tab_unregister();
         XftDrawDestroy(xftdraw_buf);
         XFreePixmap(dpy, buf);
         XFreeGC(dpy, gc);
@@ -7967,9 +9327,13 @@ int main(int argc, char **argv) {
             XClassHint *ch = XAllocClassHint();
             if (ch) { ch->res_name = (char *)"MuchiverseLivedesk"; ch->res_class = (char *)"MuchiverseLivedesk"; XSetClassHint(dpy, win, ch); XFree(ch); }
         }
-        XMapRaised(dpy, win);
+        /* open-hai / egg_window: XMapWindow, not XMapRaised — Mutter
+         * activates MapRaised WM-managed windows and steals the human's
+         * browser. File relay still drives this process. */
+        XMapWindow(dpy, win);
         XSync(dpy, False);
         { XWindowAttributes wa; if (XGetWindowAttributes(dpy, win, &wa)) { chai_win_x = wa.x; chai_win_y = wa.y; } }
+        nav_tab_register("chat-hai");
         XSync(dpy, False);
         { XEvent stale_ev; while (XCheckWindowEvent(dpy, win, ButtonPressMask | KeyPressMask, &stale_ev)) { } }
 
@@ -7983,106 +9347,9 @@ int main(int argc, char **argv) {
         if (argc > 3 && strcmp(argv[3], "--dump-and-exit") == 0) { dump_frame_png(); g_quit = 1; }
 
         Atom wm_delete_loop = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-        time_t chai_last_ledger_mtime = 0;
-        while (!g_quit) {
-            /* real ledger-mtime poll, independent of the relay poll -
-             * ported verbatim, see chai_send_composer()'s sibling
-             * comment in the original for why this matters ("i dont see
-             * chat moving" - chat_hai_loop.sh writes on its own timer,
-             * with no signal to this process at all). */
-            char chai_ledger_check[PATH_BUF];
-            chai_session_ledger_path(chai_ledger_check, sizeof(chai_ledger_check), chai_active_session);
-            struct stat chai_lst;
-            if (stat(chai_ledger_check, &chai_lst) == 0 && chai_lst.st_mtime != chai_last_ledger_mtime) {
-                chai_last_ledger_mtime = chai_lst.st_mtime;
-                chai_load_ledger();
-                if (chai_n_events > 0) chai_selected_event = chai_n_events - 1;
-                chai_feed_dirty = 1;
-                redraw();
-            }
-            /* real "who's typing" poll, ported verbatim. */
-            {
-                char chai_typing_path[PATH_BUF];
-                snprintf(chai_typing_path, sizeof(chai_typing_path), "%s/&.hq-apps/chat-hai/state/typing.txt", g_house_root);
-                char chai_cur_typing[64] = "";
-                FILE *chai_tf = fopen(chai_typing_path, "r");
-                if (chai_tf) {
-                    if (fgets(chai_cur_typing, sizeof(chai_cur_typing), chai_tf)) {
-                        char *nl = strchr(chai_cur_typing, '\n');
-                        if (nl) *nl = '\0';
-                    }
-                    fclose(chai_tf);
-                }
-                if (strcmp(chai_cur_typing, chai_typing_name) != 0) {
-                    snprintf(chai_typing_name, sizeof(chai_typing_name), "%s", chai_cur_typing);
-                    chai_update_status_label();
-                    redraw();
-                }
-            }
-            if (poll_agent_history() > 0 && !g_quit) redraw();
-            if (g_quit) break;
+        hq_run_event_loop(wm_delete_loop, 0);
 
-            fd_set fds; FD_ZERO(&fds);
-            int xfd = ConnectionNumber(dpy); FD_SET(xfd, &fds);
-            struct timeval tv = { 0, 150000 };
-            select(xfd + 1, &fds, NULL, NULL, &tv);
-
-            while (XPending(dpy)) {
-                XEvent ev; XNextEvent(dpy, &ev);
-                if (ev.type == Expose) {
-                    redraw();
-                } else if (ev.type == ButtonPress) {
-                    if (ev.xbutton.button == 1 && ev.xbutton.y < chai_chrome_h &&
-                        !(ev.xbutton.x >= chai_close_elem->x && ev.xbutton.x < chai_close_elem->x + chai_close_elem->w &&
-                          ev.xbutton.y >= chai_close_elem->y && ev.xbutton.y < chai_close_elem->y + chai_close_elem->h)) {
-                        chai_dragging = 1;
-                        chai_drag_last_x = ev.xbutton.x_root;
-                        chai_drag_last_y = ev.xbutton.y_root;
-                    }
-                    /* REAL, NEW 2026-08-28 (Phase C target #2) - mouse
-                     * wheel over the session sidebar scrolls rows, same
-                     * mechanism db-hq's own main loop already uses for
-                     * g_pal_has_grid. */
-                    if (g_pal_has_grid && (ev.xbutton.button == 4 || ev.xbutton.button == 5)) {
-                        g_pal_scroll += (ev.xbutton.button == 5) ? 2 : -2;
-                        chai_layout_pass(g_window);
-                        chai_assign_nav_indices(g_window);
-                    } else if (ev.xbutton.button != 3) {
-                        chai_handle_click(ev.xbutton.x, ev.xbutton.y);
-                    }
-                    if (!g_quit) redraw();
-                } else if (ev.type == ButtonRelease && ev.xbutton.button == 1) {
-                    chai_dragging = 0;
-                } else if (ev.type == MotionNotify) {
-                    if (chai_dragging) {
-                        int dx = ev.xmotion.x_root - chai_drag_last_x;
-                        int dy = ev.xmotion.y_root - chai_drag_last_y;
-                        chai_win_x += dx; chai_win_y += dy;
-                        if (chai_win_y < WM_MANAGED_DRAG_MIN_Y) chai_win_y = WM_MANAGED_DRAG_MIN_Y;
-                        XMoveWindow(dpy, win, chai_win_x, chai_win_y);
-                        chai_drag_last_x = ev.xmotion.x_root;
-                        chai_drag_last_y = ev.xmotion.y_root;
-                    }
-                } else if (ev.type == KeyPress) {
-                    char buf8[8]; KeySym ks;
-                    int n = XLookupString(&ev.xkey, buf8, sizeof(buf8) - 1, &ks, NULL);
-                    buf8[n > 0 ? n : 0] = '\0';
-                    const char *kname = XKeysymToString(ks);
-                    snprintf(chai_last_key_label, sizeof(chai_last_key_label), "%s", kname ? kname : (buf8[0] ? buf8 : "?"));
-                    handle_key(ks, buf8[0]);
-                    redraw();
-                } else if (ev.type == FocusIn) {
-                    chai_has_real_focus = 1;
-                    redraw();
-                } else if (ev.type == FocusOut) {
-                    chai_has_real_focus = 0;
-                    redraw();
-                } else if (ev.type == ClientMessage && (Atom)ev.xclient.data.l[0] == wm_delete_loop) {
-                    g_quit = 1;
-                }
-            }
-        }
-
+        nav_tab_unregister();
         XUngrabKeyboard(dpy, CurrentTime);
         XftDrawDestroy(xftdraw_buf);
         XFreePixmap(dpy, buf);
@@ -8134,12 +9401,38 @@ int main(int argc, char **argv) {
      * declared a window-level drop_action= attribute). */
     xdnd_init_atoms(dpy);
     xdnd_attach_if_needed(dpy, win);
-    /* override_redirect windows aren't given focus by the WM - grab it
-     * ourselves so KeyPress nav works immediately (soft, matches the
-     * legacy popup's own popup_soft_focus - RevertToPointerRoot so focus
-     * naturally falls back to whatever's under the cursor once we quit,
-     * no other window's focus is fought for). */
-    XSetInputFocus(dpy, win, RevertToPointerRoot, CurrentTime);
+    /* REAL FIX 2026-08-28, direct live report ("popups are no longer
+     * getting nav/index focus use like they used to. i have to
+     * manually click with mouse"): the "no XSetInputFocus on map"
+     * rule above was written for the AGENT-steals-the-browser case
+     * (an unattended process silently mapping a window while the human
+     * is doing something else, e.g. typing) - real, correct guidance
+     * for THAT case, per HQ-WINDOW-MAP-AND-AGENT-INPUT.md's own §1
+     * table entry: "raise-then-focus ONLY when the human needs keys in
+     * that popup." An entity-menu / taskbar-settings popup is NOT that
+     * case - it only ever exists because the human JUST right-clicked
+     * (or otherwise directly triggered) it, same real moment their
+     * mouse is already there, same normal-desktop-context-menu
+     * expectation every other app on this OS gives for free. Removing
+     * SetInputFocus here fixed a real problem for AGENT-launched HQ
+     * windows but broke real keyboard nav for HUMAN-launched popups -
+     * this restores it, scoped to popups only (HQ windows keep the
+     * XMapWindow/no-focus fix from earlier tonight, unchanged). A
+     * short retry (F-19: a bare call can silently fail once under
+     * XWayland/Mutter) - not a full XGrabKeyboard (that's the
+     * heavier, house-wide-flock-guarded exclusive resource reserved
+     * for grab_keyboard=1 entities specifically, a separate, real,
+     * not-yet-wired STATE flag - see ENTITY-MENU-LEGACY-DEPRECATION-
+     * PLAN.md) - just enough for normal KeyPress delivery to this
+     * window like any other popup on this desktop. */
+    for (int attempt = 0; attempt < 5; attempt++) {
+        XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
+        XSync(dpy, False);
+        Window focused; int revert;
+        XGetInputFocus(dpy, &focused, &revert);
+        if (focused == win) break;
+        usleep(5000);
+    }
     clock_gettime(CLOCK_MONOTONIC, &g_map_time);
     /* REAL FIX 2026-08-16, direct live report ("it also pops up instead
      * of context menu when i rightclick ava" - Chat fired immediately):
@@ -8163,82 +9456,32 @@ int main(int argc, char **argv) {
 
     redraw();
 
-    while (!g_quit) {
-        if (poll_agent_history() > 0 && !g_quit) redraw();
-        if (g_quit) break;
-        fd_set fds; FD_ZERO(&fds);
-        int xfd = ConnectionNumber(dpy); FD_SET(xfd, &fds);
-        struct timeval tv = { 0, 150000 };
-        select(xfd + 1, &fds, NULL, NULL, &tv);
-
-        while (XPending(dpy)) {
-            XEvent ev; XNextEvent(dpy, &ev);
-            if (ev.type == Expose) redraw();
-            else if (ev.type == ButtonPress) {
-                struct timespec now;
-                clock_gettime(CLOCK_MONOTONIC, &now);
-                long ms_since_map = (now.tv_sec - g_map_time.tv_sec) * 1000L
-                                   + (now.tv_nsec - g_map_time.tv_nsec) / 1000000L;
-                if (ms_since_map < PHANTOM_CLICK_GUARD_MS) continue;
-                for (int i = 0; i < g_n_nav; i++) {
-                    Elem *it = g_nav[i];
-                    if (ev.xbutton.x >= it->x && ev.xbutton.x < it->x + it->w &&
-                        ev.xbutton.y >= it->y && ev.xbutton.y < it->y + it->h) {
-                        g_focus_nav = it->nav_index;
-                        activate_focused();
-                        break;
-                    }
-                }
-                if (!g_quit) redraw();
-            } else if (ev.type == KeyPress) {
-                char buf8[8]; KeySym ks;
-                int n = XLookupString(&ev.xkey, buf8, sizeof(buf8) - 1, &ks, NULL);
-                buf8[n > 0 ? n : 0] = '\0';
-                handle_key(ks, buf8[0]);
-                if (!g_quit) redraw();
-            } else if (ev.type == SelectionNotify && g_xdnd_awaiting) {
-                /* 2026-08-24 - XDND drop data arrived; run drop_action
-                 * with $DROP_PATH set (window stays open - see the
-                 * g_drop_action block comment). */
-                g_xdnd_awaiting = 0;
-                xdnd_handle_selection(dpy, win);
-                if (!g_quit) redraw();
-            } else if (ev.type == ClientMessage && g_drop_action[0] &&
-                       (Atom)ev.xclient.message_type == ga_xdnd_enter) {
-                g_xdnd_source = (Window)ev.xclient.data.l[0];
-            } else if (ev.type == ClientMessage && g_drop_action[0] &&
-                       (Atom)ev.xclient.message_type == ga_xdnd_position &&
-                       g_xdnd_source != None) {
-                /* Answer Status immediately so the drag source shows an
-                 * accept cursor and is allowed to release here. */
-                XEvent st;
-                memset(&st, 0, sizeof(st));
-                st.xclient.type = ClientMessage;
-                st.xclient.window = g_xdnd_source;
-                st.xclient.message_type = ga_xdnd_status;
-                st.xclient.format = 32;
-                st.xclient.data.l[0] = (long)win;
-                st.xclient.data.l[1] = 1;              /* bit0: we accept */
-                st.xclient.data.l[2] = 0;              /* full-window rect */
-                st.xclient.data.l[3] = (long)ga_xdnd_action_copy;
-                st.xclient.data.l[4] = (long)ga_xdnd_action_copy;
-                XSendEvent(dpy, g_xdnd_source, False, NoEventMask, &st);
-            } else if (ev.type == ClientMessage && g_drop_action[0] &&
-                       (Atom)ev.xclient.message_type == ga_xdnd_leave) {
-                g_xdnd_source = None;
-            } else if (ev.type == ClientMessage && g_drop_action[0] &&
-                       (Atom)ev.xclient.message_type == ga_xdnd_drop &&
-                       g_xdnd_source != None) {
-                /* Request the uri-list payload; SelectionNotify above
-                 * finishes the handshake. */
-                XConvertSelection(dpy, ga_xdnd_selection, ga_uri_list,
-                                  ga_uri_list, win, (Time)ev.xclient.data.l[2]);
-                g_xdnd_awaiting = 1;
-            } else if (ev.type == ClientMessage && (Atom)ev.xclient.data.l[0] == wm_delete) {
-                g_quit = 1;
-            }
+    if (g_is_swatch_picker) {
+        /* Reset house action/state before the manager starts so a leftover
+         * PICK: from the last session cannot count as the first pick. */
+        {
+            char ap[PATH_BUF], sp[PATH_BUF];
+            snprintf(ap, sizeof(ap), "%s/#.desktop/taskbar_settings_action.txt", g_house_root);
+            snprintf(sp, sizeof(sp), "%s/#.desktop/taskbar_settings_state.txt", g_house_root);
+            FILE *af = fopen(ap, "w");
+            if (af) { fputs("seq=0\n", af); fclose(af); }
+            FILE *sf = fopen(sp, "w");
+            if (sf) { fputs("phase=0\nbg=-1\nfg=-1\napply=0\n", sf); fclose(sf); }
+            g_swatch_action_seq = 0;
+            g_phase = 0;
+            g_chosen_bg_idx = -1;
+            g_chosen_fg_idx = -1;
+        }
+        char mb[PATH_BUF];
+        snprintf(mb, sizeof(mb), "%s/*.monads/*.livedesk-taskbar/ops/+x/swatch_picker_manager.+x", g_house_root);
+        g_swatch_mgr_pid = fork();
+        if (g_swatch_mgr_pid == 0) {
+            execl(mb, mb, g_house_root, (char *)NULL);
+            _exit(1);
         }
     }
+    hq_run_event_loop(wm_delete, 1);
+    if (g_swatch_mgr_pid > 0) { kill(g_swatch_mgr_pid, SIGTERM); g_swatch_mgr_pid = -1; }
 
     XftDrawDestroy(xftdraw_buf);
     XFreeGC(dpy, gc);

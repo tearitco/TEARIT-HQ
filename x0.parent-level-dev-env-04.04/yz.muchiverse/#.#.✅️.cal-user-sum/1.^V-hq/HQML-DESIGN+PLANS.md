@@ -308,6 +308,14 @@ Since there's no WM close button, give the window its own keyboard close
 (e.g. Escape when no other input is pending) instead of relying on
 WM_DELETE_WINDOW.
 
+**CORRECTION 2026-08-28:** that rule is true for **strip / override_redirect
+popups** (taskbar Settings, entity menu). It is **false** if read as the
+recipe for **WM-managed HQ** windows in `khtpm_entity_menu_render.c`.
+Live: chat-hai `XMapRaised` stole the human browser; HQ now uses
+`XMapWindow`. Popups stay `XMapRaised` + no `XSetInputFocus` on map.
+Do not gate file-history poll on X focus. Cite:
+`HQ-WINDOW-MAP-AND-AGENT-INPUT.md` + `GROK-RENDER-INPUT-REFACTOR-HANDOFF.md`.
+
 ---
 
 ## 🎞️ Why db-hq doesn't render through raw-RGB + GL textures

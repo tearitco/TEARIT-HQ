@@ -1,0 +1,38 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+ANIMATION    | id                 | 1
+ANIMATION    | name               | Hit
+ANIMATION    | graphic            | Hit
+ANIMATION    | frames             | 4
+ANIMATION    | note               | 
+ANIMATION    | id                 | 2
+ANIMATION    | name               | Slash
+ANIMATION    | graphic            | Slash
+ANIMATION    | frames             | 6
+ANIMATION    | note               | 
+ANIMATION    | id                 | 3
+ANIMATION    | name               | Fire
+ANIMATION    | graphic            | Fire
+ANIMATION    | frames             | 8
+ANIMATION    | note               | 
+ANIMATION    | id                 | 4
+ANIMATION    | name               | Heal
+ANIMATION    | graphic            | Heal
+ANIMATION    | frames             | 6
+ANIMATION    | note               | 
+ANIMATION    | id                 | 5
+ANIMATION    | name               | 
+ANIMATION    | id                 | 6
+ANIMATION    | name               | 
+ANIMATION    | id                 | 7
+ANIMATION    | name               | 
+ANIMATION    | id                 | 8
+ANIMATION    | name               | 
+ANIMATION    | id                 | 9
+ANIMATION    | name               | 
+ANIMATION    | id                 | 10
+ANIMATION    | name               | 
+ANIMATION    | id                 | 11
+ANIMATION    | name               | 
+ANIMATION    | id                 | 12
+ANIMATION    | name               | 

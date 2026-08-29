@@ -7,5 +7,5 @@ cam_pan_z=0.00
 cam_z_level=8
 camera_mode=3
 render_mode=1
-selector_x=14
-selector_y=1
+selector_x=21
+selector_y=3

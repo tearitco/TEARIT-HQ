@@ -55,7 +55,7 @@
        dashboard.css selectors. -->
   <module src="*.monads/*.livedesk-taskbar/ops/+x/khtpm_hq_manager.+x" />
   <tabbar class="tab-bar">
-    <tab label="Actors"/>
+    <tab label="Actors" class="active"/>
     <tab label="Classes"/>
     <tab label="Skills"/>
     <tab label="Items"/>
@@ -66,7 +66,7 @@
     <tab label="States"/>
     <tab label="Animations"/>
     <tab label="Tilesets"/>
-    <tab label="Common Events" class="active"/>
+    <tab label="Common Events"/>
     <tab label="System"/>
     <tab label="Types"/>
     <tab label="Terms"/>

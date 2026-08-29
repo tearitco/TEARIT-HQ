@@ -1,0 +1,9 @@
+focused_project_root=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/101.mutaclsym🧟‍♂️️19.00
+cam_yaw=180.00
+cam_pitch=-90.00
+cam_pan_x=0.00
+cam_pan_y=0.00
+cam_pan_z=0.00
+cam_z_level=8
+camera_mode=3
+render_mode=1

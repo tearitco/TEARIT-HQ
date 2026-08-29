@@ -142,16 +142,28 @@ set_rmmv() {
     _field="$1"; _pkg="$2"; _val="$3"
     _f="$_pkg/rmmv_active.txt"
     mkdir -p "$_pkg"
-    if [ "$_field" = "tab" ]; then _other_field="tileset"; else _other_field="tab"; fi
-    _other_val=""
+    _tab=""; _tileset=""; _dir="tilesets"
     if [ -f "$_f" ]; then
-        _other_val=$(grep "^${_other_field}=" "$_f" | head -1 | cut -d= -f2-)
+        _tab=$(grep "^tab=" "$_f" | head -1 | cut -d= -f2-)
+        _tileset=$(grep "^tileset=" "$_f" | head -1 | cut -d= -f2-)
+        _dir=$(grep "^dir=" "$_f" | head -1 | cut -d= -f2-)
+        [ -n "$_dir" ] || _dir="tilesets"
     fi
+    case "$_field" in
+        tab) _tab="$_val" ;;
+        tileset) _tileset="$_val" ;;
+        dir) _dir="$_val" ;;
+    esac
+    # REAL FIX 2026-08-28: always rewrite tab+tileset+dir. The old
+    # "keep one other field" write dropped tileset on a tab click (and
+    # tab on a chooser click), which is why Dungeon/Inside needed 2-3
+    # presses to stick.
     {
-        [ -n "$_other_val" ] && printf '%s=%s\n' "$_other_field" "$_other_val"
-        printf '%s=%s\n' "$_field" "$_val"
+        [ -n "$_tab" ] && printf 'tab=%s\n' "$_tab"
+        [ -n "$_tileset" ] && printf 'tileset=%s\n' "$_tileset"
+        printf 'dir=%s\n' "$_dir"
     } > "$_f"
-    log "rmmv active $_field set to '$_val' in $_pkg"
+    log "rmmv active $_field set to '$_val' in $_pkg (tab=$_tab tileset=$_tileset dir=$_dir)"
 }
 
 case "${1:-}" in
@@ -159,6 +171,7 @@ case "${1:-}" in
     list)              list_cats; exit 0 ;;
     set-rmmv-tab)      shift; set_rmmv tab "$1" "$2"; exit 0 ;;
     set-rmmv-tileset)  shift; set_rmmv tileset "$1" "$2"; exit 0 ;;
+    set-rmmv-dir)      shift; set_rmmv dir "$1" "$2"; exit 0 ;;
 esac
 
 # Arg forms:

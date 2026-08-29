@@ -67,6 +67,7 @@
  * consumer's build script - don't hand-copy this file again. */
 
 #include <string.h>
+#include <stdio.h>
 
 #define MAX_CHILDREN 64
 
@@ -83,14 +84,45 @@ typedef struct Elem {
      * command (an unterminated quote, confirmed live: "sh: Unterminated
      * quoted string"). db-hq/chat-hai only ever WRITE this field today,
      * never read it (grep-confirmed before bumping this) - safe size
-     * increase, not a behavior change for them. */
-    char onclick[512];
+     * increase, not a behavior change for them.
+     *
+     * REAL BUG FIX 2026-08-25, same bug class recurring - bookmarks'
+     * own New+ postcmd (self path + consumed-newplus + house path + pal
+     * path, each single-quoted per the &-in-path fix, this house's own
+     * paths run 200+ bytes each with emoji dir names) measured 913
+     * bytes and got silently truncated at 512, corrupting the trailing
+     * argument and quote - New+ looked like it did nothing, no error
+     * (same class of silent failure the 64->512 bump's own header
+     * describes). 512 was already known to be an arbitrary "should be
+     * plenty" guess, not a measured bound - bumped again, this time with
+     * real headroom for this house's own long emoji-path convention
+     * rather than waiting for the next consumer to hit the ceiling. */
+    char onclick[1536];
+    /* REAL, NEW 2026-08-24 (direct request: palettes must be "a matrix of
+     * png render emojis ... like clock in toolbar or bookstack") - sprite=
+     * attribute holds the path to a sprite DIRECTORY whose sprite.csv is
+     * the real RGBA texture (emoji_gen_atlas.+x/emoji_xtract.+x pipeline,
+     * same proven mechanism as the toolbar's own clock-face build_uid
+     * glyph - see khtpm_strip_parser.c's tab_sprite()/blit_tab_sprite(),
+     * which hq_render ports). Empty = plain text element, zero behavior
+     * change for every existing consumer of this shared core. */
+    char sprite[256];
     int active;   /* tab active / sidebar item selected */
     int nav_index; /* wraith-alpha-standard index nav: 1-based sequential
                      * number assigned to every interactive element each
                      * redraw; 0 = not navigable. Ported from
                      * wraith_parser_alpha.c's own digit_accum/do_jump/
                      * display_num convention. */
+    /* REAL, NEW 2026-08-25 (live report: palettes' own scroll-arrow
+     * badges ran off the right edge of the screen - they're tiny
+     * (track-width) elements pinned at the window's own right edge, so
+     * draw_elem()'s normal inline-right badge position had nowhere to
+     * go. A real, generic capability (any narrow/edge-pinned element
+     * could hit the same problem), not a palettes-only hack: when set,
+     * draw_elem() ends the badge text AT the element's own left edge
+     * instead of starting it at the label position and growing right.
+     * Default 0 = every existing consumer's behavior is unchanged. */
+    int badge_align_left;
     struct Elem *children[MAX_CHILDREN];
     int n_children;
     struct Elem *parent;
@@ -137,6 +169,70 @@ static Elem *find_by_id(Elem *e, const char *id) {
         if (r) return r;
     }
     return NULL;
+}
+
+/* LayDoc Gap 3: flat preorder walk, same child order as
+ * dbhq_serialize_frame_subtree (non-title/module first, titles last).
+ * Root is entry 0, parent_index -1. Returns count, or -1 if cap
+ * too small (no silent truncate). */
+typedef struct {
+    int index;
+    int parent_index;
+    Elem *elem;
+} ElemFlatEntry;
+
+static int elem_flatten_add(Elem *e, int parent_idx, ElemFlatEntry *out, int cap, int *n) {
+    int me, i;
+    if (!e) return 0;
+    if (*n >= cap) return -1;
+    me = *n;
+    out[me].index = me;
+    out[me].parent_index = parent_idx;
+    out[me].elem = e;
+    (*n)++;
+    for (i = 0; i < e->n_children; i++) {
+        Elem *c = e->children[i];
+        if (strcmp(c->tag, "title") == 0 || strcmp(c->tag, "module") == 0) continue;
+        if (elem_flatten_add(c, me, out, cap, n) < 0) return -1;
+    }
+    for (i = 0; i < e->n_children; i++) {
+        Elem *c = e->children[i];
+        if (strcmp(c->tag, "title") != 0) continue;
+        if (elem_flatten_add(c, me, out, cap, n) < 0) return -1;
+    }
+    return 0;
+}
+
+int elem_flatten(Elem *root, ElemFlatEntry *out, int cap) {
+    int n = 0;
+    if (!root || !out || cap < 1) return -1;
+    if (elem_flatten_add(root, -1, out, cap, &n) < 0) return -1;
+    return n;
+}
+
+/* LayDoc Gap 5: computed cursor prefix, never stored in e->label.
+ * 2-state until is_active_scope (Gap 2): "[>]" focused, "[ ]" else.
+ * is_active_scope is the LayDoc [^] active-index branch. */
+void elem_cursor_prefix(const Elem *e, int focus_nav, int is_active_scope, char *out, size_t outsz) {
+    if (!out || outsz == 0) return;
+    if (!e || e->nav_index <= 0) { snprintf(out, outsz, "[ ]"); return; }
+    if (is_active_scope) { snprintf(out, outsz, "[^]"); return; }
+    if (e->nav_index == focus_nav) { snprintf(out, outsz, "[>]"); return; }
+    snprintf(out, outsz, "[ ]");
+}
+
+typedef Elem *(*ElemFactory)(void *row, void *ctx);
+void elem_inject_loop(Elem *parent, void **rows, int n, ElemFactory fn, void *ctx) {
+    int i;
+    if (!parent || !fn || n <= 0 || !rows) return;
+    for (i = 0; i < n; i++) {
+        Elem *e;
+        if (parent->n_children >= MAX_CHILDREN) return;
+        e = fn(rows[i], ctx);
+        if (!e) continue;
+        e->parent = parent;
+        parent->children[parent->n_children++] = e;
+    }
 }
 
 /* REAL START 2026-08-16, Stage 3 (khtpm-merge-how2.md §5) - real box-

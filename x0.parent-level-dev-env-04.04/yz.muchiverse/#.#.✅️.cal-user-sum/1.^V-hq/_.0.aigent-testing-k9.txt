@@ -130,6 +130,21 @@ dump way to quick. thats for emergency when text audit failed".
    don't repeat it. Installing xdotool ad hoc (`sudo apt-get install`)
    mid-task is itself a signal step 1 wasn't tried first.
 
+**CORRECTION / ADDENDUM 2026-08-28 (same binary, live-verified):**
+- Per-mode history files are the drive path (`db_hq_history.txt`,
+  `chat_hai_history.txt`, `taskbar_settings_history.txt`,
+  `entity_menu_history.txt`) — `KEY_PRESSED:` / `MOUSE_EVENT:` like
+  wraith-alpha. `poll_dbhq_agent_relay()` is not the only name;
+  do not require X focus to poll (that stole the human when agents
+  used xdotool to satisfy the old gate).
+- Map: override_redirect popups = `XMapRaised`, no SetInputFocus on
+  map. WM-managed HQ = `XMapWindow` (not Raised). Cite
+  `HQ-WINDOW-MAP-AND-AGENT-INPUT.md`.
+- Strip **arrows for unified nav**: `#.desktop/livedesk_agent_relay.txt`
+  codes **1002 / 1001** (KSC_FOCUS_RIGHT/LEFT). Writing
+  `strip_input_history.txt` `KEY_PRESSED:1002` did **not** move
+  `unified_nav_focus` in the 2026-08-28 re-prove.
+
 Principles
 ----------
 1) Test existing behavior first (regression baseline), then test new behavior.

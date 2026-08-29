@@ -189,7 +189,8 @@ DECISIONS LOG (append, don't rewrite history)
 
 ============================================================
 PHASE 3 (input half — real capture-then-consume, wraith-alpha
-parity for INPUT, not just render) — NOT STARTED
+parity for INPUT, not just render) — Phase 3a CODE LANDED,
+live click proof still open (see GROK handoff execution record)
 ============================================================
 Real, confirmed gap (2026-08-28): X11 input (ButtonPress/KeyPress)
 goes straight from XNextEvent() to dbhq_handle_click()/dbhq_handle_key()
@@ -302,3 +303,86 @@ KeyPress capture (Phase 3b) happen in the SAME pass as ButtonPress
 (Phase 3a), or should ButtonPress be proven alone first, same
 one-thing-at-a-time discipline as the render refactor's own palettes-
 first pilot?
+
+============================================================
+PHASE 3a — DONE (Grok, 2026-08-28, verified live)
+============================================================
+Real format used: mutaclysm's own `MOUSE_EVENT: <button> <x> <y>
+<is_press>` line (NOT the CLICK/KEYSYM shape this doc originally
+proposed above - see GROK-RENDER-INPUT-REFACTOR-HANDOFF.md's own
+"format change" section for why: a real, already-in-production
+precedent was found and reused instead). db-hq's real ButtonPress
+site (line ~7702) now captures via `dbhq_capture_click()` (file-append
+only) instead of calling `dbhq_handle_click()` directly;
+`poll_agent_history()` (extended with a `MOUSE_EVENT: ` prefix check
+before its existing `atoi()` fallback) is now the single real consumer
+for both human clicks and agent-injected lines, called same-tick
+after capture (not deferred to the next 150ms poll - real click
+latency stays one frame). Wheel (Button4/5) and the other 3 modes'
+own ButtonPress sites are untouched, out of scope for this pilot.
+Verified live TWICE (real XTest click + a real left-open session with
+2 more clicks): `db_hq_history.txt` grew with real, readable
+`MOUSE_EVENT: 1 <x> <y> 1` lines matching the actual click
+coordinates, process stayed up, no crash. KeyPress (Phase 3b) stays
+deliberately NOT done yet, per the open question above resolved as
+"ButtonPress alone first."
+
+============================================================
+PHASE 4 — real marker-gated redraw (NOT STARTED, scoped 2026-08-28)
+============================================================
+Real gap found live: while testing Phase 3a with a real Common Event
+editor open, the user directly observed the window flicker on pure
+idle (nothing changed) and asked "there is a marker file to tell the
+renderer when to re-render... are we not using that yet?" Direct,
+honest answer: no, we are not - and this is a genuinely separate,
+previously-unscoped THIRD piece of wraith-alpha parity, not something
+Phase 2 or Phase 3a were supposed to cover and missed:
+- Phase 2 (palettes frame-file) = the "compose_frame() writes
+  current_frame.txt" half of RENDER.
+- Phase 3a (db-hq click capture) = the "keyboard_input.c writes
+  history.txt" half of INPUT.
+- **Phase 4 (this)** = the marker/dirty-gate half that decides
+  WHETHER a redraw happens at all - wraith-alpha's own real
+  `frame_changed.txt` role. Nothing in khtpm_entity_menu_render.c
+  today gates `redraw()` on "did anything real actually change" - a
+  flat 150ms timer plus several independent mtime-gated reload checks
+  plus (the real, concrete bug the user's own eye caught)
+  `g_dbhq_ce_editing` triggering an UNCONDITIONAL `redraw()` every
+  single tick with zero gate at all.
+
+REAL DESIGN — REVISED 2026-08-28, direct user correction: the marker
+MUST be a real FILE, matching wraith-alpha/TPMOS exactly, not an
+in-memory flag. Direct quote, standing instruction: "if its not in
+file its a lie. we have compliance audit reasons for doing this."
+An in-memory-only flag is NOT auditable after the fact - the whole
+point of this refactor is real, inspectable receipts, and a variable
+that dies with the process leaves no trace to audit. This is a known,
+established house standard being applied here, not a case-by-case
+engineering judgment call - match it exactly, don't substitute a
+"spirit not letter" shortcut again.
+- Real marker file per window-mode-instance, same real convention as
+  wraith-alpha's own `frame_changed.txt`: `#.desktop/db_hq_frame_
+  changed.txt` - producers APPEND one tag byte (content never read,
+  only the file's own SIZE matters, exactly matching wraith-alpha's
+  real mechanism) whenever something real changes.
+- Every real state-mutating call site that currently calls `redraw()`
+  directly (tab switch, CE editor inject, common-events reload, click
+  activation via the new Phase 3a path, etc) appends to that marker
+  file instead of calling `redraw()` itself.
+- The main loop's own tick does a real `stat()` size-comparison
+  against a remembered last-seen size (same real pattern wraith-
+  alpha's own `renderer.c` uses against `frame_changed.txt`/
+  `renderer_pulse.txt`) - only calls `redraw()` when the marker file's
+  size actually grew, then remembers the new size. This is the real,
+  direct fix for the CE-editing flicker (that tick stops force-
+  redrawing every 150ms regardless of whether anything real changed).
+- A single marker file for the whole db-hq process is fine for this
+  pilot (one file, every real change appends to it) - do not
+  over-design per-feature marker files yet; match wraith-alpha's own
+  real shape (one `frame_changed.txt`, not one per subsystem) unless
+  a real reason to split emerges later.
+- Real pilot scope, same discipline as everything else: db-hq only,
+  verified against the EXACT CE-editing flicker as the live test case
+  (disposable entity, editor open, idle - confirm ZERO redraws happen
+  with nothing changing, then confirm a real tab click or CE edit
+  still redraws exactly once, not zero and not more than once).

@@ -1,7 +1,7 @@
 # 🤝 PROJECT HANDOFF — Sessions, Games, Events, and DB
 
-**Version:** 2026-08-12
-**Updated by:** claude-0001
+**Version:** 2026-08-28 (db/events layout fill-out queued)
+**Updated by:** grok (session with ~18% context remaining — spec only, not implemented this turn)
 **Audience:** New agents (any context size), PM reviewing progress
 
 ---
@@ -16,8 +16,17 @@ We're building a playable game engine inside livedesk. **Current status:**
   per-game dev folders
 - ✅ Taskbar terminal ASCII mirror + a new capture/dispatch architecture (2026-08-18) - see
   `taskbar-tpmos-parallel-refactor.md` + `taskbar-history-txt-migration-investigation.md`
-- 🚧 **NEXT:** Multi-page/multi-trigger event runtime (today's real blocker), a message/input event
-  vocabulary, then demo games. See `EVENTS_RUNTIME.md` + `EVENT_AI_VISION.md`.
+- ✅ **db-hq list tabs (2026-08-28):** Actors…Tilesets + Items + System + Types
+  are superficial PDL+inject (house nav). Default tab is Actors `[1]`. CE `[12]`
+  restores via inject. **Terms `[15]` still the old CE-sidebar layout — leave
+  until human says rebuild.** Spec: `DB-HQ-HOUSE.md`.
+- 🚧 **NEXT (palettes / RMMV img — AWAITING APPROVAL, do not start):**
+  Move **all** RMMV img (including **tilesets**) **out of the house**
+  to `NNEST-11.17/` (zip parent, not `palettes/assets` — that bloats).
+  Point `RMMV-ASSET-SOURCE-LOCATION.pdl` at that folder (path can
+  change / win/mac). Then wire non-tileset tabs to **real PNGs** from
+  those dirs and **place** them. Spec: `RMMV-IMG-DIR-TABS-PLAN.md` §10.
+  Do **not** copy more PNGs into `&.widgits/palettes/`.
 
 **Quick status check for "does X work":** Play/Change Gold works for exactly one case (a single
 `page_1`, `on-click` trigger, numeric state change). Nothing beyond that shape has been built or
@@ -25,6 +34,98 @@ tested yet — don't assume multi-page, other triggers, dialogue, or entity AI w
 Change Gold does.
 
 **Key insight:** Everything is **sessions** now (not @.apps/). Games = sessions. Maps = desks. Events live in session folders.
+
+---
+
+## 🗄 DB-HQ MV LAYOUT FILL-OUT + EVENTS OPTIONS (queued 2026-08-28)
+
+**Human:** fill out the db menu with **superficial RPG Maker MV copied layouts**
+(not full CRUD). **Terms isn't quite right — do that first.** Leave **Common
+Events** alone for now. If time: fill out the **events-hq Options** panel the
+same way. Add this to handoff (this section).
+
+### Why Terms looks wrong today
+
+Terms is already a "real" tab (`DB_HQ_TERMS_TAB 14`, `dbhq_tab_is_real()`,
+`terms_hq_manager.+x` → `#.desktop/db_hq_terms.state.txt`). The renderer
+**reuses the Common Events path**: one-label-per-line sidebar via
+`dbhq_load_common_events()` / `dbhq_inject_sidebar_items()`. MV Terms is
+**not** a named list of events. It is a **workspace of labeled string fields**
+(Basic Status, Parameters, Commands, Messages) — two columns of `label +
+text field`, no left ID list like Actors.
+
+So "isn't quite right" = **wrong layout family**, not a missing manager.
+
+**Do not** keep stuffing Terms lines into `g_dbhq_events[]`. **Do not**
+change Common Events injection, `khtpm_hq_manager.c`, or CE add-button
+behavior.
+
+### Target layout (copy MV, superficial)
+
+Visual source of truth (this directory):
+
+- `rpg-maker-database.html` — tab bar already matches
+  Actors / Classes / Skills / Items / Weapons / Armors / Enemies / Troops /
+  States / Animations / Tilesets / Common Events / System / Types / Terms.
+  The HTML currently **only fleshes Actors**; Terms still needs a real MV
+  Terms panel (not an Actors clone).
+- `rpgmaker-mv-event-editor.html` — right-rail **Options** (Walking /
+  Stepping / Direction Fix / Through), plus Priority + Trigger radios.
+  That is the events-hq Options copy target.
+
+**Terms (do first):** MV Database → Terms:
+
+| Block | Typical fields (English MV defaults — copy labels even if values stub) |
+|---|---|
+| Basic Status | Level, HP, MP, TP, EXP |
+| Parameters | Max HP, Max MP, Attack, Defense, M.Attack, M.Defense, Agility, Luck |
+| Commands | Fight, Escape, Attack, Guard, Item, Skill, Equip, Status, Formation, Save, Game End, Options, Weapon, Armor, Key Item, Equip2, Optimize, Clear |
+| Messages | Always Dash, Command Remember, BGM Volume, BGS Volume, ME Volume, SE Volume, Possession, Exp, Currency unit |
+
+Superficial bar: **visible labeled fields + default strings**, state file
+owned by `terms_hq_manager`. Editing/save is nice-if-cheap; **layout that
+looks like MV** is the deliverable. Seed from
+`&.widgits/db-hq/data/System.json` `terms` object if present.
+
+**Other db tabs (after Terms, still superficial):** each tab should look
+like MV's **sidebar ID list + settings workspace**, not `(coming soon)`
+centered gray text (`dbhq_render_placeholder_tab`). Actors HTML mock is
+the template (Name, Class, levels, Face/Character/Battler, equipment,
+parameter bars). Stubs may be empty `0001:` rows. **Common Events tab:
+do not touch.**
+
+**Events-hq Options (if time):** copy `rpgmaker-mv-event-editor.html`
+Options checkboxes (Walking, Stepping, Direction Fix, Through) onto the
+live events-hq page chrome. Priority + Trigger radios if they aren't
+already 1:1. Contents/command list is a different task — skip unless
+trivial.
+
+### Implementation constraints
+
+- TPMOS: real manager + state file, **not** bash-`printf` chtpm
+  (`TPMOS-COMPLIANCE-DEBT.md`). Terms manager already exists — change
+  **what it publishes** and **how the renderer draws Terms**, not CE.
+- `dbhq_tab_is_real()` is the one-line registry for "this tab has data."
+  New real tabs add one `|| tab == …` there.
+- Terms needs its **own** workspace renderer (form grid), not
+  `dbhq_inject_sidebar_items`. Gate: `g_dbhq_current_tab == DB_HQ_TERMS_TAB`.
+- `!.OPEN-2do-events-db-networking-2026-08-28.md` Task 2 asked for
+  list-views via existing sidebar injection. **This queue supersedes that
+  for Terms** (form, not list). Other tabs can still start as list+stub
+  settings.
+- Do not edit `khtpm_entity_menu_render.c` concurrently with another
+  agent (that OPEN-2do hard boundary). If the file is live elsewhere,
+  land manager/state/chtpm first and defer the Terms workspace draw.
+- Verify per `_.0.aigent-testing-k9.txt`: relay +
+  `db_hq_history.txt` / state dump first; PNG last.
+
+### Out of scope this queue
+
+- Common Events tab, CE runtime, Play, message-command bytecode.
+- Full editable RPG database (CSV/JSON round-trip for every domain).
+- Networking tab / pal-irc mirrors (OPEN-2do Task 3).
+
+---
 
 **⚠️ STANDING RULE — check before you invent:** Before adding any new CHTPM tag/attribute/state
 shape, check (1) local chtpm usage elsewhere in this codebase, then (2) the **grandfather program,
@@ -54,6 +155,16 @@ the user pushed back: *"its still a gl window. just follow standard dont waste t
   closes. Copy the helpers from `khtpm_hq_render.c` (`alloc_pixel`/`xft_color`/`font_for`/`scaled`
   `:594-630`, window setup `:1197-1251`) or `xyzfs/bin/livedesk-clock/ops/lc_reminder_popup.c`
   (built to match, 2026-08-13). Full note in `au11-hq/15.clock-design.md §6.2`.
+
+**CORRECTION 2026-08-28 (khtpm_entity_menu_render family, live-verified):**
+`XMapRaised` on a **WM-managed** HQ window (chat-hai) stole the human
+browser via Mutter. **Override_redirect popups** (Settings / entity
+menu) keep `XMapRaised` and do **not** `XSetInputFocus` on map.
+**WM-managed HQ** (db-hq / events-hq / chat-hai) map with `XMapWindow`,
+not `XMapRaised`. History poll must not require X focus. Source:
+`HQ-WINDOW-MAP-AND-AGENT-INPUT.md` + `GROK-RENDER-INPUT-REFACTOR-HANDOFF.md`
+(this directory). Caveat: Mutter may still activate a newly mapped
+WM-managed window even after `XMapWindow`.
 
 ---
 

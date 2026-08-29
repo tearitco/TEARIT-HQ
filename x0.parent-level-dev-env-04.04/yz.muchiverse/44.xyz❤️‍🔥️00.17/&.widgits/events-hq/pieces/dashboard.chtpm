@@ -53,7 +53,16 @@
        drawn/hit-testable in Scripting mode. Kept as its own subtree
        (not text pasted over "right") so a real block/node editor can
        replace this panel's children later without touching Scripting's
-       own left/right/footer at all. -->
+       own left/right/footer at all.
+       Visual Scripting task #2 (2026-08-28): NO structural change made
+       on purpose - khtpm_events_hq_manager.c now publishes real
+       SCRATCHBLOCK|<key>|<ON|OFF> rows (scanned from its compiled
+       event.pal Control Switch shape), and the renderer's minimal
+       fill-from-data glue (deferred .diff, see the handoff doc) injects
+       one .scratch-block Elem per row as a child of THIS panel; the
+       stub text below stays the "coming soon" fallback only. Being
+       byte-identical pre-patch keeps the live renderer's current
+       label-fill loop output unchanged until the glue lands. -->
   <panel id="viewmode-stub" class="stub-panel">
     <text id="viewmode-stub-text" class="empty-msg" label=""/>
   </panel>

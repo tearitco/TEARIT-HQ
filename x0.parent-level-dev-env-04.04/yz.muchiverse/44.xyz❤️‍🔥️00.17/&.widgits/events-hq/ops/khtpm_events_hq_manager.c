@@ -671,6 +671,52 @@ static void publish_scratch_blocks(FILE *wf, const char *pd) {
             }
         }
     }
+
+    /* VS task #2 follow-up (2026-08-28) - Change Gold / exec-shim blocks.
+     * TEMPLATE commands compile to `exec cmd_N.sh` wrappers (not the switch
+     * opcode shape above), so their blocks come from the shim itself: take
+     * the op basename + first quoted arg, publish SCRATCHBLOCK|<op>|<arg>.
+     * Switches keep |ON|OFF; these carry the real value (change_gold -> 10,
+     * take_gold -> -10). Same pseudo-format, zero parser impact. */
+    rewind(pf);
+    char sl[512];
+    while (fgets(line, sizeof(line), pf)) {
+        char shim[80];
+        if (sscanf(line, "exec cmd_%79[0-9_].sh", shim) != 1) continue;
+        char shim_path[PATH_BUF];
+        snprintf(shim_path, sizeof(shim_path), "%s/cmd_%s.sh", pd, shim);
+        FILE *sf = fopen(shim_path, "r");
+        if (!sf) continue;
+        while (fgets(sl, sizeof(sl), sf)) {
+            if (strncmp(sl, "exec ", 5) != 0) continue;
+            char *p = sl + 5;
+            while (*p == ' ') p++;
+            char *op = p;
+            while (*op && *op != ' ') op++;
+            char opb[128];
+            snprintf(opb, sizeof(opb), "%.*s", (int)(op - p), p);
+            char *slash = strrchr(opb, '/');
+            char *base = slash ? slash + 1 : opb;
+            if (strncmp(base, "mr_", 3) == 0) base += 3;
+            char *dot = strstr(base, ".+x");
+            if (dot) *dot = '\0';
+            char status[64] = "OK";
+            char *q1 = strchr(op + 1, '\'');
+            if (q1) {
+                char *q2 = strchr(q1 + 1, '\'');
+                if (q2 && q2 > q1 + 1) {
+                    int n = (int)(q2 - q1 - 1);
+                    if (n < (int)sizeof(status)) {
+                        memcpy(status, q1 + 1, n);
+                        status[n] = '\0';
+                    }
+                }
+            }
+            if (*base) fprintf(wf, "SCRATCHBLOCK|%s|%s\n", base, status);
+            break;
+        }
+        fclose(sf);
+    }
     fclose(pf);
 }
 

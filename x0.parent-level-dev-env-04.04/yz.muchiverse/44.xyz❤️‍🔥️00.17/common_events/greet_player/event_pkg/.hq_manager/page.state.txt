@@ -1,5 +1,4 @@
-TRIGGER|Parallel
-SWITCH|another_switch
+TRIGGER|Autorun
 CMD|1|change_gold|amount=1016
 CMD|2|show_choices|choices=Say hello,Wave,Ignore|default=0|default=0
 CMD|3|change_gold|amount=1

@@ -1,0 +1,50 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+SKILL        | id                 | 1
+SKILL        | name               | Attack
+SKILL        | stype              | None
+SKILL        | mp_cost            | 0
+SKILL        | tp_cost            | 0
+SKILL        | scope              | 1 Enemy
+SKILL        | occasion           | Always
+SKILL        | description        | 
+SKILL        | id                 | 2
+SKILL        | name               | Guard
+SKILL        | stype              | None
+SKILL        | mp_cost            | 0
+SKILL        | tp_cost            | 0
+SKILL        | scope              | User
+SKILL        | occasion           | Battle Screen
+SKILL        | description        | 
+SKILL        | id                 | 3
+SKILL        | name               | Magic
+SKILL        | stype              | Magic
+SKILL        | mp_cost            | 5
+SKILL        | tp_cost            | 0
+SKILL        | scope              | 1 Enemy
+SKILL        | occasion           | Battle Screen
+SKILL        | description        | 
+SKILL        | id                 | 4
+SKILL        | name               | Heal
+SKILL        | stype              | Magic
+SKILL        | mp_cost            | 4
+SKILL        | tp_cost            | 0
+SKILL        | scope              | 1 Ally
+SKILL        | occasion           | Always
+SKILL        | description        | 
+SKILL        | id                 | 5
+SKILL        | name               | 
+SKILL        | id                 | 6
+SKILL        | name               | 
+SKILL        | id                 | 7
+SKILL        | name               | 
+SKILL        | id                 | 8
+SKILL        | name               | 
+SKILL        | id                 | 9
+SKILL        | name               | 
+SKILL        | id                 | 10
+SKILL        | name               | 
+SKILL        | id                 | 11
+SKILL        | name               | 
+SKILL        | id                 | 12
+SKILL        | name               | 

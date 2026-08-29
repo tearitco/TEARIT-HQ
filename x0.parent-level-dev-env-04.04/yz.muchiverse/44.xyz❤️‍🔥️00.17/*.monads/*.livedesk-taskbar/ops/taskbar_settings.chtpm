@@ -20,18 +20,18 @@
      every <item> already uses - zero parser/struct changes needed. -->
 <window label="taskbar settings" class="swatch-picker">
   <page name="main">
-    <item id="sw0" class="swatch sw-black" label="black"/>
-    <item id="sw1" class="swatch sw-white" label="white"/>
-    <item id="sw2" class="swatch sw-charcoal" label="charcoal"/>
-    <item id="sw3" class="swatch sw-silver" label="silver"/>
-    <item id="sw4" class="swatch sw-red" label="red"/>
-    <item id="sw5" class="swatch sw-orange" label="orange"/>
-    <item id="sw6" class="swatch sw-yellow" label="yellow"/>
-    <item id="sw7" class="swatch sw-green" label="green"/>
-    <item id="sw8" class="swatch sw-cyan" label="cyan"/>
-    <item id="sw9" class="swatch sw-blue" label="blue"/>
-    <item id="sw10" class="swatch sw-purple" label="purple"/>
-    <item id="sw11" class="swatch sw-pink" label="pink"/>
-    <item id="close" class="close-btn" label="x"/>
+    <item id="sw0" action="PICK:0" class="swatch sw-black" label="black"/>
+    <item id="sw1" action="PICK:1" class="swatch sw-white" label="white"/>
+    <item id="sw2" action="PICK:2" class="swatch sw-charcoal" label="charcoal"/>
+    <item id="sw3" action="PICK:3" class="swatch sw-silver" label="silver"/>
+    <item id="sw4" action="PICK:4" class="swatch sw-red" label="red"/>
+    <item id="sw5" action="PICK:5" class="swatch sw-orange" label="orange"/>
+    <item id="sw6" action="PICK:6" class="swatch sw-yellow" label="yellow"/>
+    <item id="sw7" action="PICK:7" class="swatch sw-green" label="green"/>
+    <item id="sw8" action="PICK:8" class="swatch sw-cyan" label="cyan"/>
+    <item id="sw9" action="PICK:9" class="swatch sw-blue" label="blue"/>
+    <item id="sw10" action="PICK:10" class="swatch sw-purple" label="purple"/>
+    <item id="sw11" action="PICK:11" class="swatch sw-pink" label="pink"/>
+    <item id="close" action="CLOSE" class="close-btn" label="x"/>
   </page>
 </window>

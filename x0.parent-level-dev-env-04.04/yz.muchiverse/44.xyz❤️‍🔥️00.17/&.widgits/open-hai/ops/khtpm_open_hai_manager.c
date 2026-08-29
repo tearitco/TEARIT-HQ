@@ -65,6 +65,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <signal.h>
 #include <fcntl.h>
 
 #define PATH_BUF 4096
@@ -460,14 +461,51 @@ static int g_pending_is_tool = 0;
  * shapes, set at dispatch time (send_to_ollama()/send_to_openrouter())
  * so the response-check code doesn't need to re-derive it. */
 static BackendMode g_pending_backend_mode = BACKEND_OLLAMA_RAW;
+/* REAL FIX 2026-08-28, direct live bug: every send path below used to
+ * silently `if (g_pending) return;` with zero feedback - a message
+ * typed while a previous request was still in flight just vanished,
+ * and when the OLD request finally resolved (possibly with an error,
+ * e.g. a bad OpenRouter model), that stale result showed up instead,
+ * looking exactly like "I switched models and the new one didn't
+ * respond." Root-caused live: a real "hi" sent to OpenRouter, model
+ * switched to gemma3:1b ~29s later while still pending, and the
+ * eventual OpenRouter parse-error is what landed in the transcript -
+ * gemma3 was never actually asked anything. Two real fixes: (1) a
+ * dropped send now persists a real, visible message instead of
+ * vanishing; (2) switching models while a request is pending now
+ * cancels the stale request immediately (real SIGTERM + reap, not a
+ * freeze/wait) so the new model's send goes through right away -
+ * direct instruction: "i dont want it to freeze... if model is
+ * switched it should automatically unfreeze." g_pending_model_name
+ * remembers which model a still-in-flight request was actually sent
+ * under, so dispatch_send() can tell "still on the same model, just
+ * slow" (drop + message) apart from "model changed since this was
+ * sent" (cancel + proceed). */
+static char g_pending_model_name[128] = "";
 
 static void write_busy_state(void) {
     FILE *f = fopen(g_busy_state_path, "w");
     if (f) { fprintf(f, "%d\n", g_pending ? 1 : 0); fclose(f); }
 }
 
+static void cancel_pending(const char *reason) {
+    if (!g_pending) return;
+    kill(g_pending_pid, SIGTERM);
+    waitpid(g_pending_pid, NULL, 0);
+    if (g_pending_outfile[0]) unlink(g_pending_outfile);
+    g_pending = 0;
+    g_pending_is_tool = 0;
+    write_busy_state();
+    if (reason && reason[0]) persist_msg(0, reason);
+}
+
 static void send_to_ollama(const char *prompt) {
-    if (g_pending) return;
+    /* Real fix 2026-08-28: dispatch_send() already cancels a pending
+     * request when the MODEL changed - reaching this guard still true
+     * means the same model is genuinely still answering. Say so instead
+     * of silently eating the new message (see g_pending_model_name's
+     * own header comment for the full real bug this fixes). */
+    if (g_pending) { persist_msg(0, "[dropped: previous request to this model is still in flight - wait for it, or switch models to cancel it]"); return; }
 
     char model_name[128];
     BackendMode backend_mode;
@@ -512,6 +550,7 @@ static void send_to_ollama(const char *prompt) {
         g_pending = 1;
         g_pending_pid = pid;
         g_pending_backend_mode = BACKEND_OLLAMA_RAW;
+        snprintf(g_pending_model_name, sizeof(g_pending_model_name), "%s", model_name);
         write_busy_state();
     }
 }
@@ -526,7 +565,9 @@ static void send_to_ollama(const char *prompt) {
  * own real next step, see the handoff doc). Written and ready for that
  * wiring, not exercised against a real key/response yet. */
 static void send_to_openrouter(const char *prompt, const char *model_name) {
-    if (g_pending) return;
+    /* See send_to_ollama()'s own real-fix comment - dispatch_send()
+     * already cancels a stale pending request on a model switch. */
+    if (g_pending) { persist_msg(0, "[dropped: previous request to this model is still in flight - wait for it, or switch models to cancel it]"); return; }
 
     char key[512];
     if (!load_openrouter_key(key, sizeof(key))) {
@@ -587,6 +628,7 @@ static void send_to_openrouter(const char *prompt, const char *model_name) {
         g_pending = 1;
         g_pending_pid = pid;
         g_pending_backend_mode = BACKEND_OPENROUTER;
+        snprintf(g_pending_model_name, sizeof(g_pending_model_name), "%s", model_name);
         write_busy_state();
     }
 }
@@ -723,7 +765,9 @@ static void extract_openrouter_content(const char *json, char *out, size_t outsz
  * tool-calling itself was NOT successfully confirmed end-to-end this
  * session (see handoff doc's own open item). */
 static void send_to_tokenrouter(const char *prompt, const char *model_name) {
-    if (g_pending) return;
+    /* See send_to_ollama()'s own real-fix comment - dispatch_send()
+     * already cancels a stale pending request on a model switch. */
+    if (g_pending) { persist_msg(0, "[dropped: previous request to this model is still in flight - wait for it, or switch models to cancel it]"); return; }
 
     char key[512];
     if (!load_tokenrouter_key(key, sizeof(key))) {
@@ -765,6 +809,7 @@ static void send_to_tokenrouter(const char *prompt, const char *model_name) {
         g_pending = 1;
         g_pending_pid = pid;
         g_pending_backend_mode = BACKEND_TOKENROUTER;
+        snprintf(g_pending_model_name, sizeof(g_pending_model_name), "%s", model_name);
         write_busy_state();
     }
 }
@@ -1351,7 +1396,11 @@ static void execute_pending_tool_into(const PendingTool *pt, char *out, size_t o
 }
 
 static void start_tool_job(PendingTool *pt) {
-    if (g_pending) return;
+    /* Same real fix as the send_* functions above - a tool run isn't
+     * tied to a specific model, so a model switch does not auto-cancel
+     * it (nothing stale to reconcile), but a silently-dropped tool
+     * request is the same confusing symptom - say so. */
+    if (g_pending) { persist_msg(0, "[dropped: a previous request is still in flight - wait for it to finish before running another tool]"); return; }
     g_pending_tool = *pt;
     snprintf(g_pending_outfile, sizeof(g_pending_outfile), "%s/toolout-%d.txt", g_audit_dir, (int)getpid());
     unlink(g_pending_outfile);
@@ -1397,6 +1446,22 @@ static void dispatch_send(const char *prompt) {
     char model_name[128];
     BackendMode backend_mode;
     current_model(model_name, sizeof(model_name), &backend_mode);
+    /* REAL FIX 2026-08-28, direct instruction ("i dont want it to
+     * freeze... if model is switched it should automatically
+     * unfreeze"): if something is still pending AND it was sent under
+     * a DIFFERENT model than the one we're about to send to, that
+     * pending request is stale relative to what the human is doing
+     * right now - cancel it (real SIGTERM + reap, not a wait) so this
+     * new send proceeds immediately instead of getting silently
+     * dropped by the g_pending guards inside send_to_*(). A pending
+     * request under the SAME model is genuinely still relevant - that
+     * one is left alone and will produce the real "[dropped: ...]"
+     * message from inside send_to_*() if this call races it. */
+    if (g_pending && strcmp(g_pending_model_name, model_name) != 0) {
+        char msg[256];
+        snprintf(msg, sizeof(msg), "[cancelled: switched away from %s while it was still answering]", g_pending_model_name);
+        cancel_pending(msg);
+    }
     if (backend_mode == BACKEND_OPENROUTER) { send_to_openrouter(prompt, model_name); return; }
     if (backend_mode == BACKEND_TOKENROUTER) { send_to_tokenrouter(prompt, model_name); return; }
     send_to_ollama(prompt);

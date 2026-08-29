@@ -299,11 +299,59 @@ static void publish_elements(void) {
  * chooser) is any distinct prefix seen; a sheet/category (for the top
  * tabs) is any distinct suffix seen FOR THE ACTIVE prefix only - never
  * fabricates a tileset or sheet that has no real file backing it. */
+/* REAL FIX 2026-08-28 (RMMV-IMG-DIR-TABS-PLAN.md §10 - "move ALL img
+ * including tilesets OUT to a folder above the house... reference that
+ * folder from .pdl so the path can change without a C rewrite"): the
+ * ONE real path pointer for every rmmv img directory (tilesets AND
+ * every other category) is the `img_root` key in
+ * RMMV-ASSET-SOURCE-LOCATION.pdl. Real, exact key match (not a loose
+ * strstr()) so this doesn't accidentally match the PDL's own
+ * `img_root_added`/`img_root_why` NOTE lines, which also contain the
+ * substring "img_root". No hardcoded `&.widgits/palettes/assets/`, no
+ * hardcoded `&.widgits/palettes/tilesets/rmmv`, and no `/media/.../
+ * www/img` USB fallback anymore - img_root is the single source of
+ * truth for where the house's own stable local copy lives. */
+static int rmmv_img_root(const char *house_root, char *out, size_t outsz) {
+    char pdl[PATH_BUF];
+    snprintf(pdl, sizeof(pdl), "%s/../#.#.✅️.cal-user-sum/1.^V-hq/RMMV-ASSET-SOURCE-LOCATION.pdl", house_root);
+    FILE *f = fopen(pdl, "r");
+    if (!f) return 0;
+    char line[PATH_BUF];
+    int found = 0;
+    while (fgets(line, sizeof(line), f)) {
+        char *bar1 = strchr(line, '|');
+        if (!bar1) continue;
+        char *bar2 = strchr(bar1 + 1, '|');
+        if (!bar2) continue;
+        char key[64];
+        size_t klen = (size_t)(bar2 - (bar1 + 1));
+        if (klen >= sizeof(key)) klen = sizeof(key) - 1;
+        memcpy(key, bar1 + 1, klen);
+        key[klen] = '\0';
+        char *ks = key;
+        while (*ks == ' ') ks++;
+        char *ke = ks + strlen(ks);
+        while (ke > ks && ke[-1] == ' ') { ke--; *ke = '\0'; }
+        if (strcmp(ks, "img_root") != 0) continue;
+        char *val = bar2 + 1;
+        while (*val == ' ') val++;
+        size_t n = strlen(val);
+        while (n > 0 && (val[n-1] == '\n' || val[n-1] == '\r' || val[n-1] == ' ')) val[--n] = 0;
+        snprintf(out, outsz, "%s", val);
+        found = 1;
+        break;
+    }
+    fclose(f);
+    return found;
+}
+
 #define RMMV_MAX_ENTRIES 256
 typedef struct { char prefix[64]; char suffix[4]; } RmmvFile;
 static int scan_rmmv_dir(const char *house_root, RmmvFile *out, int max_out) {
+    char root[PATH_BUF];
+    if (!rmmv_img_root(house_root, root, sizeof(root))) return 0;
     char dir_path[PATH_BUF];
-    snprintf(dir_path, sizeof(dir_path), "%s/&.widgits/palettes/tilesets/rmmv", house_root);
+    snprintf(dir_path, sizeof(dir_path), "%s/tilesets", root);
     DIR *d = opendir(dir_path);
     if (!d) return 0;
     int n = 0;
@@ -391,14 +439,102 @@ static void rmmv_cat_for_suffix(const char *suffix, char *out, size_t outsz) {
  * real file backing it. Also resolves and returns the real, concrete
  * active category (e.g. "a2") for the active tab letter, since a tab
  * click only specifies a LETTER, not which of a1..a5 backs it. */
+
+static const char *k_rmmv_img_dirs[] = {
+    "tilesets","characters","faces","sv_actors","sv_enemies",
+    "enemies","battlebacks1","battlebacks2","parallaxes",
+    "pictures","animations","system","titles1","titles2"
+};
+
+/* REAL FIX 2026-08-28 - see rmmv_img_root()'s own header comment
+ * above. `tilesets` is no longer special-cased here: `img_root/
+ * tilesets` is a real, ordinary sibling of every other category
+ * directory under img_root now (RMMV-IMG-DIR-TABS-PLAN.md §10's own
+ * layout - `tilesets_dir` in the PDL is just `<img_root>/tilesets`
+ * for documentation/reference, this function doesn't need a separate
+ * lookup for it). No more `&.widgits/palettes/assets/` fallback, no
+ * more `/media/.../www/img` USB fallback - img_root is the single
+ * source of truth. */
+static int rmmv_resolve_img_dir(const char *dirname, char *out, size_t outsz) {
+    char root[PATH_BUF];
+    if (!rmmv_img_root(g_house_root, root, sizeof(root))) return 0;
+    snprintf(out, outsz, "%s/%s", root, dirname);
+    return access(out, F_OK) == 0;
+}
+
+static void write_png_thumb_csv(const char *png_path, const char *csv_path) {
+    int w, h, ch;
+    unsigned char *px = stbi_load(png_path, &w, &h, &ch, 4);
+    if (!px) return;
+    FILE *f = fopen(csv_path, "w");
+    if (!f) { stbi_image_free(px); return; }
+    fprintf(f, "# resolution=%d\n# scale=1.0\n# transform=0,0,0\nr,g,b,a\n", RMMV_TILE_PX);
+    for (int y = 0; y < RMMV_TILE_PX; y++) {
+        for (int x = 0; x < RMMV_TILE_PX; x++) {
+            int sx = (w > 0) ? x * w / RMMV_TILE_PX : 0;
+            int sy = (h > 0) ? y * h / RMMV_TILE_PX : 0;
+            if (sx >= w) sx = w - 1;
+            if (sy >= h) sy = h - 1;
+            if (sx < 0) sx = 0;
+            if (sy < 0) sy = 0;
+            const unsigned char *p = &px[((size_t)sy * (size_t)w + (size_t)sx) * 4];
+            fprintf(f, "%d,%d,%d,%d\n", p[0], p[1], p[2], p[3]);
+        }
+    }
+    fclose(f);
+    stbi_image_free(px);
+}
+
+static void publish_rmmv_asset_dir(const char *dirname, FILE *out) {
+    char abs[PATH_BUF];
+    if (!rmmv_resolve_img_dir(dirname, abs, sizeof(abs))) return;
+    DIR *d = opendir(abs);
+    if (!d) return;
+    char sprite_root[PATH_BUF];
+    snprintf(sprite_root, sizeof(sprite_root), "%s/sprites/rmmv/dir_%s", g_package_dir, dirname);
+    int n = 0;
+    struct dirent *de;
+    while (n < MAX_TILES && (de = readdir(d)) != NULL) {
+        const char *name = de->d_name;
+        size_t len = strlen(name);
+        if (len < 5) continue;
+        if (strcasecmp(name + len - 4, ".png") != 0) continue;
+        n++;
+        char dir[PATH_BUF], csv[PATH_BUF], png[PATH_BUF];
+        snprintf(dir, sizeof(dir), "%s/%03d", sprite_root, n);
+        snprintf(csv, sizeof(csv), "%s/sprite.csv", dir);
+        snprintf(png, sizeof(png), "%s/%s", abs, name);
+        struct stat st;
+        if (stat(csv, &st) != 0) {
+            char mk[PATH_BUF * 2];
+            snprintf(mk, sizeof(mk), "mkdir -p '%s'", dir);
+            system(mk);
+            write_png_thumb_csv(png, csv);
+        }
+        fprintf(out, "%s\t%s\t%s\n", name, name, dir);
+    }
+    closedir(d);
+}
+
 static void publish_rmmv_options(const char *house_root, const char *active_key,
-                                  const char *active_tab_letter, char *out_active_cat, size_t out_active_cat_sz) {
+                                  const char *active_tab_letter, char *out_active_cat, size_t out_active_cat_sz,
+                                  const char *active_dir) {
     char opt_path[PATH_BUF];
     snprintf(opt_path, sizeof(opt_path), "%s/rmmv_options.txt", g_package_dir);
     char tmp[PATH_BUF];
     snprintf(tmp, sizeof(tmp), "%s.tmp", opt_path);
     FILE *out = fopen(tmp, "w");
     if (!out) return;
+
+    {
+        const char *ad = (active_dir && active_dir[0]) ? active_dir : "tilesets";
+        fprintf(out, "ACTIVE_DIR|%s\n", ad);
+        for (size_t di = 0; di < sizeof(k_rmmv_img_dirs)/sizeof(k_rmmv_img_dirs[0]); di++) {
+            char pth[PATH_BUF];
+            if (!rmmv_resolve_img_dir(k_rmmv_img_dirs[di], pth, sizeof(pth))) continue;
+            fprintf(out, "DIR|%s|%s\n", k_rmmv_img_dirs[di], k_rmmv_img_dirs[di]);
+        }
+    }
 
     RmmvFile entries[RMMV_MAX_ENTRIES];
     int n_entries = scan_rmmv_dir(house_root, entries, RMMV_MAX_ENTRIES);
@@ -521,7 +657,7 @@ static void publish_rmmv(void) {
      * finds - not a hardcoded name that may not even exist on disk. */
     char active_path[PATH_BUF];
     snprintf(active_path, sizeof(active_path), "%s/rmmv_active.txt", g_package_dir);
-    char active_key[64] = "", active_tab_letter[4] = "A";
+    char active_key[64] = "", active_tab_letter[4] = "A", active_dir[32] = "tilesets";
     FILE *af = fopen(active_path, "r");
     if (af) {
         char line[128];
@@ -534,6 +670,7 @@ static void publish_rmmv(void) {
             while (vn > 0 && (v[vn-1] == '\n' || v[vn-1] == '\r')) v[--vn] = '\0';
             if (strcmp(line, "tileset") == 0) snprintf(active_key, sizeof(active_key), "%s", v);
             else if (strcmp(line, "tab") == 0) snprintf(active_tab_letter, sizeof(active_tab_letter), "%s", v);
+            else if (strcmp(line, "dir") == 0) snprintf(active_dir, sizeof(active_dir), "%s", v);
         }
         fclose(af);
     }
@@ -544,13 +681,29 @@ static void publish_rmmv(void) {
     }
 
     char active_cat[16];
-    publish_rmmv_options(g_house_root, active_key, active_tab_letter, active_cat, sizeof(active_cat));
+    publish_rmmv_options(g_house_root, active_key, active_tab_letter, active_cat, sizeof(active_cat), active_dir);
+    if (active_dir[0] && strcmp(active_dir, "tilesets") != 0) {
+        char tmp_path[PATH_BUF];
+        snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", g_state_path);
+        FILE *outf = fopen(tmp_path, "w");
+        if (outf) {
+            publish_rmmv_asset_dir(active_dir, outf);
+            fclose(outf);
+            rename(tmp_path, g_state_path);
+        }
+        return;
+    }
+
     char rel_atlas[PATH_BUF] = "";
     if (active_key[0] && active_cat[0]) {
         char suffix_upper[8]; size_t si = 0;
         for (; active_cat[si] && si + 1 < sizeof(suffix_upper); si++) suffix_upper[si] = (char)toupper((unsigned char)active_cat[si]);
         suffix_upper[si] = '\0';
-        snprintf(rel_atlas, sizeof(rel_atlas), "rmmv/%s_%s.png", active_key, suffix_upper);
+        /* REAL FIX 2026-08-28 - just the filename now, no "rmmv/"
+         * prefix (that was palettes/tilesets/rmmv/'s own subfolder
+         * name; img_root/tilesets/ IS the tileset dir now, no extra
+         * nesting - see rmmv_img_root()'s own header comment). */
+        snprintf(rel_atlas, sizeof(rel_atlas), "%s_%s.png", active_key, suffix_upper);
     }
 
     char tmp_path[PATH_BUF];
@@ -560,7 +713,9 @@ static void publish_rmmv(void) {
 
     if (rel_atlas[0]) {
         char atlas_path[PATH_BUF];
-        snprintf(atlas_path, sizeof(atlas_path), "%s/&.widgits/palettes/tilesets/%s", g_house_root, rel_atlas);
+        char img_root[PATH_BUF] = "";
+        rmmv_img_root(g_house_root, img_root, sizeof(img_root));
+        snprintf(atlas_path, sizeof(atlas_path), "%s/tilesets/%s", img_root, rel_atlas);
         /* REAL FIX 2026-08-28 (same slow-tab-switch report) - a real
          * cache-hit on every tile still paid for a full stbi_load() PNG
          * decode of the whole atlas first (the actually-expensive part
@@ -709,7 +864,9 @@ static void publish(void) {
          * comment for why the registry approach was dropped. */
         time_t reg_mtime = 0, active_mtime = 0;
         char registry_path[PATH_BUF];
-        snprintf(registry_path, sizeof(registry_path), "%s/&.widgits/palettes/tilesets/rmmv", g_house_root);
+        { char img_root[PATH_BUF] = "";
+          rmmv_img_root(g_house_root, img_root, sizeof(img_root));
+          snprintf(registry_path, sizeof(registry_path), "%s/tilesets", img_root); }
         if (stat(registry_path, &st) == 0) reg_mtime = st.st_mtime;
         char active_path[PATH_BUF];
         snprintf(active_path, sizeof(active_path), "%s/rmmv_active.txt", g_package_dir);
@@ -772,7 +929,10 @@ int main(int argc, char **argv) {
 
     for (;;) {
         publish();
-        usleep(1000000); /* 1s poll - reference data changes far less often than db-hq's own 400ms need */
+        /* rmmv tab/chooser clicks must land on press 1. 1s sleep made
+         * A/B/C and Dungeon/Inside need 2-3 presses (live). Other
+         * palettes still 1s. */
+        usleep(strcmp(g_category, "rmmv") == 0 ? 100000 : 1000000);
     }
     return 0;
 }

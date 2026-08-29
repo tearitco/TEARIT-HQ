@@ -67,6 +67,7 @@
  * consumer's build script - don't hand-copy this file again. */
 
 #include <string.h>
+#include <stdio.h>
 
 #define MAX_CHILDREN 64
 
@@ -168,6 +169,70 @@ static Elem *find_by_id(Elem *e, const char *id) {
         if (r) return r;
     }
     return NULL;
+}
+
+/* LayDoc Gap 3: flat preorder walk, same child order as
+ * dbhq_serialize_frame_subtree (non-title/module first, titles last).
+ * Root is entry 0, parent_index -1. Returns count, or -1 if cap
+ * too small (no silent truncate). */
+typedef struct {
+    int index;
+    int parent_index;
+    Elem *elem;
+} ElemFlatEntry;
+
+static int elem_flatten_add(Elem *e, int parent_idx, ElemFlatEntry *out, int cap, int *n) {
+    int me, i;
+    if (!e) return 0;
+    if (*n >= cap) return -1;
+    me = *n;
+    out[me].index = me;
+    out[me].parent_index = parent_idx;
+    out[me].elem = e;
+    (*n)++;
+    for (i = 0; i < e->n_children; i++) {
+        Elem *c = e->children[i];
+        if (strcmp(c->tag, "title") == 0 || strcmp(c->tag, "module") == 0) continue;
+        if (elem_flatten_add(c, me, out, cap, n) < 0) return -1;
+    }
+    for (i = 0; i < e->n_children; i++) {
+        Elem *c = e->children[i];
+        if (strcmp(c->tag, "title") != 0) continue;
+        if (elem_flatten_add(c, me, out, cap, n) < 0) return -1;
+    }
+    return 0;
+}
+
+int elem_flatten(Elem *root, ElemFlatEntry *out, int cap) {
+    int n = 0;
+    if (!root || !out || cap < 1) return -1;
+    if (elem_flatten_add(root, -1, out, cap, &n) < 0) return -1;
+    return n;
+}
+
+/* LayDoc Gap 5: computed cursor prefix, never stored in e->label.
+ * 2-state until is_active_scope (Gap 2): "[>]" focused, "[ ]" else.
+ * is_active_scope is the LayDoc [^] active-index branch. */
+void elem_cursor_prefix(const Elem *e, int focus_nav, int is_active_scope, char *out, size_t outsz) {
+    if (!out || outsz == 0) return;
+    if (!e || e->nav_index <= 0) { snprintf(out, outsz, "[ ]"); return; }
+    if (is_active_scope) { snprintf(out, outsz, "[^]"); return; }
+    if (e->nav_index == focus_nav) { snprintf(out, outsz, "[>]"); return; }
+    snprintf(out, outsz, "[ ]");
+}
+
+typedef Elem *(*ElemFactory)(void *row, void *ctx);
+void elem_inject_loop(Elem *parent, void **rows, int n, ElemFactory fn, void *ctx) {
+    int i;
+    if (!parent || !fn || n <= 0 || !rows) return;
+    for (i = 0; i < n; i++) {
+        Elem *e;
+        if (parent->n_children >= MAX_CHILDREN) return;
+        e = fn(rows[i], ctx);
+        if (!e) continue;
+        e->parent = parent;
+        parent->children[parent->n_children++] = e;
+    }
 }
 
 /* REAL START 2026-08-16, Stage 3 (khtpm-merge-how2.md §5) - real box-
