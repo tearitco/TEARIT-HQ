@@ -1002,8 +1002,15 @@ static void handle_action_request(void) {
             snprintf(entity_dir, sizeof(entity_dir), "%s", g_pkg_dir);
         }
 
+        /* REAL FIX 2026-08-29 ("mr was just one project using events
+         * (probably the first) but it doesn't own events"): play_event.sh
+         * moved from *.monads/*.muchi-pet/ops/ (muchi-pet's own project
+         * dir - false ownership, every entity/project uses Play, not just
+         * muchi-pet) to this manager's own events-hq/ops/ dir, right next
+         * to the manager that already drives every entity's event
+         * compilation. */
         char cmd[PATH_BUF * 2];
-        snprintf(cmd, sizeof(cmd), "sh -c 'exec sh \"%s/*.monads/*.muchi-pet/ops/play_event.sh\" \"%s\"' >/dev/null 2>&1 &",
+        snprintf(cmd, sizeof(cmd), "sh -c 'exec sh \"%s/&.widgits/events-hq/ops/play_event.sh\" \"%s\"' >/dev/null 2>&1 &",
                  g_house_root, entity_dir);
         system(cmd);
         FILE *cw = fopen(g_action_path, "w");

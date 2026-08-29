@@ -51,7 +51,7 @@ COMMAND change_gold
   FIELD1 Amount:
   FIELD2 -
   PARAMS amount
-  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_change_gold.+x" "$ENT" '{amount}'
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_change_gold.+x" "$ENT" '{amount}'
 END
 
 COMMAND show_text
@@ -59,7 +59,7 @@ COMMAND show_text
   FIELD1 Text:
   FIELD2 Speaker (opt):
   PARAMS text,speaker
-  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_show_text.+x" "$ENT" '{text}'[ '{speaker}']
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_show_text.+x" "$ENT" '{text}'[ '{speaker}']
 END
 
 COMMAND show_choices
@@ -67,7 +67,7 @@ COMMAND show_choices
   FIELD1 Choices (comma-sep):
   FIELD2 Default index:
   PARAMS choices,default
-  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_show_choices.+x" "$ENT" '{choices}' {default}
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_show_choices.+x" "$ENT" '{choices}' {default}
 END
 
 # REAL LIVE PROOF (2026-08-26) that this registry is genuinely
@@ -81,7 +81,7 @@ COMMAND take_gold
   FIELD1 Amount:
   FIELD2 -
   PARAMS amount
-  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_change_gold.+x" "$ENT" '-{amount}'
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_change_gold.+x" "$ENT" '-{amount}'
 END
 
 COMMAND control_switch
@@ -203,7 +203,7 @@ COMMAND input_number
   FIELD1 Store in variable:
   FIELD2 Digits (1-8):
   PARAMS var_name,digits
-  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_input_number.+x" "$ENT" "$D" '{var_name}' {digits}
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_input_number.+x" "$ENT" "$D" '{var_name}' {digits}
 END
 
 # Select Item: real inventory.txt (entity state) read into a SHOW_PAGE
@@ -215,7 +215,7 @@ COMMAND select_item
   FIELD1 Store in variable:
   FIELD2 -
   PARAMS var_name
-  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_select_item.+x" "$ENT" "$D" '{var_name}'
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_select_item.+x" "$ENT" "$D" '{var_name}'
 END
 
 # Scrolling Text: real SHOW_TEXT_FILE popup (multiline file), the
@@ -227,7 +227,7 @@ COMMAND scrolling_text
   FIELD1 Text:
   FIELD2 -
   PARAMS text
-  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_scrolling_text.+x" "$ENT" "$D" '{text}'
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_scrolling_text.+x" "$ENT" "$D" '{text}'
 END
 
 # ------------------------------------------------------------------
@@ -243,7 +243,7 @@ COMMAND change_transparency
   FIELD1 Value (on/off):
   FIELD2 -
   PARAMS value
-  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_character.+x" "$ENT" transparency '{value}'
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_character.+x" "$ENT" transparency '{value}'
 END
 
 COMMAND followers
@@ -251,7 +251,7 @@ COMMAND followers
   FIELD1 Show or hide:
   FIELD2 -
   PARAMS value
-  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_character.+x" "$ENT" followers '{value}'
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_character.+x" "$ENT" followers '{value}'
 END
 
 COMMAND show_animation
@@ -259,12 +259,12 @@ COMMAND show_animation
   FIELD1 Animation id:
   FIELD2 -
   PARAMS animation_id
-  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_character.+x" "$ENT" animation '{animation_id}'
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_character.+x" "$ENT" animation '{animation_id}'
 END
 
 COMMAND erase_event
   LABEL Erase Event
   FIELD1 -
   FIELD2 -
-  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_character.+x" "$ENT" erase 1
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_character.+x" "$ENT" erase 1
 END

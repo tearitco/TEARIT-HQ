@@ -125,7 +125,12 @@ log "created switches.txt with both switches OFF"
 # =========================================================================
 log "=== Step 2: Launch common_events_manager ==="
 
-MANAGER_BIN="$HOUSE/*.monads/*.muchi-pet/ops/+x/common_events_manager.+x"
+# REAL FIX 2026-08-29: common_events_manager.c moved from
+# *.monads/*.muchi-pet/ops/ (muchi-pet's own dir - false ownership, this
+# manager fires common events for every entity/project in the house, not
+# just muchi-pet) to &.widgits/events-hq/ops/, the shared events-hq ops
+# dir. Build with events-hq/ops/build_mr_event_ops.sh.
+MANAGER_BIN="$HOUSE/&.widgits/events-hq/ops/+x/common_events_manager.+x"
 
 if [ ! -x "$MANAGER_BIN" ]; then
   fail "manager binary not found or not executable: $MANAGER_BIN"
