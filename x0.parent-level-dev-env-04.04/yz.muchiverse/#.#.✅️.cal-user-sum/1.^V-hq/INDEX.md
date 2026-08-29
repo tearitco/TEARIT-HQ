@@ -506,43 +506,34 @@ The events ladders come first, then these land:
 
 ---
 
-**2026-08-29** (FURTHER real correction, same tile/map thread: direct
-follow-up "is there other recently edited docs (past 3 days) that
-mention xdnd?" surfaced the REAL primary doc this whole thread should
-have started from - `TILE-SYSTEM-DESIGN.md` (2026-08-27, same
-directory, missed by the earlier search below). Real, detailed,
-already has working verified code (autotile math ported+pixel-
-verified against real RMMV assets, a real tileset registry,
-`desk_grid.pdl` support in `tp_desktop_window_rgb.c`) answering exactly
-how a single placed tile works - a real desktop-tile ENTITY, not a
-separate canvas - and citing the real 2D→3D bridge doc (`#.DOX/
-drag-drop-how2.md`, not `101.drag-drop-test=ON🀄️`, which is a test
-HARNESS for that same real mechanism). Added a prominent pointer at
-the top of `MAPS-TILES-ZLEVELS-CONSOLIDATED-SPEC.md` (below) - that
-doc's own real remaining value is the piececraft-xyz/mutaclysm/
-cursword/Z-level material `TILE-SYSTEM-DESIGN.md` doesn't cover, not a
-competing single-tile spec. Read `TILE-SYSTEM-DESIGN.md` FIRST.) by claude
-
-**2026-08-29** (real correction, direct user catch: "previously we had
-spec'ed out that we could have both maps, individual tiles, or both...
-is there not documentation of this specific spec? maybe its disparate?"
-- confirmed yes. `MAPS-TILES-ZLEVELS-CONSOLIDATED-SPEC.md` cross-
-references the real, disparate docs that were never linked together
-(`PIECECRAFT_XYZ_DESIGN.md` - the actual real map/chunk/Z-level spec,
-already has real answered open-questions; `xelector-context.md` - the
-real cursor pattern; `CURSWORD-SOUL-VISION.md` §5). Retracts an earlier
-same-day design doc that wrongly framed "tile/map" as a from-scratch
-2D RPG-Maker-walk-around problem before this cross-reference existed.
-Also records 2 genuinely NEW integration specs from tonight's
-conversation that exist nowhere else yet: cursword driving Z-level nav
-xelector-style, and extending the desktop/piececraft/mutaclysm tile
-transfer model. On the latter: direct user follow-up ("do u see
-101.drag-drop-test=ON🀄️?") caught a real miss mid-write - the
-desktop↔mutaclysm half of that transfer is NOT new, it's real, BUILT,
-and TESTED (2026-07-26, real X11 Xdnd + exchange-dir pet-import
-round-trip) - corrected in the doc before push, only the piececraft-
-xyz extension of that same mechanism is genuinely unspec'd. Read this
-before touching maps/tiles/z-levels/palettes/piececraft ever again.) by claude
+**2026-08-29** (maps/tiles/z-levels documentation cleanup, direct
+request after a live, corrected investigation: "clean up the
+documentation... rerun by me the actual plan." Real finding chain, in
+order: a first design doc wrongly framed tile/map as a from-scratch 2D
+RPG-Maker-walk-around problem (retracted, never should have been
+written before checking for existing spec); direct user catch ("maybe
+its disparate?") led to `PIECECRAFT_XYZ_DESIGN.md`/`xelector-
+context.md`/`CURSWORD-SOUL-VISION.md` §5; a further direct catch ("do
+u see 101.drag-drop-test=ON🀄️?") found the desktop↔mutaclysm drag-drop
+transfer is real, BUILT, and TESTED (2026-07-26, X11 Xdnd + exchange-
+dir pet-import round-trip), not new as first assumed; a final direct
+catch ("recently edited docs mentioning xdnd?") surfaced the REAL
+primary doc this whole thread should have started from -
+`TILE-SYSTEM-DESIGN.md` (2026-08-27, same directory, real working
+verified code: autotile math pixel-verified against real RMMV assets,
+a real tileset registry, `desk_grid.pdl` in `tp_desktop_window_rgb.c`)
+- answers the core question (a placed tile is a real `tp_desktop_
+window_rgb.c` ENTITY, not a separate canvas) and cites the real 2D→3D
+bridge doc, `#.DOX/drag-drop-how2.md`. **Cleaned up, final state**:
+`MAPS-TILES-ZLEVELS-CONSOLIDATED-SPEC.md` is now a short real router
+doc (not a competing spec) pointing to `TILE-SYSTEM-DESIGN.md` for
+single-tile/autotile/palette mechanics and `PIECECRAFT_XYZ_DESIGN.md`
+for multi-tile chunked maps/Z-levels, records the 2 genuinely new
+integration gaps this session's conversation surfaced (cursword
+driving Z-level nav xelector-style; extending the drag-drop transfer
+to piececraft-xyz), and `GAME-READINESS-GAP-ANALYSIS-2026-08-27.md`'s
+own gap #1 is formally retired pointing here. Read `TILE-SYSTEM-
+DESIGN.md` FIRST for anything tile-related.) by claude
 
 **2026-08-29** (post-refactor audit, direct request: real explanation of
 "modes" + whether the 4-loop draw collapse held up at 9,950 lines -

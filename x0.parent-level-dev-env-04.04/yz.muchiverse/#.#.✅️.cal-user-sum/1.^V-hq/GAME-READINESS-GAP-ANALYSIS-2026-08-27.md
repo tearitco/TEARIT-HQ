@@ -1,18 +1,30 @@
 # Game-Readiness Gap Analysis — 2026-08-27
 
-**UPDATE (same day, later)**: Gap #0 (message-box rendering/suspension
-design) is now RESOLVED by direct user decision, and gap #1's "0% built,
-needs fresh design" framing was corrected after a follow-up check found
-real existing groundwork. Both are recorded in full in
-`CURSWORD-SOUL-VISION.md` §4 (turn-suspension design) and §5 (tile/
-palette correction) — read those sections before treating anything
-below as still fully open. Short version: gap #0 has a real answer now
-(continuous mode pauses via the existing `livedesk:clock:pause`
-mechanism unless marked non-blocking; turn-based mode folds the message
-into the current turn with a settable turn-cost variable); gap #1 has
-real precedent (an `rmmv` palette category, a compiled RMMV tile
-extractor, and a dated RMMV-style event-editor UI-chrome shell) that
-should be built on, not reinvented from scratch.
+**GAP #1 RETIRED (2026-08-29)**: superseded by
+`MAPS-TILES-ZLEVELS-CONSOLIDATED-SPEC.md` (same directory) — start
+there, which routes to the real, detailed, in-progress spec
+(`TILE-SYSTEM-DESIGN.md`, real autotile/tileset code already built and
+verified) and its own real next-step list. Not a separate design
+problem anymore; don't re-open gap #1 as if it still needs fresh
+design.
+
+**Gap #0 (message-box rendering/suspension)**: RESOLVED by direct user
+decision, recorded in full in `CURSWORD-SOUL-VISION.md` §4 — continuous
+mode pauses via the existing `livedesk:clock:pause` mechanism unless
+marked non-blocking; turn-based mode folds the message into the
+current turn with a settable turn-cost variable.
+
+**Gap #2 (event commands)**: also since substantially advanced this
+session — Message + Character commands (Task 1), all remaining Party/
+Actor commands, and full Flow Control (Loop/Break/Conditional Branch/
+Exit Event/Label/Jump to Label/Comment) are now real and shipped. See
+`!.OPEN-2do-events-db-networking-2026-08-28.md` for the real execution
+record.
+
+**Real question originally asked**: "what is next before we should
+really be making individual games using events/palette... more palette
+stuff will have to be done, till we can use the RPG Maker palettes for
+demo. but also events, etc?"
 **Real question asked**: "what is next before we should really be
 making individual games using events/palette... more palette stuff
 will have to be done, till we can use the RPG Maker palettes for demo.
