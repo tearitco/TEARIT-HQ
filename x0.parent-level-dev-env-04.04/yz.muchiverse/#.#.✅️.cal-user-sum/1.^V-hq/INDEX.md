@@ -2,6 +2,16 @@
 
 **If you're a new agent picking this up cold, read in this order until you have enough context to act.**
 
+**🧭 `^.COMPACTION_HANDOFF_aug29.md` — read this ONE first, before
+even Tier 1 below.** Emoji-heavy, human-and-AI-readable, plain-language
+summary of the tail end of the Aug 29 session: what shipped, the real
+mistakes made (and the pattern behind them — shallow doc searches
+leading to redesigning things that already existed), where the real
+specs actually live now, genuinely new information from that session's
+conversation that isn't written down anywhere else yet, and real
+questions worth settling before the next session starts. Smaller and
+faster to read than working through Tier 1/2 cold.
+
 **`archive/` subfolder (added 2026-08-24):** lower-priority docs — closed-bug records,
 DONE/superseded handoffs, single-feature deep-dives, and the two `.ARCHIVE.md` full-history
 twins for compacted docs — live in `archive/` instead of cluttering this directory's
