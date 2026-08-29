@@ -45,7 +45,7 @@
 #define PATH_BUF 4096
 #define MAX_PAGES 16
 #define MAX_CMDS 64
-#define MAX_REGISTRY_CMDS 32
+#define MAX_REGISTRY_CMDS 48
 #define MAX_FIELDS 4
 
 static char g_house_root[PATH_BUF];

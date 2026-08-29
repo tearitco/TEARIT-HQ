@@ -3963,7 +3963,7 @@ static void dbhq_ce_handle_key_if_needed(KeySym ks, char ch, int *consumed) {
  * compile_page() reads (#.ref/menu/event_commands.registry.pdl), not
  * hardcoded arrays. Adding a new SIMPLE command needs zero changes
  * here - just a new COMMAND block in the registry. */
-#define EVHQ_MAX_CMD_DEFS 32
+#define EVHQ_MAX_CMD_DEFS 48
 typedef struct {
     char type[48];
     char label[64];
