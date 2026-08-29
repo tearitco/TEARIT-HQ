@@ -336,13 +336,13 @@ Stop here if you just need to know "what's going on."
 10. **archive/DB-HQ-HANDOFF.md** — Implementation handoff for db cell (cell 9). Status: broken/incomplete
     AS OF BEFORE 2026-08-12 — db-hq itself got real, working this session, see #11 below for the
     current state before trusting this file's own "still-placeholder" framing.
-11. **EVENTS-HQ-RGB-HANDOFF.md** — 2026-08-12 session handoff (context ran full, new agent picking
-    up). db-hq's real focus fix (managed window + `_MOTIF_WM_HINTS`, NOT override_redirect — see
-    `!.HOUSE_STDS.md` #21-24 house-root), events-hq built real and wired to two entities (nav
-    confirmed working), RGB Phase 0 proven (compose→buffer→present is pixel-identical), and the
-    concrete next-step plan for both (events-hq's remaining event-ez-parity gaps, how to actually
-    refactor db-hq/taskbar to RGB). **Read this before starting ANY db-hq/events-hq/khtpm-window/
-    RGB work** — it points at exactly what's real vs. still-needed, don't re-derive.
+11. **archive/EVENTS-HQ-RGB-HANDOFF.md** — MOVED TO ARCHIVE 2026-08-29 (the file itself already
+    self-declared "SUPERSEDED, forward pointer" as of 2026-08-16 — events-hq/db-hq were merged into
+    the shared `khtpm_entity_menu_render.c` binary that same day, and the whole render/input stack
+    got substantially reworked again in the 2026-08-29 session; nothing here still describes current
+    architecture). 2026-08-12 db-hq focus-fix + original events-hq build/wire history — read only
+    for historical "how did this start," not current status. `khtpm-merge-how2.md` and
+    `EVENTS-HQ-RENDER-UNIFICATION-PLAN.md` are the current real references.
 12. **archive/OPENROUTER-INTEGRATION-HANDOFF.md** — 2026-08-16, real router API key work for open-hai.
     Status: **DONE for OpenRouter, TokenRouter marked a real confirmed paywalled non-starter**
     ($0 account credit blocks tool-calling even on free-labeled models — plain chat works fine).
@@ -398,7 +398,7 @@ Stop here if you just need to know "what's going on."
 | `44.xyz❤️‍🔥️00.17/LINUX_ROUNDTRIP.md` | Linux return-leg status: Mach-O quarantine (76 files), house-wide recompile (44/44 PASS), manual rebuilds (treetRace, hm_assert, apply_theme_op), verification, livedesk smoke-test | When returning from macOS to Linux (or any roundtrip); read before relaunching |
 | `yz.muchiverse/ROUNDTRIP_FIX.md` | Concise fix log + re-run recipe for future roundtrips (purge Mach-O → compile-runner → manual extras → verify → relaunch) | When re-running the purge+rebuild recipe; includes rollback instructions |
 | `$.crypts/compile-runner.ps1` | Windows house-wide compile runner (PowerShell twin of compile-runner.sh). Finds every build.ps1 and runs each from its own directory. **Untested — needs Windows/MSYS2 verification.** | When compiling all projects on Windows natively (no WSL) |
-| `EVENTS-HQ-RGB-HANDOFF.md` | 2026-08-12 session handoff: db-hq focus fix, events-hq built+wired, RGB Phase 0 result, next-step plans | When events-hq/db-hq/RGB work resumes and this doc's own "next steps" get done |
+| `archive/EVENTS-HQ-RGB-HANDOFF.md` | ARCHIVED 2026-08-29 (self-declared superseded since 2026-08-16). 2026-08-12 session handoff: db-hq focus fix, events-hq built+wired, RGB Phase 0 result | Historical only - `khtpm-merge-how2.md`/`EVENTS-HQ-RENDER-UNIFICATION-PLAN.md` are current |
 | `!.chtpm-render-dedup-guidance.md` (house root) | Deferred: `chtpm_rgb_render.c`/`chtpm_parser_pal.c` duplication across 22/28 dirs, NOT byte-identical (real per-app divergence) - investigation plan for whenever this becomes relevant, not urgent | Only when someone actually starts that dedup pass |
 | `HARNECIENT-H-AI-RELAY.md` | **HIGH PRIORITY + LOAD-BEARING** - approved design to wire the Harnecient mode (`HARNECIENT-HACK.md`) into h-ai as a CHOOSABLE model, then demo + bake in a lasting reproducible harness for the full loop: relay injection into the real h-ai window → non-tooled model (270m/1b/3B) → deterministic read/write/run → **real control of the livedesk taskbar state files** (`strip_var_tabs.txt`, `strip_state.txt`). 4 phases (model switcher → `BACKEND_HARNECIENT` backend path → relay demo → `relay-harness/` N/N proof), success criteria + risks + milestones all in the doc. | Before starting any h-ai model-switcher / Harnecient-mode / relay-harness work |
 | `chat-hai-design.md` | **HIGH PRIORITY** — design plan for a new side-bar multi-model conversation engine: 4 smol models (gemma270/qwen-ladder) constantly chatting with persistent memory, moderated by slower bigger models (qwen2.5:7b/haiku) that curate, reprompt, and delegate. Proof-of-concept ladder (Phase 0-5), memory/priority/FSM-recall architecture, relationship graphs, moderator loop, and roadmap. | Before starting any multi-agent / ambient-chat / side-bar conversation work |
