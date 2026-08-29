@@ -432,6 +432,37 @@ static struct timespec g_map_time;
 static int g_focus_nav = 1;
 static int g_n_nav = 0;
 static Elem *g_nav[MAX_ELEMS];
+/* REAL, NEW 2026-08-29 (direct instruction: "i dont want u to just do
+ * button as soon as its clicked, first nav should move and wait for
+ * second click") - replaces the old "auto" default (single click both
+ * focuses AND activates in one step) everywhere a real nav-numbered
+ * element is clicked. Shared, not duplicated per mode - every mode's
+ * own handle_click() calls this instead of inlining the check.
+ * Returns 1 when the caller should go ahead and activate `hit` (it was
+ * ALREADY the focused element - this is a real second click on the
+ * same target); returns 0 when this click's only real effect was
+ * moving focus onto `hit` for the first time, and the caller must
+ * stop there without activating - the caller is responsible for a
+ * redraw so the moved focus ring is visible immediately. Elems with no
+ * real nav_index (e.g. a scrollbar drag track/arrow - a repeat
+ * control, not a menu selection) keep the old immediate-activate
+ * behavior; this only changes real nav-numbered targets. */
+/* REAL, NEW 2026-08-29 (direct instruction: "make it optional from
+ * .pdl, can open immediately, or wait for second click") - runtime-
+ * configurable, not hardcoded, per this house's own standing rule
+ * (real PDL config beats a baked-in constant - see hq_ui.pdl's own
+ * font_scale/focus_grab keys, same file, same real key=value parser
+ * shape, reused not reinvented). Default is the new two-step behavior
+ * (1); set `click_two_step=0` in #.desktop/hq_ui.pdl to restore the
+ * old single-click-activates "auto" behavior house-wide. */
+static int g_click_two_step = 1;
+static int click_focus_then_activate(Elem *hit) {
+    if (!hit) return 0;
+    if (!g_click_two_step) return 1;
+    if (hit->nav_index <= 0) return 1;
+    if (g_focus_nav != hit->nav_index) { g_focus_nav = hit->nav_index; return 0; }
+    return 1;
+}
 /* REAL Stage 5 §5d.10 (2026-08-16) - scaled() is now mode-aware: db-hq
  * mode has a real, user-adjustable DPI scale (g_dbhq_font_scale, read
  * from #.desktop/hq_ui.pdl, ported verbatim from khtpm_hq_render.c's
@@ -813,6 +844,8 @@ static void dbhq_load_font_scale(void) {
             g_win_x = atoi(val);
         } else if (strcmp(line, "window_y") == 0) {
             g_win_y = atoi(val);
+        } else if (strcmp(line, "click_two_step") == 0) {
+            g_click_two_step = atoi(val) != 0;
         }
     }
     fclose(f);
@@ -3008,7 +3041,7 @@ static void dbhq_handle_click(int px, int py) {
         for (int i = 0; i < g_n_nav; i++) {
             Elem *e = g_nav[i];
             if (px >= e->x && px < e->x + e->w && py >= e->y && py < e->y + e->h) {
-                g_focus_nav = e->nav_index;
+                if (!click_focus_then_activate(e)) { dbhq_redraw_content(); return; }
                 dbhq_activate_elem(e);
                 return;
             }
@@ -3043,7 +3076,7 @@ static void dbhq_handle_click(int px, int py) {
     }
     Elem *hit = hit_test(g_window, px, py);
     if (!hit) return;
-    if (hit->nav_index > 0) g_focus_nav = hit->nav_index;
+    if (!click_focus_then_activate(hit)) { dbhq_redraw_content(); return; }
     dbhq_activate_elem(hit);
 }
 
@@ -3544,6 +3577,26 @@ static int g_evhq_digit_accum = 0;
 static int g_evhq_picker_open = 0;
 static int g_evhq_picker_type = -1;
 static int g_evhq_picker_focus = 1;
+/* REAL, NEW 2026-08-29 (live report: "why don't i see those events in
+ * the event editor?") - the Add-Command type list was hardcoded to a
+ * flat `i<16` cap with no scroll, from back when the registry had
+ * exactly ~16 commands - the registry now has 22 (Task 1 added Select
+ * Item/Scrolling Text/all 4 Character commands) and the picker box
+ * itself (280px default from picker.chtpm) physically can't show more
+ * than ~9 rows at 22px each regardless of any array-size fix, so the
+ * last several commands were silently unreachable even by digit-jump.
+ * g_evhq_picker_scroll is which real g_evhq_cmd_defs[] index is at the
+ * top of the visible window; g_evhq_picker_visible_rows is how many
+ * rows the box actually has room for this frame (computed in
+ * evhq_draw_picker_overlay(), read back in evhq_handle_key() - same
+ * "compute once at draw time, key handling reads the cached value"
+ * shape used for other overlay state throughout this file). Digits/
+ * arrows still move within the current visible window (same real
+ * on-screen-position semantic used everywhere else in this house);
+ * Page_Up/Page_Down scroll the window itself, same real keys the
+ * command list/palette grid already use for the identical reason. */
+static int g_evhq_picker_scroll = 0;
+static int g_evhq_picker_visible_rows = 9;
 static char g_evhq_field1[256] = "", g_evhq_field2[256] = "";
 static int g_evhq_active_field = 0;
 static int g_evhq_edit_cmd_id = -1; /* Task 7 (2026-08-26): -1 = Add Command flow, >=0 = editing that existing command's real id */
@@ -3826,7 +3879,7 @@ static void dbhq_restore_tab_content(void) {
  * open() to the selected common event instead of an entity. */
 static void dbhq_ce_handle_onclick(const char *onclick) {
     if (strcmp(onclick, "CE:ADDCMD") == 0) {
-        g_evhq_picker_open = 1; g_evhq_picker_type = -1; g_evhq_picker_focus = 1;
+        g_evhq_picker_open = 1; g_evhq_picker_type = -1; g_evhq_picker_focus = 1; g_evhq_picker_scroll = 0;
         g_evhq_field1[0] = '\0'; g_evhq_field2[0] = '\0'; g_evhq_active_field = 0;
         g_evhq_edit_cmd_id = -1;
     } else if (strncmp(onclick, "CE:EDITCMD:", 11) == 0) {
@@ -4733,17 +4786,33 @@ static void evhq_draw_picker_overlay(void) {
         const char *hdr = "Add Command";
         XftDrawStringUtf8(xftdraw_buf, &white, bfont, L->row_x, ty, (const FcChar8 *)hdr, (int)strlen(hdr));
         ty += 26;
-        for (int i = 0; i < g_evhq_n_cmd_defs && i < 16; i++) {
+        /* Real visible-row budget for THIS frame - box bottom minus the
+         * hint line minus one row reserved for Cancel, divided by row
+         * pitch. Recomputed every draw so a resize/different picker.
+         * chtpm geometry is never stale. */
+        int content_bottom = L->py + L->ph - 14 - L->row_spacing;
+        g_evhq_picker_visible_rows = (content_bottom - ty) / L->row_spacing;
+        if (g_evhq_picker_visible_rows < 1) g_evhq_picker_visible_rows = 1;
+        if (g_evhq_picker_visible_rows > 14) g_evhq_picker_visible_rows = 14; /* g_picker_slots pool safety margin, slot 15 reserved for Cancel */
+        int max_scroll = g_evhq_n_cmd_defs - g_evhq_picker_visible_rows;
+        if (max_scroll < 0) max_scroll = 0;
+        if (g_evhq_picker_scroll > max_scroll) g_evhq_picker_scroll = max_scroll;
+        if (g_evhq_picker_scroll < 0) g_evhq_picker_scroll = 0;
+        int shown = 0;
+        for (int i = 0; i < g_evhq_picker_visible_rows; i++) {
+            int cmd_idx = g_evhq_picker_scroll + i;
+            if (cmd_idx >= g_evhq_n_cmd_defs) break;
             Elem *row = reusable_slot(g_picker_slots, 16, i, "button");
             if (!row) break;
-            snprintf(row->label, sizeof(row->label), "%s", g_evhq_cmd_defs[i].label);
+            snprintf(row->label, sizeof(row->label), "%s", g_evhq_cmd_defs[cmd_idx].label);
             row->x = L->row_x; row->y = ty - 15; row->w = L->row_w; row->h = L->row_h;
             row->style.has_fg_color = 1; snprintf(row->style.fg_color, sizeof(row->style.fg_color), "#eeeeee");
             row->nav_index = i + 1;
-            snprintf(row->onclick, sizeof(row->onclick), "PICKER:TYPE:%d", i);
+            snprintf(row->onclick, sizeof(row->onclick), "PICKER:TYPE:%d", cmd_idx);
             g_nav[g_n_nav++] = row;
             draw_elem(row, 0);
             ty += L->row_spacing;
+            shown++;
         }
         {
             Elem *cancel = reusable_slot(g_picker_slots, 16, 15, "button");
@@ -4752,13 +4821,15 @@ static void evhq_draw_picker_overlay(void) {
                 cancel->x = L->row_x; cancel->y = ty - 15; cancel->w = L->row_w; cancel->h = L->row_h;
                 cancel->style.has_fg_color = 1; snprintf(cancel->style.fg_color, sizeof(cancel->style.fg_color), "#ff8080");
                 snprintf(cancel->onclick, sizeof(cancel->onclick), "PICKER:CANCEL");
-                cancel->nav_index = g_evhq_n_cmd_defs + 1;
+                cancel->nav_index = shown + 1;
                 g_nav[g_n_nav++] = cancel;
                 draw_elem(cancel, 0);
                 ty += L->row_spacing;
             }
         }
-        const char *hint = "Digits/arrows + Enter select, Escape cancels";
+        const char *hint = (max_scroll > 0)
+            ? "Digits/arrows + Enter select, PageUp/PageDown scroll, Escape cancels"
+            : "Digits/arrows + Enter select, Escape cancels";
         XftDrawStringUtf8(xftdraw_buf, &gray, font, L->row_x, L->py + L->ph - 14, (const FcChar8 *)hint, (int)strlen(hint));
     } else if (g_evhq_picker_type < g_evhq_n_cmd_defs) {
         EvhqCommandDef *def = &g_evhq_cmd_defs[g_evhq_picker_type];
@@ -5027,7 +5098,7 @@ static void evhq_activate_elem(Elem *hit) {
         return;
     }
     if (strcmp(hit->id, "add-command") == 0) {
-        g_evhq_picker_open = 1; g_evhq_picker_type = -1; g_evhq_picker_focus = 1;
+        g_evhq_picker_open = 1; g_evhq_picker_type = -1; g_evhq_picker_focus = 1; g_evhq_picker_scroll = 0;
         g_evhq_field1[0] = '\0'; g_evhq_field2[0] = '\0'; g_evhq_active_field = 0;
         g_evhq_edit_cmd_id = -1;
         return;
@@ -5055,7 +5126,7 @@ static void evhq_handle_click(int px, int py) {
         for (int i = 0; i < g_n_nav; i++) {
             Elem *e = g_nav[i];
             if (px >= e->x && px < e->x + e->w && py >= e->y && py < e->y + e->h) {
-                g_focus_nav = e->nav_index;
+                if (!click_focus_then_activate(e)) { evhq_redraw_content(); return; }
                 evhq_activate_elem(e);
                 return;
             }
@@ -5086,7 +5157,7 @@ static void evhq_handle_click(int px, int py) {
     }
     Elem *hit = hit_test(g_window, px, py);
     if (!hit) return;
-    if (hit->nav_index > 0) g_focus_nav = hit->nav_index;
+    if (!click_focus_then_activate(hit)) { evhq_redraw_content(); return; }
     evhq_activate_elem(hit);
 }
 static void evhq_submit_picker(void) {
@@ -5153,17 +5224,30 @@ static void evhq_handle_key(KeySym ks, char ch) {
             /* Direct instruction (2026-08-26): "they need a cancel" - a
              * real, nav-reachable Cancel option alongside Escape, not a
              * replacement for it. Cancel occupies one extra focus
-             * position past the last real type option
-             * (g_evhq_n_cmd_defs + 1) - reachable the same way every
-             * other option already is (arrows/Tab), Enter on it cancels
-             * instead of selecting a type. Digits 1-9 still jump only to
-             * real type options, matching existing behavior exactly. */
-            if (ch >= '1' && ch <= '9' && (ch - '0') <= g_evhq_n_cmd_defs) g_evhq_picker_focus = ch - '0';
+             * position past the last real VISIBLE row (not past the
+             * full command count - see g_evhq_picker_scroll's own
+             * header comment, the registry now has more commands than
+             * the box can show at once). Digits/arrows move within the
+             * current visible window; Page_Up/Page_Down scroll it. */
+            int last_row_focus = g_evhq_picker_visible_rows;
+            if (g_evhq_picker_scroll + last_row_focus > g_evhq_n_cmd_defs)
+                last_row_focus = g_evhq_n_cmd_defs - g_evhq_picker_scroll;
+            if (ch >= '1' && ch <= '9' && (ch - '0') <= last_row_focus) g_evhq_picker_focus = ch - '0';
             else if (ks == XK_Up || ks == XK_Left) { if (g_evhq_picker_focus > 1) g_evhq_picker_focus--; }
-            else if (ks == XK_Down || ks == XK_Right || ks == XK_Tab) { if (g_evhq_picker_focus < g_evhq_n_cmd_defs + 1) g_evhq_picker_focus++; }
+            else if (ks == XK_Down || ks == XK_Right || ks == XK_Tab) { if (g_evhq_picker_focus < last_row_focus + 1) g_evhq_picker_focus++; }
+            else if (ks == XK_Page_Up) {
+                if (g_evhq_picker_scroll > 0) g_evhq_picker_scroll -= g_evhq_picker_visible_rows;
+                if (g_evhq_picker_scroll < 0) g_evhq_picker_scroll = 0;
+            }
+            else if (ks == XK_Page_Down) {
+                int max_scroll = g_evhq_n_cmd_defs - g_evhq_picker_visible_rows;
+                if (max_scroll < 0) max_scroll = 0;
+                g_evhq_picker_scroll += g_evhq_picker_visible_rows;
+                if (g_evhq_picker_scroll > max_scroll) g_evhq_picker_scroll = max_scroll;
+            }
             else if (ks == XK_Return || ks == XK_KP_Enter) {
-                if (g_evhq_picker_focus == g_evhq_n_cmd_defs + 1) { g_evhq_picker_open = 0; g_evhq_edit_cmd_id = -1; return; }
-                g_evhq_picker_type = g_evhq_picker_focus - 1;
+                if (g_evhq_picker_focus == last_row_focus + 1) { g_evhq_picker_open = 0; g_evhq_edit_cmd_id = -1; return; }
+                g_evhq_picker_type = g_evhq_picker_scroll + g_evhq_picker_focus - 1;
                 /* Initialize select2 field to first option if empty */
                 if (g_evhq_picker_type >= 0 && g_evhq_picker_type < g_evhq_n_cmd_defs) {
                     EvhqCommandDef *sel_def = &g_evhq_cmd_defs[g_evhq_picker_type];
@@ -7573,15 +7657,23 @@ static void chai_handle_click(int px, int py) {
     }
     Elem *hit = hit_test(g_window, px, py);
     if (!hit) return;
-    if (hit->nav_index > 0) g_focus_nav = hit->nav_index;
-    /* Legacy mode (require_cli_activation=1): a click on the composer
-     * only moves focus ("[>]") - it must NOT also activate ("[^]"), that
-     * would defeat the whole point of the legacy gate. Only Enter (via
-     * chai_handle_key()'s XK_Return branch -> chai_activate_elem()) activates it
-     * in this mode. Auto mode (default): click both focuses AND
-     * activates in one step, per direct instruction ("it move '>' and
-     * auto sets it to '^' im fine with that"). */
-    if (hit == chai_composer_text_elem && chai_require_cli_activation) { chai_redraw(); return; }
+    /* The composer text field is a real exception, not an oversight:
+     * clicking a text field to focus it for typing is normal UX
+     * everywhere, and is a genuinely different action from "select a
+     * menu item" - it keeps its own real toggle (chai_require_cli_
+     * activation) rather than the new two-step convention below.
+     * Legacy mode: click only moves focus ("[>]"), Enter activates
+     * ("[^]"). Auto mode (default): click both focuses and activates,
+     * per direct instruction ("it move '>' and auto sets it to '^' im
+     * fine with that") - unchanged, this predates and is orthogonal to
+     * the newer click_focus_then_activate() convention below. */
+    if (hit == chai_composer_text_elem) {
+        if (hit->nav_index > 0) g_focus_nav = hit->nav_index;
+        if (chai_require_cli_activation) { chai_redraw(); return; }
+        chai_activate_elem(hit);
+        return;
+    }
+    if (!click_focus_then_activate(hit)) { chai_redraw(); return; }
     chai_activate_elem(hit);
 }
 
@@ -8943,7 +9035,25 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                 g_pal_scroll += (ev->xbutton.button == 5) ? 2 : -2;
                 evhq_layout_pass(g_window);
                 evhq_assign_nav_indices(g_window);
-            } else if (ev->xbutton.button != 3 && !g_evhq_picker_open) {
+            } else if (ev->xbutton.button != 3) {
+                /* REAL FIX 2026-08-29 (live report: "mouse click not
+                 * working in add commands sub window... instead it
+                 * actually changing the tabs") - this used to also
+                 * require `!g_evhq_picker_open`, so a REAL physical
+                 * click while the picker overlay was open never even
+                 * reached dbhq_capture_click()/poll_agent_history() at
+                 * all - silently dropped before evhq_handle_click()'s
+                 * own correct picker-aware hit-test (which checks
+                 * g_evhq_picker_open FIRST and hit-tests g_nav[]
+                 * instead of the main window tree) ever got a chance to
+                 * run. This exact class of bug was invisible to every
+                 * relay-driven test this session, since the file-relay
+                 * MOUSE_EVENT path calls dbhq_capture_click() directly
+                 * and was never subject to this gate - only a REAL
+                 * physical click could ever trigger it. The drag-start
+                 * and scroll-wheel guards just above stay gated (those
+                 * really should be suppressed while modal); only the
+                 * actual click-capture call was wrongly gated too. */
                 g_evhq_has_real_focus = 1;
                 dbhq_capture_click(ev->xbutton.x, ev->xbutton.y, (int)ev->xbutton.button);
                 poll_agent_history();
@@ -9137,6 +9247,14 @@ int main(int argc, char **argv) {
      * not just a reorder. */
     if (argc < 3) { fprintf(stderr, "usage: %s <house_root> <chtpm_path> [x] [y]\n", argv[0]); return 1; }
     snprintf(g_house_root, sizeof(g_house_root), "%s", argv[1]);
+    /* REAL, NEW 2026-08-29 - dbhq_load_font_scale() also reads the new
+     * click_two_step key (see click_focus_then_activate()'s own
+     * comment); that key applies to EVERY mode's clicks, not just
+     * db-hq, so it's loaded here once, unconditionally, before any
+     * mode-specific branch - the existing db-hq-only call further
+     * down is now a harmless redundant reload, left in place rather
+     * than restructured, since removing it isn't needed for this fix. */
+    dbhq_load_font_scale();
     char chtpm_path[PATH_BUF];
     snprintf(chtpm_path, sizeof(chtpm_path), "%s", argv[2]);
     snprintf(g_package_dir, sizeof(g_package_dir), "%s", chtpm_path);

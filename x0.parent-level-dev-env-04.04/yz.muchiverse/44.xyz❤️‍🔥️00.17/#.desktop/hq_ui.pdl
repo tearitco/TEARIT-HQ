@@ -23,3 +23,17 @@ window_y=160
 # XGrabKeyboard+retry / right-click-force-focus machinery if 0 doesn't
 # actually fix real physical keyboard input.
 focus_grab=0
+
+# click_two_step: 1 (default, 2026-08-29) = a click on a real nav-
+# numbered element (button/tab/row - anything with a "[ ]N." badge)
+# only moves focus onto it the first time ("[>]"), matching what nav/
+# digit-jump already does - a SECOND click on the same, already-
+# focused element is what actually activates it. Applies house-wide
+# (db-hq/events-hq/chat-hai), except the chat-hai composer text field
+# (clicking a text field to focus it for typing keeps its own separate
+# real toggle, chai_require_cli_activation - a different kind of
+# action than "select this menu item"). Set to 0 to restore the older
+# "auto" behavior: one click both focuses AND activates immediately,
+# per direct instruction ("make it optional from .pdl, can open
+# immediately, or wait for second click").
+click_two_step=1
