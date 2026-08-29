@@ -1,0 +1,10 @@
+<!-- menu.chtpm - real, generated entity context menu (meta_to_menu_chtpm.py, 2026-08-28 permanent converter). Converted 1:1 from ./*.monads/*.muchi-pet/entities/m8_redhorned/meta.pdl's own real METHOD rows - same real mechanical rule proven on ava/asa/book-stack's own hand conversions. Regenerate by deleting this file and re-running the converter; a real hand-edit here will be lost on the next regenerate, same tradeoff every generated file in this house already has. -->
+<window class="entity-menu">
+  <page name="main">
+    <item label="Ledger" action="gedit &quot;*.monads/*.muchi-pet/entities/m8_redhorned/master_ledger.txt&quot;"/>
+    <item label="Events (ez)" action="*.monads/*.muchi-pet/ops/open_event_ez.sh"/>
+    <item label="Dir" action="xdg-open"/>
+    <item label="Close" action="CLOSE"/>
+    <item label="Cancel" action="void"/>
+  </page>
+</window>

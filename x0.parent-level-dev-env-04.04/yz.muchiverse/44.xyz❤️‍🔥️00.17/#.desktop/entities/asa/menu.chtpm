@@ -1,0 +1,15 @@
+<!-- menu.chtpm - real, generated entity context menu (meta_to_menu_chtpm.py, 2026-08-28 permanent converter). Converted 1:1 from #.desktop/entities/asa/meta.pdl's own real METHOD rows - same real mechanical rule proven on ava/asa/book-stack's own hand conversions. Regenerate by deleting this file and re-running the converter; a real hand-edit here will be lost on the next regenerate, same tradeoff every generated file in this house already has. -->
+<window class="entity-menu">
+  <page name="main">
+    <item label="Chat" action="sh -c 'cd &quot;$0&quot; &amp;&amp; H=&quot;$(cd ../../.. &amp;&amp; pwd)&quot; &amp;&amp; exec gnome-terminal -- &quot;$H/@.apps/asa-&amp;-ava/pieces/asa/chat.sh&quot;'"/>
+    <item label="Events" action="sh -c 'cd &quot;$0&quot; &amp;&amp; H=&quot;$(cd ../../.. &amp;&amp; pwd)&quot; &amp;&amp; exec env EE_PKG_NAME=asa-$(cat &quot;$0/instance_id.txt&quot;) EE_PKG_DIR=&quot;$H/@.apps/asa-&amp;-ava/pieces/asa/event_pkg&quot; sh &quot;$H/&amp;.widgits/event-editor/button.sh&quot; run-widget'"/>
+    <item label="Events (mock)" action="sh -c 'cd &quot;$0&quot; &amp;&amp; H=&quot;$(cd ../../.. &amp;&amp; pwd)&quot; &amp;&amp; exec sh &quot;$H/&amp;.widgits/event-editor/gl_mock/button.sh&quot; run'"/>
+    <item label="Events (ez)" action="sh -c 'cd &quot;$0&quot; &amp;&amp; H=&quot;$(cd ../../.. &amp;&amp; pwd)&quot; &amp;&amp; exec env EZ_PKG_NAME=asa-$(cat &quot;$0/instance_id.txt&quot;) EZ_PKG_DIR=&quot;$H/@.apps/asa-&amp;-ava/pieces/asa/event_pkg&quot; sh &quot;$H/&amp;.widgits/event-ez/button.sh&quot; run-widget'"/>
+    <item label="Play" action="sh -c 'cd &quot;$0&quot; &amp;&amp; H=&quot;$(cd ../../.. &amp;&amp; pwd)&quot; &amp;&amp; test -f &quot;$H/@.apps/asa-&amp;-ava/pieces/asa/event_pkg/pages/page_1/event.pal&quot; &amp;&amp; exec &quot;$(find &quot;$H&quot; -maxdepth 1 -name &quot;101.mutaclsym🧟‍♂️️*&quot; -type d 2>/dev/null|head -1)/system/prisc+x&quot; &quot;$H/@.apps/asa-&amp;-ava/pieces/asa/event_pkg/pages/page_1/event.pal&quot;'"/>
+    <item label="Stop" action="void"/>
+    <item label="Ledger" action="sh -c 'cd &quot;$0&quot; &amp;&amp; H=&quot;$(cd ../../.. &amp;&amp; pwd)&quot; &amp;&amp; exec gedit &quot;$H/@.apps/asa-&amp;-ava/pieces/asa/master_ledger.txt&quot;'"/>
+    <item label="Dir" action="xdg-open"/>
+    <item label="Close" action="CLOSE"/>
+    <item label="Cancel" action="void"/>
+  </page>
+</window>

@@ -1,0 +1,9 @@
+<!-- menu.chtpm - real, generated entity context menu (meta_to_menu_chtpm.py, 2026-08-28 permanent converter). Converted 1:1 from ./*.monads/*.book-stack/entities/book-stack/meta.pdl's own real METHOD rows - same real mechanical rule proven on ava/asa/book-stack's own hand conversions. Regenerate by deleting this file and re-running the converter; a real hand-edit here will be lost on the next regenerate, same tradeoff every generated file in this house already has. -->
+<window class="entity-menu">
+  <page name="main">
+    <item label="Read" action="sh -c 'H=&quot;$1&quot; &amp;&amp; export PACKAGE_DIR=&quot;$0&quot; &amp;&amp; exec &quot;$(find &quot;$H&quot; -maxdepth 1 -name &quot;101.mutaclsym🧟‍♂️️*&quot; -type d 2>/dev/null|head -1)/system/prisc+x&quot; &quot;$H/*.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/event.pal&quot;'"/>
+    <item label="Dir" action="xdg-open"/>
+    <item label="Close" action="CLOSE"/>
+    <item label="Cancel" action="void"/>
+  </page>
+</window>

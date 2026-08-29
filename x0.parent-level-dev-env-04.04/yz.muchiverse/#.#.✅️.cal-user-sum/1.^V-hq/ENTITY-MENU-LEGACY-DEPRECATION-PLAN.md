@@ -1,5 +1,84 @@
 ENTITY-MENU-LEGACY-DEPRECATION-PLAN.md
 Started: 2026-08-28
+
+============================================================
+STATUS UPDATE 2026-08-29 — Phase 0/1/2 DONE, Phase 3 real finding:
+the file does NOT archive whole
+============================================================
+**Phase 0 (live paint bug) - DONE, verified live.** Root cause found
+via real PNG dump (relay 112/'p'), not guessed: `dbhq_paint_frame_
+line()`'s pipe-delimited frame format broke when an item's own
+onclick shell command contained literal "|" characters (book-stack's
+"Read" action - `find ... | head -1`, twice). Fixed by anchoring the
+5 front fields (tag/id/classes/label/sprite) from the START and the 6
+trailing numeric fields (nav_index/active/x/y/w/h) from the END,
+leaving onclick as "whatever's in the middle" - safe to contain any
+number of real pipes. One self-correction along the way (first attempt
+used `strlen(buf2)` after the buffer already had embedded NULs from
+the front-parse, silently breaking EVERY entity's menu, not just
+book-stack's - caught immediately, fixed same session, re-verified).
+
+**Phase 1 (real, durable converter) - DONE, per user's explicit choice
+of design A (generate a real file) over design B (read meta.pdl
+live).** `meta_to_menu_chtpm.py` (`*.livedesk-taskbar/ops/`) - real,
+permanent, mechanical METHOD-row -> `<item>` converter, replacing the
+lost one-off script from 2026-08-16/18. Wired into `tp_place_
+desktop.c` so every NEWLY placed entity gets a real `menu.chtpm` the
+same moment its `meta.pdl` is written - not a manual step anyone has
+to remember.
+
+**Phase 2 (batch backfill) - DONE, all 3 real real-instance locations
+covered, not just the one originally known about:**
+- `xyzfs/users/<uid>/home/livedesk/{pals,sessions/*/entities}/*` - 14
+  real instances (the one real, currently-live user; confirmed via
+  `ps aux` that every currently-running `tp_desktop_window_rgb.+x`
+  process points here).
+- `#.desktop/entities/*` (dog/ava/chicken/cat/asa) - a second, real,
+  separate convention (referenced by `@.apps/asa-&-ava/button.sh` and
+  `$.crypts/ops/crypt_autostart.c`) this plan's original state-check
+  missed - 5 more real instances, now converted.
+- Entity TYPE templates under `*.monads/*.<project>/entities/<name>/`
+  - 11 real templates (book-stack, cursword, self, 8 muchi-pet
+  monsters) - converted too, so a FUTURE fresh copy of a template
+  already carries a real menu.chtpm even before `tp_place_desktop.c`'s
+  new hook would fire for it.
+- **Total: 30 real menu.chtpm files now exist house-wide** (was 7).
+  Zero skipped due to a real parse failure; every one produced a
+  real, non-empty item list.
+
+**Phase 3 (archive) - REAL FINDING, changes the plan: `tp_desktop_
+window_rgb.c` does NOT get archived, whole or otherwise, as a file.**
+Read its own header comment directly: this is a 3412-line binary whose
+REAL, primary, ongoing job is "be a real, draggable, closeable OS
+window that represents this one desktop package" - the actual desktop
+sprite/tile render, drag-to-reposition (writes `desktop_pos.txt`),
+and self-close-on-deletion polling. The popup-menu engine (`launch_
+khtpm_menu()` + the built-in fallback popup code) is ONE feature
+inside this much larger file, not the file's own real purpose. **6
+real, currently-running desktop entities depend on this exact binary
+staying correct right now** (confirmed via `ps aux`) - this is not a
+file to delete or wholesale-archive under any real design this house
+would recognize as safe.
+
+**What CAN still happen, a real, separate, smaller, deferred
+decision**: now that all 30 known real entities have a `menu.chtpm`,
+`launch_khtpm_menu()`'s own `access(menu_chtpm_path, F_OK) == 0` check
+means the OLD BUILT-IN popup code inside this file is dead code for
+every currently-known entity - it would only ever run for some future
+entity that somehow lacks a `menu.chtpm` (which, given Phase 1's hook,
+should no longer happen for anything created through the real
+placement path). Whether to actually DELETE that now-dead code out of
+a 3412-line, 6-live-process-depended-on file is a real, separate,
+higher-risk decision than anything else in this plan - **not done
+without explicit go-ahead**, and even then, worth keeping as a real
+defensive fallback (an entity with a missing/corrupt menu.chtpm still
+gets SOME popup instead of none) rather than deleting outright. Direct
+instruction ("archive it") assumed the whole file was the popup engine
+- it isn't; recommend closing this plan's real, achievable goal (every
+entity on the shared renderer) as DONE, and treating "delete the now-
+dead legacy popup code from tp_desktop_window_rgb.c" as its own,
+separate, optional follow-up task, not this plan's Phase 3.
+
 Purpose: finish migrating EVERY entity's right-click context menu onto
 the shared Elem/CSS renderer (`khtpm_entity_menu_render.c`, class=
 "entity-menu") and archive the legacy per-entity popup engine built
