@@ -32,7 +32,19 @@ gcc $CFLAGS -o "ops/+x/tp_test_send_key.+x" "ops/tp_test_send_key.c" -lX11 -lXts
 # 101.drag-drop-test's own dd_drag_drop.c-shaped tools don't actually
 # run here: xdotool isn't installed on this machine).
 gcc $CFLAGS -o "ops/+x/tp_test_send_click.+x" "ops/tp_test_send_click.c" -lX11 -lXtst
+# Real sibling, 2026-08-29 - absolute-coordinate click, for windows
+# tp_test_send_click.+x's name-based lookup can't find (any
+# override_redirect khtpm window - see tp_test_send_click_abs.c's own
+# header). Pair with tp_find_window_by_navtab.+x to resolve coords first.
+gcc $CFLAGS -o "ops/+x/tp_test_send_click_abs.+x" "ops/tp_test_send_click_abs.c" -lX11 -lXtst
 gcc $CFLAGS -o "ops/+x/tp_find_window_by_pid.+x" "ops/tp_find_window_by_pid.c" -lX11
+# Real fix, 2026-08-29 - tp_find_window_by_pid.+x structurally cannot
+# work on ANY khtpm_entity_menu_render.c window (they're all
+# override_redirect, so the WM never sets _NET_WM_PID). This reads the
+# renderer's own self-recorded window ID from nav_tab_register()
+# instead - see tp_find_window_by_navtab.c's own header for the full
+# story.
+gcc $CFLAGS -o "ops/+x/tp_find_window_by_navtab.+x" "ops/tp_find_window_by_navtab.c" -lX11
 gcc $CFLAGS -o "ops/+x/tp_set_wm_pid.+x" "ops/tp_set_wm_pid.c" -lX11
 gcc $CFLAGS -o "ops/+x/ledger_peers.+x" "ops/ledger_peers.c"
 gcc $CFLAGS -o "ops/+x/tp_arm_placer.+x" "ops/tp_arm_placer.c" -lX11

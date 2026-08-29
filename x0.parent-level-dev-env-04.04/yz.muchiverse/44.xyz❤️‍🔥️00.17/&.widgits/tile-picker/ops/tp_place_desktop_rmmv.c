@@ -114,6 +114,25 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    /* REAL, REQUIRED (found live 2026-08-29, testing this exact op):
+     * tp_desktop_window_rgb.c silently exits at startup - clean exit
+     * code 0, zero output - if glyph.txt does not exist in the package
+     * dir, even though sprite.csv (the thing that actually gets drawn)
+     * is present and correct. Root-caused via strace: it's an
+     * undocumented dependency in existing, unmodified code, not
+     * something visible from tp_desktop_window_rgb.c's own comments.
+     * Every other real spawner (tp_place_desktop.c) always writes one;
+     * this one didn't, since an rmmv tile has no real single-glyph
+     * identity. Write a placeholder - its CONTENT is cosmetic (window
+     * title fallback only, see tp_desktop_window_rgb.c's own glyph_str
+     * use), its EXISTENCE is what's load-bearing. */
+    {
+        char glyph_path[PATH_BUF];
+        snprintf(glyph_path, sizeof(glyph_path), "%s/glyph.txt", dir);
+        FILE *gf = fopen(glyph_path, "w");
+        if (gf) { fprintf(gf, "\xF0\x9F\xA7\xB1\n" /* 🧱 */); fclose(gf); }
+    }
+
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/meta.pdl", dir);
     FILE *f = fopen(path, "w");
@@ -174,10 +193,21 @@ int main(int argc, char **argv) {
         }
     }
 
-    /* Real duplicate-spawn guard, same as tp_place_desktop.c. */
+    /* Real duplicate-spawn guard - REAL FIX 2026-08-29 vs. tp_place_
+     * desktop.c's own identical original pattern: 'tp_desktop_window_
+     * rgb.+x' is the literal FILENAME (this house's real ".+x" binary-
+     * suffix convention), but `pgrep -f` treats its argument as
+     * EXTENDED REGEX - the unescaped '.' (any char) and '+' (1-or-more
+     * of preceding) in "rgb.+x" mean this was never actually matching
+     * the literal filename, it was matching "rgb" + any-chars-greedy +
+     * literal "x" + the dir path, ANYWHERE in ANY process's cmdline -
+     * found live while testing this exact op (false "already running"
+     * on demonstrably fresh, never-before-spawned directory names).
+     * Real fix: escape the regex metacharacters so this actually means
+     * what it says. */
     {
         char pgrep_cmd[PATH_BUF * 2];
-        snprintf(pgrep_cmd, sizeof(pgrep_cmd), "pgrep -f 'tp_desktop_window_rgb.+x %s' >/dev/null 2>&1", dir);
+        snprintf(pgrep_cmd, sizeof(pgrep_cmd), "pgrep -f 'tp_desktop_window_rgb\\.\\+x %s' >/dev/null 2>&1", dir);
         if (system(pgrep_cmd) == 0) {
             printf("DESKTOP_TILE_RMMV %s: window already running, not spawning a duplicate\n", dir);
             free(house_root);

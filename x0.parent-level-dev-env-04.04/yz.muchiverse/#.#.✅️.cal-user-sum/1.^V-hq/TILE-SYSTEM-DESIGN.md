@@ -614,15 +614,35 @@ already-correct precedent the new `rmmv` work was built to match.
    render.c`) fixed to route rmmv tiles to `arm-rmmv` instead of the
    emoji `place` path (was previously sending a label string like "a2
    kind 3,1" into the FreeType glyph pipeline - a real, now-fixed bug).
-   **Verified**: manual end-to-end file-chain test (brush arm -> place
-   -> real entity dir with correct meta.pdl/menu.chtpm/sprite.csv,
-   sprite.csv byte-matches the manager's own cache) and clean compiles
-   of all 3 new ops + the renderer. **NOT YET verified**: a real, live
-   X11 click-through-the-open-picker-window test (open palettes/rmmv,
-   click a tile, click the desktop, watch the tile-entity actually
-   appear on screen) - the grab/place code is a direct, simplified
-   adaptation of `tp_arm_placer.c`'s already-proven grab technique, but
-   that specific live click path hasn't been driven end to end yet.
+   **LIVE-VERIFIED (2026-08-29, same day, follow-up session)**: real
+   X11 clicks (XTest-direct, no xdotool) through the actual open
+   picker window - click a tile (two-step click convention applied
+   here too, confirmed correct), click the bare desktop - produced a
+   real, correctly-rendered tile-entity on screen, screenshot-confirmed
+   (a floor/rug pattern matching the "Inside" a2 tileset kind clicked).
+   Two real bugs found and fixed along the way, both now fixed:
+   (1) `tp_desktop_window_rgb.c` (existing, unmodified code) silently
+   exits at startup - clean exit 0, zero output - if `glyph.txt` is
+   missing from the package dir, an undocumented dependency never hit
+   before since every prior spawner always wrote one; fixed in
+   `tp_place_desktop_rmmv.c` by writing a placeholder glyph.txt (its
+   presence is load-bearing, its content is cosmetic). (2) The
+   duplicate-spawn guard's `pgrep -f 'tp_desktop_window_rgb.+x ...'`
+   pattern was never actually matching the literal filename - `pgrep -f`
+   treats its argument as regex, and the unescaped `.`/`+` in the real
+   ".+x" binary-suffix convention made it match far more broadly than
+   intended (false "already running" on demonstrably fresh dirs);
+   fixed by escaping the regex metacharacters. Both fixes are in
+   `tp_place_desktop_rmmv.c` only - the same pre-existing pattern in
+   `tp_place_desktop.c` (the emoji brush) is a real, separate, known
+   issue, not fixed here (out of scope, working "well enough" in
+   practice for that flow so far). Also built along the way, as a
+   real, reusable fix for a house-wide testing gap: `tp_find_window_by_
+   navtab.c` (finds a khtpm window's real coords via its own self-
+   recorded xid in nav_tab_register()'s file, since `_NET_WM_PID`
+   structurally can't work on override_redirect windows) and
+   `tp_test_send_click_abs.c` (XTest click at absolute coords, for
+   windows with no WM_NAME).
    Single representative kind-thumbnail only - no neighbor-aware
    autotile blending yet, that's step 8 below, separately unbuilt.
 7. Build the map-file loader (§1.2) as a plain C parsing function,
