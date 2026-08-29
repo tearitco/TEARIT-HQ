@@ -35,14 +35,15 @@ to the main directory and drop the `archive/` prefix here.
    without duplicating effort), and a read on the user's own working style.
    Everything below this entry is task/architecture detail; this one is
    judgment.
--2. **TPMOS-COMPLIANCE-DEBT.md — STANDING #1 PRIORITY, HIGH SEVERITY (2026-08-25),
-   NOT YET FIXED, direct instruction: "this cant propagate forward into the codebase by
-   naive agents"** — real, confirmed architecture violations found while migrating
-   stats-hq: at least 3 launcher scripts (`stats-hq`, `palettes`, `bookmarks`) generate
-   `.chtpm` UI markup via raw bash `printf` of XML tags, with NO real manager process and
-   NO compiled, testable Op — violates TPMOS §11/§12 directly. **stats-hq is not just
-   non-compliant, it's actually broken**: its tabs render but do nothing when clicked
-   (labels never match the renderer's own `TAB_LABELS[]`). Read this BEFORE building or
+-2. **TPMOS-COMPLIANCE-DEBT.md — RESOLVED 2026-08-25 (was STANDING #1 PRIORITY;
+   corrected 2026-08-29 doc-audit pass, this entry had gone stale behind the doc's own
+   "Status update, 2026-08-25" section)** — real, confirmed architecture violations found
+   while migrating stats-hq: all 3 launcher scripts (`stats-hq`, `palettes`, `bookmarks`)
+   generated `.chtpm` UI markup via raw bash `printf` of XML tags, with no real manager
+   process and no compiled, testable Op — violated TPMOS §11/§12 directly, and stats-hq's
+   tabs were actually broken (labels never matched the renderer's own `TAB_LABELS[]`). All
+   3 now have real managers matching `khtpm_hq_manager.c`'s shape; see that doc's own
+   "Status update" section for the rebuild details. Read this BEFORE building or
    extending ANY taskbar-launched window/menu — this pattern looks like it works and is
    the nearest copy-paste example in the tree for exactly that reason. Full inventory,
    severity reasoning, the compliant reference pattern (db-hq/events-hq/open-hai's real
@@ -153,22 +154,22 @@ Stop here if you just need to know "what's going on."
    new UI), entity AI (movement/interaction/decision-trees via FSM/BT, referencing agent-45's
    tool-loop pattern and SCM's deterministic-first philosophy), and future network/MMO-participation
    events. Read before designing any new event TYPE (not just wiring existing ones).
-6d. **HAIKU_TASKS.md** — small, well-scoped tasks suitable for Haiku (Claude's faster variant).
-   Self-contained work with clear success criteria, no architectural decisions. Start here if you
-   want to pick up a concrete, bounded task without needing Sonnet's reasoning depth.
-6e. **DB_CONTEXT.md** — explanation of what the "db" (database) cell is and how event commands
-   like Show Text + Show Choices integrate with it. Read after completing an event-related task
-   to understand the bigger picture.
+6d. **archive/HAIKU_TASKS.md** — ARCHIVED 2026-08-29 (doc-audit pass: framed event commands as
+   limited to "the current 3," contradicted by the real registry — 35+ commands now built). Task
+   list is stale; historical only.
+6e. **archive/DB_CONTEXT.md** — ARCHIVED 2026-08-29 (doc-audit pass: "Still Missing" table listed
+   Items/Switches/Actors/Enemies as unbuilt; `DB-HQ-HOUSE.md` now documents 15 live tabs and
+   `COMMON-EVENTS-MANAGER-HANDOFF.md` shows Switches/Variables done). `DB-HQ-HOUSE.md` is current.
 6f. **EVENTS_AND_DB_GUIDE_🎪.md** — human-readable, emoji-heavy nuance guide for events-hq/db-hq:
    ASCII-vs-literal relay codes, focus-vs-selection confusion, the on-click/on_click trap, highest-
    numbered-page-wins shadowing, single-instance-guard reminders. Read this FIRST if something
    "isn't working" before diving into source — most gotchas are already catalogued here.
-6g. **EVENTS_ROADMAP_NEXT_STEPS.md** — direct 2026-08-25 gap assessment + agreed order: wire
-   common events into Play first (DONE + verified live 2026-08-25, see the doc's own Step 1
-   Status section — with one flagged limitation, common events act on their own dir not the
-   caller's, a real follow-up), then scope a `.pal`-scripted, RPG-Maker-style plugin system
-   before any battle/tactics/LOS/pathfinding work. Read before picking up any of that work so
-   you don't reorder it or re-derive the reasoning from scratch.
+6g. **archive/EVENTS_ROADMAP_NEXT_STEPS.md** — ARCHIVED 2026-08-29 (doc-audit pass: its own
+   command-count framing, "only 3 of 143 built," is long superseded — registry now has 35+ real
+   commands, and Control Switches/Variables/Conditional Branch/Call Common Event all shipped).
+   The `.pal`-scripted plugin-system idea it raises before battle/tactics work may still be worth
+   reading for that one idea, but don't trust its status claims. `GAME-READINESS-GAP-ANALYSIS-
+   2026-08-27.md` is the current gap assessment.
 6h2. **COMMON-EVENTS-MANAGER-HANDOFF.md** — LIVE HANDOFF for opencode (2026-08-25): Control
    Switches/Variables, explicit Call Common Event, Conditional Branch (real compiler work using
    `prisc+x`'s already-existing `OP_BEQ`/`OP_J` opcodes), and a real common-events manager copying
@@ -365,11 +366,11 @@ Stop here if you just need to know "what's going on."
 |---|---|---|
 | `INDEX.md` | This file — pure routing, no content | New doc added/removed |
 | `#.house-docs.html/1.index-house=solo.html` | **The human-facing house doc — this is what the user actually reads**, not just an agent-routing file. Narrative "how the house actually works" page (Overview/Standards/Taskbar/Legacy Engines/Display/Input/AI Backends/Testing/Extending/Roadmap sections). Keep the "Known Issues & Roadmap" section in sync with real findings the same way `INDEX.md`'s own changelog is kept in sync — when you land a real fix or finding that changes user-facing state, update BOTH this file and INDEX.md, not just one. | Whenever a real, user-relevant finding or fix lands — added the khtpm_hq_render receipt/frame-history gap here 2026-08-24 |
-| `TPMOS-COMPLIANCE-DEBT.md` | **STANDING #1 PRIORITY, HIGH SEVERITY, undone** — real manager-pattern violations (stats-hq/palettes/bookmarks generate `.chtpm` via raw bash `printf`, no manager, no testable Op); stats-hq's own tabs are confirmed non-functional, not just non-standard. Full inventory + remediation priority in the doc. | When any listed app is remediated, or the broader "not yet audited" sweep finds more instances — update the inventory, don't just delete the doc |
+| `TPMOS-COMPLIANCE-DEBT.md` | **RESOLVED 2026-08-25** — the 3 real manager-pattern violations found (stats-hq/palettes/bookmarks generating `.chtpm` via raw bash `printf`, no manager, no testable Op; stats-hq's tabs were actually non-functional) all got real manager rebuilds, see the doc's own "Status update" section. | If the broader "not yet audited" sweep this doc originally flagged finds more instances elsewhere — update the inventory, don't just delete the doc |
 | `house-compaction.md` | **STANDING #1 PRIORITY, undone** — the khtpm_hq_render receipt/frame-history compliance-drift finding vs. TPMOS/wraith-alpha standard, plus the doc-compaction candidate list for `1.^V-hq/` (44 files). Agreed order: compact docs first, THEN fix the compliance drift, THEN resume palettes T1-T6. | When the compliance fix lands, or a compaction item from Part 3 is acted on — tick it off, don't just delete the doc |
 | `44.xyz❤️‍🔥️00.17/!.HOUSE_STDS.md` (house root) | **THE general house standards doc** ("from zero", §A–§K): CHTPM/PAL mechanics, session isolation/symlink ban, digit-dispatch, marker discipline, runtime-config-over-hardcode, rendering pipeline, CPU/testing discipline, widgets, 3D/raymarch, pitfalls F-18/F-19/#20/#21 (window focus/managed-window standards), §J two-parser-families warning, and **§K UI-authoring standards (2026-08-24): no hardcoded UIs ever (store→generated-artifact rule), context windows OLD vs NEW (`khtpm_entity_menu_render` is THE standard), generic renderer mechanisms (onClick open:/exec:, live reload) with honest port-status caveat, SHOW_PAGE chooser contract, bookmarks spec (superseded 2026-08-25, see its own note), and §K.6 (2026-08-25): no UI element without a mirror keyboard path** | Whenever a standing house standard is set, corrected, or superseded |
 | `HANDOFF.md` | Living architecture + status snapshot, "hand this to a fresh agent" doc | Architecture changes, status changes |
-| `livedesk-dir-map.md` | Real, current directory map of everything meaningful to the livedesk toolbar (taskbar, the 5 merged window apps, `#.desktop/` runtime state, toys-cell targets, tile-picker test tooling, `xyzfs/`'s real current scope) - written 2026-08-17 to inform a real, still-undecided xyzfs migration question (only `muchi-pet`/`livedesk-clock` have moved into `xyzfs/bin/` so far; everything else, including mutaclysm/the taskbar, is still outside it) | When the directory structure meaningfully changes, or before deciding/acting on any xyzfs migration |
+| `archive/livedesk-dir-map.md` | ARCHIVED 2026-08-29 (doc-audit pass: §6-7 claimed shared event-command ops live in `xyzfs/bin/muchi-pet/ops/`; that directory no longer exists — ops moved to `&.widgits/events-hq/ops/` on 2026-08-29). Historical directory-map snapshot from 2026-08-17 only. | Historical only - re-derive a fresh directory map if one is needed, don't trust this one's paths |
 | `legacy-shared-fix.md` | Separate leg of work from `khtpm-merge-how2.md`: consolidating all 16 legacy-GL projects' `system/`+`ops/` engine binaries. **AS OF 2026-08-17: `chtpm_parser_pal.c`/`prisc+x.c` consolidation is DONE - all 12 real participants (of 16 total; 4 have neither file) now on ONE shared baseline (`&.widgits/_shared-lib/system/`), see §3.10.** `chtpm_rgb_render.c` also consolidated (9 projects, §5c.7 in the other doc). `gl_mirror.c`→`x11_mirror.c` display-shim migration: 3 of 16 projects done (mutaclysm/piececraft-xyz/my-chara-txt), 13 remain - real, open work. Also covers a real mutaclysm interact-mode regression found+fixed post-consolidation (§3.11) and mutaclysm's own separate, deferred camera/3D work (§2.6, handed off to `archive/opencode-mutafix-pie.md`). | Every time the remaining 13-project GL migration or mutaclysm's own deferred camera work advances |
 | `HARNECIENT-HACK.md` | **THE COMPANY'S BREAD AND BUTTER** - tool-like use out of NON-tooled models (gemma 270M/1b, stable-code 3b) by never telling the API we want tools: plain /api/chat, persona files forbidding structure, simple plain-text prompts, tolerant parser (`json_parser.+x`), deterministic app-side tool dispatch, real-file folding, fallback-everywhere, DESCRIBE-don't-CLASSIFY. Live reference: `@.apps/my-lawyer` (gemma reads+writes real case docs). Use this pattern for any feature that needs tool-like behavior on non-tooled models. | Before building any agentic/tool feature on a non-tooled LAN model |
 | `TESTING_STRATEGY.md` | How to test (relay-only rule, harness patterns, verified recipes) - PLUS (2026-08-18) how to test REAL X11 input specifically (not the relay): real `XTest`-based `tp_test_send_key.+x`/`tp_test_send_click.+x` (confirmed `xdotool` is NOT installed here), and the `WM_CLASS`-vs-title window-matching gotcha | Testing approach changes |

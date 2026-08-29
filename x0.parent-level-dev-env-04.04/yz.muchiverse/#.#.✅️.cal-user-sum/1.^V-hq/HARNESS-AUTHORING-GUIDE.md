@@ -1,3 +1,12 @@
+> **PATH NOTE (added 2026-08-29, doc-audit pass):** the §4 table's flat
+> per-mode history file paths (`db_hq_history.txt`, `events_hq_history.txt`,
+> `chat_hai_history.txt`) are superseded as of 2026-08-29 — relay input
+> now goes to per-PID files instead: `#.desktop/<mode>_history/<pid>.txt`.
+> Writes to the old flat paths are silent no-ops now (a real incident
+> this session: one process's test input landed in a different, live
+> window of the same mode because of this exact flat-path collision).
+> Everything else in this doc is still current.
+
 # Harness Authoring Guide — 2026-08-27
 
 **Purpose**: the single, canonical doc to read before building or

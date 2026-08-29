@@ -18,7 +18,10 @@ output:
    entry point.
 2. **Scratch-style** — draggable, snap-together visual blocks (the
    Scratch/MIT visual language look — jigsaw-piece blocks, C-shaped
-   loop/branch wrappers). Not built yet.
+   loop/branch wrappers). **Built as of 2026-08-29** (doc-audit pass:
+   real Scratch-view rendering now exists in `khtpm_entity_menu_render.c`,
+   see commits `2a1205b`/`029c232`) — this line previously said "not
+   built yet."
 3. **Blueprints-style** — a node graph with connector wires (the Unreal
    Engine Blueprints look — boxes with input/output pins, wired
    together spatially). Not built yet.

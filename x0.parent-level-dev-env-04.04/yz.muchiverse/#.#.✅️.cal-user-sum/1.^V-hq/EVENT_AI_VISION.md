@@ -11,15 +11,25 @@ without checking back.
 
 ## 0. Where We Actually Are (don't overstate progress)
 
+> **CORRECTED (2026-08-29 doc-audit pass):** the "immediate blocker"
+> paragraph below is stale — `play_event.sh` was fixed to scan all
+> pages and match `$TRIGGER` (see `EVENTS_RUNTIME.md:13` and
+> `play_event.sh:6-13`), and event commands have grown well past the
+> single-page/single-trigger slice this section describes (registry
+> now has 35+ real commands, Control Switches/Variables/Conditional
+> Branch/Loop/Call Common Event all shipped). Left below for historical
+> context on when/why this doc was written; don't treat it as current
+> status — see `GAME-READINESS-GAP-ANALYSIS-2026-08-27.md` for that.
+
 Confirmed working (EVENTS_RUNTIME.md): a single-page, single-trigger (`on-click`) numeric-state event
 (Change Gold), triggered via right-click "Play" or `RUN_METHOD:Play` relay injection, verified
 end-to-end. That is the ENTIRE proven surface as of this doc's writing. Everything below is intent —
 none of it has a line of code yet. Treat "does X work" questions accordingly.
 
-The immediate, concrete blocker standing between today's proven slice and everything below:
-**`play_event.sh` is hardcoded to run `page_1` only, unconditionally.** No trigger-awareness, no
-multi-page dispatch. This has to be fixed before ANY of the richer event types below can coexist on
-one entity.
+The immediate, concrete blocker standing between today's proven slice and everything below (NOW
+FIXED, see banner above): **`play_event.sh` is hardcoded to run `page_1` only, unconditionally.** No
+trigger-awareness, no multi-page dispatch. This has to be fixed before ANY of the richer event types
+below can coexist on one entity.
 
 ---
 

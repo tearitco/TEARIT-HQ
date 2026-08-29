@@ -1,3 +1,10 @@
+> **PATH NOTE (added 2026-08-29, doc-audit pass):** every `&.widgits/ai-cell/...`
+> path below is renamed to `&.widgits/open-hai/...` in current code
+> (`khtpm_open_hai_manager.c` is the current renderer, not
+> `khtpm_ai_cell_render.c`). Left unrewritten below to preserve the real
+> 2026-08-12/13 historical record of what shipped when — mentally
+> substitute `open-hai` for `ai-cell` when tracing current code.
+
 # 🧭 HARNECIENT × h-ai RELAY PLAN 🧭
 
 > 🟢 STATUS: **DESIGN PHASE — approved direction, not yet built.**

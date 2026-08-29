@@ -1,3 +1,8 @@
+> **PATH NOTE (added 2026-08-29, doc-audit pass):** every `&.widgits/ai-cell/...`
+> path below is renamed to `&.widgits/open-hai/...` in current code. Left
+> unrewritten to preserve the historical record — substitute `open-hai`
+> for `ai-cell` when tracing current code.
+
 # Harness Delegation Pipeline — Strategy & Survey
 
 **Purpose**: (1) survey every real "harness" (deterministic tool-

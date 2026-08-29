@@ -10,10 +10,12 @@ not a full runnable app. You (or your agent) still write:
 
 ## 📄 What's in here
 
-- **`khtpm_css_parser.c` / `.h`** — parses a `.chtpm` file's tags/attributes
-  into a tree of `Elem` structs, plus a tiny CSS-like stylesheet parser for
-  colors/fonts/spacing. Compile this as its own `.c` file (normal
-  compile+link), `#include "khtpm_css_parser.h"` where you need it.
+- **`khtpm_css_parser.c` / `.h`** — a CSS-like stylesheet parser for
+  colors/fonts/spacing (`css_compute_style()`), NOT the `.chtpm` XML
+  loader (corrected 2026-08-29 doc-audit pass — the previous text here
+  claimed it parsed `.chtpm` tags into the `Elem` tree; it doesn't).
+  Compile this as its own `.c` file (normal compile+link), `#include
+  "khtpm_css_parser.h"` where you need it.
 
 - **`khtpm_render_core.c`** — the `Elem` struct itself, plus
   `hit_test()`/`find_by_tag()`/`find_by_id()`. ⚠️ **Different include
@@ -43,7 +45,8 @@ not a full runnable app. You (or your agent) still write:
 
 1. Write your own `.chtpm` (or copy/trim `example-dashboard.chtpm`).
 2. Write a small C program: open an X11 window, parse your `.chtpm` with
-   `khtpm_css_parser.c`'s loader, build the `Elem` tree.
+   `khtpm_render_core.c`'s loader (see `load_chtpm`/`parse_chtpm` there),
+   build the `Elem` tree.
 3. Each draw/redraw: walk the tree and call `draw_elem()` from
    `khtpm_draw_core.c` on each node (`khtpm_render_core.c`'s
    `find_by_tag`/`find_by_id` help you find specific nodes to update).

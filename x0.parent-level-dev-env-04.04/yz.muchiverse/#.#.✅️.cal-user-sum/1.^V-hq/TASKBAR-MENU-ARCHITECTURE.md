@@ -107,7 +107,8 @@ some may genuinely be PDL-driven already.)
    }
    ```
 2. **Add the dispatch branch** in `ktb_hq_activate()` — copy the shape of the
-   existing `livedesk:open-ai-cell` branch verbatim (search for it, ~line
+   existing `livedesk:open-open-hai` branch verbatim (renamed from
+   `livedesk:open-ai-cell` since this doc was written — search for it, ~line
    2708 as of this writing) and adapt paths:
    ```c
    } else if (strcmp(m->command, "livedesk:open-yourthing") == 0) {

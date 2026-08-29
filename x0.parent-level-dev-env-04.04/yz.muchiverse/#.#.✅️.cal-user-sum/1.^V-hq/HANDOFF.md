@@ -274,11 +274,17 @@ Located: `#.ref/menu/event.commands.{1,2,3}.txt`
 
 ## 🐛 Known Issues & Gaps
 
-### 1. User Creation Missing in Livedesk UI
-- **Status:** Can create users via CLI (`userpal_create_account.+x <id> <name>`)
-- **Gap:** No "New User" button in livedesk 2.USER cell
-- **Solution:** Wire userpal_create_account function into ktb_hq_open() for which==2 (USER cell)
-- **File:** `khtpm_taskbar_manager.c` (ktb_hq_open switch statement, add case for new user)
+> **CORRECTED (2026-08-29 doc-audit pass):** item 1 below (User Creation
+> Missing) is stale and contradicts this doc's own TL;DR above ("USER
+> cell has real account creation (relay-verified)"). Left here struck
+> through rather than deleted, since the rest of this section (2, 3) is
+> still real and unresolved.
+
+### ~~1. User Creation Missing in Livedesk UI~~ — RESOLVED, see TL;DR above
+- ~~**Status:** Can create users via CLI (`userpal_create_account.+x <id> <name>`)~~
+- ~~**Gap:** No "New User" button in livedesk 2.USER cell~~
+- ~~**Solution:** Wire userpal_create_account function into ktb_hq_open() for which==2 (USER cell)~~
+- ~~**File:** `khtpm_taskbar_manager.c` (ktb_hq_open switch statement, add case for new user)~~
 
 ### 2. Event Persistence Test Needed
 - **Status:** Change Gold command exists in event-ez

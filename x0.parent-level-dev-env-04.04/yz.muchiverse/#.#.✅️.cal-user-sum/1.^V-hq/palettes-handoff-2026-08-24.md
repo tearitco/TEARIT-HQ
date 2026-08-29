@@ -15,9 +15,14 @@ PNG-derived sprite textures (`emoji_gen_atlas.+x`/`emoji_xtract.+x` → `sprite.
 click-to-place onto desk via tile-picker's proven chain. Verified live by user
 ("looks good") and programmatically via headless frame-dump pixel analysis.
 
-**NOT done:** every category other than emojis still shows font-glyph text tiles
-(elements/chemicals) or an honest stub (rmmv, piececraft, cdda, df, kenney, paint,
-generate). Placement-on-click has not been re-verified since the sprite rework.
+**NOT done (at 2026-08-24, this doc's own date):** every category other than emojis
+still shows font-glyph text tiles (elements/chemicals) or an honest stub (rmmv,
+piececraft, cdda, df, kenney, paint, generate). **CORRECTED 2026-08-29 doc-audit
+pass: `rmmv` is no longer a stub** — it now has a real tab bar, a real tileset
+chooser, and real state round-trip (`rmmv_active.txt`, `set-rmmv-tab`/
+`set-rmmv-tileset` handlers in `palettes_menu.sh`) — see `TILE-SYSTEM-DESIGN.md` for
+current status. The other categories' status here wasn't re-verified this pass.
+Placement-on-click has not been re-verified since the sprite rework.
 Scroll handlers exist in code but are not visually verified with the new 56px rows.
 All other taskbar cells' dropdown builders remain C-hardcoded (documented debt).
 
