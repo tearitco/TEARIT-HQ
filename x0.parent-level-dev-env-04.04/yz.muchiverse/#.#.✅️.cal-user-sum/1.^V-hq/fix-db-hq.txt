@@ -1,11 +1,35 @@
-fix-db-hq.txt — Common Events Add-Command picker: mouse still broken,
-nav bleeds into parent window (2026-08-29, handoff for fresh context)
+fix-db-hq.txt — Common Events Add-Command picker: mouse + nav-bleed
+bugs (2026-08-29)
 ============================================================
 
-STATUS: NOT FIXED. Two real, live-reported, still-open bugs. Written
-because the investigating session is nearly out of context budget -
-do NOT blind-guess a fix on top of this without re-reading the actual
-code first, the hypotheses below are real leads, not confirmed causes.
+STATUS: BOTH BUGS FIXED AND LIVE-VERIFIED, same session, after this
+doc was originally written. Left in place as a real record of the
+investigation - the hypotheses below turned out to be exactly right
+for bug 2 and a real, if not the only, contributing factor for bug 1.
+See the two real commits: `d5c1441` (mouse click) and `8588853`
+(nav-index collision). Only the chat-hai section at the bottom is
+still real, open work.
+
+**Bug 1 (mouse click) - actual confirmed root cause**, found via a
+live debug trace (not the theory originally written below, though
+related): `evhq_draw_picker_overlay()` unconditionally sets
+`g_focus_nav = g_evhq_picker_focus` (type list) or reads
+`g_evhq_active_field` (field entry) at the top of every redraw.
+`click_focus_then_activate()` only ever updated `g_focus_nav`
+directly, never those two variables - so the redraw a click itself
+triggers immediately stomped the mouse's own focus change back to
+whatever stale value they still held. Fixed by syncing
+`g_evhq_picker_focus`/`g_evhq_active_field` from the clicked Elem's
+`nav_index` before redrawing, in both `evhq_handle_click()` and
+`dbhq_handle_click()`'s own picker branches.
+
+**Bug 2 (nav bleeds to parent) - confirmed exactly as hypothesized**
+below (candidate (a)): fixed via a new `zero_nav_subtree()`, wired
+into both `*_assign_nav_indices()` functions, gated on
+`g_evhq_picker_open` (and `g_dbhq_ce_editing` for db-hq specifically).
+
+Original investigation notes preserved below for the record.
+============================================================
 
 Direct user report, verbatim: "the background and window outline (for
 add command) is back, but mouse still isn't working. also nav arrows
