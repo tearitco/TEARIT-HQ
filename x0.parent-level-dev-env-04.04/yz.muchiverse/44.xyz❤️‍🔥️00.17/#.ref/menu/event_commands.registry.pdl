@@ -268,3 +268,268 @@ COMMAND erase_event
   FIELD2 -
   TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_character.+x" "$ENT" erase 1
 END
+
+# ------------------------------------------------------------------
+# PARTY + ACTOR commands (2026-08-29, EVENTS-PAL-BUILDOUT-PLAN.md
+# Stage A/B, §1b/§4 "Shape 1" - native .pal, GET_KV_INT/ADDI/SET_KV_INT,
+# same proven template as control_switch/control_variable above, zero
+# new C op binaries). All state lives in real {STATE_DIR}-relative key=
+# value files (STATE_DIR resolves to the session root, or entity root
+# fallback - see resolve_session_root() in khtpm_events_hq_manager.c),
+# same convention switches.txt/variables.txt already use.
+#
+# Picker field-count ceiling (verified by reading EvhqCommandDef in
+# khtpm_entity_menu_render.c before assuming anything): the picker UI
+# has exactly TWO real text fields (field1/field2 -> param_names[0]/[1]
+# positionally, see evhq_submit_picker()) even though the compiler side
+# (CommandDef/PARAMS parsing) allows up to MAX_FIELDS=4 param names -
+# the extra 2 slots are dead weight the UI never fills. So any command
+# needing a 3rd real identifier (Change Parameter/State/Skill/
+# Equipment - actor_id + a second id) compounds the two ids into ONE
+# field as "actor_id:sub_id" (e.g. "1:2"), typed by the user as a single
+# value and used verbatim inside a PAL key/path string ({actor_param}
+# etc.) - GET_KV_INT/SET_KV_INT match keys by exact string prefix
+# (prisc+x.c's SYS_GET_KV_INT/SYS_SET_KV_INT), so a colon inside a key
+# name is completely valid, not a hack. This is the same "normalize
+# before substitution" shape control_switch's own ON/OFF->1/0 handling
+# already established, just via a compound field instead of a
+# hardcoded string map - no khtpm_entity_menu_render.c changes needed
+# or made for these commands.
+#
+# Add/remove and learn/forget mode fields use SELECT2 with literal
+# "1"/"0" options (not "Add"/"Remove" text) because SELECT2's chosen
+# option substitutes VERBATIM into the PAL line (`li x12, {mode}`) -
+# only control_switch gets a hardcoded ON/OFF->1/0 string translation
+# in evhq_submit_picker(); no other command does, so the option
+# strings themselves must already be the real value the PAL needs. The
+# FIELD label spells out what 1/0 means (e.g. "Add(1)/Remove(0):") so
+# this stays real and unambiguous, not a fake/half feature.
+#
+# SKIPPED ON PURPOSE: Change Name, Change Nickname, Change Profile.
+# All three are genuine STRING sets (a name/nickname/profile-text
+# value), and prisc+x.c's real ecall syscall set (SYS_OPEN/CLOSE/
+# WRITE_LINE/WRITE_INT/READ_INT/GET_KV_INT/SET_KV_INT, lines ~690-719
+# of &.widgits/_shared-lib/system/prisc+x.c) has NO string-set
+# primitive - GET_KV_INT/SET_KV_INT are integer-only by their own name
+# and implementation (atoi/"%d\n"). Per EVENTS-PAL-BUILDOUT-PLAN.md
+# §1b, that's genuinely Shape 2 (new C op + a real SYS_SET_KV_STR-class
+# syscall) territory, not something to fake with a broken/lossy
+# int encoding. Not implemented here - see this file's own commit
+# message / the delegating agent's report for the same note.
+# Change Class, despite being grouped with the string commands in the
+# task description, is actually a plain integer id (class_id) per real
+# RPG Maker MV semantics - implemented below as a normal 2-field
+# integer SET, no string primitive needed.
+
+COMMAND change_items
+  LABEL Change Items
+  FIELD1 Item id:
+  FIELD2 Amount:
+  PARAMS item_id,amount
+  PAL li x15, 6
+  PAL li x13, 0
+  PAL ecall "{STATE_DIR}/items.txt" "item_{item_id}"
+  PAL addi x12, x12, {amount}
+  PAL li x15, 7
+  PAL ecall "{STATE_DIR}/items.txt" "item_{item_id}"
+END
+
+COMMAND change_weapons
+  LABEL Change Weapons
+  FIELD1 Weapon id:
+  FIELD2 Amount:
+  PARAMS weapon_id,amount
+  PAL li x15, 6
+  PAL li x13, 0
+  PAL ecall "{STATE_DIR}/weapons.txt" "weapon_{weapon_id}"
+  PAL addi x12, x12, {amount}
+  PAL li x15, 7
+  PAL ecall "{STATE_DIR}/weapons.txt" "weapon_{weapon_id}"
+END
+
+COMMAND change_armors
+  LABEL Change Armors
+  FIELD1 Armor id:
+  FIELD2 Amount:
+  PARAMS armor_id,amount
+  PAL li x15, 6
+  PAL li x13, 0
+  PAL ecall "{STATE_DIR}/armors.txt" "armor_{armor_id}"
+  PAL addi x12, x12, {amount}
+  PAL li x15, 7
+  PAL ecall "{STATE_DIR}/armors.txt" "armor_{armor_id}"
+END
+
+COMMAND change_party_member
+  LABEL Change Party Member
+  FIELD1 Actor id:
+  FIELD2 Add(1)/Remove(0):
+  SELECT2 1:0
+  PARAMS actor_id,in_party
+  PAL li x15, 7
+  PAL li x12, {in_party}
+  PAL ecall "{STATE_DIR}/party.txt" "member_{actor_id}"
+END
+
+COMMAND change_hp
+  LABEL Change HP
+  FIELD1 Actor id:
+  FIELD2 Amount:
+  PARAMS actor_id,amount
+  PAL li x15, 6
+  PAL li x13, 0
+  PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "hp"
+  PAL addi x12, x12, {amount}
+  PAL li x15, 7
+  PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "hp"
+END
+
+COMMAND change_mp
+  LABEL Change MP
+  FIELD1 Actor id:
+  FIELD2 Amount:
+  PARAMS actor_id,amount
+  PAL li x15, 6
+  PAL li x13, 0
+  PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "mp"
+  PAL addi x12, x12, {amount}
+  PAL li x15, 7
+  PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "mp"
+END
+
+COMMAND change_tp
+  LABEL Change TP
+  FIELD1 Actor id:
+  FIELD2 Amount:
+  PARAMS actor_id,amount
+  PAL li x15, 6
+  PAL li x13, 0
+  PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "tp"
+  PAL addi x12, x12, {amount}
+  PAL li x15, 7
+  PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "tp"
+END
+
+COMMAND change_exp
+  LABEL Change EXP
+  FIELD1 Actor id:
+  FIELD2 Amount:
+  PARAMS actor_id,amount
+  PAL li x15, 6
+  PAL li x13, 0
+  PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "exp"
+  PAL addi x12, x12, {amount}
+  PAL li x15, 7
+  PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "exp"
+END
+
+COMMAND change_level
+  LABEL Change Level
+  FIELD1 Actor id:
+  FIELD2 Amount:
+  PARAMS actor_id,amount
+  PAL li x15, 6
+  PAL li x13, 0
+  PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "level"
+  PAL addi x12, x12, {amount}
+  PAL li x15, 7
+  PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "level"
+END
+
+# Change Parameter - actor_id + param_id compounded into one field
+# (see this file's own header note above on the picker's real 2-field
+# ceiling), e.g. "1:2" for actor 1's parameter 2. Shared
+# actor_params.txt, keyed "param_<actor_id>:<param_id>".
+COMMAND change_parameter
+  LABEL Change Parameter
+  FIELD1 Actor:Param id (e.g. 1:2):
+  FIELD2 Amount:
+  PARAMS actor_param,amount
+  PAL li x15, 6
+  PAL li x13, 0
+  PAL ecall "{STATE_DIR}/actor_params.txt" "param_{actor_param}"
+  PAL addi x12, x12, {amount}
+  PAL li x15, 7
+  PAL ecall "{STATE_DIR}/actor_params.txt" "param_{actor_param}"
+END
+
+# Recover All - real, defined semantics: reads max_hp/max_mp/max_tp
+# (defaulting to 9999 if not yet set - no max-stat system exists in
+# this house yet, so 9999 is a documented, real, honest default, not a
+# guess dressed up as data) and writes each straight into hp/mp/tp.
+# GET_KV_INT already leaves the read value in x12, and SET_KV_INT reads
+# its value from x12 too, so no ADDI is needed between them - a true
+# heal-to-max, not a delta.
+COMMAND recover_all
+  LABEL Recover All
+  FIELD1 Actor id:
+  FIELD2 -
+  PARAMS actor_id
+  PAL li x15, 6
+  PAL li x13, 9999
+  PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "max_hp"
+  PAL li x15, 7
+  PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "hp"
+  PAL li x15, 6
+  PAL li x13, 9999
+  PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "max_mp"
+  PAL li x15, 7
+  PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "mp"
+  PAL li x15, 6
+  PAL li x13, 9999
+  PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "max_tp"
+  PAL li x15, 7
+  PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "tp"
+END
+
+# Change State - actor_id + state_id compounded (same shape as Change
+# Parameter). Add(1)/Remove(0) is a plain SET, not an ADD.
+COMMAND change_state
+  LABEL Change State
+  FIELD1 Actor:State id (e.g. 1:4):
+  FIELD2 Add(1)/Remove(0):
+  SELECT2 1:0
+  PARAMS actor_state,add_remove
+  PAL li x15, 7
+  PAL li x12, {add_remove}
+  PAL ecall "{STATE_DIR}/actor_states.txt" "state_{actor_state}"
+END
+
+# Change Skill - actor_id + skill_id compounded. Learn(1)/Forget(0).
+COMMAND change_skill
+  LABEL Change Skill
+  FIELD1 Actor:Skill id (e.g. 1:3):
+  FIELD2 Learn(1)/Forget(0):
+  SELECT2 1:0
+  PARAMS actor_skill,learn_forget
+  PAL li x15, 7
+  PAL li x12, {learn_forget}
+  PAL ecall "{STATE_DIR}/actor_skills.txt" "skill_{actor_skill}"
+END
+
+# Change Equipment - actor_id + equipment slot compounded into field1
+# (e.g. "1:0" = actor 1, slot 0), item id to equip in field2. Plain SET
+# (equipping is "this slot now holds item X", not an add/delta).
+COMMAND change_equipment
+  LABEL Change Equipment
+  FIELD1 Actor:Slot (e.g. 1:0):
+  FIELD2 Item id:
+  PARAMS actor_slot,item_id
+  PAL li x15, 7
+  PAL li x12, {item_id}
+  PAL ecall "{STATE_DIR}/actor_equipment.txt" "equip_{actor_slot}"
+END
+
+# Change Class - real integer class_id SET (see this file's header
+# note - grouped with the string commands in the original task
+# description, but RPG Maker MV's real field is an int id, so this one
+# genuinely fits Shape 1 with no compounding needed).
+COMMAND change_class
+  LABEL Change Class
+  FIELD1 Actor id:
+  FIELD2 Class id:
+  PARAMS actor_id,class_id
+  PAL li x15, 7
+  PAL li x12, {class_id}
+  PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "class_id"
+END
