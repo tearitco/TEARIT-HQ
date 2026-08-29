@@ -1272,7 +1272,25 @@ static void dbhq_inject_palette_tiles(Elem *panel) {
         if (wide) { snprintf(tile->classes[1], sizeof(tile->classes[1]), "pal-wide"); tile->n_classes = 2; }
         snprintf(tile->label, sizeof(tile->label), "%s", g_pal_label[i]);
         if (g_pal_sprite[i][0]) snprintf(tile->sprite, sizeof(tile->sprite), "%s", g_pal_sprite[i]);
-        snprintf(tile->onclick, sizeof(tile->onclick), "exec:'%s/&.widgits/palettes/palettes_menu.sh' place '%s'", g_house_root, g_pal_emoji[i]);
+        /* REAL FIX 2026-08-29 (TILE-SYSTEM-DESIGN.md §6 item 6, the
+         * doc-audit pass's identified real gap): before this fix, EVERY
+         * category's tile click - including rmmv - went through place()
+         * with g_pal_emoji[i], which for rmmv holds a label string like
+         * "a2 kind 3,1", not a real glyph. That sent garbage into the
+         * FreeType emoji_gen_atlas pipeline, which is why "sets a real
+         * current brush state on tile click" was still flagged pending
+         * in TILE-SYSTEM-DESIGN.md's own §6 item 5 note. rmmv now arms
+         * a real tileset/category/kind brush instead - g_pal_sprite[i]
+         * is already the manager's own real per-kind sprite.csv cache
+         * dir (publish_rmmv()), so no new rendering/compositing code is
+         * needed here, only correct routing. */
+        if (strcmp(g_pal_category, "rmmv") == 0) {
+            snprintf(tile->onclick, sizeof(tile->onclick),
+                     "exec:'%s/&.widgits/palettes/palettes_menu.sh' arm-rmmv '%s' '%s' '%s' '%s'",
+                     g_house_root, g_pal_sprite[i], g_pal_active_tileset, g_pal_active_category, g_pal_label[i]);
+        } else {
+            snprintf(tile->onclick, sizeof(tile->onclick), "exec:'%s/&.widgits/palettes/palettes_menu.sh' place '%s'", g_house_root, g_pal_emoji[i]);
+        }
         row->children[row->n_children++] = tile;
     }
 

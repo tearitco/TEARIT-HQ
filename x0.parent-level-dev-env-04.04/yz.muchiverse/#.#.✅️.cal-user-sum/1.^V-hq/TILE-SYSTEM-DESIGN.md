@@ -598,9 +598,33 @@ the `livedesk:open-palette:<category>` action parse, and the manager
 launch itself - is genuinely PDL-driven end to end, zero hardcoded
 category lists anywhere in that chain. This was the real, pre-existing,
 already-correct precedent the new `rmmv` work was built to match.
-6. Wire the armed-brush "click desktop to place" interaction (§4b.3) —
-   spawns/updates a real `tp_desktop_window_rgb.c` tile-entity at the
-   clicked grid cell, per §0a.
+6. **DONE, file-level verified (2026-08-29)** — the armed-brush "click
+   desktop to place" interaction (§4b.3) is built: `tp_set_brush_rmmv.c`
+   (arms tileset+category+kind identity), `tp_arm_placer_rmmv.c` (global
+   pointer/keyboard grab, waits for the next real desktop click - same
+   proven technique as the emoji brush's `tp_arm_placer.c`, board-viewer
+   branch dropped since RMMV placement is desktop-only for now),
+   `tp_place_desktop_rmmv.c` (spawns/updates a real `tp_desktop_window_
+   rgb.c` tile-entity at the clicked point, per §0a). Rendering needed
+   ZERO changes to `tp_desktop_window_rgb.c` - it already draws any
+   entity's `sprite.csv` generically, and `palettes_manager.c`'s
+   `publish_rmmv()` already caches a real per-kind representative
+   sprite.csv, so placement just copies that cached file rather than
+   re-compositing. Renderer's tile-click onclick (`khtpm_entity_menu_
+   render.c`) fixed to route rmmv tiles to `arm-rmmv` instead of the
+   emoji `place` path (was previously sending a label string like "a2
+   kind 3,1" into the FreeType glyph pipeline - a real, now-fixed bug).
+   **Verified**: manual end-to-end file-chain test (brush arm -> place
+   -> real entity dir with correct meta.pdl/menu.chtpm/sprite.csv,
+   sprite.csv byte-matches the manager's own cache) and clean compiles
+   of all 3 new ops + the renderer. **NOT YET verified**: a real, live
+   X11 click-through-the-open-picker-window test (open palettes/rmmv,
+   click a tile, click the desktop, watch the tile-entity actually
+   appear on screen) - the grab/place code is a direct, simplified
+   adaptation of `tp_arm_placer.c`'s already-proven grab technique, but
+   that specific live click path hasn't been driven end to end yet.
+   Single representative kind-thumbnail only - no neighbor-aware
+   autotile blending yet, that's step 8 below, separately unbuilt.
 7. Build the map-file loader (§1.2) as a plain C parsing function,
    matching every other flat-PDL loader already in this codebase
    (`read_key_value()`-style, not a new parsing paradigm) — expanding a

@@ -37,6 +37,14 @@ gcc $CFLAGS -o "ops/+x/tp_set_wm_pid.+x" "ops/tp_set_wm_pid.c" -lX11
 gcc $CFLAGS -o "ops/+x/ledger_peers.+x" "ops/ledger_peers.c"
 gcc $CFLAGS -o "ops/+x/tp_arm_placer.+x" "ops/tp_arm_placer.c" -lX11
 gcc -Wall -O2 -o "ops/+x/tp_rmmv_character_extract.+x" "ops/tp_rmmv_character_extract.c" -lm
+# Real RMMV-tile "armed brush, click desktop to place" chain
+# (TILE-SYSTEM-DESIGN.md §6 item 6, built 2026-08-29 - the one real
+# remaining gap the doc-audit pass identified, see that file's own
+# header comments for why these are separate ops, not a
+# generalization of the glyph-brush ones above).
+gcc $CFLAGS -o "ops/+x/tp_set_brush_rmmv.+x" "ops/tp_set_brush_rmmv.c"
+gcc $CFLAGS -o "ops/+x/tp_place_desktop_rmmv.+x" "ops/tp_place_desktop_rmmv.c"
+gcc $CFLAGS -o "ops/+x/tp_arm_placer_rmmv.+x" "ops/tp_arm_placer_rmmv.c" -lX11
 
 # khtpm_choice_picker.+x + khtpm_show_choices.+x - REAL FIX 2026-08-16
 # ("its very old lets fix it to use khtpm"): the real khtpm-based Show

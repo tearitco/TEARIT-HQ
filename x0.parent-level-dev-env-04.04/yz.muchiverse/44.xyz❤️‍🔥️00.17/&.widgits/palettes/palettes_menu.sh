@@ -166,8 +166,26 @@ set_rmmv() {
     log "rmmv active $_field set to '$_val' in $_pkg (tab=$_tab tileset=$_tileset dir=$_dir)"
 }
 
+# arm-rmmv <sprite_dir> <tileset_key> <category> <kind_label> - the real
+# "armed brush, click desktop to place" chain for RMMV tiles
+# (TILE-SYSTEM-DESIGN.md §4b.3/§6 item 6, built 2026-08-29). Arms the
+# brush (tp_set_brush_rmmv), then spawns tp_arm_placer_rmmv detached to
+# grab the next click anywhere on the real desktop - same real
+# global-grab technique the emoji brush's own tp_arm_placer.+x already
+# proved working, just without that op's board-viewer branch (RMMV
+# placement targets bare desktop only for now, see tp_arm_placer_rmmv.c's
+# own header for why).
+arm_rmmv() {
+    _sdir="$1"; _key="$2"; _cat="$3"; _label="$4"
+    mkdir -p "$STATE_DIR" "$DESK_DIR/tiles"
+    "$TP_OPS/tp_set_brush_rmmv.+x" "$STATE_DIR" "$_sdir" "$_key" "$_cat" "$_label" >/dev/null 2>&1 || true
+    setsid "$TP_OPS/tp_arm_placer_rmmv.+x" "$STATE_DIR" "$DESK_DIR" >/dev/null 2>&1 < /dev/null &
+    log "armed rmmv brush tileset=$_key category=$_cat kind='$_label'"
+}
+
 case "${1:-}" in
     place)             shift; place "$@"; exit 0 ;;
+    arm-rmmv)          shift; arm_rmmv "$1" "$2" "$3" "$4"; exit 0 ;;
     list)              list_cats; exit 0 ;;
     set-rmmv-tab)      shift; set_rmmv tab "$1" "$2"; exit 0 ;;
     set-rmmv-tileset)  shift; set_rmmv tileset "$1" "$2"; exit 0 ;;
