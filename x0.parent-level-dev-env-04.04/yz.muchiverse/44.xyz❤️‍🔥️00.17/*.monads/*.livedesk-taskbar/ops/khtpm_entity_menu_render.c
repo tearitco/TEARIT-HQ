@@ -5586,6 +5586,27 @@ static void chai_launch_module(const char *src) {
     if (src[0] == '/') snprintf(full_path, sizeof(full_path), "%s", src);
     else snprintf(full_path, sizeof(full_path), "%s/%s", g_house_root, src);
 
+    /* REAL FIX 2026-08-29 (orphaned chat_hai_loop.sh bug, live report: loop
+     * keeps running even after renderer crashes). Root cause: renderer forks
+     * the loop as a child, but if renderer is killed (especially with -9),
+     * the loop becomes orphaned with no way to know. Solution: write the
+     * renderer's own PID to state/chat_hai_renderer.pid BEFORE launching the
+     * loop. The loop checks this file periodically (every round) and exits
+     * cleanly if the PID no longer exists - matching this house's own
+     * "file-based state only" philosophy (see !.HOUSE_STDS.md §4 real PID
+     * files). This is identical in spirit to how nav_tab registers processes
+     * per-PID (see nav_tab_register()), just reused for renderer liveness. */
+    char state_dir[PATH_BUF];
+    snprintf(state_dir, sizeof(state_dir), "%s/&.hq-apps/chat-hai/state", g_house_root);
+    mkdir(state_dir, 0777);
+    char pid_file[PATH_BUF];
+    snprintf(pid_file, sizeof(pid_file), "%s/chat_hai_renderer.pid", state_dir);
+    FILE *pf = fopen(pid_file, "w");
+    if (pf) {
+        fprintf(pf, "%d\n", (int)getpid());
+        fclose(pf);
+    }
+
     chai_module_pid = fork();
     if (chai_module_pid == 0) {
         execl(full_path, full_path, g_house_root, (char *)NULL);

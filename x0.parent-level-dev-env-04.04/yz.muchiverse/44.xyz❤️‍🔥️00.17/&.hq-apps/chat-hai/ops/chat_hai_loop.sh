@@ -597,10 +597,36 @@ ${glyph} You are $name.${angle_hint}${recall_note}${user_addendum} Say something
 
 log_line "personas: $(ls "$(personas_dir)"/*.pdl 2>/dev/null | wc -l) found in $(personas_dir)"
 
+# REAL FIX 2026-08-29 (orphaned loop bug - live report: loop keeps running
+# after renderer crashes/is killed). Renderer writes its PID to
+# state/chat_hai_renderer.pid before forking this loop. Every round, we
+# check that PID file: if the PID no longer exists or the file is gone,
+# the renderer is dead and we should exit cleanly (matching this house's
+# "file-based state only" philosophy - see !.HOUSE_STDS.md). This prevents
+# orphaned processes when the renderer is killed with -9 or crashes,
+# situations where SIGTERM handlers/atexit() don't run in the parent.
+renderer_pid_file="$STATE_DIR/chat_hai_renderer.pid"
+check_renderer_alive() {
+    if [ -f "$renderer_pid_file" ]; then
+        read -r rpid 2>/dev/null < "$renderer_pid_file"
+        if [ -n "$rpid" ] && kill -0 "$rpid" 2>/dev/null; then
+            return 0  # renderer is still alive
+        fi
+    fi
+    return 1  # renderer is dead
+}
+
 # --- main round-robin loop ---
 round=0
 while true; do
     round=$((round + 1))
+
+    # Check renderer liveness - exit cleanly if renderer is gone
+    if ! check_renderer_alive; then
+        log_line "renderer PID gone, exiting loop (PID file: $renderer_pid_file)"
+        exit 0
+    fi
+
     # personas_dir() re-evaluated every round (not cached) - a session
     # switch mid-run picks up the new session's own roster within one
     # round, same "re-read every round" contract sleep_between()/
