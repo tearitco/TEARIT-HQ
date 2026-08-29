@@ -9064,14 +9064,22 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                 dbhq_loop_request_redraw();
                 return;
             }
-            if (ev->xbutton.button == 1 && ev->xbutton.y < g_dbhq_chrome_h &&
+            /* REAL FIX 2026-08-29 (live report: Common Events' Add-
+             * Command picker had "all very weird behavior" - this
+             * check was missing the same !g_evhq_picker_open guard
+             * events-hq's own analogous drag-start check already has
+             * (see that one's own comment) - a real click meant for
+             * the modal picker, landing in the window's own top chrome
+             * strip by coincidence, could arm a background window-drag
+             * underneath the modal. */
+            if (!g_evhq_picker_open && ev->xbutton.button == 1 && ev->xbutton.y < g_dbhq_chrome_h &&
                 !(ev->xbutton.x >= g_dbhq_close_elem->x && ev->xbutton.x < g_dbhq_close_elem->x + g_dbhq_close_elem->w &&
                   ev->xbutton.y >= g_dbhq_close_elem->y && ev->xbutton.y < g_dbhq_close_elem->y + g_dbhq_close_elem->h)) {
                 g_dbhq_dragging = 1;
                 g_dbhq_drag_last_x = ev->xbutton.x_root;
                 g_dbhq_drag_last_y = ev->xbutton.y_root;
             }
-            if (g_pal_has_grid && (ev->xbutton.button == 4 || ev->xbutton.button == 5)) {
+            if (!g_evhq_picker_open && g_pal_has_grid && (ev->xbutton.button == 4 || ev->xbutton.button == 5)) {
                 g_pal_scroll += (ev->xbutton.button == 5) ? 2 : -2;
             } else if (ev->xbutton.button != 3 && ev->xbutton.button != 4 && ev->xbutton.button != 5) {
                 dbhq_capture_click(ev->xbutton.x, ev->xbutton.y, (int)ev->xbutton.button);

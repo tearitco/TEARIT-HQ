@@ -119,3 +119,44 @@ button:hover {
   color: #8f8f9a;
   font-size: 10px;
 }
+
+/* REAL FIX 2026-08-29 (live report: Common Events' own Add-Command
+ * picker had "no solid background/window outline" and other weird
+ * behavior) - root cause: evhq_draw_picker_overlay() was converted
+ * from hand-drawn C to real CSS-driven Elems (see khtpm_entity_menu_
+ * render.c's own comment on that change), but that CSS-ification only
+ * ported the new .picker-* rules into events-hq's own dashboard.css -
+ * db-hq's Common Events editor shares the SAME picker function
+ * (g_dbhq_ce_editing && g_evhq_picker_open) but loads THIS separate
+ * CSS file, which never had these rules at all, so the overlay had
+ * zero style here: no background, no border, no text color - reads as
+ * "missing" even though it was really drawing, just invisibly. Ported
+ * verbatim from events-hq's own dashboard.css, same as every other
+ * shared-Elem CSS port this session (.scratch-block/.block-item/etc
+ * above got the same treatment). */
+.picker-overlay {
+  background-color: #2a2a2a;
+  border: 1px solid #4a9eff;
+}
+.picker-title {
+  color: #eeeeee;
+  font-size: 11px;
+  font-weight: bold;
+}
+.picker-row {
+  color: #eeeeee;
+  font-size: 11px;
+}
+.picker-cancel {
+  color: #ff8080;
+  font-size: 11px;
+}
+.picker-delete {
+  background-color: #cc4444;
+  color: #ffffff;
+  font-size: 11px;
+}
+.picker-hint {
+  color: #999999;
+  font-size: 11px;
+}
