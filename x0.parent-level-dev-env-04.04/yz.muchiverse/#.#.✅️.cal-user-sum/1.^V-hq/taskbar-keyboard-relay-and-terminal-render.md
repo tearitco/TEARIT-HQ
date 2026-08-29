@@ -9,6 +9,8 @@ metadata:
 
 **Compacted 2026-08-24** (doc-compaction pass) — full original content moved to
 `archive/taskbar-keyboard-relay-and-terminal-render.ARCHIVE.md` in this same directory.
+**That archive file is DELETED as of 2026-08-29** (direct instruction, whole
+`archive/` folder removed) — recoverable only via `git log --diff-filter=D`.
 
 **Original finding (2026-08-18):** the real, current taskbar implementation
 (`*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c` + `khtpm_taskbar_manager.c`/

@@ -2,11 +2,11 @@
 
 **Written:** 2026-08-15. **Compacted:** 2026-08-24 (doc-compaction pass) — the
 step-by-step Stage 1-5d execution trail (2839 lines, 21 dated sub-sections of
-"real findings/DONE" logs) has been moved verbatim to `archive/khtpm-merge-how2.ARCHIVE.md`
-in this same directory. Everything below is current and complete for
-understanding where this merge effort stands today; open the archive only if you
-need the historical blow-by-blow of HOW a specific stage got done (exact diffs,
-exact bugs hit, exact verification commands per stage).
+"real findings/DONE" logs) was moved verbatim to `archive/khtpm-merge-how2.ARCHIVE.md`
+in this same directory. **That archive file is DELETED as of 2026-08-29**
+(direct instruction, whole `archive/` folder removed) — only recoverable via
+`git log --diff-filter=D` in this repo, not on disk. Everything below is
+current and complete for understanding where this merge effort stands today.
 
 ---
 
@@ -123,10 +123,11 @@ and how":**
 
 ---
 
-## What's in the archive (`archive/khtpm-merge-how2.ARCHIVE.md`), section map
+## What was in the archive (`archive/khtpm-merge-how2.ARCHIVE.md` — DELETED 2026-08-29)
 
-Read the archive only if you need the historical HOW, not just the current WHAT
-(already covered above). Section numbers match the archive's own headers:
+The file this section map describes is gone (whole `archive/` folder removed,
+direct instruction; recoverable only via `git log --diff-filter=D`). Section
+map kept below as a record of what it covered, not as a live reading guide:
 
 - **§0-2** — why this doc exists, the file inventory, target architecture (one
   shared core, thin per-app shims)

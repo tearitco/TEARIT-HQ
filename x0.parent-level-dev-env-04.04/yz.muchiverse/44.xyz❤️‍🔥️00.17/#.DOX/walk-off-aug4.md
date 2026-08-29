@@ -174,7 +174,10 @@ OPS=test-harn-same/ops/+x
 - **`PRISC_PROJECT_ROOT` resolves to the orchestrator's CWD** (project root, via `setenv` in orchestrator.c:254), overriding button.sh's `$SESSION_DIR` export — that's fine and expected; all ops/state paths resolve to the project root.
 - **Compile after any edit:** the running agent popen's `ops/+x/*.+x` binaries fresh, but they must be rebuilt first (`gcc -Wall -Wextra -O2 ops/X.c -o ops/+x/X.+x`).
 - **`verify_cell` PITFALL 69:** 1b is describe-shaped only ("OBSERVED ISSUES"), never applies a verdict.
-- **Archive before further changes:** pre-W0/W1 snapshot is `archive/045.muchi-pal-agent.2026-08-03-20260803-201803.tar.gz` (646 KB).
+- **Archive before further changes:** pre-W0/W1 snapshot was
+  `archive/045.muchi-pal-agent.2026-08-03-20260803-201803.tar.gz` (646 KB).
+  **DELETED 2026-08-29** along with the whole `archive/` folder (direct
+  instruction) — recoverable only via `git log --diff-filter=D`.
 
 ---
 

@@ -12,14 +12,16 @@ conversation that isn't written down anywhere else yet, and real
 questions worth settling before the next session starts. Smaller and
 faster to read than working through Tier 1/2 cold.
 
-**`archive/` subfolder (added 2026-08-24):** lower-priority docs — closed-bug records,
-DONE/superseded handoffs, single-feature deep-dives, and the two `.ARCHIVE.md` full-history
-twins for compacted docs — live in `archive/` instead of cluttering this directory's
-listing. Every doc below still has its own routing entry and read-order slot; the path
-just tells you it's reference-only, not "delete this." Nothing in `archive/` is more
-authoritative than what's linked from Tier 1/2 above it — if a doc moves back to active
-status (a deferred task restarts, a "DONE" record needs revisiting), move the file back
-to the main directory and drop the `archive/` prefix here.
+> **`archive/` DELETED (2026-08-29, direct instruction after the doc-audit
+> pass):** this folder existed 2026-08-24 through 2026-08-29 for
+> lower-priority docs — closed-bug records, DONE/superseded handoffs,
+> single-feature deep-dives, `.ARCHIVE.md` full-history twins. It's gone
+> now; every `archive/<file>.md` reference still appearing anywhere below
+> in this INDEX (there are ~15) is a **dead pointer** — the content is
+> not on disk, only recoverable via `git log --diff-filter=D -- '**/archive/**'`
+> in this repo. Treat any such reference below as "this record existed,
+> here's roughly what it said, the actual file is gone" — don't go
+> looking for it on disk.
 
 ---
 

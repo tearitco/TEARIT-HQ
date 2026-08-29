@@ -2,8 +2,10 @@
 
 Companion to `_.0.aigent-testing-k9.txt` (relay-over-xdotool order) and
 `GROK-RENDER-INPUT-REFACTOR-HANDOFF.md`. These were **not** already in
-k9 / F-19 / archive/a11.focus-troubleshooting.md as a single checklist.
-a11 is a *different* bug (pointer-grab on tile-picker context menus).
+k9 / F-19 / a11.focus-troubleshooting.md (**DELETED 2026-08-29** along
+with the whole `archive/` folder; recoverable only via `git log
+--diff-filter=D`) as a single checklist. a11 was a *different* bug
+(pointer-grab on tile-picker context menus).
 F-19 is "bare XSetInputFocus on override_redirect does not deliver keys
 under Mutter" — the opposite direction of "do not steal the human."
 
