@@ -2094,6 +2094,26 @@ static void dbhq_layout_pass(Elem *window) {
             c->style.has_height = 1; c->style.height = scaled(22);
         }
         css_layout_pass(panel, panel->x, panel->y, panel->w, panel->h);
+        /* REAL FIX 2026-08-29 (Part B, Common Events view-mode tabs) -
+         * dbhq_ce_inject_panel() injects a real "tabbar" child (view-
+         * mode tabs) whose OWN tab children were positioned relative
+         * to panel->y at injection time, before this pass just moved
+         * the tabbar itself down in the flex column (same real class
+         * of bug the window's own top tabbar already avoids by being
+         * repositioned HERE, after its own css_layout_pass() call
+         * above - the injector can't know its final y in advance).
+         * Real fix, same pattern: reposition each tab relative to the
+         * tabbar's own NOW-correct x/y. */
+        for (int i = 0; i < panel->n_children; i++) {
+            Elem *c = panel->children[i];
+            if (strcmp(c->tag, "tabbar") != 0) continue;
+            int tx = c->x;
+            for (int j = 0; j < c->n_children; j++) {
+                Elem *tab = c->children[j];
+                tab->x = tx; tab->y = c->y + 2; tab->h = c->h - 4;
+                tx += tab->w + scaled(4);
+            }
+        }
 
         /* REAL, GENERALIZED 2026-08-28 (was palettes-only inline code,
          * see generic_scroll_layout_pass()'s own header comment for the
@@ -2194,6 +2214,21 @@ static void dbhq_assign_nav_indices(Elem *window) {
         if (panel) {
             for (int i = 0; i < panel->n_children && g_n_nav < MAX_ELEMS; i++) {
                 Elem *c = panel->children[i];
+                /* REAL FIX 2026-08-29 (Part B, live report: "scripting
+                 * scratch and blueprints dont have nav. that violates
+                 * house") - Common Events' own view-mode tabbar
+                 * (dbhq_ce_inject_panel()'s "CE:VIEWTAB:" tabs) was
+                 * falling into the generic "not a button, zero it"
+                 * branch below, same real bug class events-hq's own
+                 * viewtabs nav-assignment already solves - mirrored
+                 * here, not reinvented (see evhq_assign_nav_indices()'s
+                 * own real "viewtabs nav-reachable first" comment). */
+                if (strcmp(c->tag, "tabbar") == 0) {
+                    for (int j = 0; j < c->n_children && g_n_nav < MAX_ELEMS; j++) {
+                        dbhq_nav_take(c->children[j]);
+                    }
+                    continue;
+                }
                 if (strcmp(c->tag, "button") != 0) { c->nav_index = 0; continue; }
                 dbhq_nav_take(c);
             }
@@ -2329,6 +2364,12 @@ static void dbhq_pal_scroll_to_y(int mouse_y) {
 /* Forward decls - real definitions live after the g_evhq_* globals
  * they share with events-hq's own entity editing (Task 6, 2026-08-26). */
 static void dbhq_ce_open(const char *ce_name);
+/* Forward decls, real definitions come later (evhq_* section) -
+ * dbhq_ce_inject_panel() (Part B, 2026-08-29) needs these before its
+ * own definition to build the shared view-mode tabs/Scratch content. */
+static int evhq_measure_text_px(const CssStyle *st, const char *text);
+static void evhq_build_scratch_view(Elem *viewmode_stub, int content_x, int content_y, int content_h, int window_w);
+static int evhq_handle_block_onclick(const char *onclick);
 static int dbhq_ce_inject_panel(Elem *panel);
 static void dbhq_restore_tab_content(void);
 static void dbhq_ce_handle_onclick(const char *onclick);
@@ -3494,6 +3535,14 @@ static void dbhq_ce_open(const char *ce_name) {
  * dbhq_activate_elem() (added alongside this function) - the SAME
  * dispatch mechanism bookmarks' onClick="open:..." already uses. */
 static Elem g_dbhq_panel_slots[MAX_CHILDREN]; /* see reusable_slot()'s own header comment */
+/* REAL FIX 2026-08-29 (Part B) - real slot storage for Common Events'
+ * own view-mode tabbar children + its Scratch/Blueprints stub content,
+ * same reusable_slot() pattern every other injector in this file uses -
+ * NOT part of g_dbhq_panel_slots since that pool is sized/indexed for
+ * the flat Scripting-mode child list and this content replaces it
+ * entirely in non-Scripting modes. */
+static Elem g_dbhq_ce_viewtab_slots[3];
+static Elem g_dbhq_ce_scratch_stub;
 
 static int dbhq_ce_inject_panel(Elem *panel) {
     if (!panel) return 0;
@@ -3530,6 +3579,61 @@ static int dbhq_ce_inject_panel(Elem *panel) {
     snprintf(title->classes[0], sizeof(title->classes[0]), "block-title"); title->n_classes = 1;
     snprintf(title->label, sizeof(title->label), "Common Event: %s", g_dbhq_ce_name);
     panel->children[panel->n_children++] = title;
+
+    /* REAL FIX 2026-08-29 (EVENTS-HQ-RENDER-UNIFICATION-PLAN.md Part B)
+     * - the same real Scripting/Scratch/Blueprints view-mode tabs
+     * events-hq has, sharing the SAME g_evhq_view_mode global (already
+     * shared between the two modes - see g_evhq_n_cmds/g_evhq_cmds
+     * reuse just below). Real tabbar Elem, real "tab" children, same
+     * onclick-prefix convention (dbhq_activate_elem()'s existing
+     * generic dispatch already forwards unrecognized onclicks to
+     * dbhq_ce_handle_onclick() while g_dbhq_ce_editing is set - see
+     * that function's own new "CE:VIEWTAB:" case). */
+    Elem *vtabs = reusable_slot(g_dbhq_panel_slots, MAX_CHILDREN, next_slot_index++, "tabbar");
+    if (vtabs) {
+        snprintf(vtabs->classes[0], sizeof(vtabs->classes[0]), "view-tabs"); vtabs->n_classes = 1;
+        static const char *ce_view_labels[3] = { "Scripting", "Scratch", "Blueprints" };
+        int tw = 0;
+        for (int i = 0; i < 3; i++) {
+            Elem *tab = reusable_slot(g_dbhq_ce_viewtab_slots, 3, i, "tab");
+            if (!tab) break;
+            snprintf(tab->classes[0], sizeof(tab->classes[0]), "view-tab"); tab->n_classes = 1;
+            snprintf(tab->label, sizeof(tab->label), "%s", ce_view_labels[i]);
+            char oc[16]; snprintf(oc, sizeof(oc), "CE:VIEWTAB:%d", i);
+            snprintf(tab->onclick, sizeof(tab->onclick), "%s", oc);
+            tab->active = (i == g_evhq_view_mode);
+            css_compute_style(&g_sheet, tab->tag, NULL, tab->classes, tab->n_classes, tab->active, &tab->style);
+            int this_w = evhq_measure_text_px(&tab->style, tab->label) + 34;
+            tab->x = panel->x + tw; tab->y = panel->y + 4; tab->w = this_w; tab->h = 20;
+            tw += this_w + 4;
+            vtabs->children[vtabs->n_children++] = tab;
+        }
+        vtabs->x = panel->x; vtabs->y = panel->y; vtabs->w = tw; vtabs->h = 26;
+        panel->children[panel->n_children++] = vtabs;
+    }
+    if (g_evhq_view_mode == 1) {
+        /* Scratch mode - the real content Trigger/Switch/command-list/
+         * +Add-Command below is Scripting-only; give the Scratch view
+         * its own real stub Elem to build into, same shape events-hq's
+         * own "viewmode-stub" panel gives it. */
+        Elem *stub = reusable_slot(&g_dbhq_ce_scratch_stub, 1, 0, "panel");
+        if (stub) {
+            evhq_build_scratch_view(stub, panel->x, panel->y + 30, panel->h - 30, panel->w > 0 ? panel->w : g_window->w);
+            panel->children[panel->n_children++] = stub;
+        }
+        return 1;
+    }
+    if (g_evhq_view_mode == 2) {
+        Elem *stub = reusable_slot(&g_dbhq_ce_scratch_stub, 1, 0, "text");
+        if (stub) {
+            snprintf(stub->classes[0], sizeof(stub->classes[0]), "empty-msg"); stub->n_classes = 1;
+            snprintf(stub->label, sizeof(stub->label), "Blueprints view - coming soon");
+            stub->x = panel->x + 8; stub->y = panel->y + 40; stub->w = (panel->w > 0 ? panel->w : g_window->w) - 16; stub->h = 20;
+            css_compute_style(&g_sheet, stub->tag, NULL, stub->classes, stub->n_classes, 0, &stub->style);
+            panel->children[panel->n_children++] = stub;
+        }
+        return 1;
+    }
 
     /* Direct instruction (2026-08-26): a real Trigger field, RPG Maker
      * MV/MZ shape (Common Events' own "General Settings" - None/Autorun/
@@ -3698,6 +3802,17 @@ static void dbhq_ce_handle_onclick(const char *onclick) {
         if (strcasecmp(g_evhq_trigger, "None") == 0) next = "Autorun";
         else if (strcasecmp(g_evhq_trigger, "Autorun") == 0) next = "Parallel";
         evhq_request_trigger_update(next);
+    } else if (strncmp(onclick, "CE:VIEWTAB:", 11) == 0) {
+        /* REAL FIX 2026-08-29 (Part B) - Common Events gets the SAME
+         * Scripting/Scratch/Blueprints view modes events-hq has, via
+         * the SAME shared g_evhq_view_mode global (already shared
+         * between the two modes, see dbhq_ce_inject_panel()'s own real
+         * reuse of g_evhq_n_cmds/g_evhq_cmds/etc) - not a second,
+         * db-hq-only view-mode concept. */
+        g_evhq_view_mode = atoi(onclick + 11);
+        g_dbhq_ce_needs_rebuild = 1;
+    } else if (evhq_handle_block_onclick(onclick)) {
+        g_dbhq_ce_needs_rebuild = 1;
     }
 }
 
@@ -3941,6 +4056,124 @@ static void evhq_zero_subtree(Elem *e) {
     for (int i = 0; i < e->n_children; i++) evhq_zero_subtree(e->children[i]);
 }
 
+/* REAL FIX 2026-08-29 (EVENTS-HQ-RENDER-UNIFICATION-PLAN.md Part B) -
+ * extracted from events-hq's own view_mode==1 branch (was hardcoded
+ * to that one caller's "window"/"viewmode_stub" globals) so Common
+ * Events (db-hq) can build the SAME real Scratch block-palette/
+ * placement view into its OWN target stub Elem, instead of a second,
+ * duplicated copy of this logic - the whole point of Part A unifying
+ * the paint layer first. Nav-based click-to-place, NOT drag/drop:
+ * left = block palette (onclick "BLOCK:SEL:<i>", selected gets
+ * .selected), right = the SCRATCHBLOCK rows + a "[].<#>" place slot
+ * (onclick "BLOCK:PLACE" -> evhq_request_append_node(), the same
+ * action.txt boundary append both modes already share). Parameterized
+ * on the target stub + real content geometry + window width - no
+ * caller-specific globals reached into directly. */
+static void evhq_build_scratch_view(Elem *viewmode_stub, int content_x, int content_y, int content_h, int window_w) {
+    if (g_evhq_selected_palette < 0) {
+        g_evhq_selected_palette = 0;
+        snprintf(g_evhq_selected_type, sizeof(g_evhq_selected_type), "%s", g_evhq_palette[0].type);
+        snprintf(g_evhq_selected_params, sizeof(g_evhq_selected_params), "%s", g_evhq_palette[0].params);
+    }
+    evhq_zero_subtree(viewmode_stub);
+    /* REAL FIX 2026-08-29 (Part B live report - palette overlapping
+     * db-hq's own real, persistent sidebar): this used to hardcode
+     * x=0, correct for events-hq (nothing real occupies that space in
+     * its own window shape) but WRONG for Common Events, where x=0 is
+     * underneath the real event-list sidebar. Real content_x param so
+     * each caller passes its own real left edge. */
+    viewmode_stub->x = content_x; viewmode_stub->y = content_y; viewmode_stub->w = window_w; viewmode_stub->h = content_h;
+    int pslot = 0, bslot = 0;
+    for (int i = 0; i < EVHQ_PALETTE_N && pslot < EVHQ_PALETTE_MAX; i++) {
+        Elem *it = reusable_slot(g_evhq_palette_slots, EVHQ_PALETTE_MAX, pslot++, "block-item");
+        if (!it) break;
+        snprintf(it->classes[0], sizeof(it->classes[0]), "block-item");
+        it->n_classes = 1;
+        if (g_evhq_palette[i].cls1[0]) {
+            snprintf(it->classes[it->n_classes], sizeof(it->classes[it->n_classes]), "%s", g_evhq_palette[i].cls1);
+            it->n_classes++;
+        }
+        if (g_evhq_palette[i].cls2[0]) {
+            snprintf(it->classes[it->n_classes], sizeof(it->classes[it->n_classes]), "%s", g_evhq_palette[i].cls2);
+            it->n_classes++;
+        }
+        if (i == g_evhq_selected_palette) {
+            snprintf(it->classes[it->n_classes], sizeof(it->classes[it->n_classes]), "selected");
+            it->n_classes++;
+        }
+        snprintf(it->label, sizeof(it->label), "%s", g_evhq_palette[i].label);
+        snprintf(it->onclick, sizeof(it->onclick), "BLOCK:SEL:%d", i);
+        it->x = viewmode_stub->x + 8; it->y = viewmode_stub->y + 8 + i * 26;
+        it->w = 196; it->h = 22;
+        css_compute_style(&g_sheet, it->tag, NULL, it->classes, it->n_classes, 0, &it->style);
+        viewmode_stub->children[viewmode_stub->n_children++] = it;
+    }
+    int bx = viewmode_stub->x + 220;
+    for (int i = 0; i < g_evhq_n_blocks && bslot < MAX_CHILDREN; i++) {
+        Elem *b = reusable_slot(g_evhq_block_slots, MAX_CHILDREN, bslot++, "text");
+        if (!b) break;
+        snprintf(b->classes[0], sizeof(b->classes[0]), "scratch-block"); b->n_classes = 1;
+        const char *cls2 = evhq_palette_cls_for_type(g_evhq_blocks[i].key);
+        if (cls2) { snprintf(b->classes[b->n_classes], sizeof(b->classes[b->n_classes]), "%s", cls2); b->n_classes++; }
+        snprintf(b->label, sizeof(b->label), "%s  [%s]", g_evhq_blocks[i].key, g_evhq_blocks[i].status);
+        b->x = bx; b->y = viewmode_stub->y + 8 + i * 26;
+        b->w = window_w - bx - 12; b->h = 22;
+        css_compute_style(&g_sheet, b->tag, NULL, b->classes, b->n_classes, 0, &b->style);
+        viewmode_stub->children[viewmode_stub->n_children++] = b;
+    }
+    Elem *pl = reusable_slot(g_evhq_place_slots, 2, 0, "block-place");
+    if (pl) {
+        snprintf(pl->classes[0], sizeof(pl->classes[0]), "block-place");
+        pl->n_classes = 1;
+        if (g_evhq_palette[g_evhq_selected_palette].cls1[0]) {
+            snprintf(pl->classes[pl->n_classes], sizeof(pl->classes[pl->n_classes]), "%s", g_evhq_palette[g_evhq_selected_palette].cls1);
+            pl->n_classes++;
+        }
+        if (g_evhq_palette[g_evhq_selected_palette].cls2[0]) {
+            snprintf(pl->classes[pl->n_classes], sizeof(pl->classes[pl->n_classes]), "%s", g_evhq_palette[g_evhq_selected_palette].cls2);
+            pl->n_classes++;
+        }
+        snprintf(pl->label, sizeof(pl->label), "[].%d  new block", g_evhq_n_cmds + 1);
+        snprintf(pl->onclick, sizeof(pl->onclick), "BLOCK:PLACE");
+        pl->x = bx; pl->y = viewmode_stub->y + 8 + g_evhq_n_blocks * 26;
+        pl->w = window_w - bx - 12; pl->h = 22;
+        css_compute_style(&g_sheet, pl->tag, NULL, pl->classes, pl->n_classes, 0, &pl->style);
+        viewmode_stub->children[viewmode_stub->n_children++] = pl;
+    }
+    Elem *cl = reusable_slot(g_evhq_place_slots, 2, 1, "block-clue");
+    if (cl) {
+        snprintf(cl->classes[0], sizeof(cl->classes[0]), "block-clue"); cl->n_classes = 1;
+        snprintf(cl->label, sizeof(cl->label), "sel: %s  ::  %s", g_evhq_selected_type, g_evhq_selected_params);
+        cl->x = viewmode_stub->x + 8; cl->y = viewmode_stub->y + 8 + EVHQ_PALETTE_N * 26 + 4;
+        cl->w = 196; cl->h = 18;
+        css_compute_style(&g_sheet, cl->tag, NULL, cl->classes, cl->n_classes, 0, &cl->style);
+        viewmode_stub->children[viewmode_stub->n_children++] = cl;
+    }
+}
+
+/* REAL FIX 2026-08-29 (Part B) - extracted from events-hq's own click
+ * dispatch so Common Events (db-hq) can reuse the SAME real "click-
+ * to-place Scratch" onclick handling, not a second copy. Returns 1 if
+ * this was a real BLOCK: onclick (caller then does its own mode-
+ * appropriate redraw/rebuild), 0 otherwise. */
+static int evhq_handle_block_onclick(const char *onclick) {
+    if (strncmp(onclick, "BLOCK:SEL:", 10) == 0) {
+        int idx = atoi(onclick + 10);
+        if (idx >= 0 && idx < EVHQ_PALETTE_N) {
+            g_evhq_selected_palette = idx;
+            snprintf(g_evhq_selected_type, sizeof(g_evhq_selected_type), "%s", g_evhq_palette[idx].type);
+            snprintf(g_evhq_selected_params, sizeof(g_evhq_selected_params), "%s", g_evhq_palette[idx].params);
+        }
+        return 1;
+    }
+    if (strcmp(onclick, "BLOCK:PLACE") == 0) {
+        if (g_evhq_selected_palette >= 0 && g_evhq_selected_type[0])
+            evhq_request_append_node(g_evhq_selected_type, g_evhq_selected_params);
+        return 1;
+    }
+    return 0;
+}
+
 static void evhq_layout_pass(Elem *window) {
     evhq_apply_css(window);
     window->x = 0; window->y = 0;
@@ -4072,94 +4305,7 @@ static void evhq_layout_pass(Elem *window) {
     if (viewmode_stub) {
         if (g_evhq_view_mode == 0) { evhq_zero_subtree(viewmode_stub); }
         else if (g_evhq_view_mode == 1) {
-            /* Visual block editor (2026-08-29) - nav-based click-to-
-             * place, NOT drag/drop: left = block palette (onclick
-             * "BLOCK:SEL:<i>", selected gets .selected), right = the
-             * SCRATCHBLOCK rows + a "[].<#>" place slot (onclick
-             * "BLOCK:PLACE" -> evhq_request_append_node(), the same
-             * action.txt boundary append: already uses). */
-            if (g_evhq_selected_palette < 0) {
-                g_evhq_selected_palette = 0;
-                snprintf(g_evhq_selected_type, sizeof(g_evhq_selected_type), "%s", g_evhq_palette[0].type);
-                snprintf(g_evhq_selected_params, sizeof(g_evhq_selected_params), "%s", g_evhq_palette[0].params);
-            }
-            evhq_zero_subtree(viewmode_stub);
-            viewmode_stub->x = 0; viewmode_stub->y = content_y; viewmode_stub->w = window->w; viewmode_stub->h = content_h;
-            int pslot = 0, bslot = 0;
-            for (int i = 0; i < EVHQ_PALETTE_N && pslot < EVHQ_PALETTE_MAX; i++) {
-                Elem *it = reusable_slot(g_evhq_palette_slots, EVHQ_PALETTE_MAX, pslot++, "block-item");
-                if (!it) break;
-                snprintf(it->classes[0], sizeof(it->classes[0]), "block-item");
-                it->n_classes = 1;
-                if (g_evhq_palette[i].cls1[0]) {
-                    snprintf(it->classes[it->n_classes], sizeof(it->classes[it->n_classes]), "%s", g_evhq_palette[i].cls1);
-                    it->n_classes++;
-                }
-                if (g_evhq_palette[i].cls2[0]) {
-                    snprintf(it->classes[it->n_classes], sizeof(it->classes[it->n_classes]), "%s", g_evhq_palette[i].cls2);
-                    it->n_classes++;
-                }
-                if (i == g_evhq_selected_palette) {
-                    snprintf(it->classes[it->n_classes], sizeof(it->classes[it->n_classes]), "selected");
-                    it->n_classes++;
-                }
-                snprintf(it->label, sizeof(it->label), "%s", g_evhq_palette[i].label);
-                snprintf(it->onclick, sizeof(it->onclick), "BLOCK:SEL:%d", i);
-                it->x = viewmode_stub->x + 8; it->y = viewmode_stub->y + 8 + i * 26;
-                it->w = 196; it->h = 22;
-                /* REAL FIX 2026-08-29, live visual verdict ("no color
-                 * anywhere... reads as two plain text lists"): classes
-                 * were assigned on every Elem in this block but
-                 * css_compute_style() was never called on any of them -
-                 * .style stayed whatever reusable_slot() left it at, so
-                 * draw_elem() had no real background/border color to
-                 * paint regardless of which classes were set. Same real
-                 * call dbhq_paint_frame_line() already uses for its own
-                 * temp Elems - reused here, not reinvented. */
-                css_compute_style(&g_sheet, it->tag, NULL, it->classes, it->n_classes, 0, &it->style);
-                viewmode_stub->children[viewmode_stub->n_children++] = it;
-            }
-            int bx = viewmode_stub->x + 220;
-            for (int i = 0; i < g_evhq_n_blocks && bslot < MAX_CHILDREN; i++) {
-                Elem *b = reusable_slot(g_evhq_block_slots, MAX_CHILDREN, bslot++, "text");
-                if (!b) break;
-                snprintf(b->classes[0], sizeof(b->classes[0]), "scratch-block"); b->n_classes = 1;
-                const char *cls2 = evhq_palette_cls_for_type(g_evhq_blocks[i].key);
-                if (cls2) { snprintf(b->classes[b->n_classes], sizeof(b->classes[b->n_classes]), "%s", cls2); b->n_classes++; }
-                snprintf(b->label, sizeof(b->label), "%s  [%s]", g_evhq_blocks[i].key, g_evhq_blocks[i].status);
-                b->x = bx; b->y = viewmode_stub->y + 8 + i * 26;
-                b->w = window->w - bx - 12; b->h = 22;
-                css_compute_style(&g_sheet, b->tag, NULL, b->classes, b->n_classes, 0, &b->style);
-                viewmode_stub->children[viewmode_stub->n_children++] = b;
-            }
-            Elem *pl = reusable_slot(g_evhq_place_slots, 2, 0, "block-place");
-            if (pl) {
-                snprintf(pl->classes[0], sizeof(pl->classes[0]), "block-place");
-                pl->n_classes = 1;
-                if (g_evhq_palette[g_evhq_selected_palette].cls1[0]) {
-                    snprintf(pl->classes[pl->n_classes], sizeof(pl->classes[pl->n_classes]), "%s", g_evhq_palette[g_evhq_selected_palette].cls1);
-                    pl->n_classes++;
-                }
-                if (g_evhq_palette[g_evhq_selected_palette].cls2[0]) {
-                    snprintf(pl->classes[pl->n_classes], sizeof(pl->classes[pl->n_classes]), "%s", g_evhq_palette[g_evhq_selected_palette].cls2);
-                    pl->n_classes++;
-                }
-                snprintf(pl->label, sizeof(pl->label), "[].%d  new block", g_evhq_n_cmds + 1);
-                snprintf(pl->onclick, sizeof(pl->onclick), "BLOCK:PLACE");
-                pl->x = bx; pl->y = viewmode_stub->y + 8 + g_evhq_n_blocks * 26;
-                pl->w = window->w - bx - 12; pl->h = 22;
-                css_compute_style(&g_sheet, pl->tag, NULL, pl->classes, pl->n_classes, 0, &pl->style);
-                viewmode_stub->children[viewmode_stub->n_children++] = pl;
-            }
-            Elem *cl = reusable_slot(g_evhq_place_slots, 2, 1, "block-clue");
-            if (cl) {
-                snprintf(cl->classes[0], sizeof(cl->classes[0]), "block-clue"); cl->n_classes = 1;
-                snprintf(cl->label, sizeof(cl->label), "sel: %s  ::  %s", g_evhq_selected_type, g_evhq_selected_params);
-                cl->x = viewmode_stub->x + 8; cl->y = viewmode_stub->y + 8 + EVHQ_PALETTE_N * 26 + 4;
-                cl->w = 196; cl->h = 18;
-                css_compute_style(&g_sheet, cl->tag, NULL, cl->classes, cl->n_classes, 0, &cl->style);
-                viewmode_stub->children[viewmode_stub->n_children++] = cl;
-            }
+            evhq_build_scratch_view(viewmode_stub, 0, content_y, content_h, window->w);
         }
         else {
             viewmode_stub->x = 0; viewmode_stub->y = content_y; viewmode_stub->w = window->w; viewmode_stub->h = content_h;
@@ -4715,21 +4861,13 @@ static void evhq_activate_elem(Elem *hit) {
             g_pal_scroll += (strcmp(hit->onclick, "scroll:down") == 0) ? 1 : -1;
             evhq_redraw_content();
         }
-        /* Visual block editor (2026-08-29) - click-to-place Scratch:
-         * BLOCK:SEL:<i> picks a palette piece, BLOCK:PLACE appends the
-         * chosen op via the same action.txt boundary append: uses. */
-        else if (strncmp(hit->onclick, "BLOCK:SEL:", 10) == 0) {
-            int idx = atoi(hit->onclick + 10);
-            if (idx >= 0 && idx < EVHQ_PALETTE_N) {
-                g_evhq_selected_palette = idx;
-                snprintf(g_evhq_selected_type, sizeof(g_evhq_selected_type), "%s", g_evhq_palette[idx].type);
-                snprintf(g_evhq_selected_params, sizeof(g_evhq_selected_params), "%s", g_evhq_palette[idx].params);
-            }
+        /* Visual block editor (2026-08-29, Part B: shared with Common
+         * Events via evhq_handle_block_onclick() - see its own header
+         * comment) - click-to-place Scratch: BLOCK:SEL:<i> picks a
+         * palette piece, BLOCK:PLACE appends the chosen op via the
+         * same action.txt boundary append: uses. */
+        else if (evhq_handle_block_onclick(hit->onclick)) {
             evhq_redraw_content();
-        }
-        else if (strcmp(hit->onclick, "BLOCK:PLACE") == 0) {
-            if (g_evhq_selected_palette >= 0 && g_evhq_selected_type[0])
-                evhq_request_append_node(g_evhq_selected_type, g_evhq_selected_params);
         }
         return;
     }

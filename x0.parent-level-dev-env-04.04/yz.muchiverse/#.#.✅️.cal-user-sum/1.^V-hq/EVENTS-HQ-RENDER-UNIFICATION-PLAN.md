@@ -256,3 +256,77 @@ OPEN QUESTIONS FOR WHOEVER IMPLEMENTS
    events-hq itself - Part B should carry that same stub state into
    Common Events, not invent real Blueprints content as part of this
    plan (separate, later scope).
+
+============================================================
+STATUS 2026-08-29 - Part B IMPLEMENTED, live-verified, 3 real bugs
+found and fixed along the way
+============================================================
+Done: Common Events (db-hq) now shares events-hq's real Scripting/
+Scratch/Blueprints view-mode tabs, via the SAME shared functions
+events-hq itself uses (`evhq_build_scratch_view()`, `evhq_handle_
+block_onclick()`) - not a second copy. `dbhq_ce_inject_panel()` injects
+a real `tabbar` (3 `tag="tab"` children, `onclick="CE:VIEWTAB:%d"`)
+right after the Common Event's title; `dbhq_ce_handle_onclick()`
+branches on `CE:VIEWTAB:` to flip `g_evhq_view_mode` (the same global
+events-hq's own tabs already drive) and force a rebuild. Scripting
+mode is the untouched original path; Scratch mode calls the shared
+`evhq_build_scratch_view()`; Blueprints shows the same real stub
+events-hq itself shows (per open question 4 above - not invented).
+
+Three real bugs found live (via direct-instruction screenshot review,
+not assumption) and fixed, in order:
+
+1. **View-tabs overlapping the panel title** - `dbhq_layout_pass()`'s
+   generic panel-child flex pass repositions the `tabbar` container
+   itself but never recurses into ITS OWN children, so the 3 tab Elems
+   kept their stale pre-layout x/y. Fixed with a post-`css_layout_
+   pass()` fixup loop in `dbhq_layout_pass()` that finds any `tabbar`-
+   tagged child of `panel` and repositions its children relative to
+   the tabbar's own now-correct x/y/h - mirrors the fixup already used
+   for the window's own top tabbar (same pattern, not a new one).
+
+2. **View-tabs missing `nav_index` entirely** (direct user catch:
+   "i noticed the scripting scratch and blueprints dont have nav. that
+   violats house" / "they have them in entities tabs. so why did u
+   misdo it here?"). Root cause: `dbhq_assign_nav_indices()`'s panel-
+   child loop unconditionally zeroed any non-`button`-tagged child,
+   which silently ate the new `tabbar` too. Fixed by adding a
+   `tabbar`-specific branch (checked BEFORE the button-only check) that
+   walks into the tabbar's children and calls `dbhq_nav_take()` on
+   each - mirrors `evhq_assign_nav_indices()`'s own real "viewtabs
+   nav-reachable first" pattern verbatim, just at db-hq's own scope.
+
+3. **Scratch palette overlapping db-hq's real persistent sidebar**
+   (self-caught via screenshot review). Root cause: `evhq_build_
+   scratch_view()` hardcoded `viewmode_stub->x = 0`, correct for
+   events-hq (no sidebar) but wrong for Common Events (sidebar occupies
+   x=0..~260). Fixed by adding a `content_x` parameter to `evhq_build_
+   scratch_view()` (now `(Elem *viewmode_stub, int content_x, int
+   content_y, int content_h, int window_w)`); events-hq's own call
+   site passes `0` (unchanged behavior), Common Events' call site
+   passes `panel->x` (the real sidebar-aware content-pane offset).
+
+A 4th real gap found in the same pass: db-hq's own `dashboard.css` had
+NONE of the `.scratch-block`/`.block-item`/`.block-place`/`.block-
+clue` rules events-hq's `dashboard.css` carries (Common Events'
+Scratch view rendered with zero color before this). Fixed by porting
+those rules verbatim into `&.hq-apps/db-hq/dashboard.css` (the `.tab`/
+`.tab.active` rules it already had cover the new tabbar's `tag="tab"`
+children, so those did not need porting).
+
+**Live-verified, all 4 fixes, in one real headless test session**
+(file-relay input + `xdotool windowfocus` only, no absolute-coordinate
+clicks - per this session's own standing rule): launched a real test
+db-hq window, digit-jumped into Common Events, opened `greet_player`,
+confirmed real `[ ]21./[>]22./23.` nav badges on Scripting/Scratch/
+Blueprints (bug 2 fixed), digit-jumped+Enter into Scratch, confirmed
+the palette and block chain render fully right of the sidebar with no
+overlap (bug 3 fixed) and full real gold/green/orange/purple/pink
+block colors plus the white-bg/dark-green-text new-block placeholder
+(bug 4 fixed) - screenshot matches events-hq's own Scratch view
+exactly, just sidebar-offset. Test window and all its child
+`dbhq_pdl_publish_manager.+x` processes confirmed cleanly killed after,
+zero strays left running.
+
+Part A's own open ghosting regression (see STATUS 2026-08-29 above)
+remains open and unrelated to Part B - not touched this pass.

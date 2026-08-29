@@ -83,3 +83,39 @@ window {
 button:hover {
   background-color: #2a7eff;
 }
+
+/* Part B (2026-08-29) - Common Events' new Scripting/Scratch/Blueprints
+ * view-mode tabs share evhq_build_scratch_view()'s real Elems with
+ * events-hq (see EVENTS-HQ-RENDER-UNIFICATION-PLAN.md), but db-hq's own
+ * dashboard.css never had these rules - ported verbatim from
+ * &.widgits/events-hq/pieces/dashboard.css so the Scratch view actually
+ * shows real color here instead of falling through to zero-style. */
+.scratch-block {
+  background-color: #7ea7e0;
+  color: #0a0a0a;
+  border: 1px solid #3a5a8a;
+  font-size: 11px;
+}
+.scratch-block.gold     { background-color: #e5b93e; border-color: #9a7a10; }
+.scratch-block.green    { background-color: #5cb85c; border-color: #2f7a2f; }
+.scratch-block.orange   { background-color: #e8853d; border-color: #9a5510; }
+.scratch-block.purple   { background-color: #b07cc6; border-color: #6f3f85; }
+.scratch-block.pink     { background-color: #e0618a; border-color: #993560; }
+.block-item {
+  color: #101016;
+  border: 1px solid #30303a;
+  font-size: 11px;
+}
+.block-item.selected {
+  border: 2px solid #ffffff;
+}
+.block-place {
+  background-color: #ffffff;
+  color: #1a5c1a;
+  border: 1px dashed #8f8f9a;
+  font-size: 11px;
+}
+.block-clue {
+  color: #8f8f9a;
+  font-size: 10px;
+}
