@@ -14,6 +14,17 @@ to the main directory and drop the `archive/` prefix here.
 ---
 
 ## Tier 1 — Always read (small context budget, ~2 min)
+-3. **SKILLS.md (2026-08-29)** — read this FIRST, before anything else in this
+   list. Not a task doc — a generalized "how to operate well in this house"
+   compaction: the core file-based-state philosophy, the rendering
+   architecture in one page, a landmines list of real bugs an agent will
+   otherwise re-discover the hard way (build scripts overwriting shared
+   source, per-mode files broadcasting to every open window of that mode,
+   desktop tiles being real live entities not fixtures, `xdotool click`
+   dangers, verification discipline, how to work alongside Grok/opencode
+   without duplicating effort), and a read on the user's own working style.
+   Everything below this entry is task/architecture detail; this one is
+   judgment.
 -2. **TPMOS-COMPLIANCE-DEBT.md — STANDING #1 PRIORITY, HIGH SEVERITY (2026-08-25),
    NOT YET FIXED, direct instruction: "this cant propagate forward into the codebase by
    naive agents"** — real, confirmed architecture violations found while migrating
