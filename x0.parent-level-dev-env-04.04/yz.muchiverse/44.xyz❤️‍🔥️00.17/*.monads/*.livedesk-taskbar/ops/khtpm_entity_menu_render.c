@@ -74,6 +74,7 @@ static void nav_tab_unregister(void);
 static void nav_ledger_publish(void);
 static void popup_handle_click(int px, int py);
 static void history_unregister(void); /* REAL, NEW 2026-08-29 - see its own real definition/comment near history_path() */
+static void zero_nav_subtree(Elem *e); /* REAL, NEW 2026-08-29 - see its own real definition/comment near evhq_zero_subtree() */
 #define MAX_ELEMS 512
 #define MAX_PAGE_STACK 8
 
@@ -2232,6 +2233,13 @@ static void assign_palettes_nav(Elem *e) {
 
 static void dbhq_assign_nav_indices(Elem *window) {
     g_n_nav = 0;
+    /* REAL FIX 2026-08-29 - same real fix as evhq_assign_nav_indices()'s
+     * own matching comment (nav-index collision between the modal
+     * picker and the background window). Gated on the exact same
+     * condition db-hq's own picker ownership uses everywhere else
+     * (g_dbhq_ce_editing && g_evhq_picker_open) - plain db-hq/
+     * palettes/bookmarks never open this picker at all. */
+    if (g_dbhq_ce_editing && g_evhq_picker_open) { zero_nav_subtree(window); return; }
     Elem *tabbar = find_by_tag(window, "tabbar");
     if (tabbar) {
         for (int i = 0; i < tabbar->n_children && g_n_nav < MAX_ELEMS; i++) {
@@ -4589,6 +4597,23 @@ static void evhq_refresh_page_data(Elem *window) {
 }
 static void evhq_assign_nav_indices(Elem *window) {
     g_n_nav = 0;
+    /* REAL FIX 2026-08-29 (live report: "nav arrows are still driving
+     * both sub menu and parent menu (bad)... selecting 8 in the
+     * subwindow will select 8 in parent window") - live-confirmed:
+     * the picker's own rows are numbered 1..N, the SAME low range the
+     * background window's own tabbar/sidebar/panel elements use, and
+     * draw_elem() draws a focus ring purely on `nav_index ==
+     * g_focus_nav` with no concept of which modal/window an element
+     * belongs to - a background element and a picker row with the
+     * same number both light up (and both become the real destination
+     * of nav_index-driven digit-jump) at once. This function runs
+     * BEFORE evhq_draw_picker_overlay() in the redraw sequence
+     * (evhq_redraw_content()), which rebuilds g_n_nav/g_nav[] with the
+     * picker's own real numbers - so zeroing every background
+     * element's nav_index here and returning early, while the picker
+     * is open, guarantees no background element can ever coincide
+     * with whatever number the picker is currently using. */
+    if (g_evhq_picker_open) { zero_nav_subtree(window); return; }
     /* Task 5 (2026-08-27) - viewtabs nav-reachable first (top of window,
      * always visible regardless of view mode). */
     Elem *viewtabs = find_by_id(window, "viewtabs");
