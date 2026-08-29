@@ -2241,6 +2241,27 @@ static void dbhq_assign_nav_indices(Elem *window) {
                     }
                     continue;
                 }
+                /* REAL FIX 2026-08-29 (live report: "in the 'scratch'
+                 * visual scripting setup, all blocks are supposed to be
+                 * nav numbered") - same real gap as events-hq's own
+                 * evhq_assign_nav_indices() had (see that function's own
+                 * matching comment, fixed in the same pass): the
+                 * dbhq_ce_inject_panel() Scratch stub (tag="panel",
+                 * built by the SHARED evhq_build_scratch_view()) fell
+                 * into the generic "not a button, zero it" branch below
+                 * and its real clickable children (palette items, the
+                 * place-slot) were never walked at all. Gate on
+                 * onclick[0], same as events-hq's own fix, since the
+                 * stub also carries inert "text"/"block-clue" children
+                 * that correctly stay non-nav. */
+                if (strcmp(c->tag, "panel") == 0) {
+                    for (int j = 0; j < c->n_children && g_n_nav < MAX_ELEMS; j++) {
+                        Elem *bc = c->children[j];
+                        if (!bc->onclick[0]) continue;
+                        dbhq_nav_take(bc);
+                    }
+                    continue;
+                }
                 if (strcmp(c->tag, "button") != 0) { c->nav_index = 0; continue; }
                 dbhq_nav_take(c);
             }
@@ -4451,6 +4472,27 @@ static void evhq_assign_nav_indices(Elem *window) {
     Elem *pagetabs = find_by_id(window, "pagetabs");
     if (pagetabs) for (int i = 0; i < pagetabs->n_children && g_n_nav < MAX_ELEMS; i++) {
         pagetabs->children[i]->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = pagetabs->children[i];
+    }
+    /* REAL FIX 2026-08-29 (live report: "in the 'scratch' visual
+     * scripting setup, all blocks are supposed to be nav numbered")
+     * - evhq_build_scratch_view()'s real, clickable Elems (the palette
+     * items, onclick "BLOCK:SEL:<i>", and the "[].<#> new block"
+     * place-slot, onclick "BLOCK:PLACE") were never walked here at
+     * all - Scratch mode had zero nav coverage of its own real
+     * interactive content, same class of gap Task 7 already fixed for
+     * events-hq's own "right" command rows. Gate on onclick[0] rather
+     * than tag (viewmode_stub mixes "block-item"/"text"/"block-place"/
+     * "block-clue" tags; only the first and third are real actions -
+     * the placed-block "text" rows and the "sel: ..." clue label have
+     * no onclick and correctly stay non-nav, same as any other
+     * inert-text Elem elsewhere in this file). */
+    if (g_evhq_view_mode == 1) {
+        Elem *stub = find_by_id(window, "viewmode-stub");
+        if (stub) for (int i = 0; i < stub->n_children && g_n_nav < MAX_ELEMS; i++) {
+            Elem *c = stub->children[i];
+            if (!c->onclick[0]) continue;
+            c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c;
+        }
     }
     /* Task 5 (2026-08-27) - everything below here is Scripting-mode-only
      * content (trigger/commands/footer) - skip granting nav when a stub

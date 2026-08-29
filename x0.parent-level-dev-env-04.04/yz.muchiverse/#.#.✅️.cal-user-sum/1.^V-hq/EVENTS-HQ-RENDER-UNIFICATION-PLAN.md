@@ -240,6 +240,70 @@ given it's a "faint"/partial-frame artifact, which smells like a
 one-tick-stale-content symptom, not a permanent double-draw).
 
 ============================================================
+STATUS 2026-08-29 - Ghosting regression ROOT-CAUSED and FIXED
+(neither candidate (a) nor (b) above - a real third cause)
+============================================================
+Direct live report ("in entity events, the blocks are a bit too high,
+overlapping the window header text above them") turned out to be this
+exact ghosting bug, still visible after Part B shipped. Real root
+cause, found by reading `draw_elem()` itself rather than guessing
+further: this function had NO `w<=0||h<=0` guard anywhere - the
+"draw_elem()'s own guard" this doc's earlier STATUS entry described
+was a mistaken assumption, never actually verified by reading the
+function. `evhq_zero_subtree()` zeroing an Elem's w/h correctly no-ops
+its 0x0 background/border fill (`XFillRectangle`/`XDrawRectangle` with
+0 width/height truly draw nothing), but the label-text branch drew
+`e->label` unconditionally on `e->label[0]` alone, with zero regard
+for size - so a "hidden" title's text kept rendering at its last real
+x/y. Fixed with one guard line at the top of `draw_elem()` in the
+shared `khtpm_draw_core.c` (`&.widgits/_shared-lib/`, NOT the local
+`ops/` copy - `build_entity_menu.sh` overwrites the local copy from
+the shared one on every build, which is exactly why this fix had to
+be re-applied once after an initial attempt landed in the wrong file
+and silently had no effect).
+
+Live-verified: events-hq's Scratch view no longer shows "Trigger"/
+"Commands" ghost text, and the block-palette/command rows now start
+cleanly right below the toolbar with zero header overlap.
+
+This also retroactively explains why candidates (a) reusable_slot
+timing and (b) some other w/h-touching code path were both real,
+plausible-sounding but WRONG hypotheses - the actual bug was
+structural (a missing guard, not a timing race), which is why neither
+would have reproduced it under direct testing.
+
+A second, unrelated real bug found in the same live-report pass:
+db-hq's own Common Events view-tabs (Scripting/Scratch/Blueprints)
+were overlapping each other - Part B's `dbhq_layout_pass()` fixup loop
+trusted `tab->w` AFTER `css_layout_pass(panel, ...)` had already run
+one line earlier, but that generic flex pass recomputes every panel
+child's width from scratch (the injected `vtabs` tabbar never declared
+`display:flex`), silently stomping the widths `dbhq_ce_inject_panel()`
+carefully measured at injection time. Fixed by recomputing each tab's
+width fresh inside the fixup loop, instead of trusting a value the
+very same function had just clobbered.
+
+A third real bug found in the very next live report ("in the 'scratch'
+visual scripting setup, all blocks are supposed to be nav numbered"):
+`evhq_assign_nav_indices()` never walked `viewmode-stub`'s children at
+all - it only ever numbered Scripting mode's trigger/right-panel/
+footer content, so Scratch mode's real interactive Elems (the 5
+palette items, onclick `BLOCK:SEL:<i>`, and the `[].<#> new block`
+place-slot, onclick `BLOCK:PLACE`) had zero nav coverage in both
+events-hq AND Common Events (db-hq's `dbhq_assign_nav_indices()` had
+the same gap - its Scratch stub, `tag="panel"`, fell into the generic
+"not a button, zero it" branch same as the earlier tabbar bug did).
+Fixed in both functions: gate on `onclick[0]` rather than tag (the
+stub also carries inert "text"-tagged placed-block rows and a
+"block-clue" label with no onclick, which correctly stay non-nav).
+Live-verified in both windows: all 5 palette blocks + the place-slot
+now carry real `[ ]N.` badges in events-hq, and the same in Common
+Events' Scratch view.
+
+**Part A and Part B are both now fully clean - no known open visual
+or nav bugs remain in this unification effort.**
+
+============================================================
 OPEN QUESTIONS FOR WHOEVER IMPLEMENTS
 ============================================================
 1. `evhq_layout_pass()` vs `css_layout_pass()` diff - NOT YET DONE,
