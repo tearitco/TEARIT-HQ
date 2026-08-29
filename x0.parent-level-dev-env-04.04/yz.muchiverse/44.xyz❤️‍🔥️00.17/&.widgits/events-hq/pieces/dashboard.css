@@ -131,8 +131,13 @@ window {
   border: 2px solid #ffffff;
 }
 .block-place {
+  /* REAL FIX 2026-08-29, live report ("bottom new tab on right is not
+   * visible cuz dark on dark font"): color was #101016 on a #20202a
+   * background - nearly the same near-black tone, unreadable. Real
+   * fix: same light gray this house's other dim/placeholder text
+   * already uses. */
   background-color: #20202a;
-  color: #101016;
+  color: #8f8f9a;
   border: 1px dashed #8f8f9a;
   font-size: 11px;
 }
