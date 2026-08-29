@@ -137,7 +137,7 @@ window {
    * fix: same light gray this house's other dim/placeholder text
    * already uses. */
   background-color: #20202a;
-  color: #8f8f9a;
+  color: #ffffff;
   border: 1px dashed #8f8f9a;
   font-size: 11px;
 }
