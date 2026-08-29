@@ -2904,3 +2904,40 @@ for both files below (git diff HEAD = 0 lines).
 visual window proof (events-hq window on DISPLAY against the sandbox
 pkg, screenshot of Scratch view) is the only remaining verification —
 implementation is done and committed.
+
+============================================================
+BREAKING CHANGE 2026-08-29 - history files are now per-PID, not
+per-mode. READ THIS BEFORE WRITING ANY MORE TEST INPUT.
+============================================================
+Real live incident: my own test relay input to the flat
+`db_hq_history.txt` was ALSO delivered to the user's separately-open,
+real db-hq window, corrupting its live nav state ("why isn't
+arrow/index nav working in db-hq anymore?"). Root cause: `history_
+path()` was keyed by MODE NAME ONLY - the exact "one canonical
+db_hq_history.txt" tradeoff this doc itself already flagged as a real
+risk earlier (see the per-pid discussion around line ~1468 above,
+"real added complexity" - it stopped being hypothetical).
+
+Fixed, direct user go-ahead ("yes do it now"): `history_path()` now
+mirrors `nav_tab`'s own existing per-PID convention exactly - every
+`#.desktop/<mode>_history.txt` flat file described earlier in this doc
+NO LONGER EXISTS as of this binary version. It is now
+`#.desktop/<mode>_history/<pid>.txt` (e.g. `db_hq_history/12345.txt`),
+one real file per PROCESS. Nothing reads the old flat paths anymore -
+writing to them is now a silent no-op from the reader's perspective.
+
+**Before writing any test input**, find the right pid for the specific
+window you mean to drive - do not guess or broadcast:
+- `nav_master_current.txt` publishes live `<pid> <tab_ordinal>
+  <nav_index> <id>` rows for every open window's current nav tree.
+- `nav_tab/<pid>` holds that same pid's real registered window title
+  (e.g. "db-hq", "events-hq").
+- Cross-reference the two to find "the events-hq window showing asa"
+  vs "the db-hq window on Common Events" before touching its history
+  file. This is not a new mechanism - both files already existed for
+  Tab-cycle; this just reuses them for a second real purpose.
+
+A window opened by a BINARY BUILT BEFORE this change still uses the
+old flat-file behavior in memory until it's closed and relaunched -
+don't assume every currently-running window has already picked this
+up.

@@ -495,6 +495,18 @@ The events ladders come first, then these land:
 
 ---
 
+**2026-08-29** (Part B done: Common Events shares events-hq's Scripting/
+Scratch/Blueprints tabs, 3 live bugs found+fixed along the way, plus the
+Part A ghosting regression finally root-caused+fixed - see
+`EVENTS-HQ-RENDER-UNIFICATION-PLAN.md`; a real in-picker "Delete" command
+action added, nav-driven, no keyboard shortcut; and a real, BREAKING
+input-relay fix - `history_path()` is now per-PID like `nav_tab` already
+was, not per-mode, after a live incident where test input to the old flat
+file also reached the user's own real window - see
+`HQ-WINDOW-MAP-AND-AGENT-INPUT.md` §3 and
+`GROK-RENDER-INPUT-REFACTOR-HANDOFF.md`'s own new end-of-file entry
+before writing any more test input) by claude
+
 **2026-08-25** (real manager rebuild for palettes/bookmarks + real grid scroll +
 keyboard-accessibility standard): `khtpm_hq_render.c` DELETED outright (stats-hq/
 palettes/bookmarks all migrated off it, confirmed via a full-tree grep for remaining
@@ -641,3 +653,4 @@ scenarios fixed, full trail in `44.xyz❤️‍🔥️00.17/completed-sym-list.m
 see the new Document Roles row for what may bite later) by opencode (ox-alpha)
 
 **Previously:** 2026-08-17 (`legacy-shared-fix.md`: full `chtpm_parser_pal.c`/`prisc+x.c` consolidation done, 12/12 real participants on one shared baseline; `chtpm_rgb_render.c` consolidated for 9 projects; GL→X11 display-shim migration 3/16 done (mutaclysm/piececraft-xyz/my-chara-txt), 13 remain; a real mutaclysm interact-mode regression and a real db-hq/chat-hai `[X]`-close-all-entities bug both found+fixed; mutaclysm's own camera/3D work deferred to `archive/opencode-mutafix-pie.md`. `!.HOUSE_STDS.md` also updated to point its own khtpm-window-reference mentions at the now-merged shared binary instead of the archived standalone files) by claude
+😀

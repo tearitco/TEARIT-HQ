@@ -1065,6 +1065,44 @@ static void handle_action_request(void) {
         return;
     }
 
+    /* REAL, NEW 2026-08-29 (direct instruction: "trigger able from
+     * visual nav / index, as usual... just a nav for delete") -
+     * "delete:<id>" removes the matching NODE line entirely. Same real
+     * scan/rewrite shape as "edit:" just above (mirrored, not
+     * reinvented) - the only difference is this one skips the matching
+     * line instead of replacing it. */
+    if (strncmp(line, "delete:", 7) == 0) {
+        int del_id = atoi(line + 7);
+
+        char pd[PATH_BUF]; page_dir(pd, sizeof(pd), g_current_page);
+        char ir_path[PATH_BUF]; snprintf(ir_path, sizeof(ir_path), "%s/event.ir.pdl", pd);
+
+        char all[8192] = ""; size_t all_len = 0;
+        FILE *rf = fopen(ir_path, "r");
+        if (rf) {
+            char l[512];
+            while (fgets(l, sizeof(l), rf)) {
+                if (strncmp(l, "NODE", 4) == 0) {
+                    char *idp = strstr(l, "id=");
+                    int this_id = idp ? atoi(idp + 3) : -1;
+                    if (this_id == del_id) continue; /* real delete: just don't copy this line forward */
+                }
+                size_t ll = strlen(l);
+                if (all_len + ll < sizeof(all)) { memcpy(all + all_len, l, ll); all_len += ll; }
+            }
+            fclose(rf);
+        }
+        FILE *wf = fopen(ir_path, "w");
+        if (wf) { fwrite(all, 1, all_len, wf); fclose(wf); }
+
+        compile_page(g_current_page);
+        publish_page_state();
+
+        FILE *cw = fopen(g_action_path, "w");
+        if (cw) fclose(cw);
+        return;
+    }
+
     if (strncmp(line, "append:", 7) != 0) return;
 
     char *rest = line + 7;

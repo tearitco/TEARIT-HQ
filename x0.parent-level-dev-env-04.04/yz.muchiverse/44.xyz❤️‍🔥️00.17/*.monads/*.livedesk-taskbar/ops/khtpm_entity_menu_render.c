@@ -73,6 +73,7 @@
 static void nav_tab_unregister(void);
 static void nav_ledger_publish(void);
 static void popup_handle_click(int px, int py);
+static void history_unregister(void); /* REAL, NEW 2026-08-29 - see its own real definition/comment near history_path() */
 #define MAX_ELEMS 512
 #define MAX_PAGE_STACK 8
 
@@ -98,6 +99,7 @@ static void dbhq_cleanup_module(void) {
 static void dbhq_handle_term_signal(int sig) {
     (void)sig;
     nav_tab_unregister();
+    history_unregister();
     dbhq_cleanup_module();
     _exit(0);
 }
@@ -2407,6 +2409,7 @@ static int dbhq_ce_inject_panel(Elem *panel);
 static void dbhq_restore_tab_content(void);
 static void dbhq_ce_handle_onclick(const char *onclick);
 static void evhq_dispatch_picker_onclick(const char *onclick);
+static void evhq_redraw_content(void); /* REAL, NEW 2026-08-29 - evhq_dispatch_picker_onclick()'s own new PICKER:DELETE case needs this before its real definition */
 static void nav_tab_register(const char *title);
 static void nav_tab_unregister(void);
 static void nav_tab_cycle(void);
@@ -3509,6 +3512,17 @@ static void evhq_request_edit_node(int id, const char *type, const char *params_
     fclose(f);
 }
 
+/* REAL, NEW 2026-08-29 (direct instruction: "trigger able from visual
+ * nav / index, as usual... just a nav for delete") - sibling to
+ * evhq_request_edit_node() above, same real action.txt boundary.
+ * See khtpm_events_hq_manager.c's own new "delete:" action handler. */
+static void evhq_request_delete_node(int id) {
+    FILE *f = fopen(g_evhq_mgr_action_path, "w");
+    if (!f) return;
+    fprintf(f, "delete:%d\n", id);
+    fclose(f);
+}
+
 static void evhq_request_trigger_update(const char *new_trigger) {
     /* Task H7 (2026-08-25) - request the manager rewrite condition.pdl's trigger */
     FILE *f = fopen(g_evhq_mgr_action_path, "w");
@@ -4045,6 +4059,16 @@ static void evhq_dispatch_picker_onclick(const char *onclick) {
     if (strncmp(onclick, "PICKER:FIELD:", 13) == 0) { g_evhq_active_field = atoi(onclick + 13); return; }
     if (strncmp(onclick, "PICKER:TYPE:", 12) == 0) { g_evhq_picker_type = atoi(onclick + 12); return; }
     if (strcmp(onclick, "PICKER:CANCEL") == 0) { g_evhq_picker_open = 0; g_evhq_edit_cmd_id = -1; return; }
+    /* REAL, NEW 2026-08-29 - mouse-click parity for the new Delete row,
+     * same real "onclick-first dispatch" reason this whole function
+     * exists (see its own header comment) - keyboard path is in
+     * evhq_handle_key()'s own matching PICKER:DELETE-shaped branch. */
+    if (strcmp(onclick, "PICKER:DELETE") == 0) {
+        if (g_evhq_edit_cmd_id >= 0) evhq_request_delete_node(g_evhq_edit_cmd_id);
+        g_evhq_picker_open = 0; g_evhq_edit_cmd_id = -1;
+        evhq_redraw_content();
+        return;
+    }
 }
 
 /* Trigger editing state (Task H7, 2026-08-25) - reuses the keystroke accumulation pattern */
@@ -4356,7 +4380,19 @@ static void evhq_layout_pass(Elem *window) {
         evhq_apply_css(footer);
         for (int i = 0; i < footer->n_children; i++) {
             Elem *c = footer->children[i]; evhq_apply_css(c);
-            c->w = evhq_measure_text_px(&c->style, c->label) + 20;
+            /* REAL FIX 2026-08-29 (live report: "the colors on the
+             * buttons aren't completely covering the buttons... they
+             * need to stretch to fit the text") - same real bug class
+             * already found+fixed for view-tabs on 2026-08-27 (see that
+             * fix's own comment above, toolbar section): width was
+             * measured from the plain label alone, but draw_elem()
+             * ALSO draws a real "[ ]N." nav badge INSIDE the same box,
+             * before the label - +20 never accounted for that, so the
+             * label text ran past the button's own background/border
+             * on every footer button once real nav numbering reached
+             * them. Same +34 constant that fix established, not a new
+             * number. */
+            c->w = evhq_measure_text_px(&c->style, c->label) + 34;
         }
         footer->style.has_display = 1; footer->style.display_flex = 1;
         footer->style.has_flex_direction = 1; footer->style.flex_row = 1;
@@ -4773,6 +4809,24 @@ static void evhq_draw_picker_overlay(void) {
                 ty += L->row_spacing + 2;
             }
         }
+        /* REAL, NEW 2026-08-29 (see evhq_handle_key()'s own matching
+         * comment on this same feature) - a real "Delete" row, only
+         * when editing an existing command (g_evhq_edit_cmd_id >= 0),
+         * right after Cancel. */
+        if (g_evhq_edit_cmd_id >= 0) {
+            Elem *del = reusable_slot(g_picker_slots, 16, 14, "button");
+            if (del) {
+                snprintf(del->label, sizeof(del->label), "Delete");
+                del->x = L->row_x; del->y = ty - 15; del->w = L->row_w; del->h = L->row_h;
+                del->style.has_bg_color = 1; snprintf(del->style.bg_color, sizeof(del->style.bg_color), "#cc4444");
+                del->style.has_fg_color = 1; snprintf(del->style.fg_color, sizeof(del->style.fg_color), "#ffffff");
+                snprintf(del->onclick, sizeof(del->onclick), "PICKER:DELETE");
+                del->nav_index = def->n_params + 2;
+                g_nav[g_n_nav++] = del;
+                draw_elem(del, 0);
+                ty += L->row_spacing + 2;
+            }
+        }
         const char *hint2 = def->n_select2 > 0 ? "Enter: next/submit  ←→: select  Esc: cancel"
                                                   : "Enter: next/submit  Escape: cancel";
         XftDrawStringUtf8(xftdraw_buf, &gray, font, L->row_x, L->py + L->ph - 14, (const FcChar8 *)hint2, (int)strlen(hint2));
@@ -5146,10 +5200,33 @@ static void evhq_handle_key(KeySym ks, char ch) {
          * focus position past the last real field (index == n_params),
          * reachable via Left/Right (Tab has no ASCII code so isn't
          * usable from the plain text relay, but Right/Left already are
-         * via relay codes 202/203 - see dispatch_relay_code()). */
+         * via relay codes 202/203 - see dispatch_relay_code()). REAL,
+         * NEW 2026-08-29 (live report: "the placed scratch blocks and
+         * or events may need a 'delete' input button... trigger able
+         * from visual nav / index, as usual") - a SECOND extra slot,
+         * Delete, only when g_evhq_edit_cmd_id >= 0 (editing a real,
+         * existing command - "Add Command" has nothing yet to delete).
+         * Reuses this exact same nav-driven picker flow instead of a
+         * separate focus-tracking mechanism (an earlier attempt at a
+         * standalone "delete whatever's currently focused" footer
+         * button was real but flawed - focus moves TO that button
+         * before Enter, so by the time it activates, focus no longer
+         * points at the row at all; this approach never has that
+         * problem since Delete lives inside the SAME picker session
+         * the row's own Enter already opened). */
+        int last_slot = n_params + (g_evhq_edit_cmd_id >= 0 ? 1 : 0);
         if (ks == XK_Left) { if (g_evhq_active_field > 0) g_evhq_active_field--; return; }
-        if (ks == XK_Right) { if (g_evhq_active_field < n_params) g_evhq_active_field++; return; }
-        if (g_evhq_active_field >= n_params) {
+        if (ks == XK_Right) { if (g_evhq_active_field < last_slot) g_evhq_active_field++; return; }
+        if (g_evhq_active_field > n_params) {
+            /* Focus is on the Delete slot. */
+            if (ks == XK_Return || ks == XK_KP_Enter) {
+                evhq_request_delete_node(g_evhq_edit_cmd_id);
+                g_evhq_picker_open = 0; g_evhq_edit_cmd_id = -1;
+                evhq_redraw_content();
+            }
+            return;
+        }
+        if (g_evhq_active_field == n_params) {
             /* Focus is on the Cancel slot - only Enter (handled here) and
              * Escape (handled above) do anything; typing/backspace are
              * no-ops here since there's no field buffer at this position. */
@@ -8128,18 +8205,45 @@ static void handle_key(KeySym ks, char ch) {
  * (cursor advances past it) but never dispatched - use this to leave a
  * "why" note inline in the file without a separate build. ---------- */
 static long g_history_cursor = -1;
-/* REAL Stage 5 §5d.3 step 6 (2026-08-16) - mode-aware history filename,
- * preserves both real, pre-existing external contracts
- * (taskbar_settings_history.txt / entity_menu_history.txt)
- * instead of silently breaking one of them now that this is genuinely
- * one shared binary. */
-static void history_path(char *out, size_t outsz) {
+/* REAL FIX 2026-08-29 (live incident: my own test relay input to
+ * db_hq_history.txt was ALSO delivered to the user's real, separately-
+ * open db-hq window, corrupting its live nav state - "why isn't
+ * arrow/index nav working in db-hq anymore?"). Root cause: this path
+ * was keyed by MODE NAME ONLY, so every window of the same mode - real
+ * user window, a test window, a second agent's window - read the exact
+ * same file. Real fix, mirrors nav_tab's own existing per-pid
+ * convention EXACTLY (nav_tab_dir()/nav_tab_register(), same file):
+ * one real file per PROCESS, not per mode. Every consumer (a real
+ * human's own X11 input via dbhq_capture_key()/dbhq_capture_click(),
+ * or an external agent's relay write) now only ever reaches the ONE
+ * window it actually targets - no possible cross-window bleed
+ * regardless of how many windows of the same mode are open at once.
+ * Discovery for an external writer that needs to find "the db-hq
+ * window showing X": nav_master_current.txt already publishes
+ * "<pid> <tab_ordinal> <nav_index> <id>" rows (see nav_ledger_
+ * publish()), and nav_tab/<pid> holds that pid's real window title -
+ * cross-reference the two, no new registry needed. */
+static void history_dir(char *out, size_t outsz) {
     snprintf(out, outsz, "%s/#.desktop/%s", g_house_root,
-             g_is_stats_hq ? "stats_hq_history.txt" :
-             g_is_db_hq ? "db_hq_history.txt" :
-             g_is_events_hq ? "events_hq_history.txt" :
-             g_is_chat_hai ? "chat_hai_history.txt" :
-             g_is_swatch_picker ? "taskbar_settings_history.txt" : "entity_menu_history.txt");
+             g_is_stats_hq ? "stats_hq_history" :
+             g_is_db_hq ? "db_hq_history" :
+             g_is_events_hq ? "events_hq_history" :
+             g_is_chat_hai ? "chat_hai_history" :
+             g_is_swatch_picker ? "taskbar_settings_history" : "entity_menu_history");
+}
+static void history_path(char *out, size_t outsz) {
+    char dir[PATH_BUF];
+    history_dir(dir, sizeof(dir));
+    mkdir(dir, 0777);
+    snprintf(out, outsz, "%s/%d.txt", dir, (int)getpid());
+}
+/* Real cleanup counterpart to nav_tab_unregister() - called from the
+ * same 4 real quit paths that call it, so a closed window's history
+ * file doesn't sit around forever. Harmless if never opened. */
+static void history_unregister(void) {
+    char path[PATH_BUF];
+    history_path(path, sizeof(path));
+    unlink(path);
 }
 
 /* Phase 3a: capture-only. House format from pieces/keyboard/history.txt:
@@ -9488,6 +9592,7 @@ int main(int argc, char **argv) {
         hq_run_event_loop(wm_delete_loop, 0);
 
         nav_tab_unregister();
+    history_unregister();
         XUngrabKeyboard(dpy, CurrentTime);
         XftDrawDestroy(xftdraw_buf);
         XFreePixmap(dpy, buf);
@@ -9560,6 +9665,7 @@ int main(int argc, char **argv) {
         hq_run_event_loop(wm_delete_loop, 0);
 
         nav_tab_unregister();
+    history_unregister();
         XftDrawDestroy(xftdraw_buf);
         XFreePixmap(dpy, buf);
         XFreeGC(dpy, gc);
@@ -9625,6 +9731,7 @@ int main(int argc, char **argv) {
         hq_run_event_loop(wm_delete_loop, 0);
 
         nav_tab_unregister();
+    history_unregister();
         XUngrabKeyboard(dpy, CurrentTime);
         XftDrawDestroy(xftdraw_buf);
         XFreePixmap(dpy, buf);

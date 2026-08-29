@@ -24,7 +24,7 @@ hard "Mutter will never activate." One chat-hai launch still assigned
 were the cases that did not steal. Document the ask (no MapRaised / no
 SetInputFocus on map), not an absolute WM guarantee.
 
-| Human loses focus when an agent **clicks/types** | `xdotool` / XTest injects into the global pointer/keyboard | Drive `#.desktop/<mode>_history.txt` (`MOUSE_EVENT:` / `KEY_PRESSED:`). The human can keep the same display. k9 already said this; see §3. |
+| Human loses focus when an agent **clicks/types** | `xdotool` / XTest injects into the global pointer/keyboard | Drive `#.desktop/<mode>_history/<pid>.txt` (`MOUSE_EVENT:` / `KEY_PRESSED:`) — per-PID as of 2026-08-29, see §3. The human can keep the same display. k9 already said this; see §3. |
 | Override-redirect popup **keyboard** never arrives | F-19: bare `XSetInputFocus` on a fresh popup under XWayland | raise-then-focus **only when the human needs keys in that popup**. Do not call it on map just to make agent tests work. |
 | Agent file lines do nothing | `poll_agent_history()` used to **return without reading** unless `hq_window_has_x_focus()` | Removed. This process's history file is a mailbox: consume + dispatch even if the human is in the browser. Dual-consume is "two processes, one file," not "unfocused skip." |
 
@@ -44,13 +44,33 @@ Live (user, 2026-08-28): "the windows u opened didn't interfere till u opened ha
 
 Prefer this over xdotool. User also said agents may drive however they need **if** windows do not steal; file relay is the no-steal default.
 
-Mode history files under `<house>/#.desktop/`:
+**BREAKING CHANGE 2026-08-29** — real live incident: an agent's own test
+relay input to the flat `db_hq_history.txt` was delivered to the
+user's separately-open, real db-hq window too ("why isn't arrow/index
+nav working in db-hq anymore?") — the file was keyed by MODE NAME
+ONLY, so every window of the same mode (real user window, a test
+window, a second agent's window) read the identical stream. Fixed:
+`history_path()` now mirrors `nav_tab`'s own existing per-PID
+convention exactly — one real file per PROCESS, not per mode. **The
+flat mode-named files below no longer exist as of this binary
+version** — do not write to them, nothing reads them anymore.
 
-- db-hq / palettes / bookmarks / stats-hq: `db_hq_history.txt` (stats has its own name if `g_is_stats_hq`)
-- events-hq: `events_hq_history.txt`
-- chat-hai: `chat_hai_history.txt`
-- swatch: `taskbar_settings_history.txt`
-- entity-menu: `entity_menu_history.txt`
+Per-PID history files under `<house>/#.desktop/<mode>_history/`:
+
+- db-hq / palettes / bookmarks / stats-hq: `db_hq_history/<pid>.txt` (stats has its own dir name if `g_is_stats_hq`)
+- events-hq: `events_hq_history/<pid>.txt`
+- chat-hai: `chat_hai_history/<pid>.txt`
+- swatch: `taskbar_settings_history/<pid>.txt`
+- entity-menu: `entity_menu_history/<pid>.txt`
+
+**Finding the right `<pid>` for a specific window** (no new registry -
+this already exists): `nav_master_current.txt` publishes live
+`<pid> <tab_ordinal> <nav_index> <id>` rows for every open window's
+current nav tree (see `nav_ledger_publish()`), and `nav_tab/<pid>`
+holds that same pid's real registered window title
+(`nav_tab_register()`). Cross-reference the two to identify which pid
+is "the events-hq window showing asa" vs "the db-hq window on Common
+Events" before writing any input, rather than guessing/broadcasting.
 
 Format (mutaclysm / pieces/keyboard, no timestamp prefix on these files):
 
