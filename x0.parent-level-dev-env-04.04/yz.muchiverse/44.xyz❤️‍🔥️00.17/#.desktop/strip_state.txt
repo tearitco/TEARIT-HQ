@@ -8,8 +8,8 @@ TAB | 40280 | 22 | cursword | /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜
 KEY | theme_bg | #000000
 KEY | theme_fg | #ef4444
 KEY | digit_buf | 
-KEY | tab_focus_idx | 0
-KEY | nav_armed | 0
+KEY | tab_focus_idx | 4
+KEY | nav_armed | 1
 KEY | n_tabs | 7
 KEY | n_shortcuts | 0
 KEY | hq_open | 0

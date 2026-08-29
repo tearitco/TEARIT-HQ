@@ -459,3 +459,13 @@ seq=3 focus_nav=1/15 view_mode=0 page=0 n_cmds=4 entity=sandbox
 seq=4 focus_nav=1/15 view_mode=0 page=0 n_cmds=4 entity=sandbox
 seq=5 focus_nav=2/6 view_mode=1 page=0 n_cmds=4 entity=sandbox
 seq=6 focus_nav=2/6 view_mode=1 page=0 n_cmds=4 entity=sandbox
+seq=1 focus_nav=1/15 view_mode=0 page=0 n_cmds=4 entity=sandbox
+seq=2 focus_nav=1/15 view_mode=0 page=0 n_cmds=4 entity=sandbox
+seq=3 focus_nav=1/15 view_mode=0 page=0 n_cmds=4 entity=sandbox
+seq=4 focus_nav=1/15 view_mode=0 page=0 n_cmds=4 entity=sandbox
+seq=5 focus_nav=1/15 view_mode=0 page=0 n_cmds=4 entity=sandbox
+seq=6 focus_nav=2/6 view_mode=1 page=0 n_cmds=4 entity=sandbox
+seq=7 focus_nav=2/6 view_mode=1 page=0 n_cmds=4 entity=sandbox
+seq=8 focus_nav=2/6 view_mode=1 page=0 n_cmds=4 entity=sandbox
+seq=9 focus_nav=2/6 view_mode=1 page=0 n_cmds=4 entity=sandbox
+seq=10 focus_nav=3/6 view_mode=1 page=0 n_cmds=4 entity=sandbox

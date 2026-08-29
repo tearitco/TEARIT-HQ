@@ -272,6 +272,53 @@ static void load_common_events(void) {
     closedir(d);
 }
 
+/* Gap #0 design resolution (CURSWORD-SOUL-VISION.md §4 / GAME-READINESS-
+ * GAP-ANALYSIS-2026-08-27.md): in continuous play, a BLOCKING message
+ * box pauses the existing game clock via the real lc_clock ticker
+ * (`running` flag in <house>/#.desktop/clocks/<id>.pdl flipped by the
+ * same mechanism the taskbar's livedesk:clock: rows shell out to). A
+ * player reading a blocking dialog must NOT simultaneously get side
+ * effects from a Parallel event firing. So the Parallel/Autorun tick
+ * loop itself reads the SAME real clock-pause state and skips firing
+ * while ANY registered game clock is paused (`running=0`) - this is
+ * additive on top of the per-event switch/cooldown gating, and works
+ * even for fire-and-forget (SHOW_TEXT_FILE) popups whose "showing"
+ * window this manager cannot observe directly. No clock -> no gate
+ * (defaults to firing). */
+static int any_clock_paused(void) {
+    char dir[MAX_PATH];
+    snprintf(dir, sizeof(dir), "%s/#.desktop/clocks", g_house_root);
+    DIR *d = opendir(dir);
+    if (!d) return 0; /* no clock machinery -> no gate (fallback) */
+
+    for (int attempt = 0; attempt < 2; attempt++) {
+        rewinddir(d);
+        struct dirent *de;
+        while ((de = readdir(d))) {
+            const char *nm = de->d_name;
+            size_t l = strlen(nm);
+            if (l < 4 || strcmp(nm + l - 4, ".pdl") != 0) continue;
+            if (strncmp(nm, "gameclock", 9) != 0) continue; /* only game clocks */
+            char path[MAX_PATH];
+            snprintf(path, sizeof(path), "%s/%s", dir, nm);
+            FILE *f = fopen(path, "r");
+            if (!f) continue;
+            char line[256];
+            int running = 1;
+            while (fgets(line, sizeof(line), f)) {
+                /* EXACT PREFIX: "running=" must own the token, not
+                 * be a substring of "not_running=" or similar. */
+                if (strncmp(line, "running=", 8) == 0) { running = atoi(line + 8); break; }
+            }
+            fclose(f);
+            if (running == 0) { closedir(d); return 1; }
+        }
+        usleep(20000); /* a half-open write may have read stale; one retry */
+    }
+    closedir(d);
+    return 0;
+}
+
 /* Main event-checking loop - called once per poll tick */
 static void check_common_events(void) {
     /* Reload events list periodically (every ~10 seconds at 60Hz = ~600 ticks) */
@@ -279,6 +326,17 @@ static void check_common_events(void) {
     if (tick_count++ % 600 == 0) {
         load_common_events();
     }
+
+    /* Gap #0: if a blocking message dialog has paused the game clock,
+     * hold ALL automatic (Autorun/Parallel) firings this tick. Logged
+     * once on the 0->1 transition only (no per-tick spam). */
+    static int gate_active = 0;
+    int clock_paused = any_clock_paused();
+    if (clock_paused && !gate_active) {
+        log_mgr("Clock paused -> holding parallel/autorun firings");
+    }
+    gate_active = clock_paused;
+    if (clock_paused) return;
 
     time_t now = time(NULL);
 

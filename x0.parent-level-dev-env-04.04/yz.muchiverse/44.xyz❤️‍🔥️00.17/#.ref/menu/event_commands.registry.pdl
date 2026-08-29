@@ -184,3 +184,87 @@ COMMAND send_input
   PAL li x15, 2
   PAL ecall
 END
+
+# ------------------------------------------------------------------
+# MESSAGE commands (Task 1, 2026-08-29 - docs: the 2do doc's Task 1
+# section, gap #0 design resolution). These compile to `exec cmd_N.sh`
+# wrappers like show_text/show_choices. The runtime OPS do the real
+# popup (SHOW_TEXT_FILE / SHOW_PAGE result-file machinery), write real
+# state (variables.txt etc.), and the blocking ops pause/resume the
+# existing game clock (livedesk:clock / lc_clock ticker) around the
+# blocking window per the gap-#0 decision - text-family commands are
+# the documented NON-BLOCKING popup exception in continuous mode.
+# Input Number: real digit-by-digit entry via repeated SHOW_PAGE
+#   popups (digit rows 0-9), value accumulated and stored into a real
+#   variable in STATE_DIR/variables.txt. Uses $D (house root) for the
+#   clock pause/resume and $ENT (entity root) for state.
+COMMAND input_number
+  LABEL Input Number
+  FIELD1 Store in variable:
+  FIELD2 Digits (1-8):
+  PARAMS var_name,digits
+  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_input_number.+x" "$ENT" "$D" '{var_name}' {digits}
+END
+
+# Select Item: real inventory.txt (entity state) read into a SHOW_PAGE
+#   popup; picked index stored into a real variable, picked key into
+#   .select_item_result.txt. Blocking (result-file poll), clock paused
+#   around the block.
+COMMAND select_item
+  LABEL Select Item
+  FIELD1 Store in variable:
+  FIELD2 -
+  PARAMS var_name
+  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_select_item.+x" "$ENT" "$D" '{var_name}'
+END
+
+# Scrolling Text: real SHOW_TEXT_FILE popup (multiline file), the
+#   documented non-blocking popup exception per gap #0 (fire-and-forget
+#   relay). Side-effect-free; suspension of the tick loop is handled by
+#   the blocking message ops + the common_events_manager clock gate.
+COMMAND scrolling_text
+  LABEL Scrolling Text
+  FIELD1 Text:
+  FIELD2 -
+  PARAMS text
+  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_scrolling_text.+x" "$ENT" "$D" '{text}'
+END
+
+# ------------------------------------------------------------------
+# CHARACTER commands (Task 1, 2026-08-29). All four write REAL per-
+# entity character state to <entity>/character_state.pdl (SECTION kv
+# rows read the same way switches/parameters are read elsewhere in the
+# house), plus a history/messages audit line. The sprite/rendering
+# layer that displays these states is documented as a later layer
+# (see GAME-READINESS-GAP-ANALYSIS) - the state + text-verifiable e2e
+# is this task's scope.
+COMMAND change_transparency
+  LABEL Change Transparency
+  FIELD1 Value (on/off):
+  FIELD2 -
+  PARAMS value
+  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_character.+x" "$ENT" transparency '{value}'
+END
+
+COMMAND followers
+  LABEL Followers
+  FIELD1 Show or hide:
+  FIELD2 -
+  PARAMS value
+  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_character.+x" "$ENT" followers '{value}'
+END
+
+COMMAND show_animation
+  LABEL Show Animation
+  FIELD1 Animation id:
+  FIELD2 -
+  PARAMS animation_id
+  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_character.+x" "$ENT" animation '{animation_id}'
+END
+
+COMMAND erase_event
+  LABEL Erase Event
+  FIELD1 -
+  FIELD2 -
+  TEMPLATE exec "$D/*.monads/*.muchi-pet/ops/+x/mr_character.+x" "$ENT" erase 1
+END

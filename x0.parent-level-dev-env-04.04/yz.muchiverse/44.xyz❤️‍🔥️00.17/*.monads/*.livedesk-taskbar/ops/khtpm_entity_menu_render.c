@@ -4368,69 +4368,19 @@ static XftFont *evhq_font_for(const CssStyle *st) {
     snprintf(cached_spec, sizeof(cached_spec), "%s", spec);
     return f;
 }
-static void evhq_draw_elem(Elem *e) {
-    /* REAL BUG FIX (2026-08-27, Task 5) - this function had NO w<=0/h<=0
-     * guard at all; only XFillRectangle calls were naturally harmless at
-     * zero size, but the nav-badge/label XftDrawStringUtf8 calls further
-     * down draw regardless of e->w/e->h, using only e->x/e->y (which
-     * evhq_zero_subtree() does not touch) - so a "hidden" (zeroed)
-     * subtree's old badge+label text kept rendering at its last real
-     * position every time, which is what made Task 5's Scratch/
-     * Blueprints stub view look like it was showing stale/duplicate
-     * content. hit_test() was already correctly guarded (an empty
-     * px<x+0 range can never match), only drawing was not - this is a
-     * real, previously-nonexistent guard, not a duplicate check. */
-    if (e->w <= 0 || e->h <= 0) return;
-    if (e->style.has_bg_color) { XSetForeground(dpy, gc, evhq_alloc_pixel(e->style.bg_color)); XFillRectangle(dpy, buf, gc, e->x, e->y, e->w, e->h); }
-    if (e->style.has_border_color) {
-        XSetForeground(dpy, gc, evhq_alloc_pixel(e->style.border_color));
-        XDrawRectangle(dpy, buf, gc, e->x, e->y, e->w - 1, e->h - 1);
-    }
-    if (strcmp(e->tag, "tab") == 0 && e->active && !e->style.has_bg_color) {
-        XSetForeground(dpy, gc, evhq_alloc_pixel("#3a3a3a")); XFillRectangle(dpy, buf, gc, e->x, e->y, e->w, e->h);
-    }
-    if (e->nav_index > 0 && e->nav_index == g_focus_nav) {
-        XSetForeground(dpy, gc, evhq_alloc_pixel("#ff8c00"));
-        XDrawRectangle(dpy, buf, gc, e->x - 1, e->y - 1, e->w + 1, e->h + 1);
-    }
-    int pad = 4;
-    int label_x = e->x + pad;
-    if (e->nav_index > 0) {
-        char badge[16];
-        int focused = (e->nav_index == g_focus_nav);
-        snprintf(badge, sizeof(badge), "[%c]%d.", focused ? '>' : ' ', e->nav_index);
-        char numspec[48]; snprintf(numspec, sizeof(numspec), "DejaVu Sans Mono:pixelsize=9");
-        XftFont *numfont = XftFontOpenName(dpy, screen, numspec);
-        if (numfont) {
-            XftColor numcol = evhq_xft_color(focused ? "#ff8c00" : "#9a9a9a");
-            XGlyphInfo numext; XftTextExtentsUtf8(dpy, numfont, (const FcChar8 *)badge, (int)strlen(badge), &numext);
-            int numy = e->y + (e->h + numfont->ascent - numfont->descent) / 2;
-            XftDrawStringUtf8(xftdraw_buf, &numcol, numfont, label_x, numy, (const FcChar8 *)badge, (int)strlen(badge));
-            XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &numcol);
-            label_x += numext.width + 5;
-            XftFontClose(dpy, numfont);
-        }
-    }
-    if (e->label[0]) {
-        XftFont *font = evhq_font_for(&e->style);
-        if (font) {
-            XftColor col = evhq_xft_color(e->style.has_fg_color ? e->style.fg_color : "#cccccc");
-            int ty = e->y + (e->h + font->ascent - font->descent) / 2;
-            XftDrawStringUtf8(xftdraw_buf, &col, font, label_x, ty, (const FcChar8 *)e->label, (int)strlen(e->label));
-            XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
-        }
-    }
-}
-static void evhq_render_tree(Elem *e) {
-    for (int i = 0; i < e->n_children; i++) {
-        Elem *c = e->children[i];
-        if (strcmp(c->tag, "title") == 0) continue;
-        if (strcmp(c->tag, "module") == 0) continue;
-        evhq_draw_elem(c);
-        evhq_render_tree(c);
-    }
-    for (int i = 0; i < e->n_children; i++) if (strcmp(e->children[i]->tag, "title") == 0) evhq_draw_elem(e->children[i]);
-}
+/* REAL FIX 2026-08-29 (EVENTS-HQ-RENDER-UNIFICATION-PLAN.md Part A) -
+ * evhq_draw_elem()/evhq_render_tree() were a real, hand-copied twin of
+ * the shared draw_elem()/render_tree() (khtpm_draw_core.c), drifted
+ * since the original binary-merge - missing sprite support, missing
+ * the badge-font cache (the exact perf bug already fixed in the
+ * shared version, still live here), missing elem_cursor_prefix()/
+ * ACTIVATE-scope support (tonight's Gap 5), missing border-width/
+ * padding-aware layout, missing item-active highlight, missing
+ * contrast-aware badge color, missing badge_align_left. All real
+ * call sites (the tree walk + every direct draw_elem-style call for
+ * chrome/overlay/scrollbar Elems) now call the shared draw_elem()/
+ * render_tree() directly - see this plan doc for the full real diff
+ * that justified this, not a guess. */
 static void evhq_draw_entity_glyph(void) {
     if (!g_evhq_sprite_pixels || g_evhq_sprite_res <= 0) return;
     int size = 36;
@@ -4473,7 +4423,7 @@ static void evhq_draw_chrome_bar(void) {
     snprintf(g_evhq_close_elem->style.border_color, sizeof(g_evhq_close_elem->style.border_color), "%s", g_evhq_close_elem->nav_index == g_focus_nav ? "#ff8c00" : "#888888");
     g_evhq_close_elem->style.has_fg_color = 1;
     snprintf(g_evhq_close_elem->style.fg_color, sizeof(g_evhq_close_elem->style.fg_color), "#eeeeee");
-    evhq_draw_elem(g_evhq_close_elem);
+    draw_elem(g_evhq_close_elem, 0);
 }
 /* Task 7 follow-up (2026-08-26, direct live re-test: "still dont see
  * nav on the subs (show choices, change gold? etc)... should be
@@ -4556,7 +4506,7 @@ static void evhq_draw_picker_overlay(void) {
             row->nav_index = i + 1;
             snprintf(row->onclick, sizeof(row->onclick), "PICKER:TYPE:%d", i);
             g_nav[g_n_nav++] = row;
-            evhq_draw_elem(row);
+            draw_elem(row, 0);
             ty += L->row_spacing;
         }
         {
@@ -4568,7 +4518,7 @@ static void evhq_draw_picker_overlay(void) {
                 snprintf(cancel->onclick, sizeof(cancel->onclick), "PICKER:CANCEL");
                 cancel->nav_index = g_evhq_n_cmd_defs + 1;
                 g_nav[g_n_nav++] = cancel;
-                evhq_draw_elem(cancel);
+                draw_elem(cancel, 0);
                 ty += L->row_spacing;
             }
         }
@@ -4589,7 +4539,7 @@ static void evhq_draw_picker_overlay(void) {
             f1->nav_index = 1;
             snprintf(f1->onclick, sizeof(f1->onclick), "PICKER:FIELD:0");
             g_nav[g_n_nav++] = f1;
-            evhq_draw_elem(f1);
+            draw_elem(f1, 0);
             ty += L->row_spacing + 2;
         }
         if (has_field2) {
@@ -4606,7 +4556,7 @@ static void evhq_draw_picker_overlay(void) {
                 f2->nav_index = 2;
                 snprintf(f2->onclick, sizeof(f2->onclick), "PICKER:FIELD:1");
                 g_nav[g_n_nav++] = f2;
-                evhq_draw_elem(f2);
+                draw_elem(f2, 0);
                 ty += L->row_spacing + 2;
             }
         }
@@ -4619,7 +4569,7 @@ static void evhq_draw_picker_overlay(void) {
                 snprintf(cancel->onclick, sizeof(cancel->onclick), "PICKER:CANCEL");
                 cancel->nav_index = def->n_params + 1;
                 g_nav[g_n_nav++] = cancel;
-                evhq_draw_elem(cancel);
+                draw_elem(cancel, 0);
                 ty += L->row_spacing + 2;
             }
         }
@@ -4688,7 +4638,15 @@ static void evhq_redraw_content(void) {
      * allocated buffer leaves old content sitting below the new,
      * smaller content. Clear the FULL allocated buffer every time. */
     XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)(g_buf_w > g_window->w ? g_buf_w : g_window->w), (unsigned)(g_buf_h > g_window->h ? g_buf_h : g_window->h));
-    evhq_render_tree(g_window);
+    /* REAL FIX 2026-08-29 (Part A) - was evhq_render_tree(g_window), a
+     * hand-copied twin missing tonight's Gap 5/badge-cache/sprite
+     * fixes (see this function's own draw_elem() replacement comment
+     * above). The shared render_tree() also draws the ROOT element
+     * itself (depth==0), which the old evhq_render_tree() never did -
+     * live-verified harmless: g_window's own root Elem carries no
+     * real bg/border style here, so this is a no-op paint, not a new
+     * visible layer. */
+    render_tree(g_window, 0);
     /* REAL, NEW 2026-08-28 (Phase C target #3) - events-hq has its OWN
      * redraw path (evhq_render_tree()/evhq_draw_elem()), entirely
      * separate from db-hq's dbhq_redraw_content() - the scroll track/
@@ -4724,8 +4682,8 @@ static void evhq_redraw_content(void) {
             { (short)(ax + aw - 2), (short)(down_y0 + 3) },
         };
         XFillPolygon(dpy, buf, gc, down_tri, 3, Convex, CoordModeOrigin);
-        evhq_draw_elem(g_pal_arrow_up);
-        evhq_draw_elem(g_pal_arrow_down);
+        draw_elem(g_pal_arrow_up, 0);
+        draw_elem(g_pal_arrow_down, 0);
     }
     evhq_draw_entity_glyph();
     evhq_draw_chrome_bar();
