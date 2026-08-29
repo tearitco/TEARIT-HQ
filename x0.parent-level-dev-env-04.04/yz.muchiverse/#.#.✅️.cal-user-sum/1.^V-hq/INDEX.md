@@ -506,6 +506,27 @@ The events ladders come first, then these land:
 
 ---
 
+**2026-08-29** (real correction, direct user catch: "previously we had
+spec'ed out that we could have both maps, individual tiles, or both...
+is there not documentation of this specific spec? maybe its disparate?"
+- confirmed yes. `MAPS-TILES-ZLEVELS-CONSOLIDATED-SPEC.md` cross-
+references the real, disparate docs that were never linked together
+(`PIECECRAFT_XYZ_DESIGN.md` - the actual real map/chunk/Z-level spec,
+already has real answered open-questions; `xelector-context.md` - the
+real cursor pattern; `CURSWORD-SOUL-VISION.md` §5). Retracts an earlier
+same-day design doc that wrongly framed "tile/map" as a from-scratch
+2D RPG-Maker-walk-around problem before this cross-reference existed.
+Also records 2 genuinely NEW integration specs from tonight's
+conversation that exist nowhere else yet: cursword driving Z-level nav
+xelector-style, and extending the desktop/piececraft/mutaclysm tile
+transfer model. On the latter: direct user follow-up ("do u see
+101.drag-drop-test=ON🀄️?") caught a real miss mid-write - the
+desktop↔mutaclysm half of that transfer is NOT new, it's real, BUILT,
+and TESTED (2026-07-26, real X11 Xdnd + exchange-dir pet-import
+round-trip) - corrected in the doc before push, only the piececraft-
+xyz extension of that same mechanism is genuinely unspec'd. Read this
+before touching maps/tiles/z-levels/palettes/piececraft ever again.) by claude
+
 **2026-08-29** (post-refactor audit, direct request: real explanation of
 "modes" + whether the 4-loop draw collapse held up at 9,950 lines -
 `*.monads/*.livedesk-taskbar/ops/parser-walkthru.md`, next to the
