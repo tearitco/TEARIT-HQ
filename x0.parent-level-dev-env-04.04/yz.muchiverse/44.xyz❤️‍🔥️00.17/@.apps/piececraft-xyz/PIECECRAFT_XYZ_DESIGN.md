@@ -234,13 +234,23 @@ extension reuses `camera_mode` 1–4 and the existing key bindings **exactly**
 **New, needed for real voxel play (not present in civ-txt/tactics-txt
 today):**
 
-- **Y-axis (vertical) selector movement** — civ-txt/tactics-txt's selector
-  only moves X/Z (2D board). piececraft-xyz needs a real up/down key to move
-  the block-target cursor through Z-levels (mining down, building up). Needs
-  a key from you — candidates: `PageUp`/`PageDown`, or reusing `q`/`e`
-  outside camera_mode 4 the way mutaclysm's own xlector might already do
-  something similar (worth checking `choice.c` for a live precedent before
-  picking a key — flagged in §9, not yet checked).
+- **Y-axis (vertical) selector movement — RESOLVED (2026-08-29 session,
+  the doc-audit pass's own flagged "check for a live precedent" finally
+  done)**: `choice.c`/`move_player.c` DO already have a real, live
+  precedent, and it's an exact match. `x`/`z` already move the HERO's
+  own Z-level (`hero_z++`/`hero_z--`, gated `render_mode==1`,
+  `move_player.c` ~line 485); `c`/`v` already move the CAMERA's Z-level
+  separately (`camera_control.c`), so a hero/cursor and the camera can
+  be looking at different levels at once. Direct instruction: cursword
+  (piececraft's own block-target cursor, its "SOUL" entity - see
+  `CURSWORD-SOUL-VISION.md`) uses **`x`/`z`**, matching the hero-Z-level
+  role directly, NOT the camera role - `c`/`v` stays reserved for
+  camera-Z-level, keeping "camera view" and "cursword view" as two
+  genuinely separate, real, already-precedented axes, exactly as
+  mutaclysm already does it. **`PageUp`/`PageDown` are ALSO real,
+  additional bindings for the same cursword Z-level action** (direct
+  instruction: "option page up and down") - an alt/accessibility
+  binding alongside `x`/`z`, not a replacement for it.
 - **Place/Break** — the actual voxel-editing verbs. Needs two keys from you
   (e.g. left-click-equivalent / right-click-equivalent, or two dedicated
   ASCII keys since this is keyboard-first like every other project here).

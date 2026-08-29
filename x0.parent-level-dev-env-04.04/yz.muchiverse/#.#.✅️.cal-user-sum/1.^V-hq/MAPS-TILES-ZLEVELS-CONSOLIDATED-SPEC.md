@@ -59,25 +59,37 @@ Reuses, not reinvents: `xelector-context.md`'s real cursor pattern
 real, shared, data-driven rendering (`terrain_legend.txt`/
 `ops_bank.txt`).
 
-## 4. What's genuinely new, said for the first time in tonight's
-conversation, and not yet in any of the docs above
+## 4. What was genuinely new as of the 2026-08-29 conversation — RESOLVED
+same session, keeping this section as the real record of how
 
-Two real integration points, real open questions, not yet designed:
+Two real integration points, real open questions at the time — both
+answered directly by the user before this session's own end, keeping
+this section as the record (per the same "don't lose the spec again"
+concern that started this whole doc):
 
-- **Cursword driving Z-level navigation and map-view control,
-  xelector-style.** `PIECECRAFT_XYZ_DESIGN.md` §3 flags "vertical
-  selector movement — needs a key from you" as unanswered; this
-  session's conversation answered it with a different actor than that
-  doc assumed (cursword itself, not just a keypress) — a real, new
-  link between `CURSWORD-SOUL-VISION.md` and `PIECECRAFT_XYZ_DESIGN.md`
-  that neither doc currently makes.
-- **Extending the real `drag-drop-how2.md` mechanism to piececraft-xyz
-  specifically** (today it only covers desktop↔Mutaclysm), plus a real
-  answer on tile-sized vs. map-sized drag payloads (dropping one tile
-  vs. dropping a whole map — genuinely different payload shapes).
-
-Neither of these has a real design pass yet — they're real, confirmed
-gaps, not implementation work you can start today.
+- **Cursword driving Z-level navigation, xelector-style — RESOLVED.**
+  `PIECECRAFT_XYZ_DESIGN.md` §3 flagged "vertical selector movement —
+  needs a key from you" as unanswered. Checked `choice.c`/
+  `move_player.c` for the live precedent the doc's own §9 said to check
+  first: `x`/`z` already move a hero's own Z-level, `c`/`v` already
+  move the camera's Z-level separately (both real, both live). Direct
+  instruction: cursword uses `x`/`z` (matching the hero-Z-level role,
+  since cursword is piececraft's own "SOUL" entity, not the camera) —
+  `c`/`v` stays the camera's, keeping "camera view" vs. "cursword view"
+  as two genuinely separate real axes. `PageUp`/`PageDown` are ALSO
+  real, additional bindings for the same cursword action (an alt/
+  accessibility binding, not a replacement). Recorded in full in
+  `PIECECRAFT_XYZ_DESIGN.md` §3's own updated entry.
+- **Extending the real `drag-drop-how2.md` mechanism to piececraft-xyz,
+  and the tile-sized vs. map-sized payload question — SCOPE DECIDED,
+  not yet built.** Direct instruction: design the payload format to
+  carry BOTH a single tile and a whole map/chunk from day one, even
+  though only one shape may get built first — avoiding a second
+  payload-format redesign later was the explicit reason for deciding
+  this now rather than deferring it. The actual extension code (beyond
+  today's real, tested desktop↔Mutaclysm-only XDND) is still real,
+  separate, unbuilt work — this only settles the payload-shape question
+  ahead of building it.
 
 ## 5. How the RPG-Maker-events gap analysis relates
 
