@@ -728,9 +728,13 @@ Key properties:
 
 This pattern has been proven in:
   - Mars Street Trading Sim (financial transactions)
-  - Pal-Chat-IRC (social messages)
   - Pal-Chain (blockchain transactions, implied)
   - Mutaclysm (combat, exploration, implied)
+
+  [CORRECTED 2026-08-29 doc-audit pass: Pal-Chat-IRC was previously
+  listed here too, but that's wrong - 044.pal-chat-irc+2 has no
+  master_ledger.txt/game_manager.c, it uses flat per-room files
+  instead. Confirmed via quick-summar-j26.txt.]
 
 Apply it consistently: one ledger, one ring, one decision engine per actor type,
 and you can scale from 2 players to thousands of NPCs on one machine or across

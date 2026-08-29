@@ -1,3 +1,9 @@
+> **SUPERSEDED (flagged 2026-08-29 doc-audit pass):** `!.tpmos-vs-khtpm_pal.md`
+> and `archive/temp/!.mass-refactor.md` both state this doc's invocation
+> order is inverted vs. what any of the 7 real projects actually run.
+> Despite the "(CORRECT)" in the title, treat `!.tpmos-vs-khtpm_pal.md`
+> as the current reference, not this file.
+
 # TPMOS Orchestrator Pattern (CORRECT)
 
 ## Architecture
