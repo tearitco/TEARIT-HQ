@@ -2110,8 +2110,20 @@ static void dbhq_layout_pass(Elem *window) {
             int tx = c->x;
             for (int j = 0; j < c->n_children; j++) {
                 Elem *tab = c->children[j];
-                tab->x = tx; tab->y = c->y + 2; tab->h = c->h - 4;
-                tx += tab->w + scaled(4);
+                /* REAL FIX 2026-08-29 (live report: "tabs are a bit too
+                 * close together, overlapping eachother") - the
+                 * css_layout_pass(panel, ...) call just above already
+                 * recursed into this tabbar's own children (it has no
+                 * display:flex declared, so css_layout_pass's generic
+                 * block algorithm stomped each tab's carefully-measured
+                 * injection-time width with its own default), so
+                 * trusting tab->w here was trusting a value this same
+                 * function had already clobbered one line earlier.
+                 * Recompute it fresh, same formula dbhq_ce_inject_
+                 * panel() used at injection. */
+                int tw = dbhq_measure_text_px(&tab->style, tab->label) + scaled(34);
+                tab->x = tx; tab->y = c->y + 2; tab->w = tw; tab->h = c->h - 4;
+                tx += tw + scaled(4);
             }
         }
 

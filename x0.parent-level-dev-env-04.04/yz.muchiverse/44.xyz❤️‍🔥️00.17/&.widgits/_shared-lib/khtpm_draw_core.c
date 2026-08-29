@@ -409,6 +409,20 @@ static const char *badge_focus_color(const CssStyle *st) {
 
 static void draw_elem(Elem *e, int hover_id_hash) {
     (void)hover_id_hash;
+    /* REAL FIX 2026-08-29 (EVENTS-HQ-RENDER-UNIFICATION-PLAN.md's own
+     * open "ghosting" regression, root-caused: evhq_zero_subtree()
+     * zeros an Elem's w/h to hide a whole subtree when a view mode
+     * switches away from it, but this function's label-drawing branch
+     * below (`if (!drew_sprite && e->label[0])`) never checked w/h at
+     * all - a 0x0 XFillRectangle/XDrawRectangle is a real no-op, but
+     * text was drawn regardless, so "hidden" titles like Scripting
+     * mode's "Trigger"/"Commands" block-title labels kept bleeding
+     * through as faint ghosts over Scratch/Blueprints content. This
+     * guard was believed to already exist here (see the plan doc's own
+     * now-corrected note) but never actually did - fixing it here,
+     * once, fixes every mode that relies on zeroing a subtree to hide
+     * it, not just events-hq. */
+    if (e->w <= 0 || e->h <= 0) return;
     if (e->style.has_bg_color) {
         XSetForeground(dpy, gc, alloc_pixel(e->style.bg_color));
         XFillRectangle(dpy, buf, gc, e->x, e->y, e->w, e->h);
