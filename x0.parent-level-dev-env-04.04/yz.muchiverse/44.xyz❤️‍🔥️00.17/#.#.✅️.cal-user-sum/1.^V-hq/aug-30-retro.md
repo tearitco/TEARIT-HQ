@@ -192,46 +192,54 @@ task. 🟢
 ## 📋 Next-steps roadmap (nothing here was recorded anywhere before —
 recording it now so it isn't lost)
 
-### 🔴 Priority #1 — real bug, still open
+### 🟢 Priority #1 — real bug, FIXED (`eb74b733`), pending your live confirmation
 **Sometimes clicking the piececraft-hq taskbar icon does nothing** —
 reliable via direct history-file injection, unreliable via a real
-mouse click. **Investigated 2026-08-30, not yet fixed:**
+mouse click.
 
-- Traced the full real pipeline: a real X11 `ButtonPress` on `hq_win`/
-  `popup_win`/`win` gets written by `mirror_mouse_history()` as a plain
-  `MOUSE_EVENT: ...` line into `#.desktop/strip_input_history.txt`
-  (`khtpm_strip_parser.c`) — this is the EXACT file/format the user's
-  own "tb history injection" repro method writes into directly.
-- `poll_captured_input()` reads that file back once per tick and calls
-  `apply_captured_mouse()` → `hit_test()` → `dispatch_onclick()` →
-  `send_code()`, which appends to a SECOND relay
-  (`#.desktop/strip_history.txt`) that a completely separate manager
-  process (`khtpm_taskbar_manager_main.+x`) polls and finally calls
-  `ktb_hq_activate(s, row)`, which fires the real
-  `setsid nohup sh -c 'sh "<button.sh>" run' &` launch.
-- **Real, confirmed-by-code fact**: real clicks and history-injection
-  are IDENTICAL from `strip_input_history.txt` onward — same file,
-  same parser, same dispatch. So the divergence has to be upstream of
-  that write: something about how a REAL X11 `ButtonPress` gets
-  captured/attributed sometimes fails where an injected line can't
-  (an injected line is always well-formed and always lands on the
-  window/coordinates you choose).
-- **Leading candidate, not yet proven**: a window-focus/mapping race
-  right when the popup opens — `mirror_mouse_history()` only fires for
-  a `ButtonPress` whose `ev.xbutton.window` exactly matches `hq_win`,
-  `popup_win`, or `win`; if a click lands in the brief window between
-  the popup being requested and actually `XMapRaised()`'d (or if
-  window-manager stacking briefly puts something else on top), the
-  event could be attributed to the wrong window or dropped entirely,
-  silently, with zero error output.
-- **Ruled out**: `button.sh run` itself (5/5 direct CLI launches
-  succeeded); the mirror-write itself (`fopen(path, "a")`, always
-  succeeds); the `sscanf` line-parse (format always matches what's
-  written).
-- **Not yet done**: live reproduction with real click coordinates +
-  timestamps logged against real window-map events, to catch it
-  in the act rather than guessing further. This needs a dedicated
-  session, not a rushed guess-fix.
+**Investigation (2026-08-30):** traced the full real pipeline — a real
+X11 `ButtonPress` on `hq_win`/`popup_win`/`win` gets written by
+`mirror_mouse_history()` into `#.desktop/strip_input_history.txt`
+(the EXACT file the "tb history injection" repro method writes into
+directly), read back by `poll_captured_input()`, hit-tested, and
+dispatched via `send_code()` → a separate manager process →
+`ktb_hq_activate()` → the real `button.sh run` launch. **Real clicks
+and history-injection are identical from that file onward** — so the
+bug had to be upstream, in how a real `ButtonPress` gets captured at
+all.
+
+**Root cause found**: the exact same bug class already found and
+fixed THE SAME DAY for the board window (commit `402c812b`, "its not
+geting mouse / kbd input") — `win`/`hq_win`/`popup_win` were all
+`override_redirect=True`. Mutter's real XWayland focus routing only
+ever gives real hardware click/key focus to WM-managed windows;
+`XSetInputFocus()` (which `taskbar_soft_focus()` calls directly on
+these windows) reports success at the raw X11-protocol level
+regardless, which is exactly why it looked fine under synthetic
+testing but failed unpredictably for real. "Sometimes" fits Mutter's
+own live focus/stacking state far better than a narrow timing race.
+
+**Fix (`eb74b733`)**: ported the same real technique 402c812b used —
+WM-managed window, decorations stripped via `_MOTIF_WM_HINTS` — plus
+real EWMH dock hints (`_NET_WM_WINDOW_TYPE_DOCK`,
+`_NET_WM_STATE_ABOVE`/`SKIP_TASKBAR`/`SKIP_PAGER`/`STICKY`,
+`PPosition`) since this is a real always-on-top dock, not a plain
+utility window like the board's. Also installed a non-fatal X error
+handler (this file had none before) since `XSetInputFocus()` can
+legitimately throw `BadMatch` before the WM finishes reparenting a
+freshly WM-managed window — uncaught, that would've crashed the whole
+taskbar.
+
+**Verified live**: restarted the real running taskbar; all 3 windows
+came back with correct geometry/position, zero decoration/visual
+regression (`xwininfo`), `Override Redirect State: no`, all dock/motif
+hints present (`xprop`), and `hq_win` showing `_NET_WM_STATE_FOCUSED`
+— the same marker 402c812b used to prove genuine WM-managed focus
+(absent on `override_redirect` windows under Mutter entirely).
+**Not yet verified**: the actual click-flakiness reduction itself,
+since that specifically requires real hardware input over repeated
+real use to confirm — not something a synthetic/injected event can
+prove either way. Please report back after some normal use.
 
 ### 🟡 Recorded, not yet built
 - ✅ **Screen resize / fullscreen support** — confirmed priority,
