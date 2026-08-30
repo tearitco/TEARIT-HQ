@@ -178,16 +178,60 @@ project_id=piececraft-xyz
 display_name=Piececraft-xyz
 EOF
 
-        cat > pieces/apps/player_app/state.txt << 'EOSTATE'
+        # REAL FIX 2026-08-30 (Piece 1 - completing the in-scene desks
+        # screen, direct instruction: "it should just load the 3d
+        # window. we shouldn't have to do setup and enter"). This used
+        # to unconditionally force PAL_LAYOUT=new_game.chtpm/
+        # active_target_id=new_game on EVERY launch, regardless of real
+        # session state - the C-side get_current_piece_id() fallback
+        # fix (pc_menu_input.c, same date) never mattered because this
+        # env var/state.txt write happens first and wins. Real fix:
+        # check config.txt's own real game_state (already the house's
+        # real "has a world been created" signal - CONFIRM_START/
+        # CREATE_WORLD_SEEDED/CREATE_WORLD_DEBUG all set it to
+        # "playing") and skip straight to main.chtpm/module main_module
+        # .pal when a world already exists. On a genuinely fresh
+        # install (game_state still "setup", checked BEFORE the config
+        # copy-in below since $SCRIPT_DIR's own real, persistent file is
+        # what already reflects any prior real session), auto-generate
+        # a default seeded world right here - same real
+        # pc_generate_chunk.+x call CREATE_WORLD_SEEDED's own handler
+        # makes - so first-ever launch also lands straight in the game,
+        # never showing the old blocking ATLAS-EDITOR setup screen at
+        # all.
+        REAL_GAME_STATE="setup"
+        if [ -f "$SCRIPT_DIR/pieces/system/config.txt" ]; then
+            REAL_GAME_STATE="$(grep -m1 '^game_state=' "$SCRIPT_DIR/pieces/system/config.txt" | cut -d= -f2)"
+        fi
+        if [ "$REAL_GAME_STATE" != "playing" ] && [ -x "$SESSION_DIR/ops/+x/pc_generate_chunk.+x" ]; then
+            AUTO_SEED="$(date +%s)"
+            ( cd "$SESSION_DIR" && PRISC_PROJECT_ROOT="$SESSION_DIR" "$SESSION_DIR/ops/+x/pc_generate_chunk.+x" "$AUTO_SEED" 0 0 >/dev/null 2>&1 )
+            sed -i 's/^game_state=.*/game_state=playing/' "$SCRIPT_DIR/pieces/system/config.txt" 2>/dev/null || true
+            sed -i 's/^game_state=.*/game_state=playing/' "$SESSION_DIR/pieces/system/config.txt" 2>/dev/null || true
+            REAL_GAME_STATE="playing"
+        fi
+
+        if [ "$REAL_GAME_STATE" = "playing" ]; then
+            cat > pieces/apps/player_app/state.txt << 'EOSTATE'
+module_path=system/prisc+x pal/main_module.pal
+project_id=piececraft-xyz
+active_target_id=main
+EOSTATE
+            echo "pieces/chtpm/layouts/main.chtpm" > pieces/display/current_layout.txt
+            PC_PAL_LAYOUT="pieces/chtpm/layouts/main.chtpm"
+        else
+            cat > pieces/apps/player_app/state.txt << 'EOSTATE'
 module_path=system/prisc+x pal/new_game_module.pal
 project_id=piececraft-xyz
 active_target_id=new_game
 EOSTATE
+            PC_PAL_LAYOUT="pieces/chtpm/layouts/new_game.chtpm"
+        fi
 
         export PRISC_PROJECT_ROOT="$SESSION_DIR"
         export PRISC_PROJECT_ID="piececraft-xyz"
         export NO_NET=1
-        export PAL_LAYOUT="pieces/chtpm/layouts/new_game.chtpm"
+        export PAL_LAYOUT="$PC_PAL_LAYOUT"
         "$SCRIPT_DIR/system/orchestrator" 2>>pieces/system/orchestrator.log &
         ORCH_PID=$!
 
@@ -225,6 +269,27 @@ EOSTATE
             if [ -x ./system/chtpm_rgb_render ]; then
                 ./system/chtpm_rgb_render >/dev/null 2>&1 &
                 RGB_PID=$!
+            fi
+        fi
+
+        # REAL FIX 2026-08-30, same direct instruction as the
+        # game_state check above ("it should just load the 3d window.
+        # we shouldn't have to do setup and enter") - auto-open the
+        # real board-viewer widget the instant the game reaches "main"
+        # (REAL_GAME_STATE=="playing"), instead of requiring the "2.
+        # View Board" menu click every launch. Real, deliberate scope
+        # choice: this duplicates the CORE spawn call open_board_widget()
+        # (ops/pc_menu_input.c) makes rather than calling that function
+        # directly (it's a static C function, not shell-callable) -
+        # skips that function's own peer-refocus dedup check on
+        # purpose, since this only ever runs once per fresh launch (no
+        # earlier widget for THIS session could exist yet to dedup
+        # against); the menu's own "View Board" row still goes through
+        # the real, deduped path for any later manual re-open.
+        if [ "$REAL_GAME_STATE" = "playing" ] && [ -z "$NO_GL" ] && [ -n "$DISPLAY" ]; then
+            BOARD_BTN="$HOUSE_DIR/&.widgits/board-viewer/button.sh"
+            if [ -x "$BOARD_BTN" ]; then
+                setsid bash "$BOARD_BTN" run-widget "$SCRIPT_DIR" >/dev/null 2>&1 < /dev/null &
             fi
         fi
 

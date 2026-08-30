@@ -259,7 +259,21 @@ static void write_chtpm_bridge(const char *piece_id) {
 }
 
 static void get_current_piece_id(const char *root, char *out, size_t out_sz) {
-    snprintf(out, out_sz, "new_game");
+    /* REAL FIX 2026-08-30 (Piece 1 - completing the in-scene desks
+     * screen, CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-DESIGN.md
+     * §2): this is the fallback used when current_layout.txt doesn't
+     * exist yet - i.e. a genuinely fresh session. Was "new_game" (the
+     * old blocking ATLAS-EDITOR setup screen this whole piece exists to
+     * remove) - the earlier commit added the real select_world screen +
+     * Create/Load infrastructure but never actually pointed a fresh
+     * session at it, so the blocking screen was still the real first
+     * thing every launch saw. select_world always offers Create New
+     * Seeded/Debug Flat methods regardless of whether any saved worlds
+     * exist yet (pc_compose_frame.c's own select_world block, confirmed
+     * by reading it - the Create methods are appended unconditionally
+     * after the load-world loop), so this is safe on a truly fresh
+     * install with zero saved worlds too, not just on a return visit. */
+    snprintf(out, out_sz, "select_world");
     char layout_path[PATH_BUF];
     snprintf(layout_path, sizeof(layout_path), "%s/pieces/display/current_layout.txt", root);
     FILE *f = fopen(layout_path, "r");
