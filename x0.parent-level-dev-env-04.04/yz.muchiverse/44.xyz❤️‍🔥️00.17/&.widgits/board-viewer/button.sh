@@ -246,7 +246,24 @@ EOSTATE
                 ) &
             fi
         fi
-        if [ -z "$NO_GL" ] && [ -x ./system/chtpm_rgb_render ]; then
+        # REAL FIX 2026-08-30, found live investigating "absolute parity
+        # with the legacy model" (direct instruction) - chtpm_rgb_
+        # render.+x is the real, shared COMPOSITOR daemon (blits the
+        # real text chrome chtpm_parser_pal renders AND the real 3D
+        # overlay bv_render_3d.c writes into ONE real rgb_frame.raw -
+        # see that file's own blit_overlay()/MAP3D_MARKER header
+        # comment), genuinely independent of whether any real WINDOW
+        # (x11_mirror/gl_mirror) ever displays the result - a
+        # real caller (e.g. khtpm_entity_menu_render.c's own
+        # run_pchq_board_mode()) can read rgb_frame.raw directly with
+        # zero window of its own needed here. NO_GL was wrongly gating
+        # BOTH the window AND the compositor as one unit - its own name
+        # only ever promised "no GL window", not "no compositing
+        # either". Real, separate flag for the compositor specifically
+        # (NO_RGB_COMPOSITOR) - NO_GL alone (the common real case) now
+        # still lets a real caller read a real, fully-composited
+        # rgb_frame.raw with no window ever mapping.
+        if [ -z "$NO_RGB_COMPOSITOR" ] && [ -x ./system/chtpm_rgb_render ]; then
             ./system/chtpm_rgb_render >/dev/null 2>&1 &
             RGB_PID=$!
         fi

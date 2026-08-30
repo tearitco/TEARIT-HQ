@@ -10006,6 +10006,92 @@ static void pchq_kill_legacy_display(const char *bv_session) {
     (void)rc;
 }
 
+/* REAL, NEW 2026-08-30, direct instruction: "thats not what the legacy
+ * chtpm peice board-view did u need to stick as closely to that model
+ * as possible. absolute parity. research it and see where u went
+ * wrong." Real research finding (see PIECECRAFT-HQ-BOARD-KHTPM-
+ * CONVERSION-2026-08-30.md for the full writeup):
+ *   1. board_viewer.chtpm has a real, declarative <interact src="..."/>
+ *      + a reserved onClick="INTERACT" button - the ENGINE
+ *      (chtpm_parser_pal.c) handles ALL real nav/focus/arrow-relay/ESC
+ *      natively, with zero app-side code - this is the real "for free"
+ *      system, and it lives entirely in the legacy engine, not
+ *      anything this file can reimplement locally with real parity.
+ *   2. system/chtpm_rgb_render.c (a real, shared compositor daemon,
+ *      NOT the same thing as the window-display step) already reads
+ *      BOTH the real text chrome chtpm_parser_pal renders into
+ *      current_frame.txt AND the real 3D overlay bv_render_3d.c
+ *      writes, and blits them into ONE real, fully-composited
+ *      rgb_frame.raw (see that file's own blit_overlay()/MAP3D_MARKER
+ *      header comment) - x11_mirror.c only ever needed to blit THAT
+ *      one file and forward every real key/click into board-viewer's
+ *      own real relay files, letting the real engine do everything
+ *      else. The earlier version of this function read rgb_frame_3d_
+ *      overlay.raw DIRECTLY (skipping the real compositor's own output
+ *      entirely) and hand-drew its own separate chrome/nav on top -
+ *      real parity means NOT doing either of those things.
+ * Real fix: blit rgb_frame.raw (the same file x11_mirror.c blits,
+ * already containing the real "[>] N. Interact Mode..." chrome text),
+ * and forward EVERY real key/click into board-viewer's own real
+ * relay files (keyboard/history.txt, player_app/history.txt,
+ * player_app/state.txt's last_click_x/y) via a direct, deliberate port
+ * of x11_mirror.c's own append_key()/write_click_kv()/map_special_key()
+ * - zero local nav logic of this file's own, matching x11_mirror.c's
+ * own real "steal everything, reimplement nothing" shape exactly.
+ * board-viewer/button.sh's own NO_RGB_COMPOSITOR/NO_GL split (same
+ * date) is what makes rgb_frame.raw available here with no real GL
+ * window of board-viewer's own ever needing to map. */
+#define PCHQ_ARROW_LEFT  1000
+#define PCHQ_ARROW_RIGHT 1001
+#define PCHQ_ARROW_UP    1002
+#define PCHQ_ARROW_DOWN  1003
+
+static int pchq_map_special_key(KeySym ks) {
+    if (ks == XK_Left) return PCHQ_ARROW_LEFT;
+    if (ks == XK_Right) return PCHQ_ARROW_RIGHT;
+    if (ks == XK_Up) return PCHQ_ARROW_UP;
+    if (ks == XK_Down) return PCHQ_ARROW_DOWN;
+    return 0;
+}
+
+/* Direct port of x11_mirror.c's own append_key() - dual-write, same
+ * real target files, same real format. */
+static void pchq_append_key(const char *history1, const char *history2, int key) {
+    FILE *f = fopen(history1, "a");
+    if (f) { fprintf(f, "%d\n", key); fclose(f); }
+    FILE *cf = fopen(history2, "a");
+    if (cf) { fprintf(cf, "KEY_PRESSED: %d\n", key); fclose(cf); }
+}
+
+/* Direct port of x11_mirror.c's own write_click_kv() - real read-
+ * modify-write of board-viewer's own real player_app/state.txt. */
+static void pchq_write_click_kv(const char *bv_session, const char *key, int value) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/pieces/apps/player_app/state.txt", bv_session);
+    char lines[128][512];
+    int n = 0, replaced = 0;
+    FILE *rf = fopen(path, "r");
+    if (rf) {
+        char line[512];
+        size_t klen = strlen(key);
+        while (n < 128 && fgets(line, sizeof(line), rf)) {
+            if (strncmp(line, key, klen) == 0 && line[klen] == '=') {
+                snprintf(lines[n], sizeof(lines[0]), "%s=%d\n", key, value);
+                replaced = 1;
+            } else {
+                snprintf(lines[n], sizeof(lines[0]), "%s", line);
+            }
+            n++;
+        }
+        fclose(rf);
+    }
+    FILE *wf = fopen(path, "w");
+    if (!wf) return;
+    for (int i = 0; i < n; i++) fputs(lines[i], wf);
+    if (!replaced) fprintf(wf, "%s=%d\n", key, value);
+    fclose(wf);
+}
+
 static int run_pchq_board_mode(const char *house_root, const char *host_project_id) {
     char bv_session[PATH_BUF] = "";
     if (!pchq_find_board_session(house_root, host_project_id, bv_session, sizeof(bv_session))) {
@@ -10015,15 +10101,14 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
     }
     pchq_kill_legacy_display(bv_session);
 
+    /* REAL, the actual real, fully-composited frame - same file
+     * x11_mirror.c itself blits, already containing the real text
+     * chrome AND the real 3D overlay (see this function's own header
+     * comment). NOT rgb_frame_3d_overlay.raw directly. */
     char frame_source[PATH_BUF], receipt_path[PATH_BUF];
-    snprintf(frame_source, sizeof(frame_source), "%s/pieces/display/rgb_frame_3d_overlay.raw", bv_session);
-    snprintf(receipt_path, sizeof(receipt_path), "%s/pieces/display/rgb_frame_3d_overlay.receipt.txt", bv_session);
+    snprintf(frame_source, sizeof(frame_source), "%s/pieces/display/rgb_frame.raw", bv_session);
+    snprintf(receipt_path, sizeof(receipt_path), "%s/pieces/display/rgb_frame.receipt.txt", bv_session);
 
-    /* REAL, NEW 2026-08-30, direct live report ("x x nav is flashing"):
-     * append_key() targets - the real board-viewer keyboard/history
-     * relay this window's own Interact button writes into, same real
-     * dual-write x11_mirror.c's own append_key() uses (steal, not
-     * reinvent - see that function's own header comment). */
     char bv_history1[PATH_BUF], bv_history2[PATH_BUF];
     snprintf(bv_history1, sizeof(bv_history1), "%s/pieces/apps/player_app/history.txt", bv_session);
     snprintf(bv_history2, sizeof(bv_history2), "%s/pieces/keyboard/history.txt", bv_session);
@@ -10036,30 +10121,11 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
     Colormap cmap = DefaultColormap(dpy, screen);
 
     int frame_w = 640, frame_h = 480;
-/* Widened again for the real "[>]2.X"/"[ ]2.X" nav-badge label (a bare
- * 32px "X" fit before the badge prefix was added; the badge text
- * itself needs real room). */
-#define PCHQ_CLOSE_W 70
-/* REAL FIX 2026-08-30, direct live report ("i cant see nave for x or
- * interact, they are jumbled") - 90px + a real 9px pad from the close
- * button's own left edge was too tight for "Interact" at this font/size
- * (confirmed live: the label visually clipped/touched the [X]). Widened
- * + added a real explicit gap constant instead of eyeballing padding
- * inline. */
-#define PCHQ_INTERACT_W 110
-#define PCHQ_CHROME_GAP 10
-    int win_w = frame_w, win_h = frame_h + CHROME_H;
-
-    /* REAL FIX 2026-08-30, direct live report ("window mouse movent
-     * (moving window drag) doesn't work yet") - real, same-class bug as
-     * this session's own earlier Settings-window fix: ButtonReleaseMask/
-     * ButtonMotionMask were never in the event mask at all, so X11 never
-     * delivered MotionNotify/ButtonRelease to this window regardless of
-     * any handler code - see that earlier real fix's own comment
-     * (khtpm_entity_menu_render.c, generic popup window creation) for
-     * the identical root cause. */
+#define PCHQ_CLOSE_W 26
     int win_x = 140, win_y = 90;
     int dragging = 0, drag_last_x = 0, drag_last_y = 0;
+    int win_w = frame_w, win_h = frame_h + CHROME_H;
+
     XSetWindowAttributes swa;
     swa.override_redirect = True;
     swa.background_pixel = pchq_alloc_pixel(dpy, cmap, "#1c1c1c");
@@ -10069,18 +10135,6 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
     XStoreName(dpy, win, "Piececraft-HQ Board (khtpm)");
     XMapRaised(dpy, win);
     GC gc = XCreateGC(dpy, win, 0, NULL);
-    /* REAL FIX 2026-08-30, direct live report ("they dont move from
-     * arrow or #, also mouse click doesnt' work yet") - real root
-     * cause: this window never requested real keyboard focus at all.
-     * Ported this file's own real, already-documented retry-loop fix
-     * for exactly this class of window (a HUMAN-triggered popup, not a
-     * silent agent-launched one - see the real "no XSetInputFocus on
-     * map" rule's own scoping comment just above main()'s popup-window
-     * creation, ~line 11064: "an entity-menu/taskbar-settings popup...
-     * only ever exists because the human JUST... triggered it" - same
-     * real shape this window is). XSetInputFocus is a REQUEST, not a
-     * guarantee under XWayland/Mutter (F-19) - short retry, same real
-     * pattern, not a full XGrabKeyboard. */
     for (int attempt = 0; attempt < 5; attempt++) {
         XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
         XSync(dpy, False);
@@ -10090,18 +10144,6 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
         usleep(5000);
     }
 
-    /* REAL FIX 2026-08-30, direct live report ("x x nav is flashing") -
-     * root cause: every poll tick redrew chrome+content directly onto
-     * the real, ON-SCREEN window with no offscreen buffer - a real,
-     * visible flicker on every single 300ms redraw (Expose-style
-     * tearing), same class of bug this file's OTHER real modes already
-     * avoid via their own real `buf`/`ensure_buf()` offscreen-Pixmap
-     * convention (and x11_mirror.c's own `ensure_buf()`, which this
-     * function's earlier version should have ported too, not just the
-     * pixel-blit half). Real fix: draw everything into an offscreen
-     * Pixmap first, then one single XCopyArea to the real window per
-     * frame - zero visible tearing, same real pattern every other real
-     * khtpm window in this file already uses. */
     Pixmap buf = XCreatePixmap(dpy, win, (unsigned)win_w, (unsigned)win_h, (unsigned)depth);
     XftDraw *xftdraw = XftDrawCreate(dpy, buf, visual, cmap);
     XftFont *ui_font = XftFontOpenName(dpy, screen, "Ubuntu-10");
@@ -10109,40 +10151,8 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
     unsigned char *frame_buffer = NULL;
     XImage *ximg = NULL;
     int running = 1;
-    /* REAL, NEW 2026-08-30, direct live report ("theres still no
-     * numbered indexed nave for interact and x(exit) like standard
-     * khtpms with layout... is this using a layout + interact-map like
-     * legacy chtpm?"). Researched: the real, generic Elem/nav_index/
-     * click_focus_then_activate() system (this file, ~line 580) is
-     * deeply tied to a real, full Elem tree (render_tree()/draw_elem(),
-     * parse_chtpm()) - this mode's whole point is a raw pixel canvas
-     * (bv_render_3d.c's own RGBA buffer), not Elem/CSS content, so a
-     * full migration onto that shared system is real, separate,
-     * substantial follow-up work (would mean teaching the generic
-     * renderer to treat one Elem's own "content" as a live image blit
-     * instead of text/CSS - not attempted here). Real, scoped compromise
-     * for this pass: a small, LOCAL nav-map (2 real, numbered targets:
-     * Interact, Close) replicating the same real visual convention
-     * every other khtpm window uses (`[>]N.`/`[ ]N.` badges, digit-key
-     * focus, Enter activates the focused target) - a real interact-map,
-     * just not wired into the shared g_focus_nav/Elem machinery. Honest
-     * trade-off, not silently passed off as the full system. */
-    int pchq_focus = 1; /* 1 = Interact, 2 = Close */
     int pchq_focus_ok = 0;
     while (running) {
-        /* REAL FIX 2026-08-30, direct live report (still no click/nav
-         * even after the earlier startup-only XSetInputFocus fix, on
-         * this window's REAL auto-boot launch specifically - manual
-         * launches worked). Real, plausible cause: at real boot time a
-         * LOT of other processes spawn simultaneously (game engine,
-         * board-viewer, chtpm_parser_pal...) - genuine CPU contention
-         * can delay Mutter's own window registration past the earlier
-         * one-shot 5x5ms retry budget (25ms total). Real fix: keep
-         * retrying every single poll tick, not just at startup, until
-         * it succeeds once - self-healing, matching this file's OWN
-         * real "if (g_dbhq_focus_grab_enabled) { dbhq_grab_keyboard_
-         * retry(); dbhq_soft_focus(); }" convention (runs on every
-         * click, not once) rather than a fragile one-shot assumption. */
         if (!pchq_focus_ok) {
             XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
             XSync(dpy, False);
@@ -10150,8 +10160,10 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
             XGetInputFocus(dpy, &focused, &revert);
             if (focused == win) pchq_focus_ok = 1;
         }
-        int new_w = pchq_read_kv_int(receipt_path, "overlay_w", frame_w);
-        int new_h = pchq_read_kv_int(receipt_path, "overlay_h", frame_h);
+        /* REAL, x11_mirror.c's own real receipt keys - frame_w/frame_h,
+         * not overlay_w/overlay_h (that was the wrong file). */
+        int new_w = pchq_read_kv_int(receipt_path, "frame_w", frame_w);
+        int new_h = pchq_read_kv_int(receipt_path, "frame_h", frame_h);
         if (new_w > 0 && new_h > 0 && (new_w != frame_w || new_h != frame_h || !ximg)) {
             frame_w = new_w; frame_h = new_h;
             free(frame_buffer);
@@ -10189,7 +10201,13 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                 }
         }
 
-        /* Draw into the offscreen buf, not the real window. */
+        /* Minimal, real chrome ONLY (title + close [X], same real
+         * shape x11_mirror.c's own draw_chrome() uses) - NO hand-drawn
+         * Interact/nav badges anymore. The real "[>] N. Interact
+         * Mode..." row is already INSIDE ximg (blitted from
+         * rgb_frame.raw, which chtpm_rgb_render.c already composited
+         * for real) - drawing it a second time here would be a real,
+         * literal duplicate of content the engine already rendered. */
         XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, "#2a2a2a"));
         XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)win_w, CHROME_H);
         if (ui_font) {
@@ -10199,33 +10217,19 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
             XftDrawStringUtf8(xftdraw, &col, ui_font, 8, 18, (const FcChar8 *)title, (int)strlen(title));
             XftColorFree(dpy, visual, cmap, &col);
         }
-        int interact_x = win_w - PCHQ_CLOSE_W - PCHQ_CHROME_GAP - PCHQ_INTERACT_W;
-        XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, pchq_focus == 1 ? "#2d6a44" : "#204a30"));
-        XFillRectangle(dpy, buf, gc, interact_x, 0, PCHQ_INTERACT_W, CHROME_H);
-        if (ui_font) {
-            XRenderColor rc = {0xccff, 0xffcc, 0xccff, 0xffff};
-            XftColor col; XftColorAllocValue(dpy, visual, cmap, &rc, &col);
-            const char *lab = pchq_focus == 1 ? "[>] 1. Interact" : "[ ] 1. Interact";
-            XftDrawStringUtf8(xftdraw, &col, ui_font, interact_x + 4, 18, (const FcChar8 *)lab, (int)strlen(lab));
-            XftColorFree(dpy, visual, cmap, &col);
-        }
-        XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, pchq_focus == 2 ? "#7a2a2a" : "#5a2020"));
+        XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, "#5a2020"));
         XFillRectangle(dpy, buf, gc, win_w - PCHQ_CLOSE_W, 0, PCHQ_CLOSE_W, CHROME_H);
         if (ui_font) {
             XRenderColor rc = {0xeeee, 0xeeee, 0xeeee, 0xffff};
             XftColor col; XftColorAllocValue(dpy, visual, cmap, &rc, &col);
-            const char *lab = pchq_focus == 2 ? "[>] 2. X" : "[ ] 2. X";
-            XftDrawStringUtf8(xftdraw, &col, ui_font, win_w - PCHQ_CLOSE_W + 6, 18, (const FcChar8 *)lab, (int)strlen(lab));
+            XftDrawStringUtf8(xftdraw, &col, ui_font, win_w - PCHQ_CLOSE_W + 9, 18, (const FcChar8 *)"X", 1);
             XftColorFree(dpy, visual, cmap, &col);
         }
         if (ximg) XPutImage(dpy, buf, gc, ximg, 0, 0, 0, CHROME_H, (unsigned)frame_w, (unsigned)frame_h);
-        /* One real, single blit of the finished frame to the real
-         * window - this is the only thing that ever touches `win`
-         * directly now, eliminating the earlier flicker entirely. */
         XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)win_w, (unsigned)win_h, 0, 0);
         XFlush(dpy);
 
-        struct timeval tv = {0, 300000};
+        struct timeval tv = {0, 33333}; /* same 30fps cap as x11_mirror.c's own real poll */
         fd_set fds; FD_ZERO(&fds); int xfd = ConnectionNumber(dpy); FD_SET(xfd, &fds);
         select(xfd + 1, &fds, NULL, NULL, &tv);
         while (XPending(dpy)) {
@@ -10234,77 +10238,41 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                 XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)win_w, (unsigned)win_h, 0, 0);
                 XFlush(dpy);
             } else if (ev.type == KeyPress) {
-                KeySym ks = XLookupKeysym(&ev.xkey, 0);
-                if (ks == XK_Escape) {
-                    running = 0;
-                } else if (ks == XK_1) {
-                    pchq_focus = 1;
-                } else if (ks == XK_2) {
-                    pchq_focus = 2;
-                } else if (ks == XK_Left || ks == XK_Up) {
-                    /* REAL FIX 2026-08-30, direct live report ("they
-                     * dont move from arrow or #") - digit-jump alone
-                     * isn't the real house convention; every other real
-                     * khtpm popup also moves focus with Up/Down (see
-                     * draw_popup_win()'s own real XK_Up/XK_Down wrap-
-                     * around handling) - only 2 real targets here, so
-                     * Left/Up and Right/Down both just flip between
-                     * them (no real ambiguity to resolve with only 2
-                     * items, unlike a real N-row menu). */
-                    pchq_focus = (pchq_focus == 1) ? 2 : 1;
-                } else if (ks == XK_Right || ks == XK_Down) {
-                    pchq_focus = (pchq_focus == 1) ? 2 : 1;
-                } else if (ks == XK_Return || ks == XK_KP_Enter) {
-                    /* Real, local click_focus_then_activate() equivalent
-                     * - Enter always activates whichever target already
-                     * has focus (same real "activate the focused one"
-                     * semantic, just keyboard-driven instead of a real
-                     * second click). */
-                    if (pchq_focus == 2) {
-                        running = 0;
-                    } else {
-                        FILE *h1 = fopen(bv_history1, "a");
-                        if (h1) { fprintf(h1, "13\n"); fclose(h1); }
-                        FILE *h2 = fopen(bv_history2, "a");
-                        if (h2) { fprintf(h2, "KEY_PRESSED: 13\n"); fclose(h2); }
-                    }
+                /* REAL, direct port of x11_mirror.c's own KeyPress
+                 * branch - printable chars forward verbatim, special
+                 * keys (arrows) map to the real ARROW_* codes and
+                 * forward too, Escape does NOT close this window
+                 * (removed - real parity means Escape is a real INPUT
+                 * the legacy engine's own real interact-mode handles
+                 * natively, e.g. exiting interact mode, not a window-
+                 * close shortcut this file invents). Zero local nav/
+                 * focus logic - the real engine owns all of that now. */
+                char kbuf[8]; KeySym ks;
+                int n = XLookupString(&ev.xkey, kbuf, sizeof(kbuf) - 1, &ks, NULL);
+                if (n > 0) {
+                    pchq_append_key(bv_history1, bv_history2, (int)(unsigned char)kbuf[0]);
+                } else {
+                    int mapped = pchq_map_special_key(ks);
+                    if (mapped > 0) pchq_append_key(bv_history1, bv_history2, mapped);
                 }
-            } else if (ev.type == ButtonPress) {
-                int on_close = ev.xbutton.y < CHROME_H && ev.xbutton.x >= win_w - PCHQ_CLOSE_W;
-                int on_interact = ev.xbutton.y < CHROME_H && ev.xbutton.x >= interact_x && ev.xbutton.x < interact_x + PCHQ_INTERACT_W;
-                /* Real click_focus_then_activate() semantics, replicated
-                 * locally (see this loop's own top-of-function header
-                 * comment for why not the shared g_focus_nav path): a
-                 * click on a target that does NOT already have focus
-                 * only moves focus there (matching every other real
-                 * khtpm window's own two-step convention) - a REAL
-                 * second click (already focused) activates it. */
-                if (on_close) {
-                    if (pchq_focus == 2) running = 0; else pchq_focus = 2;
-                } else if (on_interact) {
-                    if (pchq_focus == 1) {
-                        FILE *h1 = fopen(bv_history1, "a");
-                        if (h1) { fprintf(h1, "13\n"); fclose(h1); }
-                        FILE *h2 = fopen(bv_history2, "a");
-                        if (h2) { fprintf(h2, "KEY_PRESSED: 13\n"); fclose(h2); }
-                    } else {
-                        pchq_focus = 1;
-                    }
+            } else if (ev.type == ButtonPress && ev.xbutton.button == Button1) {
+                /* REAL, direct port of x11_mirror.c's own ButtonPress
+                 * branch - chrome-bar close/drag, everything below the
+                 * chrome forwards as a real click into board-viewer's
+                 * own real player_app/state.txt (last_click_x/y), same
+                 * y-offset-by-CHROME_H convention, letting the real
+                 * engine's own xelector/possess click-handling do
+                 * whatever it already does with a real click - zero
+                 * local click semantics of this file's own. */
+                if (ev.xbutton.y < CHROME_H && ev.xbutton.x >= win_w - PCHQ_CLOSE_W) {
+                    running = 0;
                 } else if (ev.xbutton.y < CHROME_H) {
-                    /* REAL, NEW 2026-08-30, direct live report ("window
-                     * mouse movent (moving window drag) doesn't work
-                     * yet") - real drag-arm on any OTHER chrome-bar
-                     * click (not on the two real buttons), same real
-                     * pattern every other draggable khtpm window in
-                     * this file already uses (ButtonPress arms, real
-                     * MotionNotify moves the window, ButtonRelease
-                     * ends) - this window's event mask now actually
-                     * requests those events too (see the real
-                     * CWEventMask fix above this function's own window-
-                     * creation call). */
                     dragging = 1;
                     drag_last_x = ev.xbutton.x_root;
                     drag_last_y = ev.xbutton.y_root;
+                } else {
+                    pchq_write_click_kv(bv_session, "last_click_x", ev.xbutton.x);
+                    pchq_write_click_kv(bv_session, "last_click_y", ev.xbutton.y - CHROME_H);
                 }
             } else if (ev.type == ButtonRelease && ev.xbutton.button == 1) {
                 dragging = 0;
