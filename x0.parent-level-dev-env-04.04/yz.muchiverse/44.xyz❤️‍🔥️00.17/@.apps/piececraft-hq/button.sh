@@ -71,6 +71,26 @@ kill_own_hq_status_manager() {
     pkill -f "ops/\+x/pc_hq_status_manager\.\+x" 2>/dev/null || true
 }
 
+# REAL, NEW 2026-08-30, direct live report ("they should quit when
+# program is quit programmatically. make sure that is fixed") - found
+# live during this same session's own repeated test launches: the EXIT
+# trap below (kill "$ORCH_PID" ...) only ever fires for a clean exit of
+# THIS SAME button.sh process. Relaunching via a brand-new `setsid bash
+# button.sh run &` (or any crash/force-kill that never lets the old
+# script's own trap run at all) leaves its orchestrator orphaned - same
+# real "must not outlive its session" class kill_own_board_widget()/
+# _clock_daemon()/_hq_status_manager() already exist for, just missing
+# an equivalent for the orchestrator itself. Uses the SAME real,
+# regex-escaped, THIS-project-scoped pkill pattern the dedicated kill
+# action already established (2026-08-17, legacy-shared-fix.md §2.6) -
+# a bare "system/orchestrator" match would kill every OTHER project's
+# orchestrator too (confirmed real collateral-kill incident that day).
+kill_own_orchestrator() {
+    local script_dir_re
+    script_dir_re=$(printf '%s' "$SCRIPT_DIR" | sed 's/[.[\*^$()+?{|]/\\&/g')
+    pkill -f "$script_dir_re/system/orchestrator" 2>/dev/null || true
+}
+
 case "$ACTION" in
     compile|c|build)
         bash "$SCRIPT_DIR/scripts/build.sh"
@@ -84,9 +104,44 @@ case "$ACTION" in
         # Safety-net cleanup - see kill_own_board_widget()'s own header
         # comment above for why this must run on every fresh start, not
         # just on quit.
-        kill_own_board_widget
-        kill_own_clock_daemon
-        kill_own_hq_status_manager
+        #
+        # REAL FIX 2026-08-30, direct live report ("sometimes it still
+        # doesn't open... no other hq window has this problem") - found
+        # by direct comparison against civ-txt/tactics-txt (both share
+        # this exact same clone lineage, neither has ever had this
+        # report): their own `run)` case calls NONE of these kills -
+        # only their `kill|k|stop)` verb does. piececraft-hq is the
+        # ONLY entity that runs a broad, PATH-scoped (not PID/session-
+        # scoped) self-kill unconditionally on every single `run`.
+        # kill_own_orchestrator() in particular matches ANY orchestrator
+        # under this SCRIPT_DIR - including one a concurrent/just-
+        # started sibling `run` invocation spawned moments earlier (a
+        # double-fired taskbar click, or the user clicking again before
+        # a window appears). That sibling's own orchestrator gets killed
+        # out from under it before it can ever show a window - a real,
+        # self-inflicted, intermittent race unique to this project's own
+        # extra orphan-cleanup safety net. Real fix: skip this whole
+        # safety net if a session dir was created in the last few
+        # seconds - that's real, live evidence another `run` is already
+        # in flight right now, not a stale orphan from a dead session.
+        RECENT_SESSION=0
+        if [ -d "$SCRIPT_DIR/pieces/sessions" ]; then
+            NOW_TS="$(date +%s)"
+            for d in "$SCRIPT_DIR"/pieces/sessions/*/; do
+                [ -d "$d" ] || continue
+                base="$(basename "$d")"
+                sess_ts="${base%%-*}"
+                case "$sess_ts" in ''|*[!0-9]*) continue ;; esac
+                age=$((NOW_TS - sess_ts))
+                if [ "$age" -ge 0 ] && [ "$age" -lt 5 ]; then RECENT_SESSION=1; break; fi
+            done
+        fi
+        if [ "$RECENT_SESSION" -eq 0 ]; then
+            kill_own_board_widget
+            kill_own_clock_daemon
+            kill_own_hq_status_manager
+            kill_own_orchestrator
+        fi
         SESSION_ID="$(date +%s)-$$"
         SESSION_DIR="$SCRIPT_DIR/pieces/sessions/$SESSION_ID"
         mkdir -p "$SESSION_DIR/pieces/system" "$SESSION_DIR/pieces/display" \
@@ -382,7 +437,7 @@ EOSTATE
             cp -p "$SESSION_DIR/pieces/system/entities.txt" "$SCRIPT_DIR/pieces/system/entities.txt" 2>/dev/null
         }
 
-        trap 'kill "$ORCH_PID" "$GL_PID" "$RGB_PID" "$HQ_MGR_PID" 2>/dev/null; wait "$ORCH_PID" 2>/dev/null; kill_own_module; kill_own_board_widget; kill_own_clock_daemon; kill_own_hq_status_manager; persist_session_state; rm -rf "$SESSION_DIR"' EXIT INT TERM
+        trap 'kill "$ORCH_PID" "$GL_PID" "$RGB_PID" "$HQ_MGR_PID" 2>/dev/null; wait "$ORCH_PID" 2>/dev/null; kill_own_module; kill_own_board_widget; kill_own_clock_daemon; kill_own_hq_status_manager; kill_own_orchestrator; persist_session_state; rm -rf "$SESSION_DIR"' EXIT INT TERM
 
         ./system/keyboard_input
 
