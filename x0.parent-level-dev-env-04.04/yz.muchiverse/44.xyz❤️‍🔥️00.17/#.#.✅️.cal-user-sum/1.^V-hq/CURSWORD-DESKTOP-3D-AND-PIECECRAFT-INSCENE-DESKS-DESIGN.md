@@ -210,3 +210,37 @@ yet":
   itself grow a new row family that can carry full board data inline?
   Direct instruction: **design the shared format first, build second** -
   no save/load code should land before this is actually decided on paper.
+
+## 6. REAL PROPOSAL (2026-08-30) - concrete hybrid format, awaiting sign-off
+
+Per "hybrid, either should work" - a proposal that gets both properties
+(desk-compatible AND able to hold a full board) without cramming grid
+data into flat `.pdl` rows:
+
+- **A board's heavy data stays in its own real directory**, reusing
+  piececraft's EXISTING chunk-file convention verbatim (no new terrain
+  format to invent): `desks/boards/<board_name>/chunk_<x>_<y>_z<N>.txt`
+  + `entities.txt` + `state.txt` (same real shape as today's
+  `pieces/system/chunks/` + `pieces/world_01/`, just relocated under
+  the real house `desks/` tree instead of living inside one project).
+- **A new, real `.pdl` row type sits in the SAME desk files DESK rows
+  already live in** (or a sibling `<name>.board.pdl` in the same real
+  `desks/` dir, discoverable by the same directory sweep):
+  `BOARD | <board_name> | desks/boards/<board_name> | <cols> | <rows> |
+  <z_min> | <z_max> | <emoji_thumbnail>` - a lightweight pointer/
+  manifest row, same real shape as a DESK row (name, path, a few
+  dimensions, a thumbnail glyph), not the grid itself.
+- **Piececraft's new "File" menu** = list real `.pdl` files that
+  contain BOARD rows (i.e. real desks that have at least one board) -
+  picking one loads that context.
+- **Piececraft's new "Desk" menu** = list the BOARD rows WITHIN the
+  currently-loaded file - picking one loads that specific board's
+  chunk/entity data into the live session (world_01-equivalent state).
+- A regular (non-piececraft) desktop desk can freely mix ordinary DESK
+  rows (pals/tiles) and BOARD rows (piececraft levels) in the same
+  file, since they're just different row types in the same real
+  pipe-delimited format the parser already reads line-by-line.
+
+**Not yet started - awaiting explicit confirmation this is the right
+shape** before any save/load code is written, per "design the shared
+format first, build second."
