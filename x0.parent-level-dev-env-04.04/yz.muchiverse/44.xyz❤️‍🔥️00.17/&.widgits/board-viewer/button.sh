@@ -73,6 +73,26 @@ run_widget_session() {
     : > pieces/display/frame_changed.txt
     : > pieces/display/renderer_pulse.txt
     echo "$HOUSE_DIR" > pieces/system/house_root.txt
+    # REAL, NEW 2026-08-29 (gl_mirror.c -> x11_mirror.c conversion,
+    # legacy-shared-fix.md's own real gap - board-viewer was never
+    # queued in the 16-project sweep since it's a shared WIDGET, not
+    # one of the 16 top-level projects) - same real convention
+    # piececraft-xyz's own button.sh already uses: the shared
+    # x11_mirror.+x binary derives its window title from THIS file's
+    # content (falling back to basename(project_root) - an ugly
+    # timestamp for board-viewer's own ephemeral SESSION_DIR - if
+    # missing). Point it at the FOCUSED host project when there is one
+    # (gives a real, correct, distinct-per-host title like "piececraft-
+    # xyz RGB mirror" instead of the old gl_mirror.c's hardcoded,
+    # always-wrong "wsr-pal RGB mirror" copied verbatim from
+    # 014.wsr-pal - a real bug this conversion also fixes, not just a
+    # rename), else this widget's own project dir for a standalone
+    # launch.
+    if [ -n "$FOCUS_PROJECT_ROOT" ]; then
+        echo "$FOCUS_PROJECT_ROOT" > pieces/system/real_project_root.txt
+    else
+        echo "$SCRIPT_DIR" > pieces/system/real_project_root.txt
+    fi
 
     # emoji_mode default-on at launch, via a config-file flag rather than
     # a runtime toggle (per direct instruction: "we dont show ascii we
@@ -154,30 +174,58 @@ EOSTATE
             sleep 0.1
             waited=$((waited + 1))
         done
-        if [ -z "$NO_GL" ] && [ -x ./system/gl_mirror ]; then
+        # REAL, NEW 2026-08-29 (gl_mirror.c -> x11_mirror.c conversion -
+        # see real_project_root.txt write above for the full why).
+        # Same real preference order piececraft-xyz's own button.sh
+        # already uses: prefer the shared x11_mirror.+x binary (one
+        # compiled copy, plain Xlib, real proven fixes gl_mirror.c never
+        # got - borderless, keyboard-fwd, receipt-writing) over this
+        # widget's own local legacy gl_mirror, with FORCE_GL_MIRROR=1 as
+        # the same real escape hatch to force the old path if ever
+        # needed for comparison/regression testing. argv1 is
+        # SESSION_DIR (same project_root gl_mirror already implicitly
+        # used via cwd - x11_mirror.+x doesn't need to be a child of
+        # that dir, so it's passed explicitly instead).
+        SHARED_MIRROR="$SCRIPT_DIR/../_shared-lib/ops/+x/x11_mirror.+x"
+        MIRROR_TITLE="wsr-pal RGB mirror"  # legacy gl_mirror's own hardcoded title, unchanged if that path is taken
+        if [ -z "$NO_GL" ] && [ -z "$FORCE_GL_MIRROR" ] && [ -x "$SHARED_MIRROR" ]; then
+            "$SHARED_MIRROR" "$SESSION_DIR" >/dev/null 2>&1 &
+            GL_PID=$!
+            TITLE_BASE="$SCRIPT_DIR"
+            [ -n "$FOCUS_PROJECT_ROOT" ] && TITLE_BASE="$FOCUS_PROJECT_ROOT"
+            MIRROR_TITLE="$(basename "$TITLE_BASE") RGB mirror"
+            GL_PROC_PATTERN="x11_mirror\.\+x $SESSION_DIR"
+        elif [ -z "$NO_GL" ] && [ -x ./system/gl_mirror ]; then
             ./system/gl_mirror >/dev/null 2>&1 &
             GL_PID=$!
+            GL_PROC_PATTERN="system/gl_mirror"
+        fi
+        if [ -n "$GL_PID" ]; then
             # REAL, NEW 2026-08-04, direct instruction (tile-picker's own
             # "^" drag-anywhere mode - see &.widgits/tile-picker/
             # TILE_PICKER_DESIGN.md §4): tag this window with the real
             # _NET_WM_PID property so tile-picker's ledger_peers+PID
             # lookup can find THIS specific board-viewer instance's
-            # window unambiguously (every widget's gl_mirror window
-            # shares the same title, "wsr-pal RGB mirror" - title
-            # matching alone can't disambiguate). Re-resolves the true
-            # running PID via cwd-scoped pgrep (bash's own $! didn't
-            # match the actual gl_mirror process in testing - it forks
-            # internally), same technique kill_own_module() below
-            # already uses.
+            # window unambiguously (every widget's LEGACY gl_mirror
+            # window shared the same fixed title, "wsr-pal RGB mirror" -
+            # title matching alone couldn't disambiguate; x11_mirror's
+            # own real, per-host-derived title mostly fixes this itself
+            # now, but the "not yet tagged" extra match condition in
+            # bv_set_wm_pid.c still matters whenever two widgets happen
+            # to focus the SAME host, so this stays wired for both
+            # binaries). Re-resolves the true running PID via cwd-scoped
+            # pgrep (bash's own $! didn't match the actual gl_mirror
+            # process in testing - it forks internally), same technique
+            # kill_own_module() below already uses.
             if [ -x ./ops/+x/bv_set_wm_pid.+x ]; then
                 (
                     sleep 0.3
                     real_pid=""
-                    for cand in $(pgrep -f "system/gl_mirror" 2>/dev/null); do
+                    for cand in $(pgrep -f "$GL_PROC_PATTERN" 2>/dev/null); do
                         cwd="$(readlink -f "/proc/$cand/cwd" 2>/dev/null)"
                         if [ "$cwd" = "$SESSION_DIR" ]; then real_pid="$cand"; fi
                     done
-                    [ -n "$real_pid" ] && ./ops/+x/bv_set_wm_pid.+x "wsr-pal RGB mirror" "$real_pid" >/dev/null 2>&1
+                    [ -n "$real_pid" ] && ./ops/+x/bv_set_wm_pid.+x "$MIRROR_TITLE" "$real_pid" >/dev/null 2>&1
                 ) &
             fi
         fi
@@ -239,6 +287,13 @@ case "$ACTION" in
         pkill -f "system/chtpm_parser_pal" 2>/dev/null
         pkill -f "system/chtpm_rgb_render" 2>/dev/null
         pkill -f "system/gl_mirror" 2>/dev/null
+        # REAL, NEW 2026-08-29 (gl_mirror.c -> x11_mirror.c conversion) -
+        # the shared binary is now the preferred display mirror, so a
+        # real `kill` needs to reap it too, scoped to THIS widget's own
+        # sessions dir (same scoping every other shared-binary kill verb
+        # in this house uses, e.g. taskbar's own pkill patterns) so it
+        # never touches another project's own x11_mirror.+x instance.
+        pkill -f "x11_mirror\.\+x $SCRIPT_DIR/pieces/sessions" 2>/dev/null
         echo "done"
         ;;
     check|verify)
@@ -250,6 +305,11 @@ case "$ACTION" in
         for b in system/chtpm_rgb_render system/gl_mirror; do
             if [ -x "$SCRIPT_DIR/$b" ]; then echo "OK   $b (optional GL)"; else echo "OPTIONAL-MISS $b"; fi
         done
+        if [ -x "$SCRIPT_DIR/../_shared-lib/ops/+x/x11_mirror.+x" ]; then
+            echo "OK   shared x11_mirror (preferred display mirror)"
+        else
+            echo "SKIP shared x11_mirror (see &.widgits/_shared-lib/ops/build_x11_mirror.sh)"
+        fi
         ;;
     help|h|-h|--help)
         echo "board-viewer widget — shared board/map viewer for civ-txt/tactics-txt"
