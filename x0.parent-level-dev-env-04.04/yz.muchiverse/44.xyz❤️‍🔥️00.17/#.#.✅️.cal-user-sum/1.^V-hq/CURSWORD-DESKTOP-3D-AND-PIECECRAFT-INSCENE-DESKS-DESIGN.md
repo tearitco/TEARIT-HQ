@@ -244,3 +244,72 @@ data into flat `.pdl` rows:
 **Not yet started - awaiting explicit confirmation this is the right
 shape** before any save/load code is written, per "design the shared
 format first, build second."
+
+## 7. REAL CONSENSUS RECORD (2026-08-30) - grilled and confirmed, still no code
+
+Direct instruction: "grill me till u are sure there is no deviation and
+record the results in plan first; this is a big deal." Below is what was
+actually confirmed, point by point - nothing here is built yet.
+
+1. **Hierarchy confirmed**: "File" picks a **level** (the outer
+   container/whole game-world folder). "Desk" picks a **map** within
+   that already-loaded level (one board/chunk-set). Two-tier, nested -
+   not independent, not the same thing at different zoom.
+
+2. **Only File and Desk are new nav rows.** Direct instruction: "file
+   and desk is enough." Editor is NOT a new nav row - it already routes
+   through the real, existing `&.widgits/palettes/pallets.pdl`
+   `piececraft` category (`PICKER=minecraft`, block-palette picker) that
+   "View Editor (opens separate GL window)" already uses today. Nothing
+   new needed there.
+   - Real, explicit note for later (documented now even though deferred,
+     per direct instruction: "we may add more things later like
+     db/plugins {but mapped to that specific file/map, not the desktop
+     global}"): any future per-level metadata (a database, plugins, etc)
+     must be scoped to the specific loaded file/map, NOT a
+     desktop-wide/global palettes category - a real constraint on how
+     any future palettes integration for this must be wired, so it
+     isn't accidentally built desktop-global by default the way the
+     earlier (reverted) wrong-scope attempt was.
+
+3. **Real default fixtures, both formats, both live in piececraft-hq's
+   own copy folder** (not the shared user-level desks tree - these are
+   ship-with-the-app fixtures/test data, not a live user's own desk).
+   Direct instruction: "there should be a default in the piececraft-hq
+   copy folder, it should be in legacy format and the correct format
+   (.pdl?) and be called default-legacy & default-pdl." Concretely:
+   - `default-legacy` = the CURRENT real chunk_0_0 + world_01 data,
+     copied as-is, untouched format, under piececraft-hq's own tree.
+   - `default-pdl` = the SAME default map, authored/converted into the
+     real new §6 format (a BOARD row + `desks/boards/<name>/` directory
+     reusing the chunk-file convention), also under piececraft-hq's own
+     tree. This is a real, deliberate CONVERSION of the actual default
+     content into the new format now, not a deferred wrap-only shim -
+     supersedes the earlier §6 "wrap existing default as-is" framing
+     for the DEFAULT specifically (still means brand-new saves always
+     use the §6 format going forward).
+
+4. **Events are confirmed new scope, not built now.** No existing
+   event/trigger system tied to piececraft boards was found - this
+   stays a real, separate, later design item, not a blocker for File/
+   Desk work now.
+
+5. **Nav mechanics for File/Desk** (not separately re-confirmed this
+   round, carried over from the earlier answer this session): real
+   numbered rows in `board_viewer.chtpm`'s own legacy nav list (same
+   `[>]`/`[ ]` convention Interact Mode already uses), each opening a
+   real picker/submenu of levels (File) or maps-within-the-current-
+   level (Desk) - not a separate header/menu-bar UI construct.
+
+## 8. Real next steps (still no code until this section itself is acted on)
+
+1. Create `default-legacy` (copy chunk_0_0 + world_01 verbatim) and
+   `default-pdl` (author the real §6 BOARD-row + directory equivalent)
+   under piececraft-hq's own tree.
+2. Add real "File" and "Desk" nav rows to `board_viewer.chtpm`'s own
+   layout/pal script, each opening a real picker listing what §7.3's
+   fixtures (and any future saves) provide.
+3. Wire "Desk" selection to actually swap the live session's active
+   chunk/entity data to the picked map's files.
+4. Everything else in this doc (desktop 3D, cursword controller, events)
+   stays explicitly deferred, unchanged from §3b/§7.4 above.
