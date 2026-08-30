@@ -340,6 +340,21 @@ first searched) before copying anything:
   exact mechanism (list levels/maps by scanning real directories/BOARD
   rows at menu-open time), not invent a parallel hardcoded list.
 
+## 7c. REAL PROGRESS (2026-08-30) - taskbar's own File/Desk fixed first
+
+Direct instruction: "maybe we should fix tb file/dek first then?"
+Done, committed (`89fb13c2`): `livedesk_build_file_menu()`/
+`livedesk_build_desk_menu()` converted from C-hardcoded to the correct
+PDL-driven pattern (`file_menu_N_label/_cmd`, `desk_menu_action_N_label
+/_cmd` rows in `#.desktop/livedesk_taskbar.pdl`), matching
+`livedesk_build_hq_menu()`/`_palettes_menu()` exactly. Desk's real
+desk-name list stays a directory scan (genuinely data, not a
+violation). Live-verified via `nav.sh` - both cells still work, now
+reading real config instead of compiled-in strings. This closes the
+`TASKBAR-MENU-ARCHITECTURE.md` debt item for these two specific cells
+(others - user/player/db/pals/toys/clock/ai - remain unconverted,
+out of scope for this pass).
+
 ## 8. Real next steps (still no code until this section itself is acted on)
 
 1. Create `default-legacy` (copy chunk_0_0 + world_01 verbatim) and
