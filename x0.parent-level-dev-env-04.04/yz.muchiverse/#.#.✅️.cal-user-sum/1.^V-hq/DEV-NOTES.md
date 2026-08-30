@@ -40,3 +40,19 @@ Not started. Revisit once piececraft's clone phase is actually verified -
 building a debug menu for an unverified base is premature.
 
 ---
+
+## Taskbar: search input + page-scroller navs above the toolbar
+
+**2026-08-30.** Idea, not designed yet, recorded for later per direct
+request: add a "search input" field, plus "page scroller" navs, to the
+bottom toolbar - positioned slightly above the toolbar, roughly centered
+horizontally. Real, existing precedent worth checking first when this gets
+picked up: the house's own `<cli_io>` input mechanism (`!.HOUSE_STDS.md`
+§K.3 item 5, `onclick="input:<file>|<post cmd>"`) is likely the right real
+building block for the search field itself, matching how this session's
+own Settings-window opacity control and bookmarks' New+ field already
+work - not a new input mechanism to invent. What "search" actually
+searches (open windows? entities? commands?) and what the page-scroller
+paginates are both undecided. Not started.
+
+---
