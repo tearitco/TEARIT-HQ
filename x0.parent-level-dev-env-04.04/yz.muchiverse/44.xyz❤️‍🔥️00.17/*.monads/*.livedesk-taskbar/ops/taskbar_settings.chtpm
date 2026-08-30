@@ -32,6 +32,8 @@
     <item id="sw9" action="PICK:9" class="swatch sw-blue" label="blue"/>
     <item id="sw10" action="PICK:10" class="swatch sw-purple" label="purple"/>
     <item id="sw11" action="PICK:11" class="swatch sw-pink" label="pink"/>
+    <item id="opacity-minus" action="OPACITY_MINUS" class="opacity-btn" label="Opacity -"/>
+    <item id="opacity-plus" action="OPACITY_PLUS" class="opacity-btn" label="Opacity +"/>
     <item id="close" action="CLOSE" class="close-btn" label="x"/>
   </page>
 </window>

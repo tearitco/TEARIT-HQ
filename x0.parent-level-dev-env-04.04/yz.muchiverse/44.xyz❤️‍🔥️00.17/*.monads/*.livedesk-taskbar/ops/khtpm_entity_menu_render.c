@@ -75,6 +75,7 @@ static void nav_ledger_publish(void);
 static void popup_handle_click(int px, int py);
 static void history_unregister(void); /* REAL, NEW 2026-08-29 - see its own real definition/comment near history_path() */
 static void zero_nav_subtree(Elem *e); /* REAL, NEW 2026-08-29 - see its own real definition/comment near evhq_zero_subtree() */
+static void redraw(void); /* REAL, forward declaration needed for dispatch()'s OPACITY_MINUS/OPACITY_PLUS handlers (NEW 2026-08-29 TASK 2) */
 #define MAX_ELEMS 512
 #define MAX_PAGE_STACK 8
 
@@ -137,6 +138,69 @@ static double load_theme_opacity(void) {
     }
     fclose(f);
     return opacity;
+}
+
+/* REAL, NEW 2026-08-29 (TASK 2: opacity control) - write a new opacity value
+ * to the livedesk_theme.pdl file. Reads the entire file, updates the COLOR|
+ * opacity line, and rewrites the file (preserving all other lines intact). */
+static void write_theme_opacity(double opacity) {
+    if (opacity < 0.0) opacity = 0.0;
+    if (opacity > 1.0) opacity = 1.0;
+
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/livedesk_theme.pdl", g_house_root);
+
+    /* Read existing file to preserve all lines */
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+
+    char lines[16][PATH_BUF];
+    int n_lines = 0;
+    char line[PATH_BUF];
+    int opacity_line_idx = -1;
+
+    while (fgets(line, sizeof(line), f) && n_lines < 16) {
+        if (strncmp(line, "COLOR", 5) == 0) {
+            char *p = strchr(line, '|');
+            if (p) {
+                p++;
+                while (*p == ' ') p++;
+                char *end = strchr(p, '|');
+                if (end) {
+                    char *key_end = end;
+                    while (key_end > p && key_end[-1] == ' ') key_end--;
+                    char key[16];
+                    size_t klen = (size_t)(key_end - p);
+                    if (klen > 0 && klen < sizeof(key)) {
+                        memcpy(key, p, klen);
+                        key[klen] = '\0';
+                        if (strcmp(key, "opacity") == 0) {
+                            opacity_line_idx = n_lines;
+                        }
+                    }
+                }
+            }
+        }
+        snprintf(lines[n_lines], sizeof(lines[n_lines]), "%s", line);
+        n_lines++;
+    }
+    fclose(f);
+
+    /* If no opacity line found, don't create one - only update existing */
+    if (opacity_line_idx < 0) return;
+
+    /* Write the file back with the updated opacity line */
+    FILE *fw = fopen(path, "w");
+    if (!fw) return;
+
+    for (int i = 0; i < n_lines; i++) {
+        if (i == opacity_line_idx) {
+            fprintf(fw, "COLOR        | opacity              | %.2f\n", opacity);
+        } else {
+            fputs(lines[i], fw);
+        }
+    }
+    fclose(fw);
 }
 /* REAL, db-hq mode only (§5d.10) - module launch, ported VERBATIM from
  * khtpm_hq_render.c (real fork()+execl(), already TPMOS-compliant - see
@@ -5811,6 +5875,13 @@ static int chai_drag_last_x = 0, chai_drag_last_y = 0;
  * motion deltas would drift wrong). Initialized to the window's real
  * creation position in main(). */
 static int chai_win_x = 100, chai_win_y = 100;
+
+/* REAL, NEW 2026-08-29 - TASK 1: popup window (entity-menu, swatch-picker)
+ * drag support. Same real pattern: ButtonPress on chrome (y < CHROME_H)
+ * records x_root/y_root, MotionNotify computes delta and XMoveWindow's,
+ * ButtonRelease clears the flag. Uses the shared g_win_x/g_win_y. */
+static int g_popup_dragging = 0;
+static int g_popup_drag_last_x = 0, g_popup_drag_last_y = 0;
 /* chat-hai's own forced window size (screen-relative, real fix for the
  * "chai_apply_css() clobbers a one-time override every chai_redraw" bug - see
  * chai_layout_pass()'s own header comment where these are applied). 0 = not
@@ -8204,9 +8275,13 @@ static void assign_nav_and_layout(void) {
             if (grid) break;
         }
         if (grid) {
-        /* Grid is data: any <item class="swatch">. Not g_is_swatch_picker. */
+        /* Grid is data: any <item class="swatch">. Not g_is_swatch_picker.
+         * REAL, NEW 2026-08-29 (TASK 2) - opacity control buttons (non-swatch
+         * items) are positioned below the grid, with dynamic height calculation. */
         int x0 = 16, y0 = CHROME_H + 44;
         int sw_i = 0;
+        int max_y = y0;
+        int other_y = CHROME_H + 180;  /* Start position for non-swatch items */
         for (i = 0; i < page->n_children; i++) {
             Elem *item = page->children[i];
             int is_sw = 0, is_close = 0, c;
@@ -8229,14 +8304,17 @@ static void assign_nav_and_layout(void) {
                 }
                 item->label[0] = '\0';
                 sw_i++;
+                if (item->y + item->h > max_y) max_y = item->y + item->h;
             } else {
-                item->x = 0; item->y = CHROME_H; item->w = g_win_w; item->h = ROW_H;
+                item->x = 0; item->y = other_y; item->w = g_win_w; item->h = ROW_H;
+                if (item->y + item->h > max_y) max_y = item->y + item->h;
+                other_y += ROW_H;
             }
             item->nav_index = ++g_n_nav;
             g_nav[g_n_nav - 1] = item;
             css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
         }
-        g_win_h = 280;
+        g_win_h = max_y + 8;  /* Dynamic height to fit swatches + any other items */
         } else {
         int y = CHROME_H;
         for (int i = 0; i < page->n_children; i++) {
@@ -8274,6 +8352,27 @@ static void dispatch(const char *action) {
         snprintf(ap, sizeof(ap), "%s/#.desktop/taskbar_settings_action.txt", g_house_root);
         FILE *af = fopen(ap, "w");
         if (af) { fprintf(af, "seq=%u\n%s\n", ++g_swatch_action_seq, action); fclose(af); }
+        return;
+    }
+    /* REAL, NEW 2026-08-29 (TASK 2: opacity control) - OPACITY_MINUS/OPACITY_PLUS
+     * handlers. Read current opacity from theme, adjust by ±0.05, write back,
+     * and apply to the window immediately for live visual feedback. */
+    if (strcmp(action, "OPACITY_MINUS") == 0) {
+        double opacity = load_theme_opacity();
+        opacity -= 0.05;
+        if (opacity < 0.0) opacity = 0.0;
+        write_theme_opacity(opacity);
+        set_window_opacity(dpy, win, opacity);
+        redraw();
+        return;
+    }
+    if (strcmp(action, "OPACITY_PLUS") == 0) {
+        double opacity = load_theme_opacity();
+        opacity += 0.05;
+        if (opacity > 1.0) opacity = 1.0;
+        write_theme_opacity(opacity);
+        set_window_opacity(dpy, win, opacity);
+        redraw();
         return;
     }
     if (strcmp(action, "CLOSE") == 0) { g_quit = 1; return; }
@@ -9468,6 +9567,15 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
     }
     if (ev->type == ButtonPress) {
         if (is_popup) {
+            /* REAL, NEW 2026-08-29 (TASK 1: popup drag support) - check for
+             * drag-start on chrome area (y < CHROME_H), same pattern as
+             * db-hq/events-hq/chat-hai. Button 1 only, top CHROME_H pixels. */
+            if (ev->xbutton.button == 1 && ev->xbutton.y < CHROME_H) {
+                g_popup_dragging = 1;
+                g_popup_drag_last_x = ev->xbutton.x_root;
+                g_popup_drag_last_y = ev->xbutton.y_root;
+                return;
+            }
             struct timespec now;
             clock_gettime(CLOCK_MONOTONIC, &now);
             long ms_since_map = (now.tv_sec - g_map_time.tv_sec) * 1000L
@@ -9570,6 +9678,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         g_pal_thumb_dragging = 0;
         g_evhq_dragging = 0;
         chai_dragging = 0;
+        g_popup_dragging = 0;  /* REAL, NEW 2026-08-29 (TASK 1) */
         return;
     }
     if (ev->type == MotionNotify) {
@@ -9602,6 +9711,18 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             XMoveWindow(dpy, win, chai_win_x, chai_win_y);
             chai_drag_last_x = ev->xmotion.x_root;
             chai_drag_last_y = ev->xmotion.y_root;
+        } else if (is_popup && g_popup_dragging) {
+            /* REAL, NEW 2026-08-29 (TASK 1: popup drag-move) - same pattern
+             * as other modes: compute delta from last recorded x_root/y_root,
+             * update g_win_x/g_win_y, call XMoveWindow, clamp to WM_MANAGED_
+             * DRAG_MIN_Y to avoid overlap with taskbar header. */
+            int dx = ev->xmotion.x_root - g_popup_drag_last_x;
+            int dy = ev->xmotion.y_root - g_popup_drag_last_y;
+            g_win_x += dx; g_win_y += dy;
+            if (g_win_y < WM_MANAGED_DRAG_MIN_Y) g_win_y = WM_MANAGED_DRAG_MIN_Y;
+            XMoveWindow(dpy, win, g_win_x, g_win_y);
+            g_popup_drag_last_x = ev->xmotion.x_root;
+            g_popup_drag_last_y = ev->xmotion.y_root;
         }
         return;
     }

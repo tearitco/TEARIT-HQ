@@ -3,6 +3,14 @@
 
 .swatch { width: 34px; height: 34px; }
 
+/* REAL, NEW 2026-08-29 (TASK 2) - opacity control button styling */
+.opacity-btn {
+    background-color: #444444;
+    color: #ffffff;
+    padding: 4px 8px;
+    border: 1px solid #666666;
+}
+
 .sw-black    { background-color: #000000; }
 .sw-white    { background-color: #ffffff; }
 .sw-charcoal { background-color: #1a1a1a; }
