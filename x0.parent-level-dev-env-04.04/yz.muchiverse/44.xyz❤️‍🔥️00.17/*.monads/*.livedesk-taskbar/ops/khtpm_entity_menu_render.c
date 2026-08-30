@@ -10224,6 +10224,29 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
     unsigned char *ov_buf = NULL;
     int ov_w_cur = 0, ov_h_cur = 0;
 
+    /* REAL PERF FIX 2026-08-30, direct live report ("super laggy...
+     * cpu is really slow") right after the restyle landed - the first
+     * cut called XftColorAllocValue/XftColorFree AND pchq_alloc_pixel
+     * (an XParseColor+XAllocColor colormap round trip) fresh for EVERY
+     * line, EVERY frame, at 30fps (up to ~48 lines/frame) - real,
+     * unnecessary per-frame server round trips for colors that never
+     * change. Allocate all of them ONCE here instead, matching the
+     * house's own general Xft convention of caching colors/pixels
+     * outside the render loop. */
+    unsigned long pix_chrome = pchq_alloc_pixel(dpy, cmap, "#2a2a2a");
+    unsigned long pix_close = pchq_alloc_pixel(dpy, cmap, "#5a2020");
+    unsigned long pix_bg = pchq_alloc_pixel(dpy, cmap, "#111111");
+    unsigned long pix_rule = pchq_alloc_pixel(dpy, cmap, "#3a3a3a");
+    unsigned long pix_focus_fill = pchq_alloc_pixel(dpy, cmap, "#3a2a10");
+    unsigned long pix_focus_border = pchq_alloc_pixel(dpy, cmap, "#ff8c00");
+    unsigned long pix_unfocus_fill = pchq_alloc_pixel(dpy, cmap, "#2a2a2a");
+    unsigned long pix_unfocus_border = pchq_alloc_pixel(dpy, cmap, "#555555");
+    XftColor col_title, col_focus, col_unfocus, col_body;
+    { XRenderColor rc = {0xeeee, 0xeeee, 0xeeee, 0xffff}; XftColorAllocValue(dpy, visual, cmap, &rc, &col_title); }
+    { XRenderColor rc = {0xffff, 0x8c8c, 0x0000, 0xffff}; XftColorAllocValue(dpy, visual, cmap, &rc, &col_focus); }
+    { XRenderColor rc = {0xaaaa, 0xaaaa, 0xaaaa, 0xffff}; XftColorAllocValue(dpy, visual, cmap, &rc, &col_unfocus); }
+    { XRenderColor rc = {0xdddd, 0xdddd, 0xdddd, 0xffff}; XftColorAllocValue(dpy, visual, cmap, &rc, &col_body); }
+
     int running = 1;
     int pchq_focus_ok = 0;
     while (running) {
@@ -10264,27 +10287,23 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
             }
         }
 
-        /* Real chrome (title + close [X]). */
-        XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, "#2a2a2a"));
+        /* Real chrome (title + close [X]). Uses the colors/pixels
+         * cached once before the loop (see this function's own real
+         * perf-fix comment above). */
+        XSetForeground(dpy, gc, pix_chrome);
         XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)win_w, CHROME_H);
         if (ui_font) {
-            XRenderColor rc = {0xeeee, 0xeeee, 0xeeee, 0xffff};
-            XftColor col; XftColorAllocValue(dpy, visual, cmap, &rc, &col);
             const char *title = "Piececraft-HQ Board (khtpm)";
-            XftDrawStringUtf8(xftdraw, &col, ui_font, 8, 18, (const FcChar8 *)title, (int)strlen(title));
-            XftColorFree(dpy, visual, cmap, &col);
+            XftDrawStringUtf8(xftdraw, &col_title, ui_font, 8, 18, (const FcChar8 *)title, (int)strlen(title));
         }
-        XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, "#5a2020"));
+        XSetForeground(dpy, gc, pix_close);
         XFillRectangle(dpy, buf, gc, win_w - PCHQ_CLOSE_W, 0, PCHQ_CLOSE_W, CHROME_H);
         if (ui_font) {
-            XRenderColor rc = {0xeeee, 0xeeee, 0xeeee, 0xffff};
-            XftColor col; XftColorAllocValue(dpy, visual, cmap, &rc, &col);
-            XftDrawStringUtf8(xftdraw, &col, ui_font, win_w - PCHQ_CLOSE_W + 9, 18, (const FcChar8 *)"X", 1);
-            XftColorFree(dpy, visual, cmap, &col);
+            XftDrawStringUtf8(xftdraw, &col_title, ui_font, win_w - PCHQ_CLOSE_W + 9, 18, (const FcChar8 *)"X", 1);
         }
 
         /* Real content background. */
-        XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, "#111111"));
+        XSetForeground(dpy, gc, pix_bg);
         XFillRectangle(dpy, buf, gc, 0, CHROME_H, (unsigned)win_w, (unsigned)frame_h);
 
         /* REAL, styled read of chtpm_parser_pal's own current_frame.txt
@@ -10333,30 +10352,22 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                 int is_panel = (trimmed[0] == '|');
 
                 if (is_rule) {
-                    XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, "#3a3a3a"));
+                    XSetForeground(dpy, gc, pix_rule);
                     XFillRectangle(dpy, buf, gc, 4, y_px + PCHQ_GLYPH_H / 2, (unsigned)(win_w - 8), 1);
                 } else if (is_focused_nav) {
-                    XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, "#3a2a10"));
+                    XSetForeground(dpy, gc, pix_focus_fill);
                     XFillRectangle(dpy, buf, gc, 4, y_px + 1, (unsigned)(win_w - 8), PCHQ_GLYPH_H - 2);
-                    XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, "#ff8c00"));
+                    XSetForeground(dpy, gc, pix_focus_border);
                     XDrawRectangle(dpy, buf, gc, 4, y_px + 1, (unsigned)(win_w - 8) - 1, PCHQ_GLYPH_H - 3);
-                    if (pchq_body_font) {
-                        XRenderColor rc = {0xffff, 0x8c8c, 0x0000, 0xffff};
-                        XftColor col; XftColorAllocValue(dpy, visual, cmap, &rc, &col);
-                        XftDrawStringUtf8(xftdraw, &col, pchq_body_font, 10, y_px + PCHQ_GLYPH_H - 4, (const FcChar8 *)trimmed, (int)strlen(trimmed));
-                        XftColorFree(dpy, visual, cmap, &col);
-                    }
+                    if (pchq_body_font)
+                        XftDrawStringUtf8(xftdraw, &col_focus, pchq_body_font, 10, y_px + PCHQ_GLYPH_H - 4, (const FcChar8 *)trimmed, (int)strlen(trimmed));
                 } else if (is_unfocused_nav) {
-                    XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, "#2a2a2a"));
+                    XSetForeground(dpy, gc, pix_unfocus_fill);
                     XFillRectangle(dpy, buf, gc, 4, y_px + 1, (unsigned)(win_w - 8), PCHQ_GLYPH_H - 2);
-                    XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, "#555555"));
+                    XSetForeground(dpy, gc, pix_unfocus_border);
                     XDrawRectangle(dpy, buf, gc, 4, y_px + 1, (unsigned)(win_w - 8) - 1, PCHQ_GLYPH_H - 3);
-                    if (pchq_body_font) {
-                        XRenderColor rc = {0xaaaa, 0xaaaa, 0xaaaa, 0xffff};
-                        XftColor col; XftColorAllocValue(dpy, visual, cmap, &rc, &col);
-                        XftDrawStringUtf8(xftdraw, &col, pchq_body_font, 10, y_px + PCHQ_GLYPH_H - 4, (const FcChar8 *)trimmed, (int)strlen(trimmed));
-                        XftColorFree(dpy, visual, cmap, &col);
-                    }
+                    if (pchq_body_font)
+                        XftDrawStringUtf8(xftdraw, &col_unfocus, pchq_body_font, 10, y_px + PCHQ_GLYPH_H - 4, (const FcChar8 *)trimmed, (int)strlen(trimmed));
                 } else {
                     const char *text = trimmed;
                     size_t tlen = strlen(text);
@@ -10364,12 +10375,8 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                         text++; tlen = tlen > 0 ? tlen - 1 : 0;
                         if (tlen > 0 && text[tlen - 1] == '|') tlen--;
                     }
-                    if (tlen > 0 && pchq_body_font) {
-                        XRenderColor rc = {0xdddd, 0xdddd, 0xdddd, 0xffff};
-                        XftColor col; XftColorAllocValue(dpy, visual, cmap, &rc, &col);
-                        XftDrawStringUtf8(xftdraw, &col, pchq_body_font, 10, y_px + PCHQ_GLYPH_H - 4, (const FcChar8 *)text, (int)tlen);
-                        XftColorFree(dpy, visual, cmap, &col);
-                    }
+                    if (tlen > 0 && pchq_body_font)
+                        XftDrawStringUtf8(xftdraw, &col_body, pchq_body_font, 10, y_px + PCHQ_GLYPH_H - 4, (const FcChar8 *)text, (int)tlen);
                 }
                 y_px += PCHQ_GLYPH_H;
                 row++;
