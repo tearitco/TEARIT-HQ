@@ -1,0 +1,76 @@
+# piececraft-hq board-viewer → khtpm conversion — real status (2026-08-30)
+
+## The real, clarified ask (corrected after an earlier wrong-scope attempt)
+
+Direct instructions, in order:
+1. Board-viewer's real 3D view/camera/interact-mode itself needs to be
+   converted to a real khtpm window (`khtpm_entity_menu_render.c` family) -
+   not just an info panel alongside the existing legacy widget. Safe to
+   do this invasively since it's `piececraft-hq`'s own copy - the real,
+   shared `&.widgits/board-viewer` (used by piececraft-xyz/civ-txt/
+   tactics-txt) stays untouched.
+2. The menu (Switch World / interact / camera controls) is a real khtpm
+   sub-window that opens under/within the game view in the same window
+   context - same real pattern as db-hq's own Common Events picker
+   (a modal that closes on exit, not a separate detached popup).
+3. Entry point lives IN-GAME, at the same level as "Interact mode" - NOT
+   the desktop taskbar's global `!.HQ` dropdown. An earlier attempt wired
+   this into `#.desktop/livedesk_taskbar.pdl`'s `hq_menu_N` rows (the
+   system-wide HQ menu) - confirmed wrong, reverted in full (see git
+   history same day - `livedesk_taskbar.pdl`/`&.widgits/palettes/
+   pallets.pdl` restored to their pre-this-session content).
+4. Real, direct instruction on approach: **"u should do it the same way
+   the legacy chtpm parser does it. if possible steal code/ops w/e u
+   have to."** - port real, proven code, don't reinvent.
+
+## What's REAL and PROVEN as of this note
+
+**`@.apps/piececraft-hq/ops/pchq_board_view_poc.c`** - a real, minimal,
+standalone proof-of-concept. Its `load_frame()`/blit logic is a direct,
+deliberate port of `&.widgits/_shared-lib/ops/x11_mirror.c`'s own
+`resize_to_frame()`/`load_frame()`/`x11_display()` (same real RGBA32-
+file-to-XImage-via-XPutPixel loading, same real `XPutImage` blit call) -
+adapted to read `pieces/display/rgb_frame_3d_overlay.raw` directly (the
+REAL 3D raymarch buffer `bv_render_3d.c` writes, BEFORE
+`bv_compose_frame.c` composites it into the flat `rgb_frame.raw`
+x11_mirror.c itself reads) instead of the flat 2D frame.
+
+**Live-verified, real screenshot evidence**: launched piececraft-hq for
+real, found its real live board-viewer session dir, ran this PoC against
+it - real 3D content (trees, hero, a placed block, ground, sky) rendered
+correctly in a genuinely new, bare X11 window, zero GL, zero khtpm code
+involved yet. Confirms the core real pixel pipeline works end-to-end via
+the stolen/ported blit mechanism - this is NOT a guess or an assumption,
+it's a real, working, screenshotted result.
+
+## What's still real, honest, NOT done
+
+This PoC has **zero khtpm integration** - no Elem/CSS chrome, no real
+window mode in `khtpm_entity_menu_render.c`, no menu, no interact/camera
+key handling, no real session-discovery (the board-viewer session dir was
+passed in by hand, not resolved automatically the way
+`open_board_widget()`'s own real `ledger_peers.+x` lookup does it for the
+legacy engine).
+
+**Real next steps, not started:**
+1. Port this same proven blit logic INTO `khtpm_entity_menu_render.c` as
+   a real new window mode (`<window class="...">`-selected, same real
+   mode-dispatch shape every other mode in that file already uses).
+2. Real session-discovery: resolve the live board-viewer session dir for
+   piececraft-hq automatically (port `ledger_peers.+x`'s own real lookup,
+   or a similar mechanism) instead of a hand-passed argv.
+3. Real khtpm chrome (title/close, matching every other khtpm window) +
+   a real digit-nav menu row set for interact-mode/camera-mode controls,
+   reading/writing the same real state files `bv_menu_input.c` already
+   uses (`bv_state.txt`, `arrow_config.txt`'s key bindings).
+4. The real "sub-window opens under/within the game view, closes on
+   exit" pattern - needs the same real technique db-hq's own Common
+   Events picker uses (a real modal overlay, not investigated in depth
+   yet for this specific port).
+5. Wire the real in-game entry point (a new row in piececraft-hq's own
+   `pieces/chtpm/layouts/main.chtpm`, at the same level as the existing
+   "Interact mode"/game-verb rows) - not the taskbar's global menu.
+
+Not committed to `khtpm_entity_menu_render.c` yet - this note and the PoC
+file are the real, honest checkpoint before that larger integration
+starts.
