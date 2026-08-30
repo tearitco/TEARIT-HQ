@@ -10655,6 +10655,18 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                              * not a synthetic click. */
                             pchq_append_key(bv_history1, bv_history2, 13);
                         } else if (hit == PCHQ_ACT_CLOSE) {
+                            /* REAL FIX 2026-08-30 - this mouse-click
+                             * branch uses `hit`, not `pchq_focus` (the
+                             * keyboard branch's own variable) - the
+                             * earlier pchq_quit_host_session() fix
+                             * (b1ef2cf0) only matched `pchq_focus ==
+                             * PCHQ_ACT_CLOSE` text and silently never
+                             * touched THIS branch at all, so a real
+                             * mouse click on Close - confirmed live,
+                             * the actual way this was being used - kept
+                             * leaving the real game session running
+                             * even after that fix. */
+                            pchq_quit_host_session(house_root, host_project_id);
                             running = 0;
                         }
                     }
