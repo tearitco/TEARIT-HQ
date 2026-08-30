@@ -183,6 +183,31 @@ static char *dirname(char *p) {
  * defaults. Edit meta.pdl and the next right-click re-reads it - no
  * rebuild, no restart. */
 static int g_menu_stay_open = 1;
+/* REAL FIX 2026-08-30, direct live report ("the context windows dont
+ * seem to respect single/2 click option yet (just using single
+ * click)") - #.desktop/hq_ui.pdl's own click_two_step setting never
+ * reached this file at all (real, separate scope gap - same class of
+ * miss already found and fixed for khtpm_strip_parser.c/the taskbar
+ * itself, 1f8abc73). Same real default (1 = two-step ON) and same
+ * real load-from-PDL shape used everywhere else this setting is read. */
+static int g_click_two_step = 1;
+static void desktop_load_click_two_step(const char *house_root) {
+    char path[4352]; /* matches this file's own later PATH_BUF (not yet declared at this point) */
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[128];
+    while (fgets(line, sizeof(line), f)) {
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char *val = eq + 1;
+        char *nl = strchr(val, '\n');
+        if (nl) *nl = '\0';
+        if (strcmp(line, "click_two_step") == 0) g_click_two_step = atoi(val) != 0;
+    }
+    fclose(f);
+}
 static int g_grab_pointer = LIVEDESK_USE_XGRAB_POINTER;
 static int g_grab_keyboard = LIVEDESK_USE_XGRAB_KEYBOARD;
 /* Soft focus fallback (option C 2026-08-06): set input focus on THIS
@@ -2050,6 +2075,7 @@ int main(int argc, char **argv) {
     if (!g_house_root[0]) snprintf(g_house_root, sizeof(g_house_root), ".");
 #endif
     snprintf(g_house_root_for_lock, sizeof(g_house_root_for_lock), "%s", g_house_root);
+    if (g_house_root[0]) desktop_load_click_two_step(g_house_root);
     /* REAL FIX 2026-08-27 (TILE-SYSTEM-DESIGN.md §0a) - read the real,
      * optional, house-wide grid cell size as early as possible (right
      * after g_house_root resolves, before anything below uses
@@ -2915,6 +2941,19 @@ int main(int argc, char **argv) {
                     close_context_menu(dpy, popup_win);
                     popup_win = 0;
                     nav_release_pid(g_house_root, getpid());
+                    need_redraw = 1;
+                    continue;
+                }
+                /* REAL FIX 2026-08-30 - real house-wide click_two_step
+                 * (see g_click_two_step's own declaration comment
+                 * above): a click on an unfocused row only focuses it
+                 * (same real semantics arrow-nav already uses via
+                 * popup_focus_row) - a second click on the SAME,
+                 * already-focused row is what actually activates it. */
+                if (g_click_two_step && popup_focus_row != row) {
+                    popup_focus_row = row;
+                    draw_context_menu(dpy, popup_win, popup_gc, methods, n_methods, popup_nav_base, popup_focus_row);
+                    popup_soft_focus(dpy, popup_win);
                     need_redraw = 1;
                     continue;
                 }
