@@ -327,3 +327,13 @@ taskbar path again → opens cleanly.
   end to end.
 - Render loop CPU spin — fixed (`fd98e1cc`, ~60fps cap, confirmed
   75-80% → ~22% CPU live).
+
+### 🆕 Also done today (tangent, direct request): taskbar click_two_step
+(`1f8abc73`) — `khtpm_strip_parser.c` never read `click_two_step` at
+all (a real scope gap: the PDL's own comment only ever documented
+db-hq/events-hq/chat-hai). Extended it to all three real mouse-click
+branches (header, dropdown, bottom bar), same real focus-then-activate
+semantics as everywhere else. Verified live via real xdotool clicks:
+first click on "11. toys" only focuses (popup stays closed), second
+click opens it; same two-step now applies to launching any app from
+the dropdown too.
