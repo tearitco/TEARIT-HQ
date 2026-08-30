@@ -10302,6 +10302,16 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
     int running = 1;
     int pchq_focus_ok = 0;
     while (running) {
+        /* REAL FIX 2026-08-30, direct live report ("screen flashes and
+         * is throttling. is the renderer cpu safe?") - this loop had NO
+         * real frame cap at all (confirmed live: ps aux showed it
+         * pinned at ~75-80% CPU, state Rs - genuinely spinning, not
+         * blocked/idle waiting on anything). Every other khtpm loop in
+         * this file (db-hq's, the strip's) has a real usleep() per
+         * iteration; this one was missed in the architecture rewrite.
+         * 16ms ~= 60fps, same real target the overlay's own raymarch
+         * producer runs at - matches, doesn't starve, doesn't spin. */
+        usleep(16000);
         if (!pchq_focus_ok) {
             XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
             XSync(dpy, False);
