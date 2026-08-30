@@ -132,25 +132,37 @@ format (its own real chunk/voxel storage, per `PIECECRAFT_XYZ_DESIGN.md`).
    camera/POV concept should work), or per-entity (each pal keeps its own
    independent 2D/3D state - more flexible, much harder to reason about
    visually, likely wrong)? Leaning desktop-wide, not decided.
-3. **Where does the "desktop-wide 3D scene" actually render?** Today,
-   every desktop entity is its OWN independent X11 window
-   (`tp_desktop_window_rgb.c`, one process per entity, confirmed via this
-   session's own `ps aux` output showing one process per tile/pal). A real
-   3D view with a shared camera angle/z-level likely needs either (a) a
-   NEW, separate compositor-style process that owns the real 3D
-   raymarch/render pass across ALL entities at once (closest analog:
-   `bv_render_3d.c`'s own per-session raymarch, but board-viewer only ever
-   renders ONE focused project's board, not N independent desktop windows
-   at arbitrary screen positions) or (b) each entity's own existing window
-   independently re-renders itself in "3D mode" using its own real
-   position + a SHARED camera-state file (angle/z-level, e.g. under
-   `#.desktop/`) that all of them poll - closer to the existing
-   one-process-per-entity architecture, no new compositor process needed,
-   but each window's own 3D render would need real depth-sorting/
-   occlusion logic to look correct next to its (still 2D-window-shaped)
-   neighbors. **Not decided - this is probably the single largest real
-   architectural fork in the whole design**, and needs a real answer
-   before any code starts.
+3. **Where does the "desktop-wide 3D scene" actually render? RESOLVED
+   (2026-08-29, direct answer)**: option (b) below - no new compositor
+   process. "each entity will change how its rendered, will render as 3d
+   top down display." Each entity's own existing window
+   (`tp_desktop_window_rgb.c`, one process per entity, unchanged
+   architecture) independently re-renders itself in 3D mode, reading a
+   real SHARED camera-state file (angle/zoom/z-level - likely under
+   `#.desktop/`, exact path TBD) that every entity window polls, the same
+   real "poll a shared state file, no cmd-bus" convention board-viewer's
+   own `bv_state.txt` already proves live. No new compositor-style
+   process owning a single combined raymarch pass across all entities at
+   once (the alternative (a) considered in the first draft of this doc -
+   explicitly NOT chosen).
+
+   **Direct, real follow-on implication, same instruction**: the fixed
+   80px `GRID_CELL_PX` 2D grid-snap every entity uses today
+   (`tp_desktop_window_rgb.c`'s own `WIN_PX`/grid-snap-on-drag-release
+   logic, this session's own earlier fix to that exact constant) is a
+   REAL 2D-only constraint and does NOT carry over to 3D mode - "we wont
+   use the '80px' default 2d style tile constraints any more when camera
+   is zoomed in or out obviously." In 3D top-down mode, each entity's own
+   on-screen size/position becomes a real function of the shared
+   camera's zoom/angle against that entity's real desktop-grid position
+   (grid_x/grid_y, or a real world x/y/z once z-levels apply), computed
+   fresh per frame - not the fixed 80px (or 160px for footprint>1)
+   window size 2D mode always snaps to. Real, concrete consequence for
+   implementation: an entity's own X11 window itself likely needs to be
+   real-time RESIZABLE/repositionable (`XResizeWindow`/`XMoveWindow`)
+   as the shared camera zooms, not just its drawn CONTENT changing
+   inside a fixed-size window - still not decided, but the direction is
+   clear enough to flag now rather than leave implicit.
 4. **Does the halo replace cursword's own emoji sprite, or render as an
    overlay/ring around it?** Overlay/ring is the more consistent choice
    (matches the "amber tint window" and "bright title text" armed-state
@@ -170,9 +182,11 @@ format (its own real chunk/voxel storage, per `PIECECRAFT_XYZ_DESIGN.md`).
 
 ## 4. Suggested next step
 
-Once this doc is reviewed: resolve open question #3 first (the real
-architectural fork) since it determines almost everything else's shape,
-then #1/#2/#4/#5/#6 can likely be settled together in one focused pass.
-Piece 1 (piececraft's own setup-screen replacement) is comparatively
-self-contained and could start independently of pieces 2/3 resolving,
-since it doesn't depend on the desktop-3D architecture question at all.
+Open question #3 (the largest real architectural fork) is now RESOLVED -
+see §3b item 3. Remaining open questions #1/#2/#4/#5/#6 can likely be
+settled together in one focused pass, now that the real rendering
+architecture (per-entity window, shared camera-state file, no new
+compositor, no fixed-80px constraint in 3D mode) is decided. Piece 1
+(piececraft's own setup-screen replacement) is comparatively self-
+contained and could start independently of pieces 2/3, since it doesn't
+depend on the desktop-3D architecture question at all.
