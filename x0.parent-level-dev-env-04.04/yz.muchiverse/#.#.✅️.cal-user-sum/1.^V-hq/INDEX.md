@@ -521,6 +521,27 @@ The events ladders come first, then these land:
 
 ---
 
+**2026-08-29** (new long-term design doc, direct request after live
+piececraft-xyz verification + board-viewer's gl_mirror→x11_mirror conversion
+this session: `CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-DESIGN.md` -
+three connected real pieces, DESIGN ONLY, nothing built yet: (1) replace
+piececraft-xyz's blocking pre-setup screen with a real in-scene files/desks
+screen; (2) port board-viewer's real, live 2D↔3D + camera-mode + z-level
+system (`bv_menu_input.c`, already proven) onto the house desktop itself;
+(3) repurpose the real, existing `cursword` desktop pal as the desktop's own
+xelector-equivalent interact controller - plain click (not right-click, not
+drag) arms a glowing neon-blue halo + a real key-recording session (Escape
+ends it), arrows move cursword, POV/camera keys drive the 2D/3D switch.
+Grounds the design in real precedent (board-viewer's camera system, the
+shared emoji→voxel asset pipeline, this session's own real desk-persistence
+work, `tp_desktop_window_rgb.c`'s existing left-click-drag/right-click-menu
+dispatch) and records 6 real, explicitly unresolved open questions - most
+notably where a desktop-wide shared 3D scene/camera would actually render,
+given every desktop entity is today its own independent X11 process/window)
+by claude
+
+---
+
 **2026-08-29** (maps/tiles/z-levels documentation cleanup, direct
 request after a live, corrected investigation: "clean up the
 documentation... rerun by me the actual plan." Real finding chain, in

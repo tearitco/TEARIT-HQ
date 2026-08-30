@@ -16,6 +16,18 @@ its own `system/` dir carrying its own compiled copy of the engine:
 `@.apps/yahoo-app`, `@.apps/aomorai-editor`, `@.apps/tactics-txt`, `@.apps/my-chara-txt`,
 `&.widgits/yahoo-broker`, `&.widgits/yahoo-chart`, `300.rtp-xyz`, `002.zoo__🦓🐒0000`.
 
+**REAL GAP FOUND 2026-08-29 (direct user diagnosis, live piececraft-xyz verification session):
+`&.widgits/board-viewer` is missing from this list and was never queued for the gl_mirror.c ->
+x11_mirror.c conversion.** It's a shared *widget* (launched BY several of the 16 projects above,
+piececraft-xyz's own real 3D board view among them), not one of the 16 top-level projects, so it
+fell outside this doc's own scope entirely. Confirmed on disk: `&.widgits/board-viewer/system/`
+still only ships the legacy `gl_mirror`/`gl_mirror.exe` binaries, no `x11_mirror` at all. Real,
+concrete consequence found live: the widget's window is invisible to standard X11 tooling
+(`xwininfo`, `dump_frame_png_op.+x`) even though it's real and live on a real display - the same
+class of remote-verification blindness x11_mirror.c's conversion already fixed for every project
+that HAS been converted. Needs its own real conversion pass, same proven pattern as mutaclysm's
+pilot. Full write-up: `PIECECRAFT-LOCAL-VERIFY-2026-08-29.md` §5. Not started.
+
 **The real engine files each project's own `system/` dir carries a separate copy of** (confirmed
 via mutaclysm's own `system/`, the most-worked-on reference this session):
 - `prisc+x.c` — the pal-script interpreter
