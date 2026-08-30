@@ -559,6 +559,34 @@ static int frame_changed_dirty(void) {
     return 0;
 }
 
+/* REAL, NEW 2026-08-30, direct instruction ("it only needs to happen
+ * on status change... what in house architecture can be used to
+ * support this") - same real cheap-marker convention as
+ * frame_changed_dirty() just above, applied to
+ * #.desktop/livedesk_theme_changed.txt (written by
+ * write_theme_opacity() in khtpm_entity_menu_render.c). Checked once
+ * per already-running tick in the main loop below - a single stat(),
+ * real work (reload+reapply opacity to all 3 real windows) only runs
+ * on an actual change. */
+static long g_theme_changed_cursor = 0;
+
+static int theme_changed_dirty(void) {
+    char path[SP_PATH_BUF];
+    path_join2(path, sizeof(path), g_house_root, "#.desktop/livedesk_theme_changed.txt");
+    struct stat st;
+    if (stat(path, &st) != 0) return 0;
+    /* REAL BUG FIX 2026-08-30, found live testing this exact function
+     * (a manual marker-append right after this process started never
+     * triggered a reapply): cursor starts at 0 (not -1) - the marker
+     * file usually doesn't exist yet at this process's own startup, so
+     * its first-ever real append (any size > 0) must count as a real
+     * change, not get silently absorbed as "just establishing a
+     * baseline" the way frame_changed_dirty()'s own -1 sentinel does
+     * for a file that's expected to already exist. */
+    if (st.st_size != g_theme_changed_cursor) { g_theme_changed_cursor = st.st_size; return 1; }
+    return 0;
+}
+
 /* Append a resolved decimal action code to strip_history.txt — UNCHANGED. */
 static void send_code(int code) {
     if (code <= 0) return;
@@ -2596,6 +2624,17 @@ int main(int argc, char **argv) {
     while (g_running) {
         g_cells_n = 0;
         reap_manager_nonblocking();
+
+        /* REAL, NEW 2026-08-30 - real, cheap, event-driven opacity
+         * reapply (see theme_changed_dirty()'s own declaration
+         * comment) - only actually reloads+reapplies on a genuine
+         * change, riding this same already-running tick. */
+        if (theme_changed_dirty()) {
+            double new_opacity = load_theme_opacity();
+            set_window_opacity(dpy, win, new_opacity);
+            set_window_opacity(dpy, hq_win, new_opacity);
+            if (popup_win) set_window_opacity(dpy, popup_win, new_opacity);
+        }
 
         int was_dirty = frame_changed_dirty();
         if (was_dirty) {

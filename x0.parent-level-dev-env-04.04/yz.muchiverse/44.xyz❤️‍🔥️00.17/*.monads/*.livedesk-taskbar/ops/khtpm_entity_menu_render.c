@@ -201,6 +201,28 @@ static void write_theme_opacity(double opacity) {
         }
     }
     fclose(fw);
+
+    /* REAL, NEW 2026-08-30, direct instruction ("it only needs to
+     * happen on status change. it doesn't have to continuously poll
+     * if settings buttons aren't being pressed. what in house
+     * architecture can be used to support this") - same real, cheap
+     * "changed marker" convention this house already uses everywhere
+     * (frame_changed.txt/strip_frame_changed.txt/pc_screen_changed.txt
+     * - see frame_changed_dirty()'s own real shape in
+     * khtpm_strip_parser.c): a real, tiny append-only file whose SIZE
+     * a consumer's ALREADY-RUNNING event-select loop checks once per
+     * tick via a single stat() - near-zero cost, no new timer, no
+     * heavy poll, and it only does real work (reload+reapply opacity)
+     * on an actual change, exactly matching the direct instruction.
+     * Written here so BOTH direct opacity edits (this settings screen)
+     * and any future write_theme_opacity() caller mark the change the
+     * same real way, without each caller needing to remember to. */
+    {
+        char marker_path[PATH_BUF];
+        snprintf(marker_path, sizeof(marker_path), "%s/#.desktop/livedesk_theme_changed.txt", g_house_root);
+        FILE *mf = fopen(marker_path, "a");
+        if (mf) { fprintf(mf, "%.2f\n", opacity); fclose(mf); }
+    }
 }
 /* REAL, db-hq mode only (§5d.10) - module launch, ported VERBATIM from
  * khtpm_hq_render.c (real fork()+execl(), already TPMOS-compliant - see
@@ -10035,6 +10057,35 @@ static int pchq_find_board_session(const char *house_root, const char *host_proj
  * clean button.sh EXIT trap (kill_own_module, kill_own_board_widget,
  * persist_session_state, rm -rf SESSION_DIR) instead of just hiding
  * this one window over a still-live session. */
+/* REAL, NEW 2026-08-30, direct instruction ("fullscreen... we will put
+ * '!' for fullscreen next to 'x'") - the standard, real EWMH way to
+ * toggle fullscreen on an ALREADY-MAPPED window: a real
+ * _NET_WM_STATE ClientMessage sent to the root window (per the EWMH
+ * spec - a direct XChangeProperty from the client itself is only
+ * honored BEFORE the initial map, which this window already is well
+ * past by the time a user clicks "!"). _NET_WM_STATE_TOGGLE (2) lets
+ * the WM own the actual on/off bookkeeping - this function only
+ * tracks *this window's own* believed state locally for the toolbar's
+ * own badge/highlight, same as pchq_interact_on's own local mirror of
+ * real engine state elsewhere in this function. */
+static void pchq_toggle_fullscreen(Display *dpy, Window win) {
+    Atom wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
+    Atom fullscreen = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
+    XEvent xev;
+    memset(&xev, 0, sizeof(xev));
+    xev.type = ClientMessage;
+    xev.xclient.window = win;
+    xev.xclient.message_type = wm_state;
+    xev.xclient.format = 32;
+    xev.xclient.data.l[0] = 2; /* _NET_WM_STATE_TOGGLE */
+    xev.xclient.data.l[1] = (long)fullscreen;
+    xev.xclient.data.l[2] = 0;
+    xev.xclient.data.l[3] = 1; /* source indication: normal application */
+    XSendEvent(dpy, RootWindow(dpy, DefaultScreen(dpy)), False,
+               SubstructureRedirectMask | SubstructureNotifyMask, &xev);
+    XFlush(dpy);
+}
+
 static void pchq_quit_host_session(const char *house_root, const char *host_project_id) {
     char sessions_dir[PATH_BUF];
     snprintf(sessions_dir, sizeof(sessions_dir), "%s/@.apps/%s/pieces/sessions", house_root, host_project_id);
@@ -10252,6 +10303,7 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
 
 #define PCHQ_TOOLBAR_H 28
 #define PCHQ_CLOSE_W 74
+#define PCHQ_FULLSCREEN_W 56
     int canvas_w = 640, canvas_h = 480; /* real defaults, resized from the overlay's own receipt below */
     int win_x = 140, win_y = 90;
     int dragging = 0, drag_last_x = 0, drag_last_y = 0;
@@ -10277,7 +10329,13 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
     XSelectInput(dpy, win, ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask);
     {
         XSizeHints *shints = XAllocSizeHints();
-        if (shints) { shints->flags = PPosition; shints->x = win_x; shints->y = win_y; XSetWMNormalHints(dpy, win, shints); XFree(shints); }
+        /* REAL FIX 2026-08-30, direct live report (fullscreen toggled
+         * off per _NET_WM_STATE, confirmed via xprop, but the window
+         * never actually shrank back down) - PPosition alone gives the
+         * WM no real "normal" size to restore to after leaving
+         * fullscreen. Real fix: also advertise PSize with this
+         * window's own actual current size. */
+        if (shints) { shints->flags = PPosition | PSize; shints->x = win_x; shints->y = win_y; shints->width = win_w; shints->height = win_h; XSetWMNormalHints(dpy, win, shints); XFree(shints); }
     }
     XMapRaised(dpy, win);
     set_window_opacity(dpy, win, load_theme_opacity());
@@ -10305,7 +10363,12 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
      * real perf fix as before - a colormap round trip per element per
      * frame at 30fps was measurably laggy). */
     unsigned long pix_chrome = pchq_alloc_pixel(dpy, cmap, "#2a2a2a");
-    unsigned long pix_close = pchq_alloc_pixel(dpy, cmap, "#5a2020");
+    /* REAL FIX 2026-08-30, direct live report ("x doesn't need to be
+     * 'red' its distracting") - matches Fullscreen's own neutral
+     * chrome-strip-icon treatment now (pix_chrome), not a special
+     * warning color - the orange focus border is still real feedback
+     * when it's actually focused, same as every other elem. */
+    unsigned long pix_close = pchq_alloc_pixel(dpy, cmap, "#2a2a2a");
     unsigned long pix_bg = pchq_alloc_pixel(dpy, cmap, "#111111");
     unsigned long pix_focus_fill = pchq_alloc_pixel(dpy, cmap, "#3a2a10");
     unsigned long pix_focus_border = pchq_alloc_pixel(dpy, cmap, "#ff8c00");
@@ -10334,16 +10397,30 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
      * real pattern the taskbar's own menus already use), with Db as
      * one of its rows - not implemented yet, this is just the stub
      * slot reserved for it. */
+    /* REAL, NEW 2026-08-30, direct instruction ("fullscreen, player and
+     * clock" - roadmap items from aug-30-retro.md's own "Next-steps"
+     * section) - Player/Clock join the toolbar row right after Menu
+     * (per direct instruction: "we will probably just add player and
+     * clock tb after menu"); Fullscreen ("!") joins Close in the chrome
+     * strip (per direct instruction: "we will put '!' for fullscreen
+     * next to 'x'"). Clock shows the real current time (cheap,
+     * deterministic, no reason to stub it); Player is a real stub for
+     * now (hero HP/position readback is a separate, later pass - not
+     * blocking this layout work). */
     typedef struct { char label[24]; int x, y, w, h; int action; } PchqElem;
-    enum { PCHQ_ACT_INTERACT = 0, PCHQ_ACT_FILE, PCHQ_ACT_DESK, PCHQ_ACT_MENU, PCHQ_ACT_CLOSE, PCHQ_N_ELEMS };
+    enum { PCHQ_ACT_INTERACT = 0, PCHQ_ACT_FILE, PCHQ_ACT_DESK, PCHQ_ACT_MENU, PCHQ_ACT_PLAYER, PCHQ_ACT_CLOCK, PCHQ_ACT_FULLSCREEN, PCHQ_ACT_CLOSE, PCHQ_N_ELEMS };
     PchqElem elems[PCHQ_N_ELEMS];
     snprintf(elems[PCHQ_ACT_INTERACT].label, sizeof(elems[0].label), "In");
     snprintf(elems[PCHQ_ACT_FILE].label, sizeof(elems[0].label), "File");
     snprintf(elems[PCHQ_ACT_DESK].label, sizeof(elems[0].label), "Desk");
     snprintf(elems[PCHQ_ACT_MENU].label, sizeof(elems[0].label), "Menu");
+    snprintf(elems[PCHQ_ACT_PLAYER].label, sizeof(elems[0].label), "Player");
+    snprintf(elems[PCHQ_ACT_CLOCK].label, sizeof(elems[0].label), "Clock");
+    snprintf(elems[PCHQ_ACT_FULLSCREEN].label, sizeof(elems[0].label), "!");
     snprintf(elems[PCHQ_ACT_CLOSE].label, sizeof(elems[0].label), "X");
     for (int i = 0; i < PCHQ_N_ELEMS; i++) elems[i].action = i;
     int pchq_focus = PCHQ_ACT_INTERACT;
+    int pchq_is_fullscreen = 0;
 
     int running = 1;
     int pchq_focus_ok = 0;
@@ -10436,16 +10513,30 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
          * the right of the header a bit") - flush against win_w left
          * zero margin for text to render into; a real gap keeps the
          * badge text fully inside the visible window. */
+        /* REAL, NEW 2026-08-30 - Fullscreen ("!") joins Close in the
+         * chrome strip, immediately to its left (direct instruction:
+         * "we will put '!' for fullscreen next to 'x'"). Player/Clock
+         * join the toolbar row after Menu (direct instruction: "we
+         * will probably just add player and clock tb after menu") -
+         * widths trimmed slightly across the board so all six toolbar
+         * boxes still fit inside the real canvas width without
+         * overflowing/clipping. */
         elems[PCHQ_ACT_CLOSE].x = win_w - PCHQ_CLOSE_W - 6; elems[PCHQ_ACT_CLOSE].y = 0;
         elems[PCHQ_ACT_CLOSE].w = PCHQ_CLOSE_W; elems[PCHQ_ACT_CLOSE].h = CHROME_H;
+        elems[PCHQ_ACT_FULLSCREEN].x = elems[PCHQ_ACT_CLOSE].x - PCHQ_FULLSCREEN_W - 4; elems[PCHQ_ACT_FULLSCREEN].y = 0;
+        elems[PCHQ_ACT_FULLSCREEN].w = PCHQ_FULLSCREEN_W; elems[PCHQ_ACT_FULLSCREEN].h = CHROME_H;
         elems[PCHQ_ACT_INTERACT].x = 6; elems[PCHQ_ACT_INTERACT].y = CHROME_H + 2;
-        elems[PCHQ_ACT_INTERACT].w = 110; elems[PCHQ_ACT_INTERACT].h = PCHQ_TOOLBAR_H - 4;
-        elems[PCHQ_ACT_FILE].x = elems[PCHQ_ACT_INTERACT].x + elems[PCHQ_ACT_INTERACT].w + 6; elems[PCHQ_ACT_FILE].y = CHROME_H + 2;
-        elems[PCHQ_ACT_FILE].w = 90; elems[PCHQ_ACT_FILE].h = PCHQ_TOOLBAR_H - 4;
-        elems[PCHQ_ACT_DESK].x = elems[PCHQ_ACT_FILE].x + elems[PCHQ_ACT_FILE].w + 6; elems[PCHQ_ACT_DESK].y = CHROME_H + 2;
-        elems[PCHQ_ACT_DESK].w = 90; elems[PCHQ_ACT_DESK].h = PCHQ_TOOLBAR_H - 4;
-        elems[PCHQ_ACT_MENU].x = elems[PCHQ_ACT_DESK].x + elems[PCHQ_ACT_DESK].w + 6; elems[PCHQ_ACT_MENU].y = CHROME_H + 2;
-        elems[PCHQ_ACT_MENU].w = 90; elems[PCHQ_ACT_MENU].h = PCHQ_TOOLBAR_H - 4;
+        elems[PCHQ_ACT_INTERACT].w = 95; elems[PCHQ_ACT_INTERACT].h = PCHQ_TOOLBAR_H - 4;
+        elems[PCHQ_ACT_FILE].x = elems[PCHQ_ACT_INTERACT].x + elems[PCHQ_ACT_INTERACT].w + 5; elems[PCHQ_ACT_FILE].y = CHROME_H + 2;
+        elems[PCHQ_ACT_FILE].w = 78; elems[PCHQ_ACT_FILE].h = PCHQ_TOOLBAR_H - 4;
+        elems[PCHQ_ACT_DESK].x = elems[PCHQ_ACT_FILE].x + elems[PCHQ_ACT_FILE].w + 5; elems[PCHQ_ACT_DESK].y = CHROME_H + 2;
+        elems[PCHQ_ACT_DESK].w = 78; elems[PCHQ_ACT_DESK].h = PCHQ_TOOLBAR_H - 4;
+        elems[PCHQ_ACT_MENU].x = elems[PCHQ_ACT_DESK].x + elems[PCHQ_ACT_DESK].w + 5; elems[PCHQ_ACT_MENU].y = CHROME_H + 2;
+        elems[PCHQ_ACT_MENU].w = 82; elems[PCHQ_ACT_MENU].h = PCHQ_TOOLBAR_H - 4;
+        elems[PCHQ_ACT_PLAYER].x = elems[PCHQ_ACT_MENU].x + elems[PCHQ_ACT_MENU].w + 5; elems[PCHQ_ACT_PLAYER].y = CHROME_H + 2;
+        elems[PCHQ_ACT_PLAYER].w = 92; elems[PCHQ_ACT_PLAYER].h = PCHQ_TOOLBAR_H - 4;
+        elems[PCHQ_ACT_CLOCK].x = elems[PCHQ_ACT_PLAYER].x + elems[PCHQ_ACT_PLAYER].w + 5; elems[PCHQ_ACT_CLOCK].y = CHROME_H + 2;
+        elems[PCHQ_ACT_CLOCK].w = 84; elems[PCHQ_ACT_CLOCK].h = PCHQ_TOOLBAR_H - 4;
 
         for (int i = 0; i < PCHQ_N_ELEMS; i++) {
             int focused = (i == pchq_focus);
@@ -10470,6 +10561,25 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                     char close_label[16];
                     snprintf(close_label, sizeof(close_label), "%s%d. X", focused ? "[>]" : "[ ]", PCHQ_ACT_CLOSE + 1);
                     XftDrawStringUtf8(xftdraw, &col_title, ui_font, elems[i].x + 4, 18, (const FcChar8 *)close_label, (int)strlen(close_label));
+                }
+                continue;
+            }
+            if (i == PCHQ_ACT_FULLSCREEN) {
+                /* Same real chrome-strip-icon treatment as Close - a
+                 * short glyph, not a normal toolbar box, matching
+                 * direct instruction ("'!' for fullscreen next to
+                 * 'x'"). */
+                XSetForeground(dpy, gc, pix_chrome);
+                XFillRectangle(dpy, buf, gc, elems[i].x, elems[i].y, (unsigned)elems[i].w, (unsigned)elems[i].h);
+                if (focused) {
+                    XSetForeground(dpy, gc, pix_focus_border);
+                    XDrawRectangle(dpy, buf, gc, elems[i].x, elems[i].y, (unsigned)elems[i].w - 1, (unsigned)elems[i].h - 1);
+                }
+                if (ui_font) {
+                    char fs_label[16];
+                    snprintf(fs_label, sizeof(fs_label), "%s%d.!", focused ? "[>]" : "[ ]", PCHQ_ACT_FULLSCREEN + 1);
+                    XftDrawStringUtf8(xftdraw, pchq_is_fullscreen ? &col_focus : &col_title, ui_font,
+                                       elems[i].x + 4, 18, (const FcChar8 *)fs_label, (int)strlen(fs_label));
                 }
                 continue;
             }
@@ -10511,6 +10621,14 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                      * (pchq_interact_on, already resolved once this
                      * frame above). */
                     snprintf(label, sizeof(label), "%s In: %s", badge, pchq_interact_on ? "ON" : "off");
+                } else if (i == PCHQ_ACT_CLOCK) {
+                    /* Real, live current time - cheap, deterministic,
+                     * no reason to leave it a stub like Menu/Player. */
+                    time_t now = time(NULL);
+                    struct tm *tmv = localtime(&now);
+                    char tbuf[16];
+                    if (tmv) strftime(tbuf, sizeof(tbuf), "%H:%M", tmv); else snprintf(tbuf, sizeof(tbuf), "--:--");
+                    snprintf(label, sizeof(label), "%s %s", badge, tbuf);
                 } else {
                     snprintf(label, sizeof(label), "%s %s", badge, elems[i].label);
                 }
@@ -10580,6 +10698,15 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                         } else if (pchq_focus == PCHQ_ACT_MENU) {
                             /* Real stub - Menu has no dispatch yet (see
                              * its own declaration comment above). */
+                        } else if (pchq_focus == PCHQ_ACT_PLAYER) {
+                            /* Real stub - hero HP/position readback is
+                             * a separate, later pass. */
+                        } else if (pchq_focus == PCHQ_ACT_CLOCK) {
+                            /* Clock is a real, live, read-only display -
+                             * nothing to activate. */
+                        } else if (pchq_focus == PCHQ_ACT_FULLSCREEN) {
+                            pchq_toggle_fullscreen(dpy, win);
+                            pchq_is_fullscreen = !pchq_is_fullscreen;
                         } else if (pchq_focus == PCHQ_ACT_INTERACT) {
                             /* REAL BUG FOUND + FIXED LIVE (2026-08-30) -
                              * a synthetic click via last_click_x/y does
@@ -10649,6 +10776,14 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                             pchq_append_key(bv_history1, bv_history2, '6');
                         } else if (hit == PCHQ_ACT_MENU) {
                             /* Real stub - see declaration comment above. */
+                        } else if (hit == PCHQ_ACT_PLAYER) {
+                            /* Real stub - see declaration comment above. */
+                        } else if (hit == PCHQ_ACT_CLOCK) {
+                            /* Real, live, read-only display - nothing to
+                             * activate. */
+                        } else if (hit == PCHQ_ACT_FULLSCREEN) {
+                            pchq_toggle_fullscreen(dpy, win);
+                            pchq_is_fullscreen = !pchq_is_fullscreen;
                         } else if (hit == PCHQ_ACT_INTERACT) {
                             /* Same real fix as the keyboard path above -
                              * a plain Enter keypress through the relay,

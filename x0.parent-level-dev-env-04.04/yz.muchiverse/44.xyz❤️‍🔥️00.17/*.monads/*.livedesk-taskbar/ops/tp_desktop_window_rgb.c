@@ -191,6 +191,29 @@ static int g_menu_stay_open = 1;
  * itself, 1f8abc73). Same real default (1 = two-step ON) and same
  * real load-from-PDL shape used everywhere else this setting is read. */
 static int g_click_two_step = 1;
+/* REAL, NEW 2026-08-30, direct instruction ("it only needs to happen
+ * on status change... what in house architecture can be used to
+ * support this") - same real cheap-marker convention this house
+ * already uses everywhere (frame_changed.txt et al) - a single
+ * stat() per already-running tick against
+ * #.desktop/livedesk_theme_changed.txt (written by
+ * write_theme_opacity() in khtpm_entity_menu_render.c), real work
+ * (reload+reapply opacity to this entity's own window) only runs on
+ * an actual change. */
+static long g_theme_changed_cursor = 0;
+static int theme_changed_dirty(const char *house_root) {
+    char path[4352];
+    snprintf(path, sizeof(path), "%s/#.desktop/livedesk_theme_changed.txt", house_root);
+    struct stat st;
+    if (stat(path, &st) != 0) return 0;
+    /* REAL BUG FIX 2026-08-30 - same fix as khtpm_strip_parser.c's own
+     * theme_changed_dirty() - cursor starts at 0, not -1, so the
+     * marker's first-ever real append (this file usually doesn't
+     * exist yet at process startup) counts as a real change. */
+    if (st.st_size != g_theme_changed_cursor) { g_theme_changed_cursor = st.st_size; return 1; }
+    return 0;
+}
+
 static void desktop_load_click_two_step(const char *house_root) {
     char path[4352]; /* matches this file's own later PATH_BUF (not yet declared at this point) */
     snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
@@ -2381,6 +2404,12 @@ int main(int argc, char **argv) {
 #ifdef _WIN32
         if (last_frame.tv_sec == 0) need_redraw = 1;
 #endif
+
+        /* Real, cheap, event-driven opacity reapply - see
+         * theme_changed_dirty()'s own declaration comment. */
+        if (theme_changed_dirty(g_house_root)) {
+            set_window_opacity(dpy, win, load_theme_opacity(g_house_root));
+        }
 
         /* REAL, 2026-08-05: poll interact_relay.txt for an injected
          * command - the "AI-injection power" half of this window's own
