@@ -357,9 +357,12 @@ out of scope for this pass).
 
 ## 8. Real next steps (still no code until this section itself is acted on)
 
-1. Create `default-legacy` (copy chunk_0_0 + world_01 verbatim) and
-   `default-pdl` (author the real §6 BOARD-row + directory equivalent)
-   under piececraft-hq's own tree.
+1. ✅ DONE (2026-08-30) - Created `@.apps/piececraft-hq/defaults/
+   default-legacy/` (verbatim copy of `chunk_0_0` + `world_01`, parity
+   confirmed via real `diff -rq`, zero differences) and `defaults/
+   default-pdl/` (`default.pdl` - a real `BOARD` manifest row - pointing
+   at `desks/boards/default/`, holding the same real chunk/entity
+   files relocated per §6's convention). See `defaults/README.md`.
 2. Add real "File" and "Desk" nav rows to `board_viewer.chtpm`'s own
    layout/pal script, each opening a real picker listing what §7.3's
    fixtures (and any future saves) provide.

@@ -1,0 +1,4 @@
+tree_small,4,4,17
+tree_small,12,4,17
+tree_small,3,12,17
+tree_small,11,12,17
