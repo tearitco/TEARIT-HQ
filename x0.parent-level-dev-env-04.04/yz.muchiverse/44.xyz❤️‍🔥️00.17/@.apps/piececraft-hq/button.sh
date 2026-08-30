@@ -65,6 +65,12 @@ kill_own_clock_daemon() {
     rm -f "$SCRIPT_DIR/pieces/system/pc_clock_daemon.pid" 2>/dev/null || true
 }
 
+kill_own_hq_status_manager() {
+    # Real, NEW 2026-08-30 - clean up the piececraft-hq status manager
+    # daemon (same two-layer pattern as clock_daemon above).
+    pkill -f "ops/\+x/pc_hq_status_manager\.\+x" 2>/dev/null || true
+}
+
 case "$ACTION" in
     compile|c|build)
         bash "$SCRIPT_DIR/scripts/build.sh"
@@ -80,6 +86,7 @@ case "$ACTION" in
         # just on quit.
         kill_own_board_widget
         kill_own_clock_daemon
+        kill_own_hq_status_manager
         SESSION_ID="$(date +%s)-$$"
         SESSION_DIR="$SCRIPT_DIR/pieces/sessions/$SESSION_ID"
         mkdir -p "$SESSION_DIR/pieces/system" "$SESSION_DIR/pieces/display" \
@@ -293,6 +300,18 @@ EOSTATE
             fi
         fi
 
+        # REAL, NEW 2026-08-30 - launch piececraft-hq status manager to
+        # poll game state and publish live info for the khtpm info window.
+        # Real, single-instance daemon (no dedup like board-viewer, since
+        # this lives only in the session and dies with it). Manager reads
+        # SESSION_DIR's real state files and publishes to a simple state
+        # file - no window positioning yet (v1 phase).
+        HQ_MGR="$SESSION_DIR/ops/+x/pc_hq_status_manager.+x"
+        if [ -x "$HQ_MGR" ] && [ "$REAL_GAME_STATE" = "playing" ]; then
+            "$HQ_MGR" "$SESSION_DIR" "$SESSION_DIR" >/dev/null 2>&1 &
+            HQ_MGR_PID=$!
+        fi
+
         kill_own_module() {
             local pid cwd
             for pid in $(pgrep -f "system/prisc\+x" 2>/dev/null); do
@@ -311,7 +330,7 @@ EOSTATE
             cp -p "$SESSION_DIR/pieces/system/entities.txt" "$SCRIPT_DIR/pieces/system/entities.txt" 2>/dev/null
         }
 
-        trap 'kill "$ORCH_PID" "$GL_PID" "$RGB_PID" 2>/dev/null; wait "$ORCH_PID" 2>/dev/null; kill_own_module; kill_own_board_widget; kill_own_clock_daemon; persist_session_state; rm -rf "$SESSION_DIR"' EXIT INT TERM
+        trap 'kill "$ORCH_PID" "$GL_PID" "$RGB_PID" "$HQ_MGR_PID" 2>/dev/null; wait "$ORCH_PID" 2>/dev/null; kill_own_module; kill_own_board_widget; kill_own_clock_daemon; kill_own_hq_status_manager; persist_session_state; rm -rf "$SESSION_DIR"' EXIT INT TERM
 
         ./system/keyboard_input
 
@@ -340,6 +359,7 @@ EOSTATE
         pkill -f "$SCRIPT_DIR_RE/system/orchestrator" 2>/dev/null
         kill_own_board_widget
         kill_own_clock_daemon
+        kill_own_hq_status_manager
         echo "done"
         ;;
     check|verify)
