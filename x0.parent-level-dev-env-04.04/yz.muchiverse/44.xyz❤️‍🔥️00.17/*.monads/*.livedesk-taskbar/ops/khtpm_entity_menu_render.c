@@ -10115,6 +10115,15 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
 
     Display *dpy = XOpenDisplay(NULL);
     if (!dpy) { fprintf(stderr, "run_pchq_board_mode: cannot open display\n"); return 1; }
+    /* REAL FIX 2026-08-30 - this mode returns before main()'s own
+     * XSetErrorHandler(evhq_nonfatal_x_error) call (line ~10655), so an
+     * XSetInputFocus() landing before the WM has finished reparenting/
+     * mapping this now-WM-managed window (see the override_redirect
+     * removal above) throws an uncaught BadMatch and crashes the whole
+     * process (confirmed live - "X Error of failed request: BadMatch
+     * ... Major opcode ... X_SetInputFocus"). Same real non-fatal
+     * handler already used elsewhere in this file. */
+    XSetErrorHandler(evhq_nonfatal_x_error);
     int screen = DefaultScreen(dpy);
     Visual *visual = DefaultVisual(dpy, screen);
     int depth = DefaultDepth(dpy, screen);
@@ -10126,13 +10135,37 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
     int dragging = 0, drag_last_x = 0, drag_last_y = 0;
     int win_w = frame_w, win_h = frame_h + CHROME_H;
 
-    XSetWindowAttributes swa;
-    swa.override_redirect = True;
-    swa.background_pixel = pchq_alloc_pixel(dpy, cmap, "#1c1c1c");
-    swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask;
-    Window win = XCreateWindow(dpy, RootWindow(dpy, screen), win_x, win_y, (unsigned)win_w, (unsigned)win_h, 0,
-                                depth, InputOutput, visual, CWBackPixel | CWOverrideRedirect | CWEventMask, &swa);
+    /* REAL FIX 2026-08-30, direct live report ("its not geting mouse /
+     * kbd input") - this window was override_redirect=True. That is the
+     * real bug: x11_mirror.c (the file this whole function claims
+     * "absolute parity" with) deliberately keeps override_redirect OFF
+     * for exactly this reason (see its own header comment) - Mutter's
+     * real XWayland focus routing only ever gives real keyboard focus to
+     * WM-MANAGED windows. XSetInputFocus/XGetInputFocus report success
+     * at the raw X11-protocol level even on an override_redirect window
+     * (which is why synthetic XTest-based testing looked like it worked)
+     * but Mutter never actually routes real hardware key/click events to
+     * an unmanaged surface. Fixed the same real way x11_mirror.c does:
+     * normal WM-managed window, decorations stripped via
+     * _MOTIF_WM_HINTS instead of override_redirect. */
+    Window win = XCreateSimpleWindow(dpy, RootWindow(dpy, screen), win_x, win_y,
+                                      (unsigned)win_w, (unsigned)win_h, 0,
+                                      BlackPixel(dpy, screen), pchq_alloc_pixel(dpy, cmap, "#1c1c1c"));
+    {
+        Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+        long hints[5] = { 2, 0, 0, 0, 0 }; /* flags=MWM_HINTS_DECORATIONS, decorations=0 */
+        XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
+    }
     XStoreName(dpy, win, "Piececraft-HQ Board (khtpm)");
+    Atom pchq_wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+    XSetWMProtocols(dpy, win, &pchq_wm_delete, 1);
+    XSelectInput(dpy, win, ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask);
+    /* PPosition - without this most WMs ignore the requested x/y (same
+     * real fix x11_mirror.c needs for the same reason). */
+    {
+        XSizeHints *shints = XAllocSizeHints();
+        if (shints) { shints->flags = PPosition; shints->x = win_x; shints->y = win_y; XSetWMNormalHints(dpy, win, shints); XFree(shints); }
+    }
     XMapRaised(dpy, win);
     GC gc = XCreateGC(dpy, win, 0, NULL);
     for (int attempt = 0; attempt < 5; attempt++) {
