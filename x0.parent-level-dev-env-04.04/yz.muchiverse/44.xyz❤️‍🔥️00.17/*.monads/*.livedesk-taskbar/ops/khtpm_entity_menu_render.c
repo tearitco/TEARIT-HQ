@@ -10010,6 +10010,52 @@ static int pchq_find_board_session(const char *house_root, const char *host_proj
     return found;
 }
 
+/* REAL FIX 2026-08-30, direct live report ("i opened. killed from
+ * close. and tried 2 open again. its not opening (pc-hq)") - the
+ * pchq-board Close Elem only ever did `running = 0`, tearing down
+ * THIS window's own X11 resources - it never touched the real,
+ * underlying piececraft-hq session (its orchestrator, board-viewer
+ * widget, everything button.sh's own `run` spawned). That whole real
+ * game session kept running silently in the background - the next
+ * taskbar click's own `run` invocation would find and kill that
+ * lingering orchestrator via kill_own_orchestrator() (real, correct
+ * cleanup, confirmed by direct code read), then start a genuinely NEW
+ * session/orchestrator/board-viewer/chrome - so a real fresh window
+ * SHOULD still have appeared... but "Close" leaving the OLD, real
+ * game session alive for however long the user waits between close
+ * and reopen is still real, wrong behavior (matches how every other
+ * hq window's own Close - db-hq/chat-hai/events-hq - actually ends
+ * the thing it's a chrome for, not just its own drawing surface).
+ * Real fix: before tearing down this window, write the SAME real
+ * pieces/system/quit_flag.txt orchestrator.c already polls for on
+ * every tick (confirmed via direct read: "Exits when
+ * pieces/system/quit_flag.txt becomes non-empty") - the exact same
+ * signal Ctrl+C's own real quit path uses (keyboard_input.c's
+ * write_quit_flag()) - so Close now triggers the REAL, full,
+ * clean button.sh EXIT trap (kill_own_module, kill_own_board_widget,
+ * persist_session_state, rm -rf SESSION_DIR) instead of just hiding
+ * this one window over a still-live session. */
+static void pchq_quit_host_session(const char *house_root, const char *host_project_id) {
+    char sessions_dir[PATH_BUF];
+    snprintf(sessions_dir, sizeof(sessions_dir), "%s/@.apps/%s/pieces/sessions", house_root, host_project_id);
+    DIR *d = opendir(sessions_dir);
+    if (!d) return;
+    char latest[256] = "";
+    long latest_ts = -1;
+    struct dirent *ent;
+    while ((ent = readdir(d)) != NULL) {
+        if (ent->d_name[0] == '.') continue;
+        long ts = atol(ent->d_name);
+        if (ts > latest_ts) { latest_ts = ts; snprintf(latest, sizeof(latest), "%s", ent->d_name); }
+    }
+    closedir(d);
+    if (!latest[0]) return;
+    char quit_path[PATH_BUF];
+    snprintf(quit_path, sizeof(quit_path), "%s/%s/pieces/system/quit_flag.txt", sessions_dir, latest);
+    FILE *f = fopen(quit_path, "w");
+    if (f) { fprintf(f, "1\n"); fclose(f); }
+}
+
 /* REAL, NEW 2026-08-30, direct live report ("there are 2 renders on
  * screen") - confirmed via real xwininfo output: this mode's own
  * window and the legacy x11_mirror.+x-based board-viewer widget window
@@ -10560,6 +10606,7 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                              * jump needed first. */
                             pchq_append_key(bv_history1, bv_history2, 13);
                         } else if (pchq_focus == PCHQ_ACT_CLOSE) {
+                            pchq_quit_host_session(house_root, host_project_id);
                             running = 0;
                         }
                     }
@@ -10634,6 +10681,11 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                     drag_last_y = ev.xmotion.y_root;
                 }
             } else if (ev.type == ClientMessage && (Atom)ev.xclient.data.l[0] == pchq_wm_delete) {
+                /* Real window-manager [X]/Alt+F4 close - same real quit
+                 * signal as the in-toolbar Close Elem, so a WM-level
+                 * close doesn't leave the underlying game session
+                 * silently alive either. */
+                pchq_quit_host_session(house_root, host_project_id);
                 running = 0;
             }
         }
