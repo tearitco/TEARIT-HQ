@@ -855,8 +855,20 @@ int main(int argc, char **argv) {
      * debug prints), not guessed. Real, confirmed-free codes instead:
      * '5'/'6'/'7' - checked the FULL real key list this file uses
      * (0,1-4,8,9,z,x,f,q,e,r,t,w,s,a,d,c,v), genuinely nothing else
-     * claims 5/6/7. board_viewer.chtpm's own onClick values must match
-     * (KEY:5/KEY:6/KEY:7, not KEY:2/KEY:3/KEY:4). */
+     * claims 5/6. board_viewer.chtpm's own onClick values must match
+     * (KEY:5/KEY:6).
+     *
+     * REAL ARCHITECTURE CORRECTION (2026-08-30, direct instruction:
+     * "isn't it only that actual 2d/3d screen needs to be blitted?
+     * everything else can be just a typical hq window") - File/Desk
+     * still dispatch through this same real relay (khtpm's own File/
+     * Desk Elems call pchq_append_key() directly on click/Enter now,
+     * instead of a board_viewer.chtpm button existing for the legacy
+     * engine's own click-hit-testing to find - same end result here,
+     * unchanged). Close moved OUT of this file entirely - it's now a
+     * pure local khtpm action (no cross-process relay needed at all,
+     * since closing the khtpm chrome window is 100% local to that
+     * process) - the real flag-file mechanism this used is gone. */
     if (focused_project_root[0] && key == '5') {
         send_action_to_host(focused_project_root, "FILE_MENU");
         bump_screen_changed(project_root);
@@ -864,26 +876,6 @@ int main(int argc, char **argv) {
     }
     if (focused_project_root[0] && key == '6') {
         send_action_to_host(focused_project_root, "DESK_MENU");
-        bump_screen_changed(project_root);
-        return 0;
-    }
-    if (key == '7') {
-        /* Real numbered Close button, same file/toolbar row as File/
-         * Desk (board_viewer.chtpm's own comment has the full
-         * writeup) - inherits real arrow-nav/Enter/focus-highlight/
-         * digit-jump for free from the SAME mechanism File/Desk/
-         * Interact Mode use. This engine has no concept of a separate
-         * outer khtpm chrome window that may be displaying it, so it
-         * can't close one directly - writes a real flag file in THIS
-         * board-viewer session (not the host's inbox - no host-side
-         * action needed) that run_pchq_board_mode()'s own poll loop
-         * checks every tick. Ungated by focused_project_root (unlike
-         * FILE_MENU/DESK_MENU) since this is board-viewer's own real
-         * session state, not a cross-project action. */
-        char close_flag[PATH_BUF];
-        snprintf(close_flag, sizeof(close_flag), "%s/pieces/system/pchq_close_request.txt", project_root);
-        FILE *cf = fopen(close_flag, "w");
-        if (cf) { fprintf(cf, "1\n"); fclose(cf); }
         bump_screen_changed(project_root);
         return 0;
     }
