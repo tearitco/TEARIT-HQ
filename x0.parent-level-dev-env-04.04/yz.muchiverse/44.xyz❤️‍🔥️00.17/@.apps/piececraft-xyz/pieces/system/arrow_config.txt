@@ -18,6 +18,19 @@
 # render_mode = has a Z-manifest ?, camera_mode = 2 (third-person).
 default_render_mode=1
 default_camera_mode=2
+# default_interact_mode: NOT YET REAL - investigated 2026-08-30, direct
+#   question ("is there also a way we can default to interact mode on as
+#   well?"). Interact mode's real ON/OFF state is owned entirely by the
+#   SHARED chtpm_parser_pal.c engine core (export_active_index(),
+#   chtpm_parser_pal.c:2719 - used by all 16 legacy-GL projects, see
+#   legacy-shared-fix.md), not by board-viewer's own config the way
+#   default_render_mode/default_camera_mode above are - a pre-seed
+#   attempt in button.sh got silently overwritten by the engine's own
+#   first real export, confirmed live. This key is NOT read by anything
+#   right now - left here as a placeholder for when the real engine-
+#   level fix (or a synthetic first-click injection) actually lands, not
+#   a working option today. Don't set it expecting an effect.
+#default_interact_mode=1
 #
 # --- Arrow-key direction mapping ---
 # If LEFT/RIGHT (or UP/DOWN) ever feel backwards on screen, just flip

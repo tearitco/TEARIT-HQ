@@ -72,6 +72,23 @@ run_widget_session() {
     : > pieces/display/bv_screen_changed.txt
     : > pieces/display/frame_changed.txt
     : > pieces/display/renderer_pulse.txt
+    # REAL, NEW 2026-08-30, direct question ("is there also a way we can
+    # default to interact mode on as well?") - INVESTIGATED, NOT A REAL
+    # FIX HERE. active_gui_is_typing.txt (bv_compose_frame.c's own
+    # "Interact mode: ON/OFF" line reads it as nav_mode, ~line 542) is
+    # NOT board-viewer's own state - it's chtpm_parser_pal.c's (the
+    # shared engine core) own export_active_index() output
+    # (chtpm_parser_pal.c:2719), re-written on every real mode
+    # transition based on the engine's own internal active_index. A
+    # pre-seed here gets silently overwritten the instant the engine's
+    # own first real export runs, since nothing has clicked the real
+    # <button onClick="INTERACT"> yet (confirmed live: seeding "1" here
+    # read back as "0" moments later). A real fix needs either a change
+    # inside the shared engine itself (chtpm_parser_pal.c, used by all
+    # 16 legacy-GL projects, not board-viewer-specific - see legacy-
+    # shared-fix.md) to seed active_index at startup, or a real
+    # synthetic first INTERACT click injected right after launch - both
+    # real, scoped follow-up work, not done here.
     echo "$HOUSE_DIR" > pieces/system/house_root.txt
     # REAL, NEW 2026-08-29 (gl_mirror.c -> x11_mirror.c conversion,
     # legacy-shared-fix.md's own real gap - board-viewer was never
