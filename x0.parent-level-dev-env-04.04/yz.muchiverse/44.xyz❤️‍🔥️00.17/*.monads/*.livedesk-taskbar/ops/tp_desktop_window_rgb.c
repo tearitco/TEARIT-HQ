@@ -26,6 +26,7 @@
 #ifndef _WIN32
 #define _DEFAULT_SOURCE
 #include <X11/Xlib.h>
+#include <X11/Xatom.h>
 #include <X11/keysym.h>
 #include <X11/extensions/shape.h>
 #else
@@ -1610,6 +1611,59 @@ static int g_popup_lock_fd = -1;
 static int g_popup_lock_depth = 0;
 static char g_house_root_for_lock[PATH_BUF] = "";
 
+/* REAL, NEW 2026-08-29, direct instruction ("the tb has a
+ * transparency. but that should propagate to 'all entities'... so
+ * player can still see thru their desktop a bit") - real, working
+ * opacity already exists (khtpm_strip_parser.c's set_window_opacity()/
+ * load_theme_opacity(), real _NET_WM_WINDOW_OPACITY + #.desktop/
+ * livedesk_theme.pdl "COLOR|opacity|N") but every desktop entity
+ * window (every pal/tile - what this file spawns) rendered at full
+ * opacity, same real gap khtpm_entity_menu_render.c had for its own
+ * windows. Ported the same way (adapted to THIS file's own PATH_BUF
+ * convention; house_root is a local in main() here, not a global, so
+ * it's a real parameter instead). */
+static void set_window_opacity(Display *d, Window w, double opacity) {
+    if (opacity < 0.0) opacity = 0.0;
+    if (opacity > 1.0) opacity = 1.0;
+    Atom opacity_atom = XInternAtom(d, "_NET_WM_WINDOW_OPACITY", False);
+    unsigned long val = (unsigned long)(opacity * (double)0xFFFFFFFFUL);
+    XChangeProperty(d, w, opacity_atom, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&val, 1);
+}
+
+static double load_theme_opacity(const char *house_root) {
+    double opacity = 0.5;
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/livedesk_theme.pdl", house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return opacity;
+    char line[PATH_BUF];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "COLOR", 5) != 0) continue;
+        char *p = strchr(line, '|');
+        if (!p) continue;
+        p++;
+        while (*p == ' ') p++;
+        char *end = strchr(p, '|');
+        if (!end) continue;
+        char *key_end = end;
+        while (key_end > p && key_end[-1] == ' ') key_end--;
+        char key[16];
+        size_t klen = (size_t)(key_end - p);
+        if (klen == 0 || klen >= sizeof(key)) continue;
+        memcpy(key, p, klen);
+        key[klen] = '\0';
+        if (strcmp(key, "opacity") != 0) continue;
+        char *v = end + 1;
+        while (*v == ' ') v++;
+        v[strcspn(v, "\r\n")] = '\0';
+        if (v[0] == '\0') continue;
+        double parsed = atof(v);
+        if (parsed >= 0.0 && parsed <= 1.0) opacity = parsed;
+    }
+    fclose(f);
+    return opacity;
+}
+
 /* REAL FIX/REVERT 2026-08-06, direct report ("not clicking buttons with
  * the mouse will run the button... serious focus issues that doing
  * khtpm introduced"): flock(LOCK_EX) BLOCKS THE ENTIRE PROCESS - this
@@ -2075,6 +2129,24 @@ int main(int argc, char **argv) {
                                 0, depth, InputOutput, vis,
                                 CWColormap | CWEventMask | CWOverrideRedirect, &swa);
     XMapWindow(dpy, win);
+    set_window_opacity(dpy, win, load_theme_opacity(g_house_root));
+    /* REAL FIX 2026-08-29, direct live report ("entities and tb dropdown
+     * cell tabs aren't opaque yet" - i.e. still full opacity) - ported
+     * from khtpm_strip_parser.c's own real "KISS opacity-on-reset fix"
+     * (2026-08-11, opacity-bug-aug9.txt): Mutter/XWayland does not
+     * reliably honor _NET_WM_WINDOW_OPACITY set at map-time, before the
+     * window has been visible/painted for at least one real frame -
+     * has to be re-applied after a short real delay. This was the
+     * actual root cause for db-hq/events-hq/chat-hai/popup too (see
+     * OPACITY-PIPELINE-INVESTIGATION-2026-08-29-part3.txt), just never
+     * ported to this file, the ONE remaining opacity gap after that
+     * fix landed. */
+    {
+        XFlush(dpy);
+        usleep(200000);
+        set_window_opacity(dpy, win, load_theme_opacity(g_house_root));
+        XFlush(dpy);
+    }
 
     /* RGB compose buffer - all real drawing (background, glyph/sprite)
      * happens into this offscreen Pixmap, presented each frame via

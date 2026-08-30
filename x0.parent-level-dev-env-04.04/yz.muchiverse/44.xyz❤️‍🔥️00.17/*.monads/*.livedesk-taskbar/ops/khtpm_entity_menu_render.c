@@ -82,6 +82,62 @@ static Elem g_pool[MAX_ELEMS];
 static int g_n_elems = 0;
 static char g_package_dir[PATH_BUF];
 static char g_house_root[PATH_BUF];
+
+/* REAL, NEW 2026-08-29, direct instruction ("the tb has a
+ * transparency. but that should propagate to 'all entities' and menu
+ * screens (including tb dropdowns... context/hq etc) so player can
+ * still see thru their desktop a bit") - real, working opacity
+ * ALREADY exists (khtpm_strip_parser.c's own set_window_opacity()/
+ * load_theme_opacity(), the taskbar's own real _NET_WM_WINDOW_OPACITY
+ * + #.desktop/livedesk_theme.pdl "COLOR|opacity|N" convention) but was
+ * never ported into THIS file - the merged renderer that now handles
+ * db-hq/events-hq/chat-hai/popups/context-menus, i.e. everything the
+ * user is describing as "full opacity" today. Ported verbatim (same
+ * real logic, adapted to this file's own PATH_BUF/snprintf convention
+ * instead of khtpm_strip_parser.c's path_join2/SP_PATH_BUF) rather
+ * than sharing code across files for two small, pure functions with
+ * no other dependencies. */
+static void set_window_opacity(Display *d, Window w, double opacity) {
+    if (opacity < 0.0) opacity = 0.0;
+    if (opacity > 1.0) opacity = 1.0;
+    Atom opacity_atom = XInternAtom(d, "_NET_WM_WINDOW_OPACITY", False);
+    unsigned long val = (unsigned long)(opacity * (double)0xFFFFFFFFUL);
+    XChangeProperty(d, w, opacity_atom, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&val, 1);
+}
+
+static double load_theme_opacity(void) {
+    double opacity = 0.5;
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/livedesk_theme.pdl", g_house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return opacity;
+    char line[PATH_BUF];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "COLOR", 5) != 0) continue;
+        char *p = strchr(line, '|');
+        if (!p) continue;
+        p++;
+        while (*p == ' ') p++;
+        char *end = strchr(p, '|');
+        if (!end) continue;
+        char *key_end = end;
+        while (key_end > p && key_end[-1] == ' ') key_end--;
+        char key[16];
+        size_t klen = (size_t)(key_end - p);
+        if (klen == 0 || klen >= sizeof(key)) continue;
+        memcpy(key, p, klen);
+        key[klen] = '\0';
+        if (strcmp(key, "opacity") != 0) continue;
+        char *v = end + 1;
+        while (*v == ' ') v++;
+        v[strcspn(v, "\r\n")] = '\0';
+        if (v[0] == '\0') continue;
+        double parsed = atof(v);
+        if (parsed >= 0.0 && parsed <= 1.0) opacity = parsed;
+    }
+    fclose(f);
+    return opacity;
+}
 /* REAL, db-hq mode only (§5d.10) - module launch, ported VERBATIM from
  * khtpm_hq_render.c (real fork()+execl(), already TPMOS-compliant - see
  * that file's own header comment, "explain to me your plan and why its
@@ -1310,6 +1366,22 @@ static void dbhq_inject_palette_tiles(Elem *panel) {
             snprintf(tile->onclick, sizeof(tile->onclick),
                      "exec:'%s/&.widgits/palettes/palettes_menu.sh' arm-rmmv '%s' '%s' '%s' '%s'",
                      g_house_root, g_pal_sprite[i], g_pal_active_tileset, g_pal_active_category, g_pal_label[i]);
+        } else if (strcmp(g_pal_category, "debug") == 0) {
+            /* REAL, NEW 2026-08-29 - debug_hq's own rows (publish_
+             * debug() in palettes_manager.c) carry a real action string
+             * in g_pal_emoji[i]: "toggle:<idx>", "clear", or "noop" for
+             * plain debug.txt content-display rows. "noop" gets no
+             * onclick at all - a real read-only row, not a dead button. */
+            if (strncmp(g_pal_emoji[i], "toggle:", 7) == 0) {
+                snprintf(tile->onclick, sizeof(tile->onclick),
+                         "exec:'%s/&.widgits/palettes/palettes_menu.sh' debug-toggle '%s'",
+                         g_house_root, g_pal_emoji[i] + 7);
+            } else if (strcmp(g_pal_emoji[i], "clear") == 0) {
+                snprintf(tile->onclick, sizeof(tile->onclick),
+                         "exec:'%s/&.widgits/palettes/palettes_menu.sh' debug-clear", g_house_root);
+            } else {
+                tile->onclick[0] = '\0';
+            }
         } else {
             snprintf(tile->onclick, sizeof(tile->onclick), "exec:'%s/&.widgits/palettes/palettes_menu.sh' place '%s'", g_house_root, g_pal_emoji[i]);
         }
@@ -2813,6 +2885,21 @@ static void dbhq_redraw_content(void) {
     }
     dbhq_draw_chrome_bar();
     dbhq_append_frame_history();
+    /* REAL BUG FIX 2026-08-29, direct live report ("it detects your
+     * clicks, but only updates when i reclick the window! just need
+     * the window to update from when new entry to debug is read, not
+     * wait for my click") - this whole function only ever drew into
+     * the offscreen buffer (buf), never presented it to the real
+     * window (win) - it relied on some OTHER later redraw path (one
+     * triggered by the next real click) to actually push the buffer
+     * to screen. That's exactly the observed symptom: content was
+     * always correctly composed (a screenshot tool reading the buffer
+     * directly showed it), but nothing reached the screen until an
+     * unrelated event forced a real present. Every other real redraw
+     * path in this file (search XCopyArea) already does this - this
+     * one just never did. */
+    XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)g_window->w, (unsigned)g_window->h, 0, 0);
+    XFlush(dpy);
 }
 
 /* REAL, ported verbatim 2026-08-25 (Stage 3 bookmarks port) from
@@ -9257,6 +9344,102 @@ static void popup_handle_click(int px, int py) {
     }
 }
 
+/* REAL, NEW 2026-08-29, direct instruction ("they should be separate
+ * functions when possible and not affect other functionality") -
+ * pulled out of hq_dispatch_xevent's own ButtonPress handling so the
+ * SAME real logic (bounds-check against the picker's own window vs.
+ * real desktop, ledger write, place-op invocation) can be called from
+ * two real callers: the event-based path (still works for synthetic/
+ * XTest clicks) and dbhq_rmmv_poll_pointer() below (the real fix for
+ * actual human mouse input - see RMMV-CLICK-CAPTURE-INVESTIGATION-
+ * 2026-08-29.txt for the full root-cause trail: real hardware pointer
+ * events are never delivered to an XGrabPointer-holding XWayland
+ * client under this Mutter version, a real, known, still-open upstream
+ * bug, not something fixable in this house's own code). Takes real
+ * root-relative coordinates; does not care which caller resolved them. */
+static void dbhq_rmmv_handle_desktop_click(int x_root, int y_root) {
+    if (x_root >= g_win_x && x_root < g_win_x + g_window->w &&
+        y_root >= g_win_y && y_root < g_win_y + g_window->h) {
+        /* Click landed back inside the picker's own window (e.g.
+         * picking a different tile to re-arm with) - ungrab and let
+         * the picker's own normal click handling take it from here
+         * (re-arms via the same onclick path if it lands on a tile). */
+        XUngrabPointer(dpy, CurrentTime);
+        XUngrabKeyboard(dpy, CurrentTime);
+        g_pal_rmmv_armed = 0;
+        return;
+    }
+
+    XUngrabPointer(dpy, CurrentTime);
+    XUngrabKeyboard(dpy, CurrentTime);
+    g_pal_rmmv_armed = 0;
+    char envx[32], envy[32];
+    snprintf(envx, sizeof(envx), "%d", x_root);
+    snprintf(envy, sizeof(envy), "%d", y_root);
+
+    /* Real master ledger (nav_master_ledger.txt), same real append-
+     * only convention nav_tab_register()/livedesk_registry_add()
+     * already use for this exact file - written synchronously, in
+     * this process, the instant the real click is resolved, decoupled
+     * from whether the placement subprocess call below ever succeeds. */
+    {
+        char led[PATH_BUF];
+        snprintf(led, sizeof(led), "%s/#.desktop/nav_master_ledger.txt", g_house_root);
+        FILE *lf = fopen(led, "a");
+        if (lf) {
+            fprintf(lf, "RMMV_CLICK pid=%d x=%s y=%s\n", (int)getpid(), envx, envy);
+            fclose(lf);
+        }
+        if (g_pal_static_title) {
+            snprintf(g_pal_static_title->label, sizeof(g_pal_static_title->label),
+                     "Clicked desktop at (%s,%s) - placing...", envx, envy);
+            snprintf(g_pal_static_title->classes[1], sizeof(g_pal_static_title->classes[1]), "pal-hint-armed");
+            g_pal_static_title->n_classes = 2;
+            dbhq_redraw_content();
+        }
+    }
+
+    /* tp_place_desktop_rmmv.+x reads its own click position straight
+     * from nav_master_ledger.txt (just written above) - a real,
+     * reusable, caller-agnostic op, not handed argv/env state here. */
+    char cmd[PATH_BUF * 3];
+    snprintf(cmd, sizeof(cmd),
+             "'%s/&.widgits/tile-picker/ops/+x/tp_place_desktop_rmmv.+x' '%s/&.widgits/palettes/state' '%s/#.desktop' >/dev/null 2>&1",
+             g_house_root, g_house_root, g_house_root);
+    int rc = system(cmd);
+    (void)rc;
+}
+
+/* REAL, NEW 2026-08-29 - the actual, human-usable fix for real mouse
+ * clicks (see dbhq_rmmv_handle_desktop_click's own header for the
+ * root-cause). XQueryPointer is a synchronous request/reply, not an
+ * asynchronously delivered event, so it sidesteps Mutter's Wayland-
+ * surface-focus input routing gap entirely - polls real button state
+ * directly rather than waiting for an event that real hardware clicks
+ * never generate for a grabbing XWayland client. Called once per
+ * event-loop tick (~150ms, see hq_run_event_loop) only while armed;
+ * detects a real 0->1 edge on Button1 so a single physical click
+ * triggers exactly once, not once per poll tick while held down. */
+static int g_pal_rmmv_button1_was_down = 0;
+
+static void dbhq_rmmv_poll_pointer(void) {
+    if (!g_pal_rmmv_armed) { g_pal_rmmv_button1_was_down = 0; return; }
+    Window root_ret, child_ret;
+    int root_x, root_y, win_x, win_y;
+    unsigned int mask;
+    if (!XQueryPointer(dpy, RootWindow(dpy, screen), &root_ret, &child_ret,
+                        &root_x, &root_y, &win_x, &win_y, &mask)) {
+        return;
+    }
+    int down = (mask & Button1Mask) ? 1 : 0;
+    if (down && !g_pal_rmmv_button1_was_down) {
+        g_pal_rmmv_button1_was_down = 1;
+        dbhq_rmmv_handle_desktop_click(root_x, root_y);
+    } else if (!down) {
+        g_pal_rmmv_button1_was_down = 0;
+    }
+}
+
 static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
 
     if (ev->type == Expose) {
@@ -9273,82 +9456,24 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
      * holds a real root-window grab, so the NEXT ButtonPress anywhere
      * on screen (x_root/y_root are absolute regardless of which window
      * the grab reports as the event window) is this click, not
-     * whatever this window's own normal click logic would do with it. */
+     * whatever this window's own normal click logic would do with it.
+     * NOTE, same day, follow-up finding (RMMV-CLICK-CAPTURE-
+     * INVESTIGATION-2026-08-29.txt, root-caused by a delegated
+     * subagent): this ButtonPress path only ever fires for SYNTHETIC
+     * (XTest-injected) clicks - real hardware mouse clicks are never
+     * delivered here at all under this Mutter/XWayland setup (a real,
+     * known, still-open Mutter bug: gitlab.gnome.org/GNOME/mutter/-/
+     * issues/642 - XGrabPointer() succeeds at the X-protocol level but
+     * Mutter never routes real hardware pointer events to the grabbing
+     * client, only to whichever surface has Wayland-level focus;
+     * XTestFakeButtonEvent bypasses this by injecting directly into
+     * the X server's own protocol layer). The REAL, human-usable path
+     * is dbhq_rmmv_poll_pointer() below (XQueryPointer polling,
+     * unaffected by this Wayland routing gap) - this event-based path
+     * is kept only because it still works for synthetic/XTest testing
+     * and costs nothing to leave in. */
     if (g_pal_rmmv_armed && ev->type == ButtonPress) {
-        /* REAL FIX 2026-08-29, direct live report ("it just places on
-         * window, instead of 'new clicked glyph armed' when using
-         * mouse"): a click landing back INSIDE this same picker window
-         * (e.g. picking a DIFFERENT tile to re-arm with) was being
-         * treated as a desktop placement, since the grab intercepts
-         * ALL clicks globally with no way to tell them apart by
-         * window - x_root/y_root are absolute regardless of which
-         * window X reports as the event window. Real fix: check
-         * against this window's own real on-screen rect first: if the
-         * click is inside it, ungrab and let it fall through to this
-         * window's own normal click handling below (which re-arms via
-         * the same onclick path, re-grabbing for the NEW tile) instead
-         * of treating it as a placement. */
-        if (ev->xbutton.x_root >= g_win_x && ev->xbutton.x_root < g_win_x + g_window->w &&
-            ev->xbutton.y_root >= g_win_y && ev->xbutton.y_root < g_win_y + g_window->h) {
-            XUngrabPointer(dpy, CurrentTime);
-            XUngrabKeyboard(dpy, CurrentTime);
-            g_pal_rmmv_armed = 0;
-            /* Fall through - the normal ButtonPress handling below
-             * (dbhq_activate_elem() et al) processes this click
-             * exactly as if nothing had been armed; if it lands on
-             * another rmmv tile, that tile's own onclick re-arms
-             * fresh. ev->xbutton.x/y (window-relative) are what that
-             * path expects, already correct on this same event. */
-        } else {
-        XUngrabPointer(dpy, CurrentTime);
-        XUngrabKeyboard(dpy, CurrentTime);
-        g_pal_rmmv_armed = 0;
-        char envx[32], envy[32];
-        snprintf(envx, sizeof(envx), "%d", ev->xbutton.x_root);
-        snprintf(envy, sizeof(envy), "%d", ev->xbutton.y_root);
-
-        /* REAL, NEW 2026-08-29, direct instruction ("before we fix
-         * placing lets fix coord announce for placing... it can do
-         * this if mouseclick writes to master ledger and tileset
-         * window reads it") - deliberately DECOUPLED from whether the
-         * tp_place_desktop_rmmv.+x call below actually succeeds:
-         * written synchronously, in this same process, the instant the
-         * real desktop click is captured - not via the subprocess or
-         * its own file writes, which is what was silently failing.
-         * Real master ledger (nav_master_ledger.txt), same real
-         * append-only convention nav_tab_register()/livedesk_registry_
-         * add() already use for this exact file - a real, permanent
-         * record, not a transient state file only this window reads. */
-        {
-            char led[PATH_BUF];
-            snprintf(led, sizeof(led), "%s/#.desktop/nav_master_ledger.txt", g_house_root);
-            FILE *lf = fopen(led, "a");
-            if (lf) {
-                fprintf(lf, "RMMV_CLICK pid=%d x=%s y=%s\n", (int)getpid(), envx, envy);
-                fclose(lf);
-            }
-            if (g_pal_static_title) {
-                snprintf(g_pal_static_title->label, sizeof(g_pal_static_title->label),
-                         "Clicked desktop at (%s,%s) - placing...", envx, envy);
-                snprintf(g_pal_static_title->classes[1], sizeof(g_pal_static_title->classes[1]), "pal-hint-armed");
-                g_pal_static_title->n_classes = 2;
-                dbhq_redraw_content();
-            }
-        }
-
-        /* No coordinate plumbing needed here anymore - tp_place_
-         * desktop_rmmv.+x reads its own click position straight from
-         * nav_master_ledger.txt (just written above), a real
-         * "reusable op, no knowledge of its caller" shape rather than
-         * this renderer handing it argv/env state. */
-        char cmd[PATH_BUF * 3];
-        snprintf(cmd, sizeof(cmd),
-                 "'%s/&.widgits/tile-picker/ops/+x/tp_place_desktop_rmmv.+x' '%s/&.widgits/palettes/state' '%s/#.desktop' >/dev/null 2>&1",
-                 g_house_root, g_house_root, g_house_root);
-        int rc = system(cmd);
-        (void)rc;
-        return;
-        }
+        dbhq_rmmv_handle_desktop_click(ev->xbutton.x_root, ev->xbutton.y_root);
     }
     if (g_pal_rmmv_armed && ev->type == KeyPress) {
         KeySym ks = XLookupKeysym(&ev->xkey, 0);
@@ -9610,12 +9735,29 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
         if (g_quit) break;
         fd_set fds; FD_ZERO(&fds);
         int xfd = ConnectionNumber(dpy); FD_SET(xfd, &fds);
-        struct timeval tv = { 0, 150000 };
+        /* REAL FIX 2026-08-29, found live-testing tp_debug_click_
+         * watcher.c (a standalone tool built to isolate this exact
+         * problem): a 150ms poll tick can genuinely miss a real click
+         * entirely - a synthetic XTest click's own button-down window
+         * is only ~50ms, and a real human click can be shorter still,
+         * so a 150ms sample interval has a real chance of landing
+         * entirely between press and release. Only shortened while
+         * g_pal_rmmv_armed (costs nothing otherwise - every other
+         * window/mode never sets this flag at all). */
+        struct timeval tv = g_pal_rmmv_armed ? (struct timeval){ 0, 15000 } : (struct timeval){ 0, 150000 };
         select(xfd + 1, &fds, NULL, NULL, &tv);
         while (XPending(dpy)) {
             XEvent ev; XNextEvent(dpy, &ev);
             hq_dispatch_xevent(&ev, wm_delete, is_popup);
         }
+        /* REAL, NEW 2026-08-29 - see dbhq_rmmv_poll_pointer's own
+         * header comment. A real, non-event, XQueryPointer-based
+         * fallback for real human mouse clicks, which a real Mutter/
+         * XWayland bug never delivers as ButtonPress events to this
+         * grabbing process. No-op (returns immediately) whenever not
+         * armed, so this costs nothing on every other tick of every
+         * other window's own event loop. */
+        dbhq_rmmv_poll_pointer();
         if (dbhq_marker_pilot()) dbhq_loop_paint_if_dirty();
     }
 }
@@ -10082,28 +10224,52 @@ int main(int argc, char **argv) {
         XSetWindowAttributes swa;
         swa.background_pixel = alloc_pixel("#141414");
         swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
+        /* REAL FIX 2026-08-29 (OPACITY-PIPELINE-INVESTIGATION-2026-08-29.txt
+         * has the full research trail) - override_redirect was set on
+         * the struct but never in the value-mask below, so X11 silently
+         * ignored it and this was always a real WM-managed window, not
+         * override_redirect like the taskbar's own windows (and this
+         * file's own popup branch). That's why _NET_WM_WINDOW_OPACITY
+         * had zero visible effect despite being set correctly - most
+         * compositors, Mutter included, only reliably honor client-
+         * requested opacity on unmanaged surfaces. Manual keyboard
+         * focus (dbhq_grab_keyboard_retry()/dbhq_soft_focus() below,
+         * already real, already used) still applies the same way an
+         * override_redirect window gets focus - this doesn't remove or
+         * change that logic, just makes the window type match what
+         * this file already treats it as. */
+        swa.override_redirect = True;
         win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)ww, (unsigned)wh, 0,
                              CopyFromParent, InputOutput, CopyFromParent,
-                             CWBackPixel | CWEventMask, &swa);
+                             CWBackPixel | CWEventMask | CWOverrideRedirect, &swa);
         {
-            Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
-            long hints[5] = { 2, 0, 0, 0, 0 };
-            XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
-
-            XWMHints *wmhints = XAllocWMHints();
-            if (wmhints) { wmhints->flags = InputHint; wmhints->input = True; XSetWMHints(dpy, win, wmhints); XFree(wmhints); }
-
-            Atom wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-            XSetWMProtocols(dpy, win, &wm_delete, 1);
-
-            XSizeHints *shints = XAllocSizeHints();
-            if (shints) { shints->flags = PPosition; shints->x = g_win_x; shints->y = g_win_y; XSetWMNormalHints(dpy, win, shints); XFree(shints); }
+            /* REAL FIX 2026-08-29 (OPACITY-PIPELINE-INVESTIGATION-2026-08-29.txt
+             * + part2.txt, root-caused by a delegated Haiku subagent) -
+             * _MOTIF_WM_HINTS and WM_DELETE_WINDOW (via XSetWMProtocols)
+             * REMOVED, in addition to the XSetWMHints/XSetWMNormalHints
+             * already removed above. Live xprop diff against the
+             * taskbar's own real, visibly-transparent windows
+             * (khtpm_strip_parser.c, confirmed by direct user
+             * observation) showed these were the ONLY remaining
+             * property differences once override_redirect was added -
+             * both are real ICCCM/WM-cooperation signals telling
+             * Mutter "manage me," directly contradicting override_
+             * redirect="I'm unmanaged," which made the compositor fall
+             * back to its own WM-level opacity handling instead of
+             * honoring the client's _NET_WM_WINDOW_OPACITY. Neither
+             * property does anything useful on an undecorated
+             * override_redirect window (no titlebar/close button exists
+             * for the WM to route a close-request through anyway) -
+             * hq_run_event_loop()'s own wm_delete_loop atom comparison
+             * below is untouched and harmless if never matched. The
+             * taskbar's own real windows never set either property. */
         }
         {
             XClassHint *ch = XAllocClassHint();
             if (ch) { ch->res_name = (char *)"MuchiverseLivedesk"; ch->res_class = (char *)"MuchiverseLivedesk"; XSetClassHint(dpy, win, ch); XFree(ch); }
         }
         XMapWindow(dpy, win);
+        set_window_opacity(dpy, win, load_theme_opacity());
         XSync(dpy, False);
         { XWindowAttributes wa; if (XGetWindowAttributes(dpy, win, &wa)) { g_win_x = wa.x; g_win_y = wa.y; } }
         nav_tab_register(g_is_palettes ? "palettes" : g_is_bookmarks ? "bookmarks" : g_is_stats_hq ? "stats-hq" : "db-hq");
@@ -10117,6 +10283,20 @@ int main(int argc, char **argv) {
         g_buf_w = ww; g_buf_h = wh;
 
         redraw();
+        /* REAL FIX 2026-08-29 part 3 (OPACITY-PIPELINE-INVESTIGATION-2026-08-29-
+         * part3.txt) - khtpm_strip_parser.c's own taskbar has a documented
+         * "KISS opacity-on-reset fix" (its own comment near set_window_opacity()
+         * relaunch calls) - Mutter/XWayland does not reliably honor
+         * _NET_WM_WINDOW_OPACITY set at map-time on an override_redirect
+         * window's FIRST paint; it must be re-applied after the window has
+         * been visible/painted for at least one real frame. The taskbar
+         * already does this (XFlush + usleep(200000) + re-set opacity after
+         * its first real draw calls); this branch never did. Applying the
+         * exact same pattern here. */
+        XFlush(dpy);
+        usleep(200000);
+        set_window_opacity(dpy, win, load_theme_opacity());
+        XFlush(dpy);
         if (dbhq_marker_pilot()) {
             /* snapshot so a leftover marker file does not force a second paint */
             (void)consume_frame_changed();
@@ -10164,28 +10344,26 @@ int main(int argc, char **argv) {
         XSetWindowAttributes swa;
         swa.background_pixel = alloc_pixel("#141414");
         swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
+        /* REAL FIX 2026-08-29 - see db-hq branch's own identical
+         * comment above (OPACITY-PIPELINE-INVESTIGATION-2026-08-29.txt
+         * has the full research trail) - same real bug, same fix. */
+        swa.override_redirect = True;
         win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)ww, (unsigned)wh, 0,
                              CopyFromParent, InputOutput, CopyFromParent,
-                             CWBackPixel | CWEventMask, &swa);
+                             CWBackPixel | CWEventMask | CWOverrideRedirect, &swa);
         {
-            Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
-            long hints[5] = { 2, 0, 0, 0, 0 };
-            XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
-
-            XWMHints *wmhints = XAllocWMHints();
-            if (wmhints) { wmhints->flags = InputHint; wmhints->input = True; XSetWMHints(dpy, win, wmhints); XFree(wmhints); }
-
-            Atom wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-            XSetWMProtocols(dpy, win, &wm_delete, 1);
-
-            XSizeHints *shints = XAllocSizeHints();
-            if (shints) { shints->flags = PPosition; shints->x = g_win_x; shints->y = g_win_y; XSetWMNormalHints(dpy, win, shints); XFree(shints); }
+            /* REAL FIX 2026-08-29 - see db-hq branch's own identical
+             * comment above (OPACITY-PIPELINE-INVESTIGATION-2026-08-29.txt
+             * + part2.txt) - _MOTIF_WM_HINTS/WM_DELETE_WINDOW removed
+             * too, same reasoning: root-caused as the actual blocker by
+             * a delegated Haiku subagent's own live xprop diff. */
         }
         {
             XClassHint *ch = XAllocClassHint();
             if (ch) { ch->res_name = (char *)"MuchiverseLivedesk"; ch->res_class = (char *)"MuchiverseLivedesk"; XSetClassHint(dpy, win, ch); XFree(ch); }
         }
         XMapWindow(dpy, win);
+        set_window_opacity(dpy, win, load_theme_opacity());
         XSync(dpy, False);
         { XWindowAttributes wa; if (XGetWindowAttributes(dpy, win, &wa)) { g_win_x = wa.x; g_win_y = wa.y; } }
         nav_tab_register("events-hq");
@@ -10196,6 +10374,14 @@ int main(int argc, char **argv) {
         g_buf_w = ww; g_buf_h = wh;
 
         redraw();
+        /* REAL FIX 2026-08-29 part 3 - see db-hq branch's own identical
+         * comment above (OPACITY-PIPELINE-INVESTIGATION-2026-08-29-part3.txt)
+         * - same real "opacity-on-reset" quirk, same fix, ported from
+         * khtpm_strip_parser.c's own already-documented pattern. */
+        XFlush(dpy);
+        usleep(200000);
+        set_window_opacity(dpy, win, load_theme_opacity());
+        XFlush(dpy);
 
         Atom wm_delete_loop = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
         hq_run_event_loop(wm_delete_loop, 0);
@@ -10223,22 +10409,19 @@ int main(int argc, char **argv) {
         XSetWindowAttributes swa;
         swa.background_pixel = alloc_pixel("#141414");
         swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
+        /* REAL FIX 2026-08-29 - see db-hq branch's own identical
+         * comment above (OPACITY-PIPELINE-INVESTIGATION-2026-08-29.txt
+         * has the full research trail) - same real bug, same fix. */
+        swa.override_redirect = True;
         win = XCreateWindow(dpy, RootWindow(dpy, screen), chai_win_x, chai_win_y, (unsigned)ww, (unsigned)wh, 0,
                              CopyFromParent, InputOutput, CopyFromParent,
-                             CWBackPixel | CWEventMask, &swa);
+                             CWBackPixel | CWEventMask | CWOverrideRedirect, &swa);
         {
-            Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
-            long hints[5] = { 2, 0, 0, 0, 0 };
-            XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
-
-            XWMHints *wmhints = XAllocWMHints();
-            if (wmhints) { wmhints->flags = InputHint; wmhints->input = True; XSetWMHints(dpy, win, wmhints); XFree(wmhints); }
-
-            Atom wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-            XSetWMProtocols(dpy, win, &wm_delete, 1);
-
-            XSizeHints *shints = XAllocSizeHints();
-            if (shints) { shints->flags = PPosition; shints->x = chai_win_x; shints->y = chai_win_y; XSetWMNormalHints(dpy, win, shints); XFree(shints); }
+            /* REAL FIX 2026-08-29 - see db-hq branch's own identical
+             * comment above (OPACITY-PIPELINE-INVESTIGATION-2026-08-29.txt
+             * + part2.txt) - _MOTIF_WM_HINTS/WM_DELETE_WINDOW removed
+             * too, same reasoning: root-caused as the actual blocker by
+             * a delegated Haiku subagent's own live xprop diff. */
         }
         {
             XClassHint *ch = XAllocClassHint();
@@ -10248,6 +10431,7 @@ int main(int argc, char **argv) {
          * activates MapRaised WM-managed windows and steals the human's
          * browser. File relay still drives this process. */
         XMapWindow(dpy, win);
+        set_window_opacity(dpy, win, load_theme_opacity());
         XSync(dpy, False);
         { XWindowAttributes wa; if (XGetWindowAttributes(dpy, win, &wa)) { chai_win_x = wa.x; chai_win_y = wa.y; } }
         nav_tab_register("chat-hai");
@@ -10260,6 +10444,14 @@ int main(int argc, char **argv) {
         g_buf_w = ww; g_buf_h = wh;
 
         redraw();
+        /* REAL FIX 2026-08-29 part 3 - see db-hq branch's own identical
+         * comment above (OPACITY-PIPELINE-INVESTIGATION-2026-08-29-part3.txt)
+         * - same real "opacity-on-reset" quirk, same fix, ported from
+         * khtpm_strip_parser.c's own already-documented pattern. */
+        XFlush(dpy);
+        usleep(200000);
+        set_window_opacity(dpy, win, load_theme_opacity());
+        XFlush(dpy);
 
         if (argc > 3 && strcmp(argv[3], "--dump-and-exit") == 0) { dump_frame_png(); g_quit = 1; }
 
@@ -10314,6 +10506,7 @@ int main(int argc, char **argv) {
     if (shints) { shints->flags = PPosition; shints->x = g_win_x; shints->y = g_win_y; XSetWMNormalHints(dpy, win, shints); XFree(shints); }
 
     XMapRaised(dpy, win);
+    set_window_opacity(dpy, win, load_theme_opacity());
     XSync(dpy, False);
     /* 2026-08-24 - XDND drop-target opt-in (no-op unless this .chtpm
      * declared a window-level drop_action= attribute). */
@@ -10373,6 +10566,14 @@ int main(int argc, char **argv) {
     xftdraw_buf = XftDrawCreate(dpy, buf, DefaultVisual(dpy, screen), cmap);
 
     redraw();
+    /* REAL FIX 2026-08-29 part 3 - see db-hq branch's own identical
+     * comment above (OPACITY-PIPELINE-INVESTIGATION-2026-08-29-part3.txt)
+     * - same real "opacity-on-reset" quirk, same fix, ported from
+     * khtpm_strip_parser.c's own already-documented pattern. */
+    XFlush(dpy);
+    usleep(200000);
+    set_window_opacity(dpy, win, load_theme_opacity());
+    XFlush(dpy);
 
     if (g_is_swatch_picker) {
         /* Reset house action/state before the manager starts so a leftover

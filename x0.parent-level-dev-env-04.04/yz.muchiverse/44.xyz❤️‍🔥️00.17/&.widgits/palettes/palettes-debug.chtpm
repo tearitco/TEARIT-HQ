@@ -1,0 +1,18 @@
+<!-- palettes-debug.chtpm — real debug/diagnostic sidebar (2026-08-29,
+     direct instruction: "make a debug sidebar in hq, and give it ops i
+     can start or stop from list of ops we're trying to debug, and
+     have it read the debug.txt in the main window"). Same real shape
+     as palettes-rmmv.chtpm - static, checked in, never regenerated.
+     Real rows (op start/stop toggles + debug.txt content lines) are
+     injected at runtime by the SAME generic dbhq_inject_palette_tiles()
+     every other category already uses - zero new renderer rendering
+     code, only a new publish_debug() branch in the SAME palettes_
+     manager.+x every other category shares, publishing rows in the
+     same real label\tlabel\tpath format. -->
+<window class="database-window palettes">
+  <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="debug" />
+  <panel class="settings-block">
+    <title class="block-title" label="Debug"/>
+    <text class="pal-hint" label="Click an op to start/stop it. debug.txt content below."/>
+  </panel>
+</window>

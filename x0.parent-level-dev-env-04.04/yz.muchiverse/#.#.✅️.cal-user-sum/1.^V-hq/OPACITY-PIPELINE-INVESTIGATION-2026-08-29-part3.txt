@@ -1,0 +1,184 @@
+OPACITY PIPELINE INVESTIGATION — 2026-08-29, PART 3
+=====================================================
+Continuation of part.txt / part2.txt. Both prior structural fixes
+(override_redirect in the value-mask, removal of _MOTIF_WM_HINTS/
+WM_DELETE_WINDOW) are REAL and were RE-VERIFIED LIVE in this pass —
+but the human confirmed, again, live, that transparency was STILL
+not visible after both. This pass found and applied a THIRD real fix,
+already proven and documented elsewhere in this exact codebase.
+
+## 1. RE-VERIFICATION FROM SCRATCH (angle 1)
+
+Fresh test window launched by this agent, not trusting prior docs:
+  cd "<house root>"
+  setsid sh "&.widgits/palettes/palettes_menu.sh" rmmv >/tmp/test.log 2>&1 </dev/null &
+  real PID via pgrep -af "palettes-rmmv" -> khtpm_entity_menu_render.+x
+  xid via #.desktop/nav_tab/<pid> -> 0x1e00002
+
+xwininfo -id 0x1e00002 -all vs xwininfo -id 0xa00003 -all (taskbar strip,
+2296x36+200+50): BOTH show:
+  Override Redirect State: yes
+  Map State: IsViewable
+  Depth 24, Visual 0x41 (TrueColor), same Colormap semantics
+
+xprop -id 0x1e00002 | sort  vs  xprop -id 0xa00003 | sort: BYTE-FOR-BYTE
+IDENTICAL property sets (both pre-fix in this pass):
+  _GTK_EDGE_CONSTRAINTS(CARDINAL) = 170
+  _NET_WM_ALLOWED_ACTIONS(ATOM) = CHANGE_DESKTOP, ABOVE, BELOW
+  _NET_WM_STATE(ATOM) = SKIP_PAGER, SKIP_TASKBAR
+  _NET_WM_WINDOW_OPACITY(CARDINAL) = 2860448218  (== 0.666, matches .pdl)
+  WM_CLASS(STRING) = "MuchiverseLivedesk", "MuchiverseLivedesk"
+
+CONCLUSION: the part1/part2 fixes are real, live-confirmed, and this
+pass independently re-derived the identical result — NOT re-derived
+from the docs' claims, from a freshly spawned window. The two windows
+are now 100% structurally indistinguishable via xprop/xwininfo. The
+"conflicting hints" hypothesis from part2 is fully falsified as the
+*remaining* cause (it was a real bug and a real fix, just not the last
+one) — this ruled out angles 2 and 3 as productive:
+
+## 2. Property stability over time (angle 2)
+
+Polled _NET_WM_WINDOW_OPACITY on the live window every 1s for 4s
+(well past its first several redraw-loop frames): value never changed,
+never got deleted/reset by anything in the redraw loop. Ruled out "set
+then silently reverted."
+
+## 3. _NET_WM_WINDOW_TYPE / compositor selection (angles 3 & 4)
+
+  xprop -id 0x1e00002 _NET_WM_WINDOW_TYPE -> not set (not present)
+  xprop -id 0xa00003  _NET_WM_WINDOW_TYPE -> not set (not present, same)
+  xprop -root _NET_WM_CM_S0 -> "not found" (Mutter doesn't register the
+    S0 compositor selection atom in this GNOME Shell 42.9 session; same
+    for both, not a differentiator, matches part2's own finding).
+
+Both angles ruled out — no difference exists to chase.
+
+## 4. THE ACTUAL REMAINING CAUSE — found via angle 6 (house prior art)
+
+Grepped khtpm_strip_parser.c (the taskbar, PROVEN working) for every
+XCreateWindow / set_window_opacity call site, not just the first one.
+Found this, already committed, already documented, in the taskbar's
+OWN source (lines ~2404-2429), and never ported over when
+khtpm_entity_menu_render.c's db-hq/events-hq/chat-hai/popup branches
+were written:
+
+    taskbar_soft_focus(dpy, win);
+
+    /* KISS opacity-on-reset fix (2026-08-11, direct question: "did u
+     * ever figure out how legacy would have transparency on bottom bar
+     * (but only after reset)?" -- see opacity-bug-aug9.txt and
+     * khtpm-refactor-plan.md's "Opacity-on-reset quirk" entry, both
+     * previously inconclusive/deferred, not actually fixed). Leading
+     * theory there: a compositor-timing quirk where Mutter/Xwayland
+     * doesn't reliably honor _NET_WM_WINDOW_OPACITY set at map-time on
+     * the FIRST paint of an override-redirect window, but does honor it
+     * once the property is re-applied after the window has been
+     * visible for at least one real frame -- which is incidentally
+     * exactly what "reset" (a full process relaunch) does. Cheapest
+     * possible fix matching that theory, never actually tried before
+     * now: just re-set the SAME opacity property again here, after the
+     * windows are already mapped/painted (first draw_header_win()/
+     * draw_bottom()/draw_popup_win() calls above already ran), instead
+     * of only once at XCreateWindow time. */
+    XFlush(dpy);
+    usleep(200000);
+    double relaunch_opacity = load_theme_opacity();
+    set_window_opacity(dpy, win, relaunch_opacity);
+    set_window_opacity(dpy, hq_win, relaunch_opacity);
+    set_window_opacity(dpy, popup_win, relaunch_opacity);
+    XFlush(dpy);
+
+This is a REAL, ALREADY-SOLVED, ALREADY-DOCUMENTED house quirk from
+2026-08-11 — the taskbar itself only became reliably transparent once
+this "set opacity again after first paint" workaround was added. The
+entity-menu renderer (khtpm_entity_menu_render.c) was written later
+(2026-08-16 per its own §5d.10/§5d.11/§5d.12 comments) and calls
+set_window_opacity() exactly ONCE, immediately after XMapWindow, BEFORE
+gc/buf/xftdraw_buf are even created and BEFORE the first redraw() call
+— i.e. exactly the map-time-only pattern the taskbar's own 2026-08-11
+comment says Mutter/XWayland does not reliably honor. This workaround
+was simply never ported into the newer file. This matches the exact
+symptom (property correct, override_redirect correct, hints correct,
+still zero visible effect) with zero remaining unexplained variance.
+
+## 5. FIX APPLIED (live, rebuilt, re-verified)
+
+File: *.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c
+
+Added, immediately after each branch's first `redraw();` call (i.e.
+after the window has been mapped AND painted at least one real frame,
+matching the taskbar's own ordering exactly):
+
+    XFlush(dpy);
+    usleep(200000);
+    set_window_opacity(dpy, win, load_theme_opacity());
+    XFlush(dpy);
+
+Applied to all FOUR window-creation branches in this file:
+  - db-hq / palettes / bookmarks / stats-hq   (after redraw(), ~line 10199)
+  - events-hq                                  (after redraw(), ~line 10276)
+  - chat-hai                                   (after redraw(), ~line 10302)
+  - popup / context-menu / swatch-picker       (after redraw(), ~line 10482)
+
+Rebuilt: `bash build_entity_menu.sh` in
+*.monads/*.livedesk-taskbar/ops/ -> "OK +x/khtpm_entity_menu_render.+x"
+(compiled clean, only pre-existing unrelated snprintf-truncation
+warnings from khtpm_taskbar_manager.c, no new warnings/errors from this
+change).
+
+## 6. LIVE RE-VERIFICATION AFTER THE FIX
+
+Killed the old test process, relaunched fresh:
+  pkill -f "palettes-rmmv"; setsid sh "&.widgits/palettes/palettes_menu.sh" rmmv ...
+  real PID 541905 (khtpm_entity_menu_render.+x), xid 0x1e00002 (from
+  #.desktop/nav_tab/541905)
+
+Polled _NET_WM_WINDOW_OPACITY every 1s for 4s (spans the map-time set
+AND the post-redraw re-set 200ms later):
+  t=1..4: _NET_WM_WINDOW_OPACITY(CARDINAL) = 2860448218  (stable, correct)
+
+xwininfo -id 0x1e00002 -all: Map State: IsViewable, Override Redirect
+State: yes — structural state unchanged and still correct.
+
+Property-level and structural verification is complete and matches the
+taskbar exactly, including now the *timing* pattern (map -> paint ->
+re-apply-after-a-frame), not just the final property value. This is
+the strongest possible property-level confirmation available without a
+real screenshot tool (scrot produces all-black frames in this sandbox
+for both working and non-working windows per part1's note — not a
+usable signal either way).
+
+## 7. WHAT STILL NEEDS HUMAN CONFIRMATION
+
+Whether this actually renders visible transparency cannot be verified
+from this sandbox — no working screenshot tool exists here. The fix is:
+  - a real, previously-proven-in-this-exact-house workaround for a
+    documented Mutter/XWayland opacity-on-first-paint quirk
+  - ported verbatim (same 200ms delay, same re-apply-after-first-frame
+    ordering) from the ONE place in this codebase where transparency is
+    known, by direct human visual confirmation, to actually work
+  - live-rebuilt and live-verified at the property/structural level
+
+but needs the human's own eyes on a freshly-launched db-hq/events-hq/
+chat-hai/popup window to confirm the visible effect, same as every
+prior pass in this investigation.
+
+## 8. CLEANUP
+
+Test process from this pass (PID 541905, palettes-rmmv window
+0x1e00002) killed before finishing:
+  pkill -f "palettes-rmmv"
+/tmp/test.log and /tmp/test2.log are scratch files, left in /tmp (not
+inside the house tree, no cleanup needed).
+
+## 9. Angle 5 (isolated minimal C control test) — not needed
+
+Not pursued: angle 6 (house prior art) found a concrete, already-proven
+root cause and fix before angle 5's isolated test became necessary,
+per the coordinator's explicit steer to exhaust in-house direct-
+comparison angles first. If the human reports the fix in §5 still does
+not produce visible transparency, angle 5's isolated control program
+is the natural next step (would isolate whether XWayland itself is the
+blocker vs. something else still specific to this file's event loop /
+redraw() content).

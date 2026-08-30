@@ -845,7 +845,89 @@ static void publish_rmmv(void) {
     rename(tmp_path, g_state_path);
 }
 
+/* REAL, NEW 2026-08-29, direct instruction ("make a debug sidebar in
+ * hq, and give it ops i can start or stop from list of ops we're
+ * trying to debug, and have it read the debug.txt in the main
+ * window") - a real, extensible list of watchable debug ops. Add a
+ * new {name, binary, enabled_flag} entry here for each future one -
+ * this manager publishes one toggle row per entry, checking each
+ * op's own real running-or-not state via its enabled-flag file's
+ * content (not by scanning /proc - the flag file IS the source of
+ * truth an op like tp_debug_click_watcher.c already polls itself). */
+typedef struct { const char *name; const char *bin_rel; const char *flag_name; } DebugOp;
+static const DebugOp DEBUG_OPS[] = {
+    { "click-watcher", "&.widgits/tile-picker/ops/+x/tp_debug_click_watcher.+x", "debug_watch_enabled.txt" },
+};
+#define N_DEBUG_OPS (int)(sizeof(DEBUG_OPS) / sizeof(DEBUG_OPS[0]))
+
+static int debug_op_enabled(const char *house_root, const DebugOp *op) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/debug/%s", house_root, op->flag_name);
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    char line[8] = "";
+    if (fgets(line, sizeof(line), f)) { /* nothing extra */ }
+    fclose(f);
+    return line[0] == '1';
+}
+
+static void publish_debug(void) {
+    char debug_dir[PATH_BUF];
+    snprintf(debug_dir, sizeof(debug_dir), "%s/#.desktop/debug", g_house_root);
+    mkdir(debug_dir, 0777);
+
+    char tmp_path[PATH_BUF];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", g_state_path);
+    FILE *out = fopen(tmp_path, "w");
+    if (!out) return;
+
+    /* Row 1..N: one real toggle per DEBUG_OPS entry. "emoji" field
+     * (first column) carries the real onclick action string - the
+     * renderer's own debug-category onclick branch (khtpm_entity_menu_
+     * render.c) routes "toggle:<op-index>" and "clear" specially,
+     * same convention rmmv's own arm-rmmv routing already uses. */
+    for (int i = 0; i < N_DEBUG_OPS; i++) {
+        int on = debug_op_enabled(g_house_root, &DEBUG_OPS[i]);
+        fprintf(out, "toggle:%d\t%s %s\t\n", i, on ? "\xE2\x96\xA0 Stop:" : "\xE2\x96\xB6 Start:", DEBUG_OPS[i].name);
+    }
+    fprintf(out, "clear\t\xF0\x9F\x97\x91 Clear debug.txt\t\n");
+
+    /* Real debug.txt content, tail-capped so a long debugging session
+     * can't blow past the renderer's own PAL_MAX_TILES (512) - shows
+     * the most RECENT lines, which is what a real debug session cares
+     * about. Read-only rows (onclick action "noop"). */
+    char debug_txt_path[PATH_BUF];
+    snprintf(debug_txt_path, sizeof(debug_txt_path), "%s/debug.txt", debug_dir);
+    FILE *df = fopen(debug_txt_path, "r");
+    if (df) {
+        char lines[300][256];
+        int n = 0;
+        char buf[256];
+        while (fgets(buf, sizeof(buf), df)) {
+            buf[strcspn(buf, "\r\n")] = '\0';
+            if (!buf[0]) continue;
+            if (n < 300) { snprintf(lines[n], sizeof(lines[n]), "%s", buf); n++; }
+            else {
+                /* shift, keep only the most recent 300 - real tail
+                 * behavior, not a silent truncation from the START. */
+                memmove(lines[0], lines[1], sizeof(lines[0]) * 299);
+                snprintf(lines[299], sizeof(lines[299]), "%s", buf);
+            }
+        }
+        fclose(df);
+        for (int i = 0; i < n; i++) {
+            fprintf(out, "noop\t%s\t\n", lines[i]);
+        }
+    } else {
+        fprintf(out, "noop\t(debug.txt does not exist yet)\t\n");
+    }
+
+    fclose(out);
+    rename(tmp_path, g_state_path);
+}
+
 static void publish(void) {
+    if (strcmp(g_category, "debug") == 0) { publish_debug(); return; }
     struct stat st;
     if (strcmp(g_category, "rmmv") == 0) {
         /* Real mtime-gate, same discipline as the other two categories
@@ -932,7 +1014,7 @@ int main(int argc, char **argv) {
         /* rmmv tab/chooser clicks must land on press 1. 1s sleep made
          * A/B/C and Dungeon/Inside need 2-3 presses (live). Other
          * palettes still 1s. */
-        usleep(strcmp(g_category, "rmmv") == 0 ? 100000 : 1000000);
+        usleep(strcmp(g_category, "debug") == 0 ? 300000 : strcmp(g_category, "rmmv") == 0 ? 100000 : 1000000);
     }
     return 0;
 }

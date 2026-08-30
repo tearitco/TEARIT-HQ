@@ -17,7 +17,9 @@ SECTION      | hq_menu_8_label     | cursword
 SECTION      | hq_menu_8_cmd       | livedesk:spawn-cursword
 SECTION      | hq_menu_9_label     | !kill hq
 SECTION      | hq_menu_9_cmd       | sh *.monads/*.livedesk-taskbar/ops/kill_hq_windows.sh .
-SECTION      | hq_menu_10_label    | cancel
+SECTION      | hq_menu_10_label    | debug
+SECTION      | hq_menu_10_cmd      | livedesk:open-palette:debug
+SECTION      | hq_menu_11_label    | cancel
 
 SECTION      | palettes_menu_1_label  | my pallet
 SECTION      | palettes_menu_1_cmd    | livedesk:open-palette:user-pallet

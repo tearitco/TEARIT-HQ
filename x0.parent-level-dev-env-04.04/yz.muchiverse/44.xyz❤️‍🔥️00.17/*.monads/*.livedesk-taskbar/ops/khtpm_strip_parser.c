@@ -2481,6 +2481,16 @@ int main(int argc, char **argv) {
                 if (!popup_mapped) {
                     XMapRaised(dpy, popup_win);
                     popup_mapped = 1;
+                    /* REAL FIX 2026-08-29, direct live report ("tb dropdown cell tabs
+                     * aren't opaque yet") - popup_win is unmapped/remapped many times
+                     * per session (each dropdown open/close), but the real opacity-
+                     * on-reset fix below only ever ran once, at startup, while this
+                     * window was still unmapped. Re-applying on every real remap too
+                     * (no blocking sleep here - a draw_popup_win() call already runs
+                     * right after this, giving one real frame boundary; avoids a
+                     * visible stutter every dropdown open, unlike the one-time
+                     * startup delay). */
+                    set_window_opacity(dpy, popup_win, load_theme_opacity());
                     draw_popup_win(dpy, popup_win, gc, &header_doc, &g_st, hq_win_x, hq_win_y);
                 }
             } else if (popup_mapped) {
@@ -2504,6 +2514,16 @@ int main(int argc, char **argv) {
                 if (!popup_mapped) {
                     XMapRaised(dpy, popup_win);
                     popup_mapped = 1;
+                    /* REAL FIX 2026-08-29, direct live report ("tb dropdown cell tabs
+                     * aren't opaque yet") - popup_win is unmapped/remapped many times
+                     * per session (each dropdown open/close), but the real opacity-
+                     * on-reset fix below only ever ran once, at startup, while this
+                     * window was still unmapped. Re-applying on every real remap too
+                     * (no blocking sleep here - a draw_popup_win() call already runs
+                     * right after this, giving one real frame boundary; avoids a
+                     * visible stutter every dropdown open, unlike the one-time
+                     * startup delay). */
+                    set_window_opacity(dpy, popup_win, load_theme_opacity());
                     draw_popup_win(dpy, popup_win, gc, &header_doc, &g_st, hq_win_x, hq_win_y);
                 }
             } else if (popup_mapped) {
@@ -2579,6 +2599,16 @@ int main(int argc, char **argv) {
                     if (!popup_mapped) {
                         XMapRaised(dpy, popup_win);
                         popup_mapped = 1;
+                        /* REAL FIX 2026-08-29, direct live report ("tb dropdown cell tabs
+                         * aren't opaque yet") - popup_win is unmapped/remapped many times
+                         * per session (each dropdown open/close), but the real opacity-
+                         * on-reset fix below only ever ran once, at startup, while this
+                         * window was still unmapped. Re-applying on every real remap too
+                         * (no blocking sleep here - a draw_popup_win() call already runs
+                         * right after this, giving one real frame boundary; avoids a
+                         * visible stutter every dropdown open, unlike the one-time
+                         * startup delay). */
+                        set_window_opacity(dpy, popup_win, load_theme_opacity());
                         draw_popup_win(dpy, popup_win, gc, &header_doc, &g_st, hq_win_x, hq_win_y);
                     }
                 } else if (popup_mapped) {

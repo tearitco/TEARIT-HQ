@@ -201,9 +201,41 @@ arm_rmmv() {
     log "armed rmmv brush tileset=$_key category=$_cat kind='$_label'"
 }
 
+# debug-toggle <op-index> - real, extensible debug-op start/stop
+# (2026-08-29, direct instruction: "give it ops i can start or stop
+# from list of ops we're trying to debug"). Index must match
+# DEBUG_OPS[] in palettes_manager.c's own publish_debug() exactly -
+# only one real op exists there so far (click-watcher, index 0).
+debug_toggle() {
+    _idx="$1"
+    _flag="$DESK_DIR/debug/debug_watch_enabled.txt"
+    mkdir -p "$DESK_DIR/debug"
+    if [ "$_idx" = "0" ]; then
+        _cur="0"
+        [ -f "$_flag" ] && _cur=$(cat "$_flag" 2>/dev/null || echo 0)
+        if [ "$_cur" = "1" ]; then
+            printf '0' > "$_flag"
+            log "debug op 0 (click-watcher) stopped"
+        else
+            printf '1' > "$_flag"
+            setsid "$TP_OPS/tp_debug_click_watcher.+x" "$HOUSE_DEFAULT" >/dev/null 2>&1 < /dev/null &
+            log "debug op 0 (click-watcher) started"
+        fi
+    fi
+}
+
+# debug-clear - real, direct instruction ("allow clearing of debug.txt").
+debug_clear() {
+    mkdir -p "$DESK_DIR/debug"
+    : > "$DESK_DIR/debug/debug.txt"
+    log "debug.txt cleared"
+}
+
 case "${1:-}" in
     place)             shift; place "$@"; exit 0 ;;
     arm-rmmv)          shift; arm_rmmv "$1" "$2" "$3" "$4"; exit 0 ;;
+    debug-toggle)      shift; debug_toggle "$1"; exit 0 ;;
+    debug-clear)       debug_clear; exit 0 ;;
     list)              list_cats; exit 0 ;;
     set-rmmv-tab)      shift; set_rmmv tab "$1" "$2"; exit 0 ;;
     set-rmmv-tileset)  shift; set_rmmv tileset "$1" "$2"; exit 0 ;;

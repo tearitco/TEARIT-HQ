@@ -1,0 +1,18 @@
+/* palettes-debug.css - real CSS for the Debug HQ sidebar (2026-08-29).
+ * Same real house convention every other palettes category .chtpm
+ * needs its OWN css file - css_compute_style() has no fallback, an
+ * unstyled class silently renders as a 0x0 invisible rect (this exact
+ * bug already hit .pal-wide/.pal-tab/.pal-tileset-opt earlier this
+ * session - see palettes-rmmv.css's own header comments for the full
+ * story). Rows here are wide, single-column text lines (op toggles +
+ * debug.txt content), not a square tile grid like emojis/rmmv. */
+window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
+.settings-block { background-color: #181818; border: 1px solid #2a2a2a; border-width: 1; }
+.block-title { background-color: #1c1c1c; color: #cccccc; font-weight: bold;
+  font-size: 9px; position: absolute; top: -8px; left: 10px; }
+.pal-hint { color: #888888; font-size: 9px; }
+.pal-grid-row { display: flex; flex-direction: row; gap: 4px; height: 22px; }
+.pal-tile { background-color: #2a2a2a; color: #cccccc; font-weight: bold;
+  width: 800px; height: 20px; font-size: 11px; padding: 2px; }
+.pal-wide { width: 1080px; }
+.pal-thumbtrack { background-color: #2a2a2a; }

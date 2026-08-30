@@ -57,6 +57,11 @@ gcc -Wall -O2 -o "ops/+x/tp_rmmv_character_extract.+x" "ops/tp_rmmv_character_ex
 gcc $CFLAGS -o "ops/+x/tp_set_brush_rmmv.+x" "ops/tp_set_brush_rmmv.c"
 gcc $CFLAGS -o "ops/+x/tp_place_desktop_rmmv.+x" "ops/tp_place_desktop_rmmv.c"
 gcc $CFLAGS -o "ops/+x/tp_arm_placer_rmmv.+x" "ops/tp_arm_placer_rmmv.c" -lX11
+# Real standalone debug tool, 2026-08-29, direct instruction ("a simple
+# op that, when on, detects clicks on desktop, and writes them to
+# debug/debug.txt") - built to isolate the real Mutter/XWayland click-
+# delivery bug independent of the rmmv feature.
+gcc $CFLAGS -o "ops/+x/tp_debug_click_watcher.+x" "ops/tp_debug_click_watcher.c" -lX11
 
 # khtpm_choice_picker.+x + khtpm_show_choices.+x - REAL FIX 2026-08-16
 # ("its very old lets fix it to use khtpm"): the real khtpm-based Show

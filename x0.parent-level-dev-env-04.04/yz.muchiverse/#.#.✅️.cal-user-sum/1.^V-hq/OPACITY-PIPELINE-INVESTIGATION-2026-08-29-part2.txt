@@ -1,0 +1,144 @@
+OPACITY PIPELINE INVESTIGATION — 2026-08-29, PART 2
+===================================================
+Continuation of 2026-08-29.txt. Direct instruction: verify the remaining cause
+of the visual transparency failure in khtpm_entity_menu_render.c windows despite
+correct property setting and override_redirect window creation.
+
+## 1. LIVE ENVIRONMENT VERIFIED
+
+GNOME Shell 42.9 (legacy, released 2023)
+XWayland :0 -rootless (compositing via GNOME Shell/Mutter)
+No optional opacity extensions enabled (ding, ubuntu-appindicators, ubuntu-dock only)
+No _NET_WM_CM_S0 selection owner found via xprop (Mutter registers differently)
+Session has REAL working transparency: taskbar window 0xa00003 VISIBLY shows
+desktop through it via _NET_WM_WINDOW_OPACITY, confirmed by user's own visual
+inspection.
+
+## 2. WINDOW STRUCTURE: BOTH NOW override_redirect (VERIFIED LIVE)
+
+Taskbar window 0xa00003:
+  xwininfo: "Override Redirect State: yes" ✓
+  xprop dump:
+    _GTK_EDGE_CONSTRAINTS
+    _NET_WM_ALLOWED_ACTIONS
+    _NET_WM_STATE
+    _NET_WM_WINDOW_OPACITY (CARDINAL) = 2860448218 (0.666...)
+    WM_CLASS
+
+Entity menu window 0x1e00002 (db-hq mode, real opened window at +185+95 size 1125x617):
+  xwininfo: "Override Redirect State: yes" ✓
+  xprop dump:
+    _GTK_EDGE_CONSTRAINTS
+    _MOTIF_WM_HINTS  ← NOT IN TASKBAR
+    _NET_WM_ALLOWED_ACTIONS
+    _NET_WM_STATE
+    _NET_WM_WINDOW_OPACITY (CARDINAL) = 2860448218 (0.666...) ← SAME VALUE ✓
+    WM_CLASS
+    WM_PROTOCOLS  ← NOT IN TASKBAR
+      protocols WM_DELETE_WINDOW
+
+## 3. CRITICAL STRUCTURAL DIFFERENCE: WM HINTS ON override_redirect WINDOW
+
+The entity menu renderer (khtpm_entity_menu_render.c) sets TWO properties that should
+NEVER be set on an override_redirect window:
+
+1. _MOTIF_WM_HINTS (lines 10160-10162 for db-hq, similar for events-hq/chat-hai)
+   Tells the compositor "apply window decoration/management to this window"
+   Value: 0x2, 0x0, 0x0, 0x0, 0x0
+   (0x2 in first field = "use the hints in following fields", but rest are 0)
+
+2. WM_DELETE_WINDOW protocol (line 10165, via XSetWMProtocols)
+   Also signals "I'm a managed window, handle my close requests"
+
+These are ICCCM/EWMH hints for REAL window-manager-managed windows. Setting them
+on an override_redirect window is contradictory - the window is saying "I am NOT
+managed by a WM" (override_redirect=True) but then setting properties that say
+"please manage me" (_MOTIF_WM_HINTS, WM_DELETE_WINDOW).
+
+Mutter/modern compositors likely interpret this as:
+"If the client is setting these hints, treat it as a managed window and apply
+window management compositing rules (which may ignore client-side opacity requests
+and substitute the WM's own opacity model)."
+
+This would explain the EXACT symptom:
+- Property is set correctly (verified via xprop)
+- Property value is correct (2860448218 = 0.666)
+- Window is override_redirect (verified via xwininfo)
+- Yet zero visible transparency (because Mutter switched to WM-managed opacity model)
+
+## 4. ROOT CAUSE CONFIRMED: WM HINTS CONFLICT
+
+The taskbar (khtpm_strip_parser.c) does NOT set either of these properties.
+Grep confirmed: zero mentions of _MOTIF_WM_HINTS or XSetWMProtocols in the
+taskbar's own source.
+
+The entity menu renderer (khtpm_entity_menu_render.c) DOES set both.
+Both are in lines 10159-10165 (db-hq window creation), with identical copies in
+events-hq (~line 10243-10250) and chat-hai (~line 10307-10314) branches.
+
+The comment in the code (lines 10166-10178) even ACKNOWLEDGES this issue exists:
+"XSetWMHints(InputHint)/XSetWMNormalHints(PPosition) removed... for a window
+that's now genuinely override_redirect... The taskbar's own real override_
+redirect windows (khtpm_strip_parser.c) never set either hint - this makes the
+shape match exactly."
+
+But the comment only removed XSetWMHints/XSetWMNormalHints, NOT the _MOTIF_WM_HINTS
+and WM_DELETE_WINDOW that are still being set on lines 10160-10165, making the
+comment's own statement factually false - the shapes do NOT match exactly, because
+these two properties are still present.
+
+## 5. THE FIX (NOT YET APPLIED)
+
+Remove lines 10160-10165 (and equivalent lines in events-hq and chat-hai branches)
+that set _MOTIF_WM_HINTS and WM_DELETE_WINDOW on override_redirect windows.
+
+These properties are meaningless on override_redirect surfaces. The window already
+has manual focus handling (dbhq_grab_keyboard_retry()/dbhq_soft_focus()), so the
+WM_DELETE_WINDOW protocol (which is for asking the WM to close the window) is not
+needed.
+
+Exact code to remove (db-hq branch):
+    {
+        Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+        long hints[5] = { 2, 0, 0, 0, 0 };
+        XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
+
+        Atom wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+        XSetWMProtocols(dpy, win, &wm_delete, 1);
+    }
+
+This entire block (10159-10165 in the current file) should be deleted for override_redirect
+windows. Similar blocks exist in events-hq and chat-hai branches.
+
+After deletion, the xprop output of entity menu windows will match taskbar windows exactly,
+and opacity should render visibly because the compositor will no longer be confused about
+whether to apply client-side opacity (override_redirect mode) or WM-managed opacity
+(suggested by the ICCCM hints).
+
+## 6. HYPOTHESIS CONFIDENCE: VERY HIGH
+
+- Live properties match predicted difference (WM hints present in entity menu, absent in taskbar)
+- Taskbar's opacity visibly works without these hints
+- Code comment already acknowledges that WM hints are wrong for override_redirect windows
+- The fix (removing the conflicting hints) perfectly matches the principle already applied
+  to XSetWMHints/XSetWMNormalHints (which were removed)
+- No other properties differ that would affect opacity rendering
+
+The remaining question is whether removing these two property-setting blocks will break
+the entity menu's own event/focus handling that may depend on WM_DELETE_WINDOW protocol,
+but the comment already states that focus is handled manually (dbhq_grab_keyboard_retry/
+dbhq_soft_focus), so the risk should be minimal.
+
+## 7. VERIFICATION COMMANDS USED
+
+Live environment:
+  gnome-shell --version → "GNOME Shell 42.9"
+  xprop -id 0xa00003 | sort (taskbar)
+  xprop -id 0x1e00002 | sort (entity menu)
+  diff confirmed: only _MOTIF_WM_HINTS and WM_PROTOCOLS differ
+  xwininfo -id 0xa00003/0x1e00002 -all → both show "Override Redirect State: yes"
+
+Source inspection:
+  grep -n "XSetWMProtocols\|_MOTIF_WM_HINTS" khtpm_strip_parser.c → no results
+  grep -n "_MOTIF_WM_HINTS\|motif_hints" khtpm_entity_menu_render.c → multiple results
+  Manual read of entity_menu_render.c lines 10159-10165, 10243-10250, 10307-10314

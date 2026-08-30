@@ -10,3 +10,4 @@ CATEGORY     | df                 | Dwarf Fortress     | df          | 0
 CATEGORY     | kenney             | Kenney 3D          | stub        | 0
 CATEGORY     | paint              | Paint Colors       | paint       | 0
 CATEGORY     | generate           | Generate           | generate    | 0
+CATEGORY     | debug              | Debug              | debug       | 1

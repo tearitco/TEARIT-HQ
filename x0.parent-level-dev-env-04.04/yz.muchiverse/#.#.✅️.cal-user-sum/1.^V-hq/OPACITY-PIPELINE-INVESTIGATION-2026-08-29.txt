@@ -1,0 +1,112 @@
+OPACITY PIPELINE INVESTIGATION — 2026-08-29
+=============================================
+Direct instruction: "research the tb opacity pipeline from .pdl read to
+render, write findings to a .txt file, compare with the current, not
+working pipeline, then make them use the same code once and for all."
+
+## 1. The .pdl → property pipeline itself (identical in both cases, verified)
+
+Source config: #.desktop/livedesk_theme.pdl
+  COLOR        | opacity              | .666
+
+Both khtpm_strip_parser.c (taskbar, WORKING) and the newly-ported
+khtpm_entity_menu_render.c / tp_desktop_window_rgb.c (NOT working) use
+byte-for-byte the same load_theme_opacity() parse logic and the same
+set_window_opacity() call:
+
+  Atom opacity_atom = XInternAtom(dpy, "_NET_WM_WINDOW_OPACITY", False);
+  unsigned long val = (unsigned long)(opacity * (double)0xFFFFFFFFUL);
+  XChangeProperty(dpy, w, opacity_atom, XA_CARDINAL, 32, PropModeReplace,
+                   (unsigned char *)&val, 1);
+
+CONFIRMED via live xprop on a real, currently-open db-hq/palettes
+window (0x1e00002):
+  _NET_WM_WINDOW_OPACITY(CARDINAL) = 2860448218
+  2860448218 / 4294967295 = 0.6659... — matches 0.666 from the .pdl
+  exactly. The property IS being set correctly. This is not a parsing
+  or a "value never reaches the window" bug.
+
+## 2. The real, verified structural difference
+
+xwininfo -id -all on a REAL, LIVE taskbar window (0xa00003, top bar)
+vs. a REAL, LIVE db-hq/palettes window (0x1e00002), same live desktop
+session:
+
+  taskbar (0xa00003):
+    Override Redirect State: YES
+    No window manager hints defined (i.e. genuinely unmanaged)
+
+  db-hq/palettes (0x1e00002):
+    Override Redirect State: NO
+    Window manager hints:
+        Client accepts input or input focus: Yes
+        Displayed on desktop 0
+    Normal window size hints:
+        Program supplied location: 100, 160
+
+The db-hq window is a REAL, WM-MANAGED window (Mutter is actively
+managing it — assigning it ICCCM/EWMH properties, desktop placement,
+focus handling). The taskbar window is a genuinely override_redirect,
+unmanaged surface, same as every X11 popup/panel/tooltip convention.
+
+## 3. Root cause, found in source (not guessed)
+
+grep for the XCreateWindow value-mask on every window this house's own
+merged renderer creates:
+
+  khtpm_entity_menu_render.c:10143  (db-hq)      CWBackPixel | CWEventMask
+  khtpm_entity_menu_render.c:10226  (events-hq)  CWBackPixel | CWEventMask
+  khtpm_entity_menu_render.c:10286  (chat-hai)   CWBackPixel | CWEventMask
+  khtpm_entity_menu_render.c:10363  (popup)      CWBackPixel | CWOverrideRedirect | CWEventMask
+
+Only the popup/context-menu branch actually sets CWOverrideRedirect in
+its value-mask. The other three branches DO set
+`swa.override_redirect = True;` on the XSetWindowAttributes struct —
+but X11 only applies struct fields whose corresponding bit is present
+in the value-mask passed to XCreateWindow. Since CWOverrideRedirect is
+absent from db-hq/events-hq/chat-hai's own mask, that struct field is
+silently ignored and Xorg/XWayland creates a REAL, WM-managed window
+regardless of what the struct says — this has apparently been true
+since these branches were written, not something introduced tonight.
+
+khtpm_strip_parser.c's own taskbar windows DO include
+CWOverrideRedirect in their own mask (confirmed at the 3 XCreateWindow
+call sites for win/hq_win/popup_win) — this is the real, concrete
+difference between "opacity visibly works" and "opacity property is
+set correctly but has no visible effect."
+
+## 4. Why this would explain the symptom
+
+_NET_WM_WINDOW_OPACITY is an EWMH convention every spec-compliant
+compositor (including Mutter) is SUPPOSED to honor on any window,
+managed or not. But in practice, several compositors (Mutter included,
+in various GNOME versions) only apply client-requested opacity
+reliably to override_redirect / "unmanaged" surfaces, and either
+ignore it or require a different mechanism (a WM-level opacity or a
+shell extension) for a real, WM-managed top-level application window,
+since those go through the WM's own compositing/decoration pipeline
+first. This matches the observed symptom exactly: property set
+correctly, value confirmed correct, zero visible effect specifically
+on the WM-managed windows, real effect on the override_redirect ones.
+
+## 5. What "make them use the same code once and for all" requires
+
+NOT a code-logic fix (the opacity-setting code is already identical) —
+a STRUCTURAL fix: db-hq/events-hq/chat-hai's own XCreateWindow calls
+need CWOverrideRedirect added to their value-mask, matching the popup
+branch and the taskbar's own real convention.
+
+This is a bigger, riskier change than it sounds: these 3 branches are
+real, WM-managed windows on purpose today (focus handling,
+XSetInputFocus/keyboard-grab retry logic throughout this file assumes
+real WM cooperation - e.g. dbhq_soft_focus()/dbhq_grab_keyboard_retry()
+- and taskbar interaction/alt-tab expectations may depend on being
+real WM-managed windows). Making them override_redirect could
+regress focus/keyboard-input behavior that's been tuned over many real
+bug-fix passes this session and prior ones (see this file's own many
+"REAL FIX ... direct live report" comments around XSetInputFocus).
+
+NOT done in this pass - flagging for direct confirmation before
+touching window-creation flags, since the blast radius (every db-hq/
+events-hq/chat-hai window's focus/input behavior) is larger than the
+opacity feature itself.

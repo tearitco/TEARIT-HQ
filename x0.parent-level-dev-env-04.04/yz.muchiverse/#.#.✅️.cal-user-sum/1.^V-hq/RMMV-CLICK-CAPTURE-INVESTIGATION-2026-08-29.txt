@@ -1,0 +1,223 @@
+RMMV CLICK-CAPTURE INVESTIGATION — 2026-08-29
+================================================
+Real human mouse clicks on the desktop never reach the armed XGrabPointer/
+XGrabKeyboard intercept in khtpm_entity_menu_render.c, even though the grab
+reports GrabSuccess and the on-disk ARMED state is written correctly.
+Synthetic XTest clicks from tp_test_send_click_abs.+x DID work (confirmed
+earlier this session).
+
+1. CODE READ — matches the task description, already includes an earlier
+   self-fix
+--------------------------------------------------------------------------
+File: *.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c
+
+- g_pal_rmmv_armed declared at line 743.
+- Arm sequence (line ~3083-3118, inside the "exec:" onclick branch,
+  triggered by the second click on an already-focused rmmv tile):
+    int gp = XGrabPointer(dpy, RootWindow(dpy, screen), False, ButtonPressMask,
+                           GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
+    int gk = (gp == GrabSuccess)
+           ? XGrabKeyboard(dpy, RootWindow(dpy, screen), False, GrabModeAsync,
+                            GrabModeAsync, CurrentTime)
+           : -1;
+    if (gp == GrabSuccess && gk == GrabSuccess) g_pal_rmmv_armed = 1;
+    else { ...write "Arm FAILED (...)" and clean up... }
+  Comment at this exact spot (dated 2026-08-29, already in the code) records
+  that a PRIOR bug — XTest clicks not being delivered to a *separately
+  spawned child process's* own XGrabPointer — was already diagnosed and
+  "fixed" by moving the grab in-process (this same running renderer process
+  now does the grab itself, instead of handing off to a freshly spawned
+  child). This is exactly the fix hypothesis #5 in the task would have
+  proposed; it was already tried, and it did NOT fully solve the problem
+  for real human clicks (only was verified via XTest synthetic clicks,
+  same file's comment admits "tp_arm_placer.c" — the pre-existing, proven
+  emoji placer — had the *same* cross-process XTest delivery problem, which
+  is a different bug from this one).
+- owner_events IS already False on both grab calls (line 3099, 3102) — this
+  answers task item #2: NOT the bug. False is correct for "capture
+  everything regardless of what's under the pointer," and that's what's
+  passed.
+- Intercept (hq_dispatch_xevent(), line 9316+): runs BEFORE all other
+  ButtonPress handling (line 9333: `if (g_pal_rmmv_armed && ev->type ==
+  ButtonPress)`), correctly distinguishes a click back inside the picker's
+  own on-screen rect (falls through / re-arms) from a click elsewhere
+  (writes RMMV_CLICK to nav_master_ledger.txt, updates title, calls
+  tp_place_desktop_rmmv.+x). Logic itself is correct and self-consistent.
+- Event pump (line ~9670-9673): a plain `select(xfd+1,...)` + `while
+  (XPending(dpy)) { XNextEvent(dpy,&ev); hq_dispatch_xevent(...); }` —
+  this is a normal, correct Xlib event loop that drains ALL queued events
+  for this process's own Display connection regardless of window, so an
+  event that actually arrives in this process's X11 event queue WILL reach
+  hq_dispatch_xevent(). No masking/filtering bug in the pump itself.
+
+CONCLUSION on code review: the C code, as currently written, is logically
+sound for both the arm and the intercept. The failure is not in this file's
+own logic — it is in whether the real hardware ButtonPress event is ever
+delivered into this process's X11 event queue at all.
+
+2. LIVE STATE CHECKED
+--------------------------------------------------------------------------
+- `&.widgits/palettes/state/rmmv_armed.txt` — NOT present at time of this
+  investigation (no stale "ARMED" note currently on disk); the picker
+  window from the report has since been closed (nav_master_ledger.txt's
+  last line for that pid is "closebtn"), so the live grab from the
+  reported session is no longer active. Could not attempt a live re-arm +
+  synchronous XGrabPointer-contention test against the exact same running
+  window in this pass without asking the human to re-click (out of scope
+  per task instructions).
+- `grep -c RMMV_CLICK #.desktop/nav_master_ledger.txt` — still 0 across all
+  history in this file; consistent with the bug report.
+- Three khtpm_entity_menu_render.+x processes are alive right now (pids
+  179268, 518771, 539348), each its own independent process with its own
+  Display connection and its own event loop/potential grab — see finding
+  #4 below on why this matters.
+- `ldd khtpm_entity_menu_render.+x` confirms it links real libX11.so.6 (not
+  the Win32 X11-shim build that also exists in this tree at
+  khtpm_strip_x11_win.c — that file defines its OWN fake
+  XGrabPointer/XGrabKeyboard that just calls Win32 SetCapture/SetFocus and
+  always returns GrabSuccess; it's a different platform target entirely,
+  not linked into the Linux binary actually running, so it is NOT the
+  cause here — checked and ruled out explicitly).
+
+3. XWAYLAND / MUTTER VERSION AND KNOWN BUG — this is the root cause
+--------------------------------------------------------------------------
+- `Xwayland -version` → X.Org Foundation Xwayland 22.1.1 (dpkg: xwayland
+  2:22.1.1-1ubuntu0.20).
+- Web research turned up a squarely on-point, still-open GNOME/Mutter
+  issue: https://gitlab.gnome.org/GNOME/mutter/-/issues/642
+  "XGrabPointer() isn't respected under Wayland" — direct quote from the
+  issue: Mutter has good support for XGrabKeyboard() under Wayland, but
+  XGrabPointer() was overlooked; an XWayland client's pointer grab is not
+  actually enforced by the Mutter/Wayland compositor. Real-world symptom
+  cited in the issue itself: a VNC viewer (an XWayland client) holding a
+  pointer grab cannot receive certain real pointer input (e.g.
+  Win+Right-Mouse) because Mutter does not route real hardware pointer
+  events to a grabbing-but-not-Wayland-focused XWayland client — it routes
+  them per Wayland's own surface-focus model instead.
+- This matches this bug EXACTLY: XGrabPointer/XGrabKeyboard both report
+  GrabSuccess (the X protocol-level grab is genuinely registered by the
+  X server / XWayland's internal state — hence "ARMED" is written
+  correctly, and Escape / picker-click handling, which only need the
+  X-level grab bookkeeping, work fine) — but real hardware ButtonPress
+  events generated by the actual mouse are routed by Mutter through
+  Wayland's own input-focus model, which has no concept of an X11 grab at
+  all. If khtpm_entity_menu_render.+x's window is not the Wayland-focused
+  surface at the moment of the real click (extremely likely for a global
+  "click anywhere on the desktop" workflow — the user's pointer is by
+  definition usually over some OTHER window, not the small picker window,
+  when they click to place a tile), Mutter simply never forwards that
+  hardware event into XWayland's stream for this client, so it never
+  reaches this process's X11 event queue, so XNextEvent() in the pump
+  never sees it, so hq_dispatch_xevent()'s intercept never runs.
+- XTest events behave differently and this explains why they worked:
+  XTestFakeButtonEvent injects directly into the X server's own event
+  delivery machinery at the X11 protocol layer (XWayland's internal X
+  server core), which DOES honor the active X11 grab state as recorded by
+  XGrabPointer — it bypasses Mutter's Wayland-surface-focus routing
+  entirely because it never goes through Wayland input routing in the
+  first place. This is exactly why the previously-confirmed test tool
+  (tp_test_send_click_abs.+x, XTest-based) worked at least twice for this
+  exact code path, while zero real human clicks (100% real hardware input,
+  necessarily routed through Mutter's Wayland input model) have ever
+  produced a single RMMV_CLICK line.
+
+CONCLUSION: this is not a bug in this house's own code. It's the known,
+still-open Mutter/XWayland limitation from gitlab.gnome.org/GNOME/mutter/
+issues/642 — Mutter does not honor/deliver real hardware pointer events to
+an XGrabPointer-holding XWayland client unless that client also happens to
+be the Wayland-focused surface, even though the X11-level grab call itself
+reports (and, at the X server's own bookkeeping level, genuinely is)
+GrabSuccess. XGrabKeyboard fares better per the same issue report, which is
+consistent with why Escape-to-cancel (KeyPress path, line 9409) has not
+been reported broken the same way pointer clicks are.
+
+4. MULTI-PROCESS GRAB CONTENTION — a related, secondary risk found in the
+   same codebase (not this bug, but worth flagging)
+--------------------------------------------------------------------------
+tp_desktop_window_rgb.c (a sibling file, each entity = its own OS process)
+carries its own dated comment on a DIFFERENT but related real incident:
+"XGrabKeyboard/XGrabPointer are DISPLAY-WIDE EXCLUSIVE resources - only one
+process can hold either at a time... every entity... independently calling
+XGrabKeyboard the moment ITS OWN popup opens, with zero coordination... If
+two entities' popups happen to open around the same time, whichever grabs
+last wins." That file's fix was a real, cross-process flock() mutex
+(#.desktop/livedesk_popup.lock). khtpm_entity_menu_render.c's rmmv arm/grab
+code does NOT take this same lock. With 3 khtpm_entity_menu_render.+x
+processes alive simultaneously right now (pids 179268, 518771, 539348),
+plus every other entity process in the house that can also call
+XGrabPointer/XGrabKeyboard, there IS a real, separate risk: another
+process's own grab attempt while rmmv is armed would itself fail loudly
+(AlreadyGrabbed) rather than silently, so this is not the primary
+explanation for the observed 0-RMMV_CLICK symptom (a grab denial is
+visible/logged), but it is a real gap that should be closed regardless —
+recommend rmmv's arm sequence also take livedesk_popup.lock the same way
+tp_desktop_window_rgb.c's popups do, for robustness once the primary bug
+below is fixed.
+
+5. HAS ANY GRAB-BASED TECHNIQUE EVER BEEN PROVEN WITH REAL HUMAN INPUT IN
+   THIS HOUSE?
+--------------------------------------------------------------------------
+Grep for XGrabPointer across the tree found several other users of the
+same technique (egg_window.c, zoo_window.c, tp_arm_placer.c,
+tp_arm_placer_rmmv.c, tp_range_grid.c, tp_desktop_window_rgb.c,
+avatar_window.c). Nearly all of these grab a POPUP window with
+owner_events=True (not the root window with owner_events=False) for
+context menus — a fundamentally easier case for Mutter/XWayland, because
+the popup window itself is typically the Wayland-focused surface at the
+moment it's opened (it was just mapped/raised in response to the very
+click that opens it), so the same Mutter XGrabPointer-not-enforced bug is
+far less likely to bite a same-window popup-menu grab than a true
+"anywhere on the whole desktop, possibly over an unfocused window" root
+grab like rmmv's. tp_arm_placer.c and tp_arm_placer_rmmv.c DO grab the
+root window with owner_events=False (same shape as rmmv) — and per the
+2026-08-29 comment already in khtpm_entity_menu_render.c, tp_arm_placer.c
+(the pre-existing, "proven" emoji placer) has the SAME real-human-click
+delivery problem, which is why the in-process workaround was attempted in
+the first place. So: no, a true global root-window grab-based click
+capture has NOT been proven reliable with real human input anywhere in
+this house — every one of this shape has the same underlying Mutter
+limitation.
+
+6. RECOMMENDED FIX (not applied — needs real human verification)
+--------------------------------------------------------------------------
+Do not keep chasing XGrabPointer-based real-hardware click capture on
+Mutter/XWayland 22.1.1 — it's a known compositor-level gap, not something
+fixable from the X11 client side. Recommended redesign, as the task itself
+anticipated in point 5:
+
+  Replace the "grab + wait for ButtonPress event" model with a
+  POLLING model using XQueryPointer:
+    - While g_pal_rmmv_armed, instead of relying on ButtonPress delivery,
+      add a periodic poll (e.g. every ~30-50ms, piggybacked on the
+      existing select()+timeout in the event loop around line 9670) that
+      calls XQueryPointer(dpy, RootWindow(dpy, screen), &root_ret,
+      &child_ret, &root_x, &root_y, &win_x, &win_y, &mask_ret).
+    - XQueryPointer reliably reports the CURRENT real button-mask state
+      under XWayland even for a non-focused client, because it's a
+      direct synchronous request/reply to the X server, not an
+      asynchronously *delivered* event — this sidesteps Mutter's Wayland
+      event-routing gap entirely (the same reason XQueryPointer-based
+      polling is the standard workaround cited for mutter#642-class bugs).
+    - Detect a real click as mask_ret's Button1Mask transitioning from 0
+      to Button1Mask (edge-triggered) between two consecutive polls, at
+      which point run the exact same logic currently in the ButtonPress
+      intercept (in/out-of-picker-rect check, ledger write, title update,
+      tp_place_desktop_rmmv.+x invocation).
+    - Keep XGrabKeyboard for Escape-to-cancel (KeyPress delivery is NOT
+      reported broken by mutter#642 — only pointer grabs are called out
+      as unenforced) — or, for full safety, also poll for Escape via
+      XQueryKeymap.
+    - Still keep XGrabPointer itself for its secondary effects (cursor
+      confinement/visual feedback if any is added later) but stop
+      depending on it for event DELIVERY — treat any ButtonPress that does
+      arrive as a bonus/fast-path, with the poll as the reliable primary
+      path.
+  This is directly testable: implement the poll, arm the brush, and have
+  the real human click the real desktop — if RMMV_CLICK lines finally
+  appear in nav_master_ledger.txt for a real mouse click (not XTest), the
+  fix is confirmed. This still needs a real human click to fully verify,
+  per the task's own constraint — could not be done in this investigation
+  pass.
+
+Sources:
+- https://gitlab.gnome.org/GNOME/mutter/-/issues/642
