@@ -1,0 +1,4 @@
+entity_type=celestial_body
+pos_x=8.00
+pos_y=-10.00
+pos_z=2.00

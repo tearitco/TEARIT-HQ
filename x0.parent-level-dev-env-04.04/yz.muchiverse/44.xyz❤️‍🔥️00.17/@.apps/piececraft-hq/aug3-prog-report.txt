@@ -1,0 +1,216 @@
+PIECECRAFT-XYZ — PROGRESS REPORT, 2026-08-03
+================================================================================
+Written end-of-session. Covers everything done today, in order, including
+what's still actively broken. Read this before picking the work back up.
+
+--------------------------------------------------------------------------------
+0. STARTING POINT
+--------------------------------------------------------------------------------
+Session started mid-crisis: an earlier agent had tried to build Minecraft-
+specific mechanics (gravity, Z-axis hero position, custom keybinds) directly
+into piececraft-hq's clone phase, instead of first cloning civ-txt's proven
+P1 skeleton and verifying it worked. Diagnosed in full in `mutant-clone.txt`
+(still in this directory) - read that first if you want the "how did it get
+broken" story.
+
+--------------------------------------------------------------------------------
+1. CLONE RESTORATION (done, verified)
+--------------------------------------------------------------------------------
+- Rewrote `ops/pc_menu_input.c` and `ops/pc_compose_frame.c` as faithful
+  clones of civ-txt's own `civ_menu_input.c`/`civ_compose_frame.c` - only
+  cosmetic renames, all Minecraft-specific logic removed.
+- Fixed `pieces/system/config.txt` back to generic game config (game_id,
+  turn, victory_condition, etc) - the mutation had put hero position
+  (pos_x/pos_y/pos_z/vel_z) there instead, which is wrong per
+  PORTABLE_ENTITY_ARCHITECTURE.md (position belongs on the entity's own
+  state.txt, not host config).
+- Deleted premature Phase 2+ files that had been seeded too early:
+  `terrain_legend.txt` (later legitimately rebuilt, see §5), `keybinds.txt`,
+  `board_widget_bridge.txt`, `widget_cmds/`.
+- Rebuilt `button.sh` to match civ-txt's own real P1 shape exactly (correct
+  starting layout `new_game.chtpm`, not `main.chtpm`; correct config seed
+  shape; no premature Minecraft-only file generation).
+- Added missing `pieces/chtpm/layouts/new_game.chtpm` and
+  `pal/new_game_module.pal` - these didn't exist at all before, which was
+  the actual reason the setup screen was being skipped.
+- Wrote `HANDOFF_NEXT_SESSION.md` and `user-walkthru.txt` documenting the
+  clone-verification-first approach.
+
+--------------------------------------------------------------------------------
+2. REAL BUGS FOUND AND FIXED DURING LIVE TESTING
+--------------------------------------------------------------------------------
+These were all found by actually running the game, not by code review:
+
+1. **RGB mirror window opened but showed nothing.** Root cause: the entire
+   `pieces/registry/fonts/ascii/` glyph-bitmap directory (95 real font
+   glyphs) was missing from piececraft-hq - `chtpm_rgb_render` needs this
+   to draw any text at all. Copied from the house's canonical
+   `014.wsr-pal💸️📌️+2/pieces/registry/fonts/ascii/` source (same place
+   civ-txt's own copy came from). Verified: 0 → 10,321 nonzero rendered
+   pixels.
+
+2. **Board-viewer widget opened but showed a totally blank/black window.**
+   Root cause: `&.widgits/board-viewer/ops/+x/bv_compose_frame.+x` and
+   `bv_menu_input.+x` were **0-byte empty files** - never actually
+   compiled, ever, in this environment. Ran board-viewer's own
+   `scripts/build.sh` for real. This wasn't a piececraft-hq bug - every
+   project using this shared widget would have hit the same thing.
+
+3. **"View Board" appeared to do nothing / showed flat boring terrain.**
+   Root cause: a `board_manifest.txt` file I'd created for testing
+   Z-level switching (see §3) was left behind in the real project,
+   silently overriding the real generated board with flat single-glyph
+   test data. Deleted once the Z-level feature itself was confirmed
+   working.
+
+4. **Board-viewer widgets clobbered each other across different games.**
+   Pressing "View Board" in tactics-txt stole piececraft-hq's
+   already-open widget window, and the reverse. Root cause: board-viewer
+   was a single global shared singleton (by original design - "there's
+   only ever meant to be one, discover and reuse it") with no per-project
+   scoping at all.
+   **Real fix, applied to civ-txt, tactics-txt, AND piececraft-hq alike:**
+   - `board-viewer/button.sh` now registers on the shared ledger as
+     `board-viewer:<host_project_name>` instead of a bare `board-viewer`
+     identity - each host gets its own independently-discoverable widget.
+   - Each host's own `OPEN_BOARD_WIDGET` handler (`civ_menu_input.c`,
+     `tactics_menu_input.c`, `pc_menu_input.c`) now scans ALL ledger_peers
+     output lines for the one matching ITS OWN scoped identity, instead of
+     blindly taking the first line.
+   - **Second-order bug caught in the same investigation:** even with
+     correct scoping, a host that restarts while its OLD board-viewer
+     widget is still alive (crash, force-kill, etc) would silently
+     refocus that orphaned widget instead of spawning a visible new one -
+     looked exactly like "the board didn't open." Fixed with a two-layer
+     defense in every host's `button.sh`: `kill_own_board_widget()` now
+     runs on both fresh START (safety net) and graceful QUIT (Ctrl+C),
+     so an orphan can never survive a restart.
+
+--------------------------------------------------------------------------------
+3. INVESTIGATION DOC: civ-vs-piece.md (done)
+--------------------------------------------------------------------------------
+Written after the clone was fully verified working, before any further
+Minecraft-specific divergence began (matching the same "verify, then
+diverge" discipline that fixed the original mutation). Documents every
+civ-shaped piece of the clone and its real Phase 1 replacement, plus a
+recommended build order. Real decisions locked in via direct Q&A this
+session:
+
+- Scope: real Phase 1 divergence (not just cosmetic reskin)
+- Setup screen: seed-based world generation (Victory/Map/Combat removed)
+- Tick model: both movement AND a manual button can end a turn/tick
+- Terrain vocabulary: expanded now to dirt/stone/grass/sand/water/wood/
+  leaves/ore (not civ's 5 strategy-game glyphs)
+- Chunk size: 16x16 (real Minecraft convention)
+- Z-height range: 32 layers
+- Controls: space=jump (already fixed by the design doc), and - after
+  checking REAL precedent in mutaclysm's own `dox/ctrl-legend.md` and
+  fuzz-op's own real fixture data (`project.pdl`'s `current_z` field,
+  `pos_z`, `map_file=..._zN.txt` naming) - Z-level movement uses `z`/`x`,
+  matching that precedent exactly (an earlier attempt to invent `[`/`]`
+  for this was caught and corrected mid-session - don't invent when real
+  precedent exists, per this house's own standing rule).
+- Mine/Build keys: `g`/`h` (raw keys, not the xelector numbered
+  context-menu design §3a originally sketched - direct instruction,
+  documented as a flagged divergence from that section).
+
+--------------------------------------------------------------------------------
+4. BOARD-VIEWER EXTENDED: REAL MULTI-Z CHUNK DISPLAY (done, verified)
+--------------------------------------------------------------------------------
+Board-viewer could previously only render one flat `board.txt` file - no
+concept of Z-levels or chunk directories. Extended (shared widget code,
+affects civ-txt/tactics-txt too, but zero-behavior-change for them):
+
+- `bv_compose_frame.c` now reads an OPTIONAL `pieces/system/
+  board_manifest.txt` (`z_base=...`, `z_count=N`) - if present, resolves
+  board data from `{z_base}{current_z}.txt` instead of the flat
+  `board.txt`. A host with no manifest (civ-txt, tactics-txt) is
+  completely unaffected - falls back to the exact old behavior.
+- `bv_menu_input.c` adds real `z`/`x` key handling to increment/decrement
+  `current_z` in `bv_state.txt`, matching the real mutaclysm precedent
+  (with one flagged, deliberate divergence: mutaclysm gates z/x to
+  3D-mode-only, but this project's 3D per-layer voxel rendering doesn't
+  exist yet, so it was made to work in 2D too - real per-Z 3D rendering
+  is later work).
+- A display-clamping bug (status line could show "Z-level: 3 / 2" - past
+  the valid range, even though the actually-rendered layer was correctly
+  clamped) was caught live during testing and fixed.
+- **Verified live**: built a hand-made 3-layer test chunk (plains/forest/
+  hills per layer) and confirmed pressing `x` correctly switched the
+  displayed terrain layer.
+
+--------------------------------------------------------------------------------
+5. REAL PHASE 1 DIVERGENCE - IN PROGRESS, ONE ACTIVE BUG
+--------------------------------------------------------------------------------
+Following civ-vs-piece.md's recommended build order (steps 1-3 combined
+into one milestone):
+
+**Done:**
+- `pieces/system/terrain_legend.txt` rewritten with the real expanded
+  vocabulary (air/dirt/stone/grass/sand/water/wood/leaves/ore) - `#`
+  deliberately avoided (known board-viewer comment-line collision).
+- New op `ops/pc_generate_chunk.c` written: real seeded-per-coordinate
+  hash (not raw `srand(time())` - design doc's own explicit requirement,
+  since chunks must regenerate identically for the future decompression
+  system), generates one real 16x16x32 chunk (`chunk_0_0`) with a real
+  height-varied plains surface (grass/dirt/stone/air layering), writes
+  `pieces/world_01/state.txt` (seed/tick/active) and
+  `pieces/hero_01/state.txt` (real entity per PORTABLE_ENTITY_
+  ARCHITECTURE.md's universal schema, standing on the generated surface).
+  **Verified working when invoked directly** (`PRISC_PROJECT_ROOT=<real
+  project root> ./ops/+x/pc_generate_chunk.+x <seed> 0 0` correctly
+  produces all expected files).
+- `pc_menu_input.c`'s `CONFIRM_START` handler rewritten to generate a
+  random seed and shell out to `pc_generate_chunk.+x`, replacing the old
+  civ-shaped flat-board-with-capital generation.
+- `pc_compose_frame.c`'s `new_game` screen rewritten - dropped Victory/
+  Map/Combat entirely, now shows a simple "a new world will be generated"
+  message with one real action (Confirm & Start).
+- Build script updated, everything compiles clean.
+
+**ACTIVE BUG, not yet resolved:** in a real interactive session, pressing
+Confirm & Start correctly flips `game_state` to `playing` (config.txt
+write works), but `pc_generate_chunk.+x` does NOT actually run -
+`pieces/world_01/state.txt`, `pieces/hero_01/state.txt`, and
+`board_manifest.txt` all fail to appear. Confirmed this is NOT a bug in
+`pc_generate_chunk.c` itself (running it directly against the real
+project root works perfectly and produces all expected files/output).
+The `system()` call inside `pc_menu_input.c`'s `CONFIRM_START` handler is
+either not firing, firing with a bad working directory/path, or its
+output is being swallowed (stderr is currently redirected to /dev/null
+in that call, which may be hiding the real error - worth removing
+temporarily to see the actual failure). Was mid-diagnosis when this
+report was requested - next step is to re-add stderr output to that
+specific `system()` call and reproduce inside a real session (not a
+manual /tmp scratch dir, which doesn't have `ops/` symlinked in and gave
+a false failure earlier this session - use `./button.sh run` and drive
+it via a real or simulated key press against the REAL session directory).
+
+--------------------------------------------------------------------------------
+6. WHAT'S NEXT (once the active bug above is fixed)
+--------------------------------------------------------------------------------
+Per civ-vs-piece.md §6's build order:
+4. Rewrite `main.chtpm`/`pc_compose_frame.c`'s main screen - replace the
+   civ-shaped Turn/Treasury/Cities readout with tick count + hero
+   position + current chunk info.
+5. Wire `pieces/system/keybinds.txt` (space=jump, g=mine, h=build) - the
+   RECEIVING side (host draining its own inbox) and SENDING side
+   (board-viewer's own `bv_menu_input.c` keybinds lookup + inbox append)
+   are BOTH already real and working (confirmed this session,
+   design doc's "still NOT built" note on the sending side is now
+   stale) - this step is just publishing the actual keybinds.txt file
+   and adding handlers in `pc_menu_input.c` for the JUMP/MINE/BUILD
+   action strings arriving via inbox.
+6. `pc_place_block`/`pc_break_block` ops (Phase 2 proper, deferred until
+   Phase 1's render/nav loop is fully proven per design §11).
+
+Still-open items flagged in civ-vs-piece.md §5, not blocking Phase 1:
+- Inspect/Inventory/Exit input scheme (design §3a's numbered xelector
+  context-menu convention still likely applies here, unlike Mine/Build)
+- Whether `active_radius` belongs on the setup screen at all if Phase 1
+  never uses it (no compression until Phase 3)
+- Real biome variety beyond the single flat "plains" pass built today
+
+--------------------------------------------------------------------------------
+END OF REPORT
+--------------------------------------------------------------------------------

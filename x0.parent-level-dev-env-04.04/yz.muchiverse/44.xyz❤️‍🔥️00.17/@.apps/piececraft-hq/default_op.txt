@@ -1,0 +1,7 @@
+# Custom operations for piececraft-hq's own prisc+x program, modeled
+# directly on @.apps/tactics-txt's own default_op.txt.
+# Format: name type handler {description}
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}
+pc_menu_input void ops/+x/pc_menu_input.+x {config-driven (keybinds.txt) key dispatch}
+pc_compose_frame void ops/+x/pc_compose_frame.+x {render the current screen into view.txt}

@@ -1,0 +1,10 @@
++============================================================+
+|  A T L A S - E D I T O R   [new_game]                      |
++============================================================+
+|                                                            |
+|Choose a world type, then Confirm & Start.                  |
+|                                                            |
+|Seeded World: real 16x16x32 chunk, +/-2 height variation.   |
+|Debug Flat World: flat ground, 4 trees, easy to verify.     |
+|                                                            |
+|  World generated (seed 1789069162). Game started.          |

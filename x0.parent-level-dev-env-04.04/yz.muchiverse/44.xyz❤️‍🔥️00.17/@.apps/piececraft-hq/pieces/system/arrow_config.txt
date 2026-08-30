@@ -1,0 +1,100 @@
+# arrow_config.txt - real, human-editable CAMERA config, read by
+# &.widgits/board-viewer's own ops (bv_menu_input.c for the arrow
+# mapping, bv_render_3d.c for the camera geometry below). No rebuild
+# needed - edit a value, save, relaunch the game to pick it up.
+#
+# --- Fresh-session defaults ---
+# What a NEW board-viewer session starts in, before the player touches
+# any key (read by bv_menu_input.c / bv_compose_frame.c /
+# bv_render_3d.c's own default_render_mode()/default_camera_mode()).
+# 2026-08-07, direct instruction ("start in 3d 3rd person as a default,
+# read from a config file so it's flexible").
+#   default_render_mode: 1 = start in 3D, 0 = start in 2D flat.
+#     2D-only hosts (civ-txt/tactics-txt) with no key here still fall
+#     back to their own real 0 default - unaffected.
+#   default_camera_mode: 1 = first-person, 2 = third-person,
+#     3 = free-roam, 4 = bird's-eye (applies while render_mode==1).
+# Omit a key (or set it invalid) to keep the real per-host default:
+# render_mode = has a Z-manifest ?, camera_mode = 2 (third-person).
+default_render_mode=1
+default_camera_mode=2
+# default_interact_mode: NOT YET REAL - investigated 2026-08-30, direct
+#   question ("is there also a way we can default to interact mode on as
+#   well?"). Interact mode's real ON/OFF state is owned entirely by the
+#   SHARED chtpm_parser_pal.c engine core (export_active_index(),
+#   chtpm_parser_pal.c:2719 - used by all 16 legacy-GL projects, see
+#   legacy-shared-fix.md), not by board-viewer's own config the way
+#   default_render_mode/default_camera_mode above are - a pre-seed
+#   attempt in button.sh got silently overwritten by the engine's own
+#   first real export, confirmed live. This key is NOT read by anything
+#   right now - left here as a placeholder for when the real engine-
+#   level fix (or a synthetic first-click injection) actually lands, not
+#   a working option today. Don't set it expecting an effect.
+#default_interact_mode=1
+#
+# --- Arrow-key direction mapping ---
+# If LEFT/RIGHT (or UP/DOWN) ever feel backwards on screen, just flip
+# the matching sign below (-1 <-> 1) and relaunch. Applies to EVERY
+# camera mode identically (arrows always move the real underlying grid
+# position the same way - what differs mode-to-mode is how that
+# position gets turned into a camera EYE position, see below).
+left_dx=-1
+right_dx=1
+up_dy=-1
+down_dy=1
+
+# --- First-person (camera_mode 1) ---
+# fp_face_distance: how far forward of the anchor cell's own center the
+#   eye sits (prevents standing dead-center inside your own cell).
+# fp_eye_height: how far above the ground (anchor_h) the eye sits.
+fp_face_distance=0.3
+fp_eye_height=1.5
+
+# --- Third-person (camera_mode 2) ---
+# tp_distance: how far BEHIND the anchor the camera sits.
+# tp_height: how far ABOVE the anchor the camera sits.
+# tp_look_down_deg: how many degrees to tilt the VIEW down (on top of
+#   whatever r/t pitch you've dialed in) so the elevated camera
+#   actually looks down at the entity instead of level over its head.
+tp_distance=5.0
+tp_height=4.0
+tp_look_down_deg=20.0
+
+# --- Lighting engine (xyz-ngn-plan.md) ---
+# lighting_enabled: 1 = real sun/moon-driven sky color + ground light
+#   level + visible sun/moon objects. 0 = flat sky, flat lighting (old
+#   behavior), sun/moon objects hidden. Toggle without a rebuild.
+lighting_enabled=1
+
+# --- Camera/movement keys (all values are the KEY'S OWN ASCII CODE,
+#     not a character - e.g. 'w' is 119, 'q' is 113. Use `python3 -c
+#     "print(ord('x'))"` to find any key's code, or man ascii.) ---
+# Defaults below match this file's own real, original hardcoded keys
+# exactly - nothing changes for anyone who doesn't touch this section.
+key_toggle_render_mode=48   # '0' - flip between 2D and 3D
+key_possess=57              # '9' - possess/release the hero
+key_reset_xelector=56       # '8' - snap xelector back to the hero
+key_z_down=122              # 'z' - xelector Z-level down
+key_z_up=120                # 'x' - xelector Z-level up
+key_reset_view=102          # 'f' - reset camera to this mode's default
+key_yaw_left=113            # 'q' - turn left (modes 1/2/3)
+key_yaw_right=101           # 'e' - turn right (modes 1/2/3)
+key_pitch_down=114          # 'r' - look down (modes 1/2/3)
+key_pitch_up=116            # 't' - look up (modes 1/2/3)
+key_pan_forward=119         # 'w' - pan/strafe forward (modes 3/4)
+key_pan_back=115            # 's' - pan/strafe back (modes 3/4)
+key_pan_left=97             # 'a' - pan/strafe left (modes 3/4)
+key_pan_right=100           # 'd' - pan/strafe right (modes 3/4)
+key_cam_down=99             # 'c' - free camera height down (modes 3/4)
+key_cam_up=118              # 'v' - free camera height up (modes 3/4)
+# NOTE: the '1'/'2'/'3'/'4' camera-mode-switch keys are NOT yet
+# remappable here - they use a compact "key - '0' = mode number" trick
+# in bv_menu_input.c that doesn't generalize to arbitrary custom keys
+# without a bigger real refactor. Flagged honestly, not silently
+# skipped - ask if you actually need those remapped and it's a real,
+# doable follow-up.
+#
+# piececraft-hq's own GAME-VERB keys (jump/mine/build/end-turn/
+# autotick toggle/tick-speed cycle) are a SEPARATE real config file:
+# pieces/system/keybinds.txt (already fully custom-key-capable, uses
+# raw keycodes the same way).

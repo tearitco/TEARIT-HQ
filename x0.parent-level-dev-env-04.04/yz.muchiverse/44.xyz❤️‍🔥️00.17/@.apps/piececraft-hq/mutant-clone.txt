@@ -1,0 +1,303 @@
+PIECECRAFT-XYZ DIAGNOSTIC REPORT: CLONE MUTATION ANALYSIS
+=========================================================
+Generated 2026-08-03 | Status: SERIOUS ARCHITECTURAL DEVIATION
+
+EXECUTIVE SUMMARY
+-----------------
+The piececraft-hq project began with a clear instruction: "clone both civ-txt
+and tactics-txt exactly, verify the clone works, then ADD Minecraft features."
+Instead, the last agent violated this order entirely—it tried to build Minecraft
+mechanics INSIDE the clone phase, creating a hybrid "mutant" that is neither a
+working clone nor a working game. The design doc is PLAN ONLY (no code yet per
+line 3 of PIECECRAFT_XYZ_DESIGN.md), but implementation began with divergence,
+not replication.
+
+ROOT CAUSE
+----------
+The agent misread the design's own Phase structure (§11):
+  - Phase 0: board-viewer refactor (terrain-legend data-driven, already done)
+  - Phase 1: CLONE the storage + nav + compose loop from civ/tactics exactly
+  - Phase 2+: THEN diverge with place/break/inventory/etc.
+
+Instead, it tried to jump straight to Phase 1.5 (a hybrid "3D with gravity")
+before Phase 1 (working clone) was even verified.
+
+MUTATIONS DETECTED (what was added that shouldn't exist yet)
+===========================================================
+
+1. TERRAIN_LEGEND PARTIAL IMPLEMENTATION (pieces/system/terrain_legend.txt)
+   ─────────────────────────────────────────────────────────────────────
+   Status: PREMATURE - Phase 0 is done board-viewer-side, but piececraft-hq
+           has no business seeding its own legend until Phase 1 lands
+
+   Current content:
+     # glyph|height|r|g|b|asset_hex|name  ("-" asset_hex = no texture)
+     .|0.0|120|170|80|1F33E|plains
+
+   Problem: This is game-specific Minecraft data (plains grass = 1F33E emoji,
+            custom height 0.0). A clone would have NO terrain_legend—it would
+            start as a bare text board game (ASCII grid of . and other glyphs,
+            like civ-txt's board.txt). Terrain rendering is board-viewer's job,
+            not the game's—the game just writes glyphs.
+
+2. CONFIG.TXT CONTAINS Z-AXIS + GRAVITY STATE (pieces/system/config.txt)
+   ─────────────────────────────────────────────────────────────────────
+   Status: CRITICAL DEVIATION - game mechanics mixed into clone skeleton
+
+   Current content:
+     pos_x=5
+     pos_y=5
+     pos_z=0
+     vel_z=0
+     last_message=
+
+   Expected (from civ-txt):
+     game_id=piececraft-hq-001
+     turn=1
+     victory_condition=<something>
+     game_state=playing
+     [other game-config fields, not player position]
+
+   Problem: The clone is already assuming 3D space (pos_z, vel_z for gravity).
+            This is Phase 2+ work. Config.txt should be GAME config
+            (difficulty, map size, etc.), not hero state (which lives in pieces/
+            hero_01/state.txt per PORTABLE_ENTITY_ARCHITECTURE). Mixing them
+            here breaks the data contract.
+
+3. KEYBINDS.TXT HARDCODED WITH GAME-SPECIFIC COMMANDS
+   ──────────────────────────────────────────────────
+   Status: PREMATURE - exists when clone should have zero keybinds yet
+
+   Current location: pieces/system/keybinds.txt (exists but not read)
+
+   Problem: The clone phase should reuse civ-txt's exact keybinds (board-viewer
+            camera modes 1–4, arrows for nav). Custom game-specific bindings
+            (JUMP/MINE/BUILD) belong in Phase 2+, after the clone works.
+            The design's §3 says "reuse wholesale, never invent" — but this
+            implies you copy civ-txt's bindings first, verify them, THEN add
+            new ones.
+
+4. OPS FILES REFERENCE GAME MECHANICS ALREADY
+   ─────────────────────────────────────────
+   Status: CRITICAL - ops contain corrections for non-existent features
+
+   Current ops:
+     - pc_menu_input.c: ~100+ lines mentioning JUMP/MINE/BUILD gravity physics,
+                        widget bridge inbox, etc.
+     - pc_compose_frame.c: ~100+ lines for "height column" rendering (later
+                          corrected), "jump key" dispatch, etc.
+
+   Comments in both files show the agent REWROTE them mid-stream, correcting
+   mistakes—e.g., pc_compose_frame header says "REWRITE 2026-08-03" and
+   explains removing the bespoke side-view because "controls shouldn't be
+   available till interact mode is activated in gl map view like civ etc."
+
+   Problem: The clone doesn't need ANY custom ops yet. It should literally
+            copy civ_menu_input.+x and civ_compose_frame.+x behavior, just
+            renamed to pc_*. This is *reuse ops wholesale, cosmetic rename
+            only at boundary* (memory: feedback_reuse_ops_dont_rename.md).
+            Instead, the agent built new ops with game logic baked in, then
+            half-reverted them mid-implementation.
+
+5. DEFAULT_OP.TXT REFERENCES PC_* OPS (not clone ops)
+   ─────────────────────────────────────────────────
+   Status: DEVIATION - lists piececraft-hq-specific ops, not civ-like ops
+
+   Current:
+     pc_menu_input void ops/+x/pc_menu_input.+x {config-driven keybinds...}
+     pc_compose_frame void ops/+x/pc_compose_frame.+x {render...}
+
+   Expected (clone):
+     [exact copy of civ-txt's default_op.txt with only the name changed]
+
+   Problem: Yes, we rename the ops (pc_* vs civ_*), but the BEHAVIOR should
+            be identical to civ-txt's on day 1. The comments in the current
+            ops already show custom logic (widget bridge, gravity, keybinds)
+            that should not exist yet.
+
+6. PIECES/SYSTEM/BOARD_WIDGET_BRIDGE.TXT EXISTS
+   ──────────────────────────────────────────────
+   Status: PREMATURE - Phase 0 buildup, not needed for clone phase
+
+   Problem: This file is part of §4a's "real pairing built" (lines 321–365 of
+            design doc). The design explicitly says this was done for civ-txt
+            and tactics-txt, and the "command bus" (inbox/bridge) allows
+            board-viewer to send commands to the host. For a clone, this
+            should already exist (copied from civ-txt), but piececraft-hq is
+            creating it anew with custom fields, polluting the clone.
+
+7. PIECES/SYSTEM/WIDGET_CMDS/INBOX.TXT EXISTS
+   ───────────────────────────────────────────
+   Status: PREMATURE - game-host-specific, not clone generic
+
+   Problem: The inbox is a **live queue** between board-viewer and the host
+            game. In the clone phase, this should be copied as-is from
+            civ-txt, empty (or with test data). Creating it fresh here
+            suggests the agent is already building the command pipeline
+            for custom game operations (JUMP/MINE/BUILD), not cloning.
+
+MISSING STRUCTURE (what a proper clone needs)
+==============================================
+
+1. NO PROOF/ DIRECTORY
+   Status: CRITICAL - no test fixtures, no verification possible
+   Expected: proof/ with board fixtures, expected render output, etc. (see
+             civ-txt/proof/ for example)
+   Impact: No way to verify the clone works without running interactively.
+
+2. NO TEST-HARN-SAME/ DIRECTORY
+   Status: CRITICAL - no regression test harness
+   Expected: test-harn-same/ with golden outputs (see civ-txt/ for example)
+   Impact: No CI-verifiable proof the clone matches civ-txt behavior.
+
+3. NO HANDOFF_NEXT_SESSION.MD
+   Status: CRITICAL - no continuation guide
+   Expected: File tracking remaining work, current state, next steps
+             (see civ-txt/HANDOFF_NEXT_SESSION.md for example)
+   Impact: Impossible to hand off work to next session; state is opaque.
+
+4. NO USER-WALKTHRU.TXT
+   Status: IMPORTANT - no manual verification guide
+   Expected: Step-by-step interactive walkthrough (see civ-txt/ for example)
+   Impact: No easy way to test the clone by hand.
+
+5. BOARD.TXT LOOKS LIKE CLONE, BUT...
+   Status: PARTIAL - 16x10 grid of dots
+   Current: pieces/system/board.txt = 16 cols × 11 rows of '.'
+   Expected: Should match civ-txt's board dimensions exactly
+   Problem: Haven't verified the dimensions match, and the file was auto-
+            generated, not carefully compared.
+
+ARCHITECTURAL VIOLATIONS
+========================
+
+1. REUSE OPS WHOLESALE, DON'T RENAME INTERNALS
+   Violated: The ops CONTAIN custom game logic (gravity, widget bridge
+             interaction, keybind dispatch). They should be near-identical
+             to civ_menu_input.c/civ_compose_frame.c on day 1, with only
+             cosmetic renames in comments and function names.
+
+2. CLONE FIRST, DIVERGE LATER
+   Violated: The agent tried to build Minecraft features (3D, gravity,
+             place/break) before verifying the 2D clone worked at all. The
+             design's Phase order (Phase 1 = clone, Phase 2+ = diverge) was
+             ignored.
+
+3. VERIFY AGAINST PRECEDENT BEFORE DOING ANYTHING NEW
+   Violated: No proof/ or test-harn-same/ to verify the clone matches civ-txt.
+             The codebase rule (from feedback_chtpm_read_precedent_first.md)
+             says "never invent a screen/menu pattern from scratch—read real
+             CHTPM precedent first." Here, the pattern itself (main menu,
+             board widget, etc.) should be COPIED, not reimplemented.
+
+THE FIX (recommended next session)
+==================================
+
+1. DISCARD AND RESTORE (not incremental patch—too much damage)
+
+   Step 1a: Delete piececraft-hq/pieces/system/terrain_legend.txt
+            (board-viewer will use its own, phase 0 already done)
+
+   Step 1b: Copy civ-txt/pieces/system/config.txt EXACTLY to
+            piececraft-hq/pieces/system/config.txt
+            Update only the game_id field to "piececraft-hq-001",
+            leave everything else identical
+
+   Step 1c: Delete keybinds.txt (clone should have zero custom keybinds—
+            board-viewer's own camera modes 1–4 are reused wholesale)
+
+   Step 1d: Replace pc_menu_input.c and pc_compose_frame.c with near-word-for-
+            word copies of civ_menu_input.c and civ_compose_frame.c
+            (only rename function names and internal identifiers to pc_*,
+            never change logic)
+
+   Step 1e: Delete pieces/system/board_widget_bridge.txt and pieces/system/
+            widget_cmds/ (copy them FROM civ-txt on day 1 if needed, don't
+            create them fresh)
+
+2. CREATE PROOF & TESTING STRUCTURE
+
+   Step 2a: Copy civ-txt/proof/ structure to piececraft-hq/proof/ (with
+            board fixtures, render golden files, etc.)
+
+   Step 2b: Copy civ-txt/test-harn-same/ to piececraft-hq/test-harn-same/
+
+   Step 2c: Run test-harn-same against both civ-txt and piececraft-hq to
+            confirm identical behavior
+
+3. CREATE HANDOFF & WALKTHROUGH
+
+   Step 3a: Write piececraft-hq/HANDOFF_NEXT_SESSION.md documenting:
+            - Clone is now verified identical to civ-txt
+            - Next phase is to add 3D storage (chunks, Z levels per §1/§1a)
+            - Remaining open questions to resolve before Phase 1 is done
+
+   Step 3b: Write piececraft-hq/user-walkthru.txt for manual verification
+
+4. RE-READ THE DESIGN
+
+   Before Phase 1 code work begins, re-read §0 (prerequisites), §1 (storage),
+   §3 (camera/controls reuse), §4 (ops-bank), and §11 (phase order).
+   The design is explicit about which phase adds what; the next agent needs
+   to follow it, not improve on it.
+
+DESIGN DOC STATUS CHECK
+=======================
+
+The PIECECRAFT_XYZ_DESIGN.md file is CORRECT and CLEAR. The agent just
+ignored it. Specific violated sections:
+
+- §11 Phase 1: "world/chunk storage, terrain gen for ONE BIOME, camera+xlector
+  wired for 3D voxel nav including Y, NO compression yet (single always-active
+  chunk, PROVE THE RENDER/NAV LOOP)"
+
+  What was built: Terrain legend seeded, gravity system half-built, custom ops
+  already hardcoded, keybinds.txt created. NO storage code, NO generation code,
+  NO nav proof.
+
+- §3: "reuse wholesale, do not reinvent" + "board-viewer extension reuses
+  camera_mode 1–4 and existing key bindings exactly"
+
+  What was built: keybinds.txt created fresh, custom ops wired up, gravity
+  half-baked, camera modes not reused.
+
+- §4a: "board-viewer had no discovery/reuse mechanism at all...now fixed"
+  (ledger_append/ledger_peers, ONLINE/OFFLINE event, focus refactoring).
+
+  What was built: board_widget_bridge.txt and widget_cmds/ created, but these
+  should EXIST already (copied from civ-txt), not seeded from scratch.
+
+NEXT AGENT INSTRUCTIONS
+=======================
+
+1. DO NOT make incremental fixes to the current state. The damage is structural
+   —the ops contain game logic when they should be naive copies, the config
+   contains position state when it should be generic game config, and there's
+   no proof the clone even compiles or runs.
+
+2. FOLLOW THE DESIGN'S PHASE ORDER EXACTLY. The design says Phase 1 is
+   "world storage + terrain gen + camera nav proving the render/nav loop."
+   Do not add gravity, place/break, or any Minecraft features until Phase 1
+   proves the clone works.
+
+3. BEFORE WRITING ANY CODE, copy the exact directory structure from civ-txt
+   (or tactics-txt). Then verify a fresh build works. ONLY THEN start
+   diverging.
+
+4. Read CHTPM_READ_PRECEDENT_FIRST.md every single time before touching
+   a screen or control scheme. Never invent one from scratch when civ-txt/
+   tactics-txt already have proven ones.
+
+5. Create proof/ and test-harn-same/ fixtures early. Gold-file diff against
+   civ-txt to catch divergence immediately.
+
+CONCLUSION
+==========
+
+The piececraft-hq project is currently a mutant hybrid—not a working clone,
+not a working game. The agent tried to optimize a shortcut (skip the clone
+phase) and created technical debt instead. The fix is not incremental fixes
+to the current ops/config, but a restore-to-clone followed by a measured,
+phase-by-phase build-out.
+
+The design is correct. The implementation ignored it.

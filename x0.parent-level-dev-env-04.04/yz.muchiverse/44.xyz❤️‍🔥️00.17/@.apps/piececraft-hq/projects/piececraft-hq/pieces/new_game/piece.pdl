@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | new_game
+
+METHOD       | Confirm & Start (Seeded World)      | CONFIRM_START
+METHOD       | Confirm & Start (Debug Flat World)  | CONFIRM_START_DEBUG
