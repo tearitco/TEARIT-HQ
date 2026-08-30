@@ -36,7 +36,33 @@ kill_khtpm() {
     pids="$(khtpm_pids)"
     if [ -n "$pids" ]; then
         echo "$pids" | xargs -r kill -TERM
-        sleep 1
+        # REAL FIX 2026-08-30, direct live incident: a fixed 1s sleep was
+        # not always enough for the manager to actually exit before this
+        # script relaunched a new one - the new instance's own real
+        # kill(pid,0) liveness-check singleton guard (khtpm_taskbar_
+        # manager_main.c) then correctly saw the OLD pid still alive and
+        # refused to start at all, leaving NO manager running (confirmed
+        # live via khtpm_strip_parser.log's own "refusing to start" line)
+        # - the parser came up, the manager silently didn't, and every
+        # desktop entity that was alive stayed alive but the taskbar's
+        # own live registry/menu logic (which the manager owns) went
+        # dark, looking like "entities in toolbar but not on screen."
+        # Poll for real death instead of guessing a fixed delay, same
+        # TERM-then-KILL escalation convention documented elsewhere in
+        # this house (TASKBAR-MENU-ARCHITECTURE.md's own button.sh
+        # recipe).
+        i=0
+        while [ "$i" -lt 30 ]; do
+            still="$(khtpm_pids)"
+            [ -z "$still" ] && break
+            sleep 0.1
+            i=$((i + 1))
+        done
+        still="$(khtpm_pids)"
+        if [ -n "$still" ]; then
+            echo "$still" | xargs -r kill -KILL
+            sleep 0.3
+        fi
         echo "khtpm stopped (was PID(s): $(echo $pids | tr '\n' ' '))"
     else
         echo "khtpm was not running"

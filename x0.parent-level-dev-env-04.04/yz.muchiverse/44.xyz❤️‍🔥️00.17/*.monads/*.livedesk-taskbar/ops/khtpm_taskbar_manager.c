@@ -1670,6 +1670,32 @@ static void livedesk_snapshot_desk(const char *house_root, const char *sroot, co
     int pids[KTB_LIVEDESK_MAX_OPEN], indexes[KTB_LIVEDESK_MAX_OPEN];
     char ents[KTB_LIVEDESK_MAX_OPEN][128], paths[KTB_LIVEDESK_MAX_OPEN][KTB_PATH_BUF];
     int n = livedesk_read_open(house_root, pids, ents, paths, indexes, KTB_LIVEDESK_MAX_OPEN);
+    /* REAL FIX 2026-08-30, direct live incident: switching desks while
+     * the live entity registry was (transiently) empty - e.g. right
+     * after a taskbar restart, before entities re-register - silently
+     * overwrote a real, populated desk .pdl with zero rows, wiping
+     * real user data (office.pdl's 7 real entities were lost this
+     * exact way during live testing). A snapshot with n==0 is
+     * indistinguishable from "the desk was already empty" vs "the
+     * registry just hasn't caught up yet" - the safe assumption is the
+     * latter. If the live registry is empty AND the existing file on
+     * disk already has real DESK rows, skip the write entirely rather
+     * than clobber it - an outgoing desk with genuinely zero real
+     * entities was already an empty file before this call, so this
+     * only changes behavior for the dangerous case, never the normal
+     * one. */
+    if (n == 0) {
+        FILE *check = fopen(sp, "r");
+        if (check) {
+            char cline[256];
+            int has_real_rows = 0;
+            while (fgets(cline, sizeof(cline), check)) {
+                if (strncmp(cline, "DESK", 4) == 0) { has_real_rows = 1; break; }
+            }
+            fclose(check);
+            if (has_real_rows) return;
+        }
+    }
     FILE *w = fopen(sp, "w");
     if (!w) return;
     for (int i = 0; i < n; i++) {
