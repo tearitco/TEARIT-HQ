@@ -9569,8 +9569,22 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         if (is_popup) {
             /* REAL, NEW 2026-08-29 (TASK 1: popup drag support) - check for
              * drag-start on chrome area (y < CHROME_H), same pattern as
-             * db-hq/events-hq/chat-hai. Button 1 only, top CHROME_H pixels. */
-            if (ev->xbutton.button == 1 && ev->xbutton.y < CHROME_H) {
+             * db-hq/events-hq/chat-hai. Button 1 only, top CHROME_H pixels.
+             *
+             * REAL FIX 2026-08-29 (live report: "why isn't x quit button
+             * working for settings anymore?") - this window's own close
+             * button lives INSIDE that same top strip (dbhq_layout_pass's
+             * is_close block: x = g_win_w-60..g_win_w, y = 0..CHROME_H).
+             * Without an exclusion this unconditionally ate every click
+             * there as a drag-start before dbhq_capture_click() ever got a
+             * chance to hit-test the close element - exactly db-hq/events-
+             * hq's own already-solved problem (see their g_dbhq_close_elem/
+             * g_evhq_close_elem exclusion just below), never ported here
+             * since this popup path has no such named close-element global
+             * to check against; excluded the same top-right 60px rect by
+             * its own known real coordinates instead. */
+            if (ev->xbutton.button == 1 && ev->xbutton.y < CHROME_H &&
+                !(ev->xbutton.x >= g_win_w - 60 && ev->xbutton.x < g_win_w)) {
                 g_popup_dragging = 1;
                 g_popup_drag_last_x = ev->xbutton.x_root;
                 g_popup_drag_last_y = ev->xbutton.y_root;
@@ -10589,7 +10603,19 @@ int main(int argc, char **argv) {
      * entirely (same as any real popup/menu), so clicks are delivered
      * immediately - matches the legacy popup's own real behavior. */
     swa.override_redirect = True;
-    swa.event_mask = ExposureMask | ButtonPressMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
+    /* REAL FIX 2026-08-29 (live report: "toolbar doesn't allow drag
+     * repositioning") - this generic popup window (entity-menu popup AND
+     * swatch-picker/Settings) never requested ButtonReleaseMask or
+     * ButtonMotionMask, unlike db-hq/events-hq/chat-hai's own event masks
+     * just above, which all three DO include. TASK 1's drag code
+     * (g_popup_dragging, hq_dispatch_xevent's is_popup MotionNotify/
+     * ButtonRelease branches) was real and correctly wired, but X11 was
+     * never asked to deliver those event types to this window at all, so
+     * ButtonPress armed g_popup_dragging and then nothing ever moved or
+     * cleared it - same class of bug as the missing CWOverrideRedirect
+     * mask entry found earlier this session (a struct field set but the
+     * corresponding mask bit missing, so X11 silently ignores it). */
+    swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
     win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h, 0,
                          CopyFromParent, InputOutput, CopyFromParent, CWBackPixel | CWOverrideRedirect | CWEventMask, &swa);
     Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
