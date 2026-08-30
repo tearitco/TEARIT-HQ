@@ -2644,7 +2644,30 @@ int main(int argc, char **argv) {
         while (XPending(dpy)) {
             XEvent ev;
             XNextEvent(dpy, &ev);
-            if (ev.type == ButtonPress && ev.xbutton.window == hq_win) {
+            if (ev.type == Expose) {
+                /* REAL FIX 2026-08-30, direct live report ("text is no
+                 * longer showing up in the tb dropdowns (any) wtf!?") -
+                 * a real regression from the override_redirect ->
+                 * WM-managed fix just above (eb74b733). This file never
+                 * handled Expose at all - harmless under
+                 * override_redirect (those windows map synchronously,
+                 * so the one-time draw call right after XMapRaised
+                 * always landed on an already-visible drawable), but a
+                 * real WM-managed window's XMapRaised() is asynchronous
+                 * - content drawn before the WM actually finishes
+                 * mapping/backing it can be silently lost, with nothing
+                 * to ever redraw it since ExposureMask events (already
+                 * selected on all three windows) were being read and
+                 * discarded, unhandled, forever. Real fix: redraw the
+                 * correct doc on the LAST Expose in a batch
+                 * (ev.xexpose.count==0), same real convention every
+                 * other Xlib app uses. */
+                if (ev.xexpose.count == 0) {
+                    if (ev.xexpose.window == win) draw_bottom(dpy, win, gc, sw, bg, &bottom_doc);
+                    else if (ev.xexpose.window == hq_win) draw_header_win(dpy, hq_win, gc, &header_doc, &g_st);
+                    else if (ev.xexpose.window == popup_win) draw_popup_win(dpy, popup_win, gc, &header_doc, &g_st, hq_win_x, hq_win_y);
+                }
+            } else if (ev.type == ButtonPress && ev.xbutton.window == hq_win) {
                 mirror_mouse_history("hq_win", ev.xbutton.button, ev.xbutton.x, ev.xbutton.y);
             } else if (ev.type == ButtonPress && ev.xbutton.window == popup_win) {
                 mirror_mouse_history("popup_win", ev.xbutton.button, ev.xbutton.x, ev.xbutton.y);
