@@ -1780,6 +1780,16 @@ static int draw_popup_win(Display *dpy, Window win, GC gc, LayDoc *doc, SpState 
              * number shown is the number to type. */
             snprintf(lab, sizeof(lab), "%s %d. %s", lay_cursor_prefix(doc, row_elidx[r]), r + 1, label);
             int cw = (int)strlen(lab) * 8 + 24;
+            /* REAL FIX 2026-08-30, direct live report ("pals... aren't
+             * actually drawing the pals pngs... why cant they use same"
+             * [as the header/bottom-bar sprite blit]) - popup rows never
+             * reserved width for a real sprite at all (this sizing pass
+             * only ever measured the text label), unlike header cells/
+             * bottom-bar tabs which already do via this exact same
+             * lay_get_sprite() check. Mirrors that real precedent. */
+            char sprite_path[LAY_SPRITE_LEN];
+            lay_get_sprite(doc, row_elidx[r], sp_get_var, &g_st, sprite_path, sizeof(sprite_path));
+            if (sprite_path[0]) cw += TAB_SPRITE_PX + 4;
             if (cw > w) w = cw;
         }
     }
@@ -1850,7 +1860,24 @@ static int draw_popup_win(Display *dpy, Window win, GC gc, LayDoc *doc, SpState 
             lay_get_label(doc, row_elidx[r], sp_get_var, &g_st, label, sizeof(label));
             char lab[192];
             snprintf(lab, sizeof(lab), "%s %d. %s", lay_cursor_prefix(doc, row_elidx[r]), r + 1, label);
-            strip_draw_utf8(dpy, DefaultScreen(dpy), g_popup_xft, fg, 12, row_y + KTB_BAR_H / 2 + 4, lab, (int)strlen(lab));
+            /* REAL FIX 2026-08-30 - same real sprite blit the header
+             * cell/bottom-bar tab rows already do (blit_tab_sprite() via
+             * a real sprite="<dir>" attribute, tab_sprite() appends
+             * "/sprite.csv" itself) - this popup row loop never called
+             * it at all. Text shifts right by TAB_SPRITE_PX only when a
+             * real sprite actually loaded, matching every other real
+             * sprite call site's own "no reserved gap on a missing/
+             * unreadable sprite.csv" contract. */
+            char sprite_path[LAY_SPRITE_LEN];
+            lay_get_sprite(doc, row_elidx[r], sp_get_var, &g_st, sprite_path, sizeof(sprite_path));
+            TabSprite *rsp = sprite_path[0] ? tab_sprite(sprite_path) : NULL;
+            int text_x = 12;
+            if (rsp) {
+                int sy = row_y + (KTB_BAR_H - TAB_SPRITE_PX) / 2;
+                blit_tab_sprite(dpy, g_popup_buf, bgc, rsp, 8, sy, TAB_SPRITE_PX, bg_pixel);
+                text_x = 8 + TAB_SPRITE_PX + 6;
+            }
+            strip_draw_utf8(dpy, DefaultScreen(dpy), g_popup_xft, fg, text_x, row_y + KTB_BAR_H / 2 + 4, lab, (int)strlen(lab));
             cell_append(row_elidx[r], "popup", lab, (row_elidx[r] == doc->focus_index));
             if (g_popup_hit_n < SP_MAX_HIT) {
                 SpHitRect *hr = &g_popup_hits[g_popup_hit_n++];

@@ -1594,7 +1594,14 @@ static void livedesk_copy_full(const char *src, const char *dst) {
     (void)rc;
 }
 
-static int livedesk_pals_root(const char *house_root, char *out, size_t sz) {
+/* REAL FIX 2026-08-30, direct live report ("tb shows emojis and pngs
+ * already for user, and pid (clock) see? why cant they use same?"):
+ * non-static (declared in khtpm_taskbar_manager.h) so khtpm_taskbar_
+ * manager_main.c's publish_var_fragments() can resolve each pals-dropdown
+ * row's real sprite.csv path - same real pattern ktb_get_username()
+ * already uses to cross this same file boundary. See that function's own
+ * header comment for the precedent. */
+int livedesk_pals_root(const char *house_root, char *out, size_t sz) {
     out[0] = '\0';
     char uuid[128] = "";
     livedesk_user_uuid(house_root, uuid, sizeof(uuid));

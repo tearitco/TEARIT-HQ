@@ -264,10 +264,45 @@ static void publish_var_fragments(const KtbState *s, const char *house_root) {
      * even if it briefly lags a state transition. */
     off = 0;
     if (s->hq_open) {
+        /* REAL FIX 2026-08-30, direct live report ("pals entity in
+         * 5.pals tb dropdown aren't actually drawing the pals pngs...
+         * tb shows emojis and pngs already for user, and pid (clock)
+         * see? why cant they use same?"). Direct hit: the real,
+         * generic sprite mechanism (khtpm_strip_layout.c's
+         * lay_get_sprite()/khtpm_strip_parser.c's tab_sprite()+
+         * blit_tab_sprite()) already draws real sprite.csv images for
+         * ANY button element that carries a real sprite="<dir>"
+         * attribute - the strip_tabs fragment above already emits one
+         * per tab (line ~234), and the header's own avatar cell does
+         * too (via ${avatar_dir}). This HQITEM fragment (every HQ
+         * popup's rows - session/desk/pals/etc., hq_menu[] is reused
+         * across cells) never emitted one AT ALL, so every popup row
+         * fell back to plain text-only, pals included - not a missing
+         * drawing capability, just a missing attribute on this one
+         * fragment. Fixed here, scoped to ONLY the pals cell
+         * (s->hq_open==5, ktb_hq_open()'s own real "which" value,
+         * confirmed via khtpm_taskbar_manager.h's own "hq_open is 0
+         * (closed) or which" comment) - every other cell's rows
+         * (session/desk/etc.) have no real per-row image and keep
+         * their exact current text-only rendering, unaffected. */
+        int is_pals = (s->hq_open == 5);
+        char pals_root[KTB_PATH_BUF] = "";
+        if (is_pals) livedesk_pals_root(s->house_root, pals_root, sizeof(pals_root));
         for (int i = 0; i < s->hq_n_menu && off < sizeof(frag); i++) {
-            int n = snprintf(frag + off, sizeof(frag) - off,
+            int n;
+            /* command is "livedesk:pal:<name>" for every real pals row
+             * (livedesk_build_pals_menu()'s own format, see that
+             * function) - the trailing "Cancel" row's command is empty
+             * and correctly falls through to the no-sprite branch. */
+            if (is_pals && pals_root[0] && strncmp(s->hq_menu[i].command, "livedesk:pal:", 13) == 0) {
+                n = snprintf(frag + off, sizeof(frag) - off,
+                              "<button label=\"%s\" onClick=\"HQITEM:%d\" sprite=\"%s/%s\"/>",
+                              s->hq_menu[i].label, i, pals_root, s->hq_menu[i].command + 13);
+            } else {
+                n = snprintf(frag + off, sizeof(frag) - off,
                               "<button label=\"%s\" onClick=\"HQITEM:%d\"/>",
                               s->hq_menu[i].label, i);
+            }
             if (n < 0) break;
             off += (size_t)n;
         }

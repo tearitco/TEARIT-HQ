@@ -245,6 +245,10 @@ void ktb_strip_user_activate(KtbState *s);
 void ktb_get_username(const KtbState *s, char *out, size_t sz);
 void ktb_get_file_label(const KtbState *s, char *out, size_t sz);
 void ktb_get_desks_label(const KtbState *s, char *out, size_t sz);
+/* REAL FIX 2026-08-30 - see khtpm_taskbar_manager.c's own header comment
+ * on this function: exported so publish_var_fragments() can resolve real
+ * pals-dropdown sprite paths, same cross-file pattern as the three above. */
+int livedesk_pals_root(const char *house_root, char *out, size_t sz);
 void ktb_get_avatar_dir(const KtbState *s, char *out, size_t sz);
 
 /* Unified header-cell + tab focus cursor, ported from tp_taskbar.c's
