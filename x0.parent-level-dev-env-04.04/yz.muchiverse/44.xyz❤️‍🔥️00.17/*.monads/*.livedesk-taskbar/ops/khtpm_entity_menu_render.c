@@ -10443,10 +10443,33 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                     drag_last_x = ev.xmotion.x_root;
                     drag_last_y = ev.xmotion.y_root;
                 }
+            } else if (ev.type == ClientMessage && (Atom)ev.xclient.data.l[0] == pchq_wm_delete) {
+                /* REAL FIX 2026-08-30, direct live report ("when window
+                 * is closed it looks like it goes blank but stays open
+                 * instead of closing") - this window registers
+                 * WM_DELETE_WINDOW (needed for the real WM-managed fix,
+                 * commit 402c812b) but never actually HANDLED the
+                 * resulting ClientMessage - a close request via the WM
+                 * (not this window's own hand-drawn [X]) fell through
+                 * silently, leaving the process alive with nothing
+                 * left redrawing it (hence "blank but stays open" -
+                 * the LAST real frame stays on screen, unrefreshed,
+                 * while the process itself never exits). */
+                running = 0;
             }
         }
     }
 
+    /* REAL FIX 2026-08-30, same live report - XCloseDisplay() alone
+     * relies on the X server's implicit per-connection resource
+     * cleanup to actually remove the window, which is real but not
+     * guaranteed to be immediate/visible under every compositor -
+     * explicit XDestroyWindow() + XSync() before closing the
+     * connection is the correct, standard-compliant real fix (same
+     * real "explicit is better than implicit" fix class as the
+     * override_redirect/WM-managed correction earlier this session). */
+    XDestroyWindow(dpy, win);
+    XSync(dpy, False);
     XCloseDisplay(dpy);
     return 0;
 }
