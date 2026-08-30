@@ -641,6 +641,16 @@ static void load_strip_offset(int *out_x, int *out_y) {
     fclose(f);
 }
 
+/* Same real non-fatal-X-error-handler shape khtpm_entity_menu_render.c's
+ * evhq_nonfatal_x_error() already uses (see that function's own comment
+ * and 402c812b) - installed in main() right after XOpenDisplay(), before
+ * any window is made WM-managed. */
+static int ktb_strip_nonfatal_x_error(Display *d, XErrorEvent *e) {
+    char ebuf[128]; XGetErrorText(d, e->error_code, ebuf, sizeof(ebuf));
+    fprintf(stderr, "khtpm_strip_parser: X error (non-fatal): %s (request %d.%d)\n", ebuf, e->request_code, e->minor_code);
+    return 0;
+}
+
 static void taskbar_set_wm_class(Display *dpy, Window w) {
     XClassHint *ch = XAllocClassHint();
     if (!ch) return;
@@ -648,6 +658,50 @@ static void taskbar_set_wm_class(Display *dpy, Window w) {
     ch->res_class = (char *)"MuchiverseLivedesk";
     XSetClassHint(dpy, w, ch);
     XFree(ch);
+}
+
+/* REAL FIX 2026-08-30, direct live report ("sometimes when i press
+ * piececraft-hq it never opens... only thru mouse click sometimes")
+ * - win/hq_win/popup_win were all override_redirect=True. Confirmed
+ * same-day, same file, same real bug class already found and fixed
+ * for run_pchq_board_mode()'s own window (commit 402c812b, "its not
+ * geting mouse / kbd input"): Mutter's real XWayland focus routing
+ * only ever gives real hardware keyboard/pointer focus to WM-managed
+ * windows - XSetInputFocus() (taskbar_soft_focus() calls this
+ * directly on these very windows) reports success at the raw
+ * X11-protocol level even on an override_redirect window, but real
+ * clicks/keys are not reliably routed to it - exactly the class of
+ * intermittent failure reported ("works via direct history-file
+ * injection" - injection bypasses X11 entirely - "sometimes doesn't
+ * via a real click" - depends on Mutter's actual focus/stacking state
+ * at the moment, hence "sometimes"). Same real fix as 402c812b: normal
+ * WM-managed window, decorations stripped via _MOTIF_WM_HINTS instead
+ * of override_redirect - but ALSO, unlike that isolated utility
+ * window, this IS a real always-on-top docked taskbar, so real EWMH
+ * dock hints are added here to preserve that behavior under a real
+ * window manager (skip taskbar/pager listing, stay above normal
+ * windows) - 402c812b's own board-window fix didn't need these. */
+static void taskbar_make_wm_managed_dock(Display *dpy, Window w, int x, int y) {
+    Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+    long hints[5] = { 2, 0, 0, 0, 0 }; /* flags=MWM_HINTS_DECORATIONS, decorations=0 */
+    XChangeProperty(dpy, w, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
+
+    Atom wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
+    Atom above = XInternAtom(dpy, "_NET_WM_STATE_ABOVE", False);
+    Atom skip_taskbar = XInternAtom(dpy, "_NET_WM_STATE_SKIP_TASKBAR", False);
+    Atom skip_pager = XInternAtom(dpy, "_NET_WM_STATE_SKIP_PAGER", False);
+    Atom sticky = XInternAtom(dpy, "_NET_WM_STATE_STICKY", False);
+    Atom states[4] = { above, skip_taskbar, skip_pager, sticky };
+    XChangeProperty(dpy, w, wm_state, XA_ATOM, 32, PropModeReplace, (unsigned char *)states, 4);
+
+    Atom win_type = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
+    Atom dock = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
+    XChangeProperty(dpy, w, win_type, XA_ATOM, 32, PropModeReplace, (unsigned char *)&dock, 1);
+
+    /* PPosition - without this most WMs ignore the requested x/y (same
+     * real fix 402c812b needed for the same reason). */
+    XSizeHints *shints = XAllocSizeHints();
+    if (shints) { shints->flags = PPosition; shints->x = x; shints->y = y; XSetWMNormalHints(dpy, w, shints); XFree(shints); }
 }
 
 /* Real, permanent frame-history log (2026-08-11, direct request: "chtpm
@@ -2317,6 +2371,16 @@ int main(int argc, char **argv) {
     wait_for_manager_first_publish();
 
     Display *dpy = XOpenDisplay(NULL);
+    /* REAL FIX 2026-08-30, same real bug class already found+fixed for
+     * run_pchq_board_mode() (commit 402c812b) - taskbar_soft_focus()
+     * calls XSetInputFocus() right after XMapRaised() (see win/hq_win's
+     * own setup below), and now that these windows are WM-managed (not
+     * override_redirect - see taskbar_make_wm_managed_dock()'s own
+     * header comment), that can legitimately throw BadMatch if called
+     * before the WM finishes reparenting/mapping the window. This file
+     * had NO real X error handler at all before this fix - an uncaught
+     * BadMatch here would crash the entire taskbar, not just one popup. */
+    if (dpy) XSetErrorHandler(ktb_strip_nonfatal_x_error);
     if (!dpy) {
         fprintf(stderr, "strip_parser: no display\n");
         cleanup_manager();
@@ -2376,14 +2440,14 @@ int main(int argc, char **argv) {
     unsigned long fg = parse_color(dpy, g_st.theme_fg, WhitePixel(dpy, DefaultScreen(dpy)));
 
     XSetWindowAttributes swa;
-    swa.override_redirect = True;
     swa.background_pixel = bg;
     swa.event_mask = ExposureMask | ButtonPressMask | KeyPressMask | FocusChangeMask;
     Window win = XCreateWindow(dpy, RootWindow(dpy, DefaultScreen(dpy)),
                                0, sh - KTB_BAR_H, sw, KTB_BAR_H, 0,
                                CopyFromParent, InputOutput, CopyFromParent,
-                               CWOverrideRedirect | CWBackPixel | CWEventMask, &swa);
+                               CWBackPixel | CWEventMask, &swa);
     taskbar_set_wm_class(dpy, win);
+    taskbar_make_wm_managed_dock(dpy, win, 0, sh - KTB_BAR_H);
     XMapRaised(dpy, win);
     set_window_opacity(dpy, win, load_theme_opacity());
     GC gc = XCreateGC(dpy, win, 0, NULL);
@@ -2393,28 +2457,28 @@ int main(int argc, char **argv) {
     int hq_real_w = header_total_width(&header_doc);
     if (hq_real_w > sw - hq_win_x) hq_real_w = sw - hq_win_x;
     XSetWindowAttributes hq_swa;
-    hq_swa.override_redirect = True;
     hq_swa.background_pixel = bg;
     hq_swa.event_mask = ExposureMask | ButtonPressMask | KeyPressMask | FocusChangeMask;
     Window hq_win = XCreateWindow(dpy, RootWindow(dpy, DefaultScreen(dpy)),
                                   hq_win_x, hq_win_y, hq_real_w, KTB_BAR_H, 0,
                                   CopyFromParent, InputOutput, CopyFromParent,
-                                  CWOverrideRedirect | CWBackPixel | CWEventMask, &hq_swa);
+                                  CWBackPixel | CWEventMask, &hq_swa);
     g_hq_win_handle = hq_win;
     g_hq_win_w = hq_real_w;
     taskbar_set_wm_class(dpy, hq_win);
+    taskbar_make_wm_managed_dock(dpy, hq_win, hq_win_x, hq_win_y);
     XMapRaised(dpy, hq_win);
     set_window_opacity(dpy, hq_win, load_theme_opacity());
 
     XSetWindowAttributes popup_swa;
-    popup_swa.override_redirect = True;
     popup_swa.background_pixel = bg;
     popup_swa.event_mask = ExposureMask | ButtonPressMask | KeyPressMask | FocusChangeMask;
     Window popup_win = XCreateWindow(dpy, RootWindow(dpy, DefaultScreen(dpy)),
                                      hq_win_x, hq_win_y + KTB_BAR_H, 200, KTB_BAR_H, 0,
                                      CopyFromParent, InputOutput, CopyFromParent,
-                                     CWOverrideRedirect | CWBackPixel | CWEventMask, &popup_swa);
+                                     CWBackPixel | CWEventMask, &popup_swa);
     taskbar_set_wm_class(dpy, popup_win);
+    taskbar_make_wm_managed_dock(dpy, popup_win, hq_win_x, hq_win_y + KTB_BAR_H);
     set_window_opacity(dpy, popup_win, load_theme_opacity());
     int popup_mapped = 0;
 
