@@ -236,10 +236,36 @@ regression (`xwininfo`), `Override Redirect State: no`, all dock/motif
 hints present (`xprop`), and `hq_win` showing `_NET_WM_STATE_FOCUSED`
 — the same marker 402c812b used to prove genuine WM-managed focus
 (absent on `override_redirect` windows under Mutter entirely).
-**Not yet verified**: the actual click-flakiness reduction itself,
-since that specifically requires real hardware input over repeated
-real use to confirm — not something a synthetic/injected event can
-prove either way. Please report back after some normal use.
+**Update — real second cause found and fixed (`0164e0fc`):** the WM
+fix above was real and necessary, but you reported it still happened
+"sometimes" and pointed out no other hq window has this problem — the
+right instruction, since it led straight to the actual remaining
+cause. Compared piececraft-hq's own `button.sh` against civ-txt's and
+tactics-txt's (same clone lineage, neither ever reported this): both
+only run their orphan-cleanup `kill_own_*()` functions inside their
+explicit `kill` verb. piececraft-hq is the ONLY one that ALSO runs
+them unconditionally at the top of `run` (added the same day, for a
+real, separate need — daemons/widgets surviving a force-killed
+session). `kill_own_orchestrator()` matches ANY orchestrator under its
+own path, not by PID/session — so a `run` fired twice close together
+(a double-fired click, or clicking again before a window appears) let
+the second invocation's own safety net kill the FIRST invocation's
+just-spawned orchestrator before it could ever show a window. Fixed by
+skipping that safety net when a session dir was created in the last 5
+seconds (real evidence another `run` is already in flight, not a
+stale orphan). Verified live: fired two `run`s 0.3s apart, both
+orchestrators now survive independently (previously the second would
+have killed the first's).
+
+**Also fixed along the way**: a real gap where this file never
+handled `Expose` events at all (harmless under `override_redirect`,
+a real problem for WM-managed windows — content drawn before the WM
+finishes mapping could be lost with nothing to ever redraw it).
+Investigated a live "text missing" report right after the WM fix and
+traced it to two separate things: the header was fine, the bottom bar
+was legitimately empty (no apps tracked open at the time, not a
+rendering bug), and the missing Expose handling was real and worth
+fixing regardless (`1521b346`).
 
 ### 🟡 Recorded, not yet built
 - ✅ **Screen resize / fullscreen support** — confirmed priority,
