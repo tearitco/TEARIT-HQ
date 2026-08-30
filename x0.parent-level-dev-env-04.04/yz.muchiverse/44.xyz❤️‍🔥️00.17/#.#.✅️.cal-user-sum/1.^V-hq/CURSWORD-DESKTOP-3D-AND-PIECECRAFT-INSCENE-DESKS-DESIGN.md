@@ -262,6 +262,15 @@ actually confirmed, point by point - nothing here is built yet.
    `piececraft` category (`PICKER=minecraft`, block-palette picker) that
    "View Editor (opens separate GL window)" already uses today. Nothing
    new needed there.
+   - Real correction/addition, confirmed: that `minecraft` picker's
+     real intended tile source is `#.NNEST_ASSETS/mc_extracted_csvs_8x8`
+     (confirmed on disk - real per-block CSV subfolders, e.g.
+     `bedrock/`, `bricks/`, `cactus_top/`). Direct instruction: "were
+     just using emojis for now cuz we haven't done that yet" - the real
+     Minecraft-tile integration for this picker is itself a separate,
+     not-yet-done piece of work; piececraft's boards currently render
+     with emoji tiles as the real placeholder. Not part of the File/
+     Desk scope here - recorded so it isn't confused with it later.
    - Real, explicit note for later (documented now even though deferred,
      per direct instruction: "we may add more things later like
      db/plugins {but mapped to that specific file/map, not the desktop
