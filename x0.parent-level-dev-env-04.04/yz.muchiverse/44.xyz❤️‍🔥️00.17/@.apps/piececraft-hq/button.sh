@@ -296,7 +296,20 @@ EOSTATE
         if [ "$REAL_GAME_STATE" = "playing" ] && [ -z "$NO_GL" ] && [ -n "$DISPLAY" ]; then
             BOARD_BTN="$HOUSE_DIR/&.widgits/board-viewer/button.sh"
             if [ -x "$BOARD_BTN" ]; then
-                setsid bash "$BOARD_BTN" run-widget "$SCRIPT_DIR" >/dev/null 2>&1 < /dev/null &
+                # REAL FIX 2026-08-30, direct live report ("first it
+                # opens legacy before switching 2 x11 khtpm version...
+                # see it open?") - real, visible flash: the legacy
+                # widget's own x11_mirror.+x display used to map for
+                # real, then get killed ~1.5s later once the khtpm
+                # window attached. NO_GL=1 (board-viewer's own real,
+                # already-documented flag, "Skip gl_mirror/chtpm_rgb_
+                # render entirely") stops that legacy display from ever
+                # mapping at all - bv_render_3d.c (the real 3D data
+                # generator this khtpm window actually reads) is
+                # entirely independent of it (confirmed via default_op
+                # .txt's own comment: "bypasses system/chtpm_rgb_
+                # render"), so the real data pipeline is unaffected.
+                NO_GL=1 setsid bash "$BOARD_BTN" run-widget "$SCRIPT_DIR" >/dev/null 2>&1 < /dev/null &
             fi
             # REAL, NEW 2026-08-30, direct live report ("the khtpm
             # piececraft is the one that is supposed to open when

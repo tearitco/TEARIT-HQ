@@ -484,8 +484,14 @@ static void open_board_widget(const char *project_root, char *message, size_t me
 #else
     if (house_root[0] && real_root[0] && access(widget_button, F_OK) == 0) {
         char cmd_buf[PATH_BUF * 2];
+        /* NO_GL=1 - real fix, same as button.sh's own identical launch
+         * site (see that file's own header comment): stops the legacy
+         * x11_mirror.+x display from ever mapping at all (a real,
+         * visible flash otherwise), safe since bv_render_3d.c - the
+         * real 3D data this khtpm window reads - is entirely
+         * independent of it. */
         snprintf(cmd_buf, sizeof(cmd_buf),
-                 "setsid env RUN_PROFILE=widget bash '%s' run-widget '%s' >/dev/null 2>&1 < /dev/null &",
+                 "setsid env RUN_PROFILE=widget NO_GL=1 bash '%s' run-widget '%s' >/dev/null 2>&1 < /dev/null &",
                  widget_button, real_root);
         { int _rc = system(cmd_buf); (void)_rc; }
         /* REAL, NEW 2026-08-30, direct live report ("the khtpm

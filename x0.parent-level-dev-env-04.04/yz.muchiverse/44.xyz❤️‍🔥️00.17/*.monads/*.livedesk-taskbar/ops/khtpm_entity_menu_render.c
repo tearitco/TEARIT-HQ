@@ -10128,7 +10128,28 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
      * just not wired into the shared g_focus_nav/Elem machinery. Honest
      * trade-off, not silently passed off as the full system. */
     int pchq_focus = 1; /* 1 = Interact, 2 = Close */
+    int pchq_focus_ok = 0;
     while (running) {
+        /* REAL FIX 2026-08-30, direct live report (still no click/nav
+         * even after the earlier startup-only XSetInputFocus fix, on
+         * this window's REAL auto-boot launch specifically - manual
+         * launches worked). Real, plausible cause: at real boot time a
+         * LOT of other processes spawn simultaneously (game engine,
+         * board-viewer, chtpm_parser_pal...) - genuine CPU contention
+         * can delay Mutter's own window registration past the earlier
+         * one-shot 5x5ms retry budget (25ms total). Real fix: keep
+         * retrying every single poll tick, not just at startup, until
+         * it succeeds once - self-healing, matching this file's OWN
+         * real "if (g_dbhq_focus_grab_enabled) { dbhq_grab_keyboard_
+         * retry(); dbhq_soft_focus(); }" convention (runs on every
+         * click, not once) rather than a fragile one-shot assumption. */
+        if (!pchq_focus_ok) {
+            XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
+            XSync(dpy, False);
+            Window focused; int revert;
+            XGetInputFocus(dpy, &focused, &revert);
+            if (focused == win) pchq_focus_ok = 1;
+        }
         int new_w = pchq_read_kv_int(receipt_path, "overlay_w", frame_w);
         int new_h = pchq_read_kv_int(receipt_path, "overlay_h", frame_h);
         if (new_w > 0 && new_h > 0 && (new_w != frame_w || new_h != frame_h || !ximg)) {
