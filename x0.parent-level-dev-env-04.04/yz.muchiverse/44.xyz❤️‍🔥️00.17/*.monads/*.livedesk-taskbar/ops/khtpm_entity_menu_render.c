@@ -10086,6 +10086,20 @@ static void pchq_toggle_fullscreen(Display *dpy, Window win) {
     XFlush(dpy);
 }
 
+/* Same real cheap "changed marker" convention as khtpm_strip_parser.c/
+ * tp_desktop_window_rgb.c's own theme_changed_dirty() (dc759f3c) -
+ * kept as a local static cursor here since this mode is its own real
+ * long-running loop, same shape as those two files' own. */
+static long g_pchq_theme_changed_cursor = 0;
+static int pchq_theme_changed_dirty(const char *house_root) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/livedesk_theme_changed.txt", house_root);
+    struct stat st;
+    if (stat(path, &st) != 0) return 0;
+    if (st.st_size != g_pchq_theme_changed_cursor) { g_pchq_theme_changed_cursor = st.st_size; return 1; }
+    return 0;
+}
+
 static void pchq_quit_host_session(const char *house_root, const char *host_project_id) {
     char sessions_dir[PATH_BUF];
     snprintf(sessions_dir, sizeof(sessions_dir), "%s/@.apps/%s/pieces/sessions", house_root, host_project_id);
@@ -10421,6 +10435,7 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
     for (int i = 0; i < PCHQ_N_ELEMS; i++) elems[i].action = i;
     int pchq_focus = PCHQ_ACT_INTERACT;
     int pchq_is_fullscreen = 0;
+    int pchq_opacity_reapplied = 0;
 
     int running = 1;
     int pchq_focus_ok = 0;
@@ -10646,6 +10661,31 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
 
         XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)win_w, (unsigned)win_h, 0, 0);
         XFlush(dpy);
+
+        /* REAL FIX 2026-08-30, direct live report ("piececraft hq
+         * window doesn't have the opacity at all yet") - the SAME real
+         * bug 9ab1c199 already found+fixed for db-hq/events-hq/chat-
+         * hai/popup/every desktop entity: Mutter/XWayland does not
+         * reliably honor _NET_WM_WINDOW_OPACITY set at map-time, before
+         * a real first paint - it must be re-applied once after the
+         * window has actually been painted at least one real frame.
+         * This mode's own set_window_opacity() call (right after
+         * XMapRaised, above) never got this follow-up - confirmed live
+         * via xprop that the property WAS set correctly but visually
+         * never applied. Same real one-time-after-first-paint pattern
+         * every other branch already uses. */
+        if (!pchq_opacity_reapplied) {
+            pchq_opacity_reapplied = 1;
+            usleep(200000);
+            set_window_opacity(dpy, win, load_theme_opacity());
+            XFlush(dpy);
+        }
+        /* Real, event-driven live opacity reload - same cheap marker
+         * convention as khtpm_strip_parser.c/tp_desktop_window_rgb.c's
+         * own theme_changed_dirty() (dc759f3c). */
+        if (pchq_theme_changed_dirty(house_root)) {
+            set_window_opacity(dpy, win, load_theme_opacity());
+        }
 
         struct timeval tv = {0, 33333}; /* same 30fps cap as x11_mirror.c's own real poll */
         fd_set fds; FD_ZERO(&fds); int xfd = ConnectionNumber(dpy); FD_SET(xfd, &fds);
