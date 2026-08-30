@@ -488,6 +488,35 @@ static void open_board_widget(const char *project_root, char *message, size_t me
                  "setsid env RUN_PROFILE=widget bash '%s' run-widget '%s' >/dev/null 2>&1 < /dev/null &",
                  widget_button, real_root);
         { int _rc = system(cmd_buf); (void)_rc; }
+        /* REAL, NEW 2026-08-30, direct live report ("the khtpm
+         * piececraft is the one that is supposed to open when
+         * piececraft-hq is clicked. why isn't it there yet?") - the
+         * real khtpm-family board window (khtpm_entity_menu_render.c's
+         * own run_pchq_board_mode(), <window class="pchq-board">,
+         * pchq-board.chtpm at this project's own root) was built and
+         * live-verified this same session but never actually wired
+         * into the real "View Board" trigger - only launchable by hand.
+         * Fixed here: launch it right after the legacy board-viewer
+         * widget (still needed - it's the real DATA GENERATOR,
+         * bv_render_3d.c/chtpm_parser_pal.c, not just a display). A
+         * short real sleep first - run_pchq_board_mode()'s own session-
+         * discovery (ledger_peers.+x) needs the widget's real ONLINE
+         * ledger row to exist first, which only happens after its own
+         * real session/ledger_append.c init runs, not instantly at
+         * process spawn. run_pchq_board_mode() itself kills the legacy
+         * x11_mirror.+x DISPLAY process once it successfully attaches
+         * (same real session, same real host_project_id) - the data-
+         * generating processes stay untouched either way. */
+        char khtpm_bin[PATH_BUF], khtpm_chtpm[PATH_BUF];
+        snprintf(khtpm_bin, sizeof(khtpm_bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity_menu_render.+x", house_root);
+        snprintf(khtpm_chtpm, sizeof(khtpm_chtpm), "%s/pchq-board.chtpm", real_root);
+        if (access(khtpm_bin, F_OK) == 0 && access(khtpm_chtpm, F_OK) == 0) {
+            char khtpm_cmd[PATH_BUF * 3];
+            snprintf(khtpm_cmd, sizeof(khtpm_cmd),
+                     "( sleep 1.5; setsid '%s' '%s' '%s' 'piececraft-hq' >/dev/null 2>&1 < /dev/null & ) &",
+                     khtpm_bin, house_root, khtpm_chtpm);
+            int _rc2 = system(khtpm_cmd); (void)_rc2;
+        }
         snprintf(message, message_sz, "Board widget launching (separate GL window)...");
     } else {
         snprintf(message, message_sz,

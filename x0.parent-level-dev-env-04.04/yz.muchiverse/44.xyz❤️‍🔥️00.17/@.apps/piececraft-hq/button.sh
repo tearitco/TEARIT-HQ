@@ -298,6 +298,23 @@ EOSTATE
             if [ -x "$BOARD_BTN" ]; then
                 setsid bash "$BOARD_BTN" run-widget "$SCRIPT_DIR" >/dev/null 2>&1 < /dev/null &
             fi
+            # REAL, NEW 2026-08-30, direct live report ("the khtpm
+            # piececraft is the one that is supposed to open when
+            # piececraft-hq is clicked. why isn't it there yet?") - the
+            # real khtpm-family board window (khtpm_entity_menu_
+            # render.c's run_pchq_board_mode(), pchq-board.chtpm at this
+            # project's own root) was wired into pc_menu_input.c's real
+            # "View Board" menu handler, but THIS auto-boot launch is a
+            # real, separate code path (see this block's own header
+            # comment above) that never went through it. Same real
+            # wiring, mirrored here: a short sleep so the widget's own
+            # real ledger row exists first (run_pchq_board_mode()'s own
+            # session-discovery needs it), then launch the khtpm window,
+            # which kills the legacy display once it attaches.
+            KHTPM_BIN="$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity_menu_render.+x"
+            if [ -x "$KHTPM_BIN" ] && [ -f "$SCRIPT_DIR/pchq-board.chtpm" ]; then
+                ( sleep 1.5; setsid "$KHTPM_BIN" "$HOUSE_DIR" "$SCRIPT_DIR/pchq-board.chtpm" "piececraft-hq" >/dev/null 2>&1 < /dev/null & ) &
+            fi
         fi
 
         # REAL, NEW 2026-08-30 - launch piececraft-hq status manager to
