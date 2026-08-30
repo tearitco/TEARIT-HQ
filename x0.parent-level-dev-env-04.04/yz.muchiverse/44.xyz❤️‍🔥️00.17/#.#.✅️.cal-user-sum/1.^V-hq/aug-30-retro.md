@@ -267,6 +267,22 @@ was legitimately empty (no apps tracked open at the time, not a
 rendering bug), and the missing Expose handling was real and worth
 fixing regardless (`1521b346`).
 
+**Update — a THIRD real bug in this same area, found live (`b1ef2cf0`):**
+direct report: "i opened. killed from close. and tried 2 open again.
+its not opening (pc-hq)". The pchq-board Close Elem (toolbar click,
+keyboard, and the window manager's own `[X]`) only ever did
+`running = 0` — tearing down THIS window's own X11 resources, never
+the real underlying game session. The orchestrator/board-viewer widget
+kept running silently in the background after "Close." Fixed by adding
+`pchq_quit_host_session()`, which finds the host's current session dir
+and writes `pieces/system/quit_flag.txt` — the exact real signal
+`orchestrator.c` already polls every tick (the same one Ctrl+C's own
+`write_quit_flag()` uses) — wired into all three Close paths. Verified
+live end to end: open → Close (via real focus-nav + Enter) → confirmed
+orchestrator, khtpm window, AND the session directory itself all fully
+gone (the real EXIT trap ran) → `button.sh run` again → fresh session
+comes up cleanly.
+
 ### 🟡 Recorded, not yet built
 - ✅ **Screen resize / fullscreen support** — confirmed priority,
   "definitely" doing this.
