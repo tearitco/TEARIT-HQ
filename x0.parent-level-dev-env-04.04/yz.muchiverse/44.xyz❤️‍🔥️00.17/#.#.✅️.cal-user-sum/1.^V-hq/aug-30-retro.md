@@ -283,6 +283,27 @@ orchestrator, khtpm window, AND the session directory itself all fully
 gone (the real EXIT trap ran) → `button.sh run` again → fresh session
 comes up cleanly.
 
+**Update — the real bug was narrower than that fix covered (`9c65e43e`):**
+that first Close fix only ever touched the KEYBOARD Close path (its
+own variable, `pchq_focus == PCHQ_ACT_CLOSE`) - the text-replace
+silently never matched the MOUSE-click Close branch, which uses a
+different variable (`hit == PCHQ_ACT_CLOSE`). Since real usage is
+mouse clicks, the actual reported bug never got fixed the first time.
+Found by reproducing the EXACT real path end-to-end via `xdotool`
+through the real running taskbar (not a CLI shortcut): taskbar → HQ
+header → toys popup → Piececraft-HQ row → window opens → click
+Close → still running, `quit_flag.txt` still empty. Along the way, one
+wrong turn: tried making Close bypass this house's own click_two_step
+convention (assuming, wrongly, that a close button should always be
+one click) - reverted per direct correction ("all menus should use
+the amount required of pdl clicks 1 or 2 - that isn't the reason its
+not reopening"). Close honors the same setting as everything else,
+unchanged; the real fix was just adding the missing
+`pchq_quit_host_session()` call to the mouse branch. Verified live,
+full real path, twice in a row: open → two real clicks on Close →
+orchestrator and session directory both fully gone → same real
+taskbar path again → opens cleanly.
+
 ### 🟡 Recorded, not yet built
 - ✅ **Screen resize / fullscreen support** — confirmed priority,
   "definitely" doing this.
