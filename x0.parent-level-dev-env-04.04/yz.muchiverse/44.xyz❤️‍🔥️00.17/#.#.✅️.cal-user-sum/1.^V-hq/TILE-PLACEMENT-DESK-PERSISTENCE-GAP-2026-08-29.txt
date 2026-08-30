@@ -1,0 +1,80 @@
+TILE-PLACEMENT DESK-PERSISTENCE GAP — real investigation, 2026-08-29
+=====================================================================
+
+TRIGGER (direct question): "when the tiles are placed they should be
+saved in user/files/desks/ so they will be reloaded on reset or when
+user opens that saved 'desk'... that is a fundamental function of this
+house."
+
+CONFIRMED: this is a real, correct observation of a real gap. Tiles
+placed via the tile-picker (both the old emoji flow AND the new RMMV
+flow built this session) are currently NOT part of the house's real
+desk-persistence system at all, and WILL vanish on next session
+load/reset.
+
+TWO REAL, SEPARATE "DESKTOP" SYSTEMS IN THIS HOUSE
+---------------------------------------------------
+1. THE REAL, PERSISTENT ONE (what the user means by "user/files/desks"):
+   xyzfs/users/<uid>/home/livedesk/sessions/<session_id>/desks/<name>.pdl
+   - Row format: `DESK | <entity_name> | <rel_path_to_pal_dir> | x | y |
+     grid_x | grid_y | glyph | index`
+   - Written by khtpm_taskbar_manager.c's livedesk_place_pal()
+     (line ~2286) whenever a "pal" (a real entity package under
+     xyzfs/users/<uid>/home/livedesk/pals/<name>/, with its own
+     pal.pdl/desktop_pos.txt/etc.) is placed onto the active desk.
+   - Read back by livedesk_spawn_desk() (line ~1710) at session
+     start/reset - loops every DESK row in the active desk's .pdl and
+     re-spawns tp_desktop_window_rgb.+x for each. THIS is the real
+     "reload on reset" mechanism the user is asking about.
+   - Confirmed real example: sessions/s1/desks/office.pdl has 7 real
+     DESK rows (self, asa, ava, m8_redhorned, m1_ninjadragon,
+     book-stack, cursword).
+
+2. THE EXCHANGE/STAGING ONE (where tile-picker currently writes):
+   #.desktop/tiles/<name>/  (shared, house-root level, NOT per-user/
+   per-session)
+   - Documented in #.desktop/README.txt as a "file desktop... shared
+     folder where pickers/event-editor/zoo/mutaclysm exchange portable
+     piece packages", explicitly framed as "outside the live world
+     until imported" - i.e. a real, deliberate staging tray, not meant
+     to be the permanent home of a live desktop entity.
+   - tp_place_desktop.c (emoji tiles) and tp_place_desktop_rmmv.c (rmmv
+     tiles, this session's work) BOTH write here and BOTH spawn
+     tp_desktop_window_rgb.+x directly via setsid, with ZERO DESK-row
+     append and zero registration with the session/desk system.
+   - Confirmed via grep: no DESK-row write exists in either placer.
+     tp_import_from_desktop.c (a real, existing, separate op) can move
+     a #.desktop/tiles/ package onto a mutaclysm MAP, but that is an
+     unrelated concept (world import, not desk persistence) and does
+     not touch desks/*.pdl either.
+   - Real, confirmed consequence: currently, EVERY tile placed this
+     entire session (14 real dirs under #.desktop/tiles/, including
+     tile_rmmv_Inside_a2_1788064703 from the just-finished live test)
+     has ZERO reload path. A taskbar restart or session reset drops
+     them silently - they'd need to be manually re-placed every time.
+
+REAL OPEN QUESTIONS (asked back to the user directly, see chat)
+------------------------------------------------------------------
+1. Should placed tiles become real DESK rows in the active per-user
+   session desk (reusing livedesk_spawn_desk()'s existing reload logic
+   as-is, zero new reload code needed), or a parallel TILE-row type in
+   the same .pdl (since a tile isn't a "pal" - no AI, no
+   interact_relay.txt, no pal.pdl identity)?
+2. Which desk does a placed tile belong to - the CURRENTLY ACTIVE
+   desk of the CURRENTLY ACTIVE session at click-time (mirrors how
+   livedesk_place_pal() already resolves "active"), or a separate,
+   fixed desk?
+3. Should #.desktop/tiles/ stop being the tile's real storage location
+   (move tile packages under the session's own directory tree instead,
+   parallel to how pals live under xyzfs/users/<uid>/.../pals/), or
+   does #.desktop/tiles/ stay as the actual on-disk package location
+   with the desk .pdl row just pointing at that path (a path outside
+   pals/, unlike every existing DESK row)?
+4. Retroactive: register the 14 already-placed #.desktop/tiles/*
+   packages into the current active desk now, or leave this fix
+   forward-only (new placements only)?
+
+STATUS: investigation only, no code changed yet. Waiting on the above
+before implementing - this is a real architectural fork, not a
+mechanical bug fix, per the user's own instruction to research and ask
+first rather than assume.
