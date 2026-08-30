@@ -73,7 +73,37 @@ tail -25 /tmp/pc_run.log                   # should show "[main]"/Tick/Hero HP/P
 ps aux | grep -iE "board-viewer|x11_mirror"  # board widget should already be running, unprompted
 ```
 
-**Known follow-up, not yet resolved**: the auto-opened board widget's window currently defaults to board-viewer's own TEXT-mode content ("Map Loading...") rather than the real 3D scene - confirmed via screenshot right after auto-spawn. Earlier in this same session the 3D scene rendered correctly, but only after real, live user interaction drove that particular instance - unclear whether the 3D view needs a real trigger key, more elapsed time, or something else. The "no setup/enter" ask itself is fully resolved regardless (both the game and the widget now launch with zero required user action) - this is a separate, smaller open item about what the widget shows by default.
+**RESOLVED (2026-08-30), correcting an earlier false alarm in this doc**:
+the auto-opened board widget DOES default to real 3D on its own, confirmed
+directly by the user ("this last time i opened it did open 2 3d"). The
+mechanism is already real and config-driven -
+`pieces/system/arrow_config.txt`'s own `default_render_mode=1`/
+`default_camera_mode=2` keys (direct instruction from 2026-08-07, "start
+in 3d 3rd person as a default, read from a config file so it's flexible")
+- piececraft-xyz's own copy already had both set correctly. The earlier
+note here about it defaulting to text/"Map Loading..." content was this
+agent grabbing the WRONG window during remote verification, not a real
+rendering bug - see the real, separate root cause below.
+
+**Real, minor, separate gap found while chasing the above (not yet
+fixed, low priority)**: `&.widgits/board-viewer/ops/bv_set_wm_pid.+x`
+identifies "the window I just spawned" by TITLE match (plus a "not yet
+tagged" guard - see that file's own header comment). Since this
+session's earlier gl_mirror->x11_mirror conversion made the widget's own
+window title match its FOCUSED HOST project (e.g. "piececraft-xyz RGB
+mirror" - a real, deliberate improvement over the old hardcoded, always-
+wrong "wsr-pal RGB mirror"), the widget's window can now share an
+IDENTICAL title with the host's own real, separate, always-untagged
+primary text-UI window - a real, new ambiguity the "not yet tagged"
+guard alone doesn't fully solve (both windows are untagged when the
+widget first spawns). Confirmed live: `dump_frame_png_op.+x` against the
+`_NET_WM_PID`-tagged window still returned the host's own text-UI content
+at least once, not the widget's. Real fix, not yet built: resolve the
+target window some way that doesn't depend on title uniqueness (e.g. by
+walking `xwininfo`'s own tree for a window whose PID/PPID relationship
+matches the just-spawned process directly, bypassing title-matching
+entirely). Does not affect real gameplay/the user's own real experience,
+only remote/automated verification tooling.
 
 ASCII digit codes if you need others: '1'=49 '2'=50 '3'=51 '4'=52 '5'=53
 '6'=54 '7'=55 '8'=56 '9'=57 '0'=48, Enter=13.
