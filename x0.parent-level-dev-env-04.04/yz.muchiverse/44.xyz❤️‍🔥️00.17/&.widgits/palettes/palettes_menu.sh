@@ -176,28 +176,42 @@ set_rmmv() {
 # placement targets bare desktop only for now, see tp_arm_placer_rmmv.c's
 # own header for why).
 arm_rmmv() {
+    # $5-$8: the picker window's own real rect (x y w h), so the
+    # armed-click-capture window can tile AROUND it instead of over
+    # it - see tp_arm_placer_rmmv.c's own header for why.
     _sdir="$1"; _key="$2"; _cat="$3"; _label="$4"
+    _winx="$5"; _winy="$6"; _winw="$7"; _winh="$8"
     mkdir -p "$STATE_DIR" "$DESK_DIR/tiles"
     "$TP_OPS/tp_set_brush_rmmv.+x" "$STATE_DIR" "$_sdir" "$_key" "$_cat" "$_label" >/dev/null 2>&1 || true
     # REAL, NEW 2026-08-29, direct live report ("nothing happened when i
     # tried it"): the picker's own hint text now shows this line while
     # armed (khtpm_entity_menu_render.c polls rmmv_armed.txt).
     #
-    # REAL FIX, same day, follow-up direct instruction ("just have
-    # picker window read which coord is clicked after armed") - the
-    # actual pointer/keyboard grab used to happen here, via a separate
-    # detached tp_arm_placer_rmmv.+x process. Live testing showed
-    # XTest-synthesized clicks (and, per direct report, real ones too)
-    # are not reliably delivered to a FRESHLY-SPAWNED process's own
-    # grab in this environment - true for the pre-existing emoji
-    # tp_arm_placer.c too, not a bug specific to rmmv. The grab now
-    # happens directly inside khtpm_entity_menu_render.c itself (see
-    # its own g_pal_rmmv_armed) right after this script call returns -
-    # this function's only remaining job is the brush/note file writes.
-    # tp_arm_placer_rmmv.+x is kept on disk (uses the shared ops
-    # tp_set_brush_rmmv.+x/tp_place_desktop_rmmv.+x still build), but
-    # is no longer invoked from here.
+    # REAL FIX HISTORY, same day - this went through 3 real designs
+    # before landing on the right one:
+    #   1. tp_arm_placer_rmmv.+x (separate process, XGrabPointer) -
+    #      real hardware clicks never delivered under this Mutter/
+    #      XWayland setup (a real, known, still-open upstream bug).
+    #   2. In-process XGrabPointer + XQueryPointer polling
+    #      (khtpm_entity_menu_render.c's own g_pal_rmmv_armed) - fixed
+    #      synthetic clicks, NOT real ones either.
+    #   3. THE REAL FIX (direct instruction: "maybe we do need a screen
+    #      wide transparent click capture surface?") - confirmed via a
+    #      real, standalone diagnostic tool (tp_debug_click_watcher.c):
+    #      every real click ever captured fell INSIDE a real, already-
+    #      open khtpm window, never on genuinely bare desktop - this
+    #      Mutter/XWayland setup only makes real click state visible to
+    #      X11 at all when the click lands on a real XWayland surface.
+    #      tp_arm_placer_rmmv.+x REWRITTEN (same file, same real design
+    #      history kept in ITS OWN header) to create a real, full-
+    #      screen, InputOnly (genuinely invisible, no opacity trick
+    #      needed) window covering the whole screen and wait for a
+    #      NORMAL ButtonPress on it - no grab, no polling, a real
+    #      mapped surface everywhere the user could click. Spawned back
+    #      here again (was briefly moved in-process for design #2,
+    #      wrong call in hindsight - reverted).
     printf '%s ARMED: %s/%s "%s" - click desktop to place, Esc to cancel\n' "$_key" "$_key" "$_cat" "$_label" > "$STATE_DIR/rmmv_armed.txt"
+    setsid "$TP_OPS/tp_arm_placer_rmmv.+x" "$STATE_DIR" "$DESK_DIR" "$_winx" "$_winy" "$_winw" "$_winh" >/dev/null 2>&1 < /dev/null &
     log "armed rmmv brush tileset=$_key category=$_cat kind='$_label'"
 }
 
@@ -233,7 +247,7 @@ debug_clear() {
 
 case "${1:-}" in
     place)             shift; place "$@"; exit 0 ;;
-    arm-rmmv)          shift; arm_rmmv "$1" "$2" "$3" "$4"; exit 0 ;;
+    arm-rmmv)          shift; arm_rmmv "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8"; exit 0 ;;
     debug-toggle)      shift; debug_toggle "$1"; exit 0 ;;
     debug-clear)       debug_clear; exit 0 ;;
     list)              list_cats; exit 0 ;;

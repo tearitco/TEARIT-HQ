@@ -645,6 +645,38 @@ already-correct precedent the new `rmmv` work was built to match.
    windows with no WM_NAME).
    Single representative kind-thumbnail only - no neighbor-aware
    autotile blending yet, that's step 8 below, separately unbuilt.
+
+   **REAL-MOUSE-VERIFIED (2026-08-29, later same day, separate real
+   debugging arc)** - the "LIVE-VERIFIED" claim above turned out to
+   only be true for synthetic (XTest-injected) clicks, not real human
+   mouse clicks. Real root cause, found via a delegated subagent plus
+   a real, standalone diagnostic tool built specifically to isolate
+   it (`tp_debug_click_watcher.c` - still on disk, wired into a new
+   Debug HQ sidebar, `livedesk:open-palette:debug`): this Mutter/
+   XWayland setup only makes real hardware click state visible to an
+   XWayland client's X11 view when the click lands on a real,
+   already-mapped XWayland surface - genuinely bare Wayland-native
+   desktop space is invisible to X11 entirely, no matter the
+   technique (XGrabPointer event delivery AND XQueryPointer polling
+   both failed the same way, for the same reason). Real fix, direct
+   instruction ("maybe we do need a screen wide transparent click
+   capture surface?"): `tp_arm_placer_rmmv.c` REWRITTEN to create up
+   to 4 real windows tiled around the picker's own rect (not over it -
+   an earlier single-full-screen-window attempt silently ate clicks
+   meant for the picker itself) covering the rest of the screen, each
+   a real, visible (subtle amber tint, ~12% opacity - direct
+   instruction, so arming is visually confirmable) mapped XWayland
+   surface waiting for a normal ButtonPress. Confirmed working
+   end-to-end with the user's own real mouse: armed a tile, saw the
+   real overlay, clicked real desktop, a real tile appeared. Also
+   fixed along the way: `dbhq_redraw_content()` (khtpm_entity_menu_
+   render.c) composed live-polled content into its offscreen buffer
+   but never called `XCopyArea`/`XFlush` to present it - a real bug
+   affecting every live-polling-driven update in db-hq/palettes mode
+   (not just rmmv), found via the user's own precise diagnosis ("it
+   detects your clicks, but only updates when i reclick the window").
+   Full real investigation trail: `RMMV-CLICK-CAPTURE-INVESTIGATION-
+   2026-08-29.txt` in this same directory.
 7. Build the map-file loader (§1.2) as a plain C parsing function,
    matching every other flat-PDL loader already in this codebase
    (`read_key_value()`-style, not a new parsing paradigm) — expanding a

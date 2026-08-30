@@ -735,11 +735,18 @@ static int g_pal_forced_h = 0;
 static char g_pal_default_hint[256] = "";
 static char g_pal_armed_path[PATH_BUF] = "";
 static unsigned long g_pal_armed_checksum = 0;
-/* REAL, NEW 2026-08-29, direct instruction after live testing showed a
- * separate spawned process's own XGrabPointer wasn't reliably catching
- * clicks in this environment - see hq_dispatch_xevent's own ButtonPress
- * handling for the full story. 1 while this process itself holds the
- * grab, waiting for the next real click (or Escape) to resolve. */
+/* DEAD CODE, kept inert intentionally 2026-08-29 - this in-process
+ * XGrabPointer/XQueryPointer-polling click-capture design was tried
+ * and superseded same day (see tp_arm_placer_rmmv.c's own header for
+ * the real reason: real hardware clicks were never visible to this
+ * process either way, only to a real mapped XWayland surface - the
+ * real fix is that file's own full-screen InputOnly window instead).
+ * g_pal_rmmv_armed is never set to 1 anywhere anymore, so every branch
+ * below gated on it (hq_dispatch_xevent's ButtonPress/KeyPress
+ * handling, dbhq_rmmv_poll_pointer(), the shortened select() timeout
+ * in hq_run_event_loop()) is real but permanently unreachable - left
+ * in place rather than surgically removed under time pressure; safe
+ * to delete in a future pass, not load-bearing for anything. */
 static int g_pal_rmmv_armed = 0;
 
 /* Real, generic tab/chooser options for the rmmv tile picker
@@ -1363,9 +1370,14 @@ static void dbhq_inject_palette_tiles(Elem *panel) {
          * dir (publish_rmmv()), so no new rendering/compositing code is
          * needed here, only correct routing. */
         if (strcmp(g_pal_category, "rmmv") == 0) {
+            /* REAL, NEW 2026-08-29 - the armed-click-capture window's
+             * own rect is passed through so it can tile AROUND this
+             * picker window (not over it) - see tp_arm_placer_rmmv.c's
+             * own header for the full real design history/why. */
             snprintf(tile->onclick, sizeof(tile->onclick),
-                     "exec:'%s/&.widgits/palettes/palettes_menu.sh' arm-rmmv '%s' '%s' '%s' '%s'",
-                     g_house_root, g_pal_sprite[i], g_pal_active_tileset, g_pal_active_category, g_pal_label[i]);
+                     "exec:'%s/&.widgits/palettes/palettes_menu.sh' arm-rmmv '%s' '%s' '%s' '%s' '%d' '%d' '%d' '%d'",
+                     g_house_root, g_pal_sprite[i], g_pal_active_tileset, g_pal_active_category, g_pal_label[i],
+                     g_win_x, g_win_y, g_window->w, g_window->h);
         } else if (strcmp(g_pal_category, "debug") == 0) {
             /* REAL, NEW 2026-08-29 - debug_hq's own rows (publish_
              * debug() in palettes_manager.c) carry a real action string
@@ -3095,58 +3107,23 @@ static void dbhq_activate_elem(Elem *hit) {
                 dbhq_inject_palette_tiles(panel);
             }
             hq_run_detached(0, hit->onclick + 5);
-            /* REAL FIX 2026-08-29, direct live report ("nothing
-             * happened when i tried it" + confirmed via repeated live
-             * testing: XTestFakeButtonEvent-synthesized clicks are not
-             * reliably delivered to a SEPARATE process's own
-             * XGrabPointer under this XWayland/Mutter setup - true for
-             * BOTH the new rmmv arm_placer AND the pre-existing, proven
-             * emoji tp_arm_placer.c, ruling out a bug specific to new
-             * code). Real fix, direct instruction ("just have picker
-             * window read which coord is clicked after armed"): the
-             * grab now happens IN THIS ALREADY-RUNNING PROCESS instead
-             * of handing off to a freshly-spawned child - this process
-             * reliably receives real X events (proven all session), a
-             * detached child's own fresh grab apparently does not, in
-             * this environment. tp_set_brush_rmmv.+x/the rmmv_armed.txt
-             * note-write above still happen via the shell exec
-             * (unchanged); only the actual click-catching moves here. */
-            if (strstr(hit->onclick, "arm-rmmv")) {
-                /* REAL BUG FIX 2026-08-29, direct live report ("its not
-                 * showing location where place, or placing anymore") -
-                 * neither grab's return code was ever checked. A
-                 * silent grab failure (AlreadyGrabbed/GrabNotViewable/
-                 * etc - real, possible causes: a stale grab left by an
-                 * earlier test run, or a real timing race) left
-                 * g_pal_rmmv_armed stuck at 1 with NO actual grab in
-                 * effect - every later click then goes to whatever
-                 * window is really under the pointer, never reaching
-                 * this process's own event queue at all, so the
-                 * intercept code above never runs again and the
-                 * "armed" note never changes. Real fix: check both,
-                 * clean up on partial failure, and write a real,
-                 * visible failure note instead of silently pretending
-                 * to be armed. */
-                int gp = XGrabPointer(dpy, RootWindow(dpy, screen), False, ButtonPressMask,
-                                       GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
-                int gk = (gp == GrabSuccess)
-                       ? XGrabKeyboard(dpy, RootWindow(dpy, screen), False, GrabModeAsync, GrabModeAsync, CurrentTime)
-                       : -1;
-                if (gp == GrabSuccess && gk == GrabSuccess) {
-                    g_pal_rmmv_armed = 1;
-                } else {
-                    if (gp == GrabSuccess) XUngrabPointer(dpy, CurrentTime);
-                    g_pal_rmmv_armed = 0;
-                    char fail_path[PATH_BUF];
-                    snprintf(fail_path, sizeof(fail_path), "%s/&.widgits/palettes/state/rmmv_armed.txt", g_house_root);
-                    FILE *ff = fopen(fail_path, "w");
-                    if (ff) {
-                        fprintf(ff, "Arm FAILED (pointer grab %s, keyboard grab %s) - try again\n",
-                                gp == GrabSuccess ? "ok" : "denied", gk == GrabSuccess ? "ok" : "denied");
-                        fclose(ff);
-                    }
-                }
-            }
+            /* REAL DESIGN HISTORY 2026-08-29 - in-process XGrabPointer/
+             * XQueryPointer-polling click-capture (g_pal_rmmv_armed)
+             * was tried here and REMOVED again same day: fixed
+             * synthetic clicks, confirmed via a real standalone
+             * diagnostic tool (tp_debug_click_watcher.c) that it did
+             * NOT fix real ones either - every real click ever
+             * captured fell inside an already-open khtpm window, never
+             * on bare desktop (this Mutter/XWayland setup only makes
+             * real click state visible to X11 when the click lands on
+             * a real XWayland surface). Real fix, direct instruction
+             * ("maybe we do need a screen wide transparent click
+             * capture surface?"): tp_arm_placer_rmmv.+x (spawned via
+             * the exec above, palettes_menu.sh's own arm_rmmv())
+             * creates a real full-screen InputOnly window tiled AROUND
+             * this picker window and waits for a normal ButtonPress on
+             * it - no grab, no polling, in this process or any other.
+             * See that file's own header for the full history. */
         }
         /* Task 6 (2026-08-26) - the embedded Common Event editor's own
          * buttons (dbhq_ce_inject_panel()), dispatched the same generic
