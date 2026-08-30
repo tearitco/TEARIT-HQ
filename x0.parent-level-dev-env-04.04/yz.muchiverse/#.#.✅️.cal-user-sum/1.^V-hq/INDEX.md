@@ -471,8 +471,10 @@ the same fact across files — link instead (`see HANDOFF.md §X`).
 | Leg | Status | Doc |
 |---|---|---|
 | Linux (canonical) | ✅ always current | `44.xyz❤️‍🔥️00.17/!.HOUSE_STDS.md` |
-| Windows | ✅ taskbar + entity windows live; **compile-runner.ps1 + 33 build.ps1 generated** (needs Windows/MSYS2 verification) | `yz.muchiverse/8.21.GROK-win.md`, `$.crypts/compile-runner.ps1` |
-| macOS (return leg) | ✅ **ROUNDTRIP FIXED 2026-08-23** — 76 Mach-O binaries quarantined + house-wide recompile (44/44 PASS) + livedesk smoke-test passed | `44.xyz❤️‍🔥️00.17/LINUX_ROUNDTRIP.md`, `yz.muchiverse/ROUNDTRIP_FIX.md` |
+| Windows | ⚠️ last verified pass 2026-08-21 — **stale, see pending doc below** | `yz.muchiverse/8.21.GROK-win.md`, `$.crypts/compile-runner.ps1` |
+| macOS (return leg) | ⚠️ last verified pass 2026-08-23 — **stale, see pending doc below** | `44.xyz❤️‍🔥️00.17/LINUX_ROUNDTRIP.md`, `yz.muchiverse/ROUNDTRIP_FIX.md` |
+
+**⚠️ PENDING (2026-08-29): a large body of Linux-only work has landed since the passes above and has NOT been ported/verified on Windows or macOS — most notably `khtpm_entity_menu_render.c` (the canonical merged renderer for 8 window modes) has NO Windows twin at all. Full delta list: `CROSS-PLATFORM-PENDING-2026-08-29.md`. Read this before the next Windows/macOS leg.**
 
 **The round-trip problem (bites EVERY Windows trip, caught 2026-08-22):** NTFS cannot store
 names containing `*`, so the house's `*.monads` / `*.START_BUTTON` trees must be renamed to `_.`
