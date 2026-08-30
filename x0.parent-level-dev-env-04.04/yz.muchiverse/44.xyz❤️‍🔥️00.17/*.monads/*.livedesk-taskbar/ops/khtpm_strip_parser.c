@@ -181,6 +181,38 @@ static char g_house_root[SP_PATH_BUF];
 static pid_t g_manager_pid = -1;
 static SpState g_st;
 
+/* REAL FIX 2026-08-30, direct live report ("why is tb and tb options
+ * 1 click to open... ofc its a bug... should we pursue the fix now" ->
+ * "i think we should pursue this") - #.desktop/hq_ui.pdl's own
+ * click_two_step setting (real, house-wide per its own comment:
+ * "Applies house-wide (db-hq/events-hq/chat-hai)") never actually
+ * included the taskbar strip itself - this file (khtpm_strip_parser.c)
+ * predates that convention and never read the setting at all, a real
+ * scope gap, not a partial/broken implementation. Same real default
+ * (1 = two-step ON) and same real load-from-PDL shape
+ * khtpm_entity_menu_render.c's own dbhq_load_font_scale() already
+ * uses - loaded once at startup, applied in apply_captured_mouse()'s
+ * three real dispatch branches (hq_win/popup_win/win) below. */
+static int g_click_two_step = 1;
+
+static void strip_load_click_two_step(void) {
+    char path[SP_PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", g_house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[128];
+    while (fgets(line, sizeof(line), f)) {
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char *val = eq + 1;
+        char *nl = strchr(val, '\n');
+        if (nl) *nl = '\0';
+        if (strcmp(line, "click_two_step") == 0) g_click_two_step = atoi(val) != 0;
+    }
+    fclose(f);
+}
+
 /* Real X11 keyboard focus tracking (2026-08-11, direct request: "does it
  * have focus? right click doesn't say... lets add a '^' in nav section if
  * it has focus, for sanity"). taskbar_soft_focus()'s XSetInputFocus() call
@@ -2211,9 +2243,17 @@ static void apply_captured_mouse(LayDoc *header_doc, LayDoc *bottom_doc, SpState
                 hit_x = (int)((long)x * (long)g_header_natural_w / (long)g_hq_win_w);
             int elidx = hit_test(g_header_hits, g_header_hit_n, hit_x, y);
             if (elidx >= 0) {
+                /* REAL FIX 2026-08-30 - real house-wide click_two_step
+                 * (see its own declaration comment above): a click on
+                 * an unfocused nav element only focuses it; a second
+                 * click on the SAME, already-focused element activates
+                 * it - same real semantics
+                 * click_focus_then_activate()/db-hq's own click
+                 * handling already use. */
+                int activate = (!g_click_two_step) || (header_doc->focus_index == elidx);
                 header_doc->focus_index = elidx;
                 g_nav_focus = root_nav_pos_of(header_doc, elidx);
-                dispatch_onclick(header_doc, elidx);
+                if (activate) dispatch_onclick(header_doc, elidx);
                 taskbar_soft_focus(dpy, hq_win);
             }
         }
@@ -2224,10 +2264,17 @@ static void apply_captured_mouse(LayDoc *header_doc, LayDoc *bottom_doc, SpState
             int elidx = hit_test(g_popup_hits, g_popup_hit_n, x, y);
             if (elidx >= 0) {
                 if (strcmp(header_doc->elements[elidx].type, "cli_io") == 0) {
+                    /* Real, documented exception (hq_ui.pdl's own
+                     * click_two_step comment: "the chat-hai composer
+                     * text field... keeps its own separate real
+                     * toggle") - a text field always focuses-and-
+                     * activates-for-typing on one click, never
+                     * two-step. */
                     send_code(KSC_ENTER);
                 } else {
+                    int activate = (!g_click_two_step) || (header_doc->focus_index == elidx);
                     header_doc->focus_index = elidx;
-                    dispatch_onclick(header_doc, elidx);
+                    if (activate) dispatch_onclick(header_doc, elidx);
                 }
                 taskbar_soft_focus(dpy, popup_win);
             }
@@ -2245,9 +2292,10 @@ static void apply_captured_mouse(LayDoc *header_doc, LayDoc *bottom_doc, SpState
         } else {
             int elidx = hit_test(g_bottom_hits, g_bottom_hit_n, x, y);
             if (elidx >= 0) {
+                int activate = (!g_click_two_step) || (bottom_doc->focus_index == elidx);
                 bottom_doc->focus_index = elidx;
                 g_nav_focus = root_nav_count(header_doc) + root_nav_pos_of(bottom_doc, elidx);
-                dispatch_onclick(bottom_doc, elidx);
+                if (activate) dispatch_onclick(bottom_doc, elidx);
             }
             }
         }
@@ -2311,6 +2359,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     snprintf(g_house_root, sizeof(g_house_root), "%s", argv[1]);
+    strip_load_click_two_step();
     frame_history_init();
     int hq_win_x = 0, hq_win_y = 40;
     load_strip_offset(&hq_win_x, &hq_win_y);
