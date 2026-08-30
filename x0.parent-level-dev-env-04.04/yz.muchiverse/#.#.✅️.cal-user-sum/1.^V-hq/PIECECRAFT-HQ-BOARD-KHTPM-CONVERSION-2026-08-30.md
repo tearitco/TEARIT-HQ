@@ -74,3 +74,12 @@ legacy engine).
 Not committed to `khtpm_entity_menu_render.c` yet - this note and the PoC
 file are the real, honest checkpoint before that larger integration
 starts.
+
+## Real layout direction for the eventual full menu (2026-08-30, direct instruction, not built yet)
+
+"lets put interact mode and menu nav? at teh bottom of the screen below
+the view" - when the full Elem/nav-system menu gets built (see the real
+open item above), Interact-mode controls and menu nav belong BELOW the
+3D view, not in the top chrome bar the current local nav-map uses.
+Direct instruction: "dont worry about the menu yet" when this was raised
+- recorded here so it isn't lost, not acted on in this pass.
