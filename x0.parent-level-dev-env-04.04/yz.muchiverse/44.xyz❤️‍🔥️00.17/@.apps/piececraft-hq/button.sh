@@ -246,9 +246,31 @@ EOSTATE
         # skips gracefully otherwise. MUST wait for chtpm_parser_pal's
         # own first real compose before launching chtpm_rgb_render, or
         # rgb_frame.raw gets stuck permanently all-black/stale.
+        #
+        # REAL FIX 2026-08-30, direct live report ("dont u see it opens
+        # 2 windows? the original window from -xyz is still opening" -
+        # meaning THIS primary session's own real x11_mirror text-mode
+        # UI, the same style piececraft-xyz has always shown; earlier
+        # fixes this session only suppressed board-viewer's own legacy
+        # display, not this one). piececraft-hq exists specifically to
+        # be the real khtpm-only experience (see PIECECRAFT-HQ-CLONE-
+        # NOTE.md) - its own primary text-mode mirror is hardcoded off
+        # here, unconditionally, rather than left NO_GL-toggle-gated
+        # for whoever launches it (the taskbar's real toy.pdl launcher
+        # never sets NO_GL, so it always showed by default before this
+        # fix). piececraft-xyz's own identical block is UNTOUCHED - this
+        # is piececraft-hq-only behavior.
         GL_PID=""
         RGB_PID=""
-        if [ -z "$NO_GL" ] && [ -n "$DISPLAY" ]; then
+        # REAL FIX 2026-08-30, found live testing the fix just above:
+        # a plain `NO_GL=1` here leaked into the LATER, unrelated
+        # board-widget-launch check further down this same script
+        # (`[ -z "$NO_GL" ]`, same shell scope, same variable name) -
+        # confirmed live: it silently disabled the real board-viewer
+        # widget spawn entirely, so NEITHER window opened. Real fix:
+        # a distinct local flag, scoped to only this one check.
+        PCHQ_SKIP_PRIMARY_MIRROR=1
+        if [ -z "$PCHQ_SKIP_PRIMARY_MIRROR" ] && [ -n "$DISPLAY" ]; then
             waited=0
             while [ ! -s pieces/display/current_frame.txt ] && [ "$waited" -lt 20 ]; do
                 sleep 0.1
