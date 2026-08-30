@@ -116,22 +116,20 @@ format (its own real chunk/voxel storage, per `PIECECRAFT_XYZ_DESIGN.md`).
 
 ### 3b. Real, unresolved open questions - genuinely undecided, not just unwritten
 
-1. **Left-click already means "drag" for every desktop entity today**
-   (`tp_desktop_window_rgb.c` ~line 3312, confirmed real, existing
-   behavior). A plain click on cursword needs a real way to tell "this was
-   a click (arm halo)" from "this was the start of a drag" - the standard
-   real fix is a movement-threshold check (ButtonPress records start
-   pos, ButtonRelease within some small pixel radius AND short time =
-   click; otherwise treat as the existing drag). Needs an explicit
-   decision on the threshold, and on whether cursword ALSO still supports
-   normal dragging (probably yes, both should coexist) or gives up
-   drag-to-move entirely in favor of arrow-key movement once armed.
-2. **Scope of the 2D/3D switch**: does armed-cursword's camera-key press
-   switch the WHOLE desktop's entities to 3D at once (a real, desktop-wide
-   mode flag, likely simplest and most consistent with how a single
-   camera/POV concept should work), or per-entity (each pal keeps its own
-   independent 2D/3D state - more flexible, much harder to reason about
-   visually, likely wrong)? Leaning desktop-wide, not decided.
+1. **Left-click already means "drag" for every desktop entity today.
+   RESOLVED (2026-08-29, direct answer): movement-threshold click
+   detection.** `ButtonPress` records the start position; if
+   `ButtonRelease` lands within a small pixel radius/short time of that,
+   treat it as a real click (arm halo); otherwise it's the existing drag.
+   Cursword keeps BOTH behaviors - drag-to-move still works exactly as
+   before, click-to-arm is a real, new, disambiguated second gesture, not
+   a replacement (`tp_desktop_window_rgb.c` ~line 3312 is where this real
+   threshold check needs to land).
+2. **Scope of the 2D/3D switch. RESOLVED (2026-08-29, direct answer):
+   desktop-wide single mode.** One shared 2D/3D flag, living in the same
+   real shared camera-state file §3b item 3 already established -every
+   entity switches together, one consistent camera concept, not a
+   per-entity toggle.
 3. **Where does the "desktop-wide 3D scene" actually render? RESOLVED
    (2026-08-29, direct answer)**: option (b) below - no new compositor
    process. "each entity will change how its rendered, will render as 3d
@@ -164,29 +162,64 @@ format (its own real chunk/voxel storage, per `PIECECRAFT_XYZ_DESIGN.md`).
    inside a fixed-size window - still not decided, but the direction is
    clear enough to flag now rather than leave implicit.
 4. **Does the halo replace cursword's own emoji sprite, or render as an
-   overlay/ring around it?** Overlay/ring is the more consistent choice
-   (matches the "amber tint window" and "bright title text" armed-state
-   precedents in §3a, which never replace the underlying content) but not
-   confirmed.
-5. **Where does the key-recording session's own real state live** (a
-   `cursword_armed.txt`-style file under `#.desktop/`, matching this
-   session's own `rmmv_armed.txt`/`debug_watch_enabled.txt` convention;
-   or something scoped inside cursword's own pal dir)? Not decided - needs
-   to be visible/pollable by whatever ends up owning the desktop-wide 3D
-   render (see open question #3).
-6. **Real key list for POV/camera** - board-viewer's own `1`-`4` are
-   already meaningful/used elsewhere on the desktop (likely house-wide
-   digit-dispatch conventions exist for other things) - needs a real,
-   confirmed-non-colliding key set, not just borrowed wholesale from
-   board-viewer without checking.
+   overlay/ring around it? RESOLVED (2026-08-29, direct answer):
+   overlay/ring around the sprite.** Matches the "amber tint window"/
+   "bright-yellow armed title" precedents already in this house - the
+   halo is a visible ARMED-STATE INDICATOR, never a replacement for
+   cursword's own normal appearance.
+5. **Where does the key-recording session's own real state live?
+   RESOLVED (2026-08-29, direct answer): inside cursword's own pal
+   directory**, NOT under the shared `#.desktop/` area (a real,
+   deliberate departure from this session's own `rmmv_armed.txt`
+   precedent, since this state is specific to one entity - cursword -
+   not a shared/global armed flag). Still needs to be visible/pollable
+   by whatever reads the shared camera-state file (§3b item 3) for the
+   actual 2D/3D+zoom+z-level values themselves, which stay separate from
+   this per-entity armed/recording flag.
+6. **Real key list for POV/camera - AUDITED (2026-08-30), no real
+   collision found; recommendation, not yet confirmed by the user.**
+   Checked `tp_desktop_window_rgb.c`'s real, existing key handling
+   (every entity window's own event loop) directly: its only digit/
+   arrow bindings (`0`-`9` jump-to-nav-index, `Up`/`Down` focus-row
+   navigation, ~line 3060-3120) are gated entirely behind `popup_win`
+   being non-null - i.e. only live while a real right-click context
+   menu is already open. A new cursword-armed key-capture mode, gated
+   behind its OWN distinct armed-state check (see §3b item 5), would
+   never run concurrently with that existing block, so there's no real
+   key-CODE collision to resolve at the code level. The taskbar strip's
+   own digit dispatch (`1`-`15` header cells) lives in a fully separate
+   X11 window/process with independent real keyboard focus - clicking
+   cursword transfers real focus to cursword's own window, so no
+   cross-window collision either. **Recommendation**: reuse board-
+   viewer's exact real key convention verbatim for consistency across
+   the house (`1`-`4` camera_mode, `x`/`z` z-level, `c`/`v` camera
+   z-level, arrows for movement/pan) - not required by any real
+   technical constraint, purely a "one convention, not two" consistency
+   choice, still needs a direct yes/no from the user before treating it
+   as final.
 
-## 4. Suggested next step
+## 4. Piece 4 - Minecraft-style HUD (2026-08-29, direct request, recorded for later)
 
-Open question #3 (the largest real architectural fork) is now RESOLVED -
-see §3b item 3. Remaining open questions #1/#2/#4/#5/#6 can likely be
-settled together in one focused pass, now that the real rendering
-architecture (per-entity window, shared camera-state file, no new
-compositor, no fixed-80px constraint in 3D mode) is decided. Piece 1
-(piececraft's own setup-screen replacement) is comparatively self-
-contained and could start independently of pieces 2/3, since it doesn't
-depend on the desktop-3D architecture question at all.
+A real, additional planned piece of this same long-term feature set,
+noted for later rather than designed in depth yet: a Minecraft-style HUD
+(health + inventory display, bottom of screen) that can be opened once
+the 3D desktop mode above exists. Not designed - no real file/mechanism
+research done yet for this piece specifically. Real, obvious open
+questions once this gets picked up: does health/inventory apply per
+possessed/armed entity (cursword? whichever pal is "active"?) or is it a
+real, desktop-wide HUD; does it reuse any existing piececraft-xyz HUD
+concept (its own in-game "Hero HP" line, confirmed real and live -
+`PIECECRAFT-LOCAL-VERIFY-2026-08-29.md` §3's own screenshot shows
+"Hero HP: 20") or is desktop inventory/health a genuinely new, separate
+concept with no piececraft equivalent to port. Depends on the 2D/3D
+desktop work above landing first.
+
+## 5. Suggested next step
+
+Open question #3 (the largest real architectural fork) is RESOLVED - see
+§3b item 3. Open questions #1/#2/#4/#5 are also now RESOLVED (§3b) - only
+#6 (real camera/POV key list, needs a real key-binding audit) and piece 4
+(the HUD, not designed yet) remain genuinely open. Piece 1 (piececraft's
+own setup-screen replacement) is comparatively self-contained and could
+start independently of pieces 2/3/4, since it doesn't depend on the
+desktop-3D architecture question at all.
