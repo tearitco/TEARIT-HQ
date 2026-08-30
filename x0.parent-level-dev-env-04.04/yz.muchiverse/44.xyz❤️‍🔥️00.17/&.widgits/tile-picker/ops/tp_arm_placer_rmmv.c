@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "self_exe.h" /* macOS leg: portable /proc/self/exe replacement */
 
 #define PATH_BUF 4352
@@ -83,6 +84,14 @@ int main(int argc, char **argv) {
     XUngrabKeyboard(dpy, CurrentTime);
     XUngrabPointer(dpy, CurrentTime);
     XCloseDisplay(dpy);
+
+    /* REAL, NEW 2026-08-29, direct live report ("nothing happened when
+     * i tried it") - clear the picker's own "armed" note on every real
+     * exit path (cancelled OR placed), so it never shows stale. See
+     * palettes_menu.sh's arm_rmmv() for the write side. */
+    char armed_path[PATH_BUF];
+    snprintf(armed_path, sizeof(armed_path), "%s/rmmv_armed.txt", widget_state_dir);
+    unlink(armed_path);
 
     if (cancelled) return 0;
 

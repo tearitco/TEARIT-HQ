@@ -2018,17 +2018,23 @@ int main(int argc, char **argv) {
         ensure_taskbar_running(g_house_root);
         append_history("LIVEDESK_INDEX=%d", g_livedesk_index);
     }
-    /* REAL FIX 2026-08-05, direct instruction (MUCHI_RANCHER monsters
-     * need a real 2x2-desktop-grid-cell footprint): only override the
-     * original flat 64px WIN_PX when a package's own meta.pdl actually
-     * declares footprint_tiles > 1. footprint_tiles defaults to 1 (see
-     * read_footprint_tiles()), so every existing pet/asa/ava package
-     * (no such STATE row) renders at EXACTLY the original 64px,
-     * unchanged - only footprint_tiles>1 packages (monsters) get
-     * footprint_tiles * GRID_CELL_PX (e.g. 2*80=160). */
+    /* REAL FIX 2026-08-05 (MUCHI_RANCHER monsters), EXTENDED 2026-08-29
+     * direct live report ("placing a tile isn't taking up the full
+     * 80px tile square... all entities need this fix except muchi
+     * mon"): the original fix only overrode the flat 64px WIN_PX when
+     * footprint_tiles > 1, so every footprint=1 entity (every pet/asa/
+     * ava/tile - everything except MUCHI_RANCHER monsters) rendered at
+     * a fixed 64px regardless of the real, configurable GRID_CELL_PX
+     * (80 by default) - a real, visible gap against the grid for
+     * anything that's supposed to tile edge-to-edge (like an rmmv
+     * floor tile). Real fix: always derive WIN_PX from GRID_CELL_PX *
+     * footprint_tiles (footprint_tiles defaults to 1, so this is
+     * exactly GRID_CELL_PX for every existing footprint=1 entity, and
+     * unchanged footprint_tiles*GRID_CELL_PX for monsters). */
     {
         int footprint_tiles = read_footprint_tiles(package_dir);
-        if (footprint_tiles > 1) WIN_PX = footprint_tiles * GRID_CELL_PX;
+        if (footprint_tiles < 1) footprint_tiles = 1;
+        WIN_PX = footprint_tiles * GRID_CELL_PX;
     }
     read_menu_config(package_dir);
     /* REAL FIX 2026-08-04, direct instruction ("id like to see emojis

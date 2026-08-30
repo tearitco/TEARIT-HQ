@@ -179,17 +179,60 @@ int main(int argc, char **argv) {
 
     printf("DESKTOP_TILE_RMMV %s tileset=%s category=%s\n", dir, tileset, category);
 
-    /* Real click-position placement, same TP_INITIAL_X/Y convention
-     * tp_place_desktop.c established (tp_arm_placer_rmmv.c sets these
-     * before invoking this op). */
+    /* REAL, NEW 2026-08-29, direct instruction ("parallel/forked
+     * placing logic op can read from ledger, place (having no
+     * knowledge of the picker window, just a reusable op)"): reads the
+     * click position from the real, permanent master ledger
+     * (nav_master_ledger.txt - khtpm_entity_menu_render.c writes a
+     * real "RMMV_CLICK pid=... x=... y=..." line the instant it
+     * captures the click, synchronously, decoupled from whether THIS
+     * op ever runs or succeeds) instead of TP_INITIAL_X/Y env vars.
+     * This op now has zero dependency on how it was invoked or by
+     * what - a real "does one thing, reads real state, no caller-
+     * specific plumbing" op, matching this house's own convention
+     * elsewhere (compare tp_desktop_window_rgb.c reading desktop_pos.
+     * txt rather than being told its own position by whatever spawned
+     * it). Scans the WHOLE ledger for the LAST matching line, since
+     * it's real, permanent, append-only history, not a single-purpose
+     * transient file. */
     {
-        const char *ix = getenv("TP_INITIAL_X");
-        const char *iy = getenv("TP_INITIAL_Y");
-        if (ix && ix[0] && iy && iy[0]) {
+        char ix[32] = "", iy[32] = "";
+        char ledger_path[PATH_BUF];
+        snprintf(ledger_path, sizeof(ledger_path), "%s/nav_master_ledger.txt", desk);
+        FILE *lf = fopen(ledger_path, "r");
+        if (lf) {
+            char line[MAX_LINE];
+            while (fgets(line, sizeof(line), lf)) {
+                if (strncmp(line, "RMMV_CLICK ", 11) != 0) continue;
+                char *xp = strstr(line, " x=");
+                char *yp = strstr(line, " y=");
+                if (xp) { sscanf(xp + 3, "%31s", ix); }
+                if (yp) { sscanf(yp + 3, "%31s", iy); }
+            }
+            fclose(lf);
+        }
+        if (ix[0] && iy[0]) {
             char pos_path[PATH_BUF];
             snprintf(pos_path, sizeof(pos_path), "%s/desktop_pos.txt", dir);
             FILE *pf = fopen(pos_path, "w");
             if (pf) { fprintf(pf, "x=%s\ny=%s\n", ix, iy); fclose(pf); }
+
+            /* REAL, NEW 2026-08-29, direct instruction ("it should say
+             * what coord was last placed on desktop if something was
+             * placed"): reuses the same armed-note file/poll mechanism
+             * (khtpm_entity_menu_render.c already watches this path and
+             * swaps the picker's title text on change) - tp_arm_placer_
+             * rmmv.c unlinks it on every real exit, this write here
+             * replaces that with a real "placed" message instead of
+             * leaving it simply gone, so the picker shows real feedback
+             * either way (armed, placed, or idle - never silent). */
+            char note_path[PATH_BUF];
+            snprintf(note_path, sizeof(note_path), "%s/rmmv_armed.txt", wdir);
+            FILE *nf = fopen(note_path, "w");
+            if (nf) {
+                fprintf(nf, "Placed %s/%s \"%s\" at (%s,%s)\n", tileset, category, kind_label, ix, iy);
+                fclose(nf);
+            }
         }
     }
 

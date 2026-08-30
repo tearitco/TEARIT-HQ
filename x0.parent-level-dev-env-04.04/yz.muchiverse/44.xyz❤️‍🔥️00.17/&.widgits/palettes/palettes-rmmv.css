@@ -10,6 +10,12 @@ window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
 .block-title { background-color: #1c1c1c; color: #cccccc; font-weight: bold;
   font-size: 9px; position: absolute; top: -8px; left: 10px; }
 .pal-hint { color: #888888; font-size: 9px; }
+/* REAL, NEW 2026-08-29, direct live report ("nothing happened when i
+ * tried it") - the plain .pal-hint (9px, dim grey) was too easy to
+ * miss for a real "armed brush" state, exactly the symptom reported.
+ * Bright, obvious, matches the picker's own active-tab yellow so an
+ * armed brush reads as unmistakably different from idle. */
+.pal-hint-armed { color: #ffcc00; font-size: 12px; font-weight: bold; }
 /* matrix view (pallette-design.txt VIEW SPECS): tiles chunked into
    pal-grid-row flex rows by the composer; the renderer scrolls them
    and draws a real thumb on pal-thumbtrack. */

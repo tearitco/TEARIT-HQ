@@ -179,7 +179,25 @@ arm_rmmv() {
     _sdir="$1"; _key="$2"; _cat="$3"; _label="$4"
     mkdir -p "$STATE_DIR" "$DESK_DIR/tiles"
     "$TP_OPS/tp_set_brush_rmmv.+x" "$STATE_DIR" "$_sdir" "$_key" "$_cat" "$_label" >/dev/null 2>&1 || true
-    setsid "$TP_OPS/tp_arm_placer_rmmv.+x" "$STATE_DIR" "$DESK_DIR" >/dev/null 2>&1 < /dev/null &
+    # REAL, NEW 2026-08-29, direct live report ("nothing happened when i
+    # tried it"): the picker's own hint text now shows this line while
+    # armed (khtpm_entity_menu_render.c polls rmmv_armed.txt).
+    #
+    # REAL FIX, same day, follow-up direct instruction ("just have
+    # picker window read which coord is clicked after armed") - the
+    # actual pointer/keyboard grab used to happen here, via a separate
+    # detached tp_arm_placer_rmmv.+x process. Live testing showed
+    # XTest-synthesized clicks (and, per direct report, real ones too)
+    # are not reliably delivered to a FRESHLY-SPAWNED process's own
+    # grab in this environment - true for the pre-existing emoji
+    # tp_arm_placer.c too, not a bug specific to rmmv. The grab now
+    # happens directly inside khtpm_entity_menu_render.c itself (see
+    # its own g_pal_rmmv_armed) right after this script call returns -
+    # this function's only remaining job is the brush/note file writes.
+    # tp_arm_placer_rmmv.+x is kept on disk (uses the shared ops
+    # tp_set_brush_rmmv.+x/tp_place_desktop_rmmv.+x still build), but
+    # is no longer invoked from here.
+    printf '%s ARMED: %s/%s "%s" - click desktop to place, Esc to cancel\n' "$_key" "$_key" "$_cat" "$_label" > "$STATE_DIR/rmmv_armed.txt"
     log "armed rmmv brush tileset=$_key category=$_cat kind='$_label'"
 }
 

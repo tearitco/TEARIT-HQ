@@ -664,6 +664,28 @@ static Elem *g_pal_static_title = NULL;
 static Elem *g_pal_static_hint = NULL;
 static int g_pal_forced_h = 0;
 
+/* REAL, NEW 2026-08-29, direct live report ("nothing happened when i
+ * tried it" - the armed-brush flow had zero visible feedback, so a
+ * click that only moved nav focus (this house's real two-step click
+ * convention, see click_focus_then_activate) looked identical to one
+ * that silently did nothing). Polls rmmv_armed.txt (written by
+ * palettes_menu.sh's arm_rmmv(), cleared by tp_arm_placer_rmmv.c on
+ * exit) and swaps the picker's own hint text between this and the
+ * chtpm's real default, so arming state is always visibly true, not
+ * assumed. g_pal_default_hint captured once from the real chtpm-parsed
+ * label the first time the hint Elem is found - not hardcoded here,
+ * so a future wording change to palettes-rmmv.chtpm's own <text> still
+ * restores correctly. */
+static char g_pal_default_hint[256] = "";
+static char g_pal_armed_path[PATH_BUF] = "";
+static unsigned long g_pal_armed_checksum = 0;
+/* REAL, NEW 2026-08-29, direct instruction after live testing showed a
+ * separate spawned process's own XGrabPointer wasn't reliably catching
+ * clicks in this environment - see hq_dispatch_xevent's own ButtonPress
+ * handling for the full story. 1 while this process itself holds the
+ * grab, waiting for the next real click (or Escape) to resolve. */
+static int g_pal_rmmv_armed = 0;
+
 /* Real, generic tab/chooser options for the rmmv tile picker
  * (2026-08-27) - published by palettes_manager.c's own publish_rmmv_
  * options() from the SAME real tileset_registry.pdl, never hardcoded
@@ -2986,6 +3008,58 @@ static void dbhq_activate_elem(Elem *hit) {
                 dbhq_inject_palette_tiles(panel);
             }
             hq_run_detached(0, hit->onclick + 5);
+            /* REAL FIX 2026-08-29, direct live report ("nothing
+             * happened when i tried it" + confirmed via repeated live
+             * testing: XTestFakeButtonEvent-synthesized clicks are not
+             * reliably delivered to a SEPARATE process's own
+             * XGrabPointer under this XWayland/Mutter setup - true for
+             * BOTH the new rmmv arm_placer AND the pre-existing, proven
+             * emoji tp_arm_placer.c, ruling out a bug specific to new
+             * code). Real fix, direct instruction ("just have picker
+             * window read which coord is clicked after armed"): the
+             * grab now happens IN THIS ALREADY-RUNNING PROCESS instead
+             * of handing off to a freshly-spawned child - this process
+             * reliably receives real X events (proven all session), a
+             * detached child's own fresh grab apparently does not, in
+             * this environment. tp_set_brush_rmmv.+x/the rmmv_armed.txt
+             * note-write above still happen via the shell exec
+             * (unchanged); only the actual click-catching moves here. */
+            if (strstr(hit->onclick, "arm-rmmv")) {
+                /* REAL BUG FIX 2026-08-29, direct live report ("its not
+                 * showing location where place, or placing anymore") -
+                 * neither grab's return code was ever checked. A
+                 * silent grab failure (AlreadyGrabbed/GrabNotViewable/
+                 * etc - real, possible causes: a stale grab left by an
+                 * earlier test run, or a real timing race) left
+                 * g_pal_rmmv_armed stuck at 1 with NO actual grab in
+                 * effect - every later click then goes to whatever
+                 * window is really under the pointer, never reaching
+                 * this process's own event queue at all, so the
+                 * intercept code above never runs again and the
+                 * "armed" note never changes. Real fix: check both,
+                 * clean up on partial failure, and write a real,
+                 * visible failure note instead of silently pretending
+                 * to be armed. */
+                int gp = XGrabPointer(dpy, RootWindow(dpy, screen), False, ButtonPressMask,
+                                       GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
+                int gk = (gp == GrabSuccess)
+                       ? XGrabKeyboard(dpy, RootWindow(dpy, screen), False, GrabModeAsync, GrabModeAsync, CurrentTime)
+                       : -1;
+                if (gp == GrabSuccess && gk == GrabSuccess) {
+                    g_pal_rmmv_armed = 1;
+                } else {
+                    if (gp == GrabSuccess) XUngrabPointer(dpy, CurrentTime);
+                    g_pal_rmmv_armed = 0;
+                    char fail_path[PATH_BUF];
+                    snprintf(fail_path, sizeof(fail_path), "%s/&.widgits/palettes/state/rmmv_armed.txt", g_house_root);
+                    FILE *ff = fopen(fail_path, "w");
+                    if (ff) {
+                        fprintf(ff, "Arm FAILED (pointer grab %s, keyboard grab %s) - try again\n",
+                                gp == GrabSuccess ? "ok" : "denied", gk == GrabSuccess ? "ok" : "denied");
+                        fclose(ff);
+                    }
+                }
+            }
         }
         /* Task 6 (2026-08-26) - the embedded Common Event editor's own
          * buttons (dbhq_ce_inject_panel()), dispatched the same generic
@@ -9100,6 +9174,35 @@ static void hq_idle_tick(void) {
                 dbhq_redraw_content();
             }
         }
+        /* REAL, NEW 2026-08-29 - visible "armed" feedback for the rmmv
+         * brush, see g_pal_default_hint's own header comment for why.
+         * Same mtime-checksum-gated poll shape g_pal_state_path already
+         * uses (dbhq_file_checksum), not a fresh redraw every tick. */
+        if (g_is_palettes && g_pal_armed_path[0] && g_pal_static_title) {
+            struct stat ast;
+            unsigned long cksum = (stat(g_pal_armed_path, &ast) == 0) ? dbhq_file_checksum(g_pal_armed_path) : 0;
+            if (cksum != g_pal_armed_checksum) {
+                g_pal_armed_checksum = cksum;
+                char line[256] = "";
+                if (cksum) {
+                    FILE *af = fopen(g_pal_armed_path, "r");
+                    if (af) { if (fgets(line, sizeof(line), af)) line[strcspn(line, "\r\n")] = '\0'; fclose(af); }
+                }
+                snprintf(g_pal_static_title->label, sizeof(g_pal_static_title->label), "%s",
+                         line[0] ? line : g_pal_default_hint);
+                /* Adds a second class (doesn't replace block-title, which
+                 * other windows' titles also use) so armed reads as
+                 * unmistakably different - see .pal-hint-armed's own
+                 * header comment in palettes-rmmv.css. */
+                if (line[0]) {
+                    snprintf(g_pal_static_title->classes[1], sizeof(g_pal_static_title->classes[1]), "pal-hint-armed");
+                    g_pal_static_title->n_classes = 2;
+                } else {
+                    g_pal_static_title->n_classes = 1;
+                }
+                dbhq_redraw_content();
+            }
+        }
         if (!g_is_palettes && !g_is_bookmarks && g_dbhq_current_tab == DB_HQ_ACTORS_TAB) {
             if (dbhq_load_actors()) {
                 dbhq_show_actors();
@@ -9163,6 +9266,103 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
     if (ev->type == ClientMessage && (Atom)ev->xclient.data.l[0] == wm_delete) {
         g_quit = 1;
         return;
+    }
+    /* REAL FIX 2026-08-29 - in-process rmmv armed-brush click capture,
+     * see g_pal_rmmv_armed's own header comment. Must run BEFORE any
+     * other ButtonPress handling below - while armed, this process
+     * holds a real root-window grab, so the NEXT ButtonPress anywhere
+     * on screen (x_root/y_root are absolute regardless of which window
+     * the grab reports as the event window) is this click, not
+     * whatever this window's own normal click logic would do with it. */
+    if (g_pal_rmmv_armed && ev->type == ButtonPress) {
+        /* REAL FIX 2026-08-29, direct live report ("it just places on
+         * window, instead of 'new clicked glyph armed' when using
+         * mouse"): a click landing back INSIDE this same picker window
+         * (e.g. picking a DIFFERENT tile to re-arm with) was being
+         * treated as a desktop placement, since the grab intercepts
+         * ALL clicks globally with no way to tell them apart by
+         * window - x_root/y_root are absolute regardless of which
+         * window X reports as the event window. Real fix: check
+         * against this window's own real on-screen rect first: if the
+         * click is inside it, ungrab and let it fall through to this
+         * window's own normal click handling below (which re-arms via
+         * the same onclick path, re-grabbing for the NEW tile) instead
+         * of treating it as a placement. */
+        if (ev->xbutton.x_root >= g_win_x && ev->xbutton.x_root < g_win_x + g_window->w &&
+            ev->xbutton.y_root >= g_win_y && ev->xbutton.y_root < g_win_y + g_window->h) {
+            XUngrabPointer(dpy, CurrentTime);
+            XUngrabKeyboard(dpy, CurrentTime);
+            g_pal_rmmv_armed = 0;
+            /* Fall through - the normal ButtonPress handling below
+             * (dbhq_activate_elem() et al) processes this click
+             * exactly as if nothing had been armed; if it lands on
+             * another rmmv tile, that tile's own onclick re-arms
+             * fresh. ev->xbutton.x/y (window-relative) are what that
+             * path expects, already correct on this same event. */
+        } else {
+        XUngrabPointer(dpy, CurrentTime);
+        XUngrabKeyboard(dpy, CurrentTime);
+        g_pal_rmmv_armed = 0;
+        char envx[32], envy[32];
+        snprintf(envx, sizeof(envx), "%d", ev->xbutton.x_root);
+        snprintf(envy, sizeof(envy), "%d", ev->xbutton.y_root);
+
+        /* REAL, NEW 2026-08-29, direct instruction ("before we fix
+         * placing lets fix coord announce for placing... it can do
+         * this if mouseclick writes to master ledger and tileset
+         * window reads it") - deliberately DECOUPLED from whether the
+         * tp_place_desktop_rmmv.+x call below actually succeeds:
+         * written synchronously, in this same process, the instant the
+         * real desktop click is captured - not via the subprocess or
+         * its own file writes, which is what was silently failing.
+         * Real master ledger (nav_master_ledger.txt), same real
+         * append-only convention nav_tab_register()/livedesk_registry_
+         * add() already use for this exact file - a real, permanent
+         * record, not a transient state file only this window reads. */
+        {
+            char led[PATH_BUF];
+            snprintf(led, sizeof(led), "%s/#.desktop/nav_master_ledger.txt", g_house_root);
+            FILE *lf = fopen(led, "a");
+            if (lf) {
+                fprintf(lf, "RMMV_CLICK pid=%d x=%s y=%s\n", (int)getpid(), envx, envy);
+                fclose(lf);
+            }
+            if (g_pal_static_title) {
+                snprintf(g_pal_static_title->label, sizeof(g_pal_static_title->label),
+                         "Clicked desktop at (%s,%s) - placing...", envx, envy);
+                snprintf(g_pal_static_title->classes[1], sizeof(g_pal_static_title->classes[1]), "pal-hint-armed");
+                g_pal_static_title->n_classes = 2;
+                dbhq_redraw_content();
+            }
+        }
+
+        /* No coordinate plumbing needed here anymore - tp_place_
+         * desktop_rmmv.+x reads its own click position straight from
+         * nav_master_ledger.txt (just written above), a real
+         * "reusable op, no knowledge of its caller" shape rather than
+         * this renderer handing it argv/env state. */
+        char cmd[PATH_BUF * 3];
+        snprintf(cmd, sizeof(cmd),
+                 "'%s/&.widgits/tile-picker/ops/+x/tp_place_desktop_rmmv.+x' '%s/&.widgits/palettes/state' '%s/#.desktop' >/dev/null 2>&1",
+                 g_house_root, g_house_root, g_house_root);
+        int rc = system(cmd);
+        (void)rc;
+        return;
+        }
+    }
+    if (g_pal_rmmv_armed && ev->type == KeyPress) {
+        KeySym ks = XLookupKeysym(&ev->xkey, 0);
+        if (ks == XK_Escape) {
+            XUngrabPointer(dpy, CurrentTime);
+            XUngrabKeyboard(dpy, CurrentTime);
+            g_pal_rmmv_armed = 0;
+            /* Same file the arm/place C ops already use for visible
+             * feedback - clear it so the picker's title reverts. */
+            char armed_path[PATH_BUF];
+            snprintf(armed_path, sizeof(armed_path), "%s/&.widgits/palettes/state/rmmv_armed.txt", g_house_root);
+            unlink(armed_path);
+            return;
+        }
     }
     if (ev->type == ButtonPress) {
         if (is_popup) {
@@ -9680,6 +9880,39 @@ int main(int argc, char **argv) {
             if (panel) {
                 g_pal_static_title = find_by_tag(panel, "title");
                 g_pal_static_hint = find_by_tag(panel, "text");
+                /* Capture the chtpm's own real default TITLE text ONCE,
+                 * before anything ever overwrites it - see g_pal_default_
+                 * hint's own header comment. REAL FIX, same testing pass:
+                 * originally targeted g_pal_static_hint (.pal-hint), but
+                 * live pixel-dump verification found that Elem never
+                 * renders at all even for its own unmodified default text
+                 * - a separate, pre-existing layout bug, not chased
+                 * further here. g_pal_static_title (.block-title) is
+                 * confirmed-rendering (it's the visible "palettes: RPG
+                 * Maker Tiles" line), so the armed note goes there
+                 * instead - variable name kept as "hint" throughout for
+                 * a smaller diff, but it now drives the title Elem. */
+                if (g_pal_static_title && !g_pal_default_hint[0]) {
+                    snprintf(g_pal_default_hint, sizeof(g_pal_default_hint), "%s", g_pal_static_title->label);
+                }
+                if (strcmp(g_pal_category, "rmmv") == 0) {
+                    snprintf(g_pal_armed_path, sizeof(g_pal_armed_path), "%s/state/rmmv_armed.txt", g_package_dir);
+                    /* REAL BUG FIX 2026-08-29, direct live report
+                     * ("window is opening auto armed, it shouldnt") -
+                     * a fresh window's g_pal_armed_checksum starts at
+                     * 0, but a stale rmmv_armed.txt left over from a
+                     * PREVIOUS session already has real content - the
+                     * first poll tick then sees checksum != 0, treats
+                     * that as a fresh "just armed" change, and shows
+                     * the old ARMED/Placed text even though this
+                     * process holds no real grab at all. A truly fresh
+                     * window session should never inherit armed state
+                     * from a previous one - delete it. */
+                    unlink(g_pal_armed_path);
+                } else {
+                    g_pal_armed_path[0] = '\0';
+                }
+                g_pal_armed_checksum = 0;
                 snprintf(g_pal_options_path, sizeof(g_pal_options_path), "%s/rmmv_options.txt", g_package_dir);
                 dbhq_load_palette_state();
                 dbhq_load_palette_options();
