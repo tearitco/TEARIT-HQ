@@ -10101,13 +10101,40 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
     }
     pchq_kill_legacy_display(bv_session);
 
-    /* REAL, the actual real, fully-composited frame - same file
-     * x11_mirror.c itself blits, already containing the real text
-     * chrome AND the real 3D overlay (see this function's own header
-     * comment). NOT rgb_frame_3d_overlay.raw directly. */
-    char frame_source[PATH_BUF], receipt_path[PATH_BUF];
-    snprintf(frame_source, sizeof(frame_source), "%s/pieces/display/rgb_frame.raw", bv_session);
-    snprintf(receipt_path, sizeof(receipt_path), "%s/pieces/display/rgb_frame.receipt.txt", bv_session);
+    /* REAL RESTYLE 2026-08-30, direct live report ("why doesn't it use
+     * the text and button styles of hq style windows? it looks like
+     * ascii from terminal") - direct instruction, given the trade-off,
+     * was to restyle the content itself rather than keep blitting
+     * chtpm_rgb_render.c's own plain white-on-black rasterized
+     * rgb_frame.raw verbatim. Real, scoped approach that keeps 100%
+     * parity with the legacy engine's own NAV/INTERACT STATE (that
+     * lives entirely inside chtpm_parser_pal, untouched): read the SAME
+     * real source chtpm_rgb_render.c itself reads - pieces/display/
+     * current_frame.txt, the engine's own real per-line text output,
+     * PLUS the same real MAP3D_MARKER protocol (a bare 0x01 byte line
+     * -> blit pieces/display/rgb_frame_3d_overlay.raw at that row, see
+     * chtpm_rgb_render.c's own blit_overlay()/render_once() header
+     * comments) - and draw each line ourselves through khtpm's own
+     * real Xft font/color system (house convention: focused="#ff8c00",
+     * unfocused="#888888"/"#9a9a9a", from db-hq/events-hq/chat-hai's
+     * own nav-row styling) instead of the compositor's plain rasterized
+     * bitmap. This is a pure DISPLAY transform of output the engine
+     * already produced - zero new local nav/interact logic, same real
+     * source of truth, just styled instead of blitted raw. */
+    char current_frame_path[PATH_BUF];
+    char overlay_path[PATH_BUF], overlay_receipt_path[PATH_BUF];
+    snprintf(current_frame_path, sizeof(current_frame_path), "%s/pieces/display/current_frame.txt", bv_session);
+    snprintf(overlay_path, sizeof(overlay_path), "%s/pieces/display/rgb_frame_3d_overlay.raw", bv_session);
+    snprintf(overlay_receipt_path, sizeof(overlay_receipt_path), "%s/pieces/display/rgb_frame_3d_overlay.receipt.txt", bv_session);
+    /* Real, fixed layout constants - same real values chtpm_rgb_render.c
+     * itself uses (GLYPH_W=8/GLYPH_H=16/FRAME_W=640/FRAME_H=768, see
+     * that file's own #define block) - this project's board-viewer
+     * text grid is a fixed real size, not something this window needs
+     * to rediscover per-frame. */
+#define PCHQ_GLYPH_W 8
+#define PCHQ_GLYPH_H 16
+#define PCHQ_COLS 80
+#define PCHQ_ROWS 48
 
     char bv_history1[PATH_BUF], bv_history2[PATH_BUF];
     snprintf(bv_history1, sizeof(bv_history1), "%s/pieces/apps/player_app/history.txt", bv_session);
@@ -10129,7 +10156,7 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
     int depth = DefaultDepth(dpy, screen);
     Colormap cmap = DefaultColormap(dpy, screen);
 
-    int frame_w = 640, frame_h = 480;
+    int frame_w = PCHQ_COLS * PCHQ_GLYPH_W, frame_h = PCHQ_ROWS * PCHQ_GLYPH_H;
 #define PCHQ_CLOSE_W 26
     int win_x = 140, win_y = 90;
     int dragging = 0, drag_last_x = 0, drag_last_y = 0;
@@ -10167,6 +10194,12 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
         if (shints) { shints->flags = PPosition; shints->x = win_x; shints->y = win_y; XSetWMNormalHints(dpy, win, shints); XFree(shints); }
     }
     XMapRaised(dpy, win);
+    /* REAL FIX 2026-08-30, direct live report ("also is missing
+     * transparency") - every other khtpm window in this file applies
+     * the real theme opacity on map (set_window_opacity()/
+     * load_theme_opacity(), same real _NET_WM_WINDOW_OPACITY mechanism
+     * db-hq/events-hq use) - this mode never called it. */
+    set_window_opacity(dpy, win, load_theme_opacity());
     GC gc = XCreateGC(dpy, win, 0, NULL);
     for (int attempt = 0; attempt < 5; attempt++) {
         XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
@@ -10180,9 +10213,17 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
     Pixmap buf = XCreatePixmap(dpy, win, (unsigned)win_w, (unsigned)win_h, (unsigned)depth);
     XftDraw *xftdraw = XftDrawCreate(dpy, buf, visual, cmap);
     XftFont *ui_font = XftFontOpenName(dpy, screen, "Ubuntu-10");
+    XftFont *pchq_body_font = XftFontOpenName(dpy, screen, "DejaVu Sans Mono:pixelsize=13");
+    if (!pchq_body_font) pchq_body_font = ui_font;
 
-    unsigned char *frame_buffer = NULL;
-    XImage *ximg = NULL;
+    /* REAL overlay (3D content) image cache - separate from the old
+     * whole-frame ximg, since the text portion is now drawn directly,
+     * not blitted. Same real RGBA-file-to-XImage load x11_mirror.c's
+     * own load_frame() uses, scoped to just the overlay rectangle. */
+    XImage *ov_img = NULL;
+    unsigned char *ov_buf = NULL;
+    int ov_w_cur = 0, ov_h_cur = 0;
+
     int running = 1;
     int pchq_focus_ok = 0;
     while (running) {
@@ -10193,54 +10234,37 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
             XGetInputFocus(dpy, &focused, &revert);
             if (focused == win) pchq_focus_ok = 1;
         }
-        /* REAL, x11_mirror.c's own real receipt keys - frame_w/frame_h,
-         * not overlay_w/overlay_h (that was the wrong file). */
-        int new_w = pchq_read_kv_int(receipt_path, "frame_w", frame_w);
-        int new_h = pchq_read_kv_int(receipt_path, "frame_h", frame_h);
-        if (new_w > 0 && new_h > 0 && (new_w != frame_w || new_h != frame_h || !ximg)) {
-            frame_w = new_w; frame_h = new_h;
-            free(frame_buffer);
-            frame_buffer = malloc((size_t)frame_w * frame_h * 4);
-            if (ximg) { XDestroyImage(ximg); ximg = NULL; }
-            char *data = malloc((size_t)frame_w * frame_h * 4);
-            ximg = XCreateImage(dpy, visual, (unsigned)depth, ZPixmap, 0, data,
-                                 (unsigned)frame_w, (unsigned)frame_h, 32, 0);
-            win_w = frame_w; win_h = frame_h + CHROME_H;
-            XResizeWindow(dpy, win, (unsigned)win_w, (unsigned)win_h);
-            XFreePixmap(dpy, buf);
-            buf = XCreatePixmap(dpy, win, (unsigned)win_w, (unsigned)win_h, (unsigned)depth);
-            XftDrawDestroy(xftdraw);
-            xftdraw = XftDrawCreate(dpy, buf, visual, cmap);
-        }
-        if (!frame_buffer) frame_buffer = malloc((size_t)frame_w * frame_h * 4);
 
-        FILE *f = fopen(frame_source, "rb");
-        if (f) {
-            size_t bytes_read = fread(frame_buffer, 1, (size_t)frame_w * frame_h * 4, f);
-            fclose(f);
-            if (bytes_read < (size_t)frame_w * frame_h * 4)
-                memset(frame_buffer + bytes_read, 0, (size_t)frame_w * frame_h * 4 - bytes_read);
-        } else {
-            memset(frame_buffer, 0, (size_t)frame_w * frame_h * 4);
+        int ov_w = pchq_read_kv_int(overlay_receipt_path, "overlay_w", 0);
+        int ov_h = pchq_read_kv_int(overlay_receipt_path, "overlay_h", 0);
+        if (ov_w > 0 && ov_h > 0 && (ov_w != ov_w_cur || ov_h != ov_h_cur || !ov_img)) {
+            ov_w_cur = ov_w; ov_h_cur = ov_h;
+            free(ov_buf);
+            ov_buf = malloc((size_t)ov_w * ov_h * 4);
+            if (ov_img) { XDestroyImage(ov_img); ov_img = NULL; }
+            char *data = malloc((size_t)ov_w * ov_h * 4);
+            ov_img = XCreateImage(dpy, visual, (unsigned)depth, ZPixmap, 0, data,
+                                   (unsigned)ov_w, (unsigned)ov_h, 32, 0);
         }
-        if (ximg) {
-            for (int y = 0; y < frame_h; y++)
-                for (int x = 0; x < frame_w; x++) {
-                    size_t o = ((size_t)y * frame_w + x) * 4;
-                    unsigned long px = ((unsigned long)frame_buffer[o] << 16)
-                                      | ((unsigned long)frame_buffer[o + 1] << 8)
-                                      | (unsigned long)frame_buffer[o + 2];
-                    XPutPixel(ximg, x, y, px);
+        if (ov_img && ov_buf) {
+            FILE *of = fopen(overlay_path, "rb");
+            if (of) {
+                size_t got = fread(ov_buf, 1, (size_t)ov_w_cur * ov_h_cur * 4, of);
+                fclose(of);
+                if (got == (size_t)ov_w_cur * ov_h_cur * 4) {
+                    for (int y = 0; y < ov_h_cur; y++)
+                        for (int x = 0; x < ov_w_cur; x++) {
+                            size_t o = ((size_t)y * ov_w_cur + x) * 4;
+                            unsigned long px = ((unsigned long)ov_buf[o] << 16)
+                                              | ((unsigned long)ov_buf[o + 1] << 8)
+                                              | (unsigned long)ov_buf[o + 2];
+                            XPutPixel(ov_img, x, y, px);
+                        }
                 }
+            }
         }
 
-        /* Minimal, real chrome ONLY (title + close [X], same real
-         * shape x11_mirror.c's own draw_chrome() uses) - NO hand-drawn
-         * Interact/nav badges anymore. The real "[>] N. Interact
-         * Mode..." row is already INSIDE ximg (blitted from
-         * rgb_frame.raw, which chtpm_rgb_render.c already composited
-         * for real) - drawing it a second time here would be a real,
-         * literal duplicate of content the engine already rendered. */
+        /* Real chrome (title + close [X]). */
         XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, "#2a2a2a"));
         XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)win_w, CHROME_H);
         if (ui_font) {
@@ -10258,7 +10282,101 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
             XftDrawStringUtf8(xftdraw, &col, ui_font, win_w - PCHQ_CLOSE_W + 9, 18, (const FcChar8 *)"X", 1);
             XftColorFree(dpy, visual, cmap, &col);
         }
-        if (ximg) XPutImage(dpy, buf, gc, ximg, 0, 0, 0, CHROME_H, (unsigned)frame_w, (unsigned)frame_h);
+
+        /* Real content background. */
+        XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, "#111111"));
+        XFillRectangle(dpy, buf, gc, 0, CHROME_H, (unsigned)win_w, (unsigned)frame_h);
+
+        /* REAL, styled read of chtpm_parser_pal's own current_frame.txt
+         * output - same real source chtpm_rgb_render.c rasterizes, read
+         * here directly and drawn via khtpm's own Xft font/color
+         * convention instead. Zero local nav/interact logic - this
+         * only classifies the ENGINE's own already-decided text
+         * ([>]/[ ]/[^] prefixes it already wrote) to pick a style. */
+        FILE *tf = fopen(current_frame_path, "r");
+        if (tf) {
+            char line[600];
+            int row = 0;
+            int y_px = CHROME_H;
+            while (row < PCHQ_ROWS && fgets(line, sizeof(line), tf)) {
+                line[strcspn(line, "\r\n")] = '\0';
+                if ((unsigned char)line[0] == 0x01) {
+                    /* MAP3D_MARKER - same real protocol chtpm_rgb_render.c
+                     * itself implements (see its blit_overlay()/
+                     * render_once() header comments) - blit the real 3D
+                     * overlay here, then skip the same number of source
+                     * rows its own producer reserved for it. */
+                    if (ov_img && ov_h_cur > 0)
+                        XPutImage(dpy, buf, gc, ov_img, 0, 0, 0, y_px, (unsigned)ov_w_cur, (unsigned)ov_h_cur);
+                    int skip_rows = (ov_h_cur > 0) ? (ov_h_cur + PCHQ_GLYPH_H - 1) / PCHQ_GLYPH_H : 0;
+                    y_px += ov_h_cur > 0 ? ov_h_cur : PCHQ_GLYPH_H;
+                    row += 1;
+                    for (int i = 1; i < skip_rows && row < PCHQ_ROWS; i++) {
+                        if (!fgets(line, sizeof(line), tf)) break;
+                        row++;
+                    }
+                    continue;
+                }
+
+                /* Classify this real line - same house nav-focus colors
+                 * every other khtpm window uses ("#ff8c00" focused,
+                 * "#888888" unfocused, see db-hq/events-hq/chat-hai's
+                 * own nav_index == g_focus_nav styling). */
+                char *trimmed = line;
+                while (*trimmed == ' ') trimmed++;
+                int is_rule = (trimmed[0] != '\0');
+                for (const char *p = trimmed; *p; p++) {
+                    if (*p != '+' && *p != '=' && *p != '-' && *p != ' ') { is_rule = 0; break; }
+                }
+                int is_focused_nav = (strncmp(trimmed, "[>]", 3) == 0 || strncmp(trimmed, "[^]", 3) == 0);
+                int is_unfocused_nav = (strncmp(trimmed, "[ ]", 3) == 0);
+                int is_panel = (trimmed[0] == '|');
+
+                if (is_rule) {
+                    XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, "#3a3a3a"));
+                    XFillRectangle(dpy, buf, gc, 4, y_px + PCHQ_GLYPH_H / 2, (unsigned)(win_w - 8), 1);
+                } else if (is_focused_nav) {
+                    XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, "#3a2a10"));
+                    XFillRectangle(dpy, buf, gc, 4, y_px + 1, (unsigned)(win_w - 8), PCHQ_GLYPH_H - 2);
+                    XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, "#ff8c00"));
+                    XDrawRectangle(dpy, buf, gc, 4, y_px + 1, (unsigned)(win_w - 8) - 1, PCHQ_GLYPH_H - 3);
+                    if (pchq_body_font) {
+                        XRenderColor rc = {0xffff, 0x8c8c, 0x0000, 0xffff};
+                        XftColor col; XftColorAllocValue(dpy, visual, cmap, &rc, &col);
+                        XftDrawStringUtf8(xftdraw, &col, pchq_body_font, 10, y_px + PCHQ_GLYPH_H - 4, (const FcChar8 *)trimmed, (int)strlen(trimmed));
+                        XftColorFree(dpy, visual, cmap, &col);
+                    }
+                } else if (is_unfocused_nav) {
+                    XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, "#2a2a2a"));
+                    XFillRectangle(dpy, buf, gc, 4, y_px + 1, (unsigned)(win_w - 8), PCHQ_GLYPH_H - 2);
+                    XSetForeground(dpy, gc, pchq_alloc_pixel(dpy, cmap, "#555555"));
+                    XDrawRectangle(dpy, buf, gc, 4, y_px + 1, (unsigned)(win_w - 8) - 1, PCHQ_GLYPH_H - 3);
+                    if (pchq_body_font) {
+                        XRenderColor rc = {0xaaaa, 0xaaaa, 0xaaaa, 0xffff};
+                        XftColor col; XftColorAllocValue(dpy, visual, cmap, &rc, &col);
+                        XftDrawStringUtf8(xftdraw, &col, pchq_body_font, 10, y_px + PCHQ_GLYPH_H - 4, (const FcChar8 *)trimmed, (int)strlen(trimmed));
+                        XftColorFree(dpy, visual, cmap, &col);
+                    }
+                } else {
+                    const char *text = trimmed;
+                    size_t tlen = strlen(text);
+                    if (is_panel) {
+                        text++; tlen = tlen > 0 ? tlen - 1 : 0;
+                        if (tlen > 0 && text[tlen - 1] == '|') tlen--;
+                    }
+                    if (tlen > 0 && pchq_body_font) {
+                        XRenderColor rc = {0xdddd, 0xdddd, 0xdddd, 0xffff};
+                        XftColor col; XftColorAllocValue(dpy, visual, cmap, &rc, &col);
+                        XftDrawStringUtf8(xftdraw, &col, pchq_body_font, 10, y_px + PCHQ_GLYPH_H - 4, (const FcChar8 *)text, (int)tlen);
+                        XftColorFree(dpy, visual, cmap, &col);
+                    }
+                }
+                y_px += PCHQ_GLYPH_H;
+                row++;
+            }
+            fclose(tf);
+        }
+
         XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)win_w, (unsigned)win_h, 0, 0);
         XFlush(dpy);
 
