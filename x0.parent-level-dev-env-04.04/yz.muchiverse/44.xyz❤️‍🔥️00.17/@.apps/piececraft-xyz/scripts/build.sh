@@ -46,6 +46,7 @@ gcc $CFLAGS -o "ops/+x/pc_compose_frame.+x" "ops/pc_compose_frame.c"
 gcc $CFLAGS -o "ops/+x/pc_generate_chunk.+x" "ops/pc_generate_chunk.c"
 gcc $CFLAGS -o "ops/+x/pc_phymoji_gen.+x" "ops/pc_phymoji_gen.c" -lm
 gcc $CFLAGS -o "ops/+x/pc_clock_daemon.+x" "ops/pc_clock_daemon.c" -lm
+gcc $CFLAGS -o "ops/+x/pc_world_manager.+x" "ops/pc_world_manager.c"
 
 echo "--- Copying real emoji_gen_atlas.+x + emoji_xtract.+x (real FreeType"
 echo "    rasterizer + real box-filter/crop extractor - board-viewer's own"

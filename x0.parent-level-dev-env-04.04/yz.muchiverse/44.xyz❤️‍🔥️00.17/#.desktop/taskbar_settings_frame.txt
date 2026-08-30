@@ -10,4 +10,6 @@ item|sw8|swatch,sw-cyan|||PICK:8|9|0|100|110|34|34
 item|sw9|swatch,sw-blue|||PICK:9|10|0|142|110|34|34
 item|sw10|swatch,sw-purple|||PICK:10|11|0|184|110|34|34
 item|sw11|swatch,sw-pink|||PICK:11|12|0|226|110|34|34
-item|close|close-btn|x||CLOSE|13|0|360|0|60|24
+item|opacity-minus|opacity-btn|Opacity -||OPACITY_MINUS|13|0|0|204|420|24
+item|opacity-plus|opacity-btn|Opacity +||OPACITY_PLUS|14|0|0|228|420|24
+item|close|close-btn|x||CLOSE|15|0|360|0|60|24

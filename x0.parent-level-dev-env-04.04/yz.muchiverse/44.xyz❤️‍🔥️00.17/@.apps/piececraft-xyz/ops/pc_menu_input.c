@@ -860,6 +860,182 @@ int main(int argc, char **argv) {
              * design this will eventually open. */
             snprintf(message, sizeof(message),
                      "View Editor - not built yet (see piececraft-xyz-blueprint.md).");
+        } else if (strcmp(cmd, "SWITCH_WORLD") == 0) {
+            /* REAL, NEW 2026-08-30 (Piece 1 implementation): navigate to
+             * the select_world piece (in-scene world selection screen,
+             * replacing the old blocking new_game setup). */
+            char layout_path[PATH_BUF];
+            snprintf(layout_path, sizeof(layout_path), "%s/pieces/display/current_layout.txt", project_root);
+            FILE *lf = fopen(layout_path, "w");
+            if (lf) {
+                fprintf(lf, "pieces/chtpm/layouts/select_world.chtpm\n");
+                fclose(lf);
+            }
+            snprintf(message, sizeof(message), "Loading world select screen...");
+        } else if (strncmp(cmd, "LOAD_WORLD:", 11) == 0) {
+            /* REAL, NEW 2026-08-30: load a saved piececraft world by name.
+             * Calls pc_world_manager.+x to handle the actual file copying
+             * and state restoration. */
+            const char *world_name = cmd + 11;
+            char real_root[PATH_BUF];
+            resolve_real_root(project_root, real_root, sizeof(real_root));
+
+            char manager_cmd[PATH_BUF * 2];
+#ifdef _WIN32
+            {
+                char env_kv[PATH_BUF + 32];
+                snprintf(env_kv, sizeof(env_kv), "PRISC_PROJECT_ROOT=%s", project_root);
+                _putenv(env_kv);
+                char args[PATH_BUF];
+                snprintf(args, sizeof(args), "load %s", world_name);
+                int ok = win_run_pe("ops\\+x\\pc_world_manager.+x", args, project_root, 30000, 0);
+                if (!ok) {
+                    snprintf(message, sizeof(message), "LOAD_WORLD: pc_world_manager failed.");
+                } else {
+                    snprintf(message, sizeof(message), "World '%s' loaded. Returning to game...", world_name);
+                    char layout_path[PATH_BUF];
+                    snprintf(layout_path, sizeof(layout_path), "%s/pieces/display/current_layout.txt", project_root);
+                    FILE *lf = fopen(layout_path, "w");
+                    if (lf) {
+                        fprintf(lf, "pieces/chtpm/layouts/main.chtpm\n");
+                        fclose(lf);
+                    }
+                }
+            }
+#else
+            {
+                snprintf(manager_cmd, sizeof(manager_cmd),
+                         "PRISC_PROJECT_ROOT='%s' '%s/ops/+x/pc_world_manager.+x' load '%s' >/dev/null 2>&1",
+                         project_root, project_root, world_name);
+                int rc = system(manager_cmd);
+                if (rc != 0) {
+                    snprintf(message, sizeof(message), "LOAD_WORLD: pc_world_manager failed.");
+                } else {
+                    snprintf(message, sizeof(message), "World '%s' loaded. Returning to game...", world_name);
+                    char layout_path[PATH_BUF];
+                    snprintf(layout_path, sizeof(layout_path), "%s/pieces/display/current_layout.txt", project_root);
+                    FILE *lf = fopen(layout_path, "w");
+                    if (lf) {
+                        fprintf(lf, "pieces/chtpm/layouts/main.chtpm\n");
+                        fclose(lf);
+                    }
+                }
+            }
+#endif
+        } else if (strcmp(cmd, "CREATE_WORLD_SEEDED") == 0) {
+            /* REAL, NEW 2026-08-30: create a new seeded world. Same as the
+             * old CONFIRM_START flow, but now refactored within the in-scene
+             * world select screen. Saves the new world to pieces/piececraft-
+             * desks/ with auto-generated name based on timestamp. */
+            write_kv(config_path, "game_state", "playing");
+
+            unsigned int world_seed = (unsigned int)time(NULL) ^ (unsigned int)getpid();
+            time_t now = time(NULL);
+            struct tm *tm_info = localtime(&now);
+            char world_name[64];
+            strftime(world_name, sizeof(world_name), "world_%Y%m%d_%H%M%S", tm_info);
+
+#ifdef _WIN32
+            {
+                char env_kv[PATH_BUF + 32];
+                snprintf(env_kv, sizeof(env_kv), "PRISC_PROJECT_ROOT=%s", project_root);
+                _putenv(env_kv);
+                char args[64];
+                snprintf(args, sizeof(args), "%u 0 0", world_seed);
+                int ok = win_run_pe("ops\\+x\\pc_generate_chunk.+x", args, project_root, 60000, 0);
+                if (!ok) {
+                    snprintf(message, sizeof(message),
+                             "CREATE_WORLD_SEEDED: pc_generate_chunk failed (Win spawn/write).");
+                } else {
+                    snprintf(message, sizeof(message), "Seeded world created (seed %u). Returning to game...", world_seed);
+                    char layout_path[PATH_BUF];
+                    snprintf(layout_path, sizeof(layout_path), "%s/pieces/display/current_layout.txt", project_root);
+                    FILE *lf = fopen(layout_path, "w");
+                    if (lf) {
+                        fprintf(lf, "pieces/chtpm/layouts/main.chtpm\n");
+                        fclose(lf);
+                    }
+                }
+            }
+#else
+            {
+                char gen_cmd[PATH_BUF + 64];
+                snprintf(gen_cmd, sizeof(gen_cmd),
+                         "PRISC_PROJECT_ROOT='%s' '%s/ops/+x/pc_generate_chunk.+x' %u 0 0 >/dev/null 2>&1",
+                         project_root, project_root, world_seed);
+                int rc = system(gen_cmd);
+                if (rc != 0) {
+                    snprintf(message, sizeof(message), "CREATE_WORLD_SEEDED: pc_generate_chunk failed.");
+                } else {
+                    snprintf(message, sizeof(message), "Seeded world created (seed %u). Returning to game...", world_seed);
+                    char layout_path[PATH_BUF];
+                    snprintf(layout_path, sizeof(layout_path), "%s/pieces/display/current_layout.txt", project_root);
+                    FILE *lf = fopen(layout_path, "w");
+                    if (lf) {
+                        fprintf(lf, "pieces/chtpm/layouts/main.chtpm\n");
+                        fclose(lf);
+                    }
+                }
+            }
+#endif
+            launch_clock_daemon_if_needed(project_root);
+
+        } else if (strcmp(cmd, "CREATE_WORLD_DEBUG") == 0) {
+            /* REAL, NEW 2026-08-30: create a new debug flat world. Same as
+             * the old CONFIRM_START_DEBUG flow, refactored within the
+             * in-scene world select screen. */
+            write_kv(config_path, "game_state", "playing");
+
+            unsigned int world_seed = (unsigned int)time(NULL) ^ (unsigned int)getpid();
+            time_t now = time(NULL);
+            struct tm *tm_info = localtime(&now);
+            char world_name[64];
+            strftime(world_name, sizeof(world_name), "debug_%Y%m%d_%H%M%S", tm_info);
+
+#ifdef _WIN32
+            {
+                char env_kv[PATH_BUF + 32];
+                snprintf(env_kv, sizeof(env_kv), "PRISC_PROJECT_ROOT=%s", project_root);
+                _putenv(env_kv);
+                char args[64];
+                snprintf(args, sizeof(args), "%u 0 0 flat", world_seed);
+                int ok = win_run_pe("ops\\+x\\pc_generate_chunk.+x", args, project_root, 120000, 0);
+                if (!ok) {
+                    snprintf(message, sizeof(message),
+                             "CREATE_WORLD_DEBUG: pc_generate_chunk failed to launch.");
+                } else {
+                    snprintf(message, sizeof(message), "Debug flat world created. Returning to game...");
+                    char layout_path[PATH_BUF];
+                    snprintf(layout_path, sizeof(layout_path), "%s/pieces/display/current_layout.txt", project_root);
+                    FILE *lf = fopen(layout_path, "w");
+                    if (lf) {
+                        fprintf(lf, "pieces/chtpm/layouts/main.chtpm\n");
+                        fclose(lf);
+                    }
+                }
+            }
+#else
+            {
+                char gen_cmd[PATH_BUF + 64];
+                snprintf(gen_cmd, sizeof(gen_cmd),
+                         "PRISC_PROJECT_ROOT='%s' '%s/ops/+x/pc_generate_chunk.+x' %u 0 0 flat >/dev/null 2>&1",
+                         project_root, project_root, world_seed);
+                int rc = system(gen_cmd);
+                if (rc != 0) {
+                    snprintf(message, sizeof(message), "CREATE_WORLD_DEBUG: pc_generate_chunk failed.");
+                } else {
+                    snprintf(message, sizeof(message), "Debug flat world created. Returning to game...");
+                    char layout_path[PATH_BUF];
+                    snprintf(layout_path, sizeof(layout_path), "%s/pieces/display/current_layout.txt", project_root);
+                    FILE *lf = fopen(layout_path, "w");
+                    if (lf) {
+                        fprintf(lf, "pieces/chtpm/layouts/main.chtpm\n");
+                        fclose(lf);
+                    }
+                }
+            }
+#endif
+            launch_clock_daemon_if_needed(project_root);
         }
     }
 

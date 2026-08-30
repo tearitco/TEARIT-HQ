@@ -1,4 +1,6 @@
-item|||Read||sh -c 'export PACKAGE_DIR="$0"; H="$1"; exec "$(find "$H" -maxdepth 1 -name "101.mutaclsym🧟‍♂️️*" -type d 2>/dev/null | head -1)/system/prisc+x" "$(find "$H" -path "*monads/*book-stack/pieces/reader/event_pkg/pages/page_1/event.pal" 2>/dev/null | head -1)"'|1|0|0|24|260|24
-item|||Dir||sh -c 'exec xdg-open "$0"'|2|0|0|48|260|24
-item|||Close||CLOSE|3|0|0|72|260|24
-item|||Cancel||void|4|0|0|96|260|24
+item|||Dir||sh -c 'mkdir -p "$0/audit"; GDK_BACKEND=x11 xdg-open "$0" >>"$0/audit/dir.log" 2>&1'|1|0|0|24|260|24
+item|||Chat||sh -c 'exec sh "$1/&.widgits/open-hai/chat_button.sh" "$1" "$0/chat" cursword-chat'|2|0|0|48|260|24
+item|||Bookmarks||sh -c 'exec sh "$1/&.widgits/bookmarks/bm_menu.sh" "$1" "$0"'|3|0|0|72|260|24
+item|||Play||sh -c 'exec sh "$1/*.monads/*.muchi-pet/ops/play_event.sh" "$0"'|4|0|0|96|260|24
+item|||Close||CLOSE|5|0|0|120|260|24
+item|||Cancel||void|6|0|0|144|260|24

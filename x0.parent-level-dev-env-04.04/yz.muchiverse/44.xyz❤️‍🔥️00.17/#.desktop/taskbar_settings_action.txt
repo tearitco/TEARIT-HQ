@@ -1,2 +1,1 @@
-seq=2
-PICK:4
+seq=0

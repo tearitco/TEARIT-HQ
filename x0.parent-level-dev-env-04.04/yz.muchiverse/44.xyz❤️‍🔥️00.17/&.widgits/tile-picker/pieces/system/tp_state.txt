@@ -1,0 +1,3 @@
+armed=0
+armed_glyph=
+status_line=Placed 🧪 on desktop at click point.

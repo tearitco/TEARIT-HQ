@@ -1,4 +1,4 @@
-phase=2
-bg=0
-fg=4
-apply=1
+phase=0
+bg=-1
+fg=-1
+apply=0

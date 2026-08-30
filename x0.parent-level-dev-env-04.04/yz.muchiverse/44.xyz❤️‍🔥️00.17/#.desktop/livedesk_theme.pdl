@@ -2,4 +2,4 @@ SECTION      | KEY                | VALUE
 ----------------------------------------
 COLOR        | bg                   | #1a1a1a
 COLOR        | fg                   | #e5e5e5
-COLOR        | opacity              | .75
+COLOR        | opacity              | 0.90

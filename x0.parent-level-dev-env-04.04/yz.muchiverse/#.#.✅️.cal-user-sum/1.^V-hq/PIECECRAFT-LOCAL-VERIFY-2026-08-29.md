@@ -47,11 +47,18 @@ then 13 (Enter)** - digit alone only moves the cursor, doesn't activate
 
 ```bash
 SESS="@.apps/piececraft-xyz/pieces/sessions/<your-session-id>"
-/tmp/tk_inject_key "$SESS" 50; sleep 0.3   # '2' = Confirm & Start (Debug Flat World)
-/tmp/tk_inject_key "$SESS" 13; sleep 1     # Enter
-/tmp/tk_inject_key "$SESS" 51; sleep 0.3   # '3' = Enter Game
-/tmp/tk_inject_key "$SESS" 13; sleep 2     # Enter
+# UPDATED 2026-08-30 (Piece 1 implementation): blocking setup screen replaced
+# with in-scene world selection. Flow is now:
+# - '1' = Switch World (navigate to select_world in-scene screen)
+# - From select_world: '1' = Create New Seeded World, '2' = Create New Debug Flat, etc.
+# - After world creation: auto-returns to main game screen
+# For initial testing, just launch and wait for the game to start:
+sleep 4                                    # Wait for initial world generation and game load
 tail -25 /tmp/pc_run.log                   # should now show Tick/Hero HP/Pos/Chunk
+# To test world switching:
+/tmp/tk_inject_key "$SESS" 49; sleep 0.3   # '1' = Switch World menu option
+/tmp/tk_inject_key "$SESS" 13; sleep 1     # Enter
+tail -25 /tmp/pc_run.log                   # should show world list and selection options
 ```
 
 ASCII digit codes if you need others: '1'=49 '2'=50 '3'=51 '4'=52 '5'=53

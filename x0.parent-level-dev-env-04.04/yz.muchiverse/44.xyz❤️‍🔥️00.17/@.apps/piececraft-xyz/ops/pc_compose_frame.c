@@ -16,6 +16,8 @@
 #include <string.h>
 #include <fcntl.h>
 #include <time.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #ifdef _WIN32
 /* MinGW has sys/time.h; keep CLOCK if present */
 #include <sys/time.h>
@@ -375,10 +377,96 @@ int main(void) {
             fprintf(pdl_out, "SECTION      | KEY                | VALUE\n");
             fprintf(pdl_out, "----------------------------------------\n");
             fprintf(pdl_out, "META         | piece_id           | main\n\n");
+            fprintf(pdl_out, "METHOD       | Switch World                        | SWITCH_WORLD\n");
             fprintf(pdl_out, "METHOD       | End Turn                            | END_TURN\n");
             fprintf(pdl_out, "METHOD       | View Board (opens separate GL window) | OPEN_BOARD_WIDGET\n");
             fprintf(pdl_out, "METHOD       | View Editor (opens separate GL window) | OPEN_VIEW_EDITOR\n");
             fclose(pdl_out);
+        }
+    } else if (strcmp(active_piece, "select_world") == 0) {
+        /* REAL, NEW 2026-08-30 (Piece 1 implementation): in-scene world
+         * selection screen. Replaces the blocking new_game setup screen.
+         * Lists available saved worlds from pieces/piececraft-desks/ and
+         * allows the user to load one, or create a new one. Similar
+         * conceptual pattern to livedesk_spawn_desk() on the desktop side,
+         * but for piececraft's own world storage format (chunks, not DESK
+         * rows). */
+        line("Available Worlds:");
+        blank();
+
+        char real_root_sw[PATH_BUF];
+        resolve_real_root(project_root, real_root_sw, sizeof(real_root_sw));
+        char desks_dir[PATH_BUF];
+        snprintf(desks_dir, sizeof(desks_dir), "%s/pieces/piececraft-desks", real_root_sw);
+
+        DIR *d = opendir(desks_dir);
+        if (d) {
+            struct dirent *ent;
+            while ((ent = readdir(d)) != NULL) {
+                if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+                    continue;
+
+                char world_path[PATH_BUF];
+                snprintf(world_path, sizeof(world_path), "%s/%s", desks_dir, ent->d_name);
+
+                struct stat st;
+                if (stat(world_path, &st) == 0 && S_ISDIR(st.st_mode)) {
+                    char world_type[32] = "unknown";
+                    char state_path[PATH_BUF];
+                    snprintf(state_path, sizeof(state_path), "%s/state.txt", world_path);
+                    FILE *sf = fopen(state_path, "r");
+                    if (sf) {
+                        char sline[MAX_LINE];
+                        while (fgets(sline, sizeof(sline), sf)) {
+                            if (strncmp(sline, "world_type=", 11) == 0) {
+                                char *v = sline + 11;
+                                v[strcspn(v, "\r\n")] = '\0';
+                                snprintf(world_type, sizeof(world_type), "%s", v);
+                            }
+                        }
+                        fclose(sf);
+                    }
+                    snprintf(rowbuf, sizeof(rowbuf), "  %s (%s)", ent->d_name, world_type);
+                    line(rowbuf);
+                }
+            }
+            closedir(d);
+        }
+
+        blank();
+        line("Choose a world to load, or create a new one:");
+
+        char select_pdl_path[PATH_BUF];
+        snprintf(select_pdl_path, sizeof(select_pdl_path), "%s/projects/piececraft-xyz/pieces/select_world/piece.pdl", project_root);
+        FILE *select_pdl = fopen(select_pdl_path, "w");
+        if (select_pdl) {
+            fprintf(select_pdl, "SECTION      | KEY                | VALUE\n");
+            fprintf(select_pdl, "----------------------------------------\n");
+            fprintf(select_pdl, "META         | piece_id           | select_world\n\n");
+
+            /* Add LOAD_WORLD methods for each existing world */
+            d = opendir(desks_dir);
+            if (d) {
+                struct dirent *ent;
+                while ((ent = readdir(d)) != NULL) {
+                    if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+                        continue;
+
+                    char world_path[PATH_BUF];
+                    snprintf(world_path, sizeof(world_path), "%s/%s", desks_dir, ent->d_name);
+
+                    struct stat st;
+                    if (stat(world_path, &st) == 0 && S_ISDIR(st.st_mode)) {
+                        fprintf(select_pdl, "METHOD       | Load %s                     | LOAD_WORLD:%s\n",
+                                ent->d_name, ent->d_name);
+                    }
+                }
+                closedir(d);
+            }
+
+            fprintf(select_pdl, "METHOD       | Create New Seeded World    | CREATE_WORLD_SEEDED\n");
+            fprintf(select_pdl, "METHOD       | Create New Debug Flat      | CREATE_WORLD_DEBUG\n");
+            fclose(select_pdl);
         }
     }
 
