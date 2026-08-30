@@ -2123,6 +2123,17 @@ static int livedesk_build_session_menu(const char *house_root, HQMenuItem *menu,
     return n;
 }
 
+/* REAL FIX 2026-08-30, same pass as livedesk_build_file_menu() above,
+ * direct instruction ("maybe we should fix tb file/desk first"). The
+ * desk NAME list itself stays a real directory scan
+ * (livedesk_desk_list()) - that's genuinely data (real desk files on
+ * disk), not a hardcoded-C violation, so it's correct as-is (matching
+ * TASKBAR-MENU-ARCHITECTURE.md's own note: "directory-scanning
+ * builders keep the scan"). What WAS the anti-pattern is the trailing
+ * static action rows (edit/+new-desk/cancel) being baked into C -
+ * converted those to the same PDL-driven shape
+ * (desk_menu_action_N_label/_cmd), falling back to the previous
+ * hardcoded 3 rows if the .pdl defines none. */
 static int livedesk_build_desk_menu(const char *house_root, HQMenuItem *menu, int max) {
     char sroot[KTB_PATH_BUF];
     if (!livedesk_sessions_root(house_root, sroot, sizeof(sroot))) return 0;
@@ -2135,23 +2146,36 @@ static int livedesk_build_desk_menu(const char *house_root, HQMenuItem *menu, in
         snprintf(menu[i].label, sizeof(menu[i].label), "%s", desks[i]);
         snprintf(menu[i].command, sizeof(menu[i].command), "livedesk:switch-desk:%s/%s", cur, desks[i]);
     }
-    if (i < max) {
+
+    char pdl[KTB_PATH_BUF];
+    snprintf(pdl, sizeof(pdl), "%s/#.desktop/livedesk_taskbar.pdl", house_root);
+    int action_count = 0;
+    HQMenuItem actions[8];
+    for (int k = 1; k <= 8 && action_count < 8; k++) {
+        char lkey[40], ckey[40];
+        snprintf(lkey, sizeof(lkey), "desk_menu_action_%d_label", k);
+        snprintf(ckey, sizeof(ckey), "desk_menu_action_%d_cmd", k);
+        char lab[64] = "", cmd[KTB_PATH_BUF] = "";
+        read_key_value(pdl, lkey, lab, sizeof(lab));
+        read_key_value(pdl, ckey, cmd, sizeof(cmd));
+        if (!lab[0]) continue;
+        snprintf(actions[action_count].label, sizeof(actions[action_count].label), "%s", lab);
+        snprintf(actions[action_count].command, sizeof(actions[action_count].command), "%s", cmd);
+        action_count++;
+    }
+    if (action_count == 0) {
         /* K11: dedicated accessibility entry - always the row right after the
          * desk list (claims index N+1); opens properties for the focused row. */
-        snprintf(menu[i].label, sizeof(menu[i].label), "edit");
-        snprintf(menu[i].command, sizeof(menu[i].command), "livedesk:edit-desk");
-        i++;
+        snprintf(actions[0].label, sizeof(actions[0].label), "edit");
+        snprintf(actions[0].command, sizeof(actions[0].command), "livedesk:edit-desk");
+        snprintf(actions[1].label, sizeof(actions[1].label), "+new-desk");
+        snprintf(actions[1].command, sizeof(actions[1].command), "livedesk:new-desk");
+        snprintf(actions[2].label, sizeof(actions[2].label), "cancel");
+        actions[2].command[0] = '\0';
+        action_count = 3;
     }
-    if (i < max) {
-        snprintf(menu[i].label, sizeof(menu[i].label), "+new-desk");
-        snprintf(menu[i].command, sizeof(menu[i].command), "livedesk:new-desk");
-        i++;
-    }
-    if (i < max) {
-        snprintf(menu[i].label, sizeof(menu[i].label), "cancel");
-        menu[i].command[0] = '\0';
-        i++;
-    }
+    for (int k = 0; k < action_count && i < max; k++, i++)
+        menu[i] = actions[k];
     return i;
 }
 
@@ -2504,7 +2528,37 @@ void ktb_hq_close(KtbState *s) {
  * strip button submenus was ever wired up there beyond the hq_menu_N_*
  * keys, so none is added here either - see this function's own header
  * comment on the which=3/8 static tables). */
-static int livedesk_build_file_menu(HQMenuItem *menu, int max) {
+/* REAL FIX 2026-08-30, direct instruction ("maybe we should fix tb
+ * file/desk first then? if ur saying there not done yet?") - this was
+ * C-hardcoded, the exact real, documented anti-pattern
+ * TASKBAR-MENU-ARCHITECTURE.md's "Standing refactor debt" section
+ * calls out (2026-08-24 update: "user confirmed none of the cells'
+ * builders are supposed to be C-hardcoded"). Converted to the SAME
+ * real, correct PDL-driven shape livedesk_build_hq_menu()/
+ * livedesk_build_palettes_menu() already use - reads
+ * #.desktop/livedesk_taskbar.pdl's "file_menu_N_label"/"_cmd" rows at
+ * cell-open time, no recompile needed to add/edit/reorder a row. Falls
+ * back to the previous hardcoded 4 rows only if the .pdl defines none
+ * (same fallback-if-empty shape hq_menu's own builder uses), so this
+ * is a pure superset - nothing regresses if the .pdl rows are never
+ * added. */
+static int livedesk_build_file_menu(const char *house_root, HQMenuItem *menu, int max) {
+    char pdl[KTB_PATH_BUF];
+    snprintf(pdl, sizeof(pdl), "%s/#.desktop/livedesk_taskbar.pdl", house_root);
+    int count = 0;
+    for (int i = 1; i <= max; i++) {
+        char lkey[32], ckey[32];
+        snprintf(lkey, sizeof(lkey), "file_menu_%d_label", i);
+        snprintf(ckey, sizeof(ckey), "file_menu_%d_cmd", i);
+        char lab[64] = "", cmd[KTB_PATH_BUF] = "";
+        read_key_value(pdl, lkey, lab, sizeof(lab));
+        read_key_value(pdl, ckey, cmd, sizeof(cmd));
+        if (!lab[0]) continue;
+        snprintf(menu[count].label, sizeof(menu[count].label), "%s", lab);
+        snprintf(menu[count].command, sizeof(menu[count].command), "%s", cmd);
+        count++;
+    }
+    if (count > 0) return count;
     int n = 0;
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "new-desk"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:new-desk"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "save"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:save"); n++; }
@@ -3081,7 +3135,7 @@ void ktb_hq_open(KtbState *s, int which) {
     else if (which == 4) n = livedesk_build_desk_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == 5) n = livedesk_build_pals_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == 1) n = livedesk_build_hq_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else if (which == 3) n = livedesk_build_file_menu(s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (which == 3) n = livedesk_build_file_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == 8) n = livedesk_build_player_menu(s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     /* db (9) restored 2026-08-12 - was parked as an inert placeholder
      * while the real bug (header-click codes swallowed whenever ANY
