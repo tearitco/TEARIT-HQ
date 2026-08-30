@@ -223,6 +223,28 @@ static void strip_load_click_two_step(void) {
  * KeyPress events never reach this process at all, which would fully
  * explain that symptom without needing a second investigation. */
 static int g_has_real_focus = 0;
+/* REAL FIX 2026-08-30, direct live report ("before my click would work
+ * on 'tap click' now i have to manually click harder... what changed?
+ * for single and double [click]") - a real side effect of the
+ * override_redirect -> WM-managed conversion (eb74b733): under
+ * override_redirect these windows were entirely exempt from Mutter's
+ * own click-to-focus handling (the WM never touches an unmanaged
+ * window at all). Now that they're real WM-managed windows, Mutter can
+ * intercept a click for its own focus-transfer/grab-replay handling
+ * when the target window doesn't already hold real input focus -
+ * taskbar_soft_focus() calling XSetInputFocus() unconditionally on
+ * EVERY click (even when the clicked window already has focus) forces
+ * an unnecessary repeated focus-transfer request into that same
+ * round-trip on every single click, which a fast/light trackpad tap's
+ * button-press-then-release may not survive as reliably as a
+ * deliberate, slightly longer hard press does. Tracks WHICH of the
+ * three real windows currently holds focus (from real FocusIn/FocusOut
+ * events) so taskbar_soft_focus() can skip the XSetInputFocus() call
+ * entirely when the target already has it - X11 delivers ButtonPress
+ * regardless of keyboard focus, so this call was only ever needed to
+ * support keyboard-driven interaction (arrow-nav/typing) after
+ * switching between windows, not on every plain click. */
+static Window g_focused_win = 0;
 
 static void path_join2(char *out, size_t n, const char *root, const char *rel) {
     size_t rl = strlen(root);
@@ -784,7 +806,9 @@ static void append_frame_history(const LayDoc *header_doc, const LayDoc *bottom_
 static void taskbar_soft_focus(Display *dpy, Window w) {
     if (!w) return;
     XRaiseWindow(dpy, w);
-    XSetInputFocus(dpy, w, RevertToParent, CurrentTime);
+    /* Skip the redundant XSetInputFocus() call when w already holds
+     * real focus - see g_focused_win's own declaration comment. */
+    if (g_focused_win != w) XSetInputFocus(dpy, w, RevertToParent, CurrentTime);
     XFlush(dpy);
 }
 
@@ -2724,8 +2748,10 @@ int main(int argc, char **argv) {
                 mirror_mouse_history("win", ev.xbutton.button, ev.xbutton.x, ev.xbutton.y);
             } else if (ev.type == FocusIn) {
                 g_has_real_focus = 1;
+                g_focused_win = ev.xfocus.window;
             } else if (ev.type == FocusOut) {
                 g_has_real_focus = 0;
+                if (g_focused_win == ev.xfocus.window) g_focused_win = 0;
             } else if (ev.type == KeyPress) {
                 KeySym ks = XLookupKeysym(&ev.xkey, 0);
                 if (ks == XK_Left || ks == XK_Up) {
