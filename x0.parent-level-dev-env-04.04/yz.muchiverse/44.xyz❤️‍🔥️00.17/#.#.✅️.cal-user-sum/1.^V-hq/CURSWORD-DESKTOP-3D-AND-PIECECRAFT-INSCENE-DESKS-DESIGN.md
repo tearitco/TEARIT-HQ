@@ -310,6 +310,36 @@ actually confirmed, point by point - nothing here is built yet.
    real picker/submenu of levels (File) or maps-within-the-current-
    level (Desk) - not a separate header/menu-bar UI construct.
 
+## 7b. Real menu-pattern grounding (2026-08-30) - checked against known debt
+
+Direct instruction: "we can use the same menu type. we dont have to
+reinvent anything." Checked the real, existing taskbar menu mechanism
+(`yz.muchiverse/#.#.✅️.cal-user-sum/1.^V-hq/TASKBAR-MENU-ARCHITECTURE.md`,
+a real, live doc - NOT lost, just one directory level up from where I
+first searched) before copying anything:
+
+- `livedesk_build_file_menu()`/`livedesk_build_desk_menu()` (the
+  taskbar's own File/Desk) are **C-hardcoded** - a real, documented,
+  CONFIRMED-WRONG regression (§"Standing refactor debt", 2026-08-24
+  update: "user confirmed none of the cells' builders are supposed to
+  be C-hardcoded"). These are NOT the pattern to copy.
+- `livedesk_build_hq_menu()`/`livedesk_build_palettes_menu()` ARE the
+  real, correct pattern - they read `hq_menu_N_label/cmd` /
+  `palettes_menu_N_label/cmd` rows from `#.desktop/livedesk_taskbar.pdl`
+  live, at cell-open time, no recompile needed for a new row.
+- Direct instruction, given this: "we may do them similar at first but
+  may need to refactor into layouts after, that was supposed to be done
+  already" - build piececraft's File/Desk on the CORRECT
+  (data-read-at-open-time) shape from the start, not the deprecated
+  hardcoded-C one, even though it's a different engine/process
+  entirely (legacy `chtpm_parser_pal`, not `khtpm_taskbar_manager.c`).
+- Real, already-aligned mechanism to build on: `select_world.chtpm`'s
+  own `${world_list}` (populated by `select_world_module.pal` scanning
+  a directory at render time) is ALREADY this same correct shape - data
+  read live, not a hardcoded branch list. File/Desk should extend this
+  exact mechanism (list levels/maps by scanning real directories/BOARD
+  rows at menu-open time), not invent a parallel hardcoded list.
+
 ## 8. Real next steps (still no code until this section itself is acted on)
 
 1. Create `default-legacy` (copy chunk_0_0 + world_01 verbatim) and
