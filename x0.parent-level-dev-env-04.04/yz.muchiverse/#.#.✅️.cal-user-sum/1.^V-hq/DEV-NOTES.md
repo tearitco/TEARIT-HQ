@@ -8,36 +8,48 @@ a real doc (and INDEX.md), and its entry here can be deleted or marked done.
 
 ---
 
-## Piececraft: HQ-style metadata menu, replacing the blocking pre-setup screen
+## ✅ DONE (2026-08-30) - Piececraft: HQ-style metadata menu / khtpm board window
 
-**2026-08-29.** Idea, not designed yet: piececraft-xyz's current setup
-screen (Victory/Map/Combat options → `CONFIRM_START`, see
-`HANDOFF_NEXT_SESSION.md`) is a blocking, modal, pre-game screen — you
-have to get through it before you see anything, which makes debugging
-awkward (can't peek at/adjust level metadata without restarting the whole
-flow).
+**Graduated** - this idea from 2026-08-29 turned into real, built,
+live-verified work. See:
+- `PIECECRAFT-HQ-BOARD-KHTPM-CONVERSION-2026-08-30.md` - the real khtpm
+  board window (`run_pchq_board_mode()` in `khtpm_entity_menu_render.c`),
+  true engine-parity nav/interact, real chrome styling, real perf fixes.
+- `CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-DESIGN.md` §5-8 -
+  the follow-on File(level)/Desk(map) menu design, still IN PROGRESS
+  (design confirmed, code not started as of this entry - see that doc's
+  own §8 real next steps).
+- `PCHQ-BOARD-HISTORY-INJECTION-CHECKLIST-2026-08-30.md` - the real
+  local test recipe for this window's own render/relay pipeline.
 
-The idea: build a real HQ-style menu (same convention as db-hq/events-hq/
-Settings - `khtpm_entity_menu_render.c`'s merged-renderer pattern, or its
-own dedicated equivalent) that opens FROM piececraft's own native running
-screen, non-blocking - lets you view/edit level metadata live instead of
-only at a gated pre-setup step. Probably replaces the pre-setup screen
-entirely rather than living alongside it, but that's not decided.
+Original open questions resolved: reused the merged renderer
+(`khtpm_entity_menu_render.c`) as a new mode, NOT a standalone window -
+piececraft-hq's board content itself stays on the legacy
+`chtpm_parser_pal` engine (absolute parity), only the window chrome is
+khtpm. Metadata-editing scope narrowed to File/Desk (level/map
+selection), not a general live-edit-everything panel.
 
-Open questions (not yet discussed):
-- Does this reuse the merged renderer (`khtpm_entity_menu_render.c`) as a
-  9th mode, or does piececraft get its own small standalone HQ window
-  (matching civ-txt/tactics-txt's own real conventions, since piececraft
-  is a clone of civ-txt's P1 skeleton, not a khtpm-family app)?
-- What metadata is actually editable live vs. read-only (game_id/turn
-  counter probably shouldn't be hand-edited mid-game; map_scale/victory
-  condition probably should be, for debug purposes)?
-- Does this block on piececraft's own clone-verification work finishing
-  first (see HANDOFF_NEXT_SESSION.md - the P1 clone was never confirmed
-  to build/run), or can it be prototyped in parallel?
+---
 
-Not started. Revisit once piececraft's clone phase is actually verified -
-building a debug menu for an unverified base is premature.
+## ✅ DONE (2026-08-30) - Taskbar File/Desk menus: C-hardcoded → real PDL-driven
+
+Closed the `TASKBAR-MENU-ARCHITECTURE.md` standing-debt item for these
+two specific cells: `livedesk_build_file_menu()`/`_desk_menu()` now read
+`file_menu_N_label/_cmd` / `desk_menu_action_N_label/_cmd` rows from
+`#.desktop/livedesk_taskbar.pdl`, matching the already-correct
+`livedesk_build_hq_menu()`/`_palettes_menu()` pattern. Other cells
+(user/player/db/pals/toys/clock/ai) remain unconverted - same debt,
+not touched this pass.
+
+**Two real bugs found + fixed live during this work** (see git log
+`a2b7e8df`): (1) `livedesk_switch_desk()`'s outgoing-desk snapshot could
+silently wipe a real, populated desk `.pdl` with zero rows if the live
+entity registry was transiently empty at switch time - real data loss,
+happened live, recovered from git, now guarded against. (2)
+`run_khtpm_strip.sh`'s restart had a race (fixed 1s sleep not always
+enough for the old manager to actually exit) that could leave the
+parser running with NO manager - looked like "entities in toolbar but
+not on screen." Fixed to poll for real death instead of guessing.
 
 ---
 
