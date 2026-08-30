@@ -75,6 +75,54 @@ Not committed to `khtpm_entity_menu_render.c` yet - this note and the PoC
 file are the real, honest checkpoint before that larger integration
 starts.
 
+## REAL CORRECTION (2026-08-30, same day) - the real, true-parity model
+
+Direct correction after the first real integration pass (items 1-3
+above all landed, but with a real, wrong local hand-rolled nav/chrome
+system): **"thats wrong. thats not what the legacy chtpm peice board-
+view did u need to stick as closely to that model as possible. absolute
+parity. research it and see where u went wrong."**
+
+Real research finding: `board_viewer.chtpm` has a real, declarative
+`<interact src="pieces/apps/player_app/interact_relay.txt"/>` + a
+reserved `onClick="INTERACT"` button - `chtpm_parser_pal.c` (the legacy
+engine) handles ALL real nav/focus/arrow-relay/ESC/the real `[>]`<->`[^]`
+glyph swap NATIVELY, zero app-side code needed - the genuine "for free"
+system, living entirely in the legacy engine. Separately,
+`system/chtpm_rgb_render.c` (a real, shared COMPOSITOR daemon, distinct
+from the window-display step) already reads BOTH the real text chrome
+`chtpm_parser_pal.c` renders AND the real 3D overlay `bv_render_3d.c`
+writes, and blits them into ONE real, fully-composited `rgb_frame.raw`
+(`blit_overlay()`/the real `MAP3D_MARKER` protocol) - the SAME file
+`x11_mirror.c` itself blits.
+
+**Where the first pass went wrong**: read `rgb_frame_3d_overlay.raw`
+DIRECTLY (skipping the real compositor's own output) and hand-drew a
+separate, local `[>]N.`/`[ ]N.` nav-badge chrome system on top - a real
+parallel reimplementation, not real reuse, despite superficially
+"stealing" the pixel-blit half of x11_mirror.c.
+
+**Real fix, DONE**: `run_pchq_board_mode()` fully rewritten to blit
+`rgb_frame.raw` (already containing the real chrome/status/3D/footer,
+rendered natively) with only a minimal real title+close chrome bar of
+its own, and to forward EVERY real key/click into board-viewer's own
+real relay files via direct ports of x11_mirror.c's own
+`append_key()`/`write_click_kv()`/`map_special_key()` - zero local nav/
+click logic left in this file. `board-viewer/button.sh` gained a real
+`NO_RGB_COMPOSITOR` flag, separate from `NO_GL`, so the real compositor
+keeps running (making `rgb_frame.raw` exist) even with no window of
+board-viewer's own ever mapping.
+
+**Live-verified real parity**: a real forwarded Enter keypress flipped
+the engine's own real `[>]`->`[^]` focus glyph, confirmed via before/
+after screenshot - the real engine's own native interact-mode state
+machine, not a local approximation. Items 2-4 in the "not started" list
+above are now MOOT (the real engine's own native nav/interact system IS
+the menu - no separate local nav-map or sub-window pattern needed for
+what the engine already provides for free); item 5 (a real in-game
+entry point row) may still be worth adding as a discoverability
+affordance, but the real mechanism itself no longer needs building.
+
 ## Real layout direction for the eventual full menu (2026-08-30, direct instruction, not built yet)
 
 "lets put interact mode and menu nav? at teh bottom of the screen below
