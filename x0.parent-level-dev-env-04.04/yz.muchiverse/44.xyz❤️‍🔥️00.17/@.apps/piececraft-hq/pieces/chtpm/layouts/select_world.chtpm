@@ -2,7 +2,7 @@
     <module>system/prisc+x pal/select_world_module.pal</module>
     <interact src="pieces/apps/player_app/interact_relay.txt" />
     <text label="+============================================================+" /><br/>
-    <text label="|                  P I E C E C R A F T - X Y Z               |" /><br/>
+    <text label="|                  P I E C E C R A F T - H Q                 |" /><br/>
     <text label="+============================================================+" /><br/>
     <text label="${world_list}" /><br/>
     <text label="+============================================================+" /><br/>

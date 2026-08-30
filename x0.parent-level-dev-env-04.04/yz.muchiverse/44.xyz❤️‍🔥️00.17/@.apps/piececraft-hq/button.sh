@@ -175,7 +175,7 @@ EOCONFIG
 inbox_path=pieces/system/widget_cmds/inbox.txt
 kind=board_game
 project_id=piececraft-hq
-display_name=Piececraft-xyz
+display_name=Piececraft-HQ
 EOF
 
         # REAL FIX 2026-08-30 (Piece 1 - completing the in-scene desks
