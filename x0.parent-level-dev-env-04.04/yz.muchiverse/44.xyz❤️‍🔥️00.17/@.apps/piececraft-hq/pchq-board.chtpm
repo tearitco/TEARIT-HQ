@@ -1,0 +1,12 @@
+<!-- pchq-board.chtpm — real khtpm-family launch point for piececraft-hq's
+     3D board view (2026-08-30). Real, data-driven mode detection, same
+     convention every other khtpm window uses (<window class="...">).
+     run_pchq_board_mode() (khtpm_entity_menu_render.c) handles this mode
+     entirely on its own - real chrome, real session-discovery, real
+     bv_render_3d.c raymarch buffer displayed via the same stolen/ported
+     x11_mirror.c blit pipeline pchq_board_view_poc.c already proved. No
+     Elem/CSS content below is actually used for THIS mode (the early-
+     return in main() happens before parse_chtpm()'s own tree is ever
+     walked for rendering) - kept minimal/honest rather than padded with
+     unused markup. -->
+<window class="pchq-board" />
