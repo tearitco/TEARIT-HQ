@@ -4065,12 +4065,16 @@ int main(int argc, char **argv) {
              * real 32-bit ARGB visual (see the XMatchVisualInfo setup
              * near main()'s window creation) - the compositor blends
              * this disc against whatever's really behind it using the
-             * alpha byte below (0x20 of 0xFF, ~12%), same gray
-             * (0x141414) the user already confirmed was the right
-             * color. Trivially tunable - raise/lower just the leading
-             * byte to taste. */
+             * alpha byte below, same gray (0x141414) the user already
+             * confirmed was the right color. Trivially tunable -
+             * raise/lower just the leading byte to taste.
+             * REAL FOLLOW-UP 2026-08-30 ("set it to 1% alpha, even
+             * lower?"): 0x20 (~12%) -> 0x03 (~1%, 3/255) - still a
+             * real, nonzero alpha (the shape/click boundary is
+             * unaffected either way, see the header comment above -
+             * this is purely how visible it reads). */
             if (g_is_cursword) {
-                XSetForeground(dpy, g_buf_gc, 0x20141414UL);
+                XSetForeground(dpy, g_buf_gc, 0x03141414UL);
                 int dcx = WIN_PX / 2, dcy = WIN_PX / 2;
                 int dradius = WIN_PX / 2 - 5;
                 XFillArc(dpy, g_buf, g_buf_gc, dcx - dradius, dcy - dradius,
