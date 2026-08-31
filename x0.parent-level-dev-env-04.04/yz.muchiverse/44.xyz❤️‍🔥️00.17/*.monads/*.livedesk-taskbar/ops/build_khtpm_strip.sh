@@ -63,7 +63,7 @@ $CC $CFLAGS $X11_FLAGS $(pkg-config --cflags xft) -o +x/khtpm_strip_parser.+x \
 # entity window is a livedesk-taskbar concern, not a tile-picker one).
 # Built here now so the whole runtime is one folder + one build script.
 echo "-- entity renderer tp_desktop_window_rgb.c -> +x/tp_desktop_window_rgb.+x"
-$CC $CFLAGS $X11_FLAGS -o +x/tp_desktop_window_rgb.+x tp_desktop_window_rgb.c -lX11 -lXext
+$CC $CFLAGS $X11_FLAGS -o +x/tp_desktop_window_rgb.+x tp_desktop_window_rgb.c -lX11 -lXext -lm
 
 echo "-- emoji->sprite helper tp_asset_to_sprite.c -> +x/tp_asset_to_sprite.+x"
 $CC $CFLAGS -o +x/tp_asset_to_sprite.+x tp_asset_to_sprite.c -lm
