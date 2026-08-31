@@ -592,9 +592,41 @@ sampling and xdotool-driven testing), and committed - not a plan:
   always. Live-verified: all four digits write the file correctly and
   log a real `CURSWORD_CAMERA_<N>_<NAME>` history row each.
 
-**Still deferred, unstarted** (§8 item 4, unchanged): the actual
-per-entity 3D re-render loop that reads `desktop_camera_mode.txt` and
-switches an entity's own window between 2D sprite and 3D raymarch
-rendering. This is the real next substantial step whenever picked up
-- everything above is the enabling plumbing for it, not the feature
-itself.
+**UPDATE (2026-08-30) - §8 item 4 is now started, real first slice
+built and live-verified.** Direct instruction: "we need to do the big
+important bulk of this now, then can polish the rough edges later...
+we can start with camera 3/4 topdown only, if that would make it
+easier?"
+
+- `load_camera_mode()` polls `desktop_camera_mode.txt` every frame,
+  desktop-wide by construction per §9 item #2's own resolution -
+  EVERY entity's own window (this one shared binary), not gated to
+  cursword or armed state.
+- `draw_topdown_block_rgb()`: modes 3 (free-roam, simplified to
+  topdown for now) and 4 (bird's-eye) render a real "extruded block" -
+  the existing flat top-face blit, plus a real, art-derived shaded
+  wall strip along the bottom of the sprite's own actual opaque
+  silhouette (bbox-crop + edge-color-averaging, same real technique
+  `bv_render_3d.c`'s own `compute_bbox_and_edge_color()` already
+  proved correct). No separate voxel-asset generation needed - reuses
+  each entity's own already-loaded `sprite.csv` texture directly.
+- Real scope note, matching the direct instruction: modes 1/2 (true
+  first/third-person perspective) and mode 3's own real free-roam
+  camera movement stay deferred - this pass renders 3 and 4
+  identically, both as the topdown/bird's-eye case.
+- Live-verified: cursword's sword (real bottom padding) shows a clear
+  wall strip in mode 4, reverts cleanly to flat in mode 1; book-stack
+  (a completely different entity, zero extra wiring) picked up the
+  same switch automatically, proving the shared-file architecture.
+- **Known rough edge, honestly flagged, not blocking**: full-bleed
+  sprites (art filling the whole 64x64 canvas, e.g. book-stack) have
+  almost no room below their own opaque bounds for the wall strip -
+  visually negligible there, clearly visible for sprites with real
+  padding like cursword's sword. Real follow-up (shrink+reposition the
+  top face to guarantee wall room for every sprite) is future polish.
+
+**Still deferred, unstarted**: true first/third-person perspective
+rendering (modes 1/2 - a real raymarch/perspective pass, not just an
+extruded topdown block), mode 3's own real free-roam camera movement,
+and the full-bleed-sprite wall-room polish noted above. This is the
+real next substantial step whenever picked up.
