@@ -309,6 +309,42 @@ static void cursword_write_armed(const char *house_root, int armed) {
     if (f) { fprintf(f, "%d\n", armed ? 1 : 0); fclose(f); }
 }
 
+/* REAL, NEW 2026-08-30, step 2 of the design doc's own §8/§10
+ * sequencing (arrow-key movement + click-to-place, both real code,
+ * house-wide PDL toggle decides which is ACTIVE while armed - direct
+ * instruction: "we could add it in a pdl as optionally changeable
+ * till we figure out what actually works best in practice"). Same
+ * real home as click_two_step/opacity/cursword_move_mode itself -
+ * #.desktop/hq_ui.pdl, loaded once at startup, same shape every other
+ * real loader in this house uses. 0 = click_place (default), 1 =
+ * arrow_only. Arrow-key nudge is real, always-on baseline movement in
+ * EITHER mode (§3a's own core spec never made arrows conditional) -
+ * this toggle only decides whether click-to-place is ALSO active. */
+static int g_cursword_click_place = 1;
+static void cursword_load_move_mode(const char *house_root) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char *val = eq + 1;
+        val[strcspn(val, "\r\n")] = '\0';
+        if (strcmp(line, "cursword_move_mode") == 0)
+            g_cursword_click_place = (strcmp(val, "arrow_only") != 0);
+    }
+    fclose(f);
+}
+
+/* Real, one-shot "waiting for the placement click" state - set right
+ * after a successful real XGrabPointer on arm (click_place mode only),
+ * cleared on the next real ButtonPress (the placement click itself) or
+ * on Escape (real abort/disarm, must also ungrab). */
+static int g_cursword_awaiting_place = 0;
+
 /* REAL FIX 2026-08-05, direct instruction ("this is where we will
  * refactor the xwindow to be chtpm/master ledger compliant" -
  * MUCHI_RANCHER's own work item 2, see MUCHI_RANCHER_DESIGN.md §5 and
@@ -2173,6 +2209,7 @@ int main(int argc, char **argv) {
 #endif
     snprintf(g_house_root_for_lock, sizeof(g_house_root_for_lock), "%s", g_house_root);
     if (g_house_root[0]) desktop_load_click_two_step(g_house_root);
+    if (g_house_root[0] && g_is_cursword) cursword_load_move_mode(g_house_root);
     /* REAL FIX 2026-08-27 (TILE-SYSTEM-DESIGN.md §0a) - read the real,
      * optional, house-wide grid cell size as early as possible (right
      * after g_house_root resolves, before anything below uses
@@ -3460,6 +3497,34 @@ int main(int argc, char **argv) {
                 append_history("SHOW_TEXT_DISMISSED");
             } else if (xev.type == Expose) {
                 need_redraw = 1;
+            } else if (xev.type == ButtonPress && xev.xbutton.button == 1 && g_is_cursword && g_cursword_awaiting_place) {
+                /* REAL, NEW 2026-08-30 - the real placement click,
+                 * step 2 of the design doc (§10 click-to-place). The
+                 * real XGrabPointer taken on arm (below) means ANY
+                 * real click anywhere on the screen lands HERE
+                 * regardless of which window it visually landed over -
+                 * x_root/y_root are real screen coordinates, snapped to
+                 * the same real desktop grid every entity already uses
+                 * (matches the existing drag's own real grid-snap
+                 * technique, just driven by the placement click's own
+                 * position instead of the window's dragged position). */
+                int gx = (xev.xbutton.x_root + GRID_CELL_PX / 2) / GRID_CELL_PX;
+                int gy = (xev.xbutton.y_root + GRID_CELL_PX / 2) / GRID_CELL_PX;
+                if (gx < 0) gx = 0;
+                if (gx > max_col) gx = max_col;
+                if (gy < 0) gy = 0;
+                if (gy > max_row) gy = max_row;
+                win_x = gx * GRID_CELL_PX;
+                win_y = gy * GRID_CELL_PX;
+                XMoveWindow(dpy, win, win_x, win_y);
+                write_pos(package_dir, win_x, win_y);
+                XUngrabPointer(dpy, CurrentTime);
+                g_cursword_awaiting_place = 0;
+                g_cursword_armed = 0;
+                cursword_write_armed(g_house_root, 0);
+                append_history("CURSWORD_PLACED");
+                cursword_update_shape(dpy, win);
+                need_redraw = 1;
             } else if (xev.type == ButtonPress && xev.xbutton.button == 1) {
                 dragging = 1;
                 drag_start_x = xev.xbutton.x_root;
@@ -3493,6 +3558,32 @@ int main(int argc, char **argv) {
                     cursword_write_armed(g_house_root, g_cursword_armed);
                     append_history(g_cursword_armed ? "CURSWORD_ARMED" : "CURSWORD_DISARMED");
                     cursword_update_shape(dpy, win);
+                    if (g_cursword_armed && g_cursword_click_place) {
+                        /* REAL, NEW 2026-08-30 - real click-to-place
+                         * arm: grab the pointer display-wide (same real
+                         * technique/retry-loop this file's own popup
+                         * code already uses, ~line 1957) so the VERY
+                         * NEXT real click anywhere is delivered to this
+                         * window as the placement click, not whatever
+                         * window it visually landed over. */
+                        for (int attempt = 0; attempt < 5; attempt++) {
+                            int rc = XGrabPointer(dpy, win, False, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
+                            if (rc == GrabSuccess) { g_cursword_awaiting_place = 1; break; }
+                            XSync(dpy, False);
+                            usleep(5000);
+                        }
+                    }
+                    /* NOTE: re-clicking cursword's own window while
+                     * g_cursword_awaiting_place is true can NEVER reach
+                     * this toggle branch at all - the real pointer grab
+                     * above means EVERY real click, including one that
+                     * visually lands back on cursword itself, is routed
+                     * to the dedicated placement-click ButtonPress
+                     * branch first (it runs unconditionally on ANY
+                     * button-1 press while awaiting placement). Escape
+                     * is therefore the only real way to cancel a
+                     * pending placement - see that branch's own real
+                     * XUngrabPointer call. */
                     need_redraw = 1;
                 } else {
                 /* REAL FIX 2026-08-04, direct instruction ("egg-pets
@@ -3569,18 +3660,48 @@ int main(int argc, char **argv) {
                      * default ("no popup open -> any key closes the
                      * tile," right below) would close cursword outright
                      * the moment a key was pressed while armed -
-                     * confirmed by direct read, not assumed. Escape
-                     * disarms; every other key is swallowed harmlessly
-                     * for now (real arrow-key movement/click-to-place/
-                     * camera-mode handling is the NEXT pass, per the
-                     * design doc's own §8/§10 sequencing - this step is
-                     * arm+halo only). */
+                     * confirmed by direct read, not assumed. */
                     KeySym ks2 = XLookupKeysym(&xev.xkey, 0);
                     if (ks2 == XK_Escape) {
+                        if (g_cursword_awaiting_place) {
+                            /* Real cancel of a pending click-to-place -
+                             * the pointer grab from arm-time must be
+                             * dropped here, this is the only real
+                             * cancel path (see the placement
+                             * ButtonPress branch's own comment for why
+                             * re-clicking cursword itself can't reach
+                             * this instead). */
+                            XUngrabPointer(dpy, CurrentTime);
+                            g_cursword_awaiting_place = 0;
+                        }
                         g_cursword_armed = 0;
                         cursword_write_armed(g_house_root, 0);
                         append_history("CURSWORD_DISARMED");
                         cursword_update_shape(dpy, win);
+                        need_redraw = 1;
+                    } else if (ks2 == XK_Left || ks2 == XK_Right || ks2 == XK_Up || ks2 == XK_Down) {
+                        /* REAL, NEW 2026-08-30, step 2 - real arrow-key
+                         * nudge (§3a: "Arrow keys move cursword itself
+                         * ... likely the same 80px GRID_CELL_PX every
+                         * entity already snaps to"). Real, always-on
+                         * baseline movement in EITHER move_mode - same
+                         * real grid-snap + write_pos + XMoveWindow
+                         * technique the existing drag-release code uses,
+                         * just stepping by one whole cell per press
+                         * instead of snapping a dragged pixel position. */
+                        int gx = win_x / GRID_CELL_PX, gy = win_y / GRID_CELL_PX;
+                        if (ks2 == XK_Left) gx--;
+                        else if (ks2 == XK_Right) gx++;
+                        else if (ks2 == XK_Up) gy--;
+                        else gy++;
+                        if (gx < 0) gx = 0;
+                        if (gx > max_col) gx = max_col;
+                        if (gy < 0) gy = 0;
+                        if (gy > max_row) gy = max_row;
+                        win_x = gx * GRID_CELL_PX;
+                        win_y = gy * GRID_CELL_PX;
+                        XMoveWindow(dpy, win, win_x, win_y);
+                        write_pos(package_dir, win_x, win_y);
                         need_redraw = 1;
                     }
                 } else if (popup_win || user_popup_win || input_popup_win || text_popup_win || input_active) {
@@ -3633,15 +3754,14 @@ int main(int argc, char **argv) {
             XSetForeground(dpy, g_buf_gc, ((unsigned long)bg_r << 16) | ((unsigned long)bg_g << 8) | (unsigned long)bg_b);
             XFillRectangle(dpy, g_buf, g_buf_gc, 0, 0, WIN_PX, WIN_PX);
             /* Real, visible armed-state halo (§3a/§9 item 4: overlay/
-             * ring, never replacing the sprite - drawn as the base
-             * layer here, BEFORE the sprite, so the sprite's own real
-             * per-pixel alpha blend in draw_sprite_rgb() still shows on
-             * top of it exactly like the real background does; the
-             * halo peeks through wherever the sprite has real
-             * transparent margins, same real "around/under it" framing
-             * the design doc asks for.  A real glow - 3 concentric
-             * rings, brightest innermost - in the same neon blue the
-             * design doc specifies. */
+             * ring, never replacing the sprite). STALE NOTE, corrected
+             * 2026-08-30: originally drawn BEFORE the sprite here,
+             * relying on draw_sprite_rgb()'s own per-pixel alpha to
+             * "peek through" - moved AFTER the sprite instead (see the
+             * real fix comment right below) once this sprite was
+             * confirmed to have no real alpha transparency. Real color
+             * changed from the design doc's original neon-blue spec to
+             * a yellow glow, direct instruction. */
             if (g_has_sprite) draw_sprite_rgb(dpy, g_buf, g_buf_gc, bg_r, bg_g, bg_b);
             else if (g_font_loaded) draw_glyph_rgb(dpy, g_buf, g_buf_gc, glyph);
             /* REAL FIX 2026-08-30, found live: the halo used to draw
@@ -3670,7 +3790,12 @@ int main(int argc, char **argv) {
                  * not an approximation of it. */
                 int halo_radius = WIN_PX / 2 - 5;
                 if (halo_radius > 3) {
-                    XSetForeground(dpy, g_buf_gc, 0x2288FFUL);
+                    /* Real, direct instruction ("i actually want to
+                     * change it to a 'yellow glowing look' instead of
+                     * blue") - matches this house's own real "amber
+                     * tint = armed" precedent (§3a) more closely than
+                     * blue ever did. */
+                    XSetForeground(dpy, g_buf_gc, 0xFFD400UL);
                     XSetLineAttributes(dpy, g_buf_gc, 9, LineSolid, CapButt, JoinMiter);
                     XDrawArc(dpy, g_buf, g_buf_gc, cx - halo_radius, cy - halo_radius, (unsigned)(halo_radius * 2), (unsigned)(halo_radius * 2), 0, 360 * 64);
                     XSetLineAttributes(dpy, g_buf_gc, 0, LineSolid, CapButt, JoinMiter);
