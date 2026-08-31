@@ -242,6 +242,20 @@ static void bump_camera_changed(const char *house_root) {
     if (f) { fputc('.', f); fclose(f); }
 }
 
+/* REAL, NEW 2026-08-30, direct instruction ("we actually want to have
+ * a .pdl file that decides how to render emoji sprits in top down.
+ * (from top or front as usual) lets view from front for now but later
+ * will change when doing more camera stuff") - a real, live-editable
+ * `emoji_sprite_view` key in this same shared hq_ui.pdl (same real
+ * home as click_two_step/cursword_move_mode - a house-wide UI toggle,
+ * not buried in cursword's own pal-scoped config). "front" (default)
+ * is a straight-on yaw=0 camera - the classic real "topdown map, but
+ * sprites/objects render front-facing" convention most real top-down
+ * games actually use, and directly answers the earlier live report
+ * that the previous fixed yaw=45 diagonal corner view looked "melted"/
+ * unreasonable. "top" is the original diagonal corner view, kept as a
+ * real, named alternative for later camera work, not deleted. */
+static int g_emoji_sprite_view_top = 0; /* 0 = front (default), 1 = top */
 static void desktop_load_click_two_step(const char *house_root) {
     char path[4352]; /* matches this file's own later PATH_BUF (not yet declared at this point) */
     snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
@@ -256,6 +270,7 @@ static void desktop_load_click_two_step(const char *house_root) {
         char *nl = strchr(val, '\n');
         if (nl) *nl = '\0';
         if (strcmp(line, "click_two_step") == 0) g_click_two_step = atoi(val) != 0;
+        else if (strcmp(line, "emoji_sprite_view") == 0) g_emoji_sprite_view_top = (strcmp(val, "top") == 0);
     }
     fclose(f);
 }
@@ -1781,14 +1796,19 @@ typedef struct {
 
 static void build_raymarch_cam(double cy, RaymarchCam *cam) {
     /* Real camera: pitch driven by cam_tilt (0 = looking straight
-     * down/bird's-eye, 100 = a real oblique 3/4 angle), fixed yaw=45deg
-     * for a real diagonal "corner" view (the classic real isometric-
-     * style angle, matches how most real voxel/block games frame a
-     * single object) - direct instruction's own "topdown only" scope
-     * still honored: yaw itself isn't camera-controlled yet, only
-     * pitch (tilt) and pan/zoom are. */
+     * down/bird's-eye, 100 = a real oblique 3/4 angle). Real, new
+     * 2026-08-30, direct correction ("lets keep the camera angles
+     * reasonable... view from front for now") - yaw now comes from
+     * the real emoji_sprite_view PDL toggle (g_emoji_sprite_view_top,
+     * see desktop_load_click_two_step()'s own header comment): the
+     * earlier fixed yaw=45 diagonal "corner" view is what read as
+     * "melted"/unreasonable - "front" (the new default) is a straight
+     * yaw=0 view instead, the classic real "topdown map, front-facing
+     * sprite" convention. yaw isn't camera-KEY-controlled yet either
+     * way, only pitch (tilt) and pan/zoom are - this toggle picks the
+     * fixed default, not a third live-adjustable axis. */
     double pitch_deg = 90.0 - (g_cam_tilt / 100.0) * 65.0; /* 90 (straight down) .. 25 (oblique) */
-    double yaw_deg = 45.0;
+    double yaw_deg = g_emoji_sprite_view_top ? 45.0 : 0.0;
     double pitch = pitch_deg * M_PI_LOCAL / 180.0, yaw = yaw_deg * M_PI_LOCAL / 180.0;
 
     cam->ex = RAYMARCH_CAM_DIST * cos(pitch) * sin(yaw);
@@ -1900,6 +1920,18 @@ typedef struct { unsigned char lx, ly, exists_mask, cr[8], cg[8], cb[8]; } CursP
 static CursPhymojiColumn g_phymoji_cols[MAX_PHYMOJI_COLUMNS];
 static int g_phymoji_col_count = 0;
 static int g_phymoji_max_lx = 0, g_phymoji_max_ly = 0, g_phymoji_max_lz = 0;
+/* REAL, NEW 2026-08-30, direct instruction ("lets definately tune
+ * proportions for 1:1 scaled camera") - the box world-size used to be
+ * a fixed unit cube regardless of the asset's own real (lx,ly,lz)
+ * extent, squashing/stretching every asset into the same shape
+ * (confirmed live: the sword's real 14x13x8 crop looked "melted" -
+ * flattened diagonal bands - forced into a 1x0.5x1 box). Real fix: ONE
+ * shared world-units-per-voxel scale (PHYMOJI_VOXEL_UNIT) applied to
+ * every axis identically - a genuinely proportional box matching the
+ * asset's own real aspect ratio, not a separate guessed scale per
+ * axis. Set once in load_cursword_phymoji(), read by draw_phymoji_rgb(). */
+#define PHYMOJI_VOXEL_UNIT 0.09
+static double g_phymoji_world_x = 1.0, g_phymoji_world_y = 0.5, g_phymoji_world_z = 1.0;
 
 /* Ported near-verbatim from bv_render_3d.c's own load_phymoji_asset() +
  * build_phymoji_columns() - real CSV load, straight into real
@@ -1946,6 +1978,13 @@ static void load_cursword_phymoji(const char *package_dir) {
             g_phymoji_cols[found].exists_mask = (unsigned char)(g_phymoji_cols[found].exists_mask | (1 << z));
             g_phymoji_cols[found].cr[z] = v->r; g_phymoji_cols[found].cg[z] = v->g; g_phymoji_cols[found].cb[z] = v->b;
         }
+    }
+    if (g_phymoji_col_count > 0) {
+        /* Real, proportional world-size - see this file's own
+         * g_phymoji_world_x/y/z declaration comment. */
+        g_phymoji_world_x = (g_phymoji_max_lx + 1) * PHYMOJI_VOXEL_UNIT;
+        g_phymoji_world_y = (g_phymoji_max_ly + 1) * PHYMOJI_VOXEL_UNIT;
+        g_phymoji_world_z = (g_phymoji_max_lz + 1) * PHYMOJI_VOXEL_UNIT;
     }
     append_history(g_phymoji_col_count > 0 ? "CURSWORD_PHYMOJI_LOADED" : "CURSWORD_PHYMOJI_EMPTY");
 }
@@ -2009,8 +2048,12 @@ static int cursword_phymoji_hit(double ox, double oy, double oz, double dx, doub
  * sword texture). */
 static void draw_phymoji_rgb(Display *dpy, Drawable buf, GC gc) {
     if (g_phymoji_col_count <= 0) return;
-    double bx0 = -0.5, bx1 = 0.5, bz0 = -0.5, bz1 = 0.5;
-    double by0 = 0.0, by1 = RAYMARCH_BLOCK_H;
+    /* Real, proportional box - see g_phymoji_world_x/y/z's own
+     * declaration comment ("1:1 scaled camera" - the asset's own real
+     * aspect ratio, not a forced unit cube). */
+    double bx0 = -g_phymoji_world_x / 2.0, bx1 = g_phymoji_world_x / 2.0;
+    double bz0 = -g_phymoji_world_z / 2.0, bz1 = g_phymoji_world_z / 2.0;
+    double by0 = 0.0, by1 = g_phymoji_world_y;
     double cy = (by0 + by1) / 2.0;
 
     RaymarchCam cam;
@@ -4759,18 +4802,24 @@ int main(int argc, char **argv) {
             load_camera_state(g_house_root);
             if (g_has_sprite) {
                 if (g_camera_mode == 3 || g_camera_mode == 4) {
-                    /* Real base layer first (unchanged flat sprite) -
-                     * whichever raymarcher runs below only overdraws
-                     * pixels its own ray actually hits; a missed ray
-                     * (background) leaves this base layer showing
-                     * through, same real "no gaps" reasoning
-                     * draw_topdown_block_rgb() itself used. Real per-
-                     * voxel phymoji render (genuine volumetric
-                     * silhouette) whenever this entity has a real
-                     * generated voxel asset; the single-box-with-
-                     * texture raymarch stays the real, honest fallback
-                     * for any entity that doesn't yet. */
-                    draw_sprite_rgb(dpy, g_buf, g_buf_gc, bg_r, bg_g, bg_b);
+                    /* REAL FIX 2026-08-30, direct live report ("its
+                     * still showing 2d sprite behind the 3d. can u fix
+                     * that?") - the flat sprite used to always draw
+                     * first as a real "no gaps" base layer (matching
+                     * draw_topdown_block_rgb()'s own older reasoning,
+                     * from when the extrusion cue was a thin strip
+                     * that genuinely needed something solid behind
+                     * it). Both real raymarchers below now cover their
+                     * own entire real footprint on a hit (a solid box,
+                     * or the phymoji model's own real silhouette) - a
+                     * missed ray is real, honest EMPTY space (the
+                     * plain background already filled above), not the
+                     * old flat sprite peeking through around/behind
+                     * the 3D shape. Real per-voxel phymoji render
+                     * (genuine volumetric silhouette) whenever this
+                     * entity has a real generated voxel asset; the
+                     * single-box-with-texture raymarch stays the real,
+                     * honest fallback for any entity that doesn't. */
                     if (g_phymoji_col_count > 0)
                         draw_phymoji_rgb(dpy, g_buf, g_buf_gc);
                     else

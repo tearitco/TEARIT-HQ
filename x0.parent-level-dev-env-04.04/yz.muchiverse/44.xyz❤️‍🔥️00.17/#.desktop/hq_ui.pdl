@@ -37,3 +37,15 @@ focus_grab=0
 # per direct instruction ("make it optional from .pdl, can open
 # immediately, or wait for second click").
 click_two_step=1
+
+# emoji_sprite_view: how desktop entities render in 3D camera mode
+# (cursword's own camera_mode 3/4, tp_desktop_window_rgb.c's real
+# per-voxel raymarch). "front" (default) = a straight-on view, the
+# classic real "topdown map, front-facing sprite/object" convention -
+# direct instruction 2026-08-30 ("lets keep the camera angles
+# reasonable... view from front for now"), since the earlier fixed
+# diagonal "corner" view read as melted/unreasonable. "top" = that
+# original diagonal corner view, kept as a real named alternative for
+# later camera work, not deleted - direct instruction: "later will
+# change when doing more camera stuff."
+emoji_sprite_view=front
