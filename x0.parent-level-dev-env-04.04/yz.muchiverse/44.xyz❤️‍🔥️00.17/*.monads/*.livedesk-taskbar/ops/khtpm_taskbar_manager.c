@@ -33,6 +33,18 @@
  * taskbar-manager start). */
 static void livedesk_ensure_cursword(const char *house_root);
 
+/* Forward decls - ktb_init() (below) needs these before their own real
+ * definitions, further down this file. livedesk_spawn_desk() is the core
+ * real logic for spawning all entities listed in a desk's PDL; reused by
+ * live desk switches and now also by livedesk_spawn_active_desk() on startup.
+ * livedesk_spawn_active_desk() itself reads the currently-active session's
+ * currently-active desk, then calls livedesk_spawn_desk() to relaunch its
+ * entities. This ensures that when button.sh reset rebuilds the manager,
+ * the active desk's real entity set (not a static autostart.pdl list that
+ * can drift) gets reliably relaunched. */
+static void livedesk_spawn_desk(const char *house_root, const char *sroot, const char *id, const char *desk);
+static void livedesk_spawn_active_desk(const char *house_root);
+
 /* REAL, NEW 2026-08-25 (direct request: a general "kill hq" menu row that
  * covers EVERYTHING the taskbar launches, not just a fixed -hq binary
  * name list — real live test proved the fixed-list kill_hq_windows.sh
@@ -267,6 +279,15 @@ void ktb_init(KtbState *s, const char *house_root) {
      * in this same file, forward-declared alongside livedesk_close_all
      * near the top) for the full real design. */
     livedesk_ensure_cursword(s->house_root);
+    /* Real, new 2026-08-31, direct instruction ("yes have the active desk
+     * be run from autostart"): on taskbar-manager start (when button.sh reset
+     * triggers), spawn the current active session's active desk entities
+     * using the same proven real logic as live desk switches. This closes the
+     * structural drift: instead of relying on a static, separately-maintained
+     * autostart.pdl list (which can become out-of-sync when entities are
+     * added/removed), we now relaunch the REAL, genuine active desk's entity
+     * set, the exact one the user left last session. */
+    livedesk_spawn_active_desk(s->house_root);
 }
 
 /* REAL, NEW 2026-08-16 - see KtbState's own cell_id_pos/cell_id_str
@@ -1832,6 +1853,32 @@ static void livedesk_ensure_cursword(const char *house_root) {
 #endif
 }
 
+/* Real fix, 2026-08-31: reads the currently-active session and desk,
+ * then reuses the proven livedesk_spawn_desk() logic to launch its real
+ * entity set. This replaces the prior static autostart.pdl-based approach
+ * with a real, drift-free mechanism: on button.sh reset, the ACTUAL active
+ * desk's ACTUAL entity list (whatever session/desk is genuinely current,
+ * not hardcoded) gets relaunched, the same way a live desk switch does.
+ * Missing/unreadable session metadata is a silent no-op (preserves prior
+ * behavior: if there's no active desk metadata, nothing spawns on reset,
+ * which is safer than trying to guess). */
+static void livedesk_spawn_active_desk(const char *house_root) {
+    char sroot[KTB_PATH_BUF];
+    if (!livedesk_sessions_root(house_root, sroot, sizeof(sroot))) return;
+
+    char active_session[64] = "";
+    livedesk_root_read(sroot, active_session, sizeof(active_session), NULL, 0);
+    if (!active_session[0]) return; /* no active session - nothing to spawn */
+
+    char active_desk[64] = "";
+    livedesk_active_desk(sroot, active_session, active_desk, sizeof(active_desk));
+    if (!active_desk[0]) return; /* no active desk - nothing to spawn */
+
+    /* Now spawn the real active desk using the same proven logic as
+     * livedesk_switch_desk() — the real, production-proven path. */
+    livedesk_spawn_desk(house_root, sroot, active_session, active_desk);
+}
+
 static void livedesk_spawn_desk(const char *house_root, const char *sroot, const char *id, const char *desk) {
     char sdir[KTB_PATH_BUF], dp[KTB_PATH_BUF];
     livedesk_session_dir(sroot, id, sdir, sizeof(sdir));
@@ -1947,6 +1994,17 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
          * session entities copy) register their package into pals first. */
         char base[64];
         livedesk_base_name(path, base, sizeof(base));
+        /* REAL FIX 2026-08-31, direct live report ("cursword now shows
+         * up twice") - same real reason livedesk_close_all() already
+         * skips cursword by basename: it has its own dedicated spawn+
+         * dedup path (livedesk_ensure_cursword(), called right before
+         * livedesk_spawn_active_desk() in ktb_init()) - a plain DESK row
+         * for it in the active desk's own .pdl would otherwise race
+         * that just-backgrounded spawn (its own real "already_live"
+         * check below reads the registry BEFORE cursword's own process
+         * has necessarily self-registered yet), producing a real
+         * duplicate. */
+        if (strcmp(base, "cursword") == 0) continue;
         char pr[KTB_PATH_BUF];
         if (!livedesk_pals_root(house_root, pr, sizeof(pr))) continue;
         char pal[KTB_PATH_BUF];
@@ -1960,6 +2018,37 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
             for (int i = 0; i < n_live; i++)
                 if (strcmp(live_paths[i], pal) == 0 && ktb_pid_alive(live_pids[i])) { already_live = 1; break; }
             if (already_live) continue; /* real process already running for this pal - never double-spawn it */
+        }
+        /* REAL FIX 2026-08-31, direct live report ("asa/ava/book-stack/
+         * tile all silently self-close within a second of spawning") -
+         * root cause: crypt_autostart.c's own quit_current_livedesk()
+         * writes a plain "CLOSE\n" into every registered pal's real
+         * interact_relay.txt as its graceful-shutdown attempt, BEFORE
+         * the hard-kill sweep that follows it. If the OLD process for
+         * this exact pal got killed before it ever polled and consumed
+         * that line (a real, confirmed race - not hypothetical, caught
+         * live via each closed pal's own history.txt: WINDOW_OPEN then
+         * INJECTED: CLOSE one second later), the stale CLOSE is still
+         * sitting in the file when THIS brand-new process starts - its
+         * own first poll tick reads it and dutifully closes itself,
+         * since interact_relay.txt is keyed by package PATH, not PID,
+         * with zero way for a fresh process to tell a genuinely-new
+         * command from a stale leftover one. Real, deterministic fix
+         * (direct instruction: "we should use a marker file that is
+         * house std" - not a timing delay, which would just narrow the
+         * race, not close it): truncate the relay file right here,
+         * immediately before this exact spawn, so any stale command
+         * from a prior incarnation of this same pal is cleared before
+         * the new process's own first poll ever runs. Matches this
+         * relay file's own already-existing real contract elsewhere in
+         * this house (write once, consumed once, truncated) - this is
+         * just enforcing that contract at the one real point it could
+         * otherwise be violated (a killed-before-consuming process). */
+        {
+            char relay[KTB_PATH_BUF];
+            snprintf(relay, sizeof(relay), "%s/interact_relay.txt", pal);
+            FILE *rf = fopen(relay, "w");
+            if (rf) fclose(rf);
         }
         int x = xs ? atoi(xs) : -1, y = ys ? atoi(ys) : -1;
         if (x >= 0 && y >= 0) {

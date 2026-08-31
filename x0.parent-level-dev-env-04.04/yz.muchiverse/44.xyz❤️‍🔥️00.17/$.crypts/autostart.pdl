@@ -4,10 +4,27 @@ STATE        | enabled              | 1
 STATE        | restore-last-open     | 0
 MOUNT        | uuid                 | b7ced73c-5231-4462-b98d-64e38fe2df9e
 MOUNT        | mountpoint           | /media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e
+# REAL FIX 2026-08-31, direct instruction ("yes have the active desk be
+# run from autostart"): the per-entity LAUNCH rows below (self/
+# m8_redhorned/m1_ninjadragon/book-stack/asa/ava) are REMOVED - they were
+# a static, hand-maintained list that silently drifted out of sync with
+# the real active desk's own entity list (confirmed: it was missing a
+# real placed tile, tile_rmmv_Inside_a2_1788175974, that the active
+# desk's own .pdl genuinely declared). khtpm_taskbar_manager.c's own
+# ktb_init() now calls livedesk_spawn_active_desk() on startup, which
+# reads whatever session/desk is genuinely active and spawns its REAL,
+# current entity list via the same proven livedesk_spawn_desk() logic a
+# live desk switch already uses - a real, drift-free single source of
+# truth. Keeping the static rows here TOO would race the manager's own
+# startup spawn (confirmed live: tool-bar's own manager process starts
+# and spawns the whole active desk before these later static LAUNCH rows
+# even run, since livedesk_spawn_desk()'s own "already live" dedup check
+# only skips a pal if it's ALREADDY registered - too early in that race
+# to catch these), producing duplicate processes for some entities and,
+# worse, silent double-launch failures dropping others entirely (self/
+# m8_redhorned both observed missing after a reset with both mechanisms
+# active). Only "tool-bar" stays - it's what starts the manager, whose
+# own real startup path now owns spawning every desk entity, cursword
+# included (see livedesk_ensure_cursword()'s own real dedup, unaffected
+# by this change).
 LAUNCH       | tool-bar             | '*.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x' '.'
-LAUNCH       | self                 | '*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/self'
-LAUNCH       | m8_redhorned         | '*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/m8_redhorned'
-LAUNCH       | m1_ninjadragon       | '*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/m1_ninjadragon'
-LAUNCH       | book-stack           | '*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/book-stack'
-LAUNCH       | asa                  | '*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/asa'
-LAUNCH       | ava                  | '*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/ava'

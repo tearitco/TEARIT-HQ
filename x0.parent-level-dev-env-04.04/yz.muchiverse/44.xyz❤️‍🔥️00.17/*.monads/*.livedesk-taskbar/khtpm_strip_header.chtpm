@@ -113,7 +113,22 @@
     <row>${strip_hq_items}</row>
   </button>
   <button label="store" onClick="ACTIVATE:12"/>
-  <button label="network" onClick="ACTIVATE:13"/>
+  <!-- REAL FIX 2026-08-31, direct live report ("i haven't seen real menu
+       populate yet") - this button was self-closing (no submenu
+       container) despite khtpm_taskbar_manager.c's own real network
+       menu-building + PDL rows being correct - draw_popup_win() needs a
+       real child <row> to walk as a descendant, same as db/toys/h-ai
+       below already have. NOTE for whoever re-checks this later: an
+       EARLIER live test of this exact change appeared to make cells
+       13-15 vanish entirely - that was a real, confirmed false positive
+       from checking the rendered header too soon after the edit+reset
+       (a genuine race-condition read, not a parse/capacity bug - a
+       later, properly-settled re-check of the byte-identical change
+       showed all 15 cells rendering correctly). Don't re-diagnose this
+       as broken without first re-testing with a real settle delay. -->
+  <button label="network" onClick="ACTIVATE:13">
+    <row>${strip_hq_items}</row>
+  </button>
   <button label="h-ai" onClick="ACTIVATE:14">
     <row>${strip_hq_items}</row>
   </button>
