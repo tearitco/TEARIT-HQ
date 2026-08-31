@@ -4997,6 +4997,24 @@ int main(int argc, char **argv) {
                      * while a bible-verse / context menu was up silently
                      * killed the whole tile window. Menus stay open until
                      * the user clicks Cancel or presses Escape/Enter. */
+                } else if (g_is_cursword) {
+                    /* REAL FIX 2026-08-31, direct live report (cursword
+                     * silently vanishing - a real key hitting cursword
+                     * right after it disarmed, e.g. from a rapid test
+                     * sequence, fell straight into the generic
+                     * "no popup open -> any key closes the tile" fallback
+                     * below and killed the whole process - no crash, no
+                     * signal, a real, deliberate, if surprising, exit).
+                     * Direct instruction on the fix: "any key is meant
+                     * to turn its halo focus off, not close it" - cursword
+                     * is the real always-open assistant entity (see the
+                     * "always-open first entity" work), not a closable
+                     * popup tile, so it's now exempt from that generic
+                     * close-on-any-key default. It's already unarmed by
+                     * the time this branch can even run (the
+                     * g_cursword_armed branch above handles every key
+                     * while armed), so there's nothing further to do here
+                     * - the halo/focus state already reflects "off." */
                 } else {
 #ifndef _WIN32
                     running = 0; /* no menu open: any key closes the tile, as before */
