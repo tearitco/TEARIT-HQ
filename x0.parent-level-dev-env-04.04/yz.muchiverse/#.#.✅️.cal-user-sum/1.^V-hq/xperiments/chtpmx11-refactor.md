@@ -520,6 +520,75 @@ genuinely native HQ window), not two ways to reach the same result.
 
 ---
 
+---
+
+## 7. "Styled mirror" vs. "native widget GUI" - what this actually means
+(added because §6's closing line was confusing without this)
+
+These are two GENUINELY DIFFERENT products, not two implementations of
+the same result. Concretely, using IRC chat's real "Send" button as
+the example:
+
+**Styled mirror** (§6's own subject - `chtpm_rgb_render.c` +
+`x11_mirror.c`/`gl_mirror.c`): the X11 window is a real-time PICTURE of
+the same text-mode app, never a second program that understands the
+UI.
+- The real "brain" - what the Send button does, which room is active,
+  what Enter does - lives entirely in the one real, running
+  `chtpm_parser_pal.c` process. That never changes, no matter how much
+  §6's steps get built.
+- The X11 window displays whatever image got composed (plain
+  monospace today; real colored boxes/borders after §6's steps) and,
+  on a click or keypress, does NOT figure out "the Send button was
+  clicked" itself - it just writes the raw key or raw x/y coordinate
+  into the SAME relay files `chtpm_parser_pal.c` already reads (the
+  real, proven mechanism §1/§3 document for board-viewer/mutaclysm:
+  `pchq_append_key()`/`pchq_write_click_kv()`, direct ports of
+  `x11_mirror.c`'s own functions). `chtpm_parser_pal.c` is the one
+  real process that decides what that click meant.
+- **The X11 process itself has zero concept of "this rectangle is a
+  button."** It is a screen plus an input forwarder, nothing more -
+  even with full §6 styling applied.
+
+**Native widget GUI** (what db-hq/chat-hai/palettes/bookmarks/
+stats-hq actually are, via `khtpm_entity_menu_render.c`): the X11
+process itself parses the layout into real Elem objects (a real
+Button at a real known rectangle) and does its OWN real hit-testing -
+"the mouse landed at (340,82), that's inside the Send button's own
+rect, run its `onclick`" - directly, in the same process, using
+`hit_test()`/`draw_elem()`/`render_tree()` (the shared paint layer,
+§2/SKILLS.md §2). The real "brain" for THAT click lives inside the
+X11 program itself, not in a separate text-mode engine it forwards
+raw input to.
+
+**Why these are not two roads to the same destination**:
+- A styled mirror can look progressively better (§6's whole point) but
+  will NEVER gain real per-element hover states, real nav-index
+  badges, or interaction responsiveness independent of the ASCII
+  engine's own poll/redraw cadence - because the X11 side genuinely
+  never learns what a "button" is, by design (that's what keeps
+  `chtpm_rgb_render.c` simple and keeps CLI/headless mirroring free -
+  §6's own real tradeoff).
+- A native widget GUI genuinely feels/behaves like every other real HQ
+  window in this house, but is real, separate new work - a real
+  manager + a real khtpm `.chtpm` layout (§4/§5's own subject) - and
+  becomes a SECOND place that has to agree with the CLI app's own real
+  business rules (in practice this usually means the manager shells
+  out to the SAME real ops the CLI app already uses, rather than
+  re-deriving logic - but it is still a second integration point to
+  build and keep correct, not free).
+
+**Practical decision rule this suggests**: pick styled-mirror when the
+goal is "let me see/drive the existing CLI app from a window, ideally
+looking nicer than raw monospace" (near-zero new code, real CLI parity
+is automatic since it's the SAME engine). Pick native-widget-GUI when
+the goal is "I want this to look and behave like every other HQ window
+in this house" (real new work, real compliance discipline per §5,
+but a genuinely native result). Neither one is a smaller version of
+the other - they answer different real questions.
+
+---
+
 ## File/line index (for a follow-up session)
 
 - `101.mutaclsym🧟‍♂️️19.00/SIMLINK_PITFALL.md` — full file read
