@@ -1450,6 +1450,44 @@ static void cursword_update_shape(Display *dpy, Window win) {
     Pixmap mask = XCreatePixmap(dpy, win, (unsigned)WIN_PX, (unsigned)WIN_PX, 1);
     GC mask_gc = XCreateGC(dpy, mask, 0, NULL);
     build_shape_mask(dpy, win, mask_gc, mask); /* real ShapeSet baseline - sprite only */
+
+    /* REAL FIX 2026-08-30, direct live report ("im still having to
+     * click right on the image") - the earlier ShapeInput-only attempt
+     * (a real, independent input-hitbox mask, wider than the visible
+     * shape, zero visual change) turned out NOT to be honored by the
+     * real compositor for genuine mouse clicks, even though it worked
+     * in synthetic testing here - a known real-world gap for
+     * ShapeInput specifically on override-redirect windows. The only
+     * mechanism actually proven reliable for real click routing is
+     * ShapeBounding itself (that's what already correctly gates every
+     * other click today), so the grab surface now has to be real
+     * ShapeBounding, not just Input - meaning it has to be visible.
+     * Direct instruction on how: "solid disc but very low
+     * transparency". This window has no true per-pixel alpha (binary
+     * Shape mask only, not an ARGB32 visual) - a real transparency
+     * blend isn't available, so this fills the disc with a real,
+     * dim, near-black color instead (0x141414 - the same dim neutral
+     * backdrop open-hai's own khtpm_open_hai_render.c already uses,
+     * not an arbitrary pick) as the closest honest approximation:
+     * reads as a faint shadow/backdrop, not a jarring solid block.
+     * ALWAYS unioned now (moved out of the `if (g_cursword_armed)`
+     * gate below) - the whole point is a wider grab surface even when
+     * unarmed. */
+    {
+        Pixmap disc_mask = XCreatePixmap(dpy, win, (unsigned)WIN_PX, (unsigned)WIN_PX, 1);
+        GC disc_gc = XCreateGC(dpy, disc_mask, 0, NULL);
+        XSetForeground(dpy, disc_gc, 0);
+        XFillRectangle(dpy, disc_mask, disc_gc, 0, 0, WIN_PX, WIN_PX);
+        XSetForeground(dpy, disc_gc, 1);
+        int dcx = WIN_PX / 2, dcy = WIN_PX / 2;
+        int dradius = WIN_PX / 2 - 5;
+        XFillArc(dpy, disc_mask, disc_gc, dcx - dradius, dcy - dradius,
+                 (unsigned)(dradius * 2), (unsigned)(dradius * 2), 0, 360 * 64);
+        XShapeCombineMask(dpy, win, ShapeBounding, 0, 0, disc_mask, ShapeUnion);
+        XFreeGC(dpy, disc_gc);
+        XFreePixmap(dpy, disc_mask);
+    }
+
     if (g_cursword_armed) {
         XSetForeground(dpy, mask_gc, 0);
         XFillRectangle(dpy, mask, mask_gc, 0, 0, WIN_PX, WIN_PX);
@@ -2449,7 +2487,19 @@ int main(int argc, char **argv) {
      * click anywhere inside that circle - not just on the thin visible
      * pixels - now hits cursword, whether armed or not. Cursword-only
      * (g_is_cursword), every other entity's own real click hit-testing
-     * is completely unaffected. */
+     * is completely unaffected.
+     *
+     * REAL FOLLOW-UP FIX 2026-08-30, direct live report ("im still
+     * having to click right on the image") - this ShapeInput mask
+     * turned out NOT to be honored by the real compositor for genuine
+     * mouse clicks (real-world gap, confirmed live) - kept here as a
+     * harmless, possibly-helpful-elsewhere redundancy, but
+     * cursword_update_shape() below (called once, right after this
+     * block) is the REAL fix now: it widens ShapeBOUNDING itself to
+     * match, which every compositor DOES reliably honor for click
+     * routing, at the cost of a real, always-visible dim backdrop
+     * disc (see that function's own header comment for the exact
+     * reasoning/color choice). */
     if (g_is_cursword) {
 #ifndef _WIN32
         Pixmap input_mask = XCreatePixmap(dpy, win, (unsigned)WIN_PX, (unsigned)WIN_PX, 1);
@@ -2465,6 +2515,10 @@ int main(int argc, char **argv) {
         XFreeGC(dpy, input_gc);
         XFreePixmap(dpy, input_mask);
 #endif
+        /* Real fix - widen ShapeBOUNDING too, from the very start (not
+         * just after the first arm/disarm), so the wider grab surface
+         * is real from cursword's first frame on screen. */
+        cursword_update_shape(dpy, win);
     }
 
     int screen_w = DisplayWidth(dpy, DefaultScreen(dpy));
@@ -3956,6 +4010,23 @@ int main(int argc, char **argv) {
              * key-log text never lingers under a fresh background. */
             XFillRectangle(dpy, g_buf, g_buf_gc, 0, 0, WIN_PX,
                             (unsigned)(WIN_PX + (g_is_cursword ? CURSWORD_LOG_H : 0)));
+            /* REAL, NEW 2026-08-30, direct report ("im still having to
+             * click right on the image") + direct instruction ("solid
+             * disc but very low transparency") - draws the real, dim
+             * backdrop disc that now permanently occupies cursword's
+             * widened ShapeBounding (see cursword_update_shape()'s own
+             * header comment for the full reasoning: this window has
+             * no real per-pixel alpha, so a near-black fill is the
+             * closest honest stand-in for "very low transparency").
+             * Drawn BEFORE the sprite, always (not gated on armed), so
+             * the sprite still renders crisp on top of it. */
+            if (g_is_cursword) {
+                XSetForeground(dpy, g_buf_gc, 0x141414UL);
+                int dcx = WIN_PX / 2, dcy = WIN_PX / 2;
+                int dradius = WIN_PX / 2 - 5;
+                XFillArc(dpy, g_buf, g_buf_gc, dcx - dradius, dcy - dradius,
+                          (unsigned)(dradius * 2), (unsigned)(dradius * 2), 0, 360 * 64);
+            }
             /* Real, visible armed-state halo (§3a/§9 item 4: overlay/
              * ring, never replacing the sprite). STALE NOTE, corrected
              * 2026-08-30: originally drawn BEFORE the sprite here,
