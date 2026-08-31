@@ -10100,6 +10100,37 @@ static int pchq_theme_changed_dirty(const char *house_root) {
     return 0;
 }
 
+/* REAL, NEW 2026-08-30, direct instruction ("lets look into dropdown
+ * for pc taskbar (file and desk menu etc) cuz thats how we will prove
+ * save load projects [note this as well, i haven't seen save load
+ * from file in pc yet]") - File's own two real states
+ * (default-pdl/default-legacy) are tracked in the HOST's own real,
+ * static config.txt (pc_menu_input.c's FILE_MENU/DESK_MENU handlers
+ * write active_level/active_board there via resolve_real_root() -
+ * confirmed by direct read: that resolves to the STATIC project root,
+ * not the ephemeral session dir, since real_project_root.txt always
+ * points back to it). Reading the SAME static path directly - no
+ * session resolution needed, this file is written once per real
+ * FILE_MENU/DESK_MENU action regardless of which session triggered
+ * it. */
+static void pchq_read_config_kv(const char *house_root, const char *host_project_id, const char *key, char *out, size_t outsz) {
+    out[0] = '\0';
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/@.apps/%s/pieces/system/config.txt", house_root, host_project_id);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[PATH_BUF];
+    size_t klen = strlen(key);
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, key, klen) == 0 && line[klen] == '=') {
+            snprintf(out, outsz, "%s", line + klen + 1);
+            out[strcspn(out, "\r\n")] = '\0';
+            break;
+        }
+    }
+    fclose(f);
+}
+
 static void pchq_quit_host_session(const char *house_root, const char *host_project_id) {
     char sessions_dir[PATH_BUF];
     snprintf(sessions_dir, sizeof(sessions_dir), "%s/@.apps/%s/pieces/sessions", house_root, host_project_id);
@@ -10318,6 +10349,7 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
 #define PCHQ_TOOLBAR_H 28
 #define PCHQ_CLOSE_W 74
 #define PCHQ_FULLSCREEN_W 56
+#define PCHQ_DROPDOWN_ROW_H 22
     int canvas_w = 640, canvas_h = 480; /* real defaults, resized from the overlay's own receipt below */
     int win_x = 140, win_y = 90;
     int dragging = 0, drag_last_x = 0, drag_last_y = 0;
@@ -10437,6 +10469,24 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
     int pchq_is_fullscreen = 0;
     int pchq_opacity_reapplied = 0;
 
+    /* REAL, NEW 2026-08-30 - File/Desk real dropdowns, so switching
+     * levels/boards is a real, visible pick instead of a blind cycle -
+     * direct instruction: "thats how we will prove save load
+     * projects... i haven't seen save load from file in pc yet".
+     * pchq_dropdown: 0=closed, 1=File open, 2=Desk open.
+     * File has exactly 2 real states today (default-pdl/default-
+     * legacy, per pc_menu_input.c's own FILE_MENU handler) - picking
+     * the non-current one sends the same real cycle key that already
+     * works, just through a real visible list instead of blind
+     * toggling. Desk has exactly 1 real board today (confirmed by
+     * direct read of defaults/default-pdl/default.pdl) - still real
+     * infrastructure, ready for when more boards exist, not
+     * fabricated content. */
+    int pchq_dropdown = 0;
+    int pchq_dropdown_focus = 0;
+    char pchq_active_level[64] = "";
+    char pchq_active_board[64] = "";
+
     int running = 1;
     int pchq_focus_ok = 0;
     while (running) {
@@ -10506,6 +10556,14 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
          * THIS toolbar's own focus while off, and forward unconditionally
          * to the game once on - "everything is normal till in interact"). */
         int pchq_interact_on = pchq_is_interact_on(bv_session);
+        /* Real, live active_level/active_board readback for the File/
+         * Desk dropdowns - only bothered with while a dropdown is
+         * actually open, to avoid a pointless file read every frame
+         * the rest of the time. */
+        if (pchq_dropdown) {
+            pchq_read_config_kv(house_root, host_project_id, "active_level", pchq_active_level, sizeof(pchq_active_level));
+            pchq_read_config_kv(house_root, host_project_id, "active_board", pchq_active_board, sizeof(pchq_active_board));
+        }
 
         /* Real title chrome - just a title, Close now lives here as a
          * real Elem (see below), not a separate hand-drawn duplicate. */
@@ -10659,6 +10717,49 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
         if (ov_img)
             XPutImage(dpy, buf, gc, ov_img, 0, 0, 0, CHROME_H + PCHQ_TOOLBAR_H, (unsigned)ov_w_cur, (unsigned)ov_h_cur);
 
+        /* Real File/Desk dropdown - drawn AFTER the content blit above
+         * (real bug, caught live: drawing it BEFORE meant the content
+         * canvas fill/blit - which starts at the SAME y as the
+         * dropdown - painted straight over it every frame; state was
+         * always correct, confirmed via debug print, only the paint
+         * order was wrong) so it actually renders on top, real rows,
+         * real current-state marker (see pchq_dropdown's own
+         * declaration comment for the full real behavior). */
+        if (pchq_dropdown) {
+            int n_rows = (pchq_dropdown == 1) ? 2 : 1;
+            int dropdown_x = elems[pchq_dropdown == 1 ? PCHQ_ACT_FILE : PCHQ_ACT_DESK].x;
+            int dropdown_y = CHROME_H + PCHQ_TOOLBAR_H;
+            int dropdown_w = 150;
+            XSetForeground(dpy, gc, pix_unfocus_fill);
+            XFillRectangle(dpy, buf, gc, dropdown_x, dropdown_y, (unsigned)dropdown_w, (unsigned)(n_rows * PCHQ_DROPDOWN_ROW_H));
+            XSetForeground(dpy, gc, pix_unfocus_border);
+            XDrawRectangle(dpy, buf, gc, dropdown_x, dropdown_y, (unsigned)dropdown_w - 1, (unsigned)(n_rows * PCHQ_DROPDOWN_ROW_H) - 1);
+            for (int r = 0; r < n_rows; r++) {
+                int row_y = dropdown_y + r * PCHQ_DROPDOWN_ROW_H;
+                int row_focused = (r == pchq_dropdown_focus);
+                int is_current;
+                const char *row_label;
+                if (pchq_dropdown == 1) {
+                    int is_legacy = (strcmp(pchq_active_level, "default-legacy") == 0);
+                    is_current = (r == (is_legacy ? 1 : 0));
+                    row_label = (r == 0) ? "default-pdl" : "default-legacy";
+                } else {
+                    is_current = 1; /* the one real board is always the active one today */
+                    row_label = pchq_active_board[0] ? pchq_active_board : "default";
+                }
+                if (row_focused) {
+                    XSetForeground(dpy, gc, pix_focus_fill);
+                    XFillRectangle(dpy, buf, gc, dropdown_x + 1, row_y + 1, (unsigned)dropdown_w - 2, (unsigned)PCHQ_DROPDOWN_ROW_H - 2);
+                }
+                if (pchq_body_font) {
+                    char row_text[64];
+                    snprintf(row_text, sizeof(row_text), "%s%s", is_current ? "* " : "  ", row_label);
+                    XftDrawStringUtf8(xftdraw, row_focused ? &col_focus : &col_unfocus, pchq_body_font,
+                                       dropdown_x + 6, row_y + PCHQ_DROPDOWN_ROW_H - 6, (const FcChar8 *)row_text, (int)strlen(row_text));
+                }
+            }
+        }
+
         XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)win_w, (unsigned)win_h, 0, 0);
         XFlush(dpy);
 
@@ -10707,7 +10808,42 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                  * dual-mode model. pchq_interact_on (resolved once this
                  * frame, above) is the one real signal deciding which
                  * side of that boundary we're on. */
-                if (!pchq_interact_on) {
+                if (pchq_dropdown) {
+                    /* Real dropdown mode - takes priority over normal
+                     * toolbar nav while open (matches the taskbar's
+                     * own popup-vs-header nav priority). Row count is
+                     * fixed per dropdown kind: File=2 (default-pdl/
+                     * default-legacy), Desk=1 (the one real board
+                     * today). */
+                    int n_rows = (pchq_dropdown == 1) ? 2 : 1;
+                    if (ks == XK_Escape) {
+                        pchq_dropdown = 0;
+                    } else if (ks == XK_Up || ks == XK_Left) {
+                        pchq_dropdown_focus = (pchq_dropdown_focus - 1 + n_rows) % n_rows;
+                    } else if (ks == XK_Down || ks == XK_Right || ks == XK_Tab) {
+                        pchq_dropdown_focus = (pchq_dropdown_focus + 1) % n_rows;
+                    } else if (ks == XK_Return || ks == XK_KP_Enter) {
+                        if (pchq_dropdown == 1) {
+                            /* Row 0 = default-pdl, row 1 = default-legacy
+                             * (matches pc_menu_input.c's own FILE_MENU
+                             * cycle order). Picking whichever ISN'T
+                             * already active sends the same real cycle
+                             * key that already works - two states, one
+                             * cycle key, a real visible pick instead of
+                             * a blind toggle. Picking the ALREADY-active
+                             * one is a real no-op (matches "you're
+                             * already here"). */
+                            int is_legacy = (strcmp(pchq_active_level, "default-legacy") == 0);
+                            int current_row = is_legacy ? 1 : 0;
+                            if (pchq_dropdown_focus != current_row) pchq_append_key(bv_history1, bv_history2, '5');
+                        } else {
+                            /* Desk - the one real board, reload it
+                             * (matches DESK_MENU's own real behavior). */
+                            pchq_append_key(bv_history1, bv_history2, '6');
+                        }
+                        pchq_dropdown = 0;
+                    }
+                } else if (!pchq_interact_on) {
                     /* Normal nav mode - arrows move THIS toolbar's own
                      * focus, digits 1-4 jump-select the SAME real way
                      * the legacy engine's own numbered rows do
@@ -10732,9 +10868,13 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                     }
                     if (activate) {
                         if (pchq_focus == PCHQ_ACT_FILE) {
-                            pchq_append_key(bv_history1, bv_history2, '5');
+                            /* REAL, NEW 2026-08-30 - open a real
+                             * dropdown instead of blind-cycling (see
+                             * pchq_dropdown's own declaration comment
+                             * above). */
+                            pchq_dropdown = 1; pchq_dropdown_focus = 0;
                         } else if (pchq_focus == PCHQ_ACT_DESK) {
-                            pchq_append_key(bv_history1, bv_history2, '6');
+                            pchq_dropdown = 2; pchq_dropdown_focus = 0;
                         } else if (pchq_focus == PCHQ_ACT_MENU) {
                             /* Real stub - Menu has no dispatch yet (see
                              * its own declaration comment above). */
@@ -10793,6 +10933,27 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                         if (mapped > 0) pchq_append_key(bv_history1, bv_history2, mapped);
                     }
                 }
+            } else if (pchq_dropdown && ev.type == ButtonPress && ev.xbutton.button == Button1) {
+                /* Real dropdown row click - see the KeyPress dropdown
+                 * branch above for the real row-count/action shape;
+                 * geometry mirrors the draw code below exactly
+                 * (dropdown_x/y/w, PCHQ_DROPDOWN_ROW_H). */
+                int n_rows = (pchq_dropdown == 1) ? 2 : 1;
+                int dropdown_x = elems[pchq_dropdown == 1 ? PCHQ_ACT_FILE : PCHQ_ACT_DESK].x;
+                int dropdown_y = CHROME_H + PCHQ_TOOLBAR_H;
+                int dropdown_w = 150;
+                int row = (ev.xbutton.x >= dropdown_x && ev.xbutton.x < dropdown_x + dropdown_w &&
+                           ev.xbutton.y >= dropdown_y) ? (ev.xbutton.y - dropdown_y) / PCHQ_DROPDOWN_ROW_H : -1;
+                if (row >= 0 && row < n_rows) {
+                    if (pchq_dropdown == 1) {
+                        int is_legacy = (strcmp(pchq_active_level, "default-legacy") == 0);
+                        int current_row = is_legacy ? 1 : 0;
+                        if (row != current_row) pchq_append_key(bv_history1, bv_history2, '5');
+                    } else {
+                        pchq_append_key(bv_history1, bv_history2, '6');
+                    }
+                }
+                pchq_dropdown = 0;
             } else if (ev.type == ButtonPress && ev.xbutton.button == Button1) {
                 int hit = -1;
                 for (int i = 0; i < PCHQ_N_ELEMS; i++) {
@@ -10811,9 +10972,9 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                     pchq_focus = hit;
                     if (activate) {
                         if (hit == PCHQ_ACT_FILE) {
-                            pchq_append_key(bv_history1, bv_history2, '5');
+                            pchq_dropdown = 1; pchq_dropdown_focus = 0;
                         } else if (hit == PCHQ_ACT_DESK) {
-                            pchq_append_key(bv_history1, bv_history2, '6');
+                            pchq_dropdown = 2; pchq_dropdown_focus = 0;
                         } else if (hit == PCHQ_ACT_MENU) {
                             /* Real stub - see declaration comment above. */
                         } else if (hit == PCHQ_ACT_PLAYER) {
