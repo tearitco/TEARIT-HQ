@@ -2435,6 +2435,38 @@ int main(int argc, char **argv) {
         /* Win: per-pixel alpha via UpdateLayeredWindow in XPutImage (XShape shim). */
     }
 
+    /* REAL, NEW 2026-08-30, direct live report ("teh cursword is a
+     * very thin png so since its hard to grab, could we make its grab
+     * surface wider (like within the halo circle, even when halo
+     * isn't visible?)") - X11's Shape extension has TWO independent
+     * masks: ShapeBounding (what's drawn/visible - build_shape_mask()'s
+     * own sprite-silhouette-only real behavior above, unchanged, so
+     * cursword still LOOKS exactly as thin as its sprite) and
+     * ShapeInput (what actually receives clicks/pointer events - can
+     * be a completely different, WIDER shape with zero visual change).
+     * Set once here, real full-circle radius matching the halo ring's
+     * own geometry (cursword_update_shape()'s WIN_PX/2-5), so every
+     * click anywhere inside that circle - not just on the thin visible
+     * pixels - now hits cursword, whether armed or not. Cursword-only
+     * (g_is_cursword), every other entity's own real click hit-testing
+     * is completely unaffected. */
+    if (g_is_cursword) {
+#ifndef _WIN32
+        Pixmap input_mask = XCreatePixmap(dpy, win, (unsigned)WIN_PX, (unsigned)WIN_PX, 1);
+        GC input_gc = XCreateGC(dpy, input_mask, 0, NULL);
+        XSetForeground(dpy, input_gc, 0);
+        XFillRectangle(dpy, input_mask, input_gc, 0, 0, WIN_PX, WIN_PX);
+        XSetForeground(dpy, input_gc, 1);
+        int icx = WIN_PX / 2, icy = WIN_PX / 2;
+        int iradius = WIN_PX / 2 - 5;
+        XFillArc(dpy, input_mask, input_gc, icx - iradius, icy - iradius,
+                 (unsigned)(iradius * 2), (unsigned)(iradius * 2), 0, 360 * 64);
+        XShapeCombineMask(dpy, win, ShapeInput, 0, 0, input_mask, ShapeSet);
+        XFreeGC(dpy, input_gc);
+        XFreePixmap(dpy, input_mask);
+#endif
+    }
+
     int screen_w = DisplayWidth(dpy, DefaultScreen(dpy));
     int screen_h = DisplayHeight(dpy, DefaultScreen(dpy));
     int max_col = (screen_w / GRID_CELL_PX) - 1;
