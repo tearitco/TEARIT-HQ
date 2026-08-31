@@ -3736,6 +3736,33 @@ int main(int argc, char **argv) {
                         XMoveWindow(dpy, win, win_x, win_y);
                         write_pos(package_dir, win_x, win_y);
                         need_redraw = 1;
+                    } else if (ks2 == XK_1 || ks2 == XK_2 || ks2 == XK_3 || ks2 == XK_4) {
+                        /* REAL, NEW 2026-08-30 - desktop-wide camera-mode
+                         * switch, design doc §9 item #6: "since real key
+                         * capture only begins once cursword is genuinely
+                         * ARMED... board-viewer's own real 1-4 camera_mode
+                         * keys can be reused verbatim with zero real
+                         * collision risk." Same real key-set/semantics as
+                         * board-viewer's own bv_menu_input.c (1=first
+                         * person, 2=third person, 3=free roam, 4=bird's
+                         * eye) but written to a NEW, desktop-wide shared
+                         * state file (§9 item #5) rather than a
+                         * per-project one - every desktop entity's own
+                         * window can poll this to know the current
+                         * camera mode once real 3D re-rendering is wired
+                         * (still explicitly deferred, §8 item 4 - this is
+                         * only the real control-side plumbing, matching
+                         * the doc's own "no code until the enabling
+                         * mechanism exists" discipline). */
+                        int mode = ks2 - XK_0;
+                        char camp[PATH_BUF];
+                        snprintf(camp, sizeof(camp), "%s/#.desktop/desktop_camera_mode.txt", g_house_root);
+                        FILE *cf = fopen(camp, "w");
+                        if (cf) { fprintf(cf, "%d\n", mode); fclose(cf); }
+                        append_history(mode == 1 ? "CURSWORD_CAMERA_1_FIRSTPERSON" :
+                                       mode == 2 ? "CURSWORD_CAMERA_2_THIRDPERSON" :
+                                       mode == 3 ? "CURSWORD_CAMERA_3_FREEROAM" :
+                                                   "CURSWORD_CAMERA_4_BIRDSEYE");
                     }
                 } else if (popup_win || user_popup_win || input_popup_win || text_popup_win || input_active) {
                     /* REAL FIX 2026-08-07, direct instruction ("print
