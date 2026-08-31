@@ -1330,7 +1330,12 @@ static int load_glyph_font(Display *dpy) {
 static void draw_glyph_rgb(Display *dpy, Drawable buf, GC gc, char g) {
     if (!g_font_info) return;
     XSetFont(dpy, gc, g_font_info->fid);
-    XSetForeground(dpy, gc, BlackPixel(dpy, DefaultScreen(dpy)));
+    /* Real, new 2026-08-30 - BlackPixel() alone has no real alpha byte
+     * (0 in the high byte), which would draw fully TRANSPARENT text on
+     * cursword's own new ARGB32 window - see draw_sprite_rgb()'s own
+     * matching comment. Harmless no-op high byte on every other
+     * entity's plain 24-bit window. */
+    XSetForeground(dpy, gc, 0xFF000000UL | BlackPixel(dpy, DefaultScreen(dpy)));
     int cw = WIN_PX / 2, ch = (g_font_info->ascent + g_font_info->descent);
     int x = (WIN_PX - cw) / 2;
     int y = (WIN_PX + g_font_info->ascent - g_font_info->descent) / 2;
@@ -1543,7 +1548,15 @@ static void draw_sprite_rgb(Display *dpy, Drawable buf, GC gc, int bg_r, int bg_
             int r = (p[0] * a + bg_r * (255 - a)) / 255;
             int g = (p[1] * a + bg_g * (255 - a)) / 255;
             int b = (p[2] * a + bg_b * (255 - a)) / 255;
-            XSetForeground(dpy, gc, ((unsigned long)r << 16) | ((unsigned long)g << 8) | (unsigned long)b);
+            /* Real, new 2026-08-30 - the top byte is a real alpha
+             * channel on cursword's own new ARGB32 window (see the
+             * XCreateWindow ARGB-visual comment near main()'s window
+             * setup) and a harmless no-op high byte on every other
+             * entity's plain 24-bit window (silently masked off by the
+             * X server, never stored) - always opaque here, since this
+             * function already does its own real alpha blend against
+             * bg_r/g/b above. */
+            XSetForeground(dpy, gc, 0xFF000000UL | ((unsigned long)r << 16) | ((unsigned long)g << 8) | (unsigned long)b);
             XDrawPoint(dpy, buf, gc, x, y);
         }
     }
@@ -2374,14 +2387,37 @@ int main(int argc, char **argv) {
     Visual *vis = DefaultVisual(dpy, screen_num);
     int depth = DefaultDepth(dpy, screen_num);
 
+    /* REAL, NEW 2026-08-30, direct instruction ("Do the real ARGB
+     * transparency") - a real 32-bit ARGB TrueColor visual for
+     * cursword's own window ONLY (every other entity keeps the plain
+     * default visual/depth above, completely untouched). Real per-
+     * pixel alpha this way is handled by the COMPOSITOR itself
+     * (mutter/XWayland here) directly from this window's own backing
+     * pixels - no XRenderComposite call needed on this side, the same
+     * standard technique real transparent-window apps use. XMatchVisualInfo
+     * with class=TrueColor, depth=32 is the common, simple way to find
+     * it (virtually universal under a modern compositing X/XWayland
+     * setup) - if it's ever unavailable, this falls back to the exact
+     * same plain visual/depth every other entity already uses, so
+     * cursword just loses real transparency (back to the flat-color
+     * disc), never crashes/breaks. */
+    XVisualInfo argb_vinfo;
+    int have_argb_visual = 0;
+    if (g_is_cursword)
+        have_argb_visual = XMatchVisualInfo(dpy, screen_num, 32, TrueColor, &argb_vinfo);
+    Visual *win_vis = have_argb_visual ? argb_vinfo.visual : vis;
+    int win_depth = have_argb_visual ? argb_vinfo.depth : depth;
+
     XSetWindowAttributes swa;
-    swa.colormap = XCreateColormap(dpy, RootWindow(dpy, screen_num), vis, AllocNone);
+    swa.colormap = XCreateColormap(dpy, RootWindow(dpy, screen_num), win_vis, AllocNone);
     swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask;
     swa.override_redirect = True;
+    swa.border_pixel = 0; /* real X11 requirement whenever a window's own depth differs from its parent's (root's) - harmless to set unconditionally */
+    swa.background_pixel = 0;
 
     Window win = XCreateWindow(dpy, RootWindow(dpy, screen_num), 3 * GRID_CELL_PX, 3 * GRID_CELL_PX, WIN_PX, WIN_PX,
-                                0, depth, InputOutput, vis,
-                                CWColormap | CWEventMask | CWOverrideRedirect, &swa);
+                                0, win_depth, InputOutput, win_vis,
+                                CWColormap | CWEventMask | CWOverrideRedirect | CWBorderPixel | CWBackPixel, &swa);
     XMapWindow(dpy, win);
     set_window_opacity(dpy, win, load_theme_opacity(g_house_root));
     /* REAL FIX 2026-08-29, direct live report ("entities and tb dropdown
@@ -2414,7 +2450,7 @@ int main(int argc, char **argv) {
      * unaffected (g_is_cursword false, buffer stays exactly WIN_PX x
      * WIN_PX as before). */
     Pixmap g_buf = XCreatePixmap(dpy, win, (unsigned)WIN_PX,
-                                  (unsigned)(WIN_PX + (g_is_cursword ? CURSWORD_LOG_H : 0)), (unsigned)depth);
+                                  (unsigned)(WIN_PX + (g_is_cursword ? CURSWORD_LOG_H : 0)), (unsigned)win_depth);
     GC g_buf_gc = XCreateGC(dpy, g_buf, 0, NULL);
     /* REAL FIX 2026-08-05, direct instruction ("context window should
      * have name/id of entity, so its addressable by others"): the
@@ -4003,7 +4039,10 @@ int main(int argc, char **argv) {
 
         {
             int bg_r = (int)(r * 255.0f), bg_g = (int)(g * 255.0f), bg_b = (int)(b * 255.0f);
-            XSetForeground(dpy, g_buf_gc, ((unsigned long)bg_r << 16) | ((unsigned long)bg_g << 8) | (unsigned long)bg_b);
+            /* Real, new 2026-08-30 - explicit full alpha, see
+             * draw_sprite_rgb()'s own matching comment (harmless
+             * no-op high byte for every non-cursword entity). */
+            XSetForeground(dpy, g_buf_gc, 0xFF000000UL | ((unsigned long)bg_r << 16) | ((unsigned long)bg_g << 8) | (unsigned long)bg_b);
             /* Real, new 2026-08-30: cursword's own buffer reserves
              * CURSWORD_LOG_H extra rows (see the g_buf XCreatePixmap
              * comment above) - cleared here too every frame so stale
@@ -4019,9 +4058,19 @@ int main(int argc, char **argv) {
              * no real per-pixel alpha, so a near-black fill is the
              * closest honest stand-in for "very low transparency").
              * Drawn BEFORE the sprite, always (not gated on armed), so
-             * the sprite still renders crisp on top of it. */
+             * the sprite still renders crisp on top of it.
+             * REAL FOLLOW-UP 2026-08-30 ("i wanted to change the
+             * colors alpha... very transparent") - genuine per-pixel
+             * alpha now, not a color trick: cursword's own window is a
+             * real 32-bit ARGB visual (see the XMatchVisualInfo setup
+             * near main()'s window creation) - the compositor blends
+             * this disc against whatever's really behind it using the
+             * alpha byte below (0x20 of 0xFF, ~12%), same gray
+             * (0x141414) the user already confirmed was the right
+             * color. Trivially tunable - raise/lower just the leading
+             * byte to taste. */
             if (g_is_cursword) {
-                XSetForeground(dpy, g_buf_gc, 0x141414UL);
+                XSetForeground(dpy, g_buf_gc, 0x20141414UL);
                 int dcx = WIN_PX / 2, dcy = WIN_PX / 2;
                 int dradius = WIN_PX / 2 - 5;
                 XFillArc(dpy, g_buf, g_buf_gc, dcx - dradius, dcy - dradius,
@@ -4069,7 +4118,11 @@ int main(int argc, char **argv) {
                      * blue") - matches this house's own real "amber
                      * tint = armed" precedent (§3a) more closely than
                      * blue ever did. */
-                    XSetForeground(dpy, g_buf_gc, 0xFFD400UL);
+                    /* Real, new 2026-08-30: explicit full alpha (see
+                     * draw_sprite_rgb()'s own matching comment) - the
+                     * halo itself stays fully opaque, only the disc
+                     * behind it (drawn above) is translucent. */
+                    XSetForeground(dpy, g_buf_gc, 0xFFFFD400UL);
                     XSetLineAttributes(dpy, g_buf_gc, 9, LineSolid, CapButt, JoinMiter);
                     XDrawArc(dpy, g_buf, g_buf_gc, cx - halo_radius, cy - halo_radius, (unsigned)(halo_radius * 2), (unsigned)(halo_radius * 2), 0, 360 * 64);
                     XSetLineAttributes(dpy, g_buf_gc, 0, LineSolid, CapButt, JoinMiter);
@@ -4092,7 +4145,9 @@ int main(int argc, char **argv) {
                     if (wrote < 0 || (size_t)wrote >= sizeof(logline) - loff) break;
                     loff += (size_t)wrote;
                 }
-                XSetForeground(dpy, g_buf_gc, 0xFFFFFFUL);
+                /* Real, new 2026-08-30: explicit full alpha, same
+                 * reasoning as the halo just above. */
+                XSetForeground(dpy, g_buf_gc, 0xFFFFFFFFUL);
                 popup_draw_text(dpy, g_buf, g_buf_gc, 2, WIN_PX + CURSWORD_LOG_H - 6,
                                  logline[0] ? logline : "(no keys yet)");
             }
