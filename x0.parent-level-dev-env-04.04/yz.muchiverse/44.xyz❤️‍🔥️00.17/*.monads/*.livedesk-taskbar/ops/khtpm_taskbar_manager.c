@@ -27,6 +27,12 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
+/* Forward decl - ktb_init() (below) needs this before its own real
+ * definition, further down this file (see that definition's own header
+ * comment: cursword must always be running, checked/relaunched on every
+ * taskbar-manager start). */
+static void livedesk_ensure_cursword(const char *house_root);
+
 /* REAL, NEW 2026-08-25 (direct request: a general "kill hq" menu row that
  * covers EVERYTHING the taskbar launches, not just a fixed -hq binary
  * name list — real live test proved the fixed-list kill_hq_windows.sh
@@ -252,6 +258,15 @@ void ktb_init(KtbState *s, const char *house_root) {
     s->strip_focus_cell = 0; /* matches tp_taskbar.c's own strip_focus_cell default (button 1 / HQ) */
     s->strip_user_cmd[0] = '\0';
     ktb_load_cell_ids(s);
+    /* Real, new 2026-08-30, direct instruction ("cursword is an entity
+     * that should always be open... its the users assistant. 1rst
+     * entity."): every taskbar-manager start is a real opportunity for
+     * cursword to have lapsed (first boot ever, a prior crash, having
+     * been closed by hand last session) - see
+     * livedesk_ensure_cursword()'s own header comment (declared later
+     * in this same file, forward-declared alongside livedesk_close_all
+     * near the top) for the full real design. */
+    livedesk_ensure_cursword(s->house_root);
 }
 
 /* REAL, NEW 2026-08-16 - see KtbState's own cell_id_pos/cell_id_str
@@ -1730,6 +1745,16 @@ static void livedesk_close_all(const char *house_root) {
     char ents[KTB_LIVEDESK_MAX_OPEN][128], paths[KTB_LIVEDESK_MAX_OPEN][KTB_PATH_BUF];
     int n = livedesk_read_open(house_root, pids, ents, paths, idx, KTB_LIVEDESK_MAX_OPEN);
     for (int i = 0; i < n; i++) {
+        /* REAL, NEW 2026-08-30, direct instruction ("cursword is an
+         * entity that should always be open... its the users
+         * assistant. 1rst entity"): cursword is exempt from every
+         * "close all" sweep - a desk switch, session load, or reset
+         * must never close it, only the real entities the DESK file
+         * itself owns. See livedesk_ensure_cursword() (which re-spawns
+         * it if it's ever found missing) for the other half of this. */
+        char base[64];
+        livedesk_base_name(paths[i], base, sizeof(base));
+        if (strcmp(base, "cursword") == 0) continue;
         char relay[KTB_PATH_BUF];
         snprintf(relay, sizeof(relay), "%s/interact_relay.txt", paths[i]);
         FILE *cf = fopen(relay, "w");
@@ -1739,6 +1764,56 @@ static void livedesk_close_all(const char *house_root) {
         struct timespec ts = {0, 450 * 1000 * 1000};
         nanosleep(&ts, NULL);
     }
+}
+
+/* REAL, NEW 2026-08-30, direct instruction ("cursword is an entity that
+ * should always be open. even if others aren't. its the users assistant.
+ * 1rst entity. how do we make that so?"): cursword is the one entity that
+ * lives OUTSIDE the desk-file/session model entirely - it's not "on" any
+ * particular desk, it's always there regardless of which desk/session is
+ * active. This checks the real live registry (same source of truth
+ * livedesk_spawn_desk's own dedup check already uses) for a real, alive
+ * process whose pal dir basename is "cursword"; if none is found - first
+ * boot, a crash, or the entity having been closed by hand - it spawns one
+ * fresh from the user's own pals/cursword copy (same exe + nohup pattern
+ * livedesk_spawn_desk uses), reusing its last saved desktop_pos.txt if
+ * present so it doesn't jump around desk-to-desk. Callers: main() at
+ * startup, and right after every livedesk_spawn_desk() call (desk switch,
+ * session load, new session/desk, reset) - anywhere entities get
+ * (re)launched or torn down is a place cursword's own presence could have
+ * lapsed. */
+static void livedesk_ensure_cursword(const char *house_root) {
+    char pr[KTB_PATH_BUF];
+    if (!livedesk_pals_root(house_root, pr, sizeof(pr))) return;
+    char pal[KTB_PATH_BUF];
+    snprintf(pal, sizeof(pal), "%s/cursword", pr);
+    if (access(pal, F_OK) != 0) return; /* no cursword pal provisioned for this user - nothing to ensure */
+
+    int pids[KTB_LIVEDESK_MAX_OPEN], idx[KTB_LIVEDESK_MAX_OPEN];
+    char ents[KTB_LIVEDESK_MAX_OPEN][128], paths[KTB_LIVEDESK_MAX_OPEN][KTB_PATH_BUF];
+    int n = livedesk_read_open(house_root, pids, ents, paths, idx, KTB_LIVEDESK_MAX_OPEN);
+    for (int i = 0; i < n; i++) {
+        char base[64];
+        livedesk_base_name(paths[i], base, sizeof(base));
+        if (strcmp(base, "cursword") == 0 && ktb_pid_alive(pids[i])) return; /* already alive */
+    }
+
+    char exe[KTB_PATH_BUF];
+    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x", house_root);
+#ifdef _WIN32
+    win_star_alias(exe);
+    win_exe_suffix(exe);
+    for (char *p = exe; *p; p++) if (*p == '/') *p = '\\';
+#endif
+    if (access(exe, F_OK) != 0) return;
+#ifdef _WIN32
+    win_spawn_cwd(exe, pal);
+#else
+    char cmd[KTB_PATH_BUF * 2];
+    snprintf(cmd, sizeof(cmd), KTB_SETSID "nohup '%s' '%s' >/dev/null 2>&1 < /dev/null &", exe, pal);
+    int rc = ktb_system_recorded(house_root, cmd);
+    (void)rc;
+#endif
 }
 
 static void livedesk_spawn_desk(const char *house_root, const char *sroot, const char *id, const char *desk) {
@@ -1887,6 +1962,12 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
 #endif
     }
     fclose(f);
+    /* Real, new 2026-08-30: whatever desk just (re)spawned its own real
+     * entities above, cursword is never one of the DESK rows read from
+     * it - it lives outside the desk model entirely (see
+     * livedesk_ensure_cursword()'s own header comment) - so it needs its
+     * own explicit re-check every time this function runs. */
+    livedesk_ensure_cursword(house_root);
 }
 
 static void livedesk_default_session(const char *house_root, const char *sroot, char *out, size_t sz) {
@@ -1964,8 +2045,12 @@ static void livedesk_kill_stray_entities(const char *house_root) {
         cmdbuf[nb] = '\0';
         for (size_t i = 0; i < nb; i++) if (cmdbuf[i] == '\0') cmdbuf[i] = ' ';
         /* Kill both legacy entities (tp_desktop_window) and khtpm subwindows
-         * (open-hai, db-hq, events-hq, etc.) that reference this house_root. */
-        if (strstr(cmdbuf, house_root) &&
+         * (open-hai, db-hq, events-hq, etc.) that reference this house_root.
+         * REAL, NEW 2026-08-30: cursword is exempt (see
+         * livedesk_ensure_cursword()'s own header comment) - it should
+         * survive this sweep exactly like a normal close, never get
+         * hard-killed as a "stray". */
+        if (strstr(cmdbuf, house_root) && !strstr(cmdbuf, "/pals/cursword") &&
             (strstr(cmdbuf, "tp_desktop_window") || strstr(cmdbuf, "khtpm_open_hai_render") ||
              strstr(cmdbuf, "khtpm_hq_render"))) {
             int pid = atoi(ent->d_name);
