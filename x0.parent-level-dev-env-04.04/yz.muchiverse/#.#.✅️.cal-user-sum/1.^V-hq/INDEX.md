@@ -12,6 +12,20 @@ conversation that isn't written down anywhere else yet, and real
 questions worth settling before the next session starts. Smaller and
 faster to read than working through Tier 1/2 cold.
 
+**🪤 `44.xyz❤️‍🔥️00.17/HOUSE_CODE_PITFALLS.md` (2026-08-31)** — real,
+live-confirmed problems + fixes/diagnostic paths, general-purpose (not
+scoped to one feature): stale processes surviving `pkill -f` on this
+house's own emoji/star-globbed paths, runtime `#.desktop/*.txt` state
+surviving a source `git reset --hard`, external screenshot capture
+racing live redraws, timing-race false positives right after an
+edit+reset, relay files keyed by package PATH inheriting a stale
+command from a killed prior process, static entity lists drifting from
+the real active desk, `.chtpm` submenu nesting rules, verifying
+subagent root-cause claims before trusting them, and the real
+relay-injection testing order of preference. Read this whenever
+something "looks broken" right after a change — several of these
+produce symptoms indistinguishable from a real code regression.
+
 **🛑 `^.ONE-MAP-ATTEMPT-ABANDONED.md` (2026-08-31) — read this BEFORE
 touching camera modes, one-map, or per-desktop z-level stacking.**
 The "one map" shared-compositor 3D idea (single X11 window raymarching
