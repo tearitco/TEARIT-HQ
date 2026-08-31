@@ -88,17 +88,29 @@ terminal tab) is still not started.
    without duplicating effort), and a read on the user's own working style.
    Everything below this entry is task/architecture detail; this one is
    judgment.
--2. **TPMOS-COMPLIANCE-DEBT.md — RESOLVED 2026-08-25 (was STANDING #1 PRIORITY;
-   corrected 2026-08-29 doc-audit pass, this entry had gone stale behind the doc's own
-   "Status update, 2026-08-25" section)** — real, confirmed architecture violations found
-   while migrating stats-hq: all 3 launcher scripts (`stats-hq`, `palettes`, `bookmarks`)
-   generated `.chtpm` UI markup via raw bash `printf` of XML tags, with no real manager
-   process and no compiled, testable Op — violated TPMOS §11/§12 directly, and stats-hq's
-   tabs were actually broken (labels never matched the renderer's own `TAB_LABELS[]`). All
-   3 now have real managers matching `khtpm_hq_manager.c`'s shape; see that doc's own
-   "Status update" section for the rebuild details. Read this BEFORE building or
-   extending ANY taskbar-launched window/menu — this pattern looks like it works and is
-   the nearest copy-paste example in the tree for exactly that reason. Full inventory,
+-2. **TPMOS-COMPLIANCE-DEBT.md — REOPENED 2026-08-31 (the original 3
+   printf-XML violations stay RESOLVED 2026-08-25; a real, DIFFERENT,
+   4th violation was found and condemned same day - `dbhq_load_actors()`
+   in `khtpm_entity_menu_render.c` itself reads real PDL data
+   (`&.widgits/db-hq/data/actors.pdl` - not hardcoded strings) but does
+   so INLINE in the shared "hard boundary" renderer file, instead of a
+   real, separate manager publishing a projection - the exact same
+   "Manager owns projection" violation this doc exists to name, just
+   with real file-backed data instead of fabricated content. Direct
+   instruction: "that being hardcoded... should be condemned... it
+   should have never happened" - not fixed yet, see the doc's own new
+   §4 + `au-31/00-todo.md` for the real remediation plan)** — real,
+   confirmed architecture violations found while migrating stats-hq:
+   all 3 launcher scripts (`stats-hq`, `palettes`, `bookmarks`)
+   generated `.chtpm` UI markup via raw bash `printf` of XML tags, with
+   no real manager process and no compiled, testable Op — violated
+   TPMOS §11/§12 directly, and stats-hq's tabs were actually broken
+   (labels never matched the renderer's own `TAB_LABELS[]`). All 3 now
+   have real managers matching `khtpm_hq_manager.c`'s shape; see that
+   doc's own "Status update" section for the rebuild details. Read this
+   BEFORE building or extending ANY taskbar-launched window/menu — this
+   pattern looks like it works and is the nearest copy-paste example in
+   the tree for exactly that reason. Full inventory,
    severity reasoning, the compliant reference pattern (db-hq/events-hq/open-hai's real
    manager binaries), and remediation priority in the doc itself.
 -1. **house-compaction.md — STANDING #1 PRIORITY (2026-08-24), NOT YET ACTED ON** —
@@ -419,7 +431,7 @@ Stop here if you just need to know "what's going on."
 |---|---|---|
 | `INDEX.md` | This file — pure routing, no content | New doc added/removed |
 | `#.house-docs.html/1.index-house=solo.html` | **The human-facing house doc — this is what the user actually reads**, not just an agent-routing file. Narrative "how the house actually works" page (Overview/Standards/Taskbar/Legacy Engines/Display/Input/AI Backends/Testing/Extending/Roadmap sections). Keep the "Known Issues & Roadmap" section in sync with real findings the same way `INDEX.md`'s own changelog is kept in sync — when you land a real fix or finding that changes user-facing state, update BOTH this file and INDEX.md, not just one. | Whenever a real, user-relevant finding or fix lands — added the khtpm_hq_render receipt/frame-history gap here 2026-08-24 |
-| `TPMOS-COMPLIANCE-DEBT.md` | **RESOLVED 2026-08-25** — the 3 real manager-pattern violations found (stats-hq/palettes/bookmarks generating `.chtpm` via raw bash `printf`, no manager, no testable Op; stats-hq's tabs were actually non-functional) all got real manager rebuilds, see the doc's own "Status update" section. | If the broader "not yet audited" sweep this doc originally flagged finds more instances elsewhere — update the inventory, don't just delete the doc |
+| `TPMOS-COMPLIANCE-DEBT.md` | **REOPENED 2026-08-31** — the original 3 printf-XML violations (stats-hq/palettes/bookmarks) stay RESOLVED 2026-08-25, real manager rebuilds; a real, different 4th violation (`dbhq_load_actors()` loading real PDL data inline in the shared renderer instead of via a manager) found and condemned same day, NOT fixed yet — see the doc's own new §4. | Build the real `dbhq_actors_manager.c` (or equivalent) fix before/alongside any new window mode added to `khtpm_entity_menu_render.c`, per `au-31/00-todo.md`; audit Classes/Skills/Items/etc. for the same shape |
 | `house-compaction.md` | **STANDING #1 PRIORITY, undone** — the khtpm_hq_render receipt/frame-history compliance-drift finding vs. TPMOS/wraith-alpha standard, plus the doc-compaction candidate list for `1.^V-hq/` (44 files). Agreed order: compact docs first, THEN fix the compliance drift, THEN resume palettes T1-T6. | When the compliance fix lands, or a compaction item from Part 3 is acted on — tick it off, don't just delete the doc |
 | `44.xyz❤️‍🔥️00.17/!.HOUSE_STDS.md` (house root) | **THE general house standards doc** ("from zero", §A–§K): CHTPM/PAL mechanics, session isolation/symlink ban, digit-dispatch, marker discipline, runtime-config-over-hardcode, rendering pipeline, CPU/testing discipline, widgets, 3D/raymarch, pitfalls F-18/F-19/#20/#21 (window focus/managed-window standards), §J two-parser-families warning, and **§K UI-authoring standards (2026-08-24): no hardcoded UIs ever (store→generated-artifact rule), context windows OLD vs NEW (`khtpm_entity_menu_render` is THE standard), generic renderer mechanisms (onClick open:/exec:, live reload) with honest port-status caveat, SHOW_PAGE chooser contract, bookmarks spec (superseded 2026-08-25, see its own note), and §K.6 (2026-08-25): no UI element without a mirror keyboard path** | Whenever a standing house standard is set, corrected, or superseded |
 | `HANDOFF.md` | Living architecture + status snapshot, "hand this to a fresh agent" doc | Architecture changes, status changes |

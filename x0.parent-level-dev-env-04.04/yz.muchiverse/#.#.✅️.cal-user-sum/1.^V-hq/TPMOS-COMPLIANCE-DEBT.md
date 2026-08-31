@@ -169,6 +169,42 @@ mutaclysm, tile-picker, event-ez, the `045.muchi-pal-agent` family, etc.) use th
 real compiled parsers/engines, not bash-composed `.chtpm` — genuinely different
 architecture, not the same debt under a different name.
 
+## 4. NEW real finding, 2026-08-31 — `dbhq_load_actors()` in `khtpm_entity_menu_render.c`
+
+**A different, milder-but-real category from the printf-XML pattern above (the 2026-08-25
+audit's own "fully contained to 3 apps" conclusion still stands for THAT specific
+pattern — this is a genuinely separate violation, not a fourth instance of it).**
+
+Found while investigating why reusing `class="db-hq"` for an unrelated new window showed
+real Actor/RPG-database content instead. `dbhq_load_actors()` (in the shared, "hard
+boundary" `khtpm_entity_menu_render.c` itself) reads a real PDL file
+(`&.widgits/db-hq/data/actors.pdl`) and injects real rows directly — the CONTENT is real
+file-based data, not hardcoded strings (confirmed: the displayed text does not appear
+anywhere in the C source). **The violation is architectural, not data-fakery**: this is a
+real "Manager owns projection" violation (TPMOS §11/§12, cited above) — the shared
+renderer parses its own mode's sovereign data source inline, instead of a real, separate
+manager publishing a structured projection the renderer only ever reads. Exactly the same
+class of coupling risk this whole doc exists to name: every new mode tempted to add its
+own inline loader to the SAME shared file compounds a real, load-bearing file nobody owns
+end-to-end.
+
+**This should not have happened** — the compliant pattern (`khtpm_hq_manager.c` for
+Common Events) already existed in the SAME house, built the SAME week, for the SAME
+window (db-hq), and Actors/Classes/Skills/etc. simply never got the same treatment.
+**Condemned here explicitly, per direct instruction ("that being hardcoded... should be
+condemned... it should have never happened")** — this is not a judgment call, it's a real,
+avoidable miss.
+
+**Real fix, not yet done**: a real `dbhq_actors_manager.c` (or extend an existing
+manager's own scope) publishing a structured `db_hq_actors.state.txt` the shared renderer
+reads generically via `reusable_slot()` — same real shape as Common Events, Stats-hq,
+bookmarks, palettes already prove. See `au-31/00-todo.md`/`01-manager-design.md` for the
+real, dated todo this produced and the direct instruction to fix this class of thing
+BEFORE adding any new window mode to the shared file, so new work doesn't compound onto
+non-compliant precedent. **Real follow-up, not yet done**: audit whether Classes/Skills/
+Items/Weapons/etc. (db-hq's other tabs) have the same inline-loader shape — not checked
+yet, real gap, same as this doc's own "Not yet audited" section above.
+
 ## Cross-references
 - `house-compaction.md` — the separate (also real, also HIGH priority) receipt/frame-
   history compliance gap found earlier this session in `khtpm_hq_render.c`. Different
