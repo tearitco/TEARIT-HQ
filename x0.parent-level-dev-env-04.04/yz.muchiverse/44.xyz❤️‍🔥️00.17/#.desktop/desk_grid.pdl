@@ -1,0 +1,9 @@
+GRID | cell_px | 80
+# map_cols / map_rows - real desktop-wide "movement wall" (direct
+# instruction 2026-08-31: "so players cant lose the map moving stuff
+# around too much"). Uncomment + set to a real grid-cell count to cap
+# how far any entity can be dragged/nudged/placed. Left unset here on
+# purpose - falls back to the screen-resolution-derived bound (this
+# file's original, pre-existing behavior) until you pick real numbers.
+# GRID | map_cols | 40
+# GRID | map_rows | 25

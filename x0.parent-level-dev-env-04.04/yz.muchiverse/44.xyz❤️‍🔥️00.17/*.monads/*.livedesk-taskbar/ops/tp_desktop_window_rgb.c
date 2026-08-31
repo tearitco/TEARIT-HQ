@@ -1216,6 +1216,48 @@ static int read_grid_cell_px(const char *house_root) {
     return result;
 }
 
+/* REAL, NEW 2026-08-31, direct instruction ("we are going to make a
+ * 'map size' so players cant lose the map moving stuff around too
+ * much (will hit 'wall' of movement)"), specified PDL-editable per
+ * direct instruction ("something in a pdl file we can edit if we need
+ * w/o changing hardcode") - same file, same GRID section, same
+ * SECTION|KEY|VALUE shape as read_grid_cell_px() just above. Reads
+ * two new optional keys:
+ *   GRID | map_cols | N   real desktop-wide movement-wall width, in
+ *                         grid cells (GRID_CELL_PX each)
+ *   GRID | map_rows | N   real desktop-wide movement-wall height,
+ *                         same units
+ * Missing/absent/<=0 (the default, matching desk_grid.pdl not having
+ * these keys yet) leaves *out_cols/*out_rows at 0 - callers treat 0 as
+ * "no configured map size," falling back to the screen-resolution-
+ * derived bound this file already used before this feature existed
+ * (zero behavior change until someone actually sets these keys). */
+static void read_map_size(const char *house_root, int *out_cols, int *out_rows) {
+    *out_cols = 0;
+    *out_rows = 0;
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/desk_grid.pdl", house_root);
+    FILE *f = pdl_open(path);
+    if (!f) return;
+    char line[PATH_BUF];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "GRID", 4) != 0) continue;
+        char *p = strchr(line, '|');
+        if (!p) continue;
+        p++;
+        while (*p == ' ') p++;
+        char *end = strchr(p, '|');
+        if (!end) continue;
+        char *label_end = end;
+        while (label_end > p && label_end[-1] == ' ') label_end--;
+        size_t klen = (size_t)(label_end - p);
+        int v = atoi(end + 1);
+        if (v > 0 && klen == 8 && strncmp(p, "map_cols", 8) == 0) *out_cols = v;
+        else if (v > 0 && klen == 8 && strncmp(p, "map_rows", 8) == 0) *out_rows = v;
+    }
+    fclose(f);
+}
+
 /* REAL 2026-08-07, direct instruction ("make them configurable via
  * config / .pdl file so i can easily experiment with them"): reads the
  * context-menu guard rows from the package's own meta.pdl (same
@@ -3503,6 +3545,22 @@ int main(int argc, char **argv) {
     int screen_h = DisplayHeight(dpy, DefaultScreen(dpy));
     int max_col = (screen_w / GRID_CELL_PX) - 1;
     int max_row = (screen_h / GRID_CELL_PX) - 1;
+    /* REAL, NEW 2026-08-31 ("map size" movement wall, see
+     * read_map_size()'s own header comment) - a configured
+     * desk_grid.pdl map_cols/map_rows overrides the screen-derived
+     * bound above (real, deliberately smaller-or-equal "wall" so an
+     * entity dragged/placed/nudged can never end up further out than
+     * the configured map, not just the physical screen edge). Every
+     * other real clamp site in this function (drag release, arrow-key
+     * nudge, click-to-place) already reuses these same max_col/max_row
+     * locals, so this one override site is the only real change
+     * needed. */
+    {
+        int cfg_cols = 0, cfg_rows = 0;
+        read_map_size(g_house_root, &cfg_cols, &cfg_rows);
+        if (cfg_cols > 0) max_col = cfg_cols - 1;
+        if (cfg_rows > 0) max_row = cfg_rows - 1;
+    }
     if (max_col < 0) max_col = 0;
     if (max_row < 0) max_row = 0;
 
