@@ -1,0 +1,72 @@
+[21:12:52] === step 0: preflight ===
+[21:12:52] prisc=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/101.mutaclsym🧟‍♂️️+18.0G/system/prisc+x
+[21:12:52] === clean stray processes ===
+[21:12:52] === step 1: sandbox package + IR (comment/exit/label/jump/loop/break/repeat) ===
+[21:12:52] === step 2: launch events-hq manager (standalone, real house root) ===
+[21:12:54] action sent: edit:1|comment|text=flow-control-harness
+[21:12:58] PASS: manager launched
+[21:12:58] === step 3: compile proof ===
+[21:12:58] PASS: event.pal compiled
+# event.pal - real prisc+x opcodes, COMPILED from event.ir.pdl by khtpm_events_hq_manager.c
+# pkg=flowctl-sandbox page=page_1 - regenerated fresh on every command save
+j user_MID
+user_MID:
+li x15, 7
+li x12, 1
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/switches.txt" "FC_PROVED_JUMP"
+_loop_1:
+li x15, 6
+li x13, 0
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/items.txt" "item_tick"
+addi x12, x12, 1
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/items.txt" "item_tick"
+li x15, 6
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/switches.txt" "FC_LOOP_GATE"
+li x2, 1
+bne x12, x2, _else_2
+j _loop_end_1
+j _endif_2
+_else_2:
+li x15, 7
+li x12, 1
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/switches.txt" "FC_LOOP_GATE"
+_endif_2:
+sleep 25000
+j _loop_1
+_loop_end_1:
+halt
+li x15, 6
+li x13, 0
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/actor_1_stats.txt" "level"
+addi x12, x12, 5
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/actor_1_stats.txt" "level"
+li x15, 6
+li x13, 0
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/items.txt" "item_should_not_exist"
+addi x12, x12, 999
+li x15, 7
+ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/harnesses/.flowctl_sandbox/20260830-211252/items.txt" "item_should_not_exist"
+halt
+[21:12:58] PASS: IR has 16 NODEs (comment/jump/label/switch/loop/if/break/else/end/wait/repeat/exit)
+[21:12:58] PASS: jump_to_label emits 'j user_MID' and label emits 'user_MID:'
+[21:12:58] PASS: loop emits '_loop_1:' and repeat_above emits backward 'j _loop_1'
+[21:12:58] PASS: repeat_above emits the '_loop_end_1:' break target
+[21:12:58] PASS: break_loop emits forward 'j _loop_end_1'
+[21:12:58] PASS: the loop's Conditional Branch compiles to a real bne on the switch GET
+[21:12:58] PASS: exit_event emits real 'halt' (found 2 halt lines, incl. the page trailer)
+[21:12:58] PASS: exit_event's halt is emitted BEFORE the tail change_level (blocks it at runtime)
+[21:12:58] PASS: wait 25ms emits real 'sleep 25000'
+[21:12:58] PASS: comment emits nothing (no-op; text absent from event.pal)
+[21:12:58] PASS: control_switch emits real SET_KV_INT ecalls against switches.txt
+[21:12:58] === step 4: runtime proof - run the compiled bytecode under prisc+x ===
+[21:12:58] PASS: prisc+x ran the compiled event to halt (exit 0)
+[21:12:58] === step 5: text-state-dump verification ===
+[21:12:58] PASS: item_tick=2: loop body truly executed TWICE (backward edge traversed exactly once)
+[21:12:58] PASS: FC_LOOP_GATE=1: 1st iteration took the else branch, 2nd broke (terminating loop)
+[21:12:58] PASS: FC_PROVED_JUMP=1: Label/Jump to Label landed (execution reached user_MID)
+[21:12:58] PASS: level stays 1: exit_event halted BEFORE change_level (+5 never applied)
+[21:12:58] PASS: no should_not_exist key: the tail change_items after exit_event never ran
+[21:12:58] state dumps copied into /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/presentations/events-hq-flow-control-20260830-211252
+cleanup done
