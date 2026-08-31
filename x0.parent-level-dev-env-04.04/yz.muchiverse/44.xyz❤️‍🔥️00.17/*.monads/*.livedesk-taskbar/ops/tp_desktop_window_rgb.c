@@ -295,7 +295,14 @@ static int g_cursword_armed = 0;
  * AND under 300ms between ButtonPress and ButtonRelease counts as a
  * real click (arm), not a drag. */
 #define CURSWORD_CLICK_MAX_PX 5
-#define CURSWORD_CLICK_MAX_MS 300
+/* REAL FIX 2026-08-30, direct live report ("clicking it with mouse
+ * moves it to fast can it wait a bit longer?") - 300ms was too tight
+ * for a real, physical mouse click (press+release), misclassifying it
+ * as a drag (moving cursword) instead of a real click (arming it).
+ * Raised to 600ms - still well under "held down and dragged" territory
+ * (CURSWORD_CLICK_MAX_PX's own 5px cap still guards against an actual
+ * drag being misread as a click, this only loosens the TIME side). */
+#define CURSWORD_CLICK_MAX_MS 600
 
 /* Real, house-standard "small state file under #.desktop/" convention
  * (§9 item 5's own cited precedent, rmmv_armed.txt) - the one real,
@@ -307,6 +314,33 @@ static void cursword_write_armed(const char *house_root, int armed) {
     snprintf(path, sizeof(path), "%s/#.desktop/cursword_armed.txt", house_root);
     FILE *f = fopen(path, "w");
     if (f) { fprintf(f, "%d\n", armed ? 1 : 0); fclose(f); }
+}
+
+/* REAL, NEW 2026-08-30, direct instruction ("i still dont have arrow
+ * control. would it help if we did a text display under cursword with
+ * pressed key history?"): a real, live-visible readout of the last
+ * few keys this window's own event loop actually received while armed
+ * - the direct, fastest way to tell "key never reached this window at
+ * all" apart from "key reached it but the move logic didn't fire,"
+ * without any indirect file/log inspection. Extends the window taller
+ * by CURSWORD_LOG_H (only while armed - see cursword_update_shape()'s
+ * own real shape-mask union for the matching visible-region rectangle)
+ * and draws the last CURSWORD_LOG_N short labels on one line via the
+ * existing popup fontset (load_popup_fontset(), already loaded
+ * unconditionally in main() - not new state). */
+#define CURSWORD_LOG_H 20
+#define CURSWORD_LOG_N 5
+static char g_cursword_log[CURSWORD_LOG_N][12];
+static int g_cursword_log_n = 0;
+static void cursword_log_key(const char *label) {
+    if (g_cursword_log_n < CURSWORD_LOG_N) {
+        snprintf(g_cursword_log[g_cursword_log_n], sizeof(g_cursword_log[0]), "%s", label);
+        g_cursword_log_n++;
+    } else {
+        for (int i = 1; i < CURSWORD_LOG_N; i++)
+            snprintf(g_cursword_log[i - 1], sizeof(g_cursword_log[0]), "%s", g_cursword_log[i]);
+        snprintf(g_cursword_log[CURSWORD_LOG_N - 1], sizeof(g_cursword_log[0]), "%s", label);
+    }
 }
 
 /* REAL, NEW 2026-08-30, step 2 of the design doc's own §8/§10
@@ -1406,6 +1440,13 @@ static void build_shape_mask(Display *dpy, Window win, GC mask_gc, Pixmap mask) 
  * a real ShapeSet) to drop the ring and return to sprite-only. */
 static void cursword_update_shape(Display *dpy, Window win) {
     if (!g_has_sprite) return;
+    /* REAL, NEW 2026-08-30 - the real key-log debug strip (see
+     * cursword_log_key()'s own header comment) needs the WINDOW
+     * itself taller while armed, or its own visible-region rectangle
+     * (unioned below) would just be empty space outside the window's
+     * real bounds. Resized back down to exactly WIN_PX on disarm. */
+    if (g_is_cursword)
+        XResizeWindow(dpy, win, (unsigned)WIN_PX, (unsigned)(WIN_PX + (g_cursword_armed ? CURSWORD_LOG_H : 0)));
     Pixmap mask = XCreatePixmap(dpy, win, (unsigned)WIN_PX, (unsigned)WIN_PX, 1);
     GC mask_gc = XCreateGC(dpy, mask, 0, NULL);
     build_shape_mask(dpy, win, mask_gc, mask); /* real ShapeSet baseline - sprite only */
@@ -1420,6 +1461,21 @@ static void cursword_update_shape(Display *dpy, Window win) {
             XDrawArc(dpy, mask, mask_gc, cx - radius, cy - radius, (unsigned)(radius * 2), (unsigned)(radius * 2), 0, 360 * 64);
         }
         XShapeCombineMask(dpy, win, ShapeBounding, 0, 0, mask, ShapeUnion);
+
+        /* Real key-log debug strip's own visible-region rectangle - a
+         * SEPARATE mask pixmap offset by (0, WIN_PX), unioned the same
+         * way as the ring just above. Deliberately separate from
+         * `mask` (WIN_PX x WIN_PX, build_shape_mask()'s own real
+         * contract) rather than resizing it, so that shared function's
+         * existing behavior for every other entity stays completely
+         * untouched. */
+        Pixmap strip_mask = XCreatePixmap(dpy, win, (unsigned)WIN_PX, (unsigned)CURSWORD_LOG_H, 1);
+        GC strip_gc = XCreateGC(dpy, strip_mask, 0, NULL);
+        XSetForeground(dpy, strip_gc, 1);
+        XFillRectangle(dpy, strip_mask, strip_gc, 0, 0, WIN_PX, CURSWORD_LOG_H);
+        XShapeCombineMask(dpy, win, ShapeBounding, 0, WIN_PX, strip_mask, ShapeUnion);
+        XFreeGC(dpy, strip_gc);
+        XFreePixmap(dpy, strip_mask);
     }
     XFreeGC(dpy, mask_gc);
     XFreePixmap(dpy, mask);
@@ -2310,8 +2366,17 @@ int main(int argc, char **argv) {
 
     /* RGB compose buffer - all real drawing (background, glyph/sprite)
      * happens into this offscreen Pixmap, presented each frame via
-     * XGetImage+XPutImage below, same as db-hq/taskbar. */
-    Pixmap g_buf = XCreatePixmap(dpy, win, WIN_PX, WIN_PX, (unsigned)depth);
+     * XGetImage+XPutImage below, same as db-hq/taskbar. REAL, NEW
+     * 2026-08-30: cursword's own buffer reserves CURSWORD_LOG_H extra
+     * rows below WIN_PX for the real key-log debug strip (see
+     * cursword_log_key()'s own header comment) - always allocated for
+     * a cursword instance (cheap, ~80x20px), revealed only while armed
+     * via the window resize + shape-mask union in
+     * cursword_update_shape(). Every other entity is completely
+     * unaffected (g_is_cursword false, buffer stays exactly WIN_PX x
+     * WIN_PX as before). */
+    Pixmap g_buf = XCreatePixmap(dpy, win, (unsigned)WIN_PX,
+                                  (unsigned)(WIN_PX + (g_is_cursword ? CURSWORD_LOG_H : 0)), (unsigned)depth);
     GC g_buf_gc = XCreateGC(dpy, g_buf, 0, NULL);
     /* REAL FIX 2026-08-05, direct instruction ("context window should
      * have name/id of entity, so its addressable by others"): the
@@ -3558,6 +3623,7 @@ int main(int argc, char **argv) {
                     g_cursword_armed = !g_cursword_armed;
                     cursword_write_armed(g_house_root, g_cursword_armed);
                     append_history(g_cursword_armed ? "CURSWORD_ARMED" : "CURSWORD_DISARMED");
+                    if (g_cursword_armed) g_cursword_log_n = 0; /* real, new 2026-08-30 - fresh key-log each new arm, see cursword_log_key()'s own header comment */
                     cursword_update_shape(dpy, win);
                     if (g_cursword_armed) {
                         /* REAL FIX 2026-08-30, direct report ("its not
@@ -3575,12 +3641,44 @@ int main(int argc, char **argv) {
                          * anywhere land on this window's own event
                          * queue regardless of focus, until the real
                          * Escape/disarm/placed paths ungrab it. */
+                        /* REAL FIX 2026-08-30, direct live report ("its
+                         * not holding focus. we need it to have special
+                         * mode of focus when it has halo. where it has
+                         * priority over all windows for key input") -
+                         * this window is override_redirect (never WM-
+                         * managed), the exact same real class of window
+                         * open-hai's own code documents as unreliable
+                         * for keyboard focus (HOUSE_STDS #21 - see
+                         * khtpm_open_hai_render.c's own "Managed window +
+                         * _MOTIF_WM_HINTS... NOT override_redirect" real
+                         * fix). Converting cursword's whole window model
+                         * to WM-managed would risk every other entity's
+                         * own real positioning/desktop-icon behavior
+                         * (same shared window-creation code, not cursword-
+                         * specific) - real, scoped fix instead: raise the
+                         * window to the very top AND explicitly set real
+                         * input focus onto it, on top of the existing
+                         * keyboard grab, every time it arms. A real
+                         * grab alone SHOULD already route every key here
+                         * per the X11 spec regardless of focus - adding
+                         * both is the same "belt and suspenders" real
+                         * mitigation for override-redirect focus
+                         * flakiness under a real compositor (mutter/
+                         * XWayland). */
+                        int grab_rc = 0;
                         for (int attempt = 0; attempt < 5; attempt++) {
-                            int rc = XGrabKeyboard(dpy, win, False, GrabModeAsync, GrabModeAsync, CurrentTime);
-                            if (rc == GrabSuccess) break;
+                            grab_rc = XGrabKeyboard(dpy, win, False, GrabModeAsync, GrabModeAsync, CurrentTime);
+                            if (grab_rc == GrabSuccess) break;
                             XSync(dpy, False);
                             usleep(5000);
                         }
+                        XRaiseWindow(dpy, win);
+                        XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
+                        /* Real, visible diagnostic (see cursword_log_key()'s
+                         * own header comment) - if the grab itself never
+                         * actually succeeded, the debug strip says so
+                         * immediately instead of silently doing nothing. */
+                        cursword_log_key(grab_rc == GrabSuccess ? "GRAB-OK" : "GRABFAIL");
                     } else {
                         /* Disarmed via a real click (only reachable in
                          * arrow_only move_mode - click_place mode's own
@@ -3694,6 +3792,14 @@ int main(int argc, char **argv) {
                      * the moment a key was pressed while armed -
                      * confirmed by direct read, not assumed. */
                     KeySym ks2 = XLookupKeysym(&xev.xkey, 0);
+                    cursword_log_key(
+                        ks2 == XK_Escape ? "ESC" :
+                        ks2 == XK_Left ? "LEFT" : ks2 == XK_Right ? "RIGHT" :
+                        ks2 == XK_Up ? "UP" : ks2 == XK_Down ? "DOWN" :
+                        (ks2 == XK_1 || ks2 == XK_2 || ks2 == XK_3 || ks2 == XK_4) ?
+                            (const char *[]){"1","2","3","4"}[ks2 - XK_1] :
+                        XKeysymToString(ks2) ? XKeysymToString(ks2) : "?");
+                    need_redraw = 1; /* real, unconditional - the log line above must always repaint, even for a key none of the branches below handle */
                     if (ks2 == XK_Escape) {
                         if (g_cursword_awaiting_place) {
                             /* Real cancel of a pending click-to-place -
@@ -3812,7 +3918,12 @@ int main(int argc, char **argv) {
         {
             int bg_r = (int)(r * 255.0f), bg_g = (int)(g * 255.0f), bg_b = (int)(b * 255.0f);
             XSetForeground(dpy, g_buf_gc, ((unsigned long)bg_r << 16) | ((unsigned long)bg_g << 8) | (unsigned long)bg_b);
-            XFillRectangle(dpy, g_buf, g_buf_gc, 0, 0, WIN_PX, WIN_PX);
+            /* Real, new 2026-08-30: cursword's own buffer reserves
+             * CURSWORD_LOG_H extra rows (see the g_buf XCreatePixmap
+             * comment above) - cleared here too every frame so stale
+             * key-log text never lingers under a fresh background. */
+            XFillRectangle(dpy, g_buf, g_buf_gc, 0, 0, WIN_PX,
+                            (unsigned)(WIN_PX + (g_is_cursword ? CURSWORD_LOG_H : 0)));
             /* Real, visible armed-state halo (§3a/§9 item 4: overlay/
              * ring, never replacing the sprite). STALE NOTE, corrected
              * 2026-08-30: originally drawn BEFORE the sprite here,
@@ -3860,6 +3971,27 @@ int main(int argc, char **argv) {
                     XDrawArc(dpy, g_buf, g_buf_gc, cx - halo_radius, cy - halo_radius, (unsigned)(halo_radius * 2), (unsigned)(halo_radius * 2), 0, 360 * 64);
                     XSetLineAttributes(dpy, g_buf_gc, 0, LineSolid, CapButt, JoinMiter);
                 }
+
+                /* REAL, NEW 2026-08-30, direct instruction ("i still
+                 * dont have arrow control. would it help if we did a
+                 * text display under cursword with pressed key
+                 * history?") - a real, live-visible readout of the last
+                 * few keys THIS window's own event loop actually
+                 * received (cursword_log_key()'s own header comment has
+                 * the full reasoning: tells "key never arrived" apart
+                 * from "key arrived but didn't move it" at a glance,
+                 * no file/log digging needed). */
+                char logline[96] = "";
+                size_t loff = 0;
+                for (int li = 0; li < g_cursword_log_n; li++) {
+                    int wrote = snprintf(logline + loff, sizeof(logline) - loff, "%s%s",
+                                          li > 0 ? " " : "", g_cursword_log[li]);
+                    if (wrote < 0 || (size_t)wrote >= sizeof(logline) - loff) break;
+                    loff += (size_t)wrote;
+                }
+                XSetForeground(dpy, g_buf_gc, 0xFFFFFFUL);
+                popup_draw_text(dpy, g_buf, g_buf_gc, 2, WIN_PX + CURSWORD_LOG_H - 6,
+                                 logline[0] ? logline : "(no keys yet)");
             }
 
             /* Present: same compose->present pattern as db-hq/taskbar -
@@ -3868,12 +4000,16 @@ int main(int argc, char **argv) {
              * 0 test). Falls back to a direct XCopyArea if XGetImage
              * ever fails, matching the same safety fallback used there. */
             XSync(dpy, False);
-            XImage *frame = XGetImage(dpy, g_buf, 0, 0, WIN_PX, WIN_PX, AllPlanes, ZPixmap);
+            /* Real, new 2026-08-30: present the full reserved buffer
+             * height while cursword is armed (the key-log strip),
+             * exactly WIN_PX otherwise/for every other entity. */
+            int present_h = WIN_PX + (g_is_cursword && g_cursword_armed ? CURSWORD_LOG_H : 0);
+            XImage *frame = XGetImage(dpy, g_buf, 0, 0, WIN_PX, present_h, AllPlanes, ZPixmap);
             if (frame) {
-                XPutImage(dpy, win, g_buf_gc, frame, 0, 0, 0, 0, WIN_PX, WIN_PX);
+                XPutImage(dpy, win, g_buf_gc, frame, 0, 0, 0, 0, WIN_PX, present_h);
                 XDestroyImage(frame);
             } else {
-                XCopyArea(dpy, g_buf, win, g_buf_gc, 0, 0, WIN_PX, WIN_PX, 0, 0);
+                XCopyArea(dpy, g_buf, win, g_buf_gc, 0, 0, (unsigned)WIN_PX, (unsigned)present_h, 0, 0);
             }
         }
         last_frame = now;
