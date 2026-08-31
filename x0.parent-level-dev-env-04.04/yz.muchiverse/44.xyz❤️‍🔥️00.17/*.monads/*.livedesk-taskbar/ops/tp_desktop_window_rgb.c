@@ -371,7 +371,13 @@ static void cursword_write_armed(const char *house_root, int armed) {
  * and draws the last CURSWORD_LOG_N short labels on one line via the
  * existing popup fontset (load_popup_fontset(), already loaded
  * unconditionally in main() - not new state). */
-#define CURSWORD_LOG_H 20
+/* REAL, NEW 2026-08-30, direct instruction ("can we do another debug
+ * below sword, that shows camera angle?") - grown from 20 to 38 to
+ * fit a real second line (the existing key-log line, plus a new
+ * camera pitch/tilt readout right below it) - see the real draw site
+ * near the end of the main render block for what actually gets
+ * printed on each line. */
+#define CURSWORD_LOG_H 38
 #define CURSWORD_LOG_N 5
 static char g_cursword_log[CURSWORD_LOG_N][12];
 static int g_cursword_log_n = 0;
@@ -1657,13 +1663,13 @@ static void load_camera_mode(const char *house_root) {
  * that per-frame is a real, separate, riskier change (pixmap/GC
  * recreation, shape-mask rebuild at new sizes) deliberately deferred
  * rather than rushed alongside pan+tilt in the same pass. */
-static int g_cam_pan_x = 0, g_cam_pan_y = 0, g_cam_tilt = 20;
+static int g_cam_pan_x = 0, g_cam_pan_y = 0, g_cam_tilt = 0;
 static void load_camera_state(const char *house_root) {
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/desktop_camera_state.txt", house_root);
     FILE *f = fopen(path, "r");
-    if (!f) { g_cam_pan_x = 0; g_cam_pan_y = 0; g_cam_tilt = 20; return; }
-    int pan_x = 0, pan_y = 0, tilt = 20;
+    if (!f) { g_cam_pan_x = 0; g_cam_pan_y = 0; g_cam_tilt = 0; return; }
+    int pan_x = 0, pan_y = 0, tilt = 0;
     char line[128];
     while (fgets(line, sizeof(line), f)) {
         char *eq = strchr(line, '=');
@@ -1807,7 +1813,16 @@ static void build_raymarch_cam(double cy, RaymarchCam *cam) {
      * sprite" convention. yaw isn't camera-KEY-controlled yet either
      * way, only pitch (tilt) and pan/zoom are - this toggle picks the
      * fixed default, not a third live-adjustable axis. */
-    double pitch_deg = 90.0 - (g_cam_tilt / 100.0) * 65.0; /* 90 (straight down) .. 25 (oblique) */
+    /* REAL FIX 2026-08-30, direct live report ("make sure there is no
+     * tilt or angle, and show front facing view... it looks tilted") -
+     * cam_tilt=0 now means a genuine, real pitch=0 EYE-LEVEL view
+     * (dead-on front, zero angle) - the old formula started at
+     * pitch=90 (straight DOWN) even at tilt=0, which is the opposite
+     * of "front facing" despite the same numeric default. Tilt now
+     * climbs UP from that real flat baseline toward a downward angle
+     * as it increases, matching the real, literal meaning of "add
+     * tilt" instead of starting pre-tilted. */
+    double pitch_deg = (g_cam_tilt / 100.0) * 65.0; /* 0 (dead-on front, no angle) .. 65 (angled down) */
     double yaw_deg = g_emoji_sprite_view_top ? 45.0 : 0.0;
     double pitch = pitch_deg * M_PI_LOCAL / 180.0, yaw = yaw_deg * M_PI_LOCAL / 180.0;
 
@@ -1817,8 +1832,18 @@ static void build_raymarch_cam(double cy, RaymarchCam *cam) {
     double fx = -cam->ex, fy = cy - cam->ey, fz = -cam->ez;
     double flen = sqrt(fx * fx + fy * fy + fz * fz);
     cam->fx = fx / flen; cam->fy = fy / flen; cam->fz = fz / flen;
-    /* world-up = (0,1,0); right = forward x world-up */
-    double rx = cam->fz, ry = 0.0, rz = -cam->fx;
+    /* REAL FIX 2026-08-30, direct live report ("i see it but why is
+     * it diagonal?" / "why does pressing not make it point straight
+     * down like it does in 2d") - this cross product had its sign
+     * backwards (real math bug, not a camera-parameter issue): world-
+     * up = (0,1,0), right = forward x world-up should be
+     * (fy*0-fz*1, fz*0-fx*0, fx*1-fy*0) = (-fz, 0, fx) - this used to
+     * compute the literal NEGATIVE of that ((fz, 0, -fx)), a real
+     * mirrored/rotated "right" vector that threw the whole
+     * orientation off (the up vector derived from it, right x
+     * forward below, inherited the same error) - not a pitch/tilt
+     * problem at all, a real vector-math sign error, now corrected. */
+    double rx = -cam->fz, ry = 0.0, rz = cam->fx;
     double rlen = sqrt(rx * rx + ry * ry + rz * rz);
     if (rlen < 1e-9) { rx = 1.0; ry = 0.0; rz = 0.0; rlen = 1.0; }
     cam->rx = rx / rlen; cam->ry = ry / rlen; cam->rz = rz / rlen;
@@ -3052,7 +3077,13 @@ int main(int argc, char **argv) {
 
     XSetWindowAttributes swa;
     swa.colormap = XCreateColormap(dpy, RootWindow(dpy, screen_num), win_vis, AllocNone);
-    swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask;
+    /* Real, new 2026-08-30, direct instruction ("if cursword loses
+     * focus... is there a way to make sure the halo goes away") -
+     * FocusChangeMask added house-wide (every entity now gets real
+     * FocusIn/FocusOut events, harmless no-op for every entity except
+     * cursword, which is the only one that ever acts on them - see
+     * the FocusOut handler in the main event loop below). */
+    swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | FocusChangeMask;
     swa.override_redirect = True;
     swa.border_pixel = 0; /* real X11 requirement whenever a window's own depth differs from its parent's (root's) - harmless to set unconditionally */
     swa.background_pixel = 0;
@@ -4557,6 +4588,30 @@ int main(int argc, char **argv) {
                 drag_start_x = xev.xmotion.x_root;
                 drag_start_y = xev.xmotion.y_root;
                 need_redraw = 1;
+            } else if (xev.type == FocusOut && g_is_cursword && g_cursword_armed) {
+                /* REAL, NEW 2026-08-30, direct live report ("if
+                 * cursword loses focus (like user clicks different
+                 * window) is there a way to make sure the halo goes
+                 * away, else it causes confusion when going back
+                 * (unselects it)") - same real disarm sequence as the
+                 * Escape branch just below (kept inline, not factored
+                 * into a shared helper, since g_house_root etc. are
+                 * main()'s own real locals, not accessible outside
+                 * this function). A real XGrabKeyboard doesn't itself
+                 * prevent the WM/compositor from moving real X input
+                 * focus to a DIFFERENT window the user clicks - this
+                 * is the real, missing "clicking away should un-arm
+                 * it" signal. */
+                if (g_cursword_awaiting_place) {
+                    XUngrabPointer(dpy, CurrentTime);
+                    g_cursword_awaiting_place = 0;
+                }
+                XUngrabKeyboard(dpy, CurrentTime);
+                g_cursword_armed = 0;
+                cursword_write_armed(g_house_root, 0);
+                append_history("CURSWORD_DISARMED_FOCUS_LOST");
+                cursword_update_shape(dpy, win);
+                need_redraw = 1;
             } else if (xev.type == KeyPress) {
                 if (g_is_cursword && g_cursword_armed) {
                     /* Real, house-standard dual-mode boundary - while
@@ -4661,7 +4716,7 @@ int main(int argc, char **argv) {
                          * real defaults (0/0/20, same shape
                          * load_camera_state()'s own no-file fallback
                          * already uses). */
-                        g_cam_pan_x = 0; g_cam_pan_y = 0; g_cam_tilt = 20;
+                        g_cam_pan_x = 0; g_cam_pan_y = 0; g_cam_tilt = 0;
                         write_camera_state(g_house_root);
                         bump_camera_changed(g_house_root);
                         append_history("CURSWORD_CAMERA_RESET");
@@ -4914,8 +4969,24 @@ int main(int argc, char **argv) {
                 /* Real, new 2026-08-30: explicit full alpha, same
                  * reasoning as the halo just above. */
                 XSetForeground(dpy, g_buf_gc, 0xFFFFFFFFUL);
-                popup_draw_text(dpy, g_buf, g_buf_gc, 2, WIN_PX + CURSWORD_LOG_H - 6,
+                popup_draw_text(dpy, g_buf, g_buf_gc, 2, WIN_PX + 15,
                                  logline[0] ? logline : "(no keys yet)");
+
+                /* REAL, NEW 2026-08-30, direct instruction ("can we do
+                 * another debug below sword, that shows camera
+                 * angle?") - a second, real line: the exact same
+                 * pitch_deg formula build_raymarch_cam() itself
+                 * computes from g_cam_tilt (not a separate guess), so
+                 * this is always genuinely what the camera is doing
+                 * right now, not just the raw tilt number - direct
+                 * live use case: "make sure there is no tilt or angle"
+                 * is verifiable at a glance without guessing whether
+                 * tilt=0 really means pitch=0. */
+                char camline[48];
+                double dbg_pitch = (g_cam_tilt / 100.0) * 65.0;
+                snprintf(camline, sizeof(camline), "tilt=%d pitch=%.0f%s",
+                         g_cam_tilt, dbg_pitch, g_emoji_sprite_view_top ? " top" : " front");
+                popup_draw_text(dpy, g_buf, g_buf_gc, 2, WIN_PX + 33, camline);
             }
 
             /* Present: same compose->present pattern as db-hq/taskbar -
