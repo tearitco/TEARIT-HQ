@@ -2383,6 +2383,37 @@ static int livedesk_build_palettes_menu(const char *house_root, HQMenuItem *menu
     return count;
 }
 
+/* REAL, NEW 2026-08-31 - the "network" cell (positional 13, click code
+ * 4000+13 per NETWORK-CELL-HQ-WINDOWS-DESIGN.md §2), wiring the real
+ * next step that doc's own "REAL HANDOFF STATUS" section documents:
+ * opencode had already built and tested the real launcher scripts
+ * (open_network_app.sh/open_network_browser.sh under &.hq-apps/
+ * network/) but never wired the taskbar menu itself. Same real
+ * PDL-driven pattern as livedesk_build_palettes_menu() right above
+ * (NOT the C-hardcoded livedesk_build_ai_menu() anti-pattern) -
+ * answers that doc's own still-open §11 reviewer question: the
+ * canonical row-writer is this dedicated-prefix PDL shape
+ * (`network_menu_N_label`/`_cmd`), same as palettes, not a literal
+ * `strip_btn_13_menu_N` guess. */
+static int livedesk_build_network_menu(const char *house_root, HQMenuItem *menu, int max) {
+    char pdl[KTB_PATH_BUF];
+    snprintf(pdl, sizeof(pdl), "%s/#.desktop/livedesk_taskbar.pdl", house_root);
+    int count = 0;
+    for (int i = 1; i <= max; i++) {
+        char lkey[40], ckey[40];
+        snprintf(lkey, sizeof(lkey), "network_menu_%d_label", i);
+        snprintf(ckey, sizeof(ckey), "network_menu_%d_cmd", i);
+        char lab[64] = "", cmd[KTB_PATH_BUF] = "";
+        read_key_value(pdl, lkey, lab, sizeof(lab));
+        read_key_value(pdl, ckey, cmd, sizeof(cmd));
+        if (!lab[0]) continue;
+        snprintf(menu[count].label, sizeof(menu[count].label), "%s", lab);
+        snprintf(menu[count].command, sizeof(menu[count].command), "%s", cmd);
+        count++;
+    }
+    return count;
+}
+
 /* Real HQ button's own menu ($.restart / X.quit / cancel), ported from
  * tp_taskbar.c's load_hq_config(): reads #.desktop/livedesk_taskbar.pdl's
  * "SECTION | hq_menu_N_label | value" / "SECTION | hq_menu_N_cmd | value"
@@ -3288,7 +3319,11 @@ void ktb_hq_open(KtbState *s, int which) {
     else if (which == 100) n = livedesk_build_session_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 100 = internal-only "session picker", reached from the file cell's "load" row (livedesk:load), never a header click directly - see ktb_hq_activate() */
     else if (which == 101) n = livedesk_build_db_ez_sections_menu(s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 101 = internal-only db-ez 14-section list, reached from db cell's "db-ez" row */
     else if (which == 102) n = livedesk_build_db_common_events_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 102 = internal-only Common Events list (global, house_root-wide), reached from db-ez's "Common Events" row */
-    else { ktb_hq_close(s); return; } /* inert cell (6/7/10/11/12/13) or unknown - close any open popup, no-op otherwise, matching the legacy exactly */
+    /* network (13) - real, wired 2026-08-31, see livedesk_build_network_
+     * menu()'s own header comment. Was one of the bare inert cells this
+     * same catch-all comment below used to include. */
+    else if (which == 13) n = livedesk_build_network_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else { ktb_hq_close(s); return; } /* inert cell (6/7/10/11/12) or unknown - close any open popup, no-op otherwise, matching the legacy exactly */
     if (n <= 0) {
         snprintf(s->hq_menu[0].label, sizeof(s->hq_menu[0].label), "(empty)");
         s->hq_menu[0].command[0] = '\0';
@@ -3495,6 +3530,39 @@ void ktb_hq_activate(KtbState *s, int row) {
         snprintf(sh, sizeof(sh),
                  KTB_SETSID "nohup sh -c 'sh \"%s/&.widgits/palettes/palettes_menu.sh\" \"%s\"' >/dev/null 2>&1 &",
                  s->house_root, m->command + 22);
+        int rc = ktb_system_recorded(s->house_root, sh);
+        (void)rc;
+        ktb_hq_close(s);
+    } else if (strncmp(m->command, "livedesk:open-network:", 22) == 0) {
+        /* network cell rows (2026-08-31, "13.network" dropdown, see
+         * livedesk_build_network_menu()'s own header comment) - SAME
+         * real reason as livedesk:open-palette: right above: the real
+         * launcher scripts live under the house's literal "&.hq-apps/"
+         * dir, which cannot survive unquoted in the generic sh -c
+         * fallback ('&' is a control operator). Dispatch string +
+         * C-side quoted absolute path, not a raw PDL shell command.
+         * "browser" opens the real cli-io stub (open_network_browser.sh,
+         * no extra arg); irc/forum/chain open the matching app via
+         * open_network_app.sh's own real <app> key. Both scripts
+         * already exist, tested, under &.hq-apps/network/ - built by
+         * opencode, only the menu wiring itself was missing (see
+         * NETWORK-CELL-HQ-WINDOWS-DESIGN.md's own "REAL HANDOFF
+         * STATUS"). Prefix length verified: printf '%s'
+         * "livedesk:open-network:" | wc -c = 22. */
+        const char *key = m->command + 22;
+        char sh[KTB_PATH_BUF * 3];
+        if (strcmp(key, "browser") == 0) {
+            snprintf(sh, sizeof(sh),
+                     KTB_SETSID "nohup sh \"%s/&.hq-apps/network/open_network_browser.sh\" \"%s\" >/dev/null 2>&1 &",
+                     s->house_root, s->house_root);
+        } else {
+            const char *title = strcmp(key, "irc") == 0 ? "IRC Chat"
+                               : strcmp(key, "forum") == 0 ? "Forum"
+                               : strcmp(key, "chain") == 0 ? "Chain" : key;
+            snprintf(sh, sizeof(sh),
+                     KTB_SETSID "nohup sh \"%s/&.hq-apps/network/open_network_app.sh\" \"%s\" \"%s\" \"%s\" >/dev/null 2>&1 &",
+                     s->house_root, s->house_root, key, title);
+        }
         int rc = ktb_system_recorded(s->house_root, sh);
         (void)rc;
         ktb_hq_close(s);

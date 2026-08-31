@@ -59,6 +59,20 @@ SECTION      | palettes_menu_10_label | generate
 SECTION      | palettes_menu_10_cmd   | livedesk:open-palette:generate
 SECTION      | palettes_menu_11_label | cancel
 
+# network cell (13.network, NETWORK-CELL-HQ-WINDOWS-DESIGN.md) - real
+# rows wired 2026-08-31, dispatching via livedesk:open-network:<key> to
+# the real, already-tested launcher scripts under &.hq-apps/network/
+# (see khtpm_taskbar_manager.c's own livedesk_build_network_menu()).
+SECTION      | network_menu_1_label  | IRC Chat
+SECTION      | network_menu_1_cmd    | livedesk:open-network:irc
+SECTION      | network_menu_2_label  | Forum
+SECTION      | network_menu_2_cmd    | livedesk:open-network:forum
+SECTION      | network_menu_3_label  | Chain
+SECTION      | network_menu_3_cmd    | livedesk:open-network:chain
+SECTION      | network_menu_4_label  | Browser
+SECTION      | network_menu_4_cmd    | livedesk:open-network:browser
+SECTION      | network_menu_5_label  | cancel
+
 # top-left command strip (2do task #4). Defaults match what's written
 # below, so editing here is the only thing needed to change labels or
 # commands - no recompile. Submenu rows: strip_btn_N_menu_M_label / _cmd.

@@ -128,7 +128,15 @@ int main(int argc, char** argv) {
     XSetWMProtocols(dpy, win, &wm_delete, 1);
     XSelectInput(dpy, win, ExposureMask | KeyPressMask | StructureNotifyMask);
     XMapWindow(dpy, win);
-    XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
+    /* REAL FIX 2026-08-31, found live: XSetInputFocus() called here,
+     * right after XMapWindow(), fails with a real BadMatch (the window
+     * isn't actually viewable yet at this exact point) - and since no
+     * X error handler is installed, Xlib's own default handler treats
+     * that as FATAL and calls exit() immediately. Net effect: the
+     * window opened and died in the same frame, invisible. Real fix:
+     * just drop the explicit focus call - a normal WM-managed window
+     * (this isn't override_redirect) already gets focus per the WM's
+     * own real click/new-window policy without fighting it here. */
 
     GC gc = XCreateGC(dpy, win, 0, NULL);
     fg = WhitePixel(dpy, scr);

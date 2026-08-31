@@ -26,16 +26,18 @@ survives a source-code `git reset --hard` and can look exactly like a
 fresh regression if left dirty from testing. Don't re-attempt any of
 this without reading it first.
 
-**🔧 `NETWORK-CELL-HQ-WINDOWS-DESIGN.md` — opencode ran out of tokens
-mid-work (2026-08-30) on this one, real code left uncommitted on
-disk.** The design itself is done; the standalone `cli_io_window.c`
-console container + its two launcher scripts (all under
-`44.xyz❤️‍🔥️00.17/&.hq-apps/network/`) are real, complete, and build
-clean right now — but the taskbar's `network` cell is still fully
-inert (zero `strip_btn_9_menu_*` rows, zero `khtpm_taskbar_manager.c`
-diff from `origin/main`), so none of it is reachable from the UI yet.
-See that doc's own "REAL HANDOFF STATUS" section for the exact next
-step before picking this back up.
+**🔧 `NETWORK-CELL-HQ-WINDOWS-DESIGN.md` — Phase 1 done (2026-08-31),
+network cell is real and live.** opencode built the real
+`cli_io_window.c` console container + launcher scripts but ran out of
+tokens before wiring the taskbar menu itself; Sonnet wired it (PDL rows
++ `livedesk_build_network_menu()` + `livedesk:open-network:` dispatch)
+and found/fixed a real crash bug in `cli_io_window.c` along the way
+(fatal `BadMatch` from a misplaced `XSetInputFocus()`). Live-verified:
+all 4 rows (IRC Chat/Forum/Chain/Browser) dispatch correctly. One
+separate, NOT-yet-fixed cosmetic bug remains (the cli-io window renders
+nothing visible despite being stable) - see that doc's own "REAL PHASE
+1 WIRING" section. §10 Phase 2 (real khtpm windows per app, not just a
+terminal tab) is still not started.
 
 > **`archive/` DELETED (2026-08-29, direct instruction after the doc-audit
 > pass):** this folder existed 2026-08-24 through 2026-08-29 for

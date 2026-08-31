@@ -1,8 +1,10 @@
 # 🌐 NETWORK-CELL-HQ-WINDOWS-DESIGN
 
-**Status:** DRAFT, partially implemented — opencode ran out of tokens
-mid-work (2026-08-30) before Phase 1 wiring; see "REAL HANDOFF STATUS"
-below before continuing.
+**Status:** Phase 1 DONE (2026-08-31) — the network cell is real and
+wired; see "REAL PHASE 1 WIRING" below for what changed and the one
+real bug found/fixed along the way. §10 Phase 2 (converting each CLI
+app into its own real khtpm window, not just a gnome-terminal tab) is
+still not started.
 **Date:** 2026-08-30
 **Owner:** events-db-networking effort (see `.OPEN-2do-events-db-networking-2026-08-28.md`)
 
@@ -53,12 +55,56 @@ specs") and step 2 (Phase 1 cell wiring) were never started:
   using whichever existing `livedesk_build_<cell>_menu()` is the real
   precedent (§2's own "established pattern to copy" already names it).
 
-**Real next session's first move:** add the 5 `strip_btn_9_menu_*`
-rows to `livedesk_taskbar.pdl` (IRC Chat/Forum/Chain/Browser, per §1)
-+ the matching `livedesk_build_network_menu()` + dispatch branch in
-`khtpm_taskbar_manager.c`, wired to the already-real, already-tested
-`open_network_app.sh`/`open_network_browser.sh` above - no new C
-needed for the launchers themselves, just the menu plumbing.
+## REAL PHASE 1 WIRING (2026-08-31, Sonnet, live-verified end to end)
+
+The §11 reviewer question is answered: the canonical row-writer is the
+**dedicated-prefix PDL pattern** (`network_menu_N_label`/`_cmd`, same
+shape as `palettes_menu_N_*`), not a literal `strip_btn_13_menu_N`
+guess - `livedesk_build_network_menu()` in `khtpm_taskbar_manager.c`
+reads it exactly like `livedesk_build_palettes_menu()` does.
+
+- `#.desktop/livedesk_taskbar.pdl` - added the real `network_menu_1..5`
+  rows (IRC Chat/Forum/Chain/Browser/cancel), dispatching via
+  `livedesk:open-network:<key>`.
+- `khtpm_taskbar_manager.c` - `livedesk_build_network_menu()` (PDL
+  reader) + `which == 13` in `ktb_hq_open()`'s dispatch chain (13 = the
+  network cell's real click-code position, confirmed against
+  `khtpm_strip_codes.h`'s own authoritative comment - ignore the STALE
+  "1=HQ..12=network" comment a few lines above that dispatch chain,
+  it's outdated and doesn't match reality) + a new
+  `livedesk:open-network:` command handler mirroring
+  `livedesk:open-palette:`'s own real C-side-quoted-path shape (needed
+  for the same real reason: raw PDL shell-out breaks on this house's
+  literal `&.hq-apps/` paths, confirmed live once already for
+  `&.widgits/`).
+
+**Real bug found and fixed while live-testing** (not present in the
+design, a real defect in opencode's own `cli_io_window.c`): it called
+`XSetInputFocus()` immediately after `XMapWindow()`, before the window
+was actually viewable - a real `BadMatch` X error, and with no error
+handler installed, Xlib's own default handler treats that as FATAL and
+calls `exit()`. The window opened and died in the same frame,
+invisible - exactly what looked like "nothing happens" when the
+Browser row was clicked. Fixed: dropped the explicit focus call (a
+normal WM-managed window doesn't need to fight the WM's own focus
+policy here).
+
+**Live-verified, all four rows real:** clicking the network header
+(click code 4013) opens the real 5-row menu; "Browser" (row 3, item
+code 5003) spawns the real, now-stable `cli_io_window.+x`; "IRC Chat"
+(row 0, item code 5000) launches the real
+`044.pal-chat-irc👥️+2/system/orchestrator` process via
+`open_network_app.sh`. Forum/Chain use the identical real path, just a
+different `<key>`.
+
+**One real, separate, NOT fixed cosmetic bug found along the way:**
+`cli_io_window.+x`'s own render loop draws nothing visible - the
+window opens, stays alive, accepts real input, but the scrollback/
+input-line text never actually appears on screen (confirmed via
+screenshot, a plain black rectangle). Not yet root-caused (font load
+success/failure wasn't isolated) - a real, separate follow-up, not
+blocking the taskbar wiring itself since the process is stable and the
+dispatch chain is proven correct independent of this.
 
 ## 1. Objective & scope
 
