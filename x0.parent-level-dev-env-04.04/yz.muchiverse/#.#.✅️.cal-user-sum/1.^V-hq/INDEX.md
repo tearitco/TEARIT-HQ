@@ -26,6 +26,17 @@ survives a source-code `git reset --hard` and can look exactly like a
 fresh regression if left dirty from testing. Don't re-attempt any of
 this without reading it first.
 
+**🔧 `NETWORK-CELL-HQ-WINDOWS-DESIGN.md` — opencode ran out of tokens
+mid-work (2026-08-30) on this one, real code left uncommitted on
+disk.** The design itself is done; the standalone `cli_io_window.c`
+console container + its two launcher scripts (all under
+`44.xyz❤️‍🔥️00.17/&.hq-apps/network/`) are real, complete, and build
+clean right now — but the taskbar's `network` cell is still fully
+inert (zero `strip_btn_9_menu_*` rows, zero `khtpm_taskbar_manager.c`
+diff from `origin/main`), so none of it is reachable from the UI yet.
+See that doc's own "REAL HANDOFF STATUS" section for the exact next
+step before picking this back up.
+
 > **`archive/` DELETED (2026-08-29, direct instruction after the doc-audit
 > pass):** this folder existed 2026-08-24 through 2026-08-29 for
 > lower-priority docs — closed-bug records, DONE/superseded handoffs,
