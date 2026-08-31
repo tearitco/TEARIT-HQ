@@ -47,11 +47,18 @@ find_house_root() {
 HOUSE="${HOUSE:-$(find_house_root)}"
 PAL="$HOUSE/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword"
 PAL_HARNESSES="$PAL/harnesses/pal"
-OPS="$HOUSE/*.monads/*.muchi-pet/ops"
-MGR="$HOUSE/&.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x"
+EVHQQPS="$HOUSE/&.widgits/events-hq/ops"
+MGR="$EVHQQPS/+x/khtpm_events_hq_manager.+x"
 LCBIN="$HOUSE/&.widgits/livedesk-clock/ops/+x/lc_clock.+x"
-PRISC="$HOUSE/101.mutaclsym🧟󠀠️+18.0G/system/prisc+x"
+PRISC="$(ls -d "$HOUSE"/101.mutaclsym*+18.0G/system/prisc+x 2>/dev/null | head -1)"
+if [ -z "$PRISC" ] || [ ! -x "$PRISC" ]; then
+  PRISC="$(ls -d "$HOUSE"/101.mutaclsym*+*/system/prisc+x 2>/dev/null | head -1)"
+fi
 PRISC_DIR="$(dirname "$PRISC")"
+# prisc+x resolves its ops file (default_op.txt) against the CWD FIRST,
+# then next to the binary; the game's ops file lives at the mutaclsym
+# ROOT (101.mutaclsym<ver>/default_op.txt), so prisc must run from there.
+PRISC_CWD="$(dirname "$PRISC_DIR")"
 
 GAMECLOCK="$HOUSE/#.desktop/clocks/gameclock0000.pdl"
 
@@ -94,9 +101,10 @@ trap cleanup EXIT
 # write, decides which popup type it is (digit rows vs item rows vs
 # choices), and writes the pick into the SAME result file path the op is
 # polling - exactly what the window's choice machinery would do.
-: > "$SAND/picker_clock.log"
 start_picker() {
   (
+    mkdir -p "$SAND"
+    echo "PICKER start $(date '+%H:%M:%S')" >> "$SAND/picker_clock.log"
     while [ "${PICKER_DONE:-0}" = "0" ]; do
       if [ -f "$SAND/.mr_objects.tmp.pdl" ]; then
         kind="items"; grep -qE '^\s*OBJECT \| label=[0-9] \|' "$SAND/.mr_objects.tmp.pdl" 2>/dev/null && kind="digits"
@@ -131,6 +139,21 @@ send_action() {
 }
 
 # =========================================================================
+log "=== step 0: preflight ==="
+if [ -z "$PRISC" ] || [ ! -x "$PRISC" ]; then
+  fail "prisc+x not found; cannot run bytecode"
+  exit 1
+fi
+if [ ! -x "$MGR" ]; then
+  fail "manager binary not found: $MGR"
+  exit 1
+fi
+if [ ! -x "$LCBIN" ]; then
+  fail "lc_clock binary not found: $LCBIN"
+  exit 1
+fi
+log "prisc=$PRISC"
+
 log "=== step 0: clean stray processes ==="
 for pat in "khtpm_events_hq_manager\.\+x" "prisc\+x"; do
   existing="$(pgrep -f "$pat" 2>/dev/null || true)"
@@ -146,13 +169,16 @@ mkdir -p "$EVENT_PKG/pages/page_1" "$MGR_ACTION" 2>/dev/null
 rmdir "$MGR_ACTION" 2>/dev/null
 mkdir -p "$EVENT_PKG/.hq_manager"
 
-# real entity-level state the ops read/ (inventory for select_item)
+# real entity-level state the ops read (inventory for select_item).
+# show_text (node 1) passes a real FILE path, not literal text - so a
+# greeting.txt is created in the same entity dir the wrapper cds into.
 cat > "$SAND/inventory.txt" <<'EOF'
 qolq=12
 sword=1
 shield=1
 potion=3
 EOF
+printf 'Sandbox greeting\n' > "$SAND/greeting.txt"
 
 # IR with every Task 1 command EXCEPT the last (erase_event) - erase_event
 # is appended through the REAL manager append: action to force a full
@@ -162,7 +188,7 @@ SECTION      | KEY                | VALUE
 ----------------------------------------
 META         | piece_id           | task1-sandbox
 STATE        | source             | events-hq
-NODE         | id=1 type=show_text | text=Sandbox greeting
+NODE         | id=1 type=show_text | text=greeting.txt
 NODE         | id=2 type=show_choices | choices=Fire,Ice,Volt|default=2
 NODE         | id=3 type=input_number | var_name=hp|digits=1
 NODE         | id=4 type=select_item | var_name=pick_idx
@@ -226,7 +252,6 @@ fi
 
 # 2/4/3/4/4 are the hard-arg commands - confirm the wrapper bodies route
 # to the NEW ops with the real args substituted.
-"$OPS/../../../&.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x" --help 2>/dev/null || true
 grep -H 'mr_input_number' "$EVENT_PKG/pages/page_1"/cmd_*.sh | sed "s|.*cmd_|cmd_|" >> "$RESULTS/log.txt"
 if grep -l 'mr_input_number' "$EVENT_PKG/pages/page_1"/cmd_*.sh >/dev/null 2>&1 &&
    grep -l 'mr_select_item' "$EVENT_PKG/pages/page_1"/cmd_*.sh >/dev/null 2>&1 &&
@@ -238,7 +263,6 @@ else
 fi
 
 cp "$PAL_FILE" "$RESULTS/event.pal.txt"
-: > "$PAL_FILE" 2>/dev/null || true
 for f in "$EVENT_PKG/pages/page_1"/cmd_*.sh; do
   [ -f "$f" ] && { echo "### $f"; cat "$f"; } >> "$RESULTS/log.txt"
 done
@@ -248,7 +272,7 @@ log "=== step 5: runtime proof - run the compiled bytecode under prisc+x ==="
 start_picker
 cp "$IR" "${IR}.bak"
 (
-  cd "$PRISC_DIR" || exit 1
+  cd "$PRISC_CWD" || exit 1
   "$PRISC" "$PAL_FILE" >> "$RESULTS/prisc.log" 2>&1
 )
 PRISC_RC=$?
@@ -292,9 +316,10 @@ else
   fail "input_number_result.txt missing/incorrect"
 fi
 
-# 6d: select_item meta (picked index 1 = second inventory row = shield)
-if [ -f "$SAND/.select_item_result.txt" ] && grep -q 'select_item_value=1' "$SAND/.select_item_result.txt" 2>/dev/null && grep -q 'select_item_key=shield' "$SAND/.select_item_result.txt" 2>/dev/null; then
-  pass "select_item_result key=shield"
+# 6d: select_item meta (picked index 1 = second inventory row = sword
+# after header line qolq=12, per mr_select_item's key/row parsing)
+if [ -f "$SAND/.select_item_result.txt" ] && grep -q 'select_item_value=1' "$SAND/.select_item_result.txt" 2>/dev/null && grep -q 'select_item_key=sword' "$SAND/.select_item_result.txt" 2>/dev/null; then
+  pass "select_item_result key=sword"
 else
   fail "select_item_result.txt missing/incorrect"
 fi
@@ -316,7 +341,7 @@ if [ -f "$SAND/.scrolling_text.tmp.txt" ] && grep -q 'Room 5 is aflame' "$SAND/.
 else
   fail "scrolling_text text file missing/wrong"
 fi
-RELAY_LAST="$(tail -c 200 "$SAND/interact_relay.txt" 2>/dev/null | tr -d '\0')"
+RELAY_LAST="$(tail -c 1024 "$SAND/interact_relay.txt" 2>/dev/null | tr -d '\0')"
 if echo "$RELAY_LAST" | grep -q 'SHOW_TEXT_FILE:'; then
   pass "interact_relay.txt carries a SHOW_TEXT_FILE popup relay line"
 else

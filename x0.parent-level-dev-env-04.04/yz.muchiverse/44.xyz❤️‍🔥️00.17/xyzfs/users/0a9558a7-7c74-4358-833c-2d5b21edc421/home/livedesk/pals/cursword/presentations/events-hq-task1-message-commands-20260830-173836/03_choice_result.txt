@@ -1,0 +1,2 @@
+choice_result=1
+choice_label=Ice
