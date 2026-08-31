@@ -9,8 +9,18 @@ correctly the first time. Source of truth: `&.widgits/WIDGIT_BIBLE.md`,
 
 - **Host** = app profile: owns the TTY, `keyboard_input` foreground,
   `system/renderer` (ASCII) + `gl_mirror` (GL) both render.
-- **WIDGIT** = widget profile: GL-only. NO `keyboard_input`, NO ASCII
-  renderer, stdout -> `/dev/null`. Launched by the host with:
+- **WIDGIT** = widget profile: GL-only (accurate for THIS project's
+  own real code today - `button.sh` only ever checks for
+  `system/gl_mirror`, no alternative). **Note, 2026-08-30: the house-
+  wide convention has since moved toward RGB-first blitting
+  (`x11_mirror.c`, no GL dependency) - board-viewer's own widget
+  already got that real conversion (see its `button.sh`'s
+  `NO_RGB_COMPOSITOR`/`NO_GL` split, `x11_mirror.+x` as the preferred
+  display mirror). TSC_ELO's own widget hasn't been converted yet -
+  this GL-only description is real and current, but due for the same
+  real migration later, not a permanent architecture choice.** NO
+  `keyboard_input`, NO ASCII renderer, stdout -> `/dev/null`. Launched
+  by the host with:
   `setsid env RUN_PROFILE=widget bash '<w>/button.sh' run-widget '<host_real_root>' >/dev/null 2>&1 < /dev/null &`
 - Each program has its OWN session dir, its OWN `system/` binaries, its
   OWN `ops/`, its OWN PAL loop, its OWN GL window. Communication is
