@@ -1,10 +1,12 @@
 # "One map" perspective 3D — design (2026-08-31)
 
-**Status: DESIGN ONLY, nothing built.** This is the deferred "final trick"
-from [[CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-DESIGN.md]] §13 —
-written up on its own per direct instruction ("lets write a design doc for
-'one-map' first"), before any real code, since it's a genuine architecture
-change, not a follow-on tweak.
+**Status: DESIGN DECIDED, nothing built.** This is the deferred "final
+trick" from [[CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-DESIGN.md]]
+§13 — written up on its own per direct instruction ("lets write a design
+doc for 'one-map' first"), before any real code, since it's a genuine
+architecture change, not a follow-on tweak. §5's five open questions were
+all resolved 2026-08-31 ("lets go thru the questions") - real
+implementation hasn't started yet.
 
 ## 0. Direct quotes this design is built from
 
@@ -95,8 +97,7 @@ keeps that separation cleaner, closer to the real "one process per real
 responsibility" house convention this whole codebase already follows
 (`khtpm_taskbar_manager_main.c` vs `khtpm_strip_parser.c`, etc.).
 
-**Recommendation: Option A.** Open question for the user before real code
-starts (see §7).
+**Decided: Option A** (§5 item 5).
 
 ## 4. Real key scheme (ties §13's reservation back together)
 
@@ -119,40 +120,69 @@ starts (see §7).
   meanings, in BOTH modes ("the camera keys stay the same, they will work
   in 'piecemode' as well") — one shared control layer, not two.
 
-## 5. Real open questions this design doc surfaces (not yet decided)
+## 5. Real decisions (resolved 2026-08-31, "lets go thru the questions")
 
-1. **Transparency** — "a transparent version of piececraft": does this
-   mean genuinely translucent/see-through voxels (alpha blending through
-   overlapping entities, real depth-sorted compositing, more expensive),
-   or "transparent" in the sense of "the same mechanism, made visible/
-   legible to you" (i.e. not literal alpha blending, just describing the
-   effect informally)? Changes real render-cost and real hit-testing
-   design (a literal-transparency raymarch can't early-exit on first hit
-   the way `test_phymoji_hit()` does today).
-2. **Z-level interaction** — does one-map show every z-level's entities
-   at once (a real, full "dollhouse" cross-section view), or does the
-   existing active-z filter ([[CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-DESIGN.md]]
-   §2) still apply, showing only the current active layer merged into one
-   scene? Both are real, valid designs; they're different features.
-3. **Scale/performance** — how many entities realistically need to be in
-   one merged scene at once? Determines whether real per-entity AABB
-   culling (skip an entity's whole voxel set if the current ray's overall
-   direction can't possibly cross its world-space bounding box before
-   testing individual columns) is required day one or can wait.
-4. **Placement while in one-map mode** — is placing a NEW entity while
-   one-map is active in scope for this design, or strictly out of scope
-   (place in "non map" mode, see it reflected next time one-map turns
-   on)? The Minecraft-style 3D placement-preview cursor
-   ([[CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-DESIGN.md]]'s own
-   real deferred scope note) would live here if so.
-5. **Option A vs B** (§3) — new standalone compositor process, or grown
-   into cursword's own process?
+1. **Transparency — literal alpha blending.** Direct instruction: "use
+   alpha blending. there maybe precedent in mutaclsym or wraith-alpha" —
+   confirmed real precedent exists: `wraith-alpha/plugins/
+   wraith_rgb_daemon.c`'s own `fill_poly_px()` (its real Z-buffer
+   rasterizer) already draws this exact distinction — alpha=255 (opaque)
+   tests AND writes the depth buffer; alpha<255 (translucent) tests depth
+   but deliberately does NOT write it, relying on back-to-front draw
+   order instead ("the sorted back-to-front translucency model both
+   Unreal and Godot fall back to once alpha blending breaks
+   straightforward Z-buffer logic"). One-map's real raymarch is the
+   front-to-back analog of the same semantics: march each ray through the
+   merged voxel scene accumulating color via the standard "over" alpha
+   compositing operator per step, instead of stopping at the first
+   opaque hit like `test_phymoji_hit()` does today — stop early only once
+   accumulated alpha reaches ~1.0 (fully opaque) or the ray exits the
+   scene. Real, own, `test_phymoji_hit()`-style hit-testing needs a new
+   variant for this (call it `test_phymoji_hit_accum()` when built) that
+   returns/accumulates every voxel along the ray instead of the first.
+2. **Z-levels — all at once.** Direct answer: "All z-levels at once." A
+   real full "dollhouse" cross-section — every entity's voxels merged
+   into world space using its own real z (not filtered by
+   `desktop_active_z.txt` the way "non map" mode is). The per-entity
+   world-space z-offset (§3 step 2) needs a real, chosen z-to-world-unit
+   conversion (not yet picked — implementation-time detail, §7).
+3. **Performance/culling — PDL-toggleable hooks, not a hard commitment
+   either way.** Direct instruction (given identically for both this and
+   placement scope): "build toggleable hooks at least (from pdl) so we
+   can test the waters." Real per-entity AABB culling (§3 step 2) gets
+   built as a real code path from day one, but gated behind a new PDL key
+   (e.g. `ONE_MAP | cull_enabled | 1`, exact key TBD at implementation
+   time) so it can be toggled off live to compare cost/behavior with
+   culling on vs off, rather than committing hard to "always on" or
+   "skip for now."
+4. **Placement while in one-map mode — same real pattern, PDL-toggleable.**
+   Direct instruction: "build togglable .pdl hooks at least so we can
+   test the waters." Real click-to-place-in-one-map support gets built,
+   gated behind a new PDL key (e.g. `ONE_MAP | placement_enabled | 1`,
+   exact key TBD) so it can be tested and toggled independently of
+   whether it's actually wanted long-term, rather than either fully
+   building it out (with the Minecraft-style 3D preview cursor) or
+   skipping it entirely this pass.
+5. **Architecture — Option A, standalone process.** Direct answer:
+   "Standalone process (recommended)." New binary (working name
+   `khtpm_one_map_render.c`, real name TBD at implementation time),
+   matching the house's own "one process, one responsibility" convention
+   (`khtpm_taskbar_manager_main.c` vs `khtpm_strip_parser.c`). Cursword
+   stays scoped to its own entity window + desktop-wide key input/mode
+   dispatch (it still OWNS the `0`/`1`-`8` key handling and writes
+   whatever shared state file tells the new process to launch/tear down
+   and which POV mode is active — same real "cursword is the desktop's
+   own real interact controller" role from
+   [[CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-DESIGN.md]] §0 item
+   3, just dispatching to a separate renderer instead of drawing one-map
+   itself).
 
-## 6. Explicit non-goals for this doc
+## 7. Explicit non-goals for this doc
 
 Not attempting to spec exact pixel/world-unit conversions, exact file
-formats for any new shared state, or exact function signatures yet — this
-doc is scoped to settling the real architecture questions in §5 first, per
-direct instruction to write the design before any code. A follow-up
-revision (or a §-numbered addendum here) turns the accepted answers into a
-real implementation plan once decided.
+formats for any new shared state, or exact function signatures yet — §5's
+real decisions settle the ARCHITECTURE questions; a follow-up revision (or
+a §-numbered addendum here) turns them into a real implementation plan
+(exact PDL key names, exact new-binary name, exact z-to-world-unit
+conversion, exact new state files cursword writes to launch/control the
+compositor) once that pass starts.
