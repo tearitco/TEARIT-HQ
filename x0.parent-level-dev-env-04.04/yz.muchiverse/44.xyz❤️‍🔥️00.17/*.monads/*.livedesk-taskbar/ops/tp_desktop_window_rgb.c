@@ -4802,7 +4802,33 @@ int main(int argc, char **argv) {
                         if (gy > max_row) gy = max_row;
                         win_x = gx * GRID_CELL_PX;
                         win_y = gy * GRID_CELL_PX;
-                        XMoveWindow(dpy, win, win_x, win_y);
+                        /* REAL FIX 2026-08-31, direct live report ("now
+                         * when moving cursword, in 3d mode it flickers
+                         * back to old position after every arrow key
+                         * move") - this used to move to the raw,
+                         * unpanned win_x/win_y directly, then the
+                         * per-frame camera-pan correction (further down
+                         * this same loop, real header comment: "win_x/
+                         * win_y themselves... stay completely
+                         * untouched... only the actual X11 window
+                         * position gets +cam_pan_x/+cam_pan_y") saw a
+                         * real mismatch against its own cached last-
+                         * applied position and immediately re-moved it
+                         * to the correct panned spot - two real, back-
+                         * to-back XMoveWindow calls to two different
+                         * targets in the same tick, a real visible
+                         * flicker. Real fix: apply the same real pan
+                         * offset here too when in 3D mode, so this
+                         * call already lands on the correct spot and
+                         * the later correction becomes a genuine no-op
+                         * (matches what it would have computed anyway,
+                         * not a second real move). */
+                        {
+                            int in_3d = (g_camera_mode == 3 || g_camera_mode == 4);
+                            int disp_x = in_3d ? win_x + g_cam_pan_x : win_x;
+                            int disp_y = in_3d ? win_y + g_cam_pan_y : win_y;
+                            XMoveWindow(dpy, win, disp_x, disp_y);
+                        }
                         write_pos(package_dir, win_x, win_y);
                         need_redraw = 1;
                     } else if (cursword_handle_camera_key(g_house_root, ks2)) {
