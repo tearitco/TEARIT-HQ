@@ -1700,6 +1700,73 @@ static void write_camera_state(const char *house_root) {
     fclose(f);
 }
 
+/* ============================================================
+ * REAL, CONSOLIDATED CAMERA CONTROLS - direct instruction 2026-08-30
+ * ("lets get all teh camera controls in 1 place first"). One real
+ * function, one real per-key dispatch, called from exactly one site
+ * in the main KeyPress handler (armed + g_is_cursword) instead of
+ * three separate elif branches scattered through that chain. Add any
+ * FUTURE camera key here too (yaw, zoom, etc. - direct instruction:
+ * "then we will add the other camera controls") - this is the one
+ * real place all of it belongs, not a per-key precedent to copy.
+ * Returns 1 if the key was a real camera key (caller should treat it
+ * as handled - set need_redraw etc.), 0 if it wasn't (caller keeps
+ * checking its own other real branches, e.g. Escape/arrows).
+ * ============================================================ */
+static int cursword_handle_camera_key(const char *house_root, KeySym ks2) {
+    if (ks2 == XK_1 || ks2 == XK_2 || ks2 == XK_3 || ks2 == XK_4) {
+        /* Real, desktop-wide camera-mode switch, design doc §9 item #6:
+         * "since real key capture only begins once cursword is
+         * genuinely ARMED... board-viewer's own real 1-4 camera_mode
+         * keys can be reused verbatim with zero real collision risk."
+         * Same real key-set/semantics as board-viewer's own
+         * bv_menu_input.c (1=first person, 2=third person, 3=free
+         * roam, 4=bird's eye), written to the shared desktop-wide
+         * state file every entity's own window polls. */
+        int mode = ks2 - XK_0;
+        char camp[PATH_BUF];
+        snprintf(camp, sizeof(camp), "%s/#.desktop/desktop_camera_mode.txt", house_root);
+        FILE *cf = fopen(camp, "w");
+        if (cf) { fprintf(cf, "%d\n", mode); fclose(cf); }
+        bump_camera_changed(house_root);
+        append_history(mode == 1 ? "CURSWORD_CAMERA_1_FIRSTPERSON" :
+                       mode == 2 ? "CURSWORD_CAMERA_2_THIRDPERSON" :
+                       mode == 3 ? "CURSWORD_CAMERA_3_FREEROAM" :
+                                   "CURSWORD_CAMERA_4_BIRDSEYE");
+        return 1;
+    }
+    if (g_camera_mode != 3 && g_camera_mode != 4) return 0; /* real, shared gate - every other camera key below only means something once in a 3D mode, matches board-viewer's own real camera_control.c "render_mode != 1 -> no-op" precedent */
+    if (ks2 == XK_f) {
+        /* Real reset - board-viewer's own real key (camera_control.c:
+         * "f reset to default facing"/"f center on hero"), reused
+         * verbatim, direct instruction. */
+        g_cam_pan_x = 0; g_cam_pan_y = 0; g_cam_tilt = 0;
+        write_camera_state(house_root);
+        bump_camera_changed(house_root);
+        append_history("CURSWORD_CAMERA_RESET");
+        return 1;
+    }
+    if (ks2 == XK_w || ks2 == XK_a || ks2 == XK_s || ks2 == XK_d || ks2 == XK_r || ks2 == XK_t) {
+        /* Real pan (w/a/s/d) + tilt (r/t) - same real letters board-
+         * viewer's own camera_control.c already uses, reused verbatim,
+         * zero collision with cursword's own arrow-key ENTITY movement
+         * or 1-4 mode keys. Desktop-wide effect - see
+         * load_camera_state()'s own header comment. */
+        int step = GRID_CELL_PX / 4;
+        if (ks2 == XK_w) g_cam_pan_y += step;
+        else if (ks2 == XK_s) g_cam_pan_y -= step;
+        else if (ks2 == XK_a) g_cam_pan_x += step;
+        else if (ks2 == XK_d) g_cam_pan_x -= step;
+        else if (ks2 == XK_r) { g_cam_tilt += 10; if (g_cam_tilt > 100) g_cam_tilt = 100; }
+        else if (ks2 == XK_t) { g_cam_tilt -= 10; if (g_cam_tilt < 0) g_cam_tilt = 0; }
+        write_camera_state(house_root);
+        bump_camera_changed(house_root);
+        append_history("CURSWORD_CAMERA_PAN_TILT");
+        return 1;
+    }
+    return 0;
+}
+
 /* Real, art-derived shaded "wall" strip - same real bbox-crop +
  * edge-color-averaging technique as draw_topdown_block_rgb()'s own
  * header comment, factored out here so cursword's own camera-state
@@ -4588,7 +4655,8 @@ int main(int argc, char **argv) {
                 drag_start_x = xev.xmotion.x_root;
                 drag_start_y = xev.xmotion.y_root;
                 need_redraw = 1;
-            } else if (xev.type == FocusOut && g_is_cursword && g_cursword_armed) {
+            } else if (xev.type == FocusOut && g_is_cursword && g_cursword_armed &&
+                       xev.xfocus.mode == NotifyNormal) {
                 /* REAL, NEW 2026-08-30, direct live report ("if
                  * cursword loses focus (like user clicks different
                  * window) is there a way to make sure the halo goes
@@ -4601,7 +4669,25 @@ int main(int argc, char **argv) {
                  * prevent the WM/compositor from moving real X input
                  * focus to a DIFFERENT window the user clicks - this
                  * is the real, missing "clicking away should un-arm
-                 * it" signal. */
+                 * it" signal.
+                 * REAL BUG FOUND + FIXED LIVE (2026-08-30, direct live
+                 * report of cursword self-closing on the very next
+                 * keypress after arming) - X11 ALSO fires a real
+                 * FocusOut on THIS SAME window the instant its own
+                 * XGrabKeyboard call (just above, on arm) establishes
+                 * the grab - a real, spurious, grab-related event, NOT
+                 * a genuine "focus moved to another window." Its real
+                 * xfocus.mode is NotifyGrab, not NotifyNormal - the
+                 * mode check above is the real, correct way to tell
+                 * them apart (confirmed via direct Xlib docs: a
+                 * genuine focus change from a real user click is
+                 * always NotifyNormal). Without this filter, arming
+                 * cursword instantly self-disarmed itself one event
+                 * later, so the VERY NEXT key hit this file's own
+                 * "no menu open -> any key closes the tile" default
+                 * fallback (since it looked unarmed again) - not a
+                 * crash, a real, deliberate self-close, just
+                 * triggered by a bug elsewhere. */
                 if (g_cursword_awaiting_place) {
                     XUngrabPointer(dpy, CurrentTime);
                     g_cursword_awaiting_place = 0;
@@ -4676,77 +4762,13 @@ int main(int argc, char **argv) {
                         XMoveWindow(dpy, win, win_x, win_y);
                         write_pos(package_dir, win_x, win_y);
                         need_redraw = 1;
-                    } else if (ks2 == XK_1 || ks2 == XK_2 || ks2 == XK_3 || ks2 == XK_4) {
-                        /* REAL, NEW 2026-08-30 - desktop-wide camera-mode
-                         * switch, design doc §9 item #6: "since real key
-                         * capture only begins once cursword is genuinely
-                         * ARMED... board-viewer's own real 1-4 camera_mode
-                         * keys can be reused verbatim with zero real
-                         * collision risk." Same real key-set/semantics as
-                         * board-viewer's own bv_menu_input.c (1=first
-                         * person, 2=third person, 3=free roam, 4=bird's
-                         * eye) but written to a NEW, desktop-wide shared
-                         * state file (§9 item #5) rather than a
-                         * per-project one - every desktop entity's own
-                         * window can poll this to know the current
-                         * camera mode once real 3D re-rendering is wired
-                         * (still explicitly deferred, §8 item 4 - this is
-                         * only the real control-side plumbing, matching
-                         * the doc's own "no code until the enabling
-                         * mechanism exists" discipline). */
-                        int mode = ks2 - XK_0;
-                        char camp[PATH_BUF];
-                        snprintf(camp, sizeof(camp), "%s/#.desktop/desktop_camera_mode.txt", g_house_root);
-                        FILE *cf = fopen(camp, "w");
-                        if (cf) { fprintf(cf, "%d\n", mode); fclose(cf); }
-                        bump_camera_changed(g_house_root); /* real, new - see camera_changed_dirty()'s own header comment */
-                        append_history(mode == 1 ? "CURSWORD_CAMERA_1_FIRSTPERSON" :
-                                       mode == 2 ? "CURSWORD_CAMERA_2_THIRDPERSON" :
-                                       mode == 3 ? "CURSWORD_CAMERA_3_FREEROAM" :
-                                                   "CURSWORD_CAMERA_4_BIRDSEYE");
-                    } else if ((g_camera_mode == 3 || g_camera_mode == 4) && ks2 == XK_f) {
-                        /* REAL, NEW 2026-08-30, direct instruction ("is
-                         * there a key that we would press in
-                         * piececraft to set camera back to normal? if
-                         * so id like to use the same for this") -
-                         * board-viewer's own real reset key
-                         * (camera_control.c: "f reset to default
-                         * facing" / "f center on hero"), reused
-                         * verbatim - resets pan/tilt back to their own
-                         * real defaults (0/0/20, same shape
-                         * load_camera_state()'s own no-file fallback
-                         * already uses). */
-                        g_cam_pan_x = 0; g_cam_pan_y = 0; g_cam_tilt = 0;
-                        write_camera_state(g_house_root);
-                        bump_camera_changed(g_house_root);
-                        append_history("CURSWORD_CAMERA_RESET");
-                    } else if ((g_camera_mode == 3 || g_camera_mode == 4) &&
-                               (ks2 == XK_w || ks2 == XK_a || ks2 == XK_s || ks2 == XK_d ||
-                                ks2 == XK_r || ks2 == XK_t)) {
-                        /* REAL, NEW 2026-08-30, direct instruction ("do
-                         * u understand how it looks depends on the
-                         * camera?" -> "both") - real camera PAN/TILT
-                         * control, only meaningful once in a 3D mode
-                         * (matches board-viewer's own real
-                         * "render_mode != 1 -> no-op" camera_control.c
-                         * gate, same reasoning). w/a/s/d pan (board-
-                         * viewer's own real key convention, reused
-                         * verbatim, zero collision with cursword's own
-                         * arrow-key ENTITY movement or 1-4 mode keys);
-                         * r/t tilt (same real letters board-viewer's
-                         * own camera_control.c already uses for
-                         * pitch). Desktop-wide effect - see
-                         * load_camera_state()'s own header comment. */
-                        int step = GRID_CELL_PX / 4;
-                        if (ks2 == XK_w) g_cam_pan_y += step;
-                        else if (ks2 == XK_s) g_cam_pan_y -= step;
-                        else if (ks2 == XK_a) g_cam_pan_x += step;
-                        else if (ks2 == XK_d) g_cam_pan_x -= step;
-                        else if (ks2 == XK_r) { g_cam_tilt += 10; if (g_cam_tilt > 100) g_cam_tilt = 100; }
-                        else if (ks2 == XK_t) { g_cam_tilt -= 10; if (g_cam_tilt < 0) g_cam_tilt = 0; }
-                        write_camera_state(g_house_root);
-                        bump_camera_changed(g_house_root); /* real, new - see camera_changed_dirty()'s own header comment */
-                        append_history("CURSWORD_CAMERA_PAN_TILT");
+                    } else if (cursword_handle_camera_key(g_house_root, ks2)) {
+                        /* Real, consolidated dispatch - see
+                         * cursword_handle_camera_key()'s own header
+                         * comment (1-4 mode, f reset, wasd/rt pan-
+                         * tilt, and any future camera key all live
+                         * there now, one real place). */
+                        need_redraw = 1;
                     }
                 } else if (popup_win || user_popup_win || input_popup_win || text_popup_win || input_active) {
                     /* REAL FIX 2026-08-07, direct instruction ("print
@@ -4830,7 +4852,14 @@ int main(int argc, char **argv) {
              * unaffected either way, see the header comment above -
              * this is purely how visible it reads). */
             if (g_is_cursword) {
-                XSetForeground(dpy, g_buf_gc, 0x03141414UL);
+                /* Real, new 2026-08-30 ("make the grey translucent
+                 * circle around cursword completely transparent 0%") -
+                 * alpha 0x03 -> 0x00. Still a real, unioned
+                 * ShapeBounding region (the wider click surface stays
+                 * exactly as wide - alpha and clickability are fully
+                 * independent, per this disc's own earlier header
+                 * comment), just genuinely invisible now. */
+                XSetForeground(dpy, g_buf_gc, 0x00141414UL);
                 int dcx = WIN_PX / 2, dcy = WIN_PX / 2;
                 int dradius = WIN_PX / 2 - 5;
                 XFillArc(dpy, g_buf, g_buf_gc, dcx - dradius, dcy - dradius,
