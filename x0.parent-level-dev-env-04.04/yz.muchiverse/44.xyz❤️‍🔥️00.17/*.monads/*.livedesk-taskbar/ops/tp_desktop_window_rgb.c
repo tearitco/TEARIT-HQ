@@ -374,10 +374,12 @@ static void cursword_write_armed(const char *house_root, int armed) {
 /* REAL, NEW 2026-08-30, direct instruction ("can we do another debug
  * below sword, that shows camera angle?") - grown from 20 to 38 to
  * fit a real second line (the existing key-log line, plus a new
- * camera pitch/tilt readout right below it) - see the real draw site
- * near the end of the main render block for what actually gets
- * printed on each line. */
-#define CURSWORD_LOG_H 38
+ * camera pitch/tilt readout right below it), then to 56 (direct
+ * instruction, 2026-08-31: "zx cy aren't changing z level... can u
+ * add another debug row for cursword that show xyz position") for a
+ * real third line - see the real draw site near the end of the main
+ * render block for what actually gets printed on each line. */
+#define CURSWORD_LOG_H 56
 #define CURSWORD_LOG_N 5
 static char g_cursword_log[CURSWORD_LOG_N][12];
 static int g_cursword_log_n = 0;
@@ -1751,7 +1753,57 @@ static int cursword_handle_camera_key(const char *house_root, const char *packag
                                    "CURSWORD_CAMERA_4_BIRDSEYE");
         return 1;
     }
-    if (g_camera_mode != 3 && g_camera_mode != 4) return 0; /* real, shared gate - every other camera key below only means something once in a 3D mode, matches board-viewer's own real camera_control.c "render_mode != 1 -> no-op" precedent */
+    if (ks2 == XK_c || ks2 == XK_v) {
+        /* REAL, NEW 2026-08-31, direct instruction ("do we have z
+         * layers yet? ... using c & v the xelector/cursword moves up
+         * and down z levels but the rest of the entities should
+         * remain on their own z level unless some event is otherwise
+         * moving them") - board-viewer's own real c/v key convention
+         * (camera_control.c: "c/v = Camera Z level"), but real,
+         * direct instruction maps it here to CURSWORD's OWN entity z
+         * (cursword is the real xelector/selector role) rather than a
+         * separate camera-only parameter - moving it is what defines
+         * the shared desktop_active_z.txt every OTHER entity's own
+         * window polls to decide whether to show or hide itself (see
+         * that file's own header comment and the real map/unmap logic
+         * in the main render loop). g_house_root/package_dir close
+         * over this function's own real parameters, not globals.
+         * REAL BUG FIX 2026-08-31, direct live report ("zx cy aren't
+         * changing z level in 2d or 3d mode yet") - this branch used
+         * to sit AFTER the 3D-only gate below, so c/v silently did
+         * nothing outside camera_mode 3/4 - real z is an always-on
+         * entity property, not a 3D-camera-only parameter, so this
+         * check now runs BEFORE that gate, matching the direct
+         * instruction's own "in 2d or 3d mode" framing exactly. */
+        g_entity_z += (ks2 == XK_v) ? 1 : -1;
+        char zpath[PATH_BUF];
+        snprintf(zpath, sizeof(zpath), "%s/desktop_pos.txt", package_dir);
+        /* Re-read x/y (write_pos()'s own real "preserve what's not
+         * changing" shape isn't reusable here - this call site has no
+         * real win_x/win_y in scope, only package_dir) so the z change
+         * doesn't clobber the entity's own real saved position. */
+        int px = 0, py = 0;
+        FILE *rf = fopen(zpath, "r");
+        if (rf) {
+            char line[128];
+            while (fgets(line, sizeof(line), rf)) {
+                if (strncmp(line, "x=", 2) == 0) px = atoi(line + 2);
+                else if (strncmp(line, "y=", 2) == 0) py = atoi(line + 2);
+            }
+            fclose(rf);
+        }
+        FILE *wf = fopen(zpath, "w");
+        if (wf) { fprintf(wf, "x=%d\ny=%d\nz=%d\n", px, py, g_entity_z); fclose(wf); }
+        char azpath[PATH_BUF];
+        snprintf(azpath, sizeof(azpath), "%s/#.desktop/desktop_active_z.txt", house_root);
+        FILE *azf = fopen(azpath, "w");
+        if (azf) { fprintf(azf, "%d\n", g_entity_z); fclose(azf); }
+        g_active_z = g_entity_z;
+        bump_camera_changed(house_root);
+        append_history(ks2 == XK_v ? "CURSWORD_Z_UP" : "CURSWORD_Z_DOWN");
+        return 1;
+    }
+    if (g_camera_mode != 3 && g_camera_mode != 4) return 0; /* real, shared gate - every OTHER camera key below only means something once in a 3D mode (c/v above is deliberately exempt - real z is not camera-only), matches board-viewer's own real camera_control.c "render_mode != 1 -> no-op" precedent */
     if (ks2 == XK_f) {
         /* Real reset - board-viewer's own real key (camera_control.c:
          * "f reset to default facing"/"f center on hero"), reused
@@ -1786,49 +1838,6 @@ static int cursword_handle_camera_key(const char *house_root, const char *packag
         write_camera_state(house_root);
         bump_camera_changed(house_root);
         append_history("CURSWORD_CAMERA_PAN_TILT");
-        return 1;
-    }
-    if (ks2 == XK_c || ks2 == XK_v) {
-        /* REAL, NEW 2026-08-31, direct instruction ("do we have z
-         * layers yet? ... using c & v the xelector/cursword moves up
-         * and down z levels but the rest of the entities should
-         * remain on their own z level unless some event is otherwise
-         * moving them") - board-viewer's own real c/v key convention
-         * (camera_control.c: "c/v = Camera Z level"), but real,
-         * direct instruction maps it here to CURSWORD's OWN entity z
-         * (cursword is the real xelector/selector role) rather than a
-         * separate camera-only parameter - moving it is what defines
-         * the shared desktop_active_z.txt every OTHER entity's own
-         * window polls to decide whether to show or hide itself (see
-         * that file's own header comment and the real map/unmap logic
-         * in the main render loop). g_house_root/package_dir close
-         * over this function's own real parameters, not globals. */
-        g_entity_z += (ks2 == XK_v) ? 1 : -1;
-        char zpath[PATH_BUF];
-        snprintf(zpath, sizeof(zpath), "%s/desktop_pos.txt", package_dir);
-        /* Re-read x/y (write_pos()'s own real "preserve what's not
-         * changing" shape isn't reusable here - this call site has no
-         * real win_x/win_y in scope, only package_dir) so the z change
-         * doesn't clobber the entity's own real saved position. */
-        int px = 0, py = 0;
-        FILE *rf = fopen(zpath, "r");
-        if (rf) {
-            char line[128];
-            while (fgets(line, sizeof(line), rf)) {
-                if (strncmp(line, "x=", 2) == 0) px = atoi(line + 2);
-                else if (strncmp(line, "y=", 2) == 0) py = atoi(line + 2);
-            }
-            fclose(rf);
-        }
-        FILE *wf = fopen(zpath, "w");
-        if (wf) { fprintf(wf, "x=%d\ny=%d\nz=%d\n", px, py, g_entity_z); fclose(wf); }
-        char azpath[PATH_BUF];
-        snprintf(azpath, sizeof(azpath), "%s/#.desktop/desktop_active_z.txt", house_root);
-        FILE *azf = fopen(azpath, "w");
-        if (azf) { fprintf(azf, "%d\n", g_entity_z); fclose(azf); }
-        g_active_z = g_entity_z;
-        bump_camera_changed(house_root);
-        append_history(ks2 == XK_v ? "CURSWORD_Z_UP" : "CURSWORD_Z_DOWN");
         return 1;
     }
     return 0;
@@ -5233,6 +5242,25 @@ int main(int argc, char **argv) {
                 snprintf(camline, sizeof(camline), "tilt=%d pitch=%.0f%s",
                          g_cam_tilt, dbg_pitch, g_emoji_sprite_view_top ? " top" : " front");
                 popup_draw_text(dpy, g_buf, g_buf_gc, 2, WIN_PX + 33, camline);
+
+                /* REAL, NEW 2026-08-31, direct instruction ("zx cy
+                 * aren't changing z level in 2d or 3d mode yet as far
+                 * as im concerned... add another debug row for
+                 * cursword that show xyz position") - a real third
+                 * line: THIS process's own real win_x/win_y (the true
+                 * logical grid position, not the panned display
+                 * position) and g_entity_z (this entity's own real,
+                 * persisted z - changed only by c/v, see
+                 * cursword_handle_camera_key()'s own header comment),
+                 * plus the shared g_active_z right next to it so a
+                 * z-vs-active-z mismatch (which is what actually
+                 * drives real visibility - see the map/unmap logic
+                 * earlier in this same loop) is visible at a glance,
+                 * not just cursword's own z in isolation. */
+                char posline[48];
+                snprintf(posline, sizeof(posline), "x=%d y=%d z=%d az=%d",
+                         win_x, win_y, g_entity_z, g_active_z);
+                popup_draw_text(dpy, g_buf, g_buf_gc, 2, WIN_PX + 51, posline);
             }
 
             /* Present: same compose->present pattern as db-hq/taskbar -
