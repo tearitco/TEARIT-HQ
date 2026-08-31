@@ -566,3 +566,41 @@ COMMAND change_class
   PAL li x12, {class_id}
   PAL ecall "{STATE_DIR}/actor_{actor_id}_stats.txt" "class_id"
 END
+
+# ------------------------------------------------------------------
+# Change Name / Change Nickname / Change Profile - the three genuine
+# STRING SETs, 2026-08-30 (Task 1/2b). Deliberately NOT Shape 1 (PAL):
+# prisc+x's real ecall kv system is integer-only (SYS_GET_KV_INT /
+# SYS_SET_KV_INT, atoi/"%d\n") - there is no string-set primitive, so
+# this is genuinely Shape 2 (new C op + registry TEMPLATE exec), added
+# as ONE op binary mr_actor_string.+x dispatched by its own first arg
+# (the same pattern mr_character.+x already set). Lives entirely in
+# events-hq's own ops dir - no shared-engine/prisc/renderer edits.
+# TEMPLATE single-quotes the value (house style); a value containing a
+# single quote is the documented limitation every exec-template shares.
+# Non-blocking: an actor name/nickname/profile is DATA - no popup, no
+# clock coupling.
+
+COMMAND change_name
+  LABEL Change Name
+  FIELD1 Actor id:
+  FIELD2 New name:
+  PARAMS actor_id,name
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_actor_string.+x" "$ENT" '{actor_id}' name '{name}'
+END
+
+COMMAND change_nickname
+  LABEL Change Nickname
+  FIELD1 Actor id:
+  FIELD2 New nickname:
+  PARAMS actor_id,nickname
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_actor_string.+x" "$ENT" '{actor_id}' nickname '{nickname}'
+END
+
+COMMAND change_profile
+  LABEL Change Profile
+  FIELD1 Actor id:
+  FIELD2 Profile text:
+  PARAMS actor_id,profile
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_actor_string.+x" "$ENT" '{actor_id}' profile '{profile}'
+END

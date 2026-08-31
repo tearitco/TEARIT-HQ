@@ -256,7 +256,7 @@ static void parse_params(const char *params_line, char keys[MAX_FIELDS][32], cha
     *n_out = n;
 }
 
-static const char *lookup_value(char keys[MAX_FIELDS][32], char vals[MAX_FIELDS][256], int n, const char *key) {
+static const char *lookup_value(char keys[MAX_FIELDS][32], char vals[MAX_FIELDS][PATH_BUF], int n, const char *key) {
     for (int i = 0; i < n; i++) if (strcmp(keys[i], key) == 0) return vals[i];
     return "";
 }
@@ -302,7 +302,7 @@ static void convert_params_to_new_format(const char *old_params, const char *cmd
  * syntax contract. No nesting; that's a deliberate simplicity limit,
  * not an oversight - every real command so far needs at most one
  * optional trailing field. */
-static void expand_template(const char *tmpl, char keys[MAX_FIELDS][32], char vals[MAX_FIELDS][256], int n, char *out, size_t outsz) {
+static void expand_template(const char *tmpl, char keys[MAX_FIELDS][32], char vals[MAX_FIELDS][PATH_BUF], int n, char *out, size_t outsz) {
     size_t oi = 0;
     const char *p = tmpl;
     while (*p && oi + 1 < outsz) {
@@ -321,7 +321,7 @@ static void expand_template(const char *tmpl, char keys[MAX_FIELDS][32], char va
                 keep = (lookup_value(keys, vals, n, kk)[0] != '\0');
             }
             if (keep) {
-                char expanded[256];
+                char expanded[PATH_BUF];
                 expand_template(seg, keys, vals, n, expanded, sizeof(expanded));
                 size_t el = strlen(expanded);
                 if (oi + el + 1 < outsz) { memcpy(out + oi, expanded, el); oi += el; }
@@ -617,7 +617,7 @@ static void compile_page(int page_idx) {
         }
         /* Normal registry-driven compilation (existing code) */
         CommandDef *def = find_command_def(nd->type);
-        char keys[MAX_FIELDS][32], vals[MAX_FIELDS][256]; int n = nd->n_params;
+        char keys[MAX_FIELDS][32], vals[MAX_FIELDS][PATH_BUF]; int n = nd->n_params;
         for (int pi = 0; pi < n; pi++) {
             snprintf(keys[pi], sizeof(keys[0]), "%s", nd->keys[pi]);
             snprintf(vals[pi], sizeof(vals[0]), "%s", nd->vals[pi]);
@@ -631,7 +631,7 @@ static void compile_page(int page_idx) {
                 n++;
             }
             for (int pi = 0; pi < def->n_pal; pi++) {
-                char expanded[512];
+                char expanded[PATH_BUF];
                 expand_template(def->pal_lines[pi], keys, vals, n, expanded, sizeof(expanded));
                 fprintf(pf, "%s\n", expanded);
             }
@@ -646,7 +646,7 @@ static void compile_page(int page_idx) {
                 fprintf(wf, "D=\"$ENT\"\n");
                 fprintf(wf, "while [ \"$D\" != \"/\" ] && [ ! -d \"$D/xyzfs\" ]; do D=\"$(dirname \"$D\")\"; done\n");
                 if (def) {
-                    char expanded[512];
+                    char expanded[PATH_BUF];
                     expand_template(def->tmpl, keys, vals, n, expanded, sizeof(expanded));
                     fprintf(wf, "%s\n", expanded);
                 }

@@ -268,7 +268,7 @@ void parse_ops_file(const char *path) {
         return;
     }
     
-    char line[256];
+    char line[1024];
     while (fgets(line, sizeof(line), f)) {
         trim(line);
         if (line[0] == '#' || line[0] == '\0') continue;
@@ -415,7 +415,7 @@ void parse_line(char *line, int pass) {
                     char *end_q = strchr(quote, '"');
                     if (end_q) {
                         int len = end_q - quote;
-                        if (len > 255) len = 255;
+                        if (len > 1023) len = 1023;
                         strncpy(i->literal_arg, quote, len);
                         i->literal_arg[len] = '\0';
                         /* Look for optional second quoted arg after first */
@@ -427,7 +427,7 @@ void parse_line(char *line, int pass) {
                             char *end_q2 = strchr(quote2, '"');
                             if (end_q2) {
                                 int len2 = end_q2 - quote2;
-                                if (len2 > 255) len2 = 255;
+                                if (len2 > 1023) len2 = 1023;
                                 strncpy(i->literal_arg2, quote2, len2);
                                 i->literal_arg2[len2] = '\0';
                             }
@@ -1014,9 +1014,9 @@ int main(int argc, char **argv) {
         }
     }
 
-    char line[256];
+    char line[1024];
     while (fgets(line, sizeof(line), f)) {
-        char trimmed[256];
+        char trimmed[1024];
         strncpy(trimmed, line, sizeof(trimmed) - 1);
         trimmed[sizeof(trimmed) - 1] = '\0';
         trim(trimmed);
