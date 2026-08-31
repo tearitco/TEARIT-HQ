@@ -12,6 +12,20 @@ conversation that isn't written down anywhere else yet, and real
 questions worth settling before the next session starts. Smaller and
 faster to read than working through Tier 1/2 cold.
 
+**🛑 `^.ONE-MAP-ATTEMPT-ABANDONED.md` (2026-08-31) — read this BEFORE
+touching camera modes, one-map, or per-desktop z-level stacking.**
+The "one map" shared-compositor 3D idea (single X11 window raymarching
+every entity together, transparent background like piececraft) was
+built, live-tested, and abandoned same day: a real, confirmed
+compositor limitation (`ShapeBounding` clips clicks but not actual
+painting for a continuously-reshaped override-redirect window) with no
+app-side fix found. A related z-level "stacking" experiment was
+reverted too, by direct instruction, independent of whether it worked.
+Also documents a real, subtle lesson: `#.desktop/*.txt` runtime state
+survives a source-code `git reset --hard` and can look exactly like a
+fresh regression if left dirty from testing. Don't re-attempt any of
+this without reading it first.
+
 > **`archive/` DELETED (2026-08-29, direct instruction after the doc-audit
 > pass):** this folder existed 2026-08-24 through 2026-08-29 for
 > lower-priority docs — closed-bug records, DONE/superseded handoffs,

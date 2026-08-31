@@ -1535,6 +1535,56 @@ static void build_shape_mask(Display *dpy, Window win, GC mask_gc, Pixmap mask) 
     XShapeCombineMask(dpy, win, ShapeBounding, 0, 0, mask, ShapeSet);
 }
 
+/* REAL, NEW 2026-08-31, direct live report ("some entities (not
+ * cursword) but all others when rotated, leave a 'red shadow' of
+ * their 2d shape") - real root cause: only cursword gets a real
+ * 32-bit ARGB visual (see have_argb_visual's own "g_is_cursword"
+ * gate near main()'s window creation) - every other entity's window
+ * has no real per-pixel alpha at all, and build_shape_mask() above is
+ * only ever called ONCE, from the flat 2D sprite's own silhouette, at
+ * startup. In 3D mode the raymarched content's real footprint moves
+ * as the entity rotates, but the window's real clickable/visible
+ * region stays frozen at that original flat outline - so whenever the
+ * rotated 3D shape covers LESS of that frozen outline than the flat
+ * sprite did, the gap reveals this frame's always-opaque background
+ * fill (the entity's own theme color) confined exactly to the old 2D
+ * silhouette's shape - the reported "shadow."
+ *
+ * Real fix: after drawing 3D content into g_buf, read it back
+ * (XGetImage - WIN_PX is small, ~80px, cheap at this file's own
+ * MAX_FPS cap) and rebuild the window's real ShapeBounding mask from
+ * whatever's ACTUALLY drawn this frame (any pixel that isn't exactly
+ * the background fill color counts as "in") - the exact same real
+ * "server clips what's not shaped in" mechanism build_shape_mask()
+ * already uses, just driven by this frame's real raymarch result
+ * instead of a one-time flat sprite. Cursword is exempt (g_is_cursword
+ * check at the call site) - it already has its own real, working
+ * shape-refresh path (cursword_update_shape()) for a different reason
+ * (the halo's wider click surface) and real ARGB alpha for its own
+ * background, so this generic path would just be redundant/
+ * conflicting there. */
+static void update_entity_shape_from_3d(Display *dpy, Window win, Drawable buf,
+                                         int bg_r, int bg_g, int bg_b) {
+    XImage *img = XGetImage(dpy, buf, 0, 0, WIN_PX, WIN_PX, AllPlanes, ZPixmap);
+    if (!img) return;
+    Pixmap mask = XCreatePixmap(dpy, win, WIN_PX, WIN_PX, 1);
+    GC mask_gc = XCreateGC(dpy, mask, 0, NULL);
+    XSetForeground(dpy, mask_gc, 0);
+    XFillRectangle(dpy, mask, mask_gc, 0, 0, WIN_PX, WIN_PX);
+    XSetForeground(dpy, mask_gc, 1);
+    unsigned long bg_pixel = ((unsigned long)bg_r << 16) | ((unsigned long)bg_g << 8) | (unsigned long)bg_b;
+    for (int y = 0; y < WIN_PX; y++) {
+        for (int x = 0; x < WIN_PX; x++) {
+            unsigned long px = XGetPixel(img, x, y) & 0xFFFFFFUL; /* real, deliberate - ignore the alpha byte, meaningless on this non-ARGB visual */
+            if (px != bg_pixel) XFillRectangle(dpy, mask, mask_gc, x, y, 1, 1);
+        }
+    }
+    XDestroyImage(img);
+    XShapeCombineMask(dpy, win, ShapeBounding, 0, 0, mask, ShapeSet);
+    XFreeGC(dpy, mask_gc);
+    XFreePixmap(dpy, mask);
+}
+
 /* REAL FIX 2026-08-30, found live: the halo drawn to g_buf/win was
  * completely invisible no matter what - traced to THIS real
  * mechanism, build_shape_mask()'s own XShapeCombineMask(ShapeSet)
@@ -1787,34 +1837,39 @@ static void write_camera_state(const char *house_root) {
  * checking its own other real branches, e.g. Escape/arrows).
  * ============================================================ */
 static int cursword_handle_camera_key(const char *house_root, const char *package_dir, KeySym ks2) {
-    if (ks2 == XK_5 || ks2 == XK_6 || ks2 == XK_7 || ks2 == XK_8) {
-        /* REAL, NEW 2026-08-31, direct instruction ("we are going to
-         * move the current camera controls to 5,6,7,8; so we can do
-         * this for 'non map 3d' and use 1,2,3,4, for if we ever do
-         * 'one map' perspective style 3d ... get rid of all entities,
-         * add them according to ray marching perspective, much like a
-         * transparent version of piececraft ... that will be our
-         * final trick") - keys 1-4 are now reserved, unbound here,
-         * for that future shared-scene mode. This block is otherwise
-         * UNCHANGED - same real 4 camera modes, same internal
-         * g_camera_mode values (1-4, still what's written to
-         * desktop_camera_mode.txt and what every ==3/==4 3D-mode gate
-         * elsewhere in this file checks) - only the physical KEYS that
-         * trigger them moved. Was originally board-viewer's own real
-         * 1-4 camera_mode key convention (bv_menu_input.c: 1=first
-         * person, 2=third person, 3=free roam, 4=bird's eye), reused
-         * verbatim; that mode numbering stays, just now reached via
-         * 5-8. */
-        int mode = ks2 - XK_4;
+    if (ks2 == XK_0) {
+        /* REAL, REPLACED 2026-08-31, direct instruction ("i just wanna
+         * use 0 to change between 2d and 3d desk entity mode since
+         * theres only 1 camera mode for desk") - the previous 1-4
+         * (moved to 5-8) four-way first-person/third-person/free-roam/
+         * bird's-eye split was board-viewer's own real convention,
+         * reused verbatim back when a future "one map" shared-scene
+         * mode was still going to need 1-4 reserved. One-map is now
+         * abandoned (see ^.ONE-MAP-ATTEMPT.md - real reasons this
+         * won't work here) and the direct-instruction framing above is
+         * simpler and correct for THIS desk: only a real 2D/3D
+         * distinction matters day to day, not which of the 4 sub-modes
+         * - both 3/4 render identically here anyway (every ==3||==4
+         * gate in this file treats them the same). Single real toggle:
+         * mode 1 (flat/2D) <-> mode 4 (the real 3D render, picked as
+         * the one representative value - bird's-eye, matches what this
+         * whole session's own live testing actually used). Also
+         * zeroes real cam_pan/tilt/yaw on every toggle - direct
+         * instruction ("when sword view is reset, the other entities
+         * views should be reset") - every other entity already polls
+         * this same shared desktop_camera_state.txt (camera_changed_
+         * dirty()'s own real poll, unchanged), so a clean reset here
+         * is a real, already-working reset for the whole desk, not
+         * just cursword's own view. */
+        g_camera_mode = (g_camera_mode == 1) ? 4 : 1;
         char camp[PATH_BUF];
         snprintf(camp, sizeof(camp), "%s/#.desktop/desktop_camera_mode.txt", house_root);
         FILE *cf = fopen(camp, "w");
-        if (cf) { fprintf(cf, "%d\n", mode); fclose(cf); }
+        if (cf) { fprintf(cf, "%d\n", g_camera_mode); fclose(cf); }
+        g_cam_pan_x = 0; g_cam_pan_y = 0; g_cam_tilt = 0; g_cam_yaw = 0;
+        write_camera_state(house_root);
         bump_camera_changed(house_root);
-        append_history(mode == 1 ? "CURSWORD_CAMERA_1_FIRSTPERSON" :
-                       mode == 2 ? "CURSWORD_CAMERA_2_THIRDPERSON" :
-                       mode == 3 ? "CURSWORD_CAMERA_3_FREEROAM" :
-                                   "CURSWORD_CAMERA_4_BIRDSEYE");
+        append_history(g_camera_mode == 4 ? "CURSWORD_CAMERA_3D_ON" : "CURSWORD_CAMERA_3D_OFF");
         return 1;
     }
     if (ks2 == XK_c || ks2 == XK_v) {
@@ -3776,6 +3831,26 @@ int main(int argc, char **argv) {
                          * observable "focus" behavior, and a human click
                          * still lands keyboard where Mutter allows it. */
                         XRaiseWindow(dpy, win);
+                        /* REAL, NEW 2026-08-31, direct instruction ("when
+                         * i click it from tb it should go back to a
+                         * familiar location") - RAISE is ONLY ever sent
+                         * for cursword's own single-instance re-click
+                         * (khtpm_taskbar_manager.c's livedesk:spawn-
+                         * cursword handler, the only real caller of this
+                         * relay command house-wide), so this is real,
+                         * safe, and cursword-only without an explicit
+                         * g_is_cursword check. If it ever got dragged/
+                         * nudged off into a weird spot (or left there by
+                         * stale test/camera-pan state), a re-click now
+                         * also snaps it straight back to its real pinned
+                         * home (same CURSWORD_HOME_X/Y convention
+                         * livedesk_ensure_cursword() already uses on
+                         * respawn) - "always findable in the same spot"
+                         * now also means "clicking it finds it," not
+                         * just "it's always open." */
+                        win_x = 0; win_y = 0;
+                        XMoveWindow(dpy, win, win_x, win_y);
+                        write_pos(package_dir, win_x, win_y);
                         XFlush(dpy);
                     } else if (strncmp(line, "RUN_METHOD:", 11) == 0) {
                         const char *label = line + 11;
@@ -5214,6 +5289,13 @@ int main(int argc, char **argv) {
                 else if (!z_should_show && z_was_mapped) { XUnmapWindow(dpy, win); z_was_mapped = 0; }
                 if (!z_should_show) goto skip_zfiltered_draw;
             }
+            /* REAL, NEW 2026-08-31 - shared by both branches right
+             * below (see update_entity_shape_from_3d()'s own header
+             * comment for the full "red shadow" bug this is part of
+             * fixing) - tracks whether THIS entity was in 3D mode last
+             * frame, so returning to 2D restores its real shape
+             * exactly once on the transition, not every 2D frame. */
+            static int was_3d_last_frame = 0;
             if (g_has_sprite) {
                 if (g_camera_mode == 3 || g_camera_mode == 4) {
                     /* REAL FIX 2026-08-30, direct live report ("its
@@ -5238,8 +5320,33 @@ int main(int argc, char **argv) {
                         draw_phymoji_rgb(dpy, g_buf, g_buf_gc);
                     else
                         draw_raymarch_block_rgb(dpy, g_buf, g_buf_gc, bg_r, bg_g, bg_b);
+                    /* REAL FIX 2026-08-31, direct live report ("some
+                     * entities... when rotated, leave a 'red shadow' of
+                     * their 2d shape") - see update_entity_shape_from_3d()'s
+                     * own header comment for the full root cause.
+                     * Cursword exempt - see that same comment. */
+                    if (!g_is_cursword)
+                        update_entity_shape_from_3d(dpy, win, g_buf, bg_r, bg_g, bg_b);
+                    was_3d_last_frame = 1;
                 } else {
                     draw_sprite_rgb(dpy, g_buf, g_buf_gc, bg_r, bg_g, bg_b);
+                    /* REAL, NEW 2026-08-31 - the real other half of the
+                     * fix above: coming BACK to 2D from 3D must restore
+                     * the window's real shape to the flat sprite's own
+                     * silhouette (update_entity_shape_from_3d() left it
+                     * pinned to whatever the last 3D frame's raymarch
+                     * happened to cover), or the entity would stay stuck
+                     * shaped like its last 3D pose forever - only runs
+                     * on the actual mode transition, not every 2D
+                     * frame. */
+                    if (was_3d_last_frame && !g_is_cursword) {
+                        Pixmap smask = XCreatePixmap(dpy, win, WIN_PX, WIN_PX, 1);
+                        GC smask_gc = XCreateGC(dpy, smask, 0, NULL);
+                        build_shape_mask(dpy, win, smask_gc, smask);
+                        XFreeGC(dpy, smask_gc);
+                        XFreePixmap(dpy, smask);
+                    }
+                    was_3d_last_frame = 0;
                 }
             }
             else if (g_font_loaded) draw_glyph_rgb(dpy, g_buf, g_buf_gc, glyph);
