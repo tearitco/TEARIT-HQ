@@ -10823,6 +10823,31 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                     } else if (ks == XK_Down || ks == XK_Right || ks == XK_Tab) {
                         pchq_dropdown_focus = (pchq_dropdown_focus + 1) % n_rows;
                     } else if (ks == XK_Return || ks == XK_KP_Enter) {
+                        /* REAL FIX 2026-08-30, direct instruction ("can
+                         * we just do w/e tb does? even reuse as op or
+                         * something?") closing the real, confirmed gap
+                         * (traced live): chtpm_parser_pal.c's own real
+                         * process_key() only ever forwards a relayed key
+                         * into interact_relay.txt (inject_raw_key())
+                         * from its `else if (strcmp(el->onClick,
+                         * "INTERACT") == 0)` branch - i.e. ONLY while
+                         * active_index is genuinely on the INTERACT
+                         * element (pchq_is_interact_on() true). This
+                         * whole dropdown is only ever reachable from the
+                         * `!pchq_interact_on` normal-nav branch above, so
+                         * '5'/'6' landed on ordinary chtpm nav dispatch
+                         * instead and never reached bv_menu_input.c at
+                         * all - confirmed by direct trace, not assumed.
+                         * Real, zero-reimplementation fix: reuse the
+                         * EXACT SAME mechanism PCHQ_ACT_INTERACT's own
+                         * activation already uses below (a plain Enter/
+                         * ASCII 13 through this same real relay) to
+                         * engage Interact Mode first, THEN send the real
+                         * File/Desk key - same "op" the legacy engine
+                         * already runs for every other key, nothing new
+                         * built. */
+                        if (!pchq_is_interact_on(bv_session))
+                            pchq_append_key(bv_history1, bv_history2, 13);
                         if (pchq_dropdown == 1) {
                             /* Row 0 = default-pdl, row 1 = default-legacy
                              * (matches pc_menu_input.c's own FILE_MENU
@@ -10945,6 +10970,15 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                 int row = (ev.xbutton.x >= dropdown_x && ev.xbutton.x < dropdown_x + dropdown_w &&
                            ev.xbutton.y >= dropdown_y) ? (ev.xbutton.y - dropdown_y) / PCHQ_DROPDOWN_ROW_H : -1;
                 if (row >= 0 && row < n_rows) {
+                    /* Same real fix as the KeyPress dropdown branch above -
+                     * engage Interact Mode first (reusing PCHQ_ACT_INTERACT's
+                     * own real activation, a plain Enter/13 through this
+                     * same relay) so chtpm_parser_pal.c's own real
+                     * onClick=="INTERACT" gate is actually open before the
+                     * File/Desk key is sent, or it never reaches
+                     * bv_menu_input.c at all. */
+                    if (!pchq_is_interact_on(bv_session))
+                        pchq_append_key(bv_history1, bv_history2, 13);
                     if (pchq_dropdown == 1) {
                         int is_legacy = (strcmp(pchq_active_level, "default-legacy") == 0);
                         int current_row = is_legacy ? 1 : 0;
