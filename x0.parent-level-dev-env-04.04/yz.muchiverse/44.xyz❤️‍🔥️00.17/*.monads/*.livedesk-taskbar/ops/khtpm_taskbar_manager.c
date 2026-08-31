@@ -1776,12 +1776,21 @@ static void livedesk_close_all(const char *house_root) {
  * process whose pal dir basename is "cursword"; if none is found - first
  * boot, a crash, or the entity having been closed by hand - it spawns one
  * fresh from the user's own pals/cursword copy (same exe + nohup pattern
- * livedesk_spawn_desk uses), reusing its last saved desktop_pos.txt if
- * present so it doesn't jump around desk-to-desk. Callers: main() at
- * startup, and right after every livedesk_spawn_desk() call (desk switch,
- * session load, new session/desk, reset) - anywhere entities get
- * (re)launched or torn down is a place cursword's own presence could have
- * lapsed. */
+ * livedesk_spawn_desk uses). Callers: main() at startup, and right after
+ * every livedesk_spawn_desk() call (desk switch, session load, new
+ * session/desk, reset) - anywhere entities get (re)launched or torn down
+ * is a place cursword's own presence could have lapsed.
+ *
+ * REAL, NEW 2026-08-30, direct instruction ("it should always start in
+ * the upper top left, where it used to auto start. see where it is right
+ * now?"): unlike every other entity, cursword's spawn position is
+ * pinned, not remembered - every fresh (re)spawn here forces
+ * desktop_pos.txt back to CURSWORD_HOME_X/Y regardless of wherever it
+ * was last dragged/nudged/placed to, so "always open" also means
+ * "always findable in the same spot," not wherever testing or a prior
+ * session happened to leave it. */
+#define CURSWORD_HOME_X 0
+#define CURSWORD_HOME_Y 0
 static void livedesk_ensure_cursword(const char *house_root) {
     char pr[KTB_PATH_BUF];
     if (!livedesk_pals_root(house_root, pr, sizeof(pr))) return;
@@ -1796,6 +1805,13 @@ static void livedesk_ensure_cursword(const char *house_root) {
         char base[64];
         livedesk_base_name(paths[i], base, sizeof(base));
         if (strcmp(base, "cursword") == 0 && ktb_pid_alive(pids[i])) return; /* already alive */
+    }
+
+    {
+        char posp[KTB_PATH_BUF];
+        snprintf(posp, sizeof(posp), "%s/desktop_pos.txt", pal);
+        FILE *pw = fopen(posp, "w");
+        if (pw) { fprintf(pw, "x=%d\ny=%d\n", CURSWORD_HOME_X, CURSWORD_HOME_Y); fclose(pw); }
     }
 
     char exe[KTB_PATH_BUF];
