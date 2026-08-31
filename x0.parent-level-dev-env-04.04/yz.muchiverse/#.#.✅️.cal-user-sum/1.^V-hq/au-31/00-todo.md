@@ -29,14 +29,12 @@ onto `khtpm_entity_menu_render.c`.
 
 ## Real todo, in order
 
-1. **Design the real per-app manager shape** (one doc section, before
-   any code): for each of irc-chat/forum/chain, a small manager binary
-   that reads that app's own real data files (`master_ledger.txt`,
-   forum's `POST|...` outbox, chain's `TX`/`BLOCK`/miner-state files)
-   and publishes a real, simple state file the shared renderer can
-   inject via `reusable_slot()` - same real shape as
-   `khtpm_hq_manager.c`'s own Common Events state-file contract. NOT
-   started yet.
+1. **Design the real per-app manager shape** - DONE, see
+   `01-manager-design.md`: irc-chat-hq's real manager designed in full
+   (state files, action-file contract, exact real op it shells out to)
+   against `khtpm_hq_manager.c`'s own proven precedent; forum-hq/
+   chain-hq to follow the identical pattern once irc-chat-hq is proven
+   live (not designed in per-field detail yet, same real shape applies).
 2. **Wire the class-detection + `<module src="...">` launch** for the
    3 new classes (irc-chat-window/forum-window/chain-window) in
    `khtpm_entity_menu_render.c` - the generic sidebar+panel injection
