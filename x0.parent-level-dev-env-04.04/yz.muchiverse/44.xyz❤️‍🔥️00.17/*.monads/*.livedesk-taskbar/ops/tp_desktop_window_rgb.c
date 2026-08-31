@@ -214,6 +214,32 @@ static int theme_changed_dirty(const char *house_root) {
     return 0;
 }
 
+/* REAL, NEW 2026-08-30, found live: an entity nobody is interacting
+ * with never sets need_redraw, so the whole draw block (later in the
+ * loop, gated `if (!need_redraw) continue;`) never runs - meaning a
+ * desktop-wide camera pan/tilt/mode CHANGE, written by cursword alone,
+ * was silently invisible on every OTHER idle entity until something
+ * else happened to poke it. Same real cheap-marker convention as
+ * theme_changed_dirty() just above (one stat() per already-running
+ * idle tick, real work only on an actual change) - cursword's own
+ * camera writers (below) touch this marker; every entity's own idle
+ * tick checks it and sets need_redraw itself when it moves. */
+static long g_camera_changed_cursor = 0;
+static int camera_changed_dirty(const char *house_root) {
+    char path[4352];
+    snprintf(path, sizeof(path), "%s/#.desktop/desktop_camera_changed.txt", house_root);
+    struct stat st;
+    if (stat(path, &st) != 0) return 0;
+    if (st.st_size != g_camera_changed_cursor) { g_camera_changed_cursor = st.st_size; return 1; }
+    return 0;
+}
+static void bump_camera_changed(const char *house_root) {
+    char path[4352];
+    snprintf(path, sizeof(path), "%s/#.desktop/desktop_camera_changed.txt", house_root);
+    FILE *f = fopen(path, "a");
+    if (f) { fputc('.', f); fclose(f); }
+}
+
 static void desktop_load_click_two_step(const char *house_root) {
     char path[4352]; /* matches this file's own later PATH_BUF (not yet declared at this point) */
     snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
@@ -1598,6 +1624,66 @@ static void load_camera_mode(const char *house_root) {
     if (g_camera_mode < 1 || g_camera_mode > 4) g_camera_mode = 1;
 }
 
+/* REAL, NEW 2026-08-30, direct follow-up ("do u understand how it
+ * looks depends on the camera?" -> "both" [tilt changes the block's
+ * own look, AND pan/zoom moves the whole desktop]) - a real, second
+ * shared state file (same real "small state file under #.desktop/"
+ * convention as desktop_camera_mode.txt) carrying actual camera
+ * PARAMETERS, not just a mode selector: cam_pan_x/cam_pan_y (a real
+ * screen-pixel offset applied to every entity's own displayed
+ * position, desktop-wide, while in 3D mode) and cam_tilt (0-100, how
+ * much of each entity's own extruded side face shows - 0 is pure
+ * straight-down/no side visible, 100 is maximally tilted/lots of side
+ * visible). Real, honest scope note: ZOOM is NOT built this pass -
+ * every entity's own window is a fixed WIN_PX size used throughout
+ * this file's own shape-mask/grid/pixmap math; dynamically resizing
+ * that per-frame is a real, separate, riskier change (pixmap/GC
+ * recreation, shape-mask rebuild at new sizes) deliberately deferred
+ * rather than rushed alongside pan+tilt in the same pass. */
+static int g_cam_pan_x = 0, g_cam_pan_y = 0, g_cam_tilt = 20;
+static void load_camera_state(const char *house_root) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/desktop_camera_state.txt", house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) { g_cam_pan_x = 0; g_cam_pan_y = 0; g_cam_tilt = 20; return; }
+    int pan_x = 0, pan_y = 0, tilt = 20;
+    char line[128];
+    while (fgets(line, sizeof(line), f)) {
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        int val = atoi(eq + 1);
+        if (strcmp(line, "cam_pan_x") == 0) pan_x = val;
+        else if (strcmp(line, "cam_pan_y") == 0) pan_y = val;
+        else if (strcmp(line, "cam_tilt") == 0) tilt = val;
+    }
+    fclose(f);
+    if (tilt < 0) tilt = 0;
+    if (tilt > 100) tilt = 100;
+    g_cam_pan_x = pan_x; g_cam_pan_y = pan_y; g_cam_tilt = tilt;
+}
+
+/* Real write side of load_camera_state() above - cursword's own
+ * camera-control keys (w/a/s/d pan, r/t tilt, board-viewer's own real
+ * key convention reused verbatim, zero collision with cursword's own
+ * arrow-key entity movement or 1-4 mode keys) call this after
+ * updating g_cam_pan_x/g_cam_pan_y/g_cam_tilt in memory. */
+static void write_camera_state(const char *house_root) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/desktop_camera_state.txt", house_root);
+    FILE *f = fopen(path, "w");
+    if (!f) return;
+    fprintf(f, "cam_pan_x=%d\ncam_pan_y=%d\ncam_tilt=%d\n", g_cam_pan_x, g_cam_pan_y, g_cam_tilt);
+    fclose(f);
+}
+
+/* Real, art-derived shaded "wall" strip - same real bbox-crop +
+ * edge-color-averaging technique as draw_topdown_block_rgb()'s own
+ * header comment, factored out here so cursword's own camera-state
+ * write helper (below) and the render path share one real definition
+ * of "how big can the wall get" instead of two independent guesses. */
+#define TOPDOWN_WALL_PX_MAX 20
+
 /* Real, in-buffer "extruded block" cue: the existing flat top-face
  * blit (draw_sprite_rgb(), unchanged, already a correct "looking
  * straight down at it" render) plus a real, art-derived shaded strip
@@ -1606,7 +1692,6 @@ static void load_camera_mode(const char *house_root) {
  * real height/a Z axis now" (direct design-doc language: "entities
  * gain a Z axis") without a full per-pixel raymarch pass for a single
  * object already being viewed from directly above. */
-#define TOPDOWN_WALL_PX 10
 static void draw_topdown_block_rgb(Display *dpy, Drawable buf, GC gc, int bg_r, int bg_g, int bg_b) {
     if (!g_sprite_pixels || g_sprite_res <= 0) return;
     draw_sprite_rgb(dpy, buf, gc, bg_r, bg_g, bg_b);
@@ -1654,7 +1739,10 @@ static void draw_topdown_block_rgb(Display *dpy, Drawable buf, GC gc, int bg_r, 
     int sx1 = ((u1 + 1) * WIN_PX) / g_sprite_res;
     int sy0 = ((v1 + 1) * WIN_PX) / g_sprite_res;
     if (sy0 > WIN_PX) sy0 = WIN_PX;
-    int wall_h = TOPDOWN_WALL_PX;
+    /* Real, new 2026-08-30 - wall height is now driven by the real,
+     * shared cam_tilt (0-100), not a fixed constant: "how it looks
+     * depends on the camera," direct instruction. */
+    int wall_h = (TOPDOWN_WALL_PX_MAX * g_cam_tilt) / 100;
     if (sy0 + wall_h > WIN_PX) wall_h = WIN_PX - sy0;
     if (sx1 > sx0 && wall_h > 0) {
         XSetForeground(dpy, gc, 0xFF000000UL | ((unsigned long)edge_r << 16) | ((unsigned long)edge_g << 8) | (unsigned long)edge_b);
@@ -2816,6 +2904,16 @@ int main(int argc, char **argv) {
          * theme_changed_dirty()'s own declaration comment. */
         if (theme_changed_dirty(g_house_root)) {
             set_window_opacity(dpy, win, load_theme_opacity(g_house_root));
+        }
+
+        /* Real, cheap, event-driven camera pan/tilt/mode reapply - see
+         * camera_changed_dirty()'s own declaration comment (without
+         * this, an idle entity nobody's touching never redraws even
+         * when the shared camera state moves). */
+        if (camera_changed_dirty(g_house_root)) {
+            load_camera_mode(g_house_root);
+            load_camera_state(g_house_root);
+            need_redraw = 1;
         }
 
         /* REAL, 2026-08-05: poll interact_relay.txt for an injected
@@ -4087,10 +4185,38 @@ int main(int argc, char **argv) {
                         snprintf(camp, sizeof(camp), "%s/#.desktop/desktop_camera_mode.txt", g_house_root);
                         FILE *cf = fopen(camp, "w");
                         if (cf) { fprintf(cf, "%d\n", mode); fclose(cf); }
+                        bump_camera_changed(g_house_root); /* real, new - see camera_changed_dirty()'s own header comment */
                         append_history(mode == 1 ? "CURSWORD_CAMERA_1_FIRSTPERSON" :
                                        mode == 2 ? "CURSWORD_CAMERA_2_THIRDPERSON" :
                                        mode == 3 ? "CURSWORD_CAMERA_3_FREEROAM" :
                                                    "CURSWORD_CAMERA_4_BIRDSEYE");
+                    } else if ((g_camera_mode == 3 || g_camera_mode == 4) &&
+                               (ks2 == XK_w || ks2 == XK_a || ks2 == XK_s || ks2 == XK_d ||
+                                ks2 == XK_r || ks2 == XK_t)) {
+                        /* REAL, NEW 2026-08-30, direct instruction ("do
+                         * u understand how it looks depends on the
+                         * camera?" -> "both") - real camera PAN/TILT
+                         * control, only meaningful once in a 3D mode
+                         * (matches board-viewer's own real
+                         * "render_mode != 1 -> no-op" camera_control.c
+                         * gate, same reasoning). w/a/s/d pan (board-
+                         * viewer's own real key convention, reused
+                         * verbatim, zero collision with cursword's own
+                         * arrow-key ENTITY movement or 1-4 mode keys);
+                         * r/t tilt (same real letters board-viewer's
+                         * own camera_control.c already uses for
+                         * pitch). Desktop-wide effect - see
+                         * load_camera_state()'s own header comment. */
+                        int step = GRID_CELL_PX / 4;
+                        if (ks2 == XK_w) g_cam_pan_y += step;
+                        else if (ks2 == XK_s) g_cam_pan_y -= step;
+                        else if (ks2 == XK_a) g_cam_pan_x += step;
+                        else if (ks2 == XK_d) g_cam_pan_x -= step;
+                        else if (ks2 == XK_r) { g_cam_tilt += 10; if (g_cam_tilt > 100) g_cam_tilt = 100; }
+                        else if (ks2 == XK_t) { g_cam_tilt -= 10; if (g_cam_tilt < 0) g_cam_tilt = 0; }
+                        write_camera_state(g_house_root);
+                        bump_camera_changed(g_house_root); /* real, new - see camera_changed_dirty()'s own header comment */
+                        append_history("CURSWORD_CAMERA_PAN_TILT");
                     }
                 } else if (popup_win || user_popup_win || input_popup_win || text_popup_win || input_active) {
                     /* REAL FIX 2026-08-07, direct instruction ("print
@@ -4198,6 +4324,7 @@ int main(int argc, char **argv) {
              * file, no changed-marker optimization needed at this
              * scale. */
             load_camera_mode(g_house_root);
+            load_camera_state(g_house_root);
             if (g_has_sprite) {
                 if (g_camera_mode == 3 || g_camera_mode == 4)
                     draw_topdown_block_rgb(dpy, g_buf, g_buf_gc, bg_r, bg_g, bg_b);
@@ -4205,6 +4332,30 @@ int main(int argc, char **argv) {
                     draw_sprite_rgb(dpy, g_buf, g_buf_gc, bg_r, bg_g, bg_b);
             }
             else if (g_font_loaded) draw_glyph_rgb(dpy, g_buf, g_buf_gc, glyph);
+            /* REAL, NEW 2026-08-30, direct instruction ("camera pan/
+             * zoom moves the whole desktop") - a real, desktop-wide
+             * screen-position offset while in 3D mode. win_x/win_y
+             * themselves (the entity's own TRUE logical grid position,
+             * used by drag/arrow-nudge/click-to-place/write_pos) are
+             * deliberately left untouched - this only corrects the
+             * real, DISPLAYED X11 position, an offset applied on top,
+             * so panning can never corrupt an entity's own saved
+             * position. Snaps back to the true win_x/win_y the instant
+             * camera_mode leaves 3/4. Tracked with a static "last
+             * applied" pair so this is a real no-op XMoveWindow-wise
+             * on every frame pan/mode aren't actually changing (avoids
+             * fighting a concurrent drag/arrow-nudge's own, separate
+             * XMoveWindow calls more than strictly necessary). */
+            {
+                static int last_disp_x = -999999, last_disp_y = -999999;
+                int in_3d = (g_camera_mode == 3 || g_camera_mode == 4);
+                int disp_x = in_3d ? win_x + g_cam_pan_x : win_x;
+                int disp_y = in_3d ? win_y + g_cam_pan_y : win_y;
+                if (disp_x != last_disp_x || disp_y != last_disp_y) {
+                    XMoveWindow(dpy, win, disp_x, disp_y);
+                    last_disp_x = disp_x; last_disp_y = disp_y;
+                }
+            }
             /* REAL FIX 2026-08-30, found live: the halo used to draw
              * BEFORE the sprite, relying on draw_sprite_rgb()'s own
              * per-pixel alpha to let it "peek through" transparent
