@@ -2025,12 +2025,49 @@ static int g_phymoji_max_lx = 0, g_phymoji_max_ly = 0, g_phymoji_max_lz = 0;
 #define PHYMOJI_VOXEL_UNIT 0.09
 static double g_phymoji_world_x = 1.0, g_phymoji_world_y = 0.5, g_phymoji_world_z = 1.0;
 
+/* REAL, NEW 2026-08-30, direct instruction ("u should make a script
+ * to do phymoji of all entities. save it locally in shared. and all
+ * new entities will use it as well") - real, on-demand asset
+ * generation, same real "ensure_X_generated, gated on existence,
+ * generate once, cache forever" convention as chtpm_rgb_render.c's
+ * own ensure_emoji_asset_generated() (see that function's own real
+ * precedent). Shells out to sprite_phymoji_gen.+x (the real, shared
+ * tool at &.widgits/_shared-lib/ops/sprite_phymoji_gen.c, copied
+ * locally into this same ops_dir by build_khtpm_strip.sh) against
+ * THIS entity's own real sprite.csv - not a re-rasterized emoji glyph
+ * (see that tool's own header comment for why that distinction is a
+ * real, previously-live bug, not a style preference). ops_dir comes
+ * from main()'s own real self_exe_path() resolution, same real
+ * pattern apply_asset_override() already uses. */
+static void ensure_entity_phymoji_generated(const char *package_dir, const char *ops_dir) {
+    char base_copy[PATH_BUF];
+    snprintf(base_copy, sizeof(base_copy), "%s", package_dir);
+    char *entity_id = basename(base_copy);
+    char csv_path[PATH_BUF];
+    snprintf(csv_path, sizeof(csv_path), "%s/pieces/registry/phymoji_assets/%s/voxels.csv", package_dir, entity_id);
+    struct stat st;
+    if (stat(csv_path, &st) == 0) return; /* already generated, real cache hit */
+    char sprite_path[PATH_BUF];
+    snprintf(sprite_path, sizeof(sprite_path), "%s/sprite.csv", package_dir);
+    if (access(sprite_path, F_OK) != 0) return; /* no sprite to generate from - real, honest no-op */
+    char gen_bin[PATH_BUF];
+    snprintf(gen_bin, sizeof(gen_bin), "%s/sprite_phymoji_gen.+x", ops_dir);
+    if (access(gen_bin, X_OK) != 0) return;
+    char out_dir[PATH_BUF];
+    snprintf(out_dir, sizeof(out_dir), "%s/pieces/registry/phymoji_assets/%s", package_dir, entity_id);
+    char cmd[PATH_BUF * 3];
+    snprintf(cmd, sizeof(cmd), "'%s' '%s' '%s' >/dev/null 2>&1", gen_bin, sprite_path, out_dir);
+    int rc = system(cmd);
+    (void)rc;
+}
+
 /* Ported near-verbatim from bv_render_3d.c's own load_phymoji_asset() +
  * build_phymoji_columns() - real CSV load, straight into real
  * (lx,ly)-merged columns (same real perf technique that file's own
  * header comment documents: one merged AABB test per column instead
  * of one per voxel). */
-static void load_cursword_phymoji(const char *package_dir) {
+static void load_entity_phymoji(const char *package_dir, const char *ops_dir) {
+    ensure_entity_phymoji_generated(package_dir, ops_dir);
     char base_copy[PATH_BUF];
     snprintf(base_copy, sizeof(base_copy), "%s", package_dir);
     char *entity_id = basename(base_copy);
@@ -2078,7 +2115,7 @@ static void load_cursword_phymoji(const char *package_dir) {
         g_phymoji_world_y = (g_phymoji_max_ly + 1) * PHYMOJI_VOXEL_UNIT;
         g_phymoji_world_z = (g_phymoji_max_lz + 1) * PHYMOJI_VOXEL_UNIT;
     }
-    append_history(g_phymoji_col_count > 0 ? "CURSWORD_PHYMOJI_LOADED" : "CURSWORD_PHYMOJI_EMPTY");
+    append_history(g_phymoji_col_count > 0 ? "ENTITY_PHYMOJI_LOADED" : "ENTITY_PHYMOJI_EMPTY");
 }
 
 /* Ported near-verbatim from bv_render_3d.c's own test_phymoji_hit() -
@@ -3222,11 +3259,16 @@ int main(int argc, char **argv) {
 
     /* Resolve ops_dir (same /proc/self/exe technique tp_place_desktop.c
      * already uses) so apply_asset_override() can find tp_asset_to_
-     * sprite.+x/emoji_gen_atlas.+x/emoji_xtract.+x next to this binary. */
+     * sprite.+x/emoji_gen_atlas.+x/emoji_xtract.+x next to this binary -
+     * kept around (not scoped to a throwaway block) since
+     * load_entity_phymoji() below also needs it, to find
+     * sprite_phymoji_gen.+x the same real way. */
+    char resolved_ops_dir[PATH_BUF] = "";
     {
         char self_path[PATH_BUF];
         if (self_exe_path(self_path, sizeof(self_path))) {
             char *ops_dir = dirname(self_path);
+            snprintf(resolved_ops_dir, sizeof(resolved_ops_dir), "%s", ops_dir);
             apply_asset_override(package_dir, ops_dir);
         }
     }
@@ -3234,11 +3276,12 @@ int main(int argc, char **argv) {
     char sprite_path[PATH_BUF];
     snprintf(sprite_path, sizeof(sprite_path), "%s/sprite.csv", package_dir);
     g_has_sprite = load_sprite_csv(sprite_path);
-    /* Real, new 2026-08-30 - real per-voxel phymoji asset, if this
-     * entity has one generated (see load_cursword_phymoji()'s own
-     * header comment) - loaded once here, cached for the whole
-     * process lifetime same as the sprite itself. */
-    load_cursword_phymoji(package_dir);
+    /* Real, new 2026-08-30 - real per-voxel phymoji asset, generated
+     * on demand from this entity's own real sprite.csv if it doesn't
+     * exist yet (see load_entity_phymoji()/ensure_entity_phymoji_
+     * generated()'s own header comments) - loaded once here, cached
+     * for the whole process lifetime same as the sprite itself. */
+    load_entity_phymoji(package_dir, resolved_ops_dir);
 
     /* Real window shape from the sprite's own alpha, if we have one -
      * see build_shape_mask()'s own header comment for why GL_BLEND

@@ -98,6 +98,22 @@ for t in emoji_gen_atlas emoji_xtract; do
     fi
 done
 
+echo "-- real, shared sprite-driven phymoji generator (build in shared, copy binary)"
+# Direct instruction 2026-08-30 ("make a script to do phymoji of all
+# entities. save it locally in shared. and all new entities will use
+# it as well") - one real compiled binary, built from the shared
+# source, copied locally same as x11_mirror.+x/emoji_gen_atlas.+x
+# already are - tp_desktop_window_rgb.c's own real load_entity_phymoji()
+# shells out to this copy at runtime (ops_dir-relative, same real
+# lookup pattern apply_asset_override() already uses).
+if [ -f "$SHARED/ops/build_sprite_phymoji_gen.sh" ]; then
+    (cd "$SHARED/ops" && bash build_sprite_phymoji_gen.sh >/dev/null 2>&1) || echo "WARN: sprite_phymoji_gen.+x failed to build"
+    if [ -x "$SHARED/ops/+x/sprite_phymoji_gen.+x" ]; then
+        cp "$SHARED/ops/+x/sprite_phymoji_gen.+x" "+x/sprite_phymoji_gen.+x"
+        chmod +x "+x/sprite_phymoji_gen.+x"
+    fi
+fi
+
 echo "-- window-position/range-grid helper tp_range_grid.c -> +x/tp_range_grid.+x"
 $CC $CFLAGS $X11_FLAGS -o +x/tp_range_grid.+x tp_range_grid.c -lX11 -lXext
 
