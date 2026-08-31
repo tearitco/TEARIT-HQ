@@ -625,8 +625,56 @@ easier?"
   padding like cursword's sword. Real follow-up (shrink+reposition the
   top face to guarantee wall room for every sprite) is future polish.
 
-**Still deferred, unstarted**: true first/third-person perspective
-rendering (modes 1/2 - a real raymarch/perspective pass, not just an
-extruded topdown block), mode 3's own real free-roam camera movement,
-and the full-bleed-sprite wall-room polish noted above. This is the
-real next substantial step whenever picked up.
+**UPDATE (2026-08-30, same day) - real camera STATE added (pan + tilt),
+plus a real rewrite from "shading cue" to real textured extrusion.**
+Direct follow-up questions/corrections, in order: "do u understand how
+it looks depends on the camera?" -> "both" [tilt changes the block's
+own look, AND pan moves the whole desktop] -> "i didn't see any
+evidence of extrusion yet, like in piececraft; is that known/
+intention?" -> answered honestly (the first pass above was a flat
+shading-strip cue, not real extrusion) -> "hopefully we do the
+extrusion soon, cause thats the real kpi... to know we have made the
+bulk progress."
+
+- New `#.desktop/desktop_camera_state.txt` (`cam_pan_x`/`cam_pan_y`/
+  `cam_tilt` 0-100) - real camera PARAMETERS, not just a mode
+  selector. Cursword's own w/a/s/d (pan) and r/t (tilt) keys, reusing
+  board-viewer's own real camera_control.c key convention verbatim,
+  write it while armed in modes 3/4.
+- Pan is a real, desktop-wide DISPLAY-position offset - every entity's
+  own true `win_x/win_y` (drag/arrow-nudge/click-to-place/saved
+  position) stays completely untouched; only the actual X11 window
+  position gets `+cam_pan_x/+cam_pan_y` while in 3D mode, snapping
+  back the instant camera_mode leaves 3/4.
+- **Real bug found and fixed**: an entity nobody is directly
+  interacting with never re-checks anything (this file's own
+  `if (!need_redraw) continue`) - cursword's own pan/tilt/mode writes
+  were silently invisible on every OTHER idle entity. Fixed with a
+  real cheap-marker file (`desktop_camera_changed.txt`), same
+  convention as this file's own existing `theme_changed_dirty()`.
+  Live-verified: book-stack moved automatically from a cursword-only
+  pan, zero direct interaction with book-stack itself.
+- **`draw_topdown_block_rgb()` rewritten** - real, textured, tilt-
+  driven extrusion, not a flat shading rectangle: a TOP face that
+  visibly foreshortens (compresses vertically, real per-pixel
+  resampling of the sprite's own texture) as tilt increases, revealing
+  a FRONT/WALL face below it built from the sprite's own real bottom-
+  edge texture row (stretched, progressively darkened with depth) -
+  not a flat averaged color. At tilt=0 this is visually identical to
+  the plain flat sprite; live-verified across the full 0/60/100 tilt
+  range showing a clear, continuous, texture-driven progression
+  (crossguard genuinely compresses, a real gray-metal wall
+  matching the blade's own color grows taller).
+- Real, honest scope note (unchanged): still not a full per-pixel
+  raymarch like `bv_render_3d.c`'s own board-scale renderer (no true
+  camera-relative perspective projection, no occlusion) - a real,
+  texture-driven two-face extrusion for a single object already
+  viewed from above, genuinely reactive to camera tilt/pan now.
+
+**Still deferred, unstarted**: real ZOOM (dynamically resizing an
+entity's own window - a bigger, separate change touching this file's
+own shape-mask/grid/pixmap math throughout, deliberately not rushed
+alongside pan+tilt), true first/third-person perspective rendering
+(modes 1/2 - a real raymarch/perspective pass), mode 3's own real
+free-roam camera movement (currently identical to mode 4), and the
+full-bleed-sprite wall-room polish noted above.
