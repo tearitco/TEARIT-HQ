@@ -734,3 +734,67 @@ at a specific (x,y,z) in 3D mode. Real, wanted future work - a
 separate, sizable UI feature on its own (2D placement already inherits
 the current active z, per above; this is specifically about a live,
 movable 3D preview before confirming placement).
+
+## 13. Real plan: reserve keys 1-4 for a future "one map" perspective
+mode; 5-8 = today's per-entity ("non map") 3D controls (2026-08-31)
+
+**Status: PLAN, documented before continuing the code change** (direct
+instruction, mid-edit: "document first"). Direct instruction, full
+quote: "ok, i have decided we are going to move the current camera
+controls to 5,6,7,8; so we can do this for 'non map 3d' and use
+1,2,3,4, for if we ever do 'one map' perspective style 3d. we will get
+rid of all entities, aad place them according to ray marching
+perspective, much like a transparent version of piececraft. do u get
+it? that will be our final trick" - followed by, mid-edit: "and we
+will beable to do the same with camera with piececraft for 5,6,7, 8
+get it?"
+
+**The real distinction being drawn** - two genuinely different future
+3D modes, not one:
+
+- **"non map" 3D (today's real system, keys 5-8 going forward)**: what
+  already exists per §2 above - each entity keeps its OWN real X11
+  window, its OWN per-voxel phymoji raymarch, positioned independently
+  on the desktop grid. No shared scene, no shared camera transform
+  across entities - this is the real, deliberate choice already made
+  in §2 ("i hope we dont have to switch to shared scene just yet").
+- **"one map" perspective 3D (future, reserved keys 1-4, "the final
+  trick")**: a genuinely different, NOT YET BUILT mode where every
+  desktop entity is real-time raymarched together into ONE shared
+  perspective scene from a single real camera - "get rid of all
+  entities, add them according to ray marching perspective, much like
+  a transparent version of piececraft." This is real Option B (the
+  shared-compositor architecture explicitly declined for now back in
+  §2/§12) - deliberately deferred again here, reserved as the meaning
+  of keys 1-4 once it's actually built, not started this pass.
+
+**The real, mechanical change this pass (in progress)**: cursword's
+own `cursword_handle_camera_key()` in `tp_desktop_window_rgb.c` -
+literal key binding moves from `XK_1..XK_4` to `XK_5..XK_8`. The
+internal `g_camera_mode` VALUES stay exactly 1-4 (same meaning: 1
+first-person, 2 third-person, 3 free-roam, 4 bird's-eye, same
+`desktop_camera_mode.txt` contents, same `==3`/`==4` 3D-mode gates
+everywhere else in the file) - only the physical keys that reach that
+switch move, freeing the literal `1`/`2`/`3`/`4` keypresses for the
+future one-map mode above. Real remaining work for this pass, not yet
+done as of this section being written:
+- Update the cursword debug key-log display (currently labels
+  `XK_1..XK_4` as `"1"`/`"2"`/`"3"`/`"4"`) to label the new `XK_5..
+  XK_8` keys correctly.
+- Live-verify the 5-8 remap end to end (armed cursword, press 5-8,
+  confirm `desktop_camera_mode.txt` + history still behave exactly as
+  the old 1-4 keys did).
+- **Same real remap on piececraft/board-viewer's own side** (direct
+  instruction: "we will beable to do the same with camera with
+  piececraft for 5,6,7,8 get it?") - `&.widgits/board-viewer/ops/
+  bv_menu_input.c`'s own real `1`-`4` `camera_mode`/`is_pov_key`
+  handling (§1's cited precedent, ~line 703) needs the identical
+  key-binding move to `5`-`8`, for the identical reason: reserve
+  piececraft's own literal `1`-`4` keys for the same future "one map"
+  perspective mode, kept consistent across both real systems since
+  they already share this one camera-mode convention by design (§1).
+  NOT started yet.
+
+Not touched by this plan: `9` (`key_possess`) and `x`/`z`/`c`/`v`
+(z-level, hero vs camera) in board-viewer's own scheme - only the
+`1`-`4` camera_mode digit keys are being reserved/moved.

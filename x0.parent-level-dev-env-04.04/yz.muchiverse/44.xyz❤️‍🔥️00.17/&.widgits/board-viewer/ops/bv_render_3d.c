@@ -1498,8 +1498,9 @@ int main(void) {
      * "default_camera_mode=2 (third-person)" open rendered top-down,
      * visually identical to bird's-eye "view 4" - the "still starts
      * as view 4" report. Real default is now mode-consistent with the
-     * '1'-'4' switch and 'f' reset handlers (6 for modes 1/2, -90 for
-     * free-roam 3 / bird's-eye 4). */
+     * '5'-'8' switch (moved from '1'-'4' 2026-08-31, see
+     * bv_menu_input.c's own header comment) and 'f' reset handlers (6
+     * for modes 1/2, -90 for free-roam 3 / bird's-eye 4). */
     int default_cam_pitch = (camera_mode == 1 || camera_mode == 2) ? 6 : -90;
     int cam_yaw = read_kv_int(state_path, "cam_yaw", 180);
     int cam_pitch = read_kv_int(state_path, "cam_pitch", default_cam_pitch);

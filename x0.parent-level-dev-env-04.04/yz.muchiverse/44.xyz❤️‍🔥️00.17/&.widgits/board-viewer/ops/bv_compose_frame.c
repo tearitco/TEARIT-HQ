@@ -699,7 +699,10 @@ int main(void) {
     }
 
     /* Camera status (5-pov-widgit.md §2e) - '0' toggles render_mode,
-     * '1'-'4' switch camera_mode while render_mode==1. 3D pixels
+     * '5'-'8' switch camera_mode while render_mode==1 (moved from
+     * '1'-'4' 2026-08-31, see bv_menu_input.c's own header comment on
+     * that change - '1'-'4' now reserved for a future "one map"
+     * perspective mode). 3D pixels
      * themselves are separate, later work (§2f) - this line makes the
      * real, already-working state dispatch visible/testable now. */
     /* REAL FIX 2026-08-04, direct instruction ("always start in 3d

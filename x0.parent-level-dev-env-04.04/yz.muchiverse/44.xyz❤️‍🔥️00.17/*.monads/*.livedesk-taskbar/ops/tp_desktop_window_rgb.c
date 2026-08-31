@@ -1745,16 +1745,25 @@ static void write_camera_state(const char *house_root) {
  * checking its own other real branches, e.g. Escape/arrows).
  * ============================================================ */
 static int cursword_handle_camera_key(const char *house_root, const char *package_dir, KeySym ks2) {
-    if (ks2 == XK_1 || ks2 == XK_2 || ks2 == XK_3 || ks2 == XK_4) {
-        /* Real, desktop-wide camera-mode switch, design doc §9 item #6:
-         * "since real key capture only begins once cursword is
-         * genuinely ARMED... board-viewer's own real 1-4 camera_mode
-         * keys can be reused verbatim with zero real collision risk."
-         * Same real key-set/semantics as board-viewer's own
-         * bv_menu_input.c (1=first person, 2=third person, 3=free
-         * roam, 4=bird's eye), written to the shared desktop-wide
-         * state file every entity's own window polls. */
-        int mode = ks2 - XK_0;
+    if (ks2 == XK_5 || ks2 == XK_6 || ks2 == XK_7 || ks2 == XK_8) {
+        /* REAL, NEW 2026-08-31, direct instruction ("we are going to
+         * move the current camera controls to 5,6,7,8; so we can do
+         * this for 'non map 3d' and use 1,2,3,4, for if we ever do
+         * 'one map' perspective style 3d ... get rid of all entities,
+         * add them according to ray marching perspective, much like a
+         * transparent version of piececraft ... that will be our
+         * final trick") - keys 1-4 are now reserved, unbound here,
+         * for that future shared-scene mode. This block is otherwise
+         * UNCHANGED - same real 4 camera modes, same internal
+         * g_camera_mode values (1-4, still what's written to
+         * desktop_camera_mode.txt and what every ==3/==4 3D-mode gate
+         * elsewhere in this file checks) - only the physical KEYS that
+         * trigger them moved. Was originally board-viewer's own real
+         * 1-4 camera_mode key convention (bv_menu_input.c: 1=first
+         * person, 2=third person, 3=free roam, 4=bird's eye), reused
+         * verbatim; that mode numbering stays, just now reached via
+         * 5-8. */
+        int mode = ks2 - XK_4;
         char camp[PATH_BUF];
         snprintf(camp, sizeof(camp), "%s/#.desktop/desktop_camera_mode.txt", house_root);
         FILE *cf = fopen(camp, "w");
@@ -4904,12 +4913,18 @@ int main(int argc, char **argv) {
                      * the moment a key was pressed while armed -
                      * confirmed by direct read, not assumed. */
                     KeySym ks2 = XLookupKeysym(&xev.xkey, 0);
+                    /* REAL FIX 2026-08-31 - the camera-mode keys moved
+                     * from 1-4 to 5-8 (see cursword_handle_camera_key()'s
+                     * own header comment: keys 1-4 are now reserved for
+                     * a future "one map" perspective mode) - the old
+                     * special-cased "1"/"2"/"3"/"4" label branch here is
+                     * dropped since it's no longer needed: XKeysymToString()
+                     * already returns the correct literal digit string
+                     * ("5".."8") for these keysyms same as any other key. */
                     cursword_log_key(
                         ks2 == XK_Escape ? "ESC" :
                         ks2 == XK_Left ? "LEFT" : ks2 == XK_Right ? "RIGHT" :
                         ks2 == XK_Up ? "UP" : ks2 == XK_Down ? "DOWN" :
-                        (ks2 == XK_1 || ks2 == XK_2 || ks2 == XK_3 || ks2 == XK_4) ?
-                            (const char *[]){"1","2","3","4"}[ks2 - XK_1] :
                         XKeysymToString(ks2) ? XKeysymToString(ks2) : "?");
                     need_redraw = 1; /* real, unconditional - the log line above must always repaint, even for a key none of the branches below handle */
                     if (ks2 == XK_Escape) {
