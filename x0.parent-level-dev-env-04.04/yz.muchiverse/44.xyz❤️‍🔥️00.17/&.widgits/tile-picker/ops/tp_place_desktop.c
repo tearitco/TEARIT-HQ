@@ -318,10 +318,29 @@ int main(int argc, char **argv) {
         const char *ix = getenv("TP_INITIAL_X");
         const char *iy = getenv("TP_INITIAL_Y");
         if (ix && ix[0] && iy && iy[0]) { click_x = atoi(ix); click_y = atoi(iy); }
+        /* REAL, NEW 2026-08-31, direct instruction ("if in 2d u will
+         * place on current z level") - a freshly-placed entity gets
+         * the real, current, shared desktop_active_z.txt (same real
+         * file cursword's own c/v keys write - see
+         * tp_desktop_window_rgb.c's own g_active_z declaration
+         * comment), not always 0. Missing file = real, honest 0
+         * default, same shape every other optional state file in this
+         * house already uses. */
+        int active_z = 0;
+        {
+            char az_path[PATH_BUF];
+            snprintf(az_path, sizeof(az_path), "%s/#.desktop/desktop_active_z.txt", house_root);
+            FILE *azf = fopen(az_path, "r");
+            if (azf) {
+                char azline[16];
+                if (fgets(azline, sizeof(azline), azf)) active_z = atoi(azline);
+                fclose(azf);
+            }
+        }
         char pos_path[PATH_BUF];
         snprintf(pos_path, sizeof(pos_path), "%s/desktop_pos.txt", dir);
         FILE *pf = fopen(pos_path, "w");
-        if (pf) { fprintf(pf, "x=%d\ny=%d\n", click_x, click_y); fclose(pf); }
+        if (pf) { fprintf(pf, "x=%d\ny=%d\nz=%d\n", click_x, click_y, active_z); fclose(pf); }
     }
 
     /* Real DESK-row append - THE actual fix, mirrors tp_place_desktop_

@@ -1664,12 +1664,26 @@ static void load_camera_mode(const char *house_root) {
  * recreation, shape-mask rebuild at new sizes) deliberately deferred
  * rather than rushed alongside pan+tilt in the same pass. */
 static int g_cam_pan_x = 0, g_cam_pan_y = 0, g_cam_tilt = 0;
+/* Real, new 2026-08-31, direct live report ("not all the camera
+ * controls were fully taken from piececraft yet") - yaw (q/e),
+ * board-viewer's own real key convention, was the real gap. Degrees,
+ * added directly onto build_raymarch_cam()'s own fixed front/top
+ * base yaw (see that function's own comment). */
+static int g_cam_yaw = 0;
+/* Real, tentative forward declarations - g_entity_z/g_active_z's own
+ * real definitions (with header comments) sit further down this file
+ * next to their real load/write functions, but cursword_handle_
+ * camera_key() (right below) needs them in scope earlier - same real
+ * C tentative-definition merge every other forward-declared global in
+ * this file already relies on. */
+static int g_entity_z;
+static int g_active_z;
 static void load_camera_state(const char *house_root) {
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/desktop_camera_state.txt", house_root);
     FILE *f = fopen(path, "r");
-    if (!f) { g_cam_pan_x = 0; g_cam_pan_y = 0; g_cam_tilt = 0; return; }
-    int pan_x = 0, pan_y = 0, tilt = 0;
+    if (!f) { g_cam_pan_x = 0; g_cam_pan_y = 0; g_cam_tilt = 0; g_cam_yaw = 0; return; }
+    int pan_x = 0, pan_y = 0, tilt = 0, yaw = 0;
     char line[128];
     while (fgets(line, sizeof(line), f)) {
         char *eq = strchr(line, '=');
@@ -1679,24 +1693,26 @@ static void load_camera_state(const char *house_root) {
         if (strcmp(line, "cam_pan_x") == 0) pan_x = val;
         else if (strcmp(line, "cam_pan_y") == 0) pan_y = val;
         else if (strcmp(line, "cam_tilt") == 0) tilt = val;
+        else if (strcmp(line, "cam_yaw") == 0) yaw = val;
     }
     fclose(f);
     if (tilt < 0) tilt = 0;
     if (tilt > 100) tilt = 100;
-    g_cam_pan_x = pan_x; g_cam_pan_y = pan_y; g_cam_tilt = tilt;
+    g_cam_pan_x = pan_x; g_cam_pan_y = pan_y; g_cam_tilt = tilt; g_cam_yaw = yaw;
 }
 
 /* Real write side of load_camera_state() above - cursword's own
- * camera-control keys (w/a/s/d pan, r/t tilt, board-viewer's own real
- * key convention reused verbatim, zero collision with cursword's own
- * arrow-key entity movement or 1-4 mode keys) call this after
- * updating g_cam_pan_x/g_cam_pan_y/g_cam_tilt in memory. */
+ * camera-control keys (w/a/s/d pan, r/t tilt, q/e yaw, board-viewer's
+ * own real key convention reused verbatim, zero collision with
+ * cursword's own arrow-key entity movement or 1-4 mode keys) call
+ * this after updating g_cam_pan_x/g_cam_pan_y/g_cam_tilt/g_cam_yaw in
+ * memory. */
 static void write_camera_state(const char *house_root) {
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/desktop_camera_state.txt", house_root);
     FILE *f = fopen(path, "w");
     if (!f) return;
-    fprintf(f, "cam_pan_x=%d\ncam_pan_y=%d\ncam_tilt=%d\n", g_cam_pan_x, g_cam_pan_y, g_cam_tilt);
+    fprintf(f, "cam_pan_x=%d\ncam_pan_y=%d\ncam_tilt=%d\ncam_yaw=%d\n", g_cam_pan_x, g_cam_pan_y, g_cam_tilt, g_cam_yaw);
     fclose(f);
 }
 
@@ -1713,7 +1729,7 @@ static void write_camera_state(const char *house_root) {
  * as handled - set need_redraw etc.), 0 if it wasn't (caller keeps
  * checking its own other real branches, e.g. Escape/arrows).
  * ============================================================ */
-static int cursword_handle_camera_key(const char *house_root, KeySym ks2) {
+static int cursword_handle_camera_key(const char *house_root, const char *package_dir, KeySym ks2) {
     if (ks2 == XK_1 || ks2 == XK_2 || ks2 == XK_3 || ks2 == XK_4) {
         /* Real, desktop-wide camera-mode switch, design doc §9 item #6:
          * "since real key capture only begins once cursword is
@@ -1740,17 +1756,23 @@ static int cursword_handle_camera_key(const char *house_root, KeySym ks2) {
         /* Real reset - board-viewer's own real key (camera_control.c:
          * "f reset to default facing"/"f center on hero"), reused
          * verbatim, direct instruction. */
-        g_cam_pan_x = 0; g_cam_pan_y = 0; g_cam_tilt = 0;
+        g_cam_pan_x = 0; g_cam_pan_y = 0; g_cam_tilt = 0; g_cam_yaw = 0;
         write_camera_state(house_root);
         bump_camera_changed(house_root);
         append_history("CURSWORD_CAMERA_RESET");
         return 1;
     }
-    if (ks2 == XK_w || ks2 == XK_a || ks2 == XK_s || ks2 == XK_d || ks2 == XK_r || ks2 == XK_t) {
-        /* Real pan (w/a/s/d) + tilt (r/t) - same real letters board-
-         * viewer's own camera_control.c already uses, reused verbatim,
-         * zero collision with cursword's own arrow-key ENTITY movement
-         * or 1-4 mode keys. Desktop-wide effect - see
+    if (ks2 == XK_w || ks2 == XK_a || ks2 == XK_s || ks2 == XK_d || ks2 == XK_r || ks2 == XK_t ||
+        ks2 == XK_q || ks2 == XK_e) {
+        /* Real pan (w/a/s/d) + tilt (r/t) + yaw (q/e) - same real
+         * letters board-viewer's own camera_control.c already uses,
+         * reused verbatim, zero collision with cursword's own arrow-
+         * key ENTITY movement or 1-4 mode keys. Real, new 2026-08-31,
+         * direct live report ("not all the camera controls were
+         * fully taken from piececraft yet") - q/e (yaw) was the real
+         * gap this closes; c/v is handled separately below (real
+         * per-entity Z, not a camera-only parameter, see g_entity_z's
+         * own declaration comment for why). Desktop-wide effect - see
          * load_camera_state()'s own header comment. */
         int step = GRID_CELL_PX / 4;
         if (ks2 == XK_w) g_cam_pan_y += step;
@@ -1759,9 +1781,54 @@ static int cursword_handle_camera_key(const char *house_root, KeySym ks2) {
         else if (ks2 == XK_d) g_cam_pan_x -= step;
         else if (ks2 == XK_r) { g_cam_tilt += 10; if (g_cam_tilt > 100) g_cam_tilt = 100; }
         else if (ks2 == XK_t) { g_cam_tilt -= 10; if (g_cam_tilt < 0) g_cam_tilt = 0; }
+        else if (ks2 == XK_q) g_cam_yaw -= 15;
+        else if (ks2 == XK_e) g_cam_yaw += 15;
         write_camera_state(house_root);
         bump_camera_changed(house_root);
         append_history("CURSWORD_CAMERA_PAN_TILT");
+        return 1;
+    }
+    if (ks2 == XK_c || ks2 == XK_v) {
+        /* REAL, NEW 2026-08-31, direct instruction ("do we have z
+         * layers yet? ... using c & v the xelector/cursword moves up
+         * and down z levels but the rest of the entities should
+         * remain on their own z level unless some event is otherwise
+         * moving them") - board-viewer's own real c/v key convention
+         * (camera_control.c: "c/v = Camera Z level"), but real,
+         * direct instruction maps it here to CURSWORD's OWN entity z
+         * (cursword is the real xelector/selector role) rather than a
+         * separate camera-only parameter - moving it is what defines
+         * the shared desktop_active_z.txt every OTHER entity's own
+         * window polls to decide whether to show or hide itself (see
+         * that file's own header comment and the real map/unmap logic
+         * in the main render loop). g_house_root/package_dir close
+         * over this function's own real parameters, not globals. */
+        g_entity_z += (ks2 == XK_v) ? 1 : -1;
+        char zpath[PATH_BUF];
+        snprintf(zpath, sizeof(zpath), "%s/desktop_pos.txt", package_dir);
+        /* Re-read x/y (write_pos()'s own real "preserve what's not
+         * changing" shape isn't reusable here - this call site has no
+         * real win_x/win_y in scope, only package_dir) so the z change
+         * doesn't clobber the entity's own real saved position. */
+        int px = 0, py = 0;
+        FILE *rf = fopen(zpath, "r");
+        if (rf) {
+            char line[128];
+            while (fgets(line, sizeof(line), rf)) {
+                if (strncmp(line, "x=", 2) == 0) px = atoi(line + 2);
+                else if (strncmp(line, "y=", 2) == 0) py = atoi(line + 2);
+            }
+            fclose(rf);
+        }
+        FILE *wf = fopen(zpath, "w");
+        if (wf) { fprintf(wf, "x=%d\ny=%d\nz=%d\n", px, py, g_entity_z); fclose(wf); }
+        char azpath[PATH_BUF];
+        snprintf(azpath, sizeof(azpath), "%s/#.desktop/desktop_active_z.txt", house_root);
+        FILE *azf = fopen(azpath, "w");
+        if (azf) { fprintf(azf, "%d\n", g_entity_z); fclose(azf); }
+        g_active_z = g_entity_z;
+        bump_camera_changed(house_root);
+        append_history(ks2 == XK_v ? "CURSWORD_Z_UP" : "CURSWORD_Z_DOWN");
         return 1;
     }
     return 0;
@@ -1890,7 +1957,10 @@ static void build_raymarch_cam(double cy, RaymarchCam *cam) {
      * as it increases, matching the real, literal meaning of "add
      * tilt" instead of starting pre-tilted. */
     double pitch_deg = (g_cam_tilt / 100.0) * 65.0; /* 0 (dead-on front, no angle) .. 65 (angled down) */
-    double yaw_deg = g_emoji_sprite_view_top ? 45.0 : 0.0;
+    /* Real, new 2026-08-31 - g_cam_yaw (q/e keys) added directly onto
+     * the fixed front/top base yaw, real, live-adjustable rotation on
+     * top of the PDL-picked default. */
+    double yaw_deg = (g_emoji_sprite_view_top ? 45.0 : 0.0) + g_cam_yaw;
     double pitch = pitch_deg * M_PI_LOCAL / 180.0, yaw = yaw_deg * M_PI_LOCAL / 180.0;
 
     cam->ex = RAYMARCH_CAM_DIST * cos(pitch) * sin(yaw);
@@ -3047,12 +3117,65 @@ static void apply_asset_override(const char *package_dir, const char *ops_dir) {
     }
 }
 
+/* REAL, NEW 2026-08-31, direct instruction ("do we have z layers
+ * yet? ... the xelector/cursword moves up and down z levels but the
+ * rest of the entities should remain on their own z level unless
+ * some event is otherwise moving them") - a real, persistent per-
+ * entity Z, same real file (desktop_pos.txt) every entity already
+ * has, a real optional third `z=N` line (missing = 0, same real
+ * backward-compatible fallback shape every other optional PDL/state
+ * key in this house already uses). g_entity_z is this real, in-
+ * memory value for THIS process's own entity - loaded once at
+ * startup, changed only by cursword's own real c/v keys (this
+ * entity's own z never changes on its own). */
+static int g_entity_z = 0;
+
+static int read_entity_z(const char *package_dir) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/desktop_pos.txt", package_dir);
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    char line[128];
+    int z = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "z=", 2) == 0) z = atoi(line + 2);
+    }
+    fclose(f);
+    return z;
+}
+
 static void write_pos(const char *package_dir, int x, int y) {
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/desktop_pos.txt", package_dir);
     FILE *f = fopen(path, "w");
     if (!f) return;
-    fprintf(f, "x=%d\ny=%d\n", x, y);
+    /* Real, deliberate: write THIS process's own real g_entity_z, not
+     * a re-read of whatever was on disk before - this file's own
+     * g_entity_z is always kept in sync with disk on the only real
+     * path that ever changes it (cursword's own c/v keys, which write
+     * immediately), so this is never stale. Every other real caller
+     * of write_pos() (drag/arrow-nudge/click-to-place) only ever
+     * changes x/y, never z - preserving it here, with zero call-site
+     * changes needed anywhere else in this file. */
+    fprintf(f, "x=%d\ny=%d\nz=%d\n", x, y, g_entity_z);
+    fclose(f);
+}
+
+/* Real, new 2026-08-31 - the shared, desktop-wide "which z level is
+ * currently visible" file (same real "small state file under
+ * #.desktop/" convention as desktop_camera_mode.txt). Cursword, the
+ * real xelector/selector entity, is the only thing that ever WRITES
+ * this (see cursword_handle_camera_key()'s own c/v branch) - every
+ * entity's own window just reads it to decide whether to show or
+ * hide itself (see the real map/unmap logic in the main render loop). */
+static int g_active_z = 0;
+static void load_active_z(const char *house_root) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/desktop_active_z.txt", house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) { g_active_z = 0; return; }
+    char line[16];
+    g_active_z = fgets(line, sizeof(line), f) ? atoi(line) : 0;
     fclose(f);
 }
 
@@ -3353,6 +3476,9 @@ int main(int argc, char **argv) {
     if (max_row < 0) max_row = 0;
 
     int xfd = ConnectionNumber(dpy);
+    /* Real, new 2026-08-31 - this entity's own persisted z, loaded
+     * once at startup (see g_entity_z's own declaration comment). */
+    g_entity_z = read_entity_z(package_dir);
     int win_x = 3 * GRID_CELL_PX, win_y = 3 * GRID_CELL_PX; /* grid-aligned spawn, matching egg_window.c's own default */
     {
         int ix, iy;
@@ -3513,6 +3639,7 @@ int main(int argc, char **argv) {
         if (camera_changed_dirty(g_house_root)) {
             load_camera_mode(g_house_root);
             load_camera_state(g_house_root);
+            load_active_z(g_house_root);
             need_redraw = 1;
         }
 
@@ -4831,7 +4958,7 @@ int main(int argc, char **argv) {
                         }
                         write_pos(package_dir, win_x, win_y);
                         need_redraw = 1;
-                    } else if (cursword_handle_camera_key(g_house_root, ks2)) {
+                    } else if (cursword_handle_camera_key(g_house_root, package_dir, ks2)) {
                         /* Real, consolidated dispatch - see
                          * cursword_handle_camera_key()'s own header
                          * comment (1-4 mode, f reset, wasd/rt pan-
@@ -4953,6 +5080,27 @@ int main(int argc, char **argv) {
              * scale. */
             load_camera_mode(g_house_root);
             load_camera_state(g_house_root);
+            load_active_z(g_house_root);
+            /* REAL, NEW 2026-08-31, direct instruction ("do we have z
+             * layers yet?... it affects 2d also. in 2d u wont see the
+             * entity") - real z-level VISIBILITY filter, applies
+             * unconditionally in EVERY camera mode (not just 3D):
+             * an entity whose own real g_entity_z doesn't match the
+             * shared g_active_z (set only by cursword's own real c/v
+             * keys, see cursword_handle_camera_key()'s own header
+             * comment) is genuinely unmapped - not drawn, not
+             * present, matching a real "which floor am I looking at"
+             * convention, achievable within this file's own existing
+             * one-window-per-entity architecture (no shared 3D scene
+             * needed, direct instruction: "i hope we dont have to
+             * switch to shared scene just yet"). */
+            {
+                static int z_was_mapped = 1; /* window starts real, mapped (XMapWindow already ran earlier in main()) */
+                int z_should_show = (g_entity_z == g_active_z);
+                if (z_should_show && !z_was_mapped) { XMapWindow(dpy, win); z_was_mapped = 1; }
+                else if (!z_should_show && z_was_mapped) { XUnmapWindow(dpy, win); z_was_mapped = 0; }
+                if (!z_should_show) goto skip_zfiltered_draw;
+            }
             if (g_has_sprite) {
                 if (g_camera_mode == 3 || g_camera_mode == 4) {
                     /* REAL FIX 2026-08-30, direct live report ("its
@@ -5105,6 +5253,7 @@ int main(int argc, char **argv) {
                 XCopyArea(dpy, g_buf, win, g_buf_gc, 0, 0, (unsigned)WIN_PX, (unsigned)present_h, 0, 0);
             }
         }
+        skip_zfiltered_draw:
         last_frame = now;
     }
 
