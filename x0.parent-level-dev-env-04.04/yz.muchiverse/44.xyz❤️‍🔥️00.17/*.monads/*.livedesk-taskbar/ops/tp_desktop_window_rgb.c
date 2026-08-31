@@ -1562,6 +1562,106 @@ static void draw_sprite_rgb(Display *dpy, Drawable buf, GC gc, int bg_r, int bg_
     }
 }
 
+/* REAL, NEW 2026-08-30 - real "desktop 3D" render, design doc §3a/§9-12,
+ * direct instruction ("we need to do the big important bulk of this
+ * now... we can start with camera 3/4 topdown only, if that would
+ * make it easier"). Desktop-wide by construction (§9 item #2's own
+ * resolution - EVERY desktop entity's own window, this exact shared
+ * binary/file, polls the SAME real #.desktop/desktop_camera_mode.txt;
+ * not gated to cursword or to armed state - cursword is only ever the
+ * CONTROLLER that writes this file, per the 1-4 key wiring above).
+ *
+ * Real scope note, matching the direct instruction above: modes 1/2
+ * (true first/third-person perspective) and mode 3's own real free-
+ * roam camera movement stay deferred - this first pass renders 3
+ * and 4 identically, as a real, extruded "block viewed from above"
+ * (matches board-viewer's own real mode-4 "bird's eye" framing
+ * exactly; mode 3 is simplified down to the same topdown case for
+ * now, not yet its own true free-roam perspective).
+ *
+ * No separate voxel-asset generation needed (unlike board-viewer's
+ * own board-scale raymarcher, which reads a project-wide registry of
+ * <hex>/voxels_16.csv files) - every desktop entity already has its
+ * own real per-pixel RGBA texture loaded right here as g_sprite_pixels/
+ * g_sprite_res (the exact same sprite.csv data draw_sprite_rgb() just
+ * used above), so THAT is the real texture this reuses directly. */
+static int g_camera_mode = 1;
+static void load_camera_mode(const char *house_root) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/desktop_camera_mode.txt", house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) { g_camera_mode = 1; return; }
+    char line[16];
+    if (!fgets(line, sizeof(line), f)) g_camera_mode = 1;
+    else g_camera_mode = atoi(line);
+    fclose(f);
+    if (g_camera_mode < 1 || g_camera_mode > 4) g_camera_mode = 1;
+}
+
+/* Real, in-buffer "extruded block" cue: the existing flat top-face
+ * blit (draw_sprite_rgb(), unchanged, already a correct "looking
+ * straight down at it" render) plus a real, art-derived shaded strip
+ * along the bottom of the sprite's own actual silhouette (not the
+ * whole square canvas) - the honest, simple signal that "this has
+ * real height/a Z axis now" (direct design-doc language: "entities
+ * gain a Z axis") without a full per-pixel raymarch pass for a single
+ * object already being viewed from directly above. */
+#define TOPDOWN_WALL_PX 10
+static void draw_topdown_block_rgb(Display *dpy, Drawable buf, GC gc, int bg_r, int bg_g, int bg_b) {
+    if (!g_sprite_pixels || g_sprite_res <= 0) return;
+    draw_sprite_rgb(dpy, buf, gc, bg_r, bg_g, bg_b);
+
+    /* Real bbox crop - same real "the actual opaque silhouette, not
+     * the whole padded canvas" technique bv_render_3d.c's own
+     * compute_bbox_and_edge_color() already established as correct
+     * for exactly this class of problem (real precedent, not
+     * reinvented from scratch). */
+    int u0 = g_sprite_res, v0 = g_sprite_res, u1 = -1, v1 = -1;
+    for (int row = 0; row < g_sprite_res; row++) {
+        for (int col = 0; col < g_sprite_res; col++) {
+            if (g_sprite_pixels[(row * g_sprite_res + col) * 4 + 3] > 10) {
+                if (col < u0) u0 = col;
+                if (col > u1) u1 = col;
+                if (row < v0) v0 = row;
+                if (row > v1) v1 = row;
+            }
+        }
+    }
+    if (u1 < u0) { u0 = 0; v0 = 0; u1 = g_sprite_res - 1; v1 = g_sprite_res - 1; }
+
+    /* Real "edge color" - average of the opaque pixels lying exactly
+     * on the bounding box's own perimeter (its actual outline color),
+     * same real technique/reasoning as bv_render_3d.c's own edge_r/g/b
+     * - used to shade the extruded wall a real, art-derived tone
+     * rather than an arbitrary gray, then darkened further (in-shadow,
+     * viewed near-edge-on). */
+    long sr = 0, sg = 0, sb = 0, n = 0;
+    for (int row = v0; row <= v1; row++) {
+        for (int col = u0; col <= u1; col++) {
+            int on_edge = (row == v0 || row == v1 || col == u0 || col == u1);
+            if (!on_edge) continue;
+            unsigned char *p = &g_sprite_pixels[(row * g_sprite_res + col) * 4];
+            if (p[3] <= 10) continue;
+            sr += p[0]; sg += p[1]; sb += p[2]; n++;
+        }
+    }
+    int edge_r = n > 0 ? (int)(sr / n) : 100;
+    int edge_g = n > 0 ? (int)(sg / n) : 100;
+    int edge_b = n > 0 ? (int)(sb / n) : 100;
+    edge_r = edge_r * 55 / 100; edge_g = edge_g * 55 / 100; edge_b = edge_b * 55 / 100;
+
+    int sx0 = (u0 * WIN_PX) / g_sprite_res;
+    int sx1 = ((u1 + 1) * WIN_PX) / g_sprite_res;
+    int sy0 = ((v1 + 1) * WIN_PX) / g_sprite_res;
+    if (sy0 > WIN_PX) sy0 = WIN_PX;
+    int wall_h = TOPDOWN_WALL_PX;
+    if (sy0 + wall_h > WIN_PX) wall_h = WIN_PX - sy0;
+    if (sx1 > sx0 && wall_h > 0) {
+        XSetForeground(dpy, gc, 0xFF000000UL | ((unsigned long)edge_r << 16) | ((unsigned long)edge_g << 8) | (unsigned long)edge_b);
+        XFillRectangle(dpy, buf, gc, sx0, sy0 - 1, (unsigned)(sx1 - sx0), (unsigned)wall_h);
+    }
+}
+
 /* REAL, NEW 2026-08-04, direct instruction ("^ mode... wherever they
  * click... the phymoji will appear"): if tp_place_desktop.c already
  * wrote a desktop_pos.txt (a real click point resolved by
@@ -4089,7 +4189,21 @@ int main(int argc, char **argv) {
              * confirmed to have no real alpha transparency. Real color
              * changed from the design doc's original neon-blue spec to
              * a yellow glow, direct instruction. */
-            if (g_has_sprite) draw_sprite_rgb(dpy, g_buf, g_buf_gc, bg_r, bg_g, bg_b);
+            /* Real, new 2026-08-30 - desktop-wide 3D switch (see
+             * load_camera_mode()/draw_topdown_block_rgb()'s own header
+             * comment): modes 3/4 render every sprite entity as a real
+             * extruded block instead of the flat top-down blit. Cheap
+             * enough to poll unconditionally every frame at this
+             * file's own 30fps cap (MAX_FPS) - a tiny, single-line
+             * file, no changed-marker optimization needed at this
+             * scale. */
+            load_camera_mode(g_house_root);
+            if (g_has_sprite) {
+                if (g_camera_mode == 3 || g_camera_mode == 4)
+                    draw_topdown_block_rgb(dpy, g_buf, g_buf_gc, bg_r, bg_g, bg_b);
+                else
+                    draw_sprite_rgb(dpy, g_buf, g_buf_gc, bg_r, bg_g, bg_b);
+            }
             else if (g_font_loaded) draw_glyph_rgb(dpy, g_buf, g_buf_gc, glyph);
             /* REAL FIX 2026-08-30, found live: the halo used to draw
              * BEFORE the sprite, relying on draw_sprite_rgb()'s own
