@@ -843,3 +843,25 @@ soon." Real, scoped ask:
   copy-template path cursword's own spawn flow already uses?), and
   whether cut visually differs from a plain close+remember-for-paste.
   Real design pass needed before code - not started.
+
+**Real answers, direct instruction 2026-08-31** ("just leave it there
+till pasted; yes multiple pastes is ok. leave it single for now"):
+- The clipboard (one shared `#.desktop/desktop_clipboard.txt`, holding
+  the copied/cut entity's own template path) does NOT clear on paste -
+  it persists until explicitly overwritten by the next real Copy/Cut,
+  so pasting the same clipboard entry multiple times in a row is real,
+  intended behavior, not a bug to guard against.
+- v1 is single-entity select/cut/copy/paste only - one entity at a
+  time, real and final for this pass (not a placeholder for
+  multi-select, see the real future item just below).
+
+**Real future item, added here, NOT this pass** ("later we will add a
+'rectangle select tool for mult[i] draw/cut/copy/paste delete'"): a
+real click-drag rectangle selection tool on the desktop background,
+selecting every entity whose position falls inside it, so Cut/Copy/
+Paste/Delete (and possibly a real multi-entity "draw"/stamp action)
+can all operate on the whole selected group at once instead of one
+entity at a time. Explicitly deferred - v1 above ships single-entity
+first; this needs its own real design pass (how selection is drawn/
+stored, what "paste" does for N entities at once - same relative
+offsets from the original click point, most likely) before any code.

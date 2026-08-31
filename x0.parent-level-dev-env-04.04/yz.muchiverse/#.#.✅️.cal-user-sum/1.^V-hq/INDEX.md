@@ -2,6 +2,14 @@
 
 **If you're a new agent picking this up cold, read in this order until you have enough context to act.**
 
+**📋 `au-31.md` (2026-08-31) — today's live, in-progress todo list**:
+factoring out real per-app managers (irc-chat/forum/chain) BEFORE
+building their HQ window shells, per a real compliance finding
+(`dbhq_load_actors()` in `khtpm_entity_menu_render.c` loads real data
+but from inline loader code in the shared file, not a separate manager
+- see `HOUSE_CODE_PITFALLS.md` #11). Nothing on this list has real code
+against it yet as of this entry.
+
 **🧭 `^.COMPACTION_HANDOFF_aug29.md` — read this ONE first, before
 even Tier 1 below.** Emoji-heavy, human-and-AI-readable, plain-language
 summary of the tail end of the Aug 29 session: what shipped, the real

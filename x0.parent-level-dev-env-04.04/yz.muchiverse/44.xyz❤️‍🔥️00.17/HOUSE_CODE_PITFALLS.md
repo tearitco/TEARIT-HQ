@@ -216,6 +216,49 @@ easy to reach for `xdotool`/screenshots out of habit instead:
   the k9 doc's own explicit "order of preference," direct instruction:
   "u should always try that before using xdo tool."
 
+## 11. Don't add a new mode's data-loading logic INSIDE the shared parser/renderer file - it creates reference drift
+
+**Real, live example:** `khtpm_entity_menu_render.c`'s own
+`dbhq_load_actors()` reads a real PDL data file
+(`&.widgits/db-hq/data/actors.pdl`) directly from inside the shared,
+"hard boundary" parser/renderer file - not hardcoded string literals
+(the content itself is real, file-based, compliant with the house's
+core rule), but the LOADING code lives in the same shared file every
+other mode's rendering also lives in, instead of a separate manager
+process. Compare to db-hq's own **Common Events** tab, which IS fully
+split - a real, separate `khtpm_hq_manager.c` owns the scanning/
+business logic and only talks to the shell through a real state file.
+
+**Why this matters / the real risk:** every NEW mode that needs its
+own data is tempted to add its own inline loader function to the SAME
+shared file (`dbhq_load_actors()`, and possibly siblings for Classes/
+Skills/Items/etc. - not yet fully audited). Each one ends up with its
+own slightly different assumptions about file format/paths, all living
+in one file nobody owns end-to-end - a real, compounding drift risk,
+not a hypothetical one. It also makes the "hard boundary" file bigger
+and riskier to touch with every mode added, the opposite of the
+house's own stated goal for that file.
+
+**Real fix / procedure:** when a new HQ-style window mode needs real
+data, give it its own real, separate manager process (matching
+`khtpm_hq_manager.c`'s own shape) that reads that mode's own real data
+files and publishes a real, simple state file - the shared renderer
+only ever reads that published state generically (via
+`reusable_slot()`, per SKILLS.md §2's own house standard), never
+parses the mode's own source data directly. Before writing a NEW
+inline loader in the shared file, check whether the mode you're adding
+should instead get its own manager, the same way you'd check `build_*.sh`
+for a `cp` line before editing a file that might be a copy (see #1
+above) - it's the same class of "check the real convention before
+adding to the pile" discipline.
+
+**Real follow-up, not yet done:** an audit pass across
+`khtpm_entity_menu_render.c` (and other manager/ops files in this
+house) to find every OTHER inline data-loading function that should
+have been a separate manager from the start - `dbhq_load_actors()` is
+the one already found; there may be siblings. See `au-31.md` for the
+real, dated todo list this finding produced.
+
 ---
 
 *Append new entries here as they're found — this file exists so the

@@ -437,4 +437,102 @@ the 2do doc's handoff section for the boundary owner (Sonnet):
 | The 3 CLI apps | `44.xyz❤️‍🔥️00.17/{044.pal-chat-irc👥️+2, 041.pal-forum👥️, 041.pal-chain⛓️}/` |
 | P2P standard | `44.xyz❤️‍🔥️00.17/2.muchi-verse/PAL-NET-STANDARD.txt` |
 | Browser contract | `44.xyz❤️‍🔥️00.17/102.agy-txt/manager/BROWSER_CONTRACT.md` |
+
+## 12. REAL CORRECTION (2026-08-31) - opencode's approach was the wrong
+    direction; real Phase 1 window shells + real Phase 2 feature design
+
+**Direct instruction, the actual ask:** "i wanted to open new hq style
+windows, and then reuse the code standards from the other network apps
+to make new gui driven networking apps, using the same data schemas,
+ops, etc." NOT what opencode built (a standalone terminal-emulator-
+from-scratch `cli_io_window.c` + a `gnome-terminal` wrapper around each
+CLI app's own ASCII UI) - that never touches this house's real HQ
+window framework at all, and reimplements a crude terminal instead of
+reusing anything.
+
+**Real fix, minimal-risk, ZERO new C code needed:** `khtpm_entity_
+menu_render.c`'s own class-detection loop (~line 11110) has NO
+fallback error for an unrecognized `<window class="...">` - every
+`g_is_*` flag just stays 0 and the shared, generic sidebar+panel+
+button+text rendering below runs anyway (real, confirmed by reading
+the code: no `else { return 1; }` after the class-check loop). This
+means a genuinely NEW class (`irc-chat-window`/`forum-window`/
+`chain-window` - deliberately NOT `chat-window`, which would
+incorrectly trigger chat-hai's own persona-loop `<module>` launch)
+gets a real, correctly-drawn generic HQ window through the ALREADY-
+COMPILED shared `khtpm_entity_menu_render.+x` binary, with zero new
+C - just a new `.chtpm`+`.css` per app (real data, not code) and a new
+`open_<app>.sh` launcher copied from `open_db_hq.sh`'s own real shape
+(same "kill existing instance, build-if-missing, PID recorded" pattern
+every other HQ launcher already uses).
+
+### Real Phase 2 feature design (window shells only for now - NOT
+    wired to real ops yet, per direct instruction "we dont even need
+    to wire up functionality yet, i just wanted to get reasonable
+    guis opening") - grounded in the REAL schemas/ops each CLI app
+    already has, so the eventual wiring is a real, known, small step
+    later, not a redesign
+
+**IRC Chat** (`044.pal-chat-irc👥️+2/`) - real schema:
+`data/master_ledger.txt` rows are
+`MSG|<msg_id>|<room>|<user>|<ts>|<text>`. Real ops:
+`chat_post_message.c`, `chat_create_user.c`, `chat_switch_user.c`,
+`chat_replay_ledger.c`, `chat_compose_frame.c`, `chat_inbox_watcher.c`.
+Real UI shape (matches chat-hai's own real sidebar+panel precedent
+almost exactly, since it's the same real room/message/user model):
+- **sidebar**: real room list (eventually populated from the distinct
+  `room` field across `master_ledger.txt` - one row per room, click ->
+  filter the panel to that room, same real interaction shape chat-hai's
+  own session sidebar already proves).
+- **panel**: message feed (room-filtered `chat_replay_ledger.c` output,
+  newest at bottom) + a compose row at the bottom (text field + Enter
+  -> `chat_post_message.+x <user> <room> <text>`, matching chat-hai's
+  own real "Enter sends, no button needed" precedent) + a user-identity
+  control (current user, `chat_switch_user.+x`/`chat_create_user.+x`
+  behind it).
+
+**Forum** (`041.pal-forum👥️/`) - real schema: `POST|<post_id>|<user_id>|
+<ts>|<text>|<image_id>` rows. Real ops: `forum_post.c`, `forum_like.c`,
+`forum_retweet.c`, `forum_follow.c`, `forum_dm.c`,
+`forum_compute_feed.c`, `forum_create_user.c`, `forum_switch_user.c`,
+`forum_inbox_watcher.c`. Real UI shape (Twitter/X-like, per its own
+real feature set):
+- **sidebar**: real tab list - Home (feed), Following, DMs,
+  Notifications - each a real button that swaps the panel's content
+  source, same real tab-switch shape db-hq's own sidebar items already
+  prove (`dbhq_tab_is_real()` precedent).
+- **panel**: feed of posts (`forum_compute_feed.+x`'s own real output -
+  each post row showing user/text/timestamp + Like/Retweet buttons
+  wired to `forum_like.+x`/`forum_retweet.+x`) + a compose box at top
+  (text field + Post button -> `forum_post.+x`). DMs tab reuses the
+  same panel shape, sourced from `forum_dm.c`'s own real per-user
+  thread instead of the public feed.
+
+**Chain** (`041.pal-chain⛓️/`) - real schema: `TX|<from>|<to>|<amount>|
+<ts>|<tx_id>` rows plus `BLOCK|...` records and a real miner state file
+(`miner_wallet_id`/`running`/`blocks_mined_this_session`/
+`last_block_index`/`last_block_hash`/`total_supply_minted`). Real ops:
+`chain_create_wallet.c`, `chain_login.c`, `chain_balance.c`,
+`chain_send.c`, `chain_miner.c`. Real UI shape (wallet dashboard, per
+its own real feature set - NOT a chat/feed shape at all, don't force
+the sidebar+panel pattern where a different one fits better):
+- **sidebar**: real tab list - Wallet, Send, Mine, History.
+- **panel**: Wallet tab shows real balance (`chain_balance.+x`) + real
+  wallet id, with a Create Wallet / Login affordance if none exists
+  yet (`chain_create_wallet.c`/`chain_login.c`). Send tab is a real
+  3-field form (to-wallet-id, amount, a Send button ->
+  `chain_send.+x <from> <to> <amount>`, matching that op's own exact
+  real argv contract). Mine tab shows the real miner state fields
+  above + a Start/Stop toggle (`chain_miner.+x <wallet_id>`,
+  background-toggled the same way chat-hai's own toggle-pause button
+  already works). History tab lists real `TX`/`BLOCK` rows, newest
+  first.
+
+**Explicitly NOT done this pass** (window shells only, real content is
+static placeholder text/labels matching the shapes above, zero real
+op dispatch wired) - the real next step once these 3 windows are
+confirmed opening correctly: wire each panel's buttons/compose actions
+to their real op binaries above, one app at a time, same real
+incremental-verify discipline every other feature in this house
+already follows.
 | Delegation map | `#.#.✅️.cal-user-sum/0.browser-prompting/architecture-explainers/9.networking-13network-delegation.md` |
