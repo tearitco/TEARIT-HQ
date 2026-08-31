@@ -277,6 +277,38 @@ static int GRID_CELL_PX = 80;
 #define MAX_FPS 30
 #define MIN_FRAME_USEC (1000000 / MAX_FPS)
 
+/* REAL, NEW 2026-08-30 (CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-
+ * DESKS-DESIGN.md §3a/§9/§10, direct instruction confirmed across
+ * several rounds of Q&A - see that doc's own real decision record
+ * before touching any of this) - real arm-on-click for cursword
+ * specifically, NOT every desktop entity: a plain click (not a drag)
+ * arms it, showing a real glowing halo, same real visible-state
+ * principle as this house's other "armed" conventions
+ * (rmmv_armed.txt/.pal-hint-armed). This is step 1 of that doc's own
+ * scoped rollout (arm+halo only) - arrow-key movement, click-to-place,
+ * and the 2D/3D camera switch are explicitly deferred to a later pass,
+ * per the doc's own §8/§10 sequencing. */
+static int g_is_cursword = 0;
+static int g_cursword_armed = 0;
+
+/* Confirmed default (§9 item 1, confirmed as-is in §10): 5px movement
+ * AND under 300ms between ButtonPress and ButtonRelease counts as a
+ * real click (arm), not a drag. */
+#define CURSWORD_CLICK_MAX_PX 5
+#define CURSWORD_CLICK_MAX_MS 300
+
+/* Real, house-standard "small state file under #.desktop/" convention
+ * (§9 item 5's own cited precedent, rmmv_armed.txt) - the one real,
+ * visible-elsewhere signal for "is cursword currently armed right
+ * now," same shape khtpm_entity_menu_render.c's own
+ * pchq_is_interact_on()/etc. already use for cross-process real state. */
+static void cursword_write_armed(const char *house_root, int armed) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/cursword_armed.txt", house_root);
+    FILE *f = fopen(path, "w");
+    if (f) { fprintf(f, "%d\n", armed ? 1 : 0); fclose(f); }
+}
+
 /* REAL FIX 2026-08-05, direct instruction ("this is where we will
  * refactor the xwindow to be chtpm/master ledger compliant" -
  * MUCHI_RANCHER's own work item 2, see MUCHI_RANCHER_DESIGN.md §5 and
@@ -1323,6 +1355,40 @@ static void build_shape_mask(Display *dpy, Window win, GC mask_gc, Pixmap mask) 
     XShapeCombineMask(dpy, win, ShapeBounding, 0, 0, mask, ShapeSet);
 }
 
+/* REAL FIX 2026-08-30, found live: the halo drawn to g_buf/win was
+ * completely invisible no matter what - traced to THIS real
+ * mechanism, build_shape_mask()'s own XShapeCombineMask(ShapeSet)
+ * above, which clips the window's real, server-enforced visible
+ * region down to just the sprite's own opaque silhouette. Anything
+ * drawn to the backing pixmap OUTSIDE that shape is real X11 protocol
+ * data that the server never composites - not a client-side bug, a
+ * real window-shape boundary. Real fix: when cursword arms, UNION a
+ * real ring-shaped mask onto the EXISTING sprite shape (ShapeUnion,
+ * not ShapeSet - adds to it rather than replacing it) so the halo's
+ * own pixels are inside the window's real visible region too; when it
+ * disarms, rebuild the shape from scratch (build_shape_mask() again,
+ * a real ShapeSet) to drop the ring and return to sprite-only. */
+static void cursword_update_shape(Display *dpy, Window win) {
+    if (!g_has_sprite) return;
+    Pixmap mask = XCreatePixmap(dpy, win, (unsigned)WIN_PX, (unsigned)WIN_PX, 1);
+    GC mask_gc = XCreateGC(dpy, mask, 0, NULL);
+    build_shape_mask(dpy, win, mask_gc, mask); /* real ShapeSet baseline - sprite only */
+    if (g_cursword_armed) {
+        XSetForeground(dpy, mask_gc, 0);
+        XFillRectangle(dpy, mask, mask_gc, 0, 0, WIN_PX, WIN_PX);
+        XSetForeground(dpy, mask_gc, 1);
+        int cx = WIN_PX / 2, cy = WIN_PX / 2;
+        int radius = WIN_PX / 2 - 5;
+        if (radius > 3) {
+            XSetLineAttributes(dpy, mask_gc, 9, LineSolid, CapButt, JoinMiter);
+            XDrawArc(dpy, mask, mask_gc, cx - radius, cy - radius, (unsigned)(radius * 2), (unsigned)(radius * 2), 0, 360 * 64);
+        }
+        XShapeCombineMask(dpy, win, ShapeBounding, 0, 0, mask, ShapeUnion);
+    }
+    XFreeGC(dpy, mask_gc);
+    XFreePixmap(dpy, mask);
+}
+
 /* Direct alpha-blended pixel blit into the compose buffer, nearest-
  * neighbor scaled sprite->window exactly like build_shape_mask()'s own
  * loop above (same sx/sy math, so the drawn pixels and the window's
@@ -2089,6 +2155,14 @@ int main(int argc, char **argv) {
     win_package_rel(package_buf);
 #endif
     const char *package_dir = package_buf;
+    /* Real, one-time identity check - see g_is_cursword's own
+     * declaration comment for why this is scoped to cursword only,
+     * not every desktop entity. */
+    {
+        char pkgcopy[PATH_BUF];
+        snprintf(pkgcopy, sizeof(pkgcopy), "%s", package_dir);
+        g_is_cursword = (strcmp(basename(pkgcopy), "cursword") == 0);
+    }
     snprintf(g_history_path, sizeof(g_history_path), "%s/history.txt", package_dir);
     snprintf(g_relay_path, sizeof(g_relay_path), "%s/interact_relay.txt", package_dir);
     append_history("WINDOW_OPEN");
@@ -2385,6 +2459,15 @@ int main(int argc, char **argv) {
 
     int popup_x = 0, popup_y = 0; /* where the MAIN popup itself opened, for real submenu adjacency */
     int dragging = 0, drag_start_x = 0, drag_start_y = 0;
+    /* Real click-vs-drag distinction, cursword only (see
+     * g_is_cursword/CURSWORD_CLICK_MAX_PX/MS declaration comments) -
+     * press_root_x/y are the RAW screen coords at ButtonPress (never
+     * updated during a drag, unlike drag_start_x/y above which slides
+     * forward every MotionNotify) so ButtonRelease can measure total
+     * real distance traveled, and press_tv is the real press timestamp
+     * for the elapsed-time half of the same check. */
+    int press_root_x = 0, press_root_y = 0;
+    struct timeval press_tv = {0, 0};
     int running = 1;
     struct timeval last_frame = { 0, 0 };
 
@@ -3381,8 +3464,37 @@ int main(int argc, char **argv) {
                 dragging = 1;
                 drag_start_x = xev.xbutton.x_root;
                 drag_start_y = xev.xbutton.y_root;
+                press_root_x = xev.xbutton.x_root;
+                press_root_y = xev.xbutton.y_root;
+                gettimeofday(&press_tv, NULL);
             } else if (xev.type == ButtonRelease && xev.xbutton.button == 1) {
                 dragging = 0;
+                /* Real click-vs-drag distinction, cursword only - see
+                 * g_is_cursword's own declaration comment
+                 * (CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-
+                 * DESIGN.md §9/§10). A real click (small movement, real
+                 * quick release) arms/disarms cursword instead of
+                 * running the existing grid-snap-drag logic below -
+                 * every OTHER entity, and any real drag on cursword
+                 * itself, keeps the exact existing behavior unchanged. */
+                int was_real_click = 0;
+                if (g_is_cursword) {
+                    int dx2 = xev.xbutton.x_root - press_root_x;
+                    int dy2 = xev.xbutton.y_root - press_root_y;
+                    int dist2 = dx2 * dx2 + dy2 * dy2;
+                    struct timeval rel_tv; gettimeofday(&rel_tv, NULL);
+                    long elapsed_ms = (rel_tv.tv_sec - press_tv.tv_sec) * 1000L +
+                                       (rel_tv.tv_usec - press_tv.tv_usec) / 1000L;
+                    if (dist2 <= CURSWORD_CLICK_MAX_PX * CURSWORD_CLICK_MAX_PX && elapsed_ms <= CURSWORD_CLICK_MAX_MS)
+                        was_real_click = 1;
+                }
+                if (was_real_click) {
+                    g_cursword_armed = !g_cursword_armed;
+                    cursword_write_armed(g_house_root, g_cursword_armed);
+                    append_history(g_cursword_armed ? "CURSWORD_ARMED" : "CURSWORD_DISARMED");
+                    cursword_update_shape(dpy, win);
+                    need_redraw = 1;
+                } else {
                 /* REAL FIX 2026-08-04, direct instruction ("egg-pets
                  * snap to grid... do u see that logic"): same
                  * round-to-nearest-cell technique egg_window.c's own
@@ -3400,6 +3512,7 @@ int main(int argc, char **argv) {
                 XMoveWindow(dpy, win, win_x, win_y);
                 write_pos(package_dir, win_x, win_y);
                 need_redraw = 1;
+                }
             } else if (xev.type == ButtonPress && xev.xbutton.button == 3) {
                 /* REAL, NEW 2026-08-04: right-click now opens the real
                  * data-driven context menu (see load_methods() above)
@@ -3445,7 +3558,32 @@ int main(int argc, char **argv) {
                 drag_start_y = xev.xmotion.y_root;
                 need_redraw = 1;
             } else if (xev.type == KeyPress) {
-                if (popup_win || user_popup_win || input_popup_win || text_popup_win || input_active) {
+                if (g_is_cursword && g_cursword_armed) {
+                    /* Real, house-standard dual-mode boundary - while
+                     * armed, real key capture begins and continues
+                     * until real Escape (CURSWORD-DESKTOP-3D-AND-
+                     * PIECECRAFT-INSCENE-DESKS-DESIGN.md §3a, same
+                     * real principle as board-viewer's own
+                     * active_index==-1 model, !.HOUSE_STDS.md §A.9).
+                     * Without this branch, this file's own real
+                     * default ("no popup open -> any key closes the
+                     * tile," right below) would close cursword outright
+                     * the moment a key was pressed while armed -
+                     * confirmed by direct read, not assumed. Escape
+                     * disarms; every other key is swallowed harmlessly
+                     * for now (real arrow-key movement/click-to-place/
+                     * camera-mode handling is the NEXT pass, per the
+                     * design doc's own §8/§10 sequencing - this step is
+                     * arm+halo only). */
+                    KeySym ks2 = XLookupKeysym(&xev.xkey, 0);
+                    if (ks2 == XK_Escape) {
+                        g_cursword_armed = 0;
+                        cursword_write_armed(g_house_root, 0);
+                        append_history("CURSWORD_DISARMED");
+                        cursword_update_shape(dpy, win);
+                        need_redraw = 1;
+                    }
+                } else if (popup_win || user_popup_win || input_popup_win || text_popup_win || input_active) {
                     /* REAL FIX 2026-08-07, direct instruction ("print
                      * screen closes the context"): with a menu/popup open,
                      * an unhandled key (Print Screen, media keys, etc.) is
@@ -3494,8 +3632,50 @@ int main(int argc, char **argv) {
             int bg_r = (int)(r * 255.0f), bg_g = (int)(g * 255.0f), bg_b = (int)(b * 255.0f);
             XSetForeground(dpy, g_buf_gc, ((unsigned long)bg_r << 16) | ((unsigned long)bg_g << 8) | (unsigned long)bg_b);
             XFillRectangle(dpy, g_buf, g_buf_gc, 0, 0, WIN_PX, WIN_PX);
+            /* Real, visible armed-state halo (§3a/§9 item 4: overlay/
+             * ring, never replacing the sprite - drawn as the base
+             * layer here, BEFORE the sprite, so the sprite's own real
+             * per-pixel alpha blend in draw_sprite_rgb() still shows on
+             * top of it exactly like the real background does; the
+             * halo peeks through wherever the sprite has real
+             * transparent margins, same real "around/under it" framing
+             * the design doc asks for.  A real glow - 3 concentric
+             * rings, brightest innermost - in the same neon blue the
+             * design doc specifies. */
             if (g_has_sprite) draw_sprite_rgb(dpy, g_buf, g_buf_gc, bg_r, bg_g, bg_b);
             else if (g_font_loaded) draw_glyph_rgb(dpy, g_buf, g_buf_gc, glyph);
+            /* REAL FIX 2026-08-30, found live: the halo used to draw
+             * BEFORE the sprite, relying on draw_sprite_rgb()'s own
+             * per-pixel alpha to let it "peek through" transparent
+             * margins - confirmed live this specific sprite has no
+             * real alpha transparency (fully opaque square), so the
+             * halo was getting completely covered, invisible. Real
+             * fix: draw the halo AFTER the sprite instead, right at
+             * the window's own edge (inset only 1/4/7px) - a real,
+             * always-visible border-glow regardless of any given
+             * sprite's own opacity, still a real overlay/ring per §9
+             * item 4 (never replaces the sprite, just frames it). */
+            if (g_is_cursword && g_cursword_armed) {
+                int cx = WIN_PX / 2, cy = WIN_PX / 2;
+                /* REAL FIX 2026-08-30, found live: a 3-ring gradient
+                 * with thin arcs left real gaps between rings, letting
+                 * a few of the sprite's own semi-transparent edge
+                 * pixels (alpha 1-127, below build_shape_mask()'s own
+                 * >127 cutoff, normally never visible at all) show
+                 * through as stray off-color specks once the mask
+                 * newly included that span. Real fix: ONE solid ring,
+                 * geometry byte-identical to cursword_update_shape()'s
+                 * own mask ring (same radius, same line width) -
+                 * guaranteed zero gaps since it's the exact same shape,
+                 * not an approximation of it. */
+                int halo_radius = WIN_PX / 2 - 5;
+                if (halo_radius > 3) {
+                    XSetForeground(dpy, g_buf_gc, 0x2288FFUL);
+                    XSetLineAttributes(dpy, g_buf_gc, 9, LineSolid, CapButt, JoinMiter);
+                    XDrawArc(dpy, g_buf, g_buf_gc, cx - halo_radius, cy - halo_radius, (unsigned)(halo_radius * 2), (unsigned)(halo_radius * 2), 0, 360 * 64);
+                    XSetLineAttributes(dpy, g_buf_gc, 0, LineSolid, CapButt, JoinMiter);
+                }
+            }
 
             /* Present: same compose->present pattern as db-hq/taskbar -
              * one XGetImage capture off the buffer, XPutImage onto the
