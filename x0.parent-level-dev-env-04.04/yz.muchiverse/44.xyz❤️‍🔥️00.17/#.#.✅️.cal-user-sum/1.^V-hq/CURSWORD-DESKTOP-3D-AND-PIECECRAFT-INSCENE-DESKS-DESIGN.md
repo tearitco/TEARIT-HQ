@@ -539,3 +539,62 @@ history for real). Plain `git add`/`git commit`/`git push`, as often
 as either of us wants, stays fine and is the safer habit, not a risk -
 less uncommitted work sitting in the shared tree at any moment is
 real, active loss-prevention, not the other way around.
+
+## 12. REAL PROGRESS LOG (2026-08-30) - arm/halo/movement/camera-key
+    plumbing built and live-verified, still following §8's own
+    "no code ahead of the enabling mechanism" discipline
+
+Everything below is real, built, live-verified (screenshot/pixel-
+sampling and xdotool-driven testing), and committed - not a plan:
+
+- **Arm/disarm + halo** (`tp_desktop_window_rgb.c`): a real click
+  (§9/§10's 5px/300ms threshold) toggles `g_cursword_armed`, written
+  to `#.desktop/cursword_armed.txt`. Armed state draws a real, gap-
+  free halo ring around cursword's own sprite via a NEW
+  `cursword_update_shape()` that unions a ring into the window's own
+  X11 Shape Extension mask (`ShapeUnion`, not `ShapeSet`) - the
+  window's existing shape (sprite silhouette only, from
+  `build_shape_mask()`) was clipping anything drawn outside it before
+  this fix. Halo color: yellow/gold (`0xFFD400`), direct instruction
+  (originally built neon-blue per the doc's own original wording
+  above - since overridden).
+- **Real "stingy" keyboard capture while armed**: arming takes a real
+  `XGrabKeyboard` (not just relying on WM focus, which turned out
+  unreliable) so every key press anywhere lands on cursword's window
+  until Escape/disarm/placed releases it - direct report ("it should
+  be very stingy with focus till esc is pressed").
+- **Arrow-key nudge + click-to-place, coexisting** (§10): arrow keys
+  move cursword one `GRID_CELL_PX` while armed; click-to-place grabs
+  the pointer (`XGrabPointer`) on arm so the next click anywhere
+  snaps cursword to that grid cell and auto-disarms. New
+  `#.desktop/hq_ui.pdl` key `cursword_move_mode` (`click_place`
+  default / `arrow_only`) picks which is active, per §10's own spec.
+- **Cursword is always open, pinned at its own home spot** - real, new
+  requirement beyond this doc's original scope, direct instruction
+  ("cursword is an entity that should always be open... its the
+  users assistant. 1rst entity"): `livedesk_ensure_cursword()`
+  (`khtpm_taskbar_manager.c`) checks the live registry on every
+  taskbar-manager start and every desk (re)spawn, relaunching
+  cursword if it's ever found missing; exempted from both the normal
+  close-all sweep and the `/proc` stray-kill sweep, so a desk switch
+  or reset never closes it. Its spawn position is PINNED to `(0,0)`
+  (top-left corner) on every fresh spawn, unlike every other entity's
+  remembered last position - direct instruction ("it should always
+  start in the upper top left, where it used to auto start").
+- **§9 item #6's own real camera-mode key reuse, built**: while
+  armed, keys `1`-`4` write a new desktop-wide
+  `#.desktop/desktop_camera_mode.txt` with board-viewer's own exact
+  real semantics (1=first person, 2=third person, 3=free roam,
+  4=bird's eye - matches `bv_menu_input.c`'s own real key handling
+  verbatim). This is control-side plumbing ONLY - no entity actually
+  re-renders in 3D yet, that real per-entity raymarch/compose work
+  (§3b, §8 item 4) stays explicitly deferred, same discipline as
+  always. Live-verified: all four digits write the file correctly and
+  log a real `CURSWORD_CAMERA_<N>_<NAME>` history row each.
+
+**Still deferred, unstarted** (§8 item 4, unchanged): the actual
+per-entity 3D re-render loop that reads `desktop_camera_mode.txt` and
+switches an entity's own window between 2D sprite and 3D raymarch
+rendering. This is the real next substantial step whenever picked up
+- everything above is the enabling plumbing for it, not the feature
+itself.
