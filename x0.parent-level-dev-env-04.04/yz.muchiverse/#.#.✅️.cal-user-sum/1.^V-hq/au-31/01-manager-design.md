@@ -1,5 +1,35 @@
 # au-31/01 — real per-app manager design (irc-chat-hq first)
 
+## Real naming clarity, direct instruction ("they will need new 'khtpm'
+   style layouts for 'x11' right? those can go in a subdir so u dont
+   confuse the 2")
+
+Each of the 3 real apps ALREADY has its own real `.chtpm` layouts under
+`<app>/pieces/chtpm/layouts/` (e.g. `044.pal-chat-irc👥️+2/pieces/
+chtpm/layouts/room.chtpm`) - these belong to a COMPLETELY DIFFERENT
+engine, `chtpm_parser_pal` (the ASCII/terminal renderer: tags like
+`<panel time_reactive="true">`, `<module>system/prisc+x ...</module>`,
+`<interact src="...">`, `<cli_io>`, `href="..."` page navigation - real,
+already-working, already-designed screens: chat has `login`/`room_list`/
+`room`; forum has `login`/`feed`/`post_compose`/`follow`/`dms`; chain
+has `login`/`signup`/`wallet_main`/`send_screen`/`receive_screen`/
+`mining_status`). Genuinely useful as real reference for what fields/
+flow already exist and are considered "done" for each app - NOT
+something to copy tag-for-tag, since the vocabulary is entirely
+different from the X11 khtpm family (`<window class="...">`,
+`<sidebar>`, `<panel>`, `<button onClick="...">`).
+
+The NEW X11 khtpm-style layouts this design is about are physically
+separate already - `&.hq-apps/<name>-hq/<name>-hq.chtpm`, outside each
+app's own `pieces/chtpm/layouts/` entirely, zero file-path collision
+risk. Naming convention going forward, made explicit here so nobody
+confuses the two by name alone: this design's files are always called
+**"khtpm layouts"** (X11, `&.hq-apps/`); each app's own existing
+screens stay **"chtpm layouts"** (ASCII, `pieces/chtpm/layouts/`) -
+one letter of difference in the family name, deliberately mirroring
+the real `khtpm_*` vs `chtpm_*` binary-name split already established
+house-wide (`khtpm_taskbar_manager.c` vs `chtpm_parser_pal.c`, etc.).
+
 Design pass only, per `00-todo.md` item 1 - no code yet. Grounded
 directly in `khtpm_hq_manager.c` (db-hq's own real, working manager,
 178 lines, read in full before writing this) as the exact real
