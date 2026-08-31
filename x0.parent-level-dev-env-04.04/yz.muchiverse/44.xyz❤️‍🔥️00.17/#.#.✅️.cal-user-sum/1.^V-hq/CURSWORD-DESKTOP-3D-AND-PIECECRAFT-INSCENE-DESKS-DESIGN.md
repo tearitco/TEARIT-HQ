@@ -798,3 +798,48 @@ done as of this section being written:
 Not touched by this plan: `9` (`key_possess`) and `x`/`z`/`c`/`v`
 (z-level, hero vs camera) in board-viewer's own scheme - only the
 `1`-`4` camera_mode digit keys are being reserved/moved.
+
+## 14. §13 SUPERSEDED (2026-08-31) - one-map abandoned, camera
+    simplified to a single `0` toggle; new TODO added
+
+§13's whole premise (reserve 1-4 for a future "one map" mode) is dead
+- see `^.ONE-MAP-ATTEMPT-ABANDONED.md` for the real, confirmed
+compositor limitation that killed it (no app-side fix found: this
+compositor honors `ShapeBounding` for click-routing only, never for
+visual painting, on a continuously-reshaped override-redirect window).
+The piececraft/board-viewer 5-8 remap in §13's own "not started yet"
+list is also moot - don't do it.
+
+Direct instruction, same close-out: "i just wanna use 0 to change
+between 2d and 3d desk entity mode since theres only 1 camera mode for
+desk." Real, live result: `cursword_handle_camera_key()` in
+`tp_desktop_window_rgb.c` now binds a single `0` key, toggling
+`g_camera_mode` between `1` (2D) and `4` (3D) and zeroing
+cam_pan/tilt/yaw on every toggle - keys `1`-`8` are fully unbound
+again. Also fixed in the same pass, live-verified: cursword now snaps
+back to its real pinned home on a taskbar re-click (previously only
+raised it), and a real "red shadow of the 2D shape" bug for every
+non-cursword entity in 3D mode (stale `ShapeBounding` mask frozen to
+the flat 2D sprite, now rebuilt each 3D frame from what's actually
+drawn). Full technical detail and the real root-cause writeup for all
+of this lives in `tp_desktop_window_rgb.c`'s own comments at the real
+call sites, not duplicated here.
+
+### Real TODO, added here for later (2026-08-31), not started
+
+Direct instruction: "later i want to give all entities (but cursword)
+'cut/copy/paste' options. lets add that to our dev dox todo lit for
+soon." Real, scoped ask:
+- Real cut/copy/paste actions on desktop entities (tiles/pals/etc) -
+  cursword explicitly EXCLUDED (it's the desktop's own singleton
+  controller, not a regular placeable entity - same real reasoning
+  §12/§9 already established for why it's exempt from close-sweeps
+  and z-level filtering).
+- NOT scoped yet: where these actions surface (right-click context
+  menu is the obvious existing precedent - see `tp_desktop_window_rgb.c`'s
+  own real per-package `meta.pdl` METHOD-row context menu, already
+  built and in use), what "paste" actually does for a live entity
+  (spawn a real new placed copy via the same `livedesk_place_pal()`/
+  copy-template path cursword's own spawn flow already uses?), and
+  whether cut visually differs from a plain close+remember-for-paste.
+  Real design pass needed before code - not started.
