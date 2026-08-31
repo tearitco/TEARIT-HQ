@@ -3519,6 +3519,7 @@ int main(int argc, char **argv) {
                 XMoveWindow(dpy, win, win_x, win_y);
                 write_pos(package_dir, win_x, win_y);
                 XUngrabPointer(dpy, CurrentTime);
+                XUngrabKeyboard(dpy, CurrentTime);
                 g_cursword_awaiting_place = 0;
                 g_cursword_armed = 0;
                 cursword_write_armed(g_house_root, 0);
@@ -3558,6 +3559,37 @@ int main(int argc, char **argv) {
                     cursword_write_armed(g_house_root, g_cursword_armed);
                     append_history(g_cursword_armed ? "CURSWORD_ARMED" : "CURSWORD_DISARMED");
                     cursword_update_shape(dpy, win);
+                    if (g_cursword_armed) {
+                        /* REAL FIX 2026-08-30, direct report ("its not
+                         * taking arrow keys yet? it should be very
+                         * stingy with focus till esc is pressed"):
+                         * arrow-key nudge was written assuming this
+                         * window already held real X11 input focus,
+                         * which nothing here ever guaranteed - normal
+                         * click-to-focus WM behavior is not reliable
+                         * enough for "stingy" key capture. A real
+                         * display-wide XGrabKeyboard on arm (same
+                         * retry-loop technique as the pre-existing
+                         * XGrabPointer just below, and this file's own
+                         * popup code ~line 2002) makes EVERY key press
+                         * anywhere land on this window's own event
+                         * queue regardless of focus, until the real
+                         * Escape/disarm/placed paths ungrab it. */
+                        for (int attempt = 0; attempt < 5; attempt++) {
+                            int rc = XGrabKeyboard(dpy, win, False, GrabModeAsync, GrabModeAsync, CurrentTime);
+                            if (rc == GrabSuccess) break;
+                            XSync(dpy, False);
+                            usleep(5000);
+                        }
+                    } else {
+                        /* Disarmed via a real click (only reachable in
+                         * arrow_only move_mode - click_place mode's own
+                         * pointer grab means a self-click can never
+                         * reach here, see the NOTE below). The keyboard
+                         * grab taken on arm above must be released
+                         * here too, same as the real Escape path. */
+                        XUngrabKeyboard(dpy, CurrentTime);
+                    }
                     if (g_cursword_armed && g_cursword_click_place) {
                         /* REAL, NEW 2026-08-30 - real click-to-place
                          * arm: grab the pointer display-wide (same real
@@ -3674,6 +3706,7 @@ int main(int argc, char **argv) {
                             XUngrabPointer(dpy, CurrentTime);
                             g_cursword_awaiting_place = 0;
                         }
+                        XUngrabKeyboard(dpy, CurrentTime);
                         g_cursword_armed = 0;
                         cursword_write_armed(g_house_root, 0);
                         append_history("CURSWORD_DISARMED");
