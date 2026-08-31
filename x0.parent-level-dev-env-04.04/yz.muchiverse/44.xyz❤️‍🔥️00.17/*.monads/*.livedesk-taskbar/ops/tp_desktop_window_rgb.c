@@ -381,6 +381,18 @@ static void cursword_write_armed(const char *house_root, int armed) {
  * render block for what actually gets printed on each line. */
 #define CURSWORD_LOG_H 56
 #define CURSWORD_LOG_N 5
+/* REAL, NEW 2026-08-31, direct live report ("its too far off the
+ * label 2 read, widen label for text?") - the debug strip's own
+ * visible-region rectangle and backing pixmap were always exactly
+ * WIN_PX (64px) wide, same as the sprite square above it, so the
+ * posline/camline/logline text (up to ~30 chars) ran straight off
+ * the right edge of the strip's own clip region and got silently
+ * clipped by the window shape - not a font/color bug, a real width
+ * bug. Strip-only width, wider than WIN_PX; every WIN_PX x WIN_PX
+ * square (sprite mask, disc mask, halo ring) is completely
+ * unaffected - only the strip's own mask/pixmap/window-width/present-
+ * width below use this. */
+#define CURSWORD_LOG_W 220
 static char g_cursword_log[CURSWORD_LOG_N][12];
 static int g_cursword_log_n = 0;
 static void cursword_log_key(const char *label) {
@@ -1502,7 +1514,8 @@ static void cursword_update_shape(Display *dpy, Window win) {
      * (unioned below) would just be empty space outside the window's
      * real bounds. Resized back down to exactly WIN_PX on disarm. */
     if (g_is_cursword)
-        XResizeWindow(dpy, win, (unsigned)WIN_PX, (unsigned)(WIN_PX + (g_cursword_armed ? CURSWORD_LOG_H : 0)));
+        XResizeWindow(dpy, win, (unsigned)(g_cursword_armed ? CURSWORD_LOG_W : WIN_PX),
+                      (unsigned)(WIN_PX + (g_cursword_armed ? CURSWORD_LOG_H : 0)));
     Pixmap mask = XCreatePixmap(dpy, win, (unsigned)WIN_PX, (unsigned)WIN_PX, 1);
     GC mask_gc = XCreateGC(dpy, mask, 0, NULL);
     build_shape_mask(dpy, win, mask_gc, mask); /* real ShapeSet baseline - sprite only */
@@ -1563,10 +1576,10 @@ static void cursword_update_shape(Display *dpy, Window win) {
          * contract) rather than resizing it, so that shared function's
          * existing behavior for every other entity stays completely
          * untouched. */
-        Pixmap strip_mask = XCreatePixmap(dpy, win, (unsigned)WIN_PX, (unsigned)CURSWORD_LOG_H, 1);
+        Pixmap strip_mask = XCreatePixmap(dpy, win, (unsigned)CURSWORD_LOG_W, (unsigned)CURSWORD_LOG_H, 1);
         GC strip_gc = XCreateGC(dpy, strip_mask, 0, NULL);
         XSetForeground(dpy, strip_gc, 1);
-        XFillRectangle(dpy, strip_mask, strip_gc, 0, 0, WIN_PX, CURSWORD_LOG_H);
+        XFillRectangle(dpy, strip_mask, strip_gc, 0, 0, CURSWORD_LOG_W, CURSWORD_LOG_H);
         XShapeCombineMask(dpy, win, ShapeBounding, 0, WIN_PX, strip_mask, ShapeUnion);
         XFreeGC(dpy, strip_gc);
         XFreePixmap(dpy, strip_mask);
@@ -3358,7 +3371,7 @@ int main(int argc, char **argv) {
      * cursword_update_shape(). Every other entity is completely
      * unaffected (g_is_cursword false, buffer stays exactly WIN_PX x
      * WIN_PX as before). */
-    Pixmap g_buf = XCreatePixmap(dpy, win, (unsigned)WIN_PX,
+    Pixmap g_buf = XCreatePixmap(dpy, win, (unsigned)(g_is_cursword ? CURSWORD_LOG_W : WIN_PX),
                                   (unsigned)(WIN_PX + (g_is_cursword ? CURSWORD_LOG_H : 0)), (unsigned)win_depth);
     GC g_buf_gc = XCreateGC(dpy, g_buf, 0, NULL);
     /* REAL FIX 2026-08-05, direct instruction ("context window should
@@ -5030,7 +5043,7 @@ int main(int argc, char **argv) {
              * CURSWORD_LOG_H extra rows (see the g_buf XCreatePixmap
              * comment above) - cleared here too every frame so stale
              * key-log text never lingers under a fresh background. */
-            XFillRectangle(dpy, g_buf, g_buf_gc, 0, 0, WIN_PX,
+            XFillRectangle(dpy, g_buf, g_buf_gc, 0, 0, (unsigned)(g_is_cursword ? CURSWORD_LOG_W : WIN_PX),
                             (unsigned)(WIN_PX + (g_is_cursword ? CURSWORD_LOG_H : 0)));
             /* REAL, NEW 2026-08-30, direct report ("im still having to
              * click right on the image") + direct instruction ("solid
@@ -5273,12 +5286,13 @@ int main(int argc, char **argv) {
              * height while cursword is armed (the key-log strip),
              * exactly WIN_PX otherwise/for every other entity. */
             int present_h = WIN_PX + (g_is_cursword && g_cursword_armed ? CURSWORD_LOG_H : 0);
-            XImage *frame = XGetImage(dpy, g_buf, 0, 0, WIN_PX, present_h, AllPlanes, ZPixmap);
+            int present_w = (g_is_cursword && g_cursword_armed) ? CURSWORD_LOG_W : WIN_PX;
+            XImage *frame = XGetImage(dpy, g_buf, 0, 0, present_w, present_h, AllPlanes, ZPixmap);
             if (frame) {
-                XPutImage(dpy, win, g_buf_gc, frame, 0, 0, 0, 0, WIN_PX, present_h);
+                XPutImage(dpy, win, g_buf_gc, frame, 0, 0, 0, 0, present_w, present_h);
                 XDestroyImage(frame);
             } else {
-                XCopyArea(dpy, g_buf, win, g_buf_gc, 0, 0, (unsigned)WIN_PX, (unsigned)present_h, 0, 0);
+                XCopyArea(dpy, g_buf, win, g_buf_gc, 0, 0, (unsigned)present_w, (unsigned)present_h, 0, 0);
             }
         }
         skip_zfiltered_draw:
