@@ -205,6 +205,38 @@ non-compliant precedent. **Real follow-up, not yet done**: audit whether Classes
 Items/Weapons/etc. (db-hq's other tabs) have the same inline-loader shape — not checked
 yet, real gap, same as this doc's own "Not yet audited" section above.
 
+## 5. NEW real finding, 2026-08-31 — `khtpm_choice_picker.c` hand-builds its Elem tree, never parses a real `.chtpm`
+
+Found while building the network-browser-hq centroid proof app: I (the assistant)
+initially cited `khtpm_choice_picker.c` as real house precedent for a small,
+wholly data-driven khtpm app skipping `.chtpm` authoring/parsing entirely and
+constructing its `Elem` tree by hand in C. **Direct correction: "we still want
+to use chtpm+layout module, we always should no matter what"** — there is no
+size/complexity exception. See `CENTROID_GOLD_STD.md` §3 rule 1 (corrected same
+day) for the now-standing rule this produces, and the
+`khtpm-always-parse-chtpm-layout` memory for the full reasoning.
+
+**Real, confirmed callers of `khtpm_choice_picker.c` today** (grep-confirmed,
+not assumed) — this is live, load-bearing infrastructure, not dead code:
+- `*.monads/*.livedesk-taskbar/ops/tp_desktop_window_rgb.c` — the desktop-tile
+  context-menu system execs this binary directly for real, live "Show Choices"
+  popups.
+- `*.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/dispatch.sh` —
+  book-stack's own real dialogue/menu-choice flow generates a real
+  `choices_file` and execs this binary to display it.
+- `&.widgits/tile-picker/ops/khtpm_show_choices.c` — the real, documented
+  caller/design predecessor (its own header comment: "this binary IS the
+  picker... simpler and lower-risk... than to also touch tp_desktop_window_
+  rgb.c's own live SHOW_PAGE relay handler").
+
+**Real fix, not yet done**: refactor `khtpm_choice_picker.c` to author a real
+`.chtpm`+`.css` for its own chrome (title bar, row list, Cancel row) and parse
+it through the real shared pipeline, injecting the caller-supplied
+`choices_file` rows into the parsed tree via `reusable_slot()`/
+`elem_inject_loop()` instead of hand-populating `Elem` structs directly. Not
+started — flagged here so it isn't silently left as the "acceptable exception"
+example it was wrongly treated as during this session.
+
 ## Cross-references
 - `house-compaction.md` — the separate (also real, also HIGH priority) receipt/frame-
   history compliance gap found earlier this session in `khtpm_hq_render.c`. Different

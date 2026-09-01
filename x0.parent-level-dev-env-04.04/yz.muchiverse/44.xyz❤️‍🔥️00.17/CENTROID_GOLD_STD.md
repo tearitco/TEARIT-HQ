@@ -151,9 +151,29 @@ parser, zero new IR to invent.
 
 ## 3. The real rule for every NEW window/app, going forward
 
-1. **Author one real `.chtpm` + one real `.css`**, khtpm's own tag
-   vocabulary (`window`/`sidebar`/`panel`/`button`/`text`/`row`) — not
-   a new vocabulary, not chtpm_parser_pal's ASCII vocabulary.
+1. **Author one real `.chtpm` + one real `.css`, and actually PARSE
+   them through the real layout pipeline** (`parse_chtpm()`-equivalent
+   + `layout_pass()`/`css_layout_pass()` + CSS application — the same
+   pipeline `khtpm_entity_menu_render.c` itself uses) to build the
+   Elem tree. khtpm's own tag vocabulary (`window`/`sidebar`/`panel`/
+   `button`/`text`/`row`) — not a new vocabulary, not chtpm_parser_
+   pal's ASCII vocabulary. **CORRECTED 2026-08-31, direct instruction
+   ("we still want to use chtpm+layout module, we always should no
+   matter what")**: this file originally carried an exception for "a
+   small, wholly data-driven view," citing `khtpm_choice_picker.c` as
+   real house precedent for hand-building the Elem tree directly in C
+   instead of parsing a `.chtpm`. That exception was wrong and is
+   struck — `khtpm_choice_picker.c` being a real, existing case that
+   skips this does not make skipping it acceptable going forward.
+   There is no size/complexity threshold below which hand-building is
+   fine: every app, however small, parses a real `.chtpm`+CSS. Dynamic/
+   fetched content is injected into the PARSED tree afterward (via
+   `reusable_slot()`/`elem_inject_loop()`, both already real, shared,
+   generic functions), never used as a reason to skip parsing
+   altogether. This also settles rule 4 below: the ASCII/CLI mirror
+   renderer must walk the SAME parsed tree the X11 renderer built —
+   not re-derive its own flat view straight from the manager's state
+   file independent of that tree.
 2. **Business logic lives in a real, separate, compiled manager
    process** (`<app>_manager.c`, matching `khtpm_hq_manager.c`'s own
    proven shape: poll loop, publish a plain-text state file, consume a
