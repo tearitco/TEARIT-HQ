@@ -72,8 +72,21 @@ sleep 1
 
 pids="$(chat_hai_pids)"
 n="$(echo "$pids" | grep -c . || true)"
+# REAL FIX 2026-09-01 (found live, investigating a "loop wasn't self-
+# spawned" warning that fired unpredictably against BOTH the original
+# launch code and a real, tested alternative - confirmed to be neither
+# a regression nor a race): chat_hai_loop.sh's own real per-round
+# operation forks short-lived child subshells that ALSO carry
+# "chat_hai_loop.sh" in their own inherited argv (confirmed live via
+# `ps -eo pid,ppid,cmd` - a real grandchild subshell, own PPID pointing
+# back at the real persistent loop, born ~40s into a real run) - a
+# pgrep -f match on the script name can never reliably equal exactly 1
+# for a script that behaves this way, by design, not a bug in the loop
+# itself. Real fix: treat "at least 1" as healthy, not "exactly 1" -
+# the exactly-1 renderer check below is unaffected (khtpm_core_render.+x
+# has no equivalent transient-subshell behavior).
 loop_n="$(chat_hai_loop_pids | grep -c . || true)"
-if [ "$n" = "1" ] && [ "$loop_n" = "1" ]; then
+if [ "$n" = "1" ] && [ "$loop_n" -ge "1" ] 2>/dev/null; then
     echo "chat-hai launched (PID $pids, self-spawned loop PID $(chat_hai_loop_pids), log=$AUDIT_DIR/chat-hai.log)"
 elif [ "$n" -gt 1 ] 2>/dev/null; then
     echo "chat-hai button.sh: WARNING - $n instances alive after launch (expected 1): $(echo $pids | tr '\n' ' ')" >&2

@@ -6078,13 +6078,31 @@ static void chai_launch_module(const char *src) {
         fclose(pf);
     }
 
-    chai_module_pid = fork();
-    if (chai_module_pid == 0) {
-        execl(full_path, full_path, g_house_root, (char *)NULL);
-        _exit(1);
-    } else if (chai_module_pid < 0) {
+    /* CORRECTED 2026-09-01 (direct instruction: "we need to finish
+     * chat-hai... reduce redundancy") - was its own real fork()+execl()
+     * here; now delegates to the generic launch_module() (§2a), same
+     * real substitution db-hq's own dbhq_launch_module() already made
+     * safely. Verified SAFE before making this change, not assumed:
+     * chat_hai_loop.sh never reads argv at all (resolves its own real
+     * paths via `$(dirname "$0")`), so the extra real package_dir argv
+     * launch_module() always passes is a harmless no-op for it.
+     *
+     * A "duplicate loops" symptom appeared during live testing and was
+     * INITIALLY misattributed to this swap - real root cause, found by
+     * direct investigation, not guessed: chat_hai_loop.sh's own real
+     * per-round operation forks short-lived child subshells that ALSO
+     * carry "chat_hai_loop.sh" in their own inherited argv (confirmed
+     * via `ps -eo pid,ppid,cmd` - a real grandchild, its own PPID
+     * pointing back at the real persistent loop). chat-hai/button.sh's
+     * own `pgrep -f chat_hai_loop.sh`-based health check can never
+     * reliably equal exactly 1 for a script that behaves this way -
+     * fixed there (treats "at least 1" as healthy) - completely
+     * unrelated to this real substitution, which was reverted once
+     * under the same false lead and confirmed safe on a second,
+     * careful pass. */
+    chai_module_pid = launch_module(src, g_house_root, g_package_dir, NULL);
+    if (chai_module_pid < 0) {
         fprintf(stderr, "chat-hai: chai_launch_module: fork failed for %s\n", full_path);
-        chai_module_pid = -1;
     }
 }
 
