@@ -136,19 +136,39 @@ terminal tab) is still not started.
    generic `g_khtpm_modes[]` dispatch table, not the 8th copy of the
    old per-project-hardcoded pattern. Not implemented yet.
 -3b. **xperiments/khtpm-generic-dispatch-design.md — READ BEFORE ADDING ANY
-   NEW MODE TO `khtpm_entity_menu_render.c`, direct instruction ("write to
+   NEW MODE TO `khtpm_core_render.c`** (renamed from
+   `khtpm_entity_menu_render.c`), direct instruction ("write to
    standards and index that this should never happen again, this is std
-   drift")** — the real design for a generic `g_khtpm_modes[]` class-
-   dispatch table + a generic `launch_module()`, replacing the `g_is_X`
-   global + ~15-scattered-branch pattern every existing mode (db-hq,
-   events-hq, chat-hai, palettes, bookmarks, stats-hq, swatch-picker)
-   currently uses. Full ordered rollout plan inside: generic mechanism
-   first → network-browser-hq as its first real user → migrate each
-   existing mode one at a time, smallest first, live-verified after
-   each → delete the old branches only once every mode is migrated.
-   Not implemented yet - design only. See `CENTROID_GOLD_STD.md` §3
-   rule 7 and `TPMOS-COMPLIANCE-DEBT.md` §6 for the real incident this
-   traces back to.
+   drift") — REAL PIVOT, 2026-08-31: the `g_khtpm_modes[]` dispatch-
+   table idea this entry used to describe was explicitly REJECTED
+   (direct instruction: "we dont use .so or linking or anything...
+   read/write to from external .txt file or .pdl from manager if you
+   need"). The real, adopted, DONE-AND-LIVE-TESTED answer instead:
+   - **Generic capability #1 (live `.chtpm` re-parse)** —
+     `reparse_chtpm_if_changed()` re-reads a `.chtpm` on mtime change;
+     any real manager process can keep regenerating a live `.chtpm`
+     projection (same "manager owns projection, renderer just re-
+     parses/renders it" philosophy `fo-menu-sys.md` already documents
+     for the ASCII/`chtpm_parser.c` family).
+   - **Generic capability #2 (`<cli_io>` text input)** — a real,
+     project-agnostic armed-text-field element (`target_id=`,
+     `input_buffer`, live-synced to `cli_io_state.txt`, Enter fires the
+     SAME `action="<cmd>"` dispatch every khtpm element already uses).
+     A real, non-obvious follow-up fix included: an armed `cli_io`
+     field now takes a real `XGrabKeyboard` (db-hq's own already-
+     existing `dbhq_grab_keyboard_retry()`, reused verbatim) for its
+     armed lifetime - without it, typing silently failed the instant
+     the mouse left the window under this desktop's focus-follows-
+     mouse WM policy (confirmed live: real `XGetInputFocus` was `0x0`/
+     None with the pointer far from the window). **Any new khtpm app
+     needing real text input should use `<cli_io>` for this reason -
+     it's the only input mechanism in this house proven immune to that
+     class of focus bug.**
+   Zero new `g_is_<project>` globals, zero per-project dispatch
+   branches for either capability - both are fully generic, used first
+   by open-hai's own real conversion (in progress). See
+   `CENTROID_GOLD_STD.md` §3 rule 7 and `TPMOS-COMPLIANCE-DEBT.md` §6
+   for the real incident this traces back to.
 -3. **SKILLS.md (2026-08-29)** — read this FIRST, before anything else in this
    list. Not a task doc — a generalized "how to operate well in this house"
    compaction: the core file-based-state philosophy, the rendering

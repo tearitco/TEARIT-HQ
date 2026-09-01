@@ -582,12 +582,51 @@ static Elem *find_page(const char *name) {
  * CONTENT does; callers gate this off entirely for the 3 modes that
  * manage their own cached Elem pointers (db-hq/events-hq/chat-hai -
  * see this function's own call site). */
+/* Forward declaration - the real definition (with its own full header
+ * comment) lives further down this file, right after g_focus_nav/
+ * g_n_nav/g_nav[] - needed here because this function must NULL it out
+ * on every reparse (elem_new()'s shared g_pool[] is reused in place, so
+ * a stale armed-field pointer from the old tree is not just wrong, it
+ * aliases whatever the new parse happens to write at that pool slot). */
+static Elem *g_default_input_elem;
+/* Forward declaration - real definition (with its own X11/Xft section
+ * header comment) lives further down this file. Needed here because a
+ * reparse that disarms a cli_io field mid-type must also release any
+ * real XGrabKeyboard that field's own arm took (see activate_focused()/
+ * default_cli_io_handle_key()'s own real grab-keyboard fix) - leaving
+ * an exclusive keyboard grab held after silently disarming would lock
+ * ALL keyboard input house-wide to this one (now non-typing) window
+ * until it closes, a real, much worse bug than the one being fixed. */
+static Display *dpy;
 static int reparse_chtpm_if_changed(void) {
     if (!g_chtpm_path[0]) return 0;
     struct stat st;
     if (stat(g_chtpm_path, &st) != 0) return 0;
     if (st.st_mtime == g_chtpm_mtime) return 0;
     g_chtpm_mtime = st.st_mtime;
+    /* REAL FIX 2026-08-31 (found live testing open-hai's own projection
+     * with a real, live-typing manager behind it: clicks/Enter appeared
+     * to silently stop arming a cli_io field for no visible reason) -
+     * elem_new()'s own g_pool[MAX_ELEMS] never frees, it's reused IN
+     * PLACE from index 0 on every reparse (see this file's own g_n_elems
+     * reset just below) - a g_default_input_elem left pointing into the
+     * OLD tree becomes a dangling/aliased pointer into WHATEVER the new
+     * parse happens to write at that same pool slot the instant this
+     * function rebuilds. A real .chtpm this house's own generic
+     * capability #1 is FOR (a manager regenerating live content) can
+     * reparse mid-arm at any moment - this isn't a rare edge case for
+     * that real use, it's the normal case. Same real "drop transient
+     * UI state tied to the old tree" reasoning this function already
+     * applies to g_current_page/g_page_stack_n just below, extended to
+     * the one other piece of state that can reference the old tree.
+     * REAL, NEW 2026-08-31 - also release any real XGrabKeyboard that
+     * field's own arm took (activate_focused()'s own real grab-keyboard
+     * fix) - see this function's own forward-declaration comment for
+     * `dpy` above for why leaving it held would be a much worse bug
+     * than the one this whole block fixes. A harmless no-op when
+     * nothing was actually armed/grabbed. */
+    if (g_default_input_elem) XUngrabKeyboard(dpy, CurrentTime);
+    g_default_input_elem = NULL;
     g_n_elems = 0;
     Elem *new_window = parse_chtpm(g_chtpm_path);
     if (!new_window) return 0;
@@ -599,7 +638,8 @@ static int reparse_chtpm_if_changed(void) {
 }
 
 /* ---------- X11/Xft ---------- */
-static Display *dpy;
+/* dpy itself is forward-declared earlier, right after g_default_input_elem
+ * (see that comment for why) - defining it again here would conflict. */
 static Window win;
 static int screen;
 static GC gc;
@@ -639,6 +679,17 @@ static struct timespec g_map_time;
 static int g_focus_nav = 1;
 static int g_n_nav = 0;
 static Elem *g_nav[MAX_ELEMS];
+/* REAL, NEW 2026-08-31 - moved up here (from its own real definition
+ * site right before activate_focused(), further down this file) so
+ * khtpm_draw_core.c's own #include below can see it: a cli_io element
+ * currently ARMED (accepting real keystrokes) needs its own distinct
+ * visual from a merely-focused-but-not-yet-armed one, matching the
+ * reference 1.TPMOS_c_+rmmp.0103.0001 chtpm_parser.c family's own
+ * real "^" (armed) vs ">" (focused only) cursor convention - direct
+ * instruction. See draw_elem()'s own real cli_io branch.
+ * (Moved even further up, above reparse_chtpm_if_changed(), 2026-08-31 -
+ * that function needs to NULL this out on every reparse - see its own
+ * comment.) */
 /* REAL, NEW 2026-08-29 (direct instruction: "i dont want u to just do
  * button as soon as its clicked, first nav should move and wait for
  * second click") - replaces the old "auto" default (single click both
@@ -2822,15 +2873,51 @@ static void dbhq_append_frame_history(void) {
  * future one ever needs to, this format would need real escaping,
  * not silently break (fields are read via strchr('|'), a literal pipe
  * inside a field would misparse loudly, not corrupt quietly). */
+/* REAL, NEW 2026-08-31 (generic capability #2 follow-up - found live
+ * testing open-hai's own real .chtpm projection: a real, armed cli_io
+ * field's own live-typed input_buffer never showed on screen, because
+ * this exact frame-file round trip never carried it) - '|' is this
+ * format's own field delimiter, so a real input_buffer/target_id value
+ * containing a literal '|' (a real shell pipe is a plausible thing to
+ * type into a composer) must not reach fprintf() unescaped, or it would
+ * misparse exactly like onclick's own pipes once did (see this file's
+ * own 2026-08-28 book-stack fix comment above dbhq_paint_frame_line()).
+ * Onclick solves this by anchoring from BOTH ends of the line; these
+ * two fields are simpler (no other data depends on their exact byte
+ * count) - a real, byte-safe substitution (0x01, a control byte that
+ * can never appear in real typed text) round-trips perfectly. */
+static void frame_field_escape_pipe(const char *in, char *out, size_t outsz) {
+    size_t o = 0;
+    for (const unsigned char *p = (const unsigned char *)in; *p && o + 1 < outsz; p++)
+        out[o++] = (*p == '|') ? '\x01' : (char)*p;
+    out[o] = '\0';
+}
+static void frame_field_unescape_pipe(const char *in, char *out, size_t outsz) {
+    size_t o = 0;
+    for (const unsigned char *p = (const unsigned char *)in; *p && o + 1 < outsz; p++)
+        out[o++] = (*p == '\x01') ? '|' : (char)*p;
+    out[o] = '\0';
+}
+
 static void dbhq_serialize_frame_elem(FILE *f, Elem *e) {
     char classes_joined[CSS_MAX_CLASSES * 33] = "";
     for (int i = 0; i < e->n_classes; i++) {
         if (i > 0) strcat(classes_joined, ",");
         strcat(classes_joined, e->classes[i]);
     }
-    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d\n",
+    /* REAL, NEW 2026-08-31 - target_id/input_buffer appended as two
+     * more trailing fields (see this function's own escape-helper
+     * comment just above for why they're pipe-escaped first). Any
+     * consumer of this frame-file format from before this change simply
+     * never had a cli_io element to serialize (the tag didn't exist
+     * yet) - not a compatibility break for anything real. */
+    char target_id_esc[64 * 2], input_buffer_esc[256 * 2];
+    frame_field_escape_pipe(e->target_id, target_id_esc, sizeof(target_id_esc));
+    frame_field_escape_pipe(e->input_buffer, input_buffer_esc, sizeof(input_buffer_esc));
+    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s\n",
             e->tag, e->id, classes_joined, e->label, e->sprite, e->onclick,
-            e->nav_index, e->active, e->x, e->y, e->w, e->h);
+            e->nav_index, e->active, e->x, e->y, e->w, e->h,
+            target_id_esc, input_buffer_esc);
 }
 
 /* Real recursive serializer, same traversal order render_tree() itself
@@ -2906,7 +2993,14 @@ static void dbhq_paint_frame_line(const char *line) {
         *bar = '\0';
         p = bar + 1;
     }
-    char *tail[6]; /* [0]=nav_index [1]=active [2]=x [3]=y [4]=w [5]=h */
+    /* [0]=nav_index [1]=active [2]=x [3]=y [4]=w [5]=h [6]=target_id
+     * (pipe-escaped) [7]=input_buffer (pipe-escaped) - the last two are
+     * REAL, NEW 2026-08-31, see dbhq_serialize_frame_elem()'s own
+     * comment; a frame file written by an older binary (before these
+     * two fields existed) simply has 6 tail fields, not 8 - the loop
+     * below returns (honest skip) rather than misparse it, matching
+     * this function's existing "malformed line" convention exactly. */
+    char *tail[8];
     /* REAL FIX 2026-08-28, same-day self-correction (first attempt at
      * this fix broke EVERY entity menu, not just book-stack's - see
      * git blame if this comment ever needs re-deriving why): the front
@@ -2918,7 +3012,7 @@ static void dbhq_paint_frame_line(const char *line) {
      * onward), so `p + strlen(p)` is the real end - `buf2 +
      * strlen(buf2)` is not. */
     char *scan_end = p + strlen(p);
-    for (int i = 5; i >= 0; i--) {
+    for (int i = 7; i >= 0; i--) {
         char *bar = NULL;
         for (char *q = scan_end - 1; q >= p; q--) { if (*q == '|') { bar = q; break; } }
         if (!bar) return; /* malformed line - honest skip, not a crash */
@@ -2953,6 +3047,15 @@ static void dbhq_paint_frame_line(const char *line) {
     tmp.y = atoi(tail[3]);
     tmp.w = atoi(tail[4]);
     tmp.h = atoi(tail[5]);
+    /* REAL, NEW 2026-08-31 - see dbhq_serialize_frame_elem()'s own
+     * comment. Without this, a cli_io element painted through THIS path
+     * (the default/popup mode's real content draw, see redraw()'s own
+     * "now the shared, generic render_tree()" comment) always saw an
+     * empty input_buffer regardless of what was really typed - `tmp` is
+     * a fresh, memset-zeroed local on every call, never the live Elem
+     * a human is actually typing into. */
+    frame_field_unescape_pipe(tail[6], tmp.target_id, sizeof(tmp.target_id));
+    frame_field_unescape_pipe(tail[7], tmp.input_buffer, sizeof(tmp.input_buffer));
 
     css_compute_style(&g_sheet, tmp.tag, tmp.id[0] ? tmp.id : NULL, tmp.classes, tmp.n_classes, tmp.active, &tmp.style);
     draw_elem(&tmp, 0);
@@ -8421,10 +8524,25 @@ static void assign_nav_and_layout(void) {
         int y = CHROME_H;
         for (int i = 0; i < page->n_children; i++) {
             Elem *item = page->children[i];
-            if (strcmp(item->tag, "item") != 0 && strcmp(item->tag, "cli_io") != 0) continue;
+            /* REAL, NEW 2026-08-31 (found live testing open-hai's own
+             * .chtpm projection: "looks nothing like the old one" /
+             * "not able to enter keys") - real bug, not a guess: this
+             * loop only ever laid out "item"/"cli_io" rows, so any
+             * plain <text> row (a status line, a transcript message, a
+             * tool-approval banner - ordinary non-interactive content
+             * ANY khtpm consumer's own .chtpm might mix in) was left at
+             * its real parse-time default x/y/w/h (0,0,0,0) - never
+             * positioned, garbled on top of row 0, and worse, silently
+             * shifting every item/cli_io AFTER it up by one full row
+             * from where its own document position visually implies.
+             * Fixed generically: a "text" row now advances y exactly
+             * like an item row (real vertical space, real row height),
+             * it's simply never added to g_nav (it isn't interactive -
+             * no real nav_index, can't be focused/clicked/armed). */
+            int is_text = strcmp(item->tag, "text") == 0;
+            if (strcmp(item->tag, "item") != 0 && strcmp(item->tag, "cli_io") != 0 && !is_text) continue;
             item->x = 0; item->y = y; item->w = g_win_w; item->h = ROW_H;
-            item->nav_index = ++g_n_nav;
-            g_nav[g_n_nav - 1] = item;
+            if (!is_text) { item->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = item; }
             css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
             y += ROW_H;
         }
@@ -8518,8 +8636,9 @@ static void apply_theme(const char *bg_hex, const char *fg_hex) {
  * and get real armed text-input, live-synced to a real, generic
  * per-window `cli_io_state.txt` (same real "target_id-keyed state
  * file" shape the reference uses, just this house's own plain
- * key=value line format instead of gui_state.txt's own). */
-static Elem *g_default_input_elem = NULL;
+ * key=value line format instead of gui_state.txt's own).
+ * (g_default_input_elem itself now lives further up this file, near
+ * g_focus_nav - see its own comment there for why.) */
 
 static void default_cli_io_state_path(char *out, size_t outsz) {
     snprintf(out, outsz, "%s/cli_io_state.txt", g_package_dir);
@@ -8595,7 +8714,27 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
         default_cli_io_save(e); /* real, empty value, matching the reference's own "clear after submit, stay active" behavior */
         return;
     }
-    if (ks == XK_Escape) { g_default_input_elem = NULL; return; }
+    /* REAL FIX 2026-08-31 (live report: armed via a real double-click,
+     * "^" showed correctly, but real physical keys typed nothing - root
+     * cause confirmed live: real X input focus was 0x0/None with the
+     * mouse pointer far from the window, i.e. this WM's focus-follows-
+     * mouse policy silently took keyboard focus away the instant the
+     * human's hand left the mouse to reach the keyboard - override_
+     * redirect + a plain XSetInputFocus retry at map time, this default
+     * mode's existing mechanism, is mouse-position-dependent by
+     * construction). Real, already-proven fix, not invented here:
+     * dbhq_grab_keyboard_retry() (db-hq's own real XGrabKeyboard retry,
+     * currently gated behind its own g_dbhq_focus_grab_enabled .pdl
+     * flag for THAT mode) - reused verbatim, unconditionally, scoped to
+     * exactly a cli_io field's own armed lifetime. An exclusive
+     * keyboard grab routes KeyPress to `win` regardless of pointer
+     * position or window-manager focus policy, so this is immune to
+     * the exact failure just diagnosed. Safe to make unconditional
+     * here (no existing popup uses cli_io yet, so this can't regress
+     * any of them) - see the matching XUngrabKeyboard on every real
+     * disarm path (Escape here, reparse_chtpm_if_changed()'s own real
+     * safety net). */
+    if (ks == XK_Escape) { g_default_input_elem = NULL; XUngrabKeyboard(dpy, CurrentTime); return; }
     if (ks == XK_BackSpace) {
         size_t len = strlen(e->input_buffer);
         if (len > 0) { e->input_buffer[len - 1] = '\0'; default_cli_io_save(e); }
@@ -8613,7 +8752,10 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
 static void activate_focused(void) {
     if (g_focus_nav < 1 || g_focus_nav > g_n_nav) return;
     Elem *item = g_nav[g_focus_nav - 1];
-    if (strcmp(item->tag, "cli_io") == 0) { g_default_input_elem = item; return; }
+    /* REAL FIX 2026-08-31 - see default_cli_io_handle_key()'s own
+     * Escape-branch comment for the full real diagnosis. Grab taken
+     * HERE (arm time), released on every real disarm path. */
+    if (strcmp(item->tag, "cli_io") == 0) { g_default_input_elem = item; dbhq_grab_keyboard_retry(); return; }
     if (item->onclick[0]) dispatch(item->onclick);
 }
 

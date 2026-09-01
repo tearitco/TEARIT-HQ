@@ -486,3 +486,106 @@ projection (a real manager-side generator, likely extending
 `khtpm_open_hai_manager.c`) to use this plus capability #1 - that is
 the real, standing task both of these capabilities exist to unblock,
 and it has not been restarted yet.
+
+## Status update, 2026-08-31 (later same day) — open-hai's real conversion built, `<cli_io>` proven end-to-end on real human hardware
+
+`khtpm_open_hai_manager.c` now owns a real `write_chtpm_projection()`,
+called every main-loop tick: regenerates `&.widgits/open-hai/open-hai.
+chtpm` from real state (sessions.state.txt, active_session.txt,
+transcript.txt tail, pending_tool.state.txt, model.txt, settings.pdl),
+using ONLY `item`/`cli_io`/`text` tags - zero new renderer C. Real
+`CYCLEMODEL`/`TOGGLESOUND` request tokens added to the manager's own
+`request.txt` protocol (model-cycling/sound-toggle moved manager-side,
+since the old per-app hand-rolled renderer that owned them is being
+replaced). Two new real action scripts, `oh_write_request.sh` (plain
+`<item>` actions - real argv shape documented in its own header) and
+`oh_write_send.sh` (the composer's own `<cli_io>` action - a DIFFERENT
+real argv shape, also documented in its own header) - both embed the
+manager's own live `g_state_dir` as a literal argv so this stays
+correct under the manager's existing `--data-root` per-persona-pal
+feature, not just plain open-hai. A content-unchanged guard skips the
+write (and so the mtime bump, and so a needless reparse) when nothing
+real actually changed.
+
+**Real bugs found and fixed along the way (all via direct, repeated,
+live relay-driven + real-hardware testing, not guessed):**
+1. `assign_nav_and_layout()`'s default list-layout loop only ever laid
+   out `item`/`cli_io` tags - a plain `<text>` row (status line,
+   transcript message, tool banner) was left at its parse-time default
+   `x/y/w/h` (0,0,0,0), garbled at the origin AND silently shifting
+   every later item/cli_io up one row from its visual document
+   position. Fixed generically: `text` now advances layout exactly
+   like `item` but is never added to `g_nav[]` (not interactive).
+2. `reparse_chtpm_if_changed()` resets `g_n_elems = 0` and rebuilds
+   the ENTIRE `g_pool[MAX_ELEMS]` in place (never frees/reallocates) -
+   `g_default_input_elem`, if left pointing into the old tree, becomes
+   a dangling/aliased pointer into whatever the new parse happens to
+   write at that same pool slot. A live-regenerating manager reparsing
+   mid-arm isn't a rare edge case for this feature, it's the normal
+   case. Fixed: disarm (`g_default_input_elem = NULL`, releasing any
+   real keyboard grab - see #4) on every reparse.
+3. The default/popup mode's real content draw does NOT call
+   `render_tree()`/`draw_elem()` directly - it serializes the visible
+   subtree to a text frame file (`dbhq_serialize_frame_subtree()`) and
+   repaints from a SEPARATE parser (`dbhq_paint_frame_line()`) that
+   builds a fresh, memset-zeroed temp `Elem` per line and calls
+   `draw_elem()` on THAT. This is why a live-typed `input_buffer` never
+   showed on screen through this path even though the underlying state
+   was genuinely correct (confirmed via `cli_io_state.txt`) - the
+   temp `Elem` never carried `target_id`/`input_buffer` at all, and the
+   armed-indicator's own pointer-equality check (`e ==
+   g_default_input_elem`) could never be true against a fresh local.
+   Fixed on both ends: `dbhq_serialize_frame_elem()` now appends
+   `target_id`/`input_buffer` as two more pipe-escaped trailing fields
+   (a literal `|` in typed text is real and plausible - a naive split
+   would misparse it exactly like onclick's own pipes once did, see
+   that fix's own 2026-08-28 comment); `dbhq_paint_frame_line()` parses
+   and populates them; the armed-indicator check now compares by `id`
+   string instead of pointer (the one thing the round trip already
+   carries faithfully).
+4. **Real human-hardware bug, not reproducible via relay-file testing
+   at all**: armed correctly (real "^" showed after a real double-
+   click), but real physical keystrokes typed nothing. Root-caused
+   live: `XGetInputFocus` returned `0x0` (None) with the real mouse
+   pointer far from the popup window - this desktop's WM uses
+   focus-follows-mouse, and moving the hand from mouse to keyboard
+   silently took real X keyboard focus away from an `override_redirect`
+   popup whose only focus mechanism was a plain `XSetInputFocus` retry
+   at map time (mouse-position-dependent by construction). Studied
+   both existing real precedents in this file before fixing: chat-hai's
+   own conclusion (`chai_focus_grab_enabled` defaults OFF - a plain
+   `override_redirect` + `XMapWindow` with zero focus calls was found
+   to be the MORE reliable real behavior for its own window shape) and
+   db-hq's own real, already-built, currently-gated-off
+   `dbhq_grab_keyboard_retry()` (an `XGrabKeyboard` retry loop - a real
+   exclusive grab is immune to focus-follows-mouse by construction,
+   since the server routes KeyPress to the grabbing window regardless
+   of pointer position or WM focus policy). Reused db-hq's function
+   verbatim, scoped tightly to exactly a `cli_io` field's own armed
+   lifetime (grabbed in `activate_focused()` on arm, released in
+   `default_cli_io_handle_key()`'s Escape branch AND in
+   `reparse_chtpm_if_changed()`'s own new disarm-on-reparse safety net
+   from bug #2 above - an exclusive grab surviving a silent mid-type
+   disarm would lock ALL keyboard input house-wide to one non-typing
+   window until it closed, a real, much worse bug than the one being
+   fixed). Made unconditional (no `.pdl` gate) since no existing popup
+   uses `cli_io` yet - can't regress anything already working.
+   **Confirmed fixed on real human hardware** (double-click to arm,
+   move mouse away, type - characters now appear).
+
+**Real, house-wide takeaway for any future khtpm app needing text
+input**: use `<cli_io>` - as of this fix, it's the only real input
+mechanism in this house proven immune to the focus-follows-mouse class
+of bug. `db-hq`'s own armed-field input (bookmarks' New+ entry) and
+`events-hq`'s own picker fields likely have the identical bug (same
+plain-`XSetInputFocus`-only mechanism, `g_dbhq_focus_grab_enabled`
+defaults OFF) - not yet checked or fixed, flagged as real follow-up
+work, NOT to be touched without checking in first (these are live,
+daily-used windows, not a fresh capability with nothing to regress).
+
+Still not started: switching the real daily-driver
+`button.sh`/`chat_button.sh` over to this new mechanism - the isolated
+`--data-root`-scoped test proved the whole pipeline end-to-end, but
+the live app is untouched. Do not touch it without checking in first
+(direct instruction, 2026-08-31: "check in with me before we edit any
+legacy projects so i can do my own safety checks").

@@ -77,6 +77,14 @@
 #define AUDIT_DIR_REL "&.widgits/open-hai/pieces/audit"
 
 static char g_house_root[PATH_BUF];
+/* REAL, NEW 2026-08-31 - the .chtpm projection's own real output path
+ * (see write_chtpm_projection() below). Set once in main() from the
+ * exact same real --data-root check every other g_*_path already uses,
+ * so a per-persona-pal instance (own sessions/state/audit) also gets
+ * its own separate projection file next to them, instead of every
+ * instance racing to overwrite one shared house-root-relative
+ * open-hai.chtpm. */
+static char g_chtpm_output_path[PATH_BUF];
 static char g_sessions_root[PATH_BUF];
 static char g_audit_dir[PATH_BUF];
 static char g_state_dir[PATH_BUF];
@@ -147,6 +155,29 @@ static int sound_on_enabled(void) {
     }
     fclose(f);
     return v != 0;
+}
+
+/* REAL, NEW 2026-08-31 (real .chtpm projection work, see this file's
+ * own write_chtpm_projection() below) - settings.pdl was documented
+ * above as "the renderer owns this file", back when the renderer was
+ * khtpm_open_hai_render.c's own hand-rolled X11 code with its own
+ * g_sound_on toggle key. That renderer is being replaced by a real,
+ * generic .chtpm projection through the shared khtpm_core_render.+x -
+ * there is no more per-app renderer process to own this write, so it
+ * moves here, next to sound_on_enabled() which already reads it fresh
+ * every message. Same real SECTION|key|value line shape the old
+ * renderer's own save_settings() used - not a new format. */
+static void toggle_sound_setting(void) {
+    int cur = sound_on_enabled();
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/settings.pdl", g_state_dir);
+    FILE *f = fopen(path, "w");
+    if (!f) return;
+    fprintf(f, "# open-hai settings.pdl - edited via the topbar Settings toggle\n"
+               "# (khtpm_open_hai_manager.c's own toggle_sound_setting()). The\n"
+               "# manager plays the incoming-message tone only while sound_on is 1.\n");
+    fprintf(f, "SECTION | sound_on | %d\n", cur ? 0 : 1);
+    fclose(f);
 }
 
 static void play_incoming_tone(void) {
@@ -424,6 +455,29 @@ static void current_model(char *name_out, size_t name_outsz, BackendMode *mode_o
         }
     }
     fclose(f);
+}
+
+/* REAL, NEW 2026-08-31 (real .chtpm projection work - see current_
+ * model()'s own comment just above, written back when "the shell owns
+ * WRITING this" meant khtpm_open_hai_render.c's own cycle_model() key
+ * handler; that renderer is being replaced by a real, generic .chtpm
+ * projection, so cycling moves here where g_models[] already lives -
+ * no need to duplicate that list a third time in a shell action
+ * script). Advances to the next model in g_models[] past whichever
+ * name current_model() resolves right now (same "unknown name in
+ * model.txt falls back to index 0" real behavior that function already
+ * has), writes the new choice - next send picks it up fresh, same real
+ * contract as before. */
+static void cycle_model_setting(void) {
+    char cur_name[128]; BackendMode cur_mode;
+    current_model(cur_name, sizeof(cur_name), &cur_mode);
+    int cur_idx = 0;
+    for (int i = 0; i < g_n_models; i++) if (strcmp(cur_name, g_models[i].name) == 0) { cur_idx = i; break; }
+    int next_idx = (cur_idx + 1) % g_n_models;
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/model.txt", g_sessions_root);
+    FILE *f = fopen(path, "w");
+    if (f) { fprintf(f, "%s\n", g_models[next_idx].name); fclose(f); }
 }
 
 static int load_persona(const char *model_name, char *out, size_t outsz) {
@@ -1516,6 +1570,197 @@ static void handle_submit(const char *prompt) {
     }
 }
 
+/* ---------- REAL, NEW 2026-08-31: the .chtpm projection ----------
+ * xperiments/khtpm-generic-dispatch-design.md's own "real pivot away
+ * from any per-mode table at all" section - the real answer this
+ * manager (already a real, separate process owning ALL of open-hai's
+ * business logic and state files) now also owns: a real, periodically-
+ * regenerated open-hai.chtpm using ONLY the generic tag vocabulary
+ * (item/cli_io/text) the shared khtpm_core_render.+x's own default
+ * page/item dispatch path already understands - same real "manager
+ * owns projection, renderer just re-parses/renders it" philosophy
+ * fo-menu-sys.md already documents for the ASCII/chtpm_parser.c family,
+ * finally extended to the X11/khtpm side via that renderer's own
+ * generic capability #1 (reparse_chtpm_if_changed()) and #2 (the
+ * generic <cli_io> element). ZERO new C in the shared renderer for any
+ * of this - khtpm_core_render.c has no idea open-hai exists.
+ *
+ * Real user actions round-trip through the SAME real request.txt
+ * protocol this file already parses in handle_request() below - a
+ * plain <item>'s action= is oh_write_request.sh with the real request
+ * line embedded as its own literal argv (see that script's own header
+ * comment for the exact argv shape this depends on); the composer's
+ * own <cli_io> action= is oh_write_send.sh (a different real argv
+ * shape - see ITS header comment). Neither script is open-hai-specific
+ * plumbing bolted onto the shared renderer; both are ordinary shell
+ * commands any khtpm consumer's own action= could point at. */
+static void xml_escape(const char *in, char *out, size_t outsz) {
+    size_t o = 0;
+    for (const unsigned char *p = (const unsigned char *)in; *p && o + 6 < outsz; p++) {
+        switch (*p) {
+            case '&': memcpy(out + o, "&amp;", 5); o += 5; break;
+            case '"': memcpy(out + o, "&quot;", 6); o += 6; break;
+            case '<': memcpy(out + o, "&lt;", 4); o += 4; break;
+            case '>': memcpy(out + o, "&gt;", 4); o += 4; break;
+            case '\n': memcpy(out + o, " ", 1); o += 1; break; /* real .chtpm attrs are single-line - a real newline in a label would break parse_element() */
+            default: out[o++] = (char)*p; break;
+        }
+    }
+    out[o] = '\0';
+}
+
+static void shell_escape_squote(const char *in, char *out, size_t outsz) {
+    size_t o = 0;
+    for (const unsigned char *p = (const unsigned char *)in; *p && o + 5 < outsz; p++) {
+        if (*p == '\'') { memcpy(out + o, "'\\''", 4); o += 4; }
+        else out[o++] = (char)*p;
+    }
+    out[o] = '\0';
+}
+
+#define OH_PROJECTION_TRANSCRIPT_TAIL 10
+
+static void write_chtpm_projection(void) {
+    char scripts_dir[PATH_BUF];
+    snprintf(scripts_dir, sizeof(scripts_dir), "%s/&.widgits/open-hai/ops", g_house_root);
+    char state_dir_sq[PATH_BUF * 2];
+    shell_escape_squote(g_state_dir, state_dir_sq, sizeof(state_dir_sq));
+
+    char *buf = malloc(262144);
+    if (!buf) return;
+    size_t cap = 262144, len = 0;
+#define OHP_APPEND(...) do { \
+        int _n = snprintf(buf + len, cap - len, __VA_ARGS__); \
+        if (_n > 0) len += (size_t)_n < cap - len ? (size_t)_n : cap - len - 1; \
+    } while (0)
+
+    OHP_APPEND("<!-- open-hai.chtpm - REAL, GENERATED PROJECTION.\n");
+    OHP_APPEND("     Written by khtpm_open_hai_manager.c's own write_chtpm_projection()\n");
+    OHP_APPEND("     every real main-loop tick - DO NOT HAND-EDIT, changes are\n");
+    OHP_APPEND("     overwritten within 200ms. See that function's own header\n");
+    OHP_APPEND("     comment for the real design this answers to. -->\n");
+    OHP_APPEND("<window label=\"open-hai\" class=\"\">\n  <page name=\"main\">\n");
+
+    char model_name[128]; BackendMode model_mode;
+    current_model(model_name, sizeof(model_name), &model_mode);
+    int sound_on = sound_on_enabled();
+    char status_esc[300], model_esc[160];
+    {
+        char status_raw[280];
+        snprintf(status_raw, sizeof(status_raw), "model: %s | sound: %s | %s",
+                 model_name, sound_on ? "on" : "off", g_pending ? "thinking..." : "idle");
+        xml_escape(status_raw, status_esc, sizeof(status_esc));
+    }
+    xml_escape(model_name, model_esc, sizeof(model_esc));
+    OHP_APPEND("    <text id=\"status\" label=\"%s\"/>\n", status_esc);
+    OHP_APPEND("    <item id=\"new\" label=\"+ New session\" action=\"'%s/oh_write_request.sh' 'NEWSESSION' '%s'\"/>\n", scripts_dir, state_dir_sq);
+    OHP_APPEND("    <item id=\"cyclemodel\" label=\"Model: %s (click to cycle)\" action=\"'%s/oh_write_request.sh' 'CYCLEMODEL' '%s'\"/>\n", model_esc, scripts_dir, state_dir_sq);
+    OHP_APPEND("    <item id=\"togglesound\" label=\"Sound: %s (click to toggle)\" action=\"'%s/oh_write_request.sh' 'TOGGLESOUND' '%s'\"/>\n", sound_on ? "on" : "off", scripts_dir, state_dir_sq);
+
+    /* ---- sessions (real sessions.state.txt, "<dir>|<label>" per line,
+     * same real file publish_sessions() above already maintains) ---- */
+    FILE *sf = fopen(g_sessions_state_path, "r");
+    if (sf) {
+        char line[PATH_BUF + 128];
+        int n = 0;
+        while (fgets(line, sizeof(line), sf) && n < 40) {
+            line[strcspn(line, "\r\n")] = '\0';
+            char *bar = strchr(line, '|');
+            if (!bar) continue;
+            *bar = '\0';
+            const char *dir = line, *label = bar + 1;
+            int is_active = g_session_dir[0] && strcmp(dir, g_session_dir) == 0;
+            char label_full[300], label_esc[350];
+            snprintf(label_full, sizeof(label_full), "%s%s", is_active ? "> " : "  ", label);
+            xml_escape(label_full, label_esc, sizeof(label_esc));
+            char dir_sq[PATH_BUF * 2], load_req_sq[PATH_BUF * 2 + 32], del_req_sq[PATH_BUF * 2 + 32];
+            shell_escape_squote(dir, dir_sq, sizeof(dir_sq));
+            snprintf(load_req_sq, sizeof(load_req_sq), "LOADSESSION|%s", dir_sq);
+            snprintf(del_req_sq, sizeof(del_req_sq), "DELETESESSION|%s", dir_sq);
+            /* load_req_sq/del_req_sq's own embedded dir_sq is already
+             * squote-escaped for ITS OWN single-quote wrapping below -
+             * safe to nest as one literal argv token each. */
+            OHP_APPEND("    <item id=\"s%d\" label=\"%s\" action=\"'%s/oh_write_request.sh' '%s' '%s'\"/>\n",
+                       n, label_esc, scripts_dir, load_req_sq, state_dir_sq);
+            OHP_APPEND("    <item id=\"sd%d\" label=\"  (delete)\" action=\"'%s/oh_write_request.sh' '%s' '%s'\"/>\n",
+                       n, scripts_dir, del_req_sq, state_dir_sq);
+            n++;
+        }
+        fclose(sf);
+    }
+
+    /* ---- active session's own real transcript tail (last N real
+     * U|/A| lines, same file/format persist_msg() writes) ---- */
+    if (g_session_dir[0]) {
+        char tpath[PATH_BUF];
+        snprintf(tpath, sizeof(tpath), "%s/transcript.txt", g_session_dir);
+        FILE *tf = fopen(tpath, "r");
+        if (tf) {
+            char *tail[OH_PROJECTION_TRANSCRIPT_TAIL];
+            for (int i = 0; i < OH_PROJECTION_TRANSCRIPT_TAIL; i++) tail[i] = NULL;
+            int head = 0, count = 0;
+            char line[MSG_LEN * 2];
+            while (fgets(line, sizeof(line), tf)) {
+                line[strcspn(line, "\r\n")] = '\0';
+                if (strlen(line) < 2 || line[1] != '|') continue;
+                free(tail[head]);
+                tail[head] = strdup(line);
+                head = (head + 1) % OH_PROJECTION_TRANSCRIPT_TAIL;
+                if (count < OH_PROJECTION_TRANSCRIPT_TAIL) count++;
+            }
+            fclose(tf);
+            int start = count < OH_PROJECTION_TRANSCRIPT_TAIL ? 0 : head;
+            for (int i = 0; i < count; i++) {
+                int idx = (start + i) % OH_PROJECTION_TRANSCRIPT_TAIL;
+                char un[MSG_LEN];
+                unescape_line(tail[idx] + 2, un, sizeof(un));
+                char shown[220], row_raw[260], row_esc[560];
+                snprintf(shown, sizeof(shown), "%.200s", un);
+                snprintf(row_raw, sizeof(row_raw), "%s: %s", tail[idx][0] == 'U' ? "you" : "hai", shown);
+                xml_escape(row_raw, row_esc, sizeof(row_esc));
+                OHP_APPEND("    <text id=\"msg%d\" label=\"%s\"/>\n", i, row_esc);
+                free(tail[idx]);
+            }
+        }
+    }
+
+    /* ---- pending tool approval gate (real pending_tool.state.txt,
+     * "name|arg|preview", same file write_pending_tool_state() above
+     * already maintains) ---- */
+    if (g_tool_pending) {
+        char banner[MSG_LEN]; tool_request_banner(&g_pending_tool, banner, sizeof(banner));
+        char banner_esc[MSG_LEN + 64];
+        xml_escape(banner, banner_esc, sizeof(banner_esc));
+        OHP_APPEND("    <text id=\"tool-banner\" label=\"%s\"/>\n", banner_esc);
+        OHP_APPEND("    <item id=\"approve\" label=\"Approve\" action=\"'%s/oh_write_request.sh' 'APPROVE' '%s'\"/>\n", scripts_dir, state_dir_sq);
+        OHP_APPEND("    <item id=\"deny\" label=\"Deny\" action=\"'%s/oh_write_request.sh' 'DENY' '%s'\"/>\n", scripts_dir, state_dir_sq);
+    }
+
+    OHP_APPEND("    <cli_io id=\"composer\" target_id=\"composer\" label=\"&gt; \" action=\"'%s/oh_write_send.sh' '%s'\"/>\n", scripts_dir, state_dir_sq);
+    OHP_APPEND("    <item id=\"close\" label=\"X (close)\" action=\"CLOSE\"/>\n");
+    OHP_APPEND("  </page>\n</window>\n");
+#undef OHP_APPEND
+
+    /* Real "only write when the real content actually changed" guard -
+     * every main-loop tick calls this (200ms), and an unconditional
+     * write would make the shared renderer's own reparse_chtpm_if_
+     * changed() (mtime-gated) fire every tick even when nothing is
+     * happening, tearing down and rebuilding the whole Elem tree (and
+     * the focus/scroll state that rides on it) for no real reason. */
+    static char *g_last_projection = NULL;
+    if (g_last_projection && strcmp(g_last_projection, buf) == 0) { free(buf); return; }
+    free(g_last_projection);
+    g_last_projection = buf;
+
+    char tmp_path[PATH_BUF];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", g_chtpm_output_path);
+    FILE *wf = fopen(tmp_path, "w");
+    if (!wf) return;
+    fputs(buf, wf);
+    fclose(wf);
+    rename(tmp_path, g_chtpm_output_path);
+}
+
 static void handle_request(void) {
     FILE *f = fopen(g_request_path, "r");
     if (!f) return;
@@ -1566,6 +1811,15 @@ static void handle_request(void) {
         delete_session(line + 14);
         if (was_active) start_new_session();
         publish_sessions();
+    } else if (strcmp(line, "CYCLEMODEL") == 0) {
+        /* REAL, NEW 2026-08-31 - see cycle_model_setting()'s own header
+         * comment for why this moved here instead of staying a shell-
+         * side-only UI action. */
+        cycle_model_setting();
+    } else if (strcmp(line, "TOGGLESOUND") == 0) {
+        /* REAL, NEW 2026-08-31 - see toggle_sound_setting()'s own header
+         * comment. */
+        toggle_sound_setting();
     }
 }
 
@@ -1602,6 +1856,11 @@ int main(int argc, char **argv) {
         snprintf(g_state_dir, sizeof(g_state_dir), "%s/&.widgits/open-hai/state", g_house_root);
     }
     mkdir(g_state_dir, 0755);
+    if (data_root[0] == '/') {
+        snprintf(g_chtpm_output_path, sizeof(g_chtpm_output_path), "%s/open-hai.chtpm", data_root);
+    } else {
+        snprintf(g_chtpm_output_path, sizeof(g_chtpm_output_path), "%s/&.widgits/open-hai/open-hai.chtpm", g_house_root);
+    }
     init_openrouter_key_path(); /* REAL START 2026-08-16 - see this file's own BACKEND_OPENROUTER header comment */
     init_tokenrouter_key_path();
 
@@ -1633,9 +1892,11 @@ int main(int argc, char **argv) {
         }
     }
 
+    write_chtpm_projection(); /* real, initial projection - before the shared renderer's own first parse_chtpm() call */
     for (;;) {
         check_pending();
         handle_request();
+        write_chtpm_projection();
         usleep(200000); /* 200ms - a bit faster than db-hq/events-hq's 400ms, this app is more interactive/request-driven */
     }
     return 0;

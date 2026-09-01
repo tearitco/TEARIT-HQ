@@ -462,7 +462,31 @@ static void draw_elem(Elem *e, int hover_id_hash) {
     if (e->nav_index > 0) {
         int focused = (e->nav_index == g_focus_nav);
         char prefix[8];
-        int is_scope = (g_dbhq_active_scope_root && e == g_dbhq_active_scope_root);
+        /* REAL, NEW 2026-08-31 - a real, generic ARMED cli_io field
+         * reuses this SAME existing "[^]" active-scope visual (direct
+         * instruction: cli_io should show "^" once armed, not the plain
+         * "[>]" a merely-focused-but-not-yet-typing element gets) -
+         * not a new bespoke prefix state, the exact one db-hq's own
+         * scope root already uses. Real nav-blocking while armed is
+         * already handled separately, in handle_key()'s own real
+         * key-order check (g_default_input_elem is tested before any
+         * Up/Down/Enter dispatch reaches the generic nav code at all).
+         * REAL FIX 2026-08-31 (found live, same investigation as
+         * dbhq_serialize_frame_elem()'s own input_buffer fix): compared
+         * by POINTER at first, which can never match here - the default/
+         * popup mode's own real content draw (redraw()'s "now the
+         * shared, generic render_tree()" path) calls draw_elem() on a
+         * fresh, freshly-built temp Elem parsed from a text frame file
+         * (dbhq_paint_frame_line()), never on the live g_pool[] Elem a
+         * human is actually typing into - `e == g_default_input_elem`
+         * was comparing two different objects' addresses and could
+         * never be true from that path. Real fix: compare by id, the
+         * one identifying field the frame-file round trip already
+         * carries faithfully - safe because a real .chtpm's ids are
+         * already relied on to be unique per window (find_page()/
+         * dispatch() etc. all key off id the same way). */
+        int is_scope = (g_dbhq_active_scope_root && e == g_dbhq_active_scope_root) ||
+                       (g_default_input_elem && e->id[0] && strcmp(e->id, g_default_input_elem->id) == 0);
         elem_cursor_prefix(e, g_focus_nav, is_scope, prefix, sizeof(prefix));
         snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index);
         (void)focused;
