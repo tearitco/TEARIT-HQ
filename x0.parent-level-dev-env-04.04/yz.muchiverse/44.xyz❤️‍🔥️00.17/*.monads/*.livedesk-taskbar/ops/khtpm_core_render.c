@@ -8576,6 +8576,16 @@ static Elem g_default_close_elem_storage;
 static Elem *g_default_close_elem = &g_default_close_elem_storage;
 static Elem g_default_fullscreen_elem_storage;
 static Elem *g_default_fullscreen_elem = &g_default_fullscreen_elem_storage;
+/* REAL, NEW 2026-09-01 (direct ask: "assume its task is just 'hide'
+ * and thats it (for now)") - a third chrome button, same real static-
+ * storage pattern as the X/! pair above. Deliberately minimal: unmaps
+ * this one window (XUnmapWindow) and nothing else - no cross-window
+ * z-order/always-on-top behavior (that was the original, bigger ask;
+ * scoped down for now per direct instruction). Restoring a hidden
+ * window currently relies on whatever already re-maps it (the
+ * taskbar's own existing raise/focus path) - not newly built here. */
+static Elem g_default_hide_elem_storage;
+static Elem *g_default_hide_elem = &g_default_hide_elem_storage;
 static int g_default_is_fullscreen = 0;
 static int g_default_pre_fullscreen_x = 0, g_default_pre_fullscreen_y = 0;
 
@@ -8763,6 +8773,20 @@ static int layout_sidebar_panel(Elem *page) {
          * right") - wider buttons, a real gap between them, and a real
          * margin off the true right edge (not flush against it). */
         int btn_w = 32, btn_h = CHROME_H - 4, gap = 8, right_margin = 10;
+
+        /* REAL, NEW 2026-09-01 - "hide" chrome button, third slot,
+         * leftmost of the three (nav-numbered FIRST of the chrome
+         * trio so X still ends up last/least-focused by default). */
+        memset(g_default_hide_elem, 0, sizeof(*g_default_hide_elem));
+        snprintf(g_default_hide_elem->tag, sizeof(g_default_hide_elem->tag), "item");
+        snprintf(g_default_hide_elem->id, sizeof(g_default_hide_elem->id), "chrome-hide");
+        snprintf(g_default_hide_elem->label, sizeof(g_default_hide_elem->label), "_");
+        snprintf(g_default_hide_elem->onclick, sizeof(g_default_hide_elem->onclick), "HIDE");
+        g_default_hide_elem->x = g_win_w - btn_w * 3 - gap * 2 - right_margin; g_default_hide_elem->y = 2;
+        g_default_hide_elem->w = btn_w; g_default_hide_elem->h = btn_h;
+        css_compute_style(&g_sheet, g_default_hide_elem->tag, NULL, NULL, 0, 0, &g_default_hide_elem->style);
+        g_default_hide_elem->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = g_default_hide_elem;
+
         memset(g_default_fullscreen_elem, 0, sizeof(*g_default_fullscreen_elem));
         snprintf(g_default_fullscreen_elem->tag, sizeof(g_default_fullscreen_elem->tag), "item");
         snprintf(g_default_fullscreen_elem->id, sizeof(g_default_fullscreen_elem->id), "chrome-fullscreen");
@@ -8946,6 +8970,18 @@ static void dispatch(const char *action) {
             g_win_x = g_default_pre_fullscreen_x; g_win_y = g_default_pre_fullscreen_y;
         }
         XMoveWindow(dpy, win, g_win_x, g_win_y);
+        return;
+    }
+    /* REAL, NEW 2026-09-01 - the sidebar+panel chrome "_" (hide)
+     * button. Deliberately minimal per direct instruction ("assume
+     * its task is just hide and thats it (for now)"): unmaps THIS
+     * window only, real Xlib XUnmapWindow, no cross-window z-order
+     * behavior. Does not track/restore itself - whatever already
+     * re-maps/raises a window from the taskbar (this house's existing
+     * tab-focus path) is what brings it back; not new code here. */
+    if (strcmp(action, "HIDE") == 0) {
+        XUnmapWindow(dpy, win);
+        XFlush(dpy);
         return;
     }
     /* REAL FIX 2026-08-16, direct live report ("cancel doesn't work
