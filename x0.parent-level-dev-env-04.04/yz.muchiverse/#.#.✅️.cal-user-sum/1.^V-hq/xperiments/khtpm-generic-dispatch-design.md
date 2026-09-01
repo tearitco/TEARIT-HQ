@@ -1,5 +1,34 @@
 # khtpm generic-dispatch design — making the shared renderer actually agnostic
 
+## Status update, 2026-08-31 (same day) — §2a built and proven live
+
+The generic `launch_module()` described in §2a below is now real,
+written, and live-tested: `dbhq_launch_module()` no longer forks/execs
+itself, it delegates to the new generic function (same exact argv:
+`house_root`, `package_dir`, optional `extra_arg`). Tested by launching
+a real db-hq window end to end (`open_db_hq.sh`) — the manager self-
+spawned correctly via the generic path (confirmed via `ps` showing the
+real argv), published real Common Events data
+(`db_hq_common_events.state.txt` populated with real rows), and a real
+screenshot (`dump_frame_png_op.+x`) showed the window rendering
+perfectly normally — tabs, sidebar, panel, Actor 0001's real fields,
+zero visible or functional regression. This is the real proof the
+mechanism works before events-hq/chat-hai/network-browser are migrated
+onto it too (not yet done).
+
+**Real, honest side-finding from reading `history_dir()`/
+`frame_changed_path()` closely while designing this**: these two
+ternary chains are already inconsistent with each other -
+`frame_changed_path()` gives palettes and bookmarks their own distinct
+filenames, but `history_dir()` does not (both fall through to
+`"db_hq_history"`, since neither has its own `g_is_palettes`/
+`g_is_bookmarks` arm in that specific chain). Not fixed here — real,
+pre-existing behavior, out of scope for this pass — but worth carrying
+into whichever future step unifies these two functions onto a shared
+per-mode config table, so the fix (give palettes/bookmarks their own
+real history dir, or confirm sharing db-hq's is intentional) happens
+deliberately, not silently changed as a side effect of the refactor.
+
 **Status: design only, 2026-08-31. No implementation in this doc.**
 Triggered by a real, caught-in-time mistake: building the network-
 browser-hq mode by adding `g_is_network_browser` branches at ~15

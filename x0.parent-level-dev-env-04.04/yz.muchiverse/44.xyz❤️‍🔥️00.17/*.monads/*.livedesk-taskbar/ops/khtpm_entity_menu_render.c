@@ -247,12 +247,39 @@ static void dbhq_handle_term_signal(int sig) {
     _exit(0);
 }
 
-static void dbhq_launch_module(const char *src, const char *extra_arg) {
-    if (!src || !src[0]) return;
+/* REAL, generic module launcher (xperiments/khtpm-generic-dispatch-
+ * design.md §2a, 2026-08-31) - collapses what used to be 3 near-
+ * identical per-mode fork+execl copies (dbhq_launch_module()/
+ * evhq_launch_module()/chai_launch_module()) into one real function
+ * with zero project knowledge: every argument comes from either the
+ * already-parsed <module> Elem (src/extra_arg) or generic context
+ * (house_root/package_dir), never a hardcoded path or class check.
+ * First real use: dbhq_launch_module() below now delegates to this
+ * instead of forking itself - a pure, verifiable substitution (same
+ * exact argv, same exact behavior) - the real proof-of-mechanism test
+ * before events-hq/chat-hai/network-browser are migrated onto it too.
+ * Returns the child pid (or -1 on fork failure), same as a bare
+ * fork() - caller owns the pid the same way it always did. */
+static pid_t launch_module(const char *src, const char *house_root, const char *package_dir, const char *extra_arg) {
+    if (!src || !src[0]) return -1;
     char full_path[PATH_BUF];
     if (src[0] == '/') snprintf(full_path, sizeof(full_path), "%s", src);
-    else snprintf(full_path, sizeof(full_path), "%s/%s", g_house_root, src);
+    else snprintf(full_path, sizeof(full_path), "%s/%s", house_root, src);
 
+    pid_t pid = fork();
+    if (pid == 0) {
+        if (extra_arg && extra_arg[0])
+            execl(full_path, full_path, house_root, package_dir, extra_arg, (char *)NULL);
+        else
+            execl(full_path, full_path, house_root, package_dir, (char *)NULL);
+        _exit(1);
+    } else if (pid < 0) {
+        fprintf(stderr, "khtpm_entity_menu_render: launch_module: fork failed for %s\n", full_path);
+    }
+    return pid;
+}
+
+static void dbhq_launch_module(const char *src, const char *extra_arg) {
     /* REAL, NEW 2026-08-25 (bookmarks manager port) - modules now also
      * get the package dir (chtpm's own dirname, i.e. the pal dir for a
      * per-pal consumer like bookmarks) as argv[2]. Backward compatible:
@@ -263,18 +290,13 @@ static void dbhq_launch_module(const char *src, const char *extra_arg) {
      * for a manager that serves multiple category windows off one
      * binary (palettes_manager.c) and needs to know which one. NULL/
      * empty is the common case (bookmarks/stats-hq don't use it) -
-     * execl() just gets a shorter argv, no behavior change for them. */
-    g_dbhq_module_pid = fork();
-    if (g_dbhq_module_pid == 0) {
-        if (extra_arg && extra_arg[0])
-            execl(full_path, full_path, g_house_root, g_package_dir, extra_arg, (char *)NULL);
-        else
-            execl(full_path, full_path, g_house_root, g_package_dir, (char *)NULL);
-        _exit(1);
-    } else if (g_dbhq_module_pid < 0) {
-        fprintf(stderr, "khtpm_entity_menu_render: db-hq: launch_module: fork failed for %s\n", full_path);
-        g_dbhq_module_pid = -1;
-    }
+     * execl() just gets a shorter argv, no behavior change for them.
+     *
+     * CORRECTED 2026-08-31 - was its own real fork()+execl() here; now
+     * delegates to the generic launch_module() above (xperiments/
+     * khtpm-generic-dispatch-design.md §2a) - same exact argv, same
+     * exact behavior, zero fork()/execl() duplication. */
+    g_dbhq_module_pid = launch_module(src, g_house_root, g_package_dir, extra_arg);
 }
 
 static Elem *elem_new(const char *tag) {
