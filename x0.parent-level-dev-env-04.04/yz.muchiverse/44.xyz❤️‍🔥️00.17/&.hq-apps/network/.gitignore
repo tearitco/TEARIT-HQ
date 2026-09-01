@@ -1,0 +1,8 @@
+# Real shared-source copies (build.sh's own `cp` step, matching
+# build_entity_menu.sh's convention) - regenerated from
+# &.widgits/_shared-lib/ on every build, not hand-forked here.
+khtpm_render_core.c
+khtpm_css_parser.c
+khtpm_css_parser.h
+# real runtime scratch (network_browser_manager.c's own fetch target)
+tmp/

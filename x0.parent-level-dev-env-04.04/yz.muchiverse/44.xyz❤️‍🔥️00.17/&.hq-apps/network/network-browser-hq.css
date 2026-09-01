@@ -1,0 +1,9 @@
+/* network-browser-hq.css - real, authored palette reference for
+   network-browser-hq.chtpm (see that file's own header comment on
+   its current NOT-yet-parsed-at-runtime status). Colors here match
+   what network_browser_render.c hand-sets today - kept in sync
+   manually until the real CSS-driven chrome pass lands. */
+.nb-chrome { background-color: #2a2a2a; color: #eeeeee; }
+.nb-address { background-color: #333355; color: #ffffff; }
+.nb-content { background-color: #1c1c1c; color: #cccccc; }
+.nb-status { background-color: #101010; color: #88cc88; }

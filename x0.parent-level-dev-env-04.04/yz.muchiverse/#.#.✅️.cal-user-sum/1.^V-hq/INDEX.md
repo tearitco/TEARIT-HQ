@@ -95,6 +95,18 @@ terminal tab) is still not started.
    (IRC/forum/chain/mutaclysm/piececraft) — deliberate, opportunistic
    migration only, one app at a time, when a real touch already justifies it.
    Read this before designing ANY new taskbar window, HQ app, or renderer.
+   **First real proof case built 2026-08-31**: `&.hq-apps/network/` -
+   `network_browser_manager.c` (real manager: fetches a URL via curl,
+   does a real simple manual HTML title/text/link extraction, publishes
+   `#.desktop/network_browser_page.state.txt` + `..._status.state.txt`,
+   consumes `..._action.txt`'s `go:<url>`), `network_browser_render.c`
+   (real khtpm Elem-tree X11 window, live-tested/screenshot-verified),
+   `network_browser_render_ascii.c` (real interactive CLI mirror of the
+   SAME manager state - live-tested, including real link-follow).
+   `open_network_browser.sh` now launches this instead of the old
+   `cli_io_window.c` stub. See those files' own header comments for the
+   real, honest scope notes (e.g. why the chrome is hand-built rather
+   than parsed from `network-browser-hq.chtpm` yet).
 -3. **SKILLS.md (2026-08-29)** — read this FIRST, before anything else in this
    list. Not a task doc — a generalized "how to operate well in this house"
    compaction: the core file-based-state philosophy, the rendering
