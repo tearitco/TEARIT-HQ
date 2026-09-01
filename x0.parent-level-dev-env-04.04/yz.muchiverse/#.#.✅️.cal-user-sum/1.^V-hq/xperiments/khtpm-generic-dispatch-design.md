@@ -240,7 +240,62 @@ Not a promise that §2c ships soon. Not a claim that today's 7 existing
 modes are broken - they work, live, right now; this is about how the
 NEXT one (and the one after that) gets added without adding an 8th,
 9th, 10th copy of the same already-known-imperfect pattern. Not
-implemented anywhere yet - `khtpm_entity_menu_render.c` has zero diff
-from `origin/main` as of this doc's own writing (confirmed: the
-in-progress network-browser hardcoding was reverted via `git checkout`
-before this doc existed).
+implemented anywhere yet beyond §2a - `khtpm_core_render.c` (renamed
+2026-08-31 from `khtpm_entity_menu_render.c`, same file, see
+`CENTROID_GOLD_STD.md`'s own cross-reference) has zero diff from
+`origin/main` on the mode-dispatch question specifically (the in-
+progress network-browser hardcoding was reverted via `git checkout`
+before this doc existed; the rename itself is real, committed, and
+purely cosmetic - see that commit's own message for the full verified-
+zero-behavior-change writeup).
+
+## 5. Broader consolidation — real, separate renderer systems this design should eventually absorb
+
+Direct instruction, 2026-08-31, same day: "open_hai need 2 use same
+layout renderer as everyone else. we dont want more than one
+renderer." Real, confirmed count as of this writing: at least **four**
+separate real khtpm parser/renderer systems exist in the house
+(`khtpm_core_render.c` itself, `khtpm_strip_parser.c` for the taskbar,
+`khtpm_choice_picker.c`, and open-hai's own `khtpm_open_hai_render.c`),
+plus real `.chtpm` files (`chain-hq.chtpm`/`forum-hq.chtpm`/`irc-chat-
+hq.chtpm`/`network-browser-hq.chtpm`) nothing parses yet at all. This
+section records each as a real, later, explicitly-not-started
+consolidation target - sequenced AFTER the 7-mode `g_khtpm_modes[]`
+migration in §3, not competing with it:
+
+- **`khtpm_open_hai_render.c`** (`&.widgits/open-hai/ops/`) - real,
+  confirmed BIGGER lift than a simple registration: its own header
+  comment states it uses a "flat (non-tag-tree) layout" and does NOT
+  parse a real `.chtpm` into an `Elem` tree at all - it hand-computes
+  x/y/w/h directly, same category of gap as network-browser's own
+  original (corrected) attempt. Real work needed: author a real
+  `open-hai.chtpm`, convert its flat layout to the tag-tree model,
+  THEN register it in `g_khtpm_modes[]` - three real steps, not one.
+- **`khtpm_choice_picker.c`** (`&.widgits/tile-picker/ops/`) - already
+  flagged in `TPMOS-COMPLIANCE-DEBT.md` §5: hand-builds its Elem tree
+  from a flat `choices_file` format, never parses a `.chtpm`. Real,
+  live infrastructure (desktop-tile context menus via
+  `tp_desktop_window_rgb.c`, book-stack's dialogue-choice flow) - same
+  real fix shape as open-hai (author a real `.chtpm`, parse it, inject
+  the caller's real choice rows via `reusable_slot()`).
+- **`khtpm_strip_parser.c`** (the taskbar itself) - a genuinely
+  different real case: it already parses real `.chtpm` files
+  (`khtpm_strip_header.chtpm`/`khtpm_strip_bottom.chtpm`) through its
+  own real, working parser/layout/manager split
+  (`khtpm_taskbar_manager.c`/`khtpm_taskbar_manager_main.c`), and
+  already has its own real ASCII mirror
+  (`khtpm_strip_render_ascii.c`) - CENTROID_GOLD_STD.md's own dual-
+  renderer rule, achieved independently, years before this design
+  doc existed. Real open question, NOT answered here: does merging the
+  taskbar into the SAME binary as every HQ window make sense at all
+  (the taskbar is a fundamentally different kind of window - always-
+  on, screen-edge-anchored, singleton), or should `g_khtpm_modes[]`
+  become a real, SHARED table both binaries include (via the same
+  real text-`#include` convention `khtpm_render_core.c` already uses)
+  rather than forcing a literal one-binary merger. Flagged for a real,
+  separate design decision later - not assumed either way here.
+
+**Real, deliberate non-goal for now**: no work has started on any of
+these three. This section exists so the real scope is written down
+before someone reaches for "just merge it in" as an offhand line item
+under an already-large migration.
