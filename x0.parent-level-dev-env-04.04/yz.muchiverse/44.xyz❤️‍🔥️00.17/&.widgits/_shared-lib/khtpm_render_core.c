@@ -147,6 +147,16 @@ typedef struct Elem {
      * branch). Empty/unused = zero behavior change for every existing
      * consumer - nothing currently reads or sets this. */
     char backspace_action[1536];
+    /* REAL, NEW 2026-09-01 (direct instruction: "build word-wrap/multi-
+     * line/emoji into the generic cli_io first" - real generic
+     * capability, not chat-hai-specific) - a real, generic <cli_io
+     * rows="N"/> attribute (default 1, matching every existing single-
+     * line consumer's real behavior unchanged): the number of real text
+     * rows this field's own box should reserve, read by the layout
+     * code that positions it (layout_fixed_rows_and_scrolllist()) so a
+     * real multi-line composer actually gets a real taller box, not
+     * just draw_elem()'s own real word-wrap with nowhere to put it. */
+    int rows;
     struct Elem *children[MAX_CHILDREN];
     int n_children;
     struct Elem *parent;

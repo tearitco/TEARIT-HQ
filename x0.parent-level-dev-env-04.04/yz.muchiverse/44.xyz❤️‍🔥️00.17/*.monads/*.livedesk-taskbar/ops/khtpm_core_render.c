@@ -490,6 +490,10 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
         snprintf(decoded, sizeof(decoded), "%s", val);
         decode_entities(decoded);
         snprintf(e->backspace_action, sizeof(e->backspace_action), "%s", decoded);
+    } else if (strcmp(name, "rows") == 0) {
+        /* REAL, NEW 2026-09-01 - see Elem's own rows field comment in
+         * khtpm_render_core.c. */
+        e->rows = atoi(val);
     } else if (strcmp(name, "drop_action") == 0) {
         /* 2026-08-24 - see the g_drop_action block comment above.
          * Window-level attr; decoded through the SAME entity decoder
@@ -8637,14 +8641,20 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
  * one exists as a direct child - real, tag-based, never part of any
  * scroll flow, always the container's own last ROW_H). */
 static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int w, int h, int *scroll, int *out_lo, int *out_hi) {
-    int has_composer = 0;
+    int composer_rows = 0;
     Elem *scrolllist = NULL;
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
-        if (strcmp(c->tag, "cli_io") == 0) has_composer = 1;
+        /* REAL, NEW 2026-09-01 (direct instruction: "build word-wrap/
+         * multi-line/emoji into the generic cli_io first") - a real
+         * <cli_io rows="N"/> reserves N real text rows instead of the
+         * old, always-1-row assumption (rows defaults to 0/unset,
+         * meaning "1" - every existing single-line consumer, open-hai's
+         * own real composer included, is completely unaffected). */
+        if (strcmp(c->tag, "cli_io") == 0) composer_rows = c->rows > 0 ? c->rows : 1;
         if (strcmp(c->tag, "scrolllist") == 0) scrolllist = c;
     }
-    int composer_h = has_composer ? ROW_H : 0;
+    int composer_h = composer_rows * ROW_H;
     int y_cursor = y;
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
@@ -8655,7 +8665,7 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
             else c->nav_index = 0;
             y_cursor += ROW_H;
         } else if (strcmp(c->tag, "cli_io") == 0) {
-            c->x = x; c->y = y + h - ROW_H; c->w = w; c->h = ROW_H;
+            c->x = x; c->y = y + h - composer_h; c->w = w; c->h = composer_h;
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
             c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c;
         }

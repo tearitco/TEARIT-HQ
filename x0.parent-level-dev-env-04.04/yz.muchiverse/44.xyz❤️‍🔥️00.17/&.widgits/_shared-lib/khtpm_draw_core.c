@@ -558,44 +558,129 @@ static void draw_elem(Elem *e, int hover_id_hash) {
         XftColor col = xft_color(e->style.has_fg_color ? e->style.fg_color : "#cccccc");
         XGlyphInfo extents;
         XftTextExtentsUtf8(dpy, font, (const FcChar8 *)shown_label, (int)strlen(shown_label), &extents);
-        /* REAL, NEW 2026-09-01 (found live testing open-hai's own real
-         * sidebar - a real session snippet longer than the sidebar's
-         * own real 220px width drew straight past its own element box
-         * into the panel column beside it, looking exactly like a
-         * garbled double-render until traced back to plain unclipped
-         * text overflow) - a real, generic fix, not open-hai-specific:
-         * any element with a real w>0 now gets its own label truncated
-         * (with a real "..." ellipsis, UTF-8-safe - real message text
-         * can and does contain multi-byte emoji, never cut mid-
-         * codepoint) to fit the space actually available between its
-         * own badge and its own right edge. A harmless no-op for any
-         * label that already fits - nothing currently working can
-         * regress from this. */
-        char clipped_buf[600];
-        const char *draw_label = shown_label;
         int avail_w = e->w > 0 ? (e->x + e->w) - badge_label_x : -1;
-        if (avail_w > 0 && extents.width > avail_w) {
-            snprintf(clipped_buf, sizeof(clipped_buf), "%s", shown_label);
-            size_t len = strlen(clipped_buf);
-            static const char *ELLIPSIS = "...";
-            XGlyphInfo ell_ext;
-            XftTextExtentsUtf8(dpy, font, (const FcChar8 *)ELLIPSIS, 3, &ell_ext);
-            int target_w = avail_w - ell_ext.width;
-            if (target_w < 0) target_w = 0;
-            while (len > 0) {
-                XGlyphInfo cur_ext;
-                XftTextExtentsUtf8(dpy, font, (const FcChar8 *)clipped_buf, (int)len, &cur_ext);
-                if (cur_ext.width <= target_w) break;
-                len--;
-                while (len > 0 && ((unsigned char)clipped_buf[len] & 0xC0) == 0x80) len--; /* don't cut mid-UTF8-codepoint */
+        int line_h = font->ascent - font->descent > 0 ? font->ascent - font->descent : 12;
+        line_h += 4; /* real, small leading - matches this file's own general text-row spacing feel */
+        /* REAL, NEW 2026-09-01 (direct instruction: "build word-wrap/
+         * multi-line/emoji into the generic cli_io first" - a real,
+         * generic capability, not chat-hai-specific, so chat-hai's own
+         * eventual migration doesn't lose real features it already has)
+         * - a <cli_io> whose own real h is declared taller than roughly
+         * 1.5 real text rows gets REAL multi-line word-wrap within that
+         * fixed box; a plain single-row cli_io (open-hai's own real
+         * composer today, h==ROW_H) is COMPLETELY unaffected - same
+         * single-line, vertically-centered path as before, zero risk to
+         * anything already working. Real, deliberate scope for this
+         * first slice: fixed-height wrap only, no dynamic auto-growth/
+         * sibling-reflow as the user types past the box - that's a real
+         * layout-engine feature, flagged as separate future work, not
+         * silently attempted here under time pressure. */
+        int is_multiline_cli_io = (strcmp(e->tag, "cli_io") == 0) && (e->h > (line_h * 3) / 2) && avail_w > 0;
+        if (is_multiline_cli_io) {
+            /* Real, generic greedy word-wrap: pack words onto each line
+             * (measuring real glyph width via Xft, not a char-count
+             * guess - same discipline chai_measure_text_px() already
+             * uses elsewhere in this house), starting a new line
+             * whenever the next word wouldn't fit; stop once no more
+             * real vertical space remains in the box (the last visible
+             * line gets a real "..." ellipsis if there's more text than
+             * fits, same real convention the single-line clip path
+             * already uses). */
+            char buf[600];
+            snprintf(buf, sizeof(buf), "%s", shown_label);
+            int max_lines = e->h / line_h;
+            if (max_lines < 1) max_lines = 1;
+            int ty = e->y + font->ascent + 2;
+            int line_no = 0;
+            char *p = buf;
+            while (*p && line_no < max_lines) {
+                int last_good_space = -1;
+                int i = 0;
+                XGlyphInfo lw;
+                for (;;) {
+                    char c = p[i];
+                    if (c == '\0') break;
+                    if (c == ' ') last_good_space = i;
+                    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)p, i + 1, &lw);
+                    if (lw.width > avail_w) break;
+                    i++;
+                }
+                int cut = i;
+                int has_more_after = (p[i] != '\0');
+                if (has_more_after && last_good_space >= 0) cut = last_good_space;
+                if (cut == 0 && p[i] != '\0') cut = 1; /* a single glyph wider than the whole box - avoid an infinite loop, take it anyway */
+                char line_buf[600];
+                int is_last_visible_line = (line_no == max_lines - 1);
+                int real_more_remains = has_more_after && (cut < (int)strlen(p) || p[cut] != '\0');
+                if (is_last_visible_line && real_more_remains) {
+                    /* Real ellipsis on the box's own last visible line
+                     * only, matching the single-line clip path's own
+                     * real convention - trims further until "..." fits,
+                     * UTF-8-safe (never cuts mid-codepoint). */
+                    int len2 = cut;
+                    static const char *ELLIPSIS = "...";
+                    XGlyphInfo ell_ext;
+                    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)ELLIPSIS, 3, &ell_ext);
+                    int target_w = avail_w - ell_ext.width;
+                    if (target_w < 0) target_w = 0;
+                    while (len2 > 0) {
+                        XGlyphInfo cw;
+                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)p, len2, &cw);
+                        if (cw.width <= target_w) break;
+                        len2--;
+                        while (len2 > 0 && ((unsigned char)p[len2] & 0xC0) == 0x80) len2--;
+                    }
+                    snprintf(line_buf, sizeof(line_buf), "%.*s%s", len2, p, ELLIPSIS);
+                } else {
+                    snprintf(line_buf, sizeof(line_buf), "%.*s", cut, p);
+                }
+                draw_text_emoji(font, &col, badge_label_x, ty, line_buf);
+                ty += line_h;
+                line_no++;
+                p += cut;
+                while (*p == ' ') p++; /* real, plain word-wrap convention - a consumed break space never starts the next line */
+                if (is_last_visible_line) break;
             }
-            clipped_buf[len] = '\0';
-            snprintf(clipped_buf + len, sizeof(clipped_buf) - len, "%s", ELLIPSIS);
-            draw_label = clipped_buf;
+        } else {
+            /* REAL, NEW 2026-09-01 (found live testing open-hai's own
+             * real sidebar - a real session snippet longer than the
+             * sidebar's own real 220px width drew straight past its own
+             * element box into the panel column beside it, looking
+             * exactly like a garbled double-render until traced back to
+             * plain unclipped text overflow) - a real, generic fix, not
+             * open-hai-specific: any element with a real w>0 now gets
+             * its own label truncated (with a real "..." ellipsis,
+             * UTF-8-safe - real message text can and does contain
+             * multi-byte emoji, never cut mid-codepoint) to fit the
+             * space actually available between its own badge and its
+             * own right edge. A harmless no-op for any label that
+             * already fits - nothing currently working can regress from
+             * this. */
+            char clipped_buf[600];
+            const char *draw_label = shown_label;
+            if (avail_w > 0 && extents.width > avail_w) {
+                snprintf(clipped_buf, sizeof(clipped_buf), "%s", shown_label);
+                size_t len = strlen(clipped_buf);
+                static const char *ELLIPSIS = "...";
+                XGlyphInfo ell_ext;
+                XftTextExtentsUtf8(dpy, font, (const FcChar8 *)ELLIPSIS, 3, &ell_ext);
+                int target_w = avail_w - ell_ext.width;
+                if (target_w < 0) target_w = 0;
+                while (len > 0) {
+                    XGlyphInfo cur_ext;
+                    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)clipped_buf, (int)len, &cur_ext);
+                    if (cur_ext.width <= target_w) break;
+                    len--;
+                    while (len > 0 && ((unsigned char)clipped_buf[len] & 0xC0) == 0x80) len--; /* don't cut mid-UTF8-codepoint */
+                }
+                clipped_buf[len] = '\0';
+                snprintf(clipped_buf + len, sizeof(clipped_buf) - len, "%s", ELLIPSIS);
+                draw_label = clipped_buf;
+            }
+            int ty = e->y + (e->h + font->ascent - font->descent) / 2;
+            if (ty < e->y + font->ascent) ty = e->y + font->ascent + pad / 2;
+            draw_text_emoji(font, &col, badge_label_x, ty, draw_label);
         }
-        int ty = e->y + (e->h + font->ascent - font->descent) / 2;
-        if (ty < e->y + font->ascent) ty = e->y + font->ascent + pad / 2;
-        draw_text_emoji(font, &col, badge_label_x, ty, draw_label);
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
     }
     /* Badge draws LAST - see the big comment above. For sprite tiles,
