@@ -1,36 +1,24 @@
-<!-- network-browser-hq.chtpm — the REAL, parsed layout for the "network
-     browser" HQ app (CENTROID_GOLD_STD.md's first real proof case).
-
-     CORRECTED 2026-08-31, direct instruction ("we still want to use
-     chtpm+layout module, we always should no matter what"): this file
-     was originally authored as a non-functional "design reference"
-     while network_browser_render.c hand-built its Elem tree in C. That
-     was wrong (see CENTROID_GOLD_STD.md §3 rule 1's own correction).
-     This file is now REAL, PARSED input - khtpm_core_render.c's
-     own parse_chtpm() reads this directly (mode g_is_network_browser,
-     class="network-browser-window"), same real mechanism db-hq/
-     events-hq/chat-hai/taskbar_settings.chtpm already use.
-
-     <module> launches the real manager (network_browser_manager.c) the
-     exact same way dashboard.chtpm's own <module> does for db-hq -
-     ported, not invented (dbhq_launch_module()/evhq_launch_module()'s
-     own real precedent).
-
-     Geometry is assigned by this mode's own nb_layout_pass() in C
-     (same real convention every other khtpm mode uses - the generic
-     css_layout_pass() flex engine is NOT yet live-tested against a
-     real app, per its own header comment in khtpm_render_core.c) -
-     this file's job is real structure/ids/classes/static labels, not
-     pixel positions. Dynamic TITLE/TEXT/LINK rows are injected into
-     #content at runtime via reusable_slot(), same shape as db-hq's own
-     dbhq_inject_list_panel(). -->
-<window label="Network Browser" class="network-browser-window">
-  <module src="&.hq-apps/network/+x/network_browser_manager.+x" />
+<!-- network-browser-hq.chtpm - REAL, GENERATED PROJECTION.
+     Written by network_browser_manager.c's own write_chtpm_projection()
+     every real main-loop tick - DO NOT HAND-EDIT, changes are
+     overwritten within ~300ms. See that function's own header
+     comment for the real design this answers to. -->
+<window label="Network Browser" class="">
   <page name="main">
-    <item id="close" action="CLOSE" class="close-btn" label="X"/>
-    <item id="fullscreen" action="FULLSCREEN_NB" class="fullscreen-btn" label="!"/>
-    <item id="address-bar" class="nb-address" label=""/>
-    <panel id="content" class="nb-content"></panel>
-    <item id="status-bar" class="nb-status" label=""/>
+    <sidebar>
+      <text id="nb-title" label="Network"/>
+      <scrolllist></scrolllist>
+    </sidebar>
+    <panel>
+    <cli_io id="address" target_id="address" label="URL: " action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.hq-apps/network/nb_write_go.sh' 'go' '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.hq-apps/network/network-browser-hq.chtpm'"/>
+    <text id="status" label="Status: ready"/>
+    <scrolllist>
+      <text id="title1" class="page-title" label="Example Domain"/>
+      <text id="text2" label="Example Domain"/>
+      <text id="text3" label="Example Domain"/>
+      <text id="text4" label="This domain is for use in documentation examples without needing permission. Avoid use in operations."/>
+      <item id="link5" label="Learn more" action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.hq-apps/network/nb_write_go.sh' 'go' 'https://iana.org/domains/example'"/>
+    </scrolllist>
+  </panel>
   </page>
 </window>

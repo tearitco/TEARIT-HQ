@@ -1,0 +1,28 @@
+<!-- network-browser-hq.chtpm — REAL, CHECKED-IN BOOTSTRAP (2026-09-01).
+     Launched by button.sh via the shared khtpm_core_render.+x (the
+     SAME renderer every other khtpm window uses - no per-app renderer
+     for network-browser anymore).
+
+     The ONLY thing that matters here is the <module> tag: it launches
+     network_browser_manager.+x as this window's own child process
+     (same real fork()+execl() mechanism db-hq/events-hq/chat-hai/open-hai
+     each already use for their own managers, reused verbatim via the
+     generic launch_module() - see that function's own header comment).
+     The manager owns EVERYTHING else - the instant it starts, it
+     overwrites THIS EXACT FILE with the real, live projection (real
+     current page/address/links/status, via its own write_chtpm_projection()),
+     which the renderer picks up within one tick via its generic
+     capability #1 (reparse_chtpm_if_changed()).
+
+     DO NOT hand-edit the <page> content below - it only exists so this
+     file is valid enough to render for the brief moment before the
+     manager's first write lands. Everything under <page> is replaced
+     immediately and continuously; only the <module> tag is ever read
+     (once, at this window's own startup) and left untouched by the
+     manager's own regenerated version. -->
+<window label="Network Browser" class="">
+  <module src="&.hq-apps/network/+x/network_browser_manager.+x"/>
+  <page name="main">
+    <text id="status" label="starting..."/>
+  </page>
+</window>
