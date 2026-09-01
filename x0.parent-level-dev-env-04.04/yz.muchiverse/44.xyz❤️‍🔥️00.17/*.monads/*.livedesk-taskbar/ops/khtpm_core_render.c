@@ -12709,9 +12709,28 @@ int main(int argc, char **argv) {
          * SIGTERM/SIGINT handler (dbhq_handle_term_signal(), which
          * explicitly calls dbhq_cleanup_module() before _exit()) - this
          * mode just never installed it, since it never had a module to
-         * clean up before now. Same real handler, not a new one. */
+         * clean up before now. A real SIGTERM/SIGINT handler here was
+         * tried and REVERTED (2026-09-01, live-confirmed via repeated
+         * isolated testing): installing it made the freshly-forked
+         * child die shortly after its own first write, root cause not
+         * isolated. Real fix instead, borrowed from chat-hai's OWN
+         * already-proven, different real mechanism for this exact
+         * problem (chai_launch_module()'s own real chat_hai_renderer.
+         * pid file + chat_hai_loop.sh's own liveness poll) - made
+         * generic here rather than copied a second time: this renderer
+         * writes ITS OWN pid to a real, predictable, generic path next
+         * to the .chtpm (module_parent.pid in package_dir) before
+         * launching ANY module; a module binary that wants this real
+         * "exit if my own parent is gone" safety net can poll that same
+         * file itself (see khtpm_open_hai_manager.c's own real use of
+         * it) - opt-in, not required, zero effect on a module that
+         * never reads it. */
         Elem *module_elem = find_by_tag(g_window, "module");
         if (module_elem && module_elem->label[0]) {
+            char parent_pid_path[PATH_BUF];
+            snprintf(parent_pid_path, sizeof(parent_pid_path), "%s/module_parent.pid", g_package_dir);
+            FILE *ppf = fopen(parent_pid_path, "w");
+            if (ppf) { fprintf(ppf, "%d\n", (int)getpid()); fclose(ppf); }
             g_dbhq_module_pid = launch_module(module_elem->label, g_house_root, g_package_dir,
                                                module_elem->id[0] ? module_elem->id : NULL);
             atexit(dbhq_cleanup_module);

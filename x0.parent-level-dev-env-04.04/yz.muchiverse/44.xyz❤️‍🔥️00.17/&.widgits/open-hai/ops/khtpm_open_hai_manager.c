@@ -66,6 +66,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <errno.h>
 #include <fcntl.h>
 
 #define PATH_BUF 4096
@@ -1897,9 +1898,40 @@ static void handle_request(void) {
     }
 }
 
+/* REAL, NEW 2026-09-01 (xperiments/khtpm-generic-dispatch-design.md -
+ * direct instruction to reduce hardcoding/redundancy, borrowed from
+ * chat-hai's OWN already-proven, different real fix for the exact
+ * "orphaned module survives its own dead parent" problem this app's
+ * own SIGTERM-handler attempt failed to solve safely: chai_launch_
+ * module() writes the renderer's own real pid to a file, chat_hai_
+ * loop.sh polls it and self-exits when that pid is gone. Made generic
+ * here (khtpm_core_render.c's own module-launch now writes this same
+ * real file for ANY module, not just open-hai's) rather than copied a
+ * second time - this manager is simply the first OTHER real consumer
+ * of it. A missing/unreadable file is treated as "no parent to check",
+ * never as "parent is dead" - this safety net degrades to today's
+ * plain behavior, it never introduces a new way to exit unexpectedly. */
+static int parent_still_alive(const char *package_dir) {
+    if (!package_dir || !package_dir[0]) return 1;
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/module_parent.pid", package_dir);
+    FILE *f = fopen(path, "r");
+    if (!f) return 1;
+    int pid = 0;
+    int got = fscanf(f, "%d", &pid);
+    fclose(f);
+    if (got != 1 || pid <= 0) return 1;
+    if (kill((pid_t)pid, 0) == 0) return 1;
+    return errno != ESRCH; /* any error OTHER than "no such process" is inconclusive - assume alive rather than risk a false exit */
+}
+
 int main(int argc, char **argv) {
     if (argc < 2) { fprintf(stderr, "khtpm_open_hai_manager: usage: <house_root> [--data-root <dir>]\n"); return 1; }
     snprintf(g_house_root, sizeof(g_house_root), "%s", argv[1]);
+    char g_parent_package_dir[PATH_BUF] = "";
+    if (argc > 2 && strcmp(argv[2], "--data-root") != 0) {
+        snprintf(g_parent_package_dir, sizeof(g_parent_package_dir), "%s", argv[2]);
+    }
     /* PER-INSTANCE DATA ROOT (2026-08-24, cursword chat): optional
      * --data-root redirects sessions/state/audit to one self-contained dir
      * (the calling entity pal's own chat/ dir) so a SECOND instance of this
@@ -1971,6 +2003,16 @@ int main(int argc, char **argv) {
         check_pending();
         handle_request();
         write_chtpm_projection();
+        /* REAL, NEW 2026-09-01 - see parent_still_alive()'s own header
+         * comment. Checked once per real loop iteration (200ms), same
+         * real cadence chat_hai_loop.sh's own poll already uses - a
+         * renderer killed with -9 (button.sh's own real relaunch path,
+         * no atexit ever fires) no longer leaves this process running
+         * forever. */
+        if (!parent_still_alive(g_parent_package_dir)) {
+            fprintf(stderr, "khtpm_open_hai_manager: real parent (pid in %s/module_parent.pid) is gone - exiting\n", g_parent_package_dir);
+            break;
+        }
         usleep(200000); /* 200ms - a bit faster than db-hq/events-hq's 400ms, this app is more interactive/request-driven */
     }
     return 0;
