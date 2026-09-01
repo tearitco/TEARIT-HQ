@@ -228,12 +228,29 @@ static void write_active_session(void) {
     fclose(f);
 }
 
+static void publish_sessions(void); /* real definition further down - see this call site's own comment */
+
 static void start_new_session(void) {
     time_t now = time(NULL);
     snprintf(g_session_dir, sizeof(g_session_dir), "%s/%ld", g_sessions_root, (long)now);
     mkdir(g_sessions_root, 0755);
     mkdir(g_session_dir, 0755);
     write_active_session();
+    /* REAL FIX 2026-08-31 (found live testing the sidebar redesign on a
+     * fresh --data-root with zero prior sessions: a brand-new session
+     * never appeared in the sidebar at all) - every OTHER real caller
+     * of start_new_session() (NEWSESSION/DELETESESSION's own request
+     * handlers) already remembered to call publish_sessions() right
+     * after, but main()'s own real startup bootstrap (no sessions
+     * exist yet -> start a fresh one) never did - a real, silent gap
+     * that only ever showed up on a genuinely empty sessions dir,
+     * which is exactly what a fresh --data-root is, and exactly what
+     * plain open-hai's own very first-ever run would be too. Real fix:
+     * publish HERE, unconditionally, so no future caller can forget -
+     * the two existing call sites' own publish_sessions() calls become
+     * harmless, cheap redundant republishes, not removed (no reason to
+     * touch working call sites for this). */
+    publish_sessions();
 }
 
 static void load_session(const char *dir) {
@@ -1652,13 +1669,21 @@ static void write_chtpm_projection(void) {
         xml_escape(status_raw, status_esc, sizeof(status_esc));
     }
     xml_escape(model_name, model_esc, sizeof(model_esc));
-    OHP_APPEND("    <text id=\"status\" label=\"%s\"/>\n", status_esc);
-    OHP_APPEND("    <item id=\"new\" label=\"+ New session\" action=\"'%s/oh_write_request.sh' 'NEWSESSION' '%s'\"/>\n", scripts_dir, state_dir_sq);
-    OHP_APPEND("    <item id=\"cyclemodel\" label=\"Model: %s (click to cycle)\" action=\"'%s/oh_write_request.sh' 'CYCLEMODEL' '%s'\"/>\n", model_esc, scripts_dir, state_dir_sq);
-    OHP_APPEND("    <item id=\"togglesound\" label=\"Sound: %s (click to toggle)\" action=\"'%s/oh_write_request.sh' 'TOGGLESOUND' '%s'\"/>\n", sound_on ? "on" : "off", scripts_dir, state_dir_sq);
 
-    /* ---- sessions (real sessions.state.txt, "<dir>|<label>" per line,
-     * same real file publish_sessions() above already maintains) ---- */
+    /* REAL, NEW 2026-08-31 (direct instruction, live report: "we
+     * actually didn't number every message, but we did number a
+     * sidebar with different chat sessions to resume" + a real growing-
+     * window bug) - real sidebar+panel dual-region layout, the shared
+     * renderer's own new, fully generic capability (khtpm_core_render.c
+     * §"generic sidebar+panel scroll" - tag-based only, not open-hai-
+     * specific). Sessions live in <sidebar> (own independent scroll,
+     * numbered/resumable exactly like before); status/controls are
+     * fixed rows at the top of <panel> (always reachable, never scroll
+     * out of view); the transcript + tool-approval gate live inside
+     * <panel>'s own <scrolllist> (own independent scroll, auto-follows
+     * new messages - see reparse_chtpm_if_changed()'s own real fix for
+     * that); the composer is <panel>'s own pinned-bottom <cli_io>. */
+    OHP_APPEND("    <sidebar>\n");
     FILE *sf = fopen(g_sessions_state_path, "r");
     if (sf) {
         char line[PATH_BUF + 128];
@@ -1688,6 +1713,14 @@ static void write_chtpm_projection(void) {
         }
         fclose(sf);
     }
+    OHP_APPEND("    </sidebar>\n");
+
+    OHP_APPEND("    <panel>\n");
+    OHP_APPEND("      <text id=\"status\" label=\"%s\"/>\n", status_esc);
+    OHP_APPEND("      <item id=\"new\" label=\"+ New session\" action=\"'%s/oh_write_request.sh' 'NEWSESSION' '%s'\"/>\n", scripts_dir, state_dir_sq);
+    OHP_APPEND("      <item id=\"cyclemodel\" label=\"Model: %s (click to cycle)\" action=\"'%s/oh_write_request.sh' 'CYCLEMODEL' '%s'\"/>\n", model_esc, scripts_dir, state_dir_sq);
+    OHP_APPEND("      <item id=\"togglesound\" label=\"Sound: %s (click to toggle)\" action=\"'%s/oh_write_request.sh' 'TOGGLESOUND' '%s'\"/>\n", sound_on ? "on" : "off", scripts_dir, state_dir_sq);
+    OHP_APPEND("      <scrolllist>\n");
 
     /* ---- active session's own real transcript tail (last N real
      * U|/A| lines, same file/format persist_msg() writes) ---- */
@@ -1718,7 +1751,7 @@ static void write_chtpm_projection(void) {
                 snprintf(shown, sizeof(shown), "%.200s", un);
                 snprintf(row_raw, sizeof(row_raw), "%s: %s", tail[idx][0] == 'U' ? "you" : "hai", shown);
                 xml_escape(row_raw, row_esc, sizeof(row_esc));
-                OHP_APPEND("    <text id=\"msg%d\" label=\"%s\"/>\n", i, row_esc);
+                OHP_APPEND("        <text id=\"msg%d\" label=\"%s\"/>\n", i, row_esc);
                 free(tail[idx]);
             }
         }
@@ -1731,13 +1764,14 @@ static void write_chtpm_projection(void) {
         char banner[MSG_LEN]; tool_request_banner(&g_pending_tool, banner, sizeof(banner));
         char banner_esc[MSG_LEN + 64];
         xml_escape(banner, banner_esc, sizeof(banner_esc));
-        OHP_APPEND("    <text id=\"tool-banner\" label=\"%s\"/>\n", banner_esc);
-        OHP_APPEND("    <item id=\"approve\" label=\"Approve\" action=\"'%s/oh_write_request.sh' 'APPROVE' '%s'\"/>\n", scripts_dir, state_dir_sq);
-        OHP_APPEND("    <item id=\"deny\" label=\"Deny\" action=\"'%s/oh_write_request.sh' 'DENY' '%s'\"/>\n", scripts_dir, state_dir_sq);
+        OHP_APPEND("        <text id=\"tool-banner\" label=\"%s\"/>\n", banner_esc);
+        OHP_APPEND("        <item id=\"approve\" label=\"Approve\" action=\"'%s/oh_write_request.sh' 'APPROVE' '%s'\"/>\n", scripts_dir, state_dir_sq);
+        OHP_APPEND("        <item id=\"deny\" label=\"Deny\" action=\"'%s/oh_write_request.sh' 'DENY' '%s'\"/>\n", scripts_dir, state_dir_sq);
     }
 
-    OHP_APPEND("    <cli_io id=\"composer\" target_id=\"composer\" label=\"&gt; \" action=\"'%s/oh_write_send.sh' '%s'\"/>\n", scripts_dir, state_dir_sq);
-    OHP_APPEND("    <item id=\"close\" label=\"X (close)\" action=\"CLOSE\"/>\n");
+    OHP_APPEND("      </scrolllist>\n");
+    OHP_APPEND("      <cli_io id=\"composer\" target_id=\"composer\" label=\"&gt; \" action=\"'%s/oh_write_send.sh' '%s'\"/>\n", scripts_dir, state_dir_sq);
+    OHP_APPEND("    </panel>\n");
     OHP_APPEND("  </page>\n</window>\n");
 #undef OHP_APPEND
 

@@ -414,7 +414,17 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
             tok = strtok(NULL, " ");
         }
     } else if (strcmp(name, "label") == 0) {
-        snprintf(e->label, sizeof(e->label), "%s", val);
+        /* REAL FIX 2026-08-31 (found live testing open-hai's own real
+         * projection: a real session snippet containing "&.widgits"
+         * showed as the literal 5-char text "&amp;.widgits" on screen)
+         * - decode_entities() already existed and was already applied
+         * to action=/onclick= (see that branch's own 2026-08-25 fix
+         * comment), just never ported to label= - the one attribute
+         * every generic <text>/<item> projection actually displays. */
+        char decoded[sizeof(e->label)];
+        snprintf(decoded, sizeof(decoded), "%s", val);
+        decode_entities(decoded);
+        snprintf(e->label, sizeof(e->label), "%s", decoded);
     } else if (strcmp(name, "action") == 0 || strcmp(name, "onClick") == 0 || strcmp(name, "onclick") == 0) {
         /* REAL FIX 2026-08-25 (Stage 2 palettes migration, direct live
          * report: "no emojis just blank glyph... no navs"). This parser
@@ -598,6 +608,13 @@ static Elem *g_default_input_elem;
  * ALL keyboard input house-wide to this one (now non-typing) window
  * until it closes, a real, much worse bug than the one being fixed. */
 static Display *dpy;
+/* Forward declaration - real definition (with its own header comment)
+ * lives in the generic sidebar+panel scroll section further down.
+ * Needed here so a reparse (new manager content) can auto-scroll the
+ * message list to the newest content, same real "always show the
+ * latest" convention any chat UI needs - see this function's own body
+ * below for where it's used. */
+static int g_default_scrolllist_scroll;
 static int reparse_chtpm_if_changed(void) {
     if (!g_chtpm_path[0]) return 0;
     struct stat st;
@@ -634,6 +651,15 @@ static int reparse_chtpm_if_changed(void) {
     g_current_page[0] = '\0';
     snprintf(g_current_page, sizeof(g_current_page), "main");
     g_page_stack_n = 0;
+    /* REAL, NEW 2026-08-31 - a real, generic <scrolllist> (see the
+     * dual-region sidebar+panel section further down) auto-follows new
+     * content by default, same real "always show the newest message"
+     * convention any chat UI needs - a huge sentinel here gets clamped
+     * to the real max_scroll the very next layout_scroll_region() call
+     * makes, so this doesn't need to know the real row count itself.
+     * Deliberately does NOT touch g_default_sidebar_scroll - a session
+     * list has no "newest is at the bottom" convention to auto-follow. */
+    g_default_scrolllist_scroll = 1000000;
     return 1;
 }
 
@@ -8459,6 +8485,174 @@ static void dbhq_dump_debug_state(void) {
 
 /* ============ end chat-hai mode content ============ */
 
+/* ============ generic sidebar+panel scroll (default/popup mode) ============
+ * REAL, NEW 2026-08-31 (open-hai's own real conversion, direct
+ * instruction: real growing-window bug + "we actually didn't number
+ * every message, but we did number a sidebar with different chat
+ * sessions to resume" - full sidebar redesign, not a quick scroll cap).
+ * Purely additive to the default/popup mode's own list-layout branch -
+ * a page with no <sidebar>/<panel> tags gets the EXACT SAME flat
+ * behavior as before (swatch-picker, choice-picker, taskbar-settings,
+ * network-browser's own current .chtpm - none use these tags, none
+ * regress). Zero project knowledge: tag-based only (item/text/cli_io/
+ * scrolllist), same discipline as launch_module()/reparse_chtpm_if_
+ * changed()/the generic <cli_io> element itself - any future khtpm
+ * consumer with a long list + a composer can use this, not just
+ * open-hai. */
+#define SIDEBAR_W 220
+#define DEFAULT_WIN_W 700
+#define DEFAULT_WIN_H 520
+
+static int g_default_sidebar_scroll = 0;
+/* g_default_scrolllist_scroll itself is forward-declared earlier, right
+ * after g_default_input_elem - see that comment for why. */
+/* Real nav-index ranges each scrollable region owns this frame - set by
+ * layout_scroll_region() below, read by the generic Page_Up/Page_Down
+ * handler (handle_key()'s own new branch) to know WHICH region's own
+ * scroll variable a page-key should adjust (whichever range g_focus_nav
+ * currently falls inside). [lo,hi] inclusive; [0,0] means "no items,
+ * nothing to scroll" (a fresh page/an empty sidebar). */
+static int g_default_sidebar_nav_lo = 0, g_default_sidebar_nav_hi = 0;
+static int g_default_scrolllist_nav_lo = 0, g_default_scrolllist_nav_hi = 0;
+
+/* Lays out `container`'s own direct item/text children as a real,
+ * generic scrollable list clipped to the given box - only `visible_rows`
+ * of them (h/ROW_H) are ever given a real position/nav_index; the rest
+ * are pushed off-canvas (never drawn, never focusable) until a real
+ * Page_Up/Page_Down (see handle_key()'s own new branch) moves `*scroll`
+ * and brings them into view on the next redraw. text children take a
+ * row like item children (real vertical space) but never get a
+ * nav_index (not interactive) - same real convention the flat-list
+ * branch's own 2026-08-31 text-row fix already established. Returns the
+ * [lo,hi] real nav_index range this call assigned, via *out_lo/*out_hi
+ * (both 0 if the container had zero item children). */
+static void layout_scroll_region(Elem *container, int x, int y, int w, int h, int *scroll, int *out_lo, int *out_hi) {
+    *out_lo = 0; *out_hi = 0;
+    if (!container || h <= 0) return;
+    int visible_rows = h / ROW_H;
+    if (visible_rows < 1) visible_rows = 1;
+    int total = 0;
+    for (int i = 0; i < container->n_children; i++) {
+        Elem *c = container->children[i];
+        if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0) total++;
+    }
+    int max_scroll = total > visible_rows ? total - visible_rows : 0;
+    if (*scroll > max_scroll) *scroll = max_scroll;
+    if (*scroll < 0) *scroll = 0;
+
+    int row = 0;
+    for (int i = 0; i < container->n_children; i++) {
+        Elem *c = container->children[i];
+        if (strcmp(c->tag, "item") != 0 && strcmp(c->tag, "text") != 0) continue;
+        int visible = (row >= *scroll && row < *scroll + visible_rows);
+        if (visible) {
+            c->x = x; c->y = y + (row - *scroll) * ROW_H; c->w = w; c->h = ROW_H;
+            css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
+            if (strcmp(c->tag, "item") == 0) {
+                c->nav_index = ++g_n_nav;
+                g_nav[g_n_nav - 1] = c;
+                if (*out_lo == 0) *out_lo = c->nav_index;
+                *out_hi = c->nav_index;
+            } else {
+                c->nav_index = 0;
+            }
+        } else {
+            c->x = x; c->y = -100000; c->w = w; c->h = ROW_H;
+            c->nav_index = 0;
+        }
+        row++;
+    }
+}
+
+/* Real, generic dual-region layout - fires only when `page` declares
+ * BOTH a <sidebar> and a <panel> (see this section's own header
+ * comment for why a page with neither is completely unaffected).
+ * <sidebar>'s own children are ALWAYS the left scroll region.
+ * <panel>'s own DIRECT item/text children (NOT inside its own
+ * <scrolllist>, if any) flow as fixed, always-visible rows top-down
+ * (real controls like "New session"/model-cycle/sound-toggle belong
+ * here - they must stay reachable without scrolling past a long
+ * transcript); a nested <scrolllist> gets whatever vertical space is
+ * left after those fixed rows and a pinned <cli_io> composer (a real
+ * generic composer field is NEVER part of any scroll flow - always
+ * the last ROW_H of its own parent panel, real convention any future
+ * consumer can rely on, tag-based, not open-hai-specific). Returns 1
+ * if it actually ran (caller should skip the old flat-list path),
+ * 0 if `page` has no sidebar+panel pair (old path still owns it). */
+static int layout_sidebar_panel(Elem *page) {
+    Elem *sidebar = find_by_tag(page, "sidebar");
+    Elem *panel = find_by_tag(page, "panel");
+    if (!sidebar || !panel) return 0;
+
+    g_win_w = g_window->style.has_width ? g_window->style.width : DEFAULT_WIN_W;
+    g_win_h = g_window->style.has_height ? g_window->style.height : DEFAULT_WIN_H;
+
+    sidebar->x = 0; sidebar->y = CHROME_H; sidebar->w = SIDEBAR_W; sidebar->h = g_win_h - CHROME_H;
+    panel->x = SIDEBAR_W; panel->y = CHROME_H; panel->w = g_win_w - SIDEBAR_W; panel->h = g_win_h - CHROME_H;
+    /* REAL, NEW 2026-08-31 (live report: "no separation elements") -
+     * a real visible divider between the two regions belongs in CSS
+     * (entity_menu_default.css's own generic `sidebar`/`cli_io` rules),
+     * NOT set programmatically here - this default/popup mode's own
+     * real content draw round-trips every frame through a text frame
+     * file (dbhq_serialize_frame_subtree()/dbhq_paint_frame_line(),
+     * see reparse_chtpm_if_changed()'s own sibling fix for the same
+     * class of bug with input_buffer/target_id) which does NOT carry
+     * style fields at all - the paint side always recomputes style
+     * fresh from CSS (tag/id/classes), so anything set directly on
+     * these live Elem objects would be silently discarded before ever
+     * reaching the screen. Found live: this exact code used to set
+     * has_bg_color/has_border_color right here and never once painted -
+     * see entity_menu_default.css's own new `sidebar { ... }` rule for
+     * the real fix (dbhq_paint_frame_line()'s own temp Elem calls
+     * css_compute_style() itself, using the SAME real g_sheet, so a
+     * real CSS rule DOES survive the round trip - only a programmatic
+     * style assignment made directly on the live tree does not). */
+
+    layout_scroll_region(sidebar, sidebar->x, sidebar->y, sidebar->w, sidebar->h,
+                          &g_default_sidebar_scroll, &g_default_sidebar_nav_lo, &g_default_sidebar_nav_hi);
+
+    /* Panel's own pass: real cli_io detection FIRST (reserves its row
+     * regardless of where it actually sits in document order), then a
+     * single top-down pass positions fixed rows and hands the
+     * <scrolllist> child (if any) whatever's left. */
+    int has_composer = 0;
+    Elem *scrolllist = NULL;
+    for (int i = 0; i < panel->n_children; i++) {
+        Elem *c = panel->children[i];
+        if (strcmp(c->tag, "cli_io") == 0) has_composer = 1;
+        if (strcmp(c->tag, "scrolllist") == 0) scrolllist = c;
+    }
+    int composer_h = has_composer ? ROW_H : 0;
+    int y_cursor = panel->y;
+    for (int i = 0; i < panel->n_children; i++) {
+        Elem *c = panel->children[i];
+        if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0) {
+            c->x = panel->x; c->y = y_cursor; c->w = panel->w; c->h = ROW_H;
+            css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
+            if (strcmp(c->tag, "item") == 0) { c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c; }
+            else c->nav_index = 0;
+            y_cursor += ROW_H;
+        } else if (strcmp(c->tag, "cli_io") == 0) {
+            c->x = panel->x; c->y = panel->y + panel->h - ROW_H; c->w = panel->w; c->h = ROW_H;
+            css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
+            c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c;
+        }
+        /* scrolllist itself is positioned in its own real pass below,
+         * once the fixed-row total (y_cursor's own final advance) is
+         * known - skipped here on purpose. */
+    }
+    if (scrolllist) {
+        int list_h = (panel->y + panel->h) - y_cursor - composer_h;
+        layout_scroll_region(scrolllist, panel->x, y_cursor, panel->w, list_h,
+                              &g_default_scrolllist_scroll, &g_default_scrolllist_nav_lo, &g_default_scrolllist_nav_hi);
+    }
+
+    if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
+    if (g_focus_nav < 1) g_focus_nav = 1;
+    return 1;
+}
+/* ============ end generic sidebar+panel scroll ============ */
+
 static void assign_nav_and_layout(void) {
     /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode branch, real WM-
      * managed window shape, own layout/nav functions (ported verbatim,
@@ -8469,6 +8663,7 @@ static void assign_nav_and_layout(void) {
     g_n_nav = 0;
     Elem *page = find_page(g_current_page);
     if (!page) { g_win_h = CHROME_H + 8; return; }
+    if (layout_sidebar_panel(page)) return;
     {
         int i, grid = 0;
         for (i = 0; i < page->n_children; i++) {
@@ -9075,6 +9270,19 @@ static void handle_key(KeySym ks, char ch) {
     if (ks == XK_Escape) { g_quit = 1; return; }
     if (ks == XK_Up) { if (g_focus_nav > 1) g_focus_nav--; return; }
     if (ks == XK_Down) { if (g_focus_nav < g_n_nav) g_focus_nav++; return; }
+    /* REAL, NEW 2026-08-31 - generic sidebar+panel scroll (see that
+     * section's own header comment). Page_Up/Down scroll whichever
+     * scrollable region g_focus_nav currently sits inside - a no-op
+     * for a page with no <sidebar>/<panel> (both nav_lo/nav_hi stay
+     * [0,0], never matching a real g_focus_nav >= 1). */
+    if (ks == XK_Page_Up || ks == XK_Page_Down) {
+        int dir = (ks == XK_Page_Down) ? 1 : -1;
+        if (g_focus_nav >= g_default_sidebar_nav_lo && g_focus_nav <= g_default_sidebar_nav_hi)
+            g_default_sidebar_scroll += dir;
+        else if (g_focus_nav >= g_default_scrolllist_nav_lo && g_focus_nav <= g_default_scrolllist_nav_hi)
+            g_default_scrolllist_scroll += dir;
+        return;
+    }
     if (ch >= '1' && ch <= '9') { int d = ch - '0'; if (d <= g_n_nav) g_focus_nav = d; return; }
 }
 
@@ -12279,6 +12487,32 @@ int main(int argc, char **argv) {
         XEvent stale_ev;
         while (XCheckWindowEvent(dpy, win, ButtonPressMask | KeyPressMask, &stale_ev)) {
             /* discard - see comment above */
+        }
+    }
+
+    /* REAL, NEW 2026-08-31 (open-hai's own real conversion, xperiments/
+     * khtpm-generic-dispatch-design.md) - the default/popup mode never
+     * had ANY <module> launch support (db-hq/events-hq/chat-hai each
+     * have their own copy, gated behind their own g_is_X flags). Reuses
+     * the already-generic launch_module() (§2a, zero project knowledge)
+     * and db-hq's own g_dbhq_module_pid/dbhq_cleanup_module() - despite
+     * the db-hq-prefixed name, neither has any g_is_db_hq check inside,
+     * they're already mode-agnostic "the module THIS process launched"
+     * bookkeeping, just never wired up for this mode before. Checked
+     * ONLY here (once, at initial parse) - NOT inside reparse_chtpm_
+     * if_changed(), which fires repeatedly for this mode's whole real
+     * reason for existing (a live-regenerating manager) - re-checking
+     * there would fork a NEW manager on every single content change.
+     * A manager's own regenerated .chtpm simply omits the <module> tag
+     * once running (nothing re-checks it after this one-time launch,
+     * so its presence or absence in later reparses doesn't matter
+     * either way - omitted for clarity, not because it's required). */
+    {
+        Elem *module_elem = find_by_tag(g_window, "module");
+        if (module_elem && module_elem->label[0]) {
+            g_dbhq_module_pid = launch_module(module_elem->label, g_house_root, g_package_dir,
+                                               module_elem->id[0] ? module_elem->id : NULL);
+            atexit(dbhq_cleanup_module);
         }
     }
 

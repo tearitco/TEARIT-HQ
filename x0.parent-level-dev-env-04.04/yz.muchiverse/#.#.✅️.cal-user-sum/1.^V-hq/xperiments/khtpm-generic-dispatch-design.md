@@ -589,3 +589,120 @@ Still not started: switching the real daily-driver
 the live app is untouched. Do not touch it without checking in first
 (direct instruction, 2026-08-31: "check in with me before we edit any
 legacy projects so i can do my own safety checks").
+
+## Status update, 2026-09-01 — generic `<module>` launch for default mode, real sidebar+panel dual-region layout, "lets start" on the switch
+
+Direct instruction ("lets start") after a real, full `.7z` backup of
+the whole dev-env was made (excluding image assets) - proceeded with
+the FIRST real piece of the button.sh switch: a checked-in bootstrap
+`open-hai.chtpm` (a `<module>` tag + a one-line placeholder page) plus
+a real, generic, NEW capability in `khtpm_core_render.c`: the default/
+popup mode never had ANY `<module>` launch support before now (db-hq/
+events-hq/chat-hai each carry their own separate copy). Reused the
+already-generic `launch_module()` (§2a) and db-hq's own
+`g_dbhq_module_pid`/`dbhq_cleanup_module()` (neither actually has a
+`g_is_db_hq` check inside despite the name - just never wired up for
+this mode) - checked ONLY once, at initial parse, never inside
+`reparse_chtpm_if_changed()` (which fires on every real content change
+for this mode - re-checking there would fork a new manager every
+tick). Live-verified against a fresh isolated `--data-root`: the
+manager launches as a real child of the renderer, immediately
+overwrites the bootstrap with its own live projection, capability #1
+picks it up within one tick. Zero regression risk to db-hq/events-hq/
+chat-hai (their own module-launch code, in their own `g_is_X` branches,
+untouched).
+
+**Real bug found+fixed along the way**: `label=` attribute values never
+got XML-entity-decoded (only `action=`/`onclick=` did) - a real session
+snippet containing `&.widgits` showed as the literal text `&amp;.
+widgits` on screen. Ported the existing `decode_entities()` call to
+`label=` too.
+
+**Real UX findings from live testing against actual production
+sessions data** (49 real sessions + full transcripts) forced a bigger,
+real design change mid-stream, by direct instruction ("full sidebar
+redesign now" - not a quick scroll cap): the flat single-column list
+(every session AND every transcript message as one long numbered
+column) does not scale - window grew to 1472px tall, and the user's
+own real correction ("we actually didn't number every message, but we
+did number a sidebar with different chat sessions to resume") called
+for real structural separation, not just a scroll cap on the existing
+flat shape.
+
+**Real, generic sidebar+panel dual-region layout - a genuinely new
+shared capability, not open-hai-specific** (`khtpm_core_render.c`'s own
+new "generic sidebar+panel scroll" section, tag-based only, zero
+project knowledge - any future default-mode consumer with a long list
++ composer can use this):
+- `<sidebar>` and `<panel>` as direct children of `<page>` triggers the
+  new `layout_sidebar_panel()` path; a page with neither still gets the
+  exact same flat-list behavior as before (zero regression for swatch-
+  picker/choice-picker/taskbar-settings/network-browser's own current
+  `.chtpm`, none of which use these tags).
+- Fixed window size (`window`'s own CSS width/height, else a real
+  700x520 default) - the actual fix for the unbounded-growth bug.
+- `<sidebar>`'s own children scroll independently (`layout_scroll_
+  region()`, a new, real, generic helper: only `h/ROW_H` rows are ever
+  given a real position/nav_index, the rest pushed off-canvas until a
+  real Page_Up/Page_Down - newly wired into `handle_key()`, which had
+  NO Page_Up/Down case at all before now for this mode - brings them
+  into view; the SAME helper also lays out a `<scrolllist>` nested
+  inside `<panel>`).
+- `<panel>`'s own direct item/text children (NOT inside its own
+  `<scrolllist>`) are fixed, always-visible rows (status/controls stay
+  reachable without scrolling past a long transcript - real, deliberate
+  UX requirement, not incidental); a nested `<scrolllist>` gets
+  whatever vertical space is left after those fixed rows and a pinned
+  `<cli_io>` composer (a generic composer is NEVER part of any scroll
+  flow, tag-based rule, not ID-based).
+- `<scrolllist>` auto-follows new content by default (real chat UX) -
+  `reparse_chtpm_if_changed()` resets its scroll to a huge sentinel,
+  clamped to the real max on the very next layout pass. Sidebar scroll
+  is deliberately untouched by reparse (a session list has no "newest
+  at the bottom" convention to auto-follow).
+
+**Second real bug found+fixed, live, on a genuinely fresh `--data-root`
+with zero prior sessions**: a brand-new session never appeared in the
+sidebar at all. Root cause: `start_new_session()`'s own real callers
+(`NEWSESSION`/`DELETESESSION` handlers) already remembered to call
+`publish_sessions()` right after, but main()'s own startup bootstrap
+(no sessions exist yet → start one) never did - invisible on any
+`--data-root` with prior real data (this session's own earlier testing
+never hit it), but exactly what a genuinely first-ever run would hit.
+Fixed inside `start_new_session()` itself so no future caller can
+forget - the two existing call sites' own `publish_sessions()` calls
+are now harmless, cheap redundant republishes.
+
+**Third real thing found+fixed, live**: an early attempt at real visual
+separation ("no separation elements" - direct live report) set
+`has_bg_color`/`has_border_color` directly on the live `sidebar`/
+`cli_io` Elem objects inside `layout_sidebar_panel()`. Never once
+painted - the default/popup mode's real content draw round-trips every
+frame through a text frame file (`dbhq_serialize_frame_subtree()`/
+`dbhq_paint_frame_line()`, the SAME indirection already responsible for
+generic capability #2's own `input_buffer`/`target_id` bug earlier this
+session) which does not carry style fields at all; the paint side
+always recomputes style fresh from CSS. Real fix: `sidebar { ... }` /
+`cli_io { ... }` rules added to `entity_menu_default.css` (the ONE
+shared CSS file every default-mode consumer already loads, not a per-
+app file - db-hq/events-hq/chat-hai are the only modes with their own
+extension-swapped `<name>.css`) - a real CSS rule DOES survive the
+round trip (the paint side calls `css_compute_style()` itself, using
+the same real sheet), a live-set style field does not. Removed the
+dead programmatic style code entirely rather than leaving it as
+misleading dead weight.
+
+Live-verified end to end on a fresh `--data-root`: real session
+creation + publish + sidebar display, real fixed 700x520 window, real
+visual separation, real send → real model response → real transcript
+display inside the auto-following scrolllist, all together, no
+regressions from the earlier isolated flat-list testing.
+
+Still not done (same "check in first" instruction as the section
+above, unchanged): `button.sh`/`chat_button.sh` themselves have not
+been edited yet - only the bootstrap `.chtpm` + the renderer's own new
+generic module-launch capability are in place so far. Also not yet
+done: `launch_module()` only forwards ONE extra argv token, which is
+enough for plain `button.sh` (no `--data-root` needed) but not for
+`chat_button.sh`'s own per-instance `--data-root <dir>` (two separate
+tokens) - flagged as real follow-up, not blocking plain `button.sh`.

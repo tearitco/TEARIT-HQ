@@ -7,3 +7,15 @@
  * here matches actual current behavior, not a new design decision. */
 window { background: #1c1c1c; }
 item { color: #cccccc; }
+
+/* REAL, NEW 2026-08-31 (open-hai's own real sidebar+panel conversion,
+ * xperiments/khtpm-generic-dispatch-design.md) - generic, tag-based
+ * visual separation for the default/popup mode's new sidebar+panel
+ * dual-region layout (khtpm_core_render.c's own layout_sidebar_panel()).
+ * Shared by every default-mode consumer using these tags, not open-hai-
+ * specific - the exact same reason window/item's own rules above are
+ * bare tag selectors, not scoped to one app's own id/class. A real,
+ * visible divider between the session list and the content panel, and
+ * a real "this is a field" look for any generic <cli_io> composer. */
+sidebar { background-color: #181818; border: 1px solid #2a2a2a; }
+cli_io { background-color: #262632; border: 1px solid #4a4a5a; }
