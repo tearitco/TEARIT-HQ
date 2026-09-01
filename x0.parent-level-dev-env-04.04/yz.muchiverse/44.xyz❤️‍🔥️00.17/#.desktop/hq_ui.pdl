@@ -22,7 +22,7 @@ window_y=160
 # zero special handling, so try that first. 1 = fall back to the earlier
 # XGrabKeyboard+retry / right-click-force-focus machinery if 0 doesn't
 # actually fix real physical keyboard input.
-focus_grab=0
+focus_grab=1
 
 # click_two_step: 1 (default, 2026-08-29) = a click on a real nav-
 # numbered element (button/tab/row - anything with a "[ ]N." badge)
