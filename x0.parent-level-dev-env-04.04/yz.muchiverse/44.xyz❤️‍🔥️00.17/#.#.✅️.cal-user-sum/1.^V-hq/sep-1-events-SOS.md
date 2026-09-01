@@ -5,11 +5,22 @@ don't have deep context on this house's codebase. Every command below
 is copy-pasteable. Every claim is backed by a real file this doc
 points you at — go look at it if something doesn't make sense.
 
-**Do not invent new file formats or command types.** Everything you
-need already exists. Your job is to use the existing "block palette"
-(5 ready-made commands, listed below) through the existing UI, or —
-if the UI misbehaves — by hand-editing the exact same plain text files
-the UI itself writes. Nothing here requires touching C code.
+**CORRECTION (2026-09-01):** everything in "Step 3" below (the 5-item
+block palette) is ALREADY BUILT and working — fine to use for
+pre-testing the flow (launching db-hq, adding an event, verifying
+files), but it is NOT new coding work. If the task is "code something
+new," skip to **"WHAT'S ACTUALLY LEFT TO CODE"** near the bottom of
+this doc instead — that section lists real, confirmed-missing RPG
+Maker commands, ranked easiest first, with copy-paste starting points.
+
+**Do not invent new file formats or command types.** Almost every
+"simple" RPG Maker command (anything that's really just "set one
+value" or "wrap one op") goes through ONE data-driven registry file,
+`#.ref/menu/event_commands.registry.pdl` — read that file's own header
+comment first, it explains the exact block format. Adding a real new
+command is usually a registry-only edit, ZERO C/recompile, unless it
+truly needs a brand-new op binary (see the ranked list below for which
+kind each missing command is).
 
 ---
 
@@ -155,13 +166,124 @@ real ledger file looks like after gold changes ran).
 - Don't hand-write `event.pal` files — they're compiled output,
   always regenerated from `event.ir.pdl` by the manager. Editing them
   directly will be silently thrown away on the next save.
-- Don't invent a 6th palette command type before trying the 5 that
-  exist. If you truly need a new one, it needs a real op binary (like
-  `mr_show_text.c`) AND a new palette entry — that's real C work, flag
-  it rather than faking a `type=` string the manager doesn't know.
+- Don't invent a 6th palette command type before checking the real
+  registry first — see "WHAT'S ACTUALLY LEFT TO CODE" below. Most
+  "new" commands are a registry-only edit (zero C, zero recompile),
+  NOT a new op binary — check there before writing any C.
 - Don't touch `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`
   unless you've confirmed (via the steps above) that the bug is
   actually in the shared renderer and not just in how you used it.
+
+---
+
+## WHAT'S ACTUALLY LEFT TO CODE (ranked easiest first)
+
+Everything in `#.ref/menu/event_commands.registry.pdl` is ALREADY
+DONE — I read the whole file plus the manager's `compile_page()`
+(`&.widgits/events-hq/ops/khtpm_events_hq_manager.c:429`) and every
+single command type listed there — including all of Flow Control
+(if/else/end/loop/break_loop/repeat_above/comment/exit_event/label/
+jump_to_label) — is genuinely implemented and wired up, not a stub.
+This covers the vast majority of RPG Maker MV/MZ's real command list:
+all Message, Game Progression, Party, Actor, and Character commands.
+
+What's below is a real gap: RPG Maker command categories with **zero**
+registry entry at all. Confirmed by grepping the registry file and
+`grep -rn "shop\|Shop" event_commands.registry.pdl` (zero hits) plus
+checking `common_events/shop_open/` on disk — it's an empty stub
+folder, name only, no real page/command content. Ranked by how much
+real work each needs:
+
+### Tier 1 — registry-only, copy an existing block, ~5 min each, ZERO new C
+These are single on/off flags, the exact same shape as `control_switch`
+(already in the registry — copy that block, rename). No new op binary
+needed; they just need a new `COMMAND` block appended to
+`#.ref/menu/event_commands.registry.pdl`, then they show up in the
+"Add Command" picker on the manager's next poll tick (proven
+zero-recompile — see that file's own "REAL LIVE PROOF" comment about
+`take_gold` being added while the manager was running).
+
+- **Change Menu Access** (enable/disable the in-game menu) — one flag,
+  e.g. `{STATE_DIR}/system_flags.txt` key `menu_enabled`.
+- **Change Save Access** (enable/disable saving) — same shape, key
+  `save_enabled`.
+- **Change Encounter** (enable/disable random encounters) — same
+  shape, key `encounter_enabled`.
+- **Change Formation Access** (enable/disable party reordering) — same
+  shape, key `formation_enabled`.
+
+Template to copy (this is literally `control_switch` from the
+registry, renamed — verify against the real file, don't retype from
+memory):
+```
+COMMAND change_menu_access
+  LABEL Change Menu Access
+  FIELD1 Enabled (ON/OFF):
+  FIELD2 -
+  PARAMS enabled
+  PAL li x15, 7
+  PAL li x12, {enabled}
+  PAL ecall "{STATE_DIR}/system_flags.txt" "menu_enabled"
+END
+```
+(Check whether ON/OFF needs translating to 1/0 first — the real
+`control_switch` block does this translation in
+`evhq_submit_picker()`, C-side, specifically for that one command; a
+new command either needs the same C hook added for it, or should ask
+the user to type `1`/`0` directly like `change_party_member` does with
+its `SELECT2 1:0` — the SELECT2 route is genuinely zero-C, prefer it.)
+
+### Tier 2 — needs ONE new small op binary, but copy an existing one almost verbatim, ~20-30 min
+Real new C, but trivial: `mr_character.c` (in `&.widgits/events-hq/ops/`)
+is a ~48-line file — read it, it's the exact template. One binary,
+dispatches on `argv[2]` (a mode string), writes one `key=value` line
+to a state file. This shape covers:
+
+- **Screen effects** (Fadeout/Fadein/Tint/Flash/Shake Screen) — new
+  `mr_screen.c`, copy `mr_character.c`'s structure exactly, modes
+  `fadeout|fadein|tint|flash|shake`, writes to
+  `<entity_dir>/screen_state.pdl`. Registry TEMPLATE lines mirror the
+  existing `change_transparency`/`followers`/`show_animation` blocks
+  (just swap the binary name and mode).
+- **Change Actor Graphics** (face/character/battler image path) — new
+  mode(s) on `mr_actor_string.c` (already exists, already takes a
+  string value — this is adding 1-3 more `if` branches to its existing
+  dispatch, not a new file) or a small `mr_actor_image.c` twin of it.
+
+Real, honest limitation to flag if you build these: like the existing
+Character commands, this writes real, verifiable STATE — it does NOT
+make anything visually happen on screen (no sprite/rendering layer
+consumes these files yet). That's consistent with what's already
+shipped (`mr_character.c`'s own header comment says the same about
+transparency/followers/animation) — not a new gap you're introducing.
+
+### Tier 3 — needs a new op binary AND a real external dependency, verify the dependency first
+- **Play SE / BGM / BGS / ME** (sound effects/music) — needs an op
+  binary that shells out to a real audio player (`aplay`/`paplay`/
+  `ffplay`). Before writing this: run `which aplay paplay ffplay` on
+  the actual target machine and confirm ONE of them is genuinely
+  available — don't assume, don't hardcode one that might not exist
+  and silently fail. If none is available, say so rather than shipping
+  a command that silently no-ops.
+
+### Tier 4 — NOT easy, genuinely bigger systems, don't start these without checking in first
+- **Shop Processing** — the `shop_open` common event already exists as
+  an empty NAME-only stub (`common_events/shop_open/` has no
+  `event_pkg/pages/` content at all) — it needs real buy/sell UI,
+  price/inventory math, and gold deduction wired together, not a
+  single command. Real design work, not a quick registry add.
+- **Set Movement Route / Transfer Player / Scroll Map** — needs a real
+  concept of "where is the player/event on a map" that doesn't exist
+  in any state file checked this session. Don't build the command
+  before confirming whether ANY map/position system exists elsewhere
+  in the house (not found in this pass — search before assuming).
+- **Battle Processing** — needs a real battle system; out of scope for
+  a "left to code, easiest first" pass.
+- **Script / Plugin Command** (arbitrary code execution) — this house
+  already has a real op-binary-per-command pattern specifically so
+  events never need to eval arbitrary text; adding a raw "run this
+  code" command would be a deliberate architecture change, not a
+  small addition — check in before building this one specifically.
 
 ## Full reference paths (all real, all checked to exist as of 2026-09-01)
 
@@ -173,5 +295,10 @@ real ledger file looks like after gold changes ran).
 - Real worked example to copy: `common_events/greet_player/`
 - Op binaries behind each command: `&.widgits/events-hq/ops/mr_*.c`
   (`mr_change_gold.c`, `mr_show_text.c`, `mr_show_choices.c`, etc.)
+- **The full command registry (the real source of truth for "what's
+  already coded")**: `#.ref/menu/event_commands.registry.pdl` — read
+  this before assuming anything is missing.
+- Where the registry is compiled/consumed: `compile_page()` in
+  `&.widgits/events-hq/ops/khtpm_events_hq_manager.c:429`.
 - Fuller architecture explanation (read this if the above isn't
   enough): `sep-1-grok.md` (same folder as this file).
