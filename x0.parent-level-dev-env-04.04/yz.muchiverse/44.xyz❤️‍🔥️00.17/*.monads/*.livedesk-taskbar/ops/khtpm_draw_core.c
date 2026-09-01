@@ -516,14 +516,27 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             }
         }
     }
-    if (!drew_sprite && e->label[0]) {
+    /* REAL, NEW 2026-08-31 (generic capability #2 - see Elem's own
+     * input_buffer field comment) - a real, generic cli_io tag shows
+     * its own live-typed input_buffer appended after its static label,
+     * with a real cursor glyph while it's the currently focused (armed)
+     * field - zero per-app code needed for any consumer of this shared
+     * draw path. */
+    char cli_io_shown[256 + 300];
+    const char *shown_label = e->label;
+    if (strcmp(e->tag, "cli_io") == 0) {
+        snprintf(cli_io_shown, sizeof(cli_io_shown), "%s%s%s", e->label, e->input_buffer,
+                 (e->nav_index > 0 && e->nav_index == g_focus_nav) ? "_" : "");
+        shown_label = cli_io_shown;
+    }
+    if (!drew_sprite && shown_label[0]) {
         XftFont *font = font_for(&e->style);
         XftColor col = xft_color(e->style.has_fg_color ? e->style.fg_color : "#cccccc");
         XGlyphInfo extents;
-        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)e->label, (int)strlen(e->label), &extents);
+        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)shown_label, (int)strlen(shown_label), &extents);
         int ty = e->y + (e->h + font->ascent - font->descent) / 2;
         if (ty < e->y + font->ascent) ty = e->y + font->ascent + pad / 2;
-        draw_text_emoji(font, &col, badge_label_x, ty, e->label);
+        draw_text_emoji(font, &col, badge_label_x, ty, shown_label);
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
     }
     /* Badge draws LAST - see the big comment above. For sprite tiles,

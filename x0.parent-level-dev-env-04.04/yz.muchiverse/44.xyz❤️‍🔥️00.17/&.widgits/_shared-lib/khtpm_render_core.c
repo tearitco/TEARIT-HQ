@@ -123,6 +123,21 @@ typedef struct Elem {
      * instead of starting it at the label position and growing right.
      * Default 0 = every existing consumer's behavior is unchanged. */
     int badge_align_left;
+    /* REAL, NEW 2026-08-31 (xperiments/khtpm-generic-dispatch-design.md
+     * §5, generic capability #2, direct instruction: "see existing
+     * chtpm parser std format... can khtpm parser be more similar?") -
+     * ported directly from 1.TPMOS_c_+rmmp.0103.0001/pieces/chtpm/
+     * plugins/chtpm_parser.c's own real, generic `<cli_io>` fields
+     * (UIElement.input_buffer/target_id) - a real, generic, tag="cli_io"
+     * text-input element every khtpm app can use with ZERO per-app C:
+     * printable keys append to input_buffer while armed, target_id
+     * (falls back to id) keys the real, generic per-window
+     * cli_io_state.txt line this value live-syncs to, matching the
+     * reference's own real "target_id-keyed gui_state.txt" design so
+     * multiple cli_io fields in one window never collide. Empty/unused
+     * = zero behavior change for every existing consumer. */
+    char input_buffer[256];
+    char target_id[64];
     struct Elem *children[MAX_CHILDREN];
     int n_children;
     struct Elem *parent;

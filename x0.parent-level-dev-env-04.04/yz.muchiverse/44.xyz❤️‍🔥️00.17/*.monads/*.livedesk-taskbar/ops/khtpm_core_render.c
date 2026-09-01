@@ -454,6 +454,12 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
          * for. Reused e->id - same "module elements are never drawn,
          * safe reuse" reasoning src= already uses for e->label. */
         snprintf(e->id, sizeof(e->id), "%s", val);
+    } else if (strcmp(name, "target_id") == 0) {
+        /* REAL, NEW 2026-08-31 (generic capability #2 - see Elem's own
+         * target_id field comment in khtpm_render_core.c) - real,
+         * generic <cli_io target_id="..."/> attribute, ported from
+         * chtpm_parser.c's own UIElement.target_id. */
+        snprintf(e->target_id, sizeof(e->target_id), "%s", val);
     } else if (strcmp(name, "drop_action") == 0) {
         /* 2026-08-24 - see the g_drop_action block comment above.
          * Window-level attr; decoded through the SAME entity decoder
@@ -8365,7 +8371,7 @@ static void assign_nav_and_layout(void) {
         for (i = 0; i < page->n_children; i++) {
             Elem *item = page->children[i];
             int c;
-            if (strcmp(item->tag, "item") != 0) continue;
+            if (strcmp(item->tag, "item") != 0 && strcmp(item->tag, "cli_io") != 0) continue;
             for (c = 0; c < item->n_classes; c++)
                 if (strcmp(item->classes[c], "swatch") == 0) { grid = 1; break; }
             if (grid) break;
@@ -8415,7 +8421,7 @@ static void assign_nav_and_layout(void) {
         int y = CHROME_H;
         for (int i = 0; i < page->n_children; i++) {
             Elem *item = page->children[i];
-            if (strcmp(item->tag, "item") != 0) continue;
+            if (strcmp(item->tag, "item") != 0 && strcmp(item->tag, "cli_io") != 0) continue;
             item->x = 0; item->y = y; item->w = g_win_w; item->h = ROW_H;
             item->nav_index = ++g_n_nav;
             g_nav[g_n_nav - 1] = item;
@@ -8501,9 +8507,100 @@ static void apply_theme(const char *bg_hex, const char *fg_hex) {
     dispatch(cmd);
 }
 
+/* REAL, generic capability #2 (2026-08-31, xperiments/khtpm-generic-
+ * dispatch-design.md §5) - a real, generic `<cli_io>` text-input
+ * element for the default/popup mode, ported directly from
+ * 1.TPMOS_c_+rmmp.0103.0001/pieces/chtpm/plugins/chtpm_parser.c's own
+ * real UIElement.input_buffer/target_id design (read in full before
+ * writing this - direct instruction: "see existing chtpm parser std
+ * format... can khtpm parser be more similar?"). Zero per-app C: any
+ * `.chtpm` can declare `<cli_io id="..." target_id="..." action="...">`
+ * and get real armed text-input, live-synced to a real, generic
+ * per-window `cli_io_state.txt` (same real "target_id-keyed state
+ * file" shape the reference uses, just this house's own plain
+ * key=value line format instead of gui_state.txt's own). */
+static Elem *g_default_input_elem = NULL;
+
+static void default_cli_io_state_path(char *out, size_t outsz) {
+    snprintf(out, outsz, "%s/cli_io_state.txt", g_package_dir);
+}
+
+/* Real, generic read-modify-write - same real shape as the reference's
+ * own save_to_gui_state_impl(): rewrite every real line, updating (or
+ * adding) the one this element owns. Small, bounded real file (one
+ * line per real armed field a window ever has), safe to rewrite whole
+ * on every keystroke, matching the reference's own real "live sync on
+ * every keystroke" behavior. */
+static void default_cli_io_save(Elem *e) {
+    const char *key = e->target_id[0] ? e->target_id : e->id;
+    if (!key[0]) return;
+    char path[PATH_BUF];
+    default_cli_io_state_path(path, sizeof(path));
+    char lines[64][128];
+    int n = 0;
+    FILE *f = fopen(path, "r");
+    if (f) {
+        char line[256];
+        while (n < 64 && fgets(line, sizeof(line), f)) {
+            line[strcspn(line, "\r\n")] = '\0';
+            char *eq = strchr(line, '=');
+            if (!eq) continue;
+            *eq = '\0';
+            if (strcmp(line, key) == 0) continue; /* real value replaced below */
+            snprintf(lines[n], sizeof(lines[n]), "%s=%s", line, eq + 1);
+            n++;
+        }
+        fclose(f);
+    }
+    f = fopen(path, "w");
+    if (!f) return;
+    for (int i = 0; i < n; i++) fprintf(f, "%s\n", lines[i]);
+    fprintf(f, "%s=%s\n", key, e->input_buffer);
+    fclose(f);
+}
+
+/* Real, generic "run this real action without also quitting" -
+ * SAME argv/quoting convention as dispatch()'s own real shell-command
+ * branch, minus its real "menus close after a real action fires"
+ * g_quit=1 - a persistent composer/chat field submitting a message
+ * must NOT close its own window, unlike a one-shot menu item. */
+static void default_cli_io_run_action(const char *action) {
+    if (!action || !action[0]) return;
+    char cmd[PATH_BUF * 3];
+    snprintf(cmd, sizeof(cmd), "%s '%s' '%s' >/dev/null 2>&1 &", action, g_package_dir, g_house_root);
+    int rc = system(cmd);
+    (void)rc;
+}
+
+static void default_cli_io_handle_key(KeySym ks, char ch) {
+    Elem *e = g_default_input_elem;
+    if (!e) return;
+    if (ks == XK_Return || ks == XK_KP_Enter) {
+        default_cli_io_save(e);
+        default_cli_io_run_action(e->onclick);
+        e->input_buffer[0] = '\0';
+        default_cli_io_save(e); /* real, empty value, matching the reference's own "clear after submit, stay active" behavior */
+        return;
+    }
+    if (ks == XK_Escape) { g_default_input_elem = NULL; return; }
+    if (ks == XK_BackSpace) {
+        size_t len = strlen(e->input_buffer);
+        if (len > 0) { e->input_buffer[len - 1] = '\0'; default_cli_io_save(e); }
+        return;
+    }
+    if (ch >= 32 && ch < 127) {
+        size_t len = strlen(e->input_buffer);
+        if (len + 1 < sizeof(e->input_buffer)) {
+            e->input_buffer[len] = ch; e->input_buffer[len + 1] = '\0';
+            default_cli_io_save(e);
+        }
+    }
+}
+
 static void activate_focused(void) {
     if (g_focus_nav < 1 || g_focus_nav > g_n_nav) return;
     Elem *item = g_nav[g_focus_nav - 1];
+    if (strcmp(item->tag, "cli_io") == 0) { g_default_input_elem = item; return; }
     if (item->onclick[0]) dispatch(item->onclick);
 }
 
@@ -8816,6 +8913,7 @@ static void handle_key(KeySym ks, char ch) {
      * and needs the SAME key-order exception as events-hq/chat-hai
      * above: 'p' must type into an armed field, not trigger a dump. */
     if (g_is_db_hq && g_input_elem) { dbhq_handle_key(ks, ch); return; }
+    if (g_default_input_elem) { default_cli_io_handle_key(ks, ch); return; } /* same real key-order exception - a real cli_io field needs 'p' as a literal typed character */
     if (ch == 'p') { dump_frame_png(); return; }
     if (g_is_db_hq) { dbhq_handle_key(ks, ch); return; }
     if (ks == XK_Return || ks == XK_KP_Enter) { activate_focused(); return; }

@@ -415,3 +415,74 @@ migration in §3, not competing with it:
 these three. This section exists so the real scope is written down
 before someone reaches for "just merge it in" as an offhand line item
 under an already-large migration.
+
+## Status update, 2026-08-31 (later same day) — capability #2 (generic `<cli_io>` text input) DONE
+
+Real generic capability #2 (the second, and last, missing piece the
+"real pivot away from any per-mode table at all" section above called
+for) is built, live-tested end to end, and works with ZERO new
+`g_is_<project>` branches. Same real reference this whole pivot was
+built from - `chtpm_parser.c`'s own `UIElement.input_buffer`/
+`target_id` fields and its real key-handling shape (append/backspace/
+Enter-saves-and-clears-but-stays-armed) - ported as closely as the
+X11/Xft side allows, not reinvented.
+
+**What was added, all in the shared renderer/shared-lib, none of it
+project-specific:**
+- `Elem.input_buffer[256]` / `Elem.target_id[64]` - two new generic
+  fields on the one shared `Elem` struct (`&.widgits/_shared-lib/
+  khtpm_render_core.c`), same real "any tag can carry these, most
+  never populate them" shape every other optional Elem field already
+  uses.
+- `target_id="..."` attribute parsing in `apply_attr()` - a real
+  cli_io element's own key into `cli_io_state.txt`, defaulting to its
+  `id` when omitted (mirrors the reference's own fallback).
+- `g_default_input_elem` + `default_cli_io_state_path()`/
+  `default_cli_io_save()`/`default_cli_io_run_action()`/
+  `default_cli_io_handle_key()` (`khtpm_core_render.c`, right before
+  `activate_focused()`) - a real, generic "one armed field at a time"
+  mechanism: Enter/click on a `<cli_io>` arms it instead of dispatching
+  its `onclick` immediately (`activate_focused()`'s own new tag check);
+  while armed, printable keys append and backspace trims, each real
+  edit immediately synced to `<package_dir>/cli_io_state.txt` (a real
+  `key=value` line file, one line per real `target_id`, same "always
+  in a file, never only in memory" house rule this whole design
+  answers to); Enter saves once more, fires the element's own
+  `onclick` as a real shell action via the SAME `action="<cmd>"`
+  dispatch every other khtpm element already uses, then clears the
+  buffer (stays armed, matching the reference's exact real behavior -
+  not chosen arbitrarily); Escape disarms without saving.
+- `draw_elem()` (`&.widgits/_shared-lib/khtpm_draw_core.c`, the real
+  shared master - the ops-dir copy was edited first by mistake, then
+  the SAME edit was ported to this master so the next build doesn't
+  silently discard it) - a `cli_io` tag now shows its own live
+  `input_buffer` appended after its static label, with a real trailing
+  `_` cursor glyph while armed. The existing generic
+  `nav_index == g_focus_nav` focus-outline box (already tag-agnostic)
+  needed no change to also frame a `cli_io` field.
+- **Real bug found and fixed along the way**: `assign_nav_and_layout()`'s
+  own default (non-db-hq/events-hq/chat-hai) page/item layout loop only
+  ever checked `strcmp(item->tag, "item") == 0` in both its grid and
+  list branches - a `<cli_io>` element was silently skipped: never
+  given real `x/y/w/h`, never added to `g_nav[]`, so it could never be
+  focused, clicked, or even seen. Fixed by accepting `"item"` OR
+  `"cli_io"` in both loops - the fully generic fix, not a `cli_io`-
+  specific branch.
+
+**Live-tested** (fresh `/tmp/*.chtpm` with one real `<cli_io
+target_id="test_field">` + a close item, launched against the freshly
+built `khtpm_core_render.+x`, driven entirely through the real
+`#.desktop/entity_menu_history/<pid>.txt` relay convention - same
+verification standard as every other change this session):
+Enter arms the field; typing `h` then `i` shows `test_field=h` then
+`test_field=hi` in `cli_io_state.txt` after each real keystroke;
+Backspace shows `test_field=h`; Escape disarms and leaves the last
+saved value untouched (no further write). A separate run confirmed
+Enter after typing runs the real action and clears+re-saves the field
+to empty, staying armed. All exactly as designed, no surprises.
+
+Not yet started: actually rebuilding open-hai's own real `.chtpm`
+projection (a real manager-side generator, likely extending
+`khtpm_open_hai_manager.c`) to use this plus capability #1 - that is
+the real, standing task both of these capabilities exist to unblock,
+and it has not been restarted yet.
