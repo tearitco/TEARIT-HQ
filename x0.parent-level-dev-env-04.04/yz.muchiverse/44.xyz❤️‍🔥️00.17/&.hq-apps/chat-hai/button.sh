@@ -17,6 +17,7 @@ OPS_DIR="$HERE/ops"
 # apps). Old chat_hai_hq_render.+x kept as reference/rollback, unused.
 BIN="$(cd "$HERE/../../*.monads/*.livedesk-taskbar/ops" && pwd)/+x/khtpm_core_render.+x"
 CHTPM="$HERE/chat-hai.chtpm"
+BOOTSTRAP_TEMPLATE="$HERE/chat-hai.chtpm.bootstrap"
 
 if [ ! -x "$BIN" ]; then
     echo "chat-hai button.sh: build failed, missing $BIN" >&2
@@ -43,20 +44,47 @@ mkdir -p "$AUDIT_DIR"
 # the old behavior.
 chat_hai_pids() { pgrep -f "khtpm_core_render\.\+x.*chat-hai\.chtpm" 2>/dev/null || true; }
 chat_hai_loop_pids() { pgrep -f "chat_hai_loop\.sh" 2>/dev/null || true; }
+# REAL FIX 2026-09-01 (chat-hai's own migration onto the shared generic
+# sidebar/panel/scrolllist/cli_io path) - the projector is a THIRD real
+# process now (chat_hai_projector.sh, launched as the loop's own
+# background child) and must be tracked/killed here too. Found live: a
+# stale projector surviving past the loop/renderer kill can win a real
+# race - it rewrites chat-hai.chtpm (no <module> tag, by design - see
+# that script's own header comment) AFTER the bootstrap restore below
+# but BEFORE the freshly-launched renderer's own one-time module scan,
+# silently eating the <module> tag on the very run meant to fix it.
+chat_hai_projector_pids() { pgrep -f "chat_hai_projector\.sh" 2>/dev/null || true; }
 
-pids="$(chat_hai_pids) $(chat_hai_loop_pids)"
+pids="$(chat_hai_pids) $(chat_hai_loop_pids) $(chat_hai_projector_pids)"
 pids="$(echo "$pids" | tr ' ' '\n' | grep -v '^$' || true)"
 if [ -n "$pids" ]; then
     echo "chat-hai button.sh: killing existing instance(s): $(echo $pids | tr '\n' ' ')"
     echo "$pids" | xargs -r kill -TERM
     sleep 1
-    pids="$(chat_hai_pids) $(chat_hai_loop_pids)"
+    pids="$(chat_hai_pids) $(chat_hai_loop_pids) $(chat_hai_projector_pids)"
     pids="$(echo "$pids" | tr ' ' '\n' | grep -v '^$' || true)"
     if [ -n "$pids" ]; then
         echo "chat-hai button.sh: still alive after TERM, escalating to KILL: $(echo $pids | tr '\n' ' ')"
         echo "$pids" | xargs -r kill -KILL
         sleep 1
     fi
+fi
+
+# REAL FIX 2026-09-01 (chat-hai's own migration onto the shared
+# generic sidebar/panel/scrolllist/cli_io path - chat-hai.chtpm is now
+# a live, continuously-regenerated PROJECTION written by
+# chat_hai_projector.sh, same real "self-healing bootstrap" fix
+# open-hai/network-browser already needed: any stray write after the
+# projector/loop dies mid-write can permanently erase the <module> tag,
+# silently breaking every future launch - restore from the permanent,
+# never-overwritten bootstrap template whenever that's found missing.
+# MUST run AFTER the kill-and-confirm-dead block above, not before -
+# found live: restoring the bootstrap first, then killing, lets a
+# still-alive projector's own next tick clobber the just-restored
+# bootstrap before this run's renderer ever reads it.
+if [ -f "$BOOTSTRAP_TEMPLATE" ] && ! grep -q '<module' "$CHTPM" 2>/dev/null; then
+    echo "chat-hai button.sh: $CHTPM lost its <module> tag (stray write) - restoring from $BOOTSTRAP_TEMPLATE"
+    cp "$BOOTSTRAP_TEMPLATE" "$CHTPM"
 fi
 
 setsid nohup "$BIN" "$HOUSE_ROOT" "$CHTPM" \

@@ -45,6 +45,12 @@ static void livedesk_ensure_cursword(const char *house_root);
 static void livedesk_spawn_desk(const char *house_root, const char *sroot, const char *id, const char *desk);
 static void livedesk_spawn_active_desk(const char *house_root);
 
+/* REAL, NEW 2026-09-01 - forward decl: ktb_reload() (defined before this
+ * helper's own definition) needs it to re-mirror the live always-on-top
+ * mode from #.desktop/khtpm_zorder_mode.state.txt. See the definition
+ * beside ktb_reload(). */
+static void ktb_load_zorder_mode(KtbState *s);
+
 /* REAL, NEW 2026-08-25 (direct request: a general "kill hq" menu row that
  * covers EVERYTHING the taskbar launches, not just a fixed -hq binary
  * name list — real live test proved the fixed-list kill_hq_windows.sh
@@ -581,9 +587,29 @@ void ktb_reload(KtbState *s) {
     load_shortcuts(s);
     load_theme(s);
     load_strip_user_cmd(s);
+    ktb_load_zorder_mode(s);
     if (s->tab_focus_idx >= s->n_tabs) s->tab_focus_idx = s->n_tabs > 0 ? s->n_tabs - 1 : 0;
     if (s->strip_focus_cell >= KTB_STRIP_N_CELLS) s->strip_focus_cell = KTB_STRIP_N_CELLS - 1;
 }
+
+/* REAL, NEW 2026-09-01 - global always-on-top ("@") mode mirror. The
+ * strip_parser is the source of truth (it owns the X Display and writes
+ * #.desktop/khtpm_zorder_mode.state.txt on every toggle); this manager
+ * only re-reads that file so its HQ row can label the live mode. If the
+ * file is missing/empty the mode defaults to normal (0). */
+static void ktb_load_zorder_mode(KtbState *s) {
+    s->zorder_above = 0;
+    char path[KTB_PATH_BUF];
+    path_join(path, sizeof(path), s->house_root, "#.desktop/khtpm_zorder_mode.state.txt");
+    FILE *f = ktb_fopen(path, "r");
+    if (!f) return;
+    char line[64];
+    if (fgets(line, sizeof(line), f)) {
+        if (strstr(line, "mode=above")) s->zorder_above = 1;
+    }
+    fclose(f);
+}
+
 
 static void write_relay(const char *package_path, const char *cmd) {
     char relay[KTB_PATH_BUF];

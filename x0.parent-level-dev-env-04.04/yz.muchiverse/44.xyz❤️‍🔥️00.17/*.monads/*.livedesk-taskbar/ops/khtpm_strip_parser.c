@@ -37,6 +37,8 @@
 #include <X11/keysym.h>
 #include <X11/Xft/Xft.h> /* REAL FIX 2026-08-13: XftDrawStringUtf8 for UTF-8 */
 #include <sys/stat.h> /* tab_sprite() mtime re-check (2026-08-24, see below) */
+#include <dirent.h> /* REAL, NEW 2026-09-01 - zorder toggle reads nav_tab/<pid> registry dir (opendir/readdir) */
+#include <fcntl.h> /* REAL, NEW 2026-09-01 - zorder toggle respawns tile pieces (open("/dev/null", O_RDWR)) */
 #else
 #include "khtpm_strip_x11_win.h"
 #endif
@@ -180,6 +182,21 @@ typedef struct {
 static char g_house_root[SP_PATH_BUF];
 static pid_t g_manager_pid = -1;
 static SpState g_st;
+
+/* REAL, NEW 2026-09-01 - the taskbar's own global always-on-top
+ * ("@") toggle. The taskbar strip owns the only always-present X11
+ * Display in this process pair (khtpm_taskbar_manager.c has zero Xlib
+ * access by design, see ktb_activate_tab()'s own comment), so the
+ * raise/lower loop over every tracked khtpm window lives HERE, in the
+ * parser, triggered by the HQ cell's "@ always-on-top" row (a special
+ * onClick the parser intercepts locally, never routed to the manager).
+ * It iterates the SAME nav_tab/<pid> registry the renderer windows
+ * self-record (now with a type field: "ord xid type title"), raising
+ * or lowering each live XID above/below the native desktop apps. Mode
+ * is persisted in #.desktop/khtpm_zorder_mode.state.txt so a fresh
+ * renderer/taskbar reflect the live mode. */
+static Display *g_dpy = NULL;
+static int g_zorder_above = 0;
 
 /* REAL FIX 2026-08-30, direct live report ("why is tb and tb options
  * 1 click to open... ofc its a bug... should we pursue the fix now" ->
@@ -1015,6 +1032,212 @@ static void sync_focus_to_digit_buf(LayDoc *header_doc, LayDoc *bottom_doc, cons
  * appended to strip_history.txt (KEY:-equivalent, this strip's own
  * TAB:/SHORTCUT:/STRIP:/HQITEM: prefixes standing in for CHTPM's KEY:n).
  * ------------------------------------------------------------------- */
+
+/* REAL, NEW 2026-09-01 - the global always-on-top ("@") toggle, owned by
+ * the strip parser because it is the only process in this pair with an
+ * X11 Display (g_dpy, set in main()). Flips the persisted mode, then
+ * raises (mode=1) or lowers (mode=0) EVERY tracked khtpm/livedesk
+ * window. Two real sources, both covered live:
+ *
+ * 1. The nav_tab/<pid> registry - each khtpm_core_render entity window
+ *    self-records its own real XID as "<ord> <xid> <type> <title>". Dead
+ *    pids are cleaned up (same kill+ESRCH pattern the renderer's own
+ *    nav_tab_cycle uses).
+ * 2. The X root's window tree - the tp_desktop_window_rgb pal/entity
+ *    windows (self, asa, ava, book-stack, cursword, ...) are raw
+ *    override_redirect Xlib windows with a distinctive WM_NAME of
+ *    "tile:<piece_id>:<glyph>" (see tp_desktop_window_rgb.c's XStoreName)
+ *    and NO _NET_WM_PID, so they never appear in nav_tab. They are
+ *    direct children of the root (override_redirect skips the WM's
+ *    reparenting), so a single-level XQueryTree(root) walk + WM_NAME
+ *    prefix match discovers them with zero changes to that binary or a
+ *    relaunch of the live pal windows. x-getentity remotes etc. all use
+ *    the same "tile:" prefix, so this matches every livedesk entity.
+ *
+ * Deliberately tolerant: a gone/zero XID is skipped, and this process
+ * installs a non-fatal X error handler, so a stale XID can never crash
+ * the taskbar. Mode is persisted in #.desktop/khtpm_zorder_mode.state.txt. */
+static void ktb_zorder_apply_tree(int raise) {
+    if (!g_dpy) return;
+    Window root = RootWindow(g_dpy, DefaultScreen(g_dpy));
+    Window root_ret, parent_ret;
+    Window *children = NULL;
+    unsigned int n = 0;
+    if (!XQueryTree(g_dpy, root, &root_ret, &parent_ret, &children, &n) || !children) return;
+    for (unsigned int i = 0; i < n; i++) {
+        char *nm = NULL;
+        if (!XFetchName(g_dpy, children[i], &nm) || !nm) continue;
+        int is_entity = (strncmp(nm, "tile:", 5) == 0);
+        XFree(nm);
+        if (!is_entity) continue;
+        if (raise) XRaiseWindow(g_dpy, children[i]);
+        else XLowerWindow(g_dpy, children[i]);
+    }
+    XFree(children);
+}
+
+static void ktb_toggle_zorder_apply(int raise) {
+    if (!g_dpy) return;
+    char dir[SP_PATH_BUF];
+    snprintf(dir, sizeof(dir), "%s/#.desktop/nav_tab", g_house_root);
+    DIR *d = opendir(dir);
+    if (d) {
+        struct dirent *de;
+        while ((de = readdir(d))) {
+            if (de->d_name[0] == '.') continue;
+            char fp[SP_PATH_BUF];
+            snprintf(fp, sizeof(fp), "%s/%s", dir, de->d_name);
+            pid_t pid = (pid_t)atoi(de->d_name);
+            if (pid > 1 && kill(pid, 0) != 0 && errno == ESRCH) {
+                unlink(fp);
+                continue;
+            }
+            FILE *f = fopen(fp, "r");
+            if (!f) continue;
+            int ord = 0;
+            unsigned long xid = 0;
+            /* "ord xid type title" - type field (the registry's new type
+             * flag) is read but ignored here: the toggle affects ALL
+             * tracked windows regardless of kind. An XID of 0 means the
+             * pid hasn't mapped a real window yet, skip it. */
+            if (fscanf(f, "%d %lx", &ord, &xid) >= 2 && xid) {
+                if (raise) XRaiseWindow(g_dpy, (Window)xid);
+                else XLowerWindow(g_dpy, (Window)xid);
+            }
+            fclose(f);
+        }
+        closedir(d);
+    }
+    ktb_zorder_apply_tree(raise);
+    XFlush(g_dpy);
+}
+
+/* REAL, NEW 2026-09-01 - the @ toggle's live half. override_redirect is
+ * fixed at XCreateWindow time, so the pdl write alone cannot restack
+ * windows already on screen. This scans /proc for every live window whose
+ * own renderer obeys the shared pdl (the tile/pal pieces, the
+ * db-hq/events-hq/chat-hai/open-hai windows on khtpm_core_render, and
+ * the network-browser window - open-hai runs on the shared
+ * khtpm_core_render binary too, verified from its own button.sh), kills
+ * each one, then relaunches it with the SAME real argv (tile:
+ * <package_dir>; hq windows: <house_root> <chtpm_path> [x] [y] or
+ * network's <house_root> [x] [y]) so every window reappears exactly
+ * where/configured as it was - the only visible change is the freshly-
+ * created window reading the new override_redirect pdl value at
+ * XCreateWindow time (the one moment it can still be decided). Matching
+ * is on argv[0] ONLY (process identity), never on data args, so a
+ * window that merely references one of these binary names in an argument
+ * is never killed. Tolerant of a stale/missing exec path (fails
+ * silently, relisted next toggle). */
+static void ktb_toggle_zorder_respawn(void) {
+    /* canonical exec paths, resolved against the live house root - the
+     * process's own argv[0] is replaced by these so a relative argv[0]
+     * from a long-dead cwd can never strand the relaunch. */
+    char bin0[SP_PATH_BUF], bin1[SP_PATH_BUF], bin2[SP_PATH_BUF];
+    snprintf(bin0, sizeof(bin0), "%s/*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x", g_house_root);
+    snprintf(bin1, sizeof(bin1), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", g_house_root);
+    snprintf(bin2, sizeof(bin2), "%s/&.hq-apps/network/+x/network_browser_render.+x", g_house_root);
+    const char *bins[3] = { bin0, bin1, bin2 };
+    const char *needles[3] = { "tp_desktop_window_rgb", "khtpm_core_render", "network_browser_render" };
+    struct { pid_t pid; int which; char arg[8][SP_PATH_BUF]; int argc; } found[64];
+    int n_found = 0;
+    DIR *pd = opendir("/proc");
+    if (!pd) return;
+    struct dirent *ent;
+    while ((ent = readdir(pd)) != NULL) {
+        if (ent->d_name[0] < '0' || ent->d_name[0] > '9') continue;
+        char cpath[64];
+        snprintf(cpath, sizeof(cpath), "/proc/%s/cmdline", ent->d_name);
+        FILE *cf = fopen(cpath, "r");
+        if (!cf) continue;
+        char cmdbuf[SP_PATH_BUF * 24];
+        size_t got = fread(cmdbuf, 1, sizeof(cmdbuf) - 1, cf);
+        fclose(cf);
+        if (got == 0) continue;
+        cmdbuf[got] = '\0';
+        /* argv[0] is the first NUL-terminated token - match against it. */
+        const char *a0 = cmdbuf;
+        size_t a0len = strlen(a0);
+        if (a0len == 0) continue;
+        int which = -1;
+        for (int k = 0; k < 3; k++) if (strstr(a0, needles[k])) { which = k; break; }
+        if (which < 0) continue;
+        if (n_found >= (int)(sizeof(found) / sizeof(found[0]))) break;
+        found[n_found].pid = (pid_t)atoi(ent->d_name);
+        found[n_found].which = which;
+        found[n_found].argc = 0;
+        const char *p = cmdbuf;
+        for (int i = 0; i < 8; i++) {
+            size_t l = strlen(p);
+            if (l == 0) break;
+            snprintf(found[n_found].arg[i], SP_PATH_BUF, "%s", p);
+            found[n_found].argc++;
+            p += l + 1;
+            if (p >= cmdbuf + got) break;
+        }
+        n_found++;
+    }
+    closedir(pd);
+    for (int i = 0; i < n_found; i++) kill(found[i].pid, SIGTERM);
+    usleep(300000); /* give them a moment to tear down before relaunch */
+    extern char **environ;
+    for (int i = 0; i < n_found; i++) {
+        pid_t pid = fork();
+        if (pid == 0) {
+            setsid();
+            int devnull = open("/dev/null", O_RDWR);
+            if (devnull >= 0) { dup2(devnull, 0); dup2(devnull, 1); dup2(devnull, 2); if (devnull > 2) close(devnull); }
+            char *av[9];
+            av[0] = (char *)bins[found[i].which];
+            int n = found[i].argc < 8 ? found[i].argc : 8;
+            for (int j = 1; j < n; j++) av[j] = found[i].arg[j];
+            av[n] = NULL;
+            execve(av[0], av, environ);
+            _exit(1);
+        }
+    }
+}
+
+static void ktb_toggle_zorder(void) {
+    /* Single source of truth: derive the CURRENT mode from the persisted
+     * file (not from this process's own in-memory flag), so a fresh
+     * parser after a restart can never flip the wrong way relative to
+     * the live on-screen state or the manager's own label mirror
+     * (ktb_load_zorder_mode in khtpm_taskbar_manager.c reads this SAME
+     * file). Then flip it and apply. */
+    g_zorder_above = 0;
+    char path[SP_PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/khtpm_zorder_mode.state.txt", g_house_root);
+    FILE *rf = fopen(path, "r");
+    if (rf) {
+        char line[32];
+        if (fgets(line, sizeof(line), rf) && strstr(line, "mode=above")) g_zorder_above = 1;
+        fclose(rf);
+    }
+    g_zorder_above = !g_zorder_above;
+    FILE *f = fopen(path, "w");
+    if (f) { fprintf(f, "mode=%s\n", g_zorder_above ? "above" : "normal"); fclose(f); }
+    /* Write the override_redirect .pdl so every pdl-reading renderer
+     * (tile pieces, db-hq/events-hq/chat-hai/open-hai on the shared
+     * khtpm_core_render binary, network-browser) picks up the new value
+     * at next spawn - above=override_redirect (always on top),
+     * normal=managed (WM controls z-order). */
+    char or_path[SP_PATH_BUF];
+    snprintf(or_path, sizeof(or_path), "%s/#.desktop/livedesk_override_redirect.pdl", g_house_root);
+    FILE *orf = fopen(or_path, "w");
+    if (orf) { fprintf(orf, "override_redirect=%s\n", g_zorder_above ? "true" : "false"); fclose(orf); }
+    /* REAL, NEW 2026-09-01: override_redirect is locked at XCreateWindow
+     * time, so toggling can't change the windows already on screen - the
+     * pdl write above only matters at their NEXT spawn. So respawn every
+     * live covered window now (tiles + the hq render windows), each with
+     * its same real argv. Tile position is restored from
+     * <package_dir>/desktop_pos.txt and each hq window re-loads its own
+     * existing state file on startup, so every window reappears where it
+     * was. This is what actually makes the @ toggle take effect live. */
+    ktb_toggle_zorder_respawn();
+    ktb_toggle_zorder_apply(g_zorder_above);
+}
+
 static void dispatch_onclick(LayDoc *doc, int idx) {
     if (idx < 0 || idx >= doc->element_count) return;
     const char *oc = doc->elements[idx].onClick;
@@ -1047,6 +1270,14 @@ static void dispatch_onclick(LayDoc *doc, int idx) {
     if (strncmp(oc, "SHORTCUT:", 9) == 0) {
         int i = atoi(oc + 9);
         if (i >= 0 && i < KTB_MAX_SHORTCUTS) send_code(KSC_SHORTCUT_BASE + i);
+        return;
+    }
+    /* REAL, NEW 2026-09-01 - the always-on-top ("@") HQ row carries this
+     * special onClick (not HQITEM:i) so the parser handles it locally
+     * with X (it owns g_dpy) instead of round-tripping to the manager,
+     * which has no Xlib access. See ktb_toggle_zorder(). */
+    if (strcmp(oc, "ZORDER_TOGGLE") == 0) {
+        ktb_toggle_zorder();
         return;
     }
     if (strncmp(oc, "HQITEM:", 7) == 0) {
@@ -2472,6 +2703,7 @@ int main(int argc, char **argv) {
     wait_for_manager_first_publish();
 
     Display *dpy = XOpenDisplay(NULL);
+    g_dpy = dpy; /* REAL, NEW 2026-09-01 - zorder toggle uses the parser's own Display */
     /* REAL FIX 2026-08-30, same real bug class already found+fixed for
      * run_pchq_board_mode() (commit 402c812b) - taskbar_soft_focus()
      * calls XSetInputFocus() right after XMapRaised() (see win/hq_win's

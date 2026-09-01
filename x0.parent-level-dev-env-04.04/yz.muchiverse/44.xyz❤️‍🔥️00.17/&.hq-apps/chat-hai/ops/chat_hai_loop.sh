@@ -201,6 +201,25 @@ echo "0" > "$PAUSE_FILE"
 > "$TYPING_FILE" # clear any stale name left over from a killed-mid-request process
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] loop online (pid $$)" >> "$LOG"
 
+# REAL, NEW 2026-09-01 (chat-hai's own migration onto the shared
+# khtpm_core_render.+x generic sidebar/panel/scrolllist/cli_io path -
+# see chat_hai_projector.sh's own header comment for the full
+# architecture). That script regenerates chat-hai.chtpm from this
+# loop's own real state files; it's launched as THIS process's own
+# background child (not a second <module> tag - see the projector's
+# own comment on why) so its lifetime is tied to this loop's, matching
+# the existing real "closing chat-hai's window stops the persona loop"
+# contract (2026-08-16 behavior change, see this file's own module-tag
+# comment further up) - the projector dying with the loop is the same
+# real shape, just one hop further.
+PROJECTOR="$SCRIPT_DIR/chat_hai_projector.sh"
+PROJECTOR_PID=""
+if [ -x "$PROJECTOR" ]; then
+    "$PROJECTOR" &
+    PROJECTOR_PID=$!
+    trap '[ -n "$PROJECTOR_PID" ] && kill "$PROJECTOR_PID" 2>/dev/null' EXIT
+fi
+
 # persona .pdl -> field (PERSONA | name | X)
 persona_field() {
     local pdl="$1" key="$2"
@@ -605,7 +624,19 @@ log_line "personas: $(ls "$(personas_dir)"/*.pdl 2>/dev/null | wc -l) found in $
 # "file-based state only" philosophy - see !.HOUSE_STDS.md). This prevents
 # orphaned processes when the renderer is killed with -9 or crashes,
 # situations where SIGTERM handlers/atexit() don't run in the parent.
-renderer_pid_file="$STATE_DIR/chat_hai_renderer.pid"
+#
+# REAL FIX 2026-09-01 (chat-hai's own migration onto the shared generic
+# sidebar/panel/scrolllist/cli_io path - found live: this loop exited
+# within one round of every launch, "renderer PID gone", because
+# state/chat_hai_renderer.pid is only ever written by the OLD
+# g_is_chat_hai-specific chai_launch_module() - dead code now that the
+# projection's <window> carries no class= and g_is_chat_hai never
+# becomes 1). The GENERIC default/popup mode's own module-launch writes
+# a DIFFERENT, already-established file instead - module_parent.pid,
+# right next to the .chtpm itself (APP_DIR, not STATE_DIR) - same real
+# mechanism/convention open-hai's own manager already reads via its
+# parent_still_alive(). Switched to that file; semantics unchanged.
+renderer_pid_file="$APP_DIR/module_parent.pid"
 check_renderer_alive() {
     if [ -f "$renderer_pid_file" ]; then
         read -r rpid 2>/dev/null < "$renderer_pid_file"

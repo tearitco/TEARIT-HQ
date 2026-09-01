@@ -256,6 +256,33 @@ static void bump_camera_changed(const char *house_root) {
  * unreasonable. "top" is the original diagonal corner view, kept as a
  * real, named alternative for later camera work, not deleted. */
 static int g_emoji_sprite_view_top = 0; /* 0 = front (default), 1 = top */
+
+/* REAL, NEW 2026-09-01 - override_redirect toggle via .pdl: tile piece
+ * windows are override_redirect by default (always on top, WM can't
+ * restack them). The taskbar's @ toggle writes override_redirect=false
+ * to #.desktop/livedesk_override_redirect.pdl when z-order control is
+ * desired; on next piece spawn the window becomes WM-managed and
+ * XRaiseWindow/XLowerWindow work normally. Missing file or unrecognized
+ * value = default true (existing behavior, every real pal unaffected). */
+static int g_override_redirect = 1;
+static void load_override_redirect(const char *house_root) {
+    char path[4352];
+    snprintf(path, sizeof(path), "%s/#.desktop/livedesk_override_redirect.pdl", house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[64];
+    while (fgets(line, sizeof(line), f)) {
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char *val = eq + 1;
+        val[strcspn(val, "\r\n")] = '\0';
+        if (strcmp(line, "override_redirect") == 0)
+            g_override_redirect = (strcmp(val, "true") == 0);
+    }
+    fclose(f);
+}
+
 static void desktop_load_click_two_step(const char *house_root) {
     char path[4352]; /* matches this file's own later PATH_BUF (not yet declared at this point) */
     snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
@@ -3338,6 +3365,7 @@ int main(int argc, char **argv) {
 #endif
     snprintf(g_house_root_for_lock, sizeof(g_house_root_for_lock), "%s", g_house_root);
     if (g_house_root[0]) desktop_load_click_two_step(g_house_root);
+    if (g_house_root[0]) load_override_redirect(g_house_root);
     if (g_house_root[0] && g_is_cursword) cursword_load_move_mode(g_house_root);
     /* REAL FIX 2026-08-27 (TILE-SYSTEM-DESIGN.md §0a) - read the real,
      * optional, house-wide grid cell size as early as possible (right
@@ -3439,13 +3467,27 @@ int main(int argc, char **argv) {
      * cursword, which is the only one that ever acts on them - see
      * the FocusOut handler in the main event loop below). */
     swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | FocusChangeMask;
-    swa.override_redirect = True;
-    swa.border_pixel = 0; /* real X11 requirement whenever a window's own depth differs from its parent's (root's) - harmless to set unconditionally */
+    swa.override_redirect = g_override_redirect; /* real X11 requirement whenever a window's own depth differs from its parent's (root's) - harmless to set unconditionally */
     swa.background_pixel = 0;
 
     Window win = XCreateWindow(dpy, RootWindow(dpy, screen_num), 3 * GRID_CELL_PX, 3 * GRID_CELL_PX, WIN_PX, WIN_PX,
                                 0, win_depth, InputOutput, win_vis,
                                 CWColormap | CWEventMask | CWOverrideRedirect | CWBorderPixel | CWBackPixel, &swa);
+    /* REAL, NEW 2026-09-01 - when the pdl turns override_redirect off
+     * (WM-managed pieces, so the taskbar's @ toggle can control their
+     * real z-order on Xwayland/Mutter), Mutter would put a titlebar/frame
+     * + taskbar entry on them. Same real house fix open-hai/the taskbar
+     * use: _MOTIF_WM_HINTS flags=MWM_HINTS_DECORATIONS(2),
+     * decorations=0 - managed window, but zero WM-drawn chrome, keeping
+     * the borderless tile look. No-op for the default override_redirect
+     * path (a WM never manages those, the hint is simply ignored). */
+    if (!g_override_redirect) {
+        Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+        long hints[5] = { 2, 0, 0, 0, 0 }; /* flags=MWM_HINTS_DECORATIONS, decorations=0 */
+        XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace,
+                        (const unsigned char *)hints, 5);
+        XSetClassHint(dpy, win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"MuchiverseLivedesk"});
+    }
     XMapWindow(dpy, win);
     set_window_opacity(dpy, win, load_theme_opacity(g_house_root));
     /* REAL FIX 2026-08-29, direct live report ("entities and tb dropdown

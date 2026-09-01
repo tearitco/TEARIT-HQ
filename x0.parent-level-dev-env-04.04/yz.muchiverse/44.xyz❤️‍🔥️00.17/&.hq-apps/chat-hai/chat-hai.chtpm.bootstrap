@@ -1,0 +1,15 @@
+<!-- chat-hai.chtpm.bootstrap - REAL, PERMANENT template, 2026-09-01
+     migration onto the shared khtpm_core_render.+x. Never overwritten
+     by the live projector (chat_hai_projector.sh) - button.sh restores
+     chat-hai.chtpm from this file whenever it's found missing its
+     <module> tag (a real, confirmed failure mode across every app on
+     this pattern - see open-hai's own identical bootstrap file for the
+     full history). Deliberately NO class= on <window> - see
+     chat_hai_projector.sh's own header comment for why that's the
+     actual mechanism that keeps this off the old g_is_chat_hai path. -->
+<window label="chat-hai">
+  <page name="main">
+    <module src="&.hq-apps/chat-hai/ops/chat_hai_loop.sh" />
+    <text id="loading" label="chat-hai starting..."/>
+  </page>
+</window>

@@ -96,6 +96,78 @@ static char g_chtpm_path[PATH_BUF];  /* real, generic (2026-08-31) - the real .c
  * the full nanosecond-resolution struct timespec (st_mtim, real glibc/
  * POSIX field) instead - immune to this exact race by construction. */
 static struct timespec g_chtpm_mtime = {0, 0};
+/* REAL, NEW 2026-09-01 - the @ z-order toggle's managed half. House rule:
+ * behavior comes from #.desktop/livedesk_override_redirect.pdl (true =
+ * always-on-top override_redirect window, false = WM-managed so the WM
+ * decides z-order and the "normal" mode can sink these below native
+ * apps). Absent file / unrecognized value = default true (existing
+ * behavior, every real window unaffected). override_redirect is fixed at
+ * XCreateWindow time, so the taskbar's toggle kills + relaunches each
+ * living window via /proc (ktb_toggle_zorder_respawn in
+ * khtpm_strip_parser.c) - this loader only has to be right at startup. */
+static int g_override_redirect = 1;
+static void load_override_redirect(const char *house_root) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/livedesk_override_redirect.pdl", house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[64];
+    while (fgets(line, sizeof(line), f)) {
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char *val = eq + 1;
+        val[strcspn(val, "\r\n")] = '\0';
+        if (strcmp(line, "override_redirect") == 0)
+            g_override_redirect = (strcmp(val, "true") == 0);
+    }
+    fclose(f);
+}
+/* REAL, NEW 2026-09-01 - when the pdl says managed, a window still needs
+ * the WM's ordinary cooperation to LOOK like this house's own window
+ * (undecorated, no shell chrome, sinkable): _MOTIF_WM_HINTS
+ * decorations=0 removes the titlebar/frame, WM_DELETE_WINDOW keeps the
+ * existing close path working, and _NET_WM_STATE SKIP_TASKBAR|SKIP_PAGER
+ * keeps it out of the shell's dock/overview exactly like an
+ * override_redirect surface already is. Shared by every window-creation
+ * site in this file that can be toggled managed. */
+static void render_managed_wm_hints(Display *dpy, Window win, int managed) {
+    if (!managed) return;
+    Atom mh = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+    long hints[5] = { 2, 0, 0, 0, 0 }; /* flags=MWM_HINTS_DECORATIONS, decorations=0 */
+    XChangeProperty(dpy, win, mh, mh, 32, PropModeReplace, (unsigned char *)hints, 5);
+    Atom wdel = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+    XSetWMProtocols(dpy, win, &wdel, 1);
+    Atom _net_state = XInternAtom(dpy, "_NET_WM_STATE", False);
+    Atom skip_tb = XInternAtom(dpy, "_NET_WM_STATE_SKIP_TASKBAR", False);
+    Atom skip_pg = XInternAtom(dpy, "_NET_WM_STATE_SKIP_PAGER", False);
+    if (_net_state != None && skip_tb != None && skip_pg != None) {
+        Atom states[2] = { skip_tb, skip_pg };
+        XChangeProperty(dpy, win, _net_state, XA_ATOM, 32, PropModeReplace, (unsigned char *)states, 2);
+    }
+}
+/* REAL, NEW 2026-09-01 - the second half of "normal" mode, called AFTER
+ * the window is mapped + its first XSync: respawning re-maps the window
+ * on top (Mutter puts freshly-mapped windows there), which would have put
+ * livedesk ABOVE the native apps the moment the toggle runs. One
+ * XConfigureWindow stack-mode Below flips it to the bottom where it
+ * belongs - the WM honors restack requests for managed windows (proven
+ * live: _NET_WM_STATE_ABOVE sticks on the managed taskbar strips). */
+static void render_managed_sink_below(Display *dpy, Window win) {
+    if (g_override_redirect) return;
+    XSync(dpy, False);
+    XWindowChanges wc;
+    wc.stack_mode = Below;
+    XConfigureWindow(dpy, win, CWStackMode, &wc);
+    XSync(dpy, False);
+}
+/* REAL, NEW 2026-09-01 - remember which modes are real "windows" the
+ * user toggles (open-hai, db-hq, events-hq, chat-hai) vs the transient
+ * always-on-top chrome (entity-menu popup / taskbar-Settings swatch
+ * picker). swatch-picker stays pinned regardless of the pdl - the one
+ * dialog where the human IS the foreground actor, same reason the tile
+ * popup menu keeps override_redirect=True. */
+static int g_is_swatch_picker = 0;
 
 /* REAL, NEW 2026-08-29, direct instruction ("the tb has a
  * transparency. but that should propagate to 'all entities' and menu
@@ -111,6 +183,12 @@ static struct timespec g_chtpm_mtime = {0, 0};
  * instead of khtpm_strip_parser.c's path_join2/SP_PATH_BUF) rather
  * than sharing code across files for two small, pure functions with
  * no other dependencies. */
+/* REAL, NEW 2026-09-01 - forward decl so the shared every-mode tick
+ * (~line 10234) can call this before its own real definition further
+ * down (~line 11034, still named pchq_ for its original single call
+ * site, but genuinely generic - a plain house_root string + a shared
+ * dirty-marker file). */
+static int pchq_theme_changed_dirty(const char *house_root);
 static void set_window_opacity(Display *d, Window w, double opacity) {
     if (opacity < 0.0) opacity = 0.0;
     if (opacity > 1.0) opacity = 1.0;
@@ -861,7 +939,6 @@ static CssSheet g_sheet;
  * alpha's own real "one binary, behavior selected by loaded data"
  * shape - not zero-app-C, but genuinely ONE compiled binary, no
  * dlopen/plugin indirection. Set once in main() after parse_chtpm(). */
-static int g_is_swatch_picker = 0;
 static pid_t g_swatch_mgr_pid = -1;
 static unsigned g_swatch_action_seq = 0;
 
@@ -2845,7 +2922,7 @@ static void dbhq_restore_tab_content(void);
 static void dbhq_ce_handle_onclick(const char *onclick);
 static void evhq_dispatch_picker_onclick(const char *onclick);
 static void evhq_redraw_content(void); /* REAL, NEW 2026-08-29 - evhq_dispatch_picker_onclick()'s own new PICKER:DELETE case needs this before its real definition */
-static void nav_tab_register(const char *title);
+static void nav_tab_register(const char *type, const char *title);
 static void nav_tab_unregister(void);
 static void nav_tab_cycle(void);
 static void nav_tab_poll_active(void);
@@ -8572,20 +8649,16 @@ static int g_default_scrolllist_nav_lo = 0, g_default_scrolllist_nav_hi = 0;
  * this unconditionally to every default-mode window would double up
  * on those, not fix a real gap - sidebar+panel is the one real shape
  * that currently has none. */
+/* REAL, NEW 2026-09-01 - set once a page has real been laid out via
+ * layout_sidebar_panel() (see assign_nav_and_layout()'s own call site
+ * comment) - dispatch()'s own tail reads this to skip its default
+ * "menus close after a real action fires" behavior for a genuinely
+ * persistent window. */
+static int g_default_has_sidebar_panel = 0;
 static Elem g_default_close_elem_storage;
 static Elem *g_default_close_elem = &g_default_close_elem_storage;
 static Elem g_default_fullscreen_elem_storage;
 static Elem *g_default_fullscreen_elem = &g_default_fullscreen_elem_storage;
-/* REAL, NEW 2026-09-01 (direct ask: "assume its task is just 'hide'
- * and thats it (for now)") - a third chrome button, same real static-
- * storage pattern as the X/! pair above. Deliberately minimal: unmaps
- * this one window (XUnmapWindow) and nothing else - no cross-window
- * z-order/always-on-top behavior (that was the original, bigger ask;
- * scoped down for now per direct instruction). Restoring a hidden
- * window currently relies on whatever already re-maps it (the
- * taskbar's own existing raise/focus path) - not newly built here. */
-static Elem g_default_hide_elem_storage;
-static Elem *g_default_hide_elem = &g_default_hide_elem_storage;
 static int g_default_is_fullscreen = 0;
 static int g_default_pre_fullscreen_x = 0, g_default_pre_fullscreen_y = 0;
 
@@ -8774,19 +8847,6 @@ static int layout_sidebar_panel(Elem *page) {
          * margin off the true right edge (not flush against it). */
         int btn_w = 32, btn_h = CHROME_H - 4, gap = 8, right_margin = 10;
 
-        /* REAL, NEW 2026-09-01 - "hide" chrome button, third slot,
-         * leftmost of the three (nav-numbered FIRST of the chrome
-         * trio so X still ends up last/least-focused by default). */
-        memset(g_default_hide_elem, 0, sizeof(*g_default_hide_elem));
-        snprintf(g_default_hide_elem->tag, sizeof(g_default_hide_elem->tag), "item");
-        snprintf(g_default_hide_elem->id, sizeof(g_default_hide_elem->id), "chrome-hide");
-        snprintf(g_default_hide_elem->label, sizeof(g_default_hide_elem->label), "_");
-        snprintf(g_default_hide_elem->onclick, sizeof(g_default_hide_elem->onclick), "HIDE");
-        g_default_hide_elem->x = g_win_w - btn_w * 3 - gap * 2 - right_margin; g_default_hide_elem->y = 2;
-        g_default_hide_elem->w = btn_w; g_default_hide_elem->h = btn_h;
-        css_compute_style(&g_sheet, g_default_hide_elem->tag, NULL, NULL, 0, 0, &g_default_hide_elem->style);
-        g_default_hide_elem->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = g_default_hide_elem;
-
         memset(g_default_fullscreen_elem, 0, sizeof(*g_default_fullscreen_elem));
         snprintf(g_default_fullscreen_elem->tag, sizeof(g_default_fullscreen_elem->tag), "item");
         snprintf(g_default_fullscreen_elem->id, sizeof(g_default_fullscreen_elem->id), "chrome-fullscreen");
@@ -8824,7 +8884,18 @@ static void assign_nav_and_layout(void) {
     g_n_nav = 0;
     Elem *page = find_page(g_current_page);
     if (!page) { g_win_h = CHROME_H + 8; return; }
-    if (layout_sidebar_panel(page)) return;
+    /* REAL FIX 2026-09-01 (found live, chat-hai's own migration onto
+     * this path - a plain <item action=...>'s Pause/Speed control
+     * silently closed the WHOLE window, and open-hai's own Sound/Model
+     * toggle items were found independently dead with the same
+     * signature): dispatch()'s own g_quit=1 tail ("real menus close
+     * after a real action fires") is correct for this mode's original
+     * context-menu use case, but wrong for a genuinely persistent
+     * sidebar+panel window, where a plain control button firing should
+     * never close the app. g_default_has_sidebar_panel latches true the
+     * first time this real dual-region layout is used, and dispatch()
+     * checks it before quitting - see that function's own tail. */
+    if (layout_sidebar_panel(page)) { g_default_has_sidebar_panel = 1; return; }
     {
         int i, grid = 0;
         for (i = 0; i < page->n_children; i++) {
@@ -8972,18 +9043,6 @@ static void dispatch(const char *action) {
         XMoveWindow(dpy, win, g_win_x, g_win_y);
         return;
     }
-    /* REAL, NEW 2026-09-01 - the sidebar+panel chrome "_" (hide)
-     * button. Deliberately minimal per direct instruction ("assume
-     * its task is just hide and thats it (for now)"): unmaps THIS
-     * window only, real Xlib XUnmapWindow, no cross-window z-order
-     * behavior. Does not track/restore itself - whatever already
-     * re-maps/raises a window from the taskbar (this house's existing
-     * tab-focus path) is what brings it back; not new code here. */
-    if (strcmp(action, "HIDE") == 0) {
-        XUnmapWindow(dpy, win);
-        XFlush(dpy);
-        return;
-    }
     /* REAL FIX 2026-08-16, direct live report ("cancel doesn't work
      * yet"): the legacy dispatch (tp_desktop_window_rgb.c line ~2026)
      * ALWAYS calls close_context_menu() before even looking at the
@@ -9000,7 +9059,18 @@ static void dispatch(const char *action) {
     snprintf(cmd, sizeof(cmd), "%s '%s' '%s' >/dev/null 2>&1 &", action, g_package_dir, g_house_root);
     int rc = system(cmd);
     (void)rc;
-    g_quit = 1; /* real menus close after a real action fires, matching tp_desktop_window_rgb.c's own UX (g_menu_stay_open aside - default behavior) */
+    /* real menus close after a real action fires, matching
+     * tp_desktop_window_rgb.c's own UX - but NOT for a genuinely
+     * persistent sidebar+panel window (open-hai/chat-hai/network-
+     * browser's own New-session/Sound-toggle/Model-cycle/Pause/Speed
+     * controls, all plain <item action=...>). REAL FIX 2026-09-01
+     * (found live: chat-hai's own Pause button - and, independently,
+     * open-hai's real running window - silently closed the WHOLE app
+     * on a single click, confirmed via a real relay-driven repro: the
+     * dispatched shell command ran and wrote its state file correctly,
+     * then the process exited cleanly right after). See
+     * g_default_has_sidebar_panel's own declaration comment. */
+    if (!g_default_has_sidebar_panel) g_quit = 1;
 }
 
 /* REAL, NEW 2026-09-01 - same real shell-command dispatch as dispatch()
@@ -9634,7 +9704,7 @@ static void nav_tab_dir(char *out, size_t n) {
     snprintf(out, n, "%s/#.desktop/nav_tab", g_house_root);
 }
 
-static void nav_tab_register(const char *title) {
+static void nav_tab_register(const char *type, const char *title) {
     char dir[PATH_BUF], path[PATH_BUF], ledger[PATH_BUF];
     nav_tab_dir(dir, sizeof(dir));
     mkdir(dir, 0777);
@@ -9664,15 +9734,17 @@ static void nav_tab_register(const char *title) {
     snprintf(path, sizeof(path), "%s/%d", dir, (int)getpid());
     FILE *f = fopen(path, "w");
     if (f) {
-        fprintf(f, "%d %lx %s\n", g_nav_tab_ordinal, (unsigned long)win,
+        fprintf(f, "%d %lx %s %s\n", g_nav_tab_ordinal, (unsigned long)win,
+                type && type[0] ? type : "hq",
                 title ? title : "hq");
         fclose(f);
     }
     snprintf(ledger, sizeof(ledger), "%s/#.desktop/nav_master_ledger.txt", g_house_root);
     FILE *lf = fopen(ledger, "a");
     if (lf) {
-        fprintf(lf, "REG pid=%d tab=%d xid=%lx %s\n",
+        fprintf(lf, "REG pid=%d tab=%d xid=%lx type=%s %s\n",
                 (int)getpid(), g_nav_tab_ordinal, (unsigned long)win,
+                type && type[0] ? type : "hq",
                 title ? title : "hq");
         fclose(lf);
     }
@@ -10176,6 +10248,25 @@ static void hq_idle_tick(void) {
             redraw();
         }
     }
+    /* REAL FIX 2026-09-01 (live report: "entities changes opacity
+     * automatically... but windows have to be reset to change. they
+     * didn't used to be like this") - live, event-driven opacity
+     * reapply already existed in this exact binary
+     * (pchq_theme_changed_dirty()/set_window_opacity(), ported from
+     * tp_desktop_window_rgb.c's own theme_changed_dirty()), but was
+     * only ever wired up for pchq_board mode (~line 11708) - every
+     * OTHER window this binary draws (open-hai/chat-hai/network-
+     * browser/db-hq/events-hq/taskbar-settings/entity-menus) had NO
+     * live reapply at all, so a theme opacity change only ever took
+     * effect on the NEXT fresh launch. Wired into this same shared,
+     * every-mode, every-tick spot (pchq_theme_changed_dirty() itself
+     * is already fully generic despite its name - a plain house_root
+     * string + a shared dirty-marker file, nothing pchq-specific) so
+     * every window gets the same live behavior entities already have,
+     * with zero per-mode duplication. */
+    if (pchq_theme_changed_dirty(g_house_root)) {
+        set_window_opacity(dpy, win, load_theme_opacity());
+    }
     if (poll_agent_history() > 0 && !g_quit) hq_request_redraw();
     if (g_is_db_hq || g_is_events_hq || g_is_chat_hai) nav_tab_poll_active();
     if (g_quit) return;
@@ -10440,8 +10531,27 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
              * since this popup path has no such named close-element global
              * to check against; excluded the same top-right 60px rect by
              * its own known real coordinates instead. */
+            /* REAL FIX 2026-09-01 (live report: "! chrome doesn't work
+             * via mouse click, only nav/Enter") - the exclusion zone
+             * below used to be a hardcoded 60px, sized when "X" was the
+             * ONLY chrome button on this popup path (2026-08-29). Once
+             * "!" and "_" were added to its LEFT this same session,
+             * most of their real clickable area fell outside that
+             * fixed 60px, so a click there was eaten as a drag-start
+             * before dbhq_capture_click() ever ran - keyboard Enter on
+             * the focused nav item bypassed this entirely, which is
+             * why it "worked from nav but not mouse". Real fix: use
+             * the chrome trio's own real leftmost x (g_default_full_
+             * screen_elem, already computed by layout_sidebar_panel())
+             * as the exclusion boundary instead of a stale constant -
+             * only when this window actually has real chrome
+             * (g_default_has_sidebar_panel), else keep the original
+             * 60px for any other popup that has just a plain close
+             * corner and no chrome trio of its own. */
+            int chrome_zone_x = (g_default_has_sidebar_panel && g_default_fullscreen_elem->w > 0)
+                                 ? g_default_fullscreen_elem->x : g_win_w - 60;
             if (ev->xbutton.button == 1 && ev->xbutton.y < CHROME_H &&
-                !(ev->xbutton.x >= g_win_w - 60 && ev->xbutton.x < g_win_w)) {
+                !(ev->xbutton.x >= chrome_zone_x && ev->xbutton.x < g_win_w)) {
                 g_popup_dragging = 1;
                 g_popup_drag_last_x = ev->xbutton.x_root;
                 g_popup_drag_last_y = ev->xbutton.y_root;
@@ -11926,6 +12036,11 @@ int main(int argc, char **argv) {
      * not just a reorder. */
     if (argc < 3) { fprintf(stderr, "usage: %s <house_root> <chtpm_path> [x] [y]\n", argv[0]); return 1; }
     snprintf(g_house_root, sizeof(g_house_root), "%s", argv[1]);
+    /* REAL, NEW 2026-09-01 - @ toggle: every real window this binary can
+     * open (db-hq/events-hq/chat-hai/open-hai) obeys the shared pdl; the
+     * popup/settings branches stay pinned below. Loaded before any
+     * window creation - override_redirect is creation-time-only. */
+    load_override_redirect(g_house_root);
     /* REAL, NEW 2026-08-29 - dbhq_load_font_scale() also reads the new
      * click_two_step key (see click_focus_then_activate()'s own
      * comment); that key applies to EVERY mode's clicks, not just
@@ -12346,6 +12461,27 @@ int main(int argc, char **argv) {
      * either way. */
     dpy = XOpenDisplay(NULL);
     if (!dpy) { fprintf(stderr, "khtpm_entity_menu_render: cannot open display\n"); return 1; }
+    /* REAL FIX 2026-09-01 (found live: open-hai/chat-hai/network-browser
+     * all completely failed to launch - real repro via direct binary
+     * run showed a fatal, unhandled "BadMatch (invalid parameter
+     * attributes)" on X_SetInputFocus, killing the whole process before
+     * a single frame ever drew). Root cause: the @ z-order work (this
+     * session, oc) makes windows optionally real WM-managed
+     * (override_redirect=false per #.desktop/livedesk_override_
+     * redirect.pdl) - a managed window's map is ASYNCHRONOUS (the WM
+     * must reparent it), unlike override_redirect (always instant, no
+     * WM involved) - so the existing post-map XSetInputFocus retry loop
+     * (~line 12824, written back when every window here WAS always
+     * override_redirect) can now genuinely fire before the window is
+     * viewable, and X's default error handler calls exit() on any
+     * unhandled error. evhq_nonfatal_x_error() already existed for
+     * exactly this class of "best-effort X call, never worth crashing
+     * the whole app over" case, but was only ever installed for
+     * events-hq mode - installing it globally here, at the earliest
+     * possible point, so EVERY mode gets the same real safety net
+     * (this fixes the crash without needing to chase every individual
+     * best-effort X call across every mode one at a time). */
+    XSetErrorHandler(evhq_nonfatal_x_error);
     screen = DefaultScreen(dpy);
     cmap = DefaultColormap(dpy, screen);
     font_ui = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=12");
@@ -12406,10 +12542,11 @@ int main(int argc, char **argv) {
          * override_redirect window gets focus - this doesn't remove or
          * change that logic, just makes the window type match what
          * this file already treats it as. */
-        swa.override_redirect = True;
+        swa.override_redirect = (Bool)g_override_redirect; /* REAL, NEW 2026-09-01 - @ toggle: managed when the shared pdl says false */
         win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)ww, (unsigned)wh, 0,
                              CopyFromParent, InputOutput, CopyFromParent,
                              CWBackPixel | CWEventMask | CWOverrideRedirect, &swa);
+        render_managed_wm_hints(dpy, win, !g_override_redirect); /* REAL, NEW 2026-09-01 - @ "normal" mode: undecorated + no shell chrome when managed */
         {
             /* REAL FIX 2026-08-29 (OPACITY-PIPELINE-INVESTIGATION-2026-08-29.txt
              * + part2.txt, root-caused by a delegated Haiku subagent) -
@@ -12440,7 +12577,9 @@ int main(int argc, char **argv) {
         set_window_opacity(dpy, win, load_theme_opacity());
         XSync(dpy, False);
         { XWindowAttributes wa; if (XGetWindowAttributes(dpy, win, &wa)) { g_win_x = wa.x; g_win_y = wa.y; } }
-        nav_tab_register(g_is_palettes ? "palettes" : g_is_bookmarks ? "bookmarks" : g_is_stats_hq ? "stats-hq" : "db-hq");
+        render_managed_sink_below(dpy, win); /* REAL, NEW 2026-09-01 - @ "normal" mode: drop this managed window below native apps */
+        nav_tab_register(g_is_palettes ? "pal" : g_is_bookmarks ? "bm" : g_is_stats_hq ? "stats" : "dbhq",
+                         g_is_palettes ? "palettes" : g_is_bookmarks ? "bookmarks" : g_is_stats_hq ? "stats-hq" : "db-hq");
         if (g_dbhq_focus_grab_enabled) { dbhq_grab_keyboard_retry(); dbhq_soft_focus(); }
         XSync(dpy, False);
         { XEvent stale_ev; while (XCheckWindowEvent(dpy, win, ButtonPressMask | KeyPressMask, &stale_ev)) { } }
@@ -12515,10 +12654,11 @@ int main(int argc, char **argv) {
         /* REAL FIX 2026-08-29 - see db-hq branch's own identical
          * comment above (OPACITY-PIPELINE-INVESTIGATION-2026-08-29.txt
          * has the full research trail) - same real bug, same fix. */
-        swa.override_redirect = True;
+        swa.override_redirect = (Bool)g_override_redirect; /* REAL, NEW 2026-09-01 - @ toggle: managed when the shared pdl says false */
         win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)ww, (unsigned)wh, 0,
                              CopyFromParent, InputOutput, CopyFromParent,
                              CWBackPixel | CWEventMask | CWOverrideRedirect, &swa);
+        render_managed_wm_hints(dpy, win, !g_override_redirect); /* REAL, NEW 2026-09-01 - @ "normal" mode: undecorated + no shell chrome when managed */
         {
             /* REAL FIX 2026-08-29 - see db-hq branch's own identical
              * comment above (OPACITY-PIPELINE-INVESTIGATION-2026-08-29.txt
@@ -12534,7 +12674,8 @@ int main(int argc, char **argv) {
         set_window_opacity(dpy, win, load_theme_opacity());
         XSync(dpy, False);
         { XWindowAttributes wa; if (XGetWindowAttributes(dpy, win, &wa)) { g_win_x = wa.x; g_win_y = wa.y; } }
-        nav_tab_register("events-hq");
+        render_managed_sink_below(dpy, win); /* REAL, NEW 2026-09-01 - @ "normal" mode: drop this managed window below native apps */
+        nav_tab_register("evhq", "events-hq");
 
         gc = XCreateGC(dpy, win, 0, NULL);
         buf = XCreatePixmap(dpy, win, (unsigned)ww, (unsigned)wh, (unsigned)DefaultDepth(dpy, screen));
@@ -12580,10 +12721,11 @@ int main(int argc, char **argv) {
         /* REAL FIX 2026-08-29 - see db-hq branch's own identical
          * comment above (OPACITY-PIPELINE-INVESTIGATION-2026-08-29.txt
          * has the full research trail) - same real bug, same fix. */
-        swa.override_redirect = True;
+        swa.override_redirect = (Bool)g_override_redirect; /* REAL, NEW 2026-09-01 - @ toggle: managed when the shared pdl says false */
         win = XCreateWindow(dpy, RootWindow(dpy, screen), chai_win_x, chai_win_y, (unsigned)ww, (unsigned)wh, 0,
                              CopyFromParent, InputOutput, CopyFromParent,
                              CWBackPixel | CWEventMask | CWOverrideRedirect, &swa);
+        render_managed_wm_hints(dpy, win, !g_override_redirect); /* REAL, NEW 2026-09-01 - @ "normal" mode: undecorated + no shell chrome when managed */
         {
             /* REAL FIX 2026-08-29 - see db-hq branch's own identical
              * comment above (OPACITY-PIPELINE-INVESTIGATION-2026-08-29.txt
@@ -12602,7 +12744,8 @@ int main(int argc, char **argv) {
         set_window_opacity(dpy, win, load_theme_opacity());
         XSync(dpy, False);
         { XWindowAttributes wa; if (XGetWindowAttributes(dpy, win, &wa)) { chai_win_x = wa.x; chai_win_y = wa.y; } }
-        nav_tab_register("chat-hai");
+        render_managed_sink_below(dpy, win); /* REAL, NEW 2026-09-01 - @ "normal" mode: drop this managed window below native apps */
+        nav_tab_register("chai", "chat-hai");
         XSync(dpy, False);
         { XEvent stale_ev; while (XCheckWindowEvent(dpy, win, ButtonPressMask | KeyPressMask, &stale_ev)) { } }
 
@@ -12658,7 +12801,13 @@ int main(int argc, char **argv) {
      * click. override_redirect bypasses window-manager management
      * entirely (same as any real popup/menu), so clicks are delivered
      * immediately - matches the legacy popup's own real behavior. */
-    swa.override_redirect = True;
+    /* REAL, NEW 2026-09-01 - @ toggle: this branch is open-hai (a real
+     * panel window) AND the transient entity-menu popup/taskbar-Settings
+     * swatch-picker. swatch-picker stays pinned always (the human is the
+     * foreground actor there); open-hai and the transient menus follow
+     * the shared pdl's managed=false when "normal" sinks below native
+     * apps. Same data-driven rule, same shared #.desktop pdl. */
+    swa.override_redirect = g_is_swatch_picker ? True : (Bool)g_override_redirect;
     /* REAL FIX 2026-08-29 (live report: "toolbar doesn't allow drag
      * repositioning") - this generic popup window (entity-menu popup AND
      * swatch-picker/Settings) never requested ButtonReleaseMask or
@@ -12674,6 +12823,7 @@ int main(int argc, char **argv) {
     swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
     win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h, 0,
                          CopyFromParent, InputOutput, CopyFromParent, CWBackPixel | CWOverrideRedirect | CWEventMask, &swa);
+    render_managed_wm_hints(dpy, win, g_is_swatch_picker ? 0 : !g_override_redirect); /* REAL, NEW 2026-09-01 - managed branch: undecorated + no shell chrome (post-map sink-below lands after XMapRaised) */
     Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
     long hints[5] = { 2, 0, 0, 0, 0 };
     XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
@@ -12688,6 +12838,7 @@ int main(int argc, char **argv) {
     XMapRaised(dpy, win);
     set_window_opacity(dpy, win, load_theme_opacity());
     XSync(dpy, False);
+    render_managed_sink_below(dpy, win); /* REAL, NEW 2026-09-01 - @ "normal" mode: drop this managed window below native apps (undoes the MapRaised) */
     /* 2026-08-24 - XDND drop-target opt-in (no-op unless this .chtpm
      * declared a window-level drop_action= attribute). */
     xdnd_init_atoms(dpy);
