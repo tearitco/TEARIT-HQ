@@ -1684,6 +1684,19 @@ static void write_chtpm_projection(void) {
      * new messages - see reparse_chtpm_if_changed()'s own real fix for
      * that); the composer is <panel>'s own pinned-bottom <cli_io>. */
     OHP_APPEND("    <sidebar>\n");
+    /* REAL, NEW 2026-09-01 (direct instruction: "id really like the
+     * other options to be in its own pane below sessions... giving the
+     * scroll window to session and chat if they need") - New/Model/
+     * Sound are sidebar's own FIXED rows now (real generic capability,
+     * khtpm_core_render.c's own layout_fixed_rows_and_scrolllist() -
+     * shared with <panel>, not a new copy), always reachable regardless
+     * of how long the real session list grows; the session list itself
+     * moves into a nested <scrolllist> below them, with its own
+     * independent scroll. */
+    OHP_APPEND("      <text id=\"sidebar-header\" label=\"Sessions\"/>\n");
+    OHP_APPEND("      <item id=\"new\" label=\"+ New session\" action=\"'%s/oh_write_request.sh' 'NEWSESSION' '%s'\"/>\n", scripts_dir, state_dir_sq);
+    OHP_APPEND("      <item id=\"togglesound\" label=\"Sound: %s (click to toggle)\" action=\"'%s/oh_write_request.sh' 'TOGGLESOUND' '%s'\"/>\n", sound_on ? "on" : "off", scripts_dir, state_dir_sq);
+    OHP_APPEND("      <scrolllist>\n");
     FILE *sf = fopen(g_sessions_state_path, "r");
     if (sf) {
         char line[PATH_BUF + 128];
@@ -1695,6 +1708,17 @@ static void write_chtpm_projection(void) {
             *bar = '\0';
             const char *dir = line, *label = bar + 1;
             int is_active = g_session_dir[0] && strcmp(dir, g_session_dir) == 0;
+            /* REAL, NEW 2026-09-01 (direct instruction: "we dont need to
+             * keep empty sessions") - a session with no real messages
+             * yet (publish_sessions()'s own real "(empty)" suffix,
+             * written when it found no U| line) is skipped from the
+             * real, visible list - real clutter this house's own
+             * repeated testing left behind. The ACTIVE session is never
+             * skipped even if empty (a freshly-created session must
+             * stay visible/selectable while its first message is still
+             * being composed) - real files on disk are untouched
+             * either way, this only affects what gets LISTED. */
+            if (!is_active && strstr(label, "(empty)")) continue;
             char label_full[300], label_esc[350];
             snprintf(label_full, sizeof(label_full), "%s%s", is_active ? "> " : "  ", label);
             xml_escape(label_full, label_esc, sizeof(label_esc));
@@ -1704,22 +1728,31 @@ static void write_chtpm_projection(void) {
             snprintf(del_req_sq, sizeof(del_req_sq), "DELETESESSION|%s", dir_sq);
             /* load_req_sq/del_req_sq's own embedded dir_sq is already
              * squote-escaped for ITS OWN single-quote wrapping below -
-             * safe to nest as one literal argv token each. */
-            OHP_APPEND("    <item id=\"s%d\" label=\"%s\" action=\"'%s/oh_write_request.sh' '%s' '%s'\"/>\n",
-                       n, label_esc, scripts_dir, load_req_sq, state_dir_sq);
-            OHP_APPEND("    <item id=\"sd%d\" label=\"  (delete)\" action=\"'%s/oh_write_request.sh' '%s' '%s'\"/>\n",
-                       n, scripts_dir, del_req_sq, state_dir_sq);
+             * safe to nest as one literal argv token each.
+             * REAL, NEW 2026-09-01 (direct instruction: "add backspace
+             * to delete... instead of making all those delete spots")
+             * - one real row per session now, not two: DELETESESSION
+             * moves to this item's own generic backspace_action= (a
+             * real, generic second action ANY focused <item> can carry,
+             * see khtpm_core_render.c's own Elem.backspace_action field
+             * comment) - Backspace while a session row is focused
+             * deletes it directly, real convention any future consumer
+             * with a real deletable list can reuse. */
+            OHP_APPEND("      <item id=\"s%d\" label=\"%s\" action=\"'%s/oh_write_request.sh' '%s' '%s'\" backspace_action=\"'%s/oh_write_request.sh' '%s' '%s'\"/>\n",
+                       n, label_esc, scripts_dir, load_req_sq, state_dir_sq, scripts_dir, del_req_sq, state_dir_sq);
             n++;
         }
         fclose(sf);
     }
+    OHP_APPEND("      </scrolllist>\n");
     OHP_APPEND("    </sidebar>\n");
 
     OHP_APPEND("    <panel>\n");
     OHP_APPEND("      <text id=\"status\" label=\"%s\"/>\n", status_esc);
-    OHP_APPEND("      <item id=\"new\" label=\"+ New session\" action=\"'%s/oh_write_request.sh' 'NEWSESSION' '%s'\"/>\n", scripts_dir, state_dir_sq);
+    /* REAL, NEW 2026-09-01 (direct instruction: "you can put model
+     * toggle up top next to model name, that would be best") - right
+     * next to panel's own status line, a fixed row same as before. */
     OHP_APPEND("      <item id=\"cyclemodel\" label=\"Model: %s (click to cycle)\" action=\"'%s/oh_write_request.sh' 'CYCLEMODEL' '%s'\"/>\n", model_esc, scripts_dir, state_dir_sq);
-    OHP_APPEND("      <item id=\"togglesound\" label=\"Sound: %s (click to toggle)\" action=\"'%s/oh_write_request.sh' 'TOGGLESOUND' '%s'\"/>\n", sound_on ? "on" : "off", scripts_dir, state_dir_sq);
     OHP_APPEND("      <scrolllist>\n");
 
     /* ---- active session's own real transcript tail (last N real
@@ -1751,7 +1784,14 @@ static void write_chtpm_projection(void) {
                 snprintf(shown, sizeof(shown), "%.200s", un);
                 snprintf(row_raw, sizeof(row_raw), "%s: %s", tail[idx][0] == 'U' ? "you" : "hai", shown);
                 xml_escape(row_raw, row_esc, sizeof(row_esc));
-                OHP_APPEND("        <text id=\"msg%d\" label=\"%s\"/>\n", i, row_esc);
+                /* REAL, NEW 2026-09-01 (direct instruction: "can u use
+                 * css 2 change color of user and ai chat?") - a real,
+                 * generic class= per real speaker, same real ".class {
+                 * color: ... }" convention entity_menu_default.css's
+                 * own sidebar/cli_io rules already use - color choice
+                 * itself lives in CSS, not baked in here. */
+                OHP_APPEND("        <text id=\"msg%d\" class=\"%s\" label=\"%s\"/>\n",
+                           i, tail[idx][0] == 'U' ? "msg-user" : "msg-hai", row_esc);
                 free(tail[idx]);
             }
         }

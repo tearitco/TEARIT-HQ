@@ -74,9 +74,26 @@ if [ ! -x "$MANAGER_BIN" ]; then
     echo "open-hai button.sh: build failed, missing $MANAGER_BIN" >&2
     exit 1
 fi
+BOOTSTRAP_TEMPLATE="$HERE/open-hai.chtpm.bootstrap"
 if [ ! -f "$CHTPM" ]; then
     echo "open-hai button.sh: missing bootstrap $CHTPM" >&2
     exit 1
+fi
+# REAL FIX 2026-09-01 (live report: after the manager's own real
+# projection overwrites open-hai.chtpm - its normal, intended job every
+# tick - a STRAY manager process (an orphan from a previous relaunch,
+# or any other writer) landing one more write on this SAME path after
+# the window that launched it is gone permanently erases the <module>
+# tag this launcher's whole mechanism depends on: the NEXT launch finds
+# no module tag, and NEVER starts a manager again at all, silently,
+# with zero error - confirmed live, reproduced multiple times).
+# Self-heal here, every launch: a real, permanent, never-overwritten
+# template (open-hai.chtpm.bootstrap, copied once from the real
+# checked-in bootstrap) restores the live path whenever it's missing
+# its own <module> tag, before this script ever execs the renderer.
+if [ -f "$BOOTSTRAP_TEMPLATE" ] && ! grep -q '<module' "$CHTPM" 2>/dev/null; then
+    echo "open-hai button.sh: $CHTPM lost its <module> tag (stray write) - restoring from $BOOTSTRAP_TEMPLATE"
+    cp "$BOOTSTRAP_TEMPLATE" "$CHTPM"
 fi
 
 AUDIT_DIR="$HOUSE_ROOT/&.widgits/open-hai/pieces/audit"

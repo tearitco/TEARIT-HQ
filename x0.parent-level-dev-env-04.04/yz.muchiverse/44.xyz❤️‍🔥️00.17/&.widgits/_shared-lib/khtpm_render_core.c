@@ -138,6 +138,15 @@ typedef struct Elem {
      * = zero behavior change for every existing consumer. */
     char input_buffer[256];
     char target_id[64];
+    /* REAL, NEW 2026-09-01 (live report: a long list of one-item-plus-
+     * its-own-separate-delete-row pairs is real visual clutter - direct
+     * instruction: "id like to add backspace to delete if possible,
+     * instead of making all those delete spots") - a real, generic
+     * second action any focused `<item>` can carry: Backspace runs
+     * THIS instead of onclick, when set (see handle_key()'s own new
+     * branch). Empty/unused = zero behavior change for every existing
+     * consumer - nothing currently reads or sets this. */
+    char backspace_action[1536];
     struct Elem *children[MAX_CHILDREN];
     int n_children;
     struct Elem *parent;

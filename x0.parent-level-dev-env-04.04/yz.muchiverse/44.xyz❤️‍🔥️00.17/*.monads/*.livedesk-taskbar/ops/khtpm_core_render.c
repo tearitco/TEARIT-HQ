@@ -84,7 +84,18 @@ static int g_n_elems = 0;
 static char g_package_dir[PATH_BUF];
 static char g_house_root[PATH_BUF];
 static char g_chtpm_path[PATH_BUF];  /* real, generic (2026-08-31) - the real .chtpm this process was launched against, kept for the generic live-reparse capability below */
-static time_t g_chtpm_mtime = 0;
+/* REAL FIX 2026-09-01 (live report: open-hai's own real projection
+ * never got picked up after a fresh launch - the bootstrap-then-
+ * manager-writes-real-content sequence happens fast enough, especially
+ * right after button.sh's own bootstrap-restore cp, that both writes
+ * can land within the SAME whole second - plain time_t/st_mtime has
+ * only 1-second resolution, so `st.st_mtime == g_chtpm_mtime` can be
+ * spuriously true even though the file's real content already changed
+ * out from under it, silently skipping the reparse forever until some
+ * LATER write finally crosses into the next second. Real fix: track
+ * the full nanosecond-resolution struct timespec (st_mtim, real glibc/
+ * POSIX field) instead - immune to this exact race by construction. */
+static struct timespec g_chtpm_mtime = {0, 0};
 
 /* REAL, NEW 2026-08-29, direct instruction ("the tb has a
  * transparency. but that should propagate to 'all entities' and menu
@@ -470,6 +481,15 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
          * generic <cli_io target_id="..."/> attribute, ported from
          * chtpm_parser.c's own UIElement.target_id. */
         snprintf(e->target_id, sizeof(e->target_id), "%s", val);
+    } else if (strcmp(name, "backspace_action") == 0) {
+        /* REAL, NEW 2026-09-01 - see Elem's own backspace_action field
+         * comment in khtpm_render_core.c. Decoded exactly like action=/
+         * onclick= (a real shell command, same &quot;/&amp;/&gt;/&lt;
+         * entity set). */
+        char decoded[sizeof(e->backspace_action)];
+        snprintf(decoded, sizeof(decoded), "%s", val);
+        decode_entities(decoded);
+        snprintf(e->backspace_action, sizeof(e->backspace_action), "%s", decoded);
     } else if (strcmp(name, "drop_action") == 0) {
         /* 2026-08-24 - see the g_drop_action block comment above.
          * Window-level attr; decoded through the SAME entity decoder
@@ -619,8 +639,8 @@ static int reparse_chtpm_if_changed(void) {
     if (!g_chtpm_path[0]) return 0;
     struct stat st;
     if (stat(g_chtpm_path, &st) != 0) return 0;
-    if (st.st_mtime == g_chtpm_mtime) return 0;
-    g_chtpm_mtime = st.st_mtime;
+    if (st.st_mtim.tv_sec == g_chtpm_mtime.tv_sec && st.st_mtim.tv_nsec == g_chtpm_mtime.tv_nsec) return 0;
+    g_chtpm_mtime = st.st_mtim;
     /* REAL FIX 2026-08-31 (found live testing open-hai's own projection
      * with a real, live-typing manager behind it: clicks/Enter appeared
      * to silently stop arming a cli_io field for no visible reason) -
@@ -8515,6 +8535,28 @@ static int g_default_sidebar_scroll = 0;
 static int g_default_sidebar_nav_lo = 0, g_default_sidebar_nav_hi = 0;
 static int g_default_scrolllist_nav_lo = 0, g_default_scrolllist_nav_hi = 0;
 
+/* REAL, NEW 2026-09-01 (live report: "still missing x and !" - real
+ * chrome affordances, same real "X" (close) / "!" (fullscreen) pair
+ * piececraft-hq's own real board-mode chrome already uses, direct
+ * instruction to reuse that convention) - two real, generic, ALWAYS-
+ * present chrome buttons for the sidebar+panel layout, same "outside
+ * the parsed tree" static-storage pattern db-hq's own g_dbhq_close_elem
+ * already uses (NOT allocated from elem_new()'s pool every frame - that
+ * would leak a pool slot every single redraw, since only a real
+ * reparse resets g_n_elems). Scoped to layout_sidebar_panel() only -
+ * every OTHER default-mode consumer (swatch-picker/choice-picker/
+ * taskbar-settings) already has its own real, data-driven close
+ * convention (a `<item id="close">`/`class="close-btn"`), so adding
+ * this unconditionally to every default-mode window would double up
+ * on those, not fix a real gap - sidebar+panel is the one real shape
+ * that currently has none. */
+static Elem g_default_close_elem_storage;
+static Elem *g_default_close_elem = &g_default_close_elem_storage;
+static Elem g_default_fullscreen_elem_storage;
+static Elem *g_default_fullscreen_elem = &g_default_fullscreen_elem_storage;
+static int g_default_is_fullscreen = 0;
+static int g_default_pre_fullscreen_x = 0, g_default_pre_fullscreen_y = 0;
+
 /* Lays out `container`'s own direct item/text children as a real,
  * generic scrollable list clipped to the given box - only `visible_rows`
  * of them (h/ROW_H) are ever given a real position/nav_index; the rest
@@ -8564,6 +8606,57 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
     }
 }
 
+/* Real, generic "fixed rows above (or around) a nested <scrolllist>"
+ * layout - shared by BOTH <sidebar> and <panel> (2026-09-01, direct
+ * instruction: sidebar needed the exact same real capability panel
+ * already had, "giving the scroll window to session and chat if they
+ * need" - one real function, not two near-duplicate copies). Any
+ * direct item/text child of `container` NOT inside its own nested
+ * <scrolllist> is a fixed, always-visible row (real controls belong
+ * here - they must stay reachable regardless of how long the scrolling
+ * content grows); a nested <scrolllist> gets whatever vertical space
+ * is left after those fixed rows AND a pinned <cli_io> composer (if
+ * one exists as a direct child - real, tag-based, never part of any
+ * scroll flow, always the container's own last ROW_H). */
+static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int w, int h, int *scroll, int *out_lo, int *out_hi) {
+    int has_composer = 0;
+    Elem *scrolllist = NULL;
+    for (int i = 0; i < container->n_children; i++) {
+        Elem *c = container->children[i];
+        if (strcmp(c->tag, "cli_io") == 0) has_composer = 1;
+        if (strcmp(c->tag, "scrolllist") == 0) scrolllist = c;
+    }
+    int composer_h = has_composer ? ROW_H : 0;
+    int y_cursor = y;
+    for (int i = 0; i < container->n_children; i++) {
+        Elem *c = container->children[i];
+        if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0) {
+            c->x = x; c->y = y_cursor; c->w = w; c->h = ROW_H;
+            css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
+            if (strcmp(c->tag, "item") == 0) { c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c; }
+            else c->nav_index = 0;
+            y_cursor += ROW_H;
+        } else if (strcmp(c->tag, "cli_io") == 0) {
+            c->x = x; c->y = y + h - ROW_H; c->w = w; c->h = ROW_H;
+            css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
+            c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c;
+        }
+        /* scrolllist itself is positioned in its own real pass below,
+         * once the fixed-row total (y_cursor's own final advance) is
+         * known - skipped here on purpose. */
+    }
+    if (scrolllist) {
+        int list_h = (y + h) - y_cursor - composer_h;
+        layout_scroll_region(scrolllist, x, y_cursor, w, list_h, scroll, out_lo, out_hi);
+    } else if (out_lo && out_hi) {
+        /* No nested scrolllist - container has no scrollable region of
+         * its own (e.g. sidebar with no sessions yet, or a page that
+         * only ever needed fixed rows). [0,0] matches layout_scroll_
+         * region()'s own "nothing to scroll" convention. */
+        *out_lo = 0; *out_hi = 0;
+    }
+}
+
 /* Real, generic dual-region layout - fires only when `page` declares
  * BOTH a <sidebar> and a <panel> (see this section's own header
  * comment for why a page with neither is completely unaffected).
@@ -8584,8 +8677,13 @@ static int layout_sidebar_panel(Elem *page) {
     Elem *panel = find_by_tag(page, "panel");
     if (!sidebar || !panel) return 0;
 
-    g_win_w = g_window->style.has_width ? g_window->style.width : DEFAULT_WIN_W;
-    g_win_h = g_window->style.has_height ? g_window->style.height : DEFAULT_WIN_H;
+    if (g_default_is_fullscreen) {
+        g_win_w = DisplayWidth(dpy, screen);
+        g_win_h = DisplayHeight(dpy, screen);
+    } else {
+        g_win_w = g_window->style.has_width ? g_window->style.width : DEFAULT_WIN_W;
+        g_win_h = g_window->style.has_height ? g_window->style.height : DEFAULT_WIN_H;
+    }
 
     sidebar->x = 0; sidebar->y = CHROME_H; sidebar->w = SIDEBAR_W; sidebar->h = g_win_h - CHROME_H;
     panel->x = SIDEBAR_W; panel->y = CHROME_H; panel->w = g_win_w - SIDEBAR_W; panel->h = g_win_h - CHROME_H;
@@ -8608,43 +8706,54 @@ static int layout_sidebar_panel(Elem *page) {
      * real CSS rule DOES survive the round trip - only a programmatic
      * style assignment made directly on the live tree does not). */
 
-    layout_scroll_region(sidebar, sidebar->x, sidebar->y, sidebar->w, sidebar->h,
-                          &g_default_sidebar_scroll, &g_default_sidebar_nav_lo, &g_default_sidebar_nav_hi);
+    /* REAL, NEW 2026-09-01 (direct instruction: "re add [the controls]
+     * by making another panel in sessions and giving the scroll window
+     * to session and chat if they need" - after they scrolled out of
+     * view once the real session list grew past sidebar's own visible
+     * height) - <sidebar> now gets the SAME real "fixed rows above a
+     * nested <scrolllist>" capability <panel> already had, via one
+     * shared helper (layout_fixed_rows_and_scrolllist() below) instead
+     * of two near-duplicate copies. Sidebar's own direct item/text
+     * children (New/Model/Sound) stay fixed and always visible; a
+     * nested <scrolllist> (the real session list) gets whatever's left
+     * and scrolls independently - same real per-region scroll variable
+     * as before, just no longer required to be sidebar's OWN direct
+     * children. */
+    layout_fixed_rows_and_scrolllist(sidebar, sidebar->x, sidebar->y, sidebar->w, sidebar->h,
+                                      &g_default_sidebar_scroll, &g_default_sidebar_nav_lo, &g_default_sidebar_nav_hi);
+    layout_fixed_rows_and_scrolllist(panel, panel->x, panel->y, panel->w, panel->h,
+                                      &g_default_scrolllist_scroll, &g_default_scrolllist_nav_lo, &g_default_scrolllist_nav_hi);
 
-    /* Panel's own pass: real cli_io detection FIRST (reserves its row
-     * regardless of where it actually sits in document order), then a
-     * single top-down pass positions fixed rows and hands the
-     * <scrolllist> child (if any) whatever's left. */
-    int has_composer = 0;
-    Elem *scrolllist = NULL;
-    for (int i = 0; i < panel->n_children; i++) {
-        Elem *c = panel->children[i];
-        if (strcmp(c->tag, "cli_io") == 0) has_composer = 1;
-        if (strcmp(c->tag, "scrolllist") == 0) scrolllist = c;
-    }
-    int composer_h = has_composer ? ROW_H : 0;
-    int y_cursor = panel->y;
-    for (int i = 0; i < panel->n_children; i++) {
-        Elem *c = panel->children[i];
-        if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0) {
-            c->x = panel->x; c->y = y_cursor; c->w = panel->w; c->h = ROW_H;
-            css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
-            if (strcmp(c->tag, "item") == 0) { c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c; }
-            else c->nav_index = 0;
-            y_cursor += ROW_H;
-        } else if (strcmp(c->tag, "cli_io") == 0) {
-            c->x = panel->x; c->y = panel->y + panel->h - ROW_H; c->w = panel->w; c->h = ROW_H;
-            css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
-            c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c;
-        }
-        /* scrolllist itself is positioned in its own real pass below,
-         * once the fixed-row total (y_cursor's own final advance) is
-         * known - skipped here on purpose. */
-    }
-    if (scrolllist) {
-        int list_h = (panel->y + panel->h) - y_cursor - composer_h;
-        layout_scroll_region(scrolllist, panel->x, y_cursor, panel->w, list_h,
-                              &g_default_scrolllist_scroll, &g_default_scrolllist_nav_lo, &g_default_scrolllist_nav_hi);
+    /* REAL, NEW 2026-09-01 - the real "X"/"!" chrome pair (see these
+     * statics' own header comment). Positioned in the chrome strip's
+     * own top-right corner, nav-numbered LAST (matches db-hq's own
+     * g_dbhq_close_elem convention - a fresh window never opens with
+     * Close already focused). */
+    {
+        /* REAL FIX 2026-09-01 (live report: "smushed to the right side...
+         * can have more space and be more visible dont be too far
+         * right") - wider buttons, a real gap between them, and a real
+         * margin off the true right edge (not flush against it). */
+        int btn_w = 32, btn_h = CHROME_H - 4, gap = 8, right_margin = 10;
+        memset(g_default_fullscreen_elem, 0, sizeof(*g_default_fullscreen_elem));
+        snprintf(g_default_fullscreen_elem->tag, sizeof(g_default_fullscreen_elem->tag), "item");
+        snprintf(g_default_fullscreen_elem->id, sizeof(g_default_fullscreen_elem->id), "chrome-fullscreen");
+        snprintf(g_default_fullscreen_elem->label, sizeof(g_default_fullscreen_elem->label), "!");
+        snprintf(g_default_fullscreen_elem->onclick, sizeof(g_default_fullscreen_elem->onclick), "TOGGLE_FULLSCREEN");
+        g_default_fullscreen_elem->x = g_win_w - btn_w * 2 - gap - right_margin; g_default_fullscreen_elem->y = 2;
+        g_default_fullscreen_elem->w = btn_w; g_default_fullscreen_elem->h = btn_h;
+        css_compute_style(&g_sheet, g_default_fullscreen_elem->tag, NULL, NULL, 0, 0, &g_default_fullscreen_elem->style);
+        g_default_fullscreen_elem->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = g_default_fullscreen_elem;
+
+        memset(g_default_close_elem, 0, sizeof(*g_default_close_elem));
+        snprintf(g_default_close_elem->tag, sizeof(g_default_close_elem->tag), "item");
+        snprintf(g_default_close_elem->id, sizeof(g_default_close_elem->id), "chrome-close");
+        snprintf(g_default_close_elem->label, sizeof(g_default_close_elem->label), "X");
+        snprintf(g_default_close_elem->onclick, sizeof(g_default_close_elem->onclick), "CLOSE");
+        g_default_close_elem->x = g_win_w - btn_w - right_margin; g_default_close_elem->y = 2;
+        g_default_close_elem->w = btn_w; g_default_close_elem->h = btn_h;
+        css_compute_style(&g_sheet, g_default_close_elem->tag, NULL, NULL, 0, 0, &g_default_close_elem->style);
+        g_default_close_elem->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = g_default_close_elem;
     }
 
     if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
@@ -8791,6 +8900,26 @@ static void dispatch(const char *action) {
         return;
     }
     if (strcmp(action, "CLOSE") == 0) { g_quit = 1; return; }
+    /* REAL, NEW 2026-09-01 - the sidebar+panel chrome "!" button (see
+     * g_default_is_fullscreen's own declaration comment) - a real,
+     * generic toggle, not open-hai-specific: any sidebar+panel window
+     * gets this for free. Real window resize handled by redraw()'s own
+     * existing g_win_w/g_win_h vs g_buf_w/g_buf_h grow-check and real
+     * XResizeWindow call, already proven safe for a live-reparse-driven
+     * size change (capability #1's own resize-safety fix) - this is
+     * the same real mechanism, just toggled by a click instead of new
+     * content. */
+    if (strcmp(action, "TOGGLE_FULLSCREEN") == 0) {
+        g_default_is_fullscreen = !g_default_is_fullscreen;
+        if (g_default_is_fullscreen) {
+            g_default_pre_fullscreen_x = g_win_x; g_default_pre_fullscreen_y = g_win_y;
+            g_win_x = 0; g_win_y = 0;
+        } else {
+            g_win_x = g_default_pre_fullscreen_x; g_win_y = g_default_pre_fullscreen_y;
+        }
+        XMoveWindow(dpy, win, g_win_x, g_win_y);
+        return;
+    }
     /* REAL FIX 2026-08-16, direct live report ("cancel doesn't work
      * yet"): the legacy dispatch (tp_desktop_window_rgb.c line ~2026)
      * ALWAYS calls close_context_menu() before even looking at the
@@ -8808,6 +8937,20 @@ static void dispatch(const char *action) {
     int rc = system(cmd);
     (void)rc;
     g_quit = 1; /* real menus close after a real action fires, matching tp_desktop_window_rgb.c's own UX (g_menu_stay_open aside - default behavior) */
+}
+
+/* REAL, NEW 2026-09-01 - same real shell-command dispatch as dispatch()
+ * itself, minus its own "menus close after a real action fires"
+ * g_quit=1 (see that function's own comment for why it's there) - a
+ * persistent window's own backspace_action (see Elem's own field
+ * comment) must not close the whole window just because it deleted one
+ * row, same real reasoning default_cli_io_run_action() already applies
+ * to a composer's own action=. */
+static void dispatch_no_quit(const char *action) {
+    char cmd[PATH_BUF * 3];
+    snprintf(cmd, sizeof(cmd), "%s '%s' '%s' >/dev/null 2>&1 &", action, g_package_dir, g_house_root);
+    int rc = system(cmd);
+    (void)rc;
 }
 
 /* REAL, ported verbatim from taskbar-settings' own real apply_theme()
@@ -9072,7 +9215,22 @@ static void redraw(void) {
                  g_is_swatch_picker ? "taskbar_settings_frame.txt" : "entity_menu_frame.txt");
         snprintf(tmpp, sizeof(tmpp), "%s.tmp", fpath);
         FILE *ff = fopen(tmpp, "w");
-        if (ff) { dbhq_serialize_frame_subtree(ff, page); fclose(ff); rename(tmpp, fpath); }
+        if (ff) {
+            dbhq_serialize_frame_subtree(ff, page);
+            /* REAL, NEW 2026-09-01 - the sidebar+panel chrome "X"/"!"
+             * pair (see their own static-storage declaration comment)
+             * live OUTSIDE `page`'s own tree (same real reason db-hq's
+             * own g_dbhq_close_elem does), so dbhq_serialize_frame_
+             * subtree()'s page-rooted recursion never reaches them on
+             * its own - serialized explicitly here, real nav_index
+             * already assigned by layout_sidebar_panel() above. A
+             * harmless no-op (both real-elem's own w/h stay 0) for any
+             * OTHER default-mode page, which never touches these two
+             * statics at all. */
+            if (g_default_close_elem->w > 0) dbhq_serialize_frame_elem(ff, g_default_close_elem);
+            if (g_default_fullscreen_elem->w > 0) dbhq_serialize_frame_elem(ff, g_default_fullscreen_elem);
+            fclose(ff); rename(tmpp, fpath);
+        }
         {
             FILE *rf = fopen(fpath, "r");
             if (rf) {
@@ -9268,6 +9426,18 @@ static void handle_key(KeySym ks, char ch) {
     if (g_is_db_hq) { dbhq_handle_key(ks, ch); return; }
     if (ks == XK_Return || ks == XK_KP_Enter) { activate_focused(); return; }
     if (ks == XK_Escape) { g_quit = 1; return; }
+    /* REAL, NEW 2026-09-01 - a real, generic second action any focused
+     * <item> can carry (see Elem's own backspace_action field comment) -
+     * checked BEFORE the plain Up/Down/digit nav below, same real key-
+     * order class as every other "armed field eats this key first"
+     * exception in this function, even though nothing here is armed -
+     * a focused item with backspace_action set simply always wins over
+     * default_cli_io_handle_key()'s own absence at this point (already
+     * routed away above if a field WAS actually armed). */
+    if (ks == XK_BackSpace && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
+        Elem *focused = g_nav[g_focus_nav - 1];
+        if (focused->backspace_action[0]) { dispatch_no_quit(focused->backspace_action); return; }
+    }
     if (ks == XK_Up) { if (g_focus_nav > 1) g_focus_nav--; return; }
     if (ks == XK_Down) { if (g_focus_nav < g_n_nav) g_focus_nav++; return; }
     /* REAL, NEW 2026-08-31 - generic sidebar+panel scroll (see that
@@ -10218,6 +10388,23 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             long ms_since_map = (now.tv_sec - g_map_time.tv_sec) * 1000L
                                + (now.tv_nsec - g_map_time.tv_nsec) / 1000000L;
             if (ms_since_map < PHANTOM_CLICK_GUARD_MS) return;
+            /* REAL FIX 2026-09-01 (live report: "backspace didn't work
+             * for me" - clicked a row, then Backspace never reached
+             * the window) - same real focus-follows-mouse root cause
+             * already diagnosed for the generic <cli_io> composer
+             * (xperiments/khtpm-generic-dispatch-design.md's own
+             * writeup), but this is the safer, non-exclusive half of
+             * that fix: an XGrabKeyboard held for this window's WHOLE
+             * life (tried first, reverted - would make the rest of the
+             * desktop keyboard-dead while this window is merely open,
+             * a much worse regression than the bug it fixes) is wrong
+             * here. A plain re-assertion of real X input focus on every
+             * real click is the normal, expected "click to focus"
+             * behavior any desktop app has - if the human's mouse is
+             * still near/over the row they just clicked (the common
+             * case for a single Backspace right after), this alone
+             * closes the gap without grabbing anything exclusively. */
+            XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
             dbhq_capture_click(ev->xbutton.x, ev->xbutton.y, (int)ev->xbutton.button);
             poll_agent_history();
             if (!g_quit) redraw();
@@ -11689,7 +11876,7 @@ int main(int argc, char **argv) {
 
     g_window = parse_chtpm(g_chtpm_path);
     if (!g_window) { fprintf(stderr, "khtpm_core_render: failed to parse %s\n", g_chtpm_path); return 1; }
-    { struct stat gcst; if (stat(g_chtpm_path, &gcst) == 0) g_chtpm_mtime = gcst.st_mtime; }
+    { struct stat gcst; if (stat(g_chtpm_path, &gcst) == 0) g_chtpm_mtime = gcst.st_mtim; }
 
     /* REAL Stage 5 §5d.3 step 6 (2026-08-16, khtpm-merge-how2.md §5d) -
      * real, data-driven mode detection - `<window class="swatch-
@@ -12508,6 +12695,21 @@ int main(int argc, char **argv) {
      * so its presence or absence in later reparses doesn't matter
      * either way - omitted for clarity, not because it's required). */
     {
+        /* REAL FIX 2026-09-01 (live report: relaunching open-hai via
+         * button.sh left an orphaned khtpm_open_hai_manager.+x behind
+         * EVERY time, piling up - confirmed live, multiple stale
+         * managers found still running after repeated relaunches).
+         * Root cause: button.sh kills this process with a plain
+         * `kill -TERM`, and SIGTERM's default action terminates a
+         * process WITHOUT running its atexit() handlers - dbhq_
+         * cleanup_module() was registered via atexit() only, which
+         * only ever fires on a NORMAL exit()/return from main(), never
+         * on an external signal. db-hq/events-hq/chat-hai already
+         * solved this exact problem for their own managers with a real
+         * SIGTERM/SIGINT handler (dbhq_handle_term_signal(), which
+         * explicitly calls dbhq_cleanup_module() before _exit()) - this
+         * mode just never installed it, since it never had a module to
+         * clean up before now. Same real handler, not a new one. */
         Elem *module_elem = find_by_tag(g_window, "module");
         if (module_elem && module_elem->label[0]) {
             g_dbhq_module_pid = launch_module(module_elem->label, g_house_root, g_package_dir,
