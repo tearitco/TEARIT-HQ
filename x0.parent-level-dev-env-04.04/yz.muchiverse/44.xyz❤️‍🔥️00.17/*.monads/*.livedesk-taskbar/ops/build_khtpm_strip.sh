@@ -48,26 +48,21 @@ echo "-- khtpm manager driver (pure logic, no Xlib) -> +x/khtpm_taskbar_manager_
 $CC $CFLAGS -o +x/khtpm_taskbar_manager_main.+x \
   khtpm_taskbar_manager_main.c khtpm_taskbar_manager.c
 
-# REAL FIX 2026-09-01 - khtpm_strip_parser.+x retired as a separate
-# binary. khtpm_strip_parser.c/khtpm_strip_layout.c/.h/
-# khtpm_strip_codes.h were folded verbatim into khtpm_core_render.c as
-# a new mode (strip_main(), dispatched on argc==2 - see that file's own
-# big merged-block comment). The 4 source files above are kept on disk
-# as reference/rollback (same precedent as chat_hai_hq_render.c etc),
-# not deleted, but no longer compiled here - real house-standard
-# consolidation this session: no cross-.c linking to share behavior
-# within one binary. run_khtpm_strip.sh now launches
-# +x/khtpm_core_render.+x (built by build_core_render.sh, invoked
-# below) instead.
-echo "-- shared khtpm_core_render.+x (now includes strip mode) -> +x/khtpm_core_render.+x"
+# REAL FIX 2026-09-01 - khtpm_strip_parser.+x AND tp_desktop_window_rgb.+x
+# both retired as separate binaries. khtpm_strip_parser.c/khtpm_strip_
+# layout.c/.h/khtpm_strip_codes.h (phase 1) and tp_desktop_window_rgb.c
+# (phase 2, including its own real 3D raymarch/phymoji engine) were
+# folded verbatim into khtpm_core_render.c as two new modes
+# (strip_main()/tp_main(), dispatched on argc==2 - see that file's own
+# big merged-block comments). All 5 source files above have been
+# deleted (real house-standard consolidation: no cross-.c linking to
+# share behavior within one binary, and no dead source left lying
+# around once nothing compiles or launches it) - see git history if
+# the old, pre-consolidation versions are ever needed again.
+# run_khtpm_strip.sh launches +x/khtpm_core_render.+x (built by
+# build_core_render.sh, invoked below) for both roles now.
+echo "-- shared khtpm_core_render.+x (now includes strip mode + entity/tile mode) -> +x/khtpm_core_render.+x"
 sh build_core_render.sh
-
-# 2026-08-14 consolidation: the livedesk entity renderer + its helper
-# set moved OUT of &.widgits/tile-picker into this runtime folder (the
-# entity window is a livedesk-taskbar concern, not a tile-picker one).
-# Built here now so the whole runtime is one folder + one build script.
-echo "-- entity renderer tp_desktop_window_rgb.c -> +x/tp_desktop_window_rgb.+x"
-$CC $CFLAGS $X11_FLAGS -o +x/tp_desktop_window_rgb.+x tp_desktop_window_rgb.c -lX11 -lXext -lm
 
 echo "-- emoji->sprite helper tp_asset_to_sprite.c -> +x/tp_asset_to_sprite.+x"
 $CC $CFLAGS -o +x/tp_asset_to_sprite.+x tp_asset_to_sprite.c -lm
@@ -131,4 +126,4 @@ $CC $CFLAGS -o +x/khtpm_strip_render_ascii.+x khtpm_strip_render_ascii.c
 echo "-- taskbar ASCII keyboard input (raw termios only, never prints) -> +x/khtpm_strip_keyboard_ascii.+x"
 $CC $CFLAGS -o +x/khtpm_strip_keyboard_ascii.+x khtpm_strip_keyboard_ascii.c
 
-echo "OK +x/khtpm_taskbar_manager_main.+x and +x/khtpm_strip_parser.+x (plus entity renderer + helpers)"
+echo "OK +x/khtpm_taskbar_manager_main.+x and +x/khtpm_core_render.+x (strip mode + entity/tile mode, plus helpers)"

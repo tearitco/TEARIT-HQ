@@ -24,6 +24,10 @@ gcc $CFLAGS -o "ops/+x/tp_import_from_desktop.+x" "ops/tp_import_from_desktop.c"
 # that folder's build_khtpm_strip.sh) - the entity window has nothing to
 # do with this widget anymore. tp_place_desktop still spawns it; it now
 # resolves the binary dynamically (see tp_place_desktop.c).
+# REAL FIX 2026-09-01 - tp_desktop_window_rgb.c itself later retired
+# entirely: folded verbatim into khtpm_core_render.c as a new mode
+# (tp_main()) and deleted. tp_place_desktop.c's own dynamic resolve now
+# points at khtpm_core_render.+x - still correct, unchanged shape.
 gcc $CFLAGS -o "ops/+x/tp_compose_frame.+x" "ops/tp_compose_frame.c"
 gcc $CFLAGS -o "ops/+x/tp_menu_input.+x" "ops/tp_menu_input.c"
 gcc $CFLAGS -o "ops/+x/tp_test_send_key.+x" "ops/tp_test_send_key.c" -lX11 -lXtst

@@ -1,5 +1,11 @@
 # khtpm strip parser — locked scope, 2026-08-11
 
+> **SUPERSEDED, 2026-09-01**: `khtpm_strip_parser.c` was later folded
+> verbatim into `ops/khtpm_core_render.c` as a new mode (`strip_main()`)
+> and deleted as a separate source file — see `README.md`'s own updated
+> architecture section. Kept for reference only; `khtpm_strip_parser.c`/
+> `khtpm_strip_layout.c`/`.h` no longer exist on disk.
+
 This document is the concrete implementation scope for the ACTUAL missing piece of the strip refactor: a real declarative-layout parser, matching CHTPM's real architecture, not the process-split-only plumbing already built. See `khtpm-refactor-plan.md`'s "DECISION MADE" section and `!.aug-11-refactor-finish.md`'s top section for why this document exists — direct instruction: *"scope the real parser and document its necessitations."*
 
 **Do not start implementation from this document alone without re-reading it once more immediately before writing code.** It is written to be precise enough to implement against directly, but the whole reason this document exists is that a prior pass skipped exactly this step and built plumbing instead of the point.

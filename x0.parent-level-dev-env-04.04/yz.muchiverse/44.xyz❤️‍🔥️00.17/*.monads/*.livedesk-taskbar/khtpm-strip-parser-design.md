@@ -1,5 +1,14 @@
 # khtpm_strip_parser — CHTPM-style design for the taskbar strip
 
+> **SUPERSEDED, 2026-09-01**: `khtpm_strip_parser.c` (built per this
+> design doc) was later folded verbatim into `ops/khtpm_core_render.c`
+> as a new mode (`strip_main()`) and deleted as a separate source file
+> — real house-standard consolidation, see that file's own big merged-
+> block header comment and `README.md`'s own updated architecture
+> section. The layout format / process-topology reasoning below is
+> still accurate history, kept for reference; the file names it
+> mentions (`khtpm_strip_parser.c`/`.h`) no longer exist on disk.
+
 This document proposes an analog of `chtpm_parser.c` for the taskbar
 ("strip") UI, treating the existing, done, live-verified
 `khtpm_taskbar_manager.c`/`.h` as the business-logic "manager" that a new

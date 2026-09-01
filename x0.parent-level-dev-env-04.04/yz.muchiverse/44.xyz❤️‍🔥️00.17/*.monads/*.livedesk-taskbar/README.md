@@ -1,15 +1,35 @@
 # livedesk-taskbar
 
-A two-process, real declarative-layout-driven window pair:
-`ops/khtpm_strip_parser.c` (the long-lived outer process — Xlib rendering,
-layout parsing, hit-testing) forks `ops/khtpm_taskbar_manager_main.c`
-(the pure-logic manager — tabs, sessions/desks, save/load, cli-io, no
-Xlib) as needed, communicating via a small file relay
-(`#.desktop/strip_history.txt`/`strip_state.txt`/`strip_frame_changed.txt`).
-Auto-launched by `tp_desktop_window.c`'s own `ensure_taskbar_running()`
-the first time any livedesk entity opens (singleton check via
-`#.desktop/livedesk_taskbar.pid` + a `/proc` scan for an already-running
-instance).
+A two-process, real declarative-layout-driven window pair: the strip's
+own Xlib rendering/layout-parsing/hit-testing logic (originally
+`ops/khtpm_strip_parser.c`, a real standalone binary) forks
+`ops/khtpm_taskbar_manager_main.c` (the pure-logic manager — tabs,
+sessions/desks, save/load, cli-io, no Xlib) as needed, communicating via
+a small file relay (`#.desktop/strip_history.txt`/`strip_state.txt`/
+`strip_frame_changed.txt`).
+
+**REAL FIX 2026-09-01 - consolidation**: `khtpm_strip_parser.c`/
+`khtpm_strip_layout.c`/`.h` were folded verbatim into
+`ops/khtpm_core_render.c` as a new mode (`strip_main()`, dispatched on
+`argc==2` — a bare `<house_root>`, no `.chtpm` path, disambiguating it
+from every other mode this same binary now also serves, including the
+entity/tile renderer below) and deleted as separate source files — see
+`khtpm_core_render.c`'s own big merged-block header comment. The
+manager (`khtpm_taskbar_manager_main.c`/`khtpm_taskbar_manager.c`)
+stays a genuinely separate, real fork/exec process, unchanged — this
+was never a candidate for merging (a real, distinct pure-logic worker,
+not GUI code). `+x/khtpm_core_render.+x` is the strip's own real,
+current binary now; there is no more `khtpm_strip_parser.+x`.
+
+Every real desktop entity (pets/asa/ava/cursword/placed tiles/etc.)
+ALSO now spawns this same `khtpm_core_render.+x` binary, in a third
+mode (`tp_main()`, dispatched when `argc==2` and `argv[1]` has no real
+`#.desktop` subdirectory — the entity/tile renderer, originally
+`tp_desktop_window_rgb.c`, folded in and deleted the same way,
+2026-09-01). `ensure_taskbar_running()` (that mode's own real
+auto-launch-the-taskbar-if-missing logic) still lives there, unchanged
+in spirit — singleton check via `#.desktop/livedesk_taskbar.pid` + a
+`/proc` scan for an already-running instance.
 
 **2026-08-11: this replaces legacy `tp_taskbar.c`, fully retired** —
 archived to `ops/LEGACY-ARCHIVE-20260811.zip`, originals deleted. See
