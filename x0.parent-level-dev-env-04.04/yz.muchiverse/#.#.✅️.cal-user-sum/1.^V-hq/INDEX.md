@@ -2,6 +2,14 @@
 
 **If you're a new agent picking this up cold, read in this order until you have enough context to act.**
 
+**🤝 `HANDOFF-2026-09-01.md` — read this FIRST if the session gap since
+this date is more than a day or two.** Real, dated status on: open-hai
+(fully converted, live), chat-hai (NOT migrated - real scoped plan, do
+not assume it's done), events-hq/db-hq (real, low-risk next steps
+identified but not started), where the fresh-install script and
+Windows/Mac compat docs actually live. Smaller and more current than
+working through the full Tier list below cold.
+
 **📋 `au-31/` (2026-08-31) — today's live, in-progress work directory**
 (`00-todo.md` is the real todo list, `01-manager-design.md` the real
 per-app manager design):
