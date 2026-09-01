@@ -264,13 +264,41 @@ consolidation target - sequenced AFTER the 7-mode `g_khtpm_modes[]`
 migration in §3, not competing with it:
 
 - **`khtpm_open_hai_render.c`** (`&.widgits/open-hai/ops/`) - real,
-  confirmed BIGGER lift than a simple registration: its own header
-  comment states it uses a "flat (non-tag-tree) layout" and does NOT
-  parse a real `.chtpm` into an `Elem` tree at all - it hand-computes
-  x/y/w/h directly, same category of gap as network-browser's own
-  original (corrected) attempt. Real work needed: author a real
-  `open-hai.chtpm`, convert its flat layout to the tag-tree model,
-  THEN register it in `g_khtpm_modes[]` - three real steps, not one.
+  confirmed BIGGER lift than a simple registration: ~3,769 real lines
+  across the render+manager files, its own hand-rolled text wrapping,
+  emoji-tile blitter, flat nav array, drag/resize handling - none of it
+  on the Elem/CSS model, comparable in real size to chat-hai's own
+  original migration. Direct instruction, 2026-08-31, given this size:
+  "scoped first slice, prove the pattern" rather than a full rewrite in
+  one pass. **First slice DONE, live-verified**: a real, standalone,
+  NOT-wired-into-the-live-app proof (`ohp_sessions_preview.c`, new file)
+  reads the real, live `state/sessions.state.txt` (real session dir|
+  label rows, khtpm_open_hai_render.c's own real, unmodified format)
+  and generates a real temp `.chtpm` - one `<item>` per real session,
+  same exact real pattern the choice-picker consolidation just proved
+  - then launches the SAME shared `khtpm_core_render.+x`. Zero new C
+  code in the shared renderer, again. Screenshot-verified: 22 real
+  chat-session labels rendered correctly with real `[>]`/`[ ]` nav
+  badges and a real Close item, real window auto-sized to the real
+  item count. `button.sh`/`chat_button.sh` (the real, live app the user
+  actually uses daily) are completely UNCHANGED - this proof runs
+  standalone, zero risk to the real chat tool while the pattern is
+  proven. Real, minor, non-blocking finding from this test: the shared
+  parser does not XML-decode entities in attribute values (a label
+  containing a literal `&`, escaped to `&amp;` per real XML rules,
+  renders as the literal text `&amp;` instead of `&`) - noted, not
+  fixed, doesn't block anything here since real session labels rarely
+  contain `&`.
+  **Real work still not done**: converting the actual LIVE app (real
+  message send/receive, real transcript scrolling, real settings, real
+  session switching) onto this pattern - this slice only proved the
+  static/read-only rendering half. That remains a real, separate,
+  larger task - author the full `open-hai.chtpm`, wire real send/
+  receive through the manager's own real request/transcript files via
+  `reusable_slot()`-injected content, migrate emoji-tile rendering onto
+  the shared sprite mechanism `khtpm_css_parser.c`'s `sprite=` attribute
+  already provides for palettes - THEN register/switch the real
+  `button.sh` over, only once fully proven equivalent live.
 - **`khtpm_choice_picker.c`** (`&.widgits/tile-picker/ops/`) - **DONE,
   2026-08-31** (`TPMOS-COMPLIANCE-DEBT.md` §5, RESOLVED). Turned out to
   need NO `g_khtpm_modes[]` registration at all, unlike open-hai below -
