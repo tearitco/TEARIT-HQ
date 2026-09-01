@@ -48,15 +48,19 @@ echo "-- khtpm manager driver (pure logic, no Xlib) -> +x/khtpm_taskbar_manager_
 $CC $CFLAGS -o +x/khtpm_taskbar_manager_main.+x \
   khtpm_taskbar_manager_main.c khtpm_taskbar_manager.c
 
-echo "-- khtpm strip parser (Xlib + layout engine + hit-testing + manager fork/exec) -> +x/khtpm_strip_parser.+x"
-# REAL FIX 2026-08-13: now links Xft (same flags as build_db_hq.sh) -
-# khtpm_strip_parser.c grew real XftDrawStringUtf8-based CJK/UTF-8
-# text rendering this session (see that file's own header comment on
-# its Xft include), replacing plain XDrawString which could only
-# render Latin-1 correctly.
-$CC $CFLAGS $X11_FLAGS $(pkg-config --cflags xft) -o +x/khtpm_strip_parser.+x \
-  khtpm_strip_parser.c khtpm_strip_layout.c khtpm_taskbar_manager.c \
-  -lX11 $(pkg-config --libs xft) -lm
+# REAL FIX 2026-09-01 - khtpm_strip_parser.+x retired as a separate
+# binary. khtpm_strip_parser.c/khtpm_strip_layout.c/.h/
+# khtpm_strip_codes.h were folded verbatim into khtpm_core_render.c as
+# a new mode (strip_main(), dispatched on argc==2 - see that file's own
+# big merged-block comment). The 4 source files above are kept on disk
+# as reference/rollback (same precedent as chat_hai_hq_render.c etc),
+# not deleted, but no longer compiled here - real house-standard
+# consolidation this session: no cross-.c linking to share behavior
+# within one binary. run_khtpm_strip.sh now launches
+# +x/khtpm_core_render.+x (built by build_core_render.sh, invoked
+# below) instead.
+echo "-- shared khtpm_core_render.+x (now includes strip mode) -> +x/khtpm_core_render.+x"
+sh build_core_render.sh
 
 # 2026-08-14 consolidation: the livedesk entity renderer + its helper
 # set moved OUT of &.widgits/tile-picker into this runtime folder (the

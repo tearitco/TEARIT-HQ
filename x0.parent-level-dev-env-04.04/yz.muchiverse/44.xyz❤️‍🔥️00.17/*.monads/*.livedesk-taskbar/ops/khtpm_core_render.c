@@ -63,6 +63,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <dirent.h> /* REAL, chat-hai mode only - session-dir listing */
+#include <fcntl.h> /* REAL, NEW 2026-09-01 - strip mode's own zorder toggle respawn (open("/dev/null", O_RDWR)) */
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/select.h>
@@ -9511,7 +9512,2341 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
     return 0;
 }
 
+/* ============================================================
+ * REAL, NEW 2026-09-01 - taskbar strip mode, folded in verbatim from
+ * khtpm_strip_parser.c + khtpm_strip_layout.c/.h + khtpm_strip_codes.h
+ * (all three real, working, extensively live-debugged files - every
+ * comment/fix-history below is preserved from the originals, not
+ * rewritten). Consolidation per direct house-standard restatement this
+ * session: no cross-.c linking OR #include-splicing to share behavior
+ * within one binary - genuinely the same file, or a separate fork/
+ * exec+file-IPC process. The strip's own two child concerns
+ * (khtpm_taskbar_manager_main.+x, the pure-logic manager; the tile/pal
+ * entity renderer) stay real, separate, fork/exec'd processes, exactly
+ * as before - only the PARSER half (owns the only X11 Display in the
+ * strip's own process pair) moves in here, as a new mode dispatched on
+ * argc==2 (this mode's own real, exactly-2-arg invocation shape -
+ * <house_root> only, no .chtpm path at all, unlike every other mode)
+ * BEFORE the shared argc<3 check further down. See strip_main()'s own
+ * renamed-from-main() comment.
+ *
+ * 5 real name collisions with the rest of this file, all resolved by
+ * dropping the strip's own duplicate and reusing what already exists
+ * here (confirmed equivalent in real meaning, not just by name):
+ *   - g_house_root, g_click_two_step (both already read from the same
+ *     real files this file's own copies already load from)
+ *   - set_window_opacity()/load_theme_opacity() (byte-for-byte the
+ *     same real _NET_WM_WINDOW_OPACITY/livedesk_theme.pdl mechanism)
+ *   - main() -> renamed strip_main(), called from THIS file's own
+ *     real main() when argc==2.
+ * KTB_PATH_BUF/KTB_MAX_TABS/KTB_MAX_SHORTCUTS/KTB_BAR_H/
+ * KTB_LIVEDESK_DYN_MAX below are real values copied from
+ * khtpm_taskbar_manager.h (18352/64/16/36/24) - that header is no
+ * longer included here per the same no-linking rule (it would drag in
+ * the whole KtbState/tab/shortcut API this mode never uses), so the
+ * 5 real constants this mode's own code actually needs are defined
+ * directly instead.
+ * ============================================================ */
+#define KTB_PATH_BUF 4352
+#define KTB_MAX_TABS 64
+#define KTB_MAX_SHORTCUTS 16
+#define KTB_BAR_H 36
+#define KTB_LIVEDESK_DYN_MAX 24
+
+/* ---- khtpm_strip_codes.h, verbatim ---- */
+/* khtpm_strip_codes.h — shared decimal action-code protocol between
+ * khtpm_strip_parser.c (writer, resolves clicks/keys locally) and
+ * khtpm_taskbar_manager_main.c (reader, polls strip_history.txt and
+ * dispatches into the existing ktb_* manager API).
+ *
+ * Per the design doc (khtpm-strip-parser-design.md §2 "Keys in"), the wire
+ * format on strip_history.txt is CHTPM's own real convention: one bare
+ * decimal integer per line ("%d\n"), no prefix. This header is the single
+ * place both new binaries agree on what each integer means — not part of
+ * either the manager's or the parser's "done" surface, just the small glue
+ * contract between the two NEW files.
+ *
+ * Judgment call (not specified field-by-field in the design doc): CHTPM's
+ * own history.txt carries raw X keycodes/ASCII, so low values (0-127) are
+ * reserved for literal ASCII (digit chars '0'-'9' = 48-57, BackSpace = 8,
+ * Return = 13, Escape = 27 — the same codes XLookupString/XLookupKeysym
+ * already normalize to in khtpm_taskbar_plat_x11.c). Values >= 1000 are
+ * strip-specific resolved actions (arrow-equivalents, tab clicks, shortcut
+ * clicks, close) that have no natural single-byte ASCII code, using the
+ * same "resolved action, not raw coordinates" shape the design's decisions
+ * section calls for.
+ */
+#define KSC_BACKSPACE   8
+#define KSC_ENTER       13
+#define KSC_ESCAPE      27
+/* digit codes: ASCII '0'..'9' == 48..57, pushed as-is via ktb_digit_push */
+
+#define KSC_FOCUS_LEFT    1001
+#define KSC_FOCUS_RIGHT   1002
+#define KSC_CLOSE_QUIT    1003
+/* Right-click "arm nav" (bug 1, 2026-08-11 live-test fix): mirrors
+ * tp_taskbar.c's button==3 ButtonPress handling on both strip_win/win —
+ * see ktb_nav_arm() in khtpm_taskbar_manager.h/.c. Sent instead of
+ * KSC_TAB_BASE/KSC_HQ_HEADER_BASE when the click was a right-click. */
+#define KSC_NAV_ARM       1004
+
+/* Tab activate:   2000 + tab_idx   (idx in [0, KTB_MAX_TABS) ) */
+#define KSC_TAB_BASE      2000
+/* Shortcut run:   3000 + shortcut_idx (idx in [0, KTB_MAX_SHORTCUTS) ) */
+#define KSC_SHORTCUT_BASE 3000
+#define KSC_HQ_HEADER_BASE 4000
+#define KSC_HQ_ITEM_BASE   5000
+
+/* ---- khtpm_strip_layout.h, verbatim (types + prototypes) ---- */
+#define LAY_MAX_ELEMENTS   256
+#define LAY_MAX_CHILDREN   64
+#define LAY_MAX_TOKENS     (LAY_MAX_ELEMENTS * 4)
+#define LAY_TYPE_LEN       16
+#define LAY_LABEL_LEN      512
+#define LAY_ONCLICK_LEN    64
+#define LAY_ATTR_LEN       64
+#define LAY_TAGNAME_LEN    32
+#define LAY_ATTRSTR_LEN    768
+#define LAY_FILE_MAX       (64 * 1024)
+#define LAY_SPRITE_LEN     512
+#define LAY_ID_LEN         64
+
+typedef struct {
+    char type[LAY_TYPE_LEN];        /* "panel" | "text" | "button" | "row" | "cli_io" */
+    char label[LAY_LABEL_LEN];      /* RAW, pre-substitution (may contain literal ${var}) */
+    char onClick[LAY_ONCLICK_LEN];  /* RAW attribute, e.g. "ACTIVATE:3", "TAB:0", "STRIP:2", "HQITEM:1", "BACK" */
+    char target_id[LAY_ATTR_LEN];   /* cli_io only */
+    char sprite[LAY_SPRITE_LEN];    /* button only, optional — entity dir for tab_sprite(), "" = none */
+    char id[LAY_ID_LEN];            /* button only, optional real stable identity — "" if absent */
+    int  parent_index;              /* -1 = root */
+    int  children[LAY_MAX_CHILDREN];
+    int  num_children;
+} LayElement;
+
+typedef struct {
+    LayElement elements[LAY_MAX_ELEMENTS];
+    int element_count;
+    int active_index;   /* -1 = no ACTIVATE scope open (matches chtpm_parser.c's active_index) */
+    int focus_index;    /* cursor position among navigable elements */
+} LayDoc;
+
+typedef const char *(*LayVarLookupFn)(const char *name, void *ctx);
+
+/* Forward decls - khtpm_strip_layout.h's own real prototypes (lay_load()
+ * etc. call these before their definitions appear later in this same
+ * merged block, exactly as they did across the header/.c split before
+ * this consolidation). */
+static int lay_load(LayDoc *doc, const char *path, LayVarLookupFn get_var, void *ctx);
+static int lay_reload_preserving_scope(LayDoc *doc, const char *path, LayVarLookupFn get_var, void *ctx);
+static int lay_is_interactive(const LayElement *el);
+static int lay_is_navigable(const LayDoc *doc, int idx);
+static int lay_is_descendant(const LayDoc *doc, int child_idx, int parent_idx);
+static int lay_is_activate_marker(const char *onClick);
+static void lay_activate(LayDoc *doc, int idx);
+static void lay_back(LayDoc *doc);
+static void lay_focus_delta(LayDoc *doc, int delta);
+static const char *lay_cursor_prefix(const LayDoc *doc, int idx);
+static void lay_get_label(const LayDoc *doc, int idx, LayVarLookupFn get_var, void *ctx, char *out, size_t outsz);
+static void lay_get_sprite(const LayDoc *doc, int idx, LayVarLookupFn get_var, void *ctx, char *out, size_t outsz);
+static const char *lay_get_id(const LayDoc *doc, int idx);
+
+/* ---- khtpm_strip_layout.c, verbatim ---- */
+typedef enum { LTOK_TEXT, LTOK_OPEN, LTOK_CLOSE, LTOK_SELFCLOSE } LayTokenType;
+
+typedef struct {
+    LayTokenType type;
+    char content[LAY_LABEL_LEN];   /* TEXT token body */
+    char tag_name[LAY_TAGNAME_LEN];
+    char attributes[LAY_ATTRSTR_LEN];
+} LayToken;
+
+static LayToken *lay_tokenize(const char *content, int *token_count) {
+    LayToken *tokens = (LayToken *)calloc((size_t)LAY_MAX_TOKENS, sizeof(LayToken));
+    *token_count = 0;
+    if (!tokens) return NULL;
+    const char *cursor = content;
+    while (*cursor && *token_count < LAY_MAX_TOKENS) {
+        if (strncmp(cursor, "<!--", 4) == 0) {
+            const char *comment_end = strstr(cursor + 4, "-->");
+            cursor = comment_end ? comment_end + 3 : cursor + strlen(cursor);
+            continue;
+        }
+        const char *tag_start = strchr(cursor, '<');
+        if (tag_start && strncmp(tag_start, "<!--", 4) == 0) {
+            if (tag_start > cursor) {
+                LayToken *t = &tokens[(*token_count)++];
+                t->type = LTOK_TEXT;
+                int len = (int)(tag_start - cursor);
+                if (len > LAY_LABEL_LEN - 1) len = LAY_LABEL_LEN - 1;
+                strncpy(t->content, cursor, (size_t)len);
+                t->content[len] = '\0';
+            }
+            const char *comment_end = strstr(tag_start + 4, "-->");
+            cursor = comment_end ? comment_end + 3 : tag_start + strlen(tag_start);
+            continue;
+        }
+        if (!tag_start) {
+            LayToken *t = &tokens[(*token_count)++];
+            t->type = LTOK_TEXT;
+            strncpy(t->content, cursor, LAY_LABEL_LEN - 1);
+            t->content[LAY_LABEL_LEN - 1] = '\0';
+            break;
+        }
+        if (tag_start > cursor) {
+            LayToken *t = &tokens[(*token_count)++];
+            t->type = LTOK_TEXT;
+            int len = (int)(tag_start - cursor);
+            if (len > LAY_LABEL_LEN - 1) len = LAY_LABEL_LEN - 1;
+            strncpy(t->content, cursor, (size_t)len);
+            t->content[len] = '\0';
+        }
+        const char *tag_end = strchr(tag_start, '>');
+        if (!tag_end) {
+            LayToken *t = &tokens[(*token_count)++];
+            t->type = LTOK_TEXT;
+            t->content[0] = '<';
+            t->content[1] = '\0';
+            cursor = tag_start + 1;
+            continue;
+        }
+        LayToken *t = &tokens[(*token_count)++];
+        char tag_body[LAY_ATTRSTR_LEN];
+        int body_len = (int)(tag_end - tag_start - 1);
+        if (body_len > (int)sizeof(tag_body) - 1) body_len = (int)sizeof(tag_body) - 1;
+        if (body_len < 0) body_len = 0;
+        strncpy(tag_body, tag_start + 1, (size_t)body_len);
+        tag_body[body_len] = '\0';
+        if (tag_body[0] == '/') {
+            t->type = LTOK_CLOSE;
+            strncpy(t->tag_name, tag_body + 1, LAY_TAGNAME_LEN - 1);
+        } else {
+            int self_closing = 0;
+            if (body_len > 0 && tag_body[body_len - 1] == '/') {
+                self_closing = 1;
+                tag_body[body_len - 1] = '\0';
+            }
+            t->type = self_closing ? LTOK_SELFCLOSE : LTOK_OPEN;
+            char *space = strchr(tag_body, ' ');
+            if (space) {
+                *space = '\0';
+                strncpy(t->tag_name, tag_body, LAY_TAGNAME_LEN - 1);
+                strncpy(t->attributes, space + 1, LAY_ATTRSTR_LEN - 1);
+            } else {
+                strncpy(t->tag_name, tag_body, LAY_TAGNAME_LEN - 1);
+                t->attributes[0] = '\0';
+            }
+        }
+        cursor = tag_end + 1;
+    }
+    return tokens;
+}
+
+static void lay_parse_attributes(LayElement *el, const char *attr_str) {
+    if (!attr_str || attr_str[0] == '\0') return;
+    char *attrs = strdup(attr_str);
+    if (!attrs) return;
+    char *pos = attrs;
+    while (*pos) {
+        while (*pos && isspace((unsigned char)*pos)) pos++;
+        if (!*pos) break;
+        char *name_start = pos;
+        while (*pos && *pos != '=' && !isspace((unsigned char)*pos)) pos++;
+        char saved = *pos;
+        *pos = '\0';
+        while (*(++pos) && isspace((unsigned char)*pos)) { /* skip */ }
+        if (*pos == '=') {
+            pos++;
+            while (*pos && isspace((unsigned char)*pos)) pos++;
+        }
+        char *val_start = pos;
+        if (*pos == '"' || *pos == '\'') {
+            char quote = *pos++;
+            val_start = pos;
+            while (*pos && *pos != quote) pos++;
+            if (*pos) *pos++ = '\0';
+        } else {
+            while (*pos && !isspace((unsigned char)*pos) && *pos != '/') pos++;
+            if (*pos) *pos++ = '\0';
+        }
+
+        if (strcmp(name_start, "label") == 0) {
+            strncpy(el->label, val_start, LAY_LABEL_LEN - 1);
+        } else if (strcmp(name_start, "onClick") == 0) {
+            strncpy(el->onClick, val_start, LAY_ONCLICK_LEN - 1);
+        } else if (strcmp(name_start, "target_id") == 0) {
+            strncpy(el->target_id, val_start, LAY_ATTR_LEN - 1);
+        } else if (strcmp(name_start, "sprite") == 0) {
+            strncpy(el->sprite, val_start, LAY_SPRITE_LEN - 1);
+        } else if (strcmp(name_start, "id") == 0) {
+            strncpy(el->id, val_start, LAY_ID_LEN - 1);
+        }
+        if (pos > attrs) *(pos - 1) = saved;
+    }
+    free(attrs);
+}
+
+static void lay_substitute_vars_naked(const char *src, char *dst, size_t max_len,
+                                       LayVarLookupFn get_var, void *ctx) {
+    const char *p_src = src;
+    char *p_dst = dst;
+    int in_tag = 0;
+    while (*p_src && (size_t)(p_dst - dst) < max_len - 1) {
+        if (*p_src == '<') in_tag = 1;
+        else if (*p_src == '>') in_tag = 0;
+
+        if (!in_tag && *p_src == '$' && *(p_src + 1) == '{') {
+            const char *end = strchr(p_src, '}');
+            if (end) {
+                char var_name[64];
+                int len = (int)(end - (p_src + 2));
+                if (len > 63) len = 63;
+                if (len < 0) len = 0;
+                strncpy(var_name, p_src + 2, (size_t)len);
+                var_name[len] = '\0';
+                const char *val = get_var ? get_var(var_name, ctx) : "";
+                if (!val) val = "";
+                while (*val && (size_t)(p_dst - dst) < max_len - 1) {
+                    if (*val == '\\' && *(val + 1) == 'n') { *p_dst++ = '\n'; val += 2; }
+                    else *p_dst++ = *val++;
+                }
+                p_src = end + 1;
+                continue;
+            }
+        }
+        *p_dst++ = *p_src++;
+    }
+    *p_dst = '\0';
+}
+
+static void lay_substitute_vars(const char *src, char *dst, size_t max_len,
+                                 LayVarLookupFn get_var, void *ctx) {
+    const char *p_src = src;
+    char *p_dst = dst;
+    while (*p_src && (size_t)(p_dst - dst) < max_len - 1) {
+        if (*p_src == '\\' && (*(p_src + 1) == '$' || *(p_src + 1) == '{' ||
+                                *(p_src + 1) == '<' || *(p_src + 1) == '\\')) {
+            *p_dst++ = *(p_src + 1);
+            p_src += 2;
+            continue;
+        }
+        if (*p_src == '$' && *(p_src + 1) == '{') {
+            const char *end = strchr(p_src, '}');
+            if (end) {
+                char var_name[64];
+                int len = (int)(end - (p_src + 2));
+                if (len > 63) len = 63;
+                if (len < 0) len = 0;
+                strncpy(var_name, p_src + 2, (size_t)len);
+                var_name[len] = '\0';
+                const char *val = get_var ? get_var(var_name, ctx) : "";
+                if (!val) val = "";
+                while (*val && (size_t)(p_dst - dst) < max_len - 1) {
+                    if (*val == '\\' && *(val + 1) == 'n') { *p_dst++ = '\n'; val += 2; }
+                    else *p_dst++ = *val++;
+                }
+                p_src = end + 1;
+                continue;
+            }
+        }
+        *p_dst++ = *p_src++;
+    }
+    *p_dst = '\0';
+}
+
+static char *lay_read_file_to_string(const char *filename) {
+    FILE *f = fopen(filename, "r");
+    if (!f) return NULL;
+    fseek(f, 0, SEEK_END);
+    long length = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (length < 0) { fclose(f); return NULL; }
+    if (length > LAY_FILE_MAX - 1) length = LAY_FILE_MAX - 1;
+    char *buffer = (char *)malloc((size_t)length + 1);
+    if (!buffer) { fclose(f); return NULL; }
+    size_t n = fread(buffer, 1, (size_t)length, f);
+    buffer[n] = '\0';
+    fclose(f);
+    return buffer;
+}
+
+static void lay_build_tree(LayDoc *doc, LayToken *tokens, int tc) {
+    doc->element_count = 0;
+    int stack[64];
+    int top = -1;
+    for (int i = 0; i < tc && doc->element_count < LAY_MAX_ELEMENTS; i++) {
+        LayToken *t = &tokens[i];
+        if (t->type == LTOK_TEXT) {
+            char *trim = strdup(t->content);
+            if (!trim) continue;
+            char *p = trim;
+            while (*p && isspace((unsigned char)*p)) p++;
+            if (*p) {
+                char *end = p + strlen(p) - 1;
+                while (end > p && isspace((unsigned char)*end)) *end-- = '\0';
+            }
+            if (!*p) { free(trim); continue; }
+            LayElement *el = &doc->elements[doc->element_count++];
+            memset(el, 0, sizeof(*el));
+            strcpy(el->type, "text");
+            strncpy(el->label, p, LAY_LABEL_LEN - 1);
+            el->parent_index = (top >= 0) ? stack[top] : -1;
+            if (el->parent_index >= 0) {
+                LayElement *pa = &doc->elements[el->parent_index];
+                if (pa->num_children < LAY_MAX_CHILDREN)
+                    pa->children[pa->num_children++] = doc->element_count - 1;
+            }
+            free(trim);
+        } else if (t->type == LTOK_OPEN || t->type == LTOK_SELFCLOSE) {
+            if (strcmp(t->tag_name, "panel") == 0) {
+                if (t->type == LTOK_OPEN && top < 63) stack[++top] = -1;
+                continue;
+            }
+            int known = (strcmp(t->tag_name, "text") == 0 ||
+                         strcmp(t->tag_name, "button") == 0 ||
+                         strcmp(t->tag_name, "row") == 0 ||
+                         strcmp(t->tag_name, "cli_io") == 0);
+            if (!known) {
+                if (t->type == LTOK_OPEN && top < 63) {
+                    int parent_of_unknown = (top >= 0) ? stack[top] : -1;
+                    stack[++top] = parent_of_unknown;
+                }
+                continue;
+            }
+            LayElement *el = &doc->elements[doc->element_count++];
+            memset(el, 0, sizeof(*el));
+            strncpy(el->type, t->tag_name, LAY_TYPE_LEN - 1);
+            lay_parse_attributes(el, t->attributes);
+            el->parent_index = (top >= 0) ? stack[top] : -1;
+            int my_index = doc->element_count - 1;
+            if (el->parent_index >= 0) {
+                LayElement *pa = &doc->elements[el->parent_index];
+                if (pa->num_children < LAY_MAX_CHILDREN)
+                    pa->children[pa->num_children++] = my_index;
+            }
+            if (t->type == LTOK_OPEN && top < 63) stack[++top] = my_index;
+        } else if (t->type == LTOK_CLOSE) {
+            if (strcmp(t->tag_name, "panel") == 0) {
+                if (top >= 0) top--;
+                continue;
+            }
+            if (top >= 0) top--;
+        }
+    }
+}
+
+static int lay_load(LayDoc *doc, const char *path, LayVarLookupFn get_var, void *ctx) {
+    memset(doc, 0, sizeof(*doc));
+    doc->active_index = -1;
+    doc->focus_index = -1;
+
+    char *content = lay_read_file_to_string(path);
+    if (!content) return 0;
+
+    char *substituted = (char *)malloc(LAY_FILE_MAX);
+    if (!substituted) { free(content); return 0; }
+    lay_substitute_vars_naked(content, substituted, LAY_FILE_MAX, get_var, ctx);
+    free(content);
+
+    int tc = 0;
+    LayToken *tokens = lay_tokenize(substituted, &tc);
+    free(substituted);
+    if (!tokens) return 0;
+
+    lay_build_tree(doc, tokens, tc);
+    free(tokens);
+
+    for (int i = 0; i < doc->element_count; i++) {
+        if (lay_is_navigable(doc, i)) { doc->focus_index = i; break; }
+    }
+    if (doc->focus_index < 0) doc->focus_index = 0;
+    return 1;
+}
+
+static int lay_reload_preserving_scope(LayDoc *doc, const char *path, LayVarLookupFn get_var, void *ctx) {
+    char saved_onclick[LAY_ONCLICK_LEN] = "";
+    char saved_focus_onclick[LAY_ONCLICK_LEN] = "";
+    if (doc->active_index >= 0 && doc->active_index < doc->element_count)
+        strncpy(saved_onclick, doc->elements[doc->active_index].onClick, LAY_ONCLICK_LEN - 1);
+    if (doc->focus_index >= 0 && doc->focus_index < doc->element_count)
+        strncpy(saved_focus_onclick, doc->elements[doc->focus_index].onClick, LAY_ONCLICK_LEN - 1);
+
+    if (!lay_load(doc, path, get_var, ctx)) return 0;
+
+    if (saved_onclick[0]) {
+        for (int i = 0; i < doc->element_count; i++) {
+            if (lay_is_interactive(&doc->elements[i]) &&
+                strcmp(doc->elements[i].onClick, saved_onclick) == 0) {
+                doc->active_index = i;
+                break;
+            }
+        }
+    }
+    if (saved_focus_onclick[0]) {
+        for (int i = 0; i < doc->element_count; i++) {
+            if (lay_is_interactive(&doc->elements[i]) &&
+                strcmp(doc->elements[i].onClick, saved_focus_onclick) == 0) {
+                doc->focus_index = i;
+                break;
+            }
+        }
+    }
+    if (doc->focus_index < 0 || doc->focus_index >= doc->element_count ||
+        !lay_is_navigable(doc, doc->focus_index)) {
+        doc->focus_index = -1;
+        for (int i = 0; i < doc->element_count; i++) {
+            if (lay_is_navigable(doc, i)) { doc->focus_index = i; break; }
+        }
+        if (doc->focus_index < 0) doc->focus_index = 0;
+    }
+    return 1;
+}
+
+static int lay_is_interactive(const LayElement *el) {
+    return strcmp(el->type, "button") == 0 || strcmp(el->type, "cli_io") == 0;
+}
+
+static int lay_is_activate_marker(const char *onClick) {
+    return onClick && strncmp(onClick, "ACTIVATE", 8) == 0;
+}
+
+static int lay_is_descendant(const LayDoc *doc, int child_idx, int parent_idx) {
+    if (child_idx < 0 || parent_idx < 0) return 0;
+    if (child_idx >= doc->element_count || parent_idx >= doc->element_count) return 0;
+    int p = doc->elements[child_idx].parent_index;
+    while (p != -1) {
+        if (p == parent_idx) return 1;
+        p = doc->elements[p].parent_index;
+    }
+    return 0;
+}
+
+static int lay_is_navigable(const LayDoc *doc, int idx) {
+    if (idx < 0 || idx >= doc->element_count) return 0;
+    const LayElement *el = &doc->elements[idx];
+    if (!lay_is_interactive(el)) return 0;
+
+    if (strcmp(el->type, "cli_io") == 0 && doc->active_index != idx) return 0;
+
+    if (doc->active_index != -1) {
+        const LayElement *active_el = &doc->elements[doc->active_index];
+        if (active_el->num_children > 0 && lay_is_activate_marker(active_el->onClick)) {
+            if (idx == doc->active_index) return 1;
+            return lay_is_descendant(doc, idx, doc->active_index);
+        }
+        return idx == doc->active_index;
+    }
+
+    int p = el->parent_index;
+    while (p != -1) {
+        if (lay_is_activate_marker(doc->elements[p].onClick)) return 0;
+        p = doc->elements[p].parent_index;
+    }
+    return 1;
+}
+
+static void lay_activate(LayDoc *doc, int idx) {
+    if (idx < 0 || idx >= doc->element_count) return;
+    doc->active_index = idx;
+    doc->focus_index = idx;
+    for (int i = 0; i < doc->element_count; i++) {
+        if (i != idx && lay_is_descendant(doc, i, idx) && lay_is_navigable(doc, i)) {
+            doc->focus_index = i;
+            break;
+        }
+    }
+}
+
+static void lay_back(LayDoc *doc) {
+    if (doc->active_index == -1) return;
+    int old_active = doc->active_index;
+    int p = doc->elements[doc->active_index].parent_index;
+    while (p != -1 && !lay_is_activate_marker(doc->elements[p].onClick))
+        p = doc->elements[p].parent_index;
+    doc->active_index = p;
+    doc->focus_index = old_active;
+    if (doc->active_index != -1 && !lay_is_navigable(doc, doc->focus_index)) {
+        doc->focus_index = -1;
+        for (int i = 0; i < doc->element_count; i++) {
+            if (lay_is_navigable(doc, i)) { doc->focus_index = i; break; }
+        }
+    }
+}
+
+static void lay_focus_delta(LayDoc *doc, int delta) {
+    if (doc->element_count == 0) return;
+    int nav_count = 0;
+    int nav_list[LAY_MAX_ELEMENTS];
+    int cur_pos = -1;
+    for (int i = 0; i < doc->element_count; i++) {
+        if (lay_is_navigable(doc, i)) {
+            if (i == doc->focus_index) cur_pos = nav_count;
+            nav_list[nav_count++] = i;
+        }
+    }
+    if (nav_count == 0) return;
+    if (cur_pos < 0) { doc->focus_index = nav_list[0]; return; }
+    int next = (cur_pos + delta) % nav_count;
+    if (next < 0) next += nav_count;
+    doc->focus_index = nav_list[next];
+}
+
+static const char *lay_cursor_prefix(const LayDoc *doc, int idx) {
+    if (idx < 0 || idx >= doc->element_count) return "[ ]";
+    int is_active = (idx == doc->active_index);
+    int is_focused = (idx == doc->focus_index);
+    int navigable = lay_is_navigable(doc, idx);
+    if (is_active) return "[^]";
+    if (is_focused && (doc->active_index == -1 || navigable)) return "[>]";
+    return "[ ]";
+}
+
+static void lay_get_label(const LayDoc *doc, int idx, LayVarLookupFn get_var, void *ctx,
+                    char *out, size_t outsz) {
+    if (idx < 0 || idx >= doc->element_count) { if (outsz) out[0] = '\0'; return; }
+    lay_substitute_vars(doc->elements[idx].label, out, outsz, get_var, ctx);
+}
+
+static void lay_get_sprite(const LayDoc *doc, int idx, LayVarLookupFn get_var, void *ctx,
+                     char *out, size_t outsz) {
+    if (idx < 0 || idx >= doc->element_count) { if (outsz) out[0] = '\0'; return; }
+    lay_substitute_vars(doc->elements[idx].sprite, out, outsz, get_var, ctx);
+}
+
+static const char *lay_get_id(const LayDoc *doc, int idx) {
+    if (idx < 0 || idx >= doc->element_count) return "";
+    return doc->elements[idx].id;
+}
+
+/* ---- khtpm_strip_parser.c, verbatim from here (minus g_house_root/
+ * g_click_two_step/set_window_opacity/load_theme_opacity dups and the
+ * renamed main()) ---- */
+#define POLL_INTERVAL_ACTIVE_USEC 16667
+#define POLL_INTERVAL_IDLE_USEC   100000
+#define ACTIVE_HOLD_TICKS 30
+
+typedef struct {
+    char theme_bg[32];
+    char theme_fg[32];
+    char digit_buf[16];
+    int  nav_armed;
+    int  hq_focus;
+    int  hq_open;
+    int  cliio_active;
+    int  cliio_typing;
+    char cliio_op[32];
+    char cliio_buffer[256];
+    char cliio_label[64];
+
+    char var_tabs[48 * 1024];
+    char var_shortcuts[48 * 1024];
+    char var_hqitems[48 * 1024];
+
+    char var_username[128];
+    char var_file_label[256];
+    char var_desks_label[64];
+    char var_avatar_dir[KTB_PATH_BUF];
+    char var_datetime[128];
+} SpState;
+
+static pid_t g_manager_pid = -1;
+static SpState g_st;
+
+static Display *g_dpy = NULL;
+static int g_zorder_above = 0;
+
+static void strip_load_click_two_step(void) {
+    char path[KTB_PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", g_house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[128];
+    while (fgets(line, sizeof(line), f)) {
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char *val = eq + 1;
+        char *nl = strchr(val, '\n');
+        if (nl) *nl = '\0';
+        if (strcmp(line, "click_two_step") == 0) g_click_two_step = atoi(val) != 0;
+    }
+    fclose(f);
+}
+
+static int g_has_real_focus = 0;
+static Window g_focused_win = 0;
+
+static void path_join2(char *out, size_t n, const char *root, const char *rel) {
+    size_t rl = strlen(root);
+    if (rl > 0 && (root[rl - 1] == '/' || root[rl - 1] == '\\'))
+        snprintf(out, n, "%s%s", root, rel);
+    else
+        snprintf(out, n, "%s/%s", root, rel);
+}
+
+static void read_small_file(const char *rel_path, char *out, size_t outsz) {
+    out[0] = '\0';
+    char path[KTB_PATH_BUF];
+    path_join2(path, sizeof(path), g_house_root, rel_path);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    size_t n = fread(out, 1, outsz - 1, f);
+    out[n] = '\0';
+    fclose(f);
+    while (n > 0 && (out[n - 1] == '\n' || out[n - 1] == '\r' || out[n - 1] == ' ' || out[n - 1] == '\t'))
+        out[--n] = '\0';
+}
+
+static char *trim_field(char *s) {
+    while (*s == ' ') s++;
+    size_t n = strlen(s);
+    while (n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\r' || s[n - 1] == '\n')) s[--n] = '\0';
+    return s;
+}
+
+static void load_state(SpState *st) {
+    memset(st, 0, sizeof(*st));
+    snprintf(st->theme_bg, sizeof(st->theme_bg), "white");
+    snprintf(st->theme_fg, sizeof(st->theme_fg), "black");
+
+    char path[KTB_PATH_BUF];
+    path_join2(path, sizeof(path), g_house_root, "#.desktop/strip_state.txt");
+    FILE *f = fopen(path, "r");
+    if (f) {
+        char line[KTB_PATH_BUF];
+        while (fgets(line, sizeof(line), f)) {
+            char *save = NULL;
+            char *col0 = strtok_r(line, "|", &save);
+            if (!col0) continue;
+            col0 = trim_field(col0);
+            if (strcmp(col0, "KEY") != 0) continue;
+            char *keyf = strtok_r(NULL, "|", &save);
+            char *valf = strtok_r(NULL, "\n", &save);
+            if (!keyf || !valf) continue;
+            char *key = trim_field(keyf);
+            char *val = trim_field(valf);
+            if (strcmp(key, "theme_bg") == 0) snprintf(st->theme_bg, sizeof(st->theme_bg), "%s", val);
+            else if (strcmp(key, "theme_fg") == 0) snprintf(st->theme_fg, sizeof(st->theme_fg), "%s", val);
+            else if (strcmp(key, "digit_buf") == 0) snprintf(st->digit_buf, sizeof(st->digit_buf), "%s", val);
+            else if (strcmp(key, "nav_armed") == 0) st->nav_armed = atoi(val);
+            else if (strcmp(key, "hq_focus") == 0) st->hq_focus = atoi(val);
+            else if (strcmp(key, "hq_open") == 0) st->hq_open = atoi(val);
+            else if (strcmp(key, "cliio_active") == 0) st->cliio_active = atoi(val);
+            else if (strcmp(key, "cliio_typing") == 0) st->cliio_typing = atoi(val);
+            else if (strcmp(key, "cliio_op") == 0) snprintf(st->cliio_op, sizeof(st->cliio_op), "%s", val);
+            else if (strcmp(key, "cliio_buffer") == 0) snprintf(st->cliio_buffer, sizeof(st->cliio_buffer), "%s", val);
+            else if (strcmp(key, "cliio_label") == 0) snprintf(st->cliio_label, sizeof(st->cliio_label), "%s", val);
+        }
+        fclose(f);
+    }
+
+    read_small_file("#.desktop/strip_var_tabs.txt", st->var_tabs, sizeof(st->var_tabs));
+    read_small_file("#.desktop/strip_var_shortcuts.txt", st->var_shortcuts, sizeof(st->var_shortcuts));
+    read_small_file("#.desktop/strip_var_hqitems.txt", st->var_hqitems, sizeof(st->var_hqitems));
+    read_small_file("#.desktop/strip_var_username.txt", st->var_username, sizeof(st->var_username));
+    read_small_file("#.desktop/strip_var_file_label.txt", st->var_file_label, sizeof(st->var_file_label));
+    read_small_file("#.desktop/strip_var_desks_label.txt", st->var_desks_label, sizeof(st->var_desks_label));
+    read_small_file("#.desktop/strip_var_avatar_dir.txt", st->var_avatar_dir, sizeof(st->var_avatar_dir));
+    read_small_file("#.desktop/strip_var_datetime.txt", st->var_datetime, sizeof(st->var_datetime));
+}
+
+static char g_build_uid[64] = "";
+static char g_build_uid_sprite_dir[KTB_PATH_BUF] = "";
+static Window g_hq_win_handle = 0;
+
+static const char *sp_get_var(const char *name, void *ctx) {
+    SpState *st = (SpState *)ctx;
+    if (strcmp(name, "strip_tabs") == 0) return st->var_tabs;
+    if (strcmp(name, "strip_shortcuts") == 0) return st->var_shortcuts;
+    if (strcmp(name, "strip_hq_items") == 0) return st->var_hqitems;
+    if (strcmp(name, "cliio_label") == 0) return st->cliio_label;
+    if (strcmp(name, "username") == 0) return st->var_username;
+    if (strcmp(name, "file_label") == 0) return st->var_file_label;
+    if (strcmp(name, "desks_label") == 0) return st->var_desks_label;
+    if (strcmp(name, "avatar_dir") == 0) return st->var_avatar_dir;
+    if (strcmp(name, "datetime") == 0) return st->var_datetime;
+    if (strcmp(name, "build_uid") == 0) return g_build_uid;
+    return "";
+}
+
+static void build_uid_init(char *out, size_t outsz, const char *house_root) {
+    snprintf(out, outsz, "%d", (int)getpid());
+
+    time_t now = time(NULL);
+    struct tm tmv;
+    localtime_r(&now, &tmv);
+    int h = tmv.tm_hour % 12; if (h == 0) h = 12;
+    int half = tmv.tm_min >= 30;
+    unsigned cp = 0x1F550 + (unsigned)(h - 1) + (half ? 12 : 0);
+    char glyph[8];
+    int goff = 0;
+    glyph[goff++] = (char)(0xF0 | ((cp >> 18) & 0x07));
+    glyph[goff++] = (char)(0x80 | ((cp >> 12) & 0x3F));
+    glyph[goff++] = (char)(0x80 | ((cp >> 6) & 0x3F));
+    glyph[goff++] = (char)(0x80 | (cp & 0x3F));
+    glyph[goff] = '\0';
+
+    char dir[KTB_PATH_BUF];
+    snprintf(dir, sizeof(dir), "%s/#.desktop/build_uid_sprite", house_root);
+    mkdir(dir, 0755);
+    char atlas[KTB_PATH_BUF], csv[KTB_PATH_BUF];
+    snprintf(atlas, sizeof(atlas), "%s/atlas.png", dir);
+    snprintf(csv, sizeof(csv), "%s/sprite.csv", dir);
+    char gen_atlas[KTB_PATH_BUF * 2], gen_xtract[KTB_PATH_BUF * 2];
+    snprintf(gen_atlas, sizeof(gen_atlas), "'%s/*.monads/*.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x' '%s' '%s' >/dev/null 2>&1",
+             house_root, glyph, atlas);
+    snprintf(gen_xtract, sizeof(gen_xtract), "'%s/*.monads/*.livedesk-taskbar/ops/+x/emoji_xtract.+x' '%s' 0 64 '%s' >/dev/null 2>&1",
+             house_root, atlas, csv);
+    if (system(gen_atlas) == 0 && system(gen_xtract) == 0)
+        snprintf(g_build_uid_sprite_dir, sizeof(g_build_uid_sprite_dir), "%s", dir);
+}
+
+static void launch_manager(void) {
+    char exe[KTB_PATH_BUF];
+    path_join2(exe, sizeof(exe), g_house_root,
+               "*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x");
+
+    pid_t pid = fork();
+    if (pid == 0) {
+        execl(exe, exe, g_house_root, (char *)NULL);
+        _exit(1);
+    } else if (pid > 0) {
+        g_manager_pid = pid;
+    } else {
+        fprintf(stderr, "strip_parser: fork() failed: %s\n", strerror(errno));
+    }
+}
+
+static int ensure_manager_running(void) {
+    if (g_manager_pid <= 0) { launch_manager(); return 1; }
+    return 0;
+}
+
+static void reap_manager_nonblocking(void) {
+    if (g_manager_pid <= 0) return;
+    int status;
+    pid_t r = waitpid(g_manager_pid, &status, WNOHANG);
+    if (r == g_manager_pid) {
+        g_manager_pid = -1;
+    }
+}
+
+static void wait_for_manager_first_publish(void) {
+    char path[KTB_PATH_BUF];
+    path_join2(path, sizeof(path), g_house_root, "#.desktop/strip_state.txt");
+    for (int i = 0; i < 40; i++) {
+        struct stat st;
+        if (stat(path, &st) == 0 && st.st_size > 0) return;
+        struct timespec ts = { 0, 25 * 1000 * 1000 };
+        nanosleep(&ts, NULL);
+    }
+}
+
+static void cleanup_manager(void) {
+    if (g_manager_pid > 0) {
+        kill(g_manager_pid, SIGTERM);
+        waitpid(g_manager_pid, NULL, WNOHANG);
+        g_manager_pid = -1;
+    }
+}
+
+static volatile sig_atomic_t g_strip_running = 1;
+static void strip_on_sigterm(int sig) { (void)sig; g_strip_running = 0; }
+
+static long g_frame_changed_cursor = -1;
+
+static int frame_changed_dirty(void) {
+    char path[KTB_PATH_BUF];
+    path_join2(path, sizeof(path), g_house_root, "#.desktop/strip_frame_changed.txt");
+    struct stat st;
+    if (stat(path, &st) != 0) return g_frame_changed_cursor != 0 ? (g_frame_changed_cursor = 0, 1) : 0;
+    if (g_frame_changed_cursor < 0) { g_frame_changed_cursor = st.st_size; return 1; }
+    if (st.st_size != g_frame_changed_cursor) { g_frame_changed_cursor = st.st_size; return 1; }
+    return 0;
+}
+
+static long g_strip_theme_changed_cursor = 0;
+
+static int strip_theme_changed_dirty(void) {
+    char path[KTB_PATH_BUF];
+    path_join2(path, sizeof(path), g_house_root, "#.desktop/livedesk_theme_changed.txt");
+    struct stat st;
+    if (stat(path, &st) != 0) return 0;
+    if (st.st_size != g_strip_theme_changed_cursor) { g_strip_theme_changed_cursor = st.st_size; return 1; }
+    return 0;
+}
+
+static void send_code(int code) {
+    if (code <= 0) return;
+    int just_launched = ensure_manager_running();
+    char path[KTB_PATH_BUF];
+    path_join2(path, sizeof(path), g_house_root, "#.desktop/strip_history.txt");
+    if (just_launched) usleep(150000);
+    FILE *f = fopen(path, "a");
+    if (f) { fprintf(f, "%d\n", code); fclose(f); }
+}
+
+static void mirror_key_history(int code) {
+    if (code <= 0) return;
+    char path[KTB_PATH_BUF];
+    path_join2(path, sizeof(path), g_house_root, "#.desktop/strip_input_history.txt");
+    FILE *f = fopen(path, "a");
+    if (f) { fprintf(f, "KEY_PRESSED: %d\n", code); fclose(f); }
+}
+
+static void mirror_mouse_history(const char *window_name, int button, int x, int y) {
+    char path[KTB_PATH_BUF];
+    path_join2(path, sizeof(path), g_house_root, "#.desktop/strip_input_history.txt");
+    FILE *f = fopen(path, "a");
+    if (f) { fprintf(f, "MOUSE_EVENT: %d %d %d 1 %s\n", button, x, y, window_name); fclose(f); }
+}
+
+static unsigned long parse_color(Display *dpy, const char *name, unsigned long fallback) {
+    Colormap cmap = DefaultColormap(dpy, DefaultScreen(dpy));
+    XColor c;
+    if (XAllocNamedColor(dpy, cmap, name, &c, &c)) return c.pixel;
+    return fallback;
+}
+
+static void load_strip_offset(int *out_x, int *out_y) {
+    *out_x = 0;
+    *out_y = 40;
+    char path[KTB_PATH_BUF];
+    path_join2(path, sizeof(path), g_house_root, "#.desktop/livedesk_taskbar.pdl");
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[KTB_PATH_BUF];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "SECTION", 7) != 0) continue;
+        char *p = strchr(line, '|');
+        if (!p) continue;
+        p++;
+        while (*p == ' ') p++;
+        char *end = strchr(p, '|');
+        if (!end) continue;
+        char *key_end = end;
+        while (key_end > p && key_end[-1] == ' ') key_end--;
+        char key[48];
+        size_t klen = (size_t)(key_end - p);
+        if (klen == 0 || klen >= sizeof(key)) continue;
+        memcpy(key, p, klen);
+        key[klen] = '\0';
+        char *v = end + 1;
+        while (*v == ' ') v++;
+        v[strcspn(v, "\r\n")] = '\0';
+        char *v_end = v + strlen(v);
+        while (v_end > v && v_end[-1] == ' ') v_end--;
+        *v_end = '\0';
+        if (v[0] == '\0') continue;
+        if (strcmp(key, "strip_x_offset") == 0) *out_x = atoi(v);
+        else if (strcmp(key, "strip_y_offset") == 0) *out_y = atoi(v);
+    }
+    fclose(f);
+}
+
+static int ktb_strip_nonfatal_x_error(Display *d, XErrorEvent *e) {
+    char ebuf[128]; XGetErrorText(d, e->error_code, ebuf, sizeof(ebuf));
+    fprintf(stderr, "khtpm_strip_parser: X error (non-fatal): %s (request %d.%d)\n", ebuf, e->request_code, e->minor_code);
+    return 0;
+}
+
+static void taskbar_set_wm_class(Display *dpy, Window w) {
+    XClassHint *ch = XAllocClassHint();
+    if (!ch) return;
+    ch->res_name = (char *)"MuchiverseLivedesk";
+    ch->res_class = (char *)"MuchiverseLivedesk";
+    XSetClassHint(dpy, w, ch);
+    XFree(ch);
+}
+
+static void taskbar_make_wm_managed_dock(Display *dpy, Window w, int x, int y) {
+    Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+    long hints[5] = { 2, 0, 0, 0, 0 };
+    XChangeProperty(dpy, w, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
+
+    Atom wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
+    Atom above = XInternAtom(dpy, "_NET_WM_STATE_ABOVE", False);
+    Atom skip_taskbar = XInternAtom(dpy, "_NET_WM_STATE_SKIP_TASKBAR", False);
+    Atom skip_pager = XInternAtom(dpy, "_NET_WM_STATE_SKIP_PAGER", False);
+    Atom sticky = XInternAtom(dpy, "_NET_WM_STATE_STICKY", False);
+    Atom states[4] = { above, skip_taskbar, skip_pager, sticky };
+    XChangeProperty(dpy, w, wm_state, XA_ATOM, 32, PropModeReplace, (unsigned char *)states, 4);
+
+    Atom win_type = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
+    Atom dock = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
+    XChangeProperty(dpy, w, win_type, XA_ATOM, 32, PropModeReplace, (unsigned char *)&dock, 1);
+
+    XSizeHints *shints = XAllocSizeHints();
+    if (shints) { shints->flags = PPosition; shints->x = x; shints->y = y; XSetWMNormalHints(dpy, w, shints); XFree(shints); }
+}
+
+#define STRIP_FRAME_HISTORY_MAX_BYTES 262144
+static char g_frame_history_path[KTB_PATH_BUF];
+
+static void frame_history_init(void) {
+    path_join2(g_frame_history_path, sizeof(g_frame_history_path), g_house_root,
+               "#.desktop/khtpm_strip_frame_history.txt");
+    FILE *f = fopen(g_frame_history_path, "w");
+    if (f) fclose(f);
+}
+
+static void append_frame_history(const LayDoc *header_doc, const LayDoc *bottom_doc, int nav_focus) {
+    if (!g_frame_history_path[0]) return;
+    struct stat st;
+    if (stat(g_frame_history_path, &st) == 0 && st.st_size > STRIP_FRAME_HISTORY_MAX_BYTES)
+        truncate(g_frame_history_path, 0);
+    FILE *f = fopen(g_frame_history_path, "a");
+    if (!f) return;
+    const char *hf_type = "-", *hf_label = "-", *hf_onclick = "-";
+    if (header_doc->focus_index >= 0 && header_doc->focus_index < header_doc->element_count) {
+        hf_type = header_doc->elements[header_doc->focus_index].type;
+        hf_label = header_doc->elements[header_doc->focus_index].label;
+        hf_onclick = header_doc->elements[header_doc->focus_index].onClick;
+    }
+    fprintf(f, "header.focus=%d[type=%s label=%s onClick=%s] header.active=%d "
+               "bottom.focus=%d unified_nav_focus=%d has_real_x11_focus=%d "
+               "cliio_active=%d nav_armed=%d digit_buf=%s hq_focus=%d element_count=%d\n",
+            header_doc->focus_index, hf_type, hf_label, hf_onclick, header_doc->active_index,
+            bottom_doc->focus_index, nav_focus, g_has_real_focus,
+            g_st.cliio_active, g_st.nav_armed, g_st.digit_buf, g_st.hq_focus, header_doc->element_count);
+    fclose(f);
+}
+
+static void taskbar_soft_focus(Display *dpy, Window w) {
+    if (!w) return;
+    XRaiseWindow(dpy, w);
+    if (g_focused_win != w) XSetInputFocus(dpy, w, RevertToParent, CurrentTime);
+    XFlush(dpy);
+}
+
+static int g_nav_focus = 0;
+
+static int root_nav_count(const LayDoc *doc) {
+    int n = 0;
+    for (int i = 0; i < doc->element_count; i++) {
+        if (!lay_is_navigable(doc, i)) continue;
+        n++;
+    }
+    return n;
+}
+
+static int root_nav_element_at(const LayDoc *doc, int pos) {
+    int n = 0;
+    for (int i = 0; i < doc->element_count; i++) {
+        if (!lay_is_navigable(doc, i)) continue;
+        if (n == pos) return i;
+        n++;
+    }
+    return -1;
+}
+
+static int root_nav_pos_of(const LayDoc *doc, int elidx) {
+    int n = 0;
+    for (int i = 0; i < doc->element_count; i++) {
+        if (!lay_is_navigable(doc, i)) continue;
+        if (i == elidx) return n;
+        n++;
+    }
+    return -1;
+}
+
+static void unified_apply(LayDoc *header_doc, LayDoc *bottom_doc) {
+    int hc = root_nav_count(header_doc);
+    if (g_nav_focus >= 0 && g_nav_focus < hc) {
+        header_doc->focus_index = root_nav_element_at(header_doc, g_nav_focus);
+        bottom_doc->focus_index = -1;
+    } else {
+        header_doc->focus_index = -1;
+        int bc = root_nav_count(bottom_doc);
+        int bpos = g_nav_focus - hc;
+        bottom_doc->focus_index = (bpos >= 0 && bpos < bc) ? root_nav_element_at(bottom_doc, bpos) : -1;
+    }
+}
+
+static void unified_step(LayDoc *header_doc, LayDoc *bottom_doc, int delta) {
+    int total = root_nav_count(header_doc) + root_nav_count(bottom_doc);
+    if (total <= 0) return;
+    g_nav_focus = ((g_nav_focus + delta) % total + total) % total;
+    unified_apply(header_doc, bottom_doc);
+}
+
+static void lay_focus_first(LayDoc *doc) {
+    for (int i = 0; i < doc->element_count; i++) {
+        if (lay_is_navigable(doc, i)) { doc->focus_index = i; return; }
+    }
+}
+
+static void sync_focus_to_digit_buf(LayDoc *header_doc, LayDoc *bottom_doc, const SpState *st) {
+    if (!st->digit_buf[0]) return;
+    if (header_doc->active_index != -1) return;
+    int nav_n = atoi(st->digit_buf);
+    if (nav_n <= 0) return;
+    int total = root_nav_count(header_doc) + root_nav_count(bottom_doc);
+    if (nav_n > total) return;
+    g_nav_focus = nav_n - 1;
+    unified_apply(header_doc, bottom_doc);
+}
+
+static void ktb_zorder_apply_tree(int raise) {
+    if (!g_dpy) return;
+    Window root = RootWindow(g_dpy, DefaultScreen(g_dpy));
+    Window root_ret, parent_ret;
+    Window *children = NULL;
+    unsigned int n = 0;
+    if (!XQueryTree(g_dpy, root, &root_ret, &parent_ret, &children, &n) || !children) return;
+    for (unsigned int i = 0; i < n; i++) {
+        char *nm = NULL;
+        if (!XFetchName(g_dpy, children[i], &nm) || !nm) continue;
+        int is_entity = (strncmp(nm, "tile:", 5) == 0);
+        XFree(nm);
+        if (!is_entity) continue;
+        if (raise) XRaiseWindow(g_dpy, children[i]);
+        else XLowerWindow(g_dpy, children[i]);
+    }
+    XFree(children);
+}
+
+static void ktb_toggle_zorder_apply(int raise) {
+    if (!g_dpy) return;
+    char dir[KTB_PATH_BUF];
+    snprintf(dir, sizeof(dir), "%s/#.desktop/nav_tab", g_house_root);
+    DIR *d = opendir(dir);
+    if (d) {
+        struct dirent *de;
+        while ((de = readdir(d))) {
+            if (de->d_name[0] == '.') continue;
+            char fp[KTB_PATH_BUF];
+            snprintf(fp, sizeof(fp), "%s/%s", dir, de->d_name);
+            pid_t pid = (pid_t)atoi(de->d_name);
+            if (pid > 1 && kill(pid, 0) != 0 && errno == ESRCH) {
+                unlink(fp);
+                continue;
+            }
+            FILE *f = fopen(fp, "r");
+            if (!f) continue;
+            int ord = 0;
+            unsigned long xid = 0;
+            if (fscanf(f, "%d %lx", &ord, &xid) >= 2 && xid) {
+                if (raise) XRaiseWindow(g_dpy, (Window)xid);
+                else XLowerWindow(g_dpy, (Window)xid);
+            }
+            fclose(f);
+        }
+        closedir(d);
+    }
+    ktb_zorder_apply_tree(raise);
+    XFlush(g_dpy);
+}
+
+static void ktb_toggle_zorder_respawn(void) {
+    char bin0[KTB_PATH_BUF], bin1[KTB_PATH_BUF], bin2[KTB_PATH_BUF];
+    snprintf(bin0, sizeof(bin0), "%s/*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x", g_house_root);
+    snprintf(bin1, sizeof(bin1), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", g_house_root);
+    snprintf(bin2, sizeof(bin2), "%s/&.hq-apps/network/+x/network_browser_render.+x", g_house_root);
+    const char *bins[3] = { bin0, bin1, bin2 };
+    const char *needles[3] = { "tp_desktop_window_rgb", "khtpm_core_render", "network_browser_render" };
+    struct { pid_t pid; int which; char arg[8][KTB_PATH_BUF]; int argc; } found[64];
+    int n_found = 0;
+    DIR *pd = opendir("/proc");
+    if (!pd) return;
+    struct dirent *ent;
+    while ((ent = readdir(pd)) != NULL) {
+        if (ent->d_name[0] < '0' || ent->d_name[0] > '9') continue;
+        char cpath[64];
+        snprintf(cpath, sizeof(cpath), "/proc/%s/cmdline", ent->d_name);
+        FILE *cf = fopen(cpath, "r");
+        if (!cf) continue;
+        char cmdbuf[KTB_PATH_BUF * 24];
+        size_t got = fread(cmdbuf, 1, sizeof(cmdbuf) - 1, cf);
+        fclose(cf);
+        if (got == 0) continue;
+        cmdbuf[got] = '\0';
+        const char *a0 = cmdbuf;
+        size_t a0len = strlen(a0);
+        if (a0len == 0) continue;
+        int which = -1;
+        for (int k = 0; k < 3; k++) if (strstr(a0, needles[k])) { which = k; break; }
+        if (which < 0) continue;
+        if (n_found >= (int)(sizeof(found) / sizeof(found[0]))) break;
+        found[n_found].pid = (pid_t)atoi(ent->d_name);
+        found[n_found].which = which;
+        found[n_found].argc = 0;
+        const char *p = cmdbuf;
+        for (int i = 0; i < 8; i++) {
+            size_t l = strlen(p);
+            if (l == 0) break;
+            snprintf(found[n_found].arg[i], KTB_PATH_BUF, "%s", p);
+            found[n_found].argc++;
+            p += l + 1;
+            if (p >= cmdbuf + got) break;
+        }
+        n_found++;
+    }
+    closedir(pd);
+    for (int i = 0; i < n_found; i++) kill(found[i].pid, SIGTERM);
+    usleep(300000);
+    extern char **environ;
+    for (int i = 0; i < n_found; i++) {
+        pid_t pid = fork();
+        if (pid == 0) {
+            setsid();
+            int devnull = open("/dev/null", O_RDWR);
+            if (devnull >= 0) { dup2(devnull, 0); dup2(devnull, 1); dup2(devnull, 2); if (devnull > 2) close(devnull); }
+            char *av[9];
+            av[0] = (char *)bins[found[i].which];
+            int n = found[i].argc < 8 ? found[i].argc : 8;
+            for (int j = 1; j < n; j++) av[j] = found[i].arg[j];
+            av[n] = NULL;
+            execve(av[0], av, environ);
+            _exit(1);
+        }
+    }
+}
+
+static void ktb_toggle_zorder(void) {
+    g_zorder_above = 0;
+    char path[KTB_PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/khtpm_zorder_mode.state.txt", g_house_root);
+    FILE *rf = fopen(path, "r");
+    if (rf) {
+        char line[32];
+        if (fgets(line, sizeof(line), rf) && strstr(line, "mode=above")) g_zorder_above = 1;
+        fclose(rf);
+    }
+    g_zorder_above = !g_zorder_above;
+    FILE *f = fopen(path, "w");
+    if (f) { fprintf(f, "mode=%s\n", g_zorder_above ? "above" : "normal"); fclose(f); }
+    char or_path[KTB_PATH_BUF];
+    snprintf(or_path, sizeof(or_path), "%s/#.desktop/livedesk_override_redirect.pdl", g_house_root);
+    FILE *orf = fopen(or_path, "w");
+    if (orf) { fprintf(orf, "override_redirect=%s\n", g_zorder_above ? "true" : "false"); fclose(orf); }
+    ktb_toggle_zorder_respawn();
+    ktb_toggle_zorder_apply(g_zorder_above);
+}
+
+static void dispatch_onclick(LayDoc *doc, int idx) {
+    if (idx < 0 || idx >= doc->element_count) return;
+    const char *oc = doc->elements[idx].onClick;
+    if (!oc[0]) return;
+
+    if (lay_is_activate_marker(oc)) {
+        lay_activate(doc, idx);
+        const char *colon = strchr(oc, ':');
+        if (colon) {
+            int n = atoi(colon + 1);
+            if (n > 0) send_code(KSC_HQ_HEADER_BASE + n);
+        }
+        return;
+    }
+    if (strcmp(oc, "BACK") == 0) {
+        lay_back(doc);
+        send_code(KSC_ESCAPE);
+        return;
+    }
+    if (strncmp(oc, "STRIP:", 6) == 0) {
+        int n = atoi(oc + 6);
+        if (n > 0) send_code(KSC_HQ_HEADER_BASE + n);
+        return;
+    }
+    if (strncmp(oc, "TAB:", 4) == 0) {
+        int i = atoi(oc + 4);
+        send_code(KSC_TAB_BASE + i);
+        return;
+    }
+    if (strncmp(oc, "SHORTCUT:", 9) == 0) {
+        int i = atoi(oc + 9);
+        if (i >= 0 && i < KTB_MAX_SHORTCUTS) send_code(KSC_SHORTCUT_BASE + i);
+        return;
+    }
+    if (strcmp(oc, "ZORDER_TOGGLE") == 0) {
+        ktb_toggle_zorder();
+        return;
+    }
+    if (strncmp(oc, "HQITEM:", 7) == 0) {
+        int i = atoi(oc + 7);
+        if (i >= 0 && i < KTB_LIVEDESK_DYN_MAX) send_code(KSC_HQ_ITEM_BASE + i);
+        return;
+    }
+}
+
+static void dispatch_key_code(LayDoc *header_doc, LayDoc *bottom_doc, const SpState *st, int code) {
+    if (code == KSC_ENTER) {
+        if (st->hq_open && header_doc->active_index == -1) {
+            send_code(KSC_ENTER);
+            return;
+        }
+        if (st->cliio_active) {
+            send_code(KSC_ENTER);
+        } else if (header_doc->active_index != -1) {
+            dispatch_onclick(header_doc, header_doc->focus_index);
+        } else if (bottom_doc->focus_index >= 0 && lay_is_navigable(bottom_doc, bottom_doc->focus_index)) {
+            dispatch_onclick(bottom_doc, bottom_doc->focus_index);
+        } else if (lay_is_navigable(header_doc, header_doc->focus_index)) {
+            dispatch_onclick(header_doc, header_doc->focus_index);
+        } else {
+            send_code(KSC_ENTER);
+        }
+    } else if (code == KSC_ESCAPE) {
+        send_code(KSC_ESCAPE);
+        if (header_doc->active_index != -1 &&
+            strcmp(header_doc->elements[header_doc->active_index].type, "cli_io") != 0) {
+            lay_back(header_doc);
+        }
+    } else if (code == KSC_BACKSPACE) {
+        send_code(KSC_BACKSPACE);
+    } else if (code == KSC_FOCUS_LEFT || code == KSC_FOCUS_RIGHT) {
+        send_code(code);
+        unified_step(header_doc, bottom_doc, code == KSC_FOCUS_LEFT ? -1 : 1);
+    } else if (code >= KSC_HQ_HEADER_BASE && code < KSC_HQ_HEADER_BASE + 16) {
+        send_code(code);
+    } else if (code >= 0x20 && code < 0x7f) {
+        send_code(code);
+    }
+}
+
+static long g_relay_cursor = -1;
+
+static void livedesk_relay_path(const char *house_root, char *out, size_t sz) {
+    snprintf(out, sz, "%s/#.desktop/livedesk_agent_relay.txt", house_root);
+}
+
+static int poll_agent_relay(const char *house_root, LayDoc *header_doc, LayDoc *bottom_doc, const SpState *st) {
+    char path[KTB_PATH_BUF];
+    livedesk_relay_path(house_root, path, sizeof(path));
+    struct stat stt;
+    if (stat(path, &stt) != 0) return 0;
+    if (g_relay_cursor < 0) { g_relay_cursor = stt.st_size; return 0; }
+    if (stt.st_size < g_relay_cursor) { g_relay_cursor = stt.st_size; return 0; }
+    if (stt.st_size == g_relay_cursor) return 0;
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    fseek(f, g_relay_cursor, SEEK_SET);
+    char line[32];
+    long consumed = g_relay_cursor;
+    int n_dispatched = 0;
+    while (fgets(line, sizeof(line), f)) {
+        char *nl = strchr(line, '\n');
+        if (!nl) break;
+        *nl = '\0';
+        long here = ftell(f);
+        int code = atoi(line);
+        if (code > 0) { dispatch_key_code(header_doc, bottom_doc, st, code); n_dispatched++; }
+        consumed = here;
+    }
+    fclose(f);
+    g_relay_cursor = consumed;
+    return n_dispatched;
+}
+
+#define SP_MAX_HIT 96
+typedef struct {
+    int x0, y0, x1, y1;
+    int elidx;
+} SpHitRect;
+
+static SpHitRect g_header_hits[SP_MAX_HIT];
+static int g_header_hit_n = 0;
+static int g_header_row_w = 0;
+static int g_hq_win_w = 0;
+static int g_header_natural_w = 0;
+
+static SpHitRect g_popup_hits[SP_MAX_HIT];
+static int g_popup_hit_n = 0;
+
+static SpHitRect g_bottom_hits[SP_MAX_HIT];
+static int g_bottom_hit_n = 0;
+
+#define STRIP_NAV_BOX_W 64
+
+static Colormap g_strip_cmap = 0;
+static XftFont *g_strip_font = NULL;
+static XftDraw *g_hq_xft = NULL, *g_popup_xft = NULL, *g_strip_xft = NULL;
+
+static XftFont *strip_font(Display *dpy, int screen) {
+    if (g_strip_font) return g_strip_font;
+    g_strip_font = XftFontOpenName(dpy, screen, "Noto Sans CJK SC:pixelsize=13");
+    if (!g_strip_font) g_strip_font = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=13");
+    return g_strip_font;
+}
+
+static XftColor strip_xft_color(Display *dpy, int screen, unsigned long pixel) {
+    XftColor xc;
+    XColor qc; qc.pixel = pixel;
+    XQueryColor(dpy, g_strip_cmap ? g_strip_cmap : DefaultColormap(dpy, screen), &qc);
+    XRenderColor rc = { qc.red, qc.green, qc.blue, 0xffff };
+    XftColorAllocValue(dpy, DefaultVisual(dpy, screen), g_strip_cmap ? g_strip_cmap : DefaultColormap(dpy, screen), &rc, &xc);
+    return xc;
+}
+
+static void strip_draw_utf8(Display *dpy, int screen, XftDraw *xftd, unsigned long fg_pixel,
+                             int x, int y, const char *s, int len) {
+    if (!xftd || !s || len <= 0) return;
+    XftFont *f = strip_font(dpy, screen);
+    if (!f) return;
+    XftColor col = strip_xft_color(dpy, screen, fg_pixel);
+    XftDrawStringUtf8(xftd, &col, f, x, y, (const FcChar8 *)s, len);
+    XftColorFree(dpy, DefaultVisual(dpy, screen), g_strip_cmap ? g_strip_cmap : DefaultColormap(dpy, screen), &col);
+}
+
+static Pixmap g_hq_buf = 0, g_popup_buf = 0, g_strip_buf = 0;
+static GC g_hq_buf_gc = 0, g_popup_buf_gc = 0, g_strip_buf_gc = 0;
+static int g_hq_buf_h = 0, g_hq_buf_w = 0;
+static int g_popup_buf_h = 0, g_popup_buf_w = 0;
+
+static void present_rgb(Display *dpy, Pixmap buf, Window win, GC gc, int w, int h) {
+    XSync(dpy, False);
+    XImage *img = XGetImage(dpy, buf, 0, 0, (unsigned)w, (unsigned)h, AllPlanes, ZPixmap);
+    if (!img) { XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)w, (unsigned)h, 0, 0); return; }
+    XPutImage(dpy, win, gc, img, 0, 0, 0, 0, (unsigned)w, (unsigned)h);
+    XDestroyImage(img);
+}
+
+static void present_rgb_fit(Display *dpy, Pixmap buf, Window win, GC gc, int bw, int bh, int ww) {
+    if (ww >= bw || ww < 1 || bw < 1 || bh < 1) {
+        present_rgb(dpy, buf, win, gc, bw, bh);
+        return;
+    }
+    XSync(dpy, False);
+    XImage *src = XGetImage(dpy, buf, 0, 0, (unsigned)bw, (unsigned)bh, AllPlanes, ZPixmap);
+    if (!src) { XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)bw, (unsigned)bh, 0, 0); return; }
+    Visual *vis = DefaultVisual(dpy, DefaultScreen(dpy));
+    int depth = DefaultDepth(dpy, DefaultScreen(dpy));
+    XImage *dst = XCreateImage(dpy, vis, depth, ZPixmap, 0, NULL,
+                               (unsigned)ww, (unsigned)bh, 32, 0);
+    if (!dst) { XPutImage(dpy, win, gc, src, 0, 0, 0, 0, (unsigned)bw, (unsigned)bh); XDestroyImage(src); return; }
+    dst->data = malloc((size_t)dst->bytes_per_line * (size_t)bh);
+    if (!dst->data) { XDestroyImage(dst); XPutImage(dpy, win, gc, src, 0, 0, 0, 0, (unsigned)bw, (unsigned)bh); XDestroyImage(src); return; }
+    for (int y = 0; y < bh; y++) {
+        const char *srow = src->data + (size_t)y * src->bytes_per_line;
+        char *drow = dst->data + (size_t)y * dst->bytes_per_line;
+        for (int x = 0; x < ww; x++) {
+            int sx = (int)((long)x * (long)bw / (long)ww);
+            memcpy(drow + (size_t)x * dst->bits_per_pixel / 8,
+                   srow + (size_t)sx * src->bits_per_pixel / 8,
+                   (size_t)dst->bits_per_pixel / 8);
+        }
+    }
+    XPutImage(dpy, win, gc, dst, 0, 0, 0, 0, (unsigned)ww, (unsigned)bh);
+    XDestroyImage(dst);
+    XDestroyImage(src);
+}
+
+#define TAB_SPRITE_PX 24
+typedef struct {
+    char path[KTB_PATH_BUF];
+    unsigned char *rgba;
+    int res;
+    time_t mtime;
+} TabSprite;
+static TabSprite g_sprite_cache[KTB_MAX_TABS];
+
+static TabSprite *tab_sprite(const char *path) {
+    if (!path || !path[0]) return NULL;
+    char pth[KTB_PATH_BUF];
+    snprintf(pth, sizeof(pth), "%s", path);
+    size_t pl = strlen(pth);
+    while (pl > 0 && (pth[pl - 1] == '\n' || pth[pl - 1] == '\r' || pth[pl - 1] == ' ' || pth[pl - 1] == '\t'))
+        pth[--pl] = 0;
+    if (!pth[0]) return NULL;
+    char csv_path[KTB_PATH_BUF];
+    snprintf(csv_path, sizeof(csv_path), "%s/sprite.csv", pth);
+    struct stat st;
+    time_t mt = 0;
+    if (stat(csv_path, &st) == 0) mt = st.st_mtime;
+    for (int i = 0; i < KTB_MAX_TABS; i++) {
+        if (g_sprite_cache[i].rgba && strcmp(g_sprite_cache[i].path, pth) == 0) {
+            if (mt != g_sprite_cache[i].mtime) {
+                free(g_sprite_cache[i].rgba);
+                memset(&g_sprite_cache[i], 0, sizeof(TabSprite));
+                break;
+            }
+            return &g_sprite_cache[i];
+        }
+    }
+    FILE *f = fopen(csv_path, "r");
+    if (!f) return NULL;
+    char line[256];
+    int res = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "# resolution=", 13) == 0) { res = atoi(line + 13); break; }
+    }
+    if (res <= 0) { fclose(f); return NULL; }
+    unsigned char *pixels = malloc((size_t)res * (size_t)res * 4);
+    if (!pixels) { fclose(f); return NULL; }
+    int count = 0;
+    while (count < res * res && fgets(line, sizeof(line), f)) {
+        int rr, gg, bb, aa;
+        if (sscanf(line, "%d,%d,%d,%d", &rr, &gg, &bb, &aa) == 4) {
+            pixels[count * 4 + 0] = (unsigned char)rr;
+            pixels[count * 4 + 1] = (unsigned char)gg;
+            pixels[count * 4 + 2] = (unsigned char)bb;
+            pixels[count * 4 + 3] = (unsigned char)aa;
+            count++;
+        }
+    }
+    fclose(f);
+    if (count != res * res) { free(pixels); return NULL; }
+    for (int i = 0; i < KTB_MAX_TABS; i++) {
+        if (!g_sprite_cache[i].rgba) {
+            snprintf(g_sprite_cache[i].path, sizeof(g_sprite_cache[i].path), "%s", pth);
+            g_sprite_cache[i].rgba = pixels;
+            g_sprite_cache[i].res = res;
+            g_sprite_cache[i].mtime = mt;
+            return &g_sprite_cache[i];
+        }
+    }
+    free(pixels);
+    return NULL;
+}
+
+static void blit_tab_sprite(Display *dpy, Drawable d, GC gc, TabSprite *sp,
+                            int x0, int y0, int px, unsigned long bg_pixel) {
+    Visual *vis = DefaultVisual(dpy, DefaultScreen(dpy));
+    int depth = DefaultDepth(dpy, DefaultScreen(dpy));
+    unsigned long rmask = vis->red_mask, gmask = vis->green_mask, bmask = vis->blue_mask;
+    int rshift = 0, gshift = 0, bshift = 0;
+    while (rmask && !(rmask & (1UL << rshift))) rshift++;
+    while (gmask && !(gmask & (1UL << gshift))) gshift++;
+    while (bmask && !(bmask & (1UL << bshift))) bshift++;
+    unsigned long br = (bg_pixel >> rshift) & 0xff;
+    unsigned long bg2 = (bg_pixel >> gshift) & 0xff;
+    unsigned long bb = (bg_pixel >> bshift) & 0xff;
+    int res = sp->res;
+    unsigned char *buf = calloc((size_t)px * px, 4);
+    if (!buf) return;
+    for (int y = 0; y < px; y++) {
+        int sy = (y * res) / px;
+        if (sy >= res) sy = res - 1;
+        for (int x = 0; x < px; x++) {
+            int sx = (x * res) / px;
+            if (sx >= res) sx = res - 1;
+            const unsigned char *pix = &sp->rgba[(sy * res + sx) * 4];
+            int a = pix[3];
+            int r = (pix[0] * a + (int)br * (255 - a)) / 255;
+            int g = (pix[1] * a + (int)bg2 * (255 - a)) / 255;
+            int b = (pix[2] * a + (int)bb * (255 - a)) / 255;
+            unsigned long word = ((unsigned long)r << rshift) | ((unsigned long)g << gshift) | ((unsigned long)b << bshift);
+            buf[(y * px + x) * 4 + 0] = (unsigned char)(word & 0xff);
+            buf[(y * px + x) * 4 + 1] = (unsigned char)((word >> 8) & 0xff);
+            buf[(y * px + x) * 4 + 2] = (unsigned char)((word >> 16) & 0xff);
+            buf[(y * px + x) * 4 + 3] = (unsigned char)((word >> 24) & 0xff);
+        }
+    }
+    XImage *img = XCreateImage(dpy, vis, depth, ZPixmap, 0, (char *)buf, px, px, 32, 0);
+    if (img) {
+        img->byte_order = LSBFirst;
+        XPutImage(dpy, d, gc, img, 0, 0, x0, y0, px, px);
+        XDestroyImage(img);
+    } else {
+        free(buf);
+    }
+}
+
+static int format_cell(LayDoc *doc, int idx, int nav_n, char *out, size_t outsz) {
+    char label[LAY_LABEL_LEN];
+    lay_get_label(doc, idx, sp_get_var, &g_st, label, sizeof(label));
+    if (nav_n > 0)
+        snprintf(out, outsz, "%s %d. %s", lay_cursor_prefix(doc, idx), nav_n, label);
+    else
+        snprintf(out, outsz, "%s %s", lay_cursor_prefix(doc, idx), label);
+    int w = (int)strlen(out) * 8 + 20;
+    char sprite_path[LAY_SPRITE_LEN];
+    lay_get_sprite(doc, idx, sp_get_var, &g_st, sprite_path, sizeof(sprite_path));
+    if (sprite_path[0]) w += TAB_SPRITE_PX + 6;
+    if (w < 40) w = 40;
+    return w;
+}
+
+#define CELLS_MAX 128
+#define CELL_CH_MAX 192
+typedef struct { int idx; int focused; char region[8]; char ch[CELL_CH_MAX]; } CellRec;
+static CellRec g_cells[CELLS_MAX];
+static int g_cells_n = 0;
+
+static void cell_append(int idx, const char *region, const char *ch, int focused) {
+    if (g_cells_n >= CELLS_MAX) return;
+    CellRec *c = &g_cells[g_cells_n++];
+    c->idx = idx;
+    c->focused = focused;
+    snprintf(c->region, sizeof(c->region), "%s", region);
+    snprintf(c->ch, sizeof(c->ch), "%s", ch);
+}
+
+static void flush_cells_pdl(const char *house_root) {
+    char tmp[KTB_PATH_BUF], dst[KTB_PATH_BUF];
+    path_join2(tmp, sizeof(tmp), house_root, "#.desktop/strip_frame.cells.pdl.tmp");
+    path_join2(dst, sizeof(dst), house_root, "#.desktop/strip_frame.cells.pdl");
+    FILE *f = fopen(tmp, "w");
+    if (!f) return;
+    for (int i = 0; i < g_cells_n; i++) {
+        CellRec *c = &g_cells[i];
+        fprintf(f, "CELL | idx=%d region=%s | ch=%s fg=default bg=default focused=%d\n",
+                c->idx, c->region, c->ch, c->focused);
+    }
+    fclose(f);
+    rename(tmp, dst);
+    char sig[KTB_PATH_BUF];
+    path_join2(sig, sizeof(sig), house_root, "#.desktop/strip_cells_changed.txt");
+    FILE *sf = fopen(sig, "a");
+    if (sf) { fputc('x', sf); fclose(sf); }
+}
+
+static int header_total_width(LayDoc *doc) {
+    int w = STRIP_NAV_BOX_W;
+    int n = 0;
+    for (int i = 0; i < doc->element_count; i++) {
+        if (doc->elements[i].parent_index != -1) continue;
+        if (strcmp(doc->elements[i].type, "button") != 0) continue;
+        n++;
+        char disp[96];
+        w += format_cell(doc, i, n, disp, sizeof(disp)) + 6;
+    }
+    for (int i = 0; i < doc->element_count; i++) {
+        if (doc->elements[i].parent_index != -1) continue;
+        if (strcmp(doc->elements[i].type, "text") != 0) continue;
+        char label[LAY_LABEL_LEN];
+        lay_get_label(doc, i, sp_get_var, &g_st, label, sizeof(label));
+        w += (int)strlen(label) * 8 + 20 + TAB_SPRITE_PX + 4;
+        break;
+    }
+    return w;
+}
+
+static void draw_header_win(Display *dpy, Window win, GC gc, LayDoc *doc, SpState *st) {
+    int h = KTB_BAR_H;
+    int header_w = STRIP_NAV_BOX_W;
+    g_header_hit_n = 0;
+
+    Window win_real = win;
+    int w_guess = header_total_width(doc);
+    if (w_guess < 1) w_guess = 1;
+    if (!g_hq_buf || g_hq_buf_h < h || g_hq_buf_w < w_guess) {
+        if (g_hq_buf) { XFreePixmap(dpy, g_hq_buf); XFreeGC(dpy, g_hq_buf_gc); }
+        if (g_hq_xft) { XftDrawDestroy(g_hq_xft); g_hq_xft = NULL; }
+        g_hq_buf = XCreatePixmap(dpy, win, w_guess, h, DefaultDepth(dpy, DefaultScreen(dpy)));
+        g_hq_buf_gc = XCreateGC(dpy, g_hq_buf, 0, NULL);
+        XCopyGC(dpy, gc, GCForeground | GCBackground | GCFont, g_hq_buf_gc);
+        g_hq_buf_h = h;
+        g_hq_buf_w = w_guess;
+        g_hq_xft = XftDrawCreate(dpy, g_hq_buf, DefaultVisual(dpy, DefaultScreen(dpy)), g_strip_cmap ? g_strip_cmap : DefaultColormap(dpy, DefaultScreen(dpy)));
+    }
+    unsigned long fg, bg_pixel;
+    { XGCValues gv; XGetGCValues(dpy, gc, GCForeground, &gv); fg = gv.foreground; }
+    { XGCValues gv; XGetGCValues(dpy, gc, GCBackground, &gv); bg_pixel = gv.background; }
+    GC bgc = g_hq_buf_gc;
+    XSetForeground(dpy, bgc, bg_pixel);
+    XFillRectangle(dpy, g_hq_buf, bgc, 0, 0, w_guess, h);
+    XSetForeground(dpy, bgc, fg);
+    XDrawRectangle(dpy, g_hq_buf, bgc, 0, 0, w_guess - 1, h - 1);
+
+    {
+        char arm_lab[72];
+        const char *focus_mark = g_has_real_focus ? "^" : " ";
+        if (st->nav_armed || st->digit_buf[0]) {
+            const char *arm = st->digit_buf[0] ? st->digit_buf : "NAV";
+            snprintf(arm_lab, sizeof(arm_lab), "%s[%s]", focus_mark, arm);
+        } else {
+            snprintf(arm_lab, sizeof(arm_lab), "%s", focus_mark);
+        }
+        strip_draw_utf8(dpy, DefaultScreen(dpy), g_hq_xft, fg, 4, KTB_BAR_H / 2 + 4, arm_lab, (int)strlen(arm_lab));
+    }
+    XDrawLine(dpy, g_hq_buf, bgc, STRIP_NAV_BOX_W, 0, STRIP_NAV_BOX_W, KTB_BAR_H);
+
+    int first = 1;
+    int cell_n = 0;
+    for (int i = 0; i < doc->element_count; i++) {
+        if (doc->elements[i].parent_index != -1) continue;
+        if (strcmp(doc->elements[i].type, "button") != 0) continue;
+        cell_n++;
+        if (!first) XDrawLine(dpy, g_hq_buf, bgc, header_w, 0, header_w, KTB_BAR_H);
+        first = 0;
+        char disp[96];
+        int cw = format_cell(doc, i, cell_n, disp, sizeof(disp));
+        char sprite_path[LAY_SPRITE_LEN];
+        lay_get_sprite(doc, i, sp_get_var, &g_st, sprite_path, sizeof(sprite_path));
+        TabSprite *sp = sprite_path[0] ? tab_sprite(sprite_path) : NULL;
+        int text_x = header_w + 6;
+        if (sp) {
+            blit_tab_sprite(dpy, g_hq_buf, bgc, sp, header_w + 4, (KTB_BAR_H - TAB_SPRITE_PX) / 2, TAB_SPRITE_PX, bg_pixel);
+            text_x = header_w + TAB_SPRITE_PX + 10;
+        }
+        strip_draw_utf8(dpy, DefaultScreen(dpy), g_hq_xft, fg, text_x, KTB_BAR_H / 2 + 4, disp, (int)strlen(disp));
+        cell_append(cell_n - 1, "header", disp, (i == doc->focus_index));
+        if (g_header_hit_n < SP_MAX_HIT) {
+            SpHitRect *r = &g_header_hits[g_header_hit_n++];
+            r->x0 = header_w; r->x1 = header_w + cw; r->y0 = 0; r->y1 = KTB_BAR_H; r->elidx = i;
+        }
+        header_w += cw + 6;
+    }
+    for (int i = 0; i < doc->element_count; i++) {
+        if (doc->elements[i].parent_index != -1) continue;
+        if (strcmp(doc->elements[i].type, "text") != 0) continue;
+        char label[LAY_LABEL_LEN];
+        lay_get_label(doc, i, sp_get_var, &g_st, label, sizeof(label));
+        int text_x = header_w - 24;
+        if (text_x < header_w - (int)strlen(label) * 8 - 20) text_x = header_w - (int)strlen(label) * 8 - 20;
+        strip_draw_utf8(dpy, DefaultScreen(dpy), g_hq_xft, fg, text_x, KTB_BAR_H / 2 + 4, label, (int)strlen(label));
+        int adv = (int)strlen(label) * 8 + 20 - 24;
+        header_w += adv;
+        if (header_w < STRIP_NAV_BOX_W) header_w = STRIP_NAV_BOX_W;
+        TabSprite *usp = g_build_uid_sprite_dir[0] ? tab_sprite(g_build_uid_sprite_dir) : NULL;
+        if (usp) {
+            blit_tab_sprite(dpy, g_hq_buf, bgc, usp, header_w, (KTB_BAR_H - TAB_SPRITE_PX) / 2, TAB_SPRITE_PX, bg_pixel);
+            header_w += TAB_SPRITE_PX + 4;
+        }
+        break;
+    }
+    g_header_row_w = header_w;
+    g_header_natural_w = w_guess;
+
+    present_rgb_fit(dpy, g_hq_buf, win_real, g_hq_buf_gc, w_guess, h, g_hq_win_w);
+    XFlush(dpy);
+}
+
+static int draw_popup_win(Display *dpy, Window win, GC gc, LayDoc *doc, SpState *st,
+                           int hq_win_x, int hq_win_y) {
+    g_popup_hit_n = 0;
+    if (doc->active_index < 0) return 0;
+
+    int is_cliio = (strcmp(doc->elements[doc->active_index].type, "cli_io") == 0);
+    int rows = 0;
+    int row_elidx[KTB_LIVEDESK_DYN_MAX];
+    if (is_cliio) {
+        if (!st->cliio_active) return 0;
+        rows = 1;
+    } else {
+        for (int i = 0; i < doc->element_count && rows < KTB_LIVEDESK_DYN_MAX; i++) {
+            if (i == doc->active_index) continue;
+            if (!lay_is_navigable(doc, i)) continue;
+            if (!lay_is_descendant(doc, i, doc->active_index)) continue;
+            row_elidx[rows++] = i;
+        }
+        if (rows == 0) return 0;
+    }
+
+    int h = KTB_BAR_H * rows;
+    int w = 40, anchor_x0 = 0;
+    for (int i = 0; i < g_header_hit_n; i++) {
+        if (g_header_hits[i].elidx == doc->active_index) { anchor_x0 = g_header_hits[i].x0; break; }
+    }
+    if (is_cliio) {
+        w = 300;
+    } else {
+        for (int r = 0; r < rows; r++) {
+            char lab[192];
+            char label[LAY_LABEL_LEN];
+            lay_get_label(doc, row_elidx[r], sp_get_var, &g_st, label, sizeof(label));
+            snprintf(lab, sizeof(lab), "%s %d. %s", lay_cursor_prefix(doc, row_elidx[r]), r + 1, label);
+            int cw = (int)strlen(lab) * 8 + 24;
+            char sprite_path[LAY_SPRITE_LEN];
+            lay_get_sprite(doc, row_elidx[r], sp_get_var, &g_st, sprite_path, sizeof(sprite_path));
+            if (sprite_path[0]) cw += TAB_SPRITE_PX + 4;
+            if (cw > w) w = cw;
+        }
+    }
+    int win_x, win_y;
+    if (is_cliio) {
+        int sw = DisplayWidth(dpy, DefaultScreen(dpy));
+        win_x = (sw - w) / 2;
+        win_y = 140;
+    } else {
+        win_x = hq_win_x + anchor_x0;
+        win_y = hq_win_y + KTB_BAR_H;
+        if (g_hq_win_handle) {
+            Window dummy = 0;
+            int hx = 0, hy = 0;
+            unsigned hw = 0, hh = 0, bw = 0, depth = 0;
+            if (XGetGeometry(dpy, g_hq_win_handle, &dummy, &hx, &hy, &hw, &hh, &bw, &depth) && hw > 0) {
+                int layout_w = g_header_row_w > 0 ? g_header_row_w : (int)hw;
+                win_x = hx + (int)((long)anchor_x0 * (long)hw / (long)layout_w);
+                win_y = hy + (int)hh;
+            }
+        }
+    }
+    if (w < 1) w = 1;
+    if (h < 1) h = 1;
+
+    Window win_real = win;
+    if (!g_popup_buf || g_popup_buf_h < h || g_popup_buf_w < w) {
+        if (g_popup_buf) { XFreePixmap(dpy, g_popup_buf); XFreeGC(dpy, g_popup_buf_gc); }
+        if (g_popup_xft) { XftDrawDestroy(g_popup_xft); g_popup_xft = NULL; }
+        g_popup_buf = XCreatePixmap(dpy, win, w, h, DefaultDepth(dpy, DefaultScreen(dpy)));
+        g_popup_buf_gc = XCreateGC(dpy, g_popup_buf, 0, NULL);
+        XCopyGC(dpy, gc, GCForeground | GCBackground | GCFont, g_popup_buf_gc);
+        g_popup_buf_h = h;
+        g_popup_buf_w = w;
+        g_popup_xft = XftDrawCreate(dpy, g_popup_buf, DefaultVisual(dpy, DefaultScreen(dpy)), g_strip_cmap ? g_strip_cmap : DefaultColormap(dpy, DefaultScreen(dpy)));
+    }
+    unsigned long fg, bg_pixel;
+    { XGCValues gv; XGetGCValues(dpy, gc, GCForeground, &gv); fg = gv.foreground; }
+    { XGCValues gv; XGetGCValues(dpy, gc, GCBackground, &gv); bg_pixel = gv.background; }
+    GC bgc = g_popup_buf_gc;
+    XSetForeground(dpy, bgc, bg_pixel);
+    XFillRectangle(dpy, g_popup_buf, bgc, 0, 0, w, h);
+    XSetForeground(dpy, bgc, fg);
+    XDrawRectangle(dpy, g_popup_buf, bgc, 0, 0, w - 1, h - 1);
+
+    if (is_cliio) {
+        const char *pref = st->cliio_typing ? "[^]" : "[>]";
+        char row0[320];
+        if (st->cliio_typing)
+            snprintf(row0, sizeof(row0), "%s %s: [%s_]  (Enter=save, Esc=cancel)", pref, st->cliio_label, st->cliio_buffer);
+        else
+            snprintf(row0, sizeof(row0), "%s %s: [%s]  (Enter=edit, Esc=cancel)", pref, st->cliio_label, st->cliio_buffer);
+        strip_draw_utf8(dpy, DefaultScreen(dpy), g_popup_xft, fg, 8, KTB_BAR_H / 2 + 4, row0, (int)strlen(row0));
+        cell_append(doc->active_index, "popup", row0, 1);
+        if (g_popup_hit_n < SP_MAX_HIT) {
+            SpHitRect *r = &g_popup_hits[g_popup_hit_n++];
+            r->x0 = 0; r->x1 = w; r->y0 = 0; r->y1 = KTB_BAR_H; r->elidx = doc->active_index;
+        }
+    } else {
+        for (int r = 0; r < rows; r++) {
+            int row_y = KTB_BAR_H * r;
+            if (r > 0) XDrawLine(dpy, g_popup_buf, bgc, 0, row_y, w, row_y);
+            char label[LAY_LABEL_LEN];
+            lay_get_label(doc, row_elidx[r], sp_get_var, &g_st, label, sizeof(label));
+            char lab[192];
+            snprintf(lab, sizeof(lab), "%s %d. %s", lay_cursor_prefix(doc, row_elidx[r]), r + 1, label);
+            char sprite_path[LAY_SPRITE_LEN];
+            lay_get_sprite(doc, row_elidx[r], sp_get_var, &g_st, sprite_path, sizeof(sprite_path));
+            TabSprite *rsp = sprite_path[0] ? tab_sprite(sprite_path) : NULL;
+            int text_x = 12;
+            if (rsp) {
+                int sy = row_y + (KTB_BAR_H - TAB_SPRITE_PX) / 2;
+                blit_tab_sprite(dpy, g_popup_buf, bgc, rsp, 8, sy, TAB_SPRITE_PX, bg_pixel);
+                text_x = 8 + TAB_SPRITE_PX + 6;
+            }
+            strip_draw_utf8(dpy, DefaultScreen(dpy), g_popup_xft, fg, text_x, row_y + KTB_BAR_H / 2 + 4, lab, (int)strlen(lab));
+            cell_append(row_elidx[r], "popup", lab, (row_elidx[r] == doc->focus_index));
+            if (g_popup_hit_n < SP_MAX_HIT) {
+                SpHitRect *hr = &g_popup_hits[g_popup_hit_n++];
+                hr->x0 = 0; hr->x1 = w; hr->y0 = row_y; hr->y1 = row_y + KTB_BAR_H; hr->elidx = row_elidx[r];
+            }
+        }
+    }
+
+    XMoveResizeWindow(dpy, win_real, win_x, win_y, w, h);
+    present_rgb(dpy, g_popup_buf, win_real, g_popup_buf_gc, w, h);
+    XFlush(dpy);
+    return 1;
+}
+
+static void draw_bottom(Display *dpy, Window win, GC gc, int sw, unsigned long bg_pixel, LayDoc *doc) {
+    g_bottom_hit_n = 0;
+    Window win_real = win;
+    if (!g_strip_buf) {
+        g_strip_buf = XCreatePixmap(dpy, win, sw, KTB_BAR_H, DefaultDepth(dpy, DefaultScreen(dpy)));
+        g_strip_buf_gc = XCreateGC(dpy, g_strip_buf, 0, NULL);
+        XCopyGC(dpy, gc, GCForeground | GCBackground | GCFont, g_strip_buf_gc);
+        g_strip_xft = XftDrawCreate(dpy, g_strip_buf, DefaultVisual(dpy, DefaultScreen(dpy)), g_strip_cmap ? g_strip_cmap : DefaultColormap(dpy, DefaultScreen(dpy)));
+    }
+    unsigned long fg;
+    { XGCValues gv; XGetGCValues(dpy, gc, GCForeground, &gv); fg = gv.foreground; }
+    GC bgc = g_strip_buf_gc;
+    XSetForeground(dpy, bgc, bg_pixel);
+    XFillRectangle(dpy, g_strip_buf, bgc, 0, 0, sw, KTB_BAR_H);
+    XSetForeground(dpy, bgc, fg);
+    win = g_strip_buf;
+
+    XDrawLine(dpy, win, bgc, 0, 0, sw, 0);
+
+    int x = 8;
+    for (int i = 0; i < doc->element_count; i++) {
+        if (doc->elements[i].parent_index != -1) continue;
+        if (strcmp(doc->elements[i].type, "row") != 0) continue;
+        for (int c = 0; c < doc->elements[i].num_children; c++) {
+            int ci = doc->elements[i].children[c];
+            if (strcmp(doc->elements[ci].type, "button") != 0) continue;
+            char label[LAY_LABEL_LEN];
+            lay_get_label(doc, ci, sp_get_var, &g_st, label, sizeof(label));
+            char lab[192];
+            snprintf(lab, sizeof(lab), "%s %s", lay_cursor_prefix(doc, ci), label);
+            char sprite_path[LAY_SPRITE_LEN];
+            lay_get_sprite(doc, ci, sp_get_var, &g_st, sprite_path, sizeof(sprite_path));
+            TabSprite *sp = tab_sprite(sprite_path);
+            int w = (int)strlen(lab) * 8 + 16 + (sp ? TAB_SPRITE_PX : 0);
+            if (x + w >= sw - 8) break;
+            XDrawLine(dpy, win, bgc, x, 0, x, KTB_BAR_H);
+            int text_x = x + 8;
+            if (sp) {
+                int sy = (KTB_BAR_H - TAB_SPRITE_PX) / 2;
+                blit_tab_sprite(dpy, win, bgc, sp, x + 2, sy, TAB_SPRITE_PX, bg_pixel);
+                text_x = x + 8 + TAB_SPRITE_PX;
+            }
+            strip_draw_utf8(dpy, DefaultScreen(dpy), g_strip_xft, fg, text_x, KTB_BAR_H / 2 + 4, lab, (int)strlen(lab));
+            cell_append(ci, "bottom", lab, (ci == doc->focus_index));
+            if (g_bottom_hit_n < SP_MAX_HIT) {
+                SpHitRect *r = &g_bottom_hits[g_bottom_hit_n++];
+                r->x0 = x; r->x1 = x + w; r->y0 = 0; r->y1 = KTB_BAR_H; r->elidx = ci;
+            }
+            x += w;
+        }
+    }
+
+    present_rgb(dpy, g_strip_buf, win_real, g_strip_buf_gc, sw, KTB_BAR_H);
+    XFlush(dpy);
+}
+
+static int sp_hit_test(SpHitRect *hits, int n, int x, int y) {
+    for (int i = 0; i < n; i++) {
+        if (x >= hits[i].x0 && x < hits[i].x1 && y >= hits[i].y0 && y < hits[i].y1)
+            return hits[i].elidx;
+    }
+    return -1;
+}
+
+static void layout_path(char *out, size_t n, const char *filename) {
+    char rel[256];
+    snprintf(rel, sizeof(rel), "*.monads/*.livedesk-taskbar/%s", filename);
+    path_join2(out, n, g_house_root, rel);
+}
+
+static void write_header_cell_ids(const LayDoc *header_doc) {
+    char path[KTB_PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/livedesk_header_cell_ids.txt", g_house_root);
+    FILE *f = fopen(path, "w");
+    if (!f) return;
+    int pos = 0;
+    for (int i = 0; i < header_doc->element_count; i++) {
+        if (!lay_is_navigable(header_doc, i)) continue;
+        pos++;
+        const char *id = lay_get_id(header_doc, i);
+        if (id && id[0]) fprintf(f, "%d|%s\n", pos, id);
+    }
+    fclose(f);
+}
+
+static void sync_cliio_scope(LayDoc *header_doc, SpState *st) {
+    int cliio_idx = -1;
+    for (int i = 0; i < header_doc->element_count; i++) {
+        if (strcmp(header_doc->elements[i].type, "cli_io") == 0) { cliio_idx = i; break; }
+    }
+    if (cliio_idx < 0) return;
+    if (st->cliio_active && header_doc->active_index != cliio_idx) {
+        lay_activate(header_doc, cliio_idx);
+    } else if (!st->cliio_active && header_doc->active_index == cliio_idx) {
+        lay_back(header_doc);
+    }
+}
+
+static char g_popup_focus_last_onclick[LAY_ONCLICK_LEN] = "";
+
+static void sync_popup_focus(LayDoc *header_doc, const SpState *st) {
+    if (header_doc->active_index < 0) { g_popup_focus_last_onclick[0] = '\0'; return; }
+    if (strcmp(header_doc->elements[header_doc->active_index].type, "cli_io") == 0) return;
+    const char *cur_onclick = header_doc->elements[header_doc->active_index].onClick;
+    if (!st->hq_open) {
+        if (strcmp(cur_onclick, g_popup_focus_last_onclick) == 0) {
+            lay_back(header_doc);
+            g_popup_focus_last_onclick[0] = '\0';
+            return;
+        }
+    }
+    snprintf(g_popup_focus_last_onclick, sizeof(g_popup_focus_last_onclick), "%s", cur_onclick);
+    int n = 0, target = -1;
+    for (int i = 0; i < header_doc->element_count; i++) {
+        if (i == header_doc->active_index) continue;
+        if (!lay_is_navigable(header_doc, i)) continue;
+        if (!lay_is_descendant(header_doc, i, header_doc->active_index)) continue;
+        if (n == st->hq_focus) { target = i; break; }
+        n++;
+    }
+    if (target >= 0) header_doc->focus_index = target;
+}
+
+static void apply_captured_key(LayDoc *header_doc, LayDoc *bottom_doc, SpState *st, int code) {
+    if (code == KSC_FOCUS_LEFT) {
+        if (header_doc->active_index != -1) lay_focus_delta(header_doc, -1);
+        else unified_step(header_doc, bottom_doc, -1);
+    } else if (code == KSC_FOCUS_RIGHT) {
+        if (header_doc->active_index != -1) lay_focus_delta(header_doc, 1);
+        else unified_step(header_doc, bottom_doc, 1);
+    } else if (code == KSC_ENTER || code == KSC_ESCAPE || code == KSC_BACKSPACE ||
+               (code >= 0x20 && code < 0x7f)) {
+        dispatch_key_code(header_doc, bottom_doc, st, code);
+    }
+}
+
+static void apply_captured_mouse(LayDoc *header_doc, LayDoc *bottom_doc, SpState *st,
+                                  Display *dpy, Window hq_win, Window popup_win, Window win,
+                                  const char *window_name, int button, int x, int y) {
+    if (strcmp(window_name, "hq_win") == 0) {
+        if (button == 3) {
+            if (!st->cliio_active) { send_code(KSC_NAV_ARM); g_nav_focus = 0; unified_apply(header_doc, bottom_doc); taskbar_soft_focus(dpy, hq_win); }
+        } else {
+            int hit_x = x;
+            if (g_header_natural_w > 0 && g_hq_win_w > 0 && g_hq_win_w < g_header_natural_w)
+                hit_x = (int)((long)x * (long)g_header_natural_w / (long)g_hq_win_w);
+            int elidx = sp_hit_test(g_header_hits, g_header_hit_n, hit_x, y);
+            if (elidx >= 0) {
+                int activate = (!g_click_two_step) || (header_doc->focus_index == elidx);
+                header_doc->focus_index = elidx;
+                g_nav_focus = root_nav_pos_of(header_doc, elidx);
+                if (activate) dispatch_onclick(header_doc, elidx);
+                taskbar_soft_focus(dpy, hq_win);
+            }
+        }
+    } else if (strcmp(window_name, "popup_win") == 0) {
+        if (button == 3) {
+            if (!st->cliio_active) { send_code(KSC_NAV_ARM); g_nav_focus = 0; unified_apply(header_doc, bottom_doc); taskbar_soft_focus(dpy, popup_win); }
+        } else {
+            int elidx = sp_hit_test(g_popup_hits, g_popup_hit_n, x, y);
+            if (elidx >= 0) {
+                if (strcmp(header_doc->elements[elidx].type, "cli_io") == 0) {
+                    send_code(KSC_ENTER);
+                } else {
+                    int activate = (!g_click_two_step) || (header_doc->focus_index == elidx);
+                    header_doc->focus_index = elidx;
+                    if (activate) dispatch_onclick(header_doc, elidx);
+                }
+                taskbar_soft_focus(dpy, popup_win);
+            }
+        }
+    } else if (strcmp(window_name, "win") == 0) {
+        if (button == 3) {
+            send_code(KSC_NAV_ARM);
+            g_nav_focus = 0;
+            unified_apply(header_doc, bottom_doc);
+            taskbar_soft_focus(dpy, win);
+        } else {
+            int elidx = sp_hit_test(g_bottom_hits, g_bottom_hit_n, x, y);
+            if (elidx >= 0) {
+                int activate = (!g_click_two_step) || (bottom_doc->focus_index == elidx);
+                bottom_doc->focus_index = elidx;
+                g_nav_focus = root_nav_count(header_doc) + root_nav_pos_of(bottom_doc, elidx);
+                if (activate) dispatch_onclick(bottom_doc, elidx);
+            }
+        }
+    }
+}
+
+static long g_capture_cursor = -1;
+
+static int poll_captured_input(LayDoc *header_doc, LayDoc *bottom_doc, SpState *st,
+                                Display *dpy, Window hq_win, Window popup_win, Window win) {
+    char path[KTB_PATH_BUF];
+    path_join2(path, sizeof(path), g_house_root, "#.desktop/strip_input_history.txt");
+    struct stat stt;
+    if (stat(path, &stt) != 0) return 0;
+    if (g_capture_cursor < 0) { g_capture_cursor = stt.st_size; return 0; }
+    if (stt.st_size < g_capture_cursor) { g_capture_cursor = stt.st_size; return 0; }
+    if (stt.st_size == g_capture_cursor) return 0;
+
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    fseek(f, g_capture_cursor, SEEK_SET);
+    char line[KTB_PATH_BUF];
+    long consumed = g_capture_cursor;
+    int n_applied = 0;
+    while (fgets(line, sizeof(line), f)) {
+        char *nl = strchr(line, '\n');
+        if (!nl) break;
+        *nl = '\0';
+        long here = ftell(f);
+        char *kp = strstr(line, "KEY_PRESSED: ");
+        char *me = strstr(line, "MOUSE_EVENT: ");
+        if (kp) {
+            int code = atoi(kp + 13);
+            if (code > 0) { apply_captured_key(header_doc, bottom_doc, st, code); n_applied++; }
+        } else if (me) {
+            int button = 0, x = 0, y = 0, is_press = 0;
+            char wname[64] = "";
+            if (sscanf(me + 13, "%d %d %d %d %63s", &button, &x, &y, &is_press, wname) == 5 && is_press) {
+                apply_captured_mouse(header_doc, bottom_doc, st, dpy, hq_win, popup_win, win, wname, button, x, y);
+                n_applied++;
+            }
+        }
+        consumed = here;
+    }
+    fclose(f);
+    g_capture_cursor = consumed;
+    return n_applied;
+}
+
+/* Renamed from main() - see this whole merged block's own header
+ * comment for the argc==2 dispatch that calls this from the real
+ * main() below. */
+static int strip_main(int argc, char **argv) {
+    if (argc < 2) {
+        fprintf(stderr, "Usage: khtpm_strip_parser <house_root>\n");
+        return 1;
+    }
+    snprintf(g_house_root, sizeof(g_house_root), "%s", argv[1]);
+    strip_load_click_two_step();
+    frame_history_init();
+    int hq_win_x = 0, hq_win_y = 40;
+    load_strip_offset(&hq_win_x, &hq_win_y);
+
+    signal(SIGTERM, strip_on_sigterm);
+    signal(SIGINT, strip_on_sigterm);
+
+    {
+        char early_header_path[KTB_PATH_BUF];
+        layout_path(early_header_path, sizeof(early_header_path), "khtpm_strip_header.chtpm");
+        LayDoc early_doc;
+        if (lay_load(&early_doc, early_header_path, NULL, NULL))
+            write_header_cell_ids(&early_doc);
+    }
+
+    launch_manager();
+    wait_for_manager_first_publish();
+
+    Display *dpy = XOpenDisplay(NULL);
+    g_dpy = dpy;
+    if (dpy) XSetErrorHandler(ktb_strip_nonfatal_x_error);
+    if (!dpy) {
+        fprintf(stderr, "strip_parser: no display\n");
+        cleanup_manager();
+        return 1;
+    }
+    int sw = DisplayWidth(dpy, DefaultScreen(dpy));
+    int sh = DisplayHeight(dpy, DefaultScreen(dpy));
+    g_strip_cmap = DefaultColormap(dpy, DefaultScreen(dpy));
+
+    load_state(&g_st);
+    build_uid_init(g_build_uid, sizeof(g_build_uid), g_house_root);
+
+    char header_path[KTB_PATH_BUF], bottom_path[KTB_PATH_BUF];
+    layout_path(header_path, sizeof(header_path), "khtpm_strip_header.chtpm");
+    layout_path(bottom_path, sizeof(bottom_path), "khtpm_strip_bottom.chtpm");
+
+    static LayDoc header_doc, bottom_doc;
+    if (!lay_load(&header_doc, header_path, sp_get_var, &g_st))
+        fprintf(stderr, "strip_parser: failed to load %s\n", header_path);
+    else
+        write_header_cell_ids(&header_doc);
+    if (!lay_load(&bottom_doc, bottom_path, sp_get_var, &g_st))
+        fprintf(stderr, "strip_parser: failed to load %s\n", bottom_path);
+    bottom_doc.focus_index = -1;
+    unified_apply(&header_doc, &bottom_doc);
+    sync_cliio_scope(&header_doc, &g_st);
+
+    unsigned long bg = parse_color(dpy, g_st.theme_bg, BlackPixel(dpy, DefaultScreen(dpy)));
+    unsigned long fg = parse_color(dpy, g_st.theme_fg, WhitePixel(dpy, DefaultScreen(dpy)));
+
+    XSetWindowAttributes swa;
+    swa.background_pixel = bg;
+    swa.event_mask = ExposureMask | ButtonPressMask | KeyPressMask | FocusChangeMask;
+    Window win = XCreateWindow(dpy, RootWindow(dpy, DefaultScreen(dpy)),
+                               0, sh - KTB_BAR_H, sw, KTB_BAR_H, 0,
+                               CopyFromParent, InputOutput, CopyFromParent,
+                               CWBackPixel | CWEventMask, &swa);
+    taskbar_set_wm_class(dpy, win);
+    taskbar_make_wm_managed_dock(dpy, win, 0, sh - KTB_BAR_H);
+    XMapRaised(dpy, win);
+    set_window_opacity(dpy, win, load_theme_opacity());
+    GC gc = XCreateGC(dpy, win, 0, NULL);
+    XSetForeground(dpy, gc, fg);
+    XSetBackground(dpy, gc, bg);
+
+    int hq_real_w = header_total_width(&header_doc);
+    if (hq_real_w > sw - hq_win_x) hq_real_w = sw - hq_win_x;
+    XSetWindowAttributes hq_swa;
+    hq_swa.background_pixel = bg;
+    hq_swa.event_mask = ExposureMask | ButtonPressMask | KeyPressMask | FocusChangeMask;
+    Window hq_win = XCreateWindow(dpy, RootWindow(dpy, DefaultScreen(dpy)),
+                                  hq_win_x, hq_win_y, hq_real_w, KTB_BAR_H, 0,
+                                  CopyFromParent, InputOutput, CopyFromParent,
+                                  CWBackPixel | CWEventMask, &hq_swa);
+    g_hq_win_handle = hq_win;
+    g_hq_win_w = hq_real_w;
+    taskbar_set_wm_class(dpy, hq_win);
+    taskbar_make_wm_managed_dock(dpy, hq_win, hq_win_x, hq_win_y);
+    XMapRaised(dpy, hq_win);
+    set_window_opacity(dpy, hq_win, load_theme_opacity());
+
+    XSetWindowAttributes popup_swa;
+    popup_swa.background_pixel = bg;
+    popup_swa.event_mask = ExposureMask | ButtonPressMask | KeyPressMask | FocusChangeMask;
+    Window popup_win = XCreateWindow(dpy, RootWindow(dpy, DefaultScreen(dpy)),
+                                     hq_win_x, hq_win_y + KTB_BAR_H, 200, KTB_BAR_H, 0,
+                                     CopyFromParent, InputOutput, CopyFromParent,
+                                     CWBackPixel | CWEventMask, &popup_swa);
+    taskbar_set_wm_class(dpy, popup_win);
+    taskbar_make_wm_managed_dock(dpy, popup_win, hq_win_x, hq_win_y + KTB_BAR_H);
+    set_window_opacity(dpy, popup_win, load_theme_opacity());
+    int popup_mapped = 0;
+
+    g_cells_n = 0;
+    draw_bottom(dpy, win, gc, sw, bg, &bottom_doc);
+    draw_header_win(dpy, hq_win, gc, &header_doc, &g_st);
+    if (draw_popup_win(dpy, popup_win, gc, &header_doc, &g_st, hq_win_x, hq_win_y)) {
+        XMapRaised(dpy, popup_win);
+        popup_mapped = 1;
+        draw_popup_win(dpy, popup_win, gc, &header_doc, &g_st, hq_win_x, hq_win_y);
+    }
+    if (g_cells_n > 0) flush_cells_pdl(g_house_root);
+
+    taskbar_soft_focus(dpy, win);
+
+    XFlush(dpy);
+    usleep(200000);
+    double relaunch_opacity = load_theme_opacity();
+    set_window_opacity(dpy, win, relaunch_opacity);
+    set_window_opacity(dpy, hq_win, relaunch_opacity);
+    set_window_opacity(dpy, popup_win, relaunch_opacity);
+    XFlush(dpy);
+
+    int active_ticks = ACTIVE_HOLD_TICKS;
+    while (g_strip_running) {
+        g_cells_n = 0;
+        reap_manager_nonblocking();
+
+        if (strip_theme_changed_dirty()) {
+            double new_opacity = load_theme_opacity();
+            set_window_opacity(dpy, win, new_opacity);
+            set_window_opacity(dpy, hq_win, new_opacity);
+            if (popup_win) set_window_opacity(dpy, popup_win, new_opacity);
+        }
+
+        int was_dirty = frame_changed_dirty();
+        if (was_dirty) {
+            load_state(&g_st);
+            lay_reload_preserving_scope(&header_doc, header_path, sp_get_var, &g_st);
+            lay_reload_preserving_scope(&bottom_doc, bottom_path, sp_get_var, &g_st);
+            if (header_doc.active_index == -1) unified_apply(&header_doc, &bottom_doc);
+            sync_cliio_scope(&header_doc, &g_st);
+            sync_popup_focus(&header_doc, &g_st);
+            sync_focus_to_digit_buf(&header_doc, &bottom_doc, &g_st);
+
+            append_frame_history(&header_doc, &bottom_doc, g_nav_focus);
+
+            bg = parse_color(dpy, g_st.theme_bg, bg);
+            fg = parse_color(dpy, g_st.theme_fg, fg);
+            XSetWindowBackground(dpy, win, bg);
+            XSetForeground(dpy, gc, fg);
+            XSetBackground(dpy, gc, bg);
+            draw_bottom(dpy, win, gc, sw, bg, &bottom_doc);
+            XSetWindowBackground(dpy, hq_win, bg);
+            draw_header_win(dpy, hq_win, gc, &header_doc, &g_st);
+            XSetWindowBackground(dpy, popup_win, bg);
+            if (draw_popup_win(dpy, popup_win, gc, &header_doc, &g_st, hq_win_x, hq_win_y)) {
+                if (!popup_mapped) {
+                    XMapRaised(dpy, popup_win);
+                    popup_mapped = 1;
+                    set_window_opacity(dpy, popup_win, load_theme_opacity());
+                    draw_popup_win(dpy, popup_win, gc, &header_doc, &g_st, hq_win_x, hq_win_y);
+                }
+            } else if (popup_mapped) {
+                XUnmapWindow(dpy, popup_win);
+                popup_mapped = 0;
+            }
+        }
+
+        int n_relay_dispatched = poll_agent_relay(g_house_root, &header_doc, &bottom_doc, &g_st);
+        if (n_relay_dispatched > 0) {
+            draw_bottom(dpy, win, gc, sw, bg, &bottom_doc);
+            draw_header_win(dpy, hq_win, gc, &header_doc, &g_st);
+            if (draw_popup_win(dpy, popup_win, gc, &header_doc, &g_st, hq_win_x, hq_win_y)) {
+                if (!popup_mapped) {
+                    XMapRaised(dpy, popup_win);
+                    popup_mapped = 1;
+                    set_window_opacity(dpy, popup_win, load_theme_opacity());
+                    draw_popup_win(dpy, popup_win, gc, &header_doc, &g_st, hq_win_x, hq_win_y);
+                }
+            } else if (popup_mapped) {
+                XUnmapWindow(dpy, popup_win);
+                popup_mapped = 0;
+            }
+        }
+
+        if (was_dirty || n_relay_dispatched > 0) active_ticks = ACTIVE_HOLD_TICKS;
+        else if (active_ticks > 0) active_ticks--;
+        int poll_interval = active_ticks > 0 ? POLL_INTERVAL_ACTIVE_USEC : POLL_INTERVAL_IDLE_USEC;
+
+        if (g_cells_n > 0) flush_cells_pdl(g_house_root);
+        {
+            fd_set fds;
+            FD_ZERO(&fds);
+            int xfd = ConnectionNumber(dpy);
+            FD_SET(xfd, &fds);
+            struct timeval tv = { 0, poll_interval };
+            select(xfd + 1, &fds, NULL, NULL, &tv);
+        }
+
+        while (XPending(dpy)) {
+            XEvent ev;
+            XNextEvent(dpy, &ev);
+            if (ev.type == Expose) {
+                if (ev.xexpose.count == 0) {
+                    if (ev.xexpose.window == win) draw_bottom(dpy, win, gc, sw, bg, &bottom_doc);
+                    else if (ev.xexpose.window == hq_win) draw_header_win(dpy, hq_win, gc, &header_doc, &g_st);
+                    else if (ev.xexpose.window == popup_win) draw_popup_win(dpy, popup_win, gc, &header_doc, &g_st, hq_win_x, hq_win_y);
+                }
+            } else if (ev.type == ButtonPress && ev.xbutton.window == hq_win) {
+                mirror_mouse_history("hq_win", ev.xbutton.button, ev.xbutton.x, ev.xbutton.y);
+            } else if (ev.type == ButtonPress && ev.xbutton.window == popup_win) {
+                mirror_mouse_history("popup_win", ev.xbutton.button, ev.xbutton.x, ev.xbutton.y);
+            } else if (ev.type == ButtonPress && ev.xbutton.window == win) {
+                mirror_mouse_history("win", ev.xbutton.button, ev.xbutton.x, ev.xbutton.y);
+            } else if (ev.type == FocusIn) {
+                g_has_real_focus = 1;
+                g_focused_win = ev.xfocus.window;
+            } else if (ev.type == FocusOut) {
+                g_has_real_focus = 0;
+                if (g_focused_win == ev.xfocus.window) g_focused_win = 0;
+            } else if (ev.type == KeyPress) {
+                KeySym ks = XLookupKeysym(&ev.xkey, 0);
+                if (ks == XK_Left || ks == XK_Up) {
+                    mirror_key_history(KSC_FOCUS_LEFT);
+                } else if (ks == XK_Right || ks == XK_Down) {
+                    mirror_key_history(KSC_FOCUS_RIGHT);
+                } else if (ks == XK_Return) {
+                    mirror_key_history(KSC_ENTER);
+                } else if (ks == XK_Escape) {
+                    mirror_key_history(KSC_ESCAPE);
+                } else if (ks == XK_BackSpace) {
+                    mirror_key_history(KSC_BACKSPACE);
+                } else {
+                    char buf[8] = {0};
+                    KeySym ks2;
+                    if (XLookupString(&ev.xkey, buf, sizeof(buf), &ks2, NULL) > 0) {
+                        unsigned char c = (unsigned char)buf[0];
+                        if (c >= 0x20 && c < 0x7f) mirror_key_history((int)c);
+                    }
+                }
+            }
+        }
+
+        {
+            int n_captured = poll_captured_input(&header_doc, &bottom_doc, &g_st, dpy, hq_win, popup_win, win);
+            if (n_captured > 0) {
+                draw_bottom(dpy, win, gc, sw, bg, &bottom_doc);
+                draw_header_win(dpy, hq_win, gc, &header_doc, &g_st);
+                if (draw_popup_win(dpy, popup_win, gc, &header_doc, &g_st, hq_win_x, hq_win_y)) {
+                    if (!popup_mapped) {
+                        XMapRaised(dpy, popup_win);
+                        popup_mapped = 1;
+                        set_window_opacity(dpy, popup_win, load_theme_opacity());
+                        draw_popup_win(dpy, popup_win, gc, &header_doc, &g_st, hq_win_x, hq_win_y);
+                    }
+                } else if (popup_mapped) {
+                    XUnmapWindow(dpy, popup_win);
+                    popup_mapped = 0;
+                }
+            }
+        }
+    }
+
+    XFreeGC(dpy, gc);
+    XDestroyWindow(dpy, win);
+    XDestroyWindow(dpy, hq_win);
+    XDestroyWindow(dpy, popup_win);
+    XCloseDisplay(dpy);
+    cleanup_manager();
+    return 0;
+}
+/* ============ end taskbar strip mode ============ */
+
 int main(int argc, char **argv) {
+    /* REAL, NEW 2026-09-01 - taskbar strip mode dispatch, checked FIRST,
+     * before any of the shared .chtpm-parsing setup below (this mode
+     * takes NO .chtpm path at all - its own real invocation shape is
+     * exactly <house_root>, argc==2, unlike every other mode which
+     * requires at least a chtpm_path too). See strip_main()'s own big
+     * merged-block header comment above for the full consolidation
+     * rationale (khtpm_strip_parser.c/khtpm_strip_layout.c/.h/
+     * khtpm_strip_codes.h folded in verbatim, zero linking). */
+    if (argc == 2) return strip_main(argc, argv);
     /* REAL Stage 5 step 3/4 (2026-08-16, khtpm-merge-how2.md §5d.3) -
      * was <package_dir> <house_root> [x] [y] (house_root NOT first,
      * unlike every other khtpm app - a real, confirmed argv drift).

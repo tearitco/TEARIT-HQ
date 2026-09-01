@@ -6,8 +6,24 @@
 SETSID="setsid"
 [ "$(uname)" = "Darwin" ] && SETSID=""
 # run_khtpm_strip.sh — manual runner for the khtpm strip parser/manager
-# pair (khtpm_strip_parser.c + khtpm_taskbar_manager_main.c), same spirit
-# as $.crypts/button.sh but scoped to this one taskbar system.
+# pair, same spirit as $.crypts/button.sh but scoped to this one taskbar
+# system.
+#
+# REAL FIX 2026-09-01 - the parser half (PARSER below) is no longer its
+# own binary. khtpm_strip_parser.c/khtpm_strip_layout.c/.h/
+# khtpm_strip_codes.h were folded verbatim into khtpm_core_render.c as
+# a new mode (strip_main(), dispatched on argc==2 - this mode's own
+# real invocation shape is exactly <house_root>, no .chtpm path, unlike
+# every other mode that binary serves). Real house-standard
+# consolidation this session: no cross-.c linking/#include to share
+# behavior across binaries - genuinely the same file, or fork/exec+
+# file-IPC (the manager, khtpm_taskbar_manager_main.+x, stays exactly
+# that - a real, separate, unrelated process). khtpm_pids() below can
+# no longer just pgrep the old binary NAME (khtpm_core_render.+x now
+# also serves every HQ app window) - it scans /proc directly for a
+# real strip-mode invocation: argv[0] matching khtpm_core_render AND
+# exactly one argument after it (this mode's own real, exactly-2-argc
+# shape - every other mode always has a 2nd argv, a .chtpm path).
 #
 # Encapsulates the exact safe kill/build/launch/verify cycle used by hand
 # all through the 2026-08-11 build-out session: never trust a bare exit
@@ -27,10 +43,28 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # for the log/pid paths - see khtpm_vars.sh's own header comment).
 . "$SCRIPT_DIR/khtpm_vars.sh"
 HOUSE="$KHTPM_HOUSE"
-PARSER="$SCRIPT_DIR/+x/khtpm_strip_parser.+x"
+PARSER="$SCRIPT_DIR/+x/khtpm_core_render.+x"
 ACTION="${1:-help}"
 
-khtpm_pids() { pgrep -f "khtpm_strip_parser\.\+x|khtpm_taskbar_manager_main\.\+x" 2>/dev/null; }
+strip_parser_pids() {
+    for p in /proc/[0-9]*; do
+        pid="${p#/proc/}"
+        [ -r "$p/cmdline" ] || continue
+        # cmdline is NUL-separated; tr to newlines, count real (non-empty)
+        # fields, check argv[0] and argc==2.
+        args="$(tr '\0' '\n' < "$p/cmdline" 2>/dev/null)"
+        [ -z "$args" ] && continue
+        argc="$(printf '%s\n' "$args" | grep -c .)"
+        a0="$(printf '%s\n' "$args" | sed -n 1p)"
+        case "$a0" in
+            */khtpm_core_render.+x|khtpm_core_render.+x)
+                [ "$argc" = "2" ] && echo "$pid"
+                ;;
+        esac
+    done
+}
+
+khtpm_pids() { { strip_parser_pids; pgrep -f "khtpm_taskbar_manager_main\.\+x" 2>/dev/null; } 2>/dev/null; }
 
 kill_khtpm() {
     pids="$(khtpm_pids)"
