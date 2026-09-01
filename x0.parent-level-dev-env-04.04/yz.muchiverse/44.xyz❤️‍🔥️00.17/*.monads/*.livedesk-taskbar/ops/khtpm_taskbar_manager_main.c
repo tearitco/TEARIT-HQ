@@ -298,6 +298,21 @@ static void publish_var_fragments(const KtbState *s, const char *house_root) {
                 n = snprintf(frag + off, sizeof(frag) - off,
                               "<button label=\"%s\" onClick=\"HQITEM:%d\" sprite=\"%s/%s\"/>",
                               s->hq_menu[i].label, i, pals_root, s->hq_menu[i].command + 13);
+            } else if (strcmp(s->hq_menu[i].command, "livedesk:zorder-toggle") == 0) {
+                /* REAL, NEW 2026-09-01 - the global always-on-top ("@")
+                 * row. Emitted with a special onClick (not HQITEM:i) so
+                 * the strip parser handles it locally with X (the parser
+                 * owns g_dpy; this manager has NO Xlib access by design,
+                 * see ktb_activate_tab()'s own comment chain). The label
+                 * reflects the live mode, kept fresh in s->zorder_above
+                 * by ktb_load_zorder_mode() on each reload. */
+                if (s->zorder_above) {
+                    n = snprintf(frag + off, sizeof(frag) - off,
+                                  "<button label=\"@ always-on-top: ON\" onClick=\"ZORDER_TOGGLE\"/>");
+                } else {
+                    n = snprintf(frag + off, sizeof(frag) - off,
+                                  "<button label=\"@ always-on-top: OFF\" onClick=\"ZORDER_TOGGLE\"/>");
+                }
             } else {
                 n = snprintf(frag + off, sizeof(frag) - off,
                               "<button label=\"%s\" onClick=\"HQITEM:%d\"/>",
@@ -694,9 +709,18 @@ int main(int argc, char **argv) {
          * picked up, matching ktb_plat_run()'s own per-tick ktb_reload(). */
         int prev_n_tabs = st.n_tabs, prev_n_sc = st.n_shortcuts;
         int prev_focus = st.tab_focus_idx;
+        /* REAL, NEW 2026-09-01 - the global always-on-top toggle runs
+         * LOCALLY in the strip parser (it owns the X Display) and writes
+         * #.desktop/khtpm_zorder_mode.state.txt, never sending a code to
+         * this manager. This manager's ktb_reload() mirrors that file into
+         * s->zorder_above every tick, but without this comparison the
+         * mirror change never counted as "reload_changed", so the strip
+         * fragment never republished and the open HQ menu kept showing the
+         * stale ON/OFF label. Include it so a toggle republishes at once. */
+        int prev_zorder = st.zorder_above;
         ktb_reload(&st);
         int reload_changed = (st.n_tabs != prev_n_tabs || st.n_shortcuts != prev_n_sc ||
-                               st.tab_focus_idx != prev_focus);
+                               st.tab_focus_idx != prev_focus || st.zorder_above != prev_zorder);
         if (mutated || reload_changed)
             publish_state(&st, house_root);
         if (mutated || reload_changed) active_ticks = ACTIVE_HOLD_TICKS;

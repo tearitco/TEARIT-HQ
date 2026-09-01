@@ -64,6 +64,7 @@
 #include "khtpm_css_parser.h" /* Elem's CssStyle field type, same as khtpm_choice_picker.c - no runtime CSS applied here */
 #include "khtpm_render_core.c" /* real .c, not a header - see that file's own comment */
 #include <X11/Xlib.h>
+#include <X11/Xatom.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
 #include <X11/Xft/Xft.h>
@@ -91,6 +92,58 @@ static char g_page_state_path[PATH_BUF];
 static char g_status_path[PATH_BUF];
 static char g_history_path[PATH_BUF];
 static char g_frame_history_path[PATH_BUF];
+
+/* REAL, NEW 2026-09-01 - the @ z-order toggle's managed half, same house
+ * rule as khtpm_core_render.c/tp_desktop_window_rgb.c: behavior comes
+ * from #.desktop/livedesk_override_redirect.pdl (true = always-on-top
+ * override_redirect window, false = WM-managed so "normal" mode sinks
+ * below native apps). Absent file / unrecognized value = default true.
+ * The taskbar's toggle kills + relaunches this window via /proc, so the
+ * value only has to be read correctly at startup. */
+static int g_override_redirect = 1;
+static void nb_load_override_redirect(const char *house_root) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/livedesk_override_redirect.pdl", house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[64];
+    while (fgets(line, sizeof(line), f)) {
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char *val = eq + 1;
+        val[strcspn(val, "\r\n")] = '\0';
+        if (strcmp(line, "override_redirect") == 0)
+            g_override_redirect = (strcmp(val, "true") == 0);
+    }
+    fclose(f);
+}
+/* Managed mode still needs to LOOK like this house's own window:
+ * decorations-off, no shell chrome, and - after map - sink to the bottom
+ * of the stacking order (the WM puts freshly-mapped windows on top, the
+ * exact opposite of "normal" mode; one XConfigureWindow stack-mode Below
+ * reverses it, and the WM honors restack for managed windows). */
+static void nb_managed_wm_hints(Display *dpy, Window win) {
+    if (g_override_redirect) return;
+    Atom mh = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+    long hints[5] = { 2, 0, 0, 0, 0 }; /* flags=MWM_HINTS_DECORATIONS, decorations=0 */
+    XChangeProperty(dpy, win, mh, mh, 32, PropModeReplace, (unsigned char *)hints, 5);
+    Atom _net_state = XInternAtom(dpy, "_NET_WM_STATE", False);
+    Atom skip_tb = XInternAtom(dpy, "_NET_WM_STATE_SKIP_TASKBAR", False);
+    Atom skip_pg = XInternAtom(dpy, "_NET_WM_STATE_SKIP_PAGER", False);
+    if (_net_state != None && skip_tb != None && skip_pg != None) {
+        Atom states[2] = { skip_tb, skip_pg };
+        XChangeProperty(dpy, win, _net_state, XA_ATOM, 32, PropModeReplace, (unsigned char *)states, 2);
+    }
+}
+static void nb_managed_sink_below(Display *dpy, Window win) {
+    if (g_override_redirect) return;
+    XSync(dpy, False);
+    XWindowChanges wc;
+    wc.stack_mode = Below;
+    XConfigureWindow(dpy, win, CWStackMode, &wc);
+    XSync(dpy, False);
+}
 
 /* ---------- real, in-memory mirror of the manager's own published page ---------- */
 typedef struct { char kind; char a[URL_BUF]; char b[512]; } PageRow; /* kind: 'T'=title, 'X'=text, 'L'=link */
@@ -513,6 +566,7 @@ static void poll_history(void) {
 int main(int argc, char **argv) {
     if (argc < 2) { fprintf(stderr, "usage: %s <house_root> [x] [y]\n", argv[0]); return 1; }
     snprintf(g_house, sizeof(g_house), "%s", argv[1]);
+    nb_load_override_redirect(g_house); /* REAL, NEW 2026-09-01 - @ toggle: read shared pdl before any window creation */
     if (argc >= 4) { g_win_x = atoi(argv[2]); g_win_y = atoi(argv[3]); }
 
     char desktop[PATH_BUF];
@@ -541,16 +595,18 @@ int main(int argc, char **argv) {
 
     XSetWindowAttributes swa;
     swa.background_pixel = alloc_pixel("#1c1c1c");
-    swa.override_redirect = True;
+    swa.override_redirect = (Bool)g_override_redirect; /* REAL, NEW 2026-09-01 - @ toggle: managed when the shared pdl says false */
     swa.event_mask = ExposureMask | ButtonPressMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
     win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h, 0,
                          CopyFromParent, InputOutput, CopyFromParent, CWBackPixel | CWOverrideRedirect | CWEventMask, &swa);
+    nb_managed_wm_hints(dpy, win); /* REAL, NEW 2026-09-01 - @ "normal" mode: undecorated + no shell chrome when managed */
     XSizeHints *shints = XAllocSizeHints();
     if (shints) { shints->flags = PPosition; shints->x = g_win_x; shints->y = g_win_y; XSetWMNormalHints(dpy, win, shints); XFree(shints); }
     XStoreName(dpy, win, "Network Browser");
 
     XMapRaised(dpy, win);
     XSync(dpy, False);
+    nb_managed_sink_below(dpy, win); /* REAL, NEW 2026-09-01 - @ "normal" mode: sink below native apps (undoes MapRaised) */
     XSetInputFocus(dpy, win, RevertToPointerRoot, CurrentTime);
     clock_gettime(CLOCK_MONOTONIC, &g_map_time);
     { XEvent stale_ev; while (XCheckWindowEvent(dpy, win, ButtonPressMask | KeyPressMask, &stale_ev)) { } }

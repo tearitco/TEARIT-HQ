@@ -123,6 +123,40 @@ typedef struct Elem {
      * instead of starting it at the label position and growing right.
      * Default 0 = every existing consumer's behavior is unchanged. */
     int badge_align_left;
+    /* REAL, NEW 2026-08-31 (xperiments/khtpm-generic-dispatch-design.md
+     * §5, generic capability #2, direct instruction: "see existing
+     * chtpm parser std format... can khtpm parser be more similar?") -
+     * ported directly from 1.TPMOS_c_+rmmp.0103.0001/pieces/chtpm/
+     * plugins/chtpm_parser.c's own real, generic `<cli_io>` fields
+     * (UIElement.input_buffer/target_id) - a real, generic, tag="cli_io"
+     * text-input element every khtpm app can use with ZERO per-app C:
+     * printable keys append to input_buffer while armed, target_id
+     * (falls back to id) keys the real, generic per-window
+     * cli_io_state.txt line this value live-syncs to, matching the
+     * reference's own real "target_id-keyed gui_state.txt" design so
+     * multiple cli_io fields in one window never collide. Empty/unused
+     * = zero behavior change for every existing consumer. */
+    char input_buffer[256];
+    char target_id[64];
+    /* REAL, NEW 2026-09-01 (live report: a long list of one-item-plus-
+     * its-own-separate-delete-row pairs is real visual clutter - direct
+     * instruction: "id like to add backspace to delete if possible,
+     * instead of making all those delete spots") - a real, generic
+     * second action any focused `<item>` can carry: Backspace runs
+     * THIS instead of onclick, when set (see handle_key()'s own new
+     * branch). Empty/unused = zero behavior change for every existing
+     * consumer - nothing currently reads or sets this. */
+    char backspace_action[1536];
+    /* REAL, NEW 2026-09-01 (direct instruction: "build word-wrap/multi-
+     * line/emoji into the generic cli_io first" - real generic
+     * capability, not chat-hai-specific) - a real, generic <cli_io
+     * rows="N"/> attribute (default 1, matching every existing single-
+     * line consumer's real behavior unchanged): the number of real text
+     * rows this field's own box should reserve, read by the layout
+     * code that positions it (layout_fixed_rows_and_scrolllist()) so a
+     * real multi-line composer actually gets a real taller box, not
+     * just draw_elem()'s own real word-wrap with nowhere to put it. */
+    int rows;
     struct Elem *children[MAX_CHILDREN];
     int n_children;
     struct Elem *parent;

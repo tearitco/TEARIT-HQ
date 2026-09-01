@@ -142,6 +142,14 @@ typedef struct {
     int cell_id_pos[15]; /* real literal, matches KTB_STRIP_N_CELLS (defined just below - can't use the macro itself before its own definition) */
     char cell_id_str[15][64];
     int n_cell_ids;
+
+    /* --- Global always-on-top ("@") z-order mode (2026-09-01). Mirrors
+     * the strip_parser's own g_zorder_above so this manager can label the
+     * HQ row with the LIVE mode. The parser is the source of truth (it
+     * owns the X Display and persists #.desktop/khtpm_zorder_mode.state.txt
+     * on every toggle) - this copy is re-read from that file each reload
+     * via ktb_load_zorder_mode(). */
+    int zorder_above;
 } KtbState;
 
 #define KTB_STRIP_N_CELLS 15
