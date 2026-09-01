@@ -310,6 +310,15 @@ int main(int argc, char **argv) {
          * follow-up work. This entity places its single representative
          * kind-thumbnail exactly as picked, no edge-blending yet. */
         fprintf(f, "METHOD       | Close                | CLOSE\n");
+        /* REAL, NEW 2026-09-01 - same real gap/fix as tp_place_desktop.c's
+         * own identical block (direct instruction: "placed tiles dont
+         * have cancel/copy/paste/delete or events"), same real scripts,
+         * see that file's own comment for the full reasoning. */
+        fprintf(f, "METHOD       | Cancel               | void\n");
+        fprintf(f, "METHOD       | Copy                 | sh -c 'exec \"$1/&.widgits/tile-picker/ops/tp_copy_tile.sh\" \"$0\" \"$1\"'\n");
+        fprintf(f, "METHOD       | Paste                | sh -c 'exec \"$1/&.widgits/tile-picker/ops/tp_paste_tile.sh\" \"$0\" \"$1\"'\n");
+        fprintf(f, "METHOD       | Delete               | sh -c 'exec \"$1/&.widgits/tile-picker/ops/tp_delete_tile.sh\" \"$0\" \"$1\"'\n");
+        fprintf(f, "METHOD       | Events               | sh -c 'mkdir -p \"$0/event_pkg/pages/page_1\" && exec env EE_PKG_NAME=\"$(basename \"$0\")\" EE_PKG_DIR=\"$0/event_pkg\" sh \"$1/&.widgits/event-editor/button.sh\" run-widget'\n");
         fclose(f);
     }
 

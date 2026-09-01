@@ -279,6 +279,28 @@ int main(int argc, char **argv) {
          * More methods (Open Event Editor, etc.) get appended here
          * later without touching the renderer that reads them. */
         fprintf(f, "METHOD       | Close                | CLOSE\n");
+        /* REAL, NEW 2026-09-01, direct instruction ("the placed tiles
+         * dont have cancel/copy/paste/delete or events... events should
+         * open entity events and allow editing" - dev-only placed
+         * tiles, no retrofit needed for anything placed before this):
+         * Cancel matches every hand-authored entity's own default
+         * (dog/asa/ava/book-stack all ship both Close AND Cancel);
+         * Copy/Paste/Delete dispatch to their own small real scripts
+         * (tp_copy_tile.sh/tp_paste_tile.sh/tp_delete_tile.sh, this same
+         * ops/ dir) rather than new C - real house_root/package_dir are
+         * both already known here at write time, so the action strings
+         * below are literal, fully-resolved paths, no runtime dir-
+         * climbing needed (this meta.pdl is generated fresh per real
+         * house install, unlike a template shipped under pieces/).
+         * Events gives THIS tile its own real, per-instance event_pkg
+         * (mkdir -p'd on first use) - unlike pets/asa/ava, which share
+         * one event_pkg per species under their own pieces/ dir, a
+         * generic placed tile has no such shared home. */
+        fprintf(f, "METHOD       | Cancel               | void\n");
+        fprintf(f, "METHOD       | Copy                 | sh -c 'exec \"$1/&.widgits/tile-picker/ops/tp_copy_tile.sh\" \"$0\" \"$1\"'\n");
+        fprintf(f, "METHOD       | Paste                | sh -c 'exec \"$1/&.widgits/tile-picker/ops/tp_paste_tile.sh\" \"$0\" \"$1\"'\n");
+        fprintf(f, "METHOD       | Delete               | sh -c 'exec \"$1/&.widgits/tile-picker/ops/tp_delete_tile.sh\" \"$0\" \"$1\"'\n");
+        fprintf(f, "METHOD       | Events               | sh -c 'mkdir -p \"$0/event_pkg/pages/page_1\" && exec env EE_PKG_NAME=\"$(basename \"$0\")\" EE_PKG_DIR=\"$0/event_pkg\" sh \"$1/&.widgits/event-editor/button.sh\" run-widget'\n");
         fclose(f);
     }
 
