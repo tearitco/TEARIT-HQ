@@ -83,6 +83,8 @@ static Elem g_pool[MAX_ELEMS];
 static int g_n_elems = 0;
 static char g_package_dir[PATH_BUF];
 static char g_house_root[PATH_BUF];
+static char g_chtpm_path[PATH_BUF];  /* real, generic (2026-08-31) - the real .chtpm this process was launched against, kept for the generic live-reparse capability below */
+static time_t g_chtpm_mtime = 0;
 
 /* REAL, NEW 2026-08-29, direct instruction ("the tb has a
  * transparency. but that should propagate to 'all entities' and menu
@@ -554,6 +556,40 @@ static Elem *find_page(const char *name) {
         if (strcmp(c->tag, "page") == 0 && strcmp(c->id, name) == 0) return c;
     }
     return NULL;
+}
+
+/* REAL, generic capability #1 (2026-08-31, xperiments/khtpm-generic-
+ * dispatch-design.md §5 - see its own header comment for the direct
+ * instruction this answers): re-reads g_chtpm_path from disk whenever
+ * its mtime changes, replacing g_window wholesale. Lets a real manager
+ * keep a live-updating, generic .chtpm as its own real projection (the
+ * SAME real "manager owns projection, renderer just re-parses/renders
+ * it" philosophy fo-menu-sys.md already documents for the chtpm_
+ * parser.c/ASCII family - this is the khtpm/X11 side finally getting
+ * the equivalent capability) - without this renderer needing ANY
+ * project-specific C code to show that manager's real, changing state.
+ * g_n_elems is reset to 0 first - the ENTIRE tree is rebuilt fresh,
+ * same real "checkpoint and rewind" discipline chat-hai's own
+ * chai_n_elems_static already uses, just for the whole tree instead of
+ * a sub-list. Real, deliberate scope: does NOT re-detect g_is_X mode
+ * flags - a window's real MODE never changes mid-session, only its
+ * CONTENT does; callers gate this off entirely for the 3 modes that
+ * manage their own cached Elem pointers (db-hq/events-hq/chat-hai -
+ * see this function's own call site). */
+static int reparse_chtpm_if_changed(void) {
+    if (!g_chtpm_path[0]) return 0;
+    struct stat st;
+    if (stat(g_chtpm_path, &st) != 0) return 0;
+    if (st.st_mtime == g_chtpm_mtime) return 0;
+    g_chtpm_mtime = st.st_mtime;
+    g_n_elems = 0;
+    Elem *new_window = parse_chtpm(g_chtpm_path);
+    if (!new_window) return 0;
+    g_window = new_window;
+    g_current_page[0] = '\0';
+    snprintf(g_current_page, sizeof(g_current_page), "main");
+    g_page_stack_n = 0;
+    return 1;
 }
 
 /* ---------- X11/Xft ---------- */
@@ -8636,6 +8672,43 @@ static void redraw(void) {
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &accent);
     }
 
+    /* REAL FIX 2026-08-31 (found live, testing generic capability #1 -
+     * the .chtpm live-reparse this default/popup mode now also gets,
+     * see reparse_chtpm_if_changed()'s own header comment): this real
+     * present path never needed a Pixmap/window resize check before -
+     * g_win_w/g_win_h and buf were both set ONCE at real launch and
+     * never changed afterward. Live reparse is the first real case
+     * where content (and so g_win_w/g_win_h, computed inside
+     * assign_nav_and_layout()'s own default-mode branch) can GROW
+     * after buf already exists, and XGetImage past a Pixmap's real
+     * allocated size throws a fatal, unhandled BadMatch (confirmed
+     * live: a real crash reproduced by growing a picker's own item
+     * count via a live-edited .chtpm). Same real fix already proven
+     * for db-hq/events-hq/open-hai above - recreate buf/xftdraw_buf if
+     * grown, real-resize the X11 window to match, checked every frame
+     * (cheap - a no-op read when nothing changed). */
+    if (g_win_w > g_buf_w || g_win_h > g_buf_h) {
+        int new_w = g_win_w > g_buf_w ? g_win_w : g_buf_w;
+        int new_h = g_win_h > g_buf_h ? g_win_h : g_buf_h;
+        if (xftdraw_buf) { XftDrawDestroy(xftdraw_buf); xftdraw_buf = NULL; }
+        if (buf) XFreePixmap(dpy, buf);
+        buf = XCreatePixmap(dpy, win, (unsigned)new_w, (unsigned)new_h, (unsigned)DefaultDepth(dpy, screen));
+        xftdraw_buf = XftDrawCreate(dpy, buf, DefaultVisual(dpy, screen), cmap);
+        g_buf_w = new_w; g_buf_h = new_h;
+        XSync(dpy, False);
+        /* the just-resized Pixmap is undefined content - this frame's
+         * real drawing above ran against the OLD buf, so it's lost;
+         * the NEXT redraw() (already scheduled by every real caller of
+         * this generic capability) repaints it for real - a single,
+         * harmless blank frame, not a crash. */
+    }
+    {
+        XWindowAttributes wa;
+        if (XGetWindowAttributes(dpy, win, &wa) && (wa.width != g_win_w || wa.height != g_win_h)) {
+            XResizeWindow(dpy, win, (unsigned)g_win_w, (unsigned)g_win_h);
+            XSync(dpy, False);
+        }
+    }
     XSync(dpy, False);
     XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
     if (frame) {
@@ -9376,6 +9449,35 @@ static void hq_idle_tick(void) {
     if (g_is_events_hq) {
         if (evhq_load_pages() || evhq_load_page_state()) {
             evhq_refresh_page_data(g_window);
+            redraw();
+        }
+    }
+    /* REAL, NEW 2026-08-31 (xperiments/khtpm-generic-dispatch-design.md
+     * §5 - direct instruction: "the renderer/parser should have no
+     * need to know the difference [between projects]... why are there
+     * different parsing standards for different apps... they should
+     * all use the same layout tags and standards"). Generic capability
+     * #1: the plain default page/item mode (the SAME one taskbar-
+     * settings/entity-menus/choice-picker/the open-hai sessions proof
+     * already use) now re-reads its own .chtpm file whenever it
+     * changes on disk, not just once at startup - lets a real manager
+     * keep regenerating real, generic markup (same real philosophy
+     * #.haiku+/tpmos-re-dox/fo-menu-sys.md already documents for the
+     * ASCII/chtpm_parser.c family) without this renderer needing ANY
+     * project-specific C code. Scoped OFF for db-hq/events-hq/chat-hai
+     * (each owns its own real content-refresh mechanism against its
+     * own cached Elem pointers already - reparsing their window from
+     * under them would invalidate those, real, deliberate exclusion,
+     * not an oversight). */
+    if (!g_is_db_hq && !g_is_events_hq && !g_is_chat_hai) {
+        if (reparse_chtpm_if_changed()) {
+            assign_nav_and_layout(); redraw();
+            /* real content growth may have just recreated buf as a
+             * blank Pixmap (see redraw()'s own resize-safety comment) -
+             * a second real redraw() repaints it for real THIS tick,
+             * instead of leaving a blank window until the next
+             * unrelated event. Cheap - a no-op second call whenever no
+             * resize was needed. */
             redraw();
         }
     }
@@ -11120,13 +11222,13 @@ int main(int argc, char **argv) {
      * down is now a harmless redundant reload, left in place rather
      * than restructured, since removing it isn't needed for this fix. */
     dbhq_load_font_scale();
-    char chtpm_path[PATH_BUF];
-    snprintf(chtpm_path, sizeof(chtpm_path), "%s", argv[2]);
-    snprintf(g_package_dir, sizeof(g_package_dir), "%s", chtpm_path);
+    snprintf(g_chtpm_path, sizeof(g_chtpm_path), "%s", argv[2]);
+    snprintf(g_package_dir, sizeof(g_package_dir), "%s", g_chtpm_path);
     { char *slash = strrchr(g_package_dir, '/'); if (slash) *slash = '\0'; }
 
-    g_window = parse_chtpm(chtpm_path);
-    if (!g_window) { fprintf(stderr, "khtpm_entity_menu_render: failed to parse %s\n", chtpm_path); return 1; }
+    g_window = parse_chtpm(g_chtpm_path);
+    if (!g_window) { fprintf(stderr, "khtpm_core_render: failed to parse %s\n", g_chtpm_path); return 1; }
+    { struct stat gcst; if (stat(g_chtpm_path, &gcst) == 0) g_chtpm_mtime = gcst.st_mtime; }
 
     /* REAL Stage 5 §5d.3 step 6 (2026-08-16, khtpm-merge-how2.md §5d) -
      * real, data-driven mode detection - `<window class="swatch-
@@ -11223,7 +11325,7 @@ int main(int argc, char **argv) {
     {
         char css_path[PATH_BUF];
         if (g_is_db_hq || g_is_events_hq || g_is_chat_hai) {
-            snprintf(css_path, sizeof(css_path), "%s", chtpm_path);
+            snprintf(css_path, sizeof(css_path), "%s", g_chtpm_path);
             char *dot = strrchr(css_path, '.');
             if (dot) snprintf(dot, sizeof(css_path) - (size_t)(dot - css_path), ".css");
         } else {
@@ -11348,8 +11450,8 @@ int main(int argc, char **argv) {
              * matches module_elem->id (<module args="<key>"/>) exactly,
              * since palettes_menu.sh's launch_cat() names the file after
              * the same key it passes as args=. */
-            const char *base = strrchr(chtpm_path, '/');
-            base = base ? base + 1 : chtpm_path;
+            const char *base = strrchr(g_chtpm_path, '/');
+            base = base ? base + 1 : g_chtpm_path;
             char catbuf[64];
             snprintf(catbuf, sizeof(catbuf), "%s", base);
             char *dot = strrchr(catbuf, '.');
@@ -11930,6 +12032,22 @@ int main(int argc, char **argv) {
     gc = XCreateGC(dpy, win, 0, NULL);
     buf = XCreatePixmap(dpy, win, (unsigned)g_win_w, (unsigned)g_win_h, (unsigned)DefaultDepth(dpy, screen));
     xftdraw_buf = XftDrawCreate(dpy, buf, DefaultVisual(dpy, screen), cmap);
+    /* REAL FIX 2026-08-31, direct live report ("blank black screen that
+     * flashes before load" on every entity context menu since today's
+     * work): g_buf_w/g_buf_h (the real allocated-Pixmap-size tracker
+     * redraw()'s own resize-safety check now uses for this mode too -
+     * see that check's own header comment) were never set here, unlike
+     * every other mode's own window-creation code (db-hq/events-hq/
+     * chat-hai all set them right after their own XCreatePixmap). Left
+     * at their static 0/0 default, redraw()'s check saw g_win_w/h > 0/0
+     * as "grown" on literally the FIRST real frame of every popup ever
+     * opened, recreating the Pixmap and, per that check's own honest
+     * "next redraw() repaints it for real" contract, silently
+     * discarding that first frame's real content - exactly the blank
+     * flash reported live. Real fix: record the REAL size this Pixmap
+     * was actually just created at, matching every other mode's own
+     * convention. */
+    g_buf_w = g_win_w; g_buf_h = g_win_h;
 
     redraw();
     /* REAL FIX 2026-08-29 part 3 - see db-hq branch's own identical

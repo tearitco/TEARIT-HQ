@@ -1,5 +1,83 @@
 # khtpm generic-dispatch design — making the shared renderer actually agnostic
 
+## Status update, 2026-08-31 (later same day) — real pivot away from any per-mode table at all
+
+Direct correction, mid-build of open-hai's own mode: "still hardcoding
+project names. why?" - caught adding `g_is_open_hai` at ~14 dispatch
+points, the exact same pattern as every existing mode, which is the
+debt this whole doc exists to end, not extend. Reverted in full
+(`git checkout`, confirmed clean) before landing.
+
+Escalated through the real options and their real limits:
+- A `g_khtpm_modes[]` table of function pointers INSIDE
+  `khtpm_core_render.c` (§2b below) - still requires a rebuild of the
+  shared file for every new project. Rejected.
+- A `dlopen()`/`.so`-per-project plugin registry, real class-name to
+  `.so`-path mapping in a `.pdl` - genuinely needs no rebuild ever, but
+  real, direct correction: "we dont use .so or linking or anything...
+  'if its not in file its a lie'... they should all use the same
+  layout tags and standards. the renderer/parser should have no need
+  to know the difference." Rejected - not this house's convention.
+
+**The real, adopted answer**: don't register per-app C behavior at
+all. Every app (existing or new) uses the SAME generic tag vocabulary
+(`window`/`page`/`item`/`panel`/`button`/`text`) through the renderer's
+own already-existing, fully generic default page/item path - the SAME
+one taskbar-settings/entity-right-click-menus/choice-picker/the open-
+hai sessions proof already use. A real, separate manager keeps
+regenerating a real `.chtpm` file as its own live projection; real user
+input already dispatches through the existing, proven `action="<shell
+command>"` mechanism. This is the exact real philosophy `#.haiku+/
+tpmos-re-dox/fo-menu-sys.md` already documents for the ASCII/
+`chtpm_parser.c` family - direct instruction: "see existing chtpm
+parser std format... use standards in here when possible instead of
+hardcoding... can khtpm parser be more similar?" - the khtpm/X11 side
+finally getting the real, equivalent capability, not a separate
+design.
+
+This needed exactly two real, missing, GENERIC (not project-specific)
+engine capabilities, confirmed by direct read before either was built:
+
+1. **Live `.chtpm` re-parse** - `parse_chtpm()` was called exactly
+   once, at startup, nowhere else (confirmed via grep before writing
+   anything). Added `reparse_chtpm_if_changed()` - a real, generic
+   mtime-gated re-parse of `g_chtpm_path`, wired into the periodic tick
+   for the default/popup family only (`!g_is_db_hq && !g_is_events_hq
+   && !g_is_chat_hai` - those three own real, cached Elem pointers into
+   their tree and manage their own real content refresh already;
+   reparsing out from under them is a real, deliberate exclusion, not
+   an oversight). Live-verified: edited a real `.chtpm` on disk while a
+   real window was open, confirmed the content changed live, confirmed
+   growing content (1 row -> 3 rows) resized the real window correctly.
+   **Two real bugs found and fixed during that same live testing**,
+   both now permanent, generic fixes benefiting every future consumer
+   of this capability, not just open-hai:
+   - `BadMatch` on `XGetImage` when content grew past the already-
+     allocated Pixmap - the default mode's own final present path never
+     had the resize-safety check db-hq/events-hq's own branches already
+     have (never needed one before this capability existed). Ported the
+     same real fix.
+   - **Direct live report** ("blank black screen that flashes before
+     load" on every entity context menu): the fix above depends on
+     `g_buf_w`/`g_buf_h` correctly recording the real Pixmap size - the
+     default mode's own window-creation code never set them (0/0
+     default), so the NEW resize check misfired on literally every
+     popup's first-ever frame, discarding real content as a spurious
+     "grow". Fixed by recording the real size at Pixmap creation,
+     matching what every other mode's own window-creation code already
+     does.
+2. **Generic text-input element** - real, confirmed gap: `<cli_io>`
+   only exists inside db-hq's own code (`dbhq_cli_io_navigable()`), not
+   the generic default path. Needed for anything (open-hai's composer,
+   any future app) to accept typed text with zero per-app C. Design/
+   build not started as of this status update - next real step.
+
+**Backlog, recorded here per direct instruction, not started**: the
+"1.hq hide" button currently closes/hides every HQ window and entity
+outright; the real, intended behavior is a pure z-order toggle (send
+behind other open windows/terminals, not close/hide) - separate, real,
+later fix, unrelated to this doc's own subject.
+
 ## Status update, 2026-08-31 (same day) — §2a built and proven live
 
 The generic `launch_module()` described in §2a below is now real,
