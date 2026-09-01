@@ -8563,11 +8563,24 @@ static void default_cli_io_save(Elem *e) {
  * SAME argv/quoting convention as dispatch()'s own real shell-command
  * branch, minus its real "menus close after a real action fires"
  * g_quit=1 - a persistent composer/chat field submitting a message
- * must NOT close its own window, unlike a one-shot menu item. */
-static void default_cli_io_run_action(const char *action) {
+ * must NOT close its own window, unlike a one-shot menu item.
+ *
+ * REAL, NEW 2026-08-31 - a 3rd argv, the field's own live typed value
+ * at the moment Enter was pressed. Without this, a consumer's only way
+ * to read what was typed is cli_io_state.txt - but this same function's
+ * caller clears and re-saves the buffer (empty) right after spawning
+ * this backgrounded command, so a script that instead re-reads that
+ * file races its own clear (real, if rare, TOCTOU - the background
+ * child may not have opened the file yet). Passing the value directly
+ * as an argv is immune to that race by construction. */
+static void default_cli_io_run_action(const char *action, const char *value) {
     if (!action || !action[0]) return;
-    char cmd[PATH_BUF * 3];
-    snprintf(cmd, sizeof(cmd), "%s '%s' '%s' >/dev/null 2>&1 &", action, g_package_dir, g_house_root);
+    char val_esc[600];
+    { size_t o = 0; for (const unsigned char *p = (const unsigned char *)value; *p && o + 5 < sizeof(val_esc); p++) {
+        if (*p == '\'') { memcpy(val_esc + o, "'\\''", 4); o += 4; } else val_esc[o++] = (char)*p;
+    } val_esc[o] = '\0'; }
+    char cmd[PATH_BUF * 3 + 700];
+    snprintf(cmd, sizeof(cmd), "%s '%s' '%s' '%s' >/dev/null 2>&1 &", action, g_package_dir, g_house_root, val_esc);
     int rc = system(cmd);
     (void)rc;
 }
@@ -8577,7 +8590,7 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
     if (!e) return;
     if (ks == XK_Return || ks == XK_KP_Enter) {
         default_cli_io_save(e);
-        default_cli_io_run_action(e->onclick);
+        default_cli_io_run_action(e->onclick, e->input_buffer);
         e->input_buffer[0] = '\0';
         default_cli_io_save(e); /* real, empty value, matching the reference's own "clear after submit, stay active" behavior */
         return;
