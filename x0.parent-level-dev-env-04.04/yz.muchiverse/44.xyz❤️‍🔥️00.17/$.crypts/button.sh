@@ -24,13 +24,24 @@ BIN="$SCRIPT_DIR/ops/+x/crypt_autostart.+x"
 RESTORE="$SCRIPT_DIR/restore-list.txt"
 HOUSE="$(cd "$SCRIPT_DIR/.." && pwd)"
 TB_DIR="$HOUSE/*.monads/*.livedesk-taskbar/ops"
-KHTPM_PARSER="$TB_DIR/+x/khtpm_strip_parser.+x"
+# REAL FIX 2026-09-01 - khtpm_strip_parser.+x retired as a separate
+# binary (folded verbatim into khtpm_core_render.c as strip_main(),
+# phase 1) and this build-sanity check was never updated to match -
+# stale since that merge, always checking for a binary that no longer
+# gets built by build_khtpm_strip.sh at all.
+KHTPM_PARSER="$TB_DIR/+x/khtpm_core_render.+x"
 
 # Single shared kill pattern for every action (quit/reset/status) - was
 # duplicated three times with khtpm_hq_render present in some spots and
 # missing in others (drift). One source of truth. Includes both the _rgb
 # entity binary (the real one on Linux) and the bare name (legacy safety).
-KHTPM_PAT="khtpm_strip_parser\.\+x|khtpm_taskbar_manager_main\.\+x|khtpm_hq_render\.\+x|tp_desktop_window_rgb\.\+x|tp_desktop_window\.\+x"
+# REAL FIX 2026-09-01 - khtpm_strip_parser.+x AND tp_desktop_window_rgb.+x
+# both retired as separate binaries, folded verbatim into
+# khtpm_core_render.c (strip_main()/tp_main() - phase 1/phase 2 of this
+# house's own consolidation). khtpm_core_render added; the two retired
+# names kept, harmless, in case an old build is somehow still running
+# mid-transition.
+KHTPM_PAT="khtpm_core_render\.\+x|khtpm_strip_parser\.\+x|khtpm_taskbar_manager_main\.\+x|khtpm_hq_render\.\+x|tp_desktop_window_rgb\.\+x|tp_desktop_window\.\+x"
 khtpm_pids() { pgrep -f "$KHTPM_PAT" 2>/dev/null; }
 
 read_restore_mode() {

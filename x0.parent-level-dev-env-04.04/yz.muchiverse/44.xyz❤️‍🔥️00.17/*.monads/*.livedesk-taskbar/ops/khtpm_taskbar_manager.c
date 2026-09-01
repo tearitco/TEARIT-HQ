@@ -1861,8 +1861,15 @@ static void livedesk_ensure_cursword(const char *house_root) {
         if (pw) { fprintf(pw, "x=%d\ny=%d\n", CURSWORD_HOME_X, CURSWORD_HOME_Y); fclose(pw); }
     }
 
+    /* REAL FIX 2026-09-01 - tp_desktop_window_rgb.+x retired as a
+     * separate binary. Its full real content (own 3D raymarch/phymoji
+     * engine, context-menu system, everything) was folded verbatim
+     * into khtpm_core_render.c as a new mode (tp_main(), dispatched on
+     * argc==2 - see that file's own big merged-block header comment).
+     * Same real invocation shape (<package_dir>), zero argv changes
+     * needed here. */
     char exe[KTB_PATH_BUF];
-    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x", house_root);
+    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
 #ifdef _WIN32
     win_star_alias(exe);
     win_exe_suffix(exe);
@@ -1945,8 +1952,12 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
     /* 2026-08-14 consolidation: the entity renderer moved OUT of
      * tile-picker into this runtime folder - path below now points at the
      * tb ops/+x/ dir instead of &.widgits/tile-picker/ops/+x/. */
+    /* REAL FIX 2026-09-01 - tp_desktop_window_rgb.+x retired as a
+     * separate binary, folded into khtpm_core_render.c's own tp_main()
+     * mode - see this file's own first spawn site (livedesk_ensure_
+     * cursword) for the full comment. */
     char exe[KTB_PATH_BUF];
-    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x", house_root);
+    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
 #ifdef _WIN32
     win_star_alias(exe);
     win_exe_suffix(exe);
@@ -2684,7 +2695,11 @@ static void livedesk_place_pal(const char *house_root, const char *name) {
     /* 2026-08-14 consolidation: entity renderer now lives in this runtime
      * folder (moved out of tile-picker); GLX tp_desktop_window.+x name
      * retired 2026-08-12 - RGB is the only renderer. */
-    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x", house_root);
+    /* REAL FIX 2026-09-01 - tp_desktop_window_rgb.+x itself retired as
+     * a separate binary, folded into khtpm_core_render.c's own
+     * tp_main() mode - see this file's own first spawn site
+     * (livedesk_ensure_cursword) for the full comment. */
+    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
 #ifdef _WIN32
     win_star_alias(exe);
     win_exe_suffix(exe);

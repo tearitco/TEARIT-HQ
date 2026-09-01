@@ -382,14 +382,21 @@ int main(int argc, char **argv) {
 
     /* REAL GUARD, added 2026-08-04, direct instruction ("make sure no
      * matter how many windows our cpu isn't taxed, add guards if
-     * needed"): refuse to spawn a SECOND tp_desktop_window_rgb.+x for
+     * needed"): refuse to spawn a SECOND entity-renderer process for
      * the SAME package dir. Escaped `pgrep -f` regex metacharacters -
      * see tp_place_desktop_rmmv.c's own identical fix/comment (this
      * placer had the exact same unescaped-regex bug, just never caught
-     * live here since this path's dir names rarely repeat). */
+     * live here since this path's dir names rarely repeat).
+     * REAL FIX 2026-09-01 - tp_desktop_window_rgb.+x retired as a
+     * separate binary, folded into khtpm_core_render.c's own tp_main()
+     * mode (see that file's own big merged-block header comment) -
+     * pgrep pattern updated to match the real, current process name;
+     * `dir` (this package's own unique path) keeps this specific
+     * enough to not false-match a strip/HQ-app instance of the same
+     * shared binary. */
     {
         char pgrep_cmd[PATH_BUF * 2];
-        snprintf(pgrep_cmd, sizeof(pgrep_cmd), "pgrep -f 'tp_desktop_window_rgb\\.\\+x %s' >/dev/null 2>&1", dir);
+        snprintf(pgrep_cmd, sizeof(pgrep_cmd), "pgrep -f 'khtpm_core_render\\.\\+x %s' >/dev/null 2>&1", dir);
         if (system(pgrep_cmd) == 0) {
             printf("DESKTOP_TILE %s: window already running, not spawning a duplicate\n", dir);
             free(house_root);
@@ -402,7 +409,7 @@ int main(int argc, char **argv) {
      * shelling-out style egg_window.c uses for self_tick_pet(). */
     {
         char exe_path[PATH_BUF], spawn_cmd[PATH_BUF * 2];
-        snprintf(exe_path, sizeof(exe_path), "%s/*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x", house_root);
+        snprintf(exe_path, sizeof(exe_path), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
         snprintf(spawn_cmd, sizeof(spawn_cmd), "setsid '%s' '%s' >/dev/null 2>&1 < /dev/null &", exe_path, dir);
         int rc = system(spawn_cmd);
         (void)rc;

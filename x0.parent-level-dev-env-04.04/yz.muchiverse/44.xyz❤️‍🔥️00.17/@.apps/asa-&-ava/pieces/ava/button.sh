@@ -96,23 +96,23 @@ read_auto_open() {
 case "$ACTION" in
     run|r|start)
         ensure_package
-        if [ -x "$TP/+x/tp_desktop_window_rgb.+x" ]; then
-            setsid nohup "$TP/+x/tp_desktop_window_rgb.+x" "$PKG" >/dev/null 2>&1 < /dev/null &
+        if [ -x "$TP/+x/khtpm_core_render.+x" ]; then
+            setsid nohup "$TP/+x/khtpm_core_render.+x" "$PKG" >/dev/null 2>&1 < /dev/null &
             [ -n "$BASH_VERSION" ] && disown
             echo "$NAME spawned: $PKG"
         else
-            echo "MISSING: $TP/+x/tp_desktop_window_rgb.+x (run *.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh first)"
+            echo "MISSING: $TP/+x/khtpm_core_render.+x (run *.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh first)"
         fi
         if [ "$(read_auto_open 2>/dev/null)" = "1" ] && command -v xdg-open >/dev/null 2>&1; then
             (xdg-open "$SCRIPT_DIR" >/dev/null 2>&1 &)
         fi
         ;;
     kill|k|stop)
-        pkill -f "tp_desktop_window.+x $PKG" 2>/dev/null
+        pkill -f "khtpm_core_render.+x $PKG" 2>/dev/null
         echo "done"
         ;;
     check|verify)
-        [ -x "$TP/+x/tp_desktop_window_rgb.+x" ] && echo "OK   tp_desktop_window_rgb.+x" || echo "MISSING tp_desktop_window_rgb.+x"
+        [ -x "$TP/+x/khtpm_core_render.+x" ] && echo "OK   khtpm_core_render.+x" || echo "MISSING khtpm_core_render.+x"
         [ -d "$SCRIPT_DIR" ] && echo "OK   $SCRIPT_DIR" || echo "MISSING $SCRIPT_DIR"
         ;;
     help|h|-h|--help|*)

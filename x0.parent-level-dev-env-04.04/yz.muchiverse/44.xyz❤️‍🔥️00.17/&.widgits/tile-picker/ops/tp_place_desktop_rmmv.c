@@ -400,10 +400,13 @@ int main(int argc, char **argv) {
      * REGEX, so the literal '.'/'+' in the binary's own ".+x" filename
      * suffix must be escaped or this silently matches far more than
      * intended (found live 2026-08-29 testing this exact op's earlier
-     * version). */
+     * version).
+     * REAL FIX 2026-09-01 - tp_desktop_window_rgb.+x retired as a
+     * separate binary, folded into khtpm_core_render.c's own tp_main()
+     * mode - see tp_place_desktop.c's own identical fix/comment. */
     {
         char pgrep_cmd[PATH_BUF * 2];
-        snprintf(pgrep_cmd, sizeof(pgrep_cmd), "pgrep -f 'tp_desktop_window_rgb\\.\\+x %s' >/dev/null 2>&1", dir);
+        snprintf(pgrep_cmd, sizeof(pgrep_cmd), "pgrep -f 'khtpm_core_render\\.\\+x %s' >/dev/null 2>&1", dir);
         if (system(pgrep_cmd) == 0) {
             printf("DESKTOP_TILE_RMMV %s: window already running, not spawning a duplicate\n", dir);
             free(house_root);
@@ -415,7 +418,7 @@ int main(int argc, char **argv) {
      * convention tp_place_desktop.c uses (outlive the calling terminal). */
     {
         char exe_path[PATH_BUF], spawn_cmd[PATH_BUF * 2];
-        snprintf(exe_path, sizeof(exe_path), "%s/*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x", house_root);
+        snprintf(exe_path, sizeof(exe_path), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
         snprintf(spawn_cmd, sizeof(spawn_cmd), "setsid '%s' '%s' >/dev/null 2>&1 < /dev/null &", exe_path, dir);
         int rc = system(spawn_cmd);
         (void)rc;

@@ -10,7 +10,7 @@ ACTION="${1:-help}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 HOUSE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-TPWIN="$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x"
+TPWIN="$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
 PRISC="$HOUSE_DIR/101.mutaclsym🧟‍♂️️+18.01/system/prisc+x"
 ENTITY_DIR="$HOUSE_DIR/*.monads/*.book-stack/entities/book-stack"
 EVENT_PAL="$SCRIPT_DIR/pieces/reader/event_pkg/pages/page_1/event.pal"

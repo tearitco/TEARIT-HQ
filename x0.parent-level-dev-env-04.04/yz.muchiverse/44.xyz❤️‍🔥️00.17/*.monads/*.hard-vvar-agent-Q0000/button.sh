@@ -18,7 +18,7 @@ HOUSE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BRAIN="$SCRIPT_DIR/pieces/brain/run.sh"
 LEDGER="$SCRIPT_DIR/pieces/brain/master_ledger.txt"
 STATE="$SCRIPT_DIR/pieces/brain/state.txt"
-TPWIN="$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x"
+TPWIN="$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
 ENTITY_DIR="$SCRIPT_DIR/entities/self"
 ASSET_DIR="$ENTITY_DIR/assets"
 # REAL 2026-08-08: robot portrait source moved off the Desktop into the
