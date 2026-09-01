@@ -3808,9 +3808,24 @@ int main(int argc, char **argv) {
 #endif
 
         int need_redraw = 0;
-#ifdef _WIN32
+        /* REAL FIX 2026-09-01 (live report: after the @ always-on-top
+         * toggle respawned every entity at once, all but cursword sat
+         * blank until an unrelated click elsewhere happened to trip a
+         * dirty check - "should be immediate, not wait for next
+         * click"). This "always paint the very first frame" seed only
+         * existed on the _WIN32 branch below - on Linux, a freshly-
+         * started process's need_redraw stayed 0 until SOME dirty
+         * condition fired (an Expose event, theme/camera change,
+         * etc.). A single normal launch usually gets away with it
+         * (XMapWindow's own Expose arrives fast enough to be
+         * unnoticeable), but respawning many entities at once creates
+         * real X11-server/CPU contention that can visibly delay it -
+         * pre-existing, not introduced by this session's consolidation
+         * work (this file's own redraw logic is otherwise untouched).
+         * Real fix: the same real seed, unconditional (not _WIN32-
+         * only) - matches the already-real intent of last_frame's own
+         * zero-init check. */
         if (last_frame.tv_sec == 0) need_redraw = 1;
-#endif
 
         /* Real, cheap, event-driven opacity reapply - see
          * theme_changed_dirty()'s own declaration comment. */
