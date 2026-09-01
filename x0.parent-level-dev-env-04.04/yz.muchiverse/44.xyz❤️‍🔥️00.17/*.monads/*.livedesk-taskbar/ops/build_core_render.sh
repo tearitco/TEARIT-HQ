@@ -16,7 +16,10 @@ else
     X11_FLAGS=""
 fi
 CFLAGS="-std=c11 -Wall -O2 $(pkg-config --cflags xft)"
-LIBS="-lX11 $(pkg-config --libs xft) -lm"
+# REAL, NEW 2026-09-01 - -lXext added for the tile mode's own real
+# X11 Shape Extension use (XShapeCombineMask, folded in verbatim from
+# tp_desktop_window_rgb.c's build_shape_mask()/cursword_update_shape()).
+LIBS="-lX11 -lXext $(pkg-config --libs xft) -lm"
 
 SHARED="$(cd "$(dirname "$0")/../../../&.widgits/_shared-lib" && pwd)"
 cp "$SHARED/khtpm_css_parser.c" khtpm_css_parser.c
