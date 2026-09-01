@@ -558,9 +558,44 @@ static void draw_elem(Elem *e, int hover_id_hash) {
         XftColor col = xft_color(e->style.has_fg_color ? e->style.fg_color : "#cccccc");
         XGlyphInfo extents;
         XftTextExtentsUtf8(dpy, font, (const FcChar8 *)shown_label, (int)strlen(shown_label), &extents);
+        /* REAL, NEW 2026-09-01 (found live testing open-hai's own real
+         * sidebar - a real session snippet longer than the sidebar's
+         * own real 220px width drew straight past its own element box
+         * into the panel column beside it, looking exactly like a
+         * garbled double-render until traced back to plain unclipped
+         * text overflow) - a real, generic fix, not open-hai-specific:
+         * any element with a real w>0 now gets its own label truncated
+         * (with a real "..." ellipsis, UTF-8-safe - real message text
+         * can and does contain multi-byte emoji, never cut mid-
+         * codepoint) to fit the space actually available between its
+         * own badge and its own right edge. A harmless no-op for any
+         * label that already fits - nothing currently working can
+         * regress from this. */
+        char clipped_buf[600];
+        const char *draw_label = shown_label;
+        int avail_w = e->w > 0 ? (e->x + e->w) - badge_label_x : -1;
+        if (avail_w > 0 && extents.width > avail_w) {
+            snprintf(clipped_buf, sizeof(clipped_buf), "%s", shown_label);
+            size_t len = strlen(clipped_buf);
+            static const char *ELLIPSIS = "...";
+            XGlyphInfo ell_ext;
+            XftTextExtentsUtf8(dpy, font, (const FcChar8 *)ELLIPSIS, 3, &ell_ext);
+            int target_w = avail_w - ell_ext.width;
+            if (target_w < 0) target_w = 0;
+            while (len > 0) {
+                XGlyphInfo cur_ext;
+                XftTextExtentsUtf8(dpy, font, (const FcChar8 *)clipped_buf, (int)len, &cur_ext);
+                if (cur_ext.width <= target_w) break;
+                len--;
+                while (len > 0 && ((unsigned char)clipped_buf[len] & 0xC0) == 0x80) len--; /* don't cut mid-UTF8-codepoint */
+            }
+            clipped_buf[len] = '\0';
+            snprintf(clipped_buf + len, sizeof(clipped_buf) - len, "%s", ELLIPSIS);
+            draw_label = clipped_buf;
+        }
         int ty = e->y + (e->h + font->ascent - font->descent) / 2;
         if (ty < e->y + font->ascent) ty = e->y + font->ascent + pad / 2;
-        draw_text_emoji(font, &col, badge_label_x, ty, shown_label);
+        draw_text_emoji(font, &col, badge_label_x, ty, draw_label);
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
     }
     /* Badge draws LAST - see the big comment above. For sprite tiles,

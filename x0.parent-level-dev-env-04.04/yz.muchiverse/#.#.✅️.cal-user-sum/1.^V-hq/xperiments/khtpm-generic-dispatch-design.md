@@ -706,3 +706,67 @@ done: `launch_module()` only forwards ONE extra argv token, which is
 enough for plain `button.sh` (no `--data-root` needed) but not for
 `chat_button.sh`'s own per-instance `--data-root <dir>` (two separate
 tokens) - flagged as real follow-up, not blocking plain `button.sh`.
+
+## Status update, 2026-09-01 (later same day) — `button.sh` SWITCHED, real production data live-verified, DONE
+
+Direct instruction ("yes, pls finish completely this phase") - `button.sh`
+now launches `khtpm_core_render.+x` (pointed at the checked-in
+bootstrap `open-hai.chtpm`) instead of the old `khtpm_open_hai_render.+x`.
+Real, house-standard kill/relaunch discipline kept (pgrep -f full-
+cmdline match, TERM-then-KILL, confirm exactly one PID after launch) -
+now ALSO kills any leftover instance of the OLD renderer as a one-time
+transition safeguard, real `--data-root` exclusion preserved for both.
+This script only ever launches ONE process now (the manager is the
+renderer's own real `<module>` child, tied to its lifetime - closing
+the window stops both, no separate PID to track). The old render
+binary/its own build script are untouched on disk, a real rollback
+reference.
+
+**Live-verified against REAL production data** (real `button.sh`,
+real house_root, real 49-session history, real ongoing conversations) -
+not just the isolated `--data-root` test: real launch succeeded, real
+kill-existing-then-relaunch succeeded on a second run, sidebar shows
+every real session, panel shows real transcript, composer visually
+distinct, fixed 700x520 window.
+
+**One more real bug found+fixed, this time only visible against real
+data** (the isolated test's session labels/messages were all short
+enough to never trigger it): a session label or message longer than
+its own element's real box width drew straight past that box into
+whatever was next to it, with zero clipping - looked exactly like a
+garbled double-render until traced back to plain text overflow via the
+raw frame-file data (which was byte-for-byte correct - x/y/w/h all
+right, this was purely a DRAW-time gap). Real, generic fix in the
+shared `draw_elem()` itself (`khtpm_draw_core.c`, not open-hai-
+specific): any element with a real `w>0` now gets its own label
+truncated to fit, with a real UTF-8-safe `"..."` ellipsis (real message
+text contains multi-byte emoji - truncation backs up over continuation
+bytes, never cuts mid-codepoint). A harmless no-op for anything that
+already fits, so nothing currently working across ANY mode can
+regress - but this is the actual reason the isolated `--data-root`
+tests all looked clean while the first real-data run didn't: short
+test strings never exceeded any box, so this exact gap was invisible
+until real, long, real-world content hit it.
+
+**A real, worth-remembering quirk for future agents**: `open-hai.chtpm`
+itself is git-tracked with ONLY its bootstrap content (the `<module>`
+tag + a one-line placeholder) - the moment the real manager runs (which
+`button.sh` triggers immediately), it overwrites that same path with
+its own live projection, same as it does every ~200ms after. A `git
+status`/`git diff` run while the real app is live will show this file
+as "modified" with real, current session/transcript content - this is
+expected, not a bug to fix or a change to stage. `git checkout -- 
+open-hai.chtpm` restores the real bootstrap before any commit that
+touches this file - do not `git add` whatever the live manager most
+recently wrote.
+
+This phase is complete: open-hai's real daily driver now runs on the
+shared khtpm_core_render.+x pipeline, zero new renderer C specific to
+open-hai, the same generic capabilities (#1 live reparse, #2 cli_io,
+the new sidebar+panel scroll, the new default-mode module launch) any
+future khtpm app can reuse. Remaining real follow-up, explicitly NOT
+done yet (flagged, not blocking): `chat_button.sh`'s own switch (needs
+`launch_module()` extended for a 2-token extra arg to forward
+`--data-root <dir>`); applying the same real keyboard-grab fix to
+db-hq/events-hq's own armed-input fields (check in first, per direct
+instruction - these are other live, daily-used windows).
