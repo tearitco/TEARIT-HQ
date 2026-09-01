@@ -22,7 +22,7 @@
  * pipeline: does the exact real blit mechanism x11_mirror.c already
  * uses successfully display bv_render_3d.c's real 3D output? Real next
  * step once this is confirmed: port this same blit logic INTO
- * khtpm_entity_menu_render.c as a real new window mode, with real
+ * khtpm_core_render.c as a real new window mode, with real
  * khtpm chrome/nav/menu around it - not done here.
  *
  * Usage: pchq_board_view_poc.+x <board_viewer_session_dir>

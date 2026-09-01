@@ -14,7 +14,7 @@
  * `do_add` still owns WRITING bookmarks.pdl (add/New+) — this manager
  * only reacts to it changing, exactly like stats_hq_manager.c reacts to
  * session-stats files changing. The renderer's own dbhq_load_bookmark_
- * state()/dbhq_inject_bookmark_items() (khtpm_entity_menu_render.c,
+ * state()/dbhq_inject_bookmark_items() (khtpm_core_render.c,
  * 2026-08-25) reads this file and injects real <button> rows — no bash
  * XML generation, no chtpm-live-reload hack (that workaround is deleted
  * along with this file landing).

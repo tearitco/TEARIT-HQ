@@ -13,9 +13,9 @@ HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OPS_DIR="$HERE/ops"
 # REAL §5d.12 (2026-08-16, khtpm-merge-how2.md) - chat-hai merged into
-# the shared khtpm_entity_menu_render.+x binary (last of the 5 window
+# the shared khtpm_core_render.+x binary (last of the 5 window
 # apps). Old chat_hai_hq_render.+x kept as reference/rollback, unused.
-BIN="$(cd "$HERE/../../*.monads/*.livedesk-taskbar/ops" && pwd)/+x/khtpm_entity_menu_render.+x"
+BIN="$(cd "$HERE/../../*.monads/*.livedesk-taskbar/ops" && pwd)/+x/khtpm_core_render.+x"
 CHTPM="$HERE/chat-hai.chtpm"
 
 if [ ! -x "$BIN" ]; then
@@ -41,7 +41,7 @@ mkdir -p "$AUDIT_DIR"
 # renderer (full parity with db-hq/events-hq) means closing chat-hai's
 # window now ALSO stops the persona loop, a real, deliberate change from
 # the old behavior.
-chat_hai_pids() { pgrep -f "khtpm_entity_menu_render\.\+x.*chat-hai\.chtpm" 2>/dev/null || true; }
+chat_hai_pids() { pgrep -f "khtpm_core_render\.\+x.*chat-hai\.chtpm" 2>/dev/null || true; }
 chat_hai_loop_pids() { pgrep -f "chat_hai_loop\.sh" 2>/dev/null || true; }
 
 pids="$(chat_hai_pids) $(chat_hai_loop_pids)"

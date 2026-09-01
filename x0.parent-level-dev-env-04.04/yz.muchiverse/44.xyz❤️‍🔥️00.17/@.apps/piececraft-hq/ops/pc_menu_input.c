@@ -497,7 +497,7 @@ static void open_board_widget(const char *project_root, char *message, size_t me
         /* REAL, NEW 2026-08-30, direct live report ("the khtpm
          * piececraft is the one that is supposed to open when
          * piececraft-hq is clicked. why isn't it there yet?") - the
-         * real khtpm-family board window (khtpm_entity_menu_render.c's
+         * real khtpm-family board window (khtpm_core_render.c's
          * own run_pchq_board_mode(), <window class="pchq-board">,
          * pchq-board.chtpm at this project's own root) was built and
          * live-verified this same session but never actually wired
@@ -514,7 +514,7 @@ static void open_board_widget(const char *project_root, char *message, size_t me
          * (same real session, same real host_project_id) - the data-
          * generating processes stay untouched either way. */
         char khtpm_bin[PATH_BUF], khtpm_chtpm[PATH_BUF];
-        snprintf(khtpm_bin, sizeof(khtpm_bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity_menu_render.+x", house_root);
+        snprintf(khtpm_bin, sizeof(khtpm_bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
         snprintf(khtpm_chtpm, sizeof(khtpm_chtpm), "%s/pchq-board.chtpm", real_root);
         if (access(khtpm_bin, F_OK) == 0 && access(khtpm_chtpm, F_OK) == 0) {
             char khtpm_cmd[PATH_BUF * 3];

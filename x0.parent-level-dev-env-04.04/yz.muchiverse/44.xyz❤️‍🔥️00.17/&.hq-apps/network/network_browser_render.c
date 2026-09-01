@@ -6,7 +6,7 @@
  * own header comment explains why that's the right, low-risk pattern
  * for a NEW, self-contained khtpm app: "this IS the picker... reuses
  * the exact same real shared Elem model... every phantom-click/focus/
- * PPosition fix proven on khtpm_entity_menu_render.c." This file
+ * PPosition fix proven on khtpm_core_render.c." This file
  * follows khtpm_choice_picker.c's real X11/Xft/event-loop shape
  * directly, not invented fresh.
  *
@@ -31,6 +31,24 @@
  * the manager's own published page-state list, which BOTH this
  * renderer and network_browser_render_ascii.c walk identically (see
  * that file's own header comment for the symmetric other half).
+ *
+ * Real agent-relay + frame-history (2026-08-31, direct instruction:
+ * "there should be a .history and frame-history file as well as source
+ * of truths" - a real, valid gap found right after this file's first
+ * live test: every other raw-Xlib khtpm app in this house has a real
+ * file-based agent-relay input path (_.0.aigent-testing-k9.txt's own
+ * documented contract - bare decimal ASCII per line: 48-57 digits, 13
+ * Enter, 27 Escape, 8 Backspace, 32-126 printable) AND a real frame-
+ * history log a text audit can read instead of reaching for a PNG dump
+ * (khtpm_strip_frame_history.txt's own real precedent) - this file had
+ * neither. Added here, ported not reinvented:
+ *   #.desktop/network_browser_history.txt  - agent relay IN (same bare-
+ *     decimal contract, same "never replay backlog, resync to EOF on
+ *     first poll" cursor discipline as poll_agent_relay()).
+ *   #.desktop/network_browser_frame_history.txt - one real line per
+ *     redraw OUT (url/editing-mode/focus/link-count/scroll/status),
+ *     same "append, never truncate, real diagnostic snapshot" shape as
+ *     khtpm_strip_frame_history.txt.
  *
  * Usage: network_browser_render.+x <house_root> [x] [y]
  */
@@ -71,6 +89,8 @@ static char g_house[PATH_BUF];
 static char g_action_path[PATH_BUF];
 static char g_page_state_path[PATH_BUF];
 static char g_status_path[PATH_BUF];
+static char g_history_path[PATH_BUF];
+static char g_frame_history_path[PATH_BUF];
 
 /* ---------- real, in-memory mirror of the manager's own published page ---------- */
 typedef struct { char kind; char a[URL_BUF]; char b[512]; } PageRow; /* kind: 'T'=title, 'X'=text, 'L'=link */
@@ -171,14 +191,28 @@ static struct timespec g_map_time;
 /* Elem tree, rebuilt from g_rows every redraw - the real, positioned/
  * styled tree this whole app's real "centroid" is. */
 static Elem *g_root, *g_chrome, *g_addr, *g_status_el, *g_content;
+static Elem *g_close_elem, *g_fullscreen_elem;
 static Elem *g_link_elems[MAX_ELEMS];
 static int g_n_link_elems = 0;
+
+/* Real house chrome-nav convention (khtpm_core_render.c's own
+ * PCHQ_ACT_CLOSE/PCHQ_ACT_FULLSCREEN + "close is always nav 1" rule,
+ * direct instruction after this file's own first draft got it wrong -
+ * "nav [] are supposed to be empty as always... there should be ! and
+ * x chrome elements for fullsize and close"). Chrome always claims nav
+ * 1 (close, label "X") and nav 2 (fullscreen, label "!"); content links
+ * start at 3 - NOT the naive "links start at 1" this file originally
+ * shipped with. */
+#define NAV_CLOSE 1
+#define NAV_FULLSCREEN 2
 
 static char g_url_buf[URL_BUF] = "https://example.com";
 static int g_url_len = 22;
 static int g_editing_addr = 1; /* 1 = typing in address bar, 0 = navigating content */
-static int g_focus_nav = 0;    /* nav_index of focused link, 0 = none */
+static int g_focus_nav = NAV_CLOSE; /* real nav-index of whatever's focused (chrome or a link) */
 static int g_scroll = 0;
+static int g_is_fullscreen = 0;
+static int g_saved_x, g_saved_y, g_saved_w, g_saved_h;
 
 static unsigned long alloc_pixel(const char *spec) {
     XColor c;
@@ -214,8 +248,20 @@ static void build_tree(void) {
     g_content->x = 0; g_content->y = CHROME_H + ADDR_H; g_content->w = g_win_w; g_content->h = g_win_h - CHROME_H - ADDR_H - STATUS_H;
     g_status_el->x = 4; g_status_el->y = g_win_h - STATUS_H; g_status_el->w = g_win_w - 8; g_status_el->h = STATUS_H;
 
+    /* real chrome nav 1/2 - fixed, top-right of the chrome bar, same
+     * "close is always nav 1" rule as every other real khtpm window. */
+    g_close_elem = elem_new(); snprintf(g_close_elem->tag, sizeof(g_close_elem->tag), "button");
+    g_close_elem->w = 24; g_close_elem->h = CHROME_H; g_close_elem->x = g_win_w - 24; g_close_elem->y = 0;
+    g_close_elem->nav_index = NAV_CLOSE;
+    snprintf(g_close_elem->label, sizeof(g_close_elem->label), "X");
+
+    g_fullscreen_elem = elem_new(); snprintf(g_fullscreen_elem->tag, sizeof(g_fullscreen_elem->tag), "button");
+    g_fullscreen_elem->w = 24; g_fullscreen_elem->h = CHROME_H; g_fullscreen_elem->x = g_win_w - 48; g_fullscreen_elem->y = 0;
+    g_fullscreen_elem->nav_index = NAV_FULLSCREEN;
+    snprintf(g_fullscreen_elem->label, sizeof(g_fullscreen_elem->label), "!");
+
     int y = g_content->y - g_scroll;
-    int nav = 1;
+    int nav = 3; /* real content links start after chrome's own nav 1/2 */
     for (int i = 0; i < g_n_rows; i++) {
         Elem *r = elem_new();
         if (!r) break;
@@ -235,7 +281,35 @@ static void build_tree(void) {
         }
         y += ROW_H;
     }
-    if (g_focus_nav > g_n_link_elems) g_focus_nav = g_n_link_elems;
+    { int max_nav = NAV_FULLSCREEN + g_n_link_elems;
+      if (g_focus_nav > max_nav) g_focus_nav = max_nav;
+      if (g_focus_nav < NAV_CLOSE) g_focus_nav = NAV_CLOSE; }
+}
+
+static Elem *link_by_nav(int nav) {
+    for (int i = 0; i < g_n_link_elems; i++) if (g_link_elems[i]->nav_index == nav) return g_link_elems[i];
+    return NULL;
+}
+
+/* Real fullscreen toggle - resizes the actual X11 window AND its backing
+ * pixmap/XftDraw (a bare XMoveResizeWindow alone would leave buf/xftdraw_
+ * buf at the old size, corrupting every redraw() after the toggle). */
+static void toggle_fullscreen(void) {
+    if (!g_is_fullscreen) {
+        g_saved_x = g_win_x; g_saved_y = g_win_y; g_saved_w = g_win_w; g_saved_h = g_win_h;
+        g_win_x = 0; g_win_y = 0;
+        g_win_w = DisplayWidth(dpy, screen);
+        g_win_h = DisplayHeight(dpy, screen);
+        g_is_fullscreen = 1;
+    } else {
+        g_win_x = g_saved_x; g_win_y = g_saved_y; g_win_w = g_saved_w; g_win_h = g_saved_h;
+        g_is_fullscreen = 0;
+    }
+    XMoveResizeWindow(dpy, win, g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h);
+    XftDrawDestroy(xftdraw_buf);
+    XFreePixmap(dpy, buf);
+    buf = XCreatePixmap(dpy, win, (unsigned)g_win_w, (unsigned)g_win_h, (unsigned)DefaultDepth(dpy, screen));
+    xftdraw_buf = XftDrawCreate(dpy, buf, DefaultVisual(dpy, screen), cmap);
 }
 
 static void redraw(void) {
@@ -254,6 +328,20 @@ static void redraw(void) {
       XftDrawStringUtf8(xftdraw_buf, &c, font_ui, 8, 16, (const FcChar8 *)t, (int)strlen(t));
       XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &c); }
 
+    /* real chrome nav 1 (close, "X") / nav 2 (fullscreen, "!") - same
+     * cursor-prefix convention as every other real khtpm window
+     * ("[>]"/"[ ]", never the literal digit inside the brackets). */
+    { Elem *chrome_btns[2] = { g_close_elem, g_fullscreen_elem };
+      for (int i = 0; i < 2; i++) {
+          Elem *b = chrome_btns[i];
+          int on = (!g_editing_addr && b->nav_index == g_focus_nav);
+          XftColor c = xft_color(on ? "#ffdd55" : "#cccccc");
+          char lbl[16];
+          snprintf(lbl, sizeof(lbl), "%s%s", on ? "[>]" : "[ ]", b->label);
+          XftDrawStringUtf8(xftdraw_buf, &c, font_ui, b->x, b->y + 16, (const FcChar8 *)lbl, (int)strlen(lbl));
+          XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &c);
+      } }
+
     /* address bar */
     XSetForeground(dpy, gc, g_editing_addr ? alloc_pixel("#333355") : alloc_pixel("#2a2a2a"));
     XFillRectangle(dpy, buf, gc, g_addr->x, g_addr->y, (unsigned)g_addr->w, (unsigned)g_addr->h);
@@ -266,7 +354,8 @@ static void redraw(void) {
     /* content panel rows - clipped to g_content's own real rect */
     for (int i = 0; i < g_n_elems; i++) {
         Elem *e = &g_pool[i];
-        if (e == g_root || e == g_chrome || e == g_addr || e == g_status_el || e == g_content) continue;
+        if (e == g_root || e == g_chrome || e == g_addr || e == g_status_el || e == g_content
+            || e == g_close_elem || e == g_fullscreen_elem) continue;
         if (e->y + e->h < g_content->y || e->y > g_content->y + g_content->h) continue;
         if (strcmp(e->tag, "title") == 0) {
             XftColor c = xft_color("#ffdd55");
@@ -284,7 +373,7 @@ static void redraw(void) {
             }
             XftColor c = xft_color(on ? "#ffdd55" : "#66aaff");
             char row[560];
-            snprintf(row, sizeof(row), "[%d] %s", e->nav_index, e->label);
+            snprintf(row, sizeof(row), "%s%d. %s", on ? "[>]" : "[ ]", e->nav_index, e->label);
             XftDrawStringUtf8(xftdraw_buf, &c, font_ui, e->x, e->y + 15, (const FcChar8 *)row, (int)strlen(row));
             XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &c);
         }
@@ -301,6 +390,17 @@ static void redraw(void) {
     XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
     if (frame) { XPutImage(dpy, win, gc, frame, 0, 0, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h); XDestroyImage(frame); }
     XFlush(dpy);
+
+    /* real frame-history append, one line per redraw - append-only,
+     * never truncated, same shape as khtpm_strip_frame_history.txt so
+     * a text audit can confirm what this window actually did without
+     * a PNG dump. */
+    FILE *fh = fopen(g_frame_history_path, "a");
+    if (fh) {
+        fprintf(fh, "url=%s editing_addr=%d focus_nav=%d n_links=%d scroll=%d status=%s\n",
+                g_page_url[0] ? g_page_url : "(none)", g_editing_addr, g_focus_nav, g_n_link_elems, g_scroll, g_status_line);
+        fclose(fh);
+    }
 }
 
 static void go_to(const char *url) {
@@ -326,27 +426,41 @@ static void handle_key(KeySym ks, char ch) {
         return;
     }
 
-    /* content-navigation mode */
+    /* content-navigation mode - real chrome-nav convention: 1 = close,
+     * 2 = fullscreen, 3.. = content links (see NAV_CLOSE/NAV_FULLSCREEN). */
+    int max_nav = NAV_FULLSCREEN + g_n_link_elems;
     if (ks == XK_Return || ks == XK_KP_Enter) {
-        if (g_focus_nav >= 1 && g_focus_nav <= g_n_link_elems) {
-            const char *href = g_link_elems[g_focus_nav - 1]->onclick;
-            snprintf(g_url_buf, sizeof(g_url_buf), "%s", href);
+        if (g_focus_nav == NAV_CLOSE) { g_quit = 1; return; }
+        if (g_focus_nav == NAV_FULLSCREEN) { toggle_fullscreen(); return; }
+        Elem *link = link_by_nav(g_focus_nav);
+        if (link) {
+            snprintf(g_url_buf, sizeof(g_url_buf), "%s", link->onclick);
             g_url_len = (int)strlen(g_url_buf);
-            go_to(href);
+            go_to(link->onclick);
             g_scroll = 0;
         }
         return;
     }
-    if (ks == XK_Down) { if (g_focus_nav < g_n_link_elems) g_focus_nav++; else if (g_n_link_elems > 0) g_focus_nav = 1; return; }
-    if (ks == XK_Up) { if (g_focus_nav > 1) g_focus_nav--; return; }
+    if (ks == XK_Down) { if (g_focus_nav < max_nav) g_focus_nav++; else g_focus_nav = NAV_CLOSE; return; }
+    if (ks == XK_Up) { if (g_focus_nav > NAV_CLOSE) g_focus_nav--; else g_focus_nav = max_nav; return; }
     if (ks == XK_Page_Down) { g_scroll += g_content->h; return; }
     if (ks == XK_Page_Up) { g_scroll -= g_content->h; if (g_scroll < 0) g_scroll = 0; return; }
-    if (ch >= '1' && ch <= '9') { int d = ch - '0'; if (d <= g_n_link_elems) g_focus_nav = d; return; }
+    if (ch >= '0' && ch <= '9') { int d = ch - '0'; if (d == 0) d = 10; if (d <= max_nav) g_focus_nav = d; return; }
 }
 
 static void handle_click(int mx, int my) {
     if (my >= g_addr->y && my < g_addr->y + g_addr->h) { g_editing_addr = 1; return; }
     g_editing_addr = 0;
+    if (mx >= g_close_elem->x && mx < g_close_elem->x + g_close_elem->w && my >= g_close_elem->y && my < g_close_elem->y + g_close_elem->h) {
+        g_focus_nav = NAV_CLOSE;
+        g_quit = 1;
+        return;
+    }
+    if (mx >= g_fullscreen_elem->x && mx < g_fullscreen_elem->x + g_fullscreen_elem->w && my >= g_fullscreen_elem->y && my < g_fullscreen_elem->y + g_fullscreen_elem->h) {
+        g_focus_nav = NAV_FULLSCREEN;
+        toggle_fullscreen();
+        return;
+    }
     for (int i = 0; i < g_n_link_elems; i++) {
         Elem *e = g_link_elems[i];
         if (mx >= e->x && mx < e->x + e->w && my >= e->y && my < e->y + e->h) {
@@ -360,6 +474,42 @@ static void handle_click(int mx, int my) {
     }
 }
 
+/* Real agent relay - same bare-decimal-ASCII-per-line contract as
+ * poll_agent_relay() in khtpm_strip_parser.c (see this file's own
+ * header comment). Converts each code to the SAME (KeySym, char) pair
+ * a real KeyPress produces and calls the SAME handle_key() a real
+ * keyboard drives - an injected code gets identical handling to a real
+ * keypress by construction, not "kept in sync by hand" (same real
+ * reasoning that file's own header comment gives for sharing
+ * dispatch_key_code() instead of duplicating it). No mouse/click relay
+ * - matches every real house relay's own "digits are how the relay
+ * navigates" contract; link-follow is fully reachable via digit codes
+ * already (handle_key()'s own '1'-'9' branch). */
+static long g_history_cursor = -1; /* -1 = uninitialized; resync to EOF on first poll, never replay backlog */
+
+static void poll_history(void) {
+    FILE *f = fopen(g_history_path, "r");
+    if (!f) return;
+    if (g_history_cursor < 0) {
+        fseek(f, 0, SEEK_END);
+        g_history_cursor = ftell(f);
+        fclose(f);
+        return;
+    }
+    fseek(f, g_history_cursor, SEEK_SET);
+    char line[64];
+    while (fgets(line, sizeof(line), f)) {
+        int code = atoi(line);
+        if (code == 13) handle_key(XK_Return, 0);
+        else if (code == 27) handle_key(XK_Escape, 0);
+        else if (code == 8) handle_key(XK_BackSpace, 0);
+        else if (code == 9) handle_key(XK_Tab, 0);
+        else if (code >= 32 && code < 127) handle_key(NoSymbol, (char)code);
+    }
+    g_history_cursor = ftell(f);
+    fclose(f);
+}
+
 int main(int argc, char **argv) {
     if (argc < 2) { fprintf(stderr, "usage: %s <house_root> [x] [y]\n", argv[0]); return 1; }
     snprintf(g_house, sizeof(g_house), "%s", argv[1]);
@@ -370,6 +520,8 @@ int main(int argc, char **argv) {
     snprintf(g_action_path, sizeof(g_action_path), "%s/network_browser_action.txt", desktop);
     snprintf(g_page_state_path, sizeof(g_page_state_path), "%s/network_browser_page.state.txt", desktop);
     snprintf(g_status_path, sizeof(g_status_path), "%s/network_browser_status.state.txt", desktop);
+    snprintf(g_history_path, sizeof(g_history_path), "%s/network_browser_history.txt", desktop);
+    snprintf(g_frame_history_path, sizeof(g_frame_history_path), "%s/network_browser_frame_history.txt", desktop);
 
     dpy = XOpenDisplay(NULL);
     if (!dpy) { fprintf(stderr, "network_browser_render: cannot open display\n"); return 1; }
@@ -418,6 +570,10 @@ int main(int argc, char **argv) {
         int need_redraw = 0;
         if (mtime_of(g_page_state_path) != g_page_mtime) need_redraw = 1;
         if (mtime_of(g_status_path) != g_status_mtime) need_redraw = 1;
+
+        { int before = g_focus_nav, before_edit = g_editing_addr, before_q = g_quit;
+          poll_history();
+          if (g_focus_nav != before || g_editing_addr != before_edit || g_quit != before_q) need_redraw = 1; }
 
         while (XPending(dpy)) {
             XEvent ev; XNextEvent(dpy, &ev);

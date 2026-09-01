@@ -4,7 +4,7 @@
  * Opens a WM-managed X11 window, spawns a child bash over pipes, types
  * lines into the child's stdin and streams child stdout+stderr into a
  * scrollback buffer that is redrawn on each event/read. Standalone
- * binary - deliberately NOT part of khtpm_entity_menu_render (HARD
+ * binary - deliberately NOT part of khtpm_core_render (HARD
  * BOUNDARY edit rule). Uses only core X fonts (no Xft/fontconfig dep).
  *
  * Usage: cli_io_window [+ title]

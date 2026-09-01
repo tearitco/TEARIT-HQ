@@ -52,7 +52,7 @@ echo "EMERGENCY KILL..."
 # has a real GL_MIRROR_BORDERLESS=1 mode (same binary/process name, no
 # separate entry needed - this list already covers it).
 # REAL ADDITION 2026-08-18, direct instruction (chat-hai window kept
-# running after being closed): khtpm_entity_menu_render.+x is the ONE
+# running after being closed): khtpm_core_render.+x is the ONE
 # shared binary behind FIVE separate apps (chat-hai, db-hq, events-hq,
 # taskbar-settings, entity-menu) - each launch forks/execs its own real,
 # separate PID running this same executable file, mode-selected via a
@@ -65,7 +65,7 @@ echo "EMERGENCY KILL..."
 # running instance of the binary, whichever of the five apps each one
 # happens to be - there is no way to target just one of the five by
 # name alone.
-NAMES='orchestrator keyboard_input chtpm_parser_pal chtpm_rgb_render gl_mirror egg_window avatar_window renderer prisc\+x agy_browser_manager rtp_manager yahoo_menu_input yahoo_compose_frame broker_menu_input broker_compose_frame deposit_withdraw tp_desktop_window tp_arm_placer tp_range_grid khtpm_strip_parser\.\+x khtpm_taskbar_manager_main\.\+x khtpm_entity_menu_render\.\+x'
+NAMES='orchestrator keyboard_input chtpm_parser_pal chtpm_rgb_render gl_mirror egg_window avatar_window renderer prisc\+x agy_browser_manager rtp_manager yahoo_menu_input yahoo_compose_frame broker_menu_input broker_compose_frame deposit_withdraw tp_desktop_window tp_arm_placer tp_range_grid khtpm_strip_parser\.\+x khtpm_taskbar_manager_main\.\+x khtpm_core_render\.\+x'
 
 pat() {
     # $1 = bare name (unescaped except prisc+x's own literal backslash

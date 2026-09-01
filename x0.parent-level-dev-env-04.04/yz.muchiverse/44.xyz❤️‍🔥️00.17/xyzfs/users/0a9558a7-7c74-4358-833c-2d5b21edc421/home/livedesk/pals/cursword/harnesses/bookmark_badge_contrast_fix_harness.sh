@@ -52,7 +52,7 @@ HOUSE="${HOUSE:-$(find_house_root)}"
 PAL="$HOUSE/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword"
 RELAY="$HOUSE/#.desktop/db_hq_history.txt"
 DUMP_PNG="/tmp/db-hq-frame.png"
-PROC_PATTERN="khtpm_entity_menu_render\.\+x.*bookmarks\.chtpm"
+PROC_PATTERN="khtpm_core_render\.\+x.*bookmarks\.chtpm"
 MGR_PATTERN="bookmarks_manager\.\+x.*cursword"
 
 FEATURE_DIR="$HERE/../presentations/bookmark-badge-contrast-fix-via-bash-harness"

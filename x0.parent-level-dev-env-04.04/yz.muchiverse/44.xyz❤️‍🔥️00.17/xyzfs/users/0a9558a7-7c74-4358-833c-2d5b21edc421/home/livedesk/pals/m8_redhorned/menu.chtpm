@@ -3,7 +3,7 @@
      Converted 1:1 from this entity's own real objects.pdl (same PAGE/OBJECT
      rows, same action strings verbatim) via the same real mechanical
      conversion rule proven on ava/asa (scratchpad objects_to_chtpm.py).
-     KNOWN GAP, not silently papered over: khtpm_entity_menu_render.c's
+     KNOWN GAP, not silently papered over: khtpm_core_render.c's
      own dispatch() does not implement STATE:<key> (real text-input rows)
      yet - only CLOSE/void/GOTO:/BACK are real reserved forms there today,
      same as this house's other khtpm apps' own real STATE: gaps. The

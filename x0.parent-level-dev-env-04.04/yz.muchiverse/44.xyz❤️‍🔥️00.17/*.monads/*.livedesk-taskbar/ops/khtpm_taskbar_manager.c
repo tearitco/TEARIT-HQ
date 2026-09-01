@@ -3852,7 +3852,7 @@ void ktb_hq_activate(KtbState *s, int row) {
          * Launched via button.sh (mirrors open-hai pattern exactly). */
 #ifdef _WIN32
         char bin[KTB_PATH_BUF], chtpm[KTB_PATH_BUF];
-        snprintf(bin, sizeof(bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity_menu_render.+x", s->house_root);
+        snprintf(bin, sizeof(bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", s->house_root);
         snprintf(chtpm, sizeof(chtpm), "%s/&.hq-apps/chat-hai/chat-hai.chtpm", s->house_root);
         const char *aa[2] = { s->house_root, chtpm };
         win_spawn_n(bin, aa, 2);

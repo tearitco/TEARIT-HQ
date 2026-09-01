@@ -199,7 +199,7 @@ static int g_click_two_step = 1;
  * already uses everywhere (frame_changed.txt et al) - a single
  * stat() per already-running tick against
  * #.desktop/livedesk_theme_changed.txt (written by
- * write_theme_opacity() in khtpm_entity_menu_render.c), real work
+ * write_theme_opacity() in khtpm_core_render.c), real work
  * (reload+reapply opacity to this entity's own window) only runs on
  * an actual change. */
 static long g_theme_changed_cursor = 0;
@@ -350,7 +350,7 @@ static int g_cursword_armed = 0;
 /* Real, house-standard "small state file under #.desktop/" convention
  * (§9 item 5's own cited precedent, rmmv_armed.txt) - the one real,
  * visible-elsewhere signal for "is cursword currently armed right
- * now," same shape khtpm_entity_menu_render.c's own
+ * now," same shape khtpm_core_render.c's own
  * pchq_is_interact_on()/etc. already use for cross-process real state. */
 static void cursword_write_armed(const char *house_root, int armed) {
     char path[PATH_BUF];
@@ -489,10 +489,10 @@ static void launch_khtpm_menu(int px, int py) {
         g_khtpm_menu_pid = -1;
     }
     char bin_path[PATH_BUF];
-    snprintf(bin_path, sizeof(bin_path), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity_menu_render.+x", g_khtpm_menu_house_root);
+    snprintf(bin_path, sizeof(bin_path), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", g_khtpm_menu_house_root);
     /* REAL Stage 5 step 3/4 (2026-08-16, khtpm-merge-how2.md §5d.3) -
      * real, unified <house_root> <chtpm_path> [x] [y] contract (was
-     * <package_dir> <house_root> [x] [y]) - khtpm_entity_menu_render's
+     * <package_dir> <house_root> [x] [y]) - khtpm_core_render's
      * own main() now derives package_dir from dirname(chtpm_path)
      * itself, so this caller just needs to build the real chtpm path
      * once instead of passing the bare dir. */
@@ -2844,7 +2844,7 @@ static char g_house_root_for_lock[PATH_BUF] = "";
  * load_theme_opacity(), real _NET_WM_WINDOW_OPACITY + #.desktop/
  * livedesk_theme.pdl "COLOR|opacity|N") but every desktop entity
  * window (every pal/tile - what this file spawns) rendered at full
- * opacity, same real gap khtpm_entity_menu_render.c had for its own
+ * opacity, same real gap khtpm_core_render.c had for its own
  * windows. Ported the same way (adapted to THIS file's own PATH_BUF
  * convention; house_root is a local in main() here, not a global, so
  * it's a real parameter instead). */
@@ -3109,7 +3109,7 @@ static Window open_context_menu(Display *dpy, GC gc, int *root_x, int *root_y, i
      * it and launch_khtpm_menu() instead) moved to the TOP of this
      * function - see that real fix's own header comment. This point is
      * now only ever reached when g_use_khtpm_menu is 0 (or on Windows,
-     * where khtpm_entity_menu_render.exe doesn't exist yet and the
+     * where khtpm_core_render.exe doesn't exist yet and the
      * legacy Xlib menu is still the real, correct behavior) - the
      * legacy popup created above is the REAL, visible result. */
     return popup;

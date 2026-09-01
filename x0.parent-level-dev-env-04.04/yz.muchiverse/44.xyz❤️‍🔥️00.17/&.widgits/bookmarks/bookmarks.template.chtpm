@@ -3,7 +3,7 @@
      ONCE per pal by bm_menu.sh (a plain token substitution + copy, not a
      per-launch regeneration - see bm_menu.sh's own provision_bookmarks()
      header) into <pal>/bookmarks.chtpm, then left alone forever. Real
-     bookmark rows are injected at runtime by khtpm_entity_menu_render.c's
+     bookmark rows are injected at runtime by khtpm_core_render.c's
      own dbhq_inject_bookmark_items(), reading bookmarks_manager.c's own
      published bookmarks_state.txt - same static-skeleton-plus-<module>
      shape stats-hq's own dashboard.chtpm already proved out (see that

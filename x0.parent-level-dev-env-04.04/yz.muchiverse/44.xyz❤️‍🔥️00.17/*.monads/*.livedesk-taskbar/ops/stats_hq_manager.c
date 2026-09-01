@@ -8,10 +8,10 @@
  * Real, direct precedent this is copied FROM (not invented):
  * khtpm_hq_manager.c (db-hq's own manager) — same init/poll-loop shape,
  * same atomic tmp-write-then-rename publish convention. Publishes into
- * the EXACT state-file format khtpm_entity_menu_render.c's own
+ * the EXACT state-file format khtpm_core_render.c's own
  * dbhq_load_common_events() already parses (one plain-text line per
  * item) — stats-hq rides db-hq's real, already-proven sidebar+panel+
- * item-click machinery for free (see khtpm_entity_menu_render.c's
+ * item-click machinery for free (see khtpm_core_render.c's
  * class-dispatch loop, g_is_stats_hq branch, 2026-08-25), rather than a
  * second bespoke rendering path.
  *

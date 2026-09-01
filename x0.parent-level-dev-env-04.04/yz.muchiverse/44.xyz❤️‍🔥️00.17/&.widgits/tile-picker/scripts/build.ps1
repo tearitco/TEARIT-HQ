@@ -58,7 +58,7 @@ gcc -Wall -O2 -o "ops/+x/tp_rmmv_character_extract.+x" "ops/tp_rmmv_character_ex
 # was silently deployed under the khtpm_show_choices.+x name and never
 # actually produced a visible window - a real, separate, pre-existing
 # bug). 7th real consumer of &.widgits/_shared-lib/khtpm_render_core.c,
-# same shared-source-copy convention as build_entity_menu.sh.
+# same shared-source-copy convention as build_core_render.sh.
 SHARED_LIB="(Resolve-Path "$SCRIPT_DIR/../_shared-lib").Path"
 Copy-Item -LiteralPath "$SHARED_LIB/khtpm_render_core.c" -Destination "ops/khtpm_render_core.c" -Force
 Copy-Item -LiteralPath "$SHARED_LIB/khtpm_css_parser.h" -Destination "ops/khtpm_css_parser.h" -Force

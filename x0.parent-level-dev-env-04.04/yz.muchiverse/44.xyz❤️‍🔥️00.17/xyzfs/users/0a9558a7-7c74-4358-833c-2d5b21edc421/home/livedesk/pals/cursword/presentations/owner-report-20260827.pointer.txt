@@ -12,5 +12,5 @@ Test Evidence:
 - Owner-Report-20260827.mp4 (6 frames, TTS narration, ~87s)
 - snapshots/01..06_*.png (real dump_frame_png() captures for steps 1/2/3/6; real ledger text rendered to PNG for steps 4/5 — common_events_manager is a headless process with no window/PNG dump of its own)
 - manifest.txt, REPRODUCE.md, owner_report_harness.sh (exact commands run), log.txt (full run transcript)
-- Zero stray processes confirmed before and after (pgrep checked for khtpm_entity_menu_render.+x and common_events_manager.+x)
+- Zero stray processes confirmed before and after (pgrep checked for khtpm_core_render.+x and common_events_manager.+x)
 Status: Current. Deviation from the literal 6-step shot list: step 3 (nesting) was verified only 1 level deep at the compile level (IR -> OP call_event reference), not a live 3-level runtime call chain — flagged here rather than silently claimed as fully proven. Steps 4/5 used a real terminal/ledger text capture rendered to PNG (not the app's own dump_frame_png(), since common_events_manager.+x is headless) — this is real captured data, not fabricated, but a different capture route than the windowed-app convention; disclosed per the testing guide's honesty requirement.

@@ -25,7 +25,7 @@
      embedded events-hq-style editor (page tabs' worth of trigger +
      command list + Add Command + Play) directly in the "panel" below,
      replacing its static placeholder content entirely
-     (dbhq_ce_open()/dbhq_ce_inject_panel() in khtpm_entity_menu_render.c).
+     (dbhq_ce_open()/dbhq_ce_inject_panel() in khtpm_core_render.c).
      A prior "Open in Editor" button used to spawn event-ez as a separate
      app for this - that was unwanted drift (event-ez's own entity-side
      launch path had also silently broken, unrelated bug, fixed same
@@ -49,7 +49,7 @@
 <window class="database-window db-hq">
   <!-- REAL Stage 5 §5d.10 (2026-08-16, khtpm-merge-how2.md) - added
        "db-hq" class alongside the original "database-window" - real,
-       data-driven mode detection for khtpm_entity_menu_render.+x's own
+       data-driven mode detection for khtpm_core_render.+x's own
        g_is_db_hq branch, same convention as taskbar-settings' own
        "swatch-picker" class. "database-window" kept, still used by
        dashboard.css selectors. -->

@@ -8,7 +8,7 @@
 # target render binary itself ... not a gap"):
 #   1. launch a REAL db-hq window via the REAL open_db_hq.sh (the house's
 #      own db-hq launcher - it kills any pre-existing db-hq instance,
-#      launches the shared khtpm_entity_menu_render.+x in db-hq mode, and
+#      launches the shared khtpm_core_render.+x in db-hq mode, and
 #      lets the shell self-spawn khtpm_hq_manager.+x via the <module> tag),
 #   2. run the .pal through the real prisc+x binary,
 #   3. verify the real PNG + verdict, then restore relay/history files and
@@ -65,8 +65,8 @@ LAUNCH_LOG="/tmp/dbhq_visproof_launch.log"
 PRISC_BIN="$HOUSE/101.mutaclsym🧟‍♂️️+18.0G/system/prisc+x"
 PRISC_CWD="$HOUSE/101.mutaclsym🧟‍♂️️+18.0G"
 
-RENDER_PAT="khtpm_entity_menu_render\.\+x"
-DBHQ_PAT="khtpm_entity_menu_render\.\+x .*db-hq/dashboard\.chtpm"
+RENDER_PAT="khtpm_core_render\.\+x"
+DBHQ_PAT="khtpm_core_render\.\+x .*db-hq/dashboard\.chtpm"
 HQMGR_PAT="khtpm_hq_manager\.\+x"
 
 # repo root + rel paths for the git-clean restore/verify (walk up from the

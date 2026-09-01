@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """meta_to_menu_chtpm.py - real, permanent converter: <package_dir>/meta.pdl
 -> <package_dir>/menu.chtpm, for the shared Elem/CSS entity-menu renderer
-(khtpm_entity_menu_render.c, class="entity-menu").
+(khtpm_core_render.c, class="entity-menu").
 
 Started: 2026-08-28, per ENTITY-MENU-LEGACY-DEPRECATION-PLAN.md's own
 Phase 1 (design decision A - a real, durable generator, not the lost
@@ -16,7 +16,7 @@ hand conversions exactly (mechanical, 1:1, no reinterpretation):
     <item label="<label>" action="<action>"/> in menu.chtpm's real
     <page name="main"> - same order, same action string verbatim.
   - action="" values get real XML entity-encoding for the 2 characters
-    khtpm_entity_menu_render.c's own apply_attr() decodes for the
+    khtpm_core_render.c's own apply_attr() decodes for the
     action attribute specifically (see that file's own header comment):
     " -> &quot; and & -> &amp;. No other escaping - this parser only
     supports those 2 entities, and inventing more would just be dead
@@ -80,7 +80,7 @@ def parse_meta_pdl(path: str):
             # Real value may itself contain real "|" pipe characters
             # (e.g. a shell command with `find ... | head -1`, the
             # exact real case that broke the RENDERER'S OWN separate
-            # frame-file format tonight, khtpm_entity_menu_render.c's
+            # frame-file format tonight, khtpm_core_render.c's
             # dbhq_paint_frame_line() - unrelated bug, same real lesson:
             # don't assume "|" only ever appears as a real delimiter).
             # Rejoin everything after the label field as the real,

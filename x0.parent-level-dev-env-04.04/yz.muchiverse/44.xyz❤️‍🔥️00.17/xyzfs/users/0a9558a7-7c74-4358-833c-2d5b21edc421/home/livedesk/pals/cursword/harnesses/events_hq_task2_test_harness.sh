@@ -29,7 +29,7 @@ PAL="$HOUSE/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/
 RELAY="$HOUSE/#.desktop/events_hq_history.txt"
 STATE="/tmp/db-hq-state.txt"
 PNG="/tmp/events-hq-frame.png"
-PROC_PATTERN="khtpm_entity_menu_render\.\+x"
+PROC_PATTERN="khtpm_core_render\.\+x"
 
 ENTITY_DIR="$PAL"
 PKG_DIR="$ENTITY_DIR/event_pkg"
@@ -129,7 +129,7 @@ rm -f /tmp/ce_test_marker.txt
 # Step 1: launch events-hq
 # =========================================================================
 log "=== step 1: launch events-hq ==="
-BIN="$HOUSE/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity_menu_render.+x"
+BIN="$HOUSE/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
 CHTPM="$HOUSE/&.widgits/events-hq/pieces/dashboard.chtpm"
 
 setsid nohup "$BIN" "$HOUSE" "$CHTPM" "$PKG_DIR" "cursword" \

@@ -401,7 +401,7 @@ EOSTATE
             # real ledger row exists first (run_pchq_board_mode()'s own
             # session-discovery needs it), then launch the khtpm window,
             # which kills the legacy display once it attaches.
-            KHTPM_BIN="$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity_menu_render.+x"
+            KHTPM_BIN="$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
             if [ -x "$KHTPM_BIN" ] && [ -f "$SCRIPT_DIR/pchq-board.chtpm" ]; then
                 ( sleep 1.5; setsid "$KHTPM_BIN" "$HOUSE_DIR" "$SCRIPT_DIR/pchq-board.chtpm" "piececraft-hq" >/dev/null 2>&1 < /dev/null & ) &
             fi

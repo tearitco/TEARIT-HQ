@@ -1,28 +1,36 @@
-<!-- network-browser-hq.chtpm — real, authored DESIGN REFERENCE for the
-     "network browser" HQ app (CENTROID_GOLD_STD.md's first real proof
-     case, 2026-08-31). Documents the app's real class name and static
-     chrome intent, khtpm vocabulary (matches taskbar_settings.chtpm's
-     own real <window class="...">/<page>/<item> shape).
+<!-- network-browser-hq.chtpm — the REAL, parsed layout for the "network
+     browser" HQ app (CENTROID_GOLD_STD.md's first real proof case).
 
-     HONEST STATUS: NOT parsed at runtime by network_browser_render.c
-     today - that file hand-builds its Elem tree directly (chrome +
-     dynamic content rows), the same real, already-established pattern
-     khtpm_choice_picker.c uses for a small, wholly data-driven view
-     (see that file's own header comment). This file is the real,
-     intended target for a later khtpm_css_parser.c-driven chrome pass
-     (address bar / status bar / panel geometry moving out of hand-set
-     x/y/w/h and into real CSS here) - a legitimate, deferred fast-
-     follow, not a blocking requirement of CENTROID_GOLD_STD.md's core
-     rule, since the actual single source of truth for this app's
-     dynamic content is network_browser_manager.c's own published
-     page-state list, which both real renderers (network_browser_
-     render.c / network_browser_render_ascii.c) already consume
-     identically. -->
+     CORRECTED 2026-08-31, direct instruction ("we still want to use
+     chtpm+layout module, we always should no matter what"): this file
+     was originally authored as a non-functional "design reference"
+     while network_browser_render.c hand-built its Elem tree in C. That
+     was wrong (see CENTROID_GOLD_STD.md §3 rule 1's own correction).
+     This file is now REAL, PARSED input - khtpm_core_render.c's
+     own parse_chtpm() reads this directly (mode g_is_network_browser,
+     class="network-browser-window"), same real mechanism db-hq/
+     events-hq/chat-hai/taskbar_settings.chtpm already use.
+
+     <module> launches the real manager (network_browser_manager.c) the
+     exact same way dashboard.chtpm's own <module> does for db-hq -
+     ported, not invented (dbhq_launch_module()/evhq_launch_module()'s
+     own real precedent).
+
+     Geometry is assigned by this mode's own nb_layout_pass() in C
+     (same real convention every other khtpm mode uses - the generic
+     css_layout_pass() flex engine is NOT yet live-tested against a
+     real app, per its own header comment in khtpm_render_core.c) -
+     this file's job is real structure/ids/classes/static labels, not
+     pixel positions. Dynamic TITLE/TEXT/LINK rows are injected into
+     #content at runtime via reusable_slot(), same shape as db-hq's own
+     dbhq_inject_list_panel(). -->
 <window label="Network Browser" class="network-browser-window">
+  <module src="&.hq-apps/network/+x/network_browser_manager.+x" />
   <page name="main">
-    <item id="chrome" class="nb-chrome" label="Network Browser"/>
+    <item id="close" action="CLOSE" class="close-btn" label="X"/>
+    <item id="fullscreen" action="FULLSCREEN_NB" class="fullscreen-btn" label="!"/>
     <item id="address-bar" class="nb-address" label=""/>
-    <item id="content-panel" class="nb-content" label=""/>
+    <panel id="content" class="nb-content"></panel>
     <item id="status-bar" class="nb-status" label=""/>
   </page>
 </window>

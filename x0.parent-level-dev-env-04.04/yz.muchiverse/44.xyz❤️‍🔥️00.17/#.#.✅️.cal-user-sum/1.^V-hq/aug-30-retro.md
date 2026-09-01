@@ -41,7 +41,7 @@ halves:
      `rgb_frame_3d_overlay.receipt.txt` (`overlay_w=…` /
      `overlay_h=…` — the real, current pixel dimensions, since the
      raymarch resolution can change).
-  2. 👀 **`run_pchq_board_mode()`** (in `khtpm_entity_menu_render.c` —
+  2. 👀 **`run_pchq_board_mode()`** (in `khtpm_core_render.c` —
      the SAME binary that draws every other khtpm window, but this one
      real function does its own thing) does NOT go through
      `parse_chtpm()`/the Elem tree AT ALL for this part. It just polls

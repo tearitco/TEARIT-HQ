@@ -25,7 +25,7 @@ $names = @(
     "tp_desktop_window",
     "khtpm_open_hai_render",
     "khtpm_hq_render",
-    "khtpm_entity_menu_render",
+    "khtpm_core_render",
     "khtpm_hq_manager"
 )
 Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {

@@ -15,13 +15,13 @@
  *
  * Real design: this binary IS the picker (no relay-into-another-
  * process indirection - khtpm_show_choices.c's own SHOW_PAGE relay
- * design predates this session's real khtpm_entity_menu_render.c work;
+ * design predates this session's real khtpm_core_render.c work;
  * simpler and lower-risk to have khtpm_show_choices.c exec this
  * directly than to also touch tp_desktop_window_rgb.c's own live
  * SHOW_PAGE relay handler). Reuses the exact same real shared Elem
  * model (&.widgits/_shared-lib/khtpm_render_core.c, 7th real consumer)
  * and every phantom-click/focus/PPosition fix proven this session on
- * khtpm_entity_menu_render.c - this is the SAME real engine, just
+ * khtpm_core_render.c - this is the SAME real engine, just
  * reading the choices_file's own real flat "OBJECT | label=.. |
  * action=.." format directly (no .chtpm authoring step needed - the
  * caller, e.g. book-stack's dispatch.sh, already generates/owns this
@@ -281,7 +281,7 @@ int main(int argc, char **argv) {
 
     XSetWindowAttributes swa;
     swa.background_pixel = alloc_pixel("#1c1c1c");
-    swa.override_redirect = True; /* real popup - see khtpm_entity_menu_render.c's own comment on why */
+    swa.override_redirect = True; /* real popup - see khtpm_core_render.c's own comment on why */
     swa.event_mask = ExposureMask | ButtonPressMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
     win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h, 0,
                          CopyFromParent, InputOutput, CopyFromParent, CWBackPixel | CWOverrideRedirect | CWEventMask, &swa);

@@ -7,7 +7,7 @@ bookstack-path-bug.txt (house root, 44.xyz❤️‍🔥️00.17/) for the origin
 investigation report this superseded.
 
 --------------------------------------------------------------------------------
-PITFALL 1 — khtpm_entity_menu_render.c's decode_entities() does NOT handle
+PITFALL 1 — khtpm_core_render.c's decode_entities() does NOT handle
 &gt;/&lt;, only &quot;/&amp;. FIXED 2026-08-18, but any FUTURE action= string
 in menu.chtpm (or any other entity's menu.chtpm) that embeds a shell redirect
 (`>`, `<`) inside its HTML-attribute-encoded value will hit this same bug again
@@ -18,7 +18,7 @@ redirects (`2>/dev/null`, from nested `$(find ... 2>/dev/null)` command
 substitutions) INSIDE an XML/HTML attribute value, so they get entity-encoded
 as `2&gt;/dev/null` in the source .chtpm file (correct, required XML encoding
 for a literal `>` inside an attribute). The RENDERER's own decode_entities()
-(&.widgits/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c) only decoded
+(&.widgits/*.livedesk-taskbar/ops/khtpm_core_render.c) only decoded
 `&quot;` and `&amp;` — `&gt;` fell through UNCHANGED, so the REAL command
 dispatch() ran contained the literal 4-character text `&gt;` where a real `>`
 was needed. `/bin/sh` parses `find ... -type d 2&gt;/dev/null` as: `find`
@@ -40,16 +40,16 @@ manual path-verification (bookstack-path-bug.txt) found every individual path
 "correct" — it was testing hand-typed strings, never the real, entity-decoded
 runtime string the live UI actually produces.
 
-Fix applied: decode_entities() (khtpm_entity_menu_render.c, ~line 141) now
+Fix applied: decode_entities() (khtpm_core_render.c, ~line 141) now
 also handles &gt; -> '>' and &lt; -> '<', in addition to the original
-&quot;/&amp;. Rebuilt via ops/build_entity_menu.sh. This is a SHARED, HOUSE-WIDE
+&quot;/&amp;. Rebuilt via ops/build_core_render.sh. This is a SHARED, HOUSE-WIDE
 fix (that file is not book-stack-specific) — any OTHER entity's menu.chtpm
 using a shell redirect inside action= now benefits too, not just book-stack.
 
 LESSON for whoever edits action= strings in ANY entity's menu.chtpm: if your
 embedded shell command needs `>`, `<`, `2>&1`, etc., remember these get
 XML-entity-encoded in the .chtpm source (`&gt;`/`&lt;`) — confirm the CURRENT
-decode_entities() in khtpm_entity_menu_render.c actually decodes whatever
+decode_entities() in khtpm_core_render.c actually decodes whatever
 entities your command needs before assuming a "correct-looking" encoded string
 will work at runtime. Test via the REAL UI trigger (actual menu click), not
 just by manually re-typing the decoded command by hand — a hand-typed test

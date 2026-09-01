@@ -19,7 +19,7 @@ Import this from a harness script that already knows its own house_root:
 
     h = Harness(house_root, feature_name="my-feature",
                 pals_dir_hint="xyzfs/users/<uuid>/home/livedesk/pals")
-    h.assert_zero_stray_processes("khtpm_entity_menu_render")
+    h.assert_zero_stray_processes("khtpm_core_render")
     ... launch the window yourself (feature-specific) ...
     h.send_ascii(relay_path, 50)          # digit '2'
     h.send_ascii(relay_path, 13)          # Enter

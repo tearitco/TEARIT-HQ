@@ -17,7 +17,7 @@ echo "-- network_browser_manager -> +x/network_browser_manager.+x"
 $CC -std=c11 -Wall -O2 -o "$SDIR/+x/network_browser_manager.+x" "$SDIR/network_browser_manager.c" && echo "OK network_browser_manager" || exit 1
 
 # real shared-source convention (khtpm-merge-how2.md's own "HOUSE
-# STANDARD" - copy, don't hand-fork) - same shape as build_entity_menu.sh
+# STANDARD" - copy, don't hand-fork) - same shape as build_core_render.sh
 SHARED="$(cd "$SDIR/../../&.widgits/_shared-lib" && pwd)"
 cp "$SHARED/khtpm_css_parser.c" "$SDIR/khtpm_css_parser.c"
 cp "$SHARED/khtpm_css_parser.h" "$SDIR/khtpm_css_parser.h"

@@ -76,7 +76,7 @@ typedef struct Elem {
     char classes[CSS_MAX_CLASSES][32];
     int n_classes;
     char label[256];
-    /* REAL FIX 2026-08-16 (found live building khtpm_entity_menu_render.c,
+    /* REAL FIX 2026-08-16 (found live building khtpm_core_render.c,
      * Stage 2c proof): 64 was too small for a real objects.pdl-style
      * action= shell command (e.g. ava's real "Play" action is 200+
      * chars) - silently truncated mid-string, producing a malformed

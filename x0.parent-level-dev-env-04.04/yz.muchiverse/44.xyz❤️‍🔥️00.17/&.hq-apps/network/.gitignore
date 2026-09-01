@@ -1,5 +1,5 @@
 # Real shared-source copies (build.sh's own `cp` step, matching
-# build_entity_menu.sh's convention) - regenerated from
+# build_core_render.sh's convention) - regenerated from
 # &.widgits/_shared-lib/ on every build, not hand-forked here.
 khtpm_render_core.c
 khtpm_css_parser.c

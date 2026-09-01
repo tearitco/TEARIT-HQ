@@ -39,7 +39,7 @@ gcc $CFLAGS -o "ops/+x/tp_test_send_click.+x" "ops/tp_test_send_click.c" -lX11 -
 gcc $CFLAGS -o "ops/+x/tp_test_send_click_abs.+x" "ops/tp_test_send_click_abs.c" -lX11 -lXtst
 gcc $CFLAGS -o "ops/+x/tp_find_window_by_pid.+x" "ops/tp_find_window_by_pid.c" -lX11
 # Real fix, 2026-08-29 - tp_find_window_by_pid.+x structurally cannot
-# work on ANY khtpm_entity_menu_render.c window (they're all
+# work on ANY khtpm_core_render.c window (they're all
 # override_redirect, so the WM never sets _NET_WM_PID). This reads the
 # renderer's own self-recorded window ID from nav_tab_register()
 # instead - see tp_find_window_by_navtab.c's own header for the full
@@ -69,7 +69,7 @@ gcc $CFLAGS -o "ops/+x/tp_debug_click_watcher.+x" "ops/tp_debug_click_watcher.c"
 # was silently deployed under the khtpm_show_choices.+x name and never
 # actually produced a visible window - a real, separate, pre-existing
 # bug). 7th real consumer of &.widgits/_shared-lib/khtpm_render_core.c,
-# same shared-source-copy convention as build_entity_menu.sh.
+# same shared-source-copy convention as build_core_render.sh.
 SHARED_LIB="$(cd "$SCRIPT_DIR/../_shared-lib" && pwd)"
 cp "$SHARED_LIB/khtpm_render_core.c" ops/khtpm_render_core.c
 cp "$SHARED_LIB/khtpm_css_parser.h" ops/khtpm_css_parser.h

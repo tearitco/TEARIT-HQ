@@ -45,7 +45,7 @@ Test Evidence:
   comments and REPRODUCE.md for the exact split)
 - manifest.txt, REPRODUCE.md, Marketing-20260827-yt-summary.txt
 - Zero stray processes confirmed before and after (pgrep checked for
-  khtpm_entity_menu_render, common_events_manager, screen-rec)
+  khtpm_core_render, common_events_manager, screen-rec)
 - No pre-existing real entity's files were touched; no disposable test
   entities were created either, since Section 2 reused already-captured
   real evidence instead of driving a fresh live GUI session this pass

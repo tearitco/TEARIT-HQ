@@ -88,7 +88,7 @@ Write-Host "OK +x/khtpm_hq_manager.+x"
 
 # ===== NEXT SCRIPT =====
 
-# build.ps1 - Windows twin of build_entity_menu.sh (*.livedesk-taskbar)
+# build.ps1 - Windows twin of build_core_render.sh (*.livedesk-taskbar)
 # ASCII only.
 
 $ErrorActionPreference = "Continue"
@@ -106,7 +106,7 @@ if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-# build_entity_menu.sh — build khtpm_entity_menu_render.c, Stage 2c PROOF
+# build_core_render.sh — build khtpm_core_render.c, Stage 2c PROOF
 # (ONE-entity test case, see local-2do-15.txt's own entry). Same real
 # shared-source convention as build_db_hq.sh - not invented.
 New-Item -ItemType Directory -Force -Path "+x" | Out-Null
@@ -142,11 +142,11 @@ if ((-not (Test-Path \""$OPS_BIN"\"))) {
 # khtpm_taskbar_manager.c/.h (already live in this ops/ dir, same real
 # link line build_db_hq.sh already uses) for ktb_init()/
 # ktb_quit_and_save() KtbState persistence.
-Write-Host "-- entity-menu renderer -> +x/khtpm_entity_menu_render.+x"
-& $CC @CFLAGS @X11_FLAGS -o +x/khtpm_entity_menu_render.+x \
-  khtpm_entity_menu_render.c khtpm_css_parser.c khtpm_taskbar_manager.c @LIBS
+Write-Host "-- entity-menu renderer -> +x/khtpm_core_render.+x"
+& $CC @CFLAGS @X11_FLAGS -o +x/khtpm_core_render.+x \
+  khtpm_core_render.c khtpm_css_parser.c khtpm_taskbar_manager.c @LIBS
 
-Write-Host "OK +x/khtpm_entity_menu_render.+x"
+Write-Host "OK +x/khtpm_core_render.+x"
 
 # ===== NEXT SCRIPT =====
 

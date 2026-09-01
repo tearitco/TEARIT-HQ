@@ -29,7 +29,7 @@ Test Evidence:
   expected focus_nav/view_mode field, per the new required procedure — not a fixed sleep-and-hope). Frames 00
   and 05 (Scripting, before and after the round trip through Scratch/Blueprints) are byte-identical (md5).
 - snapshots/06-07_*.png: rendered text account of the evhq_draw_elem() bug and fix, referencing the actual code
-  comments already in khtpm_entity_menu_render.c — disclosed explicitly as a described/log account of today's
+  comments already in khtpm_core_render.c — disclosed explicitly as a described/log account of today's
   earlier debugging session, not a re-staged live repro (the pre-fix binary no longer exists to reproduce
   byte-for-byte).
 - snapshots/08_*.png: Task 1-3 re-verification, disposable switch + disposable PAL executed directly via
@@ -40,7 +40,7 @@ Test Evidence:
   fresh run of the existing common_events_manager_test_harness.sh, 8/8 checks passed.
 - manifest.txt, REPRODUCE.md (exact commands run, including the real ASCII-code relay convention discovered
   this session: send the character's ASCII value, e.g. 50 for '2', not the literal digit)
-- Zero stray processes confirmed before and after (pgrep checked for khtpm_entity_menu_render.+x,
+- Zero stray processes confirmed before and after (pgrep checked for khtpm_core_render.+x,
   common_events_manager.+x, and prisc+x)
 - All test entities/events/switches were disposable (demo2-task5 under /tmp/v2demo/event_pkg,
   common_events/test_autorun_event, common_events/test_parallel_event, v2demo_switch). cursword's own real

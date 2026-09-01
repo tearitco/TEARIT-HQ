@@ -4,7 +4,7 @@
      the first of 3 (taskbar-settings -> ai-cell -> the taskbar itself,
      smallest/most-isolated first per direct choice). Uses the SAME
      khtpm_render_core.c (5th real consumer: db-hq, events-hq, chat-hai,
-     khtpm_entity_menu_render.c, this) and khtpm_css_parser.c every other
+     khtpm_core_render.c, this) and khtpm_css_parser.c every other
      khtpm app already shares.
 
      12 swatches, each a static <item> with its own class (design

@@ -312,7 +312,7 @@ END
 # same convention switches.txt/variables.txt already use.
 #
 # Picker field-count ceiling (verified by reading EvhqCommandDef in
-# khtpm_entity_menu_render.c before assuming anything): the picker UI
+# khtpm_core_render.c before assuming anything): the picker UI
 # has exactly TWO real text fields (field1/field2 -> param_names[0]/[1]
 # positionally, see evhq_submit_picker()) even though the compiler side
 # (CommandDef/PARAMS parsing) allows up to MAX_FIELDS=4 param names -
@@ -326,7 +326,7 @@ END
 # name is completely valid, not a hack. This is the same "normalize
 # before substitution" shape control_switch's own ON/OFF->1/0 handling
 # already established, just via a compound field instead of a
-# hardcoded string map - no khtpm_entity_menu_render.c changes needed
+# hardcoded string map - no khtpm_core_render.c changes needed
 # or made for these commands.
 #
 # Add/remove and learn/forget mode fields use SELECT2 with literal

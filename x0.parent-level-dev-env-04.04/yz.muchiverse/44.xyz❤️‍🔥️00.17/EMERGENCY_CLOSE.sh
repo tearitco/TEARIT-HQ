@@ -28,7 +28,7 @@ fi
 # Fallback: find tp_desktop_window and khtpm subwindow processes if file was empty
 if [ ! -s "$PIDFILE" ]; then
     echo "livedesk_open.txt empty, searching for entity and subwindow processes..."
-    (pgrep -f "tp_desktop_window"; pgrep -f "khtpm_open_hai_render"; pgrep -f "khtpm_hq_render"; pgrep -f "khtpm_entity_menu_render") > "$PIDFILE" 2>/dev/null
+    (pgrep -f "tp_desktop_window"; pgrep -f "khtpm_open_hai_render"; pgrep -f "khtpm_hq_render"; pgrep -f "khtpm_core_render") > "$PIDFILE" 2>/dev/null
     sort -u "$PIDFILE" -o "$PIDFILE"  # Remove duplicates
 fi
 

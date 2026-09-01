@@ -10,7 +10,7 @@
      compiled, independently-testable manager (stats_hq_manager.c, see
      its own header comment) owns the actual session-stats scan and
      publishes into #.desktop/stats_hq_common_events.state.txt, which
-     khtpm_entity_menu_render.c's own g_is_stats_hq mode (2026-08-25)
+     khtpm_core_render.c's own g_is_stats_hq mode (2026-08-25)
      reads via the SAME dbhq_load_common_events()/dbhq_inject_sidebar_
      items() machinery db-hq's real Common Events feature already
      proves out live - not a second bespoke rendering path.
@@ -31,7 +31,7 @@
   <!-- REAL FIX 2026-08-25 (direct live report: "i was hoping it was more
        human readable like before") - restored the OLD template's real
        multi-line itemized layout (id= per field, populated individually
-       by stats_populate_panel() - see khtpm_entity_menu_render.c's own
+       by stats_populate_panel() - see khtpm_core_render.c's own
        g_is_stats_hq branch), instead of one condensed summary line. -->
   <panel id="stats-panel" class="settings-block">
     <title id="stat-title" class="block-title" label="Session Stats"/>

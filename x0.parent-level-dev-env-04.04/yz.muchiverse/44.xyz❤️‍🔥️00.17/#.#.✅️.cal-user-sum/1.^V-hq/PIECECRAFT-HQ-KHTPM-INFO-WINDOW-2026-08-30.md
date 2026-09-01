@@ -64,7 +64,7 @@ possessed_id=none
 
 This implementation follows the real house standard (§J.2, confirmed via the wraith-alpha reference):
 
-1. **Shared generic renderer** (future: `khtpm_entity_menu_render.c` with new "piececraft-hq" mode)
+1. **Shared generic renderer** (future: `khtpm_core_render.c` with new "piececraft-hq" mode)
 2. **Separate manager binary** (complete: `pc_hq_status_manager.c`)
 3. **State file contract** (complete: key=value format in session dir)
 4. **Window positioning** (complete: below-game-window via XGetGeometry)
@@ -89,11 +89,11 @@ The task explicitly marked this as "future work, out of scope." The current v1 o
 
 ### 3. Full khtpm Renderer Integration
 The manager publishes state correctly, but the window display is currently a simple bash tail (xterm or console). Real khtpm styling (colors, layout, nav indices, click handling) requires:
-- Adding a new mode to `khtpm_entity_menu_render.c` (the shared binary)
+- Adding a new mode to `khtpm_core_render.c` (the shared binary)
 - Creating `.chtpm` layout + `.css` styling files
 - Wiring module launch into piececraft-hq's own layout
 
-**Recommendation for Phase 2**: Port the window-positioning logic into `khtpm_entity_menu_render.c`'s existing db-hq/events-hq mode handling (minimal change, same single-binary pattern).
+**Recommendation for Phase 2**: Port the window-positioning logic into `khtpm_core_render.c`'s existing db-hq/events-hq mode handling (minimal change, same single-binary pattern).
 
 ## Files Changed
 
@@ -158,7 +158,7 @@ The manager+state-file pattern is better fit and cleaner separation. The actual 
 
 ## Next Steps (Phase 2+)
 
-1. **Real khtpm renderer mode**: Add to `khtpm_entity_menu_render.c`'s existing mode system (g_is_piececraft_hq flag, same as g_is_db_hq)
+1. **Real khtpm renderer mode**: Add to `khtpm_core_render.c`'s existing mode system (g_is_piececraft_hq flag, same as g_is_db_hq)
 2. **Layout files**: Create piececraft-hq.chtpm + .css (trivial copy from db-hq, customize for piececraft fields)
 3. **Module wiring**: Launch via `<module>` tag in the layout (same pattern palettes/bookmarks already use)
 4. **Interact system**: Phase 2+ task, explicitly out of scope for v1
@@ -166,9 +166,9 @@ The manager+state-file pattern is better fit and cleaner separation. The actual 
 ## Real Code Sources This Session
 
 - Template: `&.widgits/palettes/ops/palettes_manager.c` (real manager pattern)
-- Reference: `khtpm_entity_menu_render.c` (window mode handling - future port target)
+- Reference: `khtpm_core_render.c` (window mode handling - future port target)
 - Reference: `&.widgits/board-viewer/button.sh` (widget launch/cleanup pattern)
-- Window positioning: `draw_popup_win()` in `khtpm_entity_menu_render.c` (XGetGeometry technique)
+- Window positioning: `draw_popup_win()` in `khtpm_core_render.c` (XGetGeometry technique)
 
 ## Honest Status Summary
 

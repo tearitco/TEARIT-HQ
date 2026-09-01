@@ -140,7 +140,7 @@ static XImage *ximg = NULL; /* rebuilt whenever g_frame_w/h changes */
  * two separate, non-atomic operations straight onto the live window -
  * visible on every single frame-pulse update, unlike every other
  * WM-managed khtpm app (db-hq/events-hq/chat-hai in
- * khtpm_entity_menu_render.c), which all composite into an offscreen
+ * khtpm_core_render.c), which all composite into an offscreen
  * Pixmap first and blit the WHOLE frame in one atomic XCopyArea. Same
  * real fix here: `buf` is the offscreen composite target now: */
 static Pixmap buf = 0;
@@ -156,7 +156,7 @@ static int g_drag_last_x = 0, g_drag_last_y = 0;
 static int g_win_x = 100, g_win_y = 90;
 
 /* REAL, SAME CONVENTION as the khtpm -hq family's own window position
- * PDL (khtpm_entity_menu_render.c's dbhq_load_font_scale() reads
+ * PDL (khtpm_core_render.c's dbhq_load_font_scale() reads
  * window_x/window_y from #.desktop/hq_ui.pdl at the khtpm house root,
  * same flat key=value shape, shared across db-hq/events-hq/chat-hai -
  * direct live ask 2026-08-17: "would be nice if eventually we could
@@ -184,7 +184,7 @@ static void load_window_pos_pdl(void) {
         else if (strcmp(line, "window_y") == 0) g_win_y = atoi(val);
     }
     fclose(f);
-    if (g_win_y < 90) g_win_y = 90; /* same real "below the taskbar header" floor as WM_MANAGED_DRAG_MIN_Y in khtpm_entity_menu_render.c */
+    if (g_win_y < 90) g_win_y = 90; /* same real "below the taskbar header" floor as WM_MANAGED_DRAG_MIN_Y in khtpm_core_render.c */
 }
 
 static unsigned long alloc_pixel(const char *hex) {
@@ -480,7 +480,7 @@ static void load_frame(void) {
 /* REAL, hand-drawn chrome bar (2026-08-17 follow-up - see this file's
  * own top-of-file comment) - the real, visible "this is the converted
  * window" signal, same style already proven on db-hq/events-hq/
- * chat-hai this session (khtpm_entity_menu_render.c's own WM-managed
+ * chat-hai this session (khtpm_core_render.c's own WM-managed
  * chrome). Title text is static (no dynamic status here, this window
  * has nothing else to report) - real content starts right below it.
  *
@@ -609,7 +609,7 @@ int main(int argc, char **argv) {
 
     /* REAL FOLLOW-UP (2026-08-17) - own chrome bar instead of the native
      * WM titlebar, same real WM-managed-but-undecorated shape already
-     * proven on db-hq/events-hq/chat-hai (khtpm_entity_menu_render.c) -
+     * proven on db-hq/events-hq/chat-hai (khtpm_core_render.c) -
      * override_redirect stays OFF (normal WM-managed window, normal
      * alt-tab/taskbar presence), only the DECORATIONS are turned off via
      * _MOTIF_WM_HINTS, same real mechanism that family already uses. */
@@ -706,7 +706,7 @@ int main(int argc, char **argv) {
                     int dx = ev.xmotion.x_root - g_drag_last_x;
                     int dy = ev.xmotion.y_root - g_drag_last_y;
                     g_win_x += dx; g_win_y += dy;
-                    if (g_win_y < 90) g_win_y = 90; /* same real clamp as khtpm_entity_menu_render.c's WM_MANAGED_DRAG_MIN_Y - never gets stuck above the taskbar header */
+                    if (g_win_y < 90) g_win_y = 90; /* same real clamp as khtpm_core_render.c's WM_MANAGED_DRAG_MIN_Y - never gets stuck above the taskbar header */
                     XMoveWindow(dpy, win, g_win_x, g_win_y);
                     g_drag_last_x = ev.xmotion.x_root;
                     g_drag_last_y = ev.xmotion.y_root;

@@ -16,7 +16,7 @@
 #   EZ_PKG_NAME=x EZ_PKG_DIR=y sh button.sh run  — manual/test override
 # REAL §5d.11 (2026-08-16, khtpm-merge-how2.md §5d) - the real, literal
 # binary merge: events-hq now runs through the SAME compiled
-# khtpm_entity_menu_render.+x entity-menu/taskbar-settings/db-hq
+# khtpm_core_render.+x entity-menu/taskbar-settings/db-hq
 # already use, mode-selected by `<window class="events-hq-window">`
 # (its own real, pre-existing class attribute - no new one needed),
 # genuinely one binary, not four, verified live before this launcher
@@ -29,11 +29,11 @@
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OPS_DIR="$HERE/../../*.monads/*.livedesk-taskbar/ops"
-BIN="$OPS_DIR/+x/khtpm_entity_menu_render.+x"
+BIN="$OPS_DIR/+x/khtpm_core_render.+x"
 CHTPM="$HERE/pieces/dashboard.chtpm"
 
 if [ ! -x "$BIN" ]; then
-    (cd "$OPS_DIR" && sh build_entity_menu.sh) || true
+    (cd "$OPS_DIR" && sh build_core_render.sh) || true
 fi
 if [ ! -x "$BIN" ]; then
     echo "events-hq: build failed, missing $BIN" >&2
@@ -76,7 +76,7 @@ mkdir -p "$PKG_DIR"
 # each one's actual argv (via /proc/<pid>/cmdline, NUL-separated) for
 # an EXACT match on PKG_DIR - no regex, no escaping, can't misfire.
 same_entity_pids() {
-    for pid in $(pgrep -f "khtpm_entity_menu_render\.\+x" 2>/dev/null || true); do
+    for pid in $(pgrep -f "khtpm_core_render\.\+x" 2>/dev/null || true); do
         if [ -r "/proc/$pid/cmdline" ]; then
             if tr '\0' '\n' < "/proc/$pid/cmdline" 2>/dev/null | grep -qxF "$PKG_DIR"; then
                 echo "$pid"

@@ -3,10 +3,10 @@
  * the window manager never sets - these are override_redirect windows
  * that deliberately bypass the WM, confirmed 2026-08-29 while testing
  * armed-brush RMMV placement: tp_find_window_by_pid.+x structurally
- * cannot work on ANY khtpm_entity_menu_render.c window, house-wide, not
+ * cannot work on ANY khtpm_core_render.c window, house-wide, not
  * just this one).
  *
- * Real fix: khtpm_entity_menu_render.c's own nav_tab_register() already
+ * Real fix: khtpm_core_render.c's own nav_tab_register() already
  * writes "#.desktop/nav_tab/<pid>" as "<ordinal> <xid-hex> <title>" for
  * every db-hq/events-hq/chat-hai window (palettes runs in db-hq mode,
  * so this covers it) - the real X window ID, self-recorded by the

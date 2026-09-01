@@ -254,7 +254,7 @@ EOSTATE
         # see that file's own blit_overlay()/MAP3D_MARKER header
         # comment), genuinely independent of whether any real WINDOW
         # (x11_mirror/gl_mirror) ever displays the result - a
-        # real caller (e.g. khtpm_entity_menu_render.c's own
+        # real caller (e.g. khtpm_core_render.c's own
         # run_pchq_board_mode()) can read rgb_frame.raw directly with
         # zero window of its own needed here. NO_GL was wrongly gating
         # BOTH the window AND the compositor as one unit - its own name

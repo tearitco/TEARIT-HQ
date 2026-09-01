@@ -12,7 +12,7 @@ Settings already use, instead of piececraft-xyz's own real `chtpm_parser_pal`/
 `!.HOUSE_STDS.md` §J - piececraft-xyz/board-viewer run on a completely
 separate, unrelated engine (`chtpm_parser_pal.c`/`prisc+x`) from the
 `khtpm_*` family (db-hq/events-hq/chat-hai/Settings, merged into
-`khtpm_entity_menu_render.c`). They only share the `.chtpm` file
+`khtpm_core_render.c`). They only share the `.chtpm` file
 extension, nothing else. A real merge between the two families is
 explicitly documented as "a real architectural decision for a future
 session, not something to attempt inside a feature-shipping task" -

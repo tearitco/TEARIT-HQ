@@ -57,7 +57,7 @@ REGISTRY=""
 
 pat_list='
 khtpm_hq_render\.\+x
-khtpm_entity_menu_render\.\+x
+khtpm_core_render\.\+x
 khtpm_hq_manager\.\+x
 khtpm_events_hq_manager\.\+x
 khtpm_open_hai_manager\.\+x

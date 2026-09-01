@@ -1,5 +1,5 @@
 #!/bin/sh
-# build_entity_menu.sh — build khtpm_entity_menu_render.c, Stage 2c PROOF
+# build_core_render.sh — build khtpm_core_render.c, Stage 2c PROOF
 # (ONE-entity test case, see local-2do-15.txt's own entry). Same real
 # shared-source convention as build_db_hq.sh - not invented.
 set -e
@@ -41,8 +41,8 @@ fi
 # khtpm_taskbar_manager.c/.h (already live in this ops/ dir, same real
 # link line build_db_hq.sh already uses) for ktb_init()/
 # ktb_quit_and_save() KtbState persistence.
-echo "-- entity-menu renderer -> +x/khtpm_entity_menu_render.+x"
-$CC $CFLAGS $X11_FLAGS -o +x/khtpm_entity_menu_render.+x \
-  khtpm_entity_menu_render.c khtpm_css_parser.c khtpm_taskbar_manager.c $LIBS
+echo "-- entity-menu renderer -> +x/khtpm_core_render.+x"
+$CC $CFLAGS $X11_FLAGS -o +x/khtpm_core_render.+x \
+  khtpm_core_render.c khtpm_css_parser.c khtpm_taskbar_manager.c $LIBS
 
-echo "OK +x/khtpm_entity_menu_render.+x"
+echo "OK +x/khtpm_core_render.+x"

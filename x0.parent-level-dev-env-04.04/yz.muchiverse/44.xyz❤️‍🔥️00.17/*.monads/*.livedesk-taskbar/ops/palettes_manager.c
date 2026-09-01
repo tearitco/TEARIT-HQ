@@ -8,14 +8,14 @@
  * compose_emojis()/compose_elements()/emit_tiles_matrix() entirely):
  * reads the real emoji pallet list or chemistry CSV for whichever
  * category this instance serves (argv[3], from <module args="..."/> -
- * see khtpm_entity_menu_render.c's own apply_attr() "args" branch and
+ * see khtpm_core_render.c's own apply_attr() "args" branch and
  * dbhq_launch_module()'s extra_arg param, both added same day for this),
  * pre-generates any missing emoji sprite.csv tiles (same emoji_gen_atlas/
  * emoji_xtract pipeline the bash version shelled out to - still shelled
  * out to here, real compiled tools, not reinvented), and publishes one
  * `emoji<TAB>label<TAB>sprite_dir_or_empty` line per tile into
  * palettes-<category>_state.txt. The renderer's own dbhq_load_palette_
- * state()/dbhq_inject_palette_tiles() (khtpm_entity_menu_render.c,
+ * state()/dbhq_inject_palette_tiles() (khtpm_core_render.c,
  * 2026-08-25) reads that and builds the real <row>/<button> grid at
  * runtime - no bash XML generation, no awk row-chunking. */
 #define _DEFAULT_SOURCE

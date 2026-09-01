@@ -25,19 +25,19 @@ HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 
 # REAL Stage 5-style single-binary merge (2026-08-25, matching db-hq's
 # own 2026-08-16 §5d.10 migration exactly): stats-hq now runs through
-# the SAME compiled khtpm_entity_menu_render.+x db-hq/events-hq/chat-hai
+# the SAME compiled khtpm_core_render.+x db-hq/events-hq/chat-hai
 # already use, mode-selected by `<window class="stats-hq">` in
 # dashboard.chtpm. khtpm_hq_render.c/build_db_hq.sh are kept only as
 # stats-hq's own former reference (au11-hq/khtpm-merge-how2.md's own
 # "kept live for stats-hq" note is now stale - see TPMOS-COMPLIANCE-
 # DEBT.md for the real, current status).
 OPS_DIR="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
-BIN="$OPS_DIR/+x/khtpm_entity_menu_render.+x"
+BIN="$OPS_DIR/+x/khtpm_core_render.+x"
 MGR_BIN="$OPS_DIR/+x/stats_hq_manager.+x"
 CHTPM="$HOUSE_ROOT/&.hq-apps/stats-hq/dashboard.chtpm"
 
 if [ ! -x "$BIN" ]; then
-    (cd "$OPS_DIR" && sh build_entity_menu.sh) || true
+    (cd "$OPS_DIR" && sh build_core_render.sh) || true
 fi
 if [ ! -x "$BIN" ]; then
     echo "open_stats_hq: build failed, missing $BIN" >&2
@@ -55,10 +55,10 @@ fi
 # everywhere under `set -e`, same real precedent open_db_hq.sh's own
 # comment documents (_.0.aigent-testing-k9.txt "SCOPE ADDENDUM
 # 2026-08-13"). Matches by the real chtpm PATH too, not just the binary
-# name, since khtpm_entity_menu_render.+x is a real, genuinely shared
+# name, since khtpm_core_render.+x is a real, genuinely shared
 # binary - a bare binary-name match would incorrectly kill/confuse
 # itself with any other legitimately-open mode using the same exe.
-stats_hq_pids() { pgrep -f "khtpm_entity_menu_render\.\+x .*stats-hq/dashboard\.chtpm" 2>/dev/null || true; }
+stats_hq_pids() { pgrep -f "khtpm_core_render\.\+x .*stats-hq/dashboard\.chtpm" 2>/dev/null || true; }
 stats_hq_mgr_pids() { pgrep -f "stats_hq_manager\.\+x" 2>/dev/null || true; }
 
 pids="$(stats_hq_pids) $(stats_hq_mgr_pids)"

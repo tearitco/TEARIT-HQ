@@ -15,7 +15,7 @@
 #     chtpm, launched by the renderer): owns reading the emoji pallet /
 #     chemistry CSV and publishing palettes-<category>_state.txt,
 #     including sprite pre-generation.
-#   - khtpm_entity_menu_render.c: reads that state file, injects real
+#   - khtpm_core_render.c: reads that state file, injects real
 #     <row>/<button> tile grids at runtime (dbhq_inject_palette_tiles()).
 #
 # Real tiles: emojis (starter grid, palettes-emojis.chtpm) and elements
@@ -105,9 +105,9 @@ launch_cat() {  # launch_cat <house> <key>
         case "$_cl" in *"$_CHTPM"*) kill "${p#/proc/}" 2>/dev/null || true ;; esac
     done
     sleep 0.2
-    BIN=$(echo "$_h"/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity_menu_render.+x)
+    BIN=$(echo "$_h"/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x)
     if [ ! -x "$BIN" ]; then
-        (cd "$_h/*.monads/*.livedesk-taskbar/ops" && sh build_entity_menu.sh) || true
+        (cd "$_h/*.monads/*.livedesk-taskbar/ops" && sh build_core_render.sh) || true
     fi
     [ -x "$BIN" ] || { echo "palettes: renderer missing: $BIN" >&2; exit 1; }
     MGRBIN="$_h/*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x"
@@ -185,7 +185,7 @@ arm_rmmv() {
     "$TP_OPS/tp_set_brush_rmmv.+x" "$STATE_DIR" "$_sdir" "$_key" "$_cat" "$_label" >/dev/null 2>&1 || true
     # REAL, NEW 2026-08-29, direct live report ("nothing happened when i
     # tried it"): the picker's own hint text now shows this line while
-    # armed (khtpm_entity_menu_render.c polls rmmv_armed.txt).
+    # armed (khtpm_core_render.c polls rmmv_armed.txt).
     #
     # REAL FIX HISTORY, same day - this went through 3 real designs
     # before landing on the right one:
@@ -193,7 +193,7 @@ arm_rmmv() {
     #      real hardware clicks never delivered under this Mutter/
     #      XWayland setup (a real, known, still-open upstream bug).
     #   2. In-process XGrabPointer + XQueryPointer polling
-    #      (khtpm_entity_menu_render.c's own g_pal_rmmv_armed) - fixed
+    #      (khtpm_core_render.c's own g_pal_rmmv_armed) - fixed
     #      synthetic clicks, NOT real ones either.
     #   3. THE REAL FIX (direct instruction: "maybe we do need a screen
     #      wide transparent click capture surface?") - confirmed via a

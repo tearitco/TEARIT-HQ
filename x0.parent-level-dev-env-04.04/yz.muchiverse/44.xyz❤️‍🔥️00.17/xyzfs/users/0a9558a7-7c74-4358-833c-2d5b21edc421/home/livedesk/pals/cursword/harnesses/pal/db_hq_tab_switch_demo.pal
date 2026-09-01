@@ -12,7 +12,7 @@
 # (db-hq) against the NEW db_hq_current_tab.txt sibling file (the
 # HARNESS-AUTHORING-GUIDE.md 3a fix-1 pattern, now ported to db-hq's
 # own frame history exactly as events-hq got it - see
-# dbhq_append_frame_history() in khtpm_entity_menu_render.c).
+# dbhq_append_frame_history() in khtpm_core_render.c).
 #
 # DISPOSABLE-entity note (honest): db-hq is deliberately
 # single-instance-per-house with NO entity argument in its launch

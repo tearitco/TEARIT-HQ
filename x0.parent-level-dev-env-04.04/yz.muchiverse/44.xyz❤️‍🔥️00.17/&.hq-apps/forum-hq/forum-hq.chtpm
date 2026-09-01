@@ -1,0 +1,30 @@
+<!-- forum-hq.chtpm - REAL, NEW 2026-08-31, real HQ-style window shell
+     for the network cell's "Forum" row (NETWORK-CELL-HQ-WINDOWS-
+     DESIGN.md §12). Same real mechanism as irc-chat-hq.chtpm's own
+     header comment - "forum-window" is a genuinely new class, falls
+     through to the generic sidebar+panel+button+text renderer via the
+     SAME shared khtpm_core_render.+x, zero new C code.
+
+     Real content is STATIC PLACEHOLDER TEXT ONLY (no wiring yet). Real
+     shape (tab sidebar + feed panel + compose box) matches
+     041.pal-forum's own real data schema (POST|post_id|user_id|ts|
+     text|image_id) and real ops (forum_post.c, forum_compute_feed.c,
+     forum_like.c, forum_retweet.c, forum_follow.c, forum_dm.c) - see
+     §12's own real wiring plan for what each element dispatches to
+     once wired. -->
+<window class="database-window forum-window">
+  <sidebar id="sidebar" class="sidebar">
+    <item class="data-item active" label="Home"/>
+    <item class="data-item" label="Following"/>
+    <item class="data-item" label="Notifications"/>
+    <item class="data-item" label="DMs"/>
+  </sidebar>
+  <panel id="panel" class="panel">
+    <text class="block-title" label="Home"/>
+    <text id="compose" class="composer-text" label="&gt; what's happening?"/>
+    <button class="btn-primary" label="Post"/>
+    <text label=" "/>
+    <text label="(feed loads here - forum_compute_feed.c)"/>
+    <text label="(Like / Retweet buttons per post - forum_like.c / forum_retweet.c)"/>
+  </panel>
+</window>

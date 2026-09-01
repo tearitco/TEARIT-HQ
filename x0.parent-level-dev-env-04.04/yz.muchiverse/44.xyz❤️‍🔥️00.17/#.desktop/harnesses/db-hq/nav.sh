@@ -1,5 +1,5 @@
 #!/bin/bash
-# nav.sh - agent history harness for db-hq (khtpm_entity_menu_render.c,
+# nav.sh - agent history harness for db-hq (khtpm_core_render.c,
 # the merged binary - the old standalone khtpm_hq_render.c was archived
 # during the manager rebuild), same bare-decimal-ASCII-per-line contract
 # as #.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh (reviewed before
@@ -8,7 +8,7 @@
 # history file is #.desktop/db_hq_history.txt (renamed 2026-08-25 from
 # db_hq_agent_relay.txt - same append-only/cursor-based reader as always,
 # only the name changed), consumed by
-# poll_agent_history()/dispatch_relay_code() in khtpm_entity_menu_render.c.
+# poll_agent_history()/dispatch_relay_code() in khtpm_core_render.c.
 # A line starting with '#' is an audit comment - it advances the read
 # cursor but is never dispatched as a command.
 #

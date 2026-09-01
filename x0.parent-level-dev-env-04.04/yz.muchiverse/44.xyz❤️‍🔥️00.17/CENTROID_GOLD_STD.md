@@ -99,7 +99,7 @@ forward in any form.**
 Built to solve the real problem Stage 1/2 never could: a genuinely
 native-looking, styled, interactive window (db-hq, chat-hai, palettes,
 bookmarks, stats-hq, entity-menu popups — all one real, merged binary,
-`khtpm_entity_menu_render.c`). Real, working, real per-element
+`khtpm_core_render.c`). Real, working, real per-element
 `x/y/w/h` after a real `layout_pass()`, real `CssStyle` (background/
 foreground/border color+width — `khtpm_css_parser.c`'s own real
 `apply_style()`), real hit-testing, real nav badges. **This stage
@@ -114,7 +114,7 @@ real lessons, and two real regressions crept in as a direct result:
 2. Individual window modes started writing their OWN business logic
    directly into the shared parser/renderer file
    (`dbhq_load_actors()` — real PDL data, but loaded inline in
-   `khtpm_entity_menu_render.c` itself, condemned in
+   `khtpm_core_render.c` itself, condemned in
    `TPMOS-COMPLIANCE-DEBT.md` §4 the same day this standard was
    written) instead of the real, already-proven-elsewhere manager
    pattern (`khtpm_hq_manager.c` for Common Events). **This is a real,
@@ -154,7 +154,7 @@ parser, zero new IR to invent.
 1. **Author one real `.chtpm` + one real `.css`, and actually PARSE
    them through the real layout pipeline** (`parse_chtpm()`-equivalent
    + `layout_pass()`/`css_layout_pass()` + CSS application — the same
-   pipeline `khtpm_entity_menu_render.c` itself uses) to build the
+   pipeline `khtpm_core_render.c` itself uses) to build the
    Elem tree. khtpm's own tag vocabulary (`window`/`sidebar`/`panel`/
    `button`/`text`/`row`) — not a new vocabulary, not chtpm_parser_
    pal's ASCII vocabulary. **CORRECTED 2026-08-31, direct instruction
@@ -205,7 +205,7 @@ parser, zero new IR to invent.
    receipt.txt` — a renderer's own output dimensions/checksum belong
    in a real, adjacent receipt file, not assumed/hardcoded by whatever
    reads it next.
-7. **The shared renderer file (`khtpm_entity_menu_render.c`) never
+7. **The shared renderer file (`khtpm_core_render.c`) never
    gains a new `g_is_<project>` global or a new per-project `strcmp`
    branch at a dispatch site, ever again.** ADDED 2026-08-31, direct
    correction caught live while building this doc's own first proof

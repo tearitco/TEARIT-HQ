@@ -20,7 +20,7 @@ fi
 # Fallback: find tp_desktop_window processes if file was empty
 if [ ! -s "$PIDFILE" ]; then
     echo "livedesk_open.txt empty, searching for tp_desktop_window processes..."
-    (pgrep -f "tp_desktop_window"; pgrep -f "khtpm_entity_menu_render") > "$PIDFILE" 2>/dev/null
+    (pgrep -f "tp_desktop_window"; pgrep -f "khtpm_core_render") > "$PIDFILE" 2>/dev/null
     sort -u "$PIDFILE" -o "$PIDFILE"
 fi
 

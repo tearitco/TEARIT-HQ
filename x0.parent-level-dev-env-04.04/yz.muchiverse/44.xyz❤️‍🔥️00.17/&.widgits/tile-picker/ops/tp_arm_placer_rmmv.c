@@ -9,7 +9,7 @@
  *      -/issues/642) - real hardware pointer events are never
  *      delivered to an XGrabPointer-holding XWayland client, only
  *      synthetic XTest-injected ones.
- *   2. Switching to XQueryPointer polling (khtpm_entity_menu_render.c's
+ *   2. Switching to XQueryPointer polling (khtpm_core_render.c's
  *      own dbhq_rmmv_poll_pointer()) fixed synthetic clicks but NOT
  *      real ones either - direct, decisive live evidence from a real,
  *      standalone diagnostic tool built for exactly this
@@ -194,7 +194,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < n_wins; i++) XDestroyWindow(dpy, wins[i]);
     XCloseDisplay(dpy);
 
-    /* Real ledger-write, same convention khtpm_entity_menu_render.c's
+    /* Real ledger-write, same convention khtpm_core_render.c's
      * own dbhq_rmmv_handle_desktop_click() uses - tp_place_desktop_
      * rmmv.+x reads its own click position straight from this file
      * (no TP_INITIAL_X/Y env vars anymore, see its own header comment

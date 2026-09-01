@@ -11,7 +11,7 @@
      commands as-is, which contain literal " characters (for "$0"-style
      var quoting inside the sh -c '...' wrapper) - since this parser only
      supports double-quote-delimited attributes with no entity decoding
-     built in elsewhere in this house, khtpm_entity_menu_render.c's own
+     built in elsewhere in this house, khtpm_core_render.c's own
      apply_attr() decodes &quot;/&amp; for the action attribute
      specifically (real, minimal XML entity decoding, not a made-up
      scheme - only the 2 entities actually needed here). Emoji in the

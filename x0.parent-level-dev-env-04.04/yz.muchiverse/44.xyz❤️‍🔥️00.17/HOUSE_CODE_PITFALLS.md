@@ -218,7 +218,7 @@ easy to reach for `xdotool`/screenshots out of habit instead:
 
 ## 11. Don't add a new mode's data-loading logic INSIDE the shared parser/renderer file - it creates reference drift
 
-**Real, live example:** `khtpm_entity_menu_render.c`'s own
+**Real, live example:** `khtpm_core_render.c`'s own
 `dbhq_load_actors()` reads a real PDL data file
 (`&.widgits/db-hq/data/actors.pdl`) directly from inside the shared,
 "hard boundary" parser/renderer file - not hardcoded string literals
@@ -253,7 +253,7 @@ above) - it's the same class of "check the real convention before
 adding to the pile" discipline.
 
 **Real follow-up, not yet done:** an audit pass across
-`khtpm_entity_menu_render.c` (and other manager/ops files in this
+`khtpm_core_render.c` (and other manager/ops files in this
 house) to find every OTHER inline data-loading function that should
 have been a separate manager from the start - `dbhq_load_actors()` is
 the one already found; there may be siblings. See `au-31.md` for the

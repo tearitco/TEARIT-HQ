@@ -13,7 +13,7 @@
 #   - bookmarks_manager.c (real, compiled, independently-testable binary,
 #     `<module src="..."/>` in the chtpm, launched by the renderer):
 #     owns bookmarks.pdl -> bookmarks_state.txt publishing.
-#   - khtpm_entity_menu_render.c: reads bookmarks_state.txt, injects
+#   - khtpm_core_render.c: reads bookmarks_state.txt, injects
 #     real <button> rows at runtime (dbhq_inject_bookmark_items()).
 #
 # Direct user goals this still serves (2026-08-24, unchanged):
@@ -185,9 +185,9 @@ for p in /proc/[0-9]*; do
 done
 sleep 0.2
 
-BIN="$HOUSE/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity_menu_render.+x"
+BIN="$HOUSE/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
 if [ ! -x "$BIN" ]; then
-    (cd "$HOUSE/*.monads/*.livedesk-taskbar/ops" && sh build_entity_menu.sh) || true
+    (cd "$HOUSE/*.monads/*.livedesk-taskbar/ops" && sh build_core_render.sh) || true
 fi
 if [ ! -x "$BIN" ]; then
     echo "bm_menu: build failed, missing $BIN" >&2

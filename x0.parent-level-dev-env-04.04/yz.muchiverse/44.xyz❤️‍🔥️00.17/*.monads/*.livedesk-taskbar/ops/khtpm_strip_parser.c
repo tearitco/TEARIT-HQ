@@ -190,7 +190,7 @@ static SpState g_st;
  * predates that convention and never read the setting at all, a real
  * scope gap, not a partial/broken implementation. Same real default
  * (1 = two-step ON) and same real load-from-PDL shape
- * khtpm_entity_menu_render.c's own dbhq_load_font_scale() already
+ * khtpm_core_render.c's own dbhq_load_font_scale() already
  * uses - loaded once at startup, applied in apply_captured_mouse()'s
  * three real dispatch branches (hq_win/popup_win/win) below. */
 static int g_click_two_step = 1;
@@ -564,7 +564,7 @@ static int frame_changed_dirty(void) {
  * support this") - same real cheap-marker convention as
  * frame_changed_dirty() just above, applied to
  * #.desktop/livedesk_theme_changed.txt (written by
- * write_theme_opacity() in khtpm_entity_menu_render.c). Checked once
+ * write_theme_opacity() in khtpm_core_render.c). Checked once
  * per already-running tick in the main loop below - a single stat(),
  * real work (reload+reapply opacity to all 3 real windows) only runs
  * on an actual change. */
@@ -723,7 +723,7 @@ static void load_strip_offset(int *out_x, int *out_y) {
     fclose(f);
 }
 
-/* Same real non-fatal-X-error-handler shape khtpm_entity_menu_render.c's
+/* Same real non-fatal-X-error-handler shape khtpm_core_render.c's
  * evhq_nonfatal_x_error() already uses (see that function's own comment
  * and 402c812b) - installed in main() right after XOpenDisplay(), before
  * any window is made WM-managed. */

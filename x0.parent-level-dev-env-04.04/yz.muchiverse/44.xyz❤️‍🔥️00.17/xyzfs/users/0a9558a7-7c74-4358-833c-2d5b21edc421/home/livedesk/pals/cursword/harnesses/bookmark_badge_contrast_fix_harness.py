@@ -38,7 +38,7 @@ PAL_DIR = HOUSE_ROOT / "xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/li
 RELAY = HOUSE_ROOT / "#.desktop/db_hq_history.txt"
 DUMP_PNG = Path("/tmp/db-hq-frame.png")
 
-PROC_PATTERN = r"khtpm_entity_menu_render\.\+x.*bookmarks\.chtpm"
+PROC_PATTERN = r"khtpm_core_render\.\+x.*bookmarks\.chtpm"
 MGR_PATTERN = r"bookmarks_manager\.\+x.*cursword"
 
 

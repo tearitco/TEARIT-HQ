@@ -1,0 +1,36 @@
+<!-- irc-chat-hq.chtpm - REAL, NEW 2026-08-31, real HQ-style window shell
+     for the network cell's "IRC Chat" row (NETWORK-CELL-HQ-WINDOWS-
+     DESIGN.md §12), replacing opencode's wrong-direction gnome-terminal
+     wrapper. Rendered by the SAME shared khtpm_core_render.+x
+     every other HQ window uses - "irc-chat-window" is a genuinely NEW
+     class with no matching g_is_* check in that file, so it falls
+     through to the fully generic sidebar+panel+button+text renderer
+     with zero new C code (confirmed by reading khtpm_entity_menu_
+     render.c's own class-detection loop: no unrecognized-class error
+     path exists). Deliberately NOT class="chat-window" - that would
+     incorrectly trigger chat-hai's own persona-loop <module> launch,
+     the wrong app entirely.
+
+     Real content below is STATIC PLACEHOLDER TEXT ONLY - direct
+     instruction "we dont even need to wire up functionality yet, i
+     just wanted to get reasonable guis opening." The real shape (room
+     sidebar + message panel + compose row) matches 044.pal-chat-irc's
+     own real data/master_ledger.txt schema (MSG|id|room|user|ts|text)
+     and its real ops (chat_post_message.c, chat_replay_ledger.c,
+     chat_switch_user.c) - see §12's own real wiring plan for exactly
+     what each element below will dispatch to once wired. -->
+<window class="database-window db-hq">
+  <sidebar id="sidebar" class="sidebar">
+    <item class="data-item active" label="# general"/>
+    <item class="data-item" label="# random"/>
+    <item class="data-item" label="(rooms load here)"/>
+  </sidebar>
+  <panel id="panel" class="panel">
+    <text class="block-title" label="IRC Chat - # general"/>
+    <text label="(messages load here - chat_replay_ledger.c)"/>
+    <text label=" "/>
+    <text label="user: (current user - chat_switch_user.c)"/>
+    <text id="compose" class="composer-text" label="&gt; type a message..."/>
+    <button class="btn-primary" label="Send"/>
+  </panel>
+</window>

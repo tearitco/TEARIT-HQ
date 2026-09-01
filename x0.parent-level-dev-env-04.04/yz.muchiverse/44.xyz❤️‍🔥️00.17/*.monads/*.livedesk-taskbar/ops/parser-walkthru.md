@@ -1,4 +1,4 @@
-# parser-walkthru.md — `khtpm_entity_menu_render.c` post-refactor audit (2026-08-29)
+# parser-walkthru.md — `khtpm_core_render.c` post-refactor audit (2026-08-29)
 
 Real answers, grounded in the actual current file (9,950 lines, 461
 `static` functions), written after a direct user question: "why is
@@ -71,7 +71,7 @@ composer text field already gets (click-to-focus-for-typing isn't
    collapse this session actually fixed** (see §3) — every mode calls
    the SAME `draw_elem()`/`render_tree()` now.
 3. **Per-mode layout/input/content layer** — lives directly in
-   `khtpm_entity_menu_render.c`, one real family per mode
+   `khtpm_core_render.c`, one real family per mode
    (`dbhq_*`/`evhq_*`/`chai_*`), each owning its own `*_layout_pass()`,
    `*_handle_click()`, `*_handle_key()`, `*_activate_elem()`,
    `*_assign_nav_indices()`, `*_redraw_content()`. This is where the
@@ -83,7 +83,7 @@ the WHOLE per-mode layer for 4 shapes plus all the shared infra it
 `#include`s inline (`khtpm_draw_core.c`, `khtpm_css_parser.c`,
 `khtpm_taskbar_manager.c`) — it is not one flat blob of unstructured
 duplication, it's several real files concatenated at build time (see
-`build_entity_menu.sh`'s own `cp`+`$CC` lines).
+`build_core_render.sh`'s own `cp`+`$CC` lines).
 
 ---
 
@@ -238,17 +238,17 @@ confirmed clean:
 
 ```sh
 # Confirms the draw-loop collapse is still holding (should each be exactly 1)
-grep -c "^static void draw_elem\b" khtpm_entity_menu_render.c khtpm_draw_core.c
-grep -c "^static void render_tree\b" khtpm_entity_menu_render.c khtpm_draw_core.c
+grep -c "^static void draw_elem\b" khtpm_core_render.c khtpm_draw_core.c
+grep -c "^static void render_tree\b" khtpm_core_render.c khtpm_draw_core.c
 
 # Lists every per-mode function family and its current size, to catch
 # unexpected growth in one mode relative to the others
-grep -oE "^static [A-Za-z_ *]+ [a-z_]+\(" khtpm_entity_menu_render.c \
+grep -oE "^static [A-Za-z_ *]+ [a-z_]+\(" khtpm_core_render.c \
   | grep -oE "[a-z_]+\($" | sed 's/($//' | sed -E 's/^([a-z]+)_.*/\1/' \
   | sort | uniq -c | sort -rn
 
 # Finds any NEW hand-copied draw/render pair before it drifts the way
 # evhq_draw_elem() once did
 grep -n "^static void [a-z]*_draw_elem\|^static void [a-z]*_render_tree" \
-  khtpm_entity_menu_render.c
+  khtpm_core_render.c
 ```

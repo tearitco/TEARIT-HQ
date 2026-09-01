@@ -15,7 +15,7 @@
 #      kill only the processes THIS run spawned.
 #
 # Verification standard (from the handoff): zero stray
-# khtpm_entity_menu_render.+x processes before/after; disposable entity
+# khtpm_core_render.+x processes before/after; disposable entity
 # deleted when done; real relay/history files restored to their pre-test
 # git-clean state. Pre-existing live managers (cursword, /tmp/v2demo -
 # present before this run) are snapshotted and NEVER touched.
@@ -43,7 +43,7 @@ PAL_FILE="$PAL_DIR/visible_window_events_hq_demo.pal"
 PKG="/tmp/eventshw_visproof/event_pkg"          # DISPOSABLE entity pkg (ASCII-safe, like §3a-proof's /tmp rule)
 ENTITY="visproof-disposable"
 
-BIN="$HOUSE/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity_menu_render.+x"
+BIN="$HOUSE/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
 CHTPM="$HOUSE/&.widgits/events-hq/pieces/dashboard.chtpm"
 RELAY="$HOUSE/#.desktop/events_hq_history.txt"
 VMODE="$HOUSE/#.desktop/events_hq_view_mode.txt"
@@ -55,7 +55,7 @@ PRISC_CWD="$HOUSE/101.mutaclsym🧟‍♂️️+18.0G"
 LAUNCH_LOG="/tmp/eventshw_visproof_launch.log"
 BKPDIR="/tmp/eventshw_visproof_backup"
 
-PROC_PATTERN="khtpm_entity_menu_render\.\+x"
+PROC_PATTERN="khtpm_core_render\.\+x"
 MGR_PATTERN="khtpm_events_hq_manager\.\+x"
 
 RESULTS_DIR="$PAL_DIR/presentations/events-hq-visible-window-$(date '+%Y%m%d-%H%M%S')"

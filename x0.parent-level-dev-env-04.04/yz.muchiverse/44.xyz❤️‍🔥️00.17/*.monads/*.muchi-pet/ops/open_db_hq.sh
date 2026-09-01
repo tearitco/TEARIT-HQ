@@ -42,7 +42,7 @@ HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 
 # REAL Stage 5 §5d.10 (2026-08-16, khtpm-merge-how2.md §5d) - the real,
 # literal binary merge: db-hq now runs through the SAME compiled
-# khtpm_entity_menu_render.+x entity-menu/taskbar-settings already use,
+# khtpm_core_render.+x entity-menu/taskbar-settings already use,
 # mode-selected by `<window class="db-hq">` in dashboard.chtpm -
 # genuinely one binary, not three, verified live before this launcher
 # was retargeted. khtpm_hq_render.c/build_db_hq.sh are kept as real,
@@ -50,14 +50,14 @@ HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 # at. The manager (khtpm_hq_manager.+x) is UNCHANGED - still a separate
 # real process, still launched by the shell itself via the <module>
 # tag's own real fork()+execl() (dbhq_launch_module() in
-# khtpm_entity_menu_render.c, ported verbatim from the original).
+# khtpm_core_render.c, ported verbatim from the original).
 OPS_DIR="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
-BIN="$OPS_DIR/+x/khtpm_entity_menu_render.+x"
+BIN="$OPS_DIR/+x/khtpm_core_render.+x"
 MGR_BIN="$OPS_DIR/+x/khtpm_hq_manager.+x"
 CHTPM="$HOUSE_ROOT/&.hq-apps/db-hq/dashboard.chtpm"
 
 if [ ! -x "$BIN" ]; then
-    (cd "$OPS_DIR" && sh build_entity_menu.sh) || true
+    (cd "$OPS_DIR" && sh build_core_render.sh) || true
 fi
 if [ ! -x "$BIN" ]; then
     echo "open_db_hq: build failed, missing $BIN" >&2
@@ -78,13 +78,13 @@ mkdir -p "$HOUSE_ROOT/common_events"
 # command substitution silently aborts the whole script - lost real
 # time to this exact bug fixing open-hai's button.sh first).
 # REAL, deliberately specific - matches by the real chtpm PATH too, not
-# just the binary name, since khtpm_entity_menu_render.+x is a real,
+# just the binary name, since khtpm_core_render.+x is a real,
 # genuinely shared binary now (same real precedent as button_taskbar_
 # settings.sh's own settings_pids()) - a bare binary-name match here
 # would incorrectly kill/confuse itself with any other, unrelated,
 # legitimately-open entity right-click menu or taskbar-settings window
 # using the exact same executable.
-db_hq_pids() { pgrep -f "khtpm_entity_menu_render\.\+x .*dashboard\.chtpm" 2>/dev/null || true; }
+db_hq_pids() { pgrep -f "khtpm_core_render\.\+x .*dashboard\.chtpm" 2>/dev/null || true; }
 db_hq_mgr_pids() { pgrep -f "khtpm_hq_manager\.\+x" 2>/dev/null || true; }
 
 pids="$(db_hq_pids) $(db_hq_mgr_pids)"
