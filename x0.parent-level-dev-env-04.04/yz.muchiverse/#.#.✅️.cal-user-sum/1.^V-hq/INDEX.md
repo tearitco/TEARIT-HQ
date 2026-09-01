@@ -121,6 +121,34 @@ terminal tab) is still not started.
    and a real agent-relay (`network_browser_history.txt`) + frame-
    history (`network_browser_frame_history.txt`) pair for the X11
    renderer, matching every other khtpm app's own testing contract.
+   **SECOND CORRECTION, same day**: a follow-up attempt to give
+   network-browser a real khtpm mode INSIDE `khtpm_entity_menu_
+   render.c` (replacing the standalone `network_browser_render.c`)
+   was built the same way every existing mode already works - a new
+   `g_is_network_browser` global checked at ~15 scattered dispatch
+   points - and was caught + fully reverted (`git checkout`, confirmed
+   zero diff from `origin/main`) before being committed or compiled,
+   direct instruction: "the parser/renderer should have no knowledge
+   of new projects and be completely agnostic." See
+   `TPMOS-COMPLIANCE-DEBT.md` §6 and `xperiments/khtpm-generic-
+   dispatch-design.md` for the real design this produced - network-
+   browser-hq is now planned to be the FIRST mode built against a new,
+   generic `g_khtpm_modes[]` dispatch table, not the 8th copy of the
+   old per-project-hardcoded pattern. Not implemented yet.
+-3b. **xperiments/khtpm-generic-dispatch-design.md — READ BEFORE ADDING ANY
+   NEW MODE TO `khtpm_entity_menu_render.c`, direct instruction ("write to
+   standards and index that this should never happen again, this is std
+   drift")** — the real design for a generic `g_khtpm_modes[]` class-
+   dispatch table + a generic `launch_module()`, replacing the `g_is_X`
+   global + ~15-scattered-branch pattern every existing mode (db-hq,
+   events-hq, chat-hai, palettes, bookmarks, stats-hq, swatch-picker)
+   currently uses. Full ordered rollout plan inside: generic mechanism
+   first → network-browser-hq as its first real user → migrate each
+   existing mode one at a time, smallest first, live-verified after
+   each → delete the old branches only once every mode is migrated.
+   Not implemented yet - design only. See `CENTROID_GOLD_STD.md` §3
+   rule 7 and `TPMOS-COMPLIANCE-DEBT.md` §6 for the real incident this
+   traces back to.
 -3. **SKILLS.md (2026-08-29)** — read this FIRST, before anything else in this
    list. Not a task doc — a generalized "how to operate well in this house"
    compaction: the core file-based-state philosophy, the rendering

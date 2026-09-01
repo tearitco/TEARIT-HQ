@@ -237,6 +237,60 @@ it through the real shared pipeline, injecting the caller-supplied
 started — flagged here so it isn't silently left as the "acceptable exception"
 example it was wrongly treated as during this session.
 
+## 6. NEW real finding, 2026-08-31, same session — the shared renderer keeps gaining per-project hardcoding, caught live before landing
+
+While building network-browser-hq's real X11 mode (immediately after
+§5 above), I (the assistant) began wiring it into
+`khtpm_entity_menu_render.c` the same way every existing mode already
+works: a new `g_is_network_browser` global, checked at ~15 scattered
+dispatch points (class detection, `assign_nav_and_layout()`,
+`redraw()`, `handle_key()`, `poll_agent_history()`'s click/key
+dispatch, the real X11 `ButtonPress`/`KeyPress`/`FocusIn`/`FocusOut`
+handlers, `history_dir()`, `frame_changed_path()`, the CSS-path
+condition, `hq_window_has_x_focus()`, `nav_tab_poll_active()`'s gate,
+`nav_tab_register()`, plus a new per-mode `nb_launch_module()` copy).
+**Direct correction, caught before any of it was committed or even
+compiled**: "that's still hardcoding u hardcoded network browser
+stuff. why cant u use existing conventions? we shouldn't hardcode...
+the parser/renderer should have no knowledge of new projects and be
+completely agnostic." Fully reverted (`git checkout` on the file,
+confirmed zero diff from `origin/main` afterward) before any further
+work.
+
+**Why this is real, not a false alarm**: every existing mode (db-hq,
+events-hq, chat-hai, palettes, bookmarks, stats-hq, swatch-picker)
+already has this exact same shape today. "Following existing
+convention" was not a defense — the convention itself is the debt,
+self-acknowledged in `khtpm_render_core.c`'s own header comment (the
+real, stated 2026-08-16 end goal: "one generic binary... ZERO per-app
+hardcoded C logic," never finished for any mode). This is the SAME
+severity class as §4's `dbhq_load_actors()` finding — a real,
+structural violation of "the renderer has no business logic" — just
+spread across dispatch sites instead of concentrated in one function,
+which is why it wasn't caught by the §4 audit.
+
+**"std drift" — direct instruction to prevent recurrence**: "write to
+standards and index that this should never happen again, this is std
+drift." Recorded here and in `CENTROID_GOLD_STD.md` §3 rule 7: the
+shared renderer file must never gain a new `g_is_<project>` global or
+new per-project dispatch branch again. A new mode registers in a real,
+generic dispatch table instead.
+
+**Real fix, design written, not yet implemented**:
+`xperiments/khtpm-generic-dispatch-design.md` — a real, ordered plan:
+(1) build a generic `launch_module()` (collapsing the 3 already-
+near-identical per-mode copies) + a generic `g_khtpm_modes[]`
+class-dispatch table; (2) network-browser-hq becomes the FIRST real
+mode registered through it, proving the pattern before touching
+anything existing; (3) migrate each of the 7 existing modes onto the
+table one at a time, smallest/lowest-risk first (swatch-picker), live-
+verifying each still works exactly as before; (4) only once every mode
+is migrated, delete the old `g_is_X` globals and their scattered
+branches. Full content/layout genericity (a `.chtpm` panel declaring
+its own data source, `css_layout_pass()` actually driving a real mode)
+is explicitly out of scope for this fix — flagged as a separate, larger,
+not-yet-designed problem in that doc's own §2c.
+
 ## Cross-references
 - `house-compaction.md` — the separate (also real, also HIGH priority) receipt/frame-
   history compliance gap found earlier this session in `khtpm_hq_render.c`. Different

@@ -205,6 +205,28 @@ parser, zero new IR to invent.
    receipt.txt` — a renderer's own output dimensions/checksum belong
    in a real, adjacent receipt file, not assumed/hardcoded by whatever
    reads it next.
+7. **The shared renderer file (`khtpm_entity_menu_render.c`) never
+   gains a new `g_is_<project>` global or a new per-project `strcmp`
+   branch at a dispatch site, ever again.** ADDED 2026-08-31, direct
+   correction caught live while building this doc's own first proof
+   case ("that's still hardcoding... why cant u use existing
+   conventions... the parser/renderer should have no knowledge of new
+   projects and be completely agnostic"): every existing mode (db-hq,
+   events-hq, chat-hai, palettes, bookmarks, stats-hq, swatch-picker)
+   already has this exact shape — a global flag checked at ~15
+   scattered dispatch points — and it is real, self-acknowledged debt,
+   not a pattern to copy for an 8th time. A new mode registers itself
+   in a real, generic dispatch table instead (`g_khtpm_modes[]` —
+   design in `xperiments/khtpm-generic-dispatch-design.md`, not yet
+   implemented as of this correction). This is the SAME severity class
+   as rule 2's `dbhq_load_actors()` condemnation — a real, structural
+   violation of "the renderer has no business logic," just distributed
+   across dispatch sites instead of concentrated in one function. See
+   `TPMOS-COMPLIANCE-DEBT.md` §6 for the full real incident + the
+   ordered migration plan (build the generic mechanism → network-
+   browser becomes its first real user → migrate each existing mode
+   one at a time, smallest first, live-verified after each → delete the
+   old `g_is_X` branches only once every mode is migrated).
 
 ---
 
