@@ -271,13 +271,23 @@ migration in §3, not competing with it:
   original (corrected) attempt. Real work needed: author a real
   `open-hai.chtpm`, convert its flat layout to the tag-tree model,
   THEN register it in `g_khtpm_modes[]` - three real steps, not one.
-- **`khtpm_choice_picker.c`** (`&.widgits/tile-picker/ops/`) - already
-  flagged in `TPMOS-COMPLIANCE-DEBT.md` §5: hand-builds its Elem tree
-  from a flat `choices_file` format, never parses a `.chtpm`. Real,
-  live infrastructure (desktop-tile context menus via
-  `tp_desktop_window_rgb.c`, book-stack's dialogue-choice flow) - same
-  real fix shape as open-hai (author a real `.chtpm`, parse it, inject
-  the caller's real choice rows via `reusable_slot()`).
+- **`khtpm_choice_picker.c`** (`&.widgits/tile-picker/ops/`) - **DONE,
+  2026-08-31** (`TPMOS-COMPLIANCE-DEBT.md` §5, RESOLVED). Turned out to
+  need NO `g_khtpm_modes[]` registration at all, unlike open-hai below -
+  its real caller (`khtpm_show_choices.c`) now generates a real,
+  temporary `.chtpm` (one `<item action="...">` per real choice) and
+  launches the already-shared `khtpm_core_render.+x` directly, whose
+  ALREADY-EXISTING generic default page/item path (used by swatch-
+  picker/entity-menus) already treats an unrecognized `action=` as a
+  real shell command and quits after - zero new C code in the shared
+  renderer. Live-verified end to end (real window, real relay-injected
+  pick, real token on stdout). The standalone `khtpm_choice_picker.c`
+  itself is left in place, unused, as a real rollback reference - not
+  deleted, not registered in any dispatch table (there wasn't a need).
+  Real lesson for open-hai below: not every consolidation needs the
+  `g_khtpm_modes[]` machinery - check whether the existing generic
+  default path already covers the real need before building new
+  registration plumbing.
 - **`khtpm_strip_parser.c`** (the taskbar itself) - a genuinely
   different real case: it already parses real `.chtpm` files
   (`khtpm_strip_header.chtpm`/`khtpm_strip_bottom.chtpm`) through its

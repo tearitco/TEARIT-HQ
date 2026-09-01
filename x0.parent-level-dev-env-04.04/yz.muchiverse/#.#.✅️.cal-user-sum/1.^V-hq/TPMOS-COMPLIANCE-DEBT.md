@@ -216,26 +216,36 @@ size/complexity exception. See `CENTROID_GOLD_STD.md` §3 rule 1 (corrected same
 day) for the now-standing rule this produces, and the
 `khtpm-always-parse-chtpm-layout` memory for the full reasoning.
 
-**Real, confirmed callers of `khtpm_choice_picker.c` today** (grep-confirmed,
-not assumed) — this is live, load-bearing infrastructure, not dead code:
-- `*.monads/*.livedesk-taskbar/ops/tp_desktop_window_rgb.c` — the desktop-tile
-  context-menu system execs this binary directly for real, live "Show Choices"
-  popups.
+**Real, confirmed callers as of the original finding** (grep-confirmed) — this
+was live, load-bearing infrastructure, not dead code:
 - `*.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/dispatch.sh` —
   book-stack's own real dialogue/menu-choice flow generates a real
-  `choices_file` and execs this binary to display it.
-- `&.widgits/tile-picker/ops/khtpm_show_choices.c` — the real, documented
-  caller/design predecessor (its own header comment: "this binary IS the
-  picker... simpler and lower-risk... than to also touch tp_desktop_window_
-  rgb.c's own live SHOW_PAGE relay handler").
+  `choices_file` and calls `khtpm_show_choices.+x` to display it.
+- `khtpm_show_choices.+x` was the one real, direct caller of
+  `khtpm_choice_picker.+x` itself (confirmed by re-checking - the earlier
+  version of this entry also named `tp_desktop_window_rgb.c` as a direct
+  caller; that was wrong, it calls `khtpm_show_choices.+x`, not the picker
+  binary directly - corrected here, not silently).
 
-**Real fix, not yet done**: refactor `khtpm_choice_picker.c` to author a real
-`.chtpm`+`.css` for its own chrome (title bar, row list, Cancel row) and parse
-it through the real shared pipeline, injecting the caller-supplied
-`choices_file` rows into the parsed tree via `reusable_slot()`/
-`elem_inject_loop()` instead of hand-populating `Elem` structs directly. Not
-started — flagged here so it isn't silently left as the "acceptable exception"
-example it was wrongly treated as during this session.
+**RESOLVED, 2026-08-31** (direct instruction: "can we do the first 2 first?
+(open-hai) and choice parser?"): `khtpm_show_choices.c` no longer execs
+`khtpm_choice_picker.+x` at all. It now generates a real, temporary `.chtpm`
+file — one real `<item id=".." label=".." action="..">` per real choice row —
+and launches `khtpm_core_render.+x` (the shared renderer), the SAME real
+`parse_chtpm()` pipeline every other khtpm window uses. Each item's `action=`
+is a small real shell one-liner writing the caller's own real token to the
+real result-file path; the shared renderer's ALREADY-EXISTING generic
+`dispatch()` treats any unrecognized `action=` as a real shell command and
+unconditionally quits after running it - zero new C code was needed in the
+shared renderer itself. A synthesized `Cancel` row (`action="CLOSE"`) is
+still added when the caller's own `choices_file` doesn't include one, same
+real UX as before. Live-verified end to end: real window opened via the real
+launcher, real digit+Enter relay injection (`entity_menu_history/<pid>.txt`)
+picked a real choice, the real token (`read_book`) came back on stdout
+exactly as `dispatch.sh`'s own `$()` capture contract expects, both processes
+exited cleanly. `khtpm_choice_picker.c` itself is left in place, unused, as a
+real rollback reference (matching this house's own `khtpm_hq_render.c`
+precedent) - not deleted, not built into anything's live path anymore.
 
 ## 6. NEW real finding, 2026-08-31, same session — the shared renderer keeps gaining per-project hardcoding, caught live before landing
 
