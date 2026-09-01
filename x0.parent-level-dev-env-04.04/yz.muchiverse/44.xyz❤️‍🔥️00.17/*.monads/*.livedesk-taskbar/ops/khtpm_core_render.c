@@ -43,7 +43,20 @@
  * eventual integration point doesn't need a different argv shape). */
 #include "khtpm_css_parser.h"
 #include "khtpm_render_core.c" /* real .c, not a header - see that file's own comment */
-#include "khtpm_taskbar_manager.h" /* REAL, db-hq mode only (§5d.10) - ktb_init()/ktb_quit_and_save() KtbState persistence, ported from khtpm_hq_render.c's own real usage */
+/* khtpm_taskbar_manager.h/.c removed 2026-09-01 - real, confirmed dead
+ * linkage: ktb_init()/ktb_quit_and_save() (the only reason db-hq mode
+ * ever needed it) were already removed from this file in an earlier
+ * pass this same session; this build was still linking the entire
+ * ~4,300-line khtpm_taskbar_manager.c object for zero real symbol use
+ * (verified: this file builds and links clean with khtpm_taskbar_
+ * manager.c dropped from the link line entirely - see
+ * build_core_render.sh's own updated comment). Also the real house
+ * standard clarified directly this session: no cross-.c linking to
+ * share behavior within one binary - either genuinely the same file,
+ * or a separate process talking over fork/exec+file IPC (which is
+ * exactly what khtpm_taskbar_manager_main.+x already does with its
+ * own real, unrelated compile of khtpm_taskbar_manager.c - untouched,
+ * still real, still needed there). */
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>

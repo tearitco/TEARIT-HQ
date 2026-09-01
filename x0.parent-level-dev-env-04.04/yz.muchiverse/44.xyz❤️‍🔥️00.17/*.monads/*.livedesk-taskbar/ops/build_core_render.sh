@@ -37,12 +37,18 @@ if [ ! -x "$OPS_BIN" ]; then
   (cd "$SHARED/ops" && sh build_dump_frame_png_op.sh)
 fi
 
-# REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode now links
-# khtpm_taskbar_manager.c/.h (already live in this ops/ dir, same real
-# link line build_db_hq.sh already uses) for ktb_init()/
-# ktb_quit_and_save() KtbState persistence.
+# REAL FIX 2026-09-01 - khtpm_taskbar_manager.c dropped from this link
+# line: real, confirmed dead (the ktb_init()/ktb_quit_and_save() calls
+# this used to exist for were already removed from khtpm_core_render.c
+# in an earlier pass this same session; this file builds and links
+# clean without it). Also the real house standard, per khtpm-merge-
+# how2.md's own "HOUSE STANDARD" section and confirmed directly again
+# this session: no cross-.c linking to share behavior within one
+# binary - genuinely the same file, or a separate fork/exec+file-IPC
+# process (khtpm_taskbar_manager_main.+x's own real, separate compile
+# of khtpm_taskbar_manager.c is that legitimate case, untouched).
 echo "-- entity-menu renderer -> +x/khtpm_core_render.+x"
 $CC $CFLAGS $X11_FLAGS -o +x/khtpm_core_render.+x \
-  khtpm_core_render.c khtpm_css_parser.c khtpm_taskbar_manager.c $LIBS
+  khtpm_core_render.c khtpm_css_parser.c $LIBS
 
 echo "OK +x/khtpm_core_render.+x"
