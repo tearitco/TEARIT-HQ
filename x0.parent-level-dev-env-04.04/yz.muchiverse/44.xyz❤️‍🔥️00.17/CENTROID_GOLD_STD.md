@@ -7,6 +7,22 @@ Existing apps are NOT retroactively rewritten to match it (see
 is a real, deliberate opportunity to migrate it onto this standard
 instead of extending its old engine further.
 
+> **MANDATORY, added 2026-09-01, direct instruction after a real,
+> concrete incident** (an agent read this doc alone, then spent a full
+> session rewriting the wrong file — a deprecated standalone renderer —
+> while the real, current, compliant version of that exact app already
+> existed, unused, in the same directory): **before touching ANY
+> khtpm-family renderer/manager code, read
+> `#.#.✅️.cal-user-sum/1.^V-hq/INDEX.md`'s Tier 1 list in full**, not
+> just this one document — specifically `xperiments/khtpm-generic-
+> dispatch-design.md` (read the file itself, not a summary of it in
+> another doc — it's a living, dated-status-update document and an
+> older cross-reference can be stale) and `TPMOS-COMPLIANCE-DEBT.md`.
+> See `.claude/skills/khtpm-house-standards/SKILL.md` for the full
+> incident writeup and the concrete, currently-adopted answer
+> (generic `<cli_io>`/live-reparse capabilities in the shared renderer,
+> no per-app dispatch table, no linking).
+
 This doc exists because the real path to this answer ran through
 several genuine, real, working architectures first — each one solved
 a real problem, each one had a real, specific flaw that the next

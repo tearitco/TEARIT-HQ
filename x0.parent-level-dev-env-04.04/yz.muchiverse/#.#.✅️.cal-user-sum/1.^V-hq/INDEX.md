@@ -2,6 +2,16 @@
 
 **If you're a new agent picking this up cold, read in this order until you have enough context to act.**
 
+**🛑 `.claude/skills/khtpm-house-standards/SKILL.md` (repo root) — added
+2026-09-01, mandatory before touching ANY khtpm renderer/manager code.**
+Written after a real incident: an agent read `CENTROID_GOLD_STD.md`
+alone, then spent a full session rewriting a deprecated standalone
+renderer while the real, current, compliant version of that exact app
+already existed, unused, in the same directory. The skill's own rule:
+read this Tier 1 list in full (not one doc), and never trust another
+doc's *summary* of a living document's status — open that document
+directly and check its own latest dated entry.
+
 **🤝 `HANDOFF-2026-09-01.md` — read this FIRST if the session gap since
 this date is more than a day or two.** Real, dated status on: open-hai
 (fully converted, live), chat-hai (NOT migrated - real scoped plan, do
