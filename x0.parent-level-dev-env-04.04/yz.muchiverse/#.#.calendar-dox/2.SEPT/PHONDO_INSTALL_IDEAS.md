@@ -108,7 +108,54 @@ page than the installer/versioning pieces above.
   right files/processes on THIS machine", not "does a totally clean
   second machine/user experience work end to end."
 
-## 5. Open questions — let's get on the same page before any doc gets written
+## 5. Real decisions made in conversation, 2026-09-01 (direct from owner)
+
+- **No fixed product name.** "HARNECIENT" and "tearit co" are both
+  placeholders, not the real ship name — the name is chosen **per
+  customer, at ship time**, because the same house may be shipped to
+  different customers for different purposes (white-label). Direct
+  consequence: **nothing in the install/build/CLI tooling may hardcode
+  a product name** — it must be a parameter, passed in by whoever is
+  shipping, every time. This invalidates §11 of the HARNECIENT design
+  doc (`$HOME/harnecient/`, `~/.local/bin/harnecient`) as written — the
+  *shape* of that design stays useful, the literal names don't.
+- **`xyz-installer-dev/` is being kept, not deleted** — real design
+  content worth harvesting (payload layout, gitlet versioning draft,
+  rollout-channel gates) — but it needs a de-hardcoding pass of its
+  own: the folder name, `xyzos-starter-install.sh`'s name, and every
+  literal "HARNECIENT" in the design doc all assume one fixed product
+  identity that no longer holds.
+- **The very first real shippable artifact is a simple CLI program**,
+  not a GUI installer — it installs everything else FROM the CLI.
+  Design-first, slow pace, deliberately — direct instruction: *"we're
+  gonna slow down and discuss the pipeline of user experience of
+  install before we really get started."*
+- **A `livedesk start`-style CLI entry point must take the product
+  name as a dynamic argument** — not hardcoded per-build. The SAME
+  name, passed in by the shipping owner, must also be used to:
+  - name the terminal shortcut command,
+  - name the installed "app" entry in Linux/Mac/Windows' native apps
+    listings,
+  - name the desktop shortcut.
+  Concretely: no more literal strings like `🔐-Livedesk-Start` baked
+  into a shortcut/binary — the name is an install-time parameter that
+  flows through to every OS-level entry point consistently.
+- **Target users, in order, strangers being the real goal**: owner
+  first → a friend → strangers off GitHub. All three matter, strangers
+  are the actual bar, but testing proceeds in that order.
+- **Store pulls from "tearit co" GitHub for now**, but the mechanism
+  must be portable — a differently-shipped/white-labeled house may
+  point at a different GitHub org/catalog entirely. Don't bake
+  "tearit co" in as a constant either.
+- **Catalog shape**: mostly one central "approved store items" catalog
+  repo, but flexible enough that other users/orgs can register bigger,
+  custom "toys" or their own internal specifications — not a fully
+  rigid one-repo-only model.
+- **Approval gate**: manual review by the owner for now; automated
+  (harness-based, matching the house's existing KPI-proof pattern) is
+  the explicit later goal, not the starting point.
+
+## 6. Open questions — let's get on the same page before any doc gets written
 
 (Answered live in conversation, not in this file — this file is the
 shared map, not the transcript.)
