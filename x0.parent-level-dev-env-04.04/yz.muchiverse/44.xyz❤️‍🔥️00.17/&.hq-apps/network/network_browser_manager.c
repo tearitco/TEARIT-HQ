@@ -423,8 +423,16 @@ static void write_chtpm_projection(void) {
     NB_APPEND("    <sidebar>\n      <text id=\"nb-title\" label=\"Network\"/>\n      <scrolllist></scrolllist>\n    </sidebar>\n");
     NB_APPEND("    <panel>\n");
 
-    /* Address bar input - generic <cli_io> mechanism */
-    NB_APPEND("    <cli_io id=\"address\" target_id=\"address\" label=\"URL: \" action=\"'%s/nb_write_go.sh' 'go' '%s'\"/>\n",
+    /* Address bar input - generic <cli_io> mechanism.
+     * REAL FIX 2026-09-01, found while packaging this app for the
+     * co-work reference repo: this baked-in action path was missing
+     * "ops/" - nb_write_go.sh has always lived at ops/nb_write_go.sh,
+     * never directly under &.hq-apps/network/. Since this ran through
+     * a real shell command with stderr redirected to /dev/null, the
+     * wrong path failed completely silently - the address bar and
+     * every content link have been non-functional since this file was
+     * written, with zero visible symptom beyond "nothing happens." */
+    NB_APPEND("    <cli_io id=\"address\" target_id=\"address\" label=\"URL: \" action=\"'%s/ops/nb_write_go.sh' 'go' '%s'\"/>\n",
               g_package_dir, g_chtpm_output_path);
 
     /* Status line - read from status file */
@@ -474,7 +482,7 @@ static void write_chtpm_projection(void) {
                     xml_escape(link_text[0] ? link_text : rest, link_text_esc, sizeof(link_text_esc));
                     char url_sq[PATH_BUF * 2];
                     shell_escape_squote(rest, url_sq, sizeof(url_sq));
-                    NB_APPEND("      <item id=\"link%d\" label=\"%s\" action=\"'%s/nb_write_go.sh' 'go' '%s'\"/>\n",
+                    NB_APPEND("      <item id=\"link%d\" label=\"%s\" action=\"'%s/ops/nb_write_go.sh' 'go' '%s'\"/>\n",
                               row_count, link_text_esc, g_package_dir, url_sq);
                 }
             }
