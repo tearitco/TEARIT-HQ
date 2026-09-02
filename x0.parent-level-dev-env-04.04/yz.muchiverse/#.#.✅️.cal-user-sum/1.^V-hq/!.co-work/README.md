@@ -14,7 +14,7 @@ when it says one of them back to you, you know what it means. 🗝️
 | `c-house-onboard-agent-prompt.md` | 🧱 Paste this FIRST. Small C "ops," one **manager**, plain-text storage. Works for any project, no UI needed. |
 | `c-htpm-agent-onboard-prompt.md` | 🖼️ Paste this SECOND, only if your agent thinks the project needs a real window. Explains **chtpm**/**khtpm** and the pitfall to avoid. |
 | `khtpm-core/` | 🧰 The REAL, working parser/draw code (not a toy) — your agent wires this in rather than writing a chtpm parser from scratch. Includes a real example `.chtpm` file, plus two later-reading docs: `GENERIC-CAPABILITIES-PATTERN.md` (how to add new renderer features without special-casing them per app - read this one sooner, it saves a real rewrite) and `CONSOLIDATION-PATTERN.md` (once your own project grows past one binary). |
-| `network-browser-demo/` | 🌐 A real, runnable, end-to-end proof of `GENERIC-CAPABILITIES-PATTERN.md` — `sh run.sh` and it actually fetches and renders a real URL. The real, unmodified house manager + a compact from-scratch generic renderer, both small enough to read start to finish. |
+| `network-browser-demo/` | 🌐 A real, runnable, end-to-end proof of `GENERIC-CAPABILITIES-PATTERN.md` — `sh run.sh` and it actually fetches and renders a real URL. This is the ACTUAL house renderer (`khtpm_core_render.c`, ~18,000 lines) and the real, unmodified manager, launcher, and layout files - not a simplified stand-in. |
 | `screenshots/` | 📸 What a real chtpm/khtpm window actually looks like, captured live from the working house (see below). |
 
 ## 🗣️ How to actually use this with your agent
