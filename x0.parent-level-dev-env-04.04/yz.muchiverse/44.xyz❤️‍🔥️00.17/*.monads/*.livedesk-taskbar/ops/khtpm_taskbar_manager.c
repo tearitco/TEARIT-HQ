@@ -3671,19 +3671,26 @@ void ktb_hq_activate(KtbState *s, int row) {
          * dir, which cannot survive unquoted in the generic sh -c
          * fallback ('&' is a control operator). Dispatch string +
          * C-side quoted absolute path, not a raw PDL shell command.
-         * "browser" opens the real cli-io stub (open_network_browser.sh,
-         * no extra arg); irc/forum/chain open the matching app via
-         * open_network_app.sh's own real <app> key. Both scripts
-         * already exist, tested, under &.hq-apps/network/ - built by
-         * opencode, only the menu wiring itself was missing (see
-         * NETWORK-CELL-HQ-WINDOWS-DESIGN.md's own "REAL HANDOFF
-         * STATUS"). Prefix length verified: printf '%s'
+         * "browser" opens the REAL, current, CENTROID_GOLD_STD-
+         * compliant window (button.sh - the shared khtpm_core_render.c
+         * generic default path + a real manager, per xperiments/
+         * khtpm-generic-dispatch-design.md's own "REAL, adopted answer"
+         * section, live-tested standalone but never actually wired to
+         * this menu until now, direct live report 2026-09-01: "so ur
+         * telling me we havent wired up the real browser to toolbar
+         * yet?"). The OLD standalone stub (open_network_browser.sh ->
+         * network_browser_render.c, its own separate hand-rolled X11
+         * app) is retired - button.sh's own header comment already
+         * documents killing any leftover instance of it as a one-time
+         * transition safeguard. irc/forum/chain still open the matching
+         * app via open_network_app.sh's own real <app> key, untouched.
+         * Prefix length verified: printf '%s'
          * "livedesk:open-network:" | wc -c = 22. */
         const char *key = m->command + 22;
         char sh[KTB_PATH_BUF * 3];
         if (strcmp(key, "browser") == 0) {
             snprintf(sh, sizeof(sh),
-                     KTB_SETSID "nohup sh \"%s/&.hq-apps/network/open_network_browser.sh\" \"%s\" >/dev/null 2>&1 &",
+                     KTB_SETSID "nohup sh \"%s/&.hq-apps/network/button.sh\" \"%s\" >/dev/null 2>&1 &",
                      s->house_root, s->house_root);
         } else {
             const char *title = strcmp(key, "irc") == 0 ? "IRC Chat"
