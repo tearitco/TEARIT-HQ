@@ -5,7 +5,7 @@ CELL | idx=4 region=bottom | ch=[ ] 19. m1_ninjadragon fg=default bg=default foc
 CELL | idx=5 region=bottom | ch=[ ] 20. asa fg=default bg=default focused=0
 CELL | idx=6 region=bottom | ch=[ ] 21. ava fg=default bg=default focused=0
 CELL | idx=7 region=bottom | ch=[ ] 22. book-stack fg=default bg=default focused=0
-CELL | idx=0 region=header | ch=[ ] 1. HQ fg=default bg=default focused=0
+CELL | idx=0 region=header | ch=[>] 1. HQ fg=default bg=default focused=1
 CELL | idx=1 region=header | ch=[ ] 2. jb fg=default bg=default focused=0
 CELL | idx=2 region=header | ch=[ ] 3. file:pre-design fg=default bg=default focused=0
 CELL | idx=3 region=header | ch=[ ] 4. desks:office fg=default bg=default focused=0
@@ -19,4 +19,4 @@ CELL | idx=10 region=header | ch=[ ] 11. toys fg=default bg=default focused=0
 CELL | idx=11 region=header | ch=[ ] 12. store fg=default bg=default focused=0
 CELL | idx=12 region=header | ch=[ ] 13. network fg=default bg=default focused=0
 CELL | idx=13 region=header | ch=[ ] 14. h-ai fg=default bg=default focused=0
-CELL | idx=14 region=header | ch=[ ] 15. 2026年09月02日 周三 06:11 fg=default bg=default focused=0
+CELL | idx=14 region=header | ch=[ ] 15. 2026年09月02日 周三 06:22 fg=default bg=default focused=0
