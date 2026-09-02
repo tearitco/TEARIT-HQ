@@ -1,12 +1,15 @@
-/* network-browser-hq.css - REAL, applied styling for network-browser-
-   hq.chtpm (CORRECTED 2026-08-31 - this file now actually gets loaded
-   and applied via khtpm_css_parser.c, same real mechanism every other
-   khtpm mode's own .css uses; it was previously a non-functional
-   reference file, see network-browser-hq.chtpm's own header comment).
-   Geometry stays in nb_layout_pass() (C) - this file only carries
-   real color/border properties, matching every other khtpm .css. */
+/* network-browser-hq.css - REAL, applied via sibling .css merge in
+   khtpm_core_render.c (same stem as network-browser-hq.chtpm).
+   Window width/height are CSS; other geometry stays in C layout.
+   Colors/borders only besides window size. */
+window { width: 960px; height: 640px; }
+window.network-browser { width: 960px; height: 640px; background-color: #141414; color: #dddddd; }
+.network-browser { width: 960px; height: 640px; background-color: #141414; color: #dddddd; }
 .close-btn { background-color: #2a2a2a; color: #ff8888; }
 .fullscreen-btn { background-color: #2a2a2a; color: #cccccc; }
-.nb-address { background-color: #2a2a2a; color: #ffffff; }
-.nb-content { background-color: #1c1c1c; color: #cccccc; }
+.toolbar { background-color: #2a2a2a; color: #eeeeee; }
+.quiet { background-color: #333333; color: #ffffff; }
+.nb-address { background-color: #0e0e0e; color: #ffffff; border: 1px solid #666666; }
 .nb-status { background-color: #101010; color: #88cc88; }
+.nb-content { background-color: #1a1a1a; color: #cccccc; }
+sidebar { width: 200px; background-color: #1a1a1a; color: #cccccc; }
