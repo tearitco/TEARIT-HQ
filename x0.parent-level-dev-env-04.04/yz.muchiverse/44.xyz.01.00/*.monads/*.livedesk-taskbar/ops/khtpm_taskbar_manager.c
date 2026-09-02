@@ -3325,7 +3325,17 @@ static int livedesk_build_user_menu(const char *house_root, HQMenuItem *menu, in
             read_key_value(prof, "display_name", dname, sizeof(dname));
             if (!dname[0]) snprintf(dname, sizeof(dname), "%s", ids[i]);
             int is_cur = (cur_id[0] && strcmp(cur_id, ids[i]) == 0);
-            snprintf(menu[n].label, sizeof(menu[n].label), "%s%s (%s)", is_cur ? "* " : "", ids[i], dname);
+            /* REAL FIX 2026-09-02: this row IS the login action when
+             * nobody's logged in yet - it dispatches user:switch:<id>
+             * either way, but a bare "<id> (<name>)" label reads as
+             * just a profile listing, not something to click to log
+             * in. Direct user report: "i only see logout, IS THERE
+             * LOGIN LOGIC?" - the logic existed, the label didn't say
+             * so. Prefix clarifies the action without changing the
+             * dispatch command at all. */
+            snprintf(menu[n].label, sizeof(menu[n].label), "%s%s (%s)",
+                     is_cur ? "* " : (cur_id[0] ? "Switch: " : "Login: "),
+                     ids[i], dname);
             snprintf(menu[n].command, sizeof(menu[n].command), "user:switch:%s", ids[i]);
             n++;
         }
