@@ -33,14 +33,35 @@ global for now" is the wrong instinct here even when it would work.
 
 ## 2. Orientation: how the rendering side of this house actually works
 
+> **STALE-NAME NOTE (added 2026-09-02):** this section originally named
+> the merged binary `khtpm_entity_menu_render.c`/`.+x`. It has since
+> been renamed **`khtpm_core_render.c`/`.+x`**, and as of 2026-09-01 it
+> also absorbed the taskbar strip parser's own duty (`khtpm_strip_
+> parser.c` folded in verbatim — see `HOUSE_FAQ.md`'s "PROCESS /
+> REGISTRY HYGIENE" entry). If you see `khtpm_entity_menu_render`
+> anywhere else in an older doc, treat it as this same file under its
+> old name, not a separate thing.
+>
+> **MORE IMPORTANT than the rename: the per-mode `g_is_<mode>` flag
+> architecture described just below is now CONDEMNED, ACTIVE DEBT, not
+> just "how it works."** `CENTROID_GOLD_STD.md` (2026-08-31) is the
+> current gold standard for anything NEW — no new `g_is_<project>`
+> global or per-project `strcmp` branch, ever again; a new mode
+> registers in a real generic dispatch table instead. Read that
+> document (and `1.^V-hq/INDEX.md`'s Tier 1 list) before touching this
+> renderer. The description below is real, accurate history of how the
+> EXISTING modes work — not a pattern to copy for a new one.
+
 - Most visible windows (db-hq, events-hq, chat-hai, palettes,
-  bookmarks, stats-hq, taskbar-settings, entity-menu popups) are all
-  **one binary**, `khtpm_entity_menu_render.+x`, built from
-  `*.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c`. Which
-  mode a given process runs is decided by a `g_is_<mode>` flag set
-  from argv/the `.chtpm` it was launched against — it is genuinely one
-  merged binary serving many roles, not many binaries that happen to
-  share a name.
+  bookmarks, stats-hq, taskbar-settings, entity-menu popups, and now
+  the taskbar strip itself) are all **one binary**, `khtpm_core_
+  render.+x`, built from `*.monads/*.livedesk-taskbar/ops/khtpm_core_
+  render.c`. Which mode a given process runs is decided by a
+  `g_is_<mode>` flag set from argv/the `.chtpm` it was launched against
+  — it is genuinely one merged binary serving many roles, not many
+  binaries that happen to share a name. **This flag-per-mode shape is
+  the exact pattern `CENTROID_GOLD_STD.md` §3 rule 7 forbids adding to
+  again — do not use it as a template for a new mode.**
 - The paint layer is shared: `khtpm_render_core.c` (Elem tree,
   `hit_test`, `find_by_id`/`find_by_tag`, `css_layout_pass`),
   `khtpm_draw_core.c` (`draw_elem`, `render_tree`, sprite/font
@@ -282,6 +303,11 @@ If you're picking this house up with zero context:
 2. Read `!.HOUSE_STDS.md` section headers to know where the technical
    reference lives for whatever you're about to touch — don't
    re-derive architecture that's already documented.
+2b. **If the task touches any `khtpm_*` renderer/manager code at all**,
+   read `44.xyz.01.00/CENTROID_GOLD_STD.md` in full before writing
+   anything — it is the current mandatory architecture (Elem-tree
+   centroid, manager-process-required, no new `g_is_<project>`
+   branches), not optional background reading.
 3. Read this file's §3 (landmines) again, specifically.
 4. Before your first live test: identify whether the file/window/
    entity you're about to touch is shared with anything real the user

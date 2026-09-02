@@ -216,3 +216,30 @@ since it wasn't fixed in the same session this was found.
 🔗️ See `CENTROID_GOLD_STD.md`'s own commit history (2026-09-01,
 "khtpm_strip_parser.c ... folded verbatim into khtpm_core_render.c")
 for the consolidation this stale process predates.
+
+============================================================
+🚚️ PATHS / HOUSE LOCATION (added 2026-09-02)
+============================================================
+
+**❓️ Why does this path look different from an older doc/handoff I'm
+reading (`NNEST-11.17`, `44.xyz❤️‍🔥️00.17`, `#.#.✅️.cal-user-sum`)?**
+🚚️ The whole house moved, 2026-09-01, in two real, executed phases
+(`S1_HOUSE_PATH_MIGRATION.md`, both phases done): the ancestor path
+moved from an emoji-laden location to
+`/home/no/Desktop/github/work/NNEST-12.00/`, AND the house's own
+internal folders got renamed too — `44.xyz❤️‍🔥️00.17` →
+`44.xyz.01.00`, `#.#.✅️.cal-user-sum` → `#.#.calendar-dox` (this doc
+now lives under the new name). Real reason: several tools' path-
+handling/display code doesn't round-trip multi-codepoint emoji
+sequences (ZWJ joiners, variation selectors) cleanly — a genuine,
+reported "Path hidden (unsupported character)" bug, not cosmetic.
+🕵️ **If you hit a literal old path string anywhere** (a stale
+`action=` in a live-generated `.chtpm`, an old relay/log `.txt` line,
+a comment), it's very likely just old runtime content that self-heals
+on the next write from `g_house_root` — confirmed live for every
+manager checked during the migration. A literal old path hardcoded
+in actual C/shell/python SOURCE would be a real bug; the migration's
+own audit found only a handful of those and fixed them all (see
+`S1_HOUSE_PATH_MIGRATION.md` §7 for the full list). The OLD location
+(`NNEST-11.17/`) still exists on disk as a rollback copy, not yet
+retired.
