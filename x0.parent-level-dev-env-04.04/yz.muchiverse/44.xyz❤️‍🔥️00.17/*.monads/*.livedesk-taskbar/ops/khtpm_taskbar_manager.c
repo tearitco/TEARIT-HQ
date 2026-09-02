@@ -257,6 +257,51 @@ int ktb_pid_alive(int pid) {
     int ok = GetExitCodeProcess(h, &code) && code == STILL_ACTIVE;
     CloseHandle(h);
     return ok;
+#elif defined(__linux__)
+    /* REAL FIX 2026-09-01, direct live report ("bookstack isn't found
+     * on desktop but its saying its open on bottom bar"): kill(pid,0)
+     * returning 0 does NOT mean "alive and running" - a real ZOMBIE
+     * (an exited process whose parent never waitpid()'d it) still
+     * holds its own PID table entry, so kill(pid,0) succeeds for it
+     * exactly the same as for a genuinely live process. Confirmed
+     * live: a stale, already-retired khtpm_strip_parser.+x instance
+     * (orphaned from before this house's own khtpm_core_render.c
+     * consolidation, invisible to run_khtpm_strip.sh's own kill sweep
+     * because that sweep matches by the CURRENT binary name) had
+     * forked 18 real entity windows over the course of normal work and
+     * never reaped a single one - book-stack's own stale
+     * livedesk_open.txt entry was one of those zombies. Real fix: read
+     * /proc/<pid>/stat's own real process-state field (the 3rd
+     * whitespace-separated token, real kernel-documented format) and
+     * treat 'Z' (zombie) as NOT alive, same as a genuinely-gone PID -
+     * closes this false-positive for good regardless of how the
+     * zombie got there. Falls through to the plain kill(pid,0) check
+     * below if /proc is ever unreadable (e.g. permission), rather than
+     * failing closed. */
+    {
+        char stat_path[64];
+        snprintf(stat_path, sizeof(stat_path), "/proc/%d/stat", pid);
+        FILE *sf = fopen(stat_path, "r");
+        if (sf) {
+            char line[512];
+            int alive = 1;
+            if (fgets(line, sizeof(line), sf)) {
+                /* comm field (2nd token) is itself "(name)" and can
+                 * contain spaces/parens - state is the token right
+                 * after its closing ')', never inside it. */
+                char *close_paren = strrchr(line, ')');
+                if (close_paren) {
+                    char *state = close_paren + 1;
+                    while (*state == ' ') state++;
+                    if (*state == 'Z') alive = 0;
+                }
+            }
+            fclose(sf);
+            if (!alive) return 0;
+            return kill((pid_t)pid, 0) == 0 || errno != ESRCH;
+        }
+    }
+    return kill((pid_t)pid, 0) == 0 || errno != ESRCH;
 #else
     return kill((pid_t)pid, 0) == 0 || errno != ESRCH;
 #endif

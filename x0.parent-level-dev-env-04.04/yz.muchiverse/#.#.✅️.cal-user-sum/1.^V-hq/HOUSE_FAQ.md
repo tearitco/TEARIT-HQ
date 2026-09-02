@@ -170,3 +170,49 @@ list)
   my-lawyer, piececraft) but never records the launched PID anywhere -
   "kill all" doesn't reach a toys-launched app. Tracked in
   `TPMOS-COMPLIANCE-DEBT.md`.
+
+============================================================
+🧟️ PROCESS / REGISTRY HYGIENE (added 2026-09-01)
+============================================================
+
+**❓️ The bottom bar says an entity (e.g. book-stack) is open, but it's
+nowhere on the real desktop. What's going on, and how do I fix it?**
+🔍️ Real cause, confirmed live: `livedesk_open.txt`'s own liveness check
+(`ktb_pid_alive()`) is `kill(pid, 0) == 0`. That call returns SUCCESS
+for a **zombie** process (a real exited process whose parent never
+called `waitpid()` on it) - the kernel still has a PID table entry for
+it, so `kill(pid,0)` can't tell "alive and running" apart from "dead,
+just not reaped yet." The bottom bar reads that stale PID as real and
+keeps showing the entity as open.
+🕵️ How the zombie got there in the real incident this entry documents:
+an OLD, already-retired copy of `khtpm_strip_parser.+x` (the pre-
+consolidation taskbar-strip binary, superseded 2026-09-01 by
+`khtpm_core_render.c`'s own `strip_main()` mode) was STILL RUNNING in
+the background, orphaned since before that swap. It kept forking real
+entity windows (as they got relaunched/killed over the course of
+normal work) and never reaped a single one - `ps --ppid <its pid>`
+showed **18 real zombie children** stacked up under it. Root cause of
+*that*: `run_khtpm_strip.sh`'s own `kill_khtpm()` sweep only matches
+processes by the CURRENT binary name (`khtpm_core_render.+x` with
+`argc==2`) - it has no way to see or kill a still-running instance of
+the OLD, retired binary, since that name isn't in its pattern anymore.
+A leftover pre-swap process is invisible to the post-swap kill sweep,
+forever, until someone finds it by hand.
+🔧️ **Quick fix, safe, no restart needed**: find and kill any stray old
+`khtpm_strip_parser.+x` (or other genuinely-retired binary name)
+processes directly:
+```
+ps aux | grep khtpm_strip_parser | grep -v grep   # confirm it's really running
+kill -TERM <pid>                                   # kill it - its zombie children reparent to init and get auto-reaped
+```
+Then just re-launch whatever entity the bottom bar was lying about
+(its own real `button.sh run`, or the taskbar's own menu row) -
+`livedesk_open.txt` gets the real, current PID the moment it opens.
+🩹️ **Real, not-yet-done structural fix**: `ktb_pid_alive()` should also
+check `/proc/<pid>/stat`'s own state field and treat `Z` (zombie) as
+NOT alive, the same as a genuinely-gone PID - this closes the false-
+positive for good, regardless of how a zombie got there. Tracked here
+since it wasn't fixed in the same session this was found.
+🔗️ See `CENTROID_GOLD_STD.md`'s own commit history (2026-09-01,
+"khtpm_strip_parser.c ... folded verbatim into khtpm_core_render.c")
+for the consolidation this stale process predates.
