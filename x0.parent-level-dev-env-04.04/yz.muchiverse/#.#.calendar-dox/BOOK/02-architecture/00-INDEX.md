@@ -16,6 +16,13 @@
   "manager" process is, PDL conventions, asset-path conventions.
 - `LEGACY-GL-PIPELINE.md` — the older chtpm_parser_pal → GL mirror
   pipeline, for projects still on that path.
+- `HTML-MEDIA-AND-SCRIPTING.md` — should a browser-type app get a
+  separate HTML-specific parser, new img/video tag types, or reuse
+  the existing generic `sprite=` mechanism? (Reuse it — no new parser,
+  no new tags.) Also covers where Duktape JS execution should live
+  (manager/op-side only, never the shared renderer) and cross-refs
+  `07-install-and-ship/SECURITY.md` for the sandbox questions that
+  raises.
 
 Condensed from: `44.xyz.01.00/CENTROID_GOLD_STD.md` (moved),
 `#.#.calendar-dox/1.^V-hq/SKILLS.md` §2, `HOUSE_FAQ.md` (Architecture/

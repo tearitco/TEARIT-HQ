@@ -16,6 +16,11 @@ exploration-delegation.md` has the fullest pointer: real location
 — it lives one level up in the dev-env tree, outside this migration's
 scope. Worth checking directly if install/ship work resumes.
 
-**Security-for-strangers material**: not found as a dedicated doc in
-this pass — likely folded into `PHONDO_INSTALL_IDEAS.md` or not yet
-written. Flagged for the owner to confirm.
+- `SECURITY.md` — **long-term security concerns for shipping to
+  strangers** (2026-09-02): install-script trust, store-content
+  supply-chain risk, network-fetched-content risk (SSRF, fetch limits,
+  media-decode CVEs, arbitrary JS execution), and account/auth gaps.
+  Written after the network-browser branch review surfaced a planned
+  Duktape JS eval op as a real, concrete case needing this exact
+  analysis. See `02-architecture/HTML-MEDIA-AND-SCRIPTING.md` for the
+  rendering-side design its §4 concerns apply to.
