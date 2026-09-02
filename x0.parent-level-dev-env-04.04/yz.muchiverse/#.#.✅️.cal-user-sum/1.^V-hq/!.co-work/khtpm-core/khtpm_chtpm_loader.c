@@ -109,6 +109,15 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
         snprintf(e->onclick, sizeof(e->onclick), "%s", decoded);
     } else if (strcmp(name, "sprite") == 0) {
         snprintf(e->sprite, sizeof(e->sprite), "%s", val);
+    } else if (strcmp(name, "src") == 0) {
+        /* Real house convention (<module src="...">) - reuses e->label,
+         * same "module elements are never drawn, safe reuse" reasoning
+         * every other repurposed field in this function already uses. */
+        snprintf(e->label, sizeof(e->label), "%s", val);
+    } else if (strcmp(name, "args") == 0) {
+        /* Real house convention (<module args="...">) - optional extra
+         * static argv for a module, reuses e->id (also never drawn). */
+        snprintf(e->id, sizeof(e->id), "%s", val);
     } else if (strcmp(name, "target_id") == 0) {
         snprintf(e->target_id, sizeof(e->target_id), "%s", val);
     } else if (strcmp(name, "backspace_action") == 0) {

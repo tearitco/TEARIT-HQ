@@ -1,0 +1,12 @@
+/* network-browser-hq.css - REAL, applied styling for network-browser-
+   hq.chtpm (CORRECTED 2026-08-31 - this file now actually gets loaded
+   and applied via khtpm_css_parser.c, same real mechanism every other
+   khtpm mode's own .css uses; it was previously a non-functional
+   reference file, see network-browser-hq.chtpm's own header comment).
+   Geometry stays in nb_layout_pass() (C) - this file only carries
+   real color/border properties, matching every other khtpm .css. */
+.close-btn { background-color: #2a2a2a; color: #ff8888; }
+.fullscreen-btn { background-color: #2a2a2a; color: #cccccc; }
+.nb-address { background-color: #2a2a2a; color: #ffffff; }
+.nb-content { background-color: #1c1c1c; color: #cccccc; }
+.nb-status { background-color: #101010; color: #88cc88; }
