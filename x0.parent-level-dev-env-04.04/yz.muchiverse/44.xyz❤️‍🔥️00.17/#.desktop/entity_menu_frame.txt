@@ -1,6 +1,4 @@
-item|||Dir||sh -c 'mkdir -p "$0/audit"; GDK_BACKEND=x11 xdg-open "$0" >>"$0/audit/dir.log" 2>&1'|1|0|0|24|260|24
-item|||Chat||sh -c 'exec sh "$1/&.widgits/open-hai/chat_button.sh" "$1" "$0/chat" cursword-chat'|2|0|0|48|260|24
-item|||Bookmarks||sh -c 'exec sh "$1/&.widgits/bookmarks/bm_menu.sh" "$1" "$0"'|3|0|0|72|260|24
-item|||Play||sh -c 'exec sh "$1/*.monads/*.muchi-pet/ops/play_event.sh" "$0"'|4|0|0|96|260|24
-item|||Close||CLOSE|5|0|0|120|260|24
-item|||Cancel||void|6|0|0|144|260|24
+item|c0||Bible verse (text)||/bin/sh -c 'printf %s '\''bible_text'\'' > '\''/tmp/khtpm_choice_result_447492.txt'\'''|1|0|0|24|260|24||
+item|c1||Bible verse (with TTS)||/bin/sh -c 'printf %s '\''bible_tts'\'' > '\''/tmp/khtpm_choice_result_447492.txt'\'''|2|0|0|48|260|24||
+item|c2||Tao Te Ching (random chapter)||/bin/sh -c 'printf %s '\''tao'\'' > '\''/tmp/khtpm_choice_result_447492.txt'\'''|3|0|0|72|260|24||
+item|cancel||Cancel||CLOSE|4|0|0|96|260|24||

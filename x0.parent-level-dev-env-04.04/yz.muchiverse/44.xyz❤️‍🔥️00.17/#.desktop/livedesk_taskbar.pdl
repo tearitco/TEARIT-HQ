@@ -1,25 +1,33 @@
 SECTION      | hq_label            | HQ
-SECTION      | hq_menu_1_label     | $.restart
-SECTION      | hq_menu_1_cmd       | sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new
-SECTION      | hq_menu_2_label     | hide/show
-SECTION      | hq_menu_2_cmd       | sh $.crypts/scripts/hide-show-desks.sh
-SECTION      | hq_menu_3_label     | dir
-SECTION      | hq_menu_3_cmd       | xdg-open .
-SECTION      | hq_menu_4_label     | X.quit
-SECTION      | hq_menu_4_cmd       | quit
-SECTION      | hq_menu_5_label     | settings
-SECTION      | hq_menu_5_cmd       | livedesk:open-settings
-SECTION      | hq_menu_6_label     | stats
-SECTION      | hq_menu_6_cmd       | livedesk:open-stats
-SECTION      | hq_menu_7_label     | cli
-SECTION      | hq_menu_7_cmd       | sh *.monads/*.livedesk-taskbar/ops/open_cli.sh
-SECTION      | hq_menu_8_label     | cursword
-SECTION      | hq_menu_8_cmd       | livedesk:spawn-cursword
-SECTION      | hq_menu_9_label     | !kill hq
-SECTION      | hq_menu_9_cmd       | sh *.monads/*.livedesk-taskbar/ops/kill_hq_windows.sh .
-SECTION      | hq_menu_10_label    | debug
-SECTION      | hq_menu_10_cmd      | livedesk:open-palette:debug
-SECTION      | hq_menu_11_label    | cancel
+# Global always-on-top ("@") toggle - raises/lowers EVERY tracked khtpm
+# window (db-hq/events-hq/chat-hai + tile/palette pickers) above/below
+# the native desktop via the nav_tab/<pid> registry. The special command
+# livedesk:zorder-toggle is intercepted by the strip parser (which owns
+# the X Display) rather than the manager - see khtpm_strip_parser.c's
+# ktb_toggle_zorder().
+SECTION      | hq_menu_1_label     | @ always-on-top
+SECTION      | hq_menu_1_cmd       | livedesk:zorder-toggle
+SECTION      | hq_menu_2_label     | $.restart
+SECTION      | hq_menu_2_cmd       | sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new
+SECTION      | hq_menu_3_label     | hide/show
+SECTION      | hq_menu_3_cmd       | sh $.crypts/scripts/hide-show-desks.sh
+SECTION      | hq_menu_4_label     | dir
+SECTION      | hq_menu_4_cmd       | xdg-open .
+SECTION      | hq_menu_5_label     | X.quit
+SECTION      | hq_menu_5_cmd       | quit
+SECTION      | hq_menu_6_label     | settings
+SECTION      | hq_menu_6_cmd       | livedesk:open-settings
+SECTION      | hq_menu_7_label     | stats
+SECTION      | hq_menu_7_cmd       | livedesk:open-stats
+SECTION      | hq_menu_8_label     | cli
+SECTION      | hq_menu_8_cmd       | sh *.monads/*.livedesk-taskbar/ops/open_cli.sh
+SECTION      | hq_menu_9_label     | cursword
+SECTION      | hq_menu_9_cmd       | livedesk:spawn-cursword
+SECTION      | hq_menu_10_label    | !kill hq
+SECTION      | hq_menu_10_cmd      | sh *.monads/*.livedesk-taskbar/ops/kill_hq_windows.sh .
+SECTION      | hq_menu_11_label    | debug
+SECTION      | hq_menu_11_cmd      | livedesk:open-palette:debug
+SECTION      | hq_menu_12_label    | cancel
 
 SECTION      | file_menu_1_label   | new-desk
 SECTION      | file_menu_1_cmd     | livedesk:new-desk

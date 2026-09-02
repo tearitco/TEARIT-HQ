@@ -1,0 +1,48 @@
++============================================================+
+|  B O A R D - V I E W E R   ( W I D G E T )                 |
++============================================================+
+|                                                            |
+|  Focused on: piececraft-hq  (board 16x16, cam 0,3)         |
+|  Interact mode: OFF (select Enter Interact Mode below)     |
+|  Possessing: none (free camera)  (press 9 to possess hero) |
+|  Display: emoji (default)                                  |
+|  Z-level: 16 / 31  (z / x to switch layers)                |
+|  Camera: 3D mode 2 (third-person) yaw=180 pitch=6          |
+|    pan=(0,0,0) z_level=0 [q/e yaw][r/t pitch][wasd pan][c/v|
+|                                                            |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+|                                                            |
+|  Selected (8,8): grass                                     |
+|  Arrow keys pan the selector. Camera follows, clamped to bo|
+|                                                            |
++============================================================+

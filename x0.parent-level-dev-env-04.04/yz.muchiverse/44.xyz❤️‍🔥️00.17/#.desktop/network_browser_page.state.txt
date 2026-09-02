@@ -1,0 +1,6 @@
+URL|http://example.com
+TITLE|Example Domain
+TEXT|Example Domain
+TEXT|Example Domain
+TEXT|This domain is for use in documentation examples without needing permission. Avoid use in operations.
+LINK|https://iana.org/domains/example|Learn more

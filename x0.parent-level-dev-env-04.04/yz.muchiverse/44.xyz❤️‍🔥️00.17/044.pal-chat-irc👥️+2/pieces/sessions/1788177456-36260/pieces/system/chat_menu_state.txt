@@ -1,0 +1,1 @@
+last_message=Welcome to pal-chat-irc.

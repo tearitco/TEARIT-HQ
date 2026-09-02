@@ -10,14 +10,14 @@
       <scrolllist></scrolllist>
     </sidebar>
     <panel>
-    <cli_io id="address" target_id="address" label="URL: " action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.hq-apps/network/nb_write_go.sh' 'go' '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.hq-apps/network/network-browser-hq.chtpm'"/>
+    <cli_io id="address" target_id="address" label="URL: " action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.hq-apps/network/ops/nb_write_go.sh' 'go' '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.hq-apps/network/network-browser-hq.chtpm'"/>
     <text id="status" label="Status: ready"/>
     <scrolllist>
       <text id="title1" class="page-title" label="Example Domain"/>
       <text id="text2" label="Example Domain"/>
       <text id="text3" label="Example Domain"/>
       <text id="text4" label="This domain is for use in documentation examples without needing permission. Avoid use in operations."/>
-      <item id="link5" label="Learn more" action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.hq-apps/network/nb_write_go.sh' 'go' 'https://iana.org/domains/example'"/>
+      <item id="link5" label="Learn more" action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.hq-apps/network/ops/nb_write_go.sh' 'go' 'https://iana.org/domains/example'"/>
     </scrolllist>
   </panel>
   </page>

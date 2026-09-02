@@ -1,7 +1,10 @@
 #!/bin/bash
 # Play all HARNECIENT training sessions in order using mpg123
 
-AUDIO_DIR="/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.✅️.cal-user-sum/1-1.HARNECIENT.AUBIO/audio-book"
+# REAL FIX 2026-09-01 (S1_HOUSE_PATH_MIGRATION.md) - was a hardcoded
+# absolute path; derive from this script's own real location instead
+# (sibling 1-1.HARNECIENT.AUBIO/, same real house-standard pattern).
+AUDIO_DIR="$(cd "$(dirname "$0")/../1-1.HARNECIENT.AUBIO" && pwd)/audio-book"
 
 # Check if directory exists
 if [ ! -d "$AUDIO_DIR" ]; then

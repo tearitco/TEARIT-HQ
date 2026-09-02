@@ -8,7 +8,9 @@ import os
 import re
 from pathlib import Path
 
-BASE_DIR = "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.✅️.cal-user-sum/1-1.HARNECIENT.AUBIO"
+import os as _os_pathfix  # REAL FIX 2026-09-01 (S1_HOUSE_PATH_MIGRATION.md) - was a hardcoded absolute path
+BASE_DIR = _os_pathfix.path.join(_os_pathfix.path.dirname(_os_pathfix.path.abspath(__file__)), "..", "1-1.HARNECIENT.AUBIO")
+BASE_DIR = _os_pathfix.path.normpath(BASE_DIR)
 
 # Voice mapping for all speakers
 VOICE_MAP = {

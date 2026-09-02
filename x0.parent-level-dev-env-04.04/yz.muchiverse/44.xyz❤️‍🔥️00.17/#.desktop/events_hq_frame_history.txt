@@ -870,3 +870,5 @@ seq=9 focus_nav=12/14 view_mode=0 page=0 n_cmds=3 entity=sandbox
 seq=10 focus_nav=12/14 view_mode=0 page=0 n_cmds=3 entity=sandbox
 seq=11 focus_nav=1/10 view_mode=0 page=0 n_cmds=3 entity=sandbox
 seq=12 focus_nav=8/10 view_mode=0 page=0 n_cmds=3 entity=sandbox
+seq=1 focus_nav=1/9 view_mode=0 page=0 n_cmds=0 entity=ava
+seq=2 focus_nav=1/9 view_mode=0 page=0 n_cmds=0 entity=ava

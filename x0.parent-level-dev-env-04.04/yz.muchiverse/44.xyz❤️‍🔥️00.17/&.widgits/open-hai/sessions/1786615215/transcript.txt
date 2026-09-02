@@ -1,3 +1,0 @@
-A|ai-cell v1 — raw Ollama backend, model: stable-code:latest. Real tools: list/read/search run immediately; write/edit/run ask for your approve/deny first. Press composer then Enter to type. History is real and on disk - Backspace on a sidebar row deletes it.
-U|howdy , how are u ?
-A|Howdy partner! I'm doing pretty well, just hanging out and ready to help. It’s a good day today, wouldn't you agree? 😊  \n\nThanks for asking – how about yourself? 👋 Do any big plans this week?

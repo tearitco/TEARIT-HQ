@@ -1,0 +1,47 @@
+<panel time_reactive="true">
+    <module>system/prisc+x pal/main_module.pal</module>
+    <interact src="pieces/apps/player_app/interact_relay.txt" />
+    <!-- REAL, NEW 2026-08-30 (CURSWORD-DESKTOP-3D-AND-PIECECRAFT-
+         INSCENE-DESKS-DESIGN.md §8 step 2, direct correction: "they
+         have nothing 2 do with interact mode, they should show under
+         toolbar" / "theres supposed to be layout buttons") - File/Desk/
+         Close are real, hand-written toolbar buttons, structurally
+         separate from Interact Mode below (own row, own onClick, NOT
+         generated via ${piece_methods} - that mechanism lumps auto-
+         generated rows into the SAME numbered list Interact Mode
+         occupies, which is exactly the wrong shape here). onClick=
+         "KEY:N" is the same real relay mechanism ${piece_methods}-
+         generated buttons use (a plain, non-reserved string - only
+         "INTERACT" itself is the truly reserved one).
+
+         REAL BUG FOUND + FIXED LIVE (2026-08-30): the first pass used
+         KEY:2/KEY:3/KEY:4 - looked free from a plain grep, but
+         bv_menu_input.c has a real, pre-existing `if (key >= '1' &&
+         key <= '4')` camera-mode-switch range check that silently
+         intercepted all three before they ever reached the real File/
+         Desk/Close handlers - confirmed via direct instrumented
+         testing (strace + inline debug prints), not guessed. Real,
+         confirmed-free codes instead: KEY:5/KEY:6/KEY:7 - checked the
+         FULL real key list bv_menu_input.c uses (0,1-4,8,9,z,x,f,q,e,
+         r,t,w,s,a,d,c,v), genuinely nothing else claims 5/6/7.
+         bv_menu_input.c's key=='5'/'6'/'7' dispatches to the real
+         FILE_MENU/DESK_MENU inbox actions and the real close-request
+         flag file (see that file's own header comment), completely
+         independent of Interact Mode's own real mode/relay lifecycle
+         and of the camera-mode-switch range. -->
+    <button label="File" onClick="KEY:5" /><text label=" | " /><button label="Desk" onClick="KEY:6" /><text label=" | " /><button label="Close" onClick="KEY:7" /><br/>
+    <!-- Real, hand-written onClick="INTERACT" button - the RESERVED
+         command string chtpm_parser_pal.c itself special-cases (NOT
+         reachable via a dynamically-generated ${piece_methods} row,
+         which always becomes onClick="KEY:N" instead - confirmed via
+         direct code read of the parser's own method-button-generation
+         branch). Exact same convention as mutaclysm's own real,
+         working game.chtpm:7 "Control Hero" button - see
+         &.widgits/interact-fix-widget.txt for the full investigation.
+         The engine itself (not this project's own ops) handles the
+         mode flag, raw arrow-key relay into interact_relay.txt, ESC-
+         exit, and the [>]->[^] focus-glyph swap - all natively. -->
+    <button label="Interact Mode (camera + selector)" onClick="INTERACT" /><br/>
+    <text label="${game_map}" /><br/>
+    ${piece_methods}
+</panel>

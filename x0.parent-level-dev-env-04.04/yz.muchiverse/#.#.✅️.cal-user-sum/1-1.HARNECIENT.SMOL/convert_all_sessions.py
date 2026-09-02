@@ -22,7 +22,8 @@ import tempfile
 from pathlib import Path
 from pydub import AudioSegment
 
-BASE_DIR = "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.✅️.cal-user-sum/1-1.HARNECIENT.SMOL"
+import os as _os_pathfix  # REAL FIX 2026-09-01 (S1_HOUSE_PATH_MIGRATION.md) - was a hardcoded absolute path
+BASE_DIR = _os_pathfix.path.dirname(_os_pathfix.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(BASE_DIR, "audio-book")
 
 VOICE_MAP = {

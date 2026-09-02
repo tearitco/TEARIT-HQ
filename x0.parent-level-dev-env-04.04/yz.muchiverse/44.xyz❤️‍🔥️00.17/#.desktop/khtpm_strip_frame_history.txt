@@ -1,3 +1,3 @@
-header.focus=0[type=button label=HQ onClick=ACTIVATE:1] header.active=-1 bottom.focus=-1 unified_nav_focus=0 has_real_x11_focus=0 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=28
-header.focus=46[type=button label=👨 asa #ba1386dc55 onClick=HQITEM:0] header.active=44 bottom.focus=0 unified_nav_focus=4 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=127
-header.focus=8[type=button label=pals onClick=ACTIVATE:5] header.active=-1 bottom.focus=0 unified_nav_focus=4 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=28
+header.focus=0[type=button label=HQ onClick=ACTIVATE:1] header.active=-1 bottom.focus=-1 unified_nav_focus=0 has_real_x11_focus=0 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=29
+header.focus=67[type=button label=my pallet onClick=HQITEM:0] header.active=65 bottom.focus=1 unified_nav_focus=5 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=161
+header.focus=10[type=button label=palettes onClick=ACTIVATE:6] header.active=-1 bottom.focus=1 unified_nav_focus=5 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=29
