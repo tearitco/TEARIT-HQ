@@ -2,6 +2,18 @@
 
 **If you're a new agent picking this up cold, read in this order until you have enough context to act.**
 
+**🚚 `S1_HOUSE_PATH_MIGRATION.md` (2026-09-01) — PLANNING ONLY, read
+before touching house-root paths or renaming anything under
+`x0.parent-level-dev-env-04.04/`.** The real plan to move the whole
+house off its current emoji-laden path (`🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/...` and
+`44.xyz❤️‍🔥️00.17`, both a real, confirmed "Path hidden (unsupported
+character)" tool problem) to a clean location
+(`/home/no/Desktop/github/work/NNEST-12.00/`), in two phases (move
+first, rename the emoji leaf folder second). Includes a real, already-
+confirmed finding (a linked git worktree with absolute back-references
+that a plain copy would silently break) and the full pre-flight/
+execution/rollback plan. Not yet executed as of this entry.
+
 **🛑 `.claude/skills/khtpm-house-standards/SKILL.md` (repo root) — added
 2026-09-01, mandatory before touching ANY khtpm renderer/manager code.**
 Written after a real incident: an agent read `CENTROID_GOLD_STD.md`
