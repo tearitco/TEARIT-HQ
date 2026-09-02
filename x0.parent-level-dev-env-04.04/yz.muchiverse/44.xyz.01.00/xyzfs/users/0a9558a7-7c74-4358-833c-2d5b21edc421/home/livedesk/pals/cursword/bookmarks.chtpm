@@ -1,0 +1,30 @@
+<!-- bookmarks.template.chtpm — real TPMOS-compliant rebuild (2026-08-25,
+     au11-hq/TPMOS-COMPLIANCE-DEBT.md's own standing rule). Provisioned
+     ONCE per pal by bm_menu.sh (a plain token substitution + copy, not a
+     per-launch regeneration - see bm_menu.sh's own provision_bookmarks()
+     header) into <pal>/bookmarks.chtpm, then left alone forever. Real
+     bookmark rows are injected at runtime by khtpm_core_render.c's
+     own dbhq_inject_bookmark_items(), reading bookmarks_manager.c's own
+     published bookmarks_state.txt - same static-skeleton-plus-<module>
+     shape stats-hq's own dashboard.chtpm already proved out (see that
+     file's own header comment). /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword//home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00//home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/bookmarks/bm_menu.sh are the only
+     substituted tokens - everything else here is truly static. -->
+<window class="database-window bookmarks">
+  <module src="*.monads/*.livedesk-taskbar/ops/+x/bookmarks_manager.+x" />
+  <panel class="settings-block">
+    <title class="block-title" label="cursword bookmarks"/>
+    <text id="bm-hint" class="bm-hint" label="Click or Enter a bookmark to open it."/>
+    <!-- REAL FIX 2026-08-25 (found live: New+ silently did nothing) -
+         the postcmd (everything after the |) runs via `sh -c`, unlike
+         the input: target path before it (read directly by the
+         renderer's own C code via fopen(), never shell-parsed). This
+         house's own paths contain a literal '&' (&.widgits) - sh parses
+         an unquoted '&' as "run in background", silently truncating the
+         command right there. Single-quote each substituted path in the
+         postcmd only - matches do_add()'s own existing "no single
+         quotes in bookmark name/path, breaks onClick quoting" rule,
+         same convention, just applied to this new consumer too. -->
+    <button id="bm-newplus" class="bm-btn" label="+ New+ (Enter, type a path, Enter)" onClick="input:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword/.bm_newplus.txt|'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/bookmarks/bm_menu.sh' consumed-newplus '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00' '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword'"/>
+    <button id="bm-openfolder" class="bm-btn" label="Open Pal Folder" onClick="open:/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword"/>
+  </panel>
+</window>

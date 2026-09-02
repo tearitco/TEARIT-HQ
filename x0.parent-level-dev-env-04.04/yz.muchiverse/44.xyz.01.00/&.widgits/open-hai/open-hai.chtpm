@@ -1,0 +1,36 @@
+<!-- open-hai.chtpm - REAL, GENERATED PROJECTION.
+     Written by khtpm_open_hai_manager.c's own write_chtpm_projection()
+     every real main-loop tick - DO NOT HAND-EDIT, changes are
+     overwritten within 200ms. See that function's own header
+     comment for the real design this answers to. -->
+<window label="open-hai" class="">
+  <page name="main">
+    <sidebar>
+      <text id="sidebar-header" label="Sessions"/>
+      <item id="new" label="+ New session" action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/ops/oh_write_request.sh' 'NEWSESSION' '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/state'"/>
+      <item id="togglesound" label="Sound: on (click to toggle)" action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/ops/oh_write_request.sh' 'TOGGLESOUND' '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/state'"/>
+      <scrolllist>
+      <item id="s0" label="&gt; 08-16 04:49 Reply with exactly one word: pong" action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/ops/oh_write_request.sh' 'LOADSESSION|/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/sessions/1786880963' '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/state'" backspace_action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/ops/oh_write_request.sh' 'DELETESESSION|/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/sessions/1786880963' '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/state'"/>
+      <item id="s1" label="  08-16 00:29 list files in &amp;.widgits/ai-cell" action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/ops/oh_write_request.sh' 'LOADSESSION|/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/sessions/1786865363' '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/state'" backspace_action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/ops/oh_write_request.sh' 'DELETESESSION|/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/sessions/1786865363' '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/state'"/>
+      <item id="s2" label="  08-14 22:45 hello from relay" action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/ops/oh_write_request.sh' 'LOADSESSION|/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/sessions/1786772702' '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/state'" backspace_action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/ops/oh_write_request.sh' 'DELETESESSION|/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/sessions/1786772702' '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/state'"/>
+      </scrolllist>
+    </sidebar>
+    <panel>
+      <text id="status" label="model: gemma3:1b | sound: on | idle"/>
+      <item id="cyclemodel" label="Model: gemma3:1b (click to cycle)" action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/ops/oh_write_request.sh' 'CYCLEMODEL' '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/state'"/>
+      <scrolllist>
+        <text id="msg0" class="msg-user" label="you: Use your list_dir tool to list files in the current directory (path=.)"/>
+        <text id="msg1" class="msg-hai" label="hai: [list_dir] /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/.:   #.resume/   0"/>
+        <text id="msg2" class="msg-user" label="you: hi "/>
+        <text id="msg3" class="msg-hai" label="hai: [error: no 'content' field in OpenRouter reply - check model name / key / raw response in or-response-*.json under the audit dir]"/>
+        <text id="msg4" class="msg-user" label="you: hi"/>
+        <text id="msg5" class="msg-hai" label="hai: Hi there! It’s nice to be able to talk with you. How’s your day going, or how about yours? 😊  What's on your mind today? 👍✨"/>
+        <text id="msg6" class="msg-user" label="you: third test signal removed"/>
+        <text id="msg7" class="msg-hai" label="hai: Okay, I've seen your message - you're indicating that the third test signal is no longer available.  That means something happened with a piece of data related to testing. To understand better what's "/>
+        <text id="msg8" class="msg-user" label="you: final verification message"/>
+        <text id="msg9" class="msg-hai" label="hai: I understand that you're seeking the final verification message and want to learn how it is generally structured. Unfortunately, I don’t have access to specific examples of final verification messag"/>
+      </scrolllist>
+      <cli_io id="composer" target_id="composer" label="&gt; " action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/ops/oh_write_send.sh' '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/state'"/>
+    </panel>
+  </page>
+</window>

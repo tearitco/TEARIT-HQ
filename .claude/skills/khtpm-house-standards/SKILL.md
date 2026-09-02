@@ -28,7 +28,7 @@ touches:
 
 **you must read, in full, not skimmed**:
 
-1. `#.#.✅️.cal-user-sum/1.^V-hq/INDEX.md` — **the Tier 1 list**,
+1. `#.#.calendar-dox/1.^V-hq/INDEX.md` — **the Tier 1 list**,
    specifically:
    - `CENTROID_GOLD_STD.md` (house root, `44.xyz❤️‍🔥️.../`) — the real
      rendering architecture rule.

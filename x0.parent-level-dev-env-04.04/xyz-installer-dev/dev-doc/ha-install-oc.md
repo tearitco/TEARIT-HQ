@@ -20,7 +20,7 @@ Hi! How can I help you today?
 
 ## User
 
-this /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.✅️.cal-user-sum/au11-hq/INDEX.md  is our project. we had been doing an installer , but that was prior to khtpm .here it is (but its gonna need some refactoring) : /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/xyz-installer-dev ; our goal is that user can run 1 script and it will install a completely fresh version of " livedesk-xyz" or w/e its naturally called (what what u call it after looking at this and understanding my intention?) 
+this /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/au11-hq/INDEX.md  is our project. we had been doing an installer , but that was prior to khtpm .here it is (but its gonna need some refactoring) : /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/xyz-installer-dev ; our goal is that user can run 1 script and it will install a completely fresh version of " livedesk-xyz" or w/e its naturally called (what what u call it after looking at this and understanding my intention?) 
 
 ---
 
@@ -37,13 +37,13 @@ Let me look at both directories
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.✅️.cal-user-sum/au11-hq/INDEX.md"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/au11-hq/INDEX.md"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.✅️.cal-user-sum/au11-hq/INDEX.md</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/au11-hq/INDEX.md</path>
 <type>file</type>
 <content>
 1: # 📍 START HERE — au11-hq Document Index
@@ -648,12 +648,12 @@ Let me look at the house root and the key docs to understand the full
 <path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse</path>
 <type>directory</type>
 <entries>
-#.#.✅️.cal-user-sum/
+#.#.calendar-dox/
 #.ref/
 #.wussup-wxyz.txt
 $.zest-er-summary-FIN❤️‍🔥️+.txt
 2.dir.search.word.arg🗃️🔬️]Q]d3.+x
-44.xyz❤️‍🔥️00.17/
+44.xyz.01.00/
 69.list+dirs🔦️[.]+#]🔐️i10]CONT.+x
 directory_map.txt
 GOT-SP?.txt
@@ -670,7 +670,7 @@ topfiles
 
 _Thinking:_
 
-Now let me look at the HANDOFF.md and the main project structure to understand what "livedesk-xyz" is. Let me look at the 44.xyz❤️‍🔥️00.17 directory which seems to be the current house root, and the au11-hq folder.
+Now let me look at the HANDOFF.md and the main project structure to understand what "livedesk-xyz" is. Let me look at the 44.xyz.01.00 directory which seems to be the current house root, and the au11-hq folder.
 
 Let me look at the house root and the current testing guide
 
@@ -679,13 +679,13 @@ Let me look at the house root and the current testing guide
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00</path>
 <type>directory</type>
 <entries>
 _.0.aigent-testing-k9.txt
@@ -800,13 +800,13 @@ YAHOO_XYZ/
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.✅️.cal-user-sum/au11-hq/HANDOFF.md"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/au11-hq/HANDOFF.md"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.✅️.cal-user-sum/au11-hq/HANDOFF.md</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/au11-hq/HANDOFF.md</path>
 <type>file</type>
 <content>
 1: # 🤝 PROJECT HANDOFF — Sessions, Games, Events, and DB
@@ -1241,13 +1241,13 @@ for-users👤️/
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.livedesk"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.livedesk"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.livedesk</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.livedesk</path>
 <type>directory</type>
 <entries>
 livedesk-editor-design.md
@@ -1263,13 +1263,13 @@ livedesk-sessions-worklog.md
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/❤️‍🔥️.XYZOS_README.md"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/❤️‍🔥️.XYZOS_README.md"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/❤️‍🔥️.XYZOS_README.md</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/❤️‍🔥️.XYZOS_README.md</path>
 <type>file</type>
 <content>
 1: # 🌌 XYZOS — Onboarding Bible  
@@ -1688,13 +1688,13 @@ Let me examine the livedesk documentation and find where the current lived
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.livedesk/livedesk-report-2026-08-10.md"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.livedesk/livedesk-report-2026-08-10.md"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.livedesk/livedesk-report-2026-08-10.md</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.livedesk/livedesk-report-2026-08-10.md</path>
 <type>file</type>
 <content>
 1: # LIVEDESK SESSIONS + DESKS — FEATURE-WORK REPORT (2026-08-10)
@@ -2009,7 +2009,7 @@ Let me examine the livedesk documentation and find where the current lived
 ```json
 {
   "pattern": "khtpm",
-  "path": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17",
+  "path": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00",
   "include": "*.txt"
 }
 ```
@@ -2017,7 +2017,7 @@ Let me examine the livedesk documentation and find where the current lived
 **Output:**
 ```
 Found 34 matches
-/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/_.0.aigent-testing-k9.txt:
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.0.aigent-testing-k9.txt:
   Line 45: exact contract). Direct instruction: built BEFORE any khtpm port of that
 
   Line 356: SCOPE ADDENDUM 2026-08-11 - khtpm_strip_parser.c / khtpm_taskbar_manager
@@ -2029,7 +2029,7 @@ Found 34 matches
   Line 403:    khtpm_strip_parser.c) is still genuinely local-only to the parser's
 
 
-/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/tile-picker/ops/KHTPM-ARCH.txt:
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tile-picker/ops/KHTPM-ARCH.txt:
   Line 13: "megafile") in favor of a shared khtpm_core.c + khtpm_plat_win.c/
 
   Line 14: khtpm_plat_x11.c split. That split was built, but the X11 half
@@ -2054,14 +2054,14 @@ Found 34 matches
 
   Line 82: deleted. See that dir's khtpm-strip-parser-design.md and
 
-  Line 83: #.#.✅️.cal-user-sum/AU11-khtpm-gap-fixes.txt for the real, current
+  Line 83: #.#.calendar-dox/AU11-khtpm-gap-fixes.txt for the real, current
 
 
-/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/$.crypts/aug8-kilo-desk-2do.txt:
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/$.crypts/aug8-kilo-desk-2do.txt:
   Line 88:       + "hq should have a nav number, and nav numbers grow, see chtpm/khtpm
 
 
-/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/hq-bugfix.txt:
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/hq-bugfix.txt:
   Line 33: D. Use black/white fallback colors (matching khtpm_plat_x11.c's working menu):
 
   Line 50: 2. khtpm_plat_x11.c show_menu_x11() (line 103):
@@ -2069,17 +2069,17 @@ Found 34 matches
   Line 122:    (khtpm_plat_x11.c uses plain XDrawString and works).
 
 
-/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/@.apps/desk-street-raider🏦️🏪️/#.wussup.DSR🏦️🏪️ .txt:
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/desk-street-raider🏦️🏪️/#.wussup.DSR🏦️🏪️ .txt:
   Line 68: maybe even in "khtpm")
 
 
-/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/khtpm-win-fix.txt:
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/khtpm-win-fix.txt:
   Line 1: khtpm-win-fix.txt — Windows port plan for $.crypts + KHTPM livedesk
 
   Line 384: End of khtpm-win-fix.txt — wait for user review before implementing.
 
 
-/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/livedesk-win-fix-lvl2.txt:
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/livedesk-win-fix-lvl2.txt:
   Line 22:   khtpm-win-fix.txt                 Phase-1 done; Phase-2 full parity open
 
   Line 205:     - Show Text / Show Choices helpers (khtpm_show_*)
@@ -2089,7 +2089,7 @@ Found 34 matches
   Line 719:     khtpm_plat_x11.c (or #ifdef blocks in one file like egg_window)
 
 
-/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/!.linux-absolute-FIXME-a6.txt:
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/!.linux-absolute-FIXME-a6.txt:
   Line 9:   - khtpm-win-fix.txt          ($.crypts + KHTPM Win port plan)
 
   Line 134:     khtpm_show_choices.+x + branch run.sh absolute paths (~6 hits)
@@ -2117,13 +2117,13 @@ Now let me look at the actual livedesk/khtpm implementation and how it builds
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/run-khtpm-strip.sh"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/run-khtpm-strip.sh"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/run-khtpm-strip.sh</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/run-khtpm-strip.sh</path>
 <type>file</type>
 <content>
 1: #!/bin/sh
@@ -2131,7 +2131,7 @@ Now let me look at the actual livedesk/khtpm implementation and how it builds
 3: # parser/manager pair (the 2026-08-11 taskbar refactor). Delegates to the
 4: # real script at *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh — see
 5: # that file's own header comment, and
-6: # #.#.✅️.cal-user-sum/aug-11-refactor-finish.md, for the full story.
+6: # #.#.calendar-dox/aug-11-refactor-finish.md, for the full story.
 7: set -e
 8: HOUSE_DIR="$(cd "$(dirname "$0")" && pwd)"
 9: exec sh "$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh" "$@"
@@ -2145,13 +2145,13 @@ Now let me look at the actual livedesk/khtpm implementation and how it builds
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/livedesk-taskbar"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/livedesk-taskbar"
 }
 ```
 
 **Error:**
 ```
-File not found: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/livedesk-taskbar
+File not found: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/livedesk-taskbar
 ```
 
 **Tool: read**
@@ -2159,13 +2159,13 @@ File not found: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits</path>
 <type>directory</type>
 <entries>
 #.wussup.widgets.txt
@@ -2208,13 +2208,13 @@ The livedesk-taskbar is in `*.monads/*.livedesk-taskbar/`. Let me look at that.
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads</path>
 <type>directory</type>
 <entries>
 *.#.misingno./
@@ -2234,13 +2234,13 @@ The livedesk-taskbar is in `*.monads/*.livedesk-taskbar/`. Let me look at that.
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.#.✅️.cal-user-sum/au11-hq/_.0.aigent-testing-k9.txt"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.#.calendar-dox/au11-hq/_.0.aigent-testing-k9.txt"
 }
 ```
 
 **Error:**
 ```
-File not found: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.#.✅️.cal-user-sum/au11-hq/_.0.aigent-testing-k9.txt
+File not found: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.#.calendar-dox/au11-hq/_.0.aigent-testing-k9.txt
 ```
 
 ---
@@ -2252,13 +2252,13 @@ File not found: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar</path>
 <type>directory</type>
 <entries>
 khtpm_strip_bottom.chtpm
@@ -2279,13 +2279,13 @@ walk-off-au5.md
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/_.0.aigent-testing-k9.txt"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.0.aigent-testing-k9.txt"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/_.0.aigent-testing-k9.txt</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.0.aigent-testing-k9.txt</path>
 <type>file</type>
 <content>
 1: J2 Testing Guide (Existing + New Features)
@@ -2729,13 +2729,13 @@ Let me dig into the khtpm livedesk ops and its build
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops</path>
 <type>directory</type>
 <entries>
 +x/
@@ -2759,13 +2759,13 @@ run_khtpm_strip.sh
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/README.md"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/README.md"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/README.md</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/README.md</path>
 <type>file</type>
 <content>
 1: # livedesk-taskbar
@@ -2783,7 +2783,7 @@ run_khtpm_strip.sh
 13: 
 14: **2026-08-11: this replaces legacy `tp_taskbar.c`, fully retired** —
 15: archived to `ops/LEGACY-ARCHIVE-20260811.zip`, originals deleted. See
-16: `#.#.✅️.cal-user-sum/AU11-khtpm-gap-fixes.txt` for the complete
+16: `#.#.calendar-dox/AU11-khtpm-gap-fixes.txt` for the complete
 17: retirement record and every real bug found/fixed along the way.
 18: 
 19: ## What it is
@@ -2868,7 +2868,7 @@ run_khtpm_strip.sh
 98:   either the real KeyPress path or the new agent relay.
 99: 
 100: Full detail on both, plus everything already fixed, is in
-101: `#.#.✅️.cal-user-sum/AU11-khtpm-gap-fixes.txt`.
+101: `#.#.calendar-dox/AU11-khtpm-gap-fixes.txt`.
 102: 
 103: ## Debug tooling
 104: 
@@ -2886,7 +2886,7 @@ run_khtpm_strip.sh
 116: - `ops/LEGACY-ARCHIVE-20260811.zip` — legacy `tp_taskbar.c` and every
 117:   related file (its Windows port, its dedicated harness, an earlier
 118:   abandoned khtpm architecture attempt), archived in full before deletion.
-119: - `#.#.✅️.cal-user-sum/AU11-khtpm-gap-fixes.txt` — the complete,
+119: - `#.#.calendar-dox/AU11-khtpm-gap-fixes.txt` — the complete,
 120:   chronological record of the real parser build-out and every bug found
 121:   fixing it, ending with the legacy retirement itself.
 122: - `khtpm-strip-parser-design.md` / `khtpm-strip-parser-SCOPE.md` — the
@@ -2920,13 +2920,13 @@ Let me look at the build_khtpm_strip.sh and run_khtpm_strip.sh to understand wha
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh</path>
 <type>file</type>
 <content>
 1: #!/bin/sh
@@ -2968,13 +2968,13 @@ Let me look at the build_khtpm_strip.sh and run_khtpm_strip.sh to understand wha
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh</path>
 <type>file</type>
 <content>
 1: #!/bin/sh
@@ -3115,13 +3115,13 @@ Let me check the installer's pointers and what config livedesk depends on at run
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop</path>
 <type>directory</type>
 <entries>
 #.dox/
@@ -3180,13 +3180,13 @@ Let me read the key config files and the parser design to understand the runtime
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/livedesk_taskbar.pdl"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/livedesk_taskbar.pdl"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/livedesk_taskbar.pdl</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/livedesk_taskbar.pdl</path>
 <type>file</type>
 <content>
 1: SECTION      | hq_label            | HQ
@@ -3250,13 +3250,13 @@ Let me read the key config files and the parser design to understand the runtime
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/livedesk_theme.pdl"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/livedesk_theme.pdl"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/livedesk_theme.pdl</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/livedesk_theme.pdl</path>
 <type>file</type>
 <content>
 1: SECTION      | KEY                | VALUE
@@ -3274,13 +3274,13 @@ Let me read the key config files and the parser design to understand the runtime
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/khtpm-strip-parser-SCOPE.md"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/khtpm-strip-parser-SCOPE.md"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/khtpm-strip-parser-SCOPE.md</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/khtpm-strip-parser-SCOPE.md</path>
 <type>file</type>
 <content>
 1: # khtpm strip parser — locked scope, 2026-08-11
@@ -3424,7 +3424,7 @@ Let me understand the entity window system that livedesk depends on, and check h
 ```json
 {
   "pattern": "livedesk_taskbar\\.pdl|#\\.desktop|HOUSE|house_root|argv\\[1\\]",
-  "path": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
   "include": "*.c"
 }
 ```
@@ -3432,7 +3432,7 @@ Let me understand the entity window system that livedesk depends on, and check h
 **Output:**
 ```
 Found 216 matches (showing first 100)
-/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c:
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c:
   Line 80: void ktb_init(KtbState *s, const char *house_root) {
 
   Line 82:     snprintf(s->house_root, sizeof(s->house_root), "%s",
@@ -3642,13 +3642,13 @@ Found 216 matches (showing first 100)
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/livedesk_shortcuts.pdl"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/livedesk_shortcuts.pdl"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/livedesk_shortcuts.pdl</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/livedesk_shortcuts.pdl</path>
 <type>file</type>
 <content>
 
@@ -3681,9 +3681,9 @@ I now have a good picture. Let me understand the dependencies of the khtpm-taskb
 
 So the khtpm-taskbar is deeply coupled to the house. But the user's goal: install a completely fresh version of "livedesk-xyz" — the user wants a single script to install a clean standalone copy.
 
-Let me check the pointer: dev_tree points to `yz.muchiverse/44.xyz❤️‍🔥️00.10`, but the current house is `44.xyz❤️‍🔥️00.17`. The installer package lives at `x0.parent-level-dev-env-04.04/xyz-installer-dev` and its parent is `x0.parent-level-dev-env-04.04`. The pointers.pdl says dev_tree = `yz.muchiverse/44.xyz❤️‍🔥️00.10`, resolved against `x0.parent-level-dev-env-04.04` parent. That's stale — current is `44.xyz❤️‍🔥️00.17`.
+Let me check the pointer: dev_tree points to `yz.muchiverse/44.xyz❤️‍🔥️00.10`, but the current house is `44.xyz.01.00`. The installer package lives at `x0.parent-level-dev-env-04.04/xyz-installer-dev` and its parent is `x0.parent-level-dev-env-04.04`. The pointers.pdl says dev_tree = `yz.muchiverse/44.xyz❤️‍🔥️00.10`, resolved against `x0.parent-level-dev-env-04.04` parent. That's stale — current is `44.xyz.01.00`.
 
-Wait, the user's actual current working directory is `/home/no/Desktop/.../yz.muchiverse/44.xyz❤️‍🔥️00.17`. And `x0.parent-level-dev-env-04.04/xyz-installer-dev`. So the installer-dev and the house are siblings: both under `x0.parent-level-dev-env-04.04`. The house is `x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17`.
+Wait, the user's actual current working directory is `/home/no/Desktop/.../yz.muchiverse/44.xyz.01.00`. And `x0.parent-level-dev-env-04.04/xyz-installer-dev`. So the installer-dev and the house are siblings: both under `x0.parent-level-dev-env-04.04`. The house is `x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00`.
 
 Let me verify the actual layout and figure out the best answer. The user asked:
 1. What would I call it after understanding the intention?
@@ -3704,13 +3704,13 @@ Let me check the managed dependency (tp_desktop_window) and how sessions/login a
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/tile-picker/ops"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tile-picker/ops"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/tile-picker/ops</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tile-picker/ops</path>
 <type>directory</type>
 <entries>
 +x/
@@ -3750,13 +3750,13 @@ tp_test_send_key.c
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/0.user-pal👤️"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/0.user-pal👤️"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/0.user-pal👤️</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/0.user-pal👤️</path>
 <type>directory</type>
 <entries>
 #.sys-fs-setup/
@@ -3772,7 +3772,7 @@ tp_test_send_key.c
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
   "offset": 1,
   "limit": 120
 }
@@ -3780,7 +3780,7 @@ tp_test_send_key.c
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
 <type>file</type>
 <content>
 1: /* khtpm_strip_parser.c — the new outer process, playing chtpm_parser.c's
@@ -3940,7 +3940,7 @@ Let me check the old installer harnesses and the portability doc, to understand 
 **Input:**
 ```json
 {
-  "command": "ls \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/\" 2>/dev/null",
+  "command": "ls \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/%.harnesses/\" 2>/dev/null",
   "description": "List harness directory contents"
 }
 ```
@@ -4070,7 +4070,7 @@ xo-human.md
 94: 
 95: ---
 96: 
-97: *Written after fixing the real regression this documents. Cross-referenced from the taskbar's own `khtpm-refactor-plan.md` (parent `yz.muchiverse/#.#.✅️.cal-user-sum/`) where the pals-migration work that triggered this discovery is fully written up.*
+97: *Written after fixing the real regression this documents. Cross-referenced from the taskbar's own `khtpm-refactor-plan.md` (parent `yz.muchiverse/#.#.calendar-dox/`) where the pals-migration work that triggered this discovery is fully written up.*
 
 (End of file - total 97 lines)
 </content>
@@ -4093,13 +4093,13 @@ Let me look at the install-xyzos harness and the old installer a bit more to und
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/install-xyzos"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/%.harnesses/install-xyzos"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/install-xyzos</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/%.harnesses/install-xyzos</path>
 <type>directory</type>
 <entries>
 button.sh
@@ -4120,13 +4120,13 @@ scenarios/
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/install-xyzos/button.sh"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/%.harnesses/install-xyzos/button.sh"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/install-xyzos/button.sh</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/%.harnesses/install-xyzos/button.sh</path>
 <type>file</type>
 <content>
 1: #!/bin/bash
@@ -4195,13 +4195,13 @@ scenarios/
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/install-xyzos/ops"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/%.harnesses/install-xyzos/ops"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/install-xyzos/ops</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/%.harnesses/install-xyzos/ops</path>
 <type>directory</type>
 <entries>
 +x/
@@ -4227,7 +4227,7 @@ Let me think about what the user is asking:
 
 So the key deliverable here is understanding + a naming recommendation + likely a plan for refactoring the installer. Let me check the au11-hq 2do and the USER_CREATION.md quickly to know what the actual "product" is and how livedesk currently runs, so I can answer the naming question well.
 
-Let me check the current house version — the pointers.pdl points to `44.xyz❤️‍🔥️00.10` but the working dir is `44.xyz❤️‍🔥️00.17` — an outdated pointer. The installer reads FROM this dev tree.
+Let me check the current house version — the pointers.pdl points to `44.xyz❤️‍🔥️00.10` but the working dir is `44.xyz.01.00` — an outdated pointer. The installer reads FROM this dev tree.
 
 The current livedesk = the khtpm two-process pair (`*.monads/*.livedesk-taskbar/`), which:
 - depends on X11, 
@@ -4258,14 +4258,14 @@ Let me check the current naming and focus docs, plus the USER_CREATION for how t
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.✅️.cal-user-sum/au11-hq/USER_CREATION.md",
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/au11-hq/USER_CREATION.md",
   "limit": 80
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.✅️.cal-user-sum/au11-hq/USER_CREATION.md</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/au11-hq/USER_CREATION.md</path>
 <type>file</type>
 <content>
 1: # User Creation System — Research, Implementation, and Test Log
@@ -4358,13 +4358,13 @@ Let me check the current naming and focus docs, plus the USER_CREATION for how t
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.✅️.cal-user-sum/au11-hq/2do-au11.txt"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/au11-hq/2do-au11.txt"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.✅️.cal-user-sum/au11-hq/2do-au11.txt</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/au11-hq/2do-au11.txt</path>
 <type>file</type>
 <content>
 1: AU11 HANDOFF — 2do tracking for 2026-08-11 session
@@ -4772,13 +4772,13 @@ Now I have a strong understanding of the project. Let me now understand what the
 Let me summarize what I've learned:
 
 **The project:**
-- The house root is `44.xyz❤️‍🔥️00.17` — an "XYZOS" local operating culture, file-mediated truth, GL windows, pal/chtpm/ops architecture.
+- The house root is `44.xyz.01.00` — an "XYZOS" local operating culture, file-mediated truth, GL windows, pal/chtpm/ops architecture.
 - The **livedesk taskbar** (`*.monads/*.livedesk-taskbar/`) is the current desktop. It's a two-process khtpm strip parser+manager (Xlib). It has 15 header cells: HQ, USER, file, desks, pals, palettes, edit, player, db, plugins, store, network, ai, date-time.
 - Sessions/desks/events = games. USER creation via `0.user-pal👤️/00.login-signup`. Entities launched via `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`.
 - Storage: same machine, `xyzfs/users/<uuid>/home/livedesk/sessions/`.
 
 **The old installer:**
-- `xyzos-starter-install.sh` copied two apps (login-signup + avatar-creation), compiled them, created session.pdl, app-store ledger, paths.pdl, launcher. It's install v1 — pre-khtpm. It reads from the dev tree `44.xyz❤️‍🔥️00.10` (pointer!), but the current house is `44.xyz❤️‍🔥️00.17`.
+- `xyzos-starter-install.sh` copied two apps (login-signup + avatar-creation), compiled them, created session.pdl, app-store ledger, paths.pdl, launcher. It's install v1 — pre-khtpm. It reads from the dev tree `44.xyz❤️‍🔥️00.10` (pointer!), but the current house is `44.xyz.01.00`.
 
 **What the user wants:**
 - Refactor the installer so a user runs 1 script and gets a completely fresh installed version of the livedesk-xyz (the khtpm taskbar system) — i.e., the whole desktop.
@@ -4828,7 +4828,7 @@ I'll keep it reasonably short but informative. Given this is a "detail" request 
 
 Got it. Here's my read after going through the project:
 
-**What this is:** The house root `44.xyz❤️‍🔥️00.17` is **XYZOS** — a file-truth, local-first OS for games/makers. The desktop is **livedesk**: a two-process khtpm taskbar (`*.monads/*.livedesk-taskbar/` — Xlib strip parser + pure-logic manager), with the USER cell now doing real signup (via `0.user-pal👤️/00.login-signup` ops), sessions/desks/events as the game model, and entities spawned through `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`.
+**What this is:** The house root `44.xyz.01.00` is **XYZOS** — a file-truth, local-first OS for games/makers. The desktop is **livedesk**: a two-process khtpm taskbar (`*.monads/*.livedesk-taskbar/` — Xlib strip parser + pure-logic manager), with the USER cell now doing real signup (via `0.user-pal👤️/00.login-signup` ops), sessions/desks/events as the game model, and entities spawned through `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`.
 
 **The old installer problem:** `xyzos-starter-install.sh` (install v1) predates khtpm. It copies just two apps (login + avatar) into `~/xyzos/` and compiles a *strip-less* taskbar. Since then, the whole desktop was rewritten as the khtpm parser/manager pair, the house moved `00.10` → `00.17` (your `pointers.pdl` still points at `.10`), and user creation moved into the USER cell. So v1 no longer installs the thing that "livedesk" actually is today.
 
@@ -4839,7 +4839,7 @@ Got it. Here's my read after going through the project:
 2. Ship the declarative layouts (`khtpm_strip_header/bottom.chtpm`), `#.desktop/livedesk_taskbar.pdl` + `livedesk_theme.pdl`.
 3. Wire the USER cell's account registry + `xyzfs/` fresh, with a **fresh guest session.pdl** and empty sessions.
 4. Bundle/find `tp_desktop_window.+x` for entity spawning, and compile with `-lX11` (X11 dev libs are a hard dependency).
-5. Update `pointers.pdl` → `44.xyz❤️‍🔥️00.17` and follow the portability rules in `dev-doc/03` (no fixed-depth `../..` climbs; `house_root` passed explicitly).
+5. Update `pointers.pdl` → `44.xyz.01.00` and follow the portability rules in `dev-doc/03` (no fixed-depth `../..` climbs; `house_root` passed explicitly).
 6. New KPI harness (v1's `%.harnesses/install-xyzos` tests the old app pair — needs a khtpm-era version).
 
 Before I write it, a few scope questions so I build the
@@ -5054,7 +5054,7 @@ Let me map the runtime dependencies precisely — what the parser launches, what
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops\" && grep -n \"khtpm_taskbar_manager_main\\|_chtpm\\|\\.chtpm\\|khtpm_strip_header\\|khtpm_strip_bottom\" khtpm_strip_parser.c | head -40",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops\" && grep -n \"khtpm_taskbar_manager_main\\|_chtpm\\|\\.chtpm\\|khtpm_strip_header\\|khtpm_strip_bottom\" khtpm_strip_parser.c | head -40",
   "description": "Find parser's layout file and manager paths"
 }
 ```
@@ -5080,7 +5080,7 @@ Let me map the runtime dependencies precisely — what the parser launches, what
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops\" && grep -n \"livedesk_taskbar\\.pdl\\|#\\.desktop\\|strip_state\\|strip_history\\|strip_var_\\|xyzfs/\"\n\", \"description\": \"\"}"
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops\" && grep -n \"livedesk_taskbar\\.pdl\\|#\\.desktop\\|strip_state\\|strip_history\\|strip_var_\\|xyzfs/\"\n\", \"description\": \"\"}"
 }
 ```
 
@@ -5100,7 +5100,7 @@ Please rewrite the input so it satisfies the expected schema.
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops\" && grep -n \"SP_PATH\\|g_house_root\\|layout_file\\|header_chtpm\\|bottom_chtpm\\|fonts\\|cwd\\|getcwd\\|chdir\" khtpm_strip_parser.c | head -50",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops\" && grep -n \"SP_PATH\\|g_house_root\\|layout_file\\|header_chtpm\\|bottom_chtpm\\|fonts\\|cwd\\|getcwd\\|chdir\" khtpm_strip_parser.c | head -50",
   "description": "Find parser path derivation"
 }
 ```
@@ -5147,7 +5147,7 @@ Please rewrite the input so it satisfies the expected schema.
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops\" && grep -n \"livedesk_taskbar\\.pdl\\|livedesk_theme\\.pdl\\|livedesk_shortcuts\\|strip_history\\|strip_state\\|strip_var_\\|log_path\\|pid_path\\|#\\.desktop\" khtpm_taskbar_manager_main.c khtpm_taskbar_manager.c | head -60",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops\" && grep -n \"livedesk_taskbar\\.pdl\\|livedesk_theme\\.pdl\\|livedesk_shortcuts\\|strip_history\\|strip_state\\|strip_var_\\|log_path\\|pid_path\\|#\\.desktop\" khtpm_taskbar_manager_main.c khtpm_taskbar_manager.c | head -60",
   "description": "Find manager path dependencies"
 }
 ```
@@ -5223,7 +5223,7 @@ Let me look at the parser's argv handling and the layout path resolution (line 1
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
   "offset": 1400,
   "limit": 70
 }
@@ -5231,7 +5231,7 @@ Let me look at the parser's argv handling and the layout path resolution (line 1
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
 <type>file</type>
 <content>
 1400:     for (int i = 0; i < header_doc->element_count; i++) {
@@ -5322,7 +5322,7 @@ Let me check the layout_path() function to see where it looks for the .chtpm fil
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
   "limit": 80,
   "offset": 130
 }
@@ -5330,7 +5330,7 @@ Let me check the layout_path() function to see where it looks for the .chtpm fil
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
 <type>file</type>
 <content>
 130: static int g_has_real_focus = 0;
@@ -5431,7 +5431,7 @@ Let me check the layout_path function to know where the .chtpm files are looked 
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops\" && grep -n \"static void layout_path\\|layout_path(\" khtpm_strip_parser.c",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops\" && grep -n \"static void layout_path\\|layout_path(\" khtpm_strip_parser.c",
   "description": "Find layout_path definition"
 }
 ```
@@ -5453,7 +5453,7 @@ Let me check the layout_path function to know where the .chtpm files are looked 
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
   "limit": 20,
   "offset": 1300
 }
@@ -5461,7 +5461,7 @@ Let me check the layout_path function to know where the .chtpm files are looked 
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
 <type>file</type>
 <content>
 1300:     return -1;
@@ -5556,7 +5556,7 @@ Good - terminal shortcut included. Let me finish dependency mapping for the enti
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/tile-picker\" && ls && ls ops/+x 2>/dev/null; echo \"---tp build refs---\"; grep -rln \"tp_desktop_window\" --include=\"*.sh\" --include=\"*.md\" . 2>/dev/null | head",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tile-picker\" && ls && ls ops/+x 2>/dev/null; echo \"---tp build refs---\"; grep -rln \"tp_desktop_window\" --include=\"*.sh\" --include=\"*.md\" . 2>/dev/null | head",
   "description": "Inspect tile-picker build layout"
 }
 ```
@@ -5614,7 +5614,7 @@ tp_test_send_key.+x
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/0.user-pal👤️/00.login-signup\" && ls && echo \"--- button.sh ---\" && sed -n '1,60p' button.sh",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/0.user-pal👤️/00.login-signup\" && ls && echo \"--- button.sh ---\" && sed -n '1,60p' button.sh",
   "description": "Inspect login-signup build"
 }
 ```
@@ -5713,7 +5713,7 @@ Let me check the tile-picker build.sh to understand how tp_desktop_window builds
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/tile-picker\" && sed -n '1,80p' scripts/build.sh",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tile-picker\" && sed -n '1,80p' scripts/build.sh",
   "description": "Read tile-picker build script"
 }
 ```
@@ -5790,7 +5790,7 @@ echo "build ok"
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/0.user-pal👤️/00.login-signup\" && sed -n '60,140p' button.sh && echo \"=== scripts/build.sh ===\" && sed -n '1,60p' scripts/build.sh 2>/dev/null",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/0.user-pal👤️/00.login-signup\" && sed -n '60,140p' button.sh && echo \"=== scripts/build.sh ===\" && sed -n '1,60p' scripts/build.sh 2>/dev/null",
   "description": "Read login-signup build and run flow"
 }
 ```
@@ -5969,7 +5969,7 @@ Got it — product name: **HQ** (installs a thing called HQ, the livedesk HQ des
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops\" && sed -n '850,940p' khtpm_taskbar_manager.c",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops\" && sed -n '850,940p' khtpm_taskbar_manager.c",
   "description": "Read userpal invocation + avatar path code"
 }
 ```
@@ -6091,7 +6091,7 @@ The USER cell shells out to `userpal_*.+x` with `PRISC_PROJECT_ROOT` pointed at 
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/tile-picker/ops\" && grep -n \"argv\\[1\\]\\|argv\\[2\\]\\|house_root\\|ensure_taskbar\\|livedesk_taskbar_struct\\|\\.pdl\\|PRISC\" tp_desktop_window.c | head -40",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tile-picker/ops\" && grep -n \"argv\\[1\\]\\|argv\\[2\\]\\|house_root\\|ensure_taskbar\\|livedesk_taskbar_struct\\|\\.pdl\\|PRISC\" tp_desktop_window.c | head -40",
   "description": "Check entity window argv + house root usage"
 }
 ```
@@ -6146,7 +6146,7 @@ The USER cell shells out to `userpal_*.+x` with `PRISC_PROJECT_ROOT` pointed at 
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/0.user-pal👤️/00.login-signup/ops\" && grep -n \"PRISC_PROJECT_ROOT\\|getenv\\|current_login\\|users/\\|xyzfs\" userpal_whoami.c | head -20",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/0.user-pal👤️/00.login-signup/ops\" && grep -n \"PRISC_PROJECT_ROOT\\|getenv\\|current_login\\|users/\\|xyzfs\" userpal_whoami.c | head -20",
   "description": "Check userpal_whoami root resolution"
 }
 ```
@@ -6239,7 +6239,7 @@ Understood — **HQ = "HAI-Q"**. Good, that's the product name. Let me finish th
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/tile-picker/ops\" && grep -n 'system(\\|popen(\\|\"\\./\\|ops/\\|sprite\\|emoji\\|renderer\\|prisc' tp_desktop_window.c | head -30; echo \"--- window.c references to external programs ---\"; grep -n \"opendir\\|access(\\|fopen\\|stat(\" tp_desktop_window.c | grep -i \"sprite\\|glyph\\|png\\|emoji\\|system\" | head",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tile-picker/ops\" && grep -n 'system(\\|popen(\\|\"\\./\\|ops/\\|sprite\\|emoji\\|renderer\\|prisc' tp_desktop_window.c | head -30; echo \"--- window.c references to external programs ---\"; grep -n \"opendir\\|access(\\|fopen\\|stat(\" tp_desktop_window.c | grep -i \"sprite\\|glyph\\|png\\|emoji\\|system\" | head",
   "description": "Check entity window runtime deps"
 }
 ```
@@ -6285,7 +6285,7 @@ Understood — **HQ = "HAI-Q"**. Good, that's the product name. Let me finish th
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/tile-picker\" && du -sh ops pieces system 2>/dev/null; echo \"---\"; ls #.desktop 2>/dev/null | head",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tile-picker\" && du -sh ops pieces system 2>/dev/null; echo \"---\"; ls #.desktop 2>/dev/null | head",
   "description": "Check tile-picker folder sizes"
 }
 ```
@@ -6380,7 +6380,7 @@ Let me verify the two xyzfs locations (login-app vs house-root) to replicate the
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17\" && echo \"=== house xyzfs ===\"; ls xyzfs/ 2>/dev/null; echo \"=== login xyzfs ===\"; ls \"0.user-pal👤️/00.login-signup/xyzfs/\" 2>/dev/null; echo \"=== login users ===\"; ls \"0.user-pal👤️/00.login-signup/users/\" 2>/dev/null; echo \"=== sessions anywhere ===\"; ls \"0.user-pal👤️/00.login-signup/xyzfs/users/\" 2>/dev/null | head",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00\" && echo \"=== house xyzfs ===\"; ls xyzfs/ 2>/dev/null; echo \"=== login xyzfs ===\"; ls \"0.user-pal👤️/00.login-signup/xyzfs/\" 2>/dev/null; echo \"=== login users ===\"; ls \"0.user-pal👤️/00.login-signup/users/\" 2>/dev/null; echo \"=== sessions anywhere ===\"; ls \"0.user-pal👤️/00.login-signup/xyzfs/users/\" 2>/dev/null | head",
   "description": "Compare house and login xyzfs trees"
 }
 ```
@@ -6410,7 +6410,7 @@ schar_1744476
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17\" && sed -n '765,805p' \"*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c\"",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00\" && sed -n '765,805p' \"*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c\"",
   "description": "Read sessions root resolution code"
 }
 ```
@@ -6492,7 +6492,7 @@ Let me check the essential runtime deps quickly — does tp_desktop_window need 
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17\" && echo \"=== login xyzfs full ===\"; ls -la \"0.user-pal👤️/00.login-signup/xyzfs/\"; echo \"=== house xyzfs/users ===\"; ls \"xyzfs/users/\" 2>/dev/null; find xyzfs/users -maxdepth 3 -name \"*livedesk*\" 2>/dev/null | head; echo \"=== symlinks in login ===\"; find \"0.user-pal👤️/00.login-signup\" -maxdepth 1 -type l | head",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00\" && echo \"=== login xyzfs full ===\"; ls -la \"0.user-pal👤️/00.login-signup/xyzfs/\"; echo \"=== house xyzfs/users ===\"; ls \"xyzfs/users/\" 2>/dev/null; find xyzfs/users -maxdepth 3 -name \"*livedesk*\" 2>/dev/null | head; echo \"=== symlinks in login ===\"; find \"0.user-pal👤️/00.login-signup\" -maxdepth 1 -type l | head",
   "description": "Check xyzfs symlink wiring"
 }
 ```
@@ -6531,7 +6531,7 @@ xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17\" && grep -n 'system(\\|popen(' \"*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c\" \"*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c\" | grep -oE \"'[^']*\\.\\+x'|'[^']*sh'|shell|userpal_dir|script|\\.sh\" | sort -u | head -40",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00\" && grep -n 'system(\\|popen(' \"*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c\" \"*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c\" | grep -oE \"'[^']*\\.\\+x'|'[^']*sh'|shell|userpal_dir|script|\\.sh\" | sort -u | head -40",
   "description": "Find external program calls in taskbar"
 }
 ```
@@ -6830,7 +6830,7 @@ Let me verify how tp_desktop_window resolves its own paths to know what director
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/tile-picker/ops\" && sed -n '214,245p' tp_desktop_window.c",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tile-picker/ops\" && sed -n '214,245p' tp_desktop_window.c",
   "description": "Read tp_desktop_window path resolution"
 }
 ```
@@ -6914,7 +6914,7 @@ Let me check sizes and the existing khtpm harness for the relay-based KPI
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17\" && du -sh \"*.monads/*.livedesk-taskbar\" \"&.widgits/tile-picker\" \"0.user-pal👤️/00.login-signup\" 2>/dev/null; echo \"=== harness ===\"; ls \"#.desktop/harnesses/khtpm-livedesk-taskbar/\" 2>/dev/null",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00\" && du -sh \"*.monads/*.livedesk-taskbar\" \"&.widgits/tile-picker\" \"0.user-pal👤️/00.login-signup\" 2>/dev/null; echo \"=== harness ===\"; ls \"#.desktop/harnesses/khtpm-livedesk-taskbar/\" 2>/dev/null",
   "description": "Check source sizes and harness"
 }
 ```
@@ -6946,9 +6946,9 @@ proof
 
 **Output:**
 ```
-./yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh
+./yz.muchiverse/44.xyz.01.00/#.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh
 ---
-./yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh
+./yz.muchiverse/44.xyz.01.00/#.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh
 
 ```
 
@@ -6961,7 +6961,7 @@ proof
 **Input:**
 ```json
 {
-  "command": "sed -n '1,120p' \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh\"",
+  "command": "sed -n '1,120p' \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh\"",
   "description": "Read nav.sh harness header"
 }
 ```
@@ -7210,7 +7210,7 @@ I now have the full dependency map. Let me confirm a couple of clean-up targets 
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/tile-picker\" && ls scenarios 2>/dev/null; echo \"--- tile-picker pieces/sessions? ---\"; find pieces -maxdepth 3 -name \"sessions\" -o -maxdepth 3 -name \"proof\" 2>/dev/null | head; echo \"--- tile-picker #.desktop ---\"; ls \"#.desktop\" 2>/dev/null | head; echo \"=== login junk dirs ===\"; cd \"../../0.user-pal👤️/00.login-signup\" && ls pieces/sessions 2>/dev/null | head -3; du -sh proof test-harn-same pieces/sessions 2>/dev/null",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tile-picker\" && ls scenarios 2>/dev/null; echo \"--- tile-picker pieces/sessions? ---\"; find pieces -maxdepth 3 -name \"sessions\" -o -maxdepth 3 -name \"proof\" 2>/dev/null | head; echo \"--- tile-picker #.desktop ---\"; ls \"#.desktop\" 2>/dev/null | head; echo \"=== login junk dirs ===\"; cd \"../../0.user-pal👤️/00.login-signup\" && ls pieces/sessions 2>/dev/null | head -3; du -sh proof test-harn-same pieces/sessions 2>/dev/null",
   "description": "Identify dev-only state to strip on copy"
 }
 ```
@@ -7281,7 +7281,7 @@ Now let me verify the account creation xyzfs path resolution — this determines
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/0.user-pal👤️/00.login-signup/ops\" && grep -n \"xyzfs\\|users\\|PRISC_PROJECT_ROOT\\|install_root\\|realpath\\|symlink\" userpal_create_account.c | head -30",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/0.user-pal👤️/00.login-signup/ops\" && grep -n \"xyzfs\\|users\\|PRISC_PROJECT_ROOT\\|install_root\\|realpath\\|symlink\" userpal_create_account.c | head -30",
   "description": "Check account creation xyzfs path logic"
 }
 ```
@@ -7338,7 +7338,7 @@ Let me re-read:
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/0.user-pal👤️/00.login-signup/ops\" && sed -n '66,90p' userpal_create_account.c",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/0.user-pal👤️/00.login-signup/ops\" && sed -n '66,90p' userpal_create_account.c",
   "description": "Read house root derivation in account op"
 }
 ```
@@ -7413,7 +7413,7 @@ Good — `HOUSE_ROOT` env or parent-of-login derivation. Let me confirm tp_deskt
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/tile-picker\" && grep -n \"system/\\|emoji_gen\\|emoji_xtract\\|ops/+\\|prisc\\|renderer\\|chtpm\" ops/tp_desktop_window.c | head -20; echo \"=== does parser spawn emoji ops? ===\"; grep -n \"emoji\\|system/\" \"ops/khtpm_show_text.c\" \"ops/khtpm_show_choices.c\" 2>/dev/null | head",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tile-picker\" && grep -n \"system/\\|emoji_gen\\|emoji_xtract\\|ops/+\\|prisc\\|renderer\\|chtpm\" ops/tp_desktop_window.c | head -20; echo \"=== does parser spawn emoji ops? ===\"; grep -n \"emoji\\|system/\" \"ops/khtpm_show_text.c\" \"ops/khtpm_show_choices.c\" 2>/dev/null | head",
   "description": "Check tp_desktop_window system deps"
 }
 ```
@@ -7521,7 +7521,7 @@ harnecient/
 
 Wait — but `livedesk_whoami` etc: manager reads current_login.txt in login dir. userpal binaries get PRISC_PROJECT_ROOT set to login dir by manager. userpal resolves install root = login dir, house root = parent-of-login (HOUSE_ROOT env not set, so climbs). In a replicated layout, house root = install root. 
 
-Actually, let me check: in the dev house, login dir is `0.user-pal👤️/00.login-signup`. Its parent as derived from install_root by climbing twice = `xyz.muchiverse`. Hmm wait: resolve_house_root uses strrchr to strip two path components from install_root. install_root = `.../yz.muchiverse/44.xyz❤️‍🔥️00.17/0.user-pal👤️/00.login-signup`. Stripping two = `.../yz.muchiverse/44.xyz❤️‍🔥️00.17`. That's the house root. Good — matches khtpm's house_root. In our replicated install, login root = `<install>/0.user-pal👤️/00.login-signup`, so house root derives to `<install>`. 
+Actually, let me check: in the dev house, login dir is `0.user-pal👤️/00.login-signup`. Its parent as derived from install_root by climbing twice = `xyz.muchiverse`. Hmm wait: resolve_house_root uses strrchr to strip two path components from install_root. install_root = `.../yz.muchiverse/44.xyz.01.00/0.user-pal👤️/00.login-signup`. Stripping two = `.../yz.muchiverse/44.xyz.01.00`. That's the house root. Good — matches khtpm's house_root. In our replicated install, login root = `<install>/0.user-pal👤️/00.login-signup`, so house root derives to `<install>`. 
 
 Now the emoji_gen_atlas path in tp_desktop_window line 1562: `'%s/emoji_gen_atlas.+x'` — first %s is what? Let me check lines 1550-1565 to see the resolution (probably ops_dir).
 
@@ -7532,7 +7532,7 @@ Let me quickly check.
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/tile-picker/ops\" && sed -n '1540,1570p' tp_desktop_window.c; echo \"=== system bin existence ===\"; ls ../system/ 2>/dev/null; echo \"=== glyph registry ===\"; ls ../pieces/registry/fonts/ascii 2>/dev/null | head -3; ls ../pieces/registry/fonts/ascii 2>/dev/null | wc -l",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tile-picker/ops\" && sed -n '1540,1570p' tp_desktop_window.c; echo \"=== system bin existence ===\"; ls ../system/ 2>/dev/null; echo \"=== glyph registry ===\"; ls ../pieces/registry/fonts/ascii 2>/dev/null | head -3; ls ../pieces/registry/fonts/ascii 2>/dev/null | wc -l",
   "description": "Check emoji pipeline ops resolution"
 }
 ```
@@ -7651,13 +7651,13 @@ Dependencies mapped. Let me quickly check the two layout files and the login `sc
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm</path>
 <type>file</type>
 <content>
 1: <!-- khtpm_strip_header.chtpm — layout for the persistent top-left header
@@ -7784,13 +7784,13 @@ Dependencies mapped. Let me quickly check the two layout files and the login `sc
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/khtpm_strip_bottom.chtpm"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/khtpm_strip_bottom.chtpm"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/khtpm_strip_bottom.chtpm</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/khtpm_strip_bottom.chtpm</path>
 <type>file</type>
 <content>
 1: <!-- khtpm_strip_bottom.chtpm — layout for the bottom tab-bar window (win),
@@ -7817,7 +7817,7 @@ Dependencies mapped. Let me quickly check the two layout files and the login `sc
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17\" && ls \"0.user-pal👤️/00.login-signup/scripts/build.sh\" && sed -n '1,45p' \"0.user-pal👤️/00.login-signup/scripts/build.sh\"",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00\" && ls \"0.user-pal👤️/00.login-signup/scripts/build.sh\" && sed -n '1,45p' \"0.user-pal👤️/00.login-signup/scripts/build.sh\"",
   "description": "Check login build script top"
 }
 ```
@@ -7922,7 +7922,7 @@ Let me check the glyph/font registry the entity window needs at runtime
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17\" && grep -n \"pieces/registry\\|font\\|glyph\\|atlas\" \"&.widgits/tile-picker/ops/tp_desktop_window.c\" | head -15; echo \"=== wsr-pal presence (build dep of tile-picker build.sh) ===\"; ls -d \"014.wsr-pal💸️📌️+2\" 2>/dev/null; ls 014.wsr-pal*/ops/+x/emoji_gen_atlas.+x 2>/dev/null",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00\" && grep -n \"pieces/registry\\|font\\|glyph\\|atlas\" \"&.widgits/tile-picker/ops/tp_desktop_window.c\" | head -15; echo \"=== wsr-pal presence (build dep of tile-picker build.sh) ===\"; ls -d \"014.wsr-pal💸️📌️+2\" 2>/dev/null; ls 014.wsr-pal*/ops/+x/emoji_gen_atlas.+x 2>/dev/null",
   "description": "Check entity window font deps"
 }
 ```
@@ -8019,7 +8019,7 @@ This is the last dependency question — what does the entity window shell out t
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/tile-picker/ops\" && grep -n 'snprintf(cmd' tp_desktop_window.c | head -30",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tile-picker/ops\" && grep -n 'snprintf(cmd' tp_desktop_window.c | head -30",
   "description": "List all shell commands entity window runs"
 }
 ```
@@ -8120,7 +8120,7 @@ Let me verify tp_desktop_window compiles standalone (local headers only) and che
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/tile-picker/ops\" && grep -n '^#include' tp_desktop_window.c | head -40; echo \"=== emoji op sources present? ===\"; ls emoji_gen_atlas.c emoji_xtract.c 2>/dev/null || echo \"no emoji sources in tile-picker (only prebuilt in +x)\"",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/tile-picker/ops\" && grep -n '^#include' tp_desktop_window.c | head -40; echo \"=== emoji op sources present? ===\"; ls emoji_gen_atlas.c emoji_xtract.c 2>/dev/null || echo \"no emoji sources in tile-picker (only prebuilt in +x)\"",
   "description": "Verify tp_desktop_window include set"
 }
 ```
@@ -8222,7 +8222,7 @@ All dependency questions answered. The design is clear: the installed HQ keeps t
 **Input:**
 ```json
 {
-  "command": "which gcc xvfb-run Xvfb 2>/dev/null; echo \"DISPLAY=$DISPLAY\"; pkg-config --exists x11 && echo \"x11 headers: yes\"; ls /usr/include/X11/Xlib.h 2>/dev/null; ls /usr/include/GL/gl.h /usr/include/GL/glx.h 2>/dev/null; echo \"=== existing nav.sh harness deps ===\"; ls \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/harnesses/khtpm-livedesk-taskbar/\" && grep -n \"xwininfo\\|tk_\\|DISPLAY\\|XTest\" \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh\" | head",
+  "command": "which gcc xvfb-run Xvfb 2>/dev/null; echo \"DISPLAY=$DISPLAY\"; pkg-config --exists x11 && echo \"x11 headers: yes\"; ls /usr/include/X11/Xlib.h 2>/dev/null; ls /usr/include/GL/gl.h /usr/include/GL/glx.h 2>/dev/null; echo \"=== existing nav.sh harness deps ===\"; ls \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/harnesses/khtpm-livedesk-taskbar/\" && grep -n \"xwininfo\\|tk_\\|DISPLAY\\|XTest\" \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh\" | head",
   "description": "Check build/test tooling availability"
 }
 ```
@@ -8320,7 +8320,7 @@ All tooling is present (`gcc`, `DISPLAY=:0`, X11/GL headers). Let me read the re
 **Input:**
 ```json
 {
-  "command": "sed -n '120,300p' \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh\"",
+  "command": "sed -n '120,300p' \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh\"",
   "description": "Read nav.sh command implementations"
 }
 ```
@@ -8394,7 +8394,7 @@ The nav.sh harness is entirely relay-based (writes to `#.desktop/livedesk_agent_
 
 Now I have a complete understanding. Let me write:
 1. The installer `harnecient-install.sh` in xyz-installer-dev/
-2. Update pointers.pdl to 44.xyz❤️‍🔥️00.17
+2. Update pointers.pdl to 44.xyz.01.00
 3. A KPI harness for the installed desktop (relay-based) in %.harnesses/
 4. A design doc
 
@@ -8480,11 +8480,11 @@ Now let me check what happened with `#.desktop/harnesses/install-xyzos` — it r
 
 Let me now write everything. I'll:
 1. Write `harnecient-install.sh` (new, replacing v1 concept) in xyz-installer-dev/
-2. Update `pointers.pdl` → 44.xyz❤️‍🔥️00.17
+2. Update `pointers.pdl` → 44.xyz.01.00
 3. Write design doc in xyz-installer-dev/dev-doc/ + user-quick update
 4. Update the INDEX/HANDOFF? Maybe minimal — the au11-hq docs link to xyz-installer-dev. I'll add a short note/doc in xyz-installer-dev.
 
-Let me first design the exact copy list. Sources (all relative to house root 44.xyz❤️‍🔥️00.17):
+Let me first design the exact copy list. Sources (all relative to house root 44.xyz.01.00):
 - `*.monads/*.livedesk-taskbar/` (full dir; includes ops, layouts, +x, README, legacy zip — exclude the LEGACY zip?  maybe keep out to reduce size; but it's small. Actually for a fresh install we don't need LEGACY-ARCHIVE zip. Exclude it.)
 - `&.widgits/tile-picker/ops/` — but tp_desktop_window also needs `&.widgits/tile-picker/pieces/registry/fonts/ascii`? For sprite fallback it reads glyph via package_dir/glyph.txt (per-entity), and emoji pipeline uses glyph_override from package assets. The emoji ops reference `pieces/registry/fonts/ascii`? Let me check quickly what emoji_prebuilt needs. Actually simpler: copy whole `&.widgits/tile-picker/` minus dev junk (scenarios, proof). It's 4MB — fine for a self-contained install. Hmm but it contains system/ binaries (prisc+x etc.) that tile-picker build copies from wsr-pal; those are per-project system copies. Do we need them for the installed HQ? tp_desktop_window for entity windows needs rendering, not chtpm system binaries. Entities themselves (the games) use xyzfs/bin/<game>/ops. The system binaries (prisc+x, chtpm_parser_pal, renderer, keyboard_input) are for the CLI login app / chtpm-family apps. The khtpm taskbar is pure Xlib GL — doesn't need them. 
 
@@ -8525,7 +8525,7 @@ Let me verify exactly how the manager invokes userpal and whether the two xyzfs 
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops\" && grep -n \"HOUSE_ROOT\\|PRISC_PROJECT_ROOT\\|userpal_create\\|userpal_login\\|userpal_logout\\|userpal_whoami\\|cd '\\\"\" khtpm_taskbar_manager.c | head -30",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops\" && grep -n \"HOUSE_ROOT\\|PRISC_PROJECT_ROOT\\|userpal_create\\|userpal_login\\|userpal_logout\\|userpal_whoami\\|cd '\\\"\" khtpm_taskbar_manager.c | head -30",
   "description": "Find userpal invocation env in manager"
 }
 ```
@@ -8614,7 +8614,7 @@ The two xyzfs roots are consistent (both resolve to `<house>/xyzfs/users/<uuid>`
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops\" && grep -n \"pid\\|pgrep\\|singleton\\|already running\\|/proc\" khtpm_strip_parser.c | head -20; echo \"=== manager pid log path ===\"; sed -n '80,105p' khtpm_taskbar_manager.c",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops\" && grep -n \"pid\\|pgrep\\|singleton\\|already running\\|/proc\" khtpm_strip_parser.c | head -20; echo \"=== manager pid log path ===\"; sed -n '80,105p' khtpm_taskbar_manager.c",
   "description": "Check parser pid/singleton logic"
 }
 ```
@@ -8734,7 +8734,7 @@ Let me read the USER cell signup trace so the KPI harness drives
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.✅️.cal-user-sum/au11-hq/USER_CREATION.md",
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/au11-hq/USER_CREATION.md",
   "offset": 180,
   "limit": 120
 }
@@ -8742,7 +8742,7 @@ Let me read the USER cell signup trace so the KPI harness drives
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.✅️.cal-user-sum/au11-hq/USER_CREATION.md</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/au11-hq/USER_CREATION.md</path>
 <type>file</type>
 <content>
 180: 
@@ -8879,7 +8879,7 @@ Let me read the USER cell signup trace so the KPI harness drives
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.✅️.cal-user-sum/au11-hq/USER_CREATION.md",
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/au11-hq/USER_CREATION.md",
   "limit": 80,
   "offset": 300
 }
@@ -8912,7 +8912,7 @@ Let me retry reading that section.
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.✅️.cal-user-sum/au11-hq/USER_CREATION.md",
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/au11-hq/USER_CREATION.md",
   "offset": 300,
   "limit": 90
 }
@@ -8920,7 +8920,7 @@ Let me retry reading that section.
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.✅️.cal-user-sum/au11-hq/USER_CREATION.md</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/au11-hq/USER_CREATION.md</path>
 <type>file</type>
 <content>
 300:    - Verify files created
@@ -9137,7 +9137,7 @@ Writing design docs first — full plan committed to disk before touching code
 ```json
 {
   "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/xyz-installer-dev/dev-doc/04.harnecient-fresh-install-design.md",
-  "content": "# 04. HARNECIENT — Fresh-Install Design (khtpm/livedesk era)\n\n> **Product name (provisional):** HARNECIENT\n> Previously called: \"livedesk-xyz\" → \"HQ\" → \"HAI-Q\"/\"hi-iq\"/\"haiku\" — all taken.\n> **Date:** 2026-08-12\n> **Status:** DESIGN (docs first, code second — written offline so work survives a disconnect)\n\n---\n\n## 1. What we are doing (one line)\n\nMake it so an end user runs **ONE script** and gets a completely fresh,\nfully self-contained install of the HARNECIENT desktop — the current\nkhtpm/livedesk taskbar + user-pal account system + entity windows — with a\nterminal shortcut to open it.\n\n---\n\n## 2. The old installer is obsolete (why we're rewriting, not patching)\n\n`xyzos-starter-install.sh` (install v1) predates the khtpm taskbar:\n\n| v1 assumed | Today's reality |\n|---|---|\n| The product is two apps: `00.login-signup` + `01.avatar-creation👤️` | The product is the whole **khtpm livedesk desktop** (parser + manager + layouts + user-pal + entity window + xyzfs) |\n| Taskbar was `tp_taskbar.c` | `tp_taskbar.c` is **retired/archived** (`LEGACY-ARCHIVE-20260811.zip`). The real taskbar is now `*.monads/*.livedesk-taskbar/ops/` — a **two-process** pair: `khtpm_strip_parser.c` (Xlib) forks `khtpm_taskbar_manager_main.c` (pure logic) |\n| Pointers point at `44.xyz❤️‍🔥️00.10` | House is now `44.xyz❤️‍🔥️00.17` — `pointers.pdl` is stale |\n| User creation is an app you open | User creation lives inside the **USER header cell** (`ACTIVATE:2` submenu, 2-stage cli-io) |\n| Installed layout: `apps/`, `app-store/` | Right shape is: preserve the **house-relative layout** the C code expects |\n\nSo: keep the spirit of v1 (read FROM dev tree, never write; non-destructive;\ncompile in place; KPI harness), but rebuild the payload around the khtpm\ndesktop.\n\n---\n\n## 3. Scope decision (locked by owner)\n\n- **Install target:** Full desktop — taskbar + user-pal ops + entity window +\n  xyzfs skeleton + config, all self-contained under one root.\n- **Self-contained:** copies everything it needs; works even if dev tree moves.\n  `house_root` is passed as argv / derived from self-exe (portability rule §7 of\n  `03.hardcoded-path-fragility-and-portability.md` — no fixed-depth `../..`\n  climbs in the installer).\n- **Install root:** flag-able (`--dest`, default `$HOME/harnecient`).\n- **Boot:** `<root>/button.sh` (launch khtpm parser with install root).\n- **Terminal shortcut:** `~/.local/bin/harnecient` (and `~/.local/bin/livedesk`\n  alias) opens it from a terminal.\n- **Testing:** relay-only KPI harness (no direct CLI), per house testing rules.\n\n---\n\n## 4. The installed layout (why it looks like the dev tree)\n\nThe C code resolves paths relative to **one `house_root`** passed to the parser\n(`argv[1]`) or recovered from `/proc/self/exe` (tile-picker). Verified in source:\n\n- `khtpm_strip_parser.c` line 1415: `g_house_root = argv[1]`, then joins\n  `#.desktop/*`, `*.monads/*.livedesk-taskbar/...`, plus rel paths.\n- `khtpm_taskbar_manager.c`: `house_root/#.desktop/livedesk_taskbar.pid`,\n  `.../livedesk_shortcuts.pdl`, `.../livedesk_theme.pdl`,\n  `.../livedesk_open.txt`, `.../livedesk-nav-claims/livedesk_nav_claims.txt`.\n  Reads login via `house_root/0.user-pal*/00.login-signup`.\n  Sessions at `house_root/xyzfs/users/<uuid>/home/livedesk/sessions`.\n- `tp_desktop_window.c` (`resolve_livedesk_paths`): hardcoding is **fixed-depth\n  from its own exe**, expecting `<root>/&.widgits/tile-picker/ops/+x/` — so the\n  tile-picker ops dir MUST sit at that same house-relative depth in the install.\n- `layout_path()` in parser: `*.monads/*.livedesk-taskbar/khtpm_strip_{header,bottom}.chtpm`\n  — layouts must sit at that same relative depth.\n\n**Consequence:** the install root IS a mini \"house\". We copy the needed\nsubtrees preserving their house-relative dir names (emoji dirs included):\n\n```\n<dest>/harnecient/                            <- install root = house_root\n├── button.sh                                 # boot HQ (launch parser, verify pid)\n├── paths.pdl                                 # pointer map (logical name -> real path)\n├── *.monads/*.livedesk-taskbar/              # taskbar: sources + layouts + build\n│   ├── khtpm_strip_header.chtpm\n│   ├── khtpm_strip_bottom.chtpm\n│   └── ops/                                  # parser/manager .c + build_khtpm_strip.sh\n├── &.widgits/tile-picker/ops/                # entity window + emoji/asset ops\n│   └── +x/                                   # tp_desktop_window.+x etc. (compiled in place)\n├── 0.user-pal👤️/00.login-signup/            # account system (fresh users/)\n│   ├── ops/                                  # userpal_*.c, build via its own scripts/build.sh\n│   └── system/                               # prisc+x, chtpm_parser_pal, renderer...\n├── #.desktop/                                # fresh config + runtime state\n│   ├── livedesk_taskbar.pdl\n│   ├── livedesk_theme.pdl\n│   └── livedesk_shortcuts.pdl\n└── xyzfs/                                    # guest session.pdl + empty users/ + bin/\n```\n\n---\n\n## 5. What gets copied (payload), and what's regenerated fresh\n\n### 5.1 Copy FROM dev tree (read-only)\n- `*.monads/*.livedesk-taskbar/` — whole tree (sources, layouts, build script,\n  design docs). Excludes nothing critical; small (~920K).\n- `&.widgits/tile-picker/ops/` — .c sources + stb_image.h/khtpm_core.h etc.\n- `&.widgits/tile-picker/system/` — the shared system binaries the login app's\n  build.sh produces/copies (prisc+x, chtpm_parser_pal, renderer, keyboard_input,\n  gl_mirror, default_op.txt).\n- `0.user-pal👤️/00.login-signup/` — app tree (ops sources, system sources,\n  pal/default_op/pieces). Dev state inside it is STRIPPED (5.3).\n\n### 5.2 Regenerated fresh (NOT copied — would carry dev identity)\n- `#.desktop/livedesk_taskbar.pdl` — config. Written fresh so hq-menu commands\n  point at install-local paths (restart = `sh button.sh restart`, dir = xdg-open\n  `#.desktop`, quit). `strip_y_offset` 50, `datetime_lang`. No dev-only\n  `$.crypts/...` commands.\n- `#.desktop/livedesk_theme.pdl` — fresh defaults (bg #000000, fg #00ff00).\n- `#.desktop/livedesk_shortcuts.pdl` — empty.\n- `xyzfs/session.pdl` — guest session (mode guest, no user), the same shape\n  the login app's own `button.sh` seeds.\n- `0.user-pal👤️/00.login-signup/current_login.txt` — empty.\n- `0.user-pal👤️/00.login-signup/xyzfs/session.pdl` — guest.\n- `0.user-pal👤️/00.login-signup/users/` — empty dir.\n- `<root>/xyzfs/users/` — empty dir. `<root>/xyzfs/bin/` — empty dir.\n\n### 5.3 Dev-only state stripped right after copy (mirror v1's \"stripping dev-only state\")\n- login app: `pieces/sessions/`, `proof/`, `test-harn-same/` removed; `users/*`\n  removed; `current_login.txt` emptied; `xyzfs/users/*` removed.\n- tile-picker: `scenarios/`, any proof/session junk removed (check on build).\n\n### 5.4 Compile in place (uses each component's own real build script)\n- Taskbar: `cd <root>/*.monads/*.livedesk-taskbar/ops && sh build_khtpm_strip.sh`\n- Tile-picker: compile `tp_desktop_window` (+ friends) in place:\n  `gcc -Wall -Wextra -O2 -o ops/+x/tp_desktop_window.+x ops/tp_desktop_window.c -lX11 -lXext -lGL -lGLX`\n  (needs X11 + GL dev headers; present on this machine).\n- Login: `cd <root>/0.user-pal👤️/00.login-signup && bash scripts/build.sh`\n  (builds system processes + userpal ops).\n\n---\n\n## 6. Runtime truth (what the installed desktop reads/writes)\n\nAll paths relative to install root `house_root`:\n\n| Program | Reads/Writes |\n|---|---|\n| parser | `#.desktop/khtpm_strip_frame_history.txt`, `#.desktop/livedesk_theme.pdl`, `#.desktop/livedesk_taskbar.pdl`, `#.desktop/livedesk_agent_relay.txt` (input), `#.desktop/strip_state.txt`, `#.desktop/strip_var_*.txt`, layouts |\n| manager | `#.desktop/livedesk_taskbar.pid`, `#.desktop/livedesk_shortcuts.pdl`, `#.desktop/livedesk_open.txt`, `#.desktop/livedesk-nav-claims/`, `#.desktop/strip_history.txt`; login via `0.user-pal*/00.login-signup`; sessions via `xyzfs/users/<uuid>/home/livedesk/sessions`; entities via `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` |\n| tp_desktop_window | `&.widgits/tile-picker/ops/+x/` for own location + emoji/asset ops; stores positions/packages in session dirs |\n\nAccount creation shells out to `0.user-pal👤️/00.login-signup/ops/+x/userpal_*.+x`\nwith `cd \"<login_root>\"` + `PRISC_PROJECT_ROOT` (the `cd` is REQUIRED — real bug,\nsee `USER_CREATION.md`).\n\n---\n\n## 7. Boot / launcher design\n\n`<root>/button.sh` (self-contained; MUST NOT reuse run_khtpm_strip.sh's global\n`pgrep -f` kill — that sweeps OTHER installs' khtpm processes too):\n\n```\nactions:\n  start   (default)  build-if-stale? (no — installer already built), launch parser:\n                     setsid env DISPLAY=... <root>/*.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x <root>\n                     write <root>/#.desktop/harnecient.pid, depend on parser's own pidfile\n                     pgrep-confirm real pid, print log path\n  status              show installed parser/manager pids for THIS root only\n  stop               TERM the parser (+ its child manager), then KILL fallback; cleanup entities?\n  restart            stop + start\n  help\n```\n\nTerminal shortcut script `~/.local/bin/harnecient` (and `~/.local/bin/livedesk`):\n`exec <root>/button.sh` (foreground, shows live logs in the terminal).\n\nNote: `khtpm_strip_parser.c` writes its own pidfile\n`#.desktop/livedesk_taskbar.pid` (per-house-root) and tp_desktop_window's\n`ensure_taskbar_running()` checks the same — so multiple installs coexist; any\n\"which taskbar is this\" helper must match cmdline + house_root, NOT bare pgrep.\n\n---\n\n## 8. KPI harness — relay-only (house testing rule)\n\nNew harness `%.harnesses/install-harnecient/` (live in house root, next to the\nexisting `install-xyzos`), driving the INSTALLED copy only through\n`<root>/#.desktop/livedesk_agent_relay.txt` via prov nav.sh, i.e. the same\nbare-decimal contract as `#.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh`.\n\nKPIs:\n- **K1 — clean install:** run installer with dest=/tmp temp home → assert layout\n  exists (`button.sh`, `*.monads/*.livedesk-taskbar/`, `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`,\n  `0.user-pal*/00.login-signup/`, `#.desktop/*`), binaries compiled,\n  `current_login.txt` empty, guest session.pdl.\n- **K2 — boot + signup via relay:** `esc` → `nav 2` (USER) → Return (New User…) →\n  Return (arm typing) → `type alice` → Return → `type Alice` → Return. Assert:\n  `0.user-pal👤️/00.login-signup/users/alice/profile.txt`, `xyzfs/users/<uuid>/`\n  (meta.txt, home/, projects/), `current_login.txt` auto-login, header shows\n  `username` label.\n- **K3 — persistence/shutdown:** stop cleanly; restart; user still there,\n  frame renders.\n\nHarness output: `proof/k1-…/`, `proof/k2-…/`, frame-history excerpts, relay log,\nfilesystem proof (same format as `install-xyzos`).\n\n---\n\n## 9. Phases / execution order (build after this doc is reviewed)\n\n1. **Phase 0 — write this design doc + user-quick update.** (DONE here.)\n2. **Phase 1 — pointer + installer script.** Fix `pointers.pdl` →\n   `yz.muchiverse/44.xyz❤️‍🔥️00.17`. Write `xyz-installer-dev/harnecient-install.sh`\n   per §4–§6 with `--dest` flag, non-destructive (refuse if dest exists),\n   compile-in-place, fresh-state regeneration, terminal-shortcut install.\n   Validate by dry listing + a real install into /tmp.\n3. **Phase 2 — KPI harness.** `%.harnesses/install-harnecient/` per §8.\n   Run K1/K2/K3 on a /tmp install; capture proof.\n4. **Phase 3 — docs/rollout.** Update `user-quick.txt`, note gitlet\n   versioning still-future; document real-install command + terminal shortcut.\n5. **Phase 4 — follow-ups (not in this pass):** avatar-creation app hookup,\n   cross-machine/Windows port story, external-asset resolution (§6 of doc 03),\n   self-update via gitlet.\n\n---\n\n## 10. Risks / things to verify while building (not assumed)\n\n1. **Parser pidfile/`ensure_taskbar_running` interplay** — entity window may\n   auto-launch the taskbar; ensure installed launcher doesn't conflict with a\n   running dev-instance on the same DISPLAY (per-house pidfile should isolate;\n   verify two installs coexist on one display).\n2. **GL/GLX dev headers** required to compile tp_desktop_window — present here,\n   must be documented as a build dependency.\n3. **Login `system/prisc+x.c` etc.** only exist as SOURCE in the login app;\n   `scripts/build.sh` compiles them locally (no shared-ops download). Coping\n   whole login subtree then building must work offline.\n4. **Emoji dir names in bash** (`0.user-pal👤️`, `❤️‍🔥️`, `*.monads/*.livedesk-taskbar`)\n   — always quote; use robust globs; never hardcode these in the installer\n   beyond what source code already requires.\n5. **`run_khtpm_strip.sh` global kill** — DO NOT reuse for the installed\n   launcher; scope stop/status/pgrep to this root's own cmdline + pidfile.\n\n---\n\n## 11. What we call things (naming, locked 2026-08-12)\n\n- **Product:** HARNECIENT (provisional; supersedes HQ / HAI-Q / hi-iq / haiku —\n  all taken).\n- **Install dirs:** `$HOME/harnecient/` (flag-overridable), boot `button.sh`.\n- **Terminal shortcut:** `harnecient` and `livedesk` in `~/.local/bin`.\n- The taskbar component remains \"livedesk\" / the KHTPM strip; \"HARNECIENT\"\n  names the whole installable desktop.\n\n---\n\n*End 04.harnecient-fresh-install-design.md — next agent: read §9, start Phase 1.*"
+  "content": "# 04. HARNECIENT — Fresh-Install Design (khtpm/livedesk era)\n\n> **Product name (provisional):** HARNECIENT\n> Previously called: \"livedesk-xyz\" → \"HQ\" → \"HAI-Q\"/\"hi-iq\"/\"haiku\" — all taken.\n> **Date:** 2026-08-12\n> **Status:** DESIGN (docs first, code second — written offline so work survives a disconnect)\n\n---\n\n## 1. What we are doing (one line)\n\nMake it so an end user runs **ONE script** and gets a completely fresh,\nfully self-contained install of the HARNECIENT desktop — the current\nkhtpm/livedesk taskbar + user-pal account system + entity windows — with a\nterminal shortcut to open it.\n\n---\n\n## 2. The old installer is obsolete (why we're rewriting, not patching)\n\n`xyzos-starter-install.sh` (install v1) predates the khtpm taskbar:\n\n| v1 assumed | Today's reality |\n|---|---|\n| The product is two apps: `00.login-signup` + `01.avatar-creation👤️` | The product is the whole **khtpm livedesk desktop** (parser + manager + layouts + user-pal + entity window + xyzfs) |\n| Taskbar was `tp_taskbar.c` | `tp_taskbar.c` is **retired/archived** (`LEGACY-ARCHIVE-20260811.zip`). The real taskbar is now `*.monads/*.livedesk-taskbar/ops/` — a **two-process** pair: `khtpm_strip_parser.c` (Xlib) forks `khtpm_taskbar_manager_main.c` (pure logic) |\n| Pointers point at `44.xyz❤️‍🔥️00.10` | House is now `44.xyz.01.00` — `pointers.pdl` is stale |\n| User creation is an app you open | User creation lives inside the **USER header cell** (`ACTIVATE:2` submenu, 2-stage cli-io) |\n| Installed layout: `apps/`, `app-store/` | Right shape is: preserve the **house-relative layout** the C code expects |\n\nSo: keep the spirit of v1 (read FROM dev tree, never write; non-destructive;\ncompile in place; KPI harness), but rebuild the payload around the khtpm\ndesktop.\n\n---\n\n## 3. Scope decision (locked by owner)\n\n- **Install target:** Full desktop — taskbar + user-pal ops + entity window +\n  xyzfs skeleton + config, all self-contained under one root.\n- **Self-contained:** copies everything it needs; works even if dev tree moves.\n  `house_root` is passed as argv / derived from self-exe (portability rule §7 of\n  `03.hardcoded-path-fragility-and-portability.md` — no fixed-depth `../..`\n  climbs in the installer).\n- **Install root:** flag-able (`--dest`, default `$HOME/harnecient`).\n- **Boot:** `<root>/button.sh` (launch khtpm parser with install root).\n- **Terminal shortcut:** `~/.local/bin/harnecient` (and `~/.local/bin/livedesk`\n  alias) opens it from a terminal.\n- **Testing:** relay-only KPI harness (no direct CLI), per house testing rules.\n\n---\n\n## 4. The installed layout (why it looks like the dev tree)\n\nThe C code resolves paths relative to **one `house_root`** passed to the parser\n(`argv[1]`) or recovered from `/proc/self/exe` (tile-picker). Verified in source:\n\n- `khtpm_strip_parser.c` line 1415: `g_house_root = argv[1]`, then joins\n  `#.desktop/*`, `*.monads/*.livedesk-taskbar/...`, plus rel paths.\n- `khtpm_taskbar_manager.c`: `house_root/#.desktop/livedesk_taskbar.pid`,\n  `.../livedesk_shortcuts.pdl`, `.../livedesk_theme.pdl`,\n  `.../livedesk_open.txt`, `.../livedesk-nav-claims/livedesk_nav_claims.txt`.\n  Reads login via `house_root/0.user-pal*/00.login-signup`.\n  Sessions at `house_root/xyzfs/users/<uuid>/home/livedesk/sessions`.\n- `tp_desktop_window.c` (`resolve_livedesk_paths`): hardcoding is **fixed-depth\n  from its own exe**, expecting `<root>/&.widgits/tile-picker/ops/+x/` — so the\n  tile-picker ops dir MUST sit at that same house-relative depth in the install.\n- `layout_path()` in parser: `*.monads/*.livedesk-taskbar/khtpm_strip_{header,bottom}.chtpm`\n  — layouts must sit at that same relative depth.\n\n**Consequence:** the install root IS a mini \"house\". We copy the needed\nsubtrees preserving their house-relative dir names (emoji dirs included):\n\n```\n<dest>/harnecient/                            <- install root = house_root\n├── button.sh                                 # boot HQ (launch parser, verify pid)\n├── paths.pdl                                 # pointer map (logical name -> real path)\n├── *.monads/*.livedesk-taskbar/              # taskbar: sources + layouts + build\n│   ├── khtpm_strip_header.chtpm\n│   ├── khtpm_strip_bottom.chtpm\n│   └── ops/                                  # parser/manager .c + build_khtpm_strip.sh\n├── &.widgits/tile-picker/ops/                # entity window + emoji/asset ops\n│   └── +x/                                   # tp_desktop_window.+x etc. (compiled in place)\n├── 0.user-pal👤️/00.login-signup/            # account system (fresh users/)\n│   ├── ops/                                  # userpal_*.c, build via its own scripts/build.sh\n│   └── system/                               # prisc+x, chtpm_parser_pal, renderer...\n├── #.desktop/                                # fresh config + runtime state\n│   ├── livedesk_taskbar.pdl\n│   ├── livedesk_theme.pdl\n│   └── livedesk_shortcuts.pdl\n└── xyzfs/                                    # guest session.pdl + empty users/ + bin/\n```\n\n---\n\n## 5. What gets copied (payload), and what's regenerated fresh\n\n### 5.1 Copy FROM dev tree (read-only)\n- `*.monads/*.livedesk-taskbar/` — whole tree (sources, layouts, build script,\n  design docs). Excludes nothing critical; small (~920K).\n- `&.widgits/tile-picker/ops/` — .c sources + stb_image.h/khtpm_core.h etc.\n- `&.widgits/tile-picker/system/` — the shared system binaries the login app's\n  build.sh produces/copies (prisc+x, chtpm_parser_pal, renderer, keyboard_input,\n  gl_mirror, default_op.txt).\n- `0.user-pal👤️/00.login-signup/` — app tree (ops sources, system sources,\n  pal/default_op/pieces). Dev state inside it is STRIPPED (5.3).\n\n### 5.2 Regenerated fresh (NOT copied — would carry dev identity)\n- `#.desktop/livedesk_taskbar.pdl` — config. Written fresh so hq-menu commands\n  point at install-local paths (restart = `sh button.sh restart`, dir = xdg-open\n  `#.desktop`, quit). `strip_y_offset` 50, `datetime_lang`. No dev-only\n  `$.crypts/...` commands.\n- `#.desktop/livedesk_theme.pdl` — fresh defaults (bg #000000, fg #00ff00).\n- `#.desktop/livedesk_shortcuts.pdl` — empty.\n- `xyzfs/session.pdl` — guest session (mode guest, no user), the same shape\n  the login app's own `button.sh` seeds.\n- `0.user-pal👤️/00.login-signup/current_login.txt` — empty.\n- `0.user-pal👤️/00.login-signup/xyzfs/session.pdl` — guest.\n- `0.user-pal👤️/00.login-signup/users/` — empty dir.\n- `<root>/xyzfs/users/` — empty dir. `<root>/xyzfs/bin/` — empty dir.\n\n### 5.3 Dev-only state stripped right after copy (mirror v1's \"stripping dev-only state\")\n- login app: `pieces/sessions/`, `proof/`, `test-harn-same/` removed; `users/*`\n  removed; `current_login.txt` emptied; `xyzfs/users/*` removed.\n- tile-picker: `scenarios/`, any proof/session junk removed (check on build).\n\n### 5.4 Compile in place (uses each component's own real build script)\n- Taskbar: `cd <root>/*.monads/*.livedesk-taskbar/ops && sh build_khtpm_strip.sh`\n- Tile-picker: compile `tp_desktop_window` (+ friends) in place:\n  `gcc -Wall -Wextra -O2 -o ops/+x/tp_desktop_window.+x ops/tp_desktop_window.c -lX11 -lXext -lGL -lGLX`\n  (needs X11 + GL dev headers; present on this machine).\n- Login: `cd <root>/0.user-pal👤️/00.login-signup && bash scripts/build.sh`\n  (builds system processes + userpal ops).\n\n---\n\n## 6. Runtime truth (what the installed desktop reads/writes)\n\nAll paths relative to install root `house_root`:\n\n| Program | Reads/Writes |\n|---|---|\n| parser | `#.desktop/khtpm_strip_frame_history.txt`, `#.desktop/livedesk_theme.pdl`, `#.desktop/livedesk_taskbar.pdl`, `#.desktop/livedesk_agent_relay.txt` (input), `#.desktop/strip_state.txt`, `#.desktop/strip_var_*.txt`, layouts |\n| manager | `#.desktop/livedesk_taskbar.pid`, `#.desktop/livedesk_shortcuts.pdl`, `#.desktop/livedesk_open.txt`, `#.desktop/livedesk-nav-claims/`, `#.desktop/strip_history.txt`; login via `0.user-pal*/00.login-signup`; sessions via `xyzfs/users/<uuid>/home/livedesk/sessions`; entities via `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` |\n| tp_desktop_window | `&.widgits/tile-picker/ops/+x/` for own location + emoji/asset ops; stores positions/packages in session dirs |\n\nAccount creation shells out to `0.user-pal👤️/00.login-signup/ops/+x/userpal_*.+x`\nwith `cd \"<login_root>\"` + `PRISC_PROJECT_ROOT` (the `cd` is REQUIRED — real bug,\nsee `USER_CREATION.md`).\n\n---\n\n## 7. Boot / launcher design\n\n`<root>/button.sh` (self-contained; MUST NOT reuse run_khtpm_strip.sh's global\n`pgrep -f` kill — that sweeps OTHER installs' khtpm processes too):\n\n```\nactions:\n  start   (default)  build-if-stale? (no — installer already built), launch parser:\n                     setsid env DISPLAY=... <root>/*.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x <root>\n                     write <root>/#.desktop/harnecient.pid, depend on parser's own pidfile\n                     pgrep-confirm real pid, print log path\n  status              show installed parser/manager pids for THIS root only\n  stop               TERM the parser (+ its child manager), then KILL fallback; cleanup entities?\n  restart            stop + start\n  help\n```\n\nTerminal shortcut script `~/.local/bin/harnecient` (and `~/.local/bin/livedesk`):\n`exec <root>/button.sh` (foreground, shows live logs in the terminal).\n\nNote: `khtpm_strip_parser.c` writes its own pidfile\n`#.desktop/livedesk_taskbar.pid` (per-house-root) and tp_desktop_window's\n`ensure_taskbar_running()` checks the same — so multiple installs coexist; any\n\"which taskbar is this\" helper must match cmdline + house_root, NOT bare pgrep.\n\n---\n\n## 8. KPI harness — relay-only (house testing rule)\n\nNew harness `%.harnesses/install-harnecient/` (live in house root, next to the\nexisting `install-xyzos`), driving the INSTALLED copy only through\n`<root>/#.desktop/livedesk_agent_relay.txt` via prov nav.sh, i.e. the same\nbare-decimal contract as `#.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh`.\n\nKPIs:\n- **K1 — clean install:** run installer with dest=/tmp temp home → assert layout\n  exists (`button.sh`, `*.monads/*.livedesk-taskbar/`, `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`,\n  `0.user-pal*/00.login-signup/`, `#.desktop/*`), binaries compiled,\n  `current_login.txt` empty, guest session.pdl.\n- **K2 — boot + signup via relay:** `esc` → `nav 2` (USER) → Return (New User…) →\n  Return (arm typing) → `type alice` → Return → `type Alice` → Return. Assert:\n  `0.user-pal👤️/00.login-signup/users/alice/profile.txt`, `xyzfs/users/<uuid>/`\n  (meta.txt, home/, projects/), `current_login.txt` auto-login, header shows\n  `username` label.\n- **K3 — persistence/shutdown:** stop cleanly; restart; user still there,\n  frame renders.\n\nHarness output: `proof/k1-…/`, `proof/k2-…/`, frame-history excerpts, relay log,\nfilesystem proof (same format as `install-xyzos`).\n\n---\n\n## 9. Phases / execution order (build after this doc is reviewed)\n\n1. **Phase 0 — write this design doc + user-quick update.** (DONE here.)\n2. **Phase 1 — pointer + installer script.** Fix `pointers.pdl` →\n   `yz.muchiverse/44.xyz.01.00`. Write `xyz-installer-dev/harnecient-install.sh`\n   per §4–§6 with `--dest` flag, non-destructive (refuse if dest exists),\n   compile-in-place, fresh-state regeneration, terminal-shortcut install.\n   Validate by dry listing + a real install into /tmp.\n3. **Phase 2 — KPI harness.** `%.harnesses/install-harnecient/` per §8.\n   Run K1/K2/K3 on a /tmp install; capture proof.\n4. **Phase 3 — docs/rollout.** Update `user-quick.txt`, note gitlet\n   versioning still-future; document real-install command + terminal shortcut.\n5. **Phase 4 — follow-ups (not in this pass):** avatar-creation app hookup,\n   cross-machine/Windows port story, external-asset resolution (§6 of doc 03),\n   self-update via gitlet.\n\n---\n\n## 10. Risks / things to verify while building (not assumed)\n\n1. **Parser pidfile/`ensure_taskbar_running` interplay** — entity window may\n   auto-launch the taskbar; ensure installed launcher doesn't conflict with a\n   running dev-instance on the same DISPLAY (per-house pidfile should isolate;\n   verify two installs coexist on one display).\n2. **GL/GLX dev headers** required to compile tp_desktop_window — present here,\n   must be documented as a build dependency.\n3. **Login `system/prisc+x.c` etc.** only exist as SOURCE in the login app;\n   `scripts/build.sh` compiles them locally (no shared-ops download). Coping\n   whole login subtree then building must work offline.\n4. **Emoji dir names in bash** (`0.user-pal👤️`, `❤️‍🔥️`, `*.monads/*.livedesk-taskbar`)\n   — always quote; use robust globs; never hardcode these in the installer\n   beyond what source code already requires.\n5. **`run_khtpm_strip.sh` global kill** — DO NOT reuse for the installed\n   launcher; scope stop/status/pgrep to this root's own cmdline + pidfile.\n\n---\n\n## 11. What we call things (naming, locked 2026-08-12)\n\n- **Product:** HARNECIENT (provisional; supersedes HQ / HAI-Q / hi-iq / haiku —\n  all taken).\n- **Install dirs:** `$HOME/harnecient/` (flag-overridable), boot `button.sh`.\n- **Terminal shortcut:** `harnecient` and `livedesk` in `~/.local/bin`.\n- The taskbar component remains \"livedesk\" / the KHTPM strip; \"HARNECIENT\"\n  names the whole installable desktop.\n\n---\n\n*End 04.harnecient-fresh-install-design.md — next agent: read §9, start Phase 1.*"
 }
 ```
 

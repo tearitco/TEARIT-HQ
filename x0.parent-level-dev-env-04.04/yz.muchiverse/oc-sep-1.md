@@ -16,7 +16,7 @@ The proper fix is to run a full toggle so the parser's respawn refreshes ALL win
 **Input:**
 ```json
 {
-  "path": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
+  "path": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
   "pattern": "ZORDER_TOGGLE|hq-click|HQ_CLICK|action|relay|registry|dup"
 }
 ```
@@ -24,7 +24,7 @@ The proper fix is to run a full toggle so the parser's respawn refreshes ALL win
 **Output:**
 ```
 Found 55 matches
-/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c:
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c:
   Line 18:  * strip_frame_changed.txt file-relay contract.
 
   Line 40: #include <dirent.h> /* REAL, NEW 2026-09-01 - zorder toggle reads nav_tab/<pid> registry dir (opendir/readdir) */
@@ -167,7 +167,7 @@ Let me verify the opacity path actually reaches the now-managed HQ window, and c
 **Input:**
 ```json
 {
-  "command": "HR=\"$PWD/44.xyz❤️‍🔥️00.17\";\necho \"=== current pdl/mode (drives managed vs above) ===\"; cat \"$HR/#.desktop/khtpm_zorder_mode.state.txt\" \"$HR/#.desktop/livedesk_override_redirect.pdl\"\necho; echo \"=== current override-relevant window count ===\"\necho \"core_render RR state:\"; for w in $(xwininfo -root -children 2>/dev/null | grep -o '0x[0-9a-f]*' | tail -n +2); do :; done\necho \"checking db-hq + tile override states right now:\"",
+  "command": "HR=\"$PWD/44.xyz.01.00\";\necho \"=== current pdl/mode (drives managed vs above) ===\"; cat \"$HR/#.desktop/khtpm_zorder_mode.state.txt\" \"$HR/#.desktop/livedesk_override_redirect.pdl\"\necho; echo \"=== current override-relevant window count ===\"\necho \"core_render RR state:\"; for w in $(xwininfo -root -children 2>/dev/null | grep -o '0x[0-9a-f]*' | tail -n +2); do :; done\necho \"checking db-hq + tile override states right now:\"",
   "description": "Inspect current pdl mode and window states"
 }
 ```
@@ -199,7 +199,7 @@ Let me find the exact relay/action injection path for ZORDER_TOGGLE:
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
   "limit": 40,
   "offset": 1497
 }
@@ -207,7 +207,7 @@ Let me find the exact relay/action injection path for ZORDER_TOGGLE:
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
 <type>file</type>
 <content>
 1497: static long g_relay_cursor = -1; /* -1 = uninitialized; set to EOF on first poll (never replay backlog) */
@@ -272,7 +272,7 @@ Actually, let me directly answer the user's three questions rather than churn mo
 **Input:**
 ```json
 {
-  "command": "HR=\"$PWD/44.xyz❤️‍🔥️00.17\"; CORE=\"$HR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x\"; CTHPM=\"$HR/&.hq-apps/db-hq/dashboard.chtpm\"\n# ensure pdl=managed so db-hq opens as a WM-managed surface (the case that lets opacity honor)\necho \"override_redirect=false\" > \"$HR/#.desktop/livedesk_override_redirect.pdl\"\nsetsid nohup \"$CORE\" \"$HR\" \"$CTHPM\" >/dev/null 2>&1 < /dev/null &\nsleep 2.5\necho \"=== db-hq window created under managed pdl ===\"\nwid=$(xwininfo -root -tree 2>/dev/null | grep -i muchiverselivedesk | grep -v '2496x36\\|2296x36\\|80x80\\|200x36' | head -1 | grep -o '0x[0-9a-f]*' | head -1)\necho \"wid=$wid\"; xwininfo -id \"$wid\" 2>/dev/null | grep 'Override Redirect State'\necho \"=== set opacity 50% and check _NET_WM_WINDOW_OPACITY sticks (what entities can do but old unmanaged windows could NOT) ===\"\nxprop -id \"$wid\" -f _NET_WM_WINDOW_OPACITY 32c -set _NET_WM_WINDOW_OPACITY $((0x80000000)) 2>&1 && echo \"opacity set; now read:\"\nxprop -id \"$wid\" _NET_WM_WINDOW_OPACITY 2>&1\npid=$(pgrep -f \"$CTHPM\" | head -1); kill \"$pid\" 2>/dev/null; echo \"closed test db-hq (pid $pid)\"",
+  "command": "HR=\"$PWD/44.xyz.01.00\"; CORE=\"$HR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x\"; CTHPM=\"$HR/&.hq-apps/db-hq/dashboard.chtpm\"\n# ensure pdl=managed so db-hq opens as a WM-managed surface (the case that lets opacity honor)\necho \"override_redirect=false\" > \"$HR/#.desktop/livedesk_override_redirect.pdl\"\nsetsid nohup \"$CORE\" \"$HR\" \"$CTHPM\" >/dev/null 2>&1 < /dev/null &\nsleep 2.5\necho \"=== db-hq window created under managed pdl ===\"\nwid=$(xwininfo -root -tree 2>/dev/null | grep -i muchiverselivedesk | grep -v '2496x36\\|2296x36\\|80x80\\|200x36' | head -1 | grep -o '0x[0-9a-f]*' | head -1)\necho \"wid=$wid\"; xwininfo -id \"$wid\" 2>/dev/null | grep 'Override Redirect State'\necho \"=== set opacity 50% and check _NET_WM_WINDOW_OPACITY sticks (what entities can do but old unmanaged windows could NOT) ===\"\nxprop -id \"$wid\" -f _NET_WM_WINDOW_OPACITY 32c -set _NET_WM_WINDOW_OPACITY $((0x80000000)) 2>&1 && echo \"opacity set; now read:\"\nxprop -id \"$wid\" _NET_WM_WINDOW_OPACITY 2>&1\npid=$(pgrep -f \"$CTHPM\" | head -1); kill \"$pid\" 2>/dev/null; echo \"closed test db-hq (pid $pid)\"",
   "description": "Verify managed HQ window accepts opacity like entities"
 }
 ```
@@ -304,7 +304,7 @@ Let me restore the state to a consistent "above" (the last real user toggle was 
 **Input:**
 ```json
 {
-  "command": "HR=\"$PWD/44.xyz❤️‍🔥️00.17\"\n# close any lingering db-hq test window\npkill -f 'db-hq/dashboard.chtpm' 2>/dev/null; sleep 0.3\n# restore to \"above\" (always-on-top) to match the last real user toggle state\necho \"mode=above\" > \"$HR/#.desktop/khtpm_zorder_mode.state.txt\"\necho \"override_redirect=true\" > \"$HR/#.desktop/livedesk_override_redirect.pdl\"\necho \"state now: mode=$(grep mode= \"$HR/#.desktop/khtpm_zorder_mode.state.txt\") | $(cat \"$HR/#.desktop/livedesk_override_redirect.pdl\")\"\necho \"--- remaining core_render (expect only settings swatch 2467751) ---\"; pgrep -af 'khtpm_core_render' | grep -v taskbar_settings || echo \"none besides settings\"\necho \"--- tiles still running? ---\"; pgrep -c -f 'tp_desktop_window_rgb'",
+  "command": "HR=\"$PWD/44.xyz.01.00\"\n# close any lingering db-hq test window\npkill -f 'db-hq/dashboard.chtpm' 2>/dev/null; sleep 0.3\n# restore to \"above\" (always-on-top) to match the last real user toggle state\necho \"mode=above\" > \"$HR/#.desktop/khtpm_zorder_mode.state.txt\"\necho \"override_redirect=true\" > \"$HR/#.desktop/livedesk_override_redirect.pdl\"\necho \"state now: mode=$(grep mode= \"$HR/#.desktop/khtpm_zorder_mode.state.txt\") | $(cat \"$HR/#.desktop/livedesk_override_redirect.pdl\")\"\necho \"--- remaining core_render (expect only settings swatch 2467751) ---\"; pgrep -af 'khtpm_core_render' | grep -v taskbar_settings || echo \"none besides settings\"\necho \"--- tiles still running? ---\"; pgrep -c -f 'tp_desktop_window_rgb'",
   "description": "Restore above state, clean test windows"
 }
 ```
@@ -331,7 +331,7 @@ The `pkill -f 'db-hq/dashboard.chtpm'` may have matched the bash command itself 
 **Input:**
 ```json
 {
-  "command": "HR=\"$PWD/44.xyz❤️‍🔥️00.17\"; cat \"$HR/#.desktop/khtpm_zorder_mode.state.txt\" \"$HR/#.desktop/livedesk_override_redirect.pdl\" 2>&1; echo \"---\"; pgrep -af 'khtpm_core_render' 2>&1 | head",
+  "command": "HR=\"$PWD/44.xyz.01.00\"; cat \"$HR/#.desktop/khtpm_zorder_mode.state.txt\" \"$HR/#.desktop/livedesk_override_redirect.pdl\" 2>&1; echo \"---\"; pgrep -af 'khtpm_core_render' 2>&1 | head",
   "description": "Check restored state and core_render procs",
   "timeout": 20000
 }
@@ -342,7 +342,7 @@ The `pkill -f 'db-hq/dashboard.chtpm'` may have matched the bash command itself 
 mode=normal
 override_redirect=false
 ---
-2484984 /bin/bash -c HR="$PWD/44.xyz❤️‍🔥️00.17"; cat "$HR/#.desktop/khtpm_zorder_mode.state.txt" "$HR/#.desktop/livedesk_override_redirect.pdl" 2>&1; echo "---"; pgrep -af 'khtpm_core_render' 2>&1 | head
+2484984 /bin/bash -c HR="$PWD/44.xyz.01.00"; cat "$HR/#.desktop/khtpm_zorder_mode.state.txt" "$HR/#.desktop/livedesk_override_redirect.pdl" 2>&1; echo "---"; pgrep -af 'khtpm_core_render' 2>&1 | head
 
 ```
 

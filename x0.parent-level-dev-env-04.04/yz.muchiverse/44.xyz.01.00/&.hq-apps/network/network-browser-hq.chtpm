@@ -1,0 +1,24 @@
+<!-- network-browser-hq.chtpm - REAL, GENERATED PROJECTION.
+     Written by network_browser_manager.c's own write_chtpm_projection()
+     every real main-loop tick - DO NOT HAND-EDIT, changes are
+     overwritten within ~300ms. See that function's own header
+     comment for the real design this answers to. -->
+<window label="Network Browser" class="">
+  <page name="main">
+    <sidebar>
+      <text id="nb-title" label="Network"/>
+      <scrolllist></scrolllist>
+    </sidebar>
+    <panel>
+    <cli_io id="address" target_id="address" label="URL: " action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_go.sh' 'go' '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/network-browser-hq.chtpm'"/>
+    <text id="status" label="Status: ready"/>
+    <scrolllist>
+      <text id="title1" class="page-title" label="Example Domain"/>
+      <text id="text2" label="Example Domain"/>
+      <text id="text3" label="Example Domain"/>
+      <text id="text4" label="This domain is for use in documentation examples without needing permission. Avoid use in operations."/>
+      <item id="link5" label="Learn more" action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_go.sh' 'go' 'https://iana.org/domains/example'"/>
+    </scrolllist>
+  </panel>
+  </page>
+</window>
