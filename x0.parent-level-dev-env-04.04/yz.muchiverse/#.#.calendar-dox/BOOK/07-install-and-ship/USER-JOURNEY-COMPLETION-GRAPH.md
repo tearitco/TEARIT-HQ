@@ -51,18 +51,29 @@ exists.** Concretely:
   item?) — worth a real decision before building, not assumed.
 
 ### 4. Signup completes → suggest avatar creation
-**Status: ⚠️ EXISTS, BUT LEGACY — real rework needed.** The login/
-signup app (`0.user-pal👤️/00.login-signup/`) is real and khtpm-native
-already. Avatar creation is the part that's stale: it was v1's own
-separate app (`01.avatar-creation👤️`), pre-dating the khtpm taskbar
-entirely (confirmed: no `avatar` directory exists at the current house
-root at all — it's gone/never migrated). **Direct instruction
-confirmed here**: rework avatar creation onto the real khtpm/
-`CENTROID_GOLD_STD` standard as its own real task, not a revival of
-the old app. `archive/USER_CREATION.md` (referenced in the book's own
-Tier 3, now under `design-docs/`) has real prior research on wiring
-account creation into the USER cell — read before building, it may
-already answer some of the "how" here.
+**Status: ⚠️ EXISTS, REAL AND SUBSTANTIAL — but on the legacy engine,
+not khtpm.** CORRECTED 2026-09-02 (an earlier pass here wrongly said
+this app no longer exists — it does, just nested one level deeper than
+first checked): `0.user-pal👤️/01.avatar-creation👤️/` is a real,
+sibling app to the login-signup one, with real depth — 14 op binaries
+including `generate_clone.c`, `cycle_dna.c`, `buy_clone.c`, `claim_
+tokens.c`, `apply_name_age.c`, a real `.pal`-scripted module set
+(`avatars_module.pal`, `customize_module.pal`, `store_module.pal`,
+`faucet_module.pal`), and its own `avatar_window.c`. Confirmed via
+source: it runs on `system/chtpm_parser_pal.c` — the LEGACY PAL-VM/
+text-grid engine (`CENTROID_GOLD_STD.md` Stage 1), the same family
+`!.HOUSE_STDS.md` §A covers, not khtpm/Elem-CSS. Login-signup itself
+(`0.user-pal👤️/00.login-signup/`) IS already khtpm-native — avatar
+creation is the one piece of this pair still on the old engine.
+**Direct instruction confirmed here**: rework avatar creation onto the
+real khtpm/`CENTROID_GOLD_STD` standard as its own real task, not a
+retire-and-rebuild-from-nothing — there's real, working DNA/clone/
+token logic already here worth carrying forward, only the rendering
+layer needs the migration (same shape as pal-chain's own §5 gap
+below). `archive/USER_CREATION.md` (referenced in the book's own Tier
+3, now under `design-docs/`) has real prior research on wiring account
+creation into the USER cell — read before building, it may already
+answer some of the "how" here.
 - The cursword-driven FSM from step 3 is the natural place to also
   suggest this next step once signup completes — same mechanism,
   next state.
@@ -138,15 +149,17 @@ without special-casing a "test mode."
 | 1 | Install script (GitHub → `hq` on PATH) | ❌ Not built — top priority |
 | 2 | `hq` launches, taskbar populates | ✅ Real, works today |
 | 3 | Cursword-driven guest→signup onboarding (FSM/BT, nav-injection) | ❌ Not built; every primitive it needs already exists |
-| 4 | Avatar creation suggestion + real build | ⚠️ Exists but legacy/gone from current house; real khtpm rework needed |
+| 4 | Avatar creation suggestion + real build | ⚠️ Real, substantial app (DNA/clone/token logic); on legacy chtpm_parser_pal engine, needs khtpm rework |
 | 5 | Tearit-chain mining/wallet suggestion | ⚠️ Real, working logic; wrong (legacy) rendering engine |
 | 6 | Interest-based toy suggestions | ❌ Not built; real source data (`MARKETABLE-FEATURES.md`) already exists |
 | 7 | 12.store on-demand toy install (code+assets, minimal footprint) | ❌ Not built at all — biggest real gap |
 | 8 | Minimal-footprint test installs | ❌ Falls out of #7's design, not separate work |
 
-**Read as**: two real, working subsystems (taskbar/entities, pal-chain's
-actual chain logic) plus one working-but-legacy app (avatar creation,
-partially) already exist to build ON; the actual connective tissue —
+**Read as**: two real, working subsystems (taskbar/entities, pal-
+chain's actual chain logic) plus one real, substantial working-but-
+legacy app (avatar creation — DNA/clone/token system, full ops depth,
+just on the old engine) already exist to build ON; the actual
+connective tissue —
 install, store, and the guided onboarding flow linking them — is
 almost entirely greenfield. This is not a discouraging picture: it
 means the hard, uncertain "does the core engine work" question is
