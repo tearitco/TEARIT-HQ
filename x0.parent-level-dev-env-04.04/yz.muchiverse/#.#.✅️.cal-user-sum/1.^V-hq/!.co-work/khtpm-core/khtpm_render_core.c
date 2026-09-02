@@ -67,6 +67,7 @@
  * consumer's build script - don't hand-copy this file again. */
 
 #include <string.h>
+#include <stdio.h>
 
 #define MAX_CHILDREN 64
 
@@ -76,7 +77,7 @@ typedef struct Elem {
     char classes[CSS_MAX_CLASSES][32];
     int n_classes;
     char label[256];
-    /* REAL FIX 2026-08-16 (found live building khtpm_entity_menu_render.c,
+    /* REAL FIX 2026-08-16 (found live building khtpm_core_render.c,
      * Stage 2c proof): 64 was too small for a real objects.pdl-style
      * action= shell command (e.g. ava's real "Play" action is 200+
      * chars) - silently truncated mid-string, producing a malformed
@@ -122,6 +123,40 @@ typedef struct Elem {
      * instead of starting it at the label position and growing right.
      * Default 0 = every existing consumer's behavior is unchanged. */
     int badge_align_left;
+    /* REAL, NEW 2026-08-31 (xperiments/khtpm-generic-dispatch-design.md
+     * §5, generic capability #2, direct instruction: "see existing
+     * chtpm parser std format... can khtpm parser be more similar?") -
+     * ported directly from 1.TPMOS_c_+rmmp.0103.0001/pieces/chtpm/
+     * plugins/chtpm_parser.c's own real, generic `<cli_io>` fields
+     * (UIElement.input_buffer/target_id) - a real, generic, tag="cli_io"
+     * text-input element every khtpm app can use with ZERO per-app C:
+     * printable keys append to input_buffer while armed, target_id
+     * (falls back to id) keys the real, generic per-window
+     * cli_io_state.txt line this value live-syncs to, matching the
+     * reference's own real "target_id-keyed gui_state.txt" design so
+     * multiple cli_io fields in one window never collide. Empty/unused
+     * = zero behavior change for every existing consumer. */
+    char input_buffer[256];
+    char target_id[64];
+    /* REAL, NEW 2026-09-01 (live report: a long list of one-item-plus-
+     * its-own-separate-delete-row pairs is real visual clutter - direct
+     * instruction: "id like to add backspace to delete if possible,
+     * instead of making all those delete spots") - a real, generic
+     * second action any focused `<item>` can carry: Backspace runs
+     * THIS instead of onclick, when set (see handle_key()'s own new
+     * branch). Empty/unused = zero behavior change for every existing
+     * consumer - nothing currently reads or sets this. */
+    char backspace_action[1536];
+    /* REAL, NEW 2026-09-01 (direct instruction: "build word-wrap/multi-
+     * line/emoji into the generic cli_io first" - real generic
+     * capability, not chat-hai-specific) - a real, generic <cli_io
+     * rows="N"/> attribute (default 1, matching every existing single-
+     * line consumer's real behavior unchanged): the number of real text
+     * rows this field's own box should reserve, read by the layout
+     * code that positions it (layout_fixed_rows_and_scrolllist()) so a
+     * real multi-line composer actually gets a real taller box, not
+     * just draw_elem()'s own real word-wrap with nowhere to put it. */
+    int rows;
     struct Elem *children[MAX_CHILDREN];
     int n_children;
     struct Elem *parent;
@@ -168,6 +203,70 @@ static Elem *find_by_id(Elem *e, const char *id) {
         if (r) return r;
     }
     return NULL;
+}
+
+/* LayDoc Gap 3: flat preorder walk, same child order as
+ * dbhq_serialize_frame_subtree (non-title/module first, titles last).
+ * Root is entry 0, parent_index -1. Returns count, or -1 if cap
+ * too small (no silent truncate). */
+typedef struct {
+    int index;
+    int parent_index;
+    Elem *elem;
+} ElemFlatEntry;
+
+static int elem_flatten_add(Elem *e, int parent_idx, ElemFlatEntry *out, int cap, int *n) {
+    int me, i;
+    if (!e) return 0;
+    if (*n >= cap) return -1;
+    me = *n;
+    out[me].index = me;
+    out[me].parent_index = parent_idx;
+    out[me].elem = e;
+    (*n)++;
+    for (i = 0; i < e->n_children; i++) {
+        Elem *c = e->children[i];
+        if (strcmp(c->tag, "title") == 0 || strcmp(c->tag, "module") == 0) continue;
+        if (elem_flatten_add(c, me, out, cap, n) < 0) return -1;
+    }
+    for (i = 0; i < e->n_children; i++) {
+        Elem *c = e->children[i];
+        if (strcmp(c->tag, "title") != 0) continue;
+        if (elem_flatten_add(c, me, out, cap, n) < 0) return -1;
+    }
+    return 0;
+}
+
+int elem_flatten(Elem *root, ElemFlatEntry *out, int cap) {
+    int n = 0;
+    if (!root || !out || cap < 1) return -1;
+    if (elem_flatten_add(root, -1, out, cap, &n) < 0) return -1;
+    return n;
+}
+
+/* LayDoc Gap 5: computed cursor prefix, never stored in e->label.
+ * 2-state until is_active_scope (Gap 2): "[>]" focused, "[ ]" else.
+ * is_active_scope is the LayDoc [^] active-index branch. */
+void elem_cursor_prefix(const Elem *e, int focus_nav, int is_active_scope, char *out, size_t outsz) {
+    if (!out || outsz == 0) return;
+    if (!e || e->nav_index <= 0) { snprintf(out, outsz, "[ ]"); return; }
+    if (is_active_scope) { snprintf(out, outsz, "[^]"); return; }
+    if (e->nav_index == focus_nav) { snprintf(out, outsz, "[>]"); return; }
+    snprintf(out, outsz, "[ ]");
+}
+
+typedef Elem *(*ElemFactory)(void *row, void *ctx);
+void elem_inject_loop(Elem *parent, void **rows, int n, ElemFactory fn, void *ctx) {
+    int i;
+    if (!parent || !fn || n <= 0 || !rows) return;
+    for (i = 0; i < n; i++) {
+        Elem *e;
+        if (parent->n_children >= MAX_CHILDREN) return;
+        e = fn(rows[i], ctx);
+        if (!e) continue;
+        e->parent = parent;
+        parent->children[parent->n_children++] = e;
+    }
 }
 
 /* REAL START 2026-08-16, Stage 3 (khtpm-merge-how2.md §5) - real box-

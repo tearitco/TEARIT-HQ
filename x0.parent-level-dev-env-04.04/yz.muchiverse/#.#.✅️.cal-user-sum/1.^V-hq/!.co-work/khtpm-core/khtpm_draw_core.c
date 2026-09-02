@@ -79,9 +79,25 @@ typedef struct {
     unsigned char *rgba;
     int res;
     time_t mtime;
+    long last_used; /* real LRU tick - see g_hq_sprite_tick's own comment */
 } HqSprite;
-#define HQ_SPRITE_CACHE_N 128
+/* REAL FIX 2026-08-28, part 2 (live report, direct: "caching isn't
+ * having an effect this go round" - correctly caught a SECOND real
+ * bug this same session, not the same one already fixed) - a fixed-
+ * size cache with NO eviction, no matter how large, eventually
+ * overflows once a real user browses enough DISTINCT sprite paths in
+ * one session (confirmed live: World's A/B/C tabs alone already total
+ * 32+256+256=544 unique paths, past even the 512 this file was just
+ * bumped to). Bumping the number again would only move the same
+ * failure further out, not fix it - real LRU eviction (least-recently-
+ * used slot reused when the cache is full) is the actual durable fix,
+ * ported as the standard fixed-capacity-cache pattern, not invented
+ * from scratch. g_hq_sprite_tick is a simple monotonic counter, bumped
+ * on every real access (hit or fresh load) - the slot with the
+ * smallest stamp is the one nothing has touched longest. */
+#define HQ_SPRITE_CACHE_N 512
 static HqSprite g_hq_sprite_cache[HQ_SPRITE_CACHE_N];
+static long g_hq_sprite_tick = 0;
 
 static HqSprite *hq_sprite(const char *dir) {
     if (!dir || !dir[0]) return NULL;
@@ -103,6 +119,7 @@ static HqSprite *hq_sprite(const char *dir) {
                 memset(&g_hq_sprite_cache[i], 0, sizeof(HqSprite));
                 break;
             }
+            g_hq_sprite_cache[i].last_used = ++g_hq_sprite_tick;
             return &g_hq_sprite_cache[i];
         }
     }
@@ -129,17 +146,31 @@ static HqSprite *hq_sprite(const char *dir) {
     }
     fclose(f);
     if (count != res * res) { free(pixels); return NULL; }
+    int slot = -1;
     for (int i = 0; i < HQ_SPRITE_CACHE_N; i++) {
-        if (!g_hq_sprite_cache[i].rgba) {
-            snprintf(g_hq_sprite_cache[i].path, sizeof(g_hq_sprite_cache[i].path), "%s", pth);
-            g_hq_sprite_cache[i].rgba = pixels;
-            g_hq_sprite_cache[i].res = res;
-            g_hq_sprite_cache[i].mtime = mt;
-            return &g_hq_sprite_cache[i];
-        }
+        if (!g_hq_sprite_cache[i].rgba) { slot = i; break; }
     }
-    free(pixels);
-    return NULL;
+    if (slot < 0) {
+        /* Cache full - real LRU eviction (2026-08-28), not a silent
+         * drop. Find the slot with the OLDEST last_used stamp (the one
+         * nothing has touched longest) and reuse it - a real user
+         * cycling through more distinct sprites than the cache can
+         * hold at once should see the LEAST recently viewed ones
+         * re-decoded on return, not a fixed hard wall past which
+         * sprites just stop appearing. */
+        long oldest = g_hq_sprite_cache[0].last_used;
+        slot = 0;
+        for (int i = 1; i < HQ_SPRITE_CACHE_N; i++) {
+            if (g_hq_sprite_cache[i].last_used < oldest) { oldest = g_hq_sprite_cache[i].last_used; slot = i; }
+        }
+        free(g_hq_sprite_cache[slot].rgba);
+    }
+    snprintf(g_hq_sprite_cache[slot].path, sizeof(g_hq_sprite_cache[slot].path), "%s", pth);
+    g_hq_sprite_cache[slot].rgba = pixels;
+    g_hq_sprite_cache[slot].res = res;
+    g_hq_sprite_cache[slot].mtime = mt;
+    g_hq_sprite_cache[slot].last_used = ++g_hq_sprite_tick;
+    return &g_hq_sprite_cache[slot];
 }
 
 static void hq_blit_sprite(HqSprite *sp, int x0, int y0, int px, unsigned long bg_pixel) {
@@ -378,6 +409,20 @@ static const char *badge_focus_color(const CssStyle *st) {
 
 static void draw_elem(Elem *e, int hover_id_hash) {
     (void)hover_id_hash;
+    /* REAL FIX 2026-08-29 (EVENTS-HQ-RENDER-UNIFICATION-PLAN.md's own
+     * open "ghosting" regression, root-caused: evhq_zero_subtree()
+     * zeros an Elem's w/h to hide a whole subtree when a view mode
+     * switches away from it, but this function's label-drawing branch
+     * below (`if (!drew_sprite && e->label[0])`) never checked w/h at
+     * all - a 0x0 XFillRectangle/XDrawRectangle is a real no-op, but
+     * text was drawn regardless, so "hidden" titles like Scripting
+     * mode's "Trigger"/"Commands" block-title labels kept bleeding
+     * through as faint ghosts over Scratch/Blueprints content. This
+     * guard was believed to already exist here (see the plan doc's own
+     * now-corrected note) but never actually did - fixing it here,
+     * once, fixes every mode that relies on zeroing a subtree to hide
+     * it, not just events-hq. */
+    if (e->w <= 0 || e->h <= 0) return;
     if (e->style.has_bg_color) {
         XSetForeground(dpy, gc, alloc_pixel(e->style.bg_color));
         XFillRectangle(dpy, buf, gc, e->x, e->y, e->w, e->h);
@@ -416,7 +461,35 @@ static void draw_elem(Elem *e, int hover_id_hash) {
     int badge_label_x = label_x;
     if (e->nav_index > 0) {
         int focused = (e->nav_index == g_focus_nav);
-        snprintf(nav_badge, sizeof(nav_badge), "[%c]%d.", focused ? '>' : ' ', e->nav_index);
+        char prefix[8];
+        /* REAL, NEW 2026-08-31 - a real, generic ARMED cli_io field
+         * reuses this SAME existing "[^]" active-scope visual (direct
+         * instruction: cli_io should show "^" once armed, not the plain
+         * "[>]" a merely-focused-but-not-yet-typing element gets) -
+         * not a new bespoke prefix state, the exact one db-hq's own
+         * scope root already uses. Real nav-blocking while armed is
+         * already handled separately, in handle_key()'s own real
+         * key-order check (g_default_input_elem is tested before any
+         * Up/Down/Enter dispatch reaches the generic nav code at all).
+         * REAL FIX 2026-08-31 (found live, same investigation as
+         * dbhq_serialize_frame_elem()'s own input_buffer fix): compared
+         * by POINTER at first, which can never match here - the default/
+         * popup mode's own real content draw (redraw()'s "now the
+         * shared, generic render_tree()" path) calls draw_elem() on a
+         * fresh, freshly-built temp Elem parsed from a text frame file
+         * (dbhq_paint_frame_line()), never on the live g_pool[] Elem a
+         * human is actually typing into - `e == g_default_input_elem`
+         * was comparing two different objects' addresses and could
+         * never be true from that path. Real fix: compare by id, the
+         * one identifying field the frame-file round trip already
+         * carries faithfully - safe because a real .chtpm's ids are
+         * already relied on to be unique per window (find_page()/
+         * dispatch() etc. all key off id the same way). */
+        int is_scope = (g_dbhq_active_scope_root && e == g_dbhq_active_scope_root) ||
+                       (g_default_input_elem && e->id[0] && strcmp(e->id, g_default_input_elem->id) == 0);
+        elem_cursor_prefix(e, g_focus_nav, is_scope, prefix, sizeof(prefix));
+        snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index);
+        (void)focused;
         /* REAL FIX 2026-08-25 (live perf report: "nav is really slow" with
          * 113 palette tiles on screen) - this was opening a fresh XftFont
          * via XftFontOpenName() for EVERY nav-badged element, EVERY redraw
@@ -467,14 +540,147 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             }
         }
     }
-    if (!drew_sprite && e->label[0]) {
+    /* REAL, NEW 2026-08-31 (generic capability #2 - see Elem's own
+     * input_buffer field comment) - a real, generic cli_io tag shows
+     * its own live-typed input_buffer appended after its static label,
+     * with a real cursor glyph while it's the currently focused (armed)
+     * field - zero per-app code needed for any consumer of this shared
+     * draw path. */
+    char cli_io_shown[256 + 300];
+    const char *shown_label = e->label;
+    if (strcmp(e->tag, "cli_io") == 0) {
+        snprintf(cli_io_shown, sizeof(cli_io_shown), "%s%s%s", e->label, e->input_buffer,
+                 (e->nav_index > 0 && e->nav_index == g_focus_nav) ? "_" : "");
+        shown_label = cli_io_shown;
+    }
+    if (!drew_sprite && shown_label[0]) {
         XftFont *font = font_for(&e->style);
         XftColor col = xft_color(e->style.has_fg_color ? e->style.fg_color : "#cccccc");
         XGlyphInfo extents;
-        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)e->label, (int)strlen(e->label), &extents);
-        int ty = e->y + (e->h + font->ascent - font->descent) / 2;
-        if (ty < e->y + font->ascent) ty = e->y + font->ascent + pad / 2;
-        draw_text_emoji(font, &col, badge_label_x, ty, e->label);
+        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)shown_label, (int)strlen(shown_label), &extents);
+        int avail_w = e->w > 0 ? (e->x + e->w) - badge_label_x : -1;
+        int line_h = font->ascent - font->descent > 0 ? font->ascent - font->descent : 12;
+        line_h += 4; /* real, small leading - matches this file's own general text-row spacing feel */
+        /* REAL, NEW 2026-09-01 (direct instruction: "build word-wrap/
+         * multi-line/emoji into the generic cli_io first" - a real,
+         * generic capability, not chat-hai-specific, so chat-hai's own
+         * eventual migration doesn't lose real features it already has)
+         * - a <cli_io> whose own real h is declared taller than roughly
+         * 1.5 real text rows gets REAL multi-line word-wrap within that
+         * fixed box; a plain single-row cli_io (open-hai's own real
+         * composer today, h==ROW_H) is COMPLETELY unaffected - same
+         * single-line, vertically-centered path as before, zero risk to
+         * anything already working. Real, deliberate scope for this
+         * first slice: fixed-height wrap only, no dynamic auto-growth/
+         * sibling-reflow as the user types past the box - that's a real
+         * layout-engine feature, flagged as separate future work, not
+         * silently attempted here under time pressure. */
+        int is_multiline_cli_io = (strcmp(e->tag, "cli_io") == 0) && (e->h > (line_h * 3) / 2) && avail_w > 0;
+        if (is_multiline_cli_io) {
+            /* Real, generic greedy word-wrap: pack words onto each line
+             * (measuring real glyph width via Xft, not a char-count
+             * guess - same discipline chai_measure_text_px() already
+             * uses elsewhere in this house), starting a new line
+             * whenever the next word wouldn't fit; stop once no more
+             * real vertical space remains in the box (the last visible
+             * line gets a real "..." ellipsis if there's more text than
+             * fits, same real convention the single-line clip path
+             * already uses). */
+            char buf[600];
+            snprintf(buf, sizeof(buf), "%s", shown_label);
+            int max_lines = e->h / line_h;
+            if (max_lines < 1) max_lines = 1;
+            int ty = e->y + font->ascent + 2;
+            int line_no = 0;
+            char *p = buf;
+            while (*p && line_no < max_lines) {
+                int last_good_space = -1;
+                int i = 0;
+                XGlyphInfo lw;
+                for (;;) {
+                    char c = p[i];
+                    if (c == '\0') break;
+                    if (c == ' ') last_good_space = i;
+                    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)p, i + 1, &lw);
+                    if (lw.width > avail_w) break;
+                    i++;
+                }
+                int cut = i;
+                int has_more_after = (p[i] != '\0');
+                if (has_more_after && last_good_space >= 0) cut = last_good_space;
+                if (cut == 0 && p[i] != '\0') cut = 1; /* a single glyph wider than the whole box - avoid an infinite loop, take it anyway */
+                char line_buf[600];
+                int is_last_visible_line = (line_no == max_lines - 1);
+                int real_more_remains = has_more_after && (cut < (int)strlen(p) || p[cut] != '\0');
+                if (is_last_visible_line && real_more_remains) {
+                    /* Real ellipsis on the box's own last visible line
+                     * only, matching the single-line clip path's own
+                     * real convention - trims further until "..." fits,
+                     * UTF-8-safe (never cuts mid-codepoint). */
+                    int len2 = cut;
+                    static const char *ELLIPSIS = "...";
+                    XGlyphInfo ell_ext;
+                    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)ELLIPSIS, 3, &ell_ext);
+                    int target_w = avail_w - ell_ext.width;
+                    if (target_w < 0) target_w = 0;
+                    while (len2 > 0) {
+                        XGlyphInfo cw;
+                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)p, len2, &cw);
+                        if (cw.width <= target_w) break;
+                        len2--;
+                        while (len2 > 0 && ((unsigned char)p[len2] & 0xC0) == 0x80) len2--;
+                    }
+                    snprintf(line_buf, sizeof(line_buf), "%.*s%s", len2, p, ELLIPSIS);
+                } else {
+                    snprintf(line_buf, sizeof(line_buf), "%.*s", cut, p);
+                }
+                draw_text_emoji(font, &col, badge_label_x, ty, line_buf);
+                ty += line_h;
+                line_no++;
+                p += cut;
+                while (*p == ' ') p++; /* real, plain word-wrap convention - a consumed break space never starts the next line */
+                if (is_last_visible_line) break;
+            }
+        } else {
+            /* REAL, NEW 2026-09-01 (found live testing open-hai's own
+             * real sidebar - a real session snippet longer than the
+             * sidebar's own real 220px width drew straight past its own
+             * element box into the panel column beside it, looking
+             * exactly like a garbled double-render until traced back to
+             * plain unclipped text overflow) - a real, generic fix, not
+             * open-hai-specific: any element with a real w>0 now gets
+             * its own label truncated (with a real "..." ellipsis,
+             * UTF-8-safe - real message text can and does contain
+             * multi-byte emoji, never cut mid-codepoint) to fit the
+             * space actually available between its own badge and its
+             * own right edge. A harmless no-op for any label that
+             * already fits - nothing currently working can regress from
+             * this. */
+            char clipped_buf[600];
+            const char *draw_label = shown_label;
+            if (avail_w > 0 && extents.width > avail_w) {
+                snprintf(clipped_buf, sizeof(clipped_buf), "%s", shown_label);
+                size_t len = strlen(clipped_buf);
+                static const char *ELLIPSIS = "...";
+                XGlyphInfo ell_ext;
+                XftTextExtentsUtf8(dpy, font, (const FcChar8 *)ELLIPSIS, 3, &ell_ext);
+                int target_w = avail_w - ell_ext.width;
+                if (target_w < 0) target_w = 0;
+                while (len > 0) {
+                    XGlyphInfo cur_ext;
+                    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)clipped_buf, (int)len, &cur_ext);
+                    if (cur_ext.width <= target_w) break;
+                    len--;
+                    while (len > 0 && ((unsigned char)clipped_buf[len] & 0xC0) == 0x80) len--; /* don't cut mid-UTF8-codepoint */
+                }
+                clipped_buf[len] = '\0';
+                snprintf(clipped_buf + len, sizeof(clipped_buf) - len, "%s", ELLIPSIS);
+                draw_label = clipped_buf;
+            }
+            int ty = e->y + (e->h + font->ascent - font->descent) / 2;
+            if (ty < e->y + font->ascent) ty = e->y + font->ascent + pad / 2;
+            draw_text_emoji(font, &col, badge_label_x, ty, draw_label);
+        }
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
     }
     /* Badge draws LAST - see the big comment above. For sprite tiles,
