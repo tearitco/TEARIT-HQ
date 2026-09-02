@@ -1,0 +1,1 @@
+<button label="Mutaclysm-Neo" onClick="HQITEM:0"/><button label="Piececraft" onClick="HQITEM:1"/><button label="My Lawyer" onClick="HQITEM:2"/><button label="My Chara" onClick="HQITEM:3"/><button label="Piececraft-HQ" onClick="HQITEM:4"/><button label="Cancel" onClick="HQITEM:5"/>

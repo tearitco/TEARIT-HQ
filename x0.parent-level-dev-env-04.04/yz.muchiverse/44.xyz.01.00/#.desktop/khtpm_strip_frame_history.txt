@@ -1,3 +1,5 @@
 header.focus=0[type=button label=HQ onClick=ACTIVATE:1] header.active=-1 bottom.focus=-1 unified_nav_focus=0 has_real_x11_focus=0 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=29
 header.focus=2[type=button label=@ always-on-top: ON onClick=ZORDER_TOGGLE] header.active=0 bottom.focus=1 unified_nav_focus=0 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=173
 header.focus=0[type=button label=HQ onClick=ACTIVATE:1] header.active=-1 bottom.focus=1 unified_nav_focus=0 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=-1 element_count=29
+header.focus=68[type=button label=IRC Chat onClick=HQITEM:0] header.active=66 bottom.focus=1 unified_nav_focus=12 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=89
+header.focus=68[type=button label=Mutaclysm-Neo onClick=HQITEM:0] header.active=66 bottom.focus=1 unified_nav_focus=-1 has_real_x11_focus=1 cliio_active=0 nav_armed=0 digit_buf= hq_focus=0 element_count=101
