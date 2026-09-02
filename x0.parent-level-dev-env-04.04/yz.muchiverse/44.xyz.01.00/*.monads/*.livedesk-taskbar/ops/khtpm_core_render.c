@@ -97,7 +97,7 @@ static void popup_handle_click(int px, int py);
 static void history_unregister(void); /* REAL, NEW 2026-08-29 - see its own real definition/comment near history_path() */
 static void zero_nav_subtree(Elem *e); /* REAL, NEW 2026-08-29 - see its own real definition/comment near evhq_zero_subtree() */
 static void redraw(void); /* REAL, forward declaration needed for dispatch()'s OPACITY_MINUS/OPACITY_PLUS handlers (NEW 2026-08-29 TASK 2) */
-#define MAX_ELEMS 512
+#define MAX_ELEMS 1024  /* 2026-09-02: page projection + chrome, was 512 */
 #define MAX_PAGE_STACK 8
 
 static Elem g_pool[MAX_ELEMS];
@@ -219,7 +219,7 @@ static void set_window_opacity(Display *d, Window w, double opacity) {
 }
 
 static double load_theme_opacity(void) {
-    double opacity = 0.5;
+    double opacity = 1.0;
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/livedesk_theme.pdl", g_house_root);
     FILE *f = fopen(path, "r");
@@ -782,7 +782,26 @@ static int reparse_chtpm_if_changed(void) {
      * makes, so this doesn't need to know the real row count itself.
      * Deliberately does NOT touch g_default_sidebar_scroll - a session
      * list has no "newest is at the bottom" convention to auto-follow. */
+    /* REAL FIX 2026-09-02 - auto-follow-bottom is the chat convention
+     * (open-hai newest message). A document-shaped consumer (network
+     * browser, any page that should start at the top) marks its panel
+     * <scrolllist class="from-top"/>. Data-driven, no per-app flag:
+     * missing class keeps the old bottom-follow so chat is unchanged. */
     g_default_scrolllist_scroll = 1000000;
+    {
+        Elem *panel = find_by_tag(new_window, "panel");
+        if (panel) {
+            int i, j;
+            for (i = 0; i < panel->n_children; i++) {
+                Elem *c = panel->children[i];
+                if (strcmp(c->tag, "scrolllist") != 0) continue;
+                for (j = 0; j < c->n_classes; j++) {
+                    if (strcmp(c->classes[j], "from-top") == 0)
+                        g_default_scrolllist_scroll = 0;
+                }
+            }
+        }
+    }
     return 1;
 }
 
@@ -945,7 +964,11 @@ static int scaled(int base_px) {
  * draw_elem()/render_tree()/font_for() (was hand-rolled, per-app pixel
  * drawing - see khtpm_draw_core.c's own header comment). Included here
  * (after dpy/screen/cmap/gc/buf/xftdraw_buf/g_focus_nav are all
- * already declared above, which it needs). */
+ * already declared above, which it needs).
+ * REAL, NEW 2026-09-02 - draw_elem() may skip the numbered nav badge
+ * when the element has class=quiet; elem_has_class is defined later
+ * in this file, so it is forward-declared here before the include. */
+static int elem_has_class(Elem *e, const char *cls);
 #include "khtpm_draw_core.c"
 #define ROW_H 24
 #define CHROME_H 24
@@ -6205,6 +6228,85 @@ static int g_default_sidebar_scroll = 0;
 static int g_default_sidebar_nav_lo = 0, g_default_sidebar_nav_hi = 0;
 static int g_default_scrolllist_nav_lo = 0, g_default_scrolllist_nav_hi = 0;
 
+/* REAL, NEW 2026-09-02 - generic visible scrollbar for ANY <scrolllist>
+ * that overflows its viewport. Palette-grid already had its own track
+ * (g_pal_track_*); this is the shared sidebar/panel scrolllist path
+ * (layout_scroll_region), not a second renderer and not per-app.
+ * Track + thumb only. Mouse-drag is NOT wired: default/popup click
+ * capture ignores wheel/drag on a dedicated thumb (MOUSE_EVENT skips
+ * buttons 4/5; MotionNotify has no generic-thumb drag). Wheel on the
+ * viewport is handled in poll_agent_history. Page_Up/Page_Down already
+ * moved *scroll. Thumb position follows that offset so the user can
+ * SEE where they are. */
+#define GENERIC_SCROLLBAR_W 8
+typedef struct {
+    int vx, vy, vw, vh;
+    int track_x, track_y, track_w, track_h;
+    int thumb_y, thumb_h;
+    int *scroll;
+    int total, visible, max_scroll;
+} GenericScrollBar;
+static GenericScrollBar g_generic_sbars[8];
+static int g_n_generic_sbars;
+
+static void generic_sbar_reset(void) { g_n_generic_sbars = 0; }
+
+static void generic_sbar_register(int x, int y, int w, int h, int *scroll,
+                                  int total, int visible, int max_scroll) {
+    GenericScrollBar *b;
+    int th, usable, sc;
+    if (g_n_generic_sbars >= 8) return;
+    if (w < GENERIC_SCROLLBAR_W + 8 || h < 8) return;
+    if (max_scroll < 1) return;
+    b = &g_generic_sbars[g_n_generic_sbars++];
+    b->vx = x; b->vy = y; b->vw = w; b->vh = h;
+    b->track_w = GENERIC_SCROLLBAR_W;
+    b->track_h = h;
+    b->track_x = x + w - GENERIC_SCROLLBAR_W;
+    b->track_y = y;
+    b->scroll = scroll;
+    b->total = total;
+    b->visible = visible;
+    b->max_scroll = max_scroll;
+    th = (total > 0) ? (h * visible) / total : h;
+    if (th < 12) th = 12;
+    if (th > h) th = h;
+    usable = h - th;
+    sc = scroll ? *scroll : 0;
+    if (sc < 0) sc = 0;
+    if (sc > max_scroll) sc = max_scroll;
+    b->thumb_h = th;
+    b->thumb_y = y + ((max_scroll > 0 && usable > 0) ? (sc * usable) / max_scroll : 0);
+}
+
+static void draw_generic_scrollbars(void) {
+    int i;
+    for (i = 0; i < g_n_generic_sbars; i++) {
+        GenericScrollBar *b = &g_generic_sbars[i];
+        XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
+        XFillRectangle(dpy, buf, gc, b->track_x, b->track_y,
+                       (unsigned)b->track_w, (unsigned)b->track_h);
+        XSetForeground(dpy, gc, alloc_pixel("#888888"));
+        XFillRectangle(dpy, buf, gc, b->track_x + 1, b->thumb_y,
+                       (unsigned)(b->track_w > 2 ? b->track_w - 2 : b->track_w),
+                       (unsigned)b->thumb_h);
+    }
+}
+
+static int generic_sbar_wheel(int mx, int my, int dir) {
+    int i;
+    for (i = 0; i < g_n_generic_sbars; i++) {
+        GenericScrollBar *b = &g_generic_sbars[i];
+        if (!b->scroll) continue;
+        if (mx >= b->vx && mx < b->vx + b->vw &&
+            my >= b->vy && my < b->vy + b->vh) {
+            *b->scroll += dir;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 /* REAL, NEW 2026-09-01 (live report: "still missing x and !" - real
  * chrome affordances, same real "X" (close) / "!" (fullscreen) pair
  * piececraft-hq's own real board-mode chrome already uses, direct
@@ -6244,27 +6346,137 @@ static int g_default_pre_fullscreen_x = 0, g_default_pre_fullscreen_y = 0;
  * branch's own 2026-08-31 text-row fix already established. Returns the
  * [lo,hi] real nav_index range this call assigned, via *out_lo/*out_hi
  * (both 0 if the container had zero item children). */
+/* REAL FIX 2026-09-02 - generic scrolllist rows are ROW_H (24px). An
+ * item with sprite= still blits via hq_sprite() but its box was 24px,
+ * so the tile crushed to ~16px and the nav badge painted into the
+ * previous row. Sprite items occupy enough ROW_H slots for a 64px
+ * blit (HQ_SPRITE_PX_MAX) plus padding. Scroll math stays row-based.
+ * Zero per-app flags - any consumer of sprite= in a scrolllist gets it.
+ *
+ * REAL, NEW 2026-09-02 - a <row class="sprite-grid-row"> (or a <row>
+ * whose children are all sprite items) lays those children horizontally
+ * inside one scroll slot whose height is one tall sprite tile. Palettes
+ * pal-grid-row is a different mechanism (generic_scroll_layout_pass) and
+ * is explicitly skipped here. */
+/* Min cell width for sprite-grid-row children. 64px blit is unchanged
+ * (draw_core caps at HQ_SPRITE_PX_MAX). Wider cell = one-line labels
+ * can show ~40 chars instead of clipping to "KPO...". Remainder of the
+ * row is split evenly so 4 columns still fill ~760px content. */
+#define SPRITE_GRID_TILE_W 168
+#define SPRITE_GRID_TILE_H 96
+
+static int scroll_is_sprite_grid_row(const Elem *c) {
+    int i, n_items = 0, n_sprites = 0;
+    if (!c || strcmp(c->tag, "row") != 0) return 0;
+    if (elem_has_class((Elem *)c, "pal-grid-row")) return 0;
+    if (elem_has_class((Elem *)c, "sprite-grid-row")) return 1;
+    for (i = 0; i < c->n_children; i++) {
+        const Elem *ch = c->children[i];
+        if (strcmp(ch->tag, "item") != 0 && strcmp(ch->tag, "text") != 0) continue;
+        n_items++;
+        if (ch->sprite[0]) n_sprites++;
+    }
+    return n_items > 0 && n_sprites == n_items;
+}
+
+static int sprite_grid_cols(int w) {
+    int cols = w / SPRITE_GRID_TILE_W;
+    return cols < 1 ? 1 : cols;
+}
+
+static int sprite_grid_n_tiles(const Elem *c) {
+    int i, n = 0;
+    if (!c) return 0;
+    for (i = 0; i < c->n_children; i++) {
+        const Elem *ch = c->children[i];
+        if (strcmp(ch->tag, "item") == 0 || strcmp(ch->tag, "text") == 0) n++;
+    }
+    return n;
+}
+
+static int sprite_grid_visual_lines(const Elem *c, int w) {
+    int n = sprite_grid_n_tiles(c);
+    int cols = sprite_grid_cols(w);
+    int lines = n > 0 ? (n + cols - 1) / cols : 1;
+    return lines < 1 ? 1 : lines;
+}
+
+static int scroll_row_span(const Elem *c, int w) {
+    if (scroll_is_sprite_grid_row(c)) {
+        int line_span = (SPRITE_GRID_TILE_H + ROW_H - 1) / ROW_H;
+        return sprite_grid_visual_lines(c, w) * line_span;
+    }
+    if (c && c->sprite[0]) return (64 + ROW_H + 8 + ROW_H - 1) / ROW_H; /* 64px blit + one ROW_H for the nav chip */
+    return 1;
+}
+
+static void layout_scroll_sprite_grid_row(Elem *row, int x, int y, int w, int h_box, int visible, int *out_lo, int *out_hi) {
+    int j, col = 0, line = 0;
+    int tile_h = SPRITE_GRID_TILE_H;
+    int cols = sprite_grid_cols(w);
+    int tile_w = (cols > 0) ? (w / cols) : SPRITE_GRID_TILE_W;
+    if (tile_w < SPRITE_GRID_TILE_W) tile_w = SPRITE_GRID_TILE_W;
+    (void)h_box;
+    row->x = x;
+    row->y = visible ? y : -100000;
+    row->w = w;
+    row->h = sprite_grid_visual_lines(row, w) * tile_h;
+    row->nav_index = 0;
+    css_compute_style(&g_sheet, row->tag, row->id, row->classes, row->n_classes, 0, &row->style);
+    for (j = 0; j < row->n_children; j++) {
+        Elem *t = row->children[j];
+        if (strcmp(t->tag, "item") != 0 && strcmp(t->tag, "text") != 0) {
+            t->x = x; t->y = -100000; t->w = 0; t->h = 0; t->nav_index = 0;
+            continue;
+        }
+        t->w = tile_w;
+        t->h = tile_h;
+        t->x = x + col * tile_w;
+        t->y = visible ? (y + line * tile_h) : -100000;
+        css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
+        if (visible && strcmp(t->tag, "item") == 0) {
+            t->nav_index = ++g_n_nav;
+            g_nav[g_n_nav - 1] = t;
+            if (*out_lo == 0) *out_lo = t->nav_index;
+            *out_hi = t->nav_index;
+        } else {
+            t->nav_index = 0;
+        }
+        col++;
+        if (col >= cols) { col = 0; line++; }
+    }
+}
+
 static void layout_scroll_region(Elem *container, int x, int y, int w, int h, int *scroll, int *out_lo, int *out_hi) {
     *out_lo = 0; *out_hi = 0;
     if (!container || h <= 0) return;
     int visible_rows = h / ROW_H;
     if (visible_rows < 1) visible_rows = 1;
     int total = 0;
+    int inner_w = w;
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
-        if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0) total++;
+        if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0 || scroll_is_sprite_grid_row(c))
+            total += scroll_row_span(c, w);
     }
     int max_scroll = total > visible_rows ? total - visible_rows : 0;
     if (*scroll > max_scroll) *scroll = max_scroll;
     if (*scroll < 0) *scroll = 0;
+    generic_sbar_register(x, y, w, h, scroll, total, visible_rows, max_scroll);
+    if (max_scroll > 0 && w > GENERIC_SCROLLBAR_W + 8)
+        inner_w = w - GENERIC_SCROLLBAR_W;
 
     int row = 0;
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
-        if (strcmp(c->tag, "item") != 0 && strcmp(c->tag, "text") != 0) continue;
-        int visible = (row >= *scroll && row < *scroll + visible_rows);
-        if (visible) {
-            c->x = x; c->y = y + (row - *scroll) * ROW_H; c->w = w; c->h = ROW_H;
+        int is_grid = scroll_is_sprite_grid_row(c);
+        if (!is_grid && strcmp(c->tag, "item") != 0 && strcmp(c->tag, "text") != 0) continue;
+        int span = scroll_row_span(c, inner_w);
+        int visible = (row + span > *scroll && row < *scroll + visible_rows);
+        if (is_grid) {
+            layout_scroll_sprite_grid_row(c, x, y + (row - *scroll) * ROW_H, inner_w, span * ROW_H, visible, out_lo, out_hi);
+        } else if (visible) {
+            c->x = x; c->y = y + (row - *scroll) * ROW_H; c->w = inner_w; c->h = span * ROW_H;
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
             if (strcmp(c->tag, "item") == 0) {
                 c->nav_index = ++g_n_nav;
@@ -6275,10 +6487,10 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
                 c->nav_index = 0;
             }
         } else {
-            c->x = x; c->y = -100000; c->w = w; c->h = ROW_H;
+            c->x = x; c->y = -100000; c->w = w; c->h = span * ROW_H;
             c->nav_index = 0;
         }
-        row++;
+        row += span;
     }
 }
 
@@ -6293,7 +6505,41 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
  * content grows); a nested <scrolllist> gets whatever vertical space
  * is left after those fixed rows AND a pinned <cli_io> composer (if
  * one exists as a direct child - real, tag-based, never part of any
- * scroll flow, always the container's own last ROW_H). */
+ * scroll flow, always the container's own last ROW_H).
+ *
+ * REAL, NEW 2026-09-02 - a direct <row class="toolbar"> is one fixed
+ * ROW_H at y_cursor (item children laid horizontally, equal widths,
+ * each with a nav_index). Data-driven: any window can emit it.
+ * pal-grid-row is a different mechanism and is skipped here.
+ * A <cli_io class="top"> pins at y_cursor like a fixed row (address
+ * bar); unclassed cli_io stays the bottom composer so chat/open-hai
+ * is unchanged. composer_h for list_h is BOTTOM cli_io only, so a
+ * top field is not subtracted twice. class "from-top" is unrelated
+ * (scrolllist starts at 0) and must not be used for this pin. */
+static void layout_toolbar_row(Elem *row, int x, int y, int w) {
+    int j, n_items = 0, col = 0, iw;
+    row->x = x; row->y = y; row->w = w; row->h = ROW_H; row->nav_index = 0;
+    css_compute_style(&g_sheet, row->tag, row->id, row->classes, row->n_classes, 0, &row->style);
+    for (j = 0; j < row->n_children; j++)
+        if (strcmp(row->children[j]->tag, "item") == 0) n_items++;
+    iw = n_items > 0 ? w / n_items : w;
+    for (j = 0; j < row->n_children; j++) {
+        Elem *t = row->children[j];
+        if (strcmp(t->tag, "item") != 0) {
+            t->x = x; t->y = -100000; t->w = 0; t->h = 0; t->nav_index = 0;
+            continue;
+        }
+        t->x = x + col * iw;
+        t->y = y;
+        t->w = iw;
+        t->h = ROW_H;
+        css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
+        t->nav_index = ++g_n_nav;
+        g_nav[g_n_nav - 1] = t;
+        col++;
+    }
+}
+
 static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int w, int h, int *scroll, int *out_lo, int *out_hi) {
     int composer_rows = 0;
     Elem *scrolllist = NULL;
@@ -6304,8 +6550,11 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
          * <cli_io rows="N"/> reserves N real text rows instead of the
          * old, always-1-row assumption (rows defaults to 0/unset,
          * meaning "1" - every existing single-line consumer, open-hai's
-         * own real composer included, is completely unaffected). */
-        if (strcmp(c->tag, "cli_io") == 0) composer_rows = c->rows > 0 ? c->rows : 1;
+         * own real composer included, is completely unaffected).
+         * REAL FIX 2026-09-02 - only BOTTOM (unclassed) cli_io reserves
+         * the trailing strip. class=top is laid at y_cursor below. */
+        if (strcmp(c->tag, "cli_io") == 0 && !elem_has_class(c, "top"))
+            composer_rows = c->rows > 0 ? c->rows : 1;
         if (strcmp(c->tag, "scrolllist") == 0) scrolllist = c;
     }
     int composer_h = composer_rows * ROW_H;
@@ -6318,8 +6567,17 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
             if (strcmp(c->tag, "item") == 0) { c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c; }
             else c->nav_index = 0;
             y_cursor += ROW_H;
+        } else if (strcmp(c->tag, "row") == 0 && elem_has_class(c, "toolbar") && !elem_has_class(c, "pal-grid-row")) {
+            layout_toolbar_row(c, x, y_cursor, w);
+            y_cursor += ROW_H;
         } else if (strcmp(c->tag, "cli_io") == 0) {
-            c->x = x; c->y = y + h - composer_h; c->w = w; c->h = composer_h;
+            int this_h = (c->rows > 0 ? c->rows : 1) * ROW_H;
+            if (elem_has_class(c, "top")) {
+                c->x = x; c->y = y_cursor; c->w = w; c->h = this_h;
+                y_cursor += this_h;
+            } else {
+                c->x = x; c->y = y + h - composer_h; c->w = w; c->h = composer_h;
+            }
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
             c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c;
         }
@@ -6329,6 +6587,8 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
     }
     if (scrolllist) {
         int list_h = (y + h) - y_cursor - composer_h;
+        scrolllist->x = x; scrolllist->y = y_cursor; scrolllist->w = w; scrolllist->h = list_h > 0 ? list_h : 0;
+        css_compute_style(&g_sheet, scrolllist->tag, scrolllist->id, scrolllist->classes, scrolllist->n_classes, 0, &scrolllist->style);
         layout_scroll_region(scrolllist, x, y_cursor, w, list_h, scroll, out_lo, out_hi);
     } else if (out_lo && out_hi) {
         /* No nested scrolllist - container has no scrollable region of
@@ -6358,6 +6618,12 @@ static int layout_sidebar_panel(Elem *page) {
     Elem *sidebar = find_by_tag(page, "sidebar");
     Elem *panel = find_by_tag(page, "panel");
     if (!sidebar || !panel) return 0;
+    generic_sbar_reset();
+
+    css_compute_style(&g_sheet, g_window->tag, g_window->id[0] ? g_window->id : NULL,
+                      g_window->classes, g_window->n_classes, 0, &g_window->style);
+    css_compute_style(&g_sheet, sidebar->tag, sidebar->id, sidebar->classes, sidebar->n_classes, 0, &sidebar->style);
+    css_compute_style(&g_sheet, panel->tag, panel->id, panel->classes, panel->n_classes, 0, &panel->style);
 
     if (g_default_is_fullscreen) {
         g_win_w = DisplayWidth(dpy, screen);
@@ -6366,9 +6632,15 @@ static int layout_sidebar_panel(Elem *page) {
         g_win_w = g_window->style.has_width ? g_window->style.width : DEFAULT_WIN_W;
         g_win_h = g_window->style.has_height ? g_window->style.height : DEFAULT_WIN_H;
     }
+    g_window->w = g_win_w;
+    g_window->h = g_win_h;
 
-    sidebar->x = 0; sidebar->y = CHROME_H; sidebar->w = SIDEBAR_W; sidebar->h = g_win_h - CHROME_H;
-    panel->x = SIDEBAR_W; panel->y = CHROME_H; panel->w = g_win_w - SIDEBAR_W; panel->h = g_win_h - CHROME_H;
+    {
+        int sidebar_w = SIDEBAR_W;
+        if (sidebar->style.has_width && !sidebar->style.width_is_pct) sidebar_w = sidebar->style.width;
+        sidebar->x = 0; sidebar->y = CHROME_H; sidebar->w = sidebar_w; sidebar->h = g_win_h - CHROME_H;
+        panel->x = sidebar_w; panel->y = CHROME_H; panel->w = g_win_w - sidebar_w; panel->h = g_win_h - CHROME_H;
+    }
     /* REAL, NEW 2026-08-31 (live report: "no separation elements") -
      * a real visible divider between the two regions belongs in CSS
      * (entity_menu_default.css's own generic `sidebar`/`cli_io` rules),
@@ -6946,6 +7218,7 @@ static void redraw(void) {
                 fclose(rf);
             }
         }
+        draw_generic_scrollbars();
     }
 
     /* REAL, swatch-picker-only overlay (ported verbatim from taskbar-
@@ -7581,7 +7854,14 @@ static int poll_agent_history(void) {
             if (strncmp(line, "MOUSE_EVENT: ", 13) == 0) {
                 int button = 0, mx = 0, my = 0, is_press = 1;
                 int nf = sscanf(line + 13, "%d %d %d %d", &button, &mx, &my, &is_press);
-                if (nf >= 3 && is_press && button != 3 && button != 4 && button != 5) {
+                if (nf >= 3 && is_press && (button == 4 || button == 5)) {
+                    if (generic_sbar_wheel(mx, my, (button == 5) ? 1 : -1))
+                        n++;
+                    else if (!g_is_db_hq && !g_is_events_hq) {
+                        g_default_scrolllist_scroll += (button == 5) ? 1 : -1;
+                        n++;
+                    }
+                } else if (nf >= 3 && is_press && button != 3 && button != 4 && button != 5) {
                     if (g_is_db_hq) dbhq_handle_click(mx, my);
                     else if (g_is_events_hq) evhq_handle_click(mx, my);
                     else popup_handle_click(mx, my);
@@ -14580,7 +14860,7 @@ static char g_house_root_for_lock[TP_PATH_BUF] = "";
  * it's a real parameter instead). */
 
 static double tp_load_theme_opacity(const char *house_root) {
-    double opacity = 0.5;
+    double opacity = 1.0;
     char path[TP_PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/livedesk_theme.pdl", house_root);
     FILE *f = fopen(path, "r");
@@ -17422,6 +17702,17 @@ int main(int argc, char **argv) {
         }
         memset(&g_sheet, 0, sizeof(g_sheet));
         css_load(css_path, &g_sheet);
+        /* REAL, NEW 2026-09-02 - merge the .css sitting next to the
+         * loaded .chtpm (same stem). Data-driven: any app can ship
+         * window size and colors without a mode flag. Missing file
+         * is a no-op (css_load returns 0). */
+        {
+            char app_css[PATH_BUF];
+            snprintf(app_css, sizeof(app_css), "%s", g_chtpm_path);
+            char *dot = strrchr(app_css, '.');
+            if (dot) snprintf(dot, sizeof(app_css) - (size_t)(dot - app_css), ".css");
+            if (strcmp(app_css, css_path) != 0) css_load(app_css, &g_sheet);
+        }
     }
 
     /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode one-time init,

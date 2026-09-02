@@ -407,6 +407,45 @@ static const char *badge_focus_color(const CssStyle *st) {
     return luma > 140 ? "#7a1a00" : "#ff8c00";
 }
 
+/* Generic XML/HTML entity decode for on-screen labels. chtpm attribute
+ * values must stay escaped in the file (`&amp;` `&gt;` for well-formed
+ * tags). apply_attr() already decodes label= at parse; this runs in the
+ * shared draw path so a raw leftover `&amp;`/`&gt;` never paints as the
+ * escape sequence. No-op if the string is already decoded. Not
+ * network-specific. */
+static void khtpm_decode_label_entities(char *s) {
+    char *r = s, *w = s;
+    while (*r) {
+        if (*r == '&') {
+            if (strncmp(r, "&quot;", 6) == 0) { *w++ = '"'; r += 6; continue; }
+            if (strncmp(r, "&apos;", 6) == 0) { *w++ = '\''; r += 6; continue; }
+            if (strncmp(r, "&nbsp;", 6) == 0) { *w++ = ' '; r += 6; continue; }
+            if (strncmp(r, "&gt;", 4) == 0) { *w++ = '>'; r += 4; continue; }
+            if (strncmp(r, "&lt;", 4) == 0) { *w++ = '<'; r += 4; continue; }
+            if (strncmp(r, "&amp;", 5) == 0) { *w++ = '&'; r += 5; continue; }
+            if (r[1] == '#') {
+                const char *q = r + 2;
+                int hex = 0;
+                if (*q == 'x' || *q == 'X') { hex = 1; q++; }
+                if (*q) {
+                    char *end = NULL;
+                    unsigned long cp = strtoul(q, &end, hex ? 16 : 10);
+                    if (end && end > q && *end == ';') {
+                        if (cp == 39 || cp == 8216 || cp == 8217) *w++ = '\'';
+                        else if (cp == 34 || cp == 8220 || cp == 8221) *w++ = '"';
+                        else if (cp == 160) *w++ = ' ';
+                        else if (cp >= 32 && cp < 128) *w++ = (char)cp;
+                        r = end + 1;
+                        continue;
+                    }
+                }
+            }
+        }
+        *w++ = *r++;
+    }
+    *w = '\0';
+}
+
 static void draw_elem(Elem *e, int hover_id_hash) {
     (void)hover_id_hash;
     /* REAL FIX 2026-08-29 (EVENTS-HQ-RENDER-UNIFICATION-PLAN.md's own
@@ -459,6 +498,9 @@ static void draw_elem(Elem *e, int hover_id_hash) {
     XftFont *nav_badge_font = NULL;
     XGlyphInfo nav_badge_ext = {0};
     int badge_label_x = label_x;
+    /* 2026-09-02: always draw "[ ]N." when nav_index>0. Digit-jump
+     * and AI control of the window need the visible brackets. class=quiet
+     * may still color the fill; it does not hide the badge. */
     if (e->nav_index > 0) {
         int focused = (e->nav_index == g_focus_nav);
         char prefix[8];
@@ -528,14 +570,20 @@ static void draw_elem(Elem *e, int hover_id_hash) {
         HqSprite *sp = hq_sprite(e->sprite);
         if (sp) {
             int pad_s = e->style.has_padding ? e->style.padding : 4;
-            int box_w = e->w - 2 * pad_s, box_h = e->h - 2 * pad_s;
+            int has_under_label = (e->h >= 64 && e->label[0] && !(e->label[0] == ' ' && e->label[1] == '\0'));
+            int label_reserve = has_under_label ? 18 : 0;
+            int box_w = e->w - 2 * pad_s, box_h = e->h - 2 * pad_s - label_reserve;
             int px = box_w < box_h ? box_w : box_h;
             if (px > HQ_SPRITE_PX_MAX) px = HQ_SPRITE_PX_MAX;
             if (px > 0) {
                 unsigned long bg_pixel = e->style.has_bg_color
                     ? alloc_pixel(e->style.bg_color)
                     : WhitePixel(dpy, screen);
-                hq_blit_sprite(sp, e->x + (e->w - px) / 2, e->y + (e->h - px) / 2, px, bg_pixel);
+                int blit_x = e->x + (e->w - px) / 2;
+                int blit_y = (e->h >= 64)
+                    ? (e->y + pad_s)
+                    : (e->y + (e->h - px) / 2);
+                hq_blit_sprite(sp, blit_x, blit_y, px, bg_pixel);
                 drew_sprite = 1;
             }
         }
@@ -547,13 +595,18 @@ static void draw_elem(Elem *e, int hover_id_hash) {
      * field - zero per-app code needed for any consumer of this shared
      * draw path. */
     char cli_io_shown[256 + 300];
+    char label_decoded[600];
     const char *shown_label = e->label;
     if (strcmp(e->tag, "cli_io") == 0) {
         snprintf(cli_io_shown, sizeof(cli_io_shown), "%s%s%s", e->label, e->input_buffer,
                  (e->nav_index > 0 && e->nav_index == g_focus_nav) ? "_" : "");
         shown_label = cli_io_shown;
     }
-    if (!drew_sprite && shown_label[0]) {
+    snprintf(label_decoded, sizeof(label_decoded), "%s", shown_label);
+    khtpm_decode_label_entities(label_decoded);
+    shown_label = label_decoded;
+    int sprite_under_label = drew_sprite && e->h >= 64 && shown_label[0] && !(shown_label[0] == ' ' && shown_label[1] == '\0');
+    if ((!drew_sprite || sprite_under_label) && shown_label[0]) {
         XftFont *font = font_for(&e->style);
         XftColor col = xft_color(e->style.has_fg_color ? e->style.fg_color : "#cccccc");
         XGlyphInfo extents;
@@ -679,6 +732,11 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             }
             int ty = e->y + (e->h + font->ascent - font->descent) / 2;
             if (ty < e->y + font->ascent) ty = e->y + font->ascent + pad / 2;
+            if (sprite_under_label) {
+                ty = e->y + e->h - 4;
+                if (ty < e->y + font->ascent) ty = e->y + font->ascent;
+                badge_label_x = e->x + pad;
+            }
             draw_text_emoji(font, &col, badge_label_x, ty, draw_label);
         }
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
@@ -692,7 +750,22 @@ static void draw_elem(Elem *e, int hover_id_hash) {
     if (e->nav_index > 0 && nav_badge_font) {
         int focused = (e->nav_index == g_focus_nav);
         int numy = e->y + (e->h + nav_badge_font->ascent - nav_badge_font->descent) / 2;
-        if (e->sprite[0]) {
+        if (e->sprite[0] && e->h >= 64) {
+            /* REAL FIX 2026-09-02 - tall sprite rows (scrolllist) have
+             * room INSIDE the box; drawing the chip above e->y painted
+             * it onto the previous text line. Palettes tiles stay on
+             * the old above-tile path (h < 64). */
+            int chip_pad = 1;
+            int numy_above = e->y + nav_badge_font->ascent + 3;
+            int chip_x0 = e->x - chip_pad;
+            int chip_y0 = numy_above - nav_badge_font->ascent - chip_pad;
+            int chip_w = nav_badge_ext.width + 2 * chip_pad;
+            int chip_h = nav_badge_font->ascent + nav_badge_font->descent + 2 * chip_pad;
+            numy = numy_above;
+            label_x = e->x;
+            XSetForeground(dpy, gc, alloc_pixel("#141414"));
+            XFillRectangle(dpy, buf, gc, chip_x0, chip_y0, (unsigned)chip_w, (unsigned)chip_h);
+        } else if (e->sprite[0]) {
             int chip_pad = 1;
             int gap_margin = 2;
             int numy_above = e->y - gap_margin - nav_badge_font->descent;

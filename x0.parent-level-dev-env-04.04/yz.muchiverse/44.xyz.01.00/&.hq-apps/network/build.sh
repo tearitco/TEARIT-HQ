@@ -18,8 +18,20 @@
 # Binaries live in +x/ (git-ignored).
 set -u
 SDIR="$(cd "$(dirname "$0")" && pwd)"
-mkdir -p "$SDIR/+x"
+mkdir -p "$SDIR/+x" "$SDIR/ops/+x"
 CC=${CC:-gcc}
+JSDIR="$SDIR/../js"
 
 echo "-- network_browser_manager -> +x/network_browser_manager.+x"
 $CC -std=c11 -Wall -O2 -o "$SDIR/+x/network_browser_manager.+x" "$SDIR/network_browser_manager.c" && echo "OK network_browser_manager" || exit 1
+
+# 2026-09-02 (merge-test pass): the two new ops the manager shells out
+# to for JS eval and media->sprite conversion. Duktape is a real,
+# vendored (not git-submoduled) third-party single-file amalgamation,
+# same convention as stb_image.h already used elsewhere in the house -
+# both live in the shared &.hq-apps/js/ dir, not copied per-op.
+echo "-- nb_js_eval -> ops/+x/nb_js_eval.+x"
+$CC -std=c11 -Wall -O2 -I"$JSDIR" -o "$SDIR/ops/+x/nb_js_eval.+x" "$SDIR/ops/nb_js_eval.c" "$JSDIR/duktape.c" -lm && echo "OK nb_js_eval" || exit 1
+
+echo "-- nb_media_to_sprite -> ops/+x/nb_media_to_sprite.+x"
+$CC -std=c11 -Wall -O2 -I"$JSDIR" -o "$SDIR/ops/+x/nb_media_to_sprite.+x" "$SDIR/ops/nb_media_to_sprite.c" -lm && echo "OK nb_media_to_sprite" || exit 1
