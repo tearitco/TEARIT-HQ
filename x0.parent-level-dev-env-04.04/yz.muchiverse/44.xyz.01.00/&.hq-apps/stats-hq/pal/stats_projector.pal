@@ -1,0 +1,179 @@
+# stats_projector.pal - the <module> UI PROJECTOR for stats-hq-pal.xhtpm.
+#
+# WHAT THIS IS: prisc+x string-opcode script (see
+# _shared-lib/system/string-ops.md), NOT a compiled manager. The real
+# manager stats_hq_manager.c is unchanged and keeps publishing
+#   <house>/#.desktop/stats_hq_common_events.state.txt
+# one pipe-delimited record per line:
+#   <label>|<f1>|<f2>|<f3>|<f4>|<f5>
+#   session row : label=timestamp  f1=total_turns f2=user_msgs
+#                 f3=ai_msgs f4=tool_calls f5=tool_call_pct
+#   row 0       : label="Overall Stats" f1=deleg_rate f2=model_calls
+#                 f3=passes f4=tokens_saved f5=dollars_saved
+#
+# INPUT  <house>/#.desktop/stats_hq_common_events.state.txt   (manager)
+#        <pkg>/state/active.pdl   selected session index, key "sel"
+#                                 (written by ops/stats_action.sh)
+# OUTPUT <pkg>/state/ui.txt  key=value for the static template:
+#          list_title=  rows_count=  row_<n>_text=  empty_list=
+#          detail_title=  kv_count=  kv_<n>_text=  no_sel=
+#
+# INT REGISTERS
+#   x1  input line cursor (0-indexed)
+#   x2  count of NON-BLANK rows emitted / scanned so far
+#   x3  kv (panel field) lines written
+#   x4  selected row index (from active.pdl; default 0)
+#   x8  scratch: string lengths
+#   x9  open fd for the output file state/ui.txt
+# STRING REGISTERS
+#   s0  current input line, then each formatted output line
+#   s1  split scratch: label      s2  "f1|f2|f3|f4|f5" remainder
+#   s3  f1   s4 remainder   s5 f2   s6 remainder   s7 f3   s8 remainder
+#   s9  f4   s10 remainder  s11 f5  s12 remainder
+#   s16 literal "sel"       s19 literal "Overall Stats"
+#   s20 selected row's label (for detail_title)
+#   s24 absolute path of the INPUT state file
+#   s25 absolute path of the OUTPUT ui.txt
+#   s26 $KHTPM_HOUSE   s27 $KHTPM_PKG   s28 path to active.pdl
+
+sgetenv s26, "KHTPM_HOUSE"                                  # s26 = house root (env set by the renderer)
+sgetenv s27, "KHTPM_PKG"                                    # s27 = this package's dir (where state/ lives)
+sfmt s24, "%s/#.desktop/stats_hq_common_events.state.txt", s26   # s24 = full path to the manager's published file
+sfmt s25, "%s/state/ui.txt", s27                            # s25 = full path to the file this projector writes
+sfmt s28, "%s/state/active.pdl", s27                        # s28 = full path to the selection file
+slit s16, "sel"                                             # s16 = active.pdl key that carries the selected index
+slit s19, "Overall Stats"                                   # s19 = the special row-0 label
+
+proj_top:                                                   # ================= one projection pass =================
+
+# ---- read the selected index out of active.pdl (default 0) ----
+li x4, 0                                                    # x4 = selected index, default 0
+li x1, 0                                                    # x1 = line cursor for active.pdl
+av_read:                                                    # loop over active.pdl lines
+sread s0, x1, s28                                           # s0 = line x1 of active.pdl (x12 = length / -1 at EOF)
+slen x8, s0                                                 # x8 = length of that line
+beq x8, x0, av_done                                         # length 0 => EOF: stop reading active.pdl
+ssplit s0, "|", s1, s2                                      # s1 = "SECTION" col, s2 = " key | value"
+ssplit s2, "|", s3, s4                                      # s3 = key, s4 = value (both still padded)
+strim s3                                                    # trim spaces off the key
+strim s4                                                    # trim spaces off the value
+sbeq s3, s16, av_sel                                        # key == "sel" -> record it
+j av_next                                                   # any other key -> skip
+av_sel:                                                     # ---- the "sel" row ----
+satoi x4, s4                                                # x4 = integer value of the "sel" string
+j av_next                                                   # move on
+av_next:                                                    # ---- advance to next active.pdl line ----
+addi x1, x1, 1                                              # x1 = x1 + 1
+j av_read                                                   # loop back
+av_done:                                                    # (fall through once active.pdl is exhausted)
+
+sfopen x9, s25                                              # open state/ui.txt for writing (truncates it)
+
+# ================= PASS 1: the session list (sidebar) =================
+li x1, 0                                                    # x1 = input line cursor
+li x2, 0                                                    # x2 = non-blank rows emitted so far (also the row index)
+p1_read:                                                    # loop over the state file, one line at a time
+sread s0, x1, s24                                           # s0 = line x1 of the state file
+slen x8, s0                                                 # x8 = length of the raw line
+beq x8, x0, p1_done                                         # length 0 => EOF: finish the list
+strim s0                                                    # trim whitespace off the whole line
+slen x8, s0                                                 # x8 = trimmed length
+beq x8, x0, p1_skip                                         # blank line after trimming -> skip it
+ssplit s0, "|", s1, s2                                      # s1 = label (everything before the first "|")
+strim s1                                                    # trim the label
+sfmt s3, "row_%d_text=%s", x2, s1                           # format "row_<n>_text=<label>"
+swrite x9, s3                                               # write that line to state/ui.txt
+addi x2, x2, 1                                              # one more row emitted
+p1_skip:                                                    # (fall-through target for blank lines)
+addi x1, x1, 1                                              # advance to the next input line
+j p1_read                                                   # loop back
+p1_done:                                                    # ---- list finished ----
+sfmt s0, "rows_count=%d", x2                                # "rows_count=<n>" -> drives <repeat count="${rows_count}">
+swrite x9, s0                                               # write it
+sfmt s0, "list_title=Sessions (%d)", x2                     # a title string for the sidebar header
+swrite x9, s0                                               # write it
+li x8, 0                                                    # reuse x8 = "empty_list" flag, start 0
+beq x2, x0, p1_empty                                        # zero rows -> set the flag
+j p1_emit_empty                                             # otherwise leave it 0
+p1_empty:                                                   # ---- no rows at all ----
+li x8, 1                                                    # empty_list = 1
+p1_emit_empty:                                              # ----
+sfmt s0, "empty_list=%d", x8                                # "empty_list=0|1" -> gates the "(no sessions yet)" text
+swrite x9, s0                                               # write it
+
+# ================= PASS 2: the selected session's fields (panel) =====
+li x1, 0                                                    # x1 = input line cursor (restart from the top)
+li x2, 0                                                    # x2 = non-blank row counter
+li x3, 0                                                    # x3 = kv lines written for the panel
+slit s20, ""                                                # s20 = selected row's label (empty until found)
+p2_read:                                                    # loop over the state file again
+sread s0, x1, s24                                           # s0 = line x1 of the state file
+slen x8, s0                                                 # x8 = raw length
+beq x8, x0, p2_done                                         # EOF -> finish the panel
+strim s0                                                    # trim the whole line
+slen x8, s0                                                 # x8 = trimmed length
+beq x8, x0, p2_skip                                         # blank line -> skip
+bne x2, x4, p2_adv                                          # this non-blank row is NOT the selected one -> just count it
+# ---- this IS the selected row: split its 6 pipe fields ----
+ssplit s0, "|", s1, s2                                      # s1 = label,  s2 = "f1|f2|f3|f4|f5"
+ssplit s2, "|", s3, s4                                      # s3 = f1,     s4 = "f2|f3|f4|f5"
+ssplit s4, "|", s5, s6                                      # s5 = f2,     s6 = "f3|f4|f5"
+ssplit s6, "|", s7, s8                                      # s7 = f3,     s8 = "f4|f5"
+ssplit s8, "|", s9, s10                                     # s9 = f4,     s10 = "f5"
+ssplit s10, "|", s11, s12                                   # s11 = f5,    s12 = leftover (unused)
+strim s1                                                    # trim the label
+strim s3                                                    # trim f1
+strim s5                                                    # trim f2
+strim s7                                                    # trim f3
+strim s9                                                    # trim f4
+strim s11                                                   # trim f5
+scpy s20, s1                                                # remember the label for detail_title
+sbeq s1, s19, p2_overall                                    # label == "Overall Stats" -> the aggregate field names
+# ---- ordinary session row field names ----
+sfmt s0, "kv_0_text=Total Turns: %s", s3                    # f1 = total turns
+swrite x9, s0                                               # write it
+sfmt s0, "kv_1_text=User Messages: %s", s5                  # f2 = user messages
+swrite x9, s0                                               # write it
+sfmt s0, "kv_2_text=AI Responses: %s", s7                   # f3 = AI responses
+swrite x9, s0                                               # write it
+sfmt s0, "kv_3_text=Tool Calls: %s", s9                     # f4 = tool calls detected
+swrite x9, s0                                               # write it
+sfmt s0, "kv_4_text=Tool Call %%: %s", s11                  # f5 = tool-call percentage ("%%" -> literal "%")
+swrite x9, s0                                               # write it
+li x3, 5                                                    # 5 field lines written
+j p2_done                                                   # done with the panel
+p2_overall:                                                 # ---- row 0: aggregate stats field names ----
+sfmt s0, "kv_0_text=Delegation rate: %s", s3                # f1 = delegation rate
+swrite x9, s0                                               # write it
+sfmt s0, "kv_1_text=Real model calls delegated: %s", s5     # f2 = model calls delegated
+swrite x9, s0                                               # write it
+sfmt s0, "kv_2_text=PASS: %s", s7                           # f3 = pass count
+swrite x9, s0                                               # write it
+sfmt s0, "kv_3_text=Estimated tokens saved: %s", s9         # f4 = tokens saved
+swrite x9, s0                                               # write it
+sfmt s0, "kv_4_text=Estimated $ saved: %s", s11             # f5 = dollars saved
+swrite x9, s0                                               # write it
+li x3, 5                                                    # 5 field lines written
+j p2_done                                                   # done with the panel
+p2_adv:                                                     # ---- a non-blank row that is not the selection ----
+addi x2, x2, 1                                              # bump the non-blank counter
+p2_skip:                                                    # (fall-through target for blank lines)
+addi x1, x1, 1                                              # advance to the next input line
+j p2_read                                                   # loop back
+p2_done:                                                    # ---- panel finished ----
+sfmt s0, "kv_count=%d", x3                                  # "kv_count=<n>" -> drives the panel's <repeat>
+swrite x9, s0                                               # write it
+sfmt s0, "detail_title=%s", s20                             # the selected session's label as the panel title
+swrite x9, s0                                               # write it
+li x8, 0                                                    # reuse x8 = "no_sel" flag
+beq x3, x0, p2_nosel                                        # no field lines -> nothing is selected/matched
+j p2_emit_nosel                                             # otherwise leave it 0
+p2_nosel:                                                   # ----
+li x8, 1                                                    # no_sel = 1
+p2_emit_nosel:                                              # ----
+sfmt s0, "no_sel=%d", x8                                    # "no_sel=0|1" -> gates the "Select a session" hint
+swrite x9, s0                                               # write it
+
+sfclose x9                                                  # close state/ui.txt (renderer content-hashes + re-reads)
+sleep 400000                                                # wait 0.4s
+j proj_top                                                  # ...then re-project from scratch

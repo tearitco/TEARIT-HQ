@@ -1,0 +1,45 @@
+<!-- stats-hq-pal.xhtpm - stats-hq as a STATIC template + PAL projector
+     (HANDOFF-scope-nav-and-chtpm-port.md 5 ; EVENTS-HQ-XHTPM-PORT.md 6).
+
+     class="stats-hq-pal" (NOT "stats-hq") so the renderer's built-in
+     g_is_stats_hq / g_is_db_hq C path stays dormant - exact-match on the
+     bare "stats-hq" string is what trips it (khtpm_core_render.c ~17931),
+     a "-pal" suffix is safe.
+
+     House-global single instance, same shape as &.hq-apps/db-hq-pal:
+       - <module> forks prisc+x on pal/stats_projector.pal
+       - the projector reads the EXISTING published state file
+         #.desktop/stats_hq_common_events.state.txt (written by the
+         unchanged stats_hq_manager.c) plus state/active.pdl (the
+         selected session, written by ops/stats_action.sh) and rewrites
+         state/ui.txt (key=value) only when it changes.
+       - the renderer substitutes ${...} and expands <repeat>.
+
+     button-pal.sh also starts stats_hq_manager.+x if it is not already
+     running (it is a house-wide scanner, one instance is enough).
+
+     The old open_stats_hq.sh + dashboard.chtpm (class="stats-hq") are
+     left completely untouched as rollback. -->
+<window label="Stats HQ (PAL)" class="stats-hq-pal database-window" vars="state/ui.txt">
+  <module src="&.widgits/_shared-lib/system/+x/prisc+x.+x pal/stats_projector.pal"/>
+  <page name="main">
+    <sidebar id="sidebar" class="sidebar">
+      <text label="${list_title}" class="quiet"/>
+      <scrolllist>
+        <repeat count="${rows_count}" bind="row">
+          <item id="s${row.#}" class="data-item" label="${row.text}" action="'${PKG}/ops/stats_action.sh' 'sel' '${row.#}' '${PKG}'"/>
+        </repeat>
+        <text label="(no sessions yet)" class="quiet" show="${empty_list}"/>
+      </scrolllist>
+    </sidebar>
+    <panel id="detail" class="settings-block">
+      <text label="${detail_title}" class="block-title"/>
+      <scrolllist class="from-top">
+        <repeat count="${kv_count}" bind="kv">
+          <text label="${kv.text}"/>
+        </repeat>
+        <text label="Select a session on the left." class="quiet" show="${no_sel}"/>
+      </scrolllist>
+    </panel>
+  </page>
+</window>
