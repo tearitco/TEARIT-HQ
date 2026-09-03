@@ -182,3 +182,17 @@ not produce visible transparency, angle 5's isolated control program
 is the natural next step (would isolate whether XWayland itself is the
 blocker vs. something else still specific to this file's event loop /
 redraw() content).
+
+---
+
+## 10. Follow-up 2026-09-03 — dock dropdown menu was the last gap
+
+Owner report: "opacity doesn't yet work on toolbars like it does
+everywhere else." Cause: `g_dock_menu_win` (the dock dropdown / "toolbar"
+menu) is its own `override_redirect` top-level window and was the only
+one of the strip's windows with no `set_window_opacity()` call — so a
+themed/adjusted opacity hit `win` + `g_dock_peer_win` but left the
+dropdown fully opaque. Fix (commit 52741e76, khtpm_core_render.c): set it
+at creation, on the live pchq_theme_changed_dirty() reapply, and in the
+OPACITY_MINUS/PLUS handlers. In-window `<row class="toolbar">` rows need
+nothing — they inherit their parent window's opacity.
