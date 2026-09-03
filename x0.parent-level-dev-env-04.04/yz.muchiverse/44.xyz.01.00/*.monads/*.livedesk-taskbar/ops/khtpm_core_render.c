@@ -8703,6 +8703,31 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         }
     }
     if (ev->type == ButtonPress) {
+        /* REAL FIX 2026-09-03 (direct live report: "its way to hard to
+         * get window focus. i tap click window and it still doesn't
+         * have focus") - root cause, confirmed live via the new "^"/"."
+         * title-bar indicator: override_redirect=true (this house's
+         * default for these windows, #.desktop/livedesk_override_
+         * redirect.pdl) means the window manager never manages these
+         * windows AT ALL, focus included - the ONLY thing that ever
+         * gave one of these windows real X input focus was main()'s own
+         * post-map XSetInputFocus retry loop (2026-08-29), which fires
+         * exactly ONCE, at launch. Nothing ever re-asserted it again -
+         * clicking back into an already-open window after focus moved
+         * elsewhere (another app, another one of these same windows)
+         * did real internal nav/dispatch work (via ev->xbutton.x/y hit-
+         * testing below) but never told the X server this window should
+         * now own the keyboard, so a human's very next keypress kept
+         * going to whichever window last called XSetInputFocus - a
+         * completely ordinary "click anywhere in a window focuses it"
+         * expectation this house never actually implemented for this
+         * mode. A plain, unconditional call here matches what every
+         * normal desktop app gets for free from its WM - these windows
+         * have no WM to do it for them. ev->xbutton.window is checked
+         * against win (not is_popup/mode-specific) so this is real,
+         * generic, and safe for every consumer of this shared
+         * dispatcher, not just chat-hai/open-hai. */
+        if (ev->xbutton.window == win) XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
         if (is_popup) {
             /* REAL, NEW 2026-08-29 (TASK 1: popup drag support) - check for
              * drag-start on chrome area (y < CHROME_H), same pattern as
