@@ -8512,13 +8512,17 @@ static void kh_apply_scope_confine(void) {
          * trigger row itself - the "you are here, Enter/Esc to leave"
          * affordance, where [^] shows; (c) a dropdown-child bound to
          * this scope via target_id (the generic "Menu" dropdown
-         * pattern - its options aren't tree children of the trigger). */
+         * pattern - its options aren't tree children of the trigger);
+         * (d) the window chrome bar (minimize/fullscreen/close) - it
+         * lives outside the page tree and must stay reachable even while
+         * a scope is held, same as any real WM titlebar. */
         int keep = (e == g_default_active_scope_root) ||
                    (g_default_active_scope_id[0] && e->id[0] &&
                     strcmp(e->id, g_default_active_scope_id) == 0) ||
                    (g_default_active_scope_id[0] && e->target_id[0] &&
                     elem_has_class(e, "dropdown-child") &&
-                    strcmp(e->target_id, g_default_active_scope_id) == 0);
+                    strcmp(e->target_id, g_default_active_scope_id) == 0) ||
+                   (e->id[0] && strncmp(e->id, "chrome-", 7) == 0);
         for (Elem *p = e; p && !keep; p = p->parent)
             if (p == g_default_active_scope_root) keep = 1;
         if (keep) { g_nav[w] = e; e->nav_index = ++w; }
