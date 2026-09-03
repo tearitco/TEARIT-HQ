@@ -14,14 +14,14 @@ set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OPS_DIR="$HERE/../../*.monads/*.livedesk-taskbar/ops"
 BIN="$OPS_DIR/+x/khtpm_core_render.+x"
-PRISC="$HERE/../_shared-lib/system/+x/prisc+x.+x"
+PROJ="$HERE/ops/+x/evhq_projector.+x"
 MGR="$HERE/ops/+x/khtpm_events_hq_manager.+x"
 XHTPM="$HERE/events-hq.xhtpm"
 
-[ -x "$BIN" ]   || (cd "$OPS_DIR" && sh build_core_render.sh) || true
-[ -x "$PRISC" ] || sh "$HERE/../_shared-lib/ops/build_prisc.sh" || true
-[ -x "$MGR" ]   || (cd "$HERE/ops" && sh build_events_hq_manager.sh) || true
-for f in "$BIN" "$PRISC" "$MGR" "$XHTPM"; do
+[ -x "$BIN" ]  || (cd "$OPS_DIR" && sh build_core_render.sh) || true
+[ -x "$PROJ" ] || (cd "$HERE/ops" && sh build_evhq_projector.sh) || true
+[ -x "$MGR" ]  || (cd "$HERE/ops" && sh build_events_hq_manager.sh) || true
+for f in "$BIN" "$PROJ" "$MGR" "$XHTPM"; do
     [ -e "$f" ] || { echo "events-hq-pal: missing $f" >&2; exit 1; }
 done
 

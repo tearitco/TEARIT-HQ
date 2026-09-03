@@ -17,7 +17,7 @@
      Phase 1 = READ ONLY. Add Command / Play call ops/evhq_action.sh but
      the picker overlay is phase 2. -->
 <window label="${entity_label}" class="events-hq-pal database-window">
-  <module src="&.widgits/_shared-lib/system/+x/prisc+x.+x pal/evhq_projector.pal"/>
+  <module src="&.widgits/events-hq/ops/+x/evhq_projector.+x"/>
   <page name="main">
 
     <tabbar class="view-tabs">
@@ -43,14 +43,26 @@
       <text label="${detail_hint}" class="quiet"/>
     </sidebar>
 
-    <!-- RIGHT: the command list for the selected page -->
+    <!-- RIGHT: the selected page's command list, OR (while picker_open)
+         the Add Command type list. Same <panel> - the renderer's
+         generic sidebar+panel layout positions exactly one <panel>, so
+         the two views are show=-gated inside it rather than being two
+         panels. A centered floating overlay is a later polish. -->
     <panel id="detail" class="command-list settings-block">
-      <text label="${list_title}" class="block-title"/>
-      <scrolllist class="from-top">
+      <text label="${list_title}" class="block-title" show="${list_open}"/>
+      <scrolllist class="from-top" show="${list_open}">
         <repeat count="${rows_count}" bind="row">
           <item id="r${row.#}" class="data-item" label="${row.text}" action="'${PKG}/ops/evhq_action.sh' 'edit' '${row.#}' '${ARG3}'"/>
         </repeat>
         <text label="(no commands on this page yet)" class="quiet" show="${empty_list}"/>
+      </scrolllist>
+
+      <text label="Add Command  -  pick a type" class="block-title" show="${picker_open}"/>
+      <scrolllist class="from-top" show="${picker_open}">
+        <item id="picker-cancel" class="data-item" label="&lt; Cancel" action="'${PKG}/ops/evhq_action.sh' 'picker' 'close' '${ARG3}'"/>
+        <repeat count="${n_picker}" bind="pk">
+          <item id="pk${pk.#}" class="data-item" label="${pk.label}" action="'${PKG}/ops/evhq_action.sh' 'pick' '${pk.type}' '${ARG3}'"/>
+        </repeat>
       </scrolllist>
     </panel>
 

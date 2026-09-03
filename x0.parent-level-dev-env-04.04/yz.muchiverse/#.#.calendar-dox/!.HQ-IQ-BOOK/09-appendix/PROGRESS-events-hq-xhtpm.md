@@ -60,10 +60,32 @@ only runs when argv[3] is NOT a directory.
 - [x] `ops/evhq_action.sh` — `view N`, `page <name>` (edit/picker/play = phase 2 stub)
 - [x] `button-pal.sh` parallel launcher (starts manager + renderer + module projector)
 - [x] headless: `greet_player` renders clean, no overlap (PNG verified 2026-09-03)
-- [ ] side-by-side parity pass vs the OLD events-hq window (§8 step 6)
-- [ ] picker overlay + Play wiring (phase 2)
-- [ ] registry pretty-print of command rows (phase 2)
-- [ ] retarget `button.sh`, delete `evhq_*` / `g_is_events_hq` (phase 3, separate commit)
+- [x] **projector is now C** (`ops/evhq_projector.c` + `build_evhq_projector.sh`) -
+      the `.pal` version is deleted. Registry (`#.ref/menu/event_commands.registry.pdl`)
+      is parsed for `type -> LABEL + PARAMS`, so command rows read
+      `Change Gold (amount: 1016)` etc. - mirrors old `evhq_describe_command`.
+      Content-gated write (only when ui.txt changes).
+- [x] **picker**: `+ Add Command` -> `evhq_action.sh picker open` -> projector
+      lists all 44 registry types in the right panel (`show="${picker_open}"`
+      swaps the command list for the type list; Cancel row on top). Click a
+      type -> `evhq_action.sh pick <type>` -> writes `append:<type>|` to
+      `action.txt` + closes picker. Verified: manager appended `CMD|4|change_gold|`,
+      recompiled, projector showed the new row.
+      NOT a floating centered overlay (full-panel swap) - polish later.
+      NOT a per-field editor - appends with empty params (manager defaults).
+- [x] **Play**: `evhq_action.sh play` -> `action.txt=play` -> manager runs
+      `play_event.sh`. Verified via master_ledger.txt.
+- [x] **phase 3 retarget**: `button.sh` execs `button-pal.sh` for normal
+      positional invocation (one guard line; `EZ_PKG_DIR=... sh button.sh run`
+      still hits the old `pieces/dashboard.chtpm` for A/B). Rollback = delete
+      the 3-line guard block.
+- [ ] side-by-side parity pass vs the OLD window on a real entity (owner click-through)
+- [ ] per-field command editor (new + edit), delete-command, view-mode content swap
+- [ ] **delete `evhq_*` / `g_is_events_hq` (~676 refs in khtpm_core_render.c)** -
+      deliberately NOT done here. Big surgery on a concurrently-edited file;
+      needs owner sign-off (§8 step 8) and is safest as its own PR (design
+      doc §8 step 10 says follow-up commit). Old `pieces/dashboard.chtpm` +
+      the `evhq_*` C stay as the working rollback until then.
 
 ## Log
 
