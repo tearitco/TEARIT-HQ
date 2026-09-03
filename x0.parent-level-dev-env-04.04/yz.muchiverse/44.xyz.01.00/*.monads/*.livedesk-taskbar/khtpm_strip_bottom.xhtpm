@@ -1,0 +1,21 @@
+<!-- STATIC dock bottom. Manager writes #.desktop/strip_ui.txt only.
+     Do not regenerate this file. See PROGRESS-strip-static-layout.md. -->
+<window class="dock-bottom" vars="#.desktop/strip_ui.txt">
+<page id="main">
+<row class="toolbar">
+<repeat count="${n_hqwins}" bind="hw">
+<item label="${hw.label}" class="dock-cell hqwin${hw.minclass}" onclick="${hw.onclick}"/>
+</repeat>
+</row>
+<row class="toolbar">
+<repeat count="${n_tabs}" bind="tab">
+<item label="${tab.label}" sprite="${tab.sprite}" class="dock-cell" action="${tab.action}"/>
+</repeat>
+</row>
+<row class="toolbar">
+<repeat count="${n_sc}" bind="sc">
+<item label="${sc.label}" class="dock-cell" action="${sc.action}"/>
+</repeat>
+</row>
+</page>
+</window>

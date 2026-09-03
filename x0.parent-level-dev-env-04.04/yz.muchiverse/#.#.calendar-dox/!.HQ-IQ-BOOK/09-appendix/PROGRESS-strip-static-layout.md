@@ -2,7 +2,7 @@
 
 **Branch:** `chtpm-var-substitution`
 **Started:** 2026-09-03
-**Status:** in progress — pass this doc to the next agent if cut off.
+**Status:** code landed, not live until strip relaunch (`run_khtpm_strip.sh run`).
 
 ## Goal
 
@@ -63,8 +63,25 @@ belong in `<repeat>`).
   content-hash reparse on the vars file (`reparse_chtpm_if_changed`).
 - This file created so a cutoff does not lose the plan.
 
-### next
+### 2026-09-03 — code (not yet relaunched)
 
-Implement ui.txt publisher, templates, launcher, peer path, clock tick.
-Do **not** `git add -A`. Do not kill the user's other apps except as
-needed to relaunch the strip after a verified build.
+Built `khtpm_taskbar_manager_main.+x` + `khtpm_core_render.+x`.
+
+- `publish_strip_ui()` writes `#.desktop/strip_ui.txt` (key=value +
+  `<repeat>` fields). `publish_live_chtpm()` `#if 0`.
+- Static templates:
+  `*.monads/*.livedesk-taskbar/khtpm_strip_header.xhtpm`
+  `khtpm_strip_bottom.xhtpm`
+  `vars="#.desktop/strip_ui.txt"` (renderer resolves `#.` against house_root).
+- `g_dock_peer_path` = sibling `khtpm_strip_bottom.xhtpm` (not generated).
+- `run_khtpm_strip.sh` waits on `strip_ui.txt`, launches header.xhtpm.
+- Clock: republish when formatted datetime string changes.
+
+**To go live:** `sh …/ops/run_khtpm_strip.sh run` (kills+rebuilds strip
+only). Then confirm `#.desktop/strip_header.chtpm` is no longer rewritten
+and `strip_ui.txt` updates on tab/menu/clock.
+
+**If cut off:** next agent verifies those files, then dropdowns (HQ
+ACTIVATE + `${n_hqitems}`), bottom tabs/shortcuts, FOCUSWIN cells,
+cli_io show=. Pitfall: `onclick` and `action` are the SAME Elem field —
+dropdown rows use one `hi_N_cmd`. Do not emit both attributes.

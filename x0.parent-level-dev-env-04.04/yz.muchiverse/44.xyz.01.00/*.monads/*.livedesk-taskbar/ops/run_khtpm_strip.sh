@@ -55,7 +55,7 @@ strip_parser_pids() {
         a0="$(printf '%s\n' "$args" | sed -n 1p)"
         case "$a0" in
             */khtpm_core_render.+x|khtpm_core_render.+x)
-                printf '%s\n' "$args" | grep -q 'strip_header.chtpm\|strip_bottom.chtpm' && echo "$pid"
+                printf '%s\n' "$args" | grep -q 'khtpm_strip_header.xhtpm\|khtpm_strip_bottom.xhtpm\|strip_header.chtpm\|strip_bottom.chtpm' && echo "$pid"
                 ;;
         esac
     done
@@ -112,13 +112,12 @@ case "$ACTION" in
         # inherit this cwd, and relative menu commands (livedesk_taskbar.pdl)
         # depend on it being house root, not wherever this script was invoked from.
         MANAGER="$SCRIPT_DIR/+x/khtpm_taskbar_manager_main.+x"
-        HEADER_CHTPM="$HOUSE/#.desktop/strip_header.chtpm"
-        BOTTOM_CHTPM="$HOUSE/#.desktop/strip_bottom.chtpm"
+        HEADER_CHTPM="$(cd "$SCRIPT_DIR/.." && pwd)/khtpm_strip_header.xhtpm"
         (cd "$HOUSE" && $SETSID env DISPLAY="${DISPLAY:-:0}" "$MANAGER" "$HOUSE" \
             >> "$KHTPM_LOG" 2>&1 < /dev/null &)
         i=0
         while [ "$i" -lt 50 ]; do
-            [ -s "$HEADER_CHTPM" ] && [ -s "$BOTTOM_CHTPM" ] && break
+            [ -s "$HOUSE/#.desktop/strip_ui.txt" ] && break
             sleep 0.1
             i=$((i + 1))
         done

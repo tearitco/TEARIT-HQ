@@ -1016,6 +1016,8 @@ static int kh_find_vars_attr(const char *buf, char *out, size_t outsz) {
                      tok = strtok_r(NULL, " \t", &save)) {
                     char one[PATH_BUF];
                     if (tok[0] == '/') snprintf(one, sizeof(one), "%s", tok);
+                    else if (tok[0] == '#' && g_house_root[0])
+                        snprintf(one, sizeof(one), "%s/%s", g_house_root, tok);
                     else snprintf(one, sizeof(one), "%s/%s", base, tok);
                     size_t cur = strlen(out);
                     snprintf(out + cur, outsz - cur, "%s%s", first ? "" : " ", one);
@@ -17818,7 +17820,10 @@ int main(int argc, char **argv) {
     if (!g_window) { fprintf(stderr, "khtpm_core_render: failed to parse %s\n", g_chtpm_path); return 1; }
     { struct stat gcst; if (stat(g_chtpm_path, &gcst) == 0) g_chtpm_mtime = gcst.st_mtim; }
     if (elem_has_class(g_window, "dock-header")) {
-        snprintf(g_dock_peer_path, sizeof(g_dock_peer_path), "%s/#.desktop/strip_bottom.chtpm", g_house_root);
+        /* peer is the static bottom template beside the header, never
+         * a generated #.desktop/strip_bottom.chtpm (layout-update). */
+        snprintf(g_dock_peer_path, sizeof(g_dock_peer_path),
+                 "%s/khtpm_strip_bottom.xhtpm", g_package_dir);
         g_dock_peer = parse_chtpm(g_dock_peer_path);
         { struct stat pst; if (g_dock_peer && stat(g_dock_peer_path, &pst) == 0) g_dock_peer_mtime = pst.st_mtim; }
     }
