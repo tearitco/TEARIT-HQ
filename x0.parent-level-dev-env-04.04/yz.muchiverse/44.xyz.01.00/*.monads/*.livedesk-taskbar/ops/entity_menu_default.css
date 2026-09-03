@@ -88,3 +88,11 @@ cli_io { background-color: #262632; border: 1px solid #4a4a5a; }
  * frame-file round trip). One shared class, not per-instance ids - any
  * number of scrollbars on one page reuse this same real look. */
 .sbar-arrow { background-color: #3a3a3a; border: 1px solid #666666; color: #cccccc; }
+
+/* REAL, NEW 2026-09-03 (HQ-WINDOW-TASKBAR-ENTRIES-AND-MINIMIZE-2026-09-
+ * 03.md §3.3) - a minimized HQ window's taskbar cell looks different from a
+ * normal one (design doc's own "real, cheap answer once minimized is a real
+ * registry field - a CSS class difference"). Scoped to the HQ-window bottom
+ * cells the manager publishes; minimized=1 in that window's registry line
+ * makes the manager emit this class at publish time. */
+.hqwin-minimized { color: #666666; border: 1px dashed #555555; }

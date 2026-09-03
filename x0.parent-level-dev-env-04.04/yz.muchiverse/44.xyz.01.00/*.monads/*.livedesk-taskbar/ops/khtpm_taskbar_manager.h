@@ -66,6 +66,20 @@ typedef struct {
     int nav; /* shared nav-claim number while this row's popup is open */
 } HQMenuItem;
 
+/* REAL, NEW 2026-09-03 (HQ-WINDOW-TASKBAR-ENTRIES-AND-MINIMIZE-2026-09-
+ * 03.md §2.1) - one merged entry from the per-renderer livedesk_hq_windows_
+ * <pid>.txt files. Written by each renderer, merged by the taskbar manager. */
+typedef struct {
+    unsigned long win;
+    int pid;
+    char title[256];
+    int x, y, w, h;
+    int minimized;
+    int focused;
+} HqWinEntry;
+
+#define KTB_MAX_HQ_WINS 32
+
 typedef struct {
     char house_root[KTB_PATH_BUF];
     char pid_path[KTB_PATH_BUF];
@@ -142,6 +156,12 @@ typedef struct {
     int cell_id_pos[15]; /* real literal, matches KTB_STRIP_N_CELLS (defined just below - can't use the macro itself before its own definition) */
     char cell_id_str[15][64];
     int n_cell_ids;
+
+    /* --- HQ window taskbar entries (2026-09-03, §2.1). Merged from
+     * per-renderer livedesk_hq_windows_<pid>.txt files, one cell per
+     * live HQ window in the bottom strip. */
+    HqWinEntry hq_wins[KTB_MAX_HQ_WINS];
+    int n_hq_wins;
 
     /* --- Global always-on-top ("@") z-order mode (2026-09-01). Mirrors
      * the strip_parser's own g_zorder_above so this manager can label the
@@ -258,6 +278,11 @@ void ktb_get_desks_label(const KtbState *s, char *out, size_t sz);
  * pals-dropdown sprite paths, same cross-file pattern as the three above. */
 int livedesk_pals_root(const char *house_root, char *out, size_t sz);
 void ktb_get_avatar_dir(const KtbState *s, char *out, size_t sz);
+
+/* HQ window taskbar entries (§2.1) - merge per-renderer registry files
+ * into bottom-strip cells. Click handling (focus/raise + restore) lives in
+ * the strip renderer's dispatch() (it owns the X Display), not here. */
+void ktb_merge_hq_windows(KtbState *s);
 
 /* Unified header-cell + tab focus cursor, ported from tp_taskbar.c's
  * nav_focus_step()/nav_focus_apply(): steps through [15 strip cells][tabs]

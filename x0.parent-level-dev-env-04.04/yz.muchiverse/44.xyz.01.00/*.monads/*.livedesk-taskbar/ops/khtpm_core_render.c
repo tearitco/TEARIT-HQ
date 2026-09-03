@@ -95,6 +95,8 @@ extern char **environ;
 static void nav_tab_unregister(void);
 static void nav_ledger_publish(void);
 static void popup_handle_click(int px, int py);
+static void handle_key(KeySym ks, char ch);
+static void history_path(char *out, size_t outsz);
 static void history_unregister(void); /* REAL, NEW 2026-08-29 - see its own real definition/comment near history_path() */
 static void zero_nav_subtree(Elem *e); /* REAL, NEW 2026-08-29 - see its own real definition/comment near evhq_zero_subtree() */
 static void redraw(void); /* REAL, forward declaration needed for dispatch()'s OPACITY_MINUS/OPACITY_PLUS handlers (NEW 2026-08-29 TASK 2) */
@@ -130,6 +132,10 @@ static int g_dock_peer_x, g_dock_peer_y, g_dock_peer_w, g_dock_peer_h;
 static int g_dock_header_nav_hi;
 static int g_dock_click_peer;
 static int g_dock_click_menu;
+static Window g_dock_kbd_win;
+static int g_dock_visible_rows = 1;
+static int g_dock_packed_rows = 1;
+static Elem g_dock_plus_elem, g_dock_minus_elem;
 static int g_dock_in_peer_paint;
 static int g_dock_in_menu_paint;
 static Window g_dock_menu_win;
@@ -7274,9 +7280,40 @@ static int layout_sidebar_panel(Elem *page) {
 #define DOCK_CELL_GAP 16
 #define DOCK_NAV_BADGE_PX 36
 #define DOCK_FOCUS_BOX_W 64
+#define DOCK_PAGER_W 80
+#define DOCK_MAX_PACK 128
 
 static int window_is_dock(void) {
     return g_window && (elem_has_class(g_window, "dock-header") || elem_has_class(g_window, "dock-bottom"));
+}
+
+static int dock_is_our_win(Window w) {
+    return w && (w == win || (g_dock_peer_win && w == g_dock_peer_win) ||
+                 (g_dock_menu_win && w == g_dock_menu_win));
+}
+
+static void dock_grab_keyboard(Window cw) {
+    if (!cw || !dpy) return;
+    XGrabKeyboard(dpy, cw, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+    g_dock_kbd_win = cw;
+}
+
+/* Keep the dock grab until focus really leaves header/bottom/menu.
+ * XGrabKeyboard itself emits FocusOut mode=NotifyGrab; ungrabbing on
+ * that event dropped the grab in the same XPending loop as the click. */
+static void dock_release_keyboard_if_left(void) {
+    Window fw = None;
+    int rev = 0;
+    if (!dpy) return;
+    XGetInputFocus(dpy, &fw, &rev);
+    if (dock_is_our_win(fw)) {
+        if (fw != g_dock_kbd_win) dock_grab_keyboard(fw);
+        return;
+    }
+    if (g_dock_kbd_win) {
+        XUngrabKeyboard(dpy, CurrentTime);
+        g_dock_kbd_win = None;
+    }
 }
 
 static void load_dock_strip_offset(int *out_x, int *out_y) {
@@ -7353,6 +7390,51 @@ static int layout_dock_toolbar_row(Elem *row, int x, int y, int max_w) {
     return row->w;
 }
 
+static int dock_item_cw(Elem *t) {
+    int cw = 6 + DOCK_NAV_BADGE_PX;
+    if (t->sprite[0]) cw += DOCK_SPRITE_PX + 4;
+    cw += dock_text_px(t->label) + 10;
+    if (cw < 52) cw = 52;
+    if (cw > 180) cw = 180;
+    return cw;
+}
+
+static void dock_place_pager(int win_w) {
+    memset(&g_dock_plus_elem, 0, sizeof(g_dock_plus_elem));
+    snprintf(g_dock_plus_elem.tag, sizeof(g_dock_plus_elem.tag), "item");
+    snprintf(g_dock_plus_elem.id, sizeof(g_dock_plus_elem.id), "dock-page-plus");
+    snprintf(g_dock_plus_elem.label, sizeof(g_dock_plus_elem.label), "+");
+    snprintf(g_dock_plus_elem.onclick, sizeof(g_dock_plus_elem.onclick), "PAGEROW:+1");
+    g_dock_plus_elem.x = win_w - DOCK_PAGER_W + 8;
+    g_dock_plus_elem.y = 0;
+    g_dock_plus_elem.w = DOCK_PAGER_W - 16;
+    g_dock_plus_elem.h = DOCK_BAR_H;
+    css_compute_style(&g_sheet, g_dock_plus_elem.tag, g_dock_plus_elem.id, NULL, 0, 0, &g_dock_plus_elem.style);
+    g_dock_plus_elem.nav_index = ++g_n_nav;
+    g_nav[g_n_nav - 1] = &g_dock_plus_elem;
+
+    memset(&g_dock_minus_elem, 0, sizeof(g_dock_minus_elem));
+    snprintf(g_dock_minus_elem.tag, sizeof(g_dock_minus_elem.tag), "item");
+    snprintf(g_dock_minus_elem.id, sizeof(g_dock_minus_elem.id), "dock-page-minus");
+    snprintf(g_dock_minus_elem.label, sizeof(g_dock_minus_elem.label), "-");
+    snprintf(g_dock_minus_elem.onclick, sizeof(g_dock_minus_elem.onclick), "PAGEROW:-1");
+    if (g_dock_visible_rows > 1) {
+        g_dock_minus_elem.x = win_w - DOCK_PAGER_W + 8;
+        g_dock_minus_elem.y = DOCK_BAR_H;
+        g_dock_minus_elem.w = DOCK_PAGER_W - 16;
+        g_dock_minus_elem.h = DOCK_BAR_H;
+        css_compute_style(&g_sheet, g_dock_minus_elem.tag, g_dock_minus_elem.id, NULL, 0, 0, &g_dock_minus_elem.style);
+        g_dock_minus_elem.nav_index = ++g_n_nav;
+        g_nav[g_n_nav - 1] = &g_dock_minus_elem;
+    } else {
+        g_dock_minus_elem.x = 0;
+        g_dock_minus_elem.y = -100000;
+        g_dock_minus_elem.w = 0;
+        g_dock_minus_elem.h = 0;
+        g_dock_minus_elem.nav_index = 0;
+    }
+}
+
 static void dock_draw_separators(Elem *page) {
     int i, j;
     if (!page || !font_ui) return;
@@ -7394,6 +7476,67 @@ static int layout_dock_bar(Elem *page) {
         if (g_win_w < 80) g_win_w = 80;
     }
     y = 0;
+    if (is_bottom) {
+        Elem *pack[DOCK_MAX_PACK];
+        int n_pack = 0, r, col_x, max_w;
+        for (i = 0; i < page->n_children; i++) {
+            Elem *c = page->children[i];
+            int k;
+            if (strcmp(c->tag, "row") != 0 || !elem_has_class(c, "toolbar")) continue;
+            c->x = 0; c->y = 0; c->w = g_win_w; c->h = 0; c->nav_index = 0;
+            for (k = 0; k < c->n_children; k++) {
+                Elem *t = c->children[k];
+                if (strcmp(t->tag, "item") != 0) {
+                    t->x = 0; t->y = -100000; t->w = 0; t->h = 0; t->nav_index = 0;
+                    continue;
+                }
+                if (n_pack < DOCK_MAX_PACK) pack[n_pack++] = t;
+            }
+        }
+        max_w = g_win_w - DOCK_FOCUS_BOX_W - DOCK_PAGER_W;
+        if (max_w < 40) max_w = 40;
+        r = 0;
+        col_x = DOCK_FOCUS_BOX_W;
+        for (i = 0; i < n_pack; i++) {
+            Elem *t = pack[i];
+            int cw = dock_item_cw(t);
+            if (col_x > DOCK_FOCUS_BOX_W && col_x + cw > DOCK_FOCUS_BOX_W + max_w) {
+                r++;
+                col_x = DOCK_FOCUS_BOX_W;
+            }
+            if (r < g_dock_visible_rows) {
+                t->x = col_x;
+                t->y = r * DOCK_BAR_H;
+                t->w = cw;
+                t->h = DOCK_BAR_H;
+                css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
+                t->nav_index = ++g_n_nav;
+                g_nav[g_n_nav - 1] = t;
+                col_x += cw + DOCK_CELL_GAP;
+            } else {
+                t->x = 0; t->y = -100000; t->w = 0; t->h = 0; t->nav_index = 0;
+            }
+        }
+        g_dock_packed_rows = (n_pack > 0) ? (r + 1) : 1;
+        if (g_dock_visible_rows > g_dock_packed_rows) g_dock_visible_rows = g_dock_packed_rows;
+        if (g_dock_visible_rows < 1) g_dock_visible_rows = 1;
+        y = g_dock_visible_rows * DOCK_BAR_H;
+        dock_place_pager(g_win_w);
+        for (i = 0; i < page->n_children; i++) {
+            Elem *c = page->children[i];
+            if (strcmp(c->tag, "cli_io") == 0) {
+                c->x = 0; c->y = y; c->w = (g_win_w > 120 ? g_win_w : 240); c->h = DOCK_BAR_H;
+                css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
+                c->nav_index = ++g_n_nav;
+                g_nav[g_n_nav - 1] = c;
+                y += DOCK_BAR_H;
+            } else if (elem_has_class(c, "dropdown-child")) {
+                continue;
+            } else if (!(strcmp(c->tag, "row") == 0 && elem_has_class(c, "toolbar"))) {
+                c->x = 0; c->y = -100000; c->w = 0; c->h = 0; c->nav_index = 0;
+            }
+        }
+    } else
     for (i = 0; i < page->n_children; i++) {
         Elem *c = page->children[i];
         if (strcmp(c->tag, "row") == 0 && elem_has_class(c, "toolbar")) {
@@ -7491,7 +7634,25 @@ static int layout_dock_bar(Elem *page) {
         }
     }
     if (y < DOCK_BAR_H) y = DOCK_BAR_H;
-    g_win_h = DOCK_BAR_H;
+    /* REAL, NEW 2026-09-03 (HQ-WINDOW-TASKBAR-ENTRIES-AND-MINIMIZE-2026-09-
+     * 03.md §2.1/§4) - the bottom dock used to be hard-fixed at exactly one
+     * DOCK_BAR_H tall, so the FIRST (entities/tabs) and SECOND (shortcuts)
+     * rows already sat fine but adding a THIRD row (this design doc's
+     * per-live-HQ-window taskbar entries, each in their own real section)
+     * would have been silently clipped off-window - every real count of
+     * stacked toolbar rows lives in `y` by this point (each row increments
+     * it by DOCK_BAR_H above). For the bottom dock, grow the window to the
+     * full stacked height instead of clamping at one row: since it's
+     * anchored to the screen bottom (g_win_y = sh - g_win_h below, using
+     * this same value), growing it makes it rise UP off the bottom edge -
+     * exactly the "show more rows by adding another layer" shape the design
+     * doc's own §4.2 asks for, without any + / - paging yet (that's the
+     * separate Slice C capacity mechanism, untouched here). Header dock
+     * (is_bottom==0) keeps its existing one-row fixed height unchanged. */
+    if (is_bottom)
+        g_win_h = y;
+    else
+        g_win_h = DOCK_BAR_H;
     if (is_bottom) {
         int inset = ox;
         int bar_max;
@@ -7568,7 +7729,13 @@ static void dock_paint_peer(void) {
         snprintf(fpath, sizeof(fpath), "%s/#.desktop/entity_menu_frame_%d_bot.txt", g_house_root, (int)getpid());
         snprintf(tmpp, sizeof(tmpp), "%s.tmp", fpath);
         FILE *ff = fopen(tmpp, "w");
-        if (ff) { dbhq_serialize_frame_subtree(ff, page); fclose(ff); rename(tmpp, fpath); }
+        if (ff) {
+            dbhq_serialize_frame_subtree(ff, page);
+            if (g_dock_plus_elem.w > 0) dbhq_serialize_frame_elem(ff, &g_dock_plus_elem);
+            if (g_dock_minus_elem.w > 0) dbhq_serialize_frame_elem(ff, &g_dock_minus_elem);
+            fclose(ff);
+            rename(tmpp, fpath);
+        }
         FILE *rf = fopen(fpath, "r");
         if (rf) {
             char line[2048];
@@ -7580,6 +7747,14 @@ static void dock_paint_peer(void) {
             fclose(rf);
         }
         dock_draw_separators(page);
+    }
+    {
+        int rr;
+        XSetForeground(dpy, gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#888888"));
+        for (rr = 1; rr < g_dock_visible_rows; rr++)
+            XDrawLine(dpy, buf, gc, 0, rr * DOCK_BAR_H, g_win_w, rr * DOCK_BAR_H);
+        if (g_dock_plus_elem.w > 0)
+            XDrawLine(dpy, buf, gc, g_win_w - DOCK_PAGER_W, 0, g_win_w - DOCK_PAGER_W, g_win_h);
     }
     {
         XWindowAttributes wa;
@@ -7859,6 +8034,53 @@ static void switch_page(const char *name) {
  * "%s '%s' '%s'" shape). */
 static void apply_theme(const char *bg_hex, const char *fg_hex);
 static void dispatch(const char *action) {
+    /* REAL, NEW 2026-09-03 (HQ-WINDOW-TASKBAR-ENTRIES-AND-MINIMIZE-2026-09-
+     * 03.md §2.2) - HQ window taskbar entry click, handled LOCALLY in the
+     * strip renderer (this process owns g_dpy; the taskbar manager is X-free
+     * by design, per Grok's review on 2026-09-03: "click-to-focus belongs in
+     * the STRIP RENDERER... dispatch() in the renderer does XRaiseWindow +
+     * XSetInputFocus on that id"). Format: FOCUSWIN:0x<win>:<pid>. For a
+     * NOT-minimized window: real XRaiseWindow (bring to top - focus alone
+     * doesn't restack) + XSetInputFocus, both on the target window's own real
+     * X id, which works cross-process. For a MINIMIZED one, the TARGET
+     * process must map its own window (house rule: a process only touches
+     * its own X resources), so read that window's registry file, and if
+     * minimized, write the design doc's §3.2 restore-request file
+     * (#.desktop/livedesk_hq_restore_<pid>.txt) the target renderer polls
+     * and responds to by XMapWindow+XSetInputFocus on ITS OWN window. */
+    if (strcmp(action, "PAGEROW:+1") == 0) {
+        if (g_dock_visible_rows < g_dock_packed_rows) g_dock_visible_rows++;
+        return;
+    }
+    if (strcmp(action, "PAGEROW:-1") == 0) {
+        if (g_dock_visible_rows > 1) g_dock_visible_rows--;
+        return;
+    }
+    if (strncmp(action, "FOCUSWIN:", 9) == 0) {
+        unsigned long w = 0; int pid = 0;
+        if (sscanf(action + 9, "0x%lx:%d", &w, &pid) != 2) return;
+        int minimized = 0;
+        if (pid > 0) {
+            char reg_path[PATH_BUF];
+            snprintf(reg_path, sizeof(reg_path), "%s/#.desktop/livedesk_hq_windows_%d.txt", g_house_root, pid);
+            FILE *rf = fopen(reg_path, "r");
+            if (rf) {
+                char rline[PATH_BUF];
+                if (fgets(rline, sizeof(rline), rf) && strstr(rline, "minimized=1")) minimized = 1;
+                fclose(rf);
+            }
+        }
+        if (minimized) {
+            char restore_path[PATH_BUF];
+            snprintf(restore_path, sizeof(restore_path), "%s/#.desktop/livedesk_hq_restore_%d.txt", g_house_root, pid);
+            FILE *wf = fopen(restore_path, "w");
+            if (wf) { fprintf(wf, "restore=1\n"); fclose(wf); }
+        } else {
+            XRaiseWindow(dpy, (Window)w);
+            XSetInputFocus(dpy, (Window)w, RevertToParent, CurrentTime);
+        }
+        return;
+    }
     if (strcmp(action, "ZORDER_TOGGLE") == 0) {
         load_zorder_mode(g_house_root);
         g_zorder_above = !g_zorder_above;
@@ -8668,7 +8890,7 @@ static void handle_key(KeySym ks, char ch) {
             Window want = (g_focus_nav > g_dock_header_nav_hi) ? g_dock_peer_win : win;
             XRaiseWindow(dpy, want);
             XSetInputFocus(dpy, want, RevertToParent, CurrentTime);
-            XGrabKeyboard(dpy, want, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+            dock_grab_keyboard(want);
         }
         return;
     }
@@ -8682,7 +8904,7 @@ static void handle_key(KeySym ks, char ch) {
             Window want = (g_focus_nav > g_dock_header_nav_hi) ? g_dock_peer_win : win;
             XRaiseWindow(dpy, want);
             XSetInputFocus(dpy, want, RevertToParent, CurrentTime);
-            XGrabKeyboard(dpy, want, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+            dock_grab_keyboard(want);
         }
         return;
     }
@@ -9331,6 +9553,7 @@ static void hq_idle_tick(void) {
     if (!g_is_db_hq && !g_is_events_hq) {
         if (reparse_chtpm_if_changed()) {
             assign_nav_and_layout(); redraw();
+            if (g_dock_kbd_win) dock_grab_keyboard(g_dock_kbd_win);
             /* real content growth may have just recreated buf as a
              * blank Pixmap (see redraw()'s own resize-safety comment) -
              * a second real redraw() repaints it for real THIS tick,
@@ -9669,7 +9892,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             }
             if (window_is_dock()) {
                 XRaiseWindow(dpy, cw);
-                XGrabKeyboard(dpy, cw, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+                dock_grab_keyboard(cw);
             }
             XSetInputFocus(dpy, cw, RevertToParent, CurrentTime);
             if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win &&
@@ -9882,8 +10105,18 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         buf8[n > 0 ? n : 0] = '\0';
         const char *kname = XKeysymToString(ks);
         if (is_popup) {
+            /* Physical keys must move dock/popup nav in-process.
+             * Capture+poll is for agent replay; idle tick still consumes
+             * KEY_PRESSED from the history file. Pin the cursor past this
+             * capture so the same key is not dispatched twice. */
+            handle_key(ks, buf8[0]);
             dbhq_capture_key(ks, buf8[0]);
-            poll_agent_history();
+            {
+                char hp[PATH_BUF];
+                struct stat st;
+                history_path(hp, sizeof(hp));
+                if (stat(hp, &st) == 0) g_history_cursor = st.st_size;
+            }
             if (!g_quit) redraw();
         } else if (g_is_db_hq) {
             snprintf(g_dbhq_last_key_label, sizeof(g_dbhq_last_key_label), "%s", kname ? kname : (buf8[0] ? buf8 : "?"));
@@ -9929,7 +10162,9 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         return;
     }
     if (ev->type == FocusOut) {
-        if (window_is_dock()) XUngrabKeyboard(dpy, CurrentTime);
+        if (window_is_dock() &&
+            ev->xfocus.mode != NotifyGrab && ev->xfocus.mode != NotifyUngrab)
+            dock_release_keyboard_if_left();
         if (g_is_db_hq && g_dbhq_has_real_focus) {
             g_dbhq_has_real_focus = 0;
             dbhq_loop_request_redraw();
