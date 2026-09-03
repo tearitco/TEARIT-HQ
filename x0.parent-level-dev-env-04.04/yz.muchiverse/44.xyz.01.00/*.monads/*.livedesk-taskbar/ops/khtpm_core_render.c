@@ -11194,6 +11194,12 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
     }
 }
 
+/* Forward declaration - set by handle_shutdown_signal() (defined later
+ * in this file, in the section just above tp_main's use of it). The
+ * default/HQ-mode loops below honor it so a SIGTERM/SIGINT breaks the
+ * event loop and runs the shared cleanup path. */
+static volatile sig_atomic_t g_shutdown_requested;
+
 static void hq_run_event_loop(Atom wm_delete, int is_popup) {
     /* headless snapshot: --dump-and-exit on any mode. Paint one real
      * frame (twice, with a beat between - same "opacity/first-paint
@@ -11219,6 +11225,13 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
         return;
     }
     while (!g_quit) {
+        /* REAL, NEW 2026-09-03 - honor the SIGTERM/SIGINT hook installed
+         * in main(): the select() below wakes on signal or every
+         * ~150ms, so this breaks the loop promptly and falls through to
+         * the shared cleanup path (atexit's cleanup_hq_window_registry,
+         * nav_tab_unregister, history_unregister) which the default/
+         * HQ-window modes previously skipped entirely on kill -TERM. */
+        if (g_shutdown_requested) { g_quit = 1; break; }
         hq_idle_tick();
         if (g_quit) break;
         fd_set fds; FD_ZERO(&fds);
@@ -15108,8 +15121,10 @@ static int measure_context_popup_w(Display *dpy, MethodItem *items, int n) {
  * real sig_atomic_t flag (async-signal-safe per POSIX - nothing more
  * elaborate is safe to do inside a signal handler), the main loop's own
  * condition checks it every iteration so the SAME real cleanup path
- * always runs. */
-static volatile sig_atomic_t g_shutdown_requested = 0;
+ * always runs. The flag itself is DECLARED earlier (just above
+ * hq_run_event_loop) so both the default/HQ handler here and the
+ * default-mode loop can use it; this file-scope static needs exactly
+ * one definition. */
 static void handle_shutdown_signal(int sig) {
     (void)sig;
     g_shutdown_requested = 1;
@@ -17898,6 +17913,20 @@ int main(int argc, char **argv) {
      * convention ktb_pid_alive() already uses) when it polls, same
      * real second-safety-net shape as this design doc's own §2.1. */
     atexit(cleanup_hq_window_registry);
+    /* REAL, NEW 2026-09-03 - default/HQ-window SIGTERM cleanup hook.
+     * tp_main() (entity/tile path) installs handle_shutdown_signal() and
+     * honors g_shutdown_requested, but the shared default/HQ path that
+     * hosts chat-hai/open-hai/palettes/bookmarks/stats-hq/etc. did NOT -
+     * a plain `kill -TERM` (what kill_hq_windows.sh and most session
+     * shutdowns send first) default-terminated without running atexit(),
+     * leaving the failed-livedesk_hq_windows_<pid>.txt registry file
+     * behind (real live case). Install the same handler here so the
+     * atexit cleanup runs on SIGTERM/SIGINT; hq_run_event_loop() now
+     * checks g_shutdown_requested to break its loop. db-hq/events-hq
+     * override with their own handlers a little later (their loops are
+     * separate), which is fine. */
+    signal(SIGTERM, handle_shutdown_signal);
+    signal(SIGINT, handle_shutdown_signal);
     /* REAL, NEW 2026-09-01 - @ toggle: every real window this binary can
      * open (db-hq/events-hq/chat-hai/open-hai) obeys the shared pdl; the
      * popup/settings branches stay pinned below. Loaded before any
