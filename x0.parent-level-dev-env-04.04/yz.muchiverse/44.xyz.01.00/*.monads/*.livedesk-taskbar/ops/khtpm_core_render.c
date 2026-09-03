@@ -18352,6 +18352,26 @@ int main(int argc, char **argv) {
     }
 
     XSetWindowAttributes swa;
+    /* REAL FIX 2026-09-03 (direct live report, still reproducing after
+     * layout_sidebar_panel()'s own clamp - "x for exit is still hanging
+     * off visible window"): root-caused further - that first clamp only
+     * ever runs for the sidebar+panel dual-region layout; a plain
+     * entity-menu/popup window (g_win_w/g_win_h fixed once, well before
+     * this real XCreateWindow call, never revisited by that function at
+     * all) never went through it. This is the one real choke point
+     * EVERY default-mode window - flat popup, swatch-picker, sidebar+
+     * panel alike - passes through with its own final g_win_x/g_win_y/
+     * g_win_w/g_win_h already decided, so the clamp belongs here, once,
+     * not duplicated per layout mode. Same real DisplayWidth/
+     * DisplayHeight this file already uses for fullscreen; only pulls
+     * IN from an off-screen edge, never re-centers. */
+    {
+        int sw = DisplayWidth(dpy, screen), sh = DisplayHeight(dpy, screen);
+        if (g_win_x + g_win_w > sw) g_win_x = sw - g_win_w;
+        if (g_win_y + g_win_h > sh) g_win_y = sh - g_win_h;
+        if (g_win_x < 0) g_win_x = 0;
+        if (g_win_y < 0) g_win_y = 0;
+    }
     swa.background_pixel = alloc_pixel("#1c1c1c"); /* real dark default - no white-flash bug, ai-cell's own proven pattern, not WhitePixel */
     /* REAL FIX 2026-08-16, direct live report ("none of the buttons seem
      * 2 work yet"): this window was a normal WM-managed window, unlike
