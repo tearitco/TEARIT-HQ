@@ -1124,7 +1124,25 @@ static void kh_expand_repeats(const char *src, char *dst, size_t cap) {
         if (strncmp(p, "<repeat", 7) == 0 &&
             (isspace((unsigned char)p[7]) || p[7] == '>')) {
             const char *gt = strchr(p, '>');
-            const char *close = gt ? strstr(gt, "</repeat>") : NULL;
+            /* depth-matched close: skip past any NESTED <repeat>...
+             * </repeat> so the outer body is captured whole. The inner
+             * ones are expanded on the next pass of the outer loop
+             * around this function (kh_expand_repeats_all). */
+            const char *close = NULL;
+            if (gt) {
+                int depth = 1;
+                const char *q = gt + 1;
+                while (*q) {
+                    if (strncmp(q, "<repeat", 7) == 0 &&
+                        (isspace((unsigned char)q[7]) || q[7] == '>')) { depth++; q += 7; continue; }
+                    if (strncmp(q, "</repeat>", 9) == 0) {
+                        depth--;
+                        if (depth == 0) { close = q; break; }
+                        q += 9; continue;
+                    }
+                    q++;
+                }
+            }
             if (gt && close) {
                 /* attrs live in [p+7, gt) */
                 char attrs[512]; size_t an = (size_t)(gt - (p + 7));
@@ -1166,6 +1184,22 @@ static void kh_expand_repeats(const char *src, char *dst, size_t cap) {
     *o = '\0';
 }
 
+/* expand nested <repeat> (pages -> commands, ...): run kh_expand_repeats
+ * repeatedly - each pass expands the outermost layer, exposing the
+ * inner <repeat>s (whose count="${x.n}" is now a concrete
+ * ${x_0_n} the var pass will read). Bounded at 5 levels. Ping-pongs
+ * between two buffers. Returns the buffer holding the final result
+ * (either `a` or `b`), NUL-terminated. */
+static char *kh_expand_repeats_all(char *a, char *b, size_t cap) {
+    char *src = a, *dst = b;
+    for (int pass = 0; pass < 5; pass++) {
+        if (!strstr(src, "<repeat")) return src;
+        kh_expand_repeats(src, dst, cap);
+        char *t = src; src = dst; dst = t;
+    }
+    return src;
+}
+
 static Elem *parse_chtpm(const char *path) {
     FILE *f = fopen(path, "r");
     if (!f) return NULL;
@@ -1191,13 +1225,16 @@ static Elem *parse_chtpm(const char *path) {
         kh_load_vars_multi(g_vars_path);
 
         if (strstr(buf, "<repeat")) {
-            size_t rcap = (size_t)sz * 8 + 65536;
-            char *expanded = malloc(rcap);
-            if (expanded) {
-                kh_expand_repeats(buf, expanded, rcap);
+            size_t rcap = (size_t)sz * 16 + 131072;
+            char *a = malloc(rcap), *b = malloc(rcap);
+            if (a && b) {
+                snprintf(a, rcap, "%s", buf);
+                char *fin = kh_expand_repeats_all(a, b, rcap);
                 free(buf);
-                buf = expanded;
-            }
+                buf = strdup(fin);
+                free(a); free(b);
+                if (!buf) return NULL;
+            } else { free(a); free(b); }
         }
 
         size_t cap = strlen(buf) * 2 + 4096;
@@ -8453,6 +8490,43 @@ static void dock_paint_menu(void) {
     }
 }
 
+/* interact-mode-style scope confinement (spirit of db-hq's own
+ * dbhq_elem_is_navigable() and piececraft INTERACT): while a generic
+ * ACTIVATE scope is held, ONLY elements under its root stay navigable.
+ * Renumber g_nav[] in place so digit/arrow nav and the g_focus_nav
+ * clamp stay consistent. Esc (handle_key) pops the scope. No scope
+ * held -> untouched, every existing window unchanged.
+ * REAL FIX 2026-09-03 - factored out of assign_nav_and_layout()'s
+ * fallthrough branch so the sidebar+panel path (<tab> scope, db-hq-pal)
+ * gets it too: layout_sidebar_panel() returns early, so the inline
+ * post-pass there was dead code for exactly the window shape that
+ * needs it - the [^] tab lock never took. */
+static void kh_apply_scope_confine(void) {
+    if (!(g_default_scope_confine && g_default_active_scope_root &&
+          !g_is_db_hq && !g_is_events_hq && !window_is_dock()))
+        return;
+    int w = 0;
+    for (int r = 0; r < g_n_nav; r++) {
+        Elem *e = g_nav[r];
+        /* keep navigable: (a) anything under the scope root; (b) the
+         * trigger row itself - the "you are here, Enter/Esc to leave"
+         * affordance, where [^] shows; (c) a dropdown-child bound to
+         * this scope via target_id (the generic "Menu" dropdown
+         * pattern - its options aren't tree children of the trigger). */
+        int keep = (e == g_default_active_scope_root) ||
+                   (g_default_active_scope_id[0] && e->id[0] &&
+                    strcmp(e->id, g_default_active_scope_id) == 0) ||
+                   (g_default_active_scope_id[0] && e->target_id[0] &&
+                    elem_has_class(e, "dropdown-child") &&
+                    strcmp(e->target_id, g_default_active_scope_id) == 0);
+        for (Elem *p = e; p && !keep; p = p->parent)
+            if (p == g_default_active_scope_root) keep = 1;
+        if (keep) { g_nav[w] = e; e->nav_index = ++w; }
+        else e->nav_index = 0;
+    }
+    g_n_nav = w;
+}
+
 static void assign_nav_and_layout(void) {
     /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode branch, real WM-
      * managed window shape, own layout/nav functions (ported verbatim,
@@ -8521,6 +8595,13 @@ static void assign_nav_and_layout(void) {
         if (g_dock_drop_lo && g_default_active_scope_id[0] &&
             (g_focus_nav < g_dock_drop_lo || g_focus_nav > g_dock_drop_hi))
             g_focus_nav = g_dock_drop_lo;
+        /* REAL FIX 2026-09-03 - the sidebar+panel window shape (db-hq-pal
+         * <tab> scope) needs the same interact-mode nav confinement the
+         * fallthrough branch below gets; without this the [^] tab lock
+         * never took (all 15 tabs stayed navigable after activating one). */
+        kh_apply_scope_confine();
+        if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
+        if (g_focus_nav < 1) g_focus_nav = 1;
         return;
     }
     {
@@ -8603,35 +8684,7 @@ static void assign_nav_and_layout(void) {
         g_win_h = y + 8;
         }
     }
-    /* interact-mode-style scope confinement (spirit of db-hq's own
-     * dbhq_elem_is_navigable() and piececraft INTERACT): while a generic
-     * ACTIVATE scope is held, ONLY elements under its root stay
-     * navigable. Renumber g_nav[] in place so digit/arrow nav and the
-     * g_focus_nav clamp below stay consistent. Esc (handle_key) pops the
-     * scope. No scope held -> untouched, every existing window unchanged. */
-    if (g_default_scope_confine && g_default_active_scope_root && !g_is_db_hq && !g_is_events_hq && !window_is_dock()) {
-        int w = 0;
-        for (int r = 0; r < g_n_nav; r++) {
-            Elem *e = g_nav[r];
-            /* keep navigable: (a) anything under the scope root; (b) the
-             * trigger row itself - the "you are here, Enter/Esc to
-             * leave" affordance, where [^] shows; (c) a dropdown-child
-             * bound to this scope via target_id (the existing generic
-             * "Menu" dropdown pattern - its options aren't tree children
-             * of the trigger). */
-            int keep = (e == g_default_active_scope_root) ||
-                       (g_default_active_scope_id[0] && e->id[0] &&
-                        strcmp(e->id, g_default_active_scope_id) == 0) ||
-                       (g_default_active_scope_id[0] && e->target_id[0] &&
-                        elem_has_class(e, "dropdown-child") &&
-                        strcmp(e->target_id, g_default_active_scope_id) == 0);
-            for (Elem *p = e; p && !keep; p = p->parent)
-                if (p == g_default_active_scope_root) keep = 1;
-            if (keep) { g_nav[w] = e; e->nav_index = ++w; }
-            else e->nav_index = 0;
-        }
-        g_n_nav = w;
-    }
+    kh_apply_scope_confine();
     if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
     if (g_focus_nav < 1) g_focus_nav = 1;
 }
