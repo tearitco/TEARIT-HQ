@@ -735,9 +735,24 @@ static const char *parse_element(const char *p, Elem *parent) {
     e->parent = parent;
     if (parent && parent->n_children < MAX_CHILDREN) parent->children[parent->n_children++] = e;
 
+    /* generic show="..." (CHTPM-ARCHITECTURE-FIX.md): with ${var} now
+     * resolved at buffer level, a static template can gate a whole
+     * element on a state value - show="" / "0" / "false" drops it from
+     * the tree, anything else keeps it. Missing show= => always shown,
+     * so every existing template is unchanged. Handles the common
+     * self-closing case; a dropped element with children still parses
+     * its subtree (detached) - fine for leaf widgets like the ones
+     * signup-hq gates. */
+    int drop_elem = 0;
     for (;;) {
         skip_ws(&p);
-        if (*p == '/' && p[1] == '>') { p += 2; return p; }
+        if (*p == '/' && p[1] == '>') {
+            p += 2;
+            if (drop_elem && parent && parent->n_children > 0 &&
+                parent->children[parent->n_children - 1] == e)
+                parent->n_children--;
+            return p;
+        }
         if (*p == '>') { p++; break; }
         if (!*p) return p;
         char attr[32]; size_t an = 0;
@@ -749,8 +764,16 @@ static const char *parse_element(const char *p, Elem *parent) {
         skip_ws(&p);
         char val[1024] = "";
         if (*p == '=') { p++; parse_attr_value(&p, val, sizeof(val)); }
-        if (attr[0]) apply_attr(e, attr, val);
+        if (attr[0]) {
+            if (strcmp(attr, "show") == 0)
+                drop_elem = (val[0] == '\0' || strcmp(val, "0") == 0 || strcmp(val, "false") == 0);
+            else
+                apply_attr(e, attr, val);
+        }
     }
+    if (drop_elem && parent && parent->n_children > 0 &&
+        parent->children[parent->n_children - 1] == e)
+        parent->n_children--;
 
     for (;;) {
         skip_ws(&p);
@@ -788,6 +811,12 @@ static char g_vars_path[PATH_BUF] = "";
 static struct timespec g_vars_mtime;
 
 static const char *kh_get_var(const char *name) {
+    /* built-ins so a static template can name house-relative paths in
+     * an action= without the manager having to bake in an absolute
+     * path: ${HOUSE} = house_root, ${PKG} = this .chtpm's own dir
+     * (what the renderer passes as $1 to every action anyway). */
+    if (strcmp(name, "HOUSE") == 0) return g_house_root;
+    if (strcmp(name, "PKG") == 0)   return g_package_dir;
     for (int i = 0; i < g_kh_nvars; i++)
         if (strcmp(g_kh_vars[i].name, name) == 0) return g_kh_vars[i].value;
     return "";
@@ -1299,6 +1328,13 @@ static XftFont *font_ui;
 static int g_win_x = 300, g_win_y = 300;
 static int g_win_w = 260, g_win_h = 200;
 static int g_quit = 0;
+/* --dump-and-exit (any argv position): paint one frame, write the PNG +
+ * .txt receipt via dump_frame_png(), then quit. Set once at startup,
+ * honoured at the top of hq_run_event_loop() so every mode is covered
+ * from one place. g_dumped guards against a mode that also calls
+ * dump_frame_png() itself before entering the loop. */
+static int g_dump_and_exit = 0;
+static int g_dumped = 0;
 /* REAL FIX 2026-08-16, direct live report ("it breaks on events or just
  * when right clicking sometimes" - intermittent): the stale-event drain
  * right after XMapRaised only discards events already sitting in the X
@@ -9041,6 +9077,31 @@ static void dump_frame_png(void) {
                     ok, g_win_w, g_win_h, (long)time(NULL), g_focus_nav, g_n_nav, g_phase, g_chosen_bg_idx, g_chosen_fg_idx);
             fclose(rf);
         }
+    } else {
+        /* Generic window: alongside the PNG write (a) a .receipt.txt and
+         * (b) a .frame.txt ASCII serialization of the laid-out Elem
+         * tree - the tpmos "if it's not in current_frame.txt it's not
+         * in the pixels" check, reusing db-hq's own serializer. */
+        char receipt[PATH_BUF], framef[PATH_BUF];
+        snprintf(receipt, sizeof(receipt), "%s.receipt.txt", png);
+        snprintf(framef, sizeof(framef), "%s.frame.txt", png);
+        FILE *rf = fopen(receipt, "w");
+        if (rf) {
+            fprintf(rf, "ok=%d png=%s w=%d h=%d t=%ld nav=%d n_nav=%d page=%s vars=%s\n",
+                    ok, png, g_win_w, g_win_h, (long)time(NULL),
+                    g_focus_nav, g_n_nav,
+                    g_current_page[0] ? g_current_page : "-",
+                    g_vars_path[0] ? g_vars_path : "-");
+            fclose(rf);
+        }
+        FILE *ff = fopen(framef, "w");
+        if (ff) {
+            if (g_window) {
+                dbhq_serialize_frame_elem(ff, g_window);
+                dbhq_serialize_frame_subtree(ff, g_window);
+            }
+            fclose(ff);
+        }
     }
 }
 
@@ -10461,6 +10522,24 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
 }
 
 static void hq_run_event_loop(Atom wm_delete, int is_popup) {
+    /* headless snapshot: --dump-and-exit on any mode. Paint one real
+     * frame (twice, with a beat between - same "opacity/first-paint
+     * settles on the 2nd" reasoning the db-hq path already relies on),
+     * write the PNG + receipt via dump_frame_png(), then quit before
+     * the loop proper. Covers every hq_run_event_loop() caller from
+     * one place. */
+    if (g_dump_and_exit) {
+        if (!g_dumped) {
+            g_dumped = 1;
+            redraw();
+            XFlush(dpy);
+            usleep(250000);
+            redraw();
+            XFlush(dpy);
+            dump_frame_png();
+        }
+        return;
+    }
     while (!g_quit) {
         hq_idle_tick();
         if (g_quit) break;
@@ -17097,6 +17176,8 @@ static void cleanup_hq_window_registry(void) {
 }
 
 int main(int argc, char **argv) {
+    for (int ai = 1; ai < argc; ai++)
+        if (strcmp(argv[ai], "--dump-and-exit") == 0) g_dump_and_exit = 1;
     /* REAL, NEW 2026-09-01 - taskbar strip mode AND tile mode dispatch,
      * checked FIRST, before any of the shared .chtpm-parsing setup below
      * - NEITHER mode takes a .chtpm path at all, so both share the same
