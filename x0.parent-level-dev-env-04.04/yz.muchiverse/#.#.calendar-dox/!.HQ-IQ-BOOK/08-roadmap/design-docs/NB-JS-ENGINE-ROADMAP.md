@@ -226,10 +226,52 @@ is the near-term goal.
 
 ---
 
-## 8. The ceiling — what "browser parity" means, and how to change it
+## 8. The ceiling — and the DECISION (2026-09-03)
 
-An earlier draft said "full parity is out of scope forever." That is
-too absolute. Precise version:
+> **DECIDED: path A — hand-built, a few pages of code at a time, our
+> own rendering. NO engine embed (not CEF "all of chromium", not
+> WebKitGTK).** The GTK/WebKit embed PoC is parked at
+> `44.xyz.01.00/&.hq-apps/network/_attic-gtk-embed/` in case that's ever
+> revisited. What follows is the "how the ceiling works" reasoning that
+> led here.
+
+### Why not embed an engine
+
+- **CEF** = all of Chromium (~200 MB, you ship it). Rejected: "don't
+  pull all the chromium."
+- **WebKitGTK** (already on the box, 86 MB .so) via XEmbed = the engine
+  owns the content rectangle's pixels; khtpm can't overlay on it, and
+  it drags a GTK window. Rejected: "use our own [visual]."
+- The only "our chrome + real engine, khtpm owns every pixel" option is
+  **offscreen render → blit the buffer** (CEF OSR). Still CEF. Rejected.
+
+So: the content pane stays khtpm-drawn `<text>`/`<item>` rows. We make
+those rows *smart* (driven by a real DOM after JS runs), not pixel-
+faithful. Visual fidelity (real CSS layout) is a later, small,
+hand-rolled lift — "when we can", §7.
+
+### What "a few pages at a time" buys, concretely
+
+Each rung below is a few hundred lines of *our* C, on top of Duktape
+(one vendored file; swap to QuickJS — also one file — only if ES6
+*syntax* becomes the wall, §4). None of it is an engine.
+
+- **Rung 2** (DOM tree in the manager, lazy-exposed to JS): ~300-500
+  lines. Unblocks most progressive-enhancement JS.
+- **Rung 3** (events + budgeted loop): ~300 lines + a timer heap.
+- **Rung 4** (XHR/fetch via manager RPC): ~200 lines.
+- **Rung 5** (mutated DOM → `page.state.txt`): ~100 lines of glue —
+  the payoff: JS-heavy pages become usable *as readable/clickable
+  content*.
+- **Rung 6** (history/location/cookies): incremental, as sites demand.
+
+Ceiling of this hand-built path: **the readable web + light SPAs, as
+text + links + images in our chrome** — not pixel-parity, not the
+application web (Gmail/Figma/WebGL). That is the accepted target.
+
+---
+
+### (background) "Parity" is two different problems
 
 ### "Parity" is two different problems
 
