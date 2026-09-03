@@ -7451,7 +7451,26 @@ static void redraw(void) {
      * ported verbatim from taskbar-settings' own redraw(); menu mode's
      * own real page-name title, unchanged. */
     {
-        const char *title = (g_window->label[0] ? g_window->label : g_current_page);
+        /* REAL, NEW 2026-09-03 (direct live request, straight out of
+         * today's own real X input-focus regression: "in toolbar of
+         * windows there is supposed to be a '^' signal if window is
+         * active. maybe we could add '.' if its not, for sanity") - a
+         * real, generic, always-on focus sanity indicator: queries the
+         * real X server (XGetInputFocus), not this app's own belief
+         * about itself, so a repeat of today's own "focus silently
+         * dropped" class of bug is visible at a glance in every future
+         * default-mode window, without needing xdotool/screenshots to
+         * diagnose. "^" reuses the SAME glyph the armed-scope/dropdown
+         * indicator already uses elsewhere in this file (a real,
+         * established "this is the active thing" convention in this
+         * house), "." is the real, deliberately unarmed/inert
+         * counterpart - not a new visual language, the same one. */
+        Window focus_win; int focus_revert;
+        XGetInputFocus(dpy, &focus_win, &focus_revert);
+        char title_buf[192];
+        const char *title_raw = (g_window->label[0] ? g_window->label : g_current_page);
+        snprintf(title_buf, sizeof(title_buf), "%s %s", (focus_win == win) ? "^" : ".", title_raw);
+        const char *title = title_buf;
         XftColor title_col = xft_color("#eeeeee");
         XftDrawStringUtf8(xftdraw_buf, &title_col, font_ui, 8, 16,
                            (const FcChar8 *)title, (int)strlen(title));
