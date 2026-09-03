@@ -77,9 +77,20 @@ Built `khtpm_taskbar_manager_main.+x` + `khtpm_core_render.+x`.
 - `run_khtpm_strip.sh` waits on `strip_ui.txt`, launches header.xhtpm.
 - Clock: republish when formatted datetime string changes.
 
-**To go live:** `sh …/ops/run_khtpm_strip.sh run` (kills+rebuilds strip
-only). Then confirm `#.desktop/strip_header.chtpm` is no longer rewritten
-and `strip_ui.txt` updates on tab/menu/clock.
+**Live 2026-09-03 11:19:** `sh …/ops/run_khtpm_strip.sh run`
+
+Killed old strip 231153/231151. New: manager **262353**, renderer **262368**
+on `khtpm_strip_header.xhtpm` (not `#.desktop/strip_header.chtpm`).
+`strip_ui.txt` has username/datetime/n_tabs=7. Frame dump shows all 15
+header cells with substituted labels; bottom dump shows 7 tab items from
+`<repeat>`. Generated `strip_header.chtpm` mtime stayed **11:04** (stale).
+
+Recipe (from house `44.xyz.01.00`):
+```
+sh "*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh" run
+```
+That script rebuilds, kills the previous strip pair, waits for
+`strip_ui.txt`, launches renderer on the static header template.
 
 **If cut off:** next agent verifies those files, then dropdowns (HQ
 ACTIVATE + `${n_hqitems}`), bottom tabs/shortcuts, FOCUSWIN cells,
