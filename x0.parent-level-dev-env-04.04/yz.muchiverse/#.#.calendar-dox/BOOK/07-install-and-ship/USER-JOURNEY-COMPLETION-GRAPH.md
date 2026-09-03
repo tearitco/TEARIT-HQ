@@ -9,16 +9,19 @@ real code, not assumed) vs. what's genuinely new work. Companion to
 
 ## The real journey, step by step
 
-### 1. `sh` one-liner → install script → adds `hq` to PATH
-**Status: ❌ NOT BUILT.** No install script pulls from GitHub and
-installs a `hq` command today. `xyzos-starter-install.sh` (v1) is
-obsolete (pre-dates the khtpm taskbar entirely). The HARNECIENT design
-doc (`design-docs/04.harnecient-fresh-install-design.md`) describes
-almost exactly this shape but was never coded. **Real new work,
-highest-priority — everything downstream depends on this existing.**
-Cross-ref: the dynamic-product-name decision already made means this
-script can't hardcode `hq` as a literal name either — it's whatever
-name the shipper passes in, `hq` being the example/default.
+### 1. `sh` one-liner → install script → adds `<product>` to PATH
+**Status: ✅ BUILT (first cut), 2026-09-02.** Shipped as a two-repo
+pipeline: `tearitco/tearit-install` (`install.sh` = `curl … | sh -s --
+tearit-hq`) downloads `tearitco/tearit-hq-payload` (curated: taskbar +
+login/signup + cursword + clock, source), compiles it in place under
+`$HOME/<product>`, and writes a `~/.local/bin/<product>` launcher.
+Product name is an argument, not hardcoded. Verified end to end with a
+real `curl | sh` run. Linux only for now. Source of truth:
+`x0.parent-level-dev-env-04.04/xyz-installer-dev/` (its `README.md` is
+the START HERE). Old `xyzos-starter-install.sh` moved to that dir's
+`_superseded-2026-09/`.
+**Still open on this step:** true minimal-footprint (step 8), Win/Mac
+build legs, and the data/tracking decisions in `tearit-legal-v2.md`.
 
 ### 2. User runs `hq` → taskbar populates
 **Status: ✅ REAL, WORKS TODAY**, once step 1 delivers a correctly laid
@@ -146,7 +149,7 @@ without special-casing a "test mode."
 
 | Step | What | Status |
 |---|---|---|
-| 1 | Install script (GitHub → `hq` on PATH) | ❌ Not built — top priority |
+| 1 | Install script (GitHub → `<product>` on PATH) | ✅ Built first cut 2026-09-02 (`tearitco/tearit-install` + `tearit-hq-payload`) |
 | 2 | `hq` launches, taskbar populates | ✅ Real, works today |
 | 3 | Cursword-driven guest→signup onboarding (FSM/BT, nav-injection) | ❌ Not built; every primitive it needs already exists |
 | 4 | Avatar creation suggestion + real build | ⚠️ Real, substantial app (DNA/clone/token logic); on legacy chtpm_parser_pal engine, needs khtpm rework |

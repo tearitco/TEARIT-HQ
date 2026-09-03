@@ -39,6 +39,13 @@ migration.
 user on a second real machine and have it work.** That's the honest
 starting line.
 
+> **UPDATE 2026-09-02:** there is now — a first-cut CLI pipeline
+> (`tearitco/tearit-install` + `tearitco/tearit-hq-payload`) installs a
+> minimal desktop (taskbar + login/signup + cursword + clock) via
+> `curl … | sh`, verified end to end. Much of the exploration below
+> (store, versioning, multi-machine accounts) is still unbuilt; §5's
+> decisions still hold. Source: `xyz-installer-dev/` (see its README).
+
 ## 2. What "versioning" currently means (also plain language)
 
 There's a separate draft, also **strategy-only, not wired**:
