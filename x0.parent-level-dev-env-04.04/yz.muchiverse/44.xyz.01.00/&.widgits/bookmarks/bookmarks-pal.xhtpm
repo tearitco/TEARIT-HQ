@@ -1,0 +1,52 @@
+<!-- bookmarks-pal.xhtpm - bookmarks as a STATIC template + PAL projector
+     (HANDOFF-scope-nav-and-chtpm-port.md 5 ; EVENTS-HQ-XHTPM-PORT.md).
+
+     class="bookmarks-pal" (NOT "bookmarks") so the renderer's built-in
+     g_is_bookmarks / g_is_db_hq C path stays dormant - exact-match on
+     the bare "bookmarks" string is what trips it (khtpm_core_render.c
+     ~17938); a "-pal" suffix is safe.
+
+     Per-pal instance, same shape as &.widgits/events-hq/events-hq.xhtpm:
+       - button-pal.sh starts bookmarks_manager.+x <house> <pal_dir>
+         itself (the generic <module> launcher can't pass it the pal dir
+         as argv) and launches the renderer with argv[3]=<pal_dir>.
+       - argv[3] is the renderer's instance-dir hook: ${ARG3}=<pal_dir>,
+         KHTPM_ARG3 exported to the <module>, and
+         <pal_dir>/.hq_manager/ui.txt auto-appended to this template's
+         vars sources.
+       - the one <module> forks prisc+x on pal/bookmarks_projector.pal,
+         which reads the UNCHANGED bookmarks_manager.c publish
+         (<pal_dir>/bookmarks_state.txt) and writes
+         <pal_dir>/.hq_manager/ui.txt.
+
+     Generic sidebar+panel layout (no g_is_bookmarks C layout): the New+
+     <cli_io> row + the bookmark <repeat> live in the <sidebar>; the
+     <panel> is a static hint block. The New+ row is a generic <cli_io>:
+     Enter arms, type a path, Enter commits -> runs ops/bm_action.sh
+     which upserts the BOOKMARK row via the existing bm_menu.sh; the
+     manager notices bookmarks.pdl's mtime change and republishes.
+
+     Old bm_menu.sh + bookmarks.template.chtpm (class="bookmarks") and
+     the per-pal provisioned bookmarks.chtpm are left untouched as
+     rollback. -->
+<window label="Bookmarks (PAL)" class="bookmarks-pal database-window">
+  <module src="&.widgits/_shared-lib/system/+x/prisc+x.+x pal/bookmarks_projector.pal"/>
+  <page name="main">
+    <sidebar id="sidebar" class="sidebar">
+      <text label="${title}" class="quiet"/>
+      <scrolllist>
+        <cli_io id="bm-newplus" target_id="bm-newplus" label="+ New+ (Enter, type a path, Enter): " onClick="'${PKG}/ops/bm_action.sh' 'newplus' '${ARG3}'"/>
+        <repeat count="${bm_count}" bind="bm">
+          <item id="b${bm.#}" class="bm-bookmark" label="${bm.name}  -  ${bm.path}" onClick="open:${bm.path}"/>
+        </repeat>
+        <text label="(no bookmarks yet - use New+)" class="quiet" show="${empty}"/>
+      </scrolllist>
+    </sidebar>
+    <panel id="detail" class="settings-block">
+      <text label="cursword bookmarks" class="block-title"/>
+      <text label="Click or Enter a bookmark row to open its folder." class="quiet"/>
+      <text label="" class="quiet"/>
+      <item id="bm-openfolder" class="data-item" label="Open Pal Folder" onClick="open:${ARG3}"/>
+    </panel>
+  </page>
+</window>
