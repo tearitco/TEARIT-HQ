@@ -7350,12 +7350,36 @@ static void load_dock_strip_offset(int *out_x, int *out_y) {
 
 static int dock_text_px(const char *s) {
     if (!s || !s[0]) return 0;
-    if (dpy && font_ui) {
-        XGlyphInfo ext;
-        XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)s, (int)strlen(s), &ext);
-        return ext.xOff;
+    {
+        int w = 0;
+        const unsigned char *p = (const unsigned char *)s;
+        const unsigned char *run = p;
+        while (*p) {
+            unsigned int cp;
+            int clen = khtpm_utf8_decode(p, &cp);
+            const EmojiTile *t = (cp == 0xFE0F || cp == 0x200D) ? NULL : khtpm_emoji_for_cp(cp);
+            if (t) {
+                if (p > run) {
+                    if (dpy && font_ui) {
+                        XGlyphInfo ext;
+                        XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)run, (int)(p - run), &ext);
+                        w += ext.xOff;
+                    } else w += (int)(p - run) * 7;
+                }
+                w += EMOJI_ADV;
+                p += clen;
+                run = p;
+            } else p += clen;
+        }
+        if (p > run) {
+            if (dpy && font_ui) {
+                XGlyphInfo ext;
+                XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)run, (int)(p - run), &ext);
+                w += ext.xOff;
+            } else w += (int)(p - run) * 7;
+        }
+        return w;
     }
-    return (int)strlen(s) * 7;
 }
 
 /* Compact left-packed cells (old strip), not equal-split across the screen. */
@@ -7395,7 +7419,9 @@ static int dock_item_cw(Elem *t) {
     if (t->sprite[0]) cw += DOCK_SPRITE_PX + 4;
     cw += dock_text_px(t->label) + 10;
     if (cw < 52) cw = 52;
-    if (cw > 180) cw = 180;
+    if (elem_has_class(t, "hqwin")) {
+        if (cw > 240) cw = 240;
+    } else if (cw > 180) cw = 180;
     return cw;
 }
 
