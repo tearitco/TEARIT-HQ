@@ -8029,6 +8029,19 @@ static int layout_dock_toolbar_row(Elem *row, int x, int y, int max_w) {
             t->x = x; t->y = -100000; t->w = 0; t->h = 0; t->nav_index = 0;
             continue;
         }
+        /* class="no-nav" - a plain status cell (e.g. the strip's pid
+         * readout after the clock): laid out and drawn, but no nav
+         * index, so it gets no "[ ]N." badge and arrows/digits skip it. */
+        if (elem_has_class(t, "no-nav")) {
+            cw = 6 + dock_text_px(t->label) + 10;
+            if (cw < 40) cw = 40;
+            t->x = col_x; t->y = y; t->w = cw; t->h = DOCK_BAR_H; t->nav_index = 0;
+            css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
+            col_x += cw + DOCK_CELL_GAP;
+            used = col_x - x;
+            if (used > max_w) used = max_w;
+            continue;
+        }
         cw = 6 + DOCK_NAV_BADGE_PX;
         if (t->sprite[0]) cw += DOCK_SPRITE_PX + 4;
         cw += dock_text_px(t->label) + 10;
