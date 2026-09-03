@@ -53,6 +53,23 @@ parsed from the href (still no navigation yet).
 **Payoff:** a large fraction of "cannot read property of undefined" on
 `window.*` / `navigator.*` disappears with ~40 lines.
 
+> **DONE — 2026-09-03**, branch `chtpm-var-substitution`. Only
+> `ops/nb_js_eval.c` touched; test `network/tests/rung1_globals.js`.
+> Added: `window`/`self`/`globalThis` = real Duktape global (was the
+> `localStorage` stub — index bug); `navigator` (userAgent, language,
+> languages, platform, onLine, cookieEnabled, doNotTrack);
+> `screen` (width/height/availWidth/availHeight/colorDepth/pixelDepth);
+> `location` protocol/host/hostname/port/pathname/search/hash/origin
+> parsed from the href in C, plus no-op assign/replace/reload;
+> `window.name`/`closed`/`length`. Verified `typeof window==="object"`,
+> `window===globalThis===self`, `window.x=5;x===5`,
+> `"addEventListener" in window` → false w/o throw, full `location.*`
+> on a real href. On google's extracted scripts the raw ERROR count is
+> unchanged (remaining failures are ES6 syntax + DOM = rungs 2/§4), but
+> `page.js.ext1.js` now clears its `window.location.pathname` failure
+> and reaches a later DOM-shaped one. Details:
+> `09-appendix/PROGRESS-nb-js-rung1.md`.
+
 ### Rung 2 — a real DOM tree  *(the big one — 1-2 focused passes)*
 The manager already tokenizes tags. Extend that into a **node tree**
 kept in C: `{tag, attrs[], text, parent, first_child, next_sibling}`.

@@ -126,8 +126,90 @@ static int read_file(const char *path, char **out, size_t *out_n) {
     return 1;
 }
 
+/* Push each component of an href as a plain string property on the object
+ * at the top of the stack. Rung 1: parsing only, no navigation. */
+static void install_location_parts(duk_context *ctx, const char *href) {
+    char protocol[32] = "";
+    char host[1024]   = "";   /* hostname[:port] */
+    char hostname[1024] = "";
+    char port[16]     = "";
+    char pathname[2048] = "";
+    char search[2048] = "";
+    char hash[2048]   = "";
+    char origin[1100] = "null";
+
+    const char *p = href ? href : "";
+    const char *sep = strstr(p, "://");
+    const char *authority_start = p;
+    if (sep) {
+        size_t plen = (size_t)(sep - p);
+        if (plen < sizeof(protocol) - 1) {
+            memcpy(protocol, p, plen);
+            protocol[plen] = 0;
+            strcat(protocol, ":");
+        }
+        authority_start = sep + 3;
+    }
+
+    /* authority runs until the first '/', '?' or '#' */
+    const char *a = authority_start;
+    const char *ae = a;
+    while (*ae && *ae != '/' && *ae != '?' && *ae != '#') ae++;
+    {
+        size_t alen = (size_t)(ae - a);
+        char authority[1024] = "";
+        if (alen < sizeof(authority) - 1) { memcpy(authority, a, alen); authority[alen] = 0; }
+        /* drop userinfo */
+        char *at = strrchr(authority, '@');
+        const char *hp = at ? at + 1 : authority;
+        snprintf(host, sizeof(host), "%s", hp);
+        /* split host:port (last ':' that is not inside [] IPv6 — keep it simple) */
+        char *colon = strrchr(host, ':');
+        char *rb = strrchr(host, ']');
+        if (colon && (!rb || colon > rb)) {
+            snprintf(port, sizeof(port), "%s", colon + 1);
+            size_t hn = (size_t)(colon - host);
+            if (hn < sizeof(hostname)) { memcpy(hostname, host, hn); hostname[hn] = 0; }
+        } else {
+            snprintf(hostname, sizeof(hostname), "%s", host);
+        }
+    }
+
+    /* pathname / search / hash from ae onward */
+    const char *rest = ae;
+    const char *q = strchr(rest, '?');
+    const char *h = strchr(rest, '#');
+    const char *path_end = rest + strlen(rest);
+    if (q) path_end = q;
+    if (h && h < path_end) path_end = h;
+    {
+        size_t pl = (size_t)(path_end - rest);
+        if (pl && pl < sizeof(pathname)) { memcpy(pathname, rest, pl); pathname[pl] = 0; }
+        else if (!pl) snprintf(pathname, sizeof(pathname), "/");
+    }
+    if (q) {
+        const char *se = h && h > q ? h : q + strlen(q);
+        size_t sl = (size_t)(se - q);
+        if (sl < sizeof(search)) { memcpy(search, q, sl); search[sl] = 0; }
+    }
+    if (h) snprintf(hash, sizeof(hash), "%s", h);
+
+    if (protocol[0] && host[0])
+        snprintf(origin, sizeof(origin), "%s//%s", protocol, host);
+
+    duk_push_string(ctx, protocol); duk_put_prop_string(ctx, -2, "protocol");
+    duk_push_string(ctx, host);     duk_put_prop_string(ctx, -2, "host");
+    duk_push_string(ctx, hostname); duk_put_prop_string(ctx, -2, "hostname");
+    duk_push_string(ctx, port);     duk_put_prop_string(ctx, -2, "port");
+    duk_push_string(ctx, pathname); duk_put_prop_string(ctx, -2, "pathname");
+    duk_push_string(ctx, search);   duk_put_prop_string(ctx, -2, "search");
+    duk_push_string(ctx, hash);     duk_put_prop_string(ctx, -2, "hash");
+    duk_push_string(ctx, origin);   duk_put_prop_string(ctx, -2, "origin");
+}
+
 static void install_host(duk_context *ctx) {
     duk_push_global_object(ctx);
+    duk_idx_t g = duk_get_top(ctx) - 1;   /* absolute index of the real JS global */
 
     duk_push_c_function(ctx, native_log, DUK_VARARGS);
     duk_put_prop_string(ctx, -2, "print");
@@ -162,7 +244,45 @@ static void install_host(duk_context *ctx) {
     duk_push_string(ctx, "href");
     duk_push_c_function(ctx, native_get_href, 0);
     duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
+    install_location_parts(ctx, g_href);
+    /* rung 6 will make these navigate; for now they must not throw */
+    duk_push_c_function(ctx, native_noop, DUK_VARARGS);
+    duk_dup(ctx, -1);
+    duk_put_prop_string(ctx, -3, "assign");
+    duk_dup(ctx, -1);
+    duk_put_prop_string(ctx, -3, "replace");
+    duk_put_prop_string(ctx, -2, "reload");
     duk_put_prop_string(ctx, -2, "location");
+
+    /* navigator — plain data props only, no functions (rung 1) */
+    duk_push_object(ctx);
+    duk_push_string(ctx, "Mozilla/5.0 (X11; Linux x86_64) nb_js_eval");
+    duk_put_prop_string(ctx, -2, "userAgent");
+    duk_push_string(ctx, "en");
+    duk_put_prop_string(ctx, -2, "language");
+    duk_push_array(ctx);
+    duk_push_string(ctx, "en");
+    duk_put_prop_index(ctx, -2, 0);
+    duk_put_prop_string(ctx, -2, "languages");
+    duk_push_string(ctx, "Linux x86_64");
+    duk_put_prop_string(ctx, -2, "platform");
+    duk_push_boolean(ctx, 1);
+    duk_put_prop_string(ctx, -2, "onLine");
+    duk_push_boolean(ctx, 0);
+    duk_put_prop_string(ctx, -2, "cookieEnabled");
+    duk_push_null(ctx);
+    duk_put_prop_string(ctx, -2, "doNotTrack");
+    duk_put_prop_string(ctx, -2, "navigator");
+
+    /* screen */
+    duk_push_object(ctx);
+    duk_push_int(ctx, 1920); duk_put_prop_string(ctx, -2, "width");
+    duk_push_int(ctx, 1080); duk_put_prop_string(ctx, -2, "height");
+    duk_push_int(ctx, 1920); duk_put_prop_string(ctx, -2, "availWidth");
+    duk_push_int(ctx, 1080); duk_put_prop_string(ctx, -2, "availHeight");
+    duk_push_int(ctx, 24);   duk_put_prop_string(ctx, -2, "colorDepth");
+    duk_push_int(ctx, 24);   duk_put_prop_string(ctx, -2, "pixelDepth");
+    duk_put_prop_string(ctx, -2, "screen");
 
     duk_push_object(ctx);
     duk_push_c_function(ctx, native_undefined, 1);
@@ -175,13 +295,21 @@ static void install_host(duk_context *ctx) {
     duk_put_prop_string(ctx, -3, "sessionStorage");
     duk_put_prop_string(ctx, -2, "localStorage");
 
-    /* Real pages start with window.foo. In a browser window === global. */
-    duk_dup(ctx, -1);
-    duk_put_prop_string(ctx, -2, "window");
-    duk_dup(ctx, -1);
-    duk_put_prop_string(ctx, -2, "self");
-    duk_dup(ctx, -1);
-    duk_put_prop_string(ctx, -2, "globalThis");
+    /* window / self / globalThis ARE the real Duktape global object. */
+    duk_dup(ctx, g);
+    duk_put_prop_string(ctx, g, "window");
+    duk_dup(ctx, g);
+    duk_put_prop_string(ctx, g, "self");
+    duk_dup(ctx, g);
+    duk_put_prop_string(ctx, g, "globalThis");
+
+    /* cheap always-safe window scalars */
+    duk_push_string(ctx, "");
+    duk_put_prop_string(ctx, g, "name");
+    duk_push_boolean(ctx, 0);
+    duk_put_prop_string(ctx, g, "closed");
+    duk_push_int(ctx, 0);
+    duk_put_prop_string(ctx, g, "length");
 
     duk_pop(ctx);
 }
