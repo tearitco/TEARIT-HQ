@@ -3,21 +3,41 @@
      every real main-loop tick - DO NOT HAND-EDIT, changes are
      overwritten within ~300ms. See that function's own header
      comment for the real design this answers to. -->
-<window label="Network Browser" class="">
+<window label="Network Browser" class="network-browser">
+  <module src="&.hq-apps/network/+x/network_browser_manager.+x"/>
   <page name="main">
     <sidebar>
-      <text id="nb-title" label="Network"/>
-      <scrolllist></scrolllist>
+      <text label="Bookmarks"/>
+      <scrolllist>
+        <text label="No bookmarks yet"/>
+      </scrolllist>
+      <text label="History"/>
+      <scrolllist>
+        <item id="hist0" label="https://www.google.com/intl/en/about/products?tab=ih" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_go.sh' 'go' 'https://www.google.com/intl/en/about/products?tab=ih'"/>
+        <item id="hist1" label="https://www.google.com/imghp?hl=en&amp;ogbl" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_go.sh' 'go' 'https://www.google.com/imghp?hl=en&ogbl'"/>
+        <item id="hist2" label="www.google.com" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_go.sh' 'go' 'www.google.com'"/>
+      </scrolllist>
     </sidebar>
     <panel>
-    <cli_io id="address" target_id="address" label="URL: " action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_go.sh' 'go' '/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/network-browser-hq.chtpm'"/>
-    <text id="status" label="Status: ready"/>
-    <scrolllist>
-      <text id="title1" class="page-title" label="Example Domain"/>
-      <text id="text2" label="Example Domain"/>
-      <text id="text3" label="Example Domain"/>
-      <text id="text4" label="This domain is for use in documentation examples without needing permission. Avoid use in operations."/>
-      <item id="link5" label="Learn more" action="'/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_go.sh' 'go' 'https://iana.org/domains/example'"/>
+      <row class="toolbar">
+        <item id="nb-back" class="quiet" label="Back" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_back.sh' 'back'"/>
+        <item id="nb-fwd" class="quiet" label="Forward" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_forward.sh' 'forward'"/>
+        <item id="nb-stop" class="quiet" label="Stop" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_stop.sh' 'stop'"/>
+        <item id="nb-reload" class="quiet" label="Reload" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_reload.sh' 'reload'"/>
+        <item id="nb-home" class="quiet" label="Home" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_go.sh' 'go' 'https://example.com'"/>
+        <item id="nb-bm" class="quiet" label="Bookmark" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_bookmark.sh' 'bookmark'"/>
+        <item id="nb-close" class="quiet" label="Close tab" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_closetab.sh' 'closetab'"/>
+      </row>
+      <row class="toolbar">
+        <item id="tab0" class="quiet" label="Google's products " action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_tab.sh' 'tab' '0'"/>
+        <item id="tab1" class="quiet" label="*Network Browser" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_tab.sh' 'tab' '1'"/>
+        <item id="nb-newtab" class="quiet" label="New tab" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_newtab.sh' 'newtab'"/>
+      </row>
+      <cli_io id="address" class="top nb-address" target_id="address" label="URL: " action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_go.sh' 'go' '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/network-browser-hq.chtpm'"/>
+      <text id="status" class="nb-status" label="Status: idle"/>
+      <scrolllist class="from-top nb-content">
+      <text id="title0" class="page-title" label="Network Browser"/>
+      <text id="text1" label="Ready - enter a URL above"/>
     </scrolllist>
   </panel>
   </page>

@@ -1,6 +1,6 @@
 CELL | idx=1 region=bottom | ch=[ ] 16. cursword fg=default bg=default focused=0
-CELL | idx=2 region=bottom | ch=[ ] 17. m8_redhorned fg=default bg=default focused=0
-CELL | idx=3 region=bottom | ch=[ ] 18. self fg=default bg=default focused=0
+CELL | idx=2 region=bottom | ch=[ ] 17. self fg=default bg=default focused=0
+CELL | idx=3 region=bottom | ch=[ ] 18. m8_redhorned fg=default bg=default focused=0
 CELL | idx=4 region=bottom | ch=[ ] 19. m1_ninjadragon fg=default bg=default focused=0
 CELL | idx=5 region=bottom | ch=[ ] 20. asa fg=default bg=default focused=0
 CELL | idx=6 region=bottom | ch=[ ] 21. ava fg=default bg=default focused=0
@@ -19,4 +19,4 @@ CELL | idx=10 region=header | ch=[ ] 11. toys fg=default bg=default focused=0
 CELL | idx=11 region=header | ch=[ ] 12. store fg=default bg=default focused=0
 CELL | idx=12 region=header | ch=[ ] 13. network fg=default bg=default focused=0
 CELL | idx=13 region=header | ch=[ ] 14. h-ai fg=default bg=default focused=0
-CELL | idx=14 region=header | ch=[ ] 15. 2026年09月02日 周三 06:22 fg=default bg=default focused=0
+CELL | idx=14 region=header | ch=[ ] 15. 2026年09月02日 周三 23:33 fg=default bg=default focused=0

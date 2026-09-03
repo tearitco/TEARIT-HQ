@@ -1,4 +1,29 @@
-item|c0||Bible verse (text)||/bin/sh -c 'printf %s '\''bible_text'\'' > '\''/tmp/khtpm_choice_result_606629.txt'\'''|1|0|0|24|260|24||
-item|c1||Bible verse (with TTS)||/bin/sh -c 'printf %s '\''bible_tts'\'' > '\''/tmp/khtpm_choice_result_606629.txt'\'''|2|0|0|48|260|24||
-item|c2||Tao Te Ching (random chapter)||/bin/sh -c 'printf %s '\''tao'\'' > '\''/tmp/khtpm_choice_result_606629.txt'\'''|3|0|0|72|260|24||
-item|cancel||Cancel||CLOSE|4|0|0|96|260|24||
+sidebar||||||0|0|0|24|200|616||
+text|||Bookmarks|||0|0|0|24|200|24||
+scrolllist||||||0|0|0|0|0|0||
+text|||No bookmarks yet|||0|0|0|0|0|0||
+text|||History|||0|0|0|48|200|24||
+scrolllist||||||0|0|0|72|200|568||
+item|hist0||https://www.google.com/intl/en/about/products?tab=ih||'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_go.sh' 'go' 'https://www.google.com/intl/en/about/products?tab=ih'|1|0|0|72|200|24||
+item|hist1||https://www.google.com/imghp?hl=en&ogbl||'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_go.sh' 'go' 'https://www.google.com/imghp?hl=en&ogbl'|2|0|0|96|200|24||
+item|hist2||www.google.com||'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_go.sh' 'go' 'www.google.com'|3|0|0|120|200|24||
+panel||||||0|0|200|24|760|616||
+row||toolbar||||0|0|200|24|760|24||
+item|nb-back|quiet|Back||'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_back.sh' 'back'|4|0|200|24|108|24||
+item|nb-fwd|quiet|Forward||'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_forward.sh' 'forward'|5|0|308|24|108|24||
+item|nb-stop|quiet|Stop||'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_stop.sh' 'stop'|6|0|416|24|108|24||
+item|nb-reload|quiet|Reload||'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_reload.sh' 'reload'|7|0|524|24|108|24||
+item|nb-home|quiet|Home||'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_go.sh' 'go' 'https://example.com'|8|0|632|24|108|24||
+item|nb-bm|quiet|Bookmark||'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_bookmark.sh' 'bookmark'|9|0|740|24|108|24||
+item|nb-close|quiet|Close tab||'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_closetab.sh' 'closetab'|10|0|848|24|108|24||
+row||toolbar||||0|0|200|48|760|24||
+item|tab0|quiet|Google's products ||'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_tab.sh' 'tab' '0'|11|0|200|48|253|24||
+item|tab1|quiet|*Network Browser||'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_tab.sh' 'tab' '1'|12|0|453|48|253|24||
+item|nb-newtab|quiet|New tab||'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_newtab.sh' 'newtab'|13|0|706|48|253|24||
+cli_io|address|top,nb-address|URL: ||'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/ops/nb_write_go.sh' 'go' '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/network-browser-hq.chtpm'|14|0|200|72|760|24|address|
+text|status|nb-status|Status: idle|||0|0|200|96|760|24||
+scrolllist||from-top,nb-content||||0|0|200|120|760|520||
+text|title0|page-title|Network Browser|||0|0|200|120|760|24||
+text|text1||Ready - enter a URL above|||0|0|200|144|760|24||
+item|chrome-close||X||CLOSE|16|0|918|2|32|20||
+item|chrome-fullscreen||!||TOGGLE_FULLSCREEN|15|0|878|2|32|20||

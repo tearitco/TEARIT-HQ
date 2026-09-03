@@ -5,7 +5,7 @@ RELATION | echo-nova | 240
 RELATION | nova-quill | 213
 RELATION | echo-quill | 220
 RELATION | moxie-sage | 6
-RELATION | bravo-sage | 19
+RELATION | bravo-sage | 20
 RELATION | bravo-pip | 6
 RELATION | daoist-evolutionist | 135
 RELATION | evolutionist-theologian | 128
