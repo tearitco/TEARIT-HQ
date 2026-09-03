@@ -16,6 +16,6 @@
 ## 🗓️ Status
 
 - ✅ Install v1 proven (KPI#4/#5). See sprint doc `2&3-jul31-sprint.md` Phase II. **OBSOLETE** — predates khtpm taskbar.
-- 🚧 **HARNECIENT fresh install** — design written (`04.harnecient-fresh-install-design.md`), **code not started**. Working offline-first so a disconnect doesn't lose the plan.
+- ✅ **HARNECIENT fresh install** — designed (`04.harnecient-fresh-install-design.md`) AND **implemented 2026-09-02** as the `tearit-install` + `tearit-hq-payload` two-repo pipeline (see `../README.md`). Product name is now `tearit-hq`, passed as an argument.
 - 🚧 gitlet versioning — **strategy drafted, not wired.** This is a proposal for review.
 - ⏭️ Next wave: **agentic AI systems capabilities** (back to `045.muchi-pal-agent🤖️+1`).
