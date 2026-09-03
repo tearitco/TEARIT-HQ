@@ -7,6 +7,8 @@
  * here matches actual current behavior, not a new design decision. */
 window { background: #1c1c1c; }
 item { color: #cccccc; }
+window.dock-header, window.dock-bottom { background: #1c1c1c; }
+.dock-cell { color: #cccccc; font-family: Noto Sans CJK SC; font-size: 13px; }
 
 /* REAL, NEW 2026-09-03 (direct live report: "db-hq uses completely
  * different render for x[] button" - a real, visible bordered box, not
