@@ -21,6 +21,11 @@ if [ -z "$HOUSE_ROOT" ] || [ ! -d "$HOUSE_ROOT" ]; then
 fi
 HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 
+# 2026-09-03 static-xhtpm port: route to the taskbar-settings-pal window.
+# TBSET_ROLLBACK=1 keeps the old taskbar_settings.chtpm / g_is_swatch_picker path.
+_TBP="$HOUSE_ROOT/&.widgits/taskbar-settings/button-pal.sh"
+[ -z "${TBSET_ROLLBACK:-}" ] && [ -f "$_TBP" ] && exec sh "$_TBP" "$HOUSE_ROOT"
+
 # REAL Stage 5 §5d.3 step 6 (2026-08-16, khtpm-merge-how2.md §5d) - the
 # real, literal binary merge: taskbar-settings now runs through the
 # SAME compiled khtpm_core_render.+x entity-menu already uses,

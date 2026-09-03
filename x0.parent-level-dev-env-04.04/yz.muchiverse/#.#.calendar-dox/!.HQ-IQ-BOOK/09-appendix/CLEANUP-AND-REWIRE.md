@@ -28,7 +28,29 @@ before sign-off.
 
 ---
 
-## 1. Launcher rewire  *(low risk once signed off; safe for a subagent)*
+## 1. Launcher rewire
+
+**DONE 2026-09-03** (verification run passed first). Each keeps an
+`X_ROLLBACK=1` env fallback to the pre-port window:
+
+| launcher | env | routes to |
+|---|---|---|
+| `&.hq-apps/chat-hai/button.sh` | `CHAT_HAI_ROLLBACK` | `chat-hai/button-pal.sh` |
+| `&.hq-apps/stats-hq/open_stats_hq.sh` | `STATS_ROLLBACK` | `stats-hq/button-pal.sh` |
+| `*.monads/*.livedesk-taskbar/ops/button_taskbar_settings.sh` | `TBSET_ROLLBACK` | `&.widgits/taskbar-settings/button-pal.sh` |
+| `&.widgits/bookmarks/bm_menu.sh` (launch path only; verbs unaffected) | `BM_ROLLBACK` | `bookmarks/button-pal.sh` |
+| `&.widgits/events-hq/button.sh` | `EZ_PKG_DIR` set | already retargeted (earlier) |
+| `&.hq-apps/network/button.sh` | `NB_ROLLBACK` | already retargeted (earlier) |
+
+**Still on the old path (deliberate):**
+- `#.desktop/livedesk_taskbar.pdl` `livedesk:open-palette:<cat>` — handled
+  by the taskbar manager verb, which is in `khtpm_taskbar_manager.c`
+  (concurrently edited). Fold the emojis/elements retarget into the
+  cleanup PR when that file is being touched. rmmv stays old.
+- `#.desktop/livedesk_launchers.pdl` `launcher_db` — waits on db-hq-pal
+  DB-record field editing.
+
+### (original notes) — old sub-launcher change plan
 
 Point the real launch paths at the new windows, keeping the old as a
 one-env-var rollback. NONE of this touches `khtpm_core_render.c`.

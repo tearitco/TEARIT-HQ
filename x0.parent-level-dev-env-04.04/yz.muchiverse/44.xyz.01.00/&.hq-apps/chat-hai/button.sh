@@ -11,6 +11,10 @@ fi
 HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
+
+# 2026-09-03 static-xhtpm port: route to button-pal.sh (chat-hai.xhtpm +
+# compiled projector). CHAT_HAI_ROLLBACK=1 keeps the old chat-hai.chtpm.
+[ -z "${CHAT_HAI_ROLLBACK:-}" ] && exec sh "$HERE/button-pal.sh" "$HOUSE_ROOT"
 OPS_DIR="$HERE/ops"
 # REAL §5d.12 (2026-08-16, khtpm-merge-how2.md) - chat-hai merged into
 # the shared khtpm_core_render.+x binary (last of the 5 window

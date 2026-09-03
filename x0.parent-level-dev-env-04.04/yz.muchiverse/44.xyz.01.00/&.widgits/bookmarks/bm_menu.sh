@@ -168,6 +168,13 @@ case "${1:-}" in
         ;;
 esac
 
+# 2026-09-03 static-xhtpm port: the LAUNCH path (bm_menu.sh <house> <pal>)
+# routes to button-pal.sh (bookmarks-pal.xhtpm + projector). The verb
+# calls above (add / list / consumed-newplus) already exited. BM_ROLLBACK=1
+# keeps the old per-pal provisioned bookmarks.chtpm path below.
+_BMP="$(cd "$(dirname "$0")" && pwd)/button-pal.sh"
+[ -z "${BM_ROLLBACK:-}" ] && [ -x "$_BMP" ] && [ -n "${2:-}" ] && exec sh "$_BMP" "$2" "$1"
+
 HOUSE="$1"; PAL="$2"
 export GDK_BACKEND=x11
 

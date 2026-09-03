@@ -23,6 +23,11 @@ if [ -z "$HOUSE_ROOT" ] || [ ! -d "$HOUSE_ROOT" ]; then
 fi
 HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 
+SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
+# 2026-09-03 static-xhtpm port: route to button-pal.sh (stats-hq-pal.xhtpm).
+# STATS_ROLLBACK=1 keeps the old dashboard.chtpm path.
+[ -z "${STATS_ROLLBACK:-}" ] && [ -x "$SELF_DIR/button-pal.sh" ] && exec sh "$SELF_DIR/button-pal.sh" "$HOUSE_ROOT"
+
 # REAL Stage 5-style single-binary merge (2026-08-25, matching db-hq's
 # own 2026-08-16 §5d.10 migration exactly): stats-hq now runs through
 # the SAME compiled khtpm_core_render.+x db-hq/events-hq/chat-hai
