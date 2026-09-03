@@ -40,6 +40,38 @@ sprite-matte fix). `button-pal.sh elements` → `n_tiles=49`, all laid out
 (compounds without a pre-generated sprite fall back to the glyph label,
 same as the old C path).
 
+## rmmv port plan (the one real remaining palette)
+
+rmmv (rpg-maker tiles) is not a plain sprite grid - it has:
+- a **tab strip** of sheet letters A-E (`publish_rmmv()` in
+  `palettes_manager.c` -> `g_pal_active_tileset`), click ->
+  `palettes_menu.sh set-rmmv-tab <pkg> <letter>`
+- a **tileset chooser row** (`publish_rmmv_options()` ->
+  `g_pal_opt_tileset_*`), click -> `set-rmmv-tileset <pkg> <prefix>`
+- the **tile grid**, but each tile click **arms a brush** (not `place`):
+  `palettes_menu.sh arm-rmmv <sprite_dir> <tileset> <category> <label>
+   <winx> <winy> <winw> <winh>` -> `tp_arm_placer_rmmv.+x` (full-screen
+  InputOnly click-capture; see its header for the XWayland history)
+- an **armed hint line** the renderer polls from `state/rmmv_armed.txt`
+
+Port shape (no g_is_palettes):
+1. `palettes-rmmv.xhtpm`: `<tabbar class="rmmv-tabs">` (5 `<tab>` A-E,
+   `action="... set-rmmv-tab ${PKG} <L>"`), a second `<tabbar>` or a
+   `<repeat>` row for tileset prefixes, then the `<repeat count="${n_tiles}"
+   class="swatch">` grid with `action="... arm-rmmv ${t.sprite} ..."`,
+   and a `<text label="${armed_hint}" show="${armed}"/>`.
+2. `palettes_projector.c` (extend, or an rmmv branch): read
+   `palettes-rmmv_state.txt` + `rmmv_active.txt` + `rmmv_armed.txt`;
+   emit `n_tiles`/`t_<n>_sprite`/`t_<n>_arm_args`, `n_tabs`/`tab_<n>_*`,
+   `n_sets`/`set_<n>_*`, `armed`/`armed_hint`, active-class flags.
+   The window rect for `arm-rmmv` args 5-8: pass `${PID}` isn't enough -
+   needs x/y/w/h. Either the renderer exposes `${WIN_X}` etc. (new
+   builtins, like `${PID}`) OR `arm-rmmv` reads the window geometry
+   itself from `/proc` + xdotool-free `XGetGeometry` in a tiny helper.
+3. `palettes_menu.sh` verbs (`set-rmmv-tab` / `-tileset` / `arm-rmmv`)
+   are UNCHANGED - already the file-ops split.
+The armed click-capture (`tp_arm_placer_rmmv.+x`) is unchanged.
+
 ## NOT ported — follow-ups
 - **rmmv** (rpg-maker tiles): tab strip (A-E sheet letters), tileset
   chooser row, and the armed-brush click-capture chain
