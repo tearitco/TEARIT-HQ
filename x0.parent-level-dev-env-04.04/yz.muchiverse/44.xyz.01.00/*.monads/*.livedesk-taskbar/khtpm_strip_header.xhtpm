@@ -18,6 +18,7 @@
 <item id="strip-cell-13" label="network" class="dock-cell" onclick="ACTIVATE"/>
 <item id="strip-cell-14" label="h-ai" class="dock-cell" onclick="ACTIVATE"/>
 <item id="strip-cell-15" label="${datetime}" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-16" label="pid ${PID}" class="dock-cell" onclick="ACTIVATE"/>
 </row>
 <repeat count="${n_hqitems}" bind="hi">
 <item class="dropdown-child" target_id="${drop_target}" label="${hi.label}" sprite="${hi.sprite}" action="${hi.cmd}"/>

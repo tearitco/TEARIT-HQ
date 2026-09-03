@@ -919,6 +919,17 @@ static const char *kh_get_var(const char *name) {
      * (what the renderer passes as $1 to every action anyway). */
     if (strcmp(name, "HOUSE") == 0) return g_house_root;
     if (strcmp(name, "PKG") == 0)   return g_package_dir;
+    /* ${PID} = this renderer process's own pid - the id the frame dump
+     * (entity_menu_frame_<pid>.txt) and the agent history injector
+     * (entity_menu_history/<pid>.txt) are keyed by. Lets a static
+     * template surface it (e.g. the strip's cell after the clock)
+     * without any manager involvement, since the manager is a
+     * different process. */
+    if (strcmp(name, "PID") == 0) {
+        static char kh_pidbuf[16];
+        snprintf(kh_pidbuf, sizeof(kh_pidbuf), "%d", (int)getpid());
+        return kh_pidbuf;
+    }
     for (int i = 0; i < g_kh_nvars; i++)
         if (strcmp(g_kh_vars[i].name, name) == 0) return g_kh_vars[i].value;
     return "";
