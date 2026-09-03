@@ -203,8 +203,107 @@ If language coverage becomes the wall:
 | 6 | client-side routing, cookie-gated content, `history` back/forward |
 | 7 | carousels, lazy images, sticky UI, anything that measures layout |
 
-Full parity with a real browser is out of scope forever. Rungs 1-5 get
-"most content sites and light SPAs usable", which is the goal.
+See §8 for what "parity" actually means and how the ceiling could be
+raised. Rungs 1-5 get "most content sites and light SPAs usable", which
+is the near-term goal.
+
+---
+
+## 8. The ceiling — what "browser parity" means, and how to change it
+
+An earlier draft said "full parity is out of scope forever." That is
+too absolute. Precise version:
+
+### "Parity" is two different problems
+
+1. **Functional usability** — can a human read the page, click things,
+   fill a form, log in, search. This is *bounded and reachable* for a
+   large fraction of the web (see §5). Rungs 1-6 + a real block/inline
+   CSS layout pass get you: content sites, wikis, docs, blogs, forums,
+   most reference/government/library sites, and light SPAs.
+2. **App-platform fidelity** — running the modern web *as an application
+   runtime*: WebGL/WebGPU, WASM, Service Workers, WebRTC, Web Audio,
+   IndexedDB, the full CSS spec (flex/grid/subgrid, containment,
+   transforms, filters, `@container`), a JIT JS engine, the HTML5
+   parser's exact error recovery, font shaping, a compositor, site
+   isolation, HTTP/2-3 + TLS + cache semantics. This is millions of
+   lines of C++ per browser, hundreds of full-time engineers. Hand-
+   building it in this house's C is genuinely not realistic.
+
+My "forever" applied to #2. #1 is a real project with an end.
+
+### Which sites fall where
+
+| site class | reachable by hand (rungs + CSS layout)? |
+|---|---|
+| static / server-rendered content, docs, wikis, forums, blogs | **yes — to near-full usability** |
+| progressive-enhancement JS (widgets, forms, menus) | **yes** (rungs 2-3) |
+| light SPA: fetch JSON → render a list/detail | **yes** (rungs 4-6) |
+| heavy SPA (Gmail, Docs, Figma, Discord, Maps, Notion) | **no** — needs #2 |
+| canvas/WebGL games, WASM apps, DRM video, WebRTC calls | **no** — needs #2 |
+
+Realistically the hand-built ceiling is **"the readable web + simple
+interactive sites"** — which is most of the *informational* web, and
+none of the *application* web.
+
+### Three ways to raise or remove the ceiling
+
+**A. Stay hand-built, aim at #1 only.** Rungs 1-6 + add a real CSS
+**block/inline/table/basic-flex layout engine** (this is the missing
+piece for visual fidelity — right now content renders as a flat text
+list). Reference implementations that prove the size: `litehtml`
+(~30k lines C++, block+inline+tables+some flex, no JS — used by several
+small mail/help viewers), Dillo's own layout (C), NetSurf's
+libnslayout, the old KHTML. Pair `litehtml` (or a from-scratch
+equivalent) + **QuickJS** + the fetch layer and you have a "small
+browser" that renders a genuine fraction of the web correctly. Scope:
+multi-month, but *bounded* — it has a done state.
+
+**B. Embed a real engine for the browser widget only.** The nuclear
+option, and a legitimate answer to "what can I do to change that":
+decide the house is OK taking one large dependency *for this one
+widget*.
+- **Servo** (`libservo`, Rust) — actively revived since 2023, designed
+  to be embeddable, MPL-licensed, no Google/Apple control. Closest to
+  "a real modern engine you can embed without shipping Chromium."
+- **WebKitGTK** — mature, embeddable, what GNOME Web/epiphany uses.
+- **CEF** (Chromium Embedded Framework) — full Chrome, ~200 MB, the
+  "it just works" option, but it *is* shipping Chromium.
+- Trade-off: instant #2-level parity, but it's no longer "our small C",
+  it's a browser engine as a black-box dependency + its update
+  treadmill + its attack surface. That's a house-values decision, not a
+  technical one.
+
+**C. Hybrid.** Keep the hand-built engine as the default (fast, small,
+private, no JS-app attack surface), and add a "open in real engine"
+escape hatch (spawn a WebKitGTK/Servo window) for the pages the
+hand-built one can't handle. Best of both; the escape hatch is ~a day
+of work once you pick an engine, and most browsing never needs it.
+
+### What *you* can do to move this
+
+1. **Pick the target.** "Readable web, fully usable" (A) vs "runs
+   everything" (B) vs "hand-built default + escape hatch" (C). Everything
+   downstream depends on that one call.
+2. If **A/C**: fund the **CSS layout engine** — that's the real
+   long-pole for visual parity, more than JS. Decide from-scratch vs
+   vendoring `litehtml`.
+3. If **B/C**: pick the engine (Servo if "our values matter", WebKitGTK
+   if "mature + embeddable", CEF if "just works"), and accept the
+   dependency.
+4. Regardless: **rung 1 is worth doing now** (see §6) — it's pure win
+   under every target.
+
+### Honest bottom line
+
+- "A hand-built browser that renders and lets you use most *content*
+  sites and light SPAs" — **yes, reachable**, it's a real project with a
+  finish line (rungs + a CSS layout engine).
+- "A hand-built browser at parity with Chrome as an app platform" —
+  **no**, that specific thing is not realistic without embedding a real
+  engine.
+- The ceiling is a *choice*, not a law: option B/C removes it entirely
+  at the cost of one large dependency.
 
 ---
 
