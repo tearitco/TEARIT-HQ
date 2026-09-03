@@ -6724,6 +6724,9 @@ static Elem g_default_close_elem_storage;
 static Elem *g_default_close_elem = &g_default_close_elem_storage;
 static Elem g_default_fullscreen_elem_storage;
 static Elem *g_default_fullscreen_elem = &g_default_fullscreen_elem_storage;
+static Elem g_default_minimize_elem_storage;
+static Elem *g_default_minimize_elem = &g_default_minimize_elem_storage;
+static int g_hq_minimized = 0;
 static int g_default_is_fullscreen = 0;
 static int g_default_pre_fullscreen_x = 0, g_default_pre_fullscreen_y = 0;
 
@@ -7233,6 +7236,19 @@ static int layout_sidebar_panel(Elem *page) {
          * (g_dbhq_close_w) is already scaled(56) for exactly this
          * reason - matched here, not invented. */
         int btn_w = 56, btn_h = CHROME_H - 4, gap = 8, right_margin = 10;
+
+        memset(g_default_minimize_elem, 0, sizeof(*g_default_minimize_elem));
+        snprintf(g_default_minimize_elem->tag, sizeof(g_default_minimize_elem->tag), "item");
+        snprintf(g_default_minimize_elem->id, sizeof(g_default_minimize_elem->id), "chrome-minimize");
+        snprintf(g_default_minimize_elem->label, sizeof(g_default_minimize_elem->label), "_");
+        snprintf(g_default_minimize_elem->onclick, sizeof(g_default_minimize_elem->onclick), "MINIMIZE");
+        g_default_minimize_elem->x = g_win_w - btn_w * 3 - gap * 2 - right_margin;
+        g_default_minimize_elem->y = 2;
+        g_default_minimize_elem->w = btn_w;
+        g_default_minimize_elem->h = btn_h;
+        css_compute_style(&g_sheet, g_default_minimize_elem->tag, g_default_minimize_elem->id, NULL, 0, 0, &g_default_minimize_elem->style);
+        g_default_minimize_elem->nav_index = ++g_n_nav;
+        g_nav[g_n_nav - 1] = g_default_minimize_elem;
 
         memset(g_default_fullscreen_elem, 0, sizeof(*g_default_fullscreen_elem));
         snprintf(g_default_fullscreen_elem->tag, sizeof(g_default_fullscreen_elem->tag), "item");
@@ -8145,6 +8161,29 @@ static void dispatch(const char *action) {
         redraw();
         return;
     }
+    if (strcmp(action, "MINIMIZE") == 0) {
+        if (!window_is_dock() && g_default_has_sidebar_panel) {
+            g_hq_minimized = 1;
+            {
+                char reg_path[PATH_BUF], reg_tmp[PATH_BUF];
+                const char *title_raw = (g_window && g_window->label[0] ? g_window->label : g_current_page);
+                snprintf(reg_path, sizeof(reg_path), "%s/#.desktop/livedesk_hq_windows_%d.txt",
+                         g_house_root, (int)getpid());
+                snprintf(reg_tmp, sizeof(reg_tmp), "%s.tmp", reg_path);
+                FILE *rf = fopen(reg_tmp, "w");
+                if (rf) {
+                    fprintf(rf, "win=0x%lx|pid=%d|title=%s|x=%d|y=%d|w=%d|h=%d|minimized=1|focused=0\n",
+                            (unsigned long)win, (int)getpid(), title_raw,
+                            g_win_x, g_win_y, g_win_w, g_win_h);
+                    fclose(rf);
+                    rename(reg_tmp, reg_path);
+                }
+            }
+            XUnmapWindow(dpy, win);
+            XFlush(dpy);
+        }
+        return;
+    }
     if (strcmp(action, "CLOSE") == 0) { g_quit = 1; return; }
     /* REAL, NEW 2026-09-01 - the sidebar+panel chrome "!" button (see
      * g_default_is_fullscreen's own declaration comment) - a real,
@@ -8561,9 +8600,9 @@ static void redraw(void) {
             snprintf(reg_tmp, sizeof(reg_tmp), "%s.tmp", reg_path);
             FILE *rf = fopen(reg_tmp, "w");
             if (rf) {
-                fprintf(rf, "win=0x%lx|pid=%d|title=%s|x=%d|y=%d|w=%d|h=%d|minimized=0|focused=%d\n",
+                fprintf(rf, "win=0x%lx|pid=%d|title=%s|x=%d|y=%d|w=%d|h=%d|minimized=%d|focused=%d\n",
                         (unsigned long)win, (int)getpid(), title_raw, g_win_x, g_win_y, g_win_w, g_win_h,
-                        (focus_win == win) ? 1 : 0);
+                        g_hq_minimized ? 1 : 0, (focus_win == win) ? 1 : 0);
                 fclose(rf);
                 rename(reg_tmp, reg_path);
             }
@@ -8624,6 +8663,7 @@ static void redraw(void) {
              * harmless no-op (both real-elem's own w/h stay 0) for any
              * OTHER default-mode page, which never touches these two
              * statics at all. */
+            if (g_default_minimize_elem->w > 0) dbhq_serialize_frame_elem(ff, g_default_minimize_elem);
             if (g_default_close_elem->w > 0) dbhq_serialize_frame_elem(ff, g_default_close_elem);
             if (g_default_fullscreen_elem->w > 0) dbhq_serialize_frame_elem(ff, g_default_fullscreen_elem);
             /* REAL, NEW 2026-09-03 - generic scrollbar up/down arrows
@@ -9614,6 +9654,20 @@ static void hq_idle_tick(void) {
         }
     }
     if (poll_agent_history() > 0 && !g_quit) hq_request_redraw();
+    if (g_default_has_sidebar_panel && !window_is_dock() && dpy && win) {
+        char restore_path[PATH_BUF];
+        snprintf(restore_path, sizeof(restore_path),
+                 "%s/#.desktop/livedesk_hq_restore_%d.txt", g_house_root, (int)getpid());
+        if (access(restore_path, F_OK) == 0) {
+            unlink(restore_path);
+            g_hq_minimized = 0;
+            XMapWindow(dpy, win);
+            XRaiseWindow(dpy, win);
+            XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
+            XFlush(dpy);
+            hq_request_redraw();
+        }
+    }
     if (g_is_db_hq || g_is_events_hq) nav_tab_poll_active();
     if (g_quit) return;
     if (g_is_db_hq) {
@@ -9968,8 +10022,10 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
              * (g_default_has_sidebar_panel), else keep the original
              * 60px for any other popup that has just a plain close
              * corner and no chrome trio of its own. */
-            int chrome_zone_x = (g_default_has_sidebar_panel && g_default_fullscreen_elem->w > 0)
-                                 ? g_default_fullscreen_elem->x : g_win_w - 60;
+            int chrome_zone_x = (g_default_has_sidebar_panel && g_default_minimize_elem->w > 0)
+                                 ? g_default_minimize_elem->x
+                                 : ((g_default_has_sidebar_panel && g_default_fullscreen_elem->w > 0)
+                                    ? g_default_fullscreen_elem->x : g_win_w - 60);
             if (!window_is_dock() && ev->xbutton.button == 1 && ev->xbutton.y < CHROME_H &&
                 !(ev->xbutton.x >= chrome_zone_x && ev->xbutton.x < g_win_w)) {
                 g_popup_dragging = 1;
