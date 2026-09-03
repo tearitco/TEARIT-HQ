@@ -722,6 +722,19 @@ static Elem *find_page(const char *name) {
  * a stale armed-field pointer from the old tree is not just wrong, it
  * aliases whatever the new parse happens to write at that pool slot). */
 static Elem *g_default_input_elem;
+/* REAL, NEW 2026-09-03 (direct request: "make menu dropdown... work for
+ * all layouts", after live-checking that piececraft-hq's own File/Desk
+ * dropdown is hand-built, mode-specific C predating CENTROID_GOLD_STD,
+ * and the real ACTIVATE/DEACTIVATE scope mechanism is currently wired
+ * only into db-hq's own dispatch) - the SAME real concept (one active
+ * "open" trigger at a time), generic to default mode instead of
+ * db-hq-only, so any default-mode app (network-browser, open-hai,
+ * chat-hai, co-lab-hai) gets a real dropdown for free just by using
+ * onclick="ACTIVATE" + class="dropdown-child" target_id="<trigger id>"
+ * in its own generated .chtpm - zero new C per app. Same dangling-
+ * pointer risk as g_default_input_elem above (elem_new()'s pool reuse
+ * on reparse) - reset alongside it in reparse_chtpm_if_changed(). */
+static Elem *g_default_active_scope_root;
 /* Forward declaration - real definition (with its own X11/Xft section
  * header comment) lives further down this file. Needed here because a
  * reparse that disarms a cli_io field mid-type must also release any
@@ -767,6 +780,10 @@ static int reparse_chtpm_if_changed(void) {
      * nothing was actually armed/grabbed. */
     if (g_default_input_elem) XUngrabKeyboard(dpy, CurrentTime);
     g_default_input_elem = NULL;
+    /* Same real dangling-pointer reasoning as g_default_input_elem just
+     * above - a stale dropdown-open pointer into a freed/reused pool
+     * slot is a real, live crash risk, not a cosmetic one. */
+    g_default_active_scope_root = NULL;
     g_n_elems = 0;
     Elem *new_window = parse_chtpm(g_chtpm_path);
     if (!new_window) return 0;
@@ -3099,12 +3116,25 @@ static void dbhq_serialize_frame_subtree(FILE *f, Elem *e) {
     for (int i = 0; i < e->n_children; i++) {
         Elem *c = e->children[i];
         if (strcmp(c->tag, "title") == 0 || strcmp(c->tag, "module") == 0) continue;
+        /* REAL FIX 2026-09-03 - this default/popup-mode redraw() never
+         * calls the shared render_tree() at all (it goes through this
+         * serialize-to-file/paint-from-file path instead, see redraw()'s
+         * own header comment); render_tree()'s own class="dropdown-child"
+         * defer (added for the "Menu" dropdown, "work for all layouts")
+         * has zero effect here, root cause of the first live test
+         * drawing nothing visible despite draw_elem() genuinely being
+         * called with the right x/y/w/h/bg - it was painted, then
+         * immediately painted-over by whatever line came after it in
+         * this file, same real reason <title> is deferred below. Same
+         * fix, same place, mirrored. */
+        if (elem_has_class(c, "dropdown-child")) continue;
         dbhq_serialize_frame_elem(f, c);
         dbhq_serialize_frame_subtree(f, c);
     }
     for (int i = 0; i < e->n_children; i++) {
         Elem *c = e->children[i];
         if (strcmp(c->tag, "title") == 0) dbhq_serialize_frame_elem(f, c);
+        else if (elem_has_class(c, "dropdown-child")) { dbhq_serialize_frame_elem(f, c); dbhq_serialize_frame_subtree(f, c); }
     }
 }
 
@@ -6588,6 +6618,13 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
     int y_cursor = y;
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
+        /* REAL, NEW 2026-09-03 - a dropdown-child never consumes fixed-
+         * row space of its own; it's positioned as a real overlay,
+         * relative to its trigger, in the dedicated pass right after
+         * this loop (which runs once every OTHER row already has its
+         * own real, final x/y/h - a trigger living inside a toolbar
+         * row, not just a bare <item>, needs that same guarantee). */
+        if (elem_has_class(c, "dropdown-child")) continue;
         if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0) {
             /* REAL FIX 2026-09-03 (direct live report: co-lab-hai's own
              * PENDING banner still didn't wrap after scroll_row_span()'s
@@ -6620,6 +6657,37 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
         /* scrolllist itself is positioned in its own real pass below,
          * once the fixed-row total (y_cursor's own final advance) is
          * known - skipped here on purpose. */
+    }
+    /* REAL, NEW 2026-09-03 - real, generic dropdown-child overlay pass.
+     * Runs after every other row/toolbar in this container has its own
+     * final x/y/h (a trigger can live inside a toolbar row, laid out
+     * above, not just as a bare <item>) - find_by_id() searches the
+     * WHOLE window, not just this container, so a trigger elsewhere on
+     * the page still works ("for all layouts", not sidebar/panel-
+     * specific). Multiple dropdown-children sharing one target_id
+     * stack vertically below the trigger, in tree order. Closed (not
+     * the active scope): positioned off-screen, same -100000 sentinel
+     * this file's own hidden-element convention already uses
+     * everywhere else - real, not just invisible-but-still-clickable. */
+    {
+        char last_target[64] = "";
+        int stack_n = 0;
+        for (int i = 0; i < container->n_children; i++) {
+            Elem *c = container->children[i];
+            if (!elem_has_class(c, "dropdown-child")) continue;
+            Elem *trigger = c->target_id[0] ? find_by_id(g_window, c->target_id) : NULL;
+            int open = trigger && (g_default_active_scope_root == trigger);
+            if (strcmp(last_target, c->target_id) != 0) { stack_n = 0; snprintf(last_target, sizeof(last_target), "%s", c->target_id); }
+            css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
+            if (open) {
+                int dw = trigger->w > 0 ? trigger->w : w;
+                c->x = trigger->x; c->y = trigger->y + trigger->h + stack_n * ROW_H; c->w = dw; c->h = ROW_H;
+                c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c;
+            } else {
+                c->x = x; c->y = -100000; c->w = 0; c->h = 0; c->nav_index = 0;
+            }
+            stack_n++;
+        }
     }
     if (scrolllist) {
         int list_h = (y + h) - y_cursor - composer_h;
@@ -6670,6 +6738,30 @@ static int layout_sidebar_panel(Elem *page) {
     }
     g_window->w = g_win_w;
     g_window->h = g_win_h;
+
+    /* REAL, NEW 2026-09-03 (direct live report: "X always hangs a bit
+     * off screen on new hq-x11 window project creations") - root cause:
+     * g_win_x/g_win_y default to a flat, content-blind 300,300 (see
+     * their own declaration) whenever a brand-new app has no saved
+     * position yet in hq_ui.pdl; g_win_w/g_win_h just above is real,
+     * content-driven, and can genuinely exceed what 300+w leaves on a
+     * real monitor - the chrome "X"/"!" pair (right after this
+     * function, computed FROM g_win_w) then sits past the actual
+     * screen edge, unreachable. Generic, real fix here rather than a
+     * per-app tweak: clamp so the window's own real right/bottom edge
+     * never lands past the real display, same real DisplayWidth/
+     * DisplayHeight this same function already uses for fullscreen
+     * above - every future new app gets this for free, not just the
+     * one this was found on. Only pulls IN from an off-screen edge,
+     * never re-centers a window the human deliberately dragged
+     * partway off - a real position clamp, not a real recenter. */
+    if (!g_default_is_fullscreen) {
+        int sw = DisplayWidth(dpy, screen), sh = DisplayHeight(dpy, screen);
+        if (g_win_x + g_win_w > sw) g_win_x = sw - g_win_w;
+        if (g_win_y + g_win_h > sh) g_win_y = sh - g_win_h;
+        if (g_win_x < 0) g_win_x = 0;
+        if (g_win_y < 0) g_win_y = 0;
+    }
 
     {
         int sidebar_w = SIDEBAR_W;
@@ -7106,6 +7198,23 @@ static void activate_focused(void) {
      * Escape-branch comment for the full real diagnosis. Grab taken
      * HERE (arm time), released on every real disarm path. */
     if (strcmp(item->tag, "cli_io") == 0) { g_default_input_elem = item; dbhq_grab_keyboard_retry(); return; }
+    /* REAL, NEW 2026-09-03 - real, generic dropdown trigger, checked
+     * BEFORE the generic dispatch() fallback (same real "an element
+     * with its own recognized onclick verb handles itself" order
+     * dbhq_activate_elem() already uses for its own ACTIVATE check).
+     * Clicking the trigger again while already open closes it (a real
+     * toggle, not just an open-only action) - matches ordinary
+     * dropdown/menu-button behavior everywhere else, not invented here. */
+    if (strcmp(item->onclick, "ACTIVATE") == 0) {
+        g_default_active_scope_root = (g_default_active_scope_root == item) ? NULL : item;
+        return;
+    }
+    /* A dropdown-child's own real action (its "action=" attribute, run
+     * via dispatch() below through the normal fallthrough) should also
+     * close the menu it came from - a selected option leaving its own
+     * dropdown open is a real, if minor, real-world UX bug this avoids
+     * for free, not a separate feature to build later. */
+    if (elem_has_class(item, "dropdown-child")) g_default_active_scope_root = NULL;
     if (item->onclick[0]) dispatch(item->onclick);
 }
 
@@ -7325,6 +7434,17 @@ static void redraw(void) {
             XResizeWindow(dpy, win, (unsigned)g_win_w, (unsigned)g_win_h);
             XSync(dpy, False);
         }
+        /* REAL, NEW 2026-09-03 - same real off-screen-chrome fix as
+         * layout_sidebar_panel()'s own g_win_x/g_win_y clamp (see its
+         * header comment); that clamp only updates the in-memory
+         * variables, this is what actually MOVES the real X11 window to
+         * match, same real "check real XGetWindowAttributes, only act
+         * on a genuine mismatch" pattern the resize check right above
+         * already uses. */
+        if (XGetWindowAttributes(dpy, win, &wa) && (wa.x != g_win_x || wa.y != g_win_y)) {
+            XMoveWindow(dpy, win, g_win_x, g_win_y);
+            XSync(dpy, False);
+        }
     }
     XSync(dpy, False);
     XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
@@ -7435,6 +7555,15 @@ static void handle_key(KeySym ks, char ch) {
     if (ch == 'p') { dump_frame_png(); return; }
     if (g_is_db_hq) { dbhq_handle_key(ks, ch); return; }
     if (ks == XK_Return || ks == XK_KP_Enter) { activate_focused(); return; }
+    /* REAL, NEW 2026-09-03 (direct instruction: "esc closes drop down
+     * and deactivates", matching the taskbar's own separate ktb_hq_
+     * close() on Escape) - checked BEFORE the plain g_quit=1 fallback
+     * right below, same real key-order class as every other "something
+     * is armed/open, Escape closes THAT first" exception in this
+     * function (default_cli_io_handle_key()'s own Escape branch is the
+     * proven precedent - this is the same real idea for the generic
+     * dropdown instead of a cli_io field). */
+    if (ks == XK_Escape && g_default_active_scope_root) { g_default_active_scope_root = NULL; return; }
     if (ks == XK_Escape) { g_quit = 1; return; }
     /* REAL, NEW 2026-09-01 - a real, generic second action any focused
      * <item> can carry (see Elem's own backspace_action field comment) -

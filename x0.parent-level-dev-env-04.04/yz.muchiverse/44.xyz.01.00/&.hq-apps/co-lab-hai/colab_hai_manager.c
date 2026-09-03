@@ -582,15 +582,16 @@ static void write_chtpm_projection(void) {
     CH_APPEND("    <panel>\n");
 
     /* Real, standing toolbar - always visible, not gated on pending.
-     * "Dir" opens this app's own real state dir for log inspection
-     * (direct request, 2026-09-02). A full dropdown "Menu" (matching
-     * piececraft-hq's own convention) + centered title is a real,
-     * separate, house-wide task (it touches the shared chrome-bar
-     * renderer every khtpm window uses, not just this app) - scoped
-     * out of this first cut on purpose, tracked in the roadmap doc. */
+     * REAL, NEW 2026-09-03 - "Menu" is now a real, generic dropdown
+     * (khtpm_core_render.c's own new class="dropdown-child" mechanism,
+     * "for all layouts" per direct request) instead of a bare "Dir"
+     * button - "Dir" and "FAQ" are its real children, more can be
+     * appended here later without any new UI concept. */
     CH_APPEND("      <row class=\"toolbar\">\n");
-    CH_APPEND("        <item id=\"ch-dir\" label=\"Dir\" action=\"'%s/ops/colab_hai_open_dir.sh'\"/>\n", g_package_dir);
+    CH_APPEND("        <item id=\"ch-menu\" label=\"Menu\" onclick=\"ACTIVATE\"/>\n");
     CH_APPEND("      </row>\n");
+    CH_APPEND("      <item id=\"ch-menu-dir\" label=\"Dir\" target_id=\"ch-menu\" class=\"dropdown-child\" action=\"'%s/ops/colab_hai_open_dir.sh'\"/>\n", g_package_dir);
+    CH_APPEND("      <item id=\"ch-menu-faq\" label=\"FAQ\" target_id=\"ch-menu\" class=\"dropdown-child\" action=\"'%s/ops/colab_hai_open_faq.sh'\"/>\n", g_package_dir);
 
     if (n_pending > 0) {
         char esc_agent[128], esc_msg[1200];

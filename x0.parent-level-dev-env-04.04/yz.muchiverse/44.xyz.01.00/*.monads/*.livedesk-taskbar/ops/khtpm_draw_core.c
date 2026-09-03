@@ -574,7 +574,16 @@ static void draw_elem(Elem *e, int hover_id_hash) {
          * already relied on to be unique per window (find_page()/
          * dispatch() etc. all key off id the same way). */
         int is_scope = (g_dbhq_active_scope_root && e == g_dbhq_active_scope_root) ||
-                       (g_default_input_elem && e->id[0] && strcmp(e->id, g_default_input_elem->id) == 0);
+                       (g_default_input_elem && e->id[0] && strcmp(e->id, g_default_input_elem->id) == 0) ||
+                       /* REAL, NEW 2026-09-03 - the generic "Menu" dropdown
+                        * trigger (g_default_active_scope_root, activate_
+                        * focused()'s own ACTIVATE toggle) reuses this SAME
+                        * "[^]" armed visual once open, same real reason and
+                        * same by-id compare as g_default_input_elem right
+                        * above (this draw call runs against a fresh temp
+                        * Elem parsed from the frame file, never the live
+                        * g_pool[] Elem, so pointer compare can't work here). */
+                       (g_default_active_scope_root && e->id[0] && strcmp(e->id, g_default_active_scope_root->id) == 0);
         elem_cursor_prefix(e, g_focus_nav, is_scope, prefix, sizeof(prefix));
         snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index);
         (void)focused;
@@ -868,11 +877,23 @@ static void render_tree(Elem *e, int depth) {
         Elem *c = e->children[i];
         if (strcmp(c->tag, "title") == 0) continue; /* deferred */
         if (strcmp(c->tag, "module") == 0) continue; /* pure config, never visual */
+        /* REAL, NEW 2026-09-03 - a real, generic dropdown ("Menu"
+         * request, "work for all layouts"): class="dropdown-child"
+         * defers to the SAME end-of-list pass <title> already uses,
+         * so a dropdown always draws on top of every sibling that
+         * comes after its trigger in the tree, regardless of where
+         * the trigger itself sits - reusing this file's own already-
+         * proven "draw this later" mechanism instead of inventing a
+         * second one. Real layout (khtpm_core_render.c) still decides
+         * WHERE it draws (or off-screen, when closed) - this only
+         * decides WHEN, in draw order. */
+        if (elem_has_class(c, "dropdown-child")) continue; /* deferred */
         draw_elem(c, 0);
         render_tree(c, depth + 1);
     }
     for (int i = 0; i < e->n_children; i++) {
         Elem *c = e->children[i];
         if (strcmp(c->tag, "title") == 0) draw_elem(c, 0);
+        else if (elem_has_class(c, "dropdown-child")) { draw_elem(c, 0); render_tree(c, depth + 1); }
     }
 }

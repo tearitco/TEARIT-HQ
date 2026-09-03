@@ -54,3 +54,14 @@ cli_io { background-color: #262632; border: 1px solid #4a4a5a; }
 .msg-evolutionist{ color: #b6f2e8; }
 .msg-system      { color: #888888; }
 .msg-other       { color: #cccccc; }
+
+/* REAL, NEW 2026-09-03 (co-lab-hai's own "Menu" dropdown, khtpm_core_
+ * render.c's generic class="dropdown-child" overlay pass) - root cause
+ * of the first live test's garbled text: this class had NO background
+ * rule at all, so an open dropdown item drew as transparent text over
+ * whatever row already sat underneath it (co-lab-hai's own Approve/
+ * Reject row) instead of a real, opaque menu. A solid background +
+ * border here is what actually makes it read as a menu, not a layout
+ * bug in khtpm_core_render.c itself - generic, any default-mode
+ * consumer's own dropdown gets this same real look for free. */
+.dropdown-child { background-color: #2a2a3a; border: 1px solid #4a4a5a; color: #eeeeee; }
