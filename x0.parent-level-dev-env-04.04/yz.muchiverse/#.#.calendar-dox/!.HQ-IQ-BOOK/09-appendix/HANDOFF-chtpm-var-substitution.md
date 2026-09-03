@@ -108,3 +108,64 @@ sh "$HOUSE/&.widgits/_shared-lib/ops/khtpm_png_dump.sh" \
   `khtpm_taskbar_manager.c` have concurrent editors.
 - Commit footer: `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>`
   / `Claude-Session: https://claude.ai/code/session_01P4rAhi6a7TzLBZdcaqfHXN`
+
+---
+
+## Rev 3 (2026-09-03) — generic `<tabbar>` + remaining-work handoff
+
+### Done this rev
+
+- **Generic `<tabbar>`/`<tab>`** ported into `khtpm_core_render.c` so a
+  plain `class=""` template gets the old db-hq shape (`1e628f49`):
+  - `layout_sidebar_panel()` lays a `<tabbar>` child of `<page>` as a
+    horizontal strip, grows the window to fit, tabs nav-numbered first,
+    active tab gets an `"active"` class (CSS `.tab`/`.tab.active`).
+  - `activate_focused()` `<tab>` branch: run `action=`, mark active
+    (`g_default_active_tab_id`, survives reparse), scope nav into the
+    page `<sidebar>` — `[^]` on the tab, `Esc` back to the tab row.
+- **Interact-mode scoped nav** for generic `ACTIVATE` (`0eae03b1`):
+  `onclick="ACTIVATE" target_id="X"` confines nav to container `X`'s
+  subtree; `Esc` pops; `[^]` on the trigger. Gated by
+  `g_default_scope_confine` — a plain dropdown `ACTIVATE` is unchanged.
+- **db-hq-pal** rewritten to the faithful shape (`<tabbar>` + 15
+  `<tab>` + `<sidebar>` + `<panel>`, `dashboard.css` ported from the
+  original). Renders ~1285px like the old db-hq.
+
+### Left to do — safe for another agent / Haiku subagents
+
+Each is the same recipe: static `<name>.xhtpm` template + a projector
+(`.pal` OR compiled `.+x` C — whichever is easier) that writes
+`state/ui.txt`; `button.sh` launches `khtpm_core_render.+x <house>
+<name>.xhtpm`; verify with `khtpm_png_dump.sh`.
+
+| # | target | notes / difficulty |
+|---|---|---|
+| 1 | **live-test db-hq-pal** tab→scope→`Esc`, then add its `toy.pdl` to a launcher / the toys menu | needs a real desk click; toy.pdl already exists |
+| 2 | **chat-hai** | replace `ops/chat_hai_projector.sh` (bash) with a `.pal` or `.c` projector writing `state/ui.txt`; author `chat-hai.xhtpm`. Message list = one `<repeat>`. Straightforward. |
+| 3 | **tile-picker** (`&.widgits/tile-picker/ops/khtpm_show_choices.c`) | small one-shot chooser; low priority |
+| 4 | **events-hq** (`&.widgits/events-hq`, `g_is_events_hq`) | now unblocked — same `<tabbar>` port as db-hq-pal. Has view sub-tabs (Scripting/Scratch/Blueprints) + a command list. Its `evhq_*` C retires. Medium. |
+| 5 | **palettes / bookmarks / stats-hq** (`g_is_palettes` / `g_is_bookmarks` / `g_is_stats_hq`, all ride `g_is_db_hq`) | each: static template + projector reading its existing state files. Palettes needs the `sprite=` grid (already a generic `draw_elem` capability). Medium each. |
+| 6 | **swatch-picker / taskbar-settings** (`g_is_swatch_picker`) | flat `<item>` list + opacity ± ; small |
+
+### Left to do — needs care (do NOT hand off)
+
+| target | why |
+|---|---|
+| **network_browser** | page content is heterogeneous (TITLE/TEXT/LINK/IMG/VIDEO + sprite-grid wrapping). Needs **`<repeat>` v2** (per-kind element via `show=` on each candidate, or nested repeats). Sketch in `CHTPM-ARCHITECTURE-FIX.md` §8. |
+| **retire `dbhq_*` C** | once db-hq-pal is signed off, point the real `open_db_hq.sh` at `dashboard.xhtpm`, drop `class="db-hq"`, delete the `dbhq_*` renderer C (~1350 lines). Big, do deliberately, its own branch. |
+| **`CENTROID_GOLD_STD.md`** | document static-template + projector (`.pal`/`.c`) as the standard once the above lands. |
+
+### `<repeat>` v2 sketch (for network_browser / any heterogeneous list)
+
+```xml
+<repeat count="${content_count}" bind="c">
+  <text class="page-title" label="${c.text}"   show="${c.is_title}"/>
+  <text                    label="${c.text}"   show="${c.is_text}"/>
+  <item label="${c.text}" action="${c.action}" show="${c.is_link}"/>
+  <item label="${c.label}" sprite="${c.sprite}" action="${c.action}" show="${c.is_media}"/>
+</repeat>
+```
+The projector sets exactly one `c_<i>_is_*` to 1 per row. Sprite-grid
+wrapping (consecutive media in one `<row class="sprite-grid-row">`) is
+lost in this first cut — acceptable, or add a `<repeat wrap-class=...
+wrap-when="${c.is_media}">` later.
