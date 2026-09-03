@@ -1,0 +1,21 @@
+<window class="dock-header">
+<page id="main">
+<row class="toolbar">
+<item id="strip-cell-1" label="HQ" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-2" label="jb" sprite="/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/avatars/5dfb09e9-852d-405d-a84e-bba7bcb22340" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-3" label="file:pre-design" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-4" label="desks:office" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-5" label="pals" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-6" label="palettes" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-7" label="edit" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-8" label="player" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-9" label="db" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-10" label="plugins" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-11" label="toys" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-12" label="store" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-13" label="network" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-14" label="h-ai" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-15" label="2026年09月03日 周四 11:04" class="dock-cell" onclick="ACTIVATE"/>
+</row>
+</page>
+</window>

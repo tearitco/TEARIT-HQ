@@ -1,0 +1,1 @@
+1788419853|grok|This is a genuinely long test message meant to verify that word wrap now works correctly inside the co-lab-hai conversation scrolllist, matching the same real wrapping behavior chat-hai already has, instead of getting silently truncated with a trailing ellipsis the way it did before this fix landed.

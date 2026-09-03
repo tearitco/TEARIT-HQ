@@ -1,58 +1,46 @@
-447596 1 1 scroll:up
-447596 1 2 scroll:down
-447596 1 3 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-dir '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'tilesets'
-447596 1 4 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-dir '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'characters'
-447596 1 5 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-dir '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'faces'
-447596 1 6 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-dir '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'sv_actors'
-447596 1 7 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-dir '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'sv_enemies'
-447596 1 8 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-dir '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'enemies'
-447596 1 9 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-dir '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'battlebacks1'
-447596 1 10 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-dir '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'battlebacks2'
-447596 1 11 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-dir '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'parallaxes'
-447596 1 12 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-dir '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'pictures'
-447596 1 13 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-dir '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'animations'
-447596 1 14 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-dir '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'system'
-447596 1 15 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-dir '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'titles1'
-447596 1 16 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-dir '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'titles2'
-447596 1 17 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-tab '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'A'
-447596 1 18 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-tab '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'B'
-447596 1 19 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-tab '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'C'
-447596 1 20 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/001' 'Inside' 'a2' 'a2 kind 0,0' '100' '160' '1125' '617'
-447596 1 21 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/002' 'Inside' 'a2' 'a2 kind 1,0' '100' '160' '1125' '617'
-447596 1 22 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/003' 'Inside' 'a2' 'a2 kind 2,0' '100' '160' '1125' '617'
-447596 1 23 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/004' 'Inside' 'a2' 'a2 kind 3,0' '100' '160' '1125' '617'
-447596 1 24 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/005' 'Inside' 'a2' 'a2 kind 4,0' '100' '160' '1125' '617'
-447596 1 25 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/006' 'Inside' 'a2' 'a2 kind 5,0' '100' '160' '1125' '617'
-447596 1 26 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/007' 'Inside' 'a2' 'a2 kind 6,0' '100' '160' '1125' '617'
-447596 1 27 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/008' 'Inside' 'a2' 'a2 kind 7,0' '100' '160' '1125' '617'
-447596 1 28 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/009' 'Inside' 'a2' 'a2 kind 0,1' '100' '160' '1125' '617'
-447596 1 29 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/010' 'Inside' 'a2' 'a2 kind 1,1' '100' '160' '1125' '617'
-447596 1 30 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/011' 'Inside' 'a2' 'a2 kind 2,1' '100' '160' '1125' '617'
-447596 1 31 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/012' 'Inside' 'a2' 'a2 kind 3,1' '100' '160' '1125' '617'
-447596 1 32 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/013' 'Inside' 'a2' 'a2 kind 4,1' '100' '160' '1125' '617'
-447596 1 33 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/014' 'Inside' 'a2' 'a2 kind 5,1' '100' '160' '1125' '617'
-447596 1 34 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/015' 'Inside' 'a2' 'a2 kind 6,1' '100' '160' '1125' '617'
-447596 1 35 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/016' 'Inside' 'a2' 'a2 kind 7,1' '100' '160' '1125' '617'
-447596 1 36 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/017' 'Inside' 'a2' 'a2 kind 0,2' '100' '160' '1125' '617'
-447596 1 37 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/018' 'Inside' 'a2' 'a2 kind 1,2' '100' '160' '1125' '617'
-447596 1 38 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/019' 'Inside' 'a2' 'a2 kind 2,2' '100' '160' '1125' '617'
-447596 1 39 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/020' 'Inside' 'a2' 'a2 kind 3,2' '100' '160' '1125' '617'
-447596 1 40 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/021' 'Inside' 'a2' 'a2 kind 4,2' '100' '160' '1125' '617'
-447596 1 41 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/022' 'Inside' 'a2' 'a2 kind 5,2' '100' '160' '1125' '617'
-447596 1 42 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/023' 'Inside' 'a2' 'a2 kind 6,2' '100' '160' '1125' '617'
-447596 1 43 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/024' 'Inside' 'a2' 'a2 kind 7,2' '100' '160' '1125' '617'
-447596 1 44 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/025' 'Inside' 'a2' 'a2 kind 0,3' '100' '160' '1125' '617'
-447596 1 45 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/026' 'Inside' 'a2' 'a2 kind 1,3' '100' '160' '1125' '617'
-447596 1 46 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/027' 'Inside' 'a2' 'a2 kind 2,3' '100' '160' '1125' '617'
-447596 1 47 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/028' 'Inside' 'a2' 'a2 kind 3,3' '100' '160' '1125' '617'
-447596 1 48 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/029' 'Inside' 'a2' 'a2 kind 4,3' '100' '160' '1125' '617'
-447596 1 49 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/030' 'Inside' 'a2' 'a2 kind 5,3' '100' '160' '1125' '617'
-447596 1 50 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/031' 'Inside' 'a2' 'a2 kind 6,3' '100' '160' '1125' '617'
-447596 1 51 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' arm-rmmv '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/sprites/rmmv/Inside_a2/032' 'Inside' 'a2' 'a2 kind 7,3' '100' '160' '1125' '617'
-447596 1 52 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-tileset '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'Dungeon'
-447596 1 53 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-tileset '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'Inside'
-447596 1 54 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-tileset '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'Outside'
-447596 1 55 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-tileset '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'SF_Inside'
-447596 1 56 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-tileset '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'SF_Outside'
-447596 1 57 exec:'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes/palettes_menu.sh' set-rmmv-tileset '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/&.widgits/palettes' 'World'
-447596 1 58 closebtn
+226481 1 1 tab
+226481 1 2 tab
+226481 1 3 tab
+226481 1 4 tab
+226481 1 5 tab
+226481 1 6 tab
+226481 1 7 tab
+226481 1 8 tab
+226481 1 9 tab
+226481 1 10 tab
+226481 1 11 tab
+226481 1 12 tab
+226481 1 13 tab
+226481 1 14 tab
+226481 1 15 tab
+226481 1 16 item
+226481 1 17 item
+226481 1 18 item
+226481 1 19 item
+226481 1 20 ce-add-event
+226481 1 21 ACTIVATE
+226481 1 22 ACTIVATE
+226481 1 23 ACTIVATE
+226481 1 24 ACTIVATE
+226481 1 25 ACTIVATE
+226481 1 26 ACTIVATE
+226481 1 27 ACTIVATE
+226481 1 28 ACTIVATE
+226481 1 29 ACTIVATE
+226481 1 30 ACTIVATE
+226481 1 31 ACTIVATE
+226481 1 32 ACTIVATE
+226481 1 33 ACTIVATE
+226481 1 34 ACTIVATE
+226481 1 35 ACTIVATE
+226481 1 36 ACTIVATE
+226481 1 37 ACTIVATE
+226481 1 38 ACTIVATE
+226481 1 39 ACTIVATE
+226481 1 40 ACTIVATE
+226481 1 41 ACTIVATE
+226481 1 42 ACTIVATE
+226481 1 43 ACTIVATE
+226481 1 44 scroll:up
+226481 1 45 scroll:down
+226481 1 46 closebtn

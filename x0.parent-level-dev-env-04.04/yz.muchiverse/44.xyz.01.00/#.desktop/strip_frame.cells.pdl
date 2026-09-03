@@ -1,11 +1,11 @@
-CELL | idx=1 region=bottom | ch=[>] 16. cursword fg=default bg=default focused=1
-CELL | idx=2 region=bottom | ch=[ ] 17. self fg=default bg=default focused=0
-CELL | idx=3 region=bottom | ch=[ ] 18. m8_redhorned fg=default bg=default focused=0
+CELL | idx=1 region=bottom | ch=[ ] 16. cursword fg=default bg=default focused=0
+CELL | idx=2 region=bottom | ch=[ ] 17. m8_redhorned fg=default bg=default focused=0
+CELL | idx=3 region=bottom | ch=[ ] 18. self fg=default bg=default focused=0
 CELL | idx=4 region=bottom | ch=[ ] 19. m1_ninjadragon fg=default bg=default focused=0
 CELL | idx=5 region=bottom | ch=[ ] 20. asa fg=default bg=default focused=0
-CELL | idx=6 region=bottom | ch=[ ] 21. ava fg=default bg=default focused=0
-CELL | idx=7 region=bottom | ch=[ ] 22. book-stack fg=default bg=default focused=0
-CELL | idx=0 region=header | ch=[ ] 1. HQ fg=default bg=default focused=0
+CELL | idx=6 region=bottom | ch=[ ] 21. book-stack fg=default bg=default focused=0
+CELL | idx=7 region=bottom | ch=[ ] 22. ava fg=default bg=default focused=0
+CELL | idx=0 region=header | ch=[>] 1. HQ fg=default bg=default focused=1
 CELL | idx=1 region=header | ch=[ ] 2. jb fg=default bg=default focused=0
 CELL | idx=2 region=header | ch=[ ] 3. file:pre-design fg=default bg=default focused=0
 CELL | idx=3 region=header | ch=[ ] 4. desks:office fg=default bg=default focused=0
@@ -18,11 +18,5 @@ CELL | idx=9 region=header | ch=[ ] 10. plugins fg=default bg=default focused=0
 CELL | idx=10 region=header | ch=[ ] 11. toys fg=default bg=default focused=0
 CELL | idx=11 region=header | ch=[ ] 12. store fg=default bg=default focused=0
 CELL | idx=12 region=header | ch=[ ] 13. network fg=default bg=default focused=0
-CELL | idx=13 region=header | ch=[^] 14. h-ai fg=default bg=default focused=0
-CELL | idx=14 region=header | ch=[ ] 15. 2026年09月02日 周三 23:38 fg=default bg=default focused=0
-CELL | idx=55 region=popup | ch=[>] 1. Open h-ai fg=default bg=default focused=1
-CELL | idx=56 region=popup | ch=[ ] 2. Chat-h-ai fg=default bg=default focused=0
-CELL | idx=57 region=popup | ch=[ ] 3. Cancel fg=default bg=default focused=0
-CELL | idx=55 region=popup | ch=[>] 1. Open h-ai fg=default bg=default focused=1
-CELL | idx=56 region=popup | ch=[ ] 2. Chat-h-ai fg=default bg=default focused=0
-CELL | idx=57 region=popup | ch=[ ] 3. Cancel fg=default bg=default focused=0
+CELL | idx=13 region=header | ch=[ ] 14. h-ai fg=default bg=default focused=0
+CELL | idx=14 region=header | ch=[ ] 15. 2026年09月03日 周四 03:11 fg=default bg=default focused=0

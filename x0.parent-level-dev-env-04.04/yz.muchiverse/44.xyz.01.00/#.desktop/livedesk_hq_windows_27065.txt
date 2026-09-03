@@ -1,0 +1,1 @@
+win=0x1c00001|pid=27065|title=Stats HQ (PAL)|x=80|y=80|w=700|h=520|minimized=0|focused=0

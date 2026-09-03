@@ -21,13 +21,31 @@ RESTORE_LIST="$CRYPTS_DIR/restore-list.txt"
 
 # Ensure the shared asset drive is mounted (book-stack's bible assets
 # live on it) - silent + idempotent, so openall is self-sufficient.
+# Uses the SHARED, retrying helper (the old inline one-shot failed at
+# login: it called udisksctl exactly once while the polkit local session
+# was still coming up as Active => silent deny, then never retried). The
+# shared version retries and also serves the book-stack reader branches.
 ensure_mount() {
     local uuid="b7ced73c-5231-4462-b98d-64e38fe2df9e"
     local mp="/media/no/$uuid"
     [ -d "$mp" ] && mountpoint -q "$mp" 2>/dev/null && return 0
-    udisksctl mount -b "/dev/disk/by-uuid/$uuid" >/dev/null 2>&1
-    sleep 1
-    mountpoint -q "$mp" 2>/dev/null && echo "mounted $uuid" || echo "WARN: could not mount $uuid (book assets unavailable)"
+    local shared="$HOUSE_DIR/*.monads/*.book-stack/pieces/_shared/ensure_book_mount.sh"
+    if [ -f "$shared" ]; then
+        # shellcheck disable=SC1090  # sourced path is computed
+        . "$shared"
+        ensure_book_mount >/dev/null 2>&1 && return 0
+    fi
+    # Fallback (shared helper unavailable): retrying udisks mount.
+    local i
+    for i in 1 2 3 4 5 6 7 8; do
+        udisksctl mount -b "/dev/disk/by-uuid/$uuid" >/dev/null 2>&1
+        local j
+        for j in 1 2 3 4 5; do
+            mountpoint -q "$mp" 2>/dev/null && { echo "mounted $uuid"; return 0; }
+            sleep 0.5
+        done
+    done
+    echo "WARN: could not mount $uuid (book assets unavailable)"
 }
 
 # pgrep -f treats its pattern as a regex, and the literal '*' globs in

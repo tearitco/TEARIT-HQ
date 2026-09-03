@@ -1,0 +1,1 @@
+win=0x1a00004|pid=16114|title=chat-hai|x=0|y=605|w=700|h=520|minimized=1|focused=0

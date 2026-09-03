@@ -17,6 +17,16 @@ fi
 if [ -f "$TAO_FILE/tao-te-ching-tty/tao-te-ching]a1.txt" ]; then
     TAO_FILE="$TAO_FILE/tao-te-ching-tty/tao-te-ching]a1.txt"
 else
+    # Linux leg: ensure the shared asset drive is up before falling back
+    # to the Linux SHARE] mount path below. No-op on macOS/Windows.
+    if [ "$(uname)" = "Linux" ] && command -v udisksctl >/dev/null 2>&1; then
+        MNT_SHARED="$BOOK_STACK/_shared/ensure_book_mount.sh"
+        if [ -f "$MNT_SHARED" ]; then
+            # shellcheck disable=SC1090  # sourced path is computed
+            . "$MNT_SHARED"
+            ensure_book_mount >/dev/null 2>&1 || true
+        fi
+    fi
     TAO_FILE="/media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e/home/jbez/Desktop/^.📶️.SHARE]/^.🦾️]fullsharezip/💪🏾️].no-desk.sharezip/!.🫁️.BIBLE.📔️]z3+/tao-te-ching-tty/tao-te-ching]a1.txt"
 fi
 if [ ! -f "$TAO_FILE" ]; then

@@ -1,0 +1,13 @@
+is_ce=0
+row_0_text=1. Hero
+row_1_text=2. Warrior
+row_2_text=3. Mage
+row_3_text=4. Priest
+rows_count=4
+tab_title=Classes (4)
+kv_0_text=id: 1
+kv_1_text=name: Hero
+kv_2_text=exp_curve: Normal
+kv_3_text=note: 
+kv_count=4
+detail_title=#1  Hero

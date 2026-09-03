@@ -1,0 +1,9 @@
+bm_0_name=event-commands
+bm_0_path=/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.ref/menu
+bm_1_name=events-db-guide
+bm_1_path=/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/1.^V-hq/EVENTS_AND_DB_GUIDE_🎪.md
+bm_2_name=tmp
+bm_2_path=/tmp
+bm_count=3
+title=cursword bookmarks (3)
+empty=0

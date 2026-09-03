@@ -1,0 +1,17 @@
+row||toolbar||||0|0|64|0|1776|36||
+item|strip-cell-1|dock-cell|HQ||ACTIVATE|1|0|64|0|71|36||
+item|strip-cell-2|dock-cell|jb|/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/avatars/5dfb09e9-852d-405d-a84e-bba7bcb22340|ACTIVATE|2|0|151|0|92|36||
+item|strip-cell-3|dock-cell|file:pre-design||ACTIVATE|3|0|259|0|140|36||
+item|strip-cell-4|dock-cell|desks:office||ACTIVATE|4|0|415|0|124|36||
+item|strip-cell-5|dock-cell|pals||ACTIVATE|5|0|555|0|77|36||
+item|strip-cell-6|dock-cell|palettes||ACTIVATE|6|0|648|0|101|36||
+item|strip-cell-7|dock-cell|edit||ACTIVATE|7|0|765|0|76|36||
+item|strip-cell-8|dock-cell|player||ACTIVATE|8|0|857|0|90|36||
+item|strip-cell-9|dock-cell|db||ACTIVATE|9|0|963|0|68|36||
+item|strip-cell-10|dock-cell|plugins||ACTIVATE|10|0|1047|0|97|36||
+item|strip-cell-11|dock-cell|toys||ACTIVATE|11|0|1160|0|78|36||
+item|strip-cell-12|dock-cell|store||ACTIVATE|12|0|1254|0|83|36||
+item|strip-cell-13|dock-cell|network||ACTIVATE|13|0|1353|0|102|36||
+item|strip-cell-14|dock-cell|h-ai||ACTIVATE|14|0|1471|0|76|36||
+item|strip-cell-15|dock-cell|2026年09月03日 周四 14:57||ACTIVATE|15|0|1563|0|180|36||
+item|strip-cell-16|dock-cell,no-nav|1015497|||0|0|1759|0|65|36||

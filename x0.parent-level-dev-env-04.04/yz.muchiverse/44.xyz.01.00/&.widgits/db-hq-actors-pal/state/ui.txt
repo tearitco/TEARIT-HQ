@@ -1,0 +1,10 @@
+actor_0_name=Harold
+actor_0_sub=Hero
+actor_1_name=Therese
+actor_1_sub=Warrior
+actor_2_name=Marsha
+actor_2_sub=Mage
+actor_3_name=Lucius
+actor_3_sub=Priest
+actors_count=4
+title=Actors (4) - projected by actors_projector.pal

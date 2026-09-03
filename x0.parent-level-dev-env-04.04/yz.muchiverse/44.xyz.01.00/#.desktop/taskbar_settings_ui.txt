@@ -1,0 +1,16 @@
+prompt=pick a background swatch
+phase=0
+bg_name=-
+fg_name=-
+sw_0_ring=
+sw_1_ring=
+sw_2_ring=
+sw_3_ring=
+sw_4_ring=
+sw_5_ring=
+sw_6_ring=
+sw_7_ring=
+sw_8_ring=
+sw_9_ring=
+sw_10_ring=
+sw_11_ring=

@@ -1,0 +1,1 @@
+win=0x1a00002|pid=186692|title=vtest|x=80|y=80|w=700|h=520|minimized=0|focused=0

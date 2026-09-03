@@ -1,0 +1,1 @@
+win=0x2200004|pid=868972|title=greet_player|x=614|y=213|w=700|h=520|minimized=0|focused=0

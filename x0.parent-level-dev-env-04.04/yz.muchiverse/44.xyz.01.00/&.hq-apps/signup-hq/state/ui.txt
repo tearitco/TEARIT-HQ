@@ -1,0 +1,15 @@
+title=You're already signed in as jb.
+hint=
+id_shown=
+field_label=
+field_verb=
+field_tid=
+err=
+btn_label=
+btn_verb=
+show_hint=0
+show_id_line=0
+show_field=0
+show_err=0
+show_rules=0
+show_btn=0

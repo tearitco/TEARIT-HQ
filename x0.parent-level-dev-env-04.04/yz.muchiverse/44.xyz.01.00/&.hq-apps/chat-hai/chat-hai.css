@@ -151,3 +151,42 @@
 .btn-send:hover {
   background-color: #79c0ff;
 }
+
+/* ===================================================================
+   chat-hai.xhtpm (static-template + projector port, 2026-09-03).
+   Additive block - the rules above still serve the old chat-hai.chtpm
+   rollback path. The shared renderer merges this whole file next to
+   chat-hai.xhtpm by stem (dashboard.chtpm -> dashboard.css convention).
+   khtpm_css_parser.c only matches a bare tag / one compound class chain
+   on a single element / an id - no descendant combinators.
+   =================================================================== */
+
+.chat-hai-pal, .database-window { background-color: #16181f; }
+
+.block-title { color: #ffffff; font-weight: bold; }
+.quiet       { color: #8b93a7; font-size: 9px; }
+.status-text { background-color: #0f1118; color: #81c784; font-size: 9px;
+               padding: 4px 8px; }
+.btn-control { background-color: #3a3f52; color: #d6d9e3; font-size: 9px;
+               padding: 4px 12px; margin: 2px 4px; }
+.data-item        { color: #d6d9e3; font-size: 10px; padding: 4px 6px; }
+.data-item.active { background-color: #2f5f8f; color: #ffffff; }
+
+/* one message row per <text id="msgN" class="chat-msg msg-<slug>"> */
+.chat-msg { color: #d6d9e3; font-size: 10px; padding: 3px 6px; }
+
+.chat-msg.msg-system       { color: #8b93a7; }
+.chat-msg.msg-user         { color: #ffb3ba; }
+.chat-msg.msg-moxie        { color: #ff8a65; }
+.chat-msg.msg-pip          { color: #64b5f6; }
+.chat-msg.msg-sage         { color: #81c784; }
+.chat-msg.msg-bravo        { color: #ffd54f; }
+.chat-msg.msg-conductor    { color: #ba68c8; }
+.chat-msg.msg-echo         { color: #4dd0e1; }
+.chat-msg.msg-nova         { color: #e91e63; }
+.chat-msg.msg-quill        { color: #a1887f; }
+.chat-msg.msg-theologian   { color: #ff6b9d; }
+.chat-msg.msg-daoist       { color: #4dd0e1; }
+.chat-msg.msg-evolutionist { color: #81c784; }
+.chat-msg.msg-synthesist   { color: #ba68c8; }
+.chat-msg.msg-other        { color: #d6d9e3; }

@@ -1,8 +1,8 @@
 Harnecient Delegation Stats (estimate)
 =======================================
 
-Source: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/%.harnesses/harnecient-fsm/observations.log
-Generated: Thu Aug 27 10:26:41 PM PDT 2026
+Source: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/%.harnesses/harnecient-fsm/observations.log
+Generated: Thu Sep  3 02:57:26 PM PDT 2026
 
 Total log rows (all kinds):     76
 Real model calls delegated:     51

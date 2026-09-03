@@ -1,34 +1,29 @@
-╔════════════ SLO P - E D   A D V A N C E D ════════════╗
-| PROJECT: slop-ed-dev/games/default-0000 | GAME: projects/slop-ed-dev/games/default-0000 |
-| LAYOUT: slop-ed-dev.chtpm                                 |
-|                                                           |
-|  GAME MAP:                                                |
-[>] 1. [Control Map]
-+=========================================================+
-| [Z-LEVEL]: 0                                               |
-+=========================================================+
-|  ####################                                     |
-|  #                  #                                     |
-|  #                  #                                     |
-|  #    .             #                                     |
-|  #                  #                                     |
-|  #   ###    R       #                                     |
-|  #        .         #                                     |
-|  #  #     @         #                                     |
-|  #                  #                                     |
-|  ####################                                     |
+[36m╔═══════════════════════════════════════════════════════════╗[0m
+[33m║                  +-DEMO PROJECT STATIC LAYOUT             ║[0m
+[36m╠═══════════════════════════════════════════════════════════╣[0m
+[37m║ This is a basic static layout.                            ║[0m
+[37m║ It demonstrates how a layout file opens without a         ║[0m
+[37m║ dynamic manager.                                        ║[0m
+[37m║                                                           ║[0m
+[32m║ For future steps, we can add functionality.               ║[0m
+[36m╚═══════════════════════════════════════════════════════════╝[0m
+[30;46m[ ] 1. [[dir1/][-] Dir1][0m
+[37;44m[ ] 2. [[2.txt] file][0m
+[37;44m[ ] 3. [[3.txt] file][0m
+[30;43m[ ] 4. [[subdir/][-] Subdir][0m
+[37;44m[ ] 5. [[5.txt] file][0m
 
-╠═══════════════════════════════════════════════════════════╣
-| [RESP]: Loaded game: projects/slop-ed-dev/games/default-0000 |
-| [POS]: (5,5,0) | [ARMED]: [ # ] | [KEY]: None             |
-╠═══════════════════════════════════════════════════════════╣
-| [ ] 2. MAPS      : ADD map_0002.txt [map_0001.txt]   |
-| [ ] 3. GLYPHS    : [#] . R T @ & Z X ? !             |
-╠═══════════════════════════════════════════════════════════╣
-║ [ ] 4. [TOGGLE EMOJI] [ ] 5. [DB]║ [ ] 6. [PROJECT] [ ] 7. [EVENT]                             ║
-║ [ ] 8. [FILE] [ ] 9. [LOADER] [ ] 10. [EXIT]                                 ║
-╚═══════════════════════════════════════════════════════════╝
- [1]: Grid | [2/3]: Palettes | [4]: Emoji Toggle | [ESC]: Nav
+
+[30;46m[ ] 6. [[dir2/][+] Dir2][0m
+[36m╠═══════════════════════════════════════════════════════════╣[0m
+[33m║             ACTIVATION SUBMENU DESIGN OPTION              ║[0m
+[36m╠═══════════════════════════════════════════════════════════╣[0m
+[30;42m[^] 7. [Menu A (Press Enter to Activate)][0m    
+    [30;43m[>] 1. [[Back]][0m    
+    [37;44m[ ] 2. [Sub-item 1][0m    
+    [37;44m[ ] 3. [Sub-item 2][0m    
+    [30;42m[ ] 4. [Nested Menu (Enter to Activate)][0m    
+
 
 +=========================================================+
-Nav > _
+Active [^]:  (ESC to exit)

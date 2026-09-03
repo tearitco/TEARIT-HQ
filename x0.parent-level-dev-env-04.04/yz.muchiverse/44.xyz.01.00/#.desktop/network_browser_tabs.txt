@@ -1,2 +1,2 @@
 TAB | 0 | https://www.google.com/intl/en/about/products?tab=ih | Google's products and services - About Google | 
-TAB | 1 |  | Network Browser | current
+TAB | 1 | https://example.com | Example Domain | current

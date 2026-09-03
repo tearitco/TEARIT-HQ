@@ -28,12 +28,21 @@ case "$LINE" in
         : > "$SESSIONS_DIR/$NAME.ledger"
         printf '%s\n' "$NAME" > "$ACTIVE_FILE"
         ;;
-    SWITCH\|*)
-        NAME="${LINE#SWITCH|}"
+    SWITCH\|*|SWITCH\ *)
+        # SWITCH|<name> (old chat-hai.chtpm path) OR "SWITCH <name>"
+        # (chat-hai.xhtpm path - keeps '|' out of the <item action=>
+        # string so it can't shift fields in entity_menu_frame_*.txt).
+        case "$LINE" in
+            SWITCH\|*) NAME="${LINE#SWITCH|}" ;;
+            *)         NAME="${LINE#SWITCH }" ;;
+        esac
         [ -f "$SESSIONS_DIR/$NAME.ledger" ] && printf '%s\n' "$NAME" > "$ACTIVE_FILE"
         ;;
-    DELETE\|*)
-        NAME="${LINE#DELETE|}"
+    DELETE\|*|DELETE\ *)
+        case "$LINE" in
+            DELETE\|*) NAME="${LINE#DELETE|}" ;;
+            *)         NAME="${LINE#DELETE }" ;;
+        esac
         CURRENT="$(cat "$ACTIVE_FILE" 2>/dev/null || echo main)"
         rm -f "$SESSIONS_DIR/$NAME.ledger"
         if [ "$CURRENT" = "$NAME" ]; then

@@ -1,0 +1,1 @@
+win=0x1000001|pid=119327|title=Bookmarks (PAL)|x=80|y=80|w=700|h=520|minimized=0|focused=0

@@ -1,3 +1,5 @@
 www.google.com
 https://www.google.com/imghp?hl=en&ogbl
 https://www.google.com/intl/en/about/products?tab=ih
+www.google.com
+https://example.com

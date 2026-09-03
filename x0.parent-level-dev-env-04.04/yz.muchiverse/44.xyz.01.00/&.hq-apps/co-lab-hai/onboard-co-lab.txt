@@ -1,0 +1,98 @@
+ONBOARD — OpenCode in co-lab-hai with Grok
+==========================================
+Date: 2026-09-03
+You are OpenCode (agent_id: opencode). Grok is grok. The human owner
+approves every message before it hits the room.
+
+House root (always quote this path):
+  /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00
+
+Git branch (already checked out):
+  hq-window-taskbar-entries-minimize
+  (this work is also on main as of merge 9773dfcd — stay on the branch)
+
+------------------------------------------------
+1. How you talk (the whole contract)
+------------------------------------------------
+POST (never write conversation.txt yourself):
+  bash "<house_root>/&.hq-apps/co-lab-hai/ops/colab_hai_post.sh" \
+    "<house_root>" opencode "@grok <your message>"
+
+READ only your feed, not the raw transcript:
+  <house_root>/#.desktop/colab_hai/current_session.txt   -> session id
+  <house_root>/#.desktop/colab_hai/sessions/<id>/feed_opencode.txt
+
+Nothing you post is visible until the human clicks Approve.
+Address Grok with @grok so other agents do not see private notes.
+Use @everyone only for status the owner should also see in-room.
+
+------------------------------------------------
+2. What you are building (Grok reviews after; do not wait on Grok to code)
+------------------------------------------------
+Design doc (read in full before any edit):
+  #.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/HQ-WINDOW-TASKBAR-ENTRIES-AND-MINIMIZE-2026-09-03.md
+
+Build order (owner):
+  A. Bottom-strip cells for live HQ windows + click = focus/raise
+     Registry WRITE side already exists: each renderer writes
+     #.desktop/livedesk_hq_windows_<pid>.txt every redraw
+     (win=|pid=|title=|x=|y=|w=|h=|minimized=|focused=).
+     YOU implement the TASKBAR MANAGER merge + bottom cells + click.
+  B. "_" chrome minimize (left of "!" and "X"). XUnmapWindow, minimized=1.
+     Restore via #.desktop/livedesk_hq_restore_<pid>.txt polled by the
+     target renderer (process only maps ITS OWN window).
+  C. Bottom bar overflow: "+" / "-" page extra ROWS of cells
+     (not infinite horizontal scroll). Glyphs + and - . Not "_" .
+
+Do NOT start C until A works live. Do NOT start entity-tile minimize
+until HQ-app-window minimize works.
+
+STALE in the design doc §4.3 — ignore it:
+  The strip IS now a .chtpm window rendered by khtpm_core_render.c
+  (strip_header.chtpm + strip_bottom.chtpm, one process, two windows).
+  Manager publishes those files. Do not revive strip_main / LayDoc.
+
+------------------------------------------------
+3. Hard house rules (stop if you would violate these)
+------------------------------------------------
+- Read CENTROID_GOLD_STD.md and
+  NNEST-12.00/.claude/skills/khtpm-house-standards/SKILL.md
+  before touching khtpm_core_render.c or any manager/render pair.
+- NO new g_is_<project> global. NO duplicate parse/draw/event loop.
+- Manager process = business logic + publish .chtpm. Renderer = shared
+  khtpm_core_render.c only.
+- Build/launch ONLY from:
+    <house_root>/*.monads/*.livedesk-taskbar/ops/
+    DISPLAY=:0 sh run_khtpm_strip.sh new
+  Never gcc from repo root or from &.widgits/_shared-lib.
+- Chrome "_" uses CSS id #chrome-minimize (same pattern as
+  #chrome-close / #chrome-fullscreen). onclick MINIMIZE in dispatch()
+  next to CLOSE / TOGGLE_FULLSCREEN. Not a new activate_focused hook.
+- Do not commit #.desktop runtime junk (frame files, pids, history).
+- Do not implement minimize/+- by growing the header window into a
+  full-width black slab (dropdowns are a separate small popup).
+
+------------------------------------------------
+4. Files you will actually touch
+------------------------------------------------
+  *.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+  *.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager_main.c
+    (merge livedesk_hq_windows_*.txt, publish bottom-strip window cells,
+     click -> focus/raise or write restore request)
+  *.monads/*.livedesk-taskbar/ops/khtpm_core_render.c
+    (chrome "_", MINIMIZE in dispatch, poll restore file, keep registry)
+  *.monads/*.livedesk-taskbar/ops/entity_menu_default.css
+    (#chrome-minimize)
+
+------------------------------------------------
+5. Done means (so Grok can review without redoing it)
+------------------------------------------------
+Post @grok a short report:
+  - files changed
+  - how to click-test (open chat-hai or co-lab-hai, see bottom cell,
+    click to focus, click "_" to hide, click cell to restore)
+  - what you could not verify
+Then stop. Grok checks live and asks for fixes if needed.
+
+First post from you should be: you read this file + the design doc,
+and the first slice you will implement (A only).
