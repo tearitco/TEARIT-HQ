@@ -1,0 +1,147 @@
+# evhq_projector.pal - the <module> for events-hq.xhtpm.
+#
+# Reads what khtpm_events_hq_manager.+x publishes for ONE entity's
+# event_pkg and writes <pkg>/.hq_manager/ui.txt (key=value) for the
+# static template. No compiled C, no bash. Phase 1 = READ ONLY:
+# page tabs + trigger + command list. Picker/Play are phase 2.
+#
+# INPUT  (all under $KHTPM_ARG3/.hq_manager/ , published by the manager)
+#   pages.state.txt      one page-dir name per line   (page_1, page_2, ...)
+#   selected_page.txt    one line: the open page's dir name
+#   page.state.txt       TRIGGER|<t>  /  SWITCH|<s>  /  CMD|<id>|<type>|<params>
+#   label.txt            one line: the entity label   (button-pal.sh writes it)
+# OUTPUT ($KHTPM_ARG3/.hq_manager/ui.txt)
+#   entity_label=   n_pages=   pg_<n>_name=   pg_<n>_active_class=
+#   trigger=   rows_count=   row_<n>_text=   list_title=   empty_list=
+#   detail_hint=
+#
+# INT REGS   x1 line cursor   x2 count (pages / commands)   x5 scratch
+#            x6 "TRIGGER seen" flag   x7 scratch   x8 line length   x9 out fd
+# STR REGS   s0 current line / scratch      s1..s4 ssplit scratch
+#            s5 formatted output line       s6 selected page name
+#            s10 "TRIGGER"  s11 "CMD"
+#            s20 pages.state.txt path   s21 selected_page.txt path
+#            s22 page.state.txt path    s23 label.txt path
+#            s25 ui.txt path (output)   s26 $KHTPM_ARG3 (the event_pkg dir)
+
+sgetenv s26, "KHTPM_ARG3"                          # the entity's event_pkg dir
+sfmt s20, "%s/.hq_manager/pages.state.txt", s26    # page list (manager writes)
+sfmt s21, "%s/.hq_manager/selected_page.txt", s26  # which page is open (action.sh writes)
+sfmt s22, "%s/.hq_manager/page.state.txt", s26     # trigger + commands for that page
+sfmt s23, "%s/.hq_manager/label.txt", s26          # entity label (button-pal.sh writes)
+sfmt s25, "%s/.hq_manager/ui.txt", s26             # what THIS projector writes
+slit s10, "TRIGGER"                                # page.state.txt tags ...
+slit s11, "CMD"
+
+proj_top:                                          # ============ one projection pass ============
+
+sfopen x9, s25                                     # open ui.txt (truncate). x9 = fd
+# (button-pal.sh mkdir -p's .hq_manager before launch, so this succeeds;
+#  prisc+x has no signed-compare branch to guard on anyway)
+
+# ---- entity label ----
+li x1, 0
+sread s0, x1, s23                                  # line 0 of label.txt
+slen x8, s0
+bne x8, x0, have_label                             # non-empty -> use it
+slit s0, "events"                                  # fallback label
+have_label:
+sfmt s5, "entity_label=%s", s0
+swrite x9, s5
+
+# ---- which page is selected (for the active tab highlight) ----
+li x1, 0
+sread s6, x1, s21                                  # s6 = selected page dir name (maybe empty)
+strim s6
+
+# ---- PAGE TABS: one line per page in pages.state.txt ----
+li x1, 0                                           # line cursor
+li x2, 0                                           # pages emitted
+pg_read:
+sread s0, x1, s20                                  # next page name
+slen x8, s0
+beq x8, x0, pg_done                                # EOF
+strim s0
+slen x8, s0
+beq x8, x0, pg_skip                                # blank line -> skip, don't count
+sfmt s5, "pg_%d_name=%s", x2, s0                   # pg_<n>_name
+swrite x9, s5
+# active class: this page's name == selected, OR (nothing selected AND row 0)
+sbeq s0, s6, pg_active                             # exact match -> active
+bne x2, x0, pg_inactive                            # not row 0 -> inactive
+slen x7, s6
+bne x7, x0, pg_inactive                            # something else is selected -> inactive
+pg_active:
+sfmt s5, "pg_%d_active_class=active", x2
+swrite x9, s5
+j pg_count
+pg_inactive:
+sfmt s5, "pg_%d_active_class=", x2                 # empty class
+swrite x9, s5
+pg_count:
+addi x2, x2, 1
+pg_skip:
+addi x1, x1, 1
+j pg_read
+pg_done:
+sfmt s5, "n_pages=%d", x2
+swrite x9, s5
+
+# ---- TRIGGER + COMMAND LIST from page.state.txt ----
+li x1, 0                                           # line cursor
+li x2, 0                                           # commands emitted
+li x6, 0                                           # TRIGGER-seen flag
+cmd_read:
+sread s0, x1, s22
+slen x8, s0
+beq x8, x0, cmd_done                               # EOF
+ssplit s0, "|", s1, s2                             # s1 = tag, s2 = rest of line
+strim s1
+sbeq s1, s10, cmd_trigger                          # tag == TRIGGER
+sbeq s1, s11, cmd_row                              # tag == CMD
+j cmd_next                                         # SWITCH / SCRATCHBLOCK / other -> ignore
+cmd_trigger:
+strim s2
+sfmt s5, "trigger=%s", s2                          # the page's trigger text
+swrite x9, s5
+li x6, 1                                           # remember we wrote one
+j cmd_next
+cmd_row:                                           # s2 = "<id>|<type>|<params>"
+ssplit s2, "|", s3, s4                             # s3 = id, s4 = "<type>|<params>"
+ssplit s4, "|", s3, s2                             # s3 = type, s2 = params
+# params can itself contain '|' (e.g. show_choices), and '|' is the
+# frame-dump field separator - an unescaped '|' in a label corrupts the
+# round trip (rows overlap). Show only up to the first '|' for phase 1;
+# the registry pretty-print in phase 2 emits clean, pipe-free text.
+ssplit s2, "|", s2, s7                             # s2 = params up to first '|'
+strim s3
+strim s2
+sfmt s5, "row_%d_text=%s  %s", x2, s3, s2          # "<type>  <first param>" (registry pretty-print is phase 2)
+swrite x9, s5
+addi x2, x2, 1
+cmd_next:
+addi x1, x1, 1
+j cmd_read
+cmd_done:
+
+bne x6, x0, have_trigger                           # a TRIGGER line was written
+slit s5, "trigger=(unknown)"
+swrite x9, s5
+have_trigger:
+
+sfmt s5, "rows_count=%d", x2
+swrite x9, s5
+sfmt s5, "list_title=Commands (%d)", x2
+swrite x9, s5
+li x5, 0                                           # empty_list = (x2 == 0)
+bne x2, x0, not_empty
+li x5, 1
+not_empty:
+sfmt s5, "empty_list=%d", x5
+swrite x9, s5
+slit s5, "detail_hint=read-only (phase 1) - Add Command / Play land in phase 2"
+swrite x9, s5
+
+sfclose x9
+sleep 400000                                       # 0.4s
+j proj_top

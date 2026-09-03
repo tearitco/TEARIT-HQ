@@ -896,6 +896,18 @@ typedef struct { char name[KH_VAR_NAME]; char value[KH_VAR_VALUE]; } KhVar;
 static KhVar g_kh_vars[KH_MAX_VARS];
 static int g_kh_nvars = 0;
 static char g_vars_path[PATH_BUF] = "";
+/* REAL, NEW 2026-09-03 - ONE generic optional-argv hook (not a per-app
+ * mode). If argv[3] is an existing directory, it is an "instance dir":
+ *   - ${ARG3} resolves to it (kh_get_var builtin, like ${PID}),
+ *   - <instance>/.hq_manager/ui.txt is appended to whatever vars= the
+ *     template declares, so a per-entity projection (events-hq, and
+ *     later db-hq Common Events) can be multi-instance without a
+ *     house-global state file,
+ *   - every <module> fork gets KHTPM_ARG3=<instance dir> in its env.
+ * The pre-existing "argc>=5 -> g_win_x=atoi(argv[3])" popup path is
+ * guarded to only run when argv[3] is NOT a directory. */
+static char g_arg3_dir[PATH_BUF] = "";
+static char g_extra_vars_path[PATH_BUF] = "";
 /* vars-file change is content-hashed (g_vars_hash), not mtime-tracked */
 /* hash of the vars-file bytes at the last reparse - so a projector that
  * rewrites state/ui.txt every tick (rather than only on change, the
@@ -930,6 +942,7 @@ static const char *kh_get_var(const char *name) {
         snprintf(kh_pidbuf, sizeof(kh_pidbuf), "%d", (int)getpid());
         return kh_pidbuf;
     }
+    if (strcmp(name, "ARG3") == 0) return g_arg3_dir;
     for (int i = 0; i < g_kh_nvars; i++)
         if (strcmp(g_kh_vars[i].name, name) == 0) return g_kh_vars[i].value;
     return "";
@@ -1233,8 +1246,16 @@ static Elem *parse_chtpm(const char *path) {
         char vpath[PATH_BUF] = "";
         if (kh_find_vars_attr(buf, vpath, sizeof(vpath))) {
             snprintf(g_vars_path, sizeof(g_vars_path), "%s", vpath);
-            g_vars_hash = kh_files_hash(g_vars_path);
         }
+        /* append the instance-dir ui.txt (argv[3] hook) as an extra
+         * space-separated vars source - kh_load_vars_multi and
+         * kh_files_hash both split g_vars_path on whitespace. */
+        if (g_extra_vars_path[0]) {
+            size_t l = strlen(g_vars_path);
+            snprintf(g_vars_path + l, sizeof(g_vars_path) - l,
+                     "%s%s", l ? " " : "", g_extra_vars_path);
+        }
+        if (g_vars_path[0]) g_vars_hash = kh_files_hash(g_vars_path);
         kh_load_vars_multi(g_vars_path);
 
         if (strstr(buf, "<repeat")) {
@@ -7737,57 +7758,64 @@ static int layout_sidebar_panel(Elem *page) {
      * sidebar/panel), like the old db-hq order. The active tab (id ==
      * g_default_active_tab_id) gets an "active" class so app CSS can
      * style it (.tab / .tab.active - see db-hq's dashboard.css). */
-    Elem *tabbar = find_by_tag(page, "tabbar");
+    /* Lay out EVERY <tabbar> child of the page, stacked (view-mode row
+     * on top, page row under it - EVENTS-HQ-XHTPM-PORT.md §5). Each is
+     * scaled(28) tall; content starts below the last one. Within one
+     * tabbar, if a sibling tab is the globally-clicked tab
+     * (g_default_active_tab_id) that one wins; if the clicked tab
+     * belongs to a DIFFERENT tabbar, this group falls back to its
+     * template / projector-supplied class="active". */
     int tabbar_h = 0;
-    if (tabbar && tabbar->n_children > 0) {
-        tabbar_h = scaled(28);
-        int tx = scaled(6), ty = CHROME_H + scaled(2), th = tabbar_h - scaled(4);
-        for (int i = 0; i < tabbar->n_children; i++) {
-            Elem *tab = tabbar->children[i];
-            if (strcmp(tab->tag, "tab") != 0) continue;
-            /* mark active: by remembered id once a tab has been chosen,
-             * else honour a template class="active" as the default
-             * (same as db-hq's dashboard.chtpm seeding tab 0 active). */
-            int tmpl_active = 0;
-            for (int k = 0; k < tab->n_classes; k++)
-                if (strcmp(tab->classes[k], "active") == 0) tmpl_active = 1;
-            tab->active = g_default_active_tab_id[0]
-                ? (tab->id[0] && strcmp(tab->id, g_default_active_tab_id) == 0)
-                : tmpl_active;
-            int has_active_cls = 0;
-            for (int k = 0; k < tab->n_classes; k++)
-                if (strcmp(tab->classes[k], "active") == 0) has_active_cls = 1;
-            if (tab->active && !has_active_cls && tab->n_classes < CSS_MAX_CLASSES)
-                snprintf(tab->classes[tab->n_classes++], sizeof(tab->classes[0]), "active");
-            else if (!tab->active && has_active_cls) {
-                int w2 = 0;
+    {
+        int row_h = scaled(28);
+        int th = row_h - scaled(4);
+        for (int ci = 0; ci < page->n_children; ci++) {
+            Elem *tabbar = page->children[ci];
+            if (strcmp(tabbar->tag, "tabbar") != 0 || tabbar->n_children <= 0) continue;
+            int group_has_click = 0;
+            if (g_default_active_tab_id[0])
+                for (int i = 0; i < tabbar->n_children; i++) {
+                    Elem *t = tabbar->children[i];
+                    if (strcmp(t->tag, "tab") == 0 && t->id[0] &&
+                        strcmp(t->id, g_default_active_tab_id) == 0) { group_has_click = 1; break; }
+                }
+            int ty = CHROME_H + tabbar_h + scaled(2);
+            int tx = scaled(6);
+            for (int i = 0; i < tabbar->n_children; i++) {
+                Elem *tab = tabbar->children[i];
+                if (strcmp(tab->tag, "tab") != 0) continue;
+                int tmpl_active = 0;
                 for (int k = 0; k < tab->n_classes; k++)
-                    if (strcmp(tab->classes[k], "active") != 0)
-                        snprintf(tab->classes[w2++], sizeof(tab->classes[0]), "%s", tab->classes[k]);
-                tab->n_classes = w2;
+                    if (strcmp(tab->classes[k], "active") == 0) tmpl_active = 1;
+                tab->active = group_has_click
+                    ? (tab->id[0] && strcmp(tab->id, g_default_active_tab_id) == 0)
+                    : tmpl_active;
+                int has_active_cls = tmpl_active;
+                if (tab->active && !has_active_cls && tab->n_classes < CSS_MAX_CLASSES)
+                    snprintf(tab->classes[tab->n_classes++], sizeof(tab->classes[0]), "active");
+                else if (!tab->active && has_active_cls) {
+                    int w2 = 0;
+                    for (int k = 0; k < tab->n_classes; k++)
+                        if (strcmp(tab->classes[k], "active") != 0)
+                            snprintf(tab->classes[w2++], sizeof(tab->classes[0]), "%s", tab->classes[k]);
+                    tab->n_classes = w2;
+                }
+                css_compute_style(&g_sheet, tab->tag, tab->id, tab->classes, tab->n_classes, 0, &tab->style);
+                int tw = scaled(34);
+                if (font_ui && tab->label[0]) {
+                    XGlyphInfo gi;
+                    XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)tab->label, (int)strlen(tab->label), &gi);
+                    tw += gi.xOff;
+                }
+                tab->x = tx; tab->y = ty; tab->w = tw; tab->h = th;
+                tab->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = tab;
+                tx += tw + scaled(3);
             }
-            css_compute_style(&g_sheet, tab->tag, tab->id, tab->classes, tab->n_classes, 0, &tab->style);
-            /* room for the "[ ]NN. " nav badge draw_elem() always
-             * prepends + the label + a little padding (db-hq uses +34). */
-            int tw = scaled(34);
-            if (font_ui && tab->label[0]) {
-                XGlyphInfo gi;
-                XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)tab->label, (int)strlen(tab->label), &gi);
-                tw += gi.xOff;
-            }
-            tab->x = tx; tab->y = ty; tab->w = tw; tab->h = th;
-            tab->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = tab;
-            tx += tw + scaled(3);
+            if (tx + scaled(6) > g_win_w) { g_win_w = tx + scaled(6); g_window->w = g_win_w; }
+            tabbar->x = 0; tabbar->y = CHROME_H + tabbar_h; tabbar->w = g_win_w; tabbar->h = row_h;
+            css_compute_style(&g_sheet, tabbar->tag, tabbar->id, tabbar->classes, tabbar->n_classes, 0, &tabbar->style);
+            tabbar_h += row_h;
         }
-        /* grow the window to fit the whole tab strip on one row, same
-         * as db-hq's own dbhq_layout_pass (window->w = max(tabbar
-         * natural width, default)). Only ever grows. */
-        if (tx + scaled(6) > g_win_w) {
-            g_win_w = tx + scaled(6);
-            g_window->w = g_win_w;
-        }
-        tabbar->x = 0; tabbar->y = CHROME_H; tabbar->w = g_win_w; tabbar->h = tabbar_h;
-        css_compute_style(&g_sheet, tabbar->tag, tabbar->id, tabbar->classes, tabbar->n_classes, 0, &tabbar->style);
     }
     int content_top = CHROME_H + tabbar_h;
 
@@ -17840,6 +17868,19 @@ int main(int argc, char **argv) {
     snprintf(g_package_dir, sizeof(g_package_dir), "%s", g_chtpm_path);
     { char *slash = strrchr(g_package_dir, '/'); if (slash) *slash = '\0'; }
 
+    /* generic argv[3] instance-dir hook (see g_arg3_dir decl). Must run
+     * BEFORE parse_chtpm so g_extra_vars_path is picked up by the
+     * static-template vars pass. */
+    if (argc >= 4 && argv[3][0]) {
+        struct stat a3st;
+        if (stat(argv[3], &a3st) == 0 && S_ISDIR(a3st.st_mode)) {
+            snprintf(g_arg3_dir, sizeof(g_arg3_dir), "%s", argv[3]);
+            snprintf(g_extra_vars_path, sizeof(g_extra_vars_path),
+                     "%s/.hq_manager/ui.txt", g_arg3_dir);
+            setenv("KHTPM_ARG3", g_arg3_dir, 1);
+        }
+    }
+
     g_window = parse_chtpm(g_chtpm_path);
     if (!g_window) { fprintf(stderr, "khtpm_core_render: failed to parse %s\n", g_chtpm_path); return 1; }
     { struct stat gcst; if (stat(g_chtpm_path, &gcst) == 0) g_chtpm_mtime = gcst.st_mtim; }
@@ -17929,7 +17970,9 @@ int main(int argc, char **argv) {
         if (argc < 5) { fprintf(stderr, "usage: %s <house_root> <chtpm_path> <event_pkg_dir> <entity_label>\n", argv[0]); return 1; }
         snprintf(g_evhq_pkg_dir, sizeof(g_evhq_pkg_dir), "%s", argv[3]);
         snprintf(g_evhq_entity_label, sizeof(g_evhq_entity_label), "%s", argv[4]);
-    } else if (argc >= 5) {
+    } else if (argc >= 5 && !g_arg3_dir[0]) {
+        /* not the instance-dir hook (g_arg3_dir) -> the legacy popup
+         * launch shape where argv[3]/argv[4] are x/y ints. */
         g_win_x = atoi(argv[3]); g_win_y = atoi(argv[4]);
     }
 

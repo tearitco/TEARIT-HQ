@@ -1,0 +1,58 @@
+<!-- events-hq.xhtpm - STATIC events editor window (EVENTS-HQ-XHTPM-PORT.md).
+     class="events-hq-pal" -> does NOT trip the renderer's g_is_events_hq
+     C path. All content comes from ${vars} written by pal/evhq_projector.pal
+     into <event_pkg>/.hq_manager/ui.txt (the renderer's argv[3] instance-
+     dir hook: ${ARG3} = that event_pkg dir, and its .hq_manager/ui.txt is
+     auto-appended to this template's vars sources).
+
+     The compile chain (event.ir.pdl -> event.pal -> cmd_N.sh) stays in
+     khtpm_events_hq_manager.+x, started by button-pal.sh - NOT a <module>
+     here (it needs the event_pkg dir as argv, which the generic <module>
+     launcher does not pass). Only the projector is a <module>.
+
+     Layout mirrors the old pieces/dashboard.chtpm: view-mode tabs +
+     page tabs on top, TRIGGER (+ Add Command / Play) on the LEFT,
+     the COMMAND LIST on the RIGHT.
+
+     Phase 1 = READ ONLY. Add Command / Play call ops/evhq_action.sh but
+     the picker overlay is phase 2. -->
+<window label="${entity_label}" class="events-hq-pal database-window">
+  <module src="&.widgits/_shared-lib/system/+x/prisc+x.+x pal/evhq_projector.pal"/>
+  <page name="main">
+
+    <tabbar class="view-tabs">
+      <tab id="view-scripting"  class="active" label="Scripting"  target_id="detail" action="'${PKG}/ops/evhq_action.sh' 'view' '0' '${ARG3}'"/>
+      <tab id="view-scratch"    label="Scratch"    target_id="detail" action="'${PKG}/ops/evhq_action.sh' 'view' '1' '${ARG3}'"/>
+      <tab id="view-blueprints" label="Blueprints" target_id="detail" action="'${PKG}/ops/evhq_action.sh' 'view' '2' '${ARG3}'"/>
+    </tabbar>
+
+    <tabbar class="page-tabs">
+      <repeat count="${n_pages}" bind="pg">
+        <tab id="page-${pg.#}" class="${pg.active_class}" label="${pg.name}" target_id="detail" action="'${PKG}/ops/evhq_action.sh' 'page' '${pg.name}' '${ARG3}'"/>
+      </repeat>
+    </tabbar>
+
+    <!-- LEFT: trigger + the two action buttons (old left-panel + footer) -->
+    <sidebar id="sidebar" class="sidebar">
+      <text label="Trigger" class="block-title"/>
+      <text label="${trigger}"/>
+      <text label=""/>
+      <item id="add-command" class="data-item" label="+ Add Command" action="'${PKG}/ops/evhq_action.sh' 'picker' 'open' '${ARG3}'"/>
+      <item id="play-test" class="data-item" label="Play" action="'${PKG}/ops/evhq_action.sh' 'play' '-' '${ARG3}'"/>
+      <text label=""/>
+      <text label="${detail_hint}" class="quiet"/>
+    </sidebar>
+
+    <!-- RIGHT: the command list for the selected page -->
+    <panel id="detail" class="command-list settings-block">
+      <text label="${list_title}" class="block-title"/>
+      <scrolllist class="from-top">
+        <repeat count="${rows_count}" bind="row">
+          <item id="r${row.#}" class="data-item" label="${row.text}" action="'${PKG}/ops/evhq_action.sh' 'edit' '${row.#}' '${ARG3}'"/>
+        </repeat>
+        <text label="(no commands on this page yet)" class="quiet" show="${empty_list}"/>
+      </scrolllist>
+    </panel>
+
+  </page>
+</window>
