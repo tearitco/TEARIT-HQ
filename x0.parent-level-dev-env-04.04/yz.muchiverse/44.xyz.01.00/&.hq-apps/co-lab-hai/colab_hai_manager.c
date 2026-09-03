@@ -476,6 +476,12 @@ static void write_agent_feeds(void) {
 }
 
 static void write_chtpm_projection(void) {
+    /* CHTPM-ARCHITECTURE-FIX.md: emit plain key=value to state/ui.txt;
+     * the STATIC co-lab-hai.chtpm template does the layout (repeat
+     * blocks for participants / sessions / conversation, show= for the
+     * pending gate). This manager writes no markup. Values are
+     * xml_escape()'d so &, ", <, > round-trip through the renderer's
+     * decode_entities() after ${var} substitution. */
     char *buf = malloc(262144);
     if (!buf) return;
     size_t cap = 262144, len = 0;
@@ -484,8 +490,7 @@ static void write_chtpm_projection(void) {
         if (_n > 0) len += (size_t)_n < cap - len ? (size_t)_n : cap - len - 1; \
     } while (0)
 
-    /* Real pending-message count + oldest pending line, for the
-     * approval toolbar. */
+    /* oldest pending line + count (approval gate) */
     char pend_agent[128] = "", pend_msg[1024] = "";
     int n_pending = 0;
     {
@@ -511,21 +516,7 @@ static void write_chtpm_projection(void) {
         }
     }
 
-    CH_APPEND("<!-- co-lab-hai.chtpm - REAL, GENERATED PROJECTION.\n");
-    CH_APPEND("     Written by colab_hai_manager.c's own write_chtpm_projection()\n");
-    CH_APPEND("     every real main-loop tick - DO NOT HAND-EDIT. -->\n");
-    CH_APPEND("<window label=\"Co-lab-h-ai\" class=\"co-lab-hai\">\n");
-    CH_APPEND("  <module src=\"&.hq-apps/co-lab-hai/+x/colab_hai_manager.+x\"/>\n");
-    CH_APPEND("  <page name=\"main\">\n");
-    CH_APPEND("    <sidebar>\n");
-
-    /* Real participant roster, scanned from the real conversation +
-     * pending logs, not a hardcoded list - reflects whoever has
-     * actually spoken. Scanned here (before either sidebar section is
-     * emitted) since Sessions' own feed-generation needs it too, but
-     * display stays Participants-first, Sessions below (owner's own
-     * "leave session where it was" - a Menu row is planned above
-     * Participants later, not built yet). */
+    /* participant roster (scan conversation + pending, same as before) */
     g_n_participants = 0;
     for (int pass = 0; pass < 2; pass++) {
         const char *path = pass == 0 ? g_conversation_path : g_pending_path;
@@ -545,74 +536,48 @@ static void write_chtpm_projection(void) {
     }
     write_agent_feeds();
 
-    CH_APPEND("      <text label=\"Participants\" class=\"quiet\"/>\n");
+    CH_APPEND("participants_count=%d\n", g_n_participants);
     for (int i = 0; i < g_n_participants; i++) {
         char esc[128];
         xml_escape(g_participants[i], esc, sizeof(esc));
-        CH_APPEND("      <text label=\"%s\" class=\"%s\"/>\n", esc, agent_css_class(i));
-    }
-    if (n_pending > 0) {
-        CH_APPEND("      <text label=\"Pending: %d\" class=\"pending-count\"/>\n", n_pending);
+        CH_APPEND("p_%d_name=%s\n", i, esc);
+        CH_APPEND("p_%d_class=%s\n", i, agent_css_class(i));
     }
 
-    /* Real sessions list (2026-09-03) - same real "+ New session" +
-     * clickable-row-per-session convention khtpm_open_hai_manager.c's
-     * own publish_sessions() already proved, reused verbatim in shape.
-     * Direct request answered here: "is there a way to clear this
-     * session and prepare for the new one? what about saving old
-     * sessions?" - New session starts fresh WITHOUT deleting the old
-     * one (still real, still on disk, still one click away). Given
-     * owner's own "never more than ~6 or so" expectation, no session-
-     * list scroll region is built yet - a real, disclosed scope
-     * decision, not an oversight; the existing generic scrolllist
-     * mechanism is what to reach for first if that ever changes. */
-    CH_APPEND("      <text label=\"Sessions\" class=\"quiet\"/>\n");
-    CH_APPEND("      <item id=\"ch-newsession\" label=\"+ New session\" action=\"'%s/ops/colab_hai_action.sh' 'newsession'\"/>\n", g_package_dir);
-    list_sessions();
-    for (int i = 0; i < g_n_sessions; i++) {
-        char label[96];
-        session_label(g_session_ids[i], label, sizeof(label));
-        int is_current = (strcmp(g_session_ids[i], g_session_id) == 0);
-        char esc[96];
-        xml_escape(label, esc, sizeof(esc));
-        CH_APPEND("      <item id=\"ch-sess-%s\" label=\"%s%s\" action=\"'%s/ops/colab_hai_action.sh' 'loadsession' '%s'\"/>\n",
-                  g_session_ids[i], is_current ? "* " : "", esc, g_package_dir, g_session_ids[i]);
-    }
-    CH_APPEND("    </sidebar>\n");
-    CH_APPEND("    <panel>\n");
-
-    /* Real, standing toolbar - always visible, not gated on pending.
-     * REAL, NEW 2026-09-03 - "Menu" is now a real, generic dropdown
-     * (khtpm_core_render.c's own new class="dropdown-child" mechanism,
-     * "for all layouts" per direct request) instead of a bare "Dir"
-     * button - "Dir" and "FAQ" are its real children, more can be
-     * appended here later without any new UI concept. */
-    CH_APPEND("      <row class=\"toolbar\">\n");
-    CH_APPEND("        <item id=\"ch-menu\" label=\"Menu\" onclick=\"ACTIVATE\"/>\n");
-    CH_APPEND("      </row>\n");
-    CH_APPEND("      <item id=\"ch-menu-dir\" label=\"Dir\" target_id=\"ch-menu\" class=\"dropdown-child\" action=\"'%s/ops/colab_hai_open_dir.sh'\"/>\n", g_package_dir);
-    CH_APPEND("      <item id=\"ch-menu-faq\" label=\"FAQ\" target_id=\"ch-menu\" class=\"dropdown-child\" action=\"'%s/ops/colab_hai_open_faq.sh'\"/>\n", g_package_dir);
-
-    if (n_pending > 0) {
+    CH_APPEND("has_pending=%d\n", n_pending > 0 ? 1 : 0);
+    CH_APPEND("n_pending=%d\n", n_pending);
+    {
         char esc_agent[128], esc_msg[1200];
         xml_escape(pend_agent, esc_agent, sizeof(esc_agent));
         xml_escape(pend_msg, esc_msg, sizeof(esc_msg));
-        /* REAL FIX 2026-09-02 (found live testing this app's own first
-         * cut): layout_toolbar_row() only positions <item> children -
-         * a bare <text> inside class="toolbar" was silently pushed
-         * off-screen (t->x/y = -100000), same "non-item children get
-         * hidden" contract every other toolbar row already relies on.
-         * A plain, unwrapped <text> flows normally in the panel
-         * instead - it doesn't need toolbar's own horizontal-item
-         * layout at all, just to be visible before the button row. */
-        CH_APPEND("      <text label=\"PENDING (%s): %s\" class=\"pending-text\"/>\n", esc_agent, esc_msg);
-        CH_APPEND("      <row class=\"toolbar\">\n");
-        CH_APPEND("        <item id=\"ch-approve\" label=\"Approve\" action=\"'%s/ops/colab_hai_action.sh' 'approve'\"/>\n", g_package_dir);
-        CH_APPEND("        <item id=\"ch-reject\" label=\"Reject\" action=\"'%s/ops/colab_hai_action.sh' 'reject'\"/>\n", g_package_dir);
-        CH_APPEND("      </row>\n");
+        CH_APPEND("pend_agent=%s\n", esc_agent);
+        CH_APPEND("pend_msg=%s\n", esc_msg);
     }
 
-    CH_APPEND("      <scrolllist id=\"conv\" class=\"from-bottom conv-list\">\n");
+    CH_APPEND("newsession_action='%s/ops/colab_hai_action.sh' 'newsession'\n", g_package_dir);
+    CH_APPEND("dir_action='%s/ops/colab_hai_open_dir.sh'\n", g_package_dir);
+    CH_APPEND("faq_action='%s/ops/colab_hai_open_faq.sh'\n", g_package_dir);
+    CH_APPEND("approve_action='%s/ops/colab_hai_action.sh' 'approve'\n", g_package_dir);
+    CH_APPEND("reject_action='%s/ops/colab_hai_action.sh' 'reject'\n", g_package_dir);
+    CH_APPEND("post_action='%s/ops/colab_hai_action.sh' 'post'\n", g_package_dir);
+
+    /* sessions list */
+    list_sessions();
+    CH_APPEND("sessions_count=%d\n", g_n_sessions);
+    for (int i = 0; i < g_n_sessions; i++) {
+        char label[96], esc[128];
+        session_label(g_session_ids[i], label, sizeof(label));
+        int is_current = (strcmp(g_session_ids[i], g_session_id) == 0);
+        char label_full[128];
+        snprintf(label_full, sizeof(label_full), "%s%s", is_current ? "* " : "", label);
+        xml_escape(label_full, esc, sizeof(esc));
+        CH_APPEND("session_%d_label=%s\n", i, esc);
+        CH_APPEND("session_%d_action='%s/ops/colab_hai_action.sh' 'loadsession' '%s'\n",
+                  i, g_package_dir, g_session_ids[i]);
+    }
+
+    /* conversation feed */
+    int convn = 0;
     {
         FILE *f = fopen(g_conversation_path, "r");
         if (f) {
@@ -626,27 +591,19 @@ static void write_chtpm_projection(void) {
                 if (!split3(tmp, &ts, &agent, &msg)) continue;
                 (void)ts;
                 int idx = participant_index(agent);
-                char esc_agent[128], esc_msg[1600];
-                xml_escape(agent, esc_agent, sizeof(esc_agent));
-                xml_escape(msg, esc_msg, sizeof(esc_msg));
-                CH_APPEND("        <text label=\"%s: %s\" class=\"%s\"/>\n",
-                          esc_agent, esc_msg, agent_css_class(idx));
+                char row_raw[1800], row_esc[2200];
+                snprintf(row_raw, sizeof(row_raw), "%s: %s", agent, msg);
+                xml_escape(row_raw, row_esc, sizeof(row_esc));
+                CH_APPEND("msg_%d_text=%s\n", convn, row_esc);
+                CH_APPEND("msg_%d_class=%s\n", convn, agent_css_class(idx));
+                convn++;
             }
             fclose(f);
         }
     }
-    CH_APPEND("      </scrolllist>\n");
-    CH_APPEND("      <cli_io id=\"composer\" target_id=\"composer\" label=\"&gt; \" "
-              "action=\"'%s/ops/colab_hai_action.sh' 'post'\"/>\n", g_package_dir);
-    CH_APPEND("    </panel>\n");
-    CH_APPEND("  </page>\n</window>\n");
+    CH_APPEND("conv_count=%d\n", convn);
 #undef CH_APPEND
 
-    /* Real "only write when content actually changed" guard - same
-     * fix network_browser_manager.c/khtpm_open_hai_manager.c already
-     * needed, for the exact same reason (an unconditional write every
-     * tick would tear down/rebuild the Elem tree - and any currently-
-     * armed cli_io field with it - for no real reason). */
     static char *g_last_projection = NULL;
     if (g_last_projection && strcmp(g_last_projection, buf) == 0) { free(buf); return; }
     free(g_last_projection);
@@ -688,7 +645,8 @@ int main(int argc, char **argv) {
     path_join(g_sessions_root, sizeof(g_sessions_root), g_state_dir, "sessions");
     mkdir_p_local(g_sessions_root);
     path_join(g_current_session_path, sizeof(g_current_session_path), g_state_dir, "current_session.txt");
-    snprintf(g_chtpm_output_path, sizeof(g_chtpm_output_path), "%s/co-lab-hai.chtpm", g_package_dir);
+    { char sd[PATH_BUF]; snprintf(sd, sizeof(sd), "%s/state", g_package_dir); mkdir_p_local(sd); }
+    snprintf(g_chtpm_output_path, sizeof(g_chtpm_output_path), "%s/state/ui.txt", g_package_dir);
 
     { FILE *f = fopen(g_incoming_path, "a"); if (f) fclose(f); }
     { FILE *f = fopen(g_request_path, "w"); if (f) fclose(f); }

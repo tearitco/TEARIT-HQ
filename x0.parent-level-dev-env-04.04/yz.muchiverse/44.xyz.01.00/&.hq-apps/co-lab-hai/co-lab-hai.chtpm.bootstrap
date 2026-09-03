@@ -1,22 +1,44 @@
-<!-- co-lab-hai.chtpm — REAL, CHECKED-IN BOOTSTRAP (2026-09-02).
-     Launched by button.sh via the shared khtpm_core_render.+x (the
-     SAME renderer every other khtpm window uses).
-
-     The ONLY thing that matters here is the <module> tag: it launches
-     colab_hai_manager.+x as this window's own child process (same
-     fork()+execl() mechanism db-hq/events-hq/chat-hai/open-hai/
-     network-browser each already use, via the generic launch_module()).
-     The manager owns EVERYTHING else - the instant it starts, it
-     overwrites THIS EXACT FILE with the real, live projection (real
-     current conversation/pending/participants), which the renderer
-     picks up within one tick via reparse_chtpm_if_changed().
-
-     DO NOT hand-edit the <page> content below - only the <module> tag
-     is ever read (once, at startup) and left untouched by the
-     manager's own regenerated version. -->
-<window label="Co-lab-h-ai" class="co-lab-hai">
+<!-- co-lab-hai.chtpm - STATIC TEMPLATE (see 08-roadmap/design-docs/
+     CHTPM-ARCHITECTURE-FIX.md). Layout only, NOT regenerated at
+     runtime. The (module) tag forks colab_hai_manager.+x, which writes
+     plain key=value to state/ui.txt; the shared renderer substitutes
+     the tokens, expands the repeat blocks from p_0_* / session_0_* /
+     msg_0_* , and drops any row whose show= is "" / "0" / "false".
+     vars= resolves against this file's own dir. button.sh restores
+     this file from the .bootstrap if the module tag goes missing. Do
+     not hand-generate this markup from the manager. -->
+<window label="Co-lab-h-ai" class="co-lab-hai" vars="state/ui.txt">
   <module src="&.hq-apps/co-lab-hai/+x/colab_hai_manager.+x"/>
   <page name="main">
-    <text id="status" label="starting..."/>
+    <sidebar>
+      <text label="Participants" class="quiet"/>
+      <repeat count="${participants_count}" bind="p">
+        <text label="${p.name}" class="${p.class}"/>
+      </repeat>
+      <text label="Pending: ${n_pending}" class="pending-count" show="${has_pending}"/>
+      <text label="Sessions" class="quiet"/>
+      <item id="ch-newsession" label="+ New session" action="${newsession_action}"/>
+      <repeat count="${sessions_count}" bind="session">
+        <item id="ch-sess-${session.#}" label="${session.label}" action="${session.action}"/>
+      </repeat>
+    </sidebar>
+    <panel>
+      <row class="toolbar">
+        <item id="ch-menu" label="Menu" onclick="ACTIVATE"/>
+      </row>
+      <item id="ch-menu-dir" label="Dir" target_id="ch-menu" class="dropdown-child" action="${dir_action}"/>
+      <item id="ch-menu-faq" label="FAQ" target_id="ch-menu" class="dropdown-child" action="${faq_action}"/>
+      <text label="PENDING (${pend_agent}): ${pend_msg}" class="pending-text" show="${has_pending}"/>
+      <row class="toolbar" show="${has_pending}">
+        <item id="ch-approve" label="Approve" action="${approve_action}"/>
+        <item id="ch-reject" label="Reject" action="${reject_action}"/>
+      </row>
+      <scrolllist id="conv" class="from-bottom conv-list">
+        <repeat count="${conv_count}" bind="msg">
+          <text label="${msg.text}" class="${msg.class}"/>
+        </repeat>
+      </scrolllist>
+      <cli_io id="composer" target_id="composer" label="&gt; " action="${post_action}"/>
+    </panel>
   </page>
 </window>
