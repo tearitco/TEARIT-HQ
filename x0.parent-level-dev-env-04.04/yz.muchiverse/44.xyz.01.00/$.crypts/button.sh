@@ -109,6 +109,10 @@ case "$ACTION" in
     compile|c|build)
         mkdir -p "$SCRIPT_DIR/ops/+x"
         gcc -Wall -O2 -o "$BIN" "$SCRIPT_DIR/ops/crypt_autostart.c" && echo "OK crypt_autostart" || echo "FAIL crypt_autostart"
+        # the desktop start button (start-temp -> this ELF). Had no build
+        # automation, went stale across the strip refactor.
+        gcc -Wall -O2 -o "$SCRIPT_DIR/ops/livedesk-start-button" "$SCRIPT_DIR/ops/livedesk-start-button.c" \
+            && echo "OK livedesk-start-button" || echo "FAIL livedesk-start-button"
         ;;
     check)
         [ -x "$BIN" ] && echo "OK $BIN" || echo "MISSING $BIN"
