@@ -2949,6 +2949,15 @@ static int livedesk_build_ai_menu(HQMenuItem *menu, int max) {
         n++;
     }
     if (n < max) {
+        /* REAL, NEW 2026-09-02 - human-supervised multi-agent chat
+         * (Sonnet/Grok, later opencode/kilo) with a real approval
+         * gate. See &.hq-apps/co-lab-hai/colab_hai_manager.c's own
+         * header comment for the full design. */
+        snprintf(menu[n].label, sizeof(menu[n].label), "Co-lab-h-ai");
+        snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:open-colab-hai");
+        n++;
+    }
+    if (n < max) {
         /* Empty command, on purpose - ktb_hq_activate()'s own final
          * `else` branch (non-empty-but-unrecognized commands instead
          * get shelled out via system() as a real fallback for actual
@@ -3962,6 +3971,24 @@ void ktb_hq_activate(KtbState *s, int row) {
 #else
         char sh[KTB_PATH_BUF * 3];
         snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s/&.hq-apps/chat-hai/button.sh\" \"%s\"' >/dev/null 2>&1 &",
+                 s->house_root, s->house_root);
+        int rc = ktb_system_recorded(s->house_root, sh);
+        (void)rc;
+#endif
+        ktb_hq_close(s);
+    } else if (strcmp(m->command, "livedesk:open-colab-hai") == 0) {
+        /* co-lab-hai (h-ai cell) - real, human-supervised multi-agent
+         * chat window. Launched via button.sh, exact same pattern as
+         * chat-hai/open-hai above. */
+#ifdef _WIN32
+        char bin[KTB_PATH_BUF], chtpm[KTB_PATH_BUF];
+        snprintf(bin, sizeof(bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", s->house_root);
+        snprintf(chtpm, sizeof(chtpm), "%s/&.hq-apps/co-lab-hai/co-lab-hai.chtpm", s->house_root);
+        const char *aa[2] = { s->house_root, chtpm };
+        win_spawn_n(bin, aa, 2);
+#else
+        char sh[KTB_PATH_BUF * 3];
+        snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s/&.hq-apps/co-lab-hai/button.sh\" \"%s\"' >/dev/null 2>&1 &",
                  s->house_root, s->house_root);
         int rc = ktb_system_recorded(s->house_root, sh);
         (void)rc;

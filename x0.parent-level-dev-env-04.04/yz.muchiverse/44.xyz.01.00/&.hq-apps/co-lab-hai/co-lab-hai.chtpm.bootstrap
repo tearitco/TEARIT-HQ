@@ -1,0 +1,22 @@
+<!-- co-lab-hai.chtpm — REAL, CHECKED-IN BOOTSTRAP (2026-09-02).
+     Launched by button.sh via the shared khtpm_core_render.+x (the
+     SAME renderer every other khtpm window uses).
+
+     The ONLY thing that matters here is the <module> tag: it launches
+     colab_hai_manager.+x as this window's own child process (same
+     fork()+execl() mechanism db-hq/events-hq/chat-hai/open-hai/
+     network-browser each already use, via the generic launch_module()).
+     The manager owns EVERYTHING else - the instant it starts, it
+     overwrites THIS EXACT FILE with the real, live projection (real
+     current conversation/pending/participants), which the renderer
+     picks up within one tick via reparse_chtpm_if_changed().
+
+     DO NOT hand-edit the <page> content below - only the <module> tag
+     is ever read (once, at startup) and left untouched by the
+     manager's own regenerated version. -->
+<window label="Co-lab-h-ai" class="co-lab-hai">
+  <module src="&.hq-apps/co-lab-hai/+x/colab_hai_manager.+x"/>
+  <page name="main">
+    <text id="status" label="starting..."/>
+  </page>
+</window>

@@ -1,0 +1,39 @@
+/* co-lab-hai.css - REAL, applied styling for co-lab-hai.chtpm, loaded
+   via the same sibling-.css auto-merge every khtpm window now gets
+   (same stem as the .chtpm, per khtpm_core_render.c's own 2026-09-02
+   generic capability). Geometry stays in C layout (layout_sidebar_
+   panel(), generic scrolllist/toolbar-row code) - this file only
+   carries color/border properties, matching every other khtpm app's
+   own .css. */
+window { width: 900px; height: 600px; }
+window.co-lab-hai { background-color: #14141c; color: #e0e0e0; }
+.close-btn { background-color: #2a2a2a; color: #ff8888; }
+.fullscreen-btn { background-color: #2a2a2a; color: #cccccc; }
+sidebar { width: 180px; background-color: #1a1a22; color: #cccccc; }
+.pending-count { background-color: #3a2a10; color: #ffcc66; }
+.pending-row { background-color: #3a2a10; color: #ffdd88; }
+.pending-text { background-color: #3a2a10; color: #ffdd88; }
+.conv-list { background-color: #14141c; color: #dddddd; }
+.quiet { background-color: #1a1a22; color: #999999; }
+
+/* Real, generic per-agent color palette - assigned in first-seen
+   order by colab_hai_manager.c's own participant_index(), not tied to
+   any one agent's identity (opencode/kilo can join later and just get
+   the next unused color, per direct instruction). Same idea chat-hai's
+   own 12-persona palette already proved, just smaller and generic. */
+.agent-0 { color: #7ec8ff; }
+.agent-1 { color: #ffb3b3; }
+.agent-2 { color: #b3ffb3; }
+.agent-3 { color: #ffe08a; }
+.agent-4 { color: #d9b3ff; }
+.agent-5 { color: #8affea; }
+.agent-6 { color: #ff9ecb; }
+.agent-7 { color: #c2e08a; }
+.agent-8 { color: #9ec2ff; }
+.agent-9 { color: #ffcf9e; }
+.agent-10 { color: #c9c9c9; }
+.agent-11 { color: #f2a6d0; }
+.agent-12 { color: #a6f2e0; }
+.agent-13 { color: #e0d9a6; }
+.agent-14 { color: #a6b8f2; }
+.agent-15 { color: #f2c6a6; }
