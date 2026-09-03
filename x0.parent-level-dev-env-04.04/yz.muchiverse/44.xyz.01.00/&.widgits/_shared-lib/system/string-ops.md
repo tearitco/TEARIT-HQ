@@ -13,7 +13,7 @@ the integer-only `ecall` set could not do.
 
 ## String registers
 
-`s0` .. `s15`, 4096 bytes each, zero on start. Distinct from `x0`..`x15`.
+`s0` .. `s31`, 4096 bytes each, zero on start. Distinct from `x0`..`x15`.
 
 ## Opcodes
 

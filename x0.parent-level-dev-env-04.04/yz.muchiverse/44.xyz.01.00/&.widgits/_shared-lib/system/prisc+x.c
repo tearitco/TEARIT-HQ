@@ -140,7 +140,7 @@ void handle_sigint(int sig) {
  * existing op touches, and the OpBase enum values below are APPENDED so
  * every prior value is unchanged. A .pal that never mentions an s*
  * mnemonic runs byte-for-byte as before. See string-ops.md. */
-#define NUM_SREGS 16
+#define NUM_SREGS 32
 #define SREG_SZ   4096
 
 typedef enum { OP_ADDI, OP_BEQ, OP_BNE, OP_LW, OP_SW, OP_JALR, OP_J, OP_HALT, OP_CUSTOM, OP_READ_HISTORY, OP_EXEC, OP_HIT_FRAME, OP_READ_STATE, OP_READ_ACTIVE_TARGET, OP_READ_ENV_KEY, OP_SLEEP, OP_READ_LAYOUT, OP_READ_POS, OP_ECALL,

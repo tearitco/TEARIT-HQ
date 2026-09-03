@@ -7,7 +7,7 @@
 # own real conversion writeup) - open-hai's own real hand-rolled
 # renderer (khtpm_open_hai_render.c) is REPLACED here by the SAME
 # shared renderer every other khtpm window uses (khtpm_core_render.+x),
-# pointed at a real, checked-in bootstrap open-hai.chtpm. That bootstrap
+# pointed at a real, checked-in bootstrap open-hai.xhtpm. That bootstrap
 # declares a <module> tag (the renderer's own generic launch_module()
 # mechanism, real, already proven for db-hq/events-hq/chat-hai, newly
 # wired up for this default/popup mode too) which starts
@@ -51,7 +51,9 @@ HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OPS_DIR="$HERE/ops"
-CHTPM="$HERE/open-hai.chtpm"
+# open-hai.xhtpm is a STATIC template (x11-hq style) - the manager
+# writes state/ui.txt, never this file, so no bootstrap/restore dance.
+XHTPM="$HERE/open-hai.xhtpm"
 
 # The shared renderer lives in the taskbar's own ops dir (khtpm_core_
 # render.+x is shared house-wide, not open-hai's own binary) - real,
@@ -74,26 +76,9 @@ if [ ! -x "$MANAGER_BIN" ]; then
     echo "open-hai button.sh: build failed, missing $MANAGER_BIN" >&2
     exit 1
 fi
-BOOTSTRAP_TEMPLATE="$HERE/open-hai.chtpm.bootstrap"
-if [ ! -f "$CHTPM" ]; then
-    echo "open-hai button.sh: missing bootstrap $CHTPM" >&2
+if [ ! -f "$XHTPM" ]; then
+    echo "open-hai button.sh: missing template $XHTPM" >&2
     exit 1
-fi
-# REAL FIX 2026-09-01 (live report: after the manager's own real
-# projection overwrites open-hai.chtpm - its normal, intended job every
-# tick - a STRAY manager process (an orphan from a previous relaunch,
-# or any other writer) landing one more write on this SAME path after
-# the window that launched it is gone permanently erases the <module>
-# tag this launcher's whole mechanism depends on: the NEXT launch finds
-# no module tag, and NEVER starts a manager again at all, silently,
-# with zero error - confirmed live, reproduced multiple times).
-# Self-heal here, every launch: a real, permanent, never-overwritten
-# template (open-hai.chtpm.bootstrap, copied once from the real
-# checked-in bootstrap) restores the live path whenever it's missing
-# its own <module> tag, before this script ever execs the renderer.
-if [ -f "$BOOTSTRAP_TEMPLATE" ] && ! grep -q '<module' "$CHTPM" 2>/dev/null; then
-    echo "open-hai button.sh: $CHTPM lost its <module> tag (stray write) - restoring from $BOOTSTRAP_TEMPLATE"
-    cp "$BOOTSTRAP_TEMPLATE" "$CHTPM"
 fi
 
 AUDIT_DIR="$HOUSE_ROOT/&.widgits/open-hai/pieces/audit"
@@ -117,7 +102,7 @@ mkdir -p "$AUDIT_DIR"
 # substring check.
 open_hai_pids() {
     local p joined
-    for p in $(pgrep -f "khtpm_core_render\.\+x.*open-hai\.chtpm" 2>/dev/null || true); do
+    for p in $(pgrep -f "khtpm_core_render\.\+x.*open-hai\.xhtpm" 2>/dev/null || true); do
         joined="$(tr '\0' ' ' < "/proc/$p/cmdline" 2>/dev/null || true)"
         case "$joined" in
             *--data-root\ *) ;;   # per-instance chat - not ours to kill
@@ -161,7 +146,7 @@ if [ -n "$pids" ]; then
     fi
 fi
 
-setsid nohup "$BIN" "$HOUSE_ROOT" "$CHTPM" \
+setsid nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" \
     >"$AUDIT_DIR/open-hai.log" 2>&1 < /dev/null &
 # REAL FIX 2026-08-25 - see open_db_hq.sh's own identical line for the
 # full rationale (au11-hq direct request: "why cant u write that final

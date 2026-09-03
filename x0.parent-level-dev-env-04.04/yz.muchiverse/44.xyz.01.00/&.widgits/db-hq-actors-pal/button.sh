@@ -9,8 +9,9 @@ HOUSE_ROOT="${1:-}"
 HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-CHTPM="$HERE/db-hq-actors.chtpm"
-BOOTSTRAP="$HERE/db-hq-actors.chtpm.bootstrap"
+# db-hq-actors.xhtpm is a STATIC template (x11-hq style); the .pal
+# projector writes state/ui.txt, never this file.
+XHTPM="$HERE/db-hq-actors.xhtpm"
 RENDER_OPS="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
 BIN="$RENDER_OPS/+x/khtpm_core_render.+x"
 PRISC="$HOUSE_ROOT/&.widgits/_shared-lib/system/+x/prisc+x.+x"
@@ -19,18 +20,14 @@ PRISC="$HOUSE_ROOT/&.widgits/_shared-lib/system/+x/prisc+x.+x"
 [ -x "$PRISC" ] || sh "$HOUSE_ROOT/&.widgits/_shared-lib/ops/build_prisc.sh" || true
 [ -x "$BIN" ]   || { echo "db-hq-actors-pal: missing $BIN" >&2; exit 1; }
 [ -x "$PRISC" ] || { echo "db-hq-actors-pal: missing $PRISC" >&2; exit 1; }
-
+[ -f "$XHTPM" ] || { echo "db-hq-actors-pal: missing $XHTPM" >&2; exit 1; }
 mkdir -p "$HERE/state"
-[ -f "$BOOTSTRAP" ] || { echo "db-hq-actors-pal: missing $BOOTSTRAP" >&2; exit 1; }
-if [ ! -f "$CHTPM" ] || ! grep -q '<module' "$CHTPM" 2>/dev/null; then
-    cp "$BOOTSTRAP" "$CHTPM"
-fi
 
-for p in $(pgrep -f "khtpm_core_render\.\+x .*db-hq-actors\.chtpm" 2>/dev/null || true) \
+for p in $(pgrep -f "khtpm_core_render\.\+x .*db-hq-actors\.xhtpm" 2>/dev/null || true) \
          $(pgrep -f "prisc\+x\.\+x .*actors_projector\.pal" 2>/dev/null || true); do
     kill "$p" 2>/dev/null || true
 done
 sleep 1
 
-setsid nohup "$BIN" "$HOUSE_ROOT" "$CHTPM" >/dev/null 2>&1 < /dev/null &
+setsid nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" >/dev/null 2>&1 < /dev/null &
 echo "db-hq-actors-pal launched (renderer + prisc+x projector)"
