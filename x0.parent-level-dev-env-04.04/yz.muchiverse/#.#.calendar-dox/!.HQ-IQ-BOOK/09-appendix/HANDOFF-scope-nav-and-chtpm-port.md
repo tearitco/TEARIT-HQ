@@ -382,8 +382,9 @@ All under `#.#.calendar-dox/!.HQ-IQ-BOOK/`:
   parallel window, then delete `evhq_*`).
 - `08-roadmap/design-docs/EVENT-COMMAND-REGISTRY-ARCHITECTURE.md` — the
   `event.ir.pdl → event.pal → cmd_N.sh` chain.
-- `08-roadmap/design-docs/media-suite.md` — `103.media-studio` → x11-hq
-  toys migration (Grok).
+- `08-roadmap/design-docs/MEDIA-STUDIO-XHTPM-PORT.md` —
+  `103.media-studio` → khtpm toys (img+3D one canvas, then DAW, then
+  video). Skeleton `@.apps/media-canvas/`.
 - `08-roadmap/design-docs/OPENCODE-HANDOFF-events-6-rung-ladder.md` —
   events "6-rung ladder" (OpenCode).
 - `&.widgits/_shared-lib/system/string-ops.md` — `prisc+x` string
