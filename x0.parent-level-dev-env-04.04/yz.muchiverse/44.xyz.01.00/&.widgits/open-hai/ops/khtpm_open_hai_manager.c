@@ -86,6 +86,7 @@ static char g_house_root[PATH_BUF];
  * instance racing to overwrite one shared house-root-relative
  * open-hai.chtpm. */
 static char g_chtpm_output_path[PATH_BUF];
+static char g_ui_state_path[PATH_BUF];   /* <state>/ui.txt - the key=value state the static template reads */
 static char g_sessions_root[PATH_BUF];
 static char g_audit_dir[PATH_BUF];
 static char g_state_dir[PATH_BUF];
@@ -1638,7 +1639,15 @@ static void shell_escape_squote(const char *in, char *out, size_t outsz) {
 
 #define OH_PROJECTION_TRANSCRIPT_TAIL 10
 
-static void write_chtpm_projection(void) {
+static void write_state(void) {
+    /* CHTPM-ARCHITECTURE-FIX.md: write plain key=value to state/ui.txt.
+     * The STATIC open-hai.chtpm template does the layout - <repeat
+     * count="${sessions_count}" bind="session"> for the session list,
+     * <repeat count="${transcript_count}" bind="msg"> for the
+     * transcript, show="${tool_pending}" for the approval gate. This
+     * manager emits no markup. Values are xml_escape()'d (the renderer
+     * decode_entities() them back after ${var} substitution, so &, ",
+     * <, > round-trip; a newline becomes a space). */
     char scripts_dir[PATH_BUF];
     snprintf(scripts_dir, sizeof(scripts_dir), "%s/&.widgits/open-hai/ops", g_house_root);
     char state_dir_sq[PATH_BUF * 2];
@@ -1652,13 +1661,6 @@ static void write_chtpm_projection(void) {
         if (_n > 0) len += (size_t)_n < cap - len ? (size_t)_n : cap - len - 1; \
     } while (0)
 
-    OHP_APPEND("<!-- open-hai.chtpm - REAL, GENERATED PROJECTION.\n");
-    OHP_APPEND("     Written by khtpm_open_hai_manager.c's own write_chtpm_projection()\n");
-    OHP_APPEND("     every real main-loop tick - DO NOT HAND-EDIT, changes are\n");
-    OHP_APPEND("     overwritten within 200ms. See that function's own header\n");
-    OHP_APPEND("     comment for the real design this answers to. -->\n");
-    OHP_APPEND("<window label=\"open-hai\" class=\"\">\n  <page name=\"main\">\n");
-
     char model_name[128]; BackendMode model_mode;
     current_model(model_name, sizeof(model_name), &model_mode);
     int sound_on = sound_on_enabled();
@@ -1671,37 +1673,19 @@ static void write_chtpm_projection(void) {
     }
     xml_escape(model_name, model_esc, sizeof(model_esc));
 
-    /* REAL, NEW 2026-08-31 (direct instruction, live report: "we
-     * actually didn't number every message, but we did number a
-     * sidebar with different chat sessions to resume" + a real growing-
-     * window bug) - real sidebar+panel dual-region layout, the shared
-     * renderer's own new, fully generic capability (khtpm_core_render.c
-     * §"generic sidebar+panel scroll" - tag-based only, not open-hai-
-     * specific). Sessions live in <sidebar> (own independent scroll,
-     * numbered/resumable exactly like before); status/controls are
-     * fixed rows at the top of <panel> (always reachable, never scroll
-     * out of view); the transcript + tool-approval gate live inside
-     * <panel>'s own <scrolllist> (own independent scroll, auto-follows
-     * new messages - see reparse_chtpm_if_changed()'s own real fix for
-     * that); the composer is <panel>'s own pinned-bottom <cli_io>. */
-    OHP_APPEND("    <sidebar>\n");
-    /* REAL, NEW 2026-09-01 (direct instruction: "id really like the
-     * other options to be in its own pane below sessions... giving the
-     * scroll window to session and chat if they need") - New/Model/
-     * Sound are sidebar's own FIXED rows now (real generic capability,
-     * khtpm_core_render.c's own layout_fixed_rows_and_scrolllist() -
-     * shared with <panel>, not a new copy), always reachable regardless
-     * of how long the real session list grows; the session list itself
-     * moves into a nested <scrolllist> below them, with its own
-     * independent scroll. */
-    OHP_APPEND("      <text id=\"sidebar-header\" label=\"Sessions\"/>\n");
-    OHP_APPEND("      <item id=\"new\" label=\"+ New session\" action=\"'%s/oh_write_request.sh' 'NEWSESSION' '%s'\"/>\n", scripts_dir, state_dir_sq);
-    OHP_APPEND("      <item id=\"togglesound\" label=\"Sound: %s (click to toggle)\" action=\"'%s/oh_write_request.sh' 'TOGGLESOUND' '%s'\"/>\n", sound_on ? "on" : "off", scripts_dir, state_dir_sq);
-    OHP_APPEND("      <scrolllist>\n");
+    OHP_APPEND("status=%s\n", status_esc);
+    OHP_APPEND("model_label=Model: %s (click to cycle)\n", model_esc);
+    OHP_APPEND("model_action='%s/oh_write_request.sh' 'CYCLEMODEL' '%s'\n", scripts_dir, state_dir_sq);
+    OHP_APPEND("sound_label=Sound: %s (click to toggle)\n", sound_on ? "on" : "off");
+    OHP_APPEND("sound_action='%s/oh_write_request.sh' 'TOGGLESOUND' '%s'\n", scripts_dir, state_dir_sq);
+    OHP_APPEND("new_action='%s/oh_write_request.sh' 'NEWSESSION' '%s'\n", scripts_dir, state_dir_sq);
+    OHP_APPEND("send_action='%s/oh_write_send.sh' '%s'\n", scripts_dir, state_dir_sq);
+
+    /* ---- session list (same read/sort/(empty)-filter as before) ---- */
+    int n = 0;
     FILE *sf = fopen(g_sessions_state_path, "r");
     if (sf) {
         char line[PATH_BUF + 128];
-        int n = 0;
         while (fgets(line, sizeof(line), sf) && n < 40) {
             line[strcspn(line, "\r\n")] = '\0';
             char *bar = strchr(line, '|');
@@ -1709,55 +1693,25 @@ static void write_chtpm_projection(void) {
             *bar = '\0';
             const char *dir = line, *label = bar + 1;
             int is_active = g_session_dir[0] && strcmp(dir, g_session_dir) == 0;
-            /* REAL, NEW 2026-09-01 (direct instruction: "we dont need to
-             * keep empty sessions") - a session with no real messages
-             * yet (publish_sessions()'s own real "(empty)" suffix,
-             * written when it found no U| line) is skipped from the
-             * real, visible list - real clutter this house's own
-             * repeated testing left behind. The ACTIVE session is never
-             * skipped even if empty (a freshly-created session must
-             * stay visible/selectable while its first message is still
-             * being composed) - real files on disk are untouched
-             * either way, this only affects what gets LISTED. */
             if (!is_active && strstr(label, "(empty)")) continue;
             char label_full[300], label_esc[350];
             snprintf(label_full, sizeof(label_full), "%s%s", is_active ? "> " : "  ", label);
             xml_escape(label_full, label_esc, sizeof(label_esc));
-            char dir_sq[PATH_BUF * 2], load_req_sq[PATH_BUF * 2 + 32], del_req_sq[PATH_BUF * 2 + 32];
+            char dir_sq[PATH_BUF * 2];
             shell_escape_squote(dir, dir_sq, sizeof(dir_sq));
-            snprintf(load_req_sq, sizeof(load_req_sq), "LOADSESSION|%s", dir_sq);
-            snprintf(del_req_sq, sizeof(del_req_sq), "DELETESESSION|%s", dir_sq);
-            /* load_req_sq/del_req_sq's own embedded dir_sq is already
-             * squote-escaped for ITS OWN single-quote wrapping below -
-             * safe to nest as one literal argv token each.
-             * REAL, NEW 2026-09-01 (direct instruction: "add backspace
-             * to delete... instead of making all those delete spots")
-             * - one real row per session now, not two: DELETESESSION
-             * moves to this item's own generic backspace_action= (a
-             * real, generic second action ANY focused <item> can carry,
-             * see khtpm_core_render.c's own Elem.backspace_action field
-             * comment) - Backspace while a session row is focused
-             * deletes it directly, real convention any future consumer
-             * with a real deletable list can reuse. */
-            OHP_APPEND("      <item id=\"s%d\" label=\"%s\" action=\"'%s/oh_write_request.sh' '%s' '%s'\" backspace_action=\"'%s/oh_write_request.sh' '%s' '%s'\"/>\n",
-                       n, label_esc, scripts_dir, load_req_sq, state_dir_sq, scripts_dir, del_req_sq, state_dir_sq);
+            OHP_APPEND("session_%d_label=%s\n", n, label_esc);
+            OHP_APPEND("session_%d_action='%s/oh_write_request.sh' 'LOADSESSION|%s' '%s'\n",
+                       n, scripts_dir, dir_sq, state_dir_sq);
+            OHP_APPEND("session_%d_del_action='%s/oh_write_request.sh' 'DELETESESSION|%s' '%s'\n",
+                       n, scripts_dir, dir_sq, state_dir_sq);
             n++;
         }
         fclose(sf);
     }
-    OHP_APPEND("      </scrolllist>\n");
-    OHP_APPEND("    </sidebar>\n");
+    OHP_APPEND("sessions_count=%d\n", n);
 
-    OHP_APPEND("    <panel>\n");
-    OHP_APPEND("      <text id=\"status\" label=\"%s\"/>\n", status_esc);
-    /* REAL, NEW 2026-09-01 (direct instruction: "you can put model
-     * toggle up top next to model name, that would be best") - right
-     * next to panel's own status line, a fixed row same as before. */
-    OHP_APPEND("      <item id=\"cyclemodel\" label=\"Model: %s (click to cycle)\" action=\"'%s/oh_write_request.sh' 'CYCLEMODEL' '%s'\"/>\n", model_esc, scripts_dir, state_dir_sq);
-    OHP_APPEND("      <scrolllist>\n");
-
-    /* ---- active session's own real transcript tail (last N real
-     * U|/A| lines, same file/format persist_msg() writes) ---- */
+    /* ---- active session transcript tail (last N U|/A| lines) ---- */
+    int msgn = 0;
     if (g_session_dir[0]) {
         char tpath[PATH_BUF];
         snprintf(tpath, sizeof(tpath), "%s/transcript.txt", g_session_dir);
@@ -1785,55 +1739,43 @@ static void write_chtpm_projection(void) {
                 snprintf(shown, sizeof(shown), "%.200s", un);
                 snprintf(row_raw, sizeof(row_raw), "%s: %s", tail[idx][0] == 'U' ? "you" : "hai", shown);
                 xml_escape(row_raw, row_esc, sizeof(row_esc));
-                /* REAL, NEW 2026-09-01 (direct instruction: "can u use
-                 * css 2 change color of user and ai chat?") - a real,
-                 * generic class= per real speaker, same real ".class {
-                 * color: ... }" convention entity_menu_default.css's
-                 * own sidebar/cli_io rules already use - color choice
-                 * itself lives in CSS, not baked in here. */
-                OHP_APPEND("        <text id=\"msg%d\" class=\"%s\" label=\"%s\"/>\n",
-                           i, tail[idx][0] == 'U' ? "msg-user" : "msg-hai", row_esc);
+                OHP_APPEND("msg_%d_class=%s\n", i, tail[idx][0] == 'U' ? "msg-user" : "msg-hai");
+                OHP_APPEND("msg_%d_text=%s\n", i, row_esc);
                 free(tail[idx]);
+                msgn++;
             }
         }
     }
+    OHP_APPEND("transcript_count=%d\n", msgn);
 
-    /* ---- pending tool approval gate (real pending_tool.state.txt,
-     * "name|arg|preview", same file write_pending_tool_state() above
-     * already maintains) ---- */
+    /* ---- pending tool-approval gate ---- */
     if (g_tool_pending) {
         char banner[MSG_LEN]; tool_request_banner(&g_pending_tool, banner, sizeof(banner));
         char banner_esc[MSG_LEN + 64];
         xml_escape(banner, banner_esc, sizeof(banner_esc));
-        OHP_APPEND("        <text id=\"tool-banner\" label=\"%s\"/>\n", banner_esc);
-        OHP_APPEND("        <item id=\"approve\" label=\"Approve\" action=\"'%s/oh_write_request.sh' 'APPROVE' '%s'\"/>\n", scripts_dir, state_dir_sq);
-        OHP_APPEND("        <item id=\"deny\" label=\"Deny\" action=\"'%s/oh_write_request.sh' 'DENY' '%s'\"/>\n", scripts_dir, state_dir_sq);
+        OHP_APPEND("tool_pending=1\n");
+        OHP_APPEND("tool_banner=%s\n", banner_esc);
+        OHP_APPEND("approve_action='%s/oh_write_request.sh' 'APPROVE' '%s'\n", scripts_dir, state_dir_sq);
+        OHP_APPEND("deny_action='%s/oh_write_request.sh' 'DENY' '%s'\n", scripts_dir, state_dir_sq);
+    } else {
+        OHP_APPEND("tool_pending=0\n");
     }
-
-    OHP_APPEND("      </scrolllist>\n");
-    OHP_APPEND("      <cli_io id=\"composer\" target_id=\"composer\" label=\"&gt; \" action=\"'%s/oh_write_send.sh' '%s'\"/>\n", scripts_dir, state_dir_sq);
-    OHP_APPEND("    </panel>\n");
-    OHP_APPEND("  </page>\n</window>\n");
 #undef OHP_APPEND
 
-    /* Real "only write when the real content actually changed" guard -
-     * every main-loop tick calls this (200ms), and an unconditional
-     * write would make the shared renderer's own reparse_chtpm_if_
-     * changed() (mtime-gated) fire every tick even when nothing is
-     * happening, tearing down and rebuilding the whole Elem tree (and
-     * the focus/scroll state that rides on it) for no real reason. */
+    /* only write on real change - keeps the renderer's mtime-gated
+     * reparse from firing every 200ms tick for nothing. */
     static char *g_last_projection = NULL;
     if (g_last_projection && strcmp(g_last_projection, buf) == 0) { free(buf); return; }
     free(g_last_projection);
     g_last_projection = buf;
 
     char tmp_path[PATH_BUF];
-    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", g_chtpm_output_path);
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", g_ui_state_path);
     FILE *wf = fopen(tmp_path, "w");
     if (!wf) return;
     fputs(buf, wf);
     fclose(wf);
-    rename(tmp_path, g_chtpm_output_path);
+    rename(tmp_path, g_ui_state_path);
 }
 
 static void handle_request(void) {
@@ -1962,6 +1904,7 @@ int main(int argc, char **argv) {
         snprintf(g_state_dir, sizeof(g_state_dir), "%s/&.widgits/open-hai/state", g_house_root);
     }
     mkdir(g_state_dir, 0755);
+    snprintf(g_ui_state_path, sizeof(g_ui_state_path), "%s/ui.txt", g_state_dir);
     if (data_root[0] == '/') {
         snprintf(g_chtpm_output_path, sizeof(g_chtpm_output_path), "%s/open-hai.chtpm", data_root);
     } else {
@@ -1998,11 +1941,11 @@ int main(int argc, char **argv) {
         }
     }
 
-    write_chtpm_projection(); /* real, initial projection - before the shared renderer's own first parse_chtpm() call */
+    write_state(); /* initial state before the renderer's first parse_chtpm() */
     for (;;) {
         check_pending();
         handle_request();
-        write_chtpm_projection();
+        write_state();
         /* REAL, NEW 2026-09-01 - see parent_still_alive()'s own header
          * comment. Checked once per real loop iteration (200ms), same
          * real cadence chat_hai_loop.sh's own poll already uses - a

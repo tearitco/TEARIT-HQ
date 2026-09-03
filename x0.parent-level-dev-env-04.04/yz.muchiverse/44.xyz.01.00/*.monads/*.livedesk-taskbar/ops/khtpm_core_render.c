@@ -901,6 +901,13 @@ static void kh_substitute_vars(const char *src, char *dst, size_t max_len) {
     char *o = dst;
     char *end = dst + max_len - 1;
     while (*p && o < end) {
+        if (strncmp(p, "<!--", 4) == 0) {
+            const char *e = strstr(p, "-->");
+            size_t span = e ? (size_t)(e + 3 - p) : strlen(p);
+            for (size_t i = 0; i < span && o < end; i++) *o++ = p[i];
+            p += span;
+            continue;
+        }
         if (*p == '\\' && (p[1] == '$' || p[1] == '{' || p[1] == '\\')) {
             *o++ = p[1]; p += 2; continue;
         }
@@ -971,6 +978,13 @@ static void kh_expand_repeats(const char *src, char *dst, size_t cap) {
     char *o = dst;
     char *oend = dst + cap - 1;
     while (*p && o < oend) {
+        if (strncmp(p, "<!--", 4) == 0) {
+            const char *e = strstr(p, "-->");
+            size_t span = e ? (size_t)(e + 3 - p) : strlen(p);
+            for (size_t i = 0; i < span && o < oend; i++) *o++ = p[i];
+            p += span;
+            continue;
+        }
         if (strncmp(p, "<repeat", 7) == 0 &&
             (isspace((unsigned char)p[7]) || p[7] == '>')) {
             const char *gt = strchr(p, '>');
