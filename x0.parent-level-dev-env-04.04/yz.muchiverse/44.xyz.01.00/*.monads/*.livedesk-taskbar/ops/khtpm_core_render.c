@@ -6407,6 +6407,33 @@ static int scroll_row_span(const Elem *c, int w) {
         return sprite_grid_visual_lines(c, w) * line_span;
     }
     if (c && c->sprite[0]) return (64 + ROW_H + 8 + ROW_H - 1) / ROW_H; /* 64px blit + one ROW_H for the nav chip */
+    /* REAL FIX 2026-09-03 (direct live report: co-lab-hai's own long
+     * agent messages clipped with "..." instead of wrapping, unlike
+     * chat-hai's own rows - traced to this exact function always
+     * returning 1, so no plain <text> row was ever given more than one
+     * ROW_H of real box height to wrap into, even after khtpm_draw_
+     * core.c's own wrap path was generalized past cli_io-only - see
+     * that file's wrap_line_count()/is_multiline_box comments for the
+     * other half of this fix). A real, generic capability: any plain
+     * <text> row (no sprite, not a grid) whose label needs more than
+     * one wrapped line at this row's own real width gets that many
+     * ROW_H units, computed via the SAME real CSS style/font this
+     * element will actually draw with (not a guessed default), so the
+     * layout and the eventual draw agree. Every existing single-line
+     * label is completely unaffected - wrap_line_count() returns 1 for
+     * anything that already fits, same as before this fix existed. */
+    if (c && strcmp(c->tag, "text") == 0 && c->label[0]) {
+        CssStyle tmp_style;
+        css_compute_style(&g_sheet, c->tag, c->id, (char (*)[32])(void *)c->classes, c->n_classes, 0, &tmp_style);
+        XftFont *font = font_for(&tmp_style);
+        int pad = tmp_style.has_padding ? tmp_style.padding : 4;
+        int avail_w = w - pad * 2;
+        int lines = wrap_line_count(font, c->label, avail_w);
+        int line_h = font->ascent - font->descent > 0 ? font->ascent - font->descent : 12;
+        line_h += 4;
+        int span = (lines * line_h + ROW_H - 1) / ROW_H;
+        return span < 1 ? 1 : span;
+    }
     return 1;
 }
 

@@ -446,6 +446,52 @@ static void khtpm_decode_label_entities(char *s) {
     *w = '\0';
 }
 
+/* REAL, NEW 2026-09-03 (direct live report: co-lab-hai's own agent
+ * messages, often long, drew with the plain single-line "..." clip
+ * instead of wrapping like chat-hai's own rows appear to - root cause
+ * found by reading this file directly: the real word-wrap path a few
+ * lines down was gated to `tag=="cli_io"` specifically (2026-09-01's
+ * own "build word-wrap into the generic cli_io FIRST" - a real,
+ * deliberate first slice, not a permanent restriction). A plain
+ * <text> row in a scrolllist is always exactly one ROW_H tall by
+ * default (scroll_row_span()'s own real default, khtpm_core_render.c),
+ * so it never had the height headroom the wrap path already checks
+ * for even once the tag restriction is lifted - see that function's
+ * own 2026-09-03 fix for the layout-side half of this.
+ *
+ * This helper counts how many real wrapped lines a label needs at a
+ * given available width - same greedy word-wrap algorithm draw_elem()
+ * itself uses below, factored out so the LAYOUT side (scroll_row_span())
+ * can ask "how tall a box does this text really need" before draw_elem()
+ * ever runs, without duplicating the wrap logic or re-deriving it by
+ * guesswork. Real, generic, not co-lab-hai-specific - any future
+ * scrolllist consumer with long text gets this for free. */
+static int wrap_line_count(XftFont *font, const char *text, int avail_w) {
+    if (!font || !text || !text[0] || avail_w <= 0) return 1;
+    int n = 0;
+    const char *p = text;
+    while (*p) {
+        int i = 0, last_good_space = -1;
+        for (;;) {
+            char c = p[i];
+            if (c == '\0') break;
+            if (c == ' ') last_good_space = i;
+            XGlyphInfo lw;
+            XftTextExtentsUtf8(dpy, font, (const FcChar8 *)p, i + 1, &lw);
+            if (lw.width > avail_w) break;
+            i++;
+        }
+        int cut = i;
+        int has_more_after = (p[i] != '\0');
+        if (has_more_after && last_good_space >= 0) cut = last_good_space;
+        if (cut == 0 && p[i] != '\0') cut = 1;
+        n++;
+        p += cut;
+        while (*p == ' ') p++;
+    }
+    return n < 1 ? 1 : n;
+}
+
 static void draw_elem(Elem *e, int hover_id_hash) {
     (void)hover_id_hash;
     /* REAL FIX 2026-08-29 (EVENTS-HQ-RENDER-UNIFICATION-PLAN.md's own
@@ -628,8 +674,19 @@ static void draw_elem(Elem *e, int hover_id_hash) {
          * sibling-reflow as the user types past the box - that's a real
          * layout-engine feature, flagged as separate future work, not
          * silently attempted here under time pressure. */
-        int is_multiline_cli_io = (strcmp(e->tag, "cli_io") == 0) && (e->h > (line_h * 3) / 2) && avail_w > 0;
-        if (is_multiline_cli_io) {
+        /* REAL FIX 2026-09-03 - generalized from cli_io-only (see
+         * wrap_line_count()'s own header comment above for the real
+         * "co-lab-hai's long agent messages don't wrap" incident this
+         * traces back to). The real gate is just "is this box tall
+         * enough for more than one line" - which tag asked for it
+         * doesn't matter. Every existing single-ROW_H element (every
+         * sidebar/panel <text>, every plain composer) is completely
+         * unaffected, since scroll_row_span()'s own default height is
+         * still exactly one line for anything that doesn't need more -
+         * this only activates for a box some other real code path
+         * already decided needs to be taller. */
+        int is_multiline_box = (e->h > (line_h * 3) / 2) && avail_w > 0;
+        if (is_multiline_box) {
             /* Real, generic greedy word-wrap: pack words onto each line
              * (measuring real glyph width via Xft, not a char-count
              * guess - same discipline chai_measure_text_px() already
