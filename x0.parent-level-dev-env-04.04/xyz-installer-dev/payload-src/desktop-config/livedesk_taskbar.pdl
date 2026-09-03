@@ -15,7 +15,7 @@ SECTION      | hq_menu_1_cmd       | livedesk:zorder-toggle
 SECTION      | hq_menu_2_label     | restart
 SECTION      | hq_menu_2_cmd       | sh start.sh restart
 SECTION      | hq_menu_3_label     | dir
-SECTION      | hq_menu_3_cmd       | xdg-open .
+SECTION      | hq_menu_3_cmd       | sh start.sh dir
 SECTION      | hq_menu_4_label     | settings
 SECTION      | hq_menu_4_cmd       | livedesk:open-settings
 SECTION      | hq_menu_5_label     | cli

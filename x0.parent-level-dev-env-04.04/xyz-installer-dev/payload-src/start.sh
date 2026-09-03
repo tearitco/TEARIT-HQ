@@ -10,6 +10,8 @@
 #   sh start.sh stop
 #   sh start.sh restart
 #   sh start.sh status
+#   sh start.sh uninstall  # stop, remove the launcher, delete this dir
+#   sh start.sh dir        # open this install folder in a file manager
 
 set -u
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -67,5 +69,35 @@ case "$ACTION" in
         p="$(our_pids)"
         [ -n "$p" ] && echo "tearit-hq: RUNNING ($(echo $p | tr '\n' ' '))" || echo "tearit-hq: stopped"
         ;;
-    *) echo "usage: sh start.sh {start|stop|restart|status}"; exit 1 ;;
+    dir|open)
+        if command -v xdg-open >/dev/null 2>&1; then xdg-open "$ROOT" >/dev/null 2>&1 &
+        elif command -v open >/dev/null 2>&1; then open "$ROOT" &
+        else echo "$ROOT"; fi
+        ;;
+    uninstall|remove)
+        # Remove everything this install put on the machine: the running
+        # desktop, any ~/.local/bin (etc.) launcher pointing here, and
+        # this directory. Ask first unless `-y` / YES=1.
+        stop_ours
+        removed_launcher=0
+        for d in "$HOME/.local/bin" "$HOME/bin" "/usr/local/bin"; do
+            [ -d "$d" ] || continue
+            for f in "$d"/*; do
+                [ -f "$f" ] || continue
+                if grep -qF "$ROOT/start.sh" "$f" 2>/dev/null; then
+                    rm -f "$f" && { echo "removed launcher: $f"; removed_launcher=1; }
+                fi
+            done
+        done
+        [ "$removed_launcher" = 0 ] && echo "no launcher found pointing here (ok)"
+        if [ "${2:-}" != "-y" ] && [ "${YES:-0}" != "1" ]; then
+            printf 'delete the whole install dir?  %s  [y/N] ' "$ROOT"
+            read ans
+            case "$ans" in y|Y|yes|YES) ;; *) echo "kept $ROOT (launcher already removed)"; exit 0 ;; esac
+        fi
+        cd /
+        rm -rf "$ROOT"
+        echo "uninstalled: $ROOT removed"
+        ;;
+    *) echo "usage: sh start.sh {start|stop|restart|status|dir|uninstall [-y]}"; exit 1 ;;
 esac

@@ -68,9 +68,12 @@
 #      NO_BUILD=1 (download only), NO_LAUNCHER=1 (don't touch PATH).           #
 #                                                                             #
 #   Q. How do I uninstall?                                                     #
-#   A. Delete the folder and the launcher:                                    #
-#        rm -rf ~/tearit-hq ~/.local/bin/tearit-hq                            #
-#      Nothing else is written anywhere.                                      #
+#   A.   tearit-hq uninstall           (add -y to skip the prompt)            #
+#      or sh ~/tearit-hq/start.sh uninstall                                   #
+#      or curl -fsSL https://raw.githubusercontent.com/tearitco/tearit-install/main/uninstall.sh | sh -s -- tearit-hq
+#      or by hand:  rm -rf ~/tearit-hq ~/.local/bin/tearit-hq                  #
+#      Nothing else is written anywhere. Reinstall = uninstall then the       #
+#      install one-liner again (or add FORCE=1 to install over the top).      #
 #                                                                             #
 #   Q. It didn't build — now what?                                            #
 #   A. The build stops with the exact missing package name. Install that      #

@@ -131,12 +131,36 @@ install (it will not stop the other one).
 
 ## Uninstall
 
+Any of these:
+
+```sh
+tearit-hq uninstall            # stops it, removes the launcher, deletes ~/tearit-hq (asks first)
+tearit-hq uninstall -y         # same, no prompt
+
+sh ~/tearit-hq/start.sh uninstall
+
+# or from scratch (launcher already gone, etc.):
+curl -fsSL https://raw.githubusercontent.com/tearitco/tearit-install/main/uninstall.sh | sh -s -- tearit-hq
+```
+
+Or do it by hand — that is the entire footprint:
+
 ```sh
 rm -rf ~/tearit-hq ~/.local/bin/tearit-hq
 ```
 
-That is the whole footprint. Adjust the paths if you used `PREFIX` /
-`BINDIR`.
+Adjust the paths if you used `PREFIX` / `BINDIR`. `YES=1` on the
+`curl … | sh` form skips the confirmation prompt.
+
+## Reinstall (install / uninstall loop)
+
+```sh
+tearit-hq uninstall -y
+curl -fsSL https://raw.githubusercontent.com/tearitco/tearit-install/main/install.sh | sh -s -- tearit-hq
+```
+
+Or reinstall over the top without removing first: add `FORCE=1` to the
+install command.
 
 ---
 
