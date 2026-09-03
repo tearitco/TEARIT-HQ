@@ -1,4 +1,4 @@
-<!-- dashboard.chtpm - db-hq as a STATIC template driven by a PAL
+<!-- dashboard.xhtpm - db-hq as a STATIC template driven by a PAL
      projector (CHTPM-ARCHITECTURE-FIX.md ; _shared-lib/system/string-ops.md).
      ONE window: the 15 RPG-Maker tabs as toolbar rows across the top of
      the panel, the active tab's record list in the sidebar, the
@@ -10,13 +10,15 @@
      class="db-hq-pal" (NOT "db-hq") so the renderer's built-in
      g_is_db_hq C path stays dormant - this is a plain generic
      sidebar+panel window. Common Events keeps its own editor (its tab
-     just links to it). button.sh restores this file from the .bootstrap. -->
+     just links to it). Pick a tab -> ACTIVATE scopes nav into the "records" list (the
+     spirit of db-hq_activate_scope / piececraft INTERACT); Esc exits
+     back to the tab row. -->
 <window label="DB (PAL)" class="db-hq-pal" vars="state/ui.txt">
   <module src="&.widgits/_shared-lib/system/+x/prisc+x.+x pal/dbhq_projector.pal"/>
   <page name="main">
     <sidebar>
       <text label="${tab_title}"/>
-      <scrolllist>
+      <scrolllist id="records">
         <repeat count="${rows_count}" bind="row">
           <item id="r${row.#}" label="${row.text}" action="'${PKG}/ops/dbhq_action.sh' 'sel' '${row.#}'"/>
         </repeat>
@@ -24,25 +26,25 @@
     </sidebar>
     <panel>
       <row class="toolbar">
-        <item label="Actors"     action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_actors.state.txt' 'ACTOR' 'Actors'"/>
-        <item label="Classes"    action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_classes.state.txt' 'CLASS' 'Classes'"/>
-        <item label="Skills"     action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_skills.state.txt' 'SKILL' 'Skills'"/>
-        <item label="Items"      action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_items.state.txt' 'ITEM' 'Items'"/>
-        <item label="Weapons"    action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_weapons.state.txt' 'WEAPON' 'Weapons'"/>
+        <item label="Actors"     onclick="ACTIVATE '${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_actors.state.txt' 'ACTOR' 'Actors'" target_id="records"/>
+        <item label="Classes"    onclick="ACTIVATE '${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_classes.state.txt' 'CLASS' 'Classes'" target_id="records"/>
+        <item label="Skills"     onclick="ACTIVATE '${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_skills.state.txt' 'SKILL' 'Skills'" target_id="records"/>
+        <item label="Items"      onclick="ACTIVATE '${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_items.state.txt' 'ITEM' 'Items'" target_id="records"/>
+        <item label="Weapons"    onclick="ACTIVATE '${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_weapons.state.txt' 'WEAPON' 'Weapons'" target_id="records"/>
       </row>
       <row class="toolbar">
-        <item label="Armors"     action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_armors.state.txt' 'ARMOR' 'Armors'"/>
-        <item label="Enemies"    action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_enemies.state.txt' 'ENEMY' 'Enemies'"/>
-        <item label="Troops"     action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_troops.state.txt' 'TROOP' 'Troops'"/>
-        <item label="States"     action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_states.state.txt' 'STATE' 'States'"/>
-        <item label="Animations" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_animations.state.txt' 'ANIMATION' 'Animations'"/>
+        <item label="Armors"     onclick="ACTIVATE '${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_armors.state.txt' 'ARMOR' 'Armors'" target_id="records"/>
+        <item label="Enemies"    onclick="ACTIVATE '${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_enemies.state.txt' 'ENEMY' 'Enemies'" target_id="records"/>
+        <item label="Troops"     onclick="ACTIVATE '${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_troops.state.txt' 'TROOP' 'Troops'" target_id="records"/>
+        <item label="States"     onclick="ACTIVATE '${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_states.state.txt' 'STATE' 'States'" target_id="records"/>
+        <item label="Animations" onclick="ACTIVATE '${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_animations.state.txt' 'ANIMATION' 'Animations'" target_id="records"/>
       </row>
       <row class="toolbar">
-        <item label="Tilesets"   action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_tilesets.state.txt' 'TILESET' 'Tilesets'"/>
-        <item label="Common Ev"  action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_common_events.state.txt' 'CE' 'Common Events'"/>
-        <item label="System"     action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_system.state.txt' 'SYSTEM' 'System'"/>
-        <item label="Types"      action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_types.state.txt' 'TYPE' 'Types'"/>
-        <item label="Terms"      action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_terms.state.txt' 'TERM' 'Terms'"/>
+        <item label="Tilesets"   onclick="ACTIVATE '${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_tilesets.state.txt' 'TILESET' 'Tilesets'" target_id="records"/>
+        <item label="Common Ev"  onclick="ACTIVATE '${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_common_events.state.txt' 'CE' 'Common Events'" target_id="records"/>
+        <item label="System"     onclick="ACTIVATE '${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_system.state.txt' 'SYSTEM' 'System'" target_id="records"/>
+        <item label="Types"      onclick="ACTIVATE '${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_types.state.txt' 'TYPE' 'Types'" target_id="records"/>
+        <item label="Terms"      onclick="ACTIVATE '${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_terms.state.txt' 'TERM' 'Terms'" target_id="records"/>
       </row>
       <text label="${detail_title}" class="quiet"/>
       <scrolllist class="from-top">

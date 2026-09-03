@@ -1189,6 +1189,12 @@ static Elem *g_default_input_elem;
  * on reparse) - reset alongside it in reparse_chtpm_if_changed(). */
 static Elem *g_default_active_scope_root;
 static char g_default_active_scope_id[64];
+/* 1 when the active scope was entered on a CONTAINER (an ACTIVATE
+ * trigger with target_id=) - then nav is confined to that subtree,
+ * interact-mode style. 0 for a plain dropdown ACTIVATE (children
+ * show/hide only, nav not confined) so every existing dropdown is
+ * unchanged. */
+static int g_default_scope_confine = 0;
 static int g_dock_drop_lo, g_dock_drop_hi;
 /* Forward declaration - real definition (with its own X11/Xft section
  * header comment) lives further down this file. Needed here because a
@@ -1263,6 +1269,7 @@ static int reparse_chtpm_if_changed(void) {
      * above - a stale dropdown-open pointer into a freed/reused pool
      * slot is a real, live crash risk, not a cosmetic one. */
     g_default_active_scope_root = NULL;
+    g_default_scope_confine = 0;
     g_n_elems = 0;
     Elem *new_window = parse_chtpm(g_chtpm_path);
     if (!new_window) return 0;
@@ -1271,8 +1278,18 @@ static int reparse_chtpm_if_changed(void) {
         g_dock_peer = parse_chtpm(g_dock_peer_path);
         { struct stat pst; if (g_dock_peer && stat(g_dock_peer_path, &pst) == 0) g_dock_peer_mtime = pst.st_mtim; }
     }
-    if (g_default_active_scope_id[0])
-        g_default_active_scope_root = find_by_id(g_window, g_default_active_scope_id);
+    if (g_default_active_scope_id[0]) {
+        /* re-resolve the scope across the reparse the projector's
+         * every-tick state write triggers - by the trigger's id, then
+         * (interact-style container scope) to its target_id container,
+         * restoring the confine flag so nav stays confined. */
+        Elem *trig = find_by_id(g_window, g_default_active_scope_id);
+        g_default_active_scope_root = trig;
+        if (trig && trig->target_id[0]) {
+            Elem *c = find_by_id(g_window, trig->target_id);
+            if (c) { g_default_active_scope_root = c; g_default_scope_confine = 1; }
+        }
+    }
     g_current_page[0] = '\0';
     snprintf(g_current_page, sizeof(g_current_page), "main");
     g_page_stack_n = 0;
@@ -8419,6 +8436,35 @@ static void assign_nav_and_layout(void) {
         g_win_h = y + 8;
         }
     }
+    /* interact-mode-style scope confinement (spirit of db-hq's own
+     * dbhq_elem_is_navigable() and piececraft INTERACT): while a generic
+     * ACTIVATE scope is held, ONLY elements under its root stay
+     * navigable. Renumber g_nav[] in place so digit/arrow nav and the
+     * g_focus_nav clamp below stay consistent. Esc (handle_key) pops the
+     * scope. No scope held -> untouched, every existing window unchanged. */
+    if (g_default_scope_confine && g_default_active_scope_root && !g_is_db_hq && !g_is_events_hq && !window_is_dock()) {
+        int w = 0;
+        for (int r = 0; r < g_n_nav; r++) {
+            Elem *e = g_nav[r];
+            /* keep navigable: (a) anything under the scope root; (b) the
+             * trigger row itself - the "you are here, Enter/Esc to
+             * leave" affordance, where [^] shows; (c) a dropdown-child
+             * bound to this scope via target_id (the existing generic
+             * "Menu" dropdown pattern - its options aren't tree children
+             * of the trigger). */
+            int keep = (e == g_default_active_scope_root) ||
+                       (g_default_active_scope_id[0] && e->id[0] &&
+                        strcmp(e->id, g_default_active_scope_id) == 0) ||
+                       (g_default_active_scope_id[0] && e->target_id[0] &&
+                        elem_has_class(e, "dropdown-child") &&
+                        strcmp(e->target_id, g_default_active_scope_id) == 0);
+            for (Elem *p = e; p && !keep; p = p->parent)
+                if (p == g_default_active_scope_root) keep = 1;
+            if (keep) { g_nav[w] = e; e->nav_index = ++w; }
+            else e->nav_index = 0;
+        }
+        g_n_nav = w;
+    }
     if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
     if (g_focus_nav < 1) g_focus_nav = 1;
 }
@@ -8758,13 +8804,15 @@ static void activate_focused(void) {
      * Clicking the trigger again while already open closes it (a real
      * toggle, not just an open-only action) - matches ordinary
      * dropdown/menu-button behavior everywhere else, not invented here. */
-    if (strcmp(item->onclick, "ACTIVATE") == 0) {
+    if (strncmp(item->onclick, "ACTIVATE", 8) == 0 &&
+        (item->onclick[8] == '\0' || item->onclick[8] == ' ')) {
         int same = (g_default_active_scope_root == item) ||
             (item->id[0] && g_default_active_scope_id[0] &&
              strcmp(item->id, g_default_active_scope_id) == 0);
         if (same) {
             g_default_active_scope_root = NULL;
             g_default_active_scope_id[0] = '\0';
+            g_default_scope_confine = 0;
             if (strncmp(item->id, "strip-cell-", 11) == 0) {
                 char hist[PATH_BUF];
                 snprintf(hist, sizeof(hist), "%s/#.desktop/strip_history.txt", g_house_root);
@@ -8772,8 +8820,26 @@ static void activate_focused(void) {
                 if (hf) { fprintf(hf, "27\n"); fclose(hf); }
             }
         } else {
-            g_default_active_scope_root = item;
+            /* Scope into the CONTAINER named by target_id (its subtree
+             * becomes the nav scope - spirit of dbhq_activate_scope() /
+             * INTERACT), or the trigger itself if no target_id. The
+             * trigger id is what Esc + the toggle above key off. */
+            Elem *scope = item;
+            g_default_scope_confine = 0;
+            if (item->target_id[0]) {
+                Elem *c = find_by_id(g_window, item->target_id);
+                if (c) { scope = c; g_default_scope_confine = 1; }
+            }
+            g_default_active_scope_root = scope;
             snprintf(g_default_active_scope_id, sizeof(g_default_active_scope_id), "%s", item->id);
+            /* `onclick="ACTIVATE '<script>' '<verb>'"` - run the trailing
+             * command too, so one click can both switch content and
+             * scope into it (e.g. a db-hq-pal tab). */
+            {
+                const char *rest = item->onclick + 8;
+                while (*rest == ' ') rest++;
+                if (*rest) dispatch(rest);
+            }
             if (strncmp(item->id, "strip-cell-", 11) == 0) {
                 int n = atoi(item->id + 11);
                 char hist[PATH_BUF];
@@ -8792,6 +8858,7 @@ static void activate_focused(void) {
     if (elem_has_class(item, "dropdown-child") && strcmp(item->onclick, "ZORDER_TOGGLE") != 0) {
         g_default_active_scope_root = NULL;
         g_default_active_scope_id[0] = '\0';
+        g_default_scope_confine = 0;
     }
     /* REAL, NEW 2026-09-03 - generic scrollbar up/down arrows
      * (generic_sbar_register()'s own header comment), same real
@@ -9300,10 +9367,19 @@ static void handle_key(KeySym ks, char ch) {
      * proven precedent - this is the same real idea for the generic
      * dropdown instead of a cli_io field). */
     if (ks == XK_Escape && (g_default_active_scope_root || g_default_active_scope_id[0])) {
-        if (g_default_active_scope_root && g_default_active_scope_root->nav_index > 0)
+        /* return focus to the trigger that opened the scope (its id is
+         * what activate_focused() stored), so Esc lands you back on the
+         * tab / row you entered from - not on a container with no
+         * nav_index. Falls back to the scope root if the trigger has
+         * gone. */
+        Elem *trig = g_default_active_scope_id[0] ? find_by_id(g_window, g_default_active_scope_id) : NULL;
+        if (trig && trig->nav_index > 0)
+            g_focus_nav = trig->nav_index;
+        else if (g_default_active_scope_root && g_default_active_scope_root->nav_index > 0)
             g_focus_nav = g_default_active_scope_root->nav_index;
         g_default_active_scope_root = NULL;
         g_default_active_scope_id[0] = '\0';
+        g_default_scope_confine = 0;
         if (window_is_dock()) {
             char hist[PATH_BUF];
             snprintf(hist, sizeof(hist), "%s/#.desktop/strip_history.txt", g_house_root);
