@@ -19,21 +19,21 @@
   <module src="&.widgits/_shared-lib/system/+x/prisc+x.+x pal/dbhq_projector.pal"/>
   <page name="main">
     <tabbar class="tab-bar">
-      <tab id="tab-actors"     class="active" label="Actors"        action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_actors.state.txt' 'ACTOR' 'Actors'"/>
-      <tab id="tab-classes"    label="Classes"       action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_classes.state.txt' 'CLASS' 'Classes'"/>
-      <tab id="tab-skills"     label="Skills"        action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_skills.state.txt' 'SKILL' 'Skills'"/>
-      <tab id="tab-items"      label="Items"         action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_items.state.txt' 'ITEM' 'Items'"/>
-      <tab id="tab-weapons"    label="Weapons"       action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_weapons.state.txt' 'WEAPON' 'Weapons'"/>
-      <tab id="tab-armors"     label="Armors"        action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_armors.state.txt' 'ARMOR' 'Armors'"/>
-      <tab id="tab-enemies"    label="Enemies"       action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_enemies.state.txt' 'ENEMY' 'Enemies'"/>
-      <tab id="tab-troops"     label="Troops"        action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_troops.state.txt' 'TROOP' 'Troops'"/>
-      <tab id="tab-states"     label="States"        action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_states.state.txt' 'STATE' 'States'"/>
-      <tab id="tab-animations" label="Animations"    action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_animations.state.txt' 'ANIMATION' 'Animations'"/>
-      <tab id="tab-tilesets"   label="Tilesets"      action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_tilesets.state.txt' 'TILESET' 'Tilesets'"/>
-      <tab id="tab-ce"         label="Common Events" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_common_events.state.txt' 'CE' 'Common Events'"/>
-      <tab id="tab-system"     label="System"        action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_system.state.txt' 'SYSTEM' 'System'"/>
-      <tab id="tab-types"      label="Types"         action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_types.state.txt' 'TYPE' 'Types'"/>
-      <tab id="tab-terms"      label="Terms"         action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_terms.state.txt' 'TERM' 'Terms'"/>
+      <tab id="tab-actors"     class="active" label="Actors"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_actors.state.txt' 'ACTOR' 'Actors'"/>
+      <tab id="tab-classes"    label="Classes"       target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_classes.state.txt' 'CLASS' 'Classes'"/>
+      <tab id="tab-skills"     label="Skills"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_skills.state.txt' 'SKILL' 'Skills'"/>
+      <tab id="tab-items"      label="Items"         target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_items.state.txt' 'ITEM' 'Items'"/>
+      <tab id="tab-weapons"    label="Weapons"       target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_weapons.state.txt' 'WEAPON' 'Weapons'"/>
+      <tab id="tab-armors"     label="Armors"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_armors.state.txt' 'ARMOR' 'Armors'"/>
+      <tab id="tab-enemies"    label="Enemies"       target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_enemies.state.txt' 'ENEMY' 'Enemies'"/>
+      <tab id="tab-troops"     label="Troops"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_troops.state.txt' 'TROOP' 'Troops'"/>
+      <tab id="tab-states"     label="States"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_states.state.txt' 'STATE' 'States'"/>
+      <tab id="tab-animations" label="Animations"    target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_animations.state.txt' 'ANIMATION' 'Animations'"/>
+      <tab id="tab-tilesets"   label="Tilesets"      target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_tilesets.state.txt' 'TILESET' 'Tilesets'"/>
+      <tab id="tab-ce"         label="Common Events" target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_common_events.state.txt' 'CE' 'Common Events'"/>
+      <tab id="tab-system"     label="System"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_system.state.txt' 'SYSTEM' 'System'"/>
+      <tab id="tab-types"      label="Types"         target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_types.state.txt' 'TYPE' 'Types'"/>
+      <tab id="tab-terms"      label="Terms"         target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_terms.state.txt' 'TERM' 'Terms'"/>
     </tabbar>
     <sidebar id="sidebar" class="sidebar">
       <text label="${tab_title}" class="quiet"/>

@@ -1293,6 +1293,11 @@ static int reparse_chtpm_if_changed(void) {
         if (trig && trig->target_id[0]) {
             Elem *c = find_by_id(g_window, trig->target_id);
             if (c) { g_default_active_scope_root = c; g_default_scope_confine = 1; }
+        } else if (trig && strcmp(trig->tag, "tab") == 0) {
+            /* a <tab> scope always locks onto the page <sidebar> */
+            Elem *pg = find_page("main");
+            Elem *sb = pg ? find_by_tag(pg, "sidebar") : NULL;
+            if (sb) { g_default_active_scope_root = sb; g_default_scope_confine = 1; }
         }
     }
     g_current_page[0] = '\0';
@@ -8871,8 +8876,14 @@ static void activate_focused(void) {
             snprintf(g_default_active_tab_id, sizeof(g_default_active_tab_id), "%s", item->id);
         if (item->onclick[0]) dispatch(item->onclick);
         {
+            /* scope target: the tab's target_id= container, else the
+             * page <sidebar>. Same path the reparse re-resolve below
+             * uses, so the scope survives the projector's every-tick
+             * state write (which triggers a full reparse). */
             Elem *pg = find_page(g_current_page);
-            Elem *sb = pg ? find_by_tag(pg, "sidebar") : NULL;
+            Elem *sb = NULL;
+            if (item->target_id[0]) sb = find_by_id(g_window, item->target_id);
+            if (!sb && pg) sb = find_by_tag(pg, "sidebar");
             if (sb) {
                 g_default_active_scope_root = sb;
                 g_default_scope_confine = 1;
