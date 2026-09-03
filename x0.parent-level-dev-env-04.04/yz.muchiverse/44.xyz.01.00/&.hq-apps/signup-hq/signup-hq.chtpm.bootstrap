@@ -7,7 +7,7 @@
      renderer built-in for this .chtpm's own dir. button.sh restores
      this file from the .bootstrap if the <module> tag ever goes
      missing. Do not hand-generate this markup from the manager. -->
-<window label="Sign up" class="signup-hq" vars="&.hq-apps/signup-hq/state/ui.txt">
+<window label="Sign up" class="signup-hq" vars="state/ui.txt">
   <module src="&.hq-apps/signup-hq/+x/signup_hq_manager.+x"/>
   <page name="main">
     <sidebar>

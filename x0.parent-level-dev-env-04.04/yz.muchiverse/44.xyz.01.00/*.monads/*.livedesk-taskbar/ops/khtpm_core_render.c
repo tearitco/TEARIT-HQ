@@ -873,9 +873,18 @@ static int kh_find_vars_attr(const char *buf, char *out, size_t outsz) {
                 char rel[PATH_BUF]; size_t n = 0;
                 while (*q && *q != '"' && n + 1 < sizeof(rel)) rel[n++] = *q++;
                 rel[n] = '\0';
-                if (rel[0] == '/') snprintf(out, outsz, "%s", rel);
-                else snprintf(out, outsz, "%s/%s",
-                              g_house_root[0] ? g_house_root : ".", rel);
+                /* absolute wins; a relative vars= resolves against this
+                 * .chtpm's own dir (g_package_dir) so a per-instance
+                 * copy of a template - e.g. open-hai under a custom
+                 * --data-root - finds its own state file, falling back
+                 * to house_root only if the package dir is unset. */
+                if (rel[0] == '/')
+                    snprintf(out, outsz, "%s", rel);
+                else if (g_package_dir[0])
+                    snprintf(out, outsz, "%s/%s", g_package_dir, rel);
+                else
+                    snprintf(out, outsz, "%s/%s",
+                             g_house_root[0] ? g_house_root : ".", rel);
                 return 1;
             }
         }
