@@ -218,28 +218,60 @@ new window-list cells and §4's own paging both render THERE, not in the
 shared default-mode CSS/Elem path §1/§3 use - two real, different
 codebases for one visual bar, unchanged by this doc.
 
-## 5. Open questions before implementation starts
+## 5. Decisions (confirmed with the owner, 2026-09-03)
 
-1. Do §2's window-entries live in the EXISTING AI-menu structure (one
-   more dynamic list, reusing `KTB_LIVEDESK_DYN_MAX` machinery) or as a
-   genuinely new, separate bottom-strip section? Affects whether §4's
-   paging is scoped to just window-entries or the whole strip.
-2. Real minimize for db-hq/events-hq (WM-managed differently than
-   default-mode popups in some configurations, per `g_override_redirect`)
-   - does `XUnmapWindow` behave identically there, or does that mode
-   need its own real check before `_` is wired for it too?
-3. Should `_`'s onclick reuse the SAME `dispatch()`-fallthrough shape
-   `X`/`!` already use, or - like `ACTIVATE`/`SCROLLUP:<i>` - be
-   intercepted earlier in `activate_focused()` as a recognized verb
-   (no real shell command involved, same reasoning as those two)?
-   Recommend the latter, matching precedent.
+1. **§2's window-entries get their own separate bottom-strip section**,
+   not folded into the existing AI-menu's `KTB_LIVEDESK_DYN_MAX`
+   machinery. Reasoning: window entries are a genuinely different real
+   concept (live windows with focus/minimize state, restack on click)
+   from a dropdown menu's own static items - a dedicated section keeps
+   that state isolated and makes §4's overflow paging simpler to scope
+   to just this section later, rather than the whole strip at once.
 
-Nothing in §1-4 is built yet. Recommend confirming §5's answers (quick,
-low-risk decisions) before writing any code, then building in the order
-the owner already stated: window registration + real click-to-focus
-first (§2), minimize second (§3), overflow paging last (§4) - each one
-independently testable via this house's own real live-verification
-convention (dump_frame_png_op's geometry receipts, the "^"/"." focus
-indicator, real xdotool clicks - not the synthetic relay alone, per
-today's own hard-won lesson that the relay can validate internal logic
-while missing real X-level regressions entirely).
+2. **Real scope correction, not a technical answer to the question as
+   asked** - direct instruction: "we should be able to minimize
+   entities also (and this would close their submenus; but could open
+   them when unminimized)... we can put minimize option in their
+   context menus." This is a real, larger scope than §3 as originally
+   drafted (which only covered the `.chtpm`/CSS default-mode app
+   windows - co-lab-hai/chat-hai/open-hai/db-hq/events-hq). Desktop
+   TILE entities (asa/ava/self/m1_ninjadragon/etc.) need real minimize
+   too, via their own existing real right-click context menu
+   (`open_context_menu()`, data-driven per-entity via `meta.pdl` - a
+   real, already-proven, already-data-driven row mechanism, confirmed
+   live this session), NOT the `_` chrome button (tile entities have no
+   window chrome bar at all - they're small icons, not `.chtpm`
+   windows). A new real `meta.pdl` row (e.g. `Minimize`) dispatches the
+   same real minimize verb §3 defines, scoped to that entity's own real
+   window instead of an HQ app's. Minimizing an entity must also close
+   any of ITS OWN currently-open submenus/popups (real, entity-specific
+   state - which popup(s) trace back to which entity isn't tracked
+   anywhere yet and needs its own real accounting, not assumed to
+   already exist), and un-minimizing should reopen them - real,
+   separate follow-up scoping needed once §3's own core minimize/
+   restore mechanism (registry field + restore-request file) is proven
+   for the simpler HQ-app-window case first. The still-open technical
+   sub-question (whether `XUnmapWindow` behaves identically for a WM-
+   managed vs. override-redirect window) remains real and unanswered -
+   build and verify on override-redirect windows first (every case
+   confirmed live so far this session), extend to any WM-managed case
+   only once that's proven, per the original recommendation.
+
+3. **`_`'s onclick falls through to `dispatch()`, matching `X`/`!`'s own
+   existing pattern today** (`CLOSE`/`TOGGLE_FULLSCREEN`, both already
+   special-cased inside `dispatch()` itself) - NOT intercepted early in
+   `activate_focused()` like `ACTIVATE`/`SCROLLUP:<i>`. All three real
+   chrome buttons stay handled identically; add a `MINIMIZE` (or
+   `TOGGLE_MINIMIZE`) verb to `dispatch()`'s own existing special-case
+   list alongside `CLOSE`/`TOGGLE_FULLSCREEN`, not a new interception
+   point.
+
+Nothing in §1-4 is built yet. Build order stays as the owner stated:
+window registration + real click-to-focus first (§2), minimize second
+(§3, HQ-app-windows before entities per the scope note above), overflow
+paging last (§4) - each one independently testable via this house's own
+real live-verification convention (dump_frame_png_op's geometry
+receipts, the "^"/"." focus indicator, real xdotool clicks - not the
+synthetic relay alone, per today's own hard-won lesson that the relay
+can validate internal logic while missing real X-level regressions
+entirely).
