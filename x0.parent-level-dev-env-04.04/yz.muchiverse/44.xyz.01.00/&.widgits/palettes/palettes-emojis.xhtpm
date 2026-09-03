@@ -1,0 +1,20 @@
+<!-- palettes-emojis.xhtpm - STATIC template. Replaces khtpm_core_render.c's
+     g_is_palettes dbhq_inject_palette_tiles() C path for this category.
+     class="palettes-pal" (NOT "palettes") so g_is_palettes stays 0; the
+     generic <item class="swatch"> grid layout (khtpm_core_render.c ~8722,
+     keyed on the class, not the flag) lays the tiles out 6-wide.
+       <module> 1: palettes_manager.+x args="emojis" - UNMODIFIED, publishes
+                   palettes-.txt (glyph<TAB>label<TAB>sprite_dir)
+       <module> 2: palettes_projector.+x id="emojis" - reads that, writes
+                   state/palettes-.txt (key=value) consumed here.
+     Old palettes-emojis.chtpm + palettes_menu.sh stay as rollback. -->
+<window label="palettes: Emojis" class="palettes-pal database-window" vars="state/palettes-emojis_ui.txt">
+  <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="emojis"/>
+  <module src="&.widgits/palettes/ops/+x/palettes_projector.+x" id="emojis"/>
+  <page name="main">
+    <repeat count="${n_tiles}" bind="t">
+      <item id="pt${t.#}" class="swatch" sprite="${t.sprite}" label="${t.glyph}" action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'place' '${t.glyph}'"/>
+    </repeat>
+    <text label="No tiles yet - the palette manager is still generating sprites." class="quiet" show="${empty}"/>
+  </page>
+</window>
