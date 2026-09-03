@@ -916,6 +916,97 @@ static void kh_substitute_vars(const char *src, char *dst, size_t max_len) {
     *o = '\0';
 }
 
+/* <repeat count="${n}" bind="row"> ... ${row.field} ... </repeat>
+ * (CHTPM-ARCHITECTURE-FIX.md 3.3, the dynamic-list half). Runs BEFORE
+ * kh_substitute_vars: `count` is resolved now (a bare int, or one
+ * ${var}); the body is emitted `count` times with ${row.field}
+ * rewritten to ${row_<i>_field} and ${row.#} to the literal index, so
+ * the value pass then fills row_0_field / row_1_field / ... from the
+ * state file. No nesting in v1 (first </repeat> closes). Missing/empty
+ * count => zero copies, so an empty list just vanishes. */
+#define KH_REPEAT_MAX 4096
+static size_t kh_emit_repeat_body(const char *body, size_t blen,
+                                  const char *bind, int idx,
+                                  char *o, char *oend) {
+    char *o0 = o;
+    size_t bl = strlen(bind);
+    for (size_t i = 0; i < blen && o < oend; ) {
+        if (body[i] == '$' && i + 1 < blen && body[i + 1] == '{' &&
+            i + 2 + bl < blen && strncmp(body + i + 2, bind, bl) == 0 &&
+            body[i + 2 + bl] == '.') {
+            size_t j = i + 3 + bl;
+            char field[64]; size_t fn = 0;
+            while (j < blen && body[j] != '}' && fn + 1 < sizeof(field) &&
+                   (isalnum((unsigned char)body[j]) || body[j] == '_' || body[j] == '#'))
+                field[fn++] = body[j++];
+            field[fn] = '\0';
+            if (j < blen && body[j] == '}') {
+                j++;
+                int n;
+                if (strcmp(field, "#") == 0)
+                    n = snprintf(o, (size_t)(oend - o), "%d", idx);
+                else
+                    n = snprintf(o, (size_t)(oend - o), "${%s_%d_%s}", bind, idx, field);
+                if (n > 0) o += (n < (int)(oend - o) ? n : (int)(oend - o));
+                i = j;
+                continue;
+            }
+        }
+        *o++ = body[i++];
+    }
+    return (size_t)(o - o0);
+}
+
+static void kh_expand_repeats(const char *src, char *dst, size_t cap) {
+    const char *p = src;
+    char *o = dst;
+    char *oend = dst + cap - 1;
+    while (*p && o < oend) {
+        if (strncmp(p, "<repeat", 7) == 0 &&
+            (isspace((unsigned char)p[7]) || p[7] == '>')) {
+            const char *gt = strchr(p, '>');
+            const char *close = gt ? strstr(gt, "</repeat>") : NULL;
+            if (gt && close) {
+                /* attrs live in [p+7, gt) */
+                char attrs[512]; size_t an = (size_t)(gt - (p + 7));
+                if (an >= sizeof(attrs)) an = sizeof(attrs) - 1;
+                memcpy(attrs, p + 7, an); attrs[an] = '\0';
+                char bind[64] = "item";
+                int count = 0;
+                const char *bp = strstr(attrs, "bind=\"");
+                if (bp) { bp += 6; size_t k = 0;
+                    while (bp[k] && bp[k] != '"' && k + 1 < sizeof(bind)) { bind[k] = bp[k]; k++; }
+                    bind[k] = '\0'; }
+                const char *cp = strstr(attrs, "count=\"");
+                if (cp) {
+                    cp += 7;
+                    char cv[64]; size_t k = 0;
+                    while (cp[k] && cp[k] != '"' && k + 1 < sizeof(cv)) { cv[k] = cp[k]; k++; }
+                    cv[k] = '\0';
+                    if (cv[0] == '$' && cv[1] == '{') {
+                        char nm[64]; size_t m = 0;
+                        for (const char *q = cv + 2; *q && *q != '}' && m + 1 < sizeof(nm); q++) nm[m++] = *q;
+                        nm[m] = '\0';
+                        count = atoi(kh_get_var(nm));
+                    } else {
+                        count = atoi(cv);
+                    }
+                }
+                if (count < 0) count = 0;
+                if (count > KH_REPEAT_MAX) count = KH_REPEAT_MAX;
+                const char *body = gt + 1;
+                size_t blen = (size_t)(close - body);
+                for (int i = 0; i < count && o < oend; i++)
+                    o += kh_emit_repeat_body(body, blen, bind, i, o, oend);
+                p = close + 9; /* strlen("</repeat>") */
+                continue;
+            }
+        }
+        *o++ = *p++;
+    }
+    *o = '\0';
+}
+
 static Elem *parse_chtpm(const char *path) {
     FILE *f = fopen(path, "r");
     if (!f) return NULL;
@@ -928,8 +1019,11 @@ static Elem *parse_chtpm(const char *path) {
     buf[rd] = '\0';
     fclose(f);
 
-    /* ${var} substitution - only when the template actually uses it. */
-    if (strstr(buf, "${")) {
+    /* static-template pipeline (CHTPM-ARCHITECTURE-FIX.md): load the
+     * state file, expand <repeat> blocks, then substitute ${var}. All
+     * skipped when the template uses neither ${...} nor <repeat> - a
+     * plain markup .chtpm is parsed byte-for-byte as before. */
+    if (strstr(buf, "${") || strstr(buf, "<repeat")) {
         char vpath[PATH_BUF] = "";
         if (kh_find_vars_attr(buf, vpath, sizeof(vpath))) {
             snprintf(g_vars_path, sizeof(g_vars_path), "%s", vpath);
@@ -937,7 +1031,18 @@ static Elem *parse_chtpm(const char *path) {
             if (stat(vpath, &vst) == 0) g_vars_mtime = vst.st_mtim;
         }
         kh_load_vars(g_vars_path);
-        size_t cap = (size_t)sz * 2 + 4096;
+
+        if (strstr(buf, "<repeat")) {
+            size_t rcap = (size_t)sz * 8 + 65536;
+            char *expanded = malloc(rcap);
+            if (expanded) {
+                kh_expand_repeats(buf, expanded, rcap);
+                free(buf);
+                buf = expanded;
+            }
+        }
+
+        size_t cap = strlen(buf) * 2 + 4096;
         char *subbed = malloc(cap);
         if (subbed) {
             kh_substitute_vars(buf, subbed, cap);
