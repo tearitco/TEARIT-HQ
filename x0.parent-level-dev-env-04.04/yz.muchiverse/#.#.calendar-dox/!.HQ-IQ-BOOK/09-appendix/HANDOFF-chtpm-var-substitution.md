@@ -75,41 +75,6 @@ Doc with full status + `<repeat>` v2 sketch:
 
 ## State: IN FLIGHT — nothing right now
 
-
-### `&.hq-apps/db-hq-pal/` — the full 15-tab db-hq as static template + PAL projector
-
-- `dashboard.chtpm(.bootstrap)` — sidebar = 15 static tab `<item>`s, each
-  `action="'${PKG}/ops/dbhq_action.sh' 'tab' '<file>' '<TAG>' '<title>'"`.
-  Panel = `${tab_title}` + `<repeat>` of records + `${detail_title}` +
-  `<repeat>` of the selected record's kv. `class="db-hq-pal"` (NOT
-  `db-hq`) so the renderer's `g_is_db_hq` C path stays dormant.
-- `ops/dbhq_action.sh` — maintains `state/active.pdl` (`file|tag|title|sel`).
-  Verbs: `tab` / `sel` / `open-ce` (launches the real db-hq for CE).
-- `pal/dbhq_projector.pal` — **NOT YET WRITTEN** (or written & untested).
-  Reads `state/active.pdl`, defaults to Actors, parses
-  `<house>/#.desktop/db_hq_<x>.state.txt` (uniform `TAG | key | value`
-  records, first field `id`, second `name`), writes `state/ui.txt`:
-  `tab_title`, `rows_count`+`row_i_text`, `kv_count`+`kv_i_text`,
-  `detail_title`, `is_ce`. Two passes over the file (pass 1 rows, pass 2
-  the `sel`-th record's kv). Model it on `db-hq-actors-pal/pal/actors_projector.pal`.
-- Common Events tab (11) — projector sets `is_ce=1`; the panel then shows
-  a note + "Open the Common Events editor" button. CE keeps its existing
-  C editor; not converted.
-
-### Pending cleanup the owner asked for (2026-09-03)
-
-1. **Rename `*.chtpm` → `*.xhtpm`** for the converted static-template apps
-   (x11-hq style, distinct from tpmos `.chtpm`). Parser doesn't care —
-   the renderer takes an explicit path arg. Touch each app's `button.sh`
-   (`CHTPM=` path + the `pgrep -f '…\.chtpm'` patterns). `khtpm_png_dump.sh`
-   already strips any extension for its stem. Check the renderer's sibling
-   `<stem>.css` lookup still resolves.
-2. **Drop the `*.chtpm.bootstrap` duplication.** It existed so `button.sh`
-   could restore the template after a manager clobbered it — but projectors
-   now write `state/ui.txt`, never the template, so the `.xhtpm` is just a
-   normal checked-in source file. Delete the `.bootstrap`, delete the stale
-   live `.chtpm` copy, remove the restore block from each `button.sh`.
-
 ---
 
 ## State: NOT DONE
