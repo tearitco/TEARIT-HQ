@@ -633,11 +633,22 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             if (px > 0) {
                 unsigned long bg_pixel = e->style.has_bg_color
                     ? alloc_pixel(e->style.bg_color)
-                    : WhitePixel(dpy, screen);
-                int blit_x = e->x + (e->w - px) / 2;
-                int blit_y = (e->h >= 64)
-                    ? (e->y + pad_s)
-                    : (e->y + (e->h - px) / 2);
+                    : alloc_pixel("#1c1c1c");
+                int blit_x, blit_y;
+                int short_bar = (e->h < 64);
+                if (short_bar) {
+                    /* Taskbar-height cells: sprite LEFT of the label,
+                     * after the nav badge — not centered over it. */
+                    if (px > 24) px = 24;
+                    blit_x = e->x + pad_s + (e->nav_index > 0 ? 36 : 0);
+                    blit_y = e->y + (e->h - px) / 2;
+                    badge_label_x = blit_x + px + 4;
+                } else {
+                    blit_x = e->x + (e->w - px) / 2;
+                    blit_y = (e->h >= 64)
+                        ? (e->y + pad_s)
+                        : (e->y + (e->h - px) / 2);
+                }
                 hq_blit_sprite(sp, blit_x, blit_y, px, bg_pixel);
                 drew_sprite = 1;
             }
@@ -661,7 +672,8 @@ static void draw_elem(Elem *e, int hover_id_hash) {
     khtpm_decode_label_entities(label_decoded);
     shown_label = label_decoded;
     int sprite_under_label = drew_sprite && e->h >= 64 && shown_label[0] && !(shown_label[0] == ' ' && shown_label[1] == '\0');
-    if ((!drew_sprite || sprite_under_label) && shown_label[0]) {
+    int sprite_beside_label = drew_sprite && e->h < 64 && shown_label[0];
+    if ((!drew_sprite || sprite_under_label || sprite_beside_label) && shown_label[0]) {
         XftFont *font = font_for(&e->style);
         XftColor col = xft_color(e->style.has_fg_color ? e->style.fg_color : "#cccccc");
         XGlyphInfo extents;
@@ -831,7 +843,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             label_x = e->x;
             XSetForeground(dpy, gc, alloc_pixel("#141414"));
             XFillRectangle(dpy, buf, gc, chip_x0, chip_y0, (unsigned)chip_w, (unsigned)chip_h);
-        } else if (e->sprite[0]) {
+        } else if (e->sprite[0] && e->y >= 16) {
             int chip_pad = 1;
             int gap_margin = 2;
             int numy_above = e->y - gap_margin - nav_badge_font->descent;

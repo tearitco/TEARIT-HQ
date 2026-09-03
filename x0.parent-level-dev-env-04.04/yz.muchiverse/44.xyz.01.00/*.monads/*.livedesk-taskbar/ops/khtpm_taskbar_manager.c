@@ -655,6 +655,18 @@ static void ktb_load_zorder_mode(KtbState *s) {
     fclose(f);
 }
 
+static void ktb_toggle_zorder_mode(KtbState *s) {
+    ktb_load_zorder_mode(s);
+    s->zorder_above = s->zorder_above ? 0 : 1;
+    char path[KTB_PATH_BUF];
+    path_join(path, sizeof(path), s->house_root, "#.desktop/khtpm_zorder_mode.state.txt");
+    FILE *f = ktb_fopen(path, "w");
+    if (f) {
+        fprintf(f, "mode=%s\n", s->zorder_above ? "above" : "normal");
+        fclose(f);
+    }
+}
+
 
 static void write_relay(const char *package_path, const char *cmd) {
     char relay[KTB_PATH_BUF];
@@ -3598,6 +3610,12 @@ void ktb_hq_activate(KtbState *s, int row) {
      * printf '%s' "user:switch:" | wc -c) - checked directly after the
      * off-by-one bugs found elsewhere in this same function on
      * "livedesk:switch-desk:"/"livedesk:open-session:", not assumed. */
+    if (strcmp(m->command, "livedesk:zorder-toggle") == 0) {
+        /* Renderer owns the real X raise/sink (onclick=ZORDER_TOGGLE).
+         * Do not flip the state file here - a leftover 5000 relay would
+         * undo the renderer's toggle on the same click. */
+        return;
+    }
     if (strcmp(m->command, "user:new") == 0) {
         /* 2026-09-03: "New User..." now opens the real signup-hq window
          * (a proper CENTROID_GOLD_STD x11-hq window - own manager +

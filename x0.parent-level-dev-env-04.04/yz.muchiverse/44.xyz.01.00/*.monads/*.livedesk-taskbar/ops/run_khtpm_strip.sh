@@ -50,15 +50,12 @@ strip_parser_pids() {
     for p in /proc/[0-9]*; do
         pid="${p#/proc/}"
         [ -r "$p/cmdline" ] || continue
-        # cmdline is NUL-separated; tr to newlines, count real (non-empty)
-        # fields, check argv[0] and argc==2.
         args="$(tr '\0' '\n' < "$p/cmdline" 2>/dev/null)"
         [ -z "$args" ] && continue
-        argc="$(printf '%s\n' "$args" | grep -c .)"
         a0="$(printf '%s\n' "$args" | sed -n 1p)"
         case "$a0" in
             */khtpm_core_render.+x|khtpm_core_render.+x)
-                [ "$argc" = "2" ] && echo "$pid"
+                printf '%s\n' "$args" | grep -q 'strip_header.chtpm\|strip_bottom.chtpm' && echo "$pid"
                 ;;
         esac
     done
@@ -114,8 +111,19 @@ case "$ACTION" in
         # cd into HOUSE first — the parser's own children (the manager)
         # inherit this cwd, and relative menu commands (livedesk_taskbar.pdl)
         # depend on it being house root, not wherever this script was invoked from.
-        (cd "$HOUSE" && $SETSID env DISPLAY="${DISPLAY:-:0}" "$PARSER" "$HOUSE" \
-            > "$KHTPM_LOG" 2>&1 < /dev/null &)
+        MANAGER="$SCRIPT_DIR/+x/khtpm_taskbar_manager_main.+x"
+        HEADER_CHTPM="$HOUSE/#.desktop/strip_header.chtpm"
+        BOTTOM_CHTPM="$HOUSE/#.desktop/strip_bottom.chtpm"
+        (cd "$HOUSE" && $SETSID env DISPLAY="${DISPLAY:-:0}" "$MANAGER" "$HOUSE" \
+            >> "$KHTPM_LOG" 2>&1 < /dev/null &)
+        i=0
+        while [ "$i" -lt 50 ]; do
+            [ -s "$HEADER_CHTPM" ] && [ -s "$BOTTOM_CHTPM" ] && break
+            sleep 0.1
+            i=$((i + 1))
+        done
+        (cd "$HOUSE" && $SETSID env DISPLAY="${DISPLAY:-:0}" "$PARSER" "$HOUSE" "$HEADER_CHTPM" \
+            >> "$KHTPM_LOG" 2>&1 < /dev/null &)
         sleep 2
         pids="$(khtpm_pids)"
         if [ -n "$pids" ]; then
