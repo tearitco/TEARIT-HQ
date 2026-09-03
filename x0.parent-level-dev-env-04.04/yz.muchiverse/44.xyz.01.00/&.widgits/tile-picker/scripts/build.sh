@@ -67,17 +67,18 @@ gcc $CFLAGS -o "ops/+x/tp_arm_placer_rmmv.+x" "ops/tp_arm_placer_rmmv.c" -lX11
 # delivery bug independent of the rmmv feature.
 gcc $CFLAGS -o "ops/+x/tp_debug_click_watcher.+x" "ops/tp_debug_click_watcher.c" -lX11
 
-# khtpm_choice_picker.+x + khtpm_show_choices.+x - REAL FIX 2026-08-16
+# khtpm_show_choices.+x - REAL FIX 2026-08-16
 # ("its very old lets fix it to use khtpm"): the real khtpm-based Show
 # Choices picker (replaces the old GLX-based tp_picker_window.c, which
 # was silently deployed under the khtpm_show_choices.+x name and never
 # actually produced a visible window - a real, separate, pre-existing
 # bug). 7th real consumer of &.widgits/_shared-lib/khtpm_render_core.c,
 # same shared-source-copy convention as build_core_render.sh.
+# The superseded khtpm_choice_picker.c fork was removed 2026-09-03 (no
+# runtime callers); only khtpm_show_choices.c is built and dispatched.
 SHARED_LIB="$(cd "$SCRIPT_DIR/../_shared-lib" && pwd)"
 cp "$SHARED_LIB/khtpm_render_core.c" ops/khtpm_render_core.c
 cp "$SHARED_LIB/khtpm_css_parser.h" ops/khtpm_css_parser.h
-gcc -std=c11 -Wall -O2 $(pkg-config --cflags xft) -o "ops/+x/khtpm_choice_picker.+x" "ops/khtpm_choice_picker.c" -lX11 $(pkg-config --libs xft) -lm
 gcc -Wall -O2 -o "ops/+x/khtpm_show_choices.+x" "ops/khtpm_show_choices.c"
 
 echo "--- Copying system binaries (local copies for dev) ---"
