@@ -3558,6 +3558,11 @@ static int livedesk_build_toys_menu(const char *house_root, HQMenuItem *menu, in
     char apps_root[KTB_PATH_BUF];
     snprintf(apps_root, sizeof(apps_root), "%s/@.apps", house_root);
     toys_scan_one_root(apps_root, menu, max, &n);
+    {
+        char ms_root[KTB_PATH_BUF];
+        snprintf(ms_root, sizeof(ms_root), "%s/103.media-studio", house_root);
+        toys_scan_one_root(ms_root, menu, max, &n);
+    }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
     return n;
 }
