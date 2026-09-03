@@ -1195,6 +1195,11 @@ static char g_default_active_scope_id[64];
  * show/hide only, nav not confined) so every existing dropdown is
  * unchanged. */
 static int g_default_scope_confine = 0;
+/* generic <tabbar>/<tab> support (2026-09-03) - the id of the tab
+ * currently marked active, so its highlight and the "you came from
+ * here" Esc target survive the projector's every-tick reparse. Ported
+ * in spirit from db-hq's g_dbhq_current_tab. */
+static char g_default_active_tab_id[64] = "";
 static int g_dock_drop_lo, g_dock_drop_hi;
 /* Forward declaration - real definition (with its own X11/Xft section
  * header comment) lives further down this file. Needed here because a
@@ -7550,11 +7555,71 @@ static int layout_sidebar_panel(Elem *page) {
         if (g_win_y < 0) g_win_y = 0;
     }
 
+    /* generic <tabbar> (spirit of db-hq's dbhq_layout_pass tab strip):
+     * a horizontal row of <tab> just under the chrome; the sidebar +
+     * panel start below it. Each <tab> is nav-numbered FIRST (before
+     * sidebar/panel), like the old db-hq order. The active tab (id ==
+     * g_default_active_tab_id) gets an "active" class so app CSS can
+     * style it (.tab / .tab.active - see db-hq's dashboard.css). */
+    Elem *tabbar = find_by_tag(page, "tabbar");
+    int tabbar_h = 0;
+    if (tabbar && tabbar->n_children > 0) {
+        tabbar_h = scaled(28);
+        int tx = scaled(6), ty = CHROME_H + scaled(2), th = tabbar_h - scaled(4);
+        for (int i = 0; i < tabbar->n_children; i++) {
+            Elem *tab = tabbar->children[i];
+            if (strcmp(tab->tag, "tab") != 0) continue;
+            /* mark active: by remembered id once a tab has been chosen,
+             * else honour a template class="active" as the default
+             * (same as db-hq's dashboard.chtpm seeding tab 0 active). */
+            int tmpl_active = 0;
+            for (int k = 0; k < tab->n_classes; k++)
+                if (strcmp(tab->classes[k], "active") == 0) tmpl_active = 1;
+            tab->active = g_default_active_tab_id[0]
+                ? (tab->id[0] && strcmp(tab->id, g_default_active_tab_id) == 0)
+                : tmpl_active;
+            int has_active_cls = 0;
+            for (int k = 0; k < tab->n_classes; k++)
+                if (strcmp(tab->classes[k], "active") == 0) has_active_cls = 1;
+            if (tab->active && !has_active_cls && tab->n_classes < CSS_MAX_CLASSES)
+                snprintf(tab->classes[tab->n_classes++], sizeof(tab->classes[0]), "active");
+            else if (!tab->active && has_active_cls) {
+                int w2 = 0;
+                for (int k = 0; k < tab->n_classes; k++)
+                    if (strcmp(tab->classes[k], "active") != 0)
+                        snprintf(tab->classes[w2++], sizeof(tab->classes[0]), "%s", tab->classes[k]);
+                tab->n_classes = w2;
+            }
+            css_compute_style(&g_sheet, tab->tag, tab->id, tab->classes, tab->n_classes, 0, &tab->style);
+            /* room for the "[ ]NN. " nav badge draw_elem() always
+             * prepends + the label + a little padding (db-hq uses +34). */
+            int tw = scaled(34);
+            if (font_ui && tab->label[0]) {
+                XGlyphInfo gi;
+                XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)tab->label, (int)strlen(tab->label), &gi);
+                tw += gi.xOff;
+            }
+            tab->x = tx; tab->y = ty; tab->w = tw; tab->h = th;
+            tab->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = tab;
+            tx += tw + scaled(3);
+        }
+        /* grow the window to fit the whole tab strip on one row, same
+         * as db-hq's own dbhq_layout_pass (window->w = max(tabbar
+         * natural width, default)). Only ever grows. */
+        if (tx + scaled(6) > g_win_w) {
+            g_win_w = tx + scaled(6);
+            g_window->w = g_win_w;
+        }
+        tabbar->x = 0; tabbar->y = CHROME_H; tabbar->w = g_win_w; tabbar->h = tabbar_h;
+        css_compute_style(&g_sheet, tabbar->tag, tabbar->id, tabbar->classes, tabbar->n_classes, 0, &tabbar->style);
+    }
+    int content_top = CHROME_H + tabbar_h;
+
     {
         int sidebar_w = SIDEBAR_W;
         if (sidebar->style.has_width && !sidebar->style.width_is_pct) sidebar_w = sidebar->style.width;
-        sidebar->x = 0; sidebar->y = CHROME_H; sidebar->w = sidebar_w; sidebar->h = g_win_h - CHROME_H;
-        panel->x = sidebar_w; panel->y = CHROME_H; panel->w = g_win_w - sidebar_w; panel->h = g_win_h - CHROME_H;
+        sidebar->x = 0; sidebar->y = content_top; sidebar->w = sidebar_w; sidebar->h = g_win_h - content_top;
+        panel->x = sidebar_w; panel->y = content_top; panel->w = g_win_w - sidebar_w; panel->h = g_win_h - content_top;
     }
     /* REAL, NEW 2026-08-31 (live report: "no separation elements") -
      * a real visible divider between the two regions belongs in CSS
@@ -8797,6 +8862,25 @@ static void activate_focused(void) {
      * Escape-branch comment for the full real diagnosis. Grab taken
      * HERE (arm time), released on every real disarm path. */
     if (strcmp(item->tag, "cli_io") == 0) { g_default_input_elem = item; dbhq_grab_keyboard_retry(); return; }
+    /* generic <tab> (spirit of db-hq's tab click): run the tab's own
+     * action= (switches the projected content), mark it active, and
+     * scope nav into the page's <sidebar> - so after choosing a tab you
+     * navigate its record list, [^] shows, Esc returns to the tab row. */
+    if (strcmp(item->tag, "tab") == 0) {
+        if (item->id[0])
+            snprintf(g_default_active_tab_id, sizeof(g_default_active_tab_id), "%s", item->id);
+        if (item->onclick[0]) dispatch(item->onclick);
+        {
+            Elem *pg = find_page(g_current_page);
+            Elem *sb = pg ? find_by_tag(pg, "sidebar") : NULL;
+            if (sb) {
+                g_default_active_scope_root = sb;
+                g_default_scope_confine = 1;
+                snprintf(g_default_active_scope_id, sizeof(g_default_active_scope_id), "%s", item->id);
+            }
+        }
+        return;
+    }
     /* REAL, NEW 2026-09-03 - real, generic dropdown trigger, checked
      * BEFORE the generic dispatch() fallback (same real "an element
      * with its own recognized onclick verb handles itself" order
