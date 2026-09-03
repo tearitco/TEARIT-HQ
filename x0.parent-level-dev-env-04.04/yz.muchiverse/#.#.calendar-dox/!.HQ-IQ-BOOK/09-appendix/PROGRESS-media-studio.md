@@ -12,3 +12,10 @@
 - Glut originals under `103.media-studio/` untouched.
 - Not launched/verified in this commit. Next: `sh @.apps/media-canvas/button.sh run`
   then HQ → toys should list Media Canvas.
+
+## 2026-09-03 — DAW + video starters
+
+`@.apps/media-daw/` and `@.apps/media-vid/` with `toy.pdl` (toys cell
+will pick them up on next open). Layouts from HOW2: DAW file/transport/
+channel/arrangement/piano/mixer; video file/transport/preview/inspector/
+V1-V2-A1-A2. Stub `action.sh` only flips ui.txt. No glut.

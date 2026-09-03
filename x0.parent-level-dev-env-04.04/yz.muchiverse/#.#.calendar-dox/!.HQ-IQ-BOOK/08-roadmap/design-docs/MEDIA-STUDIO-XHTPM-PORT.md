@@ -207,9 +207,11 @@ copy-paste into the renderer.
 - `state/paths.pdl` — export/media/keybinds relative paths
 - `state/keybinds.pdl` — camera + tool verbs (fill as features land)
 
-DAW/video dirs: **not** created until canvas is signed as a window.
+DAW/video dirs: `@.apps/media-daw/` and `@.apps/media-vid/` (starters,
+HOW2 chrome in xhtpm, stub ui.txt). Glut `103.*` is reference only —
+not launched from toys.
 
-Old glut apps: untouched.
+Old glut apps: untouched, not registered.
 
 ---
 
