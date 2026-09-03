@@ -1,6 +1,6 @@
 # HANDOFF — branch `chtpm-var-substitution`
 
-**Last updated:** 2026-09-03 (mid-session, rev 2)
+**Last updated:** 2026-09-03 (rev 6)
 **Branch:** `chtpm-var-substitution` (off `origin/main` @ `bbf9caf2`), pushed
 **Goal:** restore the tpmos layout/data separation for khtpm windows
 (`CHTPM-ARCHITECTURE-FIX.md`) — static template + a projector that writes
@@ -361,3 +361,78 @@ scope is enforced entirely by a predicate consulted at
 focus-move / jump / click / draw time — exactly the reference model.
 Then revert `59acda6d` + `dde3291e`'s `g_nav[]` mutation (the
 `chrome-*` keep survives as a `kh_elem_in_scope` clause).
+
+---
+
+## Rev 6 (2026-09-03) — phantom-HQ-window + ledger-bloat fixes, then git-hygiene cleanup
+
+Four production hardening fixes + two repo-cleanup commits, all on this
+branch, all committed and pushed after the Rev 5 work. A next agent
+should know these so it doesn't chase ghosts or redo them.
+
+### Phantom taskbar entry (chat-hai) — root cause + fix
+
+`#.desktop/strip_ui.txt` showed `n_hqwins=1` with `hw_0_label=🪟 chat-hai`
+for an entry whose process did not exist. Root cause was **PID reuse**:
+chat-hai's `livedesk_hq_windows_62518.txt` was stale (its process died
+abnormally — no atexit cleanup), and PID 62518 was reused by a Firefox
+content thread (`/proc/62518/comm` = `StyleThread#5`), so
+`ktb_merge_hq_windows`'s `ktb_pid_alive(pid)` returned true for the
+wrong process.
+
+- **Fix (committed, pushed):** `khtpm_taskbar_manager.c` now has
+  `ktb_pid_is_hq_renderer()` — checks `/proc/<pid>/comm` starts with
+  `khtpm_core_r` (fail-open on non-Linux) — used at the merge site in
+  `ktb_merge_hq_windows`. Phantom can't recur even with stale files.
+- **Also swept:** 35 dead-pid `livedesk_hq_windows_*.txt` files.
+
+### `nav_master_ledger.txt` unbounded growth — fixed in code
+
+It had reached 5.98 MB / 24,237 lines. Added `nav_ledger_trim()`/
+`nav_ledger_write()` (cap 250 KB, keep newest whole lines, tmp+rename)
+in `khtpm_core_render.c`; rewired the 3 append sites (nav_tab_register,
+SNAP block, RMMV_CLICK) + an inline cap in
+`tp_arm_placer_rmmv.c`. Truncated the live file to 256 KB.
+
+### SIGTERM/SIGINT cleanup hook — added
+
+`main()`'s default/HQ path previously had no signal handler (only
+`tp_main` did). Installed `handle_shutdown_signal` after
+`atexit(cleanup_hq_window_registry)`; `hq_run_event_loop()` now checks
+`g_shutdown_requested` at loop top. Killed HQ windows now remove their
+registry file instead of leaving stales.
+
+### Rebuilds
+
+Both production binaries rebuilt (+x/ is git-ignored, no commit):
+`khtpm_taskbar_manager_main.+x` and `khtpm_core_render.+x`. A running
+old manager picks up fixes on relaunch.
+
+### Git-hygiene cleanup
+
+- **`f6e0a834`** — added `#.desktop/.gitignore` (per-session
+  `entity_menu_history/`, `taskbar_settings_history/`,
+  `livedesk_hq_windows_*`, `*.state.txt`, `*_history.txt`, `*.pid`,
+  `*.lock`, `colab_hai/`, `nb_tabs/`, `x/`, …) and untracked **527**
+  runtime files (kept on disk; 107 legitimate files stay tracked:
+  entities/, events/, sprites/, harnesses/, all `.chtpm/.pdl/.pal`).
+  Stops git-history bloat from high-churn runtime state.
+- **`7b331459`** — deleted `khtpm_choice_picker.c` (superseded fork,
+  zero runtime callers; `.c` + build.sh line + stale `+x`). The live
+  picker is `khtpm_show_choices.+x`. NOTE: this reverses the older
+  claim in `khtpm-generic-dispatch-design.md` §5 that choice_picker
+  was "left in place as a rollback reference" — that §5 bullet is now
+  amended with a 2026-09-03 UPDATE.
+
+### Standing house rules still in force
+
+- Never `git add -A` — stage explicit paths (`khtpm_core_render.c` and
+  `khtpm_taskbar_manager.c` have concurrent editors).
+- Commit footer: `Co-Authored-By: Claude Sonnet 5
+  <noreply@anthropic.com>` / same `Claude-Session` URL as the header.
+- Rebuild binaries after editing renderer/manager C; running windows
+  don't pick up a rebuild until relaunch.
+- Read this doc's Rev 5 §"THE REFERENCE" before touching in-scope nav /
+  `kh_apply_scope_confine`; read `CENTROID_GOLD_STD.md` +
+  `khtpm-generic-dispatch-design.md` (top block, now updated 2026-09-03)
+  before adding any mode/dispatch branch to `khtpm_core_render.c`.

@@ -1,5 +1,102 @@
 # khtpm generic-dispatch design — making the shared renderer actually agnostic
 
+## READ-HANDOFF, 2026-09-03 — current state + the real size of the `g_is_X` debt a next agent must own
+
+**Read this block first. It is additively up to date; everything below a
+given block is what that block's date thought was true.** This is a
+living doc — an older section's "left in place / not deleted" claim can
+go stale the day it was written. Verified-against-the-tree corrections
+are in the two deltas at the end of this block.
+
+### What this doc is FOR (a next agent doing the §2b dispatch refactor)
+
+It specifies how to end the `g_is_<mode>` hardcoding in the shared
+renderer. Per the house standard (`CENTROID_GOLD_STD.md` rule 7 / the
+`khtpm-house-standards` skill): **no new `g_is_<project>` global or
+per-project `strcmp` branch may be added to `khtpm_core_render.c`** —
+the §2b `g_khtpm_modes[]` table (or, per the 2026-08-31 pivot, the
+non-table generic default path) is how it should be done. That rule is
+violation-classed the same as inline business logic. The §3 rollout
+step "design → build first user → migrate one existing mode at a time →
+verify each → lock into standards" is still the ordered plan.
+
+### Current `g_is_*` inventory in `khtpm_core_render.c` (2026-09-03 count) — the real size of #2
+
+`khtpm_core_render.c` is 18,847 lines. It carries **212 `g_is_*`
+dispatch sites** across **9 mode globals**:
+
+| global | live branch sites |
+|---|---|
+| `g_is_db_hq` | 48 |
+| `g_is_palettes` | 35 |
+| `g_is_events_hq` | 30 |
+| `g_is_cursword` | 30 |
+| `g_is_stats_hq` | 23 |
+| `g_is_bookmarks` | 20 |
+| `g_is_swatch_picker` | 18 |
+| `g_is_pchq_board` | 5 |
+| `g_is_chat_hai` | 3 |
+
+These are **live runtime branches** (class-tagged windows), not dead
+code. The §1 call-site inventory (1-14) still holds. The honest scope of
+§2b is: replace the SELECTION mechanism (which function the ~10
+scattered sites call), NOT each mode's own legitimate content logic —
+see §2b's "Real, honest limits" paragraph. **This is the large, ordered
+refactor — the "2k-line-ish" debt.** Do it per §3 (migrate one mode at
+a time, smallest first — `swatch-picker` is the intended first real
+row), verifying live between each mode.
+
+### What 2026-09-03 already DID (this cleanup session) — don't redo it
+
+Independent of the §2b migration, two house-maintenance changes landed
+on branch `chtpm-var-substitution` that a next agent should know
+(they're the current tree state, all committed + pushed):
+
+1. **Runtime/transient file cleanup** (`#.desktop/.gitignore`, commit
+   `f6e0a834`): untracked 527 runtime/state files (per-session
+   `entity_menu_history/`, `taskbar_settings_history/`,
+   `livedesk_hq_windows_*`, `*.state.txt`, `*_history.txt`, `*.pid`,
+   `*.lock`, `colab_hai/`, `nb_tabs/`, `x/`, …) to stop git-history
+   bloat. 107 legitimate files remain tracked (entities/, events/,
+   sprites/, harnesses/, all `.chtpm/.pdl/.pal` templates). Files stay
+   on disk; only their index tracking was removed.
+2. **`khtpm_choice_picker.c` deleted** (commit `7b331459`) — see Delta
+   A below; it reverses this doc's older §5 claim.
+
+### Deltas correcting stale claims in this doc (noted, not silently changed)
+
+- **Delta A — §5's `khtpm_choice_picker.c` "left in place, unused, as
+  a rollback reference — not deleted" is now stale.** It **was deleted
+  2026-09-03** (`7b331459`): confirmed via grep it had **zero runtime
+  callers** (the live dispatcher `dispatch.sh` resolves
+  `khtpm_show_choices.+x`, never choice_picker) and was simply a
+  superseded 2026-08-16 fork. Removed: `&.widgits/tile-picker/ops/
+  khtpm_choice_picker.c`, its `build.sh` gcc line, and the stale
+  `+x` binary; `khtpm_show_choices.+x` still builds and is dispatched.
+  If a later agent truly needs a rollback reference for that exact
+  file, it's recoverable from git history.
+- **Delta B — the branch's own operating handoff.** Environment,
+  kill/relaunch discipline, relay-injection/history verify recipe, and
+  the chtpm-var-substitution refactor state live in
+  `HANDOFF-chtpm-var-substitution.md` (Rev 3-5). Read that alongside
+  this doc before editing `khtpm_core_render.c`; the §3 §2b work does
+  not restart there — it is the pre-existing `g_is_*` migration this
+  doc specifies.
+
+### First next action for the §2b dispatcher (#2)
+
+1. Re-read this doc's §2b + §3 (§1 for the call-site inventory).
+2. Confirm the current `g_is_*` count above hasn't grown (re-grep).
+3. Rebuild/re-verify nothing active is broken first (`khtpm_png_dump.sh`
+   smoke on db-hq-pal per the branch handoff).
+4. Per §3 step 2-3: register `swatch-picker` as the FIRST
+   `g_khtpm_modes[]` row (its own real functions, smallest surface),
+   delete its 18 `g_is_swatch_picker` branches, live-verify, then
+   proceed one mode at a time. Do NOT attempt the whole table in one
+   pass.
+
+---
+
 ## Status update, 2026-08-31 (later same day) — real pivot away from any per-mode table at all
 
 Direct correction, mid-build of open-hai's own mode: "still hardcoding
@@ -387,9 +484,13 @@ migration in §3, not competing with it:
   picker/entity-menus) already treats an unrecognized `action=` as a
   real shell command and quits after - zero new C code in the shared
   renderer. Live-verified end to end (real window, real relay-injected
-  pick, real token on stdout). The standalone `khtpm_choice_picker.c`
-  itself is left in place, unused, as a real rollback reference - not
-  deleted, not registered in any dispatch table (there wasn't a need).
+  pick, real token on stdout). **UPDATE 2026-09-03: the standalone
+  `khtpm_choice_picker.c` — which the "left in place as a rollback
+  reference, not deleted" sentence below once described — has since
+  been DELETED (commit `7b331459`)**. A 2026-09-03 grep confirmed zero
+  runtime callers (the live dispatcher is `khtpm_show_choices.+x`);
+  the source, its `build.sh` gcc line, and the stale `+x` binary were
+  removed. Recoverable from git history if ever genuinely needed.
   Real lesson for open-hai below: not every consolidation needs the
   `g_khtpm_modes[]` machinery - check whether the existing generic
   default path already covers the real need before building new
