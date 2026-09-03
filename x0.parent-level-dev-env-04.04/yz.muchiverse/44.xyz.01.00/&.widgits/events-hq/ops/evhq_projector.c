@@ -45,8 +45,8 @@
 static char g_house[PATH_MAX];
 static char g_pkg[PATH_MAX];      /* the event_pkg dir (KHTPM_ARG3) */
 
-/* ---- registry: type -> label + up to 4 param names ---- */
-typedef struct { char type[48]; char label[64]; char pnames[4][32]; int npn; } TypeDef;
+/* ---- registry: type -> label + up to 4 param names + their prompts ---- */
+typedef struct { char type[48]; char label[64]; char pnames[4][32]; char prompts[4][48]; int npn; } TypeDef;
 static TypeDef g_types[MAXTYPES];
 static int g_ntypes = 0;
 static time_t g_reg_mtime = 0;
@@ -83,6 +83,10 @@ static void load_registry(void) {
                 snprintf(cur->pnames[cur->npn++], 32, "%s", tok);
                 tok = strtok(NULL, ",");
             }
+        } else if (cur && strncmp(l, "  FIELD1 ", 9) == 0) {
+            if (strcmp(l + 9, "-") != 0) snprintf(cur->prompts[0], 48, "%s", l + 9);
+        } else if (cur && strncmp(l, "  FIELD2 ", 9) == 0) {
+            if (strcmp(l + 9, "-") != 0) snprintf(cur->prompts[1], 48, "%s", l + 9);
         } else if (strcmp(l, "END") == 0) {
             cur = NULL;
         }
@@ -120,6 +124,25 @@ static void trim(char *s) {
     if (p != s) memmove(s, p, strlen(p) + 1);
     size_t l = strlen(s);
     while (l && (s[l-1] == ' ' || s[l-1] == '\t')) s[--l] = 0;
+}
+
+/* look up value for key in newline-separated "k=v\n" text (non-mutating) */
+static void kv_val(const char *buf, const char *key, char *out, size_t cap) {
+    out[0] = 0;
+    size_t kl = strlen(key);
+    const char *p = buf;
+    while (p && *p) {
+        const char *nl = strchr(p, '\n');
+        size_t linelen = nl ? (size_t)(nl - p) : strlen(p);
+        if (linelen > kl && strncmp(p, key, kl) == 0 && p[kl] == '=') {
+            size_t vl = linelen - kl - 1;
+            if (vl >= cap) vl = cap - 1;
+            memcpy(out, p + kl + 1, vl);
+            out[vl] = 0;
+            return;
+        }
+        p = nl ? nl + 1 : NULL;
+    }
 }
 
 /* look up value for key in a pipe-separated "k=v|k=v" params line */
@@ -211,7 +234,10 @@ static void project(char *ui, size_t *off) {
             char *p = ln + 4;
             char *b1 = strchr(p, '|'); if (!b1) continue;
             char *b2 = strchr(b1 + 1, '|'); if (!b2) continue;
-            char type[48];
+            char idbuf[16], type[48];
+            size_t il = (size_t)(b1 - p);
+            if (il >= sizeof(idbuf)) il = sizeof(idbuf) - 1;
+            memcpy(idbuf, p, il); idbuf[il] = 0;
             size_t tl = (size_t)(b2 - (b1 + 1));
             if (tl >= sizeof(type)) tl = sizeof(type) - 1;
             memcpy(type, b1 + 1, tl); type[tl] = 0;
@@ -221,6 +247,8 @@ static void project(char *ui, size_t *off) {
             /* '|' is the frame-dump field separator - never emit it in a label */
             for (char *c = desc; *c; c++) if (*c == '|') *c = '/';
             put(ui, off, "row_%d_text=%s\n", nrows, desc);
+            put(ui, off, "row_%d_id=%s\n", nrows, idbuf);
+            put(ui, off, "row_%d_type=%s\n", nrows, type);
             nrows++;
         }
     }
@@ -229,13 +257,28 @@ static void project(char *ui, size_t *off) {
     put(ui, off, "list_title=Commands (%d)\n", nrows);
     put(ui, off, "empty_list=%d\n", nrows == 0 ? 1 : 0);
 
-    /* Add Command picker overlay */
+    /* ---- editor.txt: which sub-view of the right panel is up ---- */
+    char ed[512];
+    snprintf(path, sizeof(path), "%s/editor.txt", mgr);
+    slurp(path, ed, sizeof(ed));
+    char ed_mode[16] = "", ed_type[48] = "", ed_id[16] = "-1";
+    for (char *ln = strtok(ed, "\n"); ln; ln = strtok(NULL, "\n")) {
+        if      (strncmp(ln, "mode=", 5) == 0)   snprintf(ed_mode, sizeof(ed_mode), "%s", ln + 5);
+        else if (strncmp(ln, "type=", 5) == 0)   snprintf(ed_type, sizeof(ed_type), "%s", ln + 5);
+        else if (strncmp(ln, "edit_id=", 8) == 0) snprintf(ed_id, sizeof(ed_id), "%s", ln + 8);
+    }
+    int fields_open = (strcmp(ed_mode, "fields") == 0) && ed_type[0];
+
     char pk[16];
     snprintf(path, sizeof(path), "%s/picker.txt", mgr);
     read_line1(path, pk, sizeof(pk));
-    int picker_open = (pk[0] == '1');
+    int picker_open = (pk[0] == '1') && !fields_open;
+
     put(ui, off, "picker_open=%d\n", picker_open);
-    put(ui, off, "list_open=%d\n", picker_open ? 0 : 1);
+    put(ui, off, "fields_open=%d\n", fields_open);
+    put(ui, off, "list_open=%d\n", (!picker_open && !fields_open) ? 1 : 0);
+
+    /* Add Command type picker */
     if (picker_open) {
         for (int i = 0; i < g_ntypes; i++) {
             put(ui, off, "pk_%d_label=%s\n", i, g_types[i].label[0] ? g_types[i].label : g_types[i].type);
@@ -246,7 +289,54 @@ static void project(char *ui, size_t *off) {
         put(ui, off, "n_picker=0\n");
     }
 
-    put(ui, off, "detail_hint=Add Command opens the picker; Play runs this page's event\n");
+    /* Field editor: one <cli_io> per registry PARAM, pre-filled from
+     * pending_fields.txt (values typed so far) or, when editing an
+     * existing command, from that CMD's current params. */
+    if (fields_open) {
+        TypeDef *d = find_type(ed_type);
+        int nf = d ? d->npn : 0;
+        put(ui, off, "editor_type=%s\n", ed_type);
+        put(ui, off, "editor_id=%s\n", ed_id);
+        put(ui, off, "editor_title=%s\n", (d && d->label[0]) ? d->label : ed_type);
+
+        /* current params for an edit: re-scan page.state.txt for CMD|<ed_id>| */
+        char cur_params[512] = "";
+        if (strcmp(ed_id, "-1") != 0) {
+            char buf2[UIBUF];
+            snprintf(path, sizeof(path), "%s/page.state.txt", mgr);
+            slurp(path, buf2, sizeof(buf2));
+            char want[32]; snprintf(want, sizeof(want), "CMD|%s|", ed_id);
+            for (char *ln = strtok(buf2, "\n"); ln; ln = strtok(NULL, "\n")) {
+                if (strncmp(ln, want, strlen(want)) != 0) continue;
+                char *b1 = strchr(ln + 4, '|');
+                char *b2 = b1 ? strchr(b1 + 1, '|') : NULL;
+                if (b2) snprintf(cur_params, sizeof(cur_params), "%s", b2 + 1);
+                break;
+            }
+        }
+        /* pending_fields.txt overrides current params, key by key */
+        char pend[1024];
+        snprintf(path, sizeof(path), "%s/pending_fields.txt", mgr);
+        slurp(path, pend, sizeof(pend));
+
+        for (int i = 0; i < nf; i++) {
+            const char *name = d->pnames[i];
+            const char *prompt = d->prompts[i][0] ? d->prompts[i] : name;
+            char v[256] = "";
+            kv_val(pend, name, v, sizeof(v));                      /* what's typed so far */
+            if (!v[0] && cur_params[0]) param_val(cur_params, name, v, sizeof(v));  /* else existing value */
+            for (char *c = v; *c; c++) if (*c == '|') *c = '/';
+            put(ui, off, "f_%d_name=%s\n", i, name);
+            put(ui, off, "f_%d_prompt=%s\n", i, prompt);
+            put(ui, off, "f_%d_value=%s\n", i, v);
+        }
+        put(ui, off, "n_fields=%d\n", nf);
+    } else {
+        put(ui, off, "n_fields=0\n");
+        put(ui, off, "editor_type=\neditor_id=-1\neditor_title=\n");
+    }
+
+    put(ui, off, "detail_hint=Add Command / Play - click a command to edit its fields\n");
 }
 
 int main(int argc, char **argv) {

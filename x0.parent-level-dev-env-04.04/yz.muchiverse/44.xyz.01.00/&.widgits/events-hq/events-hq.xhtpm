@@ -14,8 +14,10 @@
      page tabs on top, TRIGGER (+ Add Command / Play) on the LEFT,
      the COMMAND LIST on the RIGHT.
 
-     Phase 1 = READ ONLY. Add Command / Play call ops/evhq_action.sh but
-     the picker overlay is phase 2. -->
+     The right <panel> has three show=-gated views: the page command
+     list, the Add Command type picker, and the per-field editor (one
+     <cli_io> per registry PARAM). evhq_action.sh is the only write
+     path; the manager owns compile. -->
 <window label="${entity_label}" class="events-hq-pal database-window">
   <module src="&.widgits/events-hq/ops/+x/evhq_projector.+x"/>
   <page name="main">
@@ -49,20 +51,37 @@
          the two views are show=-gated inside it rather than being two
          panels. A centered floating overlay is a later polish. -->
     <panel id="detail" class="command-list settings-block">
+      <!-- view A: the page's command list. Click a row to edit its
+           fields; select it and press Delete via the "- Delete" row. -->
       <text label="${list_title}" class="block-title" show="${list_open}"/>
       <scrolllist class="from-top" show="${list_open}">
         <repeat count="${rows_count}" bind="row">
-          <item id="r${row.#}" class="data-item" label="${row.text}" action="'${PKG}/ops/evhq_action.sh' 'edit' '${row.#}' '${ARG3}'"/>
+          <item id="r${row.#}" class="data-item" label="${row.text}" action="'${PKG}/ops/evhq_action.sh' 'edit' '${row.id}' '${ARG3}'"/>
+          <item id="rd${row.#}" class="quiet" label="   - delete #${row.id}" action="'${PKG}/ops/evhq_action.sh' 'del' '${row.id}' '${ARG3}'"/>
         </repeat>
         <text label="(no commands on this page yet)" class="quiet" show="${empty_list}"/>
       </scrolllist>
 
+      <!-- view B: Add Command type picker -->
       <text label="Add Command  -  pick a type" class="block-title" show="${picker_open}"/>
       <scrolllist class="from-top" show="${picker_open}">
         <item id="picker-cancel" class="data-item" label="&lt; Cancel" action="'${PKG}/ops/evhq_action.sh' 'picker' 'close' '${ARG3}'"/>
         <repeat count="${n_picker}" bind="pk">
           <item id="pk${pk.#}" class="data-item" label="${pk.label}" action="'${PKG}/ops/evhq_action.sh' 'pick' '${pk.type}' '${ARG3}'"/>
         </repeat>
+      </scrolllist>
+
+      <!-- view C: field editor for the picked / edited command type.
+           One <cli_io> per registry PARAM (Enter on a field saves it to
+           pending_fields.txt); Save assembles append:/edit: for the
+           manager. -->
+      <text label="${editor_title}  -  fields" class="block-title" show="${fields_open}"/>
+      <scrolllist class="from-top" show="${fields_open}">
+        <item id="fld-cancel" class="data-item" label="&lt; Cancel" action="'${PKG}/ops/evhq_action.sh' 'cancel-fields' '-' '${ARG3}'"/>
+        <repeat count="${n_fields}" bind="f">
+          <cli_io id="fld_${f.name}" target_id="fld_${f.name}" label="${f.prompt}  [${f.value}]  " action="'${PKG}/ops/evhq_action.sh' 'field' '${editor_type}' '${f.name}' '${ARG3}'"/>
+        </repeat>
+        <item id="fld-save" class="data-item" label="Save command" action="'${PKG}/ops/evhq_action.sh' 'commit' '-' '${ARG3}'"/>
       </scrolllist>
     </panel>
 

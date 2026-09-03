@@ -93,3 +93,25 @@ only runs when argv[3] is NOT a directory.
 - Read design doc, old `button.sh`, `dashboard.chtpm`, `picker.chtpm`,
   manager schema, `evhq_describe_command`. Test entity:
   `44.xyz.01.00/common_events/greet_player` (3 cmds, TRIGGER|Autorun).
+
+### 2026-09-03 phase 3 — field editor + delete + view swap
+- **Per-field command editor.** `pick <type>` (or clicking a command
+  row = `edit <id>`) now writes `.hq_manager/editor.txt`
+  (`mode=fields` / `type=` / `edit_id=`), not a bare `append:`. The
+  projector reads the registry `PARAMS` + `FIELD1/FIELD2` prompts and
+  emits `fields_open=1`, `n_fields`, `f_<i>_name/_prompt/_value`
+  (value pre-filled from `pending_fields.txt`, else from the existing
+  CMD when editing). The template's view C is one `<cli_io>` per field;
+  Enter on a field runs `evhq_action.sh field <type> <name> ... <value>`
+  → upsert into `pending_fields.txt`. **Save** → `evhq_action.sh commit`
+  assembles `append:<type>|k=v|…` or `edit:<id>|<type>|k=v|…` into
+  `action.txt`. **Cancel** clears `editor.txt` + `pending_fields.txt`.
+- **Delete.** Each command row has a `- delete #<id>` sub-row →
+  `evhq_action.sh del <id>` → `delete:<id>` in `action.txt`.
+- **View swap.** `list_open = !picker_open && !fields_open`; the three
+  right-panel views are `show=`-gated on those flags.
+- Verified end-to-end on `greet_player`: pick Change Gold → type 250 →
+  Save → manager appended `CMD|5|change_gold|amount=250`; edit CMD 1 →
+  `edit:1|change_gold|…`; del CMD 1 → count 5→4.
+- Still open: view-mode (Scratch/Blueprints) content swap; floating
+  centered overlay; the `evhq_*` / `g_is_events_hq` C deletion.
