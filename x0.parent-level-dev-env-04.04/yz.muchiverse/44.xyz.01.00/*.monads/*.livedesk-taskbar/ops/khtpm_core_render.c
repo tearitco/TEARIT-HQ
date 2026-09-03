@@ -763,6 +763,130 @@ static const char *parse_element(const char *p, Elem *parent) {
     }
 }
 
+/* ------------------------------------------------------------------ *
+ * ${var} substitution - restores the tpmos layout/data separation
+ * (see 08-roadmap/design-docs/CHTPM-ARCHITECTURE-FIX.md). A .chtpm is
+ * a STATIC template; a manager writes plain key=value lines to a state
+ * file; at parse time every ${key} token in the template is replaced
+ * with that key's value. Ported from 101.ledger-player-npc-simple+3/
+ * system/chtpm_parser.c (substitute_vars/load_vars/get_var).
+ *
+ * Backward compatible: if a template contains no "${" at all, none of
+ * this runs and parsing is byte-for-byte as before. The state file is
+ * named by a `vars="<path>"` attribute on any tag (resolved against
+ * g_house_root, or absolute if it starts with '/'); a missing file
+ * makes every ${key} resolve to the empty string, matching tpmos
+ * get_var()'s default. Only khtpm_core_render.+x consumes this - the
+ * ~25 legacy chtpm_parser_pal.c apps keep their own substituter. */
+#define KH_MAX_VARS   256
+#define KH_VAR_NAME   64
+#define KH_VAR_VALUE  2048
+typedef struct { char name[KH_VAR_NAME]; char value[KH_VAR_VALUE]; } KhVar;
+static KhVar g_kh_vars[KH_MAX_VARS];
+static int g_kh_nvars = 0;
+static char g_vars_path[PATH_BUF] = "";
+static struct timespec g_vars_mtime;
+
+static const char *kh_get_var(const char *name) {
+    for (int i = 0; i < g_kh_nvars; i++)
+        if (strcmp(g_kh_vars[i].name, name) == 0) return g_kh_vars[i].value;
+    return "";
+}
+
+static void kh_set_var(const char *name, const char *value) {
+    for (int i = 0; i < g_kh_nvars; i++) {
+        if (strcmp(g_kh_vars[i].name, name) == 0) {
+            snprintf(g_kh_vars[i].value, KH_VAR_VALUE, "%s", value);
+            return;
+        }
+    }
+    if (g_kh_nvars >= KH_MAX_VARS) return;
+    snprintf(g_kh_vars[g_kh_nvars].name, KH_VAR_NAME, "%s", name);
+    snprintf(g_kh_vars[g_kh_nvars].value, KH_VAR_VALUE, "%s", value);
+    g_kh_nvars++;
+}
+
+/* key=value lines; '#' comments and blank lines skipped; key and
+ * surrounding space trimmed, interior spaces of the value kept. */
+static void kh_load_vars(const char *path) {
+    g_kh_nvars = 0;
+    if (!path || !path[0]) return;
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[KH_VAR_VALUE + KH_VAR_NAME + 8];
+    while (fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        char *s = line;
+        while (*s == ' ' || *s == '\t') s++;
+        if (*s == '\0' || *s == '#') continue;
+        char *eq = strchr(s, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char *ke = eq;
+        while (ke > s && (ke[-1] == ' ' || ke[-1] == '\t')) ke--;
+        *ke = '\0';
+        char *val = eq + 1;
+        while (*val == ' ' || *val == '\t') val++;
+        if (s[0]) kh_set_var(s, val);
+    }
+    fclose(f);
+}
+
+/* first `vars="..."` attribute in a raw template buffer -> resolved
+ * absolute path in out. Returns 1 if found. */
+static int kh_find_vars_attr(const char *buf, char *out, size_t outsz) {
+    const char *p = strstr(buf, "vars=");
+    while (p) {
+        if (p == buf || isspace((unsigned char)p[-1]) || p[-1] == '<') {
+            const char *q = p + 5;
+            if (*q == '"') {
+                q++;
+                char rel[PATH_BUF]; size_t n = 0;
+                while (*q && *q != '"' && n + 1 < sizeof(rel)) rel[n++] = *q++;
+                rel[n] = '\0';
+                if (rel[0] == '/') snprintf(out, outsz, "%s", rel);
+                else snprintf(out, outsz, "%s/%s",
+                              g_house_root[0] ? g_house_root : ".", rel);
+                return 1;
+            }
+        }
+        p = strstr(p + 5, "vars=");
+    }
+    return 0;
+}
+
+/* ${name} -> value; \$ \{ \\ pass the next char literally; a "\n"
+ * sequence inside a value becomes a real newline (tpmos convention).
+ * An unknown ${name} expands to nothing. */
+static void kh_substitute_vars(const char *src, char *dst, size_t max_len) {
+    const char *p = src;
+    char *o = dst;
+    char *end = dst + max_len - 1;
+    while (*p && o < end) {
+        if (*p == '\\' && (p[1] == '$' || p[1] == '{' || p[1] == '\\')) {
+            *o++ = p[1]; p += 2; continue;
+        }
+        if (p[0] == '$' && p[1] == '{') {
+            const char *close = strchr(p, '}');
+            if (close) {
+                char name[KH_VAR_NAME];
+                size_t n = (size_t)(close - (p + 2));
+                if (n >= sizeof(name)) n = sizeof(name) - 1;
+                memcpy(name, p + 2, n); name[n] = '\0';
+                const char *v = kh_get_var(name);
+                while (*v && o < end) {
+                    if (v[0] == '\\' && v[1] == 'n') { *o++ = '\n'; v += 2; }
+                    else *o++ = *v++;
+                }
+                p = close + 1;
+                continue;
+            }
+        }
+        *o++ = *p++;
+    }
+    *o = '\0';
+}
+
 static Elem *parse_chtpm(const char *path) {
     FILE *f = fopen(path, "r");
     if (!f) return NULL;
@@ -774,6 +898,25 @@ static Elem *parse_chtpm(const char *path) {
     size_t rd = fread(buf, 1, (size_t)sz, f);
     buf[rd] = '\0';
     fclose(f);
+
+    /* ${var} substitution - only when the template actually uses it. */
+    if (strstr(buf, "${")) {
+        char vpath[PATH_BUF] = "";
+        if (kh_find_vars_attr(buf, vpath, sizeof(vpath))) {
+            snprintf(g_vars_path, sizeof(g_vars_path), "%s", vpath);
+            struct stat vst;
+            if (stat(vpath, &vst) == 0) g_vars_mtime = vst.st_mtim;
+        }
+        kh_load_vars(g_vars_path);
+        size_t cap = (size_t)sz * 2 + 4096;
+        char *subbed = malloc(cap);
+        if (subbed) {
+            kh_substitute_vars(buf, subbed, cap);
+            free(buf);
+            buf = subbed;
+        }
+    }
+
     const char *p = buf;
     Elem *root = NULL;
     while (*p) {
@@ -878,7 +1021,20 @@ static int reparse_chtpm_if_changed(void) {
                  pst.st_mtim.tv_nsec != g_dock_peer_mtime.tv_nsec))
                 peer_changed = 1;
         }
-        if (st.st_mtim.tv_sec == g_chtpm_mtime.tv_sec && st.st_mtim.tv_nsec == g_chtpm_mtime.tv_nsec && !peer_changed)
+        /* ${var} state file (CHTPM-ARCHITECTURE-FIX.md): the template
+         * .chtpm is now static, so its mtime never moves - a data
+         * change shows up as a new mtime on g_vars_path instead. Treat
+         * that exactly like a template change: re-parse (which re-runs
+         * kh_load_vars + kh_substitute_vars) + re-layout + re-draw. */
+        int vars_changed = 0;
+        if (g_vars_path[0]) {
+            struct stat vst;
+            if (stat(g_vars_path, &vst) == 0 &&
+                (vst.st_mtim.tv_sec != g_vars_mtime.tv_sec ||
+                 vst.st_mtim.tv_nsec != g_vars_mtime.tv_nsec))
+                vars_changed = 1;
+        }
+        if (st.st_mtim.tv_sec == g_chtpm_mtime.tv_sec && st.st_mtim.tv_nsec == g_chtpm_mtime.tv_nsec && !peer_changed && !vars_changed)
             return 0;
     }
     g_chtpm_mtime = st.st_mtim;
