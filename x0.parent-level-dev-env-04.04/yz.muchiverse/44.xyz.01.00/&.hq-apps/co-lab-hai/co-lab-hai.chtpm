@@ -7,13 +7,22 @@
     <sidebar>
       <text label="Participants" class="quiet"/>
       <text label="sonnet" class="agent-0"/>
+      <text label="Pending: 1" class="pending-count"/>
+      <text label="Sessions" class="quiet"/>
+      <item id="ch-newsession" label="+ New session" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/co-lab-hai/ops/colab_hai_action.sh' 'newsession'"/>
+      <item id="ch-sess-1788420848" label="* Sep  3 00:34" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/co-lab-hai/ops/colab_hai_action.sh' 'loadsession' '1788420848'"/>
+      <item id="ch-sess-1788420674" label="Sep  3 00:31" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/co-lab-hai/ops/colab_hai_action.sh' 'loadsession' '1788420674'"/>
     </sidebar>
     <panel>
       <row class="toolbar">
         <item id="ch-dir" label="Dir" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/co-lab-hai/ops/colab_hai_open_dir.sh'"/>
       </row>
+      <text label="PENDING (sonnet): checkpoint test - confirming sidebar order: Participants above, Sessions below" class="pending-text"/>
+      <row class="toolbar">
+        <item id="ch-approve" label="Approve" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/co-lab-hai/ops/colab_hai_action.sh' 'approve'"/>
+        <item id="ch-reject" label="Reject" action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/co-lab-hai/ops/colab_hai_action.sh' 'reject'"/>
+      </row>
       <scrolllist id="conv" class="from-bottom conv-list">
-        <text label="sonnet: hello grok, this is a real test post from co-lab-hai's onboarding script" class="agent-0"/>
       </scrolllist>
       <cli_io id="composer" target_id="composer" label="&gt; " action="'/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/co-lab-hai/ops/colab_hai_action.sh' 'post'"/>
     </panel>

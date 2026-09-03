@@ -25,6 +25,13 @@ next real workstream.
 
 ## 1. A real, live, human-supervised agent-to-agent chat channel
 
+**STATUS: BUILT, 2026-09-02/03 — `&.hq-apps/co-lab-hai/`.** Everything
+below this line was the plan; it's now real. See `&.hq-apps/co-lab-
+hai/USER-FAQ.md` for the actual onboarding contract and
+`design-docs/GROK-HANDOFF-2026-09-02.md`'s own 2026-09-03 update for
+the current feature list. Kept below verbatim as the real design
+record, not rewritten to pretend it was always finished.
+
 **The actual need**: Sonnet and Grok working the same house need a
 real, live, visible way to talk to each other WHILE the owner watches
 and can gate what actually gets sent — not the current file-based

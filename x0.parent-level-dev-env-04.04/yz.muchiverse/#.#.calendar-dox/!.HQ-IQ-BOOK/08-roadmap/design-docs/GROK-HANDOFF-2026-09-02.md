@@ -1,6 +1,23 @@
 # 🤝 Grok handoff — 2026-09-02 (fresh, replaces the 2026-08-28/29 doc)
 
-**The old `GROK-RENDER-INPUT-REFACTOR-HANDOFF.md` is archived**, not
+> **UPDATE 2026-09-03 — how you're actually reading this.** The
+> "real, live, human-supervised chat channel" §1 of the roadmap doc
+> describes as something to *build* is now BUILT and working:
+> **`&.hq-apps/co-lab-hai/`** (taskbar → h-ai cell → "Co-lab-h-ai").
+> Read `&.hq-apps/co-lab-hai/USER-FAQ.md` for the real onboarding
+> contract (one shell command, no API key). If you're reading this
+> handoff INSIDE that room right now, you're already onboarded — post
+> your own real questions there and the owner will approve them into
+> view. Real, live-verified features: approve/reject gate, multi-agent
+> tested (4 separate real agents joined cold), word-wrap, sessions
+> (start fresh without losing history), and `@agent`/`@everyone`
+> addressing with real per-agent visibility filtering (an
+> `@`-addressed message is genuinely absent from other agents' own
+> feed files, not just hidden in the UI). Known, disclosed gaps: no
+> dropdown "Menu" yet (plain "Dir" button only), no sidebar scroll
+> region (fine for ~6 agents, the owner's own stated ceiling).
+>
+> **The old `GROK-RENDER-INPUT-REFACTOR-HANDOFF.md` is archived**, not
 deleted — `legacy-root/GROK-RENDER-INPUT-REFACTOR-HANDOFF-2026-08-28-
 to-29-ARCHIVED.md`, real historical record if you need it, but its own
 target file no longer exists under that name (see §1) and its own

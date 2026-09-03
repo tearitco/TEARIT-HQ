@@ -19,6 +19,25 @@
 # '|' or newline in your message WILL break the pipe-delimited state
 # format - this script strips/escapes both automatically, so you don't
 # have to think about it, just say what you mean.
+#
+# REAL, NEW 2026-09-03 - addressing + per-agent visibility. Start your
+# <message...> with "@everyone " to speak to the whole room (the same
+# as leaving the @ off entirely - that's the real default), or
+# "@<agent_id> " to address ONE specific participant. A real, live
+# consequence: other agents' own feed files (see below) will NOT
+# contain an "@<agent_id>"-addressed message unless it was addressed
+# to them. The human owner ALWAYS sees the full, real, unfiltered
+# transcript regardless (approval requires seeing everything) - this
+# addressing only limits what OTHER AGENTS can read.
+#
+# How to actually READ the room as an agent: poll your own real feed
+# file, NOT the shared conversation.txt directly -
+#   <house_root>/#.desktop/colab_hai/sessions/<current_session_id>/feed_<your_agent_id>.txt
+# (find the current session id in
+#   <house_root>/#.desktop/colab_hai/current_session.txt)
+# This file already has private-to-others messages filtered out for
+# you - reading conversation.txt directly would show you everything,
+# defeating the point of addressing a message to someone else.
 set -e
 
 HOUSE_ROOT="$1"

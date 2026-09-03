@@ -63,6 +63,42 @@
  * only generic tags already proven this session (sidebar/panel/
  * scrolllist/row class="toolbar"/cli_io) - zero new renderer C.
  *
+ * REAL, NEW 2026-09-03 - sessions (direct request: "is there a way to
+ * clear this session and prepare for the new one? what about saving
+ * old sessions?"), same real convention khtpm_open_hai_manager.c
+ * already proved (NEWSESSION/LOADSESSION, session dirs named by real
+ * unix timestamp, a sidebar list + "+ New session" row) - not a new
+ * pattern, reused verbatim. pending.txt/rejected.txt/conversation.txt
+ * now live under sessions/<ts>/ instead of directly under state_dir;
+ * incoming.txt stays global (agents don't know or care which session
+ * is active - the manager drains it into whichever session currently
+ * is). "newsession:" archives nothing (the OLD session dir is simply
+ * left on disk, real and intact - "clear" means "start a new session,"
+ * never "delete the old one"), "loadsession:<id>" switches the active
+ * session (including future writes - matching open-hai's own real
+ * semantics, not a read-only history view).
+ *
+ * REAL, NEW 2026-09-03 - addressed messages + real per-agent
+ * visibility (direct request: "'@everyone' in front of message if
+ * its for all or '@name' if its for a certain agent... and not let
+ * the others read those"). A message's real text may start with
+ * "@everyone " (or no @ prefix at all - same as @everyone) or
+ * "@<agent_id> ". conversation.txt (this manager's own real source of
+ * truth) ALWAYS holds the full, unfiltered transcript - the human
+ * approver sees everything, always, on purpose (you cannot approve
+ * what you cannot see). What's real and NEW is a per-participant
+ * filtered view, sessions/<sid>/feed_<agent_id>.txt, regenerated every
+ * tick from conversation.txt: a broadcast (@everyone/no prefix) line
+ * appears in every agent's feed; an "@<agent_id>" line appears ONLY in
+ * the sender's own feed and that one addressed agent's feed - other
+ * agents' feeds skip it entirely. Real, deliberate fail-open rule: an
+ * "@<name>" that doesn't match any known participant (typo, or
+ * addressed to someone who hasn't spoken yet) is treated as a
+ * broadcast rather than silently hidden from everyone - see
+ * write_agent_feeds()'s own header comment for the full reasoning.
+ * Agents should poll their own feed_<their_id>.txt, not conversation.txt
+ * directly, once this lands in the onboarding doc.
+ *
  * Usage: colab_hai_manager.+x <house_root> [--data-root <dir>]
  */
 #define _BSD_SOURCE
@@ -75,6 +111,8 @@
 #include <time.h>
 #include <signal.h>
 #include <errno.h>
+#include <dirent.h>
+#include <strings.h>
 
 #define PATH_BUF 4352
 #define MAX_LINES 4096
@@ -89,6 +127,12 @@ static char g_pending_path[PATH_BUF];
 static char g_rejected_path[PATH_BUF];
 static char g_conversation_path[PATH_BUF];
 static char g_request_path[PATH_BUF];
+static char g_sessions_root[PATH_BUF];
+static char g_current_session_path[PATH_BUF];
+static char g_session_id[64] = "";
+#define MAX_SESSIONS 64
+static char g_session_ids[MAX_SESSIONS][64];
+static int g_n_sessions = 0;
 
 static void path_join(char *out, size_t outsz, const char *a, const char *b) {
     snprintf(out, outsz, "%s/%s", a, b);
@@ -232,6 +276,70 @@ static int pop_pending(const char *dest_path) {
     return 1;
 }
 
+/* Real session support (2026-09-03), same convention khtpm_open_hai_
+ * manager.c already proved - see this file's own top-of-file header
+ * comment for the full design. Recomputes the 4 real per-session paths
+ * for whichever session id is now active, mkdir's it, and persists the
+ * choice to current_session.txt so a manager restart resumes the same
+ * session instead of silently starting over. */
+static void switch_session(const char *sid) {
+    snprintf(g_session_id, sizeof(g_session_id), "%s", sid);
+    char session_dir[PATH_BUF];
+    path_join(session_dir, sizeof(session_dir), g_sessions_root, sid);
+    mkdir_p_local(session_dir);
+    path_join(g_pending_path, sizeof(g_pending_path), session_dir, "pending.txt");
+    path_join(g_rejected_path, sizeof(g_rejected_path), session_dir, "rejected.txt");
+    path_join(g_conversation_path, sizeof(g_conversation_path), session_dir, "conversation.txt");
+    { FILE *f = fopen(g_pending_path, "a"); if (f) fclose(f); }
+    { FILE *f = fopen(g_rejected_path, "a"); if (f) fclose(f); }
+    { FILE *f = fopen(g_conversation_path, "a"); if (f) fclose(f); }
+    FILE *cs = fopen(g_current_session_path, "w");
+    if (cs) { fprintf(cs, "%s\n", sid); fclose(cs); }
+}
+
+static void start_new_session(void) {
+    char sid[64];
+    snprintf(sid, sizeof(sid), "%ld", (long)time(NULL));
+    switch_session(sid);
+}
+
+/* Real, generic session listing - scans sessions_root for real
+ * subdirectories, newest first (session ids are unix timestamps, so a
+ * numeric-descending sort is a real, correct "most recent first"
+ * ordering, not a guess). Same real "+ New session first, existing
+ * sessions below" sidebar shape open-hai's own publish_sessions()
+ * already proved. */
+static void list_sessions(void) {
+    g_n_sessions = 0;
+    DIR *d = opendir(g_sessions_root);
+    if (!d) return;
+    struct dirent *e;
+    while ((e = readdir(d)) && g_n_sessions < MAX_SESSIONS) {
+        if (e->d_name[0] == '.') continue;
+        snprintf(g_session_ids[g_n_sessions], sizeof(g_session_ids[0]), "%s", e->d_name);
+        g_n_sessions++;
+    }
+    closedir(d);
+    for (int i = 0; i < g_n_sessions - 1; i++)
+        for (int j = i + 1; j < g_n_sessions; j++)
+            if (strcmp(g_session_ids[j], g_session_ids[i]) > 0) {
+                char t[64];
+                snprintf(t, sizeof(t), "%s", g_session_ids[i]);
+                snprintf(g_session_ids[i], sizeof(g_session_ids[0]), "%s", g_session_ids[j]);
+                snprintf(g_session_ids[j], sizeof(g_session_ids[0]), "%s", t);
+            }
+}
+
+/* Real, human-readable session label - "Sep 2 23:51" style, matching
+ * the real timestamp already stored as the session's own dir name
+ * (unix seconds) rather than showing the raw epoch number to a human. */
+static void session_label(const char *sid, char *out, size_t outsz) {
+    time_t t = (time_t)atol(sid);
+    struct tm *tmv = localtime(&t);
+    if (!tmv) { snprintf(out, outsz, "%s", sid); return; }
+    strftime(out, outsz, "%b %e %H:%M", tmv);
+}
+
 static void post_owner_message(const char *msg) {
     time_t now = time(NULL);
     FILE *cf = fopen(g_conversation_path, "a");
@@ -257,6 +365,10 @@ static void handle_request(void) {
         pop_pending(g_rejected_path);
     } else if (strncmp(line, "post:", 5) == 0 && line[5]) {
         post_owner_message(line + 5);
+    } else if (strcmp(line, "newsession:") == 0) {
+        start_new_session();
+    } else if (strncmp(line, "loadsession:", 12) == 0 && line[12]) {
+        switch_session(line + 12);
     }
 
     FILE *clr = fopen(g_request_path, "w");
@@ -287,6 +399,80 @@ static const char *agent_css_class(int idx) {
         "agent-12", "agent-13", "agent-14", "agent-15"
     };
     return classes[idx % MAX_PARTICIPANTS];
+}
+
+/* Real message-target parsing: a leading "@<word> " token names who a
+ * message is addressed to ("everyone" or a real, known agent_id); no
+ * such token means the same thing as "@everyone" (a real, deliberate
+ * default - most messages are genuinely for the room, not private).
+ * target[0] is left '\0' for a plain broadcast either way, so callers
+ * only need one check ("target[0] && strcasecmp(target,"everyone")")
+ * to know whether real per-agent filtering applies at all. */
+static void parse_message_target(const char *msg, char *target, size_t target_sz) {
+    target[0] = '\0';
+    if (msg[0] != '@') return;
+    const char *sp = strchr(msg, ' ');
+    size_t len = sp ? (size_t)(sp - (msg + 1)) : strlen(msg + 1);
+    if (len >= target_sz) len = target_sz - 1;
+    memcpy(target, msg + 1, len);
+    target[len] = '\0';
+    if (strcasecmp(target, "everyone") == 0) target[0] = '\0';
+}
+
+/* Real, per-participant filtered view of the full conversation - see
+ * this file's own top-of-file header comment ("REAL, NEW 2026-09-03 -
+ * addressed messages") for the full design. Rebuilt from
+ * conversation.txt every tick (this house's own established "rebuild
+ * from the real source of truth, don't try to incrementally patch a
+ * derived file" convention, same as write_chtpm_projection() itself) -
+ * conversation.txt stays the one real, permanent, unfiltered record;
+ * these feed files are a disposable, always-current projection of it,
+ * never a second source of truth. An "@<name>" that doesn't match any
+ * currently-known participant is treated as a broadcast (fails open,
+ * not closed) - a typo'd or not-yet-joined recipient should never
+ * cause a message to silently vanish from everyone's view, that's a
+ * real, worse failure mode than an unintended reader seeing it. */
+static void write_agent_feeds(void) {
+    if (g_n_participants == 0) return;
+    char session_dir[PATH_BUF];
+    path_join(session_dir, sizeof(session_dir), g_sessions_root, g_session_id);
+    for (int i = 0; i < g_n_participants; i++) {
+        char fname[96], feed_path[PATH_BUF], tmp_path[PATH_BUF];
+        snprintf(fname, sizeof(fname), "feed_%s.txt", g_participants[i]);
+        path_join(feed_path, sizeof(feed_path), session_dir, fname);
+        FILE *wf = atomic_open(feed_path, tmp_path, sizeof(tmp_path));
+        if (!wf) continue;
+        FILE *cf = fopen(g_conversation_path, "r");
+        if (cf) {
+            char line[2048];
+            while (fgets(line, sizeof(line), cf)) {
+                chomp(line);
+                if (!line[0]) continue;
+                char tmpline[2048];
+                snprintf(tmpline, sizeof(tmpline), "%s", line);
+                char *ts, *agent, *msg;
+                if (!split3(tmpline, &ts, &agent, &msg)) continue;
+                (void)ts;
+                char target[64];
+                parse_message_target(msg, target, sizeof(target));
+                int visible = 1;
+                if (target[0]) {
+                    int target_known = 0;
+                    for (int k = 0; k < g_n_participants; k++)
+                        if (strcmp(g_participants[k], target) == 0) target_known = 1;
+                    if (target_known) {
+                        visible = (strcmp(agent, g_participants[i]) == 0) ||
+                                  (strcmp(target, g_participants[i]) == 0);
+                    }
+                    /* unknown target -> visible stays 1, real fail-open */
+                }
+                if (visible) fprintf(wf, "%s\n", line);
+            }
+            fclose(cf);
+        }
+        fclose(wf);
+        atomic_commit(feed_path, tmp_path);
+    }
 }
 
 static void write_chtpm_projection(void) {
@@ -332,11 +518,14 @@ static void write_chtpm_projection(void) {
     CH_APPEND("  <module src=\"&.hq-apps/co-lab-hai/+x/colab_hai_manager.+x\"/>\n");
     CH_APPEND("  <page name=\"main\">\n");
     CH_APPEND("    <sidebar>\n");
-    CH_APPEND("      <text label=\"Participants\" class=\"quiet\"/>\n");
 
     /* Real participant roster, scanned from the real conversation +
      * pending logs, not a hardcoded list - reflects whoever has
-     * actually spoken. */
+     * actually spoken. Scanned here (before either sidebar section is
+     * emitted) since Sessions' own feed-generation needs it too, but
+     * display stays Participants-first, Sessions below (owner's own
+     * "leave session where it was" - a Menu row is planned above
+     * Participants later, not built yet). */
     g_n_participants = 0;
     for (int pass = 0; pass < 2; pass++) {
         const char *path = pass == 0 ? g_conversation_path : g_pending_path;
@@ -354,6 +543,9 @@ static void write_chtpm_projection(void) {
         }
         fclose(f);
     }
+    write_agent_feeds();
+
+    CH_APPEND("      <text label=\"Participants\" class=\"quiet\"/>\n");
     for (int i = 0; i < g_n_participants; i++) {
         char esc[128];
         xml_escape(g_participants[i], esc, sizeof(esc));
@@ -361,6 +553,30 @@ static void write_chtpm_projection(void) {
     }
     if (n_pending > 0) {
         CH_APPEND("      <text label=\"Pending: %d\" class=\"pending-count\"/>\n", n_pending);
+    }
+
+    /* Real sessions list (2026-09-03) - same real "+ New session" +
+     * clickable-row-per-session convention khtpm_open_hai_manager.c's
+     * own publish_sessions() already proved, reused verbatim in shape.
+     * Direct request answered here: "is there a way to clear this
+     * session and prepare for the new one? what about saving old
+     * sessions?" - New session starts fresh WITHOUT deleting the old
+     * one (still real, still on disk, still one click away). Given
+     * owner's own "never more than ~6 or so" expectation, no session-
+     * list scroll region is built yet - a real, disclosed scope
+     * decision, not an oversight; the existing generic scrolllist
+     * mechanism is what to reach for first if that ever changes. */
+    CH_APPEND("      <text label=\"Sessions\" class=\"quiet\"/>\n");
+    CH_APPEND("      <item id=\"ch-newsession\" label=\"+ New session\" action=\"'%s/ops/colab_hai_action.sh' 'newsession'\"/>\n", g_package_dir);
+    list_sessions();
+    for (int i = 0; i < g_n_sessions; i++) {
+        char label[96];
+        session_label(g_session_ids[i], label, sizeof(label));
+        int is_current = (strcmp(g_session_ids[i], g_session_id) == 0);
+        char esc[96];
+        xml_escape(label, esc, sizeof(esc));
+        CH_APPEND("      <item id=\"ch-sess-%s\" label=\"%s%s\" action=\"'%s/ops/colab_hai_action.sh' 'loadsession' '%s'\"/>\n",
+                  g_session_ids[i], is_current ? "* " : "", esc, g_package_dir, g_session_ids[i]);
     }
     CH_APPEND("    </sidebar>\n");
     CH_APPEND("    <panel>\n");
@@ -467,21 +683,46 @@ int main(int argc, char **argv) {
     path_join(g_state_dir, sizeof(g_state_dir), desktop, "colab_hai");
     mkdir_p_local(g_state_dir);
     path_join(g_incoming_path, sizeof(g_incoming_path), g_state_dir, "incoming.txt");
-    path_join(g_pending_path, sizeof(g_pending_path), g_state_dir, "pending.txt");
-    path_join(g_rejected_path, sizeof(g_rejected_path), g_state_dir, "rejected.txt");
-    path_join(g_conversation_path, sizeof(g_conversation_path), g_state_dir, "conversation.txt");
     path_join(g_request_path, sizeof(g_request_path), g_state_dir, "request.txt");
+    path_join(g_sessions_root, sizeof(g_sessions_root), g_state_dir, "sessions");
+    mkdir_p_local(g_sessions_root);
+    path_join(g_current_session_path, sizeof(g_current_session_path), g_state_dir, "current_session.txt");
     snprintf(g_chtpm_output_path, sizeof(g_chtpm_output_path), "%s/co-lab-hai.chtpm", g_package_dir);
 
-    /* Never assume, always create - same discipline as every other
-     * manager's own startup. */
-    for (const char *p = g_incoming_path; p == g_incoming_path;) {
-        FILE *f = fopen(g_incoming_path, "a"); if (f) fclose(f);
-        f = fopen(g_pending_path, "a"); if (f) fclose(f);
-        f = fopen(g_rejected_path, "a"); if (f) fclose(f);
-        f = fopen(g_conversation_path, "a"); if (f) fclose(f);
-        f = fopen(g_request_path, "w"); if (f) fclose(f);
-        break;
+    { FILE *f = fopen(g_incoming_path, "a"); if (f) fclose(f); }
+    { FILE *f = fopen(g_request_path, "w"); if (f) fclose(f); }
+
+    /* REAL, NEW 2026-09-03 - session startup. Resume the last active
+     * session if current_session.txt says so; else, if this house
+     * still has the OLD, pre-sessions flat conversation.txt directly
+     * under state_dir (real, live test data from before this feature
+     * existed), migrate it into a real first session instead of
+     * silently orphaning it - "clear" must never mean "lose." A
+     * genuinely fresh install with neither gets a real new session. */
+    {
+        char saved_sid[64] = "";
+        FILE *cs = fopen(g_current_session_path, "r");
+        if (cs) { if (fgets(saved_sid, sizeof(saved_sid), cs)) chomp(saved_sid); fclose(cs); }
+        if (saved_sid[0]) {
+            switch_session(saved_sid);
+        } else {
+            char old_conv[PATH_BUF];
+            path_join(old_conv, sizeof(old_conv), g_state_dir, "conversation.txt");
+            struct stat st;
+            if (stat(old_conv, &st) == 0 && st.st_size > 0) {
+                char sid[64];
+                snprintf(sid, sizeof(sid), "%ld", (long)time(NULL));
+                switch_session(sid);
+                char old_pending[PATH_BUF], old_rejected[PATH_BUF];
+                path_join(old_pending, sizeof(old_pending), g_state_dir, "pending.txt");
+                path_join(old_rejected, sizeof(old_rejected), g_state_dir, "rejected.txt");
+                rename(old_conv, g_conversation_path);
+                rename(old_pending, g_pending_path);
+                rename(old_rejected, g_rejected_path);
+            } else {
+                start_new_session();
+            }
+        }
     }
 
     write_chtpm_projection();

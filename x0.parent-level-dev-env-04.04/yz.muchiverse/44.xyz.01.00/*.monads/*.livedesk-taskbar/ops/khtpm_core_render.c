@@ -6589,11 +6589,20 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
         if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0) {
-            c->x = x; c->y = y_cursor; c->w = w; c->h = ROW_H;
+            /* REAL FIX 2026-09-03 (direct live report: co-lab-hai's own
+             * PENDING banner still didn't wrap after scroll_row_span()'s
+             * own fix - root cause: that banner is a direct <text> child
+             * of <panel>, laid out HERE, in the fixed-rows path, not
+             * inside the nested <scrolllist> scroll_row_span() actually
+             * covers. Same real fix, same helper, applied here too - a
+             * fixed row can need more than one ROW_H exactly the same
+             * way a scrolled one can. */
+            int span = scroll_row_span(c, w);
+            c->x = x; c->y = y_cursor; c->w = w; c->h = span * ROW_H;
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
             if (strcmp(c->tag, "item") == 0) { c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c; }
             else c->nav_index = 0;
-            y_cursor += ROW_H;
+            y_cursor += span * ROW_H;
         } else if (strcmp(c->tag, "row") == 0 && elem_has_class(c, "toolbar") && !elem_has_class(c, "pal-grid-row")) {
             layout_toolbar_row(c, x, y_cursor, w);
             y_cursor += ROW_H;
