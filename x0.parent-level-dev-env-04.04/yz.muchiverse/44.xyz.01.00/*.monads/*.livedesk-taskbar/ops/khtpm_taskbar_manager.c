@@ -3241,6 +3241,16 @@ static int livedesk_build_db_menu(const char *house_root, HQMenuItem *menu, int 
         n++;
     }
     if (n < max) {
+        /* db-hq (PAL) - the CHTPM-ARCHITECTURE-FIX rebuild: static
+         * dashboard.xhtpm + pal/dbhq_projector.pal. Raw shell row, run
+         * via ktb_hq_activate()'s catch-all (` .` -> house_root). Kept
+         * alongside the classic C db-hq for side-by-side comparison. */
+        snprintf(menu[n].label, sizeof(menu[n].label), "db-hq (PAL)");
+        snprintf(menu[n].command, sizeof(menu[n].command),
+                 "sh &.hq-apps/db-hq-pal/button.sh .");
+        n++;
+    }
+    if (n < max) {
         snprintf(menu[n].label, sizeof(menu[n].label), "Cancel");
         menu[n].command[0] = '\0';
         n++;
