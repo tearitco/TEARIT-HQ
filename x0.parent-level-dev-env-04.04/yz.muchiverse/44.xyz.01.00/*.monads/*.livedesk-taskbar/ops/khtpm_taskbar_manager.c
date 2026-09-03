@@ -307,6 +307,40 @@ int ktb_pid_alive(int pid) {
 #endif
 }
 
+/* REAL, NEW 2026-09-03 - HQ-window identity guard against PID reuse.
+ * ktb_pid_alive() alone is defeated by PID reuse: a closed HQ window's
+ * stale livedesk_hq_windows_<pid>.txt registry file survives (its atexit
+ * cleanup can't run on a SIGKILL/crash), and if the OS later hands that
+ * same PID to an unrelated process (a real, live case: chat-hai's PID
+ * got reused by a Firefox content thread, comm "StyleThread#5"),
+ * kill(pid,0) reports it "alive" and the phantom taskbar cell persists
+ * forever - unchanged window title, FOCUSWIN targeting the wrong PID.
+ * Real fix: an HQ entry is real only if its PID is alive AND its comm
+ * is the shared HQ-window renderer binary (comm == the 15-char
+ * truncation "khtpm_core_rend"), which a reused unrelated PID can't
+ * satisfy, while every real HQ window is that one merged binary. Fails
+ * open to alive-only on non-Linux / unreadable /proc, matching
+ * ktb_pid_alive()'s own fail-open kill() fallback posture. */
+static int ktb_pid_is_hq_renderer(int pid) {
+    if (!ktb_pid_alive(pid)) return 0;
+#ifdef __linux__
+    char cpath[64], comm[16];
+    snprintf(cpath, sizeof(cpath), "/proc/%d/comm", pid);
+    FILE *cf = fopen(cpath, "r");
+    if (cf) {
+        if (fgets(comm, sizeof(comm), cf)) {
+            size_t n = strlen(comm);
+            while (n && (comm[n - 1] == '\n' || comm[n - 1] == '\r')) comm[--n] = '\0';
+            fclose(cf);
+            if (n >= 12 && memcmp(comm, "khtpm_core_r", 12) == 0) return 1;
+            return 0;
+        }
+        fclose(cf);
+    }
+#endif
+    return 1;
+}
+
 void ktb_init(KtbState *s, const char *house_root) {
     memset(s, 0, sizeof(*s));
     snprintf(s->house_root, sizeof(s->house_root), "%s",
@@ -701,7 +735,7 @@ void ktb_merge_hq_windows(KtbState *s) {
             if ((p = strstr(line, "minimized=1"))) ent.minimized = 1;
             if ((p = strstr(line, "focused=1"))) ent.focused = 1;
             fclose(f);
-            if (!ent.win || !ktb_pid_alive(ent.pid)) continue;
+            if (!ent.win || !ktb_pid_is_hq_renderer(ent.pid)) continue;
             s->hq_wins[s->n_hq_wins++] = ent;
         } else {
             fclose(f);
