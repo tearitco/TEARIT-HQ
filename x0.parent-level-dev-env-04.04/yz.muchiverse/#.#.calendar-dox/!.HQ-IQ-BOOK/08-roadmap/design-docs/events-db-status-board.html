@@ -400,10 +400,21 @@
         </div>
       </div>
       <div class="rung t4">
+        <div class="tier">Tier 4<small>wiring, not greenfield</small></div>
+        <div class="body">
+          <b>Movement / Transfer / Scroll Map</b>
+          <p>Position systems <b>already exist</b> — see “Plan going forward” below. This is
+            wiring event commands to the live <b>livedesk desk grid</b>
+            (<code>desks/*.pdl</code>: px&nbsp;xy + grid&nbsp;col/row + z, bounded by
+            <code>desk_grid.pdl</code>) or <b>board-viewer</b> (the 3D/2D grid renderer 5 apps
+            already use), plus one small tick consumer. Not a new subsystem.</p>
+        </div>
+      </div>
+      <div class="rung t4">
         <div class="tier">Tier 4<small>real subsystems</small></div>
         <div class="body">
-          <b>Shop · Movement/Transfer/Scroll · Battle · Script command</b>
-          <p><code>shop_open</code> is an empty stub folder. Transfer / Movement Route / Scroll Map need a map &amp; position system that <b>doesn't exist anywhere</b>. Battle needs a battle system. A raw Script command is a deliberate architecture change. Check in before starting any of these.</p>
+          <b>Shop · Battle · Script command</b>
+          <p><code>shop_open</code> is an empty stub folder — needs real buy/sell UI + price/inventory math. Battle needs a battle system (also what Enemies/Troops/States/Animations tabs wait on). A raw Script command is a deliberate architecture change. Check in before starting any of these.</p>
         </div>
       </div>
     </div>
@@ -477,9 +488,9 @@
   <section>
     <h2>How it fits together</h2>
     <p class="section-note">
-      Solid lines are wired and tested. Dashed = a dependency on a subsystem that doesn't
-      exist, which is what caps Tier&nbsp;4 and leaves the Actor/Character commands writing
-      state nobody draws.
+      Solid lines are wired and tested. Dashed = a link that is planned but not built.
+      The desk grid and board-viewer are <b>real and running</b> — events just don't call
+      into them yet; only Shop and Battle are genuinely absent subsystems.
     </p>
     <div class="diagram">
       <svg viewBox="0 0 640 430" role="img" aria-label="Dependency map of the events and database system">
@@ -499,8 +510,8 @@
         <path class="dg-edge" d="M150,300 C 210,300 210,300 250,300" marker-end="url(#arrow)"/>
         <text class="dg-edge-label" x="163" y="292">watches switch</text>
 
-        <path class="dg-edge-missing" d="M300,330 C 250,360 220,360 176,368" marker-end="url(#arrow-x)"/>
-        <text class="dg-edge-label" x="205" y="352" fill="var(--blocked)">needs</text>
+        <path class="dg-edge-missing" d="M300,330 C 250,360 220,360 184,368" marker-end="url(#arrow-x)"/>
+        <text class="dg-edge-label" x="196" y="350" fill="var(--blocked)">wire to</text>
 
         <path class="dg-edge-missing" d="M360,264 C 430,264 430,300 470,330" marker-end="url(#arrow-x)"/>
         <text class="dg-edge-label" x="392" y="284" fill="var(--blocked)">needs</text>
@@ -547,30 +558,139 @@
           <text class="dg-label" x="33" y="316">Parallel trigger</text>
         </g>
 
-        <!-- missing subsystems -->
+        <!-- exists but not wired to events -->
         <g>
-          <rect class="dg-node-missing" x="40" y="348" width="136" height="46" rx="9"/>
-          <text class="dg-label" x="53" y="368" fill="var(--blocked)">map / position</text>
-          <text class="dg-sub" x="53" y="384" fill="var(--blocked)">does not exist</text>
+          <rect class="dg-node-fill dg-node-stroke" x="34" y="348" width="150" height="46" rx="9"/>
+          <text class="dg-label" x="47" y="368">desk grid + board-viewer</text>
+          <text class="dg-sub" x="47" y="384">real · not wired to events</text>
         </g>
         <g>
           <rect class="dg-node-missing" x="300" y="308" width="150" height="46" rx="9"/>
-          <text class="dg-label" x="313" y="328" fill="var(--blocked)">sprite / battle</text>
-          <text class="dg-sub" x="313" y="344" fill="var(--blocked)">render layer</text>
+          <text class="dg-label" x="313" y="328" fill="var(--blocked)">no consumer for</text>
+          <text class="dg-sub" x="313" y="344" fill="var(--blocked)">mr_* state files</text>
         </g>
         <g>
           <rect class="dg-node-missing" x="420" y="322" width="150" height="46" rx="9"/>
-          <text class="dg-label" x="433" y="342" fill="var(--blocked)">Tier 4 commands</text>
-          <text class="dg-sub" x="433" y="358" fill="var(--blocked)">shop · transfer · …</text>
+          <text class="dg-label" x="433" y="342" fill="var(--blocked)">shop · battle</text>
+          <text class="dg-sub" x="433" y="358" fill="var(--blocked)">real subsystems</text>
         </g>
       </svg>
     </div>
   </section>
 
+  <section>
+    <h2>Plan going forward</h2>
+    <p class="section-note">
+      The order the SOS doc implies, corrected for the position systems that already exist.
+      Tiers 1–3 are unchanged; Tier 4's map commands drop from “blocked” to a scoped
+      wiring job.
+    </p>
+
+    <div class="ladder">
+      <div class="rung t1">
+        <div class="tier">1<small>now · 0 C</small></div>
+        <div class="body">
+          <b>Access toggles → the registry</b>
+          <p>Append 4 <code>COMMAND</code> blocks copied from <code>control_switch</code>,
+            each pointed at a <code>system_flags.txt</code> key
+            (<code>menu_enabled</code>, <code>save_enabled</code>, …). Prefer the
+            <code>SELECT2 1:0</code> route so it needs no C hook. Verifiable the moment the
+            manager re-polls.</p>
+        </div>
+      </div>
+      <div class="rung t2">
+        <div class="tier">2<small>1–2 ops</small></div>
+        <div class="body">
+          <b>Screen effects &amp; actor graphics ops</b>
+          <p>Twin <code>mr_character.c</code> into <code>mr_screen.c</code>
+            (<code>fadeout|fadein|tint|flash|shake</code> → <code>screen_state.pdl</code>)
+            and add string modes to <code>mr_actor_string.c</code>. Registry blocks mirror
+            <code>show_animation</code>. Still write-only state for now — the consumer is
+            step 5.</p>
+        </div>
+      </div>
+      <div class="rung t3">
+        <div class="tier">3<small>1 op + dep check</small></div>
+        <div class="body">
+          <b>Audio: Play SE / BGM / BGS / ME</b>
+          <p><code>which aplay paplay ffplay</code> on the target first. If one exists, a
+            ~30-line <code>mr_audio.c</code> shelling to it; 4 registry blocks. If none,
+            say so and skip — don't ship a silent no-op.</p>
+        </div>
+      </div>
+      <div class="rung t4">
+        <div class="tier">4<small>wiring job</small></div>
+        <div class="body">
+          <b>Transfer Player / Set Movement Route / Scroll Map — on the desk grid</b>
+          <p style="margin-bottom:8px">The substrate is live already: <code>desks/&lt;name&gt;.pdl</code> rows carry
+            <code>px_x px_y grid_col grid_row … z</code>, <code>desk_grid.pdl</code> sets
+            <code>cell_px</code> and an optional <code>map_cols</code>/<code>map_rows</code>
+            wall, and the taskbar manager already clamps &amp; rewrites those rows. Steps:</p>
+          <ol style="margin:0;padding-left:20px;font-size:13px;color:var(--ink-soft);line-height:1.7">
+            <li><b>Pick the entity that <em>is</em> “the player.”</b> Simplest: a designated
+              desk entity (e.g. the user's avatar / a <code>player</code> pal). Its
+              <code>desktop_pos.txt</code> + <code>DESK|</code> row are the position of record.</li>
+            <li><b><code>mr_transfer.c</code></b> (~48 lines, <code>mr_character.c</code>
+              shape): writes <code>x y map</code> to the player's pos file <em>and</em>
+              rewrites its <code>DESK|</code> row so it visibly jumps. Registry:
+              <code>transfer_player</code> (params <code>x</code>, <code>y</code>,
+              <code>map</code>).</li>
+            <li><b><code>mr_move_route.c</code></b>: appends a step list
+              (<code>up down left right wait</code>) to <code>move_route.pdl</code>.
+              Registry: <code>set_movement_route</code> (params <code>target</code>,
+              <code>route</code>).</li>
+            <li><b><code>mr_scroll_map.c</code></b>: writes a camera/pan offset to
+              <code>camera.pdl</code>. On the desktop substrate this pans the whole desk;
+              on <b>board-viewer</b> it drives its real camera directly.</li>
+            <li><b>One small tick process</b> (<code>map_tick</code>, the only genuinely new
+              binary): reads <code>move_route.pdl</code>, applies one step per tick,
+              clamped to <code>desk_grid.pdl</code>'s bound (set
+              <code>map_cols</code>/<code>map_rows</code> — they're commented out today).
+              Reuses the common-events manager's own tick cadence.</li>
+            <li><b>Second substrate, same commands:</b> point the ops at
+              <b>board-viewer</b>'s grid instead when the event runs inside a board-viewer
+              game (civ-txt / tactics-txt / piececraft-hq all use it). The registry entries
+              and event API don't change — only which coordinate file the op writes.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="rung t4">
+        <div class="tier">5<small>consumer</small></div>
+        <div class="body">
+          <b>Make the write-only commands visible</b>
+          <p>Give the desktop tile renderer (khtpm entity mode) and/or board-viewer a pass
+            that reads <code>screen_state.pdl</code> / actor-graphic state and reflects it.
+            This is what turns every Tier-2 “writes state nobody draws” command into a
+            real effect — do it once, after Tiers 2 &amp; 4 have state to show.</p>
+        </div>
+      </div>
+      <div class="rung t4">
+        <div class="tier">6<small>real builds</small></div>
+        <div class="body">
+          <b>Shop &amp; Battle</b>
+          <p>Genuinely new. Shop = buy/sell UI + price math + gold (reuses
+            <code>change_gold</code> + the Items/Weapons/Armors tabs). Battle = the missing
+            subsystem the Enemies / Troops / States / Animations tabs all wait on. Each is
+            its own design pass — not on this ladder's critical path.</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="section-note" style="margin-top:22px">
+      <b>Parallel track — the db-hq tab audit</b> (<code>sep-1-grok.md</code>): for each of
+      the 12 generic list tabs, confirm what its real RPG-Maker equivalent should store and
+      whether a row edits its sub-fields today. Not blocking the event work above.
+    </p>
+  </section>
+
   <footer>
     Sources — <code>#.ref/menu/event_commands.registry.pdl</code> ·
     <code>&amp;.widgits/events-hq/ops/khtpm_events_hq_manager.c</code> ·
-    <code>khtpm_core_render.c</code> (DB_HQ tab code, ~L1235 / L2168) ·
+    <code>khtpm_core_render.c</code> (DB_HQ tab code ~L1235 / L2168; <code>DESK|</code> row
+    writer L1815 / L2730) · <code>#.desktop/desk_grid.pdl</code> ·
+    <code>xyzfs/…/sessions/*/desks/*.pdl</code> · <code>&amp;.widgits/board-viewer/ops/</code>
+    (used by civ-txt, tactics-txt, aomorai-editor, piececraft-hq, piececraft-xyz) ·
+    <code>@.apps/piececraft-hq/PIECECRAFT_XYZ_DESIGN.md</code> (voxel engine: plan only) ·
     <code>!.HQ-IQ-BOOK/08-roadmap/design-docs/</code>: COMMON-EVENTS-MANAGER-HANDOFF.md,
     sep-1-events-SOS.md, sep-1-grok.md, !.OPEN-2do-events-db-networking-2026-08-28.md.
     Mirrored into <code>HANDOFF-2026-09-02.md §8</code>.
