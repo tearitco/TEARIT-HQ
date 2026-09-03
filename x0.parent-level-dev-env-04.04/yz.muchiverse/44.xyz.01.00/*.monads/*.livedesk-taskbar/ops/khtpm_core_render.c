@@ -6278,35 +6278,78 @@ typedef struct {
 } GenericScrollBar;
 static GenericScrollBar g_generic_sbars[8];
 static int g_n_generic_sbars;
+/* REAL, NEW 2026-09-03 (direct live report: "chat hai doesn't have the
+ * thumb navs that some other projects (like palletes) have yet" -
+ * palettes' own real up/down arrow buttons, "REAL, NEW 2026-08-25 -
+ * they need to be numbered (1 and 2), with nav feature for
+ * accessibility/disabled", ported here generically instead of being
+ * palette-grid-only forever). Real, static-storage Elems, the SAME
+ * "outside the parsed tree" pattern g_default_close_elem already uses -
+ * one up/down pair per registered scrollbar slot, index-matched to
+ * g_generic_sbars[]. Real nav_index, real onclick ("SCROLLUP:<i>"/
+ * "SCROLLDOWN:<i>"), so an AI/keyboard-only session (this house's own
+ * digit-jump nav convention) can actually reach and use them - the
+ * existing thumb/track was mouse-only. */
+static Elem g_sbar_up_elem[8], g_sbar_down_elem[8];
 
 static void generic_sbar_reset(void) { g_n_generic_sbars = 0; }
 
+#define GENERIC_SBAR_ARROW_H 14
 static void generic_sbar_register(int x, int y, int w, int h, int *scroll,
                                   int total, int visible, int max_scroll) {
     GenericScrollBar *b;
-    int th, usable, sc;
+    int th, usable, sc, slot;
     if (g_n_generic_sbars >= 8) return;
     if (w < GENERIC_SCROLLBAR_W + 8 || h < 8) return;
     if (max_scroll < 1) return;
+    slot = g_n_generic_sbars;
     b = &g_generic_sbars[g_n_generic_sbars++];
     b->vx = x; b->vy = y; b->vw = w; b->vh = h;
     b->track_w = GENERIC_SCROLLBAR_W;
-    b->track_h = h;
     b->track_x = x + w - GENERIC_SCROLLBAR_W;
-    b->track_y = y;
     b->scroll = scroll;
     b->total = total;
     b->visible = visible;
     b->max_scroll = max_scroll;
-    th = (total > 0) ? (h * visible) / total : h;
+    /* REAL, NEW 2026-09-03 - real up/down arrow buttons reserve their
+     * own ARROW_H at each end of the track, same real classic-scrollbar
+     * shape palettes' own g_pal_arrow_up/g_pal_arrow_down already use
+     * (track shrinks to make room, not drawn on top of it) - see this
+     * struct's own header comment for the real "why" (AI/keyboard-only
+     * reachability, not decoration). Falls back to the old full-height
+     * track when there's no real room for both arrows plus a usable
+     * thumb (a very short scrolllist), so nothing regresses there. */
+    int have_arrows = (h > GENERIC_SBAR_ARROW_H * 2 + 12);
+    b->track_y = y + (have_arrows ? GENERIC_SBAR_ARROW_H : 0);
+    b->track_h = h - (have_arrows ? GENERIC_SBAR_ARROW_H * 2 : 0);
+    th = (total > 0) ? (b->track_h * visible) / total : b->track_h;
     if (th < 12) th = 12;
-    if (th > h) th = h;
-    usable = h - th;
+    if (th > b->track_h) th = b->track_h;
+    usable = b->track_h - th;
     sc = scroll ? *scroll : 0;
     if (sc < 0) sc = 0;
     if (sc > max_scroll) sc = max_scroll;
     b->thumb_h = th;
-    b->thumb_y = y + ((max_scroll > 0 && usable > 0) ? (sc * usable) / max_scroll : 0);
+    b->thumb_y = b->track_y + ((max_scroll > 0 && usable > 0) ? (sc * usable) / max_scroll : 0);
+
+    if (!have_arrows) { g_sbar_up_elem[slot].w = 0; g_sbar_down_elem[slot].w = 0; return; }
+    Elem *up = &g_sbar_up_elem[slot], *dn = &g_sbar_down_elem[slot];
+    memset(up, 0, sizeof(*up)); memset(dn, 0, sizeof(*dn));
+    snprintf(up->tag, sizeof(up->tag), "item"); snprintf(dn->tag, sizeof(dn->tag), "item");
+    snprintf(up->id, sizeof(up->id), "sbar-up-%d", slot);
+    snprintf(dn->id, sizeof(dn->id), "sbar-down-%d", slot);
+    snprintf(up->classes[0], sizeof(up->classes[0]), "sbar-arrow"); up->n_classes = 1;
+    snprintf(dn->classes[0], sizeof(dn->classes[0]), "sbar-arrow"); dn->n_classes = 1;
+    snprintf(up->label, sizeof(up->label), "^");
+    snprintf(dn->label, sizeof(dn->label), "v");
+    if (sc > 0) snprintf(up->onclick, sizeof(up->onclick), "SCROLLUP:%d", slot);
+    if (sc < max_scroll) snprintf(dn->onclick, sizeof(dn->onclick), "SCROLLDOWN:%d", slot);
+    up->x = b->track_x; up->y = y; up->w = b->track_w; up->h = GENERIC_SBAR_ARROW_H;
+    dn->x = b->track_x; dn->y = y + h - GENERIC_SBAR_ARROW_H; dn->w = b->track_w; dn->h = GENERIC_SBAR_ARROW_H;
+    css_compute_style(&g_sheet, up->tag, up->id, up->classes, up->n_classes, 0, &up->style);
+    css_compute_style(&g_sheet, dn->tag, dn->id, dn->classes, dn->n_classes, 0, &dn->style);
+    up->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = up;
+    dn->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = dn;
 }
 
 static void draw_generic_scrollbars(void) {
@@ -6452,12 +6495,30 @@ static int scroll_row_span(const Elem *c, int w) {
      * layout and the eventual draw agree. Every existing single-line
      * label is completely unaffected - wrap_line_count() returns 1 for
      * anything that already fits, same as before this fix existed. */
-    if (c && strcmp(c->tag, "text") == 0 && c->label[0]) {
+    /* REAL FIX 2026-09-03 (direct live report: chat-hai's "Speed: 6s
+     * (click to cycle)" row visibly overlapped the transcript below
+     * it) - this function only ever handled tag=="text", leaving every
+     * <item> (chat-hai's Pause/Speed controls, laid out through this
+     * SAME fixed-rows path) permanently pinned at span=1 regardless of
+     * real label length. Same real wrap-span logic as the <text> case
+     * right below, reused rather than duplicated - the one real
+     * difference is an item ALSO carries a "[ ]NN. " nav badge prefix
+     * (see draw_elem()'s own badge_label_x) that eats into the same
+     * row's real available width; a fixed, generous estimate ("[ ]99. "
+     * at this font) is subtracted here so this stays a real, honest
+     * upper-bound measurement, not an undercount that reintroduces the
+     * exact same overlap for a differently-worded label later. */
+    if (c && (strcmp(c->tag, "text") == 0 || strcmp(c->tag, "item") == 0) && c->label[0]) {
         CssStyle tmp_style;
         css_compute_style(&g_sheet, c->tag, c->id, (char (*)[32])(void *)c->classes, c->n_classes, 0, &tmp_style);
         XftFont *font = font_for(&tmp_style);
         int pad = tmp_style.has_padding ? tmp_style.padding : 4;
         int avail_w = w - pad * 2;
+        if (strcmp(c->tag, "item") == 0) {
+            XGlyphInfo ext;
+            XftTextExtentsUtf8(dpy, font, (const FcChar8 *)"[ ]99. ", 7, &ext);
+            avail_w -= ext.xOff;
+        }
         int lines = wrap_line_count(font, c->label, avail_w);
         int line_h = font->ascent - font->descent > 0 ? font->ascent - font->descent : 12;
         line_h += 4;
@@ -6519,6 +6580,28 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
     int max_scroll = total > visible_rows ? total - visible_rows : 0;
     if (*scroll > max_scroll) *scroll = max_scroll;
     if (*scroll < 0) *scroll = 0;
+    /* REAL FIX 2026-09-03 (direct live report: "focus issue... never
+     * there before", traced live via a direct diff review - the
+     * generic scrollbar's own new up/down arrow buttons only ever
+     * shrank the TRACK/THUMB drawn inside generic_sbar_register(); the
+     * real content band real rows get positioned into, right below,
+     * was never shrunk to match - the arrows sat drawn on TOP of the
+     * first/last real visible row instead of in real reserved space of
+     * their own, stealing clicks/focus from whatever content used to
+     * be there). Decided ONCE, here, using the exact same real gates
+     * generic_sbar_register() uses internally (h > ARROW_H*2+12, w wide
+     * enough, max_scroll>=1) so the two can never disagree about where
+     * the real content band starts/ends - recomputes visible_rows/
+     * max_scroll against the REAL reduced band before a single row is
+     * positioned, not after. */
+    int have_arrows = max_scroll > 0 && w >= GENERIC_SCROLLBAR_W + 8 && h > GENERIC_SBAR_ARROW_H * 2 + 12;
+    int content_y = y + (have_arrows ? GENERIC_SBAR_ARROW_H : 0);
+    if (have_arrows) {
+        visible_rows = (h - GENERIC_SBAR_ARROW_H * 2) / ROW_H;
+        if (visible_rows < 1) visible_rows = 1;
+        max_scroll = total > visible_rows ? total - visible_rows : 0;
+        if (*scroll > max_scroll) *scroll = max_scroll;
+    }
     generic_sbar_register(x, y, w, h, scroll, total, visible_rows, max_scroll);
     if (max_scroll > 0 && w > GENERIC_SCROLLBAR_W + 8)
         inner_w = w - GENERIC_SCROLLBAR_W;
@@ -6531,9 +6614,9 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
         int span = scroll_row_span(c, inner_w);
         int visible = (row + span > *scroll && row < *scroll + visible_rows);
         if (is_grid) {
-            layout_scroll_sprite_grid_row(c, x, y + (row - *scroll) * ROW_H, inner_w, span * ROW_H, visible, out_lo, out_hi);
+            layout_scroll_sprite_grid_row(c, x, content_y + (row - *scroll) * ROW_H, inner_w, span * ROW_H, visible, out_lo, out_hi);
         } else if (visible) {
-            c->x = x; c->y = y + (row - *scroll) * ROW_H; c->w = inner_w; c->h = span * ROW_H;
+            c->x = x; c->y = content_y + (row - *scroll) * ROW_H; c->w = inner_w; c->h = span * ROW_H;
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
             if (strcmp(c->tag, "item") == 0) {
                 c->nav_index = ++g_n_nav;
@@ -7258,6 +7341,25 @@ static void activate_focused(void) {
      * dropdown open is a real, if minor, real-world UX bug this avoids
      * for free, not a separate feature to build later. */
     if (elem_has_class(item, "dropdown-child")) g_default_active_scope_root = NULL;
+    /* REAL, NEW 2026-09-03 - generic scrollbar up/down arrows
+     * (generic_sbar_register()'s own header comment), same real
+     * "recognized onclick verb, checked before the generic dispatch()
+     * fallback" order as ACTIVATE right above - "SCROLLUP:<i>"/
+     * "SCROLLDOWN:<i>" are never real shell commands, dispatch() must
+     * never see them. Index-matched into g_generic_sbars[], the SAME
+     * array this frame's own layout pass just populated - clamped
+     * against its own real max_scroll, not a guessed bound. */
+    if (strncmp(item->onclick, "SCROLLUP:", 9) == 0 || strncmp(item->onclick, "SCROLLDOWN:", 11) == 0) {
+        int up = item->onclick[6] == 'U';
+        int i = atoi(item->onclick + (up ? 9 : 11));
+        if (i >= 0 && i < g_n_generic_sbars && g_generic_sbars[i].scroll) {
+            int *sc = g_generic_sbars[i].scroll;
+            *sc += up ? -1 : 1;
+            if (*sc < 0) *sc = 0;
+            if (*sc > g_generic_sbars[i].max_scroll) *sc = g_generic_sbars[i].max_scroll;
+        }
+        return;
+    }
     if (item->onclick[0]) dispatch(item->onclick);
 }
 
@@ -7374,8 +7476,28 @@ static void redraw(void) {
     Elem *page = find_page(g_current_page);
     if (page) {
         char fpath[PATH_BUF], tmpp[PATH_BUF];
-        snprintf(fpath, sizeof(fpath), "%s/#.desktop/%s", g_house_root,
-                 g_is_swatch_picker ? "taskbar_settings_frame.txt" : "entity_menu_frame.txt");
+        /* REAL FIX 2026-09-03 (direct live report: chat-hai's "Speed"
+         * row and its own first transcript message rendered as
+         * character-level interleaved garbage - "moxieSpeed..." - even
+         * though a live debug print proved this function's own layout
+         * math was correct on every tick). Root cause: this path was
+         * ONE flat, house-wide name, `#.desktop/entity_menu_frame.txt`
+         * (or taskbar_settings_frame.txt for swatch-picker), shared by
+         * EVERY default-mode window in the whole house - chat-hai and
+         * open-hai (or any two default-mode apps open at once) were
+         * concurrently writing to and reading from the exact same file,
+         * every redraw tick, from separate processes with no locking.
+         * The write side's own tmp+rename is only atomic PER WRITER -
+         * two processes racing to write the SAME tmp path can still
+         * interleave, and a reader can catch the file mid-rename. Real
+         * fix: scope this path per-process, same real PID-keyed
+         * convention `#.desktop/entity_menu_history/<pid>.txt` already
+         * uses for other per-window state - getpid() is unique per
+         * renderer, so two windows can never collide on this path
+         * again, house-wide, permanently, not just for chat-hai/open-
+         * hai's own current pairing. */
+        snprintf(fpath, sizeof(fpath), "%s/#.desktop/%s_%d.txt", g_house_root,
+                 g_is_swatch_picker ? "taskbar_settings_frame" : "entity_menu_frame", (int)getpid());
         snprintf(tmpp, sizeof(tmpp), "%s.tmp", fpath);
         FILE *ff = fopen(tmpp, "w");
         if (ff) {
@@ -7392,6 +7514,15 @@ static void redraw(void) {
              * statics at all. */
             if (g_default_close_elem->w > 0) dbhq_serialize_frame_elem(ff, g_default_close_elem);
             if (g_default_fullscreen_elem->w > 0) dbhq_serialize_frame_elem(ff, g_default_fullscreen_elem);
+            /* REAL, NEW 2026-09-03 - generic scrollbar up/down arrows
+             * (generic_sbar_register()'s own header comment) live
+             * outside the parsed tree too, same real reason/pattern as
+             * the close/fullscreen pair right above - serialized
+             * explicitly here, once per registered scrollbar slot. */
+            for (int sbi = 0; sbi < g_n_generic_sbars; sbi++) {
+                if (g_sbar_up_elem[sbi].w > 0) dbhq_serialize_frame_elem(ff, &g_sbar_up_elem[sbi]);
+                if (g_sbar_down_elem[sbi].w > 0) dbhq_serialize_frame_elem(ff, &g_sbar_down_elem[sbi]);
+            }
             fclose(ff); rename(tmpp, fpath);
         }
         {
