@@ -89,3 +89,11 @@ If you're about to write a bracket/nav-badge string, a `parse_chtpm()`
 loop, or armed-input-state logic by hand: stop and check whether
 `khtpm_render_core.c`/`khtpm_draw_core.c` (the shared, text-included
 core files) already provide it. They usually do.
+
+**Scoped nav / `[^]` `[>]` (2026-09-03):** do not compact `g_nav[]`.
+Read
+`yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/09-appendix/HANDOFF-scope-nav-and-chtpm-port.md`
+**§9** before touching `kh_apply_scope_confine`, `kh_elem_in_scope`,
+or nav badges. Edit `&.widgits/_shared-lib/khtpm_draw_core.c` (the
+ops copy is overwritten on build). Running windows do not pick up a
+rebuild until relaunch.

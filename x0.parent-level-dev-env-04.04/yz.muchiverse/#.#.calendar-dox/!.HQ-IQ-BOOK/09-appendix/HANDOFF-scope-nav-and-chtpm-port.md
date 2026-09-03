@@ -9,15 +9,16 @@ the older docs listed in §7 are background only.
 
 ## 0. TL;DR — what the next agent should do
 
-1. **Fix scoped nav properly** (§3). The current implementation
-   (`kh_apply_scope_confine()` in `khtpm_core_render.c`) is a hack — it
-   *renumbers `g_nav[]` and zeroes `nav_index`* on out-of-scope rows.
-   That is not how chtpm interact mode works. Port the real model from
-   the reference parser (§2): keep `g_nav[]` immutable, gate everything
-   through a predicate. Out-of-scope rows must stay on screen **with
-   their numbers**, just inert, until `Esc`.
-2. Then continue the projector port (§5): the remaining HQ windows off
-   the per-app C dispatch.
+1. **Scoped nav is done** (§3 + §9). Do not revive `kh_apply_scope_confine()`
+   renumbering. `g_nav[]` stays the full numbered list; `kh_elem_in_scope()`
+   / `kh_elem_arrow_stop()` gate input. Visuals: `[^]` gold + `[>]` orange
+   on a dark chip (`khtpm_draw_core.c`). Chrome (`chrome-*`) is part of
+   the submenu wrap. Rebuild + **relaunch** — a running renderer keeps the
+   old inode (`(deleted)` in `/proc/pid/exe`).
+2. Continue the projector port (§5): remaining HQ windows off per-app C.
+
+See **§9** before touching nav/draw again. Those pitfalls already burned
+a live session.
 
 ---
 
@@ -402,6 +403,81 @@ dde3291e taskbar: keep the window chrome bar reachable while a scope is held    
 4b6250b6 taskbar: db-hq (PAL) via livedesk:open-db-hq-pal verb
 ```
 
-`59acda6d` + `dde3291e` do functionally lock the scope, but via the
-wrong mechanism (mutating `g_nav[]`). Replace with §3. Nothing is
-broken to pick up from.
+`59acda6d` + `dde3291e` (mutating `g_nav[]`) are superseded by the
+predicate port in `khtpm_core_render.c` + badge paint in
+`&.widgits/_shared-lib/khtpm_draw_core.c` (`build_core_render.sh`
+copies that file over ops/`khtpm_draw_core.c` on every build — **edit
+the shared-lib copy**).
+
+---
+
+## 9. What happened + pitfalls (2026-09-03 live)
+
+Reference behavior is TPMOS
+`1.TPMOS_c_+rmmp.0103.0001/pieces/chtpm/plugins/chtpm_parser.c`
+`render_element()` ~2373:
+
+```
+is_active  -> [^]
+is_focused && (active_index == -1 || navigable) -> [>]
+else [ ]
+```
+
+Outer rows keep their numbers while a submenu is held. `[>]` lives in
+the submenu. Esc pops one level.
+
+### Pitfall 1 — mutating `g_nav[]` / zeroing `nav_index`
+
+`kh_apply_scope_confine()` used to compact `g_nav[]` and set
+out-of-scope `nav_index = 0`. Numbers vanished; chrome became
+unreachable; it was not chtpm. **Never rebuild the nav array for
+scope.** Gate with `kh_elem_in_scope()`.
+
+### Pitfall 2 — draw copies have no `parent`
+
+Default-mode `redraw()` serializes to
+`#.desktop/entity_menu_frame_<pid>.txt` and paints via
+`dbhq_paint_frame_line()` into a **memset temp Elem**. Parent pointers
+are NULL. `kh_elem_in_scope()` (parent walk) is **false for every
+sidebar row** on that path. Using it to blank prefixes made `[>]`
+disappear and left only the orange ring / tab `active` fill.
+
+**Draw prefixes from ids + `g_focus_nav` only.** Scope confinement
+belongs in key/click handlers on the live tree.
+
+`[^]` is the **trigger id** (`g_default_active_scope_id` /
+`g_default_active_tab_id`), not `g_default_active_scope_root->id`
+(that root is often the `<sidebar>` container).
+
+### Pitfall 3 — TPMOS wrap lands on the `[^]` root
+
+`is_navigable(active_index)` is true, so wrapping arrows from the last
+child stop on the activate root. `is_active` wins → `[>]` vanishes.
+**khtpm fix:** `kh_elem_arrow_stop()` excludes the trigger/root but
+**includes `chrome-*`** so `_` / `!` / `X` stay in the wrap. Do not
+exclude chrome or the human cannot arrow-quit.
+
+### Pitfall 4 — `badge_contrast_color()` eats `[^]` / `[>]`
+
+Tab/sidebar fills are dark; contrast against that luma painted the
+glyphs the same color as the fill. TPMOS never hits this (ASCII on a
+dark frame). **Always** chip `#141414` behind the badge; force
+`[^]` `#ffd24a` and `[>]` `#ff8c00`.
+
+### Pitfall 5 — `build_core_render.sh` overwrites ops `khtpm_draw_core.c`
+
+It `cp`s from `&.widgits/_shared-lib/khtpm_draw_core.c`. Edits only
+under `*.monads/*.livedesk-taskbar/ops/khtpm_draw_core.c` are **lost
+on the next build**. Edit shared-lib, then rebuild.
+
+### Pitfall 6 — rebuild ≠ live
+
+gcc replaces the file; running windows keep the old inode
+(`/proc/<pid>/exe` → `(deleted)`). db-hq-pal must be **killed and
+relaunched**. `button.sh` only builds if the binary is missing, so
+run `build_core_render.sh` yourself then relaunch.
+
+### Pitfall 7 — never `git add -A`
+
+Runtime churn (`#.desktop/*`, `*.pid`, ledgers, xyzfs) drowns the
+diff. Stage explicit paths. `+x` binaries are not tracked.

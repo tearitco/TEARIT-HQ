@@ -1714,8 +1714,12 @@ static Elem *g_nav[MAX_ELEMS];
 static int g_click_two_step = 1;
 static int window_is_dock(void);
 static int elem_has_class(Elem *e, const char *cls);
+static int kh_elem_in_scope(Elem *e);
 static int click_focus_then_activate(Elem *hit) {
     if (!hit) return 0;
+    /* Out-of-scope rows stay numbered and drawn, but a click must not
+     * steal focus or fire — same as chtpm_parser.c is_navigable(). */
+    if (!kh_elem_in_scope(hit)) return 0;
     /* Dock menus: a mouse hit on ACTIVATE (HQ/File-style trigger) or a
      * dropdown-child row opens/runs immediately. Other dock cells still
      * honor #.desktop/hq_ui.pdl click_two_step. */
@@ -1813,6 +1817,26 @@ static int scaled(int base_px) {
  * in this file, so it is forward-declared here before the include. */
 static int elem_has_class(Elem *e, const char *cls);
 static int window_is_dock(void);
+/* chtpm interact-mode gate: g_nav[] stays the full numbered list;
+ * this predicate is the only thing that decides who can take focus.
+ * Port of chtpm_parser.c is_navigable()'s active_index branch. */
+static int kh_elem_in_scope(Elem *e) {
+    if (!e) return 0;
+    if (!(g_default_scope_confine && g_default_active_scope_root)) return 1;
+    if (e == g_default_active_scope_root) return 1;
+    {
+        Elem *p;
+        for (p = e->parent; p; p = p->parent)
+            if (p == g_default_active_scope_root) return 1;
+    }
+    if (e->id[0] && g_default_active_scope_id[0] &&
+        strcmp(e->id, g_default_active_scope_id) == 0) return 1;
+    if (g_default_active_scope_id[0] && e->target_id[0] &&
+        elem_has_class(e, "dropdown-child") &&
+        strcmp(e->target_id, g_default_active_scope_id) == 0) return 1;
+    if (e->id[0] && strncmp(e->id, "chrome-", 7) == 0) return 1;
+    return 0;
+}
 #include "khtpm_draw_core.c"
 #define ROW_H 24
 #define CHROME_H 24
@@ -8490,45 +8514,71 @@ static void dock_paint_menu(void) {
     }
 }
 
-/* interact-mode-style scope confinement (spirit of db-hq's own
- * dbhq_elem_is_navigable() and piececraft INTERACT): while a generic
- * ACTIVATE scope is held, ONLY elements under its root stay navigable.
- * Renumber g_nav[] in place so digit/arrow nav and the g_focus_nav
- * clamp stay consistent. Esc (handle_key) pops the scope. No scope
- * held -> untouched, every existing window unchanged.
- * REAL FIX 2026-09-03 - factored out of assign_nav_and_layout()'s
- * fallthrough branch so the sidebar+panel path (<tab> scope, db-hq-pal)
- * gets it too: layout_sidebar_panel() returns early, so the inline
- * post-pass there was dead code for exactly the window shape that
- * needs it - the [^] tab lock never took. */
+/* interact-mode-style scope confinement. g_nav[] / nav_index are
+ * immutable render data (every interactive row keeps its number).
+ * Out-of-scope rows stay on screen with [ ]N. — inert until Esc.
+ * Port of chtpm_parser.c: skip-scan + is_navigable(), not a rebuild. */
+static void kh_focus_first_in_scope(void) {
+    int i;
+    if (!(g_default_scope_confine && g_n_nav > 0)) return;
+    if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
+        kh_elem_in_scope(g_nav[g_focus_nav - 1])) return;
+    for (i = 0; i < g_n_nav; i++) {
+        if (kh_elem_in_scope(g_nav[i])) { g_focus_nav = i + 1; return; }
+    }
+}
+static void kh_focus_first_child_in_scope(void) {
+    int i;
+    if (!(g_default_scope_confine && g_n_nav > 0)) return;
+    for (i = 0; i < g_n_nav; i++) {
+        Elem *e = g_nav[i];
+        if (!kh_elem_in_scope(e)) continue;
+        if (e == g_default_active_scope_root) continue;
+        if (e->id[0] && g_default_active_scope_id[0] &&
+            strcmp(e->id, g_default_active_scope_id) == 0) continue;
+        g_focus_nav = i + 1;
+        return;
+    }
+    kh_focus_first_in_scope();
+}
+/* TPMOS is_navigable() counts the ACTIVATE root so it stays numbered,
+ * but wrapping arrows onto that root is the parser bug where [>]
+ * vanishes from the submenu. Arrow stops are descendants + chrome
+ * (chrome is numbered as part of the submenu so X/!/_ stay reachable).
+ * The [^] trigger itself is not an arrow stop. */
+static int kh_elem_arrow_stop(Elem *e) {
+    if (!e || !kh_elem_in_scope(e)) return 0;
+    if (!g_default_scope_confine) return 1;
+    if (e == g_default_active_scope_root) return 0;
+    if (e->id[0] && g_default_active_scope_id[0] &&
+        strcmp(e->id, g_default_active_scope_id) == 0) return 0;
+    return 1;
+}
+static void kh_nav_step(int dir) {
+    int prev, n;
+    if (g_n_nav < 1) return;
+    if (!g_default_scope_confine) {
+        int nv = g_focus_nav + dir;
+        if (nv >= 1 && nv <= g_n_nav) g_focus_nav = nv;
+        return;
+    }
+    prev = g_focus_nav;
+    n = g_n_nav;
+    do {
+        g_focus_nav += dir;
+        if (g_focus_nav < 1) g_focus_nav = n;
+        if (g_focus_nav > n) g_focus_nav = 1;
+    } while (g_focus_nav != prev && !kh_elem_arrow_stop(g_nav[g_focus_nav - 1]));
+}
 static void kh_apply_scope_confine(void) {
+    /* Do not shrink g_nav[] or zero nav_index. Snap focus if the
+     * current row fell out of the live predicate. */
     if (!(g_default_scope_confine && g_default_active_scope_root &&
           !g_is_db_hq && !g_is_events_hq && !window_is_dock()))
         return;
-    int w = 0;
-    for (int r = 0; r < g_n_nav; r++) {
-        Elem *e = g_nav[r];
-        /* keep navigable: (a) anything under the scope root; (b) the
-         * trigger row itself - the "you are here, Enter/Esc to leave"
-         * affordance, where [^] shows; (c) a dropdown-child bound to
-         * this scope via target_id (the generic "Menu" dropdown
-         * pattern - its options aren't tree children of the trigger);
-         * (d) the window chrome bar (minimize/fullscreen/close) - it
-         * lives outside the page tree and must stay reachable even while
-         * a scope is held, same as any real WM titlebar. */
-        int keep = (e == g_default_active_scope_root) ||
-                   (g_default_active_scope_id[0] && e->id[0] &&
-                    strcmp(e->id, g_default_active_scope_id) == 0) ||
-                   (g_default_active_scope_id[0] && e->target_id[0] &&
-                    elem_has_class(e, "dropdown-child") &&
-                    strcmp(e->target_id, g_default_active_scope_id) == 0) ||
-                   (e->id[0] && strncmp(e->id, "chrome-", 7) == 0);
-        for (Elem *p = e; p && !keep; p = p->parent)
-            if (p == g_default_active_scope_root) keep = 1;
-        if (keep) { g_nav[w] = e; e->nav_index = ++w; }
-        else e->nav_index = 0;
-    }
-    g_n_nav = w;
+    if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
+        kh_elem_arrow_stop(g_nav[g_focus_nav - 1])) return;
+    kh_focus_first_child_in_scope();
 }
 
 static void assign_nav_and_layout(void) {
@@ -9017,6 +9067,7 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
 static void activate_focused(void) {
     if (g_focus_nav < 1 || g_focus_nav > g_n_nav) return;
     Elem *item = g_nav[g_focus_nav - 1];
+    if (!kh_elem_in_scope(item)) return;
     /* REAL FIX 2026-08-31 - see default_cli_io_handle_key()'s own
      * Escape-branch comment for the full real diagnosis. Grab taken
      * HERE (arm time), released on every real disarm path. */
@@ -9042,6 +9093,7 @@ static void activate_focused(void) {
                 g_default_active_scope_root = sb;
                 g_default_scope_confine = 1;
                 snprintf(g_default_active_scope_id, sizeof(g_default_active_scope_id), "%s", item->id);
+                kh_focus_first_child_in_scope();
             }
         }
         return;
@@ -9081,6 +9133,7 @@ static void activate_focused(void) {
             }
             g_default_active_scope_root = scope;
             snprintf(g_default_active_scope_id, sizeof(g_default_active_scope_id), "%s", item->id);
+            if (g_default_scope_confine) kh_focus_first_child_in_scope();
             /* `onclick="ACTIVATE '<script>' '<verb>'"` - run the trailing
              * command too, so one click can both switch content and
              * scope into it (e.g. a db-hq-pal tab). */
@@ -9239,7 +9292,9 @@ static void redraw(void) {
         XGetInputFocus(dpy, &focus_win, &focus_revert);
         char title_buf[192];
         const char *title_raw = (g_window->label[0] ? g_window->label : g_current_page);
-        snprintf(title_buf, sizeof(title_buf), "%s %s", (focus_win == win) ? "^" : ".", title_raw);
+        snprintf(title_buf, sizeof(title_buf), "%s %s%s",
+                 (focus_win == win) ? "^" : ".", title_raw,
+                 g_default_scope_confine ? "  Active [^]: (ESC to exit)" : "");
         const char *title = title_buf;
         if (window_is_dock()) {
             const char *mark = (focus_win == win) ? "^" : ".";
@@ -9623,19 +9678,32 @@ static void handle_key(KeySym ks, char ch) {
      * proven precedent - this is the same real idea for the generic
      * dropdown instead of a cli_io field). */
     if (ks == XK_Escape && (g_default_active_scope_root || g_default_active_scope_id[0])) {
-        /* return focus to the trigger that opened the scope (its id is
-         * what activate_focused() stored), so Esc lands you back on the
-         * tab / row you entered from - not on a container with no
-         * nav_index. Falls back to the scope root if the trigger has
-         * gone. */
-        Elem *trig = g_default_active_scope_id[0] ? find_by_id(g_window, g_default_active_scope_id) : NULL;
-        if (trig && trig->nav_index > 0)
-            g_focus_nav = trig->nav_index;
-        else if (g_default_active_scope_root && g_default_active_scope_root->nav_index > 0)
-            g_focus_nav = g_default_active_scope_root->nav_index;
-        g_default_active_scope_root = NULL;
-        g_default_active_scope_id[0] = '\0';
-        g_default_scope_confine = 0;
+        /* Pop ONE level: nearest ACTIVATE ancestor, else full clear.
+         * Matches chtpm_parser.c ESC (lines 2745-2754). */
+        Elem *old = g_default_active_scope_root;
+        Elem *p = old ? old->parent : NULL;
+        Elem *next = NULL;
+        while (p) {
+            if (strncmp(p->onclick, "ACTIVATE", 8) == 0) { next = p; break; }
+            p = p->parent;
+        }
+        if (next && next != old) {
+            g_default_active_scope_root = next;
+            if (next->id[0])
+                snprintf(g_default_active_scope_id, sizeof(g_default_active_scope_id), "%s", next->id);
+            g_default_scope_confine = 1;
+            if (old && old->nav_index > 0) g_focus_nav = old->nav_index;
+            else kh_focus_first_in_scope();
+        } else {
+            Elem *trig = g_default_active_scope_id[0] ? find_by_id(g_window, g_default_active_scope_id) : NULL;
+            if (trig && trig->nav_index > 0)
+                g_focus_nav = trig->nav_index;
+            else if (g_default_active_scope_root && g_default_active_scope_root->nav_index > 0)
+                g_focus_nav = g_default_active_scope_root->nav_index;
+            g_default_active_scope_root = NULL;
+            g_default_active_scope_id[0] = '\0';
+            g_default_scope_confine = 0;
+        }
         if (window_is_dock()) {
             char hist[PATH_BUF];
             snprintf(hist, sizeof(hist), "%s/#.desktop/strip_history.txt", g_house_root);
@@ -9669,7 +9737,7 @@ static void handle_key(KeySym ks, char ch) {
             if (g_focus_nav > g_dock_drop_lo) g_focus_nav--;
             return;
         }
-        if (g_focus_nav > 1) g_focus_nav--;
+        kh_nav_step(-1);
         if (window_is_dock() && g_dock_peer_win && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
             Window want = (g_focus_nav > g_dock_header_nav_hi) ? g_dock_peer_win : win;
             XRaiseWindow(dpy, want);
@@ -9683,7 +9751,7 @@ static void handle_key(KeySym ks, char ch) {
             if (g_focus_nav < g_dock_drop_hi) g_focus_nav++;
             return;
         }
-        if (g_focus_nav < g_n_nav) g_focus_nav++;
+        kh_nav_step(1);
         if (window_is_dock() && g_dock_peer_win && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
             Window want = (g_focus_nav > g_dock_header_nav_hi) ? g_dock_peer_win : win;
             XRaiseWindow(dpy, want);
@@ -9712,7 +9780,7 @@ static void handle_key(KeySym ks, char ch) {
             if (idx >= g_dock_drop_lo && idx <= g_dock_drop_hi) g_focus_nav = idx;
             return;
         }
-        if (d <= g_n_nav) g_focus_nav = d;
+        if (d <= g_n_nav && kh_elem_in_scope(g_nav[d - 1])) g_focus_nav = d;
         return;
     }
 }
