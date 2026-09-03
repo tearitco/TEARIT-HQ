@@ -3246,8 +3246,7 @@ static int livedesk_build_db_menu(const char *house_root, HQMenuItem *menu, int 
          * via ktb_hq_activate()'s catch-all (` .` -> house_root). Kept
          * alongside the classic C db-hq for side-by-side comparison. */
         snprintf(menu[n].label, sizeof(menu[n].label), "db-hq (PAL)");
-        snprintf(menu[n].command, sizeof(menu[n].command),
-                 "sh &.hq-apps/db-hq-pal/button.sh .");
+        snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:open-db-hq-pal");
         n++;
     }
     if (n < max) {
@@ -4121,6 +4120,26 @@ void ktb_hq_activate(KtbState *s, int row) {
 #else
         char sh[KTB_PATH_BUF * 3];
         snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s/&.hq-apps/co-lab-hai/button.sh\" \"%s\"' >/dev/null 2>&1 &",
+                 s->house_root, s->house_root);
+        int rc = ktb_system_recorded(s->house_root, sh);
+        (void)rc;
+#endif
+        ktb_hq_close(s);
+    } else if (strcmp(m->command, "livedesk:open-db-hq-pal") == 0) {
+        /* db-hq (PAL) - the CHTPM-ARCHITECTURE-FIX rebuild: static
+         * dashboard.xhtpm + pal/dbhq_projector.pal. Same setsid nohup
+         * sh -c 'sh "<abs>/button.sh" "<house>"' pattern as co-lab-hai
+         * just above - the single-quoted sh -c is what makes the
+         * &.hq-apps path safe (a bare & is the shell bg operator). */
+#ifdef _WIN32
+        char bin[KTB_PATH_BUF], chtpm[KTB_PATH_BUF];
+        snprintf(bin, sizeof(bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", s->house_root);
+        snprintf(chtpm, sizeof(chtpm), "%s/&.hq-apps/db-hq-pal/dashboard.xhtpm", s->house_root);
+        const char *aa[2] = { s->house_root, chtpm };
+        win_spawn_n(bin, aa, 2);
+#else
+        char sh[KTB_PATH_BUF * 3];
+        snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s/&.hq-apps/db-hq-pal/button.sh\" \"%s\"' >/dev/null 2>&1 &",
                  s->house_root, s->house_root);
         int rc = ktb_system_recorded(s->house_root, sh);
         (void)rc;
