@@ -146,7 +146,7 @@ void handle_sigint(int sig) {
 typedef enum { OP_ADDI, OP_BEQ, OP_BNE, OP_LW, OP_SW, OP_JALR, OP_J, OP_HALT, OP_CUSTOM, OP_READ_HISTORY, OP_EXEC, OP_HIT_FRAME, OP_READ_STATE, OP_READ_ACTIVE_TARGET, OP_READ_ENV_KEY, OP_SLEEP, OP_READ_LAYOUT, OP_READ_POS, OP_ECALL,
     OP_SLIT, OP_SCPY, OP_SAPPEND, OP_SGETENV, OP_SFMT, OP_SREAD, OP_SSPLIT,
     OP_SFIND, OP_SLEN, OP_SFOPEN, OP_SFAPPEND, OP_SWRITE, OP_SFCLOSE,
-    OP_SBEQ, OP_SBNE } OpBase;
+    OP_SBEQ, OP_SBNE, OP_STRIM } OpBase;
 
 typedef struct {
     OpBase op;
@@ -380,8 +380,25 @@ void parse_line(char *line, int pass) {
     char original[1024];
     strncpy(original, line, sizeof(original) - 1);
     original[sizeof(original) - 1] = '\0';
+
+    /* Strip a TRAILING `#` comment (assembly convention, so a .pal can
+     * be annotated line by line) - quote-aware (a `#` inside a "..."
+     * literal survives) and only when real content precedes it, so a
+     * full-line `#` comment and `#include` are left for the checks
+     * below. Applied to both `line` and `original` so every downstream
+     * parse sees clean text. */
+    for (int _pass = 0; _pass < 2; _pass++) {
+        char *buf = _pass == 0 ? line : original;
+        int inq = 0, seen = 0;
+        for (char *c = buf; *c; c++) {
+            if (*c == '"') { inq = !inq; seen = 1; }
+            else if (*c == '#' && !inq && seen) { *c = '\0'; break; }
+            else if (!isspace((unsigned char)*c)) seen = 1;
+        }
+    }
+
     trim(line);
-    
+
     if (line[0] == '#' || line[0] == '\0') return;
     if (strncmp(line, "#include", 8) == 0) return;
     if (is_variable_line(line)) return;
@@ -725,6 +742,9 @@ void parse_line(char *line, int pass) {
         } else if (strcmp(part, "sbne") == 0) {
             sscanf(line, "%*s s%d, s%d, %31s", &i->ss1, &i->ss2, i->label_ref);
             i->op = OP_SBNE;
+        } else if (strcmp(part, "strim") == 0) {
+            sscanf(line, "%*s s%d", &i->sd);
+            i->op = OP_STRIM;
         }
     }
     inst_count++;
@@ -1337,6 +1357,13 @@ int main(int argc, char **argv) {
                 if (strcmp(labels[l].name, i.label_ref) == 0) target = labels[l].addr;
             int eq = (strcmp(sregs[i.ss1], sregs[i.ss2]) == 0);
             if ((i.op == OP_SBEQ && eq) || (i.op == OP_SBNE && !eq)) next_pc = target;
+        } else if (i.op == OP_STRIM) {
+            char *s = sregs[i.sd];
+            char *b = s;
+            while (*b == ' ' || *b == '\t' || *b == '\r' || *b == '\n') b++;
+            size_t n = strlen(b);
+            while (n > 0 && (b[n-1] == ' ' || b[n-1] == '\t' || b[n-1] == '\r' || b[n-1] == '\n')) n--;
+            memmove(s, b, n); s[n] = '\0';
         } else {
             switch (i.op) {
                 case OP_ADDI: regs[i.rd] = regs[i.rs1] + i.imm; break;

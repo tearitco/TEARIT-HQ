@@ -484,21 +484,62 @@ static void dbhq_handle_term_signal(int sig) {
  * before events-hq/chat-hai/network-browser are migrated onto it too.
  * Returns the child pid (or -1 on fork failure), same as a bare
  * fork() - caller owns the pid the same way it always did. */
+/* Resolve one module token to an absolute path: absolute stays as-is;
+ * a relative token is tried against package_dir then house_root, and
+ * left unchanged if neither exists (execv will then error visibly). */
+static void lm_resolve(const char *tok, const char *house_root,
+                       const char *package_dir, char *out, size_t outsz) {
+    if (tok[0] == '/') { snprintf(out, outsz, "%s", tok); return; }
+    char cand[PATH_BUF];
+    if (package_dir && package_dir[0]) {
+        snprintf(cand, sizeof(cand), "%s/%s", package_dir, tok);
+        if (access(cand, F_OK) == 0) { snprintf(out, outsz, "%s", cand); return; }
+    }
+    if (house_root && house_root[0]) {
+        snprintf(cand, sizeof(cand), "%s/%s", house_root, tok);
+        if (access(cand, F_OK) == 0) { snprintf(out, outsz, "%s", cand); return; }
+    }
+    snprintf(out, outsz, "%s/%s", house_root ? house_root : ".", tok);
+}
+
 static pid_t launch_module(const char *src, const char *house_root, const char *package_dir, const char *extra_arg) {
     if (!src || !src[0]) return -1;
-    char full_path[PATH_BUF];
-    if (src[0] == '/') snprintf(full_path, sizeof(full_path), "%s", src);
-    else snprintf(full_path, sizeof(full_path), "%s/%s", house_root, src);
+
+    /* src may be a single path OR (tpmos convention) an interpreter +
+     * its own args, space-separated - e.g.
+     *   <module src="&.widgits/_shared-lib/system/+x/prisc+x.+x pal/foo.pal"/>
+     * Every whitespace token before house_root/package_dir is a real
+     * argv entry; a relative one is resolved via lm_resolve(). A plain
+     * one-token src (the compiled-manager case) is unchanged. */
+    char work[PATH_BUF * 2];
+    snprintf(work, sizeof(work), "%s", src);
+
+    char resolved[8][PATH_BUF];
+    char *argv[16];
+    int argc = 0;
+    char *save = NULL;
+    for (char *tok = strtok_r(work, " \t", &save);
+         tok && argc < 8;
+         tok = strtok_r(NULL, " \t", &save)) {
+        lm_resolve(tok, house_root, package_dir, resolved[argc], PATH_BUF);
+        argv[argc] = resolved[argc];
+        argc++;
+    }
+    if (argc == 0) return -1;
+    argv[argc++] = (char *)house_root;
+    argv[argc++] = (char *)package_dir;
+    if (extra_arg && extra_arg[0]) argv[argc++] = (char *)extra_arg;
+    argv[argc] = NULL;
 
     pid_t pid = fork();
     if (pid == 0) {
-        if (extra_arg && extra_arg[0])
-            execl(full_path, full_path, house_root, package_dir, extra_arg, (char *)NULL);
-        else
-            execl(full_path, full_path, house_root, package_dir, (char *)NULL);
+        if (house_root)   setenv("KHTPM_HOUSE", house_root, 1);
+        if (package_dir) { setenv("KHTPM_PKG", package_dir, 1);
+                           setenv("PRISC_PROJECT_ROOT", package_dir, 1); }
+        execv(argv[0], argv);
         _exit(1);
     } else if (pid < 0) {
-        fprintf(stderr, "khtpm_entity_menu_render: launch_module: fork failed for %s\n", full_path);
+        fprintf(stderr, "khtpm_entity_menu_render: launch_module: fork failed for %s\n", argv[0]);
     }
     return pid;
 }
@@ -10662,6 +10703,11 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
             redraw();
             XFlush(dpy);
             usleep(250000);
+            /* a <module> projector just started - give it a beat to
+             * write its first state file, then pick it up before the
+             * snapshot (the event loop that normally does this is
+             * skipped in dump mode). */
+            reparse_chtpm_if_changed();
             redraw();
             XFlush(dpy);
             dump_frame_png();

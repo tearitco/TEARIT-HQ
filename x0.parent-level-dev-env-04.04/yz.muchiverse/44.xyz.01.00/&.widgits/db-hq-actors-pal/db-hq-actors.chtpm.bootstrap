@@ -1,0 +1,27 @@
+<!-- db-hq-actors.chtpm - STATIC TEMPLATE. Demonstrates a PAL-driven
+     UI projector: the <module> tag launches the shared prisc+x
+     interpreter on pal/actors_projector.pal (not a compiled manager),
+     which reads #.desktop/db_hq_actors.state.txt and writes
+     state/ui.txt. The renderer then substitutes ${...} and expands
+     <repeat> exactly as it does for the C-projector apps. button.sh
+     restores this file from the .bootstrap if the <module> tag goes
+     missing. -->
+<window label="Actors (PAL)" class="db-hq-actors" vars="state/ui.txt">
+  <module src="&.widgits/_shared-lib/system/+x/prisc+x.+x pal/actors_projector.pal"/>
+  <page name="main">
+    <sidebar>
+      <text label="${title}"/>
+      <scrolllist>
+        <repeat count="${actors_count}" bind="actor">
+          <item id="a${actor.#}" label="${actor.name}  -  ${actor.sub}"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+    <panel>
+      <text label="This list is written by a .pal script -" class="quiet"/>
+      <text label="prisc+x string opcodes, not a compiled manager." class="quiet"/>
+      <text label="Same static-template + state.txt contract as the" class="quiet"/>
+      <text label="C-projector apps (signup-hq / open-hai / co-lab-hai)." class="quiet"/>
+    </panel>
+  </page>
+</window>
