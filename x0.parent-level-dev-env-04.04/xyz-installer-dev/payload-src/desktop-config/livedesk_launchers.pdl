@@ -2,3 +2,4 @@
 # Only launchers whose target actually ships in this payload are listed.
 # (settings lives inside the taskbar's own ops dir.)
 SECTION | launcher_settings | *.monads/*.livedesk-taskbar/ops/button_taskbar_settings.sh
+SECTION | launcher_signup   | &.hq-apps/signup-hq/button.sh

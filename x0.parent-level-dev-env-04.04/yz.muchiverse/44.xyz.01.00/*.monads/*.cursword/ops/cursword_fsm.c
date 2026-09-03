@@ -129,10 +129,6 @@ static void relay_code(int code) {
     nap_ms(350);   /* parser polls ~300ms; match nav.sh's spacing */
 }
 
-static void relay_str(const char *s) {
-    for (const char *p = s; *p; p++) relay_code((unsigned char)*p);
-}
-
 static void mgr_code(int code) {
     FILE *f = fopen(g_strhist, "a");
     if (f) { fprintf(f, "%d\n", code); fclose(f); }
@@ -176,8 +172,6 @@ static int wait_for(int (*pred)(void), int timeout_s, const char *what) {
 }
 
 static int p_menu_open(void)   { return strstate_int("hq_open", 0) == 2; }
-static int p_cliio_id(void)    { char v[64]; strstate_get("cliio_op", v, sizeof(v)); return strcmp(v, "new-user-id") == 0; }
-static int p_cliio_name(void)  { char v[64]; strstate_get("cliio_op", v, sizeof(v)); return strcmp(v, "new-user-name") == 0; }
 
 /* ---------- guest detection --------------------------------------- */
 
@@ -255,47 +249,36 @@ static int run_onboarding(void) {
         return 1;
     }
 
+    /* Activating "New User..." now opens the real signup-hq WINDOW
+     * (its own manager + .chtpm, launched via livedesk_launchers.pdl) -
+     * not the old one-line strip cli_io. So the FSM's job here is just:
+     * trigger it, narrate, and watch current_login.txt. */
     set_state("NEW_USER");
     relay_code(13);                              /* activate focused row 0 = "New User..." */
-    if (!wait_for(p_cliio_id, 6, "the new-user field")) {
-        cursword_say("err.newuser",
-            "The sign-up field didn't come up. Try the person icon up top, then \"New User...\".");
-        set_state("ERROR");
-        return 1;
-    }
-
-    set_state("ARM_TYPING");
-    relay_code(13);                              /* arm cli_io typing mode */
-    nap_ms(400);
+    nap_ms(1500);                                /* window + its manager come up */
 
     if (g_auto) {
-        /* --auto: type throwaway credentials ourselves (demo / store test) */
-        char id[64], name[64];
-        snprintf(id,   sizeof(id),   "guest_%ld", now_s());
-        snprintf(name, sizeof(name), "New Player");
-        set_state("AUTO_TYPE_ID");
-        cursword_say("auto.id", "Filling in a temporary username for you.");
-        relay_str(id); relay_code(13);
-        wait_for(p_cliio_name, 6, "the display-name field");
-        set_state("AUTO_TYPE_NAME");
-        cursword_say("auto.name", "And a display name.");
-        relay_str(name); relay_code(13);
+        /* --auto: drive the signup-hq window through its OWN request
+         * file (the store-demo / hands-off path). */
+        char reqdir[1400], req[1500], id[64];
+        snprintf(reqdir, sizeof(reqdir), "%s/#.desktop/signup_hq", g_house);
+        mkdir(reqdir, 0777);
+        snprintf(req, sizeof(req), "%s/request.txt", reqdir);
+        snprintf(id, sizeof(id), "guest_%ld", now_s());
+        set_state("AUTO_ID");
+        cursword_say("auto.id", "Filling in a temporary account for you.");
+        { FILE *f = fopen(req, "w"); if (f) { fprintf(f, "setid:%s\n", id); fclose(f); } }
+        nap_ms(1200);
+        set_state("AUTO_NAME");
+        { FILE *f = fopen(req, "w"); if (f) { fprintf(f, "setname:New Player\n"); fclose(f); } }
     } else {
-        /* walk-to-the-door: hand off to the human */
-        set_state("WATCH_ID");
-        cursword_say("prompt.id",
-            "Type a username and press Enter. Letters and numbers, no spaces.");
-        if (!wait_for(p_cliio_name, 180, "you to enter a username")) {
-            cursword_say("timeout.id", "No rush - the field's still there whenever you're ready.");
-            set_state("IDLE");
-            return 0;
-        }
-        set_state("WATCH_NAME");
-        cursword_say("prompt.name",
-            "Nice. Now a display name - this is what other people see. Then press Enter.");
+        /* walk-to-the-door: the window has two clear fields; just guide. */
+        set_state("WATCH_SIGNUP");
+        cursword_say("prompt.window",
+            "A sign-up window just opened. Type a username, Enter, then a display name, Enter. I'll wait.");
     }
 
-    /* both paths: wait for the account to actually exist */
+    /* wait for the account to actually exist */
     set_state("WATCH_DONE");
     {
         long deadline = now_s() + 180;

@@ -3599,7 +3599,29 @@ void ktb_hq_activate(KtbState *s, int row) {
      * off-by-one bugs found elsewhere in this same function on
      * "livedesk:switch-desk:"/"livedesk:open-session:", not assumed. */
     if (strcmp(m->command, "user:new") == 0) {
-        ktb_cliio_open_new_user(s);
+        /* 2026-09-03: "New User..." now opens the real signup-hq window
+         * (a proper CENTROID_GOLD_STD x11-hq window - own manager +
+         * .chtpm, shared khtpm_core_render.+x) instead of the cramped
+         * one-line cli_io strip modal ktb_cliio_open_new_user() pops.
+         * Launcher path comes from the house-standard
+         * livedesk_launchers.pdl registry (launcher_signup), same as
+         * settings/stats/ai/db - NOT hardcoded here. Same setsid nohup
+         * + button-script shape as livedesk:open-settings.
+         * ktb_cliio_open_new_user() / the "new-user-id"/"new-user-name"
+         * cliio ops are kept intact as the fallback path. */
+        char launcher[KTB_PATH_BUF];
+        if (ktb_hq_launcher_path(s->house_root, "signup", launcher, sizeof(launcher))) {
+            char sh[KTB_PATH_BUF * 3];
+            snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s\" \"%s\"' >/dev/null 2>&1 &",
+                     launcher, s->house_root);
+            int rc = ktb_system_recorded(s->house_root, sh);
+            (void)rc;
+        } else {
+            /* pdl row missing - fall back to the old inline cli_io flow */
+            ktb_cliio_open_new_user(s);
+            return;
+        }
+        ktb_hq_close(s);
         return;
     } else if (strncmp(m->command, "user:switch:", 12) == 0) {
         char login_root[KTB_PATH_BUF];

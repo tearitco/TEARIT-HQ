@@ -55,6 +55,7 @@ copy_rel "*.monads/*.cursword"
 copy_rel "&.widgits/_shared-lib"
 copy_rel "&.widgits/livedesk-clock"
 copy_rel "0.user-pal👤️/00.login-signup"
+copy_rel "&.hq-apps/signup-hq"       # the real "New User" window (launcher_signup)
 
 echo "--- stripping dev-only state from the login app ---"
 LOGIN="$OUT/0.user-pal👤️/00.login-signup"

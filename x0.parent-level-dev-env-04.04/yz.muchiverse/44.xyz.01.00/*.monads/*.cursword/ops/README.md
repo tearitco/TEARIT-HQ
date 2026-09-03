@@ -9,22 +9,23 @@ For a **guest** (no `00.login-signup/current_login.txt`), on launch:
 1. Narrates a greeting to `entities/cursword/say_log.txt`.
 2. Drives the real taskbar the same way the test harnesses do —
    appends `4002` to `#.desktop/strip_history.txt` (open the USER
-   cell), then decimal key codes to `#.desktop/livedesk_agent_relay.txt`
-   (Enter to activate "New User…", Enter to arm the text field).
-3. **Walk-to-the-door**: stops there and narrates *"type a username…"*.
-   The human types their own username + display name. The FSM watches
-   `#.desktop/strip_state.txt` (`cliio_op`: `new-user-id` →
-   `new-user-name`) and narrates each transition, then watches
-   `current_login.txt` for the finished account and points at avatar
+   cell), then `13` to `#.desktop/livedesk_agent_relay.txt` (activate
+   "New User…"). That now opens the **signup-hq window**
+   (`&.hq-apps/signup-hq/`, launched via `livedesk_launchers.pdl`), not
+   a strip field.
+3. **Walk-to-the-door**: narrates *"a sign-up window opened — type a
+   username, Enter, then a display name, Enter"* and waits, watching
+   `current_login.txt` for the finished account, then points at avatar
    creation.
-4. `--auto` instead types throwaway `guest_<ts>` / "New Player"
-   credentials itself (hands-off demo / store test).
+4. `--auto` instead drives the signup-hq window through its own request
+   file (`#.desktop/signup_hq/request.txt`): `setid:guest_<ts>` then
+   `setname:New Player` (hands-off demo / store test).
 
 Exits immediately (state `IDLE`) if someone is already signed in.
 
 ## States
 
-`OFFER → OPEN_USER → NEW_USER → ARM_TYPING → WATCH_ID → WATCH_NAME →
+`OFFER → OPEN_USER → NEW_USER → WATCH_SIGNUP (or AUTO_ID → AUTO_NAME) →
 WATCH_DONE → DONE → IDLE`  (or `ERROR` if the taskbar can't be
 reached). Current state is mirrored to `entities/cursword/cursword_fsm.state`;
 a trace goes to `cursword_fsm.log`.
@@ -47,10 +48,15 @@ account created (`users/tester1/`), narrated welcome, exited clean.
 
 ## Not yet wired
 
-- The manager does not launch this yet — run it by hand /
+- The manager does not launch this FSM yet — run it by hand /
   `run_cursword_fsm.sh` for now. Manager auto-launch (next to
   `livedesk_ensure_cursword()`) is a small additive follow-up.
-- The signup cli_io itself renders as a cramped one-line field in the
-  top strip — a real UX gap, tracked for the settings/polish pass
-  (`FORWARD-ROADMAP §4`, `CURSWORD-SOUL-VISION §4`). The FSM drives it
-  correctly regardless of how it looks.
+
+## Done since v1 first cut
+
+- The cramped one-line strip `cli_io` signup is replaced by the real
+  **signup-hq window** (`&.hq-apps/signup-hq/`) — its own manager +
+  `.chtpm`, shared `khtpm_core_render.+x`, launched from
+  `livedesk_launchers.pdl` (`launcher_signup`). `user:new` in
+  `khtpm_taskbar_manager.c` opens it; the old `cli_io` flow stays as a
+  pdl-missing fallback.

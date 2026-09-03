@@ -1,0 +1,5 @@
+# hello-toy.pdl — demo toy metadata
+SECTION      | name        | hello-toy
+SECTION      | version     | 0.1.0
+SECTION      | entry       | run.sh
+SECTION      | description | Demo toy from the tearit-hq app store (prints banner and date)
