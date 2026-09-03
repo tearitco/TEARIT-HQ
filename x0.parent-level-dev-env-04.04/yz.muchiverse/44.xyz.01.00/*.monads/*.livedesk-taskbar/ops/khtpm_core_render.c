@@ -7614,10 +7614,30 @@ static void redraw(void) {
          * variables, this is what actually MOVES the real X11 window to
          * match, same real "check real XGetWindowAttributes, only act
          * on a genuine mismatch" pattern the resize check right above
-         * already uses. */
+         * already uses.
+         * REAL FIX 2026-09-03 (direct live report: "arrow keys aren't
+         * moving the '>' in the windows... when did this happen?") -
+         * this corrective move can land moments AFTER main()'s own
+         * post-map XSetInputFocus retry loop (2026-08-28, "popups are no
+         * longer getting nav/index focus... i have to manually click")
+         * already succeeded - moving a window that JUST received real
+         * input focus is a known, real way for a WM/compositor to
+         * silently drop it again, and nothing EVER moved these windows
+         * after creation before this session's own new position-anchor
+         * work, so this real regression could not have existed before
+         * it. Real fix: check who really has focus before the move: if
+         * it was genuinely this window, put it back immediately after -
+         * same retry idea as that original 2026-08-28 fix, applied at
+         * the one new real place a focused window can now move. */
         if (XGetWindowAttributes(dpy, win, &wa) && (wa.x != g_win_x || wa.y != g_win_y)) {
+            Window had_focus; int had_revert;
+            XGetInputFocus(dpy, &had_focus, &had_revert);
             XMoveWindow(dpy, win, g_win_x, g_win_y);
             XSync(dpy, False);
+            if (had_focus == win) {
+                XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
+                XSync(dpy, False);
+            }
         }
     }
     XSync(dpy, False);
