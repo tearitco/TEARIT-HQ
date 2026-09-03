@@ -184,40 +184,42 @@ static void write_projection(void) {
     char act[PB];
     snprintf(act, sizeof(act), "'%s/ops/signup_hq_action.sh'", g_pkg);
 
+    /* sidebar + panel is the ONLY shape the shared renderer parses for a
+     * window that mixes <text> and <cli_io> (co-lab-hai / chat-hai /
+     * network-browser / open-hai all use it). A flat page parses only
+     * with <item> children; a lone <panel> without a <sidebar> sibling
+     * renders empty. So: a token <sidebar>, then everything in <panel>.
+     * The window's own chrome provides the close 'x' - no CLOSE item. */
     A("<window label=\"Sign up\" class=\"signup-hq\">\n");
-    A("  <page name=\"main\">\n    <panel>\n");
+    A("  <page name=\"main\">\n");
+    A("    <sidebar>\n      <text label=\"Sign up\"/>\n    </sidebar>\n");
+    A("    <panel>\n");
 
     if (g_already[0]) {
         char e[128]; xesc(g_already, e, sizeof(e));
         A("      <text label=\"You're already signed in as %s.\" class=\"title\"/>\n", e);
-        A("      <text label=\"Close this window with the X up top.\" class=\"hint\"/>\n");
     } else if (g_stage == 0) {
         A("      <text label=\"Create your account\" class=\"title\"/>\n");
-        A("      <text label=\"Step 1 of 2 - choose a username.\" class=\"hint\"/>\n");
+        A("      <text label=\"Step 1 of 2  -  choose a username.\" class=\"hint\"/>\n");
         A("      <cli_io id=\"idf\" target_id=\"idf\" label=\"username: \" action=\"%s 'setid'\"/>\n", act);
         if (g_err[0]) { char e[220]; xesc(g_err,e,sizeof(e)); A("      <text label=\"%s\" class=\"err\"/>\n", e); }
-        A("      <text label=\"Letters, numbers, _ and - . No spaces.\" class=\"quiet\"/>\n");
+        A("      <text label=\"Letters, numbers, _ and - .  No spaces.\" class=\"quiet\"/>\n");
     } else if (g_stage == 1) {
         char id[128]; xesc(g_id, id, sizeof(id));
         A("      <text label=\"Create your account\" class=\"title\"/>\n");
-        A("      <text label=\"Step 2 of 2 - a display name (what other people see).\" class=\"hint\"/>\n");
+        A("      <text label=\"Step 2 of 2  -  a display name (what other people see).\" class=\"hint\"/>\n");
         A("      <text label=\"username: %s\" class=\"quiet\"/>\n", id);
         A("      <cli_io id=\"nmf\" target_id=\"nmf\" label=\"display name: \" action=\"%s 'setname'\"/>\n", act);
         if (g_err[0]) { char e[220]; xesc(g_err,e,sizeof(e)); A("      <text label=\"%s\" class=\"err\"/>\n", e); }
-        A("      <row class=\"toolbar\">\n");
-        A("        <item label=\"back\" action=\"%s 'back'\"/>\n", act);
-        A("      </row>\n");
+        A("      <item label=\"back\" action=\"%s 'back'\"/>\n", act);
     } else if (g_stage == 2) {
         A("      <text label=\"Creating your account...\" class=\"title\"/>\n");
         if (g_err[0]) { char e[220]; xesc(g_err,e,sizeof(e)); A("      <text label=\"%s\" class=\"err\"/>\n", e); }
-        A("      <row class=\"toolbar\">\n");
-        A("        <item label=\"start over\" action=\"%s 'restart'\"/>\n", act);
-        A("      </row>\n");
+        A("      <item label=\"start over\" action=\"%s 'restart'\"/>\n", act);
     } else { /* stage 3 done */
         char nm[128]; xesc(g_name[0] ? g_name : g_id, nm, sizeof(nm));
         A("      <text label=\"Welcome, %s!\" class=\"title\"/>\n", nm);
         A("      <text label=\"You're signed in. Next: open the person icon up top to build an avatar.\" class=\"hint\"/>\n");
-        A("      <text label=\"You can close this window now.\" class=\"quiet\"/>\n");
     }
 
     A("    </panel>\n  </page>\n</window>\n");

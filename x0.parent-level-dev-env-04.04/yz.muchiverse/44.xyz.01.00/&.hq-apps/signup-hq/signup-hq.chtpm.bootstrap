@@ -2,14 +2,14 @@
      the shared khtpm_core_render.+x. The ONLY thing read here is the
      <module> tag - it forks signup_hq_manager.+x, which then overwrites
      this file every ~150ms with the real live projection (renderer
-     picks it up via reparse_chtpm_if_changed()). Do not hand-edit the
-     <page> below; button.sh restores this file from the bootstrap
-     whenever the <module> tag goes missing. -->
+     picks it up via reparse_chtpm_if_changed()). Flat layout (bare
+     text/cli_io/item under <page>, no <panel>/<sidebar>) - the shape
+     swatch-picker/taskbar-settings use. Do not hand-edit; button.sh
+     restores this from the bootstrap when the <module> tag goes
+     missing. -->
 <window label="Sign up" class="signup-hq">
   <module src="&.hq-apps/signup-hq/+x/signup_hq_manager.+x"/>
   <page name="main">
-    <panel>
-      <text id="status" label="starting..."/>
-    </panel>
+    <text id="status" label="starting..."/>
   </page>
 </window>

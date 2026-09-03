@@ -1,15 +1,10 @@
-<!-- signup-hq.chtpm - CHECKED-IN BOOTSTRAP. Launched by button.sh via
-     the shared khtpm_core_render.+x. The ONLY thing read here is the
-     <module> tag - it forks signup_hq_manager.+x, which then overwrites
-     this file every ~150ms with the real live projection (renderer
-     picks it up via reparse_chtpm_if_changed()). Do not hand-edit the
-     <page> below; button.sh restores this file from the bootstrap
-     whenever the <module> tag goes missing. -->
 <window label="Sign up" class="signup-hq">
-  <module src="&.hq-apps/signup-hq/+x/signup_hq_manager.+x"/>
   <page name="main">
+    <sidebar>
+      <text label="Sign up"/>
+    </sidebar>
     <panel>
-      <text id="status" label="starting..."/>
+      <text label="You're already signed in as jb." class="title"/>
     </panel>
   </page>
 </window>

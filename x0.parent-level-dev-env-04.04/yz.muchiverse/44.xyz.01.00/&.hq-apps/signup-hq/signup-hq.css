@@ -1,6 +1,5 @@
 /* signup-hq.css - sibling-.css auto-merged by khtpm_core_render.c (same
    stem as the .chtpm). Colour/border only; geometry stays in C layout. */
-window { width: 460px; height: 300px; }
 window.signup-hq { background-color: #14141c; color: #e6e6e6; }
 .title { color: #ffffff; }
 .hint  { color: #cfd6e6; }
