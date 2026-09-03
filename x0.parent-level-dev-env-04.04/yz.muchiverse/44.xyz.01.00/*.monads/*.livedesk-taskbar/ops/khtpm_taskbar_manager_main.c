@@ -591,6 +591,22 @@ static void publish_live_chtpm(const KtbState *s, const char *house_root) {
     n = snprintf(body + off, sizeof(body) - off,
                  "<window class=\"dock-bottom\">\n<page id=\"main\">\n<row class=\"toolbar\">\n");
     if (n > 0) off += (size_t)n;
+    /* HQ window cells first so the 🪟 marker sits on the visible row
+     * (bottom pack is left-to-right, overflow rows start after pals). */
+    if (s->n_hq_wins > 0) {
+        char esc_title[768];
+        for (i = 0; i < s->n_hq_wins && off < sizeof(body); i++) {
+            xml_esc(s->hq_wins[i].title, esc_title, sizeof(esc_title));
+            n = snprintf(body + off, sizeof(body) - off,
+                         "<item label=\"🪟 %s\" class=\"dock-cell hqwin%s\" onclick=\"FOCUSWIN:0x%lx:%d\"/>\n",
+                         esc_title, s->hq_wins[i].minimized ? " hqwin-minimized" : "",
+                         s->hq_wins[i].win, s->hq_wins[i].pid);
+            if (n < 0) break;
+            off += (size_t)n;
+        }
+        n = snprintf(body + off, sizeof(body) - off, "</row>\n<row class=\"toolbar\">\n");
+        if (n > 0) off += (size_t)n;
+    }
     for (i = 0; i < s->n_tabs && off < sizeof(body); i++) {
         snprintf(lab, sizeof(lab), "%d. %s", s->tabs[i].nav, s->tabs[i].entity);
         item_relay(item, sizeof(item), house_root, lab, s->tabs[i].path, 2000 + i, 0);
@@ -603,31 +619,6 @@ static void publish_live_chtpm(const KtbState *s, const char *house_root) {
         item_relay(item, sizeof(item), house_root, s->shortcuts[i].glyph, NULL, 3000 + i, 0);
         n = snprintf(body + off, sizeof(body) - off, "%s\n", item);
         if (n > 0) off += (size_t)n;
-    }
-    /* REAL, NEW 2026-09-03 (HQ-WINDOW-TASKBAR-ENTRIES-AND-MINIMIZE-2026-09-
-     * 03.md §2.1) - one bottom-strip cell per live HQ window, in their own
-     * real section (design decision #1: a genuinely different concept from
-     * entity TABS / shortcuts, so a separate row keeps its focus/minimize
-     * state isolated). Each cell's label is the window's title, and onClick
-     * is a FOCUSWIN: verb carrying the real win id AND the pid so the strip
-     * renderer's dispatch() can focus/raise it (or trigger the restore
-     * request for a minimized one) with zero new IPC - see khtpm_core_
-     * render.c's own FOCUSWIN: dispatch branch. Mirrors the dropdown-child
-     * minimized visual hint per design §3.3 (a dimmed/different class on
-     * minimized cells), scoped here at publish time. */
-    if (s->n_hq_wins > 0) {
-        n = snprintf(body + off, sizeof(body) - off, "</row>\n<row class=\"toolbar\">\n");
-        if (n > 0) off += (size_t)n;
-        char esc_title[768];
-        for (i = 0; i < s->n_hq_wins && off < sizeof(body); i++) {
-            xml_esc(s->hq_wins[i].title, esc_title, sizeof(esc_title));
-            n = snprintf(body + off, sizeof(body) - off,
-                         "<item label=\"🪟 %s\" class=\"dock-cell hqwin%s\" onclick=\"FOCUSWIN:0x%lx:%d\"/>\n",
-                         esc_title, s->hq_wins[i].minimized ? " hqwin-minimized" : "",
-                         s->hq_wins[i].win, s->hq_wins[i].pid);
-            if (n < 0) break;
-            off += (size_t)n;
-        }
     }
     n = snprintf(body + off, sizeof(body) - off, "</row>\n</page>\n</window>\n");
     if (n > 0) off += (size_t)n;

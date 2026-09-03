@@ -19,7 +19,7 @@ window.dock-header, window.dock-bottom { background: #1c1c1c; }
  * edge. Real id selectors, not a class - these are the one fixed
  * "chrome-close"/"chrome-fullscreen" pair every default-mode window
  * gets, not a reusable pattern for anything else yet. */
-#chrome-close, #chrome-fullscreen { border: 1px solid #888888; }
+#chrome-close, #chrome-fullscreen, #chrome-minimize { border: 1px solid #888888; }
 
 /* REAL, NEW 2026-08-31 (open-hai's own real sidebar+panel conversion,
  * xperiments/khtpm-generic-dispatch-design.md) - generic, tag-based
