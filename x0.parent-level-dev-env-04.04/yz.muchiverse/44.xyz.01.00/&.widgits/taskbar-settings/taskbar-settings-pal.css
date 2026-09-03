@@ -1,0 +1,37 @@
+/* taskbar-settings-pal.css - merged on top of entity_menu_default.css for
+   the generic taskbar-settings-pal window. Palette hex values preserved
+   exactly from the old taskbar_settings.css / swatch_picker_manager.c
+   g_hex[] array. This file is loaded because the renderer merges the
+   .css sitting next to the loaded .xhtpm (same stem). */
+
+.swatch { width: 34px; height: 34px; }
+
+/* opacity control buttons - unchanged from taskbar_settings.css */
+.opacity-btn {
+    background-color: #444444;
+    color: #ffffff;
+    padding: 4px 8px;
+    border: 1px solid #666666;
+}
+
+/* 3rd-state "chosen" ring. draw_elem() fills bg first, then strokes the
+   border-color on top with border-width passes, so a solid inner border
+   reads as a ring over the swatch fill. ring-bg = chosen background
+   (green, matches the old C overlay's 0x22c55e), ring-fg = chosen
+   foreground/text colour (gold). Projector picks exactly one class per
+   swatch via ${sw_<i>_ring}. */
+.ring-bg { border: 3px solid #22c55e; }
+.ring-fg { border: 3px solid #ffd24a; }
+
+.sw-black    { background-color: #000000; }
+.sw-white    { background-color: #ffffff; }
+.sw-charcoal { background-color: #1a1a1a; }
+.sw-silver   { background-color: #e5e5e5; }
+.sw-red      { background-color: #ef4444; }
+.sw-orange   { background-color: #f97316; }
+.sw-yellow   { background-color: #eab308; }
+.sw-green    { background-color: #22c55e; }
+.sw-cyan     { background-color: #06b6d4; }
+.sw-blue     { background-color: #3b82f6; }
+.sw-purple   { background-color: #8b5cf6; }
+.sw-pink     { background-color: #ec4899; }

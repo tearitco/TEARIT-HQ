@@ -342,7 +342,7 @@ never mutated; §9), content-hash reparse of `vars=` files,
 | target | notes |
 |---|---|
 | **palettes / bookmarks / stats-hq** (ride `g_is_db_hq`) | each: `.xhtpm` + projector reading its existing `#.desktop/*.state.txt`. palettes needs the `sprite=` grid (already a `draw_elem` capability). |
-| **swatch-picker / taskbar-settings** (`g_is_swatch_picker`) | flat `<item>` list + opacity ± ; small. |
+| ~~**swatch-picker / taskbar-settings**~~ | **phase 1 done** (`chtpm-var-substitution`): `&.widgits/taskbar-settings/` = `taskbar-settings-pal.xhtpm` + `.css` + `ops/taskbar_settings_projector.c` (+build) + `button-pal.sh`. `class="taskbar-settings-pal database-window"` - does NOT trip `g_is_swatch_picker`. Reads the unmodified `swatch_picker_manager.c` `state.txt`, writes `#.desktop/taskbar_settings_ui.txt`. 2-phase pick + 3rd-state ring (`.ring-bg`/`.ring-fg` border, no renderer change) verified headlessly. Gaps: no auto-close on apply, status is a title-bar string. Old chtpm/button/C untouched. `PROGRESS-taskbar-settings-xhtpm.md`. |
 | **chat-hai** | replace `&.hq-apps/chat-hai/ops/chat_hai_projector.sh` (bash — not allowed) with `.pal`/`.c`; author `chat-hai.xhtpm`. Message list = one `<repeat>`. |
 
 ### LEFT — needs care, do NOT hand off
