@@ -307,34 +307,70 @@ both the taskbar manager and the renderer.
 
 ---
 
-## 5. Projector port — remaining work
+## 5. Projector port — status (THIS is the pass tracker)
 
-Recipe per window: static `<name>.xhtpm` + projector writing
-`state/ui.txt`; `button.sh` launches
-`khtpm_core_render.+x <house> <name>.xhtpm`; verify with the frame dump
-(§4) or `&.widgits/_shared-lib/ops/khtpm_png_dump.sh`.
+Goal: retire every per-app C dispatch (`g_is_*` + `dbhq_*` / `evhq_*` /
+…) from `khtpm_core_render.c`. Each HQ window = static `<name>.xhtpm` +
+a projector (`.pal` or compiled `.+x` C — never bash) writing a
+`key=value` state file. Verify with the frame dump (§4) or
+`&.widgits/_shared-lib/ops/khtpm_png_dump.sh`.
 
-### Done & working
-`signup-hq`, `open-hai`, `co-lab-hai`, `db-hq-actors-pal` (reference
-PAL app), `db-hq-pal` (15-tab, read-only — tab switch + list + panel
-project correctly via `pal/dbhq_projector.pal`).
+### Renderer primitives — DONE (all on `chtpm-var-substitution`)
 
-### Safe to hand off / parallelize
+`${var}` substitution, `<repeat>` (+ heterogeneous `show=` bodies),
+`show=` gating, `<tabbar>/<tab>` + **multiple stacked `<tabbar>`s**,
+interact-mode scoped nav (predicate `kh_elem_in_scope` — `g_nav[]` is
+never mutated; §9), content-hash reparse of `vars=` files,
+`<cli_io>` inside `<scrolllist>`, builtins `${HOUSE}` `${PKG}` `${PID}`
+`${ARG3}`, the **argv[3] instance-dir hook** (`g_arg3_dir` /
+`g_extra_vars_path` / `KHTPM_ARG3` — a dir arg auto-loads
+`<dir>/.hq_manager/ui.txt` and reaches `<module>` forks), frame dump
+`entity_menu_frame_<pid>.txt`.
+
+### Windows — DONE
+
+| window | how | notes |
+|---|---|---|
+| `signup-hq`, `open-hai`, `co-lab-hai` | `.xhtpm` + manager `write_state()` | live |
+| `db-hq-actors-pal` | `.xhtpm` + `actors_projector.pal` | reference PAL app |
+| `db-hq-pal` (15 tabs) | `dashboard.xhtpm` + `pal/dbhq_projector.pal` | **read-only** — tab switch + list + panel; no field edit / CE editor yet. Wired into strip `db` menu as `db-hq (PAL)`. |
+| **`events-hq`** | `events-hq.xhtpm` + `ops/evhq_projector.c` + `ops/evhq_action.sh` + `button-pal.sh`; `button.sh` retargeted | **phase 1+2 done**: view+page tabs, trigger, registry-pretty-printed command list, Add Command picker (all 44 types, append→recompile), Play. `class="events-hq-pal"` — does NOT trip `g_is_events_hq`. Old `pieces/dashboard.chtpm` + `evhq_*` C still present as rollback. Details: `PROGRESS-events-hq-xhtpm.md`. |
+| strip / taskbar | `khtpm_strip_header.xhtpm` + `khtpm_strip_bottom.xhtpm` + `strip_ui.txt` (manager) | Grok, `384a4fe1`. `PROGRESS-strip-static-layout.md`. pid cell restored (`${PID}`, `no-nav`); dead codegen (`publish_live_chtpm`) removed; `$.crypts/autostart.pdl` + `/home/no/Desktop/start-temp` retargeted to `run_khtpm_strip.sh new`. |
+
+### LEFT — safe to hand off / parallelize (Haiku)
 
 | target | notes |
 |---|---|
-| **db-hq-pal field editing + Common Events editor** | the real remaining db-hq work — see `DB-EVENTS-HQ-PORT-DESIGN.md` §3–§5. Needs `<cli_io>` in `<scrolllist>` (already ported, `38a3da4d`) + overlay for the CE command editor. |
-| **chat-hai** | replace `ops/chat_hai_projector.sh` (bash — NOT allowed) with `.pal` or `.c`; author `chat-hai.xhtpm`. Message list = one `<repeat>`. |
-| **events-hq** (`g_is_events_hq`) | same `<tabbar>` port as db-hq-pal; view sub-tabs + command list; `evhq_*` C retires. The `event.ir.pdl → event.pal → cmd_N.sh` compile chain stays ops-side (`&.widgits/events-hq/ops/khtpm_events_hq_manager.c` `compile_page()`); projector shells to it. |
-| **palettes / bookmarks / stats-hq** (all ride `g_is_db_hq`) | each: static template + projector reading its existing state files. Palettes needs the `sprite=` grid (already a `draw_elem` capability). |
+| **palettes / bookmarks / stats-hq** (ride `g_is_db_hq`) | each: `.xhtpm` + projector reading its existing `#.desktop/*.state.txt`. palettes needs the `sprite=` grid (already a `draw_elem` capability). |
 | **swatch-picker / taskbar-settings** (`g_is_swatch_picker`) | flat `<item>` list + opacity ± ; small. |
+| **chat-hai** | replace `&.hq-apps/chat-hai/ops/chat_hai_projector.sh` (bash — not allowed) with `.pal`/`.c`; author `chat-hai.xhtpm`. Message list = one `<repeat>`. |
 
-### Needs care — do NOT hand off
+### LEFT — needs care, do NOT hand off
 
 | target | why |
 |---|---|
-| **network_browser** | heterogeneous page content (TITLE/TEXT/LINK/IMG/VIDEO + sprite-grid wrapping). Needs `<repeat>` v2 — one body with `show="${c.is_X}"` per candidate kind; projector sets exactly one `c_<i>_is_*` = 1. Sprite-grid row wrapping lost in first cut (acceptable). |
-| **retire `dbhq_*` C** | once db-hq-pal is signed off: point `*.monads/*.muchi-pet/ops/open_db_hq.sh` at `dashboard.xhtpm`, drop `class="db-hq"`, delete `dbhq_*` renderer C (~1350 lines). Big — its own branch. |
+| **events-hq finish** | per-field command editor (append/edit currently use empty params), delete-command, Scratch/Blueprints content swap, floating centered picker overlay. Then **delete `evhq_*` / `g_is_events_hq` (~676 refs in `khtpm_core_render.c`)** — its own PR, needs owner click-through sign-off (`EVENTS-HQ-XHTPM-PORT.md` §8 step 10). |
+| **db-hq-pal finish** | field editing + Common Events editor — reuse the events-hq picker/projector pointed at each event's `event_pkg` (`DB-EVENTS-HQ-PORT-DESIGN.md` §3–§5; do not fork the editor). |
+| **retire `dbhq_*` C** (~1350 lines) | after db-hq-pal signed off: point `*.monads/*.muchi-pet/ops/open_db_hq.sh` at `dashboard.xhtpm`, drop `class="db-hq"`, delete `dbhq_*`. Own branch. |
+| **network_browser** | heterogeneous page content (TITLE/TEXT/LINK/IMG/VIDEO + sprite-grid wrap). Needs `<repeat>` v2 — one body, a `show="${c.is_X}"` per kind; projector sets exactly one `c_<i>_is_*`. |
+| **`CENTROID_GOLD_STD.md`** | document static-template + projector as the standard once the pass lands. |
+
+### Commits this pass (branch `chtpm-var-substitution`, newest first)
+
+```
+9ccc5197 $.crypts: autostart tool-bar -> run_khtpm_strip.sh new
+17cd4bcc events-hq: phase 2 (C projector, registry pretty-print, picker, Play) + button.sh retarget
+75100121 events-hq: static xhtpm + pal projector (phase 1)
+8f2a782c taskbar: drop retired strip-layout codegen (publish_live_chtpm + item_relay)
+c9ac4eac taskbar: delete dead pre-refactor files
+1c52ec3c taskbar: pid cell is a plain readout - no-nav
+c36f077b taskbar: restore the pid cell after the clock
+604802d4 khtpm: chtpm-style scoped nav - predicate gate, [^]/[>] badges (Grok)
+384a4fe1 taskbar: static xhtpm + strip_ui.txt (Grok)
++ earlier: 1e628f49 <tabbar>, 0eae03b1 scoped ACTIVATE, 3846660c <repeat>,
+  38a3da4d <cli_io> in <scrolllist>, 5438043b <module> interp split,
+  b891f4fc prisc+x string opcodes, a255846f open-hai pilot
+```
 
 ---
 
