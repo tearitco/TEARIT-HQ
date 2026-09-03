@@ -119,7 +119,7 @@ delete the old C.
 | **palettes** | `palettes-*_state.txt` | `<repeat>` grid of `sprite=` tiles (generic `draw_elem` sprite support already exists); category tabbar; scroll arrows are generic. |
 | **db-hq (14 list tabs)** | `#.desktop/db_hq_<x>.state.txt` | exactly `db-hq-pal` today: tabbar + `<repeat>` record list + detail. Make the detail rows **editable** (`<cli_io>` per field, capability #2) → the projector writes edits back to the `.pdl`. |
 | **db-hq Common Events tab** | `db_hq_common_events.state.txt` (name list) + per-event `event.ir.pdl` | the editor pane: `<repeat>` of command rows (v2, capability #1), `+ Add Command` `<item>` → opens the picker overlay (capability #3) whose choices are a `<repeat>` over the command registry, `Play` `<item>` → `ce_action.sh play` → shells to `khtpm_events_hq_manager` compile+run. Nested `<repeat>` if pages are shown (capability #4). |
-| **events-hq** | `events_hq_frame`/page state + registry | same editor as CE (it *is* the standalone version). Convert once, db-hq's CE pane reuses the same template fragment + projector logic. |
+| **events-hq** | `events_hq_frame`/page state + registry | same editor as CE (it *is* the standalone version). Convert once, db-hq's CE pane reuses the same template fragment + projector logic. **Implementation spec:** `EVENTS-HQ-XHTPM-PORT.md` (2026-09-03). |
 | **network_browser** | `page_state.txt` | heterogeneous content list → capability #1. Sprite-grid wrapping via a `<repeat wrap-class=…>` extension, or accept lone tiles first cut. |
 | **chat-hai** | `state/sessions/*.ledger` etc. | drop the bash `chat_hai_projector.sh`; `.pal` or `.c`. Session list + transcript = two `<repeat>`s. |
 

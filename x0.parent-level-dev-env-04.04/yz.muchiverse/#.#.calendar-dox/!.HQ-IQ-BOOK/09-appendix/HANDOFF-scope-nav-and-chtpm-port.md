@@ -377,6 +377,9 @@ All under `#.#.calendar-dox/!.HQ-IQ-BOOK/`:
 - `08-roadmap/design-docs/DB-EVENTS-HQ-PORT-DESIGN.md` — full port
   design: debt inventory, HTML/CSS/JS reframe (multiple `<module>`
   tags), per-app projector table, migration procedure.
+- `08-roadmap/design-docs/EVENTS-HQ-XHTPM-PORT.md` — events-hq slice
+  for a reviewing/implementing agent (static xhtpm, keep compile_page,
+  parallel window, then delete `evhq_*`).
 - `08-roadmap/design-docs/EVENT-COMMAND-REGISTRY-ARCHITECTURE.md` — the
   `event.ir.pdl → event.pal → cmd_N.sh` chain.
 - `08-roadmap/design-docs/media-suite.md` — `103.media-studio` → x11-hq
