@@ -7475,6 +7475,33 @@ static void redraw(void) {
         XftDrawStringUtf8(xftdraw_buf, &title_col, font_ui, 8, 16,
                            (const FcChar8 *)title, (int)strlen(title));
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &title_col);
+        /* REAL, NEW 2026-09-03 (HQ-WINDOW-TASKBAR-ENTRIES-AND-MINIMIZE-
+         * 2026-09-03.md §2.1) - real per-window taskbar registry, one
+         * line, written by THIS window's own renderer (never another
+         * process touching resources it doesn't own), PID-scoped same
+         * real lesson as today's frame-file race fix - two windows can
+         * never collide on this path. Scoped to real sidebar+panel app
+         * windows only (g_default_has_sidebar_panel) - a transient
+         * entity-menu popup or the swatch-picker is not a real "app"
+         * worth its own taskbar entry, same real distinction db-hq/
+         * events-hq's own separate window class already makes. Written
+         * every redraw tick (cheap - this whole block already runs
+         * every tick for the title bar right above), so the taskbar's
+         * own poll (not yet built, §2.1) always sees fresh focus/
+         * position state with zero new IPC beyond a plain text file. */
+        if (g_default_has_sidebar_panel) {
+            char reg_path[PATH_BUF], reg_tmp[PATH_BUF];
+            snprintf(reg_path, sizeof(reg_path), "%s/#.desktop/livedesk_hq_windows_%d.txt", g_house_root, (int)getpid());
+            snprintf(reg_tmp, sizeof(reg_tmp), "%s.tmp", reg_path);
+            FILE *rf = fopen(reg_tmp, "w");
+            if (rf) {
+                fprintf(rf, "win=0x%lx|pid=%d|title=%s|x=%d|y=%d|w=%d|h=%d|minimized=0|focused=%d\n",
+                        (unsigned long)win, (int)getpid(), title_raw, g_win_x, g_win_y, g_win_w, g_win_h,
+                        (focus_win == win) ? 1 : 0);
+                fclose(rf);
+                rename(reg_tmp, reg_path);
+            }
+        }
         if (g_is_swatch_picker) {
             const char *status = g_phase == 0 ? "Pick PRIMARY, then Enter"
                                 : g_phase == 1 ? "Pick SECONDARY, then Enter"
@@ -17974,6 +18001,14 @@ static int tp_main(int argc, char **argv) {
 }
 /* ============ end tile mode ============ */
 
+/* REAL, NEW 2026-09-03 (HQ-WINDOW-TASKBAR-ENTRIES-AND-MINIMIZE-2026-09-
+ * 03.md §2.1) - see main()'s own atexit() registration comment. */
+static void cleanup_hq_window_registry(void) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/livedesk_hq_windows_%d.txt", g_house_root, (int)getpid());
+    unlink(path);
+}
+
 int main(int argc, char **argv) {
     /* REAL, NEW 2026-09-01 - taskbar strip mode AND tile mode dispatch,
      * checked FIRST, before any of the shared .chtpm-parsing setup below
@@ -18005,6 +18040,18 @@ int main(int argc, char **argv) {
      * not just a reorder. */
     if (argc < 3) { fprintf(stderr, "usage: %s <house_root> <chtpm_path> [x] [y]\n", argv[0]); return 1; }
     snprintf(g_house_root, sizeof(g_house_root), "%s", argv[1]);
+    /* REAL, NEW 2026-09-03 (HQ-WINDOW-TASKBAR-ENTRIES-AND-MINIMIZE-
+     * 2026-09-03.md §2.1) - real cleanup for this window's own real
+     * taskbar-registry file (written every redraw tick once real
+     * sidebar+panel content exists, see redraw()'s own title-bar block).
+     * Registered here, unconditionally, harmless no-op unlink for any
+     * mode that never writes one (db-hq/events-hq/tile/etc.) - real,
+     * clean-exit removal so a closed window's taskbar entry doesn't
+     * linger; a crashed process still leaves a stale file, caught by
+     * the taskbar's own real liveness check (kill(pid,0), same
+     * convention ktb_pid_alive() already uses) when it polls, same
+     * real second-safety-net shape as this design doc's own §2.1. */
+    atexit(cleanup_hq_window_registry);
     /* REAL, NEW 2026-09-01 - @ toggle: every real window this binary can
      * open (db-hq/events-hq/chat-hai/open-hai) obeys the shared pdl; the
      * popup/settings branches stay pinned below. Loaded before any
