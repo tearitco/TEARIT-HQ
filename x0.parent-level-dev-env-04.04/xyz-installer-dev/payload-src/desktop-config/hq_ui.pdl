@@ -1,0 +1,7 @@
+# hq_ui.pdl - shared UI config for -hq apps. Shipped defaults.
+font_scale=1.25
+window_x=100
+window_y=160
+focus_grab=1
+click_two_step=1
+emoji_sprite_view=front

@@ -1,0 +1,11 @@
+# livedesk_theme.pdl — SHIPPED tearit-hq theme.
+# Deliberately LOUD: bright-yellow bar, red letters. This is the "not
+# your normal desk — an install / test build is running" signal, so the
+# owner never confuses a shipped/test taskbar with their dev one on the
+# same display. Change these once the install pipeline is past the
+# test-alongside-dev phase.
+SECTION      | KEY                | VALUE
+----------------------------------------
+COLOR        | bg                   | #ffd400
+COLOR        | fg                   | #c00000
+COLOR        | opacity              | 1.00

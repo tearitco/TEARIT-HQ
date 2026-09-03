@@ -1,0 +1,53 @@
+# livedesk_taskbar.pdl — SHIPPED minimal-desktop config (tearit-hq).
+# Regenerated fresh by make-payload.sh; NOT the dev-tree copy.
+#
+# What ships in this payload is deliberately small: the taskbar + the
+# USER (login/signup) cell + cursword + the clock. The other header
+# cells still render (the header layout is untouched) but their apps
+# are not part of this payload, so their launch rows are omitted here.
+# Dev-only rows ($.crypts/*, run_khtpm_strip.sh's global-kill restart)
+# are replaced with payload-local equivalents.
+
+SECTION      | hq_label            | HQ
+
+SECTION      | hq_menu_1_label     | @ always-on-top
+SECTION      | hq_menu_1_cmd       | livedesk:zorder-toggle
+SECTION      | hq_menu_2_label     | restart
+SECTION      | hq_menu_2_cmd       | sh start.sh restart
+SECTION      | hq_menu_3_label     | dir
+SECTION      | hq_menu_3_cmd       | xdg-open .
+SECTION      | hq_menu_4_label     | settings
+SECTION      | hq_menu_4_cmd       | livedesk:open-settings
+SECTION      | hq_menu_5_label     | cli
+SECTION      | hq_menu_5_cmd       | sh *.monads/*.livedesk-taskbar/ops/open_cli.sh
+SECTION      | hq_menu_6_label     | cursword
+SECTION      | hq_menu_6_cmd       | livedesk:spawn-cursword
+SECTION      | hq_menu_7_label     | quit
+SECTION      | hq_menu_7_cmd       | quit
+SECTION      | hq_menu_8_label     | cancel
+
+SECTION      | file_menu_1_label   | Cancel
+
+SECTION      | desk_menu_action_1_label | cancel
+
+# top-left command strip — header cell labels. Left intact; the header
+# layout file (khtpm_strip_header.chtpm) renders all cells regardless.
+SECTION      | strip_x_offset         | 200
+SECTION      | strip_y_offset         | 50
+SECTION      | strip_user_cmd         |
+SECTION      | datetime_lang          | en
+SECTION      | strip_btn_0_label       | file
+SECTION      | strip_btn_1_label        | desks
+SECTION      | strip_btn_2_label        | pals
+SECTION      | strip_btn_3_label        | palettes
+SECTION      | strip_btn_4_label        | edit
+SECTION      | strip_btn_5_label        | player
+SECTION      | strip_btn_6_label        | db
+SECTION      | strip_btn_7_label        | plugins
+SECTION      | strip_btn_8_label        | store
+SECTION      | strip_btn_9_label        | network
+SECTION      | strip_btn_10_label       | menus
+SECTION      | strip_btn_11_label       | datetime
+SECTION      | strip_btn_12_label       | tools
+SECTION      | strip_btn_13_label       | (reserved)
+SECTION      | strip_btn_14_label       | h-ai
