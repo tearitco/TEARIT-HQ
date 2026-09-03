@@ -1,6 +1,6 @@
 # HANDOFF — branch `chtpm-var-substitution`
 
-**Last updated:** 2026-09-03 (mid-session)
+**Last updated:** 2026-09-03 (mid-session, rev 2)
 **Branch:** `chtpm-var-substitution` (off `origin/main` @ `bbf9caf2`), pushed
 **Goal:** restore the tpmos layout/data separation for khtpm windows
 (`CHTPM-ARCHITECTURE-FIX.md`) — static template + a projector that writes
@@ -48,6 +48,7 @@ instruction lines (quote-aware). Build: `_shared-lib/ops/build_prisc.sh`
 | `&.widgits/open-hai` | C (`khtpm_open_hai_manager.c` `write_state()`) | `a255846f` |
 | `&.hq-apps/co-lab-hai` | C (`colab_hai_manager.c` `write_chtpm_projection` → key=value) | `f4ace065` |
 | `&.widgits/db-hq-actors-pal` | **PAL** (`pal/actors_projector.pal`) — the reference | `5438043b` |
+| `&.hq-apps/db-hq-pal` | **PAL** (`pal/dbhq_projector.pal`) — the real 15-tab db-hq | `4837684a` |
 
 All verified headless with `khtpm_png_dump.sh`.
 
@@ -56,7 +57,24 @@ Doc with full status + `<repeat>` v2 sketch:
 
 ---
 
-## State: IN FLIGHT (this session, may be uncommitted)
+## Done — this rev
+
+- **`*.chtpm` → `*.xhtpm`** for all converted apps (`4837684a`). Parser
+  doesn't care; sibling `.css` found by extension-swap. `.bootstrap`
+  duplication removed (projectors write `state/ui.txt`, never the
+  template), restore blocks stripped from every `button.sh`.
+- **`&.hq-apps/db-hq-pal/`** — the full 15-tab db-hq as ONE static
+  `dashboard.xhtpm` + `pal/dbhq_projector.pal`. Tabs are toolbar
+  `<item>`s writing `state/active.pdl` via `ops/dbhq_action.sh`; the
+  projector reads that + the tab's `#.desktop/db_hq_<x>.state.txt`
+  (uniform `TAG | key | value`) and writes rows + selected-record
+  fields. `class="db-hq-pal"` keeps the renderer's `g_is_db_hq` C
+  path dormant. Common Events tab → `is_ce=1` → links to the existing
+  editor. Verified headless: tab switch + record select.
+- `prisc+x` `NUM_SREGS` 16 → 32.
+
+## State: IN FLIGHT — nothing right now
+
 
 ### `&.hq-apps/db-hq-pal/` — the full 15-tab db-hq as static template + PAL projector
 
