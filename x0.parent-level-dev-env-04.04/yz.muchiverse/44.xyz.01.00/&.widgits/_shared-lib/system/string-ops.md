@@ -35,6 +35,7 @@ the integer-only `ecall` set could not do.
 | `sbeq sA, sB, label` | branch to `label` if `sA == sB` |
 | `sbne sA, sB, label` | branch to `label` if `sA != sB` |
 | `strim sD` | strip leading/trailing whitespace from `sD` in place |
+| `satoi xD, sS` | `xD = atoi(sS)` (string register -> int register) |
 
 `sfopen`/`sfappend`/`swrite`/`sfclose` share the same 8-slot fd table
 as the integer `ecall` file ops, so don't mix more than 8 open at once.

@@ -146,7 +146,7 @@ void handle_sigint(int sig) {
 typedef enum { OP_ADDI, OP_BEQ, OP_BNE, OP_LW, OP_SW, OP_JALR, OP_J, OP_HALT, OP_CUSTOM, OP_READ_HISTORY, OP_EXEC, OP_HIT_FRAME, OP_READ_STATE, OP_READ_ACTIVE_TARGET, OP_READ_ENV_KEY, OP_SLEEP, OP_READ_LAYOUT, OP_READ_POS, OP_ECALL,
     OP_SLIT, OP_SCPY, OP_SAPPEND, OP_SGETENV, OP_SFMT, OP_SREAD, OP_SSPLIT,
     OP_SFIND, OP_SLEN, OP_SFOPEN, OP_SFAPPEND, OP_SWRITE, OP_SFCLOSE,
-    OP_SBEQ, OP_SBNE, OP_STRIM } OpBase;
+    OP_SBEQ, OP_SBNE, OP_STRIM, OP_SATOI } OpBase;
 
 typedef struct {
     OpBase op;
@@ -745,6 +745,9 @@ void parse_line(char *line, int pass) {
         } else if (strcmp(part, "strim") == 0) {
             sscanf(line, "%*s s%d", &i->sd);
             i->op = OP_STRIM;
+        } else if (strcmp(part, "satoi") == 0) {
+            sscanf(line, "%*s x%d, s%d", &i->rd, &i->ss1);
+            i->op = OP_SATOI;
         }
     }
     inst_count++;
@@ -1357,6 +1360,8 @@ int main(int argc, char **argv) {
                 if (strcmp(labels[l].name, i.label_ref) == 0) target = labels[l].addr;
             int eq = (strcmp(sregs[i.ss1], sregs[i.ss2]) == 0);
             if ((i.op == OP_SBEQ && eq) || (i.op == OP_SBNE && !eq)) next_pc = target;
+        } else if (i.op == OP_SATOI) {
+            regs[i.rd] = atoi(sregs[i.ss1]);
         } else if (i.op == OP_STRIM) {
             char *s = sregs[i.sd];
             char *b = s;
