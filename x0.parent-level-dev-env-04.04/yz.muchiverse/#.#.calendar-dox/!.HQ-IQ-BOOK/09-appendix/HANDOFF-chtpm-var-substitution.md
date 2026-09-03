@@ -169,3 +169,75 @@ The projector sets exactly one `c_<i>_is_*` to 1 per row. Sprite-grid
 wrapping (consecutive media in one `<row class="sprite-grid-row">`) is
 lost in this first cut — acceptable, or add a `<repeat wrap-class=...
 wrap-when="${c.is_media}">` later.
+
+---
+
+## Rev 4 (2026-09-03) — `<tab>` scope lock actually working
+
+### Done this rev
+
+- **`59acda6d` — scope confinement now runs on the sidebar+panel path.**
+  `kh_apply_scope_confine()` (was an inline post-pass at the tail of
+  `assign_nav_and_layout()`) was **dead code for db-hq-pal**: the
+  `layout_sidebar_panel()` branch `return`s early, before the tail.
+  Factored into `kh_apply_scope_confine()`, called on *both* layout
+  paths. Now: Return on a `<tab>` shrinks `g_nav[]` to that tab + its
+  record rows; arrows can't leave; `Esc` restores the full tab row.
+- **`dde3291e` — window chrome stays reachable under a scope.**
+  `id="chrome-*"` (minimize / fullscreen / close) is kept navigable
+  even while confined — it lives outside the page tree, like a real WM
+  titlebar.
+
+### Verified (headless, via history injection — NOT a live desk click)
+
+Injection path after the refactor is unchanged: write
+`KEY_PRESSED: <code>` / `MOUSE_EVENT: <btn> <x> <y> <press>` lines to
+`#.desktop/entity_menu_history/<pid>.txt`; the generic window's
+`poll_agent_history()` (in `hq_idle_tick`) consumes them via
+`dispatch_relay_code()` → `handle_key()`. Codes: 13=Return, 27=Esc,
+200-205=arrows/page, 32-126=ASCII. Live per-redraw dump to read back:
+`#.desktop/entity_menu_frame_<pid>.txt` (`tag|id|class|label|extra|
+onclick|nav_index|active_tab_flag|x|y|w|h|target_id`). Field 7 =
+nav_index, field 8 = "is the selected tab" (NOT the focus ring — the
+focus ring is `nav_index == g_focus_nav`, only visible in the PNG).
+
+```sh
+PID=$(pgrep -f 'khtpm_core_render\.\+x .*dashboard\.xhtpm' | head -1)
+H=44.xyz.01.00/#.desktop/entity_menu_history/$PID.txt
+F=44.xyz.01.00/#.desktop/entity_menu_frame_$PID.txt
+: > "$H"; sleep 1.5
+printf 'KEY_PRESSED: 201\nKEY_PRESSED: 13\n' >> "$H"; sleep 1.2   # Down onto a tab, Return
+awk -F'|' '$7!=""&&$7!="0"{print $7,$1,$2}' "$F"   # -> tab + 4 records + 3 chrome only
+```
+
+### OUTSTANDING — matches prior interact mode, still to do
+
+**`kh_apply_scope_confine()` currently renumbers `g_nav[]` and zeroes
+`nav_index` on out-of-scope items.** The user's spec (stated twice):
+*prior interact modes keep every index assigned/visible — keys are just
+passed through / ignored for out-of-scope items until `Esc`.* So the
+preferred implementation is **gate input, don't mutate the tree**:
+
+- Leave `g_nav[]` / all `nav_index` untouched while a scope is held.
+- Add an `elem_in_scope(Elem*)` predicate (the current `keep` test:
+  under `g_default_active_scope_root`, or the trigger id, or a bound
+  `dropdown-child`, or `chrome-*`).
+- In the generic arrow / Page / digit-jump handlers and
+  `activate_focused()`: when `g_default_scope_confine`, skip over /
+  refuse to land on `!elem_in_scope(target)` — clamp movement within
+  the in-scope set, ignore digit jumps and clicks outside it.
+- `khtpm_draw_core.c` can dim out-of-scope rows (optional polish).
+
+This is more invasive than the ship-it fix above (which functionally
+locks correctly and the user OK'd keeping the numbers visible), so it's
+a refinement, not a blocker. The two commits above are safe to keep as-is.
+
+### db-hq-pal status
+
+Wired into the strip `db` menu as **`db-hq (PAL)`**
+(`livedesk:open-db-hq-pal` in `khtpm_taskbar_manager.c`,
+`&.hq-apps/db-hq-pal/button.sh`). Tab switch + record list + panel
+fields all project correctly (`pal/dbhq_projector.pal`). Still read-only
+— field editing and the Common Events command editor are the next
+build (see `DB-EVENTS-HQ-PORT-DESIGN.md` §3–§5). Old `db-hq`
+(`class="db-hq"`, `open_db_hq.sh`) untouched for A/B.
