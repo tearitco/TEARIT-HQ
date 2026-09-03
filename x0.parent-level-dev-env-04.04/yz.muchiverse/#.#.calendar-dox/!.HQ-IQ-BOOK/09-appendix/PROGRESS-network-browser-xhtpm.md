@@ -71,7 +71,10 @@ branch, prefix `js:`). `write_ui_projection()` (and the old
 `write_chtpm_projection()`) just pass every `TEXT|` row through — the
 noise is upstream of the projector, not caused by it.
 
-**How to fix later (manager-side, pick one):**
+For the deeper question - making the JS engine capable enough that
+sites actually render - see `08-roadmap/design-docs/NB-JS-ENGINE-ROADMAP.md`.
+
+**Meanwhile, to just quiet the rows (manager-side, pick one):**
 1. **Drop them by default.** In the branch that writes `TEXT|js: ...`,
    skip the write unless a debug flag is set
    (`#.desktop/network_browser_jsdebug.txt` exists, or an env var).
