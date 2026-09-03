@@ -1,0 +1,67 @@
+<!-- network-browser-hq.xhtpm - STATIC template. All content comes from
+     #.desktop/network-browser-hq_ui.txt, written by
+     network_browser_manager.c's write_ui_projection() (selected by the
+     <module id="ui"> below - argv[3]="ui"). The old
+     network-browser-hq.chtpm + .bootstrap + write_chtpm_projection()
+     stay as rollback (launch with the old button.sh path / no id).
+
+     Heterogeneous page content (title / text / link / image / video)
+     is one <repeat> whose body carries a show=-gated candidate per
+     kind; the projector sets exactly one c_<n>_is_* = 1 per row. The
+     sprite-grid-row wrap for consecutive media is NOT reproduced here
+     (each media is its own row) - acceptable first cut per
+     HANDOFF-scope-nav-and-chtpm-port.md §5. -->
+<window label="Network Browser" class="network-browser-pal database-window"
+        vars="#.desktop/network-browser-hq_ui.txt">
+  <module src="&.hq-apps/network/+x/network_browser_manager.+x" id="ui"/>
+  <page name="main">
+
+    <sidebar>
+      <text label="Bookmarks" class="block-title"/>
+      <scrolllist>
+        <repeat count="${n_bm}" bind="bm">
+          <item id="bm${bm.#}" label="${bm.label}" action="${bm.action}"/>
+        </repeat>
+        <text label="No bookmarks yet" class="quiet" show="${no_bm}"/>
+      </scrolllist>
+      <text label="History" class="block-title"/>
+      <scrolllist>
+        <repeat count="${n_hist}" bind="h">
+          <item id="hist${h.#}" label="${h.label}" action="${h.action}"/>
+        </repeat>
+        <text label="No history yet" class="quiet" show="${no_hist}"/>
+      </scrolllist>
+    </sidebar>
+
+    <panel>
+      <row class="toolbar">
+        <item id="nb-back"   class="quiet" label="Back"      action="${act_back}"/>
+        <item id="nb-fwd"    class="quiet" label="Forward"   action="${act_fwd}"/>
+        <item id="nb-stop"   class="quiet" label="Stop"      action="${act_stop}"/>
+        <item id="nb-reload" class="quiet" label="Reload"    action="${act_reload}"/>
+        <item id="nb-home"   class="quiet" label="Home"      action="${act_home}"/>
+        <item id="nb-bm"     class="quiet" label="Bookmark"  action="${act_bm}"/>
+        <item id="nb-close"  class="quiet" label="Close tab" action="${act_close}"/>
+      </row>
+      <row class="toolbar">
+        <repeat count="${n_tabs}" bind="t">
+          <item id="tab${t.#}" class="quiet" label="${t.label}" action="${t.action}"/>
+        </repeat>
+        <item id="nb-newtab" class="quiet" label="New tab" action="${act_newtab}"/>
+      </row>
+      <cli_io id="address" class="top nb-address" target_id="address"
+              label="${addr_label}" action="${act_go}"/>
+      <text id="status" class="nb-status" label="${status}"/>
+      <scrolllist class="from-top nb-content">
+        <repeat count="${content_count}" bind="c">
+          <text id="ct${c.#}" class="page-title" label="${c.text}"                          show="${c.is_title}"/>
+          <text id="cx${c.#}"                    label="${c.text}"                          show="${c.is_text}"/>
+          <item id="cl${c.#}" label="${c.text}"  action="${c.action}"                       show="${c.is_link}"/>
+          <item id="cm${c.#}" label="${c.label}" sprite="${c.sprite}" action="${c.action}"  show="${c.is_media}"/>
+        </repeat>
+        <text label="${empty_msg}" class="quiet" show="${content_empty}"/>
+      </scrolllist>
+    </panel>
+
+  </page>
+</window>

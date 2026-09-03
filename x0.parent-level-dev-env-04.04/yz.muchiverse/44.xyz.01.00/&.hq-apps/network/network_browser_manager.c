@@ -87,6 +87,13 @@
 #define PATH_BUF 4352
 
 static char g_chtpm_output_path[PATH_BUF];
+/* REAL, NEW 2026-09-03 - static-template port: when launched with argv "ui"
+ * (the <module id="ui"> in network-browser-hq.xhtpm), the manager writes a
+ * key=value UI file for the static template instead of regenerating the
+ * whole .chtpm markup every tick. The old write_chtpm_projection() path
+ * stays as rollback (old network-browser-hq.chtpm + button.sh, no "ui" arg). */
+static char g_ui_output_path[PATH_BUF];
+static int  g_mode_ui = 0;
 static char g_package_dir[PATH_BUF];
 
 /* Small local case-insensitive strstr - strcasestr isn't in strict C11
@@ -669,6 +676,7 @@ static void extract_and_publish(const char *html, const char *url, FILE *out) {
 }
 
 static void write_chtpm_projection(void);
+static void write_ui_projection(void);
 static void load_page_title(char *out, size_t outsz);
 static void do_fetch(const char *url_in, int record_history);
 
@@ -1814,6 +1822,7 @@ static void handle_request(void) {
  * (sidebar/panel/scrolllist/item/text) - zero new renderer C. The
  * renderer picks it up via reparse_chtpm_if_changed(). */
 static void write_chtpm_projection(void) {
+    if (g_mode_ui) { write_ui_projection(); return; }
     char *buf = malloc(262144);
     if (!buf) return;
     size_t cap = 262144, len = 0;
@@ -2126,6 +2135,223 @@ static void write_chtpm_projection(void) {
     rename(tmp_path, g_chtpm_output_path);
 }
 
+/* -------- static-template UI projection (g_mode_ui) ------------------
+ * Same data as write_chtpm_projection(), emitted as key=value for
+ * network-browser-hq.xhtpm instead of regenerated markup. Only written
+ * when the content changes (the renderer also content-hashes it). */
+static void uisan(const char *in, char *out, size_t outsz) {
+    /* strip CR/LF, turn '|' into '/' (it is the frame-dump field
+     * separator - an unescaped '|' in a label/action corrupts the
+     * frame round trip) */
+    size_t o = 0;
+    for (const char *p = in ? in : ""; *p && o + 1 < outsz; p++) {
+        char c = *p;
+        if (c == '\n' || c == '\r') continue;
+        if (c == '|') c = '/';
+        out[o++] = c;
+    }
+    out[o] = '\0';
+}
+static void write_ui_projection(void) {
+    char *buf = malloc(262144);
+    if (!buf) return;
+    size_t cap = 262144, len = 0;
+#define UI_PUT(...) do { \
+        int _n = snprintf(buf + len, cap - len, __VA_ARGS__); \
+        if (_n > 0) len += (size_t)_n < cap - len ? (size_t)_n : cap - len - 1; \
+    } while (0)
+
+    /* fixed toolbar action strings (were baked into the markup before) */
+    UI_PUT("act_back='%s/ops/nb_write_back.sh' 'back'\n", g_package_dir);
+    UI_PUT("act_fwd='%s/ops/nb_write_forward.sh' 'forward'\n", g_package_dir);
+    UI_PUT("act_stop='%s/ops/nb_write_stop.sh' 'stop'\n", g_package_dir);
+    UI_PUT("act_reload='%s/ops/nb_write_reload.sh' 'reload'\n", g_package_dir);
+    UI_PUT("act_home='%s/ops/nb_write_go.sh' 'go' 'https://example.com'\n", g_package_dir);
+    UI_PUT("act_bm='%s/ops/nb_write_bookmark.sh' 'bookmark'\n", g_package_dir);
+    UI_PUT("act_close='%s/ops/nb_write_closetab.sh' 'closetab'\n", g_package_dir);
+    UI_PUT("act_newtab='%s/ops/nb_write_newtab.sh' 'newtab'\n", g_package_dir);
+    UI_PUT("act_go='%s/ops/nb_write_go.sh' 'go' '%s'\n", g_package_dir, g_ui_output_path);
+
+    {
+        char shown[PATH_BUF], s[PATH_BUF];
+        snprintf(shown, sizeof(shown), "%s", g_current_url[0] ? g_current_url : "URL: ");
+        uisan(shown, s, sizeof(s));
+        UI_PUT("addr_label=%s\n", s);
+    }
+
+    /* status */
+    {
+        char status_line[256] = "idle", s[300];
+        FILE *sf = fopen(g_status_path, "r");
+        if (sf) {
+            if (fgets(status_line, sizeof(status_line), sf)) {
+                size_t n = strlen(status_line);
+                while (n > 0 && (status_line[n-1] == '\n' || status_line[n-1] == '\r')) status_line[--n] = 0;
+            }
+            fclose(sf);
+        }
+        uisan(status_line, s, sizeof(s));
+        UI_PUT("status=Status: %s\n", s);
+    }
+
+    /* bookmarks */
+    {
+        int bi = 0;
+        FILE *bf = fopen(g_bookmark_path, "r");
+        if (bf) {
+            char bline[PATH_BUF];
+            while (fgets(bline, sizeof(bline), bf) && bi < 32) {
+                size_t L = strlen(bline);
+                while (L > 0 && (bline[L-1] == '\n' || bline[L-1] == '\r')) bline[--L] = 0;
+                if (strncmp(bline, "BOOKMARK | ", 11) != 0) continue;
+                char *rest = bline + 11;
+                char *sep = strstr(rest, " | ");
+                if (!sep) continue;
+                *sep = 0;
+                char *burl = sep + 3;
+                char lab_s[600], url_sq[PATH_BUF * 2];
+                uisan(rest[0] ? rest : burl, lab_s, sizeof(lab_s));
+                shell_escape_squote(burl, url_sq, sizeof(url_sq));
+                UI_PUT("bm_%d_label=%s\n", bi, lab_s);
+                UI_PUT("bm_%d_action='%s/ops/nb_write_go.sh' 'go' '%s'\n", bi, g_package_dir, url_sq);
+                bi++;
+            }
+            fclose(bf);
+        }
+        UI_PUT("n_bm=%d\n", bi);
+        UI_PUT("no_bm=%d\n", bi == 0 ? 1 : 0);
+    }
+
+    /* history (newest first, cap 32) */
+    {
+        char hlines[256][PATH_BUF];
+        int hn = 0;
+        FILE *hf = fopen(g_visit_log_path, "r");
+        if (hf) {
+            while (hn < 256 && fgets(hlines[hn], PATH_BUF, hf)) {
+                size_t L = strlen(hlines[hn]);
+                while (L > 0 && (hlines[hn][L-1] == '\n' || hlines[hn][L-1] == '\r')) hlines[hn][--L] = 0;
+                if (hlines[hn][0]) hn++;
+            }
+            fclose(hf);
+        }
+        int shown = 0;
+        for (int hi = hn - 1; hi >= 0 && shown < 32; hi--) {
+            char lab_s[600], url_sq[PATH_BUF * 2];
+            uisan(hlines[hi], lab_s, sizeof(lab_s));
+            shell_escape_squote(hlines[hi], url_sq, sizeof(url_sq));
+            UI_PUT("h_%d_label=%s\n", shown, lab_s);
+            UI_PUT("h_%d_action='%s/ops/nb_write_go.sh' 'go' '%s'\n", shown, g_package_dir, url_sq);
+            shown++;
+        }
+        UI_PUT("n_hist=%d\n", shown);
+        UI_PUT("no_hist=%d\n", shown == 0 ? 1 : 0);
+    }
+
+    /* tab strip */
+    {
+        int ti;
+        for (ti = 0; ti < g_tab_count; ti++) {
+            const char *src = g_tabs[ti].title[0] ? g_tabs[ti].title
+                : (g_tabs[ti].url[0] ? g_tabs[ti].url : "Network Browser");
+            char shortlab[24];
+            size_t sl = strlen(src);
+            if (sl > 18) { memcpy(shortlab, src, 18); shortlab[18] = 0; }
+            else { memcpy(shortlab, src, sl + 1); }
+            char marked[26], s[64];
+            if (ti == g_tab_current && shortlab[0]) {
+                snprintf(marked, sizeof(marked), "*%s", shortlab);
+                uisan(marked, s, sizeof(s));
+            } else {
+                uisan(shortlab, s, sizeof(s));
+            }
+            UI_PUT("t_%d_label=%s\n", ti, s);
+            UI_PUT("t_%d_action='%s/ops/nb_write_tab.sh' 'tab' '%d'\n", ti, g_package_dir, ti);
+        }
+        UI_PUT("n_tabs=%d\n", g_tab_count);
+    }
+
+    /* page content - one <repeat> row per state line; media rows are
+     * NOT grouped into a sprite-grid-row here (first-cut limitation). */
+    {
+        FILE *pf = fopen(g_page_state_path, "r");
+        int rc = 0;
+        if (pf) {
+            char line[PATH_BUF + 512];
+            while (fgets(line, sizeof(line), pf) && rc < 400) {
+                size_t n = strlen(line);
+                while (n > 0 && (line[n-1] == '\n' || line[n-1] == '\r')) line[--n] = 0;
+                char *bar = strchr(line, '|');
+                if (!bar) continue;
+                *bar = 0;
+                char *rest = bar + 1;
+                const char *kind = line;
+                char t[1024], s1[1024], s2[700];
+
+                if (strcmp(kind, "TITLE") == 0) {
+                    uisan(rest, t, sizeof(t));
+                    UI_PUT("c_%d_kind=title\nc_%d_is_title=1\nc_%d_text=%s\n", rc, rc, rc, t);
+                } else if (strcmp(kind, "TEXT") == 0) {
+                    uisan(rest, t, sizeof(t));
+                    UI_PUT("c_%d_kind=text\nc_%d_is_text=1\nc_%d_text=%s\n", rc, rc, rc, t);
+                } else if (strcmp(kind, "LINK") == 0) {
+                    char *b2 = strchr(rest, '|');
+                    if (b2) { *b2 = 0; snprintf(s2, sizeof(s2), "%s", b2 + 1); } else s2[0] = 0;
+                    char url_sq[PATH_BUF * 2], lab_s[700];
+                    uisan(s2[0] ? s2 : rest, lab_s, sizeof(lab_s));
+                    shell_escape_squote(rest, url_sq, sizeof(url_sq));
+                    UI_PUT("c_%d_kind=link\nc_%d_is_link=1\nc_%d_text=%s\n", rc, rc, rc, lab_s);
+                    UI_PUT("c_%d_action='%s/ops/nb_write_go.sh' 'go' '%s'\n", rc, g_package_dir, url_sq);
+                } else if (strcmp(kind, "IMG") == 0) {
+                    char *b2 = strchr(rest, '|');
+                    if (b2) { *b2 = 0; snprintf(s2, sizeof(s2), "%s", b2 + 1); } else s2[0] = 0;
+                    uisan(rest, s1, sizeof(s1));        /* sprite dir */
+                    char lab_s[700]; uisan(s2[0] ? s2 : " ", lab_s, sizeof(lab_s));
+                    UI_PUT("c_%d_kind=img\nc_%d_is_media=1\nc_%d_sprite=%s\nc_%d_label=%s\n", rc, rc, rc, s1, rc, lab_s);
+                } else if (strcmp(kind, "VIDEO") == 0) {
+                    /* VIDEO|<sprite_dir>|<url>|<alt> */
+                    char *b2 = strchr(rest, '|');
+                    char vurl[1024] = "", valt[700] = "";
+                    if (b2) {
+                        *b2 = 0;
+                        char *vu = b2 + 1;
+                        char *b3 = strchr(vu, '|');
+                        if (b3) { *b3 = 0; snprintf(valt, sizeof(valt), "%s", b3 + 1); }
+                        snprintf(vurl, sizeof(vurl), "%s", vu);
+                    }
+                    uisan(rest, s1, sizeof(s1));
+                    char lab_s[700]; uisan(valt[0] ? valt : "play", lab_s, sizeof(lab_s));
+                    char url_sq[PATH_BUF * 2];
+                    shell_escape_squote(vurl, url_sq, sizeof(url_sq));
+                    UI_PUT("c_%d_kind=video\nc_%d_is_media=1\nc_%d_sprite=%s\nc_%d_label=%s\n", rc, rc, rc, s1, rc, lab_s);
+                    UI_PUT("c_%d_action=ffplay -autoexit -loglevel error '%s'\n", rc, url_sq);
+                } else {
+                    continue;
+                }
+                rc++;
+            }
+            fclose(pf);
+        }
+        UI_PUT("content_count=%d\n", rc);
+        UI_PUT("content_empty=%d\n", rc == 0 ? 1 : 0);
+        UI_PUT("empty_msg=Ready - enter a URL above\n");
+    }
+
+#undef UI_PUT
+    static char *g_last_ui = NULL;
+    if (g_last_ui && strcmp(g_last_ui, buf) == 0) { free(buf); return; }
+    free(g_last_ui);
+    g_last_ui = buf;
+
+    char tmp_path[PATH_BUF];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", g_ui_output_path);
+    FILE *wf = fopen(tmp_path, "w");
+    if (!wf) { fprintf(stderr, "network_browser_manager: cannot write %s\n", tmp_path); return; }
+    fputs(buf, wf);
+    fclose(wf);
+    rename(tmp_path, g_ui_output_path);
+}
+
 /* REAL, NEW 2026-09-01 (ported from khtpm_open_hai_manager.c) - check
  * if the parent renderer process is still alive. Module processes
  * (launched via the renderer's generic <module> tag) should self-exit
@@ -2145,9 +2371,11 @@ static int parent_still_alive(void) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 2) { fprintf(stderr, "usage: %s <house_root> [--data-root <dir>]\n", argv[0]); return 1; }
+    if (argc < 2) { fprintf(stderr, "usage: %s <house_root> [pkg_dir] [ui]\n", argv[0]); return 1; }
     snprintf(g_house, sizeof(g_house), "%s", argv[1]);
     snprintf(g_package_dir, sizeof(g_package_dir), "%s/&.hq-apps/network", g_house);
+    for (int ai = 2; ai < argc; ai++)
+        if (strcmp(argv[ai], "ui") == 0) g_mode_ui = 1;
 
     char desktop[PATH_BUF];
     path_join(desktop, sizeof(desktop), g_house, "#.desktop");
@@ -2175,6 +2403,7 @@ int main(int argc, char **argv) {
     /* REAL, NEW 2026-09-01 - .chtpm output path, same pattern as
      * khtpm_open_hai_manager.c's own g_chtpm_output_path setup */
     snprintf(g_chtpm_output_path, sizeof(g_chtpm_output_path), "%s/&.hq-apps/network/network-browser-hq.chtpm", g_house);
+    snprintf(g_ui_output_path, sizeof(g_ui_output_path), "%s/#.desktop/network-browser-hq_ui.txt", g_house);
 
     char tmpdir[PATH_BUF];
     snprintf(tmpdir, sizeof(tmpdir), "%s/&.hq-apps/network/tmp", g_house);
