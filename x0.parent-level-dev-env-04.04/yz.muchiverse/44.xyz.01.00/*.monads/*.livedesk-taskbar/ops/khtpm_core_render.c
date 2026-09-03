@@ -850,6 +850,20 @@ static KhVar g_kh_vars[KH_MAX_VARS];
 static int g_kh_nvars = 0;
 static char g_vars_path[PATH_BUF] = "";
 static struct timespec g_vars_mtime;
+/* hash of the vars-file bytes at the last reparse - so a projector that
+ * rewrites state/ui.txt every tick (rather than only on change, the
+ * tpmos frame_changed.txt convention) does NOT force a reparse/redraw
+ * when the content is byte-identical. Cheap: the state file is small. */
+static unsigned long g_vars_hash = 0;
+static unsigned long kh_file_hash(const char *path) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return 0;
+    unsigned long h = 1469598103934665603UL; /* FNV-1a 64 */
+    int c;
+    while ((c = fgetc(f)) != EOF) { h ^= (unsigned char)c; h *= 1099511628211UL; }
+    fclose(f);
+    return h ? h : 1;
+}
 
 static const char *kh_get_var(const char *name) {
     /* built-ins so a static template can name house-relative paths in
@@ -1093,6 +1107,7 @@ static Elem *parse_chtpm(const char *path) {
             snprintf(g_vars_path, sizeof(g_vars_path), "%s", vpath);
             struct stat vst;
             if (stat(vpath, &vst) == 0) g_vars_mtime = vst.st_mtim;
+            g_vars_hash = kh_file_hash(vpath);
         }
         kh_load_vars(g_vars_path);
 
@@ -1240,8 +1255,14 @@ static int reparse_chtpm_if_changed(void) {
             struct stat vst;
             if (stat(g_vars_path, &vst) == 0 &&
                 (vst.st_mtim.tv_sec != g_vars_mtime.tv_sec ||
-                 vst.st_mtim.tv_nsec != g_vars_mtime.tv_nsec))
-                vars_changed = 1;
+                 vst.st_mtim.tv_nsec != g_vars_mtime.tv_nsec)) {
+                g_vars_mtime = vst.st_mtim;
+                /* mtime moved - but only a real CONTENT change counts
+                 * (marker-driven-render spirit): a projector rewriting
+                 * identical bytes every tick must not churn the tree. */
+                unsigned long h = kh_file_hash(g_vars_path);
+                if (h != g_vars_hash) { g_vars_hash = h; vars_changed = 1; }
+            }
         }
         if (st.st_mtim.tv_sec == g_chtpm_mtime.tv_sec && st.st_mtim.tv_nsec == g_chtpm_mtime.tv_nsec && !peer_changed && !vars_changed)
             return 0;
@@ -9452,7 +9473,14 @@ static void handle_key(KeySym ks, char ch) {
     if (g_default_input_elem) { default_cli_io_handle_key(ks, ch); return; } /* same real key-order exception - a real cli_io field needs 'p' as a literal typed character */
     if (ch == 'p') { dump_frame_png(); return; }
     if (g_is_db_hq) { dbhq_handle_key(ks, ch); return; }
-    if (ks == XK_Return || ks == XK_KP_Enter) { activate_focused(); return; }
+    if (ks == XK_Return || ks == XK_KP_Enter) {
+        activate_focused();
+        /* activate_focused() may have just entered/left a scope (<tab>,
+         * ACTIVATE) - relayout+repaint NOW so [^] and the confined nav
+         * show immediately, instead of only on the next projector tick. */
+        if (!g_quit && !g_is_db_hq && !g_is_events_hq) { assign_nav_and_layout(); redraw(); }
+        return;
+    }
     /* REAL, NEW 2026-09-03 (direct instruction: "esc closes drop down
      * and deactivates", matching the taskbar's own separate ktb_hq_
      * close() on Escape) - checked BEFORE the plain g_quit=1 fallback
@@ -10328,6 +10356,8 @@ static void popup_handle_click(int px, int py) {
         if (px >= it->x && px < it->x + it->w && py >= it->y && py < it->y + it->h) {
             if (!click_focus_then_activate(it)) { redraw(); return; }
             activate_focused();
+            if (!g_quit && !g_is_db_hq && !g_is_events_hq) { assign_nav_and_layout(); }
+            redraw();
             return;
         }
     }
