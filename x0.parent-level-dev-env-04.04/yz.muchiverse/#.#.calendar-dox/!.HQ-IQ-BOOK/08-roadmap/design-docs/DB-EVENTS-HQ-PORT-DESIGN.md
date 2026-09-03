@@ -161,3 +161,47 @@ editor). db-hq's 14 list tabs can land before CE.
 
 The parser is **not** the bottleneck. The work is writing ~9 projectors
 and then deleting code.
+
+---
+
+## 9. Renderer capabilities — actual status (2026-09-03, branch `chtpm-var-substitution`)
+
+Turned out much smaller than §4 estimated:
+
+| # | status | commit |
+|---|---|---|
+| 0 | **DONE** — fork every `<module>`, track all pids, cleanup all; `vars="a b c"` multi-file, content-hashed reparse | `2394fd0d` chain (`kh_launch_window_modules`, `kh_load_vars_multi`, `kh_files_hash`) |
+| 1 | **FREE** — `<repeat>` v2 (heterogeneous rows) already works: put several `show="${row.is_X}"` candidates in one body, the projector sets one `${row_i_is_X}=1`, `show=` drops the rest | no change |
+| 2 | **DONE** — `<cli_io>` rows lay out + nav-number inside a `<scrolllist>` (editable field lists) | `38a3da4d` |
+| 3 | **DEFERRED to the CE editor** — `class="overlay"` (centre + dim + auto-scope + Esc). Not needed by any simple app; build it while doing the Add-Command picker. |
+| 4 | **PARTIAL** — nested `<repeat>` expands structurally (depth-matched close, up to 5 passes); `${outer.#}`/`${inner.#}` resolve. **Page-scoped data across a nested list wants the flat pattern instead**: projector emits one flat `<repeat>`, marks page boundaries with a `show=`-gated header row. | `<repeat>` depth-match commit |
+
+**So the generic renderer is ready for every simple app and db-hq's 14
+list tabs right now.** Only the CE/events command editor needs more
+(capability #3 + the compile-chain action wiring), and that is its own
+task.
+
+## 10. Haiku-ready task shape (simple apps)
+
+For **swatch-picker**, **bookmarks**, **stats-hq**, **palettes** — each:
+
+1. Read this doc + `CHTPM-ARCHITECTURE-FIX.md` §8 + `string-ops.md`.
+2. Reference: `&.widgits/db-hq-actors-pal/` — a complete, working
+   PAL-projector app (`.xhtpm` + `pal/*.pal` + `ops/*_action.sh` +
+   `button.sh` + `toy.pdl`).
+3. Build `&.<area>/<app>-v2/` (fresh `class="<app>-v2"`, NOT the old
+   class — the old window must keep working for A/B):
+   - `<app>.xhtpm` — static: sidebar+panel (+ `<tabbar>` for palettes'
+     categories). Every dynamic bit `${var}` / `<repeat>` / `show=`.
+   - `pal/<app>_projector.pal` OR `ops/+x/<app>_projector.+x` — read the
+     app's existing state file(s) (see the table in §5), write
+     `state/ui.txt` key=value, ONLY on change (content differs).
+   - `ops/<app>_action.sh` — the one write path (select, toggle, edit…).
+   - `button.sh` (copy `db-hq-actors-pal/button.sh`, adjust names),
+     `toy.pdl`.
+4. Verify headless every iteration:
+   `sh &.widgits/_shared-lib/ops/khtpm_png_dump.sh <app>.xhtpm <house> /tmp/o`
+   then diff `/tmp/o/<app>.frame.txt` against a dump of the old window.
+5. Do NOT touch `khtpm_core_render.c` or `khtpm_taskbar_manager.c`.
+   Do NOT wire it into any launcher. Stage only files under your
+   `<app>-v2/` dir. Report the frame.txt diff.
