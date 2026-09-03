@@ -1,15 +1,26 @@
-<!-- signup-hq.chtpm - CHECKED-IN BOOTSTRAP. Launched by button.sh via
-     the shared khtpm_core_render.+x. The ONLY thing read here is the
-     <module> tag - it forks signup_hq_manager.+x, which then overwrites
-     this file every ~150ms with the real live projection (renderer
-     picks it up via reparse_chtpm_if_changed()). Flat layout (bare
-     text/cli_io/item under <page>, no <panel>/<sidebar>) - the shape
-     swatch-picker/taskbar-settings use. Do not hand-edit; button.sh
-     restores this from the bootstrap when the <module> tag goes
-     missing. -->
-<window label="Sign up" class="signup-hq">
+<!-- signup-hq.chtpm - STATIC TEMPLATE (see 08-roadmap/design-docs/
+     CHTPM-ARCHITECTURE-FIX.md). This file is layout only and is NOT
+     regenerated at runtime. The <module> tag forks signup_hq_manager.+x,
+     which writes plain key=value lines to state/ui.txt; the shared
+     renderer substitutes every ${var} from that file and drops any row
+     whose show="${...}" resolves to "", "0" or "false". ${PKG} is the
+     renderer built-in for this .chtpm's own dir. button.sh restores
+     this file from the .bootstrap if the <module> tag ever goes
+     missing. Do not hand-generate this markup from the manager. -->
+<window label="Sign up" class="signup-hq" vars="&.hq-apps/signup-hq/state/ui.txt">
   <module src="&.hq-apps/signup-hq/+x/signup_hq_manager.+x"/>
   <page name="main">
-    <text id="status" label="starting..."/>
+    <sidebar>
+      <text label="Sign up"/>
+    </sidebar>
+    <panel>
+      <text label="${title}" class="title"/>
+      <text label="${hint}" class="hint" show="${show_hint}"/>
+      <text label="username: ${id_shown}" class="quiet" show="${show_id_line}"/>
+      <cli_io id="field" target_id="${field_tid}" label="${field_label}" action="'${PKG}/ops/signup_hq_action.sh' '${field_verb}'" show="${show_field}"/>
+      <text label="${err}" class="err" show="${show_err}"/>
+      <text label="Letters, numbers, _ and - .  No spaces." class="quiet" show="${show_rules}"/>
+      <item label="${btn_label}" action="'${PKG}/ops/signup_hq_action.sh' '${btn_verb}'" show="${show_btn}"/>
+    </panel>
   </page>
 </window>
