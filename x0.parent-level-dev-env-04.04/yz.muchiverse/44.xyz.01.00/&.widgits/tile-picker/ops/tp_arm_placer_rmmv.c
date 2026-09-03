@@ -202,12 +202,43 @@ int main(int argc, char **argv) {
      * hand-off, not just a debug trail. */
     if (cancelled) return 0;
     {
-        char led[PATH_BUF];
+        /* Real, NEW 2026-09-03 - size-capped ledger write. Same
+         * convention khtpm_core_render.c's nav_ledger_write() uses:
+         * nav_master_ledger.txt is append-only and previously grew
+         * unbounded; consumers only read the newest rows, so once the
+         * file exceeds the cap we keep the newest tail (whole lines,
+         * atomic tmp+rename) and drop the head. */
+        enum { NAV_LEDGER_CAP = 250u * 1024u };
+        char led[PATH_BUF], tmp[PATH_BUF];
         snprintf(led, sizeof(led), "%s/nav_master_ledger.txt", desktop_root);
         FILE *lf = fopen(led, "a");
         if (lf) {
             fprintf(lf, "RMMV_CLICK pid=%d x=%d y=%d\n", (int)getpid(), click_x, click_y);
             fclose(lf);
+            long sz = 0;
+            FILE *sf = fopen(led, "rb");
+            if (sf) { fseek(sf, 0, SEEK_END); sz = ftell(sf); fclose(sf); }
+            if (sz > (long)NAV_LEDGER_CAP) {
+                long start = sz - (long)NAV_LEDGER_CAP;
+                if (start < 0) start = 0;
+                snprintf(tmp, sizeof(tmp), "%s.tmp.%d", led, (int)getpid());
+                FILE *rf = fopen(led, "rb");
+                FILE *wf = fopen(tmp, "wb");
+                if (rf && wf) {
+                    fseek(rf, start, SEEK_SET);
+                    int copy = 0;
+                    char c;
+                    while ((c = fgetc(rf)) != EOF) {
+                        if (c == '\n') copy = 1;
+                        if (copy) fputc(c, wf);
+                    }
+                    fclose(rf); rf = NULL;
+                    fclose(wf); wf = NULL;
+                    if (rename(tmp, led) != 0) unlink(tmp);
+                }
+                if (rf) fclose(rf);
+                if (wf) fclose(wf);
+            }
         }
     }
 

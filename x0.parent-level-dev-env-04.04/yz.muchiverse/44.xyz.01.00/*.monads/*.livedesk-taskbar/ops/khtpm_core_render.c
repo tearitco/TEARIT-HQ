@@ -9952,8 +9952,59 @@ static void nav_tab_dir(char *out, size_t n) {
     snprintf(out, n, "%s/#.desktop/nav_tab", g_house_root);
 }
 
+/* Real, NEW 2026-09-03 - size-capped appender for the append-only master
+ * ledger (nav_master_ledger.txt). Written by THREE sites in this file
+ * (nav_tab_register's REG rows, the nav SNAP snapshots, the RMMV click
+ * rows) plus tp_arm_placer_rmmv.c - it previously grew unbounded (a real
+ * live case hit 5.9MB / 24k lines in a single session). Consumers
+ * (tp_place_desktop_rmmv.c / tp_arm_placer_rmmv.c) only ever read the
+ * NEWEST rows, so each write keeps the newest NAV_LEDGER_CAP bytes and
+ * drops the head - real, atomic tmp+rename, the same roof shape this
+ * file-family already uses elsewhere. */
+#define NAV_LEDGER_CAP (250u * 1024u)
+static void nav_ledger_trim(const char *house_root) {
+    char led[PATH_BUF], tmp[PATH_BUF];
+    snprintf(led, sizeof(led), "%s/#.desktop/nav_master_ledger.txt", house_root);
+    long sz = 0;
+    FILE *sf = fopen(led, "rb");
+    if (!sf) return;
+    fseek(sf, 0, SEEK_END);
+    sz = ftell(sf);
+    fclose(sf);
+    if (sz <= (long)NAV_LEDGER_CAP) return;
+    long start = sz - (long)NAV_LEDGER_CAP;
+    if (start < 0) start = 0;
+    snprintf(tmp, sizeof(tmp), "%s.tmp.%d", led, (int)getpid());
+    FILE *rf = fopen(led, "rb");
+    FILE *wf = fopen(tmp, "wb");
+    if (rf && wf) {
+        fseek(rf, start, SEEK_SET);
+        int copy = 0;
+        char ch;
+        while ((ch = fgetc(rf)) != EOF) {
+            if (ch == '\n') copy = 1;
+            if (copy) fputc(ch, wf);
+        }
+        fclose(rf); rf = NULL;
+        fclose(wf); wf = NULL;
+        if (rename(tmp, led) != 0) unlink(tmp);
+    }
+    if (rf) fclose(rf);
+    if (wf) fclose(wf);
+}
+static void nav_ledger_write(const char *house_root, const char *s) {
+    char led[PATH_BUF];
+    snprintf(led, sizeof(led), "%s/#.desktop/nav_master_ledger.txt", house_root);
+    FILE *lf = fopen(led, "a");
+    if (lf) {
+        fputs(s, lf);
+        fclose(lf);
+        nav_ledger_trim(house_root);
+    }
+}
+
 static void nav_tab_register(const char *type, const char *title) {
-    char dir[PATH_BUF], path[PATH_BUF], ledger[PATH_BUF];
+    char dir[PATH_BUF], path[PATH_BUF];
     nav_tab_dir(dir, sizeof(dir));
     mkdir(dir, 0777);
     int max_ord = 0;
@@ -9987,14 +10038,13 @@ static void nav_tab_register(const char *type, const char *title) {
                 title ? title : "hq");
         fclose(f);
     }
-    snprintf(ledger, sizeof(ledger), "%s/#.desktop/nav_master_ledger.txt", g_house_root);
-    FILE *lf = fopen(ledger, "a");
-    if (lf) {
-        fprintf(lf, "REG pid=%d tab=%d xid=%lx type=%s %s\n",
-                (int)getpid(), g_nav_tab_ordinal, (unsigned long)win,
-                type && type[0] ? type : "hq",
-                title ? title : "hq");
-        fclose(lf);
+    {
+        char regline[512];
+        snprintf(regline, sizeof(regline), "REG pid=%d tab=%d xid=%lx type=%s %s\n",
+                 (int)getpid(), g_nav_tab_ordinal, (unsigned long)win,
+                 (type && type[0]) ? type : "hq",
+                 (title && title[0]) ? title : "hq");
+        nav_ledger_write(g_house_root, regline);
     }
 }
 
@@ -10123,6 +10173,7 @@ static void nav_ledger_publish(void) {
     }
     if (cf) fclose(cf);
     if (lf) fclose(lf);
+    nav_ledger_trim(g_house_root);
 }
 
 /* Phase 4: wraith-alpha frame_changed.txt — FILE marker, size-only.
@@ -10666,13 +10717,10 @@ static void dbhq_rmmv_handle_desktop_click(int x_root, int y_root) {
      * this process, the instant the real click is resolved, decoupled
      * from whether the placement subprocess call below ever succeeds. */
     {
-        char led[PATH_BUF];
-        snprintf(led, sizeof(led), "%s/#.desktop/nav_master_ledger.txt", g_house_root);
-        FILE *lf = fopen(led, "a");
-        if (lf) {
-            fprintf(lf, "RMMV_CLICK pid=%d x=%s y=%s\n", (int)getpid(), envx, envy);
-            fclose(lf);
-        }
+        char clickline[128];
+        snprintf(clickline, sizeof(clickline), "RMMV_CLICK pid=%d x=%s y=%s\n",
+                 (int)getpid(), envx, envy);
+        nav_ledger_write(g_house_root, clickline);
         if (g_pal_static_title) {
             snprintf(g_pal_static_title->label, sizeof(g_pal_static_title->label),
                      "Clicked desktop at (%s,%s) - placing...", envx, envy);
