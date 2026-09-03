@@ -633,9 +633,18 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             int px = box_w < box_h ? box_w : box_h;
             if (px > HQ_SPRITE_PX_MAX) px = HQ_SPRITE_PX_MAX;
             if (px > 0) {
+                /* REAL FIX 2026-09-03 - sprite alpha is flattened onto
+                 * bg_pixel at blit time (this window's visual has no
+                 * per-pixel alpha), so bg_pixel MUST match the colour
+                 * actually painted behind the tile or transparent PNG
+                 * edges show a wrong-coloured box/halo. The fallback was
+                 * a hardcoded "#1c1c1c"; after a theme change (swatch
+                 * picker -> livedesk_theme.pdl COLOR|bg) the real
+                 * surface is g_theme_bg, so every transparent icon sat
+                 * on a stale grey square. Follow the theme. */
                 unsigned long bg_pixel = e->style.has_bg_color
                     ? alloc_pixel(e->style.bg_color)
-                    : alloc_pixel("#1c1c1c");
+                    : alloc_pixel(g_theme_bg[0] ? g_theme_bg : "#1c1c1c");
                 int blit_x, blit_y;
                 int short_bar = (e->h < 64);
                 if (short_bar) {
