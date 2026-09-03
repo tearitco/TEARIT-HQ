@@ -1,4 +1,0 @@
-⏰ REMINDER
-clock: gameclock0000 @ now
-note: water the plants
-event: common:test-note

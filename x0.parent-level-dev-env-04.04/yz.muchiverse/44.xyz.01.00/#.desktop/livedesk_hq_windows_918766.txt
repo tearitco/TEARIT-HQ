@@ -1,1 +1,0 @@
-win=0xa00003|pid=918766|title=Bookmarks (PAL)|x=80|y=80|w=640|h=380|minimized=0|focused=0

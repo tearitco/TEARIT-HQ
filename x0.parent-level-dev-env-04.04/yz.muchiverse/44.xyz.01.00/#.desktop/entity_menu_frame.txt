@@ -1,3 +1,0 @@
-text|status||starting...|||0|0|0|24|700|24||
-item|chrome-close||X||CLOSE|9|0|634|2|56|20||
-item|chrome-fullscreen||!||TOGGLE_FULLSCREEN|8|0|570|2|56|20||

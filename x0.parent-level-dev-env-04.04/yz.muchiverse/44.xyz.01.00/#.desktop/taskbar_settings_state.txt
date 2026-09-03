@@ -1,4 +1,0 @@
-phase=0
-bg=-1
-fg=-1
-apply=0

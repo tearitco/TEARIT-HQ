@@ -1,1 +1,0 @@
-win=0x1c00004|pid=251865|title=DB (PAL)|x=495|y=441|w=1285|h=520|minimized=0|focused=1

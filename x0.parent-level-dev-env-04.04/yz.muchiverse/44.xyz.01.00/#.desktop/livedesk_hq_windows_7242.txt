@@ -1,1 +1,0 @@
-win=0x1e00002|pid=7242|title=Network Browser|x=0|y=375|w=960|h=640|minimized=1|focused=0

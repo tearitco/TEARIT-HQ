@@ -1,0 +1,101 @@
+# Runtime state / transient files — never track these.
+# Config (.*.pdl, *.chtpm, *.pal, *.csv, *.c, *.sh, *.md) and the
+# entities/, events/, sprites/, harnesses/, build_uid_sprite/, #.dox/
+# content are NOT matched here and stay tracked.
+
+# per-session / per-window dumps and their history dirs
+/entity_menu_history/
+/entity_menu_history.txt
+entity_menu_frame*.txt
+/events_hq_history/
+/events_hq_history.txt
+/events_hq_frame_history.txt
+/events_hq_seq.txt
+/events_hq_view_mode.txt
+/taskbar_settings_history/
+/taskbar_settings_history.txt
+taskbar_settings_frame*.txt
+/taskbar_settings_action.txt
+/taskbar_settings_state.txt
+/taskbar_settings_ui.txt
+/tp_taskbar_debug/
+/chat_hai_history/
+/chat_hai_history.txt
+/chat_hai_frame_history.txt
+/colab_hai/
+/clocks/daemon.pid
+/clocks/endturn.txt
+/clocks/fired_r1.txt
+/nb_tabs/
+/signup_hq/
+/inbox/
+/x/
+/debug/
+/livedesk-nav-claims/
+/nb_sprites/
+
+# hq window registry + launcher/relay transients
+livedesk_hq_windows_*.txt
+/livedesk_header_cell_ids.txt
+/livedesk_launched_pids.txt
+/livedesk_nav_claims.txt
+/livedesk_next_index.txt
+/livedesk_open.txt
+/livedesk_taskbar.pid
+/livedesk_popup.lock
+/livedesk_registry.lock
+/livedesk_theme_changed.txt
+/livedesk_agent_relay.txt
+/lc_reminder_relay.txt
+/livedesk_master_ledger.txt
+/open_hai_agent_relay.txt
+
+# nav ledger / tab transients
+/nav_master_current.txt
+/nav_master_ledger.txt
+/nav_tab_active.txt
+
+# network browser transients
+/network_browser_action.txt
+/network_browser_back.txt
+/network_browser_forward.txt
+/network_browser_frame_history.txt
+/network_browser_history.log.txt
+/network-browser-hq_ui.txt
+/network_browser_page.state.txt
+/network_browser_request.txt
+/network_browser_status.state.txt
+/network_browser_tabs.txt
+
+# db_hq transients
+/db_hq_action.txt
+/db_hq_current_tab.txt
+/db_hq_frame_changed.txt
+/db_hq_frame_history.txt
+/db_hq_history.txt
+/db_hq_seq.txt
+db_hq_*.state.txt
+
+# misc runtime
+/cursword_armed.txt
+/desktop_active_z.txt
+/desktop_camera_changed.txt
+/desktop_camera_mode.txt
+/desktop_camera_state.txt
+/desktop_one_map_active.txt
+/entity_menu_frame.txt
+/khtpm_strip_frame_history.txt
+/khtpm_zorder_mode.state.txt
+/palettes_frame.txt
+/rmmv_options.txt
+/stats_hq_common_events.state.txt
+/stats_hq_history.txt
+/strip_ascii_current_frame.txt
+/strip_ascii_frame_history.txt
+/strip_cells_changed.txt
+/strip_frame_changed.txt
+/strip_history.txt
+/strip_input_history.txt
+/strip_state.txt
+/strip_ui.txt
+strip_var_*.txt

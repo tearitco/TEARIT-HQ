@@ -1,1 +1,0 @@
-MOUSE_EVENT: 1 53 30 1

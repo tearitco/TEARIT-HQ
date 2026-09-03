@@ -1,4 +1,0 @@
-cam_pan_x=0
-cam_pan_y=0
-cam_tilt=0
-cam_yaw=0
