@@ -544,6 +544,53 @@ static pid_t launch_module(const char *src, const char *house_root, const char *
     return pid;
 }
 
+/* fork EVERY <module> in the tree (chtpm carries several, like an HTML
+ * page carries several <script src>): one view/shell + one logic
+ * module per tab. Each gets house_root + package_dir (+ its own id as
+ * argv[3]). All pids tracked so cleanup kills them all. */
+#define KH_MAX_MODULES 16
+static pid_t g_module_pids[KH_MAX_MODULES];
+static int g_n_module_pids = 0;
+
+static void kh_cleanup_modules(void) {
+    for (int i = 0; i < g_n_module_pids; i++)
+        if (g_module_pids[i] > 0) {
+            kill(g_module_pids[i], SIGTERM);
+            waitpid(g_module_pids[i], NULL, WNOHANG);
+        }
+    g_n_module_pids = 0;
+}
+
+static void kh_collect_and_launch_modules(Elem *e, const char *house_root, const char *package_dir) {
+    if (!e) return;
+    for (int i = 0; i < e->n_children; i++) {
+        Elem *c = e->children[i];
+        if (strcmp(c->tag, "module") == 0 && c->label[0] &&
+            g_n_module_pids < KH_MAX_MODULES) {
+            pid_t p = launch_module(c->label, house_root, package_dir,
+                                    c->id[0] ? c->id : NULL);
+            if (p > 0) g_module_pids[g_n_module_pids++] = p;
+        }
+        kh_collect_and_launch_modules(c, house_root, package_dir);
+    }
+}
+
+/* launch all <module>s of a window: write module_parent.pid once, then
+ * fork each. atexit cleanup registered on first use. */
+static void kh_launch_window_modules(Elem *window, const char *house_root, const char *package_dir) {
+    if (!window) return;
+    char ppp[PATH_BUF];
+    snprintf(ppp, sizeof(ppp), "%s/module_parent.pid", package_dir);
+    FILE *pf = fopen(ppp, "w");
+    if (pf) { fprintf(pf, "%d\n", (int)getpid()); fclose(pf); }
+    int before = g_n_module_pids;
+    kh_collect_and_launch_modules(window, house_root, package_dir);
+    if (g_n_module_pids > before) {
+        static int registered = 0;
+        if (!registered) { atexit(kh_cleanup_modules); registered = 1; }
+    }
+}
+
 static void dbhq_launch_module(const char *src, const char *extra_arg) {
     /* REAL, NEW 2026-08-25 (bookmarks manager port) - modules now also
      * get the package dir (chtpm's own dirname, i.e. the pal dir for a
@@ -849,7 +896,7 @@ typedef struct { char name[KH_VAR_NAME]; char value[KH_VAR_VALUE]; } KhVar;
 static KhVar g_kh_vars[KH_MAX_VARS];
 static int g_kh_nvars = 0;
 static char g_vars_path[PATH_BUF] = "";
-static struct timespec g_vars_mtime;
+/* vars-file change is content-hashed (g_vars_hash), not mtime-tracked */
 /* hash of the vars-file bytes at the last reparse - so a projector that
  * rewrites state/ui.txt every tick (rather than only on change, the
  * tpmos frame_changed.txt convention) does NOT force a reparse/redraw
@@ -893,7 +940,6 @@ static void kh_set_var(const char *name, const char *value) {
 /* key=value lines; '#' comments and blank lines skipped; key and
  * surrounding space trimmed, interior spaces of the value kept. */
 static void kh_load_vars(const char *path) {
-    g_kh_nvars = 0;
     if (!path || !path[0]) return;
     FILE *f = fopen(path, "r");
     if (!f) return;
@@ -916,8 +962,36 @@ static void kh_load_vars(const char *path) {
     fclose(f);
 }
 
-/* first `vars="..."` attribute in a raw template buffer -> resolved
- * absolute path in out. Returns 1 if found. */
+/* load one OR MANY space-separated state files (vars="a.txt b.txt c.txt")
+ * - one <module> per file, later files add/override. Clears the table
+ * once, then appends each. */
+static void kh_load_vars_multi(const char *paths) {
+    g_kh_nvars = 0;
+    if (!paths || !paths[0]) return;
+    char work[PATH_BUF * 4];
+    snprintf(work, sizeof(work), "%s", paths);
+    char *save = NULL;
+    for (char *tok = strtok_r(work, " \t", &save); tok; tok = strtok_r(NULL, " \t", &save))
+        kh_load_vars(tok);
+}
+
+/* combined FNV-1a hash of every space-separated file in `paths` - a
+ * content change in ANY of them changes the result. */
+static unsigned long kh_files_hash(const char *paths) {
+    if (!paths || !paths[0]) return 0;
+    char work[PATH_BUF * 4];
+    snprintf(work, sizeof(work), "%s", paths);
+    unsigned long h = 1469598103934665603UL;
+    char *save = NULL;
+    for (char *tok = strtok_r(work, " \t", &save); tok; tok = strtok_r(NULL, " \t", &save)) {
+        unsigned long fh = kh_file_hash(tok);
+        h ^= fh; h *= 1099511628211UL;
+    }
+    return h ? h : 1;
+}
+
+/* the `vars="..."` attribute, with EACH space-separated token resolved
+ * against g_package_dir (or house_root), space-joined into out. */
 static int kh_find_vars_attr(const char *buf, char *out, size_t outsz) {
     const char *p = strstr(buf, "vars=");
     while (p) {
@@ -928,19 +1002,26 @@ static int kh_find_vars_attr(const char *buf, char *out, size_t outsz) {
                 char rel[PATH_BUF]; size_t n = 0;
                 while (*q && *q != '"' && n + 1 < sizeof(rel)) rel[n++] = *q++;
                 rel[n] = '\0';
-                /* absolute wins; a relative vars= resolves against this
-                 * .chtpm's own dir (g_package_dir) so a per-instance
-                 * copy of a template - e.g. open-hai under a custom
-                 * --data-root - finds its own state file, falling back
-                 * to house_root only if the package dir is unset. */
-                if (rel[0] == '/')
-                    snprintf(out, outsz, "%s", rel);
-                else if (g_package_dir[0])
-                    snprintf(out, outsz, "%s/%s", g_package_dir, rel);
-                else
-                    snprintf(out, outsz, "%s/%s",
-                             g_house_root[0] ? g_house_root : ".", rel);
-                return 1;
+                /* rel may be one path OR several space-separated (one
+                 * <module> per file). Resolve EACH token: absolute
+                 * wins; relative resolves against g_package_dir (a
+                 * per-instance copy under a custom --data-root finds
+                 * its own state), else house_root. Space-join into out. */
+                const char *base = g_package_dir[0] ? g_package_dir
+                                 : (g_house_root[0] ? g_house_root : ".");
+                out[0] = '\0';
+                char work[PATH_BUF]; snprintf(work, sizeof(work), "%s", rel);
+                char *save = NULL; int first = 1;
+                for (char *tok = strtok_r(work, " \t", &save); tok;
+                     tok = strtok_r(NULL, " \t", &save)) {
+                    char one[PATH_BUF];
+                    if (tok[0] == '/') snprintf(one, sizeof(one), "%s", tok);
+                    else snprintf(one, sizeof(one), "%s/%s", base, tok);
+                    size_t cur = strlen(out);
+                    snprintf(out + cur, outsz - cur, "%s%s", first ? "" : " ", one);
+                    first = 0;
+                }
+                return out[0] ? 1 : 0;
             }
         }
         p = strstr(p + 5, "vars=");
@@ -1105,11 +1186,9 @@ static Elem *parse_chtpm(const char *path) {
         char vpath[PATH_BUF] = "";
         if (kh_find_vars_attr(buf, vpath, sizeof(vpath))) {
             snprintf(g_vars_path, sizeof(g_vars_path), "%s", vpath);
-            struct stat vst;
-            if (stat(vpath, &vst) == 0) g_vars_mtime = vst.st_mtim;
-            g_vars_hash = kh_file_hash(vpath);
+            g_vars_hash = kh_files_hash(g_vars_path);
         }
-        kh_load_vars(g_vars_path);
+        kh_load_vars_multi(g_vars_path);
 
         if (strstr(buf, "<repeat")) {
             size_t rcap = (size_t)sz * 8 + 65536;
@@ -1252,17 +1331,12 @@ static int reparse_chtpm_if_changed(void) {
          * kh_load_vars + kh_substitute_vars) + re-layout + re-draw. */
         int vars_changed = 0;
         if (g_vars_path[0]) {
-            struct stat vst;
-            if (stat(g_vars_path, &vst) == 0 &&
-                (vst.st_mtim.tv_sec != g_vars_mtime.tv_sec ||
-                 vst.st_mtim.tv_nsec != g_vars_mtime.tv_nsec)) {
-                g_vars_mtime = vst.st_mtim;
-                /* mtime moved - but only a real CONTENT change counts
-                 * (marker-driven-render spirit): a projector rewriting
-                 * identical bytes every tick must not churn the tree. */
-                unsigned long h = kh_file_hash(g_vars_path);
-                if (h != g_vars_hash) { g_vars_hash = h; vars_changed = 1; }
-            }
+            /* content-hash ALL the state files (one per <module>) - a
+             * reparse fires only on a real byte change in any of them,
+             * not on a projector's identical every-tick rewrite
+             * (marker-driven-render spirit). Cheap: small files. */
+            unsigned long h = kh_files_hash(g_vars_path);
+            if (h != g_vars_hash) { g_vars_hash = h; vars_changed = 1; }
         }
         if (st.st_mtim.tv_sec == g_chtpm_mtime.tv_sec && st.st_mtim.tv_nsec == g_chtpm_mtime.tv_nsec && !peer_changed && !vars_changed)
             return 0;
@@ -7305,7 +7379,8 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
     int inner_w = w;
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
-        if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0 || scroll_is_sprite_grid_row(c))
+        if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0 ||
+            strcmp(c->tag, "cli_io") == 0 || scroll_is_sprite_grid_row(c))
             total += scroll_row_span(c, w);
     }
     int max_scroll = total > visible_rows ? total - visible_rows : 0;
@@ -7341,7 +7416,8 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
         int is_grid = scroll_is_sprite_grid_row(c);
-        if (!is_grid && strcmp(c->tag, "item") != 0 && strcmp(c->tag, "text") != 0) continue;
+        if (!is_grid && strcmp(c->tag, "item") != 0 && strcmp(c->tag, "text") != 0 &&
+            strcmp(c->tag, "cli_io") != 0) continue;
         int span = scroll_row_span(c, inner_w);
         int visible = (row + span > *scroll && row < *scroll + visible_rows);
         if (is_grid) {
@@ -7349,7 +7425,7 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
         } else if (visible) {
             c->x = x; c->y = content_y + (row - *scroll) * ROW_H; c->w = inner_w; c->h = span * ROW_H;
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
-            if (strcmp(c->tag, "item") == 0) {
+            if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "cli_io") == 0) {
                 c->nav_index = ++g_n_nav;
                 g_nav[g_n_nav - 1] = c;
                 if (*out_lo == 0) *out_lo = c->nav_index;
@@ -18403,17 +18479,8 @@ int main(int argc, char **argv) {
          * "exit if my own parent is gone" safety net can poll that same
          * file itself (see khtpm_open_hai_manager.c's own real use of
          * it) - opt-in, not required, zero effect on a module that
-         * never reads it. */
-        Elem *module_elem = find_by_tag(g_window, "module");
-        if (module_elem && module_elem->label[0]) {
-            char parent_pid_path[PATH_BUF];
-            snprintf(parent_pid_path, sizeof(parent_pid_path), "%s/module_parent.pid", g_package_dir);
-            FILE *ppf = fopen(parent_pid_path, "w");
-            if (ppf) { fprintf(ppf, "%d\n", (int)getpid()); fclose(ppf); }
-            g_dbhq_module_pid = launch_module(module_elem->label, g_house_root, g_package_dir,
-                                               module_elem->id[0] ? module_elem->id : NULL);
-            atexit(dbhq_cleanup_module);
-        }
+         * never reads it. Fork EVERY <module> (shell + one per tab). */
+        kh_launch_window_modules(g_window, g_house_root, g_package_dir);
     }
 
     gc = XCreateGC(dpy, win, 0, NULL);
