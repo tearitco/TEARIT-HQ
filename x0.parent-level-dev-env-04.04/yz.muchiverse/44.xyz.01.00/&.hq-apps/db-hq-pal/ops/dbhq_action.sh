@@ -44,11 +44,23 @@ case "$VERB" in
         write_active "$PKG" "$FILE" "$TAG" "$TITLE" 0
         ;;
     sel)
-        N="${2:-0}"; PKG="${3:-}"
+        N="${2:-0}"; PKG="${3:-}"; HOUSE="${4:-}"
         [ -n "$PKG" ] || { echo "dbhq_action: sel needs pkg" >&2; exit 1; }
         FILE="$(read_field "$PKG" file)"
         TAG="$(read_field "$PKG" tag)"
         TITLE="$(read_field "$PKG" title)"
+        # Common Events tab: a row IS an event. Clicking it opens the
+        # real events-hq editor pointed at common_events/<name>, instead
+        # of just moving the read-only selection. (Replaces the old
+        # "Open the Common Events editor" item that launched the whole
+        # pre-port db-hq window.)
+        if [ "$TAG" = "CE" ] && [ -n "$HOUSE" ] && [ -d "$HOUSE" ]; then
+            CE_LIST="$HOUSE/#.desktop/db_hq_common_events.state.txt"
+            NAME="$(awk -v n="$N" 'NF{ if (i==n){print; exit} i++ }' "$CE_LIST" 2>/dev/null | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+            if [ -n "$NAME" ] && [ -d "$HOUSE/common_events/$NAME" ]; then
+                setsid nohup sh "$HOUSE/&.widgits/events-hq/button.sh" "$HOUSE/common_events/$NAME" "$HOUSE" >/dev/null 2>&1 < /dev/null &
+            fi
+        fi
         write_active "$PKG" "$FILE" "$TAG" "$TITLE" "$N"
         ;;
     open-ce)

@@ -13,8 +13,12 @@
      state/ui.txt.
 
      class="db-hq-pal" (NOT "db-hq") so the renderer's built-in
-     g_is_db_hq C path stays dormant. Common Events keeps its own
-     editor (its tab links to it). -->
+     g_is_db_hq C path stays dormant. On the Common Events tab a row
+     click opens the ported events-hq editor on common_events/<name>
+     (dbhq_action.sh 'sel' detects TAG=CE). DB record FIELD EDITING
+     (Actors/Items/...) is still read-only - it needs the old db-hq
+     persistence chain (dbhq_pdl_publish_manager -> RPG-Maker JSON),
+     tracked as a follow-up. -->
 <window label="DB (PAL)" class="db-hq-pal database-window" vars="state/ui.txt">
   <module src="&.widgits/_shared-lib/system/+x/prisc+x.+x pal/dbhq_projector.pal"/>
   <page name="main">
@@ -49,8 +53,7 @@
         <repeat count="${kv_count}" bind="kv">
           <text label="${kv.text}"/>
         </repeat>
-        <text label="Common Events has its own command editor." class="quiet" show="${is_ce}"/>
-        <item label="Open the Common Events editor" action="'${PKG}/ops/dbhq_action.sh' 'open-ce'" show="${is_ce}"/>
+        <text label="Click a Common Event in the list to open it in the events editor." class="quiet" show="${is_ce}"/>
       </scrolllist>
     </panel>
   </page>

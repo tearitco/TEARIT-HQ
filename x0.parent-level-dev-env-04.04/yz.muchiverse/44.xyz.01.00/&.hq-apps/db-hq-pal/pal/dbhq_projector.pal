@@ -84,8 +84,41 @@ not_ce:
 
 # ---- open the output file (truncate) and write the header keys ----
 sfopen x9, s25                                    # x9 = fd for state/ui.txt
-sfmt s0, "is_ce=%d", x11                          # 0 or 1, gates the CE note/button in the template
+sfmt s0, "is_ce=%d", x11                          # 0 or 1, gates the CE read-only note in the template
 swrite x9, s0
+
+# ---- Common Events tab: the state file is a plain name-per-line list
+#      (not TAG|key|value), so list it read-only and skip the two-pass
+#      record parser. The command editor itself is not ported. ----
+beq x11, x0, main_list                            # not CE -> the normal path below
+li x1, 0                                          # line cursor
+li x2, 0                                          # events listed
+ce_read:
+sread s0, x1, s24                                 # next line of db_hq_common_events.state.txt
+slen x8, s0
+beq x8, x0, ce_done                               # EOF
+strim s0
+slen x8, s0
+beq x8, x0, ce_skip                               # blank line
+sfmt s5, "row_%d_text=%s", x2, s0                 # one row = one common-event name
+swrite x9, s5
+addi x2, x2, 1
+ce_skip:
+addi x1, x1, 1
+j ce_read
+ce_done:
+sfmt s0, "rows_count=%d", x2
+swrite x9, s0
+sfmt s0, "tab_title=Common Events (%d)", x2
+swrite x9, s0
+sfmt s0, "kv_count=%d", x0                        # x0 is always 0 - no field list
+swrite x9, s0
+slit s0, "detail_title=(command editor not ported yet - list is read-only)"
+swrite x9, s0
+sfclose x9
+sleep 400000
+j proj_top
+main_list:
 
 # ================= PASS 1: the record list (sidebar) =================
 li x1, 0                                          # line cursor
