@@ -6815,8 +6815,18 @@ static int layout_sidebar_panel(Elem *page) {
         /* REAL FIX 2026-09-01 (live report: "smushed to the right side...
          * can have more space and be more visible dont be too far
          * right") - wider buttons, a real gap between them, and a real
-         * margin off the true right edge (not flush against it). */
-        int btn_w = 32, btn_h = CHROME_H - 4, gap = 8, right_margin = 10;
+         * margin off the true right edge (not flush against it).
+         * REAL FIX 2026-09-03 (direct live report: "the ! and x aren't
+         * inside the box created as button, they are to the right of")
+         * - 32px fit a bare "X" label alone, but draw_elem() always
+         * prepends the real "[ ]NN." nav badge before ANY label (see its
+         * own 2026-09-02 comment, "always draw [ ]N. when nav_index>0 -
+         * digit-jump and AI control need the visible brackets"), so the
+         * label spilled out past the new border's own right edge instead
+         * of sitting inside it. db-hq's own real close button
+         * (g_dbhq_close_w) is already scaled(56) for exactly this
+         * reason - matched here, not invented. */
+        int btn_w = 56, btn_h = CHROME_H - 4, gap = 8, right_margin = 10;
 
         memset(g_default_fullscreen_elem, 0, sizeof(*g_default_fullscreen_elem));
         snprintf(g_default_fullscreen_elem->tag, sizeof(g_default_fullscreen_elem->tag), "item");
@@ -6825,7 +6835,19 @@ static int layout_sidebar_panel(Elem *page) {
         snprintf(g_default_fullscreen_elem->onclick, sizeof(g_default_fullscreen_elem->onclick), "TOGGLE_FULLSCREEN");
         g_default_fullscreen_elem->x = g_win_w - btn_w * 2 - gap - right_margin; g_default_fullscreen_elem->y = 2;
         g_default_fullscreen_elem->w = btn_w; g_default_fullscreen_elem->h = btn_h;
-        css_compute_style(&g_sheet, g_default_fullscreen_elem->tag, NULL, NULL, 0, 0, &g_default_fullscreen_elem->style);
+        /* REAL, NEW 2026-09-03 (direct live report: "db-hq uses
+         * completely different render for x[] button" - a real, visible
+         * bordered box, not plain floating text, same real look
+         * g_dbhq_close_elem already has) - id="chrome-fullscreen"/
+         * "chrome-close" real CSS rules in entity_menu_default.css do
+         * this, NOT a direct struct assignment here - same real lesson
+         * as the dropdown-child bug earlier this session: this element
+         * gets serialized to a frame file and repainted from THAT via
+         * dbhq_paint_frame_line() (see redraw()'s own header comment),
+         * which recomputes style fresh from css_compute_style() against
+         * tag/id/classes only - any style field set directly on the
+         * live struct here never survives that round trip. */
+        css_compute_style(&g_sheet, g_default_fullscreen_elem->tag, g_default_fullscreen_elem->id, NULL, 0, 0, &g_default_fullscreen_elem->style);
         g_default_fullscreen_elem->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = g_default_fullscreen_elem;
 
         memset(g_default_close_elem, 0, sizeof(*g_default_close_elem));
@@ -6835,7 +6857,9 @@ static int layout_sidebar_panel(Elem *page) {
         snprintf(g_default_close_elem->onclick, sizeof(g_default_close_elem->onclick), "CLOSE");
         g_default_close_elem->x = g_win_w - btn_w - right_margin; g_default_close_elem->y = 2;
         g_default_close_elem->w = btn_w; g_default_close_elem->h = btn_h;
-        css_compute_style(&g_sheet, g_default_close_elem->tag, NULL, NULL, 0, 0, &g_default_close_elem->style);
+        /* REAL, NEW 2026-09-03 - same real CSS-not-struct fix as
+         * fullscreen right above, same real reason. */
+        css_compute_style(&g_sheet, g_default_close_elem->tag, g_default_close_elem->id, NULL, 0, 0, &g_default_close_elem->style);
         g_default_close_elem->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = g_default_close_elem;
     }
 
@@ -6865,7 +6889,26 @@ static void assign_nav_and_layout(void) {
      * never close the app. g_default_has_sidebar_panel latches true the
      * first time this real dual-region layout is used, and dispatch()
      * checks it before quitting - see that function's own tail. */
-    if (layout_sidebar_panel(page)) { g_default_has_sidebar_panel = 1; return; }
+    if (layout_sidebar_panel(page)) {
+        /* REAL FIX 2026-09-03 (direct live report: "do this for the
+         * other windows" - open-hai/chat-hai stayed at the shared
+         * hq_ui.pdl 100,160 despite main()'s own find_by_tag(sidebar)/
+         * (panel) check, co-lab-hai got the real 80,80 fine) - root
+         * cause: that main()-time check runs against the renderer's
+         * ONE-TIME initial parse, which can still be a bootstrap
+         * placeholder skeleton with no real <sidebar>/<panel> yet
+         * (open-hai/chat-hai's own manager writes its real content on
+         * its first tick, a real race the button.sh "lost its <module>
+         * tag - restoring from bootstrap" message makes worse, not
+         * better). This runs here instead - the first time this
+         * function EVER actually detects real sidebar+panel content,
+         * on ANY tick, live reparse included - no race possible, this
+         * IS the real detection. g_default_has_sidebar_panel latching
+         * true is the correct "first time" signal already used one
+         * line below for a different real fix, same real idea reused. */
+        if (!g_default_has_sidebar_panel) { g_win_x = 80; g_win_y = 80; }
+        g_default_has_sidebar_panel = 1; return;
+    }
     {
         int i, grid = 0;
         for (i = 0; i < page->n_children; i++) {
@@ -18107,6 +18150,28 @@ int main(int argc, char **argv) {
         static const char *hex[12] = { "#000000","#ffffff","#1a1a1a","#e5e5e5","#ef4444","#f97316","#eab308","#22c55e","#06b6d4","#3b82f6","#8b5cf6","#ec4899" };
         for (int i = 0; i < 12; i++) { g_palette_hex[i] = hex[i]; g_palette_name[i] = g_palette_name_buf[i]; }
         g_win_w = 420;
+    }
+
+    /* REAL, NEW 2026-09-03 (direct live report: "look at how db hq has
+     * its x button, can u just do that? rpg maker tiles do same, they
+     * never go off screen") - same real convention as db-hq's own
+     * g_win_x=100/events-hq's own g_win_x=120 right above, applied here
+     * for the last remaining default-mode case: a real sidebar+panel
+     * window (co-lab-hai/open-hai/chat-hai - the wide, ~900px-class
+     * windows, not a small transient popup, which legitimately wants to
+     * appear wherever it was invoked from). These never got their own
+     * explicit anchor - they fell through to the generic popup default,
+     * which is really the SHARED, drag-tracked hq_ui.pdl window_x/
+     * window_y (or 300,300 if never saved) - a value ANY other popup
+     * may have left far from a safe corner, then a genuinely wide
+     * window inherits it verbatim. db-hq/events-hq never had this
+     * problem for the simple reason they never read that shared value
+     * at all - they stomp it with their own fixed, safe corner anchor
+     * right after the one shared load call (dbhq_load_font_scale()) at
+     * line ~17761, same real pattern applied here. */
+    if (!g_is_db_hq && !g_is_events_hq && !g_is_swatch_picker &&
+        find_by_tag(g_window, "sidebar") && find_by_tag(g_window, "panel")) {
+        g_win_x = 80; g_win_y = 80; /* real sidebar+panel default, distinct from db-hq's 100,100/events-hq's 120,120/the small-popup modes' 300,300 */
     }
 
     /* REAL FIX (found live, first standalone test): g_win_h is DATA-

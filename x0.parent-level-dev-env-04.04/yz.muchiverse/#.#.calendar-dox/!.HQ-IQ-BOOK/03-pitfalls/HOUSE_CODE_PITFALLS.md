@@ -261,5 +261,118 @@ real, dated todo list this finding produced.
 
 ---
 
+## 12. Default-mode chrome/layout: a style set directly on the live struct is invisible - it MUST be a real CSS rule, and TWO draw paths exist, not one
+
+**Real, live example:** co-lab-hai's "Menu" dropdown (`class="dropdown-
+child"`) and the default-mode chrome "X"/"!" pair
+(`g_default_close_elem`/`g_default_fullscreen_elem`) both hit variants
+of this exact same mistake, independently, in the same session -
+confirmed to be a real, repeatable pitfall class, not a one-off typo.
+
+**Symptom A (the dropdown):** a real, correctly-computed `<item
+class="dropdown-child">` was given a real background/border color
+programmatically and STILL drew as invisible/transparent text over
+whatever content already sat underneath it.
+
+**Symptom B (the chrome X/!):** db-hq's own close button renders as a
+real, visible bordered box (`[ ] 46. X`); the default-mode "X"/"!" pair
+render as plain floating text with no border at all, even after being
+given the identical `style.has_border_color = 1` struct fields db-hq's
+own `g_dbhq_close_elem` sets directly.
+
+**Real cause (one root cause, two symptoms):** `khtpm_core_render.c`'s
+default/popup redraw path (`redraw()`, non-db-hq/events-hq branch)
+does NOT call the shared `render_tree()`/`draw_elem()` pipeline
+directly against the live Elem tree. It serializes the tree to a real
+text frame file (`dbhq_serialize_frame_subtree()` /
+`dbhq_serialize_frame_elem()`), then repaints ENTIRELY from that file
+(`dbhq_paint_frame_line()`), which builds a FRESH temporary Elem per
+line and calls `css_compute_style()` on it from scratch using only
+tag/id/classes - `dbhq_serialize_frame_elem()` only ever writes tag/
+id/classes/label/sprite/onclick/nav_index/active/x/y/w/h/target_id/
+input_buffer to that file. **Any style field set directly on the live
+struct (a raw `elem->style.has_bg_color = 1` etc.) is real in memory
+for exactly one frame, then silently discarded** - it was never one of
+the fields that made it into the file, so the repaint never sees it.
+Only a real CSS rule (matched by tag/id/class, computed fresh from the
+SAME real stylesheet both the live tree and the temp Elem share) can
+survive this round trip. db-hq's own `g_dbhq_close_elem` gets away with
+a direct struct assignment because db-hq mode uses the OTHER real draw
+path entirely (`dbhq_redraw_content()` calls `draw_elem()` directly
+against the live struct, no frame-file round trip) - copying db-hq's
+own code shape into default mode looks identical and compiles clean,
+but silently does nothing, because default mode is on the other path.
+
+**Real fix / procedure:**
+1. Before setting ANY `elem->style.*` field directly on a struct this
+   file owns, check which real draw path the current mode actually
+   uses: `render_tree()`/`draw_elem()` directly against the live tree
+   (db-hq/events-hq), or serialize-to-file + `dbhq_paint_frame_line()`
+   (default/popup mode, `co-lab-hai`/`chat-hai`/`open-hai`/entity-menu
+   popups alike). Grep the mode's own redraw function for
+   `dbhq_serialize_frame_subtree` before assuming a struct assignment
+   will show up.
+2. If the mode uses the frame-file path, the fix is a real CSS rule in
+   `entity_menu_default.css` (id selector for one fixed element like
+   `#chrome-close`, class selector like `.dropdown-child` for a
+   reusable pattern) - AND `css_compute_style()` must actually be
+   called with the element's real `id` (not `NULL`) for an id selector
+   to ever match; passing `NULL` for id is itself a second, silent way
+   to make an id-selector CSS rule never match anything.
+3. Any NEW generic default-mode capability that needs its own real
+   z-order (drawn on top of/after something else) must be added to
+   BOTH real places that already implement `<title>`'s own defer-to-
+   last pass - `render_tree()` in `khtpm_draw_core.c` AND
+   `dbhq_serialize_frame_subtree()` in `khtpm_core_render.c` - fixing
+   only `render_tree()` has zero effect for every default-mode
+   sidebar+panel app, which is most of them.
+
+**See also:** `07-install-and-ship` (layout/chrome section, if split
+out later) for the window-POSITION half of this same debugging session
+(db-hq/events-hq anchor to their own fixed, safe corner position -
+`100,100`/`120,120` - instead of reading the shared, drag-tracked
+`hq_ui.pdl` `window_x`/`window_y` every OTHER default-mode window used
+to inherit verbatim; a wide sidebar+panel window inheriting whatever
+position a totally different, narrower popup last left itself in is a
+real, separate way chrome can end up looking "off" that has nothing to
+do with CSS at all).
+
+**Real follow-up #1 (same debugging thread, found right after #12's own
+fix landed):** a real border rendered, but the "!"/"X" LABEL still sat
+outside the box, to its right, instead of inside it. Real cause: the
+default-mode chrome buttons were sized `btn_w = 32` - enough for a bare
+"X" glyph alone, but `draw_elem()` always prepends the real
+`[ ]NN.` nav badge before ANY label (its own 2026-09-02 comment: "always
+draw `[ ]N.` when nav_index>0 - digit-jump and AI control need the
+visible brackets"), so badge+label together overflowed the narrower
+box. db-hq's own real close button (`g_dbhq_close_w`) is already
+`scaled(56)` for exactly this reason. **Lesson:** any bordered/boxed
+nav-numbered element must be sized for `[ ]NN.` + its real label
+together, never for the bare label alone - measure against the widest
+real nav_index this house's own windows reach, not just the label text.
+
+**Real follow-up #2 (same thread):** the fixed safe-corner anchor
+(`g_win_x=80,g_win_y=80`) worked immediately for co-lab-hai but had
+ZERO effect on open-hai/chat-hai - they stayed at the shared
+`hq_ui.pdl` position. Real cause: the first attempt applied the anchor
+once in `main()`, gated on `find_by_tag(g_window, "sidebar")` finding
+real content in the renderer's ONE-TIME initial `.chtpm` parse - but
+open-hai/chat-hai's own manager writes its real `<sidebar>`/`<panel>`
+content on its first live tick, not before; a fresh launch (especially
+right after a bootstrap-restore, which logs "lost its `<module>` tag -
+restoring from bootstrap") can have the renderer's initial parse race
+ahead of the manager's first real write, seeing an empty/placeholder
+tree with no sidebar or panel yet - the `find_by_tag` check silently
+found nothing, so the override never fired, and nothing after ever
+re-checked. **Lesson:** a check that only runs once, against a
+renderer's INITIAL parse, is not reliable for any mode whose real
+content is written by a separate manager process after launch - anchor
+this kind of one-time default inside the function that already
+re-detects real content on every tick / every live reparse
+(`layout_sidebar_panel()`'s own `g_default_has_sidebar_panel` latch,
+here), never inside the one-shot `main()` startup sequence.
+
+---
+
 *Append new entries here as they're found — this file exists so the
 next session doesn't re-discover the same mistake from scratch.*

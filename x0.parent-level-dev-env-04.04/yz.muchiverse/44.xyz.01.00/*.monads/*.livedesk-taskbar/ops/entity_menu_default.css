@@ -8,6 +8,17 @@
 window { background: #1c1c1c; }
 item { color: #cccccc; }
 
+/* REAL, NEW 2026-09-03 (direct live report: "db-hq uses completely
+ * different render for x[] button" - a real, visible bordered box, not
+ * plain floating text) - the default-mode chrome "X"/"!" pair
+ * (g_default_close_elem/g_default_fullscreen_elem) gets the SAME real
+ * look db-hq's own g_dbhq_close_elem already has, so it reads as an
+ * actual button instead of text that can visually vanish at a screen
+ * edge. Real id selectors, not a class - these are the one fixed
+ * "chrome-close"/"chrome-fullscreen" pair every default-mode window
+ * gets, not a reusable pattern for anything else yet. */
+#chrome-close, #chrome-fullscreen { border: 1px solid #888888; }
+
 /* REAL, NEW 2026-08-31 (open-hai's own real sidebar+panel conversion,
  * xperiments/khtpm-generic-dispatch-design.md) - generic, tag-based
  * visual separation for the default/popup mode's new sidebar+panel
