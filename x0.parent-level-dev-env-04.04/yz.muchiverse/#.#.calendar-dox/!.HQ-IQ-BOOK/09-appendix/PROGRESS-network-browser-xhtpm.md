@@ -56,6 +56,39 @@ status + content all lay out, nav order 1..26, class did not trip
 heterogeneous rows with no `|`-corruption (projector `uisan()` strips
 CR/LF and maps `|`→`/` in every label).
 
+## Follow-up: `js: script error TypeError: ...` rows in page content
+
+**What it is (intentional, pre-port):** the built-in JS interpreter
+`ops/nb_js_eval.c` (`+x/nb_js_eval.+x`) evaluates a fetched page's
+`<script>` blocks. Real sites call DOM/browser APIs it does not
+implement (`document.getElementById(...).addEventListener`,
+`window.onload = ...`, `el.onclick = ...`), so it emits TypeErrors.
+`network_browser_manager.c` deliberately turns each one into a content
+row: `do_fetch()` / the JS-effects merge path does
+`fprintf(out, "TEXT|js: %s\n", payload)` (~line 791-796, the
+`strncmp(line, "LOG|", 4) == 0 || strncmp(line, "TEXT|", 5) == 0`
+branch, prefix `js:`). `write_ui_projection()` (and the old
+`write_chtpm_projection()`) just pass every `TEXT|` row through — the
+noise is upstream of the projector, not caused by it.
+
+**How to fix later (manager-side, pick one):**
+1. **Drop them by default.** In the branch that writes `TEXT|js: ...`,
+   skip the write unless a debug flag is set
+   (`#.desktop/network_browser_jsdebug.txt` exists, or an env var).
+   One `if` around the `fprintf`. Cleanest; errors still reachable when
+   debugging the JS engine.
+2. **Collapse to one row.** Count `js:` errors during the fetch, emit a
+   single `TEXT|js: N script error(s) - open JS log` row plus write the
+   full list to `#.desktop/nb_js_errors.txt`; a toolbar item opens it.
+3. **Separate kind.** Give them their own state kind (`JSERR|<msg>`)
+   instead of `TEXT|js: `, then in `write_ui_projection()` emit them as
+   `c_<n>_is_jserr` and gate the whole group in `events-hq.xhtpm`-style
+   `show="${js_errors_on}"` (default off). Most work, best UX.
+
+**Recommendation:** option 1 for now (tiny, reversible), option 3 when
+the JS engine gets real attention. Do it in the manager — the projector
+and template stay generic.
+
 ## Left / known gaps (first-cut, documented)
 - **sprite-grid-row wrap**: consecutive IMG/VIDEO no longer group into
   one `<row class="sprite-grid-row">` — each media is its own row. The
