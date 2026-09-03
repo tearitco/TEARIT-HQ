@@ -1,5 +1,14 @@
 # 08 — Roadmap
 
+- `FORWARD-ROADMAP-2026-09-02.md` — **the current real plan going
+  forward**: hardening a live, human-supervised Sonnet/Grok chat
+  channel, then Grok's real task sequence (media-studio + network-app
+  khtpm ports, settings/polish, db-hq RPG-Maker parity, image-editor+AI
+  roadmap). Start here for "what's next."
+- `design-docs/GROK-HANDOFF-2026-09-02.md` — **the current Grok
+  onboarding doc** — replaces the old, now-archived render/input
+  handoff (stale filenames, predates `CENTROID_GOLD_STD.md` and
+  everything since). Read this before tasking Grok with anything.
 - `OPEN-ITEMS.md` — the current, real open-item summary (start here).
 - `au-31/` — 2026-08-31's live in-progress work directory (`00-todo.md`
   real todo list, `01-manager-design.md`/`02-network-browser-...md`

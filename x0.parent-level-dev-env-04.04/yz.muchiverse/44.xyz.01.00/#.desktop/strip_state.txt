@@ -5,6 +5,9 @@ TAB | 1019019 | 19 | m1_ninjadragon | /home/no/Desktop/github/work/NNEST-12.00/x
 TAB | 1019021 | 20 | asa | /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/asa
 TAB | 1019023 | 21 | ava | /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/ava
 TAB | 1019025 | 22 | book-stack | /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/book-stack
+HQITEM | Open h-ai | livedesk:open-open-hai | 0
+HQITEM | Chat-h-ai | livedesk:open-chat-hai | 0
+HQITEM | Cancel |  | 0
 KEY | theme_bg | #1a1a1a
 KEY | theme_fg | #e5e5e5
 KEY | digit_buf | 
@@ -12,9 +15,9 @@ KEY | tab_focus_idx | 0
 KEY | nav_armed | 0
 KEY | n_tabs | 7
 KEY | n_shortcuts | 0
-KEY | hq_open | 0
-KEY | hq_n_menu | 0
-KEY | hq_focus | -1
+KEY | hq_open | 14
+KEY | hq_n_menu | 3
+KEY | hq_focus | 0
 KEY | cliio_active | 0
 KEY | cliio_typing | 0
 KEY | cliio_op | 

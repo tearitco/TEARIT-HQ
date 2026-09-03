@@ -1,0 +1,1 @@
+<button label="Open h-ai" onClick="HQITEM:0"/><button label="Chat-h-ai" onClick="HQITEM:1"/><button label="Cancel" onClick="HQITEM:2"/>
