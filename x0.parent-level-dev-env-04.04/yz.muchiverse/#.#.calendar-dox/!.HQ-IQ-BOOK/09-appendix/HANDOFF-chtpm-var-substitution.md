@@ -241,3 +241,123 @@ fields all project correctly (`pal/dbhq_projector.pal`). Still read-only
 — field editing and the Common Events command editor are the next
 build (see `DB-EVENTS-HQ-PORT-DESIGN.md` §3–§5). Old `db-hq`
 (`class="db-hq"`, `open_db_hq.sh`) untouched for A/B.
+
+---
+
+## Rev 5 (2026-09-03) — STOP hacking scope. Port the reference parser's `is_navigable()`.
+
+The user is right: the current `kh_apply_scope_confine()` (commits
+`59acda6d`, `dde3291e`) **renumbers `g_nav[]` and zeroes `nav_index`**
+on out-of-scope rows. That is NOT how chtpm interact mode works. In the
+real thing the other rows keep their numbers and brackets on screen —
+they're just inert; keys pass through them until `Esc`, and the
+activated submenu gets its OWN `1..N` numbering nested under `[^]`.
+
+### THE REFERENCE — copy this, don't reinvent
+
+**File:** `44.xyz.01.00/101.ledger-player-npc-simple+3/system/chtpm_parser.c`
+(3032 lines; the `chtpm_parser_pal.c` siblings in ~20 packages are the
+same logic — `44.xyz.01.00/&.widgits/_shared-lib/system/chtpm_parser_pal.c`
+is the shared copy). The piececraft loader that produced the frame dump
+in the handoff request is `pieces/apps/playrm/loader.chtpm` driven by
+this parser.
+
+Everything hangs off **two ints and one tree pointer — the element
+array is never mutated:**
+
+| symbol | line | meaning |
+|---|---|---|
+| `int focus_index` | 91 | index into `elements[]`, the `[>]` cursor |
+| `int active_index = -1` | 91 | index of the activated scope root; `-1` = no scope |
+| `elements[i].parent_index` | 84/1858 | tree parent, set at parse; drives `is_descendant()` |
+
+**`is_navigable(int idx)` — line 1750. The whole gate. Pure function,
+mutates nothing:**
+
+```
+not is_interactive || not visible            -> false
+if active_index != -1:
+    if elements[active_index] is an ACTIVATE menu w/ children:
+        idx == active_index                  -> true   (root stays navigable/numbered)
+        is_descendant(idx, active_index)      -> true   (unless a folded ancestor between)
+        else                                 -> false
+    else (cli_io etc.): idx == active_index   -> ...    (only the field itself)
+else (global mode): walk ancestors ->
+    any ancestor is_folded                    -> false
+    any ancestor onClick == "ACTIVATE"        -> false  (submenu hidden until activated)
+    else                                     -> true
+```
+
+`is_descendant(child, parent)` — line 1708 — just walks `parent_index` up.
+
+**Arrow nav — lines 2610-2617 (global) and 2760-2764 (in scope):**
+```
+do { focus_index += dir; wrap 0..element_count-1; }
+while (focus_index != prev && !is_navigable(focus_index));
+```
+Skip-scan. No array rebuild.
+
+**Digit jump — `do_jump(n)` line 2456 / `count_navigable()` 2457:**
+count elements where `is_navigable(i)` is true, land on the n-th. The
+visible numbers are *derived every render* from `is_navigable`, so they
+are always contiguous **within the current scope** without renumbering
+anything.
+
+**Render — `render_element()` line 2195, two counters threaded down:**
+- out-of-scope interactive row: `(*p_global_counter)++` — shows its
+  normal number, prefix `[ ]`, **still drawn, just inert**.
+- in-scope row (`is_descendant(idx, active_index)`):
+  `(*p_scoped_counter)++` — its own `1..N`.
+- entering the active root's children resets `*p_scoped_counter = 0`
+  (line 2324) so the submenu starts at 1; restored after (2332).
+- prefix (2258): `[^]` if `idx == active_index`, else `[>]` if focused
+  & navigable, else `[ ]`.
+- descendants get `"    "` × depth indent (2217-2229).
+- nav prompt (2384): `active_index == -1` -> `"Nav > %s_"`,
+  else -> `"Active [^]: %s (ESC to exit)"`.
+
+**ENTER — line ~2703:** focused el `onClick=="ACTIVATE"` w/ children ->
+`active_index = focus_index`; then move `focus_index` to its first
+navigable child (2711). `onClick=="INTERACT"` -> `active_index =
+focus_index` (2730).
+
+**ESC / RELEASE / key `9` — lines 1668-1679 and 2751-2753:** pop ONE
+level: `active_index = elements[active_index].parent_index;
+focus_index = old_active;` (so nested submenus pop correctly). If
+nothing to pop: `active_index = -1; focus_index = 0;
+initialize_focus()`.
+
+**`initialize_focus()` — line 2458:** if `focus_index` isn't navigable,
+scan forward to the first that is.
+
+### How to port into `khtpm_core_render.c` (replaces the hack)
+
+1. **Delete the renumbering** in `kh_apply_scope_confine()`. Keep
+   `g_nav[]` built exactly as today — every navigable `Elem*`, full
+   1-based `nav_index`, nothing zeroed.
+2. Add `static int kh_elem_in_scope(Elem *e)` = the reference's
+   `active_index` branch: `e == g_default_active_scope_root ||
+   <e is descendant of g_default_active_scope_root> ||
+   strcmp(e->id, g_default_active_scope_id)==0 ||
+   strncmp(e->id,"chrome-",7)==0`. (Descendant walk = `for (p=e->parent;
+   p; p=p->parent) if (p==root) return 1;`.)
+3. Arrow handlers (generic branch, where `g_focus_nav++/--`): when
+   `g_default_scope_confine`, wrap the step in
+   `do { step; } while (!kh_elem_in_scope(g_nav[g_focus_nav-1]));`
+   — the reference's skip-scan, on `g_nav[]` instead of `elements[]`.
+4. Digit-jump + `activate_focused()` + mouse-click routing: if
+   `g_default_scope_confine && !kh_elem_in_scope(target)` -> ignore.
+5. `khtpm_draw_core.c`: draw `[ ]` (inert, keep the number) on
+   `!kh_elem_in_scope` rows; `[>]`/`[^]` only in scope. Optionally add
+   the scoped `1..N` counter for the submenu rows (reference
+   `p_scoped_counter`) — nice-to-have, not required for correctness.
+6. Nav-prompt / status line: show `Active [^]: (ESC to exit)` while
+   `g_default_scope_confine`, else the normal prompt.
+7. ESC: pop one level (`g_default_active_scope_root` -> its parent
+   container if nested, else clear) rather than always clearing.
+
+Net: `g_nav[]` and `nav_index` become **immutable render data**; the
+scope is enforced entirely by a predicate consulted at
+focus-move / jump / click / draw time — exactly the reference model.
+Then revert `59acda6d` + `dde3291e`'s `g_nav[]` mutation (the
+`chrome-*` keep survives as a `kh_elem_in_scope` clause).
