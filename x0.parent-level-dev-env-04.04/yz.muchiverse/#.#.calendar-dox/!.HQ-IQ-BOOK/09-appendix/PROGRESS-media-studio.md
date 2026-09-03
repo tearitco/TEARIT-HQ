@@ -1,7 +1,8 @@
 # PROGRESS — media-studio khtpm toys
 
 **Branch:** `chtpm-var-substitution`  
-**Spec:** `08-roadmap/design-docs/MEDIA-STUDIO-XHTPM-PORT.md`
+**Spec:** `08-roadmap/design-docs/MEDIA-STUDIO-XHTPM-PORT.md`  
+**Next agent:** start at **§9** of that file (gold-std reading list + remaining A–E).
 
 ## 2026-09-03 — kickoff
 
