@@ -506,6 +506,19 @@ static int load_tabs(KtbState *s) {
             t.path[strcspn(t.path, "\r\n")] = 0;
         }
         if (!t.entity[0] || !ktb_pid_alive(t.pid)) continue;
+        {
+            int dup = 0, j;
+            for (j = 0; j < s->n_tabs; j++) {
+                if (strcmp(s->tabs[j].entity, t.entity) == 0) { dup = 1; break; }
+            }
+            if (dup) {
+                /* One pal entity = one bottom-bar cell. Extra live PIDs
+                 * (zorder respawn leftovers) stay on screen if we only
+                 * hide the tab; terminate the extra so Quit closes all. */
+                if (t.pid > 1) kill((pid_t)t.pid, SIGTERM);
+                continue;
+            }
+        }
         if (w) fputs(line, w);
         s->tabs[s->n_tabs++] = t;
     }
@@ -633,8 +646,71 @@ void ktb_reload(KtbState *s) {
     load_theme(s);
     load_strip_user_cmd(s);
     ktb_load_zorder_mode(s);
+    ktb_merge_hq_windows(s);
     if (s->tab_focus_idx >= s->n_tabs) s->tab_focus_idx = s->n_tabs > 0 ? s->n_tabs - 1 : 0;
     if (s->strip_focus_cell >= KTB_STRIP_N_CELLS) s->strip_focus_cell = KTB_STRIP_N_CELLS - 1;
+}
+
+/* REAL, NEW 2026-09-03 (HQ-WINDOW-TASKBAR-ENTRIES-AND-MINIMIZE-2026-09-
+ * 03.md §2.1) - merge every live HQ window's own per-PID registry file
+ * (#.desktop/livedesk_hq_windows_<pid>.txt, written by that window's own
+ * renderer, one line:
+ *   win=0x1000001|pid=2619617|title=chat-hai|x=140|y=80|w=700|h=520|minimized=0|focused=0
+ * into s->hq_wins[] so the strip can publish one clickable bottom cell per
+ * live window. Real safety net for a crashed renderer leaving a stale
+ * file: each PID is liveness-checked with the SAME ktb_pid_alive() (itself
+ * already hardened against /proc zombies per its own header comment) the
+ * design doc's §2.1 explicitly requires - a dead PID's entry is dropped. */
+void ktb_merge_hq_windows(KtbState *s) {
+    s->n_hq_wins = 0;
+#ifndef _WIN32
+    char deskdir[KTB_PATH_BUF];
+    snprintf(deskdir, sizeof(deskdir), "%s/#.desktop",
+             (s->house_root && s->house_root[0]) ? s->house_root : ".");
+    DIR *d = opendir(deskdir);
+    if (!d) return;
+    struct dirent *e;
+    while ((e = readdir(d)) && s->n_hq_wins < KTB_MAX_HQ_WINS) {
+        if (strncmp(e->d_name, "livedesk_hq_windows_", 20) != 0) continue;
+        char path[KTB_PATH_BUF];
+        snprintf(path, sizeof(path), "%s/%s", deskdir, e->d_name);
+        FILE *f = ktb_fopen(path, "r");
+        if (!f) continue;
+        char line[KTB_PATH_BUF];
+        if (fgets(line, sizeof(line), f)) {
+            char *nl = strchr(line, '\n');
+            if (nl) *nl = '\0';
+            HqWinEntry ent;
+            memset(&ent, 0, sizeof(ent));
+            char *p;
+            if ((p = strstr(line, "win=0x"))) ent.win = strtoul(p + 6, NULL, 16);
+            else if ((p = strstr(line, "win="))) ent.win = strtoul(p + 4, NULL, 0);
+            if ((p = strstr(line, "pid="))) ent.pid = atoi(p + 4);
+            if ((p = strstr(line, "title="))) {
+                char *t = p + 6;
+                char *end = strchr(t, '|');
+                size_t len = end ? (size_t)(end - t) : strlen(t);
+                if (len >= sizeof(ent.title)) len = sizeof(ent.title) - 1;
+                memcpy(ent.title, t, len);
+                ent.title[len] = 0;
+            }
+            if ((p = strstr(line, "x="))) ent.x = atoi(p + 2);
+            if ((p = strstr(line, "y="))) ent.y = atoi(p + 2);
+            if ((p = strstr(line, "w="))) ent.w = atoi(p + 2);
+            if ((p = strstr(line, "h="))) ent.h = atoi(p + 2);
+            if ((p = strstr(line, "minimized=1"))) ent.minimized = 1;
+            if ((p = strstr(line, "focused=1"))) ent.focused = 1;
+            fclose(f);
+            if (!ent.win || !ktb_pid_alive(ent.pid)) continue;
+            s->hq_wins[s->n_hq_wins++] = ent;
+        } else {
+            fclose(f);
+        }
+    }
+    closedir(d);
+#else
+    (void)s;
+#endif
 }
 
 /* REAL, NEW 2026-09-01 - global always-on-top ("@") mode mirror. The
@@ -1905,10 +1981,16 @@ static void livedesk_ensure_cursword(const char *house_root) {
     int pids[KTB_LIVEDESK_MAX_OPEN], idx[KTB_LIVEDESK_MAX_OPEN];
     char ents[KTB_LIVEDESK_MAX_OPEN][128], paths[KTB_LIVEDESK_MAX_OPEN][KTB_PATH_BUF];
     int n = livedesk_read_open(house_root, pids, ents, paths, idx, KTB_LIVEDESK_MAX_OPEN);
-    for (int i = 0; i < n; i++) {
-        char base[64];
-        livedesk_base_name(paths[i], base, sizeof(base));
-        if (strcmp(base, "cursword") == 0 && ktb_pid_alive(pids[i])) return; /* already alive */
+    {
+        int keep = 0;
+        for (int i = 0; i < n; i++) {
+            char base[64];
+            livedesk_base_name(paths[i], base, sizeof(base));
+            if (strcmp(base, "cursword") != 0 || !ktb_pid_alive(pids[i])) continue;
+            if (!keep) keep = pids[i];
+            else if (pids[i] > 1) kill((pid_t)pids[i], SIGTERM);
+        }
+        if (keep) return; /* already alive */
     }
 
     {
