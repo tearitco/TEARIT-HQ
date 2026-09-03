@@ -130,28 +130,28 @@ strim s11                                                   # trim f5
 scpy s20, s1                                                # remember the label for detail_title
 sbeq s1, s19, p2_overall                                    # label == "Overall Stats" -> the aggregate field names
 # ---- ordinary session row field names ----
-sfmt s0, "kv_0_text=Total Turns: %s", s3                    # f1 = total turns
+sfmt s0, "kv_0_text=   Total Turns: %s", s3                    # f1 = total turns
 swrite x9, s0                                               # write it
-sfmt s0, "kv_1_text=User Messages: %s", s5                  # f2 = user messages
+sfmt s0, "kv_1_text=   User Messages: %s", s5                  # f2 = user messages
 swrite x9, s0                                               # write it
-sfmt s0, "kv_2_text=AI Responses: %s", s7                   # f3 = AI responses
+sfmt s0, "kv_2_text=   AI Responses: %s", s7                   # f3 = AI responses
 swrite x9, s0                                               # write it
-sfmt s0, "kv_3_text=Tool Calls: %s", s9                     # f4 = tool calls detected
+sfmt s0, "kv_3_text=   Tool Calls: %s", s9                     # f4 = tool calls detected
 swrite x9, s0                                               # write it
-sfmt s0, "kv_4_text=Tool Call %%: %s", s11                  # f5 = tool-call percentage ("%%" -> literal "%")
+sfmt s0, "kv_4_text=   Tool Call %%: %s", s11                  # f5 = tool-call percentage ("%%" -> literal "%")
 swrite x9, s0                                               # write it
 li x3, 5                                                    # 5 field lines written
 j p2_done                                                   # done with the panel
 p2_overall:                                                 # ---- row 0: aggregate stats field names ----
-sfmt s0, "kv_0_text=Delegation rate: %s", s3                # f1 = delegation rate
+sfmt s0, "kv_0_text=   Delegation rate: %s", s3                # f1 = delegation rate
 swrite x9, s0                                               # write it
-sfmt s0, "kv_1_text=Real model calls delegated: %s", s5     # f2 = model calls delegated
+sfmt s0, "kv_1_text=   Real model calls delegated: %s", s5     # f2 = model calls delegated
 swrite x9, s0                                               # write it
-sfmt s0, "kv_2_text=PASS: %s", s7                           # f3 = pass count
+sfmt s0, "kv_2_text=   PASS: %s", s7                           # f3 = pass count
 swrite x9, s0                                               # write it
-sfmt s0, "kv_3_text=Estimated tokens saved: %s", s9         # f4 = tokens saved
+sfmt s0, "kv_3_text=   Estimated tokens saved: %s", s9         # f4 = tokens saved
 swrite x9, s0                                               # write it
-sfmt s0, "kv_4_text=Estimated $ saved: %s", s11             # f5 = dollars saved
+sfmt s0, "kv_4_text=   Estimated $ saved: %s", s11             # f5 = dollars saved
 swrite x9, s0                                               # write it
 li x3, 5                                                    # 5 field lines written
 j p2_done                                                   # done with the panel

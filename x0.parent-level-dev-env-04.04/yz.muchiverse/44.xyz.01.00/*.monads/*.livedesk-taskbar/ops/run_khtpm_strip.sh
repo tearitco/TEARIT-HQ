@@ -101,11 +101,17 @@ kill_khtpm() {
 }
 
 case "$ACTION" in
-    new|test|run)
-        # Always build fresh first — a stale binary was a real source of
-        # confusion this session (old process still running old code
-        # while a rebuilt binary sat unused on disk).
-        sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching"; exit 1; }
+    boot|new|test|run)
+        # `boot` = launch-only, NO rebuild - for $.crypts/autostart.pdl so
+        # the desktop start button is snappy (a full build_khtpm_strip.sh
+        # is ~20s and blocked every start-temp click). `new`/`run`/`test`
+        # still build fresh first.
+        if [ "$ACTION" != "boot" ]; then
+            sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching"; exit 1; }
+        elif [ ! -x "$SCRIPT_DIR/+x/khtpm_core_render.+x" ] || [ ! -x "$SCRIPT_DIR/+x/khtpm_taskbar_manager_main.+x" ]; then
+            # first-ever boot with no binaries: fall back to a build
+            sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching"; exit 1; }
+        fi
         kill_khtpm
         rm -f "$KHTPM_LOG"
         # cd into HOUSE first — the parser's own children (the manager)

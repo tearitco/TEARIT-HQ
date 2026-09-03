@@ -27,4 +27,4 @@ MOUNT        | mountpoint           | /media/no/b7ced73c-5231-4462-b98d-64e38fe2
 # own real startup path now owns spawning every desk entity, cursword
 # included (see livedesk_ensure_cursword()'s own real dedup, unaffected
 # by this change).
-LAUNCH       | tool-bar             | '*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh' 'new'
+LAUNCH       | tool-bar             | '*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh' 'boot'
