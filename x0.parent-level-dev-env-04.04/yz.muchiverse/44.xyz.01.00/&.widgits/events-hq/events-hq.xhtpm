@@ -83,6 +83,20 @@
         </repeat>
         <item id="fld-save" class="data-item" label="Save command" action="'${PKG}/ops/evhq_action.sh' 'commit' '-' '${ARG3}'"/>
       </scrolllist>
+
+      <!-- view D: Scratch - the manager's SCRATCHBLOCK rows for this
+           page (read-only for now; a real block editor is future work). -->
+      <text label="Scratch blocks" class="block-title" show="${is_scratch}"/>
+      <scrolllist class="from-top" show="${is_scratch}">
+        <repeat count="${scratch_count}" bind="sb">
+          <text label="${sb.text}"/>
+        </repeat>
+        <text label="(no scratch blocks - Scratch view is read-only)" class="quiet" show="${scratch_empty}"/>
+      </scrolllist>
+
+      <!-- view E: Blueprints - visual node scripting, not built. -->
+      <text label="Blueprints" class="block-title" show="${is_blueprints}"/>
+      <text label="Visual node scripting is not built yet." class="quiet" show="${is_blueprints}"/>
     </panel>
 
   </page>

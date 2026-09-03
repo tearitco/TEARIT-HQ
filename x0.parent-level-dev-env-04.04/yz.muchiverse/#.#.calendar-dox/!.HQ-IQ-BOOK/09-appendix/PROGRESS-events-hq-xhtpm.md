@@ -115,3 +115,18 @@ only runs when argv[3] is NOT a directory.
   `edit:1|change_gold|…`; del CMD 1 → count 5→4.
 - Still open: view-mode (Scratch/Blueprints) content swap; floating
   centered overlay; the `evhq_*` / `g_is_events_hq` C deletion.
+
+### 2026-09-03 view-mode content swap
+- `evhq_action.sh view N` -> `.hq_manager/view.txt`. Projector reads it:
+  `view=0|1|2`, `is_scratch`, `is_blueprints`; when not Scripting it
+  forces `picker_open=fields_open=0` so Scratch/Blueprints own the panel.
+- Scratch (view 1): the manager's `SCRATCHBLOCK|<key>|<val>` rows for
+  the page, listed read-only (`scratch_count` / `scratch_<n>_text`, `|`
+  mapped to `:`). Blueprints (view 2): a "not built" stub.
+- Template `<panel>` now has 5 show=-gated views: command list /
+  picker / field editor / scratch / blueprints.
+- Verified: view 0 -> `list_open=1`; view 1 -> `is_scratch=1`,
+  `list_open=0`, panel shows the 4 SCRATCHBLOCK rows.
+- events-hq is now at feature parity with the old window minus a real
+  visual block editor (Scratch/Blueprints stay read-only stubs, as they
+  were pre-port). Remaining: the `evhq_*` / `g_is_events_hq` C deletion.

@@ -224,11 +224,15 @@ static void project(char *ui, size_t *off) {
     snprintf(path, sizeof(path), "%s/page.state.txt", mgr);
     slurp(path, buf, sizeof(buf));
     char trigger[256] = "";
-    int nrows = 0;
+    int nrows = 0, nscratch = 0;
     for (char *ln = strtok(buf, "\n"); ln; ln = strtok(NULL, "\n")) {
         if (strncmp(ln, "TRIGGER|", 8) == 0) {
             snprintf(trigger, sizeof(trigger), "%s", ln + 8);
             trim(trigger);
+        } else if (strncmp(ln, "SCRATCHBLOCK|", 13) == 0) {
+            char s[400]; snprintf(s, sizeof(s), "%s", ln + 13);
+            for (char *c = s; *c; c++) if (*c == '|') *c = ':';
+            put(ui, off, "scratch_%d_text=%s\n", nscratch++, s);
         } else if (strncmp(ln, "CMD|", 4) == 0) {
             /* CMD|<id>|<type>|<params...> */
             char *p = ln + 4;
@@ -274,9 +278,23 @@ static void project(char *ui, size_t *off) {
     read_line1(path, pk, sizeof(pk));
     int picker_open = (pk[0] == '1') && !fields_open;
 
+    /* view mode: 0 Scripting / 1 Scratch / 2 Blueprints (evhq_action.sh view N) */
+    char vw[8];
+    snprintf(path, sizeof(path), "%s/view.txt", mgr);
+    read_line1(path, vw, sizeof(vw));
+    int view = atoi(vw);
+    if (view < 0 || view > 2) view = 0;
+    int scripting = (view == 0);
+    if (!scripting) { picker_open = 0; fields_open = 0; }   /* Scratch/Blueprints own the panel */
+    put(ui, off, "view=%d\n", view);
+    put(ui, off, "is_scratch=%d\n", view == 1 ? 1 : 0);
+    put(ui, off, "is_blueprints=%d\n", view == 2 ? 1 : 0);
+    put(ui, off, "scratch_count=%d\n", nscratch);
+    put(ui, off, "scratch_empty=%d\n", nscratch == 0 ? 1 : 0);
+
     put(ui, off, "picker_open=%d\n", picker_open);
     put(ui, off, "fields_open=%d\n", fields_open);
-    put(ui, off, "list_open=%d\n", (!picker_open && !fields_open) ? 1 : 0);
+    put(ui, off, "list_open=%d\n", (scripting && !picker_open && !fields_open) ? 1 : 0);
 
     /* Add Command type picker */
     if (picker_open) {
