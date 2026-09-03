@@ -8945,6 +8945,23 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         } else if (g_is_events_hq) {
             g_evhq_has_real_focus = 1;
             redraw();
+        } else {
+            /* REAL FIX 2026-09-03 (direct live report/question: "is
+             * there a way to tell if another window gets focus and
+             * remove focus from both? should be the same if another
+             * x11-hq window gets focus") - default/popup mode
+             * (chat-hai/open-hai/co-lab-hai/entity-menu alike) already
+             * requests FocusChangeMask (see this window's own
+             * XCreateWindow event_mask) and this handler already existed
+             * for db-hq/events-hq - it simply had no default-mode branch
+             * at all, so a real FocusIn/FocusOut here was silently
+             * swallowed (both blocks `return` unconditionally). This is
+             * what makes the new "^"/"." title-bar indicator live and
+             * immediate the instant real focus changes for ANY reason -
+             * another x11-hq window, an unrelated app, alt-tab - not
+             * just whenever this window happens to redraw for some
+             * other reason anyway. */
+            redraw();
         }
         return;
     }
@@ -8954,6 +8971,10 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             dbhq_loop_request_redraw();
         } else if (g_is_events_hq) {
             g_evhq_has_real_focus = 0;
+            redraw();
+        } else {
+            /* REAL FIX 2026-09-03 - same real default-mode gap as
+             * FocusIn right above, same fix. */
             redraw();
         }
         return;
