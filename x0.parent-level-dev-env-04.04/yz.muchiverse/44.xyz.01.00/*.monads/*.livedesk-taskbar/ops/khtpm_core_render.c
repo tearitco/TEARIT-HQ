@@ -7841,6 +7841,13 @@ static void dock_paint_menu(void) {
             (unsigned)g_dock_menu_buf_w, (unsigned)g_dock_menu_buf_h,
             (unsigned)DefaultDepth(dpy, screen));
         g_dock_menu_xft = XftDrawCreate(dpy, g_dock_menu_buf, DefaultVisual(dpy, screen), cmap);
+        /* REAL FIX 2026-09-03 (owner report: "opacity doesn't yet work on
+         * toolbars like it does everywhere else") - the dock dropdown menu
+         * is its own override_redirect top-level window, so it needs its
+         * own _NET_WM_WINDOW_OPACITY just like win / g_dock_peer_win. It
+         * was the only such window missing the call, so a themed opacity
+         * only ever hit the strip + peer, never this dropdown. */
+        set_window_opacity(dpy, g_dock_menu_win, load_theme_opacity());
     }
     XMoveResizeWindow(dpy, g_dock_menu_win, g_dock_menu_sx, g_dock_menu_sy,
                       (unsigned)g_dock_menu_w, (unsigned)g_dock_menu_h);
@@ -8149,6 +8156,7 @@ static void dispatch(const char *action) {
         if (opacity < 0.0) opacity = 0.0;
         write_theme_opacity(opacity);
         set_window_opacity(dpy, win, opacity);
+        if (g_dock_menu_win) set_window_opacity(dpy, g_dock_menu_win, opacity);
         redraw();
         return;
     }
@@ -8158,6 +8166,7 @@ static void dispatch(const char *action) {
         if (opacity > 1.0) opacity = 1.0;
         write_theme_opacity(opacity);
         set_window_opacity(dpy, win, opacity);
+        if (g_dock_menu_win) set_window_opacity(dpy, g_dock_menu_win, opacity);
         redraw();
         return;
     }
@@ -9650,6 +9659,10 @@ static void hq_idle_tick(void) {
         if (window_is_dock()) {
             load_theme_colors();
             if (g_dock_peer_win) set_window_opacity(dpy, g_dock_peer_win, load_theme_opacity());
+            /* dock dropdown menu is a sibling override_redirect window - keep
+             * its opacity in lockstep with the strip on live theme changes
+             * (2026-09-03 owner report re: toolbars). */
+            if (g_dock_menu_win) set_window_opacity(dpy, g_dock_menu_win, load_theme_opacity());
             hq_request_redraw();
         }
     }
