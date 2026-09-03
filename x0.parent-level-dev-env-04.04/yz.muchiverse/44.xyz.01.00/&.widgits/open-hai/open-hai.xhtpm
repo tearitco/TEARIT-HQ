@@ -1,0 +1,39 @@
+<!-- open-hai.chtpm - STATIC TEMPLATE (see 08-roadmap/design-docs/
+     CHTPM-ARCHITECTURE-FIX.md). Layout only, NOT regenerated at
+     runtime. The <module> tag forks khtpm_open_hai_manager.+x, which
+     writes plain key=value lines to state/ui.txt; the shared renderer
+     substitutes ${var}, expands <repeat count="${n}" bind="x"> from
+     x_0_field / x_1_field / ... , and drops any row whose show="${...}"
+     is "" / "0" / "false". vars= is resolved against this file's own
+     dir, so a per-persona-pal copy under a custom --data-root finds
+     its own state/ui.txt. button.sh restores this file from the
+     .bootstrap if the <module> tag goes missing. Do not hand-generate
+     this markup from the manager. -->
+<window label="open-hai" class="" vars="state/ui.txt">
+  <module src="&.widgits/open-hai/ops/+x/khtpm_open_hai_manager.+x"/>
+  <page name="main">
+    <sidebar>
+      <text id="sidebar-header" label="Sessions"/>
+      <item id="new" label="+ New session" action="${new_action}"/>
+      <item id="togglesound" label="${sound_label}" action="${sound_action}"/>
+      <scrolllist>
+        <repeat count="${sessions_count}" bind="session">
+          <item id="s${session.#}" label="${session.label}" action="${session.action}" backspace_action="${session.del_action}"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+    <panel>
+      <text id="status" label="${status}"/>
+      <item id="cyclemodel" label="${model_label}" action="${model_action}"/>
+      <scrolllist>
+        <repeat count="${transcript_count}" bind="msg">
+          <text id="msg${msg.#}" class="${msg.class}" label="${msg.text}"/>
+        </repeat>
+        <text id="tool-banner" label="${tool_banner}" show="${tool_pending}"/>
+        <item id="approve" label="Approve" action="${approve_action}" show="${tool_pending}"/>
+        <item id="deny" label="Deny" action="${deny_action}" show="${tool_pending}"/>
+      </scrolllist>
+      <cli_io id="composer" target_id="composer" label="&gt; " action="${send_action}"/>
+    </panel>
+  </page>
+</window>

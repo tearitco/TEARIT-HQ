@@ -33,7 +33,15 @@ fi
 HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-CHTPM="$HERE/network-browser-hq.chtpm"
+# 2026-09-03 static-template port: default to the STATIC network-browser-hq.xhtpm
+# (manager runs in g_mode_ui via <module id="ui">, writes #.desktop/
+# network-browser-hq_ui.txt - no per-tick markup regen). NB_ROLLBACK=1
+# selects the pre-port generated .chtpm path instead.
+if [ -n "${NB_ROLLBACK:-}" ]; then
+    CHTPM="$HERE/network-browser-hq.chtpm"
+else
+    CHTPM="$HERE/network-browser-hq.xhtpm"
+fi
 
 # The shared renderer lives in the taskbar's own ops dir (khtpm_core_
 # render.+x is shared house-wide, not network-browser's own binary) - real,
@@ -58,7 +66,11 @@ if [ ! -x "$MANAGER_BIN" ]; then
 fi
 
 BOOTSTRAP_TEMPLATE="$HERE/network-browser-hq.chtpm.bootstrap"
-if [ ! -f "$BOOTSTRAP_TEMPLATE" ]; then
+# The .xhtpm is static and checked in - it is never overwritten, so the
+# bootstrap self-heal below only applies to the rollback .chtpm path.
+if [ -z "${NB_ROLLBACK:-}" ]; then
+    [ -f "$CHTPM" ] || { echo "network-browser button.sh: missing $CHTPM" >&2; exit 1; }
+elif [ ! -f "$BOOTSTRAP_TEMPLATE" ]; then
     echo "network-browser button.sh: missing bootstrap $BOOTSTRAP_TEMPLATE" >&2
     exit 1
 fi
@@ -75,12 +87,14 @@ fi
 # template (network-browser-hq.chtpm.bootstrap, copied once from the real
 # checked-in bootstrap) restores the live path whenever it's missing its
 # own <module> tag, before this script ever execs the renderer.
-if [ ! -f "$CHTPM" ]; then
-    cp "$BOOTSTRAP_TEMPLATE" "$CHTPM"
-fi
-if ! grep -q '<module' "$CHTPM" 2>/dev/null; then
-    echo "network-browser button.sh: $CHTPM lost its <module> tag (stray write) - restoring from $BOOTSTRAP_TEMPLATE"
-    cp "$BOOTSTRAP_TEMPLATE" "$CHTPM"
+if [ -n "${NB_ROLLBACK:-}" ]; then
+    if [ ! -f "$CHTPM" ]; then
+        cp "$BOOTSTRAP_TEMPLATE" "$CHTPM"
+    fi
+    if ! grep -q '<module' "$CHTPM" 2>/dev/null; then
+        echo "network-browser button.sh: $CHTPM lost its <module> tag (stray write) - restoring from $BOOTSTRAP_TEMPLATE"
+        cp "$BOOTSTRAP_TEMPLATE" "$CHTPM"
+    fi
 fi
 
 AUDIT_DIR="$HOUSE_ROOT/&.hq-apps/network/audit"
@@ -96,7 +110,7 @@ mkdir -p "$AUDIT_DIR"
 # binary name).
 network_browser_pids() {
     local p joined
-    for p in $(pgrep -f "khtpm_core_render\.\+x.*network-browser-hq\.chtpm" 2>/dev/null || true); do
+    for p in $(pgrep -f "khtpm_core_render\.\+x.*network-browser-hq\.[cx]htpm" 2>/dev/null || true); do
         joined="$(tr '\0' ' ' < "/proc/$p/cmdline" 2>/dev/null || true)"
         echo "$p"
     done

@@ -1,0 +1,13 @@
+SECTION      | KEY     | VALUE
+----------------------------------------
+# Fill verbs as features land. Codes are X11/ASCII; manager maps them.
+# Do not hardcode these in khtpm_core_render.c.
+SECTION      | 98      | TOOL_BRUSH
+SECTION      | 101     | TOOL_ERASER
+SECTION      | 103     | TOOL_FILL
+SECTION      | 119     | CAM_FWD
+SECTION      | 115     | CAM_BACK
+SECTION      | 97      | CAM_LEFT
+SECTION      | 100     | CAM_RIGHT
+SECTION      | 113     | CAM_YAW_LEFT
+SECTION      | 9       | CAM_YAW_RIGHT

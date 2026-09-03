@@ -1,0 +1,22 @@
+/* stats-hq-pal.css - sibling-.css for stats-hq-pal.xhtpm, auto-merged by
+   the shared renderer (same stem). Colour/border only; the generic
+   layout engine owns geometry. Mirrors &.hq-apps/db-hq-pal/dashboard.css
+   so the PAL-driven stats window matches the house look. */
+
+.sidebar {
+  background-color: #161616;
+  border-color: #333333;
+}
+
+.data-item.active {
+  background-color: #2f5f8f;
+  color: #ffffff;
+}
+
+.settings-block {
+  background-color: #181818;
+  border: 1px solid #2a2a2a;
+}
+
+.block-title { color: #ffffff; font-weight: bold; }
+.quiet       { color: #8b93a7; }

@@ -1,0 +1,9 @@
+SECTION      | KEY     | VALUE
+----------------------------------------
+SECTION      | 32      | PLAY_TOGGLE
+SECTION      | 106     | SCRUB_BACK
+SECTION      | 108     | SCRUB_FWD
+SECTION      | 99      | SPLIT
+SECTION      | 114     | RIPPLE_DELETE
+SECTION      | 120     | EXPORT_V1
+SECTION      | 115     | SAVE

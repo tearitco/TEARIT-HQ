@@ -1,0 +1,105 @@
+# actors_projector.pal - a UI PROJECTOR written in PAL, not C.
+#
+# WHAT THIS IS: the <module> the renderer launches for db-hq-actors.chtpm.
+# It reads the house's RPG-Maker Actors table and writes state/ui.txt as
+# plain key=value. The STATIC template then does all the layout with
+# ${actor_0_name} etc. and <repeat count="${actors_count}" bind="actor">.
+# No compiled C manager - just prisc+x string opcodes (see
+# _shared-lib/system/string-ops.md).
+#
+# INPUT  <house>/#.desktop/db_hq_actors.state.txt  - lines like:
+#          ACTOR        | name               | Harold
+#        i.e.  <tag> | <key> | <value>  with column padding.
+# OUTPUT <pkg>/state/ui.txt  - actor_<n>_name= / actor_<n>_sub= /
+#          actors_count= / title=
+#
+# REGISTERS USED
+#   x1  current line number (0-indexed) being read
+#   x2  count of NON-BLANK actors emitted so far  (also the <repeat> index)
+#   x7  "have we started reading an actor record yet?" flag (0/1)
+#   x8  scratch (string lengths / EOF test)
+#   x9  open file descriptor for the output file
+#   s0  scratch: the current input line, then each formatted output line
+#   s1  split scratch: the <tag> field       s2  the "<key> | <value>" remainder
+#   s3  the <key> field                      s4  the <value> field
+#   s5  the current record's name            s6  the current record's class
+#   s8  literal "class"   s9 literal "name"  s10 literal "id"  s11 literal "ACTOR"
+#   s12 absolute path of the OUTPUT file     s13 absolute path of the INPUT file
+#   s14 $KHTPM_PKG (this .chtpm's dir)       s15 $KHTPM_HOUSE (house root)
+
+sgetenv s15, "KHTPM_HOUSE"                                    # s15 = house root, from the env the renderer set
+sgetenv s14, "KHTPM_PKG"                                      # s14 = this package's dir (where state/ lives)
+sfmt s13, "%s/#.desktop/db_hq_actors.state.txt", s15          # s13 = full path to the Actors data file
+sfmt s12, "%s/state/ui.txt", s14                              # s12 = full path to the file this projector writes
+slit s11, "ACTOR"                                             # s11 = the tag every actor row starts with
+slit s10, "id"                                                # s10 = key that marks the start of a new record
+slit s9,  "name"                                              # s9  = key whose value is the actor's name
+slit s8,  "class"                                             # s8  = key whose value is the actor's class
+
+loop_top:                                                     # ---- top of the forever loop (re-projects every 0.5s) ----
+sfopen x9, s12                                                # open state/ui.txt for writing (truncates it)
+li x1, 0                                                      # start at input line 0
+li x2, 0                                                      # 0 actors emitted so far
+li x7, 0                                                      # not inside a record yet
+slit s5, ""                                                   # clear the pending name
+slit s6, ""                                                   # clear the pending class
+
+read_lines:                                                   # ---- read the input file one line at a time ----
+sread s0, x1, s13                                             # s0 = line #x1 of the input file (x12 = its length, -1 past EOF)
+slen x8, s0                                                   # x8 = length of that line
+beq x8, x0, flush_last                                        # length 0 => end of file: go emit the last record
+ssplit s0, "|", s1, s2                                        # split on the first "|": s1 = tag (padded), s2 = "  key | value"
+strim s1                                                      # trim the padding off the tag -> "ACTOR" / "SECTION" / "----..."
+sbne s1, s11, next_line                                       # if the tag isn't "ACTOR", skip this line entirely
+ssplit s2, "|", s3, s4                                        # split the remainder on "|": s3 = key (padded), s4 = value (padded)
+strim s3                                                      # trim the key   -> "id" / "name" / "class" / ...
+strim s4                                                      # trim the value -> "Harold" / "Hero" / ...
+sbeq s3, s10, on_id                                           # key == "id"    -> record boundary
+sbeq s3, s9, on_name                                          # key == "name"  -> remember the name
+sbeq s3, s8, on_class                                         # key == "class" -> remember the class
+j next_line                                                   # any other key: ignore, move on
+
+on_id:                                                        # ---- hit an "id" row: the previous record (if any) is complete ----
+beq x7, x0, id_started                                        # if we hadn't started a record yet, nothing to flush
+slen x8, s5                                                   # x8 = length of the pending name
+beq x8, x0, id_started                                        # blank name (an empty RPG-Maker actor slot): don't emit it
+sfmt s0, "actor_%d_name=%s", x2, s5                           # format "actor_<n>_name=<name>"
+swrite x9, s0                                                 # write that line to state/ui.txt
+sfmt s0, "actor_%d_sub=%s", x2, s6                            # format "actor_<n>_sub=<class>"
+swrite x9, s0                                                 # write it
+addi x2, x2, 1                                                # one more actor emitted
+id_started:                                                   # (fall-through target for the "nothing to flush" cases)
+li x7, 1                                                      # we are now inside a record
+slit s5, ""                                                   # clear name for the new record
+slit s6, ""                                                   # clear class for the new record
+j next_line                                                   # move on
+
+on_name:                                                      # ---- "name" row ----
+scpy s5, s4                                                   # remember this record's name
+j next_line                                                   # move on
+
+on_class:                                                     # ---- "class" row ----
+scpy s6, s4                                                   # remember this record's class
+j next_line                                                   # move on
+
+next_line:                                                    # ---- advance to the next input line ----
+addi x1, x1, 1                                                # x1 = x1 + 1
+j read_lines                                                  # loop back
+
+flush_last:                                                   # ---- EOF: emit the final record still held in s5/s6 ----
+slen x8, s5                                                   # x8 = length of the pending name
+beq x8, x0, write_count                                       # blank -> skip straight to the count
+sfmt s0, "actor_%d_name=%s", x2, s5                           # "actor_<n>_name=<name>"
+swrite x9, s0                                                 # write it
+sfmt s0, "actor_%d_sub=%s", x2, s6                            # "actor_<n>_sub=<class>"
+swrite x9, s0                                                 # write it
+addi x2, x2, 1                                                # count it
+
+write_count:                                                  # ---- footer keys the template needs ----
+sfmt s0, "actors_count=%d", x2                                # "actors_count=<n>"  -> drives <repeat count=...>
+swrite x9, s0                                                 # write it
+sfmt s0, "title=Actors (%d) - projected by actors_projector.pal", x2   # a title string for the sidebar
+swrite x9, s0                                                 # write it
+sfclose x9                                                    # close state/ui.txt (atomic-ish: renderer re-reads on mtime change)
+sleep 500000                                                  # wait 0.5s
+j loop_top                                                    # ...then re-project from scratch

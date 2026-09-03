@@ -1,0 +1,25 @@
+<!-- STATIC. Projector/manager writes state/ui.txt only.
+     See 08-roadmap/design-docs/MEDIA-STUDIO-XHTPM-PORT.md -->
+<window label="Media Canvas" class="media-canvas" vars="state/ui.txt">
+  <page name="main">
+    <tabbar class="view-tabs">
+      <tab id="view-2d" label="2D" action="'${PKG}/ops/media_canvas_action.sh' view 2d"/>
+      <tab id="view-3d" label="3D" action="'${PKG}/ops/media_canvas_action.sh' view 3d"/>
+    </tabbar>
+    <sidebar id="tools" class="sidebar">
+      <item id="tool-brush" label="Brush" action="'${PKG}/ops/media_canvas_action.sh' tool brush"/>
+      <item id="tool-eraser" label="Eraser" action="'${PKG}/ops/media_canvas_action.sh' tool eraser"/>
+      <item id="tool-fill" label="Fill" action="'${PKG}/ops/media_canvas_action.sh' tool fill"/>
+    </sidebar>
+    <panel id="canvas" class="panel">
+      <text class="quiet" label="${status}" show="${is_2d}"/>
+      <text class="quiet" label="3D viewport (camera via state/keybinds.pdl)" show="${is_3d}"/>
+    </panel>
+    <sidebar id="outliner" class="sidebar">
+      <text class="quiet" label="Layers / objects"/>
+      <repeat count="${n_layers}" bind="layer">
+        <item class="data-item" label="${layer.text}"/>
+      </repeat>
+    </sidebar>
+  </page>
+</window>

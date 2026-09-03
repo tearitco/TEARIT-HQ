@@ -1,0 +1,62 @@
+<!-- taskbar-settings-pal.xhtpm - static-template port of the swatch-picker /
+     taskbar-settings window that today runs as the g_is_swatch_picker C
+     path inside khtpm_core_render.c.
+
+     WHY THE CLASS IS SAFE: khtpm_core_render.c (~line 17902) sets
+     g_is_swatch_picker only on an EXACT class-token match of
+     "swatch-picker". This window's classes are "taskbar-settings-pal"
+     and "database-window" - neither trips g_is_swatch_picker,
+     g_is_db_hq, g_is_events_hq, g_is_palettes, g_is_bookmarks or
+     g_is_stats_hq (those match "db-hq" / "events-hq" / "palettes" /
+     "bookmarks" / "stats-hq" respectively). So this is a plain generic
+     default/popup window.
+
+     WHY IT STILL WORKS WITHOUT THE FLAG:
+       * The swatch-grid LAYOUT path (khtpm_core_render.c ~8716) keys on
+         "is there any <item class=\"swatch\"> among the page children",
+         not on g_is_swatch_picker. 12 swatches + the non-swatch
+         opacity/close items get positioned exactly as the old window.
+       * dispatch() handles "PICK:<n>", "OPACITY_MINUS", "OPACITY_PLUS"
+         and "CLOSE" as generic recognised action tokens (~8918-8949),
+         also not flag-gated. "PICK:<n>" writes
+         #.desktop/taskbar_settings_action.txt with an incrementing seq,
+         which the UNMODIFIED swatch_picker_manager.c already consumes.
+
+     THE PROJECTOR: the <module> forks taskbar_settings_projector.+x. It
+     READS the manager's published state file
+     (#.desktop/taskbar_settings_state.txt: phase/bg/fg/apply) and
+     WRITES #.desktop/taskbar_settings_ui.txt (key=value), content-gated.
+     This template consumes that file via vars= and ${...}. A token that
+     starts with '#' in vars= resolves against house_root
+     (kh_find_vars_attr), so this is <house>/#.desktop/taskbar_settings_ui.txt.
+
+     THE MANAGER: the generic default/popup mode does NOT fork the
+     manager (only the g_is_swatch_picker path did, ~18736), so
+     button-pal.sh starts swatch_picker_manager.+x alongside the
+     renderer. The manager is used verbatim - no edits.
+
+     3RD-STATE "CHOSEN" RING: the projector emits sw_<i>_ring = "ring-bg"
+     for the chosen background swatch, "ring-fg" for the chosen
+     foreground swatch, "" otherwise. Substituted into class=; the ring
+     is a CSS border (draw_elem() paints border-color on top of the
+     swatch bg fill). No renderer change needed. -->
+<window label="taskbar settings - ${prompt}" class="taskbar-settings-pal database-window" vars="#.desktop/taskbar_settings_ui.txt">
+  <module src="&.widgits/taskbar-settings/ops/+x/taskbar_settings_projector.+x"/>
+  <page name="main">
+    <item id="sw0"  action="PICK:0"  class="swatch sw-black ${sw_0_ring}"    label="black"/>
+    <item id="sw1"  action="PICK:1"  class="swatch sw-white ${sw_1_ring}"    label="white"/>
+    <item id="sw2"  action="PICK:2"  class="swatch sw-charcoal ${sw_2_ring}" label="charcoal"/>
+    <item id="sw3"  action="PICK:3"  class="swatch sw-silver ${sw_3_ring}"   label="silver"/>
+    <item id="sw4"  action="PICK:4"  class="swatch sw-red ${sw_4_ring}"      label="red"/>
+    <item id="sw5"  action="PICK:5"  class="swatch sw-orange ${sw_5_ring}"   label="orange"/>
+    <item id="sw6"  action="PICK:6"  class="swatch sw-yellow ${sw_6_ring}"   label="yellow"/>
+    <item id="sw7"  action="PICK:7"  class="swatch sw-green ${sw_7_ring}"    label="green"/>
+    <item id="sw8"  action="PICK:8"  class="swatch sw-cyan ${sw_8_ring}"     label="cyan"/>
+    <item id="sw9"  action="PICK:9"  class="swatch sw-blue ${sw_9_ring}"     label="blue"/>
+    <item id="sw10" action="PICK:10" class="swatch sw-purple ${sw_10_ring}"  label="purple"/>
+    <item id="sw11" action="PICK:11" class="swatch sw-pink ${sw_11_ring}"    label="pink"/>
+    <item id="opacity-minus" action="OPACITY_MINUS" class="opacity-btn" label="Opacity -"/>
+    <item id="opacity-plus"  action="OPACITY_PLUS"  class="opacity-btn" label="Opacity +"/>
+    <item id="close" action="CLOSE" class="close-btn" label="x"/>
+  </page>
+</window>

@@ -28,6 +28,16 @@
 # the new binary name now.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
+
+# --- PHASE 3 retarget (EVENTS-HQ-XHTPM-PORT.md §8 step 9) ---------------
+# The events editor is now the STATIC events-hq.xhtpm + evhq_projector
+# (button-pal.sh). Normal positional invocation routes there. Everything
+# below is the pre-port dashboard.chtpm launch, kept as the rollback and
+# for `EZ_PKG_DIR=... sh button.sh run` A/B comparison. To roll back:
+# delete these 3 lines.
+[ -z "${EZ_PKG_DIR:-}" ] && [ -n "${1:-}" ] && exec sh "$HERE/button-pal.sh" "$@"
+# ----------------------------------------------------------------------
+
 OPS_DIR="$HERE/../../*.monads/*.livedesk-taskbar/ops"
 BIN="$OPS_DIR/+x/khtpm_core_render.+x"
 CHTPM="$HERE/pieces/dashboard.chtpm"

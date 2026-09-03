@@ -1,0 +1,7 @@
+SECTION      | KEY     | VALUE
+----------------------------------------
+SECTION      | 32      | PLAY_TOGGLE
+SECTION      | 114     | RECORD
+SECTION      | 98      | MIXER_TOGGLE
+SECTION      | 61      | ADD_TRACK
+SECTION      | 115     | SAVE

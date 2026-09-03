@@ -1,0 +1,72 @@
+# bookmarks_projector.pal - the <module> UI PROJECTOR for
+# bookmarks-pal.xhtpm.
+#
+# WHAT THIS IS: prisc+x string-opcode script (see
+# _shared-lib/system/string-ops.md), NOT a compiled manager. The real
+# manager bookmarks_manager.c is unchanged and keeps publishing
+#   <pal_dir>/bookmarks_state.txt
+# one bookmark per line as:  <name><TAB><path>
+#
+# INPUT  <pal_dir>/bookmarks_state.txt   (bookmarks_manager.c)
+#        pal_dir comes from KHTPM_ARG3 (the renderer's argv[3] hook).
+# OUTPUT <pal_dir>/.hq_manager/ui.txt  key=value for the static template:
+#          title=  bm_count=  bm_<n>_name=  bm_<n>_path=  empty=
+#        (.hq_manager/ui.txt under the argv[3] dir is auto-appended to
+#         the template's vars sources by the renderer.)
+#
+# INT REGISTERS
+#   x1  input line cursor (0-indexed)
+#   x2  count of bookmarks emitted so far (also the <repeat> index)
+#   x8  scratch: string lengths / empty flag
+#   x9  open fd for the output file
+# STRING REGISTERS
+#   s0  current input line, then each formatted output line
+#   s1  split scratch: bookmark name    s2  split scratch: bookmark path
+#   s24 absolute path of the INPUT  bookmarks_state.txt
+#   s25 absolute path of the OUTPUT .hq_manager/ui.txt
+#   s26 $KHTPM_ARG3  (the pal dir this instance serves)
+
+sgetenv s26, "KHTPM_ARG3"                                   # s26 = pal dir (renderer set it from argv[3])
+sfmt s24, "%s/bookmarks_state.txt", s26                     # s24 = full path to the manager's published file
+sfmt s25, "%s/.hq_manager/ui.txt", s26                      # s25 = full path to the file this projector writes
+
+loop_top:                                                   # ================= one projection pass =================
+sfopen x9, s25                                              # open .hq_manager/ui.txt for writing (truncates it)
+li x1, 0                                                    # x1 = input line cursor
+li x2, 0                                                    # x2 = bookmarks emitted so far
+
+read_lines:                                                 # ---- read bookmarks_state.txt one line at a time ----
+sread s0, x1, s24                                           # s0 = line x1 of the input file (x12 = length / -1 at EOF)
+slen x8, s0                                                 # x8 = length of that line
+beq x8, x0, done_list                                       # length 0 => EOF: finish
+strim s0                                                    # trim outer whitespace off the line
+slen x8, s0                                                 # x8 = trimmed length
+beq x8, x0, next_line                                       # blank line -> skip it
+ssplit s0, "	", s1, s2                                      # split on the first TAB: s1 = name, s2 = path
+strim s1                                                    # trim the name
+strim s2                                                    # trim the path
+sfmt s0, "bm_%d_name=%s", x2, s1                            # format "bm_<n>_name=<name>"
+swrite x9, s0                                               # write it to ui.txt
+sfmt s0, "bm_%d_path=%s", x2, s2                            # format "bm_<n>_path=<path>"
+swrite x9, s0                                               # write it
+addi x2, x2, 1                                              # one more bookmark emitted
+next_line:                                                  # ---- advance to the next input line ----
+addi x1, x1, 1                                              # x1 = x1 + 1
+j read_lines                                                # loop back
+
+done_list:                                                  # ---- list finished ----
+sfmt s0, "bm_count=%d", x2                                  # "bm_count=<n>" -> drives <repeat count="${bm_count}">
+swrite x9, s0                                               # write it
+sfmt s0, "title=cursword bookmarks (%d)", x2               # a title string for the panel header
+swrite x9, s0                                               # write it
+li x8, 0                                                    # x8 = "empty" flag, start 0
+beq x2, x0, mark_empty                                      # zero bookmarks -> set the flag
+j emit_empty                                                # otherwise leave it 0
+mark_empty:                                                 # ----
+li x8, 1                                                    # empty = 1
+emit_empty:                                                 # ----
+sfmt s0, "empty=%d", x8                                     # "empty=0|1" -> gates the "(no bookmarks yet)" text
+swrite x9, s0                                               # write it
+sfclose x9                                                  # close ui.txt (renderer content-hashes + re-reads)
+sleep 400000                                                # wait 0.4s
+j loop_top                                                  # ...then re-project from scratch

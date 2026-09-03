@@ -470,40 +470,24 @@ static void xml_esc(const char *in, char *out, size_t out_sz) {
     out[o] = '\0';
 }
 
-static void item_relay(char *dst, size_t dst_sz, const char *house_root,
-                       const char *label, const char *sprite, int code, int dropdown) {
-    char esc[512], spr[KTB_PATH_BUF * 2], relay[KTB_PATH_BUF];
-    xml_esc(label, esc, sizeof(esc));
-    snprintf(relay, sizeof(relay),
-             "%s/*.monads/*.livedesk-taskbar/ops/strip_relay.sh", house_root);
-    spr[0] = '\0';
-    if (sprite && sprite[0]) {
-        char se[KTB_PATH_BUF];
-        xml_esc(sprite, se, sizeof(se));
-        snprintf(spr, sizeof(spr), " sprite=\"%s\"", se);
-    }
-    if (dropdown) {
-        snprintf(dst, dst_sz,
-                 "<item label=\"%s\"%s class=\"dropdown-child\" target_id=\"strip-cell-%d\" action=\"'%s' %d\"/>",
-                 esc, spr, dropdown, relay, code);
-    } else if (code >= 4001 && code <= 4015) {
-        snprintf(dst, dst_sz,
-                 "<item id=\"strip-cell-%d\" label=\"%s\"%s class=\"dock-cell\" onclick=\"ACTIVATE\"/>",
-                 code - 4000, esc, spr);
-    } else {
-        snprintf(dst, dst_sz,
-                 "<item label=\"%s\"%s class=\"dock-cell\" action=\"'%s' %d\"/>",
-                 esc, spr, relay, code);
-    }
+static void ui_put(char *buf, size_t *off, size_t cap, const char *key, const char *val) {
+    char esc[2048];
+    int n;
+    xml_esc(val ? val : "", esc, sizeof(esc));
+    if (*off >= cap) return;
+    n = snprintf(buf + *off, cap - *off, "%s=%s\n", key, esc);
+    if (n > 0) *off += (size_t)n;
 }
 
-static void publish_live_chtpm(const KtbState *s, const char *house_root) {
-    char body[96 * 1024], item[2048], lab[KTB_PATH_BUF];
-    size_t off = 0;
-    int n, i;
-    const char *hdr_labels[15];
+
+static void publish_strip_ui(const KtbState *s, const char *house_root) {
+    char body[96 * 1024], key[64], relay[KTB_PATH_BUF], act[KTB_PATH_BUF];
     char user_lab[KTB_PATH_BUF], file_lab[KTB_PATH_BUF], desks_lab[KTB_PATH_BUF];
-    char avatar[KTB_PATH_BUF], dt[128];
+    char avatar[KTB_PATH_BUF], dt[128], drop[64];
+    size_t off = 0;
+    int i;
+    snprintf(relay, sizeof(relay),
+             "%s/*.monads/*.livedesk-taskbar/ops/strip_relay.sh", house_root);
     ktb_get_username(s, user_lab, sizeof(user_lab));
     ktb_get_file_label(s, file_lab, sizeof(file_lab));
     ktb_get_desks_label(s, desks_lab, sizeof(desks_lab));
@@ -514,116 +498,112 @@ static void publish_live_chtpm(const KtbState *s, const char *house_root) {
         read_key_value(pdl_path, "datetime_lang", datetime_lang, sizeof(datetime_lang));
         format_datetime(dt, sizeof(dt), datetime_lang);
     }
-    hdr_labels[0] = "HQ";
-    hdr_labels[1] = user_lab;
-    hdr_labels[2] = file_lab;
-    hdr_labels[3] = desks_lab;
-    hdr_labels[4] = "pals";
-    hdr_labels[5] = "palettes";
-    hdr_labels[6] = "edit";
-    hdr_labels[7] = "player";
-    hdr_labels[8] = "db";
-    hdr_labels[9] = "plugins";
-    hdr_labels[10] = "toys";
-    hdr_labels[11] = "store";
-    hdr_labels[12] = "network";
-    hdr_labels[13] = "h-ai";
-    hdr_labels[14] = dt;
+    drop[0] = '\0';
+    if (s->hq_open >= 1 && s->hq_open <= 15)
+        snprintf(drop, sizeof(drop), "strip-cell-%d", s->hq_open);
 
-    n = snprintf(body + off, sizeof(body) - off,
-                 "<window class=\"dock-header\">\n<page id=\"main\">\n<row class=\"toolbar\">\n");
-    if (n > 0) off += (size_t)n;
-    for (i = 0; i < 15 && off < sizeof(body); i++) {
-        const char *spr = (i == 1) ? avatar : NULL;
-        item_relay(item, sizeof(item), house_root, hdr_labels[i], spr, 4000 + i + 1, 0);
-        n = snprintf(body + off, sizeof(body) - off, "%s\n", item);
-        if (n > 0) off += (size_t)n;
+    ui_put(body, &off, sizeof(body), "username", user_lab);
+    ui_put(body, &off, sizeof(body), "file_label", file_lab);
+    ui_put(body, &off, sizeof(body), "desks_label", desks_lab);
+    ui_put(body, &off, sizeof(body), "avatar_dir", avatar);
+    ui_put(body, &off, sizeof(body), "datetime", dt);
+    ui_put(body, &off, sizeof(body), "drop_target", drop);
+
+    {
+        char nbuf[16];
+        snprintf(nbuf, sizeof(nbuf), "%d", s->hq_open ? s->hq_n_menu : 0);
+        ui_put(body, &off, sizeof(body), "n_hqitems", nbuf);
     }
-    n = snprintf(body + off, sizeof(body) - off, "</row>\n");
-    if (n > 0) off += (size_t)n;
-    if (s->hq_open && s->hq_n_menu > 0) {
-        for (i = 0; i < s->hq_n_menu && off < sizeof(body); i++) {
-            char pals_root[KTB_PATH_BUF] = "";
-            const char *spr = NULL;
-            char sprbuf[KTB_PATH_BUF];
-            if (s->hq_open == 5 && strncmp(s->hq_menu[i].command, "livedesk:pal:", 13) == 0) {
-                livedesk_pals_root(s->house_root, pals_root, sizeof(pals_root));
-                snprintf(sprbuf, sizeof(sprbuf), "%s/%s", pals_root, s->hq_menu[i].command + 13);
-                spr = sprbuf;
+    if (s->hq_open) {
+        int is_pals = (s->hq_open == 5);
+        char pals_root[KTB_PATH_BUF] = "";
+        if (is_pals) livedesk_pals_root(s->house_root, pals_root, sizeof(pals_root));
+        for (i = 0; i < s->hq_n_menu; i++) {
+            char spr[KTB_PATH_BUF] = "";
+            const char *lab = s->hq_menu[i].label;
+            char zlab[64];
+            if (is_pals && pals_root[0] &&
+                strncmp(s->hq_menu[i].command, "livedesk:pal:", 13) == 0)
+                snprintf(spr, sizeof(spr), "%s/%s", pals_root, s->hq_menu[i].command + 13);
+            if (strcmp(s->hq_menu[i].command, "livedesk:zorder-toggle") == 0) {
+                snprintf(zlab, sizeof(zlab), "@ always-on-top: %s",
+                         s->zorder_above ? "ON" : "OFF");
+                lab = zlab;
+                snprintf(key, sizeof(key), "hi_%d_label", i);
+                ui_put(body, &off, sizeof(body), key, lab);
+                snprintf(key, sizeof(key), "hi_%d_sprite", i);
+                ui_put(body, &off, sizeof(body), key, "");
+                snprintf(key, sizeof(key), "hi_%d_cmd", i);
+                ui_put(body, &off, sizeof(body), key, "ZORDER_TOGGLE");
+            } else {
+                snprintf(key, sizeof(key), "hi_%d_label", i);
+                ui_put(body, &off, sizeof(body), key, lab);
+                snprintf(key, sizeof(key), "hi_%d_sprite", i);
+                ui_put(body, &off, sizeof(body), key, spr);
+                snprintf(act, sizeof(act), "'%s' %d", relay, 5000 + i);
+                snprintf(key, sizeof(key), "hi_%d_cmd", i);
+                ui_put(body, &off, sizeof(body), key, act);
             }
-            {
-                const char *lab = s->hq_menu[i].label;
-                char zlab[64];
-                if (strcmp(s->hq_menu[i].command, "livedesk:zorder-toggle") == 0) {
-                    snprintf(zlab, sizeof(zlab), "@ always-on-top: %s",
-                             s->zorder_above ? "ON" : "OFF");
-                    lab = zlab;
-                }
-                if (strcmp(s->hq_menu[i].command, "livedesk:zorder-toggle") == 0) {
-                    char esc[512];
-                    xml_esc(lab, esc, sizeof(esc));
-                    snprintf(item, sizeof(item),
-                             "<item label=\"%s\" class=\"dropdown-child\" target_id=\"strip-cell-%d\" onclick=\"ZORDER_TOGGLE\"/>",
-                             esc, s->hq_open);
-                } else {
-                    item_relay(item, sizeof(item), house_root, lab, spr, 5000 + i, s->hq_open);
-                }
-            }
-            n = snprintf(body + off, sizeof(body) - off, "%s\n", item);
-            if (n > 0) off += (size_t)n;
         }
     }
-    if (s->cliio_active) {
-        char esc[512], relay[KTB_PATH_BUF];
-        xml_esc(s->cliio_buffer[0] ? s->cliio_buffer : (s->cliio_op[0] ? s->cliio_op : "input"), esc, sizeof(esc));
-        snprintf(relay, sizeof(relay), "%s/*.monads/*.livedesk-taskbar/ops/strip_relay.sh", house_root);
-        n = snprintf(body + off, sizeof(body) - off,
-                     "<cli_io id=\"cliio\" label=\"%s\" action=\"'%s' submit\"/>\n",
-                     esc, relay);
-        if (n > 0) off += (size_t)n;
-    }
-    n = snprintf(body + off, sizeof(body) - off, "</page>\n</window>\n");
-    if (n > 0) off += (size_t)n;
-    body[off < sizeof(body) ? off : sizeof(body) - 1] = '\0';
-    write_small_file(house_root, "#.desktop/strip_header.chtpm", body);
 
-    off = 0;
-    n = snprintf(body + off, sizeof(body) - off,
-                 "<window class=\"dock-bottom\">\n<page id=\"main\">\n<row class=\"toolbar\">\n");
-    if (n > 0) off += (size_t)n;
-    /* HQ window cells first so the 🪟 marker sits on the visible row
-     * (bottom pack is left-to-right, overflow rows start after pals). */
-    if (s->n_hq_wins > 0) {
-        char esc_title[768];
-        for (i = 0; i < s->n_hq_wins && off < sizeof(body); i++) {
-            xml_esc(s->hq_wins[i].title, esc_title, sizeof(esc_title));
-            n = snprintf(body + off, sizeof(body) - off,
-                         "<item label=\"🪟 %s\" class=\"dock-cell hqwin%s\" onclick=\"FOCUSWIN:0x%lx:%d\"/>\n",
-                         esc_title, s->hq_wins[i].minimized ? " hqwin-minimized" : "",
-                         s->hq_wins[i].win, s->hq_wins[i].pid);
-            if (n < 0) break;
-            off += (size_t)n;
-        }
-        n = snprintf(body + off, sizeof(body) - off, "</row>\n<row class=\"toolbar\">\n");
-        if (n > 0) off += (size_t)n;
+    {
+        char nbuf[16];
+        snprintf(nbuf, sizeof(nbuf), "%d", s->n_tabs);
+        ui_put(body, &off, sizeof(body), "n_tabs", nbuf);
     }
-    for (i = 0; i < s->n_tabs && off < sizeof(body); i++) {
+    for (i = 0; i < s->n_tabs; i++) {
+        char lab[KTB_PATH_BUF];
         snprintf(lab, sizeof(lab), "%d. %s", s->tabs[i].nav, s->tabs[i].entity);
-        item_relay(item, sizeof(item), house_root, lab, s->tabs[i].path, 2000 + i, 0);
-        n = snprintf(body + off, sizeof(body) - off, "%s\n", item);
-        if (n > 0) off += (size_t)n;
+        snprintf(key, sizeof(key), "tab_%d_label", i);
+        ui_put(body, &off, sizeof(body), key, lab);
+        snprintf(key, sizeof(key), "tab_%d_sprite", i);
+        ui_put(body, &off, sizeof(body), key, s->tabs[i].path);
+        snprintf(act, sizeof(act), "'%s' %d", relay, 2000 + i);
+        snprintf(key, sizeof(key), "tab_%d_action", i);
+        ui_put(body, &off, sizeof(body), key, act);
     }
-    n = snprintf(body + off, sizeof(body) - off, "</row>\n<row class=\"toolbar\">\n");
-    if (n > 0) off += (size_t)n;
-    for (i = 0; i < s->n_shortcuts && off < sizeof(body); i++) {
-        item_relay(item, sizeof(item), house_root, s->shortcuts[i].glyph, NULL, 3000 + i, 0);
-        n = snprintf(body + off, sizeof(body) - off, "%s\n", item);
-        if (n > 0) off += (size_t)n;
+
+    {
+        char nbuf[16];
+        snprintf(nbuf, sizeof(nbuf), "%d", s->n_shortcuts);
+        ui_put(body, &off, sizeof(body), "n_sc", nbuf);
     }
-    n = snprintf(body + off, sizeof(body) - off, "</row>\n</page>\n</window>\n");
-    if (n > 0) off += (size_t)n;
-    body[off < sizeof(body) ? off : sizeof(body) - 1] = '\0';
-    write_small_file(house_root, "#.desktop/strip_bottom.chtpm", body);
+    for (i = 0; i < s->n_shortcuts; i++) {
+        snprintf(key, sizeof(key), "sc_%d_label", i);
+        ui_put(body, &off, sizeof(body), key, s->shortcuts[i].glyph);
+        snprintf(act, sizeof(act), "'%s' %d", relay, 3000 + i);
+        snprintf(key, sizeof(key), "sc_%d_action", i);
+        ui_put(body, &off, sizeof(body), key, act);
+    }
+
+    {
+        char nbuf[16];
+        snprintf(nbuf, sizeof(nbuf), "%d", s->n_hq_wins);
+        ui_put(body, &off, sizeof(body), "n_hqwins", nbuf);
+    }
+    for (i = 0; i < s->n_hq_wins; i++) {
+        char lab[768], oc[128];
+        snprintf(lab, sizeof(lab), "🪟 %s", s->hq_wins[i].title);
+        snprintf(key, sizeof(key), "hw_%d_label", i);
+        ui_put(body, &off, sizeof(body), key, lab);
+        snprintf(key, sizeof(key), "hw_%d_minclass", i);
+        ui_put(body, &off, sizeof(body), key, s->hq_wins[i].minimized ? " hqwin-minimized" : "");
+        snprintf(oc, sizeof(oc), "FOCUSWIN:0x%lx:%d",
+                 s->hq_wins[i].win, s->hq_wins[i].pid);
+        snprintf(key, sizeof(key), "hw_%d_onclick", i);
+        ui_put(body, &off, sizeof(body), key, oc);
+    }
+
+    ui_put(body, &off, sizeof(body), "cliio_on", s->cliio_active ? "1" : "0");
+    ui_put(body, &off, sizeof(body), "cliio_label",
+           s->cliio_buffer[0] ? s->cliio_buffer : (s->cliio_op[0] ? s->cliio_op : "input"));
+    snprintf(act, sizeof(act), "'%s' submit", relay);
+    ui_put(body, &off, sizeof(body), "cliio_action", act);
+
+    if (off >= sizeof(body)) off = sizeof(body) - 1;
+    body[off] = '\0';
+    write_small_file(house_root, "#.desktop/strip_ui.txt", body);
 }
 
 static void publish_state(const KtbState *s, const char *house_root) {
@@ -631,7 +611,7 @@ static void publish_state(const KtbState *s, const char *house_root) {
     serialize_state(s, buf, sizeof(buf));
     write_strip_state(house_root, buf);
     publish_var_fragments(s, house_root);
-    publish_live_chtpm(s, house_root);
+    publish_strip_ui(s, house_root);
     touch_frame_changed(house_root);
 }
 
@@ -965,6 +945,17 @@ int main(int argc, char **argv) {
         int reload_changed = (st.n_tabs != prev_n_tabs || st.n_shortcuts != prev_n_sc ||
                                st.tab_focus_idx != prev_focus || st.zorder_above != prev_zorder ||
                                st.n_hq_wins != prev_n_hq);
+        {
+            char pdl_path[KTB_PATH_BUF], datetime_lang[16] = "zh", dt[128];
+            static char last_dt[128];
+            snprintf(pdl_path, sizeof(pdl_path), "%s/#.desktop/livedesk_taskbar.pdl", house_root);
+            read_key_value(pdl_path, "datetime_lang", datetime_lang, sizeof(datetime_lang));
+            format_datetime(dt, sizeof(dt), datetime_lang);
+            if (strcmp(dt, last_dt) != 0) {
+                snprintf(last_dt, sizeof(last_dt), "%s", dt);
+                reload_changed = 1;
+            }
+        }
         if (mutated || reload_changed)
             publish_state(&st, house_root);
         if (mutated || reload_changed) active_ticks = ACTIVE_HOLD_TICKS;

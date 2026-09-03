@@ -1,0 +1,59 @@
+<!-- STATIC Media Video. HOW2_VIDEO: File, transport+LCD, preview,
+     inspector, timeline V1/V2/A1/A2. Data in state/ui.txt. -->
+<window label="Media Video" class="media-vid" vars="state/ui.txt">
+  <page name="main">
+    <tabbar class="file-bar">
+      <tab id="file-save" label="Save" action="'${PKG}/ops/media_vid_action.sh' file save"/>
+      <tab id="file-export" label="Export MP4" action="'${PKG}/ops/media_vid_action.sh' file export"/>
+      <tab id="file-demo" label="Import Demo" action="'${PKG}/ops/media_vid_action.sh' file demo"/>
+      <tab id="file-paste" label="Paste files" action="'${PKG}/ops/media_vid_action.sh' file paste"/>
+      <tab id="file-quit" label="Quit" onclick="CLOSE"/>
+    </tabbar>
+    <tabbar class="transport">
+      <tab id="tr-zero" label="|&lt;" action="'${PKG}/ops/media_vid_action.sh' transport zero"/>
+      <tab id="tr-stop" label="Stop" action="'${PKG}/ops/media_vid_action.sh' transport stop"/>
+      <tab id="tr-play" label="Play" action="'${PKG}/ops/media_vid_action.sh' transport play"/>
+      <tab id="tr-lcd" label="${lcd}"/>
+    </tabbar>
+    <sidebar id="inspector" class="sidebar">
+      <text class="block-title" label="Inspector"/>
+      <text class="quiet" label="clip ${ins_name}"/>
+      <text class="quiet" label="lane ${ins_lane}"/>
+      <text class="quiet" label="in ${ins_in}"/>
+      <text class="quiet" label="out ${ins_out}"/>
+      <text class="quiet" label="dur ${ins_dur}"/>
+      <item id="split" label="Split (C)" action="'${PKG}/ops/media_vid_action.sh' edit split"/>
+      <item id="ripple" label="Ripple del (R)" action="'${PKG}/ops/media_vid_action.sh' edit ripple"/>
+    </sidebar>
+    <panel id="stage" class="panel">
+      <text class="quiet" label="${status}"/>
+      <text class="block-title" label="Preview"/>
+      <text class="quiet" label="${preview}"/>
+      <text class="block-title" label="V1"/>
+      <scrolllist>
+        <repeat count="${n_v1}" bind="v1">
+          <item class="data-item" label="${v1.text}" action="'${PKG}/ops/media_vid_action.sh' clip v1 ${v1.#}"/>
+        </repeat>
+      </scrolllist>
+      <text class="block-title" label="V2"/>
+      <scrolllist>
+        <repeat count="${n_v2}" bind="v2">
+          <item class="data-item" label="${v2.text}" action="'${PKG}/ops/media_vid_action.sh' clip v2 ${v2.#}"/>
+        </repeat>
+      </scrolllist>
+      <text class="block-title" label="A1"/>
+      <scrolllist>
+        <repeat count="${n_a1}" bind="a1">
+          <item class="data-item" label="${a1.text}" action="'${PKG}/ops/media_vid_action.sh' clip a1 ${a1.#}"/>
+        </repeat>
+      </scrolllist>
+      <text class="block-title" label="A2"/>
+      <text class="quiet" label="(empty)" show="${a2_empty}"/>
+      <scrolllist>
+        <repeat count="${n_a2}" bind="a2">
+          <item class="data-item" label="${a2.text}" action="'${PKG}/ops/media_vid_action.sh' clip a2 ${a2.#}"/>
+        </repeat>
+      </scrolllist>
+    </panel>
+  </page>
+</window>

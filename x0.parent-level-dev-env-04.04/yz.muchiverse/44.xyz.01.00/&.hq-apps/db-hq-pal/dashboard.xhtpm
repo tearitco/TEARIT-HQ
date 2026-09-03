@@ -1,0 +1,60 @@
+<!-- dashboard.xhtpm - db-hq as a STATIC template driven by a PAL
+     projector (CHTPM-ARCHITECTURE-FIX.md ; _shared-lib/system/string-ops.md).
+     Same shape as the original db-hq: a <tabbar> of the 15 RPG-Maker
+     categories, the active tab's record list in the <sidebar>, the
+     selected record's fields in the <panel>.
+
+     Choosing a tab runs ops/dbhq_action.sh (rewrites state/active.pdl),
+     marks the tab active, and scopes nav into the record list ([^],
+     Esc returns to the tab row) - the generic renderer's <tab> +
+     ACTIVATE-scope handling, spirit of db-hq's own dbhq_activate_scope
+     and piececraft INTERACT. The <module> projector re-reads
+     active.pdl + the tab's #.desktop/db_hq_<x>.state.txt and rewrites
+     state/ui.txt.
+
+     class="db-hq-pal" (NOT "db-hq") so the renderer's built-in
+     g_is_db_hq C path stays dormant. On the Common Events tab a row
+     click opens the ported events-hq editor on common_events/<name>
+     (dbhq_action.sh 'sel' detects TAG=CE). DB record FIELD EDITING
+     (Actors/Items/...) is still read-only - it needs the old db-hq
+     persistence chain (dbhq_pdl_publish_manager -> RPG-Maker JSON),
+     tracked as a follow-up. -->
+<window label="DB (PAL)" class="db-hq-pal database-window" vars="state/ui.txt">
+  <module src="&.widgits/_shared-lib/system/+x/prisc+x.+x pal/dbhq_projector.pal"/>
+  <page name="main">
+    <tabbar class="tab-bar">
+      <tab id="tab-actors"     class="active" label="Actors"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_actors.state.txt' 'ACTOR' 'Actors'"/>
+      <tab id="tab-classes"    label="Classes"       target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_classes.state.txt' 'CLASS' 'Classes'"/>
+      <tab id="tab-skills"     label="Skills"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_skills.state.txt' 'SKILL' 'Skills'"/>
+      <tab id="tab-items"      label="Items"         target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_items.state.txt' 'ITEM' 'Items'"/>
+      <tab id="tab-weapons"    label="Weapons"       target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_weapons.state.txt' 'WEAPON' 'Weapons'"/>
+      <tab id="tab-armors"     label="Armors"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_armors.state.txt' 'ARMOR' 'Armors'"/>
+      <tab id="tab-enemies"    label="Enemies"       target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_enemies.state.txt' 'ENEMY' 'Enemies'"/>
+      <tab id="tab-troops"     label="Troops"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_troops.state.txt' 'TROOP' 'Troops'"/>
+      <tab id="tab-states"     label="States"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_states.state.txt' 'STATE' 'States'"/>
+      <tab id="tab-animations" label="Animations"    target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_animations.state.txt' 'ANIMATION' 'Animations'"/>
+      <tab id="tab-tilesets"   label="Tilesets"      target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_tilesets.state.txt' 'TILESET' 'Tilesets'"/>
+      <tab id="tab-ce"         label="Common Events" target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_common_events.state.txt' 'CE' 'Common Events'"/>
+      <tab id="tab-system"     label="System"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_system.state.txt' 'SYSTEM' 'System'"/>
+      <tab id="tab-types"      label="Types"         target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_types.state.txt' 'TYPE' 'Types'"/>
+      <tab id="tab-terms"      label="Terms"         target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_terms.state.txt' 'TERM' 'Terms'"/>
+    </tabbar>
+    <sidebar id="sidebar" class="sidebar">
+      <text label="${tab_title}" class="quiet"/>
+      <scrolllist>
+        <repeat count="${rows_count}" bind="row">
+          <item id="r${row.#}" class="data-item" label="${row.text}" action="'${PKG}/ops/dbhq_action.sh' 'sel' '${row.#}'"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+    <panel id="detail" class="settings-block">
+      <text label="${detail_title}" class="block-title"/>
+      <scrolllist class="from-top">
+        <repeat count="${kv_count}" bind="kv">
+          <text label="${kv.text}"/>
+        </repeat>
+        <text label="Click a Common Event in the list to open it in the events editor." class="quiet" show="${is_ce}"/>
+      </scrolllist>
+    </panel>
+  </page>
+</window>

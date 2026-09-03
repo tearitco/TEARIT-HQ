@@ -1,0 +1,58 @@
+<!-- chat-hai.xhtpm - STATIC template for the chat-hai window, ported off
+     the bash projector ops/chat_hai_projector.sh (HANDOFF-scope-nav-and-
+     chtpm-port.md §5). Layout only - never regenerated at runtime.
+
+     Two <module>s, both forked once by the shared renderer's generic
+     kh_launch_window_modules() (default/popup mode) and SIGTERM'd when
+     the window closes:
+       1. chat_hai_loop.sh   - the persona round-robin backend (unchanged;
+                               it appends to state/sessions/<active>.ledger)
+       2. chat_hai_projector.+x - reads that state and writes state/ui.txt
+                               (key=value), consumed here via vars=.
+
+     class="chat-hai-pal database-window" - neither token hits the
+     renderer's exact-strcmp g_is_* triggers (db-hq / events-hq-window /
+     stats-hq / palettes / bookmarks); "database-window" is CSS-only,
+     same as events-hq.xhtpm. (g_is_chat_hai itself was already deleted
+     from khtpm_core_render.c on 2026-09-01.)
+
+     The old chat-hai.chtpm + chat-hai.chtpm.bootstrap + button.sh +
+     ops/chat_hai_projector.sh stay in place as rollback. This window is
+     launched only by button-pal.sh and is not wired into any menu. -->
+<window label="chat-hai" class="chat-hai-pal database-window" vars="state/ui.txt">
+  <module src="&.hq-apps/chat-hai/ops/chat_hai_loop.sh"/>
+  <module src="&.hq-apps/chat-hai/ops/+x/chat_hai_projector.+x"/>
+  <page name="main">
+
+    <sidebar id="sidebar" class="sidebar">
+      <text id="sidebar-header" label="Sessions" class="block-title"/>
+      <item id="new" class="data-item" label="+ New Session"
+            action="'${PKG}/ops/ch_item.sh' 'NEW'"/>
+      <scrolllist class="from-top">
+        <repeat count="${sessions_count}" bind="session">
+          <item id="s${session.#}" class="session-item" label="${session.label}"
+                action="'${PKG}/ops/ch_item.sh' 'SWITCH ${session.name}'"
+                backspace_action="'${PKG}/ops/ch_item.sh' 'DELETE ${session.name}'"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+
+    <panel id="content" class="command-list settings-block">
+      <text id="status" class="status-text" label="${status}"/>
+      <item id="pause" class="btn-control" label="${pause_label}"
+            action="'${PKG}/ops/ch_item.sh' 'PAUSE'"/>
+      <item id="speed" class="btn-control" label="${speed_label}"
+            action="'${PKG}/ops/ch_item.sh' 'SPEED'"/>
+      <scrolllist class="from-top">
+        <repeat count="${msgs_count}" bind="msg">
+          <text id="msg${msg.#}" class="${msg.class}" label="${msg.text}"/>
+        </repeat>
+        <text id="empty-hint" class="quiet" label="${empty_hint}" show="${empty_hint}"/>
+        <text id="typing-banner" class="status-text" label="${typing_banner}" show="${is_typing}"/>
+      </scrolllist>
+      <cli_io id="composer" target_id="composer" rows="3" class="composer-text"
+              label="&gt; " action="'${PKG}/ops/ch_send.sh'"/>
+    </panel>
+
+  </page>
+</window>

@@ -1,0 +1,5 @@
+SECTION      | KEY         | VALUE
+----------------------------------------
+SECTION      | export_dir  | pieces/apps/player_app
+SECTION      | project     | pieces/apps/player_app/daw_state.txt
+SECTION      | keybinds    | state/keybinds.pdl

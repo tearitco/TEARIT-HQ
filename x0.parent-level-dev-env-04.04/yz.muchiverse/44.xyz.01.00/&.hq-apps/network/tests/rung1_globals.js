@@ -1,0 +1,13 @@
+console.log(typeof window, typeof navigator, typeof screen);
+console.log("win===global", window === globalThis, "win===self", window === self);
+window.foo = 42; console.log("assign", foo, window.foo);
+console.log("ua", navigator.userAgent, "lang", navigator.language, "langs", navigator.languages.join(","));
+console.log("platform", navigator.platform, "onLine", navigator.onLine, "cookieEnabled", navigator.cookieEnabled, "dnt", navigator.doNotTrack);
+console.log("screen", screen.width, screen.height, screen.colorDepth);
+console.log("ael in window", "addEventListener" in window);
+console.log("loc", location.protocol, location.host, location.hostname, location.port, location.pathname, location.search, location.hash, location.origin);
+console.log("href", location.href);
+console.log("name", JSON.stringify(window.name), "closed", window.closed, "length", window.length);
+console.log("getElementById", String(document.getElementById("x")));
+location.assign("nope"); location.reload();
+console.log("nav funcs did not throw");

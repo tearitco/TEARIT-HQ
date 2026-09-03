@@ -1,0 +1,8 @@
+view=2d
+is_2d=1
+is_3d=0
+tool=brush
+status=Media Canvas v0 — 2D/3D stub (static xhtpm)
+n_layers=1
+layer_0_text=Layer 1
+canvas_sprite=

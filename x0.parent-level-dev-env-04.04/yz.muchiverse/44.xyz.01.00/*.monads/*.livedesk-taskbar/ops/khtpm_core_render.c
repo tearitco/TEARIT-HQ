@@ -484,23 +484,111 @@ static void dbhq_handle_term_signal(int sig) {
  * before events-hq/chat-hai/network-browser are migrated onto it too.
  * Returns the child pid (or -1 on fork failure), same as a bare
  * fork() - caller owns the pid the same way it always did. */
+/* Resolve one module token to an absolute path: absolute stays as-is;
+ * a relative token is tried against package_dir then house_root, and
+ * left unchanged if neither exists (execv will then error visibly). */
+static void lm_resolve(const char *tok, const char *house_root,
+                       const char *package_dir, char *out, size_t outsz) {
+    if (tok[0] == '/') { snprintf(out, outsz, "%s", tok); return; }
+    char cand[PATH_BUF];
+    if (package_dir && package_dir[0]) {
+        snprintf(cand, sizeof(cand), "%s/%s", package_dir, tok);
+        if (access(cand, F_OK) == 0) { snprintf(out, outsz, "%s", cand); return; }
+    }
+    if (house_root && house_root[0]) {
+        snprintf(cand, sizeof(cand), "%s/%s", house_root, tok);
+        if (access(cand, F_OK) == 0) { snprintf(out, outsz, "%s", cand); return; }
+    }
+    snprintf(out, outsz, "%s/%s", house_root ? house_root : ".", tok);
+}
+
 static pid_t launch_module(const char *src, const char *house_root, const char *package_dir, const char *extra_arg) {
     if (!src || !src[0]) return -1;
-    char full_path[PATH_BUF];
-    if (src[0] == '/') snprintf(full_path, sizeof(full_path), "%s", src);
-    else snprintf(full_path, sizeof(full_path), "%s/%s", house_root, src);
+
+    /* src may be a single path OR (tpmos convention) an interpreter +
+     * its own args, space-separated - e.g.
+     *   <module src="&.widgits/_shared-lib/system/+x/prisc+x.+x pal/foo.pal"/>
+     * Every whitespace token before house_root/package_dir is a real
+     * argv entry; a relative one is resolved via lm_resolve(). A plain
+     * one-token src (the compiled-manager case) is unchanged. */
+    char work[PATH_BUF * 2];
+    snprintf(work, sizeof(work), "%s", src);
+
+    char resolved[8][PATH_BUF];
+    char *argv[16];
+    int argc = 0;
+    char *save = NULL;
+    for (char *tok = strtok_r(work, " \t", &save);
+         tok && argc < 8;
+         tok = strtok_r(NULL, " \t", &save)) {
+        lm_resolve(tok, house_root, package_dir, resolved[argc], PATH_BUF);
+        argv[argc] = resolved[argc];
+        argc++;
+    }
+    if (argc == 0) return -1;
+    argv[argc++] = (char *)house_root;
+    argv[argc++] = (char *)package_dir;
+    if (extra_arg && extra_arg[0]) argv[argc++] = (char *)extra_arg;
+    argv[argc] = NULL;
 
     pid_t pid = fork();
     if (pid == 0) {
-        if (extra_arg && extra_arg[0])
-            execl(full_path, full_path, house_root, package_dir, extra_arg, (char *)NULL);
-        else
-            execl(full_path, full_path, house_root, package_dir, (char *)NULL);
+        if (house_root)   setenv("KHTPM_HOUSE", house_root, 1);
+        if (package_dir) { setenv("KHTPM_PKG", package_dir, 1);
+                           setenv("PRISC_PROJECT_ROOT", package_dir, 1); }
+        execv(argv[0], argv);
         _exit(1);
     } else if (pid < 0) {
-        fprintf(stderr, "khtpm_entity_menu_render: launch_module: fork failed for %s\n", full_path);
+        fprintf(stderr, "khtpm_entity_menu_render: launch_module: fork failed for %s\n", argv[0]);
     }
     return pid;
+}
+
+/* fork EVERY <module> in the tree (chtpm carries several, like an HTML
+ * page carries several <script src>): one view/shell + one logic
+ * module per tab. Each gets house_root + package_dir (+ its own id as
+ * argv[3]). All pids tracked so cleanup kills them all. */
+#define KH_MAX_MODULES 16
+static pid_t g_module_pids[KH_MAX_MODULES];
+static int g_n_module_pids = 0;
+
+static void kh_cleanup_modules(void) {
+    for (int i = 0; i < g_n_module_pids; i++)
+        if (g_module_pids[i] > 0) {
+            kill(g_module_pids[i], SIGTERM);
+            waitpid(g_module_pids[i], NULL, WNOHANG);
+        }
+    g_n_module_pids = 0;
+}
+
+static void kh_collect_and_launch_modules(Elem *e, const char *house_root, const char *package_dir) {
+    if (!e) return;
+    for (int i = 0; i < e->n_children; i++) {
+        Elem *c = e->children[i];
+        if (strcmp(c->tag, "module") == 0 && c->label[0] &&
+            g_n_module_pids < KH_MAX_MODULES) {
+            pid_t p = launch_module(c->label, house_root, package_dir,
+                                    c->id[0] ? c->id : NULL);
+            if (p > 0) g_module_pids[g_n_module_pids++] = p;
+        }
+        kh_collect_and_launch_modules(c, house_root, package_dir);
+    }
+}
+
+/* launch all <module>s of a window: write module_parent.pid once, then
+ * fork each. atexit cleanup registered on first use. */
+static void kh_launch_window_modules(Elem *window, const char *house_root, const char *package_dir) {
+    if (!window) return;
+    char ppp[PATH_BUF];
+    snprintf(ppp, sizeof(ppp), "%s/module_parent.pid", package_dir);
+    FILE *pf = fopen(ppp, "w");
+    if (pf) { fprintf(pf, "%d\n", (int)getpid()); fclose(pf); }
+    int before = g_n_module_pids;
+    kh_collect_and_launch_modules(window, house_root, package_dir);
+    if (g_n_module_pids > before) {
+        static int registered = 0;
+        if (!registered) { atexit(kh_cleanup_modules); registered = 1; }
+    }
 }
 
 static void dbhq_launch_module(const char *src, const char *extra_arg) {
@@ -735,9 +823,24 @@ static const char *parse_element(const char *p, Elem *parent) {
     e->parent = parent;
     if (parent && parent->n_children < MAX_CHILDREN) parent->children[parent->n_children++] = e;
 
+    /* generic show="..." (CHTPM-ARCHITECTURE-FIX.md): with ${var} now
+     * resolved at buffer level, a static template can gate a whole
+     * element on a state value - show="" / "0" / "false" drops it from
+     * the tree, anything else keeps it. Missing show= => always shown,
+     * so every existing template is unchanged. Handles the common
+     * self-closing case; a dropped element with children still parses
+     * its subtree (detached) - fine for leaf widgets like the ones
+     * signup-hq gates. */
+    int drop_elem = 0;
     for (;;) {
         skip_ws(&p);
-        if (*p == '/' && p[1] == '>') { p += 2; return p; }
+        if (*p == '/' && p[1] == '>') {
+            p += 2;
+            if (drop_elem && parent && parent->n_children > 0 &&
+                parent->children[parent->n_children - 1] == e)
+                parent->n_children--;
+            return p;
+        }
         if (*p == '>') { p++; break; }
         if (!*p) return p;
         char attr[32]; size_t an = 0;
@@ -749,8 +852,16 @@ static const char *parse_element(const char *p, Elem *parent) {
         skip_ws(&p);
         char val[1024] = "";
         if (*p == '=') { p++; parse_attr_value(&p, val, sizeof(val)); }
-        if (attr[0]) apply_attr(e, attr, val);
+        if (attr[0]) {
+            if (strcmp(attr, "show") == 0)
+                drop_elem = (val[0] == '\0' || strcmp(val, "0") == 0 || strcmp(val, "false") == 0);
+            else
+                apply_attr(e, attr, val);
+        }
     }
+    if (drop_elem && parent && parent->n_children > 0 &&
+        parent->children[parent->n_children - 1] == e)
+        parent->n_children--;
 
     for (;;) {
         skip_ws(&p);
@@ -761,6 +872,358 @@ static const char *parse_element(const char *p, Elem *parent) {
         }
         p = parse_element(p, e);
     }
+}
+
+/* ------------------------------------------------------------------ *
+ * ${var} substitution - restores the tpmos layout/data separation
+ * (see 08-roadmap/design-docs/CHTPM-ARCHITECTURE-FIX.md). A .chtpm is
+ * a STATIC template; a manager writes plain key=value lines to a state
+ * file; at parse time every ${key} token in the template is replaced
+ * with that key's value. Ported from 101.ledger-player-npc-simple+3/
+ * system/chtpm_parser.c (substitute_vars/load_vars/get_var).
+ *
+ * Backward compatible: if a template contains no "${" at all, none of
+ * this runs and parsing is byte-for-byte as before. The state file is
+ * named by a `vars="<path>"` attribute on any tag (resolved against
+ * g_house_root, or absolute if it starts with '/'); a missing file
+ * makes every ${key} resolve to the empty string, matching tpmos
+ * get_var()'s default. Only khtpm_core_render.+x consumes this - the
+ * ~25 legacy chtpm_parser_pal.c apps keep their own substituter. */
+#define KH_MAX_VARS   256
+#define KH_VAR_NAME   64
+#define KH_VAR_VALUE  2048
+typedef struct { char name[KH_VAR_NAME]; char value[KH_VAR_VALUE]; } KhVar;
+static KhVar g_kh_vars[KH_MAX_VARS];
+static int g_kh_nvars = 0;
+static char g_vars_path[PATH_BUF] = "";
+/* REAL, NEW 2026-09-03 - ONE generic optional-argv hook (not a per-app
+ * mode). If argv[3] is an existing directory, it is an "instance dir":
+ *   - ${ARG3} resolves to it (kh_get_var builtin, like ${PID}),
+ *   - <instance>/.hq_manager/ui.txt is appended to whatever vars= the
+ *     template declares, so a per-entity projection (events-hq, and
+ *     later db-hq Common Events) can be multi-instance without a
+ *     house-global state file,
+ *   - every <module> fork gets KHTPM_ARG3=<instance dir> in its env.
+ * The pre-existing "argc>=5 -> g_win_x=atoi(argv[3])" popup path is
+ * guarded to only run when argv[3] is NOT a directory. */
+static char g_arg3_dir[PATH_BUF] = "";
+static char g_extra_vars_path[PATH_BUF] = "";
+/* vars-file change is content-hashed (g_vars_hash), not mtime-tracked */
+/* hash of the vars-file bytes at the last reparse - so a projector that
+ * rewrites state/ui.txt every tick (rather than only on change, the
+ * tpmos frame_changed.txt convention) does NOT force a reparse/redraw
+ * when the content is byte-identical. Cheap: the state file is small. */
+static unsigned long g_vars_hash = 0;
+static unsigned long kh_file_hash(const char *path) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return 0;
+    unsigned long h = 1469598103934665603UL; /* FNV-1a 64 */
+    int c;
+    while ((c = fgetc(f)) != EOF) { h ^= (unsigned char)c; h *= 1099511628211UL; }
+    fclose(f);
+    return h ? h : 1;
+}
+
+static const char *kh_get_var(const char *name) {
+    /* built-ins so a static template can name house-relative paths in
+     * an action= without the manager having to bake in an absolute
+     * path: ${HOUSE} = house_root, ${PKG} = this .chtpm's own dir
+     * (what the renderer passes as $1 to every action anyway). */
+    if (strcmp(name, "HOUSE") == 0) return g_house_root;
+    if (strcmp(name, "PKG") == 0)   return g_package_dir;
+    /* ${PID} = this renderer process's own pid - the id the frame dump
+     * (entity_menu_frame_<pid>.txt) and the agent history injector
+     * (entity_menu_history/<pid>.txt) are keyed by. Lets a static
+     * template surface it (e.g. the strip's cell after the clock)
+     * without any manager involvement, since the manager is a
+     * different process. */
+    if (strcmp(name, "PID") == 0) {
+        static char kh_pidbuf[16];
+        snprintf(kh_pidbuf, sizeof(kh_pidbuf), "%d", (int)getpid());
+        return kh_pidbuf;
+    }
+    if (strcmp(name, "ARG3") == 0) return g_arg3_dir;
+    for (int i = 0; i < g_kh_nvars; i++)
+        if (strcmp(g_kh_vars[i].name, name) == 0) return g_kh_vars[i].value;
+    return "";
+}
+
+static void kh_set_var(const char *name, const char *value) {
+    for (int i = 0; i < g_kh_nvars; i++) {
+        if (strcmp(g_kh_vars[i].name, name) == 0) {
+            snprintf(g_kh_vars[i].value, KH_VAR_VALUE, "%s", value);
+            return;
+        }
+    }
+    if (g_kh_nvars >= KH_MAX_VARS) return;
+    snprintf(g_kh_vars[g_kh_nvars].name, KH_VAR_NAME, "%s", name);
+    snprintf(g_kh_vars[g_kh_nvars].value, KH_VAR_VALUE, "%s", value);
+    g_kh_nvars++;
+}
+
+/* key=value lines; '#' comments and blank lines skipped; key and
+ * surrounding space trimmed, interior spaces of the value kept. */
+static void kh_load_vars(const char *path) {
+    if (!path || !path[0]) return;
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[KH_VAR_VALUE + KH_VAR_NAME + 8];
+    while (fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        char *s = line;
+        while (*s == ' ' || *s == '\t') s++;
+        if (*s == '\0' || *s == '#') continue;
+        char *eq = strchr(s, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char *ke = eq;
+        while (ke > s && (ke[-1] == ' ' || ke[-1] == '\t')) ke--;
+        *ke = '\0';
+        char *val = eq + 1;
+        while (*val == ' ' || *val == '\t') val++;
+        if (s[0]) kh_set_var(s, val);
+    }
+    fclose(f);
+}
+
+/* load one OR MANY space-separated state files (vars="a.txt b.txt c.txt")
+ * - one <module> per file, later files add/override. Clears the table
+ * once, then appends each. */
+static void kh_load_vars_multi(const char *paths) {
+    g_kh_nvars = 0;
+    if (!paths || !paths[0]) return;
+    char work[PATH_BUF * 4];
+    snprintf(work, sizeof(work), "%s", paths);
+    char *save = NULL;
+    for (char *tok = strtok_r(work, " \t", &save); tok; tok = strtok_r(NULL, " \t", &save))
+        kh_load_vars(tok);
+}
+
+/* combined FNV-1a hash of every space-separated file in `paths` - a
+ * content change in ANY of them changes the result. */
+static unsigned long kh_files_hash(const char *paths) {
+    if (!paths || !paths[0]) return 0;
+    char work[PATH_BUF * 4];
+    snprintf(work, sizeof(work), "%s", paths);
+    unsigned long h = 1469598103934665603UL;
+    char *save = NULL;
+    for (char *tok = strtok_r(work, " \t", &save); tok; tok = strtok_r(NULL, " \t", &save)) {
+        unsigned long fh = kh_file_hash(tok);
+        h ^= fh; h *= 1099511628211UL;
+    }
+    return h ? h : 1;
+}
+
+/* the `vars="..."` attribute, with EACH space-separated token resolved
+ * against g_package_dir (or house_root), space-joined into out. */
+static int kh_find_vars_attr(const char *buf, char *out, size_t outsz) {
+    const char *p = strstr(buf, "vars=");
+    while (p) {
+        if (p == buf || isspace((unsigned char)p[-1]) || p[-1] == '<') {
+            const char *q = p + 5;
+            if (*q == '"') {
+                q++;
+                char rel[PATH_BUF]; size_t n = 0;
+                while (*q && *q != '"' && n + 1 < sizeof(rel)) rel[n++] = *q++;
+                rel[n] = '\0';
+                /* rel may be one path OR several space-separated (one
+                 * <module> per file). Resolve EACH token: absolute
+                 * wins; relative resolves against g_package_dir (a
+                 * per-instance copy under a custom --data-root finds
+                 * its own state), else house_root. Space-join into out. */
+                const char *base = g_package_dir[0] ? g_package_dir
+                                 : (g_house_root[0] ? g_house_root : ".");
+                out[0] = '\0';
+                char work[PATH_BUF]; snprintf(work, sizeof(work), "%s", rel);
+                char *save = NULL; int first = 1;
+                for (char *tok = strtok_r(work, " \t", &save); tok;
+                     tok = strtok_r(NULL, " \t", &save)) {
+                    char one[PATH_BUF];
+                    if (tok[0] == '/') snprintf(one, sizeof(one), "%s", tok);
+                    else if (tok[0] == '#' && g_house_root[0])
+                        snprintf(one, sizeof(one), "%s/%s", g_house_root, tok);
+                    else snprintf(one, sizeof(one), "%s/%s", base, tok);
+                    size_t cur = strlen(out);
+                    snprintf(out + cur, outsz - cur, "%s%s", first ? "" : " ", one);
+                    first = 0;
+                }
+                return out[0] ? 1 : 0;
+            }
+        }
+        p = strstr(p + 5, "vars=");
+    }
+    return 0;
+}
+
+/* ${name} -> value; \$ \{ \\ pass the next char literally; a "\n"
+ * sequence inside a value becomes a real newline (tpmos convention).
+ * An unknown ${name} expands to nothing. */
+static void kh_substitute_vars(const char *src, char *dst, size_t max_len) {
+    const char *p = src;
+    char *o = dst;
+    char *end = dst + max_len - 1;
+    while (*p && o < end) {
+        if (strncmp(p, "<!--", 4) == 0) {
+            const char *e = strstr(p, "-->");
+            size_t span = e ? (size_t)(e + 3 - p) : strlen(p);
+            for (size_t i = 0; i < span && o < end; i++) *o++ = p[i];
+            p += span;
+            continue;
+        }
+        if (*p == '\\' && (p[1] == '$' || p[1] == '{' || p[1] == '\\')) {
+            *o++ = p[1]; p += 2; continue;
+        }
+        if (p[0] == '$' && p[1] == '{') {
+            const char *close = strchr(p, '}');
+            if (close) {
+                char name[KH_VAR_NAME];
+                size_t n = (size_t)(close - (p + 2));
+                if (n >= sizeof(name)) n = sizeof(name) - 1;
+                memcpy(name, p + 2, n); name[n] = '\0';
+                const char *v = kh_get_var(name);
+                while (*v && o < end) {
+                    if (v[0] == '\\' && v[1] == 'n') { *o++ = '\n'; v += 2; }
+                    else *o++ = *v++;
+                }
+                p = close + 1;
+                continue;
+            }
+        }
+        *o++ = *p++;
+    }
+    *o = '\0';
+}
+
+/* <repeat count="${n}" bind="row"> ... ${row.field} ... </repeat>
+ * (CHTPM-ARCHITECTURE-FIX.md 3.3, the dynamic-list half). Runs BEFORE
+ * kh_substitute_vars: `count` is resolved now (a bare int, or one
+ * ${var}); the body is emitted `count` times with ${row.field}
+ * rewritten to ${row_<i>_field} and ${row.#} to the literal index, so
+ * the value pass then fills row_0_field / row_1_field / ... from the
+ * state file. No nesting in v1 (first </repeat> closes). Missing/empty
+ * count => zero copies, so an empty list just vanishes. */
+#define KH_REPEAT_MAX 4096
+static size_t kh_emit_repeat_body(const char *body, size_t blen,
+                                  const char *bind, int idx,
+                                  char *o, char *oend) {
+    char *o0 = o;
+    size_t bl = strlen(bind);
+    for (size_t i = 0; i < blen && o < oend; ) {
+        if (body[i] == '$' && i + 1 < blen && body[i + 1] == '{' &&
+            i + 2 + bl < blen && strncmp(body + i + 2, bind, bl) == 0 &&
+            body[i + 2 + bl] == '.') {
+            size_t j = i + 3 + bl;
+            char field[64]; size_t fn = 0;
+            while (j < blen && body[j] != '}' && fn + 1 < sizeof(field) &&
+                   (isalnum((unsigned char)body[j]) || body[j] == '_' || body[j] == '#'))
+                field[fn++] = body[j++];
+            field[fn] = '\0';
+            if (j < blen && body[j] == '}') {
+                j++;
+                int n;
+                if (strcmp(field, "#") == 0)
+                    n = snprintf(o, (size_t)(oend - o), "%d", idx);
+                else
+                    n = snprintf(o, (size_t)(oend - o), "${%s_%d_%s}", bind, idx, field);
+                if (n > 0) o += (n < (int)(oend - o) ? n : (int)(oend - o));
+                i = j;
+                continue;
+            }
+        }
+        *o++ = body[i++];
+    }
+    return (size_t)(o - o0);
+}
+
+static void kh_expand_repeats(const char *src, char *dst, size_t cap) {
+    const char *p = src;
+    char *o = dst;
+    char *oend = dst + cap - 1;
+    while (*p && o < oend) {
+        if (strncmp(p, "<!--", 4) == 0) {
+            const char *e = strstr(p, "-->");
+            size_t span = e ? (size_t)(e + 3 - p) : strlen(p);
+            for (size_t i = 0; i < span && o < oend; i++) *o++ = p[i];
+            p += span;
+            continue;
+        }
+        if (strncmp(p, "<repeat", 7) == 0 &&
+            (isspace((unsigned char)p[7]) || p[7] == '>')) {
+            const char *gt = strchr(p, '>');
+            /* depth-matched close: skip past any NESTED <repeat>...
+             * </repeat> so the outer body is captured whole. The inner
+             * ones are expanded on the next pass of the outer loop
+             * around this function (kh_expand_repeats_all). */
+            const char *close = NULL;
+            if (gt) {
+                int depth = 1;
+                const char *q = gt + 1;
+                while (*q) {
+                    if (strncmp(q, "<repeat", 7) == 0 &&
+                        (isspace((unsigned char)q[7]) || q[7] == '>')) { depth++; q += 7; continue; }
+                    if (strncmp(q, "</repeat>", 9) == 0) {
+                        depth--;
+                        if (depth == 0) { close = q; break; }
+                        q += 9; continue;
+                    }
+                    q++;
+                }
+            }
+            if (gt && close) {
+                /* attrs live in [p+7, gt) */
+                char attrs[512]; size_t an = (size_t)(gt - (p + 7));
+                if (an >= sizeof(attrs)) an = sizeof(attrs) - 1;
+                memcpy(attrs, p + 7, an); attrs[an] = '\0';
+                char bind[64] = "item";
+                int count = 0;
+                const char *bp = strstr(attrs, "bind=\"");
+                if (bp) { bp += 6; size_t k = 0;
+                    while (bp[k] && bp[k] != '"' && k + 1 < sizeof(bind)) { bind[k] = bp[k]; k++; }
+                    bind[k] = '\0'; }
+                const char *cp = strstr(attrs, "count=\"");
+                if (cp) {
+                    cp += 7;
+                    char cv[64]; size_t k = 0;
+                    while (cp[k] && cp[k] != '"' && k + 1 < sizeof(cv)) { cv[k] = cp[k]; k++; }
+                    cv[k] = '\0';
+                    if (cv[0] == '$' && cv[1] == '{') {
+                        char nm[64]; size_t m = 0;
+                        for (const char *q = cv + 2; *q && *q != '}' && m + 1 < sizeof(nm); q++) nm[m++] = *q;
+                        nm[m] = '\0';
+                        count = atoi(kh_get_var(nm));
+                    } else {
+                        count = atoi(cv);
+                    }
+                }
+                if (count < 0) count = 0;
+                if (count > KH_REPEAT_MAX) count = KH_REPEAT_MAX;
+                const char *body = gt + 1;
+                size_t blen = (size_t)(close - body);
+                for (int i = 0; i < count && o < oend; i++)
+                    o += kh_emit_repeat_body(body, blen, bind, i, o, oend);
+                p = close + 9; /* strlen("</repeat>") */
+                continue;
+            }
+        }
+        *o++ = *p++;
+    }
+    *o = '\0';
+}
+
+/* expand nested <repeat> (pages -> commands, ...): run kh_expand_repeats
+ * repeatedly - each pass expands the outermost layer, exposing the
+ * inner <repeat>s (whose count="${x.n}" is now a concrete
+ * ${x_0_n} the var pass will read). Bounded at 5 levels. Ping-pongs
+ * between two buffers. Returns the buffer holding the final result
+ * (either `a` or `b`), NUL-terminated. */
+static char *kh_expand_repeats_all(char *a, char *b, size_t cap) {
+    char *src = a, *dst = b;
+    for (int pass = 0; pass < 5; pass++) {
+        if (!strstr(src, "<repeat")) return src;
+        kh_expand_repeats(src, dst, cap);
+        char *t = src; src = dst; dst = t;
+    }
+    return src;
 }
 
 static Elem *parse_chtpm(const char *path) {
@@ -774,6 +1237,49 @@ static Elem *parse_chtpm(const char *path) {
     size_t rd = fread(buf, 1, (size_t)sz, f);
     buf[rd] = '\0';
     fclose(f);
+
+    /* static-template pipeline (CHTPM-ARCHITECTURE-FIX.md): load the
+     * state file, expand <repeat> blocks, then substitute ${var}. All
+     * skipped when the template uses neither ${...} nor <repeat> - a
+     * plain markup .chtpm is parsed byte-for-byte as before. */
+    if (strstr(buf, "${") || strstr(buf, "<repeat")) {
+        char vpath[PATH_BUF] = "";
+        if (kh_find_vars_attr(buf, vpath, sizeof(vpath))) {
+            snprintf(g_vars_path, sizeof(g_vars_path), "%s", vpath);
+        }
+        /* append the instance-dir ui.txt (argv[3] hook) as an extra
+         * space-separated vars source - kh_load_vars_multi and
+         * kh_files_hash both split g_vars_path on whitespace. */
+        if (g_extra_vars_path[0]) {
+            size_t l = strlen(g_vars_path);
+            snprintf(g_vars_path + l, sizeof(g_vars_path) - l,
+                     "%s%s", l ? " " : "", g_extra_vars_path);
+        }
+        if (g_vars_path[0]) g_vars_hash = kh_files_hash(g_vars_path);
+        kh_load_vars_multi(g_vars_path);
+
+        if (strstr(buf, "<repeat")) {
+            size_t rcap = (size_t)sz * 16 + 131072;
+            char *a = malloc(rcap), *b = malloc(rcap);
+            if (a && b) {
+                snprintf(a, rcap, "%s", buf);
+                char *fin = kh_expand_repeats_all(a, b, rcap);
+                free(buf);
+                buf = strdup(fin);
+                free(a); free(b);
+                if (!buf) return NULL;
+            } else { free(a); free(b); }
+        }
+
+        size_t cap = strlen(buf) * 2 + 4096;
+        char *subbed = malloc(cap);
+        if (subbed) {
+            kh_substitute_vars(buf, subbed, cap);
+            free(buf);
+            buf = subbed;
+        }
+    }
+
     const char *p = buf;
     Elem *root = NULL;
     while (*p) {
@@ -848,6 +1354,17 @@ static Elem *g_default_input_elem;
  * on reparse) - reset alongside it in reparse_chtpm_if_changed(). */
 static Elem *g_default_active_scope_root;
 static char g_default_active_scope_id[64];
+/* 1 when the active scope was entered on a CONTAINER (an ACTIVATE
+ * trigger with target_id=) - then nav is confined to that subtree,
+ * interact-mode style. 0 for a plain dropdown ACTIVATE (children
+ * show/hide only, nav not confined) so every existing dropdown is
+ * unchanged. */
+static int g_default_scope_confine = 0;
+/* generic <tabbar>/<tab> support (2026-09-03) - the id of the tab
+ * currently marked active, so its highlight and the "you came from
+ * here" Esc target survive the projector's every-tick reparse. Ported
+ * in spirit from db-hq's g_dbhq_current_tab. */
+static char g_default_active_tab_id[64] = "";
 static int g_dock_drop_lo, g_dock_drop_hi;
 /* Forward declaration - real definition (with its own X11/Xft section
  * header comment) lives further down this file. Needed here because a
@@ -878,7 +1395,21 @@ static int reparse_chtpm_if_changed(void) {
                  pst.st_mtim.tv_nsec != g_dock_peer_mtime.tv_nsec))
                 peer_changed = 1;
         }
-        if (st.st_mtim.tv_sec == g_chtpm_mtime.tv_sec && st.st_mtim.tv_nsec == g_chtpm_mtime.tv_nsec && !peer_changed)
+        /* ${var} state file (CHTPM-ARCHITECTURE-FIX.md): the template
+         * .chtpm is now static, so its mtime never moves - a data
+         * change shows up as a new mtime on g_vars_path instead. Treat
+         * that exactly like a template change: re-parse (which re-runs
+         * kh_load_vars + kh_substitute_vars) + re-layout + re-draw. */
+        int vars_changed = 0;
+        if (g_vars_path[0]) {
+            /* content-hash ALL the state files (one per <module>) - a
+             * reparse fires only on a real byte change in any of them,
+             * not on a projector's identical every-tick rewrite
+             * (marker-driven-render spirit). Cheap: small files. */
+            unsigned long h = kh_files_hash(g_vars_path);
+            if (h != g_vars_hash) { g_vars_hash = h; vars_changed = 1; }
+        }
+        if (st.st_mtim.tv_sec == g_chtpm_mtime.tv_sec && st.st_mtim.tv_nsec == g_chtpm_mtime.tv_nsec && !peer_changed && !vars_changed)
             return 0;
     }
     g_chtpm_mtime = st.st_mtim;
@@ -909,6 +1440,7 @@ static int reparse_chtpm_if_changed(void) {
      * above - a stale dropdown-open pointer into a freed/reused pool
      * slot is a real, live crash risk, not a cosmetic one. */
     g_default_active_scope_root = NULL;
+    g_default_scope_confine = 0;
     g_n_elems = 0;
     Elem *new_window = parse_chtpm(g_chtpm_path);
     if (!new_window) return 0;
@@ -917,8 +1449,23 @@ static int reparse_chtpm_if_changed(void) {
         g_dock_peer = parse_chtpm(g_dock_peer_path);
         { struct stat pst; if (g_dock_peer && stat(g_dock_peer_path, &pst) == 0) g_dock_peer_mtime = pst.st_mtim; }
     }
-    if (g_default_active_scope_id[0])
-        g_default_active_scope_root = find_by_id(g_window, g_default_active_scope_id);
+    if (g_default_active_scope_id[0]) {
+        /* re-resolve the scope across the reparse the projector's
+         * every-tick state write triggers - by the trigger's id, then
+         * (interact-style container scope) to its target_id container,
+         * restoring the confine flag so nav stays confined. */
+        Elem *trig = find_by_id(g_window, g_default_active_scope_id);
+        g_default_active_scope_root = trig;
+        if (trig && trig->target_id[0]) {
+            Elem *c = find_by_id(g_window, trig->target_id);
+            if (c) { g_default_active_scope_root = c; g_default_scope_confine = 1; }
+        } else if (trig && strcmp(trig->tag, "tab") == 0) {
+            /* a <tab> scope always locks onto the page <sidebar> */
+            Elem *pg = find_page("main");
+            Elem *sb = pg ? find_by_tag(pg, "sidebar") : NULL;
+            if (sb) { g_default_active_scope_root = sb; g_default_scope_confine = 1; }
+        }
+    }
     g_current_page[0] = '\0';
     snprintf(g_current_page, sizeof(g_current_page), "main");
     g_page_stack_n = 0;
@@ -1143,6 +1690,13 @@ static XftFont *font_ui;
 static int g_win_x = 300, g_win_y = 300;
 static int g_win_w = 260, g_win_h = 200;
 static int g_quit = 0;
+/* --dump-and-exit (any argv position): paint one frame, write the PNG +
+ * .txt receipt via dump_frame_png(), then quit. Set once at startup,
+ * honoured at the top of hq_run_event_loop() so every mode is covered
+ * from one place. g_dumped guards against a mode that also calls
+ * dump_frame_png() itself before entering the loop. */
+static int g_dump_and_exit = 0;
+static int g_dumped = 0;
 /* REAL FIX 2026-08-16, direct live report ("it breaks on events or just
  * when right clicking sometimes" - intermittent): the stale-event drain
  * right after XMapRaised only discards events already sitting in the X
@@ -1194,8 +1748,12 @@ static Elem *g_nav[MAX_ELEMS];
 static int g_click_two_step = 1;
 static int window_is_dock(void);
 static int elem_has_class(Elem *e, const char *cls);
+static int kh_elem_in_scope(Elem *e);
 static int click_focus_then_activate(Elem *hit) {
     if (!hit) return 0;
+    /* Out-of-scope rows stay numbered and drawn, but a click must not
+     * steal focus or fire — same as chtpm_parser.c is_navigable(). */
+    if (!kh_elem_in_scope(hit)) return 0;
     /* Dock menus: a mouse hit on ACTIVATE (HQ/File-style trigger) or a
      * dropdown-child row opens/runs immediately. Other dock cells still
      * honor #.desktop/hq_ui.pdl click_two_step. */
@@ -1293,6 +1851,26 @@ static int scaled(int base_px) {
  * in this file, so it is forward-declared here before the include. */
 static int elem_has_class(Elem *e, const char *cls);
 static int window_is_dock(void);
+/* chtpm interact-mode gate: g_nav[] stays the full numbered list;
+ * this predicate is the only thing that decides who can take focus.
+ * Port of chtpm_parser.c is_navigable()'s active_index branch. */
+static int kh_elem_in_scope(Elem *e) {
+    if (!e) return 0;
+    if (!(g_default_scope_confine && g_default_active_scope_root)) return 1;
+    if (e == g_default_active_scope_root) return 1;
+    {
+        Elem *p;
+        for (p = e->parent; p; p = p->parent)
+            if (p == g_default_active_scope_root) return 1;
+    }
+    if (e->id[0] && g_default_active_scope_id[0] &&
+        strcmp(e->id, g_default_active_scope_id) == 0) return 1;
+    if (g_default_active_scope_id[0] && e->target_id[0] &&
+        elem_has_class(e, "dropdown-child") &&
+        strcmp(e->target_id, g_default_active_scope_id) == 0) return 1;
+    if (e->id[0] && strncmp(e->id, "chrome-", 7) == 0) return 1;
+    return 0;
+}
 #include "khtpm_draw_core.c"
 #define ROW_H 24
 #define CHROME_H 24
@@ -6896,7 +7474,8 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
     int inner_w = w;
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
-        if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0 || scroll_is_sprite_grid_row(c))
+        if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0 ||
+            strcmp(c->tag, "cli_io") == 0 || scroll_is_sprite_grid_row(c))
             total += scroll_row_span(c, w);
     }
     int max_scroll = total > visible_rows ? total - visible_rows : 0;
@@ -6932,7 +7511,8 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
         int is_grid = scroll_is_sprite_grid_row(c);
-        if (!is_grid && strcmp(c->tag, "item") != 0 && strcmp(c->tag, "text") != 0) continue;
+        if (!is_grid && strcmp(c->tag, "item") != 0 && strcmp(c->tag, "text") != 0 &&
+            strcmp(c->tag, "cli_io") != 0) continue;
         int span = scroll_row_span(c, inner_w);
         int visible = (row + span > *scroll && row < *scroll + visible_rows);
         if (is_grid) {
@@ -6940,7 +7520,7 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
         } else if (visible) {
             c->x = x; c->y = content_y + (row - *scroll) * ROW_H; c->w = inner_w; c->h = span * ROW_H;
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
-            if (strcmp(c->tag, "item") == 0) {
+            if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "cli_io") == 0) {
                 c->nav_index = ++g_n_nav;
                 g_nav[g_n_nav - 1] = c;
                 if (*out_lo == 0) *out_lo = c->nav_index;
@@ -7172,11 +7752,78 @@ static int layout_sidebar_panel(Elem *page) {
         if (g_win_y < 0) g_win_y = 0;
     }
 
+    /* generic <tabbar> (spirit of db-hq's dbhq_layout_pass tab strip):
+     * a horizontal row of <tab> just under the chrome; the sidebar +
+     * panel start below it. Each <tab> is nav-numbered FIRST (before
+     * sidebar/panel), like the old db-hq order. The active tab (id ==
+     * g_default_active_tab_id) gets an "active" class so app CSS can
+     * style it (.tab / .tab.active - see db-hq's dashboard.css). */
+    /* Lay out EVERY <tabbar> child of the page, stacked (view-mode row
+     * on top, page row under it - EVENTS-HQ-XHTPM-PORT.md §5). Each is
+     * scaled(28) tall; content starts below the last one. Within one
+     * tabbar, if a sibling tab is the globally-clicked tab
+     * (g_default_active_tab_id) that one wins; if the clicked tab
+     * belongs to a DIFFERENT tabbar, this group falls back to its
+     * template / projector-supplied class="active". */
+    int tabbar_h = 0;
+    {
+        int row_h = scaled(28);
+        int th = row_h - scaled(4);
+        for (int ci = 0; ci < page->n_children; ci++) {
+            Elem *tabbar = page->children[ci];
+            if (strcmp(tabbar->tag, "tabbar") != 0 || tabbar->n_children <= 0) continue;
+            int group_has_click = 0;
+            if (g_default_active_tab_id[0])
+                for (int i = 0; i < tabbar->n_children; i++) {
+                    Elem *t = tabbar->children[i];
+                    if (strcmp(t->tag, "tab") == 0 && t->id[0] &&
+                        strcmp(t->id, g_default_active_tab_id) == 0) { group_has_click = 1; break; }
+                }
+            int ty = CHROME_H + tabbar_h + scaled(2);
+            int tx = scaled(6);
+            for (int i = 0; i < tabbar->n_children; i++) {
+                Elem *tab = tabbar->children[i];
+                if (strcmp(tab->tag, "tab") != 0) continue;
+                int tmpl_active = 0;
+                for (int k = 0; k < tab->n_classes; k++)
+                    if (strcmp(tab->classes[k], "active") == 0) tmpl_active = 1;
+                tab->active = group_has_click
+                    ? (tab->id[0] && strcmp(tab->id, g_default_active_tab_id) == 0)
+                    : tmpl_active;
+                int has_active_cls = tmpl_active;
+                if (tab->active && !has_active_cls && tab->n_classes < CSS_MAX_CLASSES)
+                    snprintf(tab->classes[tab->n_classes++], sizeof(tab->classes[0]), "active");
+                else if (!tab->active && has_active_cls) {
+                    int w2 = 0;
+                    for (int k = 0; k < tab->n_classes; k++)
+                        if (strcmp(tab->classes[k], "active") != 0)
+                            snprintf(tab->classes[w2++], sizeof(tab->classes[0]), "%s", tab->classes[k]);
+                    tab->n_classes = w2;
+                }
+                css_compute_style(&g_sheet, tab->tag, tab->id, tab->classes, tab->n_classes, 0, &tab->style);
+                int tw = scaled(34);
+                if (font_ui && tab->label[0]) {
+                    XGlyphInfo gi;
+                    XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)tab->label, (int)strlen(tab->label), &gi);
+                    tw += gi.xOff;
+                }
+                tab->x = tx; tab->y = ty; tab->w = tw; tab->h = th;
+                tab->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = tab;
+                tx += tw + scaled(3);
+            }
+            if (tx + scaled(6) > g_win_w) { g_win_w = tx + scaled(6); g_window->w = g_win_w; }
+            tabbar->x = 0; tabbar->y = CHROME_H + tabbar_h; tabbar->w = g_win_w; tabbar->h = row_h;
+            css_compute_style(&g_sheet, tabbar->tag, tabbar->id, tabbar->classes, tabbar->n_classes, 0, &tabbar->style);
+            tabbar_h += row_h;
+        }
+    }
+    int content_top = CHROME_H + tabbar_h;
+
     {
         int sidebar_w = SIDEBAR_W;
         if (sidebar->style.has_width && !sidebar->style.width_is_pct) sidebar_w = sidebar->style.width;
-        sidebar->x = 0; sidebar->y = CHROME_H; sidebar->w = sidebar_w; sidebar->h = g_win_h - CHROME_H;
-        panel->x = sidebar_w; panel->y = CHROME_H; panel->w = g_win_w - sidebar_w; panel->h = g_win_h - CHROME_H;
+        sidebar->x = 0; sidebar->y = content_top; sidebar->w = sidebar_w; sidebar->h = g_win_h - content_top;
+        panel->x = sidebar_w; panel->y = content_top; panel->w = g_win_w - sidebar_w; panel->h = g_win_h - content_top;
     }
     /* REAL, NEW 2026-08-31 (live report: "no separation elements") -
      * a real visible divider between the two regions belongs in CSS
@@ -7408,6 +8055,19 @@ static int layout_dock_toolbar_row(Elem *row, int x, int y, int max_w) {
         int cw;
         if (strcmp(t->tag, "item") != 0) {
             t->x = x; t->y = -100000; t->w = 0; t->h = 0; t->nav_index = 0;
+            continue;
+        }
+        /* class="no-nav" - a plain status cell (e.g. the strip's pid
+         * readout after the clock): laid out and drawn, but no nav
+         * index, so it gets no "[ ]N." badge and arrows/digits skip it. */
+        if (elem_has_class(t, "no-nav")) {
+            cw = 6 + dock_text_px(t->label) + 10;
+            if (cw < 40) cw = 40;
+            t->x = col_x; t->y = y; t->w = cw; t->h = DOCK_BAR_H; t->nav_index = 0;
+            css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
+            col_x += cw + DOCK_CELL_GAP;
+            used = col_x - x;
+            if (used > max_w) used = max_w;
             continue;
         }
         cw = 6 + DOCK_NAV_BADGE_PX;
@@ -7908,6 +8568,73 @@ static void dock_paint_menu(void) {
     }
 }
 
+/* interact-mode-style scope confinement. g_nav[] / nav_index are
+ * immutable render data (every interactive row keeps its number).
+ * Out-of-scope rows stay on screen with [ ]N. — inert until Esc.
+ * Port of chtpm_parser.c: skip-scan + is_navigable(), not a rebuild. */
+static void kh_focus_first_in_scope(void) {
+    int i;
+    if (!(g_default_scope_confine && g_n_nav > 0)) return;
+    if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
+        kh_elem_in_scope(g_nav[g_focus_nav - 1])) return;
+    for (i = 0; i < g_n_nav; i++) {
+        if (kh_elem_in_scope(g_nav[i])) { g_focus_nav = i + 1; return; }
+    }
+}
+static void kh_focus_first_child_in_scope(void) {
+    int i;
+    if (!(g_default_scope_confine && g_n_nav > 0)) return;
+    for (i = 0; i < g_n_nav; i++) {
+        Elem *e = g_nav[i];
+        if (!kh_elem_in_scope(e)) continue;
+        if (e == g_default_active_scope_root) continue;
+        if (e->id[0] && g_default_active_scope_id[0] &&
+            strcmp(e->id, g_default_active_scope_id) == 0) continue;
+        g_focus_nav = i + 1;
+        return;
+    }
+    kh_focus_first_in_scope();
+}
+/* TPMOS is_navigable() counts the ACTIVATE root so it stays numbered,
+ * but wrapping arrows onto that root is the parser bug where [>]
+ * vanishes from the submenu. Arrow stops are descendants + chrome
+ * (chrome is numbered as part of the submenu so X/!/_ stay reachable).
+ * The [^] trigger itself is not an arrow stop. */
+static int kh_elem_arrow_stop(Elem *e) {
+    if (!e || !kh_elem_in_scope(e)) return 0;
+    if (!g_default_scope_confine) return 1;
+    if (e == g_default_active_scope_root) return 0;
+    if (e->id[0] && g_default_active_scope_id[0] &&
+        strcmp(e->id, g_default_active_scope_id) == 0) return 0;
+    return 1;
+}
+static void kh_nav_step(int dir) {
+    int prev, n;
+    if (g_n_nav < 1) return;
+    if (!g_default_scope_confine) {
+        int nv = g_focus_nav + dir;
+        if (nv >= 1 && nv <= g_n_nav) g_focus_nav = nv;
+        return;
+    }
+    prev = g_focus_nav;
+    n = g_n_nav;
+    do {
+        g_focus_nav += dir;
+        if (g_focus_nav < 1) g_focus_nav = n;
+        if (g_focus_nav > n) g_focus_nav = 1;
+    } while (g_focus_nav != prev && !kh_elem_arrow_stop(g_nav[g_focus_nav - 1]));
+}
+static void kh_apply_scope_confine(void) {
+    /* Do not shrink g_nav[] or zero nav_index. Snap focus if the
+     * current row fell out of the live predicate. */
+    if (!(g_default_scope_confine && g_default_active_scope_root &&
+          !g_is_db_hq && !g_is_events_hq && !window_is_dock()))
+        return;
+    if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
+        kh_elem_arrow_stop(g_nav[g_focus_nav - 1])) return;
+    kh_focus_first_child_in_scope();
+}
+
 static void assign_nav_and_layout(void) {
     /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode branch, real WM-
      * managed window shape, own layout/nav functions (ported verbatim,
@@ -7976,6 +8703,13 @@ static void assign_nav_and_layout(void) {
         if (g_dock_drop_lo && g_default_active_scope_id[0] &&
             (g_focus_nav < g_dock_drop_lo || g_focus_nav > g_dock_drop_hi))
             g_focus_nav = g_dock_drop_lo;
+        /* REAL FIX 2026-09-03 - the sidebar+panel window shape (db-hq-pal
+         * <tab> scope) needs the same interact-mode nav confinement the
+         * fallthrough branch below gets; without this the [^] tab lock
+         * never took (all 15 tabs stayed navigable after activating one). */
+        kh_apply_scope_confine();
+        if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
+        if (g_focus_nav < 1) g_focus_nav = 1;
         return;
     }
     {
@@ -8058,6 +8792,7 @@ static void assign_nav_and_layout(void) {
         g_win_h = y + 8;
         }
     }
+    kh_apply_scope_confine();
     if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
     if (g_focus_nav < 1) g_focus_nav = 1;
 }
@@ -8386,10 +9121,37 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
 static void activate_focused(void) {
     if (g_focus_nav < 1 || g_focus_nav > g_n_nav) return;
     Elem *item = g_nav[g_focus_nav - 1];
+    if (!kh_elem_in_scope(item)) return;
     /* REAL FIX 2026-08-31 - see default_cli_io_handle_key()'s own
      * Escape-branch comment for the full real diagnosis. Grab taken
      * HERE (arm time), released on every real disarm path. */
     if (strcmp(item->tag, "cli_io") == 0) { g_default_input_elem = item; dbhq_grab_keyboard_retry(); return; }
+    /* generic <tab> (spirit of db-hq's tab click): run the tab's own
+     * action= (switches the projected content), mark it active, and
+     * scope nav into the page's <sidebar> - so after choosing a tab you
+     * navigate its record list, [^] shows, Esc returns to the tab row. */
+    if (strcmp(item->tag, "tab") == 0) {
+        if (item->id[0])
+            snprintf(g_default_active_tab_id, sizeof(g_default_active_tab_id), "%s", item->id);
+        if (item->onclick[0]) dispatch(item->onclick);
+        {
+            /* scope target: the tab's target_id= container, else the
+             * page <sidebar>. Same path the reparse re-resolve below
+             * uses, so the scope survives the projector's every-tick
+             * state write (which triggers a full reparse). */
+            Elem *pg = find_page(g_current_page);
+            Elem *sb = NULL;
+            if (item->target_id[0]) sb = find_by_id(g_window, item->target_id);
+            if (!sb && pg) sb = find_by_tag(pg, "sidebar");
+            if (sb) {
+                g_default_active_scope_root = sb;
+                g_default_scope_confine = 1;
+                snprintf(g_default_active_scope_id, sizeof(g_default_active_scope_id), "%s", item->id);
+                kh_focus_first_child_in_scope();
+            }
+        }
+        return;
+    }
     /* REAL, NEW 2026-09-03 - real, generic dropdown trigger, checked
      * BEFORE the generic dispatch() fallback (same real "an element
      * with its own recognized onclick verb handles itself" order
@@ -8397,13 +9159,15 @@ static void activate_focused(void) {
      * Clicking the trigger again while already open closes it (a real
      * toggle, not just an open-only action) - matches ordinary
      * dropdown/menu-button behavior everywhere else, not invented here. */
-    if (strcmp(item->onclick, "ACTIVATE") == 0) {
+    if (strncmp(item->onclick, "ACTIVATE", 8) == 0 &&
+        (item->onclick[8] == '\0' || item->onclick[8] == ' ')) {
         int same = (g_default_active_scope_root == item) ||
             (item->id[0] && g_default_active_scope_id[0] &&
              strcmp(item->id, g_default_active_scope_id) == 0);
         if (same) {
             g_default_active_scope_root = NULL;
             g_default_active_scope_id[0] = '\0';
+            g_default_scope_confine = 0;
             if (strncmp(item->id, "strip-cell-", 11) == 0) {
                 char hist[PATH_BUF];
                 snprintf(hist, sizeof(hist), "%s/#.desktop/strip_history.txt", g_house_root);
@@ -8411,8 +9175,27 @@ static void activate_focused(void) {
                 if (hf) { fprintf(hf, "27\n"); fclose(hf); }
             }
         } else {
-            g_default_active_scope_root = item;
+            /* Scope into the CONTAINER named by target_id (its subtree
+             * becomes the nav scope - spirit of dbhq_activate_scope() /
+             * INTERACT), or the trigger itself if no target_id. The
+             * trigger id is what Esc + the toggle above key off. */
+            Elem *scope = item;
+            g_default_scope_confine = 0;
+            if (item->target_id[0]) {
+                Elem *c = find_by_id(g_window, item->target_id);
+                if (c) { scope = c; g_default_scope_confine = 1; }
+            }
+            g_default_active_scope_root = scope;
             snprintf(g_default_active_scope_id, sizeof(g_default_active_scope_id), "%s", item->id);
+            if (g_default_scope_confine) kh_focus_first_child_in_scope();
+            /* `onclick="ACTIVATE '<script>' '<verb>'"` - run the trailing
+             * command too, so one click can both switch content and
+             * scope into it (e.g. a db-hq-pal tab). */
+            {
+                const char *rest = item->onclick + 8;
+                while (*rest == ' ') rest++;
+                if (*rest) dispatch(rest);
+            }
             if (strncmp(item->id, "strip-cell-", 11) == 0) {
                 int n = atoi(item->id + 11);
                 char hist[PATH_BUF];
@@ -8431,6 +9214,7 @@ static void activate_focused(void) {
     if (elem_has_class(item, "dropdown-child") && strcmp(item->onclick, "ZORDER_TOGGLE") != 0) {
         g_default_active_scope_root = NULL;
         g_default_active_scope_id[0] = '\0';
+        g_default_scope_confine = 0;
     }
     /* REAL, NEW 2026-09-03 - generic scrollbar up/down arrows
      * (generic_sbar_register()'s own header comment), same real
@@ -8562,7 +9346,9 @@ static void redraw(void) {
         XGetInputFocus(dpy, &focus_win, &focus_revert);
         char title_buf[192];
         const char *title_raw = (g_window->label[0] ? g_window->label : g_current_page);
-        snprintf(title_buf, sizeof(title_buf), "%s %s", (focus_win == win) ? "^" : ".", title_raw);
+        snprintf(title_buf, sizeof(title_buf), "%s %s%s",
+                 (focus_win == win) ? "^" : ".", title_raw,
+                 g_default_scope_confine ? "  Active [^]: (ESC to exit)" : "");
         const char *title = title_buf;
         if (window_is_dock()) {
             const char *mark = (focus_win == win) ? "^" : ".";
@@ -8885,6 +9671,31 @@ static void dump_frame_png(void) {
                     ok, g_win_w, g_win_h, (long)time(NULL), g_focus_nav, g_n_nav, g_phase, g_chosen_bg_idx, g_chosen_fg_idx);
             fclose(rf);
         }
+    } else {
+        /* Generic window: alongside the PNG write (a) a .receipt.txt and
+         * (b) a .frame.txt ASCII serialization of the laid-out Elem
+         * tree - the tpmos "if it's not in current_frame.txt it's not
+         * in the pixels" check, reusing db-hq's own serializer. */
+        char receipt[PATH_BUF], framef[PATH_BUF];
+        snprintf(receipt, sizeof(receipt), "%s.receipt.txt", png);
+        snprintf(framef, sizeof(framef), "%s.frame.txt", png);
+        FILE *rf = fopen(receipt, "w");
+        if (rf) {
+            fprintf(rf, "ok=%d png=%s w=%d h=%d t=%ld nav=%d n_nav=%d page=%s vars=%s\n",
+                    ok, png, g_win_w, g_win_h, (long)time(NULL),
+                    g_focus_nav, g_n_nav,
+                    g_current_page[0] ? g_current_page : "-",
+                    g_vars_path[0] ? g_vars_path : "-");
+            fclose(rf);
+        }
+        FILE *ff = fopen(framef, "w");
+        if (ff) {
+            if (g_window) {
+                dbhq_serialize_frame_elem(ff, g_window);
+                dbhq_serialize_frame_subtree(ff, g_window);
+            }
+            fclose(ff);
+        }
     }
 }
 
@@ -8904,7 +9715,14 @@ static void handle_key(KeySym ks, char ch) {
     if (g_default_input_elem) { default_cli_io_handle_key(ks, ch); return; } /* same real key-order exception - a real cli_io field needs 'p' as a literal typed character */
     if (ch == 'p') { dump_frame_png(); return; }
     if (g_is_db_hq) { dbhq_handle_key(ks, ch); return; }
-    if (ks == XK_Return || ks == XK_KP_Enter) { activate_focused(); return; }
+    if (ks == XK_Return || ks == XK_KP_Enter) {
+        activate_focused();
+        /* activate_focused() may have just entered/left a scope (<tab>,
+         * ACTIVATE) - relayout+repaint NOW so [^] and the confined nav
+         * show immediately, instead of only on the next projector tick. */
+        if (!g_quit && !g_is_db_hq && !g_is_events_hq) { assign_nav_and_layout(); redraw(); }
+        return;
+    }
     /* REAL, NEW 2026-09-03 (direct instruction: "esc closes drop down
      * and deactivates", matching the taskbar's own separate ktb_hq_
      * close() on Escape) - checked BEFORE the plain g_quit=1 fallback
@@ -8914,10 +9732,32 @@ static void handle_key(KeySym ks, char ch) {
      * proven precedent - this is the same real idea for the generic
      * dropdown instead of a cli_io field). */
     if (ks == XK_Escape && (g_default_active_scope_root || g_default_active_scope_id[0])) {
-        if (g_default_active_scope_root && g_default_active_scope_root->nav_index > 0)
-            g_focus_nav = g_default_active_scope_root->nav_index;
-        g_default_active_scope_root = NULL;
-        g_default_active_scope_id[0] = '\0';
+        /* Pop ONE level: nearest ACTIVATE ancestor, else full clear.
+         * Matches chtpm_parser.c ESC (lines 2745-2754). */
+        Elem *old = g_default_active_scope_root;
+        Elem *p = old ? old->parent : NULL;
+        Elem *next = NULL;
+        while (p) {
+            if (strncmp(p->onclick, "ACTIVATE", 8) == 0) { next = p; break; }
+            p = p->parent;
+        }
+        if (next && next != old) {
+            g_default_active_scope_root = next;
+            if (next->id[0])
+                snprintf(g_default_active_scope_id, sizeof(g_default_active_scope_id), "%s", next->id);
+            g_default_scope_confine = 1;
+            if (old && old->nav_index > 0) g_focus_nav = old->nav_index;
+            else kh_focus_first_in_scope();
+        } else {
+            Elem *trig = g_default_active_scope_id[0] ? find_by_id(g_window, g_default_active_scope_id) : NULL;
+            if (trig && trig->nav_index > 0)
+                g_focus_nav = trig->nav_index;
+            else if (g_default_active_scope_root && g_default_active_scope_root->nav_index > 0)
+                g_focus_nav = g_default_active_scope_root->nav_index;
+            g_default_active_scope_root = NULL;
+            g_default_active_scope_id[0] = '\0';
+            g_default_scope_confine = 0;
+        }
         if (window_is_dock()) {
             char hist[PATH_BUF];
             snprintf(hist, sizeof(hist), "%s/#.desktop/strip_history.txt", g_house_root);
@@ -8951,7 +9791,7 @@ static void handle_key(KeySym ks, char ch) {
             if (g_focus_nav > g_dock_drop_lo) g_focus_nav--;
             return;
         }
-        if (g_focus_nav > 1) g_focus_nav--;
+        kh_nav_step(-1);
         if (window_is_dock() && g_dock_peer_win && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
             Window want = (g_focus_nav > g_dock_header_nav_hi) ? g_dock_peer_win : win;
             XRaiseWindow(dpy, want);
@@ -8965,7 +9805,7 @@ static void handle_key(KeySym ks, char ch) {
             if (g_focus_nav < g_dock_drop_hi) g_focus_nav++;
             return;
         }
-        if (g_focus_nav < g_n_nav) g_focus_nav++;
+        kh_nav_step(1);
         if (window_is_dock() && g_dock_peer_win && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
             Window want = (g_focus_nav > g_dock_header_nav_hi) ? g_dock_peer_win : win;
             XRaiseWindow(dpy, want);
@@ -8994,7 +9834,7 @@ static void handle_key(KeySym ks, char ch) {
             if (idx >= g_dock_drop_lo && idx <= g_dock_drop_hi) g_focus_nav = idx;
             return;
         }
-        if (d <= g_n_nav) g_focus_nav = d;
+        if (d <= g_n_nav && kh_elem_in_scope(g_nav[d - 1])) g_focus_nav = d;
         return;
     }
 }
@@ -9771,6 +10611,8 @@ static void popup_handle_click(int px, int py) {
         if (px >= it->x && px < it->x + it->w && py >= it->y && py < it->y + it->h) {
             if (!click_focus_then_activate(it)) { redraw(); return; }
             activate_focused();
+            if (!g_quit && !g_is_db_hq && !g_is_events_hq) { assign_nav_and_layout(); }
+            redraw();
             return;
         }
     }
@@ -10305,6 +11147,29 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
 }
 
 static void hq_run_event_loop(Atom wm_delete, int is_popup) {
+    /* headless snapshot: --dump-and-exit on any mode. Paint one real
+     * frame (twice, with a beat between - same "opacity/first-paint
+     * settles on the 2nd" reasoning the db-hq path already relies on),
+     * write the PNG + receipt via dump_frame_png(), then quit before
+     * the loop proper. Covers every hq_run_event_loop() caller from
+     * one place. */
+    if (g_dump_and_exit) {
+        if (!g_dumped) {
+            g_dumped = 1;
+            redraw();
+            XFlush(dpy);
+            usleep(250000);
+            /* a <module> projector just started - give it a beat to
+             * write its first state file, then pick it up before the
+             * snapshot (the event loop that normally does this is
+             * skipped in dump mode). */
+            reparse_chtpm_if_changed();
+            redraw();
+            XFlush(dpy);
+            dump_frame_png();
+        }
+        return;
+    }
     while (!g_quit) {
         hq_idle_tick();
         if (g_quit) break;
@@ -16941,6 +17806,8 @@ static void cleanup_hq_window_registry(void) {
 }
 
 int main(int argc, char **argv) {
+    for (int ai = 1; ai < argc; ai++)
+        if (strcmp(argv[ai], "--dump-and-exit") == 0) g_dump_and_exit = 1;
     /* REAL, NEW 2026-09-01 - taskbar strip mode AND tile mode dispatch,
      * checked FIRST, before any of the shared .chtpm-parsing setup below
      * - NEITHER mode takes a .chtpm path at all, so both share the same
@@ -17001,11 +17868,27 @@ int main(int argc, char **argv) {
     snprintf(g_package_dir, sizeof(g_package_dir), "%s", g_chtpm_path);
     { char *slash = strrchr(g_package_dir, '/'); if (slash) *slash = '\0'; }
 
+    /* generic argv[3] instance-dir hook (see g_arg3_dir decl). Must run
+     * BEFORE parse_chtpm so g_extra_vars_path is picked up by the
+     * static-template vars pass. */
+    if (argc >= 4 && argv[3][0]) {
+        struct stat a3st;
+        if (stat(argv[3], &a3st) == 0 && S_ISDIR(a3st.st_mode)) {
+            snprintf(g_arg3_dir, sizeof(g_arg3_dir), "%s", argv[3]);
+            snprintf(g_extra_vars_path, sizeof(g_extra_vars_path),
+                     "%s/.hq_manager/ui.txt", g_arg3_dir);
+            setenv("KHTPM_ARG3", g_arg3_dir, 1);
+        }
+    }
+
     g_window = parse_chtpm(g_chtpm_path);
     if (!g_window) { fprintf(stderr, "khtpm_core_render: failed to parse %s\n", g_chtpm_path); return 1; }
     { struct stat gcst; if (stat(g_chtpm_path, &gcst) == 0) g_chtpm_mtime = gcst.st_mtim; }
     if (elem_has_class(g_window, "dock-header")) {
-        snprintf(g_dock_peer_path, sizeof(g_dock_peer_path), "%s/#.desktop/strip_bottom.chtpm", g_house_root);
+        /* peer is the static bottom template beside the header, never
+         * a generated #.desktop/strip_bottom.chtpm (layout-update). */
+        snprintf(g_dock_peer_path, sizeof(g_dock_peer_path),
+                 "%s/khtpm_strip_bottom.xhtpm", g_package_dir);
         g_dock_peer = parse_chtpm(g_dock_peer_path);
         { struct stat pst; if (g_dock_peer && stat(g_dock_peer_path, &pst) == 0) g_dock_peer_mtime = pst.st_mtim; }
     }
@@ -17087,7 +17970,9 @@ int main(int argc, char **argv) {
         if (argc < 5) { fprintf(stderr, "usage: %s <house_root> <chtpm_path> <event_pkg_dir> <entity_label>\n", argv[0]); return 1; }
         snprintf(g_evhq_pkg_dir, sizeof(g_evhq_pkg_dir), "%s", argv[3]);
         snprintf(g_evhq_entity_label, sizeof(g_evhq_entity_label), "%s", argv[4]);
-    } else if (argc >= 5) {
+    } else if (argc >= 5 && !g_arg3_dir[0]) {
+        /* not the instance-dir hook (g_arg3_dir) -> the legacy popup
+         * launch shape where argv[3]/argv[4] are x/y ints. */
         g_win_x = atoi(argv[3]); g_win_y = atoi(argv[4]);
     }
 
@@ -17791,17 +18676,8 @@ int main(int argc, char **argv) {
          * "exit if my own parent is gone" safety net can poll that same
          * file itself (see khtpm_open_hai_manager.c's own real use of
          * it) - opt-in, not required, zero effect on a module that
-         * never reads it. */
-        Elem *module_elem = find_by_tag(g_window, "module");
-        if (module_elem && module_elem->label[0]) {
-            char parent_pid_path[PATH_BUF];
-            snprintf(parent_pid_path, sizeof(parent_pid_path), "%s/module_parent.pid", g_package_dir);
-            FILE *ppf = fopen(parent_pid_path, "w");
-            if (ppf) { fprintf(ppf, "%d\n", (int)getpid()); fclose(ppf); }
-            g_dbhq_module_pid = launch_module(module_elem->label, g_house_root, g_package_dir,
-                                               module_elem->id[0] ? module_elem->id : NULL);
-            atexit(dbhq_cleanup_module);
-        }
+         * never reads it. Fork EVERY <module> (shell + one per tab). */
+        kh_launch_window_modules(g_window, g_house_root, g_package_dir);
     }
 
     gc = XCreateGC(dpy, win, 0, NULL);

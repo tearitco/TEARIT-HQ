@@ -1,0 +1,6 @@
+SECTION      | KEY         | VALUE
+----------------------------------------
+SECTION      | export_dir  | pieces/apps/player_app
+SECTION      | project     | pieces/apps/player_app/timeline.clips
+SECTION      | media_dir   | media
+SECTION      | keybinds    | state/keybinds.pdl

@@ -1,0 +1,55 @@
+<!-- STATIC Media DAW. HOW2_DAW layout: File, transport+LCD, channel strip,
+     arrangement lanes, piano roll, mixer drawer. Data in state/ui.txt. -->
+<window label="Media DAW" class="media-daw" vars="state/ui.txt">
+  <page name="main">
+    <tabbar class="file-bar">
+      <tab id="file-new" label="New" action="'${PKG}/ops/media_daw_action.sh' file new"/>
+      <tab id="file-open" label="Open" action="'${PKG}/ops/media_daw_action.sh' file open"/>
+      <tab id="file-save" label="Save" action="'${PKG}/ops/media_daw_action.sh' file save"/>
+      <tab id="file-saveas" label="Save As" action="'${PKG}/ops/media_daw_action.sh' file saveas"/>
+      <tab id="file-quit" label="Quit" onclick="CLOSE"/>
+    </tabbar>
+    <tabbar class="transport">
+      <tab id="tr-start" label="|&lt;" action="'${PKG}/ops/media_daw_action.sh' transport start"/>
+      <tab id="tr-stop" label="Stop" action="'${PKG}/ops/media_daw_action.sh' transport stop"/>
+      <tab id="tr-play" label="Play" action="'${PKG}/ops/media_daw_action.sh' transport play"/>
+      <tab id="tr-rec" label="Rec" action="'${PKG}/ops/media_daw_action.sh' transport rec"/>
+      <tab id="tr-cycle" label="Cycle" action="'${PKG}/ops/media_daw_action.sh' transport cycle"/>
+      <tab id="tr-lcd" label="${lcd}  ${bpm}bpm"/>
+    </tabbar>
+    <sidebar id="channel" class="sidebar">
+      <text class="block-title" label="Channel: ${active_track}"/>
+      <item id="ch-mute" label="M mute ${ch_mute}" action="'${PKG}/ops/media_daw_action.sh' ch mute"/>
+      <item id="ch-solo" label="S solo ${ch_solo}" action="'${PKG}/ops/media_daw_action.sh' ch solo"/>
+      <item id="ch-rec" label="R rec ${ch_rec}" action="'${PKG}/ops/media_daw_action.sh' ch rec"/>
+      <item id="ch-vol" label="Vol ${ch_vol}" action="'${PKG}/ops/media_daw_action.sh' ch vol"/>
+      <item id="ch-pan" label="Pan ${ch_pan}" action="'${PKG}/ops/media_daw_action.sh' ch pan"/>
+      <item id="ch-eq" label="EQ ${ch_eq}" action="'${PKG}/ops/media_daw_action.sh' ch eq"/>
+      <item id="ch-reverb" label="Reverb ${ch_reverb}" action="'${PKG}/ops/media_daw_action.sh' ch reverb"/>
+      <item id="ch-dist" label="Dist ${ch_dist}" action="'${PKG}/ops/media_daw_action.sh' ch dist"/>
+      <item id="add-track" label="+ Track" action="'${PKG}/ops/media_daw_action.sh' track add"/>
+      <item id="mixer-toggle" label="Mixer (B)" action="'${PKG}/ops/media_daw_action.sh' mixer toggle"/>
+    </sidebar>
+    <panel id="arrange" class="panel">
+      <text class="quiet" label="${status}"/>
+      <text class="block-title" label="Arrangement"/>
+      <scrolllist>
+        <repeat count="${n_tracks}" bind="track">
+          <item class="data-item" label="${track.text}" action="'${PKG}/ops/media_daw_action.sh' track sel ${track.#}"/>
+        </repeat>
+      </scrolllist>
+      <text class="block-title" label="Piano roll"/>
+      <scrolllist>
+        <repeat count="${n_notes}" bind="note">
+          <item class="data-item" label="${note.text}"/>
+        </repeat>
+      </scrolllist>
+      <text class="block-title" label="Mixer" show="${is_mixer}"/>
+      <scrolllist show="${is_mixer}">
+        <repeat count="${n_mix}" bind="mix">
+          <item class="data-item" label="${mix.text}"/>
+        </repeat>
+      </scrolllist>
+    </panel>
+  </page>
+</window>

@@ -131,7 +131,22 @@ void handle_sigint(int sig) {
 #define MEM_SIZE 4096
 #define STRING_POOL_START 0xF00
 
-typedef enum { OP_ADDI, OP_BEQ, OP_BNE, OP_LW, OP_SW, OP_JALR, OP_J, OP_HALT, OP_CUSTOM, OP_READ_HISTORY, OP_EXEC, OP_HIT_FRAME, OP_READ_STATE, OP_READ_ACTIVE_TARGET, OP_READ_ENV_KEY, OP_SLEEP, OP_READ_LAYOUT, OP_READ_POS, OP_ECALL } OpBase;
+/* STRING SUPPORT (2026-09-03, backwards-compatible extension). The VM
+ * gains a bank of string registers s0..s15 and a set of s* opcodes so a
+ * .pal can read line content, format it, and write a text file - which
+ * plain integer ecall could not do. Every addition here is additive:
+ * the s* opcodes are new strcmp() branches in parse_line(), new cases
+ * in the executor, sregs[] is a separate zero-initialised array no
+ * existing op touches, and the OpBase enum values below are APPENDED so
+ * every prior value is unchanged. A .pal that never mentions an s*
+ * mnemonic runs byte-for-byte as before. See string-ops.md. */
+#define NUM_SREGS 32
+#define SREG_SZ   4096
+
+typedef enum { OP_ADDI, OP_BEQ, OP_BNE, OP_LW, OP_SW, OP_JALR, OP_J, OP_HALT, OP_CUSTOM, OP_READ_HISTORY, OP_EXEC, OP_HIT_FRAME, OP_READ_STATE, OP_READ_ACTIVE_TARGET, OP_READ_ENV_KEY, OP_SLEEP, OP_READ_LAYOUT, OP_READ_POS, OP_ECALL,
+    OP_SLIT, OP_SCPY, OP_SAPPEND, OP_SGETENV, OP_SFMT, OP_SREAD, OP_SSPLIT,
+    OP_SFIND, OP_SLEN, OP_SFOPEN, OP_SFAPPEND, OP_SWRITE, OP_SFCLOSE,
+    OP_SBEQ, OP_SBNE, OP_STRIM, OP_SATOI } OpBase;
 
 typedef struct {
     OpBase op;
@@ -140,6 +155,11 @@ typedef struct {
     char custom_name[32];
     char literal_arg[1024];
     char literal_arg2[1024];
+    /* string-op operands (dest + up to 3 source string regs). Unused
+     * by every non-s* opcode; memset to 0 with the rest of Inst. */
+    int sd, ss1, ss2, ss3;
+    char sfmt_toks[8][8];   /* sfmt arg list, each "xN" or "sN" */
+    int  sfmt_n;
 } Inst;
 
 typedef struct {
@@ -164,6 +184,16 @@ typedef struct {
 
 int32_t regs[16] = {0};
 int32_t mem[MEM_SIZE] = {0};
+char sregs[NUM_SREGS][SREG_SZ];   /* string registers s0..s15, zero-init */
+
+/* "s3" -> 3, anything else -> -1. Tolerates a leading space. */
+static int sreg_idx(const char *tok) {
+    while (*tok == ' ' || *tok == '\t') tok++;
+    int n = -1;
+    if (sscanf(tok, "s%d", &n) == 1 && n >= 0 && n < NUM_SREGS) return n;
+    return -1;
+}
+
 Inst program[MAX_INST];
 Label labels[MAX_LABELS];
 Variable variables[MAX_VARS];
@@ -350,8 +380,25 @@ void parse_line(char *line, int pass) {
     char original[1024];
     strncpy(original, line, sizeof(original) - 1);
     original[sizeof(original) - 1] = '\0';
+
+    /* Strip a TRAILING `#` comment (assembly convention, so a .pal can
+     * be annotated line by line) - quote-aware (a `#` inside a "..."
+     * literal survives) and only when real content precedes it, so a
+     * full-line `#` comment and `#include` are left for the checks
+     * below. Applied to both `line` and `original` so every downstream
+     * parse sees clean text. */
+    for (int _pass = 0; _pass < 2; _pass++) {
+        char *buf = _pass == 0 ? line : original;
+        int inq = 0, seen = 0;
+        for (char *c = buf; *c; c++) {
+            if (*c == '"') { inq = !inq; seen = 1; }
+            else if (*c == '#' && !inq && seen) { *c = '\0'; break; }
+            else if (!isspace((unsigned char)*c)) seen = 1;
+        }
+    }
+
     trim(line);
-    
+
     if (line[0] == '#' || line[0] == '\0') return;
     if (strncmp(line, "#include", 8) == 0) return;
     if (is_variable_line(line)) return;
@@ -629,6 +676,78 @@ void parse_line(char *line, int pass) {
                 sscanf(args, "\"%1023[^\"]\"", i->literal_arg);
             }
             i->op = OP_ECALL;
+        }
+        /* ---- string opcodes (2026-09-03, additive - see the STRING
+         * SUPPORT comment near OpBase). All operand parsing reads from
+         * `original` so quoted literals keep their spaces. ---- */
+        else if (strcmp(part, "slit") == 0) {
+            char *a = strstr(original, part) + strlen(part);
+            sscanf(a, " s%d , \"%1023[^\"]\"", &i->sd, i->literal_arg);
+            i->op = OP_SLIT;
+        } else if (strcmp(part, "scpy") == 0) {
+            sscanf(line, "%*s s%d, s%d", &i->sd, &i->ss1);
+            i->op = OP_SCPY;
+        } else if (strcmp(part, "sappend") == 0) {
+            sscanf(line, "%*s s%d, s%d", &i->sd, &i->ss1);
+            i->op = OP_SAPPEND;
+        } else if (strcmp(part, "sgetenv") == 0) {
+            char *a = strstr(original, part) + strlen(part);
+            sscanf(a, " s%d , \"%1023[^\"]\"", &i->sd, i->literal_arg);
+            i->op = OP_SGETENV;
+        } else if (strcmp(part, "sfmt") == 0) {
+            /* sfmt sD, "fmt", arg, arg, ...   arg = xN (for %d) or sN (for %s) */
+            char *a = strstr(original, part) + strlen(part);
+            sscanf(a, " s%d , \"%1023[^\"]\"", &i->sd, i->literal_arg);
+            char *q = strchr(a, '"');
+            if (q) q = strchr(q + 1, '"');        /* past closing quote */
+            if (q) {
+                char *tok = strtok(q + 1, ", \t\r\n");
+                while (tok && i->sfmt_n < 8) {
+                    snprintf(i->sfmt_toks[i->sfmt_n++], sizeof(i->sfmt_toks[0]), "%s", tok);
+                    tok = strtok(NULL, ", \t\r\n");
+                }
+            }
+            i->op = OP_SFMT;
+        } else if (strcmp(part, "sread") == 0) {
+            sscanf(line, "%*s s%d, x%d, s%d", &i->sd, &i->rs1, &i->ss1);
+            i->op = OP_SREAD;
+        } else if (strcmp(part, "ssplit") == 0) {
+            /* ssplit sSRC, "sep", sBEFORE, sAFTER */
+            char *a = strstr(original, part) + strlen(part);
+            sscanf(a, " s%d , \"%1023[^\"]\" , s%d , s%d",
+                   &i->ss1, i->literal_arg, &i->sd, &i->ss2);
+            i->op = OP_SSPLIT;
+        } else if (strcmp(part, "sfind") == 0) {
+            char *a = strstr(original, part) + strlen(part);
+            sscanf(a, " x%d , s%d , \"%1023[^\"]\"", &i->rd, &i->ss1, i->literal_arg);
+            i->op = OP_SFIND;
+        } else if (strcmp(part, "slen") == 0) {
+            sscanf(line, "%*s x%d, s%d", &i->rd, &i->ss1);
+            i->op = OP_SLEN;
+        } else if (strcmp(part, "sfopen") == 0) {
+            sscanf(line, "%*s x%d, s%d", &i->rd, &i->ss1);
+            i->op = OP_SFOPEN;
+        } else if (strcmp(part, "sfappend") == 0) {
+            sscanf(line, "%*s x%d, s%d", &i->rd, &i->ss1);
+            i->op = OP_SFAPPEND;
+        } else if (strcmp(part, "swrite") == 0) {
+            sscanf(line, "%*s x%d, s%d", &i->rs1, &i->ss1);
+            i->op = OP_SWRITE;
+        } else if (strcmp(part, "sfclose") == 0) {
+            sscanf(line, "%*s x%d", &i->rs1);
+            i->op = OP_SFCLOSE;
+        } else if (strcmp(part, "sbeq") == 0) {
+            sscanf(line, "%*s s%d, s%d, %31s", &i->ss1, &i->ss2, i->label_ref);
+            i->op = OP_SBEQ;
+        } else if (strcmp(part, "sbne") == 0) {
+            sscanf(line, "%*s s%d, s%d, %31s", &i->ss1, &i->ss2, i->label_ref);
+            i->op = OP_SBNE;
+        } else if (strcmp(part, "strim") == 0) {
+            sscanf(line, "%*s s%d", &i->sd);
+            i->op = OP_STRIM;
+        } else if (strcmp(part, "satoi") == 0) {
+            sscanf(line, "%*s x%d, s%d", &i->rd, &i->ss1);
+            i->op = OP_SATOI;
         }
     }
     inst_count++;
@@ -1151,6 +1270,105 @@ int main(int argc, char **argv) {
             else regs[i.rd] = 0;
         } else if (i.op == OP_ECALL) {
             exec_ecall(&i);
+        } else if (i.op == OP_SLIT) {
+            snprintf(sregs[i.sd], SREG_SZ, "%s", i.literal_arg);
+        } else if (i.op == OP_SCPY) {
+            snprintf(sregs[i.sd], SREG_SZ, "%s", sregs[i.ss1]);
+        } else if (i.op == OP_SAPPEND) {
+            size_t l = strlen(sregs[i.sd]);
+            if (l < SREG_SZ - 1) snprintf(sregs[i.sd] + l, SREG_SZ - l, "%s", sregs[i.ss1]);
+        } else if (i.op == OP_SGETENV) {
+            const char *v = getenv(i.literal_arg);
+            snprintf(sregs[i.sd], SREG_SZ, "%s", v ? v : "");
+        } else if (i.op == OP_SFMT) {
+            const char *f = i.literal_arg;
+            char *o = sregs[i.sd];
+            size_t used = 0; int ai = 0;
+            o[0] = '\0';
+            while (*f && used < SREG_SZ - 1) {
+                if (f[0] == '%' && f[1] == '%') { o[used++] = '%'; f += 2; continue; }
+                if (f[0] == '%' && f[1] == 'd' && ai < i.sfmt_n) {
+                    int rn = -1; sscanf(i.sfmt_toks[ai++], "x%d", &rn);
+                    if (rn >= 0 && rn < 16)
+                        used += snprintf(o + used, SREG_SZ - used, "%d", regs[rn]);
+                    f += 2; continue;
+                }
+                if (f[0] == '%' && f[1] == 's' && ai < i.sfmt_n) {
+                    int sn = sreg_idx(i.sfmt_toks[ai++]);
+                    if (sn >= 0)
+                        used += snprintf(o + used, SREG_SZ - used, "%s", sregs[sn]);
+                    f += 2; continue;
+                }
+                o[used++] = *f++;
+            }
+            o[used < SREG_SZ ? used : SREG_SZ - 1] = '\0';
+        } else if (i.op == OP_SREAD) {
+            regs[12] = -1;
+            sregs[i.sd][0] = '\0';
+            FILE *sf = fopen(sregs[i.ss1], "r");
+            if (sf) {
+                char ln[SREG_SZ];
+                int cur = 0, want = regs[i.rs1];
+                while (fgets(ln, sizeof(ln), sf)) {
+                    if (cur == want) {
+                        ln[strcspn(ln, "\r\n")] = '\0';
+                        snprintf(sregs[i.sd], SREG_SZ, "%s", ln);
+                        regs[12] = (int)strlen(sregs[i.sd]);
+                        break;
+                    }
+                    cur++;
+                }
+                fclose(sf);
+            }
+        } else if (i.op == OP_SSPLIT) {
+            char src[SREG_SZ];
+            snprintf(src, SREG_SZ, "%s", sregs[i.ss1]);
+            char *hit = i.literal_arg[0] ? strstr(src, i.literal_arg) : NULL;
+            if (hit) {
+                size_t blen = (size_t)(hit - src);
+                if (blen >= SREG_SZ) blen = SREG_SZ - 1;
+                memcpy(sregs[i.sd], src, blen); sregs[i.sd][blen] = '\0';
+                snprintf(sregs[i.ss2], SREG_SZ, "%s", hit + strlen(i.literal_arg));
+                regs[12] = 1;
+            } else {
+                snprintf(sregs[i.sd], SREG_SZ, "%s", src);
+                sregs[i.ss2][0] = '\0';
+                regs[12] = 0;
+            }
+        } else if (i.op == OP_SFIND) {
+            char *h = i.literal_arg[0] ? strstr(sregs[i.ss1], i.literal_arg) : NULL;
+            regs[i.rd] = h ? (int)(h - sregs[i.ss1]) : -1;
+        } else if (i.op == OP_SLEN) {
+            regs[i.rd] = (int)strlen(sregs[i.ss1]);
+        } else if (i.op == OP_SFOPEN || i.op == OP_SFAPPEND) {
+            FILE *wf = fopen(sregs[i.ss1], i.op == OP_SFOPEN ? "w" : "a");
+            regs[i.rd] = wf ? ecall_alloc_fd(wf) : -1;
+        } else if (i.op == OP_SWRITE) {
+            int fd = regs[i.rs1];
+            if (fd >= 0 && fd < MAX_ECALL_FDS && ecall_fds[fd]) {
+                fprintf(ecall_fds[fd], "%s\n", sregs[i.ss1]);
+                fflush(ecall_fds[fd]);
+            }
+        } else if (i.op == OP_SFCLOSE) {
+            int fd = regs[i.rs1];
+            if (fd >= 0 && fd < MAX_ECALL_FDS && ecall_fds[fd]) {
+                fclose(ecall_fds[fd]); ecall_fds[fd] = NULL;
+            }
+        } else if (i.op == OP_SBEQ || i.op == OP_SBNE) {
+            int target = -1;
+            for (int l = 0; l < label_count; l++)
+                if (strcmp(labels[l].name, i.label_ref) == 0) target = labels[l].addr;
+            int eq = (strcmp(sregs[i.ss1], sregs[i.ss2]) == 0);
+            if ((i.op == OP_SBEQ && eq) || (i.op == OP_SBNE && !eq)) next_pc = target;
+        } else if (i.op == OP_SATOI) {
+            regs[i.rd] = atoi(sregs[i.ss1]);
+        } else if (i.op == OP_STRIM) {
+            char *s = sregs[i.sd];
+            char *b = s;
+            while (*b == ' ' || *b == '\t' || *b == '\r' || *b == '\n') b++;
+            size_t n = strlen(b);
+            while (n > 0 && (b[n-1] == ' ' || b[n-1] == '\t' || b[n-1] == '\r' || b[n-1] == '\n')) n--;
+            memmove(s, b, n); s[n] = '\0';
         } else {
             switch (i.op) {
                 case OP_ADDI: regs[i.rd] = regs[i.rs1] + i.imm; break;

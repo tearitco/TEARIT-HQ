@@ -8,9 +8,10 @@
  *     (button.sh -> renderer -> generic launch_module())
  *   - argv[1] = house_root, everything else derived
  *   - every ~150ms: read one line from #.desktop/signup_hq/request.txt
- *     (truncate it), act, then regenerate <pkg>/signup-hq.chtpm with
- *     ONLY generic tags (window/page/panel/text/cli_io/row/item) - zero
- *     new renderer C
+ *     (truncate it), act, then write plain key=value lines to
+ *     <pkg>/state/ui.txt - the STATIC signup-hq.chtpm template does the
+ *     layout (${var} + show=), this manager never emits markup
+ *     (CHTPM-ARCHITECTURE-FIX.md)
  *   - exit when the parent renderer's module_parent.pid is gone
  *
  * The actual account work is NOT reinvented here: on submit it shells
@@ -43,7 +44,7 @@ static char g_pkg[PB];          /* <house>/&.hq-apps/signup-hq            */
 static char g_login[PB];        /* <house>/<0.user-pal*>/00.login-signup  */
 static char g_state[PB];        /* <house>/#.desktop/signup_hq            */
 static char g_req[PB];          /* <state>/request.txt                    */
-static char g_out[PB];          /* <pkg>/signup-hq.chtpm                  */
+static char g_out[PB];          /* <pkg>/state/ui.txt  (key=value state)  */
 static char g_curlogin[PB];     /* <login>/current_login.txt             */
 
 static int   g_stage = 0;
@@ -173,57 +174,84 @@ static void handle_request(void) {
     }
 }
 
-/* ---------- projection ------------------------------------------- */
+/* ---------- state projection ------------------------------------- *
+ * Write plain key=value lines to <pkg>/state/ui.txt. The static
+ * signup-hq.chtpm template turns these into the actual UI:
+ *   ${title} ${hint} ${id_shown} ${field_label} ${field_verb}
+ *   ${field_tid} ${err} ${btn_label} ${btn_verb}
+ *   show_hint / show_id_line / show_field / show_err / show_rules /
+ *   show_btn  ("1" or "0", consumed by the template's show="${...}")
+ * Values that can carry user text (id / name / already) are XML-attr
+ * escaped here exactly as the old markup path did - the renderer runs
+ * decode_entities() on label= after substitution, so it round-trips. */
 
 static char *g_last = NULL;
 
-static void write_projection(void) {
+static void write_state(void) {
     char buf[8192];
     size_t o = 0;
-    #define A(...) do { o += snprintf(buf+o, sizeof(buf)-o, __VA_ARGS__); } while (0)
-    char act[PB];
-    snprintf(act, sizeof(act), "'%s/ops/signup_hq_action.sh'", g_pkg);
+    #define K(...) do { o += snprintf(buf+o, sizeof(buf)-o, __VA_ARGS__); } while (0)
 
-    /* sidebar + panel is the ONLY shape the shared renderer parses for a
-     * window that mixes <text> and <cli_io> (co-lab-hai / chat-hai /
-     * network-browser / open-hai all use it). A flat page parses only
-     * with <item> children; a lone <panel> without a <sidebar> sibling
-     * renders empty. So: a token <sidebar>, then everything in <panel>.
-     * The window's own chrome provides the close 'x' - no CLOSE item. */
-    A("<window label=\"Sign up\" class=\"signup-hq\">\n");
-    A("  <page name=\"main\">\n");
-    A("    <sidebar>\n      <text label=\"Sign up\"/>\n    </sidebar>\n");
-    A("    <panel>\n");
+    char title[256] = "", hint[256] = "", id_shown[128] = "";
+    char field_label[64] = "", field_verb[16] = "", field_tid[16] = "";
+    char err_esc[256] = "";
+    char btn_label[32] = "", btn_verb[16] = "";
+    int show_hint = 0, show_id_line = 0, show_field = 0;
+    int show_err = 0, show_rules = 0, show_btn = 0;
+
+    if (g_err[0]) { xesc(g_err, err_esc, sizeof(err_esc)); show_err = 1; }
 
     if (g_already[0]) {
         char e[128]; xesc(g_already, e, sizeof(e));
-        A("      <text label=\"You're already signed in as %s.\" class=\"title\"/>\n", e);
+        snprintf(title, sizeof(title), "You're already signed in as %s.", e);
     } else if (g_stage == 0) {
-        A("      <text label=\"Create your account\" class=\"title\"/>\n");
-        A("      <text label=\"Step 1 of 2  -  choose a username.\" class=\"hint\"/>\n");
-        A("      <cli_io id=\"idf\" target_id=\"idf\" label=\"username: \" action=\"%s 'setid'\"/>\n", act);
-        if (g_err[0]) { char e[220]; xesc(g_err,e,sizeof(e)); A("      <text label=\"%s\" class=\"err\"/>\n", e); }
-        A("      <text label=\"Letters, numbers, _ and - .  No spaces.\" class=\"quiet\"/>\n");
+        snprintf(title, sizeof(title), "Create your account");
+        snprintf(hint, sizeof(hint), "Step 1 of 2  -  choose a username."); show_hint = 1;
+        snprintf(field_label, sizeof(field_label), "username: ");
+        snprintf(field_verb, sizeof(field_verb), "setid");
+        snprintf(field_tid, sizeof(field_tid), "idf");
+        show_field = 1;
+        show_rules = 1;
     } else if (g_stage == 1) {
-        char id[128]; xesc(g_id, id, sizeof(id));
-        A("      <text label=\"Create your account\" class=\"title\"/>\n");
-        A("      <text label=\"Step 2 of 2  -  a display name (what other people see).\" class=\"hint\"/>\n");
-        A("      <text label=\"username: %s\" class=\"quiet\"/>\n", id);
-        A("      <cli_io id=\"nmf\" target_id=\"nmf\" label=\"display name: \" action=\"%s 'setname'\"/>\n", act);
-        if (g_err[0]) { char e[220]; xesc(g_err,e,sizeof(e)); A("      <text label=\"%s\" class=\"err\"/>\n", e); }
-        A("      <item label=\"back\" action=\"%s 'back'\"/>\n", act);
+        xesc(g_id, id_shown, sizeof(id_shown)); show_id_line = 1;
+        snprintf(title, sizeof(title), "Create your account");
+        snprintf(hint, sizeof(hint), "Step 2 of 2  -  a display name (what other people see)."); show_hint = 1;
+        snprintf(field_label, sizeof(field_label), "display name: ");
+        snprintf(field_verb, sizeof(field_verb), "setname");
+        snprintf(field_tid, sizeof(field_tid), "nmf");
+        show_field = 1;
+        snprintf(btn_label, sizeof(btn_label), "back");
+        snprintf(btn_verb, sizeof(btn_verb), "back");
+        show_btn = 1;
     } else if (g_stage == 2) {
-        A("      <text label=\"Creating your account...\" class=\"title\"/>\n");
-        if (g_err[0]) { char e[220]; xesc(g_err,e,sizeof(e)); A("      <text label=\"%s\" class=\"err\"/>\n", e); }
-        A("      <item label=\"start over\" action=\"%s 'restart'\"/>\n", act);
+        snprintf(title, sizeof(title), "Creating your account...");
+        snprintf(btn_label, sizeof(btn_label), "start over");
+        snprintf(btn_verb, sizeof(btn_verb), "restart");
+        show_btn = 1;
     } else { /* stage 3 done */
         char nm[128]; xesc(g_name[0] ? g_name : g_id, nm, sizeof(nm));
-        A("      <text label=\"Welcome, %s!\" class=\"title\"/>\n", nm);
-        A("      <text label=\"You're signed in. Next: open the person icon up top to build an avatar.\" class=\"hint\"/>\n");
+        snprintf(title, sizeof(title), "Welcome, %s!", nm);
+        snprintf(hint, sizeof(hint),
+                 "You're signed in. Next: open the person icon up top to build an avatar.");
+        show_hint = 1;
     }
 
-    A("    </panel>\n  </page>\n</window>\n");
-    #undef A
+    K("title=%s\n", title);
+    K("hint=%s\n", hint);
+    K("id_shown=%s\n", id_shown);
+    K("field_label=%s\n", field_label);
+    K("field_verb=%s\n", field_verb);
+    K("field_tid=%s\n", field_tid);
+    K("err=%s\n", err_esc);
+    K("btn_label=%s\n", btn_label);
+    K("btn_verb=%s\n", btn_verb);
+    K("show_hint=%d\n", show_hint);
+    K("show_id_line=%d\n", show_id_line);
+    K("show_field=%d\n", show_field);
+    K("show_err=%d\n", show_err);
+    K("show_rules=%d\n", show_rules);
+    K("show_btn=%d\n", show_btn);
+    #undef K
 
     if (g_last && strcmp(g_last, buf) == 0) return;
     free(g_last);
@@ -257,7 +285,8 @@ int main(int argc, char **argv) {
     { size_t l = strlen(g_house); if (l>1 && g_house[l-1]=='/') g_house[l-1]=0; }
 
     snprintf(g_pkg, sizeof(g_pkg), "%s/&.hq-apps/signup-hq", g_house);
-    snprintf(g_out, sizeof(g_out), "%s/signup-hq.chtpm", g_pkg);
+    { char sd[PB]; snprintf(sd, sizeof(sd), "%s/state", g_pkg); mkdir(sd, 0777); }
+    snprintf(g_out, sizeof(g_out), "%s/state/ui.txt", g_pkg);
 
     char userpal[PB];
     if (!find_child_prefixed(g_house, "0.user-pal", userpal, sizeof(userpal))) {
@@ -275,7 +304,7 @@ int main(int argc, char **argv) {
     /* already signed in?  -> show the "already signed in" screen */
     { char u[64]; read_current_user(u, sizeof(u)); if (u[0]) snprintf(g_already, sizeof(g_already), "%s", u); }
 
-    write_projection();
+    write_state();
 
     for (;;) {
         handle_request();
@@ -290,7 +319,7 @@ int main(int argc, char **argv) {
             }
         }
 
-        write_projection();
+        write_state();
         if (!parent_alive()) break;
         { struct timespec ts = { 0, 150 * 1000 * 1000 }; nanosleep(&ts, NULL); }
     }

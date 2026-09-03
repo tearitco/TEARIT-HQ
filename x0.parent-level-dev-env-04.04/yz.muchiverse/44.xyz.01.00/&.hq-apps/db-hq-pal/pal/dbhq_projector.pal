@@ -1,0 +1,224 @@
+# dbhq_projector.pal - the <module> for db-hq-pal's dashboard.chtpm.
+#
+# ONE projector for all 14 generic RPG-Maker database tabs. Reads:
+#   <pkg>/state/active.pdl        which tab is open + which record is selected
+#                                 (written by ops/dbhq_action.sh)
+#   <house>/#.desktop/db_hq_<x>.state.txt   the tab's data: uniform
+#                                 "TAG | key | value" records, first key
+#                                 "id", second "name".
+# Writes <pkg>/state/ui.txt:
+#   tab_title=   rows_count=   row_<n>_text=      (the record list)
+#   detail_title=  kv_count=  kv_<n>_text=        (the selected record)
+#   is_ce=       (1 for the Common Events tab)
+# The static template turns those into the sidebar list + panel via
+# ${...} and two <repeat> blocks. No compiled C.
+#
+# INT REGISTERS
+#   x1 line#   x2 record index/count   x3 kv count   x4 selected index
+#   x7 in-record flag   x8 scratch (lengths)   x9 output fd
+#   x11 is_ce   x13 "past the selected record" flag   x14 = x4 + 1
+# STRING REGISTERS
+#   s0 current line / current formatted output line
+#   s1..s4 split scratch (tag | key | value)
+#   s5 pending/selected name   s6 pending/selected id
+#   s10 "file"  s11 "tag"  s12 "title"  s16 "sel"  s17 "id"  s18 "name"  s19 "CE"
+#   s20 active file basename   s21 active TAG   s22 active title
+#   s24 full path to the data file   s25 full path to ui.txt
+#   s26 $KHTPM_HOUSE   s27 $KHTPM_PKG   s28 path to active.pdl
+
+sgetenv s26, "KHTPM_HOUSE"                        # house root
+sgetenv s27, "KHTPM_PKG"                          # this package's dir
+sfmt s28, "%s/state/active.pdl", s27              # where dbhq_action.sh writes the tab/selection
+sfmt s25, "%s/state/ui.txt", s27                  # what this projector writes
+slit s10, "file"                                  # active.pdl key names ...
+slit s11, "tag"
+slit s12, "title"
+slit s16, "sel"
+slit s17, "id"                                    # record key: id
+slit s18, "name"                                  # record key: name
+slit s19, "CE"                                    # the Common Events tag
+
+proj_top:                                         # ================= one projection pass =================
+
+# ---- read active.pdl (default to the Actors tab if it's not there yet) ----
+slit s20, "db_hq_actors.state.txt"               # default file
+slit s21, "ACTOR"                                 # default tag
+slit s22, "Actors"                                # default title
+li x4, 0                                          # default selected index
+li x1, 0                                          # line cursor
+av_read:
+sread s0, x1, s28                                 # s0 = line x1 of active.pdl (x12 = len, -1 past EOF)
+slen x8, s0                                       # x8 = its length
+beq x8, x0, av_done                               # empty -> end of file
+ssplit s0, "|", s1, s2                            # s1 = section col, s2 = " key | value"
+ssplit s2, "|", s3, s4                            # s3 = key, s4 = value
+strim s3                                          # trim padding off the key
+strim s4                                          # trim padding off the value
+sbeq s3, s10, av_file                             # key == "file"
+sbeq s3, s11, av_tag                              # key == "tag"
+sbeq s3, s12, av_title                            # key == "title"
+sbeq s3, s16, av_sel                              # key == "sel"
+j av_next
+av_file:                                          # remember the data file basename
+scpy s20, s4
+j av_next
+av_tag:                                           # remember the record tag
+scpy s21, s4
+j av_next
+av_title:                                         # remember the tab title
+scpy s22, s4
+j av_next
+av_sel:                                           # remember the selected index (string -> int)
+satoi x4, s4
+j av_next
+av_next:
+addi x1, x1, 1                                    # next line
+j av_read
+av_done:
+
+sfmt s24, "%s/#.desktop/%s", s26, s20             # s24 = full path to the tab's data file
+li x11, 0                                         # is_ce = 0
+sbne s21, s19, not_ce                             # tag != "CE"
+li x11, 1                                         # ...it is Common Events
+not_ce:
+
+# ---- open the output file (truncate) and write the header keys ----
+sfopen x9, s25                                    # x9 = fd for state/ui.txt
+sfmt s0, "is_ce=%d", x11                          # 0 or 1, gates the CE read-only note in the template
+swrite x9, s0
+
+# ---- Common Events tab: the state file is a plain name-per-line list
+#      (not TAG|key|value), so list it read-only and skip the two-pass
+#      record parser. The command editor itself is not ported. ----
+beq x11, x0, main_list                            # not CE -> the normal path below
+li x1, 0                                          # line cursor
+li x2, 0                                          # events listed
+ce_read:
+sread s0, x1, s24                                 # next line of db_hq_common_events.state.txt
+slen x8, s0
+beq x8, x0, ce_done                               # EOF
+strim s0
+slen x8, s0
+beq x8, x0, ce_skip                               # blank line
+sfmt s5, "row_%d_text=%s", x2, s0                 # one row = one common-event name
+swrite x9, s5
+addi x2, x2, 1
+ce_skip:
+addi x1, x1, 1
+j ce_read
+ce_done:
+sfmt s0, "rows_count=%d", x2
+swrite x9, s0
+sfmt s0, "tab_title=Common Events (%d)", x2
+swrite x9, s0
+sfmt s0, "kv_count=%d", x0                        # x0 is always 0 - no field list
+swrite x9, s0
+slit s0, "detail_title=(command editor not ported yet - list is read-only)"
+swrite x9, s0
+sfclose x9
+sleep 400000
+j proj_top
+main_list:
+
+# ================= PASS 1: the record list (sidebar) =================
+li x1, 0                                          # line cursor
+li x2, 0                                          # records listed so far (also the row index)
+li x7, 0                                          # not inside a record yet
+slit s5, ""                                       # pending name
+slit s6, ""                                       # pending id
+p1_read:
+sread s0, x1, s24                                 # next line of the data file
+slen x8, s0
+beq x8, x0, p1_flush                              # EOF -> emit the last held record
+ssplit s0, "|", s1, s2                            # s1 = tag col
+ssplit s2, "|", s3, s4                            # s3 = key, s4 = value
+strim s1
+strim s3
+strim s4
+sbne s1, s21, p1_next                             # not this tab's tag -> skip
+sbeq s3, s17, p1_id                               # key "id" -> record boundary
+sbeq s3, s18, p1_name                             # key "name" -> remember it
+j p1_next
+p1_id:
+beq x7, x0, p1_id_new                             # first ever id: nothing to flush
+slen x8, s5                                       # length of the name we were holding
+beq x8, x0, p1_id_new                             # blank name (empty RM slot) -> don't list it
+sfmt s0, "row_%d_text=%s. %s", x2, s6, s5         # "<id>. <name>"
+swrite x9, s0
+addi x2, x2, 1                                    # one more row
+p1_id_new:
+li x7, 1                                          # we are now inside a record
+scpy s6, s4                                       # this record's id
+slit s5, ""                                       # clear the name for it
+j p1_next
+p1_name:
+scpy s5, s4                                       # remember this record's name
+j p1_next
+p1_next:
+addi x1, x1, 1
+j p1_read
+p1_flush:                                         # EOF: emit the final held record
+slen x8, s5
+beq x8, x0, p1_done
+sfmt s0, "row_%d_text=%s. %s", x2, s6, s5
+swrite x9, s0
+addi x2, x2, 1
+p1_done:
+sfmt s0, "rows_count=%d", x2                      # drives <repeat count="${rows_count}">
+swrite x9, s0
+sfmt s0, "tab_title=%s (%d)", s22, x2             # e.g. "Items (8)"
+swrite x9, s0
+
+# ================= PASS 2: the selected record's fields (panel) =================
+li x1, 0                                          # line cursor
+li x2, -1                                         # record index, -1 until the first id
+li x3, 0                                          # kv lines written
+li x13, 0                                         # 1 once we've passed the selected record
+addi x14, x4, 1                                   # x14 = selected index + 1
+slit s5, ""                                       # selected record's name (for detail_title)
+slit s6, ""                                       # selected record's id
+p2_read:
+sread s0, x1, s24
+slen x8, s0
+beq x8, x0, p2_done                               # EOF
+ssplit s0, "|", s1, s2
+ssplit s2, "|", s3, s4
+strim s1
+strim s3
+strim s4
+sbne s1, s21, p2_next                             # not this tab's tag
+sbeq s3, s17, p2_id                               # id line -> record boundary
+beq x13, x0, p2_emit                              # only emit while we haven't passed the target
+j p2_next
+p2_emit:                                          # a non-id field of some record
+bne x2, x4, p2_next                               # ...only the selected one
+sfmt s0, "kv_%d_text=%s: %s", x3, s3, s4          # "<key>: <value>"
+swrite x9, s0
+addi x3, x3, 1
+sbne s3, s18, p2_next                             # if this field was "name", stash it for the title
+scpy s5, s4
+j p2_next
+p2_id:
+addi x2, x2, 1                                    # advance the record index
+beq x2, x14, p2_passed                            # we've just left the selected record
+bne x2, x4, p2_next                               # not the selected record yet
+sfmt s0, "kv_%d_text=id: %s", x3, s4              # emit the selected record's id as its first field
+swrite x9, s0
+addi x3, x3, 1
+scpy s6, s4                                       # stash the id for the title
+j p2_next
+p2_passed:
+li x13, 1                                         # mark done; remaining lines are skipped
+j p2_next
+p2_next:
+addi x1, x1, 1
+j p2_read
+p2_done:
+sfmt s0, "kv_count=%d", x3                        # drives the panel's <repeat count="${kv_count}">
+swrite x9, s0
+sfmt s0, "detail_title=#%s  %s", s6, s5           # e.g. "#3  Potion"
+swrite x9, s0
+
+sfclose x9                                        # close state/ui.txt
+sleep 400000                                      # 0.4s
+j proj_top                                        # ...and re-project

@@ -16,7 +16,9 @@ fi
 HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-CHTPM="$HERE/co-lab-hai.chtpm"
+# co-lab-hai.xhtpm is a STATIC template (x11-hq style) - the manager
+# writes state/ui.txt, never this file, so no bootstrap/restore dance.
+XHTPM="$HERE/co-lab-hai.xhtpm"
 
 RENDER_OPS_DIR="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
 BIN="$RENDER_OPS_DIR/+x/khtpm_core_render.+x"
@@ -37,24 +39,16 @@ if [ ! -x "$MANAGER_BIN" ]; then
     exit 1
 fi
 
-BOOTSTRAP_TEMPLATE="$HERE/co-lab-hai.chtpm.bootstrap"
-if [ ! -f "$BOOTSTRAP_TEMPLATE" ]; then
-    echo "co-lab-hai button.sh: missing bootstrap $BOOTSTRAP_TEMPLATE" >&2
+if [ ! -f "$XHTPM" ]; then
+    echo "co-lab-hai button.sh: missing template $XHTPM" >&2
     exit 1
-fi
-# Real self-heal, same reason network-browser's own button.sh does
-# this: a stray manager write after its window closed can permanently
-# erase the <module> tag - restore from the real, never-overwritten
-# template whenever that's found missing.
-if [ ! -f "$CHTPM" ] || ! grep -q '<module' "$CHTPM" 2>/dev/null; then
-    cp "$BOOTSTRAP_TEMPLATE" "$CHTPM"
 fi
 
 AUDIT_DIR="$HOUSE_ROOT/&.hq-apps/co-lab-hai/audit"
 mkdir -p "$AUDIT_DIR"
 
 colab_hai_pids() {
-    pgrep -f "khtpm_core_render\.\+x.*co-lab-hai\.chtpm" 2>/dev/null || true
+    pgrep -f "khtpm_core_render\.\+x.*co-lab-hai\.xhtpm" 2>/dev/null || true
 }
 # REAL FIX 2026-09-02 (found live, testing this app's own first cut):
 # parent_still_alive() in colab_hai_manager.c checks a SHARED
@@ -87,7 +81,7 @@ if [ -n "$pids" ]; then
     fi
 fi
 
-setsid nohup "$BIN" "$HOUSE_ROOT" "$CHTPM" \
+setsid nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" \
     >"$AUDIT_DIR/co-lab-hai.log" 2>&1 < /dev/null &
 echo $! >> "$HOUSE_ROOT/#.desktop/livedesk_launched_pids.txt" 2>/dev/null || true
 disown 2>/dev/null || true

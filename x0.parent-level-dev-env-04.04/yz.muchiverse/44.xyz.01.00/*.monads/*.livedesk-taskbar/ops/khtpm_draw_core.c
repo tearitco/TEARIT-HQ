@@ -573,17 +573,19 @@ static void draw_elem(Elem *e, int hover_id_hash) {
          * carries faithfully - safe because a real .chtpm's ids are
          * already relied on to be unique per window (find_page()/
          * dispatch() etc. all key off id the same way). */
+        /* TPMOS chtpm_parser.c render_element():
+         *   is_active  -> [^]
+         *   is_focused && (no scope || navigable) -> [>]
+         *   else [ ]
+         * Active = the trigger id (and the remembered <tab> id while
+         * confined). Draw copies have no parent pointers — do not gate
+         * this on kh_elem_in_scope(). */
         int is_scope = (g_dbhq_active_scope_root && e == g_dbhq_active_scope_root) ||
                        (g_default_input_elem && e->id[0] && strcmp(e->id, g_default_input_elem->id) == 0) ||
-                       /* REAL, NEW 2026-09-03 - the generic "Menu" dropdown
-                        * trigger (g_default_active_scope_root, activate_
-                        * focused()'s own ACTIVATE toggle) reuses this SAME
-                        * "[^]" armed visual once open, same real reason and
-                        * same by-id compare as g_default_input_elem right
-                        * above (this draw call runs against a fresh temp
-                        * Elem parsed from the frame file, never the live
-                        * g_pool[] Elem, so pointer compare can't work here). */
-                       (g_default_active_scope_root && e->id[0] && strcmp(e->id, g_default_active_scope_root->id) == 0);
+                       (g_default_active_scope_id[0] && e->id[0] &&
+                        strcmp(e->id, g_default_active_scope_id) == 0) ||
+                       (g_default_scope_confine && g_default_active_tab_id[0] && e->id[0] &&
+                        strcmp(e->id, g_default_active_tab_id) == 0);
         elem_cursor_prefix(e, g_focus_nav, is_scope, prefix, sizeof(prefix));
         snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index);
         (void)focused;
@@ -631,9 +633,18 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             int px = box_w < box_h ? box_w : box_h;
             if (px > HQ_SPRITE_PX_MAX) px = HQ_SPRITE_PX_MAX;
             if (px > 0) {
+                /* REAL FIX 2026-09-03 - sprite alpha is flattened onto
+                 * bg_pixel at blit time (this window's visual has no
+                 * per-pixel alpha), so bg_pixel MUST match the colour
+                 * actually painted behind the tile or transparent PNG
+                 * edges show a wrong-coloured box/halo. The fallback was
+                 * a hardcoded "#1c1c1c"; after a theme change (swatch
+                 * picker -> livedesk_theme.pdl COLOR|bg) the real
+                 * surface is g_theme_bg, so every transparent icon sat
+                 * on a stale grey square. Follow the theme. */
                 unsigned long bg_pixel = e->style.has_bg_color
                     ? alloc_pixel(e->style.bg_color)
-                    : alloc_pixel("#1c1c1c");
+                    : alloc_pixel(g_theme_bg[0] ? g_theme_bg : "#1c1c1c");
                 int blit_x, blit_y;
                 int short_bar = (e->h < 64);
                 if (short_bar) {
@@ -861,15 +872,29 @@ static void draw_elem(Elem *e, int hover_id_hash) {
          * light color - badge_contrast_color() would otherwise read the
          * GOLD tile's own bg and (wrongly) pick black for a badge that's
          * actually sitting on a dark chip. */
-        XftColor numcol = xft_color(focused ? (e->sprite[0] ? "#ff8c00" : badge_focus_color(&e->style)) : (e->sprite[0] ? "#cccccc" : badge_contrast_color(&e->style)));
-        /* REAL, NEW 2026-08-25 (live report: a narrow, right-edge-pinned
-         * element's badge ran off the visible window - see
-         * badge_align_left's own declaration comment in khtpm_render_
-         * core.c). Ends the badge AT the element's own left edge instead
-         * of starting it at label_x and growing rightward off-screen. */
+        /* TPMOS ASCII prefixes sit on a dark frame; tab/sidebar fills
+         * here ate [^]/[>] via contrast-on-same-luma. Chip + fixed
+         * glyph colors so the three-state cursor is always readable. */
         int draw_x = e->badge_align_left ? (e->x - (int)nav_badge_ext.width - scaled(4)) : label_x;
-        XftDrawStringUtf8(xftdraw_buf, &numcol, nav_badge_font, draw_x, numy, (const FcChar8 *)nav_badge, (int)strlen(nav_badge));
-        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &numcol);
+        if (!e->sprite[0]) {
+            int chip_pad = 1;
+            int chip_h = nav_badge_font->ascent + nav_badge_font->descent + 2 * chip_pad;
+            int chip_y0 = numy - nav_badge_font->ascent - chip_pad;
+            XSetForeground(dpy, gc, alloc_pixel("#141414"));
+            XFillRectangle(dpy, buf, gc, draw_x - chip_pad, chip_y0,
+                           (unsigned)(nav_badge_ext.width + 2 * chip_pad), (unsigned)chip_h);
+        }
+        {
+            const char *badge_fg = "#cccccc";
+            if (nav_badge[1] == '^') badge_fg = "#ffd24a";
+            else if (nav_badge[1] == '>') badge_fg = "#ff8c00";
+            else if (focused) badge_fg = e->sprite[0] ? "#ff8c00" : badge_focus_color(&e->style);
+            else if (e->sprite[0]) badge_fg = "#cccccc";
+            else badge_fg = badge_contrast_color(&e->style);
+            XftColor numcol = xft_color(badge_fg);
+            XftDrawStringUtf8(xftdraw_buf, &numcol, nav_badge_font, draw_x, numy, (const FcChar8 *)nav_badge, (int)strlen(nav_badge));
+            XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &numcol);
+        }
         /* REAL FIX 2026-08-25 (live report, corrupted badge rendering) -
          * nav_badge_font is now the shared cache added earlier this pass
          * (same contract as font_for() above: caller must NOT close it).

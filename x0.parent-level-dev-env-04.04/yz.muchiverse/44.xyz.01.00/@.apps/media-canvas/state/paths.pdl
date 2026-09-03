@@ -1,0 +1,8 @@
+SECTION      | KEY         | VALUE
+----------------------------------------
+SECTION      | export_dir  | pieces/apps/player_app
+SECTION      | media_dir   | media
+SECTION      | keybinds    | state/keybinds.pdl
+SECTION      | canvas_w    | 800
+SECTION      | canvas_h    | 600
+SECTION      | max_layers  | 6
