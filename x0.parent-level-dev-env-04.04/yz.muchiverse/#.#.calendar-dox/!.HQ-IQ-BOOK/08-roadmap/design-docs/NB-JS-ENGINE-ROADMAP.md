@@ -132,6 +132,25 @@ jar, `window.matchMedia` stub, `window.getComputedStyle` returning a
 plausible stub, `MutationObserver` (can no-op then improve),
 `URL` / `URLSearchParams` (pure JS polyfill).
 
+> **PARTIAL — 2026-09-04, branch `chtpm-js-rungs`** (parallel-safe,
+> isolated entirely to `ops/nb_js_eval.c`; no manager/fetch changes).
+> Premature pure-JS / no-I-O pieces landed so analytics/consent/routing
+> scripts stop throwing:
+> - `URL` + `URLSearchParams` (parse, resolution, searchParams) — `91819f2e`
+> - `history` (pushState/replaceState in-memory stack + state/length,
+>   no real navigation) — `b079f0c9`
+> - `window.matchMedia` / `getComputedStyle(prop)` / `MutationObserver`
+>   no-op stubs — `b079f0c9`
+> - `atob`/`btoa` Base64 + `setTimeout`/`setInterval`/`clear*` (return
+>   ids, callback never fires — one-shot has no event loop) — `e71232d1`
+> - `document.cookie` empty-jar getter/setter (no throw; file jar still
+>   a C job later) — `f5f86b4d`
+> **Still to do (needs C or the worker):** real `history`/`location`
+> navigation pushed to the manager, file-backed `document.cookie` jar,
+> a real timer/event loop (rung 3). Tests under `network/tests/rung6_*.js`
+> all +OK|1; 5 suites green.
+
+
 ### Rung 7 — CSS/layout awareness  *(optional, large, defer)*
 `getBoundingClientRect`, `offsetWidth/Height`, `display:none`
 visibility. Needed by carousels / lazy-loaders / sticky headers.
