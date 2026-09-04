@@ -890,7 +890,10 @@ static const char *parse_element(const char *p, Elem *parent) {
  * makes every ${key} resolve to the empty string, matching tpmos
  * get_var()'s default. Only khtpm_core_render.+x consumes this - the
  * ~25 legacy chtpm_parser_pal.c apps keep their own substituter. */
-#define KH_MAX_VARS   256
+#define KH_MAX_VARS   2048  /* was 256 - a <repeat> grid emits 2+ vars/row; a
+                             * 256-tile rmmv tileset alone is 512, and silent
+                             * truncation in kh_set_var() made every count var
+                             * that landed after the overflow resolve to 0 */
 #define KH_VAR_NAME   64
 #define KH_VAR_VALUE  2048
 typedef struct { char name[KH_VAR_NAME]; char value[KH_VAR_VALUE]; } KhVar;
@@ -1267,7 +1270,10 @@ static Elem *parse_chtpm(const char *path) {
         kh_load_vars_multi(g_vars_path);
 
         if (strstr(buf, "<repeat")) {
-            size_t rcap = (size_t)sz * 16 + 131072;
+            /* Big enough for a full 256-row tile grid whose <repeat> body
+             * carries long ${…} paths (rmmv/emoji): each expanded row is
+             * ~250B pre-sub, ~600B post-sub. */
+            size_t rcap = (size_t)sz * 48 + (size_t)512 * 1024;
             char *a = malloc(rcap), *b = malloc(rcap);
             if (a && b) {
                 snprintf(a, rcap, "%s", buf);
@@ -1279,7 +1285,7 @@ static Elem *parse_chtpm(const char *path) {
             } else { free(a); free(b); }
         }
 
-        size_t cap = strlen(buf) * 2 + 4096;
+        size_t cap = strlen(buf) * 4 + 65536;
         char *subbed = malloc(cap);
         if (subbed) {
             kh_substitute_vars(buf, subbed, cap);
@@ -6565,6 +6571,7 @@ static void assign_nav_and_layout(void) {
         if (g_focus_nav < 1) g_focus_nav = 1;
         return;
     }
+    generic_sbar_reset();
     {
         int i, grid = 0;
         for (i = 0; i < page->n_children; i++) {
@@ -6577,12 +6584,16 @@ static void assign_nav_and_layout(void) {
         }
         if (grid) {
         /* Grid is data: any <item class="swatch">. Not g_is_swatch_picker.
-         * REAL, NEW 2026-08-29 (TASK 2) - opacity control buttons (non-swatch
-         * items) are positioned below the grid, with dynamic height calculation. */
+         * Pass 1: nav_index in document order, close button, and COUNT the
+         * swatches. Pass 2: lay the swatch grid clipped to a visible-rows
+         * viewport with a real scrollbar (generic_sbar) when it overflows.
+         * Pass 3: flow every OTHER <item> (opacity buttons; rmmv's dir/tab/
+         * tileset choosers) as wrapping chips BELOW the grid viewport. */
         int x0 = 16, y0 = CHROME_H + 44;
-        int sw_i = 0;
-        int max_y = y0;
-        int other_y = CHROME_H + 180;  /* Start position for non-swatch items */
+        int pitch = SWATCH + SWATCH_GAP;
+        int grid_w = SWATCH_COLS * pitch;               /* nominal grid width */
+        int n_sw = 0;
+        Elem *sw_items[MAX_CHILDREN];
         for (i = 0; i < page->n_children; i++) {
             Elem *item = page->children[i];
             int is_sw = 0, is_close = 0, c;
@@ -6592,30 +6603,67 @@ static void assign_nav_and_layout(void) {
                 if (strcmp(item->classes[c], "close-btn") == 0) is_close = 1;
             }
             if (strcmp(item->id, "close") == 0) is_close = 1;
+            css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
+            item->nav_index = ++g_n_nav;
+            g_nav[g_n_nav - 1] = item;
             if (is_close) {
                 item->x = g_win_w - 60; item->y = 0; item->w = 60; item->h = CHROME_H;
             } else if (is_sw) {
-                int col = sw_i % SWATCH_COLS, row = sw_i / SWATCH_COLS;
-                item->x = x0 + col * (SWATCH + SWATCH_GAP);
-                item->y = y0 + row * (SWATCH + SWATCH_GAP);
-                item->w = SWATCH; item->h = SWATCH;
-                if (sw_i < 12) {
-                    snprintf(g_palette_name_buf[sw_i], sizeof(g_palette_name_buf[sw_i]), "%s", item->label);
-                    g_palette_name[sw_i] = g_palette_name_buf[sw_i];
+                if (n_sw < 12) {
+                    snprintf(g_palette_name_buf[n_sw], sizeof(g_palette_name_buf[n_sw]), "%s", item->label);
+                    g_palette_name[n_sw] = g_palette_name_buf[n_sw];
                 }
                 item->label[0] = '\0';
-                sw_i++;
-                if (item->y + item->h > max_y) max_y = item->y + item->h;
-            } else {
-                item->x = 0; item->y = other_y; item->w = g_win_w; item->h = ROW_H;
-                if (item->y + item->h > max_y) max_y = item->y + item->h;
-                other_y += ROW_H;
+                if (n_sw < MAX_CHILDREN) sw_items[n_sw] = item;
+                n_sw++;
             }
-            item->nav_index = ++g_n_nav;
-            g_nav[g_n_nav - 1] = item;
-            css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
         }
-        g_win_h = max_y + 8;  /* Dynamic height to fit swatches + any other items */
+        /* pass 2: scrolled swatch grid */
+        static int g_swatch_grid_scroll = 0;
+        int total_rows = (n_sw + SWATCH_COLS - 1) / SWATCH_COLS;
+        /* Fixed ~12-row viewport (not screen-relative) - a tile picker
+         * scrolls, it doesn't grow to 1600px. */
+        int visible_rows = 12;
+        if (visible_rows > total_rows) visible_rows = total_rows;
+        if (visible_rows < 1) visible_rows = 1;
+        int max_scroll = total_rows - visible_rows;
+        if (max_scroll < 0) max_scroll = 0;
+        if (g_swatch_grid_scroll > max_scroll) g_swatch_grid_scroll = max_scroll;
+        if (g_swatch_grid_scroll < 0) g_swatch_grid_scroll = 0;
+        int view_h = visible_rows * pitch;
+        for (int s = 0; s < n_sw && s < MAX_CHILDREN; s++) {
+            Elem *it = sw_items[s];
+            int col = s % SWATCH_COLS, row = s / SWATCH_COLS - g_swatch_grid_scroll;
+            it->w = SWATCH; it->h = SWATCH;
+            if (row < 0 || row >= visible_rows) { it->w = 0; it->h = 0; it->x = 0; it->y = -100000; }
+            else { it->x = x0 + col * pitch; it->y = y0 + row * pitch; }
+        }
+        if (max_scroll > 0)
+            generic_sbar_register(x0, y0, grid_w + GENERIC_SCROLLBAR_W + 4, view_h,
+                                  &g_swatch_grid_scroll, total_rows, visible_rows, max_scroll);
+        int max_y = y0 + view_h;
+        /* pass 3: non-swatch chips below the viewport */
+        {
+            int cx = x0, cy = max_y + 12;
+            for (i = 0; i < page->n_children; i++) {
+                Elem *item = page->children[i];
+                int is_sw = 0, is_close = 0, c;
+                if (strcmp(item->tag, "item") != 0) continue;
+                for (c = 0; c < item->n_classes; c++) {
+                    if (strcmp(item->classes[c], "swatch") == 0) is_sw = 1;
+                    if (strcmp(item->classes[c], "close-btn") == 0) is_close = 1;
+                }
+                if (strcmp(item->id, "close") == 0) is_close = 1;
+                if (is_sw || is_close) continue;
+                int w = dbhq_measure_text_px(&item->style, item->label) + 18;
+                if (w < 28) w = 28;
+                if (cx > x0 && cx + w > g_win_w - 8) { cx = x0; cy += ROW_H + 4; }
+                item->x = cx; item->y = cy; item->w = w; item->h = ROW_H;
+                cx += w + 6;
+                if (cy + ROW_H > max_y) max_y = cy + ROW_H;
+            }
+        }
+        g_win_h = max_y + 8;
         } else {
         int y = CHROME_H;
         for (int i = 0; i < page->n_children; i++) {

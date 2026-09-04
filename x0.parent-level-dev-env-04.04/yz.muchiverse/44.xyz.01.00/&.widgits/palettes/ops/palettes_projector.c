@@ -168,7 +168,7 @@ int main(int argc, char **argv) {
              * template. Full 256-tile grids need KH_MAX_VARS raised in
              * the renderer (out of scope here) or a scrolllist-internal
              * grid layout that does not go through per-tile vars. */
-            #define KH_VAR_CAP 256
+            #define KH_VAR_CAP 2048  /* matches khtpm_core_render.c KH_MAX_VARS (raised 2026-09-04) */
 
             /* --- active tab letter from rmmv_active.txt --- */
             char active_tab[64] = "";

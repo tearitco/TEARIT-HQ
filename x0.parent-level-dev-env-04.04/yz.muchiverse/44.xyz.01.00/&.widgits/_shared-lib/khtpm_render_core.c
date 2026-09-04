@@ -69,7 +69,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#define MAX_CHILDREN 64
+#define MAX_CHILDREN 320  /* was 64 - a <repeat> tile grid (rmmv/emoji: up to 256 tiles) + choosers + chrome overflowed it, silently dropping children past 64 */
 
 typedef struct Elem {
     char tag[32];
