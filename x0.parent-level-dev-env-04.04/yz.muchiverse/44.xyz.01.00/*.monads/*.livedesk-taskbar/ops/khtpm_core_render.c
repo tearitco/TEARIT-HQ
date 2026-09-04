@@ -1705,6 +1705,7 @@ static int g_focus_owned_painted = -1;
  * (chtpm_parser.c: triggers set the flag, compose_frame() runs once per
  * loop). Consumed at the bottom of hq_run_event_loop(). */
 static int g_frame_dirty = 0;
+static int g_has_canvas = 0;  /* set by assign_nav_and_layout when a <canvas> is present -> event loop ticks ~30fps for a live feed */
 static int g_quit = 0;
 /* --dump-and-exit (any argv position): paint one frame, write the PNG +
  * .txt receipt via dump_frame_png(), then quit. Set once at startup,
@@ -3944,6 +3945,7 @@ static void kh_apply_scope_confine(void) {
 }
 
 static void assign_nav_and_layout(void) {
+    g_has_canvas = 0;
     /* REAL FIX 2026-09-04 - the window-frame block at the end of this
      * function does `g_win_w/h += 2*KH_WIN_FRAME` every call. Branches
      * that recompute g_win_w/h from content (sidebar+panel, persistent
@@ -4206,43 +4208,90 @@ static void assign_nav_and_layout(void) {
         #undef KH_IS_FOOTER_CHIP
         g_win_h = max_y + 8;
         } else {
+        /* A page carrying a <canvas> is a live-framebuffer window (the
+         * piececraft-hq board). It gets a horizontal toolbar row, top-
+         * strip chrome-close placement, and a canvas sized to the
+         * framebuffer's own dims. A plain flat list - context menus,
+         * bootstrap skeletons, chat-hai's fallback - has NO <canvas> and
+         * takes the ORIGINAL stacked-row path below BYTE-FOR-BYTE (this
+         * branch is shared by every windowless-list window; see the
+         * 2026-09-04 context-menu runaway/regression). */
+        int has_canvas = 0;
+        for (int _i = 0; _i < page->n_children; _i++)
+            if (strcmp(page->children[_i]->tag, "canvas") == 0) { has_canvas = 1; break; }
+
         int y = CHROME_H;
+        int chrome_x = g_win_w - 8;      /* has_canvas only */
+        int row_x = 0, row_h = 0;        /* has_canvas horizontal-row cursor */
         for (int i = 0; i < page->n_children; i++) {
             Elem *item = page->children[i];
-            /* REAL, NEW 2026-08-31 (found live testing open-hai's own
-             * .chtpm projection: "looks nothing like the old one" /
-             * "not able to enter keys") - real bug, not a guess: this
-             * loop only ever laid out "item"/"cli_io" rows, so any
-             * plain <text> row (a status line, a transcript message, a
-             * tool-approval banner - ordinary non-interactive content
-             * ANY khtpm consumer's own .chtpm might mix in) was left at
-             * its real parse-time default x/y/w/h (0,0,0,0) - never
-             * positioned, garbled on top of row 0, and worse, silently
-             * shifting every item/cli_io AFTER it up by one full row
-             * from where its own document position visually implies.
-             * Fixed generically: a "text" row now advances y exactly
-             * like an item row (real vertical space, real row height),
-             * it's simply never added to g_nav (it isn't interactive -
-             * no real nav_index, can't be focused/clicked/armed). */
+            /* 2026-08-31 - a plain <text> row advances y like an item row
+             * (real vertical space) but is never nav-numbered. */
             int is_text = strcmp(item->tag, "text") == 0;
             if (strcmp(item->tag, "canvas") == 0) {
-                /* live pixel framebuffer element (see kh_draw_canvas):
-                 * a big rect from CSS width/height (else fill window
-                 * width x 360), never nav-numbered; window grows to it */
-                int cw = item->style.has_width  ? item->style.width  : (g_win_w - 12);
-                int ch = item->style.has_height ? item->style.height : 360;
-                item->x = 6; item->y = y; item->w = cw; item->h = ch;
+                /* live pixel framebuffer element (kh_draw_canvas): sized
+                 * from CSS w/h, else the framebuffer's own receipt dims,
+                 * else window-width x 360. Never nav-numbered. */
+                g_has_canvas = 1;
+                if (row_x) { y += row_h + 4; row_x = 0; row_h = 0; }
                 css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
+                int cw = item->style.has_width  ? item->style.width  : 0;
+                int ch = item->style.has_height ? item->style.height : 0;
+                if ((!cw || !ch) && item->sprite[0]) {
+                    char rp[512]; snprintf(rp, sizeof(rp), "%s.receipt.txt", item->sprite);
+                    FILE *rf = fopen(rp, "r");
+                    if (rf) { char l[128];
+                        while (fgets(l, sizeof(l), rf)) {
+                            if (!cw && !strncmp(l, "overlay_w=", 10)) cw = atoi(l + 10);
+                            if (!ch && !strncmp(l, "overlay_h=", 10)) ch = atoi(l + 10);
+                        }
+                        fclose(rf);
+                    }
+                }
+                if (!cw) cw = g_win_w - 12;
+                if (!ch) ch = 360;
+                item->x = 6; item->y = y; item->w = cw; item->h = ch;
                 if (cw + 12 > g_win_w) { g_win_w = cw + 12; g_window->w = g_win_w; }
                 y += ch + 4;
                 continue;
             }
             if (strcmp(item->tag, "item") != 0 && strcmp(item->tag, "cli_io") != 0 && !is_text) continue;
+            css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
+
+            if (has_canvas && !is_text) {
+                int is_close = strcmp(item->id, "close") == 0;
+                for (int c = 0; c < item->n_classes && !is_close; c++)
+                    if (strcmp(item->classes[c], "chrome-btn") == 0 ||
+                        strcmp(item->classes[c], "close-btn") == 0) is_close = 1;
+                if (is_close) {
+                    int cw = kh_measure_text_px(&item->style, item->label) + 52;
+                    if (cw < 48) cw = 48;
+                    chrome_x -= cw;
+                    item->y = 2; item->w = cw; item->h = CHROME_H - 4; item->x = chrome_x;
+                    kh_clamp_elem_onscreen(item);
+                    chrome_x = item->x - 4;
+                    item->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = item;
+                    continue;
+                }
+                if (item->style.has_width && item->style.width > 0) {
+                    int iw = item->style.width;
+                    int ih = item->style.has_height ? item->style.height : ROW_H;
+                    if (row_x == 0) row_x = 6;
+                    if (row_x + iw > g_win_w - 6) { y += row_h + 4; row_x = 6; row_h = 0; }
+                    item->x = row_x; item->y = y; item->w = iw; item->h = ih;
+                    row_x += iw + 5;
+                    if (ih > row_h) row_h = ih;
+                    item->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = item;
+                    continue;
+                }
+                if (row_x) { y += row_h + 4; row_x = 0; row_h = 0; }
+            }
+
             item->x = 0; item->y = y; item->w = g_win_w; item->h = ROW_H;
             if (!is_text) { item->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = item; }
-            css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
             y += ROW_H;
         }
+        if (row_x) y += row_h + 4;
         g_win_h = y + 8;
         }
     }
@@ -6409,7 +6458,7 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
          * entirely between press and release. Only shortened while
          * g_pal_rmmv_armed (costs nothing otherwise - every other
          * window/mode never sets this flag at all). */
-        struct timeval tv = { 0, 150000 };
+        struct timeval tv = g_has_canvas ? (struct timeval){ 0, 33000 } : (struct timeval){ 0, 150000 };
         select(xfd + 1, &fds, NULL, NULL, &tv);
         while (XPending(dpy)) {
             XEvent ev; XNextEvent(dpy, &ev);
@@ -6422,6 +6471,7 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
          * grabbing process. No-op (returns immediately) whenever not
          * armed, so this costs nothing on every other tick of every
          * other window's own event loop. */
+        if (g_has_canvas && !g_quit) g_frame_dirty = 1;  /* live framebuffer: repaint every tick */
         if (g_frame_dirty && !g_quit) { g_frame_dirty = 0; redraw(); }
     }
 }
