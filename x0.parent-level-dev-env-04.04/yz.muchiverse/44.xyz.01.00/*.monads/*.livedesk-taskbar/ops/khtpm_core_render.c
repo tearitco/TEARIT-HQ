@@ -3640,7 +3640,30 @@ static void dbhq_layout_pass(Elem *window) {
          * mode below scrolls a container whose children are ALL real
          * rows (row_class=NULL). */
         if (g_is_palettes) {
-            generic_scroll_layout_pass(panel, "pal-grid-row", panel->y, panel->h);
+            /* The tileset chooser rows (class "pal-tileset-row") are flex-
+             * stacked AFTER every grid row, so with a tall grid they land
+             * far off the bottom of the window and the grid scroll region
+             * (panel->h) has no room reserved for them - the thumb can't
+             * reach the last tiles and the chooser is invisible. Pin the
+             * chooser as a fixed footer at the bottom of the panel, and
+             * shrink the grid's scroll box by that much. */
+            int footer_h = 0;
+            for (int i = 0; i < panel->n_children; i++)
+                if (elem_has_class(panel->children[i], "pal-tileset-row"))
+                    footer_h += panel->children[i]->h + scaled(4);
+            int box_h = panel->h - footer_h;
+            if (box_h < scaled(80)) box_h = panel->h; /* degenerate - don't hide the grid */
+            generic_scroll_layout_pass(panel, "pal-grid-row", panel->y, box_h);
+            if (footer_h > 0) {
+                int fy = panel->y + panel->h - footer_h + scaled(4);
+                for (int i = 0; i < panel->n_children; i++) {
+                    Elem *fr = panel->children[i];
+                    if (!elem_has_class(fr, "pal-tileset-row")) continue;
+                    int shift = fy - fr->y;
+                    dbhq_pal_shift_subtree(fr, shift);
+                    fy += fr->h + scaled(4);
+                }
+            }
         } else if (dbhq_tab_is_real(g_dbhq_current_tab) && sidebar && sidebar->n_children > 0) {
             /* REAL FIX 2026-08-28 (Phase C, fixes a real, previously-
              * silent bug: db-hq's sidebar - Common Events, Terms, and
