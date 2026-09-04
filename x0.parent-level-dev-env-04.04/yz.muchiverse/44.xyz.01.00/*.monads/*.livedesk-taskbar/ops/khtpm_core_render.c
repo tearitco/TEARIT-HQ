@@ -5182,6 +5182,18 @@ static void handle_key(KeySym ks, char ch) {
      * resolver history capture already uses - reused, not reinvented. */
     if (g_interact_relay_on) {
         int code = kh_key_history_code(ks, ch);
+        /* REAL FIX 2026-09-04 (see PLAN-pchq-interact-camera-pov.md
+         * Part A for the full citation trail) - tpmos/board-viewer's
+         * own ARROW_LEFT/RIGHT/UP/DOWN convention (chtpm_parser.c's
+         * enum, bv_menu_input.c's own #defines) is 1000/1001/1002/1003,
+         * NOT khtpm's house-wide 200-203 nav-capture convention that
+         * kh_key_history_code() correctly still returns for every
+         * OTHER caller. Interact Mode is the one relay path that must
+         * speak the game engine's own dialect - remap ONLY here. */
+        if      (code == 200) code = 1002; /* Up    -> ARROW_UP    */
+        else if (code == 201) code = 1003; /* Down  -> ARROW_DOWN  */
+        else if (code == 202) code = 1000; /* Left  -> ARROW_LEFT  */
+        else if (code == 203) code = 1001; /* Right -> ARROW_RIGHT */
         for (int i = 0; i < g_interact_relay_n; i++) {
             const char *p = g_interact_relay_paths[i];
             if (!p[0]) continue;
