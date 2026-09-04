@@ -341,6 +341,11 @@ static const char g_js_prelude[] =
 "Object.defineProperty(window,'clearTimeout',{value:function(){},configurable:true,writable:true});\n"
 "Object.defineProperty(window,'clearInterval',{value:function(){},configurable:true,writable:true});\n"
 "\n"
+"/* ---- document.cookie ---- */\n"
+"/* Empty in-memory jar. Reads return '' so cookie-consent / analytics\n"
+" * reads don't throw; writes are accepted but not persisted. A real\n"
+" * #.desktop/nb_cookies.txt jar is a C native function -> rung 6. */\n"
+"try{ Object.defineProperty(document,'cookie',{ get:function(){return '';}, set:function(v){}, configurable:true }); }catch(e){}\n"
 "})();\n";
 
 static void install_host(duk_context *ctx) {
