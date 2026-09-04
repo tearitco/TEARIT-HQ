@@ -4043,8 +4043,12 @@ static void assign_nav_and_layout(void) {
                 if (strcmp(item->id, "close") == 0) is_close = 1;
                 if (is_sw || is_close || KH_IS_FOOTER_CHIP(item)) continue;
                 const char *fam = item->n_classes ? item->classes[0] : "";
-                int w = kh_measure_text_px(&item->style, item->label) + 18;
-                if (w < 28) w = 28;
+                /* room for draw_elem's "[ ]NN. " nav badge (~46px) PLUS
+                 * the whole label, or the CSS width if it asks for more -
+                 * a too-narrow chip clipped "A"/"B" to just the badge. */
+                int w = kh_measure_text_px(&item->style, item->label) + 46;
+                if (item->style.has_width && item->style.width > w) w = item->style.width;
+                if (w < 44) w = 44;
                 int rh = item->style.has_height ? item->style.height : ROW_H;
                 if (prev_fam && strcmp(prev_fam, fam) != 0) { cx = x0; cy += rh + KH_CHIP_ROW_GAP; }
                 else if (cx > x0) cx += 6;
@@ -4086,8 +4090,12 @@ static void assign_nav_and_layout(void) {
                 Elem *item = page->children[i];
                 if (strcmp(item->tag, "item") != 0) continue;
                 if (!KH_IS_FOOTER_CHIP(item)) continue;
-                int w = kh_measure_text_px(&item->style, item->label) + 18;
-                if (w < 28) w = 28;
+                /* room for draw_elem's "[ ]NN. " nav badge (~46px) PLUS
+                 * the whole label, or the CSS width if it asks for more -
+                 * a too-narrow chip clipped "A"/"B" to just the badge. */
+                int w = kh_measure_text_px(&item->style, item->label) + 46;
+                if (item->style.has_width && item->style.width > w) w = item->style.width;
+                if (w < 44) w = 44;
                 int rh = item->style.has_height ? item->style.height : ROW_H;
                 if (cx > x0) cx += 6;
                 if (cx > x0 && cx + w > g_win_w - 8) { cx = x0; cy += rh + KH_CHIP_ROW_GAP; }
