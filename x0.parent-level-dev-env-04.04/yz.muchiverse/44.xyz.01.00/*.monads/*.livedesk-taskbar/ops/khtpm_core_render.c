@@ -1821,44 +1821,12 @@ static int click_focus_then_activate(Elem *hit) {
 /* LayDoc Gap 2: NULL = no ACTIVATE scope. Declared before draw_core
  * include so elem_cursor_prefix can show [^] on the scope root. */
 static Elem *g_dbhq_active_scope_root = NULL;
-/* PAUSED 2026-08-25 mid-migration - see the direct finding that stopped
- * this: stats-hq's real dashboard.chtpm DOES have a <tabbar> (real
- * session-timestamp tabs, e.g. "2026-08-13 22:53:37"), contradicting
- * this comment's own first-draft claim that it was tab-free generic
- * content. db-hq's own dbhq_*() tab-switching code matches tab clicks
- * against a FIXED TAB_LABELS[] array specific to db-hq's own Common
- * Events tabs - stats-hq's timestamp tabs would never match those
- * labels, so blindly aliasing g_is_stats_hq into g_is_db_hq's exact
- * path (the original plan here) would likely render fine but leave tab
- * click-switching silently broken. Flagged for the user before writing
- * any more of this - not resumed yet. */
-static const int g_is_stats_hq = 0;
-/* REAL, NEW 2026-08-25 (Stage 2 palettes migration off the deprecated
- * standalone khtpm_hq_render.c - au11-hq/TPMOS-COMPLIANCE-DEBT.md /
- * khtpm-merge-how2.md). Palettes' own .chtpm is fully static content
- * (composed once by palettes_menu.sh, no live state/manager needed,
- * unlike db-hq/stats-hq) - rides g_is_db_hq=1 too for the shared
- * chrome/dispatch machinery, but g_is_palettes gates its own generic,
- * UNCONDITIONAL nav pass (see dbhq_assign_nav_indices()'s own
- * g_is_palettes branch) - deliberately NOT the nav_index==0-guarded
- * assign_generic_onclick_nav() pattern khtpm_hq_render.c used, since
- * that pattern needed clear_nav_indices() to avoid a real, live bug
- * found+fixed there this same session (stale nav_index staying non-zero
- * after frame 1, silently skipping every element on frame 2+). Palettes
- * has no tabbar/sidebar/panel-button structure to avoid double-counting
- * against, so unconditional reassignment is both simpler and immune to
- * that whole bug class by construction. */
-static const int g_is_palettes = 0;
-/* REAL, NEW 2026-08-25 (Stage 3 bookmarks migration off khtpm_hq_render.c,
- * same debt entry as palettes above) - bookmarks is also a single
- * static panel of onClick-carrying <button> rows, no tabbar/sidebar,
- * so it needs the exact same layout-gate/sidebar_w/apply_css_deep/
- * generic-nav exceptions g_is_palettes already added - see every
- * `g_is_palettes` site below, now OR'd with this flag rather than
- * duplicated. Kept as its own flag (not folded into g_is_palettes)
- * since bookmarks also needs the chtpm-live-reload + armed-input
- * mechanism palettes has no use for. */
-static const int g_is_bookmarks = 0;
+/* 2026-09-04: g_is_stats_hq/g_is_palettes/g_is_bookmarks (and
+ * g_is_db_hq before them) removed - stats-hq/palettes/bookmarks all
+ * have real live button-pal.sh launchers pointed at their own
+ * .xhtpm templates + projectors now; every branch these flags gated
+ * was already dead by construction (const 0). See handoff
+ * Rev 15 for the audit that found this. */
 /* 2026-09-04: piececraft-hq's board window (formerly its own isolated
  * raw-pixel-blit mode, run_pchq_board_mode()/g_is_pchq_board/<window
  * class="pchq-board">) is retired - pchq-board.xhtpm (static template
@@ -5366,9 +5334,7 @@ static long g_history_cursor = -1;
  * publish()), and nav_tab/<pid> holds that pid's real window title -
  * cross-reference the two, no new registry needed. */
 static void history_dir(char *out, size_t outsz) {
-    snprintf(out, outsz, "%s/#.desktop/%s", g_house_root,
-             g_is_stats_hq ? "stats_hq_history" :
-             g_is_events_hq ? "events_hq_history" : "entity_menu_history");
+    snprintf(out, outsz, "%s/#.desktop/entity_menu_history", g_house_root);
 }
 static void history_path(char *out, size_t outsz) {
     char dir[PATH_BUF];
@@ -5630,12 +5596,7 @@ static void nav_ledger_publish(void) {
 static long g_frame_changed_last_size = -1;
 
 static void frame_changed_path(char *out, size_t outsz) {
-    snprintf(out, outsz, "%s/#.desktop/%s", g_house_root,
-             g_is_palettes ? "palettes_frame_changed.txt" :
-             g_is_bookmarks ? "bookmarks_frame_changed.txt" :
-             g_is_stats_hq ? "stats_hq_frame_changed.txt" :
-             g_is_events_hq ? "events_hq_frame_changed.txt" :
-             "entity_menu_frame_changed.txt");
+    snprintf(out, outsz, "%s/#.desktop/entity_menu_frame_changed.txt", g_house_root);
 }
 
 static void mark_frame_changed(void) {
