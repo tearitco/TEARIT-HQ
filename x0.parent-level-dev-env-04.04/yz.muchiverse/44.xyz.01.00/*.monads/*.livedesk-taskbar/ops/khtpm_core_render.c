@@ -3964,29 +3964,25 @@ static void kh_scan_interact_relay(void) {
                 tok = strtok_r(NULL, ",", &save);
             }
         }
-        /* REAL FIX 2026-09-04 (pc-hq-bugs.md Bug 2 - real keyboard
-         * input stops reaching the window after the user clicks away
-         * and comes back, "never a problem before or in mutaclysm").
-         * Root cause, by first-principles comparison against the ONE
-         * other feature in this file that also needs the keyboard for
-         * an extended, focus-independent stretch (cli_io - see
-         * activate_focused()'s own `kh_grab_keyboard_retry()` call and
-         * its header comment: "required, or typing silently breaks
-         * once the pointer leaves the window under this desktop's
-         * focus-follows-mouse policy"): under focus-follows-mouse, X
-         * keyboard focus tracks the POINTER, not the last click -
-         * moving the mouse off this window (even without clicking
-         * anything else) silently hands real X keyboard focus to
-         * whatever the pointer is over next, unless this window holds
-         * an explicit XGrabKeyboard overriding that WM policy for as
-         * long as it needs total keyboard ownership. Interact Mode
-         * needs exactly that for exactly as long as cli_io does - it
-         * just never took the grab. Same helper, same real fix,
-         * applied on the same real off->on transition. */
-        if (!g_interact_relay_on) kh_grab_keyboard_retry();
+        /* REVERTED 2026-09-04 - see pc-hq-bugs.md Bug 2 update. The
+         * XGrabKeyboard this comment used to describe was a real,
+         * confirmed regression: a keyboard grab is DISPLAY-WIDE (this
+         * file's own line ~9192 comment already warns about exactly
+         * this class of problem) and only ever released by an explicit
+         * XUngrabKeyboard on the on->off transition below - which
+         * depends on the SAME projector/reparse cycle already known
+         * fragile (Bug 3's root cause). Live-confirmed: once armed,
+         * EVERY other window in the house (including the taskbar
+         * itself) lost real keyboard input until the pc-hq process was
+         * killed outright, severing its X connection (the only other
+         * way an X grab releases). Killing the one window broke
+         * keyboard input for the entire desktop - far worse than the
+         * bug it was meant to fix. Do not re-add this without solving
+         * the disarm-reliability problem FIRST, and prefer a per-
+         * window `XSetInputFocus` reassertion over a display-wide
+         * grab if it needs revisiting at all. */
         g_interact_relay_on = 1;
     } else {
-        if (g_interact_relay_on) XUngrabKeyboard(dpy, CurrentTime);
         g_interact_relay_on = 0;
         g_interact_relay_raw[0] = '\0';
     }
