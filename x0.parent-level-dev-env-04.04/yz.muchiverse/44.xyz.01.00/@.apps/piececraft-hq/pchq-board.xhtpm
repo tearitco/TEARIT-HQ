@@ -1,0 +1,64 @@
+<!-- pchq-board.xhtpm - STATIC template for the piececraft-hq 3D board
+     view, replacing run_pchq_board_mode()'s ~800 lines of hardcoded C
+     (khtpm_core_render.c). Same "only the 2D/3D screen is a blit,
+     everything else is a normal hq window" architecture the 2026-08-30
+     rewrite was aiming at - now actually on the shared Elem/CSS path.
+
+       class="pchq-board-pal database-window"  - neither token trips the
+         renderer's exact-strcmp g_is_* / pchq-board mode triggers;
+         "database-window" is CSS-only.
+       <module> pchq_board_projector.+x args="piececraft-hq" - finds the
+         live board-viewer session (ledger_peers.+x), writes state/ui.txt:
+           bv_session=          absolute session dir ("" if none live)
+           canvas_raw=          <bv_session>/pieces/display/rgb_frame_3d_overlay.raw
+           no_session=1|""      gate for the "open View Board first" hint
+           interact_label=      "ON" / "off"  (active_gui_is_typing.txt)
+           clock=               HH:MM
+           menu_open=file|desk|  (from state/menu.txt, action.sh writes it)
+           file_menu_open= desk_menu_open=  "1"/"" derived from menu_open
+           n_file_opts= f_<i>_label= f_<i>_active=(pchq-menu-active|"")
+           n_desk_opts= d_<i>_label= d_<i>_active=
+       ops/pchq_board_action.sh <bv_session> <verb> [arg] - appends the
+         right byte(s) to the board-viewer's own history files
+         (interact=13, file=engage+'5', desk=engage+'6'); menu open/close
+         just rewrites state/menu.txt for the projector to pick up.
+
+     Old pchq-board.chtpm (class="pchq-board" -> run_pchq_board_mode)
+     stays as rollback; button.sh still launches THAT until this path is
+     proven. -->
+<window label="piececraft-hq board" class="pchq-board-pal database-window" vars="state/ui.txt">
+  <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="piececraft-hq"/>
+  <page name="main">
+    <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
+
+    <!-- toolbar row -->
+    <item id="tb-in" class="pchq-tb" label="In: ${interact_label}"
+          action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'interact'"/>
+    <item id="tb-file" class="pchq-tb" label="File"
+          action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'menu' 'file'"/>
+    <item id="tb-desk" class="pchq-tb" label="Desk"
+          action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'menu' 'desk'"/>
+    <item id="tb-clock" class="pchq-tb quiet" label="${clock}" action="void"/>
+
+    <!-- File menu (state-driven view swap, events-hq picker pattern) -->
+    <item id="fm-cancel" class="pchq-menu-row" label="- close -" show="${file_menu_open}"
+          action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'menu' 'close'"/>
+    <repeat count="${n_file_opts}" bind="f">
+      <item id="fo-${f.#}" class="pchq-menu-row ${f.active}" label="${f.label}" show="${file_menu_open}"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'file' '${f.#}'"/>
+    </repeat>
+
+    <!-- Desk menu -->
+    <item id="dm-cancel" class="pchq-menu-row" label="- close -" show="${desk_menu_open}"
+          action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'menu' 'close'"/>
+    <repeat count="${n_desk_opts}" bind="d">
+      <item id="do-${d.#}" class="pchq-menu-row ${d.active}" label="${d.label}" show="${desk_menu_open}"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${d.#}'"/>
+    </repeat>
+
+    <!-- the live 3D raymarch view -->
+    <canvas id="view" sprite="${canvas_raw}"/>
+
+    <text label="No live board-viewer session - open 'View Board' from the game first." class="quiet" show="${no_session}"/>
+  </page>
+</window>
