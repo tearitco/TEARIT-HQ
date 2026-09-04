@@ -1827,7 +1827,7 @@ static int click_focus_then_activate(Elem *hit) {
  * khtpm_draw_core.c's own font_for() (below) references it, and before
  * g_dbhq_font_scale's own declaration below uses it transitively via
  * db-hq's ported layout code - forward-declare the flag/scale here. */
-static int g_is_db_hq = 0;
+static const int g_is_db_hq = 0;   /* g_is_db_hq/palettes/stats/bookmarks C deleted 2026-09-04 - ported to *-pal.xhtpm + projectors; const 0 folds the pure-flag guards */
 /* LayDoc Gap 2: NULL = no ACTIVATE scope. Declared before draw_core
  * include so elem_cursor_prefix can show [^] on the scope root. */
 static Elem *g_dbhq_active_scope_root = NULL;
@@ -1842,7 +1842,7 @@ static Elem *g_dbhq_active_scope_root = NULL;
  * path (the original plan here) would likely render fine but leave tab
  * click-switching silently broken. Flagged for the user before writing
  * any more of this - not resumed yet. */
-static int g_is_stats_hq = 0;
+static const int g_is_stats_hq = 0;
 /* REAL, NEW 2026-08-25 (Stage 2 palettes migration off the deprecated
  * standalone khtpm_hq_render.c - au11-hq/TPMOS-COMPLIANCE-DEBT.md /
  * khtpm-merge-how2.md). Palettes' own .chtpm is fully static content
@@ -1858,7 +1858,7 @@ static int g_is_stats_hq = 0;
  * has no tabbar/sidebar/panel-button structure to avoid double-counting
  * against, so unconditional reassignment is both simpler and immune to
  * that whole bug class by construction. */
-static int g_is_palettes = 0;
+static const int g_is_palettes = 0;
 /* REAL, NEW 2026-08-25 (Stage 3 bookmarks migration off khtpm_hq_render.c,
  * same debt entry as palettes above) - bookmarks is also a single
  * static panel of onClick-carrying <button> rows, no tabbar/sidebar,
@@ -1868,7 +1868,7 @@ static int g_is_palettes = 0;
  * duplicated. Kept as its own flag (not folded into g_is_palettes)
  * since bookmarks also needs the chtpm-live-reload + armed-input
  * mechanism palettes has no use for. */
-static int g_is_bookmarks = 0;
+static const int g_is_bookmarks = 0;
 /* REAL, NEW 2026-08-30 - piececraft-hq board-view khtpm conversion,
  * direct instruction ("u should do it the same way the legacy chtpm
  * parser does it. if possible steal code/ops w/e u have to"). Real,
@@ -3321,7 +3321,7 @@ static void dbhq_apply_css(Elem *e, int hover) {
 
 /* Real, single-slot font cache for text measurement, ported verbatim
  * (khtpm-merge-how2.md §3.2's own cache pattern, already proven). */
-static int dbhq_measure_text_px(const CssStyle *st, const char *text) {
+static int kh_measure_text_px(const CssStyle *st, const char *text) {
     char spec[128];
     const char *fam = st->has_font_family ? st->font_family : "DejaVu Sans";
     int size = scaled(st->has_font_size ? st->font_size : 12);
@@ -3376,10 +3376,10 @@ static void dbhq_apply_css_deep(Elem *e) {
  * exactly where it started - only the row's own (invisible) box moved.
  * This walks the whole subtree and shifts every descendant's y by the
  * same delta, so the tiles actually move with their row. */
-static void dbhq_pal_shift_subtree(Elem *e, int dy) {
+static void kh_shift_subtree(Elem *e, int dy) {
     if (!e) return;
     e->y += dy;
-    for (int i = 0; i < e->n_children; i++) dbhq_pal_shift_subtree(e->children[i], dy);
+    for (int i = 0; i < e->n_children; i++) kh_shift_subtree(e->children[i], dy);
 }
 
 /* REAL, GENERALIZED 2026-08-28 (RENDER-FRAME-HISTORY-DRIFT-ASSESSMENT.md
@@ -3441,7 +3441,7 @@ static void generic_scroll_layout_pass(Elem *container, const char *row_class, i
     for (int i = 0; i < g_pal_total_rows; i++) {
         Elem *r = grid_rows[i];
         int dy = -(g_pal_scroll * pitch);
-        dbhq_pal_shift_subtree(r, dy);
+        kh_shift_subtree(r, dy);
         if (r->y < top || r->y + r->h > bot) { r->w = 0; r->h = 0; }
     }
     g_pal_arrow_h = scaled(14);
@@ -3505,7 +3505,7 @@ static void dbhq_layout_pass(Elem *window) {
             Elem *tab = tabbar->children[i];
             tab->active = (i == g_dbhq_current_tab);
             dbhq_apply_css(tab, 0);
-            tab_widths[i] = dbhq_measure_text_px(&tab->style, tab->label) + scaled(34);
+            tab_widths[i] = kh_measure_text_px(&tab->style, tab->label) + scaled(34);
             tab->w = tab_widths[i];
             tabbar_natural_w += tab_widths[i] + 1;
         }
@@ -3577,7 +3577,7 @@ static void dbhq_layout_pass(Elem *window) {
             Elem *c = panel->children[i];
             dbhq_apply_css(c, 0);
             if (strcmp(c->tag, "title") == 0) {
-                c->w = dbhq_measure_text_px(&c->style, c->label) + scaled(10);
+                c->w = kh_measure_text_px(&c->style, c->label) + scaled(10);
                 c->h = scaled(14);
                 continue;
             }
@@ -3625,7 +3625,7 @@ static void dbhq_layout_pass(Elem *window) {
                  * function had already clobbered one line earlier.
                  * Recompute it fresh, same formula dbhq_ce_inject_
                  * panel() used at injection. */
-                int tw = dbhq_measure_text_px(&tab->style, tab->label) + scaled(34);
+                int tw = kh_measure_text_px(&tab->style, tab->label) + scaled(34);
                 tab->x = tx; tab->y = c->y + 2; tab->w = tw; tab->h = c->h - 4;
                 tx += tw + scaled(4);
             }
@@ -3659,7 +3659,7 @@ static void dbhq_layout_pass(Elem *window) {
                     Elem *fr = panel->children[i];
                     if (!elem_has_class(fr, "pal-tileset-row")) continue;
                     int shift = fy - fr->y;
-                    dbhq_pal_shift_subtree(fr, shift);
+                    kh_shift_subtree(fr, shift);
                     fy += fr->h + scaled(4);
                 }
             }
@@ -6655,7 +6655,7 @@ static void assign_nav_and_layout(void) {
                 }
                 if (strcmp(item->id, "close") == 0) is_close = 1;
                 if (is_sw || is_close) continue;
-                int w = dbhq_measure_text_px(&item->style, item->label) + 18;
+                int w = kh_measure_text_px(&item->style, item->label) + 18;
                 if (w < 28) w = 28;
                 if (cx > x0 && cx + w > g_win_w - 8) { cx = x0; cy += ROW_H + 4; }
                 item->x = cx; item->y = cy; item->w = w; item->h = ROW_H;
@@ -15860,7 +15860,6 @@ int main(int argc, char **argv) {
         /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode, real, data-
          * driven detection (`<window class="db-hq">`, same convention
          * as swatch-picker's own). */
-        if (strcmp(g_window->classes[i], "db-hq") == 0) { g_is_db_hq = 1; break; }
         /* REAL §5d.11 (2026-08-16) - events-hq mode, same real
          * convention, matching its own real existing class attribute
          * (`<window class="events-hq-window">`, unchanged - no new
@@ -15884,14 +15883,11 @@ int main(int argc, char **argv) {
          * items work for real because they ride the exact same generic
          * item-click path db-hq's own Common Events already prove out
          * live, not a new one. */
-        if (strcmp(g_window->classes[i], "stats-hq") == 0) { g_is_stats_hq = 1; g_is_db_hq = 1; break; }
         /* REAL, NEW 2026-08-25 (Stage 2 palettes migration) - see
          * g_is_palettes's own declaration comment. */
-        if (strcmp(g_window->classes[i], "palettes") == 0) { g_is_palettes = 1; g_is_db_hq = 1; break; }
         /* REAL, NEW 2026-08-25 (Stage 3 bookmarks migration off the
          * deprecated standalone khtpm_hq_render.c) - bm_menu.sh
          * composes <window class="database-window bookmarks">. */
-        if (strcmp(g_window->classes[i], "bookmarks") == 0) { g_is_bookmarks = 1; g_is_db_hq = 1; break; }
     }
 
     /* REAL, NEW 2026-08-30 - piececraft-hq board-view mode, checked
@@ -16200,7 +16196,7 @@ int main(int argc, char **argv) {
      * REAL Stage 5 §5d.10 (2026-08-16) - dpy/screen/cmap now open
      * BEFORE this call, not after (moved up) - db-hq mode's own real
      * layout pass needs a live X connection to measure font metrics
-     * (dbhq_measure_text_px()), unlike the popup modes' fixed-height
+     * (kh_measure_text_px()), unlike the popup modes' fixed-height
      * rows which never needed dpy this early. Harmless reorder for
      * popup modes - dpy/screen/cmap weren't used before this point
      * either way. */
