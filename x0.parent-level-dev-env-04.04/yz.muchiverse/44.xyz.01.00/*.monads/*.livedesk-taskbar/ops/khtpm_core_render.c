@@ -4004,11 +4004,18 @@ static void assign_nav_and_layout(void) {
             item->nav_index = ++g_n_nav;
             g_nav[g_n_nav - 1] = item;
             if (is_close) {
-                int cw = kh_measure_text_px(&item->style, item->label) + 16;
-                if (cw < 26) cw = 26;
+                /* draw_elem prepends "[ ]NN. " before the label, so the
+                 * box must be wide enough for the badge + the label or
+                 * the glyph spills off the right edge. Then hard-clamp
+                 * fully inside the window so it can never fall off. */
+                int cw = kh_measure_text_px(&item->style, item->label) + 52;
+                if (cw < 48) cw = 48;
                 chrome_x -= cw;
-                item->x = chrome_x; item->y = 2; item->w = cw; item->h = CHROME_H - 4;
-                chrome_x -= 4;
+                item->y = 2; item->w = cw; item->h = CHROME_H - 4;
+                item->x = chrome_x;
+                if (item->x + item->w > g_win_w - 4) item->x = g_win_w - 4 - item->w;
+                if (item->x < 4) item->x = 4;
+                chrome_x = item->x - 4;
             } else if (is_sw) {
                 if (n_sw < 12) {
                     snprintf(g_palette_name_buf[n_sw], sizeof(g_palette_name_buf[n_sw]), "%s", item->label);
