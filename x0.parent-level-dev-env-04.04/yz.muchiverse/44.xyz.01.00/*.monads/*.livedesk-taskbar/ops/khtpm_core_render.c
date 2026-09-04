@@ -2439,7 +2439,7 @@ static void generic_sbar_register(int x, int y, int w, int h, int *scroll,
     b = &g_generic_sbars[g_n_generic_sbars++];
     b->vx = x; b->vy = y; b->vw = w; b->vh = h;
     b->track_w = GENERIC_SCROLLBAR_W;
-    b->track_x = x + w - GENERIC_SCROLLBAR_W;
+    b->track_x = x + w - GENERIC_SCROLLBAR_W - 6;  /* clear of the 2px window frame */
     b->scroll = scroll;
     b->total = total;
     b->visible = visible;
@@ -4624,6 +4624,15 @@ static void redraw(void) {
     if (!window_is_dock()) {
     XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
     XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, CHROME_H);
+    /* REAL, NEW 2026-09-04 (direct request) - a 2px frame in the theme
+     * SECONDARY colour (livedesk_theme.pdl fg / the swatch picker's
+     * secondary pick) on every non-dock window. Doubles as a visible
+     * guarantee that a right/bottom-edge affordance (scrollbar thumb,
+     * chrome X) that stops short of this frame is fully on-window. */
+    XSetForeground(dpy, gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#888888"));
+    for (int _fb = 0; _fb < 2; _fb++)
+        XDrawRectangle(dpy, buf, gc, _fb, _fb,
+                       (unsigned)(g_win_w - 1 - 2 * _fb), (unsigned)(g_win_h - 1 - 2 * _fb));
     }
 
     /* REAL Stage 5 §5d.3 step 6 (2026-08-16) - real, data-selected
