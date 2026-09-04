@@ -529,7 +529,11 @@ static void draw_elem(Elem *e, int hover_id_hash) {
      * once, fixes every mode that relies on zeroing a subtree to hide
      * it, not just events-hq. */
     if (e->w <= 0 || e->h <= 0) return;
-    int is_grid_tile_bg = elem_has_class(e, "pal-tile") || elem_has_class(e, "swatch");
+    /* checkerboard is a PNG-transparency cue for sprite tiles only - the
+     * taskbar-settings colour picker (also class="swatch") wants solid
+     * full-colour squares, so exclude the swatch-picker window. */
+    int is_grid_tile_bg = !g_is_swatch_picker &&
+        (elem_has_class(e, "pal-tile") || elem_has_class(e, "swatch"));
     if (e->style.has_bg_color && is_grid_tile_bg) {
         /* PNG-style transparency checkerboard behind a sprite cell -
          * reads as "this holds an image with alpha", instead of the flat
@@ -690,7 +694,8 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                  * surface is g_theme_bg, so every transparent icon sat
                  * on a stale grey square. Follow the theme. */
                 unsigned long bg_pixel =
-                    (e->style.has_bg_color && (elem_has_class(e, "pal-tile") || elem_has_class(e, "swatch")))
+                    (e->style.has_bg_color && !g_is_swatch_picker &&
+                     (elem_has_class(e, "pal-tile") || elem_has_class(e, "swatch")))
                         ? alloc_pixel("#dcdcdc")               /* checkerboard mean - matte transparent edges to a light grey */
                     : e->style.has_bg_color
                         ? alloc_pixel(e->style.bg_color)
