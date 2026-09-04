@@ -4019,10 +4019,14 @@ static void assign_nav_and_layout(void) {
                 n_sw++;
             }
         }
-        /* helper: does this <item> carry class="pal-tileset" (footer) */
-        #define KH_IS_TILESET_CHIP(it_) ({ int _t = 0; for (int _c = 0; _c < (it_)->n_classes; _c++) \
-            if (strcmp((it_)->classes[_c], "pal-tileset") == 0) { _t = 1; break; } _t; })
-        /* pass 2a: folder + sheet choosers wrap in a strip above the grid */
+        /* helper: does this <item> carry class="pal-dir" (the long folder
+         * list - pinned to the FOOTER; sheet A/B/C + tileset choosers go
+         * up top, next to the grid, since they're picked far more often) */
+        #define KH_IS_FOOTER_CHIP(it_) ({ int _t = 0; for (int _c = 0; _c < (it_)->n_classes; _c++) \
+            if (strcmp((it_)->classes[_c], "pal-dir") == 0) { _t = 1; break; } _t; })
+        const int KH_CHIP_ROW_GAP = 10;   /* breathing room between wrapped chooser rows */
+        /* pass 2a: sheet (A/B/C) + tileset choosers, above the grid,
+         * each family on its own row */
         int chips_top = CHROME_H + 6;
         {
             int cx = x0, cy = chips_top;
@@ -4037,21 +4041,19 @@ static void assign_nav_and_layout(void) {
                         strcmp(item->classes[c], "chrome-btn") == 0) is_close = 1;
                 }
                 if (strcmp(item->id, "close") == 0) is_close = 1;
-                if (is_sw || is_close || KH_IS_TILESET_CHIP(item)) continue;
+                if (is_sw || is_close || KH_IS_FOOTER_CHIP(item)) continue;
                 const char *fam = item->n_classes ? item->classes[0] : "";
                 int w = kh_measure_text_px(&item->style, item->label) + 18;
                 if (w < 28) w = 28;
                 int rh = item->style.has_height ? item->style.height : ROW_H;
-                /* new family -> start its own row (folder row, then the
-                 * A/B/C sheet row under it, like the pre-port picker) */
-                if (prev_fam && strcmp(prev_fam, fam) != 0) { cx = x0; cy += rh + 3; }
+                if (prev_fam && strcmp(prev_fam, fam) != 0) { cx = x0; cy += rh + KH_CHIP_ROW_GAP; }
                 else if (cx > x0) cx += 6;
-                if (cx > x0 && cx + w > g_win_w - 8) { cx = x0; cy += rh + 3; }
+                if (cx > x0 && cx + w > g_win_w - 8) { cx = x0; cy += rh + KH_CHIP_ROW_GAP; }
                 item->x = cx; item->y = cy; item->w = w; item->h = rh;
                 cx += w;
                 prev_fam = fam;
             }
-            if (cx > x0 || cy > chips_top) chips_top = cy + ROW_H + 8;
+            if (cx > x0 || cy > chips_top) chips_top = cy + ROW_H + KH_CHIP_ROW_GAP;
         }
         /* pass 3: scrolled swatch grid, below the header strip */
         int y0 = chips_top;
@@ -4076,27 +4078,25 @@ static void assign_nav_and_layout(void) {
             generic_sbar_register(x0, y0, grid_w + GENERIC_SCROLLBAR_W + 4, view_h,
                                   &g_swatch_grid_scroll, total_rows, visible_rows, max_scroll);
         int max_y = y0 + view_h;
-        /* pass 2b: tileset choosers pinned as a footer below the grid */
+        /* pass 2b: the folder chooser (long list) pinned as a footer below the grid */
         {
-            int cx = x0, cy = max_y + 10;
-            const char *prev_fam = NULL;
+            int foot0 = max_y + KH_CHIP_ROW_GAP + 4;
+            int cx = x0, cy = foot0;
             for (i = 0; i < page->n_children; i++) {
                 Elem *item = page->children[i];
                 if (strcmp(item->tag, "item") != 0) continue;
-                if (!KH_IS_TILESET_CHIP(item)) continue;
-                const char *fam = item->n_classes ? item->classes[0] : "";
+                if (!KH_IS_FOOTER_CHIP(item)) continue;
                 int w = kh_measure_text_px(&item->style, item->label) + 18;
                 if (w < 28) w = 28;
                 int rh = item->style.has_height ? item->style.height : ROW_H;
                 if (cx > x0) cx += 6;
-                if (cx > x0 && cx + w > g_win_w - 8) { cx = x0; cy += rh + 3; }
+                if (cx > x0 && cx + w > g_win_w - 8) { cx = x0; cy += rh + KH_CHIP_ROW_GAP; }
                 item->x = cx; item->y = cy; item->w = w; item->h = rh;
                 cx += w;
-                prev_fam = fam; (void)prev_fam;
             }
-            if (cx > x0 || cy > max_y + 10) max_y = cy + ROW_H;
+            if (cx > x0 || cy > foot0) max_y = cy + ROW_H;
         }
-        #undef KH_IS_TILESET_CHIP
+        #undef KH_IS_FOOTER_CHIP
         g_win_h = max_y + 8;
         } else {
         int y = CHROME_H;
