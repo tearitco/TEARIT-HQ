@@ -646,7 +646,14 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                     ? alloc_pixel(e->style.bg_color)
                     : alloc_pixel(g_theme_bg[0] ? g_theme_bg : "#1c1c1c");
                 int blit_x, blit_y;
-                int short_bar = (e->h < 64);
+                /* A palette/swatch GRID tile is short (h<64) too, but it
+                 * wants the pre-2026-09-03 behaviour: sprite centered,
+                 * filling the cell, no 24px cap, no left/nav offset. Only
+                 * real taskbar-strip items (short cell + a caption beside
+                 * the icon) take the left-anchored path. */
+                int is_grid_tile = elem_has_class(e, "pal-tile") ||
+                                   elem_has_class(e, "swatch");
+                int short_bar = (e->h < 64) && !is_grid_tile;
                 if (short_bar) {
                     /* Taskbar-height cells: sprite LEFT of the label,
                      * after the nav badge — not centered over it. */
@@ -683,7 +690,8 @@ static void draw_elem(Elem *e, int hover_id_hash) {
     khtpm_decode_label_entities(label_decoded);
     shown_label = label_decoded;
     int sprite_under_label = drew_sprite && e->h >= 64 && shown_label[0] && !(shown_label[0] == ' ' && shown_label[1] == '\0');
-    int sprite_beside_label = drew_sprite && e->h < 64 && shown_label[0];
+    int sprite_beside_label = drew_sprite && e->h < 64 && shown_label[0] &&
+                              !elem_has_class(e, "pal-tile") && !elem_has_class(e, "swatch");
     if ((!drew_sprite || sprite_under_label || sprite_beside_label) && shown_label[0]) {
         XftFont *font = font_for(&e->style);
         XftColor col = xft_color(e->style.has_fg_color ? e->style.fg_color : "#cccccc");
