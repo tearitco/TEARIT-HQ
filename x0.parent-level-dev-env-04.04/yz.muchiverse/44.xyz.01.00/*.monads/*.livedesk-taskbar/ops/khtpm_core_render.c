@@ -2534,6 +2534,13 @@ static int generic_sbar_wheel(int mx, int my, int dir) {
  * "menus close after a real action fires" behavior for a genuinely
  * persistent window. */
 static int g_default_has_sidebar_panel = 0;
+/* REAL, NEW 2026-09-04 - a persistent tile/grid window (palettes: a
+ * <page> of <repeat> tiles, class="palettes-pal"/"database-window")
+ * is NOT a transient context menu: firing a tile's action= must not
+ * close it, same reasoning as g_default_has_sidebar_panel but without
+ * needing the <sidebar>+<panel> structure that flag is tied to. Set
+ * once from the window class in main(). */
+static int g_default_persistent = 0;
 static Elem g_default_close_elem_storage;
 static Elem *g_default_close_elem = &g_default_close_elem_storage;
 static Elem g_default_fullscreen_elem_storage;
@@ -4242,7 +4249,7 @@ static void dispatch(const char *action) {
      * dispatched shell command ran and wrote its state file correctly,
      * then the process exited cleanly right after). See
      * g_default_has_sidebar_panel's own declaration comment. */
-    if (!g_default_has_sidebar_panel) g_quit = 1;
+    if (!g_default_has_sidebar_panel && !g_default_persistent) g_quit = 1;
 }
 
 /* REAL, NEW 2026-09-01 - same real shell-command dispatch as dispatch()
@@ -12899,6 +12906,8 @@ int main(int argc, char **argv) {
      * change - class= was already fully generic). */
     for (int i = 0; i < g_window->n_classes; i++) {
         if (strcmp(g_window->classes[i], "swatch-picker") == 0) { g_is_swatch_picker = 1; break; }
+        if (strcmp(g_window->classes[i], "database-window") == 0 ||
+            strcmp(g_window->classes[i], "palettes-pal") == 0) g_default_persistent = 1;
         /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode, real, data-
          * driven detection (`<window class="db-hq">`, same convention
          * as swatch-picker's own). */
