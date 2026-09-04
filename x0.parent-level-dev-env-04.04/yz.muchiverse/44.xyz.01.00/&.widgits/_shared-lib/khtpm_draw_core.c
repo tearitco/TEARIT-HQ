@@ -524,9 +524,11 @@ static void kh_draw_canvas(Elem *e) {
     static int   c_w, c_h;
     static XImage *c_img;
     static unsigned char *c_buf;
-    XSetForeground(dpy, gc, alloc_pixel("#101014"));
-    XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
-    if (!e->sprite[0]) return;
+    if (!e->sprite[0]) {
+        XSetForeground(dpy, gc, alloc_pixel("#101014"));
+        XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
+        return;
+    }
     /* the board-viewer convention is <base>.raw next to <base>.receipt.txt
      * (sibling, NOT <base>.raw.receipt.txt) - strip a trailing ".raw"
      * before appending, falling back to the naive append for any other
@@ -548,7 +550,29 @@ static void kh_draw_canvas(Elem *e) {
         }
         fclose(rf);
     }
-    if (w <= 0 || h <= 0) return;
+    /* REAL FIX 2026-09-04, live report ("render for pc-hq is sometimes
+     * blanking, maybe every 10 seconds - the old one didn't do this") -
+     * the receipt/raw pair is written by a SEPARATE producer process
+     * (bv_render_3d.c) with no atomicity guarantee visible from this
+     * side; a read landing mid-write can see w/h==0 for one tick, or
+     * (below) a short/partial .raw read. This used to unconditionally
+     * XFillRectangle a dark background FIRST, every call, then only
+     * overpaint it with the real frame if that tick's read succeeded -
+     * so a single bad tick (out of ~30/sec) blanked the canvas for one
+     * visible frame, repeating however often the producer's own write
+     * cycle collides with our read. Real fix: only fill-and-clear when
+     * there is no previous good frame cached yet (c_img == NULL, i.e.
+     * genuinely nothing to show); once a real frame has been decoded
+     * once, a bad tick simply leaves the LAST good frame's XImage
+     * on screen (below) instead of blanking - no visible flicker, same
+     * spirit as the old implementation apparently already had. */
+    if (w <= 0 || h <= 0) {
+        if (!c_img) {
+            XSetForeground(dpy, gc, alloc_pixel("#101014"));
+            XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
+        }
+        return;
+    }
     if (strcmp(c_path, e->sprite) != 0 || c_w != w || c_h != h || !c_img) {
         snprintf(c_path, sizeof(c_path), "%s", e->sprite);
         c_w = w; c_h = h;
