@@ -60,6 +60,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <limits.h> /* INT_MIN - g_win_pos_applied_x/y sentinel (redraw() corrective-move guard) */
 #include <string.h>
 #include <ctype.h>
 #include <dirent.h> /* REAL, chat-hai mode only - session-dir listing */
@@ -1689,6 +1690,15 @@ static Colormap cmap;
 static XftFont *font_ui;
 static int g_win_x = 300, g_win_y = 300;
 static int g_win_w = 260, g_win_h = 200;
+/* Last on-screen position we actually asked the server for via XMoveWindow.
+ * The redraw() corrective-move block (2026-09-03) must only touch the server
+ * when our INTENDED position (g_win_x/g_win_y) has genuinely changed since we
+ * last applied it - comparing against raw XGetWindowAttributes wa.x/wa.y is a
+ * coordinate-space bug (a reparenting WM reports frame-relative coords, so the
+ * "mismatch" is almost always spuriously true), which fired an XMoveWindow +
+ * XSync + XSetInputFocus storm on every idle redraw = the flicker regression.
+ * INT_MIN = "never applied yet". */
+static int g_win_pos_applied_x = INT_MIN, g_win_pos_applied_y = INT_MIN;
 static int g_quit = 0;
 /* --dump-and-exit (any argv position): paint one frame, write the PNG +
  * .txt receipt via dump_frame_png(), then quit. Set once at startup,
@@ -9571,15 +9581,34 @@ static void redraw(void) {
          * it was genuinely this window, put it back immediately after -
          * same retry idea as that original 2026-08-28 fix, applied at
          * the one new real place a focused window can now move. */
-        if (XGetWindowAttributes(dpy, win, &wa) && (wa.x != g_win_x || wa.y != g_win_y)) {
-            Window had_focus; int had_revert;
-            XGetInputFocus(dpy, &had_focus, &had_revert);
-            XMoveWindow(dpy, win, g_win_x, g_win_y);
-            XSync(dpy, False);
-            if (had_focus == win) {
-                XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
+        /* FLICKER FIX 2026-09-03 - the prior version compared raw wa.x/wa.y
+         * (which a reparenting WM reports RELATIVE TO THE WM FRAME, not the
+         * root) against g_win_x/g_win_y (root-relative), so the mismatch was
+         * almost always spuriously true and this block fired an XMoveWindow +
+         * up to 3 XSync roundtrips + an XSetInputFocus on EVERY redraw,
+         * including idle repaints - a corrective-move feedback storm the
+         * compositor rendered as intermittent flicker (cf. tpmos PITFALLS #17
+         * "renderer prints only, no side effects" and #59 split-brain coords).
+         * Now: (1) do nothing at all unless our INTENDED position actually
+         * changed since we last applied it - the idle case is zero roundtrips;
+         * (2) even then, translate the window origin to real root coords
+         * before deciding the server is genuinely out of position. */
+        if (g_win_x != g_win_pos_applied_x || g_win_y != g_win_pos_applied_y) {
+            Window root_child; int root_x = 0, root_y = 0;
+            if (XTranslateCoordinates(dpy, win, DefaultRootWindow(dpy), 0, 0,
+                                      &root_x, &root_y, &root_child)
+                && (root_x != g_win_x || root_y != g_win_y)) {
+                Window had_focus; int had_revert;
+                XGetInputFocus(dpy, &had_focus, &had_revert);
+                XMoveWindow(dpy, win, g_win_x, g_win_y);
                 XSync(dpy, False);
+                if (had_focus == win) {
+                    XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
+                    XSync(dpy, False);
+                }
             }
+            g_win_pos_applied_x = g_win_x;
+            g_win_pos_applied_y = g_win_y;
         }
     }
     XSync(dpy, False);
