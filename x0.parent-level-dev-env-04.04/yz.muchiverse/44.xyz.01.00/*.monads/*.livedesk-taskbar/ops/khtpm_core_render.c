@@ -100,6 +100,9 @@ static void handle_key(KeySym ks, char ch);
 static void history_path(char *out, size_t outsz);
 static void history_unregister(void); /* REAL, NEW 2026-08-29 - see its own real definition/comment near history_path() */
 static void zero_nav_subtree(Elem *e); /* generic: recursively zero nav_index (see its definition) */
+static void kh_grab_keyboard_retry(void);
+static void kh_capture_click(int x, int y, int button);
+static void kh_capture_key(KeySym ks, char ch);
 static void redraw(void); /* REAL, forward declaration needed for dispatch()'s OPACITY_MINUS/OPACITY_PLUS handlers (NEW 2026-08-29 TASK 2) */
 #define MAX_ELEMS 1024  /* 2026-09-02: page projection + chrome, was 512 */
 #define MAX_PAGE_STACK 8
@@ -456,22 +459,6 @@ static void write_theme_opacity(double opacity) {
  * is 0 (never called). */
 static pid_t g_dbhq_module_pid = -1;
 
-static void dbhq_cleanup_module(void) {
-    if (g_dbhq_module_pid > 0) {
-        kill(g_dbhq_module_pid, SIGTERM);
-        waitpid(g_dbhq_module_pid, NULL, WNOHANG);
-        g_dbhq_module_pid = -1;
-    }
-}
-
-static void dbhq_handle_term_signal(int sig) {
-    (void)sig;
-    nav_tab_unregister();
-    history_unregister();
-    dbhq_cleanup_module();
-    _exit(0);
-}
-
 /* REAL, generic module launcher (xperiments/khtpm-generic-dispatch-
  * design.md §2a, 2026-08-31) - collapses what used to be 3 near-
  * identical per-mode fork+execl copies (dbhq_launch_module()/
@@ -590,26 +577,6 @@ static void kh_launch_window_modules(Elem *window, const char *house_root, const
         static int registered = 0;
         if (!registered) { atexit(kh_cleanup_modules); registered = 1; }
     }
-}
-
-static void dbhq_launch_module(const char *src, const char *extra_arg) {
-    /* REAL, NEW 2026-08-25 (bookmarks manager port) - modules now also
-     * get the package dir (chtpm's own dirname, i.e. the pal dir for a
-     * per-pal consumer like bookmarks) as argv[2]. Backward compatible:
-     * every existing manager (khtpm_hq_manager.c, stats_hq_manager.c)
-     * only reads argv[1] and ignores the extra arg.
-     * REAL, NEW 2026-08-25 (palettes manager port) - optional argv[3]
-     * from <module args="..."/> (see apply_attr()'s own "args" branch),
-     * for a manager that serves multiple category windows off one
-     * binary (palettes_manager.c) and needs to know which one. NULL/
-     * empty is the common case (bookmarks/stats-hq don't use it) -
-     * execl() just gets a shorter argv, no behavior change for them.
-     *
-     * CORRECTED 2026-08-31 - was its own real fork()+execl() here; now
-     * delegates to the generic launch_module() above (xperiments/
-     * khtpm-generic-dispatch-design.md §2a) - same exact argv, same
-     * exact behavior, zero fork()/execl() duplication. */
-    g_dbhq_module_pid = launch_module(src, g_house_root, g_package_dir, extra_arg);
 }
 
 static Elem *elem_new(const char *tag) {
@@ -2026,15 +1993,6 @@ static off_t g_pal_state_size = -1;
  * real FNV-1a content checksum catches any actual byte difference
  * regardless of length coincidence, still cheap for a file this small
  * (a few KB at most). */
-static unsigned long dbhq_file_checksum(const char *path) {
-    FILE *f = fopen(path, "r");
-    if (!f) return 0;
-    unsigned long h = 2166136261UL;
-    int c;
-    while ((c = fgetc(f)) != EOF) { h ^= (unsigned long)c; h *= 16777619UL; }
-    fclose(f);
-    return h;
-}
 static unsigned long g_pal_state_checksum = 0;
 static char g_pal_category[64];
 /* REAL FIX 2026-08-27 (direct instruction: "flag hardcoded things in
@@ -2210,16 +2168,6 @@ static Elem g_dbhq_actor_panel_slots[MAX_CHILDREN];
  * placeholder. Adding a NEW real tab later (per the events/db/
  * networking delegation doc's own Task 2) means adding ONE line here,
  * not re-finding and editing 3 separate gate sites again. */
-static int dbhq_tab_is_real(int tab) {
-    return tab == DB_HQ_COMMON_EVENTS_TAB || tab == DB_HQ_TERMS_TAB || tab == DB_HQ_ACTORS_TAB
-        || tab == DB_HQ_CLASSES_TAB || tab == DB_HQ_SKILLS_TAB
-        || tab == DB_HQ_WEAPONS_TAB || tab == DB_HQ_ARMORS_TAB
-        || tab == DB_HQ_ENEMIES_TAB || tab == DB_HQ_TROOPS_TAB
-        || tab == DB_HQ_STATES_TAB || tab == DB_HQ_ANIMATIONS_TAB
-        || tab == DB_HQ_TILESETS_TAB || tab == DB_HQ_ITEMS_TAB
-        || tab == DB_HQ_SYSTEM_TAB || tab == DB_HQ_TYPES_TAB;
-}
-
 static int g_dbhq_focus_grab_enabled = 0;
 static int g_dbhq_chrome_h = 26;
 static Elem g_dbhq_close_elem_storage;
@@ -2243,35 +2191,6 @@ static int g_dbhq_has_real_focus = 0;
 static int g_dbhq_dragging = 0;
 static int g_dbhq_drag_last_x = 0, g_dbhq_drag_last_y = 0;
 
-static void dbhq_load_font_scale(void) {
-    char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", g_house_root);
-    FILE *f = fopen(path, "r");
-    if (!f) return;
-    char line[128];
-    while (fgets(line, sizeof(line), f)) {
-        char *eq = strchr(line, '=');
-        if (!eq) continue;
-        *eq = '\0';
-        char *val = eq + 1;
-        char *nl = strchr(val, '\n');
-        if (nl) *nl = '\0';
-        if (strcmp(line, "font_scale") == 0) {
-            double v = atof(val);
-            if (v >= 0.5 && v <= 3.0) g_dbhq_font_scale = v;
-        } else if (strcmp(line, "focus_grab") == 0) {
-            g_dbhq_focus_grab_enabled = atoi(val) != 0;
-        } else if (strcmp(line, "window_x") == 0) {
-            g_win_x = atoi(val);
-        } else if (strcmp(line, "window_y") == 0) {
-            g_win_y = atoi(val);
-        } else if (strcmp(line, "click_two_step") == 0) {
-            g_click_two_step = atoi(val) != 0;
-        }
-    }
-    fclose(f);
-}
-
 /* Returns 1 if the common-events list actually changed (caller should
  * re-inject sidebar items + redraw), 0 if unchanged - real, mtime-gated,
  * ported verbatim. The manager binary (khtpm_hq_manager.c, launched via
@@ -2288,244 +2207,27 @@ static void dbhq_load_font_scale(void) {
  * files' mtimes happen to coincide - the mtime-gate alone can't detect
  * "same timestamp, different file". */
 static char g_dbhq_events_last_path[PATH_BUF];
-static int dbhq_load_common_events(void) {
-    const char *path = (g_dbhq_current_tab == DB_HQ_TERMS_TAB) ? g_dbhq_terms_state_path : g_dbhq_events_state_path;
-    struct stat st;
-    if (stat(path, &st) != 0) return 0;
-    int path_changed = strcmp(path, g_dbhq_events_last_path) != 0;
-    if (!path_changed && st.st_mtime == g_dbhq_events_state_mtime) return 0;
-    snprintf(g_dbhq_events_last_path, sizeof(g_dbhq_events_last_path), "%s", path);
-    g_dbhq_events_state_mtime = st.st_mtime;
-
-    char tmp[DB_HQ_MAX_EVENTS][64];
-    int n = 0;
-    FILE *f = fopen(path, "r");
-    if (!f) return 0;
-    char line[128];
-    while (n < DB_HQ_MAX_EVENTS && fgets(line, sizeof(line), f)) {
-        size_t len = strlen(line);
-        while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) line[--len] = '\0';
-        if (len == 0) continue;
-        snprintf(tmp[n], sizeof(tmp[0]), "%s", line);
-        n++;
-    }
-    fclose(f);
-    if (n == g_dbhq_n_events) {
-        int same = 1;
-        for (int i = 0; i < n; i++) {
-            if (strcmp(tmp[i], g_dbhq_events[i]) != 0) { same = 0; break; }
-        }
-        if (same) return 0;
-    }
-    g_dbhq_n_events = n;
-    for (int i = 0; i < n; i++)
-        snprintf(g_dbhq_events[i], sizeof(g_dbhq_events[0]), "%s", tmp[i]);
-    return 1;
-}
-
 /* REAL FIX 2026-08-25 (direct live report: "i was hoping it was more
  * human readable like before") - parses just the date/name portion
  * (before the first "|") out of a stats-hq raw data line, for a clean
  * sidebar label. Real db-hq's own g_dbhq_events[] never contains "|" in
  * a common-event NAME, so this is a no-op passthrough for real db-hq. */
-static void dbhq_sidebar_label_for(int i, char *out, size_t outsz) {
-    const char *src = g_dbhq_events[i];
-    const char *bar = strchr(src, '|');
-    size_t len = bar ? (size_t)(bar - src) : strlen(src);
-    if (len >= outsz) len = outsz - 1;
-    memcpy(out, src, len);
-    out[len] = '\0';
-}
-
 /* REAL, NEW 2026-08-25 (bookmarks manager port) - mtime-gated read of
  * bookmarks_manager.c's own published `name<TAB>path` state file, same
  * convention as dbhq_load_common_events() above. Returns 1 if rows
  * actually changed (caller should re-inject + redraw), 0 if unchanged. */
-static int dbhq_load_bookmark_state(void) {
-    struct stat st;
-    if (stat(g_bm_state_path, &st) != 0) return 0;
-    if (st.st_mtime == g_bm_state_mtime) return 0;
-    g_bm_state_mtime = st.st_mtime;
-
-    g_bm_n_rows = 0;
-    FILE *f = fopen(g_bm_state_path, "r");
-    if (!f) return 1;
-    char line[PATH_BUF];
-    while (g_bm_n_rows < BM_MAX_ROWS && fgets(line, sizeof(line), f)) {
-        size_t len = strlen(line);
-        while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) line[--len] = '\0';
-        if (len == 0) continue;
-        char *tab = strchr(line, '\t');
-        if (!tab) continue;
-        *tab = '\0';
-        snprintf(g_bm_names[g_bm_n_rows], sizeof(g_bm_names[0]), "%s", line);
-        snprintf(g_bm_paths[g_bm_n_rows], sizeof(g_bm_paths[0]), "%s", tab + 1);
-        g_bm_n_rows++;
-    }
-    fclose(f);
-    return 1;
-}
-
 /* REAL, NEW 2026-08-25 (bookmarks manager port) - rebuilds panel-
  * >children[] as [title, hint, ...bookmark rows..., New+, Open Folder]
  * from the 4 captured static elems + g_bm_names/g_bm_paths. Same
  * elem_new()-per-row shape dbhq_inject_sidebar_items() already uses for
  * db-hq/stats-hq's own dynamic sidebar - not a new pattern. */
-static Elem *dbhq_bm_row_factory(void *row, void *ctx) {
-    int i = (int)(intptr_t)row;
-    Elem *e;
-    (void)ctx;
-    if (i < 0 || i >= g_bm_n_rows) return NULL;
-    e = elem_new("button");
-    snprintf(e->classes[0], sizeof(e->classes[0]), "bm-bookmark");
-    e->n_classes = 1;
-    snprintf(e->label, sizeof(e->label), "%s  -  %s", g_bm_names[i], g_bm_paths[i]);
-    snprintf(e->onclick, sizeof(e->onclick), "open:%s", g_bm_paths[i]);
-    return e;
-}
-
-static void dbhq_inject_bookmark_items(Elem *panel) {
-    if (!panel) return;
-    panel->n_children = 0;
-    if (g_bm_static_title && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_bm_static_title;
-    if (g_bm_static_hint && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_bm_static_hint;
-    {
-        void *rows[BM_MAX_ROWS];
-        int i;
-        for (i = 0; i < g_bm_n_rows; i++) rows[i] = (void *)(intptr_t)i;
-        elem_inject_loop(panel, rows, g_bm_n_rows, dbhq_bm_row_factory, NULL);
-    }
-    if (g_bm_static_newplus && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_bm_static_newplus;
-    if (g_bm_static_openfolder && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_bm_static_openfolder;
-}
-
 /* REAL, NEW 2026-08-25 (palettes manager port) - mtime-gated read of
  * palettes_manager.c's own published `emoji<TAB>label<TAB>sprite_dir`
  * state file, same convention as dbhq_load_bookmark_state() above. */
-static int dbhq_load_palette_state(void) {
-    struct stat st;
-    if (stat(g_pal_state_path, &st) != 0) return 0;
-    /* REAL FIX 2026-08-28 (live report: "have to press abc tab multiple
-     * (2/3 times) to get it to change") - st_mtime has only ONE-SECOND
-     * resolution on this filesystem. Clicking through tabs faster than
-     * a real second apart makes the manager's rewrite land on the SAME
-     * mtime as the previous one, so this gate silently treated a real
-     * content change as "nothing changed" - the renderer only actually
-     * caught up once enough real wall-clock time (or one more click,
-     * landing in a later second) had passed. Real fix: also compare
-     * file SIZE, which almost always differs between two genuinely
-     * different real publishes even within the same second - cheap
-     * (already have the stat() result), no manager-side change needed. */
-    if (st.st_mtime == g_pal_state_mtime && st.st_size == g_pal_state_size) {
-        unsigned long cksum = dbhq_file_checksum(g_pal_state_path);
-        if (cksum == g_pal_state_checksum) return 0;
-        g_pal_state_checksum = cksum;
-    } else {
-        g_pal_state_checksum = dbhq_file_checksum(g_pal_state_path);
-    }
-    g_pal_state_mtime = st.st_mtime;
-    g_pal_state_size = st.st_size;
-
-    g_pal_n_tiles = 0;
-    FILE *f = fopen(g_pal_state_path, "r");
-    if (!f) return 1;
-    char line[PATH_BUF];
-    while (g_pal_n_tiles < PAL_MAX_TILES && fgets(line, sizeof(line), f)) {
-        size_t len = strlen(line);
-        while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) line[--len] = '\0';
-        if (len == 0) continue;
-        char *tab1 = strchr(line, '\t');
-        if (!tab1) continue;
-        *tab1 = '\0';
-        char *tab2 = strchr(tab1 + 1, '\t');
-        if (!tab2) continue;
-        *tab2 = '\0';
-        int i = g_pal_n_tiles;
-        snprintf(g_pal_emoji[i], sizeof(g_pal_emoji[0]), "%s", line);
-        snprintf(g_pal_label[i], sizeof(g_pal_label[0]), "%s", tab1 + 1);
-        snprintf(g_pal_sprite[i], sizeof(g_pal_sprite[0]), "%s", tab2 + 1);
-        g_pal_n_tiles++;
-    }
-    fclose(f);
-    return 1;
-}
-
 /* Real, generic loader for rmmv_options.txt (2026-08-27, tile-picker UI
  * pass) - same mtime-gate shape as dbhq_load_palette_state() above.
  * Populates zero hardcoded tilesets/categories - whatever the manager
  * actually published from the real registry, nothing more. */
-static int dbhq_load_palette_options(void) {
-    struct stat st;
-    if (!g_pal_options_path[0] || stat(g_pal_options_path, &st) != 0) return 0;
-    /* REAL FIX 2026-08-28 - same real same-second-mtime staleness bug
-     * (+ same-size coincidence risk) as dbhq_load_palette_state()'s own
-     * header comment describes - same real content-checksum fix. */
-    if (st.st_mtime == g_pal_options_mtime && st.st_size == g_pal_options_size) {
-        unsigned long cksum = dbhq_file_checksum(g_pal_options_path);
-        if (cksum == g_pal_options_checksum) return 0;
-        g_pal_options_checksum = cksum;
-    } else {
-        g_pal_options_checksum = dbhq_file_checksum(g_pal_options_path);
-    }
-    g_pal_options_mtime = st.st_mtime;
-    g_pal_options_size = st.st_size;
-
-    g_pal_n_tilesets = 0;
-    g_pal_n_tabs = 0;
-    g_pal_n_dirs = 0;
-    g_pal_active_tileset[0] = '\0';
-    g_pal_active_category[0] = '\0';
-    snprintf(g_pal_active_dir, sizeof(g_pal_active_dir), "tilesets");
-    FILE *f = fopen(g_pal_options_path, "r");
-    if (!f) return 1;
-    char line[PATH_BUF];
-    while (fgets(line, sizeof(line), f)) {
-        size_t len = strlen(line);
-        while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) line[--len] = '\0';
-        char *p1 = strchr(line, '|');
-        if (!p1) continue;
-        *p1 = '\0';
-        char *rest = p1 + 1;
-        if (strcmp(line, "ACTIVE_TILESET") == 0) {
-            snprintf(g_pal_active_tileset, sizeof(g_pal_active_tileset), "%s", rest);
-        } else if (strcmp(line, "ACTIVE_CATEGORY") == 0) {
-            snprintf(g_pal_active_category, sizeof(g_pal_active_category), "%s", rest);
-        } else if (strcmp(line, "ACTIVE_DIR") == 0) {
-            snprintf(g_pal_active_dir, sizeof(g_pal_active_dir), "%s", rest);
-        } else if (strcmp(line, "DIR") == 0) {
-            char *p2 = strchr(rest, '|');
-            if (!p2) continue;
-            *p2 = '\0';
-            if (g_pal_n_dirs < PAL_MAX_OPTS) {
-                snprintf(g_pal_opt_dir_key[g_pal_n_dirs], sizeof(g_pal_opt_dir_key[0]), "%s", rest);
-                snprintf(g_pal_opt_dir_label[g_pal_n_dirs], sizeof(g_pal_opt_dir_label[0]), "%s", p2 + 1);
-                g_pal_n_dirs++;
-            }
-        } else if (strcmp(line, "TAB") == 0) {
-            char *p2 = strchr(rest, '|');
-            if (!p2 || p2 != rest + 1) continue; /* letter is always exactly 1 char */
-            char letter = rest[0];
-            char *defcat = p2 + 1;
-            if (g_pal_n_tabs < PAL_MAX_OPTS) {
-                g_pal_opt_tab_letter[g_pal_n_tabs] = letter;
-                snprintf(g_pal_opt_tab_cat[g_pal_n_tabs], sizeof(g_pal_opt_tab_cat[0]), "%s", defcat);
-                g_pal_n_tabs++;
-            }
-        } else if (strcmp(line, "TILESET") == 0) {
-            char *p2 = strchr(rest, '|');
-            if (!p2) continue;
-            *p2 = '\0';
-            if (g_pal_n_tilesets < PAL_MAX_OPTS) {
-                snprintf(g_pal_opt_tileset_key[g_pal_n_tilesets], sizeof(g_pal_opt_tileset_key[0]), "%s", rest);
-                snprintf(g_pal_opt_tileset_label[g_pal_n_tilesets], sizeof(g_pal_opt_tileset_label[0]), "%s", p2 + 1);
-                g_pal_n_tilesets++;
-            }
-        }
-    }
-    fclose(f);
-    return 1;
-}
-
 /* REAL, NEW 2026-08-25 (live request: "update chemistry view thru
  * layout, not hardcoded") - column count used to be a literal 4/10
  * picked by hand to roughly match what the old bash emit_tiles_matrix()
@@ -2538,30 +2240,6 @@ static int dbhq_load_palette_options(void) {
  * If a future category's CSS gives tiles a different width, this
  * recomputes cols on its own instead of needing a new hardcoded number
  * added here. */
-static int dbhq_pal_cols_for(int wide) {
-    CssStyle win_st; css_style_init(&win_st);
-    css_compute_style(&g_sheet, "window", NULL, NULL, 0, 0, &win_st);
-    int window_w = win_st.has_width ? win_st.width : scaled(900);
-
-    char classes[2][32];
-    int n_classes = 0;
-    snprintf(classes[n_classes++], sizeof(classes[0]), "pal-tile");
-    if (wide) snprintf(classes[n_classes++], sizeof(classes[0]), "pal-wide");
-    CssStyle tile_st; css_style_init(&tile_st);
-    css_compute_style(&g_sheet, "button", NULL, classes, n_classes, 0, &tile_st);
-    int tile_w = tile_st.has_width ? tile_st.width : scaled(48);
-
-    CssStyle row_st; css_style_init(&row_st);
-    char row_cls[1][32]; snprintf(row_cls[0], sizeof(row_cls[0]), "pal-grid-row");
-    css_compute_style(&g_sheet, "row", NULL, row_cls, 1, 0, &row_st);
-    int gap = row_st.has_gap ? row_st.gap : scaled(4);
-
-    int margin = scaled(8), padding = scaled(12);
-    int content_w = window_w - 2 * margin - 2 * padding;
-    int cols = (content_w + gap) / (tile_w + gap);
-    return cols > 0 ? cols : 1;
-}
-
 /* REAL BUG FIX 2026-08-28 (live crash: SIGSEGV in dbhq_inject_palette_
  * tiles(), confirmed via gdb backtrace after 2-3 real tab/tileset
  * switches) - this function used the SHARED, never-recycled elem_new()/
@@ -2591,301 +2269,7 @@ static Elem g_pal_tileset_slots[PAL_MAX_OPTS];
  * stopped working in palettes after a few clicks"). */
 static unsigned long g_pal_tree_gen = 0;
 
-static void dbhq_inject_palette_tiles(Elem *panel) {
-    if (!panel) return;
-    g_pal_tree_gen++;
-    int wide = g_pal_layout_wide; /* REAL FIX 2026-08-27 - was hardcoded strcmp(g_pal_category, "elements"), see g_pal_layout_wide's own header comment */
-    int cols = dbhq_pal_cols_for(wide);
-    g_pal_scroll = 0; /* new content, new scroll - avoids a stale offset past the new max (same habit khtpm_hq_render.c's own reload path used) */
-    int next_row_slot = 0, next_tile_slot = 0, next_tab_slot = 0, next_tileset_slot = 0;
-
-    panel->n_children = 0;
-    if (g_pal_static_title && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_pal_static_title;
-    if (g_pal_static_hint && panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = g_pal_static_hint;
-
-    /* www/img directory tabs (db-hq-shaped names), two rows wrap. */
-    if (g_pal_n_dirs > 0) {
-        const int per = 6;
-        Elem *drow = NULL;
-        int dslot = 0;
-        for (int i = 0; i < g_pal_n_dirs && panel->n_children < MAX_CHILDREN; i++) {
-            if (i % per == 0) {
-                drow = reusable_slot(g_pal_row_slots, 64, next_row_slot++, "row");
-                if (!drow) break;
-                drow->parent = panel;
-                snprintf(drow->classes[0], sizeof(drow->classes[0]), "pal-tab-row");
-                drow->n_classes = 1;
-                panel->children[panel->n_children++] = drow;
-            }
-            if (!drow || drow->n_children >= MAX_CHILDREN) continue;
-            Elem *tab = reusable_slot(g_pal_dir_slots, PAL_MAX_OPTS, dslot++, "button");
-            if (!tab) break;
-            tab->parent = drow;
-            snprintf(tab->classes[0], sizeof(tab->classes[0]), "pal-tab");
-            tab->n_classes = 1;
-            if (strcmp(g_pal_opt_dir_key[i], g_pal_active_dir) == 0) {
-                snprintf(tab->classes[1], sizeof(tab->classes[1]), "pal-tab-active");
-                tab->n_classes = 2;
-            }
-            snprintf(tab->label, sizeof(tab->label), "%s", g_pal_opt_dir_label[i]);
-            snprintf(tab->onclick, sizeof(tab->onclick),
-                     "exec:'%s/&.widgits/palettes/palettes_menu.sh' set-rmmv-dir '%s' '%s'",
-                     g_house_root, g_package_dir, g_pal_opt_dir_key[i]);
-            drow->children[drow->n_children++] = tab;
-        }
-    }
-
-    /* Real A/B/C/D/E sheet-letter tab row (2026-08-27/28, per the
-     * user's own rmmv-tiles mockup + external review correction that
-     * tabs are real sheet LETTERS, not raw a1..a5 sub-category keys) -
-     * built fresh each redraw from g_pal_opt_tab_letter/_cat (whatever
-     * the manager's own rmmv_tab_letter_for() grouping actually found
-     * in the real registry for the active tileset). Every other
-     * category has n==0 here (options file never written), so this is
-     * a no-op for them. Active highlight compares the CURRENT active
-     * category's own letter-group, not a raw string match, so any
-     * a1..a5 category active still lights up the single "A" tab. */
-    if (g_pal_n_tabs > 0 && panel->n_children < MAX_CHILDREN &&
-        (g_pal_active_dir[0] == '\0' || strcmp(g_pal_active_dir, "tilesets") == 0)) {
-        char active_letter = g_pal_active_category[0] ? (g_pal_active_category[0] == 'a' ? 'A' : (char)toupper((unsigned char)g_pal_active_category[0])) : '\0';
-        Elem *tabrow = reusable_slot(g_pal_row_slots, 64, next_row_slot++, "row");
-        if (tabrow) {
-        tabrow->parent = panel;
-        snprintf(tabrow->classes[0], sizeof(tabrow->classes[0]), "pal-tab-row");
-        tabrow->n_classes = 1;
-        for (int i = 0; i < g_pal_n_tabs && tabrow->n_children < MAX_CHILDREN; i++) {
-            Elem *tab = reusable_slot(g_pal_tab_slots, PAL_MAX_OPTS, next_tab_slot++, "button");
-            if (!tab) break;
-            tab->parent = tabrow;
-            snprintf(tab->classes[0], sizeof(tab->classes[0]), "pal-tab");
-            tab->n_classes = 1;
-            if (g_pal_opt_tab_letter[i] == active_letter) {
-                snprintf(tab->classes[1], sizeof(tab->classes[1]), "pal-tab-active");
-                tab->n_classes = 2;
-            }
-            snprintf(tab->label, sizeof(tab->label), "%c", g_pal_opt_tab_letter[i]);
-            /* Real 2026-08-28 fix - sends the TAB LETTER, not a resolved
-             * category (g_pal_opt_tab_cat[i] is kept only for the
-             * active-highlight comparison below; the manager itself now
-             * resolves letter -> concrete a1/a2/... category from a
-             * real directory scan, since which suffix backs a letter
-             * can change independently of which letter is active). */
-            snprintf(tab->onclick, sizeof(tab->onclick),
-                     "exec:'%s/&.widgits/palettes/palettes_menu.sh' set-rmmv-tab '%s' '%c'",
-                     g_house_root, g_package_dir, g_pal_opt_tab_letter[i]);
-            tabrow->children[tabrow->n_children++] = tab;
-        }
-        panel->children[panel->n_children++] = tabrow;
-        }
-    }
-
-    Elem *row = NULL;
-    for (int i = 0; i < g_pal_n_tiles && panel->n_children < MAX_CHILDREN; i++) {
-        if (i % cols == 0) {
-            row = reusable_slot(g_pal_row_slots, 64, next_row_slot++, "row");
-            if (!row) break;
-            row->parent = panel;
-            snprintf(row->classes[0], sizeof(row->classes[0]), "pal-grid-row");
-            row->n_classes = 1;
-            panel->children[panel->n_children++] = row;
-        }
-        if (!row || row->n_children >= MAX_CHILDREN) continue;
-        Elem *tile = reusable_slot(g_pal_tile_slots, PAL_MAX_TILES, next_tile_slot++, "button");
-        if (!tile) break;
-        tile->parent = row;
-        snprintf(tile->classes[0], sizeof(tile->classes[0]), "pal-tile");
-        tile->n_classes = 1;
-        if (wide) { snprintf(tile->classes[1], sizeof(tile->classes[1]), "pal-wide"); tile->n_classes = 2; }
-        snprintf(tile->label, sizeof(tile->label), "%s", g_pal_label[i]);
-        if (g_pal_sprite[i][0]) snprintf(tile->sprite, sizeof(tile->sprite), "%s", g_pal_sprite[i]);
-        /* REAL FIX 2026-08-29 (TILE-SYSTEM-DESIGN.md §6 item 6, the
-         * doc-audit pass's identified real gap): before this fix, EVERY
-         * category's tile click - including rmmv - went through place()
-         * with g_pal_emoji[i], which for rmmv holds a label string like
-         * "a2 kind 3,1", not a real glyph. That sent garbage into the
-         * FreeType emoji_gen_atlas pipeline, which is why "sets a real
-         * current brush state on tile click" was still flagged pending
-         * in TILE-SYSTEM-DESIGN.md's own §6 item 5 note. rmmv now arms
-         * a real tileset/category/kind brush instead - g_pal_sprite[i]
-         * is already the manager's own real per-kind sprite.csv cache
-         * dir (publish_rmmv()), so no new rendering/compositing code is
-         * needed here, only correct routing. */
-        if (strcmp(g_pal_category, "rmmv") == 0) {
-            /* REAL, NEW 2026-08-29 - the armed-click-capture window's
-             * own rect is passed through so it can tile AROUND this
-             * picker window (not over it) - see tp_arm_placer_rmmv.c's
-             * own header for the full real design history/why. */
-            snprintf(tile->onclick, sizeof(tile->onclick),
-                     "exec:'%s/&.widgits/palettes/palettes_menu.sh' arm-rmmv '%s' '%s' '%s' '%s' '%d' '%d' '%d' '%d'",
-                     g_house_root, g_pal_sprite[i], g_pal_active_tileset, g_pal_active_category, g_pal_label[i],
-                     g_win_x, g_win_y, g_window->w, g_window->h);
-        } else if (strcmp(g_pal_category, "debug") == 0) {
-            /* REAL, NEW 2026-08-29 - debug_hq's own rows (publish_
-             * debug() in palettes_manager.c) carry a real action string
-             * in g_pal_emoji[i]: "toggle:<idx>", "clear", or "noop" for
-             * plain debug.txt content-display rows. "noop" gets no
-             * onclick at all - a real read-only row, not a dead button. */
-            if (strncmp(g_pal_emoji[i], "toggle:", 7) == 0) {
-                snprintf(tile->onclick, sizeof(tile->onclick),
-                         "exec:'%s/&.widgits/palettes/palettes_menu.sh' debug-toggle '%s'",
-                         g_house_root, g_pal_emoji[i] + 7);
-            } else if (strcmp(g_pal_emoji[i], "clear") == 0) {
-                snprintf(tile->onclick, sizeof(tile->onclick),
-                         "exec:'%s/&.widgits/palettes/palettes_menu.sh' debug-clear", g_house_root);
-            } else {
-                tile->onclick[0] = '\0';
-            }
-        } else {
-            snprintf(tile->onclick, sizeof(tile->onclick), "exec:'%s/&.widgits/palettes/palettes_menu.sh' place '%s'", g_house_root, g_pal_emoji[i]);
-        }
-        row->children[row->n_children++] = tile;
-    }
-
-    /* Real tileset chooser row (2026-08-27, "instead of opposite menu"
-     * per direct correction - chooser sits at the BOTTOM of the panel,
-     * after the tile grid, not top). Built from g_pal_opt_tileset_*
-     * (whatever real "<key>.name" rows publish_rmmv_options() found),
-     * same no-hardcoding shape as the tab row above. */
-    /* Wrap tileset chooser at 4 per row (live: 6 prefixes, one row
-     * only showed ~4). Same wrap we'll use for img-dir tabs. */
-    if (g_pal_n_tilesets > 0 &&
-        (g_pal_active_dir[0] == '\0' || strcmp(g_pal_active_dir, "tilesets") == 0)) {
-        const int per = 4;
-        Elem *chooserrow = NULL;
-        for (int i = 0; i < g_pal_n_tilesets && panel->n_children < MAX_CHILDREN; i++) {
-            if (i % per == 0) {
-                chooserrow = reusable_slot(g_pal_row_slots, 64, next_row_slot++, "row");
-                if (!chooserrow) break;
-                chooserrow->parent = panel;
-                snprintf(chooserrow->classes[0], sizeof(chooserrow->classes[0]), "pal-tileset-row");
-                chooserrow->n_classes = 1;
-                panel->children[panel->n_children++] = chooserrow;
-            }
-            if (!chooserrow || chooserrow->n_children >= MAX_CHILDREN) continue;
-            Elem *opt = reusable_slot(g_pal_tileset_slots, PAL_MAX_OPTS, next_tileset_slot++, "button");
-            if (!opt) break;
-            opt->parent = chooserrow;
-            snprintf(opt->classes[0], sizeof(opt->classes[0]), "pal-tileset-opt");
-            opt->n_classes = 1;
-            if (strcmp(g_pal_opt_tileset_key[i], g_pal_active_tileset) == 0) {
-                snprintf(opt->classes[1], sizeof(opt->classes[1]), "pal-tileset-active");
-                opt->n_classes = 2;
-            }
-            snprintf(opt->label, sizeof(opt->label), "%s", g_pal_opt_tileset_label[i]);
-            snprintf(opt->onclick, sizeof(opt->onclick),
-                     "exec:'%s/&.widgits/palettes/palettes_menu.sh' set-rmmv-tileset '%s' '%s'",
-                     g_house_root, g_package_dir, g_pal_opt_tileset_key[i]);
-            chooserrow->children[chooserrow->n_children++] = opt;
-        }
-    }
-
-    /* REAL, NEW 2026-08-25 (same "thru layout, not hardcoded" request) -
-     * window content height used to sit at db-hq's own fixed 600px
-     * default regardless of how many rows this category's real cols
-     * count produces - harmless for the old hardcoded 10/4-col grid
-     * (roughly filled it), but a real dead-space regression once cols
-     * itself became layout-derived (a wider window fits more per row,
-     * so fewer rows, so a big empty gap below the last one). Computed
-     * from the real row height/gap this category's own CSS declares,
-     * not a second hardcoded number. */
-    CssStyle row_st2; css_style_init(&row_st2);
-    char row_cls2[1][32]; snprintf(row_cls2[0], sizeof(row_cls2[0]), "pal-grid-row");
-    css_compute_style(&g_sheet, "row", NULL, row_cls2, 1, 0, &row_st2);
-    int row_h = row_st2.has_height ? row_st2.height : scaled(56);
-    int gap = row_st2.has_gap ? row_st2.gap : scaled(4);
-    int rows = cols > 0 ? (g_pal_n_tiles + cols - 1) / cols : 0;
-    /* Real tab/chooser rows add their own row heights - counted as
-     * extra "rows" here rather than a second hardcoded height constant,
-     * since they share the exact same row_h/gap CSS shape. */
-    int extra_rows = (g_pal_n_dirs > 0 ? (g_pal_n_dirs + 5) / 6 : 0) + (g_pal_n_tabs > 0 ? 1 : 0) + (g_pal_n_tilesets > 0 ? (g_pal_n_tilesets + 3) / 4 : 0);
-    rows += extra_rows;
-    int hint_h = scaled(24);
-    /* dbhq_layout_pass() always does `content_h = window->style.height -
-     * tabbar_h`, unconditionally reserving tabbar_h even with no real
-     * <tabbar> present (a pre-existing db-hq-mode quirk, not introduced
-     * here) - style.height has to include that same amount back, or the
-     * window ends up tabbar_h short of what was actually computed. */
-    int tabbar_h = scaled(30);
-    int margin = scaled(8), padding = scaled(12);
-    int content_h = hint_h + rows * row_h + (rows > 0 ? (rows - 1) * gap : 0) + 2 * padding + margin + tabbar_h;
-    /* REAL FIX 2026-08-25 (same pass that added scrolling) - fitting the
-     * window to EVERY row defeats scrolling entirely (g_pal_visible_rows
-     * would always equal g_pal_total_rows, max_scroll always 0). Cap at
-     * a real, reasonable on-screen height instead - content taller than
-     * that scrolls via the newly-ported g_pal_scroll mechanism, content
-     * shorter than that still gets the real shrink-to-fit from the fix
-     * above (chemistry's own 917px vs the old fixed-600 default). */
-    int max_h = scaled(600);
-    if (content_h > max_h) content_h = max_h;
-    g_pal_forced_h = content_h > scaled(150) ? content_h : scaled(150);
-}
-
 static Elem g_dbhq_sidebar_slots[MAX_CHILDREN]; /* see reusable_slot()'s own header comment */
-
-static void dbhq_inject_sidebar_items(Elem *sidebar) {
-    if (!sidebar) return;
-    sidebar->n_children = 0;
-    int next_slot_index = 0;
-    for (int i = 0; i < g_dbhq_n_events; i++) {
-        Elem *item = reusable_slot(g_dbhq_sidebar_slots, MAX_CHILDREN, next_slot_index++, "item");
-        if (!item) break; /* pool exhausted - stop, don't crash (see addbtn's own comment below) */
-        item->parent = sidebar;
-        snprintf(item->classes[0], sizeof(item->classes[0]), "data-item");
-        item->n_classes = 1;
-        if (g_is_stats_hq) {
-            dbhq_sidebar_label_for(i, item->label, sizeof(item->label));
-            /* REAL FIX - id holds the real index so click-matching
-             * doesn't depend on the label (now just the date, not the
-             * full raw line anymore) staying unique/stable - see the
-             * "item" click branch below. */
-            snprintf(item->id, sizeof(item->id), "%d", i);
-        } else {
-            snprintf(item->label, sizeof(item->label), "%s", g_dbhq_events[i]);
-        }
-        item->active = (i == g_dbhq_selected_event);
-        if (sidebar->n_children < MAX_CHILDREN) sidebar->children[sidebar->n_children++] = item;
-    }
-    if (g_dbhq_n_events == 0 && !g_is_stats_hq) {
-        Elem *item = reusable_slot(g_dbhq_sidebar_slots, MAX_CHILDREN, next_slot_index++, "item");
-        if (!item) return;
-        item->parent = sidebar;
-        snprintf(item->label, sizeof(item->label), "(none yet)");
-        if (sidebar->n_children < MAX_CHILDREN) sidebar->children[sidebar->n_children++] = item;
-    }
-    /* Task 6 (2026-08-26, direct instruction: Common Events had no way
-     * to create a new one, unlike entity events' own +Add Command) -
-     * reuses the SAME generic input:<file>|<postcmd> mechanism
-     * bookmarks' own "New+" button already uses (dbhq_handle_key's
-     * g_input_elem branch), no new popup/input machinery. The post
-     * command only mkdir -p's a bare event_pkg dir - dbhq_load_common_
-     * events()'s existing mtime-gated rescan (already proven live,
-     * zero-recompile, this session) picks up the new directory on its
-     * own; the manager itself creates page_1 with the real template the
-     * first time the user clicks "+ New Page" inside it, same as an
-     * entity's own first page - no scaffold format duplicated here. */
-    if (!g_is_stats_hq && !g_is_palettes && !g_is_bookmarks) {
-        Elem *addbtn = reusable_slot(g_dbhq_sidebar_slots, MAX_CHILDREN, next_slot_index++, "item");
-        /* REAL BUG FIX 2026-08-26 (found via gdb, real SIGSEGV) -
-         * elem_new() returns NULL when the shared MAX_ELEMS pool is
-         * exhausted (it never recycles - a house-wide structural limit,
-         * not new to this function). Task 6/7's own per-tick panel
-         * rebuilds raised real pool pressure enough to hit this in
-         * practice; guard here defensively rather than pretend the pool
-         * is infinite. */
-        if (!addbtn) return;
-        addbtn->parent = sidebar;
-        snprintf(addbtn->classes[0], sizeof(addbtn->classes[0]), "data-item"); addbtn->n_classes = 1;
-        snprintf(addbtn->id, sizeof(addbtn->id), "ce-add-event");
-        snprintf(addbtn->label, sizeof(addbtn->label), "+ Add Common Event");
-        char target[PATH_BUF]; snprintf(target, sizeof(target), "%s/#.desktop/.dbhq_new_ce_name.txt", g_house_root);
-        char post[900];
-        snprintf(post, sizeof(post),
-            "sh -c 'N=$(tail -1 \"%s\" | tr -d \"/\\r\\n\"); [ -n \"$N\" ] && mkdir -p \"%s/common_events/$N/event_pkg\"'",
-            target, g_house_root);
-        snprintf(addbtn->onclick, sizeof(addbtn->onclick), "input:%s|%s", target, post);
-        if (sidebar->n_children < MAX_CHILDREN) sidebar->children[sidebar->n_children++] = addbtn;
-    }
-}
 
 /* REAL FIX 2026-08-25 (direct live report: "i was hoping it was more
  * human readable like before") - stats-hq's own panel-population,
@@ -2895,195 +2279,7 @@ static void dbhq_inject_sidebar_items(Elem *sidebar) {
  * one combined summary. Parses stats_hq_manager.c's own raw pipe-
  * delimited publish format (date|turns|user_msgs|ai_msgs|tools|pct). */
 
-static void dbhq_actor_clear(DbhqActor *a) {
-    memset(a, 0, sizeof(*a));
-    a->init_lv = 1;
-    a->max_lv = 99;
-}
-
-static void dbhq_actor_set_key(DbhqActor *a, const char *key, const char *val) {
-    if (strcmp(key, "id") == 0) a->id = atoi(val);
-    else if (strcmp(key, "name") == 0) snprintf(a->name, sizeof(a->name), "%s", val);
-    else if (strcmp(key, "nickname") == 0) snprintf(a->nickname, sizeof(a->nickname), "%s", val);
-    else if (strcmp(key, "class") == 0) snprintf(a->class_name, sizeof(a->class_name), "%s", val);
-    else if (strcmp(key, "init_lv") == 0) a->init_lv = atoi(val);
-    else if (strcmp(key, "max_lv") == 0) a->max_lv = atoi(val);
-    else if (strcmp(key, "profile") == 0) snprintf(a->profile, sizeof(a->profile), "%s", val);
-    else if (strcmp(key, "face") == 0) snprintf(a->face, sizeof(a->face), "%s", val);
-    else if (strcmp(key, "character") == 0) snprintf(a->character, sizeof(a->character), "%s", val);
-    else if (strcmp(key, "battler") == 0) snprintf(a->battler, sizeof(a->battler), "%s", val);
-    else if (strcmp(key, "weapon") == 0) snprintf(a->weapon, sizeof(a->weapon), "%s", val);
-    else if (strcmp(key, "shield") == 0) snprintf(a->shield, sizeof(a->shield), "%s", val);
-    else if (strcmp(key, "head") == 0) snprintf(a->head, sizeof(a->head), "%s", val);
-    else if (strcmp(key, "body") == 0) snprintf(a->body, sizeof(a->body), "%s", val);
-    else if (strcmp(key, "accessory") == 0) snprintf(a->accessory, sizeof(a->accessory), "%s", val);
-    else if (strcmp(key, "mhp") == 0) a->mhp = atoi(val);
-    else if (strcmp(key, "mmp") == 0) a->mmp = atoi(val);
-    else if (strcmp(key, "atk") == 0) a->atk = atoi(val);
-    else if (strcmp(key, "def") == 0) a->defn = atoi(val);
-    else if (strcmp(key, "mat") == 0) a->mat = atoi(val);
-    else if (strcmp(key, "mdf") == 0) a->mdf = atoi(val);
-    else if (strcmp(key, "agi") == 0) a->agi = atoi(val);
-    else if (strcmp(key, "luk") == 0) a->luk = atoi(val);
-    else if (strcmp(key, "note") == 0) snprintf(a->note, sizeof(a->note), "%s", val);
-}
-
 /* Parse house PDL: SECTION | KEY | VALUE  — ACTOR rows. No JSON. */
-static int dbhq_load_actors(void) {
-    const char *path = g_dbhq_actors_state_path;
-    struct stat st;
-    char fallback[PATH_BUF];
-    if (stat(path, &st) != 0) {
-        snprintf(fallback, sizeof(fallback), "%s/&.widgits/db-hq/data/actors.pdl", g_house_root);
-        path = fallback;
-        if (stat(path, &st) != 0) return 0;
-    }
-    if (st.st_mtime == g_dbhq_actors_mtime && g_dbhq_n_actors > 0) return 0;
-    FILE *f = fopen(path, "r");
-    if (!f) return 0;
-    DbhqActor tmp[DB_HQ_MAX_ACTORS];
-    int n = 0;
-    char line[512];
-    while (fgets(line, sizeof(line), f)) {
-        size_t len = strlen(line);
-        while (len > 0 && (line[len-1]=='\n' || line[len-1]=='\r')) line[--len] = '\0';
-        if (len == 0 || line[0] == '-' || strncmp(line, "SECTION", 7) == 0) continue;
-        char sec[64] = "", key[64] = "", val[256] = "";
-        char *p = line;
-        char *bar = strstr(p, "|");
-        if (!bar) continue;
-        *bar = '\0';
-        snprintf(sec, sizeof(sec), "%s", p);
-        p = bar + 1;
-        while (*p == ' ') p++;
-        bar = strstr(p, "|");
-        if (!bar) continue;
-        *bar = '\0';
-        /* trim key */
-        char *ke = bar - 1;
-        while (ke > p && (*ke == ' ' || *ke == '\t')) { *ke = '\0'; ke--; }
-        snprintf(key, sizeof(key), "%s", p);
-        p = bar + 1;
-        while (*p == ' ') p++;
-        snprintf(val, sizeof(val), "%s", p);
-        /* trim trailing space on sec */
-        for (int i = (int)strlen(sec)-1; i>=0 && (sec[i]==' '||sec[i]=='\t'); i--) sec[i]='\0';
-        if (strcmp(sec, "ACTOR") != 0) continue;
-        if (strcmp(key, "id") == 0) {
-            if (n >= DB_HQ_MAX_ACTORS) break;
-            dbhq_actor_clear(&tmp[n]);
-            dbhq_actor_set_key(&tmp[n], key, val);
-            n++;
-        } else if (n > 0) {
-            dbhq_actor_set_key(&tmp[n-1], key, val);
-        }
-    }
-    fclose(f);
-    g_dbhq_actors_mtime = st.st_mtime;
-    int same = (n == g_dbhq_n_actors);
-    if (same) {
-        for (int i = 0; i < n; i++) {
-            if (memcmp(&tmp[i], &g_dbhq_actors[i], sizeof(DbhqActor)) != 0) { same = 0; break; }
-        }
-    }
-    if (same) return 0;
-    g_dbhq_n_actors = n;
-    memcpy(g_dbhq_actors, tmp, sizeof(DbhqActor) * (size_t)n);
-    if (g_dbhq_selected_actor < 0 && n > 0) g_dbhq_selected_actor = 0;
-    if (g_dbhq_selected_actor >= n) g_dbhq_selected_actor = n > 0 ? n - 1 : -1;
-    return 1;
-}
-
-static void dbhq_actor_sidebar_label(int i, char *out, size_t outsz) {
-    snprintf(out, outsz, "%04d: %s", g_dbhq_actors[i].id, g_dbhq_actors[i].name);
-}
-
-static Elem *dbhq_actor_panel_row(Elem *panel, int *slot, const char *label) {
-    Elem *e = reusable_slot(g_dbhq_actor_panel_slots, MAX_CHILDREN, (*slot)++, "button");
-    if (!e) return NULL;
-    e->parent = panel;
-    snprintf(e->classes[0], sizeof(e->classes[0]), "data-item");
-    e->n_classes = 1;
-    snprintf(e->label, sizeof(e->label), "%s", label);
-    snprintf(e->onclick, sizeof(e->onclick), "ACTIVATE");
-    if (panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = e;
-    return e;
-}
-
-static void dbhq_inject_actors_panel(Elem *panel) {
-    if (!panel) return;
-    panel->n_children = 0;
-    int slot = 0;
-    if (g_dbhq_selected_actor < 0 || g_dbhq_selected_actor >= g_dbhq_n_actors) {
-        Elem *t = reusable_slot(g_dbhq_actor_panel_slots, MAX_CHILDREN, slot++, "title");
-        if (!t) return;
-        t->parent = panel;
-        snprintf(t->classes[0], sizeof(t->classes[0]), "block-title"); t->n_classes = 1;
-        snprintf(t->label, sizeof(t->label), "Actor");
-        if (panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = t;
-        dbhq_actor_panel_row(panel, &slot, "(select an actor)");
-        return;
-    }
-    DbhqActor *a = &g_dbhq_actors[g_dbhq_selected_actor];
-    char buf[256];
-    Elem *t = reusable_slot(g_dbhq_actor_panel_slots, MAX_CHILDREN, slot++, "title");
-    if (t) {
-        t->parent = panel;
-        snprintf(t->classes[0], sizeof(t->classes[0]), "block-title"); t->n_classes = 1;
-        snprintf(t->label, sizeof(t->label), "Actor %04d", a->id);
-        if (panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = t;
-    }
-    snprintf(buf, sizeof(buf), "Name          %s", a->name); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "Nickname      %s", a->nickname); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "Class         %s", a->class_name); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "Initial Level %d", a->init_lv); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "Max Level     %d", a->max_lv); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "Profile       %s", a->profile); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "Face          %s", a->face[0] ? a->face : "(none)"); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "Character     %s", a->character[0] ? a->character : "(none)"); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "Battler       %s", a->battler[0] ? a->battler : "(none)"); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "Weapon        %s", a->weapon[0] ? a->weapon : "None"); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "Shield        %s", a->shield[0] ? a->shield : "None"); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "Head          %s", a->head[0] ? a->head : "None"); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "Body          %s", a->body[0] ? a->body : "None"); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "Accessory     %s", a->accessory[0] ? a->accessory : "None"); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "MHP  %d", a->mhp); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "MMP  %d", a->mmp); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "ATK  %d", a->atk); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "DEF  %d", a->defn); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "MAT  %d", a->mat); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "MDF  %d", a->mdf); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "AGI  %d", a->agi); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "LUK  %d", a->luk); dbhq_actor_panel_row(panel, &slot, buf);
-    snprintf(buf, sizeof(buf), "Note          %s", a->note); dbhq_actor_panel_row(panel, &slot, buf);
-}
-
-static void dbhq_inject_actors_sidebar(Elem *sidebar) {
-    if (!sidebar) return;
-    sidebar->n_children = 0;
-    int next = 0;
-    for (int i = 0; i < g_dbhq_n_actors; i++) {
-        Elem *item = reusable_slot(g_dbhq_sidebar_slots, MAX_CHILDREN, next++, "item");
-        if (!item) break;
-        item->parent = sidebar;
-        snprintf(item->classes[0], sizeof(item->classes[0]), "data-item");
-        item->n_classes = 1;
-        dbhq_actor_sidebar_label(i, item->label, sizeof(item->label));
-        snprintf(item->id, sizeof(item->id), "%d", i);
-        item->onclick[0] = '\0';
-        item->active = (i == g_dbhq_selected_actor);
-        if (sidebar->n_children < MAX_CHILDREN) sidebar->children[sidebar->n_children++] = item;
-    }
-}
-
-static void dbhq_show_actors(void) {
-    dbhq_load_actors();
-    Elem *sidebar = find_by_tag(g_window, "sidebar");
-    dbhq_inject_actors_sidebar(sidebar);
-    Elem *panel = find_by_tag(g_window, "panel");
-    dbhq_inject_actors_panel(panel);
-}
-
 #define DBHQ_LIST_MAX 64
 #define DBHQ_KV_MAX 24
 #define DBHQ_N_LIST_TABS 12
@@ -3120,204 +2316,6 @@ static int g_dbhq_list_sel[DBHQ_N_LIST_TABS];
 static time_t g_dbhq_list_mtime[DBHQ_N_LIST_TABS];
 static char g_dbhq_list_state_path[DBHQ_N_LIST_TABS][PATH_BUF];
 
-static int dbhq_list_idx_for_tab(int tab) {
-    for (int i = 0; i < DBHQ_N_LIST_TABS; i++)
-        if (g_dbhq_list_cfg[i].tab == tab) return i;
-    return -1;
-}
-
-static void dbhq_list_rec_clear(DbhqListRec *r) {
-    memset(r, 0, sizeof(*r));
-}
-
-static void dbhq_list_rec_set(DbhqListRec *r, const char *key, const char *val) {
-    if (strcmp(key, "id") == 0) { r->id = atoi(val); return; }
-    if (strcmp(key, "name") == 0) { snprintf(r->name, sizeof(r->name), "%s", val); return; }
-    if (r->n_kv >= DBHQ_KV_MAX) return;
-    snprintf(r->kv_key[r->n_kv], sizeof(r->kv_key[0]), "%s", key);
-    snprintf(r->kv_val[r->n_kv], sizeof(r->kv_val[0]), "%s", val);
-    r->n_kv++;
-}
-
-static int dbhq_load_list_tab(int li) {
-    if (li < 0 || li >= DBHQ_N_LIST_TABS) return 0;
-    const char *path = g_dbhq_list_state_path[li];
-    struct stat st;
-    char fallback[PATH_BUF];
-    if (stat(path, &st) != 0) {
-        snprintf(fallback, sizeof(fallback), "%s/&.widgits/db-hq/data/%s",
-                 g_house_root, g_dbhq_list_cfg[li].pdl_name);
-        path = fallback;
-        if (stat(path, &st) != 0) return 0;
-    }
-    if (st.st_mtime == g_dbhq_list_mtime[li] && g_dbhq_list_n[li] > 0) return 0;
-    FILE *f = fopen(path, "r");
-    if (!f) return 0;
-    DbhqListRec tmp[DBHQ_LIST_MAX];
-    int n = 0;
-    char line[512];
-    while (fgets(line, sizeof(line), f)) {
-        size_t len = strlen(line);
-        while (len > 0 && (line[len-1]=='\n' || line[len-1]=='\r')) line[--len] = '\0';
-        if (len == 0 || line[0] == '-' || strncmp(line, "SECTION", 7) == 0) continue;
-        char sec[64] = "", key[64] = "", val[256] = "";
-        char *pcur = line;
-        char *bar = strstr(pcur, "|");
-        if (!bar) continue;
-        *bar = '\0';
-        snprintf(sec, sizeof(sec), "%s", pcur);
-        pcur = bar + 1;
-        while (*pcur == ' ') pcur++;
-        bar = strstr(pcur, "|");
-        if (!bar) continue;
-        *bar = '\0';
-        char *ke = bar - 1;
-        while (ke > pcur && (*ke == ' ' || *ke == '\t')) { *ke = '\0'; ke--; }
-        snprintf(key, sizeof(key), "%s", pcur);
-        pcur = bar + 1;
-        while (*pcur == ' ') pcur++;
-        snprintf(val, sizeof(val), "%s", pcur);
-        for (int i = (int)strlen(sec)-1; i>=0 && (sec[i]==' '||sec[i]=='\t'); i--) sec[i]='\0';
-        if (strcmp(sec, g_dbhq_list_cfg[li].section) != 0) continue;
-        if (strcmp(key, "id") == 0) {
-            if (n >= DBHQ_LIST_MAX) break;
-            dbhq_list_rec_clear(&tmp[n]);
-            dbhq_list_rec_set(&tmp[n], key, val);
-            n++;
-        } else if (n > 0) {
-            dbhq_list_rec_set(&tmp[n-1], key, val);
-        }
-    }
-    fclose(f);
-    g_dbhq_list_mtime[li] = st.st_mtime;
-    int same = (n == g_dbhq_list_n[li]);
-    if (same) {
-        for (int i = 0; i < n; i++)
-            if (memcmp(&tmp[i], &g_dbhq_list_recs[li][i], sizeof(DbhqListRec)) != 0) { same = 0; break; }
-    }
-    if (same) return 0;
-    g_dbhq_list_n[li] = n;
-    memcpy(g_dbhq_list_recs[li], tmp, sizeof(DbhqListRec) * (size_t)n);
-    if (g_dbhq_list_sel[li] < 0 && n > 0) g_dbhq_list_sel[li] = 0;
-    if (g_dbhq_list_sel[li] >= n) g_dbhq_list_sel[li] = n > 0 ? n - 1 : -1;
-    return 1;
-}
-
-static void dbhq_inject_list_sidebar(int li, Elem *sidebar) {
-    if (!sidebar) return;
-    sidebar->n_children = 0;
-    int next = 0;
-    for (int i = 0; i < g_dbhq_list_n[li]; i++) {
-        Elem *item = reusable_slot(g_dbhq_sidebar_slots, MAX_CHILDREN, next++, "item");
-        if (!item) break;
-        item->parent = sidebar;
-        snprintf(item->classes[0], sizeof(item->classes[0]), "data-item");
-        item->n_classes = 1;
-        snprintf(item->label, sizeof(item->label), "%04d: %s",
-                 g_dbhq_list_recs[li][i].id, g_dbhq_list_recs[li][i].name);
-        snprintf(item->id, sizeof(item->id), "%d", i);
-        item->onclick[0] = '\0';
-        item->active = (i == g_dbhq_list_sel[li]);
-        if (sidebar->n_children < MAX_CHILDREN) sidebar->children[sidebar->n_children++] = item;
-    }
-}
-
-static void dbhq_inject_list_panel(int li, Elem *panel) {
-    if (!panel) return;
-    panel->n_children = 0;
-    int slot = 0;
-    const char *title = g_dbhq_list_cfg[li].title;
-    if (g_dbhq_list_sel[li] < 0 || g_dbhq_list_sel[li] >= g_dbhq_list_n[li]) {
-        Elem *t = reusable_slot(g_dbhq_actor_panel_slots, MAX_CHILDREN, slot++, "title");
-        if (!t) return;
-        t->parent = panel;
-        snprintf(t->classes[0], sizeof(t->classes[0]), "block-title"); t->n_classes = 1;
-        snprintf(t->label, sizeof(t->label), "%s", title);
-        if (panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = t;
-        dbhq_actor_panel_row(panel, &slot, "(select a row)");
-        return;
-    }
-    DbhqListRec *r = &g_dbhq_list_recs[li][g_dbhq_list_sel[li]];
-    Elem *t = reusable_slot(g_dbhq_actor_panel_slots, MAX_CHILDREN, slot++, "title");
-    if (t) {
-        t->parent = panel;
-        snprintf(t->classes[0], sizeof(t->classes[0]), "block-title"); t->n_classes = 1;
-        snprintf(t->label, sizeof(t->label), "%s %04d", title, r->id);
-        if (panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = t;
-    }
-    char buf[256];
-    snprintf(buf, sizeof(buf), "Name          %s", r->name);
-    dbhq_actor_panel_row(panel, &slot, buf);
-    for (int i = 0; i < r->n_kv; i++) {
-        char pretty[48];
-        snprintf(pretty, sizeof(pretty), "%s", r->kv_key[i]);
-        for (char *c = pretty; *c; c++) if (*c == '_') *c = ' ';
-        if (pretty[0] >= 'a' && pretty[0] <= 'z') pretty[0] = (char)(pretty[0] - 32);
-        snprintf(buf, sizeof(buf), "%-13s %s", pretty, r->kv_val[i]);
-        dbhq_actor_panel_row(panel, &slot, buf);
-    }
-}
-
-static void dbhq_show_list_tab(void) {
-    int li = dbhq_list_idx_for_tab(g_dbhq_current_tab);
-    if (li < 0) return;
-    dbhq_load_list_tab(li);
-    dbhq_inject_list_sidebar(li, find_by_tag(g_window, "sidebar"));
-    dbhq_inject_list_panel(li, find_by_tag(g_window, "panel"));
-}
-
-
-static void stats_populate_panel(int idx) {
-    if (idx < 0 || idx >= g_dbhq_n_events) return;
-    char buf[128];
-    snprintf(buf, sizeof(buf), "%s", g_dbhq_events[idx]);
-    char *date = buf;
-    char *turns_s = strchr(buf, '|');
-    if (!turns_s) return;
-    *turns_s++ = '\0';
-    char *umsg_s = strchr(turns_s, '|');
-    if (!umsg_s) return;
-    *umsg_s++ = '\0';
-    char *amsg_s = strchr(umsg_s, '|');
-    if (!amsg_s) return;
-    *amsg_s++ = '\0';
-    char *tools_s = strchr(amsg_s, '|');
-    if (!tools_s) return;
-    *tools_s++ = '\0';
-    char *pct_s = strchr(tools_s, '|');
-    if (!pct_s) return;
-    *pct_s++ = '\0';
-
-    Elem *title = find_by_id(g_window, "stat-title");
-    Elem *msgs = find_by_id(g_window, "stat-msgs");
-    Elem *ai = find_by_id(g_window, "stat-ai");
-    Elem *turns = find_by_id(g_window, "stat-turns");
-    Elem *tools = find_by_id(g_window, "stat-tools");
-    /* REAL FIX 2026-08-25 (direct live report: "it used to show how
-     * much money was saved from token calls") - "Overall Stats" (sidebar
-     * entry 0, written by stats_hq_manager.c's own write_overall_line())
-     * reuses this exact same 6-field record shape but with DIFFERENT
-     * real meaning per field (delegation rate/model calls/passes/tokens
-     * saved/$ saved, not a session's turns/messages/tools) - same
-     * parsing above, just different labels here. */
-    if (strcmp(date, "Overall Stats") == 0) {
-        if (title) snprintf(title->label, sizeof(title->label), "Overall Stats (all sessions)");
-        if (msgs) snprintf(msgs->label, sizeof(msgs->label), "Delegation Rate: %s%%", turns_s);
-        if (ai) snprintf(ai->label, sizeof(ai->label), "Model Calls: %s   Passed: %s", umsg_s, amsg_s);
-        if (turns) snprintf(turns->label, sizeof(turns->label), "Tokens Saved: ~%s", tools_s);
-        if (tools) snprintf(tools->label, sizeof(tools->label), "$ Saved (Claude API): ~$%s", pct_s);
-        return;
-    }
-    if (title) snprintf(title->label, sizeof(title->label), "Session: %s", date);
-    if (msgs) snprintf(msgs->label, sizeof(msgs->label), "User Messages: %s", umsg_s);
-    if (ai) snprintf(ai->label, sizeof(ai->label), "AI Responses: %s", amsg_s);
-    if (turns) snprintf(turns->label, sizeof(turns->label), "Total Turns: %s", turns_s);
-    if (tools) snprintf(tools->label, sizeof(tools->label), "Tool Calls: %s   Delegation: %s%%", tools_s, pct_s);
-}
-
-static void dbhq_apply_css(Elem *e, int hover) {
-    css_compute_style(&g_sheet, e->tag, e->id[0] ? e->id : NULL, e->classes, e->n_classes, hover, &e->style);
-}
 
 /* Real, single-slot font cache for text measurement, ported verbatim
  * (khtpm-merge-how2.md §3.2's own cache pattern, already proven). */
@@ -3360,12 +2358,6 @@ static int kh_measure_text_px(const CssStyle *st, const char *text) {
  * elements got zero style before), never ported to this shared/merged
  * binary until now. Scoped to g_is_palettes to avoid changing db-hq's
  * own already-working flat title/text/button behavior. */
-static void dbhq_apply_css_deep(Elem *e) {
-    if (!e) return;
-    dbhq_apply_css(e, 0);
-    for (int i = 0; i < e->n_children; i++) dbhq_apply_css_deep(e->children[i]);
-}
-
 /* REAL, NEW 2026-08-25 (live report: "thumb moves but doesn't change
  * display") - css_layout_pass() (shared, khtpm_render_core.c) assigns
  * every element's own ABSOLUTE x/y during its recursion - a tile inside
@@ -3475,238 +2467,11 @@ static void generic_scroll_layout_pass(Elem *container, const char *row_class, i
     g_pal_arrow_down_disabled = (g_pal_scroll >= max_scroll);
 }
 
-static void dbhq_layout_pass(Elem *window) {
-    dbhq_apply_css(window, 0);
-    /* REAL FIX 2026-08-25 (live report: window height didn't shrink to
-     * match the real row count once palette grid columns became layout-
-     * derived) - dbhq_apply_css() above re-reads window{}'s own CSS on
-     * EVERY call, which has no height declared for palettes, so it
-     * always resets has_height back to 0 - a one-time override written
-     * into window->style at injection time got silently wiped the very
-     * next redraw. Same "re-apply every frame, not just once" fix
-     * chat_layout_pass() already uses for its own forced window size
-     * (chai_forced_win_w/h) - g_pal_forced_h is set once by
-     * dbhq_inject_palette_tiles() and re-applied here every pass. */
-    if (g_is_palettes && g_pal_forced_h > 0) { window->style.has_height = 1; window->style.height = g_pal_forced_h; }
-    window->x = 0; window->y = 0;
-    int default_w = scaled(900);
-    int content_total_h = window->style.has_height ? window->style.height : scaled(600);
-
-    Elem *tabbar = find_by_tag(window, "tabbar");
-    Elem *sidebar = find_by_tag(window, "sidebar");
-    Elem *panel = find_by_tag(window, "panel");
-
-    int tabbar_h = scaled(30);
-    int tab_widths[MAX_CHILDREN];
-    int tabbar_natural_w = scaled(4);
-    if (tabbar) {
-        dbhq_apply_css(tabbar, 0);
-        for (int i = 0; i < tabbar->n_children; i++) {
-            Elem *tab = tabbar->children[i];
-            tab->active = (i == g_dbhq_current_tab);
-            dbhq_apply_css(tab, 0);
-            tab_widths[i] = kh_measure_text_px(&tab->style, tab->label) + scaled(34);
-            tab->w = tab_widths[i];
-            tabbar_natural_w += tab_widths[i] + 1;
-        }
-    }
-    window->w = window->style.has_width ? window->style.width : (tabbar_natural_w > default_w ? tabbar_natural_w : default_w);
-    window->h = content_total_h + g_dbhq_chrome_h;
-
-    g_dbhq_close_w = scaled(56); g_dbhq_close_h = g_dbhq_chrome_h - scaled(6);
-    g_dbhq_close_x = window->w - g_dbhq_close_w - scaled(4);
-    g_dbhq_close_y = scaled(3);
-
-    if (tabbar) {
-        tabbar->style.has_display = 1; tabbar->style.display_flex = 1;
-        tabbar->style.has_flex_direction = 1; tabbar->style.flex_row = 1;
-        css_layout_pass(tabbar, 0, g_dbhq_chrome_h, window->w, tabbar_h);
-        for (int i = 0; i < tabbar->n_children; i++) {
-            Elem *tab = tabbar->children[i];
-            tab->x += scaled(4) + i;
-            tab->y = g_dbhq_chrome_h + scaled(2); tab->h = tabbar_h - scaled(4);
-        }
-    }
-
-    int content_y = g_dbhq_chrome_h + tabbar_h;
-    int content_h = content_total_h - tabbar_h;
-    /* REAL FIX 2026-08-25 (Stage 2 palettes migration) - palettes has no
-     * <sidebar> at all (find_by_tag returns NULL below), but this
-     * default was applied unconditionally, wasting 210px of panel width
-     * that no sidebar was actually using. */
-    int sidebar_w = (g_is_palettes || g_is_bookmarks) ? 0 : scaled(210);
-
-    /* REAL FIX 2026-08-25 (Stage 2 palettes migration, direct live
-     * report: "no longer showing emojis or navs") - this gate assumed
-     * every g_is_db_hq consumer has a real tabbar/tab-state concept.
-     * Palettes has no tabbar at all (g_dbhq_current_tab stays at its
-     * default, never equals DB_HQ_COMMON_EVENTS_TAB), so this early
-     * return skipped ALL panel/content layout below - every element
-     * stayed at its zero-initialized x/y/w/h, which is also why
-     * assign_palettes_nav()'s own `e->w > 0 && e->h > 0` check numbered
-     * nothing. */
-    if (!(g_is_palettes || g_is_bookmarks) && !dbhq_tab_is_real(g_dbhq_current_tab)) return;
-
-    if (sidebar) {
-        dbhq_apply_css(sidebar, 0);
-        if (sidebar->style.has_width && !sidebar->style.width_is_pct) sidebar_w = sidebar->style.width;
-        sidebar->style.has_display = 1; sidebar->style.display_flex = 1;
-        sidebar->style.has_flex_direction = 1; sidebar->style.flex_row = 0;
-        sidebar->style.has_padding = 1; sidebar->style.padding = scaled(4);
-        int item_h = scaled(22);
-        for (int i = 0; i < sidebar->n_children; i++) {
-            Elem *item = sidebar->children[i];
-            dbhq_apply_css(item, 0);
-            item->style.has_height = 1; item->style.height = item_h;
-        }
-        css_layout_pass(sidebar, 0, content_y, sidebar_w, content_h);
-    }
-
-    if (panel) {
-        dbhq_apply_css(panel, 0);
-        int margin = scaled(8);
-        panel->x = sidebar_w + margin;
-        panel->y = content_y + margin;
-        panel->w = window->w - sidebar_w - margin * 2;
-        panel->h = content_h - margin * 2;
-        panel->style.has_display = 1; panel->style.display_flex = 1;
-        panel->style.has_flex_direction = 1; panel->style.flex_row = 0;
-        panel->style.has_padding = 1; panel->style.padding = scaled(12);
-        panel->style.has_gap = 1; panel->style.gap = scaled(6);
-        for (int i = 0; i < panel->n_children; i++) {
-            Elem *c = panel->children[i];
-            dbhq_apply_css(c, 0);
-            if (strcmp(c->tag, "title") == 0) {
-                c->w = kh_measure_text_px(&c->style, c->label) + scaled(10);
-                c->h = scaled(14);
-                continue;
-            }
-            /* REAL FIX 2026-08-25 (Stage 2 palettes migration) - this
-             * unconditional 22px override was stomping palette rows'
-             * real CSS-driven height (.pal-grid-row's own 56px, needed
-             * for 48px sprite tiles) right after dbhq_apply_css() just
-             * computed it correctly two lines above. db-hq's own flat
-             * text/button panel children still want this default - only
-             * palettes skips it, since its rows size themselves from
-             * CSS. Also runs the deep CSS-apply here (not once for the
-             * whole panel up front) so it lands after this same loop's
-             * own per-row apply, not stomped by anything after. */
-            if (g_is_palettes) {
-                dbhq_apply_css_deep(c);
-                continue;
-            }
-            c->style.has_height = 1; c->style.height = scaled(22);
-        }
-        css_layout_pass(panel, panel->x, panel->y, panel->w, panel->h);
-        /* REAL FIX 2026-08-29 (Part B, Common Events view-mode tabs) -
-         * dbhq_ce_inject_panel() injects a real "tabbar" child (view-
-         * mode tabs) whose OWN tab children were positioned relative
-         * to panel->y at injection time, before this pass just moved
-         * the tabbar itself down in the flex column (same real class
-         * of bug the window's own top tabbar already avoids by being
-         * repositioned HERE, after its own css_layout_pass() call
-         * above - the injector can't know its final y in advance).
-         * Real fix, same pattern: reposition each tab relative to the
-         * tabbar's own NOW-correct x/y. */
-        for (int i = 0; i < panel->n_children; i++) {
-            Elem *c = panel->children[i];
-            if (strcmp(c->tag, "tabbar") != 0) continue;
-            int tx = c->x;
-            for (int j = 0; j < c->n_children; j++) {
-                Elem *tab = c->children[j];
-                /* REAL FIX 2026-08-29 (live report: "tabs are a bit too
-                 * close together, overlapping eachother") - the
-                 * css_layout_pass(panel, ...) call just above already
-                 * recursed into this tabbar's own children (it has no
-                 * display:flex declared, so css_layout_pass's generic
-                 * block algorithm stomped each tab's carefully-measured
-                 * injection-time width with its own default), so
-                 * trusting tab->w here was trusting a value this same
-                 * function had already clobbered one line earlier.
-                 * Recompute it fresh, same formula dbhq_ce_inject_
-                 * panel() used at injection. */
-                int tw = kh_measure_text_px(&tab->style, tab->label) + scaled(34);
-                tab->x = tx; tab->y = c->y + 2; tab->w = tw; tab->h = c->h - 4;
-                tx += tw + scaled(4);
-            }
-        }
-
-        /* REAL, GENERALIZED 2026-08-28 (was palettes-only inline code,
-         * see generic_scroll_layout_pass()'s own header comment for the
-         * full "why"). Palettes' own tile grid is the only mode with a
-         * class-filtered row selector (title/hint/tab-row/chooser-row
-         * share the panel with real scrollable tile rows) - every other
-         * mode below scrolls a container whose children are ALL real
-         * rows (row_class=NULL). */
-        if (g_is_palettes) {
-            /* The tileset chooser rows (class "pal-tileset-row") are flex-
-             * stacked AFTER every grid row, so with a tall grid they land
-             * far off the bottom of the window and the grid scroll region
-             * (panel->h) has no room reserved for them - the thumb can't
-             * reach the last tiles and the chooser is invisible. Pin the
-             * chooser as a fixed footer at the bottom of the panel, and
-             * shrink the grid's scroll box by that much. */
-            int footer_h = 0;
-            for (int i = 0; i < panel->n_children; i++)
-                if (elem_has_class(panel->children[i], "pal-tileset-row"))
-                    footer_h += panel->children[i]->h + scaled(4);
-            int box_h = panel->h - footer_h;
-            if (box_h < scaled(80)) box_h = panel->h; /* degenerate - don't hide the grid */
-            generic_scroll_layout_pass(panel, "pal-grid-row", panel->y, box_h);
-            if (footer_h > 0) {
-                int fy = panel->y + panel->h - footer_h + scaled(4);
-                for (int i = 0; i < panel->n_children; i++) {
-                    Elem *fr = panel->children[i];
-                    if (!elem_has_class(fr, "pal-tileset-row")) continue;
-                    int shift = fy - fr->y;
-                    kh_shift_subtree(fr, shift);
-                    fy += fr->h + scaled(4);
-                }
-            }
-        } else if (dbhq_tab_is_real(g_dbhq_current_tab) && sidebar && sidebar->n_children > 0) {
-            /* REAL FIX 2026-08-28 (Phase C, fixes a real, previously-
-             * silent bug: db-hq's sidebar - Common Events, Terms, and
-             * stats-hq's session list, all the SAME function - had zero
-             * scroll support; a long enough list simply ran off the
-             * bottom of the window with no way to reach it). */
-            generic_scroll_layout_pass(sidebar, NULL, sidebar->y, content_h);
-        } else if (g_is_bookmarks) {
-            generic_scroll_layout_pass(panel, "bm-bookmark", panel->y, panel->h);
-        } else {
-            g_pal_has_grid = 0;
-        }
-    }
-}
-
 /* REAL, NEW 2026-08-25 (Stage 2 palettes migration) - any element
  * carrying its own onClick= becomes a numbered row, tree-walk order.
  * Unconditional (no nav_index==0 guard) - see g_is_palettes's own
  * declaration comment for why that's the deliberate, safer choice here
  * (no earlier pass in this mode to avoid double-counting against). */
-static int dbhq_cli_io_navigable(Elem *e) {
-    if (strcmp(e->tag, "cli_io") != 0) return 1;
-    return (e == g_dbhq_active_scope_root);
-}
-static int dbhq_elem_is_navigable(Elem *e) {
-    if (!e) return 0;
-    if (!dbhq_cli_io_navigable(e)) return 0;
-    if (!g_dbhq_active_scope_root) return 1;
-    { Elem *p = e; while (p) { if (p == g_dbhq_active_scope_root) return 1; p = p->parent; } }
-    return 0;
-}
-static void dbhq_activate_scope(Elem *e) { g_dbhq_active_scope_root = e; }
-static void dbhq_back_scope(void) {
-    Elem *p = g_dbhq_active_scope_root ? g_dbhq_active_scope_root->parent : NULL;
-    while (p && strncmp(p->onclick, "ACTIVATE", 8) != 0) p = p->parent;
-    g_dbhq_active_scope_root = p;
-}
-static void dbhq_nav_take(Elem *e) {
-    if (!e || g_n_nav >= MAX_ELEMS) return;
-    if (!dbhq_elem_is_navigable(e)) { e->nav_index = 0; return; }
-    e->nav_index = ++g_n_nav;
-    g_nav[g_n_nav - 1] = e;
-}
-
 static void assign_palettes_nav(Elem *e) {
     if (!e || g_n_nav >= MAX_ELEMS) return;
     if (e->onclick[0] && e != g_dbhq_close_elem && e->w > 0 && e->h > 0) {
@@ -3717,189 +2482,6 @@ static void assign_palettes_nav(Elem *e) {
     }
     for (int i = 0; i < e->n_children && g_n_nav < MAX_ELEMS; i++)
         assign_palettes_nav(e->children[i]);
-}
-
-static void dbhq_assign_nav_indices(Elem *window) {
-    g_n_nav = 0;
-    Elem *tabbar = find_by_tag(window, "tabbar");
-    if (tabbar) {
-        for (int i = 0; i < tabbar->n_children && g_n_nav < MAX_ELEMS; i++) {
-            Elem *tab = tabbar->children[i];
-            dbhq_nav_take(tab);
-        }
-    }
-    /* REAL FIX 2026-08-25 (live report: "it never puts a default '>' in
-     * bookmarks in 4 or any" + arrows not moving anything visibly) -
-     * g_dbhq_current_tab defaults to DB_HQ_COMMON_EVENTS_TAB for EVERY
-     * db-hq window, bookmarks included (nothing ever sets it otherwise
-     * for a tabbar-less window). This block's own panel loop was
-     * numbering bookmarks' <button> rows 1,2,3 - then the generic
-     * assign_palettes_nav() pass below ran unconditionally on the SAME
-     * tree and re-numbered those same buttons a second time (4,5,6,
-     * confirmed live via a debug dump: real content sat at nav_index
-     * 4-6 while g_focus_nav defaulted to/jumped to 1-3, so NOTHING ever
-     * matched - the ring/badge never had a valid target). Two passes
-     * fighting over one tree. Scoped out here exactly like
-     * dbhq_layout_pass()'s own tab-gate already excludes palettes. */
-    if (!(g_is_palettes || g_is_bookmarks) && dbhq_tab_is_real(g_dbhq_current_tab)) {
-        Elem *sidebar = find_by_tag(window, "sidebar");
-        if (sidebar) {
-            for (int i = 0; i < sidebar->n_children && g_n_nav < MAX_ELEMS; i++) {
-                Elem *item = sidebar->children[i];
-                dbhq_nav_take(item);
-            }
-        }
-        Elem *panel = find_by_tag(window, "panel");
-        if (panel) {
-            for (int i = 0; i < panel->n_children && g_n_nav < MAX_ELEMS; i++) {
-                Elem *c = panel->children[i];
-                /* REAL FIX 2026-08-29 (Part B, live report: "scripting
-                 * scratch and blueprints dont have nav. that violates
-                 * house") - Common Events' own view-mode tabbar
-                 * (dbhq_ce_inject_panel()'s "CE:VIEWTAB:" tabs) was
-                 * falling into the generic "not a button, zero it"
-                 * branch below, same real bug class events-hq's own
-                 * viewtabs nav-assignment already solves - mirrored
-                 * here, not reinvented (see evhq_assign_nav_indices()'s
-                 * own real "viewtabs nav-reachable first" comment). */
-                if (strcmp(c->tag, "tabbar") == 0) {
-                    for (int j = 0; j < c->n_children && g_n_nav < MAX_ELEMS; j++) {
-                        dbhq_nav_take(c->children[j]);
-                    }
-                    continue;
-                }
-                /* REAL FIX 2026-08-29 (live report: "in the 'scratch'
-                 * visual scripting setup, all blocks are supposed to be
-                 * nav numbered") - same real gap as events-hq's own
-                 * evhq_assign_nav_indices() had (see that function's own
-                 * matching comment, fixed in the same pass): the
-                 * dbhq_ce_inject_panel() Scratch stub (tag="panel",
-                 * built by the SHARED evhq_build_scratch_view()) fell
-                 * into the generic "not a button, zero it" branch below
-                 * and its real clickable children (palette items, the
-                 * place-slot) were never walked at all. Gate on
-                 * onclick[0], same as events-hq's own fix, since the
-                 * stub also carries inert "text"/"block-clue" children
-                 * that correctly stay non-nav. */
-                if (strcmp(c->tag, "panel") == 0) {
-                    for (int j = 0; j < c->n_children && g_n_nav < MAX_ELEMS; j++) {
-                        Elem *bc = c->children[j];
-                        if (!bc->onclick[0]) continue;
-                        dbhq_nav_take(bc);
-                    }
-                    continue;
-                }
-                if (strcmp(c->tag, "button") != 0) { c->nav_index = 0; continue; }
-                dbhq_nav_take(c);
-            }
-        }
-    }
-    /* REAL, NEW 2026-08-25 (Stage 2 palettes migration) - generic,
-     * UNCONDITIONAL nav pass for palettes' own grid-of-tiles content
-     * (no tabbar/sidebar/panel-button structure above to conflict
-     * with). See g_is_palettes's own declaration comment for why this
-     * is deliberately unconditional, not the nav_index==0-guarded
-     * pattern khtpm_hq_render.c used (that pattern needs
-     * clear_nav_indices() every pass to stay correct - a real bug
-     * found+fixed there this session when that call was missing;
-     * unconditional reassignment sidesteps the whole bug class here). */
-    /* REAL 2026-08-25 (Stage 3 bookmarks port) - bookmarks' own flat
-     * button-per-row panel is the exact same "no tabbar/sidebar
-     * structure, every onclick-carrying element numbered" shape
-     * palettes already uses this generic pass for - reused, not
-     * duplicated. */
-    /* REAL, NEW 2026-08-25 (live instruction: "they need to be numbered
-     * (1 and 2), with nav feature for accessibility / disabled") - the
-     * scroll arrows get numbered FIRST (1/2), tiles after - matches the
-     * literal instruction, and reads naturally as "the controls for
-     * this grid, then the grid". A disabled arrow's onclick was already
-     * cleared in dbhq_layout_pass(), so it fails the same onclick[0]
-     * check every other numbered element uses - excluded from nav
-     * without a separate disabled-specific branch here. */
-    if (g_pal_has_grid) {
-        if (g_pal_arrow_up->onclick[0] && g_n_nav < MAX_ELEMS) {
-            dbhq_nav_take(g_pal_arrow_up);
-        }
-        if (g_pal_arrow_down->onclick[0] && g_n_nav < MAX_ELEMS) {
-            dbhq_nav_take(g_pal_arrow_down);
-        }
-    }
-    if (g_is_palettes || g_is_bookmarks) {
-        assign_palettes_nav(g_window);
-    }
-    if (g_n_nav < MAX_ELEMS) {
-        dbhq_nav_take(g_dbhq_close_elem);
-    }
-    if (g_focus_nav < 1) g_focus_nav = 1;
-    if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
-    nav_ledger_publish();
-}
-
-static void dbhq_render_placeholder_tab(Elem *window) {
-    char pspec[48];
-    snprintf(pspec, sizeof(pspec), "DejaVu Sans:pixelsize=%d", scaled(12));
-    XftFont *font = XftFontOpenName(dpy, screen, pspec);
-    XftColor col = xft_color("#888888");
-    char msg[64];
-    snprintf(msg, sizeof(msg), "%s \xe2\x80\x94 (coming soon)", DB_HQ_TAB_LABELS[g_dbhq_current_tab]);
-    XGlyphInfo extents;
-    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)msg, (int)strlen(msg), &extents);
-    int tx = (window->w - extents.width) / 2;
-    int ty = window->h / 2;
-    XftDrawStringUtf8(xftdraw_buf, &col, font, tx, ty, (const FcChar8 *)msg, (int)strlen(msg));
-    XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
-    XftFontClose(dpy, font);
-}
-
-static void dbhq_soft_focus(void) {
-    XRaiseWindow(dpy, win);
-    XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
-    XFlush(dpy);
-}
-
-static void dbhq_grab_keyboard_retry(void) {
-    for (int attempt = 0; attempt < 5; attempt++) {
-        int rc = XGrabKeyboard(dpy, win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
-        if (rc == GrabSuccess) break;
-        XSync(dpy, False);
-        usleep(5000);
-    }
-}
-
-static void dbhq_draw_chrome_bar(void) {
-    XSetForeground(dpy, gc, alloc_pixel("#2b2b2b"));
-    XFillRectangle(dpy, buf, gc, 0, 0, g_window->w, g_dbhq_chrome_h);
-
-    char tspec[48];
-    snprintf(tspec, sizeof(tspec), "DejaVu Sans:pixelsize=%d:bold", scaled(10));
-    XftFont *titlefont = XftFontOpenName(dpy, screen, tspec);
-    if (!titlefont) { snprintf(tspec, sizeof(tspec), "DejaVu Sans:pixelsize=%d", scaled(10)); titlefont = XftFontOpenName(dpy, screen, tspec); }
-    XftColor titlecol = xft_color("#eeeeee");
-    /* Title is DATA, not hardcoded: the window's own <window label="...">
-     * (each app's own .chtpm sets it - itself free to be a ${var} a
-     * projector fills from an app .pdl). No per-app strcmp in the
-     * renderer. "database" is a generic category fallback, not an app
-     * name. "^" when this window really holds X focus, "." when not -
-     * the same sanity indicator the generic sidebar+panel path shows. */
-    const char *tname = (g_window && g_window->label[0]) ? g_window->label : "database";
-    char title[160];
-    snprintf(title, sizeof(title), "%s %s", tname, g_dbhq_has_real_focus ? "^" : ".");
-    int ty = (g_dbhq_chrome_h + titlefont->ascent - titlefont->descent) / 2;
-    XftDrawStringUtf8(xftdraw_buf, &titlecol, titlefont, scaled(8), ty, (const FcChar8 *)title, (int)strlen(title));
-    XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &titlecol);
-    XftFontClose(dpy, titlefont);
-
-    g_dbhq_close_elem->x = g_dbhq_close_x; g_dbhq_close_elem->y = g_dbhq_close_y;
-    g_dbhq_close_elem->w = g_dbhq_close_w; g_dbhq_close_elem->h = g_dbhq_close_h;
-    snprintf(g_dbhq_close_elem->label, sizeof(g_dbhq_close_elem->label), "x");
-    css_style_init(&g_dbhq_close_elem->style);
-    g_dbhq_close_elem->style.has_border_color = 1;
-    snprintf(g_dbhq_close_elem->style.border_color, sizeof(g_dbhq_close_elem->style.border_color), "%s",
-             g_dbhq_close_elem->nav_index == g_focus_nav ? "#ff8c00" : "#888888");
-    g_dbhq_close_elem->style.has_border_width = 1; g_dbhq_close_elem->style.border_width = 1;
-    g_dbhq_close_elem->style.has_fg_color = 1;
-    snprintf(g_dbhq_close_elem->style.fg_color, sizeof(g_dbhq_close_elem->style.fg_color), "#eeeeee");
-    draw_elem(g_dbhq_close_elem, 0);
 }
 
 /* Real db-hq redraw content (called from the shared redraw()'s
@@ -3914,20 +2496,6 @@ static void dbhq_draw_chrome_bar(void) {
  * visible), dragging down increases scroll (later rows come into view).
  * max_scroll is recomputed the same way dbhq_layout_pass()'s own post-
  * pass does, since this runs from a raw pointer event, before layout. */
-static void dbhq_pal_scroll_to_y(int mouse_y) {
-    if (!g_pal_has_grid || g_pal_track_h <= 0) return;
-    int max_scroll = g_pal_total_rows - g_pal_visible_rows;
-    if (max_scroll < 0) max_scroll = 0;
-    if (max_scroll == 0) { g_pal_scroll = 0; return; }
-    int th = (g_pal_track_h * g_pal_visible_rows) / g_pal_total_rows;
-    if (th < scaled(14)) th = scaled(14);
-    int usable = g_pal_track_h - th;
-    int rel = mouse_y - g_pal_track_y - th / 2;
-    if (rel < 0) rel = 0;
-    if (rel > usable) rel = usable;
-    g_pal_scroll = usable > 0 ? (rel * max_scroll) / usable : 0;
-}
-
 static void nav_tab_register(const char *type, const char *title);
 static void nav_tab_unregister(void);
 static void nav_tab_cycle(void);
@@ -4076,19 +2644,6 @@ static void kh_serialize_frame_subtree(FILE *f, Elem *e) {
     }
 }
 
-static void dbhq_write_palette_frame_file(Elem *panel) {
-    if (!panel) return;
-    char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/#.desktop/palettes_frame.txt", g_house_root);
-    char tmp[PATH_BUF];
-    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
-    FILE *f = fopen(tmp, "w");
-    if (!f) return;
-    kh_serialize_frame_subtree(f, panel);
-    fclose(f);
-    rename(tmp, path);
-}
-
 /* Real, genuinely separate paint step - takes a PARSED LINE STRUCT,
  * never an Elem*, proving by construction that this function cannot
  * read anything except what the frame file itself said. Builds a real
@@ -4208,158 +2763,12 @@ static void kh_paint_frame_line(const char *line) {
     draw_elem(&tmp, 0);
 }
 
-static void dbhq_paint_palette_frame_file(void) {
-    char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/#.desktop/palettes_frame.txt", g_house_root);
-    FILE *f = fopen(path, "r");
-    if (!f) return; /* honest: no frame file yet, nothing to paint - not a fabricated fallback */
-    char line[2048];
-    while (fgets(line, sizeof(line), f)) {
-        size_t len = strlen(line);
-        while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) line[--len] = '\0';
-        if (len == 0) continue;
-        kh_paint_frame_line(line);
-    }
-    fclose(f);
-}
-
 /* Palette content signature - drives the layout/serialize cache below.
  * A palette tile grid is 256+ Elems; re-running dbhq_layout_pass() +
  * re-serialising the whole grid to palettes_frame.txt on EVERY redraw
  * (focus move, unrelated tick, ...) is what made palettes "incredibly
  * slow". Only these inputs change the laid-out grid; when they are
  * unchanged we repaint straight from the already-written frame file. */
-static unsigned long dbhq_pal_content_sig(void) {
-    unsigned long s = 1469598103934665603UL;
-#define KH_PAL_MIX(v) do { s ^= (unsigned long)(v); s *= 1099511628211UL; } while (0)
-    KH_PAL_MIX(g_pal_tree_gen);
-    KH_PAL_MIX(g_pal_scroll);
-    KH_PAL_MIX(g_pal_n_tiles);
-    KH_PAL_MIX(g_dbhq_current_tab);
-    KH_PAL_MIX(g_pal_forced_h);
-    KH_PAL_MIX(g_window ? g_window->w : 0);
-    KH_PAL_MIX(g_window ? g_window->h : 0);
-    for (const char *p = g_pal_active_tileset; *p; p++) KH_PAL_MIX(*p);
-    for (const char *p = g_pal_active_category; *p; p++) KH_PAL_MIX(*p);
-#undef KH_PAL_MIX
-    return s;
-}
-
-static void dbhq_redraw_content(void) {
-    static unsigned long g_pal_cache_sig = 0;
-    static int g_pal_cache_valid = 0;
-    int pal_relayout = 1;
-    if (g_is_palettes) {
-        unsigned long sig = dbhq_pal_content_sig();
-        pal_relayout = (!g_pal_cache_valid || sig != g_pal_cache_sig);
-        if (pal_relayout) { g_pal_cache_sig = sig; g_pal_cache_valid = 1; }
-    }
-    if (pal_relayout) {
-        dbhq_layout_pass(g_window);
-        dbhq_assign_nav_indices(g_window);
-    }
-    XSetForeground(dpy, gc, alloc_pixel(g_window->style.has_bg_color ? g_window->style.bg_color : "#141414"));
-    /* REAL FIX 2026-08-28 (live corruption found testing Phase 2's
-     * frame-file paint) - clearing only g_window->w/h leaves stale
-     * pixels visible whenever content SHRINKS between redraws (a
-     * taller previous session's leftover rows) - the backing Pixmap
-     * only ever GROWS (see g_buf_w/g_buf_h's own header comment),
-     * it never shrinks back down, so clearing less than the real
-     * allocated buffer leaves old content sitting below the new,
-     * smaller content. Clear the FULL allocated buffer every time. */
-    XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)(g_buf_w > g_window->w ? g_buf_w : g_window->w), (unsigned)(g_buf_h > g_window->h ? g_buf_h : g_window->h));
-    if (!dbhq_tab_is_real(g_dbhq_current_tab)) {
-        Elem *tabbar = find_by_tag(g_window, "tabbar");
-        if (tabbar) { draw_elem(tabbar, 0); render_tree(tabbar, 1); }
-        dbhq_render_placeholder_tab(g_window);
-    } else if (g_is_palettes) {
-        /* REAL, Phase 2 first proof (2026-08-28) - window chrome draws
-         * normally (draw_elem() reads the live g_window directly, same
-         * as always - only PANEL CONTENT is frame-derived for this
-         * first scoped slice, see the big comment above dbhq_
-         * serialize_frame_elem()). Panel content is: (1) serialize the
-         * just-computed real layout to a real file, (2) paint ONLY
-         * from that file - two genuinely separate steps with the file
-         * as the real boundary between them, not a cosmetic detour
-         * that still secretly reads the live tree. */
-        draw_elem(g_window, 0);
-        Elem *panel = find_by_tag(g_window, "panel");
-        /* Only re-serialise the 256-tile grid when the layout actually
-         * changed (see dbhq_pal_content_sig); otherwise the existing
-         * palettes_frame.txt is still current - just repaint from it
-         * (cheap, and keeps the focus ring live). */
-        if (pal_relayout) dbhq_write_palette_frame_file(panel);
-        dbhq_paint_palette_frame_file();
-    } else {
-        render_tree(g_window, 0);
-    }
-    /* REAL, ported 2026-08-25 - palette matrix scroll thumb, verbatim
-     * from khtpm_hq_render.c's own draw_chrome_bar-adjacent draw call
-     * (see g_pal_scroll's own declaration comment). Drawn only when this
-     * window's panel actually carries grid rows. */
-    if (g_pal_has_grid && g_pal_track_h > 0) {
-        XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
-        XFillRectangle(dpy, buf, gc, g_pal_track_x, g_pal_track_y, (unsigned)g_pal_track_w, (unsigned)g_pal_track_h);
-        XSetForeground(dpy, gc, alloc_pixel("#888888"));
-        XFillRectangle(dpy, buf, gc, g_pal_track_x + scaled(1), g_pal_thumb_y,
-                       (unsigned)(g_pal_track_w - scaled(2)), (unsigned)g_pal_thumb_h);
-        /* REAL, NEW 2026-08-25 (live instruction: "they need to be
-         * numbered (1 and 2), with nav feature for accessibility /
-         * disabled") - real up/down arrow buttons at the track's own
-         * two ends, drawn as filled triangles (standard scrollbar
-         * shape). Disabled (onclick[0]=='\0', already cleared in
-         * dbhq_layout_pass() at the scroll min/max) dims to a flatter
-         * gray instead of the enabled #cccccc, a real visual "this is
-         * inert" signal matching the real disabled-from-nav state, not
-         * just a missing badge. draw_elem() is called on each AFTER the
-         * triangle so the real nav badge/focus-ring paints on top,
-         * using the SAME code path (and so the SAME visual language)
-         * every other numbered tile's badge already uses - not a
-         * second, bespoke badge drawn here. */
-        int ax = g_pal_track_x, aw = g_pal_track_w;
-        int up_y0 = g_pal_track_y - g_pal_arrow_h;
-        int down_y0 = g_pal_track_y + g_pal_track_h;
-        int up_enabled = !g_pal_arrow_up_disabled;
-        int down_enabled = !g_pal_arrow_down_disabled;
-        XSetForeground(dpy, gc, alloc_pixel("#3a3a3a"));
-        XFillRectangle(dpy, buf, gc, ax, up_y0, (unsigned)aw, (unsigned)g_pal_arrow_h);
-        XFillRectangle(dpy, buf, gc, ax, down_y0, (unsigned)aw, (unsigned)g_pal_arrow_h);
-        XSetForeground(dpy, gc, alloc_pixel(up_enabled ? "#cccccc" : "#555555"));
-        XPoint up_tri[3] = {
-            { (short)(ax + aw / 2), (short)(up_y0 + scaled(3)) },
-            { (short)(ax + scaled(2)), (short)(up_y0 + g_pal_arrow_h - scaled(3)) },
-            { (short)(ax + aw - scaled(2)), (short)(up_y0 + g_pal_arrow_h - scaled(3)) },
-        };
-        XFillPolygon(dpy, buf, gc, up_tri, 3, Convex, CoordModeOrigin);
-        XSetForeground(dpy, gc, alloc_pixel(down_enabled ? "#cccccc" : "#555555"));
-        XPoint down_tri[3] = {
-            { (short)(ax + aw / 2), (short)(down_y0 + g_pal_arrow_h - scaled(3)) },
-            { (short)(ax + scaled(2)), (short)(down_y0 + scaled(3)) },
-            { (short)(ax + aw - scaled(2)), (short)(down_y0 + scaled(3)) },
-        };
-        XFillPolygon(dpy, buf, gc, down_tri, 3, Convex, CoordModeOrigin);
-        draw_elem(g_pal_arrow_up, 0);
-        draw_elem(g_pal_arrow_down, 0);
-    }
-    dbhq_draw_chrome_bar();
-    kh_append_frame_history();
-    /* REAL BUG FIX 2026-08-29, direct live report ("it detects your
-     * clicks, but only updates when i reclick the window! just need
-     * the window to update from when new entry to debug is read, not
-     * wait for my click") - this whole function only ever drew into
-     * the offscreen buffer (buf), never presented it to the real
-     * window (win) - it relied on some OTHER later redraw path (one
-     * triggered by the next real click) to actually push the buffer
-     * to screen. That's exactly the observed symptom: content was
-     * always correctly composed (a screenshot tool reading the buffer
-     * directly showed it), but nothing reached the screen until an
-     * unrelated event forced a real present. Every other real redraw
-     * path in this file (search XCopyArea) already does this - this
-     * one just never did. */
-    XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)g_window->w, (unsigned)g_window->h, 0, 0);
-    XFlush(dpy);
-}
-
 /* REAL, ported verbatim 2026-08-25 (Stage 3 bookmarks port) from
  * khtpm_hq_render.c's own hq_run_detached()/g_input_elem mechanism -
  * bookmarks' own onClick="open:<path>" row-open and
@@ -4401,447 +2810,11 @@ static void input_disarm(void) {
 /* Write rmmv_active.txt in-process (all three fields) and update
  * g_pal_active_* so A-E / tileset highlight moves on press 1.
  * Detached set_rmmv + 1s manager poll is why it took 2-3 presses. */
-static void dbhq_rmmv_write_active(const char *field, const char *val) {
-    char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/rmmv_active.txt", g_package_dir);
-    char tab[8] = "", tileset[64] = "", dir[64] = "tilesets";
-    FILE *in = fopen(path, "r");
-    if (in) {
-        char line[128];
-        while (fgets(line, sizeof(line), in)) {
-            size_t n = strlen(line);
-            while (n > 0 && (line[n-1]=='\n' || line[n-1]=='\r')) line[--n] = '\0';
-            if (!strncmp(line, "tab=", 4)) snprintf(tab, sizeof(tab), "%s", line + 4);
-            else if (!strncmp(line, "tileset=", 8)) snprintf(tileset, sizeof(tileset), "%s", line + 8);
-            else if (!strncmp(line, "dir=", 4)) snprintf(dir, sizeof(dir), "%s", line + 4);
-        }
-        fclose(in);
-    }
-    if (strcmp(field, "tab") == 0) snprintf(tab, sizeof(tab), "%s", val);
-    else if (strcmp(field, "tileset") == 0) snprintf(tileset, sizeof(tileset), "%s", val);
-    else if (strcmp(field, "dir") == 0) snprintf(dir, sizeof(dir), "%s", val);
-    FILE *out = fopen(path, "w");
-    if (!out) return;
-    if (tab[0]) fprintf(out, "tab=%s\n", tab);
-    if (tileset[0]) fprintf(out, "tileset=%s\n", tileset);
-    fprintf(out, "dir=%s\n", dir);
-    fclose(out);
-}
-
-
-static int dbhq_rmmv_wait_publish(const char *want_cat, const char *want_set, const char *want_dir) {
-    /* One click must wait until the manager actually rewrote options
-     * (not until the next human click). Cache miss can take seconds. */
-    for (int n = 0; n < 80; n++) {
-        int och = dbhq_load_palette_options();
-        int sch = dbhq_load_palette_state();
-        if (och || sch) {
-            int ok = 1;
-            if (want_cat && want_cat[0] && strcmp(g_pal_active_category, want_cat) != 0) ok = 0;
-            if (want_set && want_set[0] && strcmp(g_pal_active_tileset, want_set) != 0) ok = 0;
-            if (want_dir && want_dir[0] && strcmp(g_pal_active_dir, want_dir) != 0) ok = 0;
-            if (ok) return 1;
-        }
-        usleep(100000);
-    }
-    return 0;
-}
-
-static int dbhq_rmmv_apply_onclick(const char *onclick) {
-    const char *p;
-    if ((p = strstr(onclick, "set-rmmv-tab "))) {
-        const char *q = strrchr(p, '\'');
-        if (!q || q == p) return 0;
-        const char *s = q - 1;
-        while (s > p && *s != '\'') s--;
-        if (*s != '\'' || q - s < 2) return 0;
-        char letter[4] = {0};
-        letter[0] = s[1];
-        dbhq_rmmv_write_active("tab", letter);
-        char want = letter[0];
-        if (want >= 'a' && want <= 'z') want = (char)(want - 32);
-        for (int i = 0; i < g_pal_n_tabs; i++) {
-            if (g_pal_opt_tab_letter[i] == want) {
-                snprintf(g_pal_active_category, sizeof(g_pal_active_category), "%s", g_pal_opt_tab_cat[i]);
-                break;
-            }
-        }
-        dbhq_rmmv_wait_publish(g_pal_active_category, NULL, NULL);
-        return 1;
-    }
-    if ((p = strstr(onclick, "set-rmmv-tileset "))) {
-        const char *q = strrchr(p, '\'');
-        if (!q || q == p) return 0;
-        const char *s = q - 1;
-        while (s > p && *s != '\'') s--;
-        if (*s != '\'') return 0;
-        char key[64];
-        size_t klen = (size_t)(q - s - 1);
-        if (klen >= sizeof(key)) klen = sizeof(key) - 1;
-        memcpy(key, s + 1, klen);
-        key[klen] = '\0';
-        dbhq_rmmv_write_active("tileset", key);
-        snprintf(g_pal_active_tileset, sizeof(g_pal_active_tileset), "%s", key);
-        dbhq_rmmv_wait_publish(NULL, key, NULL);
-        return 1;
-    }
-    if ((p = strstr(onclick, "set-rmmv-dir "))) {
-        const char *q = strrchr(p, 39);
-        if (!q || q == p) return 0;
-        const char *s = q - 1;
-        while (s > p && *s != 39) s--;
-        if (*s != 39) return 0;
-        char key[32];
-        size_t klen = (size_t)(q - s - 1);
-        if (klen >= sizeof(key)) klen = sizeof(key) - 1;
-        memcpy(key, s + 1, klen);
-        key[klen] = 0;
-        dbhq_rmmv_write_active("dir", key);
-        snprintf(g_pal_active_dir, sizeof(g_pal_active_dir), "%s", key);
-        dbhq_rmmv_wait_publish(NULL, NULL, key);
-        return 1;
-    }
-    return 0;
-}
 
 /* Rebuild the sidebar+panel for whatever g_dbhq_current_tab now is - the
  * non-CE remainder of the old dbhq_restore_tab_content() (the Common
  * Events INLINE editor is gone; db-hq-pal opens the ported events-hq
  * window for that instead). */
-static void dbhq_show_current_tab(void) {
-    if (g_is_palettes || g_is_bookmarks || g_is_stats_hq) return;
-    if (g_dbhq_current_tab == DB_HQ_ACTORS_TAB) { dbhq_show_actors(); return; }
-    if (dbhq_list_idx_for_tab(g_dbhq_current_tab) >= 0) { dbhq_show_list_tab(); return; }
-    if (g_dbhq_current_tab == DB_HQ_COMMON_EVENTS_TAB || g_dbhq_current_tab == DB_HQ_TERMS_TAB) {
-        dbhq_load_common_events();
-        dbhq_inject_sidebar_items(find_by_tag(g_window, "sidebar"));
-        if (g_dbhq_selected_event < 0 && g_dbhq_n_events > 0) g_dbhq_selected_event = 0;
-        Elem *panel = find_by_tag(g_window, "panel");
-        if (panel) panel->n_children = 0;
-        return;
-    }
-    { Elem *sb = find_by_tag(g_window, "sidebar"); if (sb) sb->n_children = 0;
-      Elem *pn = find_by_tag(g_window, "panel");   if (pn) pn->n_children = 0; }
-}
-
-static void dbhq_activate_elem(Elem *hit) {
-    if (!hit) return;
-    if (strcmp(hit->tag, "closebtn") == 0) { g_quit = 1; return; }
-    /* REAL, ported 2026-08-25 (Stage 3 bookmarks port) - generic
-     * data-driven onClick dispatch, checked BEFORE the domain-specific
-     * tag branches below (same order khtpm_hq_render.c's own
-     * activate_elem() used: an element with its own onclick handles
-     * itself, domain branches only run for elements WITHOUT one). */
-    if (hit->onclick[0]) {
-        /* REAL, NEW 2026-08-25 (live instruction: real nav for the
-         * scroll arrows) - same generic dispatch every other onclick
-         * verb uses, so Enter-on-focused-nav and a mouse click share
-         * this ONE code path, not two. */
-        if (strcmp(hit->onclick, "ACTIVATE") == 0 || strncmp(hit->onclick, "ACTIVATE:", 9) == 0) {
-            dbhq_activate_scope(hit);
-            dbhq_assign_nav_indices(g_window);
-            dbhq_redraw_content();
-            return;
-        }
-        /* Not "BACK": that is chtpm page-stack (popup dispatch /
-         * menu.chtpm action="BACK"). Scope-pop pairs with ACTIVATE. */
-        if (strcmp(hit->onclick, "DEACTIVATE") == 0) {
-            dbhq_back_scope();
-            dbhq_assign_nav_indices(g_window);
-            dbhq_redraw_content();
-            return;
-        }
-        if (strcmp(hit->onclick, "scroll:up") == 0 || strcmp(hit->onclick, "scroll:down") == 0) {
-            g_pal_scroll += (strcmp(hit->onclick, "scroll:down") == 0) ? 1 : -1;
-            dbhq_redraw_content();
-            return;
-        }
-        if (strncmp(hit->onclick, "input:", 6) == 0) {
-            g_input_elem = hit;
-            g_input_buf[0] = '\0';
-            dbhq_redraw_content();
-            return;
-        }
-        if (strncmp(hit->onclick, "open:", 5) == 0)
-            hq_run_detached(1, hit->onclick + 5);
-        else if (strncmp(hit->onclick, "exec:", 5) == 0) {
-            /* rmmv tab/chooser: write active file HERE and re-inject so
-             * highlight moves on press 1. Still exec the script (now
-             * preserves all fields) so the manager's 100ms poll agrees. */
-            if (dbhq_rmmv_apply_onclick(hit->onclick)) {
-                Elem *panel = find_by_tag(g_window, "panel");
-                dbhq_inject_palette_tiles(panel);
-            }
-            hq_run_detached(0, hit->onclick + 5);
-            /* REAL DESIGN HISTORY 2026-08-29 - in-process XGrabPointer/
-             * XQueryPointer-polling click-capture (g_pal_rmmv_armed)
-             * was tried here and REMOVED again same day: fixed
-             * synthetic clicks, confirmed via a real standalone
-             * diagnostic tool (tp_debug_click_watcher.c) that it did
-             * NOT fix real ones either - every real click ever
-             * captured fell inside an already-open khtpm window, never
-             * on bare desktop (this Mutter/XWayland setup only makes
-             * real click state visible to X11 when the click lands on
-             * a real XWayland surface). Real fix, direct instruction
-             * ("maybe we do need a screen wide transparent click
-             * capture surface?"): tp_arm_placer_rmmv.+x (spawned via
-             * the exec above, palettes_menu.sh's own arm_rmmv())
-             * creates a real full-screen InputOnly window tiled AROUND
-             * this picker window and waits for a normal ButtonPress on
-             * it - no grab, no polling, in this process or any other.
-             * See that file's own header for the full history. */
-        }
-        dbhq_redraw_content();
-        return;
-    }
-    if (strcmp(hit->tag, "tab") == 0) {
-        for (int i = 0; i < DB_HQ_N_TABS; i++) if (strcmp(hit->label, DB_HQ_TAB_LABELS[i]) == 0) { g_dbhq_current_tab = i; break; }
-        dbhq_show_current_tab();
-        dbhq_redraw_content();
-        return;
-    }
-    if (strcmp(hit->tag, "item") == 0) {
-        if (g_dbhq_current_tab == DB_HQ_ACTORS_TAB) {
-            int idx = atoi(hit->id);
-            if (idx >= 0 && idx < g_dbhq_n_actors) g_dbhq_selected_actor = idx;
-            dbhq_show_actors();
-            dbhq_redraw_content();
-            return;
-        }
-        {
-            int li = dbhq_list_idx_for_tab(g_dbhq_current_tab);
-            if (li >= 0) {
-                int idx = atoi(hit->id);
-                if (idx >= 0 && idx < g_dbhq_list_n[li]) g_dbhq_list_sel[li] = idx;
-                dbhq_show_list_tab();
-                dbhq_redraw_content();
-                return;
-            }
-        }
-        if (g_is_stats_hq) {
-            /* REAL FIX 2026-08-25 - match by the real index stashed in
-             * item->id (dbhq_inject_sidebar_items()'s own g_is_stats_hq
-             * branch), not by label - the label is now just the date,
-             * not the full raw data line, so it can't be matched back
-             * against g_dbhq_events[] by string equality anymore. */
-            int idx = atoi(hit->id);
-            if (idx >= 0 && idx < g_dbhq_n_events) g_dbhq_selected_event = idx;
-        } else {
-            for (int i = 0; i < g_dbhq_n_events; i++) if (strcmp(g_dbhq_events[i], hit->label) == 0) { g_dbhq_selected_event = i; break; }
-        }
-        Elem *sidebar = find_by_tag(g_window, "sidebar");
-        dbhq_inject_sidebar_items(sidebar);
-        if (g_is_stats_hq) {
-            stats_populate_panel(g_dbhq_selected_event);
-        }
-        dbhq_redraw_content();
-        return;
-    }
-}
-
-static void dbhq_handle_click(int px, int py) {
-    /* REAL BUG FIX (2026-08-26, direct live report: "cancel doesn't
-     * work") - same real fix as evhq_handle_click()'s own copy of this
-     * comment: the picker's Elems aren't children of g_window, so
-     * hit_test(g_window,...) below could never find them. Hit-test
-     * directly against g_nav[] (which the picker owns exclusively while
-     * open) instead, checked first, same as the other modes do for
-     * their own synthetic/off-tree Elems (close button, scroll arrows). */
-    if (px >= g_dbhq_close_elem->x && px < g_dbhq_close_elem->x + g_dbhq_close_elem->w &&
-        py >= g_dbhq_close_elem->y && py < g_dbhq_close_elem->y + g_dbhq_close_elem->h) {
-        g_focus_nav = g_dbhq_close_elem->nav_index;
-        dbhq_activate_elem(g_dbhq_close_elem);
-        return;
-    }
-    /* REAL, NEW 2026-08-25 (live instruction: real nav for the scroll
-     * arrows) - same "synthetic elem outside the parsed tree, checked
-     * explicitly before hit_test()" pattern the close button above
-     * already uses. A disabled arrow's onclick[0]=='\0' (cleared in
-     * dbhq_layout_pass()) makes dbhq_activate_elem() a safe no-op for
-     * it - no separate disabled check needed here either. */
-    if (g_pal_has_grid) {
-        if (px >= g_pal_arrow_up->x && px < g_pal_arrow_up->x + g_pal_arrow_up->w &&
-            py >= g_pal_arrow_up->y && py < g_pal_arrow_up->y + g_pal_arrow_up->h) {
-            if (g_pal_arrow_up->nav_index > 0) g_focus_nav = g_pal_arrow_up->nav_index;
-            dbhq_activate_elem(g_pal_arrow_up);
-            return;
-        }
-        if (px >= g_pal_arrow_down->x && px < g_pal_arrow_down->x + g_pal_arrow_down->w &&
-            py >= g_pal_arrow_down->y && py < g_pal_arrow_down->y + g_pal_arrow_down->h) {
-            if (g_pal_arrow_down->nav_index > 0) g_focus_nav = g_pal_arrow_down->nav_index;
-            dbhq_activate_elem(g_pal_arrow_down);
-            return;
-        }
-    }
-    Elem *hit = hit_test(g_window, px, py);
-    if (!hit) return;
-    if (!click_focus_then_activate(hit)) { dbhq_redraw_content(); return; }
-    dbhq_activate_elem(hit);
-}
-
-static void dbhq_handle_key(KeySym ks, char ch) {
-    /* REAL, ported 2026-08-25 (Stage 3 bookmarks port) - armed input
-     * field owns every key first, same order/behavior as
-     * khtpm_hq_render.c's own handle_key(). First (only) consumer:
-     * bookmarks' New+ path entry. */
-    if (g_input_elem) {
-        if (ks == XK_Escape) { input_disarm(); dbhq_redraw_content(); return; }
-        if (ks == XK_Return || ks == XK_KP_Enter) {
-            const char *spec = g_input_elem->onclick + 6;
-            char target[PATH_BUF] = "";
-            char post[sizeof(g_input_elem->onclick)] = ""; /* real fix 2026-08-25 - onclick itself was just bumped 512->1536 after a real truncation bug; keep this in lockstep by deriving from it, not a second guessed constant */
-            const char *bar = strchr(spec, '|');
-            if (bar) {
-                size_t tl = (size_t)(bar - spec);
-                if (tl >= sizeof(target)) tl = sizeof(target) - 1;
-                memcpy(target, spec, tl);
-                snprintf(post, sizeof(post), "%s", bar + 1);
-            } else {
-                snprintf(target, sizeof(target), "%s", spec);
-            }
-            if (target[0]) {
-                FILE *f = fopen(target, "a");
-                if (f) { fprintf(f, "%s\n", g_input_buf); fclose(f); }
-            }
-            input_disarm();
-            g_dbhq_digit_accum = 0;
-            if (post[0]) hq_run_detached(0, post);
-            dbhq_redraw_content();
-            return;
-        }
-        if (ks == XK_BackSpace) {
-            size_t L = strlen(g_input_buf);
-            if (L > 0) {
-                L--;
-                while (L > 0 && (g_input_buf[L] & 0xC0) == 0x80) L--;
-                g_input_buf[L] = '\0';
-            }
-            dbhq_redraw_content();
-            return;
-        }
-        if (ch >= 32 && ch <= 126 && strlen(g_input_buf) < sizeof(g_input_buf) - 2) {
-            size_t L = strlen(g_input_buf);
-            g_input_buf[L] = ch;
-            g_input_buf[L + 1] = '\0';
-            dbhq_redraw_content();
-            return;
-        }
-        return;
-    }
-    if (ks == XK_Return || ks == XK_KP_Enter) {
-        if (g_dbhq_digit_accum > 0 && g_dbhq_digit_accum <= g_n_nav) g_focus_nav = g_dbhq_digit_accum;
-        g_dbhq_digit_accum = 0;
-        if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav) dbhq_activate_elem(g_nav[g_focus_nav - 1]);
-        return;
-    }
-    if (ks == XK_Escape) {
-        if (g_dbhq_digit_accum > 0) { g_dbhq_digit_accum = 0; return; }
-        g_quit = 1;
-        return;
-    }
-    if (ch >= '0' && ch <= '9') {
-        int d = ch - '0';
-        int new_val = g_dbhq_digit_accum * 10 + d;
-        if (new_val > 0 && new_val <= g_n_nav) {
-            g_dbhq_digit_accum = new_val;
-            g_focus_nav = new_val;
-        } else if (d > 0 && d <= g_n_nav) {
-            g_dbhq_digit_accum = d;
-            g_focus_nav = d;
-        } else {
-            g_dbhq_digit_accum = 0;
-        }
-        return;
-    }
-    /* REAL FIX 2026-08-25 (live report: "i want emoji up down arrows to
-     * move down entire row, instead of sideways to skip to next row") -
-     * Up/Down used to be aliased straight onto Left/Right (+-1 linear
-     * index), so on a 10-wide grid, Up/Down behaved identically to
-     * Left/Right and only ever felt like it "skipped to next row" once
-     * it crossed a row boundary. Real fix, palettes only: Up/Down step
-     * by the grid's own column count (detected at runtime from how many
-     * leading g_nav[] entries share the first tile's y - no hardcoded
-     * column count to keep in sync with palettes_menu.sh's own
-     * emit_tiles_matrix call), landing on the tile directly above/below.
-     * Left/Right keep the plain +-1 linear step within a row. db-hq's
-     * own sidebar/panel (not a grid) keeps the original Up/Down==Left/
-     * Right behavior unchanged. */
-    if (g_pal_has_grid && g_n_nav > 0 && (ks == XK_Up || ks == XK_Down)) {
-        int cols = 1;
-        int y0 = g_nav[0]->y;
-        for (int i = 1; i < g_n_nav; i++) {
-            if (g_nav[i]->y == y0) cols++; else break;
-        }
-        int step = (ks == XK_Up) ? -cols : cols;
-        int nv = g_focus_nav + step;
-        if (nv >= 1 && nv <= g_n_nav) {
-            g_focus_nav = nv;
-        } else if (g_pal_has_grid) {
-            /* REAL FIX 2026-08-25, direct instruction ("no UI element
-             * without mirror kbd accessibility... like in open-hai") -
-             * off-screen rows are excluded from nav numbering entirely
-             * (by design, see assign_palettes_nav()'s own w>0/h>0 check),
-             * so hitting the top/bottom edge with plain arrow keys used
-             * to just do nothing - a keyboard-only user could never
-             * reach anything below/above the fold at all, only Page_Up/
-             * Down (still keyboard, but a separate, less discoverable
-             * key) could scroll. Real fix: arrow keys now auto-scroll
-             * into view at the edge too, same as any accessible list -
-             * scroll one row, re-layout/re-number (same tiles-shift-out-
-             * of-nav mechanism Page_Up/Down already uses), then land on
-             * the newly-revealed row at the SAME column, not just
-             * wherever nav index arithmetic happens to point. */
-            int col_offset = cols > 0 ? (g_focus_nav - 1) % cols : 0;
-            g_pal_scroll += (ks == XK_Down) ? 1 : -1;
-            dbhq_layout_pass(g_window);
-            dbhq_assign_nav_indices(g_window);
-            if (ks == XK_Down) {
-                int last_row_start = g_n_nav - cols;
-                if (last_row_start < 0) last_row_start = 0;
-                int target = last_row_start + col_offset + 1;
-                g_focus_nav = (target >= 1 && target <= g_n_nav) ? target : g_n_nav;
-            } else {
-                int target = col_offset + 1;
-                g_focus_nav = (target >= 1 && target <= g_n_nav) ? target : 1;
-            }
-        }
-        g_dbhq_digit_accum = 0;
-        return;
-    }
-    if (ks == XK_Up || ks == XK_Left) {
-        if (g_focus_nav > 1) g_focus_nav--;
-        g_dbhq_digit_accum = 0;
-        return;
-    }
-    if (ks == XK_Tab || ks == XK_ISO_Left_Tab) {
-        /* Two db-hq share one history file; only the focused window
-         * may cycle, or both processes Tab-cycle and fight. */
-        if (g_dbhq_has_real_focus) nav_tab_cycle();
-        g_dbhq_digit_accum = 0;
-        return;
-    }
-    if (ks == XK_Down || ks == XK_Right) {
-        if (g_focus_nav < g_n_nav) g_focus_nav++;
-        g_dbhq_digit_accum = 0;
-        return;
-    }
-    /* REAL, ported 2026-08-25 - palette matrix paging, verbatim from
-     * khtpm_hq_render.c's own real, live-verified mechanism. One page =
-     * visible-1 rows so the top row stays for context. Re-layout +
-     * re-number immediately so the scroll clamp/thumb/visible-tile-only
-     * nav numbering all reflect the new position before the next redraw. */
-    if (ks == XK_Page_Up || ks == XK_Page_Down) {
-        if (g_pal_has_grid) {
-            int step = g_pal_visible_rows > 1 ? g_pal_visible_rows - 1 : 1;
-            g_pal_scroll += (ks == XK_Page_Down) ? step : -step;
-            dbhq_layout_pass(g_window);
-            dbhq_assign_nav_indices(g_window);
-        }
-        g_dbhq_digit_accum = 0;
-        return;
-    }
-    g_dbhq_digit_accum = 0;
-}
 /* ====================== end db-hq mode block ========================= */
 
 /* ======================================================================
@@ -4929,59 +2902,6 @@ static int g_popup_drag_last_x = 0, g_popup_drag_last_y = 0;
  * inject_sidebar_items(), not something this session's edits
  * introduced - just newly triggered by feed items now living in the
  * panel instead of a shorter-lived sidebar-only list.) */
-static void dbhq_dump_debug_state(void) {
-    char path[PATH_BUF];
-    snprintf(path, sizeof(path), "/tmp/db-hq-state.txt");
-    FILE *f = fopen(path, "w");
-    if (!f) return;
-    fprintf(f, "g_focus_nav=%d\n", g_focus_nav);
-    fprintf(f, "g_dbhq_digit_accum=%d\n", g_dbhq_digit_accum);
-    fprintf(f, "g_dbhq_current_tab=%d (%s)\n", g_dbhq_current_tab,
-            (g_dbhq_current_tab >= 0 && g_dbhq_current_tab < DB_HQ_N_TABS) ? DB_HQ_TAB_LABELS[g_dbhq_current_tab] : "?");
-    fprintf(f, "g_dbhq_selected_event=%d\n", g_dbhq_selected_event);
-    fprintf(f, "g_input_elem=%s\n", g_input_elem ? g_input_elem->id : "(null)");
-    {
-        Elem *panel = find_by_tag(g_window, "panel");
-        if (panel) {
-            fprintf(f, "panel->n_children=%d\n", panel->n_children);
-            for (int i = 0; i < panel->n_children; i++) {
-                Elem *c = panel->children[i];
-                fprintf(f, "  panel_child[%d] tag=%s id=%s nav_index=%d label=%s\n", i, c->tag, c->id, c->nav_index, c->label);
-            }
-        } else {
-            fprintf(f, "panel=NULL\n");
-        }
-    }
-    fprintf(f, "DEBUG g_buf_w=%d g_buf_h=%d g_window_w=%d g_window_h=%d\n", g_buf_w, g_buf_h, g_window->w, g_window->h);
-    fprintf(f, "g_pal_track_x=%d g_pal_track_y=%d g_pal_track_w=%d g_pal_track_h=%d g_pal_thumb_y=%d g_pal_thumb_h=%d g_pal_total_rows=%d g_pal_visible_rows=%d g_pal_scroll=%d\n",
-            g_pal_track_x, g_pal_track_y, g_pal_track_w, g_pal_track_h, g_pal_thumb_y, g_pal_thumb_h, g_pal_total_rows, g_pal_visible_rows, g_pal_scroll);
-    fprintf(f, "g_n_nav=%d\n", g_n_nav);
-    for (int i = 0; i < g_n_nav; i++) {
-        Elem *e = g_nav[i];
-        /* REAL FIX 2026-08-28 (live investigation: a visible pixel-level
-         * duplicate control couldn't be confirmed/denied from this dump
-         * alone - it only ever printed tag/id/label, never real screen
-         * geometry, so a pure draw-position bug is invisible here even
-         * though render and this dump both read the exact same live
-         * Elem tree). Real x/y/w/h added so a geometry bug is provable
-         * via the cheap text dump instead of falling back to a PNG +
-         * manual pixel inspection every time. */
-        fprintf(f, "  nav[%d] tag=%s id=%s label=%s x=%d y=%d w=%d h=%d%s\n", i + 1, e->tag, e->id, e->label,
-                e->x, e->y, e->w, e->h, (i + 1 == g_focus_nav) ? "  <-- FOCUS" : "");
-    }
-    fprintf(f, "scope_root=%s\n", g_dbhq_active_scope_root ? g_dbhq_active_scope_root->id : "(none)");
-    if (g_window) {
-        ElemFlatEntry flat[MAX_ELEMS];
-        int nf = elem_flatten(g_window, flat, MAX_ELEMS);
-        fprintf(f, "flatten_n=%d\n", nf);
-        for (int i = 0; i < nf && i < 40; i++) {
-            Elem *e = flat[i].elem;
-            fprintf(f, "  flat[%d] parent=%d tag=%s id=%s\n", flat[i].index, flat[i].parent_index, e->tag, e->id);
-        }
-    }
-    fclose(f);
-}
-
 
 /* ============ end chat-hai mode content ============ */
 
@@ -6993,7 +4913,7 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
      * redirect + a plain XSetInputFocus retry at map time, this default
      * mode's existing mechanism, is mouse-position-dependent by
      * construction). Real, already-proven fix, not invented here:
-     * dbhq_grab_keyboard_retry() (db-hq's own real XGrabKeyboard retry,
+     * kh_grab_keyboard_retry() (db-hq's own real XGrabKeyboard retry,
      * currently gated behind its own g_dbhq_focus_grab_enabled .pdl
      * flag for THAT mode) - reused verbatim, unconditionally, scoped to
      * exactly a cli_io field's own armed lifetime. An exclusive
@@ -7026,7 +4946,7 @@ static void activate_focused(void) {
     /* REAL FIX 2026-08-31 - see default_cli_io_handle_key()'s own
      * Escape-branch comment for the full real diagnosis. Grab taken
      * HERE (arm time), released on every real disarm path. */
-    if (strcmp(item->tag, "cli_io") == 0) { g_default_input_elem = item; dbhq_grab_keyboard_retry(); return; }
+    if (strcmp(item->tag, "cli_io") == 0) { g_default_input_elem = item; kh_grab_keyboard_retry(); return; }
     /* generic <tab> (spirit of db-hq's tab click): run the tab's own
      * action= (switches the projected content), mark it active, and
      * scope nav into the page's <sidebar> - so after choosing a tab you
@@ -7777,7 +5697,7 @@ static long g_history_cursor = -1;
  * same file. Real fix, mirrors nav_tab's own existing per-pid
  * convention EXACTLY (nav_tab_dir()/nav_tab_register(), same file):
  * one real file per PROCESS, not per mode. Every consumer (a real
- * human's own X11 input via dbhq_capture_key()/dbhq_capture_click(),
+ * human's own X11 input via kh_capture_key()/kh_capture_click(),
  * or an external agent's relay write) now only ever reaches the ONE
  * window it actually targets - no possible cross-window bleed
  * regardless of how many windows of the same mode are open at once.
@@ -7811,59 +5731,10 @@ static void history_unregister(void) {
 /* Phase 3a: capture-only. House format from pieces/keyboard/history.txt:
  *   MOUSE_EVENT: <button> <x> <y> <is_press>
  * Zero interpretation. Consume is poll_agent_history(). */
-static void dbhq_capture_click(int x, int y, int button) {
-    char path[PATH_BUF];
-    history_path(path, sizeof(path));
-    /* poll_agent_history() on first sight of a file sets cursor to EOF
-     * and returns without reading (skip leftover agent lines at window
-     * open). If the file did not exist yet, cursor is still -1 here, and
-     * a same-tick poll after this append would skip the click we just
-     * wrote. Pin cursor to pre-append size so only this new line is
-     * consumed. */
-    if (g_history_cursor < 0) {
-        struct stat st;
-        if (stat(path, &st) == 0) g_history_cursor = st.st_size;
-        else g_history_cursor = 0;
-    }
-    FILE *f = fopen(path, "a");
-    if (!f) return;
-    fprintf(f, "MOUSE_EVENT: %d %d %d 1\n", button, x, y);
-    fclose(f);
-}
-
 /* Phase 3b: capture-only. House format KEY_PRESSED: <decimal>.
  * Printable ASCII as-is; Tab=9; Return/Esc/BS same as existing relay;
  * arrows/page 200-205 (already in dispatch_relay_code). Other keys
  * write the raw X11 KeySym so consume can handle_key(ks,0). */
-static int dbhq_key_history_code(KeySym ks, char ch) {
-    if (ch >= 32 && ch <= 126) return (unsigned char)ch;
-    if (ks == XK_Tab || ks == XK_ISO_Left_Tab) return 9;
-    if (ks == XK_Return || ks == XK_KP_Enter) return 13;
-    if (ks == XK_Escape) return 27;
-    if (ks == XK_BackSpace) return 8;
-    if (ks == XK_Up) return 200;
-    if (ks == XK_Down) return 201;
-    if (ks == XK_Left) return 202;
-    if (ks == XK_Right) return 203;
-    if (ks == XK_Page_Up) return 204;
-    if (ks == XK_Page_Down) return 205;
-    return (int)ks;
-}
-
-static void dbhq_capture_key(KeySym ks, char ch) {
-    char path[PATH_BUF];
-    history_path(path, sizeof(path));
-    if (g_history_cursor < 0) {
-        struct stat st;
-        if (stat(path, &st) == 0) g_history_cursor = st.st_size;
-        else g_history_cursor = 0;
-    }
-    FILE *f = fopen(path, "a");
-    if (!f) return;
-    fprintf(f, "KEY_PRESSED: %d\n", dbhq_key_history_code(ks, ch));
-    fclose(f);
-}
-
 /* Tab-cycle: live registry is per-pid files (so two processes cannot
  * clobber one rewrite). Ledger is append-only audit. */
 static int g_nav_tab_ordinal;
@@ -8053,7 +5924,6 @@ static void nav_tab_poll_active(void) {
     XUngrabKeyboard(dpy, CurrentTime);
     XRaiseWindow(dpy, win);
     XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
-    if (g_is_db_hq && g_dbhq_focus_grab_enabled) dbhq_grab_keyboard_retry();
     XFlush(dpy);
 }
 
@@ -8200,6 +6070,39 @@ static void dispatch_relay_code(int code) {
 static int hq_window_has_x_focus(void) {
     if (g_is_db_hq) return g_dbhq_has_real_focus;
     return 1;
+}
+
+/* generic history-relay + keyboard-grab helpers (were dbhq_*; the
+ * popup/entity-menu + cli_io paths still need them after the dbhq_*
+ * deletion). */
+static void kh_grab_keyboard_retry(void) {
+    for (int a = 0; a < 5; a++) {
+        if (XGrabKeyboard(dpy, win, True, GrabModeAsync, GrabModeAsync, CurrentTime) == GrabSuccess) break;
+        XSync(dpy, False); usleep(5000);
+    }
+}
+static int kh_key_history_code(KeySym ks, char ch) {
+    if (ch >= 32 && ch <= 126) return (unsigned char)ch;
+    if (ks == XK_Tab || ks == XK_ISO_Left_Tab) return 9;
+    if (ks == XK_Return || ks == XK_KP_Enter) return 13;
+    if (ks == XK_Escape) return 27;
+    if (ks == XK_BackSpace) return 8;
+    if (ks == XK_Up) return 200; if (ks == XK_Down) return 201;
+    if (ks == XK_Left) return 202; if (ks == XK_Right) return 203;
+    if (ks == XK_Page_Up) return 204; if (ks == XK_Page_Down) return 205;
+    return (int)ks;
+}
+static void kh_capture_click(int x, int y, int button) {
+    char path[PATH_BUF]; history_path(path, sizeof(path));
+    if (g_history_cursor < 0) { struct stat st; g_history_cursor = (stat(path,&st)==0)?st.st_size:0; }
+    FILE *f = fopen(path, "a"); if (!f) return;
+    fprintf(f, "MOUSE_EVENT: %d %d %d 1\n", button, x, y); fclose(f);
+}
+static void kh_capture_key(KeySym ks, char ch) {
+    char path[PATH_BUF]; history_path(path, sizeof(path));
+    if (g_history_cursor < 0) { struct stat st; g_history_cursor = (stat(path,&st)==0)?st.st_size:0; }
+    FILE *f = fopen(path, "a"); if (!f) return;
+    fprintf(f, "KEY_PRESSED: %d\n", kh_key_history_code(ks, ch)); fclose(f);
 }
 
 static int poll_agent_history(void) {
@@ -8604,56 +6507,6 @@ static void popup_handle_click(int px, int py) {
  * client under this Mutter version, a real, known, still-open upstream
  * bug, not something fixable in this house's own code). Takes real
  * root-relative coordinates; does not care which caller resolved them. */
-static void dbhq_rmmv_handle_desktop_click(int x_root, int y_root) {
-    if (x_root >= g_win_x && x_root < g_win_x + g_window->w &&
-        y_root >= g_win_y && y_root < g_win_y + g_window->h) {
-        /* Click landed back inside the picker's own window (e.g.
-         * picking a different tile to re-arm with) - ungrab and let
-         * the picker's own normal click handling take it from here
-         * (re-arms via the same onclick path if it lands on a tile). */
-        XUngrabPointer(dpy, CurrentTime);
-        XUngrabKeyboard(dpy, CurrentTime);
-        g_pal_rmmv_armed = 0;
-        return;
-    }
-
-    XUngrabPointer(dpy, CurrentTime);
-    XUngrabKeyboard(dpy, CurrentTime);
-    g_pal_rmmv_armed = 0;
-    char envx[32], envy[32];
-    snprintf(envx, sizeof(envx), "%d", x_root);
-    snprintf(envy, sizeof(envy), "%d", y_root);
-
-    /* Real master ledger (nav_master_ledger.txt), same real append-
-     * only convention nav_tab_register()/livedesk_registry_add()
-     * already use for this exact file - written synchronously, in
-     * this process, the instant the real click is resolved, decoupled
-     * from whether the placement subprocess call below ever succeeds. */
-    {
-        char clickline[128];
-        snprintf(clickline, sizeof(clickline), "RMMV_CLICK pid=%d x=%s y=%s\n",
-                 (int)getpid(), envx, envy);
-        nav_ledger_write(g_house_root, clickline);
-        if (g_pal_static_title) {
-            snprintf(g_pal_static_title->label, sizeof(g_pal_static_title->label),
-                     "Clicked desktop at (%s,%s) - placing...", envx, envy);
-            snprintf(g_pal_static_title->classes[1], sizeof(g_pal_static_title->classes[1]), "pal-hint-armed");
-            g_pal_static_title->n_classes = 2;
-            dbhq_redraw_content();
-        }
-    }
-
-    /* tp_place_desktop_rmmv.+x reads its own click position straight
-     * from nav_master_ledger.txt (just written above) - a real,
-     * reusable, caller-agnostic op, not handed argv/env state here. */
-    char cmd[PATH_BUF * 3];
-    snprintf(cmd, sizeof(cmd),
-             "'%s/&.widgits/tile-picker/ops/+x/tp_place_desktop_rmmv.+x' '%s/&.widgits/palettes/state' '%s/#.desktop' >/dev/null 2>&1",
-             g_house_root, g_house_root, g_house_root);
-    int rc = system(cmd);
-    (void)rc;
-}
-
 /* REAL, NEW 2026-08-29 - the actual, human-usable fix for real mouse
  * clicks (see dbhq_rmmv_handle_desktop_click's own header for the
  * root-cause). XQueryPointer is a synchronous request/reply, not an
@@ -8665,24 +6518,6 @@ static void dbhq_rmmv_handle_desktop_click(int x_root, int y_root) {
  * detects a real 0->1 edge on Button1 so a single physical click
  * triggers exactly once, not once per poll tick while held down. */
 static int g_pal_rmmv_button1_was_down = 0;
-
-static void dbhq_rmmv_poll_pointer(void) {
-    if (!g_pal_rmmv_armed) { g_pal_rmmv_button1_was_down = 0; return; }
-    Window root_ret, child_ret;
-    int root_x, root_y, win_x, win_y;
-    unsigned int mask;
-    if (!XQueryPointer(dpy, RootWindow(dpy, screen), &root_ret, &child_ret,
-                        &root_x, &root_y, &win_x, &win_y, &mask)) {
-        return;
-    }
-    int down = (mask & Button1Mask) ? 1 : 0;
-    if (down && !g_pal_rmmv_button1_was_down) {
-        g_pal_rmmv_button1_was_down = 1;
-        dbhq_rmmv_handle_desktop_click(root_x, root_y);
-    } else if (!down) {
-        g_pal_rmmv_button1_was_down = 0;
-    }
-}
 
 static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
 
@@ -8726,9 +6561,6 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
      * unaffected by this Wayland routing gap) - this event-based path
      * is kept only because it still works for synthetic/XTest testing
      * and costs nothing to leave in. */
-    if (g_pal_rmmv_armed && ev->type == ButtonPress) {
-        dbhq_rmmv_handle_desktop_click(ev->xbutton.x_root, ev->xbutton.y_root);
-    }
     if (g_pal_rmmv_armed && ev->type == KeyPress) {
         KeySym ks = XLookupKeysym(&ev->xkey, 0);
         if (ks == XK_Escape) {
@@ -8811,7 +6643,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
              * button lives INSIDE that same top strip (dbhq_layout_pass's
              * is_close block: x = g_win_w-60..g_win_w, y = 0..CHROME_H).
              * Without an exclusion this unconditionally ate every click
-             * there as a drag-start before dbhq_capture_click() ever got a
+             * there as a drag-start before kh_capture_click() ever got a
              * chance to hit-test the close element - exactly db-hq/events-
              * hq's own already-solved problem (see their g_dbhq_close_elem/
              * g_evhq_close_elem exclusion just below), never ported here
@@ -8825,7 +6657,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
              * "!" and "_" were added to its LEFT this same session,
              * most of their real clickable area fell outside that
              * fixed 60px, so a click there was eaten as a drag-start
-             * before dbhq_capture_click() ever ran - keyboard Enter on
+             * before kh_capture_click() ever ran - keyboard Enter on
              * the focused nav item bypassed this entirely, which is
              * why it "worked from nav but not mouse". Real fix: use
              * the chrome trio's own real leftmost x (g_default_full_
@@ -8874,11 +6706,10 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
              * case for a single Backspace right after), this alone
              * closes the gap without grabbing anything exclusively. */
             XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
-            dbhq_capture_click(ev->xbutton.x, ev->xbutton.y, (int)ev->xbutton.button);
+            kh_capture_click(ev->xbutton.x, ev->xbutton.y, (int)ev->xbutton.button);
             poll_agent_history();
             if (!g_quit) redraw();
         } else if (g_is_db_hq) {
-            if (g_dbhq_focus_grab_enabled) { dbhq_grab_keyboard_retry(); dbhq_soft_focus(); }
             if (ev->xbutton.button == 1 && g_pal_has_grid &&
                 ev->xbutton.x >= g_pal_track_x && ev->xbutton.x < g_pal_track_x + g_pal_track_w &&
                 ev->xbutton.y >= g_pal_track_y && ev->xbutton.y < g_pal_track_y + g_pal_track_h) {
@@ -8899,7 +6730,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             if (g_pal_has_grid && (ev->xbutton.button == 4 || ev->xbutton.button == 5)) {
                 g_pal_scroll += (ev->xbutton.button == 5) ? 2 : -2;
             } else if (ev->xbutton.button != 3 && ev->xbutton.button != 4 && ev->xbutton.button != 5) {
-                dbhq_capture_click(ev->xbutton.x, ev->xbutton.y, (int)ev->xbutton.button);
+                kh_capture_click(ev->xbutton.x, ev->xbutton.y, (int)ev->xbutton.button);
                 poll_agent_history();
             }
             if (!g_quit) dbhq_loop_request_redraw();
@@ -8952,7 +6783,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
              * KEY_PRESSED from the history file. Pin the cursor past this
              * capture so the same key is not dispatched twice. */
             handle_key(ks, buf8[0]);
-            dbhq_capture_key(ks, buf8[0]);
+            kh_capture_key(ks, buf8[0]);
             {
                 char hp[PATH_BUF];
                 struct stat st;
@@ -8962,7 +6793,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             if (!g_quit) redraw();
         } else if (g_is_db_hq) {
             snprintf(g_dbhq_last_key_label, sizeof(g_dbhq_last_key_label), "%s", kname ? kname : (buf8[0] ? buf8 : "?"));
-            dbhq_capture_key(ks, buf8[0]);
+            kh_capture_key(ks, buf8[0]);
             poll_agent_history();
             if (!g_quit) dbhq_loop_request_redraw();
         }
@@ -9137,7 +6968,6 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
          * grabbing process. No-op (returns immediately) whenever not
          * armed, so this costs nothing on every other tick of every
          * other window's own event loop. */
-        dbhq_rmmv_poll_pointer();
         if (dbhq_marker_pilot()) dbhq_loop_paint_if_dirty();
         else if (g_frame_dirty && !g_quit) { g_frame_dirty = 0; redraw(); }
     }
@@ -15820,7 +13650,6 @@ int main(int argc, char **argv) {
      * mode-specific branch - the existing db-hq-only call further
      * down is now a harmless redundant reload, left in place rather
      * than restructured, since removing it isn't needed for this fix. */
-    dbhq_load_font_scale();
     snprintf(g_chtpm_path, sizeof(g_chtpm_path), "%s", argv[2]);
     snprintf(g_package_dir, sizeof(g_package_dir), "%s", g_chtpm_path);
     { char *slash = strrchr(g_package_dir, '/'); if (slash) *slash = '\0'; }
@@ -15962,194 +13791,6 @@ int main(int argc, char **argv) {
      * events load, real fork()+execl() module launch (the <module
      * src="..."/> tag), sidebar/panel content injection, signal
      * handlers for the manager-cleanup-on-TERM real fix. */
-    if (g_is_db_hq) {
-        signal(SIGTERM, dbhq_handle_term_signal);
-        signal(SIGINT, dbhq_handle_term_signal);
-
-        /* g_is_stats_hq: own state/action filenames so a real db-hq AND
-         * a real stats-hq window can run at once without colliding
-         * (2026-08-25, see the class-dispatch loop's own comment above
-         * for the full rationale). */
-        snprintf(g_dbhq_events_state_path, sizeof(g_dbhq_events_state_path),
-                 g_is_stats_hq ? "%s/#.desktop/stats_hq_common_events.state.txt"
-                               : "%s/#.desktop/db_hq_common_events.state.txt", g_house_root);
-        snprintf(g_dbhq_action_path, sizeof(g_dbhq_action_path),
-                 g_is_stats_hq ? "%s/#.desktop/stats_hq_action.txt"
-                               : "%s/#.desktop/db_hq_action.txt", g_house_root);
-
-        /* Real Terms tab wiring (2026-08-28, first tab to use dbhq_tab_
-         * is_real()'s new generic path alongside Common Events) - a
-         * second, independent real manager launched the SAME way
-         * Common Events' own khtpm_hq_manager.+x is below (plain fork+
-         * execl, not the <module src="..."/> single-slot mechanism,
-         * since that XML tag only supports one manager per window).
-         * Not gated to db-hq-only vs stats-hq since Terms is a real
-         * game-database concept, not a per-session stat - launches
-         * unconditionally alongside Common Events, same as it does. */
-        if (!g_is_stats_hq && !g_is_palettes && !g_is_bookmarks) {
-            snprintf(g_dbhq_terms_state_path, sizeof(g_dbhq_terms_state_path),
-                     "%s/#.desktop/db_hq_terms.state.txt", g_house_root);
-            char terms_bin[PATH_BUF];
-            snprintf(terms_bin, sizeof(terms_bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/terms_hq_manager.+x", g_house_root);
-            char terms_pkgdir[PATH_BUF];
-            snprintf(terms_pkgdir, sizeof(terms_pkgdir), "%s/#.desktop", g_house_root);
-            pid_t terms_pid = fork();
-            if (terms_pid == 0) {
-                execl(terms_bin, terms_bin, g_house_root, terms_pkgdir, (char *)NULL);
-                _exit(1);
-            }
-            snprintf(g_dbhq_actors_state_path, sizeof(g_dbhq_actors_state_path),
-                     "%s/#.desktop/db_hq_actors.state.txt", g_house_root);
-            char actors_bin[PATH_BUF];
-            snprintf(actors_bin, sizeof(actors_bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/actors_hq_manager.+x", g_house_root);
-            pid_t actors_pid = fork();
-            if (actors_pid == 0) {
-                execl(actors_bin, actors_bin, g_house_root, terms_pkgdir, (char *)NULL);
-                _exit(1);
-            }
-            dbhq_load_actors();
-            {
-                char pub_bin[PATH_BUF];
-                snprintf(pub_bin, sizeof(pub_bin),
-                         "%s/*.monads/*.livedesk-taskbar/ops/+x/dbhq_pdl_publish_manager.+x", g_house_root);
-                for (int li = 0; li < DBHQ_N_LIST_TABS; li++) {
-                    snprintf(g_dbhq_list_state_path[li], sizeof(g_dbhq_list_state_path[li]),
-                             "%s/#.desktop/%s", g_house_root, g_dbhq_list_cfg[li].state_name);
-                    char src_rel[PATH_BUF];
-                    snprintf(src_rel, sizeof(src_rel), "&.widgits/db-hq/data/%s", g_dbhq_list_cfg[li].pdl_name);
-                    pid_t pid = fork();
-                    if (pid == 0) {
-                        execl(pub_bin, pub_bin, g_house_root, terms_pkgdir, src_rel,
-                              g_dbhq_list_cfg[li].state_name, (char *)NULL);
-                        _exit(1);
-                    }
-                    dbhq_load_list_tab(li);
-                }
-            }
-        }
-
-        g_win_x = 100; g_win_y = 100; /* real db-hq default, distinct from the popup modes' 300,300 */
-        dbhq_load_font_scale();
-        g_dbhq_chrome_h = scaled(26);
-
-        memset(g_dbhq_close_elem, 0, sizeof(*g_dbhq_close_elem));
-        snprintf(g_dbhq_close_elem->tag, sizeof(g_dbhq_close_elem->tag), "closebtn");
-
-        Elem *module_elem = find_by_tag(g_window, "module");
-        if (module_elem && module_elem->label[0]) dbhq_launch_module(module_elem->label, module_elem->id);
-        atexit(dbhq_cleanup_module);
-        if (!g_is_stats_hq && !g_is_palettes && !g_is_bookmarks && g_dbhq_current_tab == DB_HQ_ACTORS_TAB)
-            dbhq_show_actors();
-
-        /* REAL, NEW 2026-08-25 (bookmarks manager port) - bookmarks is
-         * per-pal (g_package_dir, the pal dir - not house-wide like db-hq/
-         * stats-hq's own g_house_root-relative state paths above) and
-         * has no sidebar/tabbar - it gets its own init branch instead of
-         * being forced through the sidebar-shaped path below. */
-        if (g_is_bookmarks) {
-            snprintf(g_bm_state_path, sizeof(g_bm_state_path), "%s/bookmarks_state.txt", g_package_dir);
-            Elem *panel = find_by_tag(g_window, "panel");
-            if (panel) {
-                g_bm_static_title = find_by_tag(panel, "title");
-                g_bm_static_hint = find_by_id(panel, "bm-hint");
-                g_bm_static_newplus = find_by_id(panel, "bm-newplus");
-                g_bm_static_openfolder = find_by_id(panel, "bm-openfolder");
-                dbhq_load_bookmark_state();
-                dbhq_inject_bookmark_items(panel);
-            }
-        } else if (g_is_palettes && module_elem && module_elem->label[0]) {
-            /* REAL, NEW 2026-08-25 (palettes manager port) - only real
-             * picker categories (emojis/elements) declare a <module> tag;
-             * stub categories (rmmv/cdda/...) are fully static (title +
-             * hint + one doc-link button) and must NOT go through this
-             * injection path - it only knows about title/hint, so it
-             * would silently wipe the stub's own doc-link button. Category
-             * is derived from the chtpm's own basename (palettes-<key>.
-             * chtpm), same "safe derivation direction" convention
-             * bm_menu.sh's own provision_bookmarks() comment documents -
-             * matches module_elem->id (<module args="<key>"/>) exactly,
-             * since palettes_menu.sh's launch_cat() names the file after
-             * the same key it passes as args=. */
-            const char *base = strrchr(g_chtpm_path, '/');
-            base = base ? base + 1 : g_chtpm_path;
-            char catbuf[64];
-            snprintf(catbuf, sizeof(catbuf), "%s", base);
-            char *dot = strrchr(catbuf, '.');
-            if (dot) *dot = '\0';
-            const char *prefix = "palettes-";
-            const char *cat = (strncmp(catbuf, prefix, strlen(prefix)) == 0) ? catbuf + strlen(prefix) : catbuf;
-            snprintf(g_pal_category, sizeof(g_pal_category), "%s", cat);
-            snprintf(g_pal_state_path, sizeof(g_pal_state_path), "%s/palettes-%s_state.txt", g_package_dir, g_pal_category);
-            /* REAL FIX 2026-08-27 - read the manager's own published
-             * wide-layout flag (see g_pal_layout_wide's own header
-             * comment) instead of hardcoding a category name here. */
-            g_pal_layout_wide = 0;
-            char layout_path[PATH_BUF];
-            snprintf(layout_path, sizeof(layout_path), "%s/palettes-%s_layout.txt", g_package_dir, g_pal_category);
-            FILE *lf = fopen(layout_path, "r");
-            if (lf) {
-                char lline[64];
-                if (fgets(lline, sizeof(lline), lf) && strncmp(lline, "wide=", 5) == 0)
-                    g_pal_layout_wide = atoi(lline + 5);
-                fclose(lf);
-            }
-
-            Elem *panel = find_by_tag(g_window, "panel");
-            if (panel) {
-                g_pal_static_title = find_by_tag(panel, "title");
-                g_pal_static_hint = find_by_tag(panel, "text");
-                /* Capture the chtpm's own real default TITLE text ONCE,
-                 * before anything ever overwrites it - see g_pal_default_
-                 * hint's own header comment. REAL FIX, same testing pass:
-                 * originally targeted g_pal_static_hint (.pal-hint), but
-                 * live pixel-dump verification found that Elem never
-                 * renders at all even for its own unmodified default text
-                 * - a separate, pre-existing layout bug, not chased
-                 * further here. g_pal_static_title (.block-title) is
-                 * confirmed-rendering (it's the visible "palettes: RPG
-                 * Maker Tiles" line), so the armed note goes there
-                 * instead - variable name kept as "hint" throughout for
-                 * a smaller diff, but it now drives the title Elem. */
-                if (g_pal_static_title && !g_pal_default_hint[0]) {
-                    snprintf(g_pal_default_hint, sizeof(g_pal_default_hint), "%s", g_pal_static_title->label);
-                }
-                if (strcmp(g_pal_category, "rmmv") == 0) {
-                    snprintf(g_pal_armed_path, sizeof(g_pal_armed_path), "%s/state/rmmv_armed.txt", g_package_dir);
-                    /* REAL BUG FIX 2026-08-29, direct live report
-                     * ("window is opening auto armed, it shouldnt") -
-                     * a fresh window's g_pal_armed_checksum starts at
-                     * 0, but a stale rmmv_armed.txt left over from a
-                     * PREVIOUS session already has real content - the
-                     * first poll tick then sees checksum != 0, treats
-                     * that as a fresh "just armed" change, and shows
-                     * the old ARMED/Placed text even though this
-                     * process holds no real grab at all. A truly fresh
-                     * window session should never inherit armed state
-                     * from a previous one - delete it. */
-                    unlink(g_pal_armed_path);
-                } else {
-                    g_pal_armed_path[0] = '\0';
-                }
-                g_pal_armed_checksum = 0;
-                snprintf(g_pal_options_path, sizeof(g_pal_options_path), "%s/rmmv_options.txt", g_package_dir);
-                dbhq_load_palette_state();
-                dbhq_load_palette_options();
-                dbhq_inject_palette_tiles(panel);
-            }
-        } else {
-            dbhq_load_common_events();
-            if (g_dbhq_n_events > 0) g_dbhq_selected_event = 0;
-
-            Elem *sidebar = find_by_tag(g_window, "sidebar");
-            dbhq_inject_sidebar_items(sidebar);
-            if (g_is_stats_hq) {
-                stats_populate_panel(g_dbhq_selected_event);
-            } else {
-                Elem *panel_text = find_by_tag(g_window, "text");
-                if (panel_text && g_dbhq_selected_event >= 0) snprintf(panel_text->label, sizeof(panel_text->label), "%s", g_dbhq_events[g_dbhq_selected_event]);
-            }
-        }
-    }
 
     /* REAL §5d.11 (2026-08-16) - events-hq mode one-time init, ported
      * verbatim from khtpm_events_hq_render.c's own main(): manager
@@ -16260,7 +13901,7 @@ int main(int argc, char **argv) {
          * had zero visible effect despite being set correctly - most
          * compositors, Mutter included, only reliably honor client-
          * requested opacity on unmanaged surfaces. Manual keyboard
-         * focus (dbhq_grab_keyboard_retry()/dbhq_soft_focus() below,
+         * focus (kh_grab_keyboard_retry()/dbhq_soft_focus() below,
          * already real, already used) still applies the same way an
          * override_redirect window gets focus - this doesn't remove or
          * change that logic, just makes the window type match what
@@ -16306,7 +13947,6 @@ int main(int argc, char **argv) {
          * registry id, like a CSS class, not a user-facing app name.) */
         nav_tab_register(g_is_palettes ? "pal" : g_is_bookmarks ? "bm" : g_is_stats_hq ? "stats" : "dbhq",
                          (g_window && g_window->label[0]) ? g_window->label : "database");
-        if (g_dbhq_focus_grab_enabled) { dbhq_grab_keyboard_retry(); dbhq_soft_focus(); }
         XSync(dpy, False);
         { XEvent stale_ev; while (XCheckWindowEvent(dpy, win, ButtonPressMask | KeyPressMask, &stale_ev)) { } }
 
