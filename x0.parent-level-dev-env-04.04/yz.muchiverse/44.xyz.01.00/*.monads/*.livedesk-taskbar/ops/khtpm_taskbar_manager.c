@@ -3270,18 +3270,10 @@ static int livedesk_build_db_menu(const char *house_root, HQMenuItem *menu, int 
         n++;
     }
     if (n < max) {
-        /* 2026-09-03: the ported static-template window (below) is now
-         * the primary "db-hq" target; this classic C `class="db-hq"`
-         * (g_is_db_hq) row is relabelled "db-hq (classic)" and goes away
-         * with the g_is_db_hq C deletion. */
-        snprintf(menu[n].label, sizeof(menu[n].label), "db-hq (classic)");
-        snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:open-common-events-hq:%s", cur);
-        n++;
-    }
-    if (n < max) {
-        /* db-hq - the CHTPM-ARCHITECTURE-FIX rebuild: static
-         * dashboard.xhtpm + pal/dbhq_projector.pal, the primary target
-         * now (launcher_db in livedesk_launchers.pdl points here too). */
+        /* db-hq - static dashboard.xhtpm + pal/dbhq_projector.pal. The
+         * classic C `class="db-hq"` (g_is_db_hq) window + its
+         * "db-hq (classic)" / livedesk:open-common-events-hq row were
+         * retired 2026-09-04 with the g_is_db_hq C deletion. */
         snprintf(menu[n].label, sizeof(menu[n].label), "db-hq");
         snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:open-db-hq-pal");
         n++;
@@ -4086,40 +4078,6 @@ void ktb_hq_activate(KtbState *s, int row) {
                  muchi_pet_dir, ce_path, s->house_root);
         int rc = ktb_system_recorded(s->house_root, sh);
         (void)rc;
-        ktb_hq_close(s);
-    } else if (strncmp(m->command, "livedesk:open-common-events-hq:", 31) == 0) {
-        /* db-hq: first real proof of the HQML CSS layer (au11-hq/
-         * HQML-DESIGN+PLANS.md), own separate X11 window process (see
-         * khtpm_hq_render.c) - launches exactly like event-ez's own
-         * setsid nohup pattern above, just against open_db_hq.sh.
-         * PREFIX LENGTH BUG (found live via k9 relay testing, 2026-08-12):
-         * this branch used 32 here, but `printf '%s' "livedesk:open-
-         * common-events-hq:" | wc -c` is 31 - the literal's own '\0'
-         * terminator (byte 32) was being compared against the real
-         * command's 's' (start of the appended session id, e.g.
-         * "livedesk:open-common-events-hq:s1"), a guaranteed mismatch.
-         * Same off-by-one class as the "livedesk:open-session:" bug
-         * documented elsewhere in this file - this branch could NEVER
-         * match, at all, which is why clicking db-hq from the real
-         * taskbar did nothing (silently fell through to the final
-         * catch-all, see ktb_hq_activate()'s own closing branches). */
-        char muchi_pet_dir[KTB_PATH_BUF];
-        find_app_dir(s->house_root, "muchi-pet", muchi_pet_dir, sizeof(muchi_pet_dir));
-#ifdef _WIN32
-        char bin[KTB_PATH_BUF], chtpm[KTB_PATH_BUF];
-        snprintf(bin, sizeof(bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_hq_render.+x", s->house_root);
-        snprintf(chtpm, sizeof(chtpm), "%s/&.hq-apps/db-hq/dashboard.chtpm", s->house_root);
-        const char *aa[2] = { s->house_root, chtpm };
-        win_spawn_n(bin, aa, 2);
-        (void)muchi_pet_dir;
-#else
-        char sh[KTB_PATH_BUF * 3];
-        snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s/ops/open_db_hq.sh\" \"%s\"' >/dev/null 2>&1 &",
-                 muchi_pet_dir, s->house_root);
-        int rc = ktb_system_recorded(s->house_root, sh);
-        (void)rc;
-#endif
-        ktb_hq_close(s);
     } else if (strcmp(m->command, "livedesk:open-open-hai") == 0) {
         /* ai cell (14) - real, wired 2026-08-12. Own separate X11
          * window process (khtpm_open_hai_render.c), same setsid nohup
