@@ -566,3 +566,33 @@ this rev to avoid a noisy commit mid-flicker-fix.
 - Next task after the flicker fix: **#2 chat-hai** — author `chat-hai.xhtpm`
   + a `.pal`/`.c` projector replacing `ops/chat_hai_projector.sh` (bash);
   message list = one `<repeat>`. See `PROGRESS-chat-hai-xhtpm.md`.
+
+---
+
+## Rev 8 (2026-09-03) — db-hq-pal flicker: ROOT-CAUSED + FIXED
+
+The "redraws with no change while active" flicker is fixed. Full
+writeup: `09-appendix/forensic-report-flicker.md`. Short version:
+the generic (non-`g_is_db_hq`) window had no repaint-trigger gate, so
+it blitted on grab-synthetic `FocusIn`/`FocusOut` (the new `^`/`.`
+indicator), per-rectangle `Expose`, relayed mouse-*moves* (tpmos
+PITFALL #52), and a corrective-`XMoveWindow` feedback loop — none of
+which are visible-state changes. Fixes (branch commits `bc18c5ad`,
+`2865e2cd`, `75d6833c`): filter grab/pointer focus events, coalesce
+`Expose` bursts, stop counting relayed moves as input, add a
+`g_frame_dirty` coalescing flag consumed once per event-loop tick
+(the tpmos marker/dirty model the `g_is_db_hq` path already used),
+gate the corrective move on *intended* geometry change with
+root-translated coords, `graphics_exposures=False`, vars-hash
+debounce. Idle redraw count after fix: **0** (was continuous).
+New standing rule: `CENTROID_GOLD_STD.md` §3 rule 8.
+
+**If you still see it:** you are on a stale renderer process — kill
+every `khtpm_core_render.+x` and relaunch (`run_khtpm_strip.sh new`);
+a window opened before the rebuild keeps running the old binary.
+
+Follow-up (not the flicker, but noted): the generic present path still
+round-trips the frame through `#.desktop/entity_menu_frame_<pid>.txt`
+(serialize → disk → read back → paint) every redraw. PID-scoped so not
+a live race, but it should move onto `render_tree()` per
+`CENTROID_GOLD_STD.md` §3.4.

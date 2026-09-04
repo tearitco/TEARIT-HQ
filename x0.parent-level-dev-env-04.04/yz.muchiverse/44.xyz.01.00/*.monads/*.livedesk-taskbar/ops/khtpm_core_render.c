@@ -915,6 +915,13 @@ static char g_extra_vars_path[PATH_BUF] = "";
  * tpmos frame_changed.txt convention) does NOT force a reparse/redraw
  * when the content is byte-identical. Cheap: the state file is small. */
 static unsigned long g_vars_hash = 0;
+/* Provisional hash awaiting confirmation - see reparse_chtpm_if_changed().
+ * The prisc .pal projectors rewrite their state file IN PLACE (sfopen
+ * truncates, then many swrites over several ms), so a poll can catch it
+ * half-written. Requiring the same new hash on two consecutive polls
+ * before reparsing rejects that transient (tpmos ONE WRITER RULE: never
+ * act on a half-written frame). 0 = nothing pending. */
+static unsigned long g_vars_hash_pending = 0;
 static unsigned long kh_file_hash(const char *path) {
     FILE *f = fopen(path, "rb");
     if (!f) return 0;
@@ -1408,7 +1415,23 @@ static int reparse_chtpm_if_changed(void) {
              * not on a projector's identical every-tick rewrite
              * (marker-driven-render spirit). Cheap: small files. */
             unsigned long h = kh_files_hash(g_vars_path);
-            if (h != g_vars_hash) { g_vars_hash = h; vars_changed = 1; }
+            if (h != g_vars_hash) {
+                /* Debounce a non-atomic in-place projector rewrite (see
+                 * g_vars_hash_pending): only treat the change as real once
+                 * the SAME new hash shows up on two consecutive polls. A
+                 * partial/empty mid-write read hashes to a one-off value
+                 * that never repeats, so it is ignored instead of causing
+                 * a blank<->populated reparse flip every projector tick. */
+                if (h == g_vars_hash_pending) {
+                    g_vars_hash = h;
+                    g_vars_hash_pending = 0;
+                    vars_changed = 1;
+                } else {
+                    g_vars_hash_pending = h;
+                }
+            } else {
+                g_vars_hash_pending = 0;
+            }
         }
         if (st.st_mtim.tv_sec == g_chtpm_mtime.tv_sec && st.st_mtim.tv_nsec == g_chtpm_mtime.tv_nsec && !peer_changed && !vars_changed)
             return 0;
@@ -1703,6 +1726,12 @@ static int g_win_pos_applied_x = INT_MIN, g_win_pos_applied_y = INT_MIN;
  * genuine but repeated FocusIn/FocusOut (mode NotifyNormal) only repaints
  * when the indicator would truly change. -1 = nothing painted yet. */
 static int g_focus_owned_painted = -1;
+/* Coalescing repaint flag for the generic (non-marker-pilot) window. N
+ * repaint requests inside one event-loop iteration collapse to a single
+ * redraw() at the tick boundary - the tpmos marker/dirty model
+ * (chtpm_parser.c: triggers set the flag, compose_frame() runs once per
+ * loop). Consumed at the bottom of hq_run_event_loop(). */
+static int g_frame_dirty = 0;
 static int g_quit = 0;
 /* --dump-and-exit (any argv position): paint one frame, write the PNG +
  * .txt receipt via dump_frame_png(), then quit. Set once at startup,
@@ -9253,6 +9282,14 @@ static void activate_focused(void) {
 }
 
 static void redraw(void) {
+    if (getenv("KH_REDRAW_TRACE")) {
+        static int rc = 0; struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
+        void *ra = __builtin_return_address(0);
+        fprintf(stderr, "[REDRAW %d] t=%ld.%03ld ra=%p dirty=%d scope=%d tab=%s\n",
+                ++rc, (long)ts.tv_sec, ts.tv_nsec/1000000, ra,
+                g_frame_dirty, g_default_scope_confine, g_default_active_tab_id);
+        fflush(stderr);
+    }
     /* REAL §5d.12 (2026-08-16) - chat-hai mode: chai_redraw() is
      * self-contained (own layout, own present via XGetImage->XPutImage,
      * own frame-history append) - ported verbatim, not split into a
@@ -10494,13 +10531,6 @@ static void xdnd_handle_selection(Display *dpy, Window win) {
     }
     g_xdnd_source = None;
 }
-
-/* Coalescing repaint flag for the generic (non-marker-pilot) window. N
- * repaint requests inside one event-loop iteration collapse to a single
- * redraw() at the tick boundary - the tpmos marker/dirty model
- * (chtpm_parser.c: triggers set the flag, compose_frame() runs once per
- * loop). Consumed at the bottom of hq_run_event_loop(). */
-static int g_frame_dirty = 0;
 
 static void hq_request_redraw(void) {
     if (dbhq_marker_pilot()) { dbhq_loop_request_redraw(); return; }

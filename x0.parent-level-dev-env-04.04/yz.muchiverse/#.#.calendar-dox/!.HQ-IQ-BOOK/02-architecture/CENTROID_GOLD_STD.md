@@ -243,6 +243,44 @@ parser, zero new IR to invent.
    browser becomes its first real user → migrate each existing mode
    one at a time, smallest first, live-verified after each → delete the
    old `g_is_X` branches only once every mode is migrated).
+8. **Repaint discipline — marker/dirty model, one writer, never a
+   full redraw per raw X event.** ADDED 2026-09-03 after a real,
+   multi-day flicker incident on `db-hq-pal` (`forensic-report-
+   flicker.md`). The tpmos reference render loop
+   (`pieces/chtpm/plugins/chtpm_parser.c` ~3024-3155) **never** blits
+   unless a `dirty` flag is set, and `dirty` is set **only** when an
+   append-only marker file *grows* (`st.st_size > last_size`) — not on
+   mtime, not on a hash, not per input event. Input handlers *write
+   the marker*; they do not call the composer. This binary already
+   does exactly that for the real `g_is_db_hq` window
+   (`dbhq_marker_pilot()` / `mark_frame_changed()` /
+   `consume_frame_changed()`), and now for the generic default-mode
+   window too (`g_frame_dirty`, consumed once per event-loop tick).
+   Concrete rules for any renderer path, new or touched:
+   - **One writer per frame file.** The process that composes the
+     frame owns its frame/serialization file (tpmos PITFALL #17). No
+     second process `fopen("a")`s it. PID-scope the path if more than
+     one window of the same mode can exist.
+   - **Coalesce.** N repaint requests inside one event-loop iteration
+     collapse to one `redraw()` at the tick boundary. `redraw()` is
+     not a "request" — it is the blit.
+   - **No full redraw on a bare X event.** `Expose` → drain the whole
+     burst, repaint once. `FocusIn`/`FocusOut` → ignore
+     `NotifyGrab`/`NotifyUngrab`/`NotifyWhileGrabbed` and
+     `NotifyPointer`/`PointerRoot`/`Inferior`; only repaint when the
+     thing you draw from focus state actually changed. Relayed
+     `MOUSE_EVENT:` **moves** are not consumed input — only clicks and
+     wheel notches dirty the frame (tpmos PITFALL #52).
+   - **No corrective `XMoveWindow`/`XSync` on the hot path unless our
+     *intended* geometry changed.** Compare root-translated coords
+     (`XTranslateCoordinates`), never frame-relative
+     `XGetWindowAttributes` `wa.x/wa.y` — a reparenting WM makes that
+     comparison always-true and the move storm perturbs focus and
+     stacking, feeding the two rules above.
+   - **Atomic state-file publish.** A projector/manager writes its
+     `state/*.txt` via tmp + rename so a reader never sees a partial
+     frame. A reader that content-hashes a state file debounces
+     (same new value on two consecutive polls) before acting.
 
 ---
 
@@ -287,6 +325,12 @@ already-proven "no flag-day, no forced rewrite" discipline for the
 - `SKILLS.md` §2 — the real, existing shared-paint-layer/`nav_index`/
   `reusable_slot()` conventions this standard builds directly on top
   of, not around.
+- `09-appendix/forensic-report-flicker.md` — the real, worked
+  incident behind §3 rule 8: a generic khtpm window that repainted
+  on grab-synthetic focus events, per-rectangle `Expose`, relayed
+  mouse-moves, and a corrective-move feedback loop, because it never
+  went through the marker/dirty gate the `g_is_db_hq` window already
+  used. Full ruled-out list + verification recipe.
 - `au-31/00-todo.md` / `01-manager-design.md` — the real, in-progress
   network-HQ-window work this standard now governs going forward
   (manager-first, per §3 rule 2, already the plan before this document
