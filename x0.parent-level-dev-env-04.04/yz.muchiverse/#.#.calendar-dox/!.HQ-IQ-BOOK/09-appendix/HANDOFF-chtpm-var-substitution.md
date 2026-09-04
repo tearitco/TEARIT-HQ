@@ -851,21 +851,25 @@ block, compiling + `ok=1` headless after the cluster:
 (dashboard/events-hq/rmmv/emojis/elements/piececraft/debug/stub) +
 a plain entity menu verified `ok=1` headless.
 
-### STILL DEFERRED — orphan decl sweep (warnings only)
+### DONE — orphan decl sweep — `5efc32c4`
 
-`-Wunused-variable` / `-Wunused-function` now flags ~90 orphans:
-`g_dbhq_*` (`g_dbhq_actors`, `g_dbhq_list_recs`, `g_dbhq_close_elem`,
-`DbhqActor`/`DbhqListRec` typedefs, `g_dbhq_events*`, …), `g_pal_*`
-(palettes fully ported out), `g_bm_*` (bookmarks), `DB_HQ_TAB_LABELS`.
-Zero runtime effect. Do NOT blanket-delete — the same warning list
-includes generic helpers to KEEP for the taskbar/`click_two_step`
-work (`apply_theme`, `nav_tab_register`/`_unregister`/`_cycle`,
-`nav_ledger_publish`, `history_unregister`, `zero_nav_subtree`,
-`input_disarm`, `hq_run_detached`, `hq_window_has_x_focus`,
-`reusable_slot`, `render_tree`, `hit_test`, `css_layout_pass`,
-`generic_scroll_layout_pass`, `draw_topdown_block_rgb`,
-`kh_append_frame_history`). Sweep the `g_dbhq_*`/`g_pal_*`/`g_bm_*`
-data only, as its own reviewed commit.
+All `g_dbhq_*` / `g_pal_*` / `g_bm_*` / `DB_HQ_*` orphan state removed
+(`DbhqActor`/`DbhqListRec` typedefs, `g_dbhq_list_cfg`,
+`DB_HQ_TAB_LABELS` + `DB_HQ_*_TAB` macros, all the tile/options/scroll
+state), plus `generic_scroll_layout_pass()` (sole consumer of the
+`g_pal_*` scroll cluster; superseded by `generic_sbar_*`),
+`g_pal_rmmv_armed` + its two dead husks, and
+`kh_append_frame_history()` (no reader). `g_is_db_hq` itself dropped
+(zero refs). −544 lines.
+
+KEPT: `g_dbhq_active_scope_root` (draw_core `[^]` badge) and the
+still-unused-but-wanted generic helpers — `nav_tab_register`/
+`_unregister`/`_cycle`, `apply_theme`, `nav_ledger_publish`,
+`history_unregister`, `zero_nav_subtree`, `input_disarm`,
+`hq_run_detached`, `hq_window_has_x_focus`, `reusable_slot`,
+`render_tree`, `hit_test`, `kh_shift_subtree`, `mark_frame_changed`/
+`consume_frame_changed`, `css_layout_pass`, `draw_topdown_block_rgb`.
+These are the only `-Wunused` warnings left in the file.
 
 Note: `taskbar_settings.chtpm` returns "no PNG" under
 `khtpm_png_dump.sh` — expected, swatch-picker mode writes its frame to
