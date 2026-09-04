@@ -126,10 +126,16 @@ int main(int argc, char **argv) {
         char bv[PATH_MAX] = "";
         int have = find_board_session(house, host_id, bv, sizeof(bv));
 
-        char raw[PATH_MAX] = "", typing[PATH_MAX] = "";
+        char raw[PATH_MAX] = "", typing[PATH_MAX] = "", h1[PATH_MAX] = "", h2[PATH_MAX] = "";
         if (have) {
             snprintf(raw, sizeof(raw), "%s/pieces/display/rgb_frame_3d_overlay.raw", bv);
             snprintf(typing, sizeof(typing), "%s/pieces/display/active_gui_is_typing.txt", bv);
+            /* the SAME two files pchq_append_key() always dual-wrote to
+             * (bv_history1/bv_history2 in the old run_pchq_board_mode) -
+             * published so the template's generic relay= capability can
+             * forward keys here without any renderer-side app knowledge. */
+            snprintf(h1, sizeof(h1), "%s/pieces/apps/player_app/history.txt", bv);
+            snprintf(h2, sizeof(h2), "%s/pieces/keyboard/history.txt", bv);
         }
         int interact = have && file_has_nonzero(typing);
 
@@ -154,9 +160,11 @@ int main(int argc, char **argv) {
         size_t off = 0;
         off += (size_t)snprintf(ui + off, UIBUF - off,
             "bv_session=%s\ncanvas_raw=%s\nno_session=%s\n"
+            "bv_h1=%s\nbv_h2=%s\ninteract_class=%s\n"
             "interact_label=%s\nclock=%s\n"
             "menu_open=%s\nfile_menu_open=%s\ndesk_menu_open=%s\n",
             bv, raw, have ? "" : "1",
+            h1, h2, interact ? "interact-active" : "",
             interact ? "ON" : "off", clock_s,
             menu_open,
             strcmp(menu_open, "file") == 0 ? "1" : "",

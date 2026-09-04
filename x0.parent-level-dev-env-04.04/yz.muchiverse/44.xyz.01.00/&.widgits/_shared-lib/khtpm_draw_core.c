@@ -705,7 +705,13 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                        (g_default_active_scope_id[0] && e->id[0] &&
                         strcmp(e->id, g_default_active_scope_id) == 0) ||
                        (g_default_scope_confine && g_default_active_tab_id[0] && e->id[0] &&
-                        strcmp(e->id, g_default_active_tab_id) == 0);
+                        strcmp(e->id, g_default_active_tab_id) == 0) ||
+                       /* REAL, NEW 2026-09-04 - Interact Mode trigger:
+                        * "^" while g_interact_relay_on genuinely holds
+                        * the keyboard (matches run_pchq_board_mode's own
+                        * is_engaged badge, see g_interact_relay_on's own
+                        * declaration comment in khtpm_core_render.c). */
+                       (g_interact_relay_on && e->relay[0]);
         elem_cursor_prefix(e, g_focus_nav, is_scope, prefix, sizeof(prefix));
         snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index);
         (void)focused;

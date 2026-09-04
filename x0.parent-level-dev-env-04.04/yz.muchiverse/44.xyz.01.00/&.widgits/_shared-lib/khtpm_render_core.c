@@ -138,6 +138,16 @@ typedef struct Elem {
      * = zero behavior change for every existing consumer. */
     char input_buffer[256];
     char target_id[64];
+    /* REAL, NEW 2026-09-04 - generic "Interact Mode" capability (ports
+     * tpmos chtpm_parser_pal.c's own onClick="INTERACT"/active_index
+     * dual-mode key routing, same terminology on purpose - see
+     * g_interact_relay_on's own declaration comment in
+     * khtpm_core_render.c). Comma-separated target file path(s) this
+     * item forwards raw keys to WHILE it carries class="interact-active"
+     * (a live, data-driven state from a projector - the class is what
+     * arms/disarms it, not the click that requested engagement). Empty
+     * for every item that isn't an Interact Mode trigger. */
+    char relay[300];
     /* REAL, NEW 2026-09-01 (live report: a long list of one-item-plus-
      * its-own-separate-delete-row pairs is real visual clutter - direct
      * instruction: "id like to add backspace to delete if possible,

@@ -705,7 +705,13 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                        (g_default_active_scope_id[0] && e->id[0] &&
                         strcmp(e->id, g_default_active_scope_id) == 0) ||
                        (g_default_scope_confine && g_default_active_tab_id[0] && e->id[0] &&
-                        strcmp(e->id, g_default_active_tab_id) == 0);
+                        strcmp(e->id, g_default_active_tab_id) == 0) ||
+                       /* REAL, NEW 2026-09-04 - Interact Mode trigger:
+                        * "^" while g_interact_relay_on genuinely holds
+                        * the keyboard (matches run_pchq_board_mode's own
+                        * is_engaged badge, see g_interact_relay_on's own
+                        * declaration comment in khtpm_core_render.c). */
+                       (g_interact_relay_on && e->relay[0]);
         elem_cursor_prefix(e, g_focus_nav, is_scope, prefix, sizeof(prefix));
         snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index);
         (void)focused;
@@ -967,10 +973,14 @@ static void draw_elem(Elem *e, int hover_id_hash) {
      * khtpm_hq_render.c's own live-verified fix, "i think they should go
      * above the tile, not on it") with a solid backing chip for
      * contrast against any sprite color; non-sprite elements keep the
-     * original inline position. */
+     * original inline position. REAL, NEW 2026-09-04 - swatch-picker
+     * tiles (small color squares without sprites) also get the badge
+     * positioned ABOVE the tile, not overlapping it, for readability. */
     if (e->nav_index > 0 && nav_badge_font) {
         int focused = (e->nav_index == g_focus_nav);
         int numy = e->y + (e->h + nav_badge_font->ascent - nav_badge_font->descent) / 2;
+        int is_swatch_tile = g_is_swatch_picker &&
+                             (elem_has_class(e, "swatch") || elem_has_class(e, "pal-tile"));
         if (e->sprite[0] && e->h >= 64) {
             /* REAL FIX 2026-09-02 - tall sprite rows (scrolllist) have
              * room INSIDE the box; drawing the chip above e->y painted
@@ -986,7 +996,9 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             label_x = e->x;
             XSetForeground(dpy, gc, alloc_pixel("#141414"));
             XFillRectangle(dpy, buf, gc, chip_x0, chip_y0, (unsigned)chip_w, (unsigned)chip_h);
-        } else if (e->sprite[0] && e->y >= 16) {
+        } else if ((e->sprite[0] || is_swatch_tile) && e->y >= 16) {
+            /* Sprite tiles and swatch-picker tiles: draw badge ABOVE the tile
+             * with a dark backing chip for contrast. */
             int chip_pad = 1;
             int gap_margin = 2;
             int numy_above = e->y - gap_margin - nav_badge_font->descent;
@@ -999,16 +1011,15 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             XSetForeground(dpy, gc, alloc_pixel("#141414"));
             XFillRectangle(dpy, buf, gc, chip_x0, chip_y0, (unsigned)chip_w, (unsigned)chip_h);
         }
-        /* Sprite tiles draw the badge on the dark #141414 backing chip
+        /* Sprite tiles and swatch tiles draw the badge on the dark #141414 backing chip
          * above (not on the tile's own bg), so it always needs the
          * light color - badge_contrast_color() would otherwise read the
-         * GOLD tile's own bg and (wrongly) pick black for a badge that's
-         * actually sitting on a dark chip. */
+         * tile's own bg and (wrongly) pick an unreadable color. */
         /* TPMOS ASCII prefixes sit on a dark frame; tab/sidebar fills
          * here ate [^]/[>] via contrast-on-same-luma. Chip + fixed
          * glyph colors so the three-state cursor is always readable. */
         int draw_x = e->badge_align_left ? (e->x - (int)nav_badge_ext.width - scaled(4)) : label_x;
-        if (!e->sprite[0]) {
+        if (!e->sprite[0] && !is_swatch_tile) {
             int chip_pad = 1;
             int chip_h = nav_badge_font->ascent + nav_badge_font->descent + 2 * chip_pad;
             int chip_y0 = numy - nav_badge_font->ascent - chip_pad;

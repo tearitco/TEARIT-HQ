@@ -31,8 +31,16 @@
   <page name="main">
     <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
 
-    <!-- toolbar row -->
-    <item id="tb-in" class="pchq-tb" label="In: ${interact_label}"
+    <!-- toolbar row. tb-in is the generic Interact Mode trigger (see
+         khtpm_core_render.c's g_interact_relay_on): relay= names the
+         two board-viewer history files (same dual write pchq_append_
+         key() always did); class="${interact_class}" is projector-
+         published from active_gui_is_typing.txt and is what ARMS
+         keyboard forwarding - not the click. While armed, its own
+         badge reads [^] (house-wide "genuinely engaged" glyph) same
+         as every other real active-scope indicator in this file. -->
+    <item id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}"
+          relay="${bv_h1},${bv_h2}"
           action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'interact'"/>
     <item id="tb-file" class="pchq-tb" label="File"
           action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'menu' 'file'"/>

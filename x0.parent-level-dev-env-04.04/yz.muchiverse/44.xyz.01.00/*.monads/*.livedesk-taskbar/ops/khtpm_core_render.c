@@ -105,6 +105,7 @@ static void kh_capture_click(int x, int y, int button);
 static void kh_capture_key(KeySym ks, char ch);
 static void redraw(void); /* REAL, forward declaration needed for dispatch()'s OPACITY_MINUS/OPACITY_PLUS handlers (NEW 2026-08-29 TASK 2) */
 static void kh_raise_and_focus(Window w); /* fwd - dispatch()'s FOCUSWIN handler uses it, defined near hq_dispatch_xevent */
+static int kh_key_history_code(KeySym ks, char ch); /* fwd - handle_key()'s interact-relay forward uses it before its real definition, near kh_capture_key */
 #define MAX_ELEMS 1024  /* 2026-09-02: page projection + chrome, was 512 */
 #define MAX_PAGE_STACK 8
 
@@ -757,6 +758,15 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
         snprintf(decoded, sizeof(decoded), "%s", val);
         decode_entities(decoded);
         snprintf(e->backspace_action, sizeof(e->backspace_action), "%s", decoded);
+    } else if (strcmp(name, "relay") == 0) {
+        /* REAL, NEW 2026-09-04 - generic "Interact Mode" capability,
+         * ported from pc-hq's own hand-rolled run_pchq_board_mode()
+         * key-forward (see g_interact_relay_on's own declaration
+         * comment). Comma-separated target file path(s); this item's
+         * own class="interact-engaged" (data-driven, from a projector's
+         * ${var}, same convention every active/selected state in this
+         * house already uses) is what arms/disarms it - not a click. */
+        snprintf(e->relay, sizeof(e->relay), "%s", val);
     } else if (strcmp(name, "rows") == 0) {
         /* REAL, NEW 2026-09-01 - see Elem's own rows field comment in
          * khtpm_render_core.c. */
@@ -1706,6 +1716,25 @@ static int g_focus_owned_painted = -1;
  * loop). Consumed at the bottom of hq_run_event_loop(). */
 static int g_frame_dirty = 0;
 static int g_has_canvas = 0;  /* set by assign_nav_and_layout when a <canvas> is present -> event loop ticks ~30fps for a live feed */
+/* REAL, NEW 2026-09-04 (direct instruction: "we should still use
+ * 'interact' mode... it is the same in old chtpm-parser for tpmos...
+ * should try to stick as close to that as possible") - generic port of
+ * tpmos chtpm_parser_pal.c's own onClick="INTERACT"/active_index dual-
+ * mode key routing: while a real, externally-owned process (piececraft-
+ * hq's board-viewer, first real consumer) has genuinely engaged, EVERY
+ * keypress here is raw game input, not this window's own nav - same
+ * real shape run_pchq_board_mode() hand-rolled per-app, now generic.
+ * Armed/disarmed by a template <item relay="path1,path2"> carrying
+ * class="interact-active" - a LIVE, projector-published state (not a
+ * local click guess), scanned once per layout pass. While armed, keys
+ * are appended verbatim to relay path(s) as bare-decimal (matches
+ * house convention: pieces/apps/player_app/history.txt) and "KEY_
+ * PRESSED: N" (pieces/keyboard/history.txt) - the SAME two-file dual
+ * write pchq_append_key() always did, just no longer app-specific C. */
+static int g_interact_relay_on = 0;
+static char g_interact_relay_paths[2][PATH_BUF];
+static int g_interact_relay_n = 0;
+static char g_interact_relay_raw[300] = "";  /* last-armed relay= string, for the re-arm check only */
 static int g_quit = 0;
 /* --dump-and-exit (any argv position): paint one frame, write the PNG +
  * .txt receipt via dump_frame_png(), then quit. Set once at startup,
@@ -3946,6 +3975,45 @@ static void kh_apply_scope_confine(void) {
     kh_focus_first_child_in_scope();
 }
 
+/* REAL, NEW 2026-09-04 - see g_interact_relay_on's own declaration
+ * comment. Scans the current page's direct <item> children (never the
+ * whole tree - a relay trigger is always a real, top-level toolbar-ish
+ * item, same shape the chrome/canvas scans right above already use)
+ * for one carrying BOTH a non-empty relay= and class="interact-active".
+ * Arms if found and not already armed; disarms if not found and
+ * currently armed - so simply not publishing that class on the next
+ * reparse (the projector's own real signal that the external process
+ * disengaged) is what turns keyboard ownership back over to this
+ * window, never a local guess. */
+static void kh_scan_interact_relay(void) {
+    Elem *pg = find_page(g_current_page);
+    Elem *found = NULL;
+    if (pg) {
+        for (int i = 0; i < pg->n_children; i++) {
+            Elem *it = pg->children[i];
+            if (strcmp(it->tag, "item") != 0 || !it->relay[0]) continue;
+            if (elem_has_class(it, "interact-active")) { found = it; break; }
+        }
+    }
+    if (found) {
+        if (!g_interact_relay_on || strcmp(g_interact_relay_raw, found->relay) != 0) {
+            snprintf(g_interact_relay_raw, sizeof(g_interact_relay_raw), "%s", found->relay);
+            char paths[300]; snprintf(paths, sizeof(paths), "%s", found->relay);
+            g_interact_relay_n = 0;
+            char *save = NULL, *tok = strtok_r(paths, ",", &save);
+            while (tok && g_interact_relay_n < 2) {
+                snprintf(g_interact_relay_paths[g_interact_relay_n], sizeof(g_interact_relay_paths[0]), "%s", tok);
+                g_interact_relay_n++;
+                tok = strtok_r(NULL, ",", &save);
+            }
+        }
+        g_interact_relay_on = 1;
+    } else {
+        g_interact_relay_on = 0;
+        g_interact_relay_raw[0] = '\0';
+    }
+}
+
 static void assign_nav_and_layout(void) {
     g_has_canvas = 0;
     /* REAL FIX 2026-09-04 - the window-frame block at the end of this
@@ -4325,6 +4393,7 @@ static void assign_nav_and_layout(void) {
         g_window->w = g_win_w; g_window->h = g_win_h;
         g_win_frame_applied = 1;   /* the undo at the top of the next pass reads this */
     }
+    kh_scan_interact_relay();
     kh_apply_scope_confine();
     if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
     if (g_focus_nav < 1) g_focus_nav = 1;
@@ -5188,6 +5257,25 @@ static void dump_frame_png(void) {
 }
 
 static void handle_key(KeySym ks, char ch) {
+    /* REAL, NEW 2026-09-04 - see g_interact_relay_on's own declaration
+     * comment. Checked BEFORE every other key-order exception in this
+     * function (events-hq's picker, db-hq's armed field, 'p' dump) -
+     * matches run_pchq_board_mode()'s own real behavior: "keyboard is
+     * 100% game input now", forwarded unconditionally, INCLUDING Escape
+     * (the external process's own native ESC-exit consumes it there,
+     * never intercepted locally) and 'p' (never a local dump shortcut
+     * while engaged). kh_key_history_code() is the SAME decimal-code
+     * resolver history capture already uses - reused, not reinvented. */
+    if (g_interact_relay_on) {
+        int code = kh_key_history_code(ks, ch);
+        for (int i = 0; i < g_interact_relay_n; i++) {
+            const char *p = g_interact_relay_paths[i];
+            if (!p[0]) continue;
+            FILE *f = fopen(p, "a");
+            if (f) { fprintf(f, "%d\n", code); fclose(f); }
+        }
+        return;
+    }
     /* REAL, events-hq mode only - routed BEFORE the shared 'p' dump
      * check, matching its own real key-order exactly: when its picker
      * overlay is open, 'p' must be swallowed as a literal typed
