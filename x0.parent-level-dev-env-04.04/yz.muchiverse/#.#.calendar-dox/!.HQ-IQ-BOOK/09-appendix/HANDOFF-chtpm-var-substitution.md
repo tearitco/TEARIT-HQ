@@ -596,3 +596,62 @@ round-trips the frame through `#.desktop/entity_menu_frame_<pid>.txt`
 (serialize → disk → read back → paint) every redraw. PID-scoped so not
 a live race, but it should move onto `render_tree()` per
 `CENTROID_GOLD_STD.md` §3.4.
+
+---
+
+## Rev 9 (2026-09-03) — palette polish done; C-deletion is the next big rock
+
+**Branch note:** work has moved to `chtpm-delete-per-app-c` (cut from
+`chtpm-var-substitution` after the flicker forensics commit `639fec5c`).
+It carries: the Rev 8 flicker fixes, the palette work below, the step-2
+launcher rewires, and the keep-list rename. `chtpm-var-substitution`
+still has the flicker + palette-perf commits; everything else is only on
+`chtpm-delete-per-app-c`.
+
+### Palette window — fixed this rev (all on `chtpm-delete-per-app-c`)
+
+| commit | issue |
+|---|---|
+| `a520d223` | "incredibly slow": `draw_core` `alloc_pixel()` was uncached (~1000+ `XAllocColor` round-trips/frame); the first checkerboard cut did ~49 `alloc_pixel`+fill per tile; `dbhq_redraw_content()` re-laid-out + re-serialised all 256 tiles every redraw. Fix: 64-entry colour cache, FillTiled-GC checkerboard, `dbhq_pal_content_sig()` gate (198ms → 22ms). |
+| `0644150c` | tiles off-centre — `32104e91` gave every `h<64` sprite cell the taskbar-strip layout; grid tiles (`pal-tile`/`swatch`) now excluded. |
+| `01daa6b2` | gold `#d9b64a` tile bg → grey/white PNG-transparency checkerboard. |
+| `110844f2` | **clicks going dead after a few clicks** — the content-sig cache skipped `dbhq_layout_pass()` after `dbhq_inject_palette_tiles()` rebuilt the tile Elems (periodic manager republish, rmmv tab clicks), leaving tiles 0×0 so `hit_test` missed. `g_pal_tree_gen` in the sig forces a re-layout on any tree rebuild. |
+| `79aef9f7` | chrome title hardcoded "db-hq" → reads `<window label=…>` (data, no per-app strcmp); added `label=` to palettes/bookmarks/stats/db-hq templates; `^`/`.` focus indicator added to the db-hq chrome bar. |
+| `5b93e572` | `.pal-tab-active`/`.pal-tileset-active` gold+black → house blue `#2f5f8f`+white (was unreadable, esp. the focused-state dark badge). |
+| `47b167f0` | tileset chooser rows flex-stacked below a tall grid → off-screen + thumb couldn't reach last row. Now pinned as a fixed bottom footer; grid scroll box shrunk by footer height. |
+
+### Still open on the palette window (revisit later, NOT blocking)
+
+- **Scroller still not fully right** — footer pin + box-shrink landed
+  (`47b167f0`) but the user reports the thumb/scroll extent still isn't
+  perfect for the largest tilesets. Re-check `generic_scroll_layout_pass`
+  `g_pal_visible_rows`/`max_scroll` math against the new reduced `box_h`,
+  and the `max_h = scaled(600)` window cap in `dbhq_inject_palette_tiles`.
+- Live-confirm the title / active-button / click fixes on a fresh binary
+  (the `--dump-and-exit` PNG lags a frame and gets clobbered by
+  concurrent test runs — not a reliable check; use a real window).
+
+### The next big rock: delete the per-app C (CLEANUP-AND-REWIRE.md "THE TASK")
+
+Ordered plan the user gave: **(2) rewires → commit → (3) evhq+dbhq
+cluster → commit → (1) the rest**.
+
+- **(2) DONE** — `e598a864`: `livedesk:open-palette:` emojis/elements →
+  `palettes/button-pal.sh`; `launcher_db` → `db-hq-pal/button.sh`; db
+  menu "db-hq"/"db-hq (classic)" relabel.
+- **(3-prep) DONE** — `8dc41d8b`: keep-list frame helpers renamed
+  `dbhq_* → kh_*` (`kh_serialize_frame_elem/_subtree`,
+  `kh_paint_frame_line`, `kh_append_frame_history`).
+- **(3-core) NOT STARTED** — the atomic removal of `g_is_events_hq` +
+  `evhq_*` + `g_is_db_hq`/`g_is_stats_hq`/`g_is_palettes`/`g_is_bookmarks`
+  + `dbhq_*` + `dbhq_ce_*`. Must compile as ONE unit (`dbhq_ce_*` calls
+  `evhq_*`; stats/palettes/bookmarks ride `g_is_db_hq=1`). `g_is_swatch_picker`
+  (18 refs) is cleanly separable and stays for step (1). Full function
+  map + call-site list in `CLEANUP-AND-REWIRE.md` §1-§5.
+  - KEEP (already renamed or verified generic): the `kh_*` frame
+    helpers; `frame_field_escape/unescape_pipe`; `zero_nav_subtree`;
+    `evhq_nonfatal_x_error` (→ rename `kh_nonfatal_x_error`, it's the
+    generic `XSetErrorHandler` now); `hq_run_detached`; `input_disarm`.
+  - `g_dbhq_active_scope_root` is read by `_shared-lib/khtpm_draw_core.c`
+    (`[^]` badge scope test) — keep as an always-NULL stub or delete
+    that one draw_core use too.
