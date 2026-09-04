@@ -1,0 +1,47 @@
+<!-- palettes-rmmv.xhtpm - STATIC template. Replaces khtpm_core_render.c's
+     dead g_is_palettes C path for the "rmmv" (RPG Maker Tiles) category.
+     class="palettes-pal database-window" (NOT "palettes") so g_is_palettes
+     stays 0; the generic <item class="swatch"> grid lays tiles 6-wide.
+       <module> 1: palettes_manager.+x args="rmmv" - UNMODIFIED, publishes
+                   palettes-rmmv_state.txt + rmmv_options.txt + rmmv_active.txt
+       <module> 2: palettes_projector.+x id="rmmv" - reads those, writes
+                   state/palettes-rmmv_ui.txt (key=value) consumed here.
+     Old palettes-rmmv.chtpm stays as rollback. Verb contract lives in
+     palettes_menu.sh (set-rmmv-dir/-tab/-tileset, arm-rmmv).
+     NOTE: the renderer's var table caps at 256 entries, so the projector
+     caps the tile grid to the leftover budget after the choosers/counts
+     and sets truncated=1 when it had to drop tiles. -->
+<window label="palettes: RPG Maker Tiles" class="palettes-pal database-window" vars="state/palettes-rmmv_ui.txt">
+  <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="rmmv"/>
+  <module src="&.widgits/palettes/ops/+x/palettes_projector.+x" id="rmmv"/>
+  <page name="main">
+    <!-- LAYOUT NOTE: these three chooser <repeat>s emit bare <item>s, so
+         the generic layout stacks them vertically (each full-width, one
+         per line). A horizontal strip needs a flex-row parent WITH an
+         explicit width AND flex-wrap in the renderer's css_layout_pass -
+         it has neither (grep khtpm_css_parser.c: only display/
+         flex-direction/flex-grow are honoured, and a width-less flex
+         parent lays its children out at w=0). Wrapping each <repeat> in
+         <panel class="pal-tab-row"> was tried and rendered the items at
+         0x0. Vertical stack is the functional fallback; all items are
+         real, nav-reachable, and carry the -active class. -->
+    <repeat count="${n_dirs}" bind="d">
+      <item id="rmdir-${d.#}" class="pal-tab ${d.active}" label="${d.label}"
+            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-rmmv-dir' '${PKG}' '${d.key}'"/>
+    </repeat>
+    <repeat count="${n_tabs}" bind="c">
+      <item id="rmtab-${c.#}" class="pal-tab ${c.active}" label="${c.label}"
+            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-rmmv-tab' '${PKG}' '${c.letter}'"/>
+    </repeat>
+    <repeat count="${n_tilesets}" bind="s">
+      <item id="rmts-${s.#}" class="pal-tileset-opt ${s.active}" label="${s.label}"
+            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-rmmv-tileset' '${PKG}' '${s.key}'"/>
+    </repeat>
+    <repeat count="${n_tiles}" bind="t">
+      <item id="pt${t.#}" class="swatch" sprite="${t.sprite}" label="${t.glyph}"
+            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'arm-rmmv' '${t.sprite}' '${active_tileset}' '${active_category}' '${t.glyph}'"/>
+    </repeat>
+    <text label="No tiles - the palette manager is still cropping the tileset." class="quiet" show="${empty}"/>
+    <text label="Grid truncated to fit - use the tileset/category choosers to narrow it down." class="quiet" show="${truncated}"/>
+  </page>
+</window>
