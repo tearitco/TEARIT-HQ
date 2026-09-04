@@ -74,6 +74,33 @@ is kept.*
 - **Doc comments and cross-references go stale** — verify against real
   code/the doc's own latest dated entry before trusting a claim about
   current status, especially anything load-bearing.
+- **2026-09-04 real incident confirming the rule two bullets up**:
+  `#.desktop/livedesk_override_redirect.pdl` is a single, HOUSE-WIDE
+  setting (`khtpm_core_render.c`'s `g_override_redirect`, read once at
+  startup, no per-window-class override anywhere) — it does not
+  distinguish "persistent top-level window" from "short-lived
+  popup/dropdown." Flipping it to `override_redirect=false` house-wide
+  (to test the exact fix this file's own rule above prescribes, for
+  one specific window — pc-hq's board — that needed real keyboard
+  focus) made the taskbar's OWN dropdowns/popups (the "toys" menu
+  specifically) stop working entirely — "no windows are opening from
+  tb now," confirmed by direct live user report, immediately after the
+  flip; confirmed working again immediately after reverting. Root
+  cause not fully diagnosed (most likely candidate: Mutter takes over
+  click/focus/positioning for a WM-managed popup in ways an
+  `override_redirect` popup never experiences, breaking the "click a
+  dropdown row" interaction the toys launcher and similar menus depend
+  on) — flagged here as a real, live-confirmed hazard rather than
+  fully root-caused. **Standing rule going forward**: this setting
+  must never be flipped house-wide again. If a specific persistent
+  window (matching this file's own rule above) genuinely needs real
+  WM-managed focus, it needs its OWN scoped flag — e.g. a per-window
+  override read from the window's own `<window>` class or a dedicated
+  argv/env signal at that one window's launch site — never the shared
+  global. Before attempting this again: (1) add the scoped flag first,
+  (2) test the ONE target window in isolation, (3) explicitly verify
+  the taskbar's own dropdowns/popups still work before calling it
+  fixed, not after.
 
 ---
 
