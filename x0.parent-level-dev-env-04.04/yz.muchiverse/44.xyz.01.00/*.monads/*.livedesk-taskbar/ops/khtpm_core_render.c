@@ -1854,7 +1854,6 @@ static const int g_is_bookmarks = 0;
 static int g_is_pchq_board = 0;
 static double g_dbhq_font_scale = 1.0;
 static int scaled(int base_px) {
-    if (g_is_db_hq) return (int)(base_px * g_dbhq_font_scale + 0.5);
     return base_px;
 }
 /* REAL Stage 5 (2026-08-16, khtpm-merge-how2.md §5d) - shared, generic
@@ -2467,22 +2466,6 @@ static void generic_scroll_layout_pass(Elem *container, const char *row_class, i
     g_pal_arrow_down_disabled = (g_pal_scroll >= max_scroll);
 }
 
-/* REAL, NEW 2026-08-25 (Stage 2 palettes migration) - any element
- * carrying its own onClick= becomes a numbered row, tree-walk order.
- * Unconditional (no nav_index==0 guard) - see g_is_palettes's own
- * declaration comment for why that's the deliberate, safer choice here
- * (no earlier pass in this mode to avoid double-counting against). */
-static void assign_palettes_nav(Elem *e) {
-    if (!e || g_n_nav >= MAX_ELEMS) return;
-    if (e->onclick[0] && e != g_dbhq_close_elem && e->w > 0 && e->h > 0) {
-        if (dbhq_elem_is_navigable(e)) {
-            e->nav_index = ++g_n_nav;
-            g_nav[g_n_nav - 1] = e;
-        } else e->nav_index = 0;
-    }
-    for (int i = 0; i < e->n_children && g_n_nav < MAX_ELEMS; i++)
-        assign_palettes_nav(e->children[i]);
-}
 
 /* Real db-hq redraw content (called from the shared redraw()'s
  * g_is_db_hq branch) - chrome fill/tabbar/sidebar/panel/placeholder,
@@ -4407,8 +4390,7 @@ static void kh_nav_step(int dir) {
 static void kh_apply_scope_confine(void) {
     /* Do not shrink g_nav[] or zero nav_index. Snap focus if the
      * current row fell out of the live predicate. */
-    if (!(g_default_scope_confine && g_default_active_scope_root &&
-          !g_is_db_hq && !g_is_events_hq && !window_is_dock()))
+    if (!(g_default_scope_confine && g_default_active_scope_root && !window_is_dock()))
         return;
     if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav &&
         kh_elem_arrow_stop(g_nav[g_focus_nav - 1])) return;
@@ -4419,7 +4401,6 @@ static void assign_nav_and_layout(void) {
     /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode branch, real WM-
      * managed window shape, own layout/nav functions (ported verbatim,
      * not forced into the popup modes' page/item shape below). */
-    if (g_is_db_hq) { dbhq_layout_pass(g_window); dbhq_assign_nav_indices(g_window); return; }
     g_n_nav = 0;
     g_dock_header_nav_hi = 0;
     g_dock_drop_lo = 0;
@@ -5077,73 +5058,6 @@ static void redraw(void) {
     /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode: own real content
      * draw (chrome/tabbar/sidebar/panel), same shared present
      * (XGetImage->XPutImage) below every mode already uses. */
-    if (g_is_db_hq) {
-        dbhq_redraw_content();
-        /* Real fix 2026-08-28 (see g_buf_w/g_buf_h's own header comment)
-         * - content just drawn above may have grown g_window->w/h past
-         * the Pixmap's real allocated size (palettes' rmmv tab bar +
-         * tileset chooser rows are the first real case of this). Detect
-         * and recreate BEFORE the XGetImage below, which otherwise
-         * requests a rectangle larger than the real Pixmap and X
-         * rejects the whole request with BadMatch (a fatal, unhandled
-         * default Xlib error handler - the process dies, not just that
-         * one draw call). The Pixmap itself only ever grows (a smaller
-         * frame is harmless to read from an oversized buffer - real
-         * savings, not correctness). */
-        if (g_window->w > g_buf_w || g_window->h > g_buf_h) {
-            int new_w = g_window->w > g_buf_w ? g_window->w : g_buf_w;
-            int new_h = g_window->h > g_buf_h ? g_window->h : g_buf_h;
-            if (xftdraw_buf) { XftDrawDestroy(xftdraw_buf); xftdraw_buf = NULL; }
-            if (buf) XFreePixmap(dpy, buf);
-            buf = XCreatePixmap(dpy, win, (unsigned)new_w, (unsigned)new_h, (unsigned)DefaultDepth(dpy, screen));
-            xftdraw_buf = XftDrawCreate(dpy, buf, DefaultVisual(dpy, screen), cmap);
-            g_buf_w = new_w; g_buf_h = new_h;
-            XSync(dpy, False);
-            /* The just-resized Pixmap is undefined content (fresh
-             * XCreatePixmap, not a copy of the old one) - the content
-             * draw above already ran against the OLD buf, so re-run it
-             * now that buf is the right size, or this frame would blit
-             * garbage/black instead of the real content. */
-            dbhq_redraw_content();
-        }
-        /* REAL FIX 2026-08-28 (live report + real screenshot: switching
-         * between rmmv tabs/tilesets with very different real content
-         * sizes left an old, larger session's tiles visibly showing as
-         * a "second layer" below the new, smaller content) - the REAL
-         * on-screen X11 window was never resized DOWN to match shrunk
-         * content, only ever grown (the block above only grows the
-         * backing Pixmap, which is a different, legitimately-one-way
-         * concern - reading less than an oversized Pixmap is harmless).
-         * But XPutImage below only ever writes the TOP g_window->w x
-         * g_window->h pixels of the real window - if the real window is
-         * physically TALLER than that (never shrunk from an earlier,
-         * bigger session), the excess strip below is simply never
-         * touched again and keeps showing whatever was drawn there
-         * last, indefinitely. The real window's own SIZE (unlike the
-         * Pixmap's capacity) must track content exactly, both growing
-         * AND shrinking, every time it changes - checked via real
-         * XGetWindowAttributes rather than trusting a locally-tracked
-         * variable, since this is real, occasionally-stale-prone state
-         * (the WM can also resize/moves this override-redirect window). */
-        {
-            XWindowAttributes wa;
-            if (XGetWindowAttributes(dpy, win, &wa) &&
-                (wa.width != g_window->w || wa.height != g_window->h)) {
-                XResizeWindow(dpy, win, (unsigned)g_window->w, (unsigned)g_window->h);
-                XSync(dpy, False);
-            }
-        }
-        XSync(dpy, False);
-        XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_window->w, (unsigned)g_window->h, AllPlanes, ZPixmap);
-        if (frame) {
-            XPutImage(dpy, win, gc, frame, 0, 0, 0, 0, (unsigned)g_window->w, (unsigned)g_window->h);
-            XDestroyImage(frame);
-        } else {
-            XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)g_window->w, (unsigned)g_window->h, 0, 0);
-        }
-        XFlush(dpy);
-        return;
-    }
     assign_nav_and_layout();
     XSetForeground(dpy, gc, alloc_pixel(window_is_dock() ? g_theme_bg : "#1c1c1c"));
     XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h);
@@ -5482,14 +5396,6 @@ static void redraw(void);
 static void dump_frame_png(void) {
     char png[PATH_BUF];
     redraw(); /* REAL FIX above - guarantees `win`'s real on-screen pixels reflect the state as of THIS tick's input, not the previous tick's */
-    if (g_is_db_hq) {
-        snprintf(png, sizeof(png), "/tmp/db-hq-frame.png"); /* real, preserves khtpm_hq_render.c's own external contract */
-        char cmd[PATH_BUF * 2];
-        snprintf(cmd, sizeof(cmd), "'%s/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x' 0x%lx '%s'",
-                 g_house_root, (unsigned long)win, png);
-        system(cmd); /* REAL, existing house-standard op-binary dispatch, reused verbatim - not new dispatch code */
-        return;
-    }
     if (g_is_swatch_picker) {
         char audit_dir[PATH_BUF];
         snprintf(audit_dir, sizeof(audit_dir), "%s/#.desktop/taskbar-settings-audit", g_house_root);
@@ -5551,16 +5457,14 @@ static void handle_key(KeySym ks, char ch) {
      * own armed input field (g_input_elem, bookmarks' New+ path entry)
      * and needs the SAME key-order exception as events-hq/chat-hai
      * above: 'p' must type into an armed field, not trigger a dump. */
-    if (g_is_db_hq && g_input_elem) { dbhq_handle_key(ks, ch); return; }
     if (g_default_input_elem) { default_cli_io_handle_key(ks, ch); return; } /* same real key-order exception - a real cli_io field needs 'p' as a literal typed character */
     if (ch == 'p') { dump_frame_png(); return; }
-    if (g_is_db_hq) { dbhq_handle_key(ks, ch); return; }
     if (ks == XK_Return || ks == XK_KP_Enter) {
         activate_focused();
         /* activate_focused() may have just entered/left a scope (<tab>,
          * ACTIVATE) - relayout+repaint NOW so [^] and the confined nav
          * show immediately, instead of only on the next projector tick. */
-        if (!g_quit && !g_is_db_hq && !g_is_events_hq) { assign_nav_and_layout(); redraw(); }
+        if (!g_quit) { assign_nav_and_layout(); redraw(); }
         return;
     }
     /* REAL, NEW 2026-09-03 (direct instruction: "esc closes drop down
@@ -5709,7 +5613,6 @@ static long g_history_cursor = -1;
 static void history_dir(char *out, size_t outsz) {
     snprintf(out, outsz, "%s/#.desktop/%s", g_house_root,
              g_is_stats_hq ? "stats_hq_history" :
-             g_is_db_hq ? "db_hq_history" :
              g_is_events_hq ? "events_hq_history" :
              g_is_swatch_picker ? "taskbar_settings_history" : "entity_menu_history");
 }
@@ -5977,7 +5880,6 @@ static void frame_changed_path(char *out, size_t outsz) {
              g_is_palettes ? "palettes_frame_changed.txt" :
              g_is_bookmarks ? "bookmarks_frame_changed.txt" :
              g_is_stats_hq ? "stats_hq_frame_changed.txt" :
-             g_is_db_hq ? "db_hq_frame_changed.txt" :
              g_is_events_hq ? "events_hq_frame_changed.txt" :
              g_is_swatch_picker ? "taskbar_settings_frame_changed.txt" :
              "entity_menu_frame_changed.txt");
@@ -6015,21 +5917,6 @@ static int consume_frame_changed(void) {
     return 0;
 }
 
-/* Pilot: only the true db-hq window uses marker wiring this pass.
- * Palettes/bookmarks/stats-hq share this loop via g_is_db_hq=1. */
-static int dbhq_marker_pilot(void) {
-    return g_is_db_hq && !g_is_palettes && !g_is_bookmarks && !g_is_stats_hq;
-}
-
-static void dbhq_loop_request_redraw(void) {
-    if (dbhq_marker_pilot()) mark_frame_changed();
-    else redraw();
-}
-
-static void dbhq_loop_paint_if_dirty(void) {
-    if (!dbhq_marker_pilot()) return;
-    if (consume_frame_changed() && !g_quit) redraw();
-}
 
 static void dispatch_relay_code(int code) {
     if (code == 13) handle_key(XK_Return, 0);
@@ -6061,14 +5948,12 @@ static void dispatch_relay_code(int code) {
      * instead of writing a second, chai-only dump, since chat-hai had NO
      * text-state dump at all before this (only chai_dump_frame_png(),
      * PNG-only). */
-    else if (code == 210 && (g_is_db_hq || g_is_events_hq)) dbhq_dump_debug_state();
     else if (code >= 32 && code <= 126) handle_key(0, (char)code);
     else if (code > 255 && code != 200 && code != 201 && code != 202 &&
              code != 203 && code != 204 && code != 205 && code != 210)
         handle_key((KeySym)code, 0);
 }
 static int hq_window_has_x_focus(void) {
-    if (g_is_db_hq) return g_dbhq_has_real_focus;
     return 1;
 }
 
@@ -6139,13 +6024,12 @@ static int poll_agent_history(void) {
                 if (nf >= 3 && is_press && (button == 4 || button == 5)) {
                     if (generic_sbar_wheel(mx, my, (button == 5) ? 1 : -1))
                         n++;
-                    else if (!g_is_db_hq && !g_is_events_hq) {
+                    else {
                         g_default_scrolllist_scroll += (button == 5) ? 1 : -1;
                         n++;
                     }
                 } else if (nf >= 3 && is_press && button != 3 && button != 4 && button != 5) {
-                    if (g_is_db_hq) dbhq_handle_click(mx, my);
-                    else popup_handle_click(mx, my);
+                    popup_handle_click(mx, my);
                     n++;
                 }
                 /* PITFALL #52 (tpmos: MOUSE MOVE REDRAW SPAM) - do NOT count
@@ -6283,7 +6167,6 @@ static void xdnd_handle_selection(Display *dpy, Window win) {
 }
 
 static void hq_request_redraw(void) {
-    if (dbhq_marker_pilot()) { dbhq_loop_request_redraw(); return; }
     if (!g_quit) g_frame_dirty = 1;
 }
 
@@ -6328,7 +6211,7 @@ static void hq_idle_tick(void) {
      * own cached Elem pointers already - reparsing their window from
      * under them would invalidate those, real, deliberate exclusion,
      * not an oversight). */
-    if (!g_is_db_hq && !g_is_events_hq) {
+    {
         if (reparse_chtpm_if_changed()) {
             assign_nav_and_layout(); redraw();
             if (g_dock_kbd_win) dock_grab_keyboard(g_dock_kbd_win);
@@ -6380,78 +6263,7 @@ static void hq_idle_tick(void) {
             hq_request_redraw();
         }
     }
-    if (g_is_db_hq || g_is_events_hq) nav_tab_poll_active();
     if (g_quit) return;
-    if (g_is_db_hq) {
-        if (g_is_bookmarks && dbhq_load_bookmark_state()) {
-            Elem *panel = find_by_tag(g_window, "panel");
-            dbhq_inject_bookmark_items(panel);
-            dbhq_redraw_content();
-        }
-        if (g_is_palettes && g_pal_state_path[0]) {
-            int changed = dbhq_load_palette_state();
-            changed |= dbhq_load_palette_options();
-            if (changed) {
-                Elem *panel = find_by_tag(g_window, "panel");
-                dbhq_inject_palette_tiles(panel);
-                dbhq_redraw_content();
-            }
-        }
-        /* REAL, NEW 2026-08-29 - visible "armed" feedback for the rmmv
-         * brush, see g_pal_default_hint's own header comment for why.
-         * Same mtime-checksum-gated poll shape g_pal_state_path already
-         * uses (dbhq_file_checksum), not a fresh redraw every tick. */
-        if (g_is_palettes && g_pal_armed_path[0] && g_pal_static_title) {
-            struct stat ast;
-            unsigned long cksum = (stat(g_pal_armed_path, &ast) == 0) ? dbhq_file_checksum(g_pal_armed_path) : 0;
-            if (cksum != g_pal_armed_checksum) {
-                g_pal_armed_checksum = cksum;
-                char line[256] = "";
-                if (cksum) {
-                    FILE *af = fopen(g_pal_armed_path, "r");
-                    if (af) { if (fgets(line, sizeof(line), af)) line[strcspn(line, "\r\n")] = '\0'; fclose(af); }
-                }
-                snprintf(g_pal_static_title->label, sizeof(g_pal_static_title->label), "%s",
-                         line[0] ? line : g_pal_default_hint);
-                /* Adds a second class (doesn't replace block-title, which
-                 * other windows' titles also use) so armed reads as
-                 * unmistakably different - see .pal-hint-armed's own
-                 * header comment in palettes-rmmv.css. */
-                if (line[0]) {
-                    snprintf(g_pal_static_title->classes[1], sizeof(g_pal_static_title->classes[1]), "pal-hint-armed");
-                    g_pal_static_title->n_classes = 2;
-                } else {
-                    g_pal_static_title->n_classes = 1;
-                }
-                dbhq_redraw_content();
-            }
-        }
-        if (!g_is_palettes && !g_is_bookmarks && g_dbhq_current_tab == DB_HQ_ACTORS_TAB) {
-            if (dbhq_load_actors()) {
-                dbhq_show_actors();
-                dbhq_loop_request_redraw();
-            }
-        } else if (!g_is_palettes && !g_is_bookmarks && dbhq_list_idx_for_tab(g_dbhq_current_tab) >= 0) {
-            int li = dbhq_list_idx_for_tab(g_dbhq_current_tab);
-            if (dbhq_load_list_tab(li)) {
-                dbhq_show_list_tab();
-                dbhq_loop_request_redraw();
-            }
-        } else if (!g_is_palettes && !g_is_bookmarks && dbhq_load_common_events()) {
-            Elem *sidebar = find_by_tag(g_window, "sidebar");
-            dbhq_inject_sidebar_items(sidebar);
-            if (g_dbhq_selected_event < 0 && g_dbhq_n_events > 0) g_dbhq_selected_event = 0;
-            if (g_is_stats_hq) {
-                stats_populate_panel(g_dbhq_selected_event);
-            } else {
-                Elem *panel_text = find_by_tag(g_window, "text");
-                if (panel_text && g_dbhq_selected_event >= 0 && g_dbhq_selected_event < g_dbhq_n_events)
-                    snprintf(panel_text->label, sizeof(panel_text->label), "%s", g_dbhq_events[g_dbhq_selected_event]);
-            }
-            dbhq_loop_request_redraw();
-        }
-        dbhq_loop_paint_if_dirty();
-    }
 }
 
 static void popup_handle_click(int px, int py) {
@@ -6478,7 +6290,7 @@ static void popup_handle_click(int px, int py) {
         if (px >= it->x && px < it->x + it->w && py >= it->y && py < it->y + it->h) {
             if (!click_focus_then_activate(it)) { redraw(); return; }
             activate_focused();
-            if (!g_quit && !g_is_db_hq && !g_is_events_hq) { assign_nav_and_layout(); }
+            if (!g_quit) assign_nav_and_layout();
             redraw();
             return;
         }
@@ -6709,55 +6521,15 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             kh_capture_click(ev->xbutton.x, ev->xbutton.y, (int)ev->xbutton.button);
             poll_agent_history();
             if (!g_quit) redraw();
-        } else if (g_is_db_hq) {
-            if (ev->xbutton.button == 1 && g_pal_has_grid &&
-                ev->xbutton.x >= g_pal_track_x && ev->xbutton.x < g_pal_track_x + g_pal_track_w &&
-                ev->xbutton.y >= g_pal_track_y && ev->xbutton.y < g_pal_track_y + g_pal_track_h) {
-                g_pal_thumb_dragging = 1;
-                dbhq_pal_scroll_to_y(ev->xbutton.y);
-                dbhq_layout_pass(g_window);
-                dbhq_assign_nav_indices(g_window);
-                dbhq_loop_request_redraw();
-                return;
-            }
-            if (ev->xbutton.button == 1 && ev->xbutton.y < g_dbhq_chrome_h &&
-                !(ev->xbutton.x >= g_dbhq_close_elem->x && ev->xbutton.x < g_dbhq_close_elem->x + g_dbhq_close_elem->w &&
-                  ev->xbutton.y >= g_dbhq_close_elem->y && ev->xbutton.y < g_dbhq_close_elem->y + g_dbhq_close_elem->h)) {
-                g_dbhq_dragging = 1;
-                g_dbhq_drag_last_x = ev->xbutton.x_root;
-                g_dbhq_drag_last_y = ev->xbutton.y_root;
-            }
-            if (g_pal_has_grid && (ev->xbutton.button == 4 || ev->xbutton.button == 5)) {
-                g_pal_scroll += (ev->xbutton.button == 5) ? 2 : -2;
-            } else if (ev->xbutton.button != 3 && ev->xbutton.button != 4 && ev->xbutton.button != 5) {
-                kh_capture_click(ev->xbutton.x, ev->xbutton.y, (int)ev->xbutton.button);
-                poll_agent_history();
-            }
-            if (!g_quit) dbhq_loop_request_redraw();
         }
         return;
     }
     if (ev->type == ButtonRelease && ev->xbutton.button == 1) {
-        g_dbhq_dragging = 0;
-        g_pal_thumb_dragging = 0;
         g_popup_dragging = 0;  /* REAL, NEW 2026-08-29 (TASK 1) */
         return;
     }
     if (ev->type == MotionNotify) {
-        if (g_is_db_hq && g_pal_thumb_dragging) {
-            dbhq_pal_scroll_to_y(ev->xmotion.y);
-            dbhq_layout_pass(g_window);
-            dbhq_assign_nav_indices(g_window);
-            dbhq_loop_request_redraw();
-        } else if (g_is_db_hq && g_dbhq_dragging) {
-            int dx = ev->xmotion.x_root - g_dbhq_drag_last_x;
-            int dy = ev->xmotion.y_root - g_dbhq_drag_last_y;
-            g_win_x += dx; g_win_y += dy;
-            if (g_win_y < WM_MANAGED_DRAG_MIN_Y) g_win_y = WM_MANAGED_DRAG_MIN_Y;
-            XMoveWindow(dpy, win, g_win_x, g_win_y);
-            g_dbhq_drag_last_x = ev->xmotion.x_root;
-            g_dbhq_drag_last_y = ev->xmotion.y_root;
-        } else if (is_popup && g_popup_dragging) {
+        if (is_popup && g_popup_dragging) {
             /* REAL, NEW 2026-08-29 (TASK 1: popup drag-move) - same pattern
              * as other modes: compute delta from last recorded x_root/y_root,
              * update g_win_x/g_win_y, call XMoveWindow, clamp to WM_MANAGED_
@@ -6791,11 +6563,6 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                 if (stat(hp, &st) == 0) g_history_cursor = st.st_size;
             }
             if (!g_quit) redraw();
-        } else if (g_is_db_hq) {
-            snprintf(g_dbhq_last_key_label, sizeof(g_dbhq_last_key_label), "%s", kname ? kname : (buf8[0] ? buf8 : "?"));
-            kh_capture_key(ks, buf8[0]);
-            poll_agent_history();
-            if (!g_quit) dbhq_loop_request_redraw();
         }
         return;
     }
@@ -6821,12 +6588,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         }
     }
     if (ev->type == FocusIn) {
-        if (g_is_db_hq && !g_dbhq_has_real_focus) {
-            g_dbhq_has_real_focus = 1;
-            { struct stat st; char hp[PATH_BUF]; history_path(hp, sizeof(hp));
-              if (stat(hp, &st) == 0) g_history_cursor = st.st_size; }
-            dbhq_loop_request_redraw();
-        } else {
+        {
             /* REAL FIX 2026-09-03 (direct live report/question: "is
              * there a way to tell if another window gets focus and
              * remove focus from both? should be the same if another
@@ -6850,14 +6612,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         if (window_is_dock() &&
             ev->xfocus.mode != NotifyGrab && ev->xfocus.mode != NotifyUngrab)
             dock_release_keyboard_if_left();
-        if (g_is_db_hq && g_dbhq_has_real_focus) {
-            g_dbhq_has_real_focus = 0;
-            dbhq_loop_request_redraw();
-        } else {
-            /* REAL FIX 2026-09-03 - same real default-mode gap as
-             * FocusIn right above, same fix. */
-            if (g_focus_owned_painted != 0) redraw();
-        }
+        if (g_focus_owned_painted != 0) redraw();
         return;
     }
     /* XDND was popup-only because is_popup returned before HQ handlers.
@@ -6968,8 +6723,7 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
          * grabbing process. No-op (returns immediately) whenever not
          * armed, so this costs nothing on every other tick of every
          * other window's own event loop. */
-        if (dbhq_marker_pilot()) dbhq_loop_paint_if_dirty();
-        else if (g_frame_dirty && !g_quit) { g_frame_dirty = 0; redraw(); }
+        if (g_frame_dirty && !g_quit) { g_frame_dirty = 0; redraw(); }
     }
 }
 
@@ -13762,14 +13516,8 @@ int main(int argc, char **argv) {
      * not a fixed ops-dir filename like the other 2 modes. */
     {
         char css_path[PATH_BUF];
-        if (g_is_db_hq || g_is_events_hq) {
-            snprintf(css_path, sizeof(css_path), "%s", g_chtpm_path);
-            char *dot = strrchr(css_path, '.');
-            if (dot) snprintf(dot, sizeof(css_path) - (size_t)(dot - css_path), ".css");
-        } else {
-            snprintf(css_path, sizeof(css_path), "%s/*.monads/*.livedesk-taskbar/ops/%s",
-                     g_house_root, g_is_swatch_picker ? "taskbar_settings.css" : "entity_menu_default.css");
-        }
+        snprintf(css_path, sizeof(css_path), "%s/*.monads/*.livedesk-taskbar/ops/%s",
+                 g_house_root, g_is_swatch_picker ? "taskbar_settings.css" : "entity_menu_default.css");
         memset(&g_sheet, 0, sizeof(g_sheet));
         css_load(css_path, &g_sheet);
         /* REAL, NEW 2026-09-02 - merge the .css sitting next to the
@@ -13785,19 +13533,6 @@ int main(int argc, char **argv) {
         }
     }
 
-    /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode one-time init,
-     * ported verbatim from khtpm_hq_render.c's own main(): real state
-     * paths, font-scale/focus-grab/window-position .pdl read, common-
-     * events load, real fork()+execl() module launch (the <module
-     * src="..."/> tag), sidebar/panel content injection, signal
-     * handlers for the manager-cleanup-on-TERM real fix. */
-
-    /* REAL §5d.11 (2026-08-16) - events-hq mode one-time init, ported
-     * verbatim from khtpm_events_hq_render.c's own main(): manager
-     * state paths, page-list load, entity sprite, real fork()+execl()
-     * module launch (3 real args, not 1 - see evhq_launch_module()'s
-     * own header comment), signal handlers, real initial page-data
-     * refresh. */
     if (g_is_swatch_picker) {
         static const char *hex[12] = { "#000000","#ffffff","#1a1a1a","#e5e5e5","#ef4444","#f97316","#eab308","#22c55e","#06b6d4","#3b82f6","#8b5cf6","#ec4899" };
         for (int i = 0; i < 12; i++) { g_palette_hex[i] = hex[i]; g_palette_name[i] = g_palette_name_buf[i]; }
@@ -13821,9 +13556,9 @@ int main(int argc, char **argv) {
      * at all - they stomp it with their own fixed, safe corner anchor
      * right after the one shared load call (dbhq_load_font_scale()) at
      * line ~17761, same real pattern applied here. */
-    if (!g_is_db_hq && !g_is_events_hq && !g_is_swatch_picker &&
+    if (!g_is_swatch_picker &&
         find_by_tag(g_window, "sidebar") && find_by_tag(g_window, "panel")) {
-        g_win_x = 80; g_win_y = 80; /* real sidebar+panel default, distinct from db-hq's 100,100/events-hq's 120,120/the small-popup modes' 300,300 */
+        g_win_x = 80; g_win_y = 80; /* sidebar+panel default, distinct from the small-popup modes' 300,300 */
     }
 
     /* REAL FIX (found live, first standalone test): g_win_h is DATA-
@@ -13877,132 +13612,6 @@ int main(int argc, char **argv) {
     khtpm_load_emoji_tiles(g_house_root);
 
     assign_nav_and_layout();
-
-    /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode: real WM-managed
-     * window creation + own event loop, genuinely different shape from
-     * the popup modes below (chrome-bar drag, FocusIn/Out tracking,
-     * _MOTIF_WM_HINTS decorations-off-but-managed, WM_CLASS grab
-     * allowlist) - kept as its own real, separate branch rather than
-     * interleaved into the popup path, so the 2 already-working popup
-     * modes' code is untouched. Returns before reaching the popup
-     * window-creation code below. */
-    if (g_is_db_hq) {
-        int ww = g_window->w, wh = g_window->h;
-
-        XSetWindowAttributes swa;
-        swa.background_pixel = alloc_pixel("#141414");
-        swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
-        /* REAL FIX 2026-08-29 (OPACITY-PIPELINE-INVESTIGATION-2026-08-29.txt
-         * has the full research trail) - override_redirect was set on
-         * the struct but never in the value-mask below, so X11 silently
-         * ignored it and this was always a real WM-managed window, not
-         * override_redirect like the taskbar's own windows (and this
-         * file's own popup branch). That's why _NET_WM_WINDOW_OPACITY
-         * had zero visible effect despite being set correctly - most
-         * compositors, Mutter included, only reliably honor client-
-         * requested opacity on unmanaged surfaces. Manual keyboard
-         * focus (kh_grab_keyboard_retry()/dbhq_soft_focus() below,
-         * already real, already used) still applies the same way an
-         * override_redirect window gets focus - this doesn't remove or
-         * change that logic, just makes the window type match what
-         * this file already treats it as. */
-        swa.override_redirect = (Bool)g_override_redirect; /* REAL, NEW 2026-09-01 - @ toggle: managed when the shared pdl says false */
-        win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)ww, (unsigned)wh, 0,
-                             CopyFromParent, InputOutput, CopyFromParent,
-                             CWBackPixel | CWEventMask | CWOverrideRedirect, &swa);
-        render_managed_wm_hints(dpy, win, !g_override_redirect); /* REAL, NEW 2026-09-01 - @ "normal" mode: undecorated + no shell chrome when managed */
-        {
-            /* REAL FIX 2026-08-29 (OPACITY-PIPELINE-INVESTIGATION-2026-08-29.txt
-             * + part2.txt, root-caused by a delegated Haiku subagent) -
-             * _MOTIF_WM_HINTS and WM_DELETE_WINDOW (via XSetWMProtocols)
-             * REMOVED, in addition to the XSetWMHints/XSetWMNormalHints
-             * already removed above. Live xprop diff against the
-             * taskbar's own real, visibly-transparent windows
-             * (khtpm_strip_parser.c, confirmed by direct user
-             * observation) showed these were the ONLY remaining
-             * property differences once override_redirect was added -
-             * both are real ICCCM/WM-cooperation signals telling
-             * Mutter "manage me," directly contradicting override_
-             * redirect="I'm unmanaged," which made the compositor fall
-             * back to its own WM-level opacity handling instead of
-             * honoring the client's _NET_WM_WINDOW_OPACITY. Neither
-             * property does anything useful on an undecorated
-             * override_redirect window (no titlebar/close button exists
-             * for the WM to route a close-request through anyway) -
-             * hq_run_event_loop()'s own wm_delete_loop atom comparison
-             * below is untouched and harmless if never matched. The
-             * taskbar's own real windows never set either property. */
-        }
-        {
-            XClassHint *ch = XAllocClassHint();
-            if (ch) { ch->res_name = (char *)"MuchiverseLivedesk"; ch->res_class = (char *)"MuchiverseLivedesk"; XSetClassHint(dpy, win, ch); XFree(ch); }
-        }
-        XMapWindow(dpy, win);
-        set_window_opacity(dpy, win, load_theme_opacity());
-        XSync(dpy, False);
-        { XWindowAttributes wa; if (XGetWindowAttributes(dpy, win, &wa)) { g_win_x = wa.x; g_win_y = wa.y; } }
-        render_managed_sink_below(dpy, win); /* REAL, NEW 2026-09-01 - @ "normal" mode: drop this managed window below native apps */
-        /* Display name is DATA - the window's own <window label="...">,
-         * not a per-app strcmp here. (The short `type` key is a nav-tab
-         * registry id, like a CSS class, not a user-facing app name.) */
-        nav_tab_register(g_is_palettes ? "pal" : g_is_bookmarks ? "bm" : g_is_stats_hq ? "stats" : "dbhq",
-                         (g_window && g_window->label[0]) ? g_window->label : "database");
-        XSync(dpy, False);
-        { XEvent stale_ev; while (XCheckWindowEvent(dpy, win, ButtonPressMask | KeyPressMask, &stale_ev)) { } }
-
-        gc = XCreateGC(dpy, win, 0, NULL);
-        buf = XCreatePixmap(dpy, win, (unsigned)ww, (unsigned)wh, (unsigned)DefaultDepth(dpy, screen));
-        xftdraw_buf = XftDrawCreate(dpy, buf, DefaultVisual(dpy, screen), cmap);
-        g_buf_w = ww; g_buf_h = wh;
-
-        redraw();
-        /* REAL FIX 2026-08-29 part 3 (OPACITY-PIPELINE-INVESTIGATION-2026-08-29-
-         * part3.txt) - khtpm_strip_parser.c's own taskbar has a documented
-         * "KISS opacity-on-reset fix" (its own comment near set_window_opacity()
-         * relaunch calls) - Mutter/XWayland does not reliably honor
-         * _NET_WM_WINDOW_OPACITY set at map-time on an override_redirect
-         * window's FIRST paint; it must be re-applied after the window has
-         * been visible/painted for at least one real frame. The taskbar
-         * already does this (XFlush + usleep(200000) + re-set opacity after
-         * its first real draw calls); this branch never did. Applying the
-         * exact same pattern here. */
-        XFlush(dpy);
-        usleep(200000);
-        set_window_opacity(dpy, win, load_theme_opacity());
-        XFlush(dpy);
-        if (dbhq_marker_pilot()) {
-            /* snapshot so a leftover marker file does not force a second paint */
-            (void)consume_frame_changed();
-        }
-
-        if (argc > 3 && strcmp(argv[3], "--dump-and-exit") == 0) { dump_frame_png(); g_quit = 1; }
-
-        Atom wm_delete_loop = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-        hq_run_event_loop(wm_delete_loop, 0);
-
-        nav_tab_unregister();
-    history_unregister();
-        XUngrabKeyboard(dpy, CurrentTime);
-        XftDrawDestroy(xftdraw_buf);
-        XFreePixmap(dpy, buf);
-        XFreeGC(dpy, gc);
-        XDestroyWindow(dpy, win);
-        XCloseDisplay(dpy);
-
-        /* REAL FIX (2026-08-17, live report: "chat hai... when i use [x]
-         * to close, closes all desktop entures (bad)" - confirmed the
-         * SAME real bug also affects db-hq's own [X], byte-identical
-         * code). ktb_quit_and_save() is a real, TASKBAR-LEVEL quit
-         * action - it calls livedesk_close_all() + livedesk_kill_stray_
-         * entities() (real, desktop-wide entity teardown) and removes
-         * the shared taskbar pidfile (ktb_unlink_pidfile()). NONE of
-         * that is appropriate for a single sub-app window closing -
-         * this block was ported from db-hq's own original standalone
-         * code under a mistaken assumption it needed real "KtbState
-         * persistence" on exit; it never did. Removed entirely, not
-         * narrowed - `ktb` was only ever used for this one call. */
-        return 0;
-    }
 
     /* REAL §5d.11 (2026-08-16) - events-hq mode: real WM-managed window
      * creation + own event loop, kept as its own separate branch (not
