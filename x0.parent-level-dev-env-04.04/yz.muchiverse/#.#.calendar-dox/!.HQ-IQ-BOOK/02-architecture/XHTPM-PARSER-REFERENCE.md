@@ -220,13 +220,13 @@ Handled by `dispatch()` / `activate_focused()` / `hq_dispatch_xevent()` in khtpm
 | **`void`** | No-op; does NOT close (differs from tpmos which closes either way) | all |
 | **`GOTO:<page>`** | Switch to named page; push current to stack | all |
 | **`BACK`** | Pop page stack and switch | all |
-| **`SCROLLUP:<count>` / `SCROLLDOWN:<count>`** | Scroll element `<count>` steps | db-hq |
+| **`SCROLLUP:<i>` / `SCROLLDOWN:<i>`** | Step generic scrollbar slot `<i>` (`g_generic_sbars[i]`, clamped to its own `max_scroll`). Emitted by the auto-built `^`/`v` arrow Elems in `generic_sbar_register()` — never authored in a template. | generic (swatch grid, sidebar+panel scrolllist) |
 | **`PICK:<n>`** | Write to swatch-picker action file (`taskbar_settings_action.txt`) | swatch-picker only |
 | **`OPACITY_MINUS` / `OPACITY_PLUS`** | Adjust opacity by ±0.05, write theme, apply to window (2026-08-29) | all modes with theme support |
 | **`ZORDER_TOGGLE`** | Toggle between override_redirect and WM-managed; kills + relaunches window | taskbar |
-| **`TOGGLE_FULLSCREEN`** | Maximize (x/y = 0), toggle back | sidebar+panel mode |
+| **`TOGGLE_FULLSCREEN`** | Maximize (x/y = 0), toggle back | all (not gated) |
 | **`MINIMIZE`** | Unmap window; write registry with `minimized=1`; other apps can focus via `FOCUSWIN:0x<id>:<pid>` | HQ windows |
-| **`FOCUSWIN:0x<win>:<pid>`** | Raise and focus window (or restore if minimized; 2026-09-03) | taskbar/strip only |
+| **`FOCUSWIN:0x<win>:<pid>`** | `kh_raise_and_focus()` (XRaiseWindow + `_NET_ACTIVE_WINDOW` ClientMessage + focus — works with always-on-top=false; see §16); restore if minimized. | taskbar/strip only |
 | **`PAGEROW:±1`** | Increment/decrement visible dock rows (taskbar internal) | taskbar |
 | **`<shell-command>`** | Any other string: executed as `sh -c "<action> '<pkg_dir>' '<house_root>' >/dev/null 2>&1 &"` | all; manager writes state file |
 
@@ -280,12 +280,27 @@ Modes are auto-detected at parse time based on tag/class presence and are mutual
 
 **Trigger:** `class="swatch"` on `<item>` elements  
 **Geometry:**
-- Wrapping grid: 6 items wide, 12 rows visible (scroll tracks beyond)
-- Typical use: color palette tiles, emoji grid
-- Each `<item>` is square (aspect-ratio:1) and drawn with sprite texture + label
-- Non-swatch chips (class != "swatch") below grid
+- Wrapping grid; **column count is derived from window width** when the
+  window is `g_default_persistent` (see §16) — the pre-port rmmv-picker
+  shape (git `94d12680` `dbhq_layout_pass`). Otherwise a fixed 6 wide.
+  12 rows visible; `generic_sbar` (draggable thumb + nav-numbered `^`/`v`
+  arrows) beyond that.
+- A persistent window is widened to `5/8` screen (cap 1180) and kept on
+  screen from its current x (this path has no other screen clamp).
+- Each `<item>` is square, drawn with sprite texture (+ a
+  PNG-transparency checkerboard, unless `g_is_swatch_picker`).
+- **Chooser chips** (non-`swatch` `<item>`s) are laid out by class family:
+  a class-family change starts a new chip row (10px inter-row gap). By
+  default the family carrying `class="pal-dir"` is pinned to a **footer
+  below the grid**, every other family sits in a **strip above** it.
+  Chip width = `max(CSS width, measured label + 46)` — `draw_elem`
+  prepends a `[ ]NN. ` nav badge, so a text-width box clips short labels.
+- `<item id="close" class="chrome-btn" onclick="CLOSE">` in the template
+  is laid into the top chrome strip right-to-left and hard-clamped
+  on-window (§16). Same for `class="chrome-btn"` `!` / `_`.
 
-**Example:** palettes manager, taskbar Settings color picker
+**Example:** palettes (rmmv/emojis/elements/…), taskbar Settings color
+picker (`g_is_swatch_picker` — fixed 6-wide, no widen, solid swatches).
 
 ### 4. Flat item list (fallback)
 
@@ -533,6 +548,75 @@ See `09-appendix/forensic-report-flicker.md` for detailed render timing analysis
 - `#.#.calendar-dox/!.HQ-IQ-BOOK/09-appendix/HANDOFF-chtpm-var-substitution.md` — v1/v2/v3/v4 handoff notes, converted apps table, remaining work
 - `#.#.calendar-dox/!.HQ-IQ-BOOK/09-appendix/forensic-report-flicker.md` — render timing, dirty-coalescing rationale
 - `#.#.calendar-dox/!.HQ-IQ-BOOK/03-pitfalls/X11-AND-SESSION-PITFALLS.md` — X11 quirks (grabs, events, window manage)
+
+---
+
+## 16. Window Chrome & UX (added 2026-09-04)
+
+Cross-cutting behaviours the renderer applies to every window it draws,
+regardless of layout mode. All live in `khtpm_core_render.c` unless
+noted; the raw-pixel modes (`run_pchq_board_mode`, `strip_main`) each
+carry their own copy where they've been brought to parity.
+
+### Theme frame
+
+- A **2px border in the theme SECONDARY colour** (`g_theme_fg`, from
+  `#.desktop/livedesk_theme.pdl` `COLOR|fg|…` — the swatch picker's
+  second pick) is drawn around the **whole** window (dock included),
+  **last**, right before the present — so sidebar/panel background
+  fills can't overpaint the side/bottom edges.
+- `load_theme_colors()` runs for **every** window at startup (was
+  dock-only — non-dock windows kept the `#cccccc` default and the frame
+  looked white against a red/black theme).
+- Reloaded live on the `livedesk_theme_changed.txt` marker.
+- **Not yet on:** the bottom taskbar strip (`strip_main` render path).
+
+### Chrome buttons are template elements
+
+- `X` / `!` / `_` are declared in the template as
+  `<item class="chrome-btn" onclick="CLOSE|TOGGLE_FULLSCREEN|MINIMIZE">`
+  (or `id="close"`). The renderer only *lays them out* (top strip,
+  right-to-left) — no per-app C draw. Replaces the deleted
+  `dbhq_draw_chrome_bar`. `MINIMIZE` still needs `g_default_has_sidebar_panel`.
+
+### Edge-affordance clamp — `kh_clamp_elem_onscreen(Elem*)`
+
+Any *synthetic* edge affordance (chrome `X`/`!`/`_`, `generic_sbar`
+`^`/`v` arrows) is forced fully inside the window past the 2px frame:
+shrink if larger than the window, then pull in from any crossed edge
+(`x+w ≤ g_win_w-6`, same for y/h). The `^`/`v` arrows get a real
+badge-width box (54px, right-aligned to the track) so the `[ ]NN.`
+nav number is readable and never off-frame. `generic_sbar` `track_x`
+is also inset 12px from its region's right edge.
+
+### Window fit
+
+- `layout_sidebar_panel`: window is clamped to **never wider/taller
+  than the screen**, then a 14px margin is kept off the right/bottom
+  edges (so a right-edge scrollbar isn't flush against the screen border).
+- Swatch-grid persistent windows: clamped on-screen from their current x.
+
+### Raise-to-top / focus — `kh_raise_and_focus(Window)`
+
+- `XRaiseWindow` **+ a `_NET_ACTIVE_WINDOW` ClientMessage** to the root
+  (source indication 2 = direct user action) **+ `XSetInputFocus`**.
+- `XRaiseWindow` alone is a hint Mutter ignores under focus-stealing
+  prevention when `override_redirect=false`; the EWMH ClientMessage is
+  the sanctioned "activate me" it honours. Redundant-but-harmless when
+  `override_redirect=true`.
+- Called from: the `FOCUSWIN:` verb (taskbar window-nav click → target
+  window) and **ButtonPress on any non-dock window** (click a buried
+  window → it comes forward). Also wired into `run_pchq_board_mode`.
+- **Not yet:** "lower bar focus raises ALL its members" (taskbar-manager
+  side) and pulling a spawned child/context window up with its parent.
+
+### Persistence — `g_default_persistent`
+
+Set once in `main()` from the window class (`database-window` /
+`palettes-pal`). Checked at `dispatch()`'s quit gate alongside
+`g_default_has_sidebar_panel`: a `<page>`-of-`<repeat>` window (palette)
+is NOT a transient menu — firing a tile's `action=` must not
+`g_quit=1`. Also drives the swatch-grid widen.
 
 ---
 
