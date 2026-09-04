@@ -2989,8 +2989,20 @@ static int layout_sidebar_panel(Elem *page) {
      * partway off - a real position clamp, not a real recenter. */
     if (!g_default_is_fullscreen) {
         int sw = DisplayWidth(dpy, screen), sh = DisplayHeight(dpy, screen);
-        if (g_win_x + g_win_w > sw) g_win_x = sw - g_win_w;
-        if (g_win_y + g_win_h > sh) g_win_y = sh - g_win_h;
+        /* REAL, NEW 2026-09-04 (live report: chat-hai's session-list
+         * scrollbar sat flush against / past the screen's right edge,
+         * unusable). A window WIDER than the screen leaves g_win_x
+         * negative below and the right strip (where the scrollbar
+         * lives) permanently off-screen - shrink it to fit first. Then
+         * keep a small margin off the right/bottom edges so a
+         * right-edge affordance (scrollbar, chrome X) is never flush
+         * against the physical screen edge. */
+        const int EDGE_MARGIN = 14;
+        if (g_win_w > sw - EDGE_MARGIN) g_win_w = sw - EDGE_MARGIN;
+        if (g_win_h > sh - EDGE_MARGIN) g_win_h = sh - EDGE_MARGIN;
+        g_window->w = g_win_w; g_window->h = g_win_h;
+        if (g_win_x + g_win_w > sw - EDGE_MARGIN) g_win_x = sw - EDGE_MARGIN - g_win_w;
+        if (g_win_y + g_win_h > sh - EDGE_MARGIN) g_win_y = sh - EDGE_MARGIN - g_win_h;
         if (g_win_x < 0) g_win_x = 0;
         if (g_win_y < 0) g_win_y = 0;
     }
