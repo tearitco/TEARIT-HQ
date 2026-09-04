@@ -189,7 +189,7 @@ before (worker not even spawned unless a `<script>` exists).
 - End of each step: run all `network/tests/*.js` through the worker/test
   harness + keep `rung1_globals.js` green.
 
-## 7. Execution order (each commit = green, shippable)
+## 7. PHASE 1 — execution order (each commit = green, shippable)
 
 1. **`nb_dom.c/.h` parse + serialize** in the manager; emit `fetch.dom`
    alongside `page.js` in `do_fetch`. (No behavior change yet — the dom
@@ -212,7 +212,84 @@ before (worker not even spawned unless a `<script>` exists).
 6. **Docs**: mark rung 2 (+ rung 5 glue + §3 worker plumbing) done in
    the roadmap; note what rungs 3/4/7 remain. *Commit 6.*
 
-## 8. Explicit non-goals for this milestone
+## 8. PHASE 2 — rungs 3, 4, 5 + the rung-6 remainder (the "what's next" / hand-off)
+
+> This is the natural continuation once Phase 1 lands. It is written to be
+> **hand-off-ready**: any agent can pick up any commit-level rung below and
+> ship it green. "Rung 3" is NOT one thing to a newcomer — clarify the
+> roadmap rung numbering for anyone reading this:
+>
+> | roadmap rung | what | lands in |
+> |---|---|---|
+> | 2 | DOM tree + accessors | **Phase 1** (this doc §7) |
+> | 3 | **events + event loop** (EventTarget, timers, DOMContentLoaded/load, microtask drain) | **Phase 2** |
+> | 4 | XHR / `fetch()` via manager RPC | **Phase 2** |
+> | 5 | re-serialize mutated DOM → `page.state.txt` | **Phase 1 step 4** (glue already pulled in) |
+> | 6 | BOM odds & ends (part done: URL/URLSearchParams, history, matchMedia, getComputedStyle, MutationObserver, atob/btoa, timers stubs, cookie stub) | **partial now; real version in Phase 2** |
+> | 7 | CSS/layout awareness (getBoundingClientRect, offsetWidth, display:none) | deferred — separate effort |
+>
+> So: **"run/rung 3" = events + the event loop.** It is the first thing in
+> Phase 2, and the single biggest unlock after rung 2 (click handlers,
+> tab widgets, accordions, form validation become possible).
+
+### 8.1 Rung 3 — events + the event loop (first Phase-2 chunk)
+
+`EventTarget`-style `addEventListener/removeEventListener/dispatchEvent`,
+an `Event` object (`type`/`target`/`preventDefault`/`stopPropagation`),
+on-property handlers (`el.onclick = fn`). Timers:
+`setTimeout/setInterval/clearTimeout/clearInterval` (now really fire —
+replace the Phase-1/§7 step-3 no-op stubs with a C min-heap keyed by due
+time), `queueMicrotask`, `requestAnimationFrame` (~16ms timer).
+Lifecycle: after top-level run, fire `DOMContentLoaded` then `load` /
+`window.onload`. **The loop:** drain microtasks → run due timers →
+drain microtasks → repeat until empty or budget hit (§2 per-page
+wall-clock + timer-invocation cap + node cap). The worker already runs in
+a `usleep` RPC loop, so this slots straight in. *≈300 lines + timer heap.*
+
+### 8.2 Rung 4 — network from JS (XHR / fetch via manager RPC)
+
+`XMLHttpRequest` (async first — the worker is resident, so a callback can
+come back over the same socketpair) then `fetch()` returning a real
+Promise (Duktape 2.7 has Promise; else a microtask-queue polyfill).
+New RPC: `manager <- worker: FETCH <id> <method> <url>` and
+`manager -> worker: FETCHED <id> <status>\n<len>\n<body>`. CORS /
+same-origin stay permissive (local browser). **Payoff:** SPAs that fetch
+JSON then render become usable. *≈200 lines + RPC cases.*
+
+### 8.3 Rung 6 remainder — the real, not just stub, BOM
+
+- `history.pushState/replaceState` → manager updates address bar without a
+  fetch (new `NAVIGATE-URL` RPC or `#.desktop` marker echo-lifo).
+- `location.assign/replace/reload` → manager navigates (same channel).
+- `document.cookie` **file-backed** `#.desktop/nb_cookies.txt` jar — now
+  trivially doable in the resident worker (read/write on get/set), replacing
+  the Phase-0 empty-jar stub.
+- `MutationObserver` can stay a no-op unless a target site needs it.
+
+### 8.4 When is Phase 2 "done"?  (the §5 payoff table)
+
+| after | what works |
+|---|---|
+| Phase 1 (rung 2 + render glue) | scripts read/annotate DOM; progressive-enhancement JS, and the mutated DOM **shows** in the window |
+| Phase 2: 8.1 (rung 3) | click handlers, tab widgets, accordions, form validation |
+| Phase 2: 8.2 (rung 4) | "load more", infinite scroll, search-as-you-type, simple fetch-JSON SPAs |
+| Phase 2: 8.3 (rung 6 real) | client-side routing, cookie-gated content, back/forward |
+| Phase 3 (roadmap rung 7, optional) | carousels, lazy images, sticky UI, anything that measures layout |
+
+### 8.5 Phase-2 execution order (each green + shippable)
+
+A. Rung 3 event loop + timers + lifecycle — *Commit 7*
+B. `dispatchEvent` + on-property handlers + `EVENT <selector>` RPC
+   (user click in the window reaches a scripted el) — *Commit 8*
+C. Rung 4 XHR (async) — *Commit 9*
+D. `fetch()` + Promise — *Commit 10*
+E. Rung 6 real: history/location navigation RPC — *Commit 11*
+F. Rung 6 real: file-backed cookies — *Commit 12*
+G. Docs: phase 2 status in the roadmap — *Commit 13*
+
+Each of A–G is independently hand-off-able.
+
+## 9. Explicit non-goals (Phase 1 milestone)
 
 - No `fetch()`/XHR (rung 4), no real event loop / timers firing callbacks
   (rung 3 — we run top-level scripts + one microtask drain only), no
@@ -220,8 +297,10 @@ before (worker not even spawned unless a `<script>` exists).
   recovery, no CSS/layout (rung 7), no `history` navigation to manager.
 - `document.cookie`/`matchMedia`/`getComputedStyle` remain the rung-6
   stubs already landed — fine for this milestone.
+- **All of the above are Phase 2 work (§8), deliberately walled off so
+  Phase 1 ships a working DOM+render loop without scope creep.**
 
-## 9. Risks / mitigations
+## 10. Risks / mitigations
 
 | risk | mitigation |
 |---|---|
@@ -229,9 +308,9 @@ before (worker not even spawned unless a `<script>` exists).
 | Worker leaks / doesn't die | budget + node cap + SIGKILL-on-overrun + reap on manager exit |
 | DOM<->JS handle leak | Duktape finalizers free the C handle (roadmap §2) |
 | Split-brain doc trees (manager vs worker) | manager owns parse + static output; worker owns mutable tree + JS; only the worker's `RENDER` feeds `page.state.txt` after scripts |
-| Scope creep | §8 non-goals are hard walls; each of §7's 6 commits is independently shippable |
+| Scope creep | §9 non-goals are hard walls; each of Phase-1 §7 / Phase-2 §8.5 commits is independently shippable |
 
-## 10. Open questions for the user (before step 1)
+## 11. Open questions for the user (before step 1)
 
 1. Ship the HTML/dom to the worker via **file paths** (recommended) or
    inline payloads? → I'll take file paths unless told otherwise.
