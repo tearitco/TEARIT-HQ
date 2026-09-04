@@ -5174,6 +5174,39 @@ static void dump_frame_png(void) {
 }
 
 static void handle_key(KeySym ks, char ch) {
+    /* REAL FIX 2026-09-04 (pc-hq-bugs.md Bug 2 - "tb top gets focus
+     * (steals it) and wont ever give it back" the instant the user
+     * presses an arrow key after clicking a different window). Root
+     * cause, confirmed by direct read: dock_grab_keyboard()'s matching
+     * release (dock_release_keyboard_if_left()) only fires on a real
+     * FocusOut event for the dock's OWN window - if that release is
+     * ever missed (this desktop's real Mutter/XWayland focus-
+     * notification quirks are already documented multiple times
+     * elsewhere in this file), the dock keeps an ACTIVE, DISPLAY-WIDE
+     * XGrabKeyboard indefinitely. A key display-routed to the dock
+     * ONLY because of that stale grab (never because the user is
+     * actually navigating the taskbar) still reaches THIS function
+     * with `window_is_dock()` true, and the dock's own arrow-key nav
+     * handler below (`XRaiseWindow`+`XSetInputFocus`+`dock_grab_
+     * keyboard()`) then RE-ASSERTS AND RE-GRABS focus for itself as an
+     * ordinary side effect of what it thinks is legitimate taskbar
+     * navigation - reinforcing the exact steal, forever, on every
+     * subsequent keypress. Real fix: before acting on ANY key as the
+     * dock's own input, verify via a live XGetInputFocus (not the
+     * cached/one-tick-stale g_focus_owned_painted) that the dock
+     * genuinely holds real focus right now. If it doesn't, this key
+     * was never meant for it - release the stale grab immediately and
+     * do not process it as dock nav, so whichever window the user
+     * actually clicked keeps its real focus and gets the NEXT key. */
+    if (window_is_dock() && g_dock_kbd_win && dpy) {
+        Window fw = None; int rev = 0;
+        XGetInputFocus(dpy, &fw, &rev);
+        if (!dock_is_our_win(fw)) {
+            XUngrabKeyboard(dpy, CurrentTime);
+            g_dock_kbd_win = None;
+            return;
+        }
+    }
     /* REAL, NEW 2026-09-04 - see g_interact_relay_on's own declaration
      * comment. Checked BEFORE every other key-order exception in this
      * function (events-hq's picker, db-hq's armed field, 'p' dump) -
@@ -5966,7 +5999,18 @@ static void hq_idle_tick(void) {
     {
         if (reparse_chtpm_if_changed()) {
             assign_nav_and_layout(); redraw();
-            if (g_dock_kbd_win) dock_grab_keyboard(g_dock_kbd_win);
+            /* REAL FIX 2026-09-04 (pc-hq-bugs.md Bug 2, same root cause
+             * as handle_key()'s own new guard above) - this used to
+             * blindly re-grab whenever g_dock_kbd_win was still set,
+             * regardless of whether the dock actually still holds real
+             * focus - one of the two paths that could reinforce a
+             * stale grab forever. Same live-focus check first. */
+            if (g_dock_kbd_win) {
+                Window fw = None; int rev = 0;
+                if (dpy) XGetInputFocus(dpy, &fw, &rev);
+                if (dock_is_our_win(fw)) dock_grab_keyboard(g_dock_kbd_win);
+                else { XUngrabKeyboard(dpy, CurrentTime); g_dock_kbd_win = None; }
+            }
             /* real content growth may have just recreated buf as a
              * blank Pixmap (see redraw()'s own resize-safety comment) -
              * a second real redraw() repaints it for real THIS tick,
