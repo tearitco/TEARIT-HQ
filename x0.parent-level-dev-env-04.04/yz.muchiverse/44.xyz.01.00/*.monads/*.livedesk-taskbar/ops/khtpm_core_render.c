@@ -1887,6 +1887,7 @@ static int kh_elem_in_scope(Elem *e) {
 #include "khtpm_draw_core.c"
 #define ROW_H 24
 #define CHROME_H 24
+#define KH_WIN_FRAME 2
 
 static CssSheet g_sheet;
 
@@ -1985,6 +1986,11 @@ static void kh_shift_subtree(Elem *e, int dy) {
     for (int i = 0; i < e->n_children; i++) kh_shift_subtree(e->children[i], dy);
 }
 
+static void kh_shift_subtree_xy(Elem *e, int dx, int dy) {
+    if (!e) return;
+    e->x += dx; e->y += dy;
+    for (int i = 0; i < e->n_children; i++) kh_shift_subtree_xy(e->children[i], dx, dy);
+}
 
 
 static void nav_tab_register(const char *type, const char *title);
@@ -3850,11 +3856,13 @@ static void dock_paint_menu(void) {
                 fclose(rf);
             }
         }
-        /* 2px theme-secondary window frame, same as every other khtpm
-         * window - drawn LAST, right before the present. */
+        /* 2px theme-secondary window frame in a dedicated margin,
+         * drawn LAST, right before the present. */
         {
             XSetForeground(dpy, gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#888888"));
-            XDrawRectangle(dpy, buf, gc, 0, 0, (unsigned)(g_win_w - 1), (unsigned)(g_win_h - 1));
+            for (int _fb = 0; _fb < KH_WIN_FRAME; _fb++)
+                XDrawRectangle(dpy, buf, gc, _fb, _fb,
+                               (unsigned)(g_win_w - 1 - 2 * _fb), (unsigned)(g_win_h - 1 - 2 * _fb));
         }
         {
             XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
@@ -4221,6 +4229,25 @@ static void assign_nav_and_layout(void) {
         }
         g_win_h = y + 8;
         }
+    }
+    if (!window_is_dock() && g_window) {
+        int fb = KH_WIN_FRAME;
+        Elem *pg = find_page(g_current_page);
+        if (pg) for (int i = 0; i < pg->n_children; i++) kh_shift_subtree_xy(pg->children[i], fb, fb);
+        /* synthetic chrome elems (not in the tree) */
+        if (g_default_close_elem && g_default_close_elem->w > 0)      { g_default_close_elem->x += fb;      g_default_close_elem->y += fb; }
+        if (g_default_minimize_elem && g_default_minimize_elem->w > 0) { g_default_minimize_elem->x += fb;   g_default_minimize_elem->y += fb; }
+        if (g_default_fullscreen_elem && g_default_fullscreen_elem->w > 0) { g_default_fullscreen_elem->x += fb; g_default_fullscreen_elem->y += fb; }
+        /* generic scrollbar geometry + its ^/v arrow elems */
+        for (int i = 0; i < g_n_generic_sbars; i++) {
+            g_generic_sbars[i].vx += fb; g_generic_sbars[i].vy += fb;
+            g_generic_sbars[i].track_x += fb; g_generic_sbars[i].track_y += fb;
+            g_generic_sbars[i].thumb_y += fb;
+            if (g_sbar_up_elem[i].w > 0)   { g_sbar_up_elem[i].x += fb;   g_sbar_up_elem[i].y += fb; }
+            if (g_sbar_down_elem[i].w > 0) { g_sbar_down_elem[i].x += fb; g_sbar_down_elem[i].y += fb; }
+        }
+        g_win_w += 2 * fb; g_win_h += 2 * fb;
+        g_window->w = g_win_w; g_window->h = g_win_h;
     }
     kh_apply_scope_confine();
     if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
@@ -6138,7 +6165,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                                  ? g_default_minimize_elem->x
                                  : ((g_default_has_sidebar_panel && g_default_fullscreen_elem->w > 0)
                                     ? g_default_fullscreen_elem->x : g_win_w - 60);
-            if (!window_is_dock() && ev->xbutton.button == 1 && ev->xbutton.y < CHROME_H &&
+            if (!window_is_dock() && ev->xbutton.button == 1 && ev->xbutton.y >= KH_WIN_FRAME && ev->xbutton.y < CHROME_H + KH_WIN_FRAME &&
                 !(ev->xbutton.x >= chrome_zone_x && ev->xbutton.x < g_win_w)) {
                 g_popup_dragging = 1;
                 g_popup_drag_last_x = ev->xbutton.x_root;
