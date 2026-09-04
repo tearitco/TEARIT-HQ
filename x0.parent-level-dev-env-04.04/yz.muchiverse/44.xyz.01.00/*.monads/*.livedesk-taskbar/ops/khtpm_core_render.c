@@ -6783,6 +6783,7 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
      * the whole process (confirmed live). Same real non-fatal handler
      * already used elsewhere in this file. */
     XSetErrorHandler(kh_nonfatal_x_error);
+    load_theme_colors();  /* g_theme_fg for the window frame (this mode returns before main()'s own load) */
     int screen = DefaultScreen(dpy);
     Visual *visual = DefaultVisual(dpy, screen);
     int depth = DefaultDepth(dpy, screen);
@@ -7194,13 +7195,26 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                     XFillRectangle(dpy, buf, gc, dropdown_x + 1, row_y + 1, (unsigned)dropdown_w - 2, (unsigned)PCHQ_DROPDOWN_ROW_H - 2);
                 }
                 if (pchq_body_font) {
-                    char row_text[64];
-                    snprintf(row_text, sizeof(row_text), "%s%s", is_current ? "* " : "  ", row_label);
+                    char row_text[80];
+                    /* same "[ ]N." / "[>]N." nav-badge convention the
+                     * toolbar items above already use, so the dropdown
+                     * rows are digit-jumpable / AI-addressable too */
+                    snprintf(row_text, sizeof(row_text), "%s%d. %s%s",
+                             row_focused ? "[>]" : "[ ]", r + 1,
+                             is_current ? "* " : "", row_label);
                     XftDrawStringUtf8(xftdraw, row_focused ? &col_focus : &col_unfocus, pchq_body_font,
                                        dropdown_x + 6, row_y + PCHQ_DROPDOWN_ROW_H - 6, (const FcChar8 *)row_text, (int)strlen(row_text));
                 }
             }
         }
+
+        /* 2px theme-secondary window frame, same as every other khtpm
+         * window (see redraw()'s own frame draw) - drawn last, over the
+         * chrome + canvas, before the present. */
+        XSetForeground(dpy, gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#888888"));
+        for (int _fb = 0; _fb < 2; _fb++)
+            XDrawRectangle(dpy, buf, gc, _fb, _fb,
+                           (unsigned)(win_w - 1 - 2 * _fb), (unsigned)(win_h - 1 - 2 * _fb));
 
         XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)win_w, (unsigned)win_h, 0, 0);
         XFlush(dpy);
@@ -7431,6 +7445,7 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
                 }
                 pchq_dropdown = 0;
             } else if (ev.type == ButtonPress && ev.xbutton.button == Button1) {
+                kh_raise_and_focus(win);  /* click anywhere -> bring to top, WM-managed mode included */
                 int hit = -1;
                 for (int i = 0; i < PCHQ_N_ELEMS; i++) {
                     if (ev.xbutton.x >= elems[i].x && ev.xbutton.x < elems[i].x + elems[i].w &&
