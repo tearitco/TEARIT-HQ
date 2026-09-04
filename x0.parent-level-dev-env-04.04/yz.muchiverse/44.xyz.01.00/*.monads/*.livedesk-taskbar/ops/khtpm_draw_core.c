@@ -508,7 +508,22 @@ static void draw_elem(Elem *e, int hover_id_hash) {
      * once, fixes every mode that relies on zeroing a subtree to hide
      * it, not just events-hq. */
     if (e->w <= 0 || e->h <= 0) return;
-    if (e->style.has_bg_color) {
+    int is_grid_tile_bg = elem_has_class(e, "pal-tile") || elem_has_class(e, "swatch");
+    if (e->style.has_bg_color && is_grid_tile_bg) {
+        /* PNG-style transparency checkerboard behind a sprite cell -
+         * reads as "this holds an image with alpha", instead of the flat
+         * tile colour showing through every transparent edge. */
+        int sq = 6;
+        for (int yy = e->y; yy < e->y + e->h; yy += sq) {
+            for (int xx = e->x; xx < e->x + e->w; xx += sq) {
+                int dark = ((((xx - e->x) / sq) + ((yy - e->y) / sq)) & 1);
+                XSetForeground(dpy, gc, alloc_pixel(dark ? "#b8b8b8" : "#ffffff"));
+                int cw = (xx + sq > e->x + e->w) ? (e->x + e->w - xx) : sq;
+                int ch = (yy + sq > e->y + e->h) ? (e->y + e->h - yy) : sq;
+                XFillRectangle(dpy, buf, gc, xx, yy, (unsigned)cw, (unsigned)ch);
+            }
+        }
+    } else if (e->style.has_bg_color) {
         XSetForeground(dpy, gc, alloc_pixel(e->style.bg_color));
         XFillRectangle(dpy, buf, gc, e->x, e->y, e->w, e->h);
     }
@@ -642,9 +657,12 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                  * picker -> livedesk_theme.pdl COLOR|bg) the real
                  * surface is g_theme_bg, so every transparent icon sat
                  * on a stale grey square. Follow the theme. */
-                unsigned long bg_pixel = e->style.has_bg_color
-                    ? alloc_pixel(e->style.bg_color)
-                    : alloc_pixel(g_theme_bg[0] ? g_theme_bg : "#1c1c1c");
+                unsigned long bg_pixel =
+                    (e->style.has_bg_color && (elem_has_class(e, "pal-tile") || elem_has_class(e, "swatch")))
+                        ? alloc_pixel("#dcdcdc")               /* checkerboard mean - matte transparent edges to a light grey */
+                    : e->style.has_bg_color
+                        ? alloc_pixel(e->style.bg_color)
+                        : alloc_pixel(g_theme_bg[0] ? g_theme_bg : "#1c1c1c");
                 int blit_x, blit_y;
                 /* A palette/swatch GRID tile is short (h<64) too, but it
                  * wants the pre-2026-09-03 behaviour: sprite centered,
